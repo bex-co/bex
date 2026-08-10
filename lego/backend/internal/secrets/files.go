@@ -137,6 +137,13 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 	if err != nil {
 		return SecretFileView{}, err
 	}
+	// Canonicalize like every sibling verb (w1/m66 F10): a caller may address the
+	// service by its stable srv- id or a store-managed App's tenant-prefixed
+	// metadata.name, but the store key is always the PUBLIC service name. Writing
+	// under the request token instead created a second namespace nothing else
+	// reads — the file materialized into the pod once, then was invisible to
+	// Get/List/Delete and outlived the service's purge.
+	service = storeServiceName(a, service)
 	ctx = withTenant(ctx, storeTenant(a))
 	if s.Store == nil {
 		return SecretFileView{}, core.ErrSecretsUnavailable

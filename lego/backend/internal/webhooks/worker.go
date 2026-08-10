@@ -125,6 +125,7 @@ type WorkerStore interface {
 	ListEnabledWebhookEndpoints(ctx context.Context) ([]store.WebhookEndpoint, error)
 	EnqueueWebhookDeliveries(ctx context.Context, deliveries []store.WebhookDelivery, at time.Time, key string) error
 	ClaimDueWebhookDeliveries(ctx context.Context, now, leaseUntil time.Time, limit int) ([]store.DueWebhookDelivery, error)
+	SweepWebhookDeliveries(ctx context.Context, before time.Time, keepPerEndpoint, limit int) (int64, error)
 	RecordWebhookAttempt(ctx context.Context, id string, status int, errMsg string, at, next time.Time, delivered, failed bool) error
 	DisableWebhookEndpoint(ctx context.Context, id, reason string) error
 	ClaimWebhookFailureNotice(ctx context.Context, endpointID string, now, threshold time.Time) (bool, error)
@@ -158,6 +159,13 @@ type Worker struct {
 	Clock func() time.Time
 	// Client posts deliveries; nil => defaultClient.
 	Client *http.Client
+	// RetentionDays is how long a TERMINAL delivery survives before the sweep
+	// purges it (BEX_WEBHOOK_RETENTION_DAYS). <1 => DefaultRetentionDays.
+	RetentionDays int
+	// RetentionKeepPerEndpoint caps how many terminal deliveries an endpoint may
+	// retain regardless of age, so a burst inside the age window cannot evade the
+	// age rule. <1 => defaultRetentionKeepPerEndpoint.
+	RetentionKeepPerEndpoint int
 
 	// wm* cache the durable watermark between ticks to skip an I/O round trip on
 	// a quiet tick. It is a pure optimization under two replicas: the
@@ -167,7 +175,25 @@ type Worker struct {
 	wmLoaded bool
 	wmAt     time.Time
 	wmKey    string
+
+	// lastSweep throttles retention to one pass per sweepInterval, so the sweep
+	// rides the existing tick instead of needing its own goroutine.
+	lastSweep time.Time
 }
+
+const (
+	// DefaultRetentionDays is how long a delivered/exhausted delivery row is kept
+	// for the dashboard's history view. Matches the audit log's 90-day default
+	// (BEX_AUDIT_RETENTION_DAYS) — the two are read side by side.
+	DefaultRetentionDays = 90
+	// defaultRetentionKeepPerEndpoint bounds an endpoint's terminal history
+	// independently of age.
+	defaultRetentionKeepPerEndpoint = 1000
+	// sweepInterval is how often retention runs; sweepBatch bounds one pass so a
+	// large backlog is drained over several ticks instead of one long statement.
+	sweepInterval = time.Hour
+	sweepBatch    = 2000
+)
 
 func (w *Worker) now() time.Time {
 	if w.Clock != nil {
@@ -189,17 +215,28 @@ func (w *Worker) backoff() []time.Duration {
 // cannot register a webhook endpoint that probes cloud metadata or internal
 // services. Redirects are never followed (a 3xx is treated as a delivery
 // failure) so a redirect-to-private chain cannot bypass the dial guard.
-var defaultClient = func() *http.Client {
+var defaultClient = &http.Client{
+	Timeout:   requestTimeout,
+	Transport: deliveryTransport(),
+	CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	},
+}
+
+// deliveryTransport builds the delivery transport. Named (rather than inlined
+// into defaultClient) so a test can assert the real production construction.
+func deliveryTransport() *http.Transport {
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	tr.DialContext = netutil.SafeDialContext(requestTimeout)
-	return &http.Client{
-		Timeout:   requestTimeout,
-		Transport: tr,
-		CheckRedirect: func(*http.Request, []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-}()
+	// No ambient proxy (w1/m66 F9). This client's entire destination policy is
+	// implemented at dial time, and Clone() carries DefaultTransport's
+	// ProxyFromEnvironment: with HTTP(S)_PROXY set, SafeDialContext would only
+	// ever see the PROXY's address while the proxy resolved and fetched the
+	// tenant-controlled URL — the private/link-local/metadata guard silently
+	// bypassed. A dial-time guard and an ambient proxy are incompatible.
+	tr.Proxy = nil
+	return tr
+}
 
 func (w *Worker) client() *http.Client {
 	if w.Client != nil {
@@ -236,14 +273,47 @@ func (w *Worker) Run(ctx context.Context) {
 // one indexed SELECT — no feed read, no watermark write, no due-delivery
 // query (deliveries join enabled endpoints, so none can be due).
 func (w *Worker) RunOnce(ctx context.Context) error {
+	// Retention runs before the early return: a workspace that deletes its last
+	// endpoint must still have its terminal history reclaimed, and the sweep is
+	// self-throttling (at most one pass per sweepInterval).
+	sweepErr := w.sweepRetention(ctx)
 	endpoints, err := w.Store.ListEnabledWebhookEndpoints(ctx)
 	if err != nil {
-		return fmt.Errorf("list endpoints: %w", err)
+		return errors.Join(sweepErr, fmt.Errorf("list endpoints: %w", err))
 	}
 	if len(endpoints) == 0 {
+		return sweepErr
+	}
+	return errors.Join(sweepErr, w.dispatch(ctx, endpoints), w.send(ctx))
+}
+
+// sweepRetention purges terminal deliveries past the retention policy, at most
+// once per sweepInterval (w1/m67 F3). The delivery table doubles as the
+// dashboard's history surface, so without this a tenant's ordinary activity grew
+// shared storage forever — the only thing that ever removed a row was deleting
+// the endpoint or the workspace.
+func (w *Worker) sweepRetention(ctx context.Context) error {
+	days := w.RetentionDays
+	if days <= 0 {
+		days = DefaultRetentionDays
+	}
+	keep := w.RetentionKeepPerEndpoint
+	if keep <= 0 {
+		keep = defaultRetentionKeepPerEndpoint
+	}
+	now := w.now()
+	if !w.lastSweep.IsZero() && now.Sub(w.lastSweep) < sweepInterval {
 		return nil
 	}
-	return errors.Join(w.dispatch(ctx, endpoints), w.send(ctx))
+	w.lastSweep = now
+	n, err := w.Store.SweepWebhookDeliveries(ctx, now.AddDate(0, 0, -days), keep, sweepBatch)
+	if err != nil {
+		return fmt.Errorf("sweep webhook deliveries: %w", err)
+	}
+	if n > 0 {
+		log.Printf("webhooks: purged %d terminal deliveries older than %dd or beyond %d per endpoint", n, days, keep)
+	}
+	return nil
 }
 
 // payload is the thin body a receiver gets — Render's documented shape:

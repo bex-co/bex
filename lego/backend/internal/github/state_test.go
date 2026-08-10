@@ -41,19 +41,31 @@ func (connectStateWorkspaceResolver) IsMember(_ context.Context, _ core.Identity
 
 func TestConnectStateRoundTripAndTamperCheck(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
+	st := newFakeStore()
 	svc := &Service{
 		Base:        &core.Base{Clock: func() time.Time { return now }},
+		Store:       st,
 		StateSecret: []byte("test-only-high-entropy-state-secret"),
 	}
-	token, err := svc.mintConnectState("tea-workspace")
+	token, err := svc.mintConnectState(testCallerCtx(), "tea-workspace", testCallerSubject)
 	if err != nil {
 		t.Fatalf("mintConnectState: %v", err)
 	}
 	if strings.Contains(token, "tea-workspace") {
 		t.Fatalf("state token exposes its workspace: %q", token)
 	}
-	if got, err := svc.verifyConnectState(token); err != nil || got != "tea-workspace" {
-		t.Fatalf("verifyConnectState = %q, %v; want tea-workspace, nil", got, err)
+	// Since w1/m67 F3 the state carries only an opaque nonce; the workspace and
+	// the initiating subject live in the durable transaction it names.
+	nonce, err := svc.verifyConnectState(token)
+	if err != nil || nonce == "" {
+		t.Fatalf("verifyConnectState = %q, %v; want a nonce, nil", nonce, err)
+	}
+	if strings.Contains(token, testCallerSubject) {
+		t.Fatalf("state token exposes its initiator: %q", token)
+	}
+	txn, ok := st.txns[nonce]
+	if !ok || txn.TenantID != "tea-workspace" || txn.Subject != testCallerSubject {
+		t.Fatalf("connect transaction = %+v (present=%v); want tea-workspace/%s", txn, ok, testCallerSubject)
 	}
 
 	signed, err := base64.RawURLEncoding.DecodeString(token)
@@ -71,12 +83,13 @@ func TestConnectStateMissingAndExpired(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
 	svc := &Service{
 		Base:        &core.Base{Clock: func() time.Time { return now }},
+		Store:       newFakeStore(),
 		StateSecret: []byte("test-only-high-entropy-state-secret"),
 	}
 	if _, err := svc.verifyConnectState(""); !errors.Is(err, errConnectStateMissing) {
 		t.Fatalf("missing state error = %v, want errConnectStateMissing", err)
 	}
-	token, err := svc.mintConnectState("tea-workspace")
+	token, err := svc.mintConnectState(testCallerCtx(), "tea-workspace", testCallerSubject)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,8 +122,14 @@ func TestStartConnectReturnsStatefulInstallURL(t *testing.T) {
 		if token == "" {
 			t.Fatalf("install URL has no state: %s", installURL)
 		}
-		if got, err := svc.verifyConnectState(token); err != nil || got != "tea-target" {
-			t.Fatalf("install URL state = %q, %v; want tea-target, nil", got, err)
+		nonce, err := svc.verifyConnectState(token)
+		if err != nil || nonce == "" {
+			t.Fatalf("install URL state = %q, %v; want a nonce, nil", nonce, err)
+		}
+		// The state names an attempt; the durable row is what binds the workspace.
+		txn, ok := st.txns[nonce]
+		if !ok || txn.TenantID != "tea-target" {
+			t.Fatalf("connect transaction = %+v (present=%v); want tea-target", txn, ok)
 		}
 	}
 	assertStateWorkspace(conn.InstallURL)

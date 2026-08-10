@@ -58,6 +58,21 @@ One mirror tracks it, value-less, and is kept in sync by rule (see [CLAUDE.md](.
 
 Running-instance app SSH ([ADR035](ADR035-ssh.md)) uses a dedicated Ed25519 **server host key**, not the `bex` node-admin client key above. Its private file stays on the operator laptop at `BEX_SSH_HOST_KEY_FILE`; [`scripts/ssh-host-key-secret.sh`](../scripts/ssh-host-key-secret.sh) installs it out of band as `bex-system/bex-ssh-host-key`. The public fingerprint may be published. The key is stable across ordinary deploys; rotation is an explicit maintenance event because OpenSSH clients pin it in `known_hosts`. [`scripts/ssh-activate.sh`](../scripts/ssh-activate.sh) refuses to advertise the host until the complete public A/AAAA set equals the Terraform-owned Hetzner edge's public address set and TCP/22 presents that exact key; `--check` runs those gates without mutation.
 
+### Control-plane host keys authenticate the other end of that first hop
+
+The chain above starts with `ssh :22` to an IP the hcloud API reports — but until w1/m66 the client never authenticated the **server**: both `fetch-app-kubeconfig.sh` and `verify-substrate.sh` hardcoded `StrictHostKeyChecking=accept-new`, so a first-seen host key was trusted on faith. Anyone able to intercept that first connection could serve their own key, return an attacker-controlled `admin.conf`, and every later step — `kubectl apply`, Secret writes, the deploy — would target the attacker's API server. The follow-on `kubectl cluster-info` probe is not a check on this: it authenticates against the CA embedded in that same untrusted kubeconfig.
+
+`BEX_SSH_KNOWN_HOSTS` closes it, custodied exactly like the other bootstrap secrets (`.env` + GitHub Actions, pushed by [`scripts/gh-secrets.sh`](../scripts/gh-secrets.sh)). Both scripts share one policy helper, [`scripts/lib/ssh-hostkey.sh`](../scripts/lib/ssh-hostkey.sh): **set ⇒ fail closed** (`StrictHostKeyChecking=yes`, pinned `UserKnownHostsFile`, global known-hosts ignored); **unset ⇒ trust-on-first-use with a notice on stderr**, so the weaker mode is never silent. A pin that points at a missing or empty file is an error, not a silent downgrade.
+
+Capture it out of band, from a host you already trust, and compare the fingerprint against the node's console before storing it:
+
+```bash
+ssh-keyscan -t ed25519 <cp-ip>              # repeat per control-plane node
+ssh-keygen -lf <(ssh-keyscan -t ed25519 <cp-ip>)   # fingerprint to eyeball
+```
+
+Because the nodes are immutable and roll on template rotation ([ADR053](ADR053-node-instance-types.md)), re-capture after a control-plane rotation — the same maintenance event that already re-mints the machines. Until the secret exists, CI runs unchanged; the control is inert, not partially applied.
+
 ### Stripe test billing credentials are runtime-only
 
 The production-hosted billing sandbox uses a dedicated restricted `rk_test_*`, never the Stripe CLI login/setup key and never any `*_live_*` credential. [`scripts/stripe-billing-secret.sh`](../scripts/stripe-billing-secret.sh) validates the restricted/test prefix, keeps secret bytes in a mode-0600 temporary file, installs `bex-system/bex-stripe`, and refuses live runtime keys by default. On macOS the test endpoint secret may be sourced from the login keychain service `bex-stripe-test-webhook`; neither value belongs in `.env.example`, GitHub logs, tickets, drill evidence, or tenant-visible state.
@@ -91,6 +106,7 @@ As of this writing, `:22` (SSH, gated by `bex`) and `:6443`/`:443` (kube-API, ga
 - **Single-key blast radius.** Compromise of `bex` ⇒ full app-cluster `system:masters`. Day-to-day ops use the scoped `bex-operator` kubeconfig (ClusterRole `bex-operator-day-to-day`, ServiceAccount-token-based, no `O=system:masters`); the admin cert is reserved for break-glass. Mint via [`scripts/operator-kubeconfig.sh`](../scripts/operator-kubeconfig.sh); ClusterRole in [`deploy/gitops/base/operator-daytoday-rbac.yaml`](../deploy/gitops/base/operator-daytoday-rbac.yaml). (w7/m37)
 - **CA is revocation-proof.** `bex-ca` compromise can't be contained by revoking a cert; it requires rotating the cluster CA (disruptive). Runbook: [ADR036-ca-rotation-runbook.md](ADR036-ca-rotation-runbook.md). (w7/m37)
 - **Long-lived admin cert.** The `kubernetes-admin` cert is ~1-year (kubeadm default). A Prometheus alert `AdminCertExpiringSoon` fires 30 days before expected expiry (based on the `bex-kubeconfig` Secret creation timestamp). Renewal procedure: [ADR036-ca-rotation-runbook.md](ADR036-ca-rotation-runbook.md) §1. (w7/m37)
+- **Host-key pin is provisioned, not assumed.** The mechanism ships (w1/m66 F7) but stays inert until an operator captures the control-plane host keys into `BEX_SSH_KNOWN_HOSTS`. Treat that capture as part of cluster bring-up and of any control-plane rotation; a rotation without re-capture turns every CI fetch into a hard failure (which is the correct direction to fail, but it is a scheduled task, not a surprise).
 - **No network second layer — by decision, not omission.** `:22`/`:6443` are reachable from `0.0.0.0/0`; protection is the credential layer only. The static source-IP firewall (w1/m7 t001) was **removed** ([.pm/DO_NOT_DO.md](../.pm/DO_NOT_DO.md), 2026-07-09): a static `allowed_ssh_cidrs` fits neither a dynamic-IP operator nor GitHub-hosted CI (dynamic egress), and `:6443` is reached _via the LB_ (`:443`) so a node-`:6443` lockdown would also have to spare the LB→node hop. Auth-only is the accepted baseline. _Follow-up (only if a second layer is wanted):_ Tailscale/WireGuard locking `:22`/`:6443` to a stable tailnet, with a tailnet-joined self-hosted CI runner — never a static CIDR.
 - **Three copies to rotate.** Any rotation must cover `.env`, GitHub Actions secrets, and the in-cluster derivations. There is no single rotation command. _Follow-up:_ a rotation checklist per credential.
 

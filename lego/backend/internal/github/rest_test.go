@@ -33,9 +33,24 @@ func mux(s *Service) *http.ServeMux {
 	return m
 }
 
+// do issues a request as the signed-in bex user. The auth gate attaches the
+// caller Identity to the context for every route including the callback (its
+// anonymous exception applies only when NO credential is presented), and since
+// w1/m67 F3 the callback requires that identity to match whoever started the
+// flow — so the default here models a real signed-in browser.
 func do(t *testing.T, m *http.ServeMux, method, path string) *httptest.ResponseRecorder {
 	t.Helper()
+	return doAs(t, m, method, path, testCallerSubject)
+}
+
+// doAs issues a request as a specific subject; subject == "" is an anonymous
+// browser (no bex session cookie).
+func doAs(t *testing.T, m *http.ServeMux, method, path, subject string) *httptest.ResponseRecorder {
+	t.Helper()
 	req := httptest.NewRequest(method, path, nil)
+	if subject != "" {
+		req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: subject, Method: "session"}))
+	}
 	rec := httptest.NewRecorder()
 	m.ServeHTTP(rec, req)
 	return rec
@@ -43,7 +58,7 @@ func do(t *testing.T, m *http.ServeMux, method, path string) *httptest.ResponseR
 
 func callbackPath(t *testing.T, s *Service, installationID, workspaceID string) string {
 	t.Helper()
-	state, err := s.mintConnectState(workspaceID)
+	state, err := s.mintConnectState(testCallerCtx(), workspaceID, testCallerSubject)
 	if err != nil {
 		t.Fatalf("mint callback state: %v", err)
 	}
@@ -140,7 +155,7 @@ func TestRESTHappyPath(t *testing.T) {
 func TestRESTCallbackBadInstallationID(t *testing.T) {
 	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "octo"}, Store: newFakeStore(), StateSecret: []byte("test-only-high-entropy-state-secret")}
 	m := mux(svc)
-	state, err := svc.mintConnectState(core.DefaultTenant)
+	state, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +208,7 @@ func TestRESTCallbackStateFailuresRedirectToDashboard(t *testing.T) {
 		StateSecret:  []byte("test-only-high-entropy-state-secret"),
 		DashboardURL: "https://dash.bex.co",
 	}
-	expired, err := svc.mintConnectState(core.DefaultTenant)
+	expired, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +249,7 @@ func TestRESTCallbackStateFailuresReturnClearJSONWithoutDashboard(t *testing.T) 
 		Store:       newFakeStore(),
 		StateSecret: []byte("test-only-high-entropy-state-secret"),
 	}
-	expired, err := svc.mintConnectState(core.DefaultTenant)
+	expired, err := svc.mintConnectState(testCallerCtx(), core.DefaultTenant, testCallerSubject)
 	if err != nil {
 		t.Fatal(err)
 	}

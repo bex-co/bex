@@ -1,0 +1,24 @@
+# Repository-pinned SHA-256 checksums for the exact hcloud Packer plugin
+# artifacts `scripts/packer-plugin-install.sh` may install (w1/m66 F12).
+#
+# WHY THIS FILE EXISTS: .github/workflows/snapshot.yml runs Packer in a job that
+# holds HCLOUD_TOKEN, and the plugin executes inside that job. A version
+# constraint alone (the template pins `= 1.7.2`) selects a name, not bytes — and
+# Packer >= 1.14 no longer writes .packer.lock.hcl, so there is no lock file to
+# carry checksums. These reviewed digests are the integrity binding: the
+# installer refuses to install anything that does not match, before Packer ever
+# loads the plugin.
+#
+# PROVENANCE: copied from the upstream release's own SHA256SUMS
+#   https://github.com/hetznercloud/packer-plugin-hcloud/releases/download/v1.7.2/packer-plugin-hcloud_v1.7.2_SHA256SUMS
+# and committed here so the value is under code review rather than fetched
+# alongside the artifact at run time.
+#
+# TO BUMP: change `version` in bex-worker.pkr.hcl, fetch the new release's
+# SHA256SUMS, replace the lines below (keep linux_amd64 for CI and the platform
+# you build on locally), and re-run scripts/packer-plugin-install.sh.
+#
+# format: <sha256>  <artifact filename>
+
+5fc34e07bd7a97cd2c5c367fbbab9db9beb03fd47706c70a02bf8d3b02f6d05b  packer-plugin-hcloud_v1.7.2_x5.0_darwin_arm64.zip
+a2e818ff4f67dca19b1ef4b6f636e6bcb1f5d8cbab4f320a4e90d997eafc37d6  packer-plugin-hcloud_v1.7.2_x5.0_linux_amd64.zip

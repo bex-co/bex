@@ -59,6 +59,10 @@ jobs:
         run: bash scripts/rename-verify.test.sh
       - name: Deploy supersession detection unit tests
         run: bash scripts/deploy-superseded.test.sh
+      - name: Packer plugin pin/verify unit tests
+        run: bash scripts/packer-plugin-install.test.sh
+      - name: SSH host-key policy unit tests
+        run: bash scripts/ssh-hostkey.test.sh
       - name: Install shellcheck
         run: sudo apt-get update && sudo apt-get install -y shellcheck
       - name: Restore script shellcheck

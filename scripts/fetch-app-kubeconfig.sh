@@ -9,8 +9,11 @@
 # Usage:  HCLOUD_TOKEN=... scripts/fetch-app-kubeconfig.sh <output-path>
 # Env:    HCLOUD_TOKEN        (required) Hetzner Cloud API token
 #         BEX_SSH_KEY_PATH    SSH private key (default ~/.ssh/id_bex)
-#         BEX_SSH_KNOWN_HOSTS_FILE  optional isolated known-hosts file for
-#                                  immutable-node maintenance
+#         BEX_SSH_KNOWN_HOSTS_FILE  authoritative known-hosts file. Set => the
+#                                  host key is AUTHENTICATED and an unknown or
+#                                  changed key fails closed before admin.conf is
+#                                  read (w1/m66 F7). Unset => trust-on-first-use,
+#                                  as before, with a notice on stderr.
 #         CLUSTER_NAME        cluster name (default bex)
 # Callers: .github/workflows/app-cluster.yml, .github/workflows/deploy.yml,
 #          the deploy-app-from-local runbook, and local operators.
@@ -20,10 +23,9 @@ OUT="${1:?usage: fetch-app-kubeconfig.sh <output-path>}"
 : "${HCLOUD_TOKEN:?HCLOUD_TOKEN is required}"
 KEY="${BEX_SSH_KEY_PATH:-$HOME/.ssh/id_bex}"
 CLUSTER="${CLUSTER_NAME:-bex}"
-SSH_KNOWN_HOSTS_ARGS=()
-if [ -n "${BEX_SSH_KNOWN_HOSTS_FILE:-}" ]; then
-  SSH_KNOWN_HOSTS_ARGS=(-o "UserKnownHostsFile=$BEX_SSH_KNOWN_HOSTS_FILE")
-fi
+# shellcheck source=scripts/lib/ssh-hostkey.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/ssh-hostkey.sh"
+bex_ssh_hostkey_args
 
 CP_IPS=$(curl -sf -H "Authorization: Bearer $HCLOUD_TOKEN" \
   "https://api.hetzner.cloud/v1/servers?label_selector=caph-cluster-${CLUSTER}" \
@@ -40,8 +42,8 @@ cleanup() { [ -z "${TMP:-}" ] || rm -f -- "$TMP"; }
 trap cleanup EXIT
 
 while IFS= read -r CP_IP; do
-  if ssh -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new \
-      "${SSH_KNOWN_HOSTS_ARGS[@]}" -i "$KEY" "root@${CP_IP}" \
+  if ssh -o BatchMode=yes -o ConnectTimeout=8 \
+      "${BEX_SSH_HOSTKEY_ARGS[@]}" -i "$KEY" "root@${CP_IP}" \
       'cat /etc/kubernetes/admin.conf' > "$TMP" \
     && kubectl --kubeconfig "$TMP" --request-timeout=10s cluster-info >/dev/null; then
     chmod 600 "$TMP"

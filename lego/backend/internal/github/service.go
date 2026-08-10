@@ -39,6 +39,10 @@ type ConnectionStore interface {
 	// an installation — the unique-binding gate (w1/m65 F2).
 	GitConnectionByInstallation(ctx context.Context, installationID int64) (store.GitConnection, error)
 	DeleteGitConnection(ctx context.Context, workspaceID string) error
+	// The subject-bound, single-use connect transaction (w1/m67 F3): the record
+	// that ties "who started this flow" to "who came back from GitHub".
+	CreateGitHubConnectTransaction(ctx context.Context, t store.GitHubConnectTransaction) error
+	ConsumeGitHubConnectTransaction(ctx context.Context, nonce string) (store.GitHubConnectTransaction, error)
 }
 
 // APIClient is the GitHub REST surface the Service uses — *Client in production,
@@ -133,7 +137,18 @@ func (s *Service) StartConnect(ctx context.Context, ownerID string) (Connection,
 		return Connection{}, core.ErrGitHubUnavailable
 	}
 	workspaceID := s.workspaceID(ctx)
-	installURL, err := s.statefulInstallURL(workspaceID)
+	// Record WHO is starting this flow (w1/m67 F3). Without it the install URL is
+	// a portable bearer credential for "bind an installation to this workspace":
+	// an attacker could hand its own URL to a victim GitHub org admin, whose
+	// genuine installation would then land in the attacker's workspace.
+	subject := ""
+	if id, ok := core.IdentityFrom(ctx); ok {
+		subject = id.Subject
+	}
+	if subject == "" {
+		return Connection{}, core.ErrForbidden
+	}
+	installURL, err := s.statefulInstallURL(ctx, workspaceID, subject)
 	if err != nil {
 		return Connection{}, err
 	}
@@ -149,12 +164,22 @@ func (s *Service) StartConnect(ctx context.Context, ownerID string) (Connection,
 	return conn, nil
 }
 
-// connectFromCallback is the sole installation-binding path. The signed state
-// has already selected an authorized bex workspace; the GitHub user OAuth code
-// independently proves that the browser principal administers the selected
-// installation. Both proofs are mandatory. GitHub authorization codes are
-// single-use, which also prevents callback replay after a successful exchange.
-func (s *Service) connectFromCallback(ctx context.Context, workspaceID string, installationID int64, code string) (Connection, error) {
+// connectFromCallback is the sole installation-binding path, and it now requires
+// THREE proofs that all name the same attempt (w1/m67 F3):
+//
+//  1. the signed state, carrying an opaque nonce;
+//  2. a server-side transaction row for that nonce, atomically consumed here, that
+//     records the bex subject and workspace the flow started with; and
+//  3. the GitHub user OAuth code, proving the browser principal administers the
+//     installation.
+//
+// Before (3) was tied to (2) by a shared subject, proofs (1) and (3) belonged to
+// unrelated principals and were individually portable: an attacker's signed
+// install URL, completed by a victim GitHub admin, bound the victim's
+// installation to the attacker's workspace. caller is the authenticated bex
+// identity presenting the callback; it must equal the transaction's initiator.
+// GitHub authorization codes are single-use, and the nonce now is too.
+func (s *Service) connectFromCallback(ctx context.Context, nonce, caller string, installationID int64, code string) (Connection, error) {
 	if !s.configured() {
 		return Connection{}, core.ErrGitHubUnavailable
 	}
@@ -164,6 +189,25 @@ func (s *Service) connectFromCallback(ctx context.Context, workspaceID string, i
 	if strings.TrimSpace(code) == "" {
 		return Connection{}, fmt.Errorf("%w: GitHub user authorization code is required", core.ErrBadRequest)
 	}
+	if caller == "" {
+		// The callback is a top-level GET navigation, so the Lax-scoped bex session
+		// cookie does travel with it (deploy/gitops kratos values: same_site: Lax).
+		// No session means we cannot know who is completing the flow — refuse
+		// rather than bind on the attacker-chosen workspace alone.
+		return Connection{}, fmt.Errorf("%w: sign in to bex before completing the GitHub installation", core.ErrForbidden)
+	}
+	// Consume first: the nonce is single-use whatever happens next, so a failed or
+	// probed callback cannot be retried against a different installation.
+	txn, err := s.Store.ConsumeGitHubConnectTransaction(ctx, nonce)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return Connection{}, fmt.Errorf("%w: this GitHub connect link has expired or was already used; start again from bex", core.ErrForbidden)
+		}
+		return Connection{}, err
+	}
+	if txn.Subject != caller {
+		return Connection{}, fmt.Errorf("%w: this GitHub connect link was started by a different bex user", core.ErrForbidden)
+	}
 	ok, err := s.Verifier.VerifyInstallationAdmin(ctx, code, installationID)
 	if err != nil {
 		return Connection{}, mapGitHubErr(err)
@@ -171,7 +215,7 @@ func (s *Service) connectFromCallback(ctx context.Context, workspaceID string, i
 	if !ok {
 		return Connection{}, fmt.Errorf("%w: could not verify you administer this GitHub installation", core.ErrForbidden)
 	}
-	return s.connectWithWorkspace(ctx, workspaceID, installationID)
+	return s.connectWithWorkspace(ctx, txn.TenantID, installationID)
 }
 
 // connectWithWorkspace records a connection for the workspace authenticated by

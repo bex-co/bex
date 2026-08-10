@@ -133,6 +133,21 @@ type Server struct {
 	// WWW-Authenticate, no audience/issuer check).
 	OAuthIssuer   string
 	OAuthResource string
+	// OAuthRequireAudience (BEX_OAUTH_REQUIRE_AUDIENCE=1) narrows the empty-audience
+	// token exception to bex-provisioned OAuth clients (w1/m67 F1). Off by default:
+	// it must not be enabled before auth-bootstrap-client.sh has stamped the
+	// platform-client marker on the Render CLI + mobile clients, or their
+	// legitimately audience-less logins would be refused. See auth.go's
+	// requireAudience field and docs/ADR012-auth.md §7.
+	OAuthRequireAudience bool
+	// AuthAdmission, when set, bounds the upstream identity-provider work an
+	// unauthenticated caller can impose (w1/m67 F1, authadmission.go): a
+	// per-client-IP budget on INVALID credentials plus a global in-flight cap on
+	// upstream auth calls. It is deliberately not a request-rate limiter in front
+	// of the gate — that would throttle the dashboard's SSR traffic, which
+	// arrives from one pod IP with every user's forwarded session. nil disables
+	// both bounds.
+	AuthAdmission *AuthAdmission
 
 	// WebhookSecret is the shared HMAC-SHA256 key the git push webhook verifies
 	// signatures against; empty disables the endpoint (it 503s). The webhook sits
@@ -974,7 +989,7 @@ func (s *Server) newAuthGate() (*oryAuth, error) {
 	if s.APIKeys != nil {
 		touch = s.APIKeys.TouchAPIKey
 	}
-	return newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.OAuthIssuer, s.resourceMetadataURL(), s.Onboard, touch), nil
+	return newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.OAuthIssuer, s.resourceMetadataURL(), s.OAuthRequireAudience, s.AuthAdmission, s.Onboard, touch), nil
 }
 
 // resourceMetadataURL derives the public URL of this API's RFC 9728 metadata

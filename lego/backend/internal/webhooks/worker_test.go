@@ -18,6 +18,7 @@ package webhooks
 
 import (
 	"context"
+	"sort"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -50,6 +51,50 @@ type fakeWorkerStore struct {
 	// seen dedupes inserts on (endpoint_id, event_id), mirroring the store's
 	// unique index so a re-dispatch of the same event enqueues no duplicate.
 	seen map[string]bool
+
+	// sweeps records each retention pass's (before, keepPerEndpoint, limit) so a
+	// test can assert the policy the worker applies (w1/m67 F3).
+	sweeps []sweepCall
+}
+
+type sweepCall struct {
+	before          time.Time
+	keepPerEndpoint int
+	limit           int
+}
+
+// SweepWebhookDeliveries mirrors the store's contract: only TERMINAL rows are
+// eligible, and it never touches a delivery still awaiting or retrying delivery.
+func (f *fakeWorkerStore) SweepWebhookDeliveries(_ context.Context, before time.Time, keepPerEndpoint, limit int) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.sweeps = append(f.sweeps, sweepCall{before: before, keepPerEndpoint: keepPerEndpoint, limit: limit})
+
+	type terminal struct {
+		id string
+		at time.Time
+	}
+	perEndpoint := map[string][]terminal{}
+	for id, d := range f.queue {
+		if d.DeliveredAt == nil && d.FailedAt == nil {
+			continue // pending or retryable: never eligible
+		}
+		perEndpoint[d.EndpointID] = append(perEndpoint[d.EndpointID], terminal{id: id, at: d.CreatedAt})
+	}
+	var deleted int64
+	for _, rows := range perEndpoint {
+		sort.Slice(rows, func(i, j int) bool { return rows[i].at.After(rows[j].at) })
+		for i, r := range rows {
+			if deleted >= int64(limit) {
+				return deleted, nil
+			}
+			if i >= keepPerEndpoint || r.at.Before(before) {
+				delete(f.queue, r.id)
+				deleted++
+			}
+		}
+	}
+	return deleted, nil
 }
 
 func newFakeWorkerStore() *fakeWorkerStore {

@@ -773,7 +773,16 @@ func main() {
 		if err != nil {
 			log.Fatalf("bex-api: %v", err)
 		}
-		whWorker := &webhooks.Worker{Store: st, Mailer: deps.Mailer, Emails: srv.Notifications.Identities, Backoff: backoff}
+		// Terminal deliveries are purged on an age + per-endpoint-count policy
+		// (w1/m67 F3): webhook_deliveries doubles as the dashboard's history view,
+		// so without retention a tenant's ordinary activity grew shared storage
+		// forever. 0 keeps the documented defaults.
+		whRetentionDays, _ := strconv.Atoi(envOr("BEX_WEBHOOK_RETENTION_DAYS", "0"))
+		whKeepPerEndpoint, _ := strconv.Atoi(envOr("BEX_WEBHOOK_RETENTION_KEEP", "0"))
+		whWorker := &webhooks.Worker{
+			Store: st, Mailer: deps.Mailer, Emails: srv.Notifications.Identities, Backoff: backoff,
+			RetentionDays: whRetentionDays, RetentionKeepPerEndpoint: whKeepPerEndpoint,
+		}
 		go whWorker.Run(ctx)
 	}
 	// Native push (ADR048 D2): only an explicitly configured, startup-validated
@@ -794,6 +803,11 @@ func main() {
 	// metadata endpoint, no audience check — behavior identical to before.
 	srv.OAuthIssuer = os.Getenv("BEX_OAUTH_ISSUER")
 	srv.OAuthResource = os.Getenv("BEX_OAUTH_RESOURCE")
+	// w1/m67 F1: narrow the empty-audience token exception to bex-provisioned
+	// OAuth clients. Opt-in because it must not precede the operator step that
+	// stamps the platform-client marker (scripts/auth-bootstrap-client.sh) — see
+	// docs/ADR012-auth.md §7.
+	srv.OAuthRequireAudience = os.Getenv("BEX_OAUTH_REQUIRE_AUDIENCE") == "1"
 	srv.WebhookSecret = os.Getenv("BEX_WEBHOOK_SECRET")
 	// The GitHub App's app-wide webhook signs pushes with its own secret — a
 	// second accepted key so installed repos redeploy hands-free
@@ -886,6 +900,29 @@ func main() {
 	}
 	deployHookLookupBurst, _ := strconv.Atoi(envOr("BEX_DEPLOY_HOOK_LOOKUP_RATE_BURST", "10"))
 	srv.DeployHookLookupRateLimiter = api.NewRateLimiter(deployHookLookupRPM, deployHookLookupBurst)
+
+	// Pre-auth admission (w1/m67 F1). The per-caller limiter above runs INSIDE
+	// the auth gate, keyed on the resolved identity, so it cannot bound the work
+	// of resolving an identity: with no negative cache, every unique invalid
+	// bearer/session costs one Hydra or Kratos round trip. This budget charges
+	// only credentials that come back INVALID (a successful auth costs nothing,
+	// so the dashboard's one-pod-IP SSR traffic is never throttled) and caps how
+	// many upstream auth calls may be in flight at once.
+	// BEX_AUTH_FAILURE_LIMIT=0 + BEX_AUTH_MAX_INFLIGHT=0 disables both.
+	authFailureRPMStr := envOr("BEX_AUTH_FAILURE_LIMIT", "60")
+	authFailureRPM, err := strconv.ParseFloat(authFailureRPMStr, 64)
+	if err != nil {
+		log.Fatalf("bex-api: bad BEX_AUTH_FAILURE_LIMIT %q: %v", authFailureRPMStr, err)
+	}
+	authFailureBurst, _ := strconv.Atoi(envOr("BEX_AUTH_FAILURE_BURST", "0"))
+	authMaxInflight, err := strconv.Atoi(envOr("BEX_AUTH_MAX_INFLIGHT", "64"))
+	if err != nil {
+		log.Fatalf("bex-api: bad BEX_AUTH_MAX_INFLIGHT: %v", err)
+	}
+	srv.AuthAdmission = api.NewAuthAdmission(authFailureRPM, authFailureBurst, authMaxInflight)
+	if srv.AuthAdmission != nil {
+		srv.AuthAdmission.TrustedProxies = trustedProxies
+	}
 
 	// Trusted-proxy awareness applies to every IP-keyed budget alike: the
 	// per-caller, device-flow, webhook-intake, and deploy-hook limiters all

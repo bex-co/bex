@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -29,9 +30,56 @@ import (
 
 type fakeStore struct {
 	conns map[string]store.GitConnection
+	// txns is the subject-bound connect-transaction table (w1/m67 F3), keyed by
+	// nonce. Consumption deletes, mirroring the store's single-statement claim.
+	txns map[string]store.GitHubConnectTransaction
 }
 
-func newFakeStore() *fakeStore { return &fakeStore{conns: map[string]store.GitConnection{}} }
+// testCallerSubject is the bex identity every test flow starts from; the
+// callback must present the same one (w1/m67 F3).
+const testCallerSubject = "identity-1"
+
+// testCallerCtx carries that identity, as the auth gate would.
+func testCallerCtx() context.Context {
+	return core.WithIdentity(context.Background(), core.Identity{Subject: testCallerSubject, Method: "session"})
+}
+
+// seedConnectTxn records a connect attempt as StartConnect would and returns its
+// nonce, so a test can exercise the callback directly (w1/m67 F3).
+func seedConnectTxn(t *testing.T, svc *Service, workspaceID, subject string) string {
+	t.Helper()
+	f, ok := svc.Store.(*fakeStore)
+	if !ok {
+		t.Fatalf("seedConnectTxn needs the fake store, got %T", svc.Store)
+	}
+	nonce := "nonce-" + workspaceID + "-" + subject
+	f.txns[nonce] = store.GitHubConnectTransaction{
+		Nonce: nonce, TenantID: workspaceID, Subject: subject,
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+	return nonce
+}
+
+func newFakeStore() *fakeStore {
+	return &fakeStore{
+		conns: map[string]store.GitConnection{},
+		txns:  map[string]store.GitHubConnectTransaction{},
+	}
+}
+
+func (f *fakeStore) CreateGitHubConnectTransaction(_ context.Context, t store.GitHubConnectTransaction) error {
+	f.txns[t.Nonce] = t
+	return nil
+}
+
+func (f *fakeStore) ConsumeGitHubConnectTransaction(_ context.Context, nonce string) (store.GitHubConnectTransaction, error) {
+	t, ok := f.txns[nonce]
+	if !ok {
+		return store.GitHubConnectTransaction{}, store.ErrNotFound
+	}
+	delete(f.txns, nonce) // single-use by construction, like the DELETE … RETURNING
+	return t, nil
+}
 
 func (f *fakeStore) UpsertGitConnection(_ context.Context, c store.GitConnection) (store.GitConnection, error) {
 	f.conns[c.WorkspaceID] = c
@@ -152,7 +200,7 @@ func TestConnectRoundTrip(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	conn, err := svc.connectFromCallback(ctx, core.DefaultTenant, 42, "oauth-code")
+	conn, err := svc.connectFromCallback(ctx, seedConnectTxn(t, svc, core.DefaultTenant, testCallerSubject), testCallerSubject, 42, "oauth-code")
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
@@ -202,7 +250,9 @@ func TestVerbs503WhenUnconfigured(t *testing.T) {
 	}
 	for name, svc := range cases {
 		t.Run(name, func(t *testing.T) {
-			if _, err := svc.connectFromCallback(ctx, core.DefaultTenant, 1, "oauth-code"); !errors.Is(err, core.ErrGitHubUnavailable) {
+			// Unconfigured short-circuits before any transaction lookup, so the
+			// nonce here is deliberately arbitrary (some cases have no store at all).
+			if _, err := svc.connectFromCallback(ctx, "unused-nonce", testCallerSubject, 1, "oauth-code"); !errors.Is(err, core.ErrGitHubUnavailable) {
 				t.Errorf("connect err = %v", err)
 			}
 			if _, err := svc.GetConnection(ctx, ""); !errors.Is(err, core.ErrGitHubUnavailable) {
@@ -225,7 +275,7 @@ func TestConnectForgedInstallationRejected(t *testing.T) {
 		Store:    newFakeStore(),
 		Verifier: &fakeVerifier{ok: true},
 	}
-	_, err := svc.connectFromCallback(context.Background(), core.DefaultTenant, 999, "oauth-code")
+	_, err := svc.connectFromCallback(context.Background(), seedConnectTxn(t, svc, core.DefaultTenant, testCallerSubject), testCallerSubject, 999, "oauth-code")
 	if !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("forged installation err = %v, want ErrBadRequest", err)
 	}
@@ -236,7 +286,7 @@ func TestConnectForgedInstallationRejected(t *testing.T) {
 
 func TestConnectRejectsNonPositiveID(t *testing.T) {
 	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{}, Store: newFakeStore(), Verifier: &fakeVerifier{ok: true}}
-	if _, err := svc.connectFromCallback(context.Background(), core.DefaultTenant, 0, "oauth-code"); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.connectFromCallback(context.Background(), seedConnectTxn(t, svc, core.DefaultTenant, testCallerSubject), testCallerSubject, 0, "oauth-code"); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("id 0 err = %v, want ErrBadRequest", err)
 	}
 }
@@ -516,7 +566,7 @@ func TestConnectFromCallbackEnforcesInstallationAdmin(t *testing.T) {
 		Store:    newFakeStore(),
 		Verifier: &fakeVerifier{ok: false},
 	}
-	if _, err := reject.connectFromCallback(ctx, "tea-a", 42, "usercode"); !errors.Is(err, core.ErrForbidden) {
+	if _, err := reject.connectFromCallback(ctx, seedConnectTxn(t, reject, "tea-a", testCallerSubject), testCallerSubject, 42, "usercode"); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("unproven installation err = %v, want ErrForbidden", err)
 	}
 	if len(reject.Store.(*fakeStore).conns) != 0 {
@@ -532,7 +582,7 @@ func TestConnectFromCallbackEnforcesInstallationAdmin(t *testing.T) {
 		Store:    newFakeStore(),
 		Verifier: fv,
 	}
-	if _, err := accept.connectFromCallback(ctx, "tea-a", 42, "usercode"); err != nil {
+	if _, err := accept.connectFromCallback(ctx, seedConnectTxn(t, accept, "tea-a", testCallerSubject), testCallerSubject, 42, "usercode"); err != nil {
 		t.Fatalf("proven installation connect: %v", err)
 	}
 	if accept.Store.(*fakeStore).conns["tea-a"].InstallationID != 42 {
@@ -541,14 +591,14 @@ func TestConnectFromCallbackEnforcesInstallationAdmin(t *testing.T) {
 	if fv.gotCode != "usercode" || fv.gotID != 42 {
 		t.Errorf("verifier saw code=%q id=%d, want usercode/42", fv.gotCode, fv.gotID)
 	}
-	if _, err := accept.connectFromCallback(ctx, "tea-a", 42, ""); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := accept.connectFromCallback(ctx, seedConnectTxn(t, accept, "tea-a", testCallerSubject), testCallerSubject, 42, ""); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("missing OAuth code err = %v, want ErrBadRequest", err)
 	}
 
 	// No verifier wired => binding fails closed even if GitHub can look up the
 	// installation. App-level visibility is not proof of the user's authority.
 	noVerify := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{login: "octo"}, Store: newFakeStore()}
-	if _, err := noVerify.connectFromCallback(ctx, "tea-a", 42, "usercode"); !errors.Is(err, core.ErrGitHubUnavailable) {
+	if _, err := noVerify.connectFromCallback(ctx, seedConnectTxn(t, noVerify, "tea-a", testCallerSubject), testCallerSubject, 42, "usercode"); !errors.Is(err, core.ErrGitHubUnavailable) {
 		t.Fatalf("verifier-unwired callback err = %v, want ErrGitHubUnavailable", err)
 	}
 	if len(noVerify.Store.(*fakeStore).conns) != 0 {

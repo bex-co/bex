@@ -447,3 +447,86 @@ describe("handleConsentDecision (POST)", () => {
     expect(location.searchParams.get("consent_challenge")).toBe(CHALLENGE);
   });
 });
+
+// w1/m66 F8: the gate documented itself as enforcing S256 but only checked that
+// a code_challenge parameter existed, so `plain` (and an omitted method, which
+// RFC 7636 defines AS plain) reached consent acceptance. Both entry points must
+// refuse anything that is not exactly one S256 challenge — a downgrade here
+// removes the protection an intercepted authorization request relies on.
+describe("PKCE S256 enforcement (w1/m66 F8)", () => {
+  const authorize = "https://oauth.bex.co/oauth2/auth?response_type=code";
+  const approve = {
+    consent_challenge: CHALLENGE,
+    decision: "approve",
+    csrf_token: csrf(),
+  };
+
+  const refused: Array<[string, string]> = [
+    ["plain", `${authorize}&code_challenge=abc&code_challenge_method=plain`],
+    ["omitted method (RFC 7636 => plain)", `${authorize}&code_challenge=abc`],
+    ["lowercase s256", `${authorize}&code_challenge=abc&code_challenge_method=s256`],
+    // %20, not a literal space: the WHATWG URL parser strips trailing spaces
+    // from the input string, so a literal one would never reach the check.
+    [
+      "trailing whitespace in the method",
+      `${authorize}&code_challenge=abc&code_challenge_method=S256%20`,
+    ],
+    [
+      "duplicated method",
+      `${authorize}&code_challenge=abc&code_challenge_method=S256&code_challenge_method=plain`,
+    ],
+    [
+      "duplicated challenge",
+      `${authorize}&code_challenge=abc&code_challenge=def&code_challenge_method=S256`,
+    ],
+    ["empty challenge", `${authorize}&code_challenge=&code_challenge_method=S256`],
+    ["unknown method", `${authorize}&code_challenge=abc&code_challenge_method=SHA256`],
+    ["unparseable authorize URL", "not-a-url"],
+  ];
+
+  for (const [label, request_url] of refused) {
+    it(`refuses ${label} on the headless/trusted path`, async () => {
+      const calls = mockUpstreams({
+        // skip: true would auto-accept — prove the PKCE gate runs first.
+        lookupBody: consentRequest({ request_url, skip: true }),
+      });
+      const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+      expect((res as Response).status).toBe(400);
+      expect(accepts(calls)).toHaveLength(0);
+    });
+
+    it(`refuses ${label} on the human-decision path`, async () => {
+      const calls = mockUpstreams({ lookupBody: consentRequest({ request_url }) });
+      const res = await handleConsentDecision(decisionReq(approve));
+      expect(res.status).toBe(400);
+      expect(accepts(calls)).toHaveLength(0);
+    });
+  }
+
+  it("still accepts an exact S256 request on both paths", async () => {
+    const request_url = `${authorize}&code_challenge=abc&code_challenge_method=S256`;
+    const headless = mockUpstreams({
+      lookupBody: consentRequest({ request_url, skip: true }),
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).status).toBe(302);
+    expect(accepts(headless)).toHaveLength(1);
+
+    const human = mockUpstreams({ lookupBody: consentRequest({ request_url }) });
+    const decided = await handleConsentDecision(decisionReq(approve));
+    expect(decided.status).toBe(303);
+    expect(accepts(human)).toHaveLength(1);
+  });
+
+  it("keeps the RFC 8628 device exception (the official Render CLI login)", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({
+        request_url:
+          "https://oauth.bex.co/oauth2/device/verify?device_verifier=v&client_id=429024F5E608930E2A65EF92591A25CC",
+      }),
+    });
+    const view = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect(view).not.toBeInstanceOf(Response);
+    expect(accepts(calls)).toHaveLength(0);
+  });
+});

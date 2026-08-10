@@ -37,6 +37,14 @@ import (
 // fakeHydra serves POST /admin/oauth2/introspect: testToken is active (sub
 // "client-1", with the given issuer and aud list), everything else inactive.
 // hits counts real introspections.
+// introspectReq is the minimal request the gate's introspect path needs: the
+// admission bound (w1/m67 F1) reads the source IP from it, and the upstream call
+// takes its context. Unmetered here — these tests construct the gate without an
+// admission bound.
+func introspectReq() *http.Request {
+	return httptest.NewRequest(http.MethodGet, "/v1/services", nil)
+}
+
 func fakeHydra(t *testing.T, hits *atomic.Int32, iss string, aud ...string) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -184,6 +192,26 @@ func (callbackGitHubClient) VerifyInstallationAdmin(context.Context, string, int
 
 type callbackGitHubStore struct {
 	connections map[string]store.GitConnection
+	// The subject-bound connect transactions w1/m67 F3 added; this fake only has
+	// to satisfy the interface — the gate test is about routing, not binding.
+	txns map[string]store.GitHubConnectTransaction
+}
+
+func (s *callbackGitHubStore) CreateGitHubConnectTransaction(_ context.Context, t store.GitHubConnectTransaction) error {
+	if s.txns == nil {
+		s.txns = map[string]store.GitHubConnectTransaction{}
+	}
+	s.txns[t.Nonce] = t
+	return nil
+}
+
+func (s *callbackGitHubStore) ConsumeGitHubConnectTransaction(_ context.Context, nonce string) (store.GitHubConnectTransaction, error) {
+	t, ok := s.txns[nonce]
+	if !ok {
+		return store.GitHubConnectTransaction{}, store.ErrNotFound
+	}
+	delete(s.txns, nonce)
+	return t, nil
 }
 
 func (s *callbackGitHubStore) UpsertGitConnection(_ context.Context, conn store.GitConnection) (store.GitConnection, error) {
@@ -297,7 +325,7 @@ func TestAuthGate(t *testing.T) {
 func TestAuthGateGitHubCallbackExceptionIsExact(t *testing.T) {
 	var hits atomic.Int32
 	hydra := fakeHydra(t, &hits, "")
-	mw := newOryAuth(hydra.URL, "", "", "", "", nil, nil).middleware(echoIdentity)
+	mw := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil).middleware(echoIdentity)
 
 	for _, tc := range []struct {
 		name, method, path, bearer string
@@ -365,10 +393,23 @@ func TestGitHubBrowserCallbackThroughFullAuthStack(t *testing.T) {
 		t.Fatal("start response installUrl has no state")
 	}
 
-	// GitHub's redirect carries no Ory credential. It passes the exact auth-gate
-	// exception, verifies state in the feature, records the connection, and
-	// redirects the browser when the production dashboard URL is configured.
+	// GitHub's redirect carries no GitHub-side bex credential, and the auth gate's
+	// exact exception still lets a credential-less callback through to the feature
+	// — but since w1/m67 F3 the feature itself refuses to bind without the bex
+	// identity that started the flow, so an anonymous callback records nothing.
+	anon := httptest.NewRequest(http.MethodGet, "/v1/git/callback?installation_id=42&state="+url.QueryEscape(state)+"&code=oauth-code", nil)
+	anonRec := httptest.NewRecorder()
+	h.ServeHTTP(anonRec, anon)
+	if len(st.connections) != 0 {
+		t.Fatalf("anonymous callback recorded a connection: %+v", st.connections)
+	}
+
+	// The real browser DOES carry the session: the Kratos cookie is SameSite=Lax
+	// (deploy/gitops/base/values/kratos.values.yaml), so it rides this top-level
+	// GET navigation back from GitHub. With it, the callback verifies state,
+	// consumes the transaction, records the connection, and redirects.
 	callback := httptest.NewRequest(http.MethodGet, "/v1/git/callback?installation_id=42&state="+url.QueryEscape(state)+"&code=oauth-code", nil)
+	callback.Header.Set("Authorization", "Bearer "+testToken)
 	callbackRec := httptest.NewRecorder()
 	h.ServeHTTP(callbackRec, callback)
 	if callbackRec.Code != http.StatusFound {
@@ -403,7 +444,7 @@ func TestGitHubBrowserCallbackThroughFullAuthStack(t *testing.T) {
 func TestIntrospectionCache(t *testing.T) {
 	var hits atomic.Int32
 	hydra := fakeHydra(t, &hits, "")
-	mw := newOryAuth(hydra.URL, "", "", "", "", nil, nil).middleware(echoIdentity)
+	mw := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil).middleware(echoIdentity)
 
 	req := func(token string) int {
 		r := httptest.NewRequest(http.MethodGet, "/probe", nil)
@@ -448,10 +489,10 @@ func TestLogoutCannotBeUndoneByInflightIntrospection(t *testing.T) {
 	}))
 	defer hydra.Close()
 
-	auth := newOryAuth(hydra.URL, "", "", "", "", nil, nil)
+	auth := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil)
 	introspected := make(chan struct{})
 	go func() {
-		_, _ = auth.introspect(context.Background(), "old-access")
+		_, _ = auth.introspect(introspectReq(), "old-access")
 		close(introspected)
 	}()
 	<-started
@@ -470,7 +511,7 @@ func TestLogoutCannotBeUndoneByInflightIntrospection(t *testing.T) {
 	if _, ok := auth.cache.Get("old-access"); ok {
 		t.Fatal("in-flight introspection repopulated the cache after logout")
 	}
-	id, err := auth.introspect(context.Background(), "old-access")
+	id, err := auth.introspect(introspectReq(), "old-access")
 	if err != nil || id != (core.Identity{}) {
 		t.Fatalf("old access after logout = %+v, %v", id, err)
 	}
@@ -516,10 +557,10 @@ func blockingHydra(t *testing.T, sub, clientID string) (srv *httptest.Server, st
 func TestInvalidateDoesNotBlockDuringInFlightUpstreamRTT(t *testing.T) {
 	hydra, started, release, _ := blockingHydra(t, "human-a", "client-a")
 
-	auth := newOryAuth(hydra.URL, "", "", "", "", nil, nil)
+	auth := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil)
 	introspected := make(chan struct{})
 	go func() {
-		_, _ = auth.introspect(context.Background(), "in-flight-token")
+		_, _ = auth.introspect(introspectReq(), "in-flight-token")
 		close(introspected)
 	}()
 	<-started
@@ -553,10 +594,10 @@ func TestInvalidateDoesNotBlockDuringInFlightUpstreamRTT(t *testing.T) {
 func TestEpochBumpDuringRTTDiscardsStalePut(t *testing.T) {
 	hydra, started, release, calls := blockingHydra(t, "human-a", "client-a")
 
-	auth := newOryAuth(hydra.URL, "", "", "", "", nil, nil)
+	auth := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil)
 	introspected := make(chan struct{})
 	go func() {
-		_, _ = auth.introspect(context.Background(), "in-flight-token")
+		_, _ = auth.introspect(introspectReq(), "in-flight-token")
 		close(introspected)
 	}()
 	<-started
@@ -575,7 +616,7 @@ func TestEpochBumpDuringRTTDiscardsStalePut(t *testing.T) {
 	}
 	// A follow-up call re-introspects (miss) rather than treating the token as
 	// permanently poisoned — the epoch only discards ONE stale result.
-	id, err := auth.introspect(context.Background(), "in-flight-token")
+	id, err := auth.introspect(introspectReq(), "in-flight-token")
 	if err != nil || id.Subject != "human-a" {
 		t.Fatalf("re-introspection after discard = %+v, %v", id, err)
 	}
@@ -585,7 +626,7 @@ func TestEpochBumpDuringRTTDiscardsStalePut(t *testing.T) {
 }
 
 func TestInvalidateEvictsOnlyTheRevokedOAuthCredential(t *testing.T) {
-	auth := newOryAuth("http://unused", "", "", "", "", nil, nil)
+	auth := newOryAuth("http://unused", "", "", "", "", false, nil, nil, nil)
 	expires := time.Now().Add(time.Minute)
 	values := map[string]core.Identity{
 		"human-a-1": {Subject: "human-a", Method: "oauth2", ClientID: "shared", Human: true},
@@ -653,7 +694,7 @@ func TestHumanOAuthTokenRunsTenantOnboarding(t *testing.T) {
 			}))
 			defer hydra.Close()
 			onboard := &recordingOnboard{}
-			mw := newOryAuth(hydra.URL, "", "", "", "", onboard, nil).middleware(echoIdentity)
+			mw := newOryAuth(hydra.URL, "", "", "", "", false, nil, onboard, nil).middleware(echoIdentity)
 			r := httptest.NewRequest(http.MethodGet, "/probe", nil)
 			r.Header.Set("Authorization", "Bearer token")
 			rec := httptest.NewRecorder()
@@ -679,7 +720,7 @@ func TestIntrospectionTouchesKey(t *testing.T) {
 	var hits atomic.Int32
 	hydra := fakeHydra(t, &hits, "")
 	touched := make(chan string, 4)
-	mw := newOryAuth(hydra.URL, "", "", "", "", nil, func(clientID string) { touched <- clientID }).middleware(echoIdentity)
+	mw := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, func(clientID string) { touched <- clientID }).middleware(echoIdentity)
 
 	do := func(token string) {
 		r := httptest.NewRequest(http.MethodGet, "/probe", nil)

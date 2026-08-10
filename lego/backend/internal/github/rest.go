@@ -62,7 +62,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			s.writeCallbackFailure(w, r, callbackStateErrorCode(errConnectStateMissing), errConnectStateMissing)
 			return
 		}
-		workspaceID, err := s.verifyConnectState(stateToken)
+		nonce, err := s.verifyConnectState(stateToken)
 		if err != nil {
 			if errors.Is(err, core.ErrGitHubUnavailable) {
 				core.WriteErr(w, err)
@@ -78,7 +78,16 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			s.writeCallbackFailure(w, r, "invalid_installation", core.ErrBadRequest)
 			return
 		}
-		_, err = s.connectFromCallback(r.Context(), workspaceID, id, r.URL.Query().Get("code"))
+		// The authenticated bex subject, when the browser presented one. The gate
+		// lets this exact route through anonymously (GitHub has no bex credential
+		// to offer), but the session cookie IS Lax-scoped, so a signed-in user's
+		// identity does arrive on this top-level navigation — and w1/m67 F3 now
+		// requires it to match whoever started the flow.
+		caller := ""
+		if identity, ok := core.IdentityFrom(r.Context()); ok {
+			caller = identity.Subject
+		}
+		_, err = s.connectFromCallback(r.Context(), nonce, caller, id, r.URL.Query().Get("code"))
 		if err != nil {
 			s.writeCallbackFailure(w, r, callbackConnectErrorCode(err), err)
 			return

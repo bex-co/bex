@@ -59,10 +59,18 @@ jobs:
         with:
           version: "1.11.2"
 
-      - name: packer init + validate
+      # NOT `packer init` (w1/m66 F12): init resolves a version constraint over
+      # the network and — since Packer 1.14 dropped .packer.lock.hcl — records no
+      # checksum anywhere, so identical revisions could execute different plugin
+      # bytes in this HCLOUD_TOKEN-bearing job. The installer verifies the
+      # downloaded artifact against infra/packer/plugin-checksums.txt (reviewed,
+      # in git) and refuses to install on mismatch.
+      - name: install the pinned, checksum-verified hcloud plugin
+        run: bash scripts/packer-plugin-install.sh
+
+      - name: packer validate
         working-directory: infra/packer
         run: |
-          packer init .
           packer validate \
             -var "kubernetes_version=${KUBERNETES_VERSION}" \
             -var "image_name=${IMAGE_NAME}" .

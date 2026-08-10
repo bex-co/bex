@@ -42,7 +42,7 @@ func TestAudienceValidation(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var hits atomic.Int32
 			hydra := fakeHydra(t, &hits, "", tc.aud...)
-			mw := newOryAuth(hydra.URL, "", tc.resource, "", "", nil, nil).middleware(echoIdentity)
+			mw := newOryAuth(hydra.URL, "", tc.resource, "", "", false, nil, nil, nil).middleware(echoIdentity)
 			if w := do(t, mw, http.MethodGet, "/mcp", testToken, ""); w.Code != tc.want {
 				t.Fatalf("status = %d, want %d", w.Code, tc.want)
 			}
@@ -69,7 +69,7 @@ func TestIssuerValidation(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var hits atomic.Int32
 			hydra := fakeHydra(t, &hits, tc.iss)
-			mw := newOryAuth(hydra.URL, "", "", tc.issuer, "", nil, nil).middleware(echoIdentity)
+			mw := newOryAuth(hydra.URL, "", "", tc.issuer, "", false, nil, nil, nil).middleware(echoIdentity)
 			if w := do(t, mw, http.MethodGet, "/mcp", testToken, ""); w.Code != tc.want {
 				t.Fatalf("status = %d, want %d", w.Code, tc.want)
 			}
@@ -80,7 +80,7 @@ func TestIssuerValidation(t *testing.T) {
 func TestWWWAuthenticateResourceMetadata(t *testing.T) {
 	t.Run("enriched-when-configured", func(t *testing.T) {
 		mw := newOryAuth(fakeHydraURL(t), "", "https://api.bex.co/mcp", "",
-			"https://api.bex.co/.well-known/oauth-protected-resource", nil, nil).middleware(echoIdentity)
+			"https://api.bex.co/.well-known/oauth-protected-resource", false, nil, nil, nil).middleware(echoIdentity)
 		w := do(t, mw, http.MethodGet, "/mcp", "", "") // no credential
 		if w.Code != 401 {
 			t.Fatalf("status = %d, want 401", w.Code)
@@ -93,7 +93,7 @@ func TestWWWAuthenticateResourceMetadata(t *testing.T) {
 	})
 
 	t.Run("bare-when-unconfigured", func(t *testing.T) {
-		mw := newOryAuth(fakeHydraURL(t), "", "", "", "", nil, nil).middleware(echoIdentity)
+		mw := newOryAuth(fakeHydraURL(t), "", "", "", "", false, nil, nil, nil).middleware(echoIdentity)
 		w := do(t, mw, http.MethodGet, "/mcp", "", "")
 		if got := w.Header().Get("WWW-Authenticate"); got != "Bearer" {
 			t.Fatalf("WWW-Authenticate = %q, want bare Bearer (unchanged behavior)", got)
