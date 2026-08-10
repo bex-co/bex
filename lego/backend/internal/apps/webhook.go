@@ -65,6 +65,12 @@ type GitWebhook struct {
 	// global match — the manual secret is a single operator-configured key with no
 	// per-repo binding (per-workspace manual secrets are the follow-up).
 	Installations InstallationResolver
+	// Multitenant, when true, rejects the shared manual secret (BEX_WEBHOOK_SECRET)
+	// because it carries no per-workspace binding and would authorize cross-tenant
+	// deployment mutations (codex #4). The GitHub App key is unaffected — its
+	// deliveries are confined via Installations. Set when the control-plane store
+	// is active (BEX_CP_DB_URI set), i.e. genuine multitenant operation.
+	Multitenant bool
 }
 
 // InstallationResolver maps a GitHub App installation id to the workspace that
@@ -225,6 +231,14 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		core.WriteErrStatus(w, http.StatusUnauthorized, "invalid or missing signature")
 		return
 	}
+	// codex #4: in multitenant mode the shared manual secret (BEX_WEBHOOK_SECRET)
+	// has no per-workspace binding — any holder can name another tenant's repo and
+	// trigger deployments across all workspaces. Fail closed: only the GitHub App
+	// key (confined via Installations) is accepted when Multitenant is true.
+	if h.Multitenant && key == keyManual {
+		core.WriteErrStatus(w, http.StatusForbidden, "manual webhook key disabled in multitenant mode; use the GitHub App webhook")
+		return
+	}
 	// The GitHub App's one app-wide webhook also delivers lifecycle events
 	// (ping on setup, installation/installation_repositories on grant changes).
 	// They're validly signed, so don't 401 them — just no-op with 200. A branch
@@ -276,7 +290,9 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		go func() {
 			for tenantID := range tenants {
-				h.Svc.triggerBlueprintSync(context.Background(), tenantID, repo, branch)
+				// Preserve tenant context for background sync to maintain isolation
+				bgCtx := core.WithWorkspace(context.Background(), tenantID)
+				h.Svc.triggerBlueprintSync(bgCtx, tenantID, repo, branch)
 			}
 		}()
 	}
@@ -448,6 +464,14 @@ func (h *GitWebhook) redeployMatching(ctx context.Context, ev pushEvent, branch,
 		}
 		if !buildFilterMatches(a.Spec.BuildFilter, paths) {
 			h.recordCommitIgnored(ctx, a, ev, store.EventReasonBuildFilter)
+			continue
+		}
+		// codex #6: enforce the billing lifecycle gate on push-triggered
+		// redeploys — a delinquent workspace must not keep triggering builds via
+		// git push. Best-effort like other per-app failures: log and skip rather
+		// than 5xx (which would cause retries and generation churn).
+		if err := h.Svc.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
+			log.Printf("webhook: skip redeploy %s: billing enforced: %v", a.Name, err)
 			continue
 		}
 		if _, err := h.Svc.redeployFetched(ctx, a, ev.commitInfo()); err != nil {

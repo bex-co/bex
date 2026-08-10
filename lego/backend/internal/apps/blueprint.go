@@ -630,8 +630,8 @@ func (s *Service) triggerBlueprintSync(ctx context.Context, tenantID, repo, bran
 	if err != nil || !b.AutoSync {
 		return
 	}
-	bgCtx := context.Background()
-	_, _ = s.runSync(bgCtx, b, "", "")
+	// Preserve tenant context from caller; ctx already carries WithWorkspace(tenantID)
+	_, _ = s.runSync(ctx, b, "", "")
 }
 
 // ListBlueprintSyncs returns recorded sync runs for a blueprint, newest first.

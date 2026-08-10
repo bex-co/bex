@@ -7,6 +7,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
@@ -16,6 +17,11 @@ type listArgs struct {
 
 type idArgs struct {
 	ID string `json:"id"`
+}
+
+type attachTicketArgs struct {
+	ID     string `json:"id"`
+	Action string `json:"action,omitempty"` // "read" or "turn", defaults to "read"
 }
 
 type steerArgs struct {
@@ -65,9 +71,13 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.Resume(ctx, in.ID)
 			return nil, out, toolError(err)
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "attach_agent_session", Description: "Mint a fresh attach ticket for a started cloud coding-agent session to (re)connect to its live or replayed conversation stream, without changing its lifecycle."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
-			out, err := s.AttachTicket(ctx, in.ID)
+	mcp.AddTool(server, &mcp.Tool{Name: "attach_agent_session", Description: "Mint a fresh attach ticket for a started cloud coding-agent session to (re)connect to its live or replayed conversation stream, without changing its lifecycle. Action 'read' for transcript replay (GET), 'turn' for live prompt execution (POST). Requires can_create for 'turn'."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in attachTicketArgs) (*mcp.CallToolResult, View, error) {
+			action := in.Action
+			if action == "" {
+				action = agentsessionticket.ActionRead // Default to read for safety
+			}
+			out, err := s.AttachTicket(ctx, in.ID, action)
 			return nil, out, toolError(err)
 		})
 	mcp.AddTool(server, &mcp.Tool{Name: "cancel_agent_session", Description: "Cancel a cloud coding-agent session and terminate its sandbox."},

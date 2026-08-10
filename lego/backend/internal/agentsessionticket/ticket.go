@@ -34,10 +34,18 @@ import (
 
 const clockSkew = 30 * time.Second
 
+const (
+	// ActionRead authorizes transcript replay only (GET requests).
+	ActionRead = "read"
+	// ActionTurn authorizes live prompt execution (POST requests).
+	ActionTurn = "turn"
+)
+
 var (
-	ErrMalformed = errors.New("malformed agent session ticket")
-	ErrSignature = errors.New("agent session ticket signature mismatch")
-	ErrExpired   = errors.New("agent session ticket expired")
+	ErrMalformed     = errors.New("malformed agent session ticket")
+	ErrSignature     = errors.New("agent session ticket signature mismatch")
+	ErrExpired       = errors.New("agent session ticket expired")
+	ErrInvalidAction = errors.New("agent session ticket action must be 'read' or 'turn'")
 )
 
 // TicketHeader carries a signed agent-session ticket on the transports that use
@@ -56,6 +64,10 @@ type Claims struct {
 	Pod       string `json:"pod"`
 	Workspace string `json:"ws"`
 	Namespace string `json:"ns"`
+	// Action is the authorized operation: "read" for transcript replay (GET),
+	// "turn" for live prompt execution (POST). Required on new tickets; omitted
+	// on legacy tickets (treated as "read" for compatibility).
+	Action string `json:"act,omitempty"`
 	// Turn is the session turn this ticket is scoped to (the session's turn
 	// counter at mint time, ADR051). It is optional — omitted/zero on legacy
 	// tickets — and lets the transcript tee/recorder stamp each part with its
@@ -105,6 +117,15 @@ func Verify(secret []byte, token string, now time.Time) (Claims, error) {
 		claims.SandboxID == "" || claims.Pod == "" || claims.Workspace == "" ||
 		claims.Namespace == "" || claims.ExpiresAt == 0 || claims.Nonce == "" {
 		return Claims{}, ErrMalformed
+	}
+	// Validate Action field: if present, must be either "read" or "turn".
+	// Omitted action is treated as "read" for legacy ticket compatibility.
+	if claims.Action != "" && claims.Action != ActionRead && claims.Action != ActionTurn {
+		return Claims{}, ErrInvalidAction
+	}
+	// Normalize omitted action to "read" for legacy tickets
+	if claims.Action == "" {
+		claims.Action = ActionRead
 	}
 	if now.Add(-clockSkew).After(time.Unix(claims.ExpiresAt, 0)) {
 		return Claims{}, ErrExpired

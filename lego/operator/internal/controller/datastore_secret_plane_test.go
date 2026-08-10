@@ -68,8 +68,11 @@ func TestKeyValueCredentialsUseTheUncachedSecretClient(t *testing.T) {
 	const ns = "tea-secretplane"
 
 	kv := &appv1alpha1.KeyValue{
-		ObjectMeta: metav1.ObjectMeta{Name: "red-plane", Namespace: ns},
-		Spec:       appv1alpha1.KeyValueSpec{Plan: "free"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "red-plane", Namespace: ns,
+			Labels: map[string]string{labelWorkspace: ns}, // canonical tenant namespace
+		},
+		Spec: appv1alpha1.KeyValueSpec{Plan: "free"},
 	}
 	cached := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv).
 		WithStatusSubresource(&appv1alpha1.KeyValue{}).Build()

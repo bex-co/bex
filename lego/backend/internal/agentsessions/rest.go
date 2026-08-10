@@ -3,6 +3,7 @@ package agentsessions
 import (
 	"net/http"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
@@ -60,7 +61,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, view)
 	})
 	mux.HandleFunc("POST /v1/agent-sessions/{id}/attach-ticket", func(w http.ResponseWriter, r *http.Request) {
-		view, err := s.AttachTicket(r.Context(), r.PathValue("id"))
+		// Determine action from query parameter or default to "read"
+		action := r.URL.Query().Get("action")
+		if action == "" {
+			action = agentsessionticket.ActionRead // Default to read for safety
+		}
+		view, err := s.AttachTicket(r.Context(), r.PathValue("id"), action)
 		if err != nil {
 			core.WriteErr(w, err)
 			return

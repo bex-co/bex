@@ -45,6 +45,12 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+// maxHydratedEnvGroups bounds the number of groups fully hydrated (env + file
+// maps) per list request. Without this, a tenant with many groups triggers two
+// OpenBao reads per group on every list, unbounded by the requested page size
+// (codex #10). 200 is well above any reasonable page limit.
+const maxHydratedEnvGroups = 200
+
 // Service manages environment groups over the shared core.SecretKV store and
 // projects them into linked services. Embeds *core.Base for the client, clock, and
 // authorization gate.
@@ -187,6 +193,13 @@ func (s *Service) ListEnvGroupsFiltered(ctx context.Context, filter EnvGroupList
 			seen[group.id] = struct{}{}
 			matched = append(matched, group)
 		}
+	}
+	// codex #10: bound the backend work — without this cap, each matched group
+	// triggers two OpenBao reads (env map + file map), so a tenant with many
+	// groups could exhaust API/OpenBao capacity on every list request. The cap is
+	// well above any reasonable page limit, so ordinary pagination is unaffected.
+	if len(matched) > maxHydratedEnvGroups {
+		matched = matched[:maxHydratedEnvGroups]
 	}
 	out := make([]EnvGroupView, 0, len(matched))
 	for _, group := range matched {

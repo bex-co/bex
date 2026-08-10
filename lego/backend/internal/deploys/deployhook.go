@@ -340,6 +340,13 @@ func (s *Service) DeployHookHandler() http.Handler {
 			core.WriteErr(w, err)
 			return
 		}
+		// codex #6: enforce the same billing lifecycle gate as the authenticated
+		// Trigger verb — a delinquent workspace must not trigger builds via an
+		// unguessable deploy-hook URL.
+		if err := s.RequireBillingMutation(r.Context(), a.Labels[core.LabelTenant]); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
 		d, err := s.triggerFetched(r.Context(), deployHookServiceName(a), a, TriggerParams{
 			CommitID: r.URL.Query().Get("ref"),
 			ImageURL: r.URL.Query().Get("imgURL"),

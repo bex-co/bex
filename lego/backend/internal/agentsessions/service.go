@@ -306,6 +306,11 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if !ok {
 		return View{}, core.ErrForbidden
 	}
+	// codex #6: enforce the billing lifecycle gate — a delinquent/enforced
+	// workspace must not provision new agent-session sandbox compute.
+	if err := s.RequireBillingMutation(ctx, workspaceID); err != nil {
+		return View{}, err
+	}
 	modelAPIKey, err := s.modelAPIKey(ctx, workspaceID)
 	if err != nil {
 		return View{}, err
@@ -656,6 +661,11 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	case PhaseCreating, PhaseRunning, PhaseResuming, PhaseRedispatching:
 		return View{}, core.NewConflictError("AGENT_SESSION_TURN_IN_FLIGHT", "a turn is already running; wait for it to finish before steering", map[string]any{"phase": record.Phase})
 	}
+	// codex #6: enforce the billing lifecycle gate — steering dispatches a fresh
+	// sandbox with a caller-supplied prompt, so a delinquent workspace is blocked.
+	if err := s.RequireBillingMutation(ctx, record.WorkspaceID); err != nil {
+		return View{}, err
+	}
 	config, err := decodeAgentConfig(record)
 	if err != nil {
 		return View{}, err
@@ -716,8 +726,16 @@ func (s *Service) runSteerDispatch(ctx context.Context, record store.AgentSessio
 // namespace claims, so the gateway authorizes reattach and terminal replay
 // identically to a first connect. A session that never started a sandbox has
 // nothing to attach to.
-func (s *Service) AttachTicket(ctx context.Context, sessionID string) (View, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
+func (s *Service) AttachTicket(ctx context.Context, sessionID, action string) (View, error) {
+	// Determine required authorization based on requested action
+	var relation string
+	if action == agentsessionticket.ActionTurn {
+		relation = core.RelCanCreate // Developer-only for live turns
+	} else {
+		relation = core.RelCanOperate // Contributors can read transcripts
+	}
+
+	if err := s.AuthorizeOn(ctx, relation, sessionObject(sessionID)); err != nil {
 		return View{}, err
 	}
 	if !s.enabled() || !s.ticketEnabled() {
@@ -725,6 +743,13 @@ func (s *Service) AttachTicket(ctx context.Context, sessionID string) (View, err
 	}
 	if err := validateSessionID(sessionID); err != nil {
 		return View{}, err
+	}
+	if action != "" && action != agentsessionticket.ActionRead && action != agentsessionticket.ActionTurn {
+		return View{}, fmt.Errorf("invalid action: must be 'read' or 'turn'")
+	}
+	// Default to "read" for compatibility with callers that don't specify action
+	if action == "" {
+		action = agentsessionticket.ActionRead
 	}
 	record, err := s.Store.GetAgentSession(ctx, sessionID)
 	if err != nil {
@@ -734,10 +759,10 @@ func (s *Service) AttachTicket(ctx context.Context, sessionID string) (View, err
 		return View{}, core.NewConflictError("AGENT_SESSION_NOT_ATTACHABLE",
 			"agent session has not started a sandbox yet", map[string]any{"phase": record.Phase})
 	}
-	return s.withTicket(ctx, record)
+	return s.withTicket(ctx, record, action)
 }
 
-func (s *Service) withTicket(ctx context.Context, record store.AgentSession) (View, error) {
+func (s *Service) withTicket(ctx context.Context, record store.AgentSession, action string) (View, error) {
 	identity, ok := core.IdentityFrom(ctx)
 	if !ok || identity.Subject == "" {
 		return View{}, core.ErrForbidden
@@ -747,7 +772,7 @@ func (s *Service) withTicket(ctx context.Context, record store.AgentSession) (Vi
 	ticket, err := agentsessionticket.Mint(s.TicketSecret, agentsessionticket.Claims{
 		Subject: identity.Subject, SessionID: record.ID, SandboxID: record.SandboxID,
 		Pod: record.SandboxID + "-0", Workspace: record.WorkspaceID,
-		Namespace: record.WorkspaceID + "-sandbox", Turn: record.Turns,
+		Namespace: record.WorkspaceID + "-sandbox", Action: action, Turn: record.Turns,
 		IssuedAt: now.Unix(), ExpiresAt: expires.Unix(),
 	})
 	if err != nil {

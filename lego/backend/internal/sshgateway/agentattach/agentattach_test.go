@@ -189,7 +189,20 @@ func attachTicket(t *testing.T, secret []byte, session string) string {
 	t.Helper()
 	tok, err := agentsessionticket.Mint(secret, agentsessionticket.Claims{
 		Subject: "alice", SessionID: session, SandboxID: "sandbox-1", Pod: "sandbox-1-0",
-		Workspace: "tea-a", Namespace: "tea-a-sandbox",
+		Workspace: "tea-a", Namespace: "tea-a-sandbox", Action: agentsessionticket.ActionRead,
+		IssuedAt: 1_800_000_000, ExpiresAt: 1_800_000_090,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return tok
+}
+
+func turnTicket(t *testing.T, secret []byte, session string) string {
+	t.Helper()
+	tok, err := agentsessionticket.Mint(secret, agentsessionticket.Claims{
+		Subject: "alice", SessionID: session, SandboxID: "sandbox-1", Pod: "sandbox-1-0",
+		Workspace: "tea-a", Namespace: "tea-a-sandbox", Action: agentsessionticket.ActionTurn,
 		IssuedAt: 1_800_000_000, ExpiresAt: 1_800_000_090,
 	})
 	if err != nil {
@@ -464,7 +477,7 @@ func TestAgentTurnQuotaIsCumulative(t *testing.T) {
 
 	postTurn := func() string {
 		req, _ := http.NewRequest(http.MethodPost, srv.URL, strings.NewReader(`{"prompt":"go"}`))
-		req.Header.Set(TicketHeader, attachTicket(t, secret, session))
+		req.Header.Set(TicketHeader, turnTicket(t, secret, session))
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			t.Fatal(err)

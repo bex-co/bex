@@ -144,6 +144,13 @@ type Server struct {
 	// this and WebhookSecret are empty (docs/ADR026-github-integration.md).
 	GitHubWebhookSecret string
 
+	// MultitenantWebhook, when true, rejects the shared manual webhook secret
+	// (BEX_WEBHOOK_SECRET) on the git push endpoint because it carries no
+	// per-workspace binding and would authorize cross-tenant deployment mutations
+	// (codex #4). The GitHub App key is unaffected — its deliveries are confined
+	// via Installations. Set when the control-plane store is active.
+	MultitenantWebhook bool
+
 	// RateLimiter, when set, enforces per-caller token-bucket limits on the three
 	// auth-gated surfaces (REST, GraphQL, MCP). nil disables rate limiting. The
 	// healthz endpoint is intentionally exempt; the webhook intakes get their own
@@ -871,7 +878,7 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 	// the body read + HMAC verification (w7/m60).
 	webhookLimit := s.webhookRateLimitMiddleware()
 	if s.Apps != nil {
-		wh := &apps.GitWebhook{Svc: s.Apps, Secret: s.WebhookSecret, GitHubSecret: s.GitHubWebhookSecret}
+		wh := &apps.GitWebhook{Svc: s.Apps, Secret: s.WebhookSecret, GitHubSecret: s.GitHubWebhookSecret, Multitenant: s.MultitenantWebhook}
 		// codex #7: confine a GitHub-App-signed delivery to its installation's
 		// workspace. Only wire the resolver when the GitHub service is present —
 		// assigning a nil *github.Service would trap a typed-nil in the interface.

@@ -456,6 +456,14 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if !kv.DeletionTimestamp.IsZero() {
 		return r.handleKeyValueDeletion(ctx, &kv)
 	}
+	// codex #11: refuse a KeyValue outside its canonical tenant namespace before
+	// adding a finalizer or creating dependent resources. Same confused-deputy
+	// threat as the Database guard above.
+	if !canonicalNamespace(&kv.ObjectMeta) {
+		logf.FromContext(ctx).Info("refusing KeyValue outside a canonical tenant namespace (codex #11)",
+			"namespace", kv.Namespace, "name", kv.Name)
+		return ctrl.Result{}, nil
+	}
 
 	plan, requestedStorageGB := resolveKVPlan(kv.Spec)
 	backupEnabled := keyValueBackupsEnabled(plan, r.Backup)

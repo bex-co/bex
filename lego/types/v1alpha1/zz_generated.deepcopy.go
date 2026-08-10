@@ -487,6 +487,11 @@ func (in *DatabaseSpec) DeepCopyInto(out *DatabaseSpec) {
 		*out = make([]DatabaseUser, len(*in))
 		copy(*out, *in)
 	}
+	if in.DeletedUsers != nil {
+		in, out := &in.DeletedUsers, &out.DeletedUsers
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Recovery != nil {
 		in, out := &in.Recovery, &out.Recovery
 		*out = new(DatabaseRecovery)

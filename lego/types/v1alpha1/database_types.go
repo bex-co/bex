@@ -191,6 +191,14 @@ type DatabaseSpec struct {
 	// +listMapKey=name
 	Users []DatabaseUser `json:"users,omitempty"`
 
+	// DeletedUsers are login-role names removed via the API that must be
+	// explicitly dropped from PostgreSQL (ensure:absent). Without this tombstone
+	// the operator would simply stop listing the role, leaving it valid in
+	// Postgres after the API reports successful deletion (codex #8). Cleared by
+	// the operator once CNPG confirms the role is absent.
+	// +optional
+	DeletedUsers []string `json:"deletedUsers,omitempty"`
+
 	// Recovery, when set, provisions this Database by restoring another Database's
 	// object-store backups to a point in time (PITR) into a NEW instance, instead
 	// of initializing an empty database (CNPG bootstrap.recovery). Immutable after

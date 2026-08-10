@@ -24,8 +24,8 @@ spec:
     resourceRules:
       - apiGroups: ["app.bex.co"]
         apiVersions: ["v1alpha1"]
-        operations: ["CREATE", "UPDATE"]
-        resources: ["apps"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["apps", "databases", "keyvalues"]
   matchConditions:
     - name: bex-api-service-account
       expression: request.userInfo.username == 'system:serviceaccount:bex-system:bex-api'
@@ -40,7 +40,7 @@ spec:
   validations:
     - expression: variables.canonical
       reason: Forbidden
-      message: bex-api may create or mutate an App only in the bootstrap namespace or the App's own tea-<id> workspace namespace
+      message: bex-api may create, mutate, or delete an App, Database, or KeyValue only in the bootstrap namespace or the resource's own tea-<id> workspace namespace
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

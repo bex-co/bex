@@ -372,9 +372,18 @@ func ensureKpackGitSecret(ctx context.Context, o Options) (string, error) {
 	if len(token) == 0 {
 		return "", fmt.Errorf("clone secret %s has no token key", o.CloneSecret)
 	}
+	// SECURITY (codex #5): the clone token is a GitHub installation token — it
+	// must only be presented to github.com, never to the (tenant-mutable) repo
+	// origin. kpack annotates the BasicAuth secret with this origin and presents
+	// it whenever kpack fetches that host; a non-github.com origin would leak the
+	// token to an attacker-controlled server. Reject any origin that is not
+	// exactly github.com when a clone token is present.
 	origin, err := gitHTTPOrigin(o.Repo)
 	if err != nil {
 		return "", err
+	}
+	if origin != "https://github.com" {
+		return "", fmt.Errorf("kpack clone token is github-scoped but repo origin is %q; refusing to send token to non-github origin", origin)
 	}
 	name := JobName(o.Name, "kpack-git")
 	dst := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: o.Namespace}}

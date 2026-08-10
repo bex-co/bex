@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { LogOut, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
 import { createFrontendApi } from "@/common/lib/ory/frontend";
@@ -12,6 +12,12 @@ import { Button } from "@/common/components/ui/button";
  * Logout page — calls Kratos's browser logout flow (which clears the
  * `ory_kratos_session` cookie) then redirects to login.
  *
+ * SECURITY (codex #12): logout requires an explicit click — the page renders a
+ * confirmation first and only calls Kratos when the user presses the button. This
+ * prevents a cross-site top-level navigation from silently ending the victim's
+ * session (CSRF logout). A `useEffect`-driven auto-logout on GET would let any
+ * malicious site link to /auth/logout and log the user out.
+ *
  * SECURITY (codex #6): the provider-side session is the real boundary, so we
  * treat the flow as done ONLY when Kratos returns a successful response. A failed
  * or errored logout keeps a blocking error with a retry — never a "signed out"
@@ -23,9 +29,9 @@ export default function LogoutPage() {
   const navigate = useNavigate();
   const router = useRouter();
   const { t } = useTranslations();
-  const [status, setStatus] = useState<"logging-out" | "success" | "error">(
-    "logging-out",
-  );
+  const [status, setStatus] = useState<
+    "confirm" | "logging-out" | "success" | "error"
+  >("confirm");
 
   const performLogout = useCallback(async () => {
     try {
@@ -58,10 +64,6 @@ export default function LogoutPage() {
     }
   }, [navigate, router]);
 
-  useEffect(() => {
-    void performLogout();
-  }, [performLogout]);
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background to-muted/20">
       <div className="space-y-8">
@@ -83,6 +85,28 @@ export default function LogoutPage() {
         </div>
 
         <div className="text-center space-y-3">
+          {status === "confirm" && (
+            <>
+              <h1 className="text-2xl font-semibold">
+                {t("auth.logoutConfirmTitle")}
+              </h1>
+              <p className="text-muted-foreground">
+                {t("auth.logoutConfirmSubtitle")}
+              </p>
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => void navigate({ to: "/" })}
+                >
+                  {t("auth.logoutCancel")}
+                </Button>
+                <Button onClick={() => void performLogout()}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  {t("auth.logoutConfirm")}
+                </Button>
+              </div>
+            </>
+          )}
           {status === "logging-out" && (
             <>
               <div className="flex items-center justify-center gap-3">

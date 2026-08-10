@@ -108,6 +108,22 @@ const enAuth: Record<string, TranslationEntry> = {
     message: "Try again",
     description: "Logout page retry button after a failed sign-out",
   },
+  "auth.logoutConfirmTitle": {
+    message: "Sign out?",
+    description: "Logout page heading on the confirmation screen (codex #12 CSRF logout fix)",
+  },
+  "auth.logoutConfirmSubtitle": {
+    message: "Are you sure you want to end your session?",
+    description: "Logout page subtext on the confirmation screen",
+  },
+  "auth.logoutConfirm": {
+    message: "Sign out",
+    description: "Logout page confirm button that triggers the actual logout",
+  },
+  "auth.logoutCancel": {
+    message: "Cancel",
+    description: "Logout page cancel button that returns to the dashboard",
+  },
   "auth.logoutTitle": {
     message: "Sign out",
     description: "Logout page document title",
