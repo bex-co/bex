@@ -1321,7 +1321,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexGuidance": {
     message:
-      "顶级域名无法使用普通 CNAME。若你的服务商支持 ALIAS/ANAME（或 CNAME flattening），请创建此记录；否则请在注册商处将顶级域名重定向到 www 子域名。",
+      "顶级域名无法使用普通 CNAME —— 若你的服务商支持 ALIAS/ANAME（或 CNAME flattening），请创建此记录后重新检查。解析生效后 bex 会自动签发 TLS 证书，并为你自动配置 www ↔ 顶级域名之间的重定向。",
     description: "Guidance line above the DNS record for an apex domain",
   },
   "services.domainRecordType": {
