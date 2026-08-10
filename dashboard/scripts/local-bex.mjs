@@ -1138,6 +1138,11 @@ const MESSAGES = [
   'level=info msg="reconnected" service=fx-rates',
   'level=info msg="GET /assets/app.css 304" duration=0.4ms',
   'level=info msg="scheduler tick" jobs=3 pending=0',
+  // Two ANSI-colorized lines shaped like real BuildKit/Tailwind build output,
+  // so the local viewer exercises the escape-interpreting render path
+  // (dashboard/src/features/logs/lib/ansi.ts) the way production build logs do.
+  "#11 94.34 \u001b[2m│\u001b[22m     min-height: var(--feed-reserve-*);",
+  "#11 94.34 \u001b[2m┆\u001b[22m                    \u001b[33m\u001b[2m^--\u001b[22m Unexpected token Delim('*')\u001b[39m",
 ];
 
 function line(iso, i, resource) {

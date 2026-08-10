@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DeployLogPanel } from "../deploy-log-panel";
 import type { UseDeployLogsResult } from "../../hooks/use-deploy-logs";
@@ -132,6 +132,52 @@ describe("DeployLogPanel", () => {
     expect(screen.queryByText("==> Build queued")).not.toBeInTheDocument();
     expect(screen.getByText("server listening")).toBeInTheDocument();
     expect(screen.getByText("running migration")).toBeInTheDocument();
+  });
+
+  it("searches the displayed text, not the raw ANSI bytes", async () => {
+    const esc = "\u001b";
+    const line = (key: string, message: string): LogLine => ({
+      key,
+      timestamp: "2026-07-17T20:16:14Z",
+      time: "20:16:14",
+      instance: "",
+      message,
+      type: "build",
+      level: "",
+      method: "",
+      statusCode: "",
+    });
+    // A colorized build line: the needle straddles the escape, so matching the
+    // wire bytes would drop this row from its own search.
+    logState.lines = [
+      line(
+        "1",
+        `${esc}[2mmin-height: var(--feed-${esc}[33mreserve${esc}[39m);`,
+      ),
+      line("2", "unrelated line"),
+    ];
+
+    render(
+      <DeployLogPanel
+        resource="web"
+        startTime="2026-07-14T00:00:00Z"
+        endTime={undefined}
+        hasPreDeploy={false}
+        followBuild={false}
+      />,
+    );
+    const user = userEvent.setup();
+
+    await user.type(
+      screen.getByPlaceholderText("Search logs…"),
+      "feed-reserve",
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText("unrelated line")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("reserve")).toBeInTheDocument();
+    expect(screen.queryByText("No logs yet")).not.toBeInTheDocument();
   });
 
   it("shows a short clickable instance and exposes its removable exact filter", async () => {
