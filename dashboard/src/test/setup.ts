@@ -45,6 +45,26 @@ if (typeof window !== "undefined") {
     Element.prototype.releasePointerCapture = vi.fn();
   }
 
+  // ProseMirror positions selections with Range geometry. jsdom exposes
+  // Range, but not these layout methods, so rich-editor interactions otherwise
+  // fail while dispatching an otherwise-valid document transaction.
+  if (typeof Range !== "undefined") {
+    Range.prototype.getBoundingClientRect = vi.fn(() => new DOMRect());
+    Range.prototype.getClientRects = vi.fn(
+      () =>
+        ({
+          length: 0,
+          item: () => null,
+          [Symbol.iterator]: function* () {},
+        }) as DOMRectList,
+    );
+  }
+  if (typeof Document !== "undefined") {
+    Document.prototype.elementFromPoint = vi.fn(
+      () => document.activeElement ?? document.body,
+    );
+  }
+
   // Mock matchMedia (jsdom doesn't implement it) — used by useIsMobile and
   // the theme provider's system-theme detection.
   window.matchMedia =

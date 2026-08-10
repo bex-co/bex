@@ -36,7 +36,7 @@ export const CATEGORY_META: Record<
   },
 };
 
-/** The typed token a category selection inserts into the composer input. */
+/** The typed token a category selection inserts into the composer editor. */
 export function mentionToken(category: MentionCategory): string {
   return `@${category}:`;
 }
@@ -47,25 +47,19 @@ export function mentionToken(category: MentionCategory): string {
  */
 export interface MentionState {
   category: MentionCategory | null;
-  /** Index of the trigger `@` in the task text. */
-  start: number;
-  /** The filter text typed after the token — the caret sits at its end. */
+  /** The filter text typed after `@` or the selected category token. */
   query: string;
-  /** Index of the keyboard-highlighted option. */
-  highlight: number;
 }
 
-/** Index just past the mention's trigger/token in the task text. */
-export function mentionTokenEnd(state: MentionState): number {
-  return (
-    state.start +
-    (state.category === null ? 1 : mentionToken(state.category).length)
-  );
-}
-
-/** Index just past the whole mention (token + typed query) in the task text. */
-export function mentionEnd(state: MentionState): number {
-  return mentionTokenEnd(state) + state.query.length;
+/** Decode Tiptap Suggestion's query into the picker's two levels. */
+export function mentionStateFromQuery(query: string): MentionState {
+  for (const category of MENTION_CATEGORIES) {
+    const prefix = `${category}:`;
+    if (query.startsWith(prefix)) {
+      return { category, query: query.slice(prefix.length) };
+    }
+  }
+  return { category: null, query };
 }
 
 /**
@@ -92,7 +86,7 @@ export type MentionOption =
   | { kind: "repo"; repo: RepoView }
   | { kind: "session"; session: AgentSessionView };
 
-/** Stable per-option DOM id, referenced by the textarea's aria-activedescendant. */
+/** Stable per-option DOM id, referenced by the editor's aria-activedescendant. */
 export function mentionOptionId(idBase: string, index: number): string {
   return `${idBase}-option-${index}`;
 }

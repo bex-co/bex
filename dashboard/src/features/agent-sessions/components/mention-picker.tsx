@@ -75,10 +75,10 @@ function describeOption(
 
 /**
  * The two-level `@` mention popup (Devin's picker shape). Presentation-only:
- * the composer owns the state machine and hands down the flattened, already
- * filtered option list. For a highlighted repo, a readiness preview footer
- * shows the GitHub-App-connected state (every row comes from the connected
- * installation's `repos` query) and the default branch.
+ * the editor adapter hands down the flattened, already-filtered option list.
+ * For a highlighted repo, a readiness preview footer shows the
+ * GitHub-App-connected state (every row comes from the connected installation's
+ * `repos` query) and the default branch.
  */
 export function MentionPicker({
   idBase,
@@ -93,7 +93,7 @@ export function MentionPicker({
   const footerRepo = highlighted?.kind === "repo" ? highlighted.repo : null;
 
   return (
-    <div className="bg-popover text-popover-foreground absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-md border shadow-md">
+    <div className="bg-popover text-popover-foreground z-30 w-96 max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border shadow-md">
       <div
         role="listbox"
         id={idBase}
@@ -161,7 +161,7 @@ function MentionOptionRow({
         "flex w-full items-start gap-2 rounded-sm px-2 py-1.5 text-left text-sm",
         active && "bg-accent text-accent-foreground",
       )}
-      // preventDefault keeps focus in the composer textarea through the click.
+      // preventDefault keeps focus in the composer editor through the click.
       onMouseDown={(event) => event.preventDefault()}
       onMouseEnter={onHighlight}
       onClick={onSelect}
