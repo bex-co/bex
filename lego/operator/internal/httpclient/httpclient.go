@@ -42,7 +42,12 @@ var Shared = New(RequestTimeout)
 func New(totalTimeout time.Duration) *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
+			// No ambient proxy (w1/m66 F9): this client's destination policy is
+			// implemented at dial time (below), and ProxyFromEnvironment would hand
+			// the dialer the PROXY's address while the proxy resolved and fetched the
+			// tenant-influenced target — silently bypassing the metadata guard. A
+			// dial-time guard and an ambient proxy are incompatible.
+			Proxy: nil,
 			// SSRF guard (w1/m53): block the cloud-metadata endpoint / link-local
 			// while still permitting the private ClusterIP services this client
 			// legitimately reaches (Zot registry, Prometheus) and loopback — so a

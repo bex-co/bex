@@ -793,6 +793,43 @@ else
   fi
 fi
 
+# Platform backup supply chain (w1/m66 F16, from the 2026-08-10 security scan).
+# These Pods hold the raw etcd/OpenBao snapshot and the S3 upload credentials on
+# one shared volume, so every stage that runs before the upload is as sensitive
+# as the data itself. Two invariants:
+#   1. every image is content-addressed (a moved tag must not change what runs);
+#   2. no stage resolves code from a package repository at run time.
+echo "==> platform backup CronJobs are digest-pinned and install nothing at runtime"
+for backup_chart in deploy/gitops/charts/etcd-backup/cronjob.yaml \
+  deploy/gitops/charts/openbao-backup/cronjob.yaml; do
+  backup_imgs="$(yq -N '.spec.jobTemplate.spec.template.spec | [(.initContainers // [])[], (.containers // [])[]] | .[] | .image' \
+    "$backup_chart")"
+  while IFS= read -r img; do
+    [ -n "$img" ] || continue
+    case "$img" in
+      *@sha256:*) ;;
+      *)
+        echo "FAIL: $backup_chart runs '$img' by tag — pin it by @sha256 digest (w1/m66 F16)" >&2
+        fail=1
+        ;;
+    esac
+  done <<< "$backup_imgs"
+  # Inspect the executed args only: the charts mention `apk add` in a comment
+  # explaining why it was removed, and that must not trip the guard.
+  backup_args="$(yq -N '.spec.jobTemplate.spec.template.spec | [(.initContainers // [])[], (.containers // [])[]] | .[] | (.args // [])[]' \
+    "$backup_chart")"
+  if echo "$backup_args" | grep -qE '(apk[[:space:]]+add|apt-get[[:space:]]+install|yum[[:space:]]+install|pip[[:space:]]+install)'; then
+    echo "FAIL: $backup_chart installs packages at run time next to snapshot data + upload credentials (w1/m66 F16)" >&2
+    fail=1
+  fi
+  # The pinned age artifact must be checksum-verified before it executes.
+  if echo "$backup_args" | grep -q 'FiloSottile/age/releases' \
+    && ! echo "$backup_args" | grep -q 'sha256sum -c'; then
+    echo "FAIL: $backup_chart downloads the age binary without verifying it against the pinned SHA-256 (w1/m66 F16)" >&2
+    fail=1
+  fi
+done
+
 # bex-db plugin backup contract (w1/m56 t006/t008): Cluster WAL archiving and
 # ScheduledBackup use the one declared ObjectStore and preserve the 04:00 UTC
 # schedule. The exact plugin-only object shape is asserted below.

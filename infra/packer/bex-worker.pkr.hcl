@@ -26,9 +26,15 @@
 
 packer {
   required_plugins {
+    # Pinned EXACTLY, with the resolved artifact checksums committed in
+    # .packer.lock.hcl (w1/m66 F12). `packer init` runs in the credentialed
+    # snapshot workflow immediately before `packer build`, so an open-ended
+    # constraint let identical repository revisions execute different plugin
+    # bytes next to HCLOUD_TOKEN. Bump deliberately: edit the version, re-run
+    # `packer init -upgrade`, and commit the regenerated lock.
     hcloud = {
       source  = "github.com/hetznercloud/hcloud"
-      version = ">= 1.6.0"
+      version = "= 1.7.2"
     }
   }
 }

@@ -91,3 +91,51 @@ func (s *PGStore) DeleteGitConnection(ctx context.Context, workspaceID string) e
 	}
 	return nil
 }
+
+// GitHubConnectTransaction is one in-flight connect attempt: who started it, for
+// which workspace, and until when (w1/m67 F3). It exists because the GitHub
+// install redirect returns to an anonymous callback, so without a server-side
+// record the flow could only ever prove that SOMEONE authorized SOME workspace —
+// never that the human completing the installation is the one who asked.
+type GitHubConnectTransaction struct {
+	Nonce     string
+	TenantID  string
+	Subject   string
+	ExpiresAt time.Time
+}
+
+// CreateGitHubConnectTransaction records a connect attempt. Expired rows are
+// pruned here rather than by a janitor: the flow is human-driven and rare, so the
+// piggybacked DELETE keeps the table at "attempts started in the last few
+// minutes" for free.
+func (s *PGStore) CreateGitHubConnectTransaction(ctx context.Context, t GitHubConnectTransaction) error {
+	if _, err := s.Pool.Exec(ctx, `DELETE FROM github_connect_transactions WHERE expires_at < now()`); err != nil {
+		return err
+	}
+	_, err := s.Pool.Exec(ctx,
+		`INSERT INTO github_connect_transactions (nonce, tenant_id, subject, expires_at)
+		 VALUES ($1, $2, $3, $4)`,
+		t.Nonce, t.TenantID, t.Subject, t.ExpiresAt)
+	if err != nil {
+		return classify("github connect transaction", err)
+	}
+	return nil
+}
+
+// ConsumeGitHubConnectTransaction atomically claims an unexpired attempt and
+// returns it. Single-use by construction: the row is DELETEd in the same
+// statement that reads it, so a replayed callback — on any replica — finds
+// nothing. ErrNotFound covers unknown, already-consumed, and expired alike, so a
+// caller cannot distinguish them (and neither can an attacker probing).
+func (s *PGStore) ConsumeGitHubConnectTransaction(ctx context.Context, nonce string) (GitHubConnectTransaction, error) {
+	var t GitHubConnectTransaction
+	err := s.Pool.QueryRow(ctx,
+		`DELETE FROM github_connect_transactions
+		  WHERE nonce = $1 AND expires_at > now()
+		  RETURNING nonce, tenant_id, subject, expires_at`, nonce,
+	).Scan(&t.Nonce, &t.TenantID, &t.Subject, &t.ExpiresAt)
+	if err != nil {
+		return GitHubConnectTransaction{}, classify("github connect transaction", err)
+	}
+	return t, nil
+}

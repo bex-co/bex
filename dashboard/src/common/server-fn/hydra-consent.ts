@@ -107,20 +107,56 @@ function csrfTokenMatches(
   return want.length === got.length && timingSafeEqual(want, got);
 }
 
+/** The only PKCE transform bex accepts. RFC 7636 defines exactly two — `plain`
+ * offers no protection against an intercepted authorization request, so it is
+ * refused rather than downgraded to. Compared case-sensitively: the RFC's ABNF
+ * fixes the literal, and accepting `s256` would mean accepting whatever a
+ * non-conforming client sent without knowing what it actually computed. */
+const REQUIRED_PKCE_METHOD = "S256";
+
 /**
- * Require PKCE for every authorization_code grant (w6/003). Hydra mandates PKCE
- * for public clients (token_endpoint_auth_method: none) at the token endpoint,
- * but a confidential DCR client could run auth_code without it and Hydra has no
- * global "enforce PKCE" toggle — consent is the one place bex sees the flow, so
- * require a code_challenge in the original authorize request URL.
+ * Require PKCE **with S256** for every authorization_code grant (w6/003, method
+ * check w1/m66 F8). Hydra mandates PKCE for public clients
+ * (token_endpoint_auth_method: none) at the token endpoint, but a confidential
+ * DCR client could run auth_code without it and Hydra has no global "enforce
+ * PKCE" toggle — consent is the one place bex sees the flow.
+ *
+ * Presence of a code_challenge is NOT proof of S256: until F8 this only checked
+ * that the parameter existed, so `code_challenge_method=plain` (or an omitted
+ * method, which RFC 7636 defines AS plain) sailed through the gate that
+ * documents itself as enforcing S256. Both consent entry points share this one
+ * function so the policy cannot drift between the headless and human paths.
+ *
+ * Returns true when the request satisfies the policy.
  */
-function missingPKCE(consent: OAuth2ConsentRequest): boolean {
-  const requestUrl = consent.request_url ? new URL(consent.request_url) : null;
+function pkceSatisfied(consent: OAuth2ConsentRequest): boolean {
+  let requestUrl: URL | null = null;
+  try {
+    requestUrl = consent.request_url ? new URL(consent.request_url) : null;
+  } catch {
+    return false; // unparseable authorize URL: refuse, never assume
+  }
+  if (!requestUrl) return false;
   // RFC 8628 device authorization has no authorization-code redirect and no
   // PKCE verifier. Hydra still routes it through the same consent provider;
   // requiring code_challenge here would reject every legitimate CLI login.
-  if (requestUrl?.pathname === "/oauth2/device/verify") return false;
-  return !requestUrl?.searchParams.get("code_challenge");
+  if (requestUrl.pathname === "/oauth2/device/verify") return true;
+
+  // Exactly one of each: a duplicated parameter is ambiguous, and which copy
+  // Hydra used is not something this gate can know.
+  const challenges = requestUrl.searchParams.getAll("code_challenge");
+  const methods = requestUrl.searchParams.getAll("code_challenge_method");
+  if (challenges.length !== 1 || !challenges[0]) return false;
+  if (methods.length !== 1) return false;
+  return methods[0] === REQUIRED_PKCE_METHOD;
+}
+
+/** One refusal for both consent paths. */
+function pkceRefusal(): Response {
+  return new Response(
+    "PKCE required: the authorization request must include a code_challenge with code_challenge_method=S256",
+    { status: 400 },
+  );
 }
 
 function isTrusted(consent: OAuth2ConsentRequest): boolean {
@@ -216,11 +252,8 @@ export async function handleConsent(
     return home();
   }
 
-  if (missingPKCE(consent)) {
-    return new Response(
-      "PKCE required: the authorization request must include a code_challenge (S256)",
-      { status: 400 },
-    );
+  if (!pkceSatisfied(consent)) {
+    return pkceRefusal();
   }
 
   if (isTrusted(consent)) {
@@ -328,11 +361,8 @@ export async function handleConsentDecision(
   } catch {
     return refuse("consent refused: stale or unknown challenge");
   }
-  if (missingPKCE(consent)) {
-    return new Response(
-      "PKCE required: the authorization request must include a code_challenge (S256)",
-      { status: 400 },
-    );
+  if (!pkceSatisfied(consent)) {
+    return pkceRefusal();
   }
   if (consent.subject && consent.subject !== session.identity?.id) {
     return refuse("consent refused: session does not own this authorization");

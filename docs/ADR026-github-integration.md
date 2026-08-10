@@ -49,6 +49,16 @@ Any of the first three unset ⇒ the github service is nil ⇒ **every** git-con
 
 A connection (which GitHub installation belongs to this workspace) is durable state, so it lives in the control-plane store (`git_connections`, keyed by workspace), which requires `BEX_CP_DB_URI` — consistent with [ADR003-control-plane.md](ADR003-control-plane.md)'s opt-in. One connection per workspace for now (bex is effectively single-workspace; multi-workspace is w6). Recording a connection requires two independent checks: the callback's single-use OAuth code must identify a user who administers that installation, and an app-JWT lookup (`GET /app/installations/{id}`) must confirm that the installation belongs to this GitHub App and provide its account login. Either failure is rejected before persistence. App-level visibility alone is only defense in depth; it does not prove the callback user may bind the installation to a workspace.
 
+**Three proofs, one principal (w1/m67 F3, revising the two-proof design above).** Those two checks were individually sound and jointly insufficient, because they authenticated _different people_. The signed `state` proved "a bex admin authorized workspace X"; the OAuth code proved "the browser here administers installation Y". Nothing tied them together — so an attacker could start a connect for its **own** workspace and hand the resulting install URL to a victim GitHub org admin. The victim's installation was genuine, the victim's admin proof was genuine, and the victim's repositories ended up bound to the attacker's workspace. The unique installation→workspace binding added in `w1/m65` then made it a lockout too: the rightful workspace could no longer claim its own installation.
+
+The flow now carries a server-side, single-use transaction (`github_connect_transactions`, migration 0071):
+
+1. `StartConnect` mints a random nonce and records `{nonce, workspace, initiating subject, expiry}`; the signed state carries **only the nonce**, so possessing a state authorizes nothing — it merely names an attempt.
+2. The callback consumes that row atomically (`DELETE … RETURNING`, so a replay finds nothing) and requires the presenting bex subject to equal the initiator. The Kratos session cookie is `SameSite=Lax`, so it does ride GitHub's top-level GET redirect; an anonymous callback is refused outright.
+3. The installation-admin OAuth proof and the app-JWT installation lookup run as before.
+
+The nonce is consumed even when a later step refuses, so a probed or rejected attempt cannot be retried against a different installation. Unknown, expired, and already-consumed nonces are refused identically.
+
 ### 5. Surfaces — REST/GraphQL/MCP/UI, with the repo surface a bex superset
 
 The connection and repo list are exposed on all four surfaces over one core (the [ADR006-bex-api.md](ADR006-bex-api.md) one-core/thin-adapters rule):

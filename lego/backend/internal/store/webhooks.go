@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -69,10 +70,29 @@ func scanWebhookEndpoint(row pgx.Row) (WebhookEndpoint, error) {
 	return e, err
 }
 
+// MaxWebhookEndpointsPerWorkspace bounds how many endpoints one workspace may
+// register (w1/m67 F2). Every event is fanned out across every enabled endpoint
+// of its workspace by a worker SHARED with every other tenant, so an unbounded
+// endpoint count is an unbounded multiplier on shared memory and database work —
+// growable persistently, by an ordinary workspace admin, at no cost to them.
+// The value is far above any real integration topology (Render's own docs
+// describe a handful of endpoints per workspace); it exists to stop the
+// pathological case, not to shape normal use.
+const MaxWebhookEndpointsPerWorkspace = 25
+
+// ErrWebhookEndpointLimit is the typed refusal when a workspace is already at
+// MaxWebhookEndpointsPerWorkspace. Wraps ErrConflict so existing REST/GraphQL/MCP
+// error mapping treats it like the other quota refusals (cf. ErrInvitePlanLimit).
+var ErrWebhookEndpointLimit = fmt.Errorf("workspace has the maximum number of webhook endpoints: %w", ErrConflict)
+
 // CreateWebhookEndpoint mints a new endpoint row (id.New(id.Webhook)) and
 // inserts it. The secret is minted by the caller (internal/webhooks owns the
 // format) and returned on this one response only. An empty name defaults to
 // the URL.
+//
+// The count check and the insert share ONE transaction, and the count takes a
+// row-level lock over the workspace's existing endpoints, so two concurrent
+// creates at the boundary cannot both observe "one slot left" and both take it.
 func (s *PGStore) CreateWebhookEndpoint(ctx context.Context, tenantID, name, url, secret string, eventTypes []string, createdBy string) (WebhookEndpoint, error) {
 	if name == "" {
 		name = url
@@ -81,12 +101,29 @@ func (s *PGStore) CreateWebhookEndpoint(ctx context.Context, tenantID, name, url
 		ID: ids.New(ids.Webhook), TenantID: tenantID, Name: name, URL: url,
 		Secret: secret, EventTypes: eventTypes, Enabled: true, CreatedBy: createdBy,
 	}
-	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO webhook_endpoints (id, tenant_id, name, url, secret, event_types, created_by)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING created_at, updated_at`,
-		e.ID, e.TenantID, e.Name, e.URL, e.Secret, e.EventTypes, e.CreatedBy,
-	).Scan(&e.CreatedAt, &e.UpdatedAt)
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var n int
+		// FOR UPDATE on the workspace's rows serializes concurrent creates against
+		// each other without blocking any other workspace.
+		if err := tx.QueryRow(ctx,
+			`SELECT count(*) FROM (
+			   SELECT 1 FROM webhook_endpoints WHERE tenant_id = $1 FOR UPDATE
+			 ) existing`, tenantID).Scan(&n); err != nil {
+			return err
+		}
+		if n >= MaxWebhookEndpointsPerWorkspace {
+			return ErrWebhookEndpointLimit
+		}
+		return tx.QueryRow(ctx,
+			`INSERT INTO webhook_endpoints (id, tenant_id, name, url, secret, event_types, created_by)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING created_at, updated_at`,
+			e.ID, e.TenantID, e.Name, e.URL, e.Secret, e.EventTypes, e.CreatedBy,
+		).Scan(&e.CreatedAt, &e.UpdatedAt)
+	})
 	if err != nil {
+		if errors.Is(err, ErrWebhookEndpointLimit) {
+			return WebhookEndpoint{}, err
+		}
 		return WebhookEndpoint{}, classify("webhook endpoint", err)
 	}
 	return e, nil
@@ -573,6 +610,51 @@ func (s *PGStore) RecordWebhookAttempt(ctx context.Context, id string, status in
 		 WHERE id = $1`,
 		id, status, errMsg, at, next, delivered, failed)
 	return err
+}
+
+// SweepWebhookDeliveries purges terminal delivery rows (w1/m67 F3). The table is
+// both the durable delivery QUEUE and the product's history surface, so nothing
+// ever reclaimed a delivered/exhausted row: ordinary tenant activity grew shared
+// table, index, and backup storage without bound.
+//
+// Two eligibility rules, applied only to rows that are already terminal
+// (delivered_at or failed_at set — a pending or retryable delivery is never
+// touched):
+//
+//   - older than `before`, so history has a finite lifetime; and
+//   - beyond `keepPerEndpoint` most recent rows for their endpoint, so a burst
+//     inside the age window cannot evade the age rule alone.
+//
+// Deletion is bounded per call (`limit`) and safe to run concurrently on two
+// replicas — rows are claimed with FOR UPDATE SKIP LOCKED, so a second sweeper
+// simply takes different rows. Returns the number deleted.
+func (s *PGStore) SweepWebhookDeliveries(ctx context.Context, before time.Time, keepPerEndpoint, limit int) (int64, error) {
+	if limit <= 0 {
+		limit = 1000
+	}
+	if keepPerEndpoint < 0 {
+		keepPerEndpoint = 0
+	}
+	tag, err := s.Pool.Exec(ctx,
+		`WITH ranked AS (
+		   SELECT id, created_at,
+		          row_number() OVER (PARTITION BY endpoint_id ORDER BY created_at DESC, id DESC) AS rn
+		     FROM webhook_deliveries
+		    WHERE delivered_at IS NOT NULL OR failed_at IS NOT NULL
+		 ),
+		 eligible AS (
+		   SELECT id FROM ranked
+		    WHERE rn > $2 OR created_at < $1
+		    ORDER BY created_at
+		    LIMIT $3
+		    FOR UPDATE SKIP LOCKED
+		 )
+		 DELETE FROM webhook_deliveries d USING eligible e WHERE d.id = e.id`,
+		before, keepPerEndpoint, limit)
+	if err != nil {
+		return 0, classify("webhook deliveries", err)
+	}
+	return tag.RowsAffected(), nil
 }
 
 // prefixColumns qualifies a comma-separated column list with a table alias —

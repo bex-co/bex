@@ -20,8 +20,10 @@
 #
 # Env: HCLOUD_TOKEN (required; sourced from ./.env if unset)
 #      BEX_SSH_KEY_PATH   SSH key for the CP fetch (default ~/.ssh/bex)
-#      BEX_SSH_KNOWN_HOSTS_FILE  optional isolated known-hosts file, forwarded
-#                         to the CP fetch and remote firewall scan
+#      BEX_SSH_KNOWN_HOSTS_FILE  authoritative known-hosts file, forwarded to the
+#                         CP fetch and remote firewall scan. Set => host keys are
+#                         authenticated and fail closed (w1/m66 F7); unset =>
+#                         trust-on-first-use with a notice
 #      WL_KUBECONFIG      skip the fetch and use this kubeconfig (check 1 still
 #                         runs unless SKIP_FETCH=1)
 # Exit 0 on full pass; non-zero naming the failed check. Requires kubectl, jq,
@@ -34,10 +36,9 @@ if [ -z "${HCLOUD_TOKEN:-}" ] && [ -f .env ]; then
 fi
 : "${HCLOUD_TOKEN:?HCLOUD_TOKEN required (env or .env)}"
 export BEX_SSH_KEY_PATH="${BEX_SSH_KEY_PATH:-$HOME/.ssh/bex}"
-SSH_KNOWN_HOSTS_ARGS=()
-if [ -n "${BEX_SSH_KNOWN_HOSTS_FILE:-}" ]; then
-  SSH_KNOWN_HOSTS_ARGS=(-o "UserKnownHostsFile=$BEX_SSH_KNOWN_HOSTS_FILE")
-fi
+# shellcheck source=scripts/lib/ssh-hostkey.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/ssh-hostkey.sh"
+bex_ssh_hostkey_args
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "PASS: $*"; }
@@ -219,8 +220,8 @@ BAD_LB=$(jq --argjson id "$NETWORK_ID" '[.load_balancers[]
 SOURCE_IP=$(jq -r '[.servers[] | select(.labels.machine_type == "control_plane")][0].public_net.ipv4.ip // ""' <<<"$SERVERS_JSON")
 TARGET_IP=$(jq -r --arg source "$SOURCE_IP" '[.servers[] | select(.public_net.ipv4.ip != $source)][0].public_net.ipv4.ip // ""' <<<"$SERVERS_JSON")
 [ -n "$SOURCE_IP" ] && [ -n "$TARGET_IP" ] || fail "network: need two public node IPs for the remote firewall scan"
-SCAN=$(ssh -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new \
-  "${SSH_KNOWN_HOSTS_ARGS[@]}" -i "$BEX_SSH_KEY_PATH" "root@$SOURCE_IP" \
+SCAN=$(ssh -o BatchMode=yes -o ConnectTimeout=8 \
+  "${BEX_SSH_HOSTKEY_ARGS[@]}" -i "$BEX_SSH_KEY_PATH" "root@$SOURCE_IP" \
   "for port in 22 80 443 2379 2380 5000 6443 8472 10250 30080; do (if timeout 2 bash -c '</dev/tcp/$TARGET_IP/'\"\$port\" 2>/dev/null; then echo \"\$port\"; fi) & done; wait") \
   || fail "network: could not scan $TARGET_IP from control-plane node $SOURCE_IP"
 [ "$SCAN" = "22" ] || fail "network: public node scan saw open ports '${SCAN//$'\n'/,}' (want only 22)"

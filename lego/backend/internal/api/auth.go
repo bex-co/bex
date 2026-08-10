@@ -19,6 +19,8 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"slices"
@@ -64,7 +66,27 @@ type oryAuth struct {
 	// implement RFC 8707's `resource` parameter (it has its own `audience`
 	// request param), so plain API-key (client_credentials) tokens carry no
 	// audience and must keep working. A documented subset, not full RFC 8707.
+	//
+	// w1/m67 F1 narrowed the empty-aud exception: see platformClient. The blanket
+	// form let ANY consented token — including one minted for a self-registered
+	// (DCR) third-party client that never requested this resource — authorize a
+	// human's full workspace rights here.
 	resource string
+	// platformClients caches, per client_id, whether Hydra's client record carries
+	// the `bex.co/platform-client` marker that scripts/auth-bootstrap-client.sh
+	// stamps on the clients bex itself provisions (the official Render CLI's
+	// device-flow client, bex-mobile). It is consulted only on the narrow path
+	// where the answer changes a decision — a HUMAN token with an empty audience
+	// while `resource` is configured — so ordinary API-key and audience-carrying
+	// traffic costs no extra Hydra call, and even that path pays at most one
+	// lookup per client per TTL.
+	platformClients *core.TTLCache[bool]
+	// requireAudience turns the narrowed rule on (BEX_OAUTH_REQUIRE_AUDIENCE=1).
+	// Default off is deliberate and temporary: enforcing it before an operator has
+	// re-run auth-bootstrap-client.sh (so the provisioned platform clients carry
+	// the marker) would reject the official Render CLI's device-flow logins, which
+	// legitimately request no audience. Activation runbook: docs/ADR012-auth.md §7.
+	requireAudience bool
 	// Issuer pinning (w6/m6): when set (Hydra's public issuer, e.g.
 	// https://oauth.bex.co), a token whose introspected `iss` is non-empty must
 	// match it. Defense-in-depth on top of introspecting one fixed Hydra admin
@@ -118,25 +140,74 @@ type oryAuth struct {
 	// side, so it adds no I/O to the request path; nil disables it (no apikeys
 	// feature).
 	touch func(clientID string)
+
+	// admission bounds what an unauthenticated caller can spend on Hydra/Kratos
+	// (w1/m67 F1). Only INVALID credentials are charged — see authadmission.go.
+	// nil disables both bounds (pre-m67 behavior).
+	admission *AuthAdmission
 }
 
-func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL string, onboard Onboarding, touch func(string)) *oryAuth {
+func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL string, requireAudience bool, admission *AuthAdmission, onboard Onboarding, touch func(string)) *oryAuth {
 	challenge := "Bearer"
 	if resourceMetadataURL != "" {
 		challenge = `Bearer resource_metadata="` + resourceMetadataURL + `"`
 	}
 	return &oryAuth{
-		hydraAdminURL: strings.TrimSuffix(hydraAdminURL, "/"),
-		kratosURL:     strings.TrimSuffix(kratosURL, "/"),
-		resource:      resource,
-		issuer:        issuer,
-		challenge:     challenge,
-		onboard:       onboard,
-		client:        &http.Client{Timeout: 5 * time.Second, Transport: core.OryTransport},
-		cache:         core.NewTTLCache[core.Identity](),
-		touch:         touch,
+		hydraAdminURL:   strings.TrimSuffix(hydraAdminURL, "/"),
+		kratosURL:       strings.TrimSuffix(kratosURL, "/"),
+		resource:        resource,
+		issuer:          issuer,
+		challenge:       challenge,
+		onboard:         onboard,
+		client:          &http.Client{Timeout: 5 * time.Second, Transport: core.OryTransport},
+		cache:           core.NewTTLCache[core.Identity](),
+		platformClients: core.NewTTLCache[bool](),
+		requireAudience: requireAudience,
+		admission:       admission,
+		touch:           touch,
 	}
 }
+
+// platformClient reports whether client_id is one bex provisioned itself, per
+// Hydra's own client record — the authoritative source, not an inference from
+// the token's shape. scripts/auth-bootstrap-client.sh stamps
+// `metadata: {"bex.co/platform-client": true}` on the Render CLI and bex-mobile
+// clients; a self-registered (DCR) client cannot set it, because DCR bodies do
+// not carry bex's metadata key through Hydra's registration endpoint into an
+// operator-provisioned marker namespace.
+//
+// Errors are returned, never swallowed into "not platform": an unreachable Hydra
+// must fail the request closed (503, like introspection itself), not silently
+// downgrade a trusted client to an untrusted one.
+func (a *oryAuth) platformClient(ctx context.Context, clientID string) (bool, error) {
+	if clientID == "" {
+		return false, nil
+	}
+	if ok, cached := a.platformClients.Get(clientID); cached {
+		return ok, nil
+	}
+	var out struct {
+		Metadata map[string]any `json:"metadata"`
+	}
+	if err := core.DoJSON(ctx, a.client, http.MethodGet,
+		a.hydraAdminURL+"/admin/clients/"+url.PathEscape(clientID),
+		"", nil, http.StatusOK, &out); err != nil {
+		var status *core.HTTPStatusError
+		if errors.As(err, &status) && status.Code == http.StatusNotFound {
+			// A token for a client Hydra no longer knows is not a platform client.
+			a.platformClients.Put(clientID, false, time.Now().Add(core.PositiveTTL))
+			return false, nil
+		}
+		return false, err
+	}
+	marked, _ := out.Metadata[platformClientMarker].(bool)
+	a.platformClients.Put(clientID, marked, time.Now().Add(core.PositiveTTL))
+	return marked, nil
+}
+
+// platformClientMarker is the Hydra client-metadata key auth-bootstrap-client.sh
+// stamps on bex-provisioned OAuth clients.
+const platformClientMarker = "bex.co/platform-client"
 
 // invalidate evicts a token whose upstream state changed. A human CLI logout
 // revokes the whole subject+client consent chain in Hydra, so evict every
@@ -184,9 +255,16 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		// Refuse an absurd credential before it is allocated into an upstream
+		// request or forwarded as a header (w1/m67 F1). No real Hydra token or
+		// Kratos session token comes close to this bound.
+		if oversizedCredential(bearer) || oversizedCredential(r.Header.Get("X-Session-Token")) {
+			a.unauthorized(w)
+			return
+		}
 		switch {
 		case hasBearer:
-			id, err = a.introspect(r.Context(), bearer)
+			id, err = a.introspect(r, bearer)
 		case hasSession:
 			id, err = a.whoami(r)
 		default:
@@ -194,6 +272,10 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 			return
 		}
 		switch {
+		case errors.Is(err, errAuthOverloaded):
+			// Shed before the upstream call: the caller is spending more
+			// authentication work than its source is budgeted for.
+			writeAuthOverloaded(w, r)
 		case err != nil: // Ory unreachable/broken — fail closed, honestly
 			core.WriteErrStatus(w, http.StatusServiceUnavailable, "auth upstream unavailable")
 		case id == core.Identity{}:
@@ -229,12 +311,23 @@ func hasSessionCredential(r *http.Request) bool {
 
 // introspect validates an OAuth2 token at Hydra's admin API. Returns the zero
 // Identity for an inactive/unknown token, an error when Hydra is unreachable.
-func (a *oryAuth) introspect(ctx context.Context, token string) (core.Identity, error) {
+func (a *oryAuth) introspect(r *http.Request, token string) (core.Identity, error) {
+	ctx := r.Context()
 	if id, ok := a.cache.Get(token); ok {
 		return id, nil
 	}
+	// A cache miss is the expensive event: it costs one Hydra round trip. Meter
+	// it (w1/m67 F1) so a flood of DISTINCT invalid tokens — which defeats both
+	// the positive cache and singleflight — cannot amplify into the shared
+	// identity service. A legitimate caller pays at most one token per
+	// credential per PositiveTTL.
+	release, err := a.admission.admit(r)
+	if err != nil {
+		return core.Identity{}, err
+	}
+	defer release()
 	// Coalesce concurrent misses for the same token into one Hydra call.
-	_, err, _ := a.group.Do(token, func() (any, error) {
+	_, err, _ = a.group.Do(token, func() (any, error) {
 		return nil, a.introspectUpstream(ctx, token)
 	})
 	if err != nil {
@@ -247,6 +340,10 @@ func (a *oryAuth) introspect(ctx context.Context, token string) (core.Identity, 
 	if id, ok := a.cache.Get(token); ok {
 		return id, nil
 	}
+	// The token was rejected upstream: charge this source (w1/m67 F1). Only
+	// failures are metered, so a busy legitimate caller is never throttled while
+	// a flood of distinct invalid tokens exhausts its budget within seconds.
+	a.admission.penalize(r)
 	return core.Identity{}, nil
 }
 
@@ -287,10 +384,37 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 	if !out.Active {
 		return nil
 	}
+	// Hydra may return sub=client_id for client_credentials tokens. A human
+	// authorization/device token instead carries the end-user subject, distinct
+	// from the OAuth client that obtained it. The class decides how strict the
+	// audience rule below is, so it is computed before the check.
+	human := out.Sub != "" && out.Sub != out.ClientID
+
 	// Audience discipline (see the resource field): a token minted for another
-	// resource must not authorize this one. Empty aud stays accepted (API keys).
+	// resource must not authorize this one.
 	if a.resource != "" && len(out.Aud) > 0 && !slices.Contains(out.Aud, a.resource) {
 		return nil
+	}
+	// The empty-aud exception, narrowed (w1/m67 F1). It exists for
+	// client_credentials API keys, which carry no audience at all — but written as
+	// "any active token with an empty aud", it also admitted a HUMAN token minted
+	// for a self-registered third-party client that never asked for this resource.
+	// Such a token carries the user's full workspace rights here.
+	//
+	// So: machine tokens keep the exception unconditionally; a human token with no
+	// audience is admitted only when Hydra's own client record says bex provisioned
+	// that client (the official Render CLI's device flow, bex-mobile) — those
+	// legitimately request no audience. Everyone else must request the resource,
+	// which the MCP authorization spec already tells clients to do.
+	if a.requireAudience && a.resource != "" && len(out.Aud) == 0 && human {
+		platform, err := a.platformClient(ctx, out.ClientID)
+		if err != nil {
+			return err // Hydra unreachable => 503, never a silent downgrade
+		}
+		if !platform {
+			log.Printf("auth: rejecting audience-less token for human subject from non-platform client %q (w1/m67 F1)", out.ClientID)
+			return nil
+		}
 	}
 	// Issuer discipline (see the issuer field): a token from a different issuer
 	// must not authorize this resource. Empty iss stays accepted.
@@ -301,10 +425,6 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 	if subject == "" {
 		subject = out.ClientID
 	}
-	// Hydra may return sub=client_id for client_credentials tokens. A human
-	// authorization/device token instead carries the end-user subject, distinct
-	// from the OAuth client that obtained it.
-	human := out.Sub != "" && out.Sub != out.ClientID
 	id := core.Identity{
 		Subject:  subject,
 		Method:   "oauth2",
@@ -350,6 +470,13 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 // session credential (cookie or X-Session-Token). Returns the zero Identity for a
 // missing/expired session, an error when Kratos is unreachable.
 func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
+	// Kratos sessions are not positively cached here, so every session request is
+	// an upstream call and is metered as one (w1/m67 F1).
+	release, admitErr := a.admission.admit(r)
+	if admitErr != nil {
+		return core.Identity{}, admitErr
+	}
+	defer release()
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, a.kratosURL+"/sessions/whoami", nil)
 	if err != nil {
 		return core.Identity{}, err
@@ -367,6 +494,10 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 	defer core.DrainClose(resp)
 	switch {
 	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		// Invalid/expired session: charge this source (w1/m67 F1). A legitimate
+		// dashboard SSR pod, whose users all share its IP, is never charged
+		// because its sessions authenticate.
+		a.admission.penalize(r)
 		return core.Identity{}, nil
 	case resp.StatusCode != http.StatusOK:
 		return core.Identity{}, core.Err("kratos whoami returned " + resp.Status)

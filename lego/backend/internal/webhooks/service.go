@@ -327,9 +327,27 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, 
 	}
 	e, err := s.Store.CreateWebhookEndpoint(ctx, s.workspaceID(ctx), strings.TrimSpace(req.Name), dest, secret, types, createdBy)
 	if err != nil {
-		return EndpointView{}, err
+		return EndpointView{}, mapCreateErr(err)
 	}
 	return toView(e), nil
+}
+
+// EndpointLimitCode is the machine-readable refusal a caller sees when the
+// workspace is already at the endpoint cap (w1/m67 F2). Named so REST, GraphQL,
+// and MCP all surface the same code and the dashboard can render a human
+// message instead of a raw store error.
+const EndpointLimitCode = "WEBHOOK_ENDPOINT_LIMIT"
+
+// mapCreateErr turns the store's typed quota refusal into a coded API error.
+// Every other store error passes through the shared mapping.
+func mapCreateErr(err error) error {
+	if errors.Is(err, store.ErrWebhookEndpointLimit) {
+		return core.NewBadRequestError(EndpointLimitCode,
+			fmt.Sprintf("this workspace already has the maximum of %d webhook endpoints; delete one before adding another",
+				store.MaxWebhookEndpointsPerWorkspace),
+			map[string]any{"limit": store.MaxWebhookEndpointsPerWorkspace})
+	}
+	return mapStoreErr(err)
 }
 
 // List returns the workspace's endpoints (secrets never included). ownerID

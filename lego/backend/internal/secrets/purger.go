@@ -19,6 +19,7 @@ package secrets
 import (
 	"context"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -89,7 +90,17 @@ func (p *WorkspacePurger) PurgeApp(ctx context.Context, a *appv1alpha1.App) erro
 func (p *WorkspacePurger) purgeAppSecrets(ctx context.Context, a *appv1alpha1.App) error {
 	name := storeServiceName(a, a.Name)
 	tenantCtx := withTenant(ctx, storeTenant(a))
-	for _, path := range []string{envPath(name), filesPath(name)} {
+	paths := []string{envPath(name), filesPath(name)}
+	// Also purge any legacy id-keyed paths (w1/m66 F10). SetSecretFile wrote under
+	// the caller's request token before it canonicalized, so a service addressed by
+	// its stable srv- id left data at services/<srv-id>/…. That id is unique to
+	// THIS App inside THIS tenant, and a srv- id is a legal service name shorter
+	// than the 30-char limit — so without this a later service named after the old
+	// id would read the dead service's secrets.
+	if id := a.Labels[core.LabelAppID]; id != "" && id != name {
+		paths = append(paths, envPath(id), filesPath(id))
+	}
+	for _, path := range paths {
 		if err := p.Store.Delete(tenantCtx, path); err != nil {
 			return err
 		}

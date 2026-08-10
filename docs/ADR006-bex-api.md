@@ -228,6 +228,16 @@ The other direction — bex → you (`internal/webhooks`, [ADR018-render-parity.
 
 Signing is Standard Webhooks (`webhook-id`/`webhook-timestamp`/`webhook-signature`, HMAC-SHA256 over `id.timestamp.body` with the `whsec_…` secret minted once at creation); Render's documented semantics apply: 2xx within 15s, 8 retries on an exponential backoff (final ~33h, override with `BEX_WEBHOOK_BACKOFF` for dev/verification), failure-notice email (to the endpoint's creator, over the shared SMTP relay) after 3 consecutive failures, auto-disable until manually re-enabled after the schedule is exhausted. Endpoint management is one Core, three adapters: Render-compatible REST `GET/POST /v1/webhooks`, `GET/PATCH/DELETE /v1/webhooks/{id}`, and `GET /v1/webhooks/{id}/events`, with the canonical REST `eventFilter` request/response field, plus `GET /v1/webhooks/event-types`; GraphQL `webhookEndpoints`/`webhookEndpoint`/`webhookDeliveries`/`webhookEventTypes` queries + create/update/enable/delete mutations retain their GraphQL-native `eventTypes` field; MCP `list_/create_/update_/delete_webhook_endpoint` is a bex superset because Render's own MCP has no webhook tools. Writes are admin-tier (`can_manage`), reads member-tier (`can_view`); the store-off mode 503s (`ErrWebhooksUnavailable`), never fakes. Proven end-to-end by `scripts/webhooks-verify.sh` and by datastore write → audit row → Render payload tests.
 
+**Bounds (w1/m67 F2 + F3).** Every event is fanned out across every enabled endpoint of its workspace by a worker shared with every other tenant, and `webhook_deliveries` is simultaneously the durable queue and the dashboard's history view. Both dimensions were unbounded, so an ordinary workspace admin could grow shared work and shared storage persistently, at no cost to themselves:
+
+| Bound | Value | Notes |
+| --- | --- | --- |
+| Endpoints per workspace | 25 | Enforced in the same transaction as the insert (`FOR UPDATE` over the workspace's rows), so two concurrent creates cannot both take the last slot. Refused with `WEBHOOK_ENDPOINT_LIMIT` on REST, GraphQL, and MCP alike. |
+| Terminal delivery age | 90 days (`BEX_WEBHOOK_RETENTION_DAYS`) | Delivered or retries-exhausted rows only. |
+| Terminal deliveries per endpoint | 1000 (`BEX_WEBHOOK_RETENTION_KEEP`) | Stops a burst inside the age window from evading the age rule. |
+
+The sweep rides the existing worker tick (at most hourly), deletes in bounded batches with `FOR UPDATE SKIP LOCKED` so two replicas cooperate rather than collide, and **never** touches a delivery still pending or retryable. It also runs for workspaces with no enabled endpoints — deleting the last endpoint previously stranded its whole history forever.
+
 ## GraphQL (Render dashboard compatible)
 
 `POST /graphql`, mirroring the operation names captured from Render's dashboard: queries `services`, `server(id)`, plus the bex extension `instanceTypes` (backs the dashboard's plan picker); mutations `suspendService(id)`, `resumeService(id)`, `restartServer(id)`, and the bex extensions `setDisplayName(id, displayName)`, `updateServicePlan(id, plan)`, `scaleService(id, numInstances)`, `setIdleTimeout(id, idleTTLSeconds)` (the free-tier auto-sleep window — no Render counterpart, w1/m4.5), `setMaxShutdownDelay(id, seconds)`, `createService(name, type?, schedule?, command?, repo?, image?, branch?, plan?, port?, replicas?, maxShutdownDelaySeconds?)` (create-only since w4/m19 — a same-workspace duplicate `name` errors rather than upserting; its name/shape unconfirmed against a live Render capture, like the two before it), and `deleteService(id)` (delete the service, returning a success boolean like `deleteCustomDomain` — there is no object left to return). Cron-run parity adds `cronJobRuns(serviceId,cursor,limit)` / `cronJobRun(serviceId,runId)` and `runCronJob(id)` / `cancelCronJobRun(serviceId,runId)`, all returning `CronRun { id status startedAt finishedAt }`; `Service.lastSuccessfulRunAt` mirrors the REST cron details field. Type `Service` keeps the legacy nested `runs` field for existing clients. Every resolver delegates to the same feature `Service`.
@@ -527,6 +537,18 @@ bex matches this contract with a per-caller token-bucket at the shared mux, keye
 | MCP (HTTP) | Same as REST (HTTP-level 429) + `Retry-After` |
 
 Exemptions: `GET /healthz` (liveness), `POST /v1/webhooks/git` (HMAC-authed), and `/v1/deploy-hooks/{token}` (secret-URL-authed) are outside the authenticated rate-limit gate. Deploy hooks enforce their own fixed per-token budget of six/minute with a burst of two and the same 429 + `Retry-After` contract.
+
+**Pre-auth admission (w1/m67 F1).** The per-caller bucket above runs _inside_ the auth gate — it keys on the resolved Identity, so it structurally cannot bound the work of **resolving** an Identity. Inactive tokens are deliberately never cached (a negative cache would mask a revocation) and singleflight only coalesces _identical_ tokens, so before m67 every unique invalid bearer or session credential bought exactly one Hydra introspection or Kratos whoami, from an anonymous caller, with nothing in the request path able to stop it.
+
+The bound deliberately meters **failures, not traffic**. A per-request IP budget in front of the gate would have been wrong: the dashboard's SSR calls all arrive from one pod IP carrying each user's forwarded session, and Kratos sessions are not positively cached, so such a budget would throttle the whole dashboard under load.
+
+| Bound | Default | Env var |
+| --- | --- | --- |
+| Invalid credentials per client IP per minute | 60 (burst = limit) | `BEX_AUTH_FAILURE_LIMIT` / `BEX_AUTH_FAILURE_BURST` |
+| Concurrent upstream auth calls, process-wide | 64 | `BEX_AUTH_MAX_INFLIGHT` |
+| Credential size accepted before any upstream call | 4 KiB → 401 | (constant) |
+
+A credential that authenticates costs nothing, however many users share its source. Each credential that comes back invalid spends one token; once a source's bucket is dry the next attempt is refused **before** the upstream call, with the same surface-shaped 429 + `Retry-After` as the per-caller limiter (a client cannot tell which limiter shed it). Client IPs resolve through `BEX_TRUSTED_PROXY_CIDRS` like every other IP-keyed budget. Setting both limits to `0` restores the pre-m67 behavior exactly.
 
 **Request caps** (companion limits that rate-limiting alone doesn't catch):
 

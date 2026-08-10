@@ -17,7 +17,9 @@ limitations under the License.
 package github
 
 import (
+	"context"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -26,10 +28,11 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 const (
-	connectStateVersion = 1
+	connectStateVersion = 2
 	connectStateTTL     = 15 * time.Minute
 	connectStateMaxLen  = 1024
 )
@@ -44,18 +47,25 @@ var (
 // workspace through GitHub's cross-site install redirect. The whole payload plus
 // its HMAC is base64url-encoded as one opaque query value; callers must never
 // inspect or construct it themselves.
+//
+// w1/m67 F3: the payload is now just an opaque nonce. The workspace and the
+// initiating subject live in a server-side transaction row, so possession of a
+// signed state no longer AUTHORIZES anything — it only names an attempt, which
+// the callback must then consume and match against the caller.
 type connectState struct {
-	Version     int    `json:"v"`
-	WorkspaceID string `json:"workspaceId"`
-	ExpiresAt   int64  `json:"expiresAt"`
+	Version   int    `json:"v"`
+	Nonce     string `json:"nonce"`
+	ExpiresAt int64  `json:"expiresAt"`
 }
 
-// statefulInstallURL binds the install flow to the workspace StartConnect just
-// authorized. The GitHub App private key's PEM bytes are reused as the HMAC key:
-// they are already required, high-entropy, identical on every API replica, and
-// remain on the platform-secret path described by ADR026.
-func (s *Service) statefulInstallURL(workspaceID string) (string, error) {
-	token, err := s.mintConnectState(workspaceID)
+// statefulInstallURL binds the install flow to the attempt StartConnect just
+// recorded — workspace AND initiating subject (w1/m67 F3). The GitHub App private
+// key's PEM bytes are reused as the HMAC key: they are already required,
+// high-entropy, identical on every API replica, and remain on the platform-secret
+// path described by ADR026. The HMAC is now a cheap pre-check in front of the
+// durable row, not the authorization itself.
+func (s *Service) statefulInstallURL(ctx context.Context, workspaceID, subject string) (string, error) {
+	token, err := s.mintConnectState(ctx, workspaceID, subject)
 	if err != nil {
 		return "", err
 	}
@@ -69,17 +79,29 @@ func (s *Service) statefulInstallURL(workspaceID string) (string, error) {
 	return u.String(), nil
 }
 
-func (s *Service) mintConnectState(workspaceID string) (string, error) {
+func (s *Service) mintConnectState(ctx context.Context, workspaceID, subject string) (string, error) {
 	if len(s.StateSecret) == 0 {
 		return "", core.ErrGitHubUnavailable
 	}
-	if workspaceID == "" {
+	if workspaceID == "" || subject == "" {
 		return "", errConnectStateInvalid
 	}
+	nonce, err := newConnectNonce()
+	if err != nil {
+		return "", err
+	}
+	expiresAt := s.Now().Add(connectStateTTL)
+	// The durable record is what the callback authorizes against; the signed state
+	// merely carries its name.
+	if err := s.Store.CreateGitHubConnectTransaction(ctx, store.GitHubConnectTransaction{
+		Nonce: nonce, TenantID: workspaceID, Subject: subject, ExpiresAt: expiresAt,
+	}); err != nil {
+		return "", err
+	}
 	payload, err := json.Marshal(connectState{
-		Version:     connectStateVersion,
-		WorkspaceID: workspaceID,
-		ExpiresAt:   s.Now().Add(connectStateTTL).Unix(),
+		Version:   connectStateVersion,
+		Nonce:     nonce,
+		ExpiresAt: expiresAt.Unix(),
 	})
 	if err != nil {
 		return "", err
@@ -113,11 +135,20 @@ func (s *Service) verifyConnectState(token string) (string, error) {
 		return "", errConnectStateInvalid
 	}
 	var state connectState
-	if err := json.Unmarshal(payload, &state); err != nil || state.Version != connectStateVersion || state.WorkspaceID == "" || state.ExpiresAt <= 0 {
+	if err := json.Unmarshal(payload, &state); err != nil || state.Version != connectStateVersion || state.Nonce == "" || state.ExpiresAt <= 0 {
 		return "", errConnectStateInvalid
 	}
 	if !s.Now().Before(time.Unix(state.ExpiresAt, 0)) {
 		return "", errConnectStateExpired
 	}
-	return state.WorkspaceID, nil
+	return state.Nonce, nil
+}
+
+// newConnectNonce mints the opaque, unguessable name of one connect attempt.
+func newConnectNonce() (string, error) {
+	var b [32]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b[:]), nil
 }

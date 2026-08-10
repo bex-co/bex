@@ -44,10 +44,24 @@ jobs:
 
       # --- fetch the cluster's own kubeconfig via a CP node (self-managed, w1/m19.1) ---
       - name: fetch app cluster kubeconfig (via a CP node)
+        env:
+          # Funneled through env rather than interpolated into the script body,
+          # the repo's standing injection-safety convention for secrets.
+          BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
         run: |
           install -m700 -d ~/.ssh
           printf '%s\n' "${{ secrets.BEX_SSH_PRIVATE_KEY }}" > ~/.ssh/id_bex
           chmod 600 ~/.ssh/id_bex
+          # Authenticate the control-plane host key when the operator has
+          # provisioned it (w1/m66 F7): with the pin present the fetch fails
+          # closed on an unknown/changed key instead of trusting it on first use
+          # and handing every later step an attacker-supplied admin.conf. Absent
+          # (until the secret is set) the run is byte-identical to before.
+          if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > ~/.ssh/bex_known_hosts
+            chmod 600 ~/.ssh/bex_known_hosts
+            export BEX_SSH_KNOWN_HOSTS_FILE=~/.ssh/bex_known_hosts
+          fi
           bash scripts/fetch-app-kubeconfig.sh "$PWD/app.kubeconfig"
           echo "KUBECONFIG=$PWD/app.kubeconfig" >> "$GITHUB_ENV"
 
