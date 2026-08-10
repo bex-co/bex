@@ -1344,7 +1344,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.domainDnsApexGuidance": {
     message:
-      "Apex domains can't use a plain CNAME. Create this record if your provider supports ALIAS/ANAME (or CNAME flattening); otherwise redirect the apex to your www subdomain at your registrar.",
+      "Apex domains can't use a plain CNAME — create this record if your provider supports ALIAS/ANAME (or CNAME flattening), then re-check. bex issues the TLS certificate automatically once it resolves, and sets up the www ↔ apex redirect for you.",
     description: "Guidance line above the DNS record for an apex domain",
   },
   "services.domainRecordType": {
