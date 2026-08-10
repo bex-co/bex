@@ -39,6 +39,8 @@ import {
   TooltipTrigger,
 } from "@/common/components/ui/tooltip";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
+import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
 import { agentSessionDurationMs } from "@/features/agent-sessions/lib/mapper";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
@@ -275,31 +277,47 @@ function OpenInZedButton({ session }: { session: AgentSessionView }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-3">
-        <DropdownMenuItem asChild className="mb-2 cursor-pointer">
-          {/* An intentional external-scheme anchor — the OS launches Zed. */}
-          <a href={zedUrl}>
-            <Code2 className="size-4" />
-            {t("agentSessions.openInZed")}
-          </a>
-        </DropdownMenuItem>
-        <DropdownMenuLabel className="flex items-center gap-2 px-0 pt-0">
-          <Terminal className="size-4" />
-          {t("agentSessions.connectSSH")}
-        </DropdownMenuLabel>
-        <div className="bg-muted flex min-w-0 items-center gap-1 rounded-md py-1 pr-1 pl-2">
-          <code className="min-w-0 flex-1 truncate text-xs" title={command}>
-            {command}
-          </code>
-          <CopyButton
-            value={command}
-            label={t("agentSessions.sshCopy")}
-            successText={t("agentSessions.sshCopied")}
-            errorText={t("agentSessions.sshCopyError")}
-          />
-        </div>
-        <p className="text-muted-foreground mt-2 text-xs">
-          {t("agentSessions.openInZedHint")}
-        </p>
+        {/* Gate the doomed payload behind key registration (w2/m66): with no
+            key, the zed:// link + ssh command would fail off-surface in Zed's
+            own dialog, so swap them for an add-key CTA that returns here. The
+            trigger stays visible so the feature is still discoverable. Agent
+            sessions have no in-dashboard terminal yet (ADR047 D8 is phase 2), so
+            there is no second "browser terminal" door here — only on services. */}
+        <RequiresSshKey
+          surface="agent-session-zed"
+          fallback={
+            <AddSshKeyCta
+              surface="agent-session-zed"
+              returnTo={`/agents/${session.id}`}
+            />
+          }
+        >
+          <DropdownMenuItem asChild className="mb-2 cursor-pointer">
+            {/* An intentional external-scheme anchor — the OS launches Zed. */}
+            <a href={zedUrl}>
+              <Code2 className="size-4" />
+              {t("agentSessions.openInZed")}
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuLabel className="flex items-center gap-2 px-0 pt-0">
+            <Terminal className="size-4" />
+            {t("agentSessions.connectSSH")}
+          </DropdownMenuLabel>
+          <div className="bg-muted flex min-w-0 items-center gap-1 rounded-md py-1 pr-1 pl-2">
+            <code className="min-w-0 flex-1 truncate text-xs" title={command}>
+              {command}
+            </code>
+            <CopyButton
+              value={command}
+              label={t("agentSessions.sshCopy")}
+              successText={t("agentSessions.sshCopied")}
+              errorText={t("agentSessions.sshCopyError")}
+            />
+          </div>
+          <p className="text-muted-foreground mt-2 text-xs">
+            {t("agentSessions.openInZedHint")}
+          </p>
+        </RequiresSshKey>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -5,6 +5,7 @@ import {
   Github,
   KeyRound,
   Network,
+  SquareTerminal,
   Terminal,
 } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge.tsx";
@@ -23,6 +24,8 @@ import {
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
+import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
 import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
@@ -323,12 +326,42 @@ function ServiceConnectButton({ service }: { service: ServiceView }) {
           {t("services.connectSSH")}
         </DropdownMenuLabel>
         {command ? (
-          <ConnectCodeRow
-            value={command}
-            copyLabel={t("services.sshCopy")}
-            copiedText={t("services.sshCopied")}
-            errorText={t("services.sshCopyError")}
-          />
+          // Gate the doomed `ssh …` command behind key registration (w2/m66).
+          // With no key it fails off-surface; swap it for an add-key CTA — and,
+          // since a paid running service has the in-browser Web Shell, offer that
+          // as a second, zero-setup door (session-auth, needs no SSH key).
+          <RequiresSshKey
+            surface="service-ssh"
+            fallback={
+              <AddSshKeyCta
+                surface="service-ssh"
+                returnTo={`/services/${service.id}`}
+                secondaryAction={
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                  >
+                    <Link
+                      to="/services/$serviceId/shell"
+                      params={{ serviceId: service.id }}
+                    >
+                      <SquareTerminal className="size-4" />
+                      {t("services.openBrowserTerminal")}
+                    </Link>
+                  </Button>
+                }
+              />
+            }
+          >
+            <ConnectCodeRow
+              value={command}
+              copyLabel={t("services.sshCopy")}
+              copiedText={t("services.sshCopied")}
+              errorText={t("services.sshCopyError")}
+            />
+          </RequiresSshKey>
         ) : (
           <p
             className="text-muted-foreground text-xs"

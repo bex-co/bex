@@ -92,6 +92,18 @@ const zhSSHKeys: Record<string, TranslationEntry> = {
     message: "无法删除此 SSH 密钥",
     description: "Delete SSH key failure toast",
   },
+  "sshKeys.gateTitle": {
+    message: "添加 SSH 密钥以连接",
+    description: "RequiresSshKey gate — CTA title when no key is registered",
+  },
+  "sshKeys.gateBody": {
+    message: "此功能使用你自己的密钥通过 SSH 连接。添加一次公钥后即可返回连接。",
+    description: "RequiresSshKey gate — CTA body",
+  },
+  "sshKeys.gateAddKey": {
+    message: "添加 SSH 密钥",
+    description: "RequiresSshKey gate — primary action linking to settings",
+  },
 };
 
 export default zhSSHKeys;

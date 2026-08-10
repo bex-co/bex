@@ -11,6 +11,8 @@ import {
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
+import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
 import { useServer } from "@/features/services/hooks/use-server";
 import { WebShellPanel } from "@/features/services/components/web-shell-panel";
 
@@ -78,7 +80,19 @@ export function ServiceShellPage({ serviceId }: { serviceId: string }) {
           </CardHeader>
           <CardContent className="space-y-4">
             {command ? (
-              <>
+              // Gate the copy-ready `ssh` command behind key registration
+              // (w2/m66): with no key it fails, so show the add-key CTA instead.
+              // The in-browser Web Shell card above is the zero-setup second door
+              // (session-auth, no key), so this CTA needs no secondary action.
+              <RequiresSshKey
+                surface="service-shell"
+                fallback={
+                  <AddSshKeyCta
+                    surface="service-shell"
+                    returnTo={`/services/${serviceId}/shell`}
+                  />
+                }
+              >
                 <ConnectionField
                   label={t("services.shellCommand")}
                   value={command}
@@ -88,7 +102,7 @@ export function ServiceShellPage({ serviceId }: { serviceId: string }) {
                 <p className="text-muted-foreground text-sm">
                   {t("services.shellSessionLifecycle")}
                 </p>
-              </>
+              </RequiresSshKey>
             ) : null}
 
             <Button asChild variant="outline" size="sm">
