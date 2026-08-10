@@ -116,6 +116,25 @@ describe("NewSessionComposer", () => {
     );
   });
 
+  it("submits on Enter and inserts a newline on Shift+Enter", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await pickRepo(user);
+
+    // Shift+Enter adds a newline without submitting (chat-composer style).
+    await user.keyboard("{Shift>}{Enter}{/Shift}");
+    expect(create).not.toHaveBeenCalled();
+
+    // A bare Enter submits the prompt.
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ repo: "acme/widgets" }),
+    );
+  });
+
   it("keeps Send disabled until the task text is non-empty", async () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);
