@@ -200,6 +200,10 @@ export function NewSessionComposer() {
                 setComposerDocument(nextDocument);
                 if (nextDocument.repo) setRepoNudge(false);
               }}
+              onSubmit={() => {
+                if (isSubmitting || task.trim().length === 0) return;
+                void onSubmit();
+              }}
             />
 
             <div className="flex items-center gap-1 px-1.5 pb-1.5">

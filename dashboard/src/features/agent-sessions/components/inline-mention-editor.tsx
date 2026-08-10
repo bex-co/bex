@@ -47,6 +47,8 @@ export interface InlineMentionEditorProps {
   ariaLabel: string;
   placeholder: string;
   onChange: (document: ComposerDocument) => void;
+  /** Enter (without Shift) submits the prompt, chat-composer style. */
+  onSubmit: () => void;
 }
 
 export interface InlineMentionEditorHandle {
@@ -74,6 +76,7 @@ class EditorRuntime {
     public reposLoading: boolean,
     public placeholder: string,
     public onChange: (document: ComposerDocument) => void,
+    public onSubmit: () => void,
     public t: Translate,
   ) {}
 
@@ -82,12 +85,14 @@ class EditorRuntime {
     reposLoading: boolean,
     placeholder: string,
     onChange: (document: ComposerDocument) => void,
+    onSubmit: () => void,
     t: Translate,
   ) {
     this.source = source;
     this.reposLoading = reposLoading;
     this.placeholder = placeholder;
     this.onChange = onChange;
+    this.onSubmit = onSubmit;
     this.t = t;
   }
 }
@@ -101,17 +106,25 @@ export const InlineMentionEditor = forwardRef<
   InlineMentionEditorHandle,
   InlineMentionEditorProps
 >(function InlineMentionEditor(
-  { source, reposLoading, ariaLabel, placeholder, onChange },
+  { source, reposLoading, ariaLabel, placeholder, onChange, onSubmit },
   ref,
 ) {
   const { t } = useTranslations();
   const [runtime] = useState(
-    () => new EditorRuntime(source, reposLoading, placeholder, onChange, t),
+    () =>
+      new EditorRuntime(
+        source,
+        reposLoading,
+        placeholder,
+        onChange,
+        onSubmit,
+        t,
+      ),
   );
 
   useEffect(() => {
-    runtime.update(source, reposLoading, placeholder, onChange, t);
-  }, [onChange, placeholder, reposLoading, runtime, source, t]);
+    runtime.update(source, reposLoading, placeholder, onChange, onSubmit, t);
+  }, [onChange, onSubmit, placeholder, reposLoading, runtime, source, t]);
 
   const suggestion: Omit<
     SuggestionOptions<MentionOption, MentionOption>,
@@ -211,6 +224,20 @@ export const InlineMentionEditor = forwardRef<
           role: "combobox",
           class:
             "min-h-16 px-3 py-2 text-sm outline-none [&_p]:min-h-6 [&_p.is-editor-empty:first-child]:before:pointer-events-none [&_p.is-editor-empty:first-child]:before:float-left [&_p.is-editor-empty:first-child]:before:h-0 [&_p.is-editor-empty:first-child]:before:text-muted-foreground [&_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]",
+        },
+        // Enter submits; Shift+Enter inserts a newline (chat-composer style).
+        // When the @-mention picker is open, defer to its own Enter handling.
+        handleKeyDown: (view, event) => {
+          if (event.key !== "Enter" || event.shiftKey || event.isComposing) {
+            return false;
+          }
+          const mention = mentionPluginKey.getState(view.state) as
+            | { active?: boolean }
+            | undefined;
+          if (mention?.active) return false;
+          event.preventDefault();
+          runtime.onSubmit();
+          return true;
         },
       },
       onCreate: ({ editor: nextEditor }) => {
