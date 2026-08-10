@@ -21,6 +21,7 @@ fragment AgentSessionFields on AgentSession {
     template
   }
   sandboxId
+  sshAddress
   phase
   status
   headSha

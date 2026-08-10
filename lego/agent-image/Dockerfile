@@ -32,6 +32,7 @@ RUN apt-get update \
         curl \
         git \
         openssh-client \
+        openssh-sftp-server \
         python3 \
         python3-pip \
         python3-venv \

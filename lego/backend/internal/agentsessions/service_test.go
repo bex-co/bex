@@ -29,6 +29,9 @@ type fakeStore struct {
 	getCalls   int
 	now        time.Time
 	transcript map[string]map[int64]store.AgentSessionTranscriptPart
+	// openSSH models the ssh_sessions table for the teardown-deferral tests
+	// (ADR054 D6): resource id -> the started_at of a still-open editor session.
+	openSSH map[string]time.Time
 }
 
 func newFakeStore() *fakeStore {
@@ -36,7 +39,32 @@ func newFakeStore() *fakeStore {
 		rows:       map[string]store.AgentSession{},
 		now:        time.Unix(1_800_000_000, 0).UTC(),
 		transcript: map[string]map[int64]store.AgentSessionTranscriptPart{},
+		openSSH:    map[string]time.Time{},
 	}
+}
+
+func (f *fakeStore) HasOpenSSHSession(_ context.Context, resourceID string, since time.Time) (bool, error) {
+	started, ok := f.openSSH[resourceID]
+	return ok && !started.Before(since), nil
+}
+
+func (f *fakeStore) ListTerminalAgentSessionsWithSandbox(_ context.Context, since time.Time) ([]store.AgentSession, error) {
+	terminal := map[string]bool{PhaseCompleted: true, PhaseFailed: true, PhaseCanceled: true}
+	out := []store.AgentSession{}
+	for _, row := range f.rows {
+		if terminal[row.Phase] && row.SandboxID != "" && !row.UpdatedAt.Before(since) {
+			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeStore) ClearAgentSessionSandbox(_ context.Context, id string) error {
+	if row, ok := f.rows[id]; ok && row.SandboxID != "" {
+		row.SandboxID = ""
+		f.rows[id] = row
+	}
+	return nil
 }
 
 func (f *fakeStore) AppendAgentSessionTranscript(_ context.Context, id string, parts []store.AgentSessionTranscriptPart) error {

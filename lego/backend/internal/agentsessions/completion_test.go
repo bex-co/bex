@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
@@ -342,4 +343,57 @@ func TestSteerRequiresPromptAndAuthorization(t *testing.T) {
 func isCode(err error, code string) bool {
 	var coded *core.CodedError
 	return errors.As(err, &coded) && coded.Code == code
+}
+
+// --- Open in Zed: deferred teardown (ADR054 D6) -----------------------------
+
+// While an editor SSH session is open, a finished turn finalizes and captures
+// its transcript but leaves the sandbox alive; once the connection closes, the
+// reaper reclaims it and clears the sandbox id.
+func TestCompleterDefersTeardownWhileEditorSSHOpen(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	lc.transcriptLog = `{"at":"t","type":"ui-message","part":{"type":"text","text":"hi"}}`
+	st.openSSH[id] = time.Now() // a live "Open in Zed" session
+
+	c.Reconcile(context.Background())
+
+	if st.rows[id].Phase != PhaseCompleted {
+		t.Fatalf("session should still finalize while SSH is open, phase=%s", st.rows[id].Phase)
+	}
+	if lc.canceled != 0 {
+		t.Fatalf("sandbox torn down despite open editor SSH (canceled=%d)", lc.canceled)
+	}
+	if st.rows[id].SandboxID == "" {
+		t.Fatal("sandbox id cleared while teardown is deferred; the reaper would lose the sandbox")
+	}
+	if len(st.transcript[id]) == 0 {
+		t.Fatal("transcript should be captured even while teardown is deferred")
+	}
+
+	// The editor disconnects; the next tick reaps the sandbox.
+	delete(st.openSSH, id)
+	c.Reconcile(context.Background())
+
+	if lc.canceled != 1 {
+		t.Fatalf("sandbox not reaped after SSH closed (canceled=%d)", lc.canceled)
+	}
+	if st.rows[id].SandboxID != "" {
+		t.Fatalf("sandbox id not cleared after reap: %q", st.rows[id].SandboxID)
+	}
+}
+
+// A leaked ssh_sessions row (older than the SSH session cap — a crashed gateway
+// replica) must not pin a sandbox forever: teardown proceeds normally.
+func TestCompleterStaleSSHRowDoesNotPinSandbox(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	st.openSSH[id] = time.Now().Add(-5 * time.Hour) // older than the 4h grace
+
+	c.Reconcile(context.Background())
+
+	if lc.canceled != 1 {
+		t.Fatalf("stale SSH row pinned the sandbox (canceled=%d)", lc.canceled)
+	}
+	if st.rows[id].SandboxID != "" {
+		t.Fatalf("sandbox id not cleared: %q", st.rows[id].SandboxID)
+	}
 }

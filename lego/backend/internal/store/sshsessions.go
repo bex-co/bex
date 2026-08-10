@@ -51,6 +51,21 @@ func (s *PGStore) EndSSHSession(ctx context.Context, sessionID, result string, e
 	return err
 }
 
+// HasOpenSSHSession reports whether a still-open SSH session (ended_at IS NULL)
+// targets the given resource id and started at or after `since` (ADR054 D6). The
+// agent-session Completer uses it to defer a finished session's sandbox teardown
+// while an editor is connected; `since` (now − the SSH session cap) discards a
+// leaked row a crashed gateway replica never closed, so deferral stays bounded.
+func (s *PGStore) HasOpenSSHSession(ctx context.Context, resourceID string, since time.Time) (bool, error) {
+	var open bool
+	err := s.Pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM ssh_sessions
+			WHERE service_id = $1 AND ended_at IS NULL AND started_at >= $2)`,
+		resourceID, since).Scan(&open)
+	return open, err
+}
+
 // PurgeSSHSessions applies the platform audit-retention window to SSH session
 // metadata as well as ordinary audit_events. Remote addresses and target ids
 // must not become an indefinitely retained second audit trail.

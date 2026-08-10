@@ -186,6 +186,44 @@ func (s *PGStore) ListTerminalAgentSessionsForPush(ctx context.Context, since ti
 	return out, rows.Err()
 }
 
+// ListTerminalAgentSessionsWithSandbox returns terminal sessions (completed/
+// failed/canceled) that still carry a sandbox id and were updated at or after
+// `since`, oldest first (ADR054 D6). It drives the Completer's deferred-teardown
+// reaper: a terminal session keeps its sandbox_id only while its editor SSH is
+// held open, so this is the small working set of sandboxes awaiting reclamation.
+// The recency bound keeps the scan cheap and skips pre-feature history (whose
+// sandboxes are long gone). Trusted background read — no authorization.
+func (s *PGStore) ListTerminalAgentSessionsWithSandbox(ctx context.Context, since time.Time) ([]AgentSession, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT `+agentSessionColumns+`
+		FROM agent_sessions
+		WHERE phase = ANY($1) AND sandbox_id <> '' AND updated_at >= $2
+		ORDER BY updated_at ASC, id ASC`,
+		[]string{"completed", "failed", "canceled"}, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]AgentSession, 0)
+	for rows.Next() {
+		v, err := scanAgentSession(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
+// ClearAgentSessionSandbox blanks a session's sandbox_id after its sandbox has
+// been torn down (ADR054 D6), dropping it from the deferred-teardown reaper's
+// working set and releasing the live-sandbox unique index. It never changes
+// phase/status — the session stays terminal — and is a no-op if already blank.
+func (s *PGStore) ClearAgentSessionSandbox(ctx context.Context, id string) error {
+	_, err := s.Pool.Exec(ctx,
+		`UPDATE agent_sessions SET sandbox_id = '', updated_at = now() WHERE id = $1 AND sandbox_id <> ''`, id)
+	return err
+}
+
 // RecordAgentSessionDispatch stamps a newly dispatched turn: it advances the
 // phase/status, adopts a fresh sandbox id when re-dispatched, records the
 // delivery mode ("resume" or "redispatch"), and increments the turn counter.

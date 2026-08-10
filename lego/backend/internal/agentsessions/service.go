@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/validation"
+
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -45,6 +47,12 @@ type Store interface {
 	RecordAgentSessionDispatch(context.Context, string, string, string, string, string) (store.AgentSession, error)
 	FinalizeAgentSession(context.Context, string, string, string, string, int, json.RawMessage, string) (store.AgentSession, error)
 	DeleteAgentSession(context.Context, string) error
+	// Deferred-teardown reaping (ADR054 D6): the Completer defers a finished
+	// session's sandbox teardown while an editor SSH session is open, then reaps
+	// it once the connection closes.
+	HasOpenSSHSession(ctx context.Context, resourceID string, since time.Time) (bool, error)
+	ListTerminalAgentSessionsWithSandbox(ctx context.Context, since time.Time) ([]store.AgentSession, error)
+	ClearAgentSessionSandbox(ctx context.Context, id string) error
 	// Transcript persistence (ADR051): the Completer harvests the driver's log
 	// at completion and appends it here (idempotent, keyed by session+seq).
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
@@ -110,6 +118,11 @@ type Service struct {
 	Sandbox      SandboxLifecycle
 	TicketSecret []byte
 	GatewayURL   string
+	// SSHHost, when set (BEX_SSH_HOST, same activation gates as ADR035), is the
+	// public SSH gateway hostname projected onto View.SSHAddress as
+	// `ags-<xid>@<host>` for the "Open in Zed" affordance (ADR054 D5). Empty =>
+	// no address is surfaced and the feature is invisible (byte-identical default).
+	SSHHost string
 	// CredentialURL is the in-cluster gateway git-credential broker endpoint the
 	// sandbox's helper calls (ADR047 D2). Empty => defaultCredentialURL.
 	CredentialURL string
@@ -324,7 +337,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		env:           driverEnv(req.AgentConfig, record.Repo, record.Branch, record.ID, store.SandboxNamespace(record.WorkspaceID), s.credentialURL()),
 	}
 	s.detach(ctx, func(ctx context.Context) { s.runDispatch(ctx, record, spec) })
-	return viewOf(record)
+	return s.toView(record)
 }
 
 // dispatchSpec is the immutable provisioning input a background turn carries from
@@ -448,7 +461,7 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]View, error) {
 	}
 	out := make([]View, 0, len(rows))
 	for _, row := range rows {
-		view, err := viewOf(row)
+		view, err := s.toView(row)
 		if err != nil {
 			return nil, err
 		}
@@ -473,7 +486,7 @@ func (s *Service) Get(ctx context.Context, sessionID string) (View, error) {
 	if err != nil {
 		return View{}, mapStoreError(sessionID, err)
 	}
-	return viewOf(record)
+	return s.toView(record)
 }
 
 func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
@@ -503,7 +516,7 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 	// Accept fast: the same sandbox is woken in the background, converging to
 	// running (or failed). The client re-attaches via AttachTicket once running.
 	s.detach(ctx, func(ctx context.Context) { s.runResume(ctx, record) })
-	return viewOf(record)
+	return s.toView(record)
 }
 
 // runResume wakes an idle session's existing sandbox in the background and
@@ -533,7 +546,7 @@ func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
 		return View{}, mapStoreError(sessionID, err)
 	}
 	if record.Phase == PhaseCanceled {
-		return viewOf(record) // idempotent public cancel
+		return s.toView(record) // idempotent public cancel
 	}
 	record, err = s.Store.SetAgentSessionLifecycle(ctx, sessionID, "", PhaseCanceling, "canceling", false)
 	if err != nil {
@@ -548,7 +561,7 @@ func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
 	if err != nil {
 		return View{}, mapStoreError(sessionID, err)
 	}
-	return viewOf(record)
+	return s.toView(record)
 }
 
 // agentCommand maps a public agent selector to its installed ACP adapter
@@ -678,7 +691,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	// client sees redispatching immediately and the new turn streams once it
 	// attaches; the Completer updates the same draft PR.
 	s.detach(ctx, func(ctx context.Context) { s.runSteerDispatch(ctx, record, spec) })
-	return viewOf(record)
+	return s.toView(record)
 }
 
 // runSteerDispatch tears the previous turn's sandbox down (idempotent) then
@@ -740,7 +753,7 @@ func (s *Service) withTicket(ctx context.Context, record store.AgentSession) (Vi
 	if err != nil {
 		return View{}, err
 	}
-	view, err := viewOf(record)
+	view, err := s.toView(record)
 	if err != nil {
 		return View{}, err
 	}
@@ -755,6 +768,33 @@ func decodeAgentConfig(record store.AgentSession) (AgentConfig, error) {
 		return AgentConfig{}, fmt.Errorf("decode persisted agent config: %w", err)
 	}
 	return config, nil
+}
+
+// toView projects a stored session to its cross-surface View and enriches it
+// with the SSH address (ADR054 D5). Every verb that returns a View routes
+// through it, so REST, GraphQL, and MCP surface sshAddress identically.
+func (s *Service) toView(record store.AgentSession) (View, error) {
+	view, err := viewOf(record)
+	if err != nil {
+		return View{}, err
+	}
+	view.SSHAddress = s.sshAddress(record)
+	return view, nil
+}
+
+// sshAddress returns `ags-<xid>@<BEX_SSH_HOST>` when an editor could actually
+// open the sandbox: a valid public host is configured AND the sandbox is live
+// (liveSandboxPhase + a non-empty sandbox id) — the exact condition the gateway
+// resolver enforces, so a surfaced address never dangles. Empty otherwise.
+func (s *Service) sshAddress(record store.AgentSession) string {
+	host := strings.ToLower(strings.TrimSpace(s.SSHHost))
+	if host == "" || !strings.Contains(host, ".") || len(validation.IsDNS1123Subdomain(host)) != 0 {
+		return ""
+	}
+	if !liveSandboxPhase(record.Phase) || record.SandboxID == "" {
+		return ""
+	}
+	return record.ID + "@" + host
 }
 
 func viewOf(record store.AgentSession) (View, error) {

@@ -31,6 +31,7 @@ func TestMetricsUseOnlyBoundedPrivacySafeLabels(t *testing.T) {
 	metrics.SessionStarted()
 	metrics.SessionEnded("completed", 2*time.Second)
 	metrics.LimitRejected("identity")
+	metrics.ChannelOpened()
 
 	families, err := registry.Gather()
 	if err != nil {
@@ -39,6 +40,7 @@ func TestMetricsUseOnlyBoundedPrivacySafeLabels(t *testing.T) {
 	want := []string{
 		"bex_ssh_gateway_active_sessions",
 		"bex_ssh_gateway_authentications_total",
+		"bex_ssh_gateway_channels_total",
 		"bex_ssh_gateway_limit_rejections_total",
 		"bex_ssh_gateway_session_duration_seconds",
 		"bex_ssh_gateway_sessions_total",
