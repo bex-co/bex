@@ -55,11 +55,20 @@ type subsystemRequest struct {
 }
 
 // sftpServerPath is the OpenSSH SFTP server binary in the agent-session sandbox
-// image (Debian `openssh-sftp-server`, ADR054 D4). It is a FIXED argv — never
-// caller input — exec'd only for a `sftp` subsystem on a sandbox target, so Zed
-// can upload its remote-server binary when the sandbox's closed egress blocks a
-// direct download.
+// image (Debian `openssh-sftp-server`, ADR054 D4). It is exec'd only for a
+// `sftp` subsystem on a sandbox target, so Zed can upload its remote-server
+// binary when the sandbox's closed egress blocks a direct download.
 const sftpServerPath = "/usr/lib/openssh/sftp-server"
+
+// sftpServerCommand starts the SFTP server in $HOME. OpenSSH's sshd runs a
+// subsystem in the user's login directory, so a client's RELATIVE upload path
+// resolves under $HOME — Zed sends `.zed_server/…` and creates `~/.zed_server`.
+// The gateway's pods/exec instead lands in the container WORKDIR (/workspace),
+// so without this the upload targets /workspace/.zed_server and fails
+// "No such file or directory" (w2/m65 live fix). `sh -c` (not `-lc`) so no
+// profile/MOTD output corrupts the SFTP protocol stream. Fixed string, never
+// caller input — the sole variability is the runtime $HOME the shell expands.
+const sftpServerCommand = `cd "${HOME:-/home/bex}" && exec ` + sftpServerPath
 
 func serveSession(ctx context.Context, channel ssh.Channel, requests <-chan *ssh.Request, executor sshgateway.Executor, target apps.SSHInstanceTarget) error {
 	defer channel.Close()
@@ -117,7 +126,7 @@ func serveSession(ctx context.Context, channel ssh.Channel, requests <-chan *ssh
 					continue
 				}
 				_ = request.Reply(true, nil)
-				return runExec(ctx, channel, requests, executor, target, []string{sftpServerPath}, false, nil)
+				return runExec(ctx, channel, requests, executor, target, []string{"/bin/sh", "-c", sftpServerCommand}, false, nil)
 			default:
 				// env, agent/X11 forwarding, and every other extension are unsupported.
 				// None reaches Kubernetes.
