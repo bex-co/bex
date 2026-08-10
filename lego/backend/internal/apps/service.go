@@ -1085,6 +1085,11 @@ type SSHInstanceTarget struct {
 	Namespace string
 	PodName   string
 	Container string
+	// Sandbox marks an agent-session sandbox target (ADR054): the transport then
+	// permits Zed's multi-channel remoting and the sftp-server subsystem bridge,
+	// which stay banned for ordinary App-instance (srv-…) targets. Resolved
+	// server-side (never from caller input) by the agent-session SSH resolver.
+	Sandbox bool `json:"Sandbox,omitempty"`
 }
 
 // ResolveSSHSession performs resource-scoped authorization and resolves a raw

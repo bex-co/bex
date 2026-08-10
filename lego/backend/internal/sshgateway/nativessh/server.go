@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -69,6 +70,13 @@ type Server struct {
 
 	HandshakeTimeout time.Duration
 	SessionTimeout   time.Duration
+
+	// MaxChannelsPerConn bounds concurrent session channels on ONE connection for
+	// agent-session sandbox targets (ADR054 D3), which Zed's ControlMaster remoting
+	// multiplexes. 0 disables the exception: sandbox targets fall back to the
+	// single-channel App path. App (srv-…) targets are always single-channel
+	// regardless of this value.
+	MaxChannelsPerConn int
 }
 
 func (s *Server) defaults() {
@@ -222,6 +230,16 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 	go ssh.DiscardRequests(requests)
 	sessionCtx, cancel := context.WithTimeout(ctx, s.SessionTimeout)
 	defer cancel()
+
+	// An agent-session sandbox target (ADR054 D3) accepts Zed's multiplexed
+	// remoting: many concurrent session channels over one connection, each its own
+	// pods/exec stream, bounded per connection. Every other target — and a sandbox
+	// target when the cap is disabled (0) — keeps the single-channel contract.
+	if target.Sandbox && s.MaxChannelsPerConn > 0 {
+		result = s.serveMultiChannel(sessionCtx, channels, target)
+		return nil
+	}
+
 	for {
 		var newChannel ssh.NewChannel
 		select {
@@ -256,6 +274,55 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		// rejects attempts to multiplex extra shells over an authorized channel.
 		result = "completed"
 		return nil
+	}
+}
+
+// serveMultiChannel serves an agent-session sandbox connection that may open
+// several concurrent session channels (Zed's ControlMaster protocol, its
+// terminals, and its tasks). Each channel runs the self-contained serveSession
+// against its own pods/exec stream; the connection holds one session-limiter
+// slot (acquired by the caller) while a per-connection semaphore bounds the
+// channel fan-out. A connection that opens no channels (Zed's `-N` master) is
+// valid and simply idles until the client closes it or the session times out.
+func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewChannel, target apps.SSHInstanceTarget) string {
+	sem := make(chan struct{}, s.MaxChannelsPerConn)
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	for {
+		var newChannel ssh.NewChannel
+		select {
+		case <-ctx.Done():
+			return "failed"
+		case channel, ok := <-channels:
+			if !ok {
+				return "completed"
+			}
+			newChannel = channel
+		}
+		if newChannel.ChannelType() != "session" {
+			_ = newChannel.Reject(ssh.UnknownChannelType, "unsupported channel type")
+			continue
+		}
+		select {
+		case sem <- struct{}{}:
+		default:
+			// Over the per-connection channel budget: shed this channel without
+			// tearing down the connection or its active channels.
+			_ = newChannel.Reject(ssh.ResourceShortage, "channel limit reached")
+			continue
+		}
+		channel, channelRequests, err := newChannel.Accept()
+		if err != nil {
+			<-sem
+			continue
+		}
+		s.Metrics.ChannelOpened()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+			_ = serveSession(ctx, channel, channelRequests, s.Executor, target)
+		}()
 	}
 }
 

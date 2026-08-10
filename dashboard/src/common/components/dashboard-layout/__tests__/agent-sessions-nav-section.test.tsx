@@ -43,6 +43,7 @@ function view(over: Partial<AgentSessionView> = {}): AgentSessionView {
       template: null,
     },
     sandboxId: null,
+    sshAddress: null,
     phase,
     status: phase,
     headSha: null,

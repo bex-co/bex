@@ -636,6 +636,35 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "打开拉取请求",
     description: "Header overflow menu — open the draft PR in a new tab",
   },
+  "agentSessions.connect": {
+    message: "连接",
+    description: "Header — trigger for the Open-in-Zed / SSH connect menu",
+  },
+  "agentSessions.openInZed": {
+    message: "在 Zed 中打开",
+    description:
+      "Connect menu — hotlink that opens the sandbox as a Zed remote project",
+  },
+  "agentSessions.openInZedHint": {
+    message: "通过 SSH 打开沙箱的 /workspace，需要安装 Zed 编辑器。",
+    description: "Connect menu — helper text under the Open-in-Zed action",
+  },
+  "agentSessions.connectSSH": {
+    message: "SSH",
+    description: "Connect menu — label above the copyable ssh command",
+  },
+  "agentSessions.sshCopy": {
+    message: "复制 SSH 命令",
+    description: "Connect menu — accessible label for the copy button",
+  },
+  "agentSessions.sshCopied": {
+    message: "已复制 SSH 命令",
+    description: "Connect menu — toast after copying the ssh command",
+  },
+  "agentSessions.sshCopyError": {
+    message: "复制失败",
+    description: "Connect menu — toast when copying the ssh command fails",
+  },
   "agentSessions.groupWorkedFor": {
     message: "工作了 {duration}",
     description: "Activity-group summary with a derived elapsed duration",

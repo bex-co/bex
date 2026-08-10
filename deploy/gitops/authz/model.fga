@@ -109,3 +109,11 @@ type agent_session
     # developer-and-up relation Create does, against the session object rather
     # than the caller's default workspace (codex round-4 #3).
     define can_create: can_create from workspace
+    # can_view_sensitive gates a real shell into the session's sandbox — the
+    # "Open in Zed" / ags-<id>@ssh.bex.co SSH path (ADR054 D2). A sandbox shell
+    # reads the gateway-refreshed Git token, the BYO model key, and the whole
+    # working tree, so — mirroring App SSH / Web Shell — it must gate on the
+    # SINK's relation, not the transport's: can_operate (which attach/steer use)
+    # is too weak, since a contributor holds can_operate + can_manage_ssh_keys
+    # and could otherwise enroll a key and read credentials attach never reveals.
+    define can_view_sensitive: can_view_sensitive from workspace

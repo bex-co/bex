@@ -31,6 +31,7 @@ type Metrics struct {
 	sessions        *prometheus.CounterVec
 	durations       *prometheus.HistogramVec
 	limitRejections *prometheus.CounterVec
+	channels        prometheus.Counter
 }
 
 func NewMetrics(registerer prometheus.Registerer) *Metrics {
@@ -56,8 +57,12 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "limit_rejections_total",
 			Help: "Authenticated SSH connections rejected by the configured session limit.",
 		}, []string{"scope"}),
+		channels: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "channels_total",
+			Help: "Session channels accepted on multi-channel (agent-session sandbox) connections.",
+		}),
 	}
-	registerer.MustRegister(m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections)
+	registerer.MustRegister(m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels)
 	return m
 }
 
@@ -84,5 +89,11 @@ func (m *Metrics) SessionEnded(result string, elapsed time.Duration) {
 func (m *Metrics) LimitRejected(scope string) {
 	if m != nil {
 		m.limitRejections.WithLabelValues(scope).Inc()
+	}
+}
+
+func (m *Metrics) ChannelOpened() {
+	if m != nil {
+		m.channels.Inc()
 	}
 }

@@ -81,6 +81,7 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"branch":      &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v View) any { return v.Branch })},
 		"agentConfig": &graphql.Field{Type: graphql.NewNonNull(agentConfigGQLType), Resolve: gqlutil.Field(func(v View) any { return v.AgentConfig })},
 		"sandboxId":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any { return v.SandboxID })},
+		"sshAddress":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any { return v.SSHAddress })},
 		"phase":       &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v View) any { return v.Phase })},
 		"status":      &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v View) any { return v.Status })},
 		"headSha":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any { return v.HeadSHA })},

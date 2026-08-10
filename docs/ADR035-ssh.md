@@ -1,6 +1,6 @@
 # ADR035 — SSH into running service instances
 
-**Status:** accepted; running-instance SSH implemented behind production activation and live verification (2026-07-14); in-dashboard Browser Web Shell over that same running instance added (w2/m55, 2026-07-17)
+**Status:** accepted; running-instance SSH implemented behind production activation and live verification (2026-07-14); in-dashboard Browser Web Shell over that same running instance added (w2/m55, 2026-07-17). **Amended by [ADR054](ADR054-open-in-zed.md) (w2/m65): a second target kind — the agent-session sandbox (`ags-…@ssh.bex.co`) — resolves through this same gateway with a per-connection multi-channel exception and an sftp-server subsystem bridge, both scoped to sandbox targets only; `srv-…` App targets keep the single-channel / no-subsystem / no-forwarding contract unchanged. The inline corrections below fold that amendment in.**
 
 ## Context
 
@@ -19,9 +19,9 @@ The connection path is:
 1. OpenSSH connects to `<service-id>@ssh.bex.co`, or `<instance-id>@ssh.bex.co` for a selected replica.
 2. The gateway accepts public-key authentication only. It hashes the presented key with OpenSSH SHA-256 and resolves that globally unique fingerprint in `ssh_keys`.
 3. After the client proves key possession, the gateway attaches the stored subject as a `core.Identity` with method `ssh`.
-4. `apps.Service.ResolveSSHSession` parses the username, resolves the App through its stable `srv-…` id, and calls the resource-scoped `AuthorizeApp(can_operate)` seam. Authorization therefore targets the App's workspace, not whichever workspace happens to be the caller's default.
-5. The resolver selects a Running, Ready pod whose revision label and `app` container image equal the App's active status. A bare service id selects a random eligible replica, matching Render. A specific instance id selects exactly the pod returned by the instances endpoint.
-6. One SSH `session` channel maps to one Kubernetes `pods/exec` stream in the existing `app` container. No sshd or sidecar is injected into tenant images.
+4. A composite resolver routes by id kind (ADR054 D1). A `srv-…` username goes to `apps.Service.ResolveSSHSession`, which resolves the App through its stable id and calls the resource-scoped `AuthorizeApp(can_view_sensitive)` seam — the SINK's relation, since a shell reads the pod's env vars and mounted secrets (codex round-4 #8; the weaker `can_operate` an earlier draft named would let a contributor `printenv` around the boundary). An `ags-…` username goes to the agent-session resolver, which authorizes `can_view_sensitive` on the `agent_session:<id>` object and derives the session's sandbox pod. Authorization therefore targets the resource's own workspace, not whichever workspace happens to be the caller's default.
+5. For an App target the resolver selects a Running, Ready pod whose revision label and `app` container image equal the App's active status. A bare service id selects a random eligible replica, matching Render. A specific instance id selects exactly the pod returned by the instances endpoint. For an agent-session target it derives the live sandbox pod (`<sandbox_id>-0` in `<workspace_id>-sandbox`, container `sandbox`) — refused unless the session's phase implies a running sandbox.
+6. One SSH `session` channel maps to one Kubernetes `pods/exec` stream in the target container. EXCEPTION (ADR054 D3): an agent-session sandbox target may open several concurrent `session` channels over one connection — what Zed's ControlMaster remoting multiplexes — each its own `pods/exec` stream, bounded by `BEX_SSH_MAX_CHANNELS_PER_CONN`; App targets stay single-channel. No sshd or sidecar is injected into tenant images.
 
 ## Public contract
 
@@ -62,17 +62,18 @@ The field is omitted for free, suspended, cron, static, or unsupported service t
 
 The server permits only:
 
-- one `session` channel per SSH connection;
+- one `session` channel per SSH connection (EXCEPTION: an agent-session sandbox target may open up to `BEX_SSH_MAX_CHANNELS_PER_CONN` concurrent `session` channels, each its own exec stream — ADR054 D3);
 - `pty-req` before execution;
 - `window-change` while a PTY session runs;
 - one `shell` request, executed as `/bin/sh`; or
-- one `exec` request, executed as `/bin/sh -lc <client-command>`.
+- one `exec` request, executed as `/bin/sh -lc <client-command>`; or
+- the `sftp` subsystem, executed as the fixed `sftp-server` binary — ONLY on an agent-session sandbox target, so Zed can upload its remote-server when the sandbox's closed egress blocks a direct download (ADR054 D4). App targets reject every subsystem.
 
 The command is one argv value, not interpolated into a Kubernetes URL or host command. It intentionally receives normal shell semantics inside the app container. The gateway does not log or persist it.
 
 stdin, stdout, stderr, TTY state, and resize events bridge through client-go `remotecommand`. Kubernetes exit codes become SSH `exit-status`. Client disconnect, gateway shutdown, session timeout, restart, redeploy, or pod deletion cancels the stream. An image without executable `/bin/sh` fails with exit 126 and a bounded shell-unavailable message; bex never installs a shell into the image.
 
-The following never reach Kubernetes: `direct-tcpip`, forwarding, agent forwarding, X11, subsystems including SFTP, SCP protocol handling, environment requests, and extra session channels.
+The following never reach Kubernetes: `direct-tcpip`, forwarding, agent forwarding, X11, SCP protocol handling, and environment requests — on every target. Subsystems and extra session channels are likewise banned EXCEPT the two ADR054 D3/D4 carve-outs above (multiple `session` channels and the `sftp` subsystem), which apply to agent-session sandbox targets only.
 
 ## Isolation and RBAC
 
@@ -94,7 +95,7 @@ Rotation is deliberate: create a new key, publish its fingerprint and maintenanc
 
 ## Audit contract
 
-`AuthorizeApp(can_operate)` records the allowed or denied connection authorization through the shared audit seam. A successful handshake additionally creates an `ssn-…` row in `ssh_sessions`, then closes it with end time and result. The table contains only subject, workspace, service id, instance id, remote address, start/end times, and result. The daily audit sweep deletes these rows after `BEX_AUDIT_RETENTION_DAYS` (default 90), the same boundary as `audit_events`.
+`AuthorizeApp(can_view_sensitive)` (App target) or `AuthorizeOn(can_view_sensitive, agent_session:<id>)` (sandbox target, ADR054 D2) records the allowed or denied connection authorization through the shared audit seam. A successful handshake additionally creates an `ssn-…` row in `ssh_sessions`, then closes it with end time and result. The table contains only subject, workspace, service id, instance id, remote address, start/end times, and result. The daily audit sweep deletes these rows after `BEX_AUDIT_RETENTION_DAYS` (default 90), the same boundary as `audit_events`.
 
 The audit type and schema have no command, argv, environment, stdin, stdout, stderr, or terminal-content field. This structural omission is the privacy boundary; operators must not add ad hoc stream logging around it.
 

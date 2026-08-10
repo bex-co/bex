@@ -50,6 +50,17 @@ type execRequest struct {
 	Command string
 }
 
+type subsystemRequest struct {
+	Name string
+}
+
+// sftpServerPath is the OpenSSH SFTP server binary in the agent-session sandbox
+// image (Debian `openssh-sftp-server`, ADR054 D4). It is a FIXED argv — never
+// caller input — exec'd only for a `sftp` subsystem on a sandbox target, so Zed
+// can upload its remote-server binary when the sandbox's closed egress blocks a
+// direct download.
+const sftpServerPath = "/usr/lib/openssh/sftp-server"
+
 func serveSession(ctx context.Context, channel ssh.Channel, requests <-chan *ssh.Request, executor sshgateway.Executor, target apps.SSHInstanceTarget) error {
 	defer channel.Close()
 	var tty bool
@@ -95,9 +106,21 @@ func serveSession(ctx context.Context, channel ssh.Channel, requests <-chan *ssh
 				}
 				_ = request.Reply(true, nil)
 				return runExec(ctx, channel, requests, executor, target, []string{"/bin/sh", "-lc", payload.Command}, tty, initial)
+			case "subsystem":
+				// The ONLY honored subsystem, and only for an agent-session sandbox
+				// target (ADR054 D4): the fixed sftp-server binary, so Zed can upload
+				// its remote-server. App (srv-…) targets reject every subsystem exactly
+				// as before, and SCP protocol stays rejected on the exec path above.
+				var payload subsystemRequest
+				if !target.Sandbox || ssh.Unmarshal(request.Payload, &payload) != nil || payload.Name != "sftp" {
+					_ = request.Reply(false, nil)
+					continue
+				}
+				_ = request.Reply(true, nil)
+				return runExec(ctx, channel, requests, executor, target, []string{sftpServerPath}, false, nil)
 			default:
-				// env, subsystem, agent/X11 forwarding, and every extension are
-				// unsupported. None reaches Kubernetes.
+				// env, agent/X11 forwarding, and every other extension are unsupported.
+				// None reaches Kubernetes.
 				_ = request.Reply(false, nil)
 			}
 		}

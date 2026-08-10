@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
+	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/api"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/authz"
@@ -113,6 +114,12 @@ func main() {
 	tenantSvc := api.NewTenantService(st, nil)
 	base.Workspace = tenantSvc
 	appService := &apps.Service{Base: base}
+	// Compose the SSH target resolver (ADR054 D1): srv-… App instances stay on
+	// apps.Service byte-identically; ags-… agent-session usernames route to the
+	// sandbox resolver, which authorizes can_view_sensitive on the agent_session
+	// object and derives the sandbox pod from the (SELECT-only) session row.
+	agentResolver := &agentsessions.SSHResolver{Base: base, Store: st}
+	sshResolver := sshgateway.CompositeResolver{Apps: appService, AgentSessions: agentResolver}
 
 	registry := prometheus.NewRegistry()
 	// The metrics, session limiter, and nonce guard are each constructed ONCE
@@ -129,13 +136,18 @@ func main() {
 	sessionTimeout := durationEnv("BEX_SSH_SESSION_TIMEOUT", 4*time.Hour)
 
 	gateway := &nativessh.Server{
-		Store: st, Apps: appService,
+		Store: st, Apps: sshResolver,
 		Executor:         executor,
 		Signer:           signer,
 		Metrics:          metrics,
 		Limits:           limits,
 		HandshakeTimeout: handshakeTimeout,
 		SessionTimeout:   sessionTimeout,
+		// Zed remoting into an agent-session sandbox multiplexes many session
+		// channels over one connection (ADR054 D3). This per-connection channel cap
+		// bounds that fan-out for sandbox targets only; 0 disables the exception and
+		// restores single-channel everywhere. srv-… App targets are always single.
+		MaxChannelsPerConn: intEnvAllowZero("BEX_SSH_MAX_CHANNELS_PER_CONN", 16),
 	}
 	shell := &webshell.Server{
 		TicketSecret:     []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
@@ -392,6 +404,20 @@ func intEnv(name string, fallback int) int {
 	n, err := strconv.Atoi(value)
 	if err != nil || n <= 0 {
 		log.Fatalf("ssh gateway: %s must be a positive integer", name)
+	}
+	return n
+}
+
+// intEnvAllowZero is intEnv for a knob whose 0 is a meaningful "disable", not an
+// error (BEX_SSH_MAX_CHANNELS_PER_CONN=0 restores single-channel).
+func intEnvAllowZero(name string, fallback int) int {
+	value := os.Getenv(name)
+	if value == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(value)
+	if err != nil || n < 0 {
+		log.Fatalf("ssh gateway: %s must be a non-negative integer", name)
 	}
 	return n
 }

@@ -40,3 +40,11 @@ GRANT INSERT ON audit_events TO __ROLE__;
 -- the gateway's, so a stolen gateway credential can neither rewrite nor purge a
 -- transcript.
 GRANT SELECT, INSERT ON agent_session_transcripts TO __ROLE__;
+
+-- The agent-session row (ADR054 D7): the "Open in Zed" SSH resolver reads the
+-- session by its ags-<id> username (GetAgentSession) to derive the sandbox pod
+-- (<sandbox_id>-0) and namespace (<workspace_id>-sandbox) after authorizing
+-- can_view_sensitive. READ-ONLY — the gateway never writes lifecycle; bex-api
+-- alone advances phase/sandbox_id, so a stolen gateway credential can read a
+-- session row but cannot mutate, cancel, or fabricate one.
+GRANT SELECT ON agent_sessions TO __ROLE__;

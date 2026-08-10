@@ -45,6 +45,7 @@ function view(
       template: null,
     },
     sandboxId: null,
+    sshAddress: null,
     phase,
     status: "s",
     headSha: null,

@@ -83,11 +83,17 @@ type Completer struct {
 	APIPublicURL string
 	Interval     time.Duration
 	Now          func() time.Time
-
 	// MaxTranscriptBytes overrides the per-session cumulative transcript quota
 	// (store.MaxAgentSessionTranscriptBytes); zero => the platform default.
 	// Tests set it small to exercise the quota without 64 MiB payloads.
 	MaxTranscriptBytes int64
+
+	// SSHGraceTTL bounds the "Open in Zed" teardown deferral (ADR054 D6): a
+	// finished session's sandbox is kept alive while an editor SSH session is
+	// open, and an ssh_sessions row older than this is treated as leaked (a
+	// crashed gateway replica) and ignored. It equals the gateway's SSH session
+	// cap; 0 => the 4h default (matching BEX_SSH_SESSION_TIMEOUT's default).
+	SSHGraceTTL time.Duration
 }
 
 // transcriptQuota is the per-session cumulative transcript byte cap the
@@ -97,6 +103,24 @@ func (c *Completer) transcriptQuota() int64 {
 		return c.MaxTranscriptBytes
 	}
 	return store.MaxAgentSessionTranscriptBytes
+}
+
+// defaultSSHGraceTTL mirrors the gateway's default BEX_SSH_SESSION_TIMEOUT so a
+// deferred sandbox can outlive one full-length editor session but no longer.
+const defaultSSHGraceTTL = 4 * time.Hour
+
+func (c *Completer) sshGraceTTL() time.Duration {
+	if c.SSHGraceTTL > 0 {
+		return c.SSHGraceTTL
+	}
+	return defaultSSHGraceTTL
+}
+
+func (c *Completer) now() time.Time {
+	if c.Now != nil {
+		return c.Now()
+	}
+	return time.Now()
 }
 
 func (c *Completer) enabled() bool {
@@ -142,6 +166,24 @@ func (c *Completer) Reconcile(ctx context.Context) {
 	}
 	for _, row := range rows {
 		c.finalize(ctx, row)
+	}
+	c.reapDeferredSandboxes(ctx)
+}
+
+// reapDeferredSandboxes tears down the sandboxes of already-finished sessions
+// whose teardown was deferred for an open editor SSH session (ADR054 D6). A
+// terminal session drops out of activePhases, so its sandbox would otherwise
+// linger forever; each tick this retries teardown for the small set of terminal
+// sessions still holding a sandbox id, and teardown itself re-checks the
+// deferral so it fires only once the connection has closed (or aged out).
+func (c *Completer) reapDeferredSandboxes(ctx context.Context) {
+	since := c.now().Add(-2 * c.sshGraceTTL())
+	rows, err := c.Store.ListTerminalAgentSessionsWithSandbox(ctx, since)
+	if err != nil {
+		return
+	}
+	for _, row := range rows {
+		c.teardown(ctx, row)
 	}
 }
 
@@ -262,7 +304,23 @@ func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 		return
 	}
 	c.captureTranscript(ctx, record)
+	// Open in Zed (ADR054 D6): keep the sandbox alive while an editor SSH session
+	// is connected, so a finishing turn does not kill a live edit. The transcript
+	// is already captured above, delivery already happened, and the session is
+	// already finalized — only the physical teardown waits. The reaper retries
+	// each tick; an explicit Cancel (its own teardown path) is not gated by this,
+	// so a user asking to kill the session always wins.
+	if open, err := c.Store.HasOpenSSHSession(ctx, record.ID, c.now().Add(-c.sshGraceTTL())); err != nil {
+		log.Printf("agent-session completer: ssh-session check failed (session=%s): %v", record.ID, err)
+		return // transient store error: retry next tick rather than tear down blind
+	} else if open {
+		log.Printf("agent-session completer: deferring teardown, editor SSH open (session=%s)", record.ID)
+		return
+	}
 	_ = c.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID)
+	if err := c.Store.ClearAgentSessionSandbox(ctx, record.ID); err != nil {
+		log.Printf("agent-session completer: clear sandbox id failed (session=%s): %v", record.ID, err)
+	}
 }
 
 // captureTranscript harvests the driver's per-part session log over the SAME

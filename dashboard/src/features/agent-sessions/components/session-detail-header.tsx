@@ -2,12 +2,15 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  ChevronDown,
+  Code2,
   ExternalLink,
   GitBranch,
   GitPullRequest,
   Loader2,
   MoreHorizontal,
   PanelRightOpen,
+  Terminal,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/common/components/ui/button";
@@ -26,8 +29,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
+import { CopyButton } from "@/common/components/copy-button";
 import {
   Tooltip,
   TooltipContent,
@@ -153,6 +158,8 @@ export function SessionDetailHeader({
 
       <HeaderPrBadge session={session} />
 
+      <OpenInZedButton session={session} />
+
       {onOpenEvidence ? (
         <Button
           size="sm"
@@ -237,6 +244,64 @@ export function SessionDetailHeader({
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/**
+ * The "Open in Zed" affordance (ADR054 D5): a Connect-style dropdown offering a
+ * `zed://ssh/…/workspace` hotlink that opens the session's sandbox as a Zed
+ * remote project, plus a copyable `ssh <address>` command for any other editor
+ * or a one-shot shell. Rendered only while the backend surfaces `sshAddress`
+ * (BEX_SSH_HOST set AND the sandbox live) — its absence hides the whole control,
+ * so a dangling target is never offered. The `zed://` href is an intentional
+ * external-protocol link (the first custom scheme in the dashboard); the browser
+ * hands it to the OS, which launches Zed.
+ */
+function OpenInZedButton({ session }: { session: AgentSessionView }) {
+  const { t } = useTranslations();
+  if (!session.sshAddress) return null;
+  const command = `ssh ${session.sshAddress}`;
+  const zedUrl = `zed://ssh/${session.sshAddress}/workspace`;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="shrink-0">
+          <Code2 className="size-4" />
+          <span className="hidden sm:inline">
+            {t("agentSessions.connect")}
+          </span>
+          <ChevronDown className="size-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80 p-3">
+        <DropdownMenuItem asChild className="mb-2 cursor-pointer">
+          {/* An intentional external-scheme anchor — the OS launches Zed. */}
+          <a href={zedUrl}>
+            <Code2 className="size-4" />
+            {t("agentSessions.openInZed")}
+          </a>
+        </DropdownMenuItem>
+        <DropdownMenuLabel className="flex items-center gap-2 px-0 pt-0">
+          <Terminal className="size-4" />
+          {t("agentSessions.connectSSH")}
+        </DropdownMenuLabel>
+        <div className="bg-muted flex min-w-0 items-center gap-1 rounded-md py-1 pr-1 pl-2">
+          <code className="min-w-0 flex-1 truncate text-xs" title={command}>
+            {command}
+          </code>
+          <CopyButton
+            value={command}
+            label={t("agentSessions.sshCopy")}
+            successText={t("agentSessions.sshCopied")}
+            errorText={t("agentSessions.sshCopyError")}
+          />
+        </div>
+        <p className="text-muted-foreground mt-2 text-xs">
+          {t("agentSessions.openInZedHint")}
+        </p>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

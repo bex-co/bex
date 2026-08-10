@@ -38,6 +38,7 @@ function view({
       template: null,
     },
     sandboxId: null,
+    sshAddress: null,
     phase: "running",
     status: "working",
     headSha: null,

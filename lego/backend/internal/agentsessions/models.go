@@ -161,7 +161,13 @@ type View struct {
 	CreatedAt     time.Time   `json:"createdAt"`
 	UpdatedAt     time.Time   `json:"updatedAt"`
 	CanceledAt    *time.Time  `json:"canceledAt,omitempty"`
-	Ticket        string      `json:"ticket,omitempty"`
-	URL           string      `json:"url,omitempty"`
-	ExpiresAt     *time.Time  `json:"expiresAt,omitempty"`
+	// SSHAddress is the Render-shaped `ags-<xid>@<BEX_SSH_HOST>` an editor uses to
+	// open the session's sandbox over SSH (ADR054 D5 — "Open in Zed"). Present only
+	// when BEX_SSH_HOST is configured AND the sandbox is live (the exact condition
+	// the gateway resolver enforces), so a surfaced address always connects; empty
+	// otherwise. It carries no credential — auth is the caller's own SSH key.
+	SSHAddress string     `json:"sshAddress,omitempty"`
+	Ticket     string     `json:"ticket,omitempty"`
+	URL        string     `json:"url,omitempty"`
+	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`
 }

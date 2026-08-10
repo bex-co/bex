@@ -648,6 +648,35 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Open pull request",
     description: "Header overflow menu — open the draft PR in a new tab",
   },
+  "agentSessions.connect": {
+    message: "Connect",
+    description: "Header — trigger for the Open-in-Zed / SSH connect menu",
+  },
+  "agentSessions.openInZed": {
+    message: "Open in Zed",
+    description:
+      "Connect menu — hotlink that opens the sandbox as a Zed remote project",
+  },
+  "agentSessions.openInZedHint": {
+    message: "Opens the sandbox's /workspace over SSH. Requires the Zed editor.",
+    description: "Connect menu — helper text under the Open-in-Zed action",
+  },
+  "agentSessions.connectSSH": {
+    message: "SSH",
+    description: "Connect menu — label above the copyable ssh command",
+  },
+  "agentSessions.sshCopy": {
+    message: "Copy SSH command",
+    description: "Connect menu — accessible label for the copy button",
+  },
+  "agentSessions.sshCopied": {
+    message: "SSH command copied",
+    description: "Connect menu — toast after copying the ssh command",
+  },
+  "agentSessions.sshCopyError": {
+    message: "Couldn't copy",
+    description: "Connect menu — toast when copying the ssh command fails",
+  },
   "agentSessions.groupWorkedFor": {
     message: "Worked for {duration}",
     description: "Activity-group summary with a derived elapsed duration",

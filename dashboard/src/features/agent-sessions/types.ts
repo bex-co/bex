@@ -56,6 +56,13 @@ export interface AgentSessionView {
   branch: string;
   agentConfig: AgentSessionConfigView;
   sandboxId: string | null;
+  /**
+   * `ags-<id>@<ssh-host>` for opening the session's sandbox over SSH — the
+   * "Open in Zed" affordance (ADR054 D5). Non-null only while the sandbox is live
+   * and BEX_SSH_HOST is configured; the backend omits it otherwise, so its mere
+   * presence gates the button.
+   */
+  sshAddress: string | null;
   /** The lifecycle enum the whole UI keys off. */
   phase: AgentSessionPhase;
   /** Free-text human status line; display-only, never branched on. */

@@ -2691,6 +2691,9 @@ function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
       phase: "running",
       status: "running",
       sandboxId: "sbx-live-0001",
+      // A live sandbox surfaces its SSH address (ADR054 D5), so the dashboard
+      // shows the "Open in Zed" control and the zed://ssh/… hotlink.
+      sshAddress: "ags-demo00000000000000004@ssh.bex.co",
       turns: 1,
       createdAt: agoISO(1),
       updatedAt: agoISO(1),

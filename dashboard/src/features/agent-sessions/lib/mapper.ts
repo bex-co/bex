@@ -69,6 +69,7 @@ export function toAgentSessionView(
       template: wire.agentConfig.template ?? null,
     },
     sandboxId: wire.sandboxId ?? null,
+    sshAddress: wire.sshAddress ?? null,
     phase,
     status: wire.status,
     headSha: wire.headSha ?? null,
