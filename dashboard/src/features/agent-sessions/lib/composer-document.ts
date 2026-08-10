@@ -2,7 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 
 const REPO_PREFIX = "repo:";
 const SESSION_PREFIX = "session:";
-const MENTION_MARKER = "\u0000";
+const MENTION_MARKER = "\uFFFC";
 
 export interface ComposerDocument {
   task: string;
@@ -41,7 +41,7 @@ export function readComposerDocument(doc: JSONContent): ComposerDocument {
     // Mentions commonly have a typed space before them and the editor's
     // inserted space after them. Collapse only that mention-shaped gap, while
     // preserving deliberate whitespace elsewhere in the prompt.
-    .replace(/[ \t]*\u0000[ \t]*/g, " ")
+    .replace(/[ \t]*\uFFFC[ \t]*/g, " ")
     .replace(/[ \t]+\n/g, "\n")
     .trim();
 

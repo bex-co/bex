@@ -3,7 +3,6 @@ import {
   useEffect,
   useId,
   useImperativeHandle,
-  useRef,
   useState,
 } from "react";
 import type { Range } from "@tiptap/core";
@@ -66,6 +65,33 @@ type MentionMenuProps = BaseSuggestionProps & {
 
 const mentionPluginKey = new PluginKey("agent-composer-mention");
 
+type Translate = ReturnType<typeof useTranslations>["t"];
+
+/** Mutable editor inputs live outside React's render data flow. */
+class EditorRuntime {
+  constructor(
+    public source: MentionSource,
+    public reposLoading: boolean,
+    public placeholder: string,
+    public onChange: (document: ComposerDocument) => void,
+    public t: Translate,
+  ) {}
+
+  update(
+    source: MentionSource,
+    reposLoading: boolean,
+    placeholder: string,
+    onChange: (document: ComposerDocument) => void,
+    t: Translate,
+  ) {
+    this.source = source;
+    this.reposLoading = reposLoading;
+    this.placeholder = placeholder;
+    this.onChange = onChange;
+    this.t = t;
+  }
+}
+
 /**
  * Tiptap-backed prompt surface. Repositories and prior sessions are atomic
  * inline nodes, so normal caret movement, selection, undo, and Backspace all
@@ -79,18 +105,13 @@ export const InlineMentionEditor = forwardRef<
   ref,
 ) {
   const { t } = useTranslations();
-  const sourceRef = useRef(source);
-  const reposLoadingRef = useRef(reposLoading);
-  const ariaLabelRef = useRef(ariaLabel);
-  const placeholderRef = useRef(placeholder);
-  const onChangeRef = useRef(onChange);
-  const translationRef = useRef(t);
-  sourceRef.current = source;
-  reposLoadingRef.current = reposLoading;
-  ariaLabelRef.current = ariaLabel;
-  placeholderRef.current = placeholder;
-  onChangeRef.current = onChange;
-  translationRef.current = t;
+  const [runtime] = useState(
+    () => new EditorRuntime(source, reposLoading, placeholder, onChange, t),
+  );
+
+  useEffect(() => {
+    runtime.update(source, reposLoading, placeholder, onChange, t);
+  }, [onChange, placeholder, reposLoading, runtime, source, t]);
 
   const suggestion: Omit<
     SuggestionOptions<MentionOption, MentionOption>,
@@ -107,13 +128,13 @@ export const InlineMentionEditor = forwardRef<
       const availableSource =
         state.category === "sessions"
           ? {
-              ...sourceRef.current,
-              sessions: sourceRef.current.sessions.filter(
+              ...runtime.source,
+              sessions: runtime.source.sessions.filter(
                 (session) => !selectedSessions.has(session.id),
               ),
             }
-          : sourceRef.current;
-      return mentionOptions(state, availableSource, translationRef.current);
+          : runtime.source;
+      return mentionOptions(state, availableSource, runtime.t);
     },
     command: ({ editor, range, props: option }) => {
       if (option.kind === "category") {
@@ -134,8 +155,8 @@ export const InlineMentionEditor = forwardRef<
 
       const menuProps = (props: BaseSuggestionProps): MentionMenuProps => ({
         ...props,
-        source: sourceRef.current,
-        reposLoading: reposLoadingRef.current,
+        source: runtime.source,
+        reposLoading: runtime.reposLoading,
       });
 
       return {
@@ -166,7 +187,7 @@ export const InlineMentionEditor = forwardRef<
         Text,
         UndoRedo,
         Placeholder.configure({
-          placeholder: () => placeholderRef.current,
+          placeholder: () => runtime.placeholder,
         }),
         Mention.configure({
           HTMLAttributes: {
@@ -184,7 +205,7 @@ export const InlineMentionEditor = forwardRef<
       immediatelyRender: false,
       editorProps: {
         attributes: {
-          "aria-label": ariaLabelRef.current,
+          "aria-label": ariaLabel,
           "aria-autocomplete": "list",
           "aria-expanded": "false",
           role: "combobox",
@@ -193,10 +214,10 @@ export const InlineMentionEditor = forwardRef<
         },
       },
       onCreate: ({ editor: nextEditor }) => {
-        onChangeRef.current(readComposerDocument(nextEditor.getJSON()));
+        runtime.onChange(readComposerDocument(nextEditor.getJSON()));
       },
       onUpdate: ({ editor: nextEditor }) => {
-        onChangeRef.current(readComposerDocument(nextEditor.getJSON()));
+        runtime.onChange(readComposerDocument(nextEditor.getJSON()));
       },
     },
     [],
@@ -208,7 +229,7 @@ export const InlineMentionEditor = forwardRef<
       const { from } = editor.state.selection;
       const previous =
         from > 1
-          ? editor.state.doc.textBetween(from - 1, from, "\n", "\0")
+          ? editor.state.doc.textBetween(from - 1, from, "\n", "\uFFFC")
           : "";
       editor
         .chain()
@@ -303,10 +324,16 @@ const MentionSuggestionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
   ) {
     const { t } = useTranslations();
     const idBase = useId();
-    const [highlight, setHighlight] = useState(0);
+    const [highlightState, setHighlightState] = useState({ query, index: 0 });
+    const highlight =
+      highlightState.query === query
+        ? Math.min(highlightState.index, Math.max(items.length - 1, 0))
+        : 0;
     const state = mentionStateFromQuery(query);
 
-    useEffect(() => setHighlight(0), [query]);
+    function setHighlight(index: number) {
+      setHighlightState({ query, index });
+    }
 
     useEffect(() => {
       const element = editor.view.dom;
@@ -334,17 +361,15 @@ const MentionSuggestionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
     useImperativeHandle(ref, () => ({
       onKeyDown: ({ event }) => {
         if (event.key === "ArrowUp") {
-          setHighlight((current) =>
+          setHighlight(
             items.length === 0
               ? 0
-              : (current - 1 + items.length) % items.length,
+              : (highlight - 1 + items.length) % items.length,
           );
           return true;
         }
         if (event.key === "ArrowDown") {
-          setHighlight((current) =>
-            items.length === 0 ? 0 : (current + 1) % items.length,
-          );
+          setHighlight(items.length === 0 ? 0 : (highlight + 1) % items.length);
           return true;
         }
         if (event.key === "Enter") {
