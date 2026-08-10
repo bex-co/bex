@@ -1005,6 +1005,28 @@ type blueprintParseOverrides struct {
 	envVarValues map[string]string
 }
 
+// validateUniqueName trims, validates non-empty, and checks for duplicates.
+func validateUniqueName(raw, entityType string, seen map[string]bool) (string, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "", fmt.Errorf("%w: %s is missing its name", core.ErrBadRequest, entityType)
+	}
+	if seen[trimmed] {
+		return "", fmt.Errorf("%w: duplicate %s name %q", core.ErrBadRequest, entityType, trimmed)
+	}
+	seen[trimmed] = true
+	return trimmed, nil
+}
+
+// registerUniqueName checks for duplicate names across services and databases.
+func registerUniqueName(name string, seen map[string]bool) error {
+	if seen[name] {
+		return fmt.Errorf("%w: duplicate name %q — every service and database name in a render.yaml must be unique", core.ErrBadRequest, name)
+	}
+	seen[name] = true
+	return nil
+}
+
 // parseCompiledStack is the typed adapter boundary after the one strict
 // Blueprint compiler pass. Callers that already own a compiled source/IR (such
 // as validation) use this directly so no later helper can parse the submitted
@@ -1014,6 +1036,11 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	m, err := decodeCompiledBlueprintManifest(source)
 	if err != nil {
 		return parsedStack{}, err
+	}
+	// Early check for empty manifests before processing
+	hasUngroupedContent := m.Ungrouped != nil && (len(m.Ungrouped.Services) > 0 || len(m.Ungrouped.Databases) > 0 || len(m.Ungrouped.EnvVarGroups) > 0)
+	if len(m.Services) == 0 && len(m.Databases) == 0 && len(m.EnvVarGroups) == 0 && len(m.Projects) == 0 && !hasUngroupedContent {
+		return parsedStack{}, fmt.Errorf("%w: render.yaml must define at least one service, database, env group, or project environment resource", core.ErrBadRequest)
 	}
 	type serviceDecl struct {
 		value     bexService
@@ -1025,21 +1052,21 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		grouping  string
 		ungrouped bool
 	}
-	services := make([]serviceDecl, 0, len(m.Services))
-	for _, service := range m.Services {
-		services = append(services, serviceDecl{value: service})
+	services := make([]serviceDecl, len(m.Services))
+	for i, service := range m.Services {
+		services[i] = serviceDecl{value: service}
 	}
-	databases := make([]databaseDecl, 0, len(m.Databases))
-	for _, database := range m.Databases {
-		databases = append(databases, databaseDecl{value: database})
+	databases := make([]databaseDecl, len(m.Databases))
+	for i, database := range m.Databases {
+		databases[i] = databaseDecl{value: database}
 	}
 	type envGroupDecl struct {
 		value    bexEnvGroup
 		grouping string
 	}
-	envGroups := make([]envGroupDecl, 0, len(m.EnvVarGroups))
-	for _, eg := range m.EnvVarGroups {
-		envGroups = append(envGroups, envGroupDecl{value: eg})
+	envGroups := make([]envGroupDecl, len(m.EnvVarGroups))
+	for i, eg := range m.EnvVarGroups {
+		envGroups[i] = envGroupDecl{value: eg}
 	}
 	if m.Ungrouped != nil {
 		for _, service := range m.Ungrouped.Services {
@@ -1055,24 +1082,16 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	st := parsedStack{}
 	projectNames := map[string]bool{}
 	for _, project := range m.Projects {
-		projectName := strings.TrimSpace(project.Name)
-		if projectName == "" {
-			return parsedStack{}, fmt.Errorf("%w: a projects entry is missing its name", core.ErrBadRequest)
+		projectName, err := validateUniqueName(project.Name, "projects entry", projectNames)
+		if err != nil {
+			return parsedStack{}, err
 		}
-		if projectNames[projectName] {
-			return parsedStack{}, fmt.Errorf("%w: duplicate project name %q", core.ErrBadRequest, projectName)
-		}
-		projectNames[projectName] = true
 		environmentNames := map[string]bool{}
 		for _, environment := range project.Environments {
-			environmentName := strings.TrimSpace(environment.Name)
-			if environmentName == "" {
-				return parsedStack{}, fmt.Errorf("%w: project %q has an environment without a name", core.ErrBadRequest, projectName)
+			environmentName, err := validateUniqueName(environment.Name, fmt.Sprintf("project %q environment", projectName), environmentNames)
+			if err != nil {
+				return parsedStack{}, err
 			}
-			if environmentNames[environmentName] {
-				return parsedStack{}, fmt.Errorf("%w: project %q has duplicate environment name %q", core.ErrBadRequest, projectName, environmentName)
-			}
-			environmentNames[environmentName] = true
 			if environment.Networking.Isolation != "" && environment.Networking.Isolation != "enabled" && environment.Networking.Isolation != "disabled" {
 				return parsedStack{}, fmt.Errorf("%w: project %q environment %q networking.isolation must be enabled or disabled", core.ErrBadRequest, projectName, environmentName)
 			}
@@ -1112,15 +1131,15 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		if err != nil {
 			return parsedStack{}, err
 		}
-		if groupNames[pg.name] {
+		if err := registerUniqueName(pg.name, groupNames); err != nil {
 			return parsedStack{}, fmt.Errorf("%w: duplicate env group name %q", core.ErrBadRequest, pg.name)
 		}
-		groupNames[pg.name] = true
 		pg.grouping = egDecl.grouping
 		st.envGroups = append(st.envGroups, pg)
 	}
 
 	// Databases next into the stack (and into the name index services reference).
+	// services slice includes both regular services and keyvalue resources
 	names := make(map[string]bool, len(services)+len(databases))
 	databaseNames := make(map[string]bool, len(databases))
 	databasePoolers := make(map[string]bool, len(databases))
@@ -1130,10 +1149,9 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		if err != nil {
 			return parsedStack{}, err
 		}
-		if names[ds.name] {
-			return parsedStack{}, fmt.Errorf("%w: duplicate name %q — every service and database name in a render.yaml must be unique", core.ErrBadRequest, ds.name)
+		if err := registerUniqueName(ds.name, names); err != nil {
+			return parsedStack{}, err
 		}
-		names[ds.name] = true
 		databaseNames[ds.name] = true
 		databasePoolers[ds.name] = ds.spec.Pooler
 		ds.grouping = d.grouping
@@ -1165,10 +1183,9 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 			if err != nil {
 				return parsedStack{}, err
 			}
-			if names[kv.name] {
-				return parsedStack{}, fmt.Errorf("%w: duplicate name %q — every service and database name in a render.yaml must be unique", core.ErrBadRequest, kv.name)
+			if err := registerUniqueName(kv.name, names); err != nil {
+				return parsedStack{}, err
 			}
-			names[kv.name] = true
 			kvStackNames[kv.name] = true
 			kv.grouping = a.grouping
 			kv.ungrouped = a.ungrouped
@@ -1180,10 +1197,9 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		if err != nil {
 			return parsedStack{}, err
 		}
-		if names[req.Name] {
-			return parsedStack{}, fmt.Errorf("%w: duplicate name %q — every service and database name in a render.yaml must be unique", core.ErrBadRequest, req.Name)
+		if err := registerUniqueName(req.Name, names); err != nil {
+			return parsedStack{}, err
 		}
-		names[req.Name] = true
 		pendings = append(pendings, pending{
 			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, grouping: a.grouping, ungrouped: a.ungrouped},
 			refVars: se.refVars,
