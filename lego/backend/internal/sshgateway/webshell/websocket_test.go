@@ -126,9 +126,26 @@ func TestWebSocketShellHappyPath(t *testing.T) {
 	if resolver.Subject != "user-1" || resolver.Username != "srv-abcdeabcdeabcdeabcde" {
 		t.Errorf("resolver saw subject=%q username=%q", resolver.Subject, resolver.Username)
 	}
-	started, ended := st.StartedSessions(), st.EndedSessions()
+	started, ended := st.StartedSessions(), waitEndedSessions(t, st, 1)
 	if len(started) != 1 || len(ended) != 1 || !strings.HasSuffix(ended[0], ":completed") {
 		t.Errorf("audit rows: started=%v ended=%v", started, ended)
+	}
+}
+
+// waitEndedSessions polls for `want` session-end audit rows. bridgeShell sends
+// the WebSocket close frame before runWebSocketSession's deferred EndSSHSession
+// runs, so a client that asserts the moment its read loop breaks races the
+// audit write. Returns whatever it has at the deadline so the caller reports
+// the real rows.
+func waitEndedSessions(t *testing.T, st *gatewaytest.FakeStore, want int) []string {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		ended := st.EndedSessions()
+		if len(ended) >= want || time.Now().After(deadline) {
+			return ended
+		}
+		time.Sleep(time.Millisecond)
 	}
 }
 
