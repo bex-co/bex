@@ -35,6 +35,10 @@ export interface DriverServer {
   server: http.Server;
   address: ReturnType<http.Server["address"]>;
   close(): Promise<void>;
+  // setTurnInFlight lets the caller (main.ts's initial headless turn) participate
+  // in the same single-flight guard as POST /turn, so a live-turn request during
+  // the initial turn gets 409 instead of starting a second agent (codex #9).
+  setTurnInFlight(inFlight: boolean): void;
 }
 
 function streamHeaders(response: ServerResponse): void {
@@ -247,6 +251,9 @@ export async function startDriverServer(
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
       );
+    },
+    setTurnInFlight(inFlight: boolean) {
+      turnInFlight = inFlight;
     },
   };
 }

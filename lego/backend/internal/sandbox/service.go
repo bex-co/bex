@@ -337,6 +337,11 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 	if err := s.RequirePaymentMethod(ctx, workspace); err != nil {
 		return Sandbox{}, err
 	}
+	// codex #6: enforce the billing lifecycle gate — a delinquent/enforced
+	// workspace must not start new sandbox compute, not just lack a payment method.
+	if err := s.RequireBillingMutation(ctx, workspace); err != nil {
+		return Sandbox{}, err
+	}
 	key := ""
 	if s.Keys != nil {
 		key, err = s.Keys.WorkspaceKey(ctx, workspace)

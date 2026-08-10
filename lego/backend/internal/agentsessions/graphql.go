@@ -5,6 +5,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -177,9 +178,23 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"resumeAgentSession": &graphql.Field{Type: agentSessionGQLType, Args: idArg, Resolve: func(p graphql.ResolveParams) (any, error) {
 			return s.Resume(p.Context, stringArg(p.Args, "id"))
 		}},
-		"attachAgentSession": &graphql.Field{Type: agentSessionGQLType, Args: idArg, Resolve: func(p graphql.ResolveParams) (any, error) {
-			return s.AttachTicket(p.Context, stringArg(p.Args, "id"))
-		}},
+		"attachAgentSession": &graphql.Field{
+			Type: agentSessionGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"action": &graphql.ArgumentConfig{
+					Type:        graphql.String,
+					Description: "Ticket action: 'read' for transcript replay (GET), 'turn' for live prompt execution (POST). Requires can_create for 'turn'. Defaults to 'read'.",
+				},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				action := stringArg(p.Args, "action")
+				if action == "" {
+					action = agentsessionticket.ActionRead // Default to read for safety
+				}
+				return s.AttachTicket(p.Context, stringArg(p.Args, "id"), action)
+			},
+		},
 		"cancelAgentSession": &graphql.Field{Type: agentSessionGQLType, Args: idArg, Resolve: func(p graphql.ResolveParams) (any, error) {
 			return s.Cancel(p.Context, stringArg(p.Args, "id"))
 		}},

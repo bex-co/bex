@@ -2968,15 +2968,30 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 		}
 	}
 	oldPullSecret := a.Spec.ExternalRegistryPullSecret
+	// SECURITY (codex #5): when the repository origin changes, the retained GitHub
+	// clone token is scoped to the OLD origin. Static publisher and kpack would send
+	// it to the new (possibly attacker-controlled) origin. Atomically clear the old
+	// clone Secret and spec.cloneSecret; a replacement (if the new repo is a
+	// connected private one) is minted on the next deploy.
+	repoChanged := nextRepo != a.Spec.Repo
+	oldCloneSecret := a.Spec.CloneSecret
 	updated, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.Repo = nextRepo
 		a.Spec.Image = nextImage
 		a.Spec.Branch = nextBranch
 		a.Spec.RegistryCredentialID = cloneStringPtr(nextRegistryCredentialID)
 		a.Spec.ExternalRegistryPullSecret = pullSecretName
+		if repoChanged {
+			a.Spec.CloneSecret = "" // clear stale token; reminted on next deploy
+		}
 	})
 	if err != nil {
 		return AppView{}, err
+	}
+	if repoChanged && oldCloneSecret != "" {
+		if err := s.deleteCloneSecret(ctx, a.Namespace, a.Name); err != nil {
+			log.Printf("apps: clear stale clone secret for %s after repo change: %v", a.Name, err)
+		}
 	}
 	if oldPullSecret != "" && pullSecretName == "" {
 		if err := s.deleteExternalRegistryPullSecret(ctx, a.Namespace, a.Name); err != nil {

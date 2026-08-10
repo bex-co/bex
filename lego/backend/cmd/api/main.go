@@ -799,6 +799,10 @@ func main() {
 	// second accepted key so installed repos redeploy hands-free
 	// (docs/ADR026-github-integration.md).
 	srv.GitHubWebhookSecret = os.Getenv("BEX_GITHUB_WEBHOOK_SECRET")
+	// codex #4: in multitenant mode (control-plane store active), reject the shared
+	// manual webhook secret because it carries no per-workspace binding and would
+	// authorize cross-tenant deployment mutations. The GitHub App key is unaffected.
+	srv.MultitenantWebhook = os.Getenv("BEX_CP_DB_URI") != ""
 
 	// stdio MCP mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP
 	// adapter over stdin/stdout — how a local agent launches bex as a subprocess.

@@ -365,7 +365,7 @@ func cloneContainer(o Options) corev1.Container {
 mkdir -p /work && cd /work
 git init -q .
 git remote add origin "$REPO"
-git -c credential.helper='!f() { echo "username=x-access-token"; echo "password=$GIT_AUTH_TOKEN"; }; f' fetch -q --depth 1 origin "$REF"
+git -c credential.helper='!f() { [ "$1" = get ] || exit 0; h=; while IFS= read -r l; do [ -z "$l" ] && break; case "$l" in host=*) h=${l#host=};; esac; done; [ "$h" = github.com ] || exit 0; echo "username=x-access-token"; echo "password=$GIT_AUTH_TOKEN"; }; f' fetch -q --depth 1 origin "$REF"
 git checkout -q FETCH_HEAD
 cd "/work/$SRC_DIR"
 cp -a . ` + outMount + `/`

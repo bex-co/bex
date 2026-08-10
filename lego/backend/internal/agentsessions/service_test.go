@@ -401,7 +401,7 @@ func TestLifecycleTicketClaimsAndFirstClassAuthorization(t *testing.T) {
 	}
 
 	// The ticket is minted lazily via AttachTicket once a sandbox exists.
-	attached, err := svc.AttachTicket(caller("alice"), created.ID)
+	attached, err := svc.AttachTicket(caller("alice"), created.ID, agentsessionticket.ActionRead)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -438,7 +438,7 @@ func TestLifecycleTicketClaimsAndFirstClassAuthorization(t *testing.T) {
 		t.Fatalf("resume did not run the sandbox: %+v", lifecycle)
 	}
 	// A fresh attach ticket after resume differs from the earlier one (fresh nonce).
-	reattached, err := svc.AttachTicket(caller("alice"), created.ID)
+	reattached, err := svc.AttachTicket(caller("alice"), created.ID, agentsessionticket.ActionRead)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -497,7 +497,7 @@ func TestAttachTicketMintsWithoutChangingLifecycle(t *testing.T) {
 	}
 	beforeCreated, beforeEntered := lifecycle.created, lifecycle.entered
 
-	attached, err := svc.AttachTicket(caller("alice"), created.ID)
+	attached, err := svc.AttachTicket(caller("alice"), created.ID, agentsessionticket.ActionRead)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -518,18 +518,18 @@ func TestAttachTicketMintsWithoutChangingLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	svc.Tuples.GrantAgentSessionWorkspace(caller("alice"), pending.ID, "tea-a")
-	if _, err := svc.AttachTicket(caller("alice"), pending.ID); !isCode(err, "AGENT_SESSION_NOT_ATTACHABLE") {
+	if _, err := svc.AttachTicket(caller("alice"), pending.ID, agentsessionticket.ActionRead); !isCode(err, "AGENT_SESSION_NOT_ATTACHABLE") {
 		t.Fatalf("attach to sandbox-less session = %v, want AGENT_SESSION_NOT_ATTACHABLE", err)
 	}
 
 	// Cross-workspace caller is denied by the first-class tuple.
-	if _, err := svc.AttachTicket(caller("bob"), created.ID); !errors.Is(err, core.ErrForbidden) {
+	if _, err := svc.AttachTicket(caller("bob"), created.ID, agentsessionticket.ActionRead); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("cross-workspace attach = %v, want forbidden", err)
 	}
 
 	// Gateway unconfigured => 503 on the mint verb, like create/resume/steer.
 	svc.GatewayURL = ""
-	if _, err := svc.AttachTicket(caller("alice"), created.ID); !errors.Is(err, core.ErrAgentSessionsUnavailable) {
+	if _, err := svc.AttachTicket(caller("alice"), created.ID, agentsessionticket.ActionRead); !errors.Is(err, core.ErrAgentSessionsUnavailable) {
 		t.Fatalf("attach with no gateway = %v, want unavailable", err)
 	}
 }
@@ -799,13 +799,13 @@ func TestAttachTicketNotReadyDuringProvisioning(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.AttachTicket(caller("alice"), created.ID); !isCode(err, "AGENT_SESSION_NOT_ATTACHABLE") {
+	if _, err := svc.AttachTicket(caller("alice"), created.ID, agentsessionticket.ActionRead); !isCode(err, "AGENT_SESSION_NOT_ATTACHABLE") {
 		t.Fatalf("attach during provisioning = %v, want AGENT_SESSION_NOT_ATTACHABLE", err)
 	}
 	for _, fn := range pending {
 		fn()
 	}
-	attached, err := svc.AttachTicket(caller("alice"), created.ID)
+	attached, err := svc.AttachTicket(caller("alice"), created.ID, agentsessionticket.ActionRead)
 	if err != nil || attached.Ticket == "" {
 		t.Fatalf("attach after provisioning = %+v err=%v, want a ticket", attached, err)
 	}

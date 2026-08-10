@@ -107,6 +107,22 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "重试",
     description: "Logout page retry button after a failed sign-out",
   },
+  "auth.logoutConfirmTitle": {
+    message: "退出登录？",
+    description: "Logout page heading on the confirmation screen (codex #12 CSRF logout fix)",
+  },
+  "auth.logoutConfirmSubtitle": {
+    message: "确定要结束当前会话吗？",
+    description: "Logout page subtext on the confirmation screen",
+  },
+  "auth.logoutConfirm": {
+    message: "退出登录",
+    description: "Logout page confirm button that triggers the actual logout",
+  },
+  "auth.logoutCancel": {
+    message: "取消",
+    description: "Logout page cancel button that returns to the dashboard",
+  },
   "auth.logoutTitle": {
     message: "退出登录",
     description: "Logout page document title",

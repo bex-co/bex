@@ -52,9 +52,17 @@ async function main(): Promise<void> {
     // empty) before the agent runs. Package-registry egress is open here; the
     // agent phase then narrows it (ADR047 D5).
     if (config.deliver) await ensureRepo(config);
+    // codex #9: hold the single-flight guard during the initial headless turn so
+    // a concurrent POST /turn gets 409 instead of starting a second agent against
+    // the same checkout, transcript, credentials, and Git branch.
+    listener.setTurnInFlight(true);
     await runHeadlessTurn(config, credentials, hub);
+    listener.setTurnInFlight(false);
     if (config.exitAfterTurn) await shutdown();
   } catch (error) {
+    // Release the single-flight guard on any error so the server can accept
+    // subsequent turns (codex #9).
+    listener.setTurnInFlight(false);
     console.error(
       credentials.redact(error instanceof Error ? error.message : error),
     );

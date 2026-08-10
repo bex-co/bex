@@ -252,6 +252,18 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid ticket", http.StatusUnauthorized)
 		return
 	}
+	// Verify that the ticket action matches the HTTP method.
+	// GET (transcript replay) requires ActionRead, POST (live turn) requires ActionTurn.
+	if r.Method == http.MethodGet && claims.Action != agentsessionticket.ActionRead {
+		s.Metrics.Authentication("rejected_action")
+		http.Error(w, "ticket action 'read' required for GET requests", http.StatusForbidden)
+		return
+	}
+	if r.Method == http.MethodPost && claims.Action != agentsessionticket.ActionTurn {
+		s.Metrics.Authentication("rejected_action")
+		http.Error(w, "ticket action 'turn' required for POST requests", http.StatusForbidden)
+		return
+	}
 	// The session id is bound in the ticket; a mismatched path id is a caller
 	// error, not an authorization bypass (the ticket still governs), but reject
 	// it so a client cannot believe it attached to a different session.

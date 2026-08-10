@@ -55,8 +55,8 @@ type KubernetesEnforcer struct {
 }
 
 // appNamespace is where a workspace's App CRs live: its own `<ws>` namespace
-// under per-tenant isolation (ADR043). Databases/KeyValues always use
-// e.Namespace — they did not move.
+// under per-tenant isolation (ADR043). Databases/KeyValues also moved to
+// tenant namespaces under ADR043, so enforcement must be cluster-wide.
 func (e *KubernetesEnforcer) appNamespace(workspaceID string) string {
 	if workspaceID != "" {
 		return workspaceID
@@ -94,7 +94,8 @@ func (e *KubernetesEnforcer) Enforce(ctx context.Context, state store.BillingLif
 		}
 	}
 	var databases appv1alpha1.DatabaseList
-	if err := e.Client.List(ctx, &databases, client.InNamespace(e.Namespace), client.MatchingLabels{core.LabelTenant: state.WorkspaceID}); err != nil {
+	// List cluster-wide to handle both tenant-namespace (ADR043) and legacy shared namespace resources
+	if err := e.Client.List(ctx, &databases, client.MatchingLabels{core.LabelTenant: state.WorkspaceID}); err != nil {
 		return err
 	}
 	for i := range databases.Items {
@@ -103,7 +104,8 @@ func (e *KubernetesEnforcer) Enforce(ctx context.Context, state store.BillingLif
 		}
 	}
 	var keyvalues appv1alpha1.KeyValueList
-	if err := e.Client.List(ctx, &keyvalues, client.InNamespace(e.Namespace), client.MatchingLabels{core.LabelTenant: state.WorkspaceID}); err != nil {
+	// List cluster-wide to handle both tenant-namespace (ADR043) and legacy shared namespace resources
+	if err := e.Client.List(ctx, &keyvalues, client.MatchingLabels{core.LabelTenant: state.WorkspaceID}); err != nil {
 		return err
 	}
 	for i := range keyvalues.Items {
@@ -200,25 +202,64 @@ func (e *KubernetesEnforcer) Recover(ctx context.Context, state store.BillingLif
 
 func (e *KubernetesEnforcer) recoverOne(ctx context.Context, entry store.BillingEnforcement) error {
 	var obj client.Object
-	namespace := e.Namespace
+	var namespace string
 	switch entry.ResourceKind {
 	case "service":
 		obj = &appv1alpha1.App{}
-		// Only App CRs moved to per-tenant namespaces (ADR043); DB/KV stay put.
+		// Apps use per-tenant namespaces under ADR043
 		namespace = e.appNamespace(entry.WorkspaceID)
 	case "postgres":
-		obj = &appv1alpha1.Database{}
+		// Databases moved to per-tenant namespaces under ADR043
+		// Search cluster-wide to handle both tenant-namespace and legacy resources
+		var dbs appv1alpha1.DatabaseList
+		if err := e.Client.List(ctx, &dbs, client.MatchingLabels{core.LabelTenant: entry.WorkspaceID}); err != nil {
+			return err
+		}
+		// Find the database with matching name
+		for i := range dbs.Items {
+			if dbs.Items[i].Name == entry.ResourceName {
+				obj = &dbs.Items[i]
+				namespace = obj.GetNamespace()
+				break
+			}
+		}
+		if obj == nil {
+			return e.Store.MarkBillingEnforcementRecovered(ctx, entry.WorkspaceID, entry.ResourceKind, entry.ResourceName, e.now())
+		}
 	case "key_value":
-		obj = &appv1alpha1.KeyValue{}
+		// KeyValues moved to per-tenant namespaces under ADR043
+		// Search cluster-wide to handle both tenant-namespace and legacy resources
+		var kvs appv1alpha1.KeyValueList
+		if err := e.Client.List(ctx, &kvs, client.MatchingLabels{core.LabelTenant: entry.WorkspaceID}); err != nil {
+			return err
+		}
+		// Find the keyvalue with matching name
+		for i := range kvs.Items {
+			if kvs.Items[i].Name == entry.ResourceName {
+				obj = &kvs.Items[i]
+				namespace = obj.GetNamespace()
+				break
+			}
+		}
+		if obj == nil {
+			return e.Store.MarkBillingEnforcementRecovered(ctx, entry.WorkspaceID, entry.ResourceKind, entry.ResourceName, e.now())
+		}
 	default:
 		return fmt.Errorf("unknown billing resource kind %q", entry.ResourceKind)
 	}
-	key := client.ObjectKey{Namespace: namespace, Name: entry.ResourceName}
-	if err := e.Client.Get(ctx, key, obj); err != nil {
-		if apierrors.IsNotFound(err) {
-			return e.Store.MarkBillingEnforcementRecovered(ctx, entry.WorkspaceID, entry.ResourceKind, entry.ResourceName, e.now())
+
+	// For databases and keyvalues, we've already found the object via cluster-wide search
+	if entry.ResourceKind == "postgres" || entry.ResourceKind == "key_value" {
+		// Object already found and set above, proceed with recovery
+	} else {
+		// For services, use namespace-based lookup
+		key := client.ObjectKey{Namespace: namespace, Name: entry.ResourceName}
+		if err := e.Client.Get(ctx, key, obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				return e.Store.MarkBillingEnforcementRecovered(ctx, entry.WorkspaceID, entry.ResourceKind, entry.ResourceName, e.now())
+			}
+			return err
 		}
-		return err
 	}
 	// Losing/replacing the exact annotation is an explicit independent operator
 	// action. Release the marker without overriding current intent.

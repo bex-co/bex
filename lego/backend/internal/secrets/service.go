@@ -27,6 +27,7 @@ package secrets
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -276,12 +277,14 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	if err != nil {
 		return EnvVarView{}, err
 	}
-	env, err := s.readMap(ctx, envPath(service))
+	env, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
+		if v, ok := current[key]; ok && v == value {
+			return false // no change
+		}
+		current[key] = value
+		return true
+	})
 	if err != nil {
-		return EnvVarView{}, err
-	}
-	env[key] = value
-	if err := s.storeMap(ctx, envPath(service), env); err != nil {
 		return EnvVarView{}, err
 	}
 	if err := s.materializeEnv(ctx, a, env); err != nil {
@@ -302,18 +305,20 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
-	env, err := s.readMap(ctx, envPath(service))
+	var keyFound bool
+	env, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
+		if _, ok := current[key]; !ok {
+			return false
+		}
+		keyFound = true
+		delete(current, key)
+		return true
+	})
 	if err != nil {
 		return err
 	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if _, ok := env[key]; !ok {
+	if !keyFound {
 		return core.ErrNotFound
-	}
-	delete(env, key)
-	if err := s.storeMap(ctx, envPath(service), env); err != nil {
-		return err
 	}
 	return s.materializeEnv(ctx, a, env)
 }
@@ -415,6 +420,61 @@ func (s *Service) storeMap(ctx context.Context, path string, data map[string]str
 		return s.Store.Delete(ctx, path)
 	}
 	return s.Store.Put(ctx, path, data)
+}
+
+// casMaxRetries bounds the optimistic-concurrency retry loop so a continuously
+// contended path fails rather than spinning (codex #7).
+const casMaxRetries = 3
+
+// updateMapCAS performs a conflict-safe read-modify-write of one OpenBao KV path:
+// it reads the current map with its version, applies mutate, and writes back with
+// check-and-set. On a CAS conflict it re-reads and retries up to casMaxRetries
+// times. Stores that do not implement VersionedSecretKV (test doubles) fall back
+// to the unconditional storeMap path. Returns the final map and whether it
+// changed (false + nil delete means the path was already empty/no-op).
+func (s *Service) updateMapCAS(ctx context.Context, path string, mutate func(current map[string]string) (changed bool)) (map[string]string, error) {
+	versioned, ok := s.Store.(core.VersionedSecretKV)
+	if !ok {
+		// Non-versioned store (test double): unconditional read-modify-write.
+		current, err := s.readMap(ctx, path)
+		if err != nil {
+			return nil, err
+		}
+		if !mutate(current) {
+			return current, nil
+		}
+		if err := s.storeMap(ctx, path, current); err != nil {
+			return nil, err
+		}
+		return current, nil
+	}
+	for attempt := 0; attempt <= casMaxRetries; attempt++ {
+		snapshot, err := versioned.GetVersioned(ctx, path)
+		if err != nil {
+			return nil, envSourceUnavailable()
+		}
+		current := snapshot.Data
+		if current == nil {
+			current = map[string]string{}
+		}
+		if !mutate(current) {
+			return current, nil
+		}
+		if len(current) == 0 {
+			if err := s.Store.Delete(ctx, path); err != nil {
+				return nil, err
+			}
+			return current, nil
+		}
+		if _, err := versioned.PutCAS(ctx, path, current, snapshot.Version); err != nil {
+			if errors.Is(err, core.ErrConflict) && attempt < casMaxRetries {
+				continue // re-read and retry
+			}
+			return nil, err
+		}
+		return current, nil
+	}
+	return nil, fmt.Errorf("%w: secret changed; refresh before saving", core.ErrConflict)
 }
 
 // envVarViews renders an env map as a key-sorted slice.

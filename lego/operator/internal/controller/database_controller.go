@@ -191,6 +191,9 @@ type clusterParams struct {
 	recovery *appv1alpha1.DatabaseRecovery
 	// users are additional managed login roles (spec.managed.roles).
 	users []appv1alpha1.DatabaseUser
+	// deletedUsers are removed roles projected as ensure:absent so CNPG drops
+	// them from PostgreSQL (codex #8).
+	deletedUsers []string
 	// highAvailability, when true, provisions a replicated cluster (≥2 instances,
 	// primary + standby) with pod anti-affinity. Render's enableHighAvailability.
 	highAvailability bool
@@ -237,20 +240,39 @@ func barmanCloudPlugin(serverName string, walArchiver bool) map[string]any {
 	return plugin
 }
 
+// canonicalNamespace reports whether obj lives in a namespace the reconciler is
+// allowed to act on: the shared/bootstrap apps namespace ("default") or its own
+// per-workspace namespace (namespace == workspace label). Any other namespace is
+// a confused-deputy / cross-tenant write (codex #11). Shared by the Database and
+// KeyValue reconcilers.
+func canonicalNamespace(meta *metav1.ObjectMeta) bool {
+	if meta.Namespace == "default" {
+		return true
+	}
+	ws := meta.Labels[labelWorkspace]
+	return ws != "" && meta.Namespace == ws
+}
+
 // managedRoles projects additional Database users onto CNPG spec.managed.roles —
 // login roles ensured present, each with its password read from the referenced
-// Secret (created by bex-api). Returns nil for no users (so spec.managed is omitted).
-func managedRoles(users []appv1alpha1.DatabaseUser) []any {
-	if len(users) == 0 {
+// Secret (created by bex-api). DeletedUsers are projected as ensure:absent so CNPG
+// drops the live PostgreSQL role (codex #8). Returns nil for no roles (so
+// spec.managed is omitted).
+func managedRoles(users []appv1alpha1.DatabaseUser, deletedUsers []string) []any {
+	if len(users) == 0 && len(deletedUsers) == 0 {
 		return nil
 	}
-	roles := make([]any, 0, len(users))
+	roles := make([]any, 0, len(users)+len(deletedUsers))
 	for _, u := range users {
 		role := map[string]any{"name": u.Name, "ensure": "present", "login": true}
 		if u.SecretName != "" {
 			role["passwordSecret"] = map[string]any{"name": u.SecretName}
 		}
 		roles = append(roles, role)
+	}
+	// ensure:absent tombstones so CNPG drops the role from PostgreSQL (codex #8).
+	for _, name := range deletedUsers {
+		roles = append(roles, map[string]any{"name": name, "ensure": "absent"})
 	}
 	return roles
 }
@@ -336,7 +358,7 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	if p.plan.Backup && p.store != nil {
 		spec["plugins"] = []any{barmanCloudPlugin(p.backupServerName, true)}
 	}
-	if roles := managedRoles(p.users); roles != nil {
+	if roles := managedRoles(p.users, p.deletedUsers); roles != nil {
 		spec["managed"] = map[string]any{"roles": roles}
 	}
 	return spec
@@ -494,6 +516,16 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if !db.DeletionTimestamp.IsZero() {
 		return r.handleDBDeletion(ctx, req, &db)
 	}
+	// codex #11: refuse a Database outside its canonical tenant namespace before
+	// adding a finalizer or creating dependent resources. A compromised bex-api
+	// ServiceAccount has cluster-wide Database CRUD; without this guard it could
+	// place a Database in a platform or foreign-tenant namespace and drive the
+	// operator as a confused deputy (the same threat the App admission policy closes).
+	if !canonicalNamespace(&db.ObjectMeta) {
+		logf.FromContext(ctx).Info("refusing Database outside a canonical tenant namespace (codex #11)",
+			"namespace", db.Namespace, "name", db.Name)
+		return ctrl.Result{}, nil
+	}
 	// Stamp the finalizer so deletion goes through the teardown path above.
 	if controllerutil.AddFinalizer(&db, dbFinalizer) {
 		if err := r.Update(ctx, &db); err != nil {
@@ -554,6 +586,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			dbname: dbname, owner: owner, store: store,
 			backupServerName: targetBackupServerName,
 			recovery:         db.Spec.Recovery, users: db.Spec.Users,
+			deletedUsers:     db.Spec.DeletedUsers,
 			highAvailability: db.Spec.HighAvailability,
 			parameters:       db.Spec.Parameters,
 		})
