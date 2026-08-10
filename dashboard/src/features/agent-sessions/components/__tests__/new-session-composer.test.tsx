@@ -6,6 +6,7 @@ import {
   AgentSessionError,
   AgentSessionsUnavailableError,
 } from "@/features/agent-sessions/lib/errors";
+import type { AgentSessionView } from "@/features/agent-sessions/types";
 
 const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
@@ -47,9 +48,10 @@ vi.mock("@/features/services/hooks/use-repos", () => ({
   }),
 }));
 
+let priorSessions: AgentSessionView[] = [];
 vi.mock("@/features/agent-sessions/hooks/use-agent-sessions", () => ({
   useAgentSessions: () => ({
-    sessions: [],
+    sessions: priorSessions,
     loading: false,
     error: undefined,
     refetch: vi.fn(),
@@ -57,6 +59,7 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-sessions", () => ({
 }));
 
 beforeEach(() => {
+  priorSessions = [];
   mockNavigate.mockReset();
   create.mockReset();
   create.mockResolvedValue({
@@ -72,7 +75,7 @@ async function typeTask(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("Task"), "  refactor the mapper  ");
 }
 
-/** Set the repo chip through the @ toolbar button → Repositories → item. */
+/** Insert a repo mention through the @ toolbar → Repositories → item. */
 async function pickRepo(
   user: ReturnType<typeof userEvent.setup>,
   match: RegExp = /widgets/,
@@ -85,7 +88,7 @@ async function pickRepo(
 }
 
 describe("NewSessionComposer", () => {
-  it("submits createAgentSession with the chip's repo, auto-derived branch, and trimmed task, then navigates", async () => {
+  it("submits createAgentSession with the mentioned repo, derived branch, and trimmed task, then navigates", async () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);
     await typeTask(user);
@@ -123,7 +126,7 @@ describe("NewSessionComposer", () => {
     expect(send).toBeEnabled();
   });
 
-  it("nudges at the @ button instead of submitting when no repo chip is set", async () => {
+  it("nudges at the @ button instead of submitting when no repo is mentioned", async () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);
     await typeTask(user);
@@ -136,7 +139,22 @@ describe("NewSessionComposer", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it("opens categories on a typed @, inserts the typed token, fuzzy-filters, and embeds a chip on Enter", async () => {
+  it("opens the toolbar mention after text without requiring manual whitespace", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await user.type(screen.getByLabelText("Task"), "fix this");
+
+    await user.click(
+      screen.getByRole("button", { name: "Mention a repository or session" }),
+    );
+
+    expect(
+      await screen.findByRole("option", { name: /Repositories/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Task")).toHaveTextContent("fix this @");
+  });
+
+  it("opens categories on a typed @, filters, and inserts an atomic inline mention", async () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);
     const task = screen.getByLabelText("Task");
@@ -152,7 +170,7 @@ describe("NewSessionComposer", () => {
 
     // Enter selects the highlighted category and swaps `@` for the token.
     await user.keyboard("{Enter}");
-    expect(task).toHaveValue("fix the bug @repos:");
+    expect(task).toHaveTextContent("fix the bug @repos:");
 
     // Typing after the token fuzzy-filters the repo list.
     await user.keyboard("anvils");
@@ -168,34 +186,70 @@ describe("NewSessionComposer", () => {
     expect(screen.getByText("Connected via GitHub App")).toBeInTheDocument();
     expect(screen.getByText("Default branch: develop")).toBeInTheDocument();
 
-    // Enter removes the token text and embeds the removable chip.
+    // Enter replaces the typed token with a mention node at the same caret.
     await user.keyboard("{Enter}");
-    expect(task).toHaveValue("fix the bug ");
+    expect(task).toHaveTextContent("fix the bug @acme/anvils");
     expect(
-      screen.getByRole("button", { name: "Remove acme/anvils" }),
+      task.querySelector('[data-type="mention"][data-id="repo:acme/anvils"]'),
     ).toBeInTheDocument();
 
-    // The chip's repo is what the create receives.
+    // The inline mention's repo is what the create receives.
     await user.click(screen.getByRole("button", { name: "Start session" }));
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
     expect(create.mock.calls[0][0].repo).toBe("acme/anvils");
   });
 
-  it("re-nudges after the repo chip is removed", async () => {
+  it("replaces the prior inline repo because a session has one checkout", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await pickRepo(user);
+
+    const task = screen.getByLabelText("Task");
+    await pickRepo(user, /anvils/);
+
+    expect(
+      task.querySelector('[data-id="repo:acme/widgets"]'),
+    ).not.toBeInTheDocument();
+    expect(
+      task.querySelector('[data-id="repo:acme/anvils"]'),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ repo: "acme/anvils" }),
+    );
+  });
+
+  it("keeps session context inline and serializes its id into the prompt", async () => {
+    priorSessions = [agentSession("as-prior", "Investigate flaky tests")];
     const user = userEvent.setup();
     render(<NewSessionComposer />);
     await typeTask(user);
     await pickRepo(user);
 
     await user.click(
-      screen.getByRole("button", { name: "Remove acme/widgets" }),
+      screen.getByRole("button", { name: "Mention a repository or session" }),
     );
-    await user.click(screen.getByRole("button", { name: "Start session" }));
+    await user.click(await screen.findByRole("option", { name: /Sessions/ }));
+    await user.click(
+      await screen.findByRole("option", { name: /Investigate flaky tests/ }),
+    );
 
     expect(
-      await screen.findByText("Pick a repository with @ first."),
-    ).toBeInTheDocument();
-    expect(create).not.toHaveBeenCalled();
+      screen
+        .getByLabelText("Task")
+        .querySelector('[data-id="session:as-prior"]'),
+    ).toHaveTextContent("@Investigate flaky tests");
+
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        task: "refactor the mapper\n\nContext: agent session as-prior",
+      }),
+    );
   });
 
   it("rejects more than 32 egress hostnames before ever calling create", async () => {
@@ -338,3 +392,34 @@ describe("NewSessionComposer", () => {
     expect(screen.getByText(/That input isn't valid/)).toBeInTheDocument();
   });
 });
+
+function agentSession(id: string, task: string): AgentSessionView {
+  return {
+    id,
+    ownerId: "tea-1",
+    repo: "acme/widgets",
+    branch: `bex-agent/${id}`,
+    agentConfig: {
+      agent: "claude",
+      model: null,
+      modelEndpoint: null,
+      task,
+      template: null,
+    },
+    sandboxId: null,
+    phase: "completed",
+    status: "Completed",
+    headSha: null,
+    prUrl: null,
+    prNumber: null,
+    evidence: null,
+    turns: 1,
+    deliveryMode: null,
+    failureReason: null,
+    createdAt: "2026-08-09T00:00:00Z",
+    updatedAt: "2026-08-09T00:00:00Z",
+    canceledAt: null,
+    isTerminal: true,
+    isSteerable: true,
+  };
+}
