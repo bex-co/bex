@@ -281,6 +281,10 @@ function buildSecurityHeaders(
   // node URLs built from Kratos's upstream base URL, so dev must allow both
   // origins while production only exposes the browser-facing one.
   const scriptOrigins = new Set([new URL(kratosPublicURL).origin]);
+  // Cloudflare Web Analytics injects its beacon <script> into the HTML at the
+  // edge (the zone proxies dashboard.bex.co); without this origin the browser
+  // logs a CSP violation on every full document load.
+  scriptOrigins.add("https://static.cloudflareinsights.com");
   if (process.env.NODE_ENV !== "production") {
     scriptOrigins.add(new URL(kratosProxyTarget).origin);
   }

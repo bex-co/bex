@@ -204,7 +204,9 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
                     ) : null}
                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       {createdAt ? (
-                        <span>
+                        // formatDeployTimestamp renders in the local timezone,
+                        // which differs between the UTC SSR pod and the browser.
+                        <span suppressHydrationWarning>
                           {t("deploys.deployedAt", { timestamp: createdAt })}
                         </span>
                       ) : null}

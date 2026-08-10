@@ -23,6 +23,7 @@ describe("detectLanguageOnClient", () => {
     vi.clearAllMocks();
     mockGetSearchParamOnClient.mockReturnValue(null);
     mockGetCookie.mockReturnValue(undefined);
+    document.documentElement.lang = "";
   });
 
   it("falls back to the default language when nothing is set", async () => {
@@ -68,6 +69,28 @@ describe("detectLanguageOnClient", () => {
 
   it("ignores an unsupported cookie value", async () => {
     mockGetCookie.mockReturnValue("fr");
+
+    const detectLanguageOnClient = await importDetectLanguageOnClient();
+    expect(detectLanguageOnClient()).toBe("en");
+  });
+
+  it("falls back to the SSR-stamped <html lang> when no URL param or cookie is set", async () => {
+    document.documentElement.lang = "zh";
+
+    const detectLanguageOnClient = await importDetectLanguageOnClient();
+    expect(detectLanguageOnClient()).toBe("zh");
+  });
+
+  it("prefers the cookie over the SSR-stamped <html lang>", async () => {
+    document.documentElement.lang = "zh";
+    mockGetCookie.mockReturnValue("en");
+
+    const detectLanguageOnClient = await importDetectLanguageOnClient();
+    expect(detectLanguageOnClient()).toBe("en");
+  });
+
+  it("ignores an unsupported <html lang> value", async () => {
+    document.documentElement.lang = "fr";
 
     const detectLanguageOnClient = await importDetectLanguageOnClient();
     expect(detectLanguageOnClient()).toBe("en");
