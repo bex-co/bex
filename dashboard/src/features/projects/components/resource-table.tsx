@@ -211,7 +211,10 @@ function ResourceTableRow({
           <TableCell className="hidden text-muted-foreground lg:table-cell">
             {row.region ?? <UnknownValue />}
           </TableCell>
-          <TableCell className="hidden tabular-nums text-muted-foreground sm:table-cell">
+          <TableCell
+            className="hidden tabular-nums text-muted-foreground sm:table-cell"
+            suppressHydrationWarning
+          >
             {row.updatedAt ? (
               formatRelativeAge(row.updatedAt)
             ) : (
@@ -220,7 +223,10 @@ function ResourceTableRow({
           </TableCell>
         </>
       ) : (
-        <TableCell className="hidden tabular-nums text-muted-foreground md:table-cell">
+        <TableCell
+          className="hidden tabular-nums text-muted-foreground md:table-cell"
+          suppressHydrationWarning
+        >
           {formatRelativeAge(row.createdAt)}
         </TableCell>
       )}

@@ -9,9 +9,12 @@ import { getCookie } from "@/common/hooks/use-cookie-storage-state/cookie";
 
 /**
  * Detect the preferred language on the client, mirroring the server's
- * URL > cookie chain (no Accept-Language client-side, no localStorage here —
- * localStorage is applied post-hydration in useLanguageHydrationSync to
- * avoid a hydration mismatch against the SSR-rendered language).
+ * URL > cookie chain, then falling back to the SSR-stamped <html lang>
+ * before the default. The client cannot read Accept-Language, so without
+ * that fallback a first-time visitor whose browser negotiated a non-default
+ * language server-side would hydrate an English render over a translated
+ * document — a whole-tree React #418. (No localStorage here — that is
+ * applied post-hydration in useLanguageHydrationSync for the same reason.)
  */
 export function detectLanguageOnClient(): SupportedLanguage {
   const urlLang = resolveUrlLanguage(getSearchParamOnClient);
@@ -19,6 +22,9 @@ export function detectLanguageOnClient(): SupportedLanguage {
 
   const cookieLang = asSupportedLanguage(getCookie("i18nextLng"));
   if (cookieLang) return cookieLang;
+
+  const documentLang = asSupportedLanguage(document.documentElement.lang);
+  if (documentLang) return documentLang;
 
   return DEFAULT_LANGUAGE;
 }
