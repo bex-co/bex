@@ -62,22 +62,34 @@ export function mentionStateFromQuery(query: string): MentionState {
   return { category: null, query };
 }
 
+/** How well a query hit a candidate — the ranking's primary signal. */
+const MATCH_NONE = 0;
+const MATCH_SUBSEQUENCE = 1;
+const MATCH_SUBSTRING = 2;
+const MATCH_PREFIX = 3;
+
 /**
- * Dependency-free fuzzy match: case-insensitive `includes` first, then an
- * in-order subsequence scan (`tianpan` matches `android-tianpanco-release`;
- * `awg` matches `acme/widgets`). An empty query matches everything.
+ * Dependency-free fuzzy match quality: prefix, then case-insensitive
+ * `includes`, then an in-order subsequence scan (`tianpan` matches
+ * `android-tianpanco-release`; `awg` matches `acme/widgets`). An empty query
+ * matches everything at `MATCH_PREFIX`, so it leaves the source order intact.
  */
-export function fuzzyMatch(query: string, candidate: string): boolean {
+function matchQuality(query: string, candidate: string): number {
   const q = query.trim().toLowerCase();
-  if (!q) return true;
   const c = candidate.toLowerCase();
-  if (c.includes(q)) return true;
+  if (c.startsWith(q)) return MATCH_PREFIX;
+  if (c.includes(q)) return MATCH_SUBSTRING;
   let i = 0;
   for (const ch of c) {
     if (ch === q[i]) i += 1;
-    if (i === q.length) return true;
+    if (i === q.length) return MATCH_SUBSEQUENCE;
   }
-  return false;
+  return MATCH_NONE;
+}
+
+/** Whether the query hits the candidate at all (any quality). */
+export function fuzzyMatch(query: string, candidate: string): boolean {
+  return matchQuality(query, candidate) !== MATCH_NONE;
 }
 
 /** One row of the open picker — a category, a repo, or a prior session. */
@@ -97,22 +109,60 @@ export interface MentionSource {
   sessions: AgentSessionView[];
 }
 
-/** Every text a row can be matched against (a category matches its id or label). */
+/** The bare repo name — `acme/widgets` → `widgets`; no owner ⇒ the whole name. */
+function repoName(fullName: string): string {
+  const slash = fullName.lastIndexOf("/");
+  return slash === -1 ? fullName : fullName.slice(slash + 1);
+}
+
+/**
+ * Every text a row can be matched against, **most significant first** — a repo
+ * leads with its bare name so `@repos:bex` ranks `someone/bex7` above every
+ * repo that merely lives under a `bex…` org (a category matches its id or
+ * label; the repo's `fullName` still carries the owner match).
+ */
 function optionSearchTexts(option: MentionOption, t: Translate): string[] {
   switch (option.kind) {
     case "category":
       return [option.category, t(CATEGORY_META[option.category].labelKey)];
     case "repo":
-      return [option.repo.fullName];
+      return [repoName(option.repo.fullName), option.repo.fullName];
     case "session":
       return [sessionTitle(option.session)];
   }
 }
 
+/**
+ * A row's relevance: the best (field priority, match quality) pair it offers.
+ * Prefix/substring hits form a strong band ordered by field first — a repo-name
+ * hit outranks an owner-only one — while the noisier subsequence hits all sink
+ * below it. `0` means the row does not match at all.
+ */
+function optionScore(
+  query: string,
+  option: MentionOption,
+  t: Translate,
+): number {
+  let best = 0;
+  optionSearchTexts(option, t).forEach((text, field) => {
+    const quality = matchQuality(query, text);
+    if (quality === MATCH_NONE) return;
+    const score =
+      quality === MATCH_SUBSEQUENCE ? quality : 100 - field * 10 + quality;
+    if (score > best) best = score;
+  });
+  return best;
+}
+
 /** The popup scrolls ~6 rows and an org installation can expose hundreds. */
 const MAX_OPTIONS = 50;
 
-/** The open level's rows, fuzzy-filtered by the typed query and capped. */
+/**
+ * The open level's rows, fuzzy-filtered by the typed query, ranked by
+ * relevance, and capped. The sort is stable, so an empty query (every row
+ * scores alike) and same-relevance ties both keep the source order — and the
+ * cap now keeps the best matches rather than the first fifty.
+ */
 export function mentionOptions(
   state: MentionState,
   source: MentionSource,
@@ -125,12 +175,11 @@ export function mentionOptions(
         ? source.repos.map((repo) => ({ kind: "repo", repo }))
         : source.sessions.map((session) => ({ kind: "session", session }));
   return rows
-    .filter((option) =>
-      optionSearchTexts(option, t).some((text) =>
-        fuzzyMatch(state.query, text),
-      ),
-    )
-    .slice(0, MAX_OPTIONS);
+    .map((option) => ({ option, score: optionScore(state.query, option, t) }))
+    .filter((scored) => scored.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_OPTIONS)
+    .map((scored) => scored.option);
 }
 
 /** What an empty list means: no source rows reads differently from no matches. */
