@@ -21,6 +21,13 @@ spec:
       - http01:
           ingress:
             ingressClassName: traefik
+            # ClusterIP (not the cert-manager default NodePort): the ACME solver
+            # Service is created in the tenant namespace, whose ResourceQuota sets
+            # services.nodeports=0 (ADR043 — a tenant NodePort would bind every
+            # node's public IP, bypassing ingress + firewall, ADR022). Traefik
+            # routes the /.well-known/acme-challenge path to a ClusterIP solver,
+            # so certs issue without any NodePort — quota + isolation stay intact.
+            serviceType: ClusterIP
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -38,3 +45,10 @@ spec:
       - http01:
           ingress:
             ingressClassName: traefik
+            # ClusterIP (not the cert-manager default NodePort): the ACME solver
+            # Service is created in the tenant namespace, whose ResourceQuota sets
+            # services.nodeports=0 (ADR043 — a tenant NodePort would bind every
+            # node's public IP, bypassing ingress + firewall, ADR022). Traefik
+            # routes the /.well-known/acme-challenge path to a ClusterIP solver,
+            # so certs issue without any NodePort — quota + isolation stay intact.
+            serviceType: ClusterIP
