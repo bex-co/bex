@@ -37,6 +37,7 @@ function wire(
       modelEndpoint: null,
       task: "do the thing",
       template: null,
+      openPr: false,
     },
     sandboxId: null,
     phase: "running",
@@ -44,7 +45,6 @@ function wire(
     headSha: null,
     prUrl: null,
     prNumber: null,
-    evidence: null,
     turns: 0,
     deliveryMode: null,
     failureReason: null,
@@ -96,6 +96,7 @@ describe("toAgentSessionView", () => {
           modelEndpoint: "https://api.example.com",
           task: "ship it",
           template: "tpl-1",
+          openPr: true,
         },
       }),
     );
@@ -121,40 +122,16 @@ describe("toAgentSessionView", () => {
       modelEndpoint: "https://api.example.com",
       task: "ship it",
       template: "tpl-1",
+      openPr: true,
     });
   });
 
   it("normalizes null/absent optionals to their defaults", () => {
-    const view = toAgentSessionView(wire({ turns: null, evidence: null }));
+    const view = toAgentSessionView(wire({ turns: null }));
     expect(view.turns).toBe(0);
-    expect(view.evidence).toBeNull();
     expect(view.deliveryMode).toBeNull();
     expect(view.isTerminal).toBe(false); // phase "running"
     expect(view.isSteerable).toBe(false);
-  });
-
-  it("maps the evidence sub-object, defaulting missing lists/flags", () => {
-    const view = toAgentSessionView(
-      wire({
-        evidence: {
-          __typename: "AgentSessionEvidence",
-          commandLog: ["go build ./..."],
-          testOutput: null,
-          outputTail: "ok",
-          changedFiles: null,
-          commits: 2,
-          truncated: true,
-        },
-      }),
-    );
-    expect(view.evidence).toEqual({
-      commandLog: ["go build ./..."],
-      testOutput: [],
-      outputTail: "ok",
-      changedFiles: [],
-      commits: 2,
-      truncated: true,
-    });
   });
 });
 
@@ -217,9 +194,9 @@ describe("agentSessionStatusPhraseKey", () => {
     expect(
       agentSessionStatusPhraseKey({ phase: "completed", prNumber: null }),
     ).toBe("agentSessions.phase.completed");
-    expect(agentSessionStatusPhraseKey({ phase: "failed", prNumber: null })).toBe(
-      "agentSessions.phase.failed",
-    );
+    expect(
+      agentSessionStatusPhraseKey({ phase: "failed", prNumber: null }),
+    ).toBe("agentSessions.phase.failed");
     expect(
       agentSessionStatusPhraseKey({ phase: "canceled", prNumber: null }),
     ).toBe("agentSessions.phase.canceled");

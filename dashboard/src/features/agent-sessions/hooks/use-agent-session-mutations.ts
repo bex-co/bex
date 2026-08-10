@@ -32,6 +32,12 @@ export interface CreateAgentSessionInput {
   task: string;
   /** Platform-registered sandbox image; omitted ⇒ the default template. */
   template?: string;
+  /**
+   * Ask the platform to open a draft PR when the session finishes (w5/m65).
+   * The `bex-agent/*` branch is always pushed; the PR is opt-in, so omitting
+   * this delivers the branch alone.
+   */
+  openPr?: boolean;
   /** Extra egress FQDNs beyond the model endpoint + built-in setup registries. */
   egressAllowlist?: string[];
 }
@@ -83,6 +89,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
               modelEndpoint: input.modelEndpoint || undefined,
               task: input.task,
               template: input.template || undefined,
+              openPr: input.openPr || undefined,
             },
             egressAllowlist: input.egressAllowlist?.length
               ? input.egressAllowlist

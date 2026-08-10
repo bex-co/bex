@@ -226,8 +226,15 @@ func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
 }
 
 func (c *Completer) complete(ctx context.Context, record store.AgentSession, report statusReport) {
-	evidence := buildEvidence(report)
-	evidenceJSON, _ := json.Marshal(evidence) // Evidence is plain data; marshal cannot fail
+	evidenceJSON, _ := json.Marshal(buildEvidence(report)) // Evidence is plain data; marshal cannot fail
+
+	// An unreadable config fails safe to opted OUT and an untitled PR rather than
+	// blocking the completion: the branch is already pushed, so the recoverable
+	// outcome is to record the turn and write nothing to the tenant's repository.
+	config, err := decodeAgentConfig(record)
+	if err != nil {
+		log.Printf("agent-session completer: agent config unreadable (session=%s): %v", record.ID, err)
+	}
 
 	// A turn that pushed nothing is an honest no-op completion: record it (with
 	// evidence) but open no PR — there is nothing to review.
@@ -238,6 +245,21 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 		} else {
 			log.Printf("agent-session completer: finalize no-op failed (session=%s): %v", record.ID, err)
 		}
+		return
+	}
+
+	// Draft-PR delivery is opt-in (w5/m65): unless the session asked for a pull
+	// request at create time, the pushed branch IS the delivery. Finalize with the
+	// head SHA and open nothing on the tenant's repository — a PR nobody asked for
+	// is noise on their repo, and the branch remains theirs to open one from.
+	if !config.OpenPR {
+		if _, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted,
+			report.Delivery.HeadSHA, "", 0, evidenceJSON, ""); err != nil {
+			log.Printf("agent-session completer: finalize (no PR requested) failed (session=%s): %v", record.ID, err)
+			return // retry next tick; the sandbox stays until the row is finalized
+		}
+		log.Printf("agent-session completer: completed session=%s head=%s (branch pushed, no PR requested)", record.ID, report.Delivery.HeadSHA)
+		c.teardown(ctx, record)
 		return
 	}
 
@@ -261,7 +283,7 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 		return // transient store error: retry next tick
 	}
 	pr, err := c.GitHub.OpenDraftPullRequest(ctx, conn.InstallationID, owner, name,
-		record.Branch, base, prTitle(record), prBody(record, report, evidence, c.APIPublicURL))
+		record.Branch, base, prTitle(config, record.ID), prBody(record, report, c.APIPublicURL))
 	if err != nil {
 		log.Printf("agent-session completer: open draft PR failed (session=%s repo=%s branch=%s base=%s): %v", record.ID, record.Repo, record.Branch, base, err)
 		c.fail(ctx, record, "draft pull request could not be opened")
@@ -414,10 +436,10 @@ func parseTranscriptLog(raw string, turn int) []store.AgentSessionTranscriptPart
 	return out
 }
 
-func prTitle(record store.AgentSession) string {
-	task := firstLine(taskOf(record))
+func prTitle(config AgentConfig, sessionID string) string {
+	task := firstLine(config.Task)
 	if task == "" {
-		return "bex agent session " + record.ID
+		return "bex agent session " + sessionID
 	}
 	if len(task) > 72 {
 		task = task[:72]
@@ -425,7 +447,12 @@ func prTitle(record store.AgentSession) string {
 	return "bex agent: " + task
 }
 
-func prBody(record store.AgentSession, report statusReport, ev Evidence, apiURL string) string {
+// prBody is the draft PR's description: session metadata only (w5/m65). The
+// evidence digest it used to inline was a lossy re-derivation of what the PR
+// already shows better — GitHub renders the real diff and commit list, and the
+// "test output" was whatever tool call happened to emit stdout (the driver's
+// extractor cannot tell a test run from a grep).
+func prBody(record store.AgentSession, report statusReport, apiURL string) string {
 	var b strings.Builder
 	b.WriteString("Opened by a bex cloud coding-agent session.\n\n")
 	fmt.Fprintf(&b, "- Session: `%s`\n- Branch: `%s`\n- Head: `%s`\n",
@@ -435,25 +462,6 @@ func prBody(record store.AgentSession, report statusReport, ev Evidence, apiURL 
 	}
 	if apiURL != "" {
 		fmt.Fprintf(&b, "- API: %s/v1/agent-sessions/%s\n", strings.TrimRight(apiURL, "/"), record.ID)
-	}
-	if len(ev.ChangedFiles) > 0 {
-		b.WriteString("\n**Changed files**\n\n")
-		for _, f := range ev.ChangedFiles {
-			fmt.Fprintf(&b, "- `%s`\n", f)
-		}
-	}
-	if len(ev.CommandLog) > 0 {
-		b.WriteString("\n**Commands run**\n\n```\n")
-		b.WriteString(strings.Join(ev.CommandLog, "\n"))
-		b.WriteString("\n```\n")
-	}
-	if len(ev.TestOutput) > 0 {
-		b.WriteString("\n**Test output (tail)**\n\n```\n")
-		b.WriteString(strings.Join(ev.TestOutput, "\n"))
-		b.WriteString("\n```\n")
-	}
-	if ev.Truncated {
-		b.WriteString("\n_Evidence truncated to bounded limits._\n")
 	}
 	return b.String()
 }
@@ -498,14 +506,6 @@ func capLines(in []string, max int) ([]string, bool) {
 		out = append(out, line)
 	}
 	return out, truncated
-}
-
-func taskOf(record store.AgentSession) string {
-	config, err := decodeAgentConfig(record)
-	if err != nil {
-		return ""
-	}
-	return config.Task
 }
 
 func firstLine(s string) string {

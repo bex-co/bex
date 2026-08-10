@@ -1,0 +1,54 @@
+import { describe, it, expect, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
+import type { AgentSessionView } from "@/features/agent-sessions/types";
+import { agentSessionView } from "@/test/mocks/agent-session";
+
+// The header links out to /agents and drives cancel through the mutations hook;
+// neither is under test here, so both are inert.
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, ...rest }: { children: React.ReactNode }) => (
+    <a {...rest}>{children}</a>
+  ),
+}));
+vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
+  useAgentSessionMutations: () => ({ cancel: vi.fn() }),
+}));
+
+function view(over: Partial<AgentSessionView> = {}): AgentSessionView {
+  return agentSessionView({ phase: "completed", turns: 1, ...over });
+}
+
+describe("SessionDetailHeader", () => {
+  // w5/m65 removed the evidence side panel; the header must not offer a way back
+  // to a surface that no longer exists.
+  it("offers no evidence toggle", () => {
+    render(<SessionDetailHeader session={view()} />);
+    expect(screen.queryByText("Evidence")).not.toBeInTheDocument();
+  });
+
+  // With the inline PR card gone, this badge is the session's only PR
+  // affordance, so it has to survive.
+  it("links the draft PR through the #N badge when the session opened one", () => {
+    render(
+      <SessionDetailHeader
+        session={view({
+          prNumber: 7,
+          prUrl: "https://github.com/acme/widgets/pull/7",
+        })}
+      />,
+    );
+    const link = screen.getByRole("link", { name: /#7/ });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://github.com/acme/widgets/pull/7",
+    );
+  });
+
+  // The default (opted-out) session has no PR at all — the badge must stay away
+  // rather than render an empty or dead reference.
+  it("renders no PR badge for a session that never asked for one", () => {
+    render(<SessionDetailHeader session={view()} />);
+    expect(screen.queryByText(/#\d/)).not.toBeInTheDocument();
+  });
+});

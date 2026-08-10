@@ -2554,36 +2554,36 @@ function resolveGraphQL({ operationName, variables = {} }) {
       // CREATED_AGENT_SESSIONS so the detail page + sidebar can read it back).
       const cfg = variables.agentConfig ?? {};
       const created = {
-          __typename: "AgentSession",
-          id: `ags-demo${String(Date.now()).slice(-9)}created`,
-          ownerId: variables.ownerId || WORKSPACE_DEFAULT,
-          repo: variables.repo,
-          branch: variables.branch,
-          agentConfig: {
-            __typename: "AgentSessionConfig",
-            agent: cfg.agent ?? "claude",
-            model: cfg.model ?? null,
-            modelEndpoint: cfg.modelEndpoint ?? null,
-            task: cfg.task ?? "",
-            template: cfg.template ?? null,
-          },
-          sandboxId: "sbx-created-0001",
-          phase: "running",
-          status: "running",
-          headSha: null,
-          prUrl: null,
-          prNumber: null,
-          evidence: null,
-          turns: 1,
-          deliveryMode: null,
-          failureReason: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          canceledAt: null,
-          ticket: "mock-create-ticket",
-          url: `http://localhost:${PORT}`,
-          expiresAt: new Date(Date.now() + 90_000).toISOString(),
-        };
+        __typename: "AgentSession",
+        id: `ags-demo${String(Date.now()).slice(-9)}created`,
+        ownerId: variables.ownerId || WORKSPACE_DEFAULT,
+        repo: variables.repo,
+        branch: variables.branch,
+        agentConfig: {
+          __typename: "AgentSessionConfig",
+          agent: cfg.agent ?? "claude",
+          model: cfg.model ?? null,
+          modelEndpoint: cfg.modelEndpoint ?? null,
+          task: cfg.task ?? "",
+          template: cfg.template ?? null,
+          openPr: cfg.openPr ?? false,
+        },
+        sandboxId: "sbx-created-0001",
+        phase: "running",
+        status: "running",
+        headSha: null,
+        prUrl: null,
+        prNumber: null,
+        turns: 1,
+        deliveryMode: null,
+        failureReason: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        canceledAt: null,
+        ticket: "mock-create-ticket",
+        url: `http://localhost:${PORT}`,
+        expiresAt: new Date(Date.now() + 90_000).toISOString(),
+      };
       CREATED_AGENT_SESSIONS.unshift(created);
       return { createAgentSession: created };
     }
@@ -2606,29 +2606,23 @@ function resolveGraphQL({ operationName, variables = {} }) {
 
 // Mock agent sessions (ADR047 D9) so the /agents list renders populated in the
 // offline stub: one per lifecycle phase, mirroring the real m43 E2E shape
-// (completed → draft PR + evidence, a steered two-turn session, a running turn,
-// a failed turn with a reason, a canceled one). Stub-only; never a real backend.
+// (completed → draft PR, a steered two-turn session, a running turn, a failed
+// turn with a reason, a canceled one). Stub-only; never a real backend. The two
+// completed sessions opted into a PR (openPr); a default session pushes its
+// branch and opens none (w5/m65).
 const agoISO = (mins) => new Date(Date.now() - mins * 60_000).toISOString();
 // Sessions created through the stub this process-lifetime (so the create →
 // navigate → detail flow works offline; lost on restart, which is fine).
 const CREATED_AGENT_SESSIONS = [];
 function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
-  const cfg = (task, model = null) => ({
+  const cfg = (task, model = null, openPr = false) => ({
     __typename: "AgentSessionConfig",
     agent: "claude",
     model,
     modelEndpoint: null,
     task,
     template: null,
-  });
-  const ev = (files, commits) => ({
-    __typename: "AgentSessionEvidence",
-    commandLog: ["git status", "git add -A && git commit -m …", "git push"],
-    testOutput: [],
-    outputTail: "Done! Committed and pushed the change.",
-    changedFiles: files,
-    commits,
-    truncated: false,
+    openPr,
   });
   const base = {
     __typename: "AgentSession",
@@ -2638,7 +2632,6 @@ function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
     headSha: null,
     prUrl: null,
     prNumber: null,
-    evidence: null,
     turns: 0,
     deliveryMode: null,
     failureReason: null,
@@ -2651,13 +2644,12 @@ function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
       id: "ags-demo00000000000000006",
       repo: "bex-co/bex-hello-go-live",
       branch: "bex-agent/pr-add-healthcheck",
-      agentConfig: cfg("Add a /healthz endpoint and a unit test."),
+      agentConfig: cfg("Add a /healthz endpoint and a unit test.", null, true),
       phase: "completed",
       status: "completed",
       headSha: "56e215d4e64e30ead0c7dafd096b8fec46c26342",
       prUrl: "https://github.com/bex-co/bex-hello-go-live/pull/6",
       prNumber: 6,
-      evidence: ev(["healthz.go", "healthz_test.go"], 1),
       turns: 1,
       deliveryMode: null,
       createdAt: agoISO(2),
@@ -2668,13 +2660,16 @@ function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
       id: "ags-demo00000000000000005",
       repo: "bex-co/bex-hello-go-live",
       branch: "bex-agent/verify-live-run",
-      agentConfig: cfg("Create VERIFY.md, then append a STEERED line."),
+      agentConfig: cfg(
+        "Create VERIFY.md, then append a STEERED line.",
+        null,
+        true,
+      ),
       phase: "completed",
       status: "completed",
       headSha: "f327bff2b40951cac1d432e9f198592f5d000da0",
       prUrl: "https://github.com/bex-co/bex-hello-go-live/pull/5",
       prNumber: 5,
-      evidence: ev(["VERIFY.md"], 2),
       turns: 2,
       deliveryMode: "redispatch",
       createdAt: agoISO(9),
@@ -2746,25 +2741,95 @@ const AGENT_STREAM_TRANSCRIPT = [
     data: {
       type: "plan",
       entries: [
-        { content: "Add the /healthz handler", status: "completed", priority: "high" },
-        { content: "Write a unit test", status: "completed", priority: "medium" },
-        { content: "Commit and open a draft PR", status: "in_progress", priority: "medium" },
+        {
+          content: "Add the /healthz handler",
+          status: "completed",
+          priority: "high",
+        },
+        {
+          content: "Write a unit test",
+          status: "completed",
+          priority: "medium",
+        },
+        {
+          content: "Commit and open a draft PR",
+          status: "in_progress",
+          priority: "medium",
+        },
       ],
     },
   },
   { type: "reasoning-start", id: "r1" },
-  { type: "reasoning-delta", id: "r1", delta: "The service already wires a router, " },
-  { type: "reasoning-delta", id: "r1", delta: "so I'll register the route there and add a table test." },
+  {
+    type: "reasoning-delta",
+    id: "r1",
+    delta: "The service already wires a router, ",
+  },
+  {
+    type: "reasoning-delta",
+    id: "r1",
+    delta: "so I'll register the route there and add a table test.",
+  },
   { type: "reasoning-end", id: "r1" },
-  { type: "tool-input-start", toolCallId: "c1", toolName: "acp_agent", dynamic: true },
-  { type: "tool-input-available", toolCallId: "c1", toolName: "acp_agent", input: { command: "ls" }, dynamic: true },
-  { type: "data-acp", data: { sessionUpdate: "tool_call", title: "List the repo", command: "ls -la", kind: "execute" } },
-  { type: "data-acp", data: { type: "diff", path: "healthz.go", oldText: "", newText: "package main\n\nfunc healthz(w http.ResponseWriter, r *http.Request) {\n\tw.WriteHeader(200)\n}\n", toolCallId: "c1" } },
-  { type: "data-acp", data: { type: "terminal", terminalId: "term-1", output: "$ go test ./...\nok  \tbex-hello-go-live\t0.12s", toolCallId: "c1" } },
-  { type: "tool-output-available", toolCallId: "c1", output: { ok: true }, dynamic: true },
+  {
+    type: "tool-input-start",
+    toolCallId: "c1",
+    toolName: "acp_agent",
+    dynamic: true,
+  },
+  {
+    type: "tool-input-available",
+    toolCallId: "c1",
+    toolName: "acp_agent",
+    input: { command: "ls" },
+    dynamic: true,
+  },
+  {
+    type: "data-acp",
+    data: {
+      sessionUpdate: "tool_call",
+      title: "List the repo",
+      command: "ls -la",
+      kind: "execute",
+    },
+  },
+  {
+    type: "data-acp",
+    data: {
+      type: "diff",
+      path: "healthz.go",
+      oldText: "",
+      newText:
+        "package main\n\nfunc healthz(w http.ResponseWriter, r *http.Request) {\n\tw.WriteHeader(200)\n}\n",
+      toolCallId: "c1",
+    },
+  },
+  {
+    type: "data-acp",
+    data: {
+      type: "terminal",
+      terminalId: "term-1",
+      output: "$ go test ./...\nok  \tbex-hello-go-live\t0.12s",
+      toolCallId: "c1",
+    },
+  },
+  {
+    type: "tool-output-available",
+    toolCallId: "c1",
+    output: { ok: true },
+    dynamic: true,
+  },
   { type: "text-start", id: "t1" },
-  { type: "text-delta", id: "t1", delta: "Done! I added `/healthz` with a passing test and " },
-  { type: "text-delta", id: "t1", delta: "committed on `bex-agent/pr-add-healthcheck`." },
+  {
+    type: "text-delta",
+    id: "t1",
+    delta: "Done! I added `/healthz` with a passing test and ",
+  },
+  {
+    type: "text-delta",
+    id: "t1",
+    delta: "committed on `bex-agent/pr-add-healthcheck`.",
+  },
   { type: "text-end", id: "t1" },
   { type: "finish-step" },
   { type: "finish" },

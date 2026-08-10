@@ -25,7 +25,7 @@ import {
   MobileCancelAgentSessionDocument,
 } from "@/generated-graphql";
 import { isCancelablePhase, sessionPhaseView } from "../lifecycle";
-import { hasEvidence, isGitHubPrUrl } from "./evidence";
+import { isGitHubPrUrl } from "./github-links";
 
 const cancelAgentSession = defineSafeAction(
   "cancel-agent-session",
@@ -48,7 +48,6 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
 
   const session = data?.agentSession ?? null;
   const phase = sessionPhaseView(session?.phase);
-  const evidence = session?.evidence ?? null;
 
   const options: MobileActionOption[] =
     session && isCancelablePhase(session.phase)
@@ -73,23 +72,6 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
           },
         ]
       : [];
-
-  const list = (label: string, items: readonly string[] | null | undefined) =>
-    items && items.length > 0 ? (
-      <View style={styles.section}>
-        <Text style={[styles.sectionLabel, { color: theme.mutedForeground }]}>
-          {label}
-        </Text>
-        {items.map((item, index) => (
-          <Text
-            key={`${label}:${index}`}
-            style={[styles.mono, { color: theme.foreground }]}
-          >
-            {item}
-          </Text>
-        ))}
-      </View>
-    ) : null;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
@@ -175,51 +157,6 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
               </DashboardCard>
             ) : null}
 
-            <DashboardCard title={t("agentSessions.detail.evidence")}>
-              {hasEvidence(evidence) ? (
-                <>
-                  {list(
-                    t("agentSessions.detail.commandLog"),
-                    evidence?.commandLog,
-                  )}
-                  {list(
-                    t("agentSessions.detail.testOutput"),
-                    evidence?.testOutput,
-                  )}
-                  {list(
-                    t("agentSessions.detail.changedFiles"),
-                    evidence?.changedFiles,
-                  )}
-                  {evidence?.outputTail ? (
-                    <View style={styles.section}>
-                      <Text
-                        style={[
-                          styles.sectionLabel,
-                          { color: theme.mutedForeground },
-                        ]}
-                      >
-                        {t("agentSessions.detail.outputTail")}
-                      </Text>
-                      <Text style={[styles.mono, { color: theme.foreground }]}>
-                        {evidence.outputTail}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {evidence?.truncated ? (
-                    <Text
-                      style={[styles.meta, { color: theme.mutedForeground }]}
-                    >
-                      {t("agentSessions.detail.truncated")}
-                    </Text>
-                  ) : null}
-                </>
-              ) : (
-                <Text style={[styles.body, { color: theme.mutedForeground }]}>
-                  {t("agentSessions.detail.noEvidence")}
-                </Text>
-              )}
-            </DashboardCard>
-
             <SafeActionPanel options={options} />
           </>
         )}
@@ -239,11 +176,4 @@ const styles = StyleSheet.create({
   body: { fontSize: fontSizes.sm, lineHeight: fontSizes.sm * 1.5 },
   meta: { fontSize: fontSizes.xs, marginTop: space.xs },
   phase: { fontSize: fontSizes.sm, fontWeight: fontWeights.medium },
-  section: { marginTop: space.sm, gap: 2 },
-  sectionLabel: {
-    fontSize: fontSizes.xs,
-    fontWeight: fontWeights.medium,
-    textTransform: "uppercase",
-  },
-  mono: { fontSize: fontSizes.xs, fontFamily: "monospace" },
 });

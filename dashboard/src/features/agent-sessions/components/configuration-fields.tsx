@@ -1,4 +1,5 @@
 import { Input } from "@/common/components/ui/input";
+import { Switch } from "@/common/components/ui/switch";
 import { Textarea } from "@/common/components/ui/textarea";
 import {
   Select,
@@ -136,6 +137,25 @@ export function ConfigurationFields({
             </FormControl>
             <FormDescription>{t("agentSessions.egressHint")}</FormDescription>
             <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        name="openPr"
+        render={({ field }) => (
+          <FormItem className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <FormLabel>{t("agentSessions.openPrLabel")}</FormLabel>
+              <FormDescription>{t("agentSessions.openPrHint")}</FormDescription>
+            </div>
+            <FormControl>
+              <Switch
+                checked={field.value}
+                onCheckedChange={field.onChange}
+                aria-label={t("agentSessions.openPrLabel")}
+              />
+            </FormControl>
           </FormItem>
         )}
       />

@@ -6,6 +6,7 @@ import type {
   AgentSessionPhase,
   AgentSessionView,
 } from "@/features/agent-sessions/types";
+import { agentSessionView } from "@/test/mocks/agent-session";
 
 const steer = vi.fn();
 vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
@@ -32,36 +33,7 @@ function view(
   phase: AgentSessionPhase,
   over: Partial<AgentSessionView> = {},
 ): AgentSessionView {
-  return {
-    id: "as-1",
-    ownerId: "tea-1",
-    repo: "acme/widgets",
-    branch: "bex-agent/fix",
-    agentConfig: {
-      agent: "claude",
-      model: null,
-      modelEndpoint: null,
-      task: "fix the failing tests",
-      template: null,
-    },
-    sandboxId: null,
-    sshAddress: null,
-    phase,
-    status: "s",
-    headSha: null,
-    prUrl: null,
-    prNumber: null,
-    evidence: null,
-    turns: 0,
-    deliveryMode: null,
-    failureReason: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    canceledAt: null,
-    isTerminal: ["completed", "failed", "canceled"].includes(phase),
-    isSteerable: ["completed", "failed"].includes(phase),
-    ...over,
-  };
+  return agentSessionView({ phase, task: "fix the failing tests", ...over });
 }
 
 describe("FailureCallout", () => {
@@ -99,7 +71,9 @@ describe("FailureCallout", () => {
         session={view("failed", { failureReason: null, status: "" })}
       />,
     );
-    expect(screen.getByText("The session failed to start.")).toBeInTheDocument();
+    expect(
+      screen.getByText("The session failed to start."),
+    ).toBeInTheDocument();
   });
 
   it("retries by re-running the original task through the steer mutation", async () => {

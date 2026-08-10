@@ -10,10 +10,8 @@ import {
 } from "@tanstack/react-router";
 import { SidebarProvider } from "@/common/components/ui/sidebar.tsx";
 import { DashboardSidebar } from "../dashboard-sidebar";
-import type {
-  AgentSessionPhase,
-  AgentSessionView,
-} from "@/features/agent-sessions/types";
+import type { AgentSessionView } from "@/features/agent-sessions/types";
+import { agentSessionView } from "@/test/mocks/agent-session";
 
 const sessionsState: { sessions: AgentSessionView[]; loading: boolean } = {
   sessions: [],
@@ -29,38 +27,13 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-sessions", () => ({
 }));
 
 function view(over: Partial<AgentSessionView> = {}): AgentSessionView {
-  const phase = (over.phase ?? "completed") as AgentSessionPhase;
-  return {
-    id: "as-1",
-    ownerId: "tea-1",
-    repo: "acme/widgets",
-    branch: "bex-agent/fix",
-    agentConfig: {
-      agent: "claude",
-      model: null,
-      modelEndpoint: null,
-      task: "refactor the mapper",
-      template: null,
-    },
-    sandboxId: null,
-    sshAddress: null,
-    phase,
-    status: phase,
-    headSha: null,
-    prUrl: null,
-    prNumber: null,
-    evidence: null,
-    turns: 1,
-    deliveryMode: null,
-    failureReason: null,
+  return agentSessionView({
+    phase: "completed",
     createdAt: "2026-08-05T00:00:00Z",
     updatedAt: "2026-08-05T00:01:00Z",
-    canceledAt: null,
-    isTerminal:
-      phase === "completed" || phase === "failed" || phase === "canceled",
-    isSteerable: phase === "completed" || phase === "failed",
+    turns: 1,
     ...over,
-  };
+  });
 }
 
 /** Renders the real rail at a real route, so route-param-derived state
@@ -108,7 +81,9 @@ describe("AgentSessionsNavSection (w5/m64 — one rail, contextual slot)", () =>
     sessionsState.sessions = [view()];
     for (const path of ["/", "/blueprints", "/usage", "/webhooks"]) {
       const { unmount } = renderAt(path);
-      expect(await screen.findByRole("link", { name: "Projects" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("link", { name: "Projects" }),
+      ).toBeInTheDocument();
       expect(screen.queryByText("Recent")).not.toBeInTheDocument();
       unmount();
     }
@@ -127,7 +102,9 @@ describe("AgentSessionsNavSection (w5/m64 — one rail, contextual slot)", () =>
     ];
     renderAt("/agents/$agentSessionId", "/agents/as-b");
 
-    const active = await screen.findByRole("link", { name: /tighten hero copy/ });
+    const active = await screen.findByRole("link", {
+      name: /tighten hero copy/,
+    });
     expect(active).toHaveAttribute("data-active", "true");
     expect(
       screen.getByRole("link", { name: /wire up metrics/ }),
@@ -162,7 +139,10 @@ describe("AgentSessionsNavSection (w5/m64 — one rail, contextual slot)", () =>
     // The PR number is a DIRECT external GitHub link, not an internal route,
     // and it is a SIBLING of the row link — never nested inside it.
     const pr = screen.getByRole("link", { name: /#6/ });
-    expect(pr).toHaveAttribute("href", "https://github.com/acme/widgets/pull/6");
+    expect(pr).toHaveAttribute(
+      "href",
+      "https://github.com/acme/widgets/pull/6",
+    );
     expect(pr.closest("a[href='/agents/as-pr']")).toBeNull();
   });
 

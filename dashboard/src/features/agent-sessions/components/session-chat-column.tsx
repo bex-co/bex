@@ -2,7 +2,6 @@ import { useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
-import { PrCard } from "@/features/agent-sessions/components/pr-card";
 import { FailureCallout } from "@/features/agent-sessions/components/failure-callout";
 import { SteeringComposer } from "@/features/agent-sessions/components/steering-composer";
 import { SessionConversation } from "@/features/agent-sessions/components/session-conversation";
@@ -14,7 +13,6 @@ export interface SessionChatColumnProps {
   chat: ConversationChatHandle | null;
   onChatStateChange: (handle: ConversationChatHandle | null) => void;
   onChanged: () => void;
-  onOpenEvidence: () => void;
 }
 
 /**
@@ -37,7 +35,6 @@ export function SessionChatColumn({
   chat,
   onChatStateChange,
   onChanged,
-  onOpenEvidence,
 }: SessionChatColumnProps) {
   const { t } = useTranslations();
 
@@ -63,16 +60,17 @@ export function SessionChatColumn({
           ? t("agentSessions.terminalStatus.canceled")
           : undefined;
 
-  // Inline transcript footer: the optimistic echo (if pending), the failure
-  // callout (with a Retry action, if the session failed), then the draft-PR card
-  // — all read as part of the conversation flow rather than side cards.
+  // Inline transcript footer: the optimistic echo (if pending) and the failure
+  // callout (with a Retry action, if the session failed) — both read as part of
+  // the conversation flow rather than side cards. The draft-PR card that used to
+  // close this footer was removed in w5/m65: a PR is now opt-in, and when there
+  // is one the header's `#N` badge already links it.
   const footer = (
     <>
       {showPendingSteer ? (
         <OptimisticUserBubble text={pendingSteer.prompt} />
       ) : null}
       <FailureCallout session={session} onRetried={onChanged} />
-      <PrCard session={session} />
     </>
   );
 
@@ -100,11 +98,7 @@ export function SessionChatColumn({
 
   return (
     <>
-      <SessionDetailHeader
-        session={session}
-        onCanceled={onChanged}
-        onOpenEvidence={onOpenEvidence}
-      />
+      <SessionDetailHeader session={session} onCanceled={onChanged} />
 
       <div className="min-h-0 flex-1">{conversation}</div>
 
@@ -138,8 +132,8 @@ function OptimisticUserBubble({ text }: { text: string }) {
 /**
  * The conversation area shown before a sandbox exists (w2/m64): the same
  * scroll-region shell the real column uses, carrying an optional status line
- * (the provisioning spinner) and the transcript footer (failure callout + PR
- * card) so those still render while the stream is not yet attachable.
+ * (the provisioning spinner) and the transcript footer (the failure callout) so
+ * those still render while the stream is not yet attachable.
  */
 function ConversationFallback({
   status,

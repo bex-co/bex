@@ -8,6 +8,7 @@ import type {
   AgentSessionView,
 } from "@/features/agent-sessions/types";
 import { AgentSessionError } from "@/features/agent-sessions/lib/errors";
+import { agentSessionView } from "@/test/mocks/agent-session";
 
 const steer = vi.fn();
 vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
@@ -27,36 +28,7 @@ beforeEach(() => {
 
 /** A view whose phase drives `isTerminal`/`isSteerable` like the mapper does. */
 function view(phase: AgentSessionPhase): AgentSessionView {
-  const isTerminal = ["completed", "failed", "canceled"].includes(phase);
-  const isSteerable = ["completed", "failed"].includes(phase);
-  return {
-    id: "as-1",
-    ownerId: "tea-1",
-    repo: "acme/widgets",
-    branch: "bex-agent/fix",
-    agentConfig: {
-      agent: "claude",
-      model: null,
-      modelEndpoint: null,
-      task: "t",
-      template: null,
-    },
-    sandboxId: null,
-    phase,
-    status: "s",
-    headSha: null,
-    prUrl: null,
-    prNumber: null,
-    evidence: null,
-    turns: 0,
-    deliveryMode: null,
-    failureReason: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    canceledAt: null,
-    isTerminal,
-    isSteerable,
-  };
+  return agentSessionView({ phase, task: "t" });
 }
 
 function chatHandle(status: string): ConversationChatHandle {

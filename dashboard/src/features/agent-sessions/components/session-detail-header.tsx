@@ -9,7 +9,6 @@ import {
   GitPullRequest,
   Loader2,
   MoreHorizontal,
-  PanelRightOpen,
   Terminal,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -61,24 +60,22 @@ export interface SessionDetailHeaderProps {
   session: AgentSessionView;
   /** Re-read the session once a cancel converges (the header owns no cache). */
   onCanceled?: () => void;
-  /** Opens the evidence side panel (t006) — the header's panel-toggle target. */
-  onOpenEvidence?: () => void;
 }
 
 /**
  * The full-page chat header (ADR047 D9, w3/m44): a compact top bar with a
  * back-to-sessions link, the phase chip + repo title, a compact meta row
- * (branch, ticking duration, turns), an inline draft-PR badge `#N`, the evidence
- * panel toggle, a "…" overflow menu (open PR), and cancel-with-confirm. The
- * duration ticks live while the session is non-terminal; once terminal it pins
- * to the session's own end timestamp (via the mapper). Cancel is offered only
- * while the session can still be stopped and is disabled with a reason once
- * canceling/canceled — the confirm copy states pushed work is preserved.
+ * (branch, ticking duration, turns), an inline draft-PR badge `#N`, the Open in
+ * Zed action (w2/m65), a "…" overflow menu (open PR), and cancel-with-confirm. The duration ticks live
+ * while the session is non-terminal; once terminal it pins to the session's own
+ * end timestamp (via the mapper). Cancel is offered only while the session can
+ * still be stopped and is disabled with a reason once canceling/canceled — the
+ * confirm copy states pushed work is preserved. The evidence-panel toggle that
+ * sat beside the PR badge was removed in w5/m65 along with the panel itself.
  */
 export function SessionDetailHeader({
   session,
   onCanceled,
-  onOpenEvidence,
 }: SessionDetailHeaderProps) {
   const { t } = useTranslations();
   const { cancel } = useAgentSessionMutations();
@@ -161,20 +158,6 @@ export function SessionDetailHeader({
       <HeaderPrBadge session={session} />
 
       <OpenInZedButton session={session} />
-
-      {onOpenEvidence ? (
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onOpenEvidence}
-          className="shrink-0"
-        >
-          <PanelRightOpen className="size-4" />
-          <span className="hidden sm:inline">
-            {t("agentSessions.evidenceToggle")}
-          </span>
-        </Button>
-      ) : null}
 
       {showCancel ? (
         <CancelButton
@@ -270,9 +253,7 @@ function OpenInZedButton({ session }: { session: AgentSessionView }) {
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="shrink-0">
           <Code2 className="size-4" />
-          <span className="hidden sm:inline">
-            {t("agentSessions.connect")}
-          </span>
+          <span className="hidden sm:inline">{t("agentSessions.connect")}</span>
           <ChevronDown className="size-3.5" />
         </Button>
       </DropdownMenuTrigger>

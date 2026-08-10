@@ -75,14 +75,6 @@ query MobileAgentSession($id: String!) {
     createdAt
     updatedAt
     canceledAt
-    evidence {
-      commandLog
-      testOutput
-      outputTail
-      changedFiles
-      commits
-      truncated
-    }
   }
 }
 

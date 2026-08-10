@@ -6,6 +6,7 @@ import type {
   AgentSessionPhase,
   AgentSessionView,
 } from "@/features/agent-sessions/types";
+import { agentSessionView } from "@/test/mocks/agent-session";
 
 // Isolate the column's own logic (provisioning gate + optimistic echo). The
 // heavy/collaborating children are stubbed: the conversation renders its footer
@@ -31,9 +32,6 @@ vi.mock("@/features/agent-sessions/components/steering-composer", () => ({
     </button>
   ),
 }));
-vi.mock("@/features/agent-sessions/components/pr-card", () => ({
-  PrCard: () => null,
-}));
 vi.mock("@/features/agent-sessions/components/failure-callout", () => ({
   FailureCallout: () => null,
 }));
@@ -42,36 +40,7 @@ function view(
   phase: AgentSessionPhase,
   over: Partial<AgentSessionView> = {},
 ): AgentSessionView {
-  return {
-    id: "as-1",
-    ownerId: "tea-1",
-    repo: "acme/widgets",
-    branch: "bex-agent/fix",
-    agentConfig: {
-      agent: "claude",
-      model: null,
-      modelEndpoint: null,
-      task: "t",
-      template: null,
-    },
-    sandboxId: null,
-    sshAddress: null,
-    phase,
-    status: "s",
-    headSha: null,
-    prUrl: null,
-    prNumber: null,
-    evidence: null,
-    turns: 0,
-    deliveryMode: null,
-    failureReason: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    canceledAt: null,
-    isTerminal: ["completed", "failed", "canceled"].includes(phase),
-    isSteerable: ["completed", "failed"].includes(phase),
-    ...over,
-  };
+  return agentSessionView({ phase, task: "t", ...over });
 }
 
 const noop = () => {};
@@ -83,7 +52,6 @@ function column(session: AgentSessionView) {
       chat={null}
       onChatStateChange={noop}
       onChanged={noop}
-      onOpenEvidence={noop}
     />
   );
 }
@@ -126,9 +94,7 @@ describe("SessionChatColumn optimistic redispatch echo (w2/m64)", () => {
 
     // Re-dispatched turn recorded (turns advanced) AND settled → the durable
     // transcript now carries it, so the optimistic echo is withdrawn.
-    rerender(
-      column(view("completed", { sandboxId: "sandbox-1", turns: 2 })),
-    );
+    rerender(column(view("completed", { sandboxId: "sandbox-1", turns: 2 })));
     expect(screen.queryByText("echoed prompt")).not.toBeInTheDocument();
   });
 
@@ -143,9 +109,7 @@ describe("SessionChatColumn optimistic redispatch echo (w2/m64)", () => {
     // Session flips to a non-terminal working phase (redispatching): the turn is
     // not settled yet, so the echo must remain.
     rerender(
-      column(
-        view("redispatching", { sandboxId: "sandbox-1", turns: 1 }),
-      ),
+      column(view("redispatching", { sandboxId: "sandbox-1", turns: 1 })),
     );
     expect(screen.getByText("echoed prompt")).toBeInTheDocument();
   });

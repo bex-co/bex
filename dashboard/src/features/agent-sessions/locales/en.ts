@@ -228,6 +228,15 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "Extra public hostnames the sandbox may reach (up to 32), beyond the model endpoint and the built-in package registries.",
     description: "Composer (advanced) — egress allowlist field helper text",
   },
+  "agentSessions.openPrLabel": {
+    message: "Open a draft pull request",
+    description: "Composer (advanced) — draft-PR opt-in toggle label",
+  },
+  "agentSessions.openPrHint": {
+    message:
+      "Off by default. The agent always pushes its bex-agent/* branch; turn this on to also open a draft PR when the session finishes.",
+    description: "Composer (advanced) — draft-PR opt-in helper text",
+  },
   "agentSessions.egressTooMany": {
     message: "Too many hostnames — the allowlist allows at most 32 entries.",
     description: "Composer — validation error when more than 32 egress entries",
@@ -282,11 +291,13 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.failureRetry": {
     message: "Retry",
-    description: "Detail page — button to re-run a failed session's original task",
+    description:
+      "Detail page — button to re-run a failed session's original task",
   },
   "agentSessions.failureRetrying": {
     message: "Retrying…",
-    description: "Detail page — retry button label while the redispatch is in flight",
+    description:
+      "Detail page — retry button label while the redispatch is in flight",
   },
   "agentSessions.provisioning": {
     message: "Starting the sandbox…",
@@ -346,53 +357,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.cancelConfirmProceed": {
     message: "Cancel session",
     description: "Cancel confirm dialog — proceed button",
-  },
-  // PR card
-  "agentSessions.prCardTitle": {
-    message: "Pull request",
-    description: "Detail page — draft-PR card title",
-  },
-  "agentSessions.prCardNone": {
-    message:
-      "No pull request yet. The agent opens a draft PR once it pushes work.",
-    description: "PR card — shown before the session has opened a PR",
-  },
-  "agentSessions.prCardHeadSha": {
-    message: "Head commit",
-    description: "PR card — label for the head SHA",
-  },
-  // Evidence panel
-  "agentSessions.evidenceTitle": {
-    message: "Evidence",
-    description: "Detail page — bounded evidence card title",
-  },
-  "agentSessions.evidenceEmpty": {
-    message: "No evidence captured yet.",
-    description: "Evidence panel — empty state",
-  },
-  "agentSessions.evidenceCommits": {
-    message: "{count} commits",
-    description: "Evidence panel — commit count",
-  },
-  "agentSessions.evidenceCommandLog": {
-    message: "Command log",
-    description: "Evidence panel — command log section label",
-  },
-  "agentSessions.evidenceTestOutput": {
-    message: "Test output",
-    description: "Evidence panel — test output section label",
-  },
-  "agentSessions.evidenceOutputTail": {
-    message: "Output tail",
-    description: "Evidence panel — output tail section label",
-  },
-  "agentSessions.evidenceChangedFiles": {
-    message: "Changed files",
-    description: "Evidence panel — changed-files section label",
-  },
-  "agentSessions.evidenceTruncated": {
-    message: "Some captured output was truncated.",
-    description: "Evidence panel — honest truncation note",
   },
   // Steering composer
   "agentSessions.steerTitle": {
@@ -636,10 +600,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Working…",
     description: "Sidebar status phrase — session still converging",
   },
-  "agentSessions.evidenceToggle": {
-    message: "Evidence",
-    description: "Header — toggle that opens the evidence side panel",
-  },
   "agentSessions.menuMore": {
     message: "More actions",
     description: "Header — accessible label for the '…' overflow menu",
@@ -701,22 +661,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.terminalStatus.canceled": {
     message: "Session was canceled",
     description: "Terminal transcript status line — canceled session",
-  },
-  "agentSessions.prInlineTitle": {
-    message: "Draft pull request",
-    description: "Inline PR card — heading",
-  },
-  "agentSessions.prBot": {
-    message: "bot",
-    description: "Inline PR card — the agent authored the PR (bot author tag)",
-  },
-  "agentSessions.prReview": {
-    message: "Review",
-    description: "Inline PR card — review/open action label",
-  },
-  "agentSessions.prDiffStat": {
-    message: "+{added} −{deleted}",
-    description: "Inline PR card — added/deleted line diff stat",
   },
 };
 
