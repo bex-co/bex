@@ -25,6 +25,7 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { LogLineList } from "@/features/logs/components/log-line-list";
+import { stripAnsi } from "@/features/logs/lib/ansi";
 import type { EventSourceFactory } from "@/features/logs/hooks/use-live-logs";
 import { useDeployLogs } from "../hooks/use-deploy-logs";
 import { LOG_RANGES, RANGE_LABEL_KEYS, type LogRange } from "../lib/log-range";
@@ -118,8 +119,12 @@ export function DeployLogPanel({
         ? lines
         : lines.filter((l) => matchesTypeChoice(l.type, typeChoice));
     if (debouncedSearch) {
+      // Match the *displayed* text, not the wire bytes: a build line's color
+      // escapes sit between words, so a raw substring search silently misses
+      // any needle that straddles one.
+      const needle = debouncedSearch.toLowerCase();
       out = out.filter((l) =>
-        l.message.toLowerCase().includes(debouncedSearch.toLowerCase()),
+        stripAnsi(l.message).toLowerCase().includes(needle),
       );
     }
     if (instanceFilter) {

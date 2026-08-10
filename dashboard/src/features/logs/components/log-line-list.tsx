@@ -1,8 +1,9 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import { Button } from "@/common/components/ui/button.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
+import { needsAnsiParse, parseAnsi, type AnsiSpan } from "../lib/ansi";
 import { LOG_TYPE_REQUEST, type LogLine } from "../types";
 
 // A request (HTTP access) line's status chip, tinted by response class — the
@@ -63,6 +64,20 @@ export function LogLineList({
   const viewportRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
 
+  // Build output is dense with ANSI escapes (BuildKit, Vite, Tailwind); left
+  // uninterpreted the browser swallows the ESC byte and paints the parameter
+  // tail as literal `[2m` garbage. Parse once per `lines` identity rather than
+  // per render — this list re-renders on every live-tail frame. A message with
+  // nothing to interpret stays `null` and renders as the plain text node it
+  // always was.
+  const parsed = useMemo(
+    () =>
+      lines.map((l) =>
+        needsAnsiParse(l.message) ? parseAnsi(l.message) : null,
+      ),
+    [lines],
+  );
+
   const scrollToBottom = () => {
     const el = viewportRef.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -95,7 +110,7 @@ export function LogLineList({
         )}
       >
         <div className={cn("p-3", wrap ? "min-w-full" : "w-max min-w-full")}>
-          {lines.map((line) => (
+          {lines.map((line, i) => (
             <div
               key={line.key}
               className={cn(
@@ -146,7 +161,7 @@ export function LogLineList({
                 </span>
               ) : null}
               <span className="min-w-0 flex-1 text-foreground">
-                {line.message}
+                <LogMessage spans={parsed[i]} text={line.message} />
               </span>
             </div>
           ))}
@@ -169,6 +184,25 @@ export function LogLineList({
       ) : null}
     </div>
   );
+}
+
+// The message cell. `spans` is null for a line with nothing to interpret, which
+// renders the bare string — byte-identical to the pre-ANSI DOM for the common
+// app-log line. Text always goes through React's escaping; the only inline
+// styles are colors this module builds from parsed integers.
+function LogMessage({
+  spans,
+  text,
+}: {
+  spans: AnsiSpan[] | null;
+  text: string;
+}) {
+  if (!spans) return text;
+  return spans.map((span, i) => (
+    <span key={i} className={span.className || undefined} style={span.style}>
+      {span.text}
+    </span>
+  ));
 }
 
 // Deployment-managed pods end in Kubernetes's five-character replica slug

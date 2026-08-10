@@ -50,6 +50,38 @@ describe("LogLineList request-line rendering (w5/008)", () => {
     expect(screen.queryByText("200")).not.toBeInTheDocument();
   });
 
+  it("interprets a build line's ANSI instead of leaking the parameter tail", () => {
+    const esc = "\u001b";
+    const { container } = render(
+      <LogLineList
+        lines={[
+          line({
+            key: "b1",
+            type: "build",
+            message: `#11 94.34 ${esc}[2m│${esc}[22m   ${esc}[33m^--${esc}[39m oops`,
+          }),
+        ]}
+      />,
+    );
+
+    // The reader sees the text, never `[2m` / `[22m` / `[33m`.
+    expect(container.textContent).toContain("#11 94.34 │   ^-- oops");
+    expect(container.textContent).not.toContain("[2m");
+    expect(container.textContent).not.toContain("[22m");
+    expect(container.textContent).not.toContain("[33m");
+    expect(container.textContent).not.toContain(esc);
+
+    expect(screen.getByText("│").className).toContain("opacity-70");
+    expect(screen.getByText("^--").className).toContain("text-amber-700");
+  });
+
+  it("leaves a plain line as a single unstyled text node", () => {
+    render(<LogLineList lines={[line({ message: "no escapes here" })]} />);
+    const message = screen.getByText("no escapes here");
+    expect(message.tagName).toBe("SPAN");
+    expect(message.querySelector("span")).toBeNull();
+  });
+
   it("shows a short clickable pod slug and filters with the full instance", () => {
     const onInstanceFilter = vi.fn();
     const instance = "hello-go-6f7d8f9c4b-bv612";
