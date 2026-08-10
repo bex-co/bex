@@ -2831,7 +2831,11 @@ func (s *Service) SetBuildFilter(ctx context.Context, name string, filter *Build
 // projection-owned (mirrors Builder/RootDir); the spec change bumps generation,
 // so the command runs on the resulting rollout with no explicit restart.
 func (s *Service) SetPreDeployCommand(ctx context.Context, name, command string) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	// SECURITY (codex round-5 F2): a pre-deploy command is attacker-chosen code
+	// the service executes with its runtime identity and secret projections, so
+	// it is create-like for exactly the reason SetCommands below is — gate on
+	// can_create (developer and up), not can_operate.
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -3026,7 +3030,11 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 // a non-nil command of "" clears the entrypoint override. Direct CR patch, not
 // projection-owned (mirrors Builder/RootDir).
 func (s *Service) SetCronJob(ctx context.Context, name string, schedule, command *string) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	// SECURITY (codex round-5 F2): the command IS the code the cron runs, so
+	// supplying one (including clearing it, which changes what executes) is
+	// create-like. A schedule-only change is genuine lifecycle — when the cron
+	// runs, not what it runs — and stays available to contributors.
+	a, err := s.AuthorizeApp(ctx, core.LifecycleOrCreate(command != nil), name)
 	if err != nil {
 		return AppView{}, err
 	}

@@ -126,14 +126,14 @@ func TestKeyValueBackupCronJobSpec(t *testing.T) {
 		Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: "8"},
 	}
 	r := &KeyValueReconciler{Backup: testKeyValueBackupStore}
-	spec := r.keyValueBackupCronJobSpec(kv, "red-paid-kv-auth")
+	spec := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-paid-kv-auth")
 
 	cron := &batchv1.CronJob{Spec: spec}
 	assertKeyValueBackupSchedule(t, cron)
 	assertKeyValueBackupPod(t, cron.Spec.JobTemplate.Spec.Template.Spec)
 
 	kv.Spec.Suspended = true
-	suspended := r.keyValueBackupCronJobSpec(kv, "red-paid-kv-auth")
+	suspended := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-paid-kv-auth")
 	if suspended.Suspend == nil || !*suspended.Suspend {
 		t.Fatal("suspended KeyValue must suspend its backup CronJob")
 	}
@@ -157,7 +157,7 @@ func TestKeyValueBackupEncryptStepDisabledByDefault(t *testing.T) {
 	}
 	// testKeyValueBackupStore has no AgePublicKey ⇒ byte-identical pre-ADR050 shape.
 	r := &KeyValueReconciler{Backup: testKeyValueBackupStore}
-	pod := r.keyValueBackupCronJobSpec(kv, "red-plain-kv-auth").JobTemplate.Spec.Template.Spec
+	pod := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-plain-kv-auth").JobTemplate.Spec.Template.Spec
 	if len(pod.InitContainers) != 2 {
 		t.Fatalf("encryption off must keep snapshot+compress only, got %d init containers", len(pod.InitContainers))
 	}
@@ -184,7 +184,7 @@ func TestKeyValueBackupEncryptStepWhenKeyConfigured(t *testing.T) {
 		Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: "8"},
 	}
 	r := &KeyValueReconciler{Backup: store}
-	pod := r.keyValueBackupCronJobSpec(kv, "red-enc-kv-auth").JobTemplate.Spec.Template.Spec
+	pod := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-enc-kv-auth").JobTemplate.Spec.Template.Spec
 
 	// The encrypt step slots between compress and upload (snapshot, compress, encrypt).
 	if len(pod.InitContainers) != 3 {

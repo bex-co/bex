@@ -73,6 +73,16 @@ spec:
                 maxLength: 63
                 pattern: ^[a-z_][a-z0-9_]{0,62}$
                 type: string
+              deletedUsers:
+                description: |-
+                  DeletedUsers are login-role names removed via the API that must be
+                  explicitly dropped from PostgreSQL (ensure:absent). Without this tombstone
+                  the operator would simply stop listing the role, leaving it valid in
+                  Postgres after the API reports successful deletion (codex #8). Cleared by
+                  the operator once CNPG confirms the role is absent.
+                items:
+                  type: string
+                type: array
               diskAutoscaling:
                 description: |-
                   DiskAutoscaling enables automatic grow-only storage increases when the

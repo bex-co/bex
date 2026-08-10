@@ -64,6 +64,26 @@ assert "node 20 fails" 1 "$(body "      - uses: $PINNED
         with:
           node-version: '20'")"
 
+# --- w1/m68 F3: host-key pin coverage for admin.conf fetchers ---------------
+# RED: a workflow that fetches admin.conf over SSH without wiring the pin. This
+# is exactly the shape openbao-restore-drill.yml had — the whole reason m66's
+# fix was incomplete — so it is the case that must be proven red.
+assert "unpinned admin.conf fetcher fails" 1 "$(body "      - uses: $PINNED
+      - run: bash scripts/fetch-app-kubeconfig.sh \"\$RUNNER_TEMP/app.kubeconfig\"")" \
+  "trust the control-plane host key on first use"
+# RED: the same for the substrate verifier, the other SSH entry point.
+assert "unpinned verify-substrate fails" 1 "$(body "      - uses: $PINNED
+      - run: bash scripts/verify-substrate.sh")" \
+  "trust the control-plane host key on first use"
+# GREEN: wiring the secret satisfies it.
+assert "pinned admin.conf fetcher passes" 0 "$(body "      - uses: $PINNED
+      - env:
+          BEX_SSH_KNOWN_HOSTS: \${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: bash scripts/fetch-app-kubeconfig.sh \"\$RUNNER_TEMP/app.kubeconfig\"")"
+# GREEN: a workflow that never fetches admin.conf is unaffected.
+assert "non-fetcher unaffected" 0 "$(body "      - uses: $PINNED
+      - run: make test")"
+
 # GREEN: the real canonical tree passes end-to-end (inventory + deploy wiring).
 if "$SCRIPT" >/dev/null 2>&1; then
   echo "ok: real tree passes"

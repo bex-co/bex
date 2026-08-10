@@ -1646,6 +1646,21 @@ for manifest in lego/operator/config/manager/manager.yaml lego/operator/config/a
   fi
 done
 
+# w1/m68 F3: bex-api is deployed behind Traefik, so it MUST know which peers may
+# assert a client IP. Unset, every IP-keyed budget (above all the m67 pre-auth
+# failure limiter) keys on the Traefik pod IP, giving the whole internet one
+# shared bucket — an anonymous flood then 429s every uncached login. The value
+# must equal the cluster's pod CIDR; an empty or drifted value is the bug.
+cluster_pod_cidr="$(yq -N 'select(.kind == "Cluster") | .spec.clusterNetwork.pods.cidrBlocks[]' infra/clusterapi/overlays/hetzner-caph/cluster.yaml | head -1)"
+api_proxy_cidrs="$(yq -N 'select(.kind == "Deployment") | .spec.template.spec.containers[].env[]? | select(.name == "BEX_TRUSTED_PROXY_CIDRS") | .value' lego/operator/config/api/deployment.yaml)"
+if [ -z "$api_proxy_cidrs" ]; then
+  echo "FAIL: bex-api deployment must set BEX_TRUSTED_PROXY_CIDRS — behind Traefik an empty set collapses every client onto one shared rate-limit bucket (w1/m68 F3)" >&2
+  fail=1
+elif [ "$api_proxy_cidrs" != "$cluster_pod_cidr" ]; then
+  echo "FAIL: bex-api BEX_TRUSTED_PROXY_CIDRS='$api_proxy_cidrs' but the cluster pod CIDR is '$cluster_pod_cidr' — a wrong trust set is worse than none (it lets the named range spoof X-Forwarded-For)" >&2
+  fail=1
+fi
+
 deny_types="$(yq -N 'select(.kind == "NetworkPolicy" and .metadata.name == "default-deny" and .metadata.namespace == "bex-build") | .spec.policyTypes | sort | join(",")' "$BUILD_BOUNDARY")"
 if [ "$deny_types" != "Egress,Ingress" ]; then
   echo "FAIL: bex-build default-deny must select both ingress and egress" >&2

@@ -26,6 +26,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -37,6 +38,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -206,6 +208,34 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	version := req.Version
 	if version == "" {
 		version = currentPostgresVersion(src)
+	}
+	// Recovery was written as its own create path and inherited none of the
+	// shared create invariants (codex round-5 F5). A caller-supplied plan and
+	// version reached the CR unvalidated, and neither billing gate ran, so a
+	// recovery could provision paid capacity that CreatePostgres and SetPlan
+	// would both have refused for the identical cost.
+	//
+	// Only CALLER-SUPPLIED values are validated, exactly as CreatePostgres
+	// treats req.Version: an inherited plan/version comes from a Database that
+	// already exists, and re-validating it would refuse to recover an instance
+	// on a plan since retired from the catalog — or one whose version is empty
+	// because it takes the operator's default. The billing gates use the
+	// RESOLVED plan either way, because that is what the recovery actually costs.
+	if req.Plan != "" {
+		if _, ok := tiers.Postgres.ByID(req.Plan); !ok {
+			return PostgresView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
+		}
+	}
+	if req.Version != "" && !postgresVersionKnown(req.Version) {
+		return PostgresView{}, fmt.Errorf("%w: version must be one of %s", core.ErrBadRequest, supportedPostgresVersionText())
+	}
+	if core.PaidPlan(plan) {
+		if err := s.RequirePaymentMethod(ctx, tenantID); err != nil {
+			return PostgresView{}, err
+		}
+	}
+	if err := s.RequireBillingMutation(ctx, tenantID); err != nil {
+		return PostgresView{}, err
 	}
 	sourceBackupServerName := src.Status.BackupServerName
 	if sourceBackupServerName == "" {

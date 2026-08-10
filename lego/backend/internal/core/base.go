@@ -118,6 +118,28 @@ const (
 // the workspace lifecycle verbs authorize against, e.g. workspace:tea-abc.
 func WorkspaceObject(tenantID string) string { return "workspace:" + tenantID }
 
+// LifecycleOrCreate picks a verb's relation when the SAME verb is lifecycle for
+// some calls and create-like for others — a deploy trigger that may or may not
+// carry an imageUrl, a cron update that may or may not carry a command, a
+// Postgres patch that may or may not turn on statement logging (w1/m68).
+//
+// It exists to name the pattern rather than to save four lines. The relation
+// must be decided from the REQUEST, before the single AuthorizeApp/
+// AuthorizeDatabase fetch, because a second authorization pass on an
+// already-fetched resource resolves a different workspace than the first (see
+// backend/CLAUDE.md) — so every such verb has to compute it the same way, up
+// front. Three verbs did that independently before this helper; the fourth
+// should not have to rediscover the shape.
+//
+// createLike true => can_create (developer and up); false => can_operate
+// (contributor and up).
+func LifecycleOrCreate(createLike bool) string {
+	if createLike {
+		return RelCanCreate
+	}
+	return RelCanOperate
+}
+
 // LabelTenant carries a projected App CR's owning tenant id (tea-<id>) —
 // stamped by internal/store's reconciler (its LabelTenant references this
 // constant, single source of truth) and by apps.Create for a directly-created

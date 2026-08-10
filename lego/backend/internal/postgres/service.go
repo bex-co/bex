@@ -775,6 +775,56 @@ func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 	}
 }
 
+// sensitiveLoggingParameters are the PostgreSQL settings that put STATEMENT
+// TEXT — and therefore the literals inside it: passwords, tokens, personal
+// data — into the database log. They are not blocked outright, because
+// log_min_duration_statement is the standard way to find a slow query and
+// refusing it would cost real operational value; they are gated at
+// developer-and-up (codex round-5 F7).
+//
+// can_create rather than can_view_sensitive, even though this is a
+// confidentiality boundary: the two relations resolve to the SAME roles
+// (developer or admin, per model.fga), and can_create is a write relation, so
+// the change stays in the service events feed. can_view_sensitive is a read
+// relation whose allowed outcomes are deliberately not recorded — gating a
+// write on it would make a security-relevant configuration change invisible.
+// Same reasoning the deploy-hook rotation carries in representativeVerbRelations.
+//
+// auto_explain.* is included defensively: it logs query text with bind
+// parameters, and while it needs shared_preload_libraries (which the operator
+// owns and this map already drops) that is one operator change away from
+// becoming reachable.
+var sensitiveLoggingParameters = map[string]bool{
+	"log_statement":                     true, // all/mod/ddl — logs the statement itself
+	"log_min_duration_statement":        true, // >= 0 logs the text of every qualifying statement
+	"log_min_error_statement":           true, // logs the statement that errored
+	"log_min_duration_sample":           true, // sampled variant of the above
+	"log_statement_sample_rate":         true, // controls how much of that sample is emitted
+	"log_parameter_max_length":          true, // how much of the BIND PARAMETERS (the literal values) is logged
+	"log_parameter_max_length_on_error": true,
+	"auto_explain.log_min_duration":     true,
+	"auto_explain.log_analyze":          true,
+	"auto_explain.log_parameterization": true,
+}
+
+// setsSensitiveLoggingParameter reports whether an override map asserts any
+// statement-logging setting.
+//
+// Presence, not delta: the parameter map is a full REPLACEMENT, so a caller
+// submitting it is asserting the whole logging configuration, not editing one
+// key. A contributor who needs to tune work_mem on a database whose logging a
+// developer configured therefore has to ask a developer — the same boundary
+// that already applies to every other developer-owned setting, and the reading
+// that fails closed.
+func setsSensitiveLoggingParameter(params map[string]string) bool {
+	for name := range params {
+		if sensitiveLoggingParameters[strings.ToLower(strings.TrimSpace(name))] {
+			return true
+		}
+	}
+	return false
+}
+
 func normalizeParameterOverrides(params map[string]string) map[string]string {
 	if len(params) == 0 {
 		return nil
@@ -799,7 +849,17 @@ func normalizeParameterOverrides(params map[string]string) map[string]string {
 // ip-allow-list — not just plan).
 func (s *Service) UpdatePostgres(ctx context.Context, name string, patch PostgresPatch) (PostgresView, error) {
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
-	d, err := s.fetchDatabase(ctx, core.RelCanOperate, name)
+	// SECURITY (codex round-5 F7): turning on statement logging writes the SQL
+	// text — and the literals inside it — into the database log, which
+	// can_view_logs (contributor and up) can read. That is the same disclosure
+	// ExecuteQuery and the top-query views reserve for developer-and-up, so the
+	// write that CAUSES it must not be reachable one rung lower. Relation
+	// resolved from the request before the single fetch (the t001 shape); the
+	// alternative — fetch, diff, then gate — needs a second authorization pass
+	// on an already-fetched resource, which this codebase forbids because the
+	// two gates resolve different workspaces (see backend/CLAUDE.md).
+	d, err := s.fetchDatabase(ctx, core.LifecycleOrCreate(
+		patch.ParameterOverrides != nil && setsSensitiveLoggingParameter(*patch.ParameterOverrides)), name)
 	if err != nil {
 		return PostgresView{}, err
 	}

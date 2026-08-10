@@ -398,7 +398,12 @@ type TriggerParams struct {
 //
 // Suspended services refuse the trigger: there is nothing to roll.
 func (s *Service) Trigger(ctx context.Context, service string, p TriggerParams) (DeployView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
+	// SECURITY (codex round-5 F2): imageUrl and commitId SELECT the executable
+	// content this deploy runs — a different image, or a different commit to
+	// build — so supplying either is create-like (developer and up). A
+	// parameter-free trigger redeploys the artifact the service is already
+	// configured for and stays lifecycle, available to contributors.
+	a, err := s.AuthorizeApp(ctx, core.LifecycleOrCreate(p.ImageURL != "" || p.CommitID != ""), service)
 	if err != nil {
 		return DeployView{}, err
 	}

@@ -26,6 +26,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,6 +51,59 @@ const (
 	// enabled (BackupStore.AgePublicKey set).
 	keyValueBackupAgeImage = "alpine:3.21"
 )
+
+// keyValueBackupWorkHeadroomGiB is the slack added on top of the derived peak
+// so a backup that is merely at the top of its plan does not fail (codex
+// round-5 F10).
+const keyValueBackupWorkHeadroomGiB = 1
+
+// keyValueBackupWorkBudget bounds the backup Job's EmptyDir and its containers'
+// ephemeral storage, derived per instance rather than as one global constant so
+// a starter instance cannot claim a standard instance's ceiling.
+//
+// The derivation, from the pipeline in keyValueBackupCronJobSpec:
+//
+//	snapshot  writes /backup/dump.rdb                        => S
+//	compress  gzip -9 dump.rdb (both files exist mid-run)     => S + S(worst case,
+//	          because gzip on incompressible data is ~1.0x)      i.e. PEAK = 2S
+//	encrypt   age -o dump.rdb.gz.age dump.rdb.gz, then rm     => <= 2 * gz size <= 2S
+//	upload    reads one file                                  => unchanged
+//
+// So the peak is 2S, at the compress step — the pipeline deletes as it goes, so
+// the three representations never coexist. S is bounded by the instance's
+// ALLOCATED storage rather than its memory: maxmemory is only applied when a
+// MaxmemoryPolicy is chosen (see keyvalue_controller.go), so memory is not a
+// reliable ceiling on the dataset, while the PVC always is.
+//
+// Revisit this if the pipeline ever stops deleting intermediates, or if a plan
+// gains a storage size far above the current 5 GiB top.
+func keyValueBackupWorkBudget(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier) resource.Quantity {
+	storageGB := int64(kv.Status.AllocatedStorageGB)
+	if intent := int64(kv.Spec.StorageGB); intent > storageGB {
+		storageGB = intent
+	}
+	if base := int64(plan.StorageGB); base > storageGB {
+		storageGB = base
+	}
+	if storageGB < 1 {
+		storageGB = 1
+	}
+	return *resource.NewQuantity((2*storageGB+keyValueBackupWorkHeadroomGiB)*(1<<30), resource.BinarySI)
+}
+
+// backupResources is guaranteedResources plus an ephemeral-storage bound. The
+// EmptyDir's own SizeLimit is not sufficient on its own: an EmptyDir's usage
+// counts against the POD's ephemeral-storage limit, so a container without one
+// leaves the node's eviction manager as the only thing standing between a large
+// tenant backup and its co-scheduled neighbours.
+func backupResources(cpu, memory string, ephemeral resource.Quantity) corev1.ResourceRequirements {
+	list := corev1.ResourceList{
+		corev1.ResourceCPU:              resource.MustParse(cpu),
+		corev1.ResourceMemory:           resource.MustParse(memory),
+		corev1.ResourceEphemeralStorage: ephemeral,
+	}
+	return corev1.ResourceRequirements{Requests: list, Limits: list}
+}
 
 func keyValueBackupsEnabled(plan tiers.ValkeyTier, store BackupStore) bool {
 	return plan.ID != tiers.Valkey.Default().ID && store.configured()
@@ -123,13 +177,13 @@ func (r *KeyValueReconciler) reconcileKeyValueBackup(
 	cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: kv.Namespace}}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cron, func() error {
 		cron.Labels = keyValueBackupLabels(kv, keyValueBackupComponent)
-		cron.Spec = r.keyValueBackupCronJobSpec(kv, authSecretName)
+		cron.Spec = r.keyValueBackupCronJobSpec(kv, plan, authSecretName)
 		return controllerutil.SetControllerReference(kv, cron, r.Scheme)
 	})
 	return err
 }
 
-func (r *KeyValueReconciler) keyValueBackupCronJobSpec(kv *appv1alpha1.KeyValue, authSecretName string) batchv1.CronJobSpec {
+func (r *KeyValueReconciler) keyValueBackupCronJobSpec(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, authSecretName string) batchv1.CronJobSpec {
 	failedHistory := int32(3)
 	successfulHistory := int32(3)
 	backoff := int32(2)
@@ -137,6 +191,7 @@ func (r *KeyValueReconciler) keyValueBackupCronJobSpec(kv *appv1alpha1.KeyValue,
 	timeZone := "Etc/UTC"
 	labels := keyValueBackupLabels(kv, keyValueBackupComponent)
 	volumeMount := corev1.VolumeMount{Name: "backup", MountPath: "/backup"}
+	workBudget := keyValueBackupWorkBudget(kv, plan)
 
 	// ADR050 Tier A: age-encrypt the RDB before upload when a public key is
 	// configured. The encrypt step slots between compress and upload; the object
@@ -163,7 +218,7 @@ test -s /backup/dump.rdb`},
 					LocalObjectReference: corev1.LocalObjectReference{Name: authSecretName}, Key: "password",
 				}}},
 			},
-			Resources:       guaranteedResources("100m", "128Mi"),
+			Resources:       backupResources("100m", "128Mi", workBudget),
 			SecurityContext: tenantSecCtx(),
 			VolumeMounts:    []corev1.VolumeMount{volumeMount},
 		},
@@ -171,7 +226,7 @@ test -s /backup/dump.rdb`},
 			Name:            "compress",
 			Image:           "busybox:1.37",
 			Command:         []string{"gzip", "-9", "/backup/dump.rdb"},
-			Resources:       guaranteedResources("10m", "32Mi"),
+			Resources:       backupResources("10m", "32Mi", workBudget),
 			SecurityContext: tenantSecCtx(),
 			VolumeMounts:    []corev1.VolumeMount{volumeMount},
 		},
@@ -185,7 +240,7 @@ test -s /backup/dump.rdb`},
 age -r "${AGE_PUBLIC_KEY}" -o /backup/dump.rdb.gz.age /backup/dump.rdb.gz
 rm -f /backup/dump.rdb.gz`},
 			Env:             []corev1.EnvVar{{Name: "AGE_PUBLIC_KEY", Value: r.Backup.AgePublicKey}},
-			Resources:       guaranteedResources("50m", "64Mi"),
+			Resources:       backupResources("50m", "64Mi", workBudget),
 			SecurityContext: tenantSecCtx(),
 			VolumeMounts:    []corev1.VolumeMount{volumeMount},
 		})
@@ -237,12 +292,12 @@ aws --endpoint-url "${ENDPOINT}" s3 ls "${prefix}" \
 							EnvFrom: []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{
 								LocalObjectReference: corev1.LocalObjectReference{Name: r.Backup.S3Secret},
 							}}},
-							Resources:       guaranteedResources("50m", "128Mi"),
+							Resources:       backupResources("50m", "128Mi", workBudget),
 							SecurityContext: tenantSecCtx(),
 							VolumeMounts:    []corev1.VolumeMount{volumeMount},
 						}},
 						Volumes: []corev1.Volume{{Name: "backup", VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
+							EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: &workBudget},
 						}}},
 					},
 				},
@@ -337,6 +392,8 @@ aws --endpoint-url "${ENDPOINT}" s3 rm "${DESTINATION%/}/${KEYVALUE}/" --recursi
 						EnvFrom: []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{
 							LocalObjectReference: corev1.LocalObjectReference{Name: r.Backup.S3Secret},
 						}}},
+						// The purge Job only issues S3 deletes — it mounts no work
+						// volume, so it needs no ephemeral-storage budget.
 						Resources:       guaranteedResources("50m", "128Mi"),
 						SecurityContext: tenantSecCtx(),
 					}},

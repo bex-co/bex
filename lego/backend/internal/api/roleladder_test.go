@@ -306,8 +306,16 @@ var representativeVerbRelations = map[string]string{
 	"*apps.Service.Restart":          core.RelCanOperate,
 	"*apps.Service.Scale":            core.RelCanOperate,
 	"*apps.Service.SetPlan":          core.RelCanOperate,
-	"*deploys.Service.Trigger":       core.RelCanOperate,
 	"*postgres.Service.CreateExport": core.RelCanOperate,
+	// Two verbs are CONDITIONAL (codex round-5 F2): their relation depends on
+	// whether the call supplies executable content. The reflection sweep invokes
+	// them with zero-valued arguments, so what these two pins capture is the
+	// LIFECYCLE branch — a bare redeploy and a schedule-only cron change, both of
+	// which must stay available to contributors. The create-like branch is pinned
+	// separately by TestExecutableSelectionRequiresCanCreate, which calls them
+	// WITH the parameters; changing either branch alone turns one of the two red.
+	"*deploys.Service.Trigger":  core.RelCanOperate,
+	"*apps.Service.SetCronJob":  core.RelCanOperate,
 	// can_create — developer and up (create/delete resources).
 	"*apps.Service.Create":             core.RelCanCreate,
 	"*apps.Service.Delete":             core.RelCanCreate,
@@ -326,6 +334,12 @@ var representativeVerbRelations = map[string]string{
 	"*apps.Service.SetSourceAndRegistryCredential": core.RelCanCreate,
 	"*agentsessions.Service.Create":                core.RelCanCreate,
 	"*deploys.Service.RegenerateDeployHook":        core.RelCanCreate,
+	// The remainder of the same class, missed by the codex #1 pass and found by
+	// round-5 F2: a pre-deploy command and a one-off job command are both
+	// attacker-chosen code run in the service's image with its secret
+	// projections, reaching the identical sink as SetCommands above.
+	"*apps.Service.SetPreDeployCommand": core.RelCanCreate,
+	"*jobs.Service.Create":              core.RelCanCreate,
 	// Steering re-dispatches a FRESH sandbox with the same reusable model key and
 	// a caller-supplied prompt + egress allowlist, so it is as create-like as
 	// Create itself — not a lifecycle verb (codex round-4 #3).
