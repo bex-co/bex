@@ -227,6 +227,15 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
       "除模型端点和内置软件包镜像源之外，沙箱可访问的额外公共主机名（最多 32 个）。",
     description: "Composer (advanced) — egress allowlist field helper text",
   },
+  "agentSessions.openPrLabel": {
+    message: "创建草稿 Pull Request",
+    description: "Composer (advanced) — draft-PR opt-in toggle label",
+  },
+  "agentSessions.openPrHint": {
+    message:
+      "默认关闭。智能体始终会推送 bex-agent/* 分支；开启后会在会话结束时额外创建一个草稿 PR。",
+    description: "Composer (advanced) — draft-PR opt-in helper text",
+  },
   "agentSessions.egressTooMany": {
     message: "主机名过多——允许列表最多支持 32 个条目。",
     description: "Composer — validation error when more than 32 egress entries",
@@ -280,11 +289,13 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.failureRetry": {
     message: "重试",
-    description: "Detail page — button to re-run a failed session's original task",
+    description:
+      "Detail page — button to re-run a failed session's original task",
   },
   "agentSessions.failureRetrying": {
     message: "重试中…",
-    description: "Detail page — retry button label while the redispatch is in flight",
+    description:
+      "Detail page — retry button label while the redispatch is in flight",
   },
   "agentSessions.provisioning": {
     message: "正在启动沙箱…",
@@ -343,52 +354,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.cancelConfirmProceed": {
     message: "取消会话",
     description: "Cancel confirm dialog — proceed button",
-  },
-  // PR card
-  "agentSessions.prCardTitle": {
-    message: "拉取请求",
-    description: "Detail page — draft-PR card title",
-  },
-  "agentSessions.prCardNone": {
-    message: "尚无拉取请求。智能体推送工作后会打开一个草稿 PR。",
-    description: "PR card — shown before the session has opened a PR",
-  },
-  "agentSessions.prCardHeadSha": {
-    message: "头部提交",
-    description: "PR card — label for the head SHA",
-  },
-  // Evidence panel
-  "agentSessions.evidenceTitle": {
-    message: "证据",
-    description: "Detail page — bounded evidence card title",
-  },
-  "agentSessions.evidenceEmpty": {
-    message: "尚未捕获证据。",
-    description: "Evidence panel — empty state",
-  },
-  "agentSessions.evidenceCommits": {
-    message: "{count} 次提交",
-    description: "Evidence panel — commit count",
-  },
-  "agentSessions.evidenceCommandLog": {
-    message: "命令日志",
-    description: "Evidence panel — command log section label",
-  },
-  "agentSessions.evidenceTestOutput": {
-    message: "测试输出",
-    description: "Evidence panel — test output section label",
-  },
-  "agentSessions.evidenceOutputTail": {
-    message: "输出末尾",
-    description: "Evidence panel — output tail section label",
-  },
-  "agentSessions.evidenceChangedFiles": {
-    message: "变更文件",
-    description: "Evidence panel — changed-files section label",
-  },
-  "agentSessions.evidenceTruncated": {
-    message: "部分捕获的输出已被截断。",
-    description: "Evidence panel — honest truncation note",
   },
   // Steering composer
   "agentSessions.steerTitle": {
@@ -624,10 +589,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "工作中…",
     description: "Sidebar status phrase — session still converging",
   },
-  "agentSessions.evidenceToggle": {
-    message: "证据",
-    description: "Header — toggle that opens the evidence side panel",
-  },
   "agentSessions.menuMore": {
     message: "更多操作",
     description: "Header — accessible label for the '…' overflow menu",
@@ -689,22 +650,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.terminalStatus.canceled": {
     message: "会话已取消",
     description: "Terminal transcript status line — canceled session",
-  },
-  "agentSessions.prInlineTitle": {
-    message: "草稿拉取请求",
-    description: "Inline PR card — heading",
-  },
-  "agentSessions.prBot": {
-    message: "bot",
-    description: "Inline PR card — the agent authored the PR (bot author tag)",
-  },
-  "agentSessions.prReview": {
-    message: "查看",
-    description: "Inline PR card — review/open action label",
-  },
-  "agentSessions.prDiffStat": {
-    message: "+{added} −{deleted}",
-    description: "Inline PR card — added/deleted line diff stat",
   },
 };
 

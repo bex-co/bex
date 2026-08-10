@@ -11,25 +11,18 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/common/components/ui/sheet";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSession } from "@/features/agent-sessions/hooks/use-agent-session";
-import { EvidencePanel } from "@/features/agent-sessions/components/evidence-panel";
 import { SessionChatColumn } from "@/features/agent-sessions/components/session-chat-column";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
-import type { AgentSessionView } from "@/features/agent-sessions/types";
 
 // The agent-session detail page (ADR047 § D9), restructured into ONE full-page
 // Devin-style chat (w3/m44): a left sessions sidebar + a chat column whose whole
 // main pane is the scrollable conversation, with the header on top and the
-// state-routed composer docked at the bottom. The draft PR renders inline in the
-// transcript; evidence lives behind a header-toggled side panel. Metadata
-// (header/PR/evidence/failure) comes from phase-aware GraphQL polling and the
+// state-routed composer docked at the bottom. The conversation IS the page
+// (w5/m65) — the evidence side panel and the inline PR card were removed, and a
+// session's draft PR (when one was requested) is the header's `#N` badge.
+// Metadata (header/PR/failure) comes from phase-aware GraphQL polling and the
 // conversation rides the m43 stream — the two degrade independently.
 export const Route = createFileRoute("/agents_/$agentSessionId")({
   component: AgentSessionDetailPage,
@@ -50,8 +43,6 @@ function AgentSessionDetailPage() {
   // Lifted from the conversation column so the steering composer can send a live
   // turn through the column's own useChat instance (null ⇒ live path disabled).
   const [chat, setChat] = useState<ConversationChatHandle | null>(null);
-  // Evidence relocated behind a header-toggled side panel (t006), closed by default.
-  const [evidenceOpen, setEvidenceOpen] = useState(false);
 
   return (
     <DashboardLayout>
@@ -67,45 +58,11 @@ function AgentSessionDetailPage() {
               chat={chat}
               onChatStateChange={setChat}
               onChanged={() => void refetch()}
-              onOpenEvidence={() => setEvidenceOpen(true)}
             />
           ) : null}
         </div>
       </div>
-
-      {session ? (
-        <EvidenceSidePanel
-          session={session}
-          open={evidenceOpen}
-          onOpenChange={setEvidenceOpen}
-        />
-      ) : null}
     </DashboardLayout>
-  );
-}
-
-/** Evidence as a right-side sheet opened from the header (t006). */
-function EvidenceSidePanel({
-  session,
-  open,
-  onOpenChange,
-}: {
-  session: AgentSessionView;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const { t } = useTranslations();
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full gap-0 overflow-y-auto sm:max-w-md">
-        <SheetHeader>
-          <SheetTitle>{t("agentSessions.evidenceTitle")}</SheetTitle>
-        </SheetHeader>
-        <div className="px-4 pb-6">
-          <EvidencePanel evidence={session.evidence} />
-        </div>
-      </SheetContent>
-    </Sheet>
   );
 }
 

@@ -1,6 +1,6 @@
-import { hasEvidence, isGitHubPrUrl, isGitHubUrl } from "../evidence";
+import { isGitHubPrUrl, isGitHubUrl } from "../github-links";
 
-describe("agent-session evidence helpers", () => {
+describe("agent-session GitHub link guards", () => {
   it("opens only https github.com hosts (shared link guard)", () => {
     expect(isGitHubUrl("https://github.com/apps/bex/installations/new")).toBe(
       true,
@@ -24,17 +24,5 @@ describe("agent-session evidence helpers", () => {
     expect(isGitHubPrUrl("javascript:alert(1)")).toBe(false);
     expect(isGitHubPrUrl(null)).toBe(false);
     expect(isGitHubPrUrl("")).toBe(false);
-  });
-
-  it("reports evidence only when a section is non-empty", () => {
-    expect(hasEvidence(null)).toBe(false);
-    expect(hasEvidence({})).toBe(false);
-    expect(
-      hasEvidence({ commandLog: [], testOutput: [], outputTail: "" }),
-    ).toBe(false);
-    expect(hasEvidence({ outputTail: "   " })).toBe(false);
-    expect(hasEvidence({ commandLog: ["npm test"] })).toBe(true);
-    expect(hasEvidence({ changedFiles: ["a.ts"] })).toBe(true);
-    expect(hasEvidence({ outputTail: "ok" })).toBe(true);
   });
 });

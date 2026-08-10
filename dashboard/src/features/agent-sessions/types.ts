@@ -21,24 +21,18 @@ export type AgentSessionPhase =
 /** How a turn's sandbox was obtained (backend Delivery* constants). */
 export type AgentSessionDeliveryMode = "resume" | "redispatch";
 
-/** The stable cross-surface driver config (agent/model/task/template). */
+/** The stable cross-surface per-session config (agent/model/task/template). */
 export interface AgentSessionConfigView {
   agent: string;
   model: string | null;
   modelEndpoint: string | null;
   task: string;
   template: string | null;
-}
-
-/** The bounded, verifiable turn extract the driver captures (ADR047 D4). */
-export interface AgentSessionEvidenceView {
-  commandLog: string[];
-  testOutput: string[];
-  outputTail: string | null;
-  changedFiles: string[];
-  commits: number | null;
-  /** True when any cap dropped content — truncation is explicit, never silent. */
-  truncated: boolean;
+  /**
+   * Whether the session asked for a draft PR at create time (w5/m65). The branch
+   * is always pushed; the PR is opt-in, so this is false for most sessions.
+   */
+  openPr: boolean;
 }
 
 /**
@@ -70,7 +64,6 @@ export interface AgentSessionView {
   headSha: string | null;
   prUrl: string | null;
   prNumber: number | null;
-  evidence: AgentSessionEvidenceView | null;
   /** Number of prompt turns taken so far. */
   turns: number;
   deliveryMode: AgentSessionDeliveryMode | null;

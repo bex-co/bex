@@ -1,7 +1,11 @@
 # Cloud coding-agent sessions — the control-plane metadata surface (ADR047 D9,
 # backend/internal/agentsessions/graphql.go). The dashboard polls these ops for
-# metadata (phase, PR, evidence, turns); the live conversation column is NOT
-# polled — it rides the same-origin stream endpoint (w3/m43), never GraphQL.
+# metadata (phase, PR, turns); the live conversation column is NOT polled — it
+# rides the same-origin stream endpoint (w3/m43), never GraphQL.
+#
+# The `evidence` field is deliberately NOT selected (w5/m65): the digest is a
+# phase-1 artifact superseded by the ADR051 durable transcript, and nothing in
+# the dashboard renders it. It remains on the wire for API consumers.
 #
 # Key off `phase` (creating/running/resuming/redispatching/completed/failed/
 # canceling/canceled), not the free-text `status`. The mint fields
@@ -19,6 +23,7 @@ fragment AgentSessionFields on AgentSession {
     modelEndpoint
     task
     template
+    openPr
   }
   sandboxId
   sshAddress
@@ -27,14 +32,6 @@ fragment AgentSessionFields on AgentSession {
   headSha
   prUrl
   prNumber
-  evidence {
-    commandLog
-    testOutput
-    outputTail
-    changedFiles
-    commits
-    truncated
-  }
   turns
   deliveryMode
   failureReason

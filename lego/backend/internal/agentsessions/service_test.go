@@ -369,6 +369,26 @@ func createInput() CreateRequest {
 	return CreateRequest{OwnerID: "tea-a", Repo: "bex-co/example", Branch: "bex-agent/session-test", AgentConfig: AgentConfig{Agent: "codex", Model: "gpt-5", ModelEndpoint: "https://api.openai.com/v1", Task: "fix the tests"}, EgressAllowlist: []string{"docs.example.com"}}
 }
 
+// The opt-in choice is persisted with the session, so the Completer (and every
+// read surface) sees what the user actually asked for turns later. The create
+// surfaces themselves are covered by TestRESTGraphQLMCPCreateParity.
+func TestCreatePersistsPROptInChoice(t *testing.T) {
+	svc, _, _, _ := fixture()
+	in := createInput()
+	in.AgentConfig.OpenPR = true
+	created, err := svc.Create(caller("alice"), in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := svc.Get(caller("alice"), created.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.AgentConfig.OpenPR {
+		t.Fatal("openPr did not survive the round trip through the store")
+	}
+}
+
 func TestLifecycleTicketClaimsAndFirstClassAuthorization(t *testing.T) {
 	svc, st, fga, lifecycle := fixture()
 	created, err := svc.Create(caller("alice"), createInput())
@@ -813,6 +833,10 @@ func TestAttachTicketNotReadyDuringProvisioning(t *testing.T) {
 
 func TestRESTGraphQLMCPCreateParity(t *testing.T) {
 	want := createInput()
+	// Exercise the opt-in draft-PR choice here too (w5/m65): `check` compares the
+	// whole AgentConfig, so a surface that dropped `openPr` fails this test — the
+	// zero value would pass it silently.
+	want.AgentConfig.OpenPR = true
 	check := func(t *testing.T, got View) {
 		t.Helper()
 		// Create returns fast: the creating phase with no sandbox/ticket yet
@@ -845,7 +869,7 @@ func TestRESTGraphQLMCPCreateParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := graphql.Do(graphql.Params{Schema: schema, Context: caller("alice"), RequestString: `mutation { createAgentSession(ownerId:"tea-a", repo:"bex-co/example", branch:"bex-agent/session-test", agentConfig:{agent:"codex",model:"gpt-5",modelEndpoint:"https://api.openai.com/v1",task:"fix the tests"}, egressAllowlist:["docs.example.com"]) { id ownerId repo branch agentConfig { agent model modelEndpoint task template } sandboxId phase status ticket url expiresAt } }`})
+	result := graphql.Do(graphql.Params{Schema: schema, Context: caller("alice"), RequestString: `mutation { createAgentSession(ownerId:"tea-a", repo:"bex-co/example", branch:"bex-agent/session-test", agentConfig:{agent:"codex",model:"gpt-5",modelEndpoint:"https://api.openai.com/v1",task:"fix the tests",openPr:true}, egressAllowlist:["docs.example.com"]) { id ownerId repo branch agentConfig { agent model modelEndpoint task template openPr } sandboxId phase status ticket url expiresAt } }`})
 	if len(result.Errors) != 0 {
 		t.Fatalf("GraphQL errors = %#v", result.Errors)
 	}
@@ -872,7 +896,7 @@ func TestRESTGraphQLMCPCreateParity(t *testing.T) {
 	defer client.Close()
 	mcpResult, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "spawn_agent_session", Arguments: map[string]any{
 		"ownerId": "tea-a", "repo": "bex-co/example", "branch": "bex-agent/session-test",
-		"agentConfig":     map[string]any{"agent": "codex", "model": "gpt-5", "modelEndpoint": "https://api.openai.com/v1", "task": "fix the tests"},
+		"agentConfig":     map[string]any{"agent": "codex", "model": "gpt-5", "modelEndpoint": "https://api.openai.com/v1", "task": "fix the tests", "openPr": true},
 		"egressAllowlist": []any{"docs.example.com"},
 	}})
 	if err != nil || mcpResult.IsError {
@@ -1030,5 +1054,37 @@ func TestCapabilitiesUnavailableWhenNotWired(t *testing.T) {
 	}
 	if caps.Enabled || caps.Ready || len(caps.Agents) != 0 {
 		t.Fatalf("unwired feature must report Enabled:false with no profiles: %#v", caps)
+	}
+}
+
+// An ABSENT flag must never be read as consent to write a PR to the tenant's
+// repository — the safety-critical direction. (TestRESTGraphQLMCPCreateParity
+// covers the other one: that `openPr: true` propagates identically everywhere.)
+func TestOpenPRDefaultsToOptedOutOnEverySurface(t *testing.T) {
+	// REST and MCP both decode this body shape straight into CreateRequest.
+	var fromJSON CreateRequest
+	if err := json.Unmarshal([]byte(`{"repo":"bex-co/example","branch":"bex-agent/x","agentConfig":{"agent":"codex","task":"t"}}`), &fromJSON); err != nil {
+		t.Fatal(err)
+	}
+	if fromJSON.AgentConfig.OpenPR {
+		t.Fatal("REST/MCP body without openPr defaulted to opted IN")
+	}
+	if got := configArg(map[string]any{"agentConfig": map[string]any{"agent": "codex", "task": "t"}}); got.OpenPR {
+		t.Fatal("GraphQL agentConfig without openPr defaulted to opted IN")
+	}
+}
+
+// The evidence digest lost its renderers in w5/m65 but deliberately kept its
+// wire field, so API consumers still receive it.
+func TestEvidenceRemainsOnTheWire(t *testing.T) {
+	view, err := viewOf(store.AgentSession{
+		AgentConfig: []byte(`{"agent":"codex","task":"t"}`),
+		Evidence:    []byte(`{"commandLog":["go test ./..."],"commits":2}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if view.Evidence == nil || len(view.Evidence.CommandLog) != 1 || view.Evidence.Commits != 2 {
+		t.Fatalf("evidence dropped from the wire view: %+v", view.Evidence)
 	}
 }

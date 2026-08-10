@@ -5,6 +5,7 @@ import type {
   AgentSessionPhase,
   AgentSessionView,
 } from "@/features/agent-sessions/types";
+import { agentSessionView } from "@/test/mocks/agent-session";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -21,40 +22,10 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 /** `task` is a convenience override for the nested `agentConfig.task`. */
-function view({
-  task = "refactor the mapper",
-  ...over
-}: Partial<AgentSessionView> & { task?: string } = {}): AgentSessionView {
-  return {
-    id: "as-1",
-    ownerId: "tea-1",
-    repo: "acme/widgets",
-    branch: "bex-agent/fix",
-    agentConfig: {
-      agent: "claude",
-      model: null,
-      modelEndpoint: null,
-      task,
-      template: null,
-    },
-    sandboxId: null,
-    sshAddress: null,
-    phase: "running",
-    status: "working",
-    headSha: null,
-    prUrl: null,
-    prNumber: null,
-    evidence: null,
-    turns: 0,
-    deliveryMode: null,
-    failureReason: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    canceledAt: null,
-    isTerminal: false,
-    isSteerable: false,
-    ...over,
-  };
+function view(
+  over: Partial<AgentSessionView> & { task?: string } = {},
+): AgentSessionView {
+  return agentSessionView({ status: "working", ...over });
 }
 
 describe("SessionList", () => {

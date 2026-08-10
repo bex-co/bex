@@ -80,7 +80,7 @@ The dashboard has exactly **one** left sidebar. A route module must never render
 - **Replace** the nav (`ProjectSidebar`, `ServiceSidebar`) — deep hierarchical context, entered via a back link.
 - **Augment** it (`AgentSessionsNavSection`) — a section-scoped working-set list beneath the global nav, Devin's shape. Scope it to its own routes; it must not follow the user elsewhere.
 
-`DashboardLayout` takes no `sidebar` override prop, and `routes/__tests__/one-rail-invariant.test.ts` fails the build if a route module grows an `<aside>` or imports a `*-sidebar`. A genuinely needed second panel goes on the **right** (see the agent-session evidence/PR panel). Rationale: `docs/ADR047-cloud-coding-agent-sessions.md` § D9a.
+`DashboardLayout` takes no `sidebar` override prop, and `routes/__tests__/one-rail-invariant.test.ts` fails the build if a route module grows an `<aside>` or imports a `*-sidebar`. A genuinely needed second panel goes on the **right** — the agent-session evidence panel was the reference implementation until w5/m65 removed it, so there is currently no live example; the rule still holds for the next one. Rationale: `docs/ADR047-cloud-coding-agent-sessions.md` § D9a.
 
 ## SSR gotcha
 

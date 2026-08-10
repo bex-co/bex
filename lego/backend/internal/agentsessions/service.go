@@ -626,7 +626,8 @@ func driverEnv(config AgentConfig, repo, branch, sessionID, namespace, credentia
 // ADR047 D8 phase 1). In phase 1 a new prompt cannot ride the original sandbox — its
 // prompt env is fixed at creation and there is no live attach yet — so steering
 // re-dispatches a fresh sandbox that re-clones the same bex-agent/* branch and
-// runs the new prompt; the Completer then updates the same draft PR. The
+// runs the new prompt; the Completer then updates the session's draft PR if it
+// opted into one (w5/m65 — PR delivery is opt-in). The
 // delivery mode is recorded on the row.
 func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	// SECURITY (codex round-4 #3): Create gates on can_create because a session
@@ -699,7 +700,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	// one in the background. In phase 1 a new prompt can't ride the old sandbox
 	// (its prompt env is fixed at creation, no live attach yet — ADR047 D8), so the
 	// client sees redispatching immediately and the new turn streams once it
-	// attaches; the Completer updates the same draft PR.
+	// attaches; the Completer updates the session's draft PR if it has one.
 	s.detach(ctx, func(ctx context.Context) { s.runSteerDispatch(ctx, record, spec) })
 	return s.toView(record)
 }

@@ -41,7 +41,7 @@ import {
   defaultBranchFor,
   type ComposerFields,
 } from "./compose";
-import { isGitHubUrl } from "../detail/evidence";
+import { isGitHubUrl } from "../detail/github-links";
 
 const createAgentSession = defineSafeAction(
   "create-agent-session",

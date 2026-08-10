@@ -8,7 +8,6 @@ import type {
 } from "@/graphql/definitions";
 import type {
   AgentSessionDeliveryMode,
-  AgentSessionEvidenceView,
   AgentSessionPhase,
   AgentSessionTicket,
   AgentSessionView,
@@ -37,20 +36,6 @@ export function isSteerablePhase(phase: string): boolean {
   return STEERABLE_PHASES.has(phase as AgentSessionPhase);
 }
 
-function toEvidenceView(
-  evidence: AgentSessionFieldsFragment["evidence"],
-): AgentSessionEvidenceView | null {
-  if (!evidence) return null;
-  return {
-    commandLog: evidence.commandLog ?? [],
-    testOutput: evidence.testOutput ?? [],
-    outputTail: evidence.outputTail ?? null,
-    changedFiles: evidence.changedFiles ?? [],
-    commits: evidence.commits ?? null,
-    truncated: evidence.truncated ?? false,
-  };
-}
-
 /** Projects one wire `AgentSession` onto its normalized view. */
 export function toAgentSessionView(
   wire: AgentSessionFieldsFragment,
@@ -67,6 +52,7 @@ export function toAgentSessionView(
       modelEndpoint: wire.agentConfig.modelEndpoint ?? null,
       task: wire.agentConfig.task,
       template: wire.agentConfig.template ?? null,
+      openPr: wire.agentConfig.openPr ?? false,
     },
     sandboxId: wire.sandboxId ?? null,
     sshAddress: wire.sshAddress ?? null,
@@ -75,7 +61,6 @@ export function toAgentSessionView(
     headSha: wire.headSha ?? null,
     prUrl: wire.prUrl ?? null,
     prNumber: wire.prNumber ?? null,
-    evidence: toEvidenceView(wire.evidence),
     turns: wire.turns ?? 0,
     deliveryMode:
       (wire.deliveryMode as AgentSessionDeliveryMode | null) ?? null,

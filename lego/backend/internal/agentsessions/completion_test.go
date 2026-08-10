@@ -56,10 +56,16 @@ func (f fakeConn) GetGitConnection(context.Context, string) (store.GitConnection
 }
 
 // completerFixture builds a Completer over a fake store holding one running
-// session with a live sandbox id, ready for a status-driven finalize.
+// session with a live sandbox id, ready for a status-driven finalize. The
+// session opts INTO draft-PR delivery (w5/m65) so the PR-path tests below still
+// exercise that path; completerFixtureConfig covers the opted-out default.
 func completerFixture(status string, statusErr error) (*Completer, *fakeStore, *fakeLifecycle, *fakePR, string) {
+	return completerFixtureConfig(status, statusErr, AgentConfig{Agent: "codex", Task: "fix the tests", OpenPR: true})
+}
+
+func completerFixtureConfig(status string, statusErr error, agentConfig AgentConfig) (*Completer, *fakeStore, *fakeLifecycle, *fakePR, string) {
 	st := newFakeStore()
-	config, _ := json.Marshal(AgentConfig{Agent: "codex", Task: "fix the tests"})
+	config, _ := json.Marshal(agentConfig)
 	row, _ := st.CreateAgentSession(context.Background(), store.AgentSession{WorkspaceID: "tea-a", Repo: "bex-co/example", Branch: "bex-agent/s1", AgentConfig: config})
 	row, _ = st.RecordAgentSessionDispatch(context.Background(), row.ID, "sandbox-1", PhaseRunning, "running", "")
 	lc := &fakeLifecycle{status: status, statusErr: statusErr}
@@ -84,8 +90,16 @@ func TestCompleterOpensDraftPRAndRecordsEvidence(t *testing.T) {
 	if pr.calls != 1 || pr.last.head != "bex-agent/s1" || pr.last.base != "main" || pr.last.owner != "bex-co" || pr.last.repo != "example" {
 		t.Fatalf("PR open = %+v (calls=%d)", pr.last, pr.calls)
 	}
-	if !strings.Contains(pr.last.body, "go test ./...") || !strings.Contains(pr.last.body, "fix.txt") {
-		t.Fatalf("PR body missing evidence: %s", pr.last.body)
+	// The body is session metadata only (w5/m65) — the diff and commit list are
+	// what GitHub already renders, and the "test output" the digest used to inline
+	// was any tool call that happened to write stdout.
+	if !strings.Contains(pr.last.body, id) || !strings.Contains(pr.last.body, "bex-agent/s1") || !strings.Contains(pr.last.body, "abc123") {
+		t.Fatalf("PR body missing session metadata: %s", pr.last.body)
+	}
+	for _, banned := range []string{"go test ./...", "fix.txt", "Changed files", "Commands run", "Test output", "truncated"} {
+		if strings.Contains(pr.last.body, banned) {
+			t.Fatalf("PR body still carries the evidence digest (%q): %s", banned, pr.last.body)
+		}
 	}
 	row := st.rows[id]
 	if row.Phase != PhaseCompleted || row.HeadSHA != "abc123" || row.PRURL == "" || row.PRNumber != 7 {
@@ -211,6 +225,45 @@ func TestCompleterNoChangeCompletesWithoutPR(t *testing.T) {
 	}
 	if st.rows[id].Phase != PhaseCompleted || st.rows[id].PRURL != "" || lc.canceled != 1 {
 		t.Fatalf("no-op completion = %+v", st.rows[id])
+	}
+}
+
+// The w5/m65 default: a session that never asked for a pull request delivers its
+// pushed branch and nothing else. It still completes with the head SHA — the
+// branch is the deliverable — and the tenant's repository gains no PR.
+func TestCompleterWithoutPROptInPushesBranchAndOpensNoPR(t *testing.T) {
+	c, st, lc, pr, id := completerFixtureConfig(succeededStatus(true), nil, AgentConfig{Agent: "codex", Task: "fix the tests"})
+	c.Reconcile(context.Background())
+
+	if pr.calls != 0 {
+		t.Fatalf("opened a PR nobody asked for: calls=%d body=%s", pr.calls, pr.last.body)
+	}
+	row := st.rows[id]
+	if row.Phase != PhaseCompleted || row.HeadSHA != "abc123" {
+		t.Fatalf("opted-out completion = %+v, want completed at the pushed head", row)
+	}
+	if row.PRURL != "" || row.PRNumber != 0 {
+		t.Fatalf("opted-out row carries PR fields: url=%q number=%d", row.PRURL, row.PRNumber)
+	}
+	if lc.canceled != 1 {
+		t.Fatalf("sandbox not torn down: canceled=%d", lc.canceled)
+	}
+}
+
+// A config that cannot be decoded must not be read as consent to write to the
+// tenant's repository — an unwanted PR cannot be un-opened.
+func TestCompleterUnreadableConfigOpensNoPR(t *testing.T) {
+	c, st, _, pr, id := completerFixture(succeededStatus(true), nil)
+	row := st.rows[id]
+	row.AgentConfig = []byte("{not json")
+	st.rows[id] = row
+	c.Reconcile(context.Background())
+
+	if pr.calls != 0 {
+		t.Fatalf("unreadable config opened a PR: calls=%d", pr.calls)
+	}
+	if st.rows[id].Phase != PhaseCompleted {
+		t.Fatalf("unreadable config blocked completion: %+v", st.rows[id])
 	}
 }
 
