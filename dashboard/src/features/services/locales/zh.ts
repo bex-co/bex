@@ -1049,11 +1049,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Settings tab: health-check path row label",
   },
   "services.settingsHealthCheckPathHint": {
-    message: "提供 bex 定期轮询以监控服务的 HTTP 路径。",
+    message:
+      "bex 用来判断服务是否可以接收流量的 HTTP 路径，需在 5 秒内返回 2xx 或 3xx。留空则只检查进程是否在端口上监听 —— 当服务没有可以低成本返回 2xx 的路由时，应当留空。",
     description: "Settings tab: health-check path row hint text",
   },
   "services.settingsHealthCheckPathPlaceholder": {
-    message: "/",
+    message: "留空 —— 仅检查端口",
     description: "Settings tab: health-check path input placeholder",
   },
   "services.settingsHealthCheckPathEdit": {

@@ -200,7 +200,7 @@ type displayNameArgs struct {
 // healthCheckPathArgs is set_health_check_path's input.
 type healthCheckPathArgs struct {
 	ServiceID       string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	HealthCheckPath string `json:"healthCheckPath" jsonschema:"HTTP path the platform GETs to gate pod readiness; must start with / or be empty to restore the platform default /"`
+	HealthCheckPath string `json:"healthCheckPath" jsonschema:"HTTP path the platform GETs to gate pod readiness; must start with /. Empty clears it, which switches the service to a TCP check that only verifies the process is listening"`
 }
 
 // maxShutdownDelayArgs is set_max_shutdown_delay's input. Render's official
@@ -1028,7 +1028,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_health_check_path",
-		Description: "Change the HTTP path the platform GETs to decide whether a web or private service is ready to receive traffic (spec.healthCheckPath → ReadinessProbe). A 2xx/3xx response marks the pod ready. Pass an empty string to restore the platform default /. Has no effect on cron_job or background_worker services.",
+		Description: "Change the HTTP path the platform GETs to decide whether a web or private service is ready to receive traffic (spec.healthCheckPath). A 2xx/3xx response marks the pod ready. Pass an empty string to CLEAR the path, which switches the service to a TCP check that only verifies the process is listening — the platform default, and the right choice for a service with no cheap 2xx route (an API whose / is a 404 can never pass an HTTP check). Has no effect on cron_job or background_worker services.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in healthCheckPathArgs) (*mcp.CallToolResult, renderService, error) {
 		app, err := s.SetHealthCheckPath(ctx, in.ServiceID, in.HealthCheckPath)
 		if err != nil {

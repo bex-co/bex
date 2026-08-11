@@ -217,22 +217,79 @@ var _ = Describe("App Controller", func() {
 			Expect(c.ReadinessProbe.HTTPGet).NotTo(BeNil())
 			Expect(c.ReadinessProbe.HTTPGet.Path).To(Equal("/healthz"))
 			Expect(c.ReadinessProbe.HTTPGet.Port.IntVal).To(Equal(int32(3000)), "probe targets the app port")
+			Expect(c.ReadinessProbe.TCPSocket).To(BeNil(), "an explicit path selects the strict HTTP mode")
 		})
 
-		It("defaults the probe path to \"/\" when healthCheckPath is unset", func() {
+		// The counterpart of the case above, and the reason the CRD carries no
+		// default: Kubernetes scores an HTTP probe healthy only on
+		// 200 <= code < 400. Defaulting an unset path to GET / therefore made a
+		// service whose root is a legitimate 404 — an API with no root route —
+		// permanently un-Ready and impossible to deploy, while Render (which
+		// defaults to a TCP socket probe) deploys it untouched.
+		It("probes TCP, not HTTP, when healthCheckPath is unset — a 404 root must still deploy", func() {
 			c := appContainer("default-health-app", appv1alpha1.AppSpec{
 				Image: "traefik/whoami", Port: 3000,
 			})
 			Expect(c.ReadinessProbe).NotTo(BeNil())
-			Expect(c.ReadinessProbe.HTTPGet.Path).To(Equal("/"))
-			Expect(c.ReadinessProbe.HTTPGet.Port.IntVal).To(Equal(int32(3000)))
+			Expect(c.ReadinessProbe.TCPSocket).NotTo(BeNil(), "unset path must not impose an HTTP success range")
+			Expect(c.ReadinessProbe.TCPSocket.Port.IntVal).To(Equal(int32(3000)))
+			Expect(c.ReadinessProbe.HTTPGet).To(BeNil())
+			Expect(c.StartupProbe).NotTo(BeNil())
+			Expect(c.StartupProbe.TCPSocket).NotTo(BeNil(), "both probes share one handler")
 		})
 
-		It("omits the ReadinessProbe on a background_worker (no HTTP port)", func() {
+		// Render: "…responds with a 2xx or 3xx status code within five seconds."
+		// Unset, Kubernetes defaults this to 1s, which a server-side-rendered
+		// page cannot reliably meet — the pod flaps instead of failing honestly.
+		It("gives every probe Render's five-second budget", func() {
+			c := appContainer("probe-timeout-app", appv1alpha1.AppSpec{
+				Image: "traefik/whoami", Port: 3000, HealthCheckPath: "/healthz",
+			})
+			Expect(c.ReadinessProbe.TimeoutSeconds).To(Equal(int32(5)))
+			Expect(c.StartupProbe.TimeoutSeconds).To(Equal(int32(5)))
+		})
+
+		// A slow boot must not be killed by whichever of the three rollout
+		// timers happens to be tightest. Asserted as an equality against the
+		// Deployment's own deadline rather than as a repeated literal — three
+		// literals that agree today is exactly how ∞/600s/180s happened.
+		It("spends the startup budget over 15 minutes, equal to progressDeadlineSeconds", func() {
+			nn := types.NamespacedName{Name: "slow-boot-app", Namespace: "default"}
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+				Spec:       appv1alpha1.AppSpec{Image: "traefik/whoami", Port: 3000},
+			}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+			reconcileN(nn)
+			dep := getDep(nn)
+			c := dep.Spec.Template.Spec.Containers[0]
+
+			Expect(dep.Spec.ProgressDeadlineSeconds).NotTo(BeNil())
+			budget := c.StartupProbe.PeriodSeconds * c.StartupProbe.FailureThreshold
+			Expect(budget).To(Equal(*dep.Spec.ProgressDeadlineSeconds),
+				"startupProbe budget and progressDeadlineSeconds must be the same number")
+			Expect(budget).To(Equal(int32(900)), "Render cancels a deploy after 15 minutes")
+
+			Expect(k8sClient.Delete(ctx, app)).To(Succeed())
+			reconcileN(nn)
+		})
+
+		It("omits every probe on a background_worker (no HTTP port)", func() {
 			c := appContainer("worker-no-probe", appv1alpha1.AppSpec{
 				Image: "traefik/whoami", Port: 3000, Type: appv1alpha1.TypeBackgroundWorker,
 			})
 			Expect(c.ReadinessProbe).To(BeNil(), "a worker exposes no HTTP port, so no readiness probe")
+			Expect(c.StartupProbe).To(BeNil(), "…and no startup probe either")
+		})
+
+		// Deliberate divergence, recorded so it reads as a decision rather than
+		// an oversight: Render restarts an instance after 60s of failures.
+		// See .pm/w7/027.md for why that is not adopted unconditionally.
+		It("carries no livenessProbe", func() {
+			c := appContainer("no-liveness-app", appv1alpha1.AppSpec{
+				Image: "traefik/whoami", Port: 3000, HealthCheckPath: "/healthz",
+			})
+			Expect(c.LivenessProbe).To(BeNil())
 		})
 
 		It("maps maxShutdownDelaySeconds onto the pod grace period for every long-running type", func() {

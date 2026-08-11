@@ -1070,11 +1070,11 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.settingsHealthCheckPathHint": {
     message:
-      "Provide an HTTP endpoint path that bex polls periodically to monitor your service.",
+      "An HTTP path bex polls to decide whether your service is ready for traffic; it must answer 2xx or 3xx within 5 seconds. Leave it empty to check only that the process is listening on its port — the right choice when the service has no cheap route that returns 2xx.",
     description: "Settings tab: health-check path row hint text",
   },
   "services.settingsHealthCheckPathPlaceholder": {
-    message: "/",
+    message: "Empty — check the port only",
     description: "Settings tab: health-check path input placeholder",
   },
   "services.settingsHealthCheckPathEdit": {

@@ -69,7 +69,31 @@ const (
 	// CR's phase, to ever report a deploy as failed.
 	defaultBuildGateTimeout     = 35 * time.Minute
 	defaultPreDeployGateTimeout = 12 * time.Minute
-	defaultDeployGateTimeout    = 3 * time.Minute
+	// defaultDeployGateTimeout observes the rollout the same way the two gates
+	// above observe their Jobs, so it follows the same rule: a control-plane
+	// budget must be strictly LONGER than the mechanism it watches, or the
+	// generic "did not become healthy within the health-gate window" races the
+	// mechanism's own specific verdict and can win — re-creating the vague
+	// message w7/m79 worked to eliminate.
+	//
+	// The mechanism here is the rollout budget in
+	// lego/operator/internal/controller/deployment_projection.go
+	// (rolloutBudgetSeconds = 900s), which is Render's window: "If this
+	// condition is not met within 15 minutes, Render cancels the deploy and
+	// continues routing traffic to your service's existing instances." Both
+	// the startupProbe budget and Deployment.spec.progressDeadlineSeconds are
+	// derived from it, so the Deployment reports ProgressDeadlineExceeded at
+	// 15m and this gate closes the row at 18m. The margin matches the existing
+	// pattern (build 30m→35m, pre-deploy 10m→12m).
+	//
+	// The constant cannot be shared — separate Go module, and backend must
+	// never import operator — so the invariant is held by a test on each side.
+	//
+	// Before m80 this was 3 minutes against the operator's inherited 600s
+	// default, so the real budget was 3 minutes for reasons nobody chose: an
+	// image pull alone has been measured at 52s on a 498 MB image, before the
+	// container even starts.
+	defaultDeployGateTimeout = 18 * time.Minute
 )
 
 // CloneSecreter is called by the Reconciler when projecting a new App CR for

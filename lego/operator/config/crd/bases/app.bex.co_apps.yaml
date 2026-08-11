@@ -372,13 +372,28 @@ spec:
                   type: object
                 type: array
               healthCheckPath:
-                default: /
                 description: |-
-                  HealthCheckPath is the HTTP path the operator GETs to gate pod readiness
-                  (Render's health check — a 2xx/3xx makes a pod ready and routes traffic
-                  to it). Wired as the app container's ReadinessProbe; defaults to "/".
-                  Applies only to HTTP-serving service types (web/private) — workers and
-                  cron jobs expose no port, so the path is unused there.
+                  HealthCheckPath selects what "healthy" means for this service, in the two
+                  modes Render offers:
+
+                    unset — a TCP socket probe against the container port. The platform has
+                            not been told what healthy looks like, so it asks only whether
+                            the process is listening. This is Render's default.
+                    set   — an HTTP GET of the path; 2xx/3xx is healthy. The opt-in to a
+                            stricter check, for a service that can answer the question.
+
+                  Wired as both the startup and readiness probes (identical handler, see
+                  deployment_projection.go). Applies only to HTTP-serving service types
+                  (web/private) — workers and cron jobs expose no port, so it is unused
+                  there.
+
+                  Deliberately carries NO +kubebuilder:default. It used to default to "/",
+                  which forced the strict mode on every service and made an ordinary API —
+                  one whose root is a legitimate 404 — impossible to deploy, since
+                  Kubernetes scores an HTTP probe healthy only on 200 <= code < 400.
+                  Because defaults are applied at write time, Apps stored before that
+                  change still carry a persisted "/" and keep the HTTP check until an
+                  owner clears the field; see docs/ADR004-app-deployment.md.
                 type: string
               host:
                 description: |-
