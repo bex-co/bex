@@ -981,6 +981,35 @@ func TestRecordDeployClosesFailedOnCRFailed(t *testing.T) {
 	}
 }
 
+// TestDeployGateOutlastsTheRolloutBudgetItObserves pins the control-plane end
+// of the three timers that bound a rollout. The other two — the startupProbe
+// budget and Deployment.spec.progressDeadlineSeconds — live in the operator
+// module, which backend must never import, so no constant can be shared; the
+// operator suite asserts those two equal each other and equal 900s, and this
+// asserts the relationship that must hold across the boundary.
+//
+// The rule is the same one the build and pre-deploy gates already follow: a
+// control-plane budget must be strictly longer than the mechanism it watches
+// (build Jobs 30m → gate 35m, pre-deploy Jobs 10m → gate 12m). Equal would be
+// a race — the generic "did not become healthy within the health-gate window"
+// could beat the Deployment's own specific ProgressDeadlineExceeded and report
+// the vague message w7/m79 worked to eliminate.
+func TestDeployGateOutlastsTheRolloutBudgetItObserves(t *testing.T) {
+	rec, _, _ := newTestReconciler(t)
+	// Mirrors rolloutBudgetSeconds in the operator's deployment_projection.go.
+	const rolloutBudget = 15 * time.Minute
+
+	if rec.DeployGateTimeout <= rolloutBudget {
+		t.Fatalf("DeployGateTimeout = %v must be strictly longer than the %v rollout budget it "+
+			"observes, or the generic health-gate message races the Deployment's own verdict",
+			rec.DeployGateTimeout, rolloutBudget)
+	}
+	if rec.DeployGateTimeout != 18*time.Minute {
+		t.Errorf("DeployGateTimeout = %v, want 18m (15m rollout budget + the same margin the "+
+			"build and pre-deploy gates carry)", rec.DeployGateTimeout)
+	}
+}
+
 // TestRecordDeployClosesFailedOnGateTimeout covers a deploy that never gates
 // healthy and never reaches PhaseFailed either — a bad image stuck
 // ImagePullBackOff, which the App CR's own phase machine polls PhaseDeploying
@@ -1047,9 +1076,26 @@ func TestFailureReasonFor(t *testing.T) {
 	}
 }
 
+// TestDeployTimedOutUsesPhaseSpecificBudgets proves each phase is judged
+// against its OWN budget rather than one global one.
+//
+// Every case is expressed relative to the gate it exercises (just under it, or
+// just past it) instead of sharing one wall-clock literal. The table used to
+// hang on a single "4 minutes", which only worked while the rollout gate was
+// the shortest of the three; when m80 raised it to 18m — past the 12m
+// pre-deploy gate — no single elapsed value could express the table's intent
+// any more. Anchoring each case to its own gate removes that dependency on the
+// accidental ordering among budgets, which is not a property any of them
+// promises: they bound sequential phases with unrelated mechanisms (BuildKit's
+// 30m Job deadline, the pre-deploy Job's 10m, the rollout's 15m).
 func TestDeployTimedOutUsesPhaseSpecificBudgets(t *testing.T) {
 	rec := NewReconciler(nil, nil)
 	now := time.Now()
+	// elapsed builds an UpdatedAt that sits `delta` away from `gate`.
+	elapsed := func(gate, delta time.Duration) time.Time { return now.Add(-gate - delta) }
+	const margin = time.Minute
+
+	repo := DesiredApp{App: App{Repo: "https://github.com/acme/web"}}
 
 	tests := []struct {
 		name string
@@ -1058,32 +1104,41 @@ func TestDeployTimedOutUsesPhaseSpecificBudgets(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "repo build may exceed rollout gate",
-			app:  DesiredApp{App: App{Repo: "https://github.com/acme/web"}},
-			open: Deploy{Status: DeployBuildInProgress, UpdatedAt: now.Add(-4 * time.Minute)},
+			name: "repo build gets the build budget, not the rollout one",
+			app:  repo,
+			open: Deploy{Status: DeployBuildInProgress, UpdatedAt: elapsed(defaultDeployGateTimeout, margin)},
 		},
 		{
-			name: "repo created phase uses build budget",
-			app:  DesiredApp{App: App{Repo: "https://github.com/acme/web"}},
-			open: Deploy{Status: DeployCreated, UpdatedAt: now.Add(-4 * time.Minute)},
+			name: "repo created phase gets the build budget",
+			app:  repo,
+			open: Deploy{Status: DeployCreated, UpdatedAt: elapsed(defaultDeployGateTimeout, margin)},
 		},
 		{
-			name: "pre-deploy may exceed rollout gate",
-			open: Deploy{Status: DeployPreDeployInProgress, UpdatedAt: now.Add(-4 * time.Minute)},
+			name: "pre-deploy gets its own budget",
+			open: Deploy{Status: DeployPreDeployInProgress, UpdatedAt: elapsed(defaultPreDeployGateTimeout, -margin)},
+		},
+		{
+			name: "rollout inside its budget survives",
+			open: Deploy{Status: DeployUpdateInProgress, UpdatedAt: elapsed(defaultDeployGateTimeout, -margin)},
 		},
 		{
 			name: "build eventually times out",
-			open: Deploy{Status: DeployBuildInProgress, UpdatedAt: now.Add(-defaultBuildGateTimeout - time.Minute)},
+			open: Deploy{Status: DeployBuildInProgress, UpdatedAt: elapsed(defaultBuildGateTimeout, margin)},
 			want: true,
 		},
 		{
-			name: "rollout uses short health gate",
-			open: Deploy{Status: DeployUpdateInProgress, UpdatedAt: now.Add(-4 * time.Minute)},
+			name: "pre-deploy eventually times out",
+			open: Deploy{Status: DeployPreDeployInProgress, UpdatedAt: elapsed(defaultPreDeployGateTimeout, margin)},
 			want: true,
 		},
 		{
-			name: "image deploy created phase uses rollout gate",
-			open: Deploy{Status: DeployCreated, UpdatedAt: now.Add(-4 * time.Minute)},
+			name: "rollout past its budget times out",
+			open: Deploy{Status: DeployUpdateInProgress, UpdatedAt: elapsed(defaultDeployGateTimeout, margin)},
+			want: true,
+		},
+		{
+			name: "image deploy created phase uses the rollout gate",
+			open: Deploy{Status: DeployCreated, UpdatedAt: elapsed(defaultDeployGateTimeout, margin)},
 			want: true,
 		},
 	}

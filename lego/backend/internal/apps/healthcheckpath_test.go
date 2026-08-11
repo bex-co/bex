@@ -100,15 +100,18 @@ func TestRESTPatchServiceHealthCheckPathEmpty(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	// Explicit "" normalizes to "/" (the platform default stored in spec).
+	// Explicit "" clears the field, selecting the TCP probe (w7/m80). The REST
+	// surface has to be able to express this or the mode is unreachable: a
+	// pointer field distinguishes absent (leave alone) from explicit "" (clear),
+	// and the service verb must not undo that by coercing back to "/".
 	body := strings.NewReader(`{"healthCheckPath":""}`)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH healthCheckPath='' => 200, got %d: %s", rec.Code, rec.Body)
 	}
-	if got := getApp(t, cl, "web").Spec.HealthCheckPath; got != "/" {
-		t.Errorf("spec.healthCheckPath = %q, want / (platform default)", got)
+	if got := getApp(t, cl, "web").Spec.HealthCheckPath; got != "" {
+		t.Errorf("spec.healthCheckPath = %q, want empty (TCP probe)", got)
 	}
 }
 
@@ -129,17 +132,39 @@ func TestSetHealthCheckPathSetsSpec(t *testing.T) {
 	}
 }
 
-func TestSetHealthCheckPathEmptyNormalizesToDefault(t *testing.T) {
+// TestSetHealthCheckPathEmptyClearsToTCPMode pins the reverse of what this
+// used to assert. An empty path must CLEAR the field, not reset it to "/".
+//
+// The old coercion made the field one-way: once any path was set, no surface
+// could ever express "unset" again, so no caller could reach the TCP probe that
+// w7/m80 made the platform default and that Render defaults to. Clearing is
+// also the documented migration for a service created before m80, whose spec
+// still carries the "/" the CRD default persisted at write time — without this,
+// that service could never be moved off the strict HTTP check.
+func TestSetHealthCheckPathEmptyClearsToTCPMode(t *testing.T) {
 	app := sampleApp("web")
 	app.Spec.HealthCheckPath = "/healthz"
 	svc, cl := newService(nil, app)
 
-	// Empty normalizes to "/" and stores that in the spec.
 	if _, err := svc.SetHealthCheckPath(context.Background(), "web", ""); err != nil {
 		t.Fatalf("SetHealthCheckPath(''): %v", err)
 	}
-	if got := getApp(t, cl, "web").Spec.HealthCheckPath; got != "/" {
-		t.Errorf("spec.healthCheckPath = %q, want / (platform default)", got)
+	if got := getApp(t, cl, "web").Spec.HealthCheckPath; got != "" {
+		t.Errorf("spec.healthCheckPath = %q, want empty (selects the TCP probe)", got)
+	}
+}
+
+// Whitespace is still a clear, not a validation error — " " trims to empty.
+func TestSetHealthCheckPathWhitespaceClears(t *testing.T) {
+	app := sampleApp("web")
+	app.Spec.HealthCheckPath = "/healthz"
+	svc, cl := newService(nil, app)
+
+	if _, err := svc.SetHealthCheckPath(context.Background(), "web", "   "); err != nil {
+		t.Fatalf("SetHealthCheckPath('   '): %v", err)
+	}
+	if got := getApp(t, cl, "web").Spec.HealthCheckPath; got != "" {
+		t.Errorf("spec.healthCheckPath = %q, want empty", got)
 	}
 }
 

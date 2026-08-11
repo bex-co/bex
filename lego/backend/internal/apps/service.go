@@ -3067,11 +3067,18 @@ func validCronSchedule(s string) bool {
 	return len(strings.Fields(s)) == 5
 }
 
-// SetHealthCheckPath changes spec.healthCheckPath — the HTTP path the operator
-// wires into the container's ReadinessProbe (w1/m23/t001). A direct CR patch,
-// not projection-owned (mirrors Builder/RootDir). An empty path resets to the
-// default "/". Rejected for service types that have no HTTP port (cron_job,
-// background_worker) since those never serve a health endpoint.
+// SetHealthCheckPath changes spec.healthCheckPath — what the operator wires
+// into the container's startup and readiness probes (w1/m23/t001). A direct CR
+// patch, not projection-owned (mirrors Builder/RootDir). Rejected for service
+// types that have no HTTP port (cron_job, background_worker) since those never
+// serve a health endpoint.
+//
+// An empty path CLEARS the field, selecting the TCP probe — it does not reset
+// to "/" (w7/m80). That coercion used to make the field one-way: once any path
+// was set, no surface could express "unset" again, so no caller could reach the
+// TCP mode that is now the platform default and Render's. Clearing is also the
+// documented migration for a service created before m80, which still carries a
+// "/" the CRD default persisted at write time.
 func (s *Service) SetHealthCheckPath(ctx context.Context, name string, path string) (AppView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
 	if err != nil {
@@ -3081,10 +3088,7 @@ func (s *Service) SetHealthCheckPath(ctx context.Context, name string, path stri
 		return AppView{}, fmt.Errorf("%w: health check path is not applicable to a %s", core.ErrBadRequest, a.Spec.Type)
 	}
 	trimmed := strings.TrimSpace(path)
-	if trimmed == "" {
-		trimmed = "/"
-	}
-	if !strings.HasPrefix(trimmed, "/") {
+	if trimmed != "" && !strings.HasPrefix(trimmed, "/") {
 		return AppView{}, fmt.Errorf("%w: health check path must start with /", core.ErrBadRequest)
 	}
 	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {

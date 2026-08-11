@@ -155,10 +155,64 @@ func TestWebServiceReadinessProbe(t *testing.T) {
 		}
 	})
 
-	t.Run("defaults to root", func(t *testing.T) {
+	// An unset path means the platform was never told what healthy looks like,
+	// so it asks only what it can answer honestly — is the process listening —
+	// which is Render's default too. It must NOT fall back to GET /: Kubernetes
+	// scores an HTTP probe healthy only on 200 <= code < 400, so that fallback
+	// made a service whose root is a legitimate 404 permanently un-Ready and
+	// impossible to deploy.
+	t.Run("falls back to a TCP probe, not GET /, when no path is set", func(t *testing.T) {
 		container := appContainerOf(t, project(projectionApp(), webParams()))
-		if got := container.ReadinessProbe.HTTPGet.Path; got != "/" {
-			t.Errorf("probe path = %q; want the CRD default /", got)
+
+		if container.ReadinessProbe == nil || container.ReadinessProbe.TCPSocket == nil {
+			t.Fatal("an unset health check path must probe TCP")
+		}
+		if container.ReadinessProbe.HTTPGet != nil {
+			t.Error("an unset path must not impose an HTTP success range on the root route")
+		}
+		if got := container.ReadinessProbe.TCPSocket.Port.IntValue(); got != 8080 {
+			t.Errorf("probe port = %d; want the container port", got)
+		}
+	})
+
+	// Both probes must agree about what healthy means; they share one handler
+	// so they cannot drift.
+	t.Run("startup and readiness share one handler", func(t *testing.T) {
+		app := projectionApp(func(a *appv1alpha1.App) { a.Spec.HealthCheckPath = "/healthz" })
+		container := appContainerOf(t, project(app, webParams()))
+
+		if container.StartupProbe == nil || container.StartupProbe.HTTPGet == nil {
+			t.Fatal("a web service must carry a startup probe")
+		}
+		if container.StartupProbe.HTTPGet.Path != container.ReadinessProbe.HTTPGet.Path {
+			t.Errorf("startup probes %q but readiness probes %q",
+				container.StartupProbe.HTTPGet.Path, container.ReadinessProbe.HTTPGet.Path)
+		}
+	})
+
+	// Render: healthy means answering "within five seconds". Kubernetes would
+	// default this to 1s, which a server-side-rendered page cannot meet — the
+	// pod then flaps NotReady forever instead of failing honestly.
+	t.Run("gives every probe Render's five-second budget", func(t *testing.T) {
+		app := projectionApp(func(a *appv1alpha1.App) { a.Spec.HealthCheckPath = "/healthz" })
+		container := appContainerOf(t, project(app, webParams()))
+
+		if got := container.ReadinessProbe.TimeoutSeconds; got != 5 {
+			t.Errorf("readiness timeout = %ds; want Render's 5s", got)
+		}
+		if got := container.StartupProbe.TimeoutSeconds; got != 5 {
+			t.Errorf("startup timeout = %ds; want Render's 5s", got)
+		}
+	})
+
+	// Deliberate divergence: Render restarts an instance after 60s of
+	// consecutive failures. Adopting that unconditionally would let a service
+	// that merely slows under load be restarted into a cold start. See
+	// .pm/w7/027.md.
+	t.Run("carries no liveness probe", func(t *testing.T) {
+		app := projectionApp(func(a *appv1alpha1.App) { a.Spec.HealthCheckPath = "/healthz" })
+		if container := appContainerOf(t, project(app, webParams())); container.LivenessProbe != nil {
+			t.Error("no liveness probe until .pm/w7/027.md is promoted")
 		}
 	})
 
@@ -168,6 +222,33 @@ func TestWebServiceReadinessProbe(t *testing.T) {
 			t.Errorf("ports = %v; want the single app port", container.Ports)
 		}
 	})
+}
+
+// TestRolloutTimersAgree pins the two mechanism timers to one number. They are
+// the operator's half of the three that bound a rollout; bex-api's
+// DeployGateTimeout is the third and observes them from another module, so it
+// is asserted there (TestDeployGateOutlastsTheRolloutBudgetItObserves).
+//
+// Asserted as an equality between the two derived values rather than as two
+// literals: three literals that happen to agree today is exactly how the
+// pre-m80 state (∞ / 600s / 180s) arose, where the effective budget was the
+// accidental minimum of three unrelated choices.
+func TestRolloutTimersAgree(t *testing.T) {
+	dep := project(projectionApp(), webParams())
+	container := appContainerOf(t, dep)
+
+	if dep.Spec.ProgressDeadlineSeconds == nil {
+		t.Fatal("progressDeadlineSeconds must be set; unset inherits Kubernetes' 600s and silently " +
+			"cuts Render's 15-minute window to 10")
+	}
+	budget := container.StartupProbe.PeriodSeconds * container.StartupProbe.FailureThreshold
+	if budget != *dep.Spec.ProgressDeadlineSeconds {
+		t.Errorf("startup budget = %ds but progressDeadlineSeconds = %ds; the tightest silently "+
+			"decides, so they must be one number", budget, *dep.Spec.ProgressDeadlineSeconds)
+	}
+	if budget != 900 {
+		t.Errorf("rollout budget = %ds; want Render's 15 minutes", budget)
+	}
 }
 
 // TestStartCommandOnlyOverridesOpaqueImages pins the rule that a native or

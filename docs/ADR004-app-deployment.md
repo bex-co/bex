@@ -87,7 +87,22 @@ kubectl patch app my-app --type merge \
   -p '{"spec":{"image":"my-app:<sha>"}}'
 ```
 
-This is the actual "deploy". The spec change bumps `metadata.generation` — **required**, because the controller watches with `GenerationChangedPredicate`: generation-changing updates are delivered to the reconciler (the reconcile itself is level-triggered and deliberately has no early-return — it re-applies desired state on every pass). The operator then classifies the change by artifact/release identity; changing `spec.image` changes both and therefore rewrites the owned Deployment's image. The default RollingUpdate starts the new pod **before** terminating the old one, so the single node serves without a gap. A pod joins the Service's endpoints (and receives traffic) only once its **`ReadinessProbe`** passes — an HTTP `GET` of `spec.healthCheckPath` on the container port (a 2xx/3xx makes a pod ready; a failure keeps it out of rotation until it recovers). Empty `healthCheckPath` defaults to `/`. Workers and cron jobs expose no HTTP port, so they carry no probe.
+This is the actual "deploy". The spec change bumps `metadata.generation` — **required**, because the controller watches with `GenerationChangedPredicate`: generation-changing updates are delivered to the reconciler (the reconcile itself is level-triggered and deliberately has no early-return — it re-applies desired state on every pass). The operator then classifies the change by artifact/release identity; changing `spec.image` changes both and therefore rewrites the owned Deployment's image. The default RollingUpdate starts the new pod **before** terminating the old one, so the single node serves without a gap. A pod joins the Service's endpoints (and receives traffic) only once its **`ReadinessProbe`** passes. Workers and cron jobs expose no HTTP port, so they carry no probe at all. What "healthy" means has two modes, matching Render:
+
+| `spec.healthCheckPath` | probe | meaning |
+| --- | --- | --- |
+| unset | `TCPSocket` on the container port | the platform was not told what healthy looks like, so it asks only whether the process is listening |
+| set | `HTTPGet` of the path; 2xx/3xx is ready | the opt-in to a stricter check |
+
+The empty case deliberately does **not** fall back to `GET /`. Kubernetes scores an HTTP probe healthy only on `200 ≤ code < 400`, so that fallback made a service whose root is a legitimate 404 — an API with no root route — permanently un-Ready and impossible to deploy, while the same service deploys on Render (whose default is likewise a TCP socket probe) untouched. The CRD therefore carries no default for the field.
+
+> **Migration.** Kubernetes applies CRD defaults at write time, so every App stored before this change has `healthCheckPath: "/"` persisted and keeps the HTTP check. Clearing the field is how an owner opts into the TCP default; nothing is rewritten automatically, because silently changing the health semantics of a running service is not a decision the platform should make on an owner's behalf.
+
+Both probes get Render's five-second budget (`timeoutSeconds: 5`) rather than Kubernetes' one-second default, which no server-side-rendered page reliably meets — the result there is a permanently flapping pod rather than an honest failure.
+
+A `StartupProbe` with the same handler owns the boot phase and carries the full rollout budget; while it runs, kubelet suspends readiness, so a slow start cannot be mistaken for a sick instance. **Three timers bound a rollout and their relationship is the contract:** the startup budget and the Deployment's `progressDeadlineSeconds` are the mechanism and derive from one constant (15 minutes, Render's window), while bex-api's `DeployGateTimeout` _observes_ that mechanism and is deliberately longer (18 minutes) — the same rule the build (30m Job → 35m gate) and pre-deploy (10m → 12m) budgets follow, so the mechanism's own specific verdict lands before the generic health-gate message.
+
+Two divergences from Render are deliberate. Render drops an instance from rotation after 15s of consecutive failures where bex takes 30s (10s period × 3 failures): the probe targets a tenant-supplied path that is often an expensive render, so halving the interval doubles that cost platform-wide, and faster removal buys nothing at `replicas: 1`. Render also **restarts** an instance after 60s of failures; bex ships no `livenessProbe`, because restarting a service that merely slowed under load produces a cold start that makes the next probe slower still. That one is tracked rather than closed — see `.pm/w7/027.md`.
 
 Preferred over a raw patch: declare the App in the project's `render.yaml` and apply that (see below) — same effect, but the spec lives in the app repo.
 
@@ -120,7 +135,7 @@ services:
     image: { url: my-app:<sha> }
     # For a git build, use runtime: docker plus repo/branch instead of image.
     numInstances: 1
-    healthCheckPath: / # GET path the operator probes for pod readiness (2xx/3xx → ready); defaults to "/"
+    healthCheckPath: /healthz # optional. Set => HTTP GET, 2xx/3xx is ready. Omit => TCP probe on the port (no default path)
 
     envVars: # literal (non-secret) config -> App.spec.env (PORT is operator-owned)
       - key: LOG_LEVEL

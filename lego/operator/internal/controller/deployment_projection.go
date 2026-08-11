@@ -28,6 +28,62 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 )
 
+// Health-check timing. Every value here mirrors a number Render documents, so
+// an app Render deploys without complaint also deploys here.
+//
+// The one deliberate divergence is the *period*: Render pulls an instance from
+// rotation after 15s of consecutive failures, which would need a 5s period, and
+// we keep Kubernetes' 10s (so 10s × the default failureThreshold of 3 = 30s).
+// The probe targets a tenant-supplied path that is frequently an expensive
+// server-side render, so halving the interval doubles that cost for every
+// service on the platform; and the thing a faster removal buys — shifting
+// traffic to a healthy peer — does not exist at replicas: 1, which is the
+// common shape. Leave periodSeconds/failureThreshold unset unless that
+// trade-off changes.
+const (
+	// healthCheckTimeoutSeconds is Render's budget: "Render considers a check
+	// successful if the instance responds with a 2xx or 3xx status code within
+	// five seconds." Kubernetes would otherwise default this to 1s, which no
+	// server-side-rendered page reliably meets — it produces a permanently
+	// flapping pod rather than an honest failure.
+	healthCheckTimeoutSeconds int32 = 5
+
+	// healthCheckPeriodSeconds is how often a probe runs, for both the startup
+	// and readiness probes.
+	healthCheckPeriodSeconds int32 = 10
+
+	// rolloutBudgetSeconds is how long a new pod may take to first report
+	// healthy, matching Render: "If this condition is not met within 15
+	// minutes, Render cancels the deploy and continues routing traffic to your
+	// service's existing instances."
+	//
+	// THREE timers bound a rollout, in two roles:
+	//
+	//   mechanism — the startupProbe budget below (periodSeconds ×
+	//               failureThreshold) and Deployment.spec.progressDeadlineSeconds,
+	//               both derived from this constant so they are one number.
+	//   observer  — bex-api's DeployGateTimeout
+	//               (lego/backend/internal/store/reconciler.go), which watches
+	//               the rollout from the control plane and is deliberately
+	//               LONGER (18m), so the mechanism's own specific verdict lands
+	//               before the generic health-gate message. That follows the
+	//               rule its sibling gates already use (build Jobs 30m → gate
+	//               35m, pre-deploy 10m → 12m).
+	//
+	// The observer lives in another module and cannot share this constant; its
+	// comment names this one and a test on each side pins the relationship.
+	//
+	// Before m80 the three read ∞ / 600s (the Kubernetes default, never set) /
+	// 180s, so the real budget was 3 minutes — the accidental minimum of three
+	// unrelated choices, none of them Render's.
+	rolloutBudgetSeconds int32 = 900
+
+	// healthCheckStartupFailureThreshold spends rolloutBudgetSeconds at
+	// healthCheckPeriodSeconds. Derived, never written as a literal, so the
+	// budget cannot drift away from progressDeadlineSeconds.
+	healthCheckStartupFailureThreshold = rolloutBudgetSeconds / healthCheckPeriodSeconds
+)
+
 // deploymentParams bundles the inputs the Deployment projection needs beyond
 // the App itself — the reconcile-time decisions (which image won, how many
 // replicas the autoscaler settled on) and the reconciler's own configuration.
@@ -102,20 +158,63 @@ func appContainer(app *appv1alpha1.App, p deploymentParams) corev1.Container {
 		container.Command = []string{"/bin/sh", "-c", app.Spec.StartCommand}
 	}
 	// Health-gating: a non-worker service speaks HTTP, so gate pod readiness on
-	// GET spec.healthCheckPath — Render's health check. A 2xx/3xx (k8s' default
-	// success range) makes the pod ready and routes traffic; a failure pulls it
-	// out of the Service until it recovers. Empty defaults to "/", matching the
-	// CRD's +kubebuilder:default.
+	// spec.healthCheckPath — Render's health check. A failure pulls the pod out
+	// of the Service until it recovers.
+	//
+	// Render's ONE health check carries three consequences (gate the deploy,
+	// drop from rotation, restart) where Kubernetes has three probes. Loading
+	// all of it onto readiness — as this did before m80 — welds boot behavior
+	// to steady-state behavior, so neither can be tuned without wrecking the
+	// other. Split them:
+	//
+	//   startupProbe  — owns boot, with Render's full 15-minute budget. While
+	//                   it runs kubelet suspends readiness (and liveness),
+	//                   which is what makes that budget real.
+	//   readinessProbe — owns steady state, strict, once boot has succeeded.
+	//
+	// There is deliberately no livenessProbe: Render restarts an instance
+	// after 60s of failures, but adopting that unconditionally would let a
+	// service that merely slows under load be restarted into a cold start,
+	// making the next probe slower still. Tracked as .pm/w7/027.md.
 	if !p.worker {
-		path := app.Spec.HealthCheckPath
-		if path == "" {
-			path = "/"
+		handler := healthCheckHandler(app.Spec.HealthCheckPath, p.port)
+		container.StartupProbe = &corev1.Probe{
+			ProbeHandler:     handler,
+			TimeoutSeconds:   healthCheckTimeoutSeconds,
+			PeriodSeconds:    healthCheckPeriodSeconds,
+			FailureThreshold: healthCheckStartupFailureThreshold,
 		}
-		container.ReadinessProbe = &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
-			HTTPGet: &corev1.HTTPGetAction{Path: path, Port: intstr.FromInt(p.port)},
-		}}
+		container.ReadinessProbe = &corev1.Probe{
+			ProbeHandler:   handler,
+			TimeoutSeconds: healthCheckTimeoutSeconds,
+		}
 	}
 	return container
+}
+
+// healthCheckHandler builds the probe handler both probes share, so they can
+// never disagree about what "healthy" means for a given App.
+//
+// The two modes are Render's. An unset healthCheckPath means the platform has
+// not been told what healthy looks like, so it asks only the question it can
+// answer honestly — is the process listening — exactly as Render does: "By
+// default, health checks are TCP socket probes to one of your service's open
+// ports." Setting a path is the opt-in to the stricter HTTP check.
+//
+// Defaulting the empty case to GET / instead (bex's behavior before m80) is not
+// a harmless guess: Kubernetes scores an HTTP probe healthy only on
+// 200 <= code < 400, so a service whose root is a legitimate 404 — an API with
+// no root route — could never become Ready, and could never deploy, while the
+// same service deploys on Render untouched.
+func healthCheckHandler(path string, port int) corev1.ProbeHandler {
+	if path == "" {
+		return corev1.ProbeHandler{
+			TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(port)},
+		}
+	}
+	return corev1.ProbeHandler{
+		HTTPGet: &corev1.HTTPGetAction{Path: path, Port: intstr.FromInt(port)},
+	}
 }
 
 // applyDeploymentSpec projects the App onto dep's spec. It is the body of the
@@ -129,6 +228,10 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 	dep.Spec.Replicas = &p.replicas
 	dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: map[string]string{labelApp: app.Name}}
 	dep.Spec.Template.Labels = appPodLabels(app, p.verifyImage)
+	// Timer (2) of the three named on rolloutBudgetSeconds. Unset, Kubernetes
+	// defaults this to 600s, which would cut Render's 15-minute window to 10
+	// for reasons nobody chose.
+	dep.Spec.ProgressDeadlineSeconds = ptr(rolloutBudgetSeconds)
 
 	// restart = roll the template (same mechanism as kubectl rollout restart,
 	// recorded in the contract). Never removed once set — removal would itself
