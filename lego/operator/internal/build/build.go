@@ -210,6 +210,23 @@ type Options struct {
 	PullSecret string
 	// RegistryConfig makes buildkitd consume buildkitd.toml from PullSecret.
 	RegistryConfig bool
+	// OnWaiting, when set, is called on each poll of the wait loop with whether
+	// the build is still QUEUED — dispatched but with no pod yet placed on a
+	// node — plus the scheduler's own explanation.
+	//
+	// It exists because "we dispatched a Job" and "the build is running" are
+	// different facts, and only the second should start a build clock. A build
+	// requests 2 CPU + 7Gi and is therefore node-exclusive by design, so it can
+	// sit Pending for many minutes waiting for capacity. Charging that wait to
+	// the build's budget is what let a healthy build be reported failed
+	// (2026-08-11: 22 minutes Pending consumed most of the control plane's
+	// 35-minute build gate, which then closed the deploy while the build was
+	// still running and about to succeed).
+	//
+	// Mechanism only: this package reports the distinction and does not know
+	// what a caller does with it. The App controller maps it onto the
+	// BuildQueued/Building phase reasons the control plane already understands.
+	OnWaiting func(queued bool, reason string)
 }
 
 // Result is a successful build.
@@ -301,12 +318,57 @@ func Build(ctx context.Context, o Options) (Result, error) {
 		case jobCondition(&cur, batchv1.JobFailed):
 			return Result{}, fmt.Errorf("build: job %s failed: %s", key.Name, jobFailureMessage(&cur))
 		}
+		if o.OnWaiting != nil {
+			queued, reason := buildQueued(wctx, o, key.Name)
+			o.OnWaiting(queued, reason)
+		}
 		select {
 		case <-wctx.Done():
 			return Result{}, fmt.Errorf("build: job %s did not finish within %s", key.Name, buildTimeout)
 		case <-time.After(pollInterval):
 		}
 	}
+}
+
+// buildQueued reports whether the Job's build is still waiting for capacity
+// rather than doing work, and the scheduler's reason when it is.
+//
+// "Placed on a node" is the dividing line, NOT pod phase: the build runs in
+// initContainers (clone, then BuildKit), so a pod actively compiling reports
+// phase Pending for most of its life. Reading phase would classify a healthy
+// mid-build pod as queued. A pod with spec.nodeName set is consuming capacity
+// and making progress; one the scheduler could not place is not.
+//
+// Errors and the no-pods-yet window are reported as NOT queued: this only
+// gates a status nicety, and guessing "queued" on a failed List would stall the
+// caller's clock on evidence it does not have.
+func buildQueued(ctx context.Context, o Options, jobName string) (bool, string) {
+	var pods corev1.PodList
+	if err := o.Client.List(ctx, &pods,
+		client.InNamespace(o.Namespace),
+		client.MatchingLabels{"job-name": jobName},
+	); err != nil || len(pods.Items) == 0 {
+		return false, ""
+	}
+	reason := ""
+	for idx := range pods.Items {
+		pod := &pods.Items[idx]
+		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+			continue // a spent attempt says nothing about the current one
+		}
+		if pod.Spec.NodeName != "" {
+			return false, "" // scheduled ⇒ really building
+		}
+		for _, cond := range pod.Status.Conditions {
+			if cond.Type == corev1.PodScheduled && cond.Status == corev1.ConditionFalse && cond.Message != "" {
+				reason = cond.Message
+			}
+		}
+	}
+	if reason == "" {
+		reason = "waiting for a node with capacity for the build"
+	}
+	return true, reason
 }
 
 // appDeleting reads the uncached client supplied to the build plane so a

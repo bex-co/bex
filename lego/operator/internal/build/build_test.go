@@ -820,3 +820,74 @@ func TestActiveWorkspaceBuilds(t *testing.T) {
 		t.Errorf("empty workspace: got (%d, %v), want (0, nil)", n, err)
 	}
 }
+
+// buildPod is a pod as the Job controller would create it: `job-name` is the
+// label kubelet/the Job controller stamp and what buildQueued selects on.
+func buildPod(o Options, name, nodeName string, cond *corev1.PodCondition) *corev1.Pod {
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+		Name:      name,
+		Namespace: o.Namespace,
+		Labels:    map[string]string{"job-name": JobName(o.Name, o.Revision)},
+	}}
+	pod.Spec.NodeName = nodeName
+	pod.Status.Phase = corev1.PodPending
+	if cond != nil {
+		pod.Status.Conditions = []corev1.PodCondition{*cond}
+	}
+	return pod
+}
+
+// TestBuildQueuedSeparatesWaitingForCapacityFromBuilding is the distinction the
+// whole start-point fix rests on. A build requests 2 CPU + 7Gi and is
+// node-exclusive by design, so it can sit unschedulable for many minutes; that
+// wait must be reported as QUEUED so the control plane does not spend it from
+// the build's own budget (2026-08-11: 22 minutes Pending ate most of the
+// 35-minute build gate and a healthy, still-running build was reported failed).
+func TestBuildQueuedSeparatesWaitingForCapacityFromBuilding(t *testing.T) {
+	o := opts()
+	job := BuildJob(o, o.ImageRef())
+	unschedulable := &corev1.PodCondition{
+		Type: corev1.PodScheduled, Status: corev1.ConditionFalse,
+		Reason: "Unschedulable", Message: "0/10 nodes are available: 3 Insufficient memory.",
+	}
+
+	t.Run("unplaced pod is queued and carries the scheduler's reason", func(t *testing.T) {
+		o.Client = fakeClient(job, buildPod(o, "b-1", "", unschedulable))
+		queued, reason := buildQueued(context.Background(), o, job.Name)
+		if !queued {
+			t.Fatal("a pod the scheduler could not place must report queued")
+		}
+		if !strings.Contains(reason, "Insufficient memory") {
+			t.Errorf("reason = %q, want the scheduler's own message", reason)
+		}
+	})
+
+	// The regression guard for the subtle half: the build runs in
+	// initContainers, so a pod actively compiling reports phase Pending. Keying
+	// on phase instead of placement would call a healthy mid-build pod queued
+	// and hold the clock at zero for the entire build.
+	t.Run("scheduled pod still Pending is building, not queued", func(t *testing.T) {
+		o.Client = fakeClient(job, buildPod(o, "b-2", "node-a", nil))
+		if queued, _ := buildQueued(context.Background(), o, job.Name); queued {
+			t.Error("a placed pod is consuming capacity and building, even while phase is Pending")
+		}
+	})
+
+	t.Run("a spent attempt does not mask the live one", func(t *testing.T) {
+		dead := buildPod(o, "b-3", "node-a", nil)
+		dead.Status.Phase = corev1.PodFailed
+		o.Client = fakeClient(job, dead, buildPod(o, "b-4", "", unschedulable))
+		if queued, _ := buildQueued(context.Background(), o, job.Name); !queued {
+			t.Error("the retry is unplaced, so the build is queued regardless of the failed attempt")
+		}
+	})
+
+	// Fail toward "building": guessing queued on absent evidence would stall the
+	// caller's clock on something it does not actually know.
+	t.Run("no pods yet is not reported as queued", func(t *testing.T) {
+		o.Client = fakeClient(job)
+		if queued, _ := buildQueued(context.Background(), o, job.Name); queued {
+			t.Error("the no-pod-yet window must not be reported as queued")
+		}
+	})
+}

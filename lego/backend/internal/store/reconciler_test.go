@@ -1297,3 +1297,75 @@ func TestProjectAppSkipsCloneSecreterForImageApp(t *testing.T) {
 		t.Errorf("CloneSecreter called for an image-backed App; should be skipped")
 	}
 }
+
+// TestQueuedBuildDoesNotSpendTheBuildBudget is the control-plane half of the
+// build-gate start-point fix (the operator half reports BuildQueued while the
+// build pod is unplaced).
+//
+// A build requests 2 CPU + 7Gi and is node-exclusive by design, so it can wait
+// many minutes for capacity. That wait used to be charged to the build's own
+// 35-minute budget, because a dispatched build reported Building immediately:
+// on 2026-08-11 a build sat Pending 22 minutes, the gate closed its deploy
+// build_failed while the build was still running, and the build then succeeded
+// and shipped — leaving the deploy record contradicting the live revision.
+//
+// The fix rides machinery that already existed on both sides: queued is a
+// distinct row status, and phase budgets are measured from UpdatedAt, which
+// only moves on a real transition. What this pins is that the pieces line up.
+func TestQueuedBuildDoesNotSpendTheBuildBudget(t *testing.T) {
+	gen := int64(82)
+	buildingApp := func(reason string) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Generation: gen},
+			Status: appv1alpha1.AppStatus{
+				Phase:             appv1alpha1.PhaseBuilding,
+				ReleaseGeneration: gen,
+				Conditions: []metav1.Condition{{
+					Type: "Ready", Status: metav1.ConditionFalse,
+					Reason: reason, ObservedGeneration: gen,
+				}},
+			},
+		}
+	}
+
+	// 1. Waiting for capacity is reported as queued, not as a running build.
+	open := Deploy{Generation: gen, Status: DeployCreated}
+	if got := observedDeployStatus(open, buildingApp("BuildQueued"), false); got != DeployQueued {
+		t.Fatalf("unplaced build => %q, want %q", got, DeployQueued)
+	}
+
+	// 2. Once a pod is placed, the row advances — and this edge is a REAL
+	//    transition, which is what restarts the budget (deployTimedOut measures
+	//    from UpdatedAt, and TransitionDeploy rejects same->same so only a
+	//    genuine change moves it).
+	queued := Deploy{Generation: gen, Status: DeployQueued}
+	if got := observedDeployStatus(queued, buildingApp("Building"), false); got != DeployBuildInProgress {
+		t.Fatalf("placed build => %q, want %q", got, DeployBuildInProgress)
+	}
+	if !CanTransitionDeploy(DeployQueued, DeployBuildInProgress) {
+		t.Fatal("queued -> build_in_progress must be legal; it is the edge that resets the clock")
+	}
+	if CanTransitionDeploy(DeployBuildInProgress, DeployBuildInProgress) {
+		t.Fatal("same->same must be rejected, or UpdatedAt would move every poll and the gate could never fire")
+	}
+
+	// 3. The concrete regression: a build that queued a long time and has only
+	//    just started must get its full budget, not the queue's leftovers.
+	rec := NewReconciler(nil, nil)
+	justStarted := Deploy{
+		Generation: gen,
+		Status:     DeployBuildInProgress,
+		CreatedAt:  time.Now().Add(-34 * time.Minute), // 34 min ago: queued nearly the whole budget
+		UpdatedAt:  time.Now().Add(-1 * time.Minute),  // but only started building a minute ago
+	}
+	if rec.deployTimedOut(DesiredApp{App: App{Repo: "https://github.com/acme/web"}}, justStarted) {
+		t.Error("a build one minute into its run must not be failed for time spent queued before it")
+	}
+
+	// And the budget is still enforced once the build itself overruns.
+	overrun := justStarted
+	overrun.UpdatedAt = time.Now().Add(-rec.BuildGateTimeout - time.Minute)
+	if !rec.deployTimedOut(DesiredApp{App: App{Repo: "https://github.com/acme/web"}}, overrun) {
+		t.Error("a build past its own budget must still time out")
+	}
+}
