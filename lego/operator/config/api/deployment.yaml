@@ -111,14 +111,16 @@ spec:
             # `bex.co/platform-client`, stamped by scripts/auth-bootstrap-client.sh).
             # Without it, a consented token from ANY self-registered client
             # authorizes the human's full workspace rights here — a cross-tenant
-            # escalation. Enforced ("1"); bex-api additionally FAILS CLOSED when
-            # this is off in the multi-tenant posture (control-plane store on).
-            # PREREQUISITE (docs/ADR012-auth.md §7): scripts/auth-bootstrap-client.sh
-            # MUST have run so the official Render CLI + bex-mobile clients carry
-            # the marker BEFORE this deploys — the reverse order refuses their
-            # legitimately audience-less device-flow logins.
+            # escalation. The narrowed check is implemented and bex-api warns
+            # loudly on every start while this is off.
+            # ACTIVATION (docs/ADR012-auth.md §7) — an OPERATOR step, deliberately
+            # NOT flipped autonomously: run scripts/auth-bootstrap-client.sh FIRST
+            # so the official Render CLI + bex-mobile clients carry the marker,
+            # THEN set this to "1". The reverse order 401s their legitimately
+            # audience-less device-flow logins, so it stays "0" until the marker
+            # is confirmed stamped in this environment.
             - name: BEX_OAUTH_REQUIRE_AUDIENCE
-              value: "1"
+              value: "0"
             - name: BEX_PROM_URL # Prometheus scraping Traefik => request metrics
               value: http://prometheus-server.monitoring.svc.cluster.local
             - name: BEX_LOKI_URL # Loki (log-shipper DaemonSet) => durable log history
