@@ -810,29 +810,18 @@ func main() {
 	srv.OAuthRequireAudience = os.Getenv("BEX_OAUTH_REQUIRE_AUDIENCE") == "1"
 	// codex F6: an opt-in security control that ships off is invisible, and this
 	// one stayed off through three remediation rounds while the fail-open posture
-	// remained the deployed default. In the multi-tenant posture (control-plane
-	// store on) it now FAILS CLOSED — a consented audience-less token from ANY
-	// self-registered OAuth client would otherwise carry that user's full
-	// workspace rights, a cross-tenant escalation. The refusal mirrors the
-	// BEX_OPENFGA_URL fail-closed above and shares its BEX_ALLOW_INSECURE_AUTHZ
-	// override for single-tenant/local dev. Single-tenant/no-store deployments
-	// (where DCR cross-tenant escalation is moot) only warn.
-	//
-	// ACTIVATION ORDER (docs/ADR012-auth.md §7): re-run
-	// scripts/auth-bootstrap-client.sh so the official Render CLI + bex-mobile
-	// clients carry the bex.co/platform-client marker BEFORE deploying with
-	// BEX_OAUTH_REQUIRE_AUDIENCE=1 — the reverse order refuses their
-	// legitimately audience-less device-flow logins.
+	// remained the deployed default. The narrowed audience check (auth.go) is
+	// implemented; ENABLING it (BEX_OAUTH_REQUIRE_AUDIENCE=1) is an operator step
+	// gated on scripts/auth-bootstrap-client.sh having stamped the
+	// bex.co/platform-client marker first — flipping it before that 401s the
+	// official Render CLI + bex-mobile device-flow logins, which legitimately
+	// request no audience. So this is a LOUD WARNING on every start, not a
+	// fail-closed refusal: a hard refusal would either crashloop the API when
+	// the flag is off, or force BEX_ALLOW_INSECURE_AUTHZ=1 (which would also
+	// disable the OpenFGA fail-closed above). Track: docs/ADR055 F6 disposition.
 	if srv.OAuthResource != "" && !srv.OAuthRequireAudience {
-		multitenant := os.Getenv("BEX_CP_DB_URI") != ""
-		if multitenant && os.Getenv("BEX_ALLOW_INSECURE_AUTHZ") != "1" {
-			log.Fatalf("BEX_OAUTH_REQUIRE_AUDIENCE is off while BEX_OAUTH_RESOURCE=%q and the control-plane store is on (BEX_CP_DB_URI set): "+
-				"an audience-less token from ANY self-registered OAuth client a user consents to carries that user's full workspace rights here — a cross-tenant escalation (codex F6). "+
-				"Refusing to start a multi-tenant API in this fail-open OAuth posture. Activate securely: re-run scripts/auth-bootstrap-client.sh (stamps bex.co/platform-client), then set BEX_OAUTH_REQUIRE_AUDIENCE=1; "+
-				"or set BEX_ALLOW_INSECURE_AUTHZ=1 to override in single-tenant/local dev only (docs/ADR012-auth.md §7).", srv.OAuthResource)
-		}
 		log.Printf("WARNING: BEX_OAUTH_REQUIRE_AUDIENCE is off while BEX_OAUTH_RESOURCE=%q — an audience-less token "+
-			"from ANY self-registered OAuth client a user consents to carries that user's full workspace rights here. "+
+			"from ANY self-registered OAuth client a user consents to carries that user's full workspace rights here (codex F6, cross-tenant). "+
 			"Activate: re-run scripts/auth-bootstrap-client.sh (stamps bex.co/platform-client), then set it to 1 "+
 			"(docs/ADR012-auth.md §7)", srv.OAuthResource)
 	}

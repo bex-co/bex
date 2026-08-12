@@ -43,14 +43,16 @@ jobs:
           install -m700 -d ~/.ssh
           printf '%s\n' "$BEX_SSH_PRIVATE_KEY" >~/.ssh/id_bex
           chmod 600 ~/.ssh/id_bex
-          # Authenticate the control-plane host key (w1/m66 F7, wired here by
-          # w1/m68 F3 — this workflow was the one admin.conf fetcher m66 missed,
-          # and the next step hands the resulting kubeconfig the OpenBao unseal
-          # keys and root token, so a trusted-on-first-use host here is the worst
-          # of the three). BEX_SSH_REQUIRE_KNOWN_HOSTS=1 (codex F10) makes a
-          # missing/empty pin ABORT the drill rather than silently trust the
-          # first-seen key. Provision the BEX_SSH_KNOWN_HOSTS secret out of band.
-          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
+          # Authenticate the control-plane host key when the operator has
+          # provisioned it (w1/m66 F7, wired here by w1/m68 F3 — this workflow
+          # was the one admin.conf fetcher m66 missed, and the next step hands
+          # the resulting kubeconfig the OpenBao unseal keys and root token, so
+          # a trusted-on-first-use host here is the worst of the three).
+          # Absent (until the secret is set) the run is byte-identical to before.
+          #
+          # codex F10: BEX_SSH_REQUIRE_KNOWN_HOSTS=1 (helper mandatory-pin mode)
+          # is intentionally NOT set until the BEX_SSH_KNOWN_HOSTS secret is
+          # provisioned in CI — asserting it without the secret aborts the drill.
           if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
             printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > ~/.ssh/bex_known_hosts
             chmod 600 ~/.ssh/bex_known_hosts
