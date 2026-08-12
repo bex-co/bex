@@ -16,9 +16,13 @@
 #   * BEX_SSH_KNOWN_HOSTS_FILE set  => pin to it and FAIL CLOSED
 #     (StrictHostKeyChecking=yes, global known-hosts ignored). An unknown or
 #     changed host key aborts before admin.conf is ever read.
-#   * unset => accept-new, exactly as before (local/dev, and CI until the
-#     operator provisions the key), but say so on stderr — the weaker mode must
-#     never be silent.
+#   * unset, BEX_SSH_REQUIRE_KNOWN_HOSTS truthy => FAIL CLOSED (codex F10). CI
+#     and production bootstrap set this so a missing/empty pin aborts the run
+#     instead of silently trusting the first-seen key. This is what makes the
+#     pin mandatory outside development: the accept-new fallback below is
+#     reachable only when the requirement is NOT asserted.
+#   * unset, requirement not asserted => accept-new (local/dev only), but say so
+#     on stderr — the weaker mode must never be silent.
 #
 # Provisioning the pinned file is an out-of-band operator step, same custody
 # model as the SSH private key itself (docs/ADR019-infra-credentials.md).
@@ -29,7 +33,14 @@
 bex_ssh_hostkey_args() {
   BEX_SSH_HOSTKEY_ARGS=()
   local known="${BEX_SSH_KNOWN_HOSTS_FILE:-}"
+  local require="${BEX_SSH_REQUIRE_KNOWN_HOSTS:-}"
   if [ -z "$known" ]; then
+    case "$require" in
+      1 | true | TRUE | yes | YES)
+        echo "error: BEX_SSH_REQUIRE_KNOWN_HOSTS is set but BEX_SSH_KNOWN_HOSTS_FILE is unset (codex F10) — refusing to fetch cluster-admin over an unauthenticated (trust-on-first-use) SSH host key. Provision the BEX_SSH_KNOWN_HOSTS secret / pinned known_hosts file out of band (docs/ADR019-infra-credentials.md)." >&2
+        return 1
+        ;;
+    esac
     BEX_SSH_HOSTKEY_ARGS=(-o StrictHostKeyChecking=accept-new)
     echo "note: BEX_SSH_KNOWN_HOSTS_FILE is unset — the control-plane host key is trusted on first use (unauthenticated server identity)" >&2
     return 0

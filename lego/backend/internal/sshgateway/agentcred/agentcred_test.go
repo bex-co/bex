@@ -47,6 +47,15 @@ func (credentialConnections) GetGitConnection(_ context.Context, workspace strin
 	return store.GitConnection{WorkspaceID: workspace, InstallationID: 42, AccountLogin: "octo"}, nil
 }
 
+// credentialSessions models a still-active session (codex F12): the mint's
+// lifecycle gate reads it and only issues while the session is running in its
+// own workspace with a live sandbox.
+type credentialSessions struct{}
+
+func (credentialSessions) GetAgentSession(_ context.Context, id string) (store.AgentSession, error) {
+	return store.AgentSession{ID: id, WorkspaceID: "tea-a", SandboxID: "sbx-a", Phase: "running"}, nil
+}
+
 type credentialGitHub struct{ calls int }
 
 func (g *credentialGitHub) MintSessionInstallationToken(context.Context, int64, string) (github.InstallationToken, error) {
@@ -79,7 +88,7 @@ func TestAgentCredentialGatewayBindsSourcePodAndProxiesSignedMint(t *testing.T) 
 	apiAudit := &credentialAudit{}
 	apiHandler := &agentsession.Handler{
 		Secret: secret,
-		Minter: &agentsession.Minter{GitHub: gh, Connections: credentialConnections{}, Audit: apiAudit, Now: func() time.Time { return fixed }},
+		Minter: &agentsession.Minter{GitHub: gh, Connections: credentialConnections{}, Sessions: credentialSessions{}, Audit: apiAudit, Now: func() time.Time { return fixed }},
 		Now:    func() time.Time { return fixed },
 	}
 	apiServer := httptest.NewServer(apiHandler)

@@ -563,7 +563,7 @@ func (s *Service) validateMaintenanceMode(ctx context.Context, a *appv1alpha1.Ap
 	// amplifying fetch cycle between two services. Reject platform-reserved
 	// hosts (`*.<base>`, dashboard — reservedHost) and any custom host claimed
 	// by another App cluster-wide (the same sweep AddDomain enforces).
-	if s.reservedHost(a.Name, host) {
+	if s.reservedHost(s.ownPlatformHost(a), host) {
 		return fmt.Errorf("%w: maintenanceMode.uri cannot point to a platform hostname", core.ErrBadRequest)
 	}
 	if claimed, err := s.hostClaimedElsewhere(ctx, a.Name, host); err != nil {
@@ -1855,7 +1855,7 @@ func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1al
 	// through the same reserved-platform + cross-App collision check AddDomain
 	// enforces — closing the hole where a create could bind spec.host/spec.hosts
 	// to a platform-reserved or foreign-owned host and mint a hijacking Ingress.
-	if err := s.ensureHostsClaimable(ctx, a.Name, a.Spec.Host, a.Spec.Hosts); err != nil {
+	if err := s.ensureHostsClaimable(ctx, a); err != nil {
 		return err
 	}
 	if len(files) == 0 {

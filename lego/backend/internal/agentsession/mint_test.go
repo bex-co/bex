@@ -33,6 +33,27 @@ func (f fakeConnections) GetGitConnection(context.Context, string) (store.GitCon
 	return f.row, nil
 }
 
+type fakeSessions struct {
+	session store.AgentSession
+	err     error
+}
+
+func (f fakeSessions) GetAgentSession(_ context.Context, id string) (store.AgentSession, error) {
+	if f.err != nil {
+		return store.AgentSession{}, f.err
+	}
+	if f.session.ID != "" && f.session.ID != id {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	return f.session, nil
+}
+
+// activeSession is the durable record for the valid mint request: still running,
+// in tea-a, holding a live sandbox.
+func activeSession() store.AgentSession {
+	return store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running"}
+}
+
 type fakeSessionGitHub struct {
 	calls        int
 	installation int64
@@ -64,7 +85,8 @@ func TestMinterScopesRepoWritesAndAudits(t *testing.T) {
 	audit := &auditRecorder{}
 	m := &Minter{
 		GitHub: gh, Connections: fakeConnections{row: store.GitConnection{WorkspaceID: "tea-a", InstallationID: 42, AccountLogin: "Octo"}},
-		Audit: audit, Now: func() time.Time { return time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC) },
+		Sessions: fakeSessions{session: activeSession()},
+		Audit:    audit, Now: func() time.Time { return time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC) },
 	}
 	got, err := m.Mint(context.Background(), validMintRequest())
 	if err != nil {
@@ -89,7 +111,7 @@ func TestMinterRefusesWrongBranchOrInstallationOwner(t *testing.T) {
 	} {
 		gh := &fakeSessionGitHub{}
 		audit := &auditRecorder{}
-		m := &Minter{GitHub: gh, Connections: fakeConnections{row: store.GitConnection{InstallationID: 42, AccountLogin: "octo"}}, Audit: audit}
+		m := &Minter{GitHub: gh, Connections: fakeConnections{row: store.GitConnection{InstallationID: 42, AccountLogin: "octo"}}, Sessions: fakeSessions{session: activeSession()}, Audit: audit}
 		req := validMintRequest()
 		mutate(&req)
 		_, err := m.Mint(context.Background(), req)
@@ -105,10 +127,41 @@ func TestMinterRefusesWrongBranchOrInstallationOwner(t *testing.T) {
 	}
 }
 
+func TestMinterRefusesTerminalOrForeignSession(t *testing.T) {
+	// codex F12: a retained terminal sandbox pod (or a foreign/absent session)
+	// must not mint a fresh repository write token, even though its pod identity
+	// is otherwise intact.
+	cases := map[string]fakeSessions{
+		"completed":         {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "completed"}},
+		"failed":            {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "failed"}},
+		"canceled":          {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "canceled"}},
+		"sandbox cleared":   {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "", Phase: "running"}},
+		"foreign workspace": {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-b", SandboxID: "sbx-1", Phase: "running"}},
+		"absent session":    {err: store.ErrNotFound},
+	}
+	for name, sessions := range cases {
+		t.Run(name, func(t *testing.T) {
+			gh := &fakeSessionGitHub{}
+			audit := &auditRecorder{}
+			m := &Minter{GitHub: gh, Connections: fakeConnections{row: store.GitConnection{WorkspaceID: "tea-a", InstallationID: 42, AccountLogin: "octo"}}, Sessions: sessions, Audit: audit}
+			_, err := m.Mint(context.Background(), validMintRequest())
+			if !errors.Is(err, ErrForbidden) {
+				t.Fatalf("Mint error = %v, want forbidden", err)
+			}
+			if gh.calls != 0 {
+				t.Fatal("refused mint reached GitHub")
+			}
+			if len(audit.events) != 1 || audit.events[0].Outcome != core.AuditDenied {
+				t.Fatalf("denied audit = %+v", audit.events)
+			}
+		})
+	}
+}
+
 func TestMinterAuditsMalformedRepositoryWithoutRawInput(t *testing.T) {
 	gh := &fakeSessionGitHub{}
 	audit := &auditRecorder{}
-	m := &Minter{GitHub: gh, Connections: fakeConnections{}, Audit: audit}
+	m := &Minter{GitHub: gh, Connections: fakeConnections{}, Sessions: fakeSessions{session: activeSession()}, Audit: audit}
 	req := validMintRequest()
 	req.Repository = "octo/repo\nforged-audit-line"
 	_, err := m.Mint(context.Background(), req)

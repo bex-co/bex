@@ -75,6 +75,41 @@ func TestCreateRejectsReservedAndClaimedHosts(t *testing.T) {
 	}
 }
 
+// TestReservedHostExemptsSlugNotAppName is the regression guard for codex F5.
+// The reserved-`*.<base>` exemption formerly compared the caller-supplied App CR
+// NAME (`<appName>.<base>`), but App names are only workspace-local (ADR043), so
+// a tenant could name its service after a VICTIM's globally-unique platform slug
+// and add `<victim-slug>.<base>` as a custom domain — the exemption fired on the
+// name match and let the operator mint a competing Ingress for the victim's
+// platform host. The exemption now compares the App's OWN immutable
+// spec.subdomain platform host, so a name that merely spells another tenant's
+// slug is still reserved.
+func TestReservedHostExemptsSlugNotAppName(t *testing.T) {
+	// The attacker deliberately names its CR after the victim's platform slug,
+	// but its OWN globally-unique slug (spec.subdomain) is something else.
+	attacker := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "victim-slug", Namespace: "default"},
+		Spec:       appv1alpha1.AppSpec{Image: "img:1", Subdomain: "attacker-9f3c"},
+	}
+	svc, cl := newBaseDomainService("onbex.co", "dashboard.bex.co", attacker)
+	ctx := context.Background()
+
+	// Claiming the victim's platform host must be REFUSED as reserved — pre-fix
+	// the `<appName>.<base>` exemption accepted it because the CR name matched.
+	if _, err := svc.AddDomain(ctx, "victim-slug", "victim-slug.onbex.co"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("AddDomain(victim-slug.onbex.co): got %v, want core.ErrBadRequest (reserved) — cross-tenant platform-host hijack", err)
+	}
+	if hosts := getApp(t, cl, "victim-slug").Spec.Hosts; slices.Contains(hosts, "victim-slug.onbex.co") {
+		t.Fatalf("the refused claim still wrote the victim host into spec.hosts: %v", hosts)
+	}
+
+	// The App may still add its OWN real platform host (the exemption still works
+	// for the correct, slug-derived name) — no false positive.
+	if _, err := svc.AddDomain(ctx, "victim-slug", "attacker-9f3c.onbex.co"); err != nil {
+		t.Fatalf("AddDomain of the App's own slug host was refused: %v", err)
+	}
+}
+
 // TestCreateCanonicalizesHostnamesAtWrite is the regression guard for hostname
 // canonicalization at the write boundary. BEFORE the fix, create persisted
 // req.Hosts verbatim while the uniqueness sweep compared raw strings and

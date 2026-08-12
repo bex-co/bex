@@ -38,6 +38,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -802,6 +803,12 @@ func projectBackupCredential(ctx context.Context, cl client.Client, srcNS, dstNS
 	if _, err := controllerutil.CreateOrUpdate(ctx, cl, projected, func() error {
 		projected.Type = credential.Type
 		projected.Data = credential.Data
+		// codex F1: mark the shared backup credential so the App reconcile refuses
+		// to wire it into any co-located tenant pod (EnvFrom/volume/env by name).
+		if projected.Labels == nil {
+			projected.Labels = map[string]string{}
+		}
+		projected.Labels[execution.LabelProtectedFromTenantMount] = execution.ProtectedFromTenantMount
 		return nil
 	}); err != nil {
 		return fmt.Errorf("projecting backup credential into %s: %w", dstNS, err)

@@ -42,11 +42,23 @@ type ConnectionStore interface {
 	GetGitConnection(context.Context, string) (store.GitConnection, error)
 }
 
+// SessionStore reads the durable agent-session lifecycle record. Mint consults
+// it to refuse a credential for a session that is no longer active (codex F12).
+type SessionStore interface {
+	GetAgentSession(context.Context, string) (store.AgentSession, error)
+}
+
+// terminalPhases are the agent-session phases past which no new capability may
+// be issued (codex F12). Kept in sync with the store's terminal set (the
+// deferred-teardown reaper's completed/failed/canceled).
+var terminalPhases = map[string]bool{"completed": true, "failed": true, "canceled": true}
+
 // Minter is bex-api's internal-only credential verb. It trusts only a request
 // authenticated by Handler's HMAC and still rechecks branch/repository policy.
 type Minter struct {
 	GitHub      GitHubClient
 	Connections ConnectionStore
+	Sessions    SessionStore
 	Audit       core.AuditSink
 	Now         func() time.Time
 }
@@ -84,6 +96,25 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintRespon
 	}
 	if req.Workspace == "" || req.SessionID == "" || req.PodName == "" || req.PodUID == "" {
 		return MintResponse{}, fmt.Errorf("%w: incomplete verified identity", ErrInvalidRequest)
+	}
+	// Bind the mint to the session's CURRENT lifecycle, not just the requesting
+	// pod's immutable identity (codex F12). A terminal session keeps its sandbox
+	// pod through the ADR054 grace window, so pod-identity checks alone would let
+	// a retained or compromised pod mint a fresh one-hour contents:write token
+	// after the task was completed, failed, or canceled. Fail closed unless the
+	// durable record is still active, in this workspace, and holds a live sandbox.
+	if m.Sessions == nil {
+		return MintResponse{}, fmt.Errorf("agent credentials unavailable")
+	}
+	session, sessErr := m.Sessions.GetAgentSession(ctx, req.SessionID)
+	if sessErr != nil {
+		if errors.Is(sessErr, store.ErrNotFound) {
+			return MintResponse{}, ErrForbidden
+		}
+		return MintResponse{}, sessErr
+	}
+	if session.WorkspaceID != req.Workspace || session.SandboxID == "" || terminalPhases[session.Phase] {
+		return MintResponse{}, ErrForbidden
 	}
 	if err := ValidateBranch(req.Branch); err != nil {
 		return MintResponse{}, err

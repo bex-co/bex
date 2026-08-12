@@ -300,22 +300,38 @@ func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (D
 	return s.GetDomain(ctx, appName, hostname)
 }
 
+// ownPlatformHost is the App's own `<slug>.<base>` auto host — the single
+// `*.<base>` name exempt from reservedHost. It derives from the App's
+// globally-unique platform subdomain (spec.subdomain, w4/m19), NEVER the
+// workspace-local CR name: App names collide across tenants (ADR043 per-tenant
+// namespaces), so exempting a caller-supplied `<appName>.<base>` let a tenant
+// name its service after a victim's slug and claim the victim's platform host
+// (codex F5). Empty when BaseDomain is unset (nothing to exempt under it).
+func (s *Service) ownPlatformHost(app *appv1alpha1.App) string {
+	if s.BaseDomain == "" {
+		return ""
+	}
+	return app.Spec.PlatformSubdomain(app.Name) + "." + s.BaseDomain
+}
+
 // reservedHost reports whether host is a platform-owned name no App may claim as
 // a custom domain. Reserved: the BEX_BASE_DOMAIN apex, and any `<label…>.<base>`
-// platform host other than this App's own `<app>.<base>` auto host (the whole
+// platform host other than this App's own `<slug>.<base>` auto host (the whole
 // `*.<base>` namespace is platform-controlled — its DNS resolves to the shared
 // ingress, so a foreign claim would pass ACME and hijack another App's platform
 // subdomain), plus the dashboard host when configured. Render likewise reserves
 // its own `*.onrender.com` subdomains; the dashboard/base-apex entries are the
 // bex analog for the platform's own control-plane hosts. Inert when BaseDomain is
-// unset (nothing to reserve under it).
-func (s *Service) reservedHost(appName, host string) bool {
+// unset (nothing to reserve under it). ownPlatformHost is the resolved App's own
+// exempt `<slug>.<base>` host (from s.ownPlatformHost) — pass the immutable slug
+// host, never the caller-supplied CR name (codex F5).
+func (s *Service) reservedHost(ownPlatformHost, host string) bool {
 	if s.BaseDomain != "" {
 		if host == s.BaseDomain {
 			return true // the base-domain apex itself
 		}
 		// a `<x>.<base>` platform host — reserved unless it's this App's own auto host
-		if strings.HasSuffix(host, "."+s.BaseDomain) && host != appName+"."+s.BaseDomain {
+		if strings.HasSuffix(host, "."+s.BaseDomain) && host != ownPlatformHost {
 			return true
 		}
 	}
@@ -373,17 +389,21 @@ func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string
 // platform name (api/dashboard/`*.<base>`) or one another tenant already owns and
 // have the operator mint an Ingress that hijacks it (w7/m57). Before this, the
 // guard lived ONLY in AddDomain, so a create could claim any host unchecked.
-// appName is the new App's CR name; hostClaimedElsewhere skips that name, so a
-// blueprint re-apply that re-states the App's own hosts is not self-rejected.
-func (s *Service) ensureHostsClaimable(ctx context.Context, appName, host string, hosts []string) error {
-	for _, h := range append([]string{host}, hosts...) {
+// app is the new App; hostClaimedElsewhere skips app.Name, so a blueprint
+// re-apply that re-states the App's own hosts is not self-rejected, and
+// reservedHost exempts only the App's own immutable `<slug>.<base>` platform
+// host (via s.ownPlatformHost) — not `<app.Name>.<base>`, which a tenant could
+// otherwise set to a victim's slug and hijack at create time too (codex F5).
+func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App) error {
+	ownHost := s.ownPlatformHost(app)
+	for _, h := range append([]string{app.Spec.Host}, app.Spec.Hosts...) {
 		if h == "" {
 			continue
 		}
-		if s.reservedHost(appName, h) {
+		if s.reservedHost(ownHost, h) {
 			return fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, h)
 		}
-		if claimed, err := s.hostClaimedElsewhere(ctx, appName, h); err != nil {
+		if claimed, err := s.hostClaimedElsewhere(ctx, app.Name, h); err != nil {
 			return err
 		} else if claimed {
 			return errDomainInUse()
@@ -462,7 +482,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 			return s.domainView(ctx, app, hostname, s.platformHost(app)), false, nil
 		}
 	}
-	if s.reservedHost(appName, hostname) {
+	if s.reservedHost(s.ownPlatformHost(app), hostname) {
 		return DomainView{}, false, fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, hostname)
 	}
 	if claimed, err := s.hostClaimedElsewhere(ctx, appName, hostname); err != nil {

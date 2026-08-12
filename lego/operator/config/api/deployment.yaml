@@ -106,17 +106,19 @@ spec:
               value: https://oauth.bex.co
             - name: BEX_OAUTH_RESOURCE
               value: https://api.bex.co/mcp
-            # w1/m67 F1: narrows the empty-audience exception to bex-provisioned
+            # codex F6: narrows the empty-audience exception to bex-provisioned
             # OAuth clients (the Hydra client-metadata marker
             # `bex.co/platform-client`, stamped by scripts/auth-bootstrap-client.sh).
             # Without it, a consented token from ANY self-registered client
-            # authorizes the human's full workspace rights here.
-            # ACTIVATION ORDER (docs/ADR012-auth.md §7): re-run the bootstrap
-            # script first so the Render CLI + mobile clients carry the marker,
-            # then flip this to "1" — the reverse order refuses their logins,
-            # which legitimately request no audience.
+            # authorizes the human's full workspace rights here — a cross-tenant
+            # escalation. Enforced ("1"); bex-api additionally FAILS CLOSED when
+            # this is off in the multi-tenant posture (control-plane store on).
+            # PREREQUISITE (docs/ADR012-auth.md §7): scripts/auth-bootstrap-client.sh
+            # MUST have run so the official Render CLI + bex-mobile clients carry
+            # the marker BEFORE this deploys — the reverse order refuses their
+            # legitimately audience-less device-flow logins.
             - name: BEX_OAUTH_REQUIRE_AUDIENCE
-              value: "0"
+              value: "1"
             - name: BEX_PROM_URL # Prometheus scraping Traefik => request metrics
               value: http://prometheus-server.monitoring.svc.cluster.local
             - name: BEX_LOKI_URL # Loki (log-shipper DaemonSet) => durable log history
