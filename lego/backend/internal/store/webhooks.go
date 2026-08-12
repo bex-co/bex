@@ -102,13 +102,20 @@ func (s *PGStore) CreateWebhookEndpoint(ctx context.Context, tenantID, name, url
 		Secret: secret, EventTypes: eventTypes, Enabled: true, CreatedBy: createdBy,
 	}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		// A transaction-scoped advisory lock keyed on the workspace serializes
+		// concurrent creates for THIS tenant against each other, without blocking
+		// any other workspace. FOR UPDATE alone (codex F8) locked only the
+		// endpoint rows the count returned — an empty or sub-limit workspace has no
+		// row to lock, so two parallel creates both read the same count and both
+		// insert, overflowing the cap. The advisory lock has a stable target
+		// (hashtext of the tenant id) that exists even with zero rows, so the
+		// second create blocks until the first commits and re-reads the true count.
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, tenantID); err != nil {
+			return err
+		}
 		var n int
-		// FOR UPDATE on the workspace's rows serializes concurrent creates against
-		// each other without blocking any other workspace.
 		if err := tx.QueryRow(ctx,
-			`SELECT count(*) FROM (
-			   SELECT 1 FROM webhook_endpoints WHERE tenant_id = $1 FOR UPDATE
-			 ) existing`, tenantID).Scan(&n); err != nil {
+			`SELECT count(*) FROM webhook_endpoints WHERE tenant_id = $1`, tenantID).Scan(&n); err != nil {
 			return err
 		}
 		if n >= MaxWebhookEndpointsPerWorkspace {

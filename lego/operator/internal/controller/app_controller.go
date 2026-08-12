@@ -335,6 +335,15 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
+	// codex F1: refuse to build any workload for an App that references an
+	// operator-managed Secret marked protected-from-tenant-mount (the shared S3
+	// backup credential the Database/KeyValue reconcilers project into a datastore
+	// namespace). A co-located tenant App could otherwise mount it by name; kubelet
+	// projection needs no pod-side API token, so pod hardening does not prevent it.
+	if err := r.rejectProtectedSecretRefs(ctx, &app); err != nil {
+		return r.fail(ctx, &app, "ProtectedSecretReference", err)
+	}
+
 	// Registry auth is operator-level configuration, so converge it before a
 	// source build can halt this pass. A failed newer build deliberately leaves
 	// the previous Deployment/CronJob serving; without this early backfill that
@@ -771,6 +780,53 @@ func (r *AppReconciler) predeployPullSecrets(ctx context.Context, app *appv1alph
 // namespace IS the App namespace. A Secret absent from the App namespace is
 // skipped: the pod then behaves exactly as it would in-namespace (optional
 // refs tolerate it, the required one fails the pod the same way).
+// rejectProtectedSecretRefs fails the reconcile when a tenant App names an
+// operator-managed Secret marked LabelProtectedFromTenantMount in any of its
+// secret-mount fields (codex F1). It covers every kubelet-projected reference
+// the App pod (or its pre-deploy Job) would resolve by name: spec.envFromSecret,
+// spec.envFromSecrets[], spec.filesFromSecrets[], and per-variable
+// env[].valueFrom.secretKeyRef. Reads use the uncached build-plane client so the
+// lookup is reliable in per-tenant namespaces the manager does not cache; a
+// referenced Secret that does not exist is not our concern here (it resolves to
+// nothing / fails the pod on its own). Zero secret references => no lookups.
+func (r *AppReconciler) rejectProtectedSecretRefs(ctx context.Context, app *appv1alpha1.App) error {
+	names := make(map[string]bool)
+	add := func(n string) {
+		if n != "" {
+			names[n] = true
+		}
+	}
+	for _, n := range app.Spec.EnvFromSecrets {
+		add(n)
+	}
+	for _, n := range app.Spec.FilesFromSecrets {
+		add(n)
+	}
+	add(app.Spec.EnvFromSecret)
+	for _, e := range app.Spec.Env {
+		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {
+			add(e.ValueFrom.SecretKeyRef.Name)
+		}
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	cl := r.buildPlaneClient()
+	for name := range names {
+		var sec corev1.Secret
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, &sec); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return fmt.Errorf("validating secret reference %s/%s: %w", app.Namespace, name, err)
+		}
+		if sec.Labels[execution.LabelProtectedFromTenantMount] == execution.ProtectedFromTenantMount {
+			return fmt.Errorf("App references protected operator Secret %q which tenant workloads may not mount (codex F1)", name)
+		}
+	}
+	return nil
+}
+
 func (r *AppReconciler) mirrorPreDeploySecrets(ctx context.Context, app *appv1alpha1.App, ns string) error {
 	if ns == app.Namespace {
 		return nil
@@ -799,8 +855,36 @@ func (r *AppReconciler) mirrorPreDeploySecrets(ctx context.Context, app *appv1al
 			continue
 		}
 		seen[name] = true
-		if err := r.copyCloneSecret(ctx, app, app.Namespace, ns, name); err != nil && !apierrors.IsNotFound(err) {
+		err := r.copyCloneSecret(ctx, app, app.Namespace, ns, name)
+		if err == nil {
+			continue
+		}
+		if !apierrors.IsNotFound(err) {
 			return fmt.Errorf("relocating secret %s to %s: %w", name, ns, err)
+		}
+		// codex F4: the tenant-referenced Secret is absent in the App namespace, so
+		// NO tenant-owned copy landed in the build namespace. Silently skipping here
+		// (the pre-fix behavior) is safe ONLY when the name resolves to nothing —
+		// but the pre-deploy Job runs in a SHARED build namespace, so if a
+		// same-named Secret already exists there the pod's unchanged EnvFrom/volume
+		// reference binds THAT object, which can be a platform Secret (e.g. the
+		// static publisher credential) — leaking it to a tenant-controlled
+		// preDeployCommand. Fail closed unless the pre-existing build-namespace
+		// Secret is one this App itself owns (a benign stale copy). A name absent
+		// from BOTH namespaces stays the tolerated optional case.
+		var existing corev1.Secret
+		getErr := r.buildPlaneClient().Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &existing)
+		if getErr == nil {
+			identity := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+				Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
+			if ownErr := identity.CheckOwner(&existing); ownErr != nil {
+				return fmt.Errorf("pre-deploy secret %q is absent in App namespace %s but a foreign Secret of that name occupies the shared build namespace %s; refusing to run the pre-deploy Job against a non-tenant Secret (codex F4): %w",
+					name, app.Namespace, ns, ownErr)
+			}
+			continue
+		}
+		if !apierrors.IsNotFound(getErr) {
+			return fmt.Errorf("checking build-namespace secret %s/%s: %w", ns, name, getErr)
 		}
 	}
 	return nil

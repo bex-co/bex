@@ -30,6 +30,16 @@ const (
 	VerifyImageEnabled = "enabled"
 	NodePoolLabel      = "bex.co/pool"
 	UntrustedNodePool  = "tenant"
+
+	// LabelProtectedFromTenantMount marks an operator-projected Secret that a
+	// tenant workload must never mount (codex F1) — e.g. the shared S3 backup
+	// credential the Database/KeyValue reconcilers copy into a datastore's own
+	// namespace. Kubelet secret projection needs no pod-side API token, so pod
+	// hardening alone does not stop a co-located tenant App from naming such a
+	// Secret in EnvFrom/volume/env; the App reconcile rejects any reference to a
+	// Secret carrying this label.
+	LabelProtectedFromTenantMount = "app.bex.co/protected-from-tenant-mount"
+	ProtectedFromTenantMount      = "true"
 )
 
 // PodLabels returns the common labels that let logging, admission, and network

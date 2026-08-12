@@ -850,7 +850,13 @@ func (s *Server) Handler() (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	return withSecurityHeaders(withBodyLimit(s.MaxBodyBytes)(withCORS(s.CORSOrigin, mux))), nil
+	// withBodyLimit is applied PER ROUTE inside rootMux, never as a blanket outer
+	// wrapper (codex F11): buffering every non-GET body at the top read up to
+	// MaxBodyBytes for each request BEFORE the route's cheap admission (the
+	// unauthenticated webhook/deploy-hook IP limiters, the auth gate) could shed
+	// it. Each mounted body-bearing handler now runs its limiter/auth first and
+	// caps the body last.
+	return withSecurityHeaders(withCORS(s.CORSOrigin, mux)), nil
 }
 
 // rootMux builds the composed top-level mux: the directly-mounted always-public
@@ -873,6 +879,10 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 	s.schema = schema
 
 	mux := http.NewServeMux()
+	// Per-route body cap (codex F11): mounted AFTER each route's cheap admission
+	// so an over-budget or unauthenticated caller is shed before its body is
+	// buffered. Zero/disabled MaxBodyBytes makes this a pass-through.
+	bodyLimit := withBodyLimit(s.MaxBodyBytes)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
@@ -900,20 +910,20 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 		if s.GitHub != nil {
 			wh.Installations = s.GitHub.InstallationResolver()
 		}
-		mux.Handle("POST /v1/webhooks/git", webhookLimit(wh))
+		mux.Handle("POST /v1/webhooks/git", webhookLimit(bodyLimit(wh)))
 	}
 	// Stripe cannot present a bex bearer token; its timestamped HMAC signature
 	// is the route's authentication. The injected handler verifies it before
 	// decoding or acting on any event; the limiter sheds a flood ahead of that.
 	if s.StripeWebhook != nil {
-		mux.Handle("POST /v1/webhooks/stripe", webhookLimit(s.StripeWebhook))
+		mux.Handle("POST /v1/webhooks/stripe", webhookLimit(bodyLimit(s.StripeWebhook)))
 	}
 	// Deploy hooks authenticate with the unguessable URL token itself. Mount the
 	// whole prefix outside OAuth so malformed credentials containing an extra
 	// slash still reach the hook handler's uniform 404 instead of falling through
 	// to the authenticated /v1 wildcard and becoming a distinguishing 401.
 	if s.Deploys != nil {
-		hook := s.deployHookLookupRateLimitMiddleware()(s.Deploys.DeployHookHandler())
+		hook := s.deployHookLookupRateLimitMiddleware()(bodyLimit(s.Deploys.DeployHookHandler()))
 		mux.Handle("/v1/deploy-hooks", hook)
 		mux.Handle("/v1/deploy-hooks/", hook)
 	}
@@ -926,9 +936,13 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 	if err != nil {
 		return nil, err
 	}
-	mux.Handle("/v1/", auth(rl(rest)))
-	mux.Handle("/graphql", auth(rl(s.graphqlHandler())))
-	mux.Handle("/mcp", auth(rl(s.mcpHTTPHandler())))
+	// bodyLimit is innermost: auth (bearer/cookie — never the body) and the
+	// identity-keyed rate limiter both admit the request before its body is
+	// buffered, so an unauthenticated or throttled caller is rejected without the
+	// server reading up to MaxBodyBytes (codex F11).
+	mux.Handle("/v1/", auth(rl(bodyLimit(rest))))
+	mux.Handle("/graphql", auth(rl(bodyLimit(s.graphqlHandler()))))
+	mux.Handle("/mcp", auth(rl(bodyLimit(s.mcpHTTPHandler()))))
 
 	// RFC 9728 protected-resource metadata (w4/m9): open by design — it's how an
 	// unauthenticated MCP client discovers the authorization server (the MCP

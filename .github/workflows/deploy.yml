@@ -479,11 +479,14 @@ jobs:
           install -m700 -d ~/.ssh
           printf '%s\n' "${{ secrets.BEX_SSH_PRIVATE_KEY }}" > ~/.ssh/id_bex
           chmod 600 ~/.ssh/id_bex
-          # Authenticate the control-plane host key when the operator has
-          # provisioned it (w1/m66 F7): with the pin present the fetch fails
-          # closed on an unknown/changed key instead of trusting it on first use
-          # and handing every later step an attacker-supplied admin.conf. Absent
-          # (until the secret is set) the run is byte-identical to before.
+          # Authenticate the control-plane host key (w1/m66 F7; mandatory since
+          # codex F10): the pin makes the fetch fail closed on an unknown/changed
+          # key instead of trusting it on first use and handing every later step
+          # an attacker-supplied admin.conf. BEX_SSH_REQUIRE_KNOWN_HOSTS=1 makes a
+          # missing/empty pin ABORT the deploy rather than silently fall back to
+          # trust-on-first-use — provision the BEX_SSH_KNOWN_HOSTS secret out of
+          # band (docs/ADR019-infra-credentials.md) before this workflow runs.
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
           if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
             printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > ~/.ssh/bex_known_hosts
             chmod 600 ~/.ssh/bex_known_hosts
