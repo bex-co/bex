@@ -70,6 +70,15 @@ const (
 	finalizer                    = "app.bex.co/finalizer"
 	registryCredentialRotateTrue = "true"
 	childHealthRequeue           = 30 * time.Second
+
+	// Ready-condition reasons for the two halves of a source build. They are a
+	// shared vocabulary, not local strings: the control plane keys on them to
+	// tell "waiting for capacity" from "building" and gives each its own phase
+	// budget (lego/backend/internal/store/reconciler.go observedDeployStatus).
+	// Changing either value silently re-times deploys, so they live here rather
+	// than being written out at each call site.
+	reasonBuildQueued = "BuildQueued"
+	reasonBuilding    = "Building"
 )
 
 // generationOrDeletionPredicate adds App's explicit registry-credential
@@ -486,14 +495,35 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 					return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("counting workspace builds: %w", err))
 				}
 				if active >= r.MaxConcurrentBuilds {
-					r.setPhase(ctx, &app, appv1alpha1.PhaseBuilding, "BuildQueued",
+					r.setPhase(ctx, &app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
 						fmt.Sprintf("workspace has %d/%d concurrent builds active; waiting for a slot", active, r.MaxConcurrentBuilds))
 					return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 				}
 			}
 		}
 
-		r.setPhase(ctx, &app, appv1alpha1.PhaseBuilding, "Building", "Building image from "+app.Spec.Repo)
+		// Open at BuildQueued, not Building: at this instant the Job does not
+		// exist yet, so nothing is building. buildWaitReporter flips it to
+		// Building the moment a pod is actually placed on a node, and the
+		// control plane's budget restarts on that edge — which is the whole
+		// point, since a build that waits 20 minutes for capacity must not
+		// spend that wait from the time allowed for the build itself.
+		//
+		// The reason must be honest from the FIRST status the control plane
+		// samples. Its deploy row may only enter queued from created, so an
+		// optimistic "Building" here would let a poll landing in the gap
+		// between dispatch and the first wait callback lock the row into
+		// build_in_progress, and the queued→building edge that resets the clock
+		// would never happen.
+		//
+		// Buildpack (kpack) is exempt: build.Build returns down a different path
+		// that never reports waiting, so opening it queued would strand it there
+		// until the gate fired. It keeps the previous immediate Building.
+		buildOpenReason, buildOpenMessage := reasonBuildQueued, "waiting for build capacity: dispatching build"
+		if builder == build.BuilderBuildpack {
+			buildOpenReason, buildOpenMessage = reasonBuilding, "Building image from "+app.Spec.Repo
+		}
+		r.setPhase(ctx, &app, appv1alpha1.PhaseBuilding, buildOpenReason, buildOpenMessage)
 		// The clone Secret (docs/ADR026-github-integration.md) that bex-api wrote lives
 		// in the App's namespace, but the build Job runs in buildNs
 		// (BEX_BUILD_NAMESPACE). When they differ, relocate it so BuildKit can read
@@ -536,6 +566,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			PullSecret:       buildRegistryPullSecret,
 			RegistryConfig:   usesBuildRegistryConfig(&app, builder),
 			Client:           buildClient,
+			OnWaiting:        r.buildWaitReporter(ctx, &app),
 		})
 		if err != nil {
 			if errors.Is(err, build.ErrAppDeleting) {
@@ -556,6 +587,41 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return r.reconcileKubernetes(ctx, &app, image, port)
 	}
 	return r.reconcileOpenSandbox(ctx, &app, image, port)
+}
+
+// buildWaitReporter returns the callback build.Build invokes while it waits,
+// which keeps the App's Ready reason honest about whether the build is QUEUED
+// (dispatched, but the scheduler has not placed a pod) or actually Building.
+//
+// This is what separates "waiting for capacity" from "building" for everyone
+// downstream. The control plane maps reason=BuildQueued to the deploy row's
+// queued status and reason=Building to build_in_progress, and its phase budgets
+// restart on each legal transition — so the queued→building edge hands the real
+// build its full build-gate window instead of whatever the queue left over.
+// Before this, a dispatched build reported Building immediately and a long wait
+// for a node was spent from the build's own budget: on 2026-08-11 a build sat
+// Pending 22 minutes and the control plane closed its deploy build_failed while
+// the build was still running and went on to succeed, leaving the deploy record
+// contradicting the revision actually serving.
+//
+// Writes only on a CHANGE of state. The wait loop polls every few seconds and a
+// build runs for minutes; re-stamping an unchanged reason each pass would be a
+// needless status write per poll, per building App.
+func (r *AppReconciler) buildWaitReporter(ctx context.Context, app *appv1alpha1.App) func(bool, string) {
+	last := ""
+	return func(queued bool, reason string) {
+		state := reasonBuilding
+		message := "Building image from " + app.Spec.Repo
+		if queued {
+			state = reasonBuildQueued
+			message = "waiting for build capacity: " + reason
+		}
+		if state == last {
+			return
+		}
+		last = state
+		r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, state, message)
+	}
 }
 
 // pinBuiltImage rewrites a freshly built mutable-tag reference to its immutable
