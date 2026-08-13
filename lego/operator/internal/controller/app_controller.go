@@ -398,7 +398,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			app.Status.Phase = appv1alpha1.PhaseFailed
 			app.Status.ObservedGeneration = app.Generation
 			meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-				Type: "Ready", Status: metav1.ConditionFalse, Reason: "BuildCanceled",
+				Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "BuildCanceled",
 				Message: "build canceled before a release became available", ObservedGeneration: app.Generation,
 			})
 			if err := r.Status().Update(ctx, &app); err != nil {
@@ -1040,6 +1040,13 @@ func (r *AppReconciler) backfillWorkloadPullSecrets(ctx context.Context, app *ap
 // RotateCreds then clears the annotation.
 const annotRotateRegistryCreds = "bex.co/rotate-registry-creds"
 
+// appNeedsRegistryCred reports whether the App needs a platform-registry
+// credential: it will build+push to our registry (Repo-based) or already has a
+// registry-hosted image in spec or status.
+func (r *AppReconciler) appNeedsRegistryCred(app *appv1alpha1.App) bool {
+	return app.Spec.Repo != "" || r.registryHosted(app.Spec.Image) || r.registryHosted(app.Status.Image)
+}
+
 // ensurePerAppRegistryCreds mints per-App pull credentials (w7/m36) when
 // PerAppRegistry is configured and the App needs a registry-hosted image. It is
 // a no-op when PerAppRegistry is nil or the App is not registry-hosted.
@@ -1047,12 +1054,7 @@ func (r *AppReconciler) ensurePerAppRegistryCreds(ctx context.Context, app *appv
 	if r.PerAppRegistry == nil || r.Registry == "" {
 		return nil
 	}
-	// Mint credentials if the App will build+push to our registry (Repo-based)
-	// or already has a registry-hosted image in spec or status.
-	needsCred := app.Spec.Repo != "" ||
-		strings.HasPrefix(app.Spec.Image, r.Registry+"/") ||
-		strings.HasPrefix(app.Status.Image, r.Registry+"/")
-	if !needsCred {
+	if !r.appNeedsRegistryCred(app) {
 		return nil
 	}
 
@@ -1082,10 +1084,7 @@ func (r *AppReconciler) mirrorPerAppRegistryCredential(ctx context.Context, app 
 	if r.PerAppRegistry == nil || r.Registry == "" || r.buildNamespace(app.Namespace) == app.Namespace {
 		return nil
 	}
-	needsCred := app.Spec.Repo != "" ||
-		strings.HasPrefix(app.Spec.Image, r.Registry+"/") ||
-		strings.HasPrefix(app.Status.Image, r.Registry+"/")
-	if !needsCred {
+	if !r.appNeedsRegistryCred(app) {
 		return nil
 	}
 	name := registry.PullSecretName(app.Name)
@@ -1248,7 +1247,13 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// Service, no Ingress, no URL, no auto-sleep (nothing routes traffic to wake it).
 	worker := app.Spec.Type == appv1alpha1.TypeBackgroundWorker
 
-	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
+	// A settled Running app on a steady-state pass (childHealthRequeue, pod
+	// events) must not flap Running→Deploying→Running: stamp the transitional
+	// phase only when something is actually rolling out.
+	if app.Status.Phase != appv1alpha1.PhaseRunning ||
+		app.Status.ObservedGeneration != app.Generation || app.Status.Image != image {
+		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
+	}
 
 	// Auto-hibernate: idle free-tier app past its TTL → scale to 0 without
 	// touching spec.suspended, so manual-suspend semantics are preserved. A worker
@@ -1385,38 +1390,15 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	completeAutoscalingTransition(app, dep.Status.Replicas, dep.Status.ReadyReplicas, time.Now())
 	if !deploymentRolloutReady(dep, replicas) || !r.deploymentPodsReady(ctx, dep, replicas) {
-		app.Status.Phase = appv1alpha1.PhaseDeploying
 		app.Status.Image = image
-		notReadyReason, notReadyMessage := "RolloutProgressing", "waiting for the current Deployment revision and pods to become ready"
-		if r.currentRevisionFullyReady(ctx, dep, replicas) {
-			notReadyReason, notReadyMessage = "RolloutSettling", "current revision fully ready; Deployment status still converging"
-		}
-		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionFalse, Reason: notReadyReason,
-			Message: notReadyMessage, ObservedGeneration: app.Generation,
-		})
-		// Surface why the rollout is stuck when a pod is crash-looping or cannot
-		// pull its image: the deploy would otherwise time out as an opaque
-		// update_failed with the cause visible only in pod state no tenant
-		// surface shows (w9/011).
-		if reason, msg := r.stuckPodMessage(ctx, dep, port); msg != "" {
-			meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-				Type: "Ready", Status: metav1.ConditionFalse, Reason: reason,
-				Message: msg, ObservedGeneration: app.Generation,
-			})
-		}
-		_ = r.Status().Update(ctx, app)
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		return r.reportRolloutProgress(ctx, app, dep, replicas, port,
+			"waiting for the current Deployment revision and pods to become ready")
 	}
 
 	app.Status.Phase = appv1alpha1.PhaseRunning
 	app.Status.Image = image
 	if len(hosts) > 0 {
-		app.Status.URL = "https://" + hosts[0]
-		app.Status.URLs = nil
-		for _, h := range hosts {
-			app.Status.URLs = append(app.Status.URLs, "https://"+h)
-		}
+		setStatusURLs(app, hosts)
 	} else {
 		app.Status.URL = internalURL(app)
 		app.Status.URLs = nil
@@ -1424,7 +1406,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	app.Status.ActiveRevision = releaseRevision(app)
 	app.Status.ObservedGeneration = app.Generation
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionTrue, Reason: "Deployed",
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Deployed",
 		Message:            fmt.Sprintf("%d/%d replicas ready", dep.Status.ReadyReplicas, replicas),
 		ObservedGeneration: app.Generation,
 	})
@@ -1468,7 +1450,7 @@ func (r *AppReconciler) hibernated(ctx context.Context, app *appv1alpha1.App, im
 	}
 	app.Status.ObservedGeneration = app.Generation
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionFalse, Reason: reason,
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
 		Message: message, ObservedGeneration: app.Generation,
 	})
 	return ctrl.Result{}, r.Status().Update(ctx, app)
@@ -1556,6 +1538,17 @@ func internalURL(app *appv1alpha1.App) string {
 	return fmt.Sprintf("http://%s.%s.svc:%d", app.Name, app.Namespace, app.Spec.EffectivePort())
 }
 
+// setStatusURLs projects a serving App's public hosts onto status: the first
+// host is the canonical URL, the full list lands in URLs. hosts must be
+// non-empty; the no-host cases (internal URL, no URL at all) stay per-type.
+func setStatusURLs(app *appv1alpha1.App, hosts []string) {
+	app.Status.URL = "https://" + hosts[0]
+	app.Status.URLs = nil
+	for _, h := range hosts {
+		app.Status.URLs = append(app.Status.URLs, "https://"+h)
+	}
+}
+
 // reconcileWorkerStatus finishes the background_worker reconcile: a worker's
 // Deployment is already applied by reconcileKubernetes, so here we tear down any
 // Service/Ingress left from a prior type, then report status with no URL (a
@@ -1566,6 +1559,14 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
 		&networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
 	} {
+		// Cached existence check first: both objects are absent on every
+		// steady-state pass, and a blind Delete is a live API round trip.
+		if err := r.Get(ctx, client.ObjectKeyFromObject(obj), obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return r.fail(ctx, app, "WorkerCleanupFailed", err)
+		}
 		if err := r.Delete(ctx, obj); err != nil && !apierrors.IsNotFound(err) {
 			return r.fail(ctx, app, "WorkerCleanupFailed", err)
 		}
@@ -1579,7 +1580,7 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	if app.Spec.Suspended {
 		app.Status.Phase = appv1alpha1.PhaseHibernated
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionFalse, Reason: "Suspended",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "Suspended",
 			Message: "worker suspended (scaled to 0)", ObservedGeneration: app.Generation,
 		})
 		if err := r.Status().Update(ctx, app); err != nil {
@@ -1590,31 +1591,15 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	if !deploymentRolloutReady(dep, replicas) || !r.deploymentPodsReady(ctx, dep, replicas) {
-		app.Status.Phase = appv1alpha1.PhaseDeploying
-		notReadyReason, notReadyMessage := "RolloutProgressing", "waiting for the current worker Deployment revision and pods to become ready"
-		if r.currentRevisionFullyReady(ctx, dep, replicas) {
-			notReadyReason, notReadyMessage = "RolloutSettling", "current revision fully ready; Deployment status still converging"
-		}
-		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionFalse, Reason: notReadyReason,
-			Message: notReadyMessage, ObservedGeneration: app.Generation,
-		})
-		// Same stuck-rollout surfacing as the web path; port 0 — a worker has no
-		// HTTP endpoint, so the $PORT hint is omitted (w9/011).
-		if reason, msg := r.stuckPodMessage(ctx, dep, 0); msg != "" {
-			meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-				Type: "Ready", Status: metav1.ConditionFalse, Reason: reason,
-				Message: msg, ObservedGeneration: app.Generation,
-			})
-		}
-		_ = r.Status().Update(ctx, app)
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		// Port 0 — a worker has no HTTP endpoint, so the $PORT hint is omitted (w9/011).
+		return r.reportRolloutProgress(ctx, app, dep, replicas, 0,
+			"waiting for the current worker Deployment revision and pods to become ready")
 	}
 
 	app.Status.Phase = appv1alpha1.PhaseRunning
 	app.Status.ActiveRevision = releaseRevision(app)
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionTrue, Reason: "Deployed",
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Deployed",
 		Message:            fmt.Sprintf("%d/%d replicas ready", dep.Status.ReadyReplicas, replicas),
 		ObservedGeneration: app.Generation,
 	})
@@ -1623,6 +1608,34 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	}
 	logf.FromContext(ctx).Info("worker running (kubernetes)", "name", app.Name, "image", image, "replicas", replicas)
 	return ctrl.Result{RequeueAfter: childHealthRequeue}, nil
+}
+
+// reportRolloutProgress records the shared not-ready shape of a Deployment
+// rollout (the web and worker paths): phase Deploying, Ready=False with
+// RolloutProgressing — upgraded to RolloutSettling when a live pod listing
+// shows the current revision fully ready while the Deployment status is still
+// converging — then overlaid with the stuck-pod diagnosis when a pod is
+// crash-looping or cannot pull its image: the deploy would otherwise time out
+// as an opaque update_failed with the cause visible only in pod state no
+// tenant surface shows (w9/011).
+func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, replicas int32, port int, notReadyMessage string) (ctrl.Result, error) {
+	app.Status.Phase = appv1alpha1.PhaseDeploying
+	notReadyReason := "RolloutProgressing"
+	if r.currentRevisionFullyReady(ctx, dep, replicas) {
+		notReadyReason, notReadyMessage = "RolloutSettling", "current revision fully ready; Deployment status still converging"
+	}
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: notReadyReason,
+		Message: notReadyMessage, ObservedGeneration: app.Generation,
+	})
+	if reason, msg := r.stuckPodMessage(ctx, dep, port); msg != "" {
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
+			Message: msg, ObservedGeneration: app.Generation,
+		})
+	}
+	_ = r.Status().Update(ctx, app)
+	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 }
 
 // deploymentRolloutReady follows the Deployment controller's rollout-complete
@@ -1736,6 +1749,15 @@ func (r *AppReconciler) reconcileIPAllowListMiddleware(ctx context.Context, app 
 	return names, nil
 }
 
+// appIDOrName is the Render-shaped service id stamped on the App CR, falling
+// back to the CR name for legacy/hand-applied Apps that carry no id label.
+func appIDOrName(app *appv1alpha1.App) string {
+	if appID := app.Labels[labelAppID]; appID != "" {
+		return appID
+	}
+	return app.Name
+}
+
 func (r *AppReconciler) reconcileWebsocketMeterMiddleware(ctx context.Context, app *appv1alpha1.App, enabled bool) (string, error) {
 	middlewareName := app.Name + "-ws-egress"
 	if !enabled {
@@ -1744,12 +1766,8 @@ func (r *AppReconciler) reconcileWebsocketMeterMiddleware(ctx context.Context, a
 		}
 		return "", nil
 	}
-	appID := app.Labels[labelAppID]
-	if appID == "" {
-		appID = app.Name
-	}
 	spec := map[string]any{"plugin": map[string]any{
-		"bexWebsocketEgress": map[string]any{"appId": appID, "metricsAddr": ":9101"},
+		"bexWebsocketEgress": map[string]any{"appId": appIDOrName(app), "metricsAddr": ":9101"},
 	}}
 	if err := upsertOwned(ctx, r.Client, r.Scheme, app, traefikHTTPMiddlewareGVK, middlewareName, spec); err != nil {
 		return "", err
@@ -1774,7 +1792,10 @@ func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.A
 		return err
 	}
 	if len(hosts) == 0 {
-		stale := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+		stale := &networkingv1.Ingress{}
+		if err := r.Get(ctx, client.ObjectKey{Name: app.Name, Namespace: app.Namespace}, stale); err != nil {
+			return client.IgnoreNotFound(err) // cached read: absent on every steady-state pass
+		}
 		if err := r.Delete(ctx, stale); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
@@ -1937,9 +1958,15 @@ func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1al
 
 	ingressName := hostRedirectIngressName(app.Name)
 	if len(redirects) == 0 {
-		stale := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: ingressName, Namespace: app.Namespace}}
-		if err := r.Delete(ctx, stale); err != nil && !apierrors.IsNotFound(err) {
+		stale := &networkingv1.Ingress{}
+		err := r.Get(ctx, client.ObjectKey{Name: ingressName, Namespace: app.Namespace}, stale)
+		if err != nil && !apierrors.IsNotFound(err) {
 			return nil, err
+		}
+		if err == nil { // cached read: absent on every steady-state pass
+			if err := r.Delete(ctx, stale); err != nil && !apierrors.IsNotFound(err) {
+				return nil, err
+			}
 		}
 		return map[string]bool{}, nil
 	}
@@ -2010,6 +2037,14 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
 		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
 	} {
+		// Cached existence check first: both objects are absent on every
+		// steady-state pass, and a blind Delete is a live API round trip.
+		if err := r.Get(ctx, client.ObjectKeyFromObject(obj), obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return r.fail(ctx, app, "StaticCleanupFailed", err)
+		}
 		if err := r.Delete(ctx, obj); err != nil && !apierrors.IsNotFound(err) {
 			return r.fail(ctx, app, "StaticCleanupFailed", err)
 		}
@@ -2093,18 +2128,9 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 		if err := r.reconcileIngress(ctx, app, nil, "", 0, nil); err != nil {
 			return r.fail(ctx, app, "IngressCleanupFailed", err)
 		}
-		app.Status.Phase = appv1alpha1.PhaseHibernated
-		app.Status.Image = image
 		app.Status.ActiveRevision = rev
-		app.Status.ObservedGeneration = app.Generation
-		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionFalse, Reason: "Suspended",
-			Message: "static site suspended (not served; published content kept)", ObservedGeneration: app.Generation,
-		})
-		if err := r.Status().Update(ctx, app); err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
+		return r.hibernated(ctx, app, image, nil, "Suspended",
+			"static site suspended (not served; published content kept)")
 	}
 
 	staticMWNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
@@ -2126,13 +2152,9 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	app.Status.Image = image
 	app.Status.ActiveRevision = rev
 	app.Status.ObservedGeneration = app.Generation
-	app.Status.URL = "https://" + hosts[0]
-	app.Status.URLs = nil
-	for _, h := range hosts {
-		app.Status.URLs = append(app.Status.URLs, "https://"+h)
-	}
+	setStatusURLs(app, hosts)
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionTrue, Reason: "Published",
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Published",
 		Message: "static site published and served from the object-store origin", ObservedGeneration: app.Generation,
 	})
 	if err := r.Status().Update(ctx, app); err != nil {
@@ -2173,7 +2195,13 @@ func (r *AppReconciler) reconcileStaticServerAlias(ctx context.Context, app *app
 }
 
 func staticServerAliasName(appName string) string {
-	const prefix = "bex-static-"
+	return platformAliasName("bex-static-", appName)
+}
+
+// platformAliasName derives the ≤63-char Service name for an App's platform
+// ExternalName alias: prefix + app name, truncated with a sha256 suffix when
+// the combination would exceed the DNS-label cap.
+func platformAliasName(prefix, appName string) string {
 	if len(prefix)+len(appName) <= 63 {
 		return prefix + appName
 	}
@@ -2247,13 +2275,7 @@ func (r *AppReconciler) reconcilePlatformAlias(ctx context.Context, app *appv1al
 }
 
 func maintenanceAliasName(appName string) string {
-	const prefix = "bex-maintenance-"
-	if len(prefix)+len(appName) <= 63 {
-		return prefix + appName
-	}
-	sum := fmt.Sprintf("%x", sha256.Sum256([]byte(appName)))[:8]
-	keep := 63 - len(prefix) - 1 - len(sum)
-	return prefix + appName[:keep] + "-" + sum
+	return platformAliasName("bex-maintenance-", appName)
 }
 
 // maxCronRuns caps how many recent runs the status carries — enough to show a
@@ -2269,13 +2291,13 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if app.Spec.Schedule == "" {
 		return r.fail(ctx, app, "BadSpec", fmt.Errorf("spec.schedule is required for a cron_job"))
 	}
-	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling CronJob for "+image)
-	labels := map[string]string{labelApp: app.Name}
-	if appID := app.Labels[labelAppID]; appID != "" {
-		labels[labelAppID] = appID
-	} else {
-		labels[labelAppID] = app.Name
+	// Same steady-state gate as the Deployment path: the 1-minute run-history
+	// poll of a settled Running cron must not flap Running→Deploying→Running.
+	if app.Status.Phase != appv1alpha1.PhaseRunning ||
+		app.Status.ObservedGeneration != app.Generation || app.Status.Image != image {
+		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling CronJob for "+image)
 	}
+	labels := map[string]string{labelApp: app.Name, labelAppID: appIDOrName(app)}
 	if r.TenantSignKeySecret != "" {
 		labels[execution.LabelVerifyImage] = execution.VerifyImageEnabled
 	}
@@ -2325,13 +2347,13 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if suspended {
 		app.Status.Phase = appv1alpha1.PhaseHibernated
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionFalse, Reason: "Suspended",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "Suspended",
 			Message: "cron schedule suspended", ObservedGeneration: app.Generation,
 		})
 	} else {
 		app.Status.Phase = appv1alpha1.PhaseRunning
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionTrue, Reason: "Scheduled",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Scheduled",
 			Message: "cron scheduled: " + app.Spec.Schedule, ObservedGeneration: app.Generation,
 		})
 	}
@@ -2558,7 +2580,7 @@ func (r *AppReconciler) reconcileOpenSandbox(ctx context.Context, app *appv1alph
 		app.Status.Phase = appv1alpha1.PhaseHibernated
 		app.Status.ObservedGeneration = app.Generation
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionFalse, Reason: "Suspended",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "Suspended",
 			Message: "sandbox paused (snapshot kept)", ObservedGeneration: app.Generation,
 		})
 		if err := r.Status().Update(ctx, app); err != nil {
@@ -2576,7 +2598,7 @@ func (r *AppReconciler) reconcileOpenSandbox(ctx context.Context, app *appv1alph
 			app.Status.URL = target.URL()
 			app.Status.ObservedGeneration = app.Generation
 			meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-				Type: "Ready", Status: metav1.ConditionTrue, Reason: "Resumed",
+				Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Resumed",
 				Message: "sandbox resumed", ObservedGeneration: app.Generation,
 			})
 			if err := r.Status().Update(ctx, app); err != nil {
@@ -2611,7 +2633,7 @@ func (r *AppReconciler) reconcileOpenSandbox(ctx context.Context, app *appv1alph
 	app.Status.ActiveRevision = releaseRevision(app)
 	app.Status.ObservedGeneration = app.Generation
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionTrue, Reason: "Deployed",
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Deployed",
 		Message: "revision running", ObservedGeneration: app.Generation,
 	})
 	if err := r.Status().Update(ctx, app); err != nil {
@@ -2827,14 +2849,14 @@ func ptr[T any](v T) *T { return &v }
 // stuckPodMessage inspects the pods behind a not-yet-ready tenant Deployment
 // for a terminal-looking container state and returns an actionable Ready
 // condition (reason, message). Empty when the rollout is merely progressing.
-// Listed with the uncached client: pods are not in the manager cache and a
-// cached List would establish a cluster-wide informer for them.
+// Listed with the cached client: SetupWithManager watches pods, so the
+// informer already exists and the read is free.
 func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deployment, port int) (string, string) {
 	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
 		return "", ""
 	}
 	var pods corev1.PodList
-	if err := r.buildPlaneClient().List(ctx, &pods, client.InNamespace(dep.Namespace),
+	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace),
 		client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
 		return "", ""
 	}
@@ -2931,19 +2953,28 @@ func (r *AppReconciler) setPublicRoutingCondition(app *appv1alpha1.App, hosts []
 	})
 }
 
+// setPhase stamps a transitional phase + Ready=False condition. The write is
+// skipped when the persisted phase and condition already match: a no-op pass
+// re-stamping an unchanged state would otherwise issue a status write per
+// reconcile, per App (the same diff-before-write discipline as
+// buildWaitReporter).
 func (r *AppReconciler) setPhase(ctx context.Context, app *appv1alpha1.App, p appv1alpha1.AppPhase, reason, msg string) {
+	samePhase := app.Status.Phase == p
 	app.Status.Phase = p
-	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionFalse, Reason: reason, Message: msg,
+	changed := meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: msg,
 		ObservedGeneration: app.Generation,
 	})
+	if samePhase && !changed {
+		return
+	}
 	_ = r.Status().Update(ctx, app)
 }
 
 func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason string, err error) (ctrl.Result, error) {
 	app.Status.Phase = appv1alpha1.PhaseFailed
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionFalse, Reason: reason, Message: err.Error(),
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: err.Error(),
 		ObservedGeneration: app.Generation,
 	})
 	_ = r.Status().Update(ctx, app)
@@ -2992,6 +3023,12 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	ns := r.buildNamespace(app.Namespace)
 	rev := fmt.Sprintf("gen-%d", gen)
 	jobName := predeploy.JobName(app.Name, rev)
+	failedPD := func(job, msg string) *appv1alpha1.PreDeployStatus {
+		return &appv1alpha1.PreDeployStatus{
+			Job: job, Generation: gen, Status: appv1alpha1.PreDeployFailed,
+			StartedAt: started, FinishedAt: time.Now().UTC().Format(time.RFC3339), Message: msg,
+		}
+	}
 
 	// Newest-wins: cancel any older-revision migration still in flight — but only
 	// on the FIRST pass for this revision. Re-checking a running migration has
@@ -2999,10 +3036,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	// so this avoids a wasted List on every requeue.
 	if firstForGen {
 		if err := predeploy.CancelSuperseded(ctx, app.Name, ns, jobName, r.Client); err != nil {
-			return r.failPreDeploy(ctx, app, &appv1alpha1.PreDeployStatus{
-				Job: jobName, Generation: gen, Status: appv1alpha1.PreDeployFailed,
-				StartedAt: started, FinishedAt: time.Now().UTC().Format(time.RFC3339), Message: err.Error(),
-			}, fmt.Errorf("pre-deploy: %w", err))
+			return r.failPreDeploy(ctx, app, failedPD(jobName, err.Error()), fmt.Errorf("pre-deploy: %w", err))
 		}
 	}
 
@@ -3020,16 +3054,10 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		err = r.mirrorPreDeploySecrets(ctx, app, ns)
 	}
 	if err != nil {
-		return r.failPreDeploy(ctx, app, &appv1alpha1.PreDeployStatus{
-			Job: jobName, Generation: gen, Status: appv1alpha1.PreDeployFailed,
-			StartedAt: started, FinishedAt: time.Now().UTC().Format(time.RFC3339), Message: err.Error(),
-		}, fmt.Errorf("pre-deploy: %w", err))
+		return r.failPreDeploy(ctx, app, failedPD(jobName, err.Error()), fmt.Errorf("pre-deploy: %w", err))
 	}
 	if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
-		return r.failPreDeploy(ctx, app, &appv1alpha1.PreDeployStatus{
-			Job: jobName, Generation: gen, Status: appv1alpha1.PreDeployFailed,
-			StartedAt: started, FinishedAt: time.Now().UTC().Format(time.RFC3339), Message: err.Error(),
-		}, fmt.Errorf("pre-deploy network policy: %w", err))
+		return r.failPreDeploy(ctx, app, failedPD(jobName, err.Error()), fmt.Errorf("pre-deploy network policy: %w", err))
 	}
 	job, err := predeploy.Ensure(ctx, predeploy.Options{
 		Name:             app.Name,
@@ -3068,10 +3096,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		logf.FromContext(ctx).Info("pre-deploy succeeded", "name", app.Name, "job", job.Name)
 		return ctrl.Result{}, false, nil // proceed to the rollout
 	case predeploy.StateFailed:
-		return r.failPreDeploy(ctx, app, &appv1alpha1.PreDeployStatus{
-			Job: job.Name, Generation: gen, Status: appv1alpha1.PreDeployFailed,
-			StartedAt: started, FinishedAt: now, Message: msg,
-		}, fmt.Errorf("pre-deploy command failed: %s", msg))
+		return r.failPreDeploy(ctx, app, failedPD(job.Name, msg), fmt.Errorf("pre-deploy command failed: %s", msg))
 	default: // Pending/Running — keep the old revision serving and requeue
 		app.Status.Phase = appv1alpha1.PhaseDeploying
 		app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
@@ -3079,7 +3104,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 			StartedAt: started,
 		}
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionFalse, Reason: "PreDeploy",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "PreDeploy",
 			Message: "running pre-deploy command", ObservedGeneration: app.Generation,
 		})
 		_ = r.Status().Update(ctx, app)
@@ -3106,7 +3131,10 @@ func (r *AppReconciler) failPreDeploy(ctx context.Context, app *appv1alpha1.App,
 // boundary now. The transitional TenantNamespaces gate that made this
 // conditional was retired in w3/m34 once every cluster had migrated.
 func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1alpha1.App) error {
-	np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+	np := &networkingv1.NetworkPolicy{}
+	if err := r.Get(ctx, client.ObjectKey{Name: app.Name, Namespace: app.Namespace}, np); err != nil {
+		return client.IgnoreNotFound(err) // cached read: absent on every steady-state pass
+	}
 	if err := r.Delete(ctx, np); err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
@@ -3215,14 +3243,8 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 		}
 		// Cross-namespace build/predeploy Jobs and kpack Images in the build
 		// namespace — ownerRefs are invalid across namespaces so nothing cascades.
-		ns := r.BuildNamespace
-		if ns == "" {
-			ns = app.Namespace
-		}
-		cl := r.Client
-		if r.BuildClient != nil {
-			cl = r.BuildClient
-		}
+		ns := r.buildNamespace(app.Namespace)
+		cl := r.buildPlaneClient()
 		executionPending, err := r.reclaimAppExecution(ctx, app, ns, cl)
 		errs = append(errs, err)
 		externalPending, err := r.reclaimAppExternalArtifacts(ctx, app, ns, cl)
@@ -3349,8 +3371,8 @@ func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *ap
 			}
 		}
 	}
-	registryOwned := strings.HasPrefix(app.Status.Image, r.Registry+"/") ||
-		strings.HasPrefix(app.Status.ArtifactImage, r.Registry+"/") || app.Spec.Repo != ""
+	registryOwned := r.registryHosted(app.Status.Image) ||
+		r.registryHosted(app.Status.ArtifactImage) || app.Spec.Repo != ""
 	if r.Registry != "" && registryOwned && app.Annotations[annotRegistryPurgeComplete] != "true" {
 		done, registryErr := r.deleteRegistryRepo(ctx, app)
 		pending = pending || !done
@@ -3478,6 +3500,19 @@ func tlsSecretHistory(app *appv1alpha1.App) []string {
 	return names
 }
 
+// tlsSecretNameSet is every cert-manager TLS Secret name this App may own: the
+// recorded history plus the names derived from the current effective hosts.
+func (r *AppReconciler) tlsSecretNameSet(app *appv1alpha1.App) map[string]struct{} {
+	names := make(map[string]struct{})
+	for _, name := range tlsSecretHistory(app) {
+		names[name] = struct{}{}
+	}
+	for idx, host := range effectiveHosts(app, r.BaseDomain) {
+		names[tlsSecretName(app.Name, idx, host)] = struct{}{}
+	}
+	return names
+}
+
 // quiesceTLSProducers removes the current Ingress and its ingress-shim
 // Certificates before TLS Secret cleanup. Kubernetes does not garbage-collect
 // App-owned children while the App's finalizer is still present, so relying on
@@ -3499,14 +3534,7 @@ func (r *AppReconciler) quiesceTLSProducers(ctx context.Context, app *appv1alpha
 
 	var errs []error
 	pending := false
-	names := make(map[string]struct{})
-	for _, name := range tlsSecretHistory(app) {
-		names[name] = struct{}{}
-	}
-	for idx, host := range effectiveHosts(app, r.BaseDomain) {
-		names[tlsSecretName(app.Name, idx, host)] = struct{}{}
-	}
-	for name := range names {
+	for name := range r.tlsSecretNameSet(app) {
 		certificate := &unstructured.Unstructured{}
 		certificate.SetGroupVersionKind(certManagerCertificateGVK)
 		certificate.SetName(name)
@@ -3522,13 +3550,7 @@ func (r *AppReconciler) quiesceTLSProducers(ctx context.Context, app *appv1alpha
 
 func (r *AppReconciler) deleteTLSSecrets(ctx context.Context, app *appv1alpha1.App) (bool, error) {
 	secretClient := r.buildPlaneClient()
-	names := make(map[string]struct{})
-	for _, name := range tlsSecretHistory(app) {
-		names[name] = struct{}{}
-	}
-	for idx, host := range effectiveHosts(app, r.BaseDomain) {
-		names[tlsSecretName(app.Name, idx, host)] = struct{}{}
-	}
+	names := r.tlsSecretNameSet(app)
 	// Migration safety for Apps whose custom host was removed before m61 wrote
 	// the history annotation. These names are operator-reserved for this App.
 	var secrets corev1.SecretList
@@ -3684,14 +3706,8 @@ func (r *AppReconciler) registryAuthHeader(ctx context.Context, app *appv1alpha1
 	if r.RegistryPushSecret == "" {
 		return "", true, nil
 	}
-	ns := r.BuildNamespace
-	if ns == "" {
-		ns = app.Namespace
-	}
-	cl := r.Client
-	if r.BuildClient != nil {
-		cl = r.BuildClient
-	}
+	ns := r.buildNamespace(app.Namespace)
+	cl := r.buildPlaneClient()
 	var sec corev1.Secret
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: ns, Name: r.RegistryPushSecret}, &sec); err != nil {
 		return "", false, fmt.Errorf("read configured push Secret %s/%s: %w", ns, r.RegistryPushSecret, err)

@@ -574,6 +574,18 @@ func (s *Service) validateMaintenanceMode(ctx context.Context, a *appv1alpha1.Ap
 	return nil
 }
 
+// validateNewSpecMaintenanceMode runs validateMaintenanceMode over a NEW
+// service's desired spec — before any App exists — via a name-only probe
+// object. No-ops when the spec carries no maintenanceMode; shared by create
+// and the Blueprint validate/apply paths so the probe shape can't drift.
+func (s *Service) validateNewSpecMaintenanceMode(ctx context.Context, name string, desired appv1alpha1.AppSpec) error {
+	if desired.MaintenanceMode == nil {
+		return nil
+	}
+	probe := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: name}, Spec: desired}
+	return s.validateMaintenanceMode(ctx, probe, maintenanceModeView(desired.MaintenanceMode))
+}
+
 func parseMaintenanceURI(raw string) (*url.URL, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -873,6 +885,17 @@ func sshEligible(v AppView) bool {
 	}
 }
 
+// sshSessionReady is the shared runtime gate both pods/exec transports
+// (ResolveSSHSession's native SSH and CreateShellSession's browser shell)
+// apply on top of sshEligible: the service must be Running with a live
+// revision and image before a session can target one of its pods.
+func sshSessionReady(v AppView) error {
+	if !sshEligible(v) || v.Phase != string(appv1alpha1.PhaseRunning) || v.Revision == "" || v.Image == "" {
+		return fmt.Errorf("%w: service is not eligible and running", core.ErrConflict)
+	}
+	return nil
+}
+
 // cronRunViews projects the CR's status run history onto the neutral view shape.
 func cronRunViews(runs []appv1alpha1.CronRun) []CronRunView {
 	if len(runs) == 0 {
@@ -895,22 +918,31 @@ func cronRunView(r appv1alpha1.CronRun) CronRunView {
 	}
 }
 
+// The Render-facing cron-run status vocabulary (CronRunView.Status), produced
+// only by renderCronRunStatus and the cancel/trigger verbs.
+const (
+	cronRunPending      = "pending"
+	cronRunSuccessful   = "successful"
+	cronRunUnsuccessful = "unsuccessful"
+	cronRunCanceled     = "canceled"
+)
+
 func renderCronRunStatus(status string) string {
 	switch strings.ToLower(status) {
-	case "succeeded", "successful":
-		return "successful"
-	case "failed", "unsuccessful":
-		return "unsuccessful"
-	case "canceled", "cancelled":
-		return "canceled"
+	case "succeeded", cronRunSuccessful:
+		return cronRunSuccessful
+	case "failed", cronRunUnsuccessful:
+		return cronRunUnsuccessful
+	case cronRunCanceled, "cancelled":
+		return cronRunCanceled
 	default:
-		return "pending"
+		return cronRunPending
 	}
 }
 
 func lastSuccessfulCronRunAt(runs []appv1alpha1.CronRun) string {
 	for _, run := range runs {
-		if renderCronRunStatus(run.Status) == "successful" && run.FinishedAt != "" {
+		if renderCronRunStatus(run.Status) == cronRunSuccessful && run.FinishedAt != "" {
 			return run.FinishedAt
 		}
 	}
@@ -1037,10 +1069,7 @@ func (s *Service) ListInstances(ctx context.Context, name string) ([]ServiceInst
 	}
 
 	out := make([]ServiceInstanceView, 0)
-	serviceType := a.Spec.Type
-	if serviceType == "" {
-		serviceType = appv1alpha1.TypeWebService
-	}
+	serviceType := effectiveType(a.Spec.Type)
 	if a.Spec.Suspended || a.Status.Phase == appv1alpha1.PhaseHibernated {
 		return out, nil
 	}
@@ -1118,8 +1147,8 @@ func (s *Service) ResolveSSHSession(ctx context.Context, username string) (SSHIn
 		return SSHInstanceTarget{}, parseErr
 	}
 	v := s.view(a)
-	if !sshEligible(v) || v.Phase != string(appv1alpha1.PhaseRunning) || v.Revision == "" || v.Image == "" {
-		return SSHInstanceTarget{}, fmt.Errorf("%w: service is not eligible and running", core.ErrConflict)
+	if err := sshSessionReady(v); err != nil {
+		return SSHInstanceTarget{}, err
 	}
 	targets, err := s.readySSHInstances(ctx, a, v)
 	if err != nil {
@@ -1175,8 +1204,8 @@ func (s *Service) CreateShellSession(ctx context.Context, name, instanceID strin
 		return ShellSessionView{}, core.ErrShellUnavailable
 	}
 	v := s.view(a)
-	if !sshEligible(v) || v.Phase != string(appv1alpha1.PhaseRunning) || v.Revision == "" || v.Image == "" {
-		return ShellSessionView{}, fmt.Errorf("%w: service is not eligible and running", core.ErrConflict)
+	if err := sshSessionReady(v); err != nil {
+		return ShellSessionView{}, err
 	}
 	instanceID = strings.TrimSpace(instanceID)
 	if instanceID != "" && !strings.HasPrefix(instanceID, v.ID+"-") {
@@ -1500,11 +1529,8 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if err != nil {
 		return AppView{}, err
 	}
-	if desired.MaintenanceMode != nil {
-		probe := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: req.Name}, Spec: desired}
-		if err := s.validateMaintenanceMode(ctx, probe, maintenanceModeView(desired.MaintenanceMode)); err != nil {
-			return AppView{}, err
-		}
+	if err := s.validateNewSpecMaintenanceMode(ctx, req.Name, desired); err != nil {
+		return AppView{}, err
 	}
 	// The workspace this create acts in: the one named by req.OwnerID (already
 	// membership-checked by Create's Authorize) or the caller's default. Empty
@@ -1559,115 +1585,22 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		// namespace, so two tenants both naming a service "web" must not
 		// collide on the bare name the way the pre-migration scheme did.
 		a.Name = core.CRName(tenantID, req.Name)
-	}
-	a.Namespace = s.AppNamespace(tenantID)
-	a.Spec = desired
-	// A store-managed create writes its source-of-truth row before the CR so the
-	// CR can be stamped with the row id and its initial deploy history exists as
-	// soon as create succeeds. If any later step fails, remove that row again:
-	// otherwise the projector can resurrect a service the API reported as
-	// failed, potentially from the store's narrower projection of the desired
-	// spec (for example after a stale CRD rejects a newly added field).
-	var createdRowID string
-	rollbackStoreRow := func(cause error) error {
-		if createdRowID == "" || s.Store == nil {
-			return cause
-		}
-		if err := s.Store.DeleteApp(ctx, createdRowID); err != nil && !errors.Is(err, store.ErrNotFound) {
-			return errors.Join(cause, fmt.Errorf("rolling back service record: %w", err))
-		}
-		if s.Kick != nil {
-			s.Kick()
-		}
-		return cause
-	}
-	if tenantID != "" {
 		// LabelServiceName is what lets GetApp find this App from one of the
 		// caller's OTHER workspaces by its public name (w4/m19) — metadata.Name
 		// alone no longer serves that purpose once it's tenant-prefixed.
 		a.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelServiceName: req.Name}
 	}
+	a.Namespace = s.AppNamespace(tenantID)
+	a.Spec = desired
 	stampEnvironmentMembership(a, environment)
-	// Write the store row when the store is on + a tenant is resolved, so the
-	// create populates deploy history and the projector recognises the CR as
-	// store-managed (unified create path, w2/m11). The store's own
-	// UNIQUE(tenant_id, name) constraint is the race-safe backstop behind the
-	// GetApp pre-check above: a concurrent duplicate create that slips past it
-	// still surfaces as ErrConflict here, never an unclassified 500.
-	var firstDeployID string
-	if s.Store != nil && tenantID != "" {
-		row, err := s.Store.CreateApp(ctx, store.App{
-			TenantID:             tenantID,
-			Name:                 req.Name,
-			Repo:                 req.Repo,
-			Image:                req.Image,
-			RegistryCredentialID: cloneStringPtr(desired.RegistryCredentialID),
-			Branch:               desired.Branch,
-			Port:                 desired.Port,
-			Replicas:             desired.Replicas,
-			Tier:                 desired.Tier,
-			ProjectID:            environment.ProjectID,
-			EnvironmentID:        environment.ID,
-			// Provenance for the first deploy row CreateApp opens (w9/001):
-			// the branch tip this create will build, resolved best-effort.
-			FirstDeployCommit: s.resolveDeployCommit(ctx, tenantID, req.Repo, desired.Branch),
-		})
-		if err != nil {
-			if errors.Is(err, store.ErrConflict) {
-				return AppView{}, fmt.Errorf("%w: name %q is already in use", core.ErrConflict, req.Name)
-			}
-			return AppView{}, fmt.Errorf("creating service record: %w", err)
-		}
-		// Stamp the managed-by + app-id labels so the projector's byID index
-		// finds this CR on its next pass (avoiding a duplicate create) and
-		// lifecycle verbs (suspend/scale/plan) have an app-id to write through.
-		if a.Labels == nil {
-			a.Labels = map[string]string{}
-		}
-		a.Labels[store.LabelManagedBy] = store.ManagedByValue
-		a.Labels[store.LabelAppID] = row.ID
-		createdRowID = row.ID
-		a.Labels[store.LabelWorkspace] = tenantID
-		// The globally-unique slug (w4/m19) drives the platform host
-		// (operator effectiveHosts) — never req.Name, which is only
-		// workspace-unique and can collide across tenants.
-		a.Spec.Subdomain = row.Slug
-		firstDeployID = row.FirstDeployID
-	}
-	// The control-plane row already supplied its canonical id above. A direct
-	// API create has no row, so persist an equally Render-shaped service id on
-	// the CR; all later reads and lifecycle verbs can resolve it by label.
-	if a.Labels == nil {
-		a.Labels = map[string]string{}
-	}
-	if a.Labels[core.LabelAppID] == "" {
-		a.Labels[core.LabelAppID] = ids.New(ids.Service)
-	}
-	// A private-connection repo gets a fresh clone token + spec.cloneSecret so
-	// its first build authenticates. create-owned only: never set on a spec
-	// that already hand-pointed cloneSecret elsewhere.
-	if desired.CloneSecret == "" {
-		secretName, err := s.ensureCloneSecret(ctx, a)
-		if err != nil {
-			return AppView{}, rollbackStoreRow(err)
-		}
-		a.Spec.CloneSecret = secretName
-	}
-	pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, a)
-	if err != nil {
-		return AppView{}, rollbackStoreRow(err)
-	}
-	a.Spec.ExternalRegistryPullSecret = pullSecretName
-	resourcemeta.Touch(a, s.Now())
-	if err := s.writeNewApp(ctx, req.Name, a, req.SecretFiles); err != nil {
-		return AppView{}, rollbackStoreRow(err)
-	}
-	if s.Kick != nil {
-		s.Kick()
-	}
-	v := s.view(a)
-	v.LatestDeployID = firstDeployID
-	return v, nil
+	// rollbackStoreRow=true: the source-of-truth row is written before the CR
+	// so the CR can be stamped with the row id and its initial deploy history
+	// exists as soon as create succeeds; if any later step fails, remove that
+	// row again — otherwise the projector can resurrect a service the API
+	// reported as failed, potentially from the store's narrower projection of
+	// the desired spec (for example after a stale CRD rejects a newly added
+	// field).
+	return s.materializeNewApp(ctx, req, a, tenantID, environment, true)
 }
 
 // nameTaken reports whether name is already claimed in the exactly-one
@@ -1738,6 +1671,45 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		return AppView{}, err
 	}
 	stampEnvironmentMembership(a, environment)
+	// Persist the initialDeployHook command for echo-back on reads (w2/m45).
+	// The ran-once annotation is added by applyCreate once the first pre-deploy
+	// Job succeeds; createNewApp only stores the command.
+	if req.InitialDeployHook != "" {
+		if a.Annotations == nil {
+			a.Annotations = map[string]string{}
+		}
+		a.Annotations[initialDeployHookAnnotation] = req.InitialDeployHook
+	}
+	// rollbackStoreRow=false: the stack path keeps its historical no-rollback
+	// behavior — its idempotent upsert re-converges on the next apply instead.
+	return s.materializeNewApp(ctx, req, a, tenantID, environment, false)
+}
+
+// materializeNewApp is the shared write tail of create and createNewApp, run
+// once the caller has shaped the CR (object name, namespace, spec, tenant +
+// environment labels, and any annotations): the store row + its first deploy
+// record when the store is on — with the UNIQUE(tenant_id, name) ErrConflict
+// backstop behind both callers' duplicate pre-checks (a concurrent duplicate
+// create that slips past them still surfaces as ErrConflict here, never an
+// unclassified 500) and the managed-by/app-id/workspace/slug stamps — then the
+// LabelAppID fallback mint for a store-less create, the clone + external-
+// registry pull Secrets, and Touch → writeNewApp → Kick → view. When
+// rollbackStoreRowOnFailure is set, a failure after the row write deletes the
+// created row again (see create's rationale); createNewApp passes false.
+func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, environment core.EnvironmentAssignment, rollbackStoreRowOnFailure bool) (AppView, error) {
+	var createdRowID string
+	rollbackStoreRow := func(cause error) error {
+		if !rollbackStoreRowOnFailure || createdRowID == "" || s.Store == nil {
+			return cause
+		}
+		if err := s.Store.DeleteApp(ctx, createdRowID); err != nil && !errors.Is(err, store.ErrNotFound) {
+			return errors.Join(cause, fmt.Errorf("rolling back service record: %w", err))
+		}
+		if s.Kick != nil {
+			s.Kick()
+		}
+		return cause
+	}
 	// Write the store row when the store is on + a tenant is resolved, so the
 	// create populates deploy history and the projector recognises the CR as
 	// store-managed (unified create path, w2/m11).
@@ -1748,24 +1720,18 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 			Name:                 req.Name,
 			Repo:                 req.Repo,
 			Image:                req.Image,
-			RegistryCredentialID: cloneStringPtr(desired.RegistryCredentialID),
-			Branch:               desired.Branch,
-			Port:                 desired.Port,
-			Replicas:             desired.Replicas,
-			Tier:                 desired.Tier,
+			RegistryCredentialID: cloneStringPtr(a.Spec.RegistryCredentialID),
+			Branch:               a.Spec.Branch,
+			Port:                 a.Spec.Port,
+			Replicas:             a.Spec.Replicas,
+			Tier:                 a.Spec.Tier,
 			ProjectID:            environment.ProjectID,
 			EnvironmentID:        environment.ID,
-			// Provenance for the first deploy row CreateApp opens (w9/001) —
-			// same best-effort resolution as create()'s.
-			FirstDeployCommit: s.resolveDeployCommit(ctx, tenantID, req.Repo, desired.Branch),
+			// Provenance for the first deploy row CreateApp opens (w9/001):
+			// the branch tip this create will build, resolved best-effort.
+			FirstDeployCommit: s.resolveDeployCommit(ctx, tenantID, req.Repo, a.Spec.Branch),
 		})
 		if err != nil {
-			// Same TOCTOU backstop as create() (w4/m19): applyCreate's own
-			// GetApp pre-check can miss a duplicate that lands concurrently
-			// between the check and this write; the store's UNIQUE(tenant_id,
-			// name) constraint still catches it and must classify as
-			// ErrConflict here too, or a blueprint-stack race would 500
-			// instead of 409.
 			if errors.Is(err, store.ErrConflict) {
 				return AppView{}, fmt.Errorf("%w: name %q is already in use", core.ErrConflict, req.Name)
 			}
@@ -1779,13 +1745,17 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		}
 		a.Labels[store.LabelManagedBy] = store.ManagedByValue
 		a.Labels[store.LabelAppID] = row.ID
+		createdRowID = row.ID
 		a.Labels[store.LabelWorkspace] = tenantID
-		// The globally-unique slug (w4/m19) drives the platform host (operator
-		// effectiveHosts) — never req.Name, which is only workspace-unique and
-		// can collide across tenants.
+		// The globally-unique slug (w4/m19) drives the platform host
+		// (operator effectiveHosts) — never req.Name, which is only
+		// workspace-unique and can collide across tenants.
 		a.Spec.Subdomain = row.Slug
 		firstDeployID = row.FirstDeployID
 	}
+	// The control-plane row already supplied its canonical id above. A direct
+	// API create has no row, so persist an equally Render-shaped service id on
+	// the CR; all later reads and lifecycle verbs can resolve it by label.
 	if a.Labels == nil {
 		a.Labels = map[string]string{}
 	}
@@ -1795,30 +1765,21 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 	// A private-connection repo gets a fresh clone token + spec.cloneSecret so
 	// its first build authenticates. create-owned only: never set on a spec
 	// that already hand-pointed cloneSecret elsewhere.
-	if desired.CloneSecret == "" {
+	if a.Spec.CloneSecret == "" {
 		secretName, err := s.ensureCloneSecret(ctx, a)
 		if err != nil {
-			return AppView{}, err
+			return AppView{}, rollbackStoreRow(err)
 		}
 		a.Spec.CloneSecret = secretName
 	}
 	pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, a)
 	if err != nil {
-		return AppView{}, err
+		return AppView{}, rollbackStoreRow(err)
 	}
 	a.Spec.ExternalRegistryPullSecret = pullSecretName
-	// Persist the initialDeployHook command for echo-back on reads (w2/m45).
-	// The ran-once annotation is added by applyCreate once the first pre-deploy
-	// Job succeeds; createNewApp only stores the command.
-	if req.InitialDeployHook != "" {
-		if a.Annotations == nil {
-			a.Annotations = map[string]string{}
-		}
-		a.Annotations[initialDeployHookAnnotation] = req.InitialDeployHook
-	}
 	resourcemeta.Touch(a, s.Now())
 	if err := s.writeNewApp(ctx, req.Name, a, req.SecretFiles); err != nil {
-		return AppView{}, err
+		return AppView{}, rollbackStoreRow(err)
 	}
 	if s.Kick != nil {
 		s.Kick()
@@ -2481,7 +2442,7 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string) (CronRunView,
 	jobName := appv1alpha1.ManualCronRunJobName(a.Name, runAt)
 	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		for _, run := range a.Status.Runs {
-			if renderCronRunStatus(run.Status) == "pending" {
+			if renderCronRunStatus(run.Status) == cronRunPending {
 				a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: run.Name, RequestedAt: runAt}
 				break
 			}
@@ -2491,7 +2452,7 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string) (CronRunView,
 	if err != nil {
 		return CronRunView{}, err
 	}
-	return CronRunView{ID: ids.Derive(ids.CronRun, jobName), Name: jobName, Status: "pending"}, nil
+	return CronRunView{ID: ids.Derive(ids.CronRun, jobName), Name: jobName, Status: cronRunPending}, nil
 }
 
 // ListCronRuns returns a cron_job's first-class run history, newest first. The
@@ -2563,7 +2524,7 @@ func (s *Service) CancelCurrentCronRun(ctx context.Context, name string) (CronRu
 	}
 	for _, raw := range a.Status.Runs {
 		run := cronRunView(raw)
-		if run.Status == "pending" {
+		if run.Status == cronRunPending {
 			return s.cancelCronRunFetched(ctx, a, run)
 		}
 	}
@@ -2571,7 +2532,7 @@ func (s *Service) CancelCurrentCronRun(ctx context.Context, name string) (CronRu
 }
 
 func (s *Service) cancelCronRunFetched(ctx context.Context, a *appv1alpha1.App, run CronRunView) (CronRunView, error) {
-	if run.Status != "pending" {
+	if run.Status != cronRunPending {
 		return CronRunView{}, core.NewConflictError(
 			CronErrorRunTerminal,
 			fmt.Sprintf("cron run %q is already %s", run.ID, run.Status),
@@ -2584,7 +2545,7 @@ func (s *Service) cancelCronRunFetched(ctx context.Context, a *appv1alpha1.App, 
 	}); err != nil {
 		return CronRunView{}, err
 	}
-	run.Status = "canceled"
+	run.Status = cronRunCanceled
 	run.FinishedAt = now
 	return run, nil
 }
@@ -2876,12 +2837,23 @@ func (s *Service) SetCommands(ctx context.Context, name string, buildCommand, st
 	})
 }
 
+// sourcePatch is SetSourceAndRegistryCredential's field set — Render's PATCH
+// source object plus its context-sensitive registryCredentialId. Every field
+// follows the same pointer convention: nil means omitted (preserve current).
+type sourcePatch struct {
+	Repo                 *string
+	Image                *string
+	Branch               *string
+	RegistryCredentialID *string
+	ImageOwnerID         *string
+}
+
 // SetSource applies the official CLI's repo/image/branch PATCH. Repo and image
 // remain mutually exclusive; specifying either source kind switches away from
 // the other. Store-managed Apps write the row first because the projector owns
 // these fields.
 func (s *Service) SetSource(ctx context.Context, name string, repo, image, branch *string) (AppView, error) {
-	return s.SetSourceAndRegistryCredential(ctx, name, repo, image, branch, nil, nil)
+	return s.SetSourceAndRegistryCredential(ctx, name, sourcePatch{Repo: repo, Image: image, Branch: branch})
 }
 
 // SetRegistryCredential sets, changes, or clears an image-backed service's or
@@ -2890,7 +2862,7 @@ func (s *Service) SetSource(ctx context.Context, name string, repo, image, branc
 // All adapters call this same verb so membership, host validation, Secret
 // materialization, and error classification cannot drift.
 func (s *Service) SetRegistryCredential(ctx context.Context, name, credentialID string) (AppView, error) {
-	return s.SetSourceAndRegistryCredential(ctx, name, nil, nil, nil, &credentialID, nil)
+	return s.SetSourceAndRegistryCredential(ctx, name, sourcePatch{RegistryCredentialID: &credentialID})
 }
 
 // SetSourceAndRegistryCredential applies Render's PATCH source object and its
@@ -2900,7 +2872,7 @@ func (s *Service) SetRegistryCredential(ctx context.Context, name, credentialID 
 // A nil credential pointer preserves the current binding; pointer-to-empty
 // clears it. Switching to a repo clears an old image credential unless the
 // request explicitly supplies one for a Dockerfile build.
-func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name string, repo, image, branch, registryCredentialID, imageOwnerID *string) (AppView, error) {
+func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name string, patch sourcePatch) (AppView, error) {
 	// SECURITY (codex #1): repointing a service at a new repo or image chooses the
 	// executable the operator runs with the service identity — create-like, so gate
 	// on can_create (developer and up), not the lifecycle-oriented can_operate.
@@ -2908,23 +2880,23 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	if err != nil {
 		return AppView{}, err
 	}
-	if imageOwnerID != nil {
-		ownerID := strings.TrimSpace(*imageOwnerID)
+	if patch.ImageOwnerID != nil {
+		ownerID := strings.TrimSpace(*patch.ImageOwnerID)
 		if ownerID != "" && ownerID != a.Labels[core.LabelTenant] {
 			return AppView{}, fmt.Errorf("%w: image.ownerId does not match the service owner", core.ErrBadRequest)
 		}
 	}
 	previousBranch := a.Spec.Branch
 	nextRepo, nextImage, nextBranch := a.Spec.Repo, a.Spec.Image, previousBranch
-	if repo != nil {
-		nextRepo = strings.TrimSpace(*repo)
+	if patch.Repo != nil {
+		nextRepo = strings.TrimSpace(*patch.Repo)
 		if nextRepo == "" || !store.ValidRepo(nextRepo) {
 			return AppView{}, fmt.Errorf("%w: invalid repository URL", core.ErrBadRequest)
 		}
 		nextImage = ""
 	}
-	if image != nil {
-		nextImage = strings.TrimSpace(*image)
+	if patch.Image != nil {
+		nextImage = strings.TrimSpace(*patch.Image)
 		if nextImage == "" {
 			return AppView{}, fmt.Errorf("%w: image path is required", core.ErrBadRequest)
 		}
@@ -2933,8 +2905,8 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 		}
 		nextRepo = ""
 	}
-	if branch != nil {
-		nextBranch = strings.TrimSpace(*branch)
+	if patch.Branch != nil {
+		nextBranch = strings.TrimSpace(*patch.Branch)
 		// An explicit empty means "back to the default" — the setter family's
 		// convention (empty clears to the default, cf. SetCommands); the
 		// fallback below applies it. Only a non-empty ref is validated.
@@ -2946,10 +2918,10 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 		nextBranch = "main"
 	}
 	nextRegistryCredentialID := cloneStringPtr(a.Spec.RegistryCredentialID)
-	if registryCredentialID != nil {
-		value := strings.TrimSpace(*registryCredentialID)
+	if patch.RegistryCredentialID != nil {
+		value := strings.TrimSpace(*patch.RegistryCredentialID)
 		nextRegistryCredentialID = &value
-	} else if repo != nil {
+	} else if patch.Repo != nil {
 		// A source-kind switch stops using the former image credential. This is
 		// omission-as-preserve for ordinary PATCHes, but an explicit repo switch
 		// cannot retain image-only authentication intent.

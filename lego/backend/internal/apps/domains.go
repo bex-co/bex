@@ -366,8 +366,15 @@ func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string
 	if err := s.Client.List(ctx, &list); err != nil {
 		return false, err
 	}
-	for i := range list.Items {
-		a := &list.Items[i]
+	return hostClaimedInApps(list.Items, appName, host), nil
+}
+
+// hostClaimedInApps is hostClaimedElsewhere's matching core over an
+// already-fetched App list, so ensureHostsClaimable can check a whole host set
+// against one cluster-wide sweep instead of Listing per host.
+func hostClaimedInApps(items []appv1alpha1.App, appName, host string) bool {
+	for i := range items {
+		a := &items[i]
 		if a.Name == appName {
 			continue
 		}
@@ -375,11 +382,11 @@ func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string
 		for _, h := range claimed {
 			h = normalizeHostname(h)
 			if h != "" && (h == host || wwwSibling(h) == host) {
-				return true, nil
+				return true
 			}
 		}
 	}
-	return false, nil
+	return false
 }
 
 // ensureHostsClaimable runs the same platform-reserved + cross-App collision
@@ -396,6 +403,11 @@ func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string
 // otherwise set to a victim's slug and hijack at create time too (codex F5).
 func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App) error {
 	ownHost := s.ownPlatformHost(app)
+	// One cluster-wide sweep serves every host in the set, fetched on first
+	// need so a hostless create still Lists nothing and a reserved first host
+	// still fails before any List.
+	var apps []appv1alpha1.App
+	fetched := false
 	for _, h := range append([]string{app.Spec.Host}, app.Spec.Hosts...) {
 		if h == "" {
 			continue
@@ -403,9 +415,15 @@ func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App
 		if s.reservedHost(ownHost, h) {
 			return fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, h)
 		}
-		if claimed, err := s.hostClaimedElsewhere(ctx, app.Name, h); err != nil {
-			return err
-		} else if claimed {
+		if !fetched {
+			var list appv1alpha1.AppList
+			if err := s.Client.List(ctx, &list); err != nil {
+				return err
+			}
+			apps = list.Items
+			fetched = true
+		}
+		if hostClaimedInApps(apps, app.Name, h) {
 			return errDomainInUse()
 		}
 	}

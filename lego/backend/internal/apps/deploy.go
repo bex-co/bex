@@ -522,7 +522,28 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.requireStackPaymentMethod(ctx, st); err != nil {
 		return StackResult{}, err
 	}
-	databaseIDs, kvCRNames, err := s.resolveExistingBlueprintReferences(ctx, st)
+	// One workspace-scoped Database/KeyValue List each for the whole apply: the
+	// display-name lookups (resolveExistingBlueprintReferences and the
+	// applyDatabase/applyKeyValue upserts) share these snapshots instead of
+	// re-Listing per stack entry. Safe because stack entry names are unique
+	// (registerUniqueName), so no lookup targets an object this same apply
+	// creates.
+	tenantID, _ := s.Tenant(ctx)
+	var databases *appv1alpha1.DatabaseList
+	if len(st.databases) > 0 {
+		databases = &appv1alpha1.DatabaseList{}
+		if err := s.Client.List(ctx, databases, s.DatastoreListOptions(tenantID)...); err != nil {
+			return StackResult{}, err
+		}
+	}
+	var keyValues *appv1alpha1.KeyValueList
+	if len(st.keyValues) > 0 {
+		keyValues = &appv1alpha1.KeyValueList{}
+		if err := s.Client.List(ctx, keyValues, s.DatastoreListOptions(tenantID)...); err != nil {
+			return StackResult{}, err
+		}
+	}
+	databaseIDs, kvCRNames, err := s.resolveExistingBlueprintReferences(ctx, st, databases, keyValues)
 	if err != nil {
 		return StackResult{}, err
 	}
@@ -561,7 +582,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	// applying the dependent first would leave it Pending on a missing Secret
 	// anyway, but applying the DB first starts its provisioning immediately.
 	for _, db := range st.databases {
-		v, err := s.applyDatabase(ctx, db, assignments[db.grouping])
+		v, err := s.applyDatabase(ctx, db, assignments[db.grouping], databases.Items)
 		if err != nil {
 			return res, err
 		}
@@ -569,7 +590,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 		databaseIDs[db.name] = v.ID
 	}
 	for _, kv := range st.keyValues {
-		v, err := s.applyKeyValue(ctx, kv, assignments[kv.grouping])
+		v, err := s.applyKeyValue(ctx, kv, assignments[kv.grouping], keyValues.Items)
 		if err != nil {
 			return res, err
 		}
@@ -691,7 +712,9 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 // before group or resource writes and yields only CR/Secret identities, never a
 // credential value. Service envVarKey copying remains same-file-only because
 // its source value is intentionally not a generally readable resource field.
-func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st parsedStack) (map[string]string, map[string]string, error) {
+// databases/keyValues are deployParsedStack's pre-fetched workspace snapshots;
+// nil means fetch here when a lookup actually needs one.
+func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st parsedStack, databases *appv1alpha1.DatabaseList, keyValues *appv1alpha1.KeyValueList) (map[string]string, map[string]string, error) {
 	databaseIDs := make(map[string]string, len(st.databases))
 	keyValueIDs := make(map[string]string, len(st.keyValues))
 	declaredDatabases := make(map[string]bool, len(st.databases))
@@ -723,21 +746,16 @@ func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st par
 
 	tenantID, scoped := s.Tenant(ctx)
 	if len(neededDatabases) > 0 {
-		var databases appv1alpha1.DatabaseList
-		if err := s.Client.List(ctx, &databases, s.DatastoreListOptions(tenantID)...); err != nil {
-			return nil, nil, err
+		if databases == nil {
+			databases = &appv1alpha1.DatabaseList{}
+			if err := s.Client.List(ctx, databases, s.DatastoreListOptions(tenantID)...); err != nil {
+				return nil, nil, err
+			}
 		}
 		for name := range neededDatabases {
-			var found *appv1alpha1.Database
-			for index := range databases.Items {
-				candidate := &databases.Items[index]
-				if scoped && candidate.Labels[core.LabelTenant] != tenantID || candidate.Spec.Name != name {
-					continue
-				}
-				if found != nil {
-					return nil, nil, fmt.Errorf("%w: fromDatabase reference %q is ambiguous in this workspace", core.ErrConflict, name)
-				}
-				found = candidate
+			found, duplicate := uniqueDatabaseByDisplayName(databases.Items, scoped, tenantID, name)
+			if duplicate {
+				return nil, nil, fmt.Errorf("%w: fromDatabase reference %q is ambiguous in this workspace", core.ErrConflict, name)
 			}
 			if found == nil {
 				return nil, nil, fmt.Errorf("%w: fromDatabase references unknown database %q in this workspace", core.ErrBadRequest, name)
@@ -753,21 +771,16 @@ func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st par
 		}
 	}
 	if len(neededKeyValues) > 0 {
-		var keyValues appv1alpha1.KeyValueList
-		if err := s.Client.List(ctx, &keyValues, s.DatastoreListOptions(tenantID)...); err != nil {
-			return nil, nil, err
+		if keyValues == nil {
+			keyValues = &appv1alpha1.KeyValueList{}
+			if err := s.Client.List(ctx, keyValues, s.DatastoreListOptions(tenantID)...); err != nil {
+				return nil, nil, err
+			}
 		}
 		for name := range neededKeyValues {
-			var found *appv1alpha1.KeyValue
-			for index := range keyValues.Items {
-				candidate := &keyValues.Items[index]
-				if scoped && candidate.Labels[core.LabelTenant] != tenantID || candidate.Spec.Name != name {
-					continue
-				}
-				if found != nil {
-					return nil, nil, fmt.Errorf("%w: fromService Key Value reference %q is ambiguous in this workspace", core.ErrConflict, name)
-				}
-				found = candidate
+			found, duplicate := uniqueKeyValueByDisplayName(keyValues.Items, scoped, tenantID, name)
+			if duplicate {
+				return nil, nil, fmt.Errorf("%w: fromService Key Value reference %q is ambiguous in this workspace", core.ErrConflict, name)
 			}
 			if found == nil {
 				return nil, nil, fmt.Errorf("%w: fromService references unknown Key Value %q in this workspace", core.ErrBadRequest, name)
@@ -776,6 +789,42 @@ func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st par
 		}
 	}
 	return databaseIDs, keyValueIDs, nil
+}
+
+// uniqueDatabaseByDisplayName resolves a Blueprint display name against a
+// fetched Database snapshot: the single item whose Spec.Name matches (scoped
+// to tenantID when scoped), or duplicate=true when a second item also matches
+// — each caller owns the error wording for its surface, and an ambiguous name
+// only errors when it is actually looked up.
+func uniqueDatabaseByDisplayName(items []appv1alpha1.Database, scoped bool, tenantID, name string) (*appv1alpha1.Database, bool) {
+	var found *appv1alpha1.Database
+	for index := range items {
+		candidate := &items[index]
+		if scoped && candidate.Labels[core.LabelTenant] != tenantID || candidate.Spec.Name != name {
+			continue
+		}
+		if found != nil {
+			return nil, true
+		}
+		found = candidate
+	}
+	return found, false
+}
+
+// uniqueKeyValueByDisplayName is uniqueDatabaseByDisplayName's KeyValue twin.
+func uniqueKeyValueByDisplayName(items []appv1alpha1.KeyValue, scoped bool, tenantID, name string) (*appv1alpha1.KeyValue, bool) {
+	var found *appv1alpha1.KeyValue
+	for index := range items {
+		candidate := &items[index]
+		if scoped && candidate.Labels[core.LabelTenant] != tenantID || candidate.Spec.Name != name {
+			continue
+		}
+		if found != nil {
+			return nil, true
+		}
+		found = candidate
+	}
+	return found, false
 }
 
 func (s *Service) requireStackPaymentMethod(ctx context.Context, st parsedStack) error {
@@ -816,11 +865,7 @@ func (s *Service) validateBlueprintServices(ctx context.Context, st parsedStack)
 		if err != nil {
 			return fmt.Errorf("service %q: %w", svc.req.Name, err)
 		}
-		if desired.MaintenanceMode == nil {
-			continue
-		}
-		probe := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: svc.req.Name}, Spec: desired}
-		if err := s.validateMaintenanceMode(ctx, probe, maintenanceModeView(desired.MaintenanceMode)); err != nil {
+		if err := s.validateNewSpecMaintenanceMode(ctx, svc.req.Name, desired); err != nil {
 			return fmt.Errorf("service %q: %w", svc.req.Name, err)
 		}
 	}
@@ -851,6 +896,10 @@ func (s *Service) applyBlueprintGroupings(ctx context.Context, groupings []parse
 	for _, project := range projects {
 		byName[project.Name] = project
 	}
+	// One ListEnvironments per project for the whole loop: groupings under the
+	// same project share the memoized slice, extended in place after each
+	// CreateEnvironment so a later grouping still sees the new row.
+	environmentsByProject := map[string][]store.Environment{}
 	for _, grouping := range groupings {
 		project, exists := byName[grouping.projectName]
 		if !exists {
@@ -860,9 +909,13 @@ func (s *Service) applyBlueprintGroupings(ctx context.Context, groupings []parse
 			}
 			byName[grouping.projectName] = project
 		}
-		environments, err := s.BlueprintGroups.ListEnvironments(ctx, project.ID)
-		if err != nil {
-			return nil, fmt.Errorf("listing Blueprint environments for project %q: %w", grouping.projectName, err)
+		environments, listed := environmentsByProject[project.ID]
+		if !listed {
+			environments, err = s.BlueprintGroups.ListEnvironments(ctx, project.ID)
+			if err != nil {
+				return nil, fmt.Errorf("listing Blueprint environments for project %q: %w", grouping.projectName, err)
+			}
+			environmentsByProject[project.ID] = environments
 		}
 		var environment store.Environment
 		for _, candidate := range environments {
@@ -876,6 +929,7 @@ func (s *Service) applyBlueprintGroupings(ctx context.Context, groupings []parse
 			if err != nil {
 				return nil, fmt.Errorf("creating Blueprint environment %q: %w", grouping.environmentName, err)
 			}
+			environmentsByProject[project.ID] = append(environmentsByProject[project.ID], environment)
 		}
 		// Render's Blueprint schema declares protection/isolation but no
 		// environment IP rules, so the ACL write PRESERVES the row's current
@@ -1583,14 +1637,16 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	if d.EnvironmentID != "" {
 		return parsedDatabase{}, fmt.Errorf("%w: database %q uses environmentId, which is a create-API field, not a Render Blueprint field; nest the database under projects[].environments[].databases instead", core.ErrBadRequest, d.Name)
 	}
-	for _, unsupported := range []string{"region", "previewPlan", "previewDiskSizeGB"} {
-		present := map[string]bool{
-			"region":            d.Region != "",
-			"previewPlan":       d.PreviewPlan != "",
-			"previewDiskSizeGB": d.PreviewDiskSizeGB != nil,
-		}[unsupported]
-		if present {
-			return parsedDatabase{}, fmt.Errorf("%w: database %q field %q is unsupported because bex has no preview environments or per-resource region placement", core.ErrBadRequest, d.Name, unsupported)
+	for _, unsupported := range []struct {
+		name    string
+		present bool
+	}{
+		{"region", d.Region != ""},
+		{"previewPlan", d.PreviewPlan != ""},
+		{"previewDiskSizeGB", d.PreviewDiskSizeGB != nil},
+	} {
+		if unsupported.present {
+			return parsedDatabase{}, fmt.Errorf("%w: database %q field %q is unsupported because bex has no preview environments or per-resource region placement", core.ErrBadRequest, d.Name, unsupported.name)
 		}
 	}
 	if d.DatabaseName != "" && !appv1alpha1.ValidPostgresIdentifier(d.DatabaseName) {
@@ -1609,15 +1665,9 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	if _, ok := tiers.Postgres.ByID(plan); !ok {
 		return parsedDatabase{}, fmt.Errorf("%w: database %q plan %q is not a supported Render Postgres plan (one of %s)", core.ErrBadRequest, d.Name, plan, strings.Join(tiers.Postgres.IDs(), "|"))
 	}
-	var allow []appv1alpha1.IPAllowEntry
-	for _, e := range d.IPAllowList {
-		if e.Source == "" {
-			return parsedDatabase{}, fmt.Errorf("%w: database %q has an ipAllowList entry without a source", core.ErrBadRequest, d.Name)
-		}
-		if err := core.ValidateCIDRs([]string{e.Source}); err != nil {
-			return parsedDatabase{}, fmt.Errorf("%w: database %q ipAllowList: %v", core.ErrBadRequest, d.Name, err)
-		}
-		allow = append(allow, appv1alpha1.IPAllowEntry{CIDR: e.Source, Description: e.Description})
+	allow, err := parseBlueprintIPAllowList("database", d.Name, d.IPAllowList)
+	if err != nil {
+		return parsedDatabase{}, err
 	}
 	for _, r := range d.ReadReplicas {
 		if r.Name == "" {
@@ -1660,15 +1710,15 @@ func parseKeyValue(k bexService) (parsedKeyValue, error) {
 			return parsedKeyValue{}, fmt.Errorf("%w: key-value %q plan %q is not a bex Key Value plan (one of %s)", core.ErrBadRequest, k.Name, k.Plan, strings.Join(tiers.Valkey.IDs(), "|"))
 		}
 	}
-	allow := make([]appv1alpha1.IPAllowEntry, 0, len(k.IPAllowList))
-	for _, entry := range k.IPAllowList {
-		if entry.Source == "" {
-			return parsedKeyValue{}, fmt.Errorf("%w: key-value %q has an ipAllowList entry without a source", core.ErrBadRequest, k.Name)
-		}
-		if err := core.ValidateCIDRs([]string{entry.Source}); err != nil {
-			return parsedKeyValue{}, fmt.Errorf("%w: key-value %q ipAllowList: %v", core.ErrBadRequest, k.Name, err)
-		}
-		allow = append(allow, appv1alpha1.IPAllowEntry{CIDR: entry.Source, Description: entry.Description})
+	allow, err := parseBlueprintIPAllowList("key-value", k.Name, k.IPAllowList)
+	if err != nil {
+		return parsedKeyValue{}, err
+	}
+	if allow == nil {
+		// A KeyValue spec carries a non-nil empty list for zero entries — the
+		// shape blueprintKeyValueSpecChanged's DeepEqual idempotency compares
+		// against, unlike parseDatabase's nil.
+		allow = []appv1alpha1.IPAllowEntry{}
 	}
 	validMaxmemory := map[string]bool{
 		"noeviction": true, "allkeys-lru": true, "allkeys-lfu": true,
@@ -1688,6 +1738,24 @@ func parseKeyValue(k bexService) (parsedKeyValue, error) {
 		MaxmemoryPolicy: k.MaxmemoryPolicy,
 		PersistenceMode: k.PersistenceMode,
 	}}, nil
+}
+
+// parseBlueprintIPAllowList validates one databases[]/key-value ipAllowList
+// entry list and projects it onto the CR entry type; label ("database" or
+// "key-value") keys the per-entry error wording. Zero entries yield nil — the
+// parseKeyValue call site restores its non-nil empty slice.
+func parseBlueprintIPAllowList(label, name string, entries []bexIPEntry) ([]appv1alpha1.IPAllowEntry, error) {
+	var allow []appv1alpha1.IPAllowEntry
+	for _, e := range entries {
+		if e.Source == "" {
+			return nil, fmt.Errorf("%w: %s %q has an ipAllowList entry without a source", core.ErrBadRequest, label, name)
+		}
+		if err := core.ValidateCIDRs([]string{e.Source}); err != nil {
+			return nil, fmt.Errorf("%w: %s %q ipAllowList: %v", core.ErrBadRequest, label, name, err)
+		}
+		allow = append(allow, appv1alpha1.IPAllowEntry{CIDR: e.Source, Description: e.Description})
+	}
+	return allow, nil
 }
 
 // validateGroupLink checks a keyless {fromGroup: <name>} entry: it links a whole
@@ -1881,11 +1949,8 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 		return AppView{}, err
 	}
 	if errors.Is(err, core.ErrNotFound) {
-		if desired.MaintenanceMode != nil {
-			probe := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: req.Name}, Spec: desired}
-			if err := s.validateMaintenanceMode(ctx, probe, maintenanceModeView(desired.MaintenanceMode)); err != nil {
-				return AppView{}, err
-			}
+		if err := s.validateNewSpecMaintenanceMode(ctx, req.Name, desired); err != nil {
+			return AppView{}, err
 		}
 		// initialDeployHook: use the one-time command as preDeployCommand on first
 		// create so the operator runs it on the first deploy (w2/m45).
@@ -2123,26 +2188,13 @@ func blueprintKeyValueSpecChanged(cur, want appv1alpha1.KeyValueSpec, fields map
 // applyDatabase is the stack path's idempotent Database upsert: create when
 // absent (stamped with the caller's tenant labels, mirroring CreatePostgres),
 // else merge-patch the owned spec fields only when they changed. An unchanged
-// re-apply is a no-op.
-func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignment core.EnvironmentAssignment) (StackDatabaseView, error) {
+// re-apply is a no-op. databases is deployParsedStack's pre-fetched workspace
+// snapshot.
+func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignment core.EnvironmentAssignment, databases []appv1alpha1.Database) (StackDatabaseView, error) {
 	tenantID, scoped := s.Tenant(ctx)
-	var databases appv1alpha1.DatabaseList
-	if err := s.Client.List(ctx, &databases, s.DatastoreListOptions(tenantID)...); err != nil {
-		return StackDatabaseView{}, err
-	}
-	var existing *appv1alpha1.Database
-	for i := range databases.Items {
-		candidate := &databases.Items[i]
-		if scoped && candidate.Labels[core.LabelTenant] != tenantID {
-			continue
-		}
-		if candidate.Spec.Name != db.name {
-			continue
-		}
-		if existing != nil {
-			return StackDatabaseView{}, fmt.Errorf("%w: database name %q is already used more than once in this workspace; run the Postgres name migration before applying this Blueprint", core.ErrConflict, db.name)
-		}
-		existing = candidate
+	existing, duplicate := uniqueDatabaseByDisplayName(databases, scoped, tenantID, db.name)
+	if duplicate {
+		return StackDatabaseView{}, fmt.Errorf("%w: database name %q is already used more than once in this workspace; run the Postgres name migration before applying this Blueprint", core.ErrConflict, db.name)
 	}
 	if existing != nil {
 		if db.spec.DatabaseName != "" && db.spec.DatabaseName != existing.Spec.EffectiveDatabaseName(existing.Name) {
@@ -2193,7 +2245,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.Postgres), Namespace: s.TenantNamespace(tenantID)},
 		Spec:       db.spec,
 	}
-	if tenantID, ok := s.Tenant(ctx); ok {
+	if scoped {
 		d.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
 	if assignment.ID != "" {
@@ -2230,29 +2282,16 @@ func applyGroupingLabels(labels map[string]string, assignment core.EnvironmentAs
 	labels[core.LabelEnvironment] = assignment.ID
 }
 
-func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignment core.EnvironmentAssignment) (StackKeyValueView, error) {
+func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignment core.EnvironmentAssignment, keyValues []appv1alpha1.KeyValue) (StackKeyValueView, error) {
 	// Resolve an existing store by its mutable DISPLAY name within the workspace,
 	// not by metadata.name — a store now carries an opaque red- id, so a re-apply
 	// of the same render.yaml entry must match on the user-facing name (w9/m6,
-	// mirroring applyDatabase).
+	// mirroring applyDatabase). keyValues is deployParsedStack's pre-fetched
+	// workspace snapshot.
 	tenantID, scoped := s.Tenant(ctx)
-	var keyValues appv1alpha1.KeyValueList
-	if err := s.Client.List(ctx, &keyValues, s.DatastoreListOptions(tenantID)...); err != nil {
-		return StackKeyValueView{}, err
-	}
-	var existing *appv1alpha1.KeyValue
-	for i := range keyValues.Items {
-		candidate := &keyValues.Items[i]
-		if scoped && candidate.Labels[core.LabelTenant] != tenantID {
-			continue
-		}
-		if candidate.Spec.Name != kv.name {
-			continue
-		}
-		if existing != nil {
-			return StackKeyValueView{}, fmt.Errorf("%w: key-value name %q is already used more than once in this workspace; run the key-value name migration before applying this Blueprint", core.ErrConflict, kv.name)
-		}
-		existing = candidate
+	existing, duplicate := uniqueKeyValueByDisplayName(keyValues, scoped, tenantID, kv.name)
+	if duplicate {
+		return StackKeyValueView{}, fmt.Errorf("%w: key-value name %q is already used more than once in this workspace; run the key-value name migration before applying this Blueprint", core.ErrConflict, kv.name)
 	}
 	if existing != nil {
 		specChanged := blueprintKeyValueSpecChanged(existing.Spec, kv.spec, kv.fields)
@@ -2282,7 +2321,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.KeyValue), Namespace: s.TenantNamespace(tenantID)},
 		Spec:       kv.spec,
 	}
-	if tenantID, ok := s.Tenant(ctx); ok {
+	if scoped {
 		resource.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
 	if assignment.ID != "" {

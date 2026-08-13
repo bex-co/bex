@@ -1330,7 +1330,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				branch := p.Args["branch"].(string)
-				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), nil, nil, &branch, nil, nil)
+				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), sourcePatch{Branch: &branch})
 			},
 		},
 		// setRepo switches the Git repository a service builds from (Render's
@@ -1345,7 +1345,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				repo := p.Args["repo"].(string)
-				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), &repo, nil, nil, nil, nil)
+				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), sourcePatch{Repo: &repo})
 			},
 		},
 		// setBuildCommand changes the build command for a repo-backed service.
