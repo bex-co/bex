@@ -764,7 +764,7 @@ func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st par
 			for _, service := range st.services {
 				for _, ref := range service.databaseRefs {
 					if ref.FromDatabase != nil && ref.FromDatabase.Name == name && ref.FromDatabase.Property == "connectionPoolString" && !found.Spec.Pooler {
-						return nil, nil, fmt.Errorf("%w: service %q: fromDatabase connectionPoolString requires database %q connectionPool: pgbouncer", core.ErrBadRequest, service.req.Name, name)
+						return nil, nil, poolerRequiredError(service.req.Name, name)
 					}
 				}
 			}
@@ -797,26 +797,23 @@ func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st par
 // — each caller owns the error wording for its surface, and an ambiguous name
 // only errors when it is actually looked up.
 func uniqueDatabaseByDisplayName(items []appv1alpha1.Database, scoped bool, tenantID, name string) (*appv1alpha1.Database, bool) {
-	var found *appv1alpha1.Database
-	for index := range items {
-		candidate := &items[index]
-		if scoped && candidate.Labels[core.LabelTenant] != tenantID || candidate.Spec.Name != name {
-			continue
-		}
-		if found != nil {
-			return nil, true
-		}
-		found = candidate
-	}
-	return found, false
+	return uniqueMatching(items, func(candidate *appv1alpha1.Database) bool {
+		return (!scoped || candidate.Labels[core.LabelTenant] == tenantID) && candidate.Spec.Name == name
+	})
 }
 
 // uniqueKeyValueByDisplayName is uniqueDatabaseByDisplayName's KeyValue twin.
 func uniqueKeyValueByDisplayName(items []appv1alpha1.KeyValue, scoped bool, tenantID, name string) (*appv1alpha1.KeyValue, bool) {
-	var found *appv1alpha1.KeyValue
+	return uniqueMatching(items, func(candidate *appv1alpha1.KeyValue) bool {
+		return (!scoped || candidate.Labels[core.LabelTenant] == tenantID) && candidate.Spec.Name == name
+	})
+}
+
+func uniqueMatching[T any](items []T, match func(*T) bool) (*T, bool) {
+	var found *T
 	for index := range items {
 		candidate := &items[index]
-		if scoped && candidate.Labels[core.LabelTenant] != tenantID || candidate.Spec.Name != name {
+		if !match(candidate) {
 			continue
 		}
 		if found != nil {
@@ -1072,6 +1069,13 @@ func validateUniqueName(raw, entityType string, seen map[string]bool) (string, e
 	return trimmed, nil
 }
 
+// poolerRequiredError is the shared wording for a connectionPoolString
+// reference to a database without connectionPool: pgbouncer, so the
+// parse-time and resolve-time checks can't drift.
+func poolerRequiredError(service, database string) error {
+	return fmt.Errorf("%w: service %q: fromDatabase connectionPoolString requires database %q connectionPool: pgbouncer", core.ErrBadRequest, service, database)
+}
+
 // registerUniqueName checks for duplicate names across services and databases.
 func registerUniqueName(name string, seen map[string]bool) error {
 	if seen[name] {
@@ -1091,11 +1095,6 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	if err != nil {
 		return parsedStack{}, err
 	}
-	// Early check for empty manifests before processing
-	hasUngroupedContent := m.Ungrouped != nil && (len(m.Ungrouped.Services) > 0 || len(m.Ungrouped.Databases) > 0 || len(m.Ungrouped.EnvVarGroups) > 0)
-	if len(m.Services) == 0 && len(m.Databases) == 0 && len(m.EnvVarGroups) == 0 && len(m.Projects) == 0 && !hasUngroupedContent {
-		return parsedStack{}, fmt.Errorf("%w: render.yaml must define at least one service, database, env group, or project environment resource", core.ErrBadRequest)
-	}
 	type serviceDecl struct {
 		value     bexService
 		grouping  string
@@ -1106,6 +1105,10 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		grouping  string
 		ungrouped bool
 	}
+	type envGroupDecl struct {
+		value    bexEnvGroup
+		grouping string
+	}
 	services := make([]serviceDecl, len(m.Services))
 	for i, service := range m.Services {
 		services[i] = serviceDecl{value: service}
@@ -1113,10 +1116,6 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	databases := make([]databaseDecl, len(m.Databases))
 	for i, database := range m.Databases {
 		databases[i] = databaseDecl{value: database}
-	}
-	type envGroupDecl struct {
-		value    bexEnvGroup
-		grouping string
 	}
 	envGroups := make([]envGroupDecl, len(m.EnvVarGroups))
 	for i, eg := range m.EnvVarGroups {
@@ -1276,7 +1275,7 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		for _, r := range p.refVars {
 			if r.FromDatabase != nil {
 				if databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == "connectionPoolString" && !databasePoolers[r.FromDatabase.Name] {
-					return parsedStack{}, fmt.Errorf("%w: service %q: fromDatabase connectionPoolString requires database %q connectionPool: pgbouncer", core.ErrBadRequest, svc.req.Name, r.FromDatabase.Name)
+					return parsedStack{}, poolerRequiredError(svc.req.Name, r.FromDatabase.Name)
 				}
 				svc.databaseRefs = append(svc.databaseRefs, r)
 				continue
@@ -2030,25 +2029,18 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	deploySpecChanged := specChanged && !maintenanceOnly
 	base := client.MergeFrom(existing.DeepCopy())
 	if deploySpecChanged {
-		if existing.Annotations == nil {
-			existing.Annotations = map[string]string{}
-		}
-		existing.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(existing.Generation+1, 10)
-		applyBlueprintServiceSpec(&existing.Spec, desired, fields)
+		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(existing.Generation+1, 10))
+		// final already holds desired applied over existing (the change probe
+		// above), so adopt it instead of running a second apply pass.
+		existing.Spec = final.Spec
 		if maintenanceChanged {
 			existing.Spec.MaintenanceMode = currentMaintenance
 		}
 	}
 	if initialHookChanged {
-		if existing.Annotations == nil {
-			existing.Annotations = map[string]string{}
-		}
-		existing.Annotations[initialDeployHookAnnotation] = req.InitialDeployHook
+		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, initialDeployHookAnnotation, req.InitialDeployHook)
 	}
 	if environmentChanged {
-		if existing.Labels == nil {
-			existing.Labels = map[string]string{}
-		}
 		if assignment.ID == "" {
 			delete(existing.Labels, core.LabelProject)
 			delete(existing.Labels, core.LabelEnvironment)
@@ -2056,13 +2048,13 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 			// Leaving the environment sheds its inbound-IP layer (w4/m28).
 			existing.Spec.EnvironmentIPAllowList = nil
 		} else {
-			existing.Labels[core.LabelProject] = assignment.ProjectID
-			existing.Labels[core.LabelEnvironment] = assignment.ID
+			metav1.SetMetaDataLabel(&existing.ObjectMeta, core.LabelProject, assignment.ProjectID)
+			metav1.SetMetaDataLabel(&existing.ObjectMeta, core.LabelEnvironment, assignment.ID)
 			// Joining (or switching) inherits the environment's inbound-IP
 			// layer (w4/m28).
 			existing.Spec.EnvironmentIPAllowList = core.EnvironmentLayerCIDRs(assignment.IPAllowList)
 			if assignment.NetworkIsolationEnabled {
-				existing.Labels[core.LabelNetworkIsolation] = assignment.ID
+				metav1.SetMetaDataLabel(&existing.ObjectMeta, core.LabelNetworkIsolation, assignment.ID)
 			} else {
 				delete(existing.Labels, core.LabelNetworkIsolation)
 			}
@@ -2099,10 +2091,7 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	}
 	// Mark the initialDeployHook as ran so subsequent syncs skip it (w2/m45).
 	if markHookRan {
-		if existing.Annotations == nil {
-			existing.Annotations = map[string]string{}
-		}
-		existing.Annotations[initialDeployHookRanAnnotation] = "true"
+		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, initialDeployHookRanAnnotation, "true")
 	}
 	resourcemeta.Touch(existing, s.Now())
 	if err := s.Client.Patch(ctx, existing, base); err != nil {
@@ -2229,11 +2218,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 			}
 		}
 		if groupingChanged {
-			if existing.Labels == nil {
-				existing.Labels = map[string]string{}
-			}
-			applyGroupingLabels(existing.Labels, assignment)
-			existing.Spec.EnvironmentIPAllowList = groupingEnvironmentLayer(assignment)
+			existing.Spec.EnvironmentIPAllowList = applyGrouping(existing, assignment)
 		}
 		resourcemeta.Touch(existing, s.Now())
 		if err := s.Client.Patch(ctx, existing, base); err != nil {
@@ -2249,11 +2234,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		d.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
 	if assignment.ID != "" {
-		if d.Labels == nil {
-			d.Labels = map[string]string{}
-		}
-		applyGroupingLabels(d.Labels, assignment)
-		d.Spec.EnvironmentIPAllowList = groupingEnvironmentLayer(assignment)
+		d.Spec.EnvironmentIPAllowList = applyGrouping(d, assignment)
 	}
 	resourcemeta.Touch(d, s.Now())
 	if err := s.Client.Create(ctx, d); err != nil {
@@ -2262,24 +2243,24 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 	return stackDatabaseView(d), nil
 }
 
-// groupingEnvironmentLayer is applyGroupingLabels' inbound-IP sibling
-// (w4/m28): a grouped resource inherits the environment's projected rule
-// layer; an ungrouped one sheds it.
-func groupingEnvironmentLayer(assignment core.EnvironmentAssignment) []string {
-	if assignment.ID == "" {
-		return nil
-	}
-	return core.EnvironmentLayerCIDRs(assignment.IPAllowList)
-}
-
-func applyGroupingLabels(labels map[string]string, assignment core.EnvironmentAssignment) {
+// applyGrouping stamps the environment/project labels of a Blueprint grouping
+// onto a datastore object and returns the environment's projected inbound-IP
+// layer (w4/m28) for the caller's Spec.EnvironmentIPAllowList — a grouped
+// resource inherits the layer, an ungrouped one sheds labels and layer.
+func applyGrouping(obj client.Object, assignment core.EnvironmentAssignment) []string {
+	labels := obj.GetLabels()
 	if assignment.ID == "" {
 		delete(labels, core.LabelProject)
 		delete(labels, core.LabelEnvironment)
-		return
+		return nil
+	}
+	if labels == nil {
+		labels = map[string]string{}
 	}
 	labels[core.LabelProject] = assignment.ProjectID
 	labels[core.LabelEnvironment] = assignment.ID
+	obj.SetLabels(labels)
+	return core.EnvironmentLayerCIDRs(assignment.IPAllowList)
 }
 
 func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignment core.EnvironmentAssignment, keyValues []appv1alpha1.KeyValue) (StackKeyValueView, error) {
@@ -2305,11 +2286,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 			ApplyBlueprintKeyValueSpec(&existing.Spec, kv.spec, kv.fields)
 		}
 		if groupingChanged {
-			if existing.Labels == nil {
-				existing.Labels = map[string]string{}
-			}
-			applyGroupingLabels(existing.Labels, assignment)
-			existing.Spec.EnvironmentIPAllowList = groupingEnvironmentLayer(assignment)
+			existing.Spec.EnvironmentIPAllowList = applyGrouping(existing, assignment)
 		}
 		resourcemeta.Touch(existing, s.Now())
 		if err := s.Client.Patch(ctx, existing, base); err != nil {
@@ -2325,11 +2302,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 		resource.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
 	if assignment.ID != "" {
-		if resource.Labels == nil {
-			resource.Labels = map[string]string{}
-		}
-		applyGroupingLabels(resource.Labels, assignment)
-		resource.Spec.EnvironmentIPAllowList = groupingEnvironmentLayer(assignment)
+		resource.Spec.EnvironmentIPAllowList = applyGrouping(resource, assignment)
 	}
 	resourcemeta.Touch(resource, s.Now())
 	if err := s.Client.Create(ctx, resource); err != nil {

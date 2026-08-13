@@ -128,6 +128,10 @@ type blueprintCapabilityContext struct {
 
 type blueprintCapabilityKind string
 
+// blueprintEnvironmentPropertyPrefix is the schema pointer prefix for a
+// project environment's own (non-resource) properties.
+const blueprintEnvironmentPropertyPrefix = "#/definitions/environment/allOf/1/properties/"
+
 const (
 	blueprintCapabilityRoot               blueprintCapabilityKind = "root"
 	blueprintCapabilityResources          blueprintCapabilityKind = "resources"
@@ -348,7 +352,7 @@ func blueprintFieldCapabilityPointer(context blueprintCapabilityContext, field s
 		case "services", "databases", "envVarGroups":
 			return "#/definitions/resources/properties/" + field
 		default:
-			return "#/definitions/environment/allOf/1/properties/" + field
+			return blueprintEnvironmentPropertyPrefix + field
 		}
 	case blueprintCapabilityIPAllowList:
 		return "#/definitions/ipAllowList/items/properties/" + field
@@ -359,19 +363,31 @@ func blueprintFieldCapabilityPointer(context blueprintCapabilityContext, field s
 	return "#/definitions/" + string(context.kind) + "/properties/" + field
 }
 
+// blueprintResourceChildKind maps a resources-family collection field to its
+// child capability context — the same triple under the root, the ungrouped
+// resources block, and a project environment.
+func blueprintResourceChildKind(field string) (blueprintCapabilityContext, bool) {
+	switch field {
+	case "services":
+		return blueprintCapabilityContext{kind: blueprintCapabilityServices}, true
+	case "databases":
+		return blueprintCapabilityContext{kind: blueprintCapabilityDatabase}, true
+	case "envVarGroups":
+		return blueprintCapabilityContext{kind: blueprintCapabilityEnvGroup}, true
+	}
+	return blueprintCapabilityContext{}, false
+}
+
 func blueprintChildCapabilityContext(context blueprintCapabilityContext, field string, child any) blueprintCapabilityContext {
 	if context.base != "" {
 		return blueprintCapabilityContext{base: context.base + "/properties/" + field}
 	}
 	switch context.kind {
 	case blueprintCapabilityRoot:
+		if child, ok := blueprintResourceChildKind(field); ok {
+			return child
+		}
 		switch field {
-		case "services":
-			return blueprintCapabilityContext{kind: blueprintCapabilityServices}
-		case "databases":
-			return blueprintCapabilityContext{kind: blueprintCapabilityDatabase}
-		case "envVarGroups":
-			return blueprintCapabilityContext{kind: blueprintCapabilityEnvGroup}
 		case "ungrouped":
 			return blueprintCapabilityContext{kind: blueprintCapabilityResources}
 		case "projects":
@@ -380,28 +396,20 @@ func blueprintChildCapabilityContext(context blueprintCapabilityContext, field s
 			return blueprintCapabilityContext{kind: blueprintCapabilityRootPreviews}
 		}
 	case blueprintCapabilityResources:
-		switch field {
-		case "services":
-			return blueprintCapabilityContext{kind: blueprintCapabilityServices}
-		case "databases":
-			return blueprintCapabilityContext{kind: blueprintCapabilityDatabase}
-		case "envVarGroups":
-			return blueprintCapabilityContext{kind: blueprintCapabilityEnvGroup}
+		if child, ok := blueprintResourceChildKind(field); ok {
+			return child
 		}
 	case blueprintCapabilityProject:
 		if field == "environments" {
 			return blueprintCapabilityContext{kind: blueprintCapabilityEnvironment}
 		}
 	case blueprintCapabilityEnvironment:
+		if child, ok := blueprintResourceChildKind(field); ok {
+			return child
+		}
 		switch field {
-		case "services":
-			return blueprintCapabilityContext{kind: blueprintCapabilityServices}
-		case "databases":
-			return blueprintCapabilityContext{kind: blueprintCapabilityDatabase}
-		case "envVarGroups":
-			return blueprintCapabilityContext{kind: blueprintCapabilityEnvGroup}
 		case "networking", "permissions":
-			return blueprintCapabilityContext{base: "#/definitions/environment/allOf/1/properties/" + field}
+			return blueprintCapabilityContext{base: blueprintEnvironmentPropertyPrefix + field}
 		}
 	case blueprintCapabilityServer, blueprintCapabilityCron, blueprintCapabilityStatic:
 		switch field {
@@ -488,14 +496,28 @@ func blueprintEnvVarCapabilityContext(value any) blueprintCapabilityContext {
 	}
 }
 
+// commonServiceEnumPointer covers the enum fields the server and cron service
+// kinds share; static deliberately has no plan/runtime enum pointer.
+func commonServiceEnumPointer(field string) string {
+	switch field {
+	case "runtime":
+		return "#/definitions/runtime/enum"
+	case "autoDeployTrigger":
+		return "#/definitions/autoDeployTrigger/enum"
+	case "plan":
+		return "#/definitions/plan/enum"
+	}
+	return ""
+}
+
 func blueprintFieldEnumCapabilityPointer(context blueprintCapabilityContext, field string) string {
 	if context.base != "" {
 		switch context.base {
-		case "#/definitions/environment/allOf/1/properties/networking":
+		case blueprintEnvironmentPropertyPrefix + "networking":
 			if field == "isolation" {
 				return context.base + "/properties/isolation/enum"
 			}
-		case "#/definitions/environment/allOf/1/properties/permissions":
+		case blueprintEnvironmentPropertyPrefix + "permissions":
 			if field == "protection" {
 				return context.base + "/properties/protection/enum"
 			}
@@ -517,22 +539,10 @@ func blueprintFieldEnumCapabilityPointer(context blueprintCapabilityContext, fie
 		switch field {
 		case "type", "renderSubdomainPolicy":
 			return "#/definitions/serverService/properties/" + field + "/enum"
-		case "runtime":
-			return "#/definitions/runtime/enum"
-		case "autoDeployTrigger":
-			return "#/definitions/autoDeployTrigger/enum"
-		case "plan":
-			return "#/definitions/plan/enum"
 		}
+		return commonServiceEnumPointer(field)
 	case blueprintCapabilityCron:
-		switch field {
-		case "runtime":
-			return "#/definitions/runtime/enum"
-		case "autoDeployTrigger":
-			return "#/definitions/autoDeployTrigger/enum"
-		case "plan":
-			return "#/definitions/plan/enum"
-		}
+		return commonServiceEnumPointer(field)
 	case blueprintCapabilityStatic:
 		switch field {
 		case "renderSubdomainPolicy":

@@ -756,7 +756,7 @@ func view(a *appv1alpha1.App) AppView {
 		URLs:                  a.Status.URLs,
 		Image:                 a.Status.Image,
 		SourceImage:           a.Spec.Image,
-		RegistryCredentialID:  cloneStringPtr(a.Spec.RegistryCredentialID),
+		RegistryCredentialID:  clonePtr(a.Spec.RegistryCredentialID),
 		Runtime:               a.Spec.Runtime,
 		BuildCommand:          a.Spec.BuildCommand,
 		StartCommand:          a.Spec.StartCommand,
@@ -1720,7 +1720,7 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 			Name:                 req.Name,
 			Repo:                 req.Repo,
 			Image:                req.Image,
-			RegistryCredentialID: cloneStringPtr(a.Spec.RegistryCredentialID),
+			RegistryCredentialID: clonePtr(a.Spec.RegistryCredentialID),
 			Branch:               a.Spec.Branch,
 			Port:                 a.Spec.Port,
 			Replicas:             a.Spec.Replicas,
@@ -2058,7 +2058,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err := core.ValidateAllowList(req.IPAllowList); err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
-	registryCredentialID := cloneStringPtr(req.RegistryCredentialID)
+	registryCredentialID := clonePtr(req.RegistryCredentialID)
 	if registryCredentialID != nil {
 		*registryCredentialID = strings.TrimSpace(*registryCredentialID)
 	}
@@ -2080,7 +2080,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		Replicas:             replicas,
 		Tier:                 tier,
 		HealthCheckPath:      req.HealthCheckPath,
-		MaxShutdownDelaySeconds: cloneInt32(
+		MaxShutdownDelaySeconds: clonePtr(
 			req.MaxShutdownDelaySeconds,
 		),
 		Env:              req.Env,
@@ -2223,20 +2223,12 @@ func effectiveMaxShutdownDelaySeconds(serviceType string, seconds *int32) int32 
 	return *seconds
 }
 
-func cloneInt32(value *int32) *int32 {
+func clonePtr[T any](value *T) *T {
 	if value == nil {
 		return nil
 	}
 	cloned := *value
 	return &cloned
-}
-
-func cloneStringPtr(value *string) *string {
-	if value == nil {
-		return nil
-	}
-	copy := *value
-	return &copy
 }
 
 // applyCreateToSpec copies the create-owned fields of want onto an existing
@@ -2262,7 +2254,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.Replicas = want.Replicas
 	dst.Tier = want.Tier
 	dst.HealthCheckPath = want.HealthCheckPath
-	dst.MaxShutdownDelaySeconds = cloneInt32(want.MaxShutdownDelaySeconds)
+	dst.MaxShutdownDelaySeconds = clonePtr(want.MaxShutdownDelaySeconds)
 	dst.Env = want.Env
 	dst.AutoDeploy = want.AutoDeploy
 	dst.NotifyOnFail = want.NotifyOnFail
@@ -2917,7 +2909,7 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	if nextBranch == "" {
 		nextBranch = "main"
 	}
-	nextRegistryCredentialID := cloneStringPtr(a.Spec.RegistryCredentialID)
+	nextRegistryCredentialID := clonePtr(a.Spec.RegistryCredentialID)
 	if patch.RegistryCredentialID != nil {
 		value := strings.TrimSpace(*patch.RegistryCredentialID)
 		nextRegistryCredentialID = &value
@@ -2931,14 +2923,14 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	probe.Spec.Repo = nextRepo
 	probe.Spec.Image = nextImage
 	probe.Spec.Branch = nextBranch
-	probe.Spec.RegistryCredentialID = cloneStringPtr(nextRegistryCredentialID)
+	probe.Spec.RegistryCredentialID = clonePtr(nextRegistryCredentialID)
 	pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, probe)
 	if err != nil {
 		return AppView{}, err
 	}
 	if s.Store != nil {
 		if id := managedAppID(a); id != "" {
-			if err := s.Store.SetAppSource(ctx, id, nextRepo, nextImage, nextBranch, cloneStringPtr(nextRegistryCredentialID)); err != nil {
+			if err := s.Store.SetAppSource(ctx, id, nextRepo, nextImage, nextBranch, clonePtr(nextRegistryCredentialID)); err != nil {
 				return AppView{}, fmt.Errorf("update source of truth: %w", err)
 			}
 		}
@@ -2955,7 +2947,7 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 		a.Spec.Repo = nextRepo
 		a.Spec.Image = nextImage
 		a.Spec.Branch = nextBranch
-		a.Spec.RegistryCredentialID = cloneStringPtr(nextRegistryCredentialID)
+		a.Spec.RegistryCredentialID = clonePtr(nextRegistryCredentialID)
 		a.Spec.ExternalRegistryPullSecret = pullSecretName
 		if repoChanged {
 			a.Spec.CloneSecret = "" // clear stale token; reminted on next deploy
@@ -2974,25 +2966,37 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 			return AppView{}, fmt.Errorf("delete cleared registry pull secret: %w", err)
 		}
 	}
-	if previousBranch != "" && previousBranch != nextBranch && s.EventFacts != nil {
-		if appID := managedAppID(a); appID != "" {
-			at := s.Now().UTC()
-			if updated.UpdatedAt != "" {
-				if parsed, parseErr := time.Parse(time.RFC3339Nano, updated.UpdatedAt); parseErr == nil {
-					at = parsed
-				}
-			}
-			fact := store.ServiceEventFact{
-				SourceKey: fmt.Sprintf("branch:%s:%d", appID, at.UnixNano()),
-				AppID:     appID, Type: store.EventFactBranchChanged, At: at,
-				BranchFrom: previousBranch, BranchTo: nextBranch,
-			}
-			if _, factErr := s.EventFacts.InsertServiceEventFact(ctx, fact); factErr != nil {
-				log.Printf("events: record branch change for %s: %v", appID, factErr)
-			}
-		}
+	if previousBranch != "" && previousBranch != nextBranch {
+		s.recordBranchChangedFact(ctx, a, previousBranch, nextBranch, updated.UpdatedAt)
 	}
 	return updated, nil
+}
+
+// recordBranchChangedFact appends the branch_changed fact after a source
+// patch moved the tracked branch, stamped with the patch's own UpdatedAt so
+// the feed matches the write (mirrors GitWebhook.recordBranchDeletedFact).
+func (s *Service) recordBranchChangedFact(ctx context.Context, a *appv1alpha1.App, from, to, updatedAt string) {
+	if s.EventFacts == nil {
+		return
+	}
+	appID := managedAppID(a)
+	if appID == "" {
+		return
+	}
+	at := s.Now().UTC()
+	if updatedAt != "" {
+		if parsed, parseErr := time.Parse(time.RFC3339Nano, updatedAt); parseErr == nil {
+			at = parsed
+		}
+	}
+	fact := store.ServiceEventFact{
+		SourceKey: fmt.Sprintf("branch:%s:%d", appID, at.UnixNano()),
+		AppID:     appID, Type: store.EventFactBranchChanged, At: at,
+		BranchFrom: from, BranchTo: to,
+	}
+	if _, err := s.EventFacts.InsertServiceEventFact(ctx, fact); err != nil {
+		log.Printf("events: record branch change for %s: %v", appID, err)
+	}
 }
 
 // SetCronJob changes a cron_job's schedule and/or command (spec.schedule +
@@ -3081,7 +3085,7 @@ func (s *Service) SetMaxShutdownDelay(ctx context.Context, name string, seconds 
 		return AppView{}, err
 	}
 	return s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
-		a.Spec.MaxShutdownDelaySeconds = cloneInt32(&seconds)
+		a.Spec.MaxShutdownDelaySeconds = clonePtr(&seconds)
 	})
 }
 

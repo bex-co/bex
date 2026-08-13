@@ -69,7 +69,7 @@ func (f *fakePullSecrets) MaterializePullSecret(_ context.Context, workspaceID s
 	f.calls++
 	f.lastWorkspace = workspaceID
 	f.lastImage = image
-	f.lastID = cloneStringPtr(credentialID)
+	f.lastID = clonePtr(credentialID)
 	return f.name, f.ok, f.err
 }
 

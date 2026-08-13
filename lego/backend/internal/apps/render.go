@@ -21,7 +21,34 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+type envVarInput struct {
+	Key   string `json:"key" jsonschema:"the environment variable name"`
+	Value string `json:"value" jsonschema:"the literal value"`
+}
+
+type secretFileInput struct {
+	Name    string `json:"name" jsonschema:"file name beneath /etc/secrets"`
+	Content string `json:"content" jsonschema:"secret file contents"`
+}
+
+func toEnvVars(in []envVarInput) []appv1alpha1.EnvVar {
+	var env []appv1alpha1.EnvVar
+	for _, e := range in {
+		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
+	}
+	return env
+}
+
+func toSecretFiles(in []secretFileInput) []core.SecretFile {
+	var files []core.SecretFile
+	for _, f := range in {
+		files = append(files, core.SecretFile{Name: f.Name, Content: f.Content})
+	}
+	return files
+}
 
 // render.go maps AppView onto Render's public-API "service" shape, verified
 // against Render's OpenAPI spec (render-public-api-1.json). A client written for
@@ -30,12 +57,12 @@ import (
 
 // renderWebService is Render's default serviceType — reported for an App with no
 // explicit spec.type set (view() already defaults empty => web_service).
-const renderWebService = "web_service"
+const renderWebService = appv1alpha1.TypeWebService
 
 // renderPrivateService is Render's serviceType for a private-network-only
 // service — the one type whose serviceDetails omits `url` (captured
 // docs/render-artifacts/service-addresses.md §3).
-const renderPrivateService = "private_service"
+const renderPrivateService = appv1alpha1.TypePrivateService
 
 // renderService mirrors components.schemas.service (the fields bex has a real
 // equivalent for) plus bex-native extras.
@@ -255,7 +282,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		set("envSpecificDetails", dockerDetails)
 	} else if a.Runtime != "" {
 		startCommand := a.StartCommand
-		if svcType == "cron_job" {
+		if svcType == appv1alpha1.TypeCronJob {
 			startCommand = a.Command
 		}
 		set("envSpecificDetails", map[string]any{
@@ -276,7 +303,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 	if a.PublishPath != "" {
 		set("publishPath", a.PublishPath) // staticSiteDetails.publishPath (render-public-api-1.json)
 	}
-	if svcType == "static_site" {
+	if svcType == appv1alpha1.TypeStaticSite {
 		set("buildCommand", a.BuildCommand)
 	}
 	if a.PreDeployCommand != "" {
@@ -363,7 +390,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		NotificationsToSend:   a.NotificationsToSend,
 		RenderSubdomainPolicy: a.RenderSubdomainPolicy,
 		HealthCheckPath:       a.HealthCheckPath,
-		IPAllowList:           toIPAllowListEntries(a.IPAllowList),
+		IPAllowList:           cloneIPAllowEntries(a.IPAllowList),
 	}
 }
 

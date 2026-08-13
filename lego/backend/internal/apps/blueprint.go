@@ -828,7 +828,7 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 			if resourceID == "" {
 				resourceID = a.Name
 			}
-			resources = append(resources, BlueprintResource{ID: resourceID, Name: resource.Name, Type: blueprintIRServiceRenderType(resource)})
+			resources = append(resources, BlueprintResource{ID: resourceID, Name: resource.Name, Type: effectiveType(a.Spec.Type)})
 		case BlueprintResourcePostgres:
 			d, ok := dbByName[resource.Name]
 			if !ok {
@@ -844,23 +844,6 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 		}
 	}
 	return resources
-}
-
-func blueprintIRServiceRenderType(resource BlueprintResourceIR) string {
-	serviceType, _ := resource.Fields["type"].Value.(string)
-	runtime, _ := resource.Fields["runtime"].Value.(string)
-	if runtime == "static" {
-		return "static_site"
-	}
-	switch serviceType {
-	case "pserv", "private_service":
-		return "private_service"
-	case "worker", "background_worker":
-		return "background_worker"
-	case "cron", "cron_job":
-		return "cron_job"
-	}
-	return "web_service"
 }
 
 // blueprintValidationPlanFromIR builds the structural validation summary from
