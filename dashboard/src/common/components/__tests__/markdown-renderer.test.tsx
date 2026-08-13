@@ -48,7 +48,7 @@ describe("MarkdownRenderer", () => {
     render(<MarkdownRenderer content="[Example](https://example.com)" />);
     const link = screen.getByText("Example");
     expect(link).toBeInTheDocument();
-    expect(link.closest("a")).toHaveAttribute("href", "https://example.com");
+    expect(link.closest("a")).toHaveAttribute("href", "https://example.com/");
     expect(link.closest("a")).toHaveAttribute("target", "_blank");
     expect(screen.getByTestId("external-link-icon")).toBeInTheDocument();
   });
@@ -104,5 +104,16 @@ describe("MarkdownRenderer", () => {
     const { container } = render(<MarkdownRenderer content={markdown} />);
     expect(container.querySelector("script")).toBeNull();
     expect(screen.getByText("Safe content")).toBeInTheDocument();
+  });
+
+  it("treats a protocol-relative link as external, not internal", () => {
+    render(<MarkdownRenderer content="[Login](//attacker.example/login)" />);
+    const anchor = screen.getByText("Login").closest("a");
+    expect(anchor).not.toBeNull();
+    expect(anchor).toHaveAttribute("target", "_blank");
+    expect(anchor).toHaveAttribute("rel", "noopener noreferrer");
+    // Resolved to an absolute origin — never navigates the current tab as a
+    // silent "internal" relative link.
+    expect(anchor?.getAttribute("href")).toMatch(/^https?:\/\/attacker\.example\//);
   });
 });

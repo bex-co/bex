@@ -303,6 +303,85 @@ func TestAgentAttachTerminalSessionReplaysThenDone(t *testing.T) {
 	}
 }
 
+func TestAgentAttachReplayPagesAllPartsInOrder(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-00000000000000000000a"
+	st := newFakeAttachStore()
+	want := []string{
+		`{"type":"a"}`, `{"type":"b"}`, `{"type":"c"}`,
+		`{"type":"d"}`, `{"type":"e"}`,
+	}
+	parts := make([]store.AgentSessionTranscriptPart, len(want))
+	for i, p := range want {
+		parts[i] = store.AgentSessionTranscriptPart{Seq: int64(i), Part: []byte(p)}
+	}
+	_ = st.AppendAgentSessionTranscript(context.Background(), session, parts)
+
+	gw := newAttachGateway(st, fixedPodIP{err: fmt.Errorf("pod gone")}, secret, 8787)
+	// A page budget smaller than two parts forces replay across several pages;
+	// the result must still be every part, once, in emission order.
+	gw.ReplayPageBytes = 15
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req.Header.Set(TicketHeader, attachTicket(t, secret, session))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if got := dataPayloads(string(body)); fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("multi-page replay = %v, want %v", got, want)
+	}
+}
+
+// stickyFailWriter is an http.ResponseWriter+Flusher whose Write fails after
+// failAfter successful writes, to exercise agentSSE's sticky-error path.
+type stickyFailWriter struct {
+	header    http.Header
+	writes    int
+	failAfter int
+}
+
+func (w *stickyFailWriter) Header() http.Header {
+	if w.header == nil {
+		w.header = http.Header{}
+	}
+	return w.header
+}
+func (w *stickyFailWriter) WriteHeader(int) {}
+func (w *stickyFailWriter) Flush()          {}
+func (w *stickyFailWriter) Write(b []byte) (int, error) {
+	if w.writes >= w.failAfter {
+		return 0, errors.New("client gone")
+	}
+	w.writes++
+	return len(b), nil
+}
+
+func TestAgentSSEStopsOnStickyWriteError(t *testing.T) {
+	fw := &stickyFailWriter{failAfter: 0} // fail on the very first write
+	sse := (&Server{}).startAgentSSE(fw, fw)
+
+	if err := sse.frame(`{"type":"x"}`); err == nil {
+		t.Fatal("frame did not surface the client write error")
+	}
+	if sse.Err() == nil {
+		t.Fatal("write error was not made sticky")
+	}
+	before := fw.writes
+	// A second frame must be a no-op that returns the same sticky error — the
+	// caller's replay/splice loop stops instead of walking the whole transcript.
+	if err := sse.frame(`{"type":"y"}`); err == nil {
+		t.Fatal("frame after a sticky error must keep returning it")
+	}
+	if fw.writes != before {
+		t.Fatalf("frame after a sticky error still wrote to the client (writes %d -> %d)", before, fw.writes)
+	}
+}
+
 func TestAgentAttachRejectsBadTicketReplayAndMismatch(t *testing.T) {
 	secret := []byte("shell-ticket-secret")
 	session := "ags-000000000000000000003"

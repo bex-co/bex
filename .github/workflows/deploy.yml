@@ -128,7 +128,15 @@ jobs:
     # A run superseded before its build starts is skipped here (neutral, no
     # build). A run superseded DURING its build is caught by the write-back guard
     # (it concludes neutral instead). w1/m59.
-    if: needs.check-supersession.outputs.superseded != 'true'
+    #
+    # Ref guard (scan finding #2): this job checks out the dispatched ref and then
+    # exposes cluster/SSH/OpenBao production secrets, so it must run ONLY from the
+    # reviewed default branch. Without this, a same-repo collaborator could
+    # workflow_dispatch a modified branch and reach production credentials without
+    # merging to main. Defense in depth alongside GitHub-side protected
+    # environments + branch policies (the infra.yml `production-infra` pattern),
+    # which are the authoritative control but live in repo settings, not YAML.
+    if: needs.check-supersession.outputs.superseded != 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

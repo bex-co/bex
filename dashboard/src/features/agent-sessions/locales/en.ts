@@ -492,6 +492,11 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Degraded-state message when the m43 stream endpoint errors or is unconfigured",
   },
+  "agentSessions.showEarlierMessages": {
+    message: "Show {count} earlier messages",
+    description:
+      "Button revealing older transcript messages hidden by the render window",
+  },
   "agentSessions.groupThought": {
     message: "Thought",
     description: "Collapsible header for the agent's reasoning group",

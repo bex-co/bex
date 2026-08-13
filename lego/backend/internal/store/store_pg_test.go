@@ -1800,6 +1800,31 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 		t.Fatalf("re-enable must clear notified_at so a notice can send again (err %v)", err)
 	}
 
+	// Sweep age-out of an abandoned PENDING row (scan finding #3). A disabled
+	// endpoint's open deliveries are never claimed (ClaimDue requires e.enabled)
+	// nor terminalized, so without an age-out they park forever and grow the
+	// shared table without bound. The sweep must reclaim a pending row older than
+	// the retention floor, while a RECENT pending row survives (park-and-resume).
+	parked := WebhookDelivery{
+		ID: ids.New(ids.WebhookDelivery), EndpointID: ep.ID, EventID: "evt-parked-000000000",
+		EventType: "deploy_started", ServiceID: app.Name, Payload: `{}`, NextAttemptAt: cnow,
+	}
+	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{parked}, cnow, "k-parked"); err != nil {
+		t.Fatalf("enqueue parked: %v", err)
+	}
+	if n, err := s.SweepWebhookDeliveries(ctx, cnow.Add(-time.Hour), 1000, 100); err != nil || n != 0 {
+		t.Fatalf("recent pending row swept (n=%d, err %v); park-and-resume must survive the retention floor", n, err)
+	}
+	if !deliveryExists(ctx, pool, parked.ID) {
+		t.Fatal("recent pending delivery was reclaimed before the retention floor")
+	}
+	if n, err := s.SweepWebhookDeliveries(ctx, cnow.Add(time.Hour), 1000, 100); err != nil || n < 1 {
+		t.Fatalf("aged pending row not swept (n=%d, err %v), want >=1", n, err)
+	}
+	if deliveryExists(ctx, pool, parked.ID) {
+		t.Fatal("abandoned pending delivery survived the age-out sweep")
+	}
+
 	// Deleting the endpoint cascades its deliveries.
 	if err := s.DeleteWebhookEndpoint(ctx, ten.ID, ep.ID); err != nil {
 		t.Fatalf("delete endpoint: %v", err)
@@ -1817,6 +1842,12 @@ func containsDelivery(due []DueWebhookDelivery, id string) bool {
 		}
 	}
 	return false
+}
+
+func deliveryExists(ctx context.Context, pool *pgxpool.Pool, id string) bool {
+	var n int
+	_ = pool.QueryRow(ctx, `SELECT count(*) FROM webhook_deliveries WHERE id=$1`, id).Scan(&n)
+	return n > 0
 }
 
 func assertDeleteCascades(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool.Pool, app App) {

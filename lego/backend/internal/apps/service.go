@@ -2608,7 +2608,11 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	if err != nil {
 		return AppView{}, err
 	}
-	s.RecordPlanChanged(ctx, a, fromPlan, plan)
+	// Same no-op guard as Scale: a plan change to the current plan emits no
+	// plan_changed audit row or webhook (the allowed-write audit is deferred here).
+	if fromPlan != plan {
+		s.RecordPlanChanged(ctx, a, fromPlan, plan)
+	}
 	return result, nil
 }
 
@@ -2663,7 +2667,15 @@ func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppVi
 	if err != nil {
 		return AppView{}, err
 	}
-	s.RecordScaleEffect(ctx, a, fromReplicas, replicas)
+	// Only record the effect when the count actually changed. A scale to the
+	// current replica count is a no-op, and Render's instance_count_changed
+	// semantics are "changed" — recording it would emit a spurious audit row and
+	// webhook delivery. Because the allowed-write audit is deferred to this call,
+	// skipping it means a no-op scale produces no event at all, closing a cheap
+	// repeatable amplifier of the shared outbound-webhook queue (scan finding #3).
+	if fromReplicas != replicas {
+		s.RecordScaleEffect(ctx, a, fromReplicas, replicas)
+	}
 	return result, nil
 }
 

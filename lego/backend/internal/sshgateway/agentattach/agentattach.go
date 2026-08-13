@@ -81,6 +81,20 @@ const maxAgentTurnRequest = 256 << 10
 // sandbox-exec per-line cap (1 MiB).
 const maxSSEPartBytes = 1 << 20
 
+// replayPageBytes bounds the peak memory one reader's transcript replay holds
+// at once (F10 follow-up). The durable read is paged in these increments and
+// each page is framed and dropped before the next is fetched, so a replica
+// serving several concurrent replays never materializes multiples of the full
+// per-session quota (up to 64 MiB) — only one page per reader. Comfortably above
+// maxSSEPartBytes (1 MiB) so every part fits in a page and replay makes progress.
+const replayPageBytes = 4 << 20
+
+// defaultSSEWriteTimeout bounds a single SSE write to one client. A stalled
+// reader that stops draining its socket would otherwise pin the handler — and
+// with it the replay/page buffers and the shared session-limiter slot —
+// indefinitely, so a write that cannot complete in this window fails the stream.
+const defaultSSEWriteTimeout = 30 * time.Second
+
 // maxSessionTranscriptBytes caps the total transcript bytes stored for one
 // session and materialized on replay (w1/m65 F10), bounding both gateway
 // memory and unbounded Postgres growth from tenant-controlled agent output.
@@ -166,6 +180,16 @@ type Server struct {
 	// (maxSessionTranscriptBytes); zero => the platform default. Tests set it
 	// small to exercise the quota without 64 MiB payloads.
 	MaxTranscriptBytes int64
+
+	// ReplayPageBytes overrides the per-page replay budget (replayPageBytes);
+	// zero => the platform default. Tests set it small to exercise multi-page
+	// replay without multi-megabyte payloads.
+	ReplayPageBytes int64
+
+	// WriteTimeout overrides the per-write SSE deadline (defaultSSEWriteTimeout);
+	// zero => the platform default. Bounds how long one stalled client write may
+	// block the handler before the stream is abandoned.
+	WriteTimeout time.Duration
 }
 
 func (s *Server) defaults() {
@@ -213,6 +237,20 @@ func (s *Server) transcriptQuota() int64 {
 		return s.MaxTranscriptBytes
 	}
 	return maxSessionTranscriptBytes
+}
+
+func (s *Server) replayPageQuota() int64 {
+	if s.ReplayPageBytes > 0 {
+		return s.ReplayPageBytes
+	}
+	return replayPageBytes
+}
+
+func (s *Server) writeTimeout() time.Duration {
+	if s.WriteTimeout > 0 {
+		return s.WriteTimeout
+	}
+	return defaultSSEWriteTimeout
 }
 
 func (s *Server) httpClient() *http.Client {
@@ -304,7 +342,7 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 		turnBody = tb
 	}
 
-	sse := startAgentSSE(w, flusher)
+	sse := s.startAgentSSE(w, flusher)
 
 	if r.Method == http.MethodPost {
 		if ipErr != nil {
@@ -322,26 +360,47 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 // driver is reachable — splices the live driver stream and tees new parts into
 // the store. A terminal/gone session (ipErr) replays and closes with `[DONE]`.
 func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP string, ipErr error, sessionID string, turn int) {
-	stored, err := s.Store.AgentSessionTranscript(ctx, sessionID, -1, s.transcriptQuota())
-	if err != nil {
-		log.Printf("agent attach: transcript replay failed (session=%s): %v", sessionID, err)
-		sse.errorAndDone("transcript unavailable")
-		return
-	}
+	// Replay the durable transcript in bounded pages rather than materializing the
+	// whole (up to 64 MiB) transcript at once (F10 follow-up). Peak memory per
+	// reader is one page, not the full session quota, so concurrent replays can't
+	// sum past the pod memory limit; and a stalled or disconnected client aborts
+	// the replay — freeing the page buffer and the shared session-limiter slot —
+	// instead of pinning them for the whole write.
+	quota := s.transcriptQuota()
+	pageBudget := s.replayPageQuota()
 	var replayedMax int64 = -1
 	var replayedBytes int64
-	for _, part := range stored {
-		// Defensive replay budget (F10): the store read is already capped at the
-		// session quota, so this never trips in normal operation, but a bounded
-		// replay loop guarantees a large transcript can't be materialized+framed
-		// without limit even if the budgeted read is ever bypassed.
-		if replayedBytes+int64(len(part.Part)) > s.transcriptQuota() {
-			log.Printf("agent attach: transcript replay truncated at cap (session=%s)", sessionID)
+	after := int64(-1)
+replay:
+	for {
+		if ctx.Err() != nil {
+			return
+		}
+		page, err := s.Store.AgentSessionTranscript(ctx, sessionID, after, pageBudget)
+		if err != nil {
+			log.Printf("agent attach: transcript replay failed (session=%s): %v", sessionID, err)
+			sse.errorAndDone("transcript unavailable")
+			return
+		}
+		if len(page) == 0 {
 			break
 		}
-		sse.frame(string(part.Part))
-		replayedMax = part.Seq
-		replayedBytes += int64(len(part.Part))
+		for _, part := range page {
+			// Cap the cumulative replay at the session quota (a stored transcript
+			// that ever outgrew it is truncated rather than framed without limit).
+			if replayedBytes+int64(len(part.Part)) > quota {
+				log.Printf("agent attach: transcript replay truncated at cap (session=%s)", sessionID)
+				break replay
+			}
+			if err := sse.frame(string(part.Part)); err != nil {
+				// Client gone or stalled past the write deadline: stop now so the
+				// deferred limiter release + this return free the reader's memory.
+				return
+			}
+			replayedMax = part.Seq
+			replayedBytes += int64(len(part.Part))
+		}
+		after = page[len(page)-1].Seq
 	}
 	if ipErr != nil {
 		// No live driver: this is the terminal-session history path.
@@ -402,7 +461,12 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 			log.Printf("agent attach: tee failed (session=%s seq=%d): %v", sessionID, ordinal, err)
 		}
 		if ordinal > replayedMax {
-			sse.frame(payload)
+			if err := sse.frame(payload); err != nil {
+				// Client gone or stalled past the write deadline. The tee above
+				// already persisted this part; stop forwarding (the Completer's
+				// headless recorder captures the remainder at session end).
+				return err
+			}
 		}
 	}
 }
@@ -479,7 +543,10 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 		}); err != nil {
 			log.Printf("agent turn: tee failed (session=%s seq=%d): %v", sessionID, ordinal, err)
 		}
-		sse.frame(payload)
+		if err := sse.frame(payload); err != nil {
+			// Client gone or stalled past the write deadline: stop forwarding.
+			return
+		}
 	}
 	sse.done()
 }
@@ -576,13 +643,20 @@ func (s *Server) applyCORS(w http.ResponseWriter, r *http.Request) {
 }
 
 // agentSSE serializes SSE writes to one client response and preserves the
-// verbatim UI-message-stream framing.
+// verbatim UI-message-stream framing. Every write is bounded by a per-write
+// deadline and the first failure is sticky: once a write fails (a gone or
+// stalled client), later writes are no-ops and callers observe it via the
+// frame error so they stop replaying/splicing and release the handler's memory
+// and session-limiter slot.
 type agentSSE struct {
-	w       http.ResponseWriter
-	flusher http.Flusher
+	w            http.ResponseWriter
+	flusher      http.Flusher
+	rc           *http.ResponseController
+	writeTimeout time.Duration
+	err          error
 }
 
-func startAgentSSE(w http.ResponseWriter, flusher http.Flusher) *agentSSE {
+func (s *Server) startAgentSSE(w http.ResponseWriter, flusher http.Flusher) *agentSSE {
 	// Ignore any cookies on this path (the ticket is the sole credential) and
 	// preserve the v1 marker end to end.
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -592,26 +666,80 @@ func startAgentSSE(w http.ResponseWriter, flusher http.Flusher) *agentSSE {
 	w.Header().Set(uiMessageStreamHeader, "v1")
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
-	return &agentSSE{w: w, flusher: flusher}
+	return &agentSSE{
+		w:            w,
+		flusher:      flusher,
+		rc:           http.NewResponseController(w),
+		writeTimeout: s.writeTimeout(),
+	}
+}
+
+// setDeadline arms the per-write deadline on the underlying connection using the
+// real wall clock (a socket operation — not the injected ticket clock). An
+// unsupported ResponseWriter (e.g. a test recorder) returns ErrNotSupported,
+// which is harmlessly ignored: the request context still bounds the stream.
+func (a *agentSSE) setDeadline() {
+	if a.rc != nil && a.writeTimeout > 0 {
+		_ = a.rc.SetWriteDeadline(time.Now().Add(a.writeTimeout))
+	}
+}
+
+func (a *agentSSE) put(str string) bool {
+	if a.err != nil {
+		return false
+	}
+	if _, err := io.WriteString(a.w, str); err != nil {
+		a.err = err
+		return false
+	}
+	return true
+}
+
+func (a *agentSSE) flush() {
+	if a.err != nil {
+		return
+	}
+	if a.rc != nil {
+		if err := a.rc.Flush(); err == nil {
+			return
+		} else if !errors.Is(err, http.ErrNotSupported) {
+			a.err = err
+			return
+		}
+	}
+	a.flusher.Flush()
 }
 
 // frame writes one part verbatim as `data: <payload>\n\n` — byte-identical to
-// the driver's own framing, so the client stream matches what the driver emitted.
-func (a *agentSSE) frame(payload string) {
-	_, _ = io.WriteString(a.w, "data: ")
-	_, _ = io.WriteString(a.w, payload)
-	_, _ = io.WriteString(a.w, "\n\n")
-	a.flusher.Flush()
+// the driver's own framing, so the client stream matches what the driver
+// emitted. It returns the sticky write error so a caller stops on a dead client.
+func (a *agentSSE) frame(payload string) error {
+	if a.err != nil {
+		return a.err
+	}
+	a.setDeadline()
+	if a.put("data: ") && a.put(payload) && a.put("\n\n") {
+		a.flush()
+	}
+	return a.err
 }
 
 func (a *agentSSE) done() {
-	_, _ = io.WriteString(a.w, "data: [DONE]\n\n")
-	a.flusher.Flush()
+	if a.err != nil {
+		return
+	}
+	a.setDeadline()
+	if a.put("data: [DONE]\n\n") {
+		a.flush()
+	}
 }
+
+// Err reports the first write failure observed on this stream, if any.
+func (a *agentSSE) Err() error { return a.err }
 
 // errorAndDone emits a UI-message `error` part then the terminator, so a Vercel
 // AI SDK client surfaces the failure and settles rather than hanging.
 func (a *agentSSE) errorAndDone(message string) {
-	a.frame(fmt.Sprintf(`{"type":"error","errorText":%q}`, message))
+	_ = a.frame(fmt.Sprintf(`{"type":"error","errorText":%q}`, message))
 	a.done()
 }
