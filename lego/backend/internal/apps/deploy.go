@@ -1085,6 +1085,52 @@ func registerUniqueName(name string, seen map[string]bool) error {
 	return nil
 }
 
+// decl wraps one manifest declaration with where it was declared: a
+// project/environment grouping key, or the legacy top-level "ungrouped" list.
+type decl[T any] struct {
+	value     T
+	grouping  string
+	ungrouped bool
+}
+
+func appendDecls[T any](decls []decl[T], values []T, ungrouped bool) []decl[T] {
+	for _, value := range values {
+		decls = append(decls, decl[T]{value: value, ungrouped: ungrouped})
+	}
+	return decls
+}
+
+// isKeyValueType reports whether a manifest service type names the key-value
+// flavor (Render accepts both spellings).
+func isKeyValueType(t string) bool {
+	return t == "keyvalue" || t == "redis"
+}
+
+// validateEnabledDisabled checks a manifest tri-state toggle ("", enabled,
+// disabled); what names the field in the error.
+func validateEnabledDisabled(value, what string) error {
+	if value != "" && value != "enabled" && value != "disabled" {
+		return fmt.Errorf("%w: %s must be enabled or disabled", core.ErrBadRequest, what)
+	}
+	return nil
+}
+
+// manifestAllowEntries validates and maps one manifest ipAllowList; noun and
+// name identify the resource in errors.
+func manifestAllowEntries(entries []bexIPEntry, noun, name string) ([]core.IPAllowListEntry, error) {
+	var allow []core.IPAllowListEntry
+	for _, e := range entries {
+		if strings.TrimSpace(e.Source) == "" {
+			return nil, fmt.Errorf("%w: %s %q has an ipAllowList entry without a source", core.ErrBadRequest, noun, name)
+		}
+		allow = append(allow, core.IPAllowListEntry{CIDRBlock: e.Source, Description: e.Description})
+	}
+	if err := core.ValidateAllowList(allow); err != nil {
+		return nil, fmt.Errorf("%w: %s %q ipAllowList: %v", core.ErrBadRequest, noun, name, err)
+	}
+	return allow, nil
+}
+
 // parseCompiledStack is the typed adapter boundary after the one strict
 // Blueprint compiler pass. Callers that already own a compiled source/IR (such
 // as validation) use this directly so no later helper can parse the submitted
@@ -1095,43 +1141,19 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	if err != nil {
 		return parsedStack{}, err
 	}
-	type serviceDecl struct {
-		value     bexService
-		grouping  string
-		ungrouped bool
-	}
-	type databaseDecl struct {
-		value     bexDatabase
-		grouping  string
-		ungrouped bool
-	}
-	type envGroupDecl struct {
-		value    bexEnvGroup
-		grouping string
-	}
-	services := make([]serviceDecl, len(m.Services))
-	for i, service := range m.Services {
-		services[i] = serviceDecl{value: service}
-	}
-	databases := make([]databaseDecl, len(m.Databases))
-	for i, database := range m.Databases {
-		databases[i] = databaseDecl{value: database}
-	}
-	envGroups := make([]envGroupDecl, len(m.EnvVarGroups))
-	for i, eg := range m.EnvVarGroups {
-		envGroups[i] = envGroupDecl{value: eg}
-	}
+	var ungrouped bexResources
 	if m.Ungrouped != nil {
-		for _, service := range m.Ungrouped.Services {
-			services = append(services, serviceDecl{value: service, ungrouped: true})
-		}
-		for _, database := range m.Ungrouped.Databases {
-			databases = append(databases, databaseDecl{value: database, ungrouped: true})
-		}
-		for _, eg := range m.Ungrouped.EnvVarGroups {
-			envGroups = append(envGroups, envGroupDecl{value: eg})
-		}
+		ungrouped = *m.Ungrouped
 	}
+	services := make([]decl[bexService], 0, len(m.Services)+len(ungrouped.Services))
+	services = appendDecls(services, m.Services, false)
+	services = appendDecls(services, ungrouped.Services, true)
+	databases := make([]decl[bexDatabase], 0, len(m.Databases)+len(ungrouped.Databases))
+	databases = appendDecls(databases, m.Databases, false)
+	databases = appendDecls(databases, ungrouped.Databases, true)
+	envGroups := make([]decl[bexEnvGroup], 0, len(m.EnvVarGroups)+len(ungrouped.EnvVarGroups))
+	envGroups = appendDecls(envGroups, m.EnvVarGroups, false)
+	envGroups = appendDecls(envGroups, ungrouped.EnvVarGroups, false)
 	st := parsedStack{}
 	projectNames := map[string]bool{}
 	for _, project := range m.Projects {
@@ -1145,19 +1167,19 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 			if err != nil {
 				return parsedStack{}, err
 			}
-			if environment.Networking.Isolation != "" && environment.Networking.Isolation != "enabled" && environment.Networking.Isolation != "disabled" {
-				return parsedStack{}, fmt.Errorf("%w: project %q environment %q networking.isolation must be enabled or disabled", core.ErrBadRequest, projectName, environmentName)
+			if err := validateEnabledDisabled(environment.Networking.Isolation, fmt.Sprintf("project %q environment %q networking.isolation", projectName, environmentName)); err != nil {
+				return parsedStack{}, err
 			}
-			if environment.Permissions.Protection != "" && environment.Permissions.Protection != "enabled" && environment.Permissions.Protection != "disabled" {
-				return parsedStack{}, fmt.Errorf("%w: project %q environment %q permissions.protection must be enabled or disabled", core.ErrBadRequest, projectName, environmentName)
+			if err := validateEnabledDisabled(environment.Permissions.Protection, fmt.Sprintf("project %q environment %q permissions.protection", projectName, environmentName)); err != nil {
+				return parsedStack{}, err
 			}
 			grouping := blueprintGroupingKey(projectName, environmentName)
 			for _, eg := range environment.EnvVarGroups {
-				envGroups = append(envGroups, envGroupDecl{value: eg, grouping: grouping})
+				envGroups = append(envGroups, decl[bexEnvGroup]{value: eg, grouping: grouping})
 			}
-			protectedStatus := "unprotected"
+			protectedStatus := core.ProtectedStatusUnprotected
 			if environment.Permissions.Protection == "enabled" {
-				protectedStatus = "protected"
+				protectedStatus = core.ProtectedStatusProtected
 			}
 			st.groupings = append(st.groupings, parsedGrouping{
 				projectName:             projectName,
@@ -1166,10 +1188,10 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 				protectedStatus:         protectedStatus,
 			})
 			for _, service := range environment.Services {
-				services = append(services, serviceDecl{value: service, grouping: grouping})
+				services = append(services, decl[bexService]{value: service, grouping: grouping})
 			}
 			for _, database := range environment.Databases {
-				databases = append(databases, databaseDecl{value: database, grouping: grouping})
+				databases = append(databases, decl[bexDatabase]{value: database, grouping: grouping})
 			}
 		}
 	}
@@ -1231,7 +1253,7 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	// fromService.envVarKey copy (a from*/generateValue var has no parse-time value).
 	serviceKnownEnv := make(map[string]map[string]string, len(services))
 	for _, a := range services {
-		if a.value.Type == "keyvalue" || a.value.Type == "redis" {
+		if isKeyValueType(a.value.Type) {
 			kv, err := parseKeyValue(a.value)
 			if err != nil {
 				return parsedStack{}, err
@@ -1280,7 +1302,7 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 				svc.databaseRefs = append(svc.databaseRefs, r)
 				continue
 			}
-			if r.FromService != nil && (r.FromService.Type == "keyvalue" || r.FromService.Type == "redis") {
+			if r.FromService != nil && isKeyValueType(r.FromService.Type) {
 				svc.kvRefs = append(svc.kvRefs, r)
 				continue
 			}
@@ -1445,13 +1467,14 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 	// Only a web service is exposed; private/worker/cron/static have no ingress,
 	// so a manifest that lists domains for one is a mistake worth catching here
 	// with a manifest-shaped message.
-	if svcType != appv1alpha1.TypeWebService && svcType != appv1alpha1.TypeStaticSite && (len(a.Domains) > 0 || a.Domain != "") {
+	hasIngress := svcType == appv1alpha1.TypeWebService || svcType == appv1alpha1.TypeStaticSite
+	if !hasIngress && (len(a.Domains) > 0 || a.Domain != "") {
 		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: %s has no ingress and cannot list domains", core.ErrBadRequest, a.Name)
 	}
-	if a.RenderSubdomainPolicy != "" && svcType != appv1alpha1.TypeWebService && svcType != appv1alpha1.TypeStaticSite {
+	if a.RenderSubdomainPolicy != "" && !hasIngress {
 		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q renderSubdomainPolicy applies only to web services and static sites", core.ErrBadRequest, a.Name)
 	}
-	if len(a.IPAllowList) > 0 && svcType != appv1alpha1.TypeWebService && svcType != appv1alpha1.TypeStaticSite {
+	if len(a.IPAllowList) > 0 && !hasIngress {
 		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q ipAllowList applies only to web services and static sites", core.ErrBadRequest, a.Name)
 	}
 	if a.Scaling != nil && svcType == appv1alpha1.TypeBackgroundWorker {
@@ -1556,15 +1579,9 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 	if len(se.seedLiterals) == 0 {
 		se.seedLiterals = nil
 	}
-	allowList := make([]core.IPAllowListEntry, 0, len(a.IPAllowList))
-	for _, entry := range a.IPAllowList {
-		if strings.TrimSpace(entry.Source) == "" {
-			return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q has an ipAllowList entry without a source", core.ErrBadRequest, a.Name)
-		}
-		allowList = append(allowList, core.IPAllowListEntry{CIDRBlock: entry.Source, Description: entry.Description})
-	}
-	if err := core.ValidateAllowList(allowList); err != nil {
-		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q ipAllowList: %v", core.ErrBadRequest, a.Name, err)
+	allowList, err := manifestAllowEntries(a.IPAllowList, "service", a.Name)
+	if err != nil {
+		return CreateRequest{}, serviceEnv{}, err
 	}
 
 	return CreateRequest{
@@ -1791,7 +1808,7 @@ func validateKeyedEnv(e bexEnvVar) error {
 			if ref.Property != "" {
 				return fmt.Errorf("fromService sets both envVarKey and property — pick one")
 			}
-		case ref.Type == "keyvalue" || ref.Type == "redis":
+		case isKeyValueType(ref.Type):
 			if ref.Property == "" {
 				return fmt.Errorf("fromService keyvalue needs a property (connectionString, host, port, or password)")
 			}
@@ -1961,14 +1978,11 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	if effectiveType(existing.Spec.Type) != effectiveType(desired.Type) {
 		return AppView{}, fmt.Errorf("%w: spec.type is immutable; delete and recreate the service to change type", core.ErrBadRequest)
 	}
-	// initialDeployHook ran-once gate (w2/m45): decide whether to use the hook
-	// or the regular preDeployCommand for this sync based on the ran-once annotation
-	// and the current pre-deploy status.
+	// initialDeployHook ran-once gate (w2/m45): once the ran-once annotation is
+	// set, desired.PreDeployCommand stays the regular one from req.
 	markHookRan := false
-	if req.InitialDeployHook != "" {
-		if existing.Annotations[initialDeployHookRanAnnotation] != "" {
-			// Hook already ran: desired.PreDeployCommand is the regular one from req.
-		} else if pd := existing.Status.PreDeploy; pd != nil && pd.Status == appv1alpha1.PreDeploySucceeded {
+	if req.InitialDeployHook != "" && existing.Annotations[initialDeployHookRanAnnotation] == "" {
+		if pd := existing.Status.PreDeploy; pd != nil && pd.Status == appv1alpha1.PreDeploySucceeded {
 			// First pre-deploy just succeeded: mark ran, revert to regular command.
 			markHookRan = true
 		} else {
@@ -2048,16 +2062,11 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 			// Leaving the environment sheds its inbound-IP layer (w4/m28).
 			existing.Spec.EnvironmentIPAllowList = nil
 		} else {
-			metav1.SetMetaDataLabel(&existing.ObjectMeta, core.LabelProject, assignment.ProjectID)
-			metav1.SetMetaDataLabel(&existing.ObjectMeta, core.LabelEnvironment, assignment.ID)
-			// Joining (or switching) inherits the environment's inbound-IP
-			// layer (w4/m28).
-			existing.Spec.EnvironmentIPAllowList = core.EnvironmentLayerCIDRs(assignment.IPAllowList)
-			if assignment.NetworkIsolationEnabled {
-				metav1.SetMetaDataLabel(&existing.ObjectMeta, core.LabelNetworkIsolation, assignment.ID)
-			} else {
-				delete(existing.Labels, core.LabelNetworkIsolation)
-			}
+			// Joining (or switching) inherits the environment's labels +
+			// inbound-IP layer (w4/m28); the delete covers switching to an
+			// environment without isolation, which the stamp leaves alone.
+			delete(existing.Labels, core.LabelNetworkIsolation)
+			stampEnvironmentMembership(existing, assignment)
 		}
 		if appID := managedAppID(existing); appID != "" {
 			environmentStore, ok := s.Store.(interface {
@@ -2125,13 +2134,12 @@ func serviceSpecChangedOnlyByMaintenance(cur, want appv1alpha1.AppSpec) bool {
 	return reflect.DeepEqual(*probe, cur)
 }
 
-func applyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec, fields map[string]BlueprintField) bool {
+func applyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec, fields map[string]BlueprintField) {
 	if fields == nil {
-		before := *dst.DeepCopy()
 		applyCreateToSpec(dst, want)
-		return !reflect.DeepEqual(before, *dst)
+		return
 	}
-	return ApplyBlueprintServiceSpec(dst, want, fields)
+	ApplyBlueprintServiceSpec(dst, want, fields)
 }
 
 // createOwnedSpecChanged reports whether applying `want`'s create-owned fields

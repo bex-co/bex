@@ -403,9 +403,10 @@ func TestMaintenanceModeRESTPlanTransitions(t *testing.T) {
 		t.Fatalf("disable+downgrade = %d %s; spec=%+v", downgrade.Code, downgrade.Body, got.Spec)
 	}
 
-	upgrade := patch(`{"serviceDetails":{"plan":"starter","maintenanceMode":{"enabled":false,"uri":""}}}`)
-	if upgrade.Code != http.StatusOK || getApp(t, cl, "web").Spec.Tier != "starter" {
-		t.Fatalf("upgrade+disabled object = %d %s; spec=%+v", upgrade.Code, upgrade.Body, getApp(t, cl, "web").Spec)
+	upgrade := patch(`{"serviceDetails":{"plan":"starter","maintenanceMode":{"enabled":true,"uri":""}}}`)
+	upgraded := getApp(t, cl, "web")
+	if upgrade.Code != http.StatusOK || upgraded.Spec.Tier != "starter" || upgraded.Spec.MaintenanceMode == nil || !upgraded.Spec.MaintenanceMode.Enabled {
+		t.Fatalf("upgrade+enable = %d %s; spec=%+v", upgrade.Code, upgrade.Body, upgraded.Spec)
 	}
 }
 

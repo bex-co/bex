@@ -397,6 +397,31 @@ func preferTopLevel(top, nested string) string {
 	return nested
 }
 
+// handleJSON adapts the dominant handler shape — call the service, then write
+// the mapped error or the JSON result — so each route registers only its call.
+func handleJSON(status int, fn func(*http.Request) (any, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		v, err := fn(r)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, status, v)
+	}
+}
+
+// handleNoContent is handleJSON's shape for the verbs that answer 204 with an
+// empty body.
+func handleNoContent(fn func(*http.Request) error) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := fn(r); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 // toCreateRequest folds the Render-nested and bex top-level fields into the
 // neutral CreateRequest. serviceDetails is Render's canonical location for
 // plan/numInstances/healthCheckPath; the top-level plan is a bex convenience
@@ -600,12 +625,11 @@ func parseAutoDeploy(autoDeploy, trigger string) (*bool, error) {
 // spec. Served at Render's canonical /v1/services route;
 // it holds no logic beyond routing + Render serialization.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	list := func(w http.ResponseWriter, r *http.Request) {
+	list := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
 		apps, err := s.List(r.Context(), q.Get("ownerId"))
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
 		// name filters by exact name, OR'd across repeated ?name= values (Render's
 		// documented "Filter by name" — the official CLI resolves a bare
@@ -619,20 +643,17 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// values return a named 400; absent means unfiltered.
 		suspended, err := core.ParseEnum("suspended", q.Get("suspended"), "true", "false")
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
 		// Time-window filters (w2/m52): Render's createdBefore/createdAfter and
 		// updatedBefore/updatedAfter RFC3339 params.
 		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
 		updated, err := core.QueryTimeWindow(q, "updatedBefore", "updatedAfter")
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
 		apps = core.Filter(apps, func(a AppView) bool {
 			return (len(names) == 0 || slices.Contains(names, a.Name) || slices.Contains(names, renderServiceName(a))) &&
@@ -645,51 +666,39 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// service's cursor is its name; `cursor`/`limit` page the result.
 		after, limit := core.PageParams(q)
 		page := core.Page(apps, after, limit, func(a AppView) string { return a.Name })
-		core.WriteJSON(w, http.StatusOK, s.restServiceList(r.Context(), page)) // [{service, cursor}, ...]
-	}
-	get := func(w http.ResponseWriter, r *http.Request) {
+		return s.restServiceList(r.Context(), page), nil // [{service, cursor}, ...]
+	})
+	get := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		app, err := s.Get(r.Context(), r.PathValue("id"))
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app))
-	}
-	listInstances := func(w http.ResponseWriter, r *http.Request) {
-		instances, err := s.ListInstances(r.Context(), r.PathValue("id"))
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, instances)
-	}
+		return s.restService(r.Context(), app), nil
+	})
+	listInstances := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.ListInstances(r.Context(), r.PathValue("id"))
+	})
 	// shellTicket mints a Browser Web Shell exec ticket (docs/ADR035-ssh.md
 	// § Browser Web Shell). bex extension over Render's REST — the dashboard
 	// terminal opens the gateway WebSocket with it. Optional ?instance=<id>
 	// pins one Ready replica; omitted selects a random one, matching SSH.
-	shellTicket := func(w http.ResponseWriter, r *http.Request) {
-		view, err := s.CreateShellSession(r.Context(), r.PathValue("id"), r.URL.Query().Get("instance"))
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusCreated, view)
-	}
+	shellTicket := handleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+		return s.CreateShellSession(r.Context(), r.PathValue("id"), r.URL.Query().Get("instance"))
+	})
 	// verb maps a Service action to a handler with a Render-accurate status
 	// code. ?confirm=<phrase> rides the context on every verb (withConfirm) —
 	// a no-op for most of them, but it's what arms Suspend's protected-
 	// environment guard (w6/m19, ProtectedConfirmation) without needing a
 	// bespoke handler alongside Restart/Resume.
 	verb := func(status int, fn func(context.Context, string) (AppView, error)) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
+		return handleJSON(status, func(r *http.Request) (any, error) {
 			ctx := withConfirm(r.Context(), r.URL.Query().Get("confirm"))
 			app, err := fn(ctx, r.PathValue("id"))
 			if err != nil {
-				core.WriteErr(w, err)
-				return
+				return nil, err
 			}
-			core.WriteJSON(w, status, s.restService(r.Context(), app))
-		}
+			return s.restService(r.Context(), app), nil
+		})
 	}
 	// patch handles PATCH /v1/services/{id} — a plan change (serviceDetails.plan),
 	// an idle-timeout change (serviceDetails.idleTTLSeconds), and/or a root
@@ -712,15 +721,25 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		var plan string
 		var idleTTL *int32
 		var maxShutdownDelay optionalInt32
-		var healthCheckPath, preDeployCommand, schedule, publishPath, buildCommand, startCommand, dockerfilePath *string
+		var publishPath, buildCommand, startCommand, dockerfilePath *string
 		var nestedRegistryCredentialID json.RawMessage
 		var patchIPAllowList *[]core.IPAllowListEntry // nil = not provided (leave unchanged); non-nil = replace
+		// Fields with both a top-level and a nested serviceDetails spelling
+		// coalesce to one apply; the nested spelling wins when a body carries
+		// both.
+		healthCheckPath, preDeployCommand, schedule := req.HealthCheckPath, req.PreDeployCommand, req.Schedule
 		if req.ServiceDetails != nil {
 			plan, idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
 			maxShutdownDelay = req.ServiceDetails.MaxShutdownDelaySeconds
-			healthCheckPath = req.ServiceDetails.HealthCheckPath
-			preDeployCommand = req.ServiceDetails.PreDeployCommand
-			schedule = req.ServiceDetails.Schedule
+			if req.ServiceDetails.HealthCheckPath != nil {
+				healthCheckPath = req.ServiceDetails.HealthCheckPath
+			}
+			if req.ServiceDetails.PreDeployCommand != nil {
+				preDeployCommand = req.ServiceDetails.PreDeployCommand
+			}
+			if req.ServiceDetails.Schedule != nil {
+				schedule = req.ServiceDetails.Schedule
+			}
 			publishPath = req.ServiceDetails.PublishPath
 			buildCommand = req.ServiceDetails.BuildCommand
 			allowList, provided, err := decodeIPAllowList(r.Context(), req.ServiceDetails.IPAllowList)
@@ -843,23 +862,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		addOp(autoDeploy != nil, func() (AppView, error) {
 			return s.SetAutoDeploy(r.Context(), id, *autoDeploy)
 		})
-		addOp(req.Schedule != nil || req.Command != nil, func() (AppView, error) {
-			return s.SetCronJob(r.Context(), id, req.Schedule, req.Command)
-		})
-		addOp(req.HealthCheckPath != nil, func() (AppView, error) {
-			return s.SetHealthCheckPath(r.Context(), id, *req.HealthCheckPath)
-		})
-		addOp(req.PreDeployCommand != nil, func() (AppView, error) {
-			return s.SetPreDeployCommand(r.Context(), id, *req.PreDeployCommand)
+		addOp(schedule != nil || req.Command != nil, func() (AppView, error) {
+			return s.SetCronJob(r.Context(), id, schedule, req.Command)
 		})
 		addOp(healthCheckPath != nil, func() (AppView, error) {
 			return s.SetHealthCheckPath(r.Context(), id, *healthCheckPath)
 		})
 		addOp(preDeployCommand != nil, func() (AppView, error) {
 			return s.SetPreDeployCommand(r.Context(), id, *preDeployCommand)
-		})
-		addOp(schedule != nil, func() (AppView, error) {
-			return s.SetCronJob(r.Context(), id, schedule, nil)
 		})
 		addOp(publishPath != nil, func() (AppView, error) {
 			return s.SetPublishPath(r.Context(), id, *publishPath)
@@ -898,19 +908,17 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}
 	// scale handles POST /v1/services/{id}/scale — sets the running instance
 	// count (numInstances); out-of-range is core.ErrBadRequest => 400.
-	scale := func(w http.ResponseWriter, r *http.Request) {
+	scale := handleJSON(http.StatusAccepted, func(r *http.Request) (any, error) {
 		var req scaleRequest
 		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
+			return nil, core.ErrBadRequest
 		}
 		app, err := s.Scale(r.Context(), r.PathValue("id"), req.NumInstances)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusAccepted, s.restService(r.Context(), app)) // Render: scale => 202
-	}
+		return s.restService(r.Context(), app), nil
+	})
 
 	// create handles POST /v1/services — create-or-update a service from a
 	// Render-shaped body; deploy-from-chat rides this with a repo (no bespoke
@@ -957,55 +965,49 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// ?confirm=<phrase> arms the delete when the service is a member of a
 	// protectedStatus=protected Environment (w6/m19, ProtectedConfirmation);
 	// ignored (harmless) otherwise.
-	deleteSvc := func(w http.ResponseWriter, r *http.Request) {
+	deleteSvc := handleNoContent(func(r *http.Request) error {
 		ctx := withConfirm(r.Context(), r.URL.Query().Get("confirm"))
-		if err := s.Delete(ctx, r.PathValue("id")); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent) // Render: delete => 204, empty body
-	}
+		return s.Delete(ctx, r.PathValue("id"))
+	})
 
-	writeCronRun := func(w http.ResponseWriter, run CronRunView, err error) {
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, toRenderCronJobRun(run))
-	}
 	// runCron handles Render's current POST /cron-jobs/{id}/runs contract. The
 	// deterministic pending run is returned immediately; if another run is active,
 	// the same intent patch asks the operator to cancel it before replacement.
-	runCron := func(w http.ResponseWriter, r *http.Request) {
+	runCron := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		run, err := s.TriggerCronRun(r.Context(), r.PathValue("id"))
-		writeCronRun(w, run, err)
-	}
-	listCronRuns := func(w http.ResponseWriter, r *http.Request) {
+		if err != nil {
+			return nil, err
+		}
+		return toRenderCronJobRun(run), nil
+	})
+	listCronRuns := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		cursor, limit := core.PageParams(r.URL.Query())
 		runs, err := s.ListCronRuns(r.Context(), r.PathValue("id"), cursor, limit)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, toCronJobRunList(runs))
-	}
-	getCronRun := func(w http.ResponseWriter, r *http.Request) {
+		return toCronJobRunList(runs), nil
+	})
+	getCronRun := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		run, err := s.GetCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
-		writeCronRun(w, run, err)
-	}
-	cancelCronRun := func(w http.ResponseWriter, r *http.Request) {
+		if err != nil {
+			return nil, err
+		}
+		return toRenderCronJobRun(run), nil
+	})
+	cancelCronRun := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		run, err := s.CancelCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
-		writeCronRun(w, run, err)
-	}
+		if err != nil {
+			return nil, err
+		}
+		return toRenderCronJobRun(run), nil
+	})
 	// Render's current cancel route addresses the active run implicitly and
 	// returns 204. The per-run POST route above is a documented bex extension.
-	cancelCurrentCronRun := func(w http.ResponseWriter, r *http.Request) {
-		if _, err := s.CancelCurrentCronRun(r.Context(), r.PathValue("id")); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}
+	cancelCurrentCronRun := handleNoContent(func(r *http.Request) error {
+		_, err := s.CancelCurrentCronRun(r.Context(), r.PathValue("id"))
+		return err
+	})
 	// Render's canonical cron-job noun. The service subresource form is also
 	// registered below; the retired public /v1/apps family is not.
 	mux.HandleFunc("GET /v1/cron-jobs/{id}/runs", listCronRuns)
@@ -1015,17 +1017,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/cron-jobs/{id}/runs/{runId}/cancel", cancelCronRun)
 
 	// Custom-domains sub-resource (Render-compatible).
-	listDomains := func(w http.ResponseWriter, r *http.Request) {
+	listDomains := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		domains, err := s.ListDomains(r.Context(), r.PathValue("id"))
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
 		q := r.URL.Query()
 		domains, err = filterDomains(domains, q.Get("verificationStatus"), q.Get("domainType"))
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
 		// Cursor/limit pagination — cursor is the domain name, matching the per-item cursor
 		// emitted by toCustomDomainList. Pagination is applied only when either cursor or
@@ -1033,132 +1033,103 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		after, limit := core.PageParams(q)
 		domains = core.StablePage(domains, after, limit, q.Has("cursor") || q.Has("limit"),
 			func(d DomainView) string { return d.Name })
-		core.WriteJSON(w, http.StatusOK, toCustomDomainList(domains))
-	}
-	addDomain := func(w http.ResponseWriter, r *http.Request) {
+		return toCustomDomainList(domains), nil
+	})
+	addDomain := handleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		var req struct {
 			Name string `json:"name"`
 		}
 		if err := core.DecodeJSON(r, &req); err != nil || req.Name == "" {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
+			return nil, core.ErrBadRequest
 		}
 		d, err := s.AddDomain(r.Context(), r.PathValue("id"), req.Name)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusCreated, toRenderCustomDomain(d))
-	}
-	getDomain := func(w http.ResponseWriter, r *http.Request) {
+		return toRenderCustomDomain(d), nil
+	})
+	getDomain := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		d, err := s.GetDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, toRenderCustomDomain(d))
-	}
-	deleteDomain := func(w http.ResponseWriter, r *http.Request) {
-		if err := s.DeleteDomain(r.Context(), r.PathValue("id"), r.PathValue("name")); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}
+		return toRenderCustomDomain(d), nil
+	})
+	deleteDomain := handleNoContent(func(r *http.Request) error {
+		return s.DeleteDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
+	})
 	// verifyDomain re-checks DNS/cert state now (Render's POST …/verify) and returns
 	// the fresh domain. 200 OK — bex verification is automatic, so this is a re-read.
-	verifyDomain := func(w http.ResponseWriter, r *http.Request) {
+	verifyDomain := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		d, err := s.VerifyDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, toRenderCustomDomain(d))
-	}
+		return toRenderCustomDomain(d), nil
+	})
 
 	// Autoscaling sub-resource (Render-compatible).
 	// GET   …/autoscaling — current config (bex extension; Render has no GET)
 	// PUT   …/autoscaling — upsert autoscaling (Render: PUT, 200)
 	// DELETE …/autoscaling — disable autoscaling (Render: DELETE, 204)
-	getAutoscaling := func(w http.ResponseWriter, r *http.Request) {
-		av, err := s.GetAutoscaling(r.Context(), r.PathValue("id"))
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, av)
-	}
-	putAutoscaling := func(w http.ResponseWriter, r *http.Request) {
+	getAutoscaling := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.GetAutoscaling(r.Context(), r.PathValue("id"))
+	})
+	putAutoscaling := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var req SetAutoscalingRequest
 		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
+			return nil, core.ErrBadRequest
 		}
-		av, err := s.SetAutoscaling(r.Context(), r.PathValue("id"), req)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, av)
-	}
-	deleteAutoscaling := func(w http.ResponseWriter, r *http.Request) {
-		if err := s.DeleteAutoscaling(r.Context(), r.PathValue("id")); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}
+		return s.SetAutoscaling(r.Context(), r.PathValue("id"), req)
+	})
+	deleteAutoscaling := handleNoContent(func(r *http.Request) error {
+		return s.DeleteAutoscaling(r.Context(), r.PathValue("id"))
+	})
 
 	// Static-site edge rules (Render-compatible): /routes (redirects/rewrites) and
 	// /headers (custom response headers). GET lists; PUT replaces the whole list.
-	listRoutes := func(w http.ResponseWriter, r *http.Request) {
+	listRoutes := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		routes, err := s.ListRoutes(r.Context(), r.PathValue("id"))
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, toRenderRoutes(routes))
-	}
-	putRoutes := func(w http.ResponseWriter, r *http.Request) {
+		return toRenderRoutes(routes), nil
+	})
+	putRoutes := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body []renderRoute
 		if err := core.DecodeJSON(r, &body); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
+			return nil, core.ErrBadRequest
 		}
 		app, err := s.SetRoutes(r.Context(), r.PathValue("id"), routeViewsFromRender(body))
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, toRenderRoutes(app.Routes))
-	}
-	listHeaders := func(w http.ResponseWriter, r *http.Request) {
+		return toRenderRoutes(app.Routes), nil
+	})
+	listHeaders := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		headers, err := s.ListHeaders(r.Context(), r.PathValue("id"))
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, toRenderHeaders(headers))
-	}
-	putHeaders := func(w http.ResponseWriter, r *http.Request) {
+		return toRenderHeaders(headers), nil
+	})
+	putHeaders := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body []renderHeader
 		if err := core.DecodeJSON(r, &body); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
+			return nil, core.ErrBadRequest
 		}
 		app, err := s.SetHeaders(r.Context(), r.PathValue("id"), headerViewsFromRender(body))
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, toRenderHeaders(app.Headers))
-	}
+		return toRenderHeaders(app.Headers), nil
+	})
 
 	// Blueprint routes (w2/m15 + w2/m41 + w2/m62): validate · create · list ·
 	// get-by-id · sync · list-syncs · update · disconnect.
 	// POST /v1/blueprints/validate is registered before POST /v1/blueprints/{id}/sync
 	// — Go 1.22+ ServeMux resolves the more specific (literal) path first.
-	mux.HandleFunc("POST /v1/blueprints", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /v1/blueprints", handleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		var body struct {
 			Repo         string            `json:"repo"`
 			Branch       string            `json:"branch"`
@@ -1169,10 +1140,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			Confirm      string            `json:"confirm"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
+			return nil, core.ErrBadRequest
 		}
-		view, err := s.CreateBlueprint(r.Context(), body.OwnerID, CreateBlueprintRequest{
+		return s.CreateBlueprint(r.Context(), body.OwnerID, CreateBlueprintRequest{
 			Repo:         body.Repo,
 			Branch:       body.Branch,
 			Path:         body.Path,
@@ -1180,22 +1150,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			EnvVarValues: body.EnvVarValues,
 			Confirm:      body.Confirm,
 		})
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusCreated, view)
-	})
-	mux.HandleFunc("GET /v1/blueprints/{id}", func(w http.ResponseWriter, r *http.Request) {
-		ownerID := r.URL.Query().Get("ownerId")
-		view, err := s.GetBlueprintByID(r.Context(), r.PathValue("id"), ownerID)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, view)
-	})
-	mux.HandleFunc("PATCH /v1/blueprints/{id}", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("GET /v1/blueprints/{id}", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.GetBlueprintByID(r.Context(), r.PathValue("id"), r.URL.Query().Get("ownerId"))
+	}))
+	mux.HandleFunc("PATCH /v1/blueprints/{id}", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
 			Name     *string `json:"name"`
 			AutoSync *bool   `json:"autoSync"`
@@ -1203,39 +1162,22 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			OwnerID  string  `json:"ownerId"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
+			return nil, core.ErrBadRequest
 		}
-		view, err := s.UpdateBlueprint(r.Context(), r.PathValue("id"), body.OwnerID, UpdateBlueprintRequest{
+		return s.UpdateBlueprint(r.Context(), r.PathValue("id"), body.OwnerID, UpdateBlueprintRequest{
 			Name:     body.Name,
 			AutoSync: body.AutoSync,
 			Path:     body.Path,
 		})
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, view)
-	})
-	mux.HandleFunc("DELETE /v1/blueprints/{id}", func(w http.ResponseWriter, r *http.Request) {
-		ownerID := r.URL.Query().Get("ownerId")
-		if err := s.DisconnectBlueprint(r.Context(), r.PathValue("id"), ownerID); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-	mux.HandleFunc("GET /v1/blueprints/{id}/syncs", func(w http.ResponseWriter, r *http.Request) {
-		ownerID := r.URL.Query().Get("ownerId")
-		cursor := r.URL.Query().Get("cursor")
-		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-		runs, err := s.ListBlueprintSyncs(r.Context(), r.PathValue("id"), ownerID, cursor, limit)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, runs)
-	})
+	}))
+	mux.HandleFunc("DELETE /v1/blueprints/{id}", handleNoContent(func(r *http.Request) error {
+		return s.DisconnectBlueprint(r.Context(), r.PathValue("id"), r.URL.Query().Get("ownerId"))
+	}))
+	mux.HandleFunc("GET /v1/blueprints/{id}/syncs", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		q := r.URL.Query()
+		limit, _ := strconv.Atoi(q.Get("limit"))
+		return s.ListBlueprintSyncs(r.Context(), r.PathValue("id"), q.Get("ownerId"), q.Get("cursor"), limit)
+	}))
 	mux.HandleFunc("POST /v1/blueprints/validate", func(w http.ResponseWriter, r *http.Request) {
 		ownerID, bexYAML, err := decodeBlueprintValidationRequest(w, r)
 		if err != nil {
@@ -1249,7 +1191,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, v)
 	})
-	mux.HandleFunc("POST /v1/blueprints/deploy", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /v1/blueprints/deploy", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
 			OwnerID string `json:"ownerId"`
 			Repo    string `json:"repo"`
@@ -1258,19 +1200,13 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			Confirm string `json:"confirm"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil || strings.TrimSpace(body.BexYAML) == "" {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
+			return nil, core.ErrBadRequest
 		}
-		result, err := s.DeployStack(r.Context(), DeployRequest{
+		return s.DeployStack(r.Context(), DeployRequest{
 			OwnerID: body.OwnerID, Repo: body.Repo, Branch: body.Branch, Manifest: body.BexYAML, Confirm: body.Confirm,
 		})
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, result)
-	})
-	mux.HandleFunc("POST /v1/blueprints/preview", func(w http.ResponseWriter, r *http.Request) {
+	}))
+	mux.HandleFunc("POST /v1/blueprints/preview", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
 			Repo    string `json:"repo"`
 			Branch  string `json:"branch"`
@@ -1278,87 +1214,64 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			OwnerID string `json:"ownerId"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
+			return nil, core.ErrBadRequest
 		}
-		p, err := s.PreviewBlueprint(r.Context(), body.OwnerID, body.Repo, body.Branch, body.Path)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, p)
-	})
-	mux.HandleFunc("GET /v1/blueprints", func(w http.ResponseWriter, r *http.Request) {
-		ownerID := r.URL.Query().Get("ownerId")
-		views, err := s.ListBlueprints(r.Context(), ownerID)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, views)
-	})
-	mux.HandleFunc("POST /v1/blueprints/{id}/sync", func(w http.ResponseWriter, r *http.Request) {
+		return s.PreviewBlueprint(r.Context(), body.OwnerID, body.Repo, body.Branch, body.Path)
+	}))
+	mux.HandleFunc("GET /v1/blueprints", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.ListBlueprints(r.Context(), r.URL.Query().Get("ownerId"))
+	}))
+	mux.HandleFunc("POST /v1/blueprints/{id}/sync", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
 			BexYAML string `json:"bexYaml"`
 			OwnerID string `json:"ownerId"`
 			Confirm string `json:"confirm"`
 		}
 		_ = core.DecodeJSON(r, &body)
-		res, err := s.SyncBlueprint(r.Context(), r.PathValue("id"), body.OwnerID, body.BexYAML, body.Confirm)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, res)
-	})
+		return s.SyncBlueprint(r.Context(), r.PathValue("id"), body.OwnerID, body.BexYAML, body.Confirm)
+	}))
 
 	type notificationOverrideResponse struct {
 		NotificationsToSend         string `json:"notificationsToSend"`
 		PreviewNotificationsEnabled string `json:"previewNotificationsEnabled"`
 	}
-	writeNotificationOverride := func(w http.ResponseWriter, app AppView) {
-		core.WriteJSON(w, http.StatusOK, notificationOverrideResponse{
+	toNotificationOverride := func(app AppView) notificationOverrideResponse {
+		return notificationOverrideResponse{
 			NotificationsToSend:         app.NotificationsToSend,
 			PreviewNotificationsEnabled: "default",
-		})
+		}
 	}
-	mux.HandleFunc("GET /v1/notification-settings/overrides/services/{id}", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /v1/notification-settings/overrides/services/{id}", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		app, err := s.Get(r.Context(), r.PathValue("id"))
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		writeNotificationOverride(w, app)
-	})
-	mux.HandleFunc("PATCH /v1/notification-settings/overrides/services/{id}", func(w http.ResponseWriter, r *http.Request) {
+		return toNotificationOverride(app), nil
+	}))
+	mux.HandleFunc("PATCH /v1/notification-settings/overrides/services/{id}", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
 			NotificationsToSend         *string `json:"notificationsToSend"`
 			PreviewNotificationsEnabled *string `json:"previewNotificationsEnabled"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
-			core.WriteErr(w, fmt.Errorf("%w: invalid notification override body", core.ErrBadRequest))
-			return
+			return nil, fmt.Errorf("%w: invalid notification override body", core.ErrBadRequest)
 		}
 		if body.PreviewNotificationsEnabled != nil && *body.PreviewNotificationsEnabled != "default" {
-			core.WriteErr(w, fmt.Errorf("%w: previewNotificationsEnabled is not supported; use default", core.ErrBadRequest))
-			return
+			return nil, fmt.Errorf("%w: previewNotificationsEnabled is not supported; use default", core.ErrBadRequest)
 		}
 		if body.NotificationsToSend == nil {
 			app, err := s.Get(r.Context(), r.PathValue("id"))
 			if err != nil {
-				core.WriteErr(w, err)
-				return
+				return nil, err
 			}
-			writeNotificationOverride(w, app)
-			return
+			return toNotificationOverride(app), nil
 		}
 		app, err := s.SetNotificationsToSend(r.Context(), r.PathValue("id"), *body.NotificationsToSend)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		writeNotificationOverride(w, app)
-	})
+		return toNotificationOverride(app), nil
+	}))
 
 	const base = "/v1/services"
 	mux.HandleFunc("GET "+base, list)
