@@ -353,7 +353,7 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 			return nil, result, true, failErr
 		}
 		kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
-		meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{Type: "Ready", Status: metav1.ConditionFalse,
+		meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
 			Reason: "ConnectionSecretRebuilding", Message: "rebuilding immutable connection information", ObservedGeneration: kv.Generation})
 		if err := r.Status().Update(ctx, kv); err != nil {
 			return nil, ctrl.Result{}, true, err
@@ -695,7 +695,7 @@ func (r *KeyValueReconciler) applyKeyValueStorageState(
 		kv.Status.Phase = appv1alpha1.KVPhaseFailed
 	}
 	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionFalse, Reason: state.reason,
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: state.reason,
 		Message: state.message, ObservedGeneration: kv.Generation,
 	})
 	if err := r.Status().Update(ctx, kv); err != nil {
@@ -726,7 +726,7 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 		}
 		kv.Status.Phase = appv1alpha1.KVPhaseReady
 		meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionTrue, Reason: reason,
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: reason,
 			Message: message, ObservedGeneration: kv.Generation,
 		})
 		if err := r.Status().Update(ctx, kv); err != nil {
@@ -742,7 +742,7 @@ func (r *KeyValueReconciler) updateKeyValueReadiness(
 		reason, message = "PodUnready", "a current Valkey pod is not Ready"
 	}
 	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionFalse, Reason: reason,
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
 		Message: message, ObservedGeneration: kv.Generation,
 	})
 	if err := r.Status().Update(ctx, kv); err != nil {
@@ -821,7 +821,7 @@ func (r *KeyValueReconciler) rejectKeyValueStorageShrink(ctx context.Context, kv
 		Message: message, ObservedGeneration: kv.Generation,
 	})
 	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionFalse, Reason: "StorageShrinkRejected",
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "StorageShrinkRejected",
 		Message: message, ObservedGeneration: kv.Generation,
 	})
 	return r.Status().Update(ctx, kv)
@@ -942,7 +942,7 @@ func setKeyValueStorageCondition(kv *appv1alpha1.KeyValue, state keyValueStorage
 func (r *KeyValueReconciler) kvFail(ctx context.Context, kv *appv1alpha1.KeyValue, reason string, err error) (ctrl.Result, error) {
 	kv.Status.Phase = appv1alpha1.KVPhaseFailed
 	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionFalse, Reason: reason, Message: err.Error(),
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: err.Error(),
 		ObservedGeneration: kv.Generation,
 	})
 	_ = r.Status().Update(ctx, kv)

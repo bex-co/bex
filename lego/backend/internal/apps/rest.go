@@ -828,7 +828,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			imageOwnerID = &req.Image.OwnerID
 		}
 		if req.Repo != nil || image != nil || req.Branch != nil || registryCredentialID != nil {
-			if app, err = s.SetSourceAndRegistryCredential(r.Context(), id, req.Repo, image, req.Branch, registryCredentialID, imageOwnerID); err != nil {
+			if app, err = s.SetSourceAndRegistryCredential(r.Context(), id, sourcePatch{Repo: req.Repo, Image: image, Branch: req.Branch, RegistryCredentialID: registryCredentialID, ImageOwnerID: imageOwnerID}); err != nil {
 				core.WriteErr(w, err)
 				return
 			}

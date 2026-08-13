@@ -67,6 +67,15 @@ const AnnotationCanceledReleaseGeneration = "app.bex.co/canceled-release-generat
 // private service) or whose owner switched its own platform subdomain off.
 const ConditionPublicRouting = "PublicRouting"
 
+// ConditionReady is the status condition every bex resource (App, Database,
+// KeyValue) reports its convergence on: True once the reconciler has the
+// resource at its desired state, False with a reason/message while it is
+// building, rolling out, suspended, or failed. It lives on the CRD contract
+// because both sides key on it — the operator writes it, and the control plane
+// maps its reasons onto deploy/service state (see the reconcilers' shared
+// reason vocabulary).
+const ConditionReady = "Ready"
+
 // SubdomainPolicy controls whether the platform subdomain (<slug>.onbex.co) is
 // active for an App. Render's renderSubdomainPolicy enum values.
 const (

@@ -659,7 +659,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if db.Spec.Suspended {
 		db.Status.Phase = appv1alpha1.DBPhaseReady
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionFalse, Reason: "Suspended",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "Suspended",
 			Message: "postgres suspended (hibernated; PVC and config kept)", ObservedGeneration: db.Generation,
 		})
 		if err := r.Status().Update(ctx, &db); err != nil {
@@ -860,7 +860,7 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 		}
 		db.Status.Phase = appv1alpha1.DBPhaseFailed
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionFalse, Reason: "MajorVersionUpgradeFailed",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "MajorVersionUpgradeFailed",
 			Message: clusterState.message, ObservedGeneration: db.Generation,
 		})
 		if err := r.Status().Update(ctx, db); err != nil {
@@ -871,7 +871,7 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 	if clusterState.majorUpgradeRunning() {
 		db.Status.Phase = appv1alpha1.DBPhaseUpgrading
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionFalse, Reason: "MajorVersionUpgrade",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "MajorVersionUpgrade",
 			Message: clusterState.message, ObservedGeneration: db.Generation,
 		})
 		if err := r.Status().Update(ctx, db); err != nil {
@@ -893,7 +893,7 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 		}
 		db.Status.Phase = appv1alpha1.DBPhaseReady
 		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-			Type: "Ready", Status: metav1.ConditionTrue, Reason: "Provisioned",
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Provisioned",
 			Message: "postgres ready", ObservedGeneration: db.Generation,
 		})
 		if err := r.Status().Update(ctx, db); err != nil {
@@ -908,7 +908,7 @@ func (r *DatabaseReconciler) reconcileDatabaseReadiness(
 
 	db.Status.Phase = appv1alpha1.DBPhaseProvisioning
 	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionFalse, Reason: "Provisioning",
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "Provisioning",
 		Message: "waiting for CloudNativePG", ObservedGeneration: db.Generation,
 	})
 	if err := r.Status().Update(ctx, db); err != nil {
@@ -1080,7 +1080,7 @@ func (r *DatabaseReconciler) updateExternalAddressStatus(db *appv1alpha1.Databas
 func (r *DatabaseReconciler) dbFail(ctx context.Context, db *appv1alpha1.Database, reason string, err error) (ctrl.Result, error) {
 	db.Status.Phase = appv1alpha1.DBPhaseFailed
 	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionFalse, Reason: reason, Message: err.Error(),
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: err.Error(),
 		ObservedGeneration: db.Generation,
 	})
 	_ = r.Status().Update(ctx, db)
@@ -1091,7 +1091,7 @@ func (r *DatabaseReconciler) rejectDatabaseStorageShrink(ctx context.Context, db
 	db.Status.Phase = appv1alpha1.DBPhaseFailed
 	db.Status.AllocatedStorageGB = current
 	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-		Type: "Ready", Status: metav1.ConditionFalse, Reason: "StorageShrinkRejected",
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "StorageShrinkRejected",
 		Message:            fmt.Sprintf("Postgres storage is grow-only: requested %d GB is below the allocated %d GB", requested, current),
 		ObservedGeneration: db.Generation,
 	})
