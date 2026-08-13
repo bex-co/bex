@@ -1,9 +1,11 @@
+import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import { CodeBlock } from "@/common/components/code-block";
+import { classifyHref } from "@/common/lib/external-url";
 import { ExternalLink } from "lucide-react";
 import type { Components } from "react-markdown";
 
@@ -23,10 +25,14 @@ const components: Components = {
   },
 
   a({ children, href, ...props }) {
-    const isExternal = href?.startsWith("http");
+    const { safeHref, isExternal } = classifyHref(href);
+    if (!safeHref) {
+      // Refused destination (e.g. javascript:/data:) — keep the text, drop the link.
+      return <span {...props}>{children}</span>;
+    }
     return (
       <a
-        href={href}
+        href={safeHref}
         target={isExternal ? "_blank" : undefined}
         rel={isExternal ? "noopener noreferrer" : undefined}
         className="underline hover:opacity-80 inline-flex items-center gap-1 font-medium"
@@ -127,7 +133,10 @@ const components: Components = {
   },
 };
 
-export function MarkdownRenderer({
+// Memoized on its props (content + className): rich Markdown parsing is the
+// dominant per-block cost when a long transcript re-renders during streaming, so
+// a block whose text has not changed must not re-parse (scan finding #9).
+export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   className,
 }: MarkdownRendererProps) {
@@ -144,4 +153,4 @@ export function MarkdownRenderer({
       </ReactMarkdown>
     </div>
   );
-}
+});

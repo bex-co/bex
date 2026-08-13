@@ -71,6 +71,15 @@ type Server struct {
 	HandshakeTimeout time.Duration
 	SessionTimeout   time.Duration
 
+	// MaxPreAuthConns bounds how many connections may be in the pre-authentication
+	// phase (TCP accepted, SSH handshake + public-key database lookups in flight)
+	// at once. The session limiter is acquired only AFTER the handshake, so
+	// without this an unauthenticated flood spawns unbounded goroutines and store
+	// lookups before any cap applies. A slot is held only across the handshake and
+	// released the moment the connection authenticates (the session limiter takes
+	// over) or fails. 0 gets the default (256).
+	MaxPreAuthConns int
+
 	// MaxChannelsPerConn bounds concurrent session channels on ONE connection for
 	// agent-session sandbox targets (ADR054 D3), which Zed's ControlMaster remoting
 	// multiplexes. 0 disables the exception: sandbox targets fall back to the
@@ -85,6 +94,9 @@ func (s *Server) defaults() {
 	}
 	if s.SessionTimeout <= 0 {
 		s.SessionTimeout = 4 * time.Hour
+	}
+	if s.MaxPreAuthConns <= 0 {
+		s.MaxPreAuthConns = 256
 	}
 	if s.Limits == nil {
 		s.Limits = sshgateway.NewSessionLimiter(0, 0)
@@ -161,6 +173,11 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 		<-ctx.Done()
 		_ = listener.Close()
 	}()
+	// Pre-authentication admission. Bounds concurrent handshakes-in-flight before
+	// ssh.NewServerConn and its key-lookup DB round trips run, so an anonymous
+	// connection flood cannot exhaust goroutines, descriptors, and store QPS ahead
+	// of the post-handshake session limiter. A full buffer sheds immediately.
+	preAuth := make(chan struct{}, s.MaxPreAuthConns)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -169,23 +186,44 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 			}
 			return err
 		}
+		select {
+		case preAuth <- struct{}{}:
+		default:
+			s.Metrics.LimitRejected("preauth")
+			_ = conn.Close()
+			continue
+		}
 		go func() {
-			if err := s.serveConn(ctx, conn, config); err != nil && ctx.Err() == nil {
+			// Idempotent release: serveConn frees the slot as soon as the handshake
+			// resolves; this is the safety net if it returns without doing so.
+			released := false
+			release := func() {
+				if !released {
+					released = true
+					<-preAuth
+				}
+			}
+			if err := s.serveConn(ctx, conn, config, release); err != nil && ctx.Err() == nil {
 				log.Printf("ssh gateway connection ended: %v", err)
 			}
+			release()
 		}()
 	}
 }
 
-func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.ServerConfig) error {
+func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.ServerConfig, releasePreAuth func()) error {
 	defer raw.Close()
 	_ = raw.SetDeadline(time.Now().Add(s.HandshakeTimeout))
 	conn, channels, requests, err := ssh.NewServerConn(raw, config)
 	if err != nil {
+		releasePreAuth()
 		return err
 	}
 	defer conn.Close()
 	_ = raw.SetDeadline(time.Time{})
+	// Handshake done: the authenticated session limiter now bounds this
+	// connection, so free the pre-auth slot for the next incoming handshake.
+	releasePreAuth()
 
 	subject := conn.Permissions.Extensions[permissionSubject]
 	target, err := decodeTarget(conn.Permissions.Extensions[permissionTarget])

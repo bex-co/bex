@@ -619,22 +619,29 @@ func (s *PGStore) RecordWebhookAttempt(ctx context.Context, id string, status in
 	return err
 }
 
-// SweepWebhookDeliveries purges terminal delivery rows (w1/m67 F3). The table is
-// both the durable delivery QUEUE and the product's history surface, so nothing
-// ever reclaimed a delivered/exhausted row: ordinary tenant activity grew shared
+// SweepWebhookDeliveries purges reclaimable delivery rows (w1/m67 F3). The table
+// is both the durable delivery QUEUE and the product's history surface, so before
+// m67 nothing ever reclaimed a finished row: ordinary tenant activity grew shared
 // table, index, and backup storage without bound.
 //
-// Two eligibility rules, applied only to rows that are already terminal
-// (delivered_at or failed_at set — a pending or retryable delivery is never
-// touched):
+// Terminal rows (delivered_at or failed_at set) are purged when either:
 //
-//   - older than `before`, so history has a finite lifetime; and
+//   - older than `before`, so history has a finite lifetime; or
 //   - beyond `keepPerEndpoint` most recent rows for their endpoint, so a burst
 //     inside the age window cannot evade the age rule alone.
 //
-// Deletion is bounded per call (`limit`) and safe to run concurrently on two
-// replicas — rows are claimed with FOR UPDATE SKIP LOCKED, so a second sweeper
-// simply takes different rows. Returns the number deleted.
+// Abandoned PENDING rows older than `before` are also purged (scan finding #3):
+// a disabled endpoint's open deliveries are never claimed (ClaimDue requires
+// e.enabled) and never terminalized, so without this they park forever and grow
+// the shared table without bound — an attacker's disabled-endpoint backlog would
+// survive retention indefinitely. This is safe because a live retryable delivery
+// exhausts its ~33h schedule far inside the 90-day retention floor, so a still-open
+// row older than `before` is definitively dead, not mid-retry. Park-and-resume for
+// a recently disabled endpoint is unaffected (its rows are younger than `before`).
+//
+// Deletion is bounded per call (`limit` for each of the two passes) and safe to
+// run concurrently on two replicas — rows are claimed with FOR UPDATE SKIP LOCKED,
+// so a second sweeper simply takes different rows. Returns the number deleted.
 func (s *PGStore) SweepWebhookDeliveries(ctx context.Context, before time.Time, keepPerEndpoint, limit int) (int64, error) {
 	if limit <= 0 {
 		limit = 1000
@@ -642,7 +649,7 @@ func (s *PGStore) SweepWebhookDeliveries(ctx context.Context, before time.Time, 
 	if keepPerEndpoint < 0 {
 		keepPerEndpoint = 0
 	}
-	tag, err := s.Pool.Exec(ctx,
+	terminal, err := s.Pool.Exec(ctx,
 		`WITH ranked AS (
 		   SELECT id, created_at,
 		          row_number() OVER (PARTITION BY endpoint_id ORDER BY created_at DESC, id DESC) AS rn
@@ -661,7 +668,20 @@ func (s *PGStore) SweepWebhookDeliveries(ctx context.Context, before time.Time, 
 	if err != nil {
 		return 0, classify("webhook deliveries", err)
 	}
-	return tag.RowsAffected(), nil
+	abandoned, err := s.Pool.Exec(ctx,
+		`WITH eligible AS (
+		   SELECT id FROM webhook_deliveries
+		    WHERE delivered_at IS NULL AND failed_at IS NULL AND created_at < $1
+		    ORDER BY created_at
+		    LIMIT $2
+		    FOR UPDATE SKIP LOCKED
+		 )
+		 DELETE FROM webhook_deliveries d USING eligible e WHERE d.id = e.id`,
+		before, limit)
+	if err != nil {
+		return 0, classify("webhook deliveries", err)
+	}
+	return terminal.RowsAffected() + abandoned.RowsAffected(), nil
 }
 
 // prefixColumns qualifies a comma-separated column list with a table alias —

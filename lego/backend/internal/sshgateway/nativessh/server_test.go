@@ -22,6 +22,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
+	"io"
 	"net"
 	"testing"
 	"time"
@@ -223,6 +224,51 @@ func TestAuthenticatedConnectionWithoutChannelTimesOutAndReleasesLimit(t *testin
 		t.Fatalf("connection after idle timeout: %v", err)
 	}
 	_ = second.Close()
+}
+
+func TestGatewayPreAuthConnectionCapShedsExcessBeforeHandshake(t *testing.T) {
+	clientSigner := signer(t)
+	addr, stop := startGatewayConfigured(
+		t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}, clientSigner,
+		func(server *Server) {
+			server.MaxPreAuthConns = 1
+			server.HandshakeTimeout = 2 * time.Second
+		},
+	)
+	defer stop()
+
+	// Hold the single pre-auth slot with a silent connection that never sends its
+	// SSH version string, so it stays inside the handshake until the deadline. An
+	// admitted connection receives the server banner; wait for it so the slot is
+	// provably held before the second dial.
+	hog, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer hog.Close()
+	_ = hog.SetReadDeadline(time.Now().Add(time.Second))
+	banner := make([]byte, 4)
+	if _, err := io.ReadFull(hog, banner); err != nil || string(banner) != "SSH-" {
+		t.Fatalf("first connection was not admitted (banner=%q err=%v)", banner, err)
+	}
+
+	// A second connection must be shed immediately: accepted then closed with no
+	// banner, because the only pre-auth slot is occupied. If the cap were absent,
+	// the server would enter ssh.NewServerConn and write its banner here too.
+	shed, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer shed.Close()
+	_ = shed.SetReadDeadline(time.Now().Add(time.Second))
+	n, err := shed.Read(make([]byte, 1))
+	if err == nil {
+		t.Fatalf("second connection read %d byte(s); expected an immediate close (was not shed)", n)
+	}
+	var ne net.Error
+	if errors.As(err, &ne) && ne.Timeout() {
+		t.Fatal("second connection was held through the handshake window; pre-auth cap did not shed it")
+	}
 }
 
 func TestGatewayExecPropagatesIdentityOutputExitAndAudit(t *testing.T) {

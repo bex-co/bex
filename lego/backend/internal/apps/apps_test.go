@@ -971,6 +971,48 @@ func TestScaleSetsReplicas(t *testing.T) {
 	}
 }
 
+// captureAuditSink records emitted audit events for assertions. Audit recording
+// is synchronous on the verb's own goroutine (core.RecordAuditEvent), so a plain
+// slice with no lock is safe for these single-goroutine tests.
+type captureAuditSink struct{ events []core.AuditEvent }
+
+func (c *captureAuditSink) Record(_ context.Context, ev core.AuditEvent) error {
+	c.events = append(c.events, ev)
+	return nil
+}
+
+func (c *captureAuditSink) countVerb(verb string) int {
+	n := 0
+	for _, e := range c.events {
+		if e.Verb == verb {
+			n++
+		}
+	}
+	return n
+}
+
+// TestScaleNoOpEmitsNoEvent pins scan finding #3's cheapest amplifier closed: a
+// scale to the CURRENT replica count records no scale audit event (and therefore
+// no webhook delivery), while a real change still records exactly one.
+func TestScaleNoOpEmitsNoEvent(t *testing.T) {
+	sink := &captureAuditSink{}
+	cl := fakeClient(sampleApp("web")) // sampleApp starts at 2
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Audit: sink}}
+
+	if _, err := svc.Scale(context.Background(), "web", 3); err != nil {
+		t.Fatalf("Scale 2->3: %v", err)
+	}
+	if n := sink.countVerb(core.AuditVerbScale); n != 1 {
+		t.Fatalf("a real scale recorded %d scale events, want 1", n)
+	}
+	if _, err := svc.Scale(context.Background(), "web", 3); err != nil {
+		t.Fatalf("no-op Scale 3->3: %v", err)
+	}
+	if n := sink.countVerb(core.AuditVerbScale); n != 1 {
+		t.Fatalf("a no-op scale recorded another event (total %d scale events), want still 1", n)
+	}
+}
+
 func TestScaleOutOfRangeIsBadRequestAndNoOp(t *testing.T) {
 	svc, cl := newService(nil, sampleApp("web"))
 

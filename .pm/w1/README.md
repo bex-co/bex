@@ -105,6 +105,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 - `044` — one-off: cancel Stripe subscriptions orphaned by pre-m61 workspace deletes (conditional, operator-run; blocked until m61 ships to prod)
 - `045` — custom domains are served before DNS ownership is proven (scan F4; milestone-sized, promote when scheduled — sequence after m66/m67)
 - `046` — residual Tier-3 findings from the 2026-08-10 scan (supply-chain pass F11/F13/F14/F15 + small residuals F17/F18 + scan coverage caveat)
+- `048` — security-scan round 6 (`codex-security-bex-rYWVXe`, revision `bfe1376c`): 6 new findings **fixed in place** with tests (#11 md links, #5 SSH pre-auth cap, #7 transcript replay memory, #3 webhook no-op/lease/age-out slices, #2 CI ref-guard, #9 client render budget) + pointers to the 5 already-tracked (#1→045, #4/#6→m68, #8/#10→046). Deferred within #3: per-workspace delivery quota + fair scheduling. Uncommitted pending `/ship`
 
 > **Done 2026-07-31:** `043` (reprovision the shared CAPD mock cluster) — recreated, dev-5 verification inventory ALL GREEN, and every hand-applied piece of "walk-ready" codified into `scripts/mock-cluster.sh` / `dev-5/up.sh` / the mock-cluster skill; `w5/028`+`w5/029` walks unblocked locally. Note moved to `done/` with the full resolution.
 

@@ -143,6 +143,9 @@ func main() {
 		Limits:           limits,
 		HandshakeTimeout: handshakeTimeout,
 		SessionTimeout:   sessionTimeout,
+		// Bound concurrent pre-auth handshakes so an anonymous connection flood
+		// can't exhaust the gateway before the post-handshake session limiter.
+		MaxPreAuthConns: intEnv("BEX_SSH_MAX_PREAUTH_CONNS", 256),
 		// Zed remoting into an agent-session sandbox multiplexes many session
 		// channels over one connection (ADR054 D3). This per-connection channel cap
 		// bounds that fan-out for sandbox targets only; 0 disables the exception and

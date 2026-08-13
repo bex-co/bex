@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useChat } from "@ai-sdk/react";
 import type { ChatTransport } from "ai";
 import { AlertCircle, ChevronDown, Loader2, User } from "lucide-react";
@@ -98,6 +105,20 @@ export interface SessionConversationImplProps {
   terminalLabel?: string;
 }
 
+// A transcript can be as large as the gateway allows (64 MiB / thousands of
+// parts). The client must not translate that straight into an unbounded React
+// tree: without a budget, a crafted or simply long session parses every text and
+// reasoning block as Markdown and mounts every row on every render, which can
+// freeze or crash the viewer's tab (scan finding #9). Three bounds keep it safe:
+//   - INITIAL_WINDOW / WINDOW_STEP cap how many message rows mount at once (older
+//     rows are revealed on demand), so total DOM is bounded regardless of length;
+//   - per-message block-building is memoized by message identity so a streaming
+//     token re-parses only the one changed message, not the whole transcript; and
+//   - MAX_BLOCK_CHARS clips a single oversized text/reasoning part before it
+//     reaches the Markdown parser + DOM.
+const INITIAL_WINDOW = 200;
+const WINDOW_STEP = 200;
+
 export function SessionConversationImpl({
   sessionId,
   isTerminal,
@@ -184,6 +205,35 @@ export function SessionConversationImpl({
     setShouldAutoScroll(Math.abs(scrollHeight - scrollTop - clientHeight) < 12);
   };
 
+  // Build the display blocks once per message. Collapse a duplicated replay:
+  // `resume` can fire twice on mount (a second GET replays the same transcript as
+  // a fresh-id message), which would render the whole conversation twice (w3/m44);
+  // collapseDoubledParts dedupes by content signature so nothing real is hidden.
+  //
+  // Memoized by message identity (a WeakMap keyed on each message object): the AI
+  // SDK keeps prior message objects referentially stable and only grows the last
+  // one as tokens stream, so a streaming update rebuilds blocks for just that one
+  // message instead of re-running buildBlocks over the entire transcript on every
+  // token. The stable block reference is also what lets React.memo skip
+  // re-rendering (and re-parsing Markdown for) every unchanged row. These hooks
+  // run unconditionally (before the error early-return) per the Rules of Hooks.
+  const blockCacheRef = useRef(new WeakMap<object, DisplayBlock[]>());
+  const rendered = useMemo(() => {
+    const cache = blockCacheRef.current;
+    return messages.map((message) => {
+      let blocks = cache.get(message);
+      if (!blocks) {
+        blocks = buildBlocks(collapseDoubledParts(message.parts as PartLike[]));
+        cache.set(message, blocks);
+      }
+      return { message, blocks };
+    });
+  }, [messages]);
+  // Render only the most recent window of messages; older rows are revealed on
+  // demand. This bounds the mounted DOM for a very long transcript while always
+  // keeping the live tail visible.
+  const [windowSize, setWindowSize] = useState(INITIAL_WINDOW);
+
   if (error) {
     return (
       <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
@@ -197,24 +247,14 @@ export function SessionConversationImpl({
   const isLoading = status === "submitted" || status === "streaming";
   const connecting = empty && isLoading;
 
-  // Build the display blocks once per message so the parent can decide whether
-  // the typing indicator is due (the last turn is a user prompt or the last
-  // assistant message has no renderable content yet).
-  // Collapse a duplicated replay. `resume` can fire twice on mount (a second GET
-  // replays the same transcript as a fresh-id message), which would render the
-  // whole conversation twice (w3/m44). Dedupe by a CONTENT signature that ignores
-  // volatile per-part ids (the two replays get fresh text/tool/step ids, so the
-  // raw parts differ) — the visible text plus the part-type sequence. Distinct
-  // live turns differ in text/shape, so nothing real is ever hidden.
-  const rendered = messages.map((message) => ({
-    message,
-    blocks: buildBlocks(collapseDoubledParts(message.parts as PartLike[])),
-  }));
   const last = rendered[rendered.length - 1];
   const showTyping =
     isLoading &&
     last !== undefined &&
     (last.message.role !== "assistant" || last.blocks.length === 0);
+
+  const hiddenCount = Math.max(0, rendered.length - windowSize);
+  const visible = hiddenCount > 0 ? rendered.slice(hiddenCount) : rendered;
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
@@ -238,18 +278,32 @@ export function SessionConversationImpl({
             </p>
           )}
 
-          {rendered.map(({ message, blocks }, index) => (
-            <MessageRow
-              key={message.id}
-              role={message.role}
-              blocks={blocks}
-              showCursor={isLoading && index === rendered.length - 1}
-              // A plan is "live" only in the currently-streaming last row; every
-              // other (finished) row is settled, so a trailing in_progress entry
-              // never spins — including historical plans once a new turn streams.
-              settled={!(isLoading && index === rendered.length - 1)}
-            />
-          ))}
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setWindowSize((n) => n + WINDOW_STEP)}
+              className="text-muted-foreground hover:text-foreground mx-auto block text-xs underline"
+            >
+              {t("agentSessions.showEarlierMessages", { count: hiddenCount })}
+            </button>
+          )}
+
+          {visible.map(({ message, blocks }, i) => {
+            const index = hiddenCount + i;
+            const isLast = index === rendered.length - 1;
+            return (
+              <MessageRow
+                key={message.id}
+                role={message.role}
+                blocks={blocks}
+                showCursor={isLoading && isLast}
+                // A plan is "live" only in the currently-streaming last row; every
+                // other (finished) row is settled, so a trailing in_progress entry
+                // never spins — including historical plans once a new turn streams.
+                settled={!(isLoading && isLast)}
+              />
+            );
+          })}
 
           {showTyping && (
             // Agent turns carry no avatar (Devin drops it) — the typing
@@ -306,8 +360,20 @@ function TerminalStatusLine({ label }: { label: string }) {
 
 type PartLike = { type: string } & Record<string, unknown>;
 
+// Largest single text/reasoning block handed to the Markdown parser. The gateway
+// permits 1 MiB parts, but rich-rendering a block that big builds a huge AST +
+// DOM and can freeze the tab (scan finding #9), so an oversized block is clipped
+// with a neutral elision marker before it reaches the renderer. Generous enough
+// that no real agent message is affected.
+const MAX_BLOCK_CHARS = 100_000;
+
 function str(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+function capText(text: string): string {
+  if (text.length <= MAX_BLOCK_CHARS) return text;
+  return text.slice(0, MAX_BLOCK_CHARS) + "\n\n[…]";
 }
 
 // --- Display-block model ------------------------------------------------------
@@ -344,7 +410,11 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
 
   parts.forEach((part, index) => {
     if (part.type === "text") {
-      blocks.push({ type: "text", key: `text-${index}`, text: str(part.text) });
+      blocks.push({
+        type: "text",
+        key: `text-${index}`,
+        text: capText(str(part.text)),
+      });
       return;
     }
 
@@ -352,7 +422,7 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
       blocks.push({
         type: "reasoning",
         key: `reasoning-${index}`,
-        text: str(part.text),
+        text: capText(str(part.text)),
       });
       return;
     }
@@ -434,7 +504,11 @@ function UserAvatar() {
   );
 }
 
-function MessageRow({
+// Memoized so a streaming update — which changes only the last row's props —
+// does not re-render (and re-parse the Markdown of) every earlier row. This
+// relies on buildBlocks being memoized by message identity above, so an
+// unchanged row's `blocks` reference is stable across renders (scan finding #9).
+const MessageRow = memo(function MessageRow({
   role,
   blocks,
   showCursor,
@@ -501,7 +575,7 @@ function MessageRow({
       {isUser && <UserAvatar />}
     </div>
   );
-}
+});
 
 // The agent's chain-of-thought, rendered with the vendored AI Elements
 // `Reasoning` disclosure. Collapsed by default so a long transcript stays

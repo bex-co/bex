@@ -97,10 +97,17 @@ const (
 	// within 15s or the attempt failed.
 	requestTimeout = 15 * time.Second
 	// claimLease is how long ClaimDueWebhookDeliveries hides a claimed row from
-	// other workers while this one POSTs it. It must exceed requestTimeout so a
-	// slow-but-live attempt is never re-claimed by a second replica; a worker that
-	// crashes mid-send releases the row after this window (at-least-once).
-	claimLease = 4 * requestTimeout
+	// other workers while this one POSTs it. It must exceed the WORST-CASE time a
+	// row can wait inside one send pass before its own POST completes, not just a
+	// single requestTimeout: a row claimed in the first wave may not be POSTed
+	// until the last of ceil(sendBatch/senderConcurrency) concurrency waves, each
+	// up to requestTimeout. A lease shorter than that whole window lets the other
+	// replica re-claim a still-in-flight row and double-POST it — double-counting
+	// the attempt and burning the retry schedule roughly twice as fast (scan
+	// finding #3, adjacent bug). One wave of headroom above the worst case; a
+	// crashed worker still releases the row after this window (at-least-once).
+	sendWaves  = (sendBatch + senderConcurrency - 1) / senderConcurrency
+	claimLease = (sendWaves + 1) * requestTimeout
 	// emailAfterFailures is when the failure notice goes out (Render: "after 3
 	// consecutive failures"); emailSuppression stops a burst of failing
 	// deliveries to one endpoint from mailing per-delivery.

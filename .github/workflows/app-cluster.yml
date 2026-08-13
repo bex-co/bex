@@ -38,6 +38,12 @@ env:
 
 jobs:
   bootstrap-app-cluster:
+    # Ref guard (scan finding #2): this job SSH-fetches admin.conf and reconciles
+    # the cluster with HCLOUD_TOKEN + BEX_SSH_PRIVATE_KEY, so it must run ONLY from
+    # the reviewed default branch — a workflow_dispatch from a same-repo branch is
+    # skipped before any secret is touched. Defense in depth alongside GitHub-side
+    # protected environments (see infra.yml).
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

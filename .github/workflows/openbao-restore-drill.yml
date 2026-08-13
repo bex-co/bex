@@ -26,6 +26,12 @@ concurrency:
 
 jobs:
   restore:
+    # Ref guard (scan finding #2): this manual drill SSH-fetches admin.conf and
+    # hands the resulting kubeconfig the OpenBao unseal keys + root token, so it
+    # must run ONLY from the reviewed default branch — a workflow_dispatch from a
+    # same-repo branch is skipped before any secret is touched. Defense in depth
+    # alongside GitHub-side protected environments (see infra.yml).
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

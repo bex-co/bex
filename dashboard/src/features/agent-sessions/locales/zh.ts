@@ -481,6 +481,11 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Degraded-state message when the m43 stream endpoint errors or is unconfigured",
   },
+  "agentSessions.showEarlierMessages": {
+    message: "显示更早的 {count} 条消息",
+    description:
+      "Button revealing older transcript messages hidden by the render window",
+  },
   "agentSessions.groupThought": {
     message: "思考",
     description: "Collapsible header for the agent's reasoning group",
