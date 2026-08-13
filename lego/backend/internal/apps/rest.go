@@ -169,7 +169,7 @@ type createServiceRequest struct {
 	// NotifyOnFail is Render's exact per-service notifyOnFail enum (default |
 	// notify | ignore); "" => default (docs/render-artifacts/notify-on-fail.md).
 	NotifyOnFail   string             `json:"notifyOnFail"`
-	EnvVars        []keyValue         `json:"envVars"`
+	EnvVars        []envVarInput      `json:"envVars"`
 	SecretFiles    []secretFileInput  `json:"secretFiles"`
 	ServiceDetails *serviceDetailsReq `json:"serviceDetails"`
 	// bex extensions (no Render create-body equivalent): the build strategy, the
@@ -204,16 +204,6 @@ type createServiceRequest struct {
 	// is 200 (not 201 Created) to signal that no resource was actually created.
 	// Can also be set via the ?dryRun=true query parameter.
 	DryRun bool `json:"dryRun,omitempty"`
-}
-
-type keyValue struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
-type secretFileInput struct {
-	Name    string `json:"name"`
-	Content string `json:"content"`
 }
 
 // imageRef is Render's prebuilt-image object: the image path lives under
@@ -376,18 +366,35 @@ func effectiveImageOwnerID(ownerID, defaultOwnerID string, image *imageRef) (str
 // one description-preserving shape.
 type ipAllowEntry = core.IPAllowListEntry
 
-func toIPAllowListEntries(entries []core.IPAllowListEntry) []ipAllowEntry {
+// cloneIPAllowEntries copies allowlist entries, preserving nil for empty so
+// omitempty stays wire-accurate.
+func cloneIPAllowEntries(entries []core.IPAllowListEntry) []core.IPAllowListEntry {
 	if len(entries) == 0 {
 		return nil
 	}
-	return append([]ipAllowEntry(nil), entries...)
+	return slices.Clone(entries)
 }
 
-func fromIPAllowListEntries(entries []ipAllowEntry) []core.IPAllowListEntry {
-	if len(entries) == 0 {
-		return nil
+// decodeIPAllowList decodes a serviceDetails.ipAllowList RawMessage; provided
+// reports whether the field carried a value (absent/null leaves it unchanged).
+func decodeIPAllowList(ctx context.Context, raw json.RawMessage) (entries []core.IPAllowListEntry, provided bool, err error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, false, nil
 	}
-	return append([]core.IPAllowListEntry(nil), entries...)
+	var in []ipAllowEntry
+	if err := core.UnmarshalJSON(ctx, raw, &in); err != nil {
+		return nil, false, fmt.Errorf("%w: ipAllowList: %v", core.ErrBadRequest, err)
+	}
+	return cloneIPAllowEntries(in), true, nil
+}
+
+// preferTopLevel resolves a field sent both at the top level and nested under
+// serviceDetails: the top-level value wins, the nested one is the fallback.
+func preferTopLevel(top, nested string) string {
+	if top != "" {
+		return top
+	}
+	return nested
 }
 
 // toCreateRequest folds the Render-nested and bex top-level fields into the
@@ -404,7 +411,10 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 	var maxShutdownDelaySeconds *int32
 	var maintenanceMode *MaintenanceModeView
 	if r.ServiceDetails != nil {
-		maintenanceMode, _ = decodeMaintenanceMode(ctx, r.ServiceDetails.MaintenanceMode)
+		var err error
+		if maintenanceMode, err = decodeMaintenanceMode(ctx, r.ServiceDetails.MaintenanceMode); err != nil {
+			return CreateRequest{}, err
+		}
 		if r.ServiceDetails.Plan != "" {
 			plan = r.ServiceDetails.Plan
 		}
@@ -433,21 +443,13 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 			value := r.ServiceDetails.MaxShutdownDelaySeconds.Value
 			maxShutdownDelaySeconds = &value
 		}
-		if schedule == "" {
-			schedule = r.ServiceDetails.Schedule // top-level schedule wins over the nested one
-		}
-		if command == "" {
-			command = r.ServiceDetails.Command // top-level command wins over the nested one
-		}
+		schedule = preferTopLevel(schedule, r.ServiceDetails.Schedule)
+		command = preferTopLevel(command, r.ServiceDetails.Command)
 		if command == "" && r.Type == appv1alpha1.TypeCronJob {
 			command = startCommand // official CLI encodes cron command in envSpecificDetails.startCommand
 		}
-		if publishPath == "" {
-			publishPath = r.ServiceDetails.PublishPath // top-level publishPath wins over the nested one
-		}
-		if preDeploy == "" {
-			preDeploy = r.ServiceDetails.PreDeployCommand // top-level preDeployCommand wins over the nested one
-		}
+		publishPath = preferTopLevel(publishPath, r.ServiceDetails.PublishPath)
+		preDeploy = preferTopLevel(preDeploy, r.ServiceDetails.PreDeployCommand)
 	}
 	image := ""
 	var imageRegistryCredentialID json.RawMessage
@@ -463,21 +465,14 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 	if err != nil {
 		return CreateRequest{}, err
 	}
-	var env []appv1alpha1.EnvVar
-	for _, e := range r.EnvVars {
-		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
-	}
-	secretFiles := make([]core.SecretFile, 0, len(r.SecretFiles))
-	for _, f := range r.SecretFiles {
-		secretFiles = append(secretFiles, core.SecretFile{Name: f.Name, Content: f.Content})
-	}
+	env := toEnvVars(r.EnvVars)
+	secretFiles := toSecretFiles(r.SecretFiles)
 	var ipAllowList []core.IPAllowListEntry
-	if r.ServiceDetails != nil && len(r.ServiceDetails.IPAllowList) > 0 && string(r.ServiceDetails.IPAllowList) != "null" {
-		var entries []ipAllowEntry
-		if err := core.UnmarshalJSON(ctx, r.ServiceDetails.IPAllowList, &entries); err != nil {
-			return CreateRequest{}, fmt.Errorf("%w: ipAllowList: %v", core.ErrBadRequest, err)
+	if r.ServiceDetails != nil {
+		var err error
+		if ipAllowList, _, err = decodeIPAllowList(ctx, r.ServiceDetails.IPAllowList); err != nil {
+			return CreateRequest{}, err
 		}
-		ipAllowList = fromIPAllowListEntries(entries)
 	}
 	// Auto-Deploy: autoDeployTrigger (off|commit) wins over the legacy autoDeploy
 	// enum when both are sent; checksPass is rejected (w5/m53).
@@ -728,13 +723,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			schedule = req.ServiceDetails.Schedule
 			publishPath = req.ServiceDetails.PublishPath
 			buildCommand = req.ServiceDetails.BuildCommand
-			if len(req.ServiceDetails.IPAllowList) > 0 && string(req.ServiceDetails.IPAllowList) != "null" {
-				var entries []ipAllowEntry
-				if err := core.UnmarshalJSON(r.Context(), req.ServiceDetails.IPAllowList, &entries); err != nil {
-					core.WriteErr(w, fmt.Errorf("%w: ipAllowList: %v", core.ErrBadRequest, err))
-					return
-				}
-				allowList := fromIPAllowListEntries(entries)
+			allowList, provided, err := decodeIPAllowList(r.Context(), req.ServiceDetails.IPAllowList)
+			if err != nil {
+				core.WriteErr(w, err)
+				return
+			}
+			if provided {
 				patchIPAllowList = &allowList
 			}
 			if len(req.ServiceDetails.EnvSpecific) > 0 && string(req.ServiceDetails.EnvSpecific) != "null" {
@@ -805,153 +799,97 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				return
 			}
 		}
-		if plan == "" && idleTTL == nil && !maxShutdownDelay.Set && displayName == nil && req.Repo == nil && req.Image == nil && req.Branch == nil && registryCredentialID == nil && req.RootDir == nil && req.BuildFilter == nil && autoDeploy == nil && req.Schedule == nil && req.Command == nil && req.HealthCheckPath == nil && req.PreDeployCommand == nil && req.NotifyOnFail == nil && req.RenderSubdomainPolicy == nil && healthCheckPath == nil && preDeployCommand == nil && schedule == nil && publishPath == nil && buildCommand == nil && startCommand == nil && dockerfilePath == nil && patchIPAllowList == nil && maintenanceMode == nil {
-			get(w, r) // no supported field present => read-only no-op
-			return
-		}
-		// Apply the supported fields in turn; the no-op guard above guarantees at
-		// least one runs, so app is always set by the time we serialize.
-		var app AppView
-		var err error
-		if displayName != nil {
-			if app, err = s.SetDisplayName(r.Context(), id, *displayName); err != nil {
-				core.WriteErr(w, err)
-				return
+		// Collect the supported fields as an ordered list of verb calls; an empty
+		// list is the read-only no-op (the guard is derived from the same list, so
+		// a new field can't fall out of sync with it).
+		var ops []func() (AppView, error)
+		addOp := func(present bool, op func() (AppView, error)) {
+			if present {
+				ops = append(ops, op)
 			}
 		}
-		var image *string
+		addOp(displayName != nil, func() (AppView, error) {
+			return s.SetDisplayName(r.Context(), id, *displayName)
+		})
+		var image, imageOwnerID *string
 		if req.Image != nil {
 			image = &req.Image.ImagePath
-		}
-		var imageOwnerID *string
-		if req.Image != nil {
 			imageOwnerID = &req.Image.OwnerID
 		}
-		if req.Repo != nil || image != nil || req.Branch != nil || registryCredentialID != nil {
-			if app, err = s.SetSourceAndRegistryCredential(r.Context(), id, sourcePatch{Repo: req.Repo, Image: image, Branch: req.Branch, RegistryCredentialID: registryCredentialID, ImageOwnerID: imageOwnerID}); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
+		addOp(req.Repo != nil || image != nil || req.Branch != nil || registryCredentialID != nil, func() (AppView, error) {
+			return s.SetSourceAndRegistryCredential(r.Context(), id, sourcePatch{Repo: req.Repo, Image: image, Branch: req.Branch, RegistryCredentialID: registryCredentialID, ImageOwnerID: imageOwnerID})
+		})
 		// A simultaneous downgrade must disable maintenance first; every other
 		// combination applies the plan first so validation sees the final plan.
 		maintenanceBeforePlan := maintenanceMode != nil && !maintenanceMode.Enabled && plan == "free"
-		if maintenanceBeforePlan {
-			if app, err = s.ConfigureMaintenanceMode(r.Context(), id, *maintenanceMode); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
+		addOp(maintenanceBeforePlan, func() (AppView, error) {
+			return s.ConfigureMaintenanceMode(r.Context(), id, *maintenanceMode)
+		})
+		addOp(plan != "", func() (AppView, error) {
+			return s.SetPlan(r.Context(), id, plan)
+		})
+		addOp(idleTTL != nil, func() (AppView, error) {
+			return s.SetIdleTTL(r.Context(), id, *idleTTL)
+		})
+		addOp(maxShutdownDelay.Set, func() (AppView, error) {
+			return s.SetMaxShutdownDelay(r.Context(), id, maxShutdownDelay.Value)
+		})
+		addOp(req.RootDir != nil, func() (AppView, error) {
+			return s.SetRootDir(r.Context(), id, *req.RootDir)
+		})
+		addOp(req.BuildFilter != nil, func() (AppView, error) {
+			return s.SetBuildFilter(r.Context(), id, req.BuildFilter)
+		})
+		addOp(autoDeploy != nil, func() (AppView, error) {
+			return s.SetAutoDeploy(r.Context(), id, *autoDeploy)
+		})
+		addOp(req.Schedule != nil || req.Command != nil, func() (AppView, error) {
+			return s.SetCronJob(r.Context(), id, req.Schedule, req.Command)
+		})
+		addOp(req.HealthCheckPath != nil, func() (AppView, error) {
+			return s.SetHealthCheckPath(r.Context(), id, *req.HealthCheckPath)
+		})
+		addOp(req.PreDeployCommand != nil, func() (AppView, error) {
+			return s.SetPreDeployCommand(r.Context(), id, *req.PreDeployCommand)
+		})
+		addOp(healthCheckPath != nil, func() (AppView, error) {
+			return s.SetHealthCheckPath(r.Context(), id, *healthCheckPath)
+		})
+		addOp(preDeployCommand != nil, func() (AppView, error) {
+			return s.SetPreDeployCommand(r.Context(), id, *preDeployCommand)
+		})
+		addOp(schedule != nil, func() (AppView, error) {
+			return s.SetCronJob(r.Context(), id, schedule, nil)
+		})
+		addOp(publishPath != nil, func() (AppView, error) {
+			return s.SetPublishPath(r.Context(), id, *publishPath)
+		})
+		addOp(buildCommand != nil || startCommand != nil, func() (AppView, error) {
+			return s.SetCommands(r.Context(), id, buildCommand, startCommand)
+		})
+		addOp(dockerfilePath != nil, func() (AppView, error) {
+			return s.SetDockerfilePath(r.Context(), id, *dockerfilePath)
+		})
+		addOp(req.NotifyOnFail != nil, func() (AppView, error) {
+			return s.SetNotifyOnFail(r.Context(), id, *req.NotifyOnFail)
+		})
+		addOp(req.RenderSubdomainPolicy != nil, func() (AppView, error) {
+			return s.SetSubdomainPolicy(r.Context(), id, *req.RenderSubdomainPolicy)
+		})
+		addOp(patchIPAllowList != nil, func() (AppView, error) {
+			return s.SetIPAllowList(r.Context(), id, *patchIPAllowList)
+		})
+		addOp(maintenanceMode != nil && !maintenanceBeforePlan, func() (AppView, error) {
+			return s.ConfigureMaintenanceMode(r.Context(), id, *maintenanceMode)
+		})
+		if len(ops) == 0 {
+			get(w, r) // no supported field present => read-only no-op
+			return
 		}
-		if plan != "" {
-			if app, err = s.SetPlan(r.Context(), id, plan); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if idleTTL != nil {
-			if app, err = s.SetIdleTTL(r.Context(), id, *idleTTL); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if maxShutdownDelay.Set {
-			if app, err = s.SetMaxShutdownDelay(r.Context(), id, maxShutdownDelay.Value); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if req.RootDir != nil {
-			if app, err = s.SetRootDir(r.Context(), id, *req.RootDir); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if req.BuildFilter != nil {
-			if app, err = s.SetBuildFilter(r.Context(), id, req.BuildFilter); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if autoDeploy != nil {
-			if app, err = s.SetAutoDeploy(r.Context(), id, *autoDeploy); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if req.Schedule != nil || req.Command != nil {
-			if app, err = s.SetCronJob(r.Context(), id, req.Schedule, req.Command); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if req.HealthCheckPath != nil {
-			if app, err = s.SetHealthCheckPath(r.Context(), id, *req.HealthCheckPath); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if req.PreDeployCommand != nil {
-			if app, err = s.SetPreDeployCommand(r.Context(), id, *req.PreDeployCommand); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if healthCheckPath != nil {
-			if app, err = s.SetHealthCheckPath(r.Context(), id, *healthCheckPath); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if preDeployCommand != nil {
-			if app, err = s.SetPreDeployCommand(r.Context(), id, *preDeployCommand); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if schedule != nil {
-			if app, err = s.SetCronJob(r.Context(), id, schedule, nil); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if publishPath != nil {
-			if app, err = s.SetPublishPath(r.Context(), id, *publishPath); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if buildCommand != nil || startCommand != nil {
-			if app, err = s.SetCommands(r.Context(), id, buildCommand, startCommand); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if dockerfilePath != nil {
-			if app, err = s.SetDockerfilePath(r.Context(), id, *dockerfilePath); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if req.NotifyOnFail != nil {
-			if app, err = s.SetNotifyOnFail(r.Context(), id, *req.NotifyOnFail); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if req.RenderSubdomainPolicy != nil {
-			if app, err = s.SetSubdomainPolicy(r.Context(), id, *req.RenderSubdomainPolicy); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if patchIPAllowList != nil {
-			if app, err = s.SetIPAllowList(r.Context(), id, *patchIPAllowList); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		if maintenanceMode != nil && !maintenanceBeforePlan {
-			if app, err = s.ConfigureMaintenanceMode(r.Context(), id, *maintenanceMode); err != nil {
+		var app AppView
+		for _, op := range ops {
+			var err error
+			if app, err = op(); err != nil {
 				core.WriteErr(w, err)
 				return
 			}
@@ -991,12 +929,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, fmt.Errorf("%w: services %s is not supported by this platform", core.ErrBadRequest, field))
 			return
 		}
-		if req.ServiceDetails != nil {
-			if _, err := decodeMaintenanceMode(r.Context(), req.ServiceDetails.MaintenanceMode); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
 		if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
 			req.DryRun = true
 		}
@@ -1034,16 +966,19 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		w.WriteHeader(http.StatusNoContent) // Render: delete => 204, empty body
 	}
 
-	// runCron handles Render's current POST /cron-jobs/{id}/runs contract. The
-	// deterministic pending run is returned immediately; if another run is active,
-	// the same intent patch asks the operator to cancel it before replacement.
-	runCron := func(w http.ResponseWriter, r *http.Request) {
-		run, err := s.TriggerCronRun(r.Context(), r.PathValue("id"))
+	writeCronRun := func(w http.ResponseWriter, run CronRunView, err error) {
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, toRenderCronJobRun(run))
+	}
+	// runCron handles Render's current POST /cron-jobs/{id}/runs contract. The
+	// deterministic pending run is returned immediately; if another run is active,
+	// the same intent patch asks the operator to cancel it before replacement.
+	runCron := func(w http.ResponseWriter, r *http.Request) {
+		run, err := s.TriggerCronRun(r.Context(), r.PathValue("id"))
+		writeCronRun(w, run, err)
 	}
 	listCronRuns := func(w http.ResponseWriter, r *http.Request) {
 		cursor, limit := core.PageParams(r.URL.Query())
@@ -1056,19 +991,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}
 	getCronRun := func(w http.ResponseWriter, r *http.Request) {
 		run, err := s.GetCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, toRenderCronJobRun(run))
+		writeCronRun(w, run, err)
 	}
 	cancelCronRun := func(w http.ResponseWriter, r *http.Request) {
 		run, err := s.CancelCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, toRenderCronJobRun(run))
+		writeCronRun(w, run, err)
 	}
 	// Render's current cancel route addresses the active run implicitly and
 	// returns 204. The per-run POST route above is a documented bex extension.

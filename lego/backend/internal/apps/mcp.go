@@ -254,8 +254,8 @@ type createWebServiceArgs struct {
 	DockerfilePath          string                  `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
 	Builder                 string                  `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
 	Plan                    string                  `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default free)"`
-	EnvVars                 []envVarArg             `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
-	SecretFiles             []secretFileArg         `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
+	EnvVars                 []envVarInput           `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
+	SecretFiles             []secretFileInput       `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
 	AutoDeploy              string                  `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
 	NotifyOnFail            string                  `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
 	HealthCheckPath         string                  `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness (spec.healthCheckPath); must start with / or be empty to use the platform default /"`
@@ -267,17 +267,6 @@ type createWebServiceArgs struct {
 	DryRun                  bool                    `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 	IPAllowList             []string                `json:"ipAllowList,omitempty" jsonschema:"CIDR blocks to restrict inbound HTTP to (e.g. '203.0.113.0/24'); empty = open to all source IPs (Render default). Only applies to web_service and static_site."`
 	IPAllowListEntries      []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"description-preserving allowlist entries as {cidrBlock, description}; use instead of ipAllowList"`
-}
-
-// envVarArg is Render's {key, value} env-var shape, shared by the create tool.
-type envVarArg struct {
-	Key   string `json:"key" jsonschema:"the environment variable name"`
-	Value string `json:"value" jsonschema:"the literal value"`
-}
-
-type secretFileArg struct {
-	Name    string `json:"name" jsonschema:"file name beneath /etc/secrets"`
-	Content string `json:"content" jsonschema:"secret file contents"`
 }
 
 type listCronJobRunsArgs struct {
@@ -304,7 +293,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		Type:                    a.Type,
 		Repo:                    a.Repo,
 		Image:                   a.Image,
-		RegistryCredentialID:    cloneStringPtr(a.RegistryCredentialID),
+		RegistryCredentialID:    clonePtr(a.RegistryCredentialID),
 		Branch:                  a.Branch,
 		RootDir:                 a.RootDir,
 		BuildFilter:             a.BuildFilter.toView(),
@@ -319,7 +308,7 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 		AutoDeploy:              parseYesNo(a.AutoDeploy),
 		NotifyOnFail:            a.NotifyOnFail,
 		HealthCheckPath:         a.HealthCheckPath,
-		MaxShutdownDelaySeconds: cloneInt32(a.MaxShutdownDelaySeconds),
+		MaxShutdownDelaySeconds: clonePtr(a.MaxShutdownDelaySeconds),
 		PreDeployCommand:        a.PreDeployCommand,
 		MaintenanceMode:         a.MaintenanceMode.toView(),
 		Port:                    a.Port,
@@ -333,27 +322,27 @@ func (a createWebServiceArgs) toCreateRequest() CreateRequest {
 // tracks create_web_service but requires a schedule and has no port/replicas
 // (a cron runs its command to completion on the schedule, not as a server).
 type createCronJobArgs struct {
-	OwnerID              string          `json:"-"`
-	EnvironmentID        string          `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
-	Name                 string          `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
-	Schedule             string          `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
-	Command              string          `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to run the image's own command"`
-	Repo                 string          `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
-	Image                string          `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
-	RegistryCredentialID *string         `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image or Dockerfile FROM; omit for automatic image-host matching, empty to explicitly use none"`
-	Branch               string          `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
-	RootDir              string          `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
-	Runtime              string          `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
-	BuildCommand         string          `json:"buildCommand" jsonschema:"command used to build a native-runtime cron job; ignored for docker"`
-	StartCommand         string          `json:"startCommand" jsonschema:"command run by the native-runtime cron job; ignored for docker"`
-	DockerfilePath       string          `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
-	Builder              string          `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
-	Plan                 string          `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
-	EnvVars              []envVarArg     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
-	SecretFiles          []secretFileArg `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
-	AutoDeploy           string          `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
-	NotifyOnFail         string          `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
-	DryRun               bool            `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
+	OwnerID              string            `json:"-"`
+	EnvironmentID        string            `json:"environmentId,omitempty" jsonschema:"an environment id (env-...) in the target workspace; assignment also joins its project"`
+	Name                 string            `json:"name" jsonschema:"the cron job name (a DNS label, 1-30 chars)"`
+	Schedule             string            `json:"schedule" jsonschema:"the cron schedule (standard 5-field crontab, e.g. '0 * * * *')"`
+	Command              string            `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to run the image's own command"`
+	Repo                 string            `json:"repo,omitempty" jsonschema:"git repository URL to build from (build-from-git); omit if using image"`
+	Image                string            `json:"image,omitempty" jsonschema:"a prebuilt OCI image to run directly; omit if using repo"`
+	RegistryCredentialID *string           `json:"registryCredentialId,omitempty" jsonschema:"stored registry credential id for a private prebuilt image or Dockerfile FROM; omit for automatic image-host matching, empty to explicitly use none"`
+	Branch               string            `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
+	RootDir              string            `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
+	Runtime              string            `json:"runtime" jsonschema:"Render runtime: node, python, go, rust, ruby, elixir, or docker"`
+	BuildCommand         string            `json:"buildCommand" jsonschema:"command used to build a native-runtime cron job; ignored for docker"`
+	StartCommand         string            `json:"startCommand" jsonschema:"command run by the native-runtime cron job; ignored for docker"`
+	DockerfilePath       string            `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile, relative to rootDir; only applies when runtime is docker (default Dockerfile)"`
+	Builder              string            `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
+	Plan                 string            `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro (default free)"`
+	EnvVars              []envVarInput     `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the job"`
+	SecretFiles          []secretFileInput `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
+	AutoDeploy           string            `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`
+	NotifyOnFail         string            `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member), or ignore (never email anyone for this service); default if omitted"`
+	DryRun               bool              `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
 func (a createCronJobArgs) toCreateRequest() CreateRequest {
@@ -366,7 +355,7 @@ func (a createCronJobArgs) toCreateRequest() CreateRequest {
 		Command:              a.Command,
 		Repo:                 a.Repo,
 		Image:                a.Image,
-		RegistryCredentialID: cloneStringPtr(a.RegistryCredentialID),
+		RegistryCredentialID: clonePtr(a.RegistryCredentialID),
 		Branch:               a.Branch,
 		RootDir:              a.RootDir,
 		Runtime:              a.Runtime,
@@ -381,24 +370,6 @@ func (a createCronJobArgs) toCreateRequest() CreateRequest {
 		NotifyOnFail:         a.NotifyOnFail,
 		DryRun:               a.DryRun,
 	}
-}
-
-// toEnvVars maps the Render {key,value} env-var shape onto the CR EnvVar type,
-// shared by the create tools.
-func toEnvVars(in []envVarArg) []appv1alpha1.EnvVar {
-	var env []appv1alpha1.EnvVar
-	for _, e := range in {
-		env = append(env, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
-	}
-	return env
-}
-
-func toSecretFiles(in []secretFileArg) []core.SecretFile {
-	var files []core.SecretFile
-	for _, f := range in {
-		files = append(files, core.SecretFile{Name: f.Name, Content: f.Content})
-	}
-	return files
 }
 
 // deployArgs is the deploy tool's input: a repo + its render.yaml Blueprint. Deploy-from-chat
@@ -553,8 +524,8 @@ type createStaticSiteArgs struct {
 	Branch             string                  `json:"branch,omitempty" jsonschema:"branch to track when building from a repo (default main)"`
 	RootDir            string                  `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from, for monorepos (default the repo root)"`
 	PublishPath        string                  `json:"publishPath" jsonschema:"the built output directory to serve as the site root, e.g. dist, build, or public"`
-	EnvVars            []envVarArg             `json:"envVars,omitempty" jsonschema:"literal (non-secret) build-time environment variables"`
-	SecretFiles        []secretFileArg         `json:"secretFiles,omitempty" jsonschema:"secret files available to the static-site build from first boot"`
+	EnvVars            []envVarInput           `json:"envVars,omitempty" jsonschema:"literal (non-secret) build-time environment variables"`
+	SecretFiles        []secretFileInput       `json:"secretFiles,omitempty" jsonschema:"secret files available to the static-site build from first boot"`
 	Domains            []string                `json:"domains,omitempty" jsonschema:"custom domains to serve the site at, in addition to the platform hostname"`
 	Routes             []staticRouteArg        `json:"routes,omitempty" jsonschema:"ordered redirect/rewrite rules (first match wins), e.g. an SPA fallback rewrite of /* to /index.html"`
 	Headers            []staticHeaderArg       `json:"headers,omitempty" jsonschema:"custom response-header rules scoped by request path"`
@@ -683,11 +654,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		createReq := in.toCreateRequest()
 		createReq.IPAllowList = allowList
-		app, err := s.Create(ctx, createReq)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.Create(ctx, createReq))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -695,11 +662,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Create a cron job that runs a repo/image's command on a schedule, and get back the service. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, renderService, error) {
 		in.OwnerID = core.NamedWorkspace(ctx)
-		app, err := s.Create(ctx, in.toCreateRequest())
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.Create(ctx, in.toCreateRequest()))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -713,11 +676,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		createReq := in.toCreateRequest()
 		createReq.IPAllowList = allowList
-		app, err := s.Create(ctx, createReq)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.Create(ctx, createReq))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -770,11 +729,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "update_cron_job",
 		Description: "Change a cron job's schedule and/or command. Render ships a non-functional stub for this tool; bex makes it real. schedule is the 5-field crontab expression (required); command overrides the image's entrypoint (optional — omit to keep the existing override, empty to clear it).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateCronJobArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetCronJob(ctx, in.ServiceID, &in.Schedule, in.Command)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetCronJob(ctx, in.ServiceID, &in.Schedule, in.Command))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -805,11 +760,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "suspend_service",
 		Description: "Suspend a service: scale to zero, keeping host and certificates. A member of a protectedStatus=protected Environment (w6/m19) refuses without confirm — retry with the phrase from the error message. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceConfirmArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.Suspend(withConfirm(ctx, in.Confirm), in.ServiceID)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.Suspend(withConfirm(ctx, in.Confirm), in.ServiceID))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -821,129 +772,80 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "update_service_plan",
 		Description: "Change a service's instance plan/size (e.g. to starter, standard, pro, pro_plus, pro_max, pro_ultra). Resizes the pod's resources and rolls it. Pass dryRun:true to preview the change without any writes. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePlanArgs) (*mcp.CallToolResult, renderService, error) {
-		var (
-			app AppView
-			err error
-		)
 		if in.DryRun {
-			app, err = s.PreviewSetPlan(ctx, in.ServiceID, in.Plan)
-		} else {
-			app, err = s.SetPlan(ctx, in.ServiceID, in.Plan)
+			return renderServiceResult(s.PreviewSetPlan(ctx, in.ServiceID, in.Plan))
 		}
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetPlan(ctx, in.ServiceID, in.Plan))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "scale_service",
 		Description: "Scale a service to a specific number of running instances (numInstances, 1-100). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in scaleArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.Scale(ctx, in.ServiceID, in.NumInstances)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.Scale(ctx, in.ServiceID, in.NumInstances))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_idle_timeout",
 		Description: "Set a service's idle timeout: seconds a free-tier service may idle before it auto-sleeps (0 = controller default). bex extension over Render's MCP (Render's spin-down window is fixed).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in idleTimeoutArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetIdleTTL(ctx, in.ServiceID, in.IdleTTLSeconds)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetIdleTTL(ctx, in.ServiceID, in.IdleTTLSeconds))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_root_directory",
 		Description: "Set a build-from-git service's Root Directory: the subdirectory of its repo to build from (monorepo support). Triggers a fresh build scoped to that subdirectory. Tracks Render's Root Directory setting.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in rootDirArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetRootDir(ctx, in.ServiceID, in.RootDir)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetRootDir(ctx, in.ServiceID, in.RootDir))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_branch",
 		Description: "Change the Git branch a repo-backed service builds and deploys from (Render's editable Branch field). The next deploy builds the new branch and push-to-deploy matches pushes against it. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in branchArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetSourceAndRegistryCredential(ctx, in.ServiceID, sourcePatch{Branch: &in.Branch})
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetSourceAndRegistryCredential(ctx, in.ServiceID, sourcePatch{Branch: &in.Branch}))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_build_command",
 		Description: "Change the build command for a repo-backed service (e.g. npm run build). Applies to static sites and native-runtime services. Empty clears the command (builder default). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in buildCommandArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetCommands(ctx, in.ServiceID, &in.BuildCommand, nil)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetCommands(ctx, in.ServiceID, &in.BuildCommand, nil))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_start_command",
 		Description: "Change the command used to start an existing service. For a Docker service this overrides the image CMD (Render's Docker Command); for a native runtime it is Render's Start Command. Empty restores the image default where supported. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in startCommandArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetCommands(ctx, in.ServiceID, nil, &in.StartCommand)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetCommands(ctx, in.ServiceID, nil, &in.StartCommand))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_dockerfile_path",
 		Description: "Change a repo-backed Docker service's Dockerfile Path, relative to its Root Directory. Empty restores the default Dockerfile. Triggers a fresh build. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in dockerfilePathArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetDockerfilePath(ctx, in.ServiceID, in.DockerfilePath)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetDockerfilePath(ctx, in.ServiceID, in.DockerfilePath))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_registry_credential",
 		Description: "Bind an image-backed service or Dockerfile build to a stored private-registry credential. The credential must belong to the service workspace; image-backed bindings must also match the image registry host. Pass an empty registryCredentialId to clear the binding.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in registryCredentialArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetRegistryCredential(ctx, in.ServiceID, in.RegistryCredentialID)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetRegistryCredential(ctx, in.ServiceID, in.RegistryCredentialID))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_build_filter",
 		Description: "Set a build-from-git service's Build Filters: repository-root-relative glob patterns (paths/ignoredPaths) deciding whether a git push triggers an auto-deploy. A push deploys only when a changed file matches an include path (or paths is empty) and is not ignored; ignored wins over included. Pass empty paths and ignoredPaths to clear the filter. Tracks Render's Build Filters setting. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in buildFilterArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetBuildFilter(ctx, in.ServiceID, in.BuildFilter.toView())
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetBuildFilter(ctx, in.ServiceID, in.BuildFilter.toView()))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_maintenance_mode",
 		Description: "Take a web service offline behind an interstitial page without suspending it — pods keep running, only public traffic is redirected to the maintenance page. Every host the service serves answers 503. An empty uri serves bex's default page; a non-empty uri must be an absolute http(s) URL to a custom page, fetched and served in place of the default. web_service only. Tracks Render's maintenanceMode setting.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in maintenanceModeArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetMaintenanceMode(ctx, in.ServiceID, MaintenanceModeView{Enabled: in.MaintenanceMode.Enabled, URI: in.MaintenanceMode.URI})
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetMaintenanceMode(ctx, in.ServiceID, MaintenanceModeView{Enabled: in.MaintenanceMode.Enabled, URI: in.MaintenanceMode.URI}))
 	})
 
 	// Autoscaling tools — tracking Render's PUT/DELETE .../autoscaling contract.
@@ -986,88 +888,56 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "set_auto_deploy",
 		Description: "Turn a service's Auto-Deploy on or off: whether a signed git push to its tracked branch redeploys it (Render's Auto-Deploy toggle). Off leaves only explicit deploys. Does not itself redeploy.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in autoDeployArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetAutoDeploy(ctx, in.ServiceID, in.Enabled)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetAutoDeploy(ctx, in.ServiceID, in.Enabled))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_notify_on_fail",
 		Description: "Change a service's deploy-failure notification override (Render's exact notifyOnFail field/enum): default defers to each workspace member's own notification preference, notify always emails every member on a failed deploy, ignore never emails anyone for this service. Governs failure notifications only — success emails always follow each member's own preference.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in notifyOnFailArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetNotifyOnFail(ctx, in.ServiceID, in.Value)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetNotifyOnFail(ctx, in.ServiceID, in.Value))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_notifications_to_send",
 		Description: "Set a service notification policy: default inherits workspace/member preferences (failure-only by default), failure sends only failed-deploy mail, all sends every deploy lifecycle mail, and none suppresses deploy mail.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in notificationsToSendArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetNotificationsToSend(ctx, in.ServiceID, in.Value)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetNotificationsToSend(ctx, in.ServiceID, in.Value))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_display_name",
 		Description: "Change the human-facing label for a service without changing its immutable service id, platform hostname, or derived Kubernetes resources. Pass an empty displayName to restore the immutable-name fallback. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in displayNameArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetDisplayName(ctx, in.ServiceID, in.DisplayName)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetDisplayName(ctx, in.ServiceID, in.DisplayName))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_health_check_path",
 		Description: "Change the HTTP path the platform GETs to decide whether a web or private service is ready to receive traffic (spec.healthCheckPath). A 2xx/3xx response marks the pod ready. Pass an empty string to CLEAR the path, which switches the service to a TCP check that only verifies the process is listening — the platform default, and the right choice for a service with no cheap 2xx route (an API whose / is a 404 can never pass an HTTP check). Has no effect on cron_job or background_worker services.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in healthCheckPathArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetHealthCheckPath(ctx, in.ServiceID, in.HealthCheckPath)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetHealthCheckPath(ctx, in.ServiceID, in.HealthCheckPath))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_max_shutdown_delay",
 		Description: "Set the graceful-shutdown window for a web, private, or background-worker service: seconds after SIGTERM before Kubernetes sends SIGKILL (1-300; default 30). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in maxShutdownDelayArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetMaxShutdownDelay(ctx, in.ServiceID, in.Seconds)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetMaxShutdownDelay(ctx, in.ServiceID, in.Seconds))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_pre_deploy_command",
 		Description: "Change the pre-deploy command (spec.preDeployCommand → Render's Pre-Deploy Command): a command run to completion against the new revision's image before it serves traffic (typically a database migration). A non-zero exit fails the deploy and leaves the previous revision serving. Pass an empty string to clear the step. Has no effect on cron_job or static_site services.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in preDeployCommandArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetPreDeployCommand(ctx, in.ServiceID, in.PreDeployCommand)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetPreDeployCommand(ctx, in.ServiceID, in.PreDeployCommand))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_subdomain_policy",
 		Description: "Control whether the platform subdomain (<slug>.<BEX_BASE_DOMAIN>) is active for a web or static-site service (Render's renderSubdomainPolicy field). Shared platform hosting is available only when the operator has configured a safe Public Suffix. 'enabled' keeps that host in the Ingress and status URL; 'disabled' drops it so only custom domains configured on the service receive traffic. Requires at least one custom domain before disabling.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in subdomainPolicyArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetSubdomainPolicy(ctx, in.ServiceID, in.Policy)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetSubdomainPolicy(ctx, in.ServiceID, in.Policy))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -1078,11 +948,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err != nil {
 			return nil, renderService{}, err
 		}
-		app, err := s.SetIPAllowList(ctx, in.ServiceID, entries)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetIPAllowList(ctx, in.ServiceID, entries))
 	})
 
 	// Custom domain tools — tracking render-oss/render-mcp-server tool names.
@@ -1121,22 +987,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "get_custom_domain",
 		Description: "Get details about a specific custom domain on a service.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
-		d, err := s.GetDomain(ctx, in.ServiceID, in.Name)
-		if err != nil {
-			return nil, renderCustomDomain{}, err
-		}
-		return nil, toRenderCustomDomain(d), nil
+		return customDomainResult(s.GetDomain(ctx, in.ServiceID, in.Name))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "add_custom_domain",
 		Description: "Add a custom domain to a service. The domain must be CNAME'd to the service's platform hostname before TLS can be issued.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
-		d, err := s.AddDomain(ctx, in.ServiceID, in.Name)
-		if err != nil {
-			return nil, renderCustomDomain{}, err
-		}
-		return nil, toRenderCustomDomain(d), nil
+		return customDomainResult(s.AddDomain(ctx, in.ServiceID, in.Name))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -1151,11 +1009,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "verify_custom_domain",
 		Description: "Re-check a custom domain's DNS/certificate state now and return its fresh verification/serving status plus the DNS record to create (Render's verify). Verification is automatic on bex, so this is a re-read, not a trigger.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
-		d, err := s.VerifyDomain(ctx, in.ServiceID, in.Name)
-		if err != nil {
-			return nil, renderCustomDomain{}, err
-		}
-		return nil, toRenderCustomDomain(d), nil
+		return customDomainResult(s.VerifyDomain(ctx, in.ServiceID, in.Name))
 	})
 
 	// Static-site edge-rule tools. Render's official MCP ships only a
@@ -1209,11 +1063,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "update_publish_path",
 		Description: "Change the built output directory a static site serves (its publishPath) and republish. Rejected for a non-static-site service.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in publishPathArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := s.SetPublishPath(ctx, in.ServiceID, in.PublishPath)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(s.SetPublishPath(ctx, in.ServiceID, in.PublishPath))
 	})
 
 	// Blueprint verbs (w2/m15 + w2/m41 + w2/m62).
@@ -1306,10 +1156,24 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 // verb handlers use, so the surfaces stay identical.
 func (s *Service) serviceTool(fn func(context.Context, string) (AppView, error)) mcp.ToolHandlerFor[serviceArgs, renderService] {
 	return func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, renderService, error) {
-		app, err := fn(ctx, in.ServiceID)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return nil, toRenderService(app), nil
+		return renderServiceResult(fn(ctx, in.ServiceID))
 	}
+}
+
+// renderServiceResult adapts a service verb's (AppView, error) return into the
+// MCP tool result shape — serviceTool's value-level sibling for handlers that
+// take extra arguments.
+func renderServiceResult(app AppView, err error) (*mcp.CallToolResult, renderService, error) {
+	if err != nil {
+		return nil, renderService{}, err
+	}
+	return nil, toRenderService(app), nil
+}
+
+// customDomainResult is renderServiceResult's twin for the domain verbs.
+func customDomainResult(d DomainView, err error) (*mcp.CallToolResult, renderCustomDomain, error) {
+	if err != nil {
+		return nil, renderCustomDomain{}, err
+	}
+	return nil, toRenderCustomDomain(d), nil
 }

@@ -158,7 +158,7 @@ func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 		dst.HealthCheckPath = want.HealthCheckPath
 	}
 	if present("maxShutdownDelaySeconds") {
-		dst.MaxShutdownDelaySeconds = cloneInt32(want.MaxShutdownDelaySeconds)
+		dst.MaxShutdownDelaySeconds = clonePtr(want.MaxShutdownDelaySeconds)
 	}
 	if present("autoDeploy") || present("autoDeployTrigger") {
 		dst.AutoDeploy = want.AutoDeploy
