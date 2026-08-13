@@ -262,7 +262,7 @@ func TestDeployStackRepoOverrideWins(t *testing.T) {
 
 func TestDeployStackRejectsEmptyAndPrivateWithDomains(t *testing.T) {
 	svc, _ := newService(nil)
-	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: "apps: []"}); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: "services: []"}); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "must define at least one") {
 		t.Errorf("empty manifest => ErrBadRequest, got %v", err)
 	}
 	priv := "services:\n  - name: p\n    image: {url: x}\n    type: private\n    domains: [a.example.com]\n"

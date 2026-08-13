@@ -238,7 +238,7 @@ func normalizeBlueprintResourceLists(ir *BlueprintIR, problems *[]BlueprintSourc
 			path := append(append([]string(nil), basePath...), declaration.Field, fmt.Sprintf("%d", index))
 			resource := blueprintResourceFromMap(source, declaration.Kind, entry, path, project, environment, ungrouped)
 			if declaration.Field == "services" {
-				if kind, _ := entry["type"].(string); kind == "keyvalue" || kind == "redis" {
+				if kind, _ := entry["type"].(string); isKeyValueType(kind) {
 					resource.Kind = BlueprintResourceKeyValue
 				}
 			}

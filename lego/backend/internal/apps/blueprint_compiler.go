@@ -470,10 +470,10 @@ func blueprintChildCapabilityContext(context blueprintCapabilityContext, field s
 func blueprintServiceCapabilityContext(value any) blueprintCapabilityContext {
 	service, _ := value.(map[string]any)
 	serviceType, _ := service["type"].(string)
-	switch serviceType {
-	case "keyvalue", "redis":
+	if isKeyValueType(serviceType) {
 		return blueprintCapabilityContext{kind: blueprintCapabilityKeyValue}
-	case "cron":
+	}
+	if serviceType == "cron" {
 		return blueprintCapabilityContext{kind: blueprintCapabilityCron}
 	}
 	if runtime, _ := service["runtime"].(string); runtime == "static" {

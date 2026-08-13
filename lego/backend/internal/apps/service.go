@@ -2342,10 +2342,7 @@ func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commi
 	}
 	previousGeneration := a.Generation
 	v, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
-		if a.Annotations == nil {
-			a.Annotations = map[string]string{}
-		}
-		a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(previousGeneration+1, 10)
+		metav1.SetMetaDataAnnotation(&a.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(previousGeneration+1, 10))
 		if secretName != "" {
 			a.Spec.CloneSecret = secretName
 		}
