@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"slices"
 	"strings"
@@ -652,8 +653,8 @@ func TestPatchEnvironmentCompensatesStoreAndProjectionsWhenAppPatchFails(t *test
 	if err == nil || !strings.Contains(err.Error(), "injected App patch failure") {
 		t.Fatalf("patch error = %v", err)
 	}
-	if !equalStringMaps(store.m[envPath("web")], map[string]string{"OLD": "env-before"}) ||
-		!equalStringMaps(store.m[filesPath("web")], map[string]string{"old.pem": "file-before"}) {
+	if !maps.Equal(store.m[envPath("web")], map[string]string{"OLD": "env-before"}) ||
+		!maps.Equal(store.m[filesPath("web")], map[string]string{"old.pem": "file-before"}) {
 		t.Fatalf("source compensation failed: env=%#v files=%#v", store.m[envPath("web")], store.m[filesPath("web")])
 	}
 	for _, name := range []string{"web-env", "web-files"} {

@@ -265,6 +265,52 @@ func WriteErrStatus(w http.ResponseWriter, status int, msg string) {
 	WriteJSON(w, status, map[string]any{"error": msg, "message": msg, "id": statusErrID(status)})
 }
 
+// HandleJSON adapts the dominant REST handler shape — call the service, then
+// write the mapped error or the JSON result — so each route registers only its
+// call.
+func HandleJSON(status int, fn func(*http.Request) (any, error)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		v, err := fn(r)
+		if err != nil {
+			WriteErr(w, err)
+			return
+		}
+		WriteJSON(w, status, v)
+	}
+}
+
+// HandleNoBody is HandleJSON's shape for the verbs that answer an empty body
+// (delete's 204, the async verbs' 202).
+func HandleNoBody(status int, fn func(*http.Request) error) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := fn(r); err != nil {
+			WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(status)
+	}
+}
+
+// ParseTimeWindow parses the optional startTime/endTime RFC3339 bounds the
+// log-query surfaces share (REST `?startTime=&endTime=`, GraphQL arguments) —
+// one parser so the surfaces cannot drift on the accepted format or the error
+// text naming the offending field. Empty stays the zero time (bound unset).
+// The logs MCP tool keeps its own copy: its error type, Err, differs from the
+// ErrBadRequest wrap here, so unifying it would change its error shape.
+func ParseTimeWindow(startTime, endTime string) (since, end time.Time, err error) {
+	if startTime != "" {
+		if since, err = time.Parse(time.RFC3339, startTime); err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: startTime: %s", ErrBadRequest, err)
+		}
+	}
+	if endTime != "" {
+		if end, err = time.Parse(time.RFC3339, endTime); err != nil {
+			return time.Time{}, time.Time{}, fmt.Errorf("%w: endTime: %s", ErrBadRequest, err)
+		}
+	}
+	return since, end, nil
+}
+
 // statusErrID maps an HTTP status onto the stable error id WriteErr/
 // WriteErrStatus report in the "id" field, so both writers of the one dialect
 // label a status identically.

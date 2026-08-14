@@ -397,31 +397,6 @@ func preferTopLevel(top, nested string) string {
 	return nested
 }
 
-// handleJSON adapts the dominant handler shape — call the service, then write
-// the mapped error or the JSON result — so each route registers only its call.
-func handleJSON(status int, fn func(*http.Request) (any, error)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		v, err := fn(r)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, status, v)
-	}
-}
-
-// handleNoContent is handleJSON's shape for the verbs that answer 204 with an
-// empty body.
-func handleNoContent(fn func(*http.Request) error) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if err := fn(r); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	}
-}
-
 // toCreateRequest folds the Render-nested and bex top-level fields into the
 // neutral CreateRequest. serviceDetails is Render's canonical location for
 // plan/numInstances/healthCheckPath; the top-level plan is a bex convenience
@@ -625,7 +600,7 @@ func parseAutoDeploy(autoDeploy, trigger string) (*bool, error) {
 // spec. Served at Render's canonical /v1/services route;
 // it holds no logic beyond routing + Render serialization.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	list := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	list := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
 		apps, err := s.List(r.Context(), q.Get("ownerId"))
 		if err != nil {
@@ -668,21 +643,21 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		page := core.Page(apps, after, limit, func(a AppView) string { return a.Name })
 		return s.restServiceList(r.Context(), page), nil // [{service, cursor}, ...]
 	})
-	get := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	get := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		app, err := s.Get(r.Context(), r.PathValue("id"))
 		if err != nil {
 			return nil, err
 		}
 		return s.restService(r.Context(), app), nil
 	})
-	listInstances := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	listInstances := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.ListInstances(r.Context(), r.PathValue("id"))
 	})
 	// shellTicket mints a Browser Web Shell exec ticket (docs/ADR035-ssh.md
 	// § Browser Web Shell). bex extension over Render's REST — the dashboard
 	// terminal opens the gateway WebSocket with it. Optional ?instance=<id>
 	// pins one Ready replica; omitted selects a random one, matching SSH.
-	shellTicket := handleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+	shellTicket := core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		return s.CreateShellSession(r.Context(), r.PathValue("id"), r.URL.Query().Get("instance"))
 	})
 	// verb maps a Service action to a handler with a Render-accurate status
@@ -691,7 +666,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// environment guard (w6/m19, ProtectedConfirmation) without needing a
 	// bespoke handler alongside Restart/Resume.
 	verb := func(status int, fn func(context.Context, string) (AppView, error)) http.HandlerFunc {
-		return handleJSON(status, func(r *http.Request) (any, error) {
+		return core.HandleJSON(status, func(r *http.Request) (any, error) {
 			ctx := withConfirm(r.Context(), r.URL.Query().Get("confirm"))
 			app, err := fn(ctx, r.PathValue("id"))
 			if err != nil {
@@ -908,7 +883,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}
 	// scale handles POST /v1/services/{id}/scale — sets the running instance
 	// count (numInstances); out-of-range is core.ErrBadRequest => 400.
-	scale := handleJSON(http.StatusAccepted, func(r *http.Request) (any, error) {
+	scale := core.HandleJSON(http.StatusAccepted, func(r *http.Request) (any, error) {
 		var req scaleRequest
 		if err := core.DecodeJSON(r, &req); err != nil {
 			return nil, core.ErrBadRequest
@@ -965,7 +940,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// ?confirm=<phrase> arms the delete when the service is a member of a
 	// protectedStatus=protected Environment (w6/m19, ProtectedConfirmation);
 	// ignored (harmless) otherwise.
-	deleteSvc := handleNoContent(func(r *http.Request) error {
+	deleteSvc := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		ctx := withConfirm(r.Context(), r.URL.Query().Get("confirm"))
 		return s.Delete(ctx, r.PathValue("id"))
 	})
@@ -973,14 +948,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// runCron handles Render's current POST /cron-jobs/{id}/runs contract. The
 	// deterministic pending run is returned immediately; if another run is active,
 	// the same intent patch asks the operator to cancel it before replacement.
-	runCron := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	runCron := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		run, err := s.TriggerCronRun(r.Context(), r.PathValue("id"))
 		if err != nil {
 			return nil, err
 		}
 		return toRenderCronJobRun(run), nil
 	})
-	listCronRuns := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	listCronRuns := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		cursor, limit := core.PageParams(r.URL.Query())
 		runs, err := s.ListCronRuns(r.Context(), r.PathValue("id"), cursor, limit)
 		if err != nil {
@@ -988,14 +963,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		return toCronJobRunList(runs), nil
 	})
-	getCronRun := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	getCronRun := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		run, err := s.GetCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
 		if err != nil {
 			return nil, err
 		}
 		return toRenderCronJobRun(run), nil
 	})
-	cancelCronRun := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	cancelCronRun := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		run, err := s.CancelCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
 		if err != nil {
 			return nil, err
@@ -1004,7 +979,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 	// Render's current cancel route addresses the active run implicitly and
 	// returns 204. The per-run POST route above is a documented bex extension.
-	cancelCurrentCronRun := handleNoContent(func(r *http.Request) error {
+	cancelCurrentCronRun := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		_, err := s.CancelCurrentCronRun(r.Context(), r.PathValue("id"))
 		return err
 	})
@@ -1017,7 +992,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/cron-jobs/{id}/runs/{runId}/cancel", cancelCronRun)
 
 	// Custom-domains sub-resource (Render-compatible).
-	listDomains := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	listDomains := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		domains, err := s.ListDomains(r.Context(), r.PathValue("id"))
 		if err != nil {
 			return nil, err
@@ -1035,7 +1010,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			func(d DomainView) string { return d.Name })
 		return toCustomDomainList(domains), nil
 	})
-	addDomain := handleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+	addDomain := core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		var req struct {
 			Name string `json:"name"`
 		}
@@ -1048,19 +1023,19 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		return toRenderCustomDomain(d), nil
 	})
-	getDomain := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	getDomain := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		d, err := s.GetDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
 		if err != nil {
 			return nil, err
 		}
 		return toRenderCustomDomain(d), nil
 	})
-	deleteDomain := handleNoContent(func(r *http.Request) error {
+	deleteDomain := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
 	})
 	// verifyDomain re-checks DNS/cert state now (Render's POST …/verify) and returns
 	// the fresh domain. 200 OK — bex verification is automatic, so this is a re-read.
-	verifyDomain := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	verifyDomain := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		d, err := s.VerifyDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
 		if err != nil {
 			return nil, err
@@ -1072,30 +1047,30 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// GET   …/autoscaling — current config (bex extension; Render has no GET)
 	// PUT   …/autoscaling — upsert autoscaling (Render: PUT, 200)
 	// DELETE …/autoscaling — disable autoscaling (Render: DELETE, 204)
-	getAutoscaling := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	getAutoscaling := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.GetAutoscaling(r.Context(), r.PathValue("id"))
 	})
-	putAutoscaling := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	putAutoscaling := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var req SetAutoscalingRequest
 		if err := core.DecodeJSON(r, &req); err != nil {
 			return nil, core.ErrBadRequest
 		}
 		return s.SetAutoscaling(r.Context(), r.PathValue("id"), req)
 	})
-	deleteAutoscaling := handleNoContent(func(r *http.Request) error {
+	deleteAutoscaling := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteAutoscaling(r.Context(), r.PathValue("id"))
 	})
 
 	// Static-site edge rules (Render-compatible): /routes (redirects/rewrites) and
 	// /headers (custom response headers). GET lists; PUT replaces the whole list.
-	listRoutes := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	listRoutes := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		routes, err := s.ListRoutes(r.Context(), r.PathValue("id"))
 		if err != nil {
 			return nil, err
 		}
 		return toRenderRoutes(routes), nil
 	})
-	putRoutes := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	putRoutes := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body []renderRoute
 		if err := core.DecodeJSON(r, &body); err != nil {
 			return nil, core.ErrBadRequest
@@ -1106,14 +1081,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		return toRenderRoutes(app.Routes), nil
 	})
-	listHeaders := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	listHeaders := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		headers, err := s.ListHeaders(r.Context(), r.PathValue("id"))
 		if err != nil {
 			return nil, err
 		}
 		return toRenderHeaders(headers), nil
 	})
-	putHeaders := handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	putHeaders := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body []renderHeader
 		if err := core.DecodeJSON(r, &body); err != nil {
 			return nil, core.ErrBadRequest
@@ -1129,7 +1104,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// get-by-id · sync · list-syncs · update · disconnect.
 	// POST /v1/blueprints/validate is registered before POST /v1/blueprints/{id}/sync
 	// — Go 1.22+ ServeMux resolves the more specific (literal) path first.
-	mux.HandleFunc("POST /v1/blueprints", handleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+	mux.HandleFunc("POST /v1/blueprints", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		var body struct {
 			Repo         string            `json:"repo"`
 			Branch       string            `json:"branch"`
@@ -1151,10 +1126,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			Confirm:      body.Confirm,
 		})
 	}))
-	mux.HandleFunc("GET /v1/blueprints/{id}", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("GET /v1/blueprints/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.GetBlueprintByID(r.Context(), r.PathValue("id"), r.URL.Query().Get("ownerId"))
 	}))
-	mux.HandleFunc("PATCH /v1/blueprints/{id}", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("PATCH /v1/blueprints/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
 			Name     *string `json:"name"`
 			AutoSync *bool   `json:"autoSync"`
@@ -1170,10 +1145,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			Path:     body.Path,
 		})
 	}))
-	mux.HandleFunc("DELETE /v1/blueprints/{id}", handleNoContent(func(r *http.Request) error {
+	mux.HandleFunc("DELETE /v1/blueprints/{id}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DisconnectBlueprint(r.Context(), r.PathValue("id"), r.URL.Query().Get("ownerId"))
 	}))
-	mux.HandleFunc("GET /v1/blueprints/{id}/syncs", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("GET /v1/blueprints/{id}/syncs", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
 		limit, _ := strconv.Atoi(q.Get("limit"))
 		return s.ListBlueprintSyncs(r.Context(), r.PathValue("id"), q.Get("ownerId"), q.Get("cursor"), limit)
@@ -1191,7 +1166,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, v)
 	})
-	mux.HandleFunc("POST /v1/blueprints/deploy", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("POST /v1/blueprints/deploy", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
 			OwnerID string `json:"ownerId"`
 			Repo    string `json:"repo"`
@@ -1206,7 +1181,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			OwnerID: body.OwnerID, Repo: body.Repo, Branch: body.Branch, Manifest: body.BexYAML, Confirm: body.Confirm,
 		})
 	}))
-	mux.HandleFunc("POST /v1/blueprints/preview", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("POST /v1/blueprints/preview", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
 			Repo    string `json:"repo"`
 			Branch  string `json:"branch"`
@@ -1218,10 +1193,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		return s.PreviewBlueprint(r.Context(), body.OwnerID, body.Repo, body.Branch, body.Path)
 	}))
-	mux.HandleFunc("GET /v1/blueprints", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("GET /v1/blueprints", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.ListBlueprints(r.Context(), r.URL.Query().Get("ownerId"))
 	}))
-	mux.HandleFunc("POST /v1/blueprints/{id}/sync", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("POST /v1/blueprints/{id}/sync", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
 			BexYAML string `json:"bexYaml"`
 			OwnerID string `json:"ownerId"`
@@ -1241,14 +1216,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			PreviewNotificationsEnabled: "default",
 		}
 	}
-	mux.HandleFunc("GET /v1/notification-settings/overrides/services/{id}", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("GET /v1/notification-settings/overrides/services/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		app, err := s.Get(r.Context(), r.PathValue("id"))
 		if err != nil {
 			return nil, err
 		}
 		return toNotificationOverride(app), nil
 	}))
-	mux.HandleFunc("PATCH /v1/notification-settings/overrides/services/{id}", handleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("PATCH /v1/notification-settings/overrides/services/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
 			NotificationsToSend         *string `json:"notificationsToSend"`
 			PreviewNotificationsEnabled *string `json:"previewNotificationsEnabled"`

@@ -225,27 +225,6 @@ type LogQuery struct {
 	searchLower string // Search lowercased once by normalized(); read by keep()
 }
 
-// parseTimeWindow parses the optional startTime/endTime RFC3339 bounds shared
-// by REST (`?startTime=&endTime=`) and GraphQL (`logs(startTime:, endTime:)`)
-// — one parser so the two surfaces cannot drift on the accepted format or the
-// error text naming the offending field (MCP's `list_logs` keeps its own copy:
-// its error type, core.Err, differs from REST/GraphQL's core.ErrBadRequest
-// wrap, so unifying it here would change its error shape). Empty stays the
-// zero time (bound unset, LogQuery.Since/.End's own contract).
-func parseTimeWindow(startTime, endTime string) (since, end time.Time, err error) {
-	if startTime != "" {
-		if since, err = time.Parse(time.RFC3339, startTime); err != nil {
-			return time.Time{}, time.Time{}, fmt.Errorf("%w: startTime: %s", core.ErrBadRequest, err)
-		}
-	}
-	if endTime != "" {
-		if end, err = time.Parse(time.RFC3339, endTime); err != nil {
-			return time.Time{}, time.Time{}, fmt.Errorf("%w: endTime: %s", core.ErrBadRequest, err)
-		}
-	}
-	return since, end, nil
-}
-
 // validate rejects a filter value outside the accepted vocabulary — an unknown
 // `direction` or log `type`. It runs inside the verbs (before normalized(), which
 // coerces), so the refusal is the service's, not each adapter's: a fourth caller

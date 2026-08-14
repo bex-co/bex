@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
-	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
@@ -297,7 +296,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+base+"/{id}/logs", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		limit, _ := strconv.ParseInt(q.Get("limit"), 10, 64)
-		since, end, err := parseKVTimeWindow(q.Get("startTime"), q.Get("endTime"))
+		since, end, err := core.ParseTimeWindow(q.Get("startTime"), q.Get("endTime"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -356,21 +355,4 @@ func (s *Service) handleUpdateKeyValue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	core.WriteJSON(w, http.StatusOK, s.renderOneKeyValue(r.Context(), kv))
-}
-
-// parseKVTimeWindow parses optional startTime/endTime RFC3339 bounds for Key
-// Value log queries — the same contract as the app and postgres REST log
-// handlers.
-func parseKVTimeWindow(startTime, endTime string) (since, end time.Time, err error) {
-	if startTime != "" {
-		if since, err = time.Parse(time.RFC3339, startTime); err != nil {
-			return time.Time{}, time.Time{}, fmt.Errorf("%w: startTime: %s", core.ErrBadRequest, err)
-		}
-	}
-	if endTime != "" {
-		if end, err = time.Parse(time.RFC3339, endTime); err != nil {
-			return time.Time{}, time.Time{}, fmt.Errorf("%w: endTime: %s", core.ErrBadRequest, err)
-		}
-	}
-	return since, end, nil
 }

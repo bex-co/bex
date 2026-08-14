@@ -88,6 +88,44 @@ func envOr(k, def string) string {
 	return def
 }
 
+// rateLimitEnv parses one of the requests/min rate-limit env pairs: the fill
+// rate (startup-fatal when malformed) plus its best-effort burst companion.
+func rateLimitEnv(limitVar, limitDef, burstVar, burstDef string) (float64, int) {
+	raw := envOr(limitVar, limitDef)
+	rpm, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		log.Fatalf("bex-api: bad %s %q: %v", limitVar, raw, err)
+	}
+	burst, _ := strconv.Atoi(envOr(burstVar, burstDef))
+	return rpm, burst
+}
+
+// positiveIntEnv parses an integer ≥ 1 tuning knob, warning (so the caller
+// keeps its default) when the variable is set but invalid; unset is silently
+// ok=false.
+func positiveIntEnv(name string, def any) (int, bool) {
+	v := os.Getenv(name)
+	if v == "" {
+		return 0, false
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 1 {
+		log.Printf("%s=%q invalid (want integer ≥ 1); using default %v", name, v, def)
+		return 0, false
+	}
+	return n, true
+}
+
+// minuteDurationEnv parses a duration env var with a floor of one minute,
+// startup-fatal when malformed or shorter.
+func minuteDurationEnv(name, def string) time.Duration {
+	d, err := time.ParseDuration(envOr(name, def))
+	if err != nil || d < time.Minute {
+		log.Fatalf("bex-api: %s must be a duration >= 1m: %v", name, err)
+	}
+	return d
+}
+
 func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Template {
 	return map[string]sandbox.Template{
 		"base": {
@@ -464,12 +502,8 @@ func main() {
 		// window is BEX_USAGE_RETENTION_MONTHS calendar months (current month
 		// included; default 3, minimum 1) — docs/ADR023-usage-metering.md.
 		usageSvc := usage.NewService(base, st, promURL, nil)
-		if v := os.Getenv("BEX_USAGE_RETENTION_MONTHS"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil && n >= 1 {
-				usageSvc.RetentionMonths = n
-			} else {
-				log.Printf("BEX_USAGE_RETENTION_MONTHS=%q invalid (want integer ≥ 1); using default %d", v, usage.DefaultRetentionMonths)
-			}
+		if n, ok := positiveIntEnv("BEX_USAGE_RETENTION_MONTHS", usage.DefaultRetentionMonths); ok {
+			usageSvc.RetentionMonths = n
 		}
 		deps.Usage = usageSvc
 
@@ -514,12 +548,8 @@ func main() {
 			emitter.Metrics = billingMetrics
 			emitter.Epoch = billingEpoch
 			emitter.RequirePaymentMethod = requirePaymentMethod
-			if v := os.Getenv("BEX_STRIPE_SEAL_HOURS"); v != "" {
-				if n, err := strconv.Atoi(v); err == nil && n >= 1 {
-					emitter.SealHours = time.Duration(n) * time.Hour
-				} else {
-					log.Printf("BEX_STRIPE_SEAL_HOURS=%q invalid (want integer ≥ 1); using default %s", v, billing.DefaultSealHours)
-				}
+			if n, ok := positiveIntEnv("BEX_STRIPE_SEAL_HOURS", billing.DefaultSealHours); ok {
+				emitter.SealHours = time.Duration(n) * time.Hour
 			}
 			// w7/m57: never seal shorter than the usage rollup's catch-up window, or
 			// an exported row could still be rewritten and never re-emitted.
@@ -532,14 +562,8 @@ func main() {
 				if stripeClient.ExpectedLivemode() {
 					log.Fatal("bex-api: BEX_STRIPE_DUNNING_ENABLED=1 is test-mode only at w7/m52; refusing live enforcement")
 				}
-				grace, err := time.ParseDuration(envOr("BEX_STRIPE_GRACE_PERIOD", "168h"))
-				if err != nil || grace < time.Minute {
-					log.Fatalf("bex-api: BEX_STRIPE_GRACE_PERIOD must be a duration >= 1m: %v", err)
-				}
-				reconcileEvery, err := time.ParseDuration(envOr("BEX_STRIPE_RECONCILE_INTERVAL", "5m"))
-				if err != nil || reconcileEvery < time.Minute {
-					log.Fatalf("bex-api: BEX_STRIPE_RECONCILE_INTERVAL must be a duration >= 1m: %v", err)
-				}
+				grace := minuteDurationEnv("BEX_STRIPE_GRACE_PERIOD", "168h")
+				reconcileEvery := minuteDurationEnv("BEX_STRIPE_RECONCILE_INTERVAL", "5m")
 				lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: false}
 				enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: envOr("BEX_CP_APPS_NAMESPACE", base.Namespace)}
 				stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
@@ -564,12 +588,8 @@ func main() {
 		// cadence/shape as usage's compaction loop above. The write side is
 		// base.Audit (wired above); this Service is the read verb + sweep only.
 		auditSvc := &audit.Service{Base: base, Store: st}
-		if v := os.Getenv("BEX_AUDIT_RETENTION_DAYS"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil && n >= 1 {
-				auditSvc.RetentionDays = n
-			} else {
-				log.Printf("BEX_AUDIT_RETENTION_DAYS=%q invalid (want integer ≥ 1); using default %d", v, audit.DefaultRetentionDays)
-			}
+		if n, ok := positiveIntEnv("BEX_AUDIT_RETENTION_DAYS", audit.DefaultRetentionDays); ok {
+			auditSvc.RetentionDays = n
 		}
 		deps.Audit = auditSvc
 		go auditSvc.Run(ctx)
@@ -866,13 +886,7 @@ func main() {
 	}
 
 	// Rate limiting + request caps (w7/m3). BEX_RATE_LIMIT=0 disables the limiter.
-	rpmStr := envOr("BEX_RATE_LIMIT", "500")
-	rpm, err := strconv.ParseFloat(rpmStr, 64)
-	if err != nil {
-		log.Fatalf("bex-api: bad BEX_RATE_LIMIT %q: %v", rpmStr, err)
-	}
-	burstStr := envOr("BEX_RATE_BURST", "0")
-	burst, _ := strconv.Atoi(burstStr)
+	rpm, burst := rateLimitEnv("BEX_RATE_LIMIT", "500", "BEX_RATE_BURST", "0")
 	srv.RateLimiter = api.NewRateLimiter(rpm, burst) // nil when rpm=0 (disabled)
 
 	// Device-flow rate limiting (w4/m31/t002). BEX_DEVICE_RATE_LIMIT=0
@@ -883,12 +897,7 @@ func main() {
 	// needs the env-derived rpm/burst, so there's no reason its configuration
 	// should wait until after Handler() the way its consumer's construction
 	// must.
-	deviceRPMStr := envOr("BEX_DEVICE_RATE_LIMIT", "30")
-	deviceRPM, err := strconv.ParseFloat(deviceRPMStr, 64)
-	if err != nil {
-		log.Fatalf("bex-api: bad BEX_DEVICE_RATE_LIMIT %q: %v", deviceRPMStr, err)
-	}
-	deviceBurst, _ := strconv.Atoi(envOr("BEX_DEVICE_RATE_BURST", "0"))
+	deviceRPM, deviceBurst := rateLimitEnv("BEX_DEVICE_RATE_LIMIT", "30", "BEX_DEVICE_RATE_BURST", "0")
 	srv.DeviceRateLimiter = cliauth.NewDeviceRateLimiter(deviceRPM, deviceBurst)
 
 	// Webhook intake rate limiting (w7/m60). The two unauthenticated intakes
@@ -899,23 +908,13 @@ func main() {
 	// delivery pattern hits 10 req/s from one source IP, and both senders retry, so
 	// an unlucky burst-shed self-heals — only an abusive flood is turned away.
 	// BEX_WEBHOOK_RATE_LIMIT=0 disables it (byte-identical to before m60).
-	webhookRPMStr := envOr("BEX_WEBHOOK_RATE_LIMIT", "600")
-	webhookRPM, err := strconv.ParseFloat(webhookRPMStr, 64)
-	if err != nil {
-		log.Fatalf("bex-api: bad BEX_WEBHOOK_RATE_LIMIT %q: %v", webhookRPMStr, err)
-	}
-	webhookBurst, _ := strconv.Atoi(envOr("BEX_WEBHOOK_RATE_BURST", "0"))
+	webhookRPM, webhookBurst := rateLimitEnv("BEX_WEBHOOK_RATE_LIMIT", "600", "BEX_WEBHOOK_RATE_BURST", "0")
 	srv.WebhookRateLimiter = api.NewRateLimiter(webhookRPM, webhookBurst) // nil when rpm=0
 
 	// Deploy-hook lookup limiting is a distinct IP budget outside the auth gate.
 	// The hook's inner 6/min token bucket handles a leaked valid credential; this
 	// outer cap sheds random-token enumeration before any Kubernetes API lookup.
-	deployHookLookupRPMStr := envOr("BEX_DEPLOY_HOOK_LOOKUP_RATE_LIMIT", "60")
-	deployHookLookupRPM, err := strconv.ParseFloat(deployHookLookupRPMStr, 64)
-	if err != nil {
-		log.Fatalf("bex-api: bad BEX_DEPLOY_HOOK_LOOKUP_RATE_LIMIT %q: %v", deployHookLookupRPMStr, err)
-	}
-	deployHookLookupBurst, _ := strconv.Atoi(envOr("BEX_DEPLOY_HOOK_LOOKUP_RATE_BURST", "10"))
+	deployHookLookupRPM, deployHookLookupBurst := rateLimitEnv("BEX_DEPLOY_HOOK_LOOKUP_RATE_LIMIT", "60", "BEX_DEPLOY_HOOK_LOOKUP_RATE_BURST", "10")
 	srv.DeployHookLookupRateLimiter = api.NewRateLimiter(deployHookLookupRPM, deployHookLookupBurst)
 
 	// Pre-auth admission (w1/m67 F1). The per-caller limiter above runs INSIDE
@@ -926,12 +925,7 @@ func main() {
 	// so the dashboard's one-pod-IP SSR traffic is never throttled) and caps how
 	// many upstream auth calls may be in flight at once.
 	// BEX_AUTH_FAILURE_LIMIT=0 + BEX_AUTH_MAX_INFLIGHT=0 disables both.
-	authFailureRPMStr := envOr("BEX_AUTH_FAILURE_LIMIT", "60")
-	authFailureRPM, err := strconv.ParseFloat(authFailureRPMStr, 64)
-	if err != nil {
-		log.Fatalf("bex-api: bad BEX_AUTH_FAILURE_LIMIT %q: %v", authFailureRPMStr, err)
-	}
-	authFailureBurst, _ := strconv.Atoi(envOr("BEX_AUTH_FAILURE_BURST", "0"))
+	authFailureRPM, authFailureBurst := rateLimitEnv("BEX_AUTH_FAILURE_LIMIT", "60", "BEX_AUTH_FAILURE_BURST", "0")
 	authMaxInflight, err := strconv.Atoi(envOr("BEX_AUTH_MAX_INFLIGHT", "64"))
 	if err != nil {
 		log.Fatalf("bex-api: bad BEX_AUTH_MAX_INFLIGHT: %v", err)

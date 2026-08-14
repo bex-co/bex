@@ -35,6 +35,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -406,10 +407,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			}
 			return ctrl.Result{}, nil
 		}
-		if r.Mode == ModeKubernetes {
-			return r.reconcileKubernetes(ctx, &app, app.Status.Image, port)
-		}
-		return r.reconcileOpenSandbox(ctx, &app, app.Status.Image, port)
+		return r.dispatchRuntime(ctx, &app, app.Status.Image, port)
 	}
 
 	// --- resolve the image: prebuilt, cached artifact, or build from git ---
@@ -433,160 +431,176 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return r.fail(ctx, &app, "BadSpec", fmt.Errorf("static_site requires the kubernetes runtime"))
 	}
 	if image == "" {
-		if app.Spec.Repo == "" {
-			return r.fail(ctx, &app, "BadSpec", fmt.Errorf("one of spec.image or spec.repo is required"))
+		built, res, halted, err := r.buildFromSource(ctx, &app)
+		if halted {
+			return res, err
 		}
-		ref := app.Spec.Branch
-		if ref == "" {
-			ref = "main"
-		}
-		// A commitId override from the deploy API (spec.BuildCommit) takes
-		// precedence over the tracked branch for this single build. The next
-		// trigger without a commitId resets BuildCommit to "" via the API patch,
-		// so Branch HEAD is the default for every subsequent deploy.
-		if app.Spec.BuildCommit != "" {
-			ref = app.Spec.BuildCommit
-		}
-		// Tag by release generation: a deploy trigger (including a webhook redeploy
-		// that stamps spec.restartedAt) yields a new tag, while an operational spec
-		// generation retains the current tag/artifact.
-		//
-		// A fresh tag makes the built image fresh and
-		// the Deployment re-pulls it. An in-cluster BuildKit Job does the work — no
-		// docker daemon on the node.
-		buildNs := r.buildNamespace(app.Namespace)
-		builder := effectiveBuilder(app.Spec)
-
-		// The build's serial push phase uses this App's repository-scoped Zot
-		// credential. Zot reads htpasswd and ACL Secrets only at startup, so a new
-		// App's freshly minted credential may not be active yet. The workload gate
-		// in reconcileKubernetes is necessarily too late for this path: the image
-		// must be pushed before there is an image to roll out. Prove activation
-		// before creating the build Job so a healthy build cannot fail at its final
-		// push with a misleading BuildFailed/authentication-required error.
-		if r.PerAppRegistry != nil && r.Registry != "" {
-			active, err := r.PerAppRegistry.EnsureActive(ctx, app.Name, app.Namespace)
-			if err != nil {
-				logf.FromContext(ctx).Error(err, "registry credential probe failed before build; requeueing", "app", app.Name)
-				return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
-			}
-			if !active {
-				r.setPhase(ctx, &app, appv1alpha1.PhaseBuilding, "RegistryCredsPending",
-					"Waiting for the registry to accept this app's build credential")
-				return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
-			}
-		}
-
-		// Newest-wins per App (w7/m9): cancel any active build Job for this service
-		// so a push-spam burst never runs more than one build at a time per App,
-		// matching Render's "Render cancels any in-progress build for the same service".
-		buildClient := r.buildPlaneClient()
-		if err := build.CancelActiveBuilds(ctx, app.Name, string(app.UID), buildNs, buildClient); err != nil {
-			return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("cancelling superseded build: %w", err))
-		}
-
-		// Per-workspace concurrent-build cap (w7/m9): hold off when the workspace is
-		// at its limit — requeue until a slot opens rather than starting another.
-		// Byte-identical when MaxConcurrentBuilds == 0 (unset) or workspace absent.
-		if r.MaxConcurrentBuilds > 0 {
-			if workspace := app.Labels[labelWorkspace]; workspace != "" {
-				active, err := build.ActiveWorkspaceBuilds(ctx, workspace, buildNs, buildClient)
-				if err != nil {
-					return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("counting workspace builds: %w", err))
-				}
-				if active >= r.MaxConcurrentBuilds {
-					r.setPhase(ctx, &app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
-						fmt.Sprintf("workspace has %d/%d concurrent builds active; waiting for a slot", active, r.MaxConcurrentBuilds))
-					return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
-				}
-			}
-		}
-
-		// Open at BuildQueued, not Building: at this instant the Job does not
-		// exist yet, so nothing is building. buildWaitReporter flips it to
-		// Building the moment a pod is actually placed on a node, and the
-		// control plane's budget restarts on that edge — which is the whole
-		// point, since a build that waits 20 minutes for capacity must not
-		// spend that wait from the time allowed for the build itself.
-		//
-		// The reason must be honest from the FIRST status the control plane
-		// samples. Its deploy row may only enter queued from created, so an
-		// optimistic "Building" here would let a poll landing in the gap
-		// between dispatch and the first wait callback lock the row into
-		// build_in_progress, and the queued→building edge that resets the clock
-		// would never happen.
-		//
-		// Buildpack (kpack) is exempt: build.Build returns down a different path
-		// that never reports waiting, so opening it queued would strand it there
-		// until the gate fired. It keeps the previous immediate Building.
-		buildOpenReason, buildOpenMessage := reasonBuildQueued, "waiting for build capacity: dispatching build"
-		if builder == build.BuilderBuildpack {
-			buildOpenReason, buildOpenMessage = reasonBuilding, "Building image from "+app.Spec.Repo
-		}
-		r.setPhase(ctx, &app, appv1alpha1.PhaseBuilding, buildOpenReason, buildOpenMessage)
-		// The clone Secret (docs/ADR026-github-integration.md) that bex-api wrote lives
-		// in the App's namespace, but the build Job runs in buildNs
-		// (BEX_BUILD_NAMESPACE). When they differ, relocate it so BuildKit can read
-		// GIT_AUTH_TOKEN — otherwise the build pod is CreateContainerConfigError
-		// ("secret not found"). Mechanism-only: the operator just copies an opaque
-		// Secret across namespaces; it never mints or inspects the token.
-		if app.Spec.CloneSecret != "" && buildNs != app.Namespace {
-			if err := r.copyCloneSecret(ctx, &app, app.Namespace, buildNs, app.Spec.CloneSecret); err != nil {
-				return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("relocating clone secret to %s: %w", buildNs, err))
-			}
-		}
-		runtimeSecret := runtimeEnvSecret(&app)
-		if builder == build.BuilderNative && runtimeSecret != "" && buildNs != app.Namespace {
-			if err := r.copyCloneSecret(ctx, &app, app.Namespace, buildNs, runtimeSecret); err != nil {
-				return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("relocating native build env to %s: %w", buildNs, err))
-			}
-		}
-		buildRegistryPullSecret, err := r.prepareBuildRegistrySecret(ctx, &app, buildNs, builder)
-		if err != nil {
-			return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("preparing Docker-build registry credential: %w", err))
-		}
-		res, err := build.Build(ctx, build.Options{
-			Repo: app.Spec.Repo, Ref: ref, RootDir: app.Spec.RootDir,
-			DockerfilePath: app.Spec.DockerfilePath, Name: app.Name, AppUID: string(app.UID),
-			Registry: r.Registry, KpackRegistry: r.KpackRegistry,
-			Builder:          builder,
-			Runtime:          app.Spec.Runtime,
-			BuildCommand:     app.Spec.BuildCommand,
-			StartCommand:     app.Spec.StartCommand,
-			BuildEnv:         buildEnv(builder, app.Spec.Env),
-			RuntimeEnvSecret: runtimeSecret,
-			Revision:         releaseBuildRevision(&app),
-			Namespace:        buildNs,
-			AppNamespace:     app.Namespace,
-			Workspace:        app.Labels[labelWorkspace],
-			CloneSecret:      app.Spec.CloneSecret,
-			SignKeySecret:    r.TenantSignKeySecret,
-			SignImage:        r.TenantSignImage,
-			PushSecret:       r.buildJobPushSecret(&app),
-			PullSecret:       buildRegistryPullSecret,
-			RegistryConfig:   usesBuildRegistryConfig(&app, builder),
-			Client:           buildClient,
-			OnWaiting:        r.buildWaitReporter(ctx, &app),
-		})
-		if err != nil {
-			if errors.Is(err, build.ErrAppDeleting) {
-				logf.FromContext(ctx).Info("build wait interrupted because App is deleting", "app", app.Name)
-				return ctrl.Result{Requeue: true}, nil
-			}
-			return r.fail(ctx, &app, "BuildFailed", err)
-		}
-		image = r.pinBuiltImage(ctx, &app, res.Image)
-		artifactResolved = true
+		image, artifactResolved = built, true
 	}
 	if artifactResolved {
 		app.Status.ArtifactFingerprint = releaseDecision.desired.artifact
 		app.Status.ArtifactImage = image
 	}
 
+	return r.dispatchRuntime(ctx, &app, image, port)
+}
+
+// dispatchRuntime hands the resolved image to the configured runtime.
+func (r *AppReconciler) dispatchRuntime(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, error) {
 	if r.Mode == ModeKubernetes {
-		return r.reconcileKubernetes(ctx, &app, image, port)
+		return r.reconcileKubernetes(ctx, app, image, port)
 	}
-	return r.reconcileOpenSandbox(ctx, &app, image, port)
+	return r.reconcileOpenSandbox(ctx, app, image, port)
+}
+
+// buildFromSource resolves the image for a repo-backed App by dispatching an
+// in-cluster build and waiting for it. halted=true means this reconcile pass
+// must stop and return (res, err): the credential gate, the per-workspace
+// build cap, an interrupted wait, or a build failure has already recorded its
+// status. Pure extraction from Reconcile — the pinned image is its only
+// output.
+func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.App) (string, ctrl.Result, bool, error) {
+	halt := func(res ctrl.Result, err error) (string, ctrl.Result, bool, error) {
+		return "", res, true, err
+	}
+	if app.Spec.Repo == "" {
+		return halt(r.fail(ctx, app, "BadSpec", fmt.Errorf("one of spec.image or spec.repo is required")))
+	}
+	ref := app.Spec.Branch
+	if ref == "" {
+		ref = "main"
+	}
+	// A commitId override from the deploy API (spec.BuildCommit) takes
+	// precedence over the tracked branch for this single build. The next
+	// trigger without a commitId resets BuildCommit to "" via the API patch,
+	// so Branch HEAD is the default for every subsequent deploy.
+	if app.Spec.BuildCommit != "" {
+		ref = app.Spec.BuildCommit
+	}
+	// Tag by release generation: a deploy trigger (including a webhook redeploy
+	// that stamps spec.restartedAt) yields a new tag, while an operational spec
+	// generation retains the current tag/artifact.
+	//
+	// A fresh tag makes the built image fresh and
+	// the Deployment re-pulls it. An in-cluster BuildKit Job does the work — no
+	// docker daemon on the node.
+	buildNs := r.buildNamespace(app.Namespace)
+	builder := effectiveBuilder(app.Spec)
+
+	// The build's serial push phase uses this App's repository-scoped Zot
+	// credential. Zot reads htpasswd and ACL Secrets only at startup, so a new
+	// App's freshly minted credential may not be active yet. The workload gate
+	// in reconcileKubernetes is necessarily too late for this path: the image
+	// must be pushed before there is an image to roll out. Prove activation
+	// before creating the build Job so a healthy build cannot fail at its final
+	// push with a misleading BuildFailed/authentication-required error.
+	if r.PerAppRegistry != nil && r.Registry != "" {
+		if res, halted := r.awaitRegistryCredActive(ctx, app, appv1alpha1.PhaseBuilding,
+			"registry credential probe failed before build; requeueing",
+			"Waiting for the registry to accept this app's build credential"); halted {
+			return halt(res, nil)
+		}
+	}
+
+	// Newest-wins per App (w7/m9): cancel any active build Job for this service
+	// so a push-spam burst never runs more than one build at a time per App,
+	// matching Render's "Render cancels any in-progress build for the same service".
+	buildClient := r.buildPlaneClient()
+	if err := build.CancelActiveBuilds(ctx, app.Name, string(app.UID), buildNs, buildClient); err != nil {
+		return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("cancelling superseded build: %w", err)))
+	}
+
+	// Per-workspace concurrent-build cap (w7/m9): hold off when the workspace is
+	// at its limit — requeue until a slot opens rather than starting another.
+	// Byte-identical when MaxConcurrentBuilds == 0 (unset) or workspace absent.
+	if r.MaxConcurrentBuilds > 0 {
+		if workspace := app.Labels[labelWorkspace]; workspace != "" {
+			active, err := build.ActiveWorkspaceBuilds(ctx, workspace, buildNs, buildClient)
+			if err != nil {
+				return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("counting workspace builds: %w", err)))
+			}
+			if active >= r.MaxConcurrentBuilds {
+				r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
+					fmt.Sprintf("workspace has %d/%d concurrent builds active; waiting for a slot", active, r.MaxConcurrentBuilds))
+				return halt(ctrl.Result{RequeueAfter: 30 * time.Second}, nil)
+			}
+		}
+	}
+
+	// Open at BuildQueued, not Building: at this instant the Job does not
+	// exist yet, so nothing is building. buildWaitReporter flips it to
+	// Building the moment a pod is actually placed on a node, and the
+	// control plane's budget restarts on that edge — which is the whole
+	// point, since a build that waits 20 minutes for capacity must not
+	// spend that wait from the time allowed for the build itself.
+	//
+	// The reason must be honest from the FIRST status the control plane
+	// samples. Its deploy row may only enter queued from created, so an
+	// optimistic "Building" here would let a poll landing in the gap
+	// between dispatch and the first wait callback lock the row into
+	// build_in_progress, and the queued→building edge that resets the clock
+	// would never happen.
+	//
+	// Buildpack (kpack) is exempt: build.Build returns down a different path
+	// that never reports waiting, so opening it queued would strand it there
+	// until the gate fired. It keeps the previous immediate Building.
+	buildOpenReason, buildOpenMessage := reasonBuildQueued, "waiting for build capacity: dispatching build"
+	if builder == build.BuilderBuildpack {
+		buildOpenReason, buildOpenMessage = reasonBuilding, "Building image from "+app.Spec.Repo
+	}
+	r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, buildOpenReason, buildOpenMessage)
+	// The clone Secret (docs/ADR026-github-integration.md) that bex-api wrote lives
+	// in the App's namespace, but the build Job runs in buildNs
+	// (BEX_BUILD_NAMESPACE). When they differ, relocate it so BuildKit can read
+	// GIT_AUTH_TOKEN — otherwise the build pod is CreateContainerConfigError
+	// ("secret not found"). Mechanism-only: the operator just copies an opaque
+	// Secret across namespaces; it never mints or inspects the token.
+	if app.Spec.CloneSecret != "" && buildNs != app.Namespace {
+		if err := r.copyCloneSecret(ctx, app, app.Namespace, buildNs, app.Spec.CloneSecret); err != nil {
+			return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("relocating clone secret to %s: %w", buildNs, err)))
+		}
+	}
+	runtimeSecret := runtimeEnvSecret(app)
+	if builder == build.BuilderNative && runtimeSecret != "" && buildNs != app.Namespace {
+		if err := r.copyCloneSecret(ctx, app, app.Namespace, buildNs, runtimeSecret); err != nil {
+			return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("relocating native build env to %s: %w", buildNs, err)))
+		}
+	}
+	buildRegistryPullSecret, err := r.prepareBuildRegistrySecret(ctx, app, buildNs, builder)
+	if err != nil {
+		return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("preparing Docker-build registry credential: %w", err)))
+	}
+	res, err := build.Build(ctx, build.Options{
+		Repo: app.Spec.Repo, Ref: ref, RootDir: app.Spec.RootDir,
+		DockerfilePath: app.Spec.DockerfilePath, Name: app.Name, AppUID: string(app.UID),
+		Registry: r.Registry, KpackRegistry: r.KpackRegistry,
+		Builder:          builder,
+		Runtime:          app.Spec.Runtime,
+		BuildCommand:     app.Spec.BuildCommand,
+		StartCommand:     app.Spec.StartCommand,
+		BuildEnv:         buildEnv(builder, app.Spec.Env),
+		RuntimeEnvSecret: runtimeSecret,
+		Revision:         releaseBuildRevision(app),
+		Namespace:        buildNs,
+		AppNamespace:     app.Namespace,
+		Workspace:        app.Labels[labelWorkspace],
+		CloneSecret:      app.Spec.CloneSecret,
+		SignKeySecret:    r.TenantSignKeySecret,
+		SignImage:        r.TenantSignImage,
+		PushSecret:       r.buildJobPushSecret(app),
+		PullSecret:       buildRegistryPullSecret,
+		RegistryConfig:   usesBuildRegistryConfig(app, builder),
+		Client:           buildClient,
+		OnWaiting:        r.buildWaitReporter(ctx, app),
+	})
+	if err != nil {
+		if errors.Is(err, build.ErrAppDeleting) {
+			logf.FromContext(ctx).Info("build wait interrupted because App is deleting", "app", app.Name)
+			return halt(ctrl.Result{Requeue: true}, nil)
+		}
+		return halt(r.fail(ctx, app, "BuildFailed", err))
+	}
+	return r.pinBuiltImage(ctx, app, res.Image), ctrl.Result{}, false, nil
 }
 
 // buildWaitReporter returns the callback build.Build invokes while it waits,
@@ -1211,17 +1225,10 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// registry-hosted image, verify zot accepts this App's credential.
 	// Suspended Apps skip the gate: they scale to zero and pull nothing.
 	if r.PerAppRegistry != nil && !app.Spec.Suspended && r.registryHosted(image) {
-		active, err := r.PerAppRegistry.EnsureActive(ctx, app.Name, app.Namespace)
-		if err != nil {
-			// Probe impossible (zot or the pull Secret unreachable) — a platform
-			// hiccup, not an App failure; keep the previous revision serving and retry.
-			logf.FromContext(ctx).Error(err, "registry credential probe failed; requeueing", "app", app.Name)
-			return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
-		}
-		if !active {
-			r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "RegistryCredsPending",
-				"Waiting for the registry to accept this app's pull credential")
-			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		if res, halted := r.awaitRegistryCredActive(ctx, app, appv1alpha1.PhaseDeploying,
+			"registry credential probe failed; requeueing",
+			"Waiting for the registry to accept this app's pull credential"); halted {
+			return res, nil
 		}
 	}
 
@@ -1410,10 +1417,14 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		Message:            fmt.Sprintf("%d/%d replicas ready", dep.Status.ReadyReplicas, replicas),
 		ObservedGeneration: app.Generation,
 	})
-	if err := r.Status().Update(ctx, app); err != nil {
-		return ctrl.Result{}, err
+	// A settled Running app re-stamps identical status on every steady-state
+	// pass (childHealthRequeue): skip the no-op PUT and its log line.
+	if !r.statusSettled(ctx, app) {
+		if err := r.Status().Update(ctx, app); err != nil {
+			return ctrl.Result{}, err
+		}
+		logf.FromContext(ctx).Info("app running (kubernetes)", "name", app.Name, "image", image, "replicas", replicas)
 	}
-	logf.FromContext(ctx).Info("app running (kubernetes)", "name", app.Name, "image", image, "replicas", replicas)
 
 	// Free-tier apps with an idle TTL: stamp last-active on first Running reconcile
 	// and schedule a re-check after the TTL so the operator can auto-hibernate.
@@ -1453,6 +1464,9 @@ func (r *AppReconciler) hibernated(ctx context.Context, app *appv1alpha1.App, im
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
 		Message: message, ObservedGeneration: app.Generation,
 	})
+	if r.statusSettled(ctx, app) {
+		return ctrl.Result{}, nil
+	}
 	return ctrl.Result{}, r.Status().Update(ctx, app)
 }
 
@@ -1603,10 +1617,13 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 		Message:            fmt.Sprintf("%d/%d replicas ready", dep.Status.ReadyReplicas, replicas),
 		ObservedGeneration: app.Generation,
 	})
-	if err := r.Status().Update(ctx, app); err != nil {
-		return ctrl.Result{}, err
+	// Same steady-state no-op guard as the web path's Running terminal.
+	if !r.statusSettled(ctx, app) {
+		if err := r.Status().Update(ctx, app); err != nil {
+			return ctrl.Result{}, err
+		}
+		logf.FromContext(ctx).Info("worker running (kubernetes)", "name", app.Name, "image", image, "replicas", replicas)
 	}
-	logf.FromContext(ctx).Info("worker running (kubernetes)", "name", app.Name, "image", image, "replicas", replicas)
 	return ctrl.Result{RequeueAfter: childHealthRequeue}, nil
 }
 
@@ -2951,6 +2968,37 @@ func (r *AppReconciler) setPublicRoutingCondition(app *appv1alpha1.App, hosts []
 			"installation, and no custom domain is attached. Add a custom domain to serve it publicly.",
 		ObservedGeneration: app.Generation,
 	})
+}
+
+// awaitRegistryCredActive proves zot accepts this App's per-App credential
+// before a build pushes or a workload pulls (zot loads credentials only at
+// process start — see registry/verify.go). It reports halted=true with the
+// result to return while the credential is unusable: a probe failure is a
+// platform hiccup (requeue, keep the previous state serving), a not-yet-active
+// credential parks the App at the caller's phase.
+func (r *AppReconciler) awaitRegistryCredActive(ctx context.Context, app *appv1alpha1.App, phase appv1alpha1.AppPhase, logMsg, waitMsg string) (ctrl.Result, bool) {
+	active, err := r.PerAppRegistry.EnsureActive(ctx, app.Name, app.Namespace)
+	if err != nil {
+		logf.FromContext(ctx).Error(err, logMsg, "app", app.Name)
+		return ctrl.Result{RequeueAfter: 15 * time.Second}, true
+	}
+	if !active {
+		r.setPhase(ctx, app, phase, "RegistryCredsPending", waitMsg)
+		return ctrl.Result{RequeueAfter: 10 * time.Second}, true
+	}
+	return ctrl.Result{}, false
+}
+
+// statusSettled reports whether the App's in-memory status already matches the
+// stored object's, so a steady-state terminal pass can skip its no-op status
+// PUT (the same diff-before-write discipline as setPhase; the Get is served by
+// the informer cache).
+func (r *AppReconciler) statusSettled(ctx context.Context, app *appv1alpha1.App) bool {
+	var stored appv1alpha1.App
+	if err := r.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+		return false
+	}
+	return apiequality.Semantic.DeepEqual(stored.Status, app.Status)
 }
 
 // setPhase stamps a transitional phase + Ready=False condition. The write is
