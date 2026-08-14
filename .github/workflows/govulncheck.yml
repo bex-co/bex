@@ -43,16 +43,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Resolve the newest 1.25.x from go.dev (the golang:1.25 line)
+        id: goline
+        # The scan must run the SAME newest-1.25.x stdlib the release image
+        # ships (lego/Dockerfile `FROM golang:1.25`). Neither the runner's
+        # pre-installed toolchain nor setup-go's version manifest can be
+        # trusted for that on a patch-release day — both lag go.dev by
+        # hours-to-days, and the scan then flags stdlib vulns the image no
+        # longer carries (2026-08-13: manifest resolved 1.25.12, even with
+        # check-latest, while go.dev and golang:1.25 were on 1.25.13). So ask
+        # go.dev's current-releases feed directly; setup-go downloads exact
+        # versions the manifest lacks straight from go.dev. If this step
+        # fails, the 1.25 line has left the current-releases feed — time to
+        # move lego/Dockerfile (and this comment) to the next Go line.
+        run: |
+          v=$(curl -fsSL 'https://go.dev/dl/?mode=json' | jq -r '[.[] | select(.stable) | .version | select(startswith("go1.25."))][0] // empty' | sed 's/^go//')
+          if [ -z "$v" ]; then
+            echo "no stable 1.25.x in go.dev's current-releases feed" >&2
+            exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "resolved go $v"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          # The latest 1.25.x, matching lego/Dockerfile's `FROM golang:1.25`.
-          # check-latest matters: without it setup-go trusts the runner image's
-          # pre-installed toolchain, which lags a fresh Go patch release by
-          # days — the scan then flags stdlib vulns (fixed in the newest
-          # 1.25.x) that the golang:1.25 release image no longer carries
-          # (2026-08-13: runner had 1.25.12, stdlib fixes were in 1.25.13).
-          go-version: "1.25"
-          check-latest: true
+          go-version: "${{ steps.goline.outputs.version }}"
           cache: false
       - name: Install govulncheck (pinned, checksum-DB verified)
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
