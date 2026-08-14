@@ -407,6 +407,20 @@ func (b *Base) Authorize(ctx context.Context, relation string) error {
 	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(verbFrameSkip), err)
 }
 
+// Can reports whether the caller holds relation on their acting workspace,
+// without Authorize's audit side effect. It is a response-shaping probe for
+// optional sensitive fields (a viewer listing blueprints did not ASK for the
+// manifest, so the missing capability is not a recordable denial) — never a
+// verb gate: a verb still opens with Authorize/AuthorizeApp. Fails closed: a
+// resolution or checker error reads as "no".
+func (b *Base) Can(ctx context.Context, relation string) bool {
+	object, err := b.callerWorkspace(ctx)
+	if err != nil {
+		return false
+	}
+	return b.checkAuthz(ctx, relation, object) == nil
+}
+
 // callerWorkspace is the OpenFGA object of the workspace the caller is acting
 // in: workspace:tea-<id> for the workspace they NAMED (once membership-checked)
 // or, naming none, for the one the resolver resolves them to; workspace:default

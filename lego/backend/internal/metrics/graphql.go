@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"github.com/graphql-go/graphql"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // graphql.go is the metrics GraphQL fragment. This shape is Render's *dashboard*
@@ -283,6 +285,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
+				if err := checkFanOut(len(resources), 1, latencyFan(q.Metric, q.Quantiles)); err != nil {
+					return nil, err
+				}
 				var out []metricSeriesResult
 				for _, res := range resources {
 					q.App = res
@@ -406,18 +411,9 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 		return nil, MetricQuery{}, fmt.Errorf("filters must include a RESOURCE entry")
 	}
 
-	if s, ok := input["start"].(string); ok && s != "" {
-		if t, err := time.Parse(time.RFC3339, s); err == nil {
-			q.Start = t
-		}
-	}
-	if e, ok := input["end"].(string); ok && e != "" {
-		if t, err := time.Parse(time.RFC3339, e); err == nil {
-			q.End = t
-		}
-	}
-	if n, ok := input["resolution"].(int); ok {
-		q.Resolution = time.Duration(n) * time.Second
+	var err error
+	if q.Start, q.End, q.Resolution, err = windowFromInput(input); err != nil {
+		return nil, MetricQuery{}, err
 	}
 	// Render's `parameters` is a list; each entry names a quantile. A single entry
 	// is the ordinary percentile pick, several entries are the percentile "All"
@@ -479,21 +475,31 @@ func datastoreMetricsQueryInputFromArgs(raw any) (DatastoreMetricQuery, error) {
 	}
 	q := DatastoreMetricQuery{Kind: kind, Resource: resource, Metric: metric}
 
-	if s, ok := input["start"].(string); ok && s != "" {
-		if t, err := time.Parse(time.RFC3339, s); err == nil {
-			q.Start = t
-		}
-	}
-	if e, ok := input["end"].(string); ok && e != "" {
-		if t, err := time.Parse(time.RFC3339, e); err == nil {
-			q.End = t
-		}
-	}
-	if n, ok := input["resolution"].(int); ok {
-		q.Resolution = time.Duration(n) * time.Second
+	var err error
+	if q.Start, q.End, q.Resolution, err = windowFromInput(input); err != nil {
+		return DatastoreMetricQuery{}, err
 	}
 
 	return q, nil
+}
+
+// windowFromInput parses the start/end/resolution window shared by both
+// GraphQL query inputs. Malformed timestamps error (core.ParseTime) rather
+// than silently falling back to the default window, which would bypass the
+// MaxQueryHours cap on the range the caller actually asked for.
+func windowFromInput(input map[string]any) (start, end time.Time, resolution time.Duration, err error) {
+	rawStart, _ := input["start"].(string)
+	if start, err = core.ParseTime("start", rawStart); err != nil {
+		return time.Time{}, time.Time{}, 0, err
+	}
+	rawEnd, _ := input["end"].(string)
+	if end, err = core.ParseTime("end", rawEnd); err != nil {
+		return time.Time{}, time.Time{}, 0, err
+	}
+	if n, ok := input["resolution"].(int); ok {
+		resolution = time.Duration(n) * time.Second
+	}
+	return start, end, resolution, nil
 }
 
 func metricsFiltersQueryFromArgs(raw any) (MetricsFiltersQuery, error) {

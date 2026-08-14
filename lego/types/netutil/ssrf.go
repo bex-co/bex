@@ -24,25 +24,62 @@ import (
 	"time"
 )
 
-// rfc6598 is the shared (carrier-grade NAT) address space 100.64.0.0/10.
-// net.IP.IsPrivate covers RFC1918 + IPv6 ULA but NOT this special-purpose
-// range, so an explicit prefix check is required — otherwise a literal address
-// or a hostname resolving into 100.64.0.0/10 (where cluster, metadata, or
-// provider control services can live) passes the origin guard (w1/m65 F15).
-var rfc6598 = net.IPNet{IP: net.IPv4(100, 64, 0, 0), Mask: net.CIDRMask(10, 32)}
+// mustPrefix parses a CIDR literal at package init, panicking on a typo — a
+// silently nil network would make Contains always-false, failing the deny
+// list OPEN. net.IPNet (not netip.Prefix) is deliberate: its Contains
+// normalizes IPv4-mapped IPv6 answers via To4, netip's does not.
+func mustPrefix(cidr string) net.IPNet {
+	_, network, err := net.ParseCIDR(cidr)
+	if err != nil {
+		panic("netutil: invalid special-purpose prefix " + cidr)
+	}
+	return *network
+}
+
+// specialPurposePrefixes are the non-public ranges net.IP's predicates do NOT
+// cover — the remainder of the IANA special-purpose registries after
+// IsLoopback/IsPrivate/IsLinkLocal*/IsMulticast/IsUnspecified have matched
+// their families (codex r7 #14; the CGNAT entry is w1/m65 F15). None is a
+// legitimate webhook destination, and the IPv6 transition prefixes (NAT64 /
+// Teredo / 6to4) can embed a private IPv4 target inside a "public-looking"
+// v6 answer. Kept deliberately separate from egressmeter's nonPublicPrefixes:
+// that list decides what traffic is NOT BILLED, this one decides what may
+// not be dialled — changing one must never silently change the other.
+var specialPurposePrefixes = []net.IPNet{
+	mustPrefix("0.0.0.0/8"),       // "this network" (IsUnspecified matches only 0.0.0.0 itself)
+	mustPrefix("100.64.0.0/10"),   // RFC 6598 shared CGNAT space
+	mustPrefix("192.0.0.0/24"),    // IETF protocol assignments
+	mustPrefix("192.0.2.0/24"),    // TEST-NET-1
+	mustPrefix("198.18.0.0/15"),   // benchmarking
+	mustPrefix("198.51.100.0/24"), // TEST-NET-2
+	mustPrefix("203.0.113.0/24"),  // TEST-NET-3
+	mustPrefix("240.0.0.0/4"),     // reserved, incl. 255.255.255.255 broadcast
+	mustPrefix("64:ff9b::/96"),    // NAT64 well-known prefix (embeds an IPv4 target)
+	mustPrefix("100::/64"),        // discard-only
+	mustPrefix("2001::/32"),       // Teredo (embeds an IPv4 target)
+	mustPrefix("2001:db8::/32"),   // documentation
+	mustPrefix("2002::/16"),       // 6to4 (embeds an IPv4 target)
+}
 
 // UnsafeOriginIP reports whether ip must not be dialled as an outbound webhook
-// or fetch target: loopback, private (RFC1918 + IPv6 ULA), RFC 6598 shared
-// address space, link-local unicast/multicast, multicast, and unspecified
-// addresses are all off-limits to prevent SSRF against cloud-metadata endpoints
+// or fetch target: loopback, private (RFC1918 + IPv6 ULA), link-local
+// unicast/multicast, multicast, unspecified, and every special-purpose prefix
+// above are off-limits to prevent SSRF against cloud-metadata endpoints
 // (169.254.169.254) or internal services. The policy is an explicit
-// not-globally-routable deny, not merely "not IsPrivate": net.IP.IsPrivate
-// omits 100.64.0.0/10 (Contains normalizes IPv4-mapped IPv6 via To4, so a
-// mapped-form answer is caught too).
+// not-globally-routable deny, not merely "not IsPrivate" (net.IPNet.Contains
+// normalizes IPv4-mapped IPv6 via To4, so a mapped-form answer is caught too).
 func UnsafeOriginIP(ip net.IP) bool {
-	return ip.IsLoopback() || ip.IsPrivate() || rfc6598.Contains(ip) ||
+	if ip.IsLoopback() || ip.IsPrivate() ||
 		ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
-		ip.IsMulticast() || ip.IsUnspecified()
+		ip.IsMulticast() || ip.IsUnspecified() {
+		return true
+	}
+	for _, prefix := range specialPurposePrefixes {
+		if prefix.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 // UnsafeMetadataIP is the guard for an in-cluster client that MUST still reach

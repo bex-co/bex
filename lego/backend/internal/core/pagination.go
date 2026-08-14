@@ -42,18 +42,44 @@ func QueryList(q url.Values, key string) []string {
 	return out
 }
 
+// ParseTime parses one optional RFC3339 field value and returns a named bad
+// request for malformed input — QueryTime's string-argument core, for the
+// GraphQL/MCP adapters that receive strings rather than query values. A
+// malformed value must never be silently ignored: falling back to a default
+// widens the effective window past caps like BEX_MAX_QUERY_HOURS.
+func ParseTime(field, value string) (time.Time, error) {
+	if value == "" {
+		return time.Time{}, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%w: %s must be an RFC3339 timestamp", ErrBadRequest, field)
+	}
+	return parsed, nil
+}
+
 // QueryTime parses one optional RFC3339 list-filter boundary and returns a
 // named bad request for malformed input, so adapters never silently ignore it.
 func QueryTime(q url.Values, key string) (time.Time, error) {
-	raw := q.Get(key)
-	if raw == "" {
-		return time.Time{}, nil
+	return ParseTime(key, q.Get(key))
+}
+
+// CheckQueryWindow enforces a BEX_MAX_QUERY_HOURS-style cap on a query's
+// start–end range — shared by the logs, events, and metrics services so the
+// window budget cannot drift per feature (w9/004 → codex r7 #13). maxHours
+// <= 0 disables the cap; an open start is unbounded history and passes; an
+// open end is measured against now.
+func CheckQueryWindow(maxHours int, now func() time.Time, start, end time.Time) error {
+	if maxHours <= 0 || start.IsZero() {
+		return nil
 	}
-	parsed, err := time.Parse(time.RFC3339, raw)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("%w: %s must be an RFC3339 timestamp", ErrBadRequest, key)
+	if end.IsZero() {
+		end = now()
 	}
-	return parsed, nil
+	if end.Sub(start) > time.Duration(maxHours)*time.Hour {
+		return fmt.Errorf("%w: query range exceeds %d hours", ErrBadRequest, maxHours)
+	}
+	return nil
 }
 
 // TimeWindow is one Render `<field>Before`/`<field>After` list-filter range.

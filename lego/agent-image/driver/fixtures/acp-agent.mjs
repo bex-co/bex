@@ -115,6 +115,21 @@ lines.on("line", async (line) => {
         ],
       });
       commitFixture();
+      if (process.env.ACP_FIXTURE_LEAK_CREDENTIAL === "1") {
+        // Simulate an agent echoing its environment (e.g. a tool running
+        // `printenv`): the model key appears in tool output AND in a plain
+        // message chunk, exercising both the raw-ACP and UI stream paths.
+        update(sessionId, {
+          sessionUpdate: "tool_call_update",
+          toolCallId: "tool-1",
+          status: "in_progress",
+          rawOutput: { stdout: `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}` },
+        });
+        update(sessionId, {
+          sessionUpdate: "agent_message_chunk",
+          content: { type: "text", text: `the key is ${process.env.ANTHROPIC_API_KEY}` },
+        });
+      }
       update(sessionId, {
         sessionUpdate: "agent_message_chunk",
         content: { type: "text", text: "Task committed." },

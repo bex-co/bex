@@ -585,15 +585,20 @@ func TestBlueprintExplicitPathAllowsOnlyBlueprintFilenames(t *testing.T) {
 	}
 }
 
-type previewRelationChecker struct{ relations []string }
+// relationChecker authorizes exactly the allowed relations and records every
+// relation asked — the role-ladder fake for response-shaping tests.
+type relationChecker struct {
+	allow map[string]bool
+	asked []string
+}
 
-func (c *previewRelationChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
-	c.relations = append(c.relations, relation)
-	return relation == core.RelCanViewSensitive, nil
+func (c *relationChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
+	c.asked = append(c.asked, relation)
+	return c.allow[relation], nil
 }
 
 func TestPreviewBlueprintRequiresSensitiveRead(t *testing.T) {
-	checker := &previewRelationChecker{}
+	checker := &relationChecker{allow: map[string]bool{core.RelCanViewSensitive: true}}
 	svc := &Service{
 		Base:       &core.Base{Client: fakeClient(), Namespace: "default", Authz: checker},
 		GitFetcher: fakeBlueprintFetcher{contents: stackManifest, sha: "abc1234"},
@@ -602,8 +607,8 @@ func TestPreviewBlueprintRequiresSensitiveRead(t *testing.T) {
 	if _, err := svc.PreviewBlueprint(ctx, "", "https://github.com/a/app", "main", ""); err != nil {
 		t.Fatalf("sensitive preview: %v", err)
 	}
-	if len(checker.relations) != 1 || checker.relations[0] != core.RelCanViewSensitive {
-		t.Fatalf("preview relations = %v, want only can_view_sensitive", checker.relations)
+	if len(checker.asked) != 1 || checker.asked[0] != core.RelCanViewSensitive {
+		t.Fatalf("preview relations = %v, want only can_view_sensitive", checker.asked)
 	}
 }
 
@@ -722,6 +727,40 @@ func TestListBlueprintsScopedToTenant(t *testing.T) {
 	}
 	if len(views) != 1 || views[0].ID != "blp-1" {
 		t.Errorf("ListBlueprints: want [blp-1], got %+v", views)
+	}
+}
+
+// codex r7 #11 — the stored manifest is the same private repository content
+// PreviewBlueprint gates on can_view_sensitive, so blueprint get/list must
+// not hand it to a plain viewer while keeping the metadata viewer-readable.
+func TestBlueprintManifestGatedOnSensitiveRead(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	newService := func(allow map[string]bool) *Service {
+		fs := newFakeBlueprintStore(store.Blueprint{
+			ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+			Branch: "main", Manifest: stackManifest, Status: "active", Name: "app",
+		})
+		return &Service{
+			Base:       &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws, Authz: &relationChecker{allow: allow}},
+			Blueprints: fs,
+		}
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	viewer := newService(map[string]bool{core.RelCanView: true})
+	if v, err := viewer.GetBlueprintByID(ctx, "blp-1", "tea-a"); err != nil || v.Manifest != "" || v.Name != "app" {
+		t.Errorf("viewer get = manifest %q name %q (%v), want blank manifest with metadata intact", v.Manifest, v.Name, err)
+	}
+	if vs, err := viewer.ListBlueprints(ctx, "tea-a"); err != nil || len(vs) != 1 || vs[0].Manifest != "" {
+		t.Errorf("viewer list = %+v (%v), want one view with a blank manifest", vs, err)
+	}
+
+	developer := newService(map[string]bool{core.RelCanView: true, core.RelCanViewSensitive: true})
+	if v, err := developer.GetBlueprintByID(ctx, "blp-1", "tea-a"); err != nil || v.Manifest != stackManifest {
+		t.Errorf("developer get manifest = %q (%v), want the stored manifest", v.Manifest, err)
+	}
+	if vs, err := developer.ListBlueprints(ctx, "tea-a"); err != nil || len(vs) != 1 || vs[0].Manifest != stackManifest {
+		t.Errorf("developer list = %+v (%v), want the stored manifest", vs, err)
 	}
 }
 

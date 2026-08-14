@@ -449,6 +449,9 @@ func (s *Service) GetBlueprintByID(ctx context.Context, bpID, ownerID string) (B
 		return BlueprintView{}, err
 	}
 	v := toBlueprintView(b)
+	if !s.canReadManifest(ctx) {
+		v.Manifest = ""
+	}
 	v.Resources = s.resolveBlueprintResources(ctx, b)
 	return v, nil
 }
@@ -481,7 +484,22 @@ func (s *Service) ListBlueprints(ctx context.Context, ownerID string) ([]Bluepri
 	for i, b := range bs {
 		views[i] = toBlueprintView(b)
 	}
+	if len(views) > 0 && !s.canReadManifest(ctx) {
+		for i := range views {
+			views[i].Manifest = ""
+		}
+	}
 	return views, nil
+}
+
+// canReadManifest is the one place the raw-manifest sensitivity rule lives:
+// the stored manifest is the same private repository content PreviewBlueprint
+// gates on RelCanViewSensitive, and its envVars may carry literal values the
+// env-vars API protects behind the same relation — serving it at can_view
+// would be a read-around of both (codex r7 #11). Get/list blank Manifest for
+// callers below that role; blueprint metadata stays viewer-readable.
+func (s *Service) canReadManifest(ctx context.Context) bool {
+	return s.Can(ctx, core.RelCanViewSensitive)
 }
 
 // SyncBlueprint re-applies the blueprint by id.

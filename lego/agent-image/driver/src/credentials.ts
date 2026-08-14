@@ -26,6 +26,7 @@ export interface CredentialManager {
   scrubPersistedState(roots?: string[]): Promise<string[]>;
   forget(): void;
   redact(value: unknown): string;
+  redactPart<T>(value: T): T;
   configured(): boolean;
 }
 
@@ -141,12 +142,24 @@ export function createCredentialManager(
   env: NodeJS.ProcessEnv = process.env,
 ): CredentialManager {
   let secret = config.modelCredential || "";
+  // The JSON-escaped rendering of the secret, precomputed once (it only
+  // changes on forget): a credential containing `"` or `\` appears escaped
+  // inside serialized parts, so both forms must be scrubbed everywhere.
+  let escapedSecret = secret ? JSON.stringify(secret).slice(1, -1) : "";
   const credentialEnvName = config.credentialEnvName;
 
   // The generic injection variable is for the driver only. The child receives
   // the agent-native name; neither value belongs in the driver's inherited env.
   delete env.BEX_AGENT_MODEL_API_KEY;
   if (credentialEnvName) delete env[credentialEnvName];
+
+  // scrub is the one string-level redactor behind redact and redactPart, so
+  // escaped-form handling can never live in only one of them.
+  const scrub = (text: string): string => {
+    let out = text.split(secret).join("[REDACTED]");
+    if (escapedSecret !== secret) out = out.split(escapedSecret).join("[REDACTED]");
+    return out;
+  };
 
   return {
     agentEnvironment() {
@@ -164,11 +177,31 @@ export function createCredentialManager(
 
     forget() {
       secret = "";
+      escapedSecret = "";
     },
 
     redact(value: unknown) {
       const text = String(value);
-      return secret ? text.split(secret).join("[REDACTED]") : text;
+      return secret ? scrub(text) : text;
+    },
+
+    // redactPart sanitizes a structured stream part BEFORE its first fan-out,
+    // so the hub history, attached SSE clients, the POST /turn mirror (the
+    // gateway's durable transcript tee), and the session log all carry one
+    // sanitized representation. Matches on the serialized JSON, covering the
+    // secret nested at any depth and its JSON-escaped rendering; fails closed
+    // if the substitution would corrupt the document.
+    redactPart<T>(value: T): T {
+      if (!secret) return value;
+      const text = JSON.stringify(value);
+      if (text === undefined) return value;
+      const sanitized = scrub(text);
+      if (sanitized === text) return value;
+      try {
+        return JSON.parse(sanitized) as T;
+      } catch {
+        return { type: "data-redacted" } as unknown as T;
+      }
     },
 
     configured() {

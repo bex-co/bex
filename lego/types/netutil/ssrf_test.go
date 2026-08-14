@@ -49,6 +49,53 @@ func TestUnsafeOriginIP(t *testing.T) {
 	}
 }
 
+// TestUnsafeOriginIPSpecialPurposeRanges pins codex r7 #14: every IANA
+// special-purpose range the net.IP predicates miss is blocked for outbound
+// origin dials — including the IPv6 transition prefixes that can embed a
+// private IPv4 target — while neighboring genuinely public space stays open.
+func TestUnsafeOriginIPSpecialPurposeRanges(t *testing.T) {
+	blocked := []string{
+		"0.1.2.3",           // 0.0.0.0/8 beyond the bare unspecified address
+		"192.0.0.8",         // IETF protocol assignments
+		"192.0.2.10",        // TEST-NET-1
+		"198.18.0.1",        // benchmarking
+		"198.19.255.255",    // benchmarking (upper half of /15)
+		"198.51.100.5",      // TEST-NET-2
+		"203.0.113.9",       // TEST-NET-3
+		"240.0.0.1",         // reserved
+		"255.255.255.255",   // broadcast
+		"64:ff9b::a00:1",    // NAT64 embedding 10.0.0.1
+		"100::1",            // discard-only
+		"2001::1",           // Teredo
+		"2001:db8::1",       // documentation
+		"2002:a00:1::",      // 6to4 embedding 10.0.0.1
+		"::ffff:198.18.0.1", // IPv4-mapped form of a blocked range
+	}
+	for _, raw := range blocked {
+		ip := net.ParseIP(raw)
+		if ip == nil {
+			t.Fatalf("net.ParseIP(%q) = nil", raw)
+		}
+		if !netutil.UnsafeOriginIP(ip) {
+			t.Errorf("UnsafeOriginIP(%s) = false; want true (special-purpose range)", raw)
+		}
+	}
+	// Immediate public neighbors of the blocked ranges must stay dialable.
+	for _, raw := range []string{
+		"1.0.0.1", "192.0.1.1", "192.0.3.1", "198.17.255.255", "198.20.0.1",
+		"198.51.101.1", "203.0.114.1", "223.255.255.255",
+		"2001:db9::1", "2003::1", "2606:4700::1111",
+	} {
+		ip := net.ParseIP(raw)
+		if ip == nil {
+			t.Fatalf("net.ParseIP(%q) = nil", raw)
+		}
+		if netutil.UnsafeOriginIP(ip) {
+			t.Errorf("UnsafeOriginIP(%s) = true; want false (public neighbor)", raw)
+		}
+	}
+}
+
 // TestUnsafeOriginIPRFC6598 pins the w1/m65 F15 fix: RFC 6598 shared address
 // space (100.64.0.0/10) is blocked for outbound origin dials — net.IP.IsPrivate
 // does NOT cover it — across literal, boundary, and IPv4-mapped-IPv6 forms,

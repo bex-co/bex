@@ -78,8 +78,10 @@ func (s *Service) metricQuery(w http.ResponseWriter, r *http.Request, metric str
 		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := checkQueryRange(s.MaxQueryHours, q.Start, q.End); err != nil {
-		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+	// The window cap lives in the shared service (Metrics.checkWindow); only
+	// the resource-array fan-out is adapter-shaped, so it is checked here.
+	if err := checkFanOut(len(resources), 1, latencyFan(metric, q.Quantiles)); err != nil {
+		core.WriteErr(w, err)
 		return
 	}
 	q.Metric = metric
@@ -109,10 +111,6 @@ func (s *Service) datastoreMetricQuery(w http.ResponseWriter, r *http.Request, m
 		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := checkQueryRange(s.MaxQueryHours, q.Start, q.End); err != nil {
-		core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
-		return
-	}
 	q.Metric = metric
 	series, err := s.DatastoreMetrics(r.Context(), q)
 	if err != nil {
@@ -122,35 +120,15 @@ func (s *Service) datastoreMetricQuery(w http.ResponseWriter, r *http.Request, m
 	core.WriteJSON(w, http.StatusOK, toRenderMetrics(series))
 }
 
-// checkQueryRange enforces MaxQueryHours (0 = unlimited) against a resolved
-// start–end window — shared by metricQuery and datastoreMetricQuery so the
-// REST cap can't drift between the two endpoint families.
-func checkQueryRange(maxQueryHours int, start, end time.Time) error {
-	if maxQueryHours <= 0 || start.IsZero() {
-		return nil
-	}
-	if end.IsZero() {
-		end = time.Now()
-	}
-	if end.Sub(start) > time.Duration(maxQueryHours)*time.Hour {
-		return fmt.Errorf("query range exceeds %d hours", maxQueryHours)
-	}
-	return nil
-}
-
 // parseTimeWindow parses the startTime/endTime/resolutionSeconds query params
 // shared by every metrics REST endpoint (App-scoped and datastore-scoped
 // alike) into a MetricQuery's window fields.
 func parseTimeWindow(v url.Values) (start, end time.Time, resolution time.Duration, err error) {
-	if s := v.Get("startTime"); s != "" {
-		if start, err = time.Parse(time.RFC3339, s); err != nil {
-			return time.Time{}, time.Time{}, 0, fmt.Errorf("startTime: %w", err)
-		}
+	if start, err = core.QueryTime(v, "startTime"); err != nil {
+		return time.Time{}, time.Time{}, 0, err
 	}
-	if e := v.Get("endTime"); e != "" {
-		if end, err = time.Parse(time.RFC3339, e); err != nil {
-			return time.Time{}, time.Time{}, 0, fmt.Errorf("endTime: %w", err)
-		}
+	if end, err = core.QueryTime(v, "endTime"); err != nil {
+		return time.Time{}, time.Time{}, 0, err
 	}
 	if rs := v.Get("resolutionSeconds"); rs != "" {
 		n, err := strconv.Atoi(rs)
