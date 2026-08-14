@@ -154,57 +154,55 @@ func (s *PGStore) ResolveBillingExportIssue(ctx context.Context, transactionID, 
 	if action != "acknowledge" && action != "retry" && action != "mark_repaired" {
 		return BillingExportIssue{}, fmt.Errorf("%w: action must be acknowledge, retry, or mark_repaired", ErrInvalid)
 	}
-	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return BillingExportIssue{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	issue, err := scanBillingExportIssue(tx.QueryRow(ctx, `SELECT `+billingExportIssueColumns+`
+	var issue BillingExportIssue
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		var err error
+		issue, err = scanBillingExportIssue(tx.QueryRow(ctx, `SELECT `+billingExportIssueColumns+`
 		FROM billing_export_issues WHERE transaction_id=$1 FOR UPDATE`, transactionID))
-	if err != nil {
-		return BillingExportIssue{}, classify("billing export issue", err)
-	}
-	if issue.ResolvedAt != nil {
-		return BillingExportIssue{}, fmt.Errorf("%w: billing export issue already resolved", ErrConflict)
-	}
-	if action == "retry" {
-		if issue.IssueKind != "permanent_reject" {
-			return BillingExportIssue{}, fmt.Errorf("%w: ambiguous provider outcome cannot be retried; reconcile then mark_repaired or acknowledge", ErrConflict)
+		if err != nil {
+			return classify("billing export issue", err)
 		}
-		if issue.WindowStart.Before(at.Add(-billingRepairHorizon)) {
-			return BillingExportIssue{}, fmt.Errorf("%w: event timestamp is outside the safe Stripe backfill horizon", ErrConflict)
+		if issue.ResolvedAt != nil {
+			return fmt.Errorf("%w: billing export issue already resolved", ErrConflict)
 		}
-		if _, err = tx.Exec(ctx, `UPDATE usage_hourly
+		if action == "retry" {
+			if issue.IssueKind != "permanent_reject" {
+				return fmt.Errorf("%w: ambiguous provider outcome cannot be retried; reconcile then mark_repaired or acknowledge", ErrConflict)
+			}
+			if issue.WindowStart.Before(at.Add(-billingRepairHorizon)) {
+				return fmt.Errorf("%w: event timestamp is outside the safe Stripe backfill horizon", ErrConflict)
+			}
+			if _, err = tx.Exec(ctx, `UPDATE usage_hourly
 			SET billing_export_state='pending', billing_export_attempted_at=NULL,
 			    billing_export_error_code='', billing_export_error=''
 			WHERE resource_kind=$1 AND service_id=$2 AND kind=$3 AND tier=$4 AND window_start=$5
 			  AND billing_export_transaction_id=$6 AND billing_export_state='rejected'`,
-			issue.ResourceKind, issue.ServiceID, issue.Kind, issue.Tier, issue.WindowStart, issue.TransactionID); err != nil {
-			return BillingExportIssue{}, err
-		}
-	} else if action == "mark_repaired" {
-		if _, err = tx.Exec(ctx, `UPDATE usage_hourly
+				issue.ResourceKind, issue.ServiceID, issue.Kind, issue.Tier, issue.WindowStart, issue.TransactionID); err != nil {
+				return err
+			}
+		} else if action == "mark_repaired" {
+			if _, err = tx.Exec(ctx, `UPDATE usage_hourly
 			SET billing_export_state='emitted', emitted_at=$1,
 			    billing_export_error_code='', billing_export_error=''
 			WHERE resource_kind=$2 AND service_id=$3 AND kind=$4 AND tier=$5 AND window_start=$6
 			  AND billing_export_transaction_id=$7 AND billing_export_state IN ('rejected','ambiguous')`,
-			at.UTC(), issue.ResourceKind, issue.ServiceID, issue.Kind, issue.Tier, issue.WindowStart, issue.TransactionID); err != nil {
-			return BillingExportIssue{}, err
+				at.UTC(), issue.ResourceKind, issue.ServiceID, issue.Kind, issue.Tier, issue.WindowStart, issue.TransactionID); err != nil {
+				return err
+			}
 		}
-	}
-	if _, err = tx.Exec(ctx, `UPDATE billing_export_issues
+		if _, err = tx.Exec(ctx, `UPDATE billing_export_issues
 		SET resolved_at=$2, resolution=$3, actor=$4, reason=$5
 		WHERE transaction_id=$1`, transactionID, at.UTC(), action, actor, boundedBillingDiagnostic(reason, 240)); err != nil {
-		return BillingExportIssue{}, err
-	}
-	if _, err = tx.Exec(ctx, `INSERT INTO audit_events
+			return err
+		}
+		_, err = tx.Exec(ctx, `INSERT INTO audit_events
 		(id, workspace_id, caller, caller_method, verb, resource, target, outcome, at, billing_override_reason)
 		VALUES ($1,$2,$3,'internal','billing.ResolveExportIssue',$4,$5,'allowed',$6,$7)`,
-		ids.New(ids.Audit), issue.WorkspaceID, actor, core.WorkspaceObject(issue.WorkspaceID),
-		"billing_export:"+transactionID, at.UTC(), boundedBillingDiagnostic(reason, 240)); err != nil {
-		return BillingExportIssue{}, err
-	}
-	if err = tx.Commit(ctx); err != nil {
+			ids.New(ids.Audit), issue.WorkspaceID, actor, core.WorkspaceObject(issue.WorkspaceID),
+			"billing_export:"+transactionID, at.UTC(), boundedBillingDiagnostic(reason, 240))
+		return err
+	})
+	if err != nil {
 		return BillingExportIssue{}, err
 	}
 	issue.Resolution = action

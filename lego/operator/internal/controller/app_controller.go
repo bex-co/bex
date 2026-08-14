@@ -305,7 +305,6 @@ func (r *AppReconciler) canonicalNamespace(app *appv1alpha1.App) bool {
 	return ws != "" && app.Namespace == ws
 }
 
-//nolint:gocyclo // Reconcile intentionally coordinates the App state machine's distinct phases.
 func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var app appv1alpha1.App
 	if err := r.Get(ctx, req.NamespacedName, &app); err != nil {
@@ -1216,8 +1215,6 @@ func maintenanceEnabled(app *appv1alpha1.App) bool {
 
 // reconcileKubernetes runs the revision as a Deployment (+ ClusterIP k8s Service)
 // owned by the App — pods are scheduled onto the cluster's nodes (machines).
-//
-//nolint:gocyclo // one cohesive linear reconcile pass (Deployment → Service → Ingress → status); each step is a guarded CreateOrUpdate, and splitting it solely to satisfy the counter would fragment a coherent unit without aiding readability.
 func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, error) {
 	// Registry credential activation gate (w9/m43): zot only loads per-App
 	// credentials at process start (see registry/verify.go), so before rolling
@@ -1262,27 +1259,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
 	}
 
-	// Auto-hibernate: idle free-tier app past its TTL → scale to 0 without
-	// touching spec.suspended, so manual-suspend semantics are preserved. A worker
-	// never auto-hibernates — it has no Ingress, so a request could never wake it.
-	autoHibernating := !worker && r.ActivatorService != "" && shouldAutoHibernate(app)
-
-	replicas := effectiveReplicas(app)
-	// Seed from the autoscaler annotation so a metrics-failure pass doesn't revert
-	// to spec.replicas (the user's static count). applyAutoscaling writes the
-	// annotation instead of spec.replicas to avoid bumping generation (see annotAutoscaleReplicas).
-	var autoscaleRequeue bool
-	if app.Spec.Autoscaling != nil && app.Spec.Autoscaling.Enabled && !worker && !app.Spec.Suspended {
-		if raw := app.Annotations[annotAutoscaleReplicas]; raw != "" {
-			if n, err := strconv.ParseInt(raw, 10, 32); err == nil && n > 0 {
-				replicas = int32(n)
-			}
-		}
-		replicas, autoscaleRequeue = r.applyAutoscaling(ctx, app, replicas)
-	}
-	if autoHibernating {
-		replicas = 0
-	}
+	replicas, autoscaleRequeue, autoHibernating := r.desiredReplicas(ctx, app, worker)
 
 	// Pre-deploy gate (w1/m33): run spec.preDeployCommand to completion against
 	// the new revision's image before rolling the Deployment to it. A non-zero
@@ -1341,68 +1318,123 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 
 	r.setPublicRoutingCondition(app, hosts)
 
-	// Maintenance has public-routing precedence over both auto-hibernation and
-	// manual suspension. It changes only the public Ingress backend; the workload
-	// follows its independent replica/suspension policy.
-	ingressSvc := app.Name
-	ingressPort := int32(port)
-	if maintenanceEnabled(app) {
-		maintenanceSvc, err := r.reconcileMaintenanceAlias(ctx, app)
-		if err != nil {
-			return r.fail(ctx, app, "MaintenanceRoutingFailed", err)
-		}
-		ingressSvc = maintenanceSvc
-		ingressPort = int32(r.maintenancePort())
-	} else if autoHibernating {
-		ingressSvc = r.ActivatorService
-		ingressPort = int32(r.ActivatorPort)
+	ingressSvc, ingressPort, err := r.ingressBackend(ctx, app, port, autoHibernating)
+	if err != nil {
+		return r.fail(ctx, app, "MaintenanceRoutingFailed", err)
 	}
 
-	mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
-	if err != nil {
-		return r.fail(ctx, app, "MiddlewareFailed", err)
-	}
-	wsMeter, err := r.reconcileWebsocketMeterMiddleware(ctx, app, len(hosts) > 0)
-	if err != nil {
-		return r.fail(ctx, app, "MiddlewareFailed", err)
-	}
-	middlewareNames := mwNames
-	if wsMeter != "" {
-		middlewareNames = append(middlewareNames, wsMeter)
-	}
-	if err := r.reconcileIngress(ctx, app, hosts, ingressSvc, ingressPort, middlewareNames); err != nil {
-		return r.fail(ctx, app, "IngressFailed", err)
+	if reason, err := r.reconcileIngressWithMiddlewares(ctx, app, hosts, ingressSvc, ingressPort); err != nil {
+		return r.fail(ctx, app, reason, err)
 	}
 
 	// Suspended: parked at 0 replicas with Service/Ingress/TLS (and spec.replicas)
 	// all kept — resume is just scaling back. Report Hibernated and stop.
-	if app.Spec.Suspended {
-		return r.hibernated(ctx, app, image, hosts, "Suspended",
-			"suspended (scaled to 0; config, host and certs kept)")
-	}
-
 	// Auto-hibernated: idle free-tier app scaled to 0, Ingress now points at the
 	// activator. The next inbound request will wake it; no further requeue needed.
-	if autoHibernating {
-		res, err := r.hibernated(ctx, app, image, hosts, "AutoHibernated",
-			fmt.Sprintf("idle ≥%ds on free tier; wakes on next request", app.Spec.IdleTTLSeconds))
-		if err == nil {
+	if app.Spec.Suspended || autoHibernating {
+		reason, message := "Suspended", "suspended (scaled to 0; config, host and certs kept)"
+		if !app.Spec.Suspended {
+			reason = "AutoHibernated"
+			message = fmt.Sprintf("idle ≥%ds on free tier; wakes on next request", app.Spec.IdleTTLSeconds)
+		}
+		res, err := r.hibernated(ctx, app, image, hosts, reason, message)
+		if err == nil && reason == "AutoHibernated" {
 			logf.FromContext(ctx).Info("app auto-hibernated", "name", app.Name, "idleTTL", app.Spec.IdleTTLSeconds)
 		}
 		return res, err
 	}
 
+	if res, halt, err := r.reportKubernetesRunning(ctx, app, dep, image, hosts, replicas, port); halt || err != nil {
+		return res, err
+	}
+
+	return r.runningRequeue(ctx, app, autoscaleRequeue)
+}
+
+// desiredReplicas resolves the replica count reconcileKubernetes rolls the
+// Deployment to, plus the flags for the two policies that can shape it
+// (autoscale polling, auto-hibernation).
+//
+// Auto-hibernate: idle free-tier app past its TTL → scale to 0 without
+// touching spec.suspended, so manual-suspend semantics are preserved. A worker
+// never auto-hibernates — it has no Ingress, so a request could never wake it.
+func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.App, worker bool) (replicas int32, autoscaleRequeue, autoHibernating bool) {
+	autoHibernating = !worker && r.ActivatorService != "" && shouldAutoHibernate(app)
+
+	replicas = effectiveReplicas(app)
+	// Seed from the autoscaler annotation so a metrics-failure pass doesn't revert
+	// to spec.replicas (the user's static count). applyAutoscaling writes the
+	// annotation instead of spec.replicas to avoid bumping generation (see annotAutoscaleReplicas).
+	if app.Spec.Autoscaling != nil && app.Spec.Autoscaling.Enabled && !worker && !app.Spec.Suspended {
+		if raw := app.Annotations[annotAutoscaleReplicas]; raw != "" {
+			if n, err := strconv.ParseInt(raw, 10, 32); err == nil && n > 0 {
+				replicas = int32(n)
+			}
+		}
+		replicas, autoscaleRequeue = r.applyAutoscaling(ctx, app, replicas)
+	}
+	if autoHibernating {
+		replicas = 0
+	}
+	return replicas, autoscaleRequeue, autoHibernating
+}
+
+// ingressBackend picks the Service/port the public Ingress routes to.
+// Maintenance has public-routing precedence over both auto-hibernation and
+// manual suspension. It changes only the public Ingress backend; the workload
+// follows its independent replica/suspension policy.
+func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App, port int, autoHibernating bool) (string, int32, error) {
+	if maintenanceEnabled(app) {
+		maintenanceSvc, err := r.reconcileMaintenanceAlias(ctx, app)
+		if err != nil {
+			return "", 0, err
+		}
+		return maintenanceSvc, int32(r.maintenancePort()), nil
+	}
+	if autoHibernating {
+		return r.ActivatorService, int32(r.ActivatorPort), nil
+	}
+	return app.Name, int32(port), nil
+}
+
+// reconcileIngressWithMiddlewares assembles the App's Traefik middlewares (IP
+// allow-list + websocket meter) and applies the Ingress fronting svc:port. On
+// error it returns the failure reason for the caller's r.fail.
+func (r *AppReconciler) reconcileIngressWithMiddlewares(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32) (string, error) {
+	mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
+	if err != nil {
+		return "MiddlewareFailed", err
+	}
+	wsMeter, err := r.reconcileWebsocketMeterMiddleware(ctx, app, len(hosts) > 0)
+	if err != nil {
+		return "MiddlewareFailed", err
+	}
+	middlewareNames := mwNames
+	if wsMeter != "" {
+		middlewareNames = append(middlewareNames, wsMeter)
+	}
+	if err := r.reconcileIngress(ctx, app, hosts, svc, port, middlewareNames); err != nil {
+		return "IngressFailed", err
+	}
+	return "", nil
+}
+
+// reportKubernetesRunning reports the web/private path's rollout readiness and,
+// once ready, stamps the Running status. halt=true means the caller must stop
+// this reconcile and return (res, err) — the rollout is still progressing (or a
+// status write failed); halt=false falls through to the running requeue policy.
+func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, image string, hosts []string, replicas int32, port int) (ctrl.Result, bool, error) {
 	// Readiness: requeue until this Deployment revision, rather than retained
 	// ready replicas from the previous ReplicaSet, has completed its rollout.
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	completeAutoscalingTransition(app, dep.Status.Replicas, dep.Status.ReadyReplicas, time.Now())
 	if !deploymentRolloutReady(dep, replicas) || !r.deploymentPodsReady(ctx, dep, replicas) {
 		app.Status.Image = image
-		return r.reportRolloutProgress(ctx, app, dep, replicas, port,
+		res, err := r.reportRolloutProgress(ctx, app, dep, replicas, port,
 			"waiting for the current Deployment revision and pods to become ready")
+		return res, true, err
 	}
 
-	app.Status.Phase = appv1alpha1.PhaseRunning
 	app.Status.Image = image
 	if len(hosts) > 0 {
 		setStatusURLs(app, hosts)
@@ -1410,22 +1442,16 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		app.Status.URL = internalURL(app)
 		app.Status.URLs = nil
 	}
-	app.Status.ActiveRevision = releaseRevision(app)
 	app.Status.ObservedGeneration = app.Generation
-	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Deployed",
-		Message:            fmt.Sprintf("%d/%d replicas ready", dep.Status.ReadyReplicas, replicas),
-		ObservedGeneration: app.Generation,
-	})
-	// A settled Running app re-stamps identical status on every steady-state
-	// pass (childHealthRequeue): skip the no-op PUT and its log line.
-	if !r.statusSettled(ctx, app) {
-		if err := r.Status().Update(ctx, app); err != nil {
-			return ctrl.Result{}, err
-		}
-		logf.FromContext(ctx).Info("app running (kubernetes)", "name", app.Name, "image", image, "replicas", replicas)
+	if err := r.markRunning(ctx, app, dep, replicas, "app running (kubernetes)",
+		"name", app.Name, "image", image, "replicas", replicas); err != nil {
+		return ctrl.Result{}, true, err
 	}
+	return ctrl.Result{}, false, nil
+}
 
+// runningRequeue picks the steady-state requeue for a Running app.
+func (r *AppReconciler) runningRequeue(ctx context.Context, app *appv1alpha1.App, autoscaleRequeue bool) (ctrl.Result, error) {
 	// Free-tier apps with an idle TTL: stamp last-active on first Running reconcile
 	// and schedule a re-check after the TTL so the operator can auto-hibernate.
 	if r.ActivatorService != "" && app.Spec.IdleTTLSeconds > 0 && isFreeApp(app) {
@@ -1465,6 +1491,47 @@ func (r *AppReconciler) hibernated(ctx context.Context, app *appv1alpha1.App, im
 		return ctrl.Result{}, nil
 	}
 	return ctrl.Result{}, r.Status().Update(ctx, app)
+}
+
+// markRunning stamps the Running terminal shared by the web and worker paths:
+// phase Running, the release revision as active, and Ready=True with the
+// replica tally. URL/Image bookkeeping stays with each caller, as does the log
+// line, so the two paths keep their distinct messages.
+func (r *AppReconciler) markRunning(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, replicas int32, logMsg string, logKVs ...any) error {
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	app.Status.ActiveRevision = releaseRevision(app)
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Deployed",
+		Message:            fmt.Sprintf("%d/%d replicas ready", dep.Status.ReadyReplicas, replicas),
+		ObservedGeneration: app.Generation,
+	})
+	// A settled Running app re-stamps identical status on every steady-state
+	// pass (childHealthRequeue): skip the no-op PUT and its log line.
+	if !r.statusSettled(ctx, app) {
+		if err := r.Status().Update(ctx, app); err != nil {
+			return err
+		}
+		logf.FromContext(ctx).Info(logMsg, logKVs...)
+	}
+	return nil
+}
+
+// deleteStaleChildren removes leftover children a type change orphaned.
+func (r *AppReconciler) deleteStaleChildren(ctx context.Context, objs ...client.Object) error {
+	for _, obj := range objs {
+		// Cached existence check first: both objects are absent on every
+		// steady-state pass, and a blind Delete is a live API round trip.
+		if err := r.Get(ctx, client.ObjectKeyFromObject(obj), obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+			return err
+		}
+		if err := r.Delete(ctx, obj); err != nil && !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+	return nil
 }
 
 func terminationGracePeriodSeconds(seconds *int32) *int64 {
@@ -1566,21 +1633,11 @@ func setStatusURLs(app *appv1alpha1.App, hosts []string) {
 // worker has no HTTP endpoint). It shares the Deployment/readiness shape with the
 // web path but skips exposure and the auto-sleep machinery entirely.
 func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alpha1.App, image string, dep *appsv1.Deployment, replicas int32) (ctrl.Result, error) {
-	for _, obj := range []client.Object{
+	if err := r.deleteStaleChildren(ctx,
 		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
 		&networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
-	} {
-		// Cached existence check first: both objects are absent on every
-		// steady-state pass, and a blind Delete is a live API round trip.
-		if err := r.Get(ctx, client.ObjectKeyFromObject(obj), obj); err != nil {
-			if apierrors.IsNotFound(err) {
-				continue
-			}
-			return r.fail(ctx, app, "WorkerCleanupFailed", err)
-		}
-		if err := r.Delete(ctx, obj); err != nil && !apierrors.IsNotFound(err) {
-			return r.fail(ctx, app, "WorkerCleanupFailed", err)
-		}
+	); err != nil {
+		return r.fail(ctx, app, "WorkerCleanupFailed", err)
 	}
 
 	app.Status.Image = image
@@ -1607,19 +1664,9 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 			"waiting for the current worker Deployment revision and pods to become ready")
 	}
 
-	app.Status.Phase = appv1alpha1.PhaseRunning
-	app.Status.ActiveRevision = releaseRevision(app)
-	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Deployed",
-		Message:            fmt.Sprintf("%d/%d replicas ready", dep.Status.ReadyReplicas, replicas),
-		ObservedGeneration: app.Generation,
-	})
-	// Same steady-state no-op guard as the web path's Running terminal.
-	if !r.statusSettled(ctx, app) {
-		if err := r.Status().Update(ctx, app); err != nil {
-			return ctrl.Result{}, err
-		}
-		logf.FromContext(ctx).Info("worker running (kubernetes)", "name", app.Name, "image", image, "replicas", replicas)
+	if err := r.markRunning(ctx, app, dep, replicas, "worker running (kubernetes)",
+		"name", app.Name, "image", image, "replicas", replicas); err != nil {
+		return ctrl.Result{}, err
 	}
 	return ctrl.Result{RequeueAfter: childHealthRequeue}, nil
 }
@@ -2047,21 +2094,11 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 
 	// Type-change cleanup: a static_site has no Deployment/Service of its own.
 	// (The slug alias is converged by reconcileSlugService before dispatch.)
-	for _, obj := range []client.Object{
+	if err := r.deleteStaleChildren(ctx,
 		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
 		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
-	} {
-		// Cached existence check first: both objects are absent on every
-		// steady-state pass, and a blind Delete is a live API round trip.
-		if err := r.Get(ctx, client.ObjectKeyFromObject(obj), obj); err != nil {
-			if apierrors.IsNotFound(err) {
-				continue
-			}
-			return r.fail(ctx, app, "StaticCleanupFailed", err)
-		}
-		if err := r.Delete(ctx, obj); err != nil && !apierrors.IsNotFound(err) {
-			return r.fail(ctx, app, "StaticCleanupFailed", err)
-		}
+	); err != nil {
+		return r.fail(ctx, app, "StaticCleanupFailed", err)
 	}
 
 	rev := releaseRevision(app)

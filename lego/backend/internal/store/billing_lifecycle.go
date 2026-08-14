@@ -240,38 +240,44 @@ func (s *PGStore) GetBillingLifecycle(ctx context.Context, workspaceID string) (
 	return b, nil
 }
 
-// RecordStripeBillingEvent inserts the provider event and applies its normalized
-// transition in one transaction. Duplicate ids and stale provider timestamps
-// are retained/recognized without repeating a state change or notification.
-func (s *PGStore) RecordStripeBillingEvent(ctx context.Context, e StripeBillingEvent, grace time.Duration) (BillingLifecycle, bool, bool, error) {
+// lockBillingLifecycle reads one lifecycle row FOR UPDATE, pinning it for the
+// rest of the transaction. The raw scan error is returned; callers that can
+// observe a missing row classify it themselves.
+func lockBillingLifecycle(ctx context.Context, tx pgx.Tx, workspaceID string) (BillingLifecycle, error) {
+	return scanBillingLifecycle(tx.QueryRow(ctx,
+		`SELECT `+billingLifecycleColumns+` FROM billing_lifecycles WHERE workspace_id=$1 FOR UPDATE`, workspaceID))
+}
+
+// normalized validates the event's required fields (and the grace window that
+// accompanies it) and canonicalizes both timestamps to UTC, defaulting
+// ReceivedAt to now.
+func (e StripeBillingEvent) normalized(grace time.Duration) (StripeBillingEvent, error) {
 	if e.EventID == "" || e.WorkspaceID == "" || e.ProviderCreatedAt.IsZero() {
-		return BillingLifecycle{}, false, false, fmt.Errorf("incomplete Stripe billing event")
+		return StripeBillingEvent{}, fmt.Errorf("incomplete Stripe billing event")
 	}
 	if e.Outcome != BillingOutcomeFailure && e.Outcome != BillingOutcomeSuccess {
-		return BillingLifecycle{}, false, false, fmt.Errorf("unknown billing outcome %q", e.Outcome)
+		return StripeBillingEvent{}, fmt.Errorf("unknown billing outcome %q", e.Outcome)
 	}
 	if grace <= 0 {
-		return BillingLifecycle{}, false, false, fmt.Errorf("grace must be positive")
+		return StripeBillingEvent{}, fmt.Errorf("grace must be positive")
 	}
 	if e.CustomerID == "" || e.SubscriptionID == "" {
-		return BillingLifecycle{}, false, false, fmt.Errorf("Stripe billing event missing customer/subscription")
+		return StripeBillingEvent{}, fmt.Errorf("Stripe billing event missing customer/subscription")
 	}
 	if e.ReceivedAt.IsZero() {
 		e.ReceivedAt = time.Now().UTC()
 	}
 	e.ProviderCreatedAt = e.ProviderCreatedAt.UTC()
 	e.ReceivedAt = e.ReceivedAt.UTC()
+	return e, nil
+}
 
-	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return BillingLifecycle{}, false, false, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	// The immutable Subscription metadata names the workspace. Bind or verify
-	// the mapping in the same transaction before accepting its event: the
-	// upsert touches exactly one row iff the mapping was created or already
-	// matches (the DO UPDATE's WHERE); zero rows means a conflicting mapping.
+// verifyBillingProviderMapping binds or verifies the event's workspace mapping.
+// The immutable Subscription metadata names the workspace. Bind or verify
+// the mapping in the same transaction before accepting its event: the
+// upsert touches exactly one row iff the mapping was created or already
+// matches (the DO UPDATE's WHERE); zero rows means a conflicting mapping.
+func verifyBillingProviderMapping(ctx context.Context, tx pgx.Tx, e StripeBillingEvent) error {
 	mapping, err := tx.Exec(ctx, `
 		INSERT INTO billing_provider_mappings (workspace_id, customer_id, subscription_id, livemode)
 		VALUES ($1, $2, $3, $4)
@@ -284,70 +290,65 @@ func (s *PGStore) RecordStripeBillingEvent(ctx context.Context, e StripeBillingE
 		  AND billing_provider_mappings.subscription_id = EXCLUDED.subscription_id
 		  AND billing_provider_mappings.livemode = EXCLUDED.livemode`, e.WorkspaceID, e.CustomerID, e.SubscriptionID, e.Livemode)
 	if err != nil {
-		return BillingLifecycle{}, false, false, fmt.Errorf("verify billing mapping: %w", err)
+		return fmt.Errorf("verify billing mapping: %w", err)
 	}
 	if mapping.RowsAffected() != 1 {
-		return BillingLifecycle{}, false, false, fmt.Errorf("provider mapping mismatch")
+		return fmt.Errorf("provider mapping mismatch")
 	}
+	return nil
+}
 
-	cmd, err := tx.Exec(ctx, `
-		INSERT INTO stripe_billing_events
-		(event_id, event_type, workspace_id, customer_id, subscription_id, object_id, livemode, provider_created_at, received_at, outcome, reason)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-		ON CONFLICT (event_id) DO NOTHING`, e.EventID, e.EventType, e.WorkspaceID,
-		e.CustomerID, e.SubscriptionID, e.ObjectID, e.Livemode, e.ProviderCreatedAt, e.ReceivedAt, e.Outcome, e.Reason)
-	if err != nil {
-		return BillingLifecycle{}, false, false, err
-	}
-	inserted := cmd.RowsAffected() == 1
+// markStripeBillingEventApplied stamps the event row applied — the shared tail
+// of both the stale-event guard and the applied-transition path.
+func markStripeBillingEventApplied(ctx context.Context, tx pgx.Tx, e StripeBillingEvent) error {
+	_, err := tx.Exec(ctx, `UPDATE stripe_billing_events SET applied_at=$2 WHERE event_id=$1`, e.EventID, e.ReceivedAt)
+	return err
+}
 
-	// commit and markApplied are the shared transaction tails: every early
-	// exit commits with its own (state, inserted, changed) triple, and both
-	// the stale-event and applied paths stamp the event row.
-	commit := func(st BillingLifecycle, inserted, changed bool) (BillingLifecycle, bool, bool, error) {
-		if err := tx.Commit(ctx); err != nil {
-			return BillingLifecycle{}, false, false, err
-		}
-		return st, inserted, changed, nil
-	}
-	markApplied := func() error {
-		_, err := tx.Exec(ctx, `UPDATE stripe_billing_events SET applied_at=$2 WHERE event_id=$1`, e.EventID, e.ReceivedAt)
-		return err
-	}
-
+// stripeBillingEventGuards seeds and locks the lifecycle row, then applies the
+// no-transition guards. done reports that the locked state should be returned
+// unchanged: a replayed already-applied event, an excluded/comped tenant, or a
+// provider timestamp not newer than the applied source event (which is still
+// stamped applied).
+func stripeBillingEventGuards(ctx context.Context, tx pgx.Tx, e StripeBillingEvent, inserted bool) (BillingLifecycle, bool, error) {
 	if _, err := tx.Exec(ctx, ensureBillingLifecycleSQL, e.WorkspaceID); err != nil {
-		return BillingLifecycle{}, false, false, err
+		return BillingLifecycle{}, false, err
 	}
-	state, err := scanBillingLifecycle(tx.QueryRow(ctx,
-		`SELECT `+billingLifecycleColumns+` FROM billing_lifecycles WHERE workspace_id=$1 FOR UPDATE`, e.WorkspaceID))
+	state, err := lockBillingLifecycle(ctx, tx, e.WorkspaceID)
 	if err != nil {
-		return BillingLifecycle{}, false, false, classify("billing lifecycle", err)
+		return BillingLifecycle{}, false, classify("billing lifecycle", err)
 	}
 	// A freshly inserted event row has applied_at NULL by construction, so
 	// the duplicate-application read only matters for a replayed event.
 	if !inserted {
 		var appliedAt *time.Time
 		if err := tx.QueryRow(ctx, `SELECT applied_at FROM stripe_billing_events WHERE event_id=$1`, e.EventID).Scan(&appliedAt); err != nil {
-			return BillingLifecycle{}, false, false, err
+			return BillingLifecycle{}, false, err
 		}
 		if appliedAt != nil {
-			return commit(state, false, false)
+			return state, true, nil
 		}
 	}
 	var excluded, comped bool
 	if err := tx.QueryRow(ctx, `SELECT billing_excluded,billing_comped FROM tenants WHERE id=$1`, e.WorkspaceID).Scan(&excluded, &comped); err != nil {
-		return BillingLifecycle{}, false, false, err
+		return BillingLifecycle{}, false, err
 	}
 	if excluded || comped || state.Status == BillingExcluded || state.Status == BillingComped {
-		return commit(state, inserted, false)
+		return state, true, nil
 	}
 	if state.SourceEventAt != nil && !e.ProviderCreatedAt.After(*state.SourceEventAt) {
-		if err := markApplied(); err != nil {
-			return BillingLifecycle{}, false, false, err
+		if err := markStripeBillingEventApplied(ctx, tx, e); err != nil {
+			return BillingLifecycle{}, false, err
 		}
-		return commit(state, inserted, false)
+		return state, true, nil
 	}
+	return state, false, nil
+}
 
+// applyStripeBillingTransition computes and persists the event's transition,
+// enqueues the notification when the status edge warrants one, and stamps the
+// event row applied. changed reports whether status, reason, or deadline moved.
+func applyStripeBillingTransition(ctx context.Context, tx pgx.Tx, state BillingLifecycle, e StripeBillingEvent, grace time.Duration) (BillingLifecycle, bool, error) {
 	previous := state.Status
 	next, reason, deadline := transitionBillingState(state, e, grace)
 	changed := next != state.Status || reason != state.Reason || !sameTime(deadline, state.GraceDeadline)
@@ -357,7 +358,7 @@ func (s *PGStore) RecordStripeBillingEvent(ctx context.Context, e StripeBillingE
 		version++
 		attemptCount = 0
 	}
-	state, err = scanBillingLifecycle(tx.QueryRow(ctx, `
+	state, err := scanBillingLifecycle(tx.QueryRow(ctx, `
 		UPDATE billing_lifecycles SET
 		status=$2, reason=$3, grace_deadline=$4, source_event_id=$5,
 		source_event_at=$6, source_event_outcome=$7, invoice_id=$8, subscription_id=$9,
@@ -367,17 +368,55 @@ func (s *PGStore) RecordStripeBillingEvent(ctx context.Context, e StripeBillingE
 		e.WorkspaceID, next, reason, deadline, e.EventID, e.ProviderCreatedAt, e.Outcome,
 		e.ObjectID, e.SubscriptionID, version, attemptCount, e.ReceivedAt))
 	if err != nil {
-		return BillingLifecycle{}, false, false, err
+		return BillingLifecycle{}, false, err
 	}
 	if changed && notifyBillingStatus(previous, next) {
 		if err := insertBillingNotification(ctx, tx, e.WorkspaceID, version, next, reason, deadline, e.Livemode, e.ReceivedAt); err != nil {
-			return BillingLifecycle{}, false, false, err
+			return BillingLifecycle{}, false, err
 		}
 	}
-	if err := markApplied(); err != nil {
+	if err := markStripeBillingEventApplied(ctx, tx, e); err != nil {
+		return BillingLifecycle{}, false, err
+	}
+	return state, changed, nil
+}
+
+// RecordStripeBillingEvent inserts the provider event and applies its normalized
+// transition in one transaction. Duplicate ids and stale provider timestamps
+// are retained/recognized without repeating a state change or notification.
+func (s *PGStore) RecordStripeBillingEvent(ctx context.Context, e StripeBillingEvent, grace time.Duration) (BillingLifecycle, bool, bool, error) {
+	e, err := e.normalized(grace)
+	if err != nil {
 		return BillingLifecycle{}, false, false, err
 	}
-	return commit(state, inserted, changed)
+	var state BillingLifecycle
+	var inserted, changed bool
+	err = s.withTx(ctx, func(tx pgx.Tx) error {
+		if err := verifyBillingProviderMapping(ctx, tx, e); err != nil {
+			return err
+		}
+		cmd, err := tx.Exec(ctx, `
+		INSERT INTO stripe_billing_events
+		(event_id, event_type, workspace_id, customer_id, subscription_id, object_id, livemode, provider_created_at, received_at, outcome, reason)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+		ON CONFLICT (event_id) DO NOTHING`, e.EventID, e.EventType, e.WorkspaceID,
+			e.CustomerID, e.SubscriptionID, e.ObjectID, e.Livemode, e.ProviderCreatedAt, e.ReceivedAt, e.Outcome, e.Reason)
+		if err != nil {
+			return err
+		}
+		inserted = cmd.RowsAffected() == 1
+		var done bool
+		state, done, err = stripeBillingEventGuards(ctx, tx, e, inserted)
+		if err != nil || done {
+			return err
+		}
+		state, changed, err = applyStripeBillingTransition(ctx, tx, state, e, grace)
+		return err
+	})
+	if err != nil {
+		return BillingLifecycle{}, false, false, err
+	}
+	return state, inserted, changed, nil
 }
 
 func transitionBillingState(state BillingLifecycle, e StripeBillingEvent, grace time.Duration) (string, string, *time.Time) {
@@ -437,13 +476,11 @@ func (s *PGStore) ClaimDueBillingLifecycle(ctx context.Context, now time.Time, l
 	if lease <= 0 {
 		lease = time.Minute
 	}
-	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return BillingLifecycle{}, false, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	var workspaceID string
-	err = tx.QueryRow(ctx, `
+	var b BillingLifecycle
+	var claimed bool
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		var workspaceID string
+		err := tx.QueryRow(ctx, `
 		SELECT workspace_id FROM billing_lifecycles
 		WHERE (
 		    (status='grace' AND grace_deadline <= $1) OR
@@ -451,91 +488,87 @@ func (s *PGStore) ClaimDueBillingLifecycle(ctx context.Context, now time.Time, l
 		) AND (claimed_until IS NULL OR claimed_until < $1)
 		ORDER BY COALESCE(retry_at, grace_deadline, updated_at), workspace_id
 		FOR UPDATE SKIP LOCKED LIMIT 1`, now).Scan(&workspaceID)
-	if err == pgx.ErrNoRows {
-		_ = tx.Commit(ctx)
-		return BillingLifecycle{}, false, nil
-	}
-	if err != nil {
-		return BillingLifecycle{}, false, err
-	}
-	b, err := scanBillingLifecycle(tx.QueryRow(ctx, `
+		if err == pgx.ErrNoRows {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		b, err = scanBillingLifecycle(tx.QueryRow(ctx, `
 		UPDATE billing_lifecycles SET
 		status=CASE WHEN status='grace' THEN 'enforcing' ELSE status END,
 		transition_version=CASE WHEN status='grace' THEN transition_version+1 ELSE transition_version END,
 		claimed_until=$2, attempt_count=attempt_count+1, updated_at=$1
 		WHERE workspace_id=$3 RETURNING `+billingLifecycleColumns, now, now.Add(lease), workspaceID))
+		if err != nil {
+			return err
+		}
+		claimed = true
+		return nil
+	})
 	if err != nil {
 		return BillingLifecycle{}, false, err
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return BillingLifecycle{}, false, err
-	}
-	return b, true, nil
+	return b, claimed, nil
 }
 
 func (s *PGStore) CompleteBillingLifecycleWork(ctx context.Context, workspaceID string, expectedVersion int64, status string, now time.Time) (BillingLifecycle, error) {
 	if status != BillingEnforced && status != BillingHealthy && status != BillingExcluded && status != BillingComped {
 		return BillingLifecycle{}, fmt.Errorf("invalid completed billing status %q", status)
 	}
-	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return BillingLifecycle{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	current, err := scanBillingLifecycle(tx.QueryRow(ctx,
-		`SELECT `+billingLifecycleColumns+` FROM billing_lifecycles WHERE workspace_id=$1 FOR UPDATE`, workspaceID))
-	if err != nil {
-		return BillingLifecycle{}, classify("billing lifecycle", err)
-	}
-	if current.TransitionVersion != expectedVersion ||
-		(status == BillingEnforced && current.Status != BillingEnforcing) ||
-		(status != BillingEnforced && current.Status != BillingRecovering) {
-		if err := tx.Commit(ctx); err != nil {
-			return BillingLifecycle{}, err
+	var b BillingLifecycle
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		current, err := lockBillingLifecycle(ctx, tx, workspaceID)
+		if err != nil {
+			return classify("billing lifecycle", err)
 		}
-		return current, nil
-	}
-	if current.Status == status {
-		_ = tx.Commit(ctx)
-		return current, nil
-	}
-	version := current.TransitionVersion + 1
-	reason := current.Reason
-	var deadline *time.Time = current.GraceDeadline
-	if status == BillingHealthy {
-		reason, deadline = "", nil
-	}
-	b, err := scanBillingLifecycle(tx.QueryRow(ctx, `
+		if current.TransitionVersion != expectedVersion ||
+			(status == BillingEnforced && current.Status != BillingEnforcing) ||
+			(status != BillingEnforced && current.Status != BillingRecovering) {
+			b = current
+			return nil
+		}
+		if current.Status == status {
+			b = current
+			return nil
+		}
+		version := current.TransitionVersion + 1
+		reason := current.Reason
+		var deadline *time.Time = current.GraceDeadline
+		if status == BillingHealthy {
+			reason, deadline = "", nil
+		}
+		b, err = scanBillingLifecycle(tx.QueryRow(ctx, `
 		UPDATE billing_lifecycles SET status=$2, reason=$3, grace_deadline=$4,
 		transition_version=$5, attempt_count=0, retry_at=NULL, claimed_until=NULL, last_error='',
 		enforced_at=CASE WHEN $2='enforced' THEN $6 ELSE enforced_at END,
 		recovered_at=CASE WHEN $2 IN ('healthy','excluded','comped') THEN $6 ELSE recovered_at END,
 		recovery_target='healthy',
 		updated_at=$6 WHERE workspace_id=$1 RETURNING `+billingLifecycleColumns,
-		workspaceID, status, reason, deadline, version, now))
-	if err != nil {
-		return BillingLifecycle{}, err
-	}
-	var livemode bool
-	if err := tx.QueryRow(ctx, `SELECT livemode FROM billing_provider_mappings WHERE workspace_id=$1`, workspaceID).Scan(&livemode); err != nil {
-		return BillingLifecycle{}, err
-	}
-	if notifyBillingStatus(current.Status, status) {
-		if err := insertBillingNotification(ctx, tx, workspaceID, version, status, reason, deadline, livemode, now); err != nil {
-			return BillingLifecycle{}, err
+			workspaceID, status, reason, deadline, version, now))
+		if err != nil {
+			return err
 		}
-	}
-	verb := core.AuditVerbBillingEnforced
-	if status != BillingEnforced {
-		verb = core.AuditVerbBillingRecovered
-	}
-	if _, err := tx.Exec(ctx, `INSERT INTO audit_events
+		var livemode bool
+		if err := tx.QueryRow(ctx, `SELECT livemode FROM billing_provider_mappings WHERE workspace_id=$1`, workspaceID).Scan(&livemode); err != nil {
+			return err
+		}
+		if notifyBillingStatus(current.Status, status) {
+			if err := insertBillingNotification(ctx, tx, workspaceID, version, status, reason, deadline, livemode, now); err != nil {
+				return err
+			}
+		}
+		verb := core.AuditVerbBillingEnforced
+		if status != BillingEnforced {
+			verb = core.AuditVerbBillingRecovered
+		}
+		_, err = tx.Exec(ctx, `INSERT INTO audit_events
 		(id,workspace_id,caller,caller_method,verb,resource,outcome,at)
 		VALUES($1,$2,'billing-worker','internal',$3,$4,'allowed',$5)`,
-		ids.New(ids.Audit), workspaceID, verb, core.WorkspaceObject(workspaceID), now); err != nil {
-		return BillingLifecycle{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
+			ids.New(ids.Audit), workspaceID, verb, core.WorkspaceObject(workspaceID), now)
+		return err
+	})
+	if err != nil {
 		return BillingLifecycle{}, err
 	}
 	return b, nil
@@ -685,67 +718,25 @@ func (s *PGStore) CheckBillingMutationAllowed(ctx context.Context, workspaceID s
 	}
 }
 
-// SetBillingException atomically applies/removes the structural exclusion or
-// rated-but-free comp flag and moves any billing-owned suspension through the
-// ordinary recovery worker. reason is a bounded operator explanation, never a
-// payment detail or arbitrary payload.
-func (s *PGStore) SetBillingException(ctx context.Context, workspaceID, exception string, enabled bool, actor, reason string, at time.Time) (bool, BillingLifecycle, error) {
-	if exception != BillingExcluded && exception != BillingComped {
-		return false, BillingLifecycle{}, fmt.Errorf("invalid billing exception %q", exception)
-	}
-	actor, reason, err := normalizeBillingOverride(actor, reason)
-	if err != nil {
-		return false, BillingLifecycle{}, err
-	}
-	column := "billing_excluded"
-	verb := core.AuditVerbBillingExclusionChanged
-	if exception == BillingComped {
-		column, verb = "billing_comped", core.AuditVerbBillingCompChanged
-	}
-	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return false, BillingLifecycle{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	// One locked read of both flags; the row stays locked for the whole
-	// transaction and the UPDATE below is its only writer, so the post-update
-	// pair is derived locally instead of re-read.
-	var excluded, comped bool
-	if err := tx.QueryRow(ctx, `SELECT billing_excluded,billing_comped FROM tenants WHERE id=$1 FOR UPDATE`, workspaceID).Scan(&excluded, &comped); err != nil {
-		return false, BillingLifecycle{}, classify("tenant", err)
-	}
-	current := excluded
-	if exception == BillingComped {
-		current = comped
-	}
-	changed := current != enabled
-	if !changed {
-		state, err := scanBillingLifecycle(tx.QueryRow(ctx, `SELECT `+billingLifecycleColumns+` FROM billing_lifecycles WHERE workspace_id=$1`, workspaceID))
-		if err == pgx.ErrNoRows {
-			state, err = BillingLifecycle{WorkspaceID: workspaceID, Status: BillingHealthy}, nil
-		}
-		_ = tx.Commit(ctx)
-		return false, state, err
-	}
-	if _, err := tx.Exec(ctx, `UPDATE tenants SET `+column+`=$2,updated_at=now() WHERE id=$1`, workspaceID, enabled); err != nil {
-		return false, BillingLifecycle{}, err
-	}
-	if _, err := tx.Exec(ctx, `INSERT INTO billing_lifecycles(workspace_id,status) VALUES($1,'healthy') ON CONFLICT DO NOTHING`, workspaceID); err != nil {
-		return false, BillingLifecycle{}, err
-	}
-	state, err := scanBillingLifecycle(tx.QueryRow(ctx, `SELECT `+billingLifecycleColumns+` FROM billing_lifecycles WHERE workspace_id=$1 FOR UPDATE`, workspaceID))
-	if err != nil {
-		return false, BillingLifecycle{}, err
-	}
-	previousStatus := state.Status
+// billingExceptionOutcome is billingExceptionTransition's computed transition.
+type billingExceptionOutcome struct {
+	next         string // lifecycle status to persist
+	target       string // recovery_target accompanying it
+	reason       string // operator-prefixed reason ("" for healthy)
+	version      int64  // transition_version to persist
+	stateChanged bool   // whether status or reason moved
+}
+
+// billingExceptionTransition computes the lifecycle transition one exception
+// toggle produces: the toggle is folded into the tenant's pre-toggle flags,
+// active enforcement (or an enforcement-shaped status) routes the change
+// through the ordinary recovery worker, and the version advances only on a
+// real change. Pure — every input is read before it runs.
+func billingExceptionTransition(state BillingLifecycle, exception string, enabled bool, excluded, comped, active bool, reason string) billingExceptionOutcome {
 	if exception == BillingExcluded {
 		excluded = enabled
 	} else {
 		comped = enabled
-	}
-	var active bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM billing_enforcements WHERE workspace_id=$1 AND recovered_at IS NULL)`, workspaceID).Scan(&active); err != nil {
-		return false, BillingLifecycle{}, err
 	}
 	desired := BillingHealthy
 	if excluded {
@@ -771,25 +762,100 @@ func (s *PGStore) SetBillingException(ctx context.Context, workspaceID, exceptio
 	if stateChanged {
 		version++
 	}
-	state, err = scanBillingLifecycle(tx.QueryRow(ctx, `UPDATE billing_lifecycles SET status=$2,reason=$3,grace_deadline=NULL,recovery_target=$4,transition_version=$5,attempt_count=0,retry_at=NULL,claimed_until=NULL,last_error='',updated_at=$6 WHERE workspace_id=$1 RETURNING `+billingLifecycleColumns, workspaceID, next, nextReason, target, version, at))
+	return billingExceptionOutcome{next: next, target: target, reason: nextReason, version: version, stateChanged: stateChanged}
+}
+
+// applyBillingExceptionTransition seeds and locks the lifecycle row, computes
+// the pure exception transition from the pre-toggle flags plus any still-active
+// enforcement, and persists it. previousStatus is the pre-update status the
+// audit row records.
+func applyBillingExceptionTransition(ctx context.Context, tx pgx.Tx, workspaceID, exception string, enabled bool, excluded, comped bool, reason string, at time.Time) (BillingLifecycle, billingExceptionOutcome, string, error) {
+	// Deliberately the plain 'healthy' seed, not ensureBillingLifecycleSQL: the
+	// tenant flag was already toggled in this transaction, so the flag-aware
+	// seed would stamp a fresh row 'excluded'/'comped' and change the audit
+	// row's previousStatus for excluded/comped tenants.
+	if _, err := tx.Exec(ctx, `INSERT INTO billing_lifecycles(workspace_id,status) VALUES($1,'healthy') ON CONFLICT DO NOTHING`, workspaceID); err != nil {
+		return BillingLifecycle{}, billingExceptionOutcome{}, "", err
+	}
+	state, err := lockBillingLifecycle(ctx, tx, workspaceID)
+	if err != nil {
+		return BillingLifecycle{}, billingExceptionOutcome{}, "", err
+	}
+	previousStatus := state.Status
+	var active bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM billing_enforcements WHERE workspace_id=$1 AND recovered_at IS NULL)`, workspaceID).Scan(&active); err != nil {
+		return BillingLifecycle{}, billingExceptionOutcome{}, "", err
+	}
+	out := billingExceptionTransition(state, exception, enabled, excluded, comped, active, reason)
+	state, err = scanBillingLifecycle(tx.QueryRow(ctx, `UPDATE billing_lifecycles SET status=$2,reason=$3,grace_deadline=NULL,recovery_target=$4,transition_version=$5,attempt_count=0,retry_at=NULL,claimed_until=NULL,last_error='',updated_at=$6 WHERE workspace_id=$1 RETURNING `+billingLifecycleColumns, workspaceID, out.next, out.reason, out.target, out.version, at))
+	if err != nil {
+		return BillingLifecycle{}, billingExceptionOutcome{}, "", err
+	}
+	return state, out, previousStatus, nil
+}
+
+// SetBillingException atomically applies/removes the structural exclusion or
+// rated-but-free comp flag and moves any billing-owned suspension through the
+// ordinary recovery worker. reason is a bounded operator explanation, never a
+// payment detail or arbitrary payload.
+func (s *PGStore) SetBillingException(ctx context.Context, workspaceID, exception string, enabled bool, actor, reason string, at time.Time) (bool, BillingLifecycle, error) {
+	if exception != BillingExcluded && exception != BillingComped {
+		return false, BillingLifecycle{}, fmt.Errorf("invalid billing exception %q", exception)
+	}
+	actor, reason, err := normalizeBillingOverride(actor, reason)
 	if err != nil {
 		return false, BillingLifecycle{}, err
 	}
-	var livemode bool
-	_ = tx.QueryRow(ctx, `SELECT livemode FROM billing_provider_mappings WHERE workspace_id=$1`, workspaceID).Scan(&livemode)
-	if next != BillingRecovering && stateChanged {
-		if err := insertBillingNotification(ctx, tx, workspaceID, version, next, nextReason, nil, livemode, at); err != nil {
-			return false, BillingLifecycle{}, err
+	column := "billing_excluded"
+	verb := core.AuditVerbBillingExclusionChanged
+	if exception == BillingComped {
+		column, verb = "billing_comped", core.AuditVerbBillingCompChanged
+	}
+	var changed bool
+	var state BillingLifecycle
+	err = s.withTx(ctx, func(tx pgx.Tx) error {
+		// One locked read of both flags; the row stays locked for the whole
+		// transaction and the UPDATE below is its only writer, so the post-update
+		// pair is derived locally instead of re-read.
+		var excluded, comped bool
+		if err := tx.QueryRow(ctx, `SELECT billing_excluded,billing_comped FROM tenants WHERE id=$1 FOR UPDATE`, workspaceID).Scan(&excluded, &comped); err != nil {
+			return classify("tenant", err)
 		}
-	}
-	var excludedTo *bool
-	if exception == BillingExcluded {
-		excludedTo = &enabled
-	}
-	if err := insertBillingOverrideAudit(ctx, tx, workspaceID, actor, verb, at, excludedTo, reason, previousStatus, state.Status); err != nil {
-		return false, BillingLifecycle{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
+		current := excluded
+		if exception == BillingComped {
+			current = comped
+		}
+		changed = current != enabled
+		if !changed {
+			var err error
+			state, err = scanBillingLifecycle(tx.QueryRow(ctx, `SELECT `+billingLifecycleColumns+` FROM billing_lifecycles WHERE workspace_id=$1`, workspaceID))
+			if err == pgx.ErrNoRows {
+				state, err = BillingLifecycle{WorkspaceID: workspaceID, Status: BillingHealthy}, nil
+			}
+			return err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE tenants SET `+column+`=$2,updated_at=now() WHERE id=$1`, workspaceID, enabled); err != nil {
+			return err
+		}
+		st, out, previousStatus, err := applyBillingExceptionTransition(ctx, tx, workspaceID, exception, enabled, excluded, comped, reason, at)
+		if err != nil {
+			return err
+		}
+		state = st
+		var livemode bool
+		_ = tx.QueryRow(ctx, `SELECT livemode FROM billing_provider_mappings WHERE workspace_id=$1`, workspaceID).Scan(&livemode)
+		if out.next != BillingRecovering && out.stateChanged {
+			if err := insertBillingNotification(ctx, tx, workspaceID, out.version, out.next, out.reason, nil, livemode, at); err != nil {
+				return err
+			}
+		}
+		var excludedTo *bool
+		if exception == BillingExcluded {
+			excludedTo = &enabled
+		}
+		return insertBillingOverrideAudit(ctx, tx, workspaceID, actor, verb, at, excludedTo, reason, previousStatus, state.Status)
+	})
+	if err != nil {
 		return false, BillingLifecycle{}, err
 	}
 	return changed, state, nil
@@ -803,19 +869,16 @@ func (s *PGStore) ExtendBillingGrace(ctx context.Context, workspaceID string, ex
 	if err != nil {
 		return BillingLifecycle{}, err
 	}
-	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
+	var state BillingLifecycle
+	err = s.withTx(ctx, func(tx pgx.Tx) error {
+		var err error
+		state, err = scanBillingLifecycle(tx.QueryRow(ctx, `UPDATE billing_lifecycles SET grace_deadline=GREATEST(grace_deadline,$2)+($3 * interval '1 second'),reason=$4,transition_version=transition_version+1,updated_at=$2 WHERE workspace_id=$1 AND status='grace' RETURNING `+billingLifecycleColumns, workspaceID, at, int64(extension/time.Second), "operator_grace_extension: "+reason))
+		if err != nil {
+			return classify("billing grace", err)
+		}
+		return insertBillingOverrideAudit(ctx, tx, workspaceID, actor, core.AuditVerbBillingGraceExtended, at, nil, reason, BillingGrace, BillingGrace)
+	})
 	if err != nil {
-		return BillingLifecycle{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	state, err := scanBillingLifecycle(tx.QueryRow(ctx, `UPDATE billing_lifecycles SET grace_deadline=GREATEST(grace_deadline,$2)+($3 * interval '1 second'),reason=$4,transition_version=transition_version+1,updated_at=$2 WHERE workspace_id=$1 AND status='grace' RETURNING `+billingLifecycleColumns, workspaceID, at, int64(extension/time.Second), "operator_grace_extension: "+reason))
-	if err != nil {
-		return BillingLifecycle{}, classify("billing grace", err)
-	}
-	if err := insertBillingOverrideAudit(ctx, tx, workspaceID, actor, core.AuditVerbBillingGraceExtended, at, nil, reason, BillingGrace, BillingGrace); err != nil {
-		return BillingLifecycle{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
 		return BillingLifecycle{}, err
 	}
 	return state, nil
@@ -826,23 +889,20 @@ func (s *PGStore) ForceBillingRecovery(ctx context.Context, workspaceID, actor, 
 	if err != nil {
 		return BillingLifecycle{}, err
 	}
-	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
+	var state BillingLifecycle
+	err = s.withTx(ctx, func(tx pgx.Tx) error {
+		var previous string
+		if err := tx.QueryRow(ctx, `SELECT status FROM billing_lifecycles WHERE workspace_id=$1 FOR UPDATE`, workspaceID).Scan(&previous); err != nil {
+			return classify("billing lifecycle", err)
+		}
+		var err error
+		state, err = scanBillingLifecycle(tx.QueryRow(ctx, `UPDATE billing_lifecycles SET status='recovering',reason=$2,recovery_target='healthy',grace_deadline=NULL,transition_version=transition_version+1,attempt_count=0,retry_at=NULL,claimed_until=NULL,last_error='',updated_at=$3 WHERE workspace_id=$1 AND status IN ('grace','enforcing','enforced','recovering') RETURNING `+billingLifecycleColumns, workspaceID, "operator_recovery: "+reason, at))
+		if err != nil {
+			return classify("billing lifecycle", err)
+		}
+		return insertBillingOverrideAudit(ctx, tx, workspaceID, actor, core.AuditVerbBillingRecoveryForced, at, nil, reason, previous, BillingRecovering)
+	})
 	if err != nil {
-		return BillingLifecycle{}, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	var previous string
-	if err := tx.QueryRow(ctx, `SELECT status FROM billing_lifecycles WHERE workspace_id=$1 FOR UPDATE`, workspaceID).Scan(&previous); err != nil {
-		return BillingLifecycle{}, classify("billing lifecycle", err)
-	}
-	state, err := scanBillingLifecycle(tx.QueryRow(ctx, `UPDATE billing_lifecycles SET status='recovering',reason=$2,recovery_target='healthy',grace_deadline=NULL,transition_version=transition_version+1,attempt_count=0,retry_at=NULL,claimed_until=NULL,last_error='',updated_at=$3 WHERE workspace_id=$1 AND status IN ('grace','enforcing','enforced','recovering') RETURNING `+billingLifecycleColumns, workspaceID, "operator_recovery: "+reason, at))
-	if err != nil {
-		return BillingLifecycle{}, classify("billing lifecycle", err)
-	}
-	if err := insertBillingOverrideAudit(ctx, tx, workspaceID, actor, core.AuditVerbBillingRecoveryForced, at, nil, reason, previous, BillingRecovering); err != nil {
-		return BillingLifecycle{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
 		return BillingLifecycle{}, err
 	}
 	return state, nil

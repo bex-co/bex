@@ -366,108 +366,84 @@ func blueprintFieldCapabilityPointer(context blueprintCapabilityContext, field s
 	return "#/definitions/" + string(context.kind) + "/properties/" + field
 }
 
-// blueprintResourceChildKind maps a resources-family collection field to its
-// child capability context — the same triple under the root, the ungrouped
+// blueprintResourceChildContexts maps a resources-family collection field to
+// its child capability context — the same triple under the root, the ungrouped
 // resources block, and a project environment.
-func blueprintResourceChildKind(field string) (blueprintCapabilityContext, bool) {
-	switch field {
-	case "services":
-		return blueprintCapabilityContext{kind: blueprintCapabilityServices}, true
-	case "databases":
-		return blueprintCapabilityContext{kind: blueprintCapabilityDatabase}, true
-	case "envVarGroups":
-		return blueprintCapabilityContext{kind: blueprintCapabilityEnvGroup}, true
-	}
-	return blueprintCapabilityContext{}, false
+var blueprintResourceChildContexts = map[string]blueprintCapabilityContext{
+	"services":     {kind: blueprintCapabilityServices},
+	"databases":    {kind: blueprintCapabilityDatabase},
+	"envVarGroups": {kind: blueprintCapabilityEnvGroup},
 }
 
-func blueprintChildCapabilityContext(context blueprintCapabilityContext, field string, child any) blueprintCapabilityContext {
+// blueprintEnvVarChildContexts is shared by the four env-var entry kinds:
+// which reference form an entry uses is decided per item, so every kind
+// resolves the same two reference objects.
+var blueprintEnvVarChildContexts = map[string]blueprintCapabilityContext{
+	"fromDatabase": {base: "#/definitions/envVarFromDatabase/properties/fromDatabase"},
+	"fromService":  {base: "#/definitions/envVarFromService/properties/fromService"},
+}
+
+// blueprintServiceChildContexts builds the shared service child-context row.
+// scaling and maintenanceMode are inline schema objects under the service
+// kind's own definition, and the previews child kind differs per service kind.
+func blueprintServiceChildContexts(kind, previews blueprintCapabilityKind) map[string]blueprintCapabilityContext {
+	return map[string]blueprintCapabilityContext{
+		"image":              {kind: blueprintCapabilityImage},
+		"registryCredential": {kind: blueprintCapabilityRegistryCredential},
+		"envVars":            {kind: blueprintCapabilityEnvKeyValue},
+		"buildFilter":        {kind: blueprintCapabilityBuildFilter},
+		"disk":               {kind: blueprintCapabilityDisk},
+		"ipAllowList":        {kind: blueprintCapabilityIPAllowList},
+		"previews":           {kind: previews},
+		"scaling":            {base: "#/definitions/" + string(kind) + "/properties/scaling"},
+		"maintenanceMode":    {base: "#/definitions/" + string(kind) + "/properties/maintenanceMode"},
+		"headers":            {kind: blueprintCapabilityHeader},
+		"routes":             {kind: blueprintCapabilityRoute},
+	}
+}
+
+// blueprintChildContexts resolves (parent kind, field) to the child's
+// capability context. A field absent from its kind's row — including every
+// field under the previews kinds — yields the zero context.
+var blueprintChildContexts = map[blueprintCapabilityKind]map[string]blueprintCapabilityContext{
+	blueprintCapabilityRoot: mergedBlueprintMaps(blueprintResourceChildContexts, map[string]blueprintCapabilityContext{
+		"ungrouped": {kind: blueprintCapabilityResources},
+		"projects":  {kind: blueprintCapabilityProject},
+		"previews":  {kind: blueprintCapabilityRootPreviews},
+	}),
+	blueprintCapabilityResources: blueprintResourceChildContexts,
+	blueprintCapabilityProject: {
+		"environments": {kind: blueprintCapabilityEnvironment},
+	},
+	blueprintCapabilityEnvironment: mergedBlueprintMaps(blueprintResourceChildContexts, map[string]blueprintCapabilityContext{
+		"networking":  {base: blueprintEnvironmentPropertyPrefix + "networking"},
+		"permissions": {base: blueprintEnvironmentPropertyPrefix + "permissions"},
+	}),
+	blueprintCapabilityServer: blueprintServiceChildContexts(blueprintCapabilityServer, blueprintCapabilityServicePreviews),
+	blueprintCapabilityCron:   blueprintServiceChildContexts(blueprintCapabilityCron, blueprintCapabilityServicePreviews),
+	blueprintCapabilityStatic: blueprintServiceChildContexts(blueprintCapabilityStatic, blueprintCapabilityStaticPreviews),
+	blueprintCapabilityDatabase: {
+		"ipAllowList":      {kind: blueprintCapabilityIPAllowList},
+		"readReplicas":     {kind: blueprintCapabilityReadReplica},
+		"highAvailability": {base: "#/definitions/database/properties/highAvailability"},
+	},
+	blueprintCapabilityKeyValue: {
+		"ipAllowList": {kind: blueprintCapabilityIPAllowList},
+	},
+	blueprintCapabilityEnvGroup: {
+		"envVars": {kind: blueprintCapabilityEnvKeyValue},
+	},
+	blueprintCapabilityEnvKeyValue:       blueprintEnvVarChildContexts,
+	blueprintCapabilityEnvDatabase:       blueprintEnvVarChildContexts,
+	blueprintCapabilityEnvService:        blueprintEnvVarChildContexts,
+	blueprintCapabilityEnvGroupReference: blueprintEnvVarChildContexts,
+}
+
+func blueprintChildCapabilityContext(context blueprintCapabilityContext, field string, _ any) blueprintCapabilityContext {
 	if context.base != "" {
 		return blueprintCapabilityContext{base: context.base + "/properties/" + field}
 	}
-	switch context.kind {
-	case blueprintCapabilityRoot:
-		if child, ok := blueprintResourceChildKind(field); ok {
-			return child
-		}
-		switch field {
-		case "ungrouped":
-			return blueprintCapabilityContext{kind: blueprintCapabilityResources}
-		case "projects":
-			return blueprintCapabilityContext{kind: blueprintCapabilityProject}
-		case "previews":
-			return blueprintCapabilityContext{kind: blueprintCapabilityRootPreviews}
-		}
-	case blueprintCapabilityResources:
-		if child, ok := blueprintResourceChildKind(field); ok {
-			return child
-		}
-	case blueprintCapabilityProject:
-		if field == "environments" {
-			return blueprintCapabilityContext{kind: blueprintCapabilityEnvironment}
-		}
-	case blueprintCapabilityEnvironment:
-		if child, ok := blueprintResourceChildKind(field); ok {
-			return child
-		}
-		switch field {
-		case "networking", "permissions":
-			return blueprintCapabilityContext{base: blueprintEnvironmentPropertyPrefix + field}
-		}
-	case blueprintCapabilityServer, blueprintCapabilityCron, blueprintCapabilityStatic:
-		switch field {
-		case "image":
-			return blueprintCapabilityContext{kind: blueprintCapabilityImage}
-		case "registryCredential":
-			return blueprintCapabilityContext{kind: blueprintCapabilityRegistryCredential}
-		case "envVars":
-			return blueprintCapabilityContext{kind: blueprintCapabilityEnvKeyValue}
-		case "buildFilter":
-			return blueprintCapabilityContext{kind: blueprintCapabilityBuildFilter}
-		case "disk":
-			return blueprintCapabilityContext{kind: blueprintCapabilityDisk}
-		case "ipAllowList":
-			return blueprintCapabilityContext{kind: blueprintCapabilityIPAllowList}
-		case "previews":
-			if context.kind == blueprintCapabilityStatic {
-				return blueprintCapabilityContext{kind: blueprintCapabilityStaticPreviews}
-			}
-			return blueprintCapabilityContext{kind: blueprintCapabilityServicePreviews}
-		case "scaling", "maintenanceMode":
-			return blueprintCapabilityContext{base: "#/definitions/" + string(context.kind) + "/properties/" + field}
-		case "headers":
-			return blueprintCapabilityContext{kind: blueprintCapabilityHeader}
-		case "routes":
-			return blueprintCapabilityContext{kind: blueprintCapabilityRoute}
-		}
-	case blueprintCapabilityDatabase:
-		switch field {
-		case "ipAllowList":
-			return blueprintCapabilityContext{kind: blueprintCapabilityIPAllowList}
-		case "readReplicas":
-			return blueprintCapabilityContext{kind: blueprintCapabilityReadReplica}
-		case "highAvailability":
-			return blueprintCapabilityContext{base: "#/definitions/database/properties/highAvailability"}
-		}
-	case blueprintCapabilityKeyValue:
-		if field == "ipAllowList" {
-			return blueprintCapabilityContext{kind: blueprintCapabilityIPAllowList}
-		}
-	case blueprintCapabilityEnvGroup:
-		if field == "envVars" {
-			return blueprintCapabilityContext{kind: blueprintCapabilityEnvKeyValue}
-		}
-	case blueprintCapabilityEnvKeyValue, blueprintCapabilityEnvDatabase, blueprintCapabilityEnvService, blueprintCapabilityEnvGroupReference:
-		switch field {
-		case "fromDatabase":
-			return blueprintCapabilityContext{base: "#/definitions/envVarFromDatabase/properties/fromDatabase"}
-		case "fromService":
-			return blueprintCapabilityContext{base: "#/definitions/envVarFromService/properties/fromService"}
-		}
-	case blueprintCapabilityRootPreviews, blueprintCapabilityServicePreviews, blueprintCapabilityStaticPreviews:
-		return blueprintCapabilityContext{}
-	}
-	return blueprintCapabilityContext{}
+	return blueprintChildContexts[context.kind][field]
 }
 
 func blueprintServiceCapabilityContext(value any) blueprintCapabilityContext {
@@ -499,90 +475,75 @@ func blueprintEnvVarCapabilityContext(value any) blueprintCapabilityContext {
 	}
 }
 
-// commonServiceEnumPointer covers the enum fields the server and cron service
-// kinds share; static deliberately has no plan/runtime enum pointer.
-func commonServiceEnumPointer(field string) string {
-	switch field {
-	case "runtime":
-		return "#/definitions/runtime/enum"
-	case "autoDeployTrigger":
-		return "#/definitions/autoDeployTrigger/enum"
-	case "plan":
-		return "#/definitions/plan/enum"
-	}
-	return ""
+// blueprintCommonServiceEnumPointers covers the enum fields the server and
+// cron service kinds share; static deliberately has no plan/runtime enum
+// pointer.
+var blueprintCommonServiceEnumPointers = map[string]string{
+	"runtime":           "#/definitions/runtime/enum",
+	"autoDeployTrigger": "#/definitions/autoDeployTrigger/enum",
+	"plan":              "#/definitions/plan/enum",
+}
+
+var blueprintPreviewsEnumPointers = map[string]string{
+	"generation": "#/definitions/previewsGeneration/enum",
+}
+
+// blueprintBaseEnumPointers resolves (inline-object base, field) to the enum
+// pointer the registry classifies that field's values under.
+var blueprintBaseEnumPointers = map[string]map[string]string{
+	blueprintEnvironmentPropertyPrefix + "networking": {
+		"isolation": blueprintEnvironmentPropertyPrefix + "networking/properties/isolation/enum",
+	},
+	blueprintEnvironmentPropertyPrefix + "permissions": {
+		"protection": blueprintEnvironmentPropertyPrefix + "permissions/properties/protection/enum",
+	},
+	"#/definitions/envVarFromDatabase/properties/fromDatabase": {
+		"property": "#/definitions/databaseEnvVarProperty/enum",
+	},
+	"#/definitions/envVarFromService/properties/fromService": {
+		"property": "#/definitions/serviceEnvVarProperty/enum",
+		"type":     "#/definitions/serviceType/enum",
+	},
+}
+
+// blueprintKindEnumPointers is blueprintBaseEnumPointers' counterpart for
+// named-definition contexts.
+var blueprintKindEnumPointers = map[blueprintCapabilityKind]map[string]string{
+	blueprintCapabilityServer: mergedBlueprintMaps(blueprintCommonServiceEnumPointers, map[string]string{
+		"type":                  "#/definitions/serverService/properties/type/enum",
+		"renderSubdomainPolicy": "#/definitions/serverService/properties/renderSubdomainPolicy/enum",
+	}),
+	blueprintCapabilityCron: blueprintCommonServiceEnumPointers,
+	blueprintCapabilityStatic: {
+		"renderSubdomainPolicy": "#/definitions/staticService/properties/renderSubdomainPolicy/enum",
+		"autoDeployTrigger":     "#/definitions/autoDeployTrigger/enum",
+	},
+	blueprintCapabilityDatabase: {
+		"plan":                 "#/definitions/plan/enum",
+		"postgresMajorVersion": "#/definitions/database/properties/postgresMajorVersion/enum",
+		"connectionPool":       "#/definitions/connectionPool/enum",
+		"region":               "#/definitions/region/enum",
+	},
+	blueprintCapabilityKeyValue: {
+		"type":            "#/definitions/redisServer/properties/type/enum",
+		"maxmemoryPolicy": "#/definitions/redisServer/properties/maxmemoryPolicy/enum",
+		"persistenceMode": "#/definitions/redisServer/properties/persistenceMode/enum",
+		"plan":            "#/definitions/plan/enum",
+		"region":          "#/definitions/region/enum",
+	},
+	blueprintCapabilityRoute: {
+		"type": "#/definitions/route/properties/type/enum",
+	},
+	blueprintCapabilityRootPreviews:    blueprintPreviewsEnumPointers,
+	blueprintCapabilityServicePreviews: blueprintPreviewsEnumPointers,
+	blueprintCapabilityStaticPreviews:  blueprintPreviewsEnumPointers,
 }
 
 func blueprintFieldEnumCapabilityPointer(context blueprintCapabilityContext, field string) string {
-	if context.base != "" {
-		switch context.base {
-		case blueprintEnvironmentPropertyPrefix + "networking":
-			if field == "isolation" {
-				return context.base + "/properties/isolation/enum"
-			}
-		case blueprintEnvironmentPropertyPrefix + "permissions":
-			if field == "protection" {
-				return context.base + "/properties/protection/enum"
-			}
-		case "#/definitions/envVarFromDatabase/properties/fromDatabase":
-			if field == "property" {
-				return "#/definitions/databaseEnvVarProperty/enum"
-			}
-		case "#/definitions/envVarFromService/properties/fromService":
-			if field == "property" {
-				return "#/definitions/serviceEnvVarProperty/enum"
-			}
-			if field == "type" {
-				return "#/definitions/serviceType/enum"
-			}
-		}
+	if pointer := blueprintBaseEnumPointers[context.base][field]; pointer != "" {
+		return pointer
 	}
-	switch context.kind {
-	case blueprintCapabilityServer:
-		switch field {
-		case "type", "renderSubdomainPolicy":
-			return "#/definitions/serverService/properties/" + field + "/enum"
-		}
-		return commonServiceEnumPointer(field)
-	case blueprintCapabilityCron:
-		return commonServiceEnumPointer(field)
-	case blueprintCapabilityStatic:
-		switch field {
-		case "renderSubdomainPolicy":
-			return "#/definitions/staticService/properties/renderSubdomainPolicy/enum"
-		case "autoDeployTrigger":
-			return "#/definitions/autoDeployTrigger/enum"
-		}
-	case blueprintCapabilityDatabase:
-		switch field {
-		case "plan":
-			return "#/definitions/plan/enum"
-		case "postgresMajorVersion":
-			return "#/definitions/database/properties/postgresMajorVersion/enum"
-		case "connectionPool":
-			return "#/definitions/connectionPool/enum"
-		case "region":
-			return "#/definitions/region/enum"
-		}
-	case blueprintCapabilityKeyValue:
-		switch field {
-		case "type", "maxmemoryPolicy", "persistenceMode":
-			return "#/definitions/redisServer/properties/" + field + "/enum"
-		case "plan":
-			return "#/definitions/plan/enum"
-		case "region":
-			return "#/definitions/region/enum"
-		}
-	case blueprintCapabilityRoute:
-		if field == "type" {
-			return "#/definitions/route/properties/type/enum"
-		}
-	case blueprintCapabilityRootPreviews, blueprintCapabilityServicePreviews, blueprintCapabilityStaticPreviews:
-		if field == "generation" {
-			return "#/definitions/previewsGeneration/enum"
-		}
-	}
-	return ""
+	return blueprintKindEnumPointers[context.kind][field]
 }
 
 func blueprintEncodedValue(value any) string {
@@ -946,7 +907,7 @@ func normalizeRenderResourceContainers(document map[string]any) error {
 	if !ok {
 		return fmt.Errorf("embedded Render Blueprint schema has no root properties")
 	}
-	document["properties"] = mergedBlueprintSchemaProperties(resourceProperties, rootProperties)
+	document["properties"] = mergedBlueprintMaps(resourceProperties, rootProperties)
 	document["additionalProperties"] = false
 	delete(document, "allOf")
 	delete(document, "unevaluatedProperties")
@@ -967,7 +928,7 @@ func normalizeRenderResourceContainers(document map[string]any) error {
 	if !ok {
 		return fmt.Errorf("embedded Render Blueprint schema has no environment properties")
 	}
-	environment["properties"] = mergedBlueprintSchemaProperties(resourceProperties, environmentProperties)
+	environment["properties"] = mergedBlueprintMaps(resourceProperties, environmentProperties)
 	environment["additionalProperties"] = false
 	delete(environment, "allOf")
 	delete(environment, "unevaluatedProperties")
@@ -977,15 +938,15 @@ func normalizeRenderResourceContainers(document map[string]any) error {
 	if !ok {
 		return fmt.Errorf("embedded Render Blueprint schema has no ungrouped definition")
 	}
-	ungrouped["properties"] = mergedBlueprintSchemaProperties(resourceProperties, nil)
+	ungrouped["properties"] = mergedBlueprintMaps(resourceProperties, nil)
 	ungrouped["additionalProperties"] = false
 	delete(ungrouped, "allOf")
 	delete(ungrouped, "unevaluatedProperties")
 	return nil
 }
 
-func mergedBlueprintSchemaProperties(groups ...map[string]any) map[string]any {
-	merged := map[string]any{}
+func mergedBlueprintMaps[V any](groups ...map[string]V) map[string]V {
+	merged := map[string]V{}
 	for _, group := range groups {
 		for key, value := range group {
 			merged[key] = value

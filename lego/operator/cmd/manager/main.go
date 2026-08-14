@@ -77,6 +77,20 @@ func positiveEnvInt(k string, def int) int {
 	return n
 }
 
+// envInt returns the integer from k, or def when k is unset or malformed. Any
+// parsed value — including zero and negatives — is accepted as-is.
+func envInt(k string, def int) int {
+	v := os.Getenv(k)
+	if v == "" {
+		return def
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return def
+	}
+	return n
+}
+
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
@@ -84,32 +98,43 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
-// nolint:gocyclo
-func main() {
-	var metricsAddr string
-	var metricsCertPath, metricsCertName, metricsCertKey string
-	var webhookCertPath, webhookCertName, webhookCertKey string
-	var enableLeaderElection bool
-	var probeAddr string
-	var secureMetrics bool
-	var enableHTTP2 bool
-	var tlsOpts []func(*tls.Config)
-	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
+// managerConfig carries the flag- and env-derived settings main needs before
+// the manager is constructed.
+type managerConfig struct {
+	metricsAddr          string
+	metricsCertPath      string
+	metricsCertName      string
+	metricsCertKey       string
+	webhookCertPath      string
+	webhookCertName      string
+	webhookCertKey       string
+	enableLeaderElection bool
+	probeAddr            string
+	secureMetrics        bool
+	enableHTTP2          bool
+	baseDomain           string
+}
+
+// parseManagerConfig registers and parses the manager flags, installs the
+// logger, and validates the shared tenant hosting suffix.
+func parseManagerConfig() managerConfig {
+	var cfg managerConfig
+	flag.StringVar(&cfg.metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
+	flag.StringVar(&cfg.probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.BoolVar(&cfg.enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&secureMetrics, "metrics-secure", true,
+	flag.BoolVar(&cfg.secureMetrics, "metrics-secure", true,
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
-	flag.StringVar(&webhookCertPath, "webhook-cert-path", "", "The directory that contains the webhook certificate.")
-	flag.StringVar(&webhookCertName, "webhook-cert-name", "tls.crt", "The name of the webhook certificate file.")
-	flag.StringVar(&webhookCertKey, "webhook-cert-key", "tls.key", "The name of the webhook key file.")
-	flag.StringVar(&metricsCertPath, "metrics-cert-path", "",
+	flag.StringVar(&cfg.webhookCertPath, "webhook-cert-path", "", "The directory that contains the webhook certificate.")
+	flag.StringVar(&cfg.webhookCertName, "webhook-cert-name", "tls.crt", "The name of the webhook certificate file.")
+	flag.StringVar(&cfg.webhookCertKey, "webhook-cert-key", "tls.key", "The name of the webhook key file.")
+	flag.StringVar(&cfg.metricsCertPath, "metrics-cert-path", "",
 		"The directory that contains the metrics server certificate.")
-	flag.StringVar(&metricsCertName, "metrics-cert-name", "tls.crt", "The name of the metrics server certificate file.")
-	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
-	flag.BoolVar(&enableHTTP2, "enable-http2", false,
+	flag.StringVar(&cfg.metricsCertName, "metrics-cert-name", "tls.crt", "The name of the metrics server certificate file.")
+	flag.StringVar(&cfg.metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
+	flag.BoolVar(&cfg.enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	opts := zap.Options{
 		Development: true,
@@ -118,20 +143,27 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	baseDomain := os.Getenv("BEX_BASE_DOMAIN")
-	if err := hostingdomain.ValidateSharedSuffix(baseDomain); err != nil {
+	cfg.baseDomain = os.Getenv("BEX_BASE_DOMAIN")
+	if err := hostingdomain.ValidateSharedSuffix(cfg.baseDomain); err != nil {
 		// A well-formed-but-not-yet-PSL-listed suffix (onbex.co) runs with a loud
 		// warning instead of taking the operator down: cross-tenant cookie
 		// isolation firms up once onbex.co is submitted to publicsuffix/list and a
 		// newer golang.org/x/net embeds it. A malformed suffix stays fatal.
 		if errors.Is(err, hostingdomain.ErrUnlistedSharedSuffix) {
 			setupLog.Info("WARNING: BEX_BASE_DOMAIN is not a private Public Suffix in this build; enabling shared platform hosts anyway. Cross-tenant cookie isolation is not browser-enforced until this suffix is in the PSL — submit onbex.co to publicsuffix/list",
-				"baseDomain", baseDomain, "reason", err.Error())
+				"baseDomain", cfg.baseDomain, "reason", err.Error())
 		} else {
 			setupLog.Error(err, "unsafe shared tenant hosting suffix")
 			os.Exit(1)
 		}
 	}
+	return cfg
+}
+
+// buildServerOptions assembles the webhook server and the metrics-server
+// options from the parsed manager config.
+func buildServerOptions(cfg managerConfig) (webhook.Server, metricsserver.Options) {
+	var tlsOpts []func(*tls.Config)
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
@@ -144,7 +176,7 @@ func main() {
 		c.NextProtos = []string{"http/1.1"}
 	}
 
-	if !enableHTTP2 {
+	if !cfg.enableHTTP2 {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
@@ -154,28 +186,25 @@ func main() {
 		TLSOpts: webhookTLSOpts,
 	}
 
-	if len(webhookCertPath) > 0 {
+	if len(cfg.webhookCertPath) > 0 {
 		setupLog.Info("Initializing webhook certificate watcher using provided certificates",
-			"webhook-cert-path", webhookCertPath, "webhook-cert-name", webhookCertName, "webhook-cert-key", webhookCertKey)
+			"webhook-cert-path", cfg.webhookCertPath, "webhook-cert-name", cfg.webhookCertName, "webhook-cert-key", cfg.webhookCertKey)
 
-		webhookServerOptions.CertDir = webhookCertPath
-		webhookServerOptions.CertName = webhookCertName
-		webhookServerOptions.KeyName = webhookCertKey
+		webhookServerOptions.CertDir = cfg.webhookCertPath
+		webhookServerOptions.CertName = cfg.webhookCertName
+		webhookServerOptions.KeyName = cfg.webhookCertKey
 	}
 
 	webhookServer := webhook.NewServer(webhookServerOptions)
 
 	// Metrics endpoint is enabled in 'config/default/kustomization.yaml'. The Metrics options configure the server.
-	// More info:
-	// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.23.3/pkg/metrics/server
-	// - https://book.kubebuilder.io/reference/metrics.html
 	metricsServerOptions := metricsserver.Options{
-		BindAddress:   metricsAddr,
-		SecureServing: secureMetrics,
+		BindAddress:   cfg.metricsAddr,
+		SecureServing: cfg.secureMetrics,
 		TLSOpts:       tlsOpts,
 	}
 
-	if secureMetrics {
+	if cfg.secureMetrics {
 		// FilterProvider is used to protect the metrics endpoint with authn/authz.
 		// These configurations ensure that only authorized users and service accounts
 		// can access the metrics endpoint. The RBAC are configured in 'config/rbac/kustomization.yaml'. More info:
@@ -183,22 +212,23 @@ func main() {
 		metricsServerOptions.FilterProvider = filters.WithAuthenticationAndAuthorization
 	}
 
-	// If the certificate is not specified, controller-runtime will automatically
-	// generate self-signed certificates for the metrics server. While convenient for development and testing,
-	// this setup is not recommended for production.
-	//
-	// TODO(user): If you enable certManager, uncomment the following lines:
-	// - [METRICS-WITH-CERTS] at config/default/kustomization.yaml to generate and use certificates
-	// managed by cert-manager for the metrics server.
-	// - [PROMETHEUS-WITH-CERTS] at config/prometheus/kustomization.yaml for TLS certification.
-	if len(metricsCertPath) > 0 {
+	// Without a certificate, controller-runtime auto-generates self-signed metrics-server certificates — not recommended for production.
+	if len(cfg.metricsCertPath) > 0 {
 		setupLog.Info("Initializing metrics certificate watcher using provided certificates",
-			"metrics-cert-path", metricsCertPath, "metrics-cert-name", metricsCertName, "metrics-cert-key", metricsCertKey)
+			"metrics-cert-path", cfg.metricsCertPath, "metrics-cert-name", cfg.metricsCertName, "metrics-cert-key", cfg.metricsCertKey)
 
-		metricsServerOptions.CertDir = metricsCertPath
-		metricsServerOptions.CertName = metricsCertName
-		metricsServerOptions.KeyName = metricsCertKey
+		metricsServerOptions.CertDir = cfg.metricsCertPath
+		metricsServerOptions.CertName = cfg.metricsCertName
+		metricsServerOptions.KeyName = cfg.metricsCertKey
 	}
+
+	return webhookServer, metricsServerOptions
+}
+
+func main() {
+	cfg := parseManagerConfig()
+
+	webhookServer, metricsServerOptions := buildServerOptions(cfg)
 
 	appsNamespace := envOr("BEX_APPS_NAMESPACE", "default")
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -206,20 +236,10 @@ func main() {
 		Cache:                  controller.NamespacedSecretCacheOptions(appsNamespace),
 		Metrics:                metricsServerOptions,
 		WebhookServer:          webhookServer,
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
+		HealthProbeBindAddress: cfg.probeAddr,
+		LeaderElection:         cfg.enableLeaderElection,
 		LeaderElectionID:       "36450c48.bex.co",
-		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
-		// when the Manager ends. This requires the binary to immediately end when the
-		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
-		// speeds up voluntary leader transitions as the new leader don't have to wait
-		// LeaseDuration time first.
-		//
-		// In the default scaffold provided, the program ends immediately after
-		// the manager stops, so would be fine to enable this option. However,
-		// if you are doing or is intended to do any operation such as perform cleanups
-		// after the manager stops then its usage might be unsafe.
-		// LeaderElectionReleaseOnCancel: true,
+		// LeaderElectionReleaseOnCancel: true, // voluntary step-down on stop; only safe when the binary exits immediately after the manager stops.
 	})
 	if err != nil {
 		setupLog.Error(err, "Failed to start manager")
@@ -242,24 +262,46 @@ func main() {
 		os.Exit(1)
 	}
 
-	activatorPort := 8888
-	if v := os.Getenv("BEX_ACTIVATOR_PORT"); v != "" {
-		if p, err := strconv.Atoi(v); err == nil {
-			activatorPort = p
+	setupAppReconciler(mgr, uncachedClient, cs, appsNamespace, cfg.baseDomain)
+
+	setupDatastoreReconcilers(mgr, uncachedClient, appsNamespace)
+	// +kubebuilder:scaffold:builder
+
+	// Admission-time tenant-image signature verification (w7/m11): active only
+	// when BEX_TENANT_SIGNING_KEY_SECRET is set AND the Secret contains cosign.pub.
+	if signKey := os.Getenv("BEX_TENANT_SIGNING_KEY_SECRET"); signKey != "" {
+		if err := bexwebhook.SetupWithManager(mgr,
+			signKey,
+			envOr("BEX_BUILD_NAMESPACE", "bex-system"),
+			envOr("BEX_REGISTRY", "127.0.0.1:5050"),
+			os.Getenv("BEX_REGISTRY_PUSH_SECRET"),
+		); err != nil {
+			setupLog.Error(err, "Failed to set up image signature admission webhook")
+			os.Exit(1)
 		}
 	}
-	staticServerPort := 8080
-	if v := os.Getenv("BEX_STATIC_SERVER_PORT"); v != "" {
-		if p, err := strconv.Atoi(v); err == nil {
-			staticServerPort = p
-		}
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		setupLog.Error(err, "Failed to set up health check")
+		os.Exit(1)
 	}
-	maxConcurrentBuilds := 0
-	if v := os.Getenv("BEX_MAX_CONCURRENT_BUILDS"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			maxConcurrentBuilds = n
-		}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		setupLog.Error(err, "Failed to set up ready check")
+		os.Exit(1)
 	}
+
+	setupLog.Info("Starting manager")
+	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		setupLog.Error(err, "Failed to run manager")
+		os.Exit(1)
+	}
+}
+
+// setupAppReconciler constructs and registers the App reconciler (and, when
+// per-App registry credentials are active, the sandbox-namespace registry
+// reconciler).
+func setupAppReconciler(mgr ctrl.Manager, uncachedClient client.Client, cs *kubernetes.Clientset, appsNamespace, baseDomain string) {
+	activatorPort := envInt("BEX_ACTIVATOR_PORT", 8888)
 	appReconciler := &controller.AppReconciler{
 		Client:                  mgr.GetClient(),
 		BuildClient:             uncachedClient,
@@ -278,7 +320,7 @@ func main() {
 		MaintenanceService:      envOr("BEX_ACTIVATOR_SERVICE", "bex-activator"),
 		MaintenanceNamespace:    envOr("POD_NAMESPACE", "bex-system"),
 		MaintenancePort:         activatorPort,
-		MaxConcurrentBuilds:     maxConcurrentBuilds,
+		MaxConcurrentBuilds:     envInt("BEX_MAX_CONCURRENT_BUILDS", 0),
 		MaxConcurrentReconciles: positiveEnvInt("BEX_APP_RECONCILE_WORKERS", 1),
 		StaticStore: publish.Store{
 			Bucket:   envOr("BEX_STATIC_S3_BUCKET", ""),
@@ -288,7 +330,7 @@ func main() {
 		},
 		StaticServerService:     envOr("BEX_STATIC_SERVER_SERVICE", ""),
 		StaticServerNamespace:   envOr("POD_NAMESPACE", "bex-system"),
-		StaticServerPort:        staticServerPort,
+		StaticServerPort:        envInt("BEX_STATIC_SERVER_PORT", 8080),
 		TenantSignKeySecret:     os.Getenv("BEX_TENANT_SIGNING_KEY_SECRET"),
 		TenantSignImage:         envOr("BEX_TENANT_SIGNING_IMAGE", ""),
 		RegistryPushSecret:      os.Getenv("BEX_REGISTRY_PUSH_SECRET"),
@@ -308,12 +350,6 @@ func main() {
 	// Per-App registry pull credentials (w7/m36). Active when BEX_REGISTRY_NS is
 	// set (typically "bex-registry"). Supersedes the shared bex-puller path.
 	if zotNS := os.Getenv("BEX_REGISTRY_NS"); zotNS != "" {
-		rc := 0
-		if v := os.Getenv("BEX_ZOT_RETENTION_COUNT"); v != "" {
-			if n, err := strconv.Atoi(v); err == nil && n > 0 {
-				rc = n
-			}
-		}
 		appReconciler.PerAppRegistry = &registry.Creds{
 			// Zot Secrets live outside the manager's namespaced Secret cache.
 			// A cached client fails these reads with "unknown namespace for the
@@ -324,7 +360,7 @@ func main() {
 			ConfigName:     envOr("BEX_ZOT_CONFIG_SECRET", "zot-config"),
 			Registry:       envOr("BEX_REGISTRY", "127.0.0.1:5050"),
 			KpackRegistry:  os.Getenv("BEX_KPACK_REGISTRY"),
-			RetentionCount: rc,
+			RetentionCount: positiveEnvInt("BEX_ZOT_RETENTION_COUNT", 0),
 		}
 	}
 	if cs != nil {
@@ -352,7 +388,11 @@ func main() {
 			os.Exit(1)
 		}
 	}
+}
 
+// setupDatastoreReconcilers constructs and registers the Database and KeyValue
+// reconcilers.
+func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, appsNamespace string) {
 	databaseReconciler := &controller.DatabaseReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
@@ -413,36 +453,6 @@ func main() {
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "keyvalue")
-		os.Exit(1)
-	}
-	// +kubebuilder:scaffold:builder
-
-	// Admission-time tenant-image signature verification (w7/m11): active only
-	// when BEX_TENANT_SIGNING_KEY_SECRET is set AND the Secret contains cosign.pub.
-	if signKey := os.Getenv("BEX_TENANT_SIGNING_KEY_SECRET"); signKey != "" {
-		if err := bexwebhook.SetupWithManager(mgr,
-			signKey,
-			envOr("BEX_BUILD_NAMESPACE", "bex-system"),
-			envOr("BEX_REGISTRY", "127.0.0.1:5050"),
-			os.Getenv("BEX_REGISTRY_PUSH_SECRET"),
-		); err != nil {
-			setupLog.Error(err, "Failed to set up image signature admission webhook")
-			os.Exit(1)
-		}
-	}
-
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "Failed to set up health check")
-		os.Exit(1)
-	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "Failed to set up ready check")
-		os.Exit(1)
-	}
-
-	setupLog.Info("Starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "Failed to run manager")
 		os.Exit(1)
 	}
 }

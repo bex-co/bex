@@ -1914,30 +1914,8 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
-	if err := validateMaxShutdownDelaySeconds(svcType, req.MaxShutdownDelaySeconds); err != nil {
+	if err := validateTypeSpecificCreate(svcType, req); err != nil {
 		return appv1alpha1.AppSpec{}, err
-	}
-	// A cron_job needs a schedule; a worker/cron has no ingress, so it can't carry
-	// custom domains (same rule the deploy manifest enforces for private services).
-	if svcType == appv1alpha1.TypeCronJob && strings.TrimSpace(req.Schedule) == "" {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: schedule is required for a cron_job", core.ErrBadRequest)
-	}
-	if (svcType == appv1alpha1.TypeBackgroundWorker || svcType == appv1alpha1.TypeCronJob) && len(req.Hosts) > 0 {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: a %s has no ingress and cannot list domains", core.ErrBadRequest, svcType)
-	}
-	// A static_site needs a publish directory, and its edge rules must be valid.
-	if svcType == appv1alpha1.TypeStaticSite {
-		if strings.TrimSpace(req.PublishPath) == "" {
-			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: publishPath is required for a static_site", core.ErrBadRequest)
-		}
-		if err := validateRoutes(req.Routes); err != nil {
-			return appv1alpha1.AppSpec{}, err
-		}
-		if err := validateHeaders(req.Headers); err != nil {
-			return appv1alpha1.AppSpec{}, err
-		}
-	} else if strings.TrimSpace(req.PublishPath) != "" || len(req.Routes) > 0 || len(req.Headers) > 0 {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: publishPath/routes/headers only apply to a static_site", core.ErrBadRequest)
 	}
 	tier, err := normalizeTierOrPlan(req.Plan)
 	if err != nil {
@@ -1946,34 +1924,13 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err := validateMaintenanceEligibility(svcType, tier, req.MaintenanceMode); err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
-	if req.Port < 0 || req.Port > 65535 {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: port must be 1-65535", core.ErrBadRequest)
-	}
-	if req.Replicas < 0 || req.Replicas > store.MaxReplicas {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: replicas must be 0-%d", core.ErrBadRequest, store.MaxReplicas)
-	}
-	port := req.Port
-	if port == 0 {
-		port = appv1alpha1.DefaultPort
-	}
-	replicas := req.Replicas
-	if replicas == 0 {
-		replicas = 1
-	}
-	branch := req.Branch
-	if branch == "" && req.Repo != "" {
-		branch = "main"
+	port, replicas, branch, autoDeploy, err := normalizeCreateDefaults(req)
+	if err != nil {
+		return appv1alpha1.AppSpec{}, err
 	}
 	runtime, builder, err := resolveBuildStrategy(req)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
-	}
-	// AutoDeploy: default on for a repo-backed service (a push should redeploy,
-	// Render's default), off for an image-backed one (no repo to rebuild from).
-	// An explicit request value wins.
-	autoDeploy := req.Repo != ""
-	if req.AutoDeploy != nil {
-		autoDeploy = *req.AutoDeploy
 	}
 	buildFilter, err := normalizeBuildFilter(req.BuildFilter)
 	if err != nil {
@@ -1987,38 +1944,30 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
-	subdomainPolicy, err := normalizeSubdomainPolicy(req.SubdomainPolicy)
+	subdomainPolicy, err := resolveCreateSubdomainPolicy(req)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
-	}
-	if subdomainPolicy == appv1alpha1.SubdomainPolicyDisabled && len(req.Hosts) == 0 {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: renderSubdomainPolicy cannot be disabled without at least one custom domain", core.ErrBadRequest)
 	}
 	if err := core.ValidateAllowList(req.IPAllowList); err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
-	registryCredentialID := clonePtr(req.RegistryCredentialID)
-	if registryCredentialID != nil {
-		*registryCredentialID = strings.TrimSpace(*registryCredentialID)
-	}
 	spec := appv1alpha1.AppSpec{
-		Type:                 svcType,
-		Repo:                 req.Repo,
-		Image:                req.Image,
-		RegistryCredentialID: registryCredentialID,
-		Branch:               branch,
-		Runtime:              runtime,
-		BuildCommand:         req.BuildCommand,
-		StartCommand:         req.StartCommand,
-		Builder:              builder,
-		RootDir:              req.RootDir,
-		BuildFilter:          buildFilter,
-		MaintenanceMode:      maintenanceMode,
-		DockerfilePath:       req.DockerfilePath,
-		Port:                 port,
-		Replicas:             replicas,
-		Tier:                 tier,
-		HealthCheckPath:      req.HealthCheckPath,
+		Type:            svcType,
+		Repo:            req.Repo,
+		Image:           req.Image,
+		Branch:          branch,
+		Runtime:         runtime,
+		BuildCommand:    req.BuildCommand,
+		StartCommand:    req.StartCommand,
+		Builder:         builder,
+		RootDir:         req.RootDir,
+		BuildFilter:     buildFilter,
+		MaintenanceMode: maintenanceMode,
+		DockerfilePath:  req.DockerfilePath,
+		Port:            port,
+		Replicas:        replicas,
+		Tier:            tier,
+		HealthCheckPath: req.HealthCheckPath,
 		MaxShutdownDelaySeconds: clonePtr(
 			req.MaxShutdownDelaySeconds,
 		),
@@ -2034,29 +1983,8 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		Expose: svcType == appv1alpha1.TypeWebService || svcType == appv1alpha1.TypeStaticSite,
 	}
 	spec.SetIPAllowListEntries(core.AllowListToSpec(req.IPAllowList))
-	if svcType == appv1alpha1.TypeCronJob {
-		spec.Schedule = strings.TrimSpace(req.Schedule)
-		spec.Command = strings.TrimSpace(req.Command)
-	}
-	if svcType == appv1alpha1.TypeStaticSite {
-		spec.PublishPath = strings.TrimSpace(req.PublishPath)
-		spec.Routes = routesFromViews(req.Routes)
-		spec.Headers = headersFromViews(req.Headers)
-	}
-	if len(req.Hosts) > 0 {
-		hosts, err := canonicalHosts(req.Hosts)
-		if err != nil {
-			return appv1alpha1.AppSpec{}, err
-		}
-		spec.Host = hosts[0]
-		spec.Hosts = hosts[1:]
-	}
-	if req.Autoscaling != nil {
-		as, err := autoscalingSpec(*req.Autoscaling)
-		if err != nil {
-			return appv1alpha1.AppSpec{}, err
-		}
-		spec.Autoscaling = &as
+	if err := applyOptionalCreateSpec(&spec, svcType, req); err != nil {
+		return appv1alpha1.AppSpec{}, err
 	}
 	return spec, nil
 }
@@ -2095,6 +2023,70 @@ func validateCreateSource(req CreateRequest) error {
 	return nil
 }
 
+// validateTypeSpecificCreate enforces the create fields tied to the service
+// type: the shutdown grace window only applies to types that run continuously;
+// a cron_job needs a schedule; a worker/cron has no ingress, so it can't carry
+// custom domains (same rule the deploy manifest enforces for private
+// services); and a static_site's publish/edge fields are required for it and
+// rejected for every other type.
+func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
+	if err := validateMaxShutdownDelaySeconds(svcType, req.MaxShutdownDelaySeconds); err != nil {
+		return err
+	}
+	if svcType == appv1alpha1.TypeCronJob && strings.TrimSpace(req.Schedule) == "" {
+		return fmt.Errorf("%w: schedule is required for a cron_job", core.ErrBadRequest)
+	}
+	if (svcType == appv1alpha1.TypeBackgroundWorker || svcType == appv1alpha1.TypeCronJob) && len(req.Hosts) > 0 {
+		return fmt.Errorf("%w: a %s has no ingress and cannot list domains", core.ErrBadRequest, svcType)
+	}
+	// A static_site needs a publish directory, and its edge rules must be valid.
+	if svcType == appv1alpha1.TypeStaticSite {
+		if strings.TrimSpace(req.PublishPath) == "" {
+			return fmt.Errorf("%w: publishPath is required for a static_site", core.ErrBadRequest)
+		}
+		if err := validateRoutes(req.Routes); err != nil {
+			return err
+		}
+		return validateHeaders(req.Headers)
+	}
+	if strings.TrimSpace(req.PublishPath) != "" || len(req.Routes) > 0 || len(req.Headers) > 0 {
+		return fmt.Errorf("%w: publishPath/routes/headers only apply to a static_site", core.ErrBadRequest)
+	}
+	return nil
+}
+
+// normalizeCreateDefaults bounds-checks the create's port/replica values and
+// resolves the fields with request-shape defaults: port (DefaultPort),
+// replicas (1), branch ("main" for a repo-backed service), and autoDeploy.
+func normalizeCreateDefaults(req CreateRequest) (port, replicas int32, branch string, autoDeploy bool, err error) {
+	if req.Port < 0 || req.Port > 65535 {
+		return 0, 0, "", false, fmt.Errorf("%w: port must be 1-65535", core.ErrBadRequest)
+	}
+	if req.Replicas < 0 || req.Replicas > store.MaxReplicas {
+		return 0, 0, "", false, fmt.Errorf("%w: replicas must be 0-%d", core.ErrBadRequest, store.MaxReplicas)
+	}
+	port = req.Port
+	if port == 0 {
+		port = appv1alpha1.DefaultPort
+	}
+	replicas = req.Replicas
+	if replicas == 0 {
+		replicas = 1
+	}
+	branch = req.Branch
+	if branch == "" && req.Repo != "" {
+		branch = "main"
+	}
+	// AutoDeploy: default on for a repo-backed service (a push should redeploy,
+	// Render's default), off for an image-backed one (no repo to rebuild from).
+	// An explicit request value wins.
+	autoDeploy = req.Repo != ""
+	if req.AutoDeploy != nil {
+		autoDeploy = *req.AutoDeploy
+	}
+	return port, replicas, branch, autoDeploy, nil
+}
+
 // resolveBuildStrategy folds the create's runtime/builder pair into the
 // effective builder: runtime wins (docker → dockerfile, image → auto, a
 // Blueprint-native runtime → native with its command requirements), and a
@@ -2130,6 +2122,56 @@ func resolveBuildStrategy(req CreateRequest) (string, string, error) {
 		builder = "native"
 	}
 	return runtime, builder, nil
+}
+
+// resolveCreateSubdomainPolicy normalizes the create's renderSubdomainPolicy
+// and refuses to disable the platform subdomain when no custom domain would
+// remain to serve the app from.
+func resolveCreateSubdomainPolicy(req CreateRequest) (string, error) {
+	subdomainPolicy, err := normalizeSubdomainPolicy(req.SubdomainPolicy)
+	if err != nil {
+		return "", err
+	}
+	if subdomainPolicy == appv1alpha1.SubdomainPolicyDisabled && len(req.Hosts) == 0 {
+		return "", fmt.Errorf("%w: renderSubdomainPolicy cannot be disabled without at least one custom domain", core.ErrBadRequest)
+	}
+	return subdomainPolicy, nil
+}
+
+// applyOptionalCreateSpec projects the create's type-specific and optional
+// fields onto the spec: the trimmed registry credential, cron
+// schedule/command, static-site publish/edge rules, custom domains, and
+// autoscaling.
+func applyOptionalCreateSpec(spec *appv1alpha1.AppSpec, svcType string, req CreateRequest) error {
+	if registryCredentialID := clonePtr(req.RegistryCredentialID); registryCredentialID != nil {
+		*registryCredentialID = strings.TrimSpace(*registryCredentialID)
+		spec.RegistryCredentialID = registryCredentialID
+	}
+	if svcType == appv1alpha1.TypeCronJob {
+		spec.Schedule = strings.TrimSpace(req.Schedule)
+		spec.Command = strings.TrimSpace(req.Command)
+	}
+	if svcType == appv1alpha1.TypeStaticSite {
+		spec.PublishPath = strings.TrimSpace(req.PublishPath)
+		spec.Routes = routesFromViews(req.Routes)
+		spec.Headers = headersFromViews(req.Headers)
+	}
+	if len(req.Hosts) > 0 {
+		hosts, err := canonicalHosts(req.Hosts)
+		if err != nil {
+			return err
+		}
+		spec.Host = hosts[0]
+		spec.Hosts = hosts[1:]
+	}
+	if req.Autoscaling != nil {
+		as, err := autoscalingSpec(*req.Autoscaling)
+		if err != nil {
+			return err
+		}
+		spec.Autoscaling = &as
+	}
+	return nil
 }
 
 // canonicalHosts canonicalizes every requested custom hostname (trimmed,

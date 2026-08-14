@@ -226,24 +226,7 @@ func main() {
 	if shell.Enabled() {
 		shellMux := http.NewServeMux()
 		shellMux.Handle("GET /shell", shell.Handler())
-		shellMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
-		shellServer := &http.Server{Handler: shellMux, ReadHeaderTimeout: 5 * time.Second}
-		shellAddr := envOr("BEX_SHELL_WS_ADDR", ":8080")
-		shellListener, err := net.Listen("tcp", shellAddr)
-		if err != nil {
-			log.Fatalf("ssh gateway: web shell listen %s: %v", shellAddr, err)
-		}
-		go func() {
-			if err := shellServer.Serve(shellListener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				stop()
-			}
-		}()
-		defer func() {
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_ = shellServer.Shutdown(shutdownCtx)
-		}()
-		log.Printf("web shell listening on %s", shellAddr)
+		defer startAuxListener("web shell", "web shell", envOr("BEX_SHELL_WS_ADDR", ":8080"), shellMux, stop)()
 	}
 
 	// Sandbox-exec SSE listener (w3/m33, `render ea sandbox exec`). Internal-only
@@ -253,24 +236,7 @@ func main() {
 	if sandbox.Enabled() {
 		execMux := http.NewServeMux()
 		execMux.Handle("POST /sandbox-exec", sandbox.Handler())
-		execMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
-		execServer := &http.Server{Handler: execMux, ReadHeaderTimeout: 5 * time.Second}
-		execAddr := envOr("BEX_SANDBOX_EXEC_ADDR", ":8081")
-		execListener, err := net.Listen("tcp", execAddr)
-		if err != nil {
-			log.Fatalf("ssh gateway: sandbox-exec listen %s: %v", execAddr, err)
-		}
-		go func() {
-			if err := execServer.Serve(execListener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				stop()
-			}
-		}()
-		defer func() {
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_ = execServer.Shutdown(shutdownCtx)
-		}()
-		log.Printf("sandbox exec listening on %s", execAddr)
+		defer startAuxListener("sandbox-exec", "sandbox exec", envOr("BEX_SANDBOX_EXEC_ADDR", ":8081"), execMux, stop)()
 	}
 
 	// Agent-session credential listener (ADR047 D2). Sandboxes call this one
@@ -280,24 +246,7 @@ func main() {
 	if credentials.Enabled() {
 		credentialMux := http.NewServeMux()
 		credentialMux.Handle("POST "+agentsession.GatewayPath, credentials.Handler())
-		credentialMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
-		credentialServer := &http.Server{Handler: credentialMux, ReadHeaderTimeout: 5 * time.Second}
-		credentialAddr := envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082")
-		credentialListener, err := net.Listen("tcp", credentialAddr)
-		if err != nil {
-			log.Fatalf("ssh gateway: agent credential listen %s: %v", credentialAddr, err)
-		}
-		go func() {
-			if err := credentialServer.Serve(credentialListener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				stop()
-			}
-		}()
-		defer func() {
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_ = credentialServer.Shutdown(shutdownCtx)
-		}()
-		log.Printf("agent credential broker listening on %s", credentialAddr)
+		defer startAuxListener("agent credential", "agent credential broker", envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop)()
 	}
 	// Agent-session conversation listener (ADR047 D9, w3/m43). Browser-facing via
 	// the platform edge, which path-routes api.bex.co/v1/agent-sessions/{id}/stream
@@ -310,24 +259,7 @@ func main() {
 		// OPTIONS reaches the same handler so the CORS preflight is answered (the
 		// cross-origin dashboard sends one before the ticketed GET/POST).
 		attachMux.Handle("OPTIONS /v1/agent-sessions/{id}/stream", attach.Handler())
-		attachMux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
-		attachServer := &http.Server{Handler: attachMux, ReadHeaderTimeout: 5 * time.Second}
-		attachAddr := envOr("BEX_AGENT_ATTACH_ADDR", ":8083")
-		attachListener, err := net.Listen("tcp", attachAddr)
-		if err != nil {
-			log.Fatalf("ssh gateway: agent attach listen %s: %v", attachAddr, err)
-		}
-		go func() {
-			if err := attachServer.Serve(attachListener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				stop()
-			}
-		}()
-		defer func() {
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_ = attachServer.Shutdown(shutdownCtx)
-		}()
-		log.Printf("agent session attach listening on %s", attachAddr)
+		defer startAuxListener("agent attach", "agent session attach", envOr("BEX_AGENT_ATTACH_ADDR", ":8083"), attachMux, stop)()
 	}
 	log.Printf("ssh gateway listening on %s", addr)
 	if err := gateway.Serve(ctx, listener); err != nil && !errors.Is(err, context.Canceled) {
@@ -342,10 +274,35 @@ func main() {
 	}
 }
 
+// startAuxListener runs one auxiliary HTTP listener (health-checked mux, fatal
+// on bind failure, stop() on serve failure) and returns the shutdown closure
+// the caller defers, keeping the process-exit LIFO order at the call sites.
+func startAuxListener(name, logName, addr string, mux *http.ServeMux, stop context.CancelFunc) func() {
+	mux.HandleFunc("GET /healthz", healthzOK)
+	server := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatalf("ssh gateway: %s listen %s: %v", name, addr, err)
+	}
+	go func() {
+		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			stop()
+		}
+	}()
+	log.Printf("%s listening on %s", logName, addr)
+	return func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = server.Shutdown(shutdownCtx)
+	}
+}
+
+func healthzOK(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }
+
 func metricsHandler(gatherer prometheus.Gatherer) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", promhttp.HandlerFor(gatherer, promhttp.HandlerOpts{}))
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	mux.HandleFunc("GET /healthz", healthzOK)
 	return mux
 }
 
