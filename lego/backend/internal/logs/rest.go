@@ -281,7 +281,7 @@ func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 	// the three surfaces refuse identically; NormalizeTypes only maps the `app`
 	// alias and the "all" widening, which is adapter-shaped work.
 	q.Direction = v.Get("direction")
-	q.Since, q.End, err = parseTimeWindow(v.Get("startTime"), v.Get("endTime"))
+	q.Since, q.End, err = core.ParseTimeWindow(v.Get("startTime"), v.Get("endTime"))
 	if err != nil {
 		return nil, LogQuery{}, err
 	}

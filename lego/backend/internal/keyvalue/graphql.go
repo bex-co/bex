@@ -17,7 +17,6 @@ limitations under the License.
 package keyvalue
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/graphql-go/graphql"
@@ -27,19 +26,11 @@ import (
 )
 
 // parseKVGQLTimeWindow parses optional startTime/endTime RFC3339 string args
-// from a GraphQL resolver's args map — same contract as parsePGTimeWindow.
+// from a GraphQL resolver's args map — same contract as the REST log handlers.
 func parseKVGQLTimeWindow(args map[string]any) (since, end time.Time, err error) {
-	if s, _ := args["startTime"].(string); s != "" {
-		if since, err = time.Parse(time.RFC3339, s); err != nil {
-			return time.Time{}, time.Time{}, fmt.Errorf("%w: startTime: %s", core.ErrBadRequest, err)
-		}
-	}
-	if e, _ := args["endTime"].(string); e != "" {
-		if end, err = time.Parse(time.RFC3339, e); err != nil {
-			return time.Time{}, time.Time{}, fmt.Errorf("%w: endTime: %s", core.ErrBadRequest, err)
-		}
-	}
-	return since, end, nil
+	s, _ := args["startTime"].(string)
+	e, _ := args["endTime"].(string)
+	return core.ParseTimeWindow(s, e)
 }
 
 // The GraphQL noun is "keyValue" — matching bex's own KeyValue CRD and Render's

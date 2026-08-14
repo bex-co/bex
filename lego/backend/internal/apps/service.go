@@ -1910,42 +1910,8 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if !store.ValidAppName(req.Name) {
 		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: name must be a DNS label of 1-30 chars ([a-z0-9-])", core.ErrBadRequest)
 	}
-	if req.Repo == "" && req.Image == "" {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: one of repo or image is required", core.ErrBadRequest)
-	}
-	if req.Image != "" {
-		declared := map[string]bool{
-			"repo":           req.Repo != "",
-			"branch":         req.Branch != "",
-			"rootDirectory":  req.RootDir != "",
-			"buildFilter":    req.BuildFilter != nil,
-			"buildCommand":   req.BuildCommand != "",
-			"dockerfilePath": req.DockerfilePath != "",
-			"autoDeploy":     req.AutoDeploy != nil,
-		}
-		for _, sourceField := range prebuiltImageSourceFields {
-			if sourceField.createName != "" && declared[sourceField.createName] {
-				return appv1alpha1.AppSpec{}, fmt.Errorf("%w: %s", core.ErrBadRequest, prebuiltImageSourceFieldMessage(sourceField.createName))
-			}
-		}
-	}
-	// Build-from-git inputs are validated at the API boundary (w6/m6 t003) so the
-	// operator never forwards an unchecked repo/branch/rootDirectory into the
-	// BuildKit context string. A bare image deploy skips these (no build).
-	if req.Repo != "" && !store.ValidRepo(req.Repo) {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: repo must be an https/ssh/git URL", core.ErrBadRequest)
-	}
-	if req.Branch != "" && !store.ValidGitRef(req.Branch) {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: branch must be a git ref (no shell metacharacters)", core.ErrBadRequest)
-	}
-	if req.Image != "" && !store.ValidImage(req.Image) {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: image must be an OCI reference (no whitespace or shell metacharacters)", core.ErrBadRequest)
-	}
-	if req.RootDir != "" && !store.ValidRootDir(req.RootDir) {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: rootDirectory must be a relative path with no '..' components", core.ErrBadRequest)
-	}
-	if req.DockerfilePath != "" && !store.ValidRootDir(req.DockerfilePath) {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: dockerfilePath must be a relative path with no '..' components", core.ErrBadRequest)
+	if err := validateCreateSource(req); err != nil {
+		return appv1alpha1.AppSpec{}, err
 	}
 	svcType, err := normalizeType(req.Type)
 	if err != nil {
@@ -2001,34 +1967,9 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if branch == "" && req.Repo != "" {
 		branch = "main"
 	}
-	builder := req.Builder
-	runtime := strings.ToLower(strings.TrimSpace(req.Runtime))
-	if runtime != "" && builder != "" && builder != "auto" {
-		return appv1alpha1.AppSpec{}, fmt.Errorf("%w: runtime and builder cannot both select a build strategy", core.ErrBadRequest)
-	}
-	switch runtime {
-	case "":
-		if builder != "" && builder != "auto" && builder != "buildpack" && builder != "dockerfile" {
-			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: builder must be auto, buildpack, or dockerfile", core.ErrBadRequest)
-		}
-	case "docker":
-		builder = "dockerfile"
-	case "image":
-		if req.Image == "" || req.Repo != "" {
-			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: runtime image requires image and no repo", core.ErrBadRequest)
-		}
-		builder = "auto"
-	default:
-		if !blueprintNativeRuntime(runtime) {
-			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: unsupported runtime %q", core.ErrBadRequest, runtime)
-		}
-		if req.Repo == "" {
-			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: native runtime %s requires repo", core.ErrBadRequest, runtime)
-		}
-		if strings.TrimSpace(req.BuildCommand) == "" || strings.TrimSpace(req.StartCommand) == "" {
-			return appv1alpha1.AppSpec{}, fmt.Errorf("%w: native runtime %s requires buildCommand and startCommand", core.ErrBadRequest, runtime)
-		}
-		builder = "native"
+	runtime, builder, err := resolveBuildStrategy(req)
+	if err != nil {
+		return appv1alpha1.AppSpec{}, err
 	}
 	// AutoDeploy: default on for a repo-backed service (a push should redeploy,
 	// Render's default), off for an image-backed one (no repo to rebuild from).
@@ -2106,18 +2047,9 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		spec.Headers = headersFromViews(req.Headers)
 	}
 	if len(req.Hosts) > 0 {
-		// Custom hostnames persist ONLY in canonical form (trimmed, terminal dot
-		// dropped, lowercased, DNS-1123 validated) so the cross-App uniqueness
-		// sweep and every downstream consumer compare like with like — a
-		// case/trailing-dot variant of another tenant's host must collapse to
-		// the same value here instead of slipping past as a distinct string.
-		hosts := make([]string, 0, len(req.Hosts))
-		for _, raw := range req.Hosts {
-			h, err := canonicalHostname(raw)
-			if err != nil {
-				return appv1alpha1.AppSpec{}, err
-			}
-			hosts = append(hosts, h)
+		hosts, err := canonicalHosts(req.Hosts)
+		if err != nil {
+			return appv1alpha1.AppSpec{}, err
 		}
 		spec.Host = hosts[0]
 		spec.Hosts = hosts[1:]
@@ -2130,6 +2062,103 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		spec.Autoscaling = &as
 	}
 	return spec, nil
+}
+
+// validateCreateSource checks the create's source inputs: one of repo/image,
+// no build-from-git field alongside a prebuilt image, and — because the
+// operator never forwards an unchecked repo/branch/rootDirectory into the
+// BuildKit context string (w6/m6 t003) — the git inputs' shape. A bare image
+// deploy skips those (no build).
+func validateCreateSource(req CreateRequest) error {
+	if req.Repo == "" && req.Image == "" {
+		return fmt.Errorf("%w: one of repo or image is required", core.ErrBadRequest)
+	}
+	if req.Image != "" {
+		declared := map[string]bool{
+			"repo":           req.Repo != "",
+			"branch":         req.Branch != "",
+			"rootDirectory":  req.RootDir != "",
+			"buildFilter":    req.BuildFilter != nil,
+			"buildCommand":   req.BuildCommand != "",
+			"dockerfilePath": req.DockerfilePath != "",
+			"autoDeploy":     req.AutoDeploy != nil,
+		}
+		for _, sourceField := range prebuiltImageSourceFields {
+			if sourceField.createName != "" && declared[sourceField.createName] {
+				return fmt.Errorf("%w: %s", core.ErrBadRequest, prebuiltImageSourceFieldMessage(sourceField.createName))
+			}
+		}
+	}
+	if req.Repo != "" && !store.ValidRepo(req.Repo) {
+		return fmt.Errorf("%w: repo must be an https/ssh/git URL", core.ErrBadRequest)
+	}
+	if req.Branch != "" && !store.ValidGitRef(req.Branch) {
+		return fmt.Errorf("%w: branch must be a git ref (no shell metacharacters)", core.ErrBadRequest)
+	}
+	if req.Image != "" && !store.ValidImage(req.Image) {
+		return fmt.Errorf("%w: image must be an OCI reference (no whitespace or shell metacharacters)", core.ErrBadRequest)
+	}
+	if req.RootDir != "" && !store.ValidRootDir(req.RootDir) {
+		return fmt.Errorf("%w: rootDirectory must be a relative path with no '..' components", core.ErrBadRequest)
+	}
+	if req.DockerfilePath != "" && !store.ValidRootDir(req.DockerfilePath) {
+		return fmt.Errorf("%w: dockerfilePath must be a relative path with no '..' components", core.ErrBadRequest)
+	}
+	return nil
+}
+
+// resolveBuildStrategy folds the create's runtime/builder pair into the
+// effective builder: runtime wins (docker → dockerfile, image → auto, a
+// Blueprint-native runtime → native with its command requirements), and a
+// bare builder value is validated as-is.
+func resolveBuildStrategy(req CreateRequest) (string, string, error) {
+	builder := req.Builder
+	runtime := strings.ToLower(strings.TrimSpace(req.Runtime))
+	if runtime != "" && builder != "" && builder != "auto" {
+		return "", "", fmt.Errorf("%w: runtime and builder cannot both select a build strategy", core.ErrBadRequest)
+	}
+	switch runtime {
+	case "":
+		if builder != "" && builder != "auto" && builder != "buildpack" && builder != "dockerfile" {
+			return "", "", fmt.Errorf("%w: builder must be auto, buildpack, or dockerfile", core.ErrBadRequest)
+		}
+	case "docker":
+		builder = "dockerfile"
+	case "image":
+		if req.Image == "" || req.Repo != "" {
+			return "", "", fmt.Errorf("%w: runtime image requires image and no repo", core.ErrBadRequest)
+		}
+		builder = "auto"
+	default:
+		if !blueprintNativeRuntime(runtime) {
+			return "", "", fmt.Errorf("%w: unsupported runtime %q", core.ErrBadRequest, runtime)
+		}
+		if req.Repo == "" {
+			return "", "", fmt.Errorf("%w: native runtime %s requires repo", core.ErrBadRequest, runtime)
+		}
+		if strings.TrimSpace(req.BuildCommand) == "" || strings.TrimSpace(req.StartCommand) == "" {
+			return "", "", fmt.Errorf("%w: native runtime %s requires buildCommand and startCommand", core.ErrBadRequest, runtime)
+		}
+		builder = "native"
+	}
+	return runtime, builder, nil
+}
+
+// canonicalHosts canonicalizes every requested custom hostname (trimmed,
+// terminal dot dropped, lowercased, DNS-1123 validated) so the cross-App
+// uniqueness sweep and every downstream consumer compare like with like — a
+// case/trailing-dot variant of another tenant's host must collapse to the
+// same value here instead of slipping past as a distinct string.
+func canonicalHosts(raw []string) ([]string, error) {
+	hosts := make([]string, 0, len(raw))
+	for _, r := range raw {
+		h, err := canonicalHostname(r)
+		if err != nil {
+			return nil, err
+		}
+		hosts = append(hosts, h)
+	}
+	return hosts, nil
 }
 
 // notifyOnFailDefault is Render's own default enum value for spec.notifyOnFail

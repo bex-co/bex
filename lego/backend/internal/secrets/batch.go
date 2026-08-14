@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
 	"strings"
 
@@ -161,8 +163,8 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 		}
 	}
 
-	envChanged := !equalStringMaps(oldEnv, env)
-	filesChanged := !equalStringMaps(oldFiles, files)
+	envChanged := !maps.Equal(oldEnv, env)
+	filesChanged := !maps.Equal(oldFiles, files)
 	result := environmentPatchResult(env, files, false)
 	if !casMode && !envChanged && !filesChanged {
 		return result, nil
@@ -207,6 +209,9 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	originalApp := a.DeepCopy()
 	base := client.MergeFrom(a.DeepCopy())
 	var casProjection casEnvProjection
+	undo := func(cause error) (EnvironmentPatchResult, error) {
+		return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, service, originalApp, oldEnv, oldFiles, envChanged, filesChanged, casWriteVersion, casProjection, cause)
+	}
 	if envChanged {
 		if casWriteVersion != nil {
 			casProjection, err = s.projectCASEnv(ctx, service, a, env, *casWriteVersion)
@@ -214,12 +219,12 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 			err = s.projectEnv(ctx, a, env)
 		}
 		if err != nil {
-			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, service, originalApp, oldEnv, oldFiles, envChanged, filesChanged, casWriteVersion, casProjection, err)
+			return undo(err)
 		}
 	}
 	if filesChanged {
 		if err := s.projectFiles(ctx, a, files); err != nil {
-			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, service, originalApp, oldEnv, oldFiles, envChanged, filesChanged, casWriteVersion, casProjection, err)
+			return undo(err)
 		}
 	}
 	rolledOut := patch.SaveMode == SaveModeDeploy
@@ -230,12 +235,13 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 		stagePendingProjectionReferences(a, originalApp, env, files, envChanged, filesChanged)
 	}
 	if apiequality.Semantic.DeepEqual(originalApp, a) {
-		return environmentPatchResult(env, files, false), nil
+		return result, nil
 	}
 	if err := s.Client.Patch(ctx, a, base); err != nil {
-		return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, service, originalApp, oldEnv, oldFiles, envChanged, filesChanged, casWriteVersion, casProjection, err)
+		return undo(err)
 	}
-	return environmentPatchResult(env, files, rolledOut), nil
+	result.RolledOut = rolledOut
+	return result, nil
 }
 
 // validateCASPatch keeps the revision-aware surface deliberately narrow: one
@@ -314,7 +320,7 @@ func (s *Service) projectCASEnv(ctx context.Context, service string, a *appv1alp
 	if err != nil {
 		return ownership, safeCASProjectionError(err)
 	}
-	if snapshot.Version != ownerVersion || !equalStringMaps(snapshot.Data, env) {
+	if snapshot.Version != ownerVersion || !maps.Equal(snapshot.Data, env) {
 		return ownership, envRevisionConflict()
 	}
 
@@ -423,7 +429,7 @@ func stagePendingProjectionReferences(a, original *appv1alpha1.App, env, files m
 	}
 	if filesChanged {
 		name := filesSecretName(a.Name)
-		if !containsString(original.Spec.FilesFromSecrets, name) && len(files) > 0 {
+		if !slices.Contains(original.Spec.FilesFromSecrets, name) && len(files) > 0 {
 			a.Annotations[appv1alpha1.PendingFilesSecretAnnotation] = name
 		} else {
 			delete(a.Annotations, appv1alpha1.PendingFilesSecretAnnotation)
@@ -567,7 +573,7 @@ func (s *Service) compensateEnvironment(ctx context.Context, service string, ori
 	}
 	if filesChanged {
 		name := filesSecretName(originalApp.Name)
-		if containsString(originalApp.Spec.FilesFromSecrets, name) {
+		if slices.Contains(originalApp.Spec.FilesFromSecrets, name) {
 			if err := s.upsertSecret(ctx, originalApp, name, oldFiles); err != nil {
 				compensation = append(compensation, fmt.Errorf("restore secret-file projection: %w", err))
 			}
@@ -669,32 +675,12 @@ func environmentPatchResult(env, files map[string]string, rolledOut bool) Enviro
 	return result
 }
 
+// cloneStringMap is deliberately not maps.Clone: a nil input must yield a
+// writable empty map (the patch appliers mutate the clone in place).
 func cloneStringMap(in map[string]string) map[string]string {
 	out := make(map[string]string, len(in))
 	for key, value := range in {
 		out[key] = value
 	}
 	return out
-}
-
-func equalStringMaps(a, b map[string]string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for key, value := range a {
-		other, ok := b[key]
-		if !ok || other != value {
-			return false
-		}
-	}
-	return true
-}
-
-func containsString(values []string, target string) bool {
-	for _, value := range values {
-		if value == target {
-			return true
-		}
-	}
-	return false
 }

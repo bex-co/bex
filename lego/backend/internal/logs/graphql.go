@@ -19,6 +19,7 @@ package logs
 import (
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -142,7 +143,7 @@ func logQueryFromArgs(args map[string]any) (LogQuery, error) {
 	q.Path = gqlutil.StringList(args["path"])
 	startTime, _ := args["startTime"].(string)
 	endTime, _ := args["endTime"].(string)
-	since, end, err := parseTimeWindow(startTime, endTime)
+	since, end, err := core.ParseTimeWindow(startTime, endTime)
 	if err != nil {
 		return LogQuery{}, err
 	}
