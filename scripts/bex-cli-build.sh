@@ -5,7 +5,12 @@ cd "$(dirname "$0")/.."
 
 output_dir="${1:?usage: scripts/bex-cli-build.sh <output-directory>}"
 readonly upstream_version=2.22.0
-readonly version_flag="-X github.com/render-oss/cli/pkg/cfg.Version=$upstream_version"
+# BEX_CLI_VERSION is bex's own release identity — the bex-cli/vX.Y.Z tag or
+# a bare X.Y.Z, normalized here; local builds stay "dev". It is distinct from
+# the pinned upstream version, which also names the User-Agent.
+bex_version="${BEX_CLI_VERSION:-dev}"
+readonly bex_version="${bex_version#bex-cli/v}"
+readonly version_flag="-X github.com/render-oss/cli/pkg/cfg.Version=$upstream_version -X main.bexVersion=$bex_version"
 
 mkdir -p "$output_dir"
 output_dir="$(cd "$output_dir" && pwd)"

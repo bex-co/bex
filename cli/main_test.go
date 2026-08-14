@@ -10,10 +10,18 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
 var bexBinary string
+
+// testBexVersion and testUpstreamVersion are injected into the test binary
+// the same way cli-release.yml and scripts/bex-cli-build.sh inject them.
+const (
+	testBexVersion      = "1.2.3"
+	testUpstreamVersion = "2.22.0"
+)
 
 func TestMain(m *testing.M) {
 	dir, err := os.MkdirTemp("", "bex-cli-test-*")
@@ -24,7 +32,9 @@ func TestMain(m *testing.M) {
 	defer os.RemoveAll(dir)
 
 	bexBinary = filepath.Join(dir, "bex")
-	build := exec.Command("go", "build", "-o", bexBinary, ".")
+	build := exec.Command("go", "build",
+		"-ldflags", "-X main.bexVersion="+testBexVersion+" -X github.com/render-oss/cli/pkg/cfg.Version="+testUpstreamVersion,
+		"-o", bexBinary, ".")
 	if output, err := build.CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "build bex: %v\n%s", err, output)
 		os.Exit(1)
@@ -264,6 +274,130 @@ func withoutRenderEnv(environment []string) []string {
 		filtered = append(filtered, item)
 	}
 	return filtered
+}
+
+// updateTestEnv strips everything that gates or targets the update check so
+// each test controls those inputs explicitly. CI in particular is set on
+// GitHub Actions runners and would silence the check.
+func updateTestEnv(home string) []string {
+	filtered := make([]string, 0, len(os.Environ()))
+	for _, item := range withoutRenderEnv(os.Environ()) {
+		name, _, _ := strings.Cut(item, "=")
+		switch name {
+		case "CI", "HOME", "BEX_NO_UPDATE_NOTIFIER", "BEX_UPDATE_API_URL":
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return append(filtered, "HOME="+home)
+}
+
+// releasesServer serves a bex-co/bex releases list whose newest stable
+// bex-cli release is v9.9.9, counting requests. The counter is atomic: the
+// handler runs on the server goroutine while the test reads the count, and
+// the only ordering edge is the child process's exit.
+func releasesServer(t *testing.T, requests *atomic.Int32) *httptest.Server {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		if r.URL.Path != "/repos/bex-co/bex/releases" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[
+			{"tag_name": "bex-cli/v9.9.9", "html_url": "https://example.test/releases/bex-cli-v9.9.9", "draft": false, "prerelease": false},
+			{"tag_name": "operator/v99.0.0", "html_url": "https://example.test/releases/operator", "draft": false, "prerelease": false}
+		]`))
+	}))
+	t.Cleanup(server.Close)
+	return server
+}
+
+func TestBexVersionOwnsTheVersionPath(t *testing.T) {
+	var requests atomic.Int32
+	api := releasesServer(t, &requests)
+	home := t.TempDir()
+
+	run := func() string {
+		command := exec.Command(buildBex(), "--version")
+		command.Env = append(updateTestEnv(home), "BEX_UPDATE_API_URL="+api.URL)
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("bex --version: %v\n%s", err, output)
+		}
+		return string(output)
+	}
+
+	output := run()
+	if !strings.Contains(output, "bex v"+testBexVersion+" (Render CLI v"+testUpstreamVersion+" compatible)") {
+		t.Errorf("missing bex identity line:\n%s", output)
+	}
+	if !strings.Contains(output, "v"+testBexVersion+" → v9.9.9") || !strings.Contains(output, "https://example.test/releases/bex-cli-v9.9.9") {
+		t.Errorf("missing bex upgrade hint:\n%s", output)
+	}
+	if strings.Contains(output, "render v") {
+		t.Errorf("upstream version handler ran:\n%s", output)
+	}
+	if got := requests.Load(); got != 1 {
+		t.Fatalf("requests = %d, want 1", got)
+	}
+
+	// Second run inside the cache window: same answer, no network call.
+	output = run()
+	if got := requests.Load(); got != 1 {
+		t.Errorf("cache hit still made a request (requests = %d)", got)
+	}
+	if !strings.Contains(output, "v9.9.9") {
+		t.Errorf("cached upgrade hint missing:\n%s", output)
+	}
+}
+
+func TestBexVersionCheckSilencedByCIAndOptOut(t *testing.T) {
+	for _, gate := range []string{"CI=1", "BEX_NO_UPDATE_NOTIFIER=1"} {
+		var requests atomic.Int32
+		api := releasesServer(t, &requests)
+		command := exec.Command(buildBex(), "-v")
+		command.Env = append(updateTestEnv(t.TempDir()), "BEX_UPDATE_API_URL="+api.URL, gate)
+		output, err := command.CombinedOutput()
+		if err != nil {
+			t.Fatalf("[%s] bex -v: %v\n%s", gate, err, output)
+		}
+		if !strings.Contains(string(output), "bex v"+testBexVersion) {
+			t.Errorf("[%s] version line missing:\n%s", gate, output)
+		}
+		if strings.Contains(string(output), "9.9.9") {
+			t.Errorf("[%s] update hint printed despite gate:\n%s", gate, output)
+		}
+		if got := requests.Load(); got != 0 {
+			t.Errorf("[%s] gated run still made %d network request(s)", gate, got)
+		}
+	}
+}
+
+func TestVersionFlagAfterSubcommandReachesUpstream(t *testing.T) {
+	command := exec.Command(buildBex(), "services", "-v")
+	command.Env = updateTestEnv(t.TempDir())
+	output, err := command.CombinedOutput()
+	if err == nil {
+		t.Fatalf("services -v unexpectedly succeeded:\n%s", output)
+	}
+	if strings.Contains(string(output), "bex v"+testBexVersion) {
+		t.Errorf("bex intercepted a post-subcommand flag:\n%s", output)
+	}
+}
+
+func TestNormalCommandsMakeNoUpdateCheckOffTTY(t *testing.T) {
+	var requests atomic.Int32
+	api := releasesServer(t, &requests)
+	command := exec.Command(buildBex(), "--help")
+	command.Env = append(updateTestEnv(t.TempDir()), "BEX_UPDATE_API_URL="+api.URL)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("bex --help: %v\n%s", err, output)
+	}
+	if got := requests.Load(); got != 0 {
+		t.Errorf("non-TTY command run made %d update request(s)", got)
+	}
 }
 
 func buildBex() string {

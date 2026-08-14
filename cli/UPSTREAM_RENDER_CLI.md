@@ -11,8 +11,9 @@ The upstream repository's v2 tags are not valid Go-module major-version tags bec
 ## Updating the pin
 
 1. Choose an upstream release and pin its exact commit with `go get github.com/render-oss/cli@<commit>` from this directory.
-2. Update all three values above and review the upstream command/API changes.
-3. Run `bash scripts/bex-cli-validate.sh`, `cd cli && go test ./...`, and the live device-flow check in `scripts/bex-cli-auth-e2e.sh` when Bex auth infrastructure is available.
-4. Update `docs/cli-compatibility-checklist.md` with supported-version and compatibility evidence or an explicit Bex server-side limitation.
+2. Update all three values above and review the upstream command/API changes. Confirm the upstream `cmd` package still exports `RootCmd` (Bex-native commands attach to it in `main.go`) and that no new upstream command collides with a Bex-native command name (`code`, `glm`, `muse`, `kimi`, `deepseek`).
+3. Check the update-check seams. `bex` intercepts the root `--version`/`-v` path in `main.go` (mirroring upstream's unexported `isRootVersionRequest` — re-diff that function on every pin bump) because upstream's handler compares against render-oss/cli releases behind the const `cfg.RepoURL`. A **second call site** in `pkg/tui/views/login.go` cannot be intercepted: once upstream releases something newer than this pin, `bex login`'s TUI shows a Render upgrade banner. Mitigation is bumping this pin promptly. (If upstream ever makes `RepoURL`/`InstallationInstructionsURL` vars, add the two `-X` repoints to `scripts/bex-cli-build.sh`; a PR proposing that was opened and then withdrawn by user decision 2026-08-15 — do not reopen without an explicit user decision.)
+4. Run `bash scripts/bex-cli-validate.sh`, `cd cli && go test ./...`, and the live device-flow check in `scripts/bex-cli-auth-e2e.sh` when Bex auth infrastructure is available.
+5. Update `docs/cli-compatibility-checklist.md` with supported-version and compatibility evidence or an explicit Bex server-side limitation.
 
 The CI validation compares this record to `go.mod`; an unnoticed dependency bump cannot pass the launcher test workflow.

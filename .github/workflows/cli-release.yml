@@ -25,6 +25,8 @@ jobs:
         working-directory: lego/backend
         run: go test ./internal/cliauth ./internal/api
       - name: build release candidates
+        env:
+          BEX_CLI_VERSION: ${{ github.ref_name }}
         run: bash scripts/bex-cli-build.sh dist/build
       - name: build archives
         env:
