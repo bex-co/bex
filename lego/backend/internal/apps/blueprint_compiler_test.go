@@ -468,6 +468,33 @@ func findBlueprintProblem(problems []BlueprintSourceProblem, code string) *Bluep
 	return nil
 }
 
+// codex r7 #9 — the byte cap must refuse an oversized manifest BEFORE
+// yaml.Decode materializes the node graph (compact flow YAML amplifies
+// ~100× into yaml.Node structs, so the walk budgets alone run too late).
+func TestBlueprintCompilerCapsManifestBytesBeforeDecode(t *testing.T) {
+	over := "k: " + strings.Repeat("x", blueprintMaxManifestBytes)
+	_, problems := parseBlueprintSource(over)
+	if p := findBlueprintProblem(problems, "BLUEPRINT_YAML_TOO_LARGE"); p == nil {
+		t.Fatalf("over-cap manifest problems = %+v, want BLUEPRINT_YAML_TOO_LARGE", problems)
+	}
+
+	// A manifest at exactly the cap, within every walk budget, still parses:
+	// two large-but-legal scalars padded to precisely the byte limit.
+	var at strings.Builder
+	at.WriteString("a: " + strings.Repeat("x", blueprintMaxScalarBytes-1) + "\n")
+	pad := blueprintMaxManifestBytes - at.Len() - len("b: ")
+	if pad <= 0 || pad >= blueprintMaxScalarBytes {
+		t.Fatalf("fixture pad = %d, want within (0, scalar budget)", pad)
+	}
+	at.WriteString("b: " + strings.Repeat("x", pad))
+	if at.Len() != blueprintMaxManifestBytes {
+		t.Fatalf("fixture size = %d, want exactly %d", at.Len(), blueprintMaxManifestBytes)
+	}
+	if _, problems := parseBlueprintSource(at.String()); len(problems) != 0 {
+		t.Fatalf("at-cap manifest problems = %+v", problems)
+	}
+}
+
 func TestBlueprintCompilerEnforcesStructuralBudgets(t *testing.T) {
 	// Deeper than blueprintMaxDepth: 110 levels of single-key mappings.
 	var deep strings.Builder

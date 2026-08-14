@@ -260,15 +260,63 @@ type Service struct {
 	// connected-clients history (redis_exporter via Prometheus, w5/011); nil =>
 	// kv_memory/kv_connections report core.ErrMetricsUnavailable.
 	KeyValueStats KeyValueStatsSource
-	// MaxQueryHours, when positive, caps the start–end window accepted by REST
-	// metrics queries (GET /v1/metrics/*). 0 = unlimited.
+	// MaxQueryHours, when positive, caps the start–end window accepted by every
+	// metrics read. Enforced in the shared service (Metrics/DatastoreMetrics),
+	// so REST, GraphQL, and MCP cannot drift (codex r7 #13 — it previously
+	// lived in the REST adapter alone, letting GraphQL/MCP scan the backends
+	// unbounded). 0 = unlimited.
 	MaxQueryHours int
 }
 
-// Metrics is the single metrics read every adapter (REST + GraphQL) calls. It
+// Fan-out budgets (codex r7 #13 / w4/029 #14): one API request multiplies
+// into len(resources) × len(metricTypes) service reads, each of which is one
+// or more Prometheus/Loki queries — and http_latency multiplies again per
+// requested percentile. The caps bound that product far above any dashboard
+// use (a handful of services × one metric × three percentiles) while keeping
+// a single request from becoming an unbounded backend scan.
+const (
+	maxMetricsFanOut    = 100 // (resource, metric) pairs per request
+	maxLatencyQuantiles = 10  // http_latency percentiles per request
+)
+
+// checkWindow enforces MaxQueryHours against a query's start–end range,
+// called by the shared service entry points so every adapter inherits it.
+func (s *Service) checkWindow(start, end time.Time) error {
+	return core.CheckQueryWindow(s.MaxQueryHours, s.Now, start, end)
+}
+
+// latencyFan is the percentile multiplier for the fan-out budget: only an
+// http_latency read expands per requested quantile (MetricsWithQuantiles
+// ignores the list for every other metric), so a non-latency request never
+// pays for percentiles it will not read.
+func latencyFan(metric string, quantiles []float64) int {
+	if metric != MetricHTTPLatency {
+		return 1
+	}
+	return len(normalizeQuantiles(quantiles))
+}
+
+// checkFanOut bounds the (resource, metric, latency-percentile) product one
+// request may expand into, called by the REST/GraphQL/MCP adapters before
+// their read loops — the array dimensions exist only adapter-side. Every
+// dimension clamps to one so an absent axis counts as a single read.
+func checkFanOut(resources, metrics, quantiles int) error {
+	reads := max(resources, 1) * max(metrics, 1) * max(quantiles, 1)
+	if reads > maxMetricsFanOut {
+		return fmt.Errorf("%w: request expands into %d metric reads; the limit is %d", core.ErrBadRequest, reads, maxMetricsFanOut)
+	}
+	return nil
+}
+
+// Metrics is the single metrics read every adapter (REST, GraphQL, MCP) calls. It
 // fails with core.ErrNotFound for an unknown App, dispatches on q.Metric, and
 // returns Render-shaped series.
 func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, error) {
+	// Window first, authorization second — preserves the REST adapter's
+	// historical order (an over-window request 400s before an unknown app 404s).
+	if err := s.checkWindow(q.Start, q.End); err != nil {
+		return nil, err
+	}
 	app, err := s.AuthorizeApp(ctx, core.RelCanView, q.App)
 	if err != nil {
 		return nil, err // ErrNotFound for unknown apps, exactly like Get
@@ -336,6 +384,9 @@ func (s *Service) MetricsWithQuantiles(ctx context.Context, q MetricQuery) ([]Qu
 	// Non-latency, or latency with at most one requested quantile: one pass, no
 	// added label — identical to calling Metrics directly.
 	quants := normalizeQuantiles(q.Quantiles)
+	if len(quants) > maxLatencyQuantiles {
+		return nil, fmt.Errorf("%w: at most %d latency percentiles per request", core.ErrBadRequest, maxLatencyQuantiles)
+	}
 	if !isLatency || len(quants) <= 1 {
 		single := q.Quantile
 		if len(quants) == 1 {

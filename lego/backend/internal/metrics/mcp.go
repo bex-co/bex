@@ -21,6 +21,8 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // mcp.go is the metrics MCP fragment. get_metrics mirrors Render's tool: a
@@ -57,15 +59,24 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			Path:       in.Path,
 			Resolution: time.Duration(in.ResolutionSeconds) * time.Second,
 		}
-		if in.StartTime != "" {
-			if t, err := time.Parse(time.RFC3339, in.StartTime); err == nil {
-				q.Start = t
+		var err error
+		if q.Start, err = core.ParseTime("startTime", in.StartTime); err != nil {
+			return nil, getMetricsResult{}, err
+		}
+		if q.End, err = core.ParseTime("endTime", in.EndTime); err != nil {
+			return nil, getMetricsResult{}, err
+		}
+		// The percentile dimension applies whenever the metric list includes
+		// http_latency; a mixed list over-approximates the product, which only
+		// errs toward refusing extreme requests.
+		quantileFan := 1
+		for _, metric := range in.MetricTypes {
+			if fan := latencyFan(metric, in.Quantiles); fan > quantileFan {
+				quantileFan = fan
 			}
 		}
-		if in.EndTime != "" {
-			if t, err := time.Parse(time.RFC3339, in.EndTime); err == nil {
-				q.End = t
-			}
+		if err := checkFanOut(len(in.Resource), len(in.MetricTypes), quantileFan); err != nil {
+			return nil, getMetricsResult{}, err
 		}
 		var all []MetricSeries
 		for _, id := range in.Resource {
@@ -124,15 +135,15 @@ func RegisterDatastoreMetricsMCP(s *Service, srv *mcp.Server) {
 			Resource:   in.Resource,
 			Resolution: time.Duration(in.ResolutionSeconds) * time.Second,
 		}
-		if in.StartTime != "" {
-			if t, err := time.Parse(time.RFC3339, in.StartTime); err == nil {
-				q.Start = t
-			}
+		var err error
+		if q.Start, err = core.ParseTime("startTime", in.StartTime); err != nil {
+			return nil, getMetricsResult{}, err
 		}
-		if in.EndTime != "" {
-			if t, err := time.Parse(time.RFC3339, in.EndTime); err == nil {
-				q.End = t
-			}
+		if q.End, err = core.ParseTime("endTime", in.EndTime); err != nil {
+			return nil, getMetricsResult{}, err
+		}
+		if err := checkFanOut(1, len(in.MetricTypes), 1); err != nil {
+			return nil, getMetricsResult{}, err
 		}
 		var all []MetricSeries
 		for _, metric := range in.MetricTypes {

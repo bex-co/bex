@@ -314,8 +314,13 @@ var representativeVerbRelations = map[string]string{
 	// which must stay available to contributors. The create-like branch is pinned
 	// separately by TestExecutableSelectionRequiresCanCreate, which calls them
 	// WITH the parameters; changing either branch alone turns one of the two red.
-	"*deploys.Service.Trigger":  core.RelCanOperate,
-	"*apps.Service.SetCronJob":  core.RelCanOperate,
+	"*deploys.Service.Trigger": core.RelCanOperate,
+	"*apps.Service.SetCronJob": core.RelCanOperate,
+	// AttachTicket is CONDITIONAL the same way (codex r7 #3): the zero-value
+	// action this sweep captures is the transcript READ branch (contributor,
+	// the documented ADR054 boundary); a live prompt turn is can_create,
+	// pinned with parameters by agentsessions.TestAttachTicketRelationPerAction.
+	"*agentsessions.Service.AttachTicket": core.RelCanOperate,
 	// can_create — developer and up (create/delete resources).
 	"*apps.Service.Create":             core.RelCanCreate,
 	"*apps.Service.Delete":             core.RelCanCreate,

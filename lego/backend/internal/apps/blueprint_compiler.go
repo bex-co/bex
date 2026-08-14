@@ -642,6 +642,18 @@ func blueprintEnumCapabilityUnsupported(registry *BlueprintCapabilityRegistry, p
 }
 
 func parseBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourceProblem) {
+	// The byte cap must run BEFORE yaml.Decode: the walk budgets below bound
+	// what the walk materializes, but the decoder has already built the full
+	// node graph by then — compact flow YAML amplifies ~100× into yaml.Node
+	// structs, so an uncapped 2 MiB body (BEX_MAX_BODY_BYTES) allocates
+	// ~200 MB before the first budget check (codex r7 #9). 512 KiB is far
+	// above any real Blueprint while keeping the pre-walk allocation bounded.
+	if len(manifest) > blueprintMaxManifestBytes {
+		return &BlueprintSource{Locations: map[string]BlueprintSourceLocation{}}, []BlueprintSourceProblem{{
+			Code: "BLUEPRINT_YAML_TOO_LARGE", Path: "#",
+			Message: fmt.Sprintf("Blueprint manifests are limited to %d KiB", blueprintMaxManifestBytes>>10),
+		}}
+	}
 	decoder := yaml.NewDecoder(strings.NewReader(manifest))
 	var document yaml.Node
 	if err := decoder.Decode(&document); err != nil {
@@ -671,20 +683,26 @@ func parseBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourceP
 	return source, problems
 }
 
-// Structural budgets for Blueprint YAML materialization. The upload bound
-// (maxBlueprintValidationFileBytes, 10 MiB) caps input bytes, but bytes do not
-// bound the amplified in-memory shape: aliases are already rejected, yet a
-// small document can still spread into millions of tiny nodes — each
-// materializing a Go value plus one locations-map entry — or nest
-// pathologically deep. Every budget is checked during the walk, before the
-// allocation it guards, and the first breach refuses the whole document. The
-// limits are far above any real Blueprint (hundreds of nodes) and far below
-// yaml.v3's own 10k nesting ceiling.
+// Structural budgets for Blueprint YAML materialization. The manifest byte
+// cap (blueprintMaxManifestBytes, checked before yaml.Decode) bounds input
+// bytes, but bytes do not bound the amplified in-memory shape: aliases are
+// already rejected, yet a small document can still spread into millions of
+// tiny nodes — each materializing a Go value plus one locations-map entry —
+// or nest pathologically deep. Every budget is checked during the walk,
+// before the allocation it guards, and the first breach refuses the whole
+// document. The limits are far above any real Blueprint (hundreds of nodes)
+// and far below yaml.v3's own 10k nesting ceiling.
 const (
+	// blueprintMaxManifestBytes is the pre-decode byte cap (see
+	// parseBlueprintSource); the budgets below govern the post-decode walk.
+	blueprintMaxManifestBytes = 512 << 10 // 512 KiB
+
 	blueprintMaxDepth             = 100
 	blueprintMaxNodes             = 100_000
 	blueprintMaxCollectionEntries = 10_000
-	blueprintMaxScalarBytes       = 1 << 20 // 1 MiB
+	// Kept below the manifest byte cap so a single oversized scalar is
+	// still reported as a scalar breach, not a document-size one.
+	blueprintMaxScalarBytes = 256 << 10 // 256 KiB
 	// The locations map holds one pointer-string entry per value node — the
 	// most expensive per-node allocation — so it is capped tighter than raw
 	// nodes (whose count also includes mapping keys): a keyless document

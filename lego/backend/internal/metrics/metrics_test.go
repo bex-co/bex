@@ -437,17 +437,7 @@ func TestManagedServiceIDMetricsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	server := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
-	svc.RegisterMCP(server)
-	serverTransport, clientTransport := mcp.NewInMemoryTransports()
-	if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
-		t.Fatalf("MCP server connect: %v", err)
-	}
-	clientSession, err := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
-	if err != nil {
-		t.Fatalf("MCP client connect: %v", err)
-	}
-	defer clientSession.Close()
+	clientSession := mcpSession(t, svc)
 	result, err := clientSession.CallTool(ctx, &mcp.CallToolParams{
 		Name: "get_metrics",
 		Arguments: map[string]any{
@@ -1151,17 +1141,7 @@ func TestHostPathFilterCrossSurfaceParity(t *testing.T) {
 
 	mcpSvc, mcpGot := newSurfaceSvc()
 	ctx := context.Background()
-	server := mcp.NewServer(&mcp.Implementation{Name: "t", Version: "0"}, nil)
-	mcpSvc.RegisterMCP(server)
-	st, ct := mcp.NewInMemoryTransports()
-	if _, err := server.Connect(ctx, st, nil); err != nil {
-		t.Fatal(err)
-	}
-	cs, err := mcp.NewClient(&mcp.Implementation{Name: "tc", Version: "0"}, nil).Connect(ctx, ct, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cs.Close()
+	cs := mcpSession(t, mcpSvc)
 	if _, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "get_metrics", Arguments: map[string]any{
 		"resource": []string{"web"}, "metricTypes": []string{MetricHTTPRequests}, "host": host, "path": path,
 	}}); err != nil {

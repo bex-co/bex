@@ -167,6 +167,10 @@ func pvcPattern(kind, resource string) string {
 // doesn't support (e.g. db_connections on a KeyValue), and returns
 // Render-shaped series.
 func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) ([]MetricSeries, error) {
+	// Same order as Metrics: window first, then authorization.
+	if err := s.checkWindow(q.Start, q.End); err != nil {
+		return nil, err
+	}
 	var isHA bool
 	// Prometheus series are namespace-labeled, so every request below must carry
 	// the datastore's OWN namespace (ADR043 D8). Querying the shared one for a

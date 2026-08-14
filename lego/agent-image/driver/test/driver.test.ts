@@ -167,6 +167,52 @@ test("one headless turn streams raw ACP data and commits in the worktree", async
   assert.doesNotMatch(log, /test-model-key-never-log/);
 });
 
+// codex r7 #4 — the model credential must be redacted BEFORE the first
+// fan-out: hub history (GET /stream attachers), the onPart mirror (the POST
+// /turn response the gateway tees into the durable transcript), and the
+// session log must all carry the sanitized representation.
+test("credential emitted by the agent never reaches hub, mirror, or log", async () => {
+  const config = await tempConfig();
+  config.agentEnv = { ACP_FIXTURE_LEAK_CREDENTIAL: "1" };
+  const hub = new UIMessageStreamHub();
+  const mirrored: string[] = [];
+  const result = await runHeadlessTurn(config, manager(config), hub, {
+    onPart: (part) => mirrored.push(JSON.stringify(part)),
+  });
+  assert.equal(result.state, "succeeded");
+  for (const [sink, text] of [
+    ["hub history", JSON.stringify(hub.history)],
+    ["turn mirror", mirrored.join("\n")],
+    ["session log", await readFile(config.sessionLogPath, "utf8")],
+  ]) {
+    assert.doesNotMatch(text, /test-model-key-never-log/, `${sink} leaked the credential`);
+    // The leak must have actually happened for the assertion above to mean
+    // anything — the sanitized marker proves the fixture emitted the key.
+    assert.match(text, /\[REDACTED\]/, `${sink} shows no redaction marker`);
+  }
+});
+
+test("redactPart sanitizes nested structured parts and fails closed", async () => {
+  const config = await tempConfig();
+  const credentials = manager(config);
+  const part = {
+    type: "data-acp",
+    data: { rawOutput: { stdout: `key=${config.modelCredential}` } },
+  };
+  const sanitized = credentials.redactPart(part);
+  assert.doesNotMatch(JSON.stringify(sanitized), /test-model-key-never-log/);
+  assert.match(JSON.stringify(sanitized), /\[REDACTED\]/);
+  assert.doesNotMatch(JSON.stringify(part), /REDACTED/, "input part must not be mutated");
+  // A clean part passes through untouched (same reference, no re-parse cost).
+  const clean = { type: "text", text: "no secrets here" };
+  assert.equal(credentials.redactPart(clean), clean);
+  // A secret whose removal would corrupt the JSON document (here it overlaps
+  // the structural `":"` between key and value) fails closed to a placeholder
+  // part rather than ever returning the raw representation.
+  const hostile = manager(await tempConfig({ modelCredential: '":"' }));
+  assert.deepEqual(hostile.redactPart({ a: "x" }), { type: "data-redacted" });
+});
+
 for (const loadSession of [false, true]) {
   test(`existing session ${loadSession ? "uses" : "does not use"} session/load when advertised=${loadSession}`, async () => {
     const config = await tempConfig({ existingSessionId: "existing-session" });

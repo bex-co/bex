@@ -143,9 +143,16 @@ export async function runHeadlessTurn(
   const closeHub = options.closeHub ?? true;
   const onPart = options.onPart;
   if (!prompt) throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
-  const publish = (part: UIMessagePart) => {
-    hub.publish(part);
-    if (onPart) onPart(part);
+  // Sanitize at the single publication choke point (codex r7 #4): the hub
+  // history, attached GET /stream clients, the POST /turn mirror — the
+  // gateway's byte-transparent durable transcript tee — and (via the return
+  // value) the session log all carry the same sanitized part. logPart's own
+  // string-level redaction stays as a second pass.
+  const publish = (part: UIMessagePart): UIMessagePart => {
+    const sanitized = credentialManager.redactPart(part);
+    hub.publish(sanitized);
+    if (onPart) onPart(sanitized);
+    return sanitized;
   };
   // Read the prior turn's persisted identity BEFORE the running-state write
   // below replaces the status file.
@@ -181,16 +188,15 @@ export async function runHeadlessTurn(
 
       const consumeUI = async () => {
         for await (const part of result!.toUIMessageStream()) {
-          publish(part as UIMessagePart);
-          await logPart(config.sessionLogPath, part as UIMessagePart, credentialManager);
+          const sanitized = publish(part as UIMessagePart);
+          await logPart(config.sessionLogPath, sanitized, credentialManager);
         }
       };
       const consumeRaw = async () => {
         for await (const part of result!.fullStream) {
           if (part.type !== "raw") continue;
-          const uiPart = rawUIMessagePart(part as unknown as { rawValue: unknown });
-          publish(uiPart);
-          await logPart(config.sessionLogPath, uiPart, credentialManager);
+          const sanitized = publish(rawUIMessagePart(part as unknown as { rawValue: unknown }));
+          await logPart(config.sessionLogPath, sanitized, credentialManager);
         }
       };
       await Promise.all([consumeUI(), consumeRaw()]);

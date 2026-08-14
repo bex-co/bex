@@ -484,6 +484,31 @@ func TestCreateInjectsGitCredentialBrokerConfig(t *testing.T) {
 	}
 }
 
+// codex r7 #3 follow-up — pin AttachTicket's per-action relation split so
+// neither branch can silently weaken: reading the transcript is a contributor
+// verb (can_operate, the documented ADR054 boundary), while a live prompt
+// turn re-drives the agent and stays developer-only (can_create). The
+// role-ladder sweep (internal/api) pins only the zero-value read branch.
+func TestAttachTicketRelationPerAction(t *testing.T) {
+	for action, want := range map[string]string{
+		agentsessionticket.ActionRead: core.RelCanOperate,
+		"":                            core.RelCanOperate, // unset action defaults to read
+		agentsessionticket.ActionTurn: core.RelCanCreate,
+	} {
+		var asked []string
+		svc := &Service{Base: &core.Base{Authz: checkerFunc(func(_ context.Context, _, relation, _ string) (bool, error) {
+			asked = append(asked, relation)
+			return false, nil // denial keeps the test at the authorization seam
+		})}}
+		if _, err := svc.AttachTicket(caller("carol"), "ags-x", action); !errors.Is(err, core.ErrForbidden) {
+			t.Errorf("action %q err = %v, want ErrForbidden", action, err)
+		}
+		if len(asked) != 1 || asked[0] != want {
+			t.Errorf("action %q asked relations %v, want [%s]", action, asked, want)
+		}
+	}
+}
+
 // TestAttachTicketMintsWithoutChangingLifecycle pins the w3/m43 reconnect verb
 // (ADR047 D9 target API shape): AttachTicket re-mints a fresh, distinct ticket
 // bound to the same session/sandbox without advancing the phase, fails closed
