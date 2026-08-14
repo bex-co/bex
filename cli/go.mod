@@ -2,7 +2,13 @@ module github.com/bex-co/bex/cli
 
 go 1.26.0
 
-require github.com/render-oss/cli v1.1.3-0.20260721145337-d8fd7c2bb09d
+require (
+	github.com/blang/semver/v4 v4.0.0
+	github.com/render-oss/cli v1.1.3-0.20260721145337-d8fd7c2bb09d
+	github.com/spf13/cobra v1.8.1
+	github.com/spf13/pflag v1.0.5
+	golang.org/x/term v0.43.0
+)
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
@@ -12,7 +18,6 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/catppuccin/go v0.3.0 // indirect
 	github.com/charmbracelet/bubbles v1.0.0 // indirect
 	github.com/charmbracelet/bubbletea v1.3.10 // indirect
@@ -67,8 +72,6 @@ require (
 	github.com/sahilm/fuzzy v0.1.1 // indirect
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
-	github.com/spf13/cobra v1.8.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.mongodb.org/mongo-driver v1.14.0 // indirect
