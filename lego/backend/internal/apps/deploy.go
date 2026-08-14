@@ -138,6 +138,13 @@ type BlueprintGroupingStore interface {
 	SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) error
 }
 
+// EnvironmentAssigner is the narrow store seam the Blueprint apply path uses to
+// record a service's project/environment assignment on its store row; a Store
+// without it makes an environment-changing apply ErrWorkspacesUnavailable.
+type EnvironmentAssigner interface {
+	SetAppEnvironment(context.Context, string, string, string) error
+}
+
 // StackResult is the set of resources one stack deploy created (or converged):
 // databases are applied first (dependents reference them via fromDatabase),
 // then services. Both are individually pollable to Ready via their status.
@@ -512,6 +519,26 @@ func (s *Service) deployStack(ctx context.Context, req DeployRequest) (StackResu
 	return s.deployParsedStack(ctx, req, st)
 }
 
+// listWorkspaceDatabases fetches the workspace-scoped Database snapshot the
+// Blueprint flows share (deployParsedStack, the existing-reference resolver,
+// and the action-plan resolver).
+func (s *Service) listWorkspaceDatabases(ctx context.Context, tenantID string) (*appv1alpha1.DatabaseList, error) {
+	list := &appv1alpha1.DatabaseList{}
+	if err := s.Client.List(ctx, list, s.DatastoreListOptions(tenantID)...); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+// listWorkspaceKeyValues is listWorkspaceDatabases' KeyValue twin.
+func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (*appv1alpha1.KeyValueList, error) {
+	list := &appv1alpha1.KeyValueList{}
+	if err := s.Client.List(ctx, list, s.DatastoreListOptions(tenantID)...); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
 // deployParsedStack applies the exact validated stack produced by compileStack.
 // It is deliberately separate from deployStack for flows (Blueprint create and
 // sync) that must preflight before recording state, then apply that same result.
@@ -531,15 +558,15 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	tenantID, _ := s.Tenant(ctx)
 	var databases *appv1alpha1.DatabaseList
 	if len(st.databases) > 0 {
-		databases = &appv1alpha1.DatabaseList{}
-		if err := s.Client.List(ctx, databases, s.DatastoreListOptions(tenantID)...); err != nil {
+		var err error
+		if databases, err = s.listWorkspaceDatabases(ctx, tenantID); err != nil {
 			return StackResult{}, err
 		}
 	}
 	var keyValues *appv1alpha1.KeyValueList
 	if len(st.keyValues) > 0 {
-		keyValues = &appv1alpha1.KeyValueList{}
-		if err := s.Client.List(ctx, keyValues, s.DatastoreListOptions(tenantID)...); err != nil {
+		var err error
+		if keyValues, err = s.listWorkspaceKeyValues(ctx, tenantID); err != nil {
 			return StackResult{}, err
 		}
 	}
@@ -629,31 +656,9 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	}
 	var deferred []deferredService
 	for _, svc := range st.services {
-		for _, ref := range svc.databaseRefs {
-			ev, err := resolveDatabaseRef(ref, databaseIDs)
-			if err != nil {
-				return res, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
-			}
-			svc.req.Env = append(svc.req.Env, ev)
-		}
-		for _, ref := range svc.kvRefs {
-			ev, err := resolveKeyValueRef(ref, kvCRNames)
-			if err != nil {
-				return res, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
-			}
-			svc.req.Env = append(svc.req.Env, ev)
-		}
-		var laterRefs []hostRef
-		for _, ref := range svc.hostRefs {
-			slug, err := lookupSlug(ref.target)
-			if err != nil {
-				return res, err
-			}
-			if slug == "" {
-				laterRefs = append(laterRefs, ref) // forward ref — sibling not created yet
-				continue
-			}
-			svc.req.Env = append(svc.req.Env, ref.env(slug))
+		laterRefs, err := resolveServiceRefs(&svc, databaseIDs, kvCRNames, lookupSlug)
+		if err != nil {
+			return res, err
 		}
 		if assignment := assignments[svc.grouping]; assignment.ID != "" {
 			svc.req.EnvironmentID = assignment.ID
@@ -706,6 +711,40 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	return res, nil
 }
 
+// resolveServiceRefs is one stack service's reference-resolution prelude: the
+// resolved database/key-value env vars and every already-resolvable host ref
+// are appended onto svc.req.Env; the forward host refs (sibling not created
+// yet) are returned for the post-create patch pass.
+func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]string, lookupSlug func(string) (string, error)) ([]hostRef, error) {
+	for _, ref := range svc.databaseRefs {
+		ev, err := resolveDatabaseRef(ref, databaseIDs)
+		if err != nil {
+			return nil, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
+		}
+		svc.req.Env = append(svc.req.Env, ev)
+	}
+	for _, ref := range svc.kvRefs {
+		ev, err := resolveKeyValueRef(ref, kvCRNames)
+		if err != nil {
+			return nil, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
+		}
+		svc.req.Env = append(svc.req.Env, ev)
+	}
+	var laterRefs []hostRef
+	for _, ref := range svc.hostRefs {
+		slug, err := lookupSlug(ref.target)
+		if err != nil {
+			return nil, err
+		}
+		if slug == "" {
+			laterRefs = append(laterRefs, ref) // forward ref — sibling not created yet
+			continue
+		}
+		svc.req.Env = append(svc.req.Env, ref.env(slug))
+	}
+	return laterRefs, nil
+}
+
 // resolveExistingBlueprintReferences provides the one allowed cross-declaration
 // lookup: a database or Key Value target not declared in this Blueprint may be
 // named only when it resolves uniquely inside the caller's workspace. It runs
@@ -747,8 +786,8 @@ func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st par
 	tenantID, scoped := s.Tenant(ctx)
 	if len(neededDatabases) > 0 {
 		if databases == nil {
-			databases = &appv1alpha1.DatabaseList{}
-			if err := s.Client.List(ctx, databases, s.DatastoreListOptions(tenantID)...); err != nil {
+			var err error
+			if databases, err = s.listWorkspaceDatabases(ctx, tenantID); err != nil {
 				return nil, nil, err
 			}
 		}
@@ -772,8 +811,8 @@ func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st par
 	}
 	if len(neededKeyValues) > 0 {
 		if keyValues == nil {
-			keyValues = &appv1alpha1.KeyValueList{}
-			if err := s.Client.List(ctx, keyValues, s.DatastoreListOptions(tenantID)...); err != nil {
+			var err error
+			if keyValues, err = s.listWorkspaceKeyValues(ctx, tenantID); err != nil {
 				return nil, nil, err
 			}
 		}
@@ -1100,6 +1139,15 @@ func appendDecls[T any](decls []decl[T], values []T, ungrouped bool) []decl[T] {
 	return decls
 }
 
+// mergeDecls seeds one manifest section's decl list: the grouped (top-level)
+// declarations first, then the legacy `ungrouped:` extras, marked ungrouped
+// only when the section distinguishes them (env groups intentionally do not).
+func mergeDecls[T any](grouped, extra []T, markUngrouped bool) []decl[T] {
+	decls := make([]decl[T], 0, len(grouped)+len(extra))
+	decls = appendDecls(decls, grouped, false)
+	return appendDecls(decls, extra, markUngrouped)
+}
+
 // isKeyValueType reports whether a manifest service type names the key-value
 // flavor (Render accepts both spellings).
 func isKeyValueType(t string) bool {
@@ -1145,56 +1193,14 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	if m.Ungrouped != nil {
 		ungrouped = *m.Ungrouped
 	}
-	services := make([]decl[bexService], 0, len(m.Services)+len(ungrouped.Services))
-	services = appendDecls(services, m.Services, false)
-	services = appendDecls(services, ungrouped.Services, true)
-	databases := make([]decl[bexDatabase], 0, len(m.Databases)+len(ungrouped.Databases))
-	databases = appendDecls(databases, m.Databases, false)
-	databases = appendDecls(databases, ungrouped.Databases, true)
-	envGroups := make([]decl[bexEnvGroup], 0, len(m.EnvVarGroups)+len(ungrouped.EnvVarGroups))
-	envGroups = appendDecls(envGroups, m.EnvVarGroups, false)
-	envGroups = appendDecls(envGroups, ungrouped.EnvVarGroups, false)
-	st := parsedStack{}
-	projectNames := map[string]bool{}
-	for _, project := range m.Projects {
-		projectName, err := validateUniqueName(project.Name, "projects entry", projectNames)
-		if err != nil {
-			return parsedStack{}, err
-		}
-		environmentNames := map[string]bool{}
-		for _, environment := range project.Environments {
-			environmentName, err := validateUniqueName(environment.Name, fmt.Sprintf("project %q environment", projectName), environmentNames)
-			if err != nil {
-				return parsedStack{}, err
-			}
-			if err := validateEnabledDisabled(environment.Networking.Isolation, fmt.Sprintf("project %q environment %q networking.isolation", projectName, environmentName)); err != nil {
-				return parsedStack{}, err
-			}
-			if err := validateEnabledDisabled(environment.Permissions.Protection, fmt.Sprintf("project %q environment %q permissions.protection", projectName, environmentName)); err != nil {
-				return parsedStack{}, err
-			}
-			grouping := blueprintGroupingKey(projectName, environmentName)
-			for _, eg := range environment.EnvVarGroups {
-				envGroups = append(envGroups, decl[bexEnvGroup]{value: eg, grouping: grouping})
-			}
-			protectedStatus := core.ProtectedStatusUnprotected
-			if environment.Permissions.Protection == "enabled" {
-				protectedStatus = core.ProtectedStatusProtected
-			}
-			st.groupings = append(st.groupings, parsedGrouping{
-				projectName:             projectName,
-				environmentName:         environmentName,
-				networkIsolationEnabled: environment.Networking.Isolation == "enabled",
-				protectedStatus:         protectedStatus,
-			})
-			for _, service := range environment.Services {
-				services = append(services, decl[bexService]{value: service, grouping: grouping})
-			}
-			for _, database := range environment.Databases {
-				databases = append(databases, decl[bexDatabase]{value: database, grouping: grouping})
-			}
-		}
+	services := mergeDecls(m.Services, ungrouped.Services, true)
+	databases := mergeDecls(m.Databases, ungrouped.Databases, true)
+	envGroups := mergeDecls(m.EnvVarGroups, ungrouped.EnvVarGroups, false)
+	services, databases, envGroups, groupings, err := flattenProjectDecls(m.Projects, services, databases, envGroups)
+	if err != nil {
+		return parsedStack{}, err
 	}
+	st := parsedStack{groupings: groupings}
 	if len(services) == 0 && len(databases) == 0 && len(envGroups) == 0 {
 		return parsedStack{}, fmt.Errorf("%w: render.yaml must define at least one service, database, env group, or project environment resource", core.ErrBadRequest)
 	}
@@ -1214,21 +1220,17 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	}
 
 	// Databases next into the stack (and into the name index services reference).
-	// services slice includes both regular services and keyvalue resources
-	names := make(map[string]bool, len(services)+len(databases))
-	databaseNames := make(map[string]bool, len(databases))
-	databasePoolers := make(map[string]bool, len(databases))
-	kvStackNames := make(map[string]bool)
+	idx := newStackIndex(len(services), len(databases))
 	for _, d := range databases {
 		ds, err := parseDatabase(d.value)
 		if err != nil {
 			return parsedStack{}, err
 		}
-		if err := registerUniqueName(ds.name, names); err != nil {
+		if err := registerUniqueName(ds.name, idx.names); err != nil {
 			return parsedStack{}, err
 		}
-		databaseNames[ds.name] = true
-		databasePoolers[ds.name] = ds.spec.Pooler
+		idx.databaseNames[ds.name] = true
+		idx.databasePoolers[ds.name] = ds.spec.Pooler
 		ds.grouping = d.grouping
 		ds.ungrouped = d.ungrouped
 		ds.fields = fieldsByResource[BlueprintResourcePostgres][ds.name]
@@ -1243,25 +1245,15 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		refVars []bexEnvVar // fromDatabase / fromService — resolved in pass 2
 	}
 	pendings := make([]pending, 0, len(services))
-	// servicePorts: name -> effective port, for services that expose a k8s Service
-	// (web/private only — workers, cron jobs and static sites have no Service, so a
-	// fromService reference to them has no DNS name to resolve). Effective port is
-	// the declared one, or the 3000 default when omitted.
-	servicePorts := make(map[string]int32, len(services))
-	// serviceKnownEnv: name -> the statically-known env of that service (plain
-	// literals + sync:false seed values), the resolvable target set for a
-	// fromService.envVarKey copy (a from*/generateValue var has no parse-time value).
-	serviceKnownEnv := make(map[string]map[string]string, len(services))
 	for _, a := range services {
 		if isKeyValueType(a.value.Type) {
 			kv, err := parseKeyValue(a.value)
 			if err != nil {
 				return parsedStack{}, err
 			}
-			if err := registerUniqueName(kv.name, names); err != nil {
+			if err := registerUniqueName(kv.name, idx.names); err != nil {
 				return parsedStack{}, err
 			}
-			kvStackNames[kv.name] = true
 			kv.grouping = a.grouping
 			kv.ungrouped = a.ungrouped
 			kv.fields = fieldsByResource[BlueprintResourceKeyValue][kv.name]
@@ -1272,71 +1264,161 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		if err != nil {
 			return parsedStack{}, err
 		}
-		if err := registerUniqueName(req.Name, names); err != nil {
+		if err := registerUniqueName(req.Name, idx.names); err != nil {
 			return parsedStack{}, err
 		}
 		pendings = append(pendings, pending{
 			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, grouping: a.grouping, ungrouped: a.ungrouped},
 			refVars: se.refVars,
 		})
-		serviceKnownEnv[req.Name] = se.known
+		idx.serviceKnownEnv[req.Name] = se.known
 		if req.Type == appv1alpha1.TypeWebService || req.Type == appv1alpha1.TypePrivateService {
 			port := req.Port
 			if port <= 0 {
 				port = appv1alpha1.DefaultPort
 			}
-			servicePorts[req.Name] = port
+			idx.servicePorts[req.Name] = port
 		}
 	}
 
-	// Resolve service references now that every name, port, and known-env is
-	// available. Database references are validated here but retained until apply:
-	// only then do we know the immutable dpg-... id that names the CNPG Secret.
+	// Pass 2: classify each pending service's deferred references now that
+	// every name, port, and known-env is available.
 	for _, p := range pendings {
-		svc := p.svc
-		for _, r := range p.refVars {
-			if r.FromDatabase != nil {
-				if databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == "connectionPoolString" && !databasePoolers[r.FromDatabase.Name] {
-					return parsedStack{}, poolerRequiredError(svc.req.Name, r.FromDatabase.Name)
-				}
-				svc.databaseRefs = append(svc.databaseRefs, r)
-				continue
-			}
-			if r.FromService != nil && isKeyValueType(r.FromService.Type) {
-				svc.kvRefs = append(svc.kvRefs, r)
-				continue
-			}
-			// One target-existence check for every remaining fromService form
-			// (host/hostport/port/envVarKey), so the message lives in one place.
-			allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == serviceRefPropertyHost
-			if r.FromService != nil && !names[r.FromService.Name] && !allowExistingServiceHost {
-				return parsedStack{}, fmt.Errorf("%w: service %q: fromService references unknown service %q (declare it under services: in the same file)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
-			}
-			// host/hostport inject the sibling's slug — minted at create (w4/m19),
-			// so resolution is deferred to apply like databaseRefs above.
-			// Addressability is validated here, all-or-nothing; the port half is
-			// already known and resolved into the ref now.
-			if r.FromService != nil && r.FromService.EnvVarKey == "" &&
-				(r.FromService.Property == serviceRefPropertyHost || r.FromService.Property == serviceRefPropertyHostPort) {
-				port, addressable := servicePorts[r.FromService.Name]
-				if !addressable && r.FromService.Property == serviceRefPropertyHost && names[r.FromService.Name] {
-					return parsedStack{}, fmt.Errorf("%w: service %q: fromService host references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
-				}
-				svc.hostRefs = append(svc.hostRefs, hostRef{
-					key: r.Key, target: r.FromService.Name, port: port,
-					hostport: r.FromService.Property == serviceRefPropertyHostPort,
-				})
-				continue
-			}
-			ev, err := resolveRef(r, servicePorts, serviceKnownEnv)
-			if err != nil {
-				return parsedStack{}, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
-			}
-			svc.req.Env = append(svc.req.Env, ev)
+		svc, err := idx.classifyRefs(p.svc, p.refVars)
+		if err != nil {
+			return parsedStack{}, err
 		}
 		st.services = append(st.services, svc)
 	}
 	return st, nil
+}
+
+// flattenProjectDecls walks Render's canonical projects[].environments[]
+// nesting (validating names and the tri-state toggles) and flattens each
+// environment's services/databases/env groups into the section decl lists,
+// tagged with their grouping key, plus one parsedGrouping per environment.
+func flattenProjectDecls(projects []bexProject, services []decl[bexService], databases []decl[bexDatabase], envGroups []decl[bexEnvGroup]) ([]decl[bexService], []decl[bexDatabase], []decl[bexEnvGroup], []parsedGrouping, error) {
+	var groupings []parsedGrouping
+	projectNames := map[string]bool{}
+	for _, project := range projects {
+		projectName, err := validateUniqueName(project.Name, "projects entry", projectNames)
+		if err != nil {
+			return nil, nil, nil, nil, err
+		}
+		environmentNames := map[string]bool{}
+		for _, environment := range project.Environments {
+			environmentName, err := validateUniqueName(environment.Name, fmt.Sprintf("project %q environment", projectName), environmentNames)
+			if err != nil {
+				return nil, nil, nil, nil, err
+			}
+			if err := validateEnabledDisabled(environment.Networking.Isolation, fmt.Sprintf("project %q environment %q networking.isolation", projectName, environmentName)); err != nil {
+				return nil, nil, nil, nil, err
+			}
+			if err := validateEnabledDisabled(environment.Permissions.Protection, fmt.Sprintf("project %q environment %q permissions.protection", projectName, environmentName)); err != nil {
+				return nil, nil, nil, nil, err
+			}
+			grouping := blueprintGroupingKey(projectName, environmentName)
+			for _, eg := range environment.EnvVarGroups {
+				envGroups = append(envGroups, decl[bexEnvGroup]{value: eg, grouping: grouping})
+			}
+			protectedStatus := core.ProtectedStatusUnprotected
+			if environment.Permissions.Protection == "enabled" {
+				protectedStatus = core.ProtectedStatusProtected
+			}
+			groupings = append(groupings, parsedGrouping{
+				projectName:             projectName,
+				environmentName:         environmentName,
+				networkIsolationEnabled: environment.Networking.Isolation == "enabled",
+				protectedStatus:         protectedStatus,
+			})
+			for _, service := range environment.Services {
+				services = append(services, decl[bexService]{value: service, grouping: grouping})
+			}
+			for _, database := range environment.Databases {
+				databases = append(databases, decl[bexDatabase]{value: database, grouping: grouping})
+			}
+		}
+	}
+	return services, databases, envGroups, groupings, nil
+}
+
+// stackIndex is the cross-declaration lookup state parseCompiledStack's pass 1
+// builds and pass 2's reference classification (classifyRefs) consumes.
+type stackIndex struct {
+	// names is the unique-name index services reference; the services decl
+	// slice includes both regular services and keyvalue resources.
+	names map[string]bool
+	// databaseNames marks the databases declared in this stack;
+	// databasePoolers records whether each declares connectionPool: pgbouncer.
+	databaseNames   map[string]bool
+	databasePoolers map[string]bool
+	// servicePorts: name -> effective port, for services that expose a k8s Service
+	// (web/private only — workers, cron jobs and static sites have no Service, so a
+	// fromService reference to them has no DNS name to resolve). Effective port is
+	// the declared one, or the 3000 default when omitted.
+	servicePorts map[string]int32
+	// serviceKnownEnv: name -> the statically-known env of that service (plain
+	// literals + sync:false seed values), the resolvable target set for a
+	// fromService.envVarKey copy (a from*/generateValue var has no parse-time value).
+	serviceKnownEnv map[string]map[string]string
+}
+
+func newStackIndex(serviceCount, databaseCount int) *stackIndex {
+	return &stackIndex{
+		names:           make(map[string]bool, serviceCount+databaseCount),
+		databaseNames:   make(map[string]bool, databaseCount),
+		databasePoolers: make(map[string]bool, databaseCount),
+		servicePorts:    make(map[string]int32, serviceCount),
+		serviceKnownEnv: make(map[string]map[string]string, serviceCount),
+	}
+}
+
+// classifyRefs resolves one service's deferred reference env vars now that
+// every name, port, and known-env is available. Database references are
+// validated here but retained until apply: only then do we know the immutable
+// dpg-... id that names the CNPG Secret.
+func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (parsedService, error) {
+	for _, r := range refVars {
+		if r.FromDatabase != nil {
+			if idx.databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == "connectionPoolString" && !idx.databasePoolers[r.FromDatabase.Name] {
+				return parsedService{}, poolerRequiredError(svc.req.Name, r.FromDatabase.Name)
+			}
+			svc.databaseRefs = append(svc.databaseRefs, r)
+			continue
+		}
+		if r.FromService != nil && isKeyValueType(r.FromService.Type) {
+			svc.kvRefs = append(svc.kvRefs, r)
+			continue
+		}
+		// One target-existence check for every remaining fromService form
+		// (host/hostport/port/envVarKey), so the message lives in one place.
+		allowExistingServiceHost := r.FromService != nil && r.FromService.EnvVarKey == "" && r.FromService.Property == serviceRefPropertyHost
+		if r.FromService != nil && !idx.names[r.FromService.Name] && !allowExistingServiceHost {
+			return parsedService{}, fmt.Errorf("%w: service %q: fromService references unknown service %q (declare it under services: in the same file)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
+		}
+		// host/hostport inject the sibling's slug — minted at create (w4/m19),
+		// so resolution is deferred to apply like databaseRefs above.
+		// Addressability is validated here, all-or-nothing; the port half is
+		// already known and resolved into the ref now.
+		if r.FromService != nil && r.FromService.EnvVarKey == "" &&
+			(r.FromService.Property == serviceRefPropertyHost || r.FromService.Property == serviceRefPropertyHostPort) {
+			port, addressable := idx.servicePorts[r.FromService.Name]
+			if !addressable && r.FromService.Property == serviceRefPropertyHost && idx.names[r.FromService.Name] {
+				return parsedService{}, fmt.Errorf("%w: service %q: fromService host references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, svc.req.Name, r.FromService.Name)
+			}
+			svc.hostRefs = append(svc.hostRefs, hostRef{
+				key: r.Key, target: r.FromService.Name, port: port,
+				hostport: r.FromService.Property == serviceRefPropertyHostPort,
+			})
+			continue
+		}
+		ev, err := resolveRef(r, idx.servicePorts, idx.serviceKnownEnv)
+		if err != nil {
+			return parsedService{}, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
+		}
+		svc.req.Env = append(svc.req.Env, ev)
+	}
+	return svc, nil
 }
 
 // decodeCompiledBlueprintManifest is a temporary typed-adapter boundary for
@@ -1531,53 +1613,9 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		}
 	}
 
-	// Classify each env var (all-or-nothing: a bad form rejects the whole apply).
-	// A keyless {fromGroup} links a whole group. Plain literals (sync unset/true)
-	// ride spec.Env and re-sync each apply. sync:false + generateValue seed the
-	// mutable env store once — never spec.Env — so a dashboard edit wins and a
-	// later sync neither overwrites nor re-mints. fromDatabase/fromService are
-	// resolved in pass 2 once every name is known.
-	se := serviceEnv{seedLiterals: map[string]string{}, known: map[string]string{}}
-	literal := make([]appv1alpha1.EnvVar, 0, len(a.EnvVars))
-	for _, e := range a.EnvVars {
-		if e.FromGroup != "" {
-			if err := validateGroupLink(e); err != nil {
-				return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: %s: %v", core.ErrBadRequest, a.Name, err)
-			}
-			se.groupLinks = append(se.groupLinks, e.FromGroup)
-			continue
-		}
-		if err := validateKeyedEnv(e); err != nil {
-			return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: %s env %q: %v", core.ErrBadRequest, a.Name, e.Key, err)
-		}
-		switch {
-		case e.FromDatabase != nil, e.FromService != nil:
-			se.refVars = append(se.refVars, e)
-		case e.GenerateValue:
-			se.seedGenerates = append(se.seedGenerates, e.Key)
-		case e.Sync != nil && !*e.Sync:
-			// A literal seeds immediately; an omitted value is a create-time prompt
-			// that DeployRequest.EnvVarValues may seed exactly once.
-			if e.Value != "" {
-				se.seedLiterals[e.Key] = e.Value
-				se.known[e.Key] = e.Value
-			} else {
-				se.promptKeys = append(se.promptKeys, e.Key)
-				if value, ok := overrides.envVarValues[e.Key]; ok {
-					se.seedLiterals[e.Key] = value
-					se.known[e.Key] = value
-				}
-			}
-		default:
-			literal = append(literal, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
-			se.known[e.Key] = e.Value
-		}
-	}
-	if len(literal) == 0 {
-		literal = nil
-	}
-	if len(se.seedLiterals) == 0 {
-		se.seedLiterals = nil
+	literal, se, err := classifyServiceEnv(overrides, a)
+	if err != nil {
+		return CreateRequest{}, serviceEnv{}, err
 	}
 	allowList, err := manifestAllowEntries(a.IPAllowList, "service", a.Name)
 	if err != nil {
@@ -1616,6 +1654,59 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		Routes:                  a.Routes,
 		Headers:                 a.Headers,
 	}, se, nil
+}
+
+// classifyServiceEnv classifies each env var of one services[] entry
+// (all-or-nothing: a bad form rejects the whole apply). A keyless {fromGroup}
+// links a whole group. Plain literals (sync unset/true) ride spec.Env and
+// re-sync each apply. sync:false + generateValue seed the mutable env store
+// once — never spec.Env — so a dashboard edit wins and a later sync neither
+// overwrites nor re-mints. fromDatabase/fromService are resolved in pass 2 once
+// every name is known.
+func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv1alpha1.EnvVar, serviceEnv, error) {
+	se := serviceEnv{seedLiterals: map[string]string{}, known: map[string]string{}}
+	literal := make([]appv1alpha1.EnvVar, 0, len(a.EnvVars))
+	for _, e := range a.EnvVars {
+		if e.FromGroup != "" {
+			if err := validateGroupLink(e); err != nil {
+				return nil, serviceEnv{}, fmt.Errorf("%w: %s: %v", core.ErrBadRequest, a.Name, err)
+			}
+			se.groupLinks = append(se.groupLinks, e.FromGroup)
+			continue
+		}
+		if err := validateKeyedEnv(e); err != nil {
+			return nil, serviceEnv{}, fmt.Errorf("%w: %s env %q: %v", core.ErrBadRequest, a.Name, e.Key, err)
+		}
+		switch {
+		case e.FromDatabase != nil, e.FromService != nil:
+			se.refVars = append(se.refVars, e)
+		case e.GenerateValue:
+			se.seedGenerates = append(se.seedGenerates, e.Key)
+		case e.Sync != nil && !*e.Sync:
+			// A literal seeds immediately; an omitted value is a create-time prompt
+			// that DeployRequest.EnvVarValues may seed exactly once.
+			if e.Value != "" {
+				se.seedLiterals[e.Key] = e.Value
+				se.known[e.Key] = e.Value
+			} else {
+				se.promptKeys = append(se.promptKeys, e.Key)
+				if value, ok := overrides.envVarValues[e.Key]; ok {
+					se.seedLiterals[e.Key] = value
+					se.known[e.Key] = value
+				}
+			}
+		default:
+			literal = append(literal, appv1alpha1.EnvVar{Name: e.Key, Value: e.Value})
+			se.known[e.Key] = e.Value
+		}
+	}
+	if len(literal) == 0 {
+		literal = nil
+	}
+	if len(se.seedLiterals) == 0 {
+		se.seedLiterals = nil
+	}
+	return literal, se, nil
 }
 
 // scalingToAutoscalingRequest converts a render.yaml scaling block into the
@@ -1761,17 +1852,11 @@ func parseKeyValue(k bexService) (parsedKeyValue, error) {
 // "key-value") keys the per-entry error wording. Zero entries yield nil — the
 // parseKeyValue call site restores its non-nil empty slice.
 func parseBlueprintIPAllowList(label, name string, entries []bexIPEntry) ([]appv1alpha1.IPAllowEntry, error) {
-	var allow []appv1alpha1.IPAllowEntry
-	for _, e := range entries {
-		if e.Source == "" {
-			return nil, fmt.Errorf("%w: %s %q has an ipAllowList entry without a source", core.ErrBadRequest, label, name)
-		}
-		if err := core.ValidateCIDRs([]string{e.Source}); err != nil {
-			return nil, fmt.Errorf("%w: %s %q ipAllowList: %v", core.ErrBadRequest, label, name, err)
-		}
-		allow = append(allow, appv1alpha1.IPAllowEntry{CIDR: e.Source, Description: e.Description})
+	allow, err := manifestAllowEntries(entries, label, name)
+	if err != nil {
+		return nil, err
 	}
-	return allow, nil
+	return core.AllowListToSpec(allow), nil
 }
 
 // validateGroupLink checks a keyless {fromGroup: <name>} entry: it links a whole
@@ -1978,21 +2063,7 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	if effectiveType(existing.Spec.Type) != effectiveType(desired.Type) {
 		return AppView{}, fmt.Errorf("%w: spec.type is immutable; delete and recreate the service to change type", core.ErrBadRequest)
 	}
-	// initialDeployHook ran-once gate (w2/m45): once the ran-once annotation is
-	// set, desired.PreDeployCommand stays the regular one from req.
-	markHookRan := false
-	if req.InitialDeployHook != "" && existing.Annotations[initialDeployHookRanAnnotation] == "" {
-		if pd := existing.Status.PreDeploy; pd != nil && pd.Status == appv1alpha1.PreDeploySucceeded {
-			// First pre-deploy just succeeded: mark ran, revert to regular command.
-			markHookRan = true
-		} else {
-			// Hook still pending: keep it as the preDeployCommand.
-			desired.PreDeployCommand = req.InitialDeployHook
-		}
-	}
-	initialHookChanged := req.InitialDeployHook != "" &&
-		existing.Annotations[initialDeployHookRanAnnotation] == "" &&
-		existing.Annotations[initialDeployHookAnnotation] != req.InitialDeployHook
+	markHookRan, initialHookChanged := initialDeployHookState(req, existing, &desired)
 	final := existing.DeepCopy()
 	applyBlueprintServiceSpec(&final.Spec, desired, fields)
 	if final.Spec.MaintenanceMode != nil {
@@ -2055,29 +2126,8 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, initialDeployHookAnnotation, req.InitialDeployHook)
 	}
 	if environmentChanged {
-		if assignment.ID == "" {
-			delete(existing.Labels, core.LabelProject)
-			delete(existing.Labels, core.LabelEnvironment)
-			delete(existing.Labels, core.LabelNetworkIsolation)
-			// Leaving the environment sheds its inbound-IP layer (w4/m28).
-			existing.Spec.EnvironmentIPAllowList = nil
-		} else {
-			// Joining (or switching) inherits the environment's labels +
-			// inbound-IP layer (w4/m28); the delete covers switching to an
-			// environment without isolation, which the stamp leaves alone.
-			delete(existing.Labels, core.LabelNetworkIsolation)
-			stampEnvironmentMembership(existing, assignment)
-		}
-		if appID := managedAppID(existing); appID != "" {
-			environmentStore, ok := s.Store.(interface {
-				SetAppEnvironment(context.Context, string, string, string) error
-			})
-			if !ok {
-				return AppView{}, core.ErrWorkspacesUnavailable
-			}
-			if err := environmentStore.SetAppEnvironment(ctx, appID, assignment.ProjectID, assignment.ID); err != nil {
-				return AppView{}, fmt.Errorf("assigning Blueprint environment: %w", err)
-			}
+		if err := s.applyEnvironmentChange(ctx, existing, assignment); err != nil {
+			return AppView{}, err
 		}
 	}
 	if deploySpecChanged && s.Store != nil {
@@ -2113,6 +2163,56 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 		return s.ConfigureMaintenanceMode(ctx, req.Name, maintenanceModeView(final.Spec.MaintenanceMode))
 	}
 	return s.view(existing), nil
+}
+
+// initialDeployHookState is the initialDeployHook ran-once gate (w2/m45) for an
+// existing service: once the ran-once annotation is set, desired.PreDeployCommand
+// stays the regular one from req. markHookRan reports the first pre-deploy just
+// succeeded (mark ran, revert to the regular command); a still-pending hook is
+// kept as desired.PreDeployCommand instead. hookChanged reports a not-yet-ran
+// hook whose command differs from the recorded annotation.
+func initialDeployHookState(req CreateRequest, existing *appv1alpha1.App, desired *appv1alpha1.AppSpec) (markHookRan, hookChanged bool) {
+	if req.InitialDeployHook != "" && existing.Annotations[initialDeployHookRanAnnotation] == "" {
+		if pd := existing.Status.PreDeploy; pd != nil && pd.Status == appv1alpha1.PreDeploySucceeded {
+			// First pre-deploy just succeeded: mark ran, revert to regular command.
+			markHookRan = true
+		} else {
+			// Hook still pending: keep it as the preDeployCommand.
+			desired.PreDeployCommand = req.InitialDeployHook
+		}
+	}
+	hookChanged = req.InitialDeployHook != "" &&
+		existing.Annotations[initialDeployHookRanAnnotation] == "" &&
+		existing.Annotations[initialDeployHookAnnotation] != req.InitialDeployHook
+	return markHookRan, hookChanged
+}
+
+// applyEnvironmentChange applies the environment half of a Blueprint re-apply
+// onto the App's labels/spec and records the assignment on its store row.
+func (s *Service) applyEnvironmentChange(ctx context.Context, existing *appv1alpha1.App, assignment core.EnvironmentAssignment) error {
+	if assignment.ID == "" {
+		delete(existing.Labels, core.LabelProject)
+		delete(existing.Labels, core.LabelEnvironment)
+		delete(existing.Labels, core.LabelNetworkIsolation)
+		// Leaving the environment sheds its inbound-IP layer (w4/m28).
+		existing.Spec.EnvironmentIPAllowList = nil
+	} else {
+		// Joining (or switching) inherits the environment's labels +
+		// inbound-IP layer (w4/m28); the delete covers switching to an
+		// environment without isolation, which the stamp leaves alone.
+		delete(existing.Labels, core.LabelNetworkIsolation)
+		stampEnvironmentMembership(existing, assignment)
+	}
+	if appID := managedAppID(existing); appID != "" {
+		environmentStore, ok := s.Store.(EnvironmentAssigner)
+		if !ok {
+			return core.ErrWorkspacesUnavailable
+		}
+		if err := environmentStore.SetAppEnvironment(ctx, appID, assignment.ProjectID, assignment.ID); err != nil {
+			return fmt.Errorf("assigning Blueprint environment: %w", err)
+		}
+	}
+	return nil
 }
 
 func createOwnedSpecChangedOnlyByMaintenance(cur, want appv1alpha1.AppSpec) bool {

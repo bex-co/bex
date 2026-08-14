@@ -1432,10 +1432,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		now := time.Now().UTC()
 		if lastActiveTime(app).IsZero() {
 			base := app.DeepCopy()
-			if app.Annotations == nil {
-				app.Annotations = map[string]string{}
-			}
-			app.Annotations[annotLastActive] = now.Format(time.RFC3339)
+			metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotLastActive, now.Format(time.RFC3339))
 			if err := r.Patch(ctx, app, client.MergeFrom(base)); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -3435,10 +3432,7 @@ func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *ap
 			errs = append(errs, fmt.Errorf("delete registry images: %w", registryErr))
 		} else if done {
 			before := client.MergeFrom(app.DeepCopy())
-			if app.Annotations == nil {
-				app.Annotations = map[string]string{}
-			}
-			app.Annotations[annotRegistryPurgeComplete] = "true"
+			metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotRegistryPurgeComplete, "true")
 			if patchErr := r.Patch(ctx, app, before); patchErr != nil {
 				errs = append(errs, fmt.Errorf("record registry purge completion: %w", patchErr))
 			}
@@ -3540,10 +3534,7 @@ func (r *AppReconciler) recordTLSSecretHistory(ctx context.Context, app *appv1al
 		return err
 	}
 	before := client.MergeFrom(app.DeepCopy())
-	if app.Annotations == nil {
-		app.Annotations = map[string]string{}
-	}
-	app.Annotations[annotTLSSecretHistory] = string(raw)
+	metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotTLSSecretHistory, string(raw))
 	return r.Patch(ctx, app, before)
 }
 

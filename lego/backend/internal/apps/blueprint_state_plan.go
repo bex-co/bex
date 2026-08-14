@@ -72,8 +72,8 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		}
 		resolver.services[app.Name] = app
 	}
-	var databases appv1alpha1.DatabaseList
-	if err := s.Client.List(ctx, &databases, s.DatastoreListOptions(tenantID)...); err != nil {
+	databases, err := s.listWorkspaceDatabases(ctx, tenantID)
+	if err != nil {
 		return nil, err
 	}
 	for i := range databases.Items {
@@ -86,8 +86,8 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		}
 		resolver.databases[database.Spec.Name] = database
 	}
-	var keyValues appv1alpha1.KeyValueList
-	if err := s.Client.List(ctx, &keyValues, s.DatastoreListOptions(tenantID)...); err != nil {
+	keyValues, err := s.listWorkspaceKeyValues(ctx, tenantID)
+	if err != nil {
 		return nil, err
 	}
 	for i := range keyValues.Items {
