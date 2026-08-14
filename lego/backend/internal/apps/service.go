@@ -1594,14 +1594,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	a.Namespace = s.AppNamespace(tenantID)
 	a.Spec = desired
 	stampEnvironmentMembership(a, environment)
-	// rollbackStoreRow=true: the source-of-truth row is written before the CR
-	// so the CR can be stamped with the row id and its initial deploy history
-	// exists as soon as create succeeds; if any later step fails, remove that
-	// row again — otherwise the projector can resurrect a service the API
-	// reported as failed, potentially from the store's narrower projection of
-	// the desired spec (for example after a stale CRD rejects a newly added
-	// field).
-	return s.materializeNewApp(ctx, req, a, tenantID, environment, true)
+	return s.materializeNewApp(ctx, req, a, tenantID, environment)
 }
 
 // nameTaken reports whether name is already claimed in the exactly-one
@@ -1681,9 +1674,7 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		}
 		a.Annotations[initialDeployHookAnnotation] = req.InitialDeployHook
 	}
-	// rollbackStoreRow=false: the stack path keeps its historical no-rollback
-	// behavior — its idempotent upsert re-converges on the next apply instead.
-	return s.materializeNewApp(ctx, req, a, tenantID, environment, false)
+	return s.materializeNewApp(ctx, req, a, tenantID, environment)
 }
 
 // materializeNewApp is the shared write tail of create and createNewApp, run
@@ -1694,13 +1685,19 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 // create that slips past them still surfaces as ErrConflict here, never an
 // unclassified 500) and the managed-by/app-id/workspace/slug stamps — then the
 // LabelAppID fallback mint for a store-less create, the clone + external-
-// registry pull Secrets, and Touch → writeNewApp → Kick → view. When
-// rollbackStoreRowOnFailure is set, a failure after the row write deletes the
-// created row again (see create's rationale); createNewApp passes false.
-func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, environment core.EnvironmentAssignment, rollbackStoreRowOnFailure bool) (AppView, error) {
+// registry pull Secrets, and Touch → writeNewApp → Kick → view.
+//
+// The source-of-truth row is written before the CR so the CR can be stamped
+// with the row id and its initial deploy history exists as soon as create
+// succeeds; if any later step fails, remove that row again — otherwise the
+// projector can resurrect a service the API reported as failed, potentially
+// from the store's narrower projection of the desired spec (for example after
+// a stale CRD rejects a newly added field). That applies to the stack path
+// too: "the next apply re-converges" only helps if a next apply ever comes.
+func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, environment core.EnvironmentAssignment) (AppView, error) {
 	var createdRowID string
 	rollbackStoreRow := func(cause error) error {
-		if !rollbackStoreRowOnFailure || createdRowID == "" || s.Store == nil {
+		if createdRowID == "" || s.Store == nil {
 			return cause
 		}
 		if err := s.Store.DeleteApp(ctx, createdRowID); err != nil && !errors.Is(err, store.ErrNotFound) {
@@ -2074,17 +2071,8 @@ func validateCreateSource(req CreateRequest) error {
 		return fmt.Errorf("%w: one of repo or image is required", core.ErrBadRequest)
 	}
 	if req.Image != "" {
-		declared := map[string]bool{
-			"repo":           req.Repo != "",
-			"branch":         req.Branch != "",
-			"rootDirectory":  req.RootDir != "",
-			"buildFilter":    req.BuildFilter != nil,
-			"buildCommand":   req.BuildCommand != "",
-			"dockerfilePath": req.DockerfilePath != "",
-			"autoDeploy":     req.AutoDeploy != nil,
-		}
 		for _, sourceField := range prebuiltImageSourceFields {
-			if sourceField.createName != "" && declared[sourceField.createName] {
+			if sourceField.declaredInCreate != nil && sourceField.declaredInCreate(req) {
 				return fmt.Errorf("%w: %s", core.ErrBadRequest, prebuiltImageSourceFieldMessage(sourceField.createName))
 			}
 		}
