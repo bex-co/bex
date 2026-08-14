@@ -1,6 +1,6 @@
 # w1 · m68 — Security-scan round 5: executable-selection relations, deployed-config gaps, activation
 
-**Worker:** worker1 **Goal:** the five confirmed Tier-1 findings of the 2026-08-10 round-5 scan are closed at root cause, and the two controls whose mechanism m66/m67 already shipped stop being inert in production. **Status:** in progress — all code complete and green; **3 operator activations pending** (t003 deploy, t006 host-key capture, t007 flag flip)
+**Worker:** worker1 **Goal:** the five confirmed Tier-1 findings of the 2026-08-10 round-5 scan are closed at root cause, and the two controls whose mechanism m66/m67 already shipped stop being inert in production. **Status:** in progress — t003 + t006 activated 2026-08-13 (CIDRs live in prod, host-key pin captured/verified/pushed + mandatory mode asserted); **t007 flag flip shipping** (rollout verification pending), then t011 closeout
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | ---- | --------------------------------------------------------------------------------- | --- | ---------------- |
 | t001 | Executable selection requires `can_create` on the four missed verbs (F2)           | 60m | — — **DONE**     |
 | t002 | Postgres logging parameters are not a contributor-writable sensitive gate (F7)     | 45m | t001 — **DONE**  |
-| t003 | Deploy `BEX_TRUSTED_PROXY_CIDRS` so m67's failure bucket keys on the client (F8)   | 30m | — — _manifest + guard done; **deploy pending**_ |
+| t003 | Deploy `BEX_TRUSTED_PROXY_CIDRS` so m67's failure bucket keys on the client (F8)   | 30m | — — **DONE** (live in prod 2026-08-13) |
 | t004 | Postgres `Recover` enforces the paid-resource billing gates (F5)                   | 30m | — — **DONE**     |
 | t005 | Bound the KeyValue backup work volume + ephemeral storage (F10)                    | 30m | — — **DONE**     |
-| t006 | Wire the known-hosts pin into the OpenBao restore drill + capture it (F3)          | 40m | — — _wiring + guard done; **capture pending**_ |
+| t006 | Wire the known-hosts pin into the OpenBao restore drill + capture it (F3)          | 40m | — — **DONE** (captured + mandatory 2026-08-13) |
 | t007 | Activate `BEX_OAUTH_REQUIRE_AUDIENCE` after re-stamping the platform clients (F1)  | 30m | — — _warning + docs done; **flip pending**_ |
 | t008 | Render parity                                                                      | 30m | t001, t002, t004 — **DONE** |
 | t009 | Simplify                                                                           | 20m | t008 — **DONE**  |

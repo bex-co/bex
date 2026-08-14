@@ -111,16 +111,15 @@ spec:
             # `bex.co/platform-client`, stamped by scripts/auth-bootstrap-client.sh).
             # Without it, a consented token from ANY self-registered client
             # authorizes the human's full workspace rights here — a cross-tenant
-            # escalation. The narrowed check is implemented and bex-api warns
-            # loudly on every start while this is off.
-            # ACTIVATION (docs/ADR012-auth.md §7) — an OPERATOR step, deliberately
-            # NOT flipped autonomously: run scripts/auth-bootstrap-client.sh FIRST
-            # so the official Render CLI + bex-mobile clients carry the marker,
-            # THEN set this to "1". The reverse order 401s their legitimately
-            # audience-less device-flow logins, so it stays "0" until the marker
-            # is confirmed stamped in this environment.
+            # escalation.
+            # ACTIVATED 2026-08-13 (w1/m68 t007, docs/ADR012-auth.md §7) after
+            # verifying the LIVE Hydra records for the official Render CLI and
+            # bex-mobile clients both carry the marker. Flipping back to "0"
+            # reopens the audience-less-token escalation; only do so if the
+            # platform clients lose the marker (their legitimately audience-less
+            # device-flow logins would otherwise be refused).
             - name: BEX_OAUTH_REQUIRE_AUDIENCE
-              value: "0"
+              value: "1"
             - name: BEX_PROM_URL # Prometheus scraping Traefik => request metrics
               value: http://prometheus-server.monitoring.svc.cluster.local
             - name: BEX_LOKI_URL # Loki (log-shipper DaemonSet) => durable log history

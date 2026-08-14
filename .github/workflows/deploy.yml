@@ -487,17 +487,19 @@ jobs:
           install -m700 -d ~/.ssh
           printf '%s\n' "${{ secrets.BEX_SSH_PRIVATE_KEY }}" > ~/.ssh/id_bex
           chmod 600 ~/.ssh/id_bex
-          # Authenticate the control-plane host key when the operator has
-          # provisioned it (w1/m66 F7): with the pin present the fetch fails
-          # closed on an unknown/changed key instead of trusting it on first use
-          # and handing every later step an attacker-supplied admin.conf. Absent
-          # (until the secret is set) the run is byte-identical to before.
+          # Authenticate the control-plane host key (w1/m66 F7): the pin makes
+          # the fetch fail closed on an unknown/changed key instead of trusting
+          # it on first use and handing every later step an attacker-supplied
+          # admin.conf.
           #
-          # codex F10: the ssh-hostkey helper now supports BEX_SSH_REQUIRE_KNOWN_HOSTS=1
-          # to make a MISSING pin fail closed (mandatory-pin mode). It is NOT set
-          # here yet — the BEX_SSH_KNOWN_HOSTS secret is not provisioned in CI, so
-          # asserting it would abort every deploy. Provision that secret out of
-          # band (docs/ADR019-infra-credentials.md), then set the flag to enforce.
+          # codex F10 / w1/m68 t006: BEX_SSH_REQUIRE_KNOWN_HOSTS=1 asserts
+          # mandatory-pin mode — the BEX_SSH_KNOWN_HOSTS secret was captured and
+          # provisioned 2026-08-13 (fingerprints verified out of band via the
+          # cluster-private network, docs/ADR019-infra-credentials.md), so a
+          # missing/empty pin now aborts the run rather than silently reverting
+          # to trust-on-first-use. Re-capture on control-plane template rotation
+          # (ADR053) BEFORE the rotation's first deploy, or that deploy aborts here.
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
           if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
             printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > ~/.ssh/bex_known_hosts
             chmod 600 ~/.ssh/bex_known_hosts
