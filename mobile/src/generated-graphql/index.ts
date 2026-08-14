@@ -7,7 +7,6 @@ export type AgentSessionConfigInput = {
   agent: string;
   model?: string | null | undefined;
   modelEndpoint?: string | null | undefined;
-  openPr?: boolean | null | undefined;
   task: string;
   template?: string | null | undefined;
 };
