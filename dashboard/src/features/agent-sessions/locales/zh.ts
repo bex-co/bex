@@ -227,15 +227,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
       "除模型端点和内置软件包镜像源之外，沙箱可访问的额外公共主机名（最多 32 个）。",
     description: "Composer (advanced) — egress allowlist field helper text",
   },
-  "agentSessions.openPrLabel": {
-    message: "创建草稿 Pull Request",
-    description: "Composer (advanced) — draft-PR opt-in toggle label",
-  },
-  "agentSessions.openPrHint": {
-    message:
-      "默认关闭。智能体始终会推送 bex-agent/* 分支；开启后会在会话结束时额外创建一个草稿 PR。",
-    description: "Composer (advanced) — draft-PR opt-in helper text",
-  },
   "agentSessions.egressTooMany": {
     message: "主机名过多——允许列表最多支持 32 个条目。",
     description: "Composer — validation error when more than 32 egress entries",

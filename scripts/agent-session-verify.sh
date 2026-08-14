@@ -92,18 +92,16 @@ api() {
 }
 
 config_json() {
-  # config_json TASK [OPEN_PR] -> the agentConfig object. Draft-PR delivery is
-  # opt-in since w5/m65: pass "true" for the legs that assert a PR exists.
-  local open_pr="${2:-false}"
-  jq -n --arg agent "$agent" --arg model "$model" --arg endpoint "$model_endpoint" --arg task "$1" --argjson openPr "$open_pr" \
-    '{agent:$agent, task:$task, openPr:$openPr} + (if $model=="" then {} else {model:$model} end) + (if $endpoint=="" then {} else {modelEndpoint:$endpoint} end)'
+  # config_json TASK -> the agentConfig object.
+  jq -n --arg agent "$agent" --arg model "$model" --arg endpoint "$model_endpoint" --arg task "$1" \
+    '{agent:$agent, task:$task} + (if $model=="" then {} else {model:$model} end) + (if $endpoint=="" then {} else {modelEndpoint:$endpoint} end)'
 }
 
 create_session() {
-  # create_session BRANCH TASK [OPEN_PR] -> prints session id (or the raw error body)
-  local br="$1" task="$2" open_pr="${3:-false}"
+  # create_session BRANCH TASK -> prints session id (or the raw error body)
+  local br="$1" task="$2"
   jq -n --arg repo "$BEX_VERIFY_REPO" --arg branch "$br" \
-        --arg owner "$owner_id" --argjson config "$(config_json "$task" "$open_pr")" \
+        --arg owner "$owner_id" --argjson config "$(config_json "$task")" \
      '{repo:$repo, branch:$branch, agentConfig:$config} + (if $owner=="" then {} else {ownerId:$owner} end)' \
     | api POST "/v1/agent-sessions" "$(cat -)"
 }
@@ -127,11 +125,9 @@ echo "== agent-session live verify =="
 echo "   repo=${BEX_VERIFY_REPO} agent=${agent} branch=${branch} egress-profile=${egress_profile}"
 
 # ---------------------------------------------------------------------------
-# 1. Happy path: create (asking for a PR) -> completed -> draft PR + evidence.
-#    The PR is opt-in (w5/m65), so this leg passes openPr=true; leg 1b covers
-#    the default, which delivers the branch and opens nothing.
+# 1. Happy path: create -> completed -> draft PR + evidence.
 # ---------------------------------------------------------------------------
-resp="$(create_session "$branch" "Add a file named VERIFY-${stamp}.md describing this run, then commit it." true)"
+resp="$(create_session "$branch" "Add a file named VERIFY-${stamp}.md describing this run, then commit it.")"
 sid="$(jq -r '.id // empty' <<<"$resp")"
 [ -n "$sid" ] || fail "create returned no session id: $resp"
 created_sessions+=("$sid")
@@ -155,26 +151,6 @@ if [ -n "${BEX_GITHUB_TOKEN:-}" ]; then
   [ "$draft" = true ] || fail "GitHub reports PR #${pr_number} is not a draft"
   ok "GitHub confirms PR #${pr_number} is a draft"
 fi
-
-# ---------------------------------------------------------------------------
-# 1b. The DEFAULT (w5/m65): a session that never asked for a pull request
-#     delivers its pushed branch and opens nothing on the repository. This is
-#     the shape almost every real session has, so it is verified explicitly —
-#     an unwanted PR cannot be un-opened.
-# ---------------------------------------------------------------------------
-nopr_branch="bex-agent/verify-nopr-${stamp}"
-nopr_resp="$(create_session "$nopr_branch" "Add a file named NOPR-${stamp}.md describing this run, then commit it.")"
-nopr_sid="$(jq -r '.id // empty' <<<"$nopr_resp")"
-[ -n "$nopr_sid" ] || fail "default-delivery create returned no session id: $nopr_resp"
-created_sessions+=("$nopr_sid")
-nopr_final="$(poll_terminal "$nopr_sid")"
-[ "$(jq -r '.phase' <<<"$nopr_final")" = completed ] \
-  || fail "default-delivery session did not complete: $(jq -c '{phase,failureReason}' <<<"$nopr_final")"
-[ -n "$(jq -r '.headSha // empty' <<<"$nopr_final")" ] \
-  || fail "default-delivery session recorded no headSha (the branch IS the delivery)"
-[ -z "$(jq -r '.prUrl // empty' <<<"$nopr_final")" ] \
-  || fail "default-delivery session opened a PR nobody asked for: $(jq -r '.prUrl' <<<"$nopr_final")"
-ok "default session delivered branch ${nopr_branch} with no pull request"
 
 # ---------------------------------------------------------------------------
 # 2. Steering: a new prompt turn produces a follow-up commit on the same branch.

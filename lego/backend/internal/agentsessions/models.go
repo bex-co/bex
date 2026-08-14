@@ -63,24 +63,16 @@ type Evidence struct {
 	Truncated    bool     `json:"truncated,omitempty"`
 }
 
-// AgentConfig is the stable cross-surface per-session contract. Agent selects
-// the installed ACP adapter, Model is passed to that driver, Task is the initial
+// AgentConfig is the stable cross-surface driver contract. Agent selects the
+// installed ACP adapter, Model is passed to that driver, Task is the initial
 // fire-and-forget prompt, and Template selects a platform-registered agent
 // sandbox image (never an arbitrary image supplied by a tenant).
-//
-// OpenPR is the session's delivery choice rather than driver input: the driver
-// always pushes the bex-agent/* branch, and the Completer opens a draft pull
-// request on the tenant's repository only when this was requested at create time
-// (w5/m65). It rides this struct because the config JSON is the one per-session
-// blob persisted verbatim, so the choice survives every later turn — steering
-// re-dispatches against the stored config and never rewrites it.
 type AgentConfig struct {
 	Agent         string `json:"agent"`
 	Model         string `json:"model,omitempty"`
 	ModelEndpoint string `json:"modelEndpoint,omitempty"`
 	Task          string `json:"task"`
 	Template      string `json:"template,omitempty"`
-	OpenPR        bool   `json:"openPr,omitempty"`
 }
 
 // AgentProfile is a selectable, secret-free agent option for the phone composer

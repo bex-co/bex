@@ -2571,7 +2571,6 @@ function resolveGraphQL({ operationName, variables = {} }) {
           modelEndpoint: cfg.modelEndpoint ?? null,
           task: cfg.task ?? "",
           template: cfg.template ?? null,
-          openPr: cfg.openPr ?? false,
         },
         sandboxId: "sbx-created-0001",
         phase: "running",
@@ -2612,22 +2611,19 @@ function resolveGraphQL({ operationName, variables = {} }) {
 // Mock agent sessions (ADR047 D9) so the /agents list renders populated in the
 // offline stub: one per lifecycle phase, mirroring the real m43 E2E shape
 // (completed → draft PR, a steered two-turn session, a running turn, a failed
-// turn with a reason, a canceled one). Stub-only; never a real backend. The two
-// completed sessions opted into a PR (openPr); a default session pushes its
-// branch and opens none (w5/m65).
+// turn with a reason, a canceled one). Stub-only; never a real backend.
 const agoISO = (mins) => new Date(Date.now() - mins * 60_000).toISOString();
 // Sessions created through the stub this process-lifetime (so the create →
 // navigate → detail flow works offline; lost on restart, which is fine).
 const CREATED_AGENT_SESSIONS = [];
 function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
-  const cfg = (task, model = null, openPr = false) => ({
+  const cfg = (task, model = null) => ({
     __typename: "AgentSessionConfig",
     agent: "claude",
     model,
     modelEndpoint: null,
     task,
     template: null,
-    openPr,
   });
   const base = {
     __typename: "AgentSession",
@@ -2649,7 +2645,7 @@ function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
       id: "ags-demo00000000000000006",
       repo: "bex-co/bex-hello-go-live",
       branch: "bex-agent/pr-add-healthcheck",
-      agentConfig: cfg("Add a /healthz endpoint and a unit test.", null, true),
+      agentConfig: cfg("Add a /healthz endpoint and a unit test."),
       phase: "completed",
       status: "completed",
       headSha: "56e215d4e64e30ead0c7dafd096b8fec46c26342",
@@ -2665,11 +2661,7 @@ function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
       id: "ags-demo00000000000000005",
       repo: "bex-co/bex-hello-go-live",
       branch: "bex-agent/verify-live-run",
-      agentConfig: cfg(
-        "Create VERIFY.md, then append a STEERED line.",
-        null,
-        true,
-      ),
+      agentConfig: cfg("Create VERIFY.md, then append a STEERED line."),
       phase: "completed",
       status: "completed",
       headSha: "f327bff2b40951cac1d432e9f198592f5d000da0",

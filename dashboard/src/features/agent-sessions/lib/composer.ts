@@ -25,12 +25,6 @@ export interface ComposerValues {
   modelEndpoint: string;
   /** Raw textarea — one hostname per line (also accepts commas). */
   egress: string;
-  /**
-   * Ask for a draft PR when the session finishes (w5/m65). Off by default: the
-   * agent always pushes its `bex-agent/*` branch, and opening a pull request
-   * writes to the user's repository, so it is an explicit choice.
-   */
-  openPr: boolean;
 }
 
 /** Split the egress textarea into trimmed, non-empty hostnames. */

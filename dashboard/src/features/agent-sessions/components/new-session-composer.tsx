@@ -79,7 +79,6 @@ export function NewSessionComposer() {
       model: "",
       modelEndpoint: "",
       egress: "",
-      openPr: false,
     },
   });
   const {
@@ -139,7 +138,6 @@ export function NewSessionComposer() {
         modelEndpoint: values.modelEndpoint.trim() || undefined,
         task: prompt,
         egressAllowlist,
-        openPr: values.openPr,
       });
       await navigate({
         to: "/agents/$agentSessionId",

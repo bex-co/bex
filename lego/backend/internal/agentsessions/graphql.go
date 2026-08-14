@@ -17,7 +17,6 @@ var agentConfigGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"modelEndpoint": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v AgentConfig) any { return v.ModelEndpoint })},
 		"task":          &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v AgentConfig) any { return v.Task })},
 		"template":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v AgentConfig) any { return v.Template })},
-		"openPr":        &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v AgentConfig) any { return v.OpenPR })},
 	},
 })
 
@@ -29,7 +28,6 @@ var agentConfigGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		"modelEndpoint": &graphql.InputObjectFieldConfig{Type: graphql.String},
 		"task":          &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
 		"template":      &graphql.InputObjectFieldConfig{Type: graphql.String},
-		"openPr":        &graphql.InputObjectFieldConfig{Type: graphql.Boolean},
 	},
 })
 
@@ -125,8 +123,7 @@ func stringArg(args map[string]any, key string) string {
 
 func configArg(args map[string]any) AgentConfig {
 	raw, _ := args["agentConfig"].(map[string]any)
-	openPR, _ := raw["openPr"].(bool)
-	return AgentConfig{Agent: stringArg(raw, "agent"), Model: stringArg(raw, "model"), ModelEndpoint: stringArg(raw, "modelEndpoint"), Task: stringArg(raw, "task"), Template: stringArg(raw, "template"), OpenPR: openPR}
+	return AgentConfig{Agent: stringArg(raw, "agent"), Model: stringArg(raw, "model"), ModelEndpoint: stringArg(raw, "modelEndpoint"), Task: stringArg(raw, "task"), Template: stringArg(raw, "template")}
 }
 
 func (s *Service) GraphQLQuery() graphql.Fields {
