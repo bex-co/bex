@@ -10,10 +10,37 @@ import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
 
+// Cap proxied request bodies (codex-security round-6 #15): these dev tunnels
+// forward credentials and buffer the whole body in memory, so an unbounded
+// read would let anything that can reach the predictable dev port exhaust the
+// dev-server process. 2 MiB matches bex-api's own BEX_MAX_BODY_BYTES default.
+const MAX_PROXY_BODY_BYTES = 2 * 1024 * 1024;
+
+class BodyTooLargeError extends Error {
+  constructor() {
+    super(`request body exceeds ${MAX_PROXY_BODY_BYTES} bytes`);
+  }
+}
+
 function readBody(req: IncomingMessage): Promise<Buffer> {
   return new Promise((resolve, reject) => {
+    const declared = Number(req.headers["content-length"]);
+    if (Number.isFinite(declared) && declared > MAX_PROXY_BODY_BYTES) {
+      reject(new BodyTooLargeError());
+      req.destroy();
+      return;
+    }
     const chunks: Buffer[] = [];
-    req.on("data", (c: Buffer) => chunks.push(c));
+    let total = 0;
+    req.on("data", (c: Buffer) => {
+      total += c.length;
+      if (total > MAX_PROXY_BODY_BYTES) {
+        reject(new BodyTooLargeError());
+        req.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
     req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
@@ -164,7 +191,7 @@ function kratosDevProxy(
           }
           res.end(body);
         })().catch((err: unknown) => {
-          res.statusCode = 502;
+          res.statusCode = err instanceof BodyTooLargeError ? 413 : 502;
           res.end(`kratos-dev-proxy: ${String(err)}`);
         });
       });
@@ -263,7 +290,7 @@ function apiDevProxy(target = "https://api.bex.co/graphql"): Plugin {
             res.destroy();
             return;
           }
-          res.statusCode = 502;
+          res.statusCode = err instanceof BodyTooLargeError ? 413 : 502;
           res.end(`api-dev-proxy: ${String(err)}`);
         });
       });

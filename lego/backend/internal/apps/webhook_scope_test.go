@@ -68,9 +68,31 @@ func TestScopeForConfinesGitHubAppDelivery(t *testing.T) {
 	if scope, proceed := h.scopeFor(context.Background(), keyManual, 7); !proceed || scope != "" {
 		t.Errorf(`manual delivery => (%q,%v), want ("",true)`, scope, proceed)
 	}
-	bare := &GitWebhook{} // resolver unwired => pre-#7 global behavior
+	bare := &GitWebhook{} // resolver unwired, single-tenant => pre-#7 global behavior
 	if scope, proceed := bare.scopeFor(context.Background(), keyGitHubApp, 7); !proceed || scope != "" {
 		t.Errorf(`app delivery without resolver => (%q,%v), want ("",true)`, scope, proceed)
+	}
+}
+
+// TestScopeForFailsClosedInMultitenantPartialConfig pins codex-security
+// round-6 #9: in multitenant operation an app-signed delivery must NEVER fall
+// back to the manual key's global scope — a partial configuration (GitHub
+// webhook secret + store, no GitHub service) or a payload with no installation
+// id acts on nothing instead of scanning and mutating every workspace's Apps.
+func TestScopeForFailsClosedInMultitenantPartialConfig(t *testing.T) {
+	// Resolver unwired (the partial deployment configuration).
+	unwired := &GitWebhook{Multitenant: true}
+	if scope, proceed := unwired.scopeFor(context.Background(), keyGitHubApp, 7); proceed || scope != "" {
+		t.Errorf(`multitenant app delivery without resolver => (%q,%v), want ("",false)`, scope, proceed)
+	}
+	// Resolver wired but the signed payload carries no installation id.
+	wired := &GitWebhook{Multitenant: true, Installations: fakeInstallations{7: "tea-a"}}
+	if scope, proceed := wired.scopeFor(context.Background(), keyGitHubApp, 0); proceed || scope != "" {
+		t.Errorf(`multitenant app delivery without installation id => (%q,%v), want ("",false)`, scope, proceed)
+	}
+	// The confined path still works.
+	if scope, proceed := wired.scopeFor(context.Background(), keyGitHubApp, 7); !proceed || scope != "tea-a" {
+		t.Errorf("multitenant bound app delivery => (%q,%v), want (tea-a,true)", scope, proceed)
 	}
 }
 

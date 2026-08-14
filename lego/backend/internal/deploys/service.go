@@ -230,8 +230,9 @@ func appStoreID(a *appv1alpha1.App) string { return a.Labels[store.LabelAppID] }
 
 // ListFilter is the neutral shape the REST/GraphQL/MCP adapters translate
 // Render's status, exclusive created/updated/finished time bounds, keyset
-// cursor, and limit params into. A zero limit preserves the pre-m31 full-history
-// contract; the store clamps values above core.MaxPageLimit.
+// cursor, and limit params into. A zero limit (absent) is bounded by the
+// store at core.MaxPageLimit, as are values above it (codex-security
+// round-6 #7).
 type ListFilter struct {
 	Statuses       []string
 	CreatedBefore  time.Time
@@ -250,10 +251,10 @@ type ListFilter struct {
 // a REST call and a tool call with the same params cannot page differently.
 // Unlike events' permissive reading, a malformed value is core.ErrBadRequest
 // (400): events falls back to its default window, but deploys has none —
-// silently dropping a bound (or turning a negative limit into "unbounded",
-// which is what the store reads <=0 as) would return the unfiltered history
-// as if it were the filtered one. The upper limit bound is the store's
-// invariant (store.DeployFilter), not re-clamped here.
+// silently dropping a bound (or turning a negative limit into "absent",
+// which the store reads <=0 as) would return the default page as if it were
+// the filtered one. Both limit bounds are the store's invariant
+// (store.DeployFilter), not re-clamped here.
 func FilterOf(statuses []string, createdBefore, createdAfter, updatedBefore, updatedAfter, finishedBefore, finishedAfter, cursor string, limit int) (ListFilter, error) {
 	if limit < 0 {
 		return ListFilter{}, fmt.Errorf("%w: limit must be a positive integer", core.ErrBadRequest)
@@ -296,8 +297,8 @@ func parseTime(name, value string) (time.Time, error) {
 
 // List returns a service's deploy history, newest first (Render's
 // list_deploys / GET .../deploys), narrowed by filter (w2/m31) — a zero
-// ListFilter returns the full history. A hand-applied App has no history: an
-// empty list, not an error.
+// ListFilter returns the newest core.MaxPageLimit page (cursor for the
+// rest). A hand-applied App has no history: an empty list, not an error.
 func (s *Service) List(ctx context.Context, service string, filter ListFilter) ([]DeployView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanView, service)
 	if err != nil {

@@ -162,3 +162,66 @@ func TestGrantAgentSessionWorkspaceWritesFirstClassParentTuple(t *testing.T) {
 		t.Fatalf("tuple = %+v, want %+v", got, want)
 	}
 }
+
+// TestRevokeWorkspaceMemberEvictsCachedPositives pins codex-security round-6
+// #16: revoking a member must evict the subject's cached positive decisions in
+// the same replica — every key for that subject (workspace and derived
+// resource objects alike), and only that subject's.
+func TestRevokeWorkspaceMemberEvictsCachedPositives(t *testing.T) {
+	var hits atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/stores":
+			_, _ = fmt.Fprint(w, `{"stores":[{"id":"store-1","name":"bex"}]}`)
+		case r.Method == http.MethodPost && r.URL.Path == "/stores/store-1/check":
+			hits.Add(1)
+			_, _ = fmt.Fprint(w, `{"allowed":true}`)
+		case r.Method == http.MethodPost && r.URL.Path == "/stores/store-1/write":
+			_, _ = fmt.Fprint(w, `{}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	chk := NewOpenFGAChecker(srv.URL, "")
+	revoker := chk.(interface {
+		RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error
+	})
+	ctx := context.Background()
+
+	// Warm three positives: the revoked subject's workspace + a derived
+	// resource decision, and an unrelated subject's decision.
+	for _, c := range [][2]string{
+		{"user:mallory", "workspace:tea-a"},
+		{"user:mallory", "service:srv-1"},
+		{"user:alice", "workspace:tea-a"},
+	} {
+		if ok, err := chk.Check(ctx, c[0], core.RelCanManage, c[1]); err != nil || !ok {
+			t.Fatalf("warm %v: ok=%v err=%v", c, ok, err)
+		}
+	}
+	if got := hits.Load(); got != 3 {
+		t.Fatalf("warm upstream checks = %d, want 3", got)
+	}
+
+	if err := revoker.RevokeWorkspaceMember(ctx, "tea-a", "user:mallory", "admin"); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+
+	// Both of mallory's decisions must re-consult upstream; alice stays cached.
+	if _, err := chk.Check(ctx, "user:mallory", core.RelCanManage, "workspace:tea-a"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := chk.Check(ctx, "user:mallory", core.RelCanManage, "service:srv-1"); err != nil {
+		t.Fatal(err)
+	}
+	if got := hits.Load(); got != 5 {
+		t.Fatalf("post-revoke upstream checks = %d, want 5 (both of the subject's entries evicted)", got)
+	}
+	if _, err := chk.Check(ctx, "user:alice", core.RelCanManage, "workspace:tea-a"); err != nil {
+		t.Fatal(err)
+	}
+	if got := hits.Load(); got != 5 {
+		t.Fatalf("unrelated subject's cache entry was evicted (checks = %d, want 5)", got)
+	}
+}

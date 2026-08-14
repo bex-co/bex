@@ -198,7 +198,19 @@ func (o *openfgaChecker) GrantAgentSessionWorkspace(ctx context.Context, session
 // through the same path). A tuple that's already gone is not an error to
 // OpenFGA's delete, so a retried revoke/delete is idempotent.
 func (o *openfgaChecker) RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error {
-	return o.writeTuple(ctx, true, tupleKey{User: subject, Relation: relation, Object: "workspace:" + tenantID})
+	if err := o.writeTuple(ctx, true, tupleKey{User: subject, Relation: relation, Object: "workspace:" + tenantID}); err != nil {
+		return err
+	}
+	// Evict every cached positive for the revoked subject (round-6 #16): the
+	// key layout is subject\x00relation\x00object, so the subject prefix covers
+	// the workspace decision AND every resource-scoped decision derived from
+	// the membership. Same-replica revocation is then immediate; other
+	// replicas' caches still drain within PositiveTTL, which is why the
+	// destructive/issuance verbs additionally use CheckFresh.
+	o.cache.DeleteKeyIf(func(key string) bool {
+		return strings.HasPrefix(key, subject+"\x00")
+	})
+	return nil
 }
 
 // store resolves the `bex` store id by name once, deduplicating the lookup

@@ -78,9 +78,10 @@ func toJobList(views []JobView) []jobWithCursor {
 }
 
 // filterFromQuery translates Render's ListJobParams query params into a
-// ListFilter. Absent limit means the full history (the bex default — Render
-// defaults to 20 but bex's explicit design choice is unbounded without a
-// stated limit, same as deploys).
+// ListFilter. Absent limit stays 0 and the store bounds it at
+// core.MaxPageLimit (codex-security round-6 #7 — Render defaults to 20; bex
+// returns the larger newest-first cap and pages with the cursor, same as
+// deploys).
 func filterFromQuery(q http.Header, vals map[string][]string) (ListFilter, error) {
 	_ = q
 	limit := 0

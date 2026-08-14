@@ -61,9 +61,11 @@ type GitWebhook struct {
 	// owns it (the unique installation→workspace binding, w1/m65 F2). When set, a
 	// GitHub-App-signed delivery is CONFINED to that workspace's Apps (codex #7): a
 	// forged app-signed event can then reach only the installation's own
-	// workspace, not another tenant's. Nil, or a manual-key delivery, stays a
-	// global match — the manual secret is a single operator-configured key with no
-	// per-repo binding (per-workspace manual secrets are the follow-up).
+	// workspace, not another tenant's. Nil ⇒ app-signed deliveries fail closed
+	// in multitenant operation (round-6 #9) and stay global single-tenant; a
+	// manual-key delivery is always a global match — the manual secret is a
+	// single operator-configured key with no per-repo binding (per-workspace
+	// manual secrets are the follow-up).
 	Installations InstallationResolver
 	// Multitenant, when true, rejects the shared manual secret (BEX_WEBHOOK_SECRET)
 	// because it carries no per-workspace binding and would authorize cross-tenant
@@ -116,10 +118,23 @@ func (h *GitWebhook) verifyKey(sig string, body []byte) verifiedKey {
 // workspace, so a forged app-signed event can reach only that workspace's Apps.
 // proceed=false means the delivery is validly signed but its installation maps to
 // no workspace (or the lookup failed) — act on nothing rather than fall back to a
-// global match (codex #7).
+// global match (codex #7). In multitenant operation the same fail-closed rule
+// covers a missing resolver or missing installation id (round-6 #9).
 func (h *GitWebhook) scopeFor(ctx context.Context, key verifiedKey, installationID int64) (scope string, proceed bool) {
-	if key != keyGitHubApp || h.Installations == nil || installationID == 0 {
-		return "", true // manual key, resolver unwired, or no installation id → global
+	if key != keyGitHubApp {
+		return "", true // manual key → global (multitenant already rejects it at verify)
+	}
+	if h.Installations == nil || installationID == 0 {
+		// Resolver unwired or the payload carries no installation id. Global
+		// matching is only safe when a single workspace exists: in multitenant
+		// operation the empty scope would scan and mutate every workspace's
+		// Apps, so a partial configuration (GitHub webhook secret + store but
+		// no GitHub service) must fail closed, not fall back to the manual
+		// key's intentionally global scope (codex-security round-6 #9).
+		if h.Multitenant {
+			return "", false
+		}
+		return "", true
 	}
 	ws, ok, err := h.Installations.WorkspaceForInstallation(ctx, installationID)
 	if err != nil || !ok || ws == "" {

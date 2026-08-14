@@ -908,3 +908,34 @@ func TestPlanLimitsAndGuards(t *testing.T) {
 		t.Fatal("hobby should allow admin (the sole member)")
 	}
 }
+
+// staleAllowChecker models the codex-security round-6 #16 window: the cached
+// path (Check) still answers a warm positive while the source of truth
+// (CheckFresh) already says the membership is gone.
+type staleAllowChecker struct{}
+
+func (staleAllowChecker) Check(context.Context, string, string, string) (bool, error) {
+	return true, nil
+}
+
+func (staleAllowChecker) CheckFresh(context.Context, string, string, string) (bool, error) {
+	return false, nil
+}
+
+// TestDelete_UsesFreshAuthorization pins round-6 #16: workspace deletion is
+// destructive and irreversible, so it must consult the authorization source of
+// truth — a just-revoked admin riding a ≤PositiveTTL cached positive is
+// refused, exactly like the membership issuance verbs.
+func TestDelete_UsesFreshAuthorization(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, &fakeRevoker{}, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
+
+	stale := &Service{Base: &core.Base{Authz: staleAllowChecker{}}, Store: st}
+	if err := stale.Delete(ctxAs("user-a"), w.ID, "sudo delete workspace acme"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("cached-positive delete after revocation: want forbidden, got %v", err)
+	}
+	if _, err := st.GetTenant(context.Background(), w.ID); err != nil {
+		t.Fatalf("stale-authorized delete removed the row: %v", err)
+	}
+}

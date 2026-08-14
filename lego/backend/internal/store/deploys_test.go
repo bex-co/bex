@@ -359,8 +359,11 @@ func TestListDeploysLimitClampsToMaxPageLimit(t *testing.T) {
 	if err != nil || len(got) != core.MaxPageLimit {
 		t.Errorf("limit above the cap: got %d rows (err %v), want %d", len(got), err, core.MaxPageLimit)
 	}
-	if got, err := s.ListDeploys(ctx, "srv-1", DeployFilter{}); err != nil || len(got) != core.MaxPageLimit+20 {
-		t.Errorf("no limit stays unbounded: got %d rows (err %v), want %d", len(got), err, core.MaxPageLimit+20)
+	// An omitted limit is bounded too (codex-security round-6 #7): the old
+	// "absent = full history" contract let any viewer of a long-lived service
+	// materialize an unbounded history; callers page with the keyset cursor.
+	if got, err := s.ListDeploys(ctx, "srv-1", DeployFilter{}); err != nil || len(got) != core.MaxPageLimit {
+		t.Errorf("no limit must clamp to the cap: got %d rows (err %v), want %d", len(got), err, core.MaxPageLimit)
 	}
 }
 

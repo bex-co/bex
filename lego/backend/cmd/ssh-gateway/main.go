@@ -184,9 +184,14 @@ func main() {
 	// stream port directly (the sandbox NetworkPolicy admits only gateway
 	// ingress) and tees the UI-message stream into the durable transcript.
 	attach := &agentattach.Server{
-		Secret:         []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
-		Store:          st,
-		Pods:           agentattach.KubePodIPResolver{Client: clientset},
+		Secret: []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
+		Store:  st,
+		Pods:   agentattach.KubePodIPResolver{Client: clientset},
+		// Redemption-time re-check (codex-security round-6 #11): the verified
+		// ticket froze bex-api's mint-time decision; re-run the same relation
+		// (fresh) + turn-phase gate here so revocation/cancellation inside the
+		// ticket's TTL window is effective at the gateway too.
+		Revalidator:    &agentsessions.AttachRevalidator{Base: base, Store: st},
 		DriverPort:     intEnv("BEX_AGENT_SESSION_DRIVER_PORT", 8787),
 		AllowedOrigins: splitCSV(os.Getenv("BEX_API_CORS_ORIGIN")),
 		Metrics:        metrics,
