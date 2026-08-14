@@ -78,6 +78,16 @@ func (o *openfgaChecker) Check(ctx context.Context, subject, relation, object st
 	return v.(bool), nil
 }
 
+// CheckFresh answers a decision straight from OpenFGA, bypassing the positive
+// cache entirely (it neither reads nor populates it). It satisfies
+// core.FreshChecker so an issuance verb can fail closed on a just-revoked
+// membership/key inside the ≤PositiveTTL window a cached Check would still allow
+// (round-5 finding 4). Not singleflighted: issuance is rare, so coalescing buys
+// nothing and would risk sharing a cached-elsewhere positive.
+func (o *openfgaChecker) CheckFresh(ctx context.Context, subject, relation, object string) (bool, error) {
+	return o.checkUpstream(ctx, subject, relation, object)
+}
+
 // checkRequest is OpenFGA's check body (a tagged struct keeps the hot path free
 // of map allocation + key sorting).
 type checkRequest struct {

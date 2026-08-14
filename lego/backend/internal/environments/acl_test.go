@@ -186,6 +186,46 @@ func TestSetACL_RejectsBadCIDR(t *testing.T) {
 	}
 }
 
+// developerChecker allows every relation EXCEPT can_manage — a workspace
+// developer below admin. round-5 finding 12: protected-environment ACL controls
+// (protectedStatus / networkIsolationEnabled / ipAllowList) are admin-classified,
+// so a developer must be refused on the ACL-bearing verbs while still creating
+// and renaming ordinary environments.
+type developerChecker struct{}
+
+func (developerChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
+	return relation != core.RelCanManage, nil
+}
+
+func TestACLMutationsRequireCanManage(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc := &Service{Base: &core.Base{Authz: developerChecker{}}, Store: st}
+
+	// A plain create (no ACL) is allowed for a developer (can_create).
+	e, err := svc.CreateWithACL(ctxAs("user-a"), CreateEnvironmentRequest{ProjectID: "prj-1", Name: "staging"})
+	if err != nil {
+		t.Fatalf("plain create must be allowed for a developer: %v", err)
+	}
+	// SetACL is admin-only.
+	if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusProtected, true, nil); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("SetACL as developer = %v, want ErrForbidden", err)
+	}
+	// A create that ALSO arms an ACL is admin-only (and leaves no environment).
+	if _, err := svc.CreateWithACL(ctxAs("user-a"), CreateEnvironmentRequest{ProjectID: "prj-1", Name: "prod", ProtectedStatus: ProtectedStatusProtected}); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("CreateWithACL(protected) as developer = %v, want ErrForbidden", err)
+	}
+	// The ACL half of Update is admin-only; a rename-only patch stays allowed.
+	protected := ProtectedStatusProtected
+	if _, err := svc.Update(ctxAs("user-a"), e.ID, EnvironmentPatch{ProtectedStatus: &protected}); !errors.Is(err, core.ErrForbidden) {
+		t.Errorf("Update(ACL) as developer = %v, want ErrForbidden", err)
+	}
+	newName := "staging2"
+	if _, err := svc.Update(ctxAs("user-a"), e.ID, EnvironmentPatch{Name: &newName}); err != nil {
+		t.Errorf("rename-only Update as developer must be allowed, got %v", err)
+	}
+}
+
 // --- ipAllowList propagation (t006) ---
 //
 // Reuses fakeDatabaseIndex/fakeKeyValueIndex (databases_test.go, w6/m20) —

@@ -1162,6 +1162,15 @@ func parseLogLine(service, pod, line string) LogEntry {
 	return parseContainerLogLine(service, pod, core.AppContainer, LogTypeApp, line)
 }
 
+// maxLogMessageBytes caps one log record's message (round-5 finding 17). The
+// stream/query scanners accept lines up to ~1 MiB; a tenant workload emitting
+// repeated near-limit lines otherwise flows unbounded into every viewer (the
+// dashboard/mobile clients cap by record COUNT, not bytes). 64 KiB is generous
+// (containerd already splits raw lines at 16 KiB) and bounds every downstream
+// consumer at the source. Truncation trims to a valid-UTF-8 boundary so the
+// marker never rides a split rune.
+const maxLogMessageBytes = 64 * 1024
+
 func parseContainerLogLine(service, pod, container, logType, line string) LogEntry {
 	ts, msg := "", line
 	if i := strings.IndexByte(line, ' '); i > 0 {
@@ -1169,6 +1178,9 @@ func parseContainerLogLine(service, pod, container, logType, line string) LogEnt
 			ts = t.UTC().Format(time.RFC3339Nano)
 			msg = line[i+1:]
 		}
+	}
+	if len(msg) > maxLogMessageBytes {
+		msg = strings.ToValidUTF8(msg[:maxLogMessageBytes], "") + " …[truncated]"
 	}
 	return LogEntry{
 		Timestamp: ts,

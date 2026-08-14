@@ -418,9 +418,13 @@ func buildLabels(o Options) map[string]string {
 	return labels
 }
 
-func cancelActiveKpackImages(ctx context.Context, name, namespace string, cl client.Client) error {
+func cancelActiveKpackImages(ctx context.Context, name, appUID, namespace string, cl client.Client) error {
+	sel := client.MatchingLabels{"app.bex.co/build": name}
+	if appUID != "" { // finding 5: UID-scope (rationale in CancelActiveBuilds)
+		sel[execution.LabelAppUID] = appUID
+	}
 	images := newKpackImageList()
-	if err := cl.List(ctx, images, client.InNamespace(namespace), client.MatchingLabels{"app.bex.co/build": name}); err != nil {
+	if err := cl.List(ctx, images, client.InNamespace(namespace), sel); err != nil {
 		// The Dockerfile path remains usable before kpack is installed.
 		if apierrors.IsNotFound(err) || strings.Contains(err.Error(), "no matches for kind") {
 			return nil

@@ -490,6 +490,15 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 		if err := validateACL(req.ProtectedStatus, req.IPAllowList); err != nil {
 			return EnvironmentView{}, err
 		}
+		// round-5 finding 12: the protected-environment ACL (protectedStatus,
+		// networkIsolationEnabled, ipAllowList) is an admin-classified control
+		// (model.fga: admin — "protected envs"), so a create that ALSO arms an
+		// ACL requires can_manage on the project's own workspace — not just the
+		// can_create a plain environment create takes. Checked before the row is
+		// written so a denied developer leaves no environment behind.
+		if _, err := s.requireProject(ctx, core.RelCanManage, req.ProjectID); err != nil {
+			return EnvironmentView{}, err
+		}
 	}
 	e, err := s.create(ctx, req.ProjectID, req.Name)
 	if err != nil {
@@ -572,6 +581,12 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	}
 	if !hasACL {
 		return s.toFullView(ctx, e)
+	}
+	// round-5 finding 12: an ACL-bearing patch mutates admin-only protected-env
+	// controls, so require can_manage on the environment's own workspace. The
+	// rename half above stays can_create; only the security half is elevated.
+	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(e.TenantID)); err != nil {
+		return EnvironmentView{}, err
 	}
 	status, isolated, allowList := e.ProtectedStatus, e.NetworkIsolationEnabled, e.IPAllowList
 	if status == "" { // pre-ACL-migration rows surface as empty
@@ -885,7 +900,11 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 	if err := validateACL(protectedStatus, ipAllowList); err != nil {
 		return EnvironmentView{}, err
 	}
-	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
+	// round-5 finding 12: SetACL is a pure protected-environment mutation, so
+	// the authoritative resource-workspace gate is can_manage (admin), not the
+	// can_create a developer holds. The coarse default-workspace gate above stays
+	// can_create; requireEnvironment is the binding check against e.TenantID.
+	e, err := s.requireEnvironment(ctx, core.RelCanManage, id)
 	if err != nil {
 		return EnvironmentView{}, err
 	}

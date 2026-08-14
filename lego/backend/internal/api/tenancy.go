@@ -240,9 +240,17 @@ func (t *tenantService) reconcileInviteRole(ctx context.Context, tenantID, subje
 		if other == role {
 			continue
 		}
-		if has, err := checker.Check(ctx, subject, other, "workspace:"+tenantID); err != nil || !has {
-			continue
+		has, err := checker.Check(ctx, subject, other, "workspace:"+tenantID)
+		if err == nil && !has {
+			continue // definitively absent — nothing to revoke
 		}
+		// round-5 finding 16: a Check ERROR must NOT be folded into "role absent".
+		// The old `err != nil || !has` skipped the revoke on a transient OpenFGA
+		// failure, leaving a higher stale role tuple the OR-based model keeps
+		// effective — and this login path has no retry driver. On an indeterminate
+		// check, attempt the revoke anyway: deleting an absent tuple is a no-op
+		// (authz.RevokeWorkspaceMember is idempotent), and a real error surfaces
+		// to the caller instead of being silently swallowed.
 		if err := t.granter.RevokeWorkspaceMember(ctx, tenantID, subject, other); err != nil {
 			return err
 		}

@@ -205,12 +205,19 @@ func activeJob(name string) *batchv1.Job {
 func TestCancelSupersededDeletesOtherActiveRunsButKeepsCurrent(t *testing.T) {
 	ctx := context.Background()
 	old := activeJob("predeploy-api-gen-1")
+	old.Labels["app.bex.co/app-uid"] = "uid-api"
 	cur := activeJob("predeploy-api-gen-2")
+	cur.Labels["app.bex.co/app-uid"] = "uid-api"
 	done := activeJob("predeploy-api-gen-0")
+	done.Labels["app.bex.co/app-uid"] = "uid-api"
 	done.Status.Conditions = []batchv1.JobCondition{{Type: batchv1.JobComplete, Status: corev1.ConditionTrue}}
-	cl := fakeClient(old, cur, done)
+	// round-5 finding 5: same service name in the shared pre-deploy namespace but
+	// a DIFFERENT workspace/UID — this App's cancellation must not interrupt it.
+	foreign := activeJob("predeploy-api-gen-3")
+	foreign.Labels["app.bex.co/app-uid"] = "uid-foreign"
+	cl := fakeClient(old, cur, done, foreign)
 
-	if err := CancelSuperseded(ctx, "api", "builds", "predeploy-api-gen-2", cl); err != nil {
+	if err := CancelSuperseded(ctx, "api", "uid-api", "builds", "predeploy-api-gen-2", cl); err != nil {
 		t.Fatalf("CancelSuperseded: %v", err)
 	}
 
@@ -222,8 +229,12 @@ func TestCancelSupersededDeletesOtherActiveRunsButKeepsCurrent(t *testing.T) {
 	if err := cl.Get(ctx, client.ObjectKeyFromObject(cur), &batchv1.Job{}); err != nil {
 		t.Errorf("current run predeploy-api-gen-2 must be kept: %v", err)
 	}
-	// ...and a finished run is left alone (not active).
+	// ...a finished run is left alone (not active)...
 	if err := cl.Get(ctx, client.ObjectKeyFromObject(done), &batchv1.Job{}); err != nil {
 		t.Errorf("finished run should not be touched: %v", err)
+	}
+	// ...and the foreign-workspace run (different UID) is never touched.
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(foreign), &batchv1.Job{}); err != nil {
+		t.Errorf("foreign-workspace run (different UID) must not be deleted: %v", err)
 	}
 }

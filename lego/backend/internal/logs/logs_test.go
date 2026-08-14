@@ -1059,3 +1059,22 @@ func TestLogLabelValuesHostAndPathForMetricsFilters(t *testing.T) {
 		t.Errorf("path discovery: want ErrBadRequest (not a discoverable label), got %v", err)
 	}
 }
+
+// TestParseContainerLogLineTruncatesHugeMessage pins round-5 finding 17: a
+// near-1MiB log record is truncated at the source so a tenant workload emitting
+// huge lines cannot exhaust every downstream (count-capped) log client.
+func TestParseContainerLogLineTruncatesHugeMessage(t *testing.T) {
+	huge := strings.Repeat("A", maxLogMessageBytes+5000)
+	entry := parseContainerLogLine("web", "web-1", core.AppContainer, LogTypeApp, "2026-08-14T00:00:00Z "+huge)
+	if len(entry.Message) > maxLogMessageBytes+len(" …[truncated]") {
+		t.Fatalf("message not truncated: len=%d", len(entry.Message))
+	}
+	if !strings.HasSuffix(entry.Message, "[truncated]") {
+		t.Errorf("truncated message must carry the marker, got tail %q", entry.Message[max(0, len(entry.Message)-20):])
+	}
+	// A normal line is untouched.
+	short := parseContainerLogLine("web", "web-1", core.AppContainer, LogTypeApp, "2026-08-14T00:00:00Z hello")
+	if short.Message != "hello" {
+		t.Errorf("short message = %q, want hello", short.Message)
+	}
+}

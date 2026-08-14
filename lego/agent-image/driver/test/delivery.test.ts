@@ -89,6 +89,26 @@ test("deliverBranch commits changes and pushes the branch with a head SHA", asyn
   assert.ok(git(remote, ["rev-parse", "bex-agent/session-1"]));
 });
 
+test("deliverBranch refuses to push when a commit carries the model credential", async () => {
+  // round-5 finding 6: the agent committed the credential itself (so it lives in
+  // a compressed git object the byte-scrubber cannot reach). The pre-push history
+  // scan must fail closed and never publish it.
+  const { root, remote } = await bareRemote();
+  const cwd = path.join(root, "workspace");
+  await mkdir(cwd);
+  const secret = "sk-ant-super-secret-key-value";
+  const config = baseConfig(cwd, {
+    repoUrl: remote,
+    containsSecret: (text) => text.includes(secret),
+  });
+  await ensureRepo(config);
+  await writeFile(path.join(cwd, "leak.txt"), `API_KEY=${secret}\n`);
+
+  await assert.rejects(deliverBranch(config), /model credential found in commit history/);
+  // The branch must NOT have reached the remote.
+  assert.throws(() => git(remote, ["rev-parse", "bex-agent/session-1"]));
+});
+
 test("deliverBranch is an honest no-op when the turn changed nothing", async () => {
   const { root, remote } = await bareRemote();
   const cwd = path.join(root, "workspace");

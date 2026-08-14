@@ -236,11 +236,18 @@ func Observe(j *batchv1.Job) (State, string) {
 // newest-wins policy — a new revision supersedes an older revision's in-flight
 // migration — without disturbing the current one. Not-found on delete is
 // tolerated (concurrent GC).
-func CancelSuperseded(ctx context.Context, name, namespace, keep string, cl client.Client) error {
+//
+// appUID scopes the selection to this App's immutable, globally-unique UID
+// (round-5 finding 5): the pre-deploy namespace is shared, so a name-only
+// selector would interrupt (and could replay) a same-named App's migration in
+// ANOTHER workspace. Empty appUID degrades to the prior name-only behavior.
+func CancelSuperseded(ctx context.Context, name, appUID, namespace, keep string, cl client.Client) error {
+	sel := client.MatchingLabels{LabelService: name}
+	if appUID != "" {
+		sel[execution.LabelAppUID] = appUID
+	}
 	var jobs batchv1.JobList
-	if err := cl.List(ctx, &jobs,
-		client.InNamespace(namespace),
-		client.MatchingLabels{LabelService: name}); err != nil {
+	if err := cl.List(ctx, &jobs, client.InNamespace(namespace), sel); err != nil {
 		return fmt.Errorf("predeploy: list for %s: %w", name, err)
 	}
 	for i := range jobs.Items {

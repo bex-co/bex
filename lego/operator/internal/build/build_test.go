@@ -765,10 +765,17 @@ func TestCancelActiveBuilds(t *testing.T) {
 	done := completedJob(o, batchv1.JobComplete)
 	done.Name = JobName(o.Name, "gen-4")
 
-	cl := fakeClient(active, done)
+	// round-5 finding 5: a same-named App in ANOTHER workspace carries the same
+	// "app.bex.co/build" label value in the shared build namespace but a distinct
+	// UID. UID-scoped cancellation must leave that foreign Job untouched.
+	foreign := BuildJob(o, o.ImageRef())
+	foreign.Name = JobName(o.Name, "gen-9")
+	foreign.Labels["app.bex.co/app-uid"] = "uid-foreign"
+
+	cl := fakeClient(active, done, foreign)
 	ctx := context.Background()
 
-	if err := CancelActiveBuilds(ctx, o.Name, o.Namespace, cl); err != nil {
+	if err := CancelActiveBuilds(ctx, o.Name, o.AppUID, o.Namespace, cl); err != nil {
 		t.Fatalf("CancelActiveBuilds: %v", err)
 	}
 
@@ -780,6 +787,10 @@ func TestCancelActiveBuilds(t *testing.T) {
 	// Completed Job untouched.
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: o.Namespace, Name: done.Name}, &j); err != nil {
 		t.Errorf("completed build Job should not be deleted: %v", err)
+	}
+	// Foreign same-named App's Job (different UID) untouched — the cross-tenant guard.
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: o.Namespace, Name: foreign.Name}, &j); err != nil {
+		t.Errorf("foreign-workspace build Job (different UID) must not be deleted: %v", err)
 	}
 }
 

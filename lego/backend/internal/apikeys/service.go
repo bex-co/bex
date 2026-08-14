@@ -103,6 +103,13 @@ func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKe
 	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
 		return APIKey{}, err
 	}
+	// round-5 finding 4: minting a bound API key issues a durable credential with
+	// its own lifetime, so re-assert can_manage_keys against the source of truth
+	// (uncached). A caller whose key/role was revoked within the last PositiveTTL
+	// must not ride a stale cached positive to mint a replacement key.
+	if err := s.AuthorizeFresh(ctx, core.RelCanManageKeys); err != nil {
+		return APIKey{}, err
+	}
 	if s.APIKeys == nil {
 		return APIKey{}, core.ErrAPIKeysUnavailable
 	}

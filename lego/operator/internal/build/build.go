@@ -768,11 +768,19 @@ func jobFailureMessage(j *batchv1.Job) string {
 // (w7/m9): before dispatching a fresh build for a new revision, the operator
 // cancels any superseded in-progress build so push-spam never runs more than
 // one build at a time per App. Not-found on delete is tolerated (concurrent GC).
-func CancelActiveBuilds(ctx context.Context, name, namespace string, cl client.Client) error {
+//
+// appUID scopes the selection to this App's immutable, globally-unique UID
+// (round-5 finding 5): the build namespace is shared, so a name-only selector
+// would also delete a same-named App's builds in ANOTHER workspace. A non-empty
+// appUID is guaranteed for any dispatched build (build.Build rejects an empty
+// one); an empty appUID degrades to the prior name-only behavior for safety.
+func CancelActiveBuilds(ctx context.Context, name, appUID, namespace string, cl client.Client) error {
+	sel := client.MatchingLabels{"app.bex.co/build": name}
+	if appUID != "" {
+		sel[execution.LabelAppUID] = appUID
+	}
 	var jobs batchv1.JobList
-	if err := cl.List(ctx, &jobs,
-		client.InNamespace(namespace),
-		client.MatchingLabels{"app.bex.co/build": name}); err != nil {
+	if err := cl.List(ctx, &jobs, client.InNamespace(namespace), sel); err != nil {
 		return fmt.Errorf("list builds for %s: %w", name, err)
 	}
 	for i := range jobs.Items {
@@ -784,7 +792,7 @@ func CancelActiveBuilds(ctx context.Context, name, namespace string, cl client.C
 			return fmt.Errorf("cancel build %s: %w", j.Name, err)
 		}
 	}
-	if err := cancelActiveKpackImages(ctx, name, namespace, cl); err != nil {
+	if err := cancelActiveKpackImages(ctx, name, appUID, namespace, cl); err != nil {
 		return err
 	}
 	return nil

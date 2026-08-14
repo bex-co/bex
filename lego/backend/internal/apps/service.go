@@ -33,6 +33,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/http/httpguts"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -3359,15 +3360,36 @@ func validateRoutes(routes []StaticRouteView) error {
 		if !strings.HasPrefix(strings.TrimSpace(r.Source), "/") {
 			return fmt.Errorf("%w: routes[%d].source must be a path starting with /", core.ErrBadRequest, i)
 		}
-		if !strings.HasPrefix(strings.TrimSpace(r.Destination), "/") {
+		dest := strings.TrimSpace(r.Destination)
+		if !strings.HasPrefix(dest, "/") {
 			return fmt.Errorf("%w: routes[%d].destination must be a path starting with /", core.ErrBadRequest, i)
+		}
+		// round-5 finding 11: a leading "/" is not enough. "//host" (protocol-
+		// relative) and "/\host" (browsers normalize backslash to slash) are
+		// network-path references the static server's http.Redirect turns into an
+		// off-site open redirect. Require a genuine local path.
+		if isNetworkPathReference(dest) {
+			return fmt.Errorf("%w: routes[%d].destination must be a local path, not a network-path reference", core.ErrBadRequest, i)
 		}
 	}
 	return nil
 }
 
+// isNetworkPathReference reports whether a "/"-rooted redirect destination would
+// actually send a browser off-site: a protocol-relative "//host" (or its "/\host"
+// backslash variant), or any embedded backslash/CR/LF/NUL that a downstream
+// parser could renormalize into one.
+func isNetworkPathReference(p string) bool {
+	if strings.HasPrefix(p, "//") || strings.HasPrefix(p, `/\`) {
+		return true
+	}
+	return strings.ContainsAny(p, "\\\r\n\x00")
+}
+
 // validateHeaders rejects a malformed custom-header list: each rule needs a
-// rooted path pattern and a header name.
+// rooted path pattern and a well-formed header name + value. Name/value are
+// token/CRLF-validated so a rule cannot inject a second header or split the
+// response once the static server emits it via h.Set (round-5 finding 11).
 func validateHeaders(headers []StaticHeaderView) error {
 	for i, h := range headers {
 		if !strings.HasPrefix(strings.TrimSpace(h.Path), "/") {
@@ -3376,6 +3398,31 @@ func validateHeaders(headers []StaticHeaderView) error {
 		if strings.TrimSpace(h.Name) == "" {
 			return fmt.Errorf("%w: headers[%d].name is required", core.ErrBadRequest, i)
 		}
+		if !httpguts.ValidHeaderFieldName(h.Name) {
+			return fmt.Errorf("%w: headers[%d].name %q is not a valid HTTP header name", core.ErrBadRequest, i, h.Name)
+		}
+		if !httpguts.ValidHeaderFieldValue(h.Value) {
+			return fmt.Errorf("%w: headers[%d].value contains an invalid character", core.ErrBadRequest, i)
+		}
+	}
+	return nil
+}
+
+// validatePublishPath rejects an empty or control-character publishPath. The
+// value reaches the operator's extract/clone Job via env — never interpolated
+// into a shell — so it cannot inject a command; control bytes are rejected as
+// obvious garbage. Absolute paths are intentionally ALLOWED: an image-backed
+// static_site serves a known in-image directory (e.g. /usr/share/nginx/html),
+// and the repo-backed checkout-escape guard already lives in the operator
+// (publish.srcDir). The real authorization control for this verb is can_create
+// (round-5 finding 11), enforced by the caller.
+func validatePublishPath(publishPath string) error {
+	pp := strings.TrimSpace(publishPath)
+	if pp == "" {
+		return fmt.Errorf("%w: publishPath must not be empty", core.ErrBadRequest)
+	}
+	if strings.ContainsAny(pp, "\r\n\x00") {
+		return fmt.Errorf("%w: publishPath must not contain control characters", core.ErrBadRequest)
 	}
 	return nil
 }
@@ -3419,7 +3466,10 @@ func (s *Service) ListRoutes(ctx context.Context, name string) ([]StaticRouteVie
 // static-server reads them live, so the change takes effect on the next resolver
 // refresh — no rebuild/republish. Direct CR patch (not projection-owned).
 func (s *Service) SetRoutes(ctx context.Context, name string, routes []StaticRouteView) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	// round-5 finding 11: routes change what the public origin serves (redirects
+	// can be off-site), so this is a content/security mutation — can_create
+	// (developer), not the can_operate a lifecycle-only contributor holds.
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -3450,7 +3500,10 @@ func (s *Service) ListHeaders(ctx context.Context, name string) ([]StaticHeaderV
 // SetHeaders replaces a static_site's custom response-header rules (Render's bulk
 // PUT /v1/services/{id}/headers). Same live-read semantics as SetRoutes.
 func (s *Service) SetHeaders(ctx context.Context, name string, headers []StaticHeaderView) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	// round-5 finding 11: response headers are a security control (CSP, HSTS,
+	// framing) the public server emits, so require can_create (developer), not
+	// the can_operate a lifecycle-only contributor holds.
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -3470,12 +3523,14 @@ func (s *Service) SetHeaders(ctx context.Context, name string, headers []StaticH
 // and the publish plane runs again.
 // Rejected for a non-static_site or an empty path.
 func (s *Service) SetPublishPath(ctx context.Context, name, publishPath string) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	// round-5 finding 11: the served output directory is content, not lifecycle —
+	// require can_create (developer), not the can_operate a contributor holds.
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
-	if strings.TrimSpace(publishPath) == "" {
-		return AppView{}, fmt.Errorf("%w: publishPath must not be empty", core.ErrBadRequest)
+	if err := validatePublishPath(publishPath); err != nil {
+		return AppView{}, err
 	}
 	if err := requireStaticSite(a, name); err != nil {
 		return AppView{}, err

@@ -160,6 +160,36 @@ func TestSetPublishPath(t *testing.T) {
 	}
 }
 
+// round-5 finding 11: the content/security setters must reject open-redirect and
+// header-injection payloads a bare "/" prefix would otherwise let through, while
+// still accepting legitimate values.
+func TestStaticSetterValidationHardening(t *testing.T) {
+	for _, dest := range []string{"//evil.com", `/\evil.com`, "/ok\r\nSet-Cookie: x"} {
+		if err := validateRoutes([]StaticRouteView{{Type: "redirect", Source: "/a", Destination: dest}}); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("redirect dest %q => ErrBadRequest, got %v", dest, err)
+		}
+	}
+	if err := validateRoutes([]StaticRouteView{{Type: "redirect", Source: "/a", Destination: "/b/c"}}); err != nil {
+		t.Errorf("clean local redirect must pass, got %v", err)
+	}
+	if err := validateHeaders([]StaticHeaderView{{Path: "/*", Name: "X Bad", Value: "1"}}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("malformed header name => ErrBadRequest, got %v", err)
+	}
+	if err := validateHeaders([]StaticHeaderView{{Path: "/*", Name: "X-A", Value: "a\r\nX-Injected: 1"}}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("CRLF header value => ErrBadRequest, got %v", err)
+	}
+	if err := validateHeaders([]StaticHeaderView{{Path: "/*", Name: "Content-Security-Policy", Value: "default-src 'self'"}}); err != nil {
+		t.Errorf("valid security header must pass, got %v", err)
+	}
+	if err := validatePublishPath("dist\nrm -rf /"); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("control-char publishPath => ErrBadRequest, got %v", err)
+	}
+	// Absolute paths stay valid — an image-backed site serves a known in-image dir.
+	if err := validatePublishPath("/usr/share/nginx/html"); err != nil {
+		t.Errorf("absolute image publishPath must pass, got %v", err)
+	}
+}
+
 func TestRESTCreateStaticSite(t *testing.T) {
 	svc, _ := newService(nil)
 	mux := http.NewServeMux()
