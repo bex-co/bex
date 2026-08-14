@@ -334,11 +334,8 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, nil
 	}
 
-	if controllerutil.AddFinalizer(&app, finalizer) {
-		if err := r.Update(ctx, &app); err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{Requeue: true}, nil // finalizer update doesn't bump generation
+	if res, done, err := stampFinalizer(ctx, r.Client, &app, finalizer); done {
+		return res, err
 	}
 	if err := r.recordTLSSecretHistory(ctx, &app); err != nil {
 		return ctrl.Result{}, err
@@ -467,7 +464,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	}
 	ref := app.Spec.Branch
 	if ref == "" {
-		ref = "main"
+		ref = appv1alpha1.DefaultBranch
 	}
 	// A commitId override from the deploy API (spec.BuildCommit) takes
 	// precedence over the tracked branch for this single build. The next
@@ -1216,17 +1213,8 @@ func maintenanceEnabled(app *appv1alpha1.App) bool {
 // reconcileKubernetes runs the revision as a Deployment (+ ClusterIP k8s Service)
 // owned by the App — pods are scheduled onto the cluster's nodes (machines).
 func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, error) {
-	// Registry credential activation gate (w9/m43): zot only loads per-App
-	// credentials at process start (see registry/verify.go), so before rolling
-	// any workload (Deployment, CronJob, static-site publish Job) to a
-	// registry-hosted image, verify zot accepts this App's credential.
-	// Suspended Apps skip the gate: they scale to zero and pull nothing.
-	if r.PerAppRegistry != nil && !app.Spec.Suspended && r.registryHosted(image) {
-		if res, halted := r.awaitRegistryCredActive(ctx, app, appv1alpha1.PhaseDeploying,
-			"registry credential probe failed; requeueing",
-			"Waiting for the registry to accept this app's pull credential"); halted {
-			return res, nil
-		}
+	if res, halted := r.deployRegistryGate(ctx, app, image); halted {
+		return res, nil
 	}
 
 	// The slug-named Service converges bidirectionally for every type BEFORE the
@@ -1251,11 +1239,7 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// Service, no Ingress, no URL, no auto-sleep (nothing routes traffic to wake it).
 	worker := app.Spec.Type == appv1alpha1.TypeBackgroundWorker
 
-	// A settled Running app on a steady-state pass (childHealthRequeue, pod
-	// events) must not flap Running→Deploying→Running: stamp the transitional
-	// phase only when something is actually rolling out.
-	if app.Status.Phase != appv1alpha1.PhaseRunning ||
-		app.Status.ObservedGeneration != app.Generation || app.Status.Image != image {
+	if rolloutPending(app, image) {
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
 	}
 
@@ -1327,21 +1311,8 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 		return r.fail(ctx, app, reason, err)
 	}
 
-	// Suspended: parked at 0 replicas with Service/Ingress/TLS (and spec.replicas)
-	// all kept — resume is just scaling back. Report Hibernated and stop.
-	// Auto-hibernated: idle free-tier app scaled to 0, Ingress now points at the
-	// activator. The next inbound request will wake it; no further requeue needed.
 	if app.Spec.Suspended || autoHibernating {
-		reason, message := "Suspended", "suspended (scaled to 0; config, host and certs kept)"
-		if !app.Spec.Suspended {
-			reason = "AutoHibernated"
-			message = fmt.Sprintf("idle ≥%ds on free tier; wakes on next request", app.Spec.IdleTTLSeconds)
-		}
-		res, err := r.hibernated(ctx, app, image, hosts, reason, message)
-		if err == nil && reason == "AutoHibernated" {
-			logf.FromContext(ctx).Info("app auto-hibernated", "name", app.Name, "idleTTL", app.Spec.IdleTTLSeconds)
-		}
-		return res, err
+		return r.parkKubernetes(ctx, app, image, hosts)
 	}
 
 	if res, halt, err := r.reportKubernetesRunning(ctx, app, dep, image, hosts, replicas, port); halt || err != nil {
@@ -1349,6 +1320,48 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	}
 
 	return r.runningRequeue(ctx, app, autoscaleRequeue)
+}
+
+// deployRegistryGate holds a rollout until zot accepts this App's pull
+// credential (w9/m43): zot only loads per-App credentials at process start (see
+// registry/verify.go), so before rolling any workload (Deployment, CronJob,
+// static-site publish Job) to a registry-hosted image, the credential must be
+// proven live. Suspended Apps skip the gate: they scale to zero and pull nothing.
+func (r *AppReconciler) deployRegistryGate(ctx context.Context, app *appv1alpha1.App, image string) (ctrl.Result, bool) {
+	if r.PerAppRegistry == nil || app.Spec.Suspended || !r.registryHosted(image) {
+		return ctrl.Result{}, false
+	}
+	return r.awaitRegistryCredActive(ctx, app, appv1alpha1.PhaseDeploying,
+		"registry credential probe failed; requeueing",
+		"Waiting for the registry to accept this app's pull credential")
+}
+
+// rolloutPending reports whether something is actually rolling out. A settled
+// Running app on a steady-state pass (childHealthRequeue, pod events) must not
+// flap Running→Deploying→Running, so the transitional phase is stamped only
+// when this is true.
+func rolloutPending(app *appv1alpha1.App, image string) bool {
+	return app.Status.Phase != appv1alpha1.PhaseRunning ||
+		app.Status.ObservedGeneration != app.Generation ||
+		app.Status.Image != image
+}
+
+// parkKubernetes settles an App that serves nothing this pass.
+// Suspended: parked at 0 replicas with Service/Ingress/TLS (and spec.replicas)
+// all kept — resume is just scaling back. Report Hibernated and stop.
+// Auto-hibernated: idle free-tier app scaled to 0, Ingress now points at the
+// activator. The next inbound request will wake it; no further requeue needed.
+func (r *AppReconciler) parkKubernetes(ctx context.Context, app *appv1alpha1.App, image string, hosts []string) (ctrl.Result, error) {
+	reason, message := "Suspended", "suspended (scaled to 0; config, host and certs kept)"
+	if !app.Spec.Suspended {
+		reason = "AutoHibernated"
+		message = fmt.Sprintf("idle ≥%ds on free tier; wakes on next request", app.Spec.IdleTTLSeconds)
+	}
+	res, err := r.hibernated(ctx, app, image, hosts, reason, message)
+	if err == nil && reason == "AutoHibernated" {
+		logf.FromContext(ctx).Info("app auto-hibernated", "name", app.Name, "idleTTL", app.Spec.IdleTTLSeconds)
+	}
+	return res, err
 }
 
 // desiredReplicas resolves the replica count reconcileKubernetes rolls the

@@ -470,11 +470,10 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// Only a KeyValue that can write backups needs the purge finalizer. This
 	// keeps the fully-disabled path byte-identical while retaining cleanup after
 	// a paid store is later downgraded to Free.
-	if backupEnabled && controllerutil.AddFinalizer(&kv, kvFinalizer) {
-		if err := r.Update(ctx, &kv); err != nil {
-			return ctrl.Result{}, err
+	if backupEnabled {
+		if res, done, err := stampFinalizer(ctx, r.Client, &kv, kvFinalizer); done {
+			return res, err
 		}
-		return ctrl.Result{Requeue: true}, nil
 	}
 	sts, storageGB, result, done, err := r.keyValueStorageIntent(ctx, &kv, requestedStorageGB)
 	if done || err != nil {

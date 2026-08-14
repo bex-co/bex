@@ -193,84 +193,131 @@ func (c *StripeClient) CreatePortalSession(ctx context.Context, workspaceID stri
 // metadata alone is never trusted. Deterministic idempotency keys make replayed
 // or reordered webhooks converge on the same Customer and Subscription state.
 func (c *StripeClient) CompleteCheckoutSession(ctx context.Context, eventSession *stripe.CheckoutSession) error {
-	if eventSession == nil || eventSession.ID == "" {
-		return &inputError{message: "checkout session is missing"}
-	}
-	params := &stripe.CheckoutSessionParams{}
-	params.Context = ctx
-	session, err := c.sc.CheckoutSessions.Get(eventSession.ID, params)
-	if err != nil {
-		return fmt.Errorf("stripe: retrieve Checkout Session %s: %w", eventSession.ID, err)
-	}
-	if !c.expectedLivemode(session.Livemode) || session.Mode != stripe.CheckoutSessionModeSetup || session.Status != stripe.CheckoutSessionStatusComplete {
-		return &inputError{message: "checkout session is not a completed setup session in the billing environment"}
-	}
-	workspaceID := session.Metadata[workspaceMetadataKey]
-	claimedSubscriptionID := session.Metadata[checkoutSubscriptionMetadataKey]
-	if workspaceID == "" || claimedSubscriptionID == "" || session.Customer == nil || session.SetupIntent == nil {
-		return &inputError{message: "checkout session ownership metadata is incomplete"}
-	}
-	customerID, found, err := c.findCustomer(ctx, workspaceID)
+	checkout, err := c.verifiedCheckout(ctx, eventSession)
 	if err != nil {
 		return err
 	}
-	if !found || customerID != session.Customer.ID {
-		return &inputError{message: "checkout session Customer does not belong to the workspace"}
-	}
-	subscription, err := c.findSubscriptionObject(ctx, workspaceID, customerID)
+	paymentMethodID, err := c.verifiedSetupPaymentMethod(ctx, checkout)
 	if err != nil {
 		return err
 	}
-	if subscription == nil || subscription.ID != claimedSubscriptionID {
-		return &inputError{message: "checkout session Subscription does not belong to the workspace"}
-	}
-
-	setupParams := &stripe.SetupIntentParams{}
-	setupParams.Context = ctx
-	setup, err := c.sc.SetupIntents.Get(session.SetupIntent.ID, setupParams)
-	if err != nil {
-		return fmt.Errorf("stripe: retrieve SetupIntent %s: %w", session.SetupIntent.ID, err)
-	}
-	if setup.Status != stripe.SetupIntentStatusSucceeded || setup.PaymentMethod == nil || setup.Customer == nil || setup.Customer.ID != customerID || setup.Metadata[workspaceMetadataKey] != workspaceID || setup.Metadata[checkoutSubscriptionMetadataKey] != subscription.ID {
-		return &inputError{message: "SetupIntent does not prove the workspace payment setup"}
-	}
-	paymentMethodID := setup.PaymentMethod.ID
-	pmParams := &stripe.PaymentMethodParams{}
-	pmParams.Context = ctx
-	paymentMethod, err := c.sc.PaymentMethods.Get(paymentMethodID, pmParams)
-	if err != nil {
-		return fmt.Errorf("stripe: retrieve PaymentMethod %s: %w", paymentMethodID, err)
-	}
-	if paymentMethod.Customer == nil || paymentMethod.Customer.ID != customerID {
-		return &inputError{message: "payment method is not attached to the workspace Customer"}
-	}
-
-	customerUpdate := &stripe.CustomerParams{InvoiceSettings: &stripe.CustomerInvoiceSettingsParams{DefaultPaymentMethod: stripe.String(paymentMethodID)}}
-	customerUpdate.Context = ctx
-	customerUpdate.SetIdempotencyKey("bex-payment-customer-" + session.ID)
-	if _, err := c.sc.Customers.Update(customerID, customerUpdate); err != nil {
-		return fmt.Errorf("stripe: bind Customer default payment method: %w", err)
-	}
-	subscriptionUpdate := &stripe.SubscriptionParams{
-		DefaultPaymentMethod: stripe.String(paymentMethodID),
-		ProrationBehavior:    stripe.String("none"),
-	}
-	if tax := c.taxReadiness(ctx, subscription); tax.Configured {
-		subscriptionUpdate.AutomaticTax = &stripe.SubscriptionAutomaticTaxParams{Enabled: stripe.Bool(true)}
-	}
-	subscriptionUpdate.Context = ctx
-	subscriptionUpdate.SetIdempotencyKey("bex-payment-subscription-" + session.ID)
-	if _, err := c.sc.Subscriptions.Update(subscription.ID, subscriptionUpdate); err != nil {
-		return fmt.Errorf("stripe: bind Subscription default payment method: %w", err)
+	if err := c.bindDefaultPaymentMethod(ctx, checkout, paymentMethodID); err != nil {
+		return err
 	}
 	// The verified webhook is the sole enforcement-snapshot writer. A failed
 	// stamp fails webhook processing so Stripe retries; acknowledging here while
 	// the local gate remained false would strand a paid-intent request even
 	// though the provider defaults were successfully bound.
 	if c.state != nil {
-		if err := c.state.SetPaymentMethodBound(ctx, workspaceID, time.Now().UTC()); err != nil {
-			return fmt.Errorf("stripe: persist payment-method binding for %s: %w", workspaceID, err)
+		if err := c.state.SetPaymentMethodBound(ctx, checkout.workspaceID, time.Now().UTC()); err != nil {
+			return fmt.Errorf("stripe: persist payment-method binding for %s: %w", checkout.workspaceID, err)
 		}
+	}
+	return nil
+}
+
+// verifiedCheckout is a Checkout Session re-read from Stripe and proven to
+// belong to the workspace it claims, together with the Customer and
+// Subscription that ownership resolved to.
+type verifiedCheckout struct {
+	sessionID     string
+	setupIntentID string
+	workspaceID   string
+	customerID    string
+	subscription  *stripe.Subscription
+}
+
+// verifiedCheckout re-reads the event's session from Stripe and proves the
+// workspace actually owns the Customer and Subscription it names; the event's
+// own metadata is never trusted on its own.
+func (c *StripeClient) verifiedCheckout(ctx context.Context, eventSession *stripe.CheckoutSession) (verifiedCheckout, error) {
+	if eventSession == nil || eventSession.ID == "" {
+		return verifiedCheckout{}, &inputError{message: "checkout session is missing"}
+	}
+	params := &stripe.CheckoutSessionParams{}
+	params.Context = ctx
+	session, err := c.sc.CheckoutSessions.Get(eventSession.ID, params)
+	if err != nil {
+		return verifiedCheckout{}, fmt.Errorf("stripe: retrieve Checkout Session %s: %w", eventSession.ID, err)
+	}
+	if !c.expectedLivemode(session.Livemode) || session.Mode != stripe.CheckoutSessionModeSetup || session.Status != stripe.CheckoutSessionStatusComplete {
+		return verifiedCheckout{}, &inputError{message: "checkout session is not a completed setup session in the billing environment"}
+	}
+	workspaceID := session.Metadata[workspaceMetadataKey]
+	claimedSubscriptionID := session.Metadata[checkoutSubscriptionMetadataKey]
+	if workspaceID == "" || claimedSubscriptionID == "" || session.Customer == nil || session.SetupIntent == nil {
+		return verifiedCheckout{}, &inputError{message: "checkout session ownership metadata is incomplete"}
+	}
+	customerID, found, err := c.findCustomer(ctx, workspaceID)
+	if err != nil {
+		return verifiedCheckout{}, err
+	}
+	if !found || customerID != session.Customer.ID {
+		return verifiedCheckout{}, &inputError{message: "checkout session Customer does not belong to the workspace"}
+	}
+	subscription, err := c.findSubscriptionObject(ctx, workspaceID, customerID)
+	if err != nil {
+		return verifiedCheckout{}, err
+	}
+	if subscription == nil || subscription.ID != claimedSubscriptionID {
+		return verifiedCheckout{}, &inputError{message: "checkout session Subscription does not belong to the workspace"}
+	}
+	return verifiedCheckout{
+		sessionID:     session.ID,
+		setupIntentID: session.SetupIntent.ID,
+		workspaceID:   workspaceID,
+		customerID:    customerID,
+		subscription:  subscription,
+	}, nil
+}
+
+// verifiedSetupPaymentMethod returns the payment method the session's
+// SetupIntent succeeded on, once both the intent and the method are re-read and
+// proven to belong to the verified Customer.
+func (c *StripeClient) verifiedSetupPaymentMethod(ctx context.Context, checkout verifiedCheckout) (string, error) {
+	setupParams := &stripe.SetupIntentParams{}
+	setupParams.Context = ctx
+	setup, err := c.sc.SetupIntents.Get(checkout.setupIntentID, setupParams)
+	if err != nil {
+		return "", fmt.Errorf("stripe: retrieve SetupIntent %s: %w", checkout.setupIntentID, err)
+	}
+	if setup.Status != stripe.SetupIntentStatusSucceeded || setup.PaymentMethod == nil || setup.Customer == nil || setup.Customer.ID != checkout.customerID || setup.Metadata[workspaceMetadataKey] != checkout.workspaceID || setup.Metadata[checkoutSubscriptionMetadataKey] != checkout.subscription.ID {
+		return "", &inputError{message: "SetupIntent does not prove the workspace payment setup"}
+	}
+	paymentMethodID := setup.PaymentMethod.ID
+	pmParams := &stripe.PaymentMethodParams{}
+	pmParams.Context = ctx
+	paymentMethod, err := c.sc.PaymentMethods.Get(paymentMethodID, pmParams)
+	if err != nil {
+		return "", fmt.Errorf("stripe: retrieve PaymentMethod %s: %w", paymentMethodID, err)
+	}
+	if paymentMethod.Customer == nil || paymentMethod.Customer.ID != checkout.customerID {
+		return "", &inputError{message: "payment method is not attached to the workspace Customer"}
+	}
+	return paymentMethodID, nil
+}
+
+// bindDefaultPaymentMethod makes the proven method the default on both the
+// Customer and the Subscription. Both idempotency keys derive from the session
+// id, so a replayed or reordered webhook converges on the same state.
+func (c *StripeClient) bindDefaultPaymentMethod(ctx context.Context, checkout verifiedCheckout, paymentMethodID string) error {
+	customerUpdate := &stripe.CustomerParams{InvoiceSettings: &stripe.CustomerInvoiceSettingsParams{DefaultPaymentMethod: stripe.String(paymentMethodID)}}
+	customerUpdate.Context = ctx
+	customerUpdate.SetIdempotencyKey("bex-payment-customer-" + checkout.sessionID)
+	if _, err := c.sc.Customers.Update(checkout.customerID, customerUpdate); err != nil {
+		return fmt.Errorf("stripe: bind Customer default payment method: %w", err)
+	}
+	subscriptionUpdate := &stripe.SubscriptionParams{
+		DefaultPaymentMethod: stripe.String(paymentMethodID),
+		ProrationBehavior:    stripe.String("none"),
+	}
+	if tax := c.taxReadiness(ctx, checkout.subscription); tax.Configured {
+		subscriptionUpdate.AutomaticTax = &stripe.SubscriptionAutomaticTaxParams{Enabled: stripe.Bool(true)}
+	}
+	subscriptionUpdate.Context = ctx
+	subscriptionUpdate.SetIdempotencyKey("bex-payment-subscription-" + checkout.sessionID)
+	if _, err := c.sc.Subscriptions.Update(checkout.subscription.ID, subscriptionUpdate); err != nil {
+		return fmt.Errorf("stripe: bind Subscription default payment method: %w", err)
 	}
 	return nil
 }

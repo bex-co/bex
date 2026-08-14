@@ -571,7 +571,7 @@ func (s *Service) resolveCommit(ctx context.Context, a *appv1alpha1.App, ref str
 		ref = a.Spec.Branch
 	}
 	if ref == "" {
-		ref = "main"
+		ref = appv1alpha1.DefaultBranch
 	}
 	workspace := a.Labels[core.LabelTenant]
 	if workspace == "" {

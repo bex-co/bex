@@ -768,7 +768,7 @@ func (s *Service) upsertBlueprint(ctx context.Context, req DeployRequest) {
 	}
 	branch := req.Branch
 	if branch == "" {
-		branch = "main"
+		branch = appv1alpha1.DefaultBranch
 	}
 	_, _ = s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
 		TenantID: tenantID,
