@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -629,7 +630,55 @@ func ValidAppName(v string) bool { return nameRE.MatchString(v) }
 // ValidRepo reports whether v is an acceptable git repo URL for a build-from-git
 // App (https/ssh/git@, no whitespace or control chars, ≤2048 bytes). Exported so
 // bex-api and the internal create API enforce one rule (w6/m6 t003).
-func ValidRepo(v string) bool { return len(v) <= 2048 && repoRE.MatchString(v) }
+//
+// URL userinfo is refused (codex-security round-6 #13): the repo string is
+// stored on the App and echoed verbatim to every workspace viewer, so
+// https://user:token@host/… (or a PAT in the username position) would turn a
+// non-secret resource identifier into a credential leak. Credentials belong in
+// the GitHub App integration / clone Secret, never the URL. The one exception
+// is a password-less ssh:// username (ssh://git@host/…): the SSH user selects
+// the account server-side and is not a bearer secret; the SCP form (git@host:…)
+// has no password syntax at all.
+func ValidRepo(v string) bool {
+	if len(v) > 2048 || !repoRE.MatchString(v) {
+		return false
+	}
+	scheme, _, hasScheme := strings.Cut(v, "://")
+	if !hasScheme {
+		return true // SCP form (git@host:path)
+	}
+	u, err := url.Parse(v)
+	if err != nil {
+		return false
+	}
+	if u.User == nil {
+		return true
+	}
+	_, hasPassword := u.User.Password()
+	return scheme == "ssh" && !hasPassword
+}
+
+// RedactRepoURL strips embedded userinfo from a repo URL before it is shown to
+// viewers — the read-side companion to ValidRepo's create/update-time refusal
+// (round-6 #13): rows stored before the rule (or written by a future code
+// path that forgets it) must not hand a same-workspace viewer another
+// member's token. A password-less ssh:// username is preserved (not a
+// credential); anything unparseable is returned as-is (it cannot be cloned
+// from either).
+func RedactRepoURL(v string) string {
+	if !strings.Contains(v, "://") {
+		return v // SCP form carries no password syntax
+	}
+	u, err := url.Parse(v)
+	if err != nil || u.User == nil {
+		return v
+	}
+	if _, hasPassword := u.User.Password(); u.Scheme == "ssh" && !hasPassword {
+		return v
+	}
+	u.User = nil
+	return u.String()
+}
 
 // ValidGitRef reports whether v is an acceptable git branch/tag/ref for a
 // build-from-git App (no shell metacharacters, no leading dash). Single-source

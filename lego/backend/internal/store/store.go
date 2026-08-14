@@ -1130,8 +1130,8 @@ func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollba
 // created/updated/finished time bounds. Cursor resumes strictly after a
 // previously returned deploy's id (newest-first keyset paging, stable under
 // concurrent inserts); an unknown cursor yields an empty page. Limit is
-// clamped here by clampPageLimit: <=0 preserves the store's unbounded legacy
-// contract and >core.MaxPageLimit clamps.
+// clamped here by clampPageLimit: <=0 (absent) and >core.MaxPageLimit both
+// become core.MaxPageLimit — no query runs uncapped.
 type DeployFilter struct {
 	Statuses       []string
 	CreatedBefore  time.Time
@@ -1144,14 +1144,18 @@ type DeployFilter struct {
 	Limit          int
 }
 
-// clampPageLimit is the store's page-size invariant for lists whose zero
-// limit means unbounded (DeployFilter): <=0 stays 0 (no LIMIT clause),
-// anything else caps at core.MaxPageLimit. The store is the enforcing layer
-// — feature translators (deploys.FilterOf) pass the caller's value through
-// rather than each keeping their own copy of the clamp.
+// clampPageLimit is the store's page-size invariant for the history lists
+// (DeployFilter, JobListFilter): every query gets a LIMIT. An absent limit
+// (<=0) becomes core.MaxPageLimit — the pre-m31 "omitted limit = full
+// history" contract let any service viewer materialize an unbounded history
+// (DB + memory + JSON + per-row k8s sync work, codex-security round-6 #7);
+// callers wanting more page with the keyset cursor. Anything else caps at
+// core.MaxPageLimit. The store is the enforcing layer — feature translators
+// (deploys.FilterOf) pass the caller's value through rather than each
+// keeping their own copy of the clamp.
 func clampPageLimit(n int) int {
 	if n <= 0 {
-		return 0
+		return core.MaxPageLimit
 	}
 	return min(n, core.MaxPageLimit)
 }

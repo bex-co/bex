@@ -557,6 +557,12 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		b = updated
 		prepared = &parsed
 	} else if s.GitFetcher != nil && b.Repo != "" {
+		// Re-validate the stored path before the token-backed fetch (round-6
+		// #14): a legacy row written before UpdateBlueprint enforced the
+		// allowlist must not become an arbitrary private-file read at sync time.
+		if _, pathErr := approvedBlueprintPath(b.Path); pathErr != nil {
+			return SyncBlueprintResult{}, pathErr
+		}
 		if contents, sha, fetchErr := s.GitFetcher.FetchBlueprintFile(ctx, tenantID, b.Repo, b.Branch, b.Path); fetchErr == nil {
 			commitSHA = sha
 			parsed, ir, parseErr := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: contents})
@@ -700,6 +706,18 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 	}
 	if req.Path != nil && *req.Path == "" {
 		return BlueprintView{}, fmt.Errorf("%w: path cannot be empty", core.ErrBadRequest)
+	}
+	// The same allowlist discovery enforces (codex-security round-6 #14): a
+	// later sync fetches this stored path with the workspace's GitHub
+	// installation token and echoes the parsed content in BlueprintView, so an
+	// unvalidated update would turn Blueprint create rights into an arbitrary
+	// private-repository file probe. Store only the normalized result.
+	if req.Path != nil {
+		clean, err := approvedBlueprintPath(*req.Path)
+		if err != nil {
+			return BlueprintView{}, err
+		}
+		req.Path = &clean
 	}
 	tenantID := s.resolveTenantID(ctx)
 	b, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID)

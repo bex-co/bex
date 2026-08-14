@@ -727,6 +727,14 @@ func (s *Service) Delete(ctx context.Context, id, confirmName string) error {
 	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(id)); err != nil {
 		return err
 	}
+	// codex-security round-6 #16: destroying a workspace is the most
+	// destructive verb the API has, so re-assert can_manage against the source
+	// of truth (uncached) after the audited check — a just-revoked admin must
+	// not ride a ≤PositiveTTL cached positive into it. Same pattern as the
+	// membership issuance verbs (round-5 finding 4).
+	if err := s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(id)); err != nil {
+		return err
+	}
 	if s.Store == nil {
 		return core.ErrWorkspacesUnavailable
 	}

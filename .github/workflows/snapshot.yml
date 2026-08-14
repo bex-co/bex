@@ -35,6 +35,11 @@ concurrency:
 jobs:
   bake:
     runs-on: ubuntu-latest
+    # Ref guard (codex-security round-6 #1): this job holds HCLOUD_TOKEN and
+    # executes repository scripts + the Packer template from the dispatched
+    # ref, so restrict dispatch to reviewed main — the same guard the other
+    # credentialed workflows (app-cluster.yml, deploy.yml) already carry.
+    if: github.ref == 'refs/heads/main'
     env:
       HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
       IMAGE_NAME: ${{ inputs.image_name }}

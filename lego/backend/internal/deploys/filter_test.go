@@ -161,10 +161,11 @@ func TestRESTListFiltersAndPaginates(t *testing.T) {
 		t.Fatalf("window = %+v, want [dep-4 dep-3]", list)
 	}
 
-	// No params stays the full, unbounded history — the pre-m31 contract.
+	// No params returns the newest core.MaxPageLimit page (all 5 here fit;
+	// the store bounds an absent limit — codex-security round-6 #7).
 	rec = get("/v1/services/web/deploys")
 	if list = decodeList(t, rec); len(list) != 5 {
-		t.Fatalf("no params = %d rows, want the full history (5)", len(list))
+		t.Fatalf("no params = %d rows, want all 5 (under the page cap)", len(list))
 	}
 }
 
@@ -314,7 +315,8 @@ func TestGraphQLDeploysFiltersMatchREST(t *testing.T) {
 
 	// A malformed timestamp is a resolver error (the REST 400), never a
 	// silently-dropped filter — and an explicit limit below 1 is rejected the
-	// same way REST rejects ?limit=0 (only an ABSENT limit means unbounded).
+	// same way REST rejects ?limit=0 (only an ABSENT limit gets the default
+	// store-bounded page).
 	for _, q := range []string{
 		`{ deploys(serviceId: "web", createdBefore: "yesterday") { id } }`,
 		`{ deploys(serviceId: "web", limit: 0) { id } }`,

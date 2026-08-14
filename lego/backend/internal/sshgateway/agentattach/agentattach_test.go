@@ -29,6 +29,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -620,5 +621,138 @@ func TestAgentAttachReplayReadIsBounded(t *testing.T) {
 	}
 	if !strings.HasSuffix(strings.TrimSpace(string(body)), "data: [DONE]") {
 		t.Fatalf("bounded replay did not end with [DONE]:\n%s", body)
+	}
+}
+
+// TestAgentAttachNeverFollowsDriverRedirects pins codex-security round-6 #2:
+// the ticket binds ONE sandbox pod, but a malicious in-sandbox driver can
+// answer with a 307/308 whose Location points at a PEER sandbox's driver —
+// reachable from the gateway's cluster-wide identity. Go's default client
+// would re-send the request (POST body included) there. The gateway client
+// must surface the 3xx unfollowed and both call sites must reject it.
+func TestAgentAttachNeverFollowsDriverRedirects(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-000000000000000000012"
+
+	// The "peer sandbox" the malicious redirect points at: any hit is a breach.
+	var victimHits atomic.Int64
+	victim := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		victimHits.Add(1)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, "data: {\"type\":\"stolen\"}\n\ndata: [DONE]\n\n")
+	}))
+	defer victim.Close()
+
+	// The ticket-bound pod's driver answers every route with a preserving redirect.
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, victim.URL+"/turn", http.StatusTemporaryRedirect)
+	})
+	evil := httptest.NewServer(mux)
+	defer evil.Close()
+	host, portStr, _ := net.SplitHostPort(strings.TrimPrefix(evil.URL, "http://"))
+	port, _ := strconv.Atoi(portStr)
+
+	st := newFakeAttachStore()
+	gw := newAttachGateway(st, fixedPodIP{ip: host}, secret, port)
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	// GET attach: the splice must not follow the redirect; the client gets the
+	// (empty) replay terminated with [DONE] and never the victim's parts.
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req.Header.Set(TicketHeader, attachTicket(t, secret, session))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if strings.Contains(string(body), "stolen") {
+		t.Fatalf("attach stream leaked redirected content:\n%s", body)
+	}
+
+	// POST turn: the prompt body must not be re-sent to the redirect target.
+	treq, _ := http.NewRequest(http.MethodPost, srv.URL, strings.NewReader(`{"prompt":"secret"}`))
+	treq.Header.Set(TicketHeader, turnTicket(t, secret, session))
+	tresp, err := http.DefaultClient.Do(treq)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tbody, _ := io.ReadAll(tresp.Body)
+	tresp.Body.Close()
+	if !strings.Contains(string(tbody), "turn dispatch failed") {
+		t.Fatalf("redirected turn was not rejected:\n%s", tbody)
+	}
+
+	if n := victimHits.Load(); n != 0 {
+		t.Fatalf("gateway followed the driver redirect: victim dialed %d times", n)
+	}
+}
+
+// recordingRevalidator is a stub SessionRevalidator: records redemptions and
+// returns a fixed decision.
+type recordingRevalidator struct {
+	err   error
+	calls []string
+}
+
+func (d *recordingRevalidator) RevalidateAttach(_ context.Context, subject, session, action string) error {
+	d.calls = append(d.calls, subject+"/"+session+"/"+action)
+	return d.err
+}
+
+// TestAgentAttachRevalidatesAtRedemption pins codex-security round-6 #11: a
+// verified, unexpired, unspent ticket is NOT the whole authorization — the
+// gateway re-checks the subject's current authorization at redemption, so a
+// member revoked (or a session canceled) inside the ticket's TTL window is
+// refused instead of getting one last read or turn.
+func TestAgentAttachRevalidatesAtRedemption(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-000000000000000000013"
+	st := newFakeAttachStore()
+	driver, host, port := fakeDriver([]string{`{"type":"start"}`})
+	defer driver.Close()
+
+	// Denied: 403 before any driver dial or transcript replay.
+	deny := &recordingRevalidator{err: errors.New("membership revoked")}
+	gw := newAttachGateway(st, fixedPodIP{ip: host}, secret, port)
+	gw.Revalidator = deny
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req.Header.Set(TicketHeader, attachTicket(t, secret, session))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("revoked redemption => %d, want 403", resp.StatusCode)
+	}
+	if len(deny.calls) != 1 || deny.calls[0] != "alice/"+session+"/read" {
+		t.Fatalf("revalidator saw %v, want the ticket's subject/session/action", deny.calls)
+	}
+
+	// Allowed: the same flow proceeds to the driver splice.
+	allow := &recordingRevalidator{}
+	gw2 := newAttachGateway(st, fixedPodIP{ip: host}, secret, port)
+	gw2.Revalidator = allow
+	srv2 := httptest.NewServer(gw2.Handler())
+	defer srv2.Close()
+	req2, _ := http.NewRequest(http.MethodGet, srv2.URL, nil)
+	req2.Header.Set(TicketHeader, attachTicket(t, secret, session))
+	resp2, err := http.DefaultClient.Do(req2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp2.Body)
+	resp2.Body.Close()
+	if resp2.StatusCode != http.StatusOK || !strings.Contains(string(body), `{"type":"start"}`) {
+		t.Fatalf("authorized redemption => %d %q, want the driver stream", resp2.StatusCode, body)
+	}
+	if len(allow.calls) != 1 {
+		t.Fatalf("revalidator calls = %v, want exactly one", allow.calls)
 	}
 }

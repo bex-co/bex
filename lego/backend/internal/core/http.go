@@ -462,6 +462,20 @@ func (c *TTLCache[V]) DeleteIf(match func(V) bool) {
 	}
 }
 
+// DeleteKeyIf is DeleteIf's key-side twin: it evicts every entry whose KEY
+// matches — for revocations where the state change is visible only in the key
+// (e.g. every cached authz decision for one subject, round-6 #16). The same
+// rare-event linear-scan tradeoff as DeleteIf.
+func (c *TTLCache[V]) DeleteKeyIf(match func(string) bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for key := range c.m {
+		if match(key) {
+			delete(c.m, key)
+		}
+	}
+}
+
 // Put caches v until the given expiry (callers may clamp below PositiveTTL, e.g.
 // to a token's own exp).
 func (c *TTLCache[V]) Put(key string, v V, expires time.Time) {

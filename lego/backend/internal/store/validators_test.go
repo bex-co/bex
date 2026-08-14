@@ -49,6 +49,13 @@ func TestValidRepo(t *testing.T) {
 		// Repo, ref, and rootDir are separately validated intent. A URL-fragment
 		// ref/subdir would create a second, ambiguous source for the latter two.
 		{"fragment-bypass-rejected", "https://github.com/x/y.git#--evil-ref:../../escape", false},
+		// Embedded credentials (round-6 #13): the stored URL is echoed to every
+		// workspace viewer, so userinfo would leak a member's token. Only the
+		// password-less ssh:// username (git@, matched above) is legitimate.
+		{"https-user-pass-rejected", "https://user:ghp_token@github.com/x/y.git", false},
+		{"https-token-as-user-rejected", "https://ghp_token@github.com/x/y.git", false},
+		{"http-userinfo-rejected", "http://user:pw@gitea.internal:3000/x/y", false},
+		{"ssh-password-rejected", "ssh://git:secret@github.com/x/y.git", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -179,5 +186,24 @@ func TestValidGlob(t *testing.T) {
 				t.Errorf("ValidGlob(%q) = %v, want %v", tc.glob, got, tc.want)
 			}
 		})
+	}
+}
+
+// TestRedactRepoURL pins round-6 #13's read side: legacy rows that embedded
+// credentials in the repo URL are redacted before any viewer sees them, while
+// clean URLs (and the legitimate ssh:// username) pass through unchanged.
+func TestRedactRepoURL(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"https://github.com/x/y.git", "https://github.com/x/y.git"},
+		{"ssh://git@github.com/x/y.git", "ssh://git@github.com/x/y.git"},
+		{"git@github.com:x/y.git", "git@github.com:x/y.git"},
+		{"https://user:ghp_token@github.com/x/y.git", "https://github.com/x/y.git"},
+		{"https://ghp_token@github.com/x/y.git", "https://github.com/x/y.git"},
+		{"ssh://git:secret@github.com/x/y.git", "ssh://github.com/x/y.git"},
+	}
+	for _, tc := range cases {
+		if got := RedactRepoURL(tc.in); got != tc.want {
+			t.Errorf("RedactRepoURL(%q) = %q, want %q", tc.in, got, tc.want)
+		}
 	}
 }

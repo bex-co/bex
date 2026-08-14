@@ -1395,3 +1395,74 @@ func TestBlueprintAutoSyncPreservesTenantContext(t *testing.T) {
 	// (This call itself doesn't fail the test; we're verifying context propagation)
 	svc.triggerBlueprintSync(bgCtx, tenantID, repo, branch)
 }
+
+// --- UpdateBlueprint path allowlist (codex-security round-6 #14) ---
+
+// recordingBlueprintFetcher fails every fetch and records the paths asked for,
+// proving a guard ran BEFORE the token-backed repository read.
+type recordingBlueprintFetcher struct{ paths []string }
+
+func (f *recordingBlueprintFetcher) FetchBlueprintFile(_ context.Context, _, _, _, filePath string) (string, string, error) {
+	f.paths = append(f.paths, filePath)
+	return "", "", fmt.Errorf("fetch should not have been reached")
+}
+
+// TestUpdateBlueprintEnforcesApprovedPath pins round-6 #14: the discovery-time
+// filename allowlist must hold on the mutable update path too — otherwise a
+// member with Blueprint create rights could point the stored path at any
+// private-repository file and read it through the workspace installation token
+// at the next sync.
+func TestUpdateBlueprintEnforcesApprovedPath(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Path: CanonicalBlueprintFilename, Manifest: stackManifest,
+		Status: "active", Name: "app",
+	})
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	for _, bad := range []string{".github/workflows/release.yml", ".env", "../render.yaml", "./render.yaml", `deploy\render.yaml`} {
+		p := bad
+		if _, err := svc.UpdateBlueprint(ctx, "blp-1", "tea-a", UpdateBlueprintRequest{Path: &p}); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("UpdateBlueprint path %q: want ErrBadRequest, got %v", bad, err)
+		}
+	}
+	if stored := fs.blueprints["blp-1"]; stored.Path != CanonicalBlueprintFilename {
+		t.Fatalf("rejected update mutated the stored path: %q", stored.Path)
+	}
+
+	good := "deploy/render.yaml"
+	if _, err := svc.UpdateBlueprint(ctx, "blp-1", "tea-a", UpdateBlueprintRequest{Path: &good}); err != nil {
+		t.Fatalf("UpdateBlueprint approved nested path: %v", err)
+	}
+	if stored := fs.blueprints["blp-1"]; stored.Path != good {
+		t.Errorf("approved path not stored: %q, want %q", stored.Path, good)
+	}
+}
+
+// TestSyncBlueprintRefusesLegacyUnapprovedPath pins the sync-side guard: a row
+// whose path predates the update-time allowlist (or was written by any path
+// that forgot it) must be refused BEFORE the installation-token fetch.
+func TestSyncBlueprintRefusesLegacyUnapprovedPath(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	fs := newFakeBlueprintStore(store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Path: ".env", Manifest: stackManifest,
+		Status: "active", Name: "app",
+	})
+	fetcher := &recordingBlueprintFetcher{}
+	svc := &Service{
+		Base:       &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints: fs,
+		GitFetcher: fetcher,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
+
+	if _, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", ""); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("legacy unapproved path sync: want ErrBadRequest, got %v", err)
+	}
+	if len(fetcher.paths) != 0 {
+		t.Errorf("sync fetched %v before validating the stored path", fetcher.paths)
+	}
+}

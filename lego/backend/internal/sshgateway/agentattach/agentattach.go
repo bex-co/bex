@@ -124,6 +124,16 @@ type Store interface {
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
 }
 
+// SessionRevalidator re-checks, at redemption time, that the ticket's subject
+// still holds the mint-time relation on the session and (for turns) that the
+// session is still live (codex-security round-6 #11). The signed single-use
+// ticket alone freezes the mint-time decision for its TTL+skew window; this
+// hook makes revocation and cancellation effective at the gateway too. An
+// error refuses the attach. Implemented by agentsessions.AttachRevalidator.
+type SessionRevalidator interface {
+	RevalidateAttach(ctx context.Context, subject, sessionID, action string) error
+}
+
 // PodIPResolver maps a claimed pod (namespace + name from the verified ticket)
 // to its current IP so the gateway can dial the in-sandbox driver directly. The
 // sandbox NetworkPolicy admits ingress only from the gateway, so this direct
@@ -162,6 +172,10 @@ type Server struct {
 	DriverPort int
 	HTTPClient *http.Client
 	Now        func() time.Time
+	// Revalidator, when set, re-authorizes every verified ticket at redemption
+	// (round-6 #11); nil skips the re-check (unit tests exercising transport
+	// behavior — cmd/ssh-gateway always wires it).
+	Revalidator SessionRevalidator
 	// AllowedOrigins is the browser origin allowlist for CORS. The endpoint
 	// publishes under the api origin but is consumed cross-subdomain by the
 	// dashboard (dashboard.bex.co -> api.bex.co), so the gateway must echo the
@@ -259,7 +273,17 @@ func (s *Server) httpClient() *http.Client {
 	}
 	// No client-side timeout: the request context (bounded by SessionTimeout)
 	// governs the long-lived stream; a Client.Timeout would truncate it.
-	return &http.Client{}
+	//
+	// Never follow redirects (codex-security round-6 #2): the ticket binds the
+	// exact sandbox pod, but a malicious in-sandbox driver could answer with a
+	// 307/308 pointing at a PEER sandbox's driver — which this gateway identity
+	// can reach cluster-wide — and Go's default client would re-send the turn
+	// POST there. Surface the 3xx as-is; the call sites reject any non-2xx.
+	return &http.Client{
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 }
 
 func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
@@ -313,6 +337,17 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 		s.Metrics.Authentication("rejected_key")
 		http.Error(w, "ticket already used", http.StatusUnauthorized)
 		return
+	}
+	// Redemption-time re-check (round-6 #11), after the nonce burn so a denied
+	// ticket is also a spent one: the mint-time authorization/lifecycle decision
+	// must still hold NOW — a member revoked (or a session canceled) inside the
+	// ticket's TTL window is refused here instead of getting one last read/turn.
+	if s.Revalidator != nil {
+		if err := s.Revalidator.RevalidateAttach(r.Context(), claims.Subject, claims.SessionID, claims.Action); err != nil {
+			s.Metrics.Authentication("rejected_authz")
+			http.Error(w, "no longer authorized for this session", http.StatusForbidden)
+			return
+		}
 	}
 	if acquired, scope := s.Limits.Acquire(claims.Subject); !acquired {
 		s.Metrics.LimitRejected(scope)
@@ -480,7 +515,18 @@ func (s *Server) dialDriverStream(ctx context.Context, podIP string) (*http.Resp
 	if err != nil {
 		return nil, err
 	}
-	return s.httpClient().Do(req)
+	resp, err := s.httpClient().Do(req)
+	if err != nil {
+		return nil, err
+	}
+	// The pod named in the ticket is the ONLY endpoint this stream may read
+	// from: a redirect (or any non-OK answer) from the tenant-controlled driver
+	// must not be treated as a stream (codex-security round-6 #2).
+	if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("driver stream returned status %d", resp.StatusCode)
+	}
+	return resp, nil
 }
 
 // forwardAgentTurn posts a live prompt turn to the driver and streams the turn's
@@ -516,6 +562,13 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode == http.StatusConflict {
 		sse.errorAndDone("a turn is already running")
+		return
+	}
+	// Reject redirects and every other non-OK driver answer (codex-security
+	// round-6 #2): the client never follows a 3xx, and the turn's parts may
+	// only come from the exact pod the ticket authorized.
+	if resp.StatusCode != http.StatusOK {
+		sse.errorAndDone("turn dispatch failed")
 		return
 	}
 	ordinal := base

@@ -12,7 +12,10 @@
 #   KUBECONFIG=/path/to/admin.kubeconfig scripts/operator-kubeconfig.sh [output-path]
 #
 # output-path defaults to ~/.kube/bex-operator.kubeconfig
-# Token TTL: 1 year (same lifecycle as the admin cert; re-run annually).
+# Token TTL: 12h by default (codex-security round-6 #5 — the old 1-year token
+# made theft of this exec-capable credential durable for a year). Re-run the
+# script to re-mint; override with BEX_OPERATOR_TOKEN_TTL for a longer window
+# when a task genuinely needs one (audited, deliberate choice).
 # After generation, use the new kubeconfig for day-to-day access:
 #   export KUBECONFIG=~/.kube/bex-operator.kubeconfig
 # For break-glass, revert to the admin kubeconfig fetched by fetch-app-kubeconfig.sh.
@@ -26,9 +29,12 @@ OUT="${1:-$HOME/.kube/bex-operator.kubeconfig}"
 # Verify the SA exists — it is deployed by Argo, not created here.
 kubectl -n kube-system get serviceaccount bex-operator >/dev/null
 
-# Mint a 1-year ServiceAccount token. Token-based kubeconfigs are immediately
-# revocable (delete the SA to invalidate), unlike the client-cert admin.conf.
-TOKEN=$(kubectl create token bex-operator -n kube-system --duration=8760h)
+# Mint a short-lived ServiceAccount token (12h default). Token-based
+# kubeconfigs are immediately revocable (delete the SA to invalidate), unlike
+# the client-cert admin.conf — and a short TTL bounds theft of this
+# cluster-wide exec-capable credential to hours, not a year.
+TTL="${BEX_OPERATOR_TOKEN_TTL:-12h}"
+TOKEN=$(kubectl create token bex-operator -n kube-system --duration="$TTL")
 
 # Extract server URL and cluster CA from the currently active kubeconfig.
 SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
