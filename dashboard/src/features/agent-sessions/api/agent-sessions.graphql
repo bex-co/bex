@@ -23,7 +23,6 @@ fragment AgentSessionFields on AgentSession {
     modelEndpoint
     task
     template
-    openPr
   }
   sandboxId
   sshAddress

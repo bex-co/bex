@@ -56,16 +56,10 @@ func (f fakeConn) GetGitConnection(context.Context, string) (store.GitConnection
 }
 
 // completerFixture builds a Completer over a fake store holding one running
-// session with a live sandbox id, ready for a status-driven finalize. The
-// session opts INTO draft-PR delivery (w5/m65) so the PR-path tests below still
-// exercise that path; completerFixtureConfig covers the opted-out default.
+// session with a live sandbox id, ready for a status-driven finalize.
 func completerFixture(status string, statusErr error) (*Completer, *fakeStore, *fakeLifecycle, *fakePR, string) {
-	return completerFixtureConfig(status, statusErr, AgentConfig{Agent: "codex", Task: "fix the tests", OpenPR: true})
-}
-
-func completerFixtureConfig(status string, statusErr error, agentConfig AgentConfig) (*Completer, *fakeStore, *fakeLifecycle, *fakePR, string) {
 	st := newFakeStore()
-	config, _ := json.Marshal(agentConfig)
+	config, _ := json.Marshal(AgentConfig{Agent: "codex", Task: "fix the tests"})
 	row, _ := st.CreateAgentSession(context.Background(), store.AgentSession{WorkspaceID: "tea-a", Repo: "bex-co/example", Branch: "bex-agent/s1", AgentConfig: config})
 	row, _ = st.RecordAgentSessionDispatch(context.Background(), row.ID, "sandbox-1", PhaseRunning, "running", "")
 	lc := &fakeLifecycle{status: status, statusErr: statusErr}
@@ -228,39 +222,20 @@ func TestCompleterNoChangeCompletesWithoutPR(t *testing.T) {
 	}
 }
 
-// The w5/m65 default: a session that never asked for a pull request delivers its
-// pushed branch and nothing else. It still completes with the head SHA — the
-// branch is the deliverable — and the tenant's repository gains no PR.
-func TestCompleterWithoutPROptInPushesBranchAndOpensNoPR(t *testing.T) {
-	c, st, lc, pr, id := completerFixtureConfig(succeededStatus(true), nil, AgentConfig{Agent: "codex", Task: "fix the tests"})
-	c.Reconcile(context.Background())
-
-	if pr.calls != 0 {
-		t.Fatalf("opened a PR nobody asked for: calls=%d body=%s", pr.calls, pr.last.body)
-	}
-	row := st.rows[id]
-	if row.Phase != PhaseCompleted || row.HeadSHA != "abc123" {
-		t.Fatalf("opted-out completion = %+v, want completed at the pushed head", row)
-	}
-	if row.PRURL != "" || row.PRNumber != 0 {
-		t.Fatalf("opted-out row carries PR fields: url=%q number=%d", row.PRURL, row.PRNumber)
-	}
-	if lc.canceled != 1 {
-		t.Fatalf("sandbox not torn down: canceled=%d", lc.canceled)
-	}
-}
-
-// A config that cannot be decoded must not be read as consent to write to the
-// tenant's repository — an unwanted PR cannot be un-opened.
-func TestCompleterUnreadableConfigOpensNoPR(t *testing.T) {
+// An unreadable config must not block completion: the branch is already pushed,
+// so the Completer still opens the draft PR — with an untitled fallback title.
+func TestCompleterUnreadableConfigStillOpensPR(t *testing.T) {
 	c, st, _, pr, id := completerFixture(succeededStatus(true), nil)
 	row := st.rows[id]
 	row.AgentConfig = []byte("{not json")
 	st.rows[id] = row
 	c.Reconcile(context.Background())
 
-	if pr.calls != 0 {
-		t.Fatalf("unreadable config opened a PR: calls=%d", pr.calls)
+	if pr.calls != 1 {
+		t.Fatalf("unreadable config did not open a PR: calls=%d", pr.calls)
+	}
+	if pr.last.title != "bex agent session "+id {
+		t.Fatalf("unreadable config PR title = %q, want the untitled fallback", pr.last.title)
 	}
 	if st.rows[id].Phase != PhaseCompleted {
 		t.Fatalf("unreadable config blocked completion: %+v", st.rows[id])

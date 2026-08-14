@@ -28,11 +28,6 @@ export interface AgentSessionConfigView {
   modelEndpoint: string | null;
   task: string;
   template: string | null;
-  /**
-   * Whether the session asked for a draft PR at create time (w5/m65). The branch
-   * is always pushed; the PR is opt-in, so this is false for most sessions.
-   */
-  openPr: boolean;
 }
 
 /**

@@ -228,9 +228,8 @@ func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
 func (c *Completer) complete(ctx context.Context, record store.AgentSession, report statusReport) {
 	evidenceJSON, _ := json.Marshal(buildEvidence(report)) // Evidence is plain data; marshal cannot fail
 
-	// An unreadable config fails safe to opted OUT and an untitled PR rather than
-	// blocking the completion: the branch is already pushed, so the recoverable
-	// outcome is to record the turn and write nothing to the tenant's repository.
+	// The config supplies the PR title; an unreadable one yields an untitled PR
+	// rather than blocking the completion (the branch is already pushed).
 	config, err := decodeAgentConfig(record)
 	if err != nil {
 		log.Printf("agent-session completer: agent config unreadable (session=%s): %v", record.ID, err)
@@ -245,21 +244,6 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 		} else {
 			log.Printf("agent-session completer: finalize no-op failed (session=%s): %v", record.ID, err)
 		}
-		return
-	}
-
-	// Draft-PR delivery is opt-in (w5/m65): unless the session asked for a pull
-	// request at create time, the pushed branch IS the delivery. Finalize with the
-	// head SHA and open nothing on the tenant's repository — a PR nobody asked for
-	// is noise on their repo, and the branch remains theirs to open one from.
-	if !config.OpenPR {
-		if _, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted,
-			report.Delivery.HeadSHA, "", 0, evidenceJSON, ""); err != nil {
-			log.Printf("agent-session completer: finalize (no PR requested) failed (session=%s): %v", record.ID, err)
-			return // retry next tick; the sandbox stays until the row is finalized
-		}
-		log.Printf("agent-session completer: completed session=%s head=%s (branch pushed, no PR requested)", record.ID, report.Delivery.HeadSHA)
-		c.teardown(ctx, record)
 		return
 	}
 

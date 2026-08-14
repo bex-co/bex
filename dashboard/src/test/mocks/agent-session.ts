@@ -3,7 +3,7 @@ import type { AgentSessionView } from "@/features/agent-sessions/types";
 /**
  * Builds an `AgentSessionView` for tests. Seven near-identical copies of this
  * literal used to live in the agent-session test files; when w5/m65 changed the
- * shape (dropping `evidence`, adding `agentConfig.openPr`) one copy was missed
+ * shape (dropping `evidence`) one copy was missed
  * and rotted silently — `tsconfig.app.json` excludes tests from `tsc -b` and
  * vitest does not typecheck, so nothing catches it.
  *
@@ -28,7 +28,6 @@ export function agentSessionView({
       modelEndpoint: null,
       task,
       template: null,
-      openPr: false,
     },
     sandboxId: null,
     sshAddress: null,

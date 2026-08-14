@@ -105,7 +105,6 @@ describe("NewSessionComposer", () => {
         agent: "claude",
         task: "refactor the mapper",
         egressAllowlist: [],
-        openPr: false,
       }),
     );
     await waitFor(() =>
@@ -312,22 +311,6 @@ describe("NewSessionComposer", () => {
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
     expect(create.mock.calls[0][0].egressAllowlist).toEqual(hostnames);
-  });
-
-  it("requests a draft PR only when the Configuration toggle is turned on", async () => {
-    const user = userEvent.setup();
-    render(<NewSessionComposer />);
-    await typeTask(user);
-    await pickRepo(user);
-
-    await user.click(screen.getByRole("button", { name: "Configuration" }));
-    await user.click(
-      await screen.findByRole("switch", { name: "Open a draft pull request" }),
-    );
-    await user.click(screen.getByRole("button", { name: "Start session" }));
-
-    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
-    expect(create.mock.calls[0][0].openPr).toBe(true);
   });
 
   it("enforces the bex-agent/* branch namespace when the branch is hand-edited", async () => {

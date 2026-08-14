@@ -37,7 +37,6 @@ function wire(
       modelEndpoint: null,
       task: "do the thing",
       template: null,
-      openPr: false,
     },
     sandboxId: null,
     phase: "running",
@@ -96,7 +95,6 @@ describe("toAgentSessionView", () => {
           modelEndpoint: "https://api.example.com",
           task: "ship it",
           template: "tpl-1",
-          openPr: true,
         },
       }),
     );
@@ -122,7 +120,6 @@ describe("toAgentSessionView", () => {
       modelEndpoint: "https://api.example.com",
       task: "ship it",
       template: "tpl-1",
-      openPr: true,
     });
   });
 

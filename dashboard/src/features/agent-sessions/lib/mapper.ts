@@ -52,7 +52,6 @@ export function toAgentSessionView(
       modelEndpoint: wire.agentConfig.modelEndpoint ?? null,
       task: wire.agentConfig.task,
       template: wire.agentConfig.template ?? null,
-      openPr: wire.agentConfig.openPr ?? false,
     },
     sandboxId: wire.sandboxId ?? null,
     sshAddress: wire.sshAddress ?? null,

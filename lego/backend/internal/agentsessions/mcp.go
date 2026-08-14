@@ -85,7 +85,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.Cancel(ctx, in.ID)
 			return nil, out, toolError(err)
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch, updating the session's draft PR if it opted into one."},
+	mcp.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in steerArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, EgressAllowlist: in.EgressAllowlist})
 			return nil, out, toolError(err)

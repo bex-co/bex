@@ -228,15 +228,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "Extra public hostnames the sandbox may reach (up to 32), beyond the model endpoint and the built-in package registries.",
     description: "Composer (advanced) — egress allowlist field helper text",
   },
-  "agentSessions.openPrLabel": {
-    message: "Open a draft pull request",
-    description: "Composer (advanced) — draft-PR opt-in toggle label",
-  },
-  "agentSessions.openPrHint": {
-    message:
-      "Off by default. The agent always pushes its bex-agent/* branch; turn this on to also open a draft PR when the session finishes.",
-    description: "Composer (advanced) — draft-PR opt-in helper text",
-  },
   "agentSessions.egressTooMany": {
     message: "Too many hostnames — the allowlist allows at most 32 entries.",
     description: "Composer — validation error when more than 32 egress entries",
