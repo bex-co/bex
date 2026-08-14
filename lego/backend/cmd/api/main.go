@@ -181,6 +181,9 @@ const drainWindow = 15 * time.Second
 
 func main() {
 	ctx := ctrl.SetupSignalHandler()
+	cpDBURI := os.Getenv("BEX_CP_DB_URI")
+	dashboardURL := os.Getenv("BEX_DASHBOARD_URL")
+	sandboxExecSecret := os.Getenv("BEX_SANDBOX_EXEC_SECRET")
 	requirePaymentMethod, err := paymentMethodGate(os.Getenv)
 	if err != nil {
 		log.Fatalf("bex-api: %v", err)
@@ -286,32 +289,7 @@ func main() {
 	if bao := os.Getenv("BEX_OPENBAO_URL"); bao != "" {
 		deps.Secrets = secrets.NewOpenBaoStore(bao)
 	}
-	// GitHub App integration (docs/ADR026-github-integration.md): private-repo deploys +
-	// zero-config push-to-deploy. Wired only when all three BEX_GITHUB_APP_* vars
-	// are set (and the key parses) — else the git-connect verbs 503. The store
-	// half (git_connections) is wired inside the BEX_CP_DB_URI block below.
-	var ghClient *github.Client
-	if appID, key, slug := os.Getenv("BEX_GITHUB_APP_ID"), os.Getenv("BEX_GITHUB_APP_PRIVATE_KEY"), os.Getenv("BEX_GITHUB_APP_SLUG"); appID != "" && key != "" && slug != "" {
-		var err error
-		ghClient, err = github.NewClient(github.Config{
-			AppID: appID, PrivateKey: key, Slug: slug,
-			// F2: both OAuth credentials enable the mandatory installation-admin
-			// proof on new browser bindings. Both absent leaves existing connections
-			// usable but makes every callback fail closed; a partial pair is fatal.
-			ClientID:     os.Getenv("BEX_GITHUB_APP_CLIENT_ID"),
-			ClientSecret: os.Getenv("BEX_GITHUB_APP_CLIENT_SECRET"),
-		})
-		if err != nil {
-			log.Fatalf("bex-api: github app config: %v", err)
-		}
-		deps.GitHubClient = ghClient
-		if ghClient.InstallVerificationConfigured() {
-			deps.GitHubInstallVerifier = ghClient
-		}
-		// The same out-of-band private key also HMAC-signs the short-lived
-		// workspace state carried through GitHub's browser install redirect.
-		deps.GitHubStateSecret = []byte(key)
-	}
+	ghClient := wireGitHubApp(&deps)
 	// Owner/member identity attributes (w6/m2): Kratos' admin API, distinct from
 	// the public BEX_KRATOS_URL session whoami above — looking up OTHER members'
 	// email/MFA needs the admin API, not a session. Unset => those fields omitted.
@@ -336,7 +314,7 @@ func main() {
 	// another workspace. A multi-tenant API must therefore FAIL CLOSED (refuse to
 	// start) rather than warn. BEX_ALLOW_INSECURE_AUTHZ=1 is the documented
 	// single-member/local-dev override (mirrors BEX_CP_INSECURE for BEX_CP_TOKEN).
-	if base.Authz == nil && os.Getenv("BEX_CP_DB_URI") != "" && !mcpStdio() {
+	if base.Authz == nil && cpDBURI != "" && !mcpStdio() {
 		if os.Getenv("BEX_ALLOW_INSECURE_AUTHZ") != "1" {
 			log.Fatal("BEX_OPENFGA_URL is unset while the control-plane store is on (BEX_CP_DB_URI set): authorization would be FAIL-OPEN — every workspace member gets admin-equivalent rights AND explicit-workspace verbs bypass membership resolution, so cross-tenant isolation does not hold. Refusing to start a multi-tenant API without enforced authorization. Set BEX_OPENFGA_URL, or set BEX_ALLOW_INSECURE_AUTHZ=1 to override in single-member/local dev only (docs/ADR012-auth.md).")
 		}
@@ -360,11 +338,11 @@ func main() {
 	var stripeLifecycleWorker *billing.Worker
 	var stripeLifecycleReconciler *billing.Reconciler
 	var stripeBillingAdmin store.BillingAdmin
-	if dbURI := os.Getenv("BEX_CP_DB_URI"); dbURI != "" && !mcpStdio() {
+	if cpDBURI != "" && !mcpStdio() {
 		// The datastore (Database/KeyValue) projection namespace; falls back to
 		// BEX_API_NAMESPACE so the two agree unless explicitly split.
 		appsNS := envOr("BEX_CP_APPS_NAMESPACE", base.Namespace)
-		pool, err := pgxpool.New(ctx, dbURI)
+		pool, err := pgxpool.New(ctx, cpDBURI)
 		if err != nil {
 			log.Fatalf("bex-api: db config: %v", err)
 		}
@@ -374,7 +352,7 @@ func main() {
 		if err := waitForDB(ctx, pool); err != nil {
 			log.Fatalf("bex-api: database unreachable: %v", err)
 		}
-		if err := store.Migrate(dbURI); err != nil {
+		if err := store.Migrate(cpDBURI); err != nil {
 			log.Fatalf("bex-api: %v", err)
 		}
 		if err := store.CheckOwnership(ctx, pool); err != nil {
@@ -392,117 +370,7 @@ func main() {
 		}
 		// rec.Run is started after NewServer below, so CloneSecrets is set before
 		// the first reconcile pass (w2/m11).
-		deps.Store = st        // single writer of intent: suspend/resume write the row first
-		deps.SSHKeysStore = st // identity-scoped SSH public-key registry
-		deps.DeployStore = st  // deploy history (w2/m5): list/get/trigger read+write the same rows
-		// Cancel (w2/m10) needs to compute a repo-backed App's in-flight build
-		// Job's identity — must match the operator's own BEX_BUILD_NAMESPACE.
-		deps.DeployBuildNamespace = os.Getenv("BEX_BUILD_NAMESPACE")
-		deps.GitHubStore = st        // git connections (w2/m8): connect/disconnect/list read+write git_connections
-		deps.EventStore = st         // service events: deploy + audit + typed observed/Git facts
-		deps.EventFacts = st         // typed observed/Git event facts (w3/m19), written outside the operator
-		deps.NotificationsStore = st // deploy notifications (w3/m9): settings read/write + the reconciler's recipient fan-out
-		deps.ProjectsStore = st      // project groupings (w1/m31): project CRUD + service-assignment
-		deps.EnvironmentsStore = st  // environment groupings (layered on w1/m31): environment CRUD + service-assignment
-		deps.RegistryCredsStore = st // registry credentials (w2/m14): CRUD metadata rows; secrets live in OpenBao (deps.Secrets)
-		deps.BlueprintsStore = st    // blueprint registry (w2/m15): auto-upserted on deploy, list+sync read it
-		deps.WebhookStore = st       // outbound webhooks (w3/m11): endpoint CRUD + delivery history; the worker below delivers
-		deps.JobStore = st           // one-off jobs (Render's /services/{id}/jobs): job CRUD + k8s Job tracking
-		deps.AgentSessionStore = st  // ADR047 D3: durable agent-session lifecycle
-		if writer, ok := authzChecker.(agentsessions.TupleWriter); ok {
-			deps.AgentSessionTuples = writer
-		}
-
-		// Audit log (w4/m10): *store.PGStore structurally satisfies
-		// core.AuditSink, so every write verb's Authorize/AuthorizeOn call
-		// starts recording the instant the store is wired — no extra plumbing.
-		base.Audit = st
-		base.Billing = st
-
-		// Workspace lifecycle (w6/m1): the workspaces feature writes through the
-		// same store and nudges the same projector to prune a deleted workspace's
-		// App CRs. The OpenFGA checker (when wired) is both the grant and revoke
-		// side, keeping workspace:tea-<id> tuples in step with tenant_members.
-		deps.WorkspaceStore = st
-		deps.WorkspaceKick = rec.Kick
-		if g, ok := authzChecker.(workspaces.WorkspaceGranter); ok {
-			deps.WorkspaceGranter = g
-		}
-		if rv, ok := authzChecker.(workspaces.WorkspaceRevoker); ok {
-			deps.WorkspaceRevoker = rv
-		}
-		// Out-of-cascade teardown (w6/m4/t005, w1/m61): a deleted workspace's
-		// OpenBao secrets, env groups, managed Databases/KeyValue stores, sandboxes
-		// (appended in the OpenSandbox block below), and Stripe subscription
-		// (appended in the billing block below) live outside the tenant row's FK
-		// cascade. Delete runs these PRE-cascade — while the tenant row still
-		// exists — so a purger failure is retryable (the row and its confirmation
-		// phrase survive) and the sandbox/Stripe purgers can still read the ids the
-		// cascade is about to drop. The secrets purger must also run here, before
-		// the App CRs are torn down: it enumerates them to find their OpenBao paths.
-		deps.WorkspacePreCascadePurgers = []workspaces.WorkspacePurger{
-			&secrets.WorkspacePurger{Service: &secrets.Service{Base: base, Store: deps.Secrets}},
-			&envgroups.WorkspacePurger{Service: &envgroups.Service{Base: base, Store: deps.Secrets}},
-			&postgres.WorkspacePurger{Service: &postgres.Service{Base: base}},
-			&keyvalue.WorkspacePurger{Service: &keyvalue.Service{Base: base}},
-		}
-		// apps.WorkspacePurger (w6/m11, live-verification finding) runs POST-cascade
-		// (w1/m61): an App created through the public REST/GraphQL/MCP surface
-		// carries core.LabelTenant only, never store.LabelManagedBy, so the
-		// row-backed cascade + reconciler prune that tears down *row-backed* Apps on
-		// workspace delete never sees it — it would otherwise survive forever, still
-		// running and permanently unreachable (its tenant is gone, so core.Base's
-		// tenant gate forbids everyone, including its creator). It must run AFTER the
-		// row cascade: purging App CRs while their apps rows still exist would let
-		// the projector immediately re-create them. Redundant-but-harmless for
-		// row-backed Apps the reconciler already pruned (delete of an already-gone
-		// object is a no-op).
-		deps.WorkspacePostCascadePurgers = []workspaces.WorkspacePurger{
-			&apps.WorkspacePurger{Service: &apps.Service{Base: base}},
-		}
-
-		// Workspace members & roles (w4/m12): the team surface writes through the
-		// same store (tenant_members + tenant_invites) and keeps OpenFGA role
-		// tuples in step. Granter/Revoker are the OpenFGA checker when authz is
-		// wired; a nil pair means the store records roles while authz isn't yet
-		// enforcing them (store on, BEX_OPENFGA_URL off).
-		deps.MembersStore = st
-		if g, ok := authzChecker.(members.RoleGranter); ok {
-			deps.MembersGranter = g
-		}
-		if rv, ok := authzChecker.(members.RoleRevoker); ok {
-			deps.MembersRevoker = rv
-		}
-
-		// Tenant onboarding + workspace scoping (w1/m9): one tenantService is the
-		// store-backed resolver (core.Base.Workspace, every verb's Authorize
-		// targets workspace:tea-<id>), the onboarding seam (mints a personal
-		// tenant on a human's first login), and the key-binder (ties minted keys
-		// to their tenant). The OpenFGA checker is the membership granter when
-		// authz is wired; a nil granter means the store isolates tenants by
-		// filtering while authz isn't yet enforcing roles (store on,
-		// BEX_OPENFGA_URL off).
-		var granter store.MembershipGranter
-		if g, ok := authzChecker.(store.MembershipGranter); ok {
-			granter = g
-		}
-		tenantSvc := api.NewTenantService(st, granter)
-		// Login-time invite redemptions record members.AcceptInvite audit rows
-		// through the same store the feature verbs' sink writes (w1/m33).
-		tenantSvc.Audit = st
-		// w1/m53 + w1/m65 F13: gate login-time invite redemption on a Kratos-verified
-		// email so an attacker can't register with a victim's not-yet-signed-up
-		// invited address and claim the invite. Secure by DEFAULT now (default true):
-		// email is an authorization key here, so ownership must be proven. The
-		// emailed ?invite=<token> bearer link still redeems regardless, so an
-		// address that genuinely can't be verified retains an explicit path. Set
-		// BEX_REQUIRE_VERIFIED_INVITE_EMAIL=0 only for local dev without a
-		// verification UX (docs/ADR024-members.md).
-		tenantSvc.RequireVerifiedInviteEmail = os.Getenv("BEX_REQUIRE_VERIFIED_INVITE_EMAIL") != "0" &&
-			!strings.EqualFold(os.Getenv("BEX_REQUIRE_VERIFIED_INVITE_EMAIL"), "false")
-		base.Workspace = tenantSvc
-		deps.Onboard = tenantSvc
-		deps.KeyBinder = tenantSvc
+		granter := wireControlPlaneFeatures(&deps, base, st, rec, authzChecker)
 
 		// Usage metering (w8/m1) + retention (m4): the loop rolls usage_hourly
 		// rows up every hour (needs Prometheus; skipped without it) and compacts
@@ -515,79 +383,7 @@ func main() {
 		}
 		deps.Usage = usageSvc
 
-		// Billing (w7/m47–m50, ADR040): one Stripe client drives both the
-		// seal-then-emit meter-event sidecar and the usage surface's invoice
-		// read-back. BEX_STRIPE_SECRET_KEY unset means no client, emitter, reader,
-		// or public Stripe webhook: estimate-only behavior stays unchanged.
-		stripeSecretKey, billingEpoch, stripeEnabled, err := stripeBillingGate(os.Getenv, time.Now())
-		if err != nil {
-			log.Fatalf("bex-api: %v", err)
-		}
-		if stripeEnabled {
-			billingMetrics.SetEnabled(true)
-			stripeClient := billing.NewStripe(billing.StripeConfig{
-				SecretKey:             stripeSecretKey,
-				BaseURL:               os.Getenv("BEX_STRIPE_API_URL"),
-				BillingEpoch:          billingEpoch,
-				CompCouponID:          os.Getenv("BEX_STRIPE_COMP_COUPON_ID"),
-				DashboardURL:          os.Getenv("BEX_DASHBOARD_URL"),
-				PortalConfigurationID: os.Getenv("BEX_STRIPE_PORTAL_CONFIGURATION_ID"),
-				TaxCode:               os.Getenv("BEX_STRIPE_TAX_CODE"),
-				TaxBehavior:           os.Getenv("BEX_STRIPE_TAX_BEHAVIOR"),
-				State:                 st,
-				Metrics:               billingMetrics,
-			})
-			usageSvc.Billing = stripeClient
-			deps.Billing = stripeClient
-			deps.BillingState = st
-			if requirePaymentMethod {
-				base.Payment = &billing.PaymentGate{Store: st}
-			}
-			stripeBillingAdmin = &billing.Admin{Store: st, Provider: stripeClient}
-			// Workspace-delete Stripe teardown (w1/m61): cancel the workspace's
-			// metered Subscription when its workspace is deleted (keeping the Customer
-			// for invoice history). Pre-cascade, so the billing_provider_mappings row
-			// still resolves the subscription id. Only wired when Stripe is enabled —
-			// byte-identical to before m61 otherwise.
-			deps.WorkspacePreCascadePurgers = append(deps.WorkspacePreCascadePurgers,
-				&billing.WorkspacePurger{Canceller: stripeClient})
-
-			emitter := billing.NewEmitter(st, stripeClient)
-			emitter.Metrics = billingMetrics
-			emitter.Epoch = billingEpoch
-			emitter.RequirePaymentMethod = requirePaymentMethod
-			if n, ok := positiveIntEnv("BEX_STRIPE_SEAL_HOURS", billing.DefaultSealHours); ok {
-				emitter.SealHours = time.Duration(n) * time.Hour
-			}
-			// w7/m57: never seal shorter than the usage rollup's catch-up window, or
-			// an exported row could still be rewritten and never re-emitted.
-			if clamped := billing.ClampSealHours(emitter.SealHours, usage.CatchupWindow); clamped != emitter.SealHours {
-				log.Printf("BEX_STRIPE_SEAL_HOURS=%s is below the usage catch-up window; raising the seal horizon to %s so exported rows are final", emitter.SealHours, clamped)
-				emitter.SealHours = clamped
-			}
-			var lifecycle *billing.Lifecycle
-			if os.Getenv("BEX_STRIPE_DUNNING_ENABLED") == "1" {
-				if stripeClient.ExpectedLivemode() {
-					log.Fatal("bex-api: BEX_STRIPE_DUNNING_ENABLED=1 is test-mode only at w7/m52; refusing live enforcement")
-				}
-				grace := minuteDurationEnv("BEX_STRIPE_GRACE_PERIOD", "168h")
-				reconcileEvery := minuteDurationEnv("BEX_STRIPE_RECONCILE_INTERVAL", "5m")
-				lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: false}
-				enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: appsNS}
-				stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
-				stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics}
-				log.Printf("bex-api Stripe test-mode dunning enabled (grace %s, reconcile %s)", grace, reconcileEvery)
-			}
-			if secret := os.Getenv("BEX_STRIPE_WEBHOOK_SECRET"); secret != "" {
-				handler := &billing.StripeWebhook{Secret: secret, ExpectedLivemode: stripeClient.ExpectedLivemode(), OnCheckoutCompleted: stripeClient.CompleteCheckoutSession, Metrics: billingMetrics}
-				if lifecycle != nil {
-					handler.OnLifecycle = lifecycle.HandleStripeEvent
-				}
-				deps.StripeWebhook = handler
-			}
-			log.Printf("bex-api Stripe Billing enabled (seal horizon %s, epoch %s, webhook %t)", emitter.SealHours, billingEpoch.Format(time.RFC3339), deps.StripeWebhook != nil)
-			go emitter.Run(ctx)
-		}
+		stripeLifecycleWorker, stripeLifecycleReconciler, stripeBillingAdmin = wireStripeBilling(ctx, &deps, base, cl, st, appsNS, usageSvc, billingMetrics, requirePaymentMethod, dashboardURL)
 
 		go usageSvc.Run(ctx)
 
@@ -602,50 +398,7 @@ func main() {
 		deps.Audit = auditSvc
 		go auditSvc.Run(ctx)
 
-		// The internal control-plane API (:8091) grants workspace-admin and
-		// cross-tenant writes, so it must never serve unauthenticated. Fail
-		// closed at startup when BEX_CP_TOKEN is empty (w1/m53: the token was
-		// set nowhere in prod, so the API had been serving open behind the
-		// NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-		cpToken := os.Getenv("BEX_CP_TOKEN")
-		if err := requireCPAuth(cpToken, os.Getenv("BEX_CP_INSECURE")); err != nil {
-			log.Fatalf("control plane: %v", err)
-		}
-		internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: cpToken, Grant: granter, Billing: stripeBillingAdmin, BillingOperations: st, SandboxTenants: st}
-		internalRoot := http.NewServeMux()
-		internalRoot.Handle("GET /metrics", promhttp.HandlerFor(metricRegistry, promhttp.HandlerOpts{}))
-		// ADR047 D2: a gateway-authenticated, internal-only mint verb. The same
-		// sandbox-exec HMAC secret is reused with protocol domain separation; the
-		// route is not mounted on :8090 and never enters the public surface.
-		if secret := os.Getenv("BEX_SANDBOX_EXEC_SECRET"); secret != "" {
-			internalRoot.Handle(agentsession.InternalMintPath, &agentsession.Handler{
-				Secret: []byte(secret),
-				Minter: &agentsession.Minter{GitHub: ghClient, Connections: st, Sessions: st, Audit: st},
-			})
-		}
-		internalRoot.Handle("/", internal.Handler())
-		cpAddr := envOr("BEX_CP_ADDR", ":8091")
-		cpSrv := &http.Server{
-			Addr:              cpAddr,
-			Handler:           internalRoot,
-			ReadHeaderTimeout: 10 * time.Second,
-			ReadTimeout:       30 * time.Second,
-			WriteTimeout:      30 * time.Second,
-		}
-		log.Printf("bex-api control plane (source of truth) on %s (Apps project into per-tenant <ws> namespaces; Databases/KeyValues stay in %q)", cpAddr, appsNS)
-		go func() {
-			// Same serve-then-graceful-shutdown pattern as the public server
-			// below: on SIGTERM (ctx cancelled) the internal API drains instead
-			// of being cut mid-request. It shares the pod's drain window — the
-			// readiness flip removes BOTH ports from the Service endpoints, so
-			// :8091 keeps serving late-routed internal calls through the same
-			// window. Its drain is best-effort — main returns once the public
-			// server finishes draining, so a slower CP drain is cut short at
-			// process exit; acceptable for an internal-only API.
-			if err := serve.UntilShutdown(ctx, cpSrv, serve.Options{Readiness: ready, DrainWindow: drainWindow}); err != nil {
-				log.Fatalf("bex-api control plane: %v", err)
-			}
-		}()
+		startControlPlaneServer(ctx, st, rec, granter, stripeBillingAdmin, metricRegistry, ghClient, sandboxExecSecret, appsNS, ready)
 	}
 
 	// Invite delivery (w4/m12): the members feature emails invites over the same
@@ -656,72 +409,14 @@ func main() {
 		os.Getenv("BEX_SMTP_USERNAME"), os.Getenv("BEX_SMTP_PASSWORD")); m != nil {
 		deps.Mailer = m
 	}
-	deps.InviteBaseURL = os.Getenv("BEX_DASHBOARD_URL")
+	deps.InviteBaseURL = dashboardURL
 	// The GitHub install callback (docs/ADR026-github-integration.md) redirects the
 	// browser back to dashboard settings on success and with a bounded error code
 	// on state/install failures.
-	deps.DashboardURL = os.Getenv("BEX_DASHBOARD_URL")
+	deps.DashboardURL = dashboardURL
 	deps.DeployHookBaseURL = os.Getenv("BEX_API_PUBLIC_URL")
 	deps.SSHHost = os.Getenv("BEX_SSH_HOST")
-	// Hosted agent sandboxes (pillar 5, ADR042/w3/m32): wire the OpenSandbox
-	// lifecycle client only when BEX_OPENSANDBOX_URL is set — unset => the
-	// sandbox verbs 503 and the feature is not registered (byte-identical). The
-	// per-workspace tenant-key provider (m32 t006) and template registry are
-	// wired as they land; for now a single default "base" template.
-	if osURL := os.Getenv("BEX_OPENSANDBOX_URL"); osURL != "" {
-		deps.SandboxClient = sandbox.NewClient(osURL)
-		deps.SandboxTemplates = sandboxTemplateRegistry(
-			envOr("BEX_SANDBOX_IMAGE", "docker.io/library/alpine:3"),
-			envOr("BEX_AGENT_SESSION_IMAGE", "ghcr.io/bex-co/bex-agent-sandbox:latest"),
-		)
-		deps.SandboxDefaultPlan = sandbox.PlanStarter
-		// The Render CLI's `ea sandbox create` sends no template (no such flag), so
-		// an empty template resolves to this registered default (w3/m32 t009).
-		deps.SandboxDefaultTemplate = "base"
-		// Agent-session egress (ADR047 D5): policy is installed before sandbox
-		// creation. The registry catalog is platform config; the model endpoint is
-		// selected per session by its agent/provider config and validated at create.
-		egress, err := sessionegress.NewManager(cl, sessionegress.Config{
-			SetupRegistryDomains: sessionegress.RegistryConfig(os.Getenv("BEX_AGENT_SETUP_REGISTRIES")),
-		})
-		if err != nil {
-			log.Fatalf("bex-api: %v", err)
-		}
-		deps.SandboxSessionEgress = egress
-		// `render ea sandbox exec` (m33): bex-api authorizes can_operate and mints a
-		// signed ticket, then reverse-proxies the SSE stream from the isolated SSH
-		// gateway (which alone holds pods/exec, Option A). Both the shared HMAC
-		// secret and the gateway's internal exec URL must be set, else the exec verb
-		// 503s (create/list/stop are unaffected).
-		if secret := os.Getenv("BEX_SANDBOX_EXEC_SECRET"); secret != "" {
-			if gwURL := os.Getenv("BEX_SANDBOX_EXEC_URL"); gwURL != "" {
-				deps.SandboxExec = &sandbox.ExecConfig{
-					Secret:     []byte(secret),
-					GatewayURL: gwURL,
-					Client:     &http.Client{}, // no timeout: the exec stream is long-lived
-					TTL:        60 * time.Second,
-				}
-			}
-		}
-		// Multi-tenant OpenSandbox (m32 t006): with the control plane enabled, each
-		// workspace gets an opaque tenant key the sandbox feature stamps as the
-		// OPEN-SANDBOX-API-KEY header; the server resolves it back through the CP
-		// tenant-lookup endpoint to the `<ws>-sandbox` namespace. Without the store
-		// (st nil), Keys stays nil and OpenSandbox must run single-tenant.
-		if st != nil {
-			deps.SandboxKeys = sandboxKeyProvider{st}
-			deps.SandboxMeter = &sandbox.Meter{Client: deps.SandboxClient, Store: st}
-			go deps.SandboxMeter.Run(ctx)
-			// Workspace-delete sandbox teardown (w1/m61): stop the workspace's
-			// running OpenSandbox sandboxes before the tenant row (and its sandbox
-			// key, migration 0056) cascade away. It joins the PRE-cascade purgers so
-			// the key still resolves; st satisfies sandbox.PurgeKeyLookup (lookup-only,
-			// never minting). Only meaningful with the store on (workspace delete
-			// needs it) and the client wired — both true in this branch.
-			deps.WorkspacePreCascadePurgers = append(deps.WorkspacePreCascadePurgers,
-				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st})
-		}
-	}
+	wireSandboxes(ctx, &deps, cl, st, sandboxExecSecret)
 	// Browser Web Shell (docs/ADR035-ssh.md § Browser Web Shell): the HMAC key
 	// shared only with the isolated gateway and the browser-reachable gateway
 	// WebSocket origin. Either unset => the ticket verb returns 503 and native
@@ -750,79 +445,8 @@ func main() {
 		go stripeLifecycleReconciler.Run(ctx)
 	}
 
-	// Wire the reconciler ↔ apps.Service now that both exist (w2/m11):
-	// - CloneSecrets: the projector mints clone Secrets for private-repo rows
-	//   created via the internal CP API (store/api.go POST /v1/apps).
-	// - Kick on the apps.Service: after a store-managed create/redeploy the
-	//   projector runs immediately instead of waiting the next resync period.
-	// rec.Run is started here — after the wiring — so CloneSecrets is already
-	// set before the first reconcile pass runs.
-	// Wire the secrets purger into the apps service so individual service deletes
-	// purge OpenBao env-var and secret-file paths (w7/m12). Uses the same
-	// WorkspacePurger that workspace delete already uses — just the per-app method.
-	srv.Apps.SecretsEraser = &secrets.WorkspacePurger{Service: srv.Secrets}
-
-	if rec != nil {
-		rec.CloneSecrets = srv.Apps.ReconcilerCloneSecreter()
-		srv.Apps.Kick = rec.Kick
-		// DeployNotifier (w3/m9): srv.Notifications structurally satisfies
-		// store.DeployNotifier (NotifyDeploy), so every deploy the reconciler
-		// closes as succeeded/failed fans out to the workspace's members —
-		// same wiring shape as CloneSecrets, deferred until here so it's set
-		// before the first reconcile pass.
-		rec.DeployNotifier = srv.Notifications
-
-		// Per-tenant namespace isolation (ADR043): whenever the store is wired the
-		// control plane also provisions each workspace's `<ws>` and `<ws>-sandbox`
-		// namespaces with base ResourceQuota/LimitRange/default-deny NetworkPolicy,
-		// and prunes them for deleted workspaces. App CRs project into `<ws>`.
-		nsRec := store.NewNamespaceReconciler(cl, st)
-		// Kick BOTH reconcilers on workspace create/delete for the same
-		// low-latency reason the projector is kicked on app writes: the
-		// projector prunes the deleted workspace's orphaned App CRs, the
-		// namespace reconciler provisions/prunes its `<ws>` namespace(s).
-		srv.Workspaces.Kick = func() {
-			rec.Kick()
-			nsRec.Kick()
-		}
-		go rec.Run(ctx)
-		go nsRec.Run(ctx)
-	}
-	// Outbound event webhooks (w3/m11): the delivery worker tails the composed
-	// event feed (deploys + audit_events + service_event_facts — the same rows the events feed reads)
-	// through a durable watermark and POSTs signed notifications to subscribed
-	// endpoints, with retry/auto-disable. Store off => no worker (the CRUD verbs
-	// already 503 via deps.WebhookStore above). Failure notices reuse the SMTP
-	// relay + Kratos email lookup the notifications feature uses.
-	// BEX_WEBHOOK_BACKOFF ("5s,10s,1m") overrides the documented retry schedule
-	// — a dev/verification knob, unset in production.
-	if st != nil {
-		backoff, err := webhooks.ParseBackoff(os.Getenv("BEX_WEBHOOK_BACKOFF"))
-		if err != nil {
-			log.Fatalf("bex-api: %v", err)
-		}
-		// Terminal deliveries are purged on an age + per-endpoint-count policy
-		// (w1/m67 F3): webhook_deliveries doubles as the dashboard's history view,
-		// so without retention a tenant's ordinary activity grew shared storage
-		// forever. 0 keeps the documented defaults.
-		whRetentionDays := intEnv("BEX_WEBHOOK_RETENTION_DAYS", "0")
-		whKeepPerEndpoint := intEnv("BEX_WEBHOOK_RETENTION_KEEP", "0")
-		whWorker := &webhooks.Worker{
-			Store: st, Mailer: deps.Mailer, Emails: srv.Notifications.Identities, Backoff: backoff,
-			RetentionDays: whRetentionDays, RetentionKeepPerEndpoint: whKeepPerEndpoint,
-		}
-		go whWorker.Run(ctx)
-	}
-	// Native push (ADR048 D2): only an explicitly configured, startup-validated
-	// transport starts the event consumer. With config absent there is no client,
-	// no worker, no feed advancement, and no provider network traffic.
-	if st != nil && mobilePush != nil {
-		pushWorker := &notifications.PushWorker{
-			Store: st, Sender: notifications.PushTransportSender{Transport: mobilePush},
-			Receipts: mobilePush, Metrics: pushMetrics, Evidence: notifications.PushEvidenceLogger{},
-		}
-		go pushWorker.Run(ctx)
-	}
+	wireReconcilers(ctx, srv, rec, st, cl)
+	startDeliveryWorkers(ctx, srv, st, deps.Mailer, mobilePush, pushMetrics)
 	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")
 	srv.HydraAdminURL = hydraAdminURL
 	srv.KratosURL = os.Getenv("BEX_KRATOS_URL")
@@ -861,7 +485,7 @@ func main() {
 	// codex #4: in multitenant mode (control-plane store active), reject the shared
 	// manual webhook secret because it carries no per-workspace binding and would
 	// authorize cross-tenant deployment mutations. The GitHub App key is unaffected.
-	srv.MultitenantWebhook = os.Getenv("BEX_CP_DB_URI") != ""
+	srv.MultitenantWebhook = cpDBURI != ""
 
 	// stdio MCP mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP
 	// adapter over stdin/stdout — how a local agent launches bex as a subprocess.
@@ -880,6 +504,461 @@ func main() {
 		log.Fatalf("bex-api: deploy-hook token index backfill: %v", err)
 	}
 
+	configureRateLimiters(srv)
+
+	srv.MaxBodyBytes = int64(intEnv("BEX_MAX_BODY_BYTES", "2097152"))
+
+	maxQueryHours := intEnv("BEX_MAX_QUERY_HOURS", "720")
+	srv.Logs.MaxQueryHours = maxQueryHours
+	srv.Logs.MaxSSEConns = int64(intEnv("BEX_MAX_SSE_CONNS", "100"))
+	srv.Metrics.MaxQueryHours = maxQueryHours
+	srv.Events.MaxQueryHours = maxQueryHours
+
+	handler, err := srv.Handler()
+	if err != nil {
+		log.Fatalf("bex-api: %v", err)
+	}
+
+	// /readyz mounts OUTSIDE the product handler (w1/m52): it is a deployment
+	// lifecycle endpoint for the readiness probe, not part of the Render-shaped
+	// API surface, so internal/api stays untouched and parity-clean. Everything
+	// else falls through to the product handler unchanged.
+	root := http.NewServeMux()
+	root.Handle("GET /readyz", ready.Handler())
+	root.Handle("/", handler)
+
+	addr := envOr("BEX_API_ADDR", ":8090")
+	httpSrv := newHTTPServer(addr, root)
+	log.Printf("bex-api listening on %s (namespace %s)", addr, base.Namespace)
+	// Serve in a goroutine and block on ctx (SIGTERM/SIGINT via
+	// ctrl.SetupSignalHandler above) so the process shuts the server down
+	// gracefully instead of serving for the whole termination grace period with
+	// every background loop's context already cancelled (w1/m30, .pm/w1/019.md).
+	// On SIGTERM: /readyz flips to 503, the server keeps serving new requests
+	// through drainWindow, then the in-flight drain runs (w1/m52).
+	if err := serve.UntilShutdown(ctx, httpSrv, serve.Options{Readiness: ready, DrainWindow: drainWindow}); err != nil {
+		log.Fatalf("bex-api: %v", err)
+	}
+}
+
+// wireGitHubApp wires the GitHub App integration (docs/ADR026-github-integration.md): private-repo deploys +
+// zero-config push-to-deploy. Wired only when all three BEX_GITHUB_APP_* vars
+// are set (and the key parses) — else the git-connect verbs 503. The store
+// half (git_connections) is wired inside the BEX_CP_DB_URI block below.
+func wireGitHubApp(deps *api.Deps) *github.Client {
+	var ghClient *github.Client
+	if appID, key, slug := os.Getenv("BEX_GITHUB_APP_ID"), os.Getenv("BEX_GITHUB_APP_PRIVATE_KEY"), os.Getenv("BEX_GITHUB_APP_SLUG"); appID != "" && key != "" && slug != "" {
+		var err error
+		ghClient, err = github.NewClient(github.Config{
+			AppID: appID, PrivateKey: key, Slug: slug,
+			// F2: both OAuth credentials enable the mandatory installation-admin
+			// proof on new browser bindings. Both absent leaves existing connections
+			// usable but makes every callback fail closed; a partial pair is fatal.
+			ClientID:     os.Getenv("BEX_GITHUB_APP_CLIENT_ID"),
+			ClientSecret: os.Getenv("BEX_GITHUB_APP_CLIENT_SECRET"),
+		})
+		if err != nil {
+			log.Fatalf("bex-api: github app config: %v", err)
+		}
+		deps.GitHubClient = ghClient
+		if ghClient.InstallVerificationConfigured() {
+			deps.GitHubInstallVerifier = ghClient
+		}
+		// The same out-of-band private key also HMAC-signs the short-lived
+		// workspace state carried through GitHub's browser install redirect.
+		deps.GitHubStateSecret = []byte(key)
+	}
+	return ghClient
+}
+
+// wireControlPlaneFeatures wires the control-plane store into the feature deps
+// and adapts the authz checker's role grant/revoke sides, returning the
+// membership granter shared by the tenant service and the internal CP API.
+func wireControlPlaneFeatures(deps *api.Deps, base *core.Base, st *store.PGStore, rec *store.Reconciler, authzChecker core.Checker) store.MembershipGranter {
+	deps.Store = st        // single writer of intent: suspend/resume write the row first
+	deps.SSHKeysStore = st // identity-scoped SSH public-key registry
+	deps.DeployStore = st  // deploy history (w2/m5): list/get/trigger read+write the same rows
+	// Cancel (w2/m10) needs to compute a repo-backed App's in-flight build
+	// Job's identity — must match the operator's own BEX_BUILD_NAMESPACE.
+	deps.DeployBuildNamespace = os.Getenv("BEX_BUILD_NAMESPACE")
+	deps.GitHubStore = st        // git connections (w2/m8): connect/disconnect/list read+write git_connections
+	deps.EventStore = st         // service events: deploy + audit + typed observed/Git facts
+	deps.EventFacts = st         // typed observed/Git event facts (w3/m19), written outside the operator
+	deps.NotificationsStore = st // deploy notifications (w3/m9): settings read/write + the reconciler's recipient fan-out
+	deps.ProjectsStore = st      // project groupings (w1/m31): project CRUD + service-assignment
+	deps.EnvironmentsStore = st  // environment groupings (layered on w1/m31): environment CRUD + service-assignment
+	deps.RegistryCredsStore = st // registry credentials (w2/m14): CRUD metadata rows; secrets live in OpenBao (deps.Secrets)
+	deps.BlueprintsStore = st    // blueprint registry (w2/m15): auto-upserted on deploy, list+sync read it
+	deps.WebhookStore = st       // outbound webhooks (w3/m11): endpoint CRUD + delivery history; the worker below delivers
+	deps.JobStore = st           // one-off jobs (Render's /services/{id}/jobs): job CRUD + k8s Job tracking
+	deps.AgentSessionStore = st  // ADR047 D3: durable agent-session lifecycle
+	if writer, ok := authzChecker.(agentsessions.TupleWriter); ok {
+		deps.AgentSessionTuples = writer
+	}
+
+	// Audit log (w4/m10): *store.PGStore structurally satisfies
+	// core.AuditSink, so every write verb's Authorize/AuthorizeOn call
+	// starts recording the instant the store is wired — no extra plumbing.
+	base.Audit = st
+	base.Billing = st
+
+	// Workspace lifecycle (w6/m1): the workspaces feature writes through the
+	// same store and nudges the same projector to prune a deleted workspace's
+	// App CRs. The OpenFGA checker (when wired) is both the grant and revoke
+	// side, keeping workspace:tea-<id> tuples in step with tenant_members.
+	deps.WorkspaceStore = st
+	deps.WorkspaceKick = rec.Kick
+	if g, ok := authzChecker.(workspaces.WorkspaceGranter); ok {
+		deps.WorkspaceGranter = g
+	}
+	if rv, ok := authzChecker.(workspaces.WorkspaceRevoker); ok {
+		deps.WorkspaceRevoker = rv
+	}
+	// Out-of-cascade teardown (w6/m4/t005, w1/m61): a deleted workspace's
+	// OpenBao secrets, env groups, managed Databases/KeyValue stores, sandboxes
+	// (appended in the OpenSandbox block below), and Stripe subscription
+	// (appended in the billing block below) live outside the tenant row's FK
+	// cascade. Delete runs these PRE-cascade — while the tenant row still
+	// exists — so a purger failure is retryable (the row and its confirmation
+	// phrase survive) and the sandbox/Stripe purgers can still read the ids the
+	// cascade is about to drop. The secrets purger must also run here, before
+	// the App CRs are torn down: it enumerates them to find their OpenBao paths.
+	deps.WorkspacePreCascadePurgers = []workspaces.WorkspacePurger{
+		&secrets.WorkspacePurger{Service: &secrets.Service{Base: base, Store: deps.Secrets}},
+		&envgroups.WorkspacePurger{Service: &envgroups.Service{Base: base, Store: deps.Secrets}},
+		&postgres.WorkspacePurger{Service: &postgres.Service{Base: base}},
+		&keyvalue.WorkspacePurger{Service: &keyvalue.Service{Base: base}},
+	}
+	// apps.WorkspacePurger (w6/m11, live-verification finding) runs POST-cascade
+	// (w1/m61): an App created through the public REST/GraphQL/MCP surface
+	// carries core.LabelTenant only, never store.LabelManagedBy, so the
+	// row-backed cascade + reconciler prune that tears down *row-backed* Apps on
+	// workspace delete never sees it — it would otherwise survive forever, still
+	// running and permanently unreachable (its tenant is gone, so core.Base's
+	// tenant gate forbids everyone, including its creator). It must run AFTER the
+	// row cascade: purging App CRs while their apps rows still exist would let
+	// the projector immediately re-create them. Redundant-but-harmless for
+	// row-backed Apps the reconciler already pruned (delete of an already-gone
+	// object is a no-op).
+	deps.WorkspacePostCascadePurgers = []workspaces.WorkspacePurger{
+		&apps.WorkspacePurger{Service: &apps.Service{Base: base}},
+	}
+
+	// Workspace members & roles (w4/m12): the team surface writes through the
+	// same store (tenant_members + tenant_invites) and keeps OpenFGA role
+	// tuples in step. Granter/Revoker are the OpenFGA checker when authz is
+	// wired; a nil pair means the store records roles while authz isn't yet
+	// enforcing them (store on, BEX_OPENFGA_URL off).
+	deps.MembersStore = st
+	if g, ok := authzChecker.(members.RoleGranter); ok {
+		deps.MembersGranter = g
+	}
+	if rv, ok := authzChecker.(members.RoleRevoker); ok {
+		deps.MembersRevoker = rv
+	}
+
+	// Tenant onboarding + workspace scoping (w1/m9): one tenantService is the
+	// store-backed resolver (core.Base.Workspace, every verb's Authorize
+	// targets workspace:tea-<id>), the onboarding seam (mints a personal
+	// tenant on a human's first login), and the key-binder (ties minted keys
+	// to their tenant). The OpenFGA checker is the membership granter when
+	// authz is wired; a nil granter means the store isolates tenants by
+	// filtering while authz isn't yet enforcing roles (store on,
+	// BEX_OPENFGA_URL off).
+	var granter store.MembershipGranter
+	if g, ok := authzChecker.(store.MembershipGranter); ok {
+		granter = g
+	}
+	tenantSvc := api.NewTenantService(st, granter)
+	// Login-time invite redemptions record members.AcceptInvite audit rows
+	// through the same store the feature verbs' sink writes (w1/m33).
+	tenantSvc.Audit = st
+	// w1/m53 + w1/m65 F13: gate login-time invite redemption on a Kratos-verified
+	// email so an attacker can't register with a victim's not-yet-signed-up
+	// invited address and claim the invite. Secure by DEFAULT now (default true):
+	// email is an authorization key here, so ownership must be proven. The
+	// emailed ?invite=<token> bearer link still redeems regardless, so an
+	// address that genuinely can't be verified retains an explicit path. Set
+	// BEX_REQUIRE_VERIFIED_INVITE_EMAIL=0 only for local dev without a
+	// verification UX (docs/ADR024-members.md).
+	tenantSvc.RequireVerifiedInviteEmail = os.Getenv("BEX_REQUIRE_VERIFIED_INVITE_EMAIL") != "0" &&
+		!strings.EqualFold(os.Getenv("BEX_REQUIRE_VERIFIED_INVITE_EMAIL"), "false")
+	base.Workspace = tenantSvc
+	deps.Onboard = tenantSvc
+	deps.KeyBinder = tenantSvc
+	return granter
+}
+
+// wireStripeBilling wires Stripe Billing (w7/m47–m50, ADR040): one Stripe
+// client drives both the seal-then-emit meter-event sidecar and the usage
+// surface's invoice read-back. BEX_STRIPE_SECRET_KEY unset means no client,
+// emitter, reader, or public Stripe webhook: estimate-only behavior stays
+// unchanged.
+func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl client.Client, st *store.PGStore, appsNS string, usageSvc *usage.Service, billingMetrics *billing.Metrics, requirePaymentMethod bool, dashboardURL string) (*billing.Worker, *billing.Reconciler, store.BillingAdmin) {
+	var stripeLifecycleWorker *billing.Worker
+	var stripeLifecycleReconciler *billing.Reconciler
+	var stripeBillingAdmin store.BillingAdmin
+	stripeSecretKey, billingEpoch, stripeEnabled, err := stripeBillingGate(os.Getenv, time.Now())
+	if err != nil {
+		log.Fatalf("bex-api: %v", err)
+	}
+	if stripeEnabled {
+		billingMetrics.SetEnabled(true)
+		stripeClient := billing.NewStripe(billing.StripeConfig{
+			SecretKey:             stripeSecretKey,
+			BaseURL:               os.Getenv("BEX_STRIPE_API_URL"),
+			BillingEpoch:          billingEpoch,
+			CompCouponID:          os.Getenv("BEX_STRIPE_COMP_COUPON_ID"),
+			DashboardURL:          dashboardURL,
+			PortalConfigurationID: os.Getenv("BEX_STRIPE_PORTAL_CONFIGURATION_ID"),
+			TaxCode:               os.Getenv("BEX_STRIPE_TAX_CODE"),
+			TaxBehavior:           os.Getenv("BEX_STRIPE_TAX_BEHAVIOR"),
+			State:                 st,
+			Metrics:               billingMetrics,
+		})
+		usageSvc.Billing = stripeClient
+		deps.Billing = stripeClient
+		deps.BillingState = st
+		if requirePaymentMethod {
+			base.Payment = &billing.PaymentGate{Store: st}
+		}
+		stripeBillingAdmin = &billing.Admin{Store: st, Provider: stripeClient}
+		// Workspace-delete Stripe teardown (w1/m61): cancel the workspace's
+		// metered Subscription when its workspace is deleted (keeping the Customer
+		// for invoice history). Pre-cascade, so the billing_provider_mappings row
+		// still resolves the subscription id. Only wired when Stripe is enabled —
+		// byte-identical to before m61 otherwise.
+		deps.WorkspacePreCascadePurgers = append(deps.WorkspacePreCascadePurgers,
+			&billing.WorkspacePurger{Canceller: stripeClient})
+
+		emitter := billing.NewEmitter(st, stripeClient)
+		emitter.Metrics = billingMetrics
+		emitter.Epoch = billingEpoch
+		emitter.RequirePaymentMethod = requirePaymentMethod
+		if n, ok := positiveIntEnv("BEX_STRIPE_SEAL_HOURS", billing.DefaultSealHours); ok {
+			emitter.SealHours = time.Duration(n) * time.Hour
+		}
+		// w7/m57: never seal shorter than the usage rollup's catch-up window, or
+		// an exported row could still be rewritten and never re-emitted.
+		if clamped := billing.ClampSealHours(emitter.SealHours, usage.CatchupWindow); clamped != emitter.SealHours {
+			log.Printf("BEX_STRIPE_SEAL_HOURS=%s is below the usage catch-up window; raising the seal horizon to %s so exported rows are final", emitter.SealHours, clamped)
+			emitter.SealHours = clamped
+		}
+		var lifecycle *billing.Lifecycle
+		if os.Getenv("BEX_STRIPE_DUNNING_ENABLED") == "1" {
+			if stripeClient.ExpectedLivemode() {
+				log.Fatal("bex-api: BEX_STRIPE_DUNNING_ENABLED=1 is test-mode only at w7/m52; refusing live enforcement")
+			}
+			grace := minuteDurationEnv("BEX_STRIPE_GRACE_PERIOD", "168h")
+			reconcileEvery := minuteDurationEnv("BEX_STRIPE_RECONCILE_INTERVAL", "5m")
+			lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: false}
+			enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: appsNS}
+			stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
+			stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics}
+			log.Printf("bex-api Stripe test-mode dunning enabled (grace %s, reconcile %s)", grace, reconcileEvery)
+		}
+		if secret := os.Getenv("BEX_STRIPE_WEBHOOK_SECRET"); secret != "" {
+			handler := &billing.StripeWebhook{Secret: secret, ExpectedLivemode: stripeClient.ExpectedLivemode(), OnCheckoutCompleted: stripeClient.CompleteCheckoutSession, Metrics: billingMetrics}
+			if lifecycle != nil {
+				handler.OnLifecycle = lifecycle.HandleStripeEvent
+			}
+			deps.StripeWebhook = handler
+		}
+		log.Printf("bex-api Stripe Billing enabled (seal horizon %s, epoch %s, webhook %t)", emitter.SealHours, billingEpoch.Format(time.RFC3339), deps.StripeWebhook != nil)
+		go emitter.Run(ctx)
+	}
+	return stripeLifecycleWorker, stripeLifecycleReconciler, stripeBillingAdmin
+}
+
+// startControlPlaneServer starts the internal control-plane API (:8091): it
+// grants workspace-admin and cross-tenant writes, so it must never serve
+// unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
+// the token was set nowhere in prod, so the API had been serving open behind
+// the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
+func startControlPlaneServer(ctx context.Context, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, ghClient *github.Client, sandboxExecSecret, appsNS string, ready *serve.Readiness) {
+	cpToken := os.Getenv("BEX_CP_TOKEN")
+	if err := requireCPAuth(cpToken, os.Getenv("BEX_CP_INSECURE")); err != nil {
+		log.Fatalf("control plane: %v", err)
+	}
+	internal := &store.API{Store: st, Kick: rec.Kick, Health: st.Ping, Token: cpToken, Grant: granter, Billing: stripeBillingAdmin, BillingOperations: st, SandboxTenants: st}
+	internalRoot := http.NewServeMux()
+	internalRoot.Handle("GET /metrics", promhttp.HandlerFor(metricRegistry, promhttp.HandlerOpts{}))
+	// ADR047 D2: a gateway-authenticated, internal-only mint verb. The same
+	// sandbox-exec HMAC secret is reused with protocol domain separation; the
+	// route is not mounted on :8090 and never enters the public surface.
+	if sandboxExecSecret != "" {
+		internalRoot.Handle(agentsession.InternalMintPath, &agentsession.Handler{
+			Secret: []byte(sandboxExecSecret),
+			Minter: &agentsession.Minter{GitHub: ghClient, Connections: st, Sessions: st, Audit: st},
+		})
+	}
+	internalRoot.Handle("/", internal.Handler())
+	cpAddr := envOr("BEX_CP_ADDR", ":8091")
+	cpSrv := newHTTPServer(cpAddr, internalRoot)
+	log.Printf("bex-api control plane (source of truth) on %s (Apps project into per-tenant <ws> namespaces; Databases/KeyValues stay in %q)", cpAddr, appsNS)
+	go func() {
+		// Same serve-then-graceful-shutdown pattern as the public server
+		// in main: on SIGTERM (ctx cancelled) the internal API drains instead
+		// of being cut mid-request. It shares the pod's drain window — the
+		// readiness flip removes BOTH ports from the Service endpoints, so
+		// :8091 keeps serving late-routed internal calls through the same
+		// window. Its drain is best-effort — main returns once the public
+		// server finishes draining, so a slower CP drain is cut short at
+		// process exit; acceptable for an internal-only API.
+		if err := serve.UntilShutdown(ctx, cpSrv, serve.Options{Readiness: ready, DrainWindow: drainWindow}); err != nil {
+			log.Fatalf("bex-api control plane: %v", err)
+		}
+	}()
+}
+
+// wireSandboxes wires hosted agent sandboxes (pillar 5, ADR042/w3/m32): the
+// OpenSandbox lifecycle client only when BEX_OPENSANDBOX_URL is set — unset =>
+// the sandbox verbs 503 and the feature is not registered (byte-identical). The
+// per-workspace tenant-key provider (m32 t006) and template registry are
+// wired as they land; for now a single default "base" template.
+func wireSandboxes(ctx context.Context, deps *api.Deps, cl client.Client, st *store.PGStore, sandboxExecSecret string) {
+	if osURL := os.Getenv("BEX_OPENSANDBOX_URL"); osURL != "" {
+		deps.SandboxClient = sandbox.NewClient(osURL)
+		deps.SandboxTemplates = sandboxTemplateRegistry(
+			envOr("BEX_SANDBOX_IMAGE", "docker.io/library/alpine:3"),
+			envOr("BEX_AGENT_SESSION_IMAGE", "ghcr.io/bex-co/bex-agent-sandbox:latest"),
+		)
+		deps.SandboxDefaultPlan = sandbox.PlanStarter
+		// The Render CLI's `ea sandbox create` sends no template (no such flag), so
+		// an empty template resolves to this registered default (w3/m32 t009).
+		deps.SandboxDefaultTemplate = "base"
+		// Agent-session egress (ADR047 D5): policy is installed before sandbox
+		// creation. The registry catalog is platform config; the model endpoint is
+		// selected per session by its agent/provider config and validated at create.
+		egress, err := sessionegress.NewManager(cl, sessionegress.Config{
+			SetupRegistryDomains: sessionegress.RegistryConfig(os.Getenv("BEX_AGENT_SETUP_REGISTRIES")),
+		})
+		if err != nil {
+			log.Fatalf("bex-api: %v", err)
+		}
+		deps.SandboxSessionEgress = egress
+		// `render ea sandbox exec` (m33): bex-api authorizes can_operate and mints a
+		// signed ticket, then reverse-proxies the SSE stream from the isolated SSH
+		// gateway (which alone holds pods/exec, Option A). Both the shared HMAC
+		// secret and the gateway's internal exec URL must be set, else the exec verb
+		// 503s (create/list/stop are unaffected).
+		if sandboxExecSecret != "" {
+			if gwURL := os.Getenv("BEX_SANDBOX_EXEC_URL"); gwURL != "" {
+				deps.SandboxExec = &sandbox.ExecConfig{
+					Secret:     []byte(sandboxExecSecret),
+					GatewayURL: gwURL,
+					Client:     &http.Client{}, // no timeout: the exec stream is long-lived
+					TTL:        60 * time.Second,
+				}
+			}
+		}
+		// Multi-tenant OpenSandbox (m32 t006): with the control plane enabled, each
+		// workspace gets an opaque tenant key the sandbox feature stamps as the
+		// OPEN-SANDBOX-API-KEY header; the server resolves it back through the CP
+		// tenant-lookup endpoint to the `<ws>-sandbox` namespace. Without the store
+		// (st nil), Keys stays nil and OpenSandbox must run single-tenant.
+		if st != nil {
+			deps.SandboxKeys = sandboxKeyProvider{st}
+			deps.SandboxMeter = &sandbox.Meter{Client: deps.SandboxClient, Store: st}
+			go deps.SandboxMeter.Run(ctx)
+			// Workspace-delete sandbox teardown (w1/m61): stop the workspace's
+			// running OpenSandbox sandboxes before the tenant row (and its sandbox
+			// key, migration 0056) cascade away. It joins the PRE-cascade purgers so
+			// the key still resolves; st satisfies sandbox.PurgeKeyLookup (lookup-only,
+			// never minting). Only meaningful with the store on (workspace delete
+			// needs it) and the client wired — both true in this branch.
+			deps.WorkspacePreCascadePurgers = append(deps.WorkspacePreCascadePurgers,
+				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st})
+		}
+	}
+}
+
+// wireReconcilers wires the apps.Service ↔ reconciler seams and starts the
+// projector + namespace reconciler loops.
+func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler, st *store.PGStore, cl client.Client) {
+	// Wire the reconciler ↔ apps.Service now that both exist (w2/m11):
+	// - CloneSecrets: the projector mints clone Secrets for private-repo rows
+	//   created via the internal CP API (store/api.go POST /v1/apps).
+	// - Kick on the apps.Service: after a store-managed create/redeploy the
+	//   projector runs immediately instead of waiting the next resync period.
+	// rec.Run is started here — after the wiring — so CloneSecrets is already
+	// set before the first reconcile pass runs.
+	// Wire the secrets purger into the apps service so individual service deletes
+	// purge OpenBao env-var and secret-file paths (w7/m12). Uses the same
+	// WorkspacePurger that workspace delete already uses — just the per-app method.
+	srv.Apps.SecretsEraser = &secrets.WorkspacePurger{Service: srv.Secrets}
+
+	if rec != nil {
+		rec.CloneSecrets = srv.Apps.ReconcilerCloneSecreter()
+		srv.Apps.Kick = rec.Kick
+		// DeployNotifier (w3/m9): srv.Notifications structurally satisfies
+		// store.DeployNotifier (NotifyDeploy), so every deploy the reconciler
+		// closes as succeeded/failed fans out to the workspace's members —
+		// same wiring shape as CloneSecrets, deferred until here so it's set
+		// before the first reconcile pass.
+		rec.DeployNotifier = srv.Notifications
+
+		// Per-tenant namespace isolation (ADR043): whenever the store is wired the
+		// control plane also provisions each workspace's `<ws>` and `<ws>-sandbox`
+		// namespaces with base ResourceQuota/LimitRange/default-deny NetworkPolicy,
+		// and prunes them for deleted workspaces. App CRs project into `<ws>`.
+		nsRec := store.NewNamespaceReconciler(cl, st)
+		// Kick BOTH reconcilers on workspace create/delete for the same
+		// low-latency reason the projector is kicked on app writes: the
+		// projector prunes the deleted workspace's orphaned App CRs, the
+		// namespace reconciler provisions/prunes its `<ws>` namespace(s).
+		srv.Workspaces.Kick = func() {
+			rec.Kick()
+			nsRec.Kick()
+		}
+		go rec.Run(ctx)
+		go nsRec.Run(ctx)
+	}
+}
+
+// startDeliveryWorkers starts the outbound-webhook delivery worker and the
+// native-push consumer; each runs only when its wiring is present.
+func startDeliveryWorkers(ctx context.Context, srv *api.Server, st *store.PGStore, m members.Mailer, mobilePush pushtransport.Transport, pushMetrics *notifications.PushMetrics) {
+	// Outbound event webhooks (w3/m11): the delivery worker tails the composed
+	// event feed (deploys + audit_events + service_event_facts — the same rows the events feed reads)
+	// through a durable watermark and POSTs signed notifications to subscribed
+	// endpoints, with retry/auto-disable. Store off => no worker (the CRUD verbs
+	// already 503 via deps.WebhookStore above). Failure notices reuse the SMTP
+	// relay + Kratos email lookup the notifications feature uses.
+	// BEX_WEBHOOK_BACKOFF ("5s,10s,1m") overrides the documented retry schedule
+	// — a dev/verification knob, unset in production.
+	if st != nil {
+		backoff, err := webhooks.ParseBackoff(os.Getenv("BEX_WEBHOOK_BACKOFF"))
+		if err != nil {
+			log.Fatalf("bex-api: %v", err)
+		}
+		// Terminal deliveries are purged on an age + per-endpoint-count policy
+		// (w1/m67 F3): webhook_deliveries doubles as the dashboard's history view,
+		// so without retention a tenant's ordinary activity grew shared storage
+		// forever. 0 keeps the documented defaults.
+		whRetentionDays := intEnv("BEX_WEBHOOK_RETENTION_DAYS", "0")
+		whKeepPerEndpoint := intEnv("BEX_WEBHOOK_RETENTION_KEEP", "0")
+		whWorker := &webhooks.Worker{
+			Store: st, Mailer: m, Emails: srv.Notifications.Identities, Backoff: backoff,
+			RetentionDays: whRetentionDays, RetentionKeepPerEndpoint: whKeepPerEndpoint,
+		}
+		go whWorker.Run(ctx)
+	}
+	// Native push (ADR048 D2): only an explicitly configured, startup-validated
+	// transport starts the event consumer. With config absent there is no client,
+	// no worker, no feed advancement, and no provider network traffic.
+	if st != nil && mobilePush != nil {
+		pushWorker := &notifications.PushWorker{
+			Store: st, Sender: notifications.PushTransportSender{Transport: mobilePush},
+			Receipts: mobilePush, Metrics: pushMetrics, Evidence: notifications.PushEvidenceLogger{},
+		}
+		go pushWorker.Run(ctx)
+	}
+}
+
+// configureRateLimiters wires the trusted-proxy-aware rate limiters and the
+// pre-auth admission budget onto the server.
+func configureRateLimiters(srv *api.Server) {
 	// Trusted-proxy CIDRs for rate-limit identity (w4/m33 P2 register,
 	// .pm/w4/029.md report #10). In production every public request's TCP peer
 	// is a Traefik pod, so without this every IP-keyed limiter below keys all
@@ -954,45 +1033,17 @@ func main() {
 	if srv.DeviceRateLimiter != nil {
 		srv.DeviceRateLimiter.TrustedProxies = trustedProxies
 	}
+}
 
-	srv.MaxBodyBytes = int64(intEnv("BEX_MAX_BODY_BYTES", "2097152"))
-
-	maxQueryHours := intEnv("BEX_MAX_QUERY_HOURS", "720")
-	srv.Logs.MaxQueryHours = maxQueryHours
-	srv.Logs.MaxSSEConns = int64(intEnv("BEX_MAX_SSE_CONNS", "100"))
-	srv.Metrics.MaxQueryHours = maxQueryHours
-	srv.Events.MaxQueryHours = maxQueryHours
-
-	handler, err := srv.Handler()
-	if err != nil {
-		log.Fatalf("bex-api: %v", err)
-	}
-
-	// /readyz mounts OUTSIDE the product handler (w1/m52): it is a deployment
-	// lifecycle endpoint for the readiness probe, not part of the Render-shaped
-	// API surface, so internal/api stays untouched and parity-clean. Everything
-	// else falls through to the product handler unchanged.
-	root := http.NewServeMux()
-	root.Handle("GET /readyz", ready.Handler())
-	root.Handle("/", handler)
-
-	addr := envOr("BEX_API_ADDR", ":8090")
-	httpSrv := &http.Server{
+// newHTTPServer builds an HTTP server with the header/read/write timeouts
+// shared by the public and internal control-plane listeners.
+func newHTTPServer(addr string, h http.Handler) *http.Server {
+	return &http.Server{
 		Addr:              addr,
-		Handler:           root,
+		Handler:           h,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,
-	}
-	log.Printf("bex-api listening on %s (namespace %s)", addr, base.Namespace)
-	// Serve in a goroutine and block on ctx (SIGTERM/SIGINT via
-	// ctrl.SetupSignalHandler above) so the process shuts the server down
-	// gracefully instead of serving for the whole termination grace period with
-	// every background loop's context already cancelled (w1/m30, .pm/w1/019.md).
-	// On SIGTERM: /readyz flips to 503, the server keeps serving new requests
-	// through drainWindow, then the in-flight drain runs (w1/m52).
-	if err := serve.UntilShutdown(ctx, httpSrv, serve.Options{Readiness: ready, DrainWindow: drainWindow}); err != nil {
-		log.Fatalf("bex-api: %v", err)
 	}
 }
 

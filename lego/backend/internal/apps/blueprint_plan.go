@@ -91,6 +91,71 @@ func blueprintServiceOmission(name string) BlueprintOmission {
 	return BlueprintPreserveOnOmission
 }
 
+// blueprintServiceFieldAppliers maps declared Blueprint fields to the
+// presence-gated spec copy each performs. Grouped names apply once when any
+// member is declared (domains|domain, autoDeploy|autoDeployTrigger). Fields
+// whose omission or interplay carries meaning (buildFilter, scaling and
+// numInstances) stay inline in ApplyBlueprintServiceSpec.
+var blueprintServiceFieldAppliers = []struct {
+	names []string
+	apply func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec)
+}{
+	{names: []string{"type"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Type = want.Type }},
+	{names: []string{"runtime"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Runtime = want.Runtime }},
+	{names: []string{"schedule"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Schedule = want.Schedule }},
+	{names: []string{"repo"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Repo = want.Repo }},
+	{names: []string{"image"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Image = want.Image }},
+	{names: []string{"branch"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Branch = want.Branch }},
+	{names: []string{"builder"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Builder = want.Builder }},
+	{names: []string{"rootDir"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.RootDir = want.RootDir }},
+	{names: []string{"buildCommand"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.BuildCommand = want.BuildCommand }},
+	{names: []string{"startCommand"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.StartCommand = want.StartCommand }},
+	{names: []string{"dockerCommand"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.StartCommand = want.StartCommand }},
+	{names: []string{"dockerfilePath"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.DockerfilePath = want.DockerfilePath }},
+	{names: []string{"plan"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Tier = want.Tier }},
+	{names: []string{"healthCheckPath"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.HealthCheckPath = want.HealthCheckPath }},
+	{names: []string{"maxShutdownDelaySeconds"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		dst.MaxShutdownDelaySeconds = clonePtr(want.MaxShutdownDelaySeconds)
+	}},
+	{names: []string{"autoDeploy", "autoDeployTrigger"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		dst.AutoDeploy = want.AutoDeploy
+	}},
+	{names: []string{"ipAllowList"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		dst.SetIPAllowListEntries(want.EffectiveIPAllowListEntries())
+	}},
+	{names: []string{"domains", "domain"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		dst.Host = want.Host
+		dst.Hosts = slices.Clone(want.Hosts)
+	}},
+	{names: []string{"staticPublishPath"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.PublishPath = want.PublishPath }},
+	{names: []string{"routes"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Routes = slices.Clone(want.Routes) }},
+	{names: []string{"headers"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Headers = slices.Clone(want.Headers) }},
+	{names: []string{"renderSubdomainPolicy"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		dst.SubdomainPolicy = want.SubdomainPolicy
+	}},
+	{names: []string{"maintenanceMode"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		if want.MaintenanceMode == nil {
+			dst.MaintenanceMode = nil
+			return
+		}
+		dst.MaintenanceMode = want.MaintenanceMode.DeepCopy()
+	}},
+	{names: []string{"preDeployCommand"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.PreDeployCommand = want.PreDeployCommand }},
+	{names: []string{"initialDeployHook"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.PreDeployCommand = want.PreDeployCommand }},
+	{names: []string{"envVars"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		dst.Env = mergeBlueprintEnv(dst.Env, want.Env)
+	}},
+}
+
+func anyPresent(fields map[string]BlueprintField, names ...string) bool {
+	for _, name := range names {
+		if _, ok := fields[name]; ok {
+			return true
+		}
+	}
+	return false
+}
+
 // ApplyBlueprintServiceSpec applies a normalized service only for source fields
 // that the Blueprint actually declared. It is for existing resources; creation
 // still uses specFromCreate, where product defaults are appropriate. The return
@@ -106,30 +171,12 @@ func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 		return ok
 	}
 
-	if present("type") {
-		dst.Type = want.Type
+	for _, field := range blueprintServiceFieldAppliers {
+		if anyPresent(fields, field.names...) {
+			field.apply(dst, want)
+		}
 	}
-	if present("runtime") {
-		dst.Runtime = want.Runtime
-	}
-	if present("schedule") {
-		dst.Schedule = want.Schedule
-	}
-	if present("repo") {
-		dst.Repo = want.Repo
-	}
-	if present("image") {
-		dst.Image = want.Image
-	}
-	if present("branch") {
-		dst.Branch = want.Branch
-	}
-	if present("builder") {
-		dst.Builder = want.Builder
-	}
-	if present("rootDir") {
-		dst.RootDir = want.RootDir
-	}
+
 	if present("buildFilter") {
 		if want.BuildFilter == nil {
 			dst.BuildFilter = nil
@@ -138,65 +185,6 @@ func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 		}
 	} else if blueprintServiceOmission("buildFilter") == BlueprintClearOnOmission {
 		dst.BuildFilter = nil
-	}
-	if present("buildCommand") {
-		dst.BuildCommand = want.BuildCommand
-	}
-	if present("startCommand") {
-		dst.StartCommand = want.StartCommand
-	}
-	if present("dockerCommand") {
-		dst.StartCommand = want.StartCommand
-	}
-	if present("dockerfilePath") {
-		dst.DockerfilePath = want.DockerfilePath
-	}
-	if present("plan") {
-		dst.Tier = want.Tier
-	}
-	if present("healthCheckPath") {
-		dst.HealthCheckPath = want.HealthCheckPath
-	}
-	if present("maxShutdownDelaySeconds") {
-		dst.MaxShutdownDelaySeconds = clonePtr(want.MaxShutdownDelaySeconds)
-	}
-	if present("autoDeploy") || present("autoDeployTrigger") {
-		dst.AutoDeploy = want.AutoDeploy
-	}
-	if present("ipAllowList") {
-		dst.SetIPAllowListEntries(want.EffectiveIPAllowListEntries())
-	}
-	if present("domains") || present("domain") {
-		dst.Host = want.Host
-		dst.Hosts = slices.Clone(want.Hosts)
-	}
-	if present("staticPublishPath") {
-		dst.PublishPath = want.PublishPath
-	}
-	if present("routes") {
-		dst.Routes = slices.Clone(want.Routes)
-	}
-	if present("headers") {
-		dst.Headers = slices.Clone(want.Headers)
-	}
-	if present("renderSubdomainPolicy") {
-		dst.SubdomainPolicy = want.SubdomainPolicy
-	}
-	if present("maintenanceMode") {
-		if want.MaintenanceMode == nil {
-			dst.MaintenanceMode = nil
-		} else {
-			dst.MaintenanceMode = want.MaintenanceMode.DeepCopy()
-		}
-	}
-	if present("preDeployCommand") {
-		dst.PreDeployCommand = want.PreDeployCommand
-	}
-	if present("initialDeployHook") {
-		dst.PreDeployCommand = want.PreDeployCommand
-	}
-	if present("envVars") {
-		dst.Env = mergeBlueprintEnv(dst.Env, want.Env)
 	}
 
 	// A declared scaling block owns autoscaling. Conversely, an explicit manual

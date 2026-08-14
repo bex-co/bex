@@ -549,26 +549,9 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.requireStackPaymentMethod(ctx, st); err != nil {
 		return StackResult{}, err
 	}
-	// One workspace-scoped Database/KeyValue List each for the whole apply: the
-	// display-name lookups (resolveExistingBlueprintReferences and the
-	// applyDatabase/applyKeyValue upserts) share these snapshots instead of
-	// re-Listing per stack entry. Safe because stack entry names are unique
-	// (registerUniqueName), so no lookup targets an object this same apply
-	// creates.
-	tenantID, _ := s.Tenant(ctx)
-	var databases *appv1alpha1.DatabaseList
-	if len(st.databases) > 0 {
-		var err error
-		if databases, err = s.listWorkspaceDatabases(ctx, tenantID); err != nil {
-			return StackResult{}, err
-		}
-	}
-	var keyValues *appv1alpha1.KeyValueList
-	if len(st.keyValues) > 0 {
-		var err error
-		if keyValues, err = s.listWorkspaceKeyValues(ctx, tenantID); err != nil {
-			return StackResult{}, err
-		}
+	databases, keyValues, err := s.stackDatastoreSnapshots(ctx, st)
+	if err != nil {
+		return StackResult{}, err
 	}
 	databaseIDs, kvCRNames, err := s.resolveExistingBlueprintReferences(ctx, st, databases, keyValues)
 	if err != nil {
@@ -590,39 +573,11 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	// context seam Delete/Suspend's REST/GraphQL/MCP adapters use.
 	ctx = withConfirm(ctx, req.Confirm)
 	res := StackResult{}
-	// Env groups first: a service's fromGroup links one, which needs the group
-	// (and its projection Secret) to exist before the service is patched.
-	for _, g := range st.envGroups {
-		if err := s.EnvGroups.ApplyEnvGroup(ctx, g.name, g.literals, g.generates); err != nil {
-			return res, fmt.Errorf("env group %q: %w", g.name, err)
-		}
-		if g.grouping != "" {
-			if assignment := assignments[g.grouping]; assignment.ID != "" {
-				if err := s.EnvGroups.SetGroupEnvironment(ctx, g.name, assignment.ID); err != nil {
-					return res, fmt.Errorf("assigning env group %q to environment: %w", g.name, err)
-				}
-			}
-		}
+	if err := s.applyStackEnvGroups(ctx, st.envGroups, assignments); err != nil {
+		return res, err
 	}
-	// Databases next: a service's fromDatabase env points (via secretRef) at the
-	// CNPG "<stable-id>-app" Secret, which only exists once the Database converges —
-	// applying the dependent first would leave it Pending on a missing Secret
-	// anyway, but applying the DB first starts its provisioning immediately.
-	for _, db := range st.databases {
-		v, err := s.applyDatabase(ctx, db, assignments[db.grouping], databases.Items)
-		if err != nil {
-			return res, err
-		}
-		res.Databases = append(res.Databases, v)
-		databaseIDs[db.name] = v.ID
-	}
-	for _, kv := range st.keyValues {
-		v, err := s.applyKeyValue(ctx, kv, assignments[kv.grouping], keyValues.Items)
-		if err != nil {
-			return res, err
-		}
-		res.KeyValues = append(res.KeyValues, v)
-		kvCRNames[kv.name] = v.ID // CR name = Secret name (kv.Status.SecretName = kv.Name)
+	if err := s.applyStackDatastores(ctx, st, assignments, databases, keyValues, databaseIDs, kvCRNames, &res); err != nil {
+		return res, err
 	}
 	// Sibling slugs for fromService host/hostport refs (ADR041 D3), filled
 	// lazily and memoized: a target that already exists (re-sync, or declared
@@ -647,18 +602,112 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 		serviceSlugs[target] = slug
 		return slug, nil
 	}
-	// deferred: services whose host refs pointed at a not-yet-created sibling
-	// on this first apply; patched with the resolved env after the loop.
-	type deferredService struct {
-		req    CreateRequest
-		fields map[string]BlueprintField
-		refs   []hostRef
+	deferred, err := s.applyStackServices(ctx, st, assignments, databaseIDs, kvCRNames, serviceSlugs, lookupSlug, &res)
+	if err != nil {
+		return res, err
 	}
+	if err := s.patchDeferredStackServices(ctx, deferred, serviceSlugs); err != nil {
+		return res, err
+	}
+	// Auto-register a blueprint row when called with a repo (w2/m15): lets
+	// list_blueprints surface it and sync_blueprint re-apply it later without
+	// the caller needing to register it separately.
+	if req.Repo != "" {
+		s.upsertBlueprint(ctx, req)
+	}
+	return res, nil
+}
+
+// stackDatastoreSnapshots fetches one workspace-scoped Database/KeyValue List
+// each for the whole apply: the display-name lookups
+// (resolveExistingBlueprintReferences and the applyDatabase/applyKeyValue
+// upserts) share these snapshots instead of re-Listing per stack entry. Safe
+// because stack entry names are unique (registerUniqueName), so no lookup
+// targets an object this same apply creates.
+func (s *Service) stackDatastoreSnapshots(ctx context.Context, st parsedStack) (*appv1alpha1.DatabaseList, *appv1alpha1.KeyValueList, error) {
+	tenantID, _ := s.Tenant(ctx)
+	var databases *appv1alpha1.DatabaseList
+	if len(st.databases) > 0 {
+		var err error
+		if databases, err = s.listWorkspaceDatabases(ctx, tenantID); err != nil {
+			return nil, nil, err
+		}
+	}
+	var keyValues *appv1alpha1.KeyValueList
+	if len(st.keyValues) > 0 {
+		var err error
+		if keyValues, err = s.listWorkspaceKeyValues(ctx, tenantID); err != nil {
+			return nil, nil, err
+		}
+	}
+	return databases, keyValues, nil
+}
+
+// applyStackEnvGroups applies the stack's env groups. Env groups first: a
+// service's fromGroup links one, which needs the group (and its projection
+// Secret) to exist before the service is patched.
+func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnvGroup, assignments map[string]core.EnvironmentAssignment) error {
+	for _, g := range envGroups {
+		if err := s.EnvGroups.ApplyEnvGroup(ctx, g.name, g.literals, g.generates); err != nil {
+			return fmt.Errorf("env group %q: %w", g.name, err)
+		}
+		if g.grouping != "" {
+			if assignment := assignments[g.grouping]; assignment.ID != "" {
+				if err := s.EnvGroups.SetGroupEnvironment(ctx, g.name, assignment.ID); err != nil {
+					return fmt.Errorf("assigning env group %q to environment: %w", g.name, err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// applyStackDatastores upserts the stack's databases and key values, appending
+// each applied view onto res and recording its name → ID/CR-name for the
+// service reference resolution that follows. Databases next: a service's
+// fromDatabase env points (via secretRef) at the CNPG "<stable-id>-app"
+// Secret, which only exists once the Database converges — applying the
+// dependent first would leave it Pending on a missing Secret anyway, but
+// applying the DB first starts its provisioning immediately.
+func (s *Service) applyStackDatastores(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, databases *appv1alpha1.DatabaseList, keyValues *appv1alpha1.KeyValueList, databaseIDs, kvCRNames map[string]string, res *StackResult) error {
+	for _, db := range st.databases {
+		v, err := s.applyDatabase(ctx, db, assignments[db.grouping], databases.Items)
+		if err != nil {
+			return err
+		}
+		res.Databases = append(res.Databases, v)
+		databaseIDs[db.name] = v.ID
+	}
+	for _, kv := range st.keyValues {
+		v, err := s.applyKeyValue(ctx, kv, assignments[kv.grouping], keyValues.Items)
+		if err != nil {
+			return err
+		}
+		res.KeyValues = append(res.KeyValues, v)
+		kvCRNames[kv.name] = v.ID // CR name = Secret name (kv.Status.SecretName = kv.Name)
+	}
+	return nil
+}
+
+// deferredService is a service whose host refs pointed at a not-yet-created
+// sibling on this first apply; patched with the resolved env after the
+// first-pass create loop.
+type deferredService struct {
+	req    CreateRequest
+	fields map[string]BlueprintField
+	refs   []hostRef
+}
+
+// applyStackServices is the first service pass: each stack service is applied
+// with every already-resolvable reference on its env and its applied view
+// appended onto res; the services whose host refs were forward references are
+// returned for the post-create patch pass.
+func (s *Service) applyStackServices(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, databaseIDs, kvCRNames, serviceSlugs map[string]string, lookupSlug func(string) (string, error), res *StackResult) ([]deferredService, error) {
 	var deferred []deferredService
 	for _, svc := range st.services {
 		laterRefs, err := resolveServiceRefs(&svc, databaseIDs, kvCRNames, lookupSlug)
 		if err != nil {
-			return res, err
+			return nil, err
 		}
 		if assignment := assignments[svc.grouping]; assignment.ID != "" {
 			svc.req.EnvironmentID = assignment.ID
@@ -668,7 +717,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 		}
 		v, err := s.applyBlueprintCreate(ctx, svc.req, svc.fields)
 		if err != nil {
-			return res, err
+			return nil, err
 		}
 		serviceSlugs[svc.req.Name] = v.Slug
 		if len(laterRefs) > 0 {
@@ -678,37 +727,36 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 		// (seed-once) now that the service exists.
 		for _, g := range svc.groupLinks {
 			if err := s.EnvGroups.LinkEnvGroup(ctx, g, svc.req.Name); err != nil {
-				return res, fmt.Errorf("linking env group %q to %q: %w", g, svc.req.Name, err)
+				return nil, fmt.Errorf("linking env group %q to %q: %w", g, svc.req.Name, err)
 			}
 		}
 		if len(svc.seedLiterals) > 0 || len(svc.seedGenerates) > 0 {
 			if err := s.EnvSeeder.SeedEnvVars(ctx, svc.req.Name, svc.seedLiterals, svc.seedGenerates); err != nil {
-				return res, fmt.Errorf("seeding env for %q: %w", svc.req.Name, err)
+				return nil, fmt.Errorf("seeding env for %q: %w", svc.req.Name, err)
 			}
 		}
 		res.Services = append(res.Services, v)
 	}
-	// Second pass: every service now exists, every slug is known — patch the
-	// services whose host refs were forward references (first apply only).
+	return deferred, nil
+}
+
+// patchDeferredStackServices is the second pass: every service now exists,
+// every slug is known — patch the services whose host refs were forward
+// references (first apply only).
+func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []deferredService, serviceSlugs map[string]string) error {
 	for _, d := range deferred {
 		for _, ref := range d.refs {
 			slug := serviceSlugs[ref.target]
 			if slug == "" { // unreachable: every stack service was created above
-				return res, fmt.Errorf("%w: service %q: fromService references service %q whose address is not yet known", core.ErrBadRequest, d.req.Name, ref.target)
+				return fmt.Errorf("%w: service %q: fromService references service %q whose address is not yet known", core.ErrBadRequest, d.req.Name, ref.target)
 			}
 			d.req.Env = append(d.req.Env, ref.env(slug))
 		}
 		if _, err := s.applyBlueprintCreate(ctx, d.req, d.fields); err != nil {
-			return res, err
+			return err
 		}
 	}
-	// Auto-register a blueprint row when called with a repo (w2/m15): lets
-	// list_blueprints surface it and sync_blueprint re-apply it later without
-	// the caller needing to register it separately.
-	if req.Repo != "" {
-		s.upsertBlueprint(ctx, req)
-	}
-	return res, nil
+	return nil
 }
 
 // resolveServiceRefs is one stack service's reference-resolution prelude: the
@@ -1519,20 +1567,8 @@ type serviceEnv struct {
 // overrides applied) plus its classified env (serviceEnv). Structural validation
 // (type, schedule, plan, private+domains) happens here.
 func parseService(overrides blueprintParseOverrides, a bexService) (CreateRequest, serviceEnv, error) {
-	if a.Name == "" {
-		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: a service entry is missing its name", core.ErrBadRequest)
-	}
-	if a.EnvironmentID != "" {
-		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q uses environmentId, which is a create-API field, not a Render Blueprint field; nest the service under projects[].environments[].services instead", core.ErrBadRequest, a.Name)
-	}
-	if len(a.SecretFiles) > 0 {
-		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q uses secretFiles, which Render's Blueprint schema does not support; use createService secretFiles or the secret-files API", core.ErrBadRequest, a.Name)
-	}
-	if a.Builder != "" {
-		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q uses retired Blueprint field builder; move it to x-bex.builder", core.ErrBadRequest, a.Name)
-	}
-	if a.Image != nil && a.Image.Creds != "" {
-		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q image.creds is unsupported; bind an authorized registry credential through the service API", core.ErrBadRequest, a.Name)
+	if err := validateManifestServiceFields(a); err != nil {
+		return CreateRequest{}, serviceEnv{}, err
 	}
 	repo := a.Repo
 	if overrides.repo != "" && a.Image == nil {
@@ -1546,42 +1582,17 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 	if err != nil {
 		return CreateRequest{}, serviceEnv{}, err
 	}
-	// Only a web service is exposed; private/worker/cron/static have no ingress,
-	// so a manifest that lists domains for one is a mistake worth catching here
-	// with a manifest-shaped message.
-	hasIngress := svcType == appv1alpha1.TypeWebService || svcType == appv1alpha1.TypeStaticSite
-	if !hasIngress && (len(a.Domains) > 0 || a.Domain != "") {
-		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: %s has no ingress and cannot list domains", core.ErrBadRequest, a.Name)
-	}
-	if a.RenderSubdomainPolicy != "" && !hasIngress {
-		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q renderSubdomainPolicy applies only to web services and static sites", core.ErrBadRequest, a.Name)
-	}
-	if len(a.IPAllowList) > 0 && !hasIngress {
-		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q ipAllowList applies only to web services and static sites", core.ErrBadRequest, a.Name)
-	}
-	if a.Scaling != nil && svcType == appv1alpha1.TypeBackgroundWorker {
-		return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q scaling is not available on background workers", core.ErrBadRequest, a.Name)
+	if err := validateManifestIngressFields(a, svcType); err != nil {
+		return CreateRequest{}, serviceEnv{}, err
 	}
 	hosts := a.Domains
 	if len(hosts) == 0 && a.Domain != "" {
 		hosts = []string{a.Domain}
 	}
 
-	plan := a.Plan
-	// Render Blueprints default a service carrying this paid-only field to a
-	// paid starter plan when no plan is declared.
-	if plan == "" && a.MaintenanceMode != nil {
-		plan = "starter"
-	}
-	var maintenanceMode *MaintenanceModeView
-	if a.MaintenanceMode != nil {
-		maintenanceMode = &MaintenanceModeView{
-			Enabled: a.MaintenanceMode.Enabled,
-			URI:     a.MaintenanceMode.URI,
-		}
-		if _, err := parseMaintenanceURI(maintenanceMode.URI); err != nil {
-			return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q maintenanceMode.uri: %v", core.ErrBadRequest, a.Name, err)
-		}
+	plan, maintenanceMode, err := manifestPlanAndMaintenance(a)
+	if err != nil {
+		return CreateRequest{}, serviceEnv{}, err
 	}
 	replicas := a.NumInstances
 	image := ""
@@ -1593,24 +1604,9 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 	if strings.EqualFold(runtime, "static") {
 		runtime = "" // static is represented by the service type, not an App runtime
 	}
-	startCommand := a.StartCommand
-	if a.DockerCommand != "" {
-		if !strings.EqualFold(a.Runtime, "docker") {
-			return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q dockerCommand requires runtime: docker", core.ErrBadRequest, a.Name)
-		}
-		if startCommand != "" {
-			return CreateRequest{}, serviceEnv{}, fmt.Errorf("%w: service %q cannot set both dockerCommand and startCommand", core.ErrBadRequest, a.Name)
-		}
-		startCommand = a.DockerCommand
-	}
-
-	autoDeploy := a.AutoDeploy
-	if a.AutoDeployTrigger != "" {
-		var err error
-		autoDeploy, err = parseTrigger(a.AutoDeployTrigger)
-		if err != nil {
-			return CreateRequest{}, serviceEnv{}, fmt.Errorf("service %q: %w", a.Name, err)
-		}
+	startCommand, autoDeploy, err := manifestStartAndAutoDeploy(a)
+	if err != nil {
+		return CreateRequest{}, serviceEnv{}, err
 	}
 
 	literal, se, err := classifyServiceEnv(overrides, a)
@@ -1654,6 +1650,99 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		Routes:                  a.Routes,
 		Headers:                 a.Headers,
 	}, se, nil
+}
+
+// validateManifestServiceFields rejects a services[] entry with no name or
+// with a manifest field bex does not accept (environmentId, secretFiles,
+// builder, image.creds), each with a manifest-shaped message.
+func validateManifestServiceFields(a bexService) error {
+	if a.Name == "" {
+		return fmt.Errorf("%w: a service entry is missing its name", core.ErrBadRequest)
+	}
+	if a.EnvironmentID != "" {
+		return fmt.Errorf("%w: service %q uses environmentId, which is a create-API field, not a Render Blueprint field; nest the service under projects[].environments[].services instead", core.ErrBadRequest, a.Name)
+	}
+	if len(a.SecretFiles) > 0 {
+		return fmt.Errorf("%w: service %q uses secretFiles, which Render's Blueprint schema does not support; use createService secretFiles or the secret-files API", core.ErrBadRequest, a.Name)
+	}
+	if a.Builder != "" {
+		return fmt.Errorf("%w: service %q uses retired Blueprint field builder; move it to x-bex.builder", core.ErrBadRequest, a.Name)
+	}
+	if a.Image != nil && a.Image.Creds != "" {
+		return fmt.Errorf("%w: service %q image.creds is unsupported; bind an authorized registry credential through the service API", core.ErrBadRequest, a.Name)
+	}
+	return nil
+}
+
+// validateManifestIngressFields rejects the fields tied to ingress (or to a
+// scalable type) on a services[] entry whose type cannot carry them. Only a
+// web service is exposed; private/worker/cron/static have no ingress, so a
+// manifest that lists domains for one is a mistake worth catching here with a
+// manifest-shaped message.
+func validateManifestIngressFields(a bexService, svcType string) error {
+	hasIngress := svcType == appv1alpha1.TypeWebService || svcType == appv1alpha1.TypeStaticSite
+	if !hasIngress && (len(a.Domains) > 0 || a.Domain != "") {
+		return fmt.Errorf("%w: %s has no ingress and cannot list domains", core.ErrBadRequest, a.Name)
+	}
+	if a.RenderSubdomainPolicy != "" && !hasIngress {
+		return fmt.Errorf("%w: service %q renderSubdomainPolicy applies only to web services and static sites", core.ErrBadRequest, a.Name)
+	}
+	if len(a.IPAllowList) > 0 && !hasIngress {
+		return fmt.Errorf("%w: service %q ipAllowList applies only to web services and static sites", core.ErrBadRequest, a.Name)
+	}
+	if a.Scaling != nil && svcType == appv1alpha1.TypeBackgroundWorker {
+		return fmt.Errorf("%w: service %q scaling is not available on background workers", core.ErrBadRequest, a.Name)
+	}
+	return nil
+}
+
+// manifestPlanAndMaintenance resolves one services[] entry's plan and optional
+// maintenance-mode block (URI validated here).
+func manifestPlanAndMaintenance(a bexService) (string, *MaintenanceModeView, error) {
+	plan := a.Plan
+	// Render Blueprints default a service carrying this paid-only field to a
+	// paid starter plan when no plan is declared.
+	if plan == "" && a.MaintenanceMode != nil {
+		plan = "starter"
+	}
+	var maintenanceMode *MaintenanceModeView
+	if a.MaintenanceMode != nil {
+		maintenanceMode = &MaintenanceModeView{
+			Enabled: a.MaintenanceMode.Enabled,
+			URI:     a.MaintenanceMode.URI,
+		}
+		if _, err := parseMaintenanceURI(maintenanceMode.URI); err != nil {
+			return "", nil, fmt.Errorf("%w: service %q maintenanceMode.uri: %v", core.ErrBadRequest, a.Name, err)
+		}
+	}
+	return plan, maintenanceMode, nil
+}
+
+// manifestStartAndAutoDeploy resolves one services[] entry's effective start
+// command (dockerCommand stands in for startCommand on a docker runtime) and
+// its auto-deploy setting (autoDeployTrigger wins over the deprecated
+// autoDeploy bool).
+func manifestStartAndAutoDeploy(a bexService) (string, *bool, error) {
+	startCommand := a.StartCommand
+	if a.DockerCommand != "" {
+		if !strings.EqualFold(a.Runtime, "docker") {
+			return "", nil, fmt.Errorf("%w: service %q dockerCommand requires runtime: docker", core.ErrBadRequest, a.Name)
+		}
+		if startCommand != "" {
+			return "", nil, fmt.Errorf("%w: service %q cannot set both dockerCommand and startCommand", core.ErrBadRequest, a.Name)
+		}
+		startCommand = a.DockerCommand
+	}
+
+	autoDeploy := a.AutoDeploy
+	if a.AutoDeployTrigger != "" {
+		var err error
+		autoDeploy, err = parseTrigger(a.AutoDeployTrigger)
+		if err != nil {
+			return "", nil, fmt.Errorf("service %q: %w", a.Name, err)
+		}
+	}
+	return startCommand, autoDeploy, nil
 }
 
 // classifyServiceEnv classifies each env var of one services[] entry
@@ -2050,43 +2139,22 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 		return AppView{}, err
 	}
 	if errors.Is(err, core.ErrNotFound) {
-		if err := s.validateNewSpecMaintenanceMode(ctx, req.Name, desired); err != nil {
-			return AppView{}, err
-		}
-		// initialDeployHook: use the one-time command as preDeployCommand on first
-		// create so the operator runs it on the first deploy (w2/m45).
-		if req.InitialDeployHook != "" {
-			desired.PreDeployCommand = req.InitialDeployHook
-		}
-		return s.createNewApp(ctx, req, desired)
+		return s.createFromStack(ctx, req, desired)
 	}
 	if effectiveType(existing.Spec.Type) != effectiveType(desired.Type) {
 		return AppView{}, fmt.Errorf("%w: spec.type is immutable; delete and recreate the service to change type", core.ErrBadRequest)
 	}
 	markHookRan, initialHookChanged := initialDeployHookState(req, existing, &desired)
 	final := existing.DeepCopy()
-	applyBlueprintServiceSpec(&final.Spec, desired, fields)
+	specChanged := applyBlueprintServiceSpec(&final.Spec, desired, fields)
 	if final.Spec.MaintenanceMode != nil {
 		if err := s.validateMaintenanceMode(ctx, final, maintenanceModeView(final.Spec.MaintenanceMode)); err != nil {
 			return AppView{}, err
 		}
 	}
-	specChanged := !reflect.DeepEqual(final.Spec, existing.Spec)
-	var assignment core.EnvironmentAssignment
-	environmentChanged := false
-	if req.EnvironmentSpecified {
-		tenantID := existing.Labels[core.LabelTenant]
-		assignment, err = s.resolveEnvironmentForCreate(ctx, req.EnvironmentID, tenantID)
-		if err != nil {
-			return AppView{}, err
-		}
-		desiredIsolation := ""
-		if assignment.NetworkIsolationEnabled {
-			desiredIsolation = assignment.ID
-		}
-		environmentChanged = existing.Labels[core.LabelEnvironment] != assignment.ID ||
-			existing.Labels[core.LabelProject] != assignment.ProjectID ||
-			existing.Labels[core.LabelNetworkIsolation] != desiredIsolation
+	assignment, environmentChanged, err := s.stackEnvironmentChange(ctx, req, existing)
+	if err != nil {
+		return AppView{}, err
 	}
 	// Idempotent update: short-circuit when both create-owned spec and explicit
 	// Blueprint grouping already match and no ran-once annotation needs writing.
@@ -2102,8 +2170,70 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	if err := s.requireUnprotected(ctx, existing, "deploy"); err != nil {
 		return AppView{}, err
 	}
-	maintenanceOnly := specChanged && serviceSpecChangedOnlyByMaintenance(existing.Spec, final.Spec)
-	if maintenanceOnly && !environmentChanged {
+	return s.patchChangedStackService(ctx, req, existing, final, stackChanges{
+		specChanged:        specChanged,
+		environmentChanged: environmentChanged,
+		markHookRan:        markHookRan,
+		initialHookChanged: initialHookChanged,
+		assignment:         assignment,
+	})
+}
+
+// createFromStack is the stack upsert's create-when-absent half.
+func (s *Service) createFromStack(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec) (AppView, error) {
+	if err := s.validateNewSpecMaintenanceMode(ctx, req.Name, desired); err != nil {
+		return AppView{}, err
+	}
+	// initialDeployHook: use the one-time command as preDeployCommand on first
+	// create so the operator runs it on the first deploy (w2/m45).
+	if req.InitialDeployHook != "" {
+		desired.PreDeployCommand = req.InitialDeployHook
+	}
+	return s.createNewApp(ctx, req, desired)
+}
+
+// stackEnvironmentChange probes the environment half of a stack re-apply:
+// whether the request's explicit grouping differs from the existing service's
+// environment/project/isolation labels. An unspecified environment reports no
+// change.
+func (s *Service) stackEnvironmentChange(ctx context.Context, req CreateRequest, existing *appv1alpha1.App) (core.EnvironmentAssignment, bool, error) {
+	if !req.EnvironmentSpecified {
+		return core.EnvironmentAssignment{}, false, nil
+	}
+	tenantID := existing.Labels[core.LabelTenant]
+	assignment, err := s.resolveEnvironmentForCreate(ctx, req.EnvironmentID, tenantID)
+	if err != nil {
+		return core.EnvironmentAssignment{}, false, err
+	}
+	desiredIsolation := ""
+	if assignment.NetworkIsolationEnabled {
+		desiredIsolation = assignment.ID
+	}
+	environmentChanged := existing.Labels[core.LabelEnvironment] != assignment.ID ||
+		existing.Labels[core.LabelProject] != assignment.ProjectID ||
+		existing.Labels[core.LabelNetworkIsolation] != desiredIsolation
+	return assignment, environmentChanged, nil
+}
+
+// stackChanges is what applyCreateWithFields' change probes computed about an
+// existing service: which halves changed and the resolved environment
+// assignment to apply.
+type stackChanges struct {
+	specChanged        bool
+	environmentChanged bool
+	markHookRan        bool
+	initialHookChanged bool
+	assignment         core.EnvironmentAssignment
+}
+
+// patchChangedStackService stages and patches an existing service the stack
+// apply changed: a maintenance-only spec change delegates to
+// ConfigureMaintenanceMode; everything else lands in one merge patch, with the
+// deploy record, clone Secret, and restartedAt bump reserved for a
+// deploy-worthy spec change.
+func (s *Service) patchChangedStackService(ctx context.Context, req CreateRequest, existing, final *appv1alpha1.App, changes stackChanges) (AppView, error) {
+	maintenanceOnly := changes.specChanged && serviceSpecChangedOnlyByMaintenance(existing.Spec, final.Spec)
+	if maintenanceOnly && !changes.environmentChanged {
 		return s.ConfigureMaintenanceMode(ctx, req.Name, maintenanceModeView(final.Spec.MaintenanceMode))
 	}
 	maintenanceChanged := !reflect.DeepEqual(existing.Spec.MaintenanceMode, final.Spec.MaintenanceMode)
@@ -2111,7 +2241,7 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	if existing.Spec.MaintenanceMode != nil {
 		currentMaintenance = existing.Spec.MaintenanceMode.DeepCopy()
 	}
-	deploySpecChanged := specChanged && !maintenanceOnly
+	deploySpecChanged := changes.specChanged && !maintenanceOnly
 	base := client.MergeFrom(existing.DeepCopy())
 	if deploySpecChanged {
 		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(existing.Generation+1, 10))
@@ -2122,23 +2252,18 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 			existing.Spec.MaintenanceMode = currentMaintenance
 		}
 	}
-	if initialHookChanged {
+	if changes.initialHookChanged {
 		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, initialDeployHookAnnotation, req.InitialDeployHook)
 	}
-	if environmentChanged {
-		if err := s.applyEnvironmentChange(ctx, existing, assignment); err != nil {
+	if changes.environmentChanged {
+		if err := s.applyEnvironmentChange(ctx, existing, changes.assignment); err != nil {
 			return AppView{}, err
 		}
 	}
-	if deploySpecChanged && s.Store != nil {
-		if id := managedAppID(existing); id != "" {
-			commit := s.resolveDeployCommit(ctx, s.deployWorkspace(ctx, existing), existing.Spec.Repo, existing.Spec.Branch)
-			if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation+1, commit); err != nil {
-				return AppView{}, fmt.Errorf("recording redeploy: %w", err)
-			}
-		}
-	}
 	if deploySpecChanged {
+		if err := s.recordBlueprintRedeploy(ctx, existing); err != nil {
+			return AppView{}, err
+		}
 		secretName, err := s.ensureCloneSecret(ctx, existing)
 		if err != nil {
 			return AppView{}, err
@@ -2149,7 +2274,7 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 		existing.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	}
 	// Mark the initialDeployHook as ran so subsequent syncs skip it (w2/m45).
-	if markHookRan {
+	if changes.markHookRan {
 		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, initialDeployHookRanAnnotation, "true")
 	}
 	resourcemeta.Touch(existing, s.Now())
@@ -2163,6 +2288,21 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 		return s.ConfigureMaintenanceMode(ctx, req.Name, maintenanceModeView(final.Spec.MaintenanceMode))
 	}
 	return s.view(existing), nil
+}
+
+// recordBlueprintRedeploy records the blueprint redeploy row for a changed
+// existing service; a nil Store or an unmanaged App records nothing.
+func (s *Service) recordBlueprintRedeploy(ctx context.Context, existing *appv1alpha1.App) error {
+	if s.Store == nil {
+		return nil
+	}
+	if id := managedAppID(existing); id != "" {
+		commit := s.resolveDeployCommit(ctx, s.deployWorkspace(ctx, existing), existing.Spec.Repo, existing.Spec.Branch)
+		if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation+1, commit); err != nil {
+			return fmt.Errorf("recording redeploy: %w", err)
+		}
+	}
+	return nil
 }
 
 // initialDeployHookState is the initialDeployHook ran-once gate (w2/m45) for an
@@ -2234,12 +2374,13 @@ func serviceSpecChangedOnlyByMaintenance(cur, want appv1alpha1.AppSpec) bool {
 	return reflect.DeepEqual(*probe, cur)
 }
 
-func applyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec, fields map[string]BlueprintField) {
+func applyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec, fields map[string]BlueprintField) bool {
 	if fields == nil {
+		before := *dst
 		applyCreateToSpec(dst, want)
-		return
+		return !reflect.DeepEqual(*dst, before)
 	}
-	ApplyBlueprintServiceSpec(dst, want, fields)
+	return ApplyBlueprintServiceSpec(dst, want, fields)
 }
 
 // createOwnedSpecChanged reports whether applying `want`'s create-owned fields

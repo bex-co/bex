@@ -433,6 +433,22 @@ func NewPGStore(pool *pgxpool.Pool) *PGStore { return &PGStore{Pool: pool} }
 // Ping reports whether the database is reachable — the /healthz check.
 func (s *PGStore) Ping(ctx context.Context) error { return s.Pool.Ping(ctx) }
 
+// withTx runs fn inside one transaction: begin, deferred best-effort rollback,
+// commit iff fn returns nil. The commit here is the transaction's ONLY commit —
+// fn returns nil early for fast paths and carries results out via closure
+// captures. The commit error is fn's caller's error.
+func (s *PGStore) withTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
+	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (s *PGStore) CreateTenant(ctx context.Context, name, plan string) (Tenant, error) {
 	t := Tenant{ID: ids.New(ids.Workspace), Name: name, Plan: plan}
 	err := s.Pool.QueryRow(ctx,
@@ -517,29 +533,29 @@ func (s *PGStore) IsMember(ctx context.Context, subject, tenantID string) (bool,
 // membership upsert is idempotent for the same reason. The tenant name is its
 // id — a unique DNS-safe placeholder.
 func (s *PGStore) CreateTenantWithMember(ctx context.Context, identityID, plan string) (Tenant, error) {
-	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return Tenant{}, err
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck // commit is the source of truth
-	id := ids.New(ids.Workspace)
-	t, err := scanTenant(tx.QueryRow(ctx, `
+	var t Tenant
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		id := ids.New(ids.Workspace)
+		var err error
+		t, err = scanTenant(tx.QueryRow(ctx, `
 		INSERT INTO tenants (id, name, plan, owner_identity_id)
 		VALUES ($1, $1, $2, $3)
 		ON CONFLICT (owner_identity_id) WHERE owner_identity_id IS NOT NULL
 		DO UPDATE SET owner_identity_id = EXCLUDED.owner_identity_id
 		RETURNING id, name, plan, created_at`,
-		id, plan, identityID))
-	if err != nil {
-		return Tenant{}, classify("tenant", err)
-	}
-	if _, err := tx.Exec(ctx, `
+			id, plan, identityID))
+		if err != nil {
+			return classify("tenant", err)
+		}
+		if _, err := tx.Exec(ctx, `
 		INSERT INTO tenant_members (tenant_id, subject, role)
 		VALUES ($1, $2, 'admin')
 		ON CONFLICT DO NOTHING`, t.ID, identityID); err != nil {
-		return Tenant{}, classify("tenant_member", err)
-	}
-	if err := tx.Commit(ctx); err != nil {
+			return classify("tenant_member", err)
+		}
+		return nil
+	})
+	if err != nil {
 		return Tenant{}, err
 	}
 	return t, nil
