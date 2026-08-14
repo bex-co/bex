@@ -569,9 +569,9 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 		return StackResult{}, err
 	}
 	// req.Confirm rides the context from here on — applyCreate's protection
-	// guard (requireUnprotected) reads it via confirmFrom, the same
+	// guard (requireUnprotected) reads it via core.ConfirmFrom, the same
 	// context seam Delete/Suspend's REST/GraphQL/MCP adapters use.
-	ctx = withConfirm(ctx, req.Confirm)
+	ctx = core.WithConfirm(ctx, req.Confirm)
 	res := StackResult{}
 	if err := s.applyStackEnvGroups(ctx, st.envGroups, assignments); err != nil {
 		return res, err

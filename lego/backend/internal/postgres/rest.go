@@ -81,14 +81,6 @@ func (s *Service) toPostgresList(ctx context.Context, pgs []PostgresView) []post
 	return out
 }
 
-// handleByID adapts the dominant read shape — call the service with the path
-// id, then write the mapped error or the 200 JSON result.
-func handleByID[T any](fn func(context.Context, string) (T, error)) http.HandlerFunc {
-	return core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		return fn(r.Context(), r.PathValue("id"))
-	})
-}
-
 // decodeOr400 decodes the JSON body into dst, answering the flat 400 this
 // surface uses on a malformed body; reports whether decoding succeeded.
 func decodeOr400(w http.ResponseWriter, r *http.Request, dst any) bool {
@@ -173,9 +165,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if !decodeOr400(w, r, &req) {
 			return
 		}
-		if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
-			req.DryRun = true
-		}
+		req.DryRun = core.DryRunRequested(r, req.DryRun)
 		pg, err := s.CreatePostgres(r.Context(), req)
 		status := http.StatusCreated // Render: create => 201
 		if req.DryRun {
@@ -192,7 +182,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
 		return s.DeletePostgres(ctx, r.PathValue("id")) // Render: delete => 204
 	}))
-	mux.HandleFunc("GET "+base+"/{id}/connection-info", handleByID(s.PostgresConnectionInfo))
+	mux.HandleFunc("GET "+base+"/{id}/connection-info", core.HandleByID(s.PostgresConnectionInfo))
 	mux.HandleFunc("POST "+base+"/{id}/query", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			SQL         string `json:"sql"`
@@ -219,7 +209,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}))
 
 	// --- recovery / exports (Render: recovery-info, recover, export) ---
-	mux.HandleFunc("POST "+base+"/{id}/recovery-info", handleByID(s.RecoveryInfo))
+	mux.HandleFunc("POST "+base+"/{id}/recovery-info", core.HandleByID(s.RecoveryInfo))
 	mux.HandleFunc("POST "+base+"/{id}/recover", func(w http.ResponseWriter, r *http.Request) {
 		var req RecoverRequest
 		if !decodeOr400(w, r, &req) {
@@ -228,7 +218,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		pg, err := s.Recover(r.Context(), r.PathValue("id"), req)
 		s.respondPostgres(w, r, http.StatusCreated, pg, err) // a new instance => 201
 	})
-	mux.HandleFunc("GET "+base+"/{id}/export", handleByID(s.ListExports))
+	mux.HandleFunc("GET "+base+"/{id}/export", core.HandleByID(s.ListExports))
 	// Render: export => 202 with no response body.
 	mux.HandleFunc("POST "+base+"/{id}/export", core.HandleNoBody(http.StatusAccepted, func(r *http.Request) error {
 		_, err := s.CreateExport(r.Context(), r.PathValue("id"))
@@ -258,7 +248,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		pg, err := s.SetIPAllowList(r.Context(), r.PathValue("id"), core.AllowListFromCIDRs(req.CIDRs))
 		s.respondPostgres(w, r, http.StatusOK, pg, err)
 	})
-	mux.HandleFunc("GET "+base+"/{id}/users", handleByID(s.ListUsers))
+	mux.HandleFunc("GET "+base+"/{id}/users", core.HandleByID(s.ListUsers))
 	mux.HandleFunc("POST "+base+"/{id}/users", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Name string `json:"name"`
@@ -296,11 +286,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}))
 
 	// --- observability: processes / top-queries / sizes / table-scans / parameter-overrides ---
-	mux.HandleFunc("GET "+base+"/{id}/processes", handleByID(s.Processes))
-	mux.HandleFunc("GET "+base+"/{id}/top-queries", handleByID(s.TopQueries))
-	mux.HandleFunc("GET "+base+"/{id}/sizes", handleByID(s.Sizes))
-	mux.HandleFunc("GET "+base+"/{id}/table-scans", handleByID(s.TableScans))
-	mux.HandleFunc("GET "+base+"/{id}/parameter-overrides", handleByID(s.ParameterOverrides))
+	mux.HandleFunc("GET "+base+"/{id}/processes", core.HandleByID(s.Processes))
+	mux.HandleFunc("GET "+base+"/{id}/top-queries", core.HandleByID(s.TopQueries))
+	mux.HandleFunc("GET "+base+"/{id}/sizes", core.HandleByID(s.Sizes))
+	mux.HandleFunc("GET "+base+"/{id}/table-scans", core.HandleByID(s.TableScans))
+	mux.HandleFunc("GET "+base+"/{id}/parameter-overrides", core.HandleByID(s.ParameterOverrides))
 	mux.HandleFunc("PUT "+base+"/{id}/parameter-overrides", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Parameters map[string]string `json:"parameters"`

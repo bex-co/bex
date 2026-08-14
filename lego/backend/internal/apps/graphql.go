@@ -1045,7 +1045,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 	verb := func(fn func(context.Context, string) (AppView, error)) graphql.FieldResolveFn {
 		return func(p graphql.ResolveParams) (any, error) {
 			confirm, _ := p.Args["confirm"].(string)
-			ctx := withConfirm(p.Context, confirm)
+			ctx := core.WithConfirm(p.Context, confirm)
 			return fn(ctx, p.Args["id"].(string))
 		}
 	}
@@ -1175,7 +1175,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: confirmIDArgs(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				confirm, _ := p.Args["confirm"].(string)
-				err := s.Delete(withConfirm(p.Context, confirm), p.Args["id"].(string))
+				err := s.Delete(core.WithConfirm(p.Context, confirm), p.Args["id"].(string))
 				return err == nil, err
 			},
 		},

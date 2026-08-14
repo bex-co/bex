@@ -48,7 +48,7 @@ func TestDelete_SucceedsWithCorrectConfirm(t *testing.T) {
 	svc, cl := newService(rec, managedApp("web", "srv-1"))
 
 	want := ProtectedConfirmation("delete", "web")
-	ctx := withConfirm(context.Background(), want)
+	ctx := core.WithConfirm(context.Background(), want)
 	if err := svc.Delete(ctx, "web"); err != nil {
 		t.Fatalf("Delete with correct confirm: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestDelete_WrongConfirmStillBlocked(t *testing.T) {
 	rec := &recordingStore{protectedStatus: map[string]string{"srv-1": "protected"}}
 	svc, _ := newService(rec, managedApp("web", "srv-1"))
 
-	ctx := withConfirm(context.Background(), "sudo delete service someone-else")
+	ctx := core.WithConfirm(context.Background(), "sudo delete service someone-else")
 	if err := svc.Delete(ctx, "web"); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("Delete with wrong confirm: got %v, want ErrBadRequest", err)
 	}
@@ -107,7 +107,7 @@ func TestSuspend_SucceedsWithCorrectConfirm(t *testing.T) {
 	svc, cl := newService(rec, managedApp("web", "srv-1"))
 
 	want := ProtectedConfirmation("suspend", "web")
-	ctx := withConfirm(context.Background(), want)
+	ctx := core.WithConfirm(context.Background(), want)
 	if _, err := svc.Suspend(ctx, "web"); err != nil {
 		t.Fatalf("Suspend with correct confirm: %v", err)
 	}

@@ -291,6 +291,46 @@ func HandleNoBody(status int, fn func(*http.Request) error) http.HandlerFunc {
 	}
 }
 
+// HandleByID adapts the dominant read shape — call the service with the path
+// id, then write the mapped error or the 200 JSON result.
+func HandleByID[T any](fn func(context.Context, string) (T, error)) http.HandlerFunc {
+	return HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return fn(r.Context(), r.PathValue("id"))
+	})
+}
+
+// HandleMapped adapts the other dominant handler shape — call the service,
+// then write the mapped error or the view-projected JSON result — so a route
+// whose service result needs a render projection registers only its call and
+// the projection.
+func HandleMapped[T, V any](status int, fn func(*http.Request) (T, error), view func(T) V) http.HandlerFunc {
+	return HandleJSON(status, func(r *http.Request) (any, error) {
+		v, err := fn(r)
+		if err != nil {
+			return nil, err
+		}
+		return view(v), nil
+	})
+}
+
+// DecodeBody decodes the JSON request body into T, mapping any decode failure
+// to the bare ErrBadRequest sentinel — the apps-surface dialect (postgres's
+// decodeOr400 keeps its flat WriteErrStatus 400 instead).
+func DecodeBody[T any](r *http.Request) (T, error) {
+	var v T
+	if err := DecodeJSON(r, &v); err != nil {
+		var zero T
+		return zero, ErrBadRequest
+	}
+	return v, nil
+}
+
+// DryRunRequested folds the two spellings of a dry-run request — the decoded
+// body flag and the ?dryRun=true query parameter (w2/m29) — into one answer.
+func DryRunRequested(r *http.Request, body bool) bool {
+	return body || r.URL.Query().Get("dryRun") == "true"
+}
+
 // ParseTimeWindow parses the optional startTime/endTime RFC3339 bounds the
 // log-query surfaces share (REST `?startTime=&endTime=`, GraphQL arguments) —
 // one parser so the surfaces cannot drift on the accepted format or the error

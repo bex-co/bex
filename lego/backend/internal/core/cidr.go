@@ -183,13 +183,5 @@ func EnvironmentLayerCIDRs(entries []IPAllowListEntry) []string {
 // ValidateAllowList is ValidateCIDRs over entry CIDRs — descriptions are never
 // validated (free text) and never influence enforcement.
 func ValidateAllowList(entries []IPAllowListEntry) error {
-	if len(entries) > MaxAllowListEntries {
-		return fmt.Errorf("%w: ipAllowList has %d entries; the limit is %d", ErrBadRequest, len(entries), MaxAllowListEntries)
-	}
-	for _, e := range entries {
-		if _, _, err := net.ParseCIDR(e.CIDRBlock); err != nil {
-			return fmt.Errorf("%w: %q is not a valid CIDR", ErrBadRequest, e.CIDRBlock)
-		}
-	}
-	return nil
+	return ValidateCIDRs(AllowListCIDRs(entries))
 }
