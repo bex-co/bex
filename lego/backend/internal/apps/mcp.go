@@ -747,7 +747,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "delete_service",
 		Description: "Delete a service permanently, cascading everything the operator derived from it (Deployment, Service, Ingress). This is irreversible. A member of a protectedStatus=protected Environment (w6/m19) refuses without confirm — retry with the phrase from the error message. bex extension over Render's MCP (Render's official server ships no delete tool), named after the REST delete verb.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceConfirmArgs) (*mcp.CallToolResult, deletedResult, error) {
-		err := s.Delete(withConfirm(ctx, in.Confirm), in.ServiceID)
+		err := s.Delete(core.WithConfirm(ctx, in.Confirm), in.ServiceID)
 		return nil, deletedResult{Deleted: err == nil}, err
 	})
 
@@ -760,7 +760,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "suspend_service",
 		Description: "Suspend a service: scale to zero, keeping host and certificates. A member of a protectedStatus=protected Environment (w6/m19) refuses without confirm — retry with the phrase from the error message. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceConfirmArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.Suspend(withConfirm(ctx, in.Confirm), in.ServiceID))
+		return renderServiceResult(s.Suspend(core.WithConfirm(ctx, in.Confirm), in.ServiceID))
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{

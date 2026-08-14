@@ -201,9 +201,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			writeBadRequestBody(w, err)
 			return
 		}
-		if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
-			req.DryRun = true
-		}
+		req.DryRun = core.DryRunRequested(r, req.DryRun)
 		kv, err := s.CreateKeyValue(r.Context(), req)
 		if err != nil {
 			core.WriteErr(w, err)

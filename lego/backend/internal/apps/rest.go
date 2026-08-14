@@ -661,9 +661,7 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 		page := core.Page(apps, after, limit, func(a AppView) string { return a.Name })
 		return s.restServiceList(r.Context(), page), nil // [{service, cursor}, ...]
 	})
-	listInstances := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		return s.ListInstances(r.Context(), r.PathValue("id"))
-	})
+	listInstances := core.HandleByID(s.ListInstances)
 	// shellTicket mints a Browser Web Shell exec ticket (docs/ADR035-ssh.md
 	// § Browser Web Shell). bex extension over Render's REST — the dashboard
 	// terminal opens the gateway WebSocket with it. Optional ?instance=<id>
@@ -674,9 +672,9 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 	// scale handles POST /v1/services/{id}/scale — sets the running instance
 	// count (numInstances); out-of-range is core.ErrBadRequest => 400.
 	scale := core.HandleJSON(http.StatusAccepted, func(r *http.Request) (any, error) {
-		var req scaleRequest
-		if err := core.DecodeJSON(r, &req); err != nil {
-			return nil, core.ErrBadRequest
+		req, err := core.DecodeBody[scaleRequest](r)
+		if err != nil {
+			return nil, err
 		}
 		app, err := s.Scale(r.Context(), r.PathValue("id"), req.NumInstances)
 		if err != nil {
@@ -692,7 +690,7 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 	// protectedStatus=protected Environment (w6/m19, ProtectedConfirmation);
 	// ignored (harmless) otherwise.
 	deleteSvc := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
-		ctx := withConfirm(r.Context(), r.URL.Query().Get("confirm"))
+		ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
 		return s.Delete(ctx, r.PathValue("id"))
 	})
 
@@ -711,13 +709,13 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 }
 
 // restVerb maps a Service action to a handler with a Render-accurate status
-// code. ?confirm=<phrase> rides the context on every verb (withConfirm) —
+// code. ?confirm=<phrase> rides the context on every verb (core.WithConfirm) —
 // a no-op for most of them, but it's what arms Suspend's protected-
 // environment guard (w6/m19, ProtectedConfirmation) without needing a
 // bespoke handler alongside Restart/Resume.
 func (s *Service) restVerb(status int, fn func(context.Context, string) (AppView, error)) http.HandlerFunc {
 	return core.HandleJSON(status, func(r *http.Request) (any, error) {
-		ctx := withConfirm(r.Context(), r.URL.Query().Get("confirm"))
+		ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
 		app, err := fn(ctx, r.PathValue("id"))
 		if err != nil {
 			return nil, err
@@ -756,7 +754,7 @@ type patchFields struct {
 // both.
 func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, error) {
 	f := patchFields{
-		dryRun:           req.DryRun || r.URL.Query().Get("dryRun") == "true",
+		dryRun:           core.DryRunRequested(r, req.DryRun),
 		healthCheckPath:  req.HealthCheckPath,
 		preDeployCommand: req.PreDeployCommand,
 		schedule:         req.Schedule,
@@ -978,9 +976,7 @@ func (s *Service) createService(w http.ResponseWriter, r *http.Request) {
 		core.WriteErr(w, fmt.Errorf("%w: services %s is not supported by this platform", core.ErrBadRequest, field))
 		return
 	}
-	if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
-		req.DryRun = true
-	}
+	req.DryRun = core.DryRunRequested(r, req.DryRun)
 	defaultOwnerID, _ := s.Tenant(r.Context())
 	createReq, err := req.toCreateRequest(r.Context(), defaultOwnerID)
 	if err != nil {
@@ -1000,37 +996,23 @@ func (s *Service) createService(w http.ResponseWriter, r *http.Request) {
 	core.WriteJSON(w, http.StatusCreated, serviceAndDeploy{Service: s.restService(r.Context(), app), DeployID: app.LatestDeployID})
 }
 
-// handleMapped wraps the recurring "run the verb, then map the view to its
-// Render wire shape" handler: call runs the service verb, wire converts a
-// successful result, and core.HandleJSON supplies the status code and the
-// shared error mapping.
-func handleMapped[T, R any](status int, call func(*http.Request) (T, error), wire func(T) R) http.HandlerFunc {
-	return core.HandleJSON(status, func(r *http.Request) (any, error) {
-		v, err := call(r)
-		if err != nil {
-			return nil, err
-		}
-		return wire(v), nil
-	})
-}
-
 // registerCronRunRoutes mounts the cron-job run routes, under both Render's
 // canonical /v1/cron-jobs noun and the /v1/services/{id}/runs subresource form.
 func (s *Service) registerCronRunRoutes(mux *http.ServeMux) {
 	// runCron handles Render's current POST /cron-jobs/{id}/runs contract. The
 	// deterministic pending run is returned immediately; if another run is active,
 	// the same intent patch asks the operator to cancel it before replacement.
-	runCron := handleMapped(http.StatusOK, func(r *http.Request) (CronRunView, error) {
+	runCron := core.HandleMapped(http.StatusOK, func(r *http.Request) (CronRunView, error) {
 		return s.TriggerCronRun(r.Context(), r.PathValue("id"))
 	}, toRenderCronJobRun)
-	listCronRuns := handleMapped(http.StatusOK, func(r *http.Request) ([]CronRunView, error) {
+	listCronRuns := core.HandleMapped(http.StatusOK, func(r *http.Request) ([]CronRunView, error) {
 		cursor, limit := core.PageParams(r.URL.Query())
 		return s.ListCronRuns(r.Context(), r.PathValue("id"), cursor, limit)
 	}, toCronJobRunList)
-	getCronRun := handleMapped(http.StatusOK, func(r *http.Request) (CronRunView, error) {
+	getCronRun := core.HandleMapped(http.StatusOK, func(r *http.Request) (CronRunView, error) {
 		return s.GetCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
 	}, toRenderCronJobRun)
-	cancelCronRun := handleMapped(http.StatusOK, func(r *http.Request) (CronRunView, error) {
+	cancelCronRun := core.HandleMapped(http.StatusOK, func(r *http.Request) (CronRunView, error) {
 		return s.CancelCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
 	}, toRenderCronJobRun)
 	// Render's current cancel route addresses the active run implicitly and
@@ -1088,7 +1070,7 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		}
 		return toRenderCustomDomain(d), nil
 	})
-	getDomain := handleMapped(http.StatusOK, func(r *http.Request) (DomainView, error) {
+	getDomain := core.HandleMapped(http.StatusOK, func(r *http.Request) (DomainView, error) {
 		return s.GetDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
 	}, toRenderCustomDomain)
 	deleteDomain := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
@@ -1096,7 +1078,7 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 	})
 	// verifyDomain re-checks DNS/cert state now (Render's POST …/verify) and returns
 	// the fresh domain. 200 OK — bex verification is automatic, so this is a re-read.
-	verifyDomain := handleMapped(http.StatusOK, func(r *http.Request) (DomainView, error) {
+	verifyDomain := core.HandleMapped(http.StatusOK, func(r *http.Request) (DomainView, error) {
 		return s.VerifyDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
 	}, toRenderCustomDomain)
 
@@ -1104,13 +1086,11 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 	// GET   …/autoscaling — current config (bex extension; Render has no GET)
 	// PUT   …/autoscaling — upsert autoscaling (Render: PUT, 200)
 	// DELETE …/autoscaling — disable autoscaling (Render: DELETE, 204)
-	getAutoscaling := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		return s.GetAutoscaling(r.Context(), r.PathValue("id"))
-	})
+	getAutoscaling := core.HandleByID(s.GetAutoscaling)
 	putAutoscaling := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		var req SetAutoscalingRequest
-		if err := core.DecodeJSON(r, &req); err != nil {
-			return nil, core.ErrBadRequest
+		req, err := core.DecodeBody[SetAutoscalingRequest](r)
+		if err != nil {
+			return nil, err
 		}
 		return s.SetAutoscaling(r.Context(), r.PathValue("id"), req)
 	})
@@ -1120,13 +1100,13 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 
 	// Static-site edge rules (Render-compatible): /routes (redirects/rewrites) and
 	// /headers (custom response headers). GET lists; PUT replaces the whole list.
-	listRoutes := handleMapped(http.StatusOK, func(r *http.Request) ([]StaticRouteView, error) {
+	listRoutes := core.HandleMapped(http.StatusOK, func(r *http.Request) ([]StaticRouteView, error) {
 		return s.ListRoutes(r.Context(), r.PathValue("id"))
 	}, toRenderRoutes)
 	putRoutes := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		var body []renderRoute
-		if err := core.DecodeJSON(r, &body); err != nil {
-			return nil, core.ErrBadRequest
+		body, err := core.DecodeBody[[]renderRoute](r)
+		if err != nil {
+			return nil, err
 		}
 		app, err := s.SetRoutes(r.Context(), r.PathValue("id"), routeViewsFromRender(body))
 		if err != nil {
@@ -1134,13 +1114,13 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		}
 		return toRenderRoutes(app.Routes), nil
 	})
-	listHeaders := handleMapped(http.StatusOK, func(r *http.Request) ([]StaticHeaderView, error) {
+	listHeaders := core.HandleMapped(http.StatusOK, func(r *http.Request) ([]StaticHeaderView, error) {
 		return s.ListHeaders(r.Context(), r.PathValue("id"))
 	}, toRenderHeaders)
 	putHeaders := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		var body []renderHeader
-		if err := core.DecodeJSON(r, &body); err != nil {
-			return nil, core.ErrBadRequest
+		body, err := core.DecodeBody[[]renderHeader](r)
+		if err != nil {
+			return nil, err
 		}
 		app, err := s.SetHeaders(r.Context(), r.PathValue("id"), headerViewsFromRender(body))
 		if err != nil {

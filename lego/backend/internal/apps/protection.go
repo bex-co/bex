@@ -36,22 +36,12 @@ import (
 // don't block a service's own configured auto-deploy).
 //
 // Guarded verbs read the caller's confirmation phrase off the context
-// (confirmFrom) rather than taking a new parameter, because they are reached
-// through generic REST/GraphQL/MCP forwarding helpers shared with unguarded
-// verbs (Restart, Resume, …) that all share a fixed func(ctx, name string)
-// shape. The context seam lives in core because Apps, Postgres, and Key Value
-// now share the same transport-independent confirmation mechanism.
-
-// withConfirm records a caller-supplied confirmation phrase for this request.
-// Empty is a no-op (no confirmation offered).
-func withConfirm(ctx context.Context, confirm string) context.Context {
-	return core.WithConfirm(ctx, confirm)
-}
-
-// confirmFrom returns the confirmation phrase the caller supplied, or "" if none.
-func confirmFrom(ctx context.Context) string {
-	return core.ConfirmFrom(ctx)
-}
+// (core.ConfirmFrom) rather than taking a new parameter, because they are
+// reached through generic REST/GraphQL/MCP forwarding helpers shared with
+// unguarded verbs (Restart, Resume, …) that all share a fixed
+// func(ctx, name string) shape. The context seam lives in core because Apps,
+// Postgres, and Key Value now share the same transport-independent
+// confirmation mechanism (core.WithConfirm records the phrase).
 
 // ProtectedConfirmation is the exact phrase a caller must echo back (REST
 // ?confirm=, a GraphQL confirm arg, or an MCP confirm field) to act on a
@@ -96,7 +86,7 @@ func (s *Service) requireUnprotected(ctx context.Context, a *appv1alpha1.App, ve
 	if name == "" {
 		name = a.Name
 	}
-	if want := ProtectedConfirmation(verb, name); confirmFrom(ctx) != want {
+	if want := ProtectedConfirmation(verb, name); core.ConfirmFrom(ctx) != want {
 		return fmt.Errorf("%w: %q is a member of a protected environment; retry with confirm=%q to %s it", core.ErrBadRequest, name, want, verb)
 	}
 	return nil
