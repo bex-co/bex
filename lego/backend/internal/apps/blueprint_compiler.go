@@ -268,19 +268,22 @@ func blueprintNativeRuntime(runtime string) bool {
 type prebuiltImageSourceField struct {
 	blueprintName string
 	createName    string
+	// declaredInCreate probes the direct create API's spelling of the field;
+	// nil marks a Blueprint-only field the create API does not expose.
+	declaredInCreate func(CreateRequest) bool
 }
 
 // prebuiltImageSourceFields is the shared policy for settings that only have
 // meaning while a service builds from Git. The Blueprint compiler reports every
 // declared field; the direct create API checks the subset it exposes.
 var prebuiltImageSourceFields = []prebuiltImageSourceField{
-	{blueprintName: "repo", createName: "repo"},
-	{blueprintName: "branch", createName: "branch"},
-	{blueprintName: "rootDir", createName: "rootDirectory"},
-	{blueprintName: "buildFilter", createName: "buildFilter"},
-	{blueprintName: "buildCommand", createName: "buildCommand"},
-	{blueprintName: "dockerfilePath", createName: "dockerfilePath"},
-	{blueprintName: "autoDeploy", createName: "autoDeploy"},
+	{blueprintName: "repo", createName: "repo", declaredInCreate: func(req CreateRequest) bool { return req.Repo != "" }},
+	{blueprintName: "branch", createName: "branch", declaredInCreate: func(req CreateRequest) bool { return req.Branch != "" }},
+	{blueprintName: "rootDir", createName: "rootDirectory", declaredInCreate: func(req CreateRequest) bool { return req.RootDir != "" }},
+	{blueprintName: "buildFilter", createName: "buildFilter", declaredInCreate: func(req CreateRequest) bool { return req.BuildFilter != nil }},
+	{blueprintName: "buildCommand", createName: "buildCommand", declaredInCreate: func(req CreateRequest) bool { return req.BuildCommand != "" }},
+	{blueprintName: "dockerfilePath", createName: "dockerfilePath", declaredInCreate: func(req CreateRequest) bool { return req.DockerfilePath != "" }},
+	{blueprintName: "autoDeploy", createName: "autoDeploy", declaredInCreate: func(req CreateRequest) bool { return req.AutoDeploy != nil }},
 	{blueprintName: "autoDeployTrigger"},
 }
 

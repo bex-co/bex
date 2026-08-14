@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -100,87 +99,124 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	if patch.SaveMode != SaveModeOnly && patch.SaveMode != SaveModeDeploy {
 		return EnvironmentPatchResult{}, fmt.Errorf("%w: saveMode must be %q or %q", core.ErrBadRequest, SaveModeOnly, SaveModeDeploy)
 	}
+	if patch.ExpectedEnvRevision != nil {
+		return s.patchEnvironmentCAS(ctx, service, a, patch)
+	}
+	return s.patchEnvironmentSparse(ctx, service, a, patch)
+}
 
-	var (
-		oldEnv          map[string]string
-		expectedVersion uint64
-		versionedStore  core.VersionedSecretKV
-		casMode         = patch.ExpectedEnvRevision != nil
-	)
-	if casMode {
-		if err := validateCASPatch(patch); err != nil {
-			return EnvironmentPatchResult{}, err
-		}
-		expectedVersion, err = decodeEnvRevision(*patch.ExpectedEnvRevision)
-		if err != nil {
-			return EnvironmentPatchResult{}, core.NewBadRequestError(
-				"ENVIRONMENT_REVISION_INVALID",
-				"expectedEnvRevision is invalid",
-				nil,
-			)
-		}
-		var ok bool
-		versionedStore, ok = s.Store.(core.VersionedSecretKV)
-		if !ok {
-			return EnvironmentPatchResult{}, fmt.Errorf("%w: environment revisions require a versioned secret store", core.ErrSecretsUnavailable)
-		}
-		snapshot, snapshotErr := versionedStore.GetVersioned(ctx, envPath(service))
-		if snapshotErr != nil {
-			return EnvironmentPatchResult{}, envSourceUnavailable()
-		}
-		oldEnv = snapshot.Data
-		if snapshot.Version != expectedVersion {
+// envPatchTxn carries what compensation needs to restore the state a failed
+// patch already wrote: the pre-patch App and source maps, which maps changed,
+// and — for revision-aware patches — the CAS write and its projection.
+type envPatchTxn struct {
+	service         string
+	originalApp     *appv1alpha1.App
+	oldEnv          map[string]string
+	oldFiles        map[string]string
+	envChanged      bool
+	filesChanged    bool
+	casWriteVersion *uint64
+	casProjection   casEnvProjection
+}
+
+// patchEnvironmentCAS is the revision-aware protocol: exactly one ordinary
+// env-var value update, compare-and-set against the caller's observed revision,
+// and no secret-file operations.
+func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *appv1alpha1.App, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
+	casKey, err := validateCASPatch(patch)
+	if err != nil {
+		return EnvironmentPatchResult{}, err
+	}
+	expectedVersion, err := decodeEnvRevision(*patch.ExpectedEnvRevision)
+	if err != nil {
+		return EnvironmentPatchResult{}, core.NewBadRequestError(
+			"ENVIRONMENT_REVISION_INVALID",
+			"expectedEnvRevision is invalid",
+			nil,
+		)
+	}
+	versionedStore, ok := s.Store.(core.VersionedSecretKV)
+	if !ok {
+		return EnvironmentPatchResult{}, fmt.Errorf("%w: environment revisions require a versioned secret store", core.ErrSecretsUnavailable)
+	}
+	snapshot, err := versionedStore.GetVersioned(ctx, envPath(service))
+	if err != nil {
+		return EnvironmentPatchResult{}, envSourceUnavailable()
+	}
+	oldEnv := snapshot.Data
+	if snapshot.Version != expectedVersion {
+		return EnvironmentPatchResult{}, envRevisionConflict()
+	}
+	if _, exists := oldEnv[casKey]; !exists {
+		return EnvironmentPatchResult{}, core.NewNotFoundError(
+			"ENVIRONMENT_VARIABLE_NOT_FOUND",
+			"environment variable was not found",
+			nil,
+		)
+	}
+	env := cloneStringMap(oldEnv)
+	if err := applyEnvPatch(env, patch.EnvVars); err != nil {
+		return EnvironmentPatchResult{}, err
+	}
+	envChanged := !maps.Equal(oldEnv, env)
+	result := environmentPatchResult(env, nil, false)
+
+	newVersion, putErr := versionedStore.PutCAS(ctx, envPath(service), env, expectedVersion)
+	if putErr != nil {
+		if errors.Is(putErr, core.ErrConflict) {
 			return EnvironmentPatchResult{}, envRevisionConflict()
 		}
-		if _, exists := oldEnv[strings.TrimSpace(patch.EnvVars[0].Key)]; !exists {
-			return EnvironmentPatchResult{}, core.NewNotFoundError(
-				"ENVIRONMENT_VARIABLE_NOT_FOUND",
-				"environment variable was not found",
-				nil,
-			)
-		}
-	} else {
-		oldEnv, err = s.readMap(ctx, envPath(service))
-		if err != nil {
-			return EnvironmentPatchResult{}, err
-		}
+		return EnvironmentPatchResult{}, envSourceUnavailable()
 	}
-	oldFiles := map[string]string{}
-	if !casMode {
-		oldFiles, err = s.readMap(ctx, filesPath(service))
-		if err != nil {
-			return EnvironmentPatchResult{}, err
+	txn := envPatchTxn{
+		service:         service,
+		originalApp:     a.DeepCopy(),
+		oldEnv:          oldEnv,
+		envChanged:      envChanged,
+		casWriteVersion: &newVersion,
+	}
+	// A compare-and-set of an unchanged value still advances the opaque
+	// revision, which is what makes two submissions from one observed revision
+	// resolve to exactly one success and one conflict. Claim the derived Secret
+	// for that new source version as well, but do not persist an App change or
+	// roll pods because the effective environment did not change.
+	if !envChanged {
+		projection, projectionErr := s.projectCASEnv(ctx, service, a, env, newVersion)
+		if projectionErr != nil {
+			txn.casProjection = projection
+			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, projectionErr)
 		}
+		return result, nil
+	}
+	return s.finalizeEnvironmentPatch(ctx, a, txn, patch.SaveMode, env, nil, result)
+}
+
+// patchEnvironmentSparse is the batch protocol: any mix of env-var and
+// secret-file operations applied to the current maps with no revision check.
+func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a *appv1alpha1.App, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
+	oldEnv, err := s.readMap(ctx, envPath(service))
+	if err != nil {
+		return EnvironmentPatchResult{}, err
+	}
+	oldFiles, err := s.readMap(ctx, filesPath(service))
+	if err != nil {
+		return EnvironmentPatchResult{}, err
 	}
 	env := cloneStringMap(oldEnv)
 	files := cloneStringMap(oldFiles)
 	if err := applyEnvPatch(env, patch.EnvVars); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	if !casMode {
-		if err := applyFilePatch(files, patch.SecretFiles); err != nil {
-			return EnvironmentPatchResult{}, err
-		}
+	if err := applyFilePatch(files, patch.SecretFiles); err != nil {
+		return EnvironmentPatchResult{}, err
 	}
-
 	envChanged := !maps.Equal(oldEnv, env)
 	filesChanged := !maps.Equal(oldFiles, files)
 	result := environmentPatchResult(env, files, false)
-	if !casMode && !envChanged && !filesChanged {
+	if !envChanged && !filesChanged {
 		return result, nil
 	}
-
-	var casWriteVersion *uint64
-	if casMode {
-		newVersion, putErr := versionedStore.PutCAS(ctx, envPath(service), env, expectedVersion)
-		if putErr != nil {
-			if errors.Is(putErr, core.ErrConflict) {
-				return EnvironmentPatchResult{}, envRevisionConflict()
-			}
-			return EnvironmentPatchResult{}, envSourceUnavailable()
-		}
-		casWriteVersion = &newVersion
-	} else if envChanged {
+	if envChanged {
 		if err := s.storeMap(ctx, envPath(service), env); err != nil {
 			return EnvironmentPatchResult{}, err
 		}
@@ -190,55 +226,50 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 			return EnvironmentPatchResult{}, errors.Join(err, s.restoreSourceMaps(ctx, service, oldEnv, oldFiles, envChanged, false))
 		}
 	}
-	// A compare-and-set of an unchanged value still advances the opaque
-	// revision, which is what makes two submissions from one observed revision
-	// resolve to exactly one success and one conflict. Claim the derived Secret
-	// for that new source version as well, but do not persist an App change or
-	// roll pods because the effective environment did not change.
-	if !envChanged && !filesChanged {
-		if casWriteVersion != nil {
-			originalApp := a.DeepCopy()
-			projection, projectionErr := s.projectCASEnv(ctx, service, a, env, *casWriteVersion)
-			if projectionErr != nil {
-				return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, service, originalApp, oldEnv, oldFiles, false, false, casWriteVersion, projection, projectionErr)
-			}
-		}
-		return result, nil
+	txn := envPatchTxn{
+		service:      service,
+		originalApp:  a.DeepCopy(),
+		oldEnv:       oldEnv,
+		oldFiles:     oldFiles,
+		envChanged:   envChanged,
+		filesChanged: filesChanged,
 	}
+	return s.finalizeEnvironmentPatch(ctx, a, txn, patch.SaveMode, env, files, result)
+}
 
-	originalApp := a.DeepCopy()
-	base := client.MergeFrom(a.DeepCopy())
-	var casProjection casEnvProjection
-	undo := func(cause error) (EnvironmentPatchResult, error) {
-		return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, service, originalApp, oldEnv, oldFiles, envChanged, filesChanged, casWriteVersion, casProjection, cause)
-	}
-	if envChanged {
-		if casWriteVersion != nil {
-			casProjection, err = s.projectCASEnv(ctx, service, a, env, *casWriteVersion)
+// finalizeEnvironmentPatch projects the changed maps onto the derived Secrets
+// and persists at most one App patch, staging or activating the projection
+// references per saveMode. Any failure compensates through txn.
+func (s *Service) finalizeEnvironmentPatch(ctx context.Context, a *appv1alpha1.App, txn envPatchTxn, saveMode SaveMode, env, files map[string]string, result EnvironmentPatchResult) (EnvironmentPatchResult, error) {
+	base := client.MergeFrom(txn.originalApp)
+	if txn.envChanged {
+		var err error
+		if txn.casWriteVersion != nil {
+			txn.casProjection, err = s.projectCASEnv(ctx, txn.service, a, env, *txn.casWriteVersion)
 		} else {
 			err = s.projectEnv(ctx, a, env)
 		}
 		if err != nil {
-			return undo(err)
+			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 		}
 	}
-	if filesChanged {
+	if txn.filesChanged {
 		if err := s.projectFiles(ctx, a, files); err != nil {
-			return undo(err)
+			return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 		}
 	}
-	rolledOut := patch.SaveMode == SaveModeDeploy
+	rolledOut := saveMode == SaveModeDeploy
 	if rolledOut {
 		activatePendingProjectionReferences(a)
 		s.bumpRestart(a)
 	} else {
-		stagePendingProjectionReferences(a, originalApp, env, files, envChanged, filesChanged)
+		stagePendingProjectionReferences(a, txn.originalApp, env, files, txn.envChanged, txn.filesChanged)
 	}
-	if apiequality.Semantic.DeepEqual(originalApp, a) {
+	if apiequality.Semantic.DeepEqual(txn.originalApp, a) {
 		return result, nil
 	}
 	if err := s.Client.Patch(ctx, a, base); err != nil {
-		return undo(err)
+		return EnvironmentPatchResult{}, s.compensateEnvironment(ctx, txn, err)
 	}
 	result.RolledOut = rolledOut
 	return result, nil
@@ -247,31 +278,32 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 // validateCASPatch keeps the revision-aware surface deliberately narrow: one
 // ordinary key/value assignment and no file, rename, delete, or generation
 // operation. Legacy callers that omit ExpectedEnvRevision retain the complete
-// sparse batch contract above.
-func validateCASPatch(patch EnvironmentPatch) error {
+// sparse batch contract above. It returns the trimmed target key.
+func validateCASPatch(patch EnvironmentPatch) (string, error) {
 	if len(patch.EnvVars) != 1 || len(patch.SecretFiles) != 0 {
-		return core.NewBadRequestError(
+		return "", core.NewBadRequestError(
 			"INVALID_ENVIRONMENT_CAS_PATCH",
 			"expectedEnvRevision requires exactly one environment variable update and no secret files",
 			nil,
 		)
 	}
 	write := patch.EnvVars[0]
-	if !core.ValidEnvKey(strings.TrimSpace(write.Key)) {
-		return core.NewBadRequestError(
+	key := strings.TrimSpace(write.Key)
+	if !core.ValidEnvKey(key) {
+		return "", core.NewBadRequestError(
 			"ENVIRONMENT_VARIABLE_INVALID",
 			"environment variable key is invalid",
 			nil,
 		)
 	}
 	if strings.TrimSpace(write.FromKey) != "" || write.Delete || write.GenerateValue {
-		return core.NewBadRequestError(
+		return "", core.NewBadRequestError(
 			"INVALID_ENVIRONMENT_CAS_PATCH",
 			"expectedEnvRevision supports only an ordinary environment variable value update",
 			nil,
 		)
 	}
-	return nil
+	return key, nil
 }
 
 func envRevisionConflict() error {
@@ -397,16 +429,9 @@ func envBytes(env map[string]string) map[string][]byte {
 }
 
 func equalSecretData(data map[string][]byte, env map[string]string) bool {
-	if len(data) != len(env) {
-		return false
-	}
-	for key, value := range env {
-		stored, ok := data[key]
-		if !ok || string(stored) != value {
-			return false
-		}
-	}
-	return true
+	return maps.EqualFunc(data, env, func(stored []byte, value string) bool {
+		return string(stored) == value
+	})
 }
 
 // stagePendingProjectionReferences keeps a save-only write metadata-only when
@@ -459,122 +484,135 @@ func activatePendingProjectionReferences(a *appv1alpha1.App) {
 }
 
 func applyEnvPatch(env map[string]string, writes []EnvVarPatch) error {
-	seen := make(map[string]struct{}, len(writes))
-	for _, write := range writes {
-		key := strings.TrimSpace(write.Key)
-		if !core.ValidEnvKey(key) {
-			return fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+	ops := make([]mapPatchOp, len(writes))
+	for i, write := range writes {
+		ops[i] = mapPatchOp{
+			key:        write.Key,
+			fromKey:    write.FromKey,
+			remove:     write.Delete,
+			hasPayload: write.GenerateValue || write.Value != "",
+			value: func(key string) (string, error) {
+				return resolveValue(key, write.Value, write.GenerateValue)
+			},
 		}
-		fromKey := strings.TrimSpace(write.FromKey)
-		if _, duplicate := seen[key]; duplicate {
-			return fmt.Errorf("%w: duplicate environment variable operation for %q", core.ErrBadRequest, key)
-		}
-		seen[key] = struct{}{}
-		if fromKey != "" {
-			if !core.ValidEnvKey(fromKey) {
-				return fmt.Errorf("%w: invalid source environment variable name %q", core.ErrBadRequest, fromKey)
-			}
-			if write.Delete || write.GenerateValue || write.Value != "" {
-				return fmt.Errorf("%w: environment variable rename %q cannot combine with delete, value, or generateValue", core.ErrBadRequest, key)
-			}
-			if _, duplicate := seen[fromKey]; duplicate && fromKey != key {
-				return fmt.Errorf("%w: conflicting environment variable operation for %q", core.ErrBadRequest, fromKey)
-			}
-			value, ok := env[fromKey]
-			if !ok {
-				return fmt.Errorf("%w: source environment variable %q", core.ErrNotFound, fromKey)
-			}
-			if _, occupied := env[key]; occupied && key != fromKey {
-				return fmt.Errorf("%w: environment variable rename destination %q already exists", core.ErrBadRequest, key)
-			}
-			seen[fromKey] = struct{}{}
-			delete(env, fromKey)
-			env[key] = value
-			continue
-		}
-		if write.Delete {
-			if write.GenerateValue || write.Value != "" {
-				return fmt.Errorf("%w: environment variable %q cannot combine delete with a value or generateValue", core.ErrBadRequest, key)
-			}
-			delete(env, key)
-			continue
-		}
-		value, err := resolveValue(key, write.Value, write.GenerateValue)
-		if err != nil {
-			return err
-		}
-		env[key] = value
 	}
-	return nil
+	return applyMapPatch(env, ops, core.ValidEnvKey, mapPatchWording{
+		noun:            "environment variable",
+		renameConflicts: "delete, value, or generateValue",
+		deleteConflicts: "a value or generateValue",
+	})
 }
 
 func applyFilePatch(files map[string]string, writes []SecretFilePatch) error {
-	seen := make(map[string]struct{}, len(writes))
-	for _, write := range writes {
-		name := strings.TrimSpace(write.Name)
-		if !core.ValidSecretFileName(name) {
-			return fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, name)
+	ops := make([]mapPatchOp, len(writes))
+	for i, write := range writes {
+		ops[i] = mapPatchOp{
+			key:        write.Name,
+			fromKey:    write.FromName,
+			remove:     write.Delete,
+			hasPayload: write.Content != "",
+			value: func(string) (string, error) {
+				return write.Content, nil
+			},
 		}
-		fromName := strings.TrimSpace(write.FromName)
-		if _, duplicate := seen[name]; duplicate {
-			return fmt.Errorf("%w: duplicate secret file operation for %q", core.ErrBadRequest, name)
+	}
+	return applyMapPatch(files, ops, core.ValidSecretFileName, mapPatchWording{
+		noun:            "secret file",
+		renameConflicts: "delete or content",
+		deleteConflicts: "content",
+	})
+}
+
+// mapPatchOp is one rename/delete/set mutation in applyMapPatch's shared
+// state machine; hasPayload reports whether the op carries any new value
+// (a literal value or generation request), which renames and deletes reject.
+type mapPatchOp struct {
+	key        string
+	fromKey    string
+	remove     bool
+	hasPayload bool
+	value      func(key string) (string, error)
+}
+
+// mapPatchWording keeps the two callers' wire error messages byte-identical.
+type mapPatchWording struct {
+	noun            string
+	renameConflicts string
+	deleteConflicts string
+}
+
+func applyMapPatch(m map[string]string, ops []mapPatchOp, valid func(string) bool, wording mapPatchWording) error {
+	seen := make(map[string]struct{}, len(ops))
+	for _, op := range ops {
+		key := strings.TrimSpace(op.key)
+		if !valid(key) {
+			return fmt.Errorf("%w: invalid %s name %q", core.ErrBadRequest, wording.noun, key)
 		}
-		seen[name] = struct{}{}
-		if fromName != "" {
-			if !core.ValidSecretFileName(fromName) {
-				return fmt.Errorf("%w: invalid source secret file name %q", core.ErrBadRequest, fromName)
+		fromKey := strings.TrimSpace(op.fromKey)
+		if _, duplicate := seen[key]; duplicate {
+			return fmt.Errorf("%w: duplicate %s operation for %q", core.ErrBadRequest, wording.noun, key)
+		}
+		seen[key] = struct{}{}
+		if fromKey != "" {
+			if !valid(fromKey) {
+				return fmt.Errorf("%w: invalid source %s name %q", core.ErrBadRequest, wording.noun, fromKey)
 			}
-			if write.Delete || write.Content != "" {
-				return fmt.Errorf("%w: secret file rename %q cannot combine with delete or content", core.ErrBadRequest, name)
+			if op.remove || op.hasPayload {
+				return fmt.Errorf("%w: %s rename %q cannot combine with %s", core.ErrBadRequest, wording.noun, key, wording.renameConflicts)
 			}
-			if _, duplicate := seen[fromName]; duplicate && fromName != name {
-				return fmt.Errorf("%w: conflicting secret file operation for %q", core.ErrBadRequest, fromName)
+			if _, duplicate := seen[fromKey]; duplicate && fromKey != key {
+				return fmt.Errorf("%w: conflicting %s operation for %q", core.ErrBadRequest, wording.noun, fromKey)
 			}
-			content, ok := files[fromName]
+			value, ok := m[fromKey]
 			if !ok {
-				return fmt.Errorf("%w: source secret file %q", core.ErrNotFound, fromName)
+				return fmt.Errorf("%w: source %s %q", core.ErrNotFound, wording.noun, fromKey)
 			}
-			if _, occupied := files[name]; occupied && name != fromName {
-				return fmt.Errorf("%w: secret file rename destination %q already exists", core.ErrBadRequest, name)
+			if _, occupied := m[key]; occupied && key != fromKey {
+				return fmt.Errorf("%w: %s rename destination %q already exists", core.ErrBadRequest, wording.noun, key)
 			}
-			seen[fromName] = struct{}{}
-			delete(files, fromName)
-			files[name] = content
+			seen[fromKey] = struct{}{}
+			delete(m, fromKey)
+			m[key] = value
 			continue
 		}
-		if write.Delete {
-			if write.Content != "" {
-				return fmt.Errorf("%w: secret file %q cannot combine delete with content", core.ErrBadRequest, name)
+		if op.remove {
+			if op.hasPayload {
+				return fmt.Errorf("%w: %s %q cannot combine delete with %s", core.ErrBadRequest, wording.noun, key, wording.deleteConflicts)
 			}
-			delete(files, name)
+			delete(m, key)
 			continue
 		}
-		files[name] = write.Content
+		value, err := op.value(key)
+		if err != nil {
+			return err
+		}
+		m[key] = value
 	}
 	return nil
 }
 
-func (s *Service) compensateEnvironment(ctx context.Context, service string, originalApp *appv1alpha1.App, oldEnv, oldFiles map[string]string, envChanged, filesChanged bool, casWriteVersion *uint64, casProjection casEnvProjection, cause error) error {
-	if casWriteVersion != nil {
-		return s.compensateCASEnvironment(ctx, service, originalApp, oldEnv, *casWriteVersion, casProjection, cause)
+func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, cause error) error {
+	if txn.casWriteVersion != nil {
+		return s.compensateCASEnvironment(ctx, txn.service, txn.originalApp, txn.oldEnv, *txn.casWriteVersion, txn.casProjection, cause)
 	}
+	originalApp := txn.originalApp
 	var compensation []error
-	if err := s.restoreSourceMaps(ctx, service, oldEnv, oldFiles, envChanged, filesChanged); err != nil {
+	if err := s.restoreSourceMaps(ctx, txn.service, txn.oldEnv, txn.oldFiles, txn.envChanged, txn.filesChanged); err != nil {
 		compensation = append(compensation, fmt.Errorf("restore secret store: %w", err))
 	}
-	if envChanged {
+	if txn.envChanged {
 		if originalApp.Spec.EnvFromSecret == envSecretName(originalApp.Name) {
-			if err := s.upsertSecret(ctx, originalApp, envSecretName(originalApp.Name), oldEnv); err != nil {
+			if err := s.upsertSecret(ctx, originalApp, envSecretName(originalApp.Name), txn.oldEnv); err != nil {
 				compensation = append(compensation, fmt.Errorf("restore environment projection: %w", err))
 			}
 		} else if err := s.deleteSecret(ctx, originalApp.Namespace, envSecretName(originalApp.Name)); err != nil {
 			compensation = append(compensation, fmt.Errorf("remove environment projection: %w", err))
 		}
 	}
-	if filesChanged {
+	if txn.filesChanged {
 		name := filesSecretName(originalApp.Name)
 		if slices.Contains(originalApp.Spec.FilesFromSecrets, name) {
-			if err := s.upsertSecret(ctx, originalApp, name, oldFiles); err != nil {
+			if err := s.upsertSecret(ctx, originalApp, name, txn.oldFiles); err != nil {
 				compensation = append(compensation, fmt.Errorf("restore secret-file projection: %w", err))
 			}
 		} else if err := s.deleteSecret(ctx, originalApp.Namespace, name); err != nil {
@@ -663,24 +701,18 @@ func (s *Service) restoreSourceMaps(ctx context.Context, service string, oldEnv,
 }
 
 func environmentPatchResult(env, files map[string]string, rolledOut bool) EnvironmentPatchResult {
-	result := EnvironmentPatchResult{RolledOut: rolledOut}
-	for key := range env {
-		result.EnvVarKeys = append(result.EnvVarKeys, key)
+	return EnvironmentPatchResult{
+		EnvVarKeys:      slices.Sorted(maps.Keys(env)),
+		SecretFileNames: slices.Sorted(maps.Keys(files)),
+		RolledOut:       rolledOut,
 	}
-	for name := range files {
-		result.SecretFileNames = append(result.SecretFileNames, name)
-	}
-	sort.Strings(result.EnvVarKeys)
-	sort.Strings(result.SecretFileNames)
-	return result
 }
 
-// cloneStringMap is deliberately not maps.Clone: a nil input must yield a
-// writable empty map (the patch appliers mutate the clone in place).
+// cloneStringMap is maps.Clone that never returns nil: the clone is mutated by
+// the patch appliers, so a nil source must still produce a writable map.
 func cloneStringMap(in map[string]string) map[string]string {
-	out := make(map[string]string, len(in))
-	for key, value := range in {
-		out[key] = value
+	if out := maps.Clone(in); out != nil {
+		return out
 	}
-	return out
+	return map[string]string{}
 }

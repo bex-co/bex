@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -420,10 +421,8 @@ func (s *Service) deleteSecret(ctx context.Context, namespace, name string) erro
 
 // addString returns list with s present exactly once (order-stable, append if new).
 func addString(list []string, s string) []string {
-	for _, v := range list {
-		if v == s {
-			return list
-		}
+	if slices.Contains(list, s) {
+		return list
 	}
 	return append(list, s)
 }
