@@ -509,6 +509,32 @@ func TestAttachTicketRelationPerAction(t *testing.T) {
 	}
 }
 
+// TestAttachTicketTurnRequiresLivePhase pins round-5 finding 13: a live-turn
+// ticket must be gated on an active phase, not just a retained sandbox. A
+// terminal or canceling session keeps its sandbox through the ADR054 editor
+// grace window, so a nonempty SandboxID alone would let a developer run
+// un-metered, off-lifecycle model turns on a finished session. Read tickets
+// (transcript replay) stay available — that is the feature.
+func TestAttachTicketTurnRequiresLivePhase(t *testing.T) {
+	svc, st, _, _ := fixture()
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, phase := range []string{PhaseCompleted, PhaseFailed, PhaseCanceled, PhaseCanceling} {
+		row := st.rows[created.ID]
+		row.Phase, row.SandboxID = phase, "sandbox-1"
+		st.rows[created.ID] = row
+
+		if _, err := svc.AttachTicket(caller("alice"), created.ID, agentsessionticket.ActionTurn); !isCode(err, "AGENT_SESSION_NOT_LIVE") {
+			t.Errorf("phase %q turn ticket = %v, want AGENT_SESSION_NOT_LIVE", phase, err)
+		}
+		if _, err := svc.AttachTicket(caller("alice"), created.ID, agentsessionticket.ActionRead); err != nil {
+			t.Errorf("phase %q read ticket must still succeed, got %v", phase, err)
+		}
+	}
+}
+
 // TestAttachTicketMintsWithoutChangingLifecycle pins the w3/m43 reconnect verb
 // (ADR047 D9 target API shape): AttachTicket re-mints a fresh, distinct ticket
 // bound to the same session/sandbox without advancing the phase, fails closed

@@ -143,6 +143,22 @@ func TestAddDomainEmptyHostnameIsBadRequest(t *testing.T) {
 	}
 }
 
+// round-5 finding 7: a wildcard custom domain and a concrete host beneath it are
+// compared literally by both the collision check and the store's UNIQUE(host)
+// constraint, so both would go live and the wildcard could hijack a concrete
+// host routed to another tenant. Reject wildcards at the write boundary.
+func TestAddDomainRejectsWildcard(t *testing.T) {
+	svc, cl := newService(nil, sampleApp("web"))
+	for _, host := range []string{"*.example.com", "*.foo.example.com", "foo.*.example.com"} {
+		if _, err := svc.AddDomain(context.Background(), "web", host); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("wildcard %q => ErrBadRequest, got %v", host, err)
+		}
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 0 {
+		t.Errorf("rejected wildcard must not touch spec.hosts, got %v", got)
+	}
+}
+
 // --- w7/m6: cross-app collision + reserved-host guards ---
 
 // TestAddDomainRejectsHostOnAnotherApp: a host registered on a different App

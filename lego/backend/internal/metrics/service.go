@@ -277,6 +277,15 @@ type Service struct {
 const (
 	maxMetricsFanOut    = 100 // (resource, metric) pairs per request
 	maxLatencyQuantiles = 10  // http_latency percentiles per request
+	// maxPointsPerSeries bounds window/resolution so a caller cannot pin a
+	// 1-second step across the full BEX_MAX_QUERY_HOURS window (round-5 finding
+	// 2). checkWindow limits elapsed hours only; without this, a viewer could
+	// force millions of PromQL/LogQL evaluation points per series on the shared
+	// observability plane. 11,000 matches Prometheus's own query_range
+	// points-per-series hard cap, so nothing that Prometheus serves today is
+	// newly rejected — an over-budget request is refused here with a clear
+	// "raise resolutionSeconds" message instead of an opaque upstream 400.
+	maxPointsPerSeries = 11000
 )
 
 // checkWindow enforces MaxQueryHours against a query's start–end range,
@@ -304,6 +313,20 @@ func checkFanOut(resources, metrics, quantiles int) error {
 	reads := max(resources, 1) * max(metrics, 1) * max(quantiles, 1)
 	if reads > maxMetricsFanOut {
 		return fmt.Errorf("%w: request expands into %d metric reads; the limit is %d", core.ErrBadRequest, reads, maxMetricsFanOut)
+	}
+	return nil
+}
+
+// checkPointBudget bounds the per-series sample count (window ÷ resolution) a
+// single read may request, called by the shared service entry points after
+// normalization so every adapter inherits it (round-5 finding 2). resolution is
+// always positive after normalized(); a zero step is impossible here.
+func checkPointBudget(start, end time.Time, resolution time.Duration) error {
+	if resolution <= 0 {
+		return nil // defensive: normalized() guarantees a positive step
+	}
+	if points := int64(end.Sub(start) / resolution); points > maxPointsPerSeries {
+		return fmt.Errorf("%w: window ÷ resolution yields %d samples per series; the limit is %d — raise resolutionSeconds", core.ErrBadRequest, points, maxPointsPerSeries)
 	}
 	return nil
 }
@@ -336,6 +359,9 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 		}
 	}
 	q = q.normalized(s.Now())
+	if err := checkPointBudget(q.Start, q.End, q.Resolution); err != nil {
+		return nil, err
+	}
 	var series []MetricSeries
 	switch q.Metric {
 	case MetricCPU, MetricMemory:

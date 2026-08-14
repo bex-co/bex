@@ -29,6 +29,9 @@ import (
 // environments, create and set alike), so a bad entry is a 400 before anything
 // lands in a CR spec or store row.
 func ValidateCIDRs(cidrs []string) error {
+	if len(cidrs) > MaxAllowListEntries {
+		return fmt.Errorf("%w: ipAllowList has %d entries; the limit is %d", ErrBadRequest, len(cidrs), MaxAllowListEntries)
+	}
 	for _, c := range cidrs {
 		if _, _, err := net.ParseCIDR(c); err != nil {
 			return fmt.Errorf("%w: %q is not a valid CIDR", ErrBadRequest, c)
@@ -139,6 +142,15 @@ func ResolveAllowListInputs(entries []IPAllowListEntry, entriesSet bool, cidrs [
 // empty sourceRange, so deny-all must be a real range no source matches.
 const DenyAllCIDR = "255.255.255.255/32"
 
+// MaxAllowListEntries caps how many CIDR entries one ipAllowList write may carry
+// (round-5 finding 15). Every prefix is materialized into the cluster-wide
+// pg-sni-proxy / kv-sni-proxy router and scanned on each TLS handshake, so an
+// unbounded list lets one contributor amplify cheap handshakes into shared-proxy
+// CPU and router-lock contention against other tenants. 1000 is far above any
+// legitimate allowlist and fails closed in the shared validators below, so the
+// REST/GraphQL/MCP write paths all inherit the bound.
+const MaxAllowListEntries = 1000
+
 // DefaultEnvironmentAllowList is the seeded allow-all rule pair a new (or
 // migrated pre-m28) environment starts with — Render's dashboard seeds
 // 0.0.0.0/0; the ::/0 twin is bex's IPv6 extension so the semantic flip to
@@ -171,6 +183,9 @@ func EnvironmentLayerCIDRs(entries []IPAllowListEntry) []string {
 // ValidateAllowList is ValidateCIDRs over entry CIDRs — descriptions are never
 // validated (free text) and never influence enforcement.
 func ValidateAllowList(entries []IPAllowListEntry) error {
+	if len(entries) > MaxAllowListEntries {
+		return fmt.Errorf("%w: ipAllowList has %d entries; the limit is %d", ErrBadRequest, len(entries), MaxAllowListEntries)
+	}
 	for _, e := range entries {
 		if _, _, err := net.ParseCIDR(e.CIDRBlock); err != nil {
 			return fmt.Errorf("%w: %q is not a valid CIDR", ErrBadRequest, e.CIDRBlock)

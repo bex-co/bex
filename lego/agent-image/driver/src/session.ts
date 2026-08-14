@@ -204,13 +204,22 @@ export async function runHeadlessTurn(
     await Promise.race([execute(), deadline]);
     if (closeHub) hub.close();
 
-    // Deliver the agent's work as a pushed branch, then extract bounded evidence
-    // from the redacted session log — both BEFORE scrubbing so the commit
-    // captures the real working tree. A delivery (push) failure throws here and
-    // is recorded as a failed turn, never a hang (ADR047 D4).
-    const delivery: DeliveryResult | null = config.deliver ? await deliverBranch(config) : null;
-    const evidence: EvidenceResult = await extractEvidence(config);
+    // Scrub the model credential out of persisted state BEFORE delivery, so a
+    // credential the agent wrote into a workspace file is redacted in the pushed
+    // commit instead of published to the connected repository (round-5 finding
+    // 6). deliverBranch additionally fails the push closed if the credential is
+    // already in the branch's commit history (a byte-scrub cannot reach a
+    // compressed git object). Evidence comes from the already-redacted session
+    // log, so scrub order does not affect it. A delivery (push) failure — including
+    // the fail-closed refusal — throws here and is recorded as a failed turn.
     const scrubbed = await credentialManager.scrubPersistedState();
+    const delivery: DeliveryResult | null = config.deliver
+      ? await deliverBranch({
+          ...config,
+          containsSecret: (text) => credentialManager.containsSecret(text),
+        })
+      : null;
+    const evidence: EvidenceResult = await extractEvidence(config);
     const status: StatusRecord = {
       state: "succeeded",
       sessionId: provider!.getSessionId(),

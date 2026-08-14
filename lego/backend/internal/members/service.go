@@ -360,6 +360,13 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 	if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
 		return InviteView{}, err
 	}
+	// round-5 finding 4: creating an admin invite is a durable-capability
+	// issuance, so re-assert can_manage against the source of truth (uncached).
+	// A caller demoted/removed within the last PositiveTTL must not ride a stale
+	// cached positive to mint an invite that outlives the cache window.
+	if err := s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
+		return InviteView{}, err
+	}
 	if s.Store == nil {
 		return InviteView{}, ErrMembersUnavailable
 	}
@@ -523,6 +530,12 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	// the member target the caller asked to change.
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.MemberTarget(subject)); err != nil {
+		return MemberView{}, err
+	}
+	// round-5 finding 4: a role change (including self-promotion back to admin)
+	// writes a durable membership tuple, so re-assert can_manage uncached — a
+	// caller demoted within the last PositiveTTL must not ride a stale positive.
+	if err := s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
 		return MemberView{}, err
 	}
 	if s.Store == nil {
@@ -701,10 +714,15 @@ func (s *Service) reconcileExactRole(ctx context.Context, tenantID, subject, rol
 		if other == role {
 			continue
 		}
-		// Only revoke a role tuple that actually exists (check-before-revoke): keeps
-		// a no-op from masquerading as a failure and never asks OpenFGA to delete a
-		// missing tuple.
-		if ok, err := s.Base.Authz.Check(ctx, subject, other, core.WorkspaceObject(tenantID)); err != nil || !ok {
+		// Only skip a role tuple that is DEFINITIVELY absent (check-before-revoke):
+		// keeps a no-op from masquerading as a failure and avoids asking OpenFGA to
+		// delete a missing tuple. round-5 finding 16: a Check ERROR is NOT absence —
+		// the old `err != nil || !ok` swallowed a transient failure and left a stale
+		// higher-role tuple the OR-based model keeps effective. On an indeterminate
+		// check, attempt the revoke (deleting an absent tuple is idempotent) and
+		// surface any real error via errs so it isn't lost.
+		ok, err := s.Base.Authz.Check(ctx, subject, other, core.WorkspaceObject(tenantID))
+		if err == nil && !ok {
 			continue
 		}
 		if err := s.revokeRoleErr(ctx, tenantID, subject, other); err != nil {

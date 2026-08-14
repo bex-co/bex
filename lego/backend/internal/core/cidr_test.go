@@ -88,6 +88,29 @@ func TestValidateAllowListNamesTheBadEntry(t *testing.T) {
 	}
 }
 
+// round-5 finding 15: an unbounded allowlist is materialized into the shared
+// SNI proxies and scanned per handshake, so both validators cap cardinality.
+func TestValidateAllowListRejectsExcessCardinality(t *testing.T) {
+	entries := make([]IPAllowListEntry, MaxAllowListEntries+1)
+	for i := range entries {
+		entries[i] = IPAllowListEntry{CIDRBlock: "10.0.0.0/8"}
+	}
+	if err := ValidateAllowList(entries); !errors.Is(err, ErrBadRequest) {
+		t.Fatalf("over-cap ValidateAllowList: want ErrBadRequest, got %v", err)
+	}
+	cidrs := make([]string, MaxAllowListEntries+1)
+	for i := range cidrs {
+		cidrs[i] = "10.0.0.0/8"
+	}
+	if err := ValidateCIDRs(cidrs); !errors.Is(err, ErrBadRequest) {
+		t.Fatalf("over-cap ValidateCIDRs: want ErrBadRequest, got %v", err)
+	}
+	// Exactly at the cap is still accepted.
+	if err := ValidateAllowList(entries[:MaxAllowListEntries]); err != nil {
+		t.Fatalf("at-cap ValidateAllowList must pass, got %v", err)
+	}
+}
+
 func TestResolveAllowListInputs(t *testing.T) {
 	entries := []IPAllowListEntry{{CIDRBlock: "203.0.113.0/24", Description: "office"}}
 	got, err := ResolveAllowListInputs(entries, true, nil, false)

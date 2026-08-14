@@ -301,6 +301,29 @@ type denyChecker struct{}
 
 func (denyChecker) Check(context.Context, string, string, string) (bool, error) { return false, nil }
 
+// errChecker fails every Check — a transient OpenFGA blip.
+type errChecker struct{}
+
+func (errChecker) Check(context.Context, string, string, string) (bool, error) {
+	return false, errors.New("openfga unavailable")
+}
+
+// TestReconcileExactRoleRevokesOnCheckError pins round-5 finding 16: an OpenFGA
+// Check error must NOT be treated as "role absent". The old code skipped the
+// revoke on a check error, leaving a stale higher-role tuple the OR-based model
+// keeps effective — with no retry driver on the invite path. Each other role
+// must instead get an (idempotent) revoke attempt.
+func TestReconcileExactRoleRevokesOnCheckError(t *testing.T) {
+	g := newFakeGranter()
+	s := svc(newFakeStore(store.PlanPro), g, &fakeMailer{}, errChecker{})
+	if err := s.reconcileExactRole(ctxWith("user-a"), "tea-a", "user:sub", "developer"); err != nil {
+		t.Fatalf("reconcileExactRole with a working granter should not error: %v", err)
+	}
+	if len(g.revoked) != len(Roles)-1 {
+		t.Fatalf("Check error must trigger a revoke attempt per other role: got %d, want %d", len(g.revoked), len(Roles)-1)
+	}
+}
+
 // roleChecker allows a caller to hold exactly one relation on the workspace.
 type roleChecker struct{ relation string }
 

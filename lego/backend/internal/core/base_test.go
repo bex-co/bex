@@ -56,6 +56,53 @@ func (f *fakeAllowChecker) Check(_ context.Context, _, _, object string) (bool, 
 	return true, nil
 }
 
+// staleFreshChecker returns a possibly-stale positive from Check (the cached
+// path) and an authoritative answer from CheckFresh — the exact shape round-5
+// finding 4 defends against for credential/privilege issuance verbs.
+type staleFreshChecker struct{ cached, fresh bool }
+
+func (c staleFreshChecker) Check(context.Context, string, string, string) (bool, error) {
+	return c.cached, nil
+}
+func (c staleFreshChecker) CheckFresh(context.Context, string, string, string) (bool, error) {
+	return c.fresh, nil
+}
+
+func TestAuthorizeFreshBypassesStalePositive(t *testing.T) {
+	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
+	ws := fakeWorkspace{"identity-a": "tea-a"}
+	// Cached says allow (stale positive), source of truth says deny (revoked).
+	b := &Base{Authz: staleFreshChecker{cached: true, fresh: false}, Workspace: ws}
+	if err := b.Authorize(ctx, RelCanManage); err != nil {
+		t.Fatalf("cached Authorize should still allow the stale positive: %v", err)
+	}
+	if err := b.AuthorizeFresh(ctx, RelCanManage); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("AuthorizeFresh must fail closed on a revoked source of truth, got %v", err)
+	}
+	if err := b.AuthorizeFreshOn(ctx, RelCanManage, WorkspaceObject("tea-a")); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("AuthorizeFreshOn must fail closed, got %v", err)
+	}
+	// When the source of truth agrees, it allows.
+	b2 := &Base{Authz: staleFreshChecker{cached: true, fresh: true}, Workspace: ws}
+	if err := b2.AuthorizeFresh(ctx, RelCanManage); err != nil {
+		t.Fatalf("AuthorizeFresh must allow when the source of truth agrees, got %v", err)
+	}
+}
+
+func TestAuthorizeFreshFallsBackWhenNoFreshChecker(t *testing.T) {
+	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
+	// fakeAllowChecker implements only Check — AuthorizeFreshOn must degrade to
+	// the cached path (an uncached checker is already authoritative).
+	chk := &fakeAllowChecker{}
+	b := &Base{Authz: chk, Workspace: fakeWorkspace{"identity-a": "tea-a"}}
+	if err := b.AuthorizeFreshOn(ctx, RelCanManage, WorkspaceObject("tea-a")); err != nil {
+		t.Fatalf("fallback AuthorizeFreshOn should allow via Check, got %v", err)
+	}
+	if chk.lastObject != "workspace:tea-a" {
+		t.Errorf("fallback checked object = %q, want workspace:tea-a", chk.lastObject)
+	}
+}
+
 func fakeAppClient(objs ...client.Object) client.Client {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)

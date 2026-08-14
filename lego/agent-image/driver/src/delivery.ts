@@ -40,6 +40,10 @@ export interface DeliveryConfig {
   prompt: string;
   gitName: string;
   gitEmail: string;
+  // containsSecret, when set, fails the push closed if any commit on the branch
+  // still carries the model credential (round-5 finding 6). Optional so direct
+  // callers/tests that never handle a credential are unaffected.
+  containsSecret?: (text: string) => boolean;
 }
 
 export interface DeliveryResult {
@@ -148,6 +152,19 @@ export async function deliverBranch(config: DeliveryConfig): Promise<DeliveryRes
   let pushed = false;
   let headSha = "";
   if (commits > 0) {
+    // round-5 finding 6: fail closed if any commit on the branch still contains
+    // the model credential. The working tree is byte-scrubbed before delivery,
+    // but that cannot reach a credential the agent itself already committed (it
+    // lives in a compressed git object), and `git push` would publish it to the
+    // connected repository, its collaborators, CI, and every clone. Scan the
+    // branch's full patch and refuse to push on a match (never on argv — the
+    // needle stays inside containsSecret).
+    if (config.containsSecret) {
+      const patch = await git(cwd, ["log", "-p", "--no-color", `${base}..${config.branch}`]);
+      if (config.containsSecret(patch)) {
+        throw new Error("refusing to push: model credential found in commit history");
+      }
+    }
     await git(cwd, ["push", "origin", `${config.branch}:${config.branch}`]);
     pushed = true;
     headSha = await git(cwd, ["rev-parse", "HEAD"]);

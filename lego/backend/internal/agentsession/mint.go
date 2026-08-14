@@ -49,9 +49,14 @@ type SessionStore interface {
 }
 
 // terminalPhases are the agent-session phases past which no new capability may
-// be issued (codex F12). Kept in sync with the store's terminal set (the
-// deferred-teardown reaper's completed/failed/canceled).
-var terminalPhases = map[string]bool{"completed": true, "failed": true, "canceled": true}
+// be issued (codex F12 + round-5 finding 10). "canceling" is included: Cancel
+// persists it BEFORE external teardown and deliberately leaves it on a teardown
+// failure (agentsessions.Cancel), so a retained or compromised sandbox in that
+// state must not refresh a fresh one-hour contents:write token. This is a
+// superset of the deferred-teardown reaper's completed/failed/canceled — the
+// reaper never sees a stuck-canceling session, which is exactly why the mint
+// gate, not the reaper, is the security boundary here.
+var terminalPhases = map[string]bool{"completed": true, "failed": true, "canceled": true, "canceling": true}
 
 // Minter is bex-api's internal-only credential verb. It trusts only a request
 // authenticated by Handler's HMAC and still rechecks branch/repository policy.

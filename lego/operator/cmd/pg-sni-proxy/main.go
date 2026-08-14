@@ -179,20 +179,27 @@ func (r *dbRouter) resolve(sni string, source netip.Addr) (dbRoute, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for name, entry := range r.table {
+		var backend string
+		switch {
+		case base == name:
+			backend = fmt.Sprintf("%s-rw.%s.svc.cluster.local:5432", name, entry.namespace)
+		case base == name+"-pool" && entry.pooler:
+			backend = fmt.Sprintf("%s-pooler.%s.svc.cluster.local:5432", name, entry.namespace)
+		case strings.HasPrefix(base, name+"-ro-") && entry.replicas[strings.TrimPrefix(base, name+"-ro-")]:
+			backend = fmt.Sprintf("%s-ro.%s.svc.cluster.local:5432", name, entry.namespace)
+		default:
+			continue
+		}
+		// round-5 finding 15: scan the (tenant-controlled, now count-capped)
+		// allowlist ONLY for the entry whose exact SNI name matched — a name
+		// compare is O(1), an allowlist scan is not, so the prior "check every
+		// database's allowlist on every handshake" turned cheap TLS churn into
+		// shared-proxy CPU + router-lock pressure. Fall-through is preserved: a
+		// name match the source can't use lets a differently-keyed entry still win.
 		if !allowedByLayer(source, entry.allow) || !allowedByLayer(source, entry.envAllow) {
 			continue
 		}
-		switch {
-		case base == name:
-			backend := fmt.Sprintf("%s-rw.%s.svc.cluster.local:5432", name, entry.namespace)
-			return dbRoute{Database: name, Backend: backend}, true
-		case base == name+"-pool" && entry.pooler:
-			backend := fmt.Sprintf("%s-pooler.%s.svc.cluster.local:5432", name, entry.namespace)
-			return dbRoute{Database: name, Backend: backend}, true
-		case strings.HasPrefix(base, name+"-ro-") && entry.replicas[strings.TrimPrefix(base, name+"-ro-")]:
-			backend := fmt.Sprintf("%s-ro.%s.svc.cluster.local:5432", name, entry.namespace)
-			return dbRoute{Database: name, Backend: backend}, true
-		}
+		return dbRoute{Database: name, Backend: backend}, true
 	}
 	return dbRoute{}, false
 }

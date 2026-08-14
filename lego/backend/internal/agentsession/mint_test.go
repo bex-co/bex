@@ -132,9 +132,12 @@ func TestMinterRefusesTerminalOrForeignSession(t *testing.T) {
 	// must not mint a fresh repository write token, even though its pod identity
 	// is otherwise intact.
 	cases := map[string]fakeSessions{
-		"completed":         {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "completed"}},
-		"failed":            {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "failed"}},
-		"canceled":          {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "canceled"}},
+		"completed": {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "completed"}},
+		"failed":    {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "failed"}},
+		"canceled":  {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "canceled"}},
+		// round-5 finding 10: Cancel persists "canceling" before external teardown
+		// and leaves it on a teardown failure, so a still-live sandbox must not mint.
+		"canceling":         {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "canceling"}},
 		"sandbox cleared":   {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "", Phase: "running"}},
 		"foreign workspace": {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-b", SandboxID: "sbx-1", Phase: "running"}},
 		"absent session":    {err: store.ErrNotFound},

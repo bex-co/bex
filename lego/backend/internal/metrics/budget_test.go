@@ -41,6 +41,25 @@ const (
 	budgetWindowEnd   = "2026-01-01T02:00:01Z" // 2h1s > the 1h test cap
 )
 
+// round-5 finding 2: window ÷ resolution is capped so a 1s step across the full
+// query window cannot force millions of per-series backend evaluation points.
+func TestCheckPointBudget(t *testing.T) {
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	over := start.Add(time.Duration(maxPointsPerSeries+1) * time.Second)
+	if err := checkPointBudget(start, over, time.Second); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("over-budget (1s step): want ErrBadRequest, got %v", err)
+	}
+	at := start.Add(time.Duration(maxPointsPerSeries) * time.Second)
+	if err := checkPointBudget(start, at, time.Second); err != nil {
+		t.Fatalf("at-budget must pass, got %v", err)
+	}
+	// A wide (30-day) window stays in budget at a coarse resolution.
+	wide := start.Add(720 * time.Hour)
+	if err := checkPointBudget(start, wide, 5*time.Minute); err != nil {
+		t.Fatalf("30d @ 5m (8640 pts) must pass, got %v", err)
+	}
+}
+
 // budgetService builds a Service with a 1-hour window cap and sources that
 // fail the test if any backend read happens — every case below must be
 // refused before backend work.

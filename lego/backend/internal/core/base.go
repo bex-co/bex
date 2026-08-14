@@ -78,6 +78,18 @@ type Checker interface {
 	Check(ctx context.Context, subject, relation, object string) (bool, error)
 }
 
+// FreshChecker is an optional Checker capability: an authoritative decision that
+// bypasses the positive-check cache. AuthorizeFreshOn uses it so a
+// security-critical ISSUANCE verb — mint a durable API key, seat/raise a member,
+// create an admin invite — is evaluated against the source of truth, closing the
+// window (up to PositiveTTL) where a just-revoked or just-downgraded caller could
+// ride a cached allow to create durable replacement access (round-5 finding 4).
+// A checker that does not implement it (e.g. a test fake with no cache) is
+// already authoritative, so AuthorizeFreshOn falls back to the cached path.
+type FreshChecker interface {
+	CheckFresh(ctx context.Context, subject, relation, object string) (bool, error)
+}
+
 type BillingMutationGate interface {
 	CheckBillingMutationAllowed(context.Context, string) error
 }
@@ -606,6 +618,57 @@ func (b *Base) checkAuthz(ctx context.Context, relation, object string) error {
 		return ErrForbidden
 	}
 	return nil
+}
+
+// checkAuthzFresh is checkAuthz that bypasses the positive-check cache when the
+// wired checker supports it (FreshChecker); otherwise it degrades to the cached
+// checkAuthz (an uncached checker is already authoritative). Same fail-closed
+// contract: nil checker allows, no identity or a negative check is ErrForbidden,
+// an unreachable checker is ErrAuthzUnavailable.
+func (b *Base) checkAuthzFresh(ctx context.Context, relation, object string) error {
+	fresh, ok := b.Authz.(FreshChecker)
+	if !ok {
+		return b.checkAuthz(ctx, relation, object)
+	}
+	id, ok := IdentityFrom(ctx)
+	if !ok {
+		return ErrForbidden
+	}
+	allowed, err := fresh.CheckFresh(ctx, "user:"+id.Subject, relation, object)
+	if err != nil {
+		return fmt.Errorf("%w: %v", ErrAuthzUnavailable, err)
+	}
+	if !allowed {
+		return ErrForbidden
+	}
+	return nil
+}
+
+// AuthorizeFreshOn re-checks relation against a specific object with an
+// authoritative (uncached) decision and NO audit side effect. A security-
+// critical issuance verb calls it AFTER its normal auditing Authorize/AuthorizeOn
+// so a caller whose membership or key was revoked within the last PositiveTTL
+// cannot ride a stale positive to mint durable replacement access (round-5
+// finding 4). The preceding Authorize already recorded the verb, so this second
+// gate stays audit-silent; only its allow/deny decision matters.
+func (b *Base) AuthorizeFreshOn(ctx context.Context, relation, object string) error {
+	// checkAuthzFresh already allows a nil checker (its FreshChecker assertion
+	// fails and it falls back to checkAuthz, which returns nil) — no guard here.
+	return b.checkAuthzFresh(ctx, relation, object)
+}
+
+// AuthorizeFresh is AuthorizeFreshOn against the caller's own workspace — the
+// object a plain Authorize resolves. A workspace-resolution error is returned as
+// a refusal, matching Authorize.
+func (b *Base) AuthorizeFresh(ctx context.Context, relation string) error {
+	if b.Authz == nil {
+		return nil
+	}
+	object, err := b.callerWorkspace(ctx)
+	if err != nil {
+		return err
+	}
+	return b.checkAuthzFresh(ctx, relation, object)
 }
 
 // Tenant returns the workspace this request acts in: the one the caller named

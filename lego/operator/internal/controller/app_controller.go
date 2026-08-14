@@ -481,7 +481,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		// so a push-spam burst never runs more than one build at a time per App,
 		// matching Render's "Render cancels any in-progress build for the same service".
 		buildClient := r.buildPlaneClient()
-		if err := build.CancelActiveBuilds(ctx, app.Name, buildNs, buildClient); err != nil {
+		if err := build.CancelActiveBuilds(ctx, app.Name, string(app.UID), buildNs, buildClient); err != nil {
 			return r.fail(ctx, &app, "BuildFailed", fmt.Errorf("cancelling superseded build: %w", err))
 		}
 
@@ -3035,7 +3035,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	// nothing newer to supersede (a newer generation would have reset firstForGen),
 	// so this avoids a wasted List on every requeue.
 	if firstForGen {
-		if err := predeploy.CancelSuperseded(ctx, app.Name, ns, jobName, r.Client); err != nil {
+		if err := predeploy.CancelSuperseded(ctx, app.Name, string(app.UID), ns, jobName, r.Client); err != nil {
 			return r.failPreDeploy(ctx, app, failedPD(jobName, err.Error()), fmt.Errorf("pre-deploy: %w", err))
 		}
 	}
@@ -3164,7 +3164,14 @@ func (r *AppReconciler) reconcileExecutionNetworkPolicy(ctx context.Context, app
 	_, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), np, func() error {
 		np.Labels = artifactLabels(app, "execution-network-policy")
 		np.Spec = networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{labelApp: app.Name}},
+			// round-5 finding 8: the build namespace is shared, so selecting source
+			// pods by name alone (labelApp) would apply this workspace's egress
+			// grant to a SAME-NAMED App's build pods in ANOTHER workspace, letting
+			// attacker build code reach the victim namespace. Scope the source
+			// selector to this App's workspace too — the same tenant discriminator
+			// the destination scopeSelector uses (ws is non-empty here). App name +
+			// workspace uniquely identifies the App (a name is unique per workspace).
+			PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{labelApp: app.Name, labelWorkspace: ws}},
 			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
 			Egress: []networkingv1.NetworkPolicyEgressRule{{
 				To: []networkingv1.NetworkPolicyPeer{{

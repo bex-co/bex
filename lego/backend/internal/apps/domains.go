@@ -105,12 +105,22 @@ func normalizeHostname(raw string) string {
 // canonicalHostname is normalizeHostname plus DNS-1123 host validation — the
 // ONE canonicalization every custom-hostname write boundary (create/update
 // spec.hosts, AddDomain) runs before persisting, so stored values are always
-// canonical and comparable. A leading "*." wildcard prefix is preserved and
-// its suffix validated, matching the operator's wildcard-host support.
+// canonical and comparable.
+//
+// Wildcard hosts ("*.example.com") are REJECTED here (round-5 finding 7). The
+// collision check and the store's UNIQUE(host) constraint both compare literal
+// hosts, so a wildcard and a concrete host beneath it (foo.example.com) look
+// non-colliding and BOTH become live public TLS Ingress rules — one tenant's
+// "*.example.com" would then hijack a concrete host routed to another tenant.
+// Render offers no tenant wildcard custom domain, so nothing legitimate needs
+// one; platform wildcard hosts (*.onbex.co) are provisioned by the operator via
+// BEX_BASE_DOMAIN, never through this tenant-facing boundary.
 func canonicalHostname(raw string) (string, error) {
 	host := normalizeHostname(raw)
-	check := strings.TrimPrefix(host, "*.")
-	if check == "" || len(validation.IsDNS1123Subdomain(check)) != 0 {
+	if strings.HasPrefix(host, "*.") || strings.Contains(host, "*") {
+		return "", fmt.Errorf("%w: wildcard hostnames are not allowed: %q", core.ErrBadRequest, raw)
+	}
+	if host == "" || len(validation.IsDNS1123Subdomain(host)) != 0 {
 		return "", fmt.Errorf("%w: invalid hostname %q", core.ErrBadRequest, raw)
 	}
 	return host, nil

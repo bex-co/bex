@@ -759,6 +759,21 @@ func (s *Service) AttachTicket(ctx context.Context, sessionID, action string) (V
 		return View{}, core.NewConflictError("AGENT_SESSION_NOT_ATTACHABLE",
 			"agent session has not started a sandbox yet", map[string]any{"phase": record.Phase})
 	}
+	// round-5 finding 13: a live-turn ticket must be gated on the same lifecycle
+	// and billing state as Create/Steer. A terminal or canceling session keeps its
+	// sandbox reachable through the ADR054 editor grace window, so a nonempty
+	// SandboxID alone would let a developer run un-metered, off-lifecycle model
+	// turns on a "finished" session. Read tickets (transcript replay of a terminal
+	// session) are intentionally exempt — that is the feature.
+	if action == agentsessionticket.ActionTurn {
+		if !liveSandboxPhase(record.Phase) {
+			return View{}, core.NewConflictError("AGENT_SESSION_NOT_LIVE",
+				"agent session is not accepting live turns", map[string]any{"phase": record.Phase})
+		}
+		if err := s.RequireBillingMutation(ctx, record.WorkspaceID); err != nil {
+			return View{}, err
+		}
+	}
 	return s.withTicket(ctx, record, action)
 }
 

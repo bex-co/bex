@@ -24,6 +24,7 @@ const scanChunkBytes = 64 * 1024;
 export interface CredentialManager {
   agentEnvironment(): Record<string, string>;
   scrubPersistedState(roots?: string[]): Promise<string[]>;
+  containsSecret(value: string): boolean;
   forget(): void;
   redact(value: unknown): string;
   redactPart<T>(value: T): T;
@@ -173,6 +174,15 @@ export function createCredentialManager(
       const needle = Buffer.from(secret);
       for (const root of roots) await scrubPath(root, needle, findings);
       return findings;
+    },
+
+    // containsSecret reports whether text carries the raw model credential (or
+    // its JSON-escaped rendering). It is the pre-push fail-closed check's needle
+    // (round-5 finding 6) — matching what redactPart scrubs — without exposing
+    // the closed-over secret to the caller.
+    containsSecret(value: string) {
+      if (!secret) return false;
+      return value.includes(secret) || (escapedSecret !== secret && value.includes(escapedSecret));
     },
 
     forget() {

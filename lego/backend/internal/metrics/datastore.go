@@ -209,6 +209,9 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 	}
 
 	q = q.normalized(s.Now())
+	if err := checkPointBudget(q.Start, q.End, q.Resolution); err != nil {
+		return nil, err
+	}
 	switch q.Metric {
 	case MetricDisk, MetricDiskCapacity:
 		if s.DiskUsage == nil {
