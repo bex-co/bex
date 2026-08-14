@@ -41,5 +41,10 @@ for s in HCLOUD_TOKEN TF_STATE_BUCKET TF_STATE_ENDPOINT TF_STATE_REGION TF_STATE
 done
 set_file BEX_SSH_PUBLIC_KEY  "${BEX_SSH_PUBLIC_KEY_FILE:?set BEX_SSH_PUBLIC_KEY_FILE in .env}"
 set_file BEX_SSH_PRIVATE_KEY "${BEX_SSH_PRIVATE_KEY_FILE:?set BEX_SSH_PRIVATE_KEY_FILE in .env}"
+# The control-plane host-key pin (w1/m68 t006, docs/ADR019-infra-credentials.md):
+# a multi-line known_hosts value; set_scalar pipes it verbatim. Re-capture and
+# re-push after a control-plane template rotation (ADR053) — the deploy/app-
+# cluster/openbao-drill workflows assert mandatory-pin mode and abort without it.
+set_scalar BEX_SSH_KNOWN_HOSTS
 
 echo "done. verify with: gh secret list"

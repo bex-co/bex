@@ -54,11 +54,11 @@ jobs:
           # was the one admin.conf fetcher m66 missed, and the next step hands
           # the resulting kubeconfig the OpenBao unseal keys and root token, so
           # a trusted-on-first-use host here is the worst of the three).
-          # Absent (until the secret is set) the run is byte-identical to before.
-          #
-          # codex F10: BEX_SSH_REQUIRE_KNOWN_HOSTS=1 (helper mandatory-pin mode)
-          # is intentionally NOT set until the BEX_SSH_KNOWN_HOSTS secret is
-          # provisioned in CI — asserting it without the secret aborts the drill.
+          # codex F10 / w1/m68 t006: the BEX_SSH_KNOWN_HOSTS secret was captured
+          # and provisioned 2026-08-13, so mandatory-pin mode is asserted — a
+          # missing/empty pin aborts the drill before any unseal material is in
+          # scope. Re-capture on control-plane template rotation (ADR053).
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
           if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
             printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > ~/.ssh/bex_known_hosts
             chmod 600 ~/.ssh/bex_known_hosts
