@@ -46,7 +46,13 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           # The latest 1.25.x, matching lego/Dockerfile's `FROM golang:1.25`.
+          # check-latest matters: without it setup-go trusts the runner image's
+          # pre-installed toolchain, which lags a fresh Go patch release by
+          # days — the scan then flags stdlib vulns (fixed in the newest
+          # 1.25.x) that the golang:1.25 release image no longer carries
+          # (2026-08-13: runner had 1.25.12, stdlib fixes were in 1.25.13).
           go-version: "1.25"
+          check-latest: true
           cache: false
       - name: Install govulncheck (pinned, checksum-DB verified)
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
