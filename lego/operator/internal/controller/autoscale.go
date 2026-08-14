@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -353,10 +354,7 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 		if stamped == "" {
 			// First downward signal — stamp now and hold.
 			base := app.DeepCopy()
-			if app.Annotations == nil {
-				app.Annotations = map[string]string{}
-			}
-			app.Annotations[annotAutoscaleScaleDown] = now.Format(time.RFC3339)
+			metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotAutoscaleScaleDown, now.Format(time.RFC3339))
 			_ = r.Patch(ctx, app, client.MergeFrom(base))
 			return current, true
 		}
@@ -385,10 +383,7 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 	// spec.replicas (the user's static count).
 	if strconv.Itoa(int(want)) != app.Annotations[annotAutoscaleReplicas] {
 		base := app.DeepCopy()
-		if app.Annotations == nil {
-			app.Annotations = map[string]string{}
-		}
-		app.Annotations[annotAutoscaleReplicas] = strconv.Itoa(int(want))
+		metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotAutoscaleReplicas, strconv.Itoa(int(want)))
 		if err := r.Patch(ctx, app, client.MergeFrom(base)); err != nil {
 			return current, true
 		}

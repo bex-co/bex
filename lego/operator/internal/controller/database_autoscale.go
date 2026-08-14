@@ -227,11 +227,8 @@ func (r *DatabaseReconciler) applyDiskAutoscaling(ctx context.Context, db *appv1
 	}
 
 	before := db.DeepCopy()
-	if db.Annotations == nil {
-		db.Annotations = map[string]string{}
-	}
 	db.Spec.StorageGB = nextGB
-	db.Annotations[annotDiskAutoscaleAt] = now.Format(time.RFC3339)
+	metav1.SetMetaDataAnnotation(&db.ObjectMeta, annotDiskAutoscaleAt, now.Format(time.RFC3339))
 	db.Annotations[annotDiskAutoscaleFromGB] = strconv.FormatInt(int64(currentGB), 10)
 	db.Annotations[annotDiskAutoscaleToGB] = strconv.FormatInt(int64(nextGB), 10)
 	db.Annotations[annotDiskAutoscaleUsed] = strconv.FormatInt(usage.UsedBytes, 10)
@@ -346,10 +343,7 @@ func (r *DatabaseReconciler) recordDiskSampleFailure(ctx context.Context, db *ap
 	}
 	failures++
 	before := db.DeepCopy()
-	if db.Annotations == nil {
-		db.Annotations = map[string]string{}
-	}
-	db.Annotations[annotDiskSampleFailures] = strconv.Itoa(failures)
+	metav1.SetMetaDataAnnotation(&db.ObjectMeta, annotDiskSampleFailures, strconv.Itoa(failures))
 	if err := r.Patch(ctx, db, client.MergeFrom(before)); err != nil {
 		return fmt.Errorf("persist disk autoscale sample failure: %w", err)
 	}

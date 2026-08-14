@@ -96,8 +96,14 @@ func rateLimitEnv(limitVar, limitDef, burstVar, burstDef string) (float64, int) 
 	if err != nil {
 		log.Fatalf("bex-api: bad %s %q: %v", limitVar, raw, err)
 	}
-	burst, _ := strconv.Atoi(envOr(burstVar, burstDef))
-	return rpm, burst
+	return rpm, intEnv(burstVar, burstDef)
+}
+
+// intEnv parses an integer tuning knob best-effort: unset ⇒ the default,
+// malformed ⇒ 0 (each such knob's documented disabled/default sentinel).
+func intEnv(name, def string) int {
+	n, _ := strconv.Atoi(envOr(name, def))
+	return n
 }
 
 // positiveIntEnv parses an integer ≥ 1 tuning knob, warning (so the caller
@@ -355,7 +361,9 @@ func main() {
 	var stripeLifecycleReconciler *billing.Reconciler
 	var stripeBillingAdmin store.BillingAdmin
 	if dbURI := os.Getenv("BEX_CP_DB_URI"); dbURI != "" && !mcpStdio() {
-		appsNS := envOr("BEX_CP_APPS_NAMESPACE", "default")
+		// The datastore (Database/KeyValue) projection namespace; falls back to
+		// BEX_API_NAMESPACE so the two agree unless explicitly split.
+		appsNS := envOr("BEX_CP_APPS_NAMESPACE", base.Namespace)
 		pool, err := pgxpool.New(ctx, dbURI)
 		if err != nil {
 			log.Fatalf("bex-api: db config: %v", err)
@@ -565,7 +573,7 @@ func main() {
 				grace := minuteDurationEnv("BEX_STRIPE_GRACE_PERIOD", "168h")
 				reconcileEvery := minuteDurationEnv("BEX_STRIPE_RECONCILE_INTERVAL", "5m")
 				lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: false}
-				enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: envOr("BEX_CP_APPS_NAMESPACE", base.Namespace)}
+				enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: appsNS}
 				stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
 				stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics}
 				log.Printf("bex-api Stripe test-mode dunning enabled (grace %s, reconcile %s)", grace, reconcileEvery)
@@ -797,8 +805,8 @@ func main() {
 		// (w1/m67 F3): webhook_deliveries doubles as the dashboard's history view,
 		// so without retention a tenant's ordinary activity grew shared storage
 		// forever. 0 keeps the documented defaults.
-		whRetentionDays, _ := strconv.Atoi(envOr("BEX_WEBHOOK_RETENTION_DAYS", "0"))
-		whKeepPerEndpoint, _ := strconv.Atoi(envOr("BEX_WEBHOOK_RETENTION_KEEP", "0"))
+		whRetentionDays := intEnv("BEX_WEBHOOK_RETENTION_DAYS", "0")
+		whKeepPerEndpoint := intEnv("BEX_WEBHOOK_RETENTION_KEEP", "0")
 		whWorker := &webhooks.Worker{
 			Store: st, Mailer: deps.Mailer, Emails: srv.Notifications.Identities, Backoff: backoff,
 			RetentionDays: whRetentionDays, RetentionKeepPerEndpoint: whKeepPerEndpoint,
@@ -947,13 +955,11 @@ func main() {
 		srv.DeviceRateLimiter.TrustedProxies = trustedProxies
 	}
 
-	maxBody, _ := strconv.ParseInt(envOr("BEX_MAX_BODY_BYTES", "2097152"), 10, 64)
-	srv.MaxBodyBytes = maxBody
+	srv.MaxBodyBytes = int64(intEnv("BEX_MAX_BODY_BYTES", "2097152"))
 
-	maxQueryHours, _ := strconv.Atoi(envOr("BEX_MAX_QUERY_HOURS", "720"))
-	maxSSEConns, _ := strconv.ParseInt(envOr("BEX_MAX_SSE_CONNS", "100"), 10, 64)
+	maxQueryHours := intEnv("BEX_MAX_QUERY_HOURS", "720")
 	srv.Logs.MaxQueryHours = maxQueryHours
-	srv.Logs.MaxSSEConns = maxSSEConns
+	srv.Logs.MaxSSEConns = int64(intEnv("BEX_MAX_SSE_CONNS", "100"))
 	srv.Metrics.MaxQueryHours = maxQueryHours
 	srv.Events.MaxQueryHours = maxQueryHours
 

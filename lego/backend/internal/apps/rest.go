@@ -594,12 +594,30 @@ func parseAutoDeploy(autoDeploy, trigger string) (*bool, error) {
 	return parseYesNo(autoDeploy), nil
 }
 
+// servicesBase is Render's canonical /v1/services route prefix, shared by the
+// registrars that mount /v1/services/{id}/… subresources.
+const servicesBase = "/v1/services"
+
 // RegisterREST mounts the App-lifecycle routes — Render-public-API compatible.
 // Paths, the {service, cursor} list envelope, the string suspended enum, and the
 // verb status codes (suspend/resume 202, restart 200) all match Render's OpenAPI
 // spec. Served at Render's canonical /v1/services route;
-// it holds no logic beyond routing + Render serialization.
+// it holds no logic beyond routing + Render serialization. Each registrar
+// mounts one route family into the same shared mux — the internal/api layer
+// requires one root — in the same family order the routes were registered in
+// before the split.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
+	s.registerCronRunRoutes(mux)
+	s.registerBlueprintRoutes(mux)
+	s.registerNotificationOverrideRoutes(mux)
+	s.registerServiceRoutes(mux)
+	s.registerDomainRoutes(mux)
+}
+
+// registerServiceRoutes mounts the /v1/services core: list · create · get ·
+// patch · delete · the lifecycle verbs (suspend/resume/restart) · scale ·
+// instances · shell tickets.
+func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 	list := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
 		apps, err := s.List(r.Context(), q.Get("ownerId"))
@@ -643,13 +661,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		page := core.Page(apps, after, limit, func(a AppView) string { return a.Name })
 		return s.restServiceList(r.Context(), page), nil // [{service, cursor}, ...]
 	})
-	get := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		app, err := s.Get(r.Context(), r.PathValue("id"))
-		if err != nil {
-			return nil, err
-		}
-		return s.restService(r.Context(), app), nil
-	})
 	listInstances := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.ListInstances(r.Context(), r.PathValue("id"))
 	})
@@ -660,227 +671,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	shellTicket := core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		return s.CreateShellSession(r.Context(), r.PathValue("id"), r.URL.Query().Get("instance"))
 	})
-	// verb maps a Service action to a handler with a Render-accurate status
-	// code. ?confirm=<phrase> rides the context on every verb (withConfirm) —
-	// a no-op for most of them, but it's what arms Suspend's protected-
-	// environment guard (w6/m19, ProtectedConfirmation) without needing a
-	// bespoke handler alongside Restart/Resume.
-	verb := func(status int, fn func(context.Context, string) (AppView, error)) http.HandlerFunc {
-		return core.HandleJSON(status, func(r *http.Request) (any, error) {
-			ctx := withConfirm(r.Context(), r.URL.Query().Get("confirm"))
-			app, err := fn(ctx, r.PathValue("id"))
-			if err != nil {
-				return nil, err
-			}
-			return s.restService(r.Context(), app), nil
-		})
-	}
-	// patch handles PATCH /v1/services/{id} — a plan change (serviceDetails.plan),
-	// an idle-timeout change (serviceDetails.idleTTLSeconds), and/or a root
-	// directory change (rootDir); an unknown plan or a rootDir on an image-backed
-	// App is core.ErrBadRequest => 400.
-	// Pass `dryRun: true` in the body or `?dryRun=true` to preview the plan
-	// change without writing; returns 200 with the resolved spec (w2/m29).
-	patch := func(w http.ResponseWriter, r *http.Request) {
-		var req patchServiceRequest
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
-			return
-		}
-		if field := req.unsupportedField(); field != "" {
-			core.WriteErr(w, fmt.Errorf("%w: services %s is not supported by this platform", core.ErrBadRequest, field))
-			return
-		}
-		id := r.PathValue("id")
-		dryRun := req.DryRun || r.URL.Query().Get("dryRun") == "true"
-		var plan string
-		var idleTTL *int32
-		var maxShutdownDelay optionalInt32
-		var publishPath, buildCommand, startCommand, dockerfilePath *string
-		var nestedRegistryCredentialID json.RawMessage
-		var patchIPAllowList *[]core.IPAllowListEntry // nil = not provided (leave unchanged); non-nil = replace
-		// Fields with both a top-level and a nested serviceDetails spelling
-		// coalesce to one apply; the nested spelling wins when a body carries
-		// both.
-		healthCheckPath, preDeployCommand, schedule := req.HealthCheckPath, req.PreDeployCommand, req.Schedule
-		if req.ServiceDetails != nil {
-			plan, idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
-			maxShutdownDelay = req.ServiceDetails.MaxShutdownDelaySeconds
-			if req.ServiceDetails.HealthCheckPath != nil {
-				healthCheckPath = req.ServiceDetails.HealthCheckPath
-			}
-			if req.ServiceDetails.PreDeployCommand != nil {
-				preDeployCommand = req.ServiceDetails.PreDeployCommand
-			}
-			if req.ServiceDetails.Schedule != nil {
-				schedule = req.ServiceDetails.Schedule
-			}
-			publishPath = req.ServiceDetails.PublishPath
-			buildCommand = req.ServiceDetails.BuildCommand
-			allowList, provided, err := decodeIPAllowList(r.Context(), req.ServiceDetails.IPAllowList)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			if provided {
-				patchIPAllowList = &allowList
-			}
-			if len(req.ServiceDetails.EnvSpecific) > 0 && string(req.ServiceDetails.EnvSpecific) != "null" {
-				var envSpecific struct {
-					BuildCommand         *string         `json:"buildCommand"`
-					StartCommand         *string         `json:"startCommand"`
-					DockerCommand        *string         `json:"dockerCommand"`
-					DockerfilePath       *string         `json:"dockerfilePath"`
-					RegistryCredentialID json.RawMessage `json:"registryCredentialId"`
-				}
-				if err := core.UnmarshalJSON(r.Context(), req.ServiceDetails.EnvSpecific, &envSpecific); err != nil {
-					core.WriteErr(w, core.ErrBadRequest)
-					return
-				}
-				if envSpecific.BuildCommand != nil {
-					buildCommand = envSpecific.BuildCommand
-				}
-				startCommand = envSpecific.StartCommand
-				if envSpecific.DockerCommand != nil {
-					startCommand = envSpecific.DockerCommand
-				}
-				dockerfilePath = envSpecific.DockerfilePath
-				nestedRegistryCredentialID = envSpecific.RegistryCredentialID
-			}
-		}
-		var imageRegistryCredentialID json.RawMessage
-		if req.Image != nil {
-			imageRegistryCredentialID = req.Image.RegistryCredentialID
-		}
-		registryCredentialID, registryErr := oneRegistryCredentialID(imageRegistryCredentialID, nestedRegistryCredentialID)
-		if registryErr != nil {
-			core.WriteErr(w, registryErr)
-			return
-		}
-		// Auto-Deploy: autoDeployTrigger (off|commit) wins over the legacy
-		// autoDeploy enum when both are sent; checksPass is rejected (w5/m53).
-		autoDeploy, autoDeployErr := parseAutoDeploy(req.AutoDeploy, req.AutoDeployTrigger)
-		if autoDeployErr != nil {
-			core.WriteErr(w, autoDeployErr)
-			return
-		}
-
-		// Dry-run: preview plan change only; no writes at all (w2/m29).
-		if dryRun {
-			if plan == "" {
-				get(w, r) // no plan => reflect current state unchanged
-				return
-			}
-			app, err := s.PreviewSetPlan(r.Context(), id, plan)
-			if err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-			core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app))
-			return
-		}
-
-		displayName := req.DisplayName
-		if req.Name != nil {
-			displayName = req.Name
-		}
-		var maintenanceMode *MaintenanceModeView
-		if req.ServiceDetails != nil {
-			var maintenanceErr error
-			maintenanceMode, maintenanceErr = decodeMaintenanceMode(r.Context(), req.ServiceDetails.MaintenanceMode)
-			if maintenanceErr != nil {
-				core.WriteErr(w, maintenanceErr)
-				return
-			}
-		}
-		// Collect the supported fields as an ordered list of verb calls; an empty
-		// list is the read-only no-op (the guard is derived from the same list, so
-		// a new field can't fall out of sync with it).
-		var ops []func() (AppView, error)
-		addOp := func(present bool, op func() (AppView, error)) {
-			if present {
-				ops = append(ops, op)
-			}
-		}
-		addOp(displayName != nil, func() (AppView, error) {
-			return s.SetDisplayName(r.Context(), id, *displayName)
-		})
-		var image, imageOwnerID *string
-		if req.Image != nil {
-			image = &req.Image.ImagePath
-			imageOwnerID = &req.Image.OwnerID
-		}
-		addOp(req.Repo != nil || image != nil || req.Branch != nil || registryCredentialID != nil, func() (AppView, error) {
-			return s.SetSourceAndRegistryCredential(r.Context(), id, sourcePatch{Repo: req.Repo, Image: image, Branch: req.Branch, RegistryCredentialID: registryCredentialID, ImageOwnerID: imageOwnerID})
-		})
-		// A simultaneous downgrade must disable maintenance first; every other
-		// combination applies the plan first so validation sees the final plan.
-		maintenanceBeforePlan := maintenanceMode != nil && !maintenanceMode.Enabled && plan == "free"
-		addOp(maintenanceBeforePlan, func() (AppView, error) {
-			return s.ConfigureMaintenanceMode(r.Context(), id, *maintenanceMode)
-		})
-		addOp(plan != "", func() (AppView, error) {
-			return s.SetPlan(r.Context(), id, plan)
-		})
-		addOp(idleTTL != nil, func() (AppView, error) {
-			return s.SetIdleTTL(r.Context(), id, *idleTTL)
-		})
-		addOp(maxShutdownDelay.Set, func() (AppView, error) {
-			return s.SetMaxShutdownDelay(r.Context(), id, maxShutdownDelay.Value)
-		})
-		addOp(req.RootDir != nil, func() (AppView, error) {
-			return s.SetRootDir(r.Context(), id, *req.RootDir)
-		})
-		addOp(req.BuildFilter != nil, func() (AppView, error) {
-			return s.SetBuildFilter(r.Context(), id, req.BuildFilter)
-		})
-		addOp(autoDeploy != nil, func() (AppView, error) {
-			return s.SetAutoDeploy(r.Context(), id, *autoDeploy)
-		})
-		addOp(schedule != nil || req.Command != nil, func() (AppView, error) {
-			return s.SetCronJob(r.Context(), id, schedule, req.Command)
-		})
-		addOp(healthCheckPath != nil, func() (AppView, error) {
-			return s.SetHealthCheckPath(r.Context(), id, *healthCheckPath)
-		})
-		addOp(preDeployCommand != nil, func() (AppView, error) {
-			return s.SetPreDeployCommand(r.Context(), id, *preDeployCommand)
-		})
-		addOp(publishPath != nil, func() (AppView, error) {
-			return s.SetPublishPath(r.Context(), id, *publishPath)
-		})
-		addOp(buildCommand != nil || startCommand != nil, func() (AppView, error) {
-			return s.SetCommands(r.Context(), id, buildCommand, startCommand)
-		})
-		addOp(dockerfilePath != nil, func() (AppView, error) {
-			return s.SetDockerfilePath(r.Context(), id, *dockerfilePath)
-		})
-		addOp(req.NotifyOnFail != nil, func() (AppView, error) {
-			return s.SetNotifyOnFail(r.Context(), id, *req.NotifyOnFail)
-		})
-		addOp(req.RenderSubdomainPolicy != nil, func() (AppView, error) {
-			return s.SetSubdomainPolicy(r.Context(), id, *req.RenderSubdomainPolicy)
-		})
-		addOp(patchIPAllowList != nil, func() (AppView, error) {
-			return s.SetIPAllowList(r.Context(), id, *patchIPAllowList)
-		})
-		addOp(maintenanceMode != nil && !maintenanceBeforePlan, func() (AppView, error) {
-			return s.ConfigureMaintenanceMode(r.Context(), id, *maintenanceMode)
-		})
-		if len(ops) == 0 {
-			get(w, r) // no supported field present => read-only no-op
-			return
-		}
-		var app AppView
-		for _, op := range ops {
-			var err error
-			if app, err = op(); err != nil {
-				core.WriteErr(w, err)
-				return
-			}
-		}
-		core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app))
-	}
 	// scale handles POST /v1/services/{id}/scale — sets the running instance
 	// count (numInstances); out-of-range is core.ErrBadRequest => 400.
 	scale := core.HandleJSON(http.StatusAccepted, func(r *http.Request) (any, error) {
@@ -895,45 +685,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		return s.restService(r.Context(), app), nil
 	})
 
-	// create handles POST /v1/services — create-or-update a service from a
-	// Render-shaped body; deploy-from-chat rides this with a repo (no bespoke
-	// deploy endpoint). Render returns 201 Created on success. `ownerId` names the
-	// workspace to create in (w6/m14) — carried on CreateRequest, membership-checked
-	// by the verb: a non-member gets 403, not a service in the wrong workspace.
-	// Pass `dryRun: true` in the body or `?dryRun=true` in the query to preview
-	// the resolved spec without any writes; response is 200 (not 201) (w2/m29).
-	create := func(w http.ResponseWriter, r *http.Request) {
-		var req createServiceRequest
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
-			return
-		}
-		if field := req.unsupportedField(); field != "" {
-			core.WriteErr(w, fmt.Errorf("%w: services %s is not supported by this platform", core.ErrBadRequest, field))
-			return
-		}
-		if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
-			req.DryRun = true
-		}
-		defaultOwnerID, _ := s.Tenant(r.Context())
-		createReq, err := req.toCreateRequest(r.Context(), defaultOwnerID)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		app, err := s.Create(r.Context(), createReq)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		if req.DryRun {
-			core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app)) // dry-run: 200 (nothing created)
-			return
-		}
-		// Render: create => 201, body wraps the service under serviceAndDeploy.
-		core.WriteJSON(w, http.StatusCreated, serviceAndDeploy{Service: s.restService(r.Context(), app), DeployID: app.LatestDeployID})
-	}
-
 	// deleteSvc handles DELETE /v1/services/{id} — remove the service and let the
 	// operator's ownerRefs cascade its derived resources. Render returns 204 No
 	// Content with an empty body; unknown id => core.ErrNotFound => 404.
@@ -945,38 +696,343 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		return s.Delete(ctx, r.PathValue("id"))
 	})
 
+	mux.HandleFunc("GET "+servicesBase, list)
+	mux.HandleFunc("POST "+servicesBase, s.createService) // Render: create => 201
+	mux.HandleFunc("GET "+servicesBase+"/{id}", s.getService)
+	// Render's official CLI uses /services.
+	mux.HandleFunc("GET "+servicesBase+"/{id}/instances", listInstances)
+	mux.HandleFunc("POST "+servicesBase+"/{id}/shell-ticket", shellTicket)
+	mux.HandleFunc("PATCH "+servicesBase+"/{id}", s.patchService)
+	mux.HandleFunc("DELETE "+servicesBase+"/{id}", deleteSvc) // Render: delete => 204
+	mux.HandleFunc("POST "+servicesBase+"/{id}/suspend", s.restVerb(http.StatusAccepted, s.Suspend))
+	mux.HandleFunc("POST "+servicesBase+"/{id}/resume", s.restVerb(http.StatusAccepted, s.Resume))
+	mux.HandleFunc("POST "+servicesBase+"/{id}/restart", s.restVerb(http.StatusOK, s.Restart)) // Render: restart => 200
+	mux.HandleFunc("POST "+servicesBase+"/{id}/scale", scale)                                  // Render: scale => 202
+}
+
+// restVerb maps a Service action to a handler with a Render-accurate status
+// code. ?confirm=<phrase> rides the context on every verb (withConfirm) —
+// a no-op for most of them, but it's what arms Suspend's protected-
+// environment guard (w6/m19, ProtectedConfirmation) without needing a
+// bespoke handler alongside Restart/Resume.
+func (s *Service) restVerb(status int, fn func(context.Context, string) (AppView, error)) http.HandlerFunc {
+	return core.HandleJSON(status, func(r *http.Request) (any, error) {
+		ctx := withConfirm(r.Context(), r.URL.Query().Get("confirm"))
+		app, err := fn(ctx, r.PathValue("id"))
+		if err != nil {
+			return nil, err
+		}
+		return s.restService(r.Context(), app), nil
+	})
+}
+
+// getService serves GET /v1/services/{id}. The PATCH handler also answers with
+// it for a dry run carrying no plan and for a body with no supported field —
+// both read-only no-ops that reflect current state unchanged.
+func (s *Service) getService(w http.ResponseWriter, r *http.Request) {
+	s.restVerb(http.StatusOK, s.Get)(w, r)
+}
+
+// patchFields is the PATCH /v1/services/{id} body coalesced to one value per
+// setting by resolveFields, so patchService's ops table reads a single source
+// of truth per field.
+type patchFields struct {
+	dryRun                                                  bool
+	plan                                                    string
+	idleTTL                                                 *int32
+	maxShutdownDelay                                        optionalInt32
+	publishPath, buildCommand, startCommand, dockerfilePath *string
+	healthCheckPath, preDeployCommand, schedule             *string
+	displayName                                             *string
+	image, imageOwnerID                                     *string
+	registryCredentialID                                    *string
+	ipAllowList                                             *[]core.IPAllowListEntry // nil = not provided (leave unchanged); non-nil = replace
+	autoDeploy                                              *bool
+}
+
+// resolveFields decodes and coalesces the wire fields into patchFields.
+// Fields with both a top-level and a nested serviceDetails spelling
+// coalesce to one apply; the nested spelling wins when a body carries
+// both.
+func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, error) {
+	f := patchFields{
+		dryRun:           req.DryRun || r.URL.Query().Get("dryRun") == "true",
+		healthCheckPath:  req.HealthCheckPath,
+		preDeployCommand: req.PreDeployCommand,
+		schedule:         req.Schedule,
+		displayName:      req.DisplayName,
+	}
+	var nestedRegistryCredentialID json.RawMessage
+	if req.ServiceDetails != nil {
+		f.plan, f.idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
+		f.maxShutdownDelay = req.ServiceDetails.MaxShutdownDelaySeconds
+		if req.ServiceDetails.HealthCheckPath != nil {
+			f.healthCheckPath = req.ServiceDetails.HealthCheckPath
+		}
+		if req.ServiceDetails.PreDeployCommand != nil {
+			f.preDeployCommand = req.ServiceDetails.PreDeployCommand
+		}
+		if req.ServiceDetails.Schedule != nil {
+			f.schedule = req.ServiceDetails.Schedule
+		}
+		f.publishPath = req.ServiceDetails.PublishPath
+		f.buildCommand = req.ServiceDetails.BuildCommand
+		allowList, provided, err := decodeIPAllowList(r.Context(), req.ServiceDetails.IPAllowList)
+		if err != nil {
+			return patchFields{}, err
+		}
+		if provided {
+			f.ipAllowList = &allowList
+		}
+		if len(req.ServiceDetails.EnvSpecific) > 0 && string(req.ServiceDetails.EnvSpecific) != "null" {
+			var envSpecific struct {
+				BuildCommand         *string         `json:"buildCommand"`
+				StartCommand         *string         `json:"startCommand"`
+				DockerCommand        *string         `json:"dockerCommand"`
+				DockerfilePath       *string         `json:"dockerfilePath"`
+				RegistryCredentialID json.RawMessage `json:"registryCredentialId"`
+			}
+			if err := core.UnmarshalJSON(r.Context(), req.ServiceDetails.EnvSpecific, &envSpecific); err != nil {
+				return patchFields{}, core.ErrBadRequest
+			}
+			if envSpecific.BuildCommand != nil {
+				f.buildCommand = envSpecific.BuildCommand
+			}
+			f.startCommand = envSpecific.StartCommand
+			if envSpecific.DockerCommand != nil {
+				f.startCommand = envSpecific.DockerCommand
+			}
+			f.dockerfilePath = envSpecific.DockerfilePath
+			nestedRegistryCredentialID = envSpecific.RegistryCredentialID
+		}
+	}
+	var imageRegistryCredentialID json.RawMessage
+	if req.Image != nil {
+		imageRegistryCredentialID = req.Image.RegistryCredentialID
+		f.image = &req.Image.ImagePath
+		f.imageOwnerID = &req.Image.OwnerID
+	}
+	registryCredentialID, registryErr := oneRegistryCredentialID(imageRegistryCredentialID, nestedRegistryCredentialID)
+	if registryErr != nil {
+		return patchFields{}, registryErr
+	}
+	f.registryCredentialID = registryCredentialID
+	// Auto-Deploy: autoDeployTrigger (off|commit) wins over the legacy
+	// autoDeploy enum when both are sent; checksPass is rejected (w5/m53).
+	autoDeploy, autoDeployErr := parseAutoDeploy(req.AutoDeploy, req.AutoDeployTrigger)
+	if autoDeployErr != nil {
+		return patchFields{}, autoDeployErr
+	}
+	f.autoDeploy = autoDeploy
+	if req.Name != nil {
+		f.displayName = req.Name
+	}
+	return f, nil
+}
+
+// patchService handles PATCH /v1/services/{id} — a plan change (serviceDetails.plan),
+// an idle-timeout change (serviceDetails.idleTTLSeconds), and/or a root
+// directory change (rootDir); an unknown plan or a rootDir on an image-backed
+// App is core.ErrBadRequest => 400.
+// Pass `dryRun: true` in the body or `?dryRun=true` to preview the plan
+// change without writing; returns 200 with the resolved spec (w2/m29).
+func (s *Service) patchService(w http.ResponseWriter, r *http.Request) {
+	var req patchServiceRequest
+	if err := core.DecodeJSON(r, &req); err != nil {
+		core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
+		return
+	}
+	if field := req.unsupportedField(); field != "" {
+		core.WriteErr(w, fmt.Errorf("%w: services %s is not supported by this platform", core.ErrBadRequest, field))
+		return
+	}
+	id := r.PathValue("id")
+	f, err := req.resolveFields(r)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+
+	// Dry-run: preview plan change only; no writes at all (w2/m29).
+	if f.dryRun {
+		if f.plan == "" {
+			s.getService(w, r) // no plan => reflect current state unchanged
+			return
+		}
+		app, err := s.PreviewSetPlan(r.Context(), id, f.plan)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app))
+		return
+	}
+
+	var maintenanceMode *MaintenanceModeView
+	if req.ServiceDetails != nil {
+		var maintenanceErr error
+		maintenanceMode, maintenanceErr = decodeMaintenanceMode(r.Context(), req.ServiceDetails.MaintenanceMode)
+		if maintenanceErr != nil {
+			core.WriteErr(w, maintenanceErr)
+			return
+		}
+	}
+	// Collect the supported fields as an ordered list of verb calls; an empty
+	// list is the read-only no-op (the guard is derived from the same list, so
+	// a new field can't fall out of sync with it).
+	var ops []func() (AppView, error)
+	addOp := func(present bool, op func() (AppView, error)) {
+		if present {
+			ops = append(ops, op)
+		}
+	}
+	addOp(f.displayName != nil, func() (AppView, error) {
+		return s.SetDisplayName(r.Context(), id, *f.displayName)
+	})
+	addOp(req.Repo != nil || f.image != nil || req.Branch != nil || f.registryCredentialID != nil, func() (AppView, error) {
+		return s.SetSourceAndRegistryCredential(r.Context(), id, sourcePatch{Repo: req.Repo, Image: f.image, Branch: req.Branch, RegistryCredentialID: f.registryCredentialID, ImageOwnerID: f.imageOwnerID})
+	})
+	// A simultaneous downgrade must disable maintenance first; every other
+	// combination applies the plan first so validation sees the final plan.
+	maintenanceBeforePlan := maintenanceMode != nil && !maintenanceMode.Enabled && f.plan == "free"
+	addOp(maintenanceBeforePlan, func() (AppView, error) {
+		return s.ConfigureMaintenanceMode(r.Context(), id, *maintenanceMode)
+	})
+	addOp(f.plan != "", func() (AppView, error) {
+		return s.SetPlan(r.Context(), id, f.plan)
+	})
+	addOp(f.idleTTL != nil, func() (AppView, error) {
+		return s.SetIdleTTL(r.Context(), id, *f.idleTTL)
+	})
+	addOp(f.maxShutdownDelay.Set, func() (AppView, error) {
+		return s.SetMaxShutdownDelay(r.Context(), id, f.maxShutdownDelay.Value)
+	})
+	addOp(req.RootDir != nil, func() (AppView, error) {
+		return s.SetRootDir(r.Context(), id, *req.RootDir)
+	})
+	addOp(req.BuildFilter != nil, func() (AppView, error) {
+		return s.SetBuildFilter(r.Context(), id, req.BuildFilter)
+	})
+	addOp(f.autoDeploy != nil, func() (AppView, error) {
+		return s.SetAutoDeploy(r.Context(), id, *f.autoDeploy)
+	})
+	addOp(f.schedule != nil || req.Command != nil, func() (AppView, error) {
+		return s.SetCronJob(r.Context(), id, f.schedule, req.Command)
+	})
+	addOp(f.healthCheckPath != nil, func() (AppView, error) {
+		return s.SetHealthCheckPath(r.Context(), id, *f.healthCheckPath)
+	})
+	addOp(f.preDeployCommand != nil, func() (AppView, error) {
+		return s.SetPreDeployCommand(r.Context(), id, *f.preDeployCommand)
+	})
+	addOp(f.publishPath != nil, func() (AppView, error) {
+		return s.SetPublishPath(r.Context(), id, *f.publishPath)
+	})
+	addOp(f.buildCommand != nil || f.startCommand != nil, func() (AppView, error) {
+		return s.SetCommands(r.Context(), id, f.buildCommand, f.startCommand)
+	})
+	addOp(f.dockerfilePath != nil, func() (AppView, error) {
+		return s.SetDockerfilePath(r.Context(), id, *f.dockerfilePath)
+	})
+	addOp(req.NotifyOnFail != nil, func() (AppView, error) {
+		return s.SetNotifyOnFail(r.Context(), id, *req.NotifyOnFail)
+	})
+	addOp(req.RenderSubdomainPolicy != nil, func() (AppView, error) {
+		return s.SetSubdomainPolicy(r.Context(), id, *req.RenderSubdomainPolicy)
+	})
+	addOp(f.ipAllowList != nil, func() (AppView, error) {
+		return s.SetIPAllowList(r.Context(), id, *f.ipAllowList)
+	})
+	addOp(maintenanceMode != nil && !maintenanceBeforePlan, func() (AppView, error) {
+		return s.ConfigureMaintenanceMode(r.Context(), id, *maintenanceMode)
+	})
+	if len(ops) == 0 {
+		s.getService(w, r) // no supported field present => read-only no-op
+		return
+	}
+	var app AppView
+	for _, op := range ops {
+		var err error
+		if app, err = op(); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+	}
+	core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app))
+}
+
+// createService handles POST /v1/services — create-or-update a service from a
+// Render-shaped body; deploy-from-chat rides this with a repo (no bespoke
+// deploy endpoint). Render returns 201 Created on success. `ownerId` names the
+// workspace to create in (w6/m14) — carried on CreateRequest, membership-checked
+// by the verb: a non-member gets 403, not a service in the wrong workspace.
+// Pass `dryRun: true` in the body or `?dryRun=true` in the query to preview
+// the resolved spec without any writes; response is 200 (not 201) (w2/m29).
+func (s *Service) createService(w http.ResponseWriter, r *http.Request) {
+	var req createServiceRequest
+	if err := core.DecodeJSON(r, &req); err != nil {
+		core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
+		return
+	}
+	if field := req.unsupportedField(); field != "" {
+		core.WriteErr(w, fmt.Errorf("%w: services %s is not supported by this platform", core.ErrBadRequest, field))
+		return
+	}
+	if !req.DryRun && r.URL.Query().Get("dryRun") == "true" {
+		req.DryRun = true
+	}
+	defaultOwnerID, _ := s.Tenant(r.Context())
+	createReq, err := req.toCreateRequest(r.Context(), defaultOwnerID)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	app, err := s.Create(r.Context(), createReq)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	if req.DryRun {
+		core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app)) // dry-run: 200 (nothing created)
+		return
+	}
+	// Render: create => 201, body wraps the service under serviceAndDeploy.
+	core.WriteJSON(w, http.StatusCreated, serviceAndDeploy{Service: s.restService(r.Context(), app), DeployID: app.LatestDeployID})
+}
+
+// handleMapped wraps the recurring "run the verb, then map the view to its
+// Render wire shape" handler: call runs the service verb, wire converts a
+// successful result, and core.HandleJSON supplies the status code and the
+// shared error mapping.
+func handleMapped[T, R any](status int, call func(*http.Request) (T, error), wire func(T) R) http.HandlerFunc {
+	return core.HandleJSON(status, func(r *http.Request) (any, error) {
+		v, err := call(r)
+		if err != nil {
+			return nil, err
+		}
+		return wire(v), nil
+	})
+}
+
+// registerCronRunRoutes mounts the cron-job run routes, under both Render's
+// canonical /v1/cron-jobs noun and the /v1/services/{id}/runs subresource form.
+func (s *Service) registerCronRunRoutes(mux *http.ServeMux) {
 	// runCron handles Render's current POST /cron-jobs/{id}/runs contract. The
 	// deterministic pending run is returned immediately; if another run is active,
 	// the same intent patch asks the operator to cancel it before replacement.
-	runCron := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		run, err := s.TriggerCronRun(r.Context(), r.PathValue("id"))
-		if err != nil {
-			return nil, err
-		}
-		return toRenderCronJobRun(run), nil
-	})
-	listCronRuns := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	runCron := handleMapped(http.StatusOK, func(r *http.Request) (CronRunView, error) {
+		return s.TriggerCronRun(r.Context(), r.PathValue("id"))
+	}, toRenderCronJobRun)
+	listCronRuns := handleMapped(http.StatusOK, func(r *http.Request) ([]CronRunView, error) {
 		cursor, limit := core.PageParams(r.URL.Query())
-		runs, err := s.ListCronRuns(r.Context(), r.PathValue("id"), cursor, limit)
-		if err != nil {
-			return nil, err
-		}
-		return toCronJobRunList(runs), nil
-	})
-	getCronRun := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		run, err := s.GetCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
-		if err != nil {
-			return nil, err
-		}
-		return toRenderCronJobRun(run), nil
-	})
-	cancelCronRun := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		run, err := s.CancelCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
-		if err != nil {
-			return nil, err
-		}
-		return toRenderCronJobRun(run), nil
-	})
+		return s.ListCronRuns(r.Context(), r.PathValue("id"), cursor, limit)
+	}, toCronJobRunList)
+	getCronRun := handleMapped(http.StatusOK, func(r *http.Request) (CronRunView, error) {
+		return s.GetCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
+	}, toRenderCronJobRun)
+	cancelCronRun := handleMapped(http.StatusOK, func(r *http.Request) (CronRunView, error) {
+		return s.CancelCronRun(r.Context(), r.PathValue("id"), r.PathValue("runId"))
+	}, toRenderCronJobRun)
 	// Render's current cancel route addresses the active run implicitly and
 	// returns 204. The per-run POST route above is a documented bex extension.
 	cancelCurrentCronRun := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
@@ -990,7 +1046,16 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /v1/cron-jobs/{id}/runs", cancelCurrentCronRun)
 	mux.HandleFunc("GET /v1/cron-jobs/{id}/runs/{runId}", getCronRun)
 	mux.HandleFunc("POST /v1/cron-jobs/{id}/runs/{runId}/cancel", cancelCronRun)
+	mux.HandleFunc("GET "+servicesBase+"/{id}/runs", listCronRuns)
+	mux.HandleFunc("POST "+servicesBase+"/{id}/runs", runCron)
+	mux.HandleFunc("DELETE "+servicesBase+"/{id}/runs", cancelCurrentCronRun)
+	mux.HandleFunc("GET "+servicesBase+"/{id}/runs/{runId}", getCronRun)
+	mux.HandleFunc("POST "+servicesBase+"/{id}/runs/{runId}/cancel", cancelCronRun)
+}
 
+// registerDomainRoutes mounts the per-service decoration sub-resources:
+// custom domains, autoscaling, and the static-site edge rules.
+func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 	// Custom-domains sub-resource (Render-compatible).
 	listDomains := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		domains, err := s.ListDomains(r.Context(), r.PathValue("id"))
@@ -1023,25 +1088,17 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		return toRenderCustomDomain(d), nil
 	})
-	getDomain := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		d, err := s.GetDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
-		if err != nil {
-			return nil, err
-		}
-		return toRenderCustomDomain(d), nil
-	})
+	getDomain := handleMapped(http.StatusOK, func(r *http.Request) (DomainView, error) {
+		return s.GetDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
+	}, toRenderCustomDomain)
 	deleteDomain := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
 	})
 	// verifyDomain re-checks DNS/cert state now (Render's POST …/verify) and returns
 	// the fresh domain. 200 OK — bex verification is automatic, so this is a re-read.
-	verifyDomain := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		d, err := s.VerifyDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
-		if err != nil {
-			return nil, err
-		}
-		return toRenderCustomDomain(d), nil
-	})
+	verifyDomain := handleMapped(http.StatusOK, func(r *http.Request) (DomainView, error) {
+		return s.VerifyDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
+	}, toRenderCustomDomain)
 
 	// Autoscaling sub-resource (Render-compatible).
 	// GET   …/autoscaling — current config (bex extension; Render has no GET)
@@ -1063,13 +1120,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 
 	// Static-site edge rules (Render-compatible): /routes (redirects/rewrites) and
 	// /headers (custom response headers). GET lists; PUT replaces the whole list.
-	listRoutes := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		routes, err := s.ListRoutes(r.Context(), r.PathValue("id"))
-		if err != nil {
-			return nil, err
-		}
-		return toRenderRoutes(routes), nil
-	})
+	listRoutes := handleMapped(http.StatusOK, func(r *http.Request) ([]StaticRouteView, error) {
+		return s.ListRoutes(r.Context(), r.PathValue("id"))
+	}, toRenderRoutes)
 	putRoutes := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body []renderRoute
 		if err := core.DecodeJSON(r, &body); err != nil {
@@ -1081,13 +1134,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		return toRenderRoutes(app.Routes), nil
 	})
-	listHeaders := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		headers, err := s.ListHeaders(r.Context(), r.PathValue("id"))
-		if err != nil {
-			return nil, err
-		}
-		return toRenderHeaders(headers), nil
-	})
+	listHeaders := handleMapped(http.StatusOK, func(r *http.Request) ([]StaticHeaderView, error) {
+		return s.ListHeaders(r.Context(), r.PathValue("id"))
+	}, toRenderHeaders)
 	putHeaders := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body []renderHeader
 		if err := core.DecodeJSON(r, &body); err != nil {
@@ -1100,10 +1149,26 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		return toRenderHeaders(app.Headers), nil
 	})
 
-	// Blueprint routes (w2/m15 + w2/m41 + w2/m62): validate · create · list ·
-	// get-by-id · sync · list-syncs · update · disconnect.
-	// POST /v1/blueprints/validate is registered before POST /v1/blueprints/{id}/sync
-	// — Go 1.22+ ServeMux resolves the more specific (literal) path first.
+	mux.HandleFunc("GET "+servicesBase+"/{id}/autoscaling", getAutoscaling)
+	mux.HandleFunc("PUT "+servicesBase+"/{id}/autoscaling", putAutoscaling)
+	mux.HandleFunc("DELETE "+servicesBase+"/{id}/autoscaling", deleteAutoscaling)
+	mux.HandleFunc("GET "+servicesBase+"/{id}/custom-domains", listDomains)
+	mux.HandleFunc("POST "+servicesBase+"/{id}/custom-domains", addDomain)
+	mux.HandleFunc("GET "+servicesBase+"/{id}/custom-domains/{name}", getDomain)
+	mux.HandleFunc("DELETE "+servicesBase+"/{id}/custom-domains/{name}", deleteDomain)
+	mux.HandleFunc("POST "+servicesBase+"/{id}/custom-domains/{name}/verify", verifyDomain)
+	mux.HandleFunc("GET "+servicesBase+"/{id}/routes", listRoutes)
+	mux.HandleFunc("PUT "+servicesBase+"/{id}/routes", putRoutes)
+	mux.HandleFunc("GET "+servicesBase+"/{id}/headers", listHeaders)
+	mux.HandleFunc("PUT "+servicesBase+"/{id}/headers", putHeaders)
+}
+
+// registerBlueprintRoutes mounts the Blueprint routes (w2/m15 + w2/m41 +
+// w2/m62): validate · create · list · get-by-id · sync · list-syncs · update ·
+// disconnect.
+// POST /v1/blueprints/validate is registered before POST /v1/blueprints/{id}/sync
+// — Go 1.22+ ServeMux resolves the more specific (literal) path first.
+func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/blueprints", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		var body struct {
 			Repo         string            `json:"repo"`
@@ -1205,17 +1270,25 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		_ = core.DecodeJSON(r, &body)
 		return s.SyncBlueprint(r.Context(), r.PathValue("id"), body.OwnerID, body.BexYAML, body.Confirm)
 	}))
+}
 
-	type notificationOverrideResponse struct {
-		NotificationsToSend         string `json:"notificationsToSend"`
-		PreviewNotificationsEnabled string `json:"previewNotificationsEnabled"`
+// notificationOverrideResponse is the per-service notification-override wire
+// shape served under /v1/notification-settings/overrides/services/{id}.
+type notificationOverrideResponse struct {
+	NotificationsToSend         string `json:"notificationsToSend"`
+	PreviewNotificationsEnabled string `json:"previewNotificationsEnabled"`
+}
+
+func toNotificationOverride(app AppView) notificationOverrideResponse {
+	return notificationOverrideResponse{
+		NotificationsToSend:         app.NotificationsToSend,
+		PreviewNotificationsEnabled: "default",
 	}
-	toNotificationOverride := func(app AppView) notificationOverrideResponse {
-		return notificationOverrideResponse{
-			NotificationsToSend:         app.NotificationsToSend,
-			PreviewNotificationsEnabled: "default",
-		}
-	}
+}
+
+// registerNotificationOverrideRoutes mounts the per-service notification
+// override pair: read the effective override, and PATCH notificationsToSend.
+func (s *Service) registerNotificationOverrideRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/notification-settings/overrides/services/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		app, err := s.Get(r.Context(), r.PathValue("id"))
 		if err != nil {
@@ -1247,37 +1320,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		return toNotificationOverride(app), nil
 	}))
-
-	const base = "/v1/services"
-	mux.HandleFunc("GET "+base, list)
-	mux.HandleFunc("POST "+base, create) // Render: create => 201
-	mux.HandleFunc("GET "+base+"/{id}", get)
-	// Render's official CLI uses /services.
-	mux.HandleFunc("GET "+base+"/{id}/instances", listInstances)
-	mux.HandleFunc("POST "+base+"/{id}/shell-ticket", shellTicket)
-	mux.HandleFunc("PATCH "+base+"/{id}", patch)
-	mux.HandleFunc("DELETE "+base+"/{id}", deleteSvc) // Render: delete => 204
-	mux.HandleFunc("POST "+base+"/{id}/suspend", verb(http.StatusAccepted, s.Suspend))
-	mux.HandleFunc("POST "+base+"/{id}/resume", verb(http.StatusAccepted, s.Resume))
-	mux.HandleFunc("POST "+base+"/{id}/restart", verb(http.StatusOK, s.Restart)) // Render: restart => 200
-	mux.HandleFunc("POST "+base+"/{id}/scale", scale)                            // Render: scale => 202
-	mux.HandleFunc("GET "+base+"/{id}/runs", listCronRuns)
-	mux.HandleFunc("POST "+base+"/{id}/runs", runCron)
-	mux.HandleFunc("DELETE "+base+"/{id}/runs", cancelCurrentCronRun)
-	mux.HandleFunc("GET "+base+"/{id}/runs/{runId}", getCronRun)
-	mux.HandleFunc("POST "+base+"/{id}/runs/{runId}/cancel", cancelCronRun)
-	mux.HandleFunc("GET "+base+"/{id}/autoscaling", getAutoscaling)
-	mux.HandleFunc("PUT "+base+"/{id}/autoscaling", putAutoscaling)
-	mux.HandleFunc("DELETE "+base+"/{id}/autoscaling", deleteAutoscaling)
-	mux.HandleFunc("GET "+base+"/{id}/custom-domains", listDomains)
-	mux.HandleFunc("POST "+base+"/{id}/custom-domains", addDomain)
-	mux.HandleFunc("GET "+base+"/{id}/custom-domains/{name}", getDomain)
-	mux.HandleFunc("DELETE "+base+"/{id}/custom-domains/{name}", deleteDomain)
-	mux.HandleFunc("POST "+base+"/{id}/custom-domains/{name}/verify", verifyDomain)
-	mux.HandleFunc("GET "+base+"/{id}/routes", listRoutes)
-	mux.HandleFunc("PUT "+base+"/{id}/routes", putRoutes)
-	mux.HandleFunc("GET "+base+"/{id}/headers", listHeaders)
-	mux.HandleFunc("PUT "+base+"/{id}/headers", putHeaders)
 }
 
 // Render permits a Blueprint file of up to 10 MiB. The multipart envelope gets
