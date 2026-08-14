@@ -1,22 +1,22 @@
 # w1 · m68 — Security-scan round 5: executable-selection relations, deployed-config gaps, activation
 
-**Worker:** worker1 **Goal:** the five confirmed Tier-1 findings of the 2026-08-10 round-5 scan are closed at root cause, and the two controls whose mechanism m66/m67 already shipped stop being inert in production. **Status:** in progress — t003 + t006 activated 2026-08-13 (CIDRs live in prod, host-key pin captured/verified/pushed + mandatory mode asserted); **t007 flag flip shipping** (rollout verification pending), then t011 closeout
+**Worker:** worker1 **Goal:** the five confirmed Tier-1 findings of the 2026-08-10 round-5 scan are closed at root cause, and the two controls whose mechanism m66/m67 already shipped stop being inert in production. **Status:** done — all three activations landed 2026-08-13: CIDRs verified live, host-key pin captured (fingerprints verified via the cluster-private second path) + mandatory mode asserted in all three workflows, and the audience flag rolled out after confirming the live platform-client markers (CLI verified post-flip, startup warning gone)
 
 ## Tasks (in order)
 
-| id   | title                                                                             | est | depends_on       |
-| ---- | --------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Executable selection requires `can_create` on the four missed verbs (F2)           | 60m | — — **DONE**     |
-| t002 | Postgres logging parameters are not a contributor-writable sensitive gate (F7)     | 45m | t001 — **DONE**  |
-| t003 | Deploy `BEX_TRUSTED_PROXY_CIDRS` so m67's failure bucket keys on the client (F8)   | 30m | — — **DONE** (live in prod 2026-08-13) |
-| t004 | Postgres `Recover` enforces the paid-resource billing gates (F5)                   | 30m | — — **DONE**     |
-| t005 | Bound the KeyValue backup work volume + ephemeral storage (F10)                    | 30m | — — **DONE**     |
-| t006 | Wire the known-hosts pin into the OpenBao restore drill + capture it (F3)          | 40m | — — **DONE** (captured + mandatory 2026-08-13) |
-| t007 | Activate `BEX_OAUTH_REQUIRE_AUDIENCE` after re-stamping the platform clients (F1)  | 30m | — — _warning + docs done; **flip pending**_ |
-| t008 | Render parity                                                                      | 30m | t001, t002, t004 — **DONE** |
-| t009 | Simplify                                                                           | 20m | t008 — **DONE**  |
-| t010 | Test coverage                                                                      | 60m | t008 — **DONE**  |
-| t011 | Closeout                                                                           | 10m | t010             |
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| t001 | Executable selection requires `can_create` on the four missed verbs (F2) | 60m | — — **DONE** |
+| t002 | Postgres logging parameters are not a contributor-writable sensitive gate (F7) | 45m | t001 — **DONE** |
+| t003 | Deploy `BEX_TRUSTED_PROXY_CIDRS` so m67's failure bucket keys on the client (F8) | 30m | — — **DONE** (live in prod 2026-08-13) |
+| t004 | Postgres `Recover` enforces the paid-resource billing gates (F5) | 30m | — — **DONE** |
+| t005 | Bound the KeyValue backup work volume + ephemeral storage (F10) | 30m | — — **DONE** |
+| t006 | Wire the known-hosts pin into the OpenBao restore drill + capture it (F3) | 40m | — — **DONE** (captured + mandatory 2026-08-13) |
+| t007 | Activate `BEX_OAUTH_REQUIRE_AUDIENCE` after re-stamping the platform clients (F1) | 30m | — — **DONE** (flipped + verified 2026-08-13) |
+| t008 | Render parity | 30m | t001, t002, t004 — **DONE** |
+| t009 | Simplify | 20m | t008 — **DONE** |
+| t010 | Test coverage | 60m | t008 — **DONE** |
+| t011 | Closeout | 10m | t010 — **DONE** |
 
 ## Definition of done
 
@@ -48,7 +48,7 @@
 
 **Verification.** Backend (all packages), operator (`make test`, envtest), types, and dashboard (303 files / 2077 tests) green; `make lint-backend` clean (the 16 operator-module issues are pre-existing and in lines this milestone did not author); `gitops-validate.sh`, `github-actions-validate.sh` + its self-test green. Every regression test was **proven red on the pre-fix code** by reverting each fix in turn — 6 cases for F2, 6 for F7, 6 for F5, 9 for F10, and the real workflow for F3.
 
-**Simplify (t009).** The conditional-relation shape reached three call sites, which is the threshold t009 named, so it became `core.LifecycleOrCreate(createLike bool)` — named for the pattern, not the four saved lines: the relation *must* be computed from the request before the single fetch, and a fourth verb should not have to rediscover why.
+**Simplify (t009).** The conditional-relation shape reached three call sites, which is the threshold t009 named, so it became `core.LifecycleOrCreate(createLike bool)` — named for the pattern, not the four saved lines: the relation _must_ be computed from the request before the single fetch, and a fourth verb should not have to rediscover why.
 
 **Parity (t008).** All changes are one core verb each, so REST/GraphQL/MCP move together by construction. Render's CONTRIBUTOR descriptions are **not capturable** from this workspace's tier (Scale+-gated), so ADR024 now records bex's boundary as a deliberate, possibly-divergent choice with the evidence that would settle it — rather than claiming a parity match nobody verified. The dashboard has no role-awareness at all, so the newly-refused controls render and then fail; filed as `w1/047` instead of built here.
 
