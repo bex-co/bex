@@ -2077,7 +2077,7 @@ func normalizeCreateDefaults(req CreateRequest) (port, replicas int32, branch st
 	}
 	branch = req.Branch
 	if branch == "" && req.Repo != "" {
-		branch = "main"
+		branch = appv1alpha1.DefaultBranch
 	}
 	// AutoDeploy: default on for a repo-backed service (a push should redeploy,
 	// Render's default), off for an image-backed one (no repo to rebuild from).
@@ -2949,76 +2949,40 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 			return AppView{}, fmt.Errorf("%w: image.ownerId does not match the service owner", core.ErrBadRequest)
 		}
 	}
-	previousBranch := a.Spec.Branch
-	nextRepo, nextImage, nextBranch := a.Spec.Repo, a.Spec.Image, previousBranch
-	if patch.Repo != nil {
-		nextRepo = strings.TrimSpace(*patch.Repo)
-		if nextRepo == "" || !store.ValidRepo(nextRepo) {
-			return AppView{}, fmt.Errorf("%w: invalid repository URL", core.ErrBadRequest)
-		}
-		nextImage = ""
-	}
-	if patch.Image != nil {
-		nextImage = strings.TrimSpace(*patch.Image)
-		if nextImage == "" {
-			return AppView{}, fmt.Errorf("%w: image path is required", core.ErrBadRequest)
-		}
-		if !store.ValidImage(nextImage) {
-			return AppView{}, fmt.Errorf("%w: image must be an OCI reference (no whitespace or shell metacharacters)", core.ErrBadRequest)
-		}
-		nextRepo = ""
-	}
-	if patch.Branch != nil {
-		nextBranch = strings.TrimSpace(*patch.Branch)
-		// An explicit empty means "back to the default" — the setter family's
-		// convention (empty clears to the default, cf. SetCommands); the
-		// fallback below applies it. Only a non-empty ref is validated.
-		if nextBranch != "" && !store.ValidGitRef(nextBranch) {
-			return AppView{}, fmt.Errorf("%w: invalid branch", core.ErrBadRequest)
-		}
-	}
-	if nextBranch == "" {
-		nextBranch = "main"
-	}
-	nextRegistryCredentialID := clonePtr(a.Spec.RegistryCredentialID)
-	if patch.RegistryCredentialID != nil {
-		value := strings.TrimSpace(*patch.RegistryCredentialID)
-		nextRegistryCredentialID = &value
-	} else if patch.Repo != nil {
-		// A source-kind switch stops using the former image credential. This is
-		// omission-as-preserve for ordinary PATCHes, but an explicit repo switch
-		// cannot retain image-only authentication intent.
-		nextRegistryCredentialID = nil
+	next, err := resolveSourcePatch(a, patch)
+	if err != nil {
+		return AppView{}, err
 	}
 	probe := a.DeepCopy()
-	probe.Spec.Repo = nextRepo
-	probe.Spec.Image = nextImage
-	probe.Spec.Branch = nextBranch
-	probe.Spec.RegistryCredentialID = clonePtr(nextRegistryCredentialID)
+	probe.Spec.Repo = next.repo
+	probe.Spec.Image = next.image
+	probe.Spec.Branch = next.branch
+	probe.Spec.RegistryCredentialID = clonePtr(next.registryCredentialID)
 	pullSecretName, err := s.ensureExternalRegistryPullSecret(ctx, probe)
 	if err != nil {
 		return AppView{}, err
 	}
 	if s.Store != nil {
 		if id := managedAppID(a); id != "" {
-			if err := s.Store.SetAppSource(ctx, id, nextRepo, nextImage, nextBranch, clonePtr(nextRegistryCredentialID)); err != nil {
+			if err := s.Store.SetAppSource(ctx, id, next.repo, next.image, next.branch, clonePtr(next.registryCredentialID)); err != nil {
 				return AppView{}, fmt.Errorf("update source of truth: %w", err)
 			}
 		}
 	}
+	previousBranch := a.Spec.Branch
 	oldPullSecret := a.Spec.ExternalRegistryPullSecret
 	// SECURITY (codex #5): when the repository origin changes, the retained GitHub
 	// clone token is scoped to the OLD origin. Static publisher and kpack would send
 	// it to the new (possibly attacker-controlled) origin. Atomically clear the old
 	// clone Secret and spec.cloneSecret; a replacement (if the new repo is a
 	// connected private one) is minted on the next deploy.
-	repoChanged := nextRepo != a.Spec.Repo
+	repoChanged := next.repo != a.Spec.Repo
 	oldCloneSecret := a.Spec.CloneSecret
 	updated, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
-		a.Spec.Repo = nextRepo
-		a.Spec.Image = nextImage
-		a.Spec.Branch = nextBranch
-		a.Spec.RegistryCredentialID = clonePtr(nextRegistryCredentialID)
+		a.Spec.Repo = next.repo
+		a.Spec.Image = next.image
+		a.Spec.Branch = next.branch
+		a.Spec.RegistryCredentialID = clonePtr(next.registryCredentialID)
 		a.Spec.ExternalRegistryPullSecret = pullSecretName
 		if repoChanged {
 			a.Spec.CloneSecret = "" // clear stale token; reminted on next deploy
@@ -3037,10 +3001,70 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 			return AppView{}, fmt.Errorf("delete cleared registry pull secret: %w", err)
 		}
 	}
-	if previousBranch != "" && previousBranch != nextBranch {
-		s.recordBranchChangedFact(ctx, a, previousBranch, nextBranch, updated.UpdatedAt)
+	if previousBranch != "" && previousBranch != next.branch {
+		s.recordBranchChangedFact(ctx, a, previousBranch, next.branch, updated.UpdatedAt)
 	}
 	return updated, nil
+}
+
+// sourceFields is the validated source a sourcePatch resolves to — the four
+// spec fields that must move together so a half-applied switch is impossible.
+type sourceFields struct {
+	repo                 string
+	image                string
+	branch               string
+	registryCredentialID *string
+}
+
+// resolveSourcePatch folds a sourcePatch onto the App's current source,
+// validating each supplied field. Repo and image are mutually exclusive, so
+// setting either clears the other.
+func resolveSourcePatch(a *appv1alpha1.App, patch sourcePatch) (sourceFields, error) {
+	next := sourceFields{
+		repo:                 a.Spec.Repo,
+		image:                a.Spec.Image,
+		branch:               a.Spec.Branch,
+		registryCredentialID: clonePtr(a.Spec.RegistryCredentialID),
+	}
+	if patch.Repo != nil {
+		next.repo = strings.TrimSpace(*patch.Repo)
+		if next.repo == "" || !store.ValidRepo(next.repo) {
+			return sourceFields{}, fmt.Errorf("%w: invalid repository URL", core.ErrBadRequest)
+		}
+		next.image = ""
+	}
+	if patch.Image != nil {
+		next.image = strings.TrimSpace(*patch.Image)
+		if next.image == "" {
+			return sourceFields{}, fmt.Errorf("%w: image path is required", core.ErrBadRequest)
+		}
+		if !store.ValidImage(next.image) {
+			return sourceFields{}, fmt.Errorf("%w: image must be an OCI reference (no whitespace or shell metacharacters)", core.ErrBadRequest)
+		}
+		next.repo = ""
+	}
+	if patch.Branch != nil {
+		next.branch = strings.TrimSpace(*patch.Branch)
+		// An explicit empty means "back to the default" — the setter family's
+		// convention (empty clears to the default, cf. SetCommands); the
+		// fallback below applies it. Only a non-empty ref is validated.
+		if next.branch != "" && !store.ValidGitRef(next.branch) {
+			return sourceFields{}, fmt.Errorf("%w: invalid branch", core.ErrBadRequest)
+		}
+	}
+	if next.branch == "" {
+		next.branch = appv1alpha1.DefaultBranch
+	}
+	if patch.RegistryCredentialID != nil {
+		value := strings.TrimSpace(*patch.RegistryCredentialID)
+		next.registryCredentialID = &value
+	} else if patch.Repo != nil {
+		// A source-kind switch stops using the former image credential. This is
+		// omission-as-preserve for ordinary PATCHes, but an explicit repo switch
+		// cannot retain image-only authentication intent.
+		next.registryCredentialID = nil
+	}
+	return next, nil
 }
 
 // recordBranchChangedFact appends the branch_changed fact after a source

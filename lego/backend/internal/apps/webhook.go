@@ -567,7 +567,7 @@ func repoURLsMatch(specRepo string, urls ...string) bool {
 // push to branch. An empty spec.branch tracks "main" (the CR default).
 func branchMatches(specBranch, branch string) bool {
 	if specBranch == "" {
-		specBranch = "main"
+		specBranch = appv1alpha1.DefaultBranch
 	}
 	return branch == "" || specBranch == branch
 }

@@ -230,119 +230,9 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		publicID = a.Name // hand-applied/store-less compatibility
 	}
 	svcType := effectiveType(a.Type) // defensive; view() already defaults this
-	var details map[string]any
-	set := func(k string, v any) {
-		if details == nil {
-			details = map[string]any{}
-		}
-		details[k] = v
-	}
-	// Render's serviceDetails carries url for web_service/static_site but
-	// OMITS it for private_service (captured 2026-07-26,
-	// docs/render-artifacts/service-addresses.md §3) — bex used to leak the
-	// cluster-internal URL there; the address now travels in internalAddress.
-	if a.URL != "" && svcType != renderPrivateService {
-		set("url", a.URL) // Render web_service exposes the live URL here
-	}
-	// internalAddress is a documented bex extension (ADR041 D4): Render's REST
-	// has no internal-address field — its consumers derive `<slug>:<port>` from
-	// slug + port — but agents and scripts benefit from the explicit, additive key.
-	if a.InternalAddress != "" {
-		set("internalAddress", a.InternalAddress)
-	}
-	if a.Plan != "" {
-		set("plan", a.Plan) // webServiceDetails.plan (render-public-api-1.json)
-	}
-	if a.SSHAddress != "" {
-		set("sshAddress", a.SSHAddress)
-	}
-	if a.Runtime != "" {
-		set("runtime", a.Runtime)
-		set("env", a.Runtime) // deprecated Render response field, still required by its schema
-	}
 	region := metadata.PlatformRegion()
 	if region == "" {
 		region = a.Region
-	}
-	if region != "" {
-		set("region", region)
-	}
-	if a.Runtime == "docker" {
-		dockerDetails := map[string]any{
-			"dockerCommand":  a.StartCommand,
-			"dockerContext":  a.RootDir,
-			"dockerfilePath": a.DockerfilePath,
-		}
-		if a.RegistryCredentialID != nil && *a.RegistryCredentialID != "" {
-			dockerDetails["registryCredentialId"] = *a.RegistryCredentialID
-		}
-		if a.PreDeployCommand != "" {
-			dockerDetails["preDeployCommand"] = a.PreDeployCommand
-		}
-		set("envSpecificDetails", dockerDetails)
-	} else if a.Runtime != "" {
-		startCommand := a.StartCommand
-		if svcType == appv1alpha1.TypeCronJob {
-			startCommand = a.Command
-		}
-		set("envSpecificDetails", map[string]any{
-			"buildCommand":     a.BuildCommand,
-			"startCommand":     startCommand,
-			"preDeployCommand": a.PreDeployCommand,
-		})
-	}
-	if a.Schedule != "" {
-		set("schedule", a.Schedule) // cronJobDetails.schedule (render-public-api-1.json)
-	}
-	if a.Command != "" {
-		set("command", a.Command) // cronJobDetails.command (render-public-api-1.json)
-	}
-	if a.LastSuccessfulRunAt != "" {
-		set("lastSuccessfulRunAt", a.LastSuccessfulRunAt) // cronJobDetails.lastSuccessfulRunAt
-	}
-	if a.PublishPath != "" {
-		set("publishPath", a.PublishPath) // staticSiteDetails.publishPath (render-public-api-1.json)
-	}
-	if svcType == appv1alpha1.TypeStaticSite {
-		set("buildCommand", a.BuildCommand)
-	}
-	if a.PreDeployCommand != "" {
-		set("preDeployCommand", a.PreDeployCommand) // webServiceDetails.preDeployCommand (w1/m33)
-	}
-	if a.InitialDeployHook != "" {
-		set("initialDeployHook", a.InitialDeployHook) // w2/m45: blueprint-only one-time first-deploy command
-	}
-	if a.MaxShutdownDelaySeconds > 0 {
-		// Render places this on web/private/background-worker serviceDetails.
-		// view() supplies the shared Render/Kubernetes default (30) when the CR
-		// pointer is unset, so legacy services read back exactly like Render.
-		set("maxShutdownDelaySeconds", a.MaxShutdownDelaySeconds)
-	}
-	set("numInstances", int(a.Replicas))
-	if a.HealthCheckPath != "" {
-		set("healthCheckPath", a.HealthCheckPath)
-	}
-	if a.RenderSubdomainPolicy != "" {
-		set("renderSubdomainPolicy", a.RenderSubdomainPolicy)
-	}
-	if svcType == renderWebService {
-		// Render's maintenanceMode is required on webServiceDetails (never
-		// omitted), unlike the mostly-optional fields above — docs/render-
-		// artifacts/maintenance-mode.md.
-		set("maintenanceMode", map[string]any{
-			"enabled": a.MaintenanceMode.Enabled,
-			"uri":     a.MaintenanceMode.URI,
-		})
-	}
-	var ras *renderAutoscaling
-	if a.Autoscaling != nil {
-		ras = &renderAutoscaling{
-			Enabled:             a.Autoscaling.Enabled,
-			MinInstances:        a.Autoscaling.MinInstances,
-			MaxInstances:        a.Autoscaling.MaxInstances,
-			TargetCPUPercent:    a.Autoscaling.TargetCPUPercent,
-			TargetMemoryPercent: a.Autoscaling.TargetMemoryPercent,
-		}
 	}
 	dashboardURL := metadata.DashboardURL(resourcemeta.ServiceDashboardRoute(svcType), publicID)
 	if dashboardURL == "" {
@@ -362,7 +252,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		DashboardURL:          dashboardURL,
 		CreatedAt:             a.CreatedAt,
 		UpdatedAt:             a.UpdatedAt,
-		ServiceDetails:        details,
+		ServiceDetails:        renderServiceDetails(a, svcType, region),
 		ImagePath:             a.SourceImage,
 		RegistryCredentialID:  registryCredentialID,
 		Suspenders:            suspenders(a.Suspended),
@@ -383,7 +273,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		BuildFilter:           a.BuildFilter,
 		Repo:                  a.Repo,
 		Branch:                a.Branch,
-		Autoscaling:           ras,
+		Autoscaling:           toRenderAutoscaling(a.Autoscaling),
 		AutoDeploy:            yesNoEnum(a.AutoDeploy),
 		AutoDeployTrigger:     triggerEnum(a.AutoDeploy),
 		NotifyOnFail:          a.NotifyOnFail,
@@ -391,6 +281,114 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		RenderSubdomainPolicy: a.RenderSubdomainPolicy,
 		HealthCheckPath:       a.HealthCheckPath,
 		IPAllowList:           cloneIPAllowEntries(a.IPAllowList),
+	}
+}
+
+// renderServiceDetails builds Render's serviceDetails map. Most keys are plain
+// omit-when-empty strings and travel through the table; the rest carry a
+// type-specific condition or a nested shape Render specifies exactly.
+func renderServiceDetails(a AppView, svcType, region string) map[string]any {
+	details := map[string]any{
+		"numInstances": int(a.Replicas),
+	}
+	for _, field := range []struct{ key, value string }{
+		// internalAddress is a documented bex extension (ADR041 D4): Render's REST
+		// has no internal-address field — its consumers derive `<slug>:<port>` from
+		// slug + port — but agents and scripts benefit from the explicit, additive key.
+		{"internalAddress", a.InternalAddress},
+		{"plan", a.Plan}, // webServiceDetails.plan (render-public-api-1.json)
+		{"sshAddress", a.SSHAddress},
+		{"region", region},
+		{"schedule", a.Schedule},                       // cronJobDetails.schedule (render-public-api-1.json)
+		{"command", a.Command},                         // cronJobDetails.command (render-public-api-1.json)
+		{"lastSuccessfulRunAt", a.LastSuccessfulRunAt}, // cronJobDetails.lastSuccessfulRunAt
+		{"publishPath", a.PublishPath},                 // staticSiteDetails.publishPath (render-public-api-1.json)
+		{"preDeployCommand", a.PreDeployCommand},       // webServiceDetails.preDeployCommand (w1/m33)
+		{"initialDeployHook", a.InitialDeployHook},     // w2/m45: blueprint-only one-time first-deploy command
+		{"healthCheckPath", a.HealthCheckPath},
+		{"renderSubdomainPolicy", a.RenderSubdomainPolicy},
+	} {
+		if field.value != "" {
+			details[field.key] = field.value
+		}
+	}
+	// Render's serviceDetails carries url for web_service/static_site but
+	// OMITS it for private_service (captured 2026-07-26,
+	// docs/render-artifacts/service-addresses.md §3) — bex used to leak the
+	// cluster-internal URL there; the address now travels in internalAddress.
+	if a.URL != "" && svcType != renderPrivateService {
+		details["url"] = a.URL // Render web_service exposes the live URL here
+	}
+	if a.Runtime != "" {
+		details["runtime"] = a.Runtime
+		details["env"] = a.Runtime // deprecated Render response field, still required by its schema
+	}
+	if specific, ok := envSpecificDetails(a, svcType); ok {
+		details["envSpecificDetails"] = specific
+	}
+	if svcType == appv1alpha1.TypeStaticSite {
+		details["buildCommand"] = a.BuildCommand
+	}
+	if a.MaxShutdownDelaySeconds > 0 {
+		// Render places this on web/private/background-worker serviceDetails.
+		// view() supplies the shared Render/Kubernetes default (30) when the CR
+		// pointer is unset, so legacy services read back exactly like Render.
+		details["maxShutdownDelaySeconds"] = a.MaxShutdownDelaySeconds
+	}
+	if svcType == renderWebService {
+		// Render's maintenanceMode is required on webServiceDetails (never
+		// omitted), unlike the mostly-optional fields above — docs/render-
+		// artifacts/maintenance-mode.md.
+		details["maintenanceMode"] = map[string]any{
+			"enabled": a.MaintenanceMode.Enabled,
+			"uri":     a.MaintenanceMode.URI,
+		}
+	}
+	return details
+}
+
+// envSpecificDetails mirrors Render's runtime-keyed envSpecificDetails: the
+// docker shape for image builds, the buildpack shape for every other declared
+// runtime. Absent entirely when the service declares no runtime.
+func envSpecificDetails(a AppView, svcType string) (map[string]any, bool) {
+	if a.Runtime == "" {
+		return nil, false
+	}
+	if a.Runtime == "docker" {
+		docker := map[string]any{
+			"dockerCommand":  a.StartCommand,
+			"dockerContext":  a.RootDir,
+			"dockerfilePath": a.DockerfilePath,
+		}
+		if a.RegistryCredentialID != nil && *a.RegistryCredentialID != "" {
+			docker["registryCredentialId"] = *a.RegistryCredentialID
+		}
+		if a.PreDeployCommand != "" {
+			docker["preDeployCommand"] = a.PreDeployCommand
+		}
+		return docker, true
+	}
+	startCommand := a.StartCommand
+	if svcType == appv1alpha1.TypeCronJob {
+		startCommand = a.Command
+	}
+	return map[string]any{
+		"buildCommand":     a.BuildCommand,
+		"startCommand":     startCommand,
+		"preDeployCommand": a.PreDeployCommand,
+	}, true
+}
+
+func toRenderAutoscaling(as *AutoscalingView) *renderAutoscaling {
+	if as == nil {
+		return nil
+	}
+	return &renderAutoscaling{
+		Enabled:             as.Enabled,
+		MinInstances:        as.MinInstances,
+		MaxInstances:        as.MaxInstances,
+		TargetCPUPercent:    as.TargetCPUPercent,
+		TargetMemoryPercent: as.TargetMemoryPercent,
 	}
 }
 

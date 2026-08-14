@@ -494,6 +494,20 @@ func upsertOwned(ctx context.Context, c client.Client, scheme *runtime.Scheme, o
 	return err
 }
 
+// stampFinalizer adds the finalizer so deletion goes through the reconciler's
+// teardown path, reporting whether the caller must return now. The finalizer
+// update doesn't bump generation, so the requeue re-runs this reconcile against
+// the stamped object. Shared by the App, Database, and KeyValue reconcilers.
+func stampFinalizer(ctx context.Context, c client.Client, obj client.Object, finalizer string) (ctrl.Result, bool, error) {
+	if !controllerutil.AddFinalizer(obj, finalizer) {
+		return ctrl.Result{}, false, nil
+	}
+	if err := c.Update(ctx, obj); err != nil {
+		return ctrl.Result{}, true, err
+	}
+	return ctrl.Result{Requeue: true}, true, nil
+}
+
 // deleteOwned best-effort removes an owned optional object by gvk/name in the
 // owner's namespace.
 func deleteOwned(ctx context.Context, c client.Client, owner client.Object, gvk schema.GroupVersionKind, name string) error {
@@ -527,12 +541,8 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			"namespace", db.Namespace, "name", db.Name)
 		return ctrl.Result{}, nil
 	}
-	// Stamp the finalizer so deletion goes through the teardown path above.
-	if controllerutil.AddFinalizer(&db, dbFinalizer) {
-		if err := r.Update(ctx, &db); err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{Requeue: true}, nil
+	if res, done, err := stampFinalizer(ctx, r.Client, &db, dbFinalizer); done {
+		return res, err
 	}
 
 	diskRequeue, err := r.applyDiskAutoscaling(ctx, &db)
@@ -544,35 +554,11 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	dbname := db.Spec.EffectiveDatabaseName(db.Name)
 	owner := db.Spec.EffectiveDatabaseUser(db.Name)
 
-	// Backups (and so recovery/PITR) require the store to be configured; whether
-	// this cluster gets its OWN backups additionally needs the plan to opt in.
-	// Restoring to a new instance without a store is a hard error (nothing to
-	// restore from) — fail loudly rather than silently init an empty db.
-	storeConfigured := r.Backup.configured()
-	var store *BackupStore
-	if storeConfigured {
-		store = &r.Backup
-	}
-	backupEnabled := plan.Backup && storeConfigured
-	currentBackupServerName, targetBackupServerName := databaseBackupServerNames(&db)
-	if db.Spec.Recovery != nil && !storeConfigured {
-		return r.dbFail(ctx, &db, "RecoveryUnavailable",
-			fmt.Errorf("recovery requested but no backup store is configured"))
+	backups, reason, err := r.prepareBackups(ctx, &db, plan)
+	if err != nil {
+		return r.dbFail(ctx, &db, reason, err)
 	}
 
-	// The Barman ObjectStore and its S3 credential are namespaced, and GitOps
-	// installs exactly one of each in the shared apps namespace. A Database in a
-	// tenant namespace (ADR043 D8.4) therefore needs both projected there before
-	// the Cluster below can reference them by name. Failing loudly beats a
-	// Cluster that comes up with a dangling barmanObjectName and silently
-	// archives nothing.
-	if backupEnabled {
-		if err := r.reconcileTenantBackupStore(ctx, &db); err != nil {
-			return r.dbFail(ctx, &db, "BackupStoreUnavailable", err)
-		}
-	}
-
-	// --- project onto a CNPG Cluster (same name, same namespace) ---
 	cluster := &unstructured.Unstructured{}
 	cluster.SetGroupVersionKind(cnpgClusterGVK)
 	cluster.SetName(db.Name)
@@ -581,62 +567,26 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if done || err != nil {
 		return result, err
 	}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {
-		spec := cnpgClusterSpec(clusterParams{
-			plan: plan, storageGB: storageGB, version: db.Spec.Version,
-			dbname: dbname, owner: owner, store: store,
-			backupServerName: targetBackupServerName,
-			recovery:         db.Spec.Recovery, users: db.Spec.Users,
-			deletedUsers:     db.Spec.DeletedUsers,
-			highAvailability: db.Spec.HighAvailability,
-			parameters:       db.Spec.Parameters,
-		})
-		// Mark CNPG-managed pods as tenant databases so the node log shipper can
-		// exclude platform/auth CNPG clusters. Propagate workspace identity through
-		// the same bounded inheritedMetadata label map for NetworkPolicy selection.
-		inheritedLabels := map[string]any{"app.bex.co/component": "database"}
-		if ws := db.Labels[labelWorkspace]; ws != "" {
-			inheritedLabels[labelWorkspace] = ws
-		}
-		spec["inheritedMetadata"] = map[string]any{"labels": inheritedLabels}
-		cluster.Object["spec"] = spec
-		setLifecycleAnnotations(cluster, db.Spec.Suspended, db.Spec.RestartedAt)
-		return controllerutil.SetControllerReference(&db, cluster, r.Scheme)
+	if err := r.reconcileCluster(ctx, &db, cluster, clusterParams{
+		plan: plan, storageGB: storageGB, version: db.Spec.Version,
+		dbname: dbname, owner: owner, store: backups.store,
+		backupServerName: backups.targetServerName,
+		recovery:         db.Spec.Recovery, users: db.Spec.Users,
+		deletedUsers:     db.Spec.DeletedUsers,
+		highAvailability: db.Spec.HighAvailability,
+		parameters:       db.Spec.Parameters,
 	}); err != nil {
 		return r.dbFail(ctx, &db, "ClusterFailed", err)
 	}
 
-	// CNPG generates Secret "<cluster>-app" (username/password/dbname/host/port/uri)
-	// and Service "<cluster>-rw". The internal Database URL is that Secret's "uri".
-	db.Status.Host = fmt.Sprintf("%s-rw.%s.svc", db.Name, db.Namespace)
-	db.Status.Port = pgPort
-	db.Status.SecretName = db.Name + "-app"
-	db.Status.AllocatedStorageGB = storageGB
-	db.Status.ObservedStorageGB = db.Spec.StorageGB
-	db.Status.ObservedGeneration = db.Generation
-	db.Status.BackupsEnabled = backupEnabled
-	if backupEnabled && db.Status.BackupServerName == "" {
-		db.Status.BackupServerName = currentBackupServerName
-	}
-	if storeConfigured {
-		db.Status.BackupEndpointURL = r.Backup.EndpointURL
-		db.Status.BackupS3SecretName = r.Backup.S3Secret
-	} else {
-		db.Status.BackupEndpointURL = ""
-		db.Status.BackupS3SecretName = ""
-	}
+	r.stampConnectionStatus(&db, storageGB, backups)
 
-	// --- daily base backup (ScheduledBackup) when backups are enabled ---
-	if backupEnabled {
-		if err := upsertOwned(ctx, r.Client, r.Scheme, &db, cnpgScheduledBackupGVK, db.Name+"-backup", scheduledBackupSpec(db.Name)); err != nil {
-			return r.dbFail(ctx, &db, "ScheduledBackupFailed", err)
-		}
-	} else if err := deleteOwned(ctx, r.Client, &db, cnpgScheduledBackupGVK, db.Name+"-backup"); err != nil {
-		return r.dbFail(ctx, &db, "ScheduledBackupCleanupFailed", err)
+	if reason, err := r.reconcileScheduledBackup(ctx, &db, backups.enabled); err != nil {
+		return r.dbFail(ctx, &db, reason, err)
 	}
 
 	// --- logical exports: pg_dump directory archive -> object store ---
-	exportRequeue, err := r.reconcileExports(ctx, &db, storeConfigured)
+	exportRequeue, err := r.reconcileExports(ctx, &db, backups.storeConfigured)
 	if err != nil {
 		return r.dbFail(ctx, &db, "ExportFailed", err)
 	}
@@ -654,21 +604,8 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// --- external SNI endpoint status (rw + pooler + read replicas) ---
 	r.updateExternalAddressStatus(&db)
 
-	// Suspended (hibernated) settles immediately — CNPG stops compute, so waiting
-	// on readyInstances would never converge (mirrors the KeyValue suspend path).
 	if db.Spec.Suspended {
-		db.Status.Phase = appv1alpha1.DBPhaseReady
-		meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "Suspended",
-			Message: "postgres suspended (hibernated; PVC and config kept)", ObservedGeneration: db.Generation,
-		})
-		if err := r.Status().Update(ctx, &db); err != nil {
-			return ctrl.Result{}, err
-		}
-		if exportRequeue > 0 {
-			return ctrl.Result{RequeueAfter: exportRequeue}, nil
-		}
-		return ctrl.Result{}, nil
+		return r.settleSuspended(ctx, &db, exportRequeue)
 	}
 
 	// Desired cluster size: the plan default, raised to 2 for HA so the ready-gate
@@ -678,7 +615,127 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		desiredInstances = 2
 	}
 
-	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backupEnabled, targetBackupServerName, soonerRequeue(exportRequeue, diskRequeue))
+	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backups.enabled, backups.targetServerName, soonerRequeue(exportRequeue, diskRequeue))
+}
+
+// databaseBackupIntent is what one reconcile resolved about this Database's
+// backups: whether a store exists at all, whether this cluster gets its own
+// backups, and the Barman server names it reads from and writes to.
+type databaseBackupIntent struct {
+	store             *BackupStore
+	storeConfigured   bool
+	enabled           bool
+	currentServerName string
+	targetServerName  string
+}
+
+// prepareBackups resolves the Database's backup intent and projects the Barman
+// ObjectStore into its namespace when backups are on. A non-empty reason
+// accompanies an error and names the status the caller should fail with.
+//
+// Backups (and so recovery/PITR) require the store to be configured; whether
+// this cluster gets its OWN backups additionally needs the plan to opt in.
+// Restoring to a new instance without a store is a hard error (nothing to
+// restore from) — fail loudly rather than silently init an empty db.
+func (r *DatabaseReconciler) prepareBackups(ctx context.Context, db *appv1alpha1.Database, plan tiers.PostgresTier) (databaseBackupIntent, string, error) {
+	intent := databaseBackupIntent{storeConfigured: r.Backup.configured()}
+	if intent.storeConfigured {
+		intent.store = &r.Backup
+	}
+	intent.enabled = plan.Backup && intent.storeConfigured
+	intent.currentServerName, intent.targetServerName = databaseBackupServerNames(db)
+	if db.Spec.Recovery != nil && !intent.storeConfigured {
+		return intent, "RecoveryUnavailable", fmt.Errorf("recovery requested but no backup store is configured")
+	}
+	// The Barman ObjectStore and its S3 credential are namespaced, and GitOps
+	// installs exactly one of each in the shared apps namespace. A Database in a
+	// tenant namespace (ADR043 D8.4) therefore needs both projected there before
+	// the Cluster below can reference them by name. Failing loudly beats a
+	// Cluster that comes up with a dangling barmanObjectName and silently
+	// archives nothing.
+	if intent.enabled {
+		if err := r.reconcileTenantBackupStore(ctx, db); err != nil {
+			return intent, "BackupStoreUnavailable", err
+		}
+	}
+	return intent, "", nil
+}
+
+// reconcileCluster projects the Database onto its CNPG Cluster (same name, same
+// namespace). The caller owns cluster because the readiness gate reads it back.
+func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alpha1.Database, cluster *unstructured.Unstructured, params clusterParams) error {
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cluster, func() error {
+		spec := cnpgClusterSpec(params)
+		// Mark CNPG-managed pods as tenant databases so the node log shipper can
+		// exclude platform/auth CNPG clusters. Propagate workspace identity through
+		// the same bounded inheritedMetadata label map for NetworkPolicy selection.
+		inheritedLabels := map[string]any{"app.bex.co/component": "database"}
+		if ws := db.Labels[labelWorkspace]; ws != "" {
+			inheritedLabels[labelWorkspace] = ws
+		}
+		spec["inheritedMetadata"] = map[string]any{"labels": inheritedLabels}
+		cluster.Object["spec"] = spec
+		setLifecycleAnnotations(cluster, db.Spec.Suspended, db.Spec.RestartedAt)
+		return controllerutil.SetControllerReference(db, cluster, r.Scheme)
+	})
+	return err
+}
+
+// stampConnectionStatus records how consumers reach this Database and what its
+// backups resolved to. CNPG generates Secret "<cluster>-app" (username/password/
+// dbname/host/port/uri) and Service "<cluster>-rw" — the internal Database URL
+// is that Secret's "uri".
+func (r *DatabaseReconciler) stampConnectionStatus(db *appv1alpha1.Database, storageGB int32, backups databaseBackupIntent) {
+	db.Status.Host = fmt.Sprintf("%s-rw.%s.svc", db.Name, db.Namespace)
+	db.Status.Port = pgPort
+	db.Status.SecretName = db.Name + "-app"
+	db.Status.AllocatedStorageGB = storageGB
+	db.Status.ObservedStorageGB = db.Spec.StorageGB
+	db.Status.ObservedGeneration = db.Generation
+	db.Status.BackupsEnabled = backups.enabled
+	if backups.enabled && db.Status.BackupServerName == "" {
+		db.Status.BackupServerName = backups.currentServerName
+	}
+	if backups.storeConfigured {
+		db.Status.BackupEndpointURL = r.Backup.EndpointURL
+		db.Status.BackupS3SecretName = r.Backup.S3Secret
+	} else {
+		db.Status.BackupEndpointURL = ""
+		db.Status.BackupS3SecretName = ""
+	}
+}
+
+// reconcileScheduledBackup converges the daily base backup on the plan's
+// intent. A non-empty reason accompanies an error.
+func (r *DatabaseReconciler) reconcileScheduledBackup(ctx context.Context, db *appv1alpha1.Database, backupEnabled bool) (string, error) {
+	if backupEnabled {
+		if err := upsertOwned(ctx, r.Client, r.Scheme, db, cnpgScheduledBackupGVK, db.Name+"-backup", scheduledBackupSpec(db.Name)); err != nil {
+			return "ScheduledBackupFailed", err
+		}
+		return "", nil
+	}
+	if err := deleteOwned(ctx, r.Client, db, cnpgScheduledBackupGVK, db.Name+"-backup"); err != nil {
+		return "ScheduledBackupCleanupFailed", err
+	}
+	return "", nil
+}
+
+// settleSuspended reports a hibernated Database Ready immediately — CNPG stops
+// compute, so waiting on readyInstances would never converge (mirrors the
+// KeyValue suspend path).
+func (r *DatabaseReconciler) settleSuspended(ctx context.Context, db *appv1alpha1.Database, exportRequeue time.Duration) (ctrl.Result, error) {
+	db.Status.Phase = appv1alpha1.DBPhaseReady
+	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "Suspended",
+		Message: "postgres suspended (hibernated; PVC and config kept)", ObservedGeneration: db.Generation,
+	})
+	if err := r.Status().Update(ctx, db); err != nil {
+		return ctrl.Result{}, err
+	}
+	if exportRequeue > 0 {
+		return ctrl.Result{RequeueAfter: exportRequeue}, nil
+	}
+	return ctrl.Result{}, nil
 }
 
 // reconcilePooler creates/removes the owned CNPG Pooler and its derived

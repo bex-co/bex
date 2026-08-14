@@ -240,41 +240,7 @@ func main() {
 		// Left nil if metrics-server is absent => those metrics report 503.
 		ResourceMetrics: metrics.NewResourceMetricsSource(cs),
 	}
-	// Durable log history, wired only when BEX_LOKI_URL is set: QueryLogs/Logs
-	// then read Loki (history survives pod restarts) instead of live pod logs.
-	// Unset => the pod-log path runs byte-identical to before (docs/ADR010-observability.md).
-	// The SSE live tail stays on pod logs either way.
-	// It also backs the request-log split (type=request) and the structured
-	// filters/label discovery — the labels live in the store, not in a pod's
-	// stdout, so unset means those are refused (503), never silently ignored.
-	if lokiURL := os.Getenv("BEX_LOKI_URL"); lokiURL != "" {
-		deps.LogHistory = logs.NewLokiSource(lokiURL, nil)
-		deps.LogLabelValues = logs.NewLokiLabelValuesSource(lokiURL, nil)
-		// Host/path-filtered request metrics are served from the same Traefik
-		// access log in Loki (w5/m58) — the only store with a per-request
-		// host/path axis; unset => a host/path-filtered metrics read 503s.
-		deps.RequestLogMetrics = metrics.NewLokiRequestMetricsSource(lokiURL, nil)
-	}
-	// Prometheus-backed history, wired only when BEX_PROM_URL is set: request
-	// metrics (http_requests/latency/bandwidth via Traefik's counters — unwired
-	// they 503) and resource-metrics history (cpu/memory/instance_count via
-	// cAdvisor, preferred over the metrics-server snapshot; Prometheus set but
-	// unreachable surfaces the query error, it does not silently fall back).
-	// promURL is also used by the usage metering block below.
-	promURL := os.Getenv("BEX_PROM_URL")
-	if promURL != "" {
-		deps.RequestMetrics = metrics.NewPrometheusRequestSource(promURL, nil)
-		deps.ResourceMetricsRange = metrics.NewPrometheusResourceSource(promURL, nil)
-		deps.MonthToDateBandwidth = metrics.NewMonthToDateBandwidthSource(promURL, nil)
-		deps.MetricsFilterValues = metrics.NewPrometheusFilterValuesSource(promURL, nil)
-		// Datastore metrics (w3/m10): PVC usage (kubelet, already scraped
-		// cluster-wide) and CNPG's postgres_exporter (connections, replication
-		// lag — deploy/gitops/base/prometheus.yaml's cnpg-tenant-db job).
-		deps.DiskUsage = metrics.NewPrometheusDiskUsageSource(promURL, nil)
-		deps.DBConnections = metrics.NewPrometheusDBConnectionsSource(promURL, nil)
-		deps.ReplicationLag = metrics.NewPrometheusReplicationLagSource(promURL, nil)
-		deps.KeyValueStats = metrics.NewPrometheusKeyValueStatsSource(promURL, nil)
-	}
+	promURL := wireObservability(&deps)
 	// Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's admin API,
 	// Kratos sessions optional. Handler() fails fast without the Hydra URL. nil key
 	// store (stdio mode without a Hydra URL) keeps the api-key verbs answering
@@ -296,30 +262,7 @@ func main() {
 	if kratosAdmin := os.Getenv("BEX_KRATOS_ADMIN_URL"); kratosAdmin != "" {
 		deps.Identities = workspaces.NewKratosIdentities(kratosAdmin)
 	}
-	// Authorization (docs/ADR012-auth.md): unset => authz disabled (every verb allowed,
-	// the pre-m4 behavior); set => every verb checks OpenFGA, fail closed. NOT
-	// wired in stdio mode: that transport's trust boundary is the subprocess itself
-	// (no auth gate, so no identity — a wired checker would deny all).
-	var authzChecker core.Checker
-	if fga := os.Getenv("BEX_OPENFGA_URL"); fga != "" && !mcpStdio() {
-		authzChecker = authz.NewOpenFGAChecker(fga, os.Getenv("BEX_OPENFGA_TOKEN"))
-		base.Authz = authzChecker
-	}
-	// w1/m53 + w1/m65 F16: with the store on but OpenFGA off, checkAuthz allows
-	// every relation (fail-open). This is worse than "roles unenforced within a
-	// workspace": the explicit-workspace verbs (workspaces/members/projects) call
-	// AuthorizeOn/AuthorizeOnTarget with an arbitrary workspace object and do NOT
-	// pass through the membership-resolving WithWorkspace path, so cross-tenant
-	// isolation does NOT hold either — any authenticated caller can read/mutate
-	// another workspace. A multi-tenant API must therefore FAIL CLOSED (refuse to
-	// start) rather than warn. BEX_ALLOW_INSECURE_AUTHZ=1 is the documented
-	// single-member/local-dev override (mirrors BEX_CP_INSECURE for BEX_CP_TOKEN).
-	if base.Authz == nil && cpDBURI != "" && !mcpStdio() {
-		if os.Getenv("BEX_ALLOW_INSECURE_AUTHZ") != "1" {
-			log.Fatal("BEX_OPENFGA_URL is unset while the control-plane store is on (BEX_CP_DB_URI set): authorization would be FAIL-OPEN — every workspace member gets admin-equivalent rights AND explicit-workspace verbs bypass membership resolution, so cross-tenant isolation does not hold. Refusing to start a multi-tenant API without enforced authorization. Set BEX_OPENFGA_URL, or set BEX_ALLOW_INSECURE_AUTHZ=1 to override in single-member/local dev only (docs/ADR012-auth.md).")
-		}
-		log.Printf("WARNING: BEX_OPENFGA_URL is unset while the control-plane store is on and BEX_ALLOW_INSECURE_AUTHZ=1 — authorization is FAIL-OPEN (every member admin-equivalent; explicit-workspace verbs bypass membership isolation). Safe ONLY for a single-member workspace / local dev.")
-	}
+	authzChecker := wireAuthz(base, cpDBURI)
 
 	// Control plane (source of truth, w1/m2): opt-in via BEX_CP_DB_URI. When set,
 	// bex-api owns bex-db — run migrations, the projector (apps rows -> App CRs),
@@ -342,22 +285,8 @@ func main() {
 		// The datastore (Database/KeyValue) projection namespace; falls back to
 		// BEX_API_NAMESPACE so the two agree unless explicitly split.
 		appsNS := envOr("BEX_CP_APPS_NAMESPACE", base.Namespace)
-		pool, err := pgxpool.New(ctx, cpDBURI)
-		if err != nil {
-			log.Fatalf("bex-api: db config: %v", err)
-		}
+		pool := openControlPlaneDB(ctx, cpDBURI)
 		defer pool.Close()
-		// CNPG may still be coming up when the pod starts — wait for the DB rather
-		// than crash-looping, then converge the schema before serving.
-		if err := waitForDB(ctx, pool); err != nil {
-			log.Fatalf("bex-api: database unreachable: %v", err)
-		}
-		if err := store.Migrate(cpDBURI); err != nil {
-			log.Fatalf("bex-api: %v", err)
-		}
-		if err := store.CheckOwnership(ctx, pool); err != nil {
-			log.Fatalf("bex-api: %v", err)
-		}
 
 		st = store.NewPGStore(pool)
 		rec = store.NewReconciler(cl, st)
@@ -450,42 +379,7 @@ func main() {
 	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")
 	srv.HydraAdminURL = hydraAdminURL
 	srv.KratosURL = os.Getenv("BEX_KRATOS_URL")
-	// OAuth 2.1 discovery for MCP/agent clients (w4/m9, docs/ADR012-auth.md): the Hydra
-	// public issuer + this API's canonical resource URI. Both unset => no
-	// metadata endpoint, no audience check — behavior identical to before.
-	srv.OAuthIssuer = os.Getenv("BEX_OAUTH_ISSUER")
-	srv.OAuthResource = os.Getenv("BEX_OAUTH_RESOURCE")
-	// w1/m67 F1: narrow the empty-audience token exception to bex-provisioned
-	// OAuth clients. Opt-in because it must not precede the operator step that
-	// stamps the platform-client marker (scripts/auth-bootstrap-client.sh) — see
-	// docs/ADR012-auth.md §7.
-	srv.OAuthRequireAudience = os.Getenv("BEX_OAUTH_REQUIRE_AUDIENCE") == "1"
-	// codex F6: an opt-in security control that ships off is invisible, and this
-	// one stayed off through three remediation rounds while the fail-open posture
-	// remained the deployed default. The narrowed audience check (auth.go) is
-	// implemented; ENABLING it (BEX_OAUTH_REQUIRE_AUDIENCE=1) is an operator step
-	// gated on scripts/auth-bootstrap-client.sh having stamped the
-	// bex.co/platform-client marker first — flipping it before that 401s the
-	// official Render CLI + bex-mobile device-flow logins, which legitimately
-	// request no audience. So this is a LOUD WARNING on every start, not a
-	// fail-closed refusal: a hard refusal would either crashloop the API when
-	// the flag is off, or force BEX_ALLOW_INSECURE_AUTHZ=1 (which would also
-	// disable the OpenFGA fail-closed above). Track: docs/ADR055 F6 disposition.
-	if srv.OAuthResource != "" && !srv.OAuthRequireAudience {
-		log.Printf("WARNING: BEX_OAUTH_REQUIRE_AUDIENCE is off while BEX_OAUTH_RESOURCE=%q — an audience-less token "+
-			"from ANY self-registered OAuth client a user consents to carries that user's full workspace rights here (codex F6, cross-tenant). "+
-			"Activate: re-run scripts/auth-bootstrap-client.sh (stamps bex.co/platform-client), then set it to 1 "+
-			"(docs/ADR012-auth.md §7)", srv.OAuthResource)
-	}
-	srv.WebhookSecret = os.Getenv("BEX_WEBHOOK_SECRET")
-	// The GitHub App's app-wide webhook signs pushes with its own secret — a
-	// second accepted key so installed repos redeploy hands-free
-	// (docs/ADR026-github-integration.md).
-	srv.GitHubWebhookSecret = os.Getenv("BEX_GITHUB_WEBHOOK_SECRET")
-	// codex #4: in multitenant mode (control-plane store active), reject the shared
-	// manual webhook secret because it carries no per-workspace binding and would
-	// authorize cross-tenant deployment mutations. The GitHub App key is unaffected.
-	srv.MultitenantWebhook = cpDBURI != ""
+	configureServerAuthOptions(srv, cpDBURI)
 
 	// stdio MCP mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP
 	// adapter over stdin/stdout — how a local agent launches bex as a subprocess.
@@ -539,6 +433,138 @@ func main() {
 	if err := serve.UntilShutdown(ctx, httpSrv, serve.Options{Readiness: ready, DrainWindow: drainWindow}); err != nil {
 		log.Fatalf("bex-api: %v", err)
 	}
+}
+
+// wireObservability wires the optional log and metric history sources, and
+// returns the Prometheus base URL the usage-metering block reuses.
+func wireObservability(deps *api.Deps) string {
+	// Durable log history, wired only when BEX_LOKI_URL is set: QueryLogs/Logs
+	// then read Loki (history survives pod restarts) instead of live pod logs.
+	// Unset => the pod-log path runs byte-identical to before (docs/ADR010-observability.md).
+	// The SSE live tail stays on pod logs either way.
+	// It also backs the request-log split (type=request) and the structured
+	// filters/label discovery — the labels live in the store, not in a pod's
+	// stdout, so unset means those are refused (503), never silently ignored.
+	if lokiURL := os.Getenv("BEX_LOKI_URL"); lokiURL != "" {
+		deps.LogHistory = logs.NewLokiSource(lokiURL, nil)
+		deps.LogLabelValues = logs.NewLokiLabelValuesSource(lokiURL, nil)
+		// Host/path-filtered request metrics are served from the same Traefik
+		// access log in Loki (w5/m58) — the only store with a per-request
+		// host/path axis; unset => a host/path-filtered metrics read 503s.
+		deps.RequestLogMetrics = metrics.NewLokiRequestMetricsSource(lokiURL, nil)
+	}
+	// Prometheus-backed history, wired only when BEX_PROM_URL is set: request
+	// metrics (http_requests/latency/bandwidth via Traefik's counters — unwired
+	// they 503) and resource-metrics history (cpu/memory/instance_count via
+	// cAdvisor, preferred over the metrics-server snapshot; Prometheus set but
+	// unreachable surfaces the query error, it does not silently fall back).
+	promURL := os.Getenv("BEX_PROM_URL")
+	if promURL != "" {
+		deps.RequestMetrics = metrics.NewPrometheusRequestSource(promURL, nil)
+		deps.ResourceMetricsRange = metrics.NewPrometheusResourceSource(promURL, nil)
+		deps.MonthToDateBandwidth = metrics.NewMonthToDateBandwidthSource(promURL, nil)
+		deps.MetricsFilterValues = metrics.NewPrometheusFilterValuesSource(promURL, nil)
+		// Datastore metrics (w3/m10): PVC usage (kubelet, already scraped
+		// cluster-wide) and CNPG's postgres_exporter (connections, replication
+		// lag — deploy/gitops/base/prometheus.yaml's cnpg-tenant-db job).
+		deps.DiskUsage = metrics.NewPrometheusDiskUsageSource(promURL, nil)
+		deps.DBConnections = metrics.NewPrometheusDBConnectionsSource(promURL, nil)
+		deps.ReplicationLag = metrics.NewPrometheusReplicationLagSource(promURL, nil)
+		deps.KeyValueStats = metrics.NewPrometheusKeyValueStatsSource(promURL, nil)
+	}
+	return promURL
+}
+
+// wireAuthz installs the OpenFGA checker on base and enforces the fail-closed
+// posture a multi-tenant API requires.
+//
+// Authorization (docs/ADR012-auth.md): unset => authz disabled (every verb allowed,
+// the pre-m4 behavior); set => every verb checks OpenFGA, fail closed. NOT
+// wired in stdio mode: that transport's trust boundary is the subprocess itself
+// (no auth gate, so no identity — a wired checker would deny all).
+func wireAuthz(base *core.Base, cpDBURI string) core.Checker {
+	var authzChecker core.Checker
+	if fga := os.Getenv("BEX_OPENFGA_URL"); fga != "" && !mcpStdio() {
+		authzChecker = authz.NewOpenFGAChecker(fga, os.Getenv("BEX_OPENFGA_TOKEN"))
+		base.Authz = authzChecker
+	}
+	// w1/m53 + w1/m65 F16: with the store on but OpenFGA off, checkAuthz allows
+	// every relation (fail-open). This is worse than "roles unenforced within a
+	// workspace": the explicit-workspace verbs (workspaces/members/projects) call
+	// AuthorizeOn/AuthorizeOnTarget with an arbitrary workspace object and do NOT
+	// pass through the membership-resolving WithWorkspace path, so cross-tenant
+	// isolation does NOT hold either — any authenticated caller can read/mutate
+	// another workspace. A multi-tenant API must therefore FAIL CLOSED (refuse to
+	// start) rather than warn. BEX_ALLOW_INSECURE_AUTHZ=1 is the documented
+	// single-member/local-dev override (mirrors BEX_CP_INSECURE for BEX_CP_TOKEN).
+	if base.Authz == nil && cpDBURI != "" && !mcpStdio() {
+		if os.Getenv("BEX_ALLOW_INSECURE_AUTHZ") != "1" {
+			log.Fatal("BEX_OPENFGA_URL is unset while the control-plane store is on (BEX_CP_DB_URI set): authorization would be FAIL-OPEN — every workspace member gets admin-equivalent rights AND explicit-workspace verbs bypass membership resolution, so cross-tenant isolation does not hold. Refusing to start a multi-tenant API without enforced authorization. Set BEX_OPENFGA_URL, or set BEX_ALLOW_INSECURE_AUTHZ=1 to override in single-member/local dev only (docs/ADR012-auth.md).")
+		}
+		log.Printf("WARNING: BEX_OPENFGA_URL is unset while the control-plane store is on and BEX_ALLOW_INSECURE_AUTHZ=1 — authorization is FAIL-OPEN (every member admin-equivalent; explicit-workspace verbs bypass membership isolation). Safe ONLY for a single-member workspace / local dev.")
+	}
+	return authzChecker
+}
+
+// openControlPlaneDB dials bex-db and converges its schema before anything
+// serves. CNPG may still be coming up when the pod starts — wait for the DB
+// rather than crash-looping. The caller owns closing the returned pool.
+func openControlPlaneDB(ctx context.Context, cpDBURI string) *pgxpool.Pool {
+	pool, err := pgxpool.New(ctx, cpDBURI)
+	if err != nil {
+		log.Fatalf("bex-api: db config: %v", err)
+	}
+	if err := waitForDB(ctx, pool); err != nil {
+		log.Fatalf("bex-api: database unreachable: %v", err)
+	}
+	if err := store.Migrate(cpDBURI); err != nil {
+		log.Fatalf("bex-api: %v", err)
+	}
+	if err := store.CheckOwnership(ctx, pool); err != nil {
+		log.Fatalf("bex-api: %v", err)
+	}
+	return pool
+}
+
+// configureServerAuthOptions applies the OAuth discovery and webhook-key
+// settings, warning loudly about the audience check that ships off.
+func configureServerAuthOptions(srv *api.Server, cpDBURI string) {
+	// OAuth 2.1 discovery for MCP/agent clients (w4/m9, docs/ADR012-auth.md): the Hydra
+	// public issuer + this API's canonical resource URI. Both unset => no
+	// metadata endpoint, no audience check — behavior identical to before.
+	srv.OAuthIssuer = os.Getenv("BEX_OAUTH_ISSUER")
+	srv.OAuthResource = os.Getenv("BEX_OAUTH_RESOURCE")
+	// w1/m67 F1: narrow the empty-audience token exception to bex-provisioned
+	// OAuth clients. Opt-in because it must not precede the operator step that
+	// stamps the platform-client marker (scripts/auth-bootstrap-client.sh) — see
+	// docs/ADR012-auth.md §7.
+	srv.OAuthRequireAudience = os.Getenv("BEX_OAUTH_REQUIRE_AUDIENCE") == "1"
+	// codex F6: an opt-in security control that ships off is invisible, and this
+	// one stayed off through three remediation rounds while the fail-open posture
+	// remained the deployed default. The narrowed audience check (auth.go) is
+	// implemented; ENABLING it (BEX_OAUTH_REQUIRE_AUDIENCE=1) is an operator step
+	// gated on scripts/auth-bootstrap-client.sh having stamped the
+	// bex.co/platform-client marker first — flipping it before that 401s the
+	// official Render CLI + bex-mobile device-flow logins, which legitimately
+	// request no audience. So this is a LOUD WARNING on every start, not a
+	// fail-closed refusal: a hard refusal would either crashloop the API when
+	// the flag is off, or force BEX_ALLOW_INSECURE_AUTHZ=1 (which would also
+	// disable the OpenFGA fail-closed above). Track: docs/ADR055 F6 disposition.
+	if srv.OAuthResource != "" && !srv.OAuthRequireAudience {
+		log.Printf("WARNING: BEX_OAUTH_REQUIRE_AUDIENCE is off while BEX_OAUTH_RESOURCE=%q — an audience-less token "+
+			"from ANY self-registered OAuth client a user consents to carries that user's full workspace rights here (codex F6, cross-tenant). "+
+			"Activate: re-run scripts/auth-bootstrap-client.sh (stamps bex.co/platform-client), then set it to 1 "+
+			"(docs/ADR012-auth.md §7)", srv.OAuthResource)
+	}
+	srv.WebhookSecret = os.Getenv("BEX_WEBHOOK_SECRET")
+	// The GitHub App's app-wide webhook signs pushes with its own secret — a
+	// second accepted key so installed repos redeploy hands-free
+	// (docs/ADR026-github-integration.md).
+	srv.GitHubWebhookSecret = os.Getenv("BEX_GITHUB_WEBHOOK_SECRET")
+	// codex #4: in multitenant mode (control-plane store active), reject the shared
+	// manual webhook secret because it carries no per-workspace binding and would
+	// authorize cross-tenant deployment mutations. The GitHub App key is unaffected.
+	srv.MultitenantWebhook = cpDBURI != ""
 }
 
 // wireGitHubApp wires the GitHub App integration (docs/ADR026-github-integration.md): private-repo deploys +

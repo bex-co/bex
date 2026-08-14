@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // CommitResolver resolves a repo ref (branch, tag, or SHA) to the exact
@@ -53,7 +54,7 @@ func (s *Service) resolveDeployCommit(ctx context.Context, workspaceID, repo, re
 		return store.CommitInfo{}
 	}
 	if ref == "" {
-		ref = "main"
+		ref = appv1alpha1.DefaultBranch
 	}
 	commit, ok, err := s.Commits.ResolveCommit(ctx, workspaceID, repo, ref)
 	if err != nil || !ok {

@@ -76,6 +76,13 @@ const ConditionPublicRouting = "PublicRouting"
 // reason vocabulary).
 const ConditionReady = "Ready"
 
+// DefaultBranch is the git branch a repo-backed App tracks when none is
+// specified. It lives on the CRD contract because both sides default to it
+// independently — the backend when validating a source patch or projecting a
+// row, the operator when cloning — and a silent disagreement would build the
+// wrong ref.
+const DefaultBranch = "main"
+
 // SubdomainPolicy controls whether the platform subdomain (<slug>.onbex.co) is
 // active for an App. Render's renderSubdomainPolicy enum values.
 const (

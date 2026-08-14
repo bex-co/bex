@@ -595,7 +595,7 @@ func observedImagePullFailure(open Deploy, app *appv1alpha1.App) (ServiceEventFa
 	}
 	for i := range app.Status.Conditions {
 		condition := &app.Status.Conditions[i]
-		if condition.Type != "Ready" || condition.ObservedGeneration != app.Generation || condition.Reason != "ImagePullBackOff" {
+		if condition.Type != appv1alpha1.ConditionReady || condition.ObservedGeneration != app.Generation || condition.Reason != "ImagePullBackOff" {
 			continue
 		}
 		at := condition.LastTransitionTime.Time
@@ -649,38 +649,10 @@ func (r *Reconciler) deployTimedOut(d DesiredApp, open Deploy) bool {
 // building or rolling; status.releaseGeneration keeps that harmless churn from
 // orphaning the deploy row. Legacy operators fall back to metadata generation.
 func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) string {
-	// A reported release generation PAST the open row's means this row's release
-	// was superseded before it could finish — a git-push redeploy, env-var
-	// change, or restart minted a newer release identity without adopting the
-	// row. Generations are monotonic, so the row can never advance again; close
-	// it canceled, the CR-side mirror of CreateDeploy's newest-wins cancel.
-	// Only status.releaseGeneration is trusted here: the legacy metadata-
-	// generation fallback below also moves for operational churn (manual
-	// scale), which must keep waiting, not cancel a live rollout's row.
-	if app.Status.ReleaseGeneration > 0 && open.Generation != 0 && app.Status.ReleaseGeneration > open.Generation {
-		return DeployCanceled
+	if status, settled := supersededDeployStatus(open, app, timedOut); settled {
+		return status
 	}
-	if generation := appReleaseGeneration(app); generation != 0 && open.Generation != 0 && generation != open.Generation {
-		// The CR's release generation no longer matches this open row. Usually a
-		// brief transient while the operator catches up to a just-patched spec, so
-		// keep waiting. But once the row has sat past its gate timeout the match
-		// will never arrive: if the App CR was deleted and recreated — e.g. the
-		// ADR043 per-tenant-namespace migration re-applying every CR — its
-		// status.releaseGeneration restarts BELOW this row's stored generation, so
-		// the release can never be adopted and the row would otherwise report
-		// "in progress" forever (a healthy PhaseRunning App never trips the
-		// phase-switch timeout below). Close it canceled — the terminal the
-		// superseded case above already uses — but only for a release-generation-
-		// aware operator (status.releaseGeneration > 0); a legacy operator's
-		// metadata generation also moves for operational churn (manual scale), so
-		// it keeps the conservative wait rather than risk canceling a live rollout.
-		if timedOut && app.Status.ReleaseGeneration > 0 {
-			return DeployCanceled
-		}
-		return ""
-	}
-	pds := preDeployStatusFor(app)
-	switch pds {
+	switch preDeployStatusFor(app) {
 	case PreDeployRunning:
 		if timedOut {
 			return DeployPreDeployFailed
@@ -693,14 +665,15 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 	reason, conditionCurrent := readyReasonForGeneration(app)
 	switch app.Status.Phase {
 	case appv1alpha1.PhaseBuilding:
-		if conditionCurrent && timedOut {
-			return DeployBuildFailed
-		}
-		if conditionCurrent && reason == "BuildQueued" {
-			return DeployQueued
-		}
 		if conditionCurrent {
-			return DeployBuildInProgress
+			switch {
+			case timedOut:
+				return DeployBuildFailed
+			case reason == "BuildQueued":
+				return DeployQueued
+			default:
+				return DeployBuildInProgress
+			}
 		}
 	case appv1alpha1.PhaseDeploying:
 		if conditionCurrent {
@@ -729,6 +702,50 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 	if !timedOut {
 		return ""
 	}
+	return timedOutDeployStatus(open)
+}
+
+// supersededDeployStatus decides the open row's fate when the CR's release
+// generation no longer matches it. settled=false means the generations agree and
+// the caller should read live phase evidence instead.
+func supersededDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) (string, bool) {
+	// A reported release generation PAST the open row's means this row's release
+	// was superseded before it could finish — a git-push redeploy, env-var
+	// change, or restart minted a newer release identity without adopting the
+	// row. Generations are monotonic, so the row can never advance again; close
+	// it canceled, the CR-side mirror of CreateDeploy's newest-wins cancel.
+	// Only status.releaseGeneration is trusted here: the legacy metadata-
+	// generation fallback below also moves for operational churn (manual
+	// scale), which must keep waiting, not cancel a live rollout's row.
+	if app.Status.ReleaseGeneration > 0 && open.Generation != 0 && app.Status.ReleaseGeneration > open.Generation {
+		return DeployCanceled, true
+	}
+	generation := appReleaseGeneration(app)
+	if generation == 0 || open.Generation == 0 || generation == open.Generation {
+		return "", false
+	}
+	// The CR's release generation no longer matches this open row. Usually a
+	// brief transient while the operator catches up to a just-patched spec, so
+	// keep waiting. But once the row has sat past its gate timeout the match
+	// will never arrive: if the App CR was deleted and recreated — e.g. the
+	// ADR043 per-tenant-namespace migration re-applying every CR — its
+	// status.releaseGeneration restarts BELOW this row's stored generation, so
+	// the release can never be adopted and the row would otherwise report
+	// "in progress" forever (a healthy PhaseRunning App never trips the
+	// phase-switch timeout below). Close it canceled — the terminal the
+	// superseded case above already uses — but only for a release-generation-
+	// aware operator (status.releaseGeneration > 0); a legacy operator's
+	// metadata generation also moves for operational churn (manual scale), so
+	// it keeps the conservative wait rather than risk canceling a live rollout.
+	if timedOut && app.Status.ReleaseGeneration > 0 {
+		return DeployCanceled, true
+	}
+	return "", true
+}
+
+// timedOutDeployStatus fails an open row out in the phase it was last known to
+// be in, once no live evidence has moved it before the gate timeout.
+func timedOutDeployStatus(open Deploy) string {
 	switch open.Status {
 	case DeployQueued, DeployBuildInProgress:
 		return DeployBuildFailed
@@ -773,7 +790,7 @@ func releaseIsActive(open Deploy, app *appv1alpha1.App) bool {
 func failureReasonFor(app *appv1alpha1.App) (string, string) {
 	for i := range app.Status.Conditions {
 		c := &app.Status.Conditions[i]
-		if c.Type != "Ready" || c.ObservedGeneration != app.Generation {
+		if c.Type != appv1alpha1.ConditionReady || c.ObservedGeneration != app.Generation {
 			continue
 		}
 		switch c.Reason {
@@ -811,7 +828,7 @@ func concreteContainerFailure(reason string) bool {
 func readyReasonForGeneration(app *appv1alpha1.App) (string, bool) {
 	for i := range app.Status.Conditions {
 		ready := &app.Status.Conditions[i]
-		if ready.Type == "Ready" && ready.ObservedGeneration == app.Generation {
+		if ready.Type == appv1alpha1.ConditionReady && ready.ObservedGeneration == app.Generation {
 			return ready.Reason, true
 		}
 	}
@@ -830,7 +847,7 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 	}
 	for i := range app.Status.Conditions {
 		condition := &app.Status.Conditions[i]
-		if condition.Type != "Ready" {
+		if condition.Type != appv1alpha1.ConditionReady {
 			continue
 		}
 		switch condition.Status {

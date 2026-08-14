@@ -31,6 +31,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 
 	"github.com/bex-co/bex/lego/types/tiers"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // API is the minimal product surface over the source of truth: create a
@@ -428,7 +429,7 @@ func appFromRequest(req CreateAppRequest) (App, error) {
 		return App{}, fmt.Errorf("%w: idleTTLSeconds must be >= 0", ErrInvalid)
 	}
 	if req.Branch == "" {
-		req.Branch = "main"
+		req.Branch = appv1alpha1.DefaultBranch
 	}
 	return App{
 		TenantID:       req.TenantID,

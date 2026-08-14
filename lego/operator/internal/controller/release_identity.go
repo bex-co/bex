@@ -148,7 +148,7 @@ func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
 	builder := effectiveBuilder(spec)
 	branch := spec.Branch
 	if spec.Repo != "" && branch == "" {
-		branch = "main"
+		branch = appv1alpha1.DefaultBranch
 	}
 
 	artifactInput := artifactIdentityInput{
