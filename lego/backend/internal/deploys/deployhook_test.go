@@ -60,7 +60,11 @@ func TestDeployHookRevealAndRotationFailClosedOnFreshRevocation(t *testing.T) {
 			svc, cl := newService(newFakeStore(), sampleApp("web", "srv-1"))
 			checker := &staleDeployHookChecker{}
 			svc.Authz = checker
-			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "revoked"})
+			// Method "session" so the round-7 F3 credential-class gate (which now
+			// fronts both verbs) passes and this test still exercises what it is
+			// about: the FRESH relation re-check. TestDeployHookVerbsRequireMintCredentialClass
+			// covers the class seam itself.
+			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "revoked", Method: "session"})
 			if err := tc.call(svc, ctx); !errors.Is(err, core.ErrForbidden) {
 				t.Fatalf("call error = %v, want ErrForbidden", err)
 			}
