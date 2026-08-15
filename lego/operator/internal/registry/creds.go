@@ -37,6 +37,7 @@ package registry
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -78,6 +79,8 @@ type Creds struct {
 	mu         sync.Mutex
 	apps       map[string]activation
 	lastBounce time.Time
+	// verified memoizes bcrypt comparisons by zot username (see hashVerified).
+	verified map[string][sha256.Size]byte
 }
 
 // zotHTPasswdPath and zotHTTPPort are contract values that the Zot Helm chart
@@ -293,18 +296,33 @@ func (c *Creds) passwordFrom(dockerConfigJSON []byte, username string) (string, 
 func (c *Creds) ensureHTPasswdEntry(ctx context.Context, username, password string) (bool, error) {
 	return c.mutateSecretKey(ctx, c.HTPasswdName, htpasswdKey, nil,
 		func(current []byte) ([]byte, bool, error) {
-			if hash, found := htpasswdUserHash(current, username); found &&
-				bcrypt.CompareHashAndPassword(hash, []byte(password)) == nil {
-				return nil, false, nil
+			if hash, found := htpasswdUserHash(current, username); found {
+				if c.hashVerified(username, hash, password) {
+					return nil, false, nil
+				}
+				if bcrypt.CompareHashAndPassword(hash, []byte(password)) == nil {
+					c.recordVerified(username, hash, password)
+					return nil, false, nil
+				}
 			}
 			next, err := setHTPasswdLine(current, username, password)
-			return next, err == nil, err
+			if err != nil {
+				c.forgetVerified(username)
+				return nil, false, err
+			}
+			// Memoize the hash just generated, so the very next pass is already
+			// free rather than paying one more compare to learn what we know.
+			if fresh, ok := htpasswdUserHash(next, username); ok {
+				c.recordVerified(username, fresh, password)
+			}
+			return next, true, nil
 		})
 }
 
 // replaceHTPasswdEntry unconditionally rehashes username's entry (rotation:
 // the new password must displace a hash that still verifies against the old).
 func (c *Creds) replaceHTPasswdEntry(ctx context.Context, username, password string) error {
+	c.forgetVerified(username)
 	_, err := c.mutateSecretKey(ctx, c.HTPasswdName, htpasswdKey, nil,
 		func(current []byte) ([]byte, bool, error) {
 			next, err := setHTPasswdLine(current, username, password)
@@ -315,6 +333,7 @@ func (c *Creds) replaceHTPasswdEntry(ctx context.Context, username, password str
 
 // removeHTPasswdEntry drops username's entry, reporting whether one was there.
 func (c *Creds) removeHTPasswdEntry(ctx context.Context, username string) (bool, error) {
+	c.forgetVerified(username)
 	removed, err := c.mutateSecretKey(ctx, c.HTPasswdName, htpasswdKey, nil,
 		func(current []byte) ([]byte, bool, error) {
 			if _, found := htpasswdUserHash(current, username); !found {

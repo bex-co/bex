@@ -243,10 +243,19 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 			inserted = append(inserted, fact)
 		}
 		checkpointPhase := checkpointServicePhase(previousPhase, obs.ServicePhase)
+		// IS DISTINCT FROM makes the steady state a no-op instead of a row
+		// write: the reconciler records an observation for EVERY app on every
+		// resync (30s) and every Kick (after each successful API write), and
+		// almost none of them changed. Without the guard, updated_at alone
+		// still moved, so each pass cost one real write + WAL + index churn per
+		// app. Nothing reads updated_at — it is write-only bookkeeping — so
+		// letting it stop advancing on a no-change pass loses nothing.
+		// Same shape as SetDeployPreDeployStatus's guard in store.go.
 		_, err = tx.Exec(ctx,
 			`UPDATE service_event_checkpoints
 			 SET service_phase = $2, availability = $3, updated_at = $4
-			 WHERE app_id = $1`,
+			 WHERE app_id = $1
+			   AND (service_phase, availability) IS DISTINCT FROM ($2, $3)`,
 			obs.AppID, checkpointPhase, availability, obs.At)
 		return err
 	})

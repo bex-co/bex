@@ -59,6 +59,7 @@ type fakePushWorkerStore struct {
 
 	notifications map[string]store.PushNotification
 	deliveries    map[string]*fakePushQueueDelivery
+	enqueueCalls  int
 }
 
 func newFakePushWorkerStore() *fakePushWorkerStore {
@@ -159,6 +160,7 @@ func (f *fakePushWorkerStore) EnqueuePushNotifications(
 ) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.enqueueCalls++
 	for _, item := range items {
 		notificationKey := pushNotificationKey(item.Notification)
 		if _, exists := f.notifications[notificationKey]; !exists {
@@ -964,5 +966,67 @@ func TestPushWorkerProjectsTerminalAgentSessions(t *testing.T) {
 	}
 	if _, leaked := byResource["ags-c185th5c2rvvnhbfil99"]; leaked {
 		t.Fatal("tea-two session leaked a push to tea-one's recipient")
+	}
+}
+
+// TestPushWorkerDoesNotReprojectSettledAgentSessions pins the agent-session
+// cursor. A terminal session stays inside the 6h scan window, so before the
+// cursor every 2s tick re-fanned it out and re-enqueued it — thousands of write
+// transactions per session, saved from being duplicates only by ON CONFLICT.
+// The cursor must stop that WITHOUT losing a session that settles later.
+func TestPushWorkerDoesNotReprojectSettledAgentSessions(t *testing.T) {
+	now := time.Date(2026, time.August, 8, 12, 0, 0, 0, time.UTC)
+	queue := newFakePushWorkerStore()
+	queue.watermarkAt = now.Add(-time.Hour)
+	queue.destinations = []store.ActivePushSubscription{{
+		TenantID: "tea-one", Subject: "alice", Role: "admin", DeviceID: "alice-ios",
+		Provider: "expo", Platform: "ios", Token: "tok", CreatedAt: now.Add(-time.Hour),
+	}}
+	queue.agentSessions = []store.AgentSession{{
+		ID: "ags-c185th5c2rvvnhbfiltg", WorkspaceID: "tea-one", Repo: "org/app",
+		Phase: "failed", FailureReason: "boom", UpdatedAt: now.Add(-time.Minute),
+	}}
+	worker := &PushWorker{Store: queue, Clock: func() time.Time { return now }}
+
+	if err := worker.RunOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	queue.mu.Lock()
+	afterFirst := queue.enqueueCalls
+	queue.mu.Unlock()
+
+	for range 5 {
+		if err := worker.RunOnce(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	queue.mu.Lock()
+	afterRepeats := queue.enqueueCalls
+	queue.mu.Unlock()
+	if afterRepeats != afterFirst {
+		t.Errorf("settled session re-enqueued on %d further ticks; want 0", afterRepeats-afterFirst)
+	}
+
+	// A session settling later — at the SAME instant as the cursor — must still
+	// be projected: the skip is strictly-older, so the boundary is re-read.
+	queue.mu.Lock()
+	queue.agentSessions = append(queue.agentSessions, store.AgentSession{
+		ID: "ags-c185th5c2rvvnhbfil00", WorkspaceID: "tea-one", Repo: "org/api",
+		Phase: "failed", FailureReason: "later", UpdatedAt: now.Add(-time.Minute),
+	})
+	queue.mu.Unlock()
+	if err := worker.RunOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	found := false
+	for _, n := range queue.notifications {
+		if n.ResourceID == "ags-c185th5c2rvvnhbfil00" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("a session settling at the cursor instant was skipped — the cursor must not lose it")
 	}
 }

@@ -719,6 +719,27 @@ func (b *Base) Tenant(ctx context.Context) (string, bool) {
 	return tenantID, true
 }
 
+// WorkspaceOrDefault is Tenant collapsed to the single-workspace default when
+// the caller has none — the form a verb wants when it must name SOME workspace
+// to scope a store row by, rather than branching on absence.
+func (b *Base) WorkspaceOrDefault(ctx context.Context) string {
+	if tenantID, ok := b.Tenant(ctx); ok {
+		return tenantID
+	}
+	return DefaultTenant
+}
+
+// AppWorkspace resolves the workspace whose GitHub connection owns an App's
+// clone token. The App's OWN tenant label wins over the caller's: a trigger
+// carrying no identity (the push webhook, a deploy hook) must still resolve the
+// App's real connection instead of falling back to the default workspace.
+func (b *Base) AppWorkspace(ctx context.Context, a *appv1alpha1.App) string {
+	if t := a.Labels[LabelTenant]; t != "" {
+		return t
+	}
+	return b.WorkspaceOrDefault(ctx)
+}
+
 // AuthorizeApp is the single seam for a verb scoped to ONE named App (w6/m17):
 // fetch it, authorize `relation` against ITS OWN workspace once, and record
 // exactly one audit event (target = core.ServiceTarget(name)). It replaces the
@@ -1269,9 +1290,18 @@ func (b *Base) AppPods(ctx context.Context, app string) ([]corev1.Pod, error) {
 		// No such App => no pods.
 		return nil, nil
 	}
+	return b.AppPodsIn(ctx, ns, app)
+}
+
+// AppPodsIn is AppPods for a caller that already holds the App CR, skipping the
+// by-name namespace resolve. That resolve is an UNSELECTED cluster-wide App
+// list against an uncached client, so it ships every App CR on the platform
+// over the wire to learn one namespace; a verb that reached this point through
+// AuthorizeApp already has app.Namespace in hand and must not pay for it.
+func (b *Base) AppPodsIn(ctx context.Context, namespace, app string) ([]corev1.Pod, error) {
 	var pods corev1.PodList
 	if err := b.Client.List(ctx, &pods,
-		client.InNamespace(ns),
+		client.InNamespace(namespace),
 		client.MatchingLabels{PodLabelApp: app}); err != nil {
 		return nil, err
 	}

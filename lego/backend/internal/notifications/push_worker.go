@@ -128,6 +128,21 @@ type PushWorker struct {
 	watermarkAt     time.Time
 	watermarkKey    string
 	lastSweep       time.Time
+	// agentSessionCursor is the newest session UpdatedAt already projected to
+	// push, and agentSessionBoundary the source keys sitting at exactly that
+	// instant. Terminal sessions stay in the 6h scan window, so without them
+	// every tick (2s) re-fans-out and re-enqueues the same sessions for six
+	// hours — ~10k redundant write transactions per session, each a batch of
+	// INSERTs that only ON CONFLICT DO NOTHING saves from being duplicates.
+	//
+	// The boundary set is what makes the skip exact rather than merely cheap: a
+	// bare timestamp forces a choice between re-projecting the newest instant
+	// forever (no saving) and skipping not-newer sessions (losing one that
+	// commits after this tick's read but shares that instant). Naming the keys
+	// already projected at the boundary rules out both. It holds one entry in
+	// the ordinary case — only sessions sharing the exact newest timestamp.
+	agentSessionCursor   time.Time
+	agentSessionBoundary map[string]bool
 }
 
 func (w *PushWorker) pollInterval() time.Duration {
@@ -396,8 +411,21 @@ func (w *PushWorker) dispatchAgentSessions(ctx context.Context, destinations []s
 	decisionTime := w.now()
 	evaluator := DeliveryPolicyEvaluator{Now: func() time.Time { return decisionTime }}
 	batch := make([]store.PushNotificationBatchItem, 0)
+	newestSeen := w.agentSessionCursor
+	boundary := map[string]bool{}
 	for _, session := range sessions {
 		if !tenantSet[session.WorkspaceID] {
+			continue
+		}
+		sourceKey := "agent:" + session.ID + ":" + session.Phase
+		if session.UpdatedAt.After(newestSeen) {
+			newestSeen = session.UpdatedAt
+			boundary = map[string]bool{}
+		}
+		if session.UpdatedAt.Equal(newestSeen) {
+			boundary[sourceKey] = true
+		}
+		if w.agentSessionProjected(session.UpdatedAt, sourceKey) {
 			continue
 		}
 		projected, ok := projectAgentSessionPush(session)
@@ -406,7 +434,7 @@ func (w *PushWorker) dispatchAgentSessions(ctx context.Context, destinations []s
 		}
 		batch, err = fanOutPush(batch, evaluator, byTenant[session.WorkspaceID], pushTarget{
 			workspaceID:  session.WorkspaceID,
-			sourceKey:    "agent:" + session.ID + ":" + session.Phase,
+			sourceKey:    sourceKey,
 			resourceKind: "agentSession", resourceID: session.ID,
 			deepLink: "/sessions/" + session.ID, occurredAt: session.UpdatedAt, projected: projected,
 		})
@@ -415,11 +443,27 @@ func (w *PushWorker) dispatchAgentSessions(ctx context.Context, destinations []s
 		}
 	}
 	if len(batch) == 0 {
+		w.agentSessionCursor, w.agentSessionBoundary = newestSeen, boundary
 		return nil
 	}
 	// Pass the CURRENT watermark: the monotonic guard makes the cursor UPDATE a
 	// no-op while the notification inserts commit (deduped by source_event_key).
-	return w.Store.EnqueuePushNotifications(ctx, batch, w.watermarkAt, w.watermarkKey)
+	if err := w.Store.EnqueuePushNotifications(ctx, batch, w.watermarkAt, w.watermarkKey); err != nil {
+		return err
+	}
+	// Advance only after the write commits, so a failed enqueue is retried.
+	w.agentSessionCursor, w.agentSessionBoundary = newestSeen, boundary
+	return nil
+}
+
+// agentSessionProjected reports whether this session has already been fanned
+// out: anything strictly older than the cursor, plus the keys recorded at the
+// cursor instant itself.
+func (w *PushWorker) agentSessionProjected(updatedAt time.Time, sourceKey string) bool {
+	if updatedAt.Before(w.agentSessionCursor) {
+		return true
+	}
+	return updatedAt.Equal(w.agentSessionCursor) && w.agentSessionBoundary[sourceKey]
 }
 
 func (w *PushWorker) dispatch(ctx context.Context, destinations []store.ActivePushSubscription) error {
