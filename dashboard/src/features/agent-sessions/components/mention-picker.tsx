@@ -1,9 +1,11 @@
+import { Fragment } from "react";
 import { BookMarked, Bot, Check, Lock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   CATEGORY_META,
+  mentionOptionGroup,
   mentionOptionId,
 } from "@/features/agent-sessions/lib/mention";
 import type {
@@ -105,15 +107,33 @@ export function MentionPicker({
         ) : (
           options.map((option, index) => {
             const description = describeOption(option, t);
+            // Category rows (group null) are intentionally headerless — they
+            // sit above the entity groups as the drill-down affordance.
+            const group = mentionOptionGroup(option);
+            const previousGroup =
+              index > 0 ? mentionOptionGroup(options[index - 1]) : null;
+            const header =
+              group !== null && group !== previousGroup
+                ? t(CATEGORY_META[group].labelKey)
+                : null;
             return (
-              <MentionOptionRow
-                key={description.key}
-                id={mentionOptionId(idBase, index)}
-                description={description}
-                active={index === highlight}
-                onHighlight={() => onHighlight(index)}
-                onSelect={() => onSelect(option)}
-              />
+              <Fragment key={description.key}>
+                {header ? (
+                  <p
+                    role="presentation"
+                    className="text-muted-foreground px-2 pt-2 pb-1 text-xs font-medium"
+                  >
+                    {header}
+                  </p>
+                ) : null}
+                <MentionOptionRow
+                  id={mentionOptionId(idBase, index)}
+                  description={description}
+                  active={index === highlight}
+                  onHighlight={() => onHighlight(index)}
+                  onSelect={() => onSelect(option)}
+                />
+              </Fragment>
             );
           })
         )}

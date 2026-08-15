@@ -158,28 +158,91 @@ function optionScore(
 const MAX_OPTIONS = 50;
 
 /**
- * The open level's rows, fuzzy-filtered by the typed query, ranked by
- * relevance, and capped. The sort is stable, so an empty query (every row
- * scores alike) and same-relevance ties both keep the source order — and the
- * cap now keeps the best matches rather than the first fifty.
+ * How many rows of each entity group the universal level previews when the
+ * query is empty — opening `@` browses a bounded slice of repos and sessions
+ * rather than dumping every one an installation exposes.
+ */
+const MAX_PREVIEW = 5;
+
+/**
+ * Fuzzy-filter rows by the typed query, rank by relevance, and cap. The sort is
+ * stable, so an empty query (every row scores alike) and same-relevance ties
+ * both keep the source order — and the cap keeps the best matches rather than
+ * the first `limit`.
+ */
+function rankAndCap(
+  rows: MentionOption[],
+  query: string,
+  t: Translate,
+  limit: number,
+): MentionOption[] {
+  return rows
+    .map((option) => ({ option, score: optionScore(query, option, t) }))
+    .filter((scored) => scored.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((scored) => scored.option);
+}
+
+/**
+ * The open level's rows. The two second levels (`@repos:`/`@sessions:`) stay a
+ * single ranked entity list, unchanged. The first level is now **universal**:
+ * category rows (the drill-down affordance), repos, and sessions are scored
+ * against one query and returned grouped by type, so `@be` surfaces `owner/bex`
+ * directly without the `repos:` hop (Devin/Cursor's model, docs/ADR047 D9). An
+ * empty query previews a bounded slice of each entity group; a typed query
+ * ranks the full set and keeps a matching category row for discoverability.
  */
 export function mentionOptions(
   state: MentionState,
   source: MentionSource,
   t: Translate,
 ): MentionOption[] {
-  const rows: MentionOption[] =
-    state.category === null
-      ? MENTION_CATEGORIES.map((category) => ({ kind: "category", category }))
-      : state.category === "repos"
-        ? source.repos.map((repo) => ({ kind: "repo", repo }))
-        : source.sessions.map((session) => ({ kind: "session", session }));
-  return rows
-    .map((option) => ({ option, score: optionScore(state.query, option, t) }))
-    .filter((scored) => scored.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_OPTIONS)
-    .map((scored) => scored.option);
+  const repoRows: MentionOption[] = source.repos.map((repo) => ({
+    kind: "repo",
+    repo,
+  }));
+  const sessionRows: MentionOption[] = source.sessions.map((session) => ({
+    kind: "session",
+    session,
+  }));
+  if (state.category === "repos") {
+    return rankAndCap(repoRows, state.query, t, MAX_OPTIONS);
+  }
+  if (state.category === "sessions") {
+    return rankAndCap(sessionRows, state.query, t, MAX_OPTIONS);
+  }
+
+  const entityLimit = state.query.trim() === "" ? MAX_PREVIEW : MAX_OPTIONS;
+  const categoryRows: MentionOption[] = MENTION_CATEGORIES.map((category) => ({
+    kind: "category",
+    category,
+  }));
+  // Groups must stay contiguous: the picker derives section headers from
+  // group changes between adjacent rows, so interleaving kinds here would
+  // emit duplicate/misplaced headers.
+  return [
+    ...rankAndCap(categoryRows, state.query, t, MENTION_CATEGORIES.length),
+    ...rankAndCap(repoRows, state.query, t, entityLimit),
+    ...rankAndCap(sessionRows, state.query, t, entityLimit),
+  ];
+}
+
+/**
+ * The section a row renders under — `null` for the ungrouped category rows,
+ * which sit above the entity groups as the drill-down affordance.
+ */
+export function mentionOptionGroup(
+  option: MentionOption,
+): MentionCategory | null {
+  switch (option.kind) {
+    case "repo":
+      return "repos";
+    case "session":
+      return "sessions";
+    case "category":
+      return null;
+  }
 }
 
 /** What an empty list means: no source rows reads differently from no matches. */
@@ -189,7 +252,12 @@ export function mentionEmptyText(
   reposLoading: boolean,
 ): TranslationKey {
   const category = state.category;
-  if (category === null) return "agentSessions.mentionNoResults";
+  if (category === null) {
+    // The universal level is only ever empty for a typed query that matched
+    // nothing (an empty query always keeps the category rows). While the repo
+    // list is still arriving, that reads as loading, not "nothing matches".
+    return reposLoading ? "common.loading" : "agentSessions.mentionNoResults";
+  }
   const rows = category === "repos" ? source.repos : source.sessions;
   if (rows.length > 0) return "agentSessions.mentionNoResults";
   if (category === "repos" && reposLoading) return "common.loading";

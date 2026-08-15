@@ -7,6 +7,7 @@ import {
   AgentSessionsUnavailableError,
 } from "@/features/agent-sessions/lib/errors";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
+import { agentSessionView } from "@/test/mocks/agent-session";
 
 const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
@@ -75,7 +76,10 @@ async function typeTask(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("Task"), "  refactor the mapper  ");
 }
 
-/** Insert a repo mention through the @ toolbar → Repositories → item. */
+/**
+ * Insert a repo mention through the @ toolbar. The picker is universal now, so
+ * the repo is offered directly at the top level — one step, no category hop.
+ */
 async function pickRepo(
   user: ReturnType<typeof userEvent.setup>,
   match: RegExp = /widgets/,
@@ -83,7 +87,6 @@ async function pickRepo(
   await user.click(
     screen.getByRole("button", { name: "Mention a repository or session" }),
   );
-  await user.click(await screen.findByRole("option", { name: /Repositories/ }));
   await user.click(await screen.findByRole("option", { name: match }));
 }
 
@@ -216,6 +219,102 @@ describe("NewSessionComposer", () => {
     await user.click(screen.getByRole("button", { name: "Start session" }));
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
     expect(create.mock.calls[0][0].repo).toBe("acme/anvils");
+  });
+
+  it("surfaces a repo directly on a typed @query and inserts it in one step", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    const task = screen.getByLabelText("Task");
+
+    // A typed name after @ filters straight to the repo — no @repos: hop.
+    await user.type(task, "fix the bug @anv");
+    expect(
+      await screen.findByRole("option", { name: /anvils/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: /widgets/ }),
+    ).not.toBeInTheDocument();
+    // The category rows dropped out ("anv" matches neither); the "Repositories"
+    // section header (decoration, not an option) groups the match.
+    expect(
+      screen.queryByRole("option", { name: /^Repositories/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Repositories")).toBeInTheDocument();
+
+    // Enter inserts the atomic mention directly from the universal level.
+    await user.keyboard("{Enter}");
+    expect(task).toHaveTextContent("fix the bug @acme/anvils");
+    expect(
+      task.querySelector('[data-type="mention"][data-id="repo:acme/anvils"]'),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0].repo).toBe("acme/anvils");
+  });
+
+  it("previews categories and entities under headers on a bare @", async () => {
+    priorSessions = [agentSession("as-prior", "Investigate flaky tests")];
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+
+    await user.type(screen.getByLabelText("Task"), "scope this @");
+
+    // The category drill-down rows survive for the @repos: shortcut…
+    expect(
+      await screen.findByRole("option", { name: /^Repositories/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: /^Sessions/ }),
+    ).toBeInTheDocument();
+    // …and the entities are previewed directly beneath them.
+    expect(screen.getByRole("option", { name: /widgets/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: /Investigate flaky tests/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("surfaces a prior session directly at the universal level", async () => {
+    priorSessions = [agentSession("as-prior", "Investigate flaky tests")];
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    const task = screen.getByLabelText("Task");
+
+    // One step: type a title fragment, pick the session — no @sessions: hop.
+    await user.type(task, "look into @flaky");
+    await user.click(
+      await screen.findByRole("option", { name: /Investigate flaky tests/ }),
+    );
+    expect(
+      task.querySelector('[data-id="session:as-prior"]'),
+    ).toBeInTheDocument();
+
+    await pickRepo(user);
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0].task).toContain(
+      "Context: agent session as-prior",
+    );
+  });
+
+  it("does not re-offer an already-mentioned session at the universal level", async () => {
+    priorSessions = [agentSession("as-prior", "Investigate flaky tests")];
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    const task = screen.getByLabelText("Task");
+
+    await user.type(task, "note @flaky");
+    await user.click(
+      await screen.findByRole("option", { name: /Investigate flaky tests/ }),
+    );
+
+    // Reopen the picker — the selected session must not appear again.
+    await user.type(task, " @flaky");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("option", { name: /Investigate flaky tests/ }),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it("replaces the prior inline repo because a session has one checkout", async () => {
@@ -413,32 +512,5 @@ describe("NewSessionComposer", () => {
 });
 
 function agentSession(id: string, task: string): AgentSessionView {
-  return {
-    id,
-    ownerId: "tea-1",
-    repo: "acme/widgets",
-    branch: `bex-agent/${id}`,
-    agentConfig: {
-      agent: "claude",
-      model: null,
-      modelEndpoint: null,
-      task,
-      template: null,
-    },
-    sandboxId: null,
-    phase: "completed",
-    status: "Completed",
-    headSha: null,
-    prUrl: null,
-    prNumber: null,
-    evidence: null,
-    turns: 1,
-    deliveryMode: null,
-    failureReason: null,
-    createdAt: "2026-08-09T00:00:00Z",
-    updatedAt: "2026-08-09T00:00:00Z",
-    canceledAt: null,
-    isTerminal: true,
-    isSteerable: true,
-  };
+  return agentSessionView({ id, task, phase: "completed" });
 }
