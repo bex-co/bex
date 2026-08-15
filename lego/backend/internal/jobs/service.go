@@ -42,7 +42,7 @@ import (
 
 // ErrJobsUnavailable is returned by every verb when BEX_CP_DB_URI is unset —
 // the store is the job log; without it there is nothing to return.
-var ErrJobsUnavailable = errors.New("jobs unavailable: BEX_CP_DB_URI is not set")
+var ErrJobsUnavailable = core.Unavailable("jobs unavailable: BEX_CP_DB_URI is not set")
 
 // jobTTL is how long Kubernetes keeps a finished Job's pod for log inspection.
 const jobTTL = int32(3600) // 1 hour

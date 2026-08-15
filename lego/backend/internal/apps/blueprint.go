@@ -59,10 +59,10 @@ type BlueprintFetcher interface {
 }
 
 // ErrBlueprintsUnavailable is returned when the control-plane store is not wired.
-var ErrBlueprintsUnavailable = errors.New("blueprints store not configured (BEX_CP_DB_URI required)")
+var ErrBlueprintsUnavailable = core.Unavailable("blueprints store not configured (BEX_CP_DB_URI required)")
 
 // ErrBlueprintFetchUnavailable is returned when no GitFetcher is configured.
-var ErrBlueprintFetchUnavailable = errors.New("blueprint file fetch unavailable (GitHub App not configured)")
+var ErrBlueprintFetchUnavailable = core.Unavailable("blueprint file fetch unavailable (GitHub App not configured)")
 
 // ErrBlueprintFilenameAmbiguous is returned only for implicit discovery when a
 // repository contains both the canonical and legacy filename. Requiring a path
