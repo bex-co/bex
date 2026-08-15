@@ -17,7 +17,6 @@ limitations under the License.
 package environments
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -43,23 +42,13 @@ func filterEnvironmentList(environments []EnvironmentView, q url.Values) ([]Envi
 	names := core.QueryList(q, "name")
 	owners := core.QueryList(q, "ownerId")
 	ids := core.QueryList(q, "environmentId")
-	out := make([]EnvironmentView, 0, len(environments))
-	for _, environment := range environments {
-		switch {
-		case len(names) > 0 && !slices.Contains(names, environment.Name):
-			continue
-		case len(owners) > 0 && !slices.Contains(owners, environment.OwnerID):
-			continue
-		case len(ids) > 0 && !slices.Contains(ids, environment.ID):
-			continue
-		case !createdBefore.IsZero() && !environment.CreatedAt.Before(createdBefore):
-			continue
-		case !createdAfter.IsZero() && !environment.CreatedAt.After(createdAfter):
-			continue
-		}
-		out = append(out, environment)
-	}
-	return out, nil
+	return core.Filter(environments, func(e EnvironmentView) bool {
+		return (len(names) == 0 || slices.Contains(names, e.Name)) &&
+			(len(owners) == 0 || slices.Contains(owners, e.OwnerID)) &&
+			(len(ids) == 0 || slices.Contains(ids, e.ID)) &&
+			(createdBefore.IsZero() || e.CreatedAt.Before(createdBefore)) &&
+			(createdAfter.IsZero() || e.CreatedAt.After(createdAfter))
+	}), nil
 }
 
 // rest.go is the environments REST fragment, mirroring internal/projects/
@@ -115,43 +104,25 @@ func toRenderEnvironment(e EnvironmentView) renderEnvironment {
 	}
 }
 
-// writeErr maps ErrEnvironmentsUnavailable to 503 before falling back to
-// core.WriteErr: that shared mapper only recognizes error sentinels declared
-// in package core (a leaf core cannot import a feature package to add this
-// one directly, matching every other "…Unavailable" convention in the
-// codebase — e.g. core.ErrWorkspacesUnavailable, core.ErrEventsUnavailable),
-// so a package-local sentinel like this one would otherwise fall through to
-// core.WriteErr's default 500.
-func writeErr(w http.ResponseWriter, err error) {
-	if errors.Is(err, ErrEnvironmentsUnavailable) {
-		core.WriteErrStatus(w, http.StatusServiceUnavailable, err.Error())
-		return
-	}
-	core.WriteErr(w, err)
-}
-
 // RegisterREST mounts the environment CRUD endpoints.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	mux.HandleFunc("GET /v1/environments", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /v1/environments", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
 		projectIDs := core.QueryList(q, "projectId")
 		if len(projectIDs) == 0 {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
+			return nil, core.ErrBadRequest
 		}
 		var environments []EnvironmentView
 		for _, projectID := range projectIDs {
 			es, err := s.List(r.Context(), projectID)
 			if err != nil {
-				writeErr(w, err)
-				return
+				return nil, err
 			}
 			environments = append(environments, es...)
 		}
 		environments, err := filterEnvironmentList(environments, q)
 		if err != nil {
-			writeErr(w, err)
-			return
+			return nil, err
 		}
 		out := make([]environmentWithCursor, 0, len(environments))
 		for _, e := range environments {
@@ -165,8 +136,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if out == nil {
 			out = []environmentWithCursor{}
 		}
-		core.WriteJSON(w, http.StatusOK, out)
-	})
+		return out, nil
+	}))
 
 	// POST /v1/environments takes Render's full create body (w4/017): name +
 	// projectId plus the optional ACL triple — protectedStatus,
@@ -175,28 +146,17 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// ACL is validated BEFORE the create so a bad CIDR is a clean 400, never
 	// an orphaned environment, then applied through the same SetACL verb the
 	// bex-native /acl route uses.
-	mux.HandleFunc("POST /v1/environments", func(w http.ResponseWriter, r *http.Request) {
-		var req CreateEnvironmentRequest
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		e, err := s.CreateWithACL(r.Context(), req)
+	mux.HandleFunc("POST /v1/environments", core.HandleMapped(http.StatusCreated, func(r *http.Request) (EnvironmentView, error) {
+		req, err := core.DecodeBody[CreateEnvironmentRequest](r)
 		if err != nil {
-			writeErr(w, err)
-			return
+			return EnvironmentView{}, err
 		}
-		core.WriteJSON(w, http.StatusCreated, toRenderEnvironment(e))
-	})
+		return s.CreateWithACL(r.Context(), req)
+	}, toRenderEnvironment))
 
-	mux.HandleFunc("GET /v1/environments/{id}", func(w http.ResponseWriter, r *http.Request) {
-		e, err := s.Get(r.Context(), r.PathValue("id"))
-		if err != nil {
-			writeErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
-	})
+	mux.HandleFunc("GET /v1/environments/{id}", core.HandleMapped(http.StatusOK, func(r *http.Request) (EnvironmentView, error) {
+		return s.Get(r.Context(), r.PathValue("id"))
+	}, toRenderEnvironment))
 
 	// PATCH /v1/environments/{id} takes Render's full update body (w4/017):
 	// every field optional, absent fields untouched — name renames; the ACL
@@ -206,125 +166,36 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// ipAllowList arrives as Render's [{cidrBlock, description}] objects (both
 	// fields persist, w4/m24). Pointer fields distinguish "absent" from a zero
 	// value — networkIsolationEnabled:false must be appliable.
-	mux.HandleFunc("PATCH /v1/environments/{id}", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
+	mux.HandleFunc("PATCH /v1/environments/{id}", core.HandleMapped(http.StatusOK, func(r *http.Request) (EnvironmentView, error) {
+		req, err := core.DecodeBody[struct {
 			Name                    *string                  `json:"name"`
 			ProtectedStatus         *string                  `json:"protectedStatus"`
 			NetworkIsolationEnabled *bool                    `json:"networkIsolationEnabled"`
 			IPAllowList             *[]core.IPAllowListEntry `json:"ipAllowList"`
+		}](r)
+		if err != nil {
+			return EnvironmentView{}, err
 		}
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		e, err := s.Update(r.Context(), r.PathValue("id"), EnvironmentPatch{
+		return s.Update(r.Context(), r.PathValue("id"), EnvironmentPatch{
 			Name:                    req.Name,
 			ProtectedStatus:         req.ProtectedStatus,
 			NetworkIsolationEnabled: req.NetworkIsolationEnabled,
 			IPAllowList:             req.IPAllowList,
 		})
-		if err != nil {
-			writeErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
-	})
+	}, toRenderEnvironment))
 
-	mux.HandleFunc("DELETE /v1/environments/{id}", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.Delete(r.Context(), r.PathValue("id")); err != nil {
-			writeErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
+	mux.HandleFunc("DELETE /v1/environments/{id}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.Delete(r.Context(), r.PathValue("id"))
+	}))
 
-	// PUT /v1/environments/{id}/service-links replaces the full list of
-	// services in an environment. Body: {"serviceIds": ["srv-...", "srv-..."]};
-	// legacy service names remain accepted during the stable-id transition.
-	mux.HandleFunc("PUT /v1/environments/{id}/service-links", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			ServiceIDs []string `json:"serviceIds"`
-		}
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		if req.ServiceIDs == nil {
-			req.ServiceIDs = []string{}
-		}
-		e, err := s.SetServices(r.Context(), r.PathValue("id"), req.ServiceIDs)
-		if err != nil {
-			writeErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
-	})
-
-	// PUT /v1/environments/{id}/database-links replaces the full list of
-	// managed Postgres databases in an environment. Body:
-	// {"databaseIds": ["name1", "name2"]} where databaseIds are Database CR
-	// names (w6/m20 extension, mirroring projects' database-links).
-	mux.HandleFunc("PUT /v1/environments/{id}/database-links", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			DatabaseIDs []string `json:"databaseIds"`
-		}
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		if req.DatabaseIDs == nil {
-			req.DatabaseIDs = []string{}
-		}
-		e, err := s.SetDatabases(r.Context(), r.PathValue("id"), req.DatabaseIDs)
-		if err != nil {
-			writeErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
-	})
-
-	// PUT /v1/environments/{id}/keyvalue-links is database-links' KeyValue-CR
-	// counterpart. Body: {"keyValueIds": ["name1", "name2"]}.
-	mux.HandleFunc("PUT /v1/environments/{id}/keyvalue-links", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			KeyValueIDs []string `json:"keyValueIds"`
-		}
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		if req.KeyValueIDs == nil {
-			req.KeyValueIDs = []string{}
-		}
-		e, err := s.SetKeyValues(r.Context(), r.PathValue("id"), req.KeyValueIDs)
-		if err != nil {
-			writeErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
-	})
-
-	// PUT /v1/environments/{id}/env-group-links replaces the full list of
-	// environment groups assigned to the Environment. Body:
-	// {"envGroupIds": ["evg-...", ...]}.
-	mux.HandleFunc("PUT /v1/environments/{id}/env-group-links", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			EnvGroupIDs []string `json:"envGroupIds"`
-		}
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		if req.EnvGroupIDs == nil {
-			req.EnvGroupIDs = []string{}
-		}
-		e, err := s.SetEnvGroups(r.Context(), r.PathValue("id"), req.EnvGroupIDs)
-		if err != nil {
-			writeErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
-	})
+	// The four link routes replace an environment's full membership list for
+	// one resource kind; an absent array clears it. Legacy service names remain
+	// accepted on service-links during the stable-id transition; databaseIds
+	// and keyValueIds are CR names (w6/m20, mirroring projects' database-links).
+	mux.HandleFunc("PUT /v1/environments/{id}/service-links", core.HandleLinks[core.ServiceLinks](s.SetServices, toRenderEnvironment))
+	mux.HandleFunc("PUT /v1/environments/{id}/database-links", core.HandleLinks[core.DatabaseLinks](s.SetDatabases, toRenderEnvironment))
+	mux.HandleFunc("PUT /v1/environments/{id}/keyvalue-links", core.HandleLinks[core.KeyValueLinks](s.SetKeyValues, toRenderEnvironment))
+	mux.HandleFunc("PUT /v1/environments/{id}/env-group-links", core.HandleLinks[core.EnvGroupLinks](s.SetEnvGroups, toRenderEnvironment))
 
 	// PATCH /v1/environments/{id}/acl replaces the full protected-environment
 	// ACL triple (w6/m19: protectedStatus/networkIsolationEnabled/ipAllowList
@@ -332,21 +203,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// Body: {"protectedStatus": "protected"|"unprotected",
 	// "networkIsolationEnabled": bool, "ipAllowList": [...]}, where entries
 	// are Render-shaped {cidrBlock, description} objects.
-	mux.HandleFunc("PATCH /v1/environments/{id}/acl", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
+	mux.HandleFunc("PATCH /v1/environments/{id}/acl", core.HandleMapped(http.StatusOK, func(r *http.Request) (EnvironmentView, error) {
+		req, err := core.DecodeBody[struct {
 			ProtectedStatus         string                  `json:"protectedStatus"`
 			NetworkIsolationEnabled bool                    `json:"networkIsolationEnabled"`
 			IPAllowList             []core.IPAllowListEntry `json:"ipAllowList"`
-		}
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		e, err := s.SetACL(r.Context(), r.PathValue("id"), req.ProtectedStatus, req.NetworkIsolationEnabled, req.IPAllowList)
+		}](r)
 		if err != nil {
-			writeErr(w, err)
-			return
+			return EnvironmentView{}, err
 		}
-		core.WriteJSON(w, http.StatusOK, toRenderEnvironment(e))
-	})
+		return s.SetACL(r.Context(), r.PathValue("id"), req.ProtectedStatus, req.NetworkIsolationEnabled, req.IPAllowList)
+	}, toRenderEnvironment))
 }

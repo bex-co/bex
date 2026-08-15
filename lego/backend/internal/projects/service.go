@@ -103,7 +103,7 @@ type Service struct {
 
 // ErrProjectsUnavailable is returned when the control-plane store is not wired
 // (BEX_CP_DB_URI unset). Projects have no CR-only equivalent.
-var ErrProjectsUnavailable = errors.New("projects store not configured")
+var ErrProjectsUnavailable = core.Unavailable("projects store not configured")
 
 // projectEnvironmentLister is the optional store capability for reading a
 // project's environments; *store.PGStore satisfies it. Kept out of the narrow

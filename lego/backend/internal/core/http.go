@@ -142,14 +142,32 @@ func rejectUnknownJSONFields(value any, target reflect.Type) error {
 	return nil
 }
 
+// jsonFieldCache memoizes jsonFieldTypes by reflect.Type. The strict-decode
+// walk visits every struct node of every request body — including once per
+// element of an array of structs — and the answer depends only on the Go type,
+// so without this each request rebuilt the same maps. Bounded by the number of
+// struct types in the binary.
+var jsonFieldCache sync.Map // reflect.Type -> map[string]reflect.Type
+
 func jsonFieldTypes(target reflect.Type) map[string]reflect.Type {
+	if cached, ok := jsonFieldCache.Load(target); ok {
+		return cached.(map[string]reflect.Type)
+	}
+	fields := buildJSONFieldTypes(target)
+	jsonFieldCache.Store(target, fields)
+	return fields
+}
+
+// buildJSONFieldTypes is jsonFieldTypes' uncached body. Callers must treat the
+// result as read-only — it is shared by every request for this type.
+func buildJSONFieldTypes(target reflect.Type) map[string]reflect.Type {
 	fields := make(map[string]reflect.Type)
 	for i := 0; i < target.NumField(); i++ {
 		field := target.Field(i)
 		if field.PkgPath != "" && !field.Anonymous {
 			continue
 		}
-		tag := strings.Split(field.Tag.Get("json"), ",")[0]
+		tag, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 		if tag == "-" {
 			continue
 		}
@@ -223,17 +241,7 @@ func WriteErr(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
 		code = http.StatusNotFound
-	case errors.Is(err, ErrLogsUnavailable), errors.Is(err, ErrLogStoreUnavailable),
-		errors.Is(err, ErrAPIKeysUnavailable), errors.Is(err, ErrSSHKeysUnavailable),
-		errors.Is(err, ErrMetricsUnavailable), errors.Is(err, ErrAuthzUnavailable),
-		errors.Is(err, ErrSecretsUnavailable), errors.Is(err, ErrWorkspacesUnavailable),
-		errors.Is(err, ErrUsageUnavailable), errors.Is(err, ErrBillingUnavailable), errors.Is(err, ErrDeploysUnavailable),
-		errors.Is(err, ErrAuditUnavailable), errors.Is(err, ErrGitHubUnavailable),
-		errors.Is(err, ErrEventsUnavailable), errors.Is(err, ErrRegistryCredentialsUnavailable),
-		errors.Is(err, ErrNotificationsUnavailable), errors.Is(err, ErrPushUnavailable),
-		errors.Is(err, ErrWebhooksUnavailable), errors.Is(err, ErrLogoutUnavailable),
-		errors.Is(err, ErrShellUnavailable), errors.Is(err, ErrSandboxesUnavailable),
-		errors.Is(err, ErrAgentSessionsUnavailable):
+	case errors.Is(err, ErrUnavailable):
 		code = http.StatusServiceUnavailable
 	case errors.Is(err, ErrBadRequest):
 		code = http.StatusBadRequest
@@ -323,6 +331,46 @@ func DecodeBody[T any](r *http.Request) (T, error) {
 		return zero, ErrBadRequest
 	}
 	return v, nil
+}
+
+// The bodies of the "replace the whole membership list" routes that projects
+// and environments both expose (PUT …/{id}/service-links, /database-links,
+// /keyvalue-links, /env-group-links). They are named structs rather than a
+// map[string][]string because these routes are in the pinned Render contract
+// and therefore strict-decoded: a map would silently accept a misspelled key
+// that today answers 400, and would lose encoding/json's case-insensitive
+// field matching.
+type (
+	ServiceLinks  struct{ ServiceIDs []string `json:"serviceIds"` }
+	DatabaseLinks struct{ DatabaseIDs []string `json:"databaseIds"` }
+	KeyValueLinks struct{ KeyValueIDs []string `json:"keyValueIds"` }
+	EnvGroupLinks struct{ EnvGroupIDs []string `json:"envGroupIds"` }
+)
+
+func (b ServiceLinks) IDs() []string  { return b.ServiceIDs }
+func (b DatabaseLinks) IDs() []string { return b.DatabaseIDs }
+func (b KeyValueLinks) IDs() []string { return b.KeyValueIDs }
+func (b EnvGroupLinks) IDs() []string { return b.EnvGroupIDs }
+
+// HandleLinks adapts the full-replace link routes: decode B, normalize an
+// absent list to empty (a missing key clears the membership, it is not a
+// no-op), call the setter with the path id, and write the projected 200.
+func HandleLinks[B interface{ IDs() []string }, T, V any](set func(context.Context, string, []string) (T, error), view func(T) V) http.HandlerFunc {
+	return HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		body, err := DecodeBody[B](r)
+		if err != nil {
+			return nil, err
+		}
+		ids := body.IDs()
+		if ids == nil {
+			ids = []string{}
+		}
+		v, err := set(r.Context(), r.PathValue("id"), ids)
+		if err != nil {
+			return nil, err
+		}
+		return view(v), nil
+	})
 }
 
 // DryRunRequested folds the two spellings of a dry-run request — the decoded

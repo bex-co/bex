@@ -115,7 +115,7 @@ type Service struct {
 
 // ErrEnvironmentsUnavailable is returned when the control-plane store is not
 // wired (BEX_CP_DB_URI unset). Environments have no CR-only equivalent.
-var ErrEnvironmentsUnavailable = errors.New("environments store not configured")
+var ErrEnvironmentsUnavailable = core.Unavailable("environments store not configured")
 
 // ResolveForCreate is the shared environment-assignment seam used by service,
 // Postgres, and Key Value creates. Each create has already bound ownerId to its

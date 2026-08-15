@@ -165,6 +165,20 @@ func (s *Service) databaseSecret(ctx context.Context, db *appv1alpha1.Database) 
 	return &sec, nil
 }
 
+// budget accumulates one of the result-size dimensions runSQLQuery meters
+// (column names, row bytes, raw total, encoded JSON total) and refuses the
+// whole query once its cap is passed — every dimension answers the same
+// errQueryResultTooLarge, so the check belongs in one place.
+type budget struct{ used, cap int }
+
+func (b *budget) add(n int) error {
+	b.used += n
+	if b.used > b.cap {
+		return errQueryResultTooLarge
+	}
+	return nil
+}
+
 // runReadOnlyQuery is retained as the focused MCP/test helper. It delegates to
 // the shared executor with the strongest transaction envelope enabled.
 func runReadOnlyQuery(ctx context.Context, connString, sql string, lim queryLimits) (QueryResult, error) {
@@ -222,36 +236,32 @@ func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, r
 		return QueryResult{}, errQueryResultTooLarge
 	}
 	cols := make([]string, len(fields))
-	columnNameBytes := 0
+	columnNames := budget{cap: queryColumnNameCap}
 	for i, f := range fields {
-		columnNameBytes += len(f.Name)
-		if columnNameBytes > queryColumnNameCap {
-			return QueryResult{}, errQueryResultTooLarge
+		if err := columnNames.add(len(f.Name)); err != nil {
+			return QueryResult{}, err
 		}
 		cols[i] = f.Name
 	}
 	out := QueryResult{Columns: cols, Rows: [][]any{}}
-	rawResultBytes := 0
-	jsonResultBytes := 0
+	rawResult := budget{cap: queryRawResultByteCap}
+	jsonResult := budget{cap: queryJSONResultCap}
 	for rows.Next() {
 		if len(out.Rows) >= lim.rowCap {
 			out.Truncated = true // a row beyond the cap exists; stop reading
 			break
 		}
-		raw := rows.RawValues()
-		rowBytes := 0
-		for _, cell := range raw {
+		row := budget{cap: queryRowByteCap}
+		for _, cell := range rows.RawValues() {
 			if len(cell) > queryCellByteCap {
 				return QueryResult{}, errQueryResultTooLarge
 			}
-			rowBytes += len(cell)
-			if rowBytes > queryRowByteCap {
-				return QueryResult{}, errQueryResultTooLarge
+			if err := row.add(len(cell)); err != nil {
+				return QueryResult{}, err
 			}
 		}
-		rawResultBytes += rowBytes
-		if rawResultBytes > queryRawResultByteCap {
-			return QueryResult{}, errQueryResultTooLarge
+		if err := rawResult.add(row.used); err != nil {
+			return QueryResult{}, err
 		}
 
 		vals, err := rows.Values()
@@ -262,9 +272,8 @@ func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, r
 		if err != nil {
 			return QueryResult{}, errQueryFailed
 		}
-		jsonResultBytes += len(encoded)
-		if jsonResultBytes > queryJSONResultCap {
-			return QueryResult{}, errQueryResultTooLarge
+		if err := jsonResult.add(len(encoded)); err != nil {
+			return QueryResult{}, err
 		}
 		out.Rows = append(out.Rows, vals)
 	}

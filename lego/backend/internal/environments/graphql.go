@@ -175,12 +175,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"serviceIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				raw, _ := p.Args["serviceIds"].([]any)
-				names := make([]string, len(raw))
-				for i, v := range raw {
-					names[i], _ = v.(string)
-				}
-				return s.SetServices(p.Context, p.Args["id"].(string), names)
+				return s.SetServices(p.Context, p.Args["id"].(string), gqlutil.StringList(p.Args["serviceIds"]))
 			},
 		},
 		"setEnvironmentDatabases": &graphql.Field{
@@ -190,12 +185,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"databaseIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				raw, _ := p.Args["databaseIds"].([]any)
-				names := make([]string, len(raw))
-				for i, v := range raw {
-					names[i], _ = v.(string)
-				}
-				return s.SetDatabases(p.Context, p.Args["id"].(string), names)
+				return s.SetDatabases(p.Context, p.Args["id"].(string), gqlutil.StringList(p.Args["databaseIds"]))
 			},
 		},
 		"setEnvironmentKeyValues": &graphql.Field{
@@ -205,12 +195,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"keyValueIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				raw, _ := p.Args["keyValueIds"].([]any)
-				names := make([]string, len(raw))
-				for i, v := range raw {
-					names[i], _ = v.(string)
-				}
-				return s.SetKeyValues(p.Context, p.Args["id"].(string), names)
+				return s.SetKeyValues(p.Context, p.Args["id"].(string), gqlutil.StringList(p.Args["keyValueIds"]))
 			},
 		},
 		"setEnvironmentEnvGroups": &graphql.Field{
@@ -220,12 +205,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"envGroupIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				raw, _ := p.Args["envGroupIds"].([]any)
-				ids := make([]string, len(raw))
-				for i, v := range raw {
-					ids[i], _ = v.(string)
-				}
-				return s.SetEnvGroups(p.Context, p.Args["id"].(string), ids)
+				return s.SetEnvGroups(p.Context, p.Args["id"].(string), gqlutil.StringList(p.Args["envGroupIds"]))
 			},
 		},
 		// setEnvironmentACL replaces the full protected-environment ACL triple

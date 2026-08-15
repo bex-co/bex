@@ -24,6 +24,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
 // graphql.go is the metrics GraphQL fragment. This shape is Render's *dashboard*
@@ -387,7 +388,7 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 				continue
 			}
 			field, _ := filter["field"].(string)
-			values := stringsFromAny(filter["values"])
+			values := gqlutil.StringList(filter["values"])
 			switch field {
 			case filterFieldResource:
 				resources = values
@@ -439,7 +440,7 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	// the Traefik service level, and per-instance request breakdowns would
 	// require per-pod Traefik metrics that aren't scraped. Recorded decision:
 	// instance aggregateBy is a no-op (w3/m18).
-	for _, v := range stringsFromAny(input["aggregateBy"]) {
+	for _, v := range gqlutil.StringList(input["aggregateBy"]) {
 		switch strings.ToUpper(v) {
 		case "STATUS_CODE":
 			q.GroupBy = "status"
@@ -515,7 +516,7 @@ func metricsFiltersQueryFromArgs(raw any) (MetricsFiltersQuery, error) {
 				continue
 			}
 			if field, _ := filter["field"].(string); field == filterFieldResource {
-				if values := stringsFromAny(filter["values"]); len(values) > 0 {
+				if values := gqlutil.StringList(filter["values"]); len(values) > 0 {
 					app = values[0]
 				}
 			}
@@ -524,19 +525,5 @@ func metricsFiltersQueryFromArgs(raw any) (MetricsFiltersQuery, error) {
 	if app == "" {
 		return MetricsFiltersQuery{}, fmt.Errorf("filters must include a RESOURCE entry")
 	}
-	return MetricsFiltersQuery{App: app, OutputFilters: stringsFromAny(input["outputFilters"])}, nil
-}
-
-func stringsFromAny(v any) []string {
-	list, ok := v.([]any)
-	if !ok {
-		return nil
-	}
-	out := make([]string, 0, len(list))
-	for _, item := range list {
-		if s, ok := item.(string); ok {
-			out = append(out, s)
-		}
-	}
-	return out
+	return MetricsFiltersQuery{App: app, OutputFilters: gqlutil.StringList(input["outputFilters"])}, nil
 }

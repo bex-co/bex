@@ -377,8 +377,8 @@ func aggregateUsageCoverage(streamByKey map[string]*usageCoverageStream, streamO
 				break
 			}
 			if state != UsageSourceHealthy {
-				streamHealthy = false
-				degraded[stream.Source] = struct{}{}
+				// The second pass below records the degradation; stop the
+				// watermark here.
 				break
 			}
 			observedThrough = observedThrough.Add(time.Hour)

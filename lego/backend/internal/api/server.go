@@ -757,83 +757,49 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 	}
 }
 
+// appendFeature adds a wired feature service to the registration list. It takes
+// the concrete *T so the nil test happens BEFORE boxing: a nil *apps.Service
+// stored in an `any` is a non-nil interface, so collecting the fields into an
+// []any first and filtering on != nil would register every unwired feature and
+// hand the surface type-assertions a nil receiver.
+func appendFeature[T any](out []any, feature *T) []any {
+	if feature == nil {
+		return out
+	}
+	return append(out, feature)
+}
+
+// features lists the wired feature services in Server field order. The three
+// surface builders each type-assert every entry for the fragments it implements
+// (restRegistrar, gqlQueryProvider, mcpRegistrar), so a feature appears on
+// exactly the surfaces it registers for.
 func (s *Server) features() []any {
 	var out []any
-	if s.Apps != nil {
-		out = append(out, s.Apps)
-	}
-	if s.Logs != nil {
-		out = append(out, s.Logs)
-	}
-	if s.Metrics != nil {
-		out = append(out, s.Metrics)
-	}
-	if s.APIKeys != nil {
-		out = append(out, s.APIKeys)
-	}
-	if s.SSHKeys != nil {
-		out = append(out, s.SSHKeys)
-	}
-	if s.Sandbox != nil {
-		out = append(out, s.Sandbox)
-	}
-	if s.AgentSessions != nil {
-		out = append(out, s.AgentSessions)
-	}
-	if s.Postgres != nil {
-		out = append(out, s.Postgres)
-	}
-	if s.KeyValue != nil {
-		out = append(out, s.KeyValue)
-	}
-	if s.Secrets != nil {
-		out = append(out, s.Secrets)
-	}
-	if s.EnvGroups != nil {
-		out = append(out, s.EnvGroups)
-	}
-	if s.Workspaces != nil {
-		out = append(out, s.Workspaces)
-	}
-	if s.Members != nil {
-		out = append(out, s.Members)
-	}
-	if s.Billing != nil {
-		out = append(out, s.Billing)
-	}
-	if s.Usage != nil {
-		out = append(out, s.Usage)
-	}
-	if s.Deploys != nil {
-		out = append(out, s.Deploys)
-	}
-	if s.Events != nil {
-		out = append(out, s.Events)
-	}
-	if s.Audit != nil {
-		out = append(out, s.Audit)
-	}
-	if s.GitHub != nil {
-		out = append(out, s.GitHub)
-	}
-	if s.Notifications != nil {
-		out = append(out, s.Notifications)
-	}
-	if s.Projects != nil {
-		out = append(out, s.Projects)
-	}
-	if s.Environments != nil {
-		out = append(out, s.Environments)
-	}
-	if s.RegistryCreds != nil {
-		out = append(out, s.RegistryCreds)
-	}
-	if s.Webhooks != nil {
-		out = append(out, s.Webhooks)
-	}
-	if s.Jobs != nil {
-		out = append(out, s.Jobs)
-	}
+	out = appendFeature(out, s.Apps)
+	out = appendFeature(out, s.Logs)
+	out = appendFeature(out, s.Metrics)
+	out = appendFeature(out, s.APIKeys)
+	out = appendFeature(out, s.SSHKeys)
+	out = appendFeature(out, s.Sandbox)
+	out = appendFeature(out, s.AgentSessions)
+	out = appendFeature(out, s.Postgres)
+	out = appendFeature(out, s.KeyValue)
+	out = appendFeature(out, s.Secrets)
+	out = appendFeature(out, s.EnvGroups)
+	out = appendFeature(out, s.Workspaces)
+	out = appendFeature(out, s.Members)
+	out = appendFeature(out, s.Billing)
+	out = appendFeature(out, s.Usage)
+	out = appendFeature(out, s.Deploys)
+	out = appendFeature(out, s.Events)
+	out = appendFeature(out, s.Audit)
+	out = appendFeature(out, s.GitHub)
+	out = appendFeature(out, s.Notifications)
+	out = appendFeature(out, s.Projects)
+	out = appendFeature(out, s.Environments)
+	out = appendFeature(out, s.RegistryCreds)
+	out = appendFeature(out, s.Webhooks)
+	out = appendFeature(out, s.Jobs)
 	return out
 }
 

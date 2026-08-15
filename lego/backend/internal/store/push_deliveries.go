@@ -504,9 +504,6 @@ var pushAgentEvents = map[string]bool{
 var pushUrgencies = map[string]bool{"routine": true, "important": true, "critical": true}
 
 func validatePushNotification(notification PushNotification) error {
-	serviceEvents := pushServiceEvents
-	agentEvents := pushAgentEvents
-	urgencies := pushUrgencies
 	eventKind, eventOK := ids.KindOf(notification.EventID)
 	resourceKind, resourceOK := ids.KindOf(notification.ResourceID)
 	common := strings.TrimSpace(notification.TenantID) != "" && strings.TrimSpace(notification.Subject) != "" &&
@@ -514,14 +511,14 @@ func validatePushNotification(notification PushNotification) error {
 		eventOK && eventKind == ids.Event &&
 		len(notification.Title) >= 1 && len(notification.Title) <= 120 && !strings.ContainsRune(notification.Title, '\x00') &&
 		len(notification.Body) >= 1 && len(notification.Body) <= 1024 && !strings.ContainsRune(notification.Body, '\x00') &&
-		urgencies[notification.Urgency] && resourceOK &&
+		pushUrgencies[notification.Urgency] && resourceOK &&
 		!notification.OccurredAt.IsZero() && !notification.DeliverAt.IsZero()
 	valid := false
 	switch {
-	case serviceEvents[notification.EventType]:
+	case pushServiceEvents[notification.EventType]:
 		valid = common && notification.ResourceKind == "service" &&
 			resourceKind == ids.Service && notification.DeepLink == "/services/"+notification.ResourceID
-	case agentEvents[notification.EventType]:
+	case pushAgentEvents[notification.EventType]:
 		valid = common && notification.ResourceKind == "agentSession" &&
 			resourceKind == ids.AgentSession && notification.DeepLink == "/sessions/"+notification.ResourceID
 	}

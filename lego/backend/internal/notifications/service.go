@@ -475,18 +475,30 @@ func normalizePushSettings(view PushSettingsView) (PushSettingsView, error) {
 	}
 	sort.Slice(view.ServiceOverrides, func(i, j int) bool { return view.ServiceOverrides[i].ServiceID < view.ServiceOverrides[j].ServiceID })
 
-	policy, err := view.deliveryPolicy()
-	if err != nil {
+	if err := assertPolicyEvaluable(view); err != nil {
 		return PushSettingsView{}, err
 	}
-	_, err = (DeliveryPolicyEvaluator{Now: func() time.Time { return time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC) }}).Evaluate(policy, DeliveryInput{
+	return view, nil
+}
+
+// assertPolicyEvaluable rejects a settings view that normalizes cleanly but
+// that the evaluator would then refuse at delivery time, so the caller gets a
+// 400 now instead of a silently undeliverable policy later. The probe input is
+// synthetic and fixed — a frozen instant and placeholder identifiers — because
+// only the evaluator's acceptance of the policy is under test, not its verdict.
+func assertPolicyEvaluable(view PushSettingsView) error {
+	policy, err := view.deliveryPolicy()
+	if err != nil {
+		return err
+	}
+	evaluator := DeliveryPolicyEvaluator{Now: func() time.Time { return time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC) }}
+	if _, err := evaluator.Evaluate(policy, DeliveryInput{
 		Channel: DeliveryChannelPush, Event: DeliveryEventDeployFailed, Urgency: DeliveryUrgencyCritical,
 		WorkspaceID: "tea-policy", EventWorkspaceID: "tea-policy", Subject: "policy-validator", WorkspaceRole: DeliveryRoleViewer,
-	})
-	if err != nil {
-		return PushSettingsView{}, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+	}); err != nil {
+		return fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 	}
-	return view, nil
+	return nil
 }
 
 func (view PushSettingsView) deliveryPolicy() (DeliveryPolicy, error) {
