@@ -1,27 +1,23 @@
 import { z } from "zod";
 import type { UIMessage } from "ai";
 
-// Classifies the driver's `data-acp` parts and the AI SDK tool parts into the
-// Devin-shaped transcript groups the conversation column renders. The wire
-// shapes come from the shipped driver: the AI SDK provider maps ACP
-// `session/update` notifications into `raw` chunks the driver re-wraps as
-// `data-acp` parts (`lego/agent-image/driver/src/session.ts` → `stream-hub.ts`),
-// while text/reasoning/tool activity arrives as standard UI-message parts.
-//
-// The `data-acp` payload is one of the provider's raw values:
-//   { type: "plan", entries: [{ content, status, priority }] }
-//   { type: "diff", path, oldText, newText, toolCallId }
-//   { type: "terminal", terminalId, output?, toolCallId }
-// The session-log/evidence form additionally uses a `sessionUpdate` discriminator
-// ({ sessionUpdate: "tool_call", title, kind, command }); both are tolerated so
-// the column never blanks on a shape variant.
+// Classifies the driver's typed `data-acp-*` parts and the AI SDK tool parts
+// into the Devin-shaped transcript groups the conversation column renders. The
+// driver (`lego/agent-image/driver/src/acp-map.ts`) maps each ACP `session/update`
+// straight into a typed UI-message chunk — text/reasoning/real dynamic tool parts
+// plus these three typed data parts (no generic `data-acp` re-wrap to re-classify):
+//   data-acp-plan     { entries: [{ content, status, priority }] }
+//   data-acp-diff     { path, oldText, newText, toolCallId }
+//   data-acp-terminal { terminalId, output?, toolCallId }
+// so the browser switches on the part TYPE, not a discriminator inside an opaque
+// payload. Any other transient `data-acp-*` part (available-commands, info) is
+// ephemeral and renders nothing.
 
 /**
- * The schema handed to `useChat`'s `dataPartSchemas` for the `acp` data key
- * (i.e. `data-acp` parts). Deliberately permissive: the verbatim-forward
- * contract (ADR047 D3) means the browser must render whatever the driver
- * emitted, never reject it — validation happens structurally in
- * `classifyAcpData`, not by dropping parts.
+ * The schema handed to `useChat`'s `dataPartSchemas` for each `data-acp-*` key.
+ * Deliberately permissive: the verbatim-forward contract (ADR047 D3) means the
+ * browser must render whatever the driver emitted, never reject it — validation
+ * happens structurally in `classifyAcpPart`, not by dropping parts.
  */
 export const acpDataSchema = z.unknown();
 
@@ -34,9 +30,7 @@ export interface AcpPlanEntry {
 export type AcpGroup =
   | { kind: "plan"; entries: AcpPlanEntry[] }
   | { kind: "diff"; path?: string; oldText?: string; newText?: string }
-  | { kind: "terminal"; terminalId?: string; output?: string }
-  | { kind: "command"; title?: string; command?: string; toolKind?: string }
-  | { kind: "unknown"; data: unknown };
+  | { kind: "terminal"; terminalId?: string; output?: string };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -53,52 +47,55 @@ function nonEmpty(value: string | undefined): string | undefined {
   return value && value.trim() ? value : undefined;
 }
 
-/** Maps one `data-acp` payload onto its transcript group. */
-export function classifyAcpData(data: unknown): AcpGroup {
+// Maps a `data-acp-plan` payload's entries onto the plan group.
+function planGroup(data: unknown): AcpGroup {
   const record = asRecord(data);
-  if (!record) return { kind: "unknown", data };
+  const rawEntries =
+    record && Array.isArray(record.entries) ? record.entries : [];
+  const entries: AcpPlanEntry[] = rawEntries.flatMap((entry) => {
+    const e = asRecord(entry);
+    const content = e ? str(e.content) : undefined;
+    if (!content) return [];
+    return [
+      {
+        content,
+        status: e ? str(e.status) : undefined,
+        priority: e ? str(e.priority) : undefined,
+      },
+    ];
+  });
+  return { kind: "plan", entries };
+}
 
-  const discriminator = str(record.type) ?? str(record.sessionUpdate);
-  switch (discriminator) {
-    case "plan": {
-      const rawEntries = Array.isArray(record.entries) ? record.entries : [];
-      const entries: AcpPlanEntry[] = rawEntries.flatMap((entry) => {
-        const e = asRecord(entry);
-        const content = e ? str(e.content) : undefined;
-        if (!content) return [];
-        return [
-          {
-            content,
-            status: e ? str(e.status) : undefined,
-            priority: e ? str(e.priority) : undefined,
-          },
-        ];
-      });
-      return { kind: "plan", entries };
-    }
-    case "diff":
+/**
+ * Classifies a driver-emitted typed data part (`data-acp-plan|diff|terminal`)
+ * onto its transcript group; returns undefined for any other part (text/tool
+ * parts and transient `data-acp-*` parts are handled elsewhere / render nothing).
+ */
+export function classifyAcpPart(
+  part: { type: string } & Record<string, unknown>,
+): AcpGroup | undefined {
+  const record = asRecord(part.data);
+  switch (part.type) {
+    case "data-acp-plan":
+      return planGroup(part.data);
+    case "data-acp-diff":
       return {
         kind: "diff",
-        path: str(record.path),
-        oldText: str(record.oldText),
-        newText: str(record.newText),
+        path: record ? str(record.path) : undefined,
+        oldText: record ? str(record.oldText) : undefined,
+        newText: record ? str(record.newText) : undefined,
       };
-    case "terminal":
+    case "data-acp-terminal":
       return {
         kind: "terminal",
-        terminalId: str(record.terminalId),
-        output: str(record.output) ?? str(record.stdout) ?? str(record.stderr),
-      };
-    case "tool_call":
-    case "tool_call_update":
-      return {
-        kind: "command",
-        title: str(record.title),
-        command: str(record.command) ?? str(record.commandLine),
-        toolKind: str(record.kind),
+        terminalId: record ? str(record.terminalId) : undefined,
+        output: record
+          ? (str(record.output) ?? str(record.stdout) ?? str(record.stderr))
+          : undefined,
       };
     default:
-      return { kind: "unknown", data };
+      return undefined;
   }
 }
 
@@ -205,12 +202,9 @@ export function isTrivialAck(output: unknown): boolean {
   );
 }
 
-/** Narrows a message part to a `data-acp` part and returns its payload. */
-export function acpPartData(
-  part: { type: string } & Record<string, unknown>,
-): unknown | undefined {
-  return part.type === "data-acp" ? part.data : undefined;
-}
-
-/** The concrete UI message type the column renders (default parts + `data-acp`). */
-export type AgentUIMessage = UIMessage<unknown, { acp: unknown }>;
+/** The concrete UI message type the column renders (default parts + the typed
+ * `data-acp-*` data parts the driver emits). */
+export type AgentUIMessage = UIMessage<
+  unknown,
+  { "acp-plan": unknown; "acp-diff": unknown; "acp-terminal": unknown }
+>;

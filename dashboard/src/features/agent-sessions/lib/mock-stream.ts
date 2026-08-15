@@ -2,9 +2,9 @@
 // column is fully developable and unit-testable before m43 is live. The wire
 // format is fixed by the shipped driver (`x-vercel-ai-ui-message-stream: v1`,
 // SSE `data:` frames terminated by `[DONE]`); these fixtures reproduce the
-// exact chunk shapes the AI SDK provider + driver emit (plan/diff/terminal
-// `data-acp` parts interleaved with text/reasoning/tool UI parts). A fixture
-// `fetch` swapped into the transport drives `useChat` with no network.
+// exact chunk shapes the driver emits (typed `data-acp-plan|diff|terminal` parts
+// interleaved with text/reasoning/tool UI parts). A fixture `fetch` swapped into
+// the transport drives `useChat` with no network.
 
 import type { UIMessageChunk } from "ai";
 
@@ -33,9 +33,8 @@ export const TERMINAL_TRANSCRIPT: UIMessageChunk[] = [
   { type: "start", messageId: "asm-1" },
   { type: "start-step" },
   {
-    type: "data-acp",
+    type: "data-acp-plan",
     data: {
-      type: "plan",
       entries: [
         {
           content: "Edit the result file",
@@ -73,9 +72,8 @@ export const TERMINAL_TRANSCRIPT: UIMessageChunk[] = [
     dynamic: true,
   },
   {
-    type: "data-acp",
+    type: "data-acp-diff",
     data: {
-      type: "diff",
       path: "agent-result.txt",
       oldText: "",
       newText: "committed by the agent\n",
@@ -83,9 +81,8 @@ export const TERMINAL_TRANSCRIPT: UIMessageChunk[] = [
     },
   } as UIMessageChunk,
   {
-    type: "data-acp",
+    type: "data-acp-terminal",
     data: {
-      type: "terminal",
       terminalId: "term-1",
       output: "$ go test ./...\nok  \tpkg\t0.10s",
       toolCallId: "t1",

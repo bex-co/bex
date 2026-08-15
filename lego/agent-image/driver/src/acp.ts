@@ -14,157 +14,153 @@
  * limitations under the License.
  */
 
-import { spawn, type ChildProcessByStdio, type SpawnOptionsWithStdioTuple, type StdioPipe } from "node:child_process";
-import readline from "node:readline";
-import type { Readable, Writable } from "node:stream";
-import { PROTOCOL_VERSION, type AgentCapabilities } from "@agentclientprotocol/sdk";
-import { createACPProvider, type ACPProvider } from "@mcpc-tech/acp-ai-provider";
+import { spawn, type ChildProcessByStdio } from "node:child_process";
+import { Readable, Writable } from "node:stream";
+import {
+  ClientSideConnection,
+  ndJsonStream,
+  PROTOCOL_VERSION,
+  type Client,
+  type PromptResponse,
+  type RequestPermissionRequest,
+  type RequestPermissionResponse,
+  type SessionNotification,
+  type SessionUpdate,
+} from "@agentclientprotocol/sdk";
 import type { AgentDriverConfig } from "./config.js";
 
-export type { ACPProvider };
-
-const probeTimeoutMs = 10_000;
 const maximumConnectTimeoutMs = 60_000;
 
-export type ACPChildProcess = ChildProcessByStdio<Writable, Readable, Readable>;
+type ACPChildProcess = ChildProcessByStdio<Writable, Readable, Readable>;
 
+// SessionProvider is the driver's handle on one ACP turn: it owns the agent
+// child process + JSON-RPC connection, and exposes exactly the verbs the turn
+// runner needs. Replaces the old fake-LanguageModel provider — the driver now
+// speaks ACP directly through the official SDK.
 export interface SessionProvider {
-  provider: ACPProvider;
+  sessionId: string;
   resume: "new" | "loaded" | "unsupported";
+  prompt(text: string): Promise<PromptResponse>;
+  cancel(): Promise<void>;
+  cleanup(): void;
 }
 
-function processOptions(
-  config: AgentDriverConfig,
-  agentEnv: Record<string, string>,
-): SpawnOptionsWithStdioTuple<StdioPipe, StdioPipe, StdioPipe> {
-  return {
-    cwd: config.cwd,
-    env: { ...process.env, ...agentEnv },
-    stdio: ["pipe", "pipe", "pipe"],
-  };
+export interface CreateSessionOptions {
+  // onUpdate receives every ACP session/update for mapping into UI-message
+  // chunks. It runs on the connection's read path, so it must not throw.
+  onUpdate: (update: SessionUpdate) => void;
+  // abortSignal, when aborted (turn timeout), SIGKILLs the child even if we are
+  // still mid-connect — so a hung `initialize` cannot leak the process.
+  abortSignal?: AbortSignal;
 }
 
-export async function probeAgentCapabilities(
-  config: AgentDriverConfig,
-  agentEnv: Record<string, string>,
-): Promise<AgentCapabilities> {
-  const child: ACPChildProcess = spawn(
-    config.command,
-    config.args,
-    processOptions(config, agentEnv),
-  );
-  const lines = readline.createInterface({ input: child.stdout });
-  const stderr: string[] = [];
-  child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk.toString()));
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+    timer.unref();
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
 
-  const request = {
-    jsonrpc: "2.0",
-    id: 1,
-    method: "initialize",
-    params: {
-      protocolVersion: PROTOCOL_VERSION,
-      clientCapabilities: {
-        fs: { readTextFile: false, writeTextFile: false },
-        terminal: false,
-      },
-      clientInfo: { name: "bex-agent-driver", version: "0.1.0" },
-    },
-  };
-
-  try {
-    return await new Promise<AgentCapabilities>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error(`ACP capability probe timed out after ${probeTimeoutMs}ms`));
-      }, probeTimeoutMs);
-      timer.unref();
-
-      child.once("error", (error) => {
-        clearTimeout(timer);
-        reject(error);
-      });
-      child.once("exit", (code, signal) => {
-        clearTimeout(timer);
-        reject(
-          new Error(
-            `ACP agent exited during capability probe (code=${code}, signal=${signal}): ${stderr.join("").trim()}`,
-          ),
-        );
-      });
-      lines.on("line", (line) => {
-        let message: Record<string, unknown>;
-        try {
-          message = JSON.parse(line);
-        } catch {
-          return;
-        }
-        if (message.id !== request.id) return;
-        clearTimeout(timer);
-        if (message.error) {
-          reject(new Error(`ACP initialize failed: ${JSON.stringify(message.error)}`));
-          return;
-        }
-        const result = message.result as { agentCapabilities?: AgentCapabilities } | undefined;
-        resolve(result?.agentCapabilities || {});
-      });
-      child.stdin.write(`${JSON.stringify(request)}\n`);
-    });
-  } finally {
-    lines.close();
-    child.kill("SIGTERM");
-  }
+// autoApprove selects a permission option for a headless run. The sandbox is the
+// security boundary (ADR047 D5 egress + fs confinement), so the driver grants
+// the requested action rather than blocking a fire-and-forget turn on a prompt.
+function autoApprove(request: RequestPermissionRequest): RequestPermissionResponse {
+  const option =
+    request.options.find((candidate) => candidate.kind === "allow_always") ??
+    request.options.find((candidate) => candidate.kind === "allow_once") ??
+    request.options.find((candidate) => candidate.kind.startsWith("allow")) ??
+    request.options[0];
+  if (!option) return { outcome: { outcome: "cancelled" } };
+  return { outcome: { outcome: "selected", optionId: option.optionId } };
 }
 
 export async function createSessionProvider(
   config: AgentDriverConfig,
   agentEnv: Record<string, string>,
+  options: CreateSessionOptions,
 ): Promise<SessionProvider> {
-  let existingSessionId: string | undefined;
-  let resume: SessionProvider["resume"] = "new";
-  if (config.existingSessionId) {
-    const capabilities = await probeAgentCapabilities(config, agentEnv);
-    if (capabilities.loadSession === true) {
-      existingSessionId = config.existingSessionId;
+  const child: ACPChildProcess = spawn(config.command, config.args, {
+    cwd: config.cwd,
+    env: { ...process.env, ...agentEnv },
+    stdio: ["pipe", "pipe", "pipe"],
+  });
+  const stderr: string[] = [];
+  child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk.toString()));
+  const cleanup = () => {
+    if (!child.killed) child.kill("SIGKILL");
+  };
+  // Guarantee the child dies on turn timeout even if we never returned from
+  // connect below (a hung initialize).
+  options.abortSignal?.addEventListener("abort", cleanup, { once: true });
+
+  const client: Client = {
+    async sessionUpdate(params: SessionNotification): Promise<void> {
+      options.onUpdate(params.update);
+    },
+    async requestPermission(params: RequestPermissionRequest): Promise<RequestPermissionResponse> {
+      return autoApprove(params);
+    },
+  };
+
+  const stream = ndJsonStream(
+    Writable.toWeb(child.stdin) as WritableStream<Uint8Array>,
+    Readable.toWeb(child.stdout) as ReadableStream<Uint8Array>,
+  );
+  const connection = new ClientSideConnection(() => client, stream);
+
+  // If the child dies during setup, surface a diagnostic instead of a generic
+  // stream-closed error.
+  const exited = new Promise<never>((_, reject) => {
+    child.once("exit", (code, signal) =>
+      reject(new Error(`ACP agent exited (code=${code}, signal=${signal}): ${stderr.join("").trim()}`)),
+    );
+    child.once("error", reject);
+  });
+  exited.catch(() => {}); // avoid an unhandled rejection when the turn ends first
+
+  const connectTimeoutMs = Math.min(config.turnTimeoutMs, maximumConnectTimeoutMs);
+  try {
+    const initialize = await withTimeout(
+      connection.initialize({
+        protocolVersion: PROTOCOL_VERSION,
+        clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
+        clientInfo: { name: "bex-agent-driver", version: "0.1.0" },
+      }),
+      connectTimeoutMs,
+      `ACP connect timed out after ${connectTimeoutMs}ms`,
+    );
+
+    let sessionId: string;
+    let resume: SessionProvider["resume"] = "new";
+    const loadSupported = initialize.agentCapabilities?.loadSession === true;
+    if (config.existingSessionId && loadSupported) {
+      await connection.loadSession({ sessionId: config.existingSessionId, cwd: config.cwd, mcpServers: [] });
+      sessionId = config.existingSessionId;
       resume = "loaded";
     } else {
-      resume = "unsupported";
+      if (config.existingSessionId) resume = "unsupported";
+      const created = await connection.newSession({ cwd: config.cwd, mcpServers: [] });
+      sessionId = created.sessionId;
     }
-  }
 
-  const provider = createACPProvider({
-    command: config.command,
-    args: config.args,
-    env: agentEnv,
-    session: { cwd: config.cwd, mcpServers: [] },
-    persistSession: config.persistSession,
-    ...(existingSessionId ? { existingSessionId } : {}),
-  });
-  // Spawn before the caller drops its copy of the model credential. Session
-  // creation remains lazy, but the already-running child owns the only env copy.
-  const connectTimeoutMs = Math.min(config.turnTimeoutMs, maximumConnectTimeoutMs);
-  let timer: NodeJS.Timeout | undefined;
-  try {
-    await Promise.race([
-      provider.connect(),
-      new Promise((_, reject) => {
-        timer = setTimeout(
-          () => reject(new Error(`ACP provider connect timed out after ${connectTimeoutMs}ms`)),
-          connectTimeoutMs,
-        );
-        timer.unref();
-      }),
-    ]);
+    return {
+      sessionId,
+      resume,
+      prompt(text: string) {
+        return Promise.race([
+          connection.prompt({ sessionId, prompt: [{ type: "text", text }] }),
+          exited,
+        ]);
+      },
+      cancel() {
+        return connection.cancel({ sessionId }).catch(() => {});
+      },
+      cleanup,
+    };
   } catch (error) {
-    provider.cleanup();
+    cleanup();
     throw error;
-  } finally {
-    clearTimeout(timer);
   }
-  return { provider, resume };
-}
-
-export function spawnRawACP(
-  config: AgentDriverConfig,
-  agentEnv: Record<string, string>,
-): ACPChildProcess {
-  return spawn(config.command, config.args, processOptions(config, agentEnv));
 }

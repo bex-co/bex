@@ -76,14 +76,26 @@ ensure_cnpg() {
      "tolerations":[{"key":"node-role.kubernetes.io/control-plane","effect":"NoSchedule"}]}}}}' >/dev/null
   echo "    waiting for the CNPG operator to become ready..."
   if ! kubectl -n cnpg-system rollout status deploy/cnpg-cloudnative-pg --timeout=150s; then
-    {
-      echo "error: the CNPG operator did not become ready — dev-5's databases cannot be created."
-      echo "diagnose:"
-      echo "  KUBECONFIG=$PWD/$KUBECONFIG_FILE kubectl -n cnpg-system describe pod -l app.kubernetes.io/name=cloudnative-pg"
-      echo "  KUBECONFIG=$PWD/$KUBECONFIG_FILE kubectl -n cnpg-system logs deploy/cnpg-cloudnative-pg --tail=40"
-      echo "(a webhook :9443 startup-probe failure means the operator's admission webhook can't bind — a CNPG-on-kind issue, not a dev-5 script bug)"
-    } >&2
-    exit 1
+    # On a degraded local cluster the CNPG operator can crashloop (etcd/apiserver
+    # slowness → "leader election lost", or a :9443 webhook bind failure on some
+    # kind builds) WITHOUT that blocking dev-5: the three CNPG Clusters it needs
+    # to create may ALREADY exist and keep running (their Postgres pods don't
+    # depend on a live operator). Only hard-fail when the DB clusters are genuinely
+    # absent; otherwise warn and continue so a re-run isn't wedged by a flaky
+    # operator that already did its one job. The DB-secret waits below still gate
+    # on the real precondition (the -app credentials existing).
+    if kubectl -n "$DEV_AUTH_NS" get cluster.postgresql.cnpg.io kratos-db hydra-db bex-db >/dev/null 2>&1; then
+      echo "    warn: CNPG operator not ready, but the kratos-db/hydra-db/bex-db Clusters already exist — continuing (their Postgres pods run without a live operator)." >&2
+    else
+      {
+        echo "error: the CNPG operator did not become ready AND the DB Clusters do not exist yet — dev-5's databases cannot be created."
+        echo "diagnose:"
+        echo "  KUBECONFIG=$PWD/$KUBECONFIG_FILE kubectl -n cnpg-system describe pod -l app.kubernetes.io/name=cloudnative-pg"
+        echo "  KUBECONFIG=$PWD/$KUBECONFIG_FILE kubectl -n cnpg-system logs deploy/cnpg-cloudnative-pg --tail=40"
+        echo "(a webhook :9443 startup-probe failure means the operator's admission webhook can't bind; 'leader election lost' means the cluster's etcd/apiserver is too slow — both are CNPG-on-kind cluster issues, not a dev-5 script bug)"
+      } >&2
+      exit 1
+    fi
   fi
 }
 echo "==> CNPG operator (self-installing if absent)"
@@ -163,9 +175,9 @@ helm repo update ory >/dev/null
 
 echo "==> kratos + hydra (helm upgrade --install)"
 helm upgrade --install kratos ory/kratos --version 0.62.1 -n "$DEV_AUTH_NS" \
-  -f deploy/gitops/base/values/kratos.values.yaml -f "$ENVDIR/values/kratos.values.yaml" --wait --timeout 5m
+  -f deploy/gitops/base/values/kratos.values.yaml -f "$ENVDIR/values/kratos.values.yaml" --wait --timeout 12m
 helm upgrade --install hydra ory/hydra --version 0.62.1 -n "$DEV_AUTH_NS" \
-  -f deploy/gitops/base/values/hydra.values.yaml -f "$ENVDIR/values/hydra.values.yaml" --wait --timeout 5m
+  -f deploy/gitops/base/values/hydra.values.yaml -f "$ENVDIR/values/hydra.values.yaml" --wait --timeout 12m
 
 kill_if_running() {
   local pidfile="$1" pid
@@ -228,6 +240,7 @@ for attempt in $(seq 1 5); do
     BEX_CP_DB_URI="$(hostDsn bex-db bex "$BEX_DB_PORT")" \
     BEX_CP_INSECURE="1" \
     BEX_CP_APPS_NAMESPACE="$DEV_NS" \
+    BEX_ALLOW_INSECURE_AUTHZ="1" \
     BEX_BASE_DOMAIN="onbex.co" \
     BEX_LOKI_URL="http://localhost:$LOKI_PORT" \
     "./$ENVDIR/bin/bex-api" > "$ENVDIR/logs/bex-api.log" 2>&1 & echo $! > "$ENVDIR/.pids/bex-api.pid"
