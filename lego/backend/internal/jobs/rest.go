@@ -18,6 +18,7 @@ package jobs
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -82,28 +83,21 @@ func toJobList(views []JobView) []jobWithCursor {
 // core.MaxPageLimit (codex-security round-6 #7 — Render defaults to 20; bex
 // returns the larger newest-first cap and pages with the cursor, same as
 // deploys).
-func filterFromQuery(q http.Header, vals map[string][]string) (ListFilter, error) {
-	_ = q
+func filterFromQuery(q url.Values) (ListFilter, error) {
 	limit := 0
-	if v := vals["limit"]; len(v) > 0 {
-		n, err := strconv.Atoi(v[0])
+	if v := q.Get("limit"); v != "" {
+		n, err := strconv.Atoi(v)
 		if err != nil || n < 1 {
 			return ListFilter{}, core.ErrBadRequest
 		}
 		limit = n
 	}
-	str := func(key string) string {
-		if v := vals[key]; len(v) > 0 {
-			return v[0]
-		}
-		return ""
-	}
 	return FilterFromStrings(
-		vals["status"],
-		str("createdBefore"), str("createdAfter"),
-		str("startedBefore"), str("startedAfter"),
-		str("finishedBefore"), str("finishedAfter"),
-		str("cursor"), limit,
+		q["status"],
+		q.Get("createdBefore"), q.Get("createdAfter"),
+		q.Get("startedBefore"), q.Get("startedAfter"),
+		q.Get("finishedBefore"), q.Get("finishedAfter"),
+		q.Get("cursor"), limit,
 	)
 }
 
@@ -112,9 +106,7 @@ func filterFromQuery(q http.Header, vals map[string][]string) (ListFilter, error
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	const base = "/v1/services"
 	mux.HandleFunc("GET "+base+"/{id}/jobs", func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
-		vals := map[string][]string(q)
-		filter, err := filterFromQuery(r.Header, vals)
+		filter, err := filterFromQuery(r.URL.Query())
 		if err != nil {
 			core.WriteErr(w, err)
 			return
