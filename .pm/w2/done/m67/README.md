@@ -1,6 +1,6 @@
 # w2 · m67 — ADR059 Active tier: last-interaction idle grace + per-workspace live-sandbox cap
 
-**Worker:** worker2 **Goal:** the Active tier of ADR059's state machine lands as a real subset of the final model — a finished session's sandbox stays alive through a bounded, last-interaction-measured idle grace (so Open in Zed's first connect is reliable), and a per-workspace concurrent live-sandbox cap bounds the cost — replacing the current "reap ~15s after the turn, unless an SSH session is open right now" behavior. **Status:** todo (t001–t004 done; t005 closeout pending ship)
+**Worker:** worker2 **Goal:** the Active tier of ADR059's state machine lands as a real subset of the final model — a finished session's sandbox stays alive through a bounded, last-interaction-measured idle grace (so Open in Zed's first connect is reliable), and a per-workspace concurrent live-sandbox cap bounds the cost — replacing the current "reap ~15s after the turn, unless an SSH session is open right now" behavior. **Status:** done (2026-08-15). Shipped in `7bf7dcde`; rolled to prod via the `81760b48` deploy (pin `12d1b730`). Idle grace (`BEX_AGENT_SANDBOX_IDLE_TTL`, default 30m; `idle = now − max(last turn end, last SSH disconnect)`; open editor pins at zero; `0` ⇒ ADR054 D6 immediate reap) generalizes the m65 teardown deferral, and the per-workspace live cap (`BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE`, default 5; `AGENT_SESSION_LIVE_LIMIT` 409 across REST/GraphQL/MCP) bounds cost. t003 simplify: reviewed — cap check and idle clock are already helper-factored, single reaper seam kept for m68's hibernate swap; nothing behavior-preserving to change. Full backend suite green; idle math + cap semantics unit-tested on a fake clock.
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | t002 | Per-workspace concurrent live-sandbox cap                                                  | 40m | t001       | — **DONE** |
 | t003 | Simplify pass over the milestone's changes                                                 | 30m | t002       | — **DONE** |
 | t004 | Test coverage for idle math, connected-never-expires, and cap behavior                     | 40m | t002       | — **DONE** |
-| t005 | Closeout                                                                                   | 15m | t004       |
+| t005 | Closeout                                                                                   | 15m | t004       | — **DONE** |
 
 ## Definition of done
 
