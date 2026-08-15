@@ -11,6 +11,11 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      # secrets.* is not allowed in step-level `if` (contexts-availability
+      # rule — the workflow file is rejected outright), so the presence check
+      # is hoisted here and steps gate on env.HAS_TAP_KEY.
+      HAS_TAP_KEY: ${{ secrets.BEX_TAP_PUSH_KEY != '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -65,7 +70,7 @@ jobs:
         # BEX_TAP_PUSH_KEY is the write deploy key of bex-co/homebrew-tap —
         # repo-scoped, non-personal, no expiry (docs/ADR019 custody: private
         # half in .env's BEX_TAP_PUSH_KEY_FILE). Skips cleanly while unset.
-        if: ${{ secrets.BEX_TAP_PUSH_KEY != '' }}
+        if: ${{ env.HAS_TAP_KEY == 'true' }}
         env:
           TAP_KEY: ${{ secrets.BEX_TAP_PUSH_KEY }}
         run: |
