@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -117,19 +116,7 @@ func (r *NamespaceReconciler) Kick() {
 
 // Run reconciles until ctx is done.
 func (r *NamespaceReconciler) Run(ctx context.Context) {
-	ticker := time.NewTicker(r.Resync)
-	defer ticker.Stop()
-	for {
-		if err := r.ReconcileOnce(ctx); err != nil && ctx.Err() == nil {
-			log.Printf("controlplane: namespace reconcile: %v", err)
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-		case <-r.kick:
-		}
-	}
+	core.PollWake(ctx, "controlplane: namespace reconcile", r.Resync, r.kick, r.ReconcileOnce)
 }
 
 // ReconcileOnce ensures a namespace (and its base isolation objects) for every

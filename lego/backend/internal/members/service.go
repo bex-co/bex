@@ -674,22 +674,8 @@ func (s *Service) RunRoleReconciler(ctx context.Context) {
 	if _, ok := s.Store.(RoleReconciliationStore); !ok {
 		return
 	}
-	run := func() {
-		if err := s.reconcilePendingRoles(ctx, 100); err != nil && !errors.Is(err, context.Canceled) {
-			log.Printf("members: role reconciliation sweep: %v", err)
-		}
-	}
-	run()
-	ticker := time.NewTicker(15 * time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			run()
-		}
-	}
+	core.Poll(ctx, "members: role reconciliation sweep", 15*time.Second,
+		func(ctx context.Context) error { return s.reconcilePendingRoles(ctx, 100) })
 }
 
 // Remove drops a member from a workspace: the row then its OpenFGA tuple.

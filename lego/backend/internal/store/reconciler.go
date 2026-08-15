@@ -245,19 +245,7 @@ func (r *Reconciler) Kick() {
 
 // Run reconciles until ctx is done.
 func (r *Reconciler) Run(ctx context.Context) {
-	ticker := time.NewTicker(r.Resync)
-	defer ticker.Stop()
-	for {
-		if err := r.ReconcileOnce(ctx); err != nil && ctx.Err() == nil {
-			log.Printf("controlplane: reconcile: %v", err)
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-		case <-r.kick:
-		}
-	}
+	core.PollWake(ctx, "controlplane: reconcile", r.Resync, r.kick, r.ReconcileOnce)
 }
 
 // ReconcileOnce drives one full pass: desired rows vs. existing managed CRs →

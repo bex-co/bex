@@ -16,41 +16,38 @@ limitations under the License.
 
 // Package sandboxexec mints and verifies the short-lived ticket that authorizes
 // one `render ea sandbox exec` command (w3/m33, docs/render-artifacts/ea-sandbox.md).
-// It is a leaf, mirroring internal/shellticket: bex-api (which authorizes
-// can_operate but must never gain pods/exec) mints a ticket that binds the exact
-// sandbox pod, namespace, and command; the isolated SSH gateway (which holds
-// pods/exec) verifies it and runs the command, streaming stdout/stderr back.
-// Because the ticket is HMAC-SHA256-signed, the gateway needs no shared database
-// — only the secret both processes hold (BEX_SANDBOX_EXEC_SECRET). Unlike the
-// Browser Web Shell ticket, the COMMAND is signed: the gateway runs exactly what
-// bex-api authorized, never an argv the caller could swap after the fact.
+// It is a leaf over internal/hmacticket, which carries the signed-token
+// envelope this flavor shares with internal/shellticket and
+// internal/agentsessionticket: bex-api (which authorizes can_operate but must
+// never gain pods/exec) mints a ticket that binds the exact sandbox pod,
+// namespace, and command; the isolated SSH gateway (which holds pods/exec)
+// verifies it and runs the command, streaming stdout/stderr back. Because the
+// ticket is HMAC-SHA256-signed, the gateway needs no shared database — only the
+// secret both processes hold (BEX_SANDBOX_EXEC_SECRET). Unlike the Browser Web
+// Shell ticket, the COMMAND is signed: the gateway runs exactly what bex-api
+// authorized, never an argv the caller could swap after the fact.
 package sandboxexec
 
 import (
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
-	"errors"
-	"strings"
 	"time"
-)
 
-const clockSkew = 30 * time.Second
+	"github.com/bex-co/bex/lego/backend/internal/hmacticket"
+)
 
 // TicketHeader carries the signed exec ticket from bex-api to the gateway. A
 // header (not a query param) keeps it out of edge access logs.
 const TicketHeader = "X-Bex-Sandbox-Exec-Ticket"
 
+var codec = hmacticket.New("sandbox exec ticket")
+
 var (
 	// ErrMalformed is returned when a ticket is structurally invalid or missing a
 	// required claim.
-	ErrMalformed = errors.New("malformed sandbox exec ticket")
+	ErrMalformed = codec.Malformed()
 	// ErrSignature is returned when a ticket's HMAC does not verify.
-	ErrSignature = errors.New("sandbox exec ticket signature mismatch")
+	ErrSignature = codec.Signature()
 	// ErrExpired is returned when a ticket is past its expiry (with clock skew).
-	ErrExpired = errors.New("sandbox exec ticket expired")
+	ErrExpired = codec.Expired()
 )
 
 // Claims binds an authenticated caller to one exec: a specific sandbox pod in a
@@ -72,79 +69,35 @@ type Claims struct {
 // Mint returns a signed, URL-safe ticket for claims, filling a fresh Nonce when
 // empty so every ticket is single-use-trackable.
 func Mint(secret []byte, claims Claims) (string, error) {
-	if len(secret) == 0 {
-		return "", errors.New("sandbox exec ticket secret is empty")
-	}
-	if claims.Nonce == "" {
-		nonce, err := newNonce()
-		if err != nil {
-			return "", err
-		}
-		claims.Nonce = nonce
-	}
-	payload, err := json.Marshal(claims)
-	if err != nil {
+	if err := hmacticket.EnsureNonce(&claims.Nonce); err != nil {
 		return "", err
 	}
-	body := base64.RawURLEncoding.EncodeToString(payload)
-	return body + "." + sign(secret, body), nil
+	return codec.Sign(secret, claims)
 }
 
 // Verify checks the signature and time bounds and returns the claims. Single-use
 // is the caller's concern (the gateway tracks consumed nonces), so verify stays
 // stateless.
 func Verify(secret []byte, token string, now time.Time) (Claims, error) {
-	if len(secret) == 0 {
-		return Claims{}, errors.New("sandbox exec ticket secret is empty")
-	}
-	body, sig, ok := strings.Cut(token, ".")
-	if !ok || body == "" || sig == "" {
-		return Claims{}, ErrMalformed
-	}
-	if !hmac.Equal([]byte(sig), []byte(sign(secret, body))) {
-		return Claims{}, ErrSignature
-	}
-	raw, err := base64.RawURLEncoding.DecodeString(body)
-	if err != nil {
-		return Claims{}, ErrMalformed
-	}
 	var claims Claims
-	if err := json.Unmarshal(raw, &claims); err != nil {
-		return Claims{}, ErrMalformed
+	if err := codec.Open(secret, token, &claims); err != nil {
+		return Claims{}, err
 	}
 	if claims.Subject == "" || claims.SandboxID == "" || claims.Namespace == "" ||
 		len(claims.Command) == 0 || claims.Nonce == "" || claims.ExpiresAt == 0 {
 		return Claims{}, ErrMalformed
 	}
-	if now.Add(-clockSkew).After(time.Unix(claims.ExpiresAt, 0)) {
-		return Claims{}, ErrExpired
+	if err := codec.CheckBounds(now, claims.IssuedAt, claims.ExpiresAt); err != nil {
+		return Claims{}, err
 	}
 	return claims, nil
 }
 
 // NonceExpiry is the instant this ticket's single-use nonce may be pruned from
-// the replay guard. It matches the verifier's EFFECTIVE acceptance window
-// (ExpiresAt + clockSkew), not the raw ExpiresAt — otherwise a still-verifiable
-// ticket's nonce could be pruned and re-claimed during the skew interval,
-// defeating single-use (codex #8).
-func (c Claims) NonceExpiry() time.Time {
-	return time.Unix(c.ExpiresAt, 0).Add(clockSkew)
-}
+// the replay guard — the verifier's effective acceptance window, not the raw
+// ExpiresAt (see hmacticket.NonceExpiry).
+func (c Claims) NonceExpiry() time.Time { return hmacticket.NonceExpiry(c.ExpiresAt) }
 
 // PodName is the sandbox's pod name: OpenSandbox names the workload pod
 // `<sandbox-id>-0` (validated live, w3/m32).
 func (c Claims) PodName() string { return c.SandboxID + "-0" }
-
-func sign(secret []byte, body string) string {
-	mac := hmac.New(sha256.New, secret)
-	mac.Write([]byte(body))
-	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
-}
-
-func newNonce() (string, error) {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b[:]), nil
-}

@@ -19,37 +19,31 @@ limitations under the License.
 // Shell). It is a leaf: bex-api (which can authorize but must never gain
 // pods/exec) mints a ticket after AuthorizeApp(can_operate); the isolated SSH
 // gateway (which holds pods/exec) verifies it before opening a browser
-// terminal. The ticket is an HMAC-SHA256-signed token so verification needs no
-// shared database — only the secret both processes hold (BEX_SHELL_TICKET_SECRET).
+// terminal. The ticket is an HMAC-SHA256-signed token (the envelope is
+// internal/hmacticket, shared with the other ticket flavors) so verification
+// needs no shared database — only the secret both processes hold
+// (BEX_SHELL_TICKET_SECRET).
 // It carries no terminal content and is not an SSH key; the private key never
 // enters the browser.
 package shellticket
 
 import (
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"strings"
 	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/hmacticket"
 )
 
-// clockSkew tolerates small clock differences between bex-api and the gateway
-// when checking the ticket's issue/expiry bounds.
-const clockSkew = 30 * time.Second
+var codec = hmacticket.New("shell ticket")
 
 var (
 	// ErrMalformed is returned when a ticket is structurally invalid or missing a
 	// required claim.
-	ErrMalformed = errors.New("malformed shell ticket")
+	ErrMalformed = codec.Malformed()
 	// ErrSignature is returned when a ticket's HMAC does not verify against the
 	// secret (tampered, or minted with a different secret).
-	ErrSignature = errors.New("shell ticket signature mismatch")
+	ErrSignature = codec.Signature()
 	// ErrExpired is returned when a ticket is past its expiry (with clock skew).
-	ErrExpired = errors.New("shell ticket expired")
+	ErrExpired = codec.Expired()
 )
 
 // Claims is the content of an exec ticket. It binds the authenticated caller to
@@ -68,66 +62,33 @@ type Claims struct {
 // Mint returns a signed, URL-safe ticket string for claims. When Nonce is empty
 // it fills a fresh random one so every minted ticket is single-use-trackable.
 func Mint(secret []byte, claims Claims) (string, error) {
-	if len(secret) == 0 {
-		return "", errors.New("shell ticket secret is empty")
-	}
-	if claims.Nonce == "" {
-		nonce, err := newNonce()
-		if err != nil {
-			return "", err
-		}
-		claims.Nonce = nonce
-	}
-	payload, err := json.Marshal(claims)
-	if err != nil {
+	if err := hmacticket.EnsureNonce(&claims.Nonce); err != nil {
 		return "", err
 	}
-	body := base64.RawURLEncoding.EncodeToString(payload)
-	return body + "." + sign(secret, body), nil
+	return codec.Sign(secret, claims)
 }
 
 // Verify checks the signature and time bounds and returns the claims. It does
 // NOT check single-use — the gateway tracks consumed nonces itself, so an
 // in-memory reuse guard survives a stateless verify.
 func Verify(secret []byte, token string, now time.Time) (Claims, error) {
-	if len(secret) == 0 {
-		return Claims{}, errors.New("shell ticket secret is empty")
-	}
-	body, sig, ok := strings.Cut(token, ".")
-	if !ok || body == "" || sig == "" {
-		return Claims{}, ErrMalformed
-	}
-	if !hmac.Equal([]byte(sig), []byte(sign(secret, body))) {
-		return Claims{}, ErrSignature
-	}
-	raw, err := base64.RawURLEncoding.DecodeString(body)
-	if err != nil {
-		return Claims{}, ErrMalformed
-	}
 	var claims Claims
-	if err := json.Unmarshal(raw, &claims); err != nil {
-		return Claims{}, ErrMalformed
+	if err := codec.Open(secret, token, &claims); err != nil {
+		return Claims{}, err
 	}
 	if claims.Subject == "" || claims.ServiceID == "" || claims.Nonce == "" || claims.ExpiresAt == 0 {
 		return Claims{}, ErrMalformed
 	}
-	if now.Add(-clockSkew).After(time.Unix(claims.ExpiresAt, 0)) {
-		return Claims{}, ErrExpired
-	}
-	if claims.IssuedAt != 0 && now.Add(clockSkew).Before(time.Unix(claims.IssuedAt, 0)) {
-		return Claims{}, fmt.Errorf("%w: issued in the future", ErrMalformed)
+	if err := codec.CheckBounds(now, claims.IssuedAt, claims.ExpiresAt); err != nil {
+		return Claims{}, err
 	}
 	return claims, nil
 }
 
 // NonceExpiry is the instant this ticket's single-use nonce may be pruned from
-// the replay guard. It matches the verifier's EFFECTIVE acceptance window
-// (ExpiresAt + clockSkew), not the raw ExpiresAt — otherwise a still-verifiable
-// ticket's nonce could be pruned and re-claimed during the skew interval,
-// defeating single-use (codex #8).
-func (c Claims) NonceExpiry() time.Time {
-	return time.Unix(c.ExpiresAt, 0).Add(clockSkew)
-}
+// the replay guard — the verifier's effective acceptance window, not the raw
+// ExpiresAt (see hmacticket.NonceExpiry).
+func (c Claims) NonceExpiry() time.Time { return hmacticket.NonceExpiry(c.ExpiresAt) }
 
 // Username returns the SSH-style username the gateway feeds ResolveSSHSession:
 // the specific instance id when the ticket pins one, else the bare service id
@@ -137,18 +98,4 @@ func (c Claims) Username() string {
 		return c.InstanceID
 	}
 	return c.ServiceID
-}
-
-func sign(secret []byte, body string) string {
-	mac := hmac.New(sha256.New, secret)
-	mac.Write([]byte(body))
-	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
-}
-
-func newNonce() (string, error) {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b[:]), nil
 }

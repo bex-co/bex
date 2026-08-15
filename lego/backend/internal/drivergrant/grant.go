@@ -24,12 +24,13 @@ package drivergrant
 import (
 	"crypto/ed25519"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/hmacticket"
 )
 
 const (
@@ -62,8 +63,8 @@ func Mint(secret []byte, sessionID string, now time.Time, ttl time.Duration) (st
 	if len(secret) == 0 || sessionID == "" || ttl <= 0 {
 		return "", errors.New("invalid driver grant configuration")
 	}
-	var nonce [16]byte
-	if _, err := rand.Read(nonce[:]); err != nil {
+	nonce, err := hmacticket.Nonce()
+	if err != nil {
 		return "", err
 	}
 	claims := Claims{
@@ -71,7 +72,7 @@ func Mint(secret []byte, sessionID string, now time.Time, ttl time.Duration) (st
 		Action:    ActionTurn,
 		IssuedAt:  now.Unix(),
 		ExpiresAt: now.Add(ttl).Unix(),
-		Nonce:     base64.RawURLEncoding.EncodeToString(nonce[:]),
+		Nonce:     nonce,
 	}
 	payload, err := json.Marshal(claims)
 	if err != nil {

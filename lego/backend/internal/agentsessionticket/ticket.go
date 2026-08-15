@@ -16,23 +16,18 @@ limitations under the License.
 
 // Package agentsessionticket is the signed handoff from bex-api to the coming
 // isolated gateway attach path (ADR047 D3). It mirrors the Browser Web Shell
-// design: a short-lived HMAC token plus a random nonce claimed atomically in
-// the shared control-plane nonce table by the gateway. bex-api authorizes and
-// signs but never connects to the sandbox network path.
+// design over the shared internal/hmacticket envelope: a short-lived HMAC token
+// plus a random nonce claimed atomically in the shared control-plane nonce table
+// by the gateway. bex-api authorizes and signs but never connects to the sandbox
+// network path.
 package agentsessionticket
 
 import (
-	"crypto/hmac"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
-	"strings"
 	"time"
-)
 
-const clockSkew = 30 * time.Second
+	"github.com/bex-co/bex/lego/backend/internal/hmacticket"
+)
 
 const (
 	// ActionRead authorizes transcript replay only (GET requests).
@@ -41,10 +36,12 @@ const (
 	ActionTurn = "turn"
 )
 
+var codec = hmacticket.New("agent session ticket")
+
 var (
-	ErrMalformed     = errors.New("malformed agent session ticket")
-	ErrSignature     = errors.New("agent session ticket signature mismatch")
-	ErrExpired       = errors.New("agent session ticket expired")
+	ErrMalformed     = codec.Malformed()
+	ErrSignature     = codec.Signature()
+	ErrExpired       = codec.Expired()
 	ErrInvalidAction = errors.New("agent session ticket action must be 'read' or 'turn'")
 )
 
@@ -79,41 +76,18 @@ type Claims struct {
 }
 
 func Mint(secret []byte, claims Claims) (string, error) {
-	if len(secret) == 0 {
-		return "", errors.New("agent session ticket secret is empty")
-	}
-	if claims.Nonce == "" {
-		var nonce [16]byte
-		if _, err := rand.Read(nonce[:]); err != nil {
-			return "", err
-		}
-		claims.Nonce = base64.RawURLEncoding.EncodeToString(nonce[:])
-	}
-	payload, err := json.Marshal(claims)
-	if err != nil {
+	if err := hmacticket.EnsureNonce(&claims.Nonce); err != nil {
 		return "", err
 	}
-	body := base64.RawURLEncoding.EncodeToString(payload)
-	return body + "." + sign(secret, body), nil
+	return codec.Sign(secret, claims)
 }
 
 func Verify(secret []byte, token string, now time.Time) (Claims, error) {
-	if len(secret) == 0 {
-		return Claims{}, errors.New("agent session ticket secret is empty")
-	}
-	body, signature, ok := strings.Cut(token, ".")
-	if !ok || body == "" || signature == "" || !hmac.Equal([]byte(signature), []byte(sign(secret, body))) {
-		if ok && body != "" && signature != "" {
-			return Claims{}, ErrSignature
-		}
-		return Claims{}, ErrMalformed
-	}
-	raw, err := base64.RawURLEncoding.DecodeString(body)
-	if err != nil {
-		return Claims{}, ErrMalformed
-	}
 	var claims Claims
-	if json.Unmarshal(raw, &claims) != nil || claims.ExpiresAt == 0 {
+	if err := codec.Open(secret, token, &claims); err != nil {
+		return Claims{}, err
+	}
+	if claims.ExpiresAt == 0 {
 		return Claims{}, ErrMalformed
 	}
 	// Every binding claim is required: a ticket missing any of them would not be
@@ -135,26 +109,13 @@ func Verify(secret []byte, token string, now time.Time) (Claims, error) {
 	default:
 		return Claims{}, ErrInvalidAction
 	}
-	if now.Add(-clockSkew).After(time.Unix(claims.ExpiresAt, 0)) {
-		return Claims{}, ErrExpired
-	}
-	if claims.IssuedAt != 0 && now.Add(clockSkew).Before(time.Unix(claims.IssuedAt, 0)) {
-		return Claims{}, ErrMalformed
+	if err := codec.CheckBounds(now, claims.IssuedAt, claims.ExpiresAt); err != nil {
+		return Claims{}, err
 	}
 	return claims, nil
 }
 
 // NonceExpiry is the instant this ticket's single-use nonce may be pruned from
-// the replay guard. It matches the verifier's EFFECTIVE acceptance window
-// (ExpiresAt + clockSkew), not the raw ExpiresAt — otherwise a still-verifiable
-// ticket's nonce could be pruned and re-claimed during the skew interval,
-// defeating single-use (codex #8).
-func (c Claims) NonceExpiry() time.Time {
-	return time.Unix(c.ExpiresAt, 0).Add(clockSkew)
-}
-
-func sign(secret []byte, body string) string {
-	mac := hmac.New(sha256.New, secret)
-	_, _ = mac.Write([]byte(body))
-	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
-}
+// the replay guard — the verifier's effective acceptance window, not the raw
+// ExpiresAt (see hmacticket.NonceExpiry).
+func (c Claims) NonceExpiry() time.Time { return hmacticket.NonceExpiry(c.ExpiresAt) }

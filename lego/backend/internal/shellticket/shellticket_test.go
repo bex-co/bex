@@ -21,6 +21,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/hmacticket"
 )
 
 var testSecret = []byte("shell-ticket-test-secret")
@@ -114,13 +116,13 @@ func TestMintEmptySecret(t *testing.T) {
 
 // TestNonceExpiryCoversVerifyWindow pins codex #8: the replay guard must retain a
 // ticket's single-use nonce at least as long as Verify still accepts the ticket.
-// NonceExpiry (ExpiresAt + clockSkew) must not fall before the last instant Verify
+// NonceExpiry (ExpiresAt + hmacticket.ClockSkew) must not fall before the last instant Verify
 // accepts, or a nonce pruned at raw ExpiresAt could be re-claimed and a
 // still-verifiable ticket replayed during the clock-skew interval.
 func TestNonceExpiryCoversVerifyWindow(t *testing.T) {
 	exp := time.Unix(1_800_000_000, 0)
 	token := mint(t, Claims{Subject: "user-1", ServiceID: "srv-abc", ExpiresAt: exp.Unix()})
-	lastAccepted := exp.Add(clockSkew) // Verify accepts through ExpiresAt+clockSkew.
+	lastAccepted := exp.Add(hmacticket.ClockSkew) // Verify accepts through ExpiresAt+hmacticket.ClockSkew.
 	claims, err := Verify(testSecret, token, lastAccepted)
 	if err != nil {
 		t.Fatalf("Verify at the last accepted instant: %v", err)

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/hmacticket"
 )
 
 func TestTicketClaimsAndTamperResistance(t *testing.T) {
@@ -42,7 +44,7 @@ func TestNonceExpiryCoversVerifyWindow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lastAccepted := exp.Add(clockSkew)
+	lastAccepted := exp.Add(hmacticket.ClockSkew)
 	claims, err := Verify([]byte("secret"), tok, lastAccepted)
 	if err != nil {
 		t.Fatalf("Verify at the last accepted instant: %v", err)
