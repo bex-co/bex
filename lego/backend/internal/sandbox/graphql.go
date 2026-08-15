@@ -89,7 +89,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Template:       gqlStr(p.Args, "template"),
 					Plan:           Plan(gqlStr(p.Args, "plan")),
 					Region:         gqlStr(p.Args, "region"),
-					TimeoutSeconds: gqlInt(p.Args, "timeoutSeconds"),
+					TimeoutSeconds: gqlutil.Int(p.Args, "timeoutSeconds"),
 					NetworkPolicy:  policy,
 				})
 			},
@@ -105,13 +105,6 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 	}
-}
-
-func gqlInt(args map[string]any, key string) int {
-	if v, ok := args[key].(int); ok {
-		return v
-	}
-	return 0
 }
 
 // gqlStr reads an optional string arg, "" when absent.

@@ -565,12 +565,6 @@ var envVarGQLType = graphql.NewObject(graphql.ObjectConfig{
 // gqlInt reads an optional argument, tolerating absence (graphql-go omits
 // unset optional args from the map) — the create mutation's scalar args are
 // all optional except name.
-func gqlInt(args map[string]any, key string) int {
-	if v, ok := args[key].(int); ok {
-		return v
-	}
-	return 0
-}
 
 func gqlInt32Ptr(args map[string]any, key string) *int32 {
 	v, ok := args[key].(int)
@@ -876,7 +870,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListCronRuns(p.Context, p.Args["serviceId"].(string), gqlutil.Str(p.Args, "cursor"), gqlInt(p.Args, "limit"))
+				return s.ListCronRuns(p.Context, p.Args["serviceId"].(string), gqlutil.Str(p.Args, "cursor"), gqlutil.Int(p.Args, "limit"))
 			},
 		},
 		"cronJobRun": &graphql.Field{
@@ -1133,8 +1127,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Plan:                    gqlutil.Str(p.Args, "plan"),
 					AutoDeploy:              gqlutil.BoolPtr(p.Args, "autoDeploy"),
 					NotifyOnFail:            gqlutil.Str(p.Args, "notifyOnFail"),
-					Port:                    int32(gqlInt(p.Args, "port")),
-					Replicas:                int32(gqlInt(p.Args, "replicas")),
+					Port:                    int32(gqlutil.Int(p.Args, "port")),
+					Replicas:                int32(gqlutil.Int(p.Args, "replicas")),
 					Env:                     env,
 					SecretFiles:             gqlSecretFileInputs(p.Args, "secretFiles"),
 					PublishPath:             gqlutil.Str(p.Args, "publishPath"),

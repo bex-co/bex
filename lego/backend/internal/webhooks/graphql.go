@@ -67,12 +67,6 @@ var deliveryGQLType = graphql.NewObject(graphql.ObjectConfig{
 })
 
 // gqlInt reads an optional int argument (absent => 0).
-func gqlInt(args map[string]any, key string) int {
-	if v, ok := args[key].(int); ok {
-		return v
-	}
-	return 0
-}
 
 // GraphQLQuery returns webhookEndpoints/webhookEndpoint/webhookDeliveries +
 // the webhookEventTypes vocabulary (the dashboard's picker source).
@@ -106,7 +100,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"limit":      &graphql.ArgumentConfig{Type: graphql.Int},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListDeliveries(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["endpointId"].(string), gqlutil.Str(p.Args, "cursor"), gqlInt(p.Args, "limit"))
+				return s.ListDeliveries(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["endpointId"].(string), gqlutil.Str(p.Args, "cursor"), gqlutil.Int(p.Args, "limit"))
 			},
 		},
 		"webhookEventTypes": &graphql.Field{
