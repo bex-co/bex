@@ -51,19 +51,24 @@ func (s *PGStore) EndSSHSession(ctx context.Context, sessionID, result string, e
 	return err
 }
 
-// HasOpenSSHSession reports whether a still-open SSH session (ended_at IS NULL)
-// targets the given resource id and started at or after `since` (ADR054 D6). The
-// agent-session Completer uses it to defer a finished session's sandbox teardown
-// while an editor is connected; `since` (now − the SSH session cap) discards a
-// leaked row a crashed gateway replica never closed, so deferral stays bounded.
-func (s *PGStore) HasOpenSSHSession(ctx context.Context, resourceID string, since time.Time) (bool, error) {
-	var open bool
-	err := s.Pool.QueryRow(ctx, `
-		SELECT EXISTS(
-			SELECT 1 FROM ssh_sessions
-			WHERE service_id = $1 AND ended_at IS NULL AND started_at >= $2)`,
-		resourceID, since).Scan(&open)
-	return open, err
+// AgentSessionSSHActivity summarizes a resource's editor-SSH activity for the
+// agent-session idle reaper (ADR059 D2 / w2/m67): whether a still-open session
+// (ended_at IS NULL) started at or after `freshSince` exists — a live editor
+// that pins the sandbox and must never be reaped — and the most recent close
+// time (ended_at), which feeds the idle clock `now − max(last turn end, last SSH
+// disconnect)`. `freshSince` (now − the SSH session cap) discards a leaked row a
+// crashed gateway replica never closed, so an editor pin stays bounded. It
+// subsumes ADR054 D6's earlier open-only check.
+func (s *PGStore) AgentSessionSSHActivity(ctx context.Context, resourceID string, freshSince time.Time) (hasFreshOpen bool, lastEnded *time.Time, err error) {
+	// COALESCE bool_or so an empty set (no rows for this id) scans as false, not NULL.
+	err = s.Pool.QueryRow(ctx, `
+		SELECT
+			COALESCE(bool_or(ended_at IS NULL AND started_at >= $2), false),
+			max(ended_at)
+		FROM ssh_sessions
+		WHERE service_id = $1`,
+		resourceID, freshSince).Scan(&hasFreshOpen, &lastEnded)
+	return hasFreshOpen, lastEnded, err
 }
 
 // PurgeSSHSessions applies the platform audit-retention window to SSH session

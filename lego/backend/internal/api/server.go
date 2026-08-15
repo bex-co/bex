@@ -260,6 +260,13 @@ type Deps struct {
 	AgentSessionTicketSecret []byte
 	AgentSessionGatewayURL   string
 	AgentGitProxyURL         string
+	// AgentSandboxIdleTTL is the Active-tier idle grace (ADR059 D2 / w2/m67): a
+	// finished session's sandbox lives until it has been idle this long. Zero ⇒
+	// no grace (reap as soon as no editor is connected, ADR054 D6 behavior).
+	AgentSandboxIdleTTL time.Duration
+	// AgentMaxLiveSandboxesPerWorkspace caps the concurrent live agent-session
+	// sandboxes one workspace may hold (ADR059 D6 / w2/m67). Zero ⇒ uncapped.
+	AgentMaxLiveSandboxesPerWorkspace int
 	// SSHHost is the public gateway hostname advertised through Render's
 	// serviceDetails.sshAddress field. Empty disables SSH address advertising.
 	SSHHost string
@@ -641,10 +648,12 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Sandbox: agentLifecycle, TicketSecret: d.AgentSessionTicketSecret,
 			GatewayURL: d.AgentSessionGatewayURL, GitProxyURL: d.AgentGitProxyURL,
 			SSHHost: sshHost, ModelKeys: d.Secrets, GitHub: gh,
+			MaxLiveSandboxes: d.AgentMaxLiveSandboxesPerWorkspace,
 		},
 		AgentSessionCompleter: &agentsessions.Completer{
 			Store: d.AgentSessionStore, Sandbox: agentLifecycle,
 			GitHub: d.GitHubClient, Connections: d.GitHubStore, APIPublicURL: d.DeployHookBaseURL,
+			IdleTTL: d.AgentSandboxIdleTTL,
 		},
 		Postgres:  pg,
 		KeyValue:  kv,

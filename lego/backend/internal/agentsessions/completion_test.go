@@ -425,3 +425,86 @@ func TestCompleterStaleSSHRowDoesNotPinSandbox(t *testing.T) {
 		t.Fatalf("sandbox id not cleared: %q", st.rows[id].SandboxID)
 	}
 }
+
+// --- ADR059 D2: last-interaction idle grace ---------------------------------
+
+// With a positive idle grace and no editor connected, a finished turn keeps its
+// sandbox until the idle window elapses since the turn end, then the reaper
+// reclaims it. This is the Active-tier generalization of the D6 immediate reap.
+func TestCompleterIdleGraceDefersUntilElapsed(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c.IdleTTL = 30 * time.Minute
+	base := st.now
+	c.Now = func() time.Time { return base }
+
+	c.Reconcile(context.Background()) // finalize; idle ≈ 0 < 30m ⇒ defer
+	if st.rows[id].Phase != PhaseCompleted {
+		t.Fatalf("turn should finalize while grace holds, phase=%s", st.rows[id].Phase)
+	}
+	if lc.canceled != 0 || st.rows[id].SandboxID == "" {
+		t.Fatalf("sandbox reaped inside the idle grace (canceled=%d, sandbox=%q)", lc.canceled, st.rows[id].SandboxID)
+	}
+
+	c.Now = func() time.Time { return base.Add(20 * time.Minute) } // still inside
+	c.Reconcile(context.Background())
+	if lc.canceled != 0 {
+		t.Fatalf("sandbox reaped before grace elapsed (canceled=%d)", lc.canceled)
+	}
+
+	c.Now = func() time.Time { return base.Add(40 * time.Minute) } // past the window
+	c.Reconcile(context.Background())
+	if lc.canceled != 1 {
+		t.Fatalf("sandbox not reaped after grace elapsed (canceled=%d)", lc.canceled)
+	}
+	if st.rows[id].SandboxID != "" {
+		t.Fatalf("sandbox id not cleared after reap: %q", st.rows[id].SandboxID)
+	}
+}
+
+// The idle clock is measured from the LATEST interaction: a later editor SSH
+// disconnect restarts it past the turn-end, so a reconnect-then-disconnect keeps
+// the sandbox alive well after the turn itself finished.
+func TestCompleterIdleGraceMeasuredFromLastSSHDisconnect(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c.IdleTTL = 30 * time.Minute
+	base := st.now
+	c.Now = func() time.Time { return base }
+	c.Reconcile(context.Background()) // finalize + defer
+
+	// An editor connected then disconnected 35m after the turn end — a fresh
+	// interaction that resets the idle clock.
+	end := base.Add(35 * time.Minute)
+	st.lastSSHEnd[id] = end
+
+	// 40m after the turn end is only 5m after the disconnect: still deferred.
+	c.Now = func() time.Time { return base.Add(40 * time.Minute) }
+	c.Reconcile(context.Background())
+	if lc.canceled != 0 {
+		t.Fatalf("reaped 5m after SSH disconnect, grace is 30m (canceled=%d)", lc.canceled)
+	}
+
+	// 31m past the disconnect: reaped.
+	c.Now = func() time.Time { return end.Add(31 * time.Minute) }
+	c.Reconcile(context.Background())
+	if lc.canceled != 1 {
+		t.Fatalf("not reaped 31m after the last disconnect (canceled=%d)", lc.canceled)
+	}
+}
+
+// An OPEN editor session pins idle at zero regardless of how far past the grace
+// the clock has moved: a live edit is never killed by the idle reaper.
+func TestCompleterOpenSSHPinsIdleRegardlessOfGrace(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c.IdleTTL = 30 * time.Minute
+	base := st.now
+	st.openSSH[id] = base.Add(time.Minute) // a live editor within the SSH cap window
+	c.Now = func() time.Time { return base.Add(2 * time.Hour) }
+
+	c.Reconcile(context.Background())
+	if lc.canceled != 0 {
+		t.Fatalf("sandbox reaped despite an open editor SSH, 2h past the grace (canceled=%d)", lc.canceled)
+	}
+	if st.rows[id].SandboxID == "" {
+		t.Fatal("sandbox id cleared while an editor is connected; the reaper would lose it")
+	}
+}
