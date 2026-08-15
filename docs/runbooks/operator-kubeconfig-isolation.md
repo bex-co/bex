@@ -28,13 +28,7 @@ Move the CAPI `Cluster`/`Machine*`/related resources into a dedicated namespace 
    kubectl create namespace bex-capi
    ```
 
-2. **Move the CAPI resources** into it during a maintenance window. Kubernetes
-   namespaces are immutable, and `clusterctl move --to-kubeconfig` preserves an
-   object's namespace; merely changing the destination context namespace does
-   not relocate the graph. Use the directory move path so the serialized graph
-   can be transformed explicitly. This is outside clusterctl's E2E-tested
-   bootstrap-pivot case, so first exercise the exact procedure against a
-   production snapshot in an isolated management cluster.
+2. **Move the CAPI resources** into it during a maintenance window. Kubernetes namespaces are immutable, and `clusterctl move --to-kubeconfig` preserves an object's namespace; merely changing the destination context namespace does not relocate the graph. Use the directory move path so the serialized graph can be transformed explicitly. This is outside clusterctl's E2E-tested bootstrap-pivot case, so first exercise the exact procedure against a production snapshot in an isolated management cluster.
 
    ```bash
    migration_dir="$(mktemp -d)"
@@ -63,9 +57,7 @@ Move the CAPI `Cluster`/`Machine*`/related resources into a dedicated namespace 
    kubectl -n bex-capi get secret bex-kubeconfig bex-ca bex-etcd bex-proxy bex-sa
    ```
 
-   The directory contains cluster PKI and must be treated as a root credential:
-   keep it on an encrypted operator host, never attach it to a ticket or commit,
-   and securely remove it after the verification and rotation below.
+   The directory contains cluster PKI and must be treated as a root credential: keep it on an encrypted operator host, never attach it to a ticket or commit, and securely remove it after the verification and rotation below.
 
    > If `clusterctl move` between namespaces on a self-managed (pivoted) cluster is impractical for your topology, use **Approach B** below instead.
 
