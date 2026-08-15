@@ -50,7 +50,7 @@ func TestCreateOwnedSpecFieldParity(t *testing.T) {
 			// fields == nil) the copy therefore always writes "" over an
 			// existing spec.notificationsToSend configured via the
 			// notification-policy verb, and makes such an App permanently
-			// "changed" to the idempotency probes (createOwnedSpecChanged).
+			// "changed" to the idempotency probes.
 			"NotificationsToSend": "copied by applyCreateToSpec, never produced by specFromCreate",
 			// specFromCreate binds Render's registryCredentialId at create
 			// time; applyCreateToSpec leaves an existing binding untouched on

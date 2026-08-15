@@ -17,21 +17,11 @@ limitations under the License.
 package keyvalue
 
 import (
-	"time"
-
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
-
-// parseKVGQLTimeWindow parses optional startTime/endTime RFC3339 string args
-// from a GraphQL resolver's args map — same contract as the REST log handlers.
-func parseKVGQLTimeWindow(args map[string]any) (since, end time.Time, err error) {
-	s, _ := args["startTime"].(string)
-	e, _ := args["endTime"].(string)
-	return core.ParseTimeWindow(s, e)
-}
 
 // The GraphQL noun is "keyValue" — matching bex's own KeyValue CRD and Render's
 // current "Key Value" product branding (the same way the postgres feature's
@@ -163,7 +153,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"instance":  &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				since, end, err := parseKVGQLTimeWindow(p.Args)
+				since, end, err := core.ParseTimeWindow(gqlutil.Str(p.Args, "startTime"), gqlutil.Str(p.Args, "endTime"))
 				if err != nil {
 					return nil, err
 				}

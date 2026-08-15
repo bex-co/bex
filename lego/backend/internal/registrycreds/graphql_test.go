@@ -123,7 +123,7 @@ func TestGraphQLUpdateRotatesSecretAndThreeStateExpiresAt(t *testing.T) {
 	if updated["username"] != "alice2" || updated["expiresAt"] != created["expiresAt"] {
 		t.Errorf("updated = %+v, want username=alice2 and expiresAt unchanged", updated)
 	}
-	secret, _ := kv.Get(ctx, secretPath(s.workspaceID(ctx), id))
+	secret, _ := kv.Get(ctx, secretPath(s.WorkspaceOrDefault(ctx), id))
 	if secret["password"] != "hunter3" {
 		t.Errorf("secret not rotated: %+v", secret)
 	}

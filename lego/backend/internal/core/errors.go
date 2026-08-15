@@ -22,7 +22,10 @@ limitations under the License.
 // root depends on features + core, so there is no import cycle.
 package core
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // The domain error sentinels every feature returns and the REST adapter maps to
 // status codes (see WriteErr). Shared here so one WriteErr can map them all and
@@ -217,6 +220,19 @@ var _ interface {
 	error
 	Extensions() map[string]any
 } = (*CodedError)(nil)
+
+// MCPError prefixes a *CodedError's stable Code onto the message an MCP tool
+// returns. MCP has no structured error envelope like REST's JSON body or
+// GraphQL's extensions, so the code has to travel in the text or an agent
+// cannot tell a plan limit from a validation failure. A plain error passes
+// through untouched.
+func MCPError(err error) error {
+	var coded *CodedError
+	if errors.As(err, &coded) {
+		return fmt.Errorf("%s: %w", coded.Code, err)
+	}
+	return err
+}
 
 // NewPlanLimitError returns a *CodedError for plan capacity and role
 // restrictions. plan is the workspace's current plan name; limit is the

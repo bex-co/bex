@@ -18,8 +18,6 @@ package sandbox
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -61,14 +59,6 @@ type execSandboxArgs struct {
 // mcpError keeps the domain's machine-readable refusal name visible in MCP's
 // text error content. REST carries it in `code` and GraphQL in `extensions`;
 // the MCP SDK otherwise serializes only Error(), which would erase the name.
-func mcpError(err error) error {
-	var coded *core.CodedError
-	if errors.As(err, &coded) {
-		return fmt.Errorf("%s: %w", coded.Code, err)
-	}
-	return err
-}
-
 // RegisterMCP wires the agent-facing sandbox tools (ADR042 D2 / ADR014 D3 —
 // agents drive sandboxes from outside over MCP). spawn_sandbox mirrors the
 // Render `ea sandbox create` intent; sandbox_exec runs a command via the same
@@ -84,21 +74,21 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 				TimeoutSeconds: in.TimeoutSeconds,
 				NetworkPolicy:  in.NetworkPolicy,
 			})
-			return nil, sb, mcpError(err)
+			return nil, sb, core.MCPError(err)
 		})
 	mcp.AddTool(server, &mcp.Tool{Name: "list_sandboxes", Description: "List the caller's workspace's sandboxes with their statuses."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listSandboxesResult, error) {
 			out, err := s.List(ctx)
-			return nil, listSandboxesResult{Sandboxes: out}, mcpError(err)
+			return nil, listSandboxesResult{Sandboxes: out}, core.MCPError(err)
 		})
 	mcp.AddTool(server, &mcp.Tool{Name: "stop_sandbox", Description: "Terminate a sandbox by id."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, stopSandboxResult, error) {
 			err := s.Terminate(ctx, in.ID)
-			return nil, stopSandboxResult{Stopped: err == nil}, mcpError(err)
+			return nil, stopSandboxResult{Stopped: err == nil}, core.MCPError(err)
 		})
 	mcp.AddTool(server, &mcp.Tool{Name: "sandbox_exec", Description: "Run a shell command in a sandbox and return its stdout, stderr, and exit code."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in execSandboxArgs) (*mcp.CallToolResult, ExecResult, error) {
 			res, err := s.ExecBuffered(ctx, ExecRequest{OwnerID: in.OwnerID, SandboxID: in.ID, Command: in.Command})
-			return nil, res, mcpError(err)
+			return nil, res, core.MCPError(err)
 		})
 }

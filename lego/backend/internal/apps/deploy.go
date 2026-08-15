@@ -2356,7 +2356,7 @@ func (s *Service) recordBlueprintRedeploy(ctx context.Context, existing *appv1al
 		return nil
 	}
 	if id := managedAppID(existing); id != "" {
-		commit := s.resolveDeployCommit(ctx, s.deployWorkspace(ctx, existing), existing.Spec.Repo, existing.Spec.Branch)
+		commit := s.resolveDeployCommit(ctx, s.AppWorkspace(ctx, existing), existing.Spec.Repo, existing.Spec.Branch)
 		if _, err := s.Store.CreateDeploy(ctx, id, "blueprint", existing.Spec.Image, existing.Generation+1, commit); err != nil {
 			return fmt.Errorf("recording redeploy: %w", err)
 		}
@@ -2414,16 +2414,6 @@ func (s *Service) applyEnvironmentChange(ctx context.Context, existing *appv1alp
 	return nil
 }
 
-func createOwnedSpecChangedOnlyByMaintenance(cur, want appv1alpha1.AppSpec) bool {
-	probe := cur
-	applyCreateToSpec(&probe, want)
-	if reflect.DeepEqual(probe.MaintenanceMode, cur.MaintenanceMode) {
-		return false
-	}
-	probe.MaintenanceMode = cur.MaintenanceMode
-	return reflect.DeepEqual(probe, cur)
-}
-
 func serviceSpecChangedOnlyByMaintenance(cur, want appv1alpha1.AppSpec) bool {
 	if reflect.DeepEqual(cur.MaintenanceMode, want.MaintenanceMode) {
 		return false
@@ -2442,39 +2432,9 @@ func applyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 	return ApplyBlueprintServiceSpec(dst, want, fields)
 }
 
-// createOwnedSpecChanged reports whether applying `want`'s create-owned fields
-// onto a copy of `cur` would change it. applyCreateToSpec touches only the
-// create-owned set, so the copy equals cur exactly when those fields already
-// match want — the idempotency gate (a non-owned field like EnvFromSecret,
-// owned by the secrets feature, never trips it).
-func createOwnedSpecChanged(cur, want appv1alpha1.AppSpec) bool {
-	probe := cur
-	applyCreateToSpec(&probe, want)
-	return !reflect.DeepEqual(probe, cur)
-}
-
-// databaseOwnedSpecChanged is the Database analogue: it reports whether the
-// Blueprint-owned Database fields differ, ignoring fields other verbs own
-// (suspended/restartedAt/users/recovery/...). Comparing the whole spec would
-// see those foreign fields as a change and patch on every re-apply.
-func databaseOwnedSpecChanged(cur, want appv1alpha1.DatabaseSpec) bool {
-	probe := cur
-	applyDatabaseSpec(&probe, want)
-	return !reflect.DeepEqual(probe, cur)
-}
-
 func blueprintDatabaseSpecChanged(cur, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField) (bool, error) {
 	probe := cur
 	return ApplyBlueprintDatabaseSpec(&probe, want, fields)
-}
-
-// keyValueOwnedSpecChanged is the KeyValue analogue. Blueprint re-apply owns
-// only the fields its schema can declare and must not clear lifecycle state
-// such as Suspended or fields managed by another API.
-func keyValueOwnedSpecChanged(cur, want appv1alpha1.KeyValueSpec) bool {
-	probe := cur
-	applyKeyValueSpec(&probe, want)
-	return !reflect.DeepEqual(probe, cur)
 }
 
 func blueprintKeyValueSpecChanged(cur, want appv1alpha1.KeyValueSpec, fields map[string]BlueprintField) bool {
@@ -2601,28 +2561,6 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 
 func stackKeyValueView(kv *appv1alpha1.KeyValue) StackKeyValueView {
 	return StackKeyValueView{ID: kv.Name, Name: kv.Spec.Name, Status: string(kv.Status.Phase)}
-}
-
-// applyDatabaseSpec copies the Blueprint-owned Database fields onto dst (the set
-// a render.yaml databases[] entry can carry). Fields owned by other verbs (users,
-// recovery, suspended, restartedAt, failoverAt) are left untouched, mirroring
-// applyCreateToSpec's discipline.
-func applyDatabaseSpec(dst *appv1alpha1.DatabaseSpec, want appv1alpha1.DatabaseSpec) {
-	dst.Name = want.Name
-	dst.Plan = want.Plan
-	dst.Version = want.Version
-	dst.StorageGB = want.StorageGB
-	dst.IPAllowList = want.IPAllowList
-	dst.ReadReplicas = want.ReadReplicas
-	dst.HighAvailability = want.HighAvailability
-}
-
-func applyKeyValueSpec(dst *appv1alpha1.KeyValueSpec, want appv1alpha1.KeyValueSpec) {
-	dst.Name = want.Name
-	dst.Plan = want.Plan
-	dst.IPAllowList = want.IPAllowList
-	dst.MaxmemoryPolicy = want.MaxmemoryPolicy
-	dst.PersistenceMode = want.PersistenceMode
 }
 
 func stackDatabaseView(d *appv1alpha1.Database) StackDatabaseView {

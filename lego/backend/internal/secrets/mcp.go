@@ -18,8 +18,6 @@ package secrets
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -99,14 +97,6 @@ type patchEnvironmentArgs struct {
 // environmentMCPError keeps the same stable domain code visible when the MCP
 // SDK serializes an error to text. REST exposes code and GraphQL exposes
 // extensions.code; without this wrapper MCP would retain only Error().
-func environmentMCPError(err error) error {
-	var coded *core.CodedError
-	if errors.As(err, &coded) {
-		return fmt.Errorf("%s: %w", coded.Code, err)
-	}
-	return err
-}
-
 // RegisterMCP adds the env-var tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
@@ -114,7 +104,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Apply one sparse env-var and secret-file patch without returning secret material; save_only causes no rollout and deploy rolls the service once.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in patchEnvironmentArgs) (*mcp.CallToolResult, EnvironmentPatchResult, error) {
 		result, err := s.PatchEnvironment(ctx, in.ServiceID, EnvironmentPatch{EnvVars: in.EnvVars, SecretFiles: in.SecretFiles, SaveMode: in.SaveMode, ExpectedEnvRevision: in.ExpectedEnvRevision})
-		return nil, result, environmentMCPError(err)
+		return nil, result, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{

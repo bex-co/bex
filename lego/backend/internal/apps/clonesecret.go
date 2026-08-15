@@ -25,7 +25,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -45,15 +44,6 @@ type CloneTokenSource interface {
 // projector) takes precedence — so a no-identity trigger (the push webhook) still
 // resolves the right connection instead of falling back to the default workspace
 // — then the caller's tenant, then the single-workspace default.
-func (s *Service) deployWorkspace(ctx context.Context, a *appv1alpha1.App) string {
-	if t := a.Labels[core.LabelTenant]; t != "" {
-		return t
-	}
-	if t, ok := s.Tenant(ctx); ok && t != "" {
-		return t
-	}
-	return core.DefaultTenant
-}
 
 // cloneSecretLabel marks the Secrets this feature writes, so the delete cascade
 // (and an operator audit) can find them.
@@ -73,7 +63,7 @@ func cloneSecretName(app string) string { return app + "-clone" }
 // public-clone path, unchanged. A GitHub failure returns an error: a private
 // repo must fail loudly, never fall back to an unauthenticated clone.
 func (s *Service) ensureCloneSecret(ctx context.Context, a *appv1alpha1.App) (string, error) {
-	return s.mintCloneSecret(ctx, a.Namespace, a.Name, s.deployWorkspace(ctx, a), a.Spec.Repo)
+	return s.mintCloneSecret(ctx, a.Namespace, a.Name, s.AppWorkspace(ctx, a), a.Spec.Repo)
 }
 
 // writeCloneSecret upserts the Opaque <app>-clone Secret holding the git token

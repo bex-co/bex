@@ -714,13 +714,8 @@ func (s *Service) UpdateKeyValue(ctx context.Context, name string, patch KeyValu
 	if err := patch.validate(); err != nil {
 		return KeyValueView{}, err
 	}
-	if patch.Plan != nil && core.PaidPlan(*patch.Plan) {
-		if err := s.RequirePaymentMethod(ctx, kv.Labels[core.LabelTenant]); err != nil {
-			return KeyValueView{}, err
-		}
-	}
 	if patch.Plan != nil {
-		if err := s.RequireBillingMutation(ctx, kv.Labels[core.LabelTenant]); err != nil {
+		if err := s.RequirePlanBilling(ctx, kv.Labels[core.LabelTenant], *patch.Plan); err != nil {
 			return KeyValueView{}, err
 		}
 	}

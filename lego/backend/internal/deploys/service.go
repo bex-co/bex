@@ -187,15 +187,6 @@ type Service struct {
 // carries no caller identity), then the caller's tenant, then the
 // single-workspace default; the same precedence as apps.Service's
 // deployWorkspace, duplicated because deploys must not import apps.
-func (s *Service) deployWorkspace(ctx context.Context, a *appv1alpha1.App) string {
-	if t := a.Labels[core.LabelTenant]; t != "" {
-		return t
-	}
-	if t, ok := s.Tenant(ctx); ok && t != "" {
-		return t
-	}
-	return core.DefaultTenant
-}
 
 // buildJobName mirrors lego/operator/internal/build.JobName's naming
 // convention (bld-<name>-gen-<generation>, lowercased, 63-char k8s name cap)
@@ -477,7 +468,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	// silently fall back to a stale or absent credential.
 	cloneSecret := ""
 	if s.CloneSecrets != nil && a.Spec.Repo != "" {
-		name, err := s.CloneSecrets.EnsureCloneSecret(ctx, a.Namespace, a.Name, s.deployWorkspace(ctx, a), a.Spec.Repo)
+		name, err := s.CloneSecrets.EnsureCloneSecret(ctx, a.Namespace, a.Name, s.AppWorkspace(ctx, a), a.Spec.Repo)
 		if err != nil {
 			return DeployView{}, err
 		}

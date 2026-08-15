@@ -503,36 +503,22 @@ func toCronJobRunList(runs []CronRunView) []cronJobRunWithCursor {
 	return out
 }
 
-// renderRoute mirrors Render's static-site route shape
-// (components.schemas.route: type/source/destination) for the /routes endpoints.
-type renderRoute struct {
-	Type        string `json:"type"` // redirect | rewrite
-	Source      string `json:"source"`
-	Destination string `json:"destination"`
-}
-
-// renderHeader mirrors Render's static-site custom-header shape
-// (path/name/value) for the /headers endpoints.
-type renderHeader struct {
-	Path  string `json:"path"`
-	Name  string `json:"name"`
-	Value string `json:"value"`
-}
-
-func toRenderRoutes(routes []StaticRouteView) []renderRoute {
-	out := make([]renderRoute, 0, len(routes))
-	for _, r := range routes {
-		out = append(out, renderRoute{Type: r.Type, Source: r.Source, Destination: r.Destination})
+// StaticRouteView / StaticHeaderView already carry Render's own wire shapes
+// (route: type/source/destination, header: path/name/value), so the /routes and
+// /headers endpoints serialize them directly. These two only normalize an empty
+// list to `[]` — Render never returns `null` for either collection.
+func toRenderRoutes(routes []StaticRouteView) []StaticRouteView {
+	if routes == nil {
+		return []StaticRouteView{}
 	}
-	return out
+	return routes
 }
 
-func toRenderHeaders(headers []StaticHeaderView) []renderHeader {
-	out := make([]renderHeader, 0, len(headers))
-	for _, h := range headers {
-		out = append(out, renderHeader{Path: h.Path, Name: h.Name, Value: h.Value})
+func toRenderHeaders(headers []StaticHeaderView) []StaticHeaderView {
+	if headers == nil {
+		return []StaticHeaderView{}
 	}
-	return out
+	return headers
 }
 
 // toRenderServices maps a slice of AppViews to bare Render service objects (no
