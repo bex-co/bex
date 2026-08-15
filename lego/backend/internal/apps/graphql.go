@@ -848,14 +848,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
-				cursor, cursorSet := p.Args["cursor"].(string)
-				limit, limitSet := p.Args["limit"].(int)
-				if !limitSet {
-					limit = core.DefaultPageLimit
-				} else {
-					limit = core.PageLimit(limit)
-				}
-				return core.StablePage(out, cursor, limit, cursorSet || limitSet, func(a AppView) string { return a.ID }), nil
+				return gqlutil.Page(p, out, func(a AppView) string { return a.ID }), nil
 			},
 		},
 		"server": &graphql.Field{ // Render's dashboard query name
@@ -943,15 +936,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
-				cursor, cursorSet := p.Args["cursor"].(string)
-				limit, limitSet := p.Args["limit"].(int)
-				if !limitSet {
-					limit = core.DefaultPageLimit
-				} else {
-					limit = core.PageLimit(limit)
-				}
-				return core.StablePage(out, cursor, limit, cursorSet || limitSet,
-					func(d DomainView) string { return d.Name }), nil
+				return gqlutil.Page(p, out, func(d DomainView) string { return d.Name }), nil
 			},
 		},
 		"customDomain": &graphql.Field{

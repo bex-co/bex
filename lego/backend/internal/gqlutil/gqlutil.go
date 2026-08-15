@@ -144,6 +144,32 @@ func BoolPtr(args map[string]any, key string) *bool {
 	return nil
 }
 
+// Page applies Render's cursor-pagination contract to a list resolver's result:
+// it reads the shared `cursor`/`limit` arguments, defaults an absent limit to
+// core.DefaultPageLimit, clamps a supplied one through core.PageLimit, and hands
+// the window to core.StablePage. cursorOf yields each item's opaque cursor.
+//
+// The `requested` flag StablePage takes is deliberately `cursorSet || limitSet`
+// rather than a constant: a caller that named NEITHER argument gets the whole
+// list back unpaged (the pre-pagination behavior every list query shipped
+// with), while naming either one opts into the windowed contract.
+//
+// Graduated here (w10/m2's threshold, the same one Str and StrPtr graduated on)
+// after six verbatim copies of this eight-line block accumulated across the
+// apps (services, customDomains), environments, projects, postgres, and
+// keyvalue fragments — enough that the defaulting rule could drift per feature
+// without anything failing.
+func Page[T any](p graphql.ResolveParams, items []T, cursorOf func(T) string) []T {
+	cursor, cursorSet := p.Args["cursor"].(string)
+	limit, limitSet := p.Args["limit"].(int)
+	if !limitSet {
+		limit = core.DefaultPageLimit
+	} else {
+		limit = core.PageLimit(limit)
+	}
+	return core.StablePage(items, cursor, limit, cursorSet || limitSet, cursorOf)
+}
+
 // StringList coerces a `[String]` argument value ([]any from graphql-go) into
 // []string, skipping non-string entries. Nil or absent => nil. Shared by the
 // CIDR-allowlist arguments (setDatabaseIpAllowList, setKeyValueIpAllowList,
