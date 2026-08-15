@@ -135,18 +135,18 @@ export const InlineMentionEditor = forwardRef<
     allowedPrefixes: [" ", "\n"],
     items: ({ query, editor }) => {
       const state = mentionStateFromQuery(query);
+      // Sessions surface at both the universal level and the `@sessions:`
+      // second level, so drop already-mentioned ones wherever they'd appear —
+      // a selected session should never be offered again.
       const selectedSessions = new Set(
         readComposerDocument(editor.getJSON()).sessionIds,
       );
-      const availableSource =
-        state.category === "sessions"
-          ? {
-              ...runtime.source,
-              sessions: runtime.source.sessions.filter(
-                (session) => !selectedSessions.has(session.id),
-              ),
-            }
-          : runtime.source;
+      const availableSource: MentionSource = {
+        ...runtime.source,
+        sessions: runtime.source.sessions.filter(
+          (session) => !selectedSessions.has(session.id),
+        ),
+      };
       return mentionOptions(state, availableSource, runtime.t);
     },
     command: ({ editor, range, props: option }) => {
