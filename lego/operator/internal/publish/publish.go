@@ -211,10 +211,10 @@ func Publish(ctx context.Context, o Options) error {
 			return fmt.Errorf("publish: check job owner %s: %w", key.Name, err)
 		}
 		switch {
-		case jobCondition(&cur, batchv1.JobComplete):
+		case execution.JobHasCondition(&cur, batchv1.JobComplete):
 			return nil
-		case jobCondition(&cur, batchv1.JobFailed):
-			return fmt.Errorf("publish: job %s failed: %s", key.Name, jobFailureMessage(&cur))
+		case execution.JobHasCondition(&cur, batchv1.JobFailed):
+			return fmt.Errorf("publish: job %s failed: %s", key.Name, execution.JobFailureMessage(&cur, "unknown publish failure"))
 		}
 		select {
 		case <-wctx.Done():
@@ -446,14 +446,6 @@ func JobName(appID, revision string) string {
 }
 
 // jobCondition reports whether the Job carries condition t with status True.
-func jobCondition(j *batchv1.Job, t batchv1.JobConditionType) bool {
-	for _, c := range j.Status.Conditions {
-		if c.Type == t && c.Status == corev1.ConditionTrue {
-			return true
-		}
-	}
-	return false
-}
 
 // PurgeJob constructs the durable terminal cleanup Job for one exact App
 // lifetime. The App finalizer creates, observes, and deletes this Job; success
@@ -524,14 +516,3 @@ func PurgeJob(appName, appUID, workspace, appNamespace string, store Store, name
 
 // jobFailureMessage extracts the JobFailed condition's reason/message for the
 // error surfaced to the App's status.
-func jobFailureMessage(j *batchv1.Job) string {
-	for _, c := range j.Status.Conditions {
-		if c.Type == batchv1.JobFailed && c.Status == corev1.ConditionTrue {
-			if c.Message != "" {
-				return c.Reason + ": " + c.Message
-			}
-			return c.Reason
-		}
-	}
-	return "unknown publish failure"
-}

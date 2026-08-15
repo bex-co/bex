@@ -187,3 +187,13 @@ func StringList(arg any) []string {
 	}
 	return out
 }
+
+// Int reads an optional Int argument, 0 when absent — Str's integer-typed
+// sibling, graduated on the same duplication threshold after the apps, sandbox,
+// and webhooks fragments each carried a verbatim `gqlInt` copy.
+func Int(args map[string]any, key string) int {
+	if v, ok := args[key].(int); ok {
+		return v
+	}
+	return 0
+}

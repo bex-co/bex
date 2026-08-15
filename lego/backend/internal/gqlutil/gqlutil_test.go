@@ -218,3 +218,26 @@ func TestPageIsTheOnlyPagingBlockLeftInTheGraphQLFragments(t *testing.T) {
 			"calling gqlutil.Page:\n\t%s", strings.Join(offenders, "\n\t"))
 	}
 }
+
+func TestIntReadsAnOptionalArgument(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args map[string]any
+		want int
+	}{
+		{name: "present", args: map[string]any{"limit": 7}, want: 7},
+		{name: "absent", args: map[string]any{}, want: 0},
+		{name: "explicit zero", args: map[string]any{"limit": 0}, want: 0},
+		{name: "negative passes through", args: map[string]any{"limit": -3}, want: -3},
+		// graphql-go hands Int arguments through as int; anything else is a
+		// foreign value and must not panic the resolver.
+		{name: "wrong type yields zero", args: map[string]any{"limit": "7"}, want: 0},
+		{name: "nil value yields zero", args: map[string]any{"limit": nil}, want: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := Int(tc.args, "limit"); got != tc.want {
+				t.Fatalf("Int = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}

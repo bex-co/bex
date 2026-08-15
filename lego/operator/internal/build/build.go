@@ -313,10 +313,10 @@ func Build(ctx context.Context, o Options) (Result, error) {
 			return Result{}, fmt.Errorf("build: check job owner %s: %w", key.Name, err)
 		}
 		switch {
-		case jobCondition(&cur, batchv1.JobComplete):
+		case execution.JobHasCondition(&cur, batchv1.JobComplete):
 			return Result{Image: image}, nil
-		case jobCondition(&cur, batchv1.JobFailed):
-			return Result{}, fmt.Errorf("build: job %s failed: %s", key.Name, jobFailureMessage(&cur))
+		case execution.JobHasCondition(&cur, batchv1.JobFailed):
+			return Result{}, fmt.Errorf("build: job %s failed: %s", key.Name, execution.JobFailureMessage(&cur, "unknown build failure"))
 		}
 		if o.OnWaiting != nil {
 			queued, reason := buildQueued(wctx, o, key.Name)
@@ -740,28 +740,9 @@ func JobName(name, revision string) string {
 }
 
 // jobCondition reports whether the Job carries condition t with status True.
-func jobCondition(j *batchv1.Job, t batchv1.JobConditionType) bool {
-	for _, c := range j.Status.Conditions {
-		if c.Type == t && c.Status == corev1.ConditionTrue {
-			return true
-		}
-	}
-	return false
-}
 
 // jobFailureMessage extracts the JobFailed condition's reason/message for the
 // error surfaced to the App's status.
-func jobFailureMessage(j *batchv1.Job) string {
-	for _, c := range j.Status.Conditions {
-		if c.Type == batchv1.JobFailed && c.Status == corev1.ConditionTrue {
-			if c.Message != "" {
-				return c.Reason + ": " + c.Message
-			}
-			return c.Reason
-		}
-	}
-	return "unknown build failure"
-}
 
 // CancelActiveBuilds deletes all active (not Complete, not Failed) build Jobs
 // for the named service in namespace. This implements the newest-wins policy
@@ -785,7 +766,7 @@ func CancelActiveBuilds(ctx context.Context, name, appUID, namespace string, cl 
 	}
 	for i := range jobs.Items {
 		j := &jobs.Items[i]
-		if jobCondition(j, batchv1.JobComplete) || jobCondition(j, batchv1.JobFailed) {
+		if execution.JobFinished(j) {
 			continue
 		}
 		if err := cl.Delete(ctx, j, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
@@ -817,7 +798,7 @@ func ActiveWorkspaceBuilds(ctx context.Context, workspace, namespace string, cl 
 	}
 	active := 0
 	for i := range jobs.Items {
-		if !jobCondition(&jobs.Items[i], batchv1.JobComplete) && !jobCondition(&jobs.Items[i], batchv1.JobFailed) {
+		if !execution.JobFinished(&jobs.Items[i]) {
 			active++
 		}
 	}

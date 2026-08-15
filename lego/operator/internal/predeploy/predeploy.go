@@ -222,10 +222,10 @@ func Ensure(ctx context.Context, o Options) (*batchv1.Job, error) {
 // record). A Job with neither terminal condition is StatePending.
 func Observe(j *batchv1.Job) (State, string) {
 	switch {
-	case jobCondition(j, batchv1.JobComplete):
+	case execution.JobHasCondition(j, batchv1.JobComplete):
 		return StateSucceeded, ""
-	case jobCondition(j, batchv1.JobFailed):
-		return StateFailed, jobFailureMessage(j)
+	case execution.JobHasCondition(j, batchv1.JobFailed):
+		return StateFailed, execution.JobFailureMessage(j, "pre-deploy command failed")
 	default:
 		return StatePending, ""
 	}
@@ -255,7 +255,7 @@ func CancelSuperseded(ctx context.Context, name, appUID, namespace, keep string,
 		if j.Name == keep {
 			continue
 		}
-		if jobCondition(j, batchv1.JobComplete) || jobCondition(j, batchv1.JobFailed) {
+		if execution.JobFinished(j) {
 			continue
 		}
 		if err := cl.Delete(ctx, j); err != nil && !apierrors.IsNotFound(err) {
@@ -266,27 +266,8 @@ func CancelSuperseded(ctx context.Context, name, appUID, namespace, keep string,
 }
 
 // jobCondition reports whether the Job carries condition t with status True.
-func jobCondition(j *batchv1.Job, t batchv1.JobConditionType) bool {
-	for _, c := range j.Status.Conditions {
-		if c.Type == t && c.Status == corev1.ConditionTrue {
-			return true
-		}
-	}
-	return false
-}
 
 // jobFailureMessage extracts the JobFailed condition's reason/message for the
 // detail surfaced on the App status / deploy record.
-func jobFailureMessage(j *batchv1.Job) string {
-	for _, c := range j.Status.Conditions {
-		if c.Type == batchv1.JobFailed && c.Status == corev1.ConditionTrue {
-			if c.Message != "" {
-				return c.Reason + ": " + c.Message
-			}
-			return c.Reason
-		}
-	}
-	return "pre-deploy command failed"
-}
 
 func ptr[T any](v T) *T { return &v }

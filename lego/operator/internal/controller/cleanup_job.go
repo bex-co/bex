@@ -21,6 +21,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -89,8 +90,8 @@ func reconcileCleanupJob(ctx context.Context, cl client.Client, parent client.Ob
 	if !cleanupJobOwnedByParent(&current, parent) {
 		return false, fmt.Errorf("cleanup Job %s belongs to a different resource lifetime", current.Name)
 	}
-	if cleanupJobCondition(&current, batchv1.JobFailed) {
-		message := cleanupJobFailureMessage(&current)
+	if execution.JobHasCondition(&current, batchv1.JobFailed) {
+		message := execution.JobFailureMessage(&current, "unknown failure")
 		if current.DeletionTimestamp.IsZero() {
 			if err := cl.Delete(ctx, &current, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
 				return false, fmt.Errorf("cleanup Job %s failed (%s) and could not be deleted: %w", current.Name, message, err)
@@ -98,7 +99,7 @@ func reconcileCleanupJob(ctx context.Context, cl client.Client, parent client.Ob
 		}
 		return false, fmt.Errorf("cleanup Job %s failed: %s", current.Name, message)
 	}
-	if !cleanupJobCondition(&current, batchv1.JobComplete) {
+	if !execution.JobHasCondition(&current, batchv1.JobComplete) {
 		return false, nil
 	}
 	before := client.MergeFrom(parent.DeepCopyObject().(client.Object))
@@ -126,27 +127,6 @@ func cleanupJobOwnedByParent(job *batchv1.Job, parent client.Object) bool {
 		return keyValueUID == uid
 	}
 	return false
-}
-
-func cleanupJobCondition(job *batchv1.Job, conditionType batchv1.JobConditionType) bool {
-	for _, condition := range job.Status.Conditions {
-		if condition.Type == conditionType && condition.Status == corev1.ConditionTrue {
-			return true
-		}
-	}
-	return false
-}
-
-func cleanupJobFailureMessage(job *batchv1.Job) string {
-	for _, condition := range job.Status.Conditions {
-		if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
-			if condition.Message != "" {
-				return condition.Reason + ": " + condition.Message
-			}
-			return condition.Reason
-		}
-	}
-	return "unknown failure"
 }
 
 // deleteAndWait deletes obj idempotently and reports done only after a later
