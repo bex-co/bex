@@ -77,7 +77,7 @@ func (s *Service) ensureExternalRegistryPullSecret(ctx context.Context, a *appv1
 		}
 		return "", nil
 	}
-	name, ok, err := s.RegistryCreds.MaterializePullSecret(ctx, s.deployWorkspace(ctx, a), a, a.Spec.Image, a.Spec.RegistryCredentialID)
+	name, ok, err := s.RegistryCreds.MaterializePullSecret(ctx, s.AppWorkspace(ctx, a), a, a.Spec.Image, a.Spec.RegistryCredentialID)
 	if err != nil {
 		return "", fmt.Errorf("materializing registry pull secret for %s: %w", a.Spec.Image, err)
 	}

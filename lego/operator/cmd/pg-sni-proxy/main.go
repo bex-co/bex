@@ -121,28 +121,15 @@ func (r *dbRouter) set(db *appv1alpha1.Database) error {
 	for _, replica := range db.Spec.ReadReplicas {
 		entry.replicas[replica.Name] = true
 	}
-	for _, item := range db.Spec.IPAllowList {
-		prefix, err := netip.ParsePrefix(item.CIDR)
-		if err != nil {
-			r.mu.Lock()
-			delete(r.table, db.Name)
-			r.invalid[db.Name] = true
-			r.mu.Unlock()
-			return fmt.Errorf("invalid allowlist CIDR %q: %w", item.CIDR, err)
-		}
-		entry.allow = append(entry.allow, prefix.Masked())
+	allow, envAllow, err := sniproxy.ParseAllowList(db.Spec.IPAllowList, db.Spec.EnvironmentIPAllowList)
+	if err != nil {
+		r.mu.Lock()
+		delete(r.table, db.Name)
+		r.invalid[db.Name] = true
+		r.mu.Unlock()
+		return err
 	}
-	for _, cidr := range db.Spec.EnvironmentIPAllowList {
-		prefix, err := netip.ParsePrefix(cidr)
-		if err != nil {
-			r.mu.Lock()
-			delete(r.table, db.Name)
-			r.invalid[db.Name] = true
-			r.mu.Unlock()
-			return fmt.Errorf("invalid environment allowlist CIDR %q: %w", cidr, err)
-		}
-		entry.envAllow = append(entry.envAllow, prefix.Masked())
-	}
+	entry.allow, entry.envAllow = allow, envAllow
 	r.mu.Lock()
 	r.table[db.Name] = entry
 	delete(r.invalid, db.Name)
@@ -196,24 +183,12 @@ func (r *dbRouter) resolve(sni string, source netip.Addr) (dbRoute, bool) {
 		// database's allowlist on every handshake" turned cheap TLS churn into
 		// shared-proxy CPU + router-lock pressure. Fall-through is preserved: a
 		// name match the source can't use lets a differently-keyed entry still win.
-		if !allowedByLayer(source, entry.allow) || !allowedByLayer(source, entry.envAllow) {
+		if !sniproxy.AllowedBy(source, entry.allow) || !sniproxy.AllowedBy(source, entry.envAllow) {
 			continue
 		}
 		return dbRoute{Database: name, Backend: backend}, true
 	}
 	return dbRoute{}, false
-}
-
-func allowedByLayer(source netip.Addr, prefixes []netip.Prefix) bool {
-	if len(prefixes) == 0 {
-		return true
-	}
-	for _, prefix := range prefixes {
-		if prefix.Contains(source.Unmap()) {
-			return true
-		}
-	}
-	return false
 }
 
 // dbWatcher is a controller-runtime reconciler that keeps dbRouter in sync with
@@ -247,10 +222,7 @@ func main() {
 	ctrl.SetLogger(zap.New())
 	log := ctrl.Log.WithName("pg-sni-proxy")
 
-	addr := defaultAddr
-	if v := os.Getenv("BEX_PROXY_ADDR"); v != "" {
-		addr = v
-	}
+	addr := sniproxy.EnvOr("BEX_PROXY_ADDR", defaultAddr)
 	domain := os.Getenv("BEX_DB_DOMAIN")
 	if domain == "" {
 		log.Info("BEX_DB_DOMAIN is unset — proxy will refuse all connections (no routing table)")
@@ -303,10 +275,7 @@ func main() {
 		os.Exit(1)
 	}
 	meter.SetHealthy(true)
-	metricsAddr := os.Getenv("BEX_PROXY_METRICS_ADDR")
-	if metricsAddr == "" {
-		metricsAddr = defaultMetricsAddr
-	}
+	metricsAddr := sniproxy.EnvOr("BEX_PROXY_METRICS_ADDR", defaultMetricsAddr)
 	metricsServer := &http.Server{
 		Addr: metricsAddr, Handler: promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 		ReadHeaderTimeout: 5 * time.Second,

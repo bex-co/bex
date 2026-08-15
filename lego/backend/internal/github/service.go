@@ -105,13 +105,6 @@ func (s *Service) configured() bool { return s.GitHub != nil && s.Store != nil }
 
 // workspaceID is the store key for the caller's connection: the caller's tenant
 // when the resolver finds one, else the single-workspace default.
-func (s *Service) workspaceID(ctx context.Context) string {
-	if tid, ok := s.Tenant(ctx); ok && tid != "" {
-		return tid
-	}
-	return core.DefaultTenant
-}
-
 // installURL is the app's install URL, or "" when the app is unconfigured.
 func (s *Service) installURL() string {
 	if s.GitHub == nil {
@@ -136,7 +129,7 @@ func (s *Service) StartConnect(ctx context.Context, ownerID string) (Connection,
 	if !s.configured() {
 		return Connection{}, core.ErrGitHubUnavailable
 	}
-	workspaceID := s.workspaceID(ctx)
+	workspaceID := s.WorkspaceOrDefault(ctx)
 	// Record WHO is starting this flow (w1/m67 F3). Without it the install URL is
 	// a portable bearer credential for "bind an installation to this workspace":
 	// an attacker could hand its own URL to a victim GitHub org admin, whose
@@ -272,7 +265,7 @@ func (s *Service) GetConnection(ctx context.Context, ownerID string) (Connection
 	if !s.configured() {
 		return Connection{}, core.ErrGitHubUnavailable
 	}
-	row, err := s.Store.GetGitConnection(ctx, s.workspaceID(ctx))
+	row, err := s.Store.GetGitConnection(ctx, s.WorkspaceOrDefault(ctx))
 	if errors.Is(err, store.ErrNotFound) {
 		return Connection{Connected: false, InstallURL: s.installURL()}, nil
 	}
@@ -293,7 +286,7 @@ func (s *Service) Disconnect(ctx context.Context, ownerID string) error {
 	if !s.configured() {
 		return core.ErrGitHubUnavailable
 	}
-	err := s.Store.DeleteGitConnection(ctx, s.workspaceID(ctx))
+	err := s.Store.DeleteGitConnection(ctx, s.WorkspaceOrDefault(ctx))
 	if errors.Is(err, store.ErrNotFound) {
 		return nil
 	}
@@ -311,7 +304,7 @@ func (s *Service) ListRepos(ctx context.Context, ownerID string) ([]Repo, error)
 	if !s.configured() {
 		return nil, core.ErrGitHubUnavailable
 	}
-	row, err := s.Store.GetGitConnection(ctx, s.workspaceID(ctx))
+	row, err := s.Store.GetGitConnection(ctx, s.WorkspaceOrDefault(ctx))
 	if errors.Is(err, store.ErrNotFound) {
 		return []Repo{}, nil
 	}
@@ -345,7 +338,7 @@ func (s *Service) ListBranches(ctx context.Context, ownerID, repoURL string) ([]
 	if !ok {
 		return []string{}, nil // non-GitHub repo => free-text fallback
 	}
-	row, err := s.Store.GetGitConnection(ctx, s.workspaceID(ctx))
+	row, err := s.Store.GetGitConnection(ctx, s.WorkspaceOrDefault(ctx))
 	if errors.Is(err, store.ErrNotFound) {
 		return []string{}, nil
 	}

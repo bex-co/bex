@@ -143,7 +143,7 @@ func TestRESTPatchUpdatesFieldsAndRotatesSecret(t *testing.T) {
 		t.Errorf("username not updated: %+v", updated)
 	}
 	ctx := context.Background()
-	secret, _ := s.Secret.Get(ctx, secretPath(s.workspaceID(ctx), created.ID))
+	secret, _ := s.Secret.Get(ctx, secretPath(s.WorkspaceOrDefault(ctx), created.ID))
 	if secret["password"] != "hunter3" {
 		t.Errorf("secret not rotated: %+v", secret)
 	}

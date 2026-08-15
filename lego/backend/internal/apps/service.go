@@ -711,7 +711,7 @@ func cleanGlobs(field string, globs []string) ([]string, error) {
 
 // effectiveType resolves spec.type to Render's serviceType, defaulting an
 // empty value to web_service — the one place that default is decided, so
-// view()/toRenderService()/requireWebService can't drift on it.
+// view()/toRenderService() can't drift on it.
 func effectiveType(specType string) string {
 	if specType == "" {
 		return appv1alpha1.TypeWebService
@@ -1087,7 +1087,7 @@ func (s *Service) ListInstances(ctx context.Context, name string) ([]ServiceInst
 		return out, nil
 	}
 
-	pods, err := s.AppPods(ctx, a.Name)
+	pods, err := s.AppPodsIn(ctx, a.Namespace, a.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -1253,7 +1253,7 @@ func parseSSHUsername(username string) (serviceID, instanceID string, err error)
 }
 
 func (s *Service) readySSHInstances(ctx context.Context, a *appv1alpha1.App, v AppView) ([]SSHInstanceTarget, error) {
-	pods, err := s.AppPods(ctx, a.Name)
+	pods, err := s.AppPodsIn(ctx, a.Namespace, a.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -2413,7 +2413,7 @@ func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commi
 	if s.Store != nil {
 		if appID != "" {
 			if commit.Hash == "" {
-				commit = s.resolveDeployCommit(ctx, s.deployWorkspace(ctx, a), a.Spec.Repo, a.Spec.Branch)
+				commit = s.resolveDeployCommit(ctx, s.AppWorkspace(ctx, a), a.Spec.Repo, a.Spec.Branch)
 			}
 			// max(after, before+1): a real API server has already incremented
 			// metadata.generation on the patch; the fake client has not
@@ -3500,11 +3500,8 @@ func validatePublishPath(publishPath string) error {
 	return nil
 }
 
-// requireStaticSite returns ErrBadRequest unless a is a static_site — the edge
-// verbs (routes/headers/publishPath) apply only to that type.
 // requireRepoBacked refuses a build-settings verb on a service with no repo,
-// naming which setting does not apply — the sibling of requireStaticSite and
-// requireWebService.
+// naming which setting does not apply — the sibling of requireStaticSite.
 func requireRepoBacked(a *appv1alpha1.App, name, detail string) error {
 	if a.Spec.Repo == "" {
 		return fmt.Errorf("%w: service %q has no repo to build (%s)", core.ErrBadRequest, name, detail)
@@ -3512,21 +3509,11 @@ func requireRepoBacked(a *appv1alpha1.App, name, detail string) error {
 	return nil
 }
 
+// requireStaticSite returns ErrBadRequest unless a is a static_site — the edge
+// verbs (routes/headers/publishPath) apply only to that type.
 func requireStaticSite(a *appv1alpha1.App, name string) error {
 	if a.Spec.Type != appv1alpha1.TypeStaticSite {
 		return fmt.Errorf("%w: service %q is not a static_site", core.ErrBadRequest, name)
-	}
-	return nil
-}
-
-// requireWebService returns ErrBadRequest unless a is a web_service —
-// maintenanceMode applies only to that type (docs/render-artifacts/
-// maintenance-mode.md). Empty spec.type defaults to web_service (effectiveType,
-// view()'s own default), so a legacy App with no explicit type is not wrongly
-// rejected.
-func requireWebService(a *appv1alpha1.App, name string) error {
-	if effectiveType(a.Spec.Type) != appv1alpha1.TypeWebService {
-		return fmt.Errorf("%w: service %q is not a web_service", core.ErrBadRequest, name)
 	}
 	return nil
 }

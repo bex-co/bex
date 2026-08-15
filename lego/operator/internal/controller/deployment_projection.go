@@ -28,6 +28,18 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 )
 
+// podReady reports the pod's PodReady condition. Readiness is what the App and
+// KeyValue reconcilers count to decide a rollout has converged — a pod that
+// exists but is not PodReady is not yet serving.
+func podReady(pod *corev1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
+
 // Health-check timing. Every value here mirrors a number Render documents, so
 // an app Render deploys without complaint also deploys here.
 //

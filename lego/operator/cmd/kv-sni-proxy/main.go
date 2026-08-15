@@ -93,28 +93,15 @@ func (r *kvRouter) set(kv *appv1alpha1.KeyValue) error {
 		ResourceID: kv.Name,
 		Backend:    fmt.Sprintf("%s.%s.svc.cluster.local:6380", kv.Name, kv.Namespace),
 	}
-	for _, entry := range kv.Spec.IPAllowList {
-		prefix, err := netip.ParsePrefix(entry.CIDR)
-		if err != nil {
-			r.mu.Lock()
-			delete(r.table, kv.Name)
-			r.invalid[kv.Name] = true
-			r.mu.Unlock()
-			return fmt.Errorf("invalid allowlist CIDR %q: %w", entry.CIDR, err)
-		}
-		route.Allow = append(route.Allow, prefix.Masked())
+	allow, envAllow, err := sniproxy.ParseAllowList(kv.Spec.IPAllowList, kv.Spec.EnvironmentIPAllowList)
+	if err != nil {
+		r.mu.Lock()
+		delete(r.table, kv.Name)
+		r.invalid[kv.Name] = true
+		r.mu.Unlock()
+		return err
 	}
-	for _, cidr := range kv.Spec.EnvironmentIPAllowList {
-		prefix, err := netip.ParsePrefix(cidr)
-		if err != nil {
-			r.mu.Lock()
-			delete(r.table, kv.Name)
-			r.invalid[kv.Name] = true
-			r.mu.Unlock()
-			return fmt.Errorf("invalid environment allowlist CIDR %q: %w", cidr, err)
-		}
-		route.EnvAllow = append(route.EnvAllow, prefix.Masked())
-	}
+	route.Allow, route.EnvAllow = allow, envAllow
 	r.mu.Lock()
 	r.table[kv.Name] = route
 	delete(r.invalid, kv.Name)
@@ -146,22 +133,10 @@ func (r *kvRouter) resolve(sni string, source netip.Addr) (kvRoute, bool) {
 	if !ok {
 		return kvRoute{}, false
 	}
-	if !allowedByLayer(source, route.Allow) || !allowedByLayer(source, route.EnvAllow) {
+	if !sniproxy.AllowedBy(source, route.Allow) || !sniproxy.AllowedBy(source, route.EnvAllow) {
 		return kvRoute{}, false
 	}
 	return route, true
-}
-
-func allowedByLayer(source netip.Addr, prefixes []netip.Prefix) bool {
-	if len(prefixes) == 0 {
-		return true
-	}
-	for _, prefix := range prefixes {
-		if prefix.Contains(source.Unmap()) {
-			return true
-		}
-	}
-	return false
 }
 
 type kvWatcher struct {
@@ -234,7 +209,7 @@ func main() {
 	}
 	meter.SetHealthy(true)
 
-	metricsAddr := envOr("BEX_KV_PROXY_METRICS_ADDR", defaultMetricsAddr)
+	metricsAddr := sniproxy.EnvOr("BEX_KV_PROXY_METRICS_ADDR", defaultMetricsAddr)
 	metricsServer := &http.Server{
 		Addr: metricsAddr, Handler: promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 		ReadHeaderTimeout: 5 * time.Second,
@@ -247,7 +222,7 @@ func main() {
 	}()
 	defer func() { _ = metricsServer.Close() }()
 
-	listener, err := net.Listen("tcp", envOr("BEX_KV_PROXY_ADDR", defaultAddr))
+	listener, err := net.Listen("tcp", sniproxy.EnvOr("BEX_KV_PROXY_ADDR", defaultAddr))
 	if err != nil {
 		logger.Error(err, "listen")
 		os.Exit(1)
@@ -332,11 +307,4 @@ func handleConn(
 	// The idle + max-lifetime bounds stop a routed connection from idling or
 	// living forever after Valkey auth (finding 6).
 	sniproxy.CopyBidirectional(conn, backend, meter, route.ResourceID, "key_value", idle, maxLifetime)
-}
-
-func envOr(name, fallback string) string {
-	if value := os.Getenv(name); value != "" {
-		return value
-	}
-	return fallback
 }

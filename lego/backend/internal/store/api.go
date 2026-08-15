@@ -30,6 +30,7 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -109,7 +110,7 @@ func (a *API) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		if a.Health != nil {
 			if err := a.Health(r.Context()); err != nil {
-				writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
+				core.WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
 				return
 			}
 		}
@@ -173,7 +174,7 @@ func (a *API) billingOverride(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"workspaceId": state.WorkspaceID, "status": state.Status, "reason": state.Reason, "graceDeadline": state.GraceDeadline})
+	core.WriteJSON(w, http.StatusOK, map[string]any{"workspaceId": state.WorkspaceID, "status": state.Status, "reason": state.Reason, "graceDeadline": state.GraceDeadline})
 }
 
 func (a *API) billingExportReport(w http.ResponseWriter, r *http.Request) {
@@ -196,7 +197,7 @@ func (a *API) billingExportReport(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, report)
+	core.WriteJSON(w, http.StatusOK, report)
 }
 
 func (a *API) listBillingExportIssues(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +211,7 @@ func (a *API) listBillingExportIssues(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"issues": issues})
+	core.WriteJSON(w, http.StatusOK, map[string]any{"issues": issues})
 }
 
 type ResolveBillingExportIssueRequest struct {
@@ -235,7 +236,7 @@ func (a *API) resolveBillingExportIssue(w http.ResponseWriter, r *http.Request) 
 		writeErr(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, issue)
+	core.WriteJSON(w, http.StatusOK, issue)
 }
 
 // CreateTenantRequest is the POST /v1/tenants body.
@@ -294,7 +295,7 @@ func (a *API) createTenant(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	writeJSON(w, http.StatusCreated, t)
+	core.WriteJSON(w, http.StatusCreated, t)
 }
 
 func (a *API) listTenants(w http.ResponseWriter, r *http.Request) {
@@ -306,7 +307,7 @@ func (a *API) listTenants(w http.ResponseWriter, r *http.Request) {
 	if ts == nil {
 		ts = []Tenant{}
 	}
-	writeJSON(w, http.StatusOK, ts)
+	core.WriteJSON(w, http.StatusOK, ts)
 }
 
 // SetBillingExcludedRequest is the PATCH /v1/tenants/{id}/billing-excluded body.
@@ -338,7 +339,7 @@ func (a *API) setBillingExcluded(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	core.WriteJSON(w, http.StatusOK, map[string]any{
 		"tenantId":        id,
 		"billingExcluded": req.Excluded,
 		"changed":         changed,
@@ -386,7 +387,7 @@ func (a *API) createApp(w http.ResponseWriter, r *http.Request) {
 	a.kick()
 	// The row is the sync part; url/phase are eventually consistent — they
 	// appear on GET /v1/apps/{id} once the operator has reconciled the CR.
-	writeJSON(w, http.StatusCreated, created)
+	core.WriteJSON(w, http.StatusCreated, created)
 }
 
 // appFromRequest validates and normalizes a create request into a row.
@@ -474,7 +475,7 @@ func (a *API) listApps(w http.ResponseWriter, r *http.Request) {
 	if apps == nil {
 		apps = []App{}
 	}
-	writeJSON(w, http.StatusOK, apps)
+	core.WriteJSON(w, http.StatusOK, apps)
 }
 
 func (a *API) getApp(w http.ResponseWriter, r *http.Request) {
@@ -483,7 +484,7 @@ func (a *API) getApp(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, app)
+	core.WriteJSON(w, http.StatusOK, app)
 }
 
 func (a *API) deleteApp(w http.ResponseWriter, r *http.Request) {
@@ -523,7 +524,7 @@ func (a *API) createDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.kick()
-	writeJSON(w, http.StatusCreated, d)
+	core.WriteJSON(w, http.StatusCreated, d)
 }
 
 func (a *API) kick() {
@@ -544,7 +545,7 @@ func (a *API) kick() {
 // {"namespace","ttl"}; 401 {"code":"UNAUTHORIZED"} for an unknown key.
 func (a *API) sandboxTenant(w http.ResponseWriter, r *http.Request) {
 	if a.SandboxTenants == nil {
-		writeJSON(w, http.StatusServiceUnavailable,
+		core.WriteJSON(w, http.StatusServiceUnavailable,
 			map[string]string{"code": "UNAVAILABLE", "message": "sandbox multi-tenancy not configured"})
 		return
 	}
@@ -552,11 +553,11 @@ func (a *API) sandboxTenant(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Any resolution failure (unknown/empty key) is 401 — the provider maps a
 		// 401 to "invalid credentials", never a server outage.
-		writeJSON(w, http.StatusUnauthorized,
+		core.WriteJSON(w, http.StatusUnauthorized,
 			map[string]string{"code": "UNAUTHORIZED", "message": "unknown sandbox api key"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"namespace": SandboxNamespace(ws), "ttl": 60})
+	core.WriteJSON(w, http.StatusOK, map[string]any{"namespace": SandboxNamespace(ws), "ttl": 60})
 }
 
 // bearer gates h behind the configured token; a no-op when Token is empty.
@@ -572,7 +573,7 @@ func (a *API) bearer(h http.Handler) http.Handler {
 		got := []byte(r.Header.Get("Authorization"))
 		want := []byte("Bearer " + a.Token)
 		if subtle.ConstantTimeCompare(got, want) != 1 {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+			core.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 			return
 		}
 		h.ServeHTTP(w, r)
@@ -751,13 +752,7 @@ func normalizeTier(field, v string) (string, error) {
 	return "", fmt.Errorf("%w: %s must be one of %s", ErrInvalid, field, strings.Join(tiers.Compute.IDs(), "|"))
 }
 
-func writeJSON(w http.ResponseWriter, status int, body any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(body)
-}
-
-// writeErr/writeJSON are the internal control-plane API's own minimal error
+// writeErr is the internal control-plane API's own minimal error
 // dialect ({"error"} only), deliberately NOT core.WriteErr's Render-shaped
 // envelope (w9/m38): this API (BEX_CP_ADDR, :8091, bearer-token) is consumed by
 // bex's own operator/projector, never a Render client, and its ErrInvalid/
@@ -772,5 +767,5 @@ func writeErr(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrConflict):
 		code = http.StatusConflict
 	}
-	writeJSON(w, code, map[string]string{"error": err.Error()})
+	core.WriteJSON(w, code, map[string]string{"error": err.Error()})
 }

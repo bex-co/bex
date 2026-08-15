@@ -22,8 +22,6 @@ package projects
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -243,7 +241,7 @@ func (s *Service) authorizedProject(ctx context.Context, relation, id string) (s
 	}
 	p, err := s.Store.GetProject(ctx, id)
 	if err != nil {
-		return store.Project{}, mapStoreErr(err)
+		return store.Project{}, store.MapError(err)
 	}
 	if err := s.AuthorizeOn(ctx, relation, core.WorkspaceObject(p.TenantID)); err != nil {
 		return store.Project{}, err
@@ -322,7 +320,7 @@ func (s *Service) Create(ctx context.Context, workspaceID, name string) (Project
 	}
 	p, err := s.Store.CreateProject(ctx, workspaceID, name)
 	if err != nil {
-		return ProjectView{}, mapStoreErr(err)
+		return ProjectView{}, store.MapError(err)
 	}
 	return toView(p, nil, nil, nil), nil
 }
@@ -334,7 +332,7 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 		return ProjectView{}, err
 	}
 	if err := s.Store.RenameProject(ctx, id, name); err != nil {
-		return ProjectView{}, mapStoreErr(err)
+		return ProjectView{}, store.MapError(err)
 	}
 	p.Name = name
 	return s.view(ctx, p)
@@ -358,7 +356,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 			return err
 		}
 	}
-	return mapStoreErr(s.Store.DeleteProject(ctx, id))
+	return store.MapError(s.Store.DeleteProject(ctx, id))
 }
 
 // SetServices replaces the full list of services in a project.
@@ -457,18 +455,5 @@ func toView(p store.Project, serviceIDs, databaseIDs, keyValueIDs []string) Proj
 		ServiceIDs:  serviceIDs,
 		DatabaseIDs: databaseIDs,
 		KeyValueIDs: keyValueIDs,
-	}
-}
-
-func mapStoreErr(err error) error {
-	switch {
-	case errors.Is(err, store.ErrNotFound):
-		return fmt.Errorf("%w: %v", core.ErrNotFound, err)
-	case errors.Is(err, store.ErrConflict):
-		return fmt.Errorf("%w: %v", core.ErrConflict, err)
-	case errors.Is(err, store.ErrInvalid):
-		return fmt.Errorf("%w: %v", core.ErrBadRequest, err)
-	default:
-		return err
 	}
 }

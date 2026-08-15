@@ -234,13 +234,6 @@ type DeliveryView struct {
 // workspaceID is the store key for the caller's endpoints: the caller's
 // tenant when resolvable, else the single-workspace default (mirrors
 // registrycreds.Service.workspaceID).
-func (s *Service) workspaceID(ctx context.Context) string {
-	if tid, ok := s.Tenant(ctx); ok && tid != "" {
-		return tid
-	}
-	return core.DefaultTenant
-}
-
 func toView(e store.WebhookEndpoint) EndpointView {
 	return EndpointView{
 		ID:             e.ID,
@@ -325,7 +318,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, 
 	if id, ok := core.IdentityFrom(ctx); ok {
 		createdBy = id.Subject
 	}
-	e, err := s.Store.CreateWebhookEndpoint(ctx, s.workspaceID(ctx), strings.TrimSpace(req.Name), dest, secret, types, createdBy)
+	e, err := s.Store.CreateWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), strings.TrimSpace(req.Name), dest, secret, types, createdBy)
 	if err != nil {
 		return EndpointView{}, mapCreateErr(err)
 	}
@@ -361,7 +354,7 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]EndpointView, err
 	if s.Store == nil {
 		return nil, core.ErrWebhooksUnavailable
 	}
-	rows, err := s.Store.ListWebhookEndpoints(ctx, s.workspaceID(ctx))
+	rows, err := s.Store.ListWebhookEndpoints(ctx, s.WorkspaceOrDefault(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -385,7 +378,7 @@ func (s *Service) Get(ctx context.Context, ownerID, id string) (EndpointView, er
 	if s.Store == nil {
 		return EndpointView{}, core.ErrWebhooksUnavailable
 	}
-	e, err := s.Store.GetWebhookEndpoint(ctx, s.workspaceID(ctx), id)
+	e, err := s.Store.GetWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), id)
 	if err != nil {
 		return EndpointView{}, mapStoreErr(err)
 	}
@@ -403,7 +396,7 @@ func (s *Service) SetEnabled(ctx context.Context, ownerID, id string, enabled bo
 	if s.Store == nil {
 		return EndpointView{}, core.ErrWebhooksUnavailable
 	}
-	e, err := s.Store.SetWebhookEndpointEnabled(ctx, s.workspaceID(ctx), id, enabled, "disabled manually")
+	e, err := s.Store.SetWebhookEndpointEnabled(ctx, s.WorkspaceOrDefault(ctx), id, enabled, "disabled manually")
 	if err != nil {
 		return EndpointView{}, mapStoreErr(err)
 	}
@@ -420,7 +413,7 @@ func (s *Service) Delete(ctx context.Context, ownerID, id string) error {
 	if s.Store == nil {
 		return core.ErrWebhooksUnavailable
 	}
-	return mapStoreErr(s.Store.DeleteWebhookEndpoint(ctx, s.workspaceID(ctx), id))
+	return mapStoreErr(s.Store.DeleteWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), id))
 }
 
 // ListDeliveries returns one endpoint's delivery history, newest first,
@@ -434,7 +427,7 @@ func (s *Service) ListDeliveries(ctx context.Context, ownerID, endpointID, curso
 	if s.Store == nil {
 		return nil, core.ErrWebhooksUnavailable
 	}
-	if _, err := s.Store.GetWebhookEndpoint(ctx, s.workspaceID(ctx), endpointID); err != nil {
+	if _, err := s.Store.GetWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), endpointID); err != nil {
 		return nil, mapStoreErr(err)
 	}
 	after, err := core.DecodeKeysetCursor(cursor)
@@ -477,7 +470,7 @@ func (s *Service) Update(ctx context.Context, ownerID, id string, req UpdateRequ
 		return EndpointView{}, core.ErrWebhooksUnavailable
 	}
 	// Fetch the current endpoint (workspace-scoped, so cross-workspace ids 404).
-	cur, err := s.Store.GetWebhookEndpoint(ctx, s.workspaceID(ctx), id)
+	cur, err := s.Store.GetWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), id)
 	if err != nil {
 		return EndpointView{}, mapStoreErr(err)
 	}
@@ -502,7 +495,7 @@ func (s *Service) Update(ctx context.Context, ownerID, id string, req UpdateRequ
 	if req.Enabled != nil {
 		enabled = *req.Enabled
 	}
-	e, err := s.Store.UpdateWebhookEndpoint(ctx, s.workspaceID(ctx), id, name, dest, types, enabled)
+	e, err := s.Store.UpdateWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), id, name, dest, types, enabled)
 	if err != nil {
 		return EndpointView{}, mapStoreErr(err)
 	}

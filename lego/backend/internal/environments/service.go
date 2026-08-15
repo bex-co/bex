@@ -128,7 +128,7 @@ func (s *Service) resolveForCreate(ctx context.Context, environmentID, workspace
 	}
 	e, err := s.Store.GetEnvironment(ctx, environmentID)
 	if err != nil {
-		return core.EnvironmentAssignment{}, mapStoreErr(err)
+		return core.EnvironmentAssignment{}, store.MapError(err)
 	}
 	if workspaceID == "" || e.TenantID != workspaceID {
 		return core.EnvironmentAssignment{}, fmt.Errorf("%w: environment %q does not belong to the target workspace", core.ErrForbidden, environmentID)
@@ -422,7 +422,7 @@ func (s *Service) List(ctx context.Context, projectID string) ([]EnvironmentView
 	}
 	rows, err := s.Store.ListEnvironments(ctx, p.ID)
 	if err != nil {
-		return nil, mapStoreErr(err)
+		return nil, store.MapError(err)
 	}
 	// Fetch each tenant-wide membership scan once and index by environment,
 	// rather than re-issuing ListPostgres/ListKeyValues per row below — every
@@ -524,7 +524,7 @@ func (s *Service) create(ctx context.Context, projectID, name string) (store.Env
 	}
 	e, err := s.Store.CreateEnvironment(ctx, p.ID, p.TenantID, name)
 	if err != nil {
-		return store.Environment{}, mapStoreErr(err)
+		return store.Environment{}, store.MapError(err)
 	}
 	return e, nil
 }
@@ -539,7 +539,7 @@ func (s *Service) Rename(ctx context.Context, id, name string) (EnvironmentView,
 		return EnvironmentView{}, err
 	}
 	if err := s.Store.RenameEnvironment(ctx, id, name); err != nil {
-		return EnvironmentView{}, mapStoreErr(err)
+		return EnvironmentView{}, store.MapError(err)
 	}
 	e.Name = name
 	return s.toFullView(ctx, e)
@@ -575,7 +575,7 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 	}
 	if patch.Name != nil {
 		if err := s.Store.RenameEnvironment(ctx, id, name); err != nil {
-			return EnvironmentView{}, mapStoreErr(err)
+			return EnvironmentView{}, store.MapError(err)
 		}
 		e.Name = name
 	}
@@ -686,7 +686,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.clearEnvironmentMembers(ctx, e); err != nil {
 		return err
 	}
-	return mapStoreErr(s.Store.DeleteEnvironment(ctx, e.ID))
+	return store.MapError(s.Store.DeleteEnvironment(ctx, e.ID))
 }
 
 // clearEnvironmentMembers clears the environment-projected layer — the
@@ -753,7 +753,7 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 		return EnvironmentView{}, err
 	}
 	if err := s.Store.SetEnvironmentServices(ctx, e.ID, e.ProjectID, e.TenantID, serviceIDs); err != nil {
-		return EnvironmentView{}, mapStoreErr(err)
+		return EnvironmentView{}, store.MapError(err)
 	}
 	sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
 	if err != nil {
@@ -920,7 +920,7 @@ func (s *Service) applyACL(ctx context.Context, e store.Environment, protectedSt
 		ipAllowList = []core.IPAllowListEntry{}
 	}
 	if err := s.Store.SetEnvironmentACL(ctx, e.ID, protectedStatus, networkIsolationEnabled, ipAllowList); err != nil {
-		return EnvironmentView{}, mapStoreErr(err)
+		return EnvironmentView{}, store.MapError(err)
 	}
 	e.ProtectedStatus, e.NetworkIsolationEnabled, e.IPAllowList = protectedStatus, networkIsolationEnabled, ipAllowList
 	sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
@@ -972,7 +972,7 @@ func (s *Service) requireProject(ctx context.Context, relation, projectID string
 	}
 	p, err := s.Store.GetProject(ctx, projectID)
 	if err != nil {
-		return store.Project{}, mapStoreErr(err)
+		return store.Project{}, store.MapError(err)
 	}
 	if err := s.AuthorizeOn(ctx, relation, core.WorkspaceObject(p.TenantID)); err != nil {
 		return store.Project{}, err
@@ -988,7 +988,7 @@ func (s *Service) requireEnvironment(ctx context.Context, relation, id string) (
 	}
 	e, err := s.Store.GetEnvironment(ctx, id)
 	if err != nil {
-		return store.Environment{}, mapStoreErr(err)
+		return store.Environment{}, store.MapError(err)
 	}
 	if err := s.AuthorizeOn(ctx, relation, core.WorkspaceObject(e.TenantID)); err != nil {
 		return store.Environment{}, err
@@ -1204,17 +1204,4 @@ func (s *Service) applyAppAllowLists(ctx context.Context, names []string, cidrs 
 		a.Spec.EnvironmentIPAllowList = cidrs
 		return true
 	})
-}
-
-func mapStoreErr(err error) error {
-	switch {
-	case errors.Is(err, store.ErrNotFound):
-		return fmt.Errorf("%w: %v", core.ErrNotFound, err)
-	case errors.Is(err, store.ErrConflict):
-		return fmt.Errorf("%w: %v", core.ErrConflict, err)
-	case errors.Is(err, store.ErrInvalid):
-		return fmt.Errorf("%w: %v", core.ErrBadRequest, err)
-	default:
-		return err
-	}
 }

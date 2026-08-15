@@ -225,7 +225,7 @@ func TestRESTPutRoutesAndHeaders(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PUT routes => 200, got %d: %s", rec.Code, rec.Body)
 	}
-	var routes []renderRoute
+	var routes []StaticRouteView
 	if err := json.Unmarshal(rec.Body.Bytes(), &routes); err != nil {
 		t.Fatalf("decode routes: %v", err)
 	}

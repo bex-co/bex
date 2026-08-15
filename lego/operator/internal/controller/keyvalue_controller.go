@@ -859,11 +859,8 @@ func (r *KeyValueReconciler) keyValuePodsReady(ctx context.Context, kv *appv1alp
 			continue
 		}
 		current++
-		for _, condition := range pod.Status.Conditions {
-			if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
-				ready++
-				break
-			}
+		if podReady(pod) {
+			ready++
 		}
 	}
 	return current == 0 || ready >= replicas

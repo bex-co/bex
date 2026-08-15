@@ -193,8 +193,8 @@ type createServiceRequest struct {
 	PreDeployCommand string `json:"preDeployCommand"`
 	// Routes/Headers are a static_site's edge rules at create time (Render sets
 	// these via separate endpoints; bex also accepts them in the create body).
-	Routes  []renderRoute  `json:"routes"`
-	Headers []renderHeader `json:"headers"`
+	Routes  []StaticRouteView  `json:"routes"`
+	Headers []StaticHeaderView `json:"headers"`
 	// RenderSubdomainPolicy is Render's renderSubdomainPolicy field: "enabled"
 	// (default) or "disabled". Cannot be "disabled" without at least one custom
 	// domain in Domains.
@@ -512,35 +512,11 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		SubdomainPolicy:         r.RenderSubdomainPolicy,
 		PreDeployCommand:        preDeploy,
 		PublishPath:             publishPath,
-		Routes:                  routeViewsFromRender(r.Routes),
-		Headers:                 headerViewsFromRender(r.Headers),
+		Routes:                  r.Routes,
+		Headers:                 r.Headers,
 		IPAllowList:             ipAllowList,
 		DryRun:                  r.DryRun,
 	}, nil
-}
-
-// routeViewsFromRender / headerViewsFromRender convert the Render-shaped decode
-// structs into the neutral surface views the service layer accepts.
-func routeViewsFromRender(routes []renderRoute) []StaticRouteView {
-	if len(routes) == 0 {
-		return nil
-	}
-	out := make([]StaticRouteView, len(routes))
-	for i, r := range routes {
-		out[i] = StaticRouteView{Type: r.Type, Source: r.Source, Destination: r.Destination}
-	}
-	return out
-}
-
-func headerViewsFromRender(headers []renderHeader) []StaticHeaderView {
-	if len(headers) == 0 {
-		return nil
-	}
-	out := make([]StaticHeaderView, len(headers))
-	for i, h := range headers {
-		out[i] = StaticHeaderView{Path: h.Path, Name: h.Name, Value: h.Value}
-	}
-	return out
 }
 
 // parseYesNo maps Render's autoDeploy enum ("yes"/"no", or the bool-ish
@@ -1104,11 +1080,11 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		return s.ListRoutes(r.Context(), r.PathValue("id"))
 	}, toRenderRoutes)
 	putRoutes := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		body, err := core.DecodeBody[[]renderRoute](r)
+		body, err := core.DecodeBody[[]StaticRouteView](r)
 		if err != nil {
 			return nil, err
 		}
-		app, err := s.SetRoutes(r.Context(), r.PathValue("id"), routeViewsFromRender(body))
+		app, err := s.SetRoutes(r.Context(), r.PathValue("id"), body)
 		if err != nil {
 			return nil, err
 		}
@@ -1118,11 +1094,11 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 		return s.ListHeaders(r.Context(), r.PathValue("id"))
 	}, toRenderHeaders)
 	putHeaders := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		body, err := core.DecodeBody[[]renderHeader](r)
+		body, err := core.DecodeBody[[]StaticHeaderView](r)
 		if err != nil {
 			return nil, err
 		}
-		app, err := s.SetHeaders(r.Context(), r.PathValue("id"), headerViewsFromRender(body))
+		app, err := s.SetHeaders(r.Context(), r.PathValue("id"), body)
 		if err != nil {
 			return nil, err
 		}

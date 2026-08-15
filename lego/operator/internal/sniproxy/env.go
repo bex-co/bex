@@ -24,6 +24,14 @@ import (
 	"github.com/go-logr/logr"
 )
 
+// EnvOr reads a string env var, falling back to def when unset or empty.
+func EnvOr(name, def string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	return def
+}
+
 // EnvInt reads an integer env var, falling back to def when unset or malformed
 // (a malformed value is logged, never fatal — these are tuning knobs).
 func EnvInt(log logr.Logger, name string, def int) int {

@@ -52,6 +52,27 @@ var (
 	ErrInvalid  = errors.New("invalid")
 )
 
+// MapError translates this taxonomy into core's, so a feature service can
+// return a store error straight out of a verb and have every surface map it to
+// the right status. The store error stays in the message (%v, not %w) — the
+// core sentinel is what callers match on.
+//
+// Features whose mapping differs deliberately (workspaces folds Conflict into
+// ErrBadRequest; registrycreds and webhooks return bare sentinels) keep their
+// own — this is the common case, not a mandate.
+func MapError(err error) error {
+	switch {
+	case errors.Is(err, ErrNotFound):
+		return fmt.Errorf("%w: %v", core.ErrNotFound, err)
+	case errors.Is(err, ErrConflict):
+		return fmt.Errorf("%w: %v", core.ErrConflict, err)
+	case errors.Is(err, ErrInvalid):
+		return fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+	default:
+		return err
+	}
+}
+
 // Tenant is a row of `tenants` — who owns apps; plan names the tier ladder row.
 type Tenant struct {
 	ID        string    `json:"id"`

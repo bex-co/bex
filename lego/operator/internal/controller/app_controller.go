@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -779,10 +780,7 @@ func isFreeApp(app *appv1alpha1.App) bool {
 // BuildNamespace, or the App's own namespace when unset (co-located; the
 // registry is reached over cluster DNS either way).
 func (r *AppReconciler) buildNamespace(appNS string) string {
-	if r.BuildNamespace != "" {
-		return r.BuildNamespace
-	}
-	return appNS
+	return cmp.Or(r.BuildNamespace, appNS)
 }
 
 // imagePullSecrets returns the imagePullSecrets a tenant pod carries so kubelet
@@ -1744,11 +1742,8 @@ func (r *AppReconciler) deploymentPodsReady(ctx context.Context, dep *appsv1.Dep
 			continue
 		}
 		current++
-		for _, condition := range pod.Status.Conditions {
-			if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
-				ready++
-				break
-			}
+		if podReady(pod) {
+			ready++
 		}
 	}
 	return current == 0 || ready >= replicas
@@ -1782,11 +1777,8 @@ func (r *AppReconciler) currentRevisionFullyReady(ctx context.Context, dep *apps
 		if !pod.DeletionTimestamp.IsZero() || pod.Labels[labelRevision] != revision {
 			continue
 		}
-		for _, condition := range pod.Status.Conditions {
-			if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
-				ready++
-				break
-			}
+		if podReady(pod) {
+			ready++
 		}
 	}
 	return ready >= replicas
@@ -1826,10 +1818,7 @@ func (r *AppReconciler) reconcileIPAllowListMiddleware(ctx context.Context, app 
 // appIDOrName is the Render-shaped service id stamped on the App CR, falling
 // back to the CR name for legacy/hand-applied Apps that carry no id label.
 func appIDOrName(app *appv1alpha1.App) string {
-	if appID := app.Labels[labelAppID]; appID != "" {
-		return appID
-	}
-	return app.Name
+	return cmp.Or(app.Labels[labelAppID], app.Name)
 }
 
 func (r *AppReconciler) reconcileWebsocketMeterMiddleware(ctx context.Context, app *appv1alpha1.App, enabled bool) (string, error) {
@@ -2236,17 +2225,11 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 
 // staticServerPort is the static-server Service port, defaulting to 8080.
 func (r *AppReconciler) staticServerPort() int {
-	if r.StaticServerPort != 0 {
-		return r.StaticServerPort
-	}
-	return 8080
+	return cmp.Or(r.StaticServerPort, 8080)
 }
 
 func (r *AppReconciler) staticServerNamespace() string {
-	if r.StaticServerNamespace != "" {
-		return r.StaticServerNamespace
-	}
-	return "bex-system"
+	return cmp.Or(r.StaticServerNamespace, platformNamespace)
 }
 
 // Ingress backends must live in the Ingress namespace. Static sites normally
@@ -2285,18 +2268,16 @@ func platformAliasName(prefix, appName string) string {
 // ActivatorService via BEX_ACTIVATOR_SERVICE.
 const defaultMaintenanceService = "bex-activator"
 
+// platformNamespace is where bex's own shared workloads (the static server, the
+// wake activator) run when no override is configured — never a tenant namespace.
+const platformNamespace = "bex-system"
+
 func (r *AppReconciler) maintenanceService() string {
-	if r.MaintenanceService != "" {
-		return r.MaintenanceService
-	}
-	return defaultMaintenanceService
+	return cmp.Or(r.MaintenanceService, defaultMaintenanceService)
 }
 
 func (r *AppReconciler) maintenanceNamespace() string {
-	if r.MaintenanceNamespace != "" {
-		return r.MaintenanceNamespace
-	}
-	return "bex-system"
+	return cmp.Or(r.MaintenanceNamespace, platformNamespace)
 }
 
 func (r *AppReconciler) maintenancePort() int {

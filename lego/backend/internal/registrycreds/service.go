@@ -100,13 +100,6 @@ func (s *Service) configured() bool { return s.Store != nil && s.Secret != nil }
 // workspaceID is the store key for the caller's credentials: the caller's
 // tenant when resolvable, else the single-workspace default (mirrors
 // github.Service.workspaceID).
-func (s *Service) workspaceID(ctx context.Context) string {
-	if tid, ok := s.Tenant(ctx); ok && tid != "" {
-		return tid
-	}
-	return core.DefaultTenant
-}
-
 // secretPath is a credential's location in OpenBao, workspace-scoped within
 // bex's own logical-path space (docs/ADR013-secrets.md §4 layout, minus the
 // mount/tenant prefix the store prepends) — defense in depth alongside the
@@ -152,7 +145,7 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]CredentialView, e
 	if s.Store == nil {
 		return nil, core.ErrRegistryCredentialsUnavailable
 	}
-	rows, err := s.Store.ListRegistryCredentials(ctx, s.workspaceID(ctx))
+	rows, err := s.Store.ListRegistryCredentials(ctx, s.WorkspaceOrDefault(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -172,7 +165,7 @@ func (s *Service) Get(ctx context.Context, id string) (CredentialView, error) {
 	if s.Store == nil {
 		return CredentialView{}, core.ErrRegistryCredentialsUnavailable
 	}
-	c, err := s.Store.GetRegistryCredential(ctx, s.workspaceID(ctx), id)
+	c, err := s.Store.GetRegistryCredential(ctx, s.WorkspaceOrDefault(ctx), id)
 	if err != nil {
 		return CredentialView{}, mapStoreErr(err)
 	}
@@ -215,7 +208,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (CredentialView
 	if id, ok := core.IdentityFrom(ctx); ok {
 		createdBy = id.Subject
 	}
-	workspaceID := s.workspaceID(ctx)
+	workspaceID := s.WorkspaceOrDefault(ctx)
 	c, err := s.Store.CreateRegistryCredential(ctx, workspaceID, strings.TrimSpace(req.Name), host, username, createdBy, req.ExpiresAt)
 	if err != nil {
 		return CredentialView{}, err
@@ -254,7 +247,7 @@ func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (Cre
 	if !s.configured() {
 		return CredentialView{}, core.ErrRegistryCredentialsUnavailable
 	}
-	workspaceID := s.workspaceID(ctx)
+	workspaceID := s.WorkspaceOrDefault(ctx)
 	existing, err := s.Store.GetRegistryCredential(ctx, workspaceID, id)
 	if err != nil {
 		return CredentialView{}, mapStoreErr(err)
@@ -304,7 +297,7 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if !s.configured() {
 		return core.ErrRegistryCredentialsUnavailable
 	}
-	workspaceID := s.workspaceID(ctx)
+	workspaceID := s.WorkspaceOrDefault(ctx)
 	if err := s.Store.DeleteRegistryCredential(ctx, workspaceID, id); err != nil {
 		return mapStoreErr(err)
 	}

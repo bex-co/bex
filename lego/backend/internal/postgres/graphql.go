@@ -28,14 +28,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
-// parseGQLTimeWindow parses optional startTime/endTime RFC3339 string args from
-// a GraphQL resolver's args map, same contract as the REST log handlers.
-func parseGQLTimeWindow(args map[string]any) (since, end time.Time, err error) {
-	s, _ := args["startTime"].(string)
-	e, _ := args["endTime"].(string)
-	return core.ParseTimeWindow(s, e)
-}
-
 // Render's dashboard GraphQL calls a managed Postgres a "database" (query
 // database(id), databaseStatusQuery, ...) — captured live — even though its REST
 // noun is "postgres". bex mirrors that split: REST /v1/postgres, GraphQL
@@ -477,7 +469,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"instance":  &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				since, end, err := parseGQLTimeWindow(p.Args)
+				since, end, err := core.ParseTimeWindow(gqlutil.Str(p.Args, "startTime"), gqlutil.Str(p.Args, "endTime"))
 				if err != nil {
 					return nil, err
 				}

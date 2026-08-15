@@ -182,13 +182,6 @@ func ownerID(ctx context.Context) string {
 	return "subject-" + hex.EncodeToString(sum[:20])
 }
 
-func (s *Service) workspaceID(ctx context.Context) string {
-	if ws, ok := s.Tenant(ctx); ok {
-		return ws
-	}
-	return core.DefaultTenant
-}
-
 func sandboxMetadata(ctx context.Context, workspace, template string, plan Plan, region string, timeout int, policy *NetworkPolicy, weight int64) map[string]string {
 	metadata := map[string]string{
 		metadataOwner:         ownerID(ctx),
@@ -318,7 +311,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if !ok {
 		return Sandbox{}, fmt.Errorf("%w: unknown template %q", core.ErrBadRequest, name)
 	}
-	ws := s.workspaceID(ctx)
+	ws := s.WorkspaceOrDefault(ctx)
 	return s.createResolved(ctx, ws, name, tmpl, plan, req.Region, req.TimeoutSeconds, policy, nil, nil)
 }
 
@@ -674,7 +667,7 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 	if err != nil {
 		return nil, err
 	}
-	ws := s.workspaceID(ctx)
+	ws := s.WorkspaceOrDefault(ctx)
 	raw, err := s.Client.List(ctx, key)
 	if err != nil {
 		return nil, err
@@ -718,7 +711,7 @@ func (s *Service) Get(ctx context.Context, id string) (Sandbox, error) {
 	if err != nil {
 		return Sandbox{}, err
 	}
-	ws := s.workspaceID(ctx)
+	ws := s.WorkspaceOrDefault(ctx)
 	raw, err := s.ownedSandbox(ctx, key, ws, id)
 	if err != nil {
 		return Sandbox{}, err
@@ -775,7 +768,7 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 	if err != nil {
 		return err
 	}
-	ws := s.workspaceID(ctx)
+	ws := s.WorkspaceOrDefault(ctx)
 	raw, err := s.ownedSandbox(ctx, key, ws, id)
 	if err != nil {
 		return err
