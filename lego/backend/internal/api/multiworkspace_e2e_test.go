@@ -215,9 +215,11 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	}
 	// ...but he must NOT be able to delete it: can_create does not hold for a
 	// viewer in bravo, even though he is an admin in his own default workspace,
-	// which is the workspace his implicit resolution picks.
-	if rec := call(carl, "DELETE", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusForbidden {
-		t.Errorf("carl (viewer of bravo, admin of charlie) DELETE bravo-web: %d %s, want 403 — a role must not leak across workspaces",
+	// which is the workspace his implicit resolution picks. Round-7 F8: the
+	// by-NAME denial reports absence (404) — the role still does not leak; a
+	// name probe just cannot distinguish a foreign App from a missing one.
+	if rec := call(carl, "DELETE", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusNotFound {
+		t.Errorf("carl (viewer of bravo, admin of charlie) DELETE bravo-web: %d %s, want 404 — a role must not leak across workspaces",
 			rec.Code, rec.Body.String())
 	}
 	if err := cl.Get(ctx, k8sKey(wsB.ID, bravoWeb), &stray); err != nil {
@@ -230,8 +232,10 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 
 	// (5) erin, a member of NEITHER of dana's workspaces, cannot reach her
 	// service at all — the isolation that predates m14 and must still hold.
-	if rec := call(erin, "GET", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusForbidden {
-		t.Errorf("erin GET dana's service: %d %s, want 403", rec.Code, rec.Body.String())
+	// Round-7 F8: the by-name answer is 404 — absence, not a foreign existence
+	// disclosure.
+	if rec := call(erin, "GET", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusNotFound {
+		t.Errorf("erin GET dana's service: %d %s, want 404", rec.Code, rec.Body.String())
 	}
 
 	// (6) PER-SERVICE SAMPLE against the REAL FGA model (w7/m55/t004). The
@@ -331,8 +335,10 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	if rec := call(fred, "POST", "/v1/services/"+bravoWeb+"/restart", ""); rec.Code != http.StatusOK {
 		t.Errorf("fred (contributor of bravo) restart bravo-web: %d %s, want 200 — can_operate must hold", rec.Code, rec.Body.String())
 	}
-	if rec := call(fred, "DELETE", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusForbidden {
-		t.Errorf("fred (contributor) DELETE bravo-web: %d %s, want 403 — can_create must NOT hold for a contributor", rec.Code, rec.Body.String())
+	// Round-7 F8: the by-name denial reports absence (404) — can_create still
+	// does not hold for a contributor; the service still is not deleted.
+	if rec := call(fred, "DELETE", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusNotFound {
+		t.Errorf("fred (contributor) DELETE bravo-web: %d %s, want 404 — can_create must NOT hold for a contributor", rec.Code, rec.Body.String())
 	}
 	if rec := call(fred, "GET", "/v1/services/"+bravoWeb+"/env-vars", ""); rec.Code == http.StatusOK {
 		t.Errorf("fred (contributor) read bravo-web env vars: %d — want a refusal (can_view_sensitive is developer+)", rec.Code)
@@ -345,8 +351,8 @@ func TestMultiWorkspaceTargetingE2E(t *testing.T) {
 	if rec := call(gwen, "GET", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusOK {
 		t.Errorf("gwen (billing of bravo) GET bravo-web: %d %s, want 200 — can_view must hold", rec.Code, rec.Body.String())
 	}
-	if rec := call(gwen, "DELETE", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusForbidden {
-		t.Errorf("gwen (billing) DELETE bravo-web: %d %s, want 403 — can_create must NOT hold for a billing member", rec.Code, rec.Body.String())
+	if rec := call(gwen, "DELETE", "/v1/services/"+bravoWeb, ""); rec.Code != http.StatusNotFound {
+		t.Errorf("gwen (billing) DELETE bravo-web: %d %s, want 404 — can_create must NOT hold for a billing member (round-7 F8: by-name denial reports absence)", rec.Code, rec.Body.String())
 	}
 	if rec := call(gwen, "GET", "/v1/services/"+bravoWeb+"/env-vars", ""); rec.Code == http.StatusOK {
 		t.Errorf("gwen (billing) read bravo-web env vars: %d — want a refusal (can_view_sensitive is developer+)", rec.Code)
