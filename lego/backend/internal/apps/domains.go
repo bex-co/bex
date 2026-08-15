@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"golang.org/x/net/publicsuffix"
@@ -510,39 +511,27 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 		return DomainView{}, false, err
 	}
 	redirectForName = normalizeHostname(redirectForName)
-	for _, h := range app.Spec.Hosts {
-		if h == hostname {
-			if app.Spec.HostRedirects[hostname] == redirectForName {
-				return s.domainView(ctx, app, hostname, s.platformHost(app)), false, nil
-			}
-			if s.Store != nil {
-				if id := managedAppID(app); id != "" {
-					if err := s.Store.AddDomain(ctx, id, hostname, redirectForName); err != nil {
-						return DomainView{}, false, fmt.Errorf("update source of truth: %w", err)
-					}
-				}
-			}
-			base := client.MergeFrom(app.DeepCopy())
-			setHostRedirect(app, hostname, redirectForName)
-			resourcemeta.Touch(app, s.Now())
-			if err := s.Client.Patch(ctx, app, base); err != nil {
-				return DomainView{}, false, err
-			}
-			return s.domainView(ctx, app, hostname, s.platformHost(app)), false, nil
+	present := slices.Contains(app.Spec.Hosts, hostname)
+	// Already served with the redirect the caller asked for: nothing to write.
+	if present && app.Spec.HostRedirects[hostname] == redirectForName {
+		return s.domainView(ctx, app, hostname, s.platformHost(app)), false, nil
+	}
+	// Claim checks apply only to a host this App doesn't already serve; a host
+	// it does serve is only having its redirect rewritten.
+	if !present {
+		if s.reservedHost(s.ownPlatformHost(app), hostname) {
+			return DomainView{}, false, fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, hostname)
 		}
-	}
-	if s.reservedHost(s.ownPlatformHost(app), hostname) {
-		return DomainView{}, false, fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, hostname)
-	}
-	if claimed, err := s.hostClaimedElsewhere(ctx, app, hostname); err != nil {
-		return DomainView{}, false, err
-	} else if claimed {
-		return DomainView{}, false, errDomainInUse()
+		if claimed, err := s.hostClaimedElsewhere(ctx, app, hostname); err != nil {
+			return DomainView{}, false, err
+		} else if claimed {
+			return DomainView{}, false, errDomainInUse()
+		}
 	}
 	if s.Store != nil {
 		if id := managedAppID(app); id != "" {
 			if err := s.Store.AddDomain(ctx, id, hostname, redirectForName); err != nil {
-				if errors.Is(err, store.ErrConflict) { // lost a race to another App's add
+				if !present && errors.Is(err, store.ErrConflict) { // lost a race to another App's add
 					return DomainView{}, false, errDomainInUse()
 				}
 				return DomainView{}, false, fmt.Errorf("update source of truth: %w", err)
@@ -550,13 +539,15 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 		}
 	}
 	base := client.MergeFrom(app.DeepCopy())
-	app.Spec.Hosts = append(app.Spec.Hosts, hostname)
+	if !present {
+		app.Spec.Hosts = append(app.Spec.Hosts, hostname)
+	}
 	setHostRedirect(app, hostname, redirectForName)
 	resourcemeta.Touch(app, s.Now())
 	if err := s.Client.Patch(ctx, app, base); err != nil {
 		return DomainView{}, false, err
 	}
-	return s.domainView(ctx, app, hostname, s.platformHost(app)), true, nil
+	return s.domainView(ctx, app, hostname, s.platformHost(app)), !present, nil
 }
 
 // setHostRedirect updates one source->canonical mapping and keeps the empty

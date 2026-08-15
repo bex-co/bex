@@ -72,9 +72,18 @@ const (
 	defaultMetricSpan = time.Hour
 )
 
-// filterFieldResource is the "RESOURCE" output-filter/query-filter field name,
-// shared between MetricsFilters and graphql.go's filter-array parsing.
-const filterFieldResource = "RESOURCE"
+// Render's filter/aggregate field vocabulary, shared between MetricsFilters and
+// graphql.go's filter-array parsing. HOST and PATH are named so the parser can
+// recognize (and Metrics can then refuse) them; INSTANCE is offered by
+// MetricsFilters only.
+const (
+	filterFieldResource   = "RESOURCE"
+	filterFieldStatusCode = "STATUS_CODE"
+	filterFieldMethod     = "METHOD"
+	filterFieldHost       = "HOST"
+	filterFieldPath       = "PATH"
+	filterFieldInstance   = "INSTANCE"
+)
 
 // MetricPoint is one (timestamp, value) sample of a series.
 type MetricPoint struct {
@@ -929,7 +938,7 @@ func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]
 		switch field {
 		case filterFieldResource:
 			out = append(out, MetricsFilterValues{Field: field, Values: []string{q.App}})
-		case "INSTANCE":
+		case filterFieldInstance:
 			pods, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
 			if err != nil {
 				return nil, err
@@ -939,7 +948,7 @@ func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]
 				instances = append(instances, p.Name)
 			}
 			out = append(out, MetricsFilterValues{Field: field, Values: instances})
-		case "STATUS_CODE":
+		case filterFieldStatusCode:
 			values, err := s.filterValuesOrEmpty(ctx, app, "code")
 			if err != nil {
 				return nil, err

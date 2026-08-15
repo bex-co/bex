@@ -268,18 +268,20 @@ func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, r
 		if err != nil {
 			return QueryResult{}, mapPGError(err)
 		}
-		encoded, err := json.Marshal(vals)
-		if err != nil {
-			return QueryResult{}, errQueryFailed
-		}
-		if err := jsonResult.add(len(encoded)); err != nil {
-			return QueryResult{}, err
-		}
 		out.Rows = append(out.Rows, vals)
 	}
 	// rows.Err surfaces read-only violations / timeouts that fire mid-stream.
 	if err := rows.Err(); err != nil {
 		return QueryResult{}, mapPGError(err)
+	}
+	// One encoding for the whole result, not one per row thrown away for its
+	// length: rawResult already bounded the loop, so this is bounded work.
+	encoded, err := json.Marshal(out.Rows)
+	if err != nil {
+		return QueryResult{}, errQueryFailed
+	}
+	if err := jsonResult.add(len(encoded)); err != nil {
+		return QueryResult{}, err
 	}
 	rows.Close()
 	out.RowCount = len(out.Rows)

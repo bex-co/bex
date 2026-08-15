@@ -186,33 +186,6 @@ func (s *PGStore) EnsurePushWatermark(ctx context.Context, at time.Time) (time.T
 	return watermarkAt, watermarkKey, nil
 }
 
-// ResolvePushServiceID converts the composed feed's CR-style service address
-// back to the stable opaque id mobile deep links accept.
-func (s *PGStore) ResolvePushServiceID(ctx context.Context, tenantID, serviceName string) (string, error) {
-	var serviceID string
-	if err := s.Pool.QueryRow(ctx,
-		`SELECT id FROM apps WHERE tenant_id = $1 AND name = $2`, tenantID, serviceName).Scan(&serviceID); err != nil {
-		return "", safePushStoreError(ctx, err)
-	}
-	return serviceID, nil
-}
-
-// PushFactStatus supplies the lifecycle-fact status omitted by the historical
-// WebhookEventRow projection. Facts are immutable, so this lookup cannot race a
-// status rewrite.
-func (s *PGStore) PushFactStatus(ctx context.Context, eventKey string) (string, error) {
-	const prefix = "fact:"
-	if !strings.HasPrefix(eventKey, prefix) || len(eventKey) == len(prefix) {
-		return "", fmt.Errorf("push fact status: %w", ErrInvalid)
-	}
-	var status string
-	if err := s.Pool.QueryRow(ctx,
-		`SELECT status FROM service_event_facts WHERE source_key = $1`, strings.TrimPrefix(eventKey, prefix)).Scan(&status); err != nil {
-		return "", safePushStoreError(ctx, err)
-	}
-	return status, nil
-}
-
 // EnqueuePushNotifications inserts logical and per-device rows and advances
 // the distinct push cursor in one transaction. Composite unique constraints
 // make feed replay, restart, and concurrent replicas converge without duplicates.

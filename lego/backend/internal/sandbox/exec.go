@@ -237,6 +237,14 @@ func bufferExec(resp *http.Response) (ExecResult, error) {
 	var out ExecResult
 	exitSeen := false
 	total := 0 // combined stdout+stderr bytes accumulated so far
+	// Builders, not string +=: the budget below admits up to maxExecOutputBytes
+	// across many small SSE chunks, and appending to a string reallocates and
+	// copies everything accumulated so far on each one.
+	var stdout, stderr strings.Builder
+	finish := func() ExecResult {
+		out.Stdout, out.Stderr = stdout.String(), stderr.String()
+		return out
+	}
 	sc := bufio.NewScanner(resp.Body)
 	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
 	event := ""
@@ -266,12 +274,12 @@ func bufferExec(resp *http.Response) (ExecResult, error) {
 					}
 					total += len(data)
 					if ev.Stream == "stderr" {
-						out.Stderr += data
+						stderr.WriteString(data)
 					} else {
-						out.Stdout += data
+						stdout.WriteString(data)
 					}
 					if out.Truncated {
-						return out, nil
+						return finish(), nil
 					}
 				}
 			case "exit":
@@ -287,16 +295,16 @@ func bufferExec(resp *http.Response) (ExecResult, error) {
 					Error string `json:"error"`
 				}
 				if json.Unmarshal([]byte(payload), &ev) == nil && ev.Error != "" {
-					return out, fmt.Errorf("%w: %s", core.ErrSandboxesUnavailable, ev.Error)
+					return finish(), fmt.Errorf("%w: %s", core.ErrSandboxesUnavailable, ev.Error)
 				}
 			}
 		}
 	}
 	if err := sc.Err(); err != nil {
-		return out, fmt.Errorf("%w: sandbox exec stream failed: %v", core.ErrSandboxesUnavailable, err)
+		return finish(), fmt.Errorf("%w: sandbox exec stream failed: %v", core.ErrSandboxesUnavailable, err)
 	}
 	if !exitSeen {
-		return out, fmt.Errorf("%w: sandbox exec stream ended without an exit event", core.ErrSandboxesUnavailable)
+		return finish(), fmt.Errorf("%w: sandbox exec stream ended without an exit event", core.ErrSandboxesUnavailable)
 	}
-	return out, nil
+	return finish(), nil
 }

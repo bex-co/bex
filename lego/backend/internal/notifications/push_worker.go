@@ -58,8 +58,6 @@ type PushWorkerStore interface {
 	EnsurePushWatermark(context.Context, time.Time) (time.Time, string, error)
 	ListWebhookEvents(context.Context, time.Time, string, time.Time, []string, []string, int) ([]store.WebhookEventRow, error)
 	ListTerminalAgentSessionsForPush(context.Context, time.Time) ([]store.AgentSession, error)
-	ResolvePushServiceID(context.Context, string, string) (string, error)
-	PushFactStatus(context.Context, string) (string, error)
 	EnqueuePushNotifications(context.Context, []store.PushNotificationBatchItem, time.Time, string) error
 	ClaimDuePushDeliveries(context.Context, time.Time, time.Time, int) ([]store.DuePushDelivery, error)
 	AcceptPushDelivery(context.Context, store.DuePushDelivery, string, time.Time, time.Time) (bool, error)
@@ -193,10 +191,15 @@ func (w *PushWorker) RunOnce(ctx context.Context) error {
 		return fmt.Errorf("list active push destinations: %w", err)
 	}
 	if len(destinations) > 0 {
-		if err := w.dispatch(ctx, destinations); err != nil {
+		// Built once per tick: both dispatchers evaluate the SAME recipients, and
+		// the build recompiles every subscriber's stored policy (and evidences the
+		// invalid ones), so doing it per dispatcher doubled that work and
+		// double-counted the invalid-policy metric.
+		byTenant, tenants := w.buildPushRecipients(ctx, destinations)
+		if err := w.dispatch(ctx, byTenant, tenants); err != nil {
 			return fmt.Errorf("project push events: %w", err)
 		}
-		if err := w.dispatchAgentSessions(ctx, destinations); err != nil {
+		if err := w.dispatchAgentSessions(ctx, byTenant, tenants); err != nil {
 			return fmt.Errorf("project agent-session push events: %w", err)
 		}
 	}
@@ -393,17 +396,12 @@ func projectAgentSessionPush(s store.AgentSession) (projectedPush, bool) {
 // so they can't ride the webhook-events feed. It scans recent terminal sessions,
 // evaluates the SAME recipients/policy, and enqueues a session-deep-linked push
 // deduped by (session, phase). It never advances the feed watermark.
-func (w *PushWorker) dispatchAgentSessions(ctx context.Context, destinations []store.ActivePushSubscription) error {
+func (w *PushWorker) dispatchAgentSessions(ctx context.Context, byTenant map[string]map[string]*pushRecipient, tenants []string) error {
 	if !w.cursor.Loaded() {
 		return nil // the feed dispatch anchors the watermark first
 	}
-	byTenant, tenants := w.buildPushRecipients(ctx, destinations)
 	if len(tenants) == 0 {
 		return nil
-	}
-	tenantSet := make(map[string]bool, len(tenants))
-	for _, tenant := range tenants {
-		tenantSet[tenant] = true
 	}
 	sessions, err := w.Store.ListTerminalAgentSessionsForPush(ctx, w.now().Add(-agentPushWindow))
 	if err != nil {
@@ -411,6 +409,10 @@ func (w *PushWorker) dispatchAgentSessions(ctx context.Context, destinations []s
 	}
 	if len(sessions) == 0 {
 		return nil
+	}
+	tenantSet := make(map[string]bool, len(tenants))
+	for _, tenant := range tenants {
+		tenantSet[tenant] = true
 	}
 	decisionTime := w.now()
 	evaluator := DeliveryPolicyEvaluator{Now: func() time.Time { return decisionTime }}
@@ -471,13 +473,12 @@ func (w *PushWorker) agentSessionProjected(updatedAt time.Time, sourceKey string
 	return updatedAt.Equal(w.agentSessionCursor) && w.agentSessionBoundary[sourceKey]
 }
 
-func (w *PushWorker) dispatch(ctx context.Context, destinations []store.ActivePushSubscription) error {
+func (w *PushWorker) dispatch(ctx context.Context, byTenant map[string]map[string]*pushRecipient, tenants []string) error {
 	until := w.now().Add(-pushDispatchLag)
 	if err := w.cursor.Load(ctx, w.Store.EnsurePushWatermark, until); err != nil {
 		return err
 	}
 
-	byTenant, tenants := w.buildPushRecipients(ctx, destinations)
 	if len(tenants) == 0 {
 		return nil
 	}
@@ -506,17 +507,15 @@ func (w *PushWorker) fanOutPage(ctx context.Context, rows []store.WebhookEventRo
 	batch := make([]store.PushNotificationBatchItem, 0)
 	decisionTime := w.now()
 	evaluator := DeliveryPolicyEvaluator{Now: func() time.Time { return decisionTime }}
+	var err error
 	for _, row := range rows {
-		serviceID, err := w.Store.ResolvePushServiceID(ctx, row.TenantID, row.ServiceName)
-		if err != nil {
-			return nil, err
-		}
+		// The feed query already carries the app id and the fact status, so
+		// neither costs a per-row round trip. It also means an app deleted
+		// between the read and a resolve can no longer poison the whole pass.
+		serviceID := row.AppID
 		factStatus := ""
 		if row.Source == store.EventSourceFact && row.FactType == string(store.EventFactJobRunEnded) {
-			factStatus, err = w.Store.PushFactStatus(ctx, row.Key)
-			if err != nil {
-				return nil, err
-			}
+			factStatus = row.Status
 		}
 		projected, ok := projectPushEvent(row, serviceID, factStatus)
 		if !ok {
