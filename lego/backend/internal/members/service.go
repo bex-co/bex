@@ -55,7 +55,7 @@ const DefaultInviteTTL = 7 * 24 * time.Hour
 
 // ErrMembersUnavailable is returned when the control-plane store isn't wired
 // (bex-api without BEX_CP_DB_URI); adapters surface it as 503.
-var ErrMembersUnavailable = errors.New("workspace members store not configured")
+var ErrMembersUnavailable = core.Unavailable("workspace members store not configured")
 
 // Stable GraphQL extensions.code values for direct invite redemption. Mobile
 // uses these to clear terminal bearer capabilities while retaining only

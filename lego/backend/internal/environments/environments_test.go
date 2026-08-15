@@ -354,9 +354,10 @@ func TestVerbsDenyWhenUnauthorized(t *testing.T) {
 }
 
 // TestREST_StoreUnavailableIs503 proves ErrEnvironmentsUnavailable — a
-// package-local sentinel core.WriteErr's switch doesn't recognize — still
-// surfaces as 503, not the silent 500 fallthrough it would get without
-// rest.go's own writeErr wrapper.
+// package-local sentinel core.WriteErr cannot name, since core is a leaf —
+// surfaces as 503 rather than the silent 500 fallthrough. It used to need
+// rest.go's own writeErr wrapper; the sentinel now carries core's
+// ErrUnavailable marker instead, so core.WriteErr maps it directly.
 func TestREST_StoreUnavailableIs503(t *testing.T) {
 	svc := &Service{Base: &core.Base{Authz: allowChecker{}}} // Store nil
 	mux := http.NewServeMux()

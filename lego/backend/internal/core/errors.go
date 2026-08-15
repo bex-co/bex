@@ -35,8 +35,10 @@ var (
 	// class once (503) instead of naming each sentinel, so a feature declaring a
 	// new one through Unavailable is mapped without editing this leaf package —
 	// which is what let internal/projects and internal/environments delete their
-	// package-local 503 shims. Deliberately NOT applied to members/jobs/blueprint
-	// sentinels: those answer 500 today, and opting them in would change statuses.
+	// package-local 503 shims. The members/jobs/blueprint sentinels are opted in
+	// too: they answered 500 while api/server.go and jobs' own RegisterREST doc
+	// promised 503, so the status change fixes a documented contract rather than
+	// breaking one (see the REST tests in those packages).
 	ErrUnavailable = errors.New("service unavailable")
 	// ErrLogsUnavailable is returned by the logs verbs when no pod-log source is
 	// wired (adapters surface it as 503, not 404 — the App exists, the source
