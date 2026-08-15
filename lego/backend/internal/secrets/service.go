@@ -86,6 +86,11 @@ func envPath(service string) string { return "services/" + service + "/env" }
 // Render client addresses the resource by its stable srv- id. Store-managed
 // Apps use a tenant-prefixed Kubernetes name, so neither the request token nor
 // metadata.name is the correct key for data seeded during create.
+//
+// Keying on the request token instead is what w1/m66 F10 fixed: a secret file
+// written under it landed in a second namespace nothing else read — it
+// materialized into the pod once, then was invisible to Get/List/Delete and
+// outlived the service's purge.
 func storeServiceName(a *appv1alpha1.App, fallback string) string {
 	if name := a.Labels[core.LabelServiceName]; name != "" {
 		return name
@@ -101,6 +106,56 @@ func storeTenant(a *appv1alpha1.App) string {
 		return t
 	}
 	return baoTenant
+}
+
+// scopeApp derives the two store-addressing values from an ALREADY-AUTHORIZED
+// App: the tenant its OpenBao paths are keyed under, and the name the store
+// knows the service by. Dropping either is a cross-tenant read or a write to a
+// path nothing else reads — neither of which fails visibly (w7/m70,
+// codex-security #1 and w1/m66 F10) — so the pairing lives in exactly one
+// place.
+//
+// It is split out from scope because the create-time phases and the purger need
+// this half WITHOUT authorizing: apps.Create already authorized before calling
+// prepare/abort, and the purger deliberately runs with no caller at all.
+func scopeApp(ctx context.Context, a *appv1alpha1.App, service string) (context.Context, string) {
+	return withTenant(ctx, storeTenant(a)), storeServiceName(a, service)
+}
+
+// scope is the opening of every secrets verb: authorize the caller against the
+// SERVICE'S OWN workspace, then scope the store to the App that authorization
+// resolved. It returns the same three locals the verbs already used, so a
+// caller writes `a, ctx, service, err := s.scope(...)` and everything below is
+// addressed to the right tenant.
+//
+// The store-nil check deliberately stays AFTER authorization, so an
+// unauthorized caller learns nothing about whether a secret store is even
+// configured.
+//
+// On error the returned context is nil, deliberately: returning the caller's
+// original ctx would leave a verb one forgotten `return` away from addressing
+// the legacy default tenant, which is the confusion w7/m70 fixed. Callers must
+// return immediately.
+//
+// It must remain an UNEXPORTED METHOD, and its relation parameter must keep the
+// name `relation`. core.callerVerb walks past unexported-method frames to name
+// the audit verb (core/audit.go's unexportedHelperMethod, budgeted by
+// helperWalkLimit), so `secrets.SetEnvVar` keeps its name through this
+// indirection; exporting it or making it a plain function would rename every
+// recorded verb and silently empty the services' activity feeds without failing
+// anything. The parameter name is load-bearing too, but loudly: the static
+// guard in events/vocabulary_test.go propagates each verb's relation through
+// one hop by matching that exact identifier.
+func (s *Service) scope(ctx context.Context, relation, service string) (*appv1alpha1.App, context.Context, string, error) {
+	a, err := s.AuthorizeApp(ctx, relation, service)
+	if err != nil {
+		return nil, nil, "", err // ErrNotFound for unknown services, exactly like Get
+	}
+	if s.Store == nil {
+		return nil, nil, "", core.ErrSecretsUnavailable
+	}
+	ctx, service = scopeApp(ctx, a, service)
+	return a, ctx, service, nil
 }
 
 // readMap fetches exactly the map under the request's tenant. Legacy
@@ -133,14 +188,9 @@ func (s *Service) ListEnvVars(ctx context.Context, service string) ([]EnvVarView
 // SecretKV implementations keep returning an empty revision so old callers and
 // test doubles remain compatible.
 func (s *Service) readAuthorizedEnvMap(ctx context.Context, service string) (map[string]string, string, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service)
+	_, ctx, service, err := s.scope(ctx, core.RelCanViewSensitive, service)
 	if err != nil {
-		return nil, "", err // ErrNotFound for unknown services, exactly like Get
-	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if s.Store == nil {
-		return nil, "", core.ErrSecretsUnavailable
+		return nil, "", err
 	}
 	versioned, ok := s.Store.(core.VersionedSecretKV)
 	if !ok {
@@ -211,14 +261,10 @@ func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarVie
 // values land in OpenBao (source of truth), are projected into the app's Secret,
 // and the pods roll so the new values take effect.
 func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarView) ([]EnvVarView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service) // one App read: existence check + patch base
+	// One App read: existence check + patch base.
+	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return nil, err
-	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if s.Store == nil {
-		return nil, core.ErrSecretsUnavailable
 	}
 	env := make(map[string]string, len(vars))
 	for _, v := range vars {
@@ -260,14 +306,9 @@ func resolveValue(key, value string, generate bool) (string, error) {
 // {value} or {generateValue:true}), merging it into the existing set rather than
 // replacing it. Returns the bare {key,value}. Manage-scope verb.
 func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvVarWrite) (EnvVarView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return EnvVarView{}, err
-	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if s.Store == nil {
-		return EnvVarView{}, core.ErrSecretsUnavailable
 	}
 	key = strings.TrimSpace(key)
 	if !core.ValidEnvKey(key) {
@@ -296,14 +337,9 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 // DeleteEnvVar removes one variable (Render's DELETE .../env-vars/{key}),
 // re-projecting the reduced set. Unknown key => core.ErrNotFound.
 func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return err
-	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if s.Store == nil {
-		return core.ErrSecretsUnavailable
 	}
 	var keyFound bool
 	env, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
@@ -333,14 +369,9 @@ func (s *Service) DeleteEnvVar(ctx context.Context, service, key string) error {
 // naturally overrides them later. A no-op when every key is already present: no
 // Secret write, no pod roll — the stack re-apply idempotency contract. Manage scope.
 func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[string]string, generates []string) error {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return err
-	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if s.Store == nil {
-		return core.ErrSecretsUnavailable
 	}
 	env, err := s.readMap(ctx, envPath(service))
 	if err != nil {

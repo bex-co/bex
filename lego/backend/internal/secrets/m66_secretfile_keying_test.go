@@ -141,6 +141,7 @@ func TestPurgeAppRemovesLegacyIDKeyedPaths(t *testing.T) {
 // instance of it.
 func TestEveryStoreKeyIsCanonicalized(t *testing.T) {
 	fset := token.NewFileSet()
+	var examined int
 	entries, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatalf("read package dir: %v", err)
@@ -160,7 +161,22 @@ func TestEveryStoreKeyIsCanonicalized(t *testing.T) {
 				continue
 			}
 			var authorizes, canonicalizes, buildsKey bool
+			// A verb reaches the store through s.scope now, which authorizes AND
+			// canonicalizes in one call — but only if the caller keeps the name it
+			// returns. Discarding it (`_, ctx, _, err := s.scope(…)`) and then
+			// building a key from the raw request token is the post-refactor shape
+			// of this exact bug, so scope's third result is inspected, not assumed.
 			ast.Inspect(fn.Body, func(n ast.Node) bool {
+				if assign, ok := n.(*ast.AssignStmt); ok && len(assign.Rhs) == 1 && len(assign.Lhs) == 4 {
+					if call, ok := assign.Rhs[0].(*ast.CallExpr); ok {
+						if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "scope" {
+							authorizes = true
+							if id, ok := assign.Lhs[2].(*ast.Ident); ok && id.Name == "service" {
+								canonicalizes = true
+							}
+						}
+					}
+				}
 				call, ok := n.(*ast.CallExpr)
 				if !ok {
 					return true
@@ -172,7 +188,7 @@ func TestEveryStoreKeyIsCanonicalized(t *testing.T) {
 					}
 				case *ast.Ident:
 					switch f.Name {
-					case "storeServiceName":
+					case "storeServiceName", "scopeApp":
 						canonicalizes = true
 					case "envPath", "filesPath":
 						// Only a key built from the service token matters; a key built
@@ -186,11 +202,21 @@ func TestEveryStoreKeyIsCanonicalized(t *testing.T) {
 				}
 				return true
 			})
+			if authorizes {
+				examined++
+			}
 			if authorizes && buildsKey && !canonicalizes {
-				t.Errorf("%s: %s authorizes an App and builds a store key from the raw request token — assign service = storeServiceName(a, service) first (w1/m66 F10)",
+				t.Errorf("%s: %s authorizes an App and builds a store key from the raw request token — canonicalize through s.scope (or storeServiceName) first (w1/m66 F10)",
 					name, fn.Name.Name)
 			}
 		}
+	}
+	// Anti-vacuity floor, the relationguard_test.go pattern. This guard matches on
+	// how a verb reaches the store, so a refactor of that path can silently reduce
+	// it to zero candidates and leave it passing forever — which is exactly what
+	// happened when the per-verb AuthorizeApp calls moved behind s.scope.
+	if examined < 8 {
+		t.Fatalf("only %d authorizing verbs examined — the sweep has gone vacuous; teach it how verbs now reach the store", examined)
 	}
 }
 

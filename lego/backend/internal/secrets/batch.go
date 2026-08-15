@@ -87,14 +87,9 @@ type EnvironmentPatchResult struct {
 // If a later write or projection fails, already-written source/projection state
 // is restored best-effort and the compensation error is joined to the cause.
 func (s *Service) PatchEnvironment(ctx context.Context, service string, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return EnvironmentPatchResult{}, err
-	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if s.Store == nil {
-		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
 	}
 	if patch.SaveMode != SaveModeOnly && patch.SaveMode != SaveModeDeploy {
 		return EnvironmentPatchResult{}, fmt.Errorf("%w: saveMode must be %q or %q", core.ErrBadRequest, SaveModeOnly, SaveModeDeploy)

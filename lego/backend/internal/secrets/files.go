@@ -58,14 +58,9 @@ func filesSecretName(service string) string { return service + "-files" }
 // ListSecretFiles returns a service's secret-file names, sorted (Render's GET
 // .../secret-files). Names only — contents are fetched per file. Sensitive read.
 func (s *Service) ListSecretFiles(ctx context.Context, service string) ([]SecretFileView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service)
+	_, ctx, service, err := s.scope(ctx, core.RelCanViewSensitive, service)
 	if err != nil {
 		return nil, err
-	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if s.Store == nil {
-		return nil, core.ErrSecretsUnavailable
 	}
 	files, err := s.readMap(ctx, filesPath(service))
 	if err != nil {
@@ -109,14 +104,9 @@ func (s *Service) ListSecretFilesPage(ctx context.Context, service, after string
 // GetSecretFile returns one file's name + content (Render's GET
 // .../secret-files/{name}). Unknown service or file => core.ErrNotFound. Sensitive.
 func (s *Service) GetSecretFile(ctx context.Context, service, name string) (SecretFileView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service)
+	_, ctx, service, err := s.scope(ctx, core.RelCanViewSensitive, service)
 	if err != nil {
 		return SecretFileView{}, err
-	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if s.Store == nil {
-		return SecretFileView{}, core.ErrSecretsUnavailable
 	}
 	files, err := s.readMap(ctx, filesPath(service))
 	if err != nil {
@@ -134,20 +124,9 @@ func (s *Service) GetSecretFile(ctx context.Context, service, name string) (Secr
 // the file's name (content echoed). Manage-scope verb; the pods roll to pick up
 // the change.
 func (s *Service) SetSecretFile(ctx context.Context, service, name, content string) (SecretFileView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return SecretFileView{}, err
-	}
-	// Canonicalize like every sibling verb (w1/m66 F10): a caller may address the
-	// service by its stable srv- id or a store-managed App's tenant-prefixed
-	// metadata.name, but the store key is always the PUBLIC service name. Writing
-	// under the request token instead created a second namespace nothing else
-	// reads — the file materialized into the pod once, then was invisible to
-	// Get/List/Delete and outlived the service's purge.
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if s.Store == nil {
-		return SecretFileView{}, core.ErrSecretsUnavailable
 	}
 	name = strings.TrimSpace(name)
 	if !core.ValidSecretFileName(name) {
@@ -173,14 +152,9 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 // validated before any mutation, so one bad entry cannot partially seed the
 // request. Existing values are merged for idempotent/retry-safe behavior.
 func (s *Service) SeedSecretFiles(ctx context.Context, service string, initial []core.SecretFile) error {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return err
-	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if s.Store == nil {
-		return core.ErrSecretsUnavailable
 	}
 	if len(initial) == 0 {
 		return nil
@@ -217,8 +191,7 @@ func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *app
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
+	ctx, service = scopeApp(ctx, a, service)
 	files := make(map[string]string, len(initial))
 	for _, f := range initial {
 		name := strings.TrimSpace(f.Name)
@@ -280,8 +253,7 @@ func (s *Service) abortSecretFiles(ctx context.Context, service string, a *appv1
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
+	ctx, service = scopeApp(ctx, a, service)
 	return errors.Join(
 		s.deleteSecret(ctx, a.Namespace, filesSecretName(a.Name)),
 		s.Store.Delete(ctx, filesPath(service)),
@@ -320,14 +292,9 @@ func NewCreateSecretFileSeeder(service *Service) CreateSecretFileSeeder {
 // DeleteSecretFile removes one file (Render's DELETE .../secret-files/{name}),
 // re-projecting the reduced set. Unknown file => core.ErrNotFound.
 func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) error {
-	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return err
-	}
-	service = storeServiceName(a, service)
-	ctx = withTenant(ctx, storeTenant(a))
-	if s.Store == nil {
-		return core.ErrSecretsUnavailable
 	}
 	files, err := s.readMap(ctx, filesPath(service))
 	if err != nil {
