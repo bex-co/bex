@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write # cosign keyless signing (GitHub OIDC)
 
 jobs:
   release:
@@ -24,26 +25,64 @@ jobs:
       - name: test Bex device-flow adapter
         working-directory: lego/backend
         run: go test ./internal/cliauth ./internal/api
+      - name: derive version from tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: echo "VERSION=${TAG#bex-cli/v}" >> "$GITHUB_ENV"
       - name: build release candidates
         env:
           BEX_CLI_VERSION: ${{ github.ref_name }}
         run: bash scripts/bex-cli-build.sh dist/build
       - name: build archives
-        env:
-          VERSION: ${{ github.ref_name }}
         run: |
           mkdir -p dist
           for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
             os="${target%/*}"
             arch="${target#*/}"
-            artifact="bex-${VERSION#bex-cli/v}-${os}-${arch}"
+            artifact="bex-${VERSION}-${os}-${arch}"
             mkdir -p "dist/$artifact"
             cp "dist/build/bex-${os}-${arch}" "dist/$artifact/bex"
             tar -C dist -czf "dist/$artifact.tar.gz" "$artifact"
           done
           (cd dist && sha256sum *.tar.gz > checksums.txt)
+      - name: install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: sign checksums (keyless bundle)
+        run: cosign sign-blob --yes --bundle dist/checksums.txt.sigstore.json dist/checksums.txt
       - name: publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" dist/*.tar.gz dist/checksums.txt --title "bex CLI ${TAG#bex-cli/v}" --generate-notes
+        # Idempotent so a failed later step (e.g. the tap push) can be fixed
+        # by re-running the job instead of leaving the release half-published.
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.tar.gz dist/checksums.txt dist/checksums.txt.sigstore.json --clobber
+          else
+            gh release create "$TAG" dist/*.tar.gz dist/checksums.txt dist/checksums.txt.sigstore.json --title "bex CLI $VERSION" --generate-notes
+          fi
+      - name: publish Homebrew formula
+        # BEX_TAP_PUSH_KEY is the write deploy key of bex-co/homebrew-tap —
+        # repo-scoped, non-personal, no expiry (docs/ADR019 custody: private
+        # half in .env's BEX_TAP_PUSH_KEY_FILE). Skips cleanly while unset.
+        if: ${{ secrets.BEX_TAP_PUSH_KEY != '' }}
+        env:
+          TAP_KEY: ${{ secrets.BEX_TAP_PUSH_KEY }}
+        run: |
+          bash scripts/bex-cli-formula.sh dist/checksums.txt > /tmp/bex.rb
+          umask 077
+          printf '%s\n' "$TAP_KEY" > /tmp/tap-key
+          # GitHub's published ed25519 host key (docs.github.com → SSH key
+          # fingerprints). If GitHub ever rotates it, this step fails with
+          # "Host key verification failed" — update the pin here.
+          printf '%s\n' "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > /tmp/tap-known-hosts
+          export GIT_SSH_COMMAND="ssh -i /tmp/tap-key -o UserKnownHostsFile=/tmp/tap-known-hosts -o IdentitiesOnly=yes"
+          git clone --depth 1 git@github.com:bex-co/homebrew-tap.git /tmp/tap
+          mkdir -p /tmp/tap/Formula
+          cp /tmp/bex.rb /tmp/tap/Formula/bex.rb
+          cd /tmp/tap
+          git config user.name "bex-release-bot"
+          git config user.email "noreply@bex.co"
+          git add Formula/bex.rb
+          git diff --cached --quiet || git commit -m "bex $VERSION"
+          git push origin main || { git pull --rebase origin main && git push origin main; }

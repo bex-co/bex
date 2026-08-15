@@ -6,7 +6,22 @@ The current pin and its update procedure are recorded in [`cli/UPSTREAM_RENDER_C
 
 ## Install
 
-When a `bex-cli/v*` tag is published, CI creates Linux and macOS GitHub-release archives plus `checksums.txt`. Download the archive matching the host, verify it, extract it, and put `bex` on `PATH`.
+One line — detects OS/arch, verifies `checksums.txt`, installs to `~/.local/bin` (`BEX_VERSION` pins, `BEX_INSTALL_DIR` retargets):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/bex-co/bex/main/scripts/install-bex.sh | sh
+```
+
+Or via Homebrew: `brew install bex-co/tap/bex` — the formula in [bex-co/homebrew-tap](https://github.com/bex-co/homebrew-tap) is rendered by `scripts/bex-cli-formula.sh` and pushed automatically by the release workflow (gated on the `BEX_TAP_PUSH_KEY` secret: the private half of a write **deploy key** scoped to only the tap repo, custodied via `.env`'s `BEX_TAP_PUSH_KEY_FILE` + `scripts/gh-secrets.sh`).
+
+Both channels consume the `bex-cli/v*` GitHub releases: when such a tag is published, CI creates Linux and macOS archives, `checksums.txt`, and a keyless cosign signature bundle over the checksums (GitHub-OIDC signed; no key custody). To verify a download's provenance:
+
+```bash
+cosign verify-blob checksums.txt \
+  --bundle checksums.txt.sigstore.json \
+  --certificate-identity-regexp 'github.com/bex-co/bex/.github/workflows/cli-release.yml' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
 
 For a checkout, build the same binary locally:
 

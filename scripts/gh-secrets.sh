@@ -47,4 +47,12 @@ set_file BEX_SSH_PRIVATE_KEY "${BEX_SSH_PRIVATE_KEY_FILE:?set BEX_SSH_PRIVATE_KE
 # cluster/openbao-drill workflows assert mandatory-pin mode and abort without it.
 set_scalar BEX_SSH_KNOWN_HOSTS
 
+# Optional: the bex-co/homebrew-tap write deploy key (cli-release.yml's
+# formula-push step); skipping leaves the release workflow's tap step off.
+if [ -n "${BEX_TAP_PUSH_KEY_FILE:-}" ]; then
+  set_file BEX_TAP_PUSH_KEY "$BEX_TAP_PUSH_KEY_FILE"
+else
+  echo "skip  BEX_TAP_PUSH_KEY (no BEX_TAP_PUSH_KEY_FILE in .env)"
+fi
+
 echo "done. verify with: gh secret list"
