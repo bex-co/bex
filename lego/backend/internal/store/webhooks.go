@@ -323,6 +323,21 @@ func (s *PGStore) EnsureWebhookWatermark(ctx context.Context, at time.Time) (tim
 	return wmAt, wmKey, nil
 }
 
+// FeedCommitLag is how far behind now a tailer of ListWebhookEvents must read.
+// The feed's timestamps are assigned before their rows commit (Go's clock for
+// audit rows, the statement's now() for deploys), so a row can appear under an
+// already-advanced watermark; reading only rows older than this leaves in-flight
+// commits time to land. A transaction slower than this can still slip under —
+// accepted, documented, and bounded (audit inserts time out at 2s,
+// core/audit.go).
+//
+// It lives with the query rather than with either consumer because it is a
+// property of THIS feed's write path, not a per-consumer tunable: every tailer
+// of ListWebhookEvents (internal/webhooks, internal/notifications) is exposed to
+// the same in-flight commits and must use the same lag. Page size and park
+// interval are genuinely per-consumer and stay in their own packages.
+const FeedCommitLag = 3 * time.Second
+
 // WebhookEventRow is one workspace-attributed row of the dispatcher's
 // composed feed — the same projection ServiceEventRow carries, plus the
 // tenant and service identity the join contributes (which the per-service

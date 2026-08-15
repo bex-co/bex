@@ -79,14 +79,9 @@ const (
 	// defaultPollInterval paces both phases — the "within seconds" delivery
 	// budget, spent mostly here.
 	defaultPollInterval = 2 * time.Second
-	// dispatchLag is how far behind now the dispatcher reads. The feed's
-	// timestamps are assigned before their rows commit (Go's clock for audit
-	// rows, the statement's now() for deploys), so a row can appear under an
-	// already-advanced watermark; reading only rows older than the lag leaves
-	// in-flight commits time to land. A transaction slower than this can still
-	// slip under — accepted, documented, and bounded (audit inserts time out at
-	// 2s, core/audit.go).
-	dispatchLag = 3 * time.Second
+	// dispatchLag is a property of the feed itself, shared with every other
+	// tailer of it — see store.FeedCommitLag for why it exists.
+	dispatchLag = store.FeedCommitLag
 	// dispatchBatch caps one dispatch pass's read; a full batch loops
 	// immediately rather than waiting a tick.
 	dispatchBatch = 200
