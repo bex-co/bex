@@ -1,9 +1,67 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyAcpPart,
   isTrivialAck,
   unwrapAcpTool,
   type ToolPartInfo,
 } from "@/features/agent-sessions/lib/acp-parts";
+
+describe("classifyAcpPart", () => {
+  it("classifies the driver's typed data parts by part type", () => {
+    const plan = classifyAcpPart({
+      type: "data-acp-plan",
+      data: {
+        entries: [{ content: "step", status: "in_progress", priority: "high" }],
+      },
+    });
+    expect(plan).toEqual({
+      kind: "plan",
+      entries: [{ content: "step", status: "in_progress", priority: "high" }],
+    });
+
+    const diff = classifyAcpPart({
+      type: "data-acp-diff",
+      data: { path: "a.txt", oldText: "", newText: "x\n" },
+    });
+    expect(diff).toEqual({
+      kind: "diff",
+      path: "a.txt",
+      oldText: "",
+      newText: "x\n",
+    });
+
+    const terminal = classifyAcpPart({
+      type: "data-acp-terminal",
+      data: { terminalId: "t1", output: "done" },
+    });
+    expect(terminal).toEqual({
+      kind: "terminal",
+      terminalId: "t1",
+      output: "done",
+    });
+  });
+
+  it("drops plan entries without content", () => {
+    const plan = classifyAcpPart({
+      type: "data-acp-plan",
+      data: { entries: [{ status: "pending" }, { content: "real" }] },
+    });
+    expect(plan).toEqual({
+      kind: "plan",
+      entries: [{ content: "real", status: undefined, priority: undefined }],
+    });
+  });
+
+  it("returns undefined for non-acp / transient parts", () => {
+    expect(classifyAcpPart({ type: "text", text: "hi" })).toBeUndefined();
+    expect(
+      classifyAcpPart({ type: "dynamic-tool", toolName: "bash" }),
+    ).toBeUndefined();
+    expect(
+      classifyAcpPart({ type: "data-acp-available-commands", data: {} }),
+    ).toBeUndefined();
+  });
+});
 
 const info = (over: Partial<ToolPartInfo>): ToolPartInfo => ({
   name: "tool",

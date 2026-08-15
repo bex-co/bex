@@ -27,8 +27,7 @@ import {
 import { TypingIndicator } from "@/features/agent-sessions/components/typing-indicator";
 import {
   acpDataSchema,
-  acpPartData,
-  classifyAcpData,
+  classifyAcpPart,
   isToolPart,
   toolPartInfo,
   type AcpPlanEntry,
@@ -154,7 +153,11 @@ export function SessionConversationImpl({
     // Replay the transcript on mount (GET) for both states; a running session's
     // stream then continues live, a terminal session's ends on `[DONE]`.
     resume: true,
-    dataPartSchemas: { acp: acpDataSchema },
+    dataPartSchemas: {
+      "acp-plan": acpDataSchema,
+      "acp-diff": acpDataSchema,
+      "acp-terminal": acpDataSchema,
+    },
   });
 
   // Publish the live-steering handle to the detail page. Withheld (null) while
@@ -427,9 +430,8 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
       return;
     }
 
-    const acp = acpPartData(part);
-    if (acp !== undefined) {
-      const group = classifyAcpData(acp);
+    const group = classifyAcpPart(part);
+    if (group) {
       if (group.kind === "plan") {
         if (planBlock) {
           planBlock.entries = group.entries; // supersede with the latest snapshot
@@ -455,18 +457,7 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
         );
         return;
       }
-      if (group.kind === "terminal") {
-        pushStep({ kind: "terminal", output: group.output }, index);
-        return;
-      }
-      if (group.kind === "command") {
-        pushStep(
-          { kind: "command", title: group.title, command: group.command },
-          index,
-        );
-        return;
-      }
-      pushStep({ kind: "unknown", data: group.data }, index);
+      pushStep({ kind: "terminal", output: group.output }, index);
       return;
     }
 

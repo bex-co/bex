@@ -175,13 +175,19 @@ test("one headless turn streams raw ACP data and commits in the worktree", async
     }).toString(),
     /agent: complete task/,
   );
-  assert.ok(hub.history.some((part) => part.type === "data-acp"));
-  const raw = JSON.stringify(
-    hub.history.filter((part) => part.type === "data-acp"),
-  );
-  assert.match(raw, /\"type\":\"plan\"/);
-  assert.match(raw, /\"type\":\"diff\"/);
-  assert.match(raw, /\"type\":\"terminal\"/);
+  // The ACP updates map to typed UI-message chunks — no generic `data-acp`
+  // re-wrap, and no synthetic single-tool collapse.
+  const types = hub.history.map((part) => part.type);
+  assert.ok(types.includes("data-acp-plan"), "plan maps to a typed data part");
+  assert.ok(types.includes("data-acp-diff"), "diff maps to a typed data part");
+  assert.ok(types.includes("data-acp-terminal"), "terminal maps to a typed data part");
+  assert.ok(!types.includes("data-acp"), "the generic data-acp re-wrap is gone");
+  // The tool call rides a real dynamic tool part carrying its true title, not
+  // the provider's old `acp_provider_agent_dynamic_tool` collapse.
+  const toolStart = hub.history.find((part) => part.type === "tool-input-start");
+  assert.equal(toolStart?.toolName, "Edit fixture");
+  const serialized = JSON.stringify(hub.history);
+  assert.doesNotMatch(serialized, /acp_provider_agent_dynamic_tool/);
   const log = await readFile(config.sessionLogPath, "utf8");
   assert.match(log, /ui-message/);
   assert.doesNotMatch(log, /test-model-key-never-log/);
@@ -373,7 +379,7 @@ test("SSE replays the standard UI-message stream and headless needs no client", 
     );
     assert.equal(response.headers.get("x-vercel-ai-ui-message-stream"), "v1");
     const body = await response.text();
-    assert.match(body, /data: .*"type":"data-acp"/);
+    assert.match(body, /data: .*"type":"data-acp-plan"/);
     assert.match(body, /data: \[DONE\]/);
   } finally {
     await listener.close();
@@ -419,12 +425,12 @@ test("POST /turn runs a live turn, streams its parts, and single-flights", async
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("x-vercel-ai-ui-message-stream"), "v1");
     const body = await response.text();
-    assert.match(body, /data: .*"type":"data-acp"/);
+    assert.match(body, /data: .*"type":"data-acp-plan"/);
     assert.match(body, /data: \[DONE\]/);
 
     // The same parts reached the hub's history (attached GET clients see them),
     // and the stream is still open for another turn.
-    assert.ok(hub.history.some((part) => part.type === "data-acp"));
+    assert.ok(hub.history.some((part) => part.type === "data-acp-plan"));
     const second = await fetch(turnURL, {
       method: "POST",
       headers: { "content-type": "application/json", "x-bex-driver-grant": turnGrant() },

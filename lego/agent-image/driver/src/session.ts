@@ -16,8 +16,9 @@
 
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { streamText } from "ai";
-import { createSessionProvider, type ACPProvider, type SessionProvider } from "./acp.js";
+import { createUIMessageStream } from "ai";
+import { createSessionProvider, type SessionProvider } from "./acp.js";
+import { createUpdateMapper } from "./acp-map.js";
 import { deliverBranch, extractEvidence, type DeliveryResult, type EvidenceResult } from "./delivery.js";
 import type { AgentDriverConfig } from "./config.js";
 import type { CredentialManager } from "./credentials.js";
@@ -81,21 +82,6 @@ async function logPart(
   await appendFile(filename, `${credentialManager.redact(record)}\n`, { mode: 0o600 });
 }
 
-function rawUIMessagePart(part: { rawValue: unknown }): UIMessagePart {
-  let data = part.rawValue;
-  if (typeof data === "string") {
-    try {
-      data = JSON.parse(data);
-    } catch {
-      // A provider is allowed to supply an opaque raw string.
-    }
-  }
-  // AI SDK 6 intentionally drops LanguageModelV3 `raw` parts while converting
-  // to UIMessage chunks. Preserve them as the standard extensible data-part
-  // form so useChat consumers receive plans/diffs/terminals without a fork.
-  return { type: "data-acp", data };
-}
-
 // A resumed sandbox restarts the driver on the restored rootfs, where the
 // previous turn's status file still carries the agent's ACP session id (the
 // agent's own on-disk session state survives rootfs snapshots — ADR047 D3).
@@ -133,6 +119,12 @@ export async function adoptPersistedSession(
 //     GET /stream watchers receive [DONE])
 //   - onPart mirrors each published part to an extra sink (the POST /turn
 //     response) in addition to the hub's fan-out to attached GET clients
+//
+// The turn speaks ACP directly (acp.ts) and maps every session/update into typed
+// UI-message chunks (acp-map.ts), written into one createUIMessageStream. There
+// is no fake-LanguageModel provider, no streamText, and no lossy raw re-wrap:
+// plans/diffs/terminals arrive as `data-acp-*` parts and tool calls as real
+// dynamic tool parts.
 export async function runHeadlessTurn(
   config: AgentDriverConfig,
   credentialManager: CredentialManager,
@@ -159,7 +151,8 @@ export async function runHeadlessTurn(
   const resumedFrom = await adoptPersistedSession(config);
   await writeStatus(config.statusPath, { state: "running" });
 
-  let provider: ACPProvider | undefined;
+  let provider: SessionProvider | undefined;
+  let promptResponse: Awaited<ReturnType<SessionProvider["prompt"]>> | undefined;
   const turnAbort = new AbortController();
   let rejectDeadline!: (error: Error) => void;
   const deadline = new Promise<never>((_, reject) => {
@@ -171,35 +164,42 @@ export async function runHeadlessTurn(
     rejectDeadline(error);
   }, config.turnTimeoutMs);
   try {
-    let created: SessionProvider | undefined;
-    let result: ReturnType<typeof streamText> | undefined;
+    // createUIMessageStream's onError swallows an execute() throw into an error
+    // chunk, so the consume loop below would otherwise resolve normally on an
+    // agent crash. Capture the error and re-raise it after the stream drains.
+    let turnError: unknown;
     const execute = async () => {
-      created = await createSessionProvider(
-        config,
-        credentialManager.agentEnvironment(),
-      );
-      provider = created.provider;
-      result = streamText({
-        model: provider.languageModel(),
-        prompt,
-        abortSignal: turnAbort.signal,
-        includeRawChunks: true,
+      const mapper = createUpdateMapper();
+      const stream = createUIMessageStream({
+        execute: async ({ writer }) => {
+          try {
+            writer.write({ type: "start" });
+            provider = await createSessionProvider(
+              config,
+              credentialManager.agentEnvironment(),
+              {
+                onUpdate: (update) => {
+                  for (const chunk of mapper.map(update)) writer.write(chunk);
+                },
+                abortSignal: turnAbort.signal,
+              },
+            );
+            promptResponse = await provider.prompt(prompt);
+            for (const chunk of mapper.flush()) writer.write(chunk);
+            writer.write({ type: "finish" });
+          } catch (error) {
+            turnError = error;
+            throw error; // also surfaces an error chunk to attached clients
+          }
+        },
+        onError: (error) =>
+          credentialManager.redact(error instanceof Error ? error.message : String(error)),
       });
-
-      const consumeUI = async () => {
-        for await (const part of result!.toUIMessageStream()) {
-          const sanitized = publish(part as UIMessagePart);
-          await logPart(config.sessionLogPath, sanitized, credentialManager);
-        }
-      };
-      const consumeRaw = async () => {
-        for await (const part of result!.fullStream) {
-          if (part.type !== "raw") continue;
-          const sanitized = publish(rawUIMessagePart(part as unknown as { rawValue: unknown }));
-          await logPart(config.sessionLogPath, sanitized, credentialManager);
-        }
-      };
-      await Promise.all([consumeUI(), consumeRaw()]);
+      for await (const chunk of stream) {
+        const sanitized = publish(chunk as UIMessagePart);
+        await logPart(config.sessionLogPath, sanitized, credentialManager);
+      }
+      if (turnError) throw turnError;
     };
     await Promise.race([execute(), deadline]);
     if (closeHub) hub.close();
@@ -222,15 +222,15 @@ export async function runHeadlessTurn(
     const evidence: EvidenceResult = await extractEvidence(config);
     const status: StatusRecord = {
       state: "succeeded",
-      sessionId: provider!.getSessionId(),
-      resume: created!.resume,
+      sessionId: provider!.sessionId,
+      resume: provider!.resume,
       ...(resumedFrom ? { resumedFrom } : {}),
       ...(delivery ? { delivery } : {}),
       evidence,
       scrubbedFiles: scrubbed.length,
     };
     await writeStatus(config.statusPath, status);
-    return { ...status, usage: await result!.usage } as TurnResult;
+    return { ...status, usage: promptResponse?.usage ?? {} } as TurnResult;
   } catch (error) {
     if (closeHub) hub.close();
     await writeStatus(config.statusPath, {
@@ -242,6 +242,7 @@ export async function runHeadlessTurn(
     throw error;
   } finally {
     clearTimeout(turnTimer);
+    provider?.cancel();
     provider?.cleanup();
   }
 }

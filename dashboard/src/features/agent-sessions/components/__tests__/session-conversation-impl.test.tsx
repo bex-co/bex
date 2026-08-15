@@ -111,7 +111,10 @@ describe("SessionConversationImpl", () => {
     );
   });
 
-  it("folds consecutive tool and command parts into one activity group", async () => {
+  it("folds consecutive tool and diff parts into one activity group", async () => {
+    // The driver now emits real dynamic tool parts (true names) and typed
+    // `data-acp-diff` parts — no synthetic command collapse. Consecutive tool +
+    // diff parts still fold into ONE Devin "Worked" group.
     const GROUPED: UIMessageChunk[] = [
       { type: "start", messageId: "asm-g" },
       {
@@ -134,21 +137,33 @@ describe("SessionConversationImpl", () => {
         dynamic: true,
       },
       {
-        type: "data-acp",
+        type: "data-acp-diff",
         data: {
-          sessionUpdate: "tool_call",
-          title: "List files",
-          command: "ls -la",
+          path: "main.go",
+          oldText: "",
+          newText: "package main\n",
+          toolCallId: "gt1",
         },
       } as UIMessageChunk,
       {
-        type: "data-acp",
-        data: {
-          sessionUpdate: "tool_call",
-          title: "Show file",
-          command: "cat main.go",
-        },
-      } as UIMessageChunk,
+        type: "tool-input-start",
+        toolCallId: "gt2",
+        toolName: "read_file",
+        dynamic: true,
+      },
+      {
+        type: "tool-input-available",
+        toolCallId: "gt2",
+        toolName: "read_file",
+        input: { path: "main.go" },
+        dynamic: true,
+      },
+      {
+        type: "tool-output-available",
+        toolCallId: "gt2",
+        output: { bytes: 12 },
+        dynamic: true,
+      },
       { type: "finish" },
     ];
 
@@ -166,9 +181,8 @@ describe("SessionConversationImpl", () => {
       />,
     );
 
-    // A single activity group folds the two commands (the tool + two ACP
-    // command parts merged) under one Devin "Worked" summary. Its steps are
-    // collapsed until expanded.
+    // A single activity group folds the two tools + the diff under one Devin
+    // "Worked" summary. Its steps are collapsed until expanded.
     const summary = await screen.findByText("Worked");
     expect(summary).toBeInTheDocument();
     expect(screen.getAllByText("Worked")).toHaveLength(1);
@@ -177,9 +191,8 @@ describe("SessionConversationImpl", () => {
     // Expanding reveals every folded step in the one group.
     await userEvent.click(summary);
     expect(screen.getByText("search")).toBeInTheDocument();
-    expect(screen.getByText("List files")).toBeInTheDocument();
-    expect(screen.getByText("ls -la")).toBeInTheDocument();
-    expect(screen.getByText("Show file")).toBeInTheDocument();
+    expect(screen.getByText("read_file")).toBeInTheDocument();
+    expect(screen.getByText("main.go")).toBeInTheDocument();
   });
 
   it("collapses ACP plan snapshots to the latest and never spins after settle", async () => {
@@ -189,9 +202,8 @@ describe("SessionConversationImpl", () => {
     const PLAN_SNAPSHOTS: UIMessageChunk[] = [
       { type: "start", messageId: "asm-p" },
       {
-        type: "data-acp",
+        type: "data-acp-plan",
         data: {
-          type: "plan",
           entries: [
             { content: "Wire the handler", status: "in_progress" },
             { content: "Open a draft PR", status: "pending" },
@@ -199,9 +211,8 @@ describe("SessionConversationImpl", () => {
         },
       } as UIMessageChunk,
       {
-        type: "data-acp",
+        type: "data-acp-plan",
         data: {
-          type: "plan",
           entries: [
             { content: "Wire the handler", status: "completed" },
             { content: "Open a draft PR", status: "in_progress" },
