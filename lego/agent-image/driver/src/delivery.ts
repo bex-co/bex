@@ -23,7 +23,7 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir, rm } from "node:fs/promises";
 
 const run = promisify(execFile);
 
@@ -118,6 +118,41 @@ export async function restoreWorkspace(
   );
 }
 
+// cloneWithRetry clones the session repo, retrying a transient authorization
+// failure from the gateway credential broker. bex-api's dispatch records the
+// session's sandbox_id AFTER the sandbox is already running (agentsessions
+// Service.dispatch order: CreateAgentSessionSandbox -> EnterAgentSessionPhase ->
+// RecordAgentSessionDispatch), so the driver's first clone can race ahead of that
+// write and the broker's live-sandbox mint check answers 403 ("remote: forbidden")
+// until the id is persisted a few seconds later. Retrying with backoff turns that
+// startup race into a brief delay instead of a failed session; each retry cleans
+// any partial clone so `git clone .` sees an empty directory.
+async function cloneWithRetry(cwd: string, repoUrl: string): Promise<void> {
+  const attempts = 10;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await git(cwd, ["clone", repoUrl, "."]);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts) break;
+      await cleanDirectory(cwd);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+  }
+  throw lastError;
+}
+
+// cleanDirectory empties a directory (removing a failed clone's partial state)
+// without removing the directory itself, so the next `git clone .` sees it empty.
+async function cleanDirectory(cwd: string): Promise<void> {
+  const entries = await readdir(cwd);
+  await Promise.all(
+    entries.map((entry) => rm(`${cwd}/${entry}`, { recursive: true, force: true })),
+  );
+}
+
 // ensureRepo makes the workspace a checkout of the session branch. A pre-cloned
 // workspace is left alone; an empty one is cloned and switched to the branch
 // (created from the default when it does not exist remotely). The remote is the
@@ -129,7 +164,7 @@ export async function ensureRepo(
   if (!config.repoUrl) {
     throw new Error("workspace is not a git repository and BEX_AGENT_REPO_URL is unset");
   }
-  await git(config.cwd, ["clone", config.repoUrl, "."]);
+  await cloneWithRetry(config.cwd, config.repoUrl);
   const base = await detectBaseBranch(config.cwd, config.baseBranch);
   try {
     await git(config.cwd, ["checkout", "-B", config.branch, `origin/${config.branch}`]);
