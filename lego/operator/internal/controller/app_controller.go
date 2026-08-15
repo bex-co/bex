@@ -2221,6 +2221,12 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Published",
 		Message: "static site published and served from the object-store origin", ObservedGeneration: app.Generation,
 	})
+	// Skip the write when nothing changed, the same guard markRunning and
+	// hibernated already use — a re-published static site otherwise re-stamps a
+	// byte-identical status (and logs) on every event.
+	if r.statusSettled(ctx, app) {
+		return ctrl.Result{}, nil
+	}
 	if err := r.Status().Update(ctx, app); err != nil {
 		return ctrl.Result{}, err
 	}
@@ -2330,7 +2336,13 @@ func (r *AppReconciler) reconcilePlatformAlias(ctx context.Context, app *appv1al
 		alias.Spec.Type = corev1.ServiceTypeExternalName
 		alias.Spec.ExternalName = fmt.Sprintf("%s.%s.svc.cluster.local", service, namespace)
 		alias.Spec.Selector = nil
-		alias.Spec.Ports = []corev1.ServicePort{{Name: "http", Port: port}}
+		// Protocol/TargetPort are set explicitly so the mutate matches the
+		// server-defaulted object and steady-state reconciles stay read-only,
+		// exactly as applyClusterIPService documents — otherwise CreateOrUpdate
+		// diffs against the defaults and PUTs on every pass forever.
+		alias.Spec.Ports = []corev1.ServicePort{{
+			Name: "http", Port: port, TargetPort: intstr.FromInt32(port), Protocol: corev1.ProtocolTCP,
+		}}
 		return controllerutil.SetControllerReference(app, alias, r.Scheme)
 	}); err != nil {
 		return err

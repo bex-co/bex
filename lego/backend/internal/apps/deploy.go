@@ -2539,7 +2539,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		Spec:       db.spec,
 	}
 	if scoped {
-		d.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
+		d.Labels = core.TenantLabels(tenantID)
 	}
 	if assignment.ID != "" {
 		d.Spec.EnvironmentIPAllowList = core.ApplyGrouping(d, assignment)
@@ -2587,7 +2587,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 		Spec:       kv.spec,
 	}
 	if scoped {
-		resource.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
+		resource.Labels = core.TenantLabels(tenantID)
 	}
 	if assignment.ID != "" {
 		resource.Spec.EnvironmentIPAllowList = core.ApplyGrouping(resource, assignment)

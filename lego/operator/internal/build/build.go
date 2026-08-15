@@ -25,6 +25,7 @@ limitations under the License.
 package build
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -395,23 +396,28 @@ func appDeleting(ctx context.Context, o Options) (bool, error) {
 // namespace, so tenant Dockerfile processes never coexist with clone, platform
 // push, or signing credentials. Only an explicitly configured private-base
 // pull credential enters BuildKit, and it grants no platform-repository write.
+// emptyDirVolume and secretVolume are the two volume shapes every build Job
+// mounts; the size limit is uniform so a build cannot fill a node's ephemeral
+// storage regardless of which scratch volume it writes to.
+func emptyDirVolume(name string) corev1.Volume {
+	return corev1.Volume{
+		Name:         name,
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: mustSizeLimit(emptyDirSizeLimit)}},
+	}
+}
+
+func secretVolume(name, secretName string) corev1.Volume {
+	return corev1.Volume{
+		Name:         name,
+		VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: secretName}},
+	}
+}
+
 func BuildJob(o Options, image string) *batchv1.Job {
-	buildkitImage := o.BuildkitImage
-	if buildkitImage == "" {
-		buildkitImage = defaultBuildkitImage
-	}
-	gitImage := o.GitImage
-	if gitImage == "" {
-		gitImage = defaultGitImage
-	}
-	pushImage := o.PushImage
-	if pushImage == "" {
-		pushImage = defaultPushImage
-	}
-	signImage := o.SignImage
-	if signImage == "" {
-		signImage = defaultSignImage
-	}
+	buildkitImage := cmp.Or(o.BuildkitImage, defaultBuildkitImage)
+	gitImage := cmp.Or(o.GitImage, defaultGitImage)
+	pushImage := cmp.Or(o.PushImage, defaultPushImage)
+	signImage := cmp.Or(o.SignImage, defaultSignImage)
 
 	contextDir := sourceMount
 	if root := strings.TrimPrefix(path.Clean("/"+o.RootDir), "/"); root != "." && root != "" {
@@ -453,32 +459,17 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	backoff := int32(1) // one build attempt; a failed build is a user error, not a flake to retry
 	ttl := int32(3600)  // reap the finished Job after an hour
 
-	volumes := []corev1.Volume{
-		{Name: "source", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: mustSizeLimit(emptyDirSizeLimit)}}},
-		{Name: "output", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: mustSizeLimit(emptyDirSizeLimit)}}},
-	}
+	volumes := []corev1.Volume{emptyDirVolume("source"), emptyDirVolume("output")}
 	if o.PushSecret != "" {
-		volumes = append(volumes, corev1.Volume{
-			Name:         "push-registry-cred",
-			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.PushSecret}},
-		})
+		volumes = append(volumes, secretVolume("push-registry-cred", o.PushSecret))
 	}
 	if o.PullSecret != "" {
-		volumes = append(volumes, corev1.Volume{
-			Name:         "pull-registry-cred",
-			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.PullSecret}},
-		})
+		volumes = append(volumes, secretVolume("pull-registry-cred", o.PullSecret))
 	}
 	if o.Builder == BuilderNative {
-		volumes = append(volumes, corev1.Volume{
-			Name:         "native-build",
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: mustSizeLimit(emptyDirSizeLimit)}},
-		})
+		volumes = append(volumes, emptyDirVolume("native-build"))
 		if o.RuntimeEnvSecret != "" {
-			volumes = append(volumes, corev1.Volume{
-				Name:         "runtime-env",
-				VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.RuntimeEnvSecret}},
-			})
+			volumes = append(volumes, secretVolume("runtime-env", o.RuntimeEnvSecret))
 		}
 	}
 

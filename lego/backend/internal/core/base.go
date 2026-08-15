@@ -389,6 +389,20 @@ func (b *Base) RequirePaymentMethod(ctx context.Context, workspaceID string) err
 	return b.Payment.RequirePaymentMethod(ctx, workspaceID)
 }
 
+// RequirePlanBilling is the paid-intent gate every billable create and plan
+// change runs: a non-free plan additionally requires a bound payment method
+// (ADR046), and every mutation is refused while dunning enforcement is active.
+// Both checks in one seam so a new billable resource kind cannot wire only one
+// of them — the drift class this exists to close.
+func (b *Base) RequirePlanBilling(ctx context.Context, workspaceID, plan string) error {
+	if PaidPlan(plan) {
+		if err := b.RequirePaymentMethod(ctx, workspaceID); err != nil {
+			return err
+		}
+	}
+	return b.RequireBillingMutation(ctx, workspaceID)
+}
+
 // Now returns the (injectable) current time.
 func (b *Base) Now() time.Time {
 	if b.Clock != nil {

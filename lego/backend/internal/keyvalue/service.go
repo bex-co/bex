@@ -421,12 +421,7 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if req.DryRun {
 		return s.view(kv), nil
 	}
-	if core.PaidPlan(req.Plan) {
-		if err := s.RequirePaymentMethod(ctx, tenantID); err != nil {
-			return KeyValueView{}, err
-		}
-	}
-	if err := s.RequireBillingMutation(ctx, tenantID); err != nil {
+	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
 		return KeyValueView{}, err
 	}
 	resourcemeta.Touch(kv, s.Now())
@@ -598,12 +593,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (KeyValueView,
 	if _, ok := tiers.Valkey.ByID(plan); !ok {
 		return KeyValueView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.IDs(), "|"))
 	}
-	if core.PaidPlan(plan) {
-		if err := s.RequirePaymentMethod(ctx, kv.Labels[core.LabelTenant]); err != nil {
-			return KeyValueView{}, err
-		}
-	}
-	if err := s.RequireBillingMutation(ctx, kv.Labels[core.LabelTenant]); err != nil {
+	if err := s.RequirePlanBilling(ctx, kv.Labels[core.LabelTenant], plan); err != nil {
 		return KeyValueView{}, err
 	}
 	from := kv.Spec.Plan
