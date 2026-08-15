@@ -1199,22 +1199,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// deploys.Restart ensures every restart opens a deploy-history row.
 		// updateServicePlan: a bex extension (naming unconfirmed against a live
 		// Render dashboard capture — see the "plan" field comment above).
-		"updateServicePlan": &graphql.Field{
-			Type: serviceGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"plan": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
-				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				dryRun, _ := p.Args["dryRun"].(bool)
-				if dryRun {
-					return s.PreviewSetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
-				}
-				return s.SetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
-			},
-		},
+		"updateServicePlan": gqlutil.PlanMutation(serviceGQLType, s.SetPlan, s.PreviewSetPlan),
 		// setDisplayName relabels a service for humans while leaving its immutable
 		// App name/id, platform hostname, and derived Kubernetes resources alone.
 		// An empty displayName clears the label and restores the name fallback.

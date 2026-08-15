@@ -21,17 +21,25 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // dispatch is a watermark-tailing pager: it reads a page of the composed feed
 // after the durable cursor, enqueues what it projects, and advances the cursor —
 // the insert and the advance in ONE store call, so a crash re-reads rather than
-// drops. The fan-out itself is well covered; the pager's own rules were not, and
-// they are the ones whose breakage is silent (events skipped, or redelivered
-// forever, with no error anywhere). The notifications push worker runs the same
-// algorithm against its own tables — notifications/watermark_test.go is this
-// file's counterpart.
+// drops. The pager itself now lives in store.TailFeed, shared with the
+// notifications push worker, and internal/store/feedtail_test.go owns its rules.
+//
+// What this file owns is how THIS worker wires that seam, which the seam test
+// structurally cannot reach: the pager takes its page size, park interval, verb
+// filter and tenant set as fields of a struct literal, so a knob can be dropped
+// and still compile. Asserting the rules end to end through dispatch is what
+// pins them — deleting these as "duplicates" of the seam test loses that.
+// (Verified: mis-wiring the page size fails here and passes there.)
+//
+// Every failure below is silent in production — events skipped, or redelivered
+// forever, with no error anywhere.
 
 // countingStore observes how the pager drives the store: how many pages it read
 // and every watermark write it made.
@@ -170,6 +178,42 @@ func TestFullPageLoopsAndShortPageEndsThePass(t *testing.T) {
 			t.Errorf("reads = %d, want 2: a full page must be followed by another read", st.reads)
 		}
 	})
+}
+
+// The audit arm of the feed is filtered by verb IN THE QUERY (`e.verb = ANY(...)`),
+// so the dispatcher has to push its vocabulary down as the pass's Verbs. An empty
+// or missing Verbs matches no verb at all and drops the audit arm from the union
+// entirely — every audit-sourced webhook type (plan changed, scaled, restarted,
+// Postgres created, ...) would silently stop being delivered, while deploy- and
+// fact-sourced ones kept working.
+//
+// Nothing caught that before: the only audit-source test called project()
+// directly, so no test ever drove an audit row through the pager.
+func TestAuditSourcedEventsReachTheirEndpoint(t *testing.T) {
+	now := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
+	eventAt := now.Add(-time.Minute)
+	w, st := countingWorker(now)
+	st.wmSeeded, st.wmAt = true, eventAt.Add(-time.Hour)
+	st.endpoints = []store.WebhookEndpoint{
+		endpoint("whk-1", "tea-a", "https://a.example/hook", "whsec_x", TypePlanChanged),
+	}
+	st.events = []store.WebhookEventRow{{
+		Key: "aud-plan:", At: eventAt, TenantID: "tea-a",
+		ServiceID: "acme-api", ServiceName: "api",
+		Source: store.EventSourceAudit, Verb: core.AuditVerbSetPlan,
+	}}
+
+	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if len(st.queue) != 1 {
+		t.Fatalf("audit-sourced event produced %d deliveries, want 1 — the verb filter must reach the query", len(st.queue))
+	}
+	for _, d := range st.queue {
+		if d.EventType != TypePlanChanged {
+			t.Errorf("delivery type = %q, want %q", d.EventType, TypePlanChanged)
+		}
+	}
 }
 
 // An endpoint never receives events from before it existed, however far back the

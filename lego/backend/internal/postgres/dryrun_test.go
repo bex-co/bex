@@ -155,6 +155,34 @@ func TestGraphQLDryRunCreateDatabase(t *testing.T) {
 	}
 }
 
+// renameDatabase carries the same dryRun contract as updateDatabasePlan but had
+// no test for it: only the applying direction was covered, so a dry run that
+// silently WROTE the rename would have gone unnoticed — and the response of a
+// preview and of an apply are identical, so nothing else would surface it.
+func TestGraphQLDryRunRenameDatabase(t *testing.T) {
+	svc, cl := pgGQLNewService()
+	seedDatabase(t, cl, "gql-rename-dry")
+	schema, err := pgGQLSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `mutation { renameDatabase(id:"gql-rename-dry", name:"renamed", dryRun:true) { id name } }`,
+		Context:       context.Background(),
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql renameDatabase dryRun: %v", res.Errors)
+	}
+	preview := res.Data.(map[string]any)["renameDatabase"].(map[string]any)
+	if preview["name"] != "renamed" {
+		t.Fatalf("preview name = %v, want renamed", preview["name"])
+	}
+	if got := getDatabase(t, cl, "gql-rename-dry"); got.Spec.Name != "" {
+		t.Fatalf("dry-run must not modify the CR, got spec.name=%q", got.Spec.Name)
+	}
+}
+
 func TestGraphQLDryRunUpdateDatabasePlan(t *testing.T) {
 	svc, cl := pgGQLNewService()
 	seedDatabase(t, cl, "gql-update")

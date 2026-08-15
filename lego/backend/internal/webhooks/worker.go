@@ -114,11 +114,10 @@ const (
 )
 
 // parkInterval bounds how far the durable watermark may lag behind the read
-// window before an otherwise-quiet dispatch pass persists it forward. Parking
-// per-tick would be a Postgres write transaction every 2s forever; parking
-// per-parkInterval makes a quiet-but-subscribed platform cost one small write
-// a minute, and a restart re-read at most a minute of already-empty window.
-const parkInterval = time.Minute
+// window before an otherwise-quiet dispatch pass persists it forward. Like
+// dispatchLag it is a property of the shared feed, not of this worker — see
+// store.DefaultFeedPark for the write-amplification trade it settles.
+const parkInterval = store.DefaultFeedPark
 
 // WorkerStore is the Worker's seam to the control-plane store —
 // *store.PGStore satisfies it; a fake backs the tests.
@@ -170,14 +169,12 @@ type Worker struct {
 	// age rule. <1 => defaultRetentionKeepPerEndpoint.
 	RetentionKeepPerEndpoint int
 
-	// wm* cache the durable watermark between ticks to skip an I/O round trip on
-	// a quiet tick. It is a pure optimization under two replicas: the
+	// cursor caches the durable watermark between ticks to skip an I/O round trip
+	// on a quiet tick. It is a pure optimization under two replicas: the
 	// (endpoint_id, event_id) unique index (w1/m58) dedupes any delivery a stale
 	// cache re-reads, so a lagging cache converges rather than duplicates. Loaded
-	// once, updated after every successful EnqueueWebhookDeliveries.
-	wmLoaded bool
-	wmAt     time.Time
-	wmKey    string
+	// once, advanced by every successful EnqueueWebhookDeliveries.
+	cursor store.FeedCursor
 
 	// lastSweep throttles retention to one pass per sweepInterval, so the sweep
 	// rides the existing tick instead of needing its own goroutine.
@@ -337,12 +334,8 @@ type payloadData struct {
 // endpoint-less stretch is skipped outright rather than paged through.
 func (w *Worker) dispatch(ctx context.Context, endpoints []store.WebhookEndpoint) error {
 	until := w.now().Add(-dispatchLag)
-	if !w.wmLoaded {
-		wmAt, wmKey, err := w.Store.EnsureWebhookWatermark(ctx, until)
-		if err != nil {
-			return fmt.Errorf("watermark: %w", err)
-		}
-		w.wmAt, w.wmKey, w.wmLoaded = wmAt, wmKey, true
+	if err := w.cursor.Load(ctx, w.Store.EnsureWebhookWatermark, until); err != nil {
+		return fmt.Errorf("watermark: %w", err)
 	}
 	byTenant := make(map[string][]store.WebhookEndpoint)
 	oldest := endpoints[0].CreatedAt
@@ -352,71 +345,63 @@ func (w *Worker) dispatch(ctx context.Context, endpoints []store.WebhookEndpoint
 			oldest = e.CreatedAt
 		}
 	}
-	tenants := slices.Sorted(maps.Keys(byTenant))
-	// Nothing before the oldest enabled endpoint existed can be delivered
-	// (the per-endpoint guard below), so the read may start there when the
-	// durable watermark is older — a read-side skip, nothing persisted.
-	floorAt, floorKey := w.wmAt, w.wmKey
-	if oldest.After(floorAt) {
-		floorAt, floorKey = oldest, ""
-	}
-	for {
-		rows, err := w.Store.ListWebhookEvents(ctx, floorAt, floorKey, until, auditVerbs, tenants, dispatchBatch)
-		if err != nil {
-			return err
+	return store.TailFeed(ctx, &w.cursor, store.FeedPass[store.WebhookDelivery]{
+		Until: until,
+		// Nothing from before the oldest enabled endpoint existed can be delivered
+		// (the per-endpoint guard in fanOut), so the read may start there when the
+		// durable watermark is older.
+		Floor:   oldest,
+		Verbs:   auditVerbs,
+		Tenants: slices.Sorted(maps.Keys(byTenant)),
+		Limit:   dispatchBatch,
+		Park:    parkInterval,
+		List:    w.Store.ListWebhookEvents,
+		Commit:  w.Store.EnqueueWebhookDeliveries,
+		Project: func(_ context.Context, rows []store.WebhookEventRow) ([]store.WebhookDelivery, error) {
+			return w.fanOutPage(rows, byTenant)
+		},
+	})
+}
+
+// fanOutPage turns one page of the feed into deliveries: every subscribed
+// endpoint of the event's workspace that both wants this event type and already
+// existed when it happened.
+func (w *Worker) fanOutPage(rows []store.WebhookEventRow, byTenant map[string][]store.WebhookEndpoint) ([]store.WebhookDelivery, error) {
+	var batch []store.WebhookDelivery
+	now := w.now()
+	for _, r := range rows {
+		eventType, data, ok := project(r)
+		if !ok {
+			continue
 		}
-		if len(rows) == 0 {
-			// Quiet window. Persist the watermark forward only once it lags by
-			// parkInterval — bounding both the per-tick write load and how much
-			// empty window a restart re-reads.
-			if until.Sub(w.wmAt) > parkInterval {
-				if err := w.Store.EnqueueWebhookDeliveries(ctx, nil, until, ""); err != nil {
-					return err
-				}
-				w.wmAt, w.wmKey = until, ""
-			}
-			return nil
-		}
-		var batch []store.WebhookDelivery
-		now := w.now()
-		for _, r := range rows {
-			eventType, data, ok := project(r)
-			if !ok {
+		// Marshaled lazily, on the first subscriber, and kept as the string the
+		// delivery row wants so N endpoints share one copy rather than N.
+		var body string
+		for _, e := range byTenant[r.TenantID] {
+			// CreatedAt guard: an endpoint never receives events from before
+			// it existed, however far back the watermark was when it appeared.
+			if r.At.Before(e.CreatedAt) || !slices.Contains(e.EventTypes, eventType) {
 				continue
 			}
-			var body []byte // marshaled lazily, on the first subscriber
-			for _, e := range byTenant[r.TenantID] {
-				// CreatedAt guard: an endpoint never receives events from before
-				// it existed, however far back the watermark was when it appeared.
-				if r.At.Before(e.CreatedAt) || !slices.Contains(e.EventTypes, eventType) {
-					continue
+			if body == "" {
+				raw, err := json.Marshal(payload{Type: eventType, Timestamp: r.At.UTC().Format(time.RFC3339), Data: data})
+				if err != nil {
+					return nil, err
 				}
-				if body == nil {
-					if body, err = json.Marshal(payload{Type: eventType, Timestamp: r.At.UTC().Format(time.RFC3339), Data: data}); err != nil {
-						return err
-					}
-				}
-				batch = append(batch, store.WebhookDelivery{
-					ID:            ids.New(ids.WebhookDelivery),
-					EndpointID:    e.ID,
-					EventID:       data.ID,
-					EventType:     eventType,
-					ServiceID:     r.ServiceID,
-					Payload:       string(body),
-					NextAttemptAt: now,
-				})
+				body = string(raw)
 			}
-		}
-		last := rows[len(rows)-1]
-		if err := w.Store.EnqueueWebhookDeliveries(ctx, batch, last.CursorAt, last.Key); err != nil {
-			return err
-		}
-		w.wmAt, w.wmKey = last.CursorAt, last.Key
-		floorAt, floorKey = last.CursorAt, last.Key
-		if len(rows) < dispatchBatch {
-			return nil
+			batch = append(batch, store.WebhookDelivery{
+				ID:            ids.New(ids.WebhookDelivery),
+				EndpointID:    e.ID,
+				EventID:       data.ID,
+				EventType:     eventType,
+				ServiceID:     r.ServiceID,
+				Payload:       body,
+				NextAttemptAt: now,
+			})
 		}
 	}
+	return batch, nil
 }
 
 // project maps one composed feed row onto the webhook vocabulary. The event

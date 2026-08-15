@@ -239,59 +239,17 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return err == nil, err
 			},
 		},
-		"updateKeyValuePlan": &graphql.Field{
-			Type: keyValueGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"plan": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
-				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				dryRun, _ := p.Args["dryRun"].(bool)
-				if dryRun {
-					return s.PreviewSetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
-				}
-				return s.SetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
-			},
-		},
+		"updateKeyValuePlan": gqlutil.PlanMutation(keyValueGQLType, s.SetPlan, s.PreviewSetPlan),
 		// setKeyValueMaxmemoryPolicy is the GraphQL/MCP mirror of the REST PATCH's
 		// maxmemoryPolicy field (w7/m45): the per-field verb pattern updateKeyValuePlan
 		// / setKeyValueIpAllowList already follow, routed through the shared
 		// UpdateKeyValue so all surfaces normalize + validate the policy identically.
-		"setKeyValueMaxmemoryPolicy": &graphql.Field{
-			Type: keyValueGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":              &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"maxmemoryPolicy": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"dryRun":          &graphql.ArgumentConfig{Type: graphql.Boolean},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				policy := p.Args["maxmemoryPolicy"].(string)
-				patch := KeyValuePatch{MaxmemoryPolicy: &policy}
-				if dryRun, _ := p.Args["dryRun"].(bool); dryRun {
-					return s.PreviewUpdateKeyValue(p.Context, p.Args["id"].(string), patch)
-				}
-				return s.UpdateKeyValue(p.Context, p.Args["id"].(string), patch)
-			},
-		},
-		"renameKeyValue": &graphql.Field{
-			Type: keyValueGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				name := p.Args["name"].(string)
-				patch := KeyValuePatch{Name: &name}
-				dryRun, _ := p.Args["dryRun"].(bool)
-				if dryRun {
-					return s.PreviewUpdateKeyValue(p.Context, p.Args["id"].(string), patch)
-				}
-				return s.UpdateKeyValue(p.Context, p.Args["id"].(string), patch)
-			},
-		},
+		"setKeyValueMaxmemoryPolicy": gqlutil.PatchMutation(keyValueGQLType, "maxmemoryPolicy",
+			func(policy string) KeyValuePatch { return KeyValuePatch{MaxmemoryPolicy: &policy} },
+			s.UpdateKeyValue, s.PreviewUpdateKeyValue),
+		"renameKeyValue": gqlutil.PatchMutation(keyValueGQLType, "name",
+			func(name string) KeyValuePatch { return KeyValuePatch{Name: &name} },
+			s.UpdateKeyValue, s.PreviewUpdateKeyValue),
 		"suspendKeyValue": &graphql.Field{
 			Type: keyValueGQLType,
 			Args: graphql.FieldConfigArgument{
