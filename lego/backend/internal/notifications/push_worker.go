@@ -663,29 +663,52 @@ func boundedRetryAfter(v, fallback time.Duration) time.Duration {
 	return v
 }
 
+// classifyPushError maps the provider errors that mean "this destination is
+// permanently unusable" onto their metric code, whether the delivery is
+// terminal, and whether the subscription should be pruned. An unrecognized
+// error returns an empty code so each caller applies its own transient default
+// — the send path additionally distinguishes rate-limited from transient.
+func classifyPushError(err error) (code string, terminal, prune bool) {
+	var invalid *pushtransport.InvalidTokenError
+	var payload *pushtransport.PayloadError
+	var permanent *pushtransport.PermanentError
+	switch {
+	case errors.As(err, &invalid):
+		return "invalid_token", true, true
+	case errors.As(err, &payload):
+		return "payload", true, false
+	case errors.As(err, &permanent):
+		return "permanent", true, false
+	}
+	return "", false, false
+}
+
+// prune revokes the exact destination behind a delivery that a provider has
+// declared permanently unusable, and records the evidence + metric once.
+func (w *PushWorker) prune(ctx context.Context, d store.DuePushDelivery, code string) {
+	_, _ = w.Store.RevokeExactPushSubscription(ctx, d)
+	w.evidence(ctx, "prune", "invalid_token", code)
+	w.Metrics.Operation("prune", "invalid_token")
+}
+
 func (w *PushWorker) recordSendFailure(ctx context.Context, d store.DuePushDelivery, err error) error {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		_, releaseErr := w.Store.ReleasePushDelivery(ctx, d)
 		return releaseErr
 	}
-	code, terminal, prune, delay := "transient", false, false, pushRetryDelay(d.AttemptCount+1)
-	var invalid *pushtransport.InvalidTokenError
-	var payload *pushtransport.PayloadError
-	var permanent *pushtransport.PermanentError
-	var limited *pushtransport.RateLimitedError
-	var transient *pushtransport.TransientError
-	switch {
-	case errors.As(err, &invalid):
-		code, terminal, prune = "invalid_token", true, true
-	case errors.As(err, &payload):
-		code, terminal = "payload", true
-	case errors.As(err, &permanent):
-		code, terminal = "permanent", true
-	case errors.As(err, &limited):
-		code = "rate_limited"
-		delay = boundedRetryAfter(limited.RetryAfter, delay)
-	case errors.As(err, &transient):
+	delay := pushRetryDelay(d.AttemptCount + 1)
+	code, terminal, prune := classifyPushError(err)
+	if code == "" {
 		code = "transient"
+		var limited *pushtransport.RateLimitedError
+		var transient *pushtransport.TransientError
+		switch {
+		case errors.As(err, &limited):
+			code = "rate_limited"
+			delay = boundedRetryAfter(limited.RetryAfter, delay)
+		case errors.As(err, &transient):
+			code = "transient"
+		}
 	}
 	if d.AttemptCount+1 >= pushMaxAttempts {
 		terminal = true
@@ -693,9 +716,7 @@ func (w *PushWorker) recordSendFailure(ctx context.Context, d store.DuePushDeliv
 	now := w.now()
 	_, storeErr := w.Store.RecordPushSendFailure(ctx, d, code, now, now.Add(delay), terminal)
 	if prune {
-		_, _ = w.Store.RevokeExactPushSubscription(ctx, d)
-		w.evidence(ctx, "prune", "invalid_token", code)
-		w.Metrics.Operation("prune", "invalid_token")
+		w.prune(ctx, d, code)
 	}
 	result := "retry"
 	if terminal {
@@ -759,17 +780,9 @@ func (w *PushWorker) checkReceipts(ctx context.Context) error {
 			w.Metrics.Succeeded(now)
 			continue
 		}
-		code, failed, prune := "receipt_transient", false, false
-		var invalid *pushtransport.InvalidTokenError
-		var payload *pushtransport.PayloadError
-		var permanent *pushtransport.PermanentError
-		switch {
-		case errors.As(r.Err, &invalid):
-			code, failed, prune = "invalid_token", true, true
-		case errors.As(r.Err, &payload):
-			code, failed = "payload", true
-		case errors.As(r.Err, &permanent):
-			code, failed = "permanent", true
+		code, failed, prune := classifyPushError(r.Err)
+		if code == "" {
+			code = "receipt_transient"
 		}
 		_, e := w.Store.RecordPushReceipt(ctx, d, code, now, now.Add(pushReceiptDelay), false, failed, !failed && ambiguous)
 		failures = append(failures, e)
@@ -781,9 +794,7 @@ func (w *PushWorker) checkReceipts(ctx context.Context) error {
 		}
 		w.Metrics.Operation("receipt", result)
 		if prune {
-			_, _ = w.Store.RevokeExactPushSubscription(ctx, d)
-			w.evidence(ctx, "prune", "invalid_token", code)
-			w.Metrics.Operation("prune", "invalid_token")
+			w.prune(ctx, d, code)
 		}
 	}
 	return errors.Join(failures...)

@@ -189,9 +189,7 @@ func attachNetfilter(objects *bpfObjects, pinPath string) ([]link.Link, error) {
 			continue
 		}
 		if err != nil {
-			for _, existing := range restored {
-				_ = existing.Close()
-			}
+			closeLinks(restored)
 			return nil, fmt.Errorf("load pinned netfilter link %s: %w", hook.path, err)
 		}
 		info, err := current.Info()
@@ -203,9 +201,7 @@ func attachNetfilter(objects *bpfObjects, pinPath string) ([]link.Link, error) {
 		}
 		if err != nil || !mapsMatch || info.Netfilter() == nil || info.Netfilter().Pf != hook.family || info.Netfilter().Hooknum != nfInetPostRouting || info.Netfilter().Priority != nfMeterPriority {
 			_ = current.Close()
-			for _, existing := range restored {
-				_ = existing.Close()
-			}
+			closeLinks(restored)
 			restored = nil
 			replace = true
 			break
@@ -217,9 +213,7 @@ func attachNetfilter(objects *bpfObjects, pinPath string) ([]link.Link, error) {
 	}
 	// A partial pair cannot account for both address families. Remove any old
 	// half before creating a fresh pair so packets can never be double counted.
-	for _, existing := range restored {
-		_ = existing.Close()
-	}
+	closeLinks(restored)
 	for _, hook := range hooks {
 		existing, err := link.LoadPinnedLink(hook.path, nil)
 		if err == nil {
@@ -279,6 +273,14 @@ func programUsesMaps(programID ebpf.ProgramID, maps ...*ebpf.Map) (bool, error) 
 		}
 	}
 	return true, nil
+}
+
+// closeLinks releases links without unpinning them — the restore path must
+// leave the bpffs pins intact for the next attach attempt, unlike cleanupLinks.
+func closeLinks(links []link.Link) {
+	for _, existing := range links {
+		_ = existing.Close()
+	}
 }
 
 func cleanupLinks(links []link.Link) {

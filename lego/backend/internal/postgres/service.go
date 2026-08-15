@@ -513,12 +513,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if req.DryRun {
 		return s.view(d), nil
 	}
-	if core.PaidPlan(req.Plan) {
-		if err := s.RequirePaymentMethod(ctx, tenantID); err != nil {
-			return PostgresView{}, err
-		}
-	}
-	if err := s.RequireBillingMutation(ctx, tenantID); err != nil {
+	if err := s.RequirePlanBilling(ctx, tenantID, req.Plan); err != nil {
 		return PostgresView{}, err
 	}
 	resourcemeta.Touch(d, s.Now())
@@ -633,12 +628,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (PostgresView,
 	if _, ok := tiers.Postgres.ByID(plan); !ok {
 		return PostgresView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Postgres.IDs(), "|"))
 	}
-	if core.PaidPlan(plan) {
-		if err := s.RequirePaymentMethod(ctx, d.Labels[core.LabelTenant]); err != nil {
-			return PostgresView{}, err
-		}
-	}
-	if err := s.RequireBillingMutation(ctx, d.Labels[core.LabelTenant]); err != nil {
+	if err := s.RequirePlanBilling(ctx, d.Labels[core.LabelTenant], plan); err != nil {
 		return PostgresView{}, err
 	}
 	from := d.Spec.Plan

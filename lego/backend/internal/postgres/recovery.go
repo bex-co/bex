@@ -229,12 +229,7 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	if req.Version != "" && !postgresVersionKnown(req.Version) {
 		return PostgresView{}, fmt.Errorf("%w: version must be one of %s", core.ErrBadRequest, supportedPostgresVersionText())
 	}
-	if core.PaidPlan(plan) {
-		if err := s.RequirePaymentMethod(ctx, tenantID); err != nil {
-			return PostgresView{}, err
-		}
-	}
-	if err := s.RequireBillingMutation(ctx, tenantID); err != nil {
+	if err := s.RequirePlanBilling(ctx, tenantID, plan); err != nil {
 		return PostgresView{}, err
 	}
 	sourceBackupServerName := src.Status.BackupServerName
@@ -259,7 +254,7 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 		},
 	}
 	if tenantID != "" {
-		newDB.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
+		newDB.Labels = core.TenantLabels(tenantID)
 	}
 	resourcemeta.Touch(newDB, s.Now())
 	if err := s.Client.Create(ctx, newDB); err != nil {

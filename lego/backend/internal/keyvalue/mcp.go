@@ -18,8 +18,6 @@ package keyvalue
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -215,7 +213,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "get_key_value_logs",
 		Description: "Return recent log lines from a managed Valkey/Redis key-value store, oldest-first and capped at limit (default 20, max 100). With BEX_LOKI_URL configured, lines survive pod restarts (standard Loki history). Without Loki, falls back to a live Valkey pod-log read: only currently running pods contribute and restarted-pod history is gone. bex extension — Render has no equivalent endpoint.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in kvLogsArgs) (*mcp.CallToolResult, kvLogsResult, error) {
-		since, end, err := parseKVMCPTimeWindow(in.StartTime, in.EndTime)
+		since, end, err := core.ParseTimeWindow(in.StartTime, in.EndTime)
 		if err != nil {
 			return nil, kvLogsResult{}, err
 		}
@@ -247,20 +245,4 @@ type kvLogsArgs struct {
 
 type kvLogsResult struct {
 	Logs []KeyValueLogEntry `json:"logs"`
-}
-
-// parseKVMCPTimeWindow parses optional RFC3339 start/end strings for MCP tool
-// inputs — same contract as parseMCPTimeWindow in postgres/mcp.go.
-func parseKVMCPTimeWindow(startTime, endTime string) (since, end time.Time, err error) {
-	if startTime != "" {
-		if since, err = time.Parse(time.RFC3339, startTime); err != nil {
-			return time.Time{}, time.Time{}, fmt.Errorf("%w: startTime: %s", core.ErrBadRequest, err)
-		}
-	}
-	if endTime != "" {
-		if end, err = time.Parse(time.RFC3339, endTime); err != nil {
-			return time.Time{}, time.Time{}, fmt.Errorf("%w: endTime: %s", core.ErrBadRequest, err)
-		}
-	}
-	return since, end, nil
 }

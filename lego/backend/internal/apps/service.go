@@ -1547,12 +1547,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		stampEnvironmentMembership(a, environment)
 		return s.view(a), nil
 	}
-	if core.PaidPlan(desired.Tier) {
-		if err := s.RequirePaymentMethod(ctx, tenantID); err != nil {
-			return AppView{}, err
-		}
-	}
-	if err := s.RequireBillingMutation(ctx, tenantID); err != nil {
+	if err := s.RequirePlanBilling(ctx, tenantID, desired.Tier); err != nil {
 		return AppView{}, err
 	}
 
@@ -2647,12 +2642,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 		return AppView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
 	}
 	tier := t.ID
-	if core.PaidPlan(tier) {
-		if err := s.RequirePaymentMethod(ctx, a.Labels[core.LabelTenant]); err != nil {
-			return AppView{}, err
-		}
-	}
-	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
+	if err := s.RequirePlanBilling(ctx, a.Labels[core.LabelTenant], tier); err != nil {
 		return AppView{}, err
 	}
 	if tier == "free" && a.Spec.MaintenanceMode != nil && a.Spec.MaintenanceMode.Enabled {
@@ -2777,8 +2767,8 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 	if err != nil {
 		return AppView{}, err
 	}
-	if a.Spec.Repo == "" {
-		return AppView{}, fmt.Errorf("%w: service %q has no repo to build (root directory only applies to build-from-git)", core.ErrBadRequest, name)
+	if err := requireRepoBacked(a, name, "root directory only applies to build-from-git"); err != nil {
+		return AppView{}, err
 	}
 	if !store.ValidRootDir(rootDir) {
 		return AppView{}, fmt.Errorf("%w: rootDirectory must be a relative path with no '..' components", core.ErrBadRequest)
@@ -2801,8 +2791,8 @@ func (s *Service) SetDockerfilePath(ctx context.Context, name, dockerfilePath st
 	if err != nil {
 		return AppView{}, err
 	}
-	if a.Spec.Repo == "" {
-		return AppView{}, fmt.Errorf("%w: service %q has no repo to build (dockerfile path only applies to Dockerfile builds)", core.ErrBadRequest, name)
+	if err := requireRepoBacked(a, name, "dockerfile path only applies to Dockerfile builds"); err != nil {
+		return AppView{}, err
 	}
 	runtime := strings.ToLower(strings.TrimSpace(a.Spec.Runtime))
 	builder := strings.ToLower(strings.TrimSpace(a.Spec.Builder))
@@ -2832,8 +2822,8 @@ func (s *Service) SetBuildFilter(ctx context.Context, name string, filter *Build
 	if err != nil {
 		return AppView{}, err
 	}
-	if a.Spec.Repo == "" {
-		return AppView{}, fmt.Errorf("%w: service %q has no repo to build (build filters only apply to build-from-git)", core.ErrBadRequest, name)
+	if err := requireRepoBacked(a, name, "build filters only apply to build-from-git"); err != nil {
+		return AppView{}, err
 	}
 	bf, err := normalizeBuildFilter(filter)
 	if err != nil {
@@ -3512,6 +3502,16 @@ func validatePublishPath(publishPath string) error {
 
 // requireStaticSite returns ErrBadRequest unless a is a static_site — the edge
 // verbs (routes/headers/publishPath) apply only to that type.
+// requireRepoBacked refuses a build-settings verb on a service with no repo,
+// naming which setting does not apply — the sibling of requireStaticSite and
+// requireWebService.
+func requireRepoBacked(a *appv1alpha1.App, name, detail string) error {
+	if a.Spec.Repo == "" {
+		return fmt.Errorf("%w: service %q has no repo to build (%s)", core.ErrBadRequest, name, detail)
+	}
+	return nil
+}
+
 func requireStaticSite(a *appv1alpha1.App, name string) error {
 	if a.Spec.Type != appv1alpha1.TypeStaticSite {
 		return fmt.Errorf("%w: service %q is not a static_site", core.ErrBadRequest, name)

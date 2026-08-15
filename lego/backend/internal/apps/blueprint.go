@@ -523,6 +523,39 @@ func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, con
 
 // runSync is the shared sync engine: records a run, pulls-from-repo or uses
 // the supplied/stored manifest, applies the stack, and stamps status + lastSyncAt.
+// prepareSyncManifest validates one candidate manifest and records it as the
+// blueprint's syncing manifest. Both sync sources — a caller-supplied YAML and
+// a git-fetched file — run the identical compile → payment-gate → action-plan
+// preflight before anything is persisted, so a manifest that cannot be applied
+// never becomes the stored one.
+func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, manifest string) (store.Blueprint, *parsedStack, error) {
+	parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: manifest})
+	if err != nil {
+		return store.Blueprint{}, nil, err
+	}
+	if err := s.requireStackPaymentMethod(ctx, parsed); err != nil {
+		return store.Blueprint{}, nil, err
+	}
+	if _, _, err := s.blueprintActionPlan(ctx, ir, parsed); err != nil {
+		return store.Blueprint{}, nil, err
+	}
+	updated, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
+		ID:       b.ID,
+		TenantID: b.TenantID,
+		Name:     b.Name,
+		Repo:     b.Repo,
+		Branch:   b.Branch,
+		Path:     b.Path,
+		AutoSync: b.AutoSync,
+		Manifest: manifest,
+		Status:   store.BlueprintStatusSyncing,
+	})
+	if err != nil {
+		return store.Blueprint{}, nil, err
+	}
+	return updated, &parsed, nil
+}
+
 func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confirm string) (SyncBlueprintResult, error) {
 	tenantID := b.TenantID
 	now := s.Now().UTC()
@@ -530,32 +563,11 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	var prepared *parsedStack
 
 	if bexYAML != "" {
-		parsed, ir, parseErr := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: bexYAML})
-		if parseErr != nil {
-			return SyncBlueprintResult{}, parseErr
-		}
-		if err := s.requireStackPaymentMethod(ctx, parsed); err != nil {
-			return SyncBlueprintResult{}, err
-		}
-		if _, _, err := s.blueprintActionPlan(ctx, ir, parsed); err != nil {
-			return SyncBlueprintResult{}, err
-		}
-		updated, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
-			ID:       b.ID,
-			TenantID: tenantID,
-			Name:     b.Name,
-			Repo:     b.Repo,
-			Branch:   b.Branch,
-			Path:     b.Path,
-			AutoSync: b.AutoSync,
-			Manifest: bexYAML,
-			Status:   store.BlueprintStatusSyncing,
-		})
+		updated, parsed, err := s.prepareSyncManifest(ctx, b, bexYAML)
 		if err != nil {
 			return SyncBlueprintResult{}, err
 		}
-		b = updated
-		prepared = &parsed
+		b, prepared = updated, parsed
 	} else if s.GitFetcher != nil && b.Repo != "" {
 		// Re-validate the stored path before the token-backed fetch (round-6
 		// #14): a legacy row written before UpdateBlueprint enforced the
@@ -563,34 +575,15 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		if _, pathErr := approvedBlueprintPath(b.Path); pathErr != nil {
 			return SyncBlueprintResult{}, pathErr
 		}
+		// A fetch failure is deliberately swallowed: the sync falls through to
+		// the stored manifest rather than failing the whole run.
 		if contents, sha, fetchErr := s.GitFetcher.FetchBlueprintFile(ctx, tenantID, b.Repo, b.Branch, b.Path); fetchErr == nil {
 			commitSHA = sha
-			parsed, ir, parseErr := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, Manifest: contents})
-			if parseErr != nil {
-				return SyncBlueprintResult{}, parseErr
-			}
-			if pmErr := s.requireStackPaymentMethod(ctx, parsed); pmErr != nil {
-				return SyncBlueprintResult{}, pmErr
-			}
-			if _, _, planErr := s.blueprintActionPlan(ctx, ir, parsed); planErr != nil {
-				return SyncBlueprintResult{}, planErr
-			}
-			updated, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
-				ID:       b.ID,
-				TenantID: tenantID,
-				Name:     b.Name,
-				Repo:     b.Repo,
-				Branch:   b.Branch,
-				Path:     b.Path,
-				AutoSync: b.AutoSync,
-				Manifest: contents,
-				Status:   store.BlueprintStatusSyncing,
-			})
+			updated, parsed, err := s.prepareSyncManifest(ctx, b, contents)
 			if err != nil {
 				return SyncBlueprintResult{}, err
 			}
-			b = updated
-			prepared = &parsed
+			b, prepared = updated, parsed
 		}
 	}
 

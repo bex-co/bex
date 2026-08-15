@@ -82,13 +82,13 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				var policy *NetworkPolicy
 				if raw, ok := p.Args["networkPolicy"].(map[string]any); ok {
-					policy = &NetworkPolicy{Default: NetworkPolicyDefault(gqlStr(raw, "default"))}
+					policy = &NetworkPolicy{Default: NetworkPolicyDefault(gqlutil.Str(raw, "default"))}
 				}
 				return s.Create(p.Context, CreateRequest{
-					OwnerID:        gqlStr(p.Args, "ownerId"),
-					Template:       gqlStr(p.Args, "template"),
-					Plan:           Plan(gqlStr(p.Args, "plan")),
-					Region:         gqlStr(p.Args, "region"),
+					OwnerID:        gqlutil.Str(p.Args, "ownerId"),
+					Template:       gqlutil.Str(p.Args, "template"),
+					Plan:           Plan(gqlutil.Str(p.Args, "plan")),
+					Region:         gqlutil.Str(p.Args, "region"),
 					TimeoutSeconds: gqlutil.Int(p.Args, "timeoutSeconds"),
 					NetworkPolicy:  policy,
 				})
@@ -105,12 +105,4 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 	}
-}
-
-// gqlStr reads an optional string arg, "" when absent.
-func gqlStr(args map[string]any, key string) string {
-	if v, ok := args[key].(string); ok {
-		return v
-	}
-	return ""
 }
