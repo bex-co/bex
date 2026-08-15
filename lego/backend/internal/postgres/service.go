@@ -474,16 +474,9 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := core.ValidateAllowList(req.IPAllowList); err != nil {
 		return PostgresView{}, err
 	}
-	var environment core.EnvironmentAssignment
-	if req.EnvironmentID != "" {
-		if s.Environments == nil || !tenantOK {
-			return PostgresView{}, core.ErrWorkspacesUnavailable
-		}
-		var err error
-		environment, err = s.Environments.ResolveForCreate(ctx, req.EnvironmentID, tenantID)
-		if err != nil {
-			return PostgresView{}, fmt.Errorf("resolving environment: %w", err)
-		}
+	environment, err := core.ResolveEnvironmentForCreate(ctx, s.Environments, req.EnvironmentID, tenantID)
+	if err != nil {
+		return PostgresView{}, err
 	}
 	crReplicas := make([]appv1alpha1.DatabaseReadReplica, 0, len(req.ReadReplicas))
 	for _, r := range req.ReadReplicas {
@@ -512,14 +505,10 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	// docs/ADR022-tenant-isolation.md), mirroring the App CR dual-stamp
 	// (store/reconciler.go's stampLabels). Skip when the store is off (no resolver).
 	if tenantOK {
-		d.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
+		d.Labels = core.TenantLabels(tenantID)
 	}
-	if environment.ID != "" {
-		d.Labels[core.LabelProject] = environment.ProjectID
-		d.Labels[core.LabelEnvironment] = environment.ID
-		// Newborn members inherit the environment's inbound-IP layer (w4/m28).
-		d.Spec.EnvironmentIPAllowList = core.EnvironmentLayerCIDRs(environment.IPAllowList)
-	}
+	// Newborn members inherit the environment's inbound-IP layer (w4/m28).
+	d.Spec.EnvironmentIPAllowList = core.ApplyGrouping(d, environment)
 	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
 	if req.DryRun {
 		return s.view(d), nil

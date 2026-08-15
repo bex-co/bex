@@ -273,13 +273,88 @@ func (w *PushWorker) buildPushRecipients(ctx context.Context, destinations []sto
 	return byTenant, tenants
 }
 
-type projectedAgentPush struct{ event, title, body, urgency string }
+// projectedPush is the channel-agnostic content of one push, produced by each
+// source's projector (projectPushEvent for the app feed, projectAgentSessionPush
+// for terminal agent sessions) and consumed by fanOutPush.
+type projectedPush struct {
+	event   string
+	title   string
+	body    string
+	urgency string
+}
+
+// pushTarget is the per-event half of a fan-out: everything that differs
+// between the app-keyed feed dispatch and the workspace-keyed agent-session
+// projection. The recipient evaluation and device filtering around it are
+// identical, which is what fanOutPush shares.
+type pushTarget struct {
+	workspaceID string
+	sourceKey   string
+	// serviceID scopes the policy evaluation to one service; empty for agent
+	// sessions, which have no App (w11/m6 t005).
+	serviceID    string
+	resourceKind string
+	resourceID   string
+	deepLink     string
+	occurredAt   time.Time
+	projected    projectedPush
+}
+
+// fanOutPush evaluates one event against every recipient in its workspace and
+// appends the resulting batch items. A recipient contributes nothing when its
+// policy drops the event or when it has no device registered before the event
+// occurred — a device may not receive pushes for what happened before it existed.
+func fanOutPush(
+	batch []store.PushNotificationBatchItem,
+	evaluator DeliveryPolicyEvaluator,
+	recipients map[string]*pushRecipient,
+	target pushTarget,
+) ([]store.PushNotificationBatchItem, error) {
+	for _, recipient := range recipients {
+		decision, err := evaluator.Evaluate(recipient.policy, DeliveryInput{
+			Channel: DeliveryChannelPush, Event: DeliveryEvent(target.projected.event),
+			Urgency: DeliveryUrgency(target.projected.urgency), WorkspaceID: target.workspaceID,
+			EventWorkspaceID: target.workspaceID, Subject: recipient.subject,
+			WorkspaceRole: recipient.role, ServiceID: target.serviceID,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("evaluate stored push policy: %w", err)
+		}
+		if decision.Disposition == DeliveryDrop {
+			continue
+		}
+		if decision.Disposition != DeliverySend && decision.Disposition != DeliveryDefer {
+			return nil, fmt.Errorf("evaluate stored push policy: unknown disposition %q", decision.Disposition)
+		}
+		deviceIDs := make([]string, 0, len(recipient.devices))
+		for _, device := range recipient.devices {
+			if !target.occurredAt.Before(device.CreatedAt) {
+				deviceIDs = append(deviceIDs, device.DeviceID)
+			}
+		}
+		if len(deviceIDs) == 0 {
+			continue
+		}
+		batch = append(batch, store.PushNotificationBatchItem{
+			Notification: store.PushNotification{
+				TenantID: target.workspaceID, Subject: recipient.subject,
+				SourceEventKey: target.sourceKey,
+				EventID:        ids.Derive(ids.Event, target.workspaceID, recipient.subject, target.sourceKey),
+				EventType:      target.projected.event, Title: target.projected.title, Body: target.projected.body,
+				Urgency: target.projected.urgency, ResourceKind: target.resourceKind, ResourceID: target.resourceID,
+				DeepLink: target.deepLink, OccurredAt: target.occurredAt, DeliverAt: decision.DeliverAt,
+			},
+			DeviceIDs: deviceIDs,
+		})
+	}
+	return batch, nil
+}
 
 // projectAgentSessionPush maps a terminal agent session to its push. A completed
 // session that opened a draft PR is "PR ready"; a completed one without a PR and
 // a failed one surface as a failure needing attention. Bodies carry no secret —
 // the repo name and (for PR-ready) the PR number only.
-func projectAgentSessionPush(s store.AgentSession) (projectedAgentPush, bool) {
+func projectAgentSessionPush(s store.AgentSession) (projectedPush, bool) {
 	switch s.Phase {
 	case "completed":
 		if s.PRURL != "" {
@@ -287,23 +362,23 @@ func projectAgentSessionPush(s store.AgentSession) (projectedAgentPush, bool) {
 			if s.PRNumber > 0 {
 				body = fmt.Sprintf("Agent opened draft PR #%d on %s.", s.PRNumber, s.Repo)
 			}
-			return projectedAgentPush{
+			return projectedPush{
 				event: string(DeliveryEventAgentPRReady), title: "Draft PR ready",
 				body: body, urgency: string(DeliveryUrgencyImportant),
 			}, true
 		}
-		return projectedAgentPush{
+		return projectedPush{
 			event: string(DeliveryEventAgentFailed), title: "Agent session ended",
 			body:    "Agent session on " + s.Repo + " ended without a pull request.",
 			urgency: string(DeliveryUrgencyImportant),
 		}, true
 	case "failed":
-		return projectedAgentPush{
+		return projectedPush{
 			event: string(DeliveryEventAgentFailed), title: "Agent session failed",
 			body: "Agent session on " + s.Repo + " failed.", urgency: string(DeliveryUrgencyImportant),
 		}, true
 	default:
-		return projectedAgentPush{}, false
+		return projectedPush{}, false
 	}
 }
 
@@ -342,43 +417,14 @@ func (w *PushWorker) dispatchAgentSessions(ctx context.Context, destinations []s
 		if !ok {
 			continue
 		}
-		sourceKey := "agent:" + session.ID + ":" + session.Phase
-		for _, recipient := range byTenant[session.WorkspaceID] {
-			decision, err := evaluator.Evaluate(recipient.policy, DeliveryInput{
-				Channel: DeliveryChannelPush, Event: DeliveryEvent(projected.event),
-				Urgency: DeliveryUrgency(projected.urgency), WorkspaceID: session.WorkspaceID,
-				EventWorkspaceID: session.WorkspaceID, Subject: recipient.subject,
-				WorkspaceRole: recipient.role,
-			})
-			if err != nil {
-				return fmt.Errorf("evaluate stored push policy: %w", err)
-			}
-			if decision.Disposition == DeliveryDrop {
-				continue
-			}
-			if decision.Disposition != DeliverySend && decision.Disposition != DeliveryDefer {
-				return fmt.Errorf("evaluate stored push policy: unknown disposition %q", decision.Disposition)
-			}
-			deviceIDs := make([]string, 0, len(recipient.devices))
-			for _, device := range recipient.devices {
-				if !session.UpdatedAt.Before(device.CreatedAt) {
-					deviceIDs = append(deviceIDs, device.DeviceID)
-				}
-			}
-			if len(deviceIDs) == 0 {
-				continue
-			}
-			notificationID := ids.Derive(ids.Event, session.WorkspaceID, recipient.subject, sourceKey)
-			batch = append(batch, store.PushNotificationBatchItem{
-				Notification: store.PushNotification{
-					TenantID: session.WorkspaceID, Subject: recipient.subject,
-					SourceEventKey: sourceKey, EventID: notificationID,
-					EventType: projected.event, Title: projected.title, Body: projected.body,
-					Urgency: projected.urgency, ResourceKind: "agentSession", ResourceID: session.ID,
-					DeepLink: "/sessions/" + session.ID, OccurredAt: session.UpdatedAt, DeliverAt: decision.DeliverAt,
-				},
-				DeviceIDs: deviceIDs,
-			})
+		batch, err = fanOutPush(batch, evaluator, byTenant[session.WorkspaceID], pushTarget{
+			workspaceID: session.WorkspaceID,
+			sourceKey:   "agent:" + session.ID + ":" + session.Phase,
+			resourceKind: "agentSession", resourceID: session.ID,
+			deepLink: "/sessions/" + session.ID, occurredAt: session.UpdatedAt, projected: projected,
+		})
+		if err != nil {
+			return err
 		}
 	}
 	if len(batch) == 0 {
@@ -440,42 +486,13 @@ func (w *PushWorker) dispatch(ctx context.Context, destinations []store.ActivePu
 			if !ok {
 				continue
 			}
-			for _, recipient := range byTenant[row.TenantID] {
-				decision, err := evaluator.Evaluate(recipient.policy, DeliveryInput{
-					Channel: DeliveryChannelPush, Event: DeliveryEvent(projected.event),
-					Urgency: DeliveryUrgency(projected.urgency), WorkspaceID: row.TenantID,
-					EventWorkspaceID: row.TenantID, Subject: recipient.subject,
-					WorkspaceRole: recipient.role, ServiceID: serviceID,
-				})
-				if err != nil {
-					return fmt.Errorf("evaluate stored push policy: %w", err)
-				}
-				if decision.Disposition == DeliveryDrop {
-					continue
-				}
-				if decision.Disposition != DeliverySend && decision.Disposition != DeliveryDefer {
-					return fmt.Errorf("evaluate stored push policy: unknown disposition %q", decision.Disposition)
-				}
-				deviceIDs := make([]string, 0, len(recipient.devices))
-				for _, device := range recipient.devices {
-					if !row.At.Before(device.CreatedAt) {
-						deviceIDs = append(deviceIDs, device.DeviceID)
-					}
-				}
-				if len(deviceIDs) == 0 {
-					continue
-				}
-				notificationID := ids.Derive(ids.Event, row.TenantID, recipient.subject, row.Key)
-				batch = append(batch, store.PushNotificationBatchItem{
-					Notification: store.PushNotification{
-						TenantID: row.TenantID, Subject: recipient.subject,
-						SourceEventKey: row.Key, EventID: notificationID,
-						EventType: projected.event, Title: projected.title, Body: projected.body,
-						Urgency: projected.urgency, ResourceKind: "service", ResourceID: serviceID,
-						DeepLink: "/services/" + serviceID, OccurredAt: row.At, DeliverAt: decision.DeliverAt,
-					},
-					DeviceIDs: deviceIDs,
-				})
+			batch, err = fanOutPush(batch, evaluator, byTenant[row.TenantID], pushTarget{
+				workspaceID: row.TenantID, sourceKey: row.Key, serviceID: serviceID,
+				resourceKind: "service", resourceID: serviceID,
+				deepLink: "/services/" + serviceID, occurredAt: row.At, projected: projected,
+			})
+			if err != nil {
+				return err
 			}
 		}
 		last := rows[len(rows)-1]
@@ -525,14 +542,7 @@ func deliveryWorkspaceRole(role string) (DeliveryWorkspaceRole, bool) {
 	}
 }
 
-type projectedPushEvent struct {
-	event   string
-	title   string
-	body    string
-	urgency string
-}
-
-func projectPushEvent(row store.WebhookEventRow, serviceID, factStatus string) (projectedPushEvent, bool) {
+func projectPushEvent(row store.WebhookEventRow, serviceID, factStatus string) (projectedPush, bool) {
 	serviceName := row.ServiceName
 	if serviceName == "" {
 		serviceName = serviceID
@@ -540,61 +550,61 @@ func projectPushEvent(row store.WebhookEventRow, serviceID, factStatus string) (
 	switch row.Source {
 	case store.EventSourceDeploy:
 		if row.Phase == store.EventPhaseStarted {
-			return projectedPushEvent{
+			return projectedPush{
 				event: string(DeliveryEventDeployStarted), title: "Deploy started",
 				body: serviceName + " deploy started.", urgency: string(DeliveryUrgencyRoutine),
 			}, true
 		}
 		if row.Phase != store.EventPhaseEnded {
-			return projectedPushEvent{}, false
+			return projectedPush{}, false
 		}
 		switch row.Status {
 		case store.DeployLive:
-			return projectedPushEvent{
+			return projectedPush{
 				event: string(DeliveryEventDeploySucceeded), title: "Deploy succeeded",
 				body: serviceName + " is live.", urgency: string(DeliveryUrgencyRoutine),
 			}, true
 		case store.DeployBuildFailed, store.DeployPreDeployFailed, store.DeployUpdateFailed:
-			return projectedPushEvent{
+			return projectedPush{
 				event: string(DeliveryEventDeployFailed), title: "Deploy failed",
 				body: serviceName + " deploy failed.", urgency: string(DeliveryUrgencyImportant),
 			}, true
 		default:
-			return projectedPushEvent{}, false
+			return projectedPush{}, false
 		}
 	case store.EventSourceFact:
 		switch row.FactType {
 		case string(store.EventFactServerFailed):
-			return projectedPushEvent{
+			return projectedPush{
 				event: string(DeliveryEventServerFailed), title: "Service unavailable",
 				body: serviceName + " is unavailable.", urgency: string(DeliveryUrgencyCritical),
 			}, true
 		case string(store.EventFactServerAvailable):
-			return projectedPushEvent{
+			return projectedPush{
 				event: string(DeliveryEventServerAvailable), title: "Service recovered",
 				body: serviceName + " recovered.", urgency: string(DeliveryUrgencyImportant),
 			}, true
 		case string(store.EventFactServiceSuspended):
-			return projectedPushEvent{
+			return projectedPush{
 				event: string(DeliveryEventServiceSuspended), title: "Service suspended",
 				body: serviceName + " was suspended.", urgency: string(DeliveryUrgencyRoutine),
 			}, true
 		case string(store.EventFactServiceResumed):
-			return projectedPushEvent{
+			return projectedPush{
 				event: string(DeliveryEventServiceResumed), title: "Service resumed",
 				body: serviceName + " resumed.", urgency: string(DeliveryUrgencyRoutine),
 			}, true
 		case string(store.EventFactJobRunEnded):
 			if factStatus != store.EventStatusFailed {
-				return projectedPushEvent{}, false
+				return projectedPush{}, false
 			}
-			return projectedPushEvent{
+			return projectedPush{
 				event: string(DeliveryEventCronFailed), title: "Cron job failed",
 				body: serviceName + " cron job failed.", urgency: string(DeliveryUrgencyImportant),
 			}, true
 		}
 	}
-	return projectedPushEvent{}, false
+	return projectedPush{}, false
 }
 
 func (w *PushWorker) send(ctx context.Context) error {

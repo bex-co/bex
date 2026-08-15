@@ -1513,20 +1513,6 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 	return s.create(ctx, req)
 }
 
-func (s *Service) resolveEnvironmentForCreate(ctx context.Context, environmentID, tenantID string) (core.EnvironmentAssignment, error) {
-	if environmentID == "" {
-		return core.EnvironmentAssignment{}, nil
-	}
-	if s.Environments == nil || tenantID == "" {
-		return core.EnvironmentAssignment{}, core.ErrWorkspacesUnavailable
-	}
-	environment, err := s.Environments.ResolveForCreate(ctx, environmentID, tenantID)
-	if err != nil {
-		return core.EnvironmentAssignment{}, fmt.Errorf("resolving environment: %w", err)
-	}
-	return environment, nil
-}
-
 // create is the unauthorized core of Create — a same-workspace duplicate name
 // is rejected (Render-style, w4/m19), never silently redeployed; that's what
 // the deploy/restart verbs and the stack path's applyCreate (deploy.go, an
@@ -1544,7 +1530,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// when the store is off or the caller is unbound. Resolved BEFORE the
 	// existence probe, because it is what makes that probe workspace-correct.
 	tenantID, _ := s.Tenant(ctx)
-	environment, err := s.resolveEnvironmentForCreate(ctx, req.EnvironmentID, tenantID)
+	environment, err := core.ResolveEnvironmentForCreate(ctx, s.Environments, req.EnvironmentID, tenantID)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -1666,7 +1652,7 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		// where the projector projects it; AppNamespace == s.Namespace when off.
 		a.Namespace = s.AppNamespace(tenantID)
 	}
-	environment, err := s.resolveEnvironmentForCreate(ctx, req.EnvironmentID, tenantID)
+	environment, err := core.ResolveEnvironmentForCreate(ctx, s.Environments, req.EnvironmentID, tenantID)
 	if err != nil {
 		return AppView{}, err
 	}

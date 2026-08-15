@@ -2246,7 +2246,7 @@ func (s *Service) stackEnvironmentChange(ctx context.Context, req CreateRequest,
 		return core.EnvironmentAssignment{}, false, nil
 	}
 	tenantID := existing.Labels[core.LabelTenant]
-	assignment, err := s.resolveEnvironmentForCreate(ctx, req.EnvironmentID, tenantID)
+	assignment, err := core.ResolveEnvironmentForCreate(ctx, s.Environments, req.EnvironmentID, tenantID)
 	if err != nil {
 		return core.EnvironmentAssignment{}, false, err
 	}
@@ -2526,7 +2526,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 			}
 		}
 		if groupingChanged {
-			existing.Spec.EnvironmentIPAllowList = applyGrouping(existing, assignment)
+			existing.Spec.EnvironmentIPAllowList = core.ApplyGrouping(existing, assignment)
 		}
 		resourcemeta.Touch(existing, s.Now())
 		if err := s.Client.Patch(ctx, existing, base); err != nil {
@@ -2542,33 +2542,13 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		d.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
 	if assignment.ID != "" {
-		d.Spec.EnvironmentIPAllowList = applyGrouping(d, assignment)
+		d.Spec.EnvironmentIPAllowList = core.ApplyGrouping(d, assignment)
 	}
 	resourcemeta.Touch(d, s.Now())
 	if err := s.Client.Create(ctx, d); err != nil {
 		return StackDatabaseView{}, err
 	}
 	return stackDatabaseView(d), nil
-}
-
-// applyGrouping stamps the environment/project labels of a Blueprint grouping
-// onto a datastore object and returns the environment's projected inbound-IP
-// layer (w4/m28) for the caller's Spec.EnvironmentIPAllowList — a grouped
-// resource inherits the layer, an ungrouped one sheds labels and layer.
-func applyGrouping(obj client.Object, assignment core.EnvironmentAssignment) []string {
-	labels := obj.GetLabels()
-	if assignment.ID == "" {
-		delete(labels, core.LabelProject)
-		delete(labels, core.LabelEnvironment)
-		return nil
-	}
-	if labels == nil {
-		labels = map[string]string{}
-	}
-	labels[core.LabelProject] = assignment.ProjectID
-	labels[core.LabelEnvironment] = assignment.ID
-	obj.SetLabels(labels)
-	return core.EnvironmentLayerCIDRs(assignment.IPAllowList)
 }
 
 func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignment core.EnvironmentAssignment, keyValues []appv1alpha1.KeyValue) (StackKeyValueView, error) {
@@ -2594,7 +2574,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 			ApplyBlueprintKeyValueSpec(&existing.Spec, kv.spec, kv.fields)
 		}
 		if groupingChanged {
-			existing.Spec.EnvironmentIPAllowList = applyGrouping(existing, assignment)
+			existing.Spec.EnvironmentIPAllowList = core.ApplyGrouping(existing, assignment)
 		}
 		resourcemeta.Touch(existing, s.Now())
 		if err := s.Client.Patch(ctx, existing, base); err != nil {
@@ -2610,7 +2590,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 		resource.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
 	}
 	if assignment.ID != "" {
-		resource.Spec.EnvironmentIPAllowList = applyGrouping(resource, assignment)
+		resource.Spec.EnvironmentIPAllowList = core.ApplyGrouping(resource, assignment)
 	}
 	resourcemeta.Touch(resource, s.Now())
 	if err := s.Client.Create(ctx, resource); err != nil {

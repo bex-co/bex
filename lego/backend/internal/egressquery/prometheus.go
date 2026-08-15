@@ -33,6 +33,17 @@ import (
 // Instant evaluates one Prometheus instant query and returns the sum of all
 // finite vector values. An empty vector is a successful zero.
 func Instant(ctx context.Context, hc *http.Client, base, query string, at time.Time) (float64, error) {
+	samples, err := fetchInstantVector(ctx, hc, base, query, at)
+	if err != nil {
+		return 0, err
+	}
+	return sumSamples(samples)
+}
+
+// fetchInstantVector performs the query and unwraps Prometheus' envelope down
+// to the raw vector samples, rejecting every shape that is not a populated
+// vector result.
+func fetchInstantVector(ctx context.Context, hc *http.Client, base, query string, at time.Time) ([]instantSample, error) {
 	if hc == nil {
 		hc = http.DefaultClient
 	}
@@ -42,36 +53,43 @@ func Instant(ctx context.Context, hc *http.Client, base, query string, at time.T
 	}.Encode())
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	resp, err := hc.Do(req)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("prometheus: status %d", resp.StatusCode)
+		return nil, fmt.Errorf("prometheus: status %d", resp.StatusCode)
 	}
 	var result instantResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return 0, fmt.Errorf("decode prometheus response: %w", err)
+		return nil, fmt.Errorf("decode prometheus response: %w", err)
 	}
 	if result.Status != "success" {
-		return 0, fmt.Errorf("prometheus status %q", result.Status)
+		return nil, fmt.Errorf("prometheus status %q", result.Status)
 	}
 	if result.Data == nil {
-		return 0, fmt.Errorf("prometheus response has no data")
+		return nil, fmt.Errorf("prometheus response has no data")
 	}
 	if result.Data.ResultType != "vector" {
-		return 0, fmt.Errorf("prometheus result type %q, want vector", result.Data.ResultType)
+		return nil, fmt.Errorf("prometheus result type %q, want vector", result.Data.ResultType)
 	}
 	if len(result.Data.Result) == 0 || bytes.Equal(bytes.TrimSpace(result.Data.Result), []byte("null")) {
-		return 0, fmt.Errorf("prometheus vector result is missing")
+		return nil, fmt.Errorf("prometheus vector result is missing")
 	}
 	var samples []instantSample
 	if err := json.Unmarshal(result.Data.Result, &samples); err != nil {
-		return 0, fmt.Errorf("decode prometheus vector result: %w", err)
+		return nil, fmt.Errorf("decode prometheus vector result: %w", err)
 	}
+	return samples, nil
+}
+
+// sumSamples totals the vector, refusing any sample that is malformed, not
+// finite, or negative — an egress meter that silently absorbed a NaN or a
+// negative counter would under-bill.
+func sumSamples(samples []instantSample) (float64, error) {
 	var total float64
 	for _, item := range samples {
 		if len(item.Value) != 2 {
