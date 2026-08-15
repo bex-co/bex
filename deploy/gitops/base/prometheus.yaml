@@ -622,7 +622,7 @@ spec:
                   # (docs/runbooks/operator-kubeconfig-isolation.md).
                   - alert: AdminCertExpiringSoon
                     expr: |
-                      (kube_secret_created{namespace=~"default|bex-capi", secret="bex-kubeconfig"} + 31536000 - time()) < (30 * 24 * 3600)
+                      (kube_secret_created{namespace="bex-capi", secret="bex-kubeconfig"} + 31536000 - time()) < (30 * 24 * 3600)
                     for: 1h
                     labels:
                       severity: warning

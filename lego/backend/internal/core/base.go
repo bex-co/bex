@@ -671,6 +671,21 @@ func (b *Base) AuthorizeFresh(ctx context.Context, relation string) error {
 	return b.checkAuthzFresh(ctx, relation, object)
 }
 
+// AuthorizeAppFresh reasserts a relation against an already-authorized App's
+// own workspace without another fetch or audit event. Credential reveal/mint
+// verbs call this immediately before their irreversible sink so a positive
+// decision cached by another API replica cannot survive membership revocation.
+func (b *Base) AuthorizeAppFresh(ctx context.Context, relation string, app *appv1alpha1.App) error {
+	if app == nil {
+		return ErrForbidden
+	}
+	object, err := b.resourceWorkspace(ctx, app.Labels)
+	if err != nil {
+		return err
+	}
+	return b.checkAuthzFresh(ctx, relation, object)
+}
+
 // Tenant returns the workspace this request acts in: the one the caller named
 // (core.WithWorkspace), else their default (resolveWorkspace). It is what a
 // create stamps its new resource with, so naming a workspace is what puts a new

@@ -16,6 +16,7 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
@@ -40,6 +41,28 @@ func newFakeStore() *fakeStore {
 		now:        time.Unix(1_800_000_000, 0).UTC(),
 		transcript: map[string]map[int64]store.AgentSessionTranscriptPart{},
 		openSSH:    map[string]time.Time{},
+	}
+}
+
+func TestAgentSelectorIsClosedAndResolvesOnlyAbsoluteImagePaths(t *testing.T) {
+	for id, want := range map[string]string{
+		"claude": "/usr/local/bin/claude-code-acp",
+		"codex":  "/usr/local/bin/codex-acp",
+		"gemini": "/usr/local/bin/gemini",
+	} {
+		req := CreateRequest{Repo: "bex-co/example", Branch: "bex-agent/test", AgentConfig: AgentConfig{Agent: id, Task: "test"}}
+		if err := validateCreate(&req); err != nil {
+			t.Fatalf("validate supported agent %q: %v", id, err)
+		}
+		if got := agentCommand(req.AgentConfig.Agent); got != want || !strings.HasPrefix(got, "/") {
+			t.Errorf("agentCommand(%q) = %q, want absolute %q", id, got, want)
+		}
+	}
+	for _, agent := range []string{"./adapter", "/workspace/adapter", "claude-code-acp", "unknown"} {
+		req := CreateRequest{Repo: "bex-co/example", Branch: "bex-agent/test", AgentConfig: AgentConfig{Agent: agent, Task: "test"}}
+		if err := validateCreate(&req); err == nil {
+			t.Errorf("validateCreate accepted unsupported agent %q", agent)
+		}
 	}
 }
 
@@ -459,12 +482,10 @@ func TestLifecycleTicketClaimsAndFirstClassAuthorization(t *testing.T) {
 	}
 }
 
-// TestCreateInjectsGitCredentialBrokerConfig is a regression guard for a bug
-// caught live on prod (w3/m43): the sandbox driver's git-credential-bex helper
-// needs BEX_AGENT_CREDENTIAL_URL + BEX_SANDBOX_NAMESPACE + BEX_AGENT_SESSION_ID
-// (ADR047 D2) or the setup-phase clone fails with "missing its session broker
-// configuration" and every session dies. driverEnv must always inject them.
-func TestCreateInjectsGitCredentialBrokerConfig(t *testing.T) {
+// TestCreateInjectsGitProxyAndTurnGrantConfig pins both sandbox trust
+// boundaries: Git uses a Pod-bound proxy (never a raw token helper), and the
+// driver gets only the public half of the gateway's turn-grant key.
+func TestCreateInjectsGitProxyAndTurnGrantConfig(t *testing.T) {
 	svc, _, _, lifecycle := fixture()
 	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
 		t.Fatal(err)
@@ -476,8 +497,15 @@ func TestCreateInjectsGitCredentialBrokerConfig(t *testing.T) {
 	if env["BEX_SANDBOX_NAMESPACE"] != "tea-a-sandbox" {
 		t.Fatalf("BEX_SANDBOX_NAMESPACE = %q, want tea-a-sandbox", env["BEX_SANDBOX_NAMESPACE"])
 	}
-	if env["BEX_AGENT_CREDENTIAL_URL"] != defaultCredentialURL {
-		t.Fatalf("BEX_AGENT_CREDENTIAL_URL = %q, want the default broker URL", env["BEX_AGENT_CREDENTIAL_URL"])
+	wantRepoURL, err := agentsession.ProxyRepositoryURL(defaultCredentialURL, env["BEX_SANDBOX_NAMESPACE"], env["BEX_AGENT_SESSION_ID"], env["BEX_AGENT_REPOSITORY"], env["BEX_AGENT_BRANCH"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if env["BEX_AGENT_REPO_URL"] != wantRepoURL {
+		t.Fatalf("BEX_AGENT_REPO_URL = %q, want Pod-bound proxy %q", env["BEX_AGENT_REPO_URL"], wantRepoURL)
+	}
+	if strings.Contains(env["BEX_AGENT_REPO_URL"], "github.com") || env["BEX_AGENT_GRANT_PUBLIC_KEY"] == "" {
+		t.Fatalf("driver trust config = %#v", env)
 	}
 	if env["BEX_AGENT_REPOSITORY"] != "bex-co/example" || env["BEX_AGENT_BRANCH"] != "bex-agent/session-test" {
 		t.Fatalf("repo/branch env = %q/%q", env["BEX_AGENT_REPOSITORY"], env["BEX_AGENT_BRANCH"])

@@ -58,6 +58,19 @@ func TestImageRefAndJobName(t *testing.T) {
 	}
 }
 
+func TestCredentialBearingPlatformImagesAreDigestPinned(t *testing.T) {
+	for name, image := range map[string]string{
+		"buildkit": defaultBuildkitImage,
+		"git":      defaultGitImage,
+		"push":     defaultPushImage,
+		"sign":     defaultSignImage,
+	} {
+		if !strings.Contains(image, "@sha256:") {
+			t.Errorf("%s image is mutable: %q", name, image)
+		}
+	}
+}
+
 func TestBuildJobShape(t *testing.T) {
 	o := opts()
 	j := BuildJob(o, o.ImageRef())

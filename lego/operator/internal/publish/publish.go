@@ -46,11 +46,11 @@ import (
 // DefaultAWSCLIImage is the S3 uploader image. Pinned < 2.23 because newer AWS
 // CLIs send CRC64 checksums that S3-compatibles (Wasabi/Hetzner) reject — the
 // same pin the etcd/OpenBao backup CronJobs use (docs/ADR011-etcd-backup-restore.md).
-const DefaultAWSCLIImage = "amazon/aws-cli:2.22.35"
+const DefaultAWSCLIImage = "amazon/aws-cli:2.22.35@sha256:6977c83ae3dc99f28fcf8276b9ea5eec33833cd5be40574b34112e98113ec7a2"
 
 // DefaultGitImage is the clone image the direct (no-Dockerfile) publish path
 // uses (w9/010) — pinned like every other platform-plane image.
-const DefaultGitImage = "alpine/git:v2.43.0"
+const DefaultGitImage = "alpine/git:v2.43.0@sha256:76fdb7210689fc26c6ff101c4adacf9d12d3d25a919a7d8ff42ebaef5bedba65"
 
 // publishTimeout bounds a single publish Job's wall-clock; the Job's own
 // activeDeadlineSeconds matches so a stuck upload is reaped, not left lingering.
@@ -518,6 +518,7 @@ func PurgeJob(appName, appUID, workspace, appNamespace string, store Store, name
 			},
 		},
 	}
+	execution.HardenPod(&job.Spec.Template.Spec)
 	return job
 }
 

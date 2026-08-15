@@ -25,6 +25,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 OVERLAY="infra/clusterapi/overlays/hetzner-caph/cluster.yaml"
+SANDBOX_OVERLAY="infra/clusterapi/overlays/hetzner-caph/sandbox-pool.yaml"
 PACKER="infra/packer/bex-worker.pkr.hcl"
 SNAPSHOT_WORKFLOW=".github/workflows/snapshot.yml"
 AUTOSCALER_VALUES="infra/clusterapi/autoscaler-values.yaml"
@@ -33,6 +34,24 @@ fail=0
 
 pk_var() { grep -A4 "variable \"$1\"" "$PACKER" | grep -m1 -oE 'default[[:space:]]*=[[:space:]]*"[^"]+"' | grep -oE '"[^"]+"' | tr -d '"'; }
 pk_k8s="$(pk_var kubernetes_version)"; pk_containerd="$(pk_var containerd_version)"; pk_runc="$(pk_var runc_version)"
+
+echo "==> production CAPI objects live only in the locked-down namespace"
+if [ "$(yq -N 'select(.kind == "Namespace" and .metadata.name == "bex-capi") | .metadata.name' "$OVERLAY")" != "bex-capi" ]; then
+  echo "FAIL: $OVERLAY must declare the bex-capi Namespace" >&2
+  fail=1
+fi
+bad_namespace="$(yq -N 'select(.kind != "Namespace" and .metadata.namespace != "bex-capi") | .kind + "/" + .metadata.name + "=" + (.metadata.namespace // "<none>")' "$OVERLAY")"
+if [ -n "$bad_namespace" ]; then
+  echo "FAIL: production CAPI resources escaped bex-capi:" >&2
+  echo "$bad_namespace" >&2
+  fail=1
+fi
+bad_sandbox_namespace="$(yq -N 'select(.metadata.namespace != "bex-capi") | .kind + "/" + .metadata.name + "=" + (.metadata.namespace // "<none>")' "$SANDBOX_OVERLAY")"
+if [ -n "$bad_sandbox_namespace" ]; then
+  echo "FAIL: sandbox CAPI resources escaped bex-capi:" >&2
+  echo "$bad_sandbox_namespace" >&2
+  fail=1
+fi
 
 echo "==> supported Kubernetes version is consistent across CAPI, Packer, and snapshot defaults"
 if [[ ! "$pk_k8s" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then

@@ -45,7 +45,7 @@ Cluster API stores the workload ("app") cluster's kubeconfig as a secret on the 
 
 ```sh
 ssh -i <ssh-key> root@<infra-ip> \
-  'kubectl -n default get secret bex-kubeconfig -o jsonpath="{.data.value}" | base64 -d' \
+  'kubectl -n bex-capi get secret bex-kubeconfig -o jsonpath="{.data.value}" | base64 -d' \
   > bex-app.kubeconfig
 export KUBECONFIG=$PWD/bex-app.kubeconfig
 kubectl get app my-app -o yaml   # current image / port / host — your baseline

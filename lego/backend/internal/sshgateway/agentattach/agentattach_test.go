@@ -514,9 +514,11 @@ func TestAgentAttachDisabledWhenNoSecret(t *testing.T) {
 
 // fakeTurnDriver serves the driver's POST /turn SSE: the turn's parts then the
 // `[DONE]` sentinel, exactly like the in-sandbox driver answering a live prompt.
-func fakeTurnDriver(parts []string) (*httptest.Server, string, int) {
+func fakeTurnDriver(parts []string) (*httptest.Server, string, int, *atomic.Value) {
+	grant := &atomic.Value{}
 	mux := http.NewServeMux()
-	mux.HandleFunc("/turn", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/turn", func(w http.ResponseWriter, r *http.Request) {
+		grant.Store(r.Header.Get("X-Bex-Driver-Grant"))
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("x-vercel-ai-ui-message-stream", "v1")
 		fl := w.(http.Flusher)
@@ -530,7 +532,7 @@ func fakeTurnDriver(parts []string) (*httptest.Server, string, int) {
 	srv := httptest.NewServer(mux)
 	host, portStr, _ := net.SplitHostPort(strings.TrimPrefix(srv.URL, "http://"))
 	port, _ := strconv.Atoi(portStr)
-	return srv, host, port
+	return srv, host, port, grant
 }
 
 // TestAgentTurnQuotaIsCumulative pins the F10 fix: the turn path's byte quota
@@ -545,7 +547,7 @@ func TestAgentTurnQuotaIsCumulative(t *testing.T) {
 	_ = st.AppendAgentSessionTranscript(context.Background(), session, []store.AgentSessionTranscriptPart{
 		{Seq: 0, Turn: 0, Part: []byte(strings.Repeat("s", 60))},
 	})
-	driver, host, port := fakeTurnDriver([]string{
+	driver, host, port, driverGrant := fakeTurnDriver([]string{
 		strings.Repeat("a", 30), strings.Repeat("b", 30),
 	})
 	defer driver.Close()
@@ -570,6 +572,9 @@ func TestAgentTurnQuotaIsCumulative(t *testing.T) {
 	// Turn 1: 60 stored + 30 fits (90 ≤ 100); the next 30 would reach 120, so
 	// the turn stops there — the client still receives the fitting part.
 	body := postTurn()
+	if got, _ := driverGrant.Load().(string); got == "" {
+		t.Fatal("gateway forwarded a live turn without a signed driver grant")
+	}
 	if payloads := dataPayloads(body); len(payloads) != 1 || payloads[0] != strings.Repeat("a", 30) {
 		t.Fatalf("turn 1 client parts = %v, want the one part that fits", payloads)
 	}

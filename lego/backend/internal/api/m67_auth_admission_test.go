@@ -17,6 +17,7 @@ limitations under the License.
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -111,9 +112,9 @@ func TestInvalidCredentialFloodIsBoundedBeforeUpstream(t *testing.T) {
 	}
 }
 
-// A valid credential is never charged, so many users behind one source IP — the
-// dashboard's SSR pod is exactly this shape — cannot throttle each other.
-func TestValidCredentialsAreNeverCharged(t *testing.T) {
+// Valid credentials are isolated from one another, so many users behind one
+// source IP do not share a bucket even though each credential is bounded.
+func TestValidCredentialsAreIsolated(t *testing.T) {
 	p := newCountingIdentityProvider(t, "good-token", "")
 	mw := gateWithAdmission(p, NewAuthAdmission(2, 2, 0))
 
@@ -124,8 +125,72 @@ func TestValidCredentialsAreNeverCharged(t *testing.T) {
 		p.validToken = fmt.Sprintf("good-token-%d", i)
 		mw.ServeHTTP(w, bearerRequest(p.validToken, "203.0.113.20"))
 		if w.Code != http.StatusOK {
-			t.Fatalf("valid credential %d: status = %d, want 200 (a successful auth must never be charged)", i, w.Code)
+			t.Fatalf("valid credential %d: status = %d, want 200", i, w.Code)
 		}
+	}
+}
+
+func TestValidSessionIsRejectedBeforeAnotherKratosCallWhenOverBudget(t *testing.T) {
+	p := newCountingIdentityProvider(t, "", "live-session")
+	mw := gateWithAdmission(p, NewAuthAdmission(2, 2, 0))
+	for i := range 3 {
+		r := httptest.NewRequest(http.MethodGet, "/v1/services", nil)
+		r.Header.Set("X-Session-Token", "live-session")
+		r.RemoteAddr = "203.0.113.21:40000"
+		w := httptest.NewRecorder()
+		mw.ServeHTTP(w, r)
+		if i < 2 && w.Code != http.StatusOK {
+			t.Fatalf("valid session request %d = %d, want 200", i, w.Code)
+		}
+		if i == 2 && w.Code != http.StatusTooManyRequests {
+			t.Fatalf("over-budget valid session = %d, want 429", w.Code)
+		}
+	}
+	if got := p.whoamis.Load(); got != 2 {
+		t.Fatalf("Kratos calls = %d, want 2; rejection must happen before upstream I/O", got)
+	}
+}
+
+func TestSessionCookieBudgetCannotBeBypassedWithIrrelevantCookies(t *testing.T) {
+	adm := NewAuthAdmission(1, 1, 0)
+	request := func(extra string) *http.Request {
+		r := httptest.NewRequest(http.MethodGet, "/v1/services", nil)
+		r.Header.Set("Cookie", "ory_kratos_session=live-session; noise="+extra)
+		r.RemoteAddr = "203.0.113.21:40000"
+		return r
+	}
+	release, err := adm.admit(request("one"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	release()
+	if _, err := adm.admit(request("two")); !errors.Is(err, errAuthOverloaded) {
+		t.Fatalf("same session with changed irrelevant cookie = %v, want errAuthOverloaded", err)
+	}
+}
+
+func TestOneCredentialCannotOccupyTheGlobalAuthenticationPool(t *testing.T) {
+	adm := NewAuthAdmission(10_000, 10_000, 64)
+	r := bearerRequest("one-credential", "203.0.113.22")
+	var releases []func()
+	for range 8 {
+		release, err := adm.admit(r)
+		if err != nil {
+			t.Fatalf("credential slot: %v", err)
+		}
+		releases = append(releases, release)
+	}
+	if _, err := adm.admit(r); !errors.Is(err, errAuthOverloaded) {
+		t.Fatalf("ninth concurrent call = %v, want errAuthOverloaded", err)
+	}
+	other := bearerRequest("other-credential", "203.0.113.22")
+	releaseOther, err := adm.admit(other)
+	if err != nil {
+		t.Fatalf("other credential was denied while global pool had capacity: %v", err)
+	}
+	releaseOther()
+	for _, release := range releases {
+		release()
 	}
 }
 

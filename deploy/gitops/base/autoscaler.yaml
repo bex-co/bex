@@ -47,7 +47,7 @@ spec:
       ref: values
   destination:
     server: https://kubernetes.default.svc
-    namespace: default # CAPI Cluster/MachineDeployments live here post-pivot
+    namespace: bex-capi # locked-down home of CAPI Cluster/Machine resources
   syncPolicy:
     automated:
       prune: true

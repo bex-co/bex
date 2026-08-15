@@ -369,23 +369,24 @@ func errDomainInUse() error {
 // with stray case/dot/whitespace still collides instead of slipping past. The
 // owning App's name is deliberately not returned: a caller must not learn
 // another tenant's service name from the rejection.
-func (s *Service) hostClaimedElsewhere(ctx context.Context, appName, host string) (bool, error) {
+func (s *Service) hostClaimedElsewhere(ctx context.Context, owner *appv1alpha1.App, host string) (bool, error) {
 	// A host is unique across the whole platform, and Apps are spread across
 	// per-tenant namespaces (ADR043), so the collision sweep must be cluster-wide.
 	var list appv1alpha1.AppList
 	if err := s.Client.List(ctx, &list); err != nil {
 		return false, err
 	}
-	return hostClaimedInApps(list.Items, appName, host), nil
+	return hostClaimedInApps(list.Items, owner, host), nil
 }
 
 // hostClaimedInApps is hostClaimedElsewhere's matching core over an
 // already-fetched App list, so ensureHostsClaimable can check a whole host set
 // against one cluster-wide sweep instead of Listing per host.
-func hostClaimedInApps(items []appv1alpha1.App, appName, host string) bool {
+func hostClaimedInApps(items []appv1alpha1.App, owner *appv1alpha1.App, host string) bool {
+	ownerID := appClaimIdentity(owner)
 	for i := range items {
 		a := &items[i]
-		if a.Name == appName {
+		if ownerID != "" && appClaimIdentity(a) == ownerID {
 			continue
 		}
 		claimed := append([]string{a.Spec.Host}, a.Spec.Hosts...)
@@ -397,6 +398,26 @@ func hostClaimedInApps(items []appv1alpha1.App, appName, host string) bool {
 		}
 	}
 	return false
+}
+
+// appClaimIdentity returns an immutable identity whenever one exists. Public
+// srv- ids are stable across projection/recreation; UID is the fallback for
+// hand-applied CRs. Namespace/name is used only before Kubernetes assigns a UID
+// and remains collision-free for canonical per-workspace object names.
+func appClaimIdentity(app *appv1alpha1.App) string {
+	if app == nil {
+		return ""
+	}
+	if id := app.Labels[core.LabelAppID]; id != "" {
+		return "id:" + id
+	}
+	if app.UID != "" {
+		return "uid:" + string(app.UID)
+	}
+	if app.Namespace != "" && app.Name != "" {
+		return "name:" + app.Namespace + "/" + app.Name
+	}
+	return ""
 }
 
 // ensureHostsClaimable runs the same platform-reserved + cross-App collision
@@ -433,7 +454,7 @@ func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App
 			apps = list.Items
 			fetched = true
 		}
-		if hostClaimedInApps(apps, app.Name, h) {
+		if hostClaimedInApps(apps, app, h) {
 			return errDomainInUse()
 		}
 	}
@@ -513,7 +534,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 	if s.reservedHost(s.ownPlatformHost(app), hostname) {
 		return DomainView{}, false, fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, hostname)
 	}
-	if claimed, err := s.hostClaimedElsewhere(ctx, appName, hostname); err != nil {
+	if claimed, err := s.hostClaimedElsewhere(ctx, app, hostname); err != nil {
 		return DomainView{}, false, err
 	} else if claimed {
 		return DomainView{}, false, errDomainInUse()

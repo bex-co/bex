@@ -125,7 +125,13 @@ var blueprintServiceFieldAppliers = []struct {
 	}},
 	{names: []string{"domains", "domain"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 		dst.Host = want.Host
-		dst.Hosts = slices.Clone(want.Hosts)
+		// Keep the zero value canonical. Kubernetes drops an empty slice when it
+		// round-trips the CR, so preserving [] here would make an identical
+		// Blueprint look changed on every re-apply.
+		dst.Hosts = nil
+		if len(want.Hosts) > 0 {
+			dst.Hosts = slices.Clone(want.Hosts)
+		}
 	}},
 	{names: []string{"staticPublishPath"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.PublishPath = want.PublishPath }},
 	{names: []string{"routes"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Routes = slices.Clone(want.Routes) }},

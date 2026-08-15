@@ -15,13 +15,15 @@ limitations under the License.
 */
 
 // Package agentsession owns the internal credential-broker contract shared by
-// bex-api, the isolated SSH gateway, and the sandbox git credential helper.
-// It deliberately exposes no public REST/GraphQL/MCP surface.
+// bex-api and the isolated SSH gateway's Pod-bound Git smart-HTTP proxy. It
+// deliberately exposes no raw credential to the sandbox and no public
+// REST/GraphQL/MCP surface.
 package agentsession
 
 import (
 	"crypto/sha256"
 	"encoding/base32"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"strings"
@@ -31,8 +33,8 @@ import (
 const (
 	// InternalMintPath lives only on bex-api's cluster-internal :8091 listener.
 	InternalMintPath = "/v1/agent-session-credentials"
-	// GatewayPath lives only on the gateway's cluster-internal :8082 listener.
-	GatewayPath = "/session-credential"
+	// GitProxyPath lives only on the gateway's cluster-internal :8082 listener.
+	GitProxyPath = "/git/"
 
 	SignatureHeader = "X-Bex-Agent-Credential-Signature"
 	TimestampHeader = "X-Bex-Agent-Credential-Timestamp"
@@ -50,6 +52,26 @@ const (
 
 	BranchPrefix = "bex-agent/"
 )
+
+// ProxyRepositoryURL binds a Git smart-HTTP remote to the exact immutable
+// session identity the gateway verifies against the direct source Pod. It
+// contains no credential.
+func ProxyRepositoryURL(baseURL, namespace, sessionID, repository, branch string) (string, error) {
+	repository, err := NormalizeRepository(repository)
+	if err != nil {
+		return "", err
+	}
+	if namespace == "" || sessionID == "" {
+		return "", ErrInvalidRequest
+	}
+	if err := ValidateBranch(branch); err != nil {
+		return "", err
+	}
+	encode := func(value string) string { return base64.RawURLEncoding.EncodeToString([]byte(value)) }
+	return strings.TrimRight(baseURL, "/") + GitProxyPath + strings.Join([]string{
+		encode(namespace), encode(sessionID), encode(repository), encode(branch),
+	}, "/"), nil
+}
 
 var (
 	ErrInvalidRequest = errors.New("invalid agent credential request")

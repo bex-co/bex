@@ -35,6 +35,49 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+type staleDeployHookChecker struct {
+	freshCalls int
+}
+
+func (*staleDeployHookChecker) Check(context.Context, string, string, string) (bool, error) {
+	return true, nil
+}
+
+func (c *staleDeployHookChecker) CheckFresh(context.Context, string, string, string) (bool, error) {
+	c.freshCalls++
+	return false, nil
+}
+
+func TestDeployHookRevealAndRotationFailClosedOnFreshRevocation(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		call func(*Service, context.Context) error
+	}{
+		{name: "reveal", call: func(s *Service, ctx context.Context) error { _, err := s.GetDeployHook(ctx, "web"); return err }},
+		{name: "rotate", call: func(s *Service, ctx context.Context) error { _, err := s.RegenerateDeployHook(ctx, "web"); return err }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, cl := newService(newFakeStore(), sampleApp("web", "srv-1"))
+			checker := &staleDeployHookChecker{}
+			svc.Authz = checker
+			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "revoked"})
+			if err := tc.call(svc, ctx); !errors.Is(err, core.ErrForbidden) {
+				t.Fatalf("call error = %v, want ErrForbidden", err)
+			}
+			if checker.freshCalls != 1 {
+				t.Fatalf("fresh checks = %d, want 1", checker.freshCalls)
+			}
+			var app appv1alpha1.App
+			if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, &app); err != nil {
+				t.Fatal(err)
+			}
+			if app.Annotations[DeployHookTokenAnnotation] != "" {
+				t.Fatal("freshly revoked caller wrote a deploy-hook token")
+			}
+		})
+	}
+}
+
 func TestDeployHookTokenIsStableOpaqueAndRotatable(t *testing.T) {
 	svc, cl := newService(newFakeStore(), sampleApp("web", "srv-1"))
 	svc.DeployHookBaseURL = "https://api.bex.co/"

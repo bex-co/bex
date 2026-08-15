@@ -17,8 +17,13 @@ limitations under the License.
 package api
 
 import (
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -42,13 +47,11 @@ import (
 // not positively cached, so such a budget would throttle the entire dashboard
 // the moment it got busy — trading a hypothetical outage for a real one.
 //
-// So this meters FAILURES, not traffic. A credential that authenticates
-// successfully costs nothing, however many share a source IP; each credential
-// that comes back invalid spends one token from that source's bucket, and once
-// the bucket is dry the next attempt is refused BEFORE the upstream call. A
-// flood of distinct bad credentials — the exact shape that defeats both the
-// positive cache and singleflight — runs the bucket dry in seconds, while a real
-// user's occasional expired token never approaches it.
+// So this combines two independent budgets: invalid credentials spend their
+// source-IP bucket, while EVERY credential (valid or invalid) spends a bucket
+// keyed by a process-secret HMAC of the actual bearer/session value. The latter
+// rejects one abusive valid session before another upstream call without
+// storing credentials or coupling unrelated SSR users behind one proxy IP.
 //
 // A global in-flight semaphore bounds the other axis: even admitted traffic
 // cannot have more than N upstream auth calls outstanding at once.
@@ -70,12 +73,20 @@ const (
 	authAdmissionSweep = 5 * time.Minute
 )
 
-// AuthAdmission is the per-source failure budget + global concurrency bound
+// AuthAdmission is the per-source failure budget, per-credential request and
+// concurrency budget, plus global concurrency bound
 // described above. A nil *AuthAdmission admits everything, which is exactly the
 // pre-m67 behavior.
 type AuthAdmission struct {
 	// failures meters INVALID credentials per client IP. nil ⇒ unmetered.
 	failures *core.KeyedRateLimiter[string]
+	// credentials meters every expensive upstream call by an HMAC fingerprint
+	// of the presented credential. The raw bearer/session value is never retained.
+	credentials           *core.KeyedRateLimiter[string]
+	fingerprintKey        [32]byte
+	credentialMaxInflight int
+	credentialMu          sync.Mutex
+	credentialInflight    map[string]int
 	// inflight bounds concurrent upstream auth calls process-wide. nil ⇒ unbounded.
 	inflight chan struct{}
 	// TrustedProxies resolves the real client IP behind the edge proxies, so
@@ -89,39 +100,96 @@ type AuthAdmission struct {
 // bound; with both disabled it returns nil (feature off).
 func NewAuthAdmission(failuresPerMin float64, burst, maxInflight int) *AuthAdmission {
 	a := &AuthAdmission{
-		failures: core.NewKeyedRateLimiter[string](failuresPerMin, burst, authAdmissionIdle, authAdmissionSweep),
+		failures:           core.NewKeyedRateLimiter[string](failuresPerMin, burst, authAdmissionIdle, authAdmissionSweep),
+		credentials:        core.NewKeyedRateLimiter[string](failuresPerMin, burst, authAdmissionIdle, authAdmissionSweep),
+		credentialInflight: map[string]int{},
 	}
+	_, _ = rand.Read(a.fingerprintKey[:])
 	if maxInflight > 0 {
 		a.inflight = make(chan struct{}, maxInflight)
+		a.credentialMaxInflight = maxInflight / 8
+		if a.credentialMaxInflight < 1 {
+			a.credentialMaxInflight = 1
+		}
 	}
-	if a.failures == nil && a.inflight == nil {
+	if a.failures == nil && a.credentials == nil && a.inflight == nil {
 		return nil
 	}
 	return a
 }
 
-// admit decides whether an upstream auth call may proceed for r's source. It
-// consumes nothing on the success path: it only checks that the source has
-// budget left, and reserves an in-flight slot. The returned release func MUST be
+// admit decides whether an upstream auth call may proceed for r's source and
+// credential. It spends the per-credential request budget and reserves both
+// per-credential and global in-flight slots. The returned release func MUST be
 // called when the upstream call completes.
 func (a *AuthAdmission) admit(r *http.Request) (release func(), err error) {
 	if a == nil {
 		return func() {}, nil
 	}
+	credential := a.credentialFingerprint(r)
+	if a.credentials != nil && !a.credentials.Bucket(credential).Allow() {
+		return nil, errAuthOverloaded
+	}
 	if a.failures != nil && a.failures.Bucket(a.TrustedProxies.ClientIP(r)).Tokens() < 1 {
 		return nil, errAuthOverloaded
 	}
+	releaseCredential, ok := a.acquireCredential(credential)
+	if !ok {
+		return nil, errAuthOverloaded
+	}
 	if a.inflight == nil {
-		return func() {}, nil
+		return releaseCredential, nil
 	}
 	select {
 	case a.inflight <- struct{}{}:
-		return func() { <-a.inflight }, nil
+		return func() {
+			<-a.inflight
+			releaseCredential()
+		}, nil
 	default:
+		releaseCredential()
 		// Shed rather than queue: a queued request holds a connection and its
 		// upstream deadline while the flood continues. Overload must be visible.
 		return nil, errAuthOverloaded
 	}
+}
+
+func (a *AuthAdmission) credentialFingerprint(r *http.Request) string {
+	value := r.Header.Get("Authorization")
+	if token := r.Header.Get("X-Session-Token"); token != "" {
+		value = "session:" + token
+	} else if cookie, err := r.Cookie("ory_kratos_session"); err == nil {
+		// Fingerprint only the authentication credential. Hashing the whole Cookie
+		// header would let one valid session bypass its budget by appending a fresh
+		// irrelevant cookie to every request.
+		value = "cookie:" + cookie.Value
+	}
+	if value == "" {
+		value = "source:" + a.TrustedProxies.ClientIP(r)
+	}
+	mac := hmac.New(sha256.New, a.fingerprintKey[:])
+	_, _ = mac.Write([]byte(value))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+func (a *AuthAdmission) acquireCredential(key string) (func(), bool) {
+	if a == nil || a.credentialMaxInflight <= 0 {
+		return func() {}, true
+	}
+	a.credentialMu.Lock()
+	defer a.credentialMu.Unlock()
+	if a.credentialInflight[key] >= a.credentialMaxInflight {
+		return nil, false
+	}
+	a.credentialInflight[key]++
+	return func() {
+		a.credentialMu.Lock()
+		defer a.credentialMu.Unlock()
+		a.credentialInflight[key]--
+		if a.credentialInflight[key] == 0 {
+			delete(a.credentialInflight, key)
+		}
+	}, true
 }
 
 // penalize charges r's source one token for a credential that turned out to be

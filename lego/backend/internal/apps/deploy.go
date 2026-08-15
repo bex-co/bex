@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"maps"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -2187,6 +2188,9 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	markHookRan, initialHookChanged := initialDeployHookState(req, existing, &desired)
 	final := existing.DeepCopy()
 	specChanged := applyBlueprintServiceSpec(&final.Spec, desired, fields)
+	domainsChanged := existing.Spec.Host != final.Spec.Host ||
+		!slices.Equal(existing.Spec.Hosts, final.Spec.Hosts) ||
+		!maps.Equal(existing.Spec.HostRedirects, final.Spec.HostRedirects)
 	if final.Spec.MaintenanceMode != nil {
 		if err := s.validateMaintenanceMode(ctx, final, maintenanceModeView(final.Spec.MaintenanceMode)); err != nil {
 			return AppView{}, err
@@ -2216,6 +2220,7 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 		markHookRan:        markHookRan,
 		initialHookChanged: initialHookChanged,
 		assignment:         assignment,
+		domainsChanged:     domainsChanged,
 	})
 }
 
@@ -2264,6 +2269,7 @@ type stackChanges struct {
 	markHookRan        bool
 	initialHookChanged bool
 	assignment         core.EnvironmentAssignment
+	domainsChanged     bool
 }
 
 // patchChangedStackService stages and patches an existing service the stack
@@ -2282,6 +2288,19 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		currentMaintenance = existing.Spec.MaintenanceMode.DeepCopy()
 	}
 	deploySpecChanged := changes.specChanged && !maintenanceOnly
+	if changes.domainsChanged {
+		if err := s.ensureHostsClaimable(ctx, final); err != nil {
+			return AppView{}, err
+		}
+		if appID := managedAppID(existing); appID != "" && s.Store != nil {
+			if err := s.Store.ReplaceDomains(ctx, appID, final.Spec.Host, final.Spec.Hosts); err != nil {
+				if errors.Is(err, store.ErrConflict) {
+					return AppView{}, errDomainInUse()
+				}
+				return AppView{}, fmt.Errorf("claim Blueprint domains: %w", err)
+			}
+		}
+	}
 	base := client.MergeFrom(existing.DeepCopy())
 	if deploySpecChanged {
 		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(existing.Generation+1, 10))

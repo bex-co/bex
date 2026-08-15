@@ -55,6 +55,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
+	"github.com/bex-co/bex/lego/backend/internal/drivergrant"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -554,6 +555,12 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
+	grant, err := drivergrant.Mint(s.Secret, sessionID, s.now(), 15*time.Second)
+	if err != nil {
+		sse.errorAndDone("turn dispatch failed")
+		return
+	}
+	req.Header.Set(drivergrant.Header, grant)
 	resp, err := s.httpClient().Do(req)
 	if err != nil {
 		sse.errorAndDone("turn dispatch failed")

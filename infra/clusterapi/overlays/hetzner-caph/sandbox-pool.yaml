@@ -16,7 +16,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
   name: bex-sandbox
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -30,7 +30,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
   name: bex-sandbox-cx33
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -42,7 +42,7 @@ apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
   name: bex-sandbox
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -259,7 +259,7 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
 metadata:
   name: bex-sandbox
-  namespace: default
+  namespace: bex-capi
   labels: {nodepool: bex-sandbox}
 spec:
   clusterName: bex

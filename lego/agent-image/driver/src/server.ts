@@ -15,11 +15,9 @@
  */
 
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
-import readline from "node:readline";
-import { WebSocket, WebSocketServer, type RawData } from "ws";
-import { spawnRawACP } from "./acp.js";
 import type { AgentDriverConfig } from "./config.js";
 import type { CredentialManager } from "./credentials.js";
+import { DriverGrantVerifier } from "./grant.js";
 import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
 
 export type RunTurn = (
@@ -93,49 +91,6 @@ function promptFromBody(body: Record<string, unknown>): string {
   return "";
 }
 
-function bridgeACP(
-  socket: WebSocket,
-  config: AgentDriverConfig,
-  credentialManager: CredentialManager,
-): void {
-  const child = spawnRawACP(config, credentialManager.agentEnvironment());
-  const lines = readline.createInterface({ input: child.stdout });
-
-  lines.on("line", (line) => {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.send(credentialManager.redact(line));
-    }
-  });
-  child.stderr.on("data", (chunk: Buffer) => {
-    // Agent diagnostics stay local to the sandbox and never enter ACP framing.
-    process.stderr.write(credentialManager.redact(chunk.toString()));
-  });
-  child.once("error", (error) => socket.close(1011, error.message.slice(0, 120)));
-  child.once("exit", (code) => {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.close(code === 0 ? 1000 : 1011, `agent exited ${code}`);
-    }
-  });
-  socket.on("message", (data: RawData, binary: boolean) => {
-    if (binary) {
-      socket.close(1003, "ACP transport accepts JSON text only");
-      return;
-    }
-    const line = data.toString();
-    try {
-      JSON.parse(line);
-    } catch {
-      socket.close(1007, "invalid JSON-RPC message");
-      return;
-    }
-    child.stdin.write(`${line}\n`);
-  });
-  socket.once("close", () => {
-    lines.close();
-    child.kill("SIGTERM");
-  });
-}
-
 export async function startDriverServer(
   config: AgentDriverConfig,
   credentialManager: CredentialManager,
@@ -147,6 +102,7 @@ export async function startDriverServer(
   // (the fire-and-forget path serves only GET /stream). turnInFlight enforces
   // single-flight: the agent runs one turn at a time.
   const runTurn = options.runTurn;
+  const grants = new DriverGrantVerifier(config.grantPublicKey, config.sessionID);
   let turnInFlight = false;
   const server = http.createServer((request, response) => {
     const url = new URL(request.url || "/", "http://bex-agent-driver.invalid");
@@ -161,6 +117,11 @@ export async function startDriverServer(
       return;
     }
     if (request.method === "POST" && url.pathname === "/turn") {
+      if (!grants.consume(request)) {
+        response.writeHead(401, { "content-type": "application/json" });
+        response.end('{"error":"valid single-use driver grant required"}\n');
+        return;
+      }
       if (!runTurn) {
         response.writeHead(501, { "content-type": "application/json" });
         response.end('{"error":"live turns not enabled"}\n');
@@ -225,19 +186,6 @@ export async function startDriverServer(
     response.writeHead(404, { "content-type": "application/json" });
     response.end('{"error":"not found"}\n');
   });
-  const sockets = new WebSocketServer({ noServer: true });
-  server.on("upgrade", (request, socket, head) => {
-    const url = new URL(request.url || "/", "http://bex-agent-driver.invalid");
-    if (url.pathname !== "/acp") {
-      socket.destroy();
-      return;
-    }
-    sockets.handleUpgrade(request, socket, head, (websocket) => {
-      sockets.emit("connection", websocket, request);
-    });
-  });
-  sockets.on("connection", (socket: WebSocket) => bridgeACP(socket, config, credentialManager));
-
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
     server.listen(config.listenPort, config.listenHost, resolve);
@@ -246,8 +194,6 @@ export async function startDriverServer(
     server,
     address: server.address(),
     async close() {
-      for (const socket of sockets.clients) socket.terminate();
-      await new Promise<void>((resolve) => sockets.close(() => resolve()));
       await new Promise<void>((resolve, reject) =>
         server.close((error) => (error ? reject(error) : resolve())),
       );

@@ -359,11 +359,15 @@ func main() {
 	}
 	deps.ShellWSURL = os.Getenv("BEX_SHELL_WS_URL")
 	deps.AgentSessionGatewayURL = os.Getenv("BEX_AGENT_SESSION_GATEWAY_URL")
-	// Optional override of the in-cluster gateway git-credential broker URL the
-	// sandbox helper calls (ADR047 D2); empty => the default internal gateway URL.
-	deps.AgentCredentialURL = os.Getenv("BEX_AGENT_CREDENTIAL_URL")
+	// Optional override of the in-cluster Git smart-HTTP proxy origin. The
+	// sandbox receives this non-secret URL, never a GitHub credential.
+	deps.AgentGitProxyURL = os.Getenv("BEX_AGENT_GIT_PROXY_URL")
 
 	srv := api.NewServer(base, deps)
+	// Membership rows and exact OpenFGA roles are joined by a transactional
+	// Postgres outbox. Drain it independently of request retries so an invite or
+	// downgrade survives transient OpenFGA failures and process restarts.
+	go srv.Members.RunRoleReconciler(ctx)
 	// The agent-session Completer finalizes fire-and-forget sessions: it opens the
 	// draft PR + records evidence for completed turns (ADR047 D4, w3/m41). It is a
 	// no-op unless the store, OpenSandbox, and GitHub App are all wired.
@@ -1033,10 +1037,10 @@ func configureRateLimiters(srv *api.Server) {
 	// Pre-auth admission (w1/m67 F1). The per-caller limiter above runs INSIDE
 	// the auth gate, keyed on the resolved identity, so it cannot bound the work
 	// of resolving an identity: with no negative cache, every unique invalid
-	// bearer/session costs one Hydra or Kratos round trip. This budget charges
-	// only credentials that come back INVALID (a successful auth costs nothing,
-	// so the dashboard's one-pod-IP SSR traffic is never throttled) and caps how
-	// many upstream auth calls may be in flight at once.
+	// bearer/session costs one Hydra or Kratos round trip. Invalid credentials
+	// spend a source-IP budget; every credential also has its own HMAC-keyed
+	// request/concurrency partition, so one stolen valid session is shed before
+	// upstream I/O without throttling unrelated SSR users behind the same IP.
 	// BEX_AUTH_FAILURE_LIMIT=0 + BEX_AUTH_MAX_INFLIGHT=0 disables both.
 	authFailureRPM, authFailureBurst := rateLimitEnv("BEX_AUTH_FAILURE_LIMIT", "60", "BEX_AUTH_FAILURE_BURST", "0")
 	authMaxInflight, err := strconv.Atoi(envOr("BEX_AUTH_MAX_INFLIGHT", "64"))

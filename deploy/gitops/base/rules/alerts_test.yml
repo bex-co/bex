@@ -523,7 +523,7 @@ tests:
   - name: AdminCertExpiringSoon fires within 30d window
     interval: 1m
     input_series:
-      - series: 'kube_secret_created{namespace="default", secret="bex-kubeconfig"}'
+      - series: 'kube_secret_created{namespace="bex-capi", secret="bex-kubeconfig"}'
         values: "-29000000x70"
     alert_rule_test:
       - eval_time: 62m
@@ -531,7 +531,7 @@ tests:
         exp_alerts:
           - exp_labels:
               severity: warning
-              namespace: default
+              namespace: bex-capi
               secret: bex-kubeconfig
             exp_annotations:
               summary: "App cluster admin cert (bex-kubeconfig) expires within 30d"
@@ -541,7 +541,7 @@ tests:
     interval: 1m
     input_series:
       # created = 0 → remaining = 0 + 31536000 - 3720 = 31532280s ≈ 365d >> 30d → no fire
-      - series: 'kube_secret_created{namespace="default", secret="bex-kubeconfig"}'
+      - series: 'kube_secret_created{namespace="bex-capi", secret="bex-kubeconfig"}'
         values: "0x70"
     alert_rule_test:
       - eval_time: 62m

@@ -75,6 +75,39 @@ func TestCreateRejectsReservedAndClaimedHosts(t *testing.T) {
 	}
 }
 
+func TestBlueprintResyncRejectsReservedAndForeignHosts(t *testing.T) {
+	victim := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "victim", Namespace: "default", Labels: map[string]string{core.LabelAppID: "srv-victim"}},
+		Spec:       appv1alpha1.AppSpec{Image: "img:1", Hosts: []string{"victim.example.com"}},
+	}
+	attacker := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "attacker", Namespace: "default", Labels: map[string]string{core.LabelAppID: "srv-attacker"}},
+		Spec:       appv1alpha1.AppSpec{Image: "img:1"},
+	}
+	for _, host := range []string{"victim.example.com", "someone-else.onbex.co"} {
+		svc, cl := newBaseDomainService("onbex.co", "dashboard.bex.co", victim.DeepCopy(), attacker.DeepCopy())
+		manifest := fmt.Sprintf("services:\n  - {name: attacker, type: web, runtime: image, image: {url: img:1}, domains: [%s]}\n", host)
+		if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err == nil {
+			t.Fatalf("Blueprint re-sync claimed %q", host)
+		}
+		if got := getApp(t, cl, "attacker").Spec; got.Host != "" || len(got.Hosts) != 0 {
+			t.Fatalf("refused Blueprint claim mutated App hosts: %+v", got)
+		}
+	}
+}
+
+func TestHostOwnershipExemptionUsesImmutableIdentity(t *testing.T) {
+	owner := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+		Name: "web", Namespace: "tea-a", Labels: map[string]string{core.LabelAppID: "srv-owner"},
+	}}
+	sameNameOtherTenant := appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+		Name: "web", Namespace: "tea-b", Labels: map[string]string{core.LabelAppID: "srv-other"},
+	}, Spec: appv1alpha1.AppSpec{Hosts: []string{"claimed.example.com"}}}
+	if !hostClaimedInApps([]appv1alpha1.App{sameNameOtherTenant}, owner, "claimed.example.com") {
+		t.Fatal("same service name in another tenant was mistaken for the owning App")
+	}
+}
+
 // TestReservedHostExemptsSlugNotAppName is the regression guard for codex F5.
 // The reserved-`*.<base>` exemption formerly compared the caller-supplied App CR
 // NAME (`<appName>.<base>`), but App names are only workspace-local (ADR043), so

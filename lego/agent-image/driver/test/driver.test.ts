@@ -15,6 +15,7 @@
  */
 
 import assert from "node:assert/strict";
+import { generateKeyPairSync, randomUUID, sign } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import {
   chmod,
@@ -28,7 +29,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { WebSocket } from "ws";
 import { loadConfig, type AgentDriverConfig } from "../src/config.js";
 import { createCredentialManager, type CredentialManager } from "../src/credentials.js";
 import { runHeadlessTurn } from "../src/session.js";
@@ -37,6 +37,16 @@ import { UIMessageStreamHub } from "../src/stream-hub.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fixture = path.join(here, "..", "fixtures", "acp-agent.mjs");
+const grantKeys = generateKeyPairSync("ed25519");
+const grantPublicKey = (grantKeys.publicKey.export({ format: "jwk" }) as JsonWebKey).x!;
+
+function turnGrant(sessionID = "ags-test"): string {
+  const now = Math.floor(Date.now() / 1000);
+  const body = Buffer.from(JSON.stringify({
+    ses: sessionID, act: "turn", iat: now, exp: now + 30, jti: randomUUID(),
+  })).toString("base64url");
+  return `${body}.${sign(null, Buffer.from(body), grantKeys.privateKey).toString("base64url")}`;
+}
 
 type TestConfig = AgentDriverConfig & { root: string };
 
@@ -67,6 +77,8 @@ async function tempConfig(
     turnTimeoutMs: 1_000,
     credentialEnvName: "ANTHROPIC_API_KEY",
     modelCredential: "test-model-key-never-log",
+    sessionID: "ags-test",
+    grantPublicKey,
     agentEnv: {},
     scrubRoots: [workspace],
     root,
@@ -78,15 +90,15 @@ function manager(config: AgentDriverConfig): CredentialManager {
   return createCredentialManager(config, {});
 }
 
-test("configuration keeps command and args fully data-driven", () => {
+test("configuration accepts only operator-owned adapter paths", () => {
   const config = loadConfig({
-    BEX_AGENT_COMMAND: "gemini",
+    BEX_AGENT_COMMAND: "/usr/local/bin/gemini",
     BEX_AGENT_ARGS: '["--experimental-acp"]',
     BEX_AGENT_CWD: "/tmp/repo",
     BEX_AGENT_LISTEN_PORT: "9000",
     BEX_AGENT_ENV_JSON: '{"MODE":"auto"}',
   });
-  assert.equal(config.command, "gemini");
+  assert.equal(config.command, "/usr/local/bin/gemini");
   assert.deepEqual(config.args, ["--experimental-acp"]);
   assert.deepEqual(config.agentEnv, { MODE: "auto" });
   assert.deepEqual(config.scrubRoots, [
@@ -98,6 +110,14 @@ test("configuration keeps command and args fully data-driven", () => {
     "/var/run/bex-agent",
   ]);
   assert.throws(() => loadConfig({ BEX_AGENT_ARGS: "--flag" }), /JSON array/);
+  assert.throws(
+    () => loadConfig({ BEX_AGENT_COMMAND: "./tenant-adapter" }),
+    /installed agent adapter path/,
+  );
+  assert.throws(
+    () => loadConfig({ BEX_AGENT_COMMAND: "/workspace/tenant-adapter" }),
+    /installed agent adapter path/,
+  );
   assert.throws(
     () =>
       loadConfig({
@@ -370,10 +390,20 @@ test("POST /turn runs a live turn, streams its parts, and single-flights", async
   try {
     const turnURL = `http://127.0.0.1:${(listener.address as { port: number }).port}/turn`;
 
+    // Same-Pod code can reach localhost but cannot launch a model-key-bearing
+    // agent without the gateway's signed, action-bound grant.
+    const unauthorized = await fetch(turnURL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ prompt: "steal the model key" }),
+    });
+    assert.equal(unauthorized.status, 401);
+    await unauthorized.text();
+
     // A missing prompt is a 400.
     const empty = await fetch(turnURL, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-bex-driver-grant": turnGrant() },
       body: "{}",
     });
     assert.equal(empty.status, 400);
@@ -383,7 +413,7 @@ test("POST /turn runs a live turn, streams its parts, and single-flights", async
     // terminates with [DONE]; the hub is NOT closed, so the session stays live.
     const response = await fetch(turnURL, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-bex-driver-grant": turnGrant() },
       body: JSON.stringify({ messages: [{ role: "user", parts: [{ type: "text", text: "make the change" }] }] }),
     });
     assert.equal(response.status, 200);
@@ -397,17 +427,33 @@ test("POST /turn runs a live turn, streams its parts, and single-flights", async
     assert.ok(hub.history.some((part) => part.type === "data-acp"));
     const second = await fetch(turnURL, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-bex-driver-grant": turnGrant() },
       body: JSON.stringify({ prompt: "another turn" }),
     });
     assert.equal(second.status, 200);
     await second.text();
+
+    const replayGrant = turnGrant();
+    const accepted = await fetch(turnURL, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-bex-driver-grant": replayGrant },
+      body: JSON.stringify({ prompt: "one use" }),
+    });
+    assert.equal(accepted.status, 200);
+    await accepted.text();
+    const replayed = await fetch(turnURL, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-bex-driver-grant": replayGrant },
+      body: JSON.stringify({ prompt: "replay" }),
+    });
+    assert.equal(replayed.status, 401);
+    await replayed.text();
   } finally {
     await listener.close();
   }
 });
 
-test("raw ACP WebSocket round-trips initialize to agent stdio", async () => {
+test("raw ACP launch route is absent", async () => {
   const config = await tempConfig();
   const listener = await startDriverServer(
     config,
@@ -415,28 +461,11 @@ test("raw ACP WebSocket round-trips initialize to agent stdio", async () => {
     new UIMessageStreamHub(),
   );
   try {
-    const response = await new Promise<Record<string, any>>((resolve, reject) => {
-      const socket = new WebSocket(
-        `ws://127.0.0.1:${(listener.address as { port: number }).port}/acp`,
-      );
-      socket.once("error", reject);
-      socket.once("open", () => {
-        socket.send(
-          JSON.stringify({
-            jsonrpc: "2.0",
-            id: 42,
-            method: "initialize",
-            params: { protocolVersion: 1, clientCapabilities: {} },
-          }),
-        );
-      });
-      socket.once("message", (data) => {
-        resolve(JSON.parse(data.toString()));
-        socket.close();
-      });
-    });
-    assert.equal(response.id, 42);
-    assert.equal(response.result.agentInfo.name, "bex-test-acp-agent");
+    const response = await fetch(
+      `http://127.0.0.1:${(listener.address as { port: number }).port}/acp`,
+      { method: "POST" },
+    );
+    assert.equal(response.status, 404);
   } finally {
     await listener.close();
   }

@@ -38,7 +38,7 @@ spec:
       containers:
         - name: buildkit
           # = lego/operator/internal/build/build.go defaultBuildkitImage
-          image: moby/buildkit:v0.30.0
+          image: moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f
           command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
           imagePullPolicy: IfNotPresent
           resources:

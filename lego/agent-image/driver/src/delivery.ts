@@ -94,8 +94,8 @@ async function detectBaseBranch(cwd: string, fallback: string): Promise<string> 
 
 // ensureRepo makes the workspace a checkout of the session branch. A pre-cloned
 // workspace is left alone; an empty one is cloned and switched to the branch
-// (created from the default when it does not exist remotely). Clone/fetch use
-// the system-wide bex Git credential helper.
+// (created from the default when it does not exist remotely). The remote is the
+// Pod-bound gateway smart-HTTP proxy; no GitHub credential enters this process.
 export async function ensureRepo(
   config: DeliveryConfig & { repoUrl: string },
 ): Promise<void> {

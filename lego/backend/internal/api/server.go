@@ -259,7 +259,7 @@ type Deps struct {
 	AgentSessionTuples       agentsessions.TupleWriter
 	AgentSessionTicketSecret []byte
 	AgentSessionGatewayURL   string
-	AgentCredentialURL       string
+	AgentGitProxyURL         string
 	// SSHHost is the public gateway hostname advertised through Render's
 	// serviceDetails.sshAddress field. Empty disables SSH address advertising.
 	SSHHost string
@@ -639,7 +639,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		AgentSessions: &agentsessions.Service{
 			Base: base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
 			Sandbox: agentLifecycle, TicketSecret: d.AgentSessionTicketSecret,
-			GatewayURL: d.AgentSessionGatewayURL, CredentialURL: d.AgentCredentialURL,
+			GatewayURL: d.AgentSessionGatewayURL, GitProxyURL: d.AgentGitProxyURL,
 			SSHHost: sshHost, ModelKeys: d.Secrets, GitHub: gh,
 		},
 		AgentSessionCompleter: &agentsessions.Completer{

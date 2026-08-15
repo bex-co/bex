@@ -133,6 +133,16 @@ type MembersStore interface {
 	OwnerIDForSubject(ctx context.Context, subject string) (string, error)
 }
 
+// RoleReconciliationStore is the durable Postgres outbox used to converge an
+// already-committed membership role into OpenFGA. It stays optional so DB-less
+// deployments and the feature's narrow unit-test fakes retain their historical
+// behavior; *store.PGStore implements it.
+type RoleReconciliationStore interface {
+	ClaimRoleReconciliations(ctx context.Context, limit int) ([]store.RoleReconciliation, error)
+	CompleteRoleReconciliation(ctx context.Context, tenantID, subject, role string) error
+	FailRoleReconciliation(ctx context.Context, tenantID, subject, role, message string) error
+}
+
 // IdentityAttrs is the slice of identity-provider state a member row is
 // enriched with: the email (w6/m10) plus the MFA-enrollment flag (w1/m33 —
 // Render's Team Members query carries user.otpEnabled; bex spells it
@@ -216,9 +226,10 @@ type SeatUsageView struct {
 // AcceptedInviteView is what redeeming an invite token returns: the workspace
 // joined, its display name (for the dashboard's toast), and the role granted.
 type AcceptedInviteView struct {
-	WorkspaceID   string `json:"workspaceId"`
-	WorkspaceName string `json:"workspaceName"`
-	Role          string `json:"role"`
+	WorkspaceID          string `json:"workspaceId"`
+	WorkspaceName        string `json:"workspaceName"`
+	Role                 string `json:"role"`
+	AuthorizationPending bool   `json:"authorizationPending,omitempty"`
 }
 
 func memberView(m store.TenantMember) MemberView {
@@ -477,15 +488,15 @@ func (s *Service) AcceptInvite(ctx context.Context, token string) (AcceptedInvit
 	if err != nil {
 		return AcceptedInviteView{}, mapAcceptInviteErr(err)
 	}
-	if err := s.reconcileExactRole(ctx, inv.TenantID, "user:"+id.Subject, inv.Role); err != nil {
-		// Row is the source of truth; the tuple is re-driven on the next login
-		// (tenancy's ensureGranted path), same best-effort model as the email path.
-		// Reconcile (not bare grant) so redeeming an invite for an EXISTING member
-		// drops the prior role rather than leaving both effective (F7).
+	pending, err := s.reconcileQueuedRole(ctx, inv.TenantID, id.Subject, inv.Role)
+	if err != nil {
+		// The membership and its reconciliation row committed atomically. Surface
+		// the degraded state explicitly while the background worker retries; the
+		// caller must never infer that OpenFGA already reflects the returned role.
 		log.Printf("members: reconciling %s on workspace %s to %s: %v", inv.Role, inv.TenantID, id.Subject, err)
 	}
 	s.recordAccepted(ctx, inv, id)
-	view := AcceptedInviteView{WorkspaceID: inv.TenantID, Role: wireRole(inv.Role)}
+	view := AcceptedInviteView{WorkspaceID: inv.TenantID, Role: wireRole(inv.Role), AuthorizationPending: pending}
 	if tenant, err := s.Store.GetTenant(ctx, inv.TenantID); err == nil {
 		view.WorkspaceName = tenant.Name
 	}
@@ -561,8 +572,9 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 		// check-before-write. Without a checker (authz off) it degrades to a bare
 		// idempotent grant — the historical no-op, since a missing tuple can't be
 		// told from a present one. No audit row — nothing changed.
-		if s.Base != nil && s.Base.Authz != nil {
-			if err := s.reconcileExactRole(ctx, workspaceID, "user:"+subject, role); err != nil {
+		_, queued := s.Store.(RoleReconciliationStore)
+		if queued || (s.Base != nil && s.Base.Authz != nil) {
+			if _, err := s.reconcileQueuedRole(ctx, workspaceID, subject, role); err != nil {
 				return MemberView{}, err
 			}
 		}
@@ -581,22 +593,103 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	if err := s.Store.UpdateMemberRole(ctx, workspaceID, subject, role); err != nil {
 		return MemberView{}, mapStoreErr(err)
 	}
-	// Grant the new relation (idempotent via grantRole's check-before-write) then
-	// revoke the OLD one, SURFACING any failure (F7 — the revoke error used to be
-	// discarded, leaving a stale higher tuple authorizing after a downgrade). A
-	// returned error is retryable: a retry re-enters via the m.Role == role branch
-	// above (the row is already updated), which repairs the grant. A role UPGRADE
-	// takes effect immediately; a DOWNGRADE is subject to the auth gate's ≤30s
-	// positive-check TTL on the old relation, an acceptable staleness for a revoke.
+	// The row update and durable reconciliation intent committed together. Apply
+	// the known old->new transition synchronously (this also works in the legacy
+	// granter-without-checker mode), but retain the outbox row on either failure.
 	if err := s.grantRole(ctx, workspaceID, "user:"+subject, role); err != nil {
+		s.failQueuedRole(ctx, workspaceID, subject, role, err)
 		return MemberView{}, fmt.Errorf("workspace %s: granting role %q: %w", workspaceID, role, err)
 	}
 	if err := s.revokeRoleErr(ctx, workspaceID, "user:"+subject, m.Role); err != nil {
+		s.failQueuedRole(ctx, workspaceID, subject, role, err)
 		return MemberView{}, fmt.Errorf("workspace %s: revoking prior role %q: %w", workspaceID, m.Role, err)
+	}
+	if err := s.completeQueuedRole(ctx, workspaceID, subject, role); err != nil {
+		return MemberView{}, err
 	}
 	s.RecordMemberRoleChanged(ctx, workspaceID, subject, m.Role, role)
 	m.Role = role
 	return memberView(m), nil
+}
+
+// reconcileQueuedRole applies the exact source-of-truth role, then acknowledges
+// the matching outbox row. pending is true only when convergence failed and the
+// durable row remains queued. A role changed again concurrently is safe: the
+// conditional acknowledgement cannot delete the newer desired role.
+func (s *Service) reconcileQueuedRole(ctx context.Context, tenantID, subject, role string) (pending bool, err error) {
+	if err := s.reconcileExactRole(ctx, tenantID, "user:"+subject, role); err != nil {
+		if saveErr := s.failQueuedRole(ctx, tenantID, subject, role, err); saveErr != nil {
+			return true, errors.Join(err, fmt.Errorf("record role reconciliation failure: %w", saveErr))
+		}
+		return true, err
+	}
+	if err := s.completeQueuedRole(ctx, tenantID, subject, role); err != nil {
+		return true, err
+	}
+	return false, nil
+}
+
+func (s *Service) completeQueuedRole(ctx context.Context, tenantID, subject, role string) error {
+	if queue, ok := s.Store.(RoleReconciliationStore); ok {
+		if err := queue.CompleteRoleReconciliation(ctx, tenantID, subject, role); err != nil {
+			return fmt.Errorf("acknowledge role reconciliation: %w", err)
+		}
+	}
+	return nil
+}
+
+func (s *Service) failQueuedRole(ctx context.Context, tenantID, subject, role string, reconcileErr error) error {
+	if queue, ok := s.Store.(RoleReconciliationStore); ok {
+		return queue.FailRoleReconciliation(ctx, tenantID, subject, role, reconcileErr.Error())
+	}
+	return nil
+}
+
+// ReconcilePendingRoles claims and repairs one bounded batch of durable role
+// intents. Claim leases plus conditional acknowledgement make this safe across
+// multiple bex-api replicas and crashes between the OpenFGA write and DB ack.
+func (s *Service) reconcilePendingRoles(ctx context.Context, limit int) error {
+	queue, ok := s.Store.(RoleReconciliationStore)
+	if !ok {
+		return nil
+	}
+	rows, err := queue.ClaimRoleReconciliations(ctx, limit)
+	if err != nil {
+		return err
+	}
+	for _, row := range rows {
+		if _, err := s.reconcileQueuedRole(ctx, row.TenantID, row.Subject, row.Role); err != nil {
+			log.Printf("members: queued role reconciliation %s/%s=%s: %v", row.TenantID, row.Subject, row.Role, err)
+			if errors.Is(err, context.Canceled) {
+				return err
+			}
+			continue
+		}
+	}
+	return nil
+}
+
+// RunRoleReconciler continuously drains the membership-role outbox.
+func (s *Service) RunRoleReconciler(ctx context.Context) {
+	if _, ok := s.Store.(RoleReconciliationStore); !ok {
+		return
+	}
+	run := func() {
+		if err := s.reconcilePendingRoles(ctx, 100); err != nil && !errors.Is(err, context.Canceled) {
+			log.Printf("members: role reconciliation sweep: %v", err)
+		}
+	}
+	run()
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			run()
+		}
+	}
 }
 
 // Remove drops a member from a workspace: the row then its OpenFGA tuple.
@@ -686,7 +779,7 @@ func (s *Service) grantRole(ctx context.Context, tenantID, subject, relation str
 		return nil
 	}
 	if s.Base != nil && s.Base.Authz != nil {
-		if ok, err := s.Base.Authz.Check(ctx, subject, relation, core.WorkspaceObject(tenantID)); err == nil && ok {
+		if ok, err := s.checkRoleFresh(ctx, subject, relation, tenantID); err == nil && ok {
 			return nil
 		}
 	}
@@ -721,7 +814,7 @@ func (s *Service) reconcileExactRole(ctx context.Context, tenantID, subject, rol
 		// higher-role tuple the OR-based model keeps effective. On an indeterminate
 		// check, attempt the revoke (deleting an absent tuple is idempotent) and
 		// surface any real error via errs so it isn't lost.
-		ok, err := s.Base.Authz.Check(ctx, subject, other, core.WorkspaceObject(tenantID))
+		ok, err := s.checkRoleFresh(ctx, subject, other, tenantID)
 		if err == nil && !ok {
 			continue
 		}
@@ -730,6 +823,14 @@ func (s *Service) reconcileExactRole(ctx context.Context, tenantID, subject, rol
 		}
 	}
 	return errors.Join(errs...)
+}
+
+func (s *Service) checkRoleFresh(ctx context.Context, subject, relation, tenantID string) (bool, error) {
+	object := core.WorkspaceObject(tenantID)
+	if fresh, ok := s.Base.Authz.(core.FreshChecker); ok {
+		return fresh.CheckFresh(ctx, subject, relation, object)
+	}
+	return s.Base.Authz.Check(ctx, subject, relation, object)
 }
 
 // revokeRoleErr removes a member's role tuple, SURFACING the error (unlike the

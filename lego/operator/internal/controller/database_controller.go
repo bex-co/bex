@@ -1245,7 +1245,8 @@ func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
+					RestartPolicy:                corev1.RestartPolicyNever,
+					AutomountServiceAccountToken: ptr(false),
 					Containers: []corev1.Container{{
 						Name:    "purge",
 						Image:   publish.DefaultAWSCLIImage,

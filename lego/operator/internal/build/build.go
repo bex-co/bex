@@ -58,14 +58,14 @@ const (
 // node, and its default process sandbox keeps Dockerfile RUN processes out of
 // the daemon's PID namespace.
 const (
-	defaultBuildkitImage = "moby/buildkit:v0.30.0"
-	defaultGitImage      = "alpine/git:v2.43.0"
+	defaultBuildkitImage = "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"
+	defaultGitImage      = "alpine/git:v2.43.0@sha256:76fdb7210689fc26c6ff101c4adacf9d12d3d25a919a7d8ff42ebaef5bedba65"
 	defaultPushImage     = "quay.io/skopeo/stable@sha256:c7d3c512612f52805023cd38351081dad7e2729fc13d14b701e47c7c8bdd6615" // v1.22.2 multi-arch manifest
 )
 
 // defaultSignImage is the cosign image the signing container runs when tenant
 // image signing is enabled (w6/006). Pinned; bump deliberately.
-const defaultSignImage = "gcr.io/projectsigstore/cosign:v2.4.1"
+const defaultSignImage = "gcr.io/projectsigstore/cosign:v2.4.1@sha256:b03690aa52bfe94054187142fba24dc54137650682810633901767d8a3e15b31"
 
 // buildTimeout bounds a single build Job's wall-clock before Build gives up
 // waiting (the Job's own activeDeadlineSeconds matches, so a stuck build is

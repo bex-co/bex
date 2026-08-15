@@ -1,0 +1,200 @@
+# The operator necessarily has cluster-wide workload verbs because tenant
+# namespaces are dynamic. RBAC cannot express the intended namespace and Pod
+# grammar, so enforce it at the API server for the exact operator identity.
+# This is a compromise-containment boundary: even arbitrary controller code may
+# author workloads only in tenant hosting / isolated execution namespaces, with
+# no Kubernetes credential, host namespace, hostPath, privileged container, or
+# direct mount of known CAPI crown-jewel Secrets.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: bex-operator-workloads
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["deployments", "statefulsets"]
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["jobs", "cronjobs"]
+  matchConditions:
+    - name: bex-operator-service-account
+      expression: request.userInfo.username == 'system:serviceaccount:bex-system:bex-controller-manager'
+  variables:
+    - name: target
+      expression: object
+    - name: pod
+      expression: >-
+        request.resource.resource == 'cronjobs' ?
+          variables.target.spec.jobTemplate.spec.template.spec :
+          variables.target.spec.template.spec
+    - name: workspace
+      expression: namespaceObject.metadata.?labels['app.bex.co/workspace'].orValue('')
+    - name: canonicalNamespace
+      expression: >-
+        variables.target.metadata.namespace == 'default' ||
+        (namespaceObject != null &&
+         ((namespaceObject.metadata.?labels['app.bex.co/execution-boundary'].orValue('') == 'untrusted') ||
+          (namespaceObject.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-controlplane' &&
+           namespaceObject.metadata.?labels['app.kubernetes.io/part-of'].orValue('') == 'bex' &&
+           namespaceObject.metadata.?labels['app.bex.co/regime'].orValue('') == 'hosting' &&
+           variables.workspace.matches('^tea-[0-9a-v]{20}$') &&
+           namespaceObject.metadata.name == variables.workspace)))
+    - name: crownSecrets
+      expression: "['bex-kubeconfig', 'bex-ca', 'bex-etcd', 'bex-proxy', 'bex-sa']"
+  validations:
+    - expression: variables.canonicalNamespace
+      reason: Forbidden
+      message: the bex operator may create workloads only in canonical tenant hosting, isolated execution, or legacy bootstrap namespaces
+    - expression: >-
+        (!has(variables.pod.serviceAccountName) || variables.pod.serviceAccountName in ['', 'default']) &&
+        has(variables.pod.automountServiceAccountToken) && variables.pod.automountServiceAccountToken == false
+      reason: Forbidden
+      message: operator-authored workloads must use no privileged ServiceAccount and must disable token automount
+    - expression: >-
+        !variables.pod.?hostNetwork.orValue(false) &&
+        !variables.pod.?hostPID.orValue(false) &&
+        !variables.pod.?hostIPC.orValue(false) &&
+        (!has(variables.pod.volumes) || variables.pod.volumes.all(v,
+          !has(v.hostPath) && (!has(v.secret) || !(v.secret.secretName in variables.crownSecrets))))
+      reason: Forbidden
+      message: operator-authored workloads may not join host namespaces, mount host paths, or mount CAPI administrator Secrets
+    - expression: >-
+        variables.pod.containers.all(c,
+          !c.?securityContext.?privileged.orValue(false) &&
+          (!has(c.envFrom) || c.envFrom.all(e, !has(e.secretRef) || !(e.secretRef.name in variables.crownSecrets))) &&
+          (!has(c.env) || c.env.all(e, !has(e.valueFrom) || !has(e.valueFrom.secretKeyRef) || !(e.valueFrom.secretKeyRef.name in variables.crownSecrets)))) &&
+        (!has(variables.pod.initContainers) || variables.pod.initContainers.all(c,
+          !c.?securityContext.?privileged.orValue(false) &&
+          (!has(c.envFrom) || c.envFrom.all(e, !has(e.secretRef) || !(e.secretRef.name in variables.crownSecrets))) &&
+          (!has(c.env) || c.env.all(e, !has(e.valueFrom) || !has(e.valueFrom.secretKeyRef) || !(e.valueFrom.secretKeyRef.name in variables.crownSecrets)))))
+      reason: Forbidden
+      message: operator-authored containers may not be privileged or consume CAPI administrator Secrets
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-operator-workloads
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-operator-workloads
+  validationActions: [Deny, Audit]
+---
+# Services are not Pod templates, so they use a separate namespace-only policy;
+# ExternalName shape is additionally constrained by operator-alias-admission.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: bex-operator-service-namespaces
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["services"]
+  matchConditions:
+    - name: bex-operator-service-account
+      expression: request.userInfo.username == 'system:serviceaccount:bex-system:bex-controller-manager'
+  variables:
+    - name: workspace
+      expression: namespaceObject.metadata.?labels['app.bex.co/workspace'].orValue('')
+  validations:
+    - expression: >-
+        object.metadata.namespace == 'default' ||
+        (namespaceObject != null &&
+         ((namespaceObject.metadata.?labels['app.bex.co/execution-boundary'].orValue('') == 'untrusted') ||
+          (namespaceObject.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-controlplane' &&
+           namespaceObject.metadata.?labels['app.kubernetes.io/part-of'].orValue('') == 'bex' &&
+           namespaceObject.metadata.?labels['app.bex.co/regime'].orValue('') == 'hosting' &&
+           variables.workspace.matches('^tea-[0-9a-v]{20}$') &&
+           namespaceObject.metadata.name == variables.workspace)))
+      reason: Forbidden
+      message: the bex operator may create Services only in canonical tenant hosting, isolated execution, or legacy bootstrap namespaces
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-operator-service-namespaces
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-operator-service-namespaces
+  validationActions: [Deny, Audit]
+---
+# The operator also authors routing, certificate, kpack, CNPG, and bex CRs.
+# Several of those controllers can materialize workloads on its behalf, so the
+# namespace boundary must cover the declarative objects as well as direct Pod
+# templates and Services.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: bex-operator-object-namespaces
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["app.bex.co"]
+        apiVersions: ["v1alpha1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["apps", "databases", "keyvalues"]
+      - apiGroups: ["cert-manager.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["certificates"]
+      - apiGroups: ["kpack.io"]
+        apiVersions: ["v1alpha2"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["images"]
+      - apiGroups: ["networking.k8s.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["ingresses", "networkpolicies"]
+      - apiGroups: ["postgresql.cnpg.io"]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["backups", "clusters", "poolers", "scheduledbackups"]
+      - apiGroups: ["traefik.io"]
+        apiVersions: ["v1alpha1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["ingressroutetcps", "middlewares", "middlewaretcps"]
+  matchConditions:
+    - name: bex-operator-service-account
+      expression: request.userInfo.username == 'system:serviceaccount:bex-system:bex-controller-manager'
+  variables:
+    - name: workspace
+      expression: namespaceObject.metadata.?labels['app.bex.co/workspace'].orValue('')
+  validations:
+    - expression: >-
+        object.metadata.namespace == 'default' ||
+        (namespaceObject != null &&
+         ((namespaceObject.metadata.?labels['app.bex.co/execution-boundary'].orValue('') == 'untrusted') ||
+          (namespaceObject.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-controlplane' &&
+           namespaceObject.metadata.?labels['app.kubernetes.io/part-of'].orValue('') == 'bex' &&
+           namespaceObject.metadata.?labels['app.bex.co/regime'].orValue('') == 'hosting' &&
+           variables.workspace.matches('^tea-[0-9a-v]{20}$') &&
+           namespaceObject.metadata.name == variables.workspace)))
+      reason: Forbidden
+      message: the bex operator may create managed objects only in canonical tenant hosting, isolated execution, or legacy bootstrap namespaces
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-operator-object-namespaces
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-operator-object-namespaces
+  validationActions: [Deny, Audit]

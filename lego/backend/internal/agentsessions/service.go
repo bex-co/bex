@@ -30,6 +30,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/drivergrant"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
@@ -123,9 +124,9 @@ type Service struct {
 	// `ags-<xid>@<host>` for the "Open in Zed" affordance (ADR054 D5). Empty =>
 	// no address is surfaced and the feature is invisible (byte-identical default).
 	SSHHost string
-	// CredentialURL is the in-cluster gateway git-credential broker endpoint the
-	// sandbox's helper calls (ADR047 D2). Empty => defaultCredentialURL.
-	CredentialURL string
+	// GitProxyURL is the trusted in-cluster smart-HTTP origin. Empty uses the
+	// gateway default; the derived repository URL carries no credential.
+	GitProxyURL string
 	// ModelKeys, when set (BEX_OPENBAO_URL wired), sources each workspace's BYO
 	// agent-session model provider key at session-create time (ADR047 D7). nil
 	// => sessions start with no model key (byte-identical to before this field
@@ -245,6 +246,11 @@ func validateCreate(req *CreateRequest) error {
 	if strings.TrimSpace(req.Repo) == "" || strings.TrimSpace(req.AgentConfig.Agent) == "" || strings.TrimSpace(req.AgentConfig.Task) == "" {
 		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "repo, agentConfig.agent, and agentConfig.task are required", nil)
 	}
+	agent := strings.ToLower(strings.TrimSpace(req.AgentConfig.Agent))
+	if _, ok := agentCommands[agent]; !ok {
+		return core.NewBadRequestError("AGENT_SESSION_AGENT_INVALID", "agentConfig.agent must name a supported agent profile", map[string]any{"field": "agentConfig.agent"})
+	}
+	req.AgentConfig.Agent = agent
 	if strings.TrimSpace(req.Branch) == "" {
 		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "branch is required", map[string]any{"field": "branch"})
 	}
@@ -339,7 +345,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		modelEndpoint: modelEndpoint,
 		modelAPIKey:   modelAPIKey,
 		egress:        egressAllowlist,
-		env:           driverEnv(req.AgentConfig, record.Repo, record.Branch, record.ID, store.SandboxNamespace(record.WorkspaceID), s.credentialURL()),
+		env:           driverEnv(req.AgentConfig, record.Repo, record.Branch, record.ID, store.SandboxNamespace(record.WorkspaceID), s.gitProxyURL(), s.driverGrantPublicKey()),
 	}
 	s.detach(ctx, func(ctx context.Context) { s.runDispatch(ctx, record, spec) })
 	return s.toView(record)
@@ -569,31 +575,26 @@ func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
 	return s.toView(record)
 }
 
-// agentCommand maps a public agent selector to its installed ACP adapter
-// command inside the image. A short name maps to its adapter binary; anything
-// else passes through so an operator can register a new adapter without a code
-// change (the image, not this map, is the security boundary).
-func agentCommand(agent string) string {
-	switch strings.ToLower(strings.TrimSpace(agent)) {
-	case "claude", "claude-code", "claude-code-acp":
-		return "claude-code-acp"
-	case "gemini", "gemini-cli":
-		return "gemini"
-	case "codex", "codex-acp":
-		return "codex-acp"
-	default:
-		return agent
-	}
+// agentCommands is the closed public-profile -> installed-executable map. Public
+// profile identifiers never double as process paths: every value is an absolute,
+// operator-owned path baked into the agent image. Adding an adapter therefore
+// requires a reviewed code + image change rather than a tenant-selected binary.
+var agentCommands = map[string]string{
+	"claude": "/usr/local/bin/claude-code-acp",
+	"codex":  "/usr/local/bin/codex-acp",
+	"gemini": "/usr/local/bin/gemini",
 }
 
-// defaultCredentialURL is the in-cluster gateway git-credential broker endpoint
-// (ADR047 D2). The sandbox's git-credential-bex helper POSTs here; the gateway
-// authenticates the source Pod and HMAC-proxies a scoped token mint to bex-api.
-const defaultCredentialURL = "http://bex-ssh-gateway.bex-system.svc:8082" + agentsession.GatewayPath
+func agentCommand(agent string) string {
+	return agentCommands[strings.ToLower(strings.TrimSpace(agent))]
+}
 
-func (s *Service) credentialURL() string {
-	if strings.TrimSpace(s.CredentialURL) != "" {
-		return s.CredentialURL
+// defaultCredentialURL is the trusted in-cluster Git smart-HTTP proxy origin.
+const defaultCredentialURL = "http://bex-ssh-gateway.bex-system.svc:8082"
+
+func (s *Service) gitProxyURL() string {
+	if strings.TrimSpace(s.GitProxyURL) != "" {
+		return s.GitProxyURL
 	}
 	return defaultCredentialURL
 }
@@ -601,25 +602,29 @@ func (s *Service) credentialURL() string {
 // driverEnv renders the non-secret environment the sandbox driver reads to run
 // one headless delivery turn (lego/agent-image/driver). The BYO model key is
 // NOT here: it is sourced from OpenBao and injected as pod-spec env by the
-// sandbox lifecycle (ADR047 D7), so no secret flows through this map. The
-// git-credential-bex vars (ADR047 D2) ARE here: without them the setup-phase
-// clone cannot authenticate and every session dies with "missing its session
-// broker configuration" (caught live on prod, w3/m43). They carry no secret —
-// only the session's non-secret identity + the internal broker URL; the token
-// is minted on demand through the gateway and never lands on disk.
-func driverEnv(config AgentConfig, repo, branch, sessionID, namespace, credentialURL string) map[string]string {
+// sandbox lifecycle (ADR047 D7), so no secret flows through this map. The Git
+// remote is a non-secret, Pod-bound gateway proxy URL; the raw GitHub token is
+// minted and consumed only by the gateway. The driver-grant value is likewise
+// only an Ed25519 public verification key.
+func driverEnv(config AgentConfig, repo, branch, sessionID, namespace, credentialURL, grantPublicKey string) map[string]string {
+	repoURL, _ := agentsession.ProxyRepositoryURL(credentialURL, namespace, sessionID, repo, branch)
 	return map[string]string{
-		"BEX_AGENT_COMMAND":         agentCommand(config.Agent),
-		"BEX_AGENT_PROMPT":          config.Task,
-		"BEX_AGENT_BRANCH":          branch,
-		"BEX_AGENT_REPO_URL":        "https://github.com/" + repo + ".git",
-		"BEX_AGENT_DELIVER":         "1",
-		"BEX_AGENT_EXIT_AFTER_TURN": "0",
-		"BEX_AGENT_CREDENTIAL_URL":  credentialURL,
-		"BEX_SANDBOX_NAMESPACE":     namespace,
-		"BEX_AGENT_SESSION_ID":      sessionID,
-		"BEX_AGENT_REPOSITORY":      repo,
+		"BEX_AGENT_COMMAND":          agentCommand(config.Agent),
+		"BEX_AGENT_PROMPT":           config.Task,
+		"BEX_AGENT_BRANCH":           branch,
+		"BEX_AGENT_REPO_URL":         repoURL,
+		"BEX_AGENT_DELIVER":          "1",
+		"BEX_AGENT_EXIT_AFTER_TURN":  "0",
+		"BEX_SANDBOX_NAMESPACE":      namespace,
+		"BEX_AGENT_SESSION_ID":       sessionID,
+		"BEX_AGENT_REPOSITORY":       repo,
+		"BEX_AGENT_GRANT_PUBLIC_KEY": grantPublicKey,
 	}
+}
+
+func (s *Service) driverGrantPublicKey() string {
+	key, _ := drivergrant.PublicKey(s.TicketSecret) // Enabled() already requires a non-empty secret.
+	return key
 }
 
 // Steer runs a follow-up prompt turn on an existing session (ADR047 D8 phase 1,
@@ -685,7 +690,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err != nil {
 		return View{}, mapStoreError(record.ID, err)
 	}
-	env := driverEnv(config, record.Repo, record.Branch, record.ID, store.SandboxNamespace(record.WorkspaceID), s.credentialURL())
+	env := driverEnv(config, record.Repo, record.Branch, record.ID, store.SandboxNamespace(record.WorkspaceID), s.gitProxyURL(), s.driverGrantPublicKey())
 	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task
 	spec := dispatchSpec{
 		template:      strings.TrimSpace(config.Template),

@@ -118,6 +118,9 @@ func (s *Service) GetDeployHook(ctx context.Context, service string) (DeployHook
 	if err != nil {
 		return DeployHookView{}, err
 	}
+	if err := s.AuthorizeAppFresh(ctx, core.RelCanViewSensitive, a); err != nil {
+		return DeployHookView{}, err
+	}
 	token, err := s.writeDeployHookToken(ctx, a, false)
 	if err != nil {
 		return DeployHookView{}, err
@@ -139,6 +142,9 @@ func (s *Service) GetDeployHook(ctx context.Context, service string) (DeployHook
 func (s *Service) RegenerateDeployHook(ctx context.Context, service string) (DeployHookView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
 	if err != nil {
+		return DeployHookView{}, err
+	}
+	if err := s.AuthorizeAppFresh(ctx, core.RelCanCreate, a); err != nil {
 		return DeployHookView{}, err
 	}
 	token, err := s.writeDeployHookToken(ctx, a, true)

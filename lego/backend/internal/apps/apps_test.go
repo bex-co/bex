@@ -646,8 +646,13 @@ type recordingStore struct {
 		id      string
 		seconds int32
 	}
-	domainAdds  []struct{ id, host, redirectForName string }
-	domainRems  []struct{ id, host string }
+	domainAdds     []struct{ id, host, redirectForName string }
+	domainRems     []struct{ id, host string }
+	domainReplaces []struct {
+		id      string
+		primary string
+		hosts   []string
+	}
 	deleteCalls []string
 	appCreates  []store.App
 	deployCalls []store.Deploy
@@ -774,6 +779,18 @@ func (r *recordingStore) AddDomain(_ context.Context, id, host, redirectForName 
 		return r.err
 	}
 	r.domainAdds = append(r.domainAdds, struct{ id, host, redirectForName string }{id, host, redirectForName})
+	return nil
+}
+
+func (r *recordingStore) ReplaceDomains(_ context.Context, id, primary string, hosts []string) error {
+	if r.err != nil {
+		return r.err
+	}
+	r.domainReplaces = append(r.domainReplaces, struct {
+		id      string
+		primary string
+		hosts   []string
+	}{id: id, primary: primary, hosts: append([]string(nil), hosts...)})
 	return nil
 }
 

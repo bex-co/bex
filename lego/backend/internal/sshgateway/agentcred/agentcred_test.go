@@ -1,25 +1,9 @@
-/*
-Copyright 2026.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package agentcred
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -47,9 +31,6 @@ func (credentialConnections) GetGitConnection(_ context.Context, workspace strin
 	return store.GitConnection{WorkspaceID: workspace, InstallationID: 42, AccountLogin: "octo"}, nil
 }
 
-// credentialSessions models a still-active session (codex F12): the mint's
-// lifecycle gate reads it and only issues while the session is running in its
-// own workspace with a live sandbox.
 type credentialSessions struct{}
 
 func (credentialSessions) GetAgentSession(_ context.Context, id string) (store.AgentSession, error) {
@@ -60,7 +41,7 @@ type credentialGitHub struct{ calls int }
 
 func (g *credentialGitHub) MintSessionInstallationToken(context.Context, int64, string) (github.InstallationToken, error) {
 	g.calls++
-	return github.InstallationToken{Token: "ghs_gateway_secret", ExpiresAt: time.Date(2026, 8, 1, 13, 0, 0, 0, time.UTC)}, nil
+	return github.InstallationToken{Token: "ghs_gateway_secret", ExpiresAt: time.Now().Add(time.Hour)}, nil
 }
 
 type credentialAudit struct{ events []core.AuditEvent }
@@ -81,55 +62,100 @@ func credentialLabels(t *testing.T, workspace string) map[string]string {
 	return labels
 }
 
-func TestAgentCredentialGatewayBindsSourcePodAndProxiesSignedMint(t *testing.T) {
-	fixed := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+func TestGitProxyKeepsTokenOutOfSandboxAndBindsSourcePod(t *testing.T) {
 	secret := []byte("shared-domain-separated-secret")
 	gh := &credentialGitHub{}
-	apiAudit := &credentialAudit{}
-	apiHandler := &agentsession.Handler{
-		Secret: secret,
-		Minter: &agentsession.Minter{GitHub: gh, Connections: credentialConnections{}, Sessions: credentialSessions{}, Audit: apiAudit, Now: func() time.Time { return fixed }},
-		Now:    func() time.Time { return fixed },
-	}
+	apiHandler := &agentsession.Handler{Secret: secret, Minter: &agentsession.Minter{
+		GitHub: gh, Connections: credentialConnections{}, Sessions: credentialSessions{},
+	}}
 	apiServer := httptest.NewServer(apiHandler)
 	defer apiServer.Close()
 
-	gatewayAudit := &credentialAudit{}
+	var upstreamAuthorization string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upstreamAuthorization = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/x-git-upload-pack-advertisement")
+		_, _ = io.WriteString(w, "0000")
+	}))
+	defer upstream.Close()
+
+	audit := &credentialAudit{}
 	broker := &Broker{
 		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
 		Pods: credentialPodResolver{pods: map[string]SessionPod{
 			"10.0.0.1": {Name: "sandbox-a", UID: "uid-a", Labels: credentialLabels(t, "tea-a")},
 			"10.0.0.2": {Name: "sandbox-b", UID: "uid-b", Labels: credentialLabels(t, "tea-b")},
 		}},
-		API:   &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client(), Now: func() time.Time { return fixed }},
-		Audit: gatewayAudit,
-		Now:   func() time.Time { return fixed },
+		API:   &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client()},
+		Audit: audit, UpstreamOrigin: upstream.URL, HTTP: upstream.Client(),
 	}
-	body, _ := json.Marshal(agentsession.MintRequest{SessionID: "ags-one", Repository: "octo/repo", Branch: "bex-agent/task-1"})
-	request := httptest.NewRequest(http.MethodPost, agentsession.GatewayPath, bytes.NewReader(body))
+	repoURL, err := agentsession.ProxyRepositoryURL("http://gateway.internal:8082", "tea-a-sandbox", "ags-one", "octo/repo", "bex-agent/task-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodGet, repoURL+"/info/refs?service=git-upload-pack", nil)
 	request.RemoteAddr = "10.0.0.1:43210"
-	request.Header.Set(agentsession.NamespaceHeader, "tea-a-sandbox")
 	recorder := httptest.NewRecorder()
 	broker.Handler().ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusOK || !strings.Contains(recorder.Body.String(), "ghs_gateway_secret") || recorder.Header().Get("Cache-Control") != "no-store" {
-		t.Fatalf("gateway response status=%d headers=%v body=%q", recorder.Code, recorder.Header(), recorder.Body.String())
+	if recorder.Code != http.StatusOK || recorder.Body.String() != "0000" {
+		t.Fatalf("proxy status=%d body=%q", recorder.Code, recorder.Body.String())
 	}
-	if gh.calls != 1 || len(apiAudit.events) != 1 || len(gatewayAudit.events) != 1 {
-		t.Fatalf("github calls=%d api audits=%d gateway audits=%d", gh.calls, len(apiAudit.events), len(gatewayAudit.events))
+	if strings.Contains(recorder.Body.String(), "ghs_gateway_secret") || strings.Contains(fmt.Sprint(recorder.Header()), "ghs_gateway_secret") {
+		t.Fatal("raw GitHub token escaped into the sandbox response")
 	}
-	if apiAudit.events[0].Verb != agentsession.AuditVerbMintCredential || gatewayAudit.events[0].Verb != agentsession.AuditVerbProxyCredential {
-		t.Fatalf("audit verbs api=%q gateway=%q", apiAudit.events[0].Verb, gatewayAudit.events[0].Verb)
+	if upstreamAuthorization == "" || !strings.HasPrefix(upstreamAuthorization, "Basic ") {
+		t.Fatalf("trusted upstream hop did not receive injected auth: %q", upstreamAuthorization)
+	}
+	if gh.calls != 1 || len(audit.events) != 1 {
+		t.Fatalf("github calls=%d audits=%d", gh.calls, len(audit.events))
 	}
 
-	// Sandbox B cannot claim A's namespace/workspace even when it knows every
-	// public session binding value. The request never reaches bex-api/GitHub.
-	request = httptest.NewRequest(http.MethodPost, agentsession.GatewayPath, bytes.NewReader(body))
+	request = httptest.NewRequest(http.MethodGet, repoURL+"/info/refs?service=git-upload-pack", nil)
 	request.RemoteAddr = "10.0.0.2:43210"
-	request.Header.Set(agentsession.NamespaceHeader, "tea-a-sandbox")
 	recorder = httptest.NewRecorder()
 	broker.Handler().ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusForbidden || gh.calls != 1 || strings.Contains(recorder.Body.String(), "ghs_gateway_secret") {
-		t.Fatalf("cross-workspace status=%d calls=%d body=%q", recorder.Code, gh.calls, recorder.Body.String())
+	if recorder.Code != http.StatusForbidden || gh.calls != 1 {
+		t.Fatalf("cross-workspace status=%d mint calls=%d", recorder.Code, gh.calls)
+	}
+}
+
+func TestGitProxyReceivePackAllowsOnlyBoundBranch(t *testing.T) {
+	secret := []byte("secret")
+	gh := &credentialGitHub{}
+	apiServer := httptest.NewServer(&agentsession.Handler{Secret: secret, Minter: &agentsession.Minter{
+		GitHub: gh, Connections: credentialConnections{}, Sessions: credentialSessions{},
+	}})
+	defer apiServer.Close()
+	upstreamCalls := 0
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { upstreamCalls++; _, _ = io.WriteString(w, "0000") }))
+	defer upstream.Close()
+	broker := &Broker{Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
+		Pods: credentialPodResolver{pods: map[string]SessionPod{"10.0.0.1": {Name: "sandbox-a", UID: "uid-a", Labels: credentialLabels(t, "tea-a")}}},
+		API:  &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client()}, UpstreamOrigin: upstream.URL, HTTP: upstream.Client()}
+	base, _ := agentsession.ProxyRepositoryURL("http://gateway", "tea-a-sandbox", "ags-one", "octo/repo", "bex-agent/task-1")
+	push := func(ref string) int {
+		old := strings.Repeat("1", 40)
+		next := strings.Repeat("2", 40)
+		line := old + " " + next + " " + ref + "\x00report-status\n"
+		body := fmt.Sprintf("%04x%s0000PACK", len(line)+4, line)
+		req := httptest.NewRequest(http.MethodPost, base+"/git-receive-pack", strings.NewReader(body))
+		req.RemoteAddr = "10.0.0.1:1234"
+		req.Header.Set("Content-Type", "application/x-git-receive-pack-request")
+		rec := httptest.NewRecorder()
+		broker.Handler().ServeHTTP(rec, req)
+		return rec.Code
+	}
+	if got := push("refs/heads/main"); got != http.StatusForbidden {
+		t.Fatalf("wrong branch status=%d", got)
+	}
+	if gh.calls != 0 || upstreamCalls != 0 {
+		t.Fatal("wrong-branch push reached credential mint or GitHub")
+	}
+	if got := push("refs/heads/bex-agent/task-1"); got != http.StatusOK {
+		t.Fatalf("bound branch status=%d", got)
+	}
+	if gh.calls != 1 || upstreamCalls != 1 {
+		t.Fatalf("valid push mints=%d upstream=%d", gh.calls, upstreamCalls)
 	}
 }
 
@@ -138,6 +164,6 @@ func TestAgentCredentialInternalMintRejectsUnsignedRequest(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, agentsession.InternalMintPath, strings.NewReader(`{}`)))
 	if recorder.Code != http.StatusUnauthorized {
-		t.Fatalf("unsigned status = %d, want 401", recorder.Code)
+		t.Fatalf("unsigned status=%d", recorder.Code)
 	}
 }

@@ -128,6 +128,21 @@ func TestRedirectRoute(t *testing.T) {
 	}
 }
 
+func TestWildcardRedirectRejectsUnsafeExpandedLocation(t *testing.T) {
+	h, _ := newTestHandler(t, Site{
+		Routes: []appv1alpha1.StaticRoute{{Type: "redirect", Source: "/old/*", Destination: "/:splat"}},
+	}, map[string]Object{})
+	for _, path := range []string{"/old/%5Cevil.example", "/old/%5C%5Cevil.example"} {
+		rec := do(h, http.MethodGet, path)
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("GET %s => %d Location=%q, want 400 with no redirect", path, rec.Code, rec.Header().Get("Location"))
+		}
+		if loc := rec.Header().Get("Location"); loc != "" {
+			t.Errorf("unsafe expanded redirect emitted Location %q", loc)
+		}
+	}
+}
+
 func TestRewriteRoute(t *testing.T) {
 	h, _ := newTestHandler(t, Site{
 		Routes: []appv1alpha1.StaticRoute{{Type: "rewrite", Source: "/app", Destination: "/app.html"}},

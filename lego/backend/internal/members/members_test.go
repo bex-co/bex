@@ -44,6 +44,61 @@ type fakeStore struct {
 	ownIDErr error             // when set, OwnerIDForSubject fails every call
 }
 
+// queuedFakeStore mirrors the production transaction by writing the accepted
+// membership and exact-role reconciliation intent as one observable operation.
+type queuedFakeStore struct {
+	*fakeStore
+	queued map[string]store.RoleReconciliation
+}
+
+func newQueuedFakeStore(plan string) *queuedFakeStore {
+	return &queuedFakeStore{fakeStore: newFakeStore(plan), queued: map[string]store.RoleReconciliation{}}
+}
+
+func roleQueueKey(tenantID, subject string) string { return tenantID + ":" + subject }
+
+func (f *queuedFakeStore) AcceptInviteByToken(ctx context.Context, token, subject string) (store.Invite, error) {
+	inv, err := f.fakeStore.AcceptInviteByToken(ctx, token, subject)
+	if err == nil {
+		f.queued[roleQueueKey(inv.TenantID, subject)] = store.RoleReconciliation{TenantID: inv.TenantID, Subject: subject, Role: inv.Role}
+	}
+	return inv, err
+}
+
+func (f *queuedFakeStore) UpdateMemberRole(ctx context.Context, tenantID, subject, role string) error {
+	if err := f.fakeStore.UpdateMemberRole(ctx, tenantID, subject, role); err != nil {
+		return err
+	}
+	f.queued[roleQueueKey(tenantID, subject)] = store.RoleReconciliation{TenantID: tenantID, Subject: subject, Role: role}
+	return nil
+}
+
+func (f *queuedFakeStore) ClaimRoleReconciliations(context.Context, int) ([]store.RoleReconciliation, error) {
+	out := make([]store.RoleReconciliation, 0, len(f.queued))
+	for _, row := range f.queued {
+		out = append(out, row)
+	}
+	return out, nil
+}
+
+func (f *queuedFakeStore) CompleteRoleReconciliation(_ context.Context, tenantID, subject, role string) error {
+	key := roleQueueKey(tenantID, subject)
+	if row, ok := f.queued[key]; ok && row.Role == role {
+		delete(f.queued, key)
+	}
+	return nil
+}
+
+func (f *queuedFakeStore) FailRoleReconciliation(_ context.Context, tenantID, subject, role, _ string) error {
+	key := roleQueueKey(tenantID, subject)
+	row := f.queued[key]
+	if row.Role == role {
+		row.Attempts++
+		f.queued[key] = row
+	}
+	return nil
+}
+
 func newFakeStore(plan string) *fakeStore {
 	return &fakeStore{
 		tenant:  store.Tenant{ID: "tea-1", Name: "acme", Plan: plan},
@@ -702,6 +757,47 @@ func TestChangeRoleSurfacesRevokeError(t *testing.T) {
 	s := svc(st, g, nil, nil)
 	if _, err := s.ChangeRole(ctxWith("admin-1"), "tea-1", "bob", "viewer"); err == nil {
 		t.Fatal("a failed revoke of the prior role must surface an error (F7), got nil")
+	}
+}
+
+func TestAcceptedInviteRetainsDurableRoleRepairUntilOpenFGASucceeds(t *testing.T) {
+	st := newQueuedFakeStore(store.PlanPro)
+	st.invites["inv-1"] = store.Invite{
+		ID: "inv-1", TenantID: "tea-1", Email: "bob@example.com", Role: "developer",
+		Token: "redeem-me", ExpiresAt: time.Now().Add(time.Hour),
+	}
+	g := newFakeGranter()
+	g.tuples[key(core.RelCanView, "default", "user:bob")] = true
+	g.tuples[key("admin", "tea-1", "user:bob")] = true
+	g.revokeErr = errors.New("openfga unavailable")
+	s := svc(st, g, nil, g)
+
+	view, err := s.AcceptInvite(ctxWith("bob"), "redeem-me")
+	if err != nil {
+		t.Fatalf("accept invite: %v", err)
+	}
+	if !view.AuthorizationPending {
+		t.Fatal("accepted invite must report authorizationPending while exact-role reconciliation is queued")
+	}
+	if len(st.queued) != 1 {
+		t.Fatalf("queued repairs = %d, want 1 after OpenFGA failure", len(st.queued))
+	}
+	if !g.tuples[key("admin", "tea-1", "user:bob")] {
+		t.Fatal("test setup lost stale admin tuple before repair retry")
+	}
+
+	g.revokeErr = nil
+	if err := s.reconcilePendingRoles(context.Background(), 100); err != nil {
+		t.Fatalf("background reconciliation: %v", err)
+	}
+	if len(st.queued) != 0 {
+		t.Fatalf("queued repairs = %d, want 0 after successful retry", len(st.queued))
+	}
+	if g.tuples[key("admin", "tea-1", "user:bob")] {
+		t.Fatal("stale admin role survived durable exact-role reconciliation")
+	}
+	if !g.tuples[key("developer", "tea-1", "user:bob")] {
+		t.Fatal("desired developer role missing after durable reconciliation")
 	}
 }
 

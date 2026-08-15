@@ -224,6 +224,10 @@ type IntentStore interface {
 	// RemoveDomain removes a custom domain row. Idempotent — not-found silently
 	// ignored.
 	RemoveDomain(ctx context.Context, appID, host string) error
+	// ReplaceDomains atomically makes the database's globally-unique domain rows
+	// match the requested primary + additional hosts. The unique host constraint
+	// is the authoritative concurrent-claim boundary used by Blueprint re-sync.
+	ReplaceDomains(ctx context.Context, appID, primary string, hosts []string) error
 	// GetAppProtectedStatus resolves an App's protectedStatus via its
 	// Environment (w6/m19) — "unprotected" when it has none. The read side of
 	// the destructive-verb guard, apps/protection.go.
@@ -567,7 +571,7 @@ func (s *Service) validateMaintenanceMode(ctx context.Context, a *appv1alpha1.Ap
 	if s.reservedHost(s.ownPlatformHost(a), host) {
 		return fmt.Errorf("%w: maintenanceMode.uri cannot point to a platform hostname", core.ErrBadRequest)
 	}
-	if claimed, err := s.hostClaimedElsewhere(ctx, a.Name, host); err != nil {
+	if claimed, err := s.hostClaimedElsewhere(ctx, a, host); err != nil {
 		return err
 	} else if claimed {
 		return fmt.Errorf("%w: maintenanceMode.uri cannot point to another service on this platform", core.ErrBadRequest)
@@ -1762,6 +1766,17 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 	if a.Labels[core.LabelAppID] == "" {
 		a.Labels[core.LabelAppID] = ids.New(ids.Service)
 	}
+	if err := s.ensureHostsClaimable(ctx, a); err != nil {
+		return AppView{}, rollbackStoreRow(err)
+	}
+	if createdRowID != "" {
+		if err := s.Store.ReplaceDomains(ctx, createdRowID, a.Spec.Host, a.Spec.Hosts); err != nil {
+			if errors.Is(err, store.ErrConflict) {
+				err = errDomainInUse()
+			}
+			return AppView{}, rollbackStoreRow(fmt.Errorf("claim service domains: %w", err))
+		}
+	}
 	// A private-connection repo gets a fresh clone token + spec.cloneSecret so
 	// its first build authenticates. create-owned only: never set on a spec
 	// that already hand-pointed cloneSecret elsewhere.
@@ -1811,14 +1826,6 @@ func mapServiceCapError(err error) error {
 // after Kubernetes assigns the App UID, Commit adopts the Secret. Every failure
 // removes both the pre-created projection and its OpenBao path.
 func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1alpha1.App, files []core.SecretFile) error {
-	// Host authority (w7/m57): the sole write seam for every new-App create path
-	// (direct create, blueprint upsert, deploy manifest) gates create-time hosts
-	// through the same reserved-platform + cross-App collision check AddDomain
-	// enforces — closing the hole where a create could bind spec.host/spec.hosts
-	// to a platform-reserved or foreign-owned host and mint a hijacking Ingress.
-	if err := s.ensureHostsClaimable(ctx, a); err != nil {
-		return err
-	}
 	if len(files) == 0 {
 		return mapServiceCapError(s.Client.Create(ctx, a))
 	}
@@ -2183,11 +2190,16 @@ func applyOptionalCreateSpec(spec *appv1alpha1.AppSpec, svcType string, req Crea
 // same value here instead of slipping past as a distinct string.
 func canonicalHosts(raw []string) ([]string, error) {
 	hosts := make([]string, 0, len(raw))
+	seen := make(map[string]struct{}, len(raw))
 	for _, r := range raw {
 		h, err := canonicalHostname(r)
 		if err != nil {
 			return nil, err
 		}
+		if _, ok := seen[h]; ok {
+			continue
+		}
+		seen[h] = struct{}{}
 		hosts = append(hosts, h)
 	}
 	return hosts, nil

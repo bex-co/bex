@@ -95,6 +95,7 @@ func TestPGStore(t *testing.T) {
 	assertDeployLifecycle(ctx, t, s, app)
 	assertConcurrentDeployTriggers(ctx, t, s, ten.ID)
 	assertDomainUniqueness(ctx, t, s, ten.ID)
+	assertMembershipRoleOutbox(ctx, t, s, ten.ID)
 	assertAuditEvents(ctx, t, s, ten)
 	assertServiceEvents(ctx, t, s, ten, app)
 	assertWorkspaceLifecycle(ctx, t, s, pool)
@@ -103,6 +104,46 @@ func TestPGStore(t *testing.T) {
 	assertProjectsAndEnvironments(ctx, t, s, pool, ten, app)
 	assertWebhooks(ctx, t, s, pool, ten, app)
 	assertDeleteCascades(ctx, t, s, pool, app)
+}
+
+func assertMembershipRoleOutbox(ctx context.Context, t *testing.T, s *PGStore, tenantID string) {
+	t.Helper()
+	const subject = "role-outbox-member"
+	if err := s.AddMember(ctx, subject, tenantID, "developer"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.RemoveMember(ctx, tenantID, subject) }()
+	if err := s.UpdateMemberRole(ctx, tenantID, subject, "viewer"); err != nil {
+		t.Fatal(err)
+	}
+	claimed, err := s.ClaimRoleReconciliations(ctx, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var found bool
+	for _, row := range claimed {
+		if row.TenantID == tenantID && row.Subject == subject && row.Role == "viewer" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("updated membership did not atomically enqueue exact-role repair: %+v", claimed)
+	}
+	// A stale worker acknowledging the prior desired role must not delete the
+	// current row; only the role it actually applied may complete it.
+	if err := s.CompleteRoleReconciliation(ctx, tenantID, subject, "developer"); err != nil {
+		t.Fatal(err)
+	}
+	var queued int
+	if err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM membership_role_reconciliations WHERE tenant_id=$1 AND subject=$2`, tenantID, subject).Scan(&queued); err != nil || queued != 1 {
+		t.Fatalf("stale role acknowledgement deleted queue: count=%d err=%v", queued, err)
+	}
+	if err := s.CompleteRoleReconciliation(ctx, tenantID, subject, "viewer"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM membership_role_reconciliations WHERE tenant_id=$1 AND subject=$2`, tenantID, subject).Scan(&queued); err != nil || queued != 0 {
+		t.Fatalf("matching role acknowledgement count=%d err=%v", queued, err)
+	}
 }
 
 func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant Tenant) {
@@ -1456,6 +1497,55 @@ func assertDomainUniqueness(ctx context.Context, t *testing.T, s *PGStore, tenan
 		t.Fatalf("create dom-b: %v", err)
 	}
 	defer func() { _ = s.DeleteApp(ctx, a1.ID); _ = s.DeleteApp(ctx, a2.ID) }()
+
+	// Blueprint re-sync uses ReplaceDomains. Two replicas racing to claim one
+	// host must have exactly one database winner, and the loser's DELETE+INSERT
+	// transaction must roll back to its former domain set.
+	if err := s.ReplaceDomains(ctx, a1.ID, "old-a.example.com", nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReplaceDomains(ctx, a2.ID, "old-b.example.com", nil); err != nil {
+		t.Fatal(err)
+	}
+	start := make(chan struct{})
+	errs := make([]error, 2)
+	var wg sync.WaitGroup
+	for i, appID := range []string{a1.ID, a2.ID} {
+		wg.Add(1)
+		go func(i int, appID string) {
+			defer wg.Done()
+			<-start
+			errs[i] = s.ReplaceDomains(ctx, appID, "race.example.com", nil)
+		}(i, appID)
+	}
+	close(start)
+	wg.Wait()
+	winner, loser := -1, -1
+	for i, err := range errs {
+		switch {
+		case err == nil:
+			winner = i
+		case errors.Is(err, ErrConflict):
+			loser = i
+		default:
+			t.Fatalf("concurrent ReplaceDomains %d: %v", i, err)
+		}
+	}
+	if winner < 0 || loser < 0 {
+		t.Fatalf("concurrent ReplaceDomains errors=%v, want one winner and one conflict", errs)
+	}
+	loserID := []string{a1.ID, a2.ID}[loser]
+	loserOld := []string{"old-a.example.com", "old-b.example.com"}[loser]
+	var preserved int
+	if err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM domains WHERE app_id = $1 AND host = $2`, loserID, loserOld).Scan(&preserved); err != nil || preserved != 1 {
+		t.Fatalf("loser domain rollback count=%d err=%v", preserved, err)
+	}
+	if err := s.ReplaceDomains(ctx, a1.ID, "", nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ReplaceDomains(ctx, a2.ID, "", nil); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := s.AddDomain(ctx, a1.ID, "shared.example.com", ""); err != nil {
 		t.Fatalf("first AddDomain: %v", err)
