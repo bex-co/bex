@@ -1,8 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bex-capi
+  labels:
+    app.kubernetes.io/part-of: bex
+    app.kubernetes.io/managed-by: cluster-api
+---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
 metadata:
   name: bex-tenant-0
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -156,7 +164,7 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
   name: bex
-  namespace: default
+  namespace: bex-capi
 spec:
   clusterNetwork:
     pods:
@@ -177,7 +185,7 @@ metadata:
   labels:
     nodepool: bex-tenant-0
   name: bex-tenant-0
-  namespace: default
+  namespace: bex-capi
   annotations:
     # Elastic range for the cluster-autoscaler (w1/m3): it discovers this
     # MachineDeployment via clusterName=bex and scales replicas within [min,max].
@@ -226,7 +234,7 @@ metadata:
   labels:
     nodepool: bex-tenant-burst
   name: bex-tenant-burst
-  namespace: default
+  namespace: bex-capi
   annotations:
     # cx33 (Intel) capacity returned to fsn1 (docs/ADR053); this burst pool is
     # rotated back to cx33. Keep it cold at zero and let Cluster Autoscaler add
@@ -268,7 +276,7 @@ metadata:
   labels:
     nodepool: bex-tenant-lg
   name: bex-tenant-lg
-  namespace: default
+  namespace: bex-capi
   annotations:
     # A third tenant pool, ADDITIVE (docs/ADR053 § Large tenant pool). The other
     # two are untouched: this adds one node, it does not rotate any existing one.
@@ -321,7 +329,7 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineHealthCheck
 metadata:
   name: bex-control-plane-unhealthy-5m
-  namespace: default
+  namespace: bex-capi
 spec:
   clusterName: bex
   maxUnhealthy: 100%
@@ -345,7 +353,7 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineHealthCheck
 metadata:
   name: bex-tenant-0-unhealthy-5m
-  namespace: default
+  namespace: bex-capi
 spec:
   clusterName: bex
   maxUnhealthy: 100%
@@ -369,7 +377,7 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineHealthCheck
 metadata:
   name: bex-tenant-burst-unhealthy-5m
-  namespace: default
+  namespace: bex-capi
 spec:
   clusterName: bex
   maxUnhealthy: 100%
@@ -396,7 +404,7 @@ metadata:
   # is replaced if it stops being Ready rather than silently removing the very
   # headroom this pool exists to provide.
   name: bex-tenant-lg-unhealthy-5m
-  namespace: default
+  namespace: bex-capi
 spec:
   clusterName: bex
   maxUnhealthy: 100%
@@ -420,7 +428,7 @@ apiVersion: controlplane.cluster.x-k8s.io/v1beta1
 kind: KubeadmControlPlane
 metadata:
   name: bex-control-plane
-  namespace: default
+  namespace: bex-capi
 spec:
   kubeadmConfigSpec:
     clusterConfiguration:
@@ -720,7 +728,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
   name: bex-control-plane
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -732,7 +740,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
   name: bex-control-plane-cpx32
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -751,7 +759,7 @@ metadata:
   # .pm/w1/m36/README.md — `kubectl delete hcloudmachinetemplate bex-tenant-0`).
   # Next image bump = rotate the name again (…-baked → …-baked2).
   name: bex-tenant-0-baked
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -769,7 +777,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
   name: bex-tenant-0-k132
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -782,7 +790,7 @@ kind: HCloudMachineTemplate
 metadata:
   # A new immutable template name is required for the cx33 → cpx32 migration.
   name: bex-tenant-0-k133-cpx32
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -794,7 +802,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
   name: bex-tenant-0-k134-cpx32
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -810,7 +818,7 @@ metadata:
   # to — that repoint is what rolls the pool. Same x86 baked snapshot as the
   # -cpx32 sibling (cx33 and cpx32 are both x86_64, 4 vCPU / 8 GB — portable).
   name: bex-tenant-0-k134-cx33
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -832,7 +840,7 @@ metadata:
   # 2026-08-11 — cx43 and cx33 succeeded, cx53 failed `resource_unavailable —
   # error during placement`. Re-probe before assuming cx53 has returned.
   name: bex-tenant-lg-k134-cx43
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -846,7 +854,7 @@ metadata:
   # CPX is the supported scale-out path in fsn1: the baked snapshot is x86 and
   # therefore portable from the existing Intel cx33 baseline to AMD cpx32.
   name: bex-tenant-burst-baked
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -858,7 +866,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
   name: bex-tenant-burst-k132
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -870,7 +878,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
   name: bex-tenant-burst-k133
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -882,7 +890,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
   name: bex-tenant-burst-k134
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -897,7 +905,7 @@ metadata:
   # MachineDeployment repoints to. Same x86 baked snapshot as the -cpx32
   # sibling; cx33 is the cheaper default now that fsn1 stock returned.
   name: bex-tenant-burst-k134-cx33
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -909,7 +917,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudRemediationTemplate
 metadata:
   name: control-plane-remediation-request
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -922,7 +930,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudRemediationTemplate
 metadata:
   name: worker-remediation-request
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -935,7 +943,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HetznerCluster
 metadata:
   name: bex
-  namespace: default
+  namespace: bex-capi
 spec:
   controlPlaneEndpoint:
     host: ""
@@ -981,7 +989,7 @@ apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
 kind: KubeadmConfigTemplate
 metadata:
   name: bex-platform
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -1110,7 +1118,7 @@ metadata:
   labels:
     nodepool: bex-platform
   name: bex-platform
-  namespace: default
+  namespace: bex-capi
   annotations:
     # Elastic range for the cluster-autoscaler (w1/m3): it discovers this
     # MachineDeployment via clusterName=bex and scales replicas within [min,max].
@@ -1152,7 +1160,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
   name: bex-platform-baked
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -1164,7 +1172,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
   name: bex-platform-k132
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -1177,7 +1185,7 @@ kind: HCloudMachineTemplate
 metadata:
   # A new immutable template name is required for the cx33 → cpx32 migration.
   name: bex-platform-k133-cpx32
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -1189,7 +1197,7 @@ apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
   name: bex-platform-k134-cpx32
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -1204,7 +1212,7 @@ metadata:
   # MachineDeployment repoints to. Same x86 baked snapshot as the -cpx32
   # sibling; cx33 is the cheaper default now that fsn1 stock returned.
   name: bex-platform-k134-cx33
-  namespace: default
+  namespace: bex-capi
 spec:
   template:
     spec:
@@ -1216,7 +1224,7 @@ apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineHealthCheck
 metadata:
   name: bex-platform-unhealthy-5m
-  namespace: default
+  namespace: bex-capi
 spec:
   clusterName: bex
   maxUnhealthy: 100%

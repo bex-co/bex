@@ -6,6 +6,7 @@
 set -euo pipefail
 
 CLUSTER_NAME="${CLUSTER_NAME:-bex}"
+CAPI_NAMESPACE="${CAPI_NAMESPACE:-bex-capi}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-3600}"
 POLL_SECONDS="${POLL_SECONDS:-10}"
 KUBECTL_GET_RETRIES="${KUBECTL_GET_RETRIES:-5}"
@@ -40,7 +41,7 @@ kubectl_get() {
 machine_group_ready() {
   local selector="$1" desired="$2" expected="$3" group="$4"
   local machines count bad node got
-  machines=$(kubectl_get machines -n default -l "$selector" -o json)
+  machines=$(kubectl_get machines -n "$CAPI_NAMESPACE" -l "$selector" -o json)
   count=$(jq '.items | length' <<<"$machines")
   bad=$(jq --arg desired "$desired" '[.items[] |
     select(.spec.version != $desired or .status.phase != "Running" or .status.nodeRef.name == null)] |
@@ -64,7 +65,7 @@ while [ "$SECONDS" -lt "$deadline" ]; do
   converged=true
   summary=""
 
-  kcp=$(kubectl_get kubeadmcontrolplane "${CLUSTER_NAME}-control-plane" -n default -o json)
+  kcp=$(kubectl_get kubeadmcontrolplane "${CLUSTER_NAME}-control-plane" -n "$CAPI_NAMESPACE" -o json)
   kcp_desired=$(jq -r '.spec.version' <<<"$kcp")
   kcp_replicas=$(jq -r '.spec.replicas // 0' <<<"$kcp")
   kcp_ready=$(jq -r '.status.readyReplicas // 0' <<<"$kcp")
@@ -77,9 +78,9 @@ while [ "$SECONDS" -lt "$deadline" ]; do
     converged=false
   fi
 
-  mds=$(kubectl_get machinedeployments -n default -o json)
+  mds=$(kubectl_get machinedeployments -n "$CAPI_NAMESPACE" -o json)
   while IFS= read -r md; do
-    md_json=$(kubectl_get machinedeployment "$md" -n default -o json)
+    md_json=$(kubectl_get machinedeployment "$md" -n "$CAPI_NAMESPACE" -o json)
     md_desired=$(jq -r '.spec.template.spec.version' <<<"$md_json")
     md_replicas=$(jq -r '.spec.replicas // 0' <<<"$md_json")
     md_ready=$(jq -r '.status.readyReplicas // 0' <<<"$md_json")
@@ -102,7 +103,7 @@ while [ "$SECONDS" -lt "$deadline" ]; do
 
   if (( attempt == 1 || attempt % 6 == 0 )); then
     echo "[$attempt] waiting for CAPI fleet convergence..."
-    kubectl get kubeadmcontrolplane,machinedeployment,machines -n default -o wide \
+    kubectl get kubeadmcontrolplane,machinedeployment,machines -n "$CAPI_NAMESPACE" -o wide \
       || echo "warning: diagnostic fleet read failed" >&2
   fi
   sleep "$POLL_SECONDS"

@@ -324,6 +324,35 @@ func (m *memStore) DeleteDomain(_ context.Context, appID, host string) error {
 	return fmt.Errorf("domain: %w", ErrNotFound)
 }
 
+func (m *memStore) ReplaceDomains(_ context.Context, appID, primary string, hosts []string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.apps[appID]; !ok {
+		return fmt.Errorf("domain reference: %w", ErrNotFound)
+	}
+	wanted := append([]string(nil), hosts...)
+	if primary != "" {
+		wanted = append([]string{primary}, wanted...)
+	}
+	for _, host := range wanted {
+		for _, d := range m.domains {
+			if d.AppID != appID && d.Host == host {
+				return fmt.Errorf("domain: %w", ErrConflict)
+			}
+		}
+	}
+	for id, d := range m.domains {
+		if d.AppID == appID {
+			delete(m.domains, id)
+		}
+	}
+	for i, host := range wanted {
+		d := Domain{ID: ids.New(ids.Domain), AppID: appID, Host: host, Primary: primary != "" && i == 0, CreatedAt: time.Now()}
+		m.domains[d.ID] = d
+	}
+	return nil
+}
+
 func (m *memStore) ListDesiredApps(context.Context) ([]DesiredApp, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

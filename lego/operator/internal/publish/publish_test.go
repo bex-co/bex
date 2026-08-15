@@ -60,6 +60,14 @@ func TestStoreConfigured(t *testing.T) {
 	}
 }
 
+func TestCredentialBearingPublishImagesAreDigestPinned(t *testing.T) {
+	for name, image := range map[string]string{"aws": DefaultAWSCLIImage, "git": DefaultGitImage} {
+		if !strings.Contains(image, "@sha256:") {
+			t.Errorf("%s image is mutable: %q", name, image)
+		}
+	}
+}
+
 func TestPrefixAndDest(t *testing.T) {
 	o := testOptions()
 	if got := o.Prefix(); got != "mysite/rev-3/" {

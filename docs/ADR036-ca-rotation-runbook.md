@@ -11,7 +11,7 @@ The app cluster's kubeadm-issued certificates fall into two categories with diff
 | **Client certs** | `kubernetes-admin`, `kube-scheduler`, `kube-controller-manager` | Low — kubeadm renews without downtime | Annual expiry (1-year default) |
 | **Cluster CA** | `bex-ca`, `bex-etcd`, `bex-proxy` | High — all components must be restarted; all downstream certs reissued | Only on compromise or proactive hardening |
 
-This document covers both paths: routine annual renewal (§1, expected path) and full CA rotation (§2, emergency path). The admin cert is the certificate embedded in the kubeconfig fetched by [`scripts/fetch-app-kubeconfig.sh`](../scripts/fetch-app-kubeconfig.sh) and stored in the in-cluster `default/bex-kubeconfig` Secret.
+This document covers both paths: routine annual renewal (§1, expected path) and full CA rotation (§2, emergency path). The admin cert is the certificate embedded in the kubeconfig fetched by [`scripts/fetch-app-kubeconfig.sh`](../scripts/fetch-app-kubeconfig.sh) and stored in the in-cluster `bex-capi/bex-kubeconfig` Secret.
 
 ## 1. Annual client-cert renewal (expected path)
 
@@ -65,7 +65,7 @@ ssh -i ~/.ssh/id_bex "root@${CP_IP}" \
   "kubeadm certs check-expiration"
 ```
 
-The CAPI in-cluster Secret `default/bex-kubeconfig` is updated automatically by CAPI after kubeadm renews the cert (CAPI watches and re-syncs). The `AdminCertExpiringSoon` alert clears within the next Prometheus scrape cycle once the Secret creation timestamp is refreshed.
+The CAPI in-cluster Secret `bex-capi/bex-kubeconfig` is updated automatically by CAPI after kubeadm renews the cert (CAPI watches and re-syncs). The `AdminCertExpiringSoon` alert clears within the next Prometheus scrape cycle once the Secret creation timestamp is refreshed.
 
 ### After renewal: push new kubeconfig to GitHub Actions
 
@@ -86,7 +86,7 @@ Rotate the cluster CA when the `bex-ca` private key is suspected to be compromis
 
 ### What changes
 
-- `bex-ca` key + cert → CAPI Secret `default/bex-ca`
+- `bex-ca` key + cert → CAPI Secret `bex-capi/bex-ca`
 - All certs signed by `bex-ca`: `kubernetes-admin`, `kube-apiserver`, `kube-apiserver-kubelet-client`, `kube-controller-manager`, `kube-scheduler`, and all kubelet client/server certs
 - All clients that trust the old CA: kubectl, kube-proxy on worker nodes, Argo CD's in-cluster SA tokens (trust the apiserver via the service-account CA, not the cluster CA directly — unaffected), and any external systems pinning the CA cert
 
@@ -175,10 +175,10 @@ EOF
 
 ```sh
 # Phase 4. Update the CAPI in-cluster Secrets with the new CA material.
-# CAPI stores the CA cert+key in default/bex-ca. After the rotation the
+# CAPI stores the CA cert+key in bex-capi/bex-ca. After the rotation the
 # in-cluster copy is stale and must be updated so CAPI can mint future node
 # certs from the new CA.
-kubectl -n default get secret bex-ca -o json \
+kubectl -n bex-capi get secret bex-ca -o json \
   | jq --arg cert "$(ssh -i ~/.ssh/id_bex "root@${CP_IP}" cat /etc/kubernetes/pki/ca.crt | base64 -w0)" \
        --arg key  "$(ssh -i ~/.ssh/id_bex "root@${CP_IP}" cat /etc/kubernetes/pki/ca.key  | base64 -w0)" \
        '.data["tls.crt"] = $cert | .data["tls.key"] = $key' \
@@ -210,7 +210,7 @@ Any system that trusted the old CA cert explicitly (in a kubeconfig `certificate
 
 ## Alert: AdminCertExpiringSoon
 
-A Prometheus alert ([deploy/gitops/base/prometheus.yaml](../deploy/gitops/base/prometheus.yaml)) fires 30 days before the expected admin-cert expiry based on the `default/bex-kubeconfig` Secret's creation timestamp (assuming 1-year kubeadm cert validity). When it fires:
+A Prometheus alert ([deploy/gitops/base/prometheus.yaml](../deploy/gitops/base/prometheus.yaml)) fires 30 days before the expected admin-cert expiry based on the `bex-capi/bex-kubeconfig` Secret's creation timestamp (assuming 1-year kubeadm cert validity). When it fires:
 
 1. Run `kubeadm certs check-expiration` (CP node SSH, §1 step 1) to confirm actual expiry.
 2. If ≤30 days remaining, run the annual renewal procedure (§1).

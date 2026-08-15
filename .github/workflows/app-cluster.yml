@@ -136,10 +136,21 @@ jobs:
             kubectl -n "$ns" wait --for=condition=Available deploy --all --timeout=300s
           done
 
-      # --- credential Secret (hcloud-only; robot keys only needed for bare-metal) ---
-      - name: hetzner credential secret (app cluster, ns default)
+      # Namespaces are immutable and two Cluster objects named bex would race to
+      # manage the same Hetzner fleet. Refuse an ordinary workflow run until the
+      # one-time migration runbook has moved the existing object graph.
+      - name: require locked-down CAPI namespace migration
         run: |
-          kubectl create secret generic hetzner -n default \
+          if kubectl -n default get cluster "$CLUSTER_NAME" >/dev/null 2>&1; then
+            echo "legacy default/$CLUSTER_NAME still exists; run docs/runbooks/operator-kubeconfig-isolation.md before applying the bex-capi overlay" >&2
+            exit 1
+          fi
+
+      # --- credential Secret (hcloud-only; robot keys only needed for bare-metal) ---
+      - name: hetzner credential secret (app cluster, locked-down CAPI namespace)
+        run: |
+          kubectl create namespace bex-capi --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic hetzner -n bex-capi \
             --from-literal=hcloud="$HCLOUD_TOKEN" \
             --dry-run=client -o yaml | kubectl apply -f -
 

@@ -171,12 +171,10 @@ func (t *tenantService) EnsureTenant(ctx context.Context, identityID, email stri
 
 // acceptInvites redeems every pending invite addressed to the caller's email
 // into a membership + its OpenFGA role tuple — how an invited teammate lands in
-// the workspace on first login (w4/m12). The membership row is the source of
-// truth and is written transactionally; the FGA tuple is a best-effort follow-up
-// (Postgres and OpenFGA aren't one transaction), logged on failure rather than
-// surfaced so a flaky OpenFGA never blocks a login. A redeemed invite is
-// terminal (accepted_at set), so a failed tuple write is a rare, narrow window
-// consistent with the rest of the system's row-is-truth/tuple-best-effort model.
+// the workspace on first login (w4/m12). The membership row and durable
+// reconciliation intent commit in one Postgres transaction. OpenFGA remains an
+// asynchronous side effect, but a failed write is retained for the members
+// worker instead of being silently stranded after accepted_at becomes terminal.
 // No email (a machine caller, or an identity without the trait) means nothing to
 // redeem.
 func (t *tenantService) acceptInvites(ctx context.Context, identityID, email string, emailVerified bool) {
@@ -205,18 +203,40 @@ func (t *tenantService) acceptInvites(ctx context.Context, identityID, email str
 			inv.TenantID, inv.ID, inv.Email, inv.Role, identityID, methodSession)
 	}
 	if t.granter == nil {
+		for _, inv := range accepted {
+			t.completeInviteRoleReconciliation(ctx, inv, identityID)
+		}
 		return
 	}
 	for _, inv := range accepted {
 		if err := t.reconcileInviteRole(ctx, inv.TenantID, "user:"+identityID, inv.Role); err != nil {
 			log.Printf("tenancy: reconciling %s on workspace %s to %s: %v", inv.Role, inv.TenantID, identityID, err)
+			t.failInviteRoleReconciliation(ctx, inv, identityID, err)
+			continue
 		}
+		t.completeInviteRoleReconciliation(ctx, inv, identityID)
 	}
 	// The caller's cached resolution (their personal workspace) stays valid — a
 	// new membership elsewhere doesn't unseat it, and the switcher's workspace
 	// list (ListTenantsForSubject) is uncached, so the invited workspace shows
 	// immediately. Which of several workspaces is "active" is a w1/m9 concern
 	// (single-tenant resolution), not this feature's.
+}
+
+func (t *tenantService) completeInviteRoleReconciliation(ctx context.Context, inv store.Invite, subject string) {
+	if queue, ok := t.store.(members.RoleReconciliationStore); ok {
+		if err := queue.CompleteRoleReconciliation(ctx, inv.TenantID, subject, inv.Role); err != nil {
+			log.Printf("tenancy: acknowledging role reconciliation for %s/%s: %v", inv.TenantID, subject, err)
+		}
+	}
+}
+
+func (t *tenantService) failInviteRoleReconciliation(ctx context.Context, inv store.Invite, subject string, reconcileErr error) {
+	if queue, ok := t.store.(members.RoleReconciliationStore); ok {
+		if err := queue.FailRoleReconciliation(ctx, inv.TenantID, subject, inv.Role, reconcileErr.Error()); err != nil {
+			log.Printf("tenancy: retaining failed role reconciliation for %s/%s: %v", inv.TenantID, subject, err)
+		}
+	}
 }
 
 // reconcileInviteRole grants the invited role and revokes any OTHER role tuple
@@ -240,7 +260,13 @@ func (t *tenantService) reconcileInviteRole(ctx context.Context, tenantID, subje
 		if other == role {
 			continue
 		}
-		has, err := checker.Check(ctx, subject, other, "workspace:"+tenantID)
+		var has bool
+		var err error
+		if fresh, ok := t.granter.(core.FreshChecker); ok {
+			has, err = fresh.CheckFresh(ctx, subject, other, "workspace:"+tenantID)
+		} else {
+			has, err = checker.Check(ctx, subject, other, "workspace:"+tenantID)
+		}
 		if err == nil && !has {
 			continue // definitively absent — nothing to revoke
 		}

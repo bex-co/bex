@@ -244,14 +244,15 @@ func main() {
 		defer startAuxListener("sandbox-exec", "sandbox exec", envOr("BEX_SANDBOX_EXEC_ADDR", ":8081"), execMux, stop)()
 	}
 
-	// Agent-session credential listener (ADR047 D2). Sandboxes call this one
-	// directly; Cilium admits only sandbox-regime Pods, then the handler resolves
-	// the TCP source IP back to a Pod and checks its immutable session bindings.
-	// It has no Ingress and is distinct from browser/SSH/sandbox-exec listeners.
+	// Agent-session Git smart-HTTP proxy (ADR047 D2). Sandboxes can clone/push
+	// through this listener but never receive the GitHub installation token. The
+	// gateway verifies the direct source Pod and confines receive-pack to the
+	// session's exact branch before injecting credentials on the upstream hop.
 	if credentials.Enabled() {
 		credentialMux := http.NewServeMux()
-		credentialMux.Handle("POST "+agentsession.GatewayPath, credentials.Handler())
-		defer startAuxListener("agent credential", "agent credential broker", envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop)()
+		credentialMux.Handle("GET "+agentsession.GitProxyPath, credentials.Handler())
+		credentialMux.Handle("POST "+agentsession.GitProxyPath, credentials.Handler())
+		defer startAuxListener("agent git proxy", "agent git proxy", envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop)()
 	}
 	// Agent-session conversation listener (ADR047 D9, w3/m43). Browser-facing via
 	// the platform edge, which path-routes api.bex.co/v1/agent-sessions/{id}/stream

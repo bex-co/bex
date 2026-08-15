@@ -311,6 +311,7 @@ type Store interface {
 	ListApps(ctx context.Context) ([]App, error)
 	DeleteApp(ctx context.Context, id string) error
 	CreateDomain(ctx context.Context, appID, host string, primary bool) (Domain, error)
+	ReplaceDomains(ctx context.Context, appID, primary string, hosts []string) error
 	// DeleteDomain removes a custom domain row. Not-found is ErrNotFound.
 	DeleteDomain(ctx context.Context, appID, host string) error
 	ListDesiredApps(ctx context.Context) ([]DesiredApp, error)
@@ -856,6 +857,41 @@ func (s *PGStore) RemoveDomain(ctx context.Context, appID, host string) error {
 		return nil
 	}
 	return err
+}
+
+// ReplaceDomains atomically reconciles one App's complete domain set. Locking
+// the App row serializes concurrent re-syncs of the same service; the global
+// UNIQUE(domains.host) index arbitrates claims between different services.
+// Any conflict rolls the transaction back, preserving the former set.
+func (s *PGStore) ReplaceDomains(ctx context.Context, appID, primary string, hosts []string) error {
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var locked string
+		if err := tx.QueryRow(ctx, `SELECT id FROM apps WHERE id = $1 FOR UPDATE`, appID).Scan(&locked); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM domains WHERE app_id = $1`, appID); err != nil {
+			return err
+		}
+		insert := func(host string, primary bool) error {
+			if host == "" {
+				return nil
+			}
+			_, err := tx.Exec(ctx,
+				`INSERT INTO domains (id, app_id, host, is_primary) VALUES ($1, $2, $3, $4)`,
+				ids.New(ids.Domain), appID, host, primary)
+			return err
+		}
+		if err := insert(primary, true); err != nil {
+			return err
+		}
+		for _, host := range hosts {
+			if err := insert(host, false); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return classify("domain", err)
 }
 
 func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {

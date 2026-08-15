@@ -54,9 +54,10 @@ var seatUsageGQLType = graphql.NewObject(graphql.ObjectConfig{
 var acceptedInviteGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AcceptedWorkspaceInvite",
 	Fields: graphql.Fields{
-		"workspaceId":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.WorkspaceID })},
-		"workspaceName": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.WorkspaceName })},
-		"role":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.Role })},
+		"workspaceId":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.WorkspaceID })},
+		"workspaceName":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.WorkspaceName })},
+		"role":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.Role })},
+		"authorizationPending": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.AuthorizationPending })},
 	},
 })
 

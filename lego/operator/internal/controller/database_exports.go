@@ -278,7 +278,8 @@ func exportJob(db *appv1alpha1.Database, request appv1alpha1.DatabaseExportReque
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
+					RestartPolicy:                corev1.RestartPolicyNever,
+					AutomountServiceAccountToken: ptr(false),
 					Volumes: []corev1.Volume{{Name: exportWorkVolume, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{
 						SizeLimit: resource.NewQuantity(exportWorkVolumeSize, resource.BinarySI),
 					}}}},
@@ -351,7 +352,8 @@ func exportCleanupJob(db *appv1alpha1.Database, status appv1alpha1.DatabaseExpor
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec: corev1.PodSpec{
-					RestartPolicy: corev1.RestartPolicyNever,
+					RestartPolicy:                corev1.RestartPolicyNever,
+					AutomountServiceAccountToken: ptr(false),
 					Containers: []corev1.Container{{
 						Name:            "expire",
 						Image:           publish.DefaultAWSCLIImage,

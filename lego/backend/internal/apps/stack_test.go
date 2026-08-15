@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -604,6 +605,8 @@ func TestDeployStackIdempotentReapplyIsNoOp(t *testing.T) {
 	rec := &recordingStore{}
 	svc, cl := newService(rec)
 	ctx := context.Background()
+	now := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
+	svc.Clock = func() time.Time { return now }
 
 	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: stackManifest}); err != nil {
 		t.Fatalf("first DeployStack: %v", err)
@@ -618,6 +621,7 @@ func TestDeployStackIdempotentReapplyIsNoOp(t *testing.T) {
 
 	// Re-applying the SAME file converges with zero spec change, zero new deploy
 	// records, and no RestartedAt bump (the DoD's idempotency contract).
+	now = now.Add(time.Second)
 	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: stackManifest}); err != nil {
 		t.Fatalf("second DeployStack: %v", err)
 	}
@@ -727,6 +731,28 @@ func TestDeployStackChangedServiceRedeploys(t *testing.T) {
 	}
 	if got := a.Annotations[appv1alpha1.AnnotationReleaseGeneration]; got != strconv.FormatInt(existing.Generation+1, 10) {
 		t.Errorf("release-generation annotation = %q, want %d", got, existing.Generation+1)
+	}
+}
+
+func TestDeployStackDomainChangeClaimsRowsBeforePatchingApp(t *testing.T) {
+	rec := &recordingStore{}
+	existing := managedApp("web", "srv-1")
+	existing.Spec.Image = "img:1"
+	svc, cl := newService(rec, existing)
+	manifest := "services:\n  - {name: web, type: web, runtime: image, image: {url: img:1}, domains: [new.example.com, alt.example.com]}\n"
+	if _, err := svc.DeployStack(context.Background(), DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	if len(rec.domainReplaces) != 1 {
+		t.Fatalf("domain replacements = %+v, want one atomic replacement", rec.domainReplaces)
+	}
+	claim := rec.domainReplaces[0]
+	if claim.id != "srv-1" || claim.primary != "new.example.com" || len(claim.hosts) != 1 || claim.hosts[0] != "alt.example.com" {
+		t.Fatalf("domain replacement = %+v", claim)
+	}
+	got := getApp(t, cl, "web")
+	if got.Spec.Host != claim.primary || len(got.Spec.Hosts) != 1 || got.Spec.Hosts[0] != claim.hosts[0] {
+		t.Fatalf("App hosts = %q/%v, want claimed database set", got.Spec.Host, got.Spec.Hosts)
 	}
 }
 

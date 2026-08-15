@@ -1,20 +1,20 @@
 # Runbook: isolate the cluster-admin kubeconfig from the operator (codex #5)
 
-**Status:** prepared, awaiting cluster execution + cert rotation. **Owner action required:** this runbook is a live-cluster migration plus an admin-cert rotation. Claude prepared the plan and the manifest diff; a cluster operator executes the steps and rotates.
+**Status:** repository desired state implemented; live cluster migration + cert rotation remain an operator procedure. Production manifests, rollout checks, autoscaler placement, and CI now use `bex-capi`; CI refuses to apply them over an unmigrated `default/bex` Cluster.
 
 ## Finding
 
-The operator's namespace-scoped Role `bex-operator-apps` (`deploy/gitops/base/operator-apps-rbac.yaml`) grants `get/list/watch` (and more) on **all** Secrets in the `default` namespace, and is bound to the `bex-controller-manager` ServiceAccount. The `default` namespace also holds `default/bex-kubeconfig` — a CAPI-generated kubeconfig whose embedded client cert is `CN=kubernetes-admin, O=system:masters` (full cluster-admin; see [ADR019](../ADR019-infra-credentials.md) and [ADR036](../ADR036-ca-rotation-runbook.md)). So a compromise of the operator pod or its SA token escalates from the operator's intended, scoped reconcile privileges to **cluster-admin** by reading one Secret.
+Before this remediation, the operator's namespace-scoped Role `bex-operator-apps` granted `get/list/watch` (and more) on **all** Secrets in `default`, while CAPI also generated `default/bex-kubeconfig` there. Its embedded client cert is `CN=kubernetes-admin, O=system:masters`, so an operator compromise escalated to cluster-admin by reading one Secret. The repository now puts every production CAPI object and generated Secret in `bex-capi`, where neither the operator nor bex-api has RBAC.
 
 CAPI PKI Secrets (`bex-ca`, `bex-etcd`, `bex-proxy`, `bex-sa`) live in `default` for the same reason and are exposed the same way.
 
 ## What makes this low-risk
 
-**Post-pivot, nothing in-cluster consumes the `default/bex-kubeconfig` Secret:**
+**Post-pivot, nothing in-cluster consumes the CAPI-generated `bex-kubeconfig` Secret:**
 
 - The cluster-autoscaler runs `clusterAPIMode=incluster-incluster` (`deploy/gitops/base/autoscaler.yaml`) and needs **no** kubeconfig Secret. The `--set clusterAPIKubeconfigSecret=bex-kubeconfig` reference in `scripts/install-autoscaler.sh` is the **bootstrap-only** (pre-pivot) installer, uninstalled at pivot.
 - Humans/CI fetch the admin credential from a control-plane node's `/etc/kubernetes/admin.conf` over SSH (`scripts/fetch-app-kubeconfig.sh`), **not** from this Secret.
-- The only in-cluster references to `default/bex-kubeconfig` are (a) CAPI generating it and (b) one Prometheus alert (`AdminCertExpiringSoon`) that reads its creation timestamp as a cert-issue-time proxy.
+- The only in-cluster references are CAPI generating `bex-capi/bex-kubeconfig` and one Prometheus alert (`AdminCertExpiringSoon`) reading its creation timestamp as a cert-issue-time proxy.
 
 So the Secret can be relocated out of `default` without breaking any runtime consumer. Only the alert's namespace selector needs to follow it.
 
@@ -28,13 +28,44 @@ Move the CAPI `Cluster`/`Machine*`/related resources into a dedicated namespace 
    kubectl create namespace bex-capi
    ```
 
-2. **Move the CAPI resources** into it (pause the Cluster first per CAPI's move procedure):
+2. **Move the CAPI resources** into it during a maintenance window. Kubernetes
+   namespaces are immutable, and `clusterctl move --to-kubeconfig` preserves an
+   object's namespace; merely changing the destination context namespace does
+   not relocate the graph. Use the directory move path so the serialized graph
+   can be transformed explicitly. This is outside clusterctl's E2E-tested
+   bootstrap-pivot case, so first exercise the exact procedure against a
+   production snapshot in an isolated management cluster.
 
    ```bash
-   clusterctl move --namespace default --to-namespace bex-capi
+   migration_dir="$(mktemp -d)"
+   chmod 700 "$migration_dir"
+
+   # Inspect the discovered graph before the destructive move-to-directory.
+   clusterctl move --namespace default --to-directory "$migration_dir" --dry-run -v 5
+   clusterctl move --namespace default --to-directory "$migration_dir"
+
+   # Rewrite only objects from the former workload-cluster namespace. Provider
+   # objects discovered in capi-system/caph-system/etc. retain their namespace.
+   while IFS= read -r -d '' object_file; do
+     yq -i 'if .metadata.namespace == "default" then .metadata.namespace = "bex-capi" else . end' "$object_file"
+   done < <(find "$migration_dir" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0)
+   if rg -n 'namespace: default' "$migration_dir"; then
+     echo "unmigrated default-namespace object remains in the CAPI graph" >&2
+     exit 1
+   fi
+
+   # Review the transformed credential-bearing files on the secured host, then
+   # restore the graph. from-directory rebuilds owner-reference UIDs.
+   clusterctl move --from-directory "$migration_dir" --dry-run -v 5
+   clusterctl move --from-directory "$migration_dir"
+
    # verify the regenerated secrets landed there
    kubectl -n bex-capi get secret bex-kubeconfig bex-ca bex-etcd bex-proxy bex-sa
    ```
+
+   The directory contains cluster PKI and must be treated as a root credential:
+   keep it on an encrypted operator host, never attach it to a ticket or commit,
+   and securely remove it after the verification and rotation below.
 
    > If `clusterctl move` between namespaces on a self-managed (pivoted) cluster is impractical for your topology, use **Approach B** below instead.
 
@@ -44,9 +75,9 @@ Move the CAPI `Cluster`/`Machine*`/related resources into a dedicated namespace 
    kubectl -n default delete secret bex-kubeconfig bex-ca bex-etcd bex-proxy bex-sa
    ```
 
-4. **Cert-expiry alert** — no action needed. `AdminCertExpiringSoon` (`deploy/gitops/base/prometheus.yaml`) already matches `namespace=~"default|bex-capi"`, so it keeps working across the move (pre-applied, migration-agnostic). Nothing to change in lockstep.
+4. **Cert-expiry alert** — deploy the repository version after the move. `AdminCertExpiringSoon` now selects only `bex-capi/bex-kubeconfig`.
 
-5. **Update docs** that name `default/bex-kubeconfig` to `bex-capi/bex-kubeconfig`: `docs/ADR004-app-deployment.md`, `docs/ADR019-infra-credentials.md`, `docs/ADR036-ca-rotation-runbook.md`.
+5. **Run the app-cluster workflow.** It now verifies no legacy `default/bex` Cluster remains before applying the canonical `bex-capi` overlay.
 
 ## Alternative approach (B): drop the operator's `default`-Secret read
 
@@ -67,7 +98,7 @@ The operator SA must not be able to read the admin kubeconfig or CAPI PKI:
 
 ```bash
 for s in bex-kubeconfig bex-ca bex-etcd bex-proxy bex-sa; do
-  kubectl auth can-i get secret/$s -n default \
+  kubectl auth can-i get secret/$s -n bex-capi \
     --as=system:serviceaccount:bex-system:bex-controller-manager
 done
 # every line must print: no

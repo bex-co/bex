@@ -23,7 +23,7 @@ graph TD
   key -->|"ssh :22 (CP node, IP via hcloud API)"| cp["control-plane node"]
   cp -->|"/etc/kubernetes/admin.conf"| admin["app admin kubeconfig<br/>CN=kubernetes-admin, O=system:masters"]
   admin -->|"kubectl :443 (apiserver LB) → CP :6443"| app["app cluster kube-API"]
-  app -->|"read secrets (default ns)"| capi["CAPI PKI secrets (in-cluster):<br/>bex-kubeconfig, bex-ca,<br/>bex-etcd, bex-proxy, bex-sa"]
+  app -->|"read CAPI secrets (bex-capi ns)"| capi["CAPI PKI secrets (in-cluster):<br/>bex-kubeconfig, bex-ca,<br/>bex-etcd, bex-proxy, bex-sa"]
   capi -->|"bex-ca (CA key)"| mint["mint ANY new app cert<br/>(revocation-proof)"]
 ```
 
@@ -35,7 +35,7 @@ graph TD
 | --- | --- | --- | --- | --- |
 | **`bex` SSH keypair** | ed25519 (`~/.ssh/bex`, `bex.pub`) | operator laptop; public half on every node | operator; **GitHub Actions** (`BEX_SSH_PRIVATE_KEY`) | SSH `:22` to CP + worker nodes (and the bootstrap node when one exists) → **root of the whole chain** |
 | **app admin kubeconfig** | client cert `CN=kubernetes-admin, O=system:masters`, ~1yr validity | `/etc/kubernetes/admin.conf` on each CP node (+ the in-cluster `bex-kubeconfig` secret) | anyone with node SSH (via `bex`); fetched per-CI-run; transient local copies | **cluster-admin** on the app cluster (`:443` apiserver LB → CP `:6443`) |
-| **app cluster PKI** | CA cert+key pairs | `bex-ca` / `bex-etcd` / `bex-proxy` / `bex-sa` secrets, app cluster `default` ns (in-cluster since the m19.1 pivot) | Cluster API (owner); anyone with cluster-admin | **`bex-ca` = mint any app cert, incl. new admin** — crown jewels |
+| **app cluster PKI** | CA cert+key pairs | `bex-ca` / `bex-etcd` / `bex-proxy` / `bex-sa` secrets, app cluster `bex-capi` ns (in-cluster since the m19.1 pivot) | Cluster API (owner); anyone with cluster-admin | **`bex-ca` = mint any app cert, incl. new admin** — crown jewels |
 | **`bex-argo-deploy` key** | ed25519, comment `argocd-deploy-key@bex` | operator laptop; deploy key on the GitHub repo | operator; Argo CD (repo-server) | **read** `git@github.com:bex-co/bex.git` (GitOps pulls) — **not** a cluster credential |
 | **`HCLOUD_TOKEN`** | Hetzner Cloud API token | [`.env`](../.env.example); GitHub secret | operator; CI; Terraform; CCM (`hcloud` secret, `kube-system`) | full Hetzner Cloud API: servers, LBs, networks, firewalls |
 | **TF-state keys** | S3 access/secret (`TF_STATE_ACCESS_KEY`/`_SECRET_KEY`) | `.env`; GitHub secret | operator; CI | bootstrap-admin read/write for Terraform state and `bex-tfstate` backups; provisions scoped static identities but is never mounted into the static plane |
@@ -95,7 +95,7 @@ CAPH provisions every node with a single SSH key ([infra/terraform/main.tf](../i
 
 ### 2. App-cluster PKI lives in the cluster itself — accepted (self-managed since m19.1)
 
-`bex-ca`/`bex-etcd`/`bex-proxy`/`bex-sa` are CAPI-owned and, since the `clusterctl move` pivot, live in the app cluster's own `default` namespace — replicated by etcd and captured by the nightly etcd snapshot (on the retired mgmt node they had **no** backup at all). Whoever holds cluster-admin can read the CA and mint revocation-proof certs; node-level hardening of the CP nodes is therefore in scope for any hardening pass. The bootstrap node, when it temporarily exists (initial bring-up / DR), briefly holds this same material and must be treated with app-cluster sensitivity for its lifetime.
+`bex-ca`/`bex-etcd`/`bex-proxy`/`bex-sa` are CAPI-owned and, since the `clusterctl move` pivot, live in the app cluster's own `bex-capi` namespace — replicated by etcd and captured by the nightly etcd snapshot (on the retired mgmt node they had **no** backup at all). Whoever holds cluster-admin can read the CA and mint revocation-proof certs; node-level hardening of the CP nodes is therefore in scope for any hardening pass. The bootstrap node, when it temporarily exists (initial bring-up / DR), briefly holds this same material and must be treated with app-cluster sensitivity for its lifetime.
 
 ### 3. Bootstrap secrets stay out-of-band in `.env` / CI secrets — accepted
 

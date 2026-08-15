@@ -103,13 +103,24 @@ func (s *PGStore) CountTenantAdmins(ctx context.Context, tenantID string) (int, 
 // API layer's validation, not the column, so an unknown role is a caller error
 // mapped upstream, not a constraint violation here.
 func (s *PGStore) UpdateMemberRole(ctx context.Context, tenantID, subject, role string) error {
-	tag, err := s.Pool.Exec(ctx,
-		`UPDATE tenant_members SET role = $3 WHERE tenant_id = $1 AND subject = $2`,
-		tenantID, subject, role)
+	var affected int64
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx,
+			`UPDATE tenant_members SET role = $3 WHERE tenant_id = $1 AND subject = $2`,
+			tenantID, subject, role)
+		if err != nil {
+			return err
+		}
+		affected = tag.RowsAffected()
+		if affected == 0 {
+			return nil
+		}
+		return enqueueRoleReconciliation(ctx, tx, tenantID, subject, role)
+	})
 	if err != nil {
 		return classify("tenant_member", err)
 	}
-	if tag.RowsAffected() == 0 {
+	if affected == 0 {
 		return fmt.Errorf("tenant_member %s: %w", subject, ErrNotFound)
 	}
 	return nil
@@ -323,7 +334,20 @@ func redeemInvite(ctx context.Context, tx pgx.Tx, inv Invite, subject string) er
 		inv.TenantID, subject, inv.Role); err != nil {
 		return err
 	}
+	if err := enqueueRoleReconciliation(ctx, tx, inv.TenantID, subject, inv.Role); err != nil {
+		return err
+	}
 	_, err := tx.Exec(ctx, `UPDATE tenant_invites SET accepted_at = now() WHERE id = $1`, inv.ID)
+	return err
+}
+
+func enqueueRoleReconciliation(ctx context.Context, tx pgx.Tx, tenantID, subject, role string) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO membership_role_reconciliations (tenant_id, subject, role)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (tenant_id, subject) DO UPDATE
+		SET role = EXCLUDED.role, attempts = 0, next_attempt_at = now(), last_error = NULL, updated_at = now()`,
+		tenantID, subject, role)
 	return err
 }
 

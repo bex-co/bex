@@ -550,51 +550,17 @@ if [ "$verify_agent_driver" = 1 ]; then
     kubectl -n bex-system exec "$gateway_allowed_pod" -- python3 -c \
       'import sys,urllib.request; r=urllib.request.urlopen(sys.argv[1],timeout=10); assert r.status == 200; assert r.headers.get("content-type", "").startswith("text/event-stream"); assert r.headers.get("x-vercel-ai-ui-message-stream") == "v1"; r.close()' \
       "http://$pod_agent_ip:8787/stream"
-  agent_name="$(kubectl -n bex-system exec -i "$gateway_allowed_pod" -- \
-    python3 - "$pod_agent_ip" 8787 <scripts/m37-acp-ws-probe.py)" \
-    || fail "raw ACP WebSocket initialize through the gateway identity failed"
-  [ -n "$agent_name" ] || fail "raw ACP WebSocket initialize returned no agent name"
+  expect_allowed "gateway workload identity cannot access a raw ACP launch route" \
+    kubectl -n bex-system exec "$gateway_allowed_pod" -- python3 -c \
+      'import sys,urllib.error,urllib.request
+try:
+    urllib.request.urlopen(sys.argv[1], timeout=10)
+except urllib.error.HTTPError as error:
+    assert error.code == 404
+else:
+    raise AssertionError("raw ACP launch route is exposed")' \
+      "http://$pod_agent_ip:8787/acp"
 
-  kubectl -n "$namespace_a" exec -i "$pod_agent" -c "$container_agent" -- \
-    /bin/sh -c 'umask 077; cat > /tmp/m37-acp-agent.mjs' \
-    <lego/agent-image/driver/fixtures/acp-agent.mjs \
-    || fail "could not install the hermetic ACP fixture in the agent sandbox"
-  if ! kubectl -n "$namespace_a" exec -i "$pod_agent" -c "$container_agent" -- \
-    /bin/sh -s >"$fixture_dir/agent-turn.log" 2>&1 <<'AGENT_TURN'
-set -eu
-cd /workspace
-git init -q
-git config user.name "bex live verifier"
-git config user.email "bex-live-verifier@example.invalid"
-printf 'm37 live substrate proof\n' > README.md
-git add README.md
-git commit -q -m initial
-mkdir -p .m37-proof
-printf '%s\n' 'test-model-key-never-log' > .m37-proof/credential-cache
-export BEX_AGENT_COMMAND=node
-export BEX_AGENT_ARGS='["/tmp/m37-acp-agent.mjs"]'
-export BEX_AGENT_PROMPT='Implement the requested change and commit it.'
-export BEX_AGENT_ENV_JSON='{"ACP_FIXTURE_COMMIT_REPO":"/workspace","ACP_FIXTURE_REQUIRE_MODEL_KEY":"1"}'
-export BEX_AGENT_MODEL_API_KEY='test-model-key-never-log'
-export BEX_AGENT_LISTEN_HOST=127.0.0.1
-export BEX_AGENT_LISTEN_PORT=8788
-export BEX_AGENT_STATUS_FILE=/workspace/.m37-proof/status.json
-export BEX_AGENT_SESSION_LOG=/workspace/.m37-proof/session.jsonl
-export BEX_AGENT_EXIT_AFTER_TURN=1
-bex-agent-driver
-grep -q '"state":"succeeded"' .m37-proof/status.json
-grep -q '"type":"data-acp"' .m37-proof/session.jsonl
-test "$(git log -1 --format=%s)" = 'agent: complete task'
-leak_report=/workspace/.m37-proof/leaks
-find /workspace /home/bex /tmp /var/tmp /var/log/bex-agent /var/run/bex-agent \
-  -type f -readable -exec grep -a -l -F -- 'test-model-key-never-log' {} + \
-  > "$leak_report" 2>/dev/null || true
-test ! -s "$leak_report"
-grep -q '\[REDACTED\]' .m37-proof/credential-cache
-AGENT_TURN
-  then
-    fail "headless ACP turn failed inside the real agent sandbox (see $fixture_dir/agent-turn.log)"
-  fi
   if [ "$verify_agent_model" = 1 ]; then
     echo "==> run one explicitly authorized model-authenticated ACP turn"
     if ! printf '%s\n' "$live_agent_model_api_key" | \
@@ -613,7 +579,7 @@ git config user.email "bex-live-model-verifier@example.invalid"
 printf "real model substrate proof\n" > README.md
 git add README.md
 git commit -q -m initial
-export BEX_AGENT_COMMAND=claude-code-acp
+export BEX_AGENT_COMMAND=/usr/local/bin/claude-code-acp
 export BEX_AGENT_ARGS="[]"
 export BEX_AGENT_CWD="$repo"
 export BEX_AGENT_PROMPT="Create model-authenticated.txt containing exactly model authenticated, then commit all changes with message agent: real model proof."
@@ -639,7 +605,7 @@ unset BEX_AGENT_MODEL_API_KEY
     live_agent_model_api_key=""
     pass "tenant model credential authenticated the bundled ACP agent and was scrubbed"
   fi
-  pass "agent template committed a headless turn; gateway SSE/ACP ingress is identity-scoped"
+  pass "agent driver exposes no raw ACP launcher; gateway SSE ingress is identity-scoped"
 fi
 
 kubectl -n "$BEX_WORKSPACE_A" run "$hosting_pod" --image "$python_image" --restart Never \

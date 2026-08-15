@@ -149,6 +149,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Edge rules run first, in order, first match wins.
 	if act, target := matchRoutes(site.Routes, reqPath); act == actRedirect {
+		if !safeRedirectTarget(target) {
+			http.Error(w, "invalid redirect target", http.StatusBadRequest)
+			return
+		}
 		applyHeaders(w.Header(), site.Headers, reqPath)
 		http.Redirect(w, r, target, http.StatusMovedPermanently)
 		return
@@ -209,6 +213,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, _ = w.Write(obj.Body)
+}
+
+// safeRedirectTarget validates the final, expanded Location at the output sink.
+// Route validation cannot prove this invariant because :splat is request data;
+// browsers normalize reverse solidus like slash in navigation URLs.
+func safeRedirectTarget(target string) bool {
+	return strings.HasPrefix(target, "/") &&
+		!strings.HasPrefix(target, "//") &&
+		!strings.HasPrefix(target, `/\`) &&
+		!strings.ContainsAny(target, "\\\r\n\x00")
 }
 
 // fetch resolves reqPath to an object, applying index.html defaulting for "/"

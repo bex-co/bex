@@ -1556,8 +1556,6 @@ grep -qF '"path":"/data/api_key"' scripts/opensandbox-server-secret.sh \
   || { echo "FAIL: OpenSandbox Secret convergence no longer removes the legacy shared api_key" >&2; fail=1; }
 bash -n scripts/verify-sandbox-isolation.sh \
   || { echo "FAIL: verify-sandbox-isolation.sh is not valid shell" >&2; fail=1; }
-python3 -c 'compile(open("scripts/m37-acp-ws-probe.py", encoding="utf-8").read(), "scripts/m37-acp-ws-probe.py", "exec")' \
-  || { echo "FAIL: m37-acp-ws-probe.py is not valid Python" >&2; fail=1; }
 for required_probe in \
   'api.github.com' \
   '169.254.169.254' \
@@ -1608,11 +1606,9 @@ for required_agent_probe in \
   'gateway label spoof on the default ServiceAccount to agent driver' \
   'gateway workload identity to agent driver health endpoint' \
   'gateway workload identity to agent driver UI-message SSE endpoint' \
-  'm37-acp-ws-probe.py' \
-  'agent: complete task' \
+  'gateway workload identity cannot access a raw ACP launch route' \
   'agent: real model proof' \
-  'test-model-key-never-log' \
-  'agent template committed a headless turn'; do
+  'agent driver exposes no raw ACP launcher'; do
   grep -qF "$required_agent_probe" scripts/verify-sandbox-isolation.sh \
     || { echo "FAIL: sandbox isolation verifier lost m37 probe: $required_agent_probe" >&2; fail=1; }
 done
@@ -1700,7 +1696,7 @@ fi
 
 echo "==> m59 execution placement and production user namespaces"
 prewarm_shape="$(yq -N '[.spec.template.spec.nodeSelector."bex.co/pool", .spec.template.spec.containers[0].image] | join(":")' deploy/gitops/base/build-image-prewarm.yaml)"
-if [ "$prewarm_shape" != "tenant:moby/buildkit:v0.30.0" ]; then
+if [ "$prewarm_shape" != "tenant:moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f" ]; then
   echo "FAIL: BuildKit prewarm must target tenant nodes with the supported rootful image; got '$prewarm_shape'" >&2
   fail=1
 fi
@@ -1721,6 +1717,38 @@ fi
 # store credentials are deliberately two different names and provider policies.
 echo "==> static-site alias admission and split S3 credential contracts"
 BASE_RENDER="$(kubectl kustomize deploy/gitops/base)"
+# The operator's cluster-wide controller verbs are safe only while admission
+# confines its exact ServiceAccount to tenant/build namespace classes and a
+# no-token/no-host/no-privileged Pod grammar.
+operator_workload_admission_objects="$(yq -N '
+  select((.kind == "ValidatingAdmissionPolicy" or .kind == "ValidatingAdmissionPolicyBinding") and
+    (.metadata.name == "bex-operator-workloads" or
+     .metadata.name == "bex-operator-service-namespaces" or
+     .metadata.name == "bex-operator-object-namespaces")) |
+  [.kind, .metadata.name,
+   .metadata.annotations."argocd.argoproj.io/sync-wave",
+   (.spec.failurePolicy // ""),
+   ((.spec.validationActions // []) | sort | join(","))] | join(":")' \
+  - <<<"$BASE_RENDER" | sed '/^[[:space:]]*$/d' | sort)"
+expected_operator_workload_admission_objects=$'ValidatingAdmissionPolicy:bex-operator-object-namespaces:-3:Fail:\nValidatingAdmissionPolicy:bex-operator-service-namespaces:-3:Fail:\nValidatingAdmissionPolicy:bex-operator-workloads:-3:Fail:\nValidatingAdmissionPolicyBinding:bex-operator-object-namespaces:-2::Audit,Deny\nValidatingAdmissionPolicyBinding:bex-operator-service-namespaces:-2::Audit,Deny\nValidatingAdmissionPolicyBinding:bex-operator-workloads:-2::Audit,Deny'
+[ "$operator_workload_admission_objects" = "$expected_operator_workload_admission_objects" ] || {
+  echo "FAIL: operator workload admission policy/binding shape drifted" >&2
+  fail=1
+}
+for required_operator_workload_guard in \
+  "system:serviceaccount:bex-system:bex-controller-manager" \
+  "app.bex.co/execution-boundary" \
+  "app.bex.co/regime'].orValue('') == 'hosting'" \
+  "automountServiceAccountToken == false" \
+  "!has(v.hostPath)" \
+  "!c.?securityContext.?privileged.orValue(false)" \
+  "bex-kubeconfig" \
+  "bex-ca"; do
+  grep -qF "$required_operator_workload_guard" deploy/gitops/base/operator-workload-admission.yaml || {
+    echo "FAIL: operator workload admission lost '$required_operator_workload_guard'" >&2
+    fail=1
+  }
+done
 # w7/m57: the bex-tenant-api / bex-tenant-operator ClusterRoles grant cluster-wide
 # `secrets` write — safe ONLY because they are bound per-tenant-namespace by
 # RoleBinding (never a ClusterRoleBinding). A ClusterRoleBinding to either would

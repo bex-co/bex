@@ -97,6 +97,9 @@ func TestLogicalExportJobShape(t *testing.T) {
 	if upload.Image != publishDefaultAWSCLIImageForTest() || !strings.Contains(upload.Args[0], "aws s3 cp") {
 		t.Fatalf("upload container = %+v", upload)
 	}
+	if automount := job.Spec.Template.Spec.AutomountServiceAccountToken; automount == nil || *automount {
+		t.Fatalf("automountServiceAccountToken = %v, want an explicit false", automount)
+	}
 	objectKey := envValue(upload.Env, "OBJECT_KEY")
 	if !strings.Contains(objectKey, "/logical-exports/tenant-db/"+db.Spec.Exports[0].ID+"/") || !strings.HasSuffix(objectKey, ".dir.tar.gz") {
 		t.Fatalf("object key = %q, want per-export Render-format artifact", objectKey)
@@ -111,7 +114,9 @@ func TestLogicalExportJobShape(t *testing.T) {
 
 // Keep the test independent of publish's package export while still pinning
 // the exact platform uploader image selected by exportJob.
-func publishDefaultAWSCLIImageForTest() string { return "amazon/aws-cli:2.22.35" }
+func publishDefaultAWSCLIImageForTest() string {
+	return "amazon/aws-cli:2.22.35@sha256:6977c83ae3dc99f28fcf8276b9ea5eec33833cd5be40574b34112e98113ec7a2"
+}
 
 func envValue(env []corev1.EnvVar, name string) string {
 	for _, item := range env {

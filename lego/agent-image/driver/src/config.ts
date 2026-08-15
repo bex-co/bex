@@ -40,6 +40,8 @@ export interface AgentDriverConfig {
   turnTimeoutMs: number;
   credentialEnvName: string;
   modelCredential: string;
+  sessionID: string;
+  grantPublicKey: string;
   agentEnv: Record<string, string>;
   scrubRoots: string[];
 }
@@ -146,8 +148,18 @@ export function loadConfig(
     );
   }
 
+  const command = env.BEX_AGENT_COMMAND || "/usr/local/bin/claude-code-acp";
+  const allowedCommands = new Set([
+    "/usr/local/bin/claude-code-acp",
+    "/usr/local/bin/codex-acp",
+    "/usr/local/bin/gemini",
+  ]);
+  if (!path.isAbsolute(command) || !allowedCommands.has(command)) {
+    throw new Error("BEX_AGENT_COMMAND must be an installed agent adapter path");
+  }
+
   return {
-    command: env.BEX_AGENT_COMMAND || "claude-code-acp",
+    command,
     args: jsonArray(env.BEX_AGENT_ARGS, "BEX_AGENT_ARGS"),
     cwd,
     prompt: env.BEX_AGENT_PROMPT || "",
@@ -167,6 +179,8 @@ export function loadConfig(
     turnTimeoutMs: positiveMilliseconds(env.BEX_AGENT_TURN_TIMEOUT_MS),
     credentialEnvName,
     modelCredential,
+    sessionID: env.BEX_AGENT_SESSION_ID || "",
+    grantPublicKey: env.BEX_AGENT_GRANT_PUBLIC_KEY || "",
     agentEnv,
     scrubRoots: [
       ...new Set(

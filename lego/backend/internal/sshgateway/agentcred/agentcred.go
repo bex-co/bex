@@ -14,22 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package agentcred is the pod-bound git credential broker of the isolated
-// SSH gateway (ADR047 D2). It serves a separate cluster-internal listener: a
-// sandbox reaches it directly, the gateway authenticates the source Pod by
-// resolving its TCP source IP back to exactly one Pod and checking its
-// immutable session bindings, and only then makes an HMAC-authenticated mint
-// call to bex-api. (The name avoids colliding with internal/agentcredential,
-// the in-sandbox credential helper.)
+// Package agentcred is the Pod-bound Git smart-HTTP proxy of the isolated SSH
+// gateway (ADR047 D2). Sandboxes can clone and push only their bound repository
+// and bex-agent branch, while the raw GitHub installation token stays entirely
+// on the trusted gateway->GitHub hop.
 package agentcred
 
 import (
+	"bufio"
+	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/base64"
 	"errors"
 	"io"
 	"net"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,7 +43,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 )
 
-const maxRequestBytes = 16 << 10
+const maxPacketBytes = 65520
 
 type SessionPod struct {
 	Name   string
@@ -50,9 +51,6 @@ type SessionPod struct {
 	Labels map[string]string
 }
 
-// SessionPodResolver maps the request's direct TCP source IP to exactly one Pod
-// in the claimed namespace. The namespace is only a lookup hint: AuthorizePod
-// independently checks its exact relationship to the Pod's workspace label.
 type SessionPodResolver interface {
 	ResolveSessionPod(context.Context, string, string) (SessionPod, error)
 }
@@ -77,38 +75,31 @@ func (r KubeSessionPodResolver) ResolveSessionPod(ctx context.Context, namespace
 	return SessionPod{Name: pod.Name, UID: string(pod.UID), Labels: pod.Labels}, nil
 }
 
-// Broker authenticates a sandbox Pod and proxies its credential mint to
-// bex-api.
 type Broker struct {
 	Pods    SessionPodResolver
 	API     *agentsession.Client
 	Audit   core.AuditSink
 	Metrics *sshgateway.Metrics
 	Now     func() time.Time
+	// UpstreamOrigin and HTTP are test seams. Production leaves the origin empty,
+	// which fixes every credential-bearing request to HTTPS github.com.
+	UpstreamOrigin string
+	HTTP           *http.Client
 }
 
-// Enabled reports whether the credential broker is configured.
-func (b *Broker) Enabled() bool {
-	return b != nil && b.Pods != nil && b.API != nil
-}
+func (b *Broker) Enabled() bool         { return b != nil && b.Pods != nil && b.API != nil }
+func (b *Broker) Handler() http.Handler { return http.HandlerFunc(b.serveGit) }
 
-// Handler returns the HTTP handler for the credential broker. Mount it on the
-// gateway's cluster-internal listener (BEX_AGENT_CREDENTIAL_ADDR); it has no
-// edge route.
-func (b *Broker) Handler() http.Handler {
-	return http.HandlerFunc(b.serveCredential)
-}
-
-func (b *Broker) serveCredential(w http.ResponseWriter, r *http.Request) {
+func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 	if !b.Enabled() {
-		http.Error(w, "agent credentials unavailable", http.StatusServiceUnavailable)
+		http.Error(w, "git proxy unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	namespace, mintRequest, service, err := parseProxyPath(r.URL.Path)
+	if err != nil || !validGitRequest(r, service) {
+		http.Error(w, "invalid git request", http.StatusBadRequest)
 		return
 	}
-	namespace := strings.TrimSpace(r.Header.Get(agentsession.NamespaceHeader))
 	sourceIP, err := remoteIP(r.RemoteAddr)
 	if err != nil {
 		http.Error(w, "forbidden", http.StatusForbidden)
@@ -120,41 +111,199 @@ func (b *Broker) serveCredential(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	body, err := io.ReadAll(io.LimitReader(r.Body, maxRequestBytes+1))
-	if err != nil || len(body) > maxRequestBytes {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-	var req agentsession.MintRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-	verified, err := agentsession.AuthorizePod(namespace, pod.Name, pod.UID, pod.Labels, req)
+	verified, err := agentsession.AuthorizePod(namespace, pod.Name, pod.UID, pod.Labels, mintRequest)
 	if err != nil {
 		b.Metrics.Authentication("rejected_target")
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	response, err := b.API.Mint(r.Context(), verified)
+	body := io.Reader(r.Body)
+	if service == "git-receive-pack" && r.Method == http.MethodPost {
+		body, err = validateReceivePack(r.Body, verified.Branch)
+		if err != nil {
+			b.Metrics.Authentication("rejected_target")
+			http.Error(w, "push is not confined to the session branch", http.StatusForbidden)
+			return
+		}
+	}
+	credential, err := b.API.Mint(r.Context(), verified)
 	if err != nil {
 		if errors.Is(err, agentsession.ErrForbidden) {
 			b.Metrics.Authentication("rejected_target")
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
-		http.Error(w, "credential broker unavailable", http.StatusBadGateway)
+		http.Error(w, "git proxy unavailable", http.StatusBadGateway)
 		return
 	}
+	upstream, err := b.upstreamURL(verified.Repository, service, r.URL.RawQuery)
+	if err != nil {
+		http.Error(w, "git proxy unavailable", http.StatusBadGateway)
+		return
+	}
+	request, err := http.NewRequestWithContext(r.Context(), r.Method, upstream, body)
+	if err != nil {
+		http.Error(w, "git proxy unavailable", http.StatusBadGateway)
+		return
+	}
+	request.ContentLength = r.ContentLength
+	request.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(credential.Username+":"+credential.Token)))
+	request.Header.Set("User-Agent", "bex-agent-git-proxy/1")
+	for _, name := range []string{"Accept", "Content-Type", "Git-Protocol"} {
+		if value := r.Header.Get(name); value != "" {
+			request.Header.Set(name, value)
+		}
+	}
+	response, err := b.httpClient().Do(request)
+	if err != nil {
+		http.Error(w, "git upstream unavailable", http.StatusBadGateway)
+		return
+	}
+	defer response.Body.Close()
+	// GitHub smart HTTP succeeds with 200. Do not reflect error bodies or auth
+	// challenges from the credential-bearing hop into the untrusted sandbox.
+	if response.StatusCode != http.StatusOK {
+		http.Error(w, "git upstream refused request", http.StatusBadGateway)
+		return
+	}
+	for _, name := range []string{"Content-Type", "Cache-Control"} {
+		if value := response.Header.Get(name); value != "" {
+			w.Header().Set(name, value)
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = io.Copy(w, response.Body)
 	b.Metrics.Authentication("accepted")
 	core.RecordAuditEvent(r.Context(), b.Audit, core.AuditEvent{
 		Caller: pod.Name, CallerMethod: "sandbox", Verb: agentsession.AuditVerbProxyCredential,
 		Resource: core.WorkspaceObject(verified.Workspace), Target: "agent-session:" + verified.SessionID,
 		TargetName: verified.Repository, Outcome: core.AuditAllowed, At: b.now(),
 	})
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	_ = json.NewEncoder(w).Encode(response)
+}
+
+func parseProxyPath(path string) (string, agentsession.MintRequest, string, error) {
+	if !strings.HasPrefix(path, agentsession.GitProxyPath) {
+		return "", agentsession.MintRequest{}, "", agentsession.ErrInvalidRequest
+	}
+	parts := strings.SplitN(strings.TrimPrefix(path, agentsession.GitProxyPath), "/", 5)
+	if len(parts) != 5 {
+		return "", agentsession.MintRequest{}, "", agentsession.ErrInvalidRequest
+	}
+	decode := func(value string) (string, error) {
+		raw, err := base64.RawURLEncoding.DecodeString(value)
+		return string(raw), err
+	}
+	namespace, err := decode(parts[0])
+	if err != nil {
+		return "", agentsession.MintRequest{}, "", err
+	}
+	sessionID, err := decode(parts[1])
+	if err != nil {
+		return "", agentsession.MintRequest{}, "", err
+	}
+	repository, err := decode(parts[2])
+	if err != nil {
+		return "", agentsession.MintRequest{}, "", err
+	}
+	branch, err := decode(parts[3])
+	if err != nil {
+		return "", agentsession.MintRequest{}, "", err
+	}
+	service := ""
+	switch parts[4] {
+	case "info/refs":
+		service = "info/refs"
+	case "git-upload-pack", "git-receive-pack":
+		service = parts[4]
+	default:
+		return "", agentsession.MintRequest{}, "", agentsession.ErrInvalidRequest
+	}
+	return namespace, agentsession.MintRequest{SessionID: sessionID, Repository: repository, Branch: branch}, service, nil
+}
+
+func validGitRequest(r *http.Request, service string) bool {
+	if service == "info/refs" {
+		return r.Method == http.MethodGet && (r.URL.Query().Get("service") == "git-upload-pack" || r.URL.Query().Get("service") == "git-receive-pack")
+	}
+	return r.Method == http.MethodPost && r.URL.RawQuery == "" && strings.EqualFold(r.Header.Get("Content-Type"), "application/x-"+service+"-request")
+}
+
+func validateReceivePack(body io.Reader, branch string) (io.Reader, error) {
+	reader := bufio.NewReader(body)
+	var prefix bytes.Buffer
+	commands := 0
+	for {
+		header := make([]byte, 4)
+		if _, err := io.ReadFull(reader, header); err != nil {
+			return nil, err
+		}
+		prefix.Write(header)
+		if string(header) == "0000" {
+			break
+		}
+		length, err := strconv.ParseUint(string(header), 16, 16)
+		if err != nil || length < 4 || length > maxPacketBytes {
+			return nil, agentsession.ErrForbidden
+		}
+		packet := make([]byte, int(length)-4)
+		if _, err := io.ReadFull(reader, packet); err != nil {
+			return nil, err
+		}
+		prefix.Write(packet)
+		line := strings.TrimSuffix(string(packet), "\n")
+		if nul := strings.IndexByte(line, 0); nul >= 0 {
+			line = line[:nul]
+		}
+		fields := strings.Fields(line)
+		if len(fields) != 3 || fields[2] != "refs/heads/"+branch || !validObjectID(fields[0]) || !validObjectID(fields[1]) || allZero(fields[1]) {
+			return nil, agentsession.ErrForbidden
+		}
+		commands++
+		if commands > 8 {
+			return nil, agentsession.ErrForbidden
+		}
+	}
+	if commands == 0 {
+		return nil, agentsession.ErrForbidden
+	}
+	return io.MultiReader(bytes.NewReader(prefix.Bytes()), reader), nil
+}
+
+func validObjectID(value string) bool {
+	if len(value) != 40 && len(value) != 64 {
+		return false
+	}
+	for _, r := range value {
+		if !strings.ContainsRune("0123456789abcdef", r) {
+			return false
+		}
+	}
+	return true
+}
+
+func allZero(value string) bool { return strings.Trim(value, "0") == "" }
+
+func (b *Broker) upstreamURL(repository, service, query string) (string, error) {
+	origin := b.UpstreamOrigin
+	if origin == "" {
+		origin = "https://github.com"
+	}
+	parsed, err := url.Parse(origin)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return "", errors.New("invalid git upstream")
+	}
+	parsed.Path = strings.TrimRight(parsed.Path, "/") + "/" + repository + ".git/" + service
+	parsed.RawQuery = query
+	return parsed.String(), nil
+}
+
+func (b *Broker) httpClient() *http.Client {
+	client := http.Client{Timeout: 30 * time.Second}
+	if b.HTTP != nil {
+		client = *b.HTTP
+	}
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return &client
 }
 
 func (b *Broker) now() time.Time {
@@ -167,7 +316,6 @@ func (b *Broker) now() time.Time {
 func remoteIP(remoteAddr string) (string, error) {
 	host, _, err := net.SplitHostPort(remoteAddr)
 	if err != nil {
-		// Tests and direct listeners may supply a bare IP.
 		host = remoteAddr
 	}
 	ip := net.ParseIP(strings.TrimSpace(host))
