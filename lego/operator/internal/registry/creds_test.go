@@ -909,3 +909,72 @@ func TestRotateCredsPasswordChange(t *testing.T) {
 		t.Errorf("expected 1 entry after rotation, got %d", count)
 	}
 }
+
+// TestEnsureCredsMemoizesHashVerification proves the bcrypt memo makes a
+// converged re-ensure free without making it blind. The reconciler is
+// level-triggered with no generation guard, so EnsureCreds runs for every App
+// every ~30s; at bcrypt.DefaultCost the comparison alone would dominate a
+// reconcile worker.
+func TestEnsureCredsMemoizesHashVerification(t *testing.T) {
+	ctx := context.Background()
+	c := newTestCreds(t, htpasswdSecret())
+	if err := c.EnsureCreds(ctx, testAppName, testAppNS); err != nil {
+		t.Fatalf("EnsureCreds: %v", err)
+	}
+	zotUser := ZotUsername(testAppName)
+	if _, memoized := c.verified[zotUser]; !memoized {
+		t.Fatal("a converged EnsureCreds must leave the verification memoized")
+	}
+
+	before := readSecret(t, c, testZotNS, "zot-htpasswd").ResourceVersion
+	for range 3 {
+		if err := c.EnsureCreds(ctx, testAppName, testAppNS); err != nil {
+			t.Fatalf("re-ensure: %v", err)
+		}
+	}
+	if after := readSecret(t, c, testZotNS, "zot-htpasswd").ResourceVersion; after != before {
+		t.Errorf("converged re-ensure rewrote the htpasswd Secret (%s -> %s)", before, after)
+	}
+}
+
+// TestEnsureCredsMemoDoesNotMaskTamperedHash is the memo's safety property: a
+// hash swapped for one that verifies a DIFFERENT password must still be
+// repaired. The memo is keyed by the exact (hash, password) pair, so a tampered
+// hash cannot hit it — were it keyed by username alone, this App would keep a
+// credential the pull Secret no longer matches until the process restarted.
+func TestEnsureCredsMemoDoesNotMaskTamperedHash(t *testing.T) {
+	ctx := context.Background()
+	c := newTestCreds(t, htpasswdSecret())
+	if err := c.EnsureCreds(ctx, testAppName, testAppNS); err != nil {
+		t.Fatalf("EnsureCreds: %v", err)
+	}
+	zotUser := ZotUsername(testAppName)
+	password, err := c.passwordFrom(
+		readSecret(t, c, testAppNS, PullSecretName(testAppName)).Data[corev1.DockerConfigJsonKey], zotUser)
+	if err != nil {
+		t.Fatalf("passwordFrom: %v", err)
+	}
+
+	// Overwrite the entry with a well-formed hash of an attacker-chosen password.
+	tampered, err := setHTPasswdLine(
+		readSecret(t, c, testZotNS, "zot-htpasswd").Data[htpasswdKey], zotUser, "not-the-real-password")
+	if err != nil {
+		t.Fatalf("setHTPasswdLine: %v", err)
+	}
+	ht := readSecret(t, c, testZotNS, "zot-htpasswd")
+	ht.Data[htpasswdKey] = tampered
+	if err := c.Client.Update(ctx, ht); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c.EnsureCreds(ctx, testAppName, testAppNS); err != nil {
+		t.Fatalf("repair EnsureCreds: %v", err)
+	}
+	hash, found := htpasswdUserHash(readSecret(t, c, testZotNS, "zot-htpasswd").Data[htpasswdKey], zotUser)
+	if !found {
+		t.Fatal("htpasswd entry vanished")
+	}
+	if err := bcrypt.CompareHashAndPassword(hash, []byte(password)); err != nil {
+		t.Errorf("tampered hash survived the memo — it must be re-synced to the pull Secret's password: %v", err)
+	}
+}

@@ -365,13 +365,13 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	var series []MetricSeries
 	switch q.Metric {
 	case MetricCPU, MetricMemory:
-		series, err = s.resourceMetric(ctx, q, app.Name)
+		series, err = s.resourceMetric(ctx, q, app)
 	case MetricCPULimit, MetricMemoryLimit:
-		series, err = s.resourceLimitMetric(ctx, q, app.Name)
+		series, err = s.resourceLimitMetric(ctx, q, app)
 	case MetricInstanceCount:
-		series, err = s.instanceCountMetric(ctx, q, app.Name)
+		series, err = s.instanceCountMetric(ctx, q, app)
 	case MetricHTTPRequests, MetricHTTPLatency, MetricBandwidth:
-		series, err = s.requestMetric(ctx, q, app, app.Name)
+		series, err = s.requestMetric(ctx, q, app)
 	case MetricCPUTarget, MetricMemoryTarget:
 		series = autoscaleTargetMetric(app, q, s.Now())
 	default:
@@ -518,21 +518,21 @@ func aggregateMaxSeries(app string, series []MetricSeries) []MetricSeries {
 // snapshot). With Percentage set, each value is divided by that pod's limit (from
 // the pod spec) and reported as a 0..100 percentage; a pod with no limit is
 // skipped from percentage output (division is undefined).
-func (s *Service) resourceMetric(ctx context.Context, q MetricQuery, appName string) ([]MetricSeries, error) {
+func (s *Service) resourceMetric(ctx context.Context, q MetricQuery, app *appv1alpha1.App) ([]MetricSeries, error) {
 	if s.ResourceMetricsRange != nil {
-		return s.resourceMetricRange(ctx, q, appName)
+		return s.resourceMetricRange(ctx, q, app)
 	}
 	if s.ResourceMetrics == nil {
 		return nil, core.ErrMetricsUnavailable
 	}
-	pods, err := s.AppPods(ctx, appName)
+	pods, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
 	if err != nil {
 		return nil, err
 	}
 	// The snapshot source reads pod metrics from the App's per-tenant `<ws>`
 	// namespace (ADR043), same as the ranged source in rangedResourceSeries —
 	// the shared s.Namespace was emptied of pods by the migration.
-	usage, err := s.ResourceMetrics(ctx, s.AppNamespaceByName(ctx, appName), appName)
+	usage, err := s.ResourceMetrics(ctx, app.Namespace, app.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -575,13 +575,13 @@ func (s *Service) resourceMetric(ctx context.Context, q MetricQuery, appName str
 // (Prometheus) source: it owns the MetricQuery→request mapping and the unit
 // stamping, so the per-verb wrappers keep only their genuinely different
 // fallbacks — the resource-family sibling of requestMetric's single funnel.
-func (s *Service) rangedResourceSeries(ctx context.Context, q MetricQuery, appName, metric, unit string) ([]MetricSeries, error) {
+func (s *Service) rangedResourceSeries(ctx context.Context, q MetricQuery, app *appv1alpha1.App, metric, unit string) ([]MetricSeries, error) {
 	series, err := s.ResourceMetricsRange(ctx, ResourceMetricsRangeRequest{
 		// cAdvisor series carry the pod's namespace; under ADR043 that is the
 		// App's per-tenant `<ws>` namespace, so resolve it from the app name rather
 		// than pinning the shared namespace (which the migration emptied of pods).
-		Namespace:  s.AppNamespaceByName(ctx, appName),
-		App:        appName,
+		Namespace:  app.Namespace,
+		App:        app.Name,
 		Metric:     metric,
 		Start:      q.Start,
 		End:        q.End,
@@ -605,17 +605,17 @@ func (s *Service) rangedResourceSeries(ctx context.Context, q MetricQuery, appNa
 // point by the pod's current spec limit, keyed by the series' instance label — an
 // instance with no limit (including a pod that no longer exists) is omitted
 // rather than faked, exactly like the snapshot path.
-func (s *Service) resourceMetricRange(ctx context.Context, q MetricQuery, appName string) ([]MetricSeries, error) {
+func (s *Service) resourceMetricRange(ctx context.Context, q MetricQuery, app *appv1alpha1.App) ([]MetricSeries, error) {
 	unit := resourceUnit(q.Metric)
 	if q.Percentage {
 		unit = unitPercentage
 	}
-	series, err := s.rangedResourceSeries(ctx, q, appName, q.Metric, unit)
+	series, err := s.rangedResourceSeries(ctx, q, app, q.Metric, unit)
 	if err != nil {
 		return nil, err
 	}
 	if q.Percentage && len(series) > 0 {
-		pods, err := s.AppPods(ctx, appName)
+		pods, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -639,8 +639,8 @@ func (s *Service) resourceMetricRange(ctx context.Context, q MetricQuery, appNam
 
 // resourceLimitMetric returns one current series per replica of the pod's
 // configured CPU/memory limit (from the pod spec, not metrics-server).
-func (s *Service) resourceLimitMetric(ctx context.Context, q MetricQuery, appName string) ([]MetricSeries, error) {
-	pods, err := s.AppPods(ctx, appName)
+func (s *Service) resourceLimitMetric(ctx context.Context, q MetricQuery, app *appv1alpha1.App) ([]MetricSeries, error) {
+	pods, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -697,11 +697,11 @@ func autoscaleTargetMetric(app *appv1alpha1.App, q MetricQuery, now time.Time) [
 // series when the ranged (Prometheus) source is wired, else a single-series
 // current count of the App's pods — the fallback needs no metrics source at all,
 // so it works even on a cluster without metrics-server.
-func (s *Service) instanceCountMetric(ctx context.Context, q MetricQuery, appName string) ([]MetricSeries, error) {
+func (s *Service) instanceCountMetric(ctx context.Context, q MetricQuery, app *appv1alpha1.App) ([]MetricSeries, error) {
 	if s.ResourceMetricsRange != nil {
-		return s.rangedResourceSeries(ctx, q, appName, MetricInstanceCount, unitCount)
+		return s.rangedResourceSeries(ctx, q, app, MetricInstanceCount, unitCount)
 	}
-	pods, err := s.AppPods(ctx, appName)
+	pods, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -719,7 +719,7 @@ func (s *Service) instanceCountMetric(ctx context.Context, q MetricQuery, appNam
 }
 
 // requestMetric delegates to the injected request-metrics source.
-func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1alpha1.App, appName string) ([]MetricSeries, error) {
+func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1alpha1.App) ([]MetricSeries, error) {
 	// A host/path filter is served from the request-log store (Loki) — Traefik's
 	// Prometheus counters carry no per-request host/path axis (w5/m58). Metrics()
 	// has already rejected host/path on any metric but the two request metrics, so
@@ -728,7 +728,7 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 		if s.RequestLogMetrics == nil {
 			return nil, core.ErrLogStoreUnavailable
 		}
-		return s.readRequestSeries(ctx, s.RequestLogMetrics, q, app, appName, nil)
+		return s.readRequestSeries(ctx, s.RequestLogMetrics, q, app, nil)
 	}
 	if s.RequestMetrics == nil {
 		return nil, core.ErrMetricsUnavailable
@@ -741,19 +741,19 @@ func (s *Service) requestMetric(ctx context.Context, q MetricQuery, app *appv1al
 			return nil, fmt.Errorf("%w: %v", core.ErrMetricsUnavailable, err)
 		}
 	}
-	return s.readRequestSeries(ctx, s.RequestMetrics, q, app, appName, routers)
+	return s.readRequestSeries(ctx, s.RequestMetrics, q, app, routers)
 }
 
 // readRequestSeries issues one request-metric read against the chosen backend
 // (Prometheus for the unfiltered path, Loki for a host/path-filtered one) and
 // restores the caller-facing resource identity + unit on every returned series —
 // the post-processing both backends share.
-func (s *Service) readRequestSeries(ctx context.Context, source RequestMetricsSource, q MetricQuery, app *appv1alpha1.App, appName string, routers []string) ([]MetricSeries, error) {
+func (s *Service) readRequestSeries(ctx context.Context, source RequestMetricsSource, q MetricQuery, app *appv1alpha1.App, routers []string) ([]MetricSeries, error) {
 	series, err := source(ctx, RequestMetricsRequest{
 		// The App CR is in hand — its namespace is the per-tenant `<ws>` namespace
 		// under ADR043; use it directly rather than the shared s.Namespace.
 		Namespace:  app.Namespace,
-		App:        appName,
+		App:        app.Name,
 		AppID:      appResourceID(app, q.App),
 		Direct:     app.Spec.Type != appv1alpha1.TypeStaticSite,
 		Routers:    routers,
@@ -930,7 +930,7 @@ func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]
 		case filterFieldResource:
 			out = append(out, MetricsFilterValues{Field: field, Values: []string{q.App}})
 		case "INSTANCE":
-			pods, err := s.AppPods(ctx, app.Name)
+			pods, err := s.AppPodsIn(ctx, app.Namespace, app.Name)
 			if err != nil {
 				return nil, err
 			}

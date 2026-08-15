@@ -759,7 +759,7 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	ch := make(chan LogEntry, 64)
 	var wg sync.WaitGroup
 
-	pods, err := s.appPodNames(ctx, q)
+	pods, err := s.appPodNames(ctx, app.Namespace, q)
 	if err != nil {
 		return err
 	}
@@ -963,7 +963,7 @@ func setLogEntryResource(entry *LogEntry, resource string) {
 // `instance` filter admits, tagged and timestamp-sorted. Shared by Logs (MCP) and
 // QueryLogs (REST/GraphQL).
 func (s *Service) collectPodLogs(ctx context.Context, namespace string, q LogQuery, tail int64) ([]LogEntry, error) {
-	pods, err := s.appPodNames(ctx, q)
+	pods, err := s.appPodNames(ctx, namespace, q)
 	if err != nil {
 		return nil, err
 	}
@@ -1038,8 +1038,8 @@ func (s *Service) collectKeyValuePodLogs(ctx context.Context, namespace string, 
 // appPodNames lists the App's replica names the query's `instance` filter admits
 // — the pod-log path's honoring of that filter (a pod name is a pod name, so this
 // one structured filter needs no store).
-func (s *Service) appPodNames(ctx context.Context, q LogQuery) ([]string, error) {
-	pods, err := s.AppPods(ctx, q.App)
+func (s *Service) appPodNames(ctx context.Context, namespace string, q LogQuery) ([]string, error) {
+	pods, err := s.AppPodsIn(ctx, namespace, q.App)
 	if err != nil {
 		return nil, err
 	}

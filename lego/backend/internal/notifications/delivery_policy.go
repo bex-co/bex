@@ -20,8 +20,31 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 )
+
+// locationCache memoizes time.LoadLocation. The Go runtime does not: each call
+// re-reads and re-parses the zone's tzdata entry. compileDeliveryPolicy runs
+// inside Evaluate, which the push worker calls once per recipient per event on
+// a 2s dispatch loop, so a full batch would otherwise re-parse the same handful
+// of zones thousands of times a minute. A *time.Location is immutable, so
+// sharing one across goroutines is safe. Only successes are cached — a bad zone
+// is rejected when settings are written, and never memoizing the failure keeps
+// a tzdata update able to heal one.
+var locationCache sync.Map // string -> *time.Location
+
+func loadLocation(zone string) (*time.Location, error) {
+	if cached, ok := locationCache.Load(zone); ok {
+		return cached.(*time.Location), nil
+	}
+	location, err := time.LoadLocation(zone)
+	if err != nil {
+		return nil, err
+	}
+	locationCache.Store(zone, location)
+	return location, nil
+}
 
 // DeliveryChannel is a user-configurable notification destination. It is
 // intentionally closed: native push extends the existing email preference
@@ -299,7 +322,7 @@ func compileDeliveryPolicy(policy DeliveryPolicy) (compiledDeliveryPolicy, error
 	if zone == "" || zone == "Local" {
 		return compiledDeliveryPolicy{}, invalidPolicyf("IANA timezone is required")
 	}
-	location, err := time.LoadLocation(zone)
+	location, err := loadLocation(zone)
 	if err != nil {
 		return compiledDeliveryPolicy{}, invalidPolicyf("timezone %q: %v", zone, err)
 	}
