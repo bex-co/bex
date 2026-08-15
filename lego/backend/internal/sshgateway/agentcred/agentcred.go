@@ -298,7 +298,23 @@ func (b *Broker) upstreamURL(repository, service, query string) (string, error) 
 }
 
 func (b *Broker) httpClient() *http.Client {
-	client := http.Client{Timeout: 30 * time.Second}
+	// A total http.Client.Timeout is WRONG for this proxy: it bounds the whole
+	// exchange INCLUDING streaming the response body, so a full `git clone` of a
+	// large repository whose upload-pack legitimately streams for longer than the
+	// budget is truncated mid-transfer ("fatal: early EOF" / "unexpected disconnect
+	// while reading sideband packet"). Bound the parts that guard against a hung
+	// upstream instead — dial, TLS handshake, and time-to-first-response-header —
+	// while letting a healthy pack stream to completion. The request already
+	// carries the sandbox request's context, so the overall lifetime is still
+	// bounded (a disconnected sandbox cancels the upstream fetch).
+	client := http.Client{
+		Transport: &http.Transport{
+			DialContext:           (&net.Dialer{Timeout: 15 * time.Second}).DialContext,
+			TLSHandshakeTimeout:   15 * time.Second,
+			ResponseHeaderTimeout: 30 * time.Second,
+			IdleConnTimeout:       90 * time.Second,
+		},
+	}
 	if b.HTTP != nil {
 		client = *b.HTTP
 	}
