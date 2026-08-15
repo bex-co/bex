@@ -64,7 +64,9 @@ class Bex < Formula
   end
 
   def install
-    bin.install Dir["bex-*/bex"].first => "bex"
+    # Homebrew strips a sole top-level archive directory during staging, so
+    # the binary is usually at the root; fall back to the nested layout.
+    bin.install(File.exist?("bex") ? "bex" : Dir["bex-*/bex"].fetch(0))
   end
 
   test do
