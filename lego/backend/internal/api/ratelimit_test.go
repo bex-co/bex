@@ -59,7 +59,7 @@ func TestRateLimiterDisabledWhenZero(t *testing.T) {
 
 func TestRateLimiterPerCallerIsolation(t *testing.T) {
 	// burst=1: first request for any key passes, second immediately fails.
-	rl := NewRateLimiter(60000, 1) // high fill rate; burst is the constraint
+	rl := NewRateLimiter(1, 1) // 1/min: the bucket cannot refill mid-test, so burst is the constraint
 	h := rl.Middleware(ok200)
 
 	// Alice: first passes, second is 429.
@@ -108,7 +108,7 @@ func TestRateLimiterRetryAfterHeader(t *testing.T) {
 }
 
 func TestRateLimiterRESTShape(t *testing.T) {
-	rl := NewRateLimiter(60000, 1)
+	rl := NewRateLimiter(1, 1)
 	h := rl.Middleware(ok200)
 	id := core.Identity{Subject: "u1"}
 	r := reqWith("GET", "/v1/services", id)
@@ -133,7 +133,7 @@ func TestRateLimiterRESTShape(t *testing.T) {
 }
 
 func TestRateLimiterGraphQLShape(t *testing.T) {
-	rl := NewRateLimiter(60000, 1)
+	rl := NewRateLimiter(1, 1)
 	h := rl.Middleware(ok200)
 	id := core.Identity{Subject: "gql-user"}
 	gqlReq := func() *http.Request {
@@ -162,7 +162,7 @@ func TestRateLimiterGraphQLShape(t *testing.T) {
 }
 
 func TestRateLimiterIPFallback(t *testing.T) {
-	rl := NewRateLimiter(60000, 1)
+	rl := NewRateLimiter(1, 1)
 	h := rl.Middleware(ok200)
 	// Request with no identity — falls back to remote IP.
 	r := httptest.NewRequest("GET", "/v1/services", nil)
@@ -194,7 +194,7 @@ func ipReq(peer, xff string) *http.Request {
 }
 
 func TestRateLimiterTrustedProxyIndependentBuckets(t *testing.T) {
-	rl := NewRateLimiter(60000, 1) // burst=1: second request for a key is 429
+	rl := NewRateLimiter(1, 1) // burst=1, refill 1/min: the second request for a key is 429
 	tp, err := core.ParseTrustedProxies("10.0.0.0/8")
 	if err != nil {
 		t.Fatalf("ParseTrustedProxies: %v", err)
@@ -225,7 +225,7 @@ func TestRateLimiterTrustedProxyIndependentBuckets(t *testing.T) {
 }
 
 func TestRateLimiterUntrustedPeerSpoofIgnored(t *testing.T) {
-	rl := NewRateLimiter(60000, 1)
+	rl := NewRateLimiter(1, 1)
 	tp, err := core.ParseTrustedProxies("10.0.0.0/8")
 	if err != nil {
 		t.Fatalf("ParseTrustedProxies: %v", err)
@@ -249,7 +249,7 @@ func TestRateLimiterUntrustedPeerSpoofIgnored(t *testing.T) {
 }
 
 func TestRateLimiterNoTrustedProxiesByteIdentical(t *testing.T) {
-	rl := NewRateLimiter(60000, 1) // TrustedProxies unset — the old behavior
+	rl := NewRateLimiter(1, 1) // TrustedProxies unset — the old behavior
 	h := rl.Middleware(ok200)
 
 	// Forwarding headers are ignored entirely: every request keys on the peer
@@ -500,8 +500,12 @@ func TestRateLimitWiredInHandler(t *testing.T) {
 	base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default"}
 	srv := NewServer(base, Deps{})
 	srv.HydraAdminURL = fakeHydraURL(t)
-	// Burst=1: after consuming the token, the next request is 429.
-	srv.RateLimiter = NewRateLimiter(60000, 1)
+	// Burst=1 at 1 request/minute: after consuming the token, the next request is
+	// 429. The rate has to be SLOW, not fast — a token bucket refills on the wall
+	// clock, so the 60000/min this used to pass handed back a token every
+	// millisecond, and this request goes through the auth gate and a fake Hydra
+	// round trip first. It lost that race about 40% of the time.
+	srv.RateLimiter = NewRateLimiter(1, 1)
 	h, err := srv.Handler()
 	if err != nil {
 		t.Fatalf("Handler: %v", err)
