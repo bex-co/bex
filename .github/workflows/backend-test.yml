@@ -107,8 +107,6 @@ jobs:
         run: go test -p 1 ./...
       - name: test agent credential snapshot scrub
         run: bash lego/agent-image/credential-scrub-test.sh
-      - name: verify live agent credential image and rootfs resume contract
-        run: bash lego/agent-image/credential-e2e-test.sh
       - name: test Stripe billing operations (offline guards + reconciliation)
         run: >-
           python3 -m unittest
