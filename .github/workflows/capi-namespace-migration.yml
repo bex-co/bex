@@ -1,0 +1,203 @@
+name: migrate CAPI namespace (one-time)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type MOVE-default-TO-bex-capi"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: bex-capi-namespace-migration
+  cancel-in-progress: false
+
+env:
+  CLUSTER_NAME: bex
+  SOURCE_NAMESPACE: default
+  TARGET_NAMESPACE: bex-capi
+
+jobs:
+  migrate:
+    if: >-
+      github.ref == 'refs/heads/main' && inputs.confirmation == 'MOVE-default-TO-bex-capi'
+
+    runs-on: ubuntu-latest
+    environment: production-infra
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v6.2.0
+        with:
+          go-version: "1.25.x"
+          cache-dependency-path: lego/operator/hack/capi-namespace-migrate/go.sum
+
+      - name: test the namespace mutator
+        working-directory: lego/operator/hack/capi-namespace-migrate
+        env:
+          GOWORK: "off"
+        run: go test ./...
+
+      - name: fetch app cluster kubeconfig
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+          BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.BEX_SSH_PRIVATE_KEY }}" > ~/.ssh/id_bex
+          chmod 600 ~/.ssh/id_bex
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
+          if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "${BEX_SSH_KNOWN_HOSTS}" > ~/.ssh/bex_known_hosts
+            chmod 600 ~/.ssh/bex_known_hosts
+            export BEX_SSH_KNOWN_HOSTS_FILE=~/.ssh/bex_known_hosts
+          fi
+          bash scripts/fetch-app-kubeconfig.sh "$PWD/app.kubeconfig"
+          echo "KUBECONFIG=$PWD/app.kubeconfig" >> "$GITHUB_ENV"
+
+      - name: preflight source, target, and fleet health
+        run: |
+          source_clusters="$(kubectl -n "$SOURCE_NAMESPACE" get clusters.cluster.x-k8s.io -o json)"
+          [ "$(jq '.items | length' <<<"$source_clusters")" -eq 1 ]
+          jq -e --arg name "$CLUSTER_NAME" '
+            .items[0].metadata.name == $name and
+            .items[0].metadata.deletionTimestamp == null and
+            (.items[0].spec.paused // false) == false and
+            .items[0].status.infrastructureReady == true and
+            .items[0].status.controlPlaneReady == true
+          ' <<<"$source_clusters" >/dev/null
+          if kubectl -n "$TARGET_NAMESPACE" get cluster "$CLUSTER_NAME" >/dev/null 2>&1; then
+            echo "$TARGET_NAMESPACE/$CLUSTER_NAME already exists; refusing a second controller graph" >&2
+            exit 1
+          fi
+          CAPI_NAMESPACE="$SOURCE_NAMESPACE" TIMEOUT_SECONDS=900 \
+            bash scripts/wait-capi-rollout.sh
+
+      - name: take and verify a fresh off-cluster etcd snapshot
+        run: |
+          backup_job="capi-migration-etcd-${GITHUB_RUN_ID}"
+          kubectl -n kube-system create job --from=cronjob/etcd-backup "$backup_job"
+          if ! kubectl -n kube-system wait --for=condition=Complete "job/$backup_job" --timeout=600s; then
+            kubectl -n kube-system describe "job/$backup_job" >&2
+            kubectl -n kube-system logs "job/$backup_job" --all-containers --tail=100 >&2 || true
+            exit 1
+          fi
+          [ "$(kubectl -n kube-system get "job/$backup_job" -o jsonpath='{.status.succeeded}')" = "1" ]
+
+      - name: back up the CAPI graph and dry-run discovery
+        working-directory: lego/operator/hack/capi-namespace-migrate
+        env:
+          GOWORK: "off"
+        run: |
+          migration_backup="$RUNNER_TEMP/capi-graph-backup"
+          install -m700 -d "$migration_backup"
+          echo "MIGRATION_BACKUP=$migration_backup" >> "$GITHUB_ENV"
+          go run . \
+            -kubeconfig "$KUBECONFIG" \
+            -from-namespace "$SOURCE_NAMESPACE" \
+            -to-namespace "$TARGET_NAMESPACE" \
+            -backup-directory "$migration_backup"
+          [ "$(find "$migration_backup" -type f | wc -l)" -gt 0 ]
+          go run . \
+            -kubeconfig "$KUBECONFIG" \
+            -from-namespace "$SOURCE_NAMESPACE" \
+            -to-namespace "$TARGET_NAMESPACE" \
+            -dry-run
+
+      - name: atomically move the CAPI graph to bex-capi
+        working-directory: lego/operator/hack/capi-namespace-migrate
+        env:
+          GOWORK: "off"
+        run: |
+          echo "MOVE_STARTED=true" >> "$GITHUB_ENV"
+          go run . \
+            -kubeconfig "$KUBECONFIG" \
+            -from-namespace "$SOURCE_NAMESPACE" \
+            -to-namespace "$TARGET_NAMESPACE" \
+            -confirm "MOVE-${SOURCE_NAMESPACE}-TO-${TARGET_NAMESPACE}"
+
+      - name: verify target graph, credentials, and operator isolation
+        run: |
+          if kubectl -n "$SOURCE_NAMESPACE" get cluster "$CLUSTER_NAME" >/dev/null 2>&1; then
+            echo "source Cluster still exists after move" >&2
+            exit 1
+          fi
+          target="$(kubectl -n "$TARGET_NAMESPACE" get cluster "$CLUSTER_NAME" -o json)"
+          jq -e '
+            .metadata.deletionTimestamp == null and
+            (.spec.paused // false) == false and
+            .status.infrastructureReady == true and
+            .status.controlPlaneReady == true
+          ' <<<"$target" >/dev/null
+          kubectl -n "$TARGET_NAMESPACE" get secret \
+            bex-kubeconfig bex-ca bex-etcd bex-proxy bex-sa >/dev/null
+          for secret in bex-kubeconfig bex-ca bex-etcd bex-proxy bex-sa; do
+            if kubectl -n "$SOURCE_NAMESPACE" get secret "$secret" >/dev/null 2>&1; then
+              echo "legacy $SOURCE_NAMESPACE/$secret remains after move" >&2
+              exit 1
+            fi
+            allowed="$(kubectl auth can-i get "secret/$secret" -n "$TARGET_NAMESPACE" \
+              --as=system:serviceaccount:bex-system:bex-controller-manager)"
+            [ "$allowed" = "no" ] || {
+              echo "operator can still read $TARGET_NAMESPACE/$secret" >&2
+              exit 1
+            }
+          done
+          CAPI_NAMESPACE="$TARGET_NAMESPACE" TIMEOUT_SECONDS=1800 \
+            bash scripts/wait-capi-rollout.sh
+
+      - name: recover a single surviving graph if the move failed
+        if: ${{ failure() && env.MOVE_STARTED == 'true' }}
+        working-directory: lego/operator/hack/capi-namespace-migrate
+        env:
+          GOWORK: "off"
+        run: |
+          source_exists=false
+          target_exists=false
+          kubectl -n "$SOURCE_NAMESPACE" get cluster "$CLUSTER_NAME" >/dev/null 2>&1 \
+            && source_exists=true
+          kubectl -n "$TARGET_NAMESPACE" get cluster "$CLUSTER_NAME" >/dev/null 2>&1 \
+            && target_exists=true
+          case "$source_exists:$target_exists" in
+            true:false)
+              kubectl -n "$SOURCE_NAMESPACE" patch cluster "$CLUSTER_NAME" \
+                --type=merge -p '{"spec":{"paused":null}}'
+              echo "move failed before deleting the source; source graph resumed" >&2
+              ;;
+            false:true)
+              kubectl -n "$TARGET_NAMESPACE" patch cluster "$CLUSTER_NAME" \
+                --type=merge -p '{"spec":{"paused":null}}'
+              echo "move reached the target; target graph resumed" >&2
+              ;;
+            true:true)
+              kubectl -n "$SOURCE_NAMESPACE" patch cluster "$CLUSTER_NAME" \
+                --type=merge -p '{"spec":{"paused":true}}'
+              kubectl -n "$TARGET_NAMESPACE" patch cluster "$CLUSTER_NAME" \
+                --type=merge -p '{"spec":{"paused":true}}'
+              echo "both graphs exist; both were paused to prevent competing reconciliation" >&2
+              exit 1
+              ;;
+            false:false)
+              go run . \
+                -kubeconfig "$KUBECONFIG" \
+                -from-namespace "$SOURCE_NAMESPACE" \
+                -to-namespace "$TARGET_NAMESPACE" \
+                -restore-directory "$MIGRATION_BACKUP" \
+                -confirm "RESTORE-${SOURCE_NAMESPACE}"
+              echo "neither root survived; restored the original graph from the in-run backup" >&2
+              ;;
+          esac
+
+      - name: securely remove in-run credentials and graph backup
+        if: ${{ always() }}
+        run: |
+          if [ -n "${MIGRATION_BACKUP:-}" ] && [ -d "$MIGRATION_BACKUP" ]; then
+            find "$MIGRATION_BACKUP" -type f -exec shred -u {} + 2>/dev/null || true
+            rm -rf -- "$MIGRATION_BACKUP"
+          fi
+          shred -u "$KUBECONFIG" ~/.ssh/id_bex ~/.ssh/bex_known_hosts 2>/dev/null || true

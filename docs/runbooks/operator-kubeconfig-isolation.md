@@ -28,48 +28,17 @@ Move the CAPI `Cluster`/`Machine*`/related resources into a dedicated namespace 
    kubectl create namespace bex-capi
    ```
 
-2. **Move the CAPI resources** into it during a maintenance window. Kubernetes namespaces are immutable, and `clusterctl move --to-kubeconfig` preserves an object's namespace; merely changing the destination context namespace does not relocate the graph. Use the directory move path so the serialized graph can be transformed explicitly. This is outside clusterctl's E2E-tested bootstrap-pivot case, so first exercise the exact procedure against a production snapshot in an isolated management cluster.
+2. **Move the CAPI resources** into it during a maintenance window. Kubernetes namespaces are immutable, and the `clusterctl` CLI preserves an object's namespace. The one-time protected workflow `.github/workflows/capi-namespace-migration.yml` therefore calls clusterctl v1.13.2's library `Move` operation with its experimental resource-mutator hook. The mutator rewrites only `default` object namespaces and known namespaced CAPI references to `bex-capi`; clusterctl creates the complete target graph, rebuilds owner-reference UIDs, force-deletes the paused source graph with its `delete-for-move` annotation, and then resumes the target.
 
-   ```bash
-   migration_dir="$(mktemp -d)"
-   chmod 700 "$migration_dir"
+   Dispatch it only from reviewed `main`, with the protected `production-infra` environment and the exact confirmation `MOVE-default-TO-bex-capi`. Before the move it requires one healthy `default/bex` Cluster, no target Cluster, a converged fleet, a fresh successful off-cluster etcd snapshot, a credential-bearing in-run graph backup, and a successful clusterctl dry run. Afterward it requires the target graph and five PKI/admin Secrets, no source copies, a converged fleet, and a negative operator `can-i` check for every target Secret.
 
-   # Inspect the discovered graph before the destructive move-to-directory.
-   clusterctl move --namespace default --to-directory "$migration_dir" --dry-run -v 5
-   clusterctl move --namespace default --to-directory "$migration_dir"
+   > **Do not use `clusterctl move --to-directory` followed by `--from-directory` for namespace relocation.** In clusterctl v1.13.2, `to-directory` is a backup operation: it pauses, serializes, and then resumes the source objects without deleting them. Restoring a namespace-rewritten directory would create a second live controller graph. The library `Move` path is required because it couples target creation and owner-UID repair with source deletion.
 
-   # Rewrite only objects from the former workload-cluster namespace. Provider
-   # objects discovered in capi-system/caph-system/etc. retain their namespace.
-   while IFS= read -r -d '' object_file; do
-     yq -i 'if .metadata.namespace == "default" then .metadata.namespace = "bex-capi" else . end' "$object_file"
-   done < <(find "$migration_dir" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0)
-   if rg -n 'namespace: default' "$migration_dir"; then
-     echo "unmigrated default-namespace object remains in the CAPI graph" >&2
-     exit 1
-   fi
+   If the atomic move fails, the workflow resumes the sole surviving graph. If both roots exist it pauses both rather than allowing competing reconciliation; if neither root exists it restores the original graph from the protected in-run backup. The fresh off-cluster etcd snapshot remains the final recovery boundary.
 
-   # Review the transformed credential-bearing files on the secured host, then
-   # restore the graph. from-directory rebuilds owner-reference UIDs.
-   clusterctl move --from-directory "$migration_dir" --dry-run -v 5
-   clusterctl move --from-directory "$migration_dir"
+3. **Cert-expiry alert** — deploy the repository version after the move. `AdminCertExpiringSoon` now selects only `bex-capi/bex-kubeconfig`.
 
-   # verify the regenerated secrets landed there
-   kubectl -n bex-capi get secret bex-kubeconfig bex-ca bex-etcd bex-proxy bex-sa
-   ```
-
-   The directory contains cluster PKI and must be treated as a root credential: keep it on an encrypted operator host, never attach it to a ticket or commit, and securely remove it after the verification and rotation below.
-
-   > If `clusterctl move` between namespaces on a self-managed (pivoted) cluster is impractical for your topology, use **Approach B** below instead.
-
-3. **Delete the stale `default` copies** once the `bex-capi` copies are confirmed:
-
-   ```bash
-   kubectl -n default delete secret bex-kubeconfig bex-ca bex-etcd bex-proxy bex-sa
-   ```
-
-4. **Cert-expiry alert** — deploy the repository version after the move. `AdminCertExpiringSoon` now selects only `bex-capi/bex-kubeconfig`.
-
-5. **Run the app-cluster workflow.** It now verifies no legacy `default/bex` Cluster remains before applying the canonical `bex-capi` overlay.
+4. **Run the app-cluster workflow.** It verifies no legacy `default/bex` Cluster remains before applying the canonical `bex-capi` overlay.
 
 ## Alternative approach (B): drop the operator's `default`-Secret read
 
