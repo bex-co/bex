@@ -4,7 +4,7 @@
 controller:
   image:
     repository: ghcr.io/bex-co/opensandbox-controller
-    tag: v0.2.0-bex-snapjobns@sha256:48e9bdd5f2d81cd2da3a45e7ff67e75cf7c4af3089d5c56eecdd1eea6eb92196
+    tag: v0.2.0-bex-snapjobns@sha256:da55e68a0e36588835cef345b5b34f0ca4a5fc18bde2b880fae717bfb62bea08
   # w1/m19 t003: platform pool
   nodeSelector:
     bex.co/pool: platform
