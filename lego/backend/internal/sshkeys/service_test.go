@@ -147,8 +147,11 @@ func TestEveryKeyManagementVerbUsesMemberSSHKeyPermission(t *testing.T) {
 	if err := svc.Delete(ctx, created.ID); err != nil {
 		t.Fatal(err)
 	}
-	if len(checker.relations) != 3 {
-		t.Fatalf("authorization checks = %v, want three", checker.relations)
+	// Four observations, all can_manage_ssh_keys: one per verb, plus Create's
+	// uncached re-assert (round-5 finding-4 symmetry, round-7) — a plain
+	// checker's CheckFresh fallback records one extra relation here.
+	if len(checker.relations) != 4 {
+		t.Fatalf("authorization checks = %v, want four", checker.relations)
 	}
 	for _, relation := range checker.relations {
 		if relation != core.RelCanManageSSHKeys {

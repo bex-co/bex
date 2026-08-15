@@ -84,6 +84,15 @@ func TestStatementLoggingParametersRequireDeveloper(t *testing.T) {
 		{"log_min_error_statement": "error"},
 		{"log_parameter_max_length": "-1"},
 		{"auto_explain.log_analyze": "on"},
+		// codex round-7 F2: the debug_print_* trees carry every literal and were
+		// missing from the exact-name map; auto_explain knobs beyond the three
+		// the map enumerated (log_nested_statements dumps nested statement text)
+		// were too. Both families are prefix-matched now.
+		{"debug_print_parse": "on"},
+		{"debug_print_rewritten": "on"},
+		{"debug_print_plan": "on"},
+		{"auto_explain.log_nested_statements": "on"},
+		{"auto_explain.sample_rate": "1"},
 		// Mixed with an innocuous key: the map is a full replacement, so the
 		// presence of one sensitive key governs the whole write.
 		{"work_mem": "8MB", "log_statement": "mod"},
@@ -148,12 +157,16 @@ func TestNonLoggingParametersStayContributorWritable(t *testing.T) {
 // treats setting names case-insensitively, so a gate that only matched the exact
 // lowercase spelling would be bypassed by "LOG_STATEMENT".
 func TestSensitiveLoggingParameterMatchIsRobust(t *testing.T) {
-	for _, name := range []string{"log_statement", "LOG_STATEMENT", "Log_Statement", "  log_statement  "} {
+	for _, name := range []string{"log_statement", "LOG_STATEMENT", "Log_Statement", "  log_statement  ",
+		"debug_print_plan", "DEBUG_PRINT_PLAN", " Debug_Print_Plan ", "auto_explain.log_verbose", "AUTO_EXPLAIN.LOG_TIMING"} {
 		if !setsSensitiveLoggingParameter(map[string]string{name: "all"}) {
 			t.Errorf("%q not recognized as a statement-logging parameter", name)
 		}
 	}
-	for _, name := range []string{"work_mem", "log_connections", "log_destination"} {
+	for _, name := range []string{"work_mem", "log_connections", "log_destination",
+		// debug_pretty_print only reformats the debug_* output; it emits nothing
+		// on its own, and the debug_print_ prefix must not swallow it.
+		"debug_pretty_print"} {
 		if setsSensitiveLoggingParameter(map[string]string{name: "x"}) {
 			t.Errorf("%q wrongly treated as statement-logging — this costs a contributor a legitimate knob", name)
 		}

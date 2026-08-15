@@ -87,6 +87,23 @@ func TestValidImage(t *testing.T) {
 		{"leading-slash-rejected", "/etc/passwd", false},
 		{"leading-dash-rejected", "-flag", false},
 		{"too-long-rejected", strings.Repeat("a", 513), false},
+		// codex round-7 F6: the kubelet pulls tenant images from node network
+		// context, outside every pod egress policy — a private/loopback/link-local/
+		// CGNAT/metadata IP-literal host or localhost turns spec.Image into a
+		// node-origin probe with tenant-visible pull errors. No public registry
+		// is affected.
+		{"loopback-host-rejected", "127.0.0.1/myapp:latest", false},
+		{"loopback-host-port-rejected", "127.0.0.1:5000/myapp", false},
+		{"localhost-rejected", "localhost/myapp", false},
+		{"localhost-port-rejected", "localhost:5000/myapp", false},
+		{"uppercase-localhost-rejected", "LOCALHOST/myapp", false},
+		{"private-host-rejected", "10.0.0.5:5000/myapp", false},
+		{"private-host-noport-rejected", "192.168.1.4/myapp", false},
+		{"metadata-host-rejected", "169.254.169.254/latest/meta-data", false},
+		{"cgnat-host-rejected", "100.64.0.9:5000/myapp", false},
+		{"linklocal-v6-rejected", "[fe80::1]:5000/myapp", false}, // bracket forms are regex-refused anyway
+		{"public-ip-literal-allowed", "1.2.3.4:5000/myapp", true},
+		{"internal-dns-name-residual", "zot.bex-registry.svc:5000/myapp", true}, // documented residual: names are indistinguishable
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -176,8 +176,10 @@ func TestCreateAPIKeyBindsToCallerTenant(t *testing.T) {
 
 func TestCreateAPIKeyNoTenantIsRefused(t *testing.T) {
 	// Binding wired (store on) but the caller resolves to no tenant — a
-	// session-less machine caller. Minting must refuse, not produce an
-	// orphaned, tuple-less key nobody can ever bind later.
+	// mint-eligible caller with no workspace to bind into (a machine caller is
+	// already refused earlier by the credential-class gate, round-7 F3).
+	// Minting must refuse, not produce an orphaned, tuple-less key nobody can
+	// ever bind later.
 	store := newFakeKeyStore()
 	binder := newFakeBinder()
 	svc := &Service{
@@ -185,7 +187,7 @@ func TestCreateAPIKeyNoTenantIsRefused(t *testing.T) {
 		APIKeys: store,
 		Binding: binder,
 	}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "unbound-caller", Method: "oauth2"})
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "unbound-caller", Method: "session"})
 
 	if _, err := svc.CreateAPIKey(ctx, "", "agent"); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("no-tenant caller: want ErrBadRequest, got %v", err)

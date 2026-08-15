@@ -114,11 +114,13 @@ func TestBuildSettingSettersRejectUnauthorizedCaller(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 	command := "bin/forbidden"
 
-	if _, err := svc.SetCommands(ctx, "other", nil, &command); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("SetCommands by non-member = %v, want forbidden", err)
+	// Round-7 F8: the by-name denial reports absence — a non-member probing
+	// names learns nothing about foreign workspaces' Apps.
+	if _, err := svc.SetCommands(ctx, "other", nil, &command); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("SetCommands by non-member = %v, want not found", err)
 	}
-	if _, err := svc.SetDockerfilePath(ctx, "other", "docker/Dockerfile"); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("SetDockerfilePath by non-member = %v, want forbidden", err)
+	if _, err := svc.SetDockerfilePath(ctx, "other", "docker/Dockerfile"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("SetDockerfilePath by non-member = %v, want not found", err)
 	}
 	got := getApp(t, cl, "other")
 	if got.Spec.StartCommand != "" || got.Spec.DockerfilePath != "" {

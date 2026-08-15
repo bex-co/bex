@@ -166,13 +166,18 @@ func sampleApp(name, tenantID string) *appv1alpha1.App {
 	return a
 }
 
-func TestGetAppCrossTenantIsForbidden(t *testing.T) {
+func TestGetAppCrossTenantByNameIsNotFound(t *testing.T) {
+	// codex round-7 F8: a by-NAME lookup whose every candidate denied collapses
+	// to the absent-resource answer — names like "web" are the one guessable
+	// lookup key, so "a foreign workspace runs `web`" must be indistinguishable
+	// from "nobody does". (A typed srv-… id stays ErrForbidden: ids are
+	// unguessable, and the distinction aids legitimate dual-member callers.)
 	cl := fakeAppClient(sampleApp("web", "tea-b"))
 	b := &Base{Client: cl, Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}}
 	ctx := WithIdentity(context.Background(), Identity{Subject: "identity-a", Method: "session"})
 
-	if _, err := b.GetApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
-		t.Errorf("cross-tenant GetApp: got %v, want ErrForbidden", err)
+	if _, err := b.GetApp(ctx, RelCanView, "web"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("cross-tenant GetApp by name: got %v, want ErrNotFound (indistinguishable from absent)", err)
 	}
 }
 

@@ -153,8 +153,10 @@ func TestExplicitWorkspaceRejectsResourceOwnedByAnotherWorkspace(t *testing.T) {
 	b := &Base{Client: cl, Namespace: "default", Workspace: aliceResolver(), Authz: &fakeAllowChecker{}}
 	ctx := WithWorkspace(aliceCtx(), "tea-a")
 
-	if _, err := b.GetApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
-		t.Errorf("GetApp(workspaceId=tea-a) for a tea-b App: got %v, want ErrForbidden", err)
+	// Still refused (round-7 F8: the by-name denial now collapses to the
+	// absent-resource answer rather than 403).
+	if _, err := b.GetApp(ctx, RelCanView, "web"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("GetApp(workspaceId=tea-a) for a tea-b App: got %v, want ErrNotFound", err)
 	}
 }
 
@@ -177,33 +179,40 @@ func TestGetAppInAnotherWorkspaceStillChecksTheRelationThere(t *testing.T) {
 	}
 	// A destructive verb's relation does NOT hold in tea-b => refused, even
 	// though she IS a member of tea-b and IS an admin of her default workspace.
-	if _, err := b.GetApp(ctx, RelCanCreate, "web"); !errors.Is(err, ErrForbidden) {
-		t.Errorf("GetApp(can_create) on an App in a workspace where she lacks it: got %v, want ErrForbidden (no cross-workspace privilege escalation)", err)
+	// Round-7 F8: the by-name answer collapses to not-found — the tea-b
+	// relation check is still what denied the candidate (no escalation; the
+	// denyWorkspaceChecker observed it), only the observable changed.
+	if _, err := b.GetApp(ctx, RelCanCreate, "web"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("GetApp(can_create) on an App in a workspace where she lacks it: got %v, want ErrNotFound (no cross-workspace privilege escalation)", err)
 	}
 }
 
-func TestGetAppInAWorkspaceTheCallerDoesNotBelongToIsForbidden(t *testing.T) {
+func TestGetAppInAWorkspaceTheCallerDoesNotBelongToIsNotFound(t *testing.T) {
 	cl := fakeAppClient(sampleApp("web", "tea-stranger"))
 	b := &Base{
 		Client: cl, Namespace: "default", Workspace: aliceResolver(),
 		Authz: &fakeAllowChecker{}, // even with authorization wide open
 	}
 
-	if _, err := b.GetApp(aliceCtx(), RelCanView, "web"); !errors.Is(err, ErrForbidden) {
-		t.Errorf("GetApp on a stranger's App: got %v, want ErrForbidden — membership is the floor, whatever OpenFGA says", err)
+	// Membership is still the floor — it is what rejected the candidate
+	// whatever OpenFGA says — but a by-name denial reports absence (round-7
+	// F8), so a non-member probing names learns nothing.
+	if _, err := b.GetApp(aliceCtx(), RelCanView, "web"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("GetApp on a stranger's App: got %v, want ErrNotFound", err)
 	}
 }
 
 func TestGetAppNamedWorkspacePinsResourceLookup(t *testing.T) {
 	// The App is in tea-a; the request explicitly acts in tea-b. Even though
 	// both are hers, an explicit per-call workspace must never drift to another
-	// workspace during resource lookup.
+	// workspace during resource lookup. Round-7 F8: the by-name refusal now
+	// reports absence rather than 403 — still refused either way.
 	cl := fakeAppClient(sampleApp("web", "tea-a"))
 	b := &Base{Client: cl, Namespace: "default", Workspace: aliceResolver(), Authz: &fakeAllowChecker{}}
 	ctx := WithWorkspace(aliceCtx(), "tea-b")
 
-	if _, err := b.GetApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
-		t.Errorf("GetApp: got %v, want ErrForbidden for an explicit workspace mismatch", err)
+	if _, err := b.GetApp(ctx, RelCanView, "web"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("GetApp: got %v, want ErrNotFound for an explicit workspace mismatch", err)
 	}
 }
 
@@ -265,8 +274,10 @@ func TestGetAppCollisionFallbackResolvesActingWorkspaceOnce(t *testing.T) {
 			Workspace: countingWorkspaceResolver{fakeWorkspace{"identity-a": "tea-a"}, &calls},
 			Authz:     fakeDenyChecker{},
 		}
-		if _, err := b.GetApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
-			t.Fatalf("got %v, want ErrForbidden", err)
+		// Round-7 F8: an all-denied by-name sweep reports absence; the subject
+		// here is the single Tenant() resolution, unchanged either way.
+		if _, err := b.GetApp(ctx, RelCanView, "web"); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("got %v, want ErrNotFound", err)
 		}
 		if calls != 1 {
 			t.Errorf("Workspace.Tenant called %d times for %d colliding candidates, want exactly 1", calls, len(apps))

@@ -209,6 +209,14 @@ func (a *oryAuth) platformClient(ctx context.Context, clientID string) (bool, er
 // stamps on bex-provisioned OAuth clients.
 const platformClientMarker = "bex.co/platform-client"
 
+// IsPlatformClient exposes the platform-client lookup as a
+// core.PlatformClientResolver so the durable-credential mint verbs
+// (AuthorizeMintClass, codex round-7 F3) can prove a human OAuth token comes
+// from a bex-issued client — sharing this cache and its fail-closed errors.
+func (a *oryAuth) IsPlatformClient(ctx context.Context, clientID string) (bool, error) {
+	return a.platformClient(ctx, clientID)
+}
+
 // invalidate evicts a token whose upstream state changed. A human CLI logout
 // revokes the whole subject+client consent chain in Hydra, so evict every
 // positively cached access token in that chain too. The official CLI refreshes

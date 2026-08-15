@@ -969,7 +969,14 @@ func (s *Server) newAuthGate() (*oryAuth, error) {
 	if s.APIKeys != nil {
 		touch = s.APIKeys.TouchAPIKey
 	}
-	return newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.OAuthIssuer, s.resourceMetadataURL(), s.OAuthRequireAudience, s.AuthAdmission, s.Onboard, touch), nil
+	gate := newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.OAuthIssuer, s.resourceMetadataURL(), s.OAuthRequireAudience, s.AuthAdmission, s.Onboard, touch)
+	// The durable-credential mint verbs' class gate (round-7 F3) resolves
+	// platform clients through the same Hydra admin API + TTL cache the audience
+	// rule uses. Every feature service shares this one Base.
+	if s.APIKeys != nil && s.APIKeys.Base != nil && s.APIKeys.Base.PlatformClients == nil {
+		s.APIKeys.Base.PlatformClients = gate
+	}
+	return gate, nil
 }
 
 // resourceMetadataURL derives the public URL of this API's RFC 9728 metadata

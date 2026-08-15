@@ -70,3 +70,13 @@ func IdentityFrom(ctx context.Context) (Identity, bool) {
 func WithIdentity(ctx context.Context, id Identity) context.Context {
 	return context.WithValue(ctx, identityCtxKey{}, id)
 }
+
+// PlatformClientResolver reports whether an OAuth client id is one the
+// platform provisioned itself (`bex.co/platform-client` metadata, stamped by
+// scripts/auth-bootstrap-client.sh — the official Render CLI, bex-mobile).
+// Implemented by the composition root against Hydra's admin API; consumed by
+// Base.AuthorizeMintClass so a delegated human token can prove it comes from
+// a bex-issued client. Errors mean "cannot establish trust", never "false".
+type PlatformClientResolver interface {
+	IsPlatformClient(ctx context.Context, clientID string) (bool, error)
+}

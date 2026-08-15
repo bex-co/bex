@@ -293,6 +293,11 @@ type Base struct {
 	// Payment gates only mutations whose target tier is non-free. nil preserves
 	// the pre-ADR046 behavior exactly (BEX_REQUIRE_PAYMENT_METHOD unset).
 	Payment PaymentGate
+	// PlatformClients proves an OAuth client id is one bex provisioned itself;
+	// the composition root wires it from Hydra's admin API. Consumed by
+	// AuthorizeMintClass; nil => a delegated (OAuth) caller can never pass that
+	// gate — fail closed (codex round-7 F3).
+	PlatformClients PlatformClientResolver
 }
 
 // TenantNamespace returns the namespace a workspace's hosting workloads live
@@ -700,6 +705,45 @@ func (b *Base) AuthorizeAppFresh(ctx context.Context, relation string, app *appv
 	return b.checkAuthzFresh(ctx, relation, object)
 }
 
+// AuthorizeMintClass gates a durable-credential mint verb (API-key creation,
+// SSH-key enrollment) on the caller's CREDENTIAL CLASS, not a relation: the
+// minted key later authenticates independently, so whatever mints it must
+// itself be an authority that does not silently outlive revocation. Only a
+// direct Kratos session, or a human OAuth token from a client bex provisioned
+// itself (PlatformClients), passes (codex round-7 F3) — a machine
+// (client_credentials) token must not self-replicate, and a consented
+// third-party client must not persist past its consent. Call it BEFORE the
+// verb's auditing Authorize: a class refusal is not a workspace decision and
+// deliberately leaves no event, the same way an unauthenticated request does.
+func (b *Base) AuthorizeMintClass(ctx context.Context) error {
+	id, ok := IdentityFrom(ctx)
+	if !ok {
+		return nil // no identity to classify; the verb's Authorize denies anyway
+	}
+	switch id.Method {
+	case "session":
+		// The session method exists only for a direct human Kratos login.
+		return nil
+	case "oauth2":
+		if !id.Human {
+			return ErrForbidden
+		}
+		if b.PlatformClients == nil {
+			return ErrForbidden // trust cannot be established — fail closed
+		}
+		platform, err := b.PlatformClients.IsPlatformClient(ctx, id.ClientID)
+		if err != nil {
+			return fmt.Errorf("%w: %v", ErrAuthzUnavailable, err)
+		}
+		if !platform {
+			return ErrForbidden
+		}
+		return nil
+	default:
+		return ErrForbidden
+	}
+}
+
 // Tenant returns the workspace this request acts in: the one the caller named
 // (core.WithWorkspace), else their default (resolveWorkspace). It is what a
 // create stamps its new resource with, so naming a workspace is what puts a new
@@ -869,7 +913,24 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 				// on what is already the worst-case-latency path.
 				b.emit(ctx, verb, WorkspaceObject(acting), ServiceTarget(name), lastErr)
 			}
-			return nil, lastErr
+			if !errors.Is(lastErr, ErrForbidden) {
+				return nil, lastErr // an authz outage is not absence — fail closed
+			}
+			// codex round-7 F8: every workspace running an App with this NAME
+			// denied the caller. Names are the one GUESSABLE lookup key (typed
+			// ids are opaque), so this tier collapses to the absent-resource
+			// answer — authorize against the acting workspace (already resolved
+			// above; no second store round-trip on the worst-case path,
+			// w4/m30/t003), then ErrNotFound — and a by-name probe cannot
+			// distinguish "a foreign workspace runs `web`" from "nobody does".
+			// The per-candidate denial rows above keep the forensic trail. The
+			// typed-id and direct-candidate tiers above keep their 403: their
+			// inputs are unguessable, and the distinction tells a legitimate
+			// dual-member caller their access was the problem, not the resource.
+			if err := b.authorizeAndAudit(ctx, relation, WorkspaceObject(acting), ServiceTarget(name), verb, nil); err != nil {
+				return nil, err
+			}
+			return nil, ErrNotFound
 		}
 	}
 	object, resolveErr := b.callerWorkspace(ctx)
@@ -1127,8 +1188,12 @@ func appCandidateNames(acting, name string) []string {
 //     403 safe: an admin of A who is only a viewer of B still cannot delete B's
 //     App by naming it, because can_create does not hold for them in B.
 //   - The App is in a workspace the caller has no relation on => ErrForbidden,
-//     not ErrNotFound, matching the existing convention — "not yours," not
-//     "doesn't exist," so a cross-tenant caller can't probe existence by name.
+//     not ErrNotFound — "not yours," not "doesn't exist." For the typed-id and
+//     direct-candidate tiers this stays 403 (their inputs are unguessable, and
+//     the distinction tells a legitimate caller their access was the problem);
+//     the by-NAME label sweep instead collapses an all-denied probe to
+//     ErrNotFound (codex round-7 F8) — names like "web" are the one guessable
+//     lookup key, and there a foreign-existence oracle is worth closing.
 //
 // A no-identity caller (the git webhook's HMAC-authenticated redeploy, which
 // carries no core.Identity) and the store-off mode skip the gate — neither has a
@@ -1196,6 +1261,14 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 		} else {
 			lastErr = err
 		}
+	}
+	// codex round-7 F8: an all-denied by-NAME sweep collapses to ErrNotFound —
+	// names are the guessable lookup key, and a foreign App's existence is not
+	// an answer a cross-tenant probe deserves (AuthorizeApp's fallback does the
+	// same). Anything that is not a plain denial (an authz outage) stays a
+	// distinct error so the caller fails closed.
+	if errors.Is(lastErr, ErrForbidden) {
+		return nil, ErrNotFound
 	}
 	return nil, lastErr
 }

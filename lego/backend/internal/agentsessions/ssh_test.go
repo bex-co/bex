@@ -44,6 +44,31 @@ func sshResolver(allow map[string]bool, st *fakeStore) *SSHResolver {
 	return &SSHResolver{Base: &core.Base{Authz: vsChecker{allow: allow}}, Store: st}
 }
 
+// freshDenyingChecker allows on the cached path and denies on the uncached
+// one — a member revoked on another replica whose positive is still warm on
+// this gateway process (codex round-7 F7's model).
+type freshDenyingChecker struct{ vsChecker }
+
+func (c freshDenyingChecker) CheckFresh(_ context.Context, _, _, _ string) (bool, error) {
+	return false, nil
+}
+
+// TestSSHResolverReassertsFreshAuthorization pins codex round-7 F7: the
+// gateway's agent-session SSH handshake converts a verified key into a NEW
+// hours-long pods/exec session, so the relation is consulted uncached — a
+// just-revoked member riding a stale cached positive is refused.
+func TestSSHResolverReassertsFreshAuthorization(t *testing.T) {
+	st := newFakeStore()
+	id := liveSession(st, "tea-a", "os-abc", PhaseRunning)
+	r := &SSHResolver{
+		Base:  &core.Base{Authz: freshDenyingChecker{vsChecker{allow: map[string]bool{"alice": true}}}},
+		Store: st,
+	}
+	if _, err := r.ResolveSSHSession(caller("alice"), id); !errors.Is(err, core.ErrForbidden) {
+		t.Fatal("revoked-on-fresh-path subject must be refused at the SSH handshake")
+	}
+}
+
 func liveSession(st *fakeStore, workspace, sandboxID, phase string) string {
 	id := ids.New(ids.AgentSession)
 	st.rows[id] = store.AgentSession{ID: id, WorkspaceID: workspace, SandboxID: sandboxID, Phase: phase}

@@ -99,6 +99,13 @@ type Service struct {
 // orphaned, tuple-less key. A bind failure rolls the Hydra client back so no
 // half-bound credential lingers.
 func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKey, error) {
+	// codex round-7 F3: minting a durable credential is reserved for direct
+	// human callers (AuthorizeMintClass) — a machine token must not
+	// self-replicate, and a consented third-party client must not persist past
+	// its consent.
+	if err := s.AuthorizeMintClass(ctx); err != nil {
+		return APIKey{}, err
+	}
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
 		return APIKey{}, err

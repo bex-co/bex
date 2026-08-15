@@ -27,8 +27,17 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-const nativePreparerImage = "busybox:1.37.0"
+// nativePreparerImage is digest-pinned (codex round-7 F10 / the ADR055 F7
+// digest-pinning deferral's highest-value pin): this initContainer mounts and
+// reads the ENTIRE runtime-env secret bundle, so a retagged upstream busybox
+// would exfiltrate every tenant build secret. The tag is kept readable for
+// humans; the digest is the 1.37.0 multi-arch OCI index.
+const nativePreparerImage = "busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0"
 
+// nativeRuntimeImages stay tag-tracked deliberately (round-7 F10 records them
+// in the deferred digest-pinning inventory): the language bases legitimately
+// float patch versions, so pinning them belongs to the reviewed digest-bump
+// automation, not a one-off.
 var nativeRuntimeImages = map[string]string{
 	"elixir": "elixir:1.18",
 	"go":     "golang:1.24-bookworm",

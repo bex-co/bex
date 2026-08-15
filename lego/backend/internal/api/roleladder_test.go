@@ -229,7 +229,10 @@ func distinct(in []string) []string {
 // them all. Completeness rides sweepableServices, which TestSweepCoversEveryWiredService
 // keeps == Server.features(), so a new verb cannot ship outside the matrix.
 func TestRoleLadderDenyMatrix(t *testing.T) {
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
+	// A direct session identity (round-7 F3): the durable-credential mint verbs
+	// (apikeys/sshkeys Create) are credential-class-gated before their Authorize,
+	// so the relation capture must ride a mint-eligible class to observe them.
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "session"})
 	verbRelations := captureVerbRelations(t, ctx)
 
 	// Every captured relation must be a modelled one — a verb checking a relation
@@ -383,7 +386,7 @@ var representativeVerbRelations = map[string]string{
 // relation. Unlike the derived role matrix, this fails when a verb is re-gated on
 // a weaker (or otherwise wrong) relation — the ADR012 ladder regression class.
 func TestRepresentativeVerbsGateOnExpectedRelation(t *testing.T) {
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "session"})
 	verbRelations := captureVerbRelations(t, ctx)
 	for verb, want := range representativeVerbRelations {
 		got, ok := verbRelations[verb]

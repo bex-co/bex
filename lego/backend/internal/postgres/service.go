@@ -769,10 +769,10 @@ func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 // write on it would make a security-relevant configuration change invisible.
 // Same reasoning the deploy-hook rotation carries in representativeVerbRelations.
 //
-// auto_explain.* is included defensively: it logs query text with bind
-// parameters, and while it needs shared_preload_libraries (which the operator
-// owns and this map already drops) that is one operator change away from
-// becoming reachable.
+// auto_explain.* is matched by prefix, defensively: it logs query text with
+// bind parameters, and while it needs shared_preload_libraries (which the
+// operator owns and normalizeParameterOverrides drops) that is one operator
+// change away from becoming reachable.
 var sensitiveLoggingParameters = map[string]bool{
 	"log_statement":                     true, // all/mod/ddl — logs the statement itself
 	"log_min_duration_statement":        true, // >= 0 logs the text of every qualifying statement
@@ -781,9 +781,16 @@ var sensitiveLoggingParameters = map[string]bool{
 	"log_statement_sample_rate":         true, // controls how much of that sample is emitted
 	"log_parameter_max_length":          true, // how much of the BIND PARAMETERS (the literal values) is logged
 	"log_parameter_max_length_on_error": true,
-	"auto_explain.log_min_duration":     true,
-	"auto_explain.log_analyze":          true,
-	"auto_explain.log_parameterization": true,
+}
+
+// sensitiveLoggingParameterPrefixes are setting-name PREFIXES whose entire
+// family discloses statement text, matched so a knob the exact-name map has
+// not heard of cannot slip under the gate (codex round-7 F2: the map knew
+// auto_explain.log_analyze but not debug_print_plan, whose parse/rewrite/plan
+// trees carry every literal — the enumeration-completeness failure this fixes).
+var sensitiveLoggingParameterPrefixes = []string{
+	"debug_print_", // debug_print_parse/rewritten/plan: raw trees, literals included
+	"auto_explain.", // the module's whole knob family logs query text/plans
 }
 
 // setsSensitiveLoggingParameter reports whether an override map asserts any
@@ -797,8 +804,14 @@ var sensitiveLoggingParameters = map[string]bool{
 // that fails closed.
 func setsSensitiveLoggingParameter(params map[string]string) bool {
 	for name := range params {
-		if sensitiveLoggingParameters[strings.ToLower(strings.TrimSpace(name))] {
+		canonical := strings.ToLower(strings.TrimSpace(name))
+		if sensitiveLoggingParameters[canonical] {
 			return true
+		}
+		for _, prefix := range sensitiveLoggingParameterPrefixes {
+			if strings.HasPrefix(canonical, prefix) {
+				return true
+			}
 		}
 	}
 	return false
