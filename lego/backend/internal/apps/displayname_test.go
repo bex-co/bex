@@ -80,8 +80,10 @@ func TestSetDisplayNameRejectsNonMemberWithoutMutation(t *testing.T) {
 	svc, cl := newTenantService(fakeWorkspace{"identity-a": "tea-a"}, app)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	if _, err := svc.SetDisplayName(ctx, "other", "Forbidden rename"); !errors.Is(err, core.ErrForbidden) {
-		t.Fatalf("SetDisplayName by non-member = %v, want ErrForbidden", err)
+	// Round-7 F8: the by-name denial reports absence (name probes must not
+	// distinguish a foreign App from a missing one).
+	if _, err := svc.SetDisplayName(ctx, "other", "Forbidden rename"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("SetDisplayName by non-member = %v, want ErrNotFound", err)
 	}
 	if got := getApp(t, cl, "other").Spec.DisplayName; got != "Original label" {
 		t.Fatalf("denied rename mutated displayName to %q", got)

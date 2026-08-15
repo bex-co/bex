@@ -1150,6 +1150,15 @@ func (s *Service) ResolveSSHSession(ctx context.Context, username string) (SSHIn
 	if err != nil {
 		return SSHInstanceTarget{}, err
 	}
+	// codex round-7 F7: this resolver runs on the separately deployed gateway
+	// and converts a verified credential (SSH key or browser ticket) into a NEW
+	// hours-long pods/exec session, so the relation is re-asserted UNCACHED —
+	// a member revoked on another replica within PositiveTTL must not open one
+	// last shell off this gateway's stale cached positive (the agent-attach
+	// revalidator's pattern, ADR057 #11).
+	if err := s.AuthorizeAppFresh(ctx, core.RelCanViewSensitive, a); err != nil {
+		return SSHInstanceTarget{}, err
+	}
 	if parseErr != nil {
 		return SSHInstanceTarget{}, parseErr
 	}

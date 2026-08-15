@@ -57,10 +57,17 @@ type SSHResolver struct {
 // then — only if a live sandbox exists — returns its pod as a sandbox-marked
 // target. Authorization runs FIRST (403 before 400/404), mirroring
 // apps.ResolveSSHSession and the repository-wide rule that a refusal never leaks
-// existence. The gateway has already attached the SSH-key identity to ctx.
+// existence. The relation is then re-asserted UNCACHED (codex round-7 F7): the
+// gateway converts a verified SSH key into a new hours-long pods/exec session,
+// so a member revoked on another replica within PositiveTTL must not open one
+// off this gateway's stale cached positive (the attach-revalidator pattern,
+// ADR057 #11). The gateway has already attached the SSH-key identity to ctx.
 func (r *SSHResolver) ResolveSSHSession(ctx context.Context, username string) (apps.SSHInstanceTarget, error) {
 	id := username
 	if err := r.AuthorizeOn(ctx, core.RelCanViewSensitive, sessionObject(id)); err != nil {
+		return apps.SSHInstanceTarget{}, err
+	}
+	if err := r.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, sessionObject(id)); err != nil {
 		return apps.SSHInstanceTarget{}, err
 	}
 	if err := validateSessionID(id); err != nil {

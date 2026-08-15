@@ -41,11 +41,23 @@ type sshAuthzCall struct {
 
 type sshAuthzRecorder struct {
 	allow bool
-	calls []sshAuthzCall
+	// freshDeny denies on the uncached path while the cached path still allows
+	// — a member revoked on another replica whose positive is still warm here.
+	freshDeny  bool
+	calls      []sshAuthzCall
+	freshCalls []sshAuthzCall
 }
 
 func (r *sshAuthzRecorder) Check(_ context.Context, _, relation, object string) (bool, error) {
 	r.calls = append(r.calls, sshAuthzCall{relation: relation, object: object})
+	return r.allow, nil
+}
+
+func (r *sshAuthzRecorder) CheckFresh(_ context.Context, _, relation, object string) (bool, error) {
+	r.freshCalls = append(r.freshCalls, sshAuthzCall{relation: relation, object: object})
+	if r.freshDeny {
+		return false, nil
+	}
 	return r.allow, nil
 }
 
@@ -126,11 +138,19 @@ func TestResolveSSHSessionAuthorizesCanViewSensitiveOnTargetWorkspace(t *testing
 	if _, err := service.ResolveSSHSession(ctxAs("user-a"), sshServiceID); err != nil {
 		t.Fatal(err)
 	}
+	// One cached decision from the auditing AuthorizeApp, one uncached
+	// re-assert from the round-7 F7 fresh gate — same relation, same workspace.
 	if len(recorder.calls) != 1 || recorder.calls[0] != (sshAuthzCall{
 		relation: core.RelCanViewSensitive,
 		object:   core.WorkspaceObject("tea-workspace"),
 	}) {
 		t.Fatalf("SSH authorization calls = %+v", recorder.calls)
+	}
+	if len(recorder.freshCalls) != 1 || recorder.freshCalls[0] != (sshAuthzCall{
+		relation: core.RelCanViewSensitive,
+		object:   core.WorkspaceObject("tea-workspace"),
+	}) {
+		t.Fatalf("SSH fresh re-assertion calls = %+v", recorder.freshCalls)
 	}
 
 	// A member who can see the target but lacks can_view_sensitive must fail
@@ -138,11 +158,32 @@ func TestResolveSSHSessionAuthorizesCanViewSensitiveOnTargetWorkspace(t *testing
 	// the public matrix later repeats against real OpenFGA.
 	recorder.allow = false
 	recorder.calls = nil
+	recorder.freshCalls = nil
 	if _, err := service.ResolveSSHSession(ctxAs("user-a"), sshServiceID); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("under-privileged resolution = %v, want forbidden", err)
 	}
 	if len(recorder.calls) != 1 || recorder.calls[0].relation != core.RelCanViewSensitive {
 		t.Fatalf("under-privileged authorization calls = %+v", recorder.calls)
+	}
+	if len(recorder.freshCalls) != 0 {
+		t.Fatalf("cached denial must not reach the fresh re-assertion: %+v", recorder.freshCalls)
+	}
+}
+
+// TestResolveSSHSessionReassertsFreshAuthorization pins codex round-7 F7: the
+// gateway's target resolution converts a verified SSH key or browser ticket
+// into a NEW hours-long pods/exec session, so the relation is consulted
+// uncached — a member revoked on another replica, whose cached positive is
+// still warm on this gateway process, must not open one last shell.
+func TestResolveSSHSessionReassertsFreshAuthorization(t *testing.T) {
+	recorder := &sshAuthzRecorder{allow: true, freshDeny: true}
+	service := &Service{Base: &core.Base{
+		Client:    fakeClient(sshApp(), sshPod("web-rs-pod01", "example/web:v2", true)),
+		Namespace: "default",
+		Authz:     recorder,
+	}}
+	if _, err := service.ResolveSSHSession(ctxAs("user-a"), sshServiceID); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("stale-positive resolution = %v, want forbidden", err)
 	}
 }
 

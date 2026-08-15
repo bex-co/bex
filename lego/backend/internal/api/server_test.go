@@ -680,8 +680,11 @@ func TestAuthzEnforcement(t *testing.T) {
 		if do(t, h, "GET", "/v1/services", testToken, "").Code != 200 {
 			t.Fatal("allowed read: want 200")
 		}
-		if do(t, h, "POST", "/v1/api-keys", testToken, `{"name":"x"}`).Code != 201 {
-			t.Fatal("allowed mint: want 201")
+		// Round-7 F3: the bearer is a machine token, so the mint verb is
+		// credential-class-gated to 403 even with an allow-all checker; the
+		// read above proves the pass-through.
+		if do(t, h, "POST", "/v1/api-keys", testToken, `{"name":"x"}`).Code != 403 {
+			t.Fatal("machine bearer mint: want 403")
 		}
 	})
 	t.Run("checker error fails closed 503", func(t *testing.T) {
@@ -765,12 +768,20 @@ func TestAPIKeys_SessionCaller(t *testing.T) {
 		}
 	})
 
-	t.Run("bearer path is unchanged — still mints via GraphQL alongside the new session path", func(t *testing.T) {
+	t.Run("machine bearer cannot mint — round-7 F3 credential-class gate", func(t *testing.T) {
+		// The bearer here is testToken: sub == client_id, i.e. a
+		// client_credentials API key. Before round-7 F3 it could mint another
+		// key (self-replication of a compromised credential); the class gate
+		// now refuses it before any relation check, while every non-mint verb
+		// keeps working for the same bearer.
 		h := newH(&fakeChecker{allow: true})
-		data := gql(t, h, `mutation { createApiKey(name: "bearer-key") { id name secret } }`)
-		created, _ := data["createApiKey"].(map[string]any)
-		if created["secret"] != "s3cret" {
-			t.Fatalf("bearer mint: got %v", data)
+		w := do(t, h, http.MethodPost, "/graphql", testToken,
+			`{"query":"mutation { createApiKey(name: \"bearer-key\") { id name secret } }"}`)
+		if w.Code != 200 || !strings.Contains(w.Body.String(), "forbidden") {
+			t.Fatalf("machine bearer mint: code %d body %s", w.Code, w.Body.String())
+		}
+		if resp := do(t, h, http.MethodGet, "/v1/api-keys", testToken, ""); resp.Code != http.StatusOK {
+			t.Fatalf("non-mint verb refused for the same bearer: code %d body %s", resp.Code, resp.Body.String())
 		}
 	})
 
@@ -1033,7 +1044,11 @@ func sweepVerbPairs(t *testing.T, ctx context.Context, allowServices, denyServic
 
 func TestAuthzGuardsEveryVerb(t *testing.T) {
 	base := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: false}}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
+	// A direct session identity (round-7 F3): the durable-credential mint verbs
+	// are credential-class-gated before their Authorize, and this sweep exists
+	// to prove every verb's relation guard exists — see mint_class_test.go for
+	// the class gate's own coverage.
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "session"})
 
 	swept := sweepEveryVerb(t, ctx, sweepableServices(base), func(serviceName, method string, err error) {
 		if !errors.Is(err, core.ErrForbidden) {
@@ -1075,7 +1090,12 @@ func TestAuditCoversEveryWriteVerbExactlyOnce(t *testing.T) {
 	allowBase := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: true}, Audit: allowSink}
 	denySink := &fakeAuditSink{}
 	denyBase := &core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default", Authz: &fakeChecker{allow: false}, Audit: denySink}
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "oauth2"})
+	// A direct session identity (round-7 F3): the durable-credential mint verbs
+	// (apikeys/sshkeys Create) are class-gated BEFORE their Authorize, so a
+	// machine-class fixture would refuse there without ever reaching — or
+	// recording — the relation decision this sweep exists to count. The class
+	// gate itself has dedicated coverage (mint_class_test.go).
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "session"})
 
 	var allowSeen, denySeen, writeVerbs, readVerbs int
 	swept := sweepVerbPairs(t, ctx, sweepableServices(allowBase), sweepableServices(denyBase),

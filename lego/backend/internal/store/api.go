@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -31,6 +32,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/types/netutil"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -610,9 +612,12 @@ var (
 	// imageRE: a prebuilt OCI image reference — host[:port]/repo[:tag][@digest] —
 	// restricted to the characters a real reference uses, starting with an
 	// alphanumeric, no whitespace/control/shell-meta characters (w1/m53). This is
-	// input hygiene bounding what a tenant can store as spec.Image; the SSRF class
-	// (an image host masquerading as the registry) is closed at the operator's
-	// admission prefix boundary, not here. Length is bounded by ValidImage.
+	// input hygiene bounding what a tenant can store as spec.Image; the
+	// registry-masquerade class (an image host impersonating BEX_REGISTRY for the
+	// admission verifier) is closed at the operator's admission prefix boundary,
+	// and the node-origin fetch class gets a second guard in ValidImage itself
+	// (private/loopback IP-literal hosts refused — codex round-7 F6). Length is
+	// bounded by ValidImage.
 	imageRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/:@-]{0,511}$`)
 )
 
@@ -691,7 +696,36 @@ func ValidGitRef(v string) bool { return refRE.MatchString(v) }
 // (host[:port]/repo[:tag][@digest], no whitespace/control/shell-meta characters,
 // ≤512 bytes). Exported so bex-api and the internal create API enforce one rule
 // (w1/m53). Empty is handled by the caller (repo-or-image required).
-func ValidImage(v string) bool { return len(v) <= 512 && imageRE.MatchString(v) }
+//
+// A reference whose registry HOST component (the first path segment, when it
+// looks like a host: contains "."/":" or is "localhost") is a non-public IP
+// literal is refused (codex round-7 F6): the kubelet pulls tenant images from
+// the node's network context — outside every pod egress policy — so a private,
+// loopback, link-local, CGNAT, or metadata literal turns spec.Image into a
+// node-origin probe with tenant-visible pull-error detail. Public registries
+// (including public IP literals and DNS hostnames like ghcr.io) are unaffected;
+// the deliberate residual is that an internal DNS NAME is lexically
+// indistinguishable from a public one and remains allowed.
+func ValidImage(v string) bool {
+	if len(v) > 512 || !imageRE.MatchString(v) {
+		return false
+	}
+	first, _, _ := strings.Cut(v, "/")
+	if !strings.ContainsAny(first, ".:") && !strings.EqualFold(first, "localhost") {
+		return true // no host component — the implicit docker.io registry
+	}
+	host := first
+	if idx := strings.LastIndex(first, ":"); idx >= 0 {
+		host = first[:idx]
+	}
+	if strings.EqualFold(host, "localhost") {
+		return false
+	}
+	if ip := net.ParseIP(host); ip != nil && netutil.UnsafeOriginIP(ip) {
+		return false
+	}
+	return true
+}
 
 // ValidRootDir reports whether v is a safe build root directory: a relative path
 // with no traversal ("..") or absolute components and no control characters, ≤512

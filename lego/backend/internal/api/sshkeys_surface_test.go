@@ -104,7 +104,12 @@ func TestSSHKeysRESTGraphQLMCPParity(t *testing.T) {
 	st := &surfaceSSHKeyStore{keys: map[string]store.SSHKey{}}
 	base := &core.Base{Client: fakeClient(), Namespace: "default"}
 	srv := NewServer(base, Deps{SSHKeysStore: st})
-	h, _ := serverWith(t, base, Deps{SSHKeysStore: st})
+	// round-7 F3: create enrolls a durable credential, so only a mint-eligible
+	// caller class succeeds — the parity test rides a human token from a
+	// platform-marked client (fakeHumanHydra); a machine or third-party token
+	// gets 403 on all three surfaces alike.
+	srv.HydraAdminURL = fakeHumanHydra(t).URL
+	h := buildHandler(t, srv)
 	restPublicKey, gqlPublicKey, mcpPublicKey := surfacePublicKey(t), surfacePublicKey(t), surfacePublicKey(t)
 
 	body, _ := json.Marshal(map[string]string{"name": "rest", "publicKey": restPublicKey})
@@ -121,7 +126,7 @@ func TestSSHKeysRESTGraphQLMCPParity(t *testing.T) {
 	if gqlCreated["name"] != "gql" || gqlCreated["fingerprint"] == "" {
 		t.Fatalf("GraphQL create = %+v", gqlCreated)
 	}
-	client := mcpSessionAs(t, srv, "client-1")
+	client := mcpSessionAs(t, srv, "identity-1")
 	mcpCreated := callTool[store.SSHKey](t, client, "add_ssh_key", map[string]any{"name": "mcp", "publicKey": mcpPublicKey})
 	if mcpCreated.Name != "mcp" || mcpCreated.Fingerprint == "" {
 		t.Fatalf("MCP create = %+v", mcpCreated)

@@ -93,7 +93,21 @@ func NormalizePublicKey(raw string) (canonical, fingerprint string, err error) {
 }
 
 func (s *Service) Create(ctx context.Context, name, rawPublicKey string) (store.SSHKey, error) {
+	// codex round-7 F3: enrolling an SSH key binds long-lived login material to
+	// the caller's subject, and the gateway later authenticates it with zero
+	// dependence on whatever minted it — so only a direct human caller
+	// (AuthorizeMintClass) may enroll; a consented third-party OAuth client
+	// must not plant SSH access that outlives its consent.
+	if err := s.AuthorizeMintClass(ctx); err != nil {
+		return store.SSHKey{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanManageSSHKeys); err != nil {
+		return store.SSHKey{}, err
+	}
+	// round-5 finding 4 symmetry (CreateAPIKey has it): enrollment issues a
+	// durable credential, so re-assert can_manage_ssh_keys uncached — a member
+	// revoked within the last PositiveTTL must not ride a stale positive.
+	if err := s.AuthorizeFresh(ctx, core.RelCanManageSSHKeys); err != nil {
 		return store.SSHKey{}, err
 	}
 	if s.Store == nil {

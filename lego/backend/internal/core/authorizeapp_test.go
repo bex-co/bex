@@ -154,8 +154,11 @@ func TestAuthorizeAppCrossWorkspaceStillChecksTheRelationThere(t *testing.T) {
 	if _, err := b.AuthorizeApp(ctx, RelCanView, "web"); err != nil {
 		t.Errorf("AuthorizeApp(can_view) on her viewable App: got %v, want served", err)
 	}
-	if _, err := b.AuthorizeApp(ctx, RelCanCreate, "web"); !errors.Is(err, ErrForbidden) {
-		t.Errorf("AuthorizeApp(can_create) where she lacks it: got %v, want ErrForbidden (no cross-workspace escalation)", err)
+	// Round-7 F8: the by-name denial collapses to not-found. The tea-b relation
+	// check still ran (the denyWorkspaceChecker observed it — no escalation);
+	// only the observable changed, closing the name-probe existence oracle.
+	if _, err := b.AuthorizeApp(ctx, RelCanCreate, "web"); !errors.Is(err, ErrNotFound) {
+		t.Errorf("AuthorizeApp(can_create) where she lacks it: got %v, want ErrNotFound (no cross-workspace escalation)", err)
 	}
 }
 
@@ -265,8 +268,11 @@ func TestAuthorizeAppFallbackCapsPerCandidateDeniedAudits(t *testing.T) {
 		if _, err := b.AuthorizeApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
 			t.Fatalf("got %v, want ErrForbidden", err)
 		}
-		if len(sink.events) != 2 {
-			t.Fatalf("recorded %d events, want 2 (one per rejected candidate, no aggregate)", len(sink.events))
+		// Round-7 F8 adds the final acting-workspace denial row (the normalized
+		// absence answer re-runs the verb's own gate, like the truly-absent
+		// path always has): 2 per-candidate rows + 1 trailing row.
+		if len(sink.events) != 3 {
+			t.Fatalf("recorded %d events, want 3 (one per rejected candidate, no aggregate, + the acting-workspace denial)", len(sink.events))
 		}
 	})
 
@@ -276,11 +282,11 @@ func TestAuthorizeAppFallbackCapsPerCandidateDeniedAudits(t *testing.T) {
 		if _, err := b.AuthorizeApp(ctx, RelCanView, "web"); !errors.Is(err, ErrForbidden) {
 			t.Fatalf("got %v, want ErrForbidden", err)
 		}
-		if want := maxFallbackCandidateAudits + 1; len(sink.events) != want {
-			t.Fatalf("recorded %d events, want %d (%d per-candidate + 1 aggregate)",
+		if want := maxFallbackCandidateAudits + 2; len(sink.events) != want {
+			t.Fatalf("recorded %d events, want %d (%d per-candidate + 1 aggregate + 1 acting-workspace denial)",
 				len(sink.events), want, maxFallbackCandidateAudits)
 		}
-		agg := sink.events[len(sink.events)-1]
+		agg := sink.events[len(sink.events)-2]
 		if agg.Resource != WorkspaceObject("tea-a") {
 			t.Errorf("aggregate row Resource = %q, want the CALLER's workspace (%q)", agg.Resource, WorkspaceObject("tea-a"))
 		}

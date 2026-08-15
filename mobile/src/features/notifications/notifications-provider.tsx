@@ -50,13 +50,24 @@ const subscriptions = new ApolloNotificationSubscriptionClient(apolloClient);
 const installation = new NotificationInstallationStore(SecureStore, randomUUID);
 const preference = new NotificationRegistrationPreference(AsyncStorage);
 
+// codex-security round-7 F9: OS-level presentation is gated on a live session.
+// Logout's remote push unregistration is deliberately fire-and-forget (the
+// runbook documents it must not make logout depend on the network), so a failed
+// unregister leaves the server subscription active and the OS keeps delivering
+// — without this gate the prior account's deploy events would banner on a
+// signed-out or account-switched device. authManager is a module singleton
+// with synchronous state; the cold-start "loading" phase fails closed (no
+// banners until a session is confirmed). In-app handling was already gated.
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async () => {
+    const signedIn = authManager.getState().status === "signedIn";
+    return {
+      shouldShowBanner: signedIn,
+      shouldShowList: signedIn,
+      shouldPlaySound: signedIn,
+      shouldSetBadge: false,
+    };
+  },
 });
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {

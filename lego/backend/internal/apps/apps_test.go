@@ -425,12 +425,16 @@ func TestListUnresolvedCallerSeesNothing(t *testing.T) {
 	}
 }
 
-func TestGetCrossTenantIsForbiddenNotNotFound(t *testing.T) {
+func TestGetCrossTenantByNameIsNotFound(t *testing.T) {
+	// Round-7 F8: a by-NAME lookup whose every candidate denied reports absence
+	// — the closed oracle is the point (a name probe must not distinguish a
+	// foreign App from a missing one). The denial itself still ran; only the
+	// observable collapsed. Typed srv-… ids keep their distinct 403.
 	svc, _ := newTenantService(fakeWorkspace{"identity-a": "tea-a"}, tenantApp("other", "tea-b"))
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 
-	if _, err := svc.Get(ctx, "other"); !errors.Is(err, core.ErrForbidden) {
-		t.Errorf("cross-tenant Get: got %v, want ErrForbidden (not a 404 leak)", err)
+	if _, err := svc.Get(ctx, "other"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("cross-tenant Get by name: got %v, want ErrNotFound (indistinguishable from absent)", err)
 	}
 }
 

@@ -350,8 +350,10 @@ func TestCreateEnvGroupRefusesCrossWorkspaceServiceWithoutOrphan(t *testing.T) {
 	_, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{
 		Name: "alpha-shared", OwnerID: "tea-a", ServiceIDs: []string{"bravo-web"},
 	})
-	if !errors.Is(err, core.ErrForbidden) || !strings.Contains(err.Error(), `serviceId "bravo-web"`) {
-		t.Fatalf("cross-workspace serviceId error = %v, want named ErrForbidden", err)
+	// Round-7 F8: the by-name denial reports absence — the named serviceId
+	// context stays in the message, but a name probe learns nothing.
+	if !errors.Is(err, core.ErrNotFound) || !strings.Contains(err.Error(), "bravo-web") {
+		t.Fatalf("cross-workspace serviceId error = %v, want named ErrNotFound", err)
 	}
 	if ids, _ := store.List(ctx, "env-groups"); len(ids) != 0 {
 		t.Fatalf("cross-workspace refusal left groups: %v", ids)
