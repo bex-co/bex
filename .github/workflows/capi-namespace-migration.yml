@@ -63,14 +63,30 @@ jobs:
       - name: preflight source, target, and fleet health
         run: |
           source_clusters="$(kubectl -n "$SOURCE_NAMESPACE" get clusters.cluster.x-k8s.io -o json)"
-          [ "$(jq '.items | length' <<<"$source_clusters")" -eq 1 ]
-          jq -e --arg name "$CLUSTER_NAME" '
+          source_count="$(jq '.items | length' <<<"$source_clusters")"
+          if [ "$source_count" -ne 1 ]; then
+            echo "expected exactly one source Cluster; found $source_count: $(jq -r '[.items[].metadata.name] | join(", ")' <<<"$source_clusters")" >&2
+            exit 1
+          fi
+          if ! jq -e --arg name "$CLUSTER_NAME" '
             .items[0].metadata.name == $name and
             .items[0].metadata.deletionTimestamp == null and
             (.items[0].spec.paused // false) == false and
             .items[0].status.infrastructureReady == true and
             .items[0].status.controlPlaneReady == true
-          ' <<<"$source_clusters" >/dev/null
+          ' <<<"$source_clusters" >/dev/null; then
+            echo "source Cluster is not an unpaused, provisioned $CLUSTER_NAME:" >&2
+            jq -c '.items[0] | {
+              name: .metadata.name,
+              deleting: (.metadata.deletionTimestamp != null),
+              paused: (.spec.paused // false),
+              phase: .status.phase,
+              infrastructureReady: .status.infrastructureReady,
+              controlPlaneReady: .status.controlPlaneReady,
+              conditions: [.status.conditions[]? | {type, status, reason}]
+            }' <<<"$source_clusters" >&2
+            exit 1
+          fi
           if kubectl -n "$TARGET_NAMESPACE" get cluster "$CLUSTER_NAME" >/dev/null 2>&1; then
             echo "$TARGET_NAMESPACE/$CLUSTER_NAME already exists; refusing a second controller graph" >&2
             exit 1
