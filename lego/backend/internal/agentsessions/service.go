@@ -861,8 +861,15 @@ func agentCommand(agent string) string {
 	return agentCommands[strings.ToLower(strings.TrimSpace(agent))]
 }
 
-// defaultCredentialURL is the trusted in-cluster Git smart-HTTP proxy origin.
-const defaultCredentialURL = "http://bex-ssh-gateway.bex-system.svc:8082"
+// defaultCredentialURL is the trusted in-cluster Git smart-HTTP proxy origin the
+// sandbox clones from (BEX_AGENT_REPO_URL). It MUST be the fully-qualified
+// `.svc.cluster.local` name, not the short `.svc` form: the sandbox's phase-split
+// egress (ADR047 D5) applies a Cilium L7 DNS filter that allows resolving ONLY the
+// exact FQDN (internal/sessionegress `credentialGatewayHost`). Under that filter a
+// short-name lookup never reaches the allowed expansion and returns EAI_AGAIN, so
+// the clone fails before the gateway is ever contacted (verified live in the
+// tenant sandbox: FQDN resolves + connects on :8082, `.svc` fails DNS).
+const defaultCredentialURL = "http://bex-ssh-gateway.bex-system.svc.cluster.local:8082"
 
 func (s *Service) gitProxyURL() string {
 	if strings.TrimSpace(s.GitProxyURL) != "" {

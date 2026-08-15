@@ -933,6 +933,12 @@ func TestCreateInjectsGitProxyAndTurnGrantConfig(t *testing.T) {
 	if strings.Contains(env["BEX_AGENT_REPO_URL"], "github.com") || env["BEX_AGENT_GRANT_PUBLIC_KEY"] == "" {
 		t.Fatalf("driver trust config = %#v", env)
 	}
+	// The clone origin MUST be the fully-qualified gateway name: the sandbox's
+	// phase-split egress (ADR047 D5) only allows resolving the `.svc.cluster.local`
+	// FQDN, so a short `.svc` host fails DNS (EAI_AGAIN) and the clone never starts.
+	if !strings.HasPrefix(env["BEX_AGENT_REPO_URL"], "http://bex-ssh-gateway.bex-system.svc.cluster.local:8082/") {
+		t.Fatalf("BEX_AGENT_REPO_URL = %q, want the FQDN gateway origin (short .svc is DNS-blocked in-sandbox)", env["BEX_AGENT_REPO_URL"])
+	}
 	if env["BEX_AGENT_REPOSITORY"] != "bex-co/example" || env["BEX_AGENT_BRANCH"] != "bex-agent/session-test" {
 		t.Fatalf("repo/branch env = %q/%q", env["BEX_AGENT_REPOSITORY"], env["BEX_AGENT_BRANCH"])
 	}
