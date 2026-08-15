@@ -114,6 +114,18 @@ func (s *Service) deployHookURL(token string) string {
 // Reading this credential requires the same sensitive-read relation as database
 // connection strings. Lazy minting avoids touching every existing App at once.
 func (s *Service) GetDeployHook(ctx context.Context, service string) (DeployHookView, error) {
+	// codex round-7 F3 (completing the fix): this verb HANDS OUT a deploy-hook
+	// URL, and that URL is a durable bearer credential that authenticates on its
+	// own at the open DeployHookHandler sink — no dependence on the caller that
+	// obtained it. So the same credential-class rule the API-key and SSH-key
+	// mints carry applies here: a machine (client_credentials) token or a
+	// consented third-party client must not walk away with a capability that
+	// outlives its own revocation. Gating only RegenerateDeployHook would be
+	// theatre — an attacker does not need a FRESH token, just a working one, and
+	// on a service that never had a hook this read is itself the mint.
+	if err := s.AuthorizeMintClass(ctx); err != nil {
+		return DeployHookView{}, err
+	}
 	a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, service)
 	if err != nil {
 		return DeployHookView{}, err
@@ -140,6 +152,12 @@ func (s *Service) GetDeployHook(ctx context.Context, service string) (DeployHook
 // drop the allowed rotation from the feed. Both relations deny contributors, so
 // the authorization outcome is identical while the audit semantics stay correct.
 func (s *Service) RegenerateDeployHook(ctx context.Context, service string) (DeployHookView, error) {
+	// codex round-7 F3 (completing the fix): rotation returns a fresh durable
+	// bearer, so the credential CLASS of the caller matters and not just the
+	// relation — see GetDeployHook for the full reasoning.
+	if err := s.AuthorizeMintClass(ctx); err != nil {
+		return DeployHookView{}, err
+	}
 	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return DeployHookView{}, err
