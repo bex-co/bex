@@ -1,0 +1,290 @@
+name: rotate app-cluster admin certificates (one-time)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type ROTATE-bex-admin"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: bex-admin-cert-rotation
+  cancel-in-progress: false
+
+env:
+  CLUSTER_NAME: bex
+  CAPI_NAMESPACE: bex-capi
+  HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+
+jobs:
+  rotate:
+    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'ROTATE-bex-admin'
+    runs-on: ubuntu-latest
+    environment: production-infra
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: fetch app cluster kubeconfig and discover every control plane
+        env:
+          BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.BEX_SSH_PRIVATE_KEY }}" > ~/.ssh/id_bex
+          chmod 600 ~/.ssh/id_bex
+          export BEX_SSH_REQUIRE_KNOWN_HOSTS=1
+          if [ -n "${BEX_SSH_KNOWN_HOSTS:-}" ]; then
+            printf '%s\n' "$BEX_SSH_KNOWN_HOSTS" > ~/.ssh/bex_known_hosts
+            chmod 600 ~/.ssh/bex_known_hosts
+            export BEX_SSH_KNOWN_HOSTS_FILE=~/.ssh/bex_known_hosts
+          fi
+          bash scripts/fetch-app-kubeconfig.sh "$PWD/app.kubeconfig"
+          echo "KUBECONFIG=$PWD/app.kubeconfig" >> "$GITHUB_ENV"
+
+          cp_list="$RUNNER_TEMP/control-planes.tsv"
+          curl -fsS -H "Authorization: Bearer $HCLOUD_TOKEN" \
+            "https://api.hetzner.cloud/v1/servers?label_selector=caph-cluster-${CLUSTER_NAME}" \
+            | jq -er --arg prefix "${CLUSTER_NAME}-control-plane" '
+                [.servers[]
+                  | select(.status == "running")
+                  | select(.name | startswith($prefix))
+                  | select(.public_net.ipv4.ip != null)]
+                | sort_by(.name)[]
+                | [.name, .public_net.ipv4.ip]
+                | @tsv
+              ' > "$cp_list"
+          chmod 600 "$cp_list"
+          echo "CP_LIST=$cp_list" >> "$GITHUB_ENV"
+
+      - name: preflight namespace, fleet, credentials, and SSH reachability
+        run: |
+          if kubectl -n default get cluster "$CLUSTER_NAME" >/dev/null 2>&1; then
+            echo "legacy default/$CLUSTER_NAME exists; refusing credential rotation" >&2
+            exit 1
+          fi
+          kubectl -n "$CAPI_NAMESPACE" wait cluster "$CLUSTER_NAME" \
+            --for=condition=Available=True --timeout=300s
+          CAPI_NAMESPACE="$CAPI_NAMESPACE" TIMEOUT_SECONDS=900 \
+            bash scripts/wait-capi-rollout.sh
+
+          expected="$(kubectl -n "$CAPI_NAMESPACE" get kubeadmcontrolplane \
+            "${CLUSTER_NAME}-control-plane" -o jsonpath='{.spec.replicas}')"
+          discovered="$(wc -l < "$CP_LIST" | tr -d ' ')"
+          if [ "$discovered" -ne "$expected" ]; then
+            echo "expected $expected running control planes; discovered $discovered" >&2
+            exit 1
+          fi
+
+          for secret in bex-kubeconfig bex-ca bex-etcd bex-proxy bex-sa; do
+            kubectl -n "$CAPI_NAMESPACE" get "secret/$secret" >/dev/null
+            allowed="$(kubectl auth can-i get "secret/$secret" -n "$CAPI_NAMESPACE" \
+              --as=system:serviceaccount:bex-system:bex-controller-manager || true)"
+            [ "$allowed" = "no" ] || {
+              echo "operator can read $CAPI_NAMESPACE/$secret; refusing rotation" >&2
+              exit 1
+            }
+          done
+
+          while IFS=$'\t' read -r name ip; do
+            echo "checking $name"
+            ssh -o BatchMode=yes -o ConnectTimeout=8 \
+              -o UserKnownHostsFile=~/.ssh/bex_known_hosts \
+              -o GlobalKnownHostsFile=/dev/null \
+              -o StrictHostKeyChecking=yes \
+              -i ~/.ssh/id_bex "root@$ip" 'bash -s' <<'EOF'
+          set -euo pipefail
+          cert_file="$(mktemp)"
+          cleanup() { shred -u "$cert_file" 2>/dev/null || rm -f -- "$cert_file"; }
+          trap cleanup EXIT
+          awk '/client-certificate-data:/ {print $2; exit}' /etc/kubernetes/admin.conf \
+            | base64 -d > "$cert_file"
+          openssl x509 -in "$cert_file" -noout -subject -enddate -fingerprint -sha256
+          openssl x509 -in "$cert_file" -noout -checkend 86400
+          KUBECONFIG=/etc/kubernetes/admin.conf \
+            kubectl --request-timeout=10s get --raw=/readyz >/dev/null
+          EOF
+          done < "$CP_LIST"
+
+      - name: take and verify a fresh off-cluster etcd snapshot
+        run: |
+          backup_job="admin-cert-etcd-${GITHUB_RUN_ID}"
+          kubectl -n kube-system create job --from=cronjob/etcd-backup "$backup_job"
+          if ! kubectl -n kube-system wait --for=condition=Complete \
+            "job/$backup_job" --timeout=600s; then
+            kubectl -n kube-system describe "job/$backup_job" >&2
+            kubectl -n kube-system logs "job/$backup_job" \
+              --all-containers --tail=100 >&2 || true
+            exit 1
+          fi
+          [ "$(kubectl -n kube-system get "job/$backup_job" \
+            -o jsonpath='{.status.succeeded}')" = "1" ]
+
+      - name: renew admin.conf serially on every control plane
+        run: |
+          while IFS=$'\t' read -r name ip; do
+            echo "renewing admin.conf on $name"
+            ssh -o BatchMode=yes -o ConnectTimeout=8 \
+              -o UserKnownHostsFile=~/.ssh/bex_known_hosts \
+              -o GlobalKnownHostsFile=/dev/null \
+              -o StrictHostKeyChecking=yes \
+              -i ~/.ssh/id_bex "root@$ip" \
+              'bash -s --' "$GITHUB_RUN_ID" <<'EOF'
+          set -euo pipefail
+          run_id="$1"
+          admin_conf=/etc/kubernetes/admin.conf
+          backup="${admin_conf}.bex-pre-${run_id}"
+          cert_file="$(mktemp)"
+          success=false
+
+          cleanup() {
+            rc=$?
+            shred -u "$cert_file" 2>/dev/null || rm -f -- "$cert_file"
+            if [ "$success" != true ] && [ -f "$backup" ]; then
+              install -m600 "$backup" "$admin_conf"
+              echo "renewal failed; restored the previous admin.conf" >&2
+            fi
+            if [ -f "$backup" ]; then
+              shred -u "$backup" 2>/dev/null || rm -f -- "$backup"
+            fi
+            exit "$rc"
+          }
+          trap cleanup EXIT
+
+          [ ! -e "$backup" ]
+          install -m600 "$admin_conf" "$backup"
+          old_fingerprint="$(
+            awk '/client-certificate-data:/ {print $2; exit}' "$admin_conf" \
+              | base64 -d \
+              | openssl x509 -noout -fingerprint -sha256
+          )"
+
+          kubeadm certs renew admin.conf
+          awk '/client-certificate-data:/ {print $2; exit}' "$admin_conf" \
+            | base64 -d > "$cert_file"
+          new_fingerprint="$(openssl x509 -in "$cert_file" -noout -fingerprint -sha256)"
+          [ "$new_fingerprint" != "$old_fingerprint" ]
+          openssl x509 -in "$cert_file" -noout -checkend 25920000
+          KUBECONFIG="$admin_conf" \
+            kubectl --request-timeout=10s get --raw=/readyz >/dev/null
+
+          success=true
+          echo "$old_fingerprint"
+          echo "$new_fingerprint"
+          openssl x509 -in "$cert_file" -noout -subject -enddate
+          EOF
+          done < "$CP_LIST"
+
+          # Prove the normal CI acquisition path now returns a renewed credential.
+          BEX_SSH_REQUIRE_KNOWN_HOSTS=1 \
+          BEX_SSH_KNOWN_HOSTS_FILE=~/.ssh/bex_known_hosts \
+            bash scripts/fetch-app-kubeconfig.sh "$RUNNER_TEMP/renewed-admin.kubeconfig"
+          kubectl --kubeconfig "$RUNNER_TEMP/renewed-admin.kubeconfig" \
+            --request-timeout=10s get --raw=/readyz >/dev/null
+
+      - name: regenerate the CAPI-managed admin kubeconfig Secret
+        run: |
+          secret_backup="$RUNNER_TEMP/bex-kubeconfig-backup.json"
+          secret_kubeconfig="$RUNNER_TEMP/capi-admin.kubeconfig"
+          secret_cert="$RUNNER_TEMP/capi-admin.crt"
+          echo "SECRET_BACKUP=$secret_backup" >> "$GITHUB_ENV"
+          echo "SECRET_KUBECONFIG=$secret_kubeconfig" >> "$GITHUB_ENV"
+          echo "SECRET_CERT=$secret_cert" >> "$GITHUB_ENV"
+
+          old_uid="$(kubectl -n "$CAPI_NAMESPACE" get secret bex-kubeconfig \
+            -o jsonpath='{.metadata.uid}')"
+          kubectl -n "$CAPI_NAMESPACE" get secret bex-kubeconfig -o json \
+            | jq 'del(
+                .metadata.creationTimestamp,
+                .metadata.managedFields,
+                .metadata.resourceVersion,
+                .metadata.uid
+              )' > "$secret_backup"
+          chmod 600 "$secret_backup"
+
+          kubectl -n "$CAPI_NAMESPACE" get secret bex-kubeconfig \
+            -o jsonpath='{.data.value}' | base64 -d > "$secret_kubeconfig"
+          chmod 600 "$secret_kubeconfig"
+          kubectl --kubeconfig "$secret_kubeconfig" config view --raw \
+            -o jsonpath='{.users[0].user.client-certificate-data}' \
+            | base64 -d > "$secret_cert"
+          old_fingerprint="$(openssl x509 -in "$secret_cert" \
+            -noout -fingerprint -sha256)"
+
+          echo "SECRET_DELETE_STARTED=true" >> "$GITHUB_ENV"
+          kubectl -n "$CAPI_NAMESPACE" delete secret bex-kubeconfig --wait=true
+
+          new_uid=""
+          for _ in $(seq 1 60); do
+            new_uid="$(kubectl -n "$CAPI_NAMESPACE" get secret bex-kubeconfig \
+              -o jsonpath='{.metadata.uid}' 2>/dev/null || true)"
+            if [ -n "$new_uid" ] && [ "$new_uid" != "$old_uid" ]; then
+              break
+            fi
+            sleep 5
+          done
+          [ -n "$new_uid" ] && [ "$new_uid" != "$old_uid" ]
+
+          kubectl -n "$CAPI_NAMESPACE" get secret bex-kubeconfig \
+            -o jsonpath='{.data.value}' | base64 -d > "$secret_kubeconfig"
+          kubectl --kubeconfig "$secret_kubeconfig" config view --raw \
+            -o jsonpath='{.users[0].user.client-certificate-data}' \
+            | base64 -d > "$secret_cert"
+          new_fingerprint="$(openssl x509 -in "$secret_cert" \
+            -noout -fingerprint -sha256)"
+          [ "$new_fingerprint" != "$old_fingerprint" ]
+          openssl x509 -in "$secret_cert" -noout -checkend 25920000
+          kubectl --kubeconfig "$secret_kubeconfig" --request-timeout=10s \
+            get --raw=/readyz >/dev/null
+          echo "SECRET_VERIFIED=true" >> "$GITHUB_ENV"
+          echo "$old_fingerprint"
+          echo "$new_fingerprint"
+          openssl x509 -in "$secret_cert" -noout -subject -enddate
+
+      - name: restore the previous CAPI kubeconfig if regeneration failed
+        if: ${{ failure() && env.SECRET_DELETE_STARTED == 'true' && env.SECRET_VERIFIED != 'true' }}
+        run: |
+          # Apply restores the known-good data whether the replacement is absent
+          # or already exists, avoiding a delete/create race with the KCP controller.
+          kubectl apply -f "$SECRET_BACKUP"
+          echo "restored the previous CAPI kubeconfig Secret" >&2
+
+      - name: verify renewed credentials, isolation, and fleet health
+        run: |
+          for secret in bex-kubeconfig bex-ca bex-etcd bex-proxy bex-sa; do
+            if kubectl -n default get "secret/$secret" >/dev/null 2>&1; then
+              echo "legacy default/$secret exists" >&2
+              exit 1
+            fi
+            allowed="$(kubectl auth can-i get "secret/$secret" -n "$CAPI_NAMESPACE" \
+              --as=system:serviceaccount:bex-system:bex-controller-manager || true)"
+            [ "$allowed" = "no" ] || {
+              echo "operator can read $CAPI_NAMESPACE/$secret" >&2
+              exit 1
+            }
+          done
+          kubectl -n "$CAPI_NAMESPACE" wait cluster "$CLUSTER_NAME" \
+            --for=condition=Available=True --timeout=300s
+          CAPI_NAMESPACE="$CAPI_NAMESPACE" TIMEOUT_SECONDS=900 \
+            bash scripts/wait-capi-rollout.sh
+          kubectl get nodes -o wide
+
+      - name: securely remove runner credentials and backups
+        if: ${{ always() }}
+        run: |
+          for file in \
+            "${KUBECONFIG:-}" \
+            "${CP_LIST:-}" \
+            "${SECRET_BACKUP:-}" \
+            "${SECRET_KUBECONFIG:-}" \
+            "${SECRET_CERT:-}" \
+            "$RUNNER_TEMP/renewed-admin.kubeconfig" \
+            ~/.ssh/id_bex \
+            ~/.ssh/bex_known_hosts; do
+            [ -z "$file" ] || shred -u "$file" 2>/dev/null || true
+          done
