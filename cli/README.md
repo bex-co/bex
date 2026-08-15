@@ -4,21 +4,27 @@
 
 ## Install
 
-One line (detects OS/arch, verifies checksums, installs to `~/.local/bin`):
+Pick either channel; both install the same signed release binaries for macOS and Linux (arm64 + amd64).
+
+**Install script** — detects OS/arch, verifies `checksums.txt`, installs atomically to `~/.local/bin`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/bex-co/bex/main/scripts/install-bex.sh | sh
 ```
 
-Or with Homebrew:
+Options via environment: `BEX_VERSION=0.1.0` pins an exact version, `BEX_INSTALL_DIR=/usr/local/bin` retargets the directory, and `GITHUB_TOKEN` (if set) authenticates the release lookup — useful on shared/CI egress IPs that hit GitHub's anonymous rate limit.
+
+**Homebrew:**
 
 ```bash
-brew install bex-co/tap/bex
+brew install bex-co/tap/bex     # upgrades later via: brew upgrade bex
 ```
 
-Both install from the [`bex-cli/v*` GitHub releases](https://github.com/bex-co/bex/releases); `BEX_VERSION=X.Y.Z` pins the script to a version, `BEX_INSTALL_DIR` changes the target directory.
+Confirm the install with `bex -v` — it prints bex's release version (e.g. `bex v0.1.0 (Render CLI v2.22.0 compatible)`) and tells you when a newer release exists.
 
-## Install from a checkout
+Both channels consume the [`bex-cli/v*` GitHub releases](https://github.com/bex-co/bex/releases); every release ships four platform archives, `checksums.txt`, and a keyless cosign signature bundle — the provenance-verification command is in the [Bex CLI guide](../docs/bex-cli.md). Windows is not currently built; use WSL.
+
+## Install from a checkout (contributors)
 
 Install the Go version declared in [`go.mod`](go.mod), then build:
 
