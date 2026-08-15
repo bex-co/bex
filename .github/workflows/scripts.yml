@@ -53,6 +53,8 @@ jobs:
         run: bash scripts/github-actions-validate.test.sh
       - name: bao-init unit tests
         run: bash scripts/bao-init.test.sh
+      - name: bex CLI installer + formula renderer offline tests
+        run: bash scripts/install-bex.test.sh
       - name: Official Key Value CLI verifier safety tests
         run: bash scripts/keyvalue-cli-verify.test.sh
       - name: Rename-verify snapshot error-handling unit tests

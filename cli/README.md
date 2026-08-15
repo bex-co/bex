@@ -2,6 +2,22 @@
 
 `bex` uses the pinned upstream [Render CLI](https://github.com/render-oss/cli) command implementation, but defaults to Bex's API and stores interactive credentials separately at `~/.bex/cli.yaml`.
 
+## Install
+
+One line (detects OS/arch, verifies checksums, installs to `~/.local/bin`):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/bex-co/bex/main/scripts/install-bex.sh | sh
+```
+
+Or with Homebrew:
+
+```bash
+brew install bex-co/tap/bex
+```
+
+Both install from the [`bex-cli/v*` GitHub releases](https://github.com/bex-co/bex/releases); `BEX_VERSION=X.Y.Z` pins the script to a version, `BEX_INSTALL_DIR` changes the target directory.
+
 ## Install from a checkout
 
 Install the Go version declared in [`go.mod`](go.mod), then build:
@@ -37,7 +53,8 @@ BEX_HOST=http://localhost:8090/v1/ bex workspaces -o json
 
 To update, replace the binary with the newer release:
 
-- **Release archive:** download the archive for your platform from the release the notice links, verify it against `checksums.txt`, and overwrite the `bex` on your `PATH`.
+- **Install script:** re-run the one-liner above — it always installs the newest release.
+- **Homebrew:** `brew update && brew upgrade bex`.
 - **From a checkout:** `git pull`, then rebuild with the same `go build` above (such builds report `vdev` and never check for updates).
 
 Maintainer knobs live elsewhere: the pinned upstream version and its bump procedure in [`UPSTREAM_RENDER_CLI.md`](UPSTREAM_RENDER_CLI.md), and release-version injection (`BEX_CLI_VERSION` → `scripts/bex-cli-build.sh`, tagged `bex-cli/vX.Y.Z`) in the [Bex CLI guide](../docs/bex-cli.md).
