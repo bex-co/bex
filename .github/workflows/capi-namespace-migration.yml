@@ -69,11 +69,16 @@ jobs:
             exit 1
           fi
           if ! jq -e --arg name "$CLUSTER_NAME" '
+            def healthy($type):
+              [.items[0].status.conditions[]? | select(.type == $type and .status == "True")] | length == 1;
             .items[0].metadata.name == $name and
             .items[0].metadata.deletionTimestamp == null and
             (.items[0].spec.paused // false) == false and
-            .items[0].status.infrastructureReady == true and
-            .items[0].status.controlPlaneReady == true
+            .items[0].status.phase == "Provisioned" and
+            healthy("Available") and
+            healthy("InfrastructureReady") and
+            healthy("ControlPlaneAvailable") and
+            healthy("RemoteConnectionProbe")
           ' <<<"$source_clusters" >/dev/null; then
             echo "source Cluster is not an unpaused, provisioned $CLUSTER_NAME:" >&2
             jq -c '.items[0] | {
@@ -143,12 +148,21 @@ jobs:
             echo "source Cluster still exists after move" >&2
             exit 1
           fi
+          for condition in Available InfrastructureReady ControlPlaneAvailable RemoteConnectionProbe; do
+            kubectl -n "$TARGET_NAMESPACE" wait cluster "$CLUSTER_NAME" \
+              --for="condition=${condition}=True" --timeout=300s
+          done
           target="$(kubectl -n "$TARGET_NAMESPACE" get cluster "$CLUSTER_NAME" -o json)"
           jq -e '
+            def healthy($type):
+              [.status.conditions[]? | select(.type == $type and .status == "True")] | length == 1;
             .metadata.deletionTimestamp == null and
             (.spec.paused // false) == false and
-            .status.infrastructureReady == true and
-            .status.controlPlaneReady == true
+            .status.phase == "Provisioned" and
+            healthy("Available") and
+            healthy("InfrastructureReady") and
+            healthy("ControlPlaneAvailable") and
+            healthy("RemoteConnectionProbe")
           ' <<<"$target" >/dev/null
           kubectl -n "$TARGET_NAMESPACE" get secret \
             bex-kubeconfig bex-ca bex-etcd bex-proxy bex-sa >/dev/null
