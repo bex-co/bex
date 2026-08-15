@@ -31,6 +31,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/email"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -258,18 +259,7 @@ func (w *Worker) Run(ctx context.Context) {
 	if interval <= 0 {
 		interval = defaultPollInterval
 	}
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		if err := w.RunOnce(ctx); err != nil && ctx.Err() == nil {
-			log.Printf("webhooks: %v", err)
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-		}
-	}
+	core.Poll(ctx, "webhooks", interval, w.RunOnce)
 }
 
 // RunOnce drives one dispatch pass then one send pass — exported so tests and

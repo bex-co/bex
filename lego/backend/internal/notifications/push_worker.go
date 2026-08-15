@@ -21,10 +21,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"sort"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	pushtransport "github.com/bex-co/bex/lego/backend/internal/notifications/push"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -148,25 +148,12 @@ func (w *PushWorker) pollInterval() time.Duration {
 // rows remain durable/retryable and the next tick resumes. Provider details
 // are already redacted before they reach this boundary.
 func (w *PushWorker) Run(ctx context.Context) {
-	var ticks <-chan time.Time
-	var ticker *time.Ticker
+	const name = "notifications: push worker"
 	if w.Tick != nil {
-		ticks = w.Tick
-	} else {
-		ticker = time.NewTicker(w.pollInterval())
-		defer ticker.Stop()
-		ticks = ticker.C
+		core.PollTicks(ctx, name, w.Tick, w.RunOnce)
+		return
 	}
-	for {
-		if err := w.RunOnce(ctx); err != nil && ctx.Err() == nil {
-			log.Printf("notifications: push worker: %v", err)
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticks:
-		}
-	}
+	core.Poll(ctx, name, w.pollInterval(), w.RunOnce)
 }
 
 func (w *PushWorker) now() time.Time {
@@ -418,8 +405,8 @@ func (w *PushWorker) dispatchAgentSessions(ctx context.Context, destinations []s
 			continue
 		}
 		batch, err = fanOutPush(batch, evaluator, byTenant[session.WorkspaceID], pushTarget{
-			workspaceID: session.WorkspaceID,
-			sourceKey:   "agent:" + session.ID + ":" + session.Phase,
+			workspaceID:  session.WorkspaceID,
+			sourceKey:    "agent:" + session.ID + ":" + session.Phase,
 			resourceKind: "agentSession", resourceID: session.ID,
 			deepLink: "/sessions/" + session.ID, occurredAt: session.UpdatedAt, projected: projected,
 		})

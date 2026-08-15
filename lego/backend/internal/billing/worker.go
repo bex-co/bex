@@ -19,9 +19,9 @@ package billing
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -61,18 +61,7 @@ func (w *Worker) Run(ctx context.Context) {
 	if interval <= 0 {
 		interval = 5 * time.Second
 	}
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		if err := w.RunOnce(ctx); err != nil && ctx.Err() == nil {
-			log.Printf("billing lifecycle: %v", err)
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-		}
-	}
+	core.Poll(ctx, "billing lifecycle", interval, w.RunOnce)
 }
 
 func (w *Worker) RunOnce(ctx context.Context) error {

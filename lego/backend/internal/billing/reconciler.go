@@ -20,12 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	stripe "github.com/stripe/stripe-go/v86"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -61,18 +61,7 @@ func (r *Reconciler) Run(ctx context.Context) {
 	if interval <= 0 {
 		interval = 5 * time.Minute
 	}
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		if err := r.RunOnce(ctx); err != nil && ctx.Err() == nil {
-			log.Printf("billing reconcile: %v", err)
-		}
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-		}
-	}
+	core.Poll(ctx, "billing reconcile", interval, r.RunOnce)
 }
 
 func (r *Reconciler) RunOnce(ctx context.Context) error {
