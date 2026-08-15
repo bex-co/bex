@@ -9,6 +9,7 @@ import {
   GitPullRequest,
   Loader2,
   MoreHorizontal,
+  Pin,
   Terminal,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -41,7 +42,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
-import { agentSessionDurationMs } from "@/features/agent-sessions/lib/mapper";
+import {
+  agentSessionDurationMs,
+  formatSnapshotBytes,
+} from "@/features/agent-sessions/lib/mapper";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import { AgentSessionPhaseChip } from "@/features/agent-sessions/components/session-list";
 
@@ -78,9 +82,28 @@ export function SessionDetailHeader({
   onCanceled,
 }: SessionDetailHeaderProps) {
   const { t } = useTranslations();
-  const { cancel } = useAgentSessionMutations();
+  const { cancel, pin, unpin } = useAgentSessionMutations();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [pinning, setPinning] = useState(false);
+
+  async function handleTogglePin() {
+    setPinning(true);
+    try {
+      if (session.pinned) {
+        await unpin(session.id);
+        toast.success(t("agentSessions.unpinSuccess"));
+      } else {
+        await pin(session.id);
+        toast.success(t("agentSessions.pinSuccess"));
+      }
+      onCanceled?.(); // re-read the session (the header owns no cache)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPinning(false);
+    }
+  }
 
   // Tick a live clock only while the session is still running; terminal
   // sessions resolve to a fixed elapsed from the mapper and never re-render here.
@@ -141,6 +164,19 @@ export function SessionDetailHeader({
           </span>
           <span>{t("agentSessions.metaDuration", { duration })}</span>
           <span>{t("agentSessions.metaTurns", { turns: session.turns })}</span>
+          {session.isHibernated ? (
+            <span>
+              {t("agentSessions.hibernatedStorage", {
+                size: formatSnapshotBytes(session.snapshotBytes),
+              })}
+            </span>
+          ) : null}
+          {session.pinned ? (
+            <Badge variant="outline" className="gap-1">
+              <Pin className="size-3" />
+              {t("agentSessions.pinned")}
+            </Badge>
+          ) : null}
           {session.deliveryMode ? (
             <span className="hidden sm:inline">
               {t("agentSessions.metaDelivery", {
@@ -158,6 +194,18 @@ export function SessionDetailHeader({
       <HeaderPrBadge session={session} />
 
       <OpenInZedButton session={session} />
+
+      {session.isHibernated ? (
+        <Button
+          size="sm"
+          variant={session.pinned ? "secondary" : "outline"}
+          disabled={pinning}
+          onClick={handleTogglePin}
+        >
+          <Pin className="size-4" />
+          {session.pinned ? t("agentSessions.unpin") : t("agentSessions.pin")}
+        </Button>
+      ) : null}
 
       {showCancel ? (
         <CancelButton

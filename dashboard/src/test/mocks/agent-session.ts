@@ -42,8 +42,13 @@ export function agentSessionView({
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     canceledAt: null,
+    pinned: false,
+    snapshotBytes: 0,
+    hibernatedAt: null,
+    retainUntil: null,
+    isHibernated: phase === "hibernated",
     isTerminal: ["completed", "failed", "canceled"].includes(phase),
-    isSteerable: ["completed", "failed"].includes(phase),
+    isSteerable: ["completed", "failed", "hibernated"].includes(phase),
     ...over,
   };
 }

@@ -16,11 +16,13 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, readFile } from "node:fs/promises";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { deliverBranch, ensureRepo, extractEvidence, type DeliveryConfig } from "../src/delivery.js";
+import { deliverBranch, ensureRepo, extractEvidence, restoreWorkspace, type DeliveryConfig } from "../src/delivery.js";
 
 function git(cwd: string, args: string[]): string {
   return execFileSync("git", args, { cwd }).toString().trim();
@@ -60,6 +62,46 @@ function baseConfig(
     ...overrides,
   };
 }
+
+test("restoreWorkspace is a no-op when no restore URL is set (normal clone path)", async () => {
+  // ADR059 D4: without a snapshot the driver clones as before; restore must not
+  // run curl/tar at all.
+  await restoreWorkspace({ restoreUrl: "" });
+});
+
+test("restoreWorkspace fetches + untars a snapshot, leaving ensureRepo a no-op", async () => {
+  // Build a real .tgz of a pre-populated git workspace, serve it over a local
+  // HTTP server (the presigned-GET stand-in), restore it, and assert the working
+  // tree — including an uncommitted edit — survives and ensureRepo skips cloning.
+  const { root, remote } = await bareRemote();
+  const src = path.join(root, "src-workspace");
+  await mkdir(src);
+  git(src, ["clone", remote, "."]);
+  git(src, ["checkout", "-B", "bex-agent/session-1"]);
+  await writeFile(path.join(src, "uncommitted.txt"), "unpushed work\n");
+  const archive = path.join(root, "snap.tgz");
+  execFileSync("tar", ["czf", archive, "-C", src, "."]);
+  const body = await readFile(archive);
+
+  const server = createServer((_req, res) => {
+    res.writeHead(200);
+    res.end(body);
+  });
+  await new Promise<void>((r) => server.listen(0, r));
+  const port = (server.address() as AddressInfo).port;
+  const cwd = path.join(root, "restored");
+  await mkdir(cwd);
+  try {
+    await restoreWorkspace({ restoreUrl: `http://127.0.0.1:${port}/snap.tgz` }, cwd);
+    // The uncommitted working-tree edit survived the snapshot round-trip.
+    assert.equal((await readFile(path.join(cwd, "uncommitted.txt"))).toString(), "unpushed work\n");
+    // A restored workspace is already a git repo, so ensureRepo does not re-clone.
+    await ensureRepo(baseConfig(cwd, { repoUrl: remote }));
+    assert.ok((await readFile(path.join(cwd, "uncommitted.txt"))).toString().includes("unpushed"));
+  } finally {
+    server.close();
+  }
+});
 
 test("ensureRepo clones an empty workspace onto the session branch", async () => {
   const { root, remote } = await bareRemote();

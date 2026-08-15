@@ -20,10 +20,11 @@ const TERMINAL_PHASES: ReadonlySet<AgentSessionPhase> = new Set([
   "canceled",
 ]);
 
-/** Idle, non-canceled phases the GraphQL steer/resume redispatch path accepts. */
+/** Idle phases the GraphQL steer/resume path accepts (hibernated rehydrates). */
 const STEERABLE_PHASES: ReadonlySet<AgentSessionPhase> = new Set([
   "completed",
   "failed",
+  "hibernated",
 ]);
 
 /** True for completed/failed/canceled — a settled session. */
@@ -67,6 +68,11 @@ export function toAgentSessionView(
     createdAt: wire.createdAt,
     updatedAt: wire.updatedAt,
     canceledAt: wire.canceledAt ?? null,
+    pinned: wire.pinned ?? false,
+    snapshotBytes: wire.snapshotBytes ?? 0,
+    hibernatedAt: wire.hibernatedAt ?? null,
+    retainUntil: wire.retainUntil ?? null,
+    isHibernated: phase === "hibernated",
     isTerminal: isTerminalPhase(phase),
     isSteerable: isSteerablePhase(phase),
   };
@@ -89,6 +95,20 @@ export function toAgentSessionTicket(
     url: wire.url ?? null,
     expiresAt: wire.expiresAt ?? null,
   };
+}
+
+/** Human-readable snapshot storage size for the hibernation cost display
+ *  (ADR059 D6). Binary units; one decimal above KiB. 0 ⇒ "0 B". */
+export function formatSnapshotBytes(bytes: number): string {
+  if (!bytes || bytes < 0) return "0 B";
+  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${unit === 0 ? value : value.toFixed(1)} ${units[unit]}`;
 }
 
 /** A session's display name — its task prompt, falling back to the raw id. */

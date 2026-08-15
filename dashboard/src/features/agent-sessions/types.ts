@@ -13,6 +13,8 @@ export type AgentSessionPhase =
   | "running"
   | "resuming"
   | "redispatching"
+  | "hibernating"
+  | "hibernated"
   | "completed"
   | "failed"
   | "canceling"
@@ -67,6 +69,18 @@ export interface AgentSessionView {
   createdAt: string;
   updatedAt: string;
   canceledAt: string | null;
+  /**
+   * Hibernation (ADR059 D5/D6). `pinned` marks the never-expire tier;
+   * `snapshotBytes` is the durable storage cost shown to the tenant (0 while
+   * live); `hibernatedAt`/`retainUntil` show when it hibernated and when an
+   * unpinned snapshot will be deleted (null while live or pinned).
+   */
+  pinned: boolean;
+  snapshotBytes: number;
+  hibernatedAt: string | null;
+  retainUntil: string | null;
+  /** hibernated — pod-less but resumable from a durable snapshot (ADR059 D2). */
+  isHibernated: boolean;
   /** completed/failed/canceled — the session will not change further on its own. */
   isTerminal: boolean;
   /**

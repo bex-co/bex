@@ -17,7 +17,7 @@
 
 import { createCredentialManager } from "./credentials.js";
 import { loadConfig } from "./config.js";
-import { ensureRepo } from "./delivery.js";
+import { ensureRepo, restoreWorkspace } from "./delivery.js";
 import { markTurnFailed, runHeadlessTurn } from "./session.js";
 import { startDriverServer } from "./server.js";
 import { UIMessageStreamHub } from "./stream-hub.js";
@@ -48,9 +48,11 @@ async function main(): Promise<void> {
 
   if (!config.prompt) return;
   try {
-    // Setup phase: check out the session branch (cloning when the workspace is
-    // empty) before the agent runs. Package-registry egress is open here; the
-    // agent phase then narrows it (ADR047 D5).
+    // Setup phase: rehydrate a hibernation snapshot when resuming (ADR059 D4),
+    // then check out the session branch (cloning only when the workspace is still
+    // empty — a restored workspace is left intact) before the agent runs.
+    // Package-registry egress is open here; the agent phase then narrows it (D5).
+    await restoreWorkspace(config);
     if (config.deliver) await ensureRepo(config);
     // codex #9: hold the single-flight guard during the initial headless turn so
     // a concurrent POST /turn gets 409 instead of starting a second agent against

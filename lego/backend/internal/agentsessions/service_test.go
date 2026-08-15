@@ -96,6 +96,123 @@ func (f *fakeStore) CountLiveAgentSessionSandboxes(_ context.Context, workspaceI
 	return n, nil
 }
 
+func (f *fakeStore) ClaimAgentSessionForHibernation(_ context.Context, id string) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok || row.SandboxID == "" || (row.Phase != PhaseCompleted && row.Phase != PhaseFailed) {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	row.Phase, row.Status = PhaseHibernating, "hibernating"
+	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
+	f.rows[id] = row
+	return row, nil
+}
+
+func (f *fakeStore) HibernateAgentSession(_ context.Context, id, ref string, bytes int64, sha string, retainUntil time.Time) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok || row.Phase != PhaseHibernating {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	row.Phase, row.Status = PhaseHibernated, "hibernated"
+	row.SnapshotRef, row.SnapshotBytes, row.SnapshotSHA = ref, bytes, sha
+	at := row.UpdatedAt.Add(time.Second)
+	row.HibernatedAt = &at
+	if !row.Pinned {
+		ru := retainUntil
+		row.RetainUntil = &ru
+	}
+	row.UpdatedAt = at
+	f.rows[id] = row
+	return row, nil
+}
+
+func (f *fakeStore) BeginRehydrate(_ context.Context, id string) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok || row.Phase != PhaseHibernated || row.SnapshotRef == "" {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	row.Phase, row.Status = PhaseResuming, "rehydrating"
+	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
+	f.rows[id] = row
+	return row, nil
+}
+
+func (f *fakeStore) AbortRehydrate(_ context.Context, id string) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok || row.Phase != PhaseResuming || row.SnapshotRef == "" || row.SandboxID != "" {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	row.Phase, row.Status = PhaseHibernated, "hibernated"
+	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
+	f.rows[id] = row
+	return row, nil
+}
+
+func (f *fakeStore) RehydrateAgentSession(_ context.Context, id, sandboxID, phase, status, delivery string) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok || row.Phase != PhaseResuming || row.SandboxID != "" {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	row.SandboxID, row.Phase, row.Status, row.DeliveryMode = sandboxID, phase, status, delivery
+	row.Turns++
+	row.SnapshotRef, row.SnapshotBytes, row.SnapshotSHA = "", 0, ""
+	row.HibernatedAt, row.RetainUntil = nil, nil
+	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
+	f.rows[id] = row
+	return row, nil
+}
+
+func (f *fakeStore) SetAgentSessionPinned(_ context.Context, id string, pinned bool, retainUntil *time.Time) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	row.Pinned = pinned
+	switch {
+	case pinned:
+		row.RetainUntil = nil
+	case row.Phase == PhaseHibernated:
+		row.RetainUntil = retainUntil
+	}
+	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
+	f.rows[id] = row
+	return row, nil
+}
+
+func (f *fakeStore) ListHibernatedForRetention(_ context.Context, now time.Time, _ int) ([]store.AgentSession, error) {
+	out := []store.AgentSession{}
+	for _, row := range f.rows {
+		if row.Phase == PhaseHibernated && !row.Pinned && row.SnapshotRef != "" &&
+			row.RetainUntil != nil && !row.RetainUntil.After(now) {
+			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeStore) ExpireHibernatedAgentSession(_ context.Context, id, ref string) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok || row.Phase != PhaseHibernated || row.SnapshotRef != ref {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	row.Phase, row.Status, row.FailureReason = PhaseCanceled, "canceled", "hibernation retention window elapsed"
+	at := row.UpdatedAt.Add(time.Second)
+	row.CanceledAt = &at
+	row.SnapshotRef, row.SnapshotBytes, row.SnapshotSHA, row.RetainUntil = "", 0, "", nil
+	row.UpdatedAt = at
+	f.rows[id] = row
+	return row, nil
+}
+
+func (f *fakeStore) CountPinnedAgentSessions(_ context.Context, workspaceID string) (int, error) {
+	n := 0
+	for _, row := range f.rows {
+		if row.WorkspaceID == workspaceID && row.Pinned {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (f *fakeStore) ListTerminalAgentSessionsWithSandbox(_ context.Context, since time.Time) ([]store.AgentSession, error) {
 	terminal := map[string]bool{PhaseCompleted: true, PhaseFailed: true, PhaseCanceled: true}
 	out := []store.AgentSession{}
@@ -339,6 +456,62 @@ type fakeLifecycle struct {
 	// Injected background-provisioning failures (w2/m64). createErr aborts the
 	// sandbox create (nothing is counted); resumeErr aborts a resume.
 	createErr, resumeErr error
+	// Hibernation (ADR059 D3, w2/m68). hibernated counts snapshot calls;
+	// lastPutURL/lastRestoreURL capture the presigned URLs threaded through;
+	// snapshot is the returned result; hibernateErr injects a snapshot failure.
+	hibernated     int
+	lastPutURL     string
+	lastRestoreURL string
+	snapshot       sandbox.SnapshotResult
+	hibernateErr   error
+}
+
+// fakeSnapshots is an in-memory SnapshotStore for the hibernation tests: it
+// records refs, hands out deterministic URLs, and tracks deletes.
+type fakeSnapshots struct {
+	seq       int
+	refs      map[string]bool // ref -> present
+	deleted   []string
+	uploadErr error
+	getErr    error
+}
+
+func newFakeSnapshots() *fakeSnapshots { return &fakeSnapshots{refs: map[string]bool{}} }
+
+func (f *fakeSnapshots) PrepareUpload(_ context.Context, workspaceID, sessionID string) (string, string, error) {
+	if f.uploadErr != nil {
+		return "", "", f.uploadErr
+	}
+	f.seq++
+	ref := fmt.Sprintf("agent-snapshots/%s/%s-%d.tgz", workspaceID, sessionID, f.seq)
+	f.refs[ref] = true
+	return ref, "https://s3.example/put/" + ref, nil
+}
+
+func (f *fakeSnapshots) PrepareDownload(_ context.Context, ref string) (string, error) {
+	if f.getErr != nil {
+		return "", f.getErr
+	}
+	return "https://s3.example/get/" + ref, nil
+}
+
+func (f *fakeSnapshots) Delete(_ context.Context, ref string) error {
+	f.deleted = append(f.deleted, ref)
+	delete(f.refs, ref)
+	return nil
+}
+
+func (f *fakeLifecycle) HibernateAgentSessionSandbox(_ context.Context, _, _, _, putURL string) (sandbox.SnapshotResult, error) {
+	f.lastPutURL = putURL
+	if f.hibernateErr != nil {
+		return sandbox.SnapshotResult{}, f.hibernateErr
+	}
+	f.hibernated++
+	res := f.snapshot
+	if res.Bytes == 0 {
+		res = sandbox.SnapshotResult{Bytes: 4096, SHA256: strings.Repeat("a", 64)}
+	}
+	return res, nil
 }
 
 func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, repository, branch, modelEndpoint, modelAPIKey string, egressAllowlist []string, driverEnv map[string]string) (sandbox.Sandbox, error) {
@@ -491,6 +664,135 @@ func TestResumeRefusedAtLiveSandboxCap(t *testing.T) {
 	seedLiveSession(st, "tea-a")
 	if _, err := svc.Resume(caller("alice"), id); !isCode(err, "AGENT_SESSION_LIVE_LIMIT") {
 		t.Fatalf("resume at cap = %v, want AGENT_SESSION_LIVE_LIMIT", err)
+	}
+}
+
+// --- ADR059 D4/D5: rehydrate + pin -------------------------------------------
+
+// seedHibernated turns the steerable session into a hibernated one holding a
+// snapshot, mirroring the state the Completer leaves after reclaiming it.
+func seedHibernated(st *fakeStore, id string) {
+	row := st.rows[id]
+	row.Phase, row.Status = PhaseHibernated, "hibernated"
+	row.SandboxID = ""
+	row.SnapshotRef, row.SnapshotBytes = "agent-snapshots/tea-a/"+id+".tgz", 4096
+	st.rows[id] = row
+}
+
+// Resume of a hibernated session rehydrates it: a fresh sandbox is created
+// carrying the presigned restore URL, the phase converges to running, and the
+// snapshot fields are cleared (consumed into the new pod).
+func TestResumeRehydratesHibernatedSession(t *testing.T) {
+	svc, st, _, id := steerableFixture(t)
+	snaps := newFakeSnapshots()
+	svc.Snapshots = snaps
+	seedHibernated(st, id)
+
+	view, err := svc.Resume(caller("alice"), id)
+	if err != nil {
+		t.Fatalf("resume hibernated = %v", err)
+	}
+	_ = view
+	row := st.rows[id]
+	if row.Phase != PhaseRunning {
+		t.Fatalf("rehydrated session phase = %s, want running", row.Phase)
+	}
+	if row.SnapshotRef != "" {
+		t.Fatalf("snapshot ref not cleared after rehydrate: %q", row.SnapshotRef)
+	}
+	if row.SandboxID == "" {
+		t.Fatal("no fresh sandbox adopted on rehydrate")
+	}
+	if row.DeliveryMode != DeliveryRehydrate {
+		t.Fatalf("delivery mode = %q, want rehydrate", row.DeliveryMode)
+	}
+}
+
+// A hibernated session with no snapshot store wired cannot be rehydrated.
+func TestResumeHibernatedWithoutStoreRefused(t *testing.T) {
+	svc, st, _, id := steerableFixture(t)
+	svc.Snapshots = nil
+	seedHibernated(st, id)
+	if _, err := svc.Resume(caller("alice"), id); !isCode(err, "AGENT_SESSION_NOT_RESUMABLE") {
+		t.Fatalf("resume hibernated without store = %v, want AGENT_SESSION_NOT_RESUMABLE", err)
+	}
+}
+
+// A failed background rehydrate reverts the row to hibernated so the snapshot is
+// not lost — the user can retry.
+func TestRehydrateFailureRevertsToHibernated(t *testing.T) {
+	svc, st, lc, id := steerableFixture(t)
+	svc.Snapshots = newFakeSnapshots()
+	lc.createErr = errors.New("pod schedule timeout")
+	seedHibernated(st, id)
+
+	if _, err := svc.Resume(caller("alice"), id); err != nil {
+		t.Fatalf("resume (accept) = %v", err)
+	}
+	row := st.rows[id]
+	if row.Phase != PhaseHibernated {
+		t.Fatalf("failed rehydrate left phase=%s, want reverted to hibernated", row.Phase)
+	}
+	if row.SnapshotRef == "" {
+		t.Fatal("snapshot ref lost on failed rehydrate — the workspace would be unrecoverable")
+	}
+}
+
+// Pinning removes the retention deadline; unpinning puts it back on the clock.
+func TestPinUnpinTogglesRetention(t *testing.T) {
+	svc, st, _, id := steerableFixture(t)
+	svc.Snapshots = newFakeSnapshots()
+	seedHibernated(st, id)
+	deadline := st.now.Add(time.Hour)
+	row := st.rows[id]
+	row.RetainUntil = &deadline
+	st.rows[id] = row
+
+	if _, err := svc.Pin(caller("alice"), id); err != nil {
+		t.Fatalf("pin = %v", err)
+	}
+	if !st.rows[id].Pinned || st.rows[id].RetainUntil != nil {
+		t.Fatalf("pin should set pinned + clear deadline: pinned=%v retain=%v", st.rows[id].Pinned, st.rows[id].RetainUntil)
+	}
+	if _, err := svc.Unpin(caller("alice"), id); err != nil {
+		t.Fatalf("unpin = %v", err)
+	}
+	if st.rows[id].Pinned || st.rows[id].RetainUntil == nil {
+		t.Fatalf("unpin should clear pinned + restore a deadline: pinned=%v retain=%v", st.rows[id].Pinned, st.rows[id].RetainUntil)
+	}
+}
+
+// The pin quota refuses a pin beyond the workspace cap.
+func TestPinRefusedAtQuota(t *testing.T) {
+	svc, st, _, id := steerableFixture(t)
+	svc.Snapshots = newFakeSnapshots()
+	svc.MaxPinnedSandboxes = 1
+	seedHibernated(st, id)
+	// A second already-pinned session in the same workspace fills the quota.
+	other := "ags-otherpinned000000000"
+	st.rows[other] = store.AgentSession{ID: other, WorkspaceID: "tea-a", Phase: PhaseHibernated, Pinned: true, SnapshotRef: "x"}
+
+	if _, err := svc.Pin(caller("alice"), id); !isCode(err, "AGENT_SESSION_PIN_LIMIT") {
+		t.Fatalf("pin at quota = %v, want AGENT_SESSION_PIN_LIMIT", err)
+	}
+}
+
+// Cancel of a hibernated session deletes its durable snapshot immediately.
+func TestCancelHibernatedDeletesSnapshot(t *testing.T) {
+	svc, st, _, id := steerableFixture(t)
+	snaps := newFakeSnapshots()
+	svc.Snapshots = snaps
+	seedHibernated(st, id)
+	ref := st.rows[id].SnapshotRef
+
+	if _, err := svc.Cancel(caller("alice"), id); err != nil {
+		t.Fatalf("cancel hibernated = %v", err)
+	}
+	if len(snaps.deleted) != 1 || snaps.deleted[0] != ref {
+		t.Fatalf("snapshot not deleted on cancel: %v", snaps.deleted)
+	}
+	if st.rows[id].Phase != PhaseCanceled {
+		t.Fatalf("phase = %s, want canceled", st.rows[id].Phase)
 	}
 }
 

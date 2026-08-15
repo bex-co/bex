@@ -90,6 +90,39 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Canceled",
     description: "Agent session phase chip — session was canceled",
   },
+  "agentSessions.phase.hibernating": {
+    message: "Hibernating",
+    description: "Agent session phase chip — snapshot upload in progress",
+  },
+  "agentSessions.phase.hibernated": {
+    message: "Hibernated",
+    description: "Agent session phase chip — reclaimed to a durable snapshot",
+  },
+  // --- Hibernation (ADR059 D5/D6) ---
+  "agentSessions.pin": {
+    message: "Pin",
+    description: "Button — pin a hibernated session so it never expires",
+  },
+  "agentSessions.unpin": {
+    message: "Unpin",
+    description: "Button — remove a session's never-expire pin",
+  },
+  "agentSessions.pinned": {
+    message: "Pinned",
+    description: "Badge — this session is pinned (never expires)",
+  },
+  "agentSessions.pinSuccess": {
+    message: "Pinned — this workspace will not expire.",
+    description: "Toast — pin succeeded",
+  },
+  "agentSessions.unpinSuccess": {
+    message: "Unpinned — this workspace is back on the retention clock.",
+    description: "Toast — unpin succeeded",
+  },
+  "agentSessions.hibernatedStorage": {
+    message: "Hibernated · {size}",
+    description: "Meta — hibernated state with snapshot storage size",
+  },
   // --- Composer (prompt box) ---
   "agentSessions.promptHeading": {
     message: "What should the agent work on?",
@@ -614,7 +647,8 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "Connect menu — hotlink that opens the sandbox as a Zed remote project",
   },
   "agentSessions.openInZedHint": {
-    message: "Opens the sandbox's /workspace over SSH. Requires the Zed editor.",
+    message:
+      "Opens the sandbox's /workspace over SSH. Requires the Zed editor.",
     description: "Connect menu — helper text under the Open-in-Zed action",
   },
   "agentSessions.connectSSH": {

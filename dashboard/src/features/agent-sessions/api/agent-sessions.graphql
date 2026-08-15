@@ -37,6 +37,10 @@ fragment AgentSessionFields on AgentSession {
   createdAt
   updatedAt
   canceledAt
+  pinned
+  snapshotBytes
+  hibernatedAt
+  retainUntil
 }
 
 # The short-lived attach ticket (+ gateway origin + expiry) the browser presents
@@ -111,6 +115,20 @@ mutation AttachAgentSession($id: String!) {
 
 mutation CancelAgentSession($id: String!) {
   cancelAgentSession(id: $id) {
+    ...AgentSessionFields
+  }
+}
+
+# ADR059 D5 pin/unpin: a pinned hibernated workspace never auto-expires (still
+# billed for snapshot storage + counted against the workspace pin quota).
+mutation PinAgentSession($id: String!) {
+  pinAgentSession(id: $id) {
+    ...AgentSessionFields
+  }
+}
+
+mutation UnpinAgentSession($id: String!) {
+  unpinAgentSession(id: $id) {
     ...AgentSessionFields
   }
 }

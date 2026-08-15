@@ -6,6 +6,8 @@ import {
   ResumeAgentSessionDocument,
   AttachAgentSessionDocument,
   CancelAgentSessionDocument,
+  PinAgentSessionDocument,
+  UnpinAgentSessionDocument,
 } from "@/graphql/definitions";
 import {
   toAgentSessionTicket,
@@ -51,6 +53,10 @@ export interface UseAgentSessionMutationsResult {
   attach: (id: string) => Promise<AgentSessionTicket>;
   /** Cancels a session; resolves the updated (canceling/canceled) view. */
   cancel: (id: string) => Promise<AgentSessionView>;
+  /** Pins a session so its hibernated workspace never expires (ADR059 D5). */
+  pin: (id: string) => Promise<AgentSessionView>;
+  /** Removes the never-expire pin, back onto the retention clock. */
+  unpin: (id: string) => Promise<AgentSessionView>;
 }
 
 /**
@@ -68,6 +74,8 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
   const [resumeMutation] = useMutation(ResumeAgentSessionDocument);
   const [attachMutation] = useMutation(AttachAgentSessionDocument);
   const [cancelMutation] = useMutation(CancelAgentSessionDocument);
+  const [pinMutation] = useMutation(PinAgentSessionDocument);
+  const [unpinMutation] = useMutation(UnpinAgentSessionDocument);
 
   const create = useCallback(
     async (input: CreateAgentSessionInput): Promise<AgentSessionTicket> => {
@@ -178,5 +186,39 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     [cancelMutation],
   );
 
-  return { create, steer, resume, attach, cancel };
+  const pin = useCallback(
+    async (id: string): Promise<AgentSessionView> => {
+      try {
+        const res = await pinMutation({
+          variables: { id },
+          fetchPolicy: "no-cache",
+        });
+        const session = res.data?.pinAgentSession;
+        if (!session) throw new Error("pinAgentSession returned no session");
+        return toAgentSessionView(session);
+      } catch (err) {
+        throw toAgentSessionError(err);
+      }
+    },
+    [pinMutation],
+  );
+
+  const unpin = useCallback(
+    async (id: string): Promise<AgentSessionView> => {
+      try {
+        const res = await unpinMutation({
+          variables: { id },
+          fetchPolicy: "no-cache",
+        });
+        const session = res.data?.unpinAgentSession;
+        if (!session) throw new Error("unpinAgentSession returned no session");
+        return toAgentSessionView(session);
+      } catch (err) {
+        throw toAgentSessionError(err);
+      }
+    },
+    [unpinMutation],
+  );
+
+  return { create, steer, resume, attach, cancel, pin, unpin };
 }

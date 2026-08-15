@@ -45,6 +45,10 @@ const PHASE_CHIP: Record<
   failed: { variant: "destructive" },
   canceled: { variant: "secondary" },
   canceling: { variant: "secondary" },
+  // Hibernated is idle-but-resumable (ADR059 D2) — a distinct muted treatment,
+  // not the active/blue of a converging phase; hibernating shares active.
+  hibernated: { variant: "secondary" },
+  hibernating: { variant: "outline", className: ACTIVE_CHIP_CLASS },
   creating: { variant: "outline", className: ACTIVE_CHIP_CLASS },
   running: { variant: "outline", className: ACTIVE_CHIP_CLASS },
   resuming: { variant: "outline", className: ACTIVE_CHIP_CLASS },

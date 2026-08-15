@@ -1,21 +1,21 @@
 # w2 · m68 — ADR059 hibernation: spike → snapshot/rehydrate → pin, retention, billing
 
-**Worker:** worker2 **Goal:** the Hibernated tier of ADR059 becomes real — an idle agent workspace is reclaimed to an encrypted filesystem snapshot in object storage and rehydrates on connect/turn within the p50<~5s / p95<~15s budget; retention (7d default, dirty-git extension) and the opt-in **pinned** never-expire primitive land with storage metering, quotas, and a see/stop/unpin surface. **Status:** t001 DONE (2026-08-15) — D7 spike resolved to **B** (self-owned tar→encrypted object storage; native `Suspend` is OCI-registry-backed, not usably durable past Terminate, high-cardinality — all 3 A-preconditions fail; ADR059 flipped to Accepted, evidence in `evidence/2026-08-15-d7-opensandbox-snapshot-spike.md`). **t003–t010 BLOCKED for autonomous drain:** a greenfield object-storage hibernation mechanism (new S3 wiring, initContainer hydrate, retention GC, pin/quota/billing dimension, dashboard) whose DoD gates closeout on a **live-cluster hibernate→rehydrate acceptance with recorded resume latency** — the same real-cluster + human-acceptance dependency that gated m65 t010. Needs a scoped session (and a disposable workspace) rather than the loop-worker drain.
+**Worker:** worker2 **Goal:** the Hibernated tier of ADR059 becomes real — an idle agent workspace is reclaimed to an encrypted filesystem snapshot in object storage and rehydrates on connect/turn within the p50<~5s / p95<~15s budget; retention (7d default, dirty-git extension) and the opt-in **pinned** never-expire primitive land with storage metering, quotas, and a see/stop/unpin surface. **Status:** code complete — **t001–t009 DONE (2026-08-15)**; **t010 (live hibernate→rehydrate acceptance) is the one remaining gate**, blocked on a live cluster + human confirmation (same dependency that held m65 t010). The whole tier is **env-gated OFF by default** (`BEX_AGENT_SNAPSHOT_S3_*` unset ⇒ reclaim stays Terminate, byte-identical to w2/m67), so it ships safely with the live acceptance as the enablement gate. Implemented: D7 spike → **B**; the `agent_sessions` hibernation data model (migration 0073 + claim/hibernate/rehydrate/pin/retention store methods); the S3 `SnapshotStore` (per-workspace prefix, presigned PUT/GET, bucket-default SSE); the Completer reclaim seam (idle → snapshot → `hibernated`, fallback Terminate on any failure) with dirty-git-extended 7d retention sweep; Resume/Steer rehydrate (fresh sandbox + presigned restore URL) with resume-latency instrumentation; the driver's `restoreWorkspace` setup hook (curl→tar, uncommitted work preserved, real tar round-trip test); pin/unpin verbs + pin quota + storage metering; the REST/GraphQL/MCP + dashboard surface (pin/unpin, hibernated chip, storage cost). All backend + driver + dashboard suites green; the tenant sandbox never receives a durable credential (presigned URLs only).
 
 ## Tasks (in order)
 
 | id   | title                                                                                        | est | depends_on       |
 | ---- | -------------------------------------------------------------------------------------------- | --- | ---------------- |
 | t001 | D7 spike: OpenSandbox `Suspend` snapshot — where stored, survives Terminate?, scales? → pick A/B | 45m | —                | — **DONE** (verdict B) |
-| t002 | Data model: Hibernated state + pin flag + idle/retention timestamps on the session/workspace row | 40m | —                |
-| t003 | Hibernate mechanism (A: retain `Suspend` snapshot / B: tar mutable mount → encrypted object storage) | 60m | t001, t002       |
-| t004 | Rehydrate on connect/turn/Resume + resume-latency instrumentation against the SLOs            | 60m | t003             |
-| t005 | Retention sweep: 7d default, dirty-git extension, pinned skips delete; object-store GC backstop | 45m | t003             |
-| t006 | Pin/unpin + quotas + storage metering + the see/stop surface (REST/GraphQL/MCP + dashboard)   | 60m | t002, t005       |
-| t007 | Render parity sweep (bex extension; cross-surface consistency)                                | 30m | t006             |
-| t008 | Simplify pass over the milestone's changes                                                    | 30m | t007             |
-| t009 | Test coverage: state machine, hibernate/rehydrate failure modes, retention, pin/quota         | 60m | t007             |
-| t010 | Closeout (requires a live hibernate→rehydrate acceptance with recorded resume latency)        | 20m | t009             |
+| t002 | Data model: Hibernated state + pin flag + idle/retention timestamps on the session/workspace row | 40m | —                | — **DONE** |
+| t003 | Hibernate mechanism (A: retain `Suspend` snapshot / B: tar mutable mount → encrypted object storage) | 60m | t001, t002       | — **DONE** (B) |
+| t004 | Rehydrate on connect/turn/Resume + resume-latency instrumentation against the SLOs            | 60m | t003             | — **DONE** |
+| t005 | Retention sweep: 7d default, dirty-git extension, pinned skips delete; object-store GC backstop | 45m | t003             | — **DONE** |
+| t006 | Pin/unpin + quotas + storage metering + the see/stop surface (REST/GraphQL/MCP + dashboard)   | 60m | t002, t005       | — **DONE** |
+| t007 | Render parity sweep (bex extension; cross-surface consistency)                                | 30m | t006             | — **DONE** |
+| t008 | Simplify pass over the milestone's changes                                                    | 30m | t007             | — **DONE** |
+| t009 | Test coverage: state machine, hibernate/rehydrate failure modes, retention, pin/quota         | 60m | t007             | — **DONE** |
+| t010 | Closeout (requires a live hibernate→rehydrate acceptance with recorded resume latency)        | 20m | t009             | ← **live-gated** |
 
 ## Definition of done
 

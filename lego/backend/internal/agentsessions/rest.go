@@ -60,6 +60,22 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, view)
 	})
+	mux.HandleFunc("POST /v1/agent-sessions/{id}/pin", func(w http.ResponseWriter, r *http.Request) {
+		view, err := s.Pin(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, view)
+	})
+	mux.HandleFunc("POST /v1/agent-sessions/{id}/unpin", func(w http.ResponseWriter, r *http.Request) {
+		view, err := s.Unpin(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, view)
+	})
 	mux.HandleFunc("POST /v1/agent-sessions/{id}/attach-ticket", func(w http.ResponseWriter, r *http.Request) {
 		// Determine action from query parameter or default to "read"
 		action := r.URL.Query().Get("action")

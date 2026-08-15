@@ -80,3 +80,42 @@ func TestAgentSuspendScrubsBeforeSnapshotAndFailsClosed(t *testing.T) {
 		})
 	}
 }
+
+// parseHibernateOutput reads the digest/size/dirty lines the snapshot script
+// prints; malformed output must fail closed rather than record a bogus snapshot.
+func TestParseHibernateOutput(t *testing.T) {
+	sha := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	ok := []struct {
+		name, in string
+		bytes    int64
+		dirty    bool
+	}{
+		{"clean", sha + "\n4096\nclean\n", 4096, false},
+		{"dirty", sha + "\n12\ndirty\n", 12, true},
+		{"trailing blanks", sha + "\n8\nclean\n\n\n", 8, false},
+	}
+	for _, tc := range ok {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := parseHibernateOutput(tc.in)
+			if err != nil {
+				t.Fatalf("parse %q = %v", tc.in, err)
+			}
+			if res.Bytes != tc.bytes || res.SHA256 != sha || res.DirtyGit != tc.dirty {
+				t.Fatalf("got %+v, want bytes=%d dirty=%v", res, tc.bytes, tc.dirty)
+			}
+		})
+	}
+	for name, in := range map[string]string{
+		"empty":         "",
+		"missing dirty": sha + "\n4096\n",
+		"zero bytes":    sha + "\n0\nclean\n",
+		"bad size":      sha + "\nnotanumber\nclean\n",
+		"short digest":  "abcd\n4096\nclean\n",
+	} {
+		t.Run("reject "+name, func(t *testing.T) {
+			if _, err := parseHibernateOutput(in); err == nil {
+				t.Fatalf("parse %q should have failed", in)
+			}
+		})
+	}
+}

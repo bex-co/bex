@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -370,6 +371,16 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 	return sandboxFromOpenSandbox(raw, workspace), nil
 }
 
+// SnapshotResult is the outcome of a hibernation snapshot (ADR059 D3): the
+// archive's size (storage-metering + quota dimension) and sha256 (integrity),
+// plus whether the workspace's git tree was dirty (uncommitted work), which
+// extends the retention window so unpushed edits survive longer.
+type SnapshotResult struct {
+	Bytes    int64
+	SHA256   string
+	DirtyGit bool
+}
+
 // AgentSessionLifecycle is intentionally separate from Service's public API
 // verb method set. Its caller (agentsessions.Service) owns authorization and
 // audit; exposing these mechanics as sandbox verbs would create a second policy
@@ -629,6 +640,93 @@ func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, works
 		return "", err
 	}
 	return result.Stdout, nil
+}
+
+// hibernateScript is the ADR059 D3 snapshot pipeline, run once via the trusted
+// gateway exec boundary (stdout-only, signed argv). It scrubs credentials (the
+// same bex-pre-snapshot hook Suspend uses), tars the mutable workspace state
+// (`/workspace` + `~/.zed_server` when present) preserving ownership, prints the
+// digest + byte count on stdout (the only channel back), then streams the
+// archive straight to the presigned PUT URL — so **no durable credential ever
+// enters the sandbox**, only a single-object time-boxed URL. `set -e` +
+// `pipefail`-free curl `-f` make any failure a non-zero exit the caller treats
+// as "hibernation failed, fall back to Terminate". The URL is single-quoted; a
+// presigned URL is percent-encoded and never contains a single quote.
+const hibernateScript = `set -e
+/usr/local/bin/bex-pre-snapshot
+SNAP=/tmp/bex-hibernate.tgz
+HOME_DIR="${HOME:-/home/bex}"
+MEMBERS="/workspace"
+[ -d "$HOME_DIR/.zed_server" ] && MEMBERS="$MEMBERS $HOME_DIR/.zed_server"
+tar czf "$SNAP" --numeric-owner $MEMBERS 2>/dev/null
+sha256sum "$SNAP" | cut -d' ' -f1
+wc -c < "$SNAP"
+if [ -n "$(git -C /workspace status --porcelain 2>/dev/null)" ]; then echo dirty; else echo clean; fi
+curl -sf -X PUT --upload-file "$SNAP" %s
+rm -f "$SNAP"`
+
+// HibernateAgentSessionSandbox snapshots the session's mutable state to the
+// presigned PUT URL and returns the archive's byte count + sha256 (parsed from
+// the exec stdout) for durable metering + integrity (ADR059 D3). It does NOT
+// terminate the pod — the Completer records the durable snapshot on the row
+// first, then terminates via CancelAgentSessionSandbox, so a failure before the
+// row write always leaves a live pod for the fallback Terminate reap and never
+// strands a row. On ANY error the pod is untouched. Trusted background call:
+// like ReadSessionStatus it re-validates the binding but performs no user
+// authorization.
+func (l *AgentSessionLifecycle) HibernateAgentSessionSandbox(ctx context.Context, workspaceID, sessionID, sandboxID, putURL string) (SnapshotResult, error) {
+	s := l.service
+	if !s.enabled() || !s.execEnabled() {
+		return SnapshotResult{}, core.ErrSandboxesUnavailable
+	}
+	if putURL == "" {
+		return SnapshotResult{}, fmt.Errorf("%w: snapshot upload URL is required", core.ErrBadRequest)
+	}
+	key, err := s.agentSessionKey(ctx, workspaceID)
+	if err != nil {
+		return SnapshotResult{}, err
+	}
+	raw, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID)
+	if err != nil {
+		return SnapshotResult{}, err
+	}
+	switch mapOpenSandboxStatus(raw.Status.State) {
+	case StatusTerminated, StatusErrored:
+		return SnapshotResult{}, sandboxNotFound(sandboxID)
+	}
+	command := fmt.Sprintf(hibernateScript, "'"+putURL+"'")
+	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, []string{"/bin/sh", "-c", command})
+	if err != nil {
+		return SnapshotResult{}, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	result, err := bufferExec(resp)
+	if err != nil {
+		return SnapshotResult{}, err
+	}
+	if result.ExitCode != 0 {
+		return SnapshotResult{}, fmt.Errorf("hibernation snapshot failed with exit code %d", result.ExitCode)
+	}
+	return parseHibernateOutput(result.Stdout)
+}
+
+// parseHibernateOutput reads the digest, byte-count, and clean/dirty lines the
+// snapshot script prints (in that order) from the exec stdout, tolerating
+// trailing blank lines. The dirty flag drives the ADR059 D5 retention extension.
+func parseHibernateOutput(stdout string) (SnapshotResult, error) {
+	fields := strings.Fields(stdout)
+	if len(fields) < 3 {
+		return SnapshotResult{}, fmt.Errorf("hibernation snapshot produced incomplete output (stdout=%q)", stdout)
+	}
+	sha := fields[0]
+	bytes, err := strconv.ParseInt(fields[1], 10, 64)
+	if err != nil || bytes <= 0 {
+		return SnapshotResult{}, fmt.Errorf("hibernation snapshot reported invalid size %q", fields[1])
+	}
+	if len(sha) != 64 {
+		return SnapshotResult{}, fmt.Errorf("hibernation snapshot reported invalid digest %q", sha)
+	}
+	return SnapshotResult{Bytes: bytes, SHA256: sha, DirtyGit: fields[2] == "dirty"}, nil
 }
 
 func (s *Service) agentSessionKey(ctx context.Context, workspaceID string) (string, error) {
