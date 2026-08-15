@@ -1,12 +1,12 @@
 # w2 · m68 — ADR059 hibernation: spike → snapshot/rehydrate → pin, retention, billing
 
-**Worker:** worker2 **Goal:** the Hibernated tier of ADR059 becomes real — an idle agent workspace is reclaimed to an encrypted filesystem snapshot in object storage and rehydrates on connect/turn within the p50<~5s / p95<~15s budget; retention (7d default, dirty-git extension) and the opt-in **pinned** never-expire primitive land with storage metering, quotas, and a see/stop/unpin surface. **Status:** todo — t001 (the D7 spike) is the sequencing gate for t003+; t002 can proceed in parallel.
+**Worker:** worker2 **Goal:** the Hibernated tier of ADR059 becomes real — an idle agent workspace is reclaimed to an encrypted filesystem snapshot in object storage and rehydrates on connect/turn within the p50<~5s / p95<~15s budget; retention (7d default, dirty-git extension) and the opt-in **pinned** never-expire primitive land with storage metering, quotas, and a see/stop/unpin surface. **Status:** t001 DONE (2026-08-15) — D7 spike resolved to **B** (self-owned tar→encrypted object storage; native `Suspend` is OCI-registry-backed, not usably durable past Terminate, high-cardinality — all 3 A-preconditions fail; ADR059 flipped to Accepted, evidence in `evidence/2026-08-15-d7-opensandbox-snapshot-spike.md`). **t003–t010 BLOCKED for autonomous drain:** a greenfield object-storage hibernation mechanism (new S3 wiring, initContainer hydrate, retention GC, pin/quota/billing dimension, dashboard) whose DoD gates closeout on a **live-cluster hibernate→rehydrate acceptance with recorded resume latency** — the same real-cluster + human-acceptance dependency that gated m65 t010. Needs a scoped session (and a disposable workspace) rather than the loop-worker drain.
 
 ## Tasks (in order)
 
 | id   | title                                                                                        | est | depends_on       |
 | ---- | -------------------------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | D7 spike: OpenSandbox `Suspend` snapshot — where stored, survives Terminate?, scales? → pick A/B | 45m | —                |
+| t001 | D7 spike: OpenSandbox `Suspend` snapshot — where stored, survives Terminate?, scales? → pick A/B | 45m | —                | — **DONE** (verdict B) |
 | t002 | Data model: Hibernated state + pin flag + idle/retention timestamps on the session/workspace row | 40m | —                |
 | t003 | Hibernate mechanism (A: retain `Suspend` snapshot / B: tar mutable mount → encrypted object storage) | 60m | t001, t002       |
 | t004 | Rehydrate on connect/turn/Resume + resume-latency instrumentation against the SLOs            | 60m | t003             |
