@@ -1,6 +1,6 @@
 # w2 · m65 — Open in Zed: SSH remoting into agent-session sandboxes (ADR054)
 
-**Worker:** worker2 **Goal:** a user on `dashboard.bex.co/agents/ags-…` clicks **Open in Zed** and gets the session's sandbox `/workspace` open as a Zed remote project over real SSH (`zed://ssh/ags-<xid>@ssh.bex.co/workspace`), reusing the ADR035 gateway end to end. **Status:** in progress — t001–t009 + t011 + t013 DONE (2026-08-09; backend `go test ./...` + dashboard 2009 tests + lint all green, FGA model in sync, dashboard→`zed://` handoff verified live via Playwright at `/agents/ags-…`). **t010 (live real-cluster SSH-into-sandbox acceptance) blocked** — needs ADR035 production activation (public `ssh.bex.co` DNS + Traefik TCP entrypoint + `ssh-activate.sh --check`) and a real OpenSandbox agent session, not available on the local kind cluster. t012 (simplify) + t014 (closeout) gated behind t010.
+**Worker:** worker2 **Goal:** a user on `dashboard.bex.co/agents/ags-…` clicks **Open in Zed** and gets the session's sandbox `/workspace` open as a Zed remote project over real SSH (`zed://ssh/ags-<xid>@ssh.bex.co/workspace`), reusing the ADR035 gateway end to end. **Status:** done (2026-08-11). t010 live acceptance PASSED on the production gateway — a real Zed client connected into an agent-session sandbox (user-confirmed "能联上了"), after diagnosing + fixing two prod-only gaps the automated suites couldn't catch: the out-of-band `GRANT SELECT ON agent_sessions` was never applied to the gateway DB role, and the sftp bridge ran in `/workspace` instead of `$HOME` so Zed's server upload landed nowhere (fixed in `session.go`, shipped `babf63ba`). Evidence: [`evidence/2026-08-11-live-acceptance.md`](evidence/2026-08-11-live-acceptance.md). t012 simplify: reviewed — the m65 code is small and already minimal, and the one complex piece (the Completer deferral) is deliberately left untouched because w2/m67 rewrites that exact seam into the ADR059 idle model, so simplifying it now would be wasted churn.
 
 ## Tasks (in order)
 
@@ -15,11 +15,11 @@
 | t007 | Completer teardown deferral while an SSH session is open                                       | 30m | t004             | — **DONE** |
 | t008 | `sshAddress` on the agent-session View (REST/GraphQL/MCP) + env docs                           | 30m | t004             | — **DONE** |
 | t009 | Dashboard: Open in Zed button + copyable `ssh` command on the session header                   | 30m | t008             | — **DONE** |
-| t010 | Live acceptance: real Zed client → live sandbox, full flow evidence                            | 45m | t005, t006, t007, t009 | BLOCKED (needs prod SSH activation + real cluster) |
+| t010 | Live acceptance: real Zed client → live sandbox, full flow evidence                            | 45m | t005, t006, t007, t009 | — **DONE** (PASSED 2026-08-11; see evidence) |
 | t011 | Render parity sweep (bex extension row + surface consistency)                                  | 30m | t010             | — **DONE** (bex extension, no Render counterpart; `sshAddress` identical across REST/GraphQL/MCP + dashboard) |
-| t012 | Simplify pass over the milestone's changes                                                     | 30m | t011             | pending (gated on t010) |
+| t012 | Simplify pass over the milestone's changes                                                     | 30m | t011             | — **DONE** (reviewed; deferral seam left for w2/m67's ADR059 refactor) |
 | t013 | Test coverage for shipped behavior and failure modes                                           | 30m | t011             | — **DONE** |
-| t014 | Closeout                                                                                       | 15m | t013             | pending (DoD requires t010 live evidence) |
+| t014 | Closeout                                                                                       | 15m | t013             | — **DONE** |
 
 ## Definition of done
 
