@@ -72,6 +72,14 @@ func countingPushWorker(now time.Time) (*PushWorker, *countingPushStore) {
 	return &PushWorker{Store: st, Clock: func() time.Time { return now }}, st
 }
 
+// dispatchOnce mirrors RunOnce's two steps — build the recipient set once, then
+// page the feed — so these tests drive the pager exactly as production does.
+func dispatchOnce(w *PushWorker, st *countingPushStore) error {
+	ctx := context.Background()
+	byTenant, tenants := w.buildPushRecipients(ctx, st.destinations)
+	return w.dispatch(ctx, byTenant, tenants)
+}
+
 func pushDeployRow(key string, at time.Time) store.WebhookEventRow {
 	return store.WebhookEventRow{
 		CursorAt: at, Key: key, At: at, TenantID: "tea-one", ServiceName: "api",
@@ -89,7 +97,7 @@ func TestPushQuietWindowParksOnlyOncePastTheParkInterval(t *testing.T) {
 	t.Run("inside the park interval writes nothing", func(t *testing.T) {
 		w, st := countingPushWorker(now)
 		st.watermarkAt = until.Add(-pushParkInterval / 2)
-		if err := w.dispatch(context.Background(), st.destinations); err != nil {
+		if err := dispatchOnce(w, st); err != nil {
 			t.Fatalf("dispatch: %v", err)
 		}
 		if len(st.writes) != 0 {
@@ -100,7 +108,7 @@ func TestPushQuietWindowParksOnlyOncePastTheParkInterval(t *testing.T) {
 	t.Run("past the park interval writes once, with no notifications", func(t *testing.T) {
 		w, st := countingPushWorker(now)
 		st.watermarkAt = until.Add(-2 * pushParkInterval)
-		if err := w.dispatch(context.Background(), st.destinations); err != nil {
+		if err := dispatchOnce(w, st); err != nil {
 			t.Fatalf("dispatch: %v", err)
 		}
 		if len(st.writes) != 1 {
@@ -124,7 +132,7 @@ func TestPushBatchAndWatermarkAdvanceInOneStoreCall(t *testing.T) {
 		pushDeployRow("dep-two:ended", eventAt.Add(time.Second)),
 	}
 
-	if err := w.dispatch(context.Background(), st.destinations); err != nil {
+	if err := dispatchOnce(w, st); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	if len(st.writes) != 1 {
@@ -149,7 +157,7 @@ func TestPushFullPageLoopsAndShortPageEndsThePass(t *testing.T) {
 		w, st := countingPushWorker(now)
 		st.watermarkAt = eventAt.Add(-time.Hour)
 		st.events = []store.WebhookEventRow{pushDeployRow("dep-one:ended", eventAt)}
-		if err := w.dispatch(context.Background(), st.destinations); err != nil {
+		if err := dispatchOnce(w, st); err != nil {
 			t.Fatalf("dispatch: %v", err)
 		}
 		if st.reads != 1 {
@@ -166,7 +174,7 @@ func TestPushFullPageLoopsAndShortPageEndsThePass(t *testing.T) {
 				eventAt.Add(time.Duration(i)*time.Millisecond),
 			))
 		}
-		if err := w.dispatch(context.Background(), st.destinations); err != nil {
+		if err := dispatchOnce(w, st); err != nil {
 			t.Fatalf("dispatch: %v", err)
 		}
 		if st.reads != 2 {
@@ -201,7 +209,7 @@ func TestPushNoEventIsDeliveredFromBeforeItsDeviceWasRegistered(t *testing.T) {
 		pushDeployRow("dep-new:ended", now.Add(-30*time.Minute)),
 	}
 
-	if err := w.dispatch(context.Background(), st.destinations); err != nil {
+	if err := dispatchOnce(w, st); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
 	st.mu.Lock()
