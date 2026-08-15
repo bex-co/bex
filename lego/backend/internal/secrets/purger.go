@@ -88,8 +88,7 @@ func (p *WorkspacePurger) PurgeApp(ctx context.Context, a *appv1alpha1.App) erro
 // The public name resolves through storeServiceName; the tenant through
 // storeTenant — matching the write path exactly.
 func (p *WorkspacePurger) purgeAppSecrets(ctx context.Context, a *appv1alpha1.App) error {
-	name := storeServiceName(a, a.Name)
-	tenantCtx := withTenant(ctx, storeTenant(a))
+	tenantCtx, name := scopeApp(ctx, a, a.Name)
 	paths := []string{envPath(name), filesPath(name)}
 	// Also purge any legacy id-keyed paths (w1/m66 F10). SetSecretFile wrote under
 	// the caller's request token before it canonicalized, so a service addressed by
