@@ -65,7 +65,9 @@ ssh -i ~/.ssh/id_bex "root@${CP_IP}" \
   "kubeadm certs check-expiration"
 ```
 
-The CAPI in-cluster Secret `bex-capi/bex-kubeconfig` is updated automatically by CAPI after kubeadm renews the cert (CAPI watches and re-syncs). The `AdminCertExpiringSoon` alert clears within the next Prometheus scrape cycle once the Secret creation timestamp is refreshed.
+The CAPI in-cluster Secret `bex-capi/bex-kubeconfig` is an independently generated credential; it does **not** mirror `/etc/kubernetes/admin.conf`. Kubeadm Control Plane rotates an owned Secret only when that Secret's own client certificate enters CAPI's renewal window. If an immediate refresh is required, first confirm no runtime consumer depends on the Secret, make a credential-protected backup, delete the Secret, wait for KCP to create it with a new UID, and verify the new kubeconfig against `/readyz`. Restore the backup if regeneration or verification fails. The `AdminCertExpiringSoon` alert clears after the Secret is regenerated and Prometheus observes its new creation timestamp.
+
+> **Revocation limit:** renewing `admin.conf` or regenerating the CAPI Secret creates a new client certificate but does not revoke the old one. Kubernetes does not provide a client-certificate revocation list in this configuration, so a previously copied certificate remains valid until its original expiry while the same cluster CA is trusted. Use the full CA rotation in §2 only when immediate invalidation is required.
 
 ### After renewal: push new kubeconfig to GitHub Actions
 
