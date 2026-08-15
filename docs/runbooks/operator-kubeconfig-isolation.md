@@ -1,6 +1,6 @@
 # Runbook: isolate the cluster-admin kubeconfig from the operator (codex #5)
 
-**Status:** production namespace migration completed 2026-08-14; admin-cert rotation remains a separate operator procedure. Production manifests, rollout checks, autoscaler placement, and CI use `bex-capi`; CI refuses to apply them over an unmigrated `default/bex` Cluster.
+**Status:** production namespace migration and admin-credential refresh completed 2026-08-14. Production manifests, rollout checks, autoscaler placement, and CI use `bex-capi`; CI refuses to apply them over an unmigrated `default/bex` Cluster. Because Kubernetes has no client-certificate revocation mechanism, the replaced certificates remain valid until their original expiry unless the cluster CA is rotated.
 
 ## Finding
 
@@ -67,9 +67,11 @@ done
 
 Reconciliation must still pass with only the intended per-workspace Secret access — run the operator's envtest suite / a smoke deploy.
 
-## Rotate the exposed admin cert
+## Refresh the exposed admin credentials
 
-Because `kubernetes-admin` was readable by the operator, rotate it after relocation, per [ADR036 §1](../ADR036-ca-rotation-runbook.md):
+Because `kubernetes-admin` was readable by the operator, every control-plane node's `admin.conf` and the independently generated `bex-capi/bex-kubeconfig` Secret were refreshed after relocation. The protected one-time implementation is preserved at commit `328c0abb`; it took a fresh off-cluster etcd snapshot, renewed and verified each node serially, backed up and regenerated the CAPI Secret, rechecked operator denial and fleet convergence, and then passed the canonical app-cluster workflow. See [rotation run 31862133147](https://github.com/bex-co/bex/actions/runs/31862133147) and [app-cluster run 31862253647](https://github.com/bex-co/bex/actions/runs/31862253647).
+
+For a future node-local refresh, per [ADR036 §1](../ADR036-ca-rotation-runbook.md):
 
 ```bash
 # on each control-plane node
@@ -78,7 +80,7 @@ sudo kubeadm certs renew admin.conf
 HCLOUD_TOKEN=... scripts/fetch-app-kubeconfig.sh <out>
 ```
 
-Full CA rotation (emergency) is ADR036 §2. Update `.env` / CI secrets if the fetched kubeconfig is cached anywhere per ADR019.
+That command does **not** update the CAPI-managed kubeconfig Secret; its lifecycle and safe regeneration are documented in ADR036. Neither renewal invalidates a previously copied client certificate: with the CA unchanged it remains accepted until its original expiry. Full CA rotation (emergency) is ADR036 §2 and is the only documented way to invalidate it immediately. Update `.env` / CI secrets if the fetched kubeconfig is cached anywhere per ADR019.
 
 ## Follow-up
 
