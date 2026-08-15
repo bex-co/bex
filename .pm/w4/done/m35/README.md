@@ -1,6 +1,6 @@
 # w4 · m35 — bex CLI distribution: first release, install script, signing, Homebrew tap
 
-**Worker:** worker4 **Goal:** installing the bex CLI becomes one command (`curl | sh` or `brew install bex-co/tap/bex`), backed by a real published `bex-cli/v0.1.0` release with signed checksums — activating the update-notice channel m34 built. **Status:** in progress (t001–t003 done; t004 blocked on `/ship` + `BEX_TAP_PUSH_TOKEN`)
+**Worker:** worker4 **Goal:** installing the bex CLI becomes one command (`curl | sh` or `brew install bex-co/tap/bex`), backed by a real published `bex-cli/v0.1.0` release with signed checksums — activating the update-notice channel m34 built. **Status:** done
 
 ## Tasks (in order)
 
@@ -9,10 +9,10 @@
 | t001 | `scripts/install-bex.sh`: one-line installer with checksum verification — **DONE**      | 45m | —          |
 | t002 | cosign keyless signing of `checksums.txt` in `cli-release.yml` — **DONE**               | 30m | t001       |
 | t003 | Homebrew tap: `bex-co/homebrew-tap` + formula auto-push on release — **DONE**           | 60m | t002       |
-| t004 | First release `bex-cli/v0.1.0`: tag, watch, verify every channel end to end  | 45m | t003       |
-| t005 | Simplify — `/simplify` over the code this milestone changed                  | 30m | t004       |
-| t006 | Test coverage — installer/formula-render logic that can be tested offline    | 30m | t005       |
-| t007 | Closeout                                                                     | 15m | t006       |
+| t004 | First release `bex-cli/v0.1.0`: tag, watch, verify every channel end to end — **DONE**  | 45m | t003       |
+| t005 | Simplify — `/simplify` over the code this milestone changed — **DONE**                  | 30m | t004       |
+| t006 | Test coverage — installer/formula-render logic that can be tested offline — **DONE**    | 30m | t005       |
+| t007 | Closeout — **DONE**                                                                     | 15m | t006       |
 
 ## Definition of done
 
