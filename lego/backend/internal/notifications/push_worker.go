@@ -31,7 +31,9 @@ import (
 )
 
 const (
-	pushDispatchLag         = 3 * time.Second
+	// A property of the feed, not of this worker: store.FeedCommitLag explains
+	// why a tailer must read behind now, and every tailer shares it.
+	pushDispatchLag         = store.FeedCommitLag
 	pushDispatchBatch       = 200
 	pushSendBatch           = 50
 	pushClaimLease          = time.Minute
