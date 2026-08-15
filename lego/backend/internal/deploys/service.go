@@ -414,26 +414,24 @@ func (s *Service) Trigger(ctx context.Context, service string, p TriggerParams) 
 	return s.triggerFetched(ctx, service, a, p, store.TriggerAPI)
 }
 
-// triggerFetched is the one deploy-trigger implementation shared by the
-// authenticated Trigger verb and the secret-URL deploy hook. The caller owns
-// the authentication boundary and supplies an already-resolved App; everything
-// after that boundary (validation, CR patch, deploy-history row) is identical.
-func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1alpha1.App, p TriggerParams, trigger string) (DeployView, error) {
+// validateTrigger holds every reason a trigger is refused before anything is
+// mutated. The checks are order-insensitive and read only the App spec and the
+// caller's params, so a rejection can never leave a half-applied deploy.
+func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerParams) error {
 	if s.Store == nil {
-		return DeployView{}, core.ErrDeploysUnavailable
+		return core.ErrDeploysUnavailable
 	}
 	if a.Spec.Suspended {
-		return DeployView{}, fmt.Errorf("%w: service %q is suspended", core.ErrConflict, service)
+		return fmt.Errorf("%w: service %q is suspended", core.ErrConflict, service)
 	}
-	appID := appStoreID(a)
-	if appID == "" {
-		return DeployView{}, fmt.Errorf("%w: service %q is not store-managed", core.ErrBadRequest, service)
+	if appStoreID(a) == "" {
+		return fmt.Errorf("%w: service %q is not store-managed", core.ErrBadRequest, service)
 	}
 	// deploy_only for a repo-backed service is rejected: this public trigger does
 	// not expose cached-artifact deployment. Operational spec changes reuse the
 	// active artifact, but a deploy trigger deliberately rebuilds from source.
 	if p.DeployMode == "deploy_only" && a.Spec.Repo != "" {
-		return DeployView{}, fmt.Errorf("%w: deployMode \"deploy_only\" is not supported for repo-backed services — "+
+		return fmt.Errorf("%w: deployMode \"deploy_only\" is not supported for repo-backed services — "+
 			"use \"build_and_deploy\" (or omit deployMode) to rebuild from source", core.ErrBadRequest)
 	}
 	// imageUrl is rejected for repo-backed services: bex rebuilds from source on
@@ -446,20 +444,32 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	// therefore effectively an arbitrary-image deploy credential — treat it like a
 	// secret (docs/ADR006-bex-api.md § Deploy hooks).
 	if p.ImageURL != "" && a.Spec.Repo != "" {
-		return DeployView{}, fmt.Errorf("%w: imageUrl is not supported for repo-backed services — "+
+		return fmt.Errorf("%w: imageUrl is not supported for repo-backed services — "+
 			"bex rebuilds from source on every trigger; use commitId to pin a ref instead", core.ErrBadRequest)
 	}
 	// Validate the supplied image ref at the boundary (w1/m53): reject whitespace/
 	// control/shell-meta characters so a malformed reference can't reach the App
 	// CR spec (where the CRD schema would reject it with a less legible error).
 	if p.ImageURL != "" && !store.ValidImage(p.ImageURL) {
-		return DeployView{}, fmt.Errorf("%w: imageUrl must be an OCI reference (no whitespace or shell metacharacters)", core.ErrBadRequest)
+		return fmt.Errorf("%w: imageUrl must be an OCI reference (no whitespace or shell metacharacters)", core.ErrBadRequest)
 	}
 	// commitId is meaningless for a cron_job: a cron runs on a schedule, not
 	// per-commit. Reject early rather than silently ignoring the field.
 	if p.CommitID != "" && a.Spec.Type == appv1alpha1.TypeCronJob {
-		return DeployView{}, fmt.Errorf("%w: commitId is not supported for cron_job services", core.ErrBadRequest)
+		return fmt.Errorf("%w: commitId is not supported for cron_job services", core.ErrBadRequest)
 	}
+	return nil
+}
+
+// triggerFetched is the one deploy-trigger implementation shared by the
+// authenticated Trigger verb and the secret-URL deploy hook. The caller owns
+// the authentication boundary and supplies an already-resolved App; everything
+// after that boundary (validation, CR patch, deploy-history row) is identical.
+func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1alpha1.App, p TriggerParams, trigger string) (DeployView, error) {
+	if err := s.validateTrigger(service, a, p); err != nil {
+		return DeployView{}, err
+	}
+	appID := appStoreID(a)
 	// Refresh the private-repo clone credential BEFORE the generation bump: the
 	// build this trigger starts must never run with the previous deploy's
 	// expired installation token. A mint failure fails the trigger loudly —

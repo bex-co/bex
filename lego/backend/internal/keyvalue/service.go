@@ -390,16 +390,9 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	if err := s.ensureKeyValueNameAvailable(ctx, tenantID, req.Name, ""); err != nil {
 		return KeyValueView{}, err
 	}
-	var environment core.EnvironmentAssignment
-	if req.EnvironmentID != "" {
-		if s.Environments == nil || !tenantOK {
-			return KeyValueView{}, core.ErrWorkspacesUnavailable
-		}
-		var err error
-		environment, err = s.Environments.ResolveForCreate(ctx, req.EnvironmentID, tenantID)
-		if err != nil {
-			return KeyValueView{}, fmt.Errorf("resolving environment: %w", err)
-		}
+	environment, err := core.ResolveEnvironmentForCreate(ctx, s.Environments, req.EnvironmentID, tenantID)
+	if err != nil {
+		return KeyValueView{}, err
 	}
 	kv := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{Name: id.New(id.KeyValue), Namespace: s.TenantNamespace(tenantID)},
@@ -420,14 +413,10 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	// reach its own KeyValue instance), mirroring postgres.CreatePostgres.
 	// Skip when the store is off (no resolver).
 	if tenantOK {
-		kv.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelWorkspace: tenantID}
+		kv.Labels = core.TenantLabels(tenantID)
 	}
-	if environment.ID != "" {
-		kv.Labels[core.LabelProject] = environment.ProjectID
-		kv.Labels[core.LabelEnvironment] = environment.ID
-		// Newborn members inherit the environment's inbound-IP layer (w4/m28).
-		kv.Spec.EnvironmentIPAllowList = core.EnvironmentLayerCIDRs(environment.IPAllowList)
-	}
+	// Newborn members inherit the environment's inbound-IP layer (w4/m28).
+	kv.Spec.EnvironmentIPAllowList = core.ApplyGrouping(kv, environment)
 	// Dry-run: return the resolved spec preview without any k8s write (w2/m29).
 	if req.DryRun {
 		return s.view(kv), nil

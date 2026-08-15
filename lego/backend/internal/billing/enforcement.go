@@ -89,7 +89,7 @@ func (e *KubernetesEnforcer) Enforce(ctx context.Context, state store.BillingLif
 		if a.Spec.Type == appv1alpha1.TypeStaticSite {
 			continue
 		}
-		if err := e.enforceApp(ctx, a, state.WorkspaceID, marker); err != nil {
+		if err := e.enforceOne(ctx, a, store.ResourceKindService, state.WorkspaceID, marker); err != nil {
 			return err
 		}
 	}
@@ -99,7 +99,7 @@ func (e *KubernetesEnforcer) Enforce(ctx context.Context, state store.BillingLif
 		return err
 	}
 	for i := range databases.Items {
-		if err := e.enforceDatabase(ctx, &databases.Items[i], state.WorkspaceID, marker); err != nil {
+		if err := e.enforceOne(ctx, &databases.Items[i], store.ResourceKindPostgres, state.WorkspaceID, marker); err != nil {
 			return err
 		}
 	}
@@ -109,79 +109,76 @@ func (e *KubernetesEnforcer) Enforce(ctx context.Context, state store.BillingLif
 		return err
 	}
 	for i := range keyvalues.Items {
-		if err := e.enforceKeyValue(ctx, &keyvalues.Items[i], state.WorkspaceID, marker); err != nil {
+		if err := e.enforceOne(ctx, &keyvalues.Items[i], store.ResourceKindKeyValue, state.WorkspaceID, marker); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (e *KubernetesEnforcer) enforceApp(ctx context.Context, a *appv1alpha1.App, workspaceID, marker string) error {
-	owned := a.Annotations[BillingEnforcementAnnotation]
-	if a.Spec.Suspended && owned == "" {
-		return nil
-	} // user/operator-owned
-	entry, err := e.Store.EnsureBillingEnforcement(ctx, store.BillingEnforcement{WorkspaceID: workspaceID, ResourceKind: store.ResourceKindService, ResourceName: a.Name, MarkerID: marker})
+// suspendedIntent and setSuspended are the one place the enforceable-kind type
+// switch lives; enforce and recover both read and write Spec.Suspended through
+// them, so a fourth CR kind is added in exactly two places.
+func suspendedIntent(obj client.Object) bool {
+	switch v := obj.(type) {
+	case *appv1alpha1.App:
+		return v.Spec.Suspended
+	case *appv1alpha1.Database:
+		return v.Spec.Suspended
+	case *appv1alpha1.KeyValue:
+		return v.Spec.Suspended
+	}
+	return false
+}
+
+func setSuspended(obj client.Object, suspended bool) {
+	switch v := obj.(type) {
+	case *appv1alpha1.App:
+		v.Spec.Suspended = suspended
+	case *appv1alpha1.Database:
+		v.Spec.Suspended = suspended
+	case *appv1alpha1.KeyValue:
+		v.Spec.Suspended = suspended
+	}
+}
+
+// enforceOne applies suspended intent to one CR under the marker protocol: a
+// resource the tenant or operator suspended themselves carries no marker and is
+// left alone, one already enforced under the current marker is a no-op, and the
+// marker is stamped in the SAME patch as the intent so a crash between them
+// cannot orphan either. recoverOne is its exact inverse.
+func (e *KubernetesEnforcer) enforceOne(ctx context.Context, obj client.Object, kind, workspaceID, marker string) error {
+	suspended := suspendedIntent(obj)
+	owned := obj.GetAnnotations()[BillingEnforcementAnnotation]
+	if suspended && owned == "" {
+		return nil // user/operator-owned
+	}
+	entry, err := e.Store.EnsureBillingEnforcement(ctx, store.BillingEnforcement{
+		WorkspaceID: workspaceID, ResourceKind: kind, ResourceName: obj.GetName(), MarkerID: marker,
+	})
 	if err != nil {
 		return err
 	}
-	if a.Spec.Suspended && owned == entry.MarkerID {
+	if suspended && owned == entry.MarkerID {
 		return nil
 	}
-	if id := a.Labels[store.LabelAppID]; a.Labels[store.LabelManagedBy] == store.ManagedByValue && id != "" {
-		if err := e.Store.SetAppSuspended(ctx, id, true); err != nil {
-			return fmt.Errorf("suspend App row %s: %w", a.Name, err)
+	// An App additionally carries its suspended state as a control-plane row.
+	if a, ok := obj.(*appv1alpha1.App); ok {
+		if id := a.Labels[store.LabelAppID]; a.Labels[store.LabelManagedBy] == store.ManagedByValue && id != "" {
+			if err := e.Store.SetAppSuspended(ctx, id, true); err != nil {
+				return fmt.Errorf("suspend App row %s: %w", a.Name, err)
+			}
 		}
 	}
-	base := client.MergeFrom(a.DeepCopy())
-	if a.Annotations == nil {
-		a.Annotations = map[string]string{}
+	base := client.MergeFrom(obj.DeepCopyObject().(client.Object))
+	annotations := obj.GetAnnotations()
+	if annotations == nil {
+		annotations = map[string]string{}
 	}
-	a.Annotations[BillingEnforcementAnnotation] = entry.MarkerID
-	a.Spec.Suspended = true
-	return e.Client.Patch(ctx, a, base)
-}
-
-func (e *KubernetesEnforcer) enforceDatabase(ctx context.Context, d *appv1alpha1.Database, workspaceID, marker string) error {
-	owned := d.Annotations[BillingEnforcementAnnotation]
-	if d.Spec.Suspended && owned == "" {
-		return nil
-	}
-	entry, err := e.Store.EnsureBillingEnforcement(ctx, store.BillingEnforcement{WorkspaceID: workspaceID, ResourceKind: store.ResourceKindPostgres, ResourceName: d.Name, MarkerID: marker})
-	if err != nil {
-		return err
-	}
-	if d.Spec.Suspended && owned == entry.MarkerID {
-		return nil
-	}
-	base := client.MergeFrom(d.DeepCopy())
-	if d.Annotations == nil {
-		d.Annotations = map[string]string{}
-	}
-	d.Annotations[BillingEnforcementAnnotation] = entry.MarkerID
-	d.Spec.Suspended = true
-	return e.Client.Patch(ctx, d, base)
-}
-
-func (e *KubernetesEnforcer) enforceKeyValue(ctx context.Context, kv *appv1alpha1.KeyValue, workspaceID, marker string) error {
-	owned := kv.Annotations[BillingEnforcementAnnotation]
-	if kv.Spec.Suspended && owned == "" {
-		return nil
-	}
-	entry, err := e.Store.EnsureBillingEnforcement(ctx, store.BillingEnforcement{WorkspaceID: workspaceID, ResourceKind: store.ResourceKindKeyValue, ResourceName: kv.Name, MarkerID: marker})
-	if err != nil {
-		return err
-	}
-	if kv.Spec.Suspended && owned == entry.MarkerID {
-		return nil
-	}
-	base := client.MergeFrom(kv.DeepCopy())
-	if kv.Annotations == nil {
-		kv.Annotations = map[string]string{}
-	}
-	kv.Annotations[BillingEnforcementAnnotation] = entry.MarkerID
-	kv.Spec.Suspended = true
-	return e.Client.Patch(ctx, kv, base)
+	annotations[BillingEnforcementAnnotation] = entry.MarkerID
+	obj.SetAnnotations(annotations)
+	setSuspended(obj, true)
+	return e.Client.Patch(ctx, obj, base)
 }
 
 func (e *KubernetesEnforcer) Recover(ctx context.Context, state store.BillingLifecycle) error {
@@ -262,19 +259,15 @@ func (e *KubernetesEnforcer) recoverOne(ctx context.Context, entry store.Billing
 	annotations := obj.GetAnnotations()
 	delete(annotations, BillingEnforcementAnnotation)
 	obj.SetAnnotations(annotations)
-	switch v := obj.(type) {
-	case *appv1alpha1.App:
-		if id := v.Labels[store.LabelAppID]; v.Labels[store.LabelManagedBy] == store.ManagedByValue && id != "" {
+	// An App additionally carries its suspended state as a control-plane row.
+	if a, ok := obj.(*appv1alpha1.App); ok {
+		if id := a.Labels[store.LabelAppID]; a.Labels[store.LabelManagedBy] == store.ManagedByValue && id != "" {
 			if err := e.Store.SetAppSuspended(ctx, id, false); err != nil {
 				return err
 			}
 		}
-		v.Spec.Suspended = false
-	case *appv1alpha1.Database:
-		v.Spec.Suspended = false
-	case *appv1alpha1.KeyValue:
-		v.Spec.Suspended = false
 	}
+	setSuspended(obj, false)
 	if err := e.Client.Patch(ctx, obj, base); err != nil {
 		return err
 	}

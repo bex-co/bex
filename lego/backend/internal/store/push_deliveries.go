@@ -480,48 +480,58 @@ func (s *PGStore) ReleasePushDelivery(ctx context.Context, delivery DuePushDeliv
 	return result.RowsAffected() == 1, nil
 }
 
-// pushServiceEvents is the service-scoped half of the DB-enqueueable push
-// vocabulary — together with pushAgentEvents it must stay equal to the
-// push_notifications event_type CHECK (migration 0070). The four lifecycle
-// names are deliberately the fact names; deploy_*/cron_failed are
-// projection-only names with no fact constant.
-var pushServiceEvents = map[string]bool{
-	"deploy_started": true, "deploy_succeeded": true, "deploy_failed": true,
-	string(EventFactServerFailed):     true,
-	string(EventFactServerAvailable):  true,
-	string(EventFactServiceSuspended): true,
-	string(EventFactServiceResumed):   true,
-	"cron_failed":                     true,
+// pushEventRule is the per-event-type resource contract: which ResourceKind the
+// notification must name, which id kind its ResourceID must be, and the deep
+// link prefix it must carry. Holding the three together means the producer's
+// vocabulary and this validator cannot drift apart field by field.
+type pushEventRule struct {
+	resourceKind   string
+	idKind         ids.Kind
+	deepLinkPrefix string
 }
 
-// pushAgentEvents are the agent-session terminal pushes (w11/m6 t005): a bex
-// extension keyed on the workspace, not an App — so the resource is the
-// agent_session id and the deep link opens the session, never a service.
-var pushAgentEvents = map[string]bool{
-	"agent_pr_ready": true, "agent_failed": true, "agent_needs_decision": true,
+var (
+	serviceEventRule = pushEventRule{resourceKind: "service", idKind: ids.Service, deepLinkPrefix: "/services/"}
+	// Agent-session terminal pushes (w11/m6 t005) are a bex extension keyed on
+	// the workspace, not an App — so the resource is the agent_session id and the
+	// deep link opens the session, never a service.
+	agentEventRule = pushEventRule{resourceKind: "agentSession", idKind: ids.AgentSession, deepLinkPrefix: "/sessions/"}
+)
+
+// pushEventRules is the whole DB-enqueueable push vocabulary; its key set must
+// stay equal to the push_notifications event_type CHECK (migration 0070). The
+// four lifecycle names are deliberately the fact names; deploy_*/cron_failed
+// are projection-only names with no fact constant.
+var pushEventRules = map[string]pushEventRule{
+	"deploy_started":                  serviceEventRule,
+	"deploy_succeeded":                serviceEventRule,
+	"deploy_failed":                   serviceEventRule,
+	string(EventFactServerFailed):     serviceEventRule,
+	string(EventFactServerAvailable):  serviceEventRule,
+	string(EventFactServiceSuspended): serviceEventRule,
+	string(EventFactServiceResumed):   serviceEventRule,
+	"cron_failed":                     serviceEventRule,
+	"agent_pr_ready":                  agentEventRule,
+	"agent_failed":                    agentEventRule,
+	"agent_needs_decision":            agentEventRule,
 }
 
 var pushUrgencies = map[string]bool{"routine": true, "important": true, "critical": true}
 
 func validatePushNotification(notification PushNotification) error {
+	rule, known := pushEventRules[notification.EventType]
 	eventKind, eventOK := ids.KindOf(notification.EventID)
 	resourceKind, resourceOK := ids.KindOf(notification.ResourceID)
-	common := strings.TrimSpace(notification.TenantID) != "" && strings.TrimSpace(notification.Subject) != "" &&
+	valid := known &&
+		strings.TrimSpace(notification.TenantID) != "" && strings.TrimSpace(notification.Subject) != "" &&
 		strings.TrimSpace(notification.SourceEventKey) != "" && len(notification.SourceEventKey) <= 512 &&
 		eventOK && eventKind == ids.Event &&
 		len(notification.Title) >= 1 && len(notification.Title) <= 120 && !strings.ContainsRune(notification.Title, '\x00') &&
 		len(notification.Body) >= 1 && len(notification.Body) <= 1024 && !strings.ContainsRune(notification.Body, '\x00') &&
 		pushUrgencies[notification.Urgency] && resourceOK &&
-		!notification.OccurredAt.IsZero() && !notification.DeliverAt.IsZero()
-	valid := false
-	switch {
-	case pushServiceEvents[notification.EventType]:
-		valid = common && notification.ResourceKind == "service" &&
-			resourceKind == ids.Service && notification.DeepLink == "/services/"+notification.ResourceID
-	case pushAgentEvents[notification.EventType]:
-		valid = common && notification.ResourceKind == "agentSession" &&
-			resourceKind == ids.AgentSession && notification.DeepLink == "/sessions/"+notification.ResourceID
-	}
+		!notification.OccurredAt.IsZero() && !notification.DeliverAt.IsZero() &&
+		notification.ResourceKind == rule.resourceKind && resourceKind == rule.idKind &&
+		notification.DeepLink == rule.deepLinkPrefix+notification.ResourceID
 	if !valid {
 		return fmt.Errorf("push notification: %w", ErrInvalid)
 	}

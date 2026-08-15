@@ -283,11 +283,12 @@ func (r *KeyValueReconciler) keyValueStorageIntent(
 	return sts, max(desiredGB, currentGB), ctrl.Result{}, false, nil
 }
 
+// reconcileKeyValueTLS manages the public front door's Certificate. The
+// Certificate and the Secret it writes share one name — tlsSecretName is both.
 func (r *KeyValueReconciler) reconcileKeyValueTLS(
 	ctx context.Context,
 	kv *appv1alpha1.KeyValue,
 	public bool,
-	certificateName string,
 	tlsSecretName string,
 ) (string, error) {
 	if public && r.ClusterIssuer == "" {
@@ -295,7 +296,7 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 		return "TLSIssuerMissing", fmt.Errorf("BEX_CLUSTER_ISSUER is required for a public Key Value endpoint")
 	}
 	if !public {
-		return "CertificateCleanupFailed", deleteOwned(ctx, r.Client, kv, certManagerCertificateGVK, certificateName)
+		return "CertificateCleanupFailed", deleteOwned(ctx, r.Client, kv, certManagerCertificateGVK, tlsSecretName)
 	}
 	host := fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
 	spec := map[string]any{
@@ -305,7 +306,7 @@ func (r *KeyValueReconciler) reconcileKeyValueTLS(
 			"name": r.ClusterIssuer, "kind": "ClusterIssuer",
 		},
 	}
-	return "CertificateFailed", upsertOwned(ctx, r.Client, r.Scheme, kv, certManagerCertificateGVK, certificateName, spec)
+	return "CertificateFailed", upsertOwned(ctx, r.Client, r.Scheme, kv, certManagerCertificateGVK, tlsSecretName, spec)
 }
 
 func (r *KeyValueReconciler) reconcileKeyValueCredentials(
@@ -448,6 +449,196 @@ func (r *KeyValueReconciler) reconcileKeyValueBackupNetworkPolicy(ctx context.Co
 	return err
 }
 
+// keyValueIntent is the derived shape one reconcile pass authors: everything
+// computed from the KeyValue spec + plan that the Service and the StatefulSet
+// both need, resolved once instead of threaded as loose locals. Mirrors
+// clusterParams/databaseBackupIntent in database_controller.go.
+type keyValueIntent struct {
+	plan          tiers.ValkeyTier
+	storageGB     int32
+	internalHost  string
+	public        bool
+	tlsSecretName string
+	// replicas is 0 while suspended — the PVC, Secret, Service and route are
+	// kept, so resume restores the same data, password and endpoint (Render's
+	// KV suspend).
+	replicas  int32
+	labels    map[string]string
+	podLabels map[string]string
+	// authSecretName and credentialRevision are filled in after the credential
+	// Secrets reconcile, which is the only step that must precede the workload.
+	authSecretName     string
+	credentialRevision string
+}
+
+func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageGB int32, kvDomain string) keyValueIntent {
+	replicas := plan.Instances
+	if kv.Spec.Suspended {
+		replicas = 0
+	}
+	// Pod-template labels are the selector labels plus the workspace label, so
+	// same-workspace NetworkPolicy selectors can reach the Valkey instance.
+	podLabels := map[string]string{labelKeyValue: kv.Name}
+	if ws := kv.Labels[labelWorkspace]; ws != "" {
+		podLabels[labelWorkspace] = ws
+	}
+	return keyValueIntent{
+		plan:          plan,
+		storageGB:     storageGB,
+		internalHost:  fmt.Sprintf("%s.%s.svc", kv.Name, kv.Namespace),
+		public:        kv.Spec.Public && kvDomain != "",
+		tlsSecretName: kv.Name + "-kv-tls",
+		replicas:      replicas,
+		labels:        map[string]string{labelKeyValue: kv.Name},
+		podLabels:     podLabels,
+	}
+}
+
+// reconcileKeyValueService authors the headless Service, which gives the
+// internal DNS "<name>.<ns>.svc" and is the StatefulSet's serviceName (stable
+// pod identity).
+func (r *KeyValueReconciler) reconcileKeyValueService(ctx context.Context, kv *appv1alpha1.KeyValue, intent keyValueIntent) error {
+	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, svc, func() error {
+		svc.Spec.ClusterIP = corev1.ClusterIPNone
+		svc.Spec.Selector = intent.labels
+		svc.Spec.Ports = []corev1.ServicePort{{Port: kvPort, TargetPort: intstr.FromInt(kvPort), Name: "valkey"}}
+		if intent.public {
+			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{Port: kvTLSPort, TargetPort: intstr.FromInt(kvTLSPort), Name: "valkey-tls"})
+		}
+		return controllerutil.SetControllerReference(kv, svc, r.Scheme)
+	})
+	return err
+}
+
+// reconcileKeyValueWorkload authors the single-instance Valkey StatefulSet,
+// sized to the tier.
+func (r *KeyValueReconciler) reconcileKeyValueWorkload(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, intent keyValueIntent) error {
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, sts, func() error {
+		applyKeyValueStatefulSet(sts, kv, intent)
+		return controllerutil.SetControllerReference(kv, sts, r.Scheme)
+	})
+	return err
+}
+
+// applyKeyValueStatefulSet writes the desired StatefulSet shape. It is a pure
+// function of (sts, kv, intent) so the workload shape is testable without a
+// client.
+func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue, intent keyValueIntent) {
+	// selector / serviceName / volumeClaimTemplates are immutable on a
+	// StatefulSet — set them once, at create. The pod template (resources,
+	// image, env) is reapplied every reconcile so a plan/version bump rolls.
+	if sts.CreationTimestamp.IsZero() {
+		sts.Spec.Selector = &metav1.LabelSelector{MatchLabels: intent.labels}
+		sts.Spec.ServiceName = kv.Name
+		sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
+			ObjectMeta: metav1.ObjectMeta{Name: "data", Labels: intent.labels},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+				Resources: corev1.VolumeResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse(fmt.Sprintf("%dGi", intent.storageGB)),
+					},
+				},
+				StorageClassName: ptr(kvStorageClass),
+			},
+		}}
+	}
+	// PVC retention policy: delete PVCs when the StatefulSet is deleted (GA in
+	// k8s 1.30, StatefulSetAutoDeletePVC feature gate) so Valkey data doesn't
+	// orphan on KeyValue deletion. WhenScaled=Retain keeps PVCs on scale-down
+	// (they'd re-attach on scale-up). This is mutable on an existing StatefulSet.
+	sts.Spec.PersistentVolumeClaimRetentionPolicy = &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
+		WhenDeleted: appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
+		WhenScaled:  appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
+	}
+	sts.Spec.Replicas = &intent.replicas
+	sts.Spec.Template.Labels = intent.podLabels
+	// A managed key-value store is a single-replica stateful service: an
+	// eviction is downtime, so the cluster-autoscaler must never bin-pack
+	// its node away. Manual/CAPI drains (node upgrades) still evict it —
+	// the StatefulSet reschedules it elsewhere.
+	sts.Spec.Template.Annotations = map[string]string{
+		"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+		"app.bex.co/credential-revision":                 intent.credentialRevision,
+	}
+	applyValkeyPodSpec(&sts.Spec.Template.Spec, kv, intent)
+}
+
+// applyValkeyPodSpec writes the Valkey server + metrics-exporter template onto
+// spec. It assigns only the fields this controller owns — never the whole
+// PodSpec — so apiserver-defaulted fields (restartPolicy, dnsPolicy,
+// terminationGracePeriodSeconds, …) survive an update instead of being blanked
+// and re-defaulted into a spurious rollout every reconcile.
+func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent keyValueIntent) {
+	// The Valkey password, shared by the server (arg expansion) and the metrics
+	// exporter (authenticated INFO scrape).
+	passwordEnv := corev1.EnvVar{
+		Name: "VALKEY_PASSWORD",
+		ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+			LocalObjectReference: corev1.LocalObjectReference{Name: intent.authSecretName},
+			Key:                  "password",
+		}},
+	}
+	serverArgs := valkeyArgs(kv.Spec, intent.plan)
+	serverPorts := []corev1.ContainerPort{{ContainerPort: kvPort, Name: "valkey"}}
+	var serverMounts []corev1.VolumeMount
+	var volumes []corev1.Volume
+	if intent.public {
+		serverArgs = append(serverArgs,
+			"--tls-port", strconv.Itoa(kvTLSPort),
+			"--tls-cert-file", "/tls/tls.crt",
+			"--tls-key-file", "/tls/tls.key",
+			"--tls-ca-cert-file", "/tls/tls.crt",
+			"--tls-auth-clients", "no",
+		)
+		serverPorts = append(serverPorts, corev1.ContainerPort{ContainerPort: kvTLSPort, Name: "valkey-tls"})
+		serverMounts = append(serverMounts, corev1.VolumeMount{Name: "public-tls", MountPath: "/tls", ReadOnly: true})
+		volumes = []corev1.Volume{{Name: "public-tls", VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{SecretName: intent.tlsSecretName},
+		}}}
+	}
+	spec.Volumes = volumes
+	// Harden the managed Valkey pod the same way tenant Deployments are (w1/m53):
+	// drop ALL caps, no privilege escalation, RuntimeDefault seccomp, and no
+	// ServiceAccount token mounted (Valkey never talks to the apiserver).
+	spec.AutomountServiceAccountToken = ptr(false)
+	spec.SecurityContext = &corev1.PodSecurityContext{
+		FSGroup:             ptr(valkeyRunAsGroup),
+		FSGroupChangePolicy: ptr(corev1.FSGroupChangeOnRootMismatch),
+	}
+	spec.Containers = []corev1.Container{{
+		Name:  "valkey",
+		Image: valkeyImage(kv.Spec.Version),
+		// VALKEY_PASSWORD (env, below) expands in args — k8s substitutes
+		// $(VAR) from the container env list. appendonly persists to the PVC.
+		Args:            serverArgs,
+		Ports:           serverPorts,
+		Env:             []corev1.EnvVar{passwordEnv},
+		Resources:       kvResources(intent.plan),
+		SecurityContext: valkeySecCtx(),
+		VolumeMounts:    append([]corev1.VolumeMount{{Name: "data", MountPath: kvDataPath}}, serverMounts...),
+		ReadinessProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
+			TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(kvPort)},
+		}},
+	}, {
+		// redis_exporter sidecar: exposes Valkey's INFO stats as Prometheus
+		// metrics (redis_memory_used_bytes, redis_connected_clients, …) on
+		// :9121, scraped by the valkey-instances job (deploy/gitops/base/
+		// prometheus.yaml) and surfaced as the Key Value metrics tab (w5/011).
+		Name:  "metrics",
+		Image: kvExporterImage,
+		Env: []corev1.EnvVar{
+			{Name: "REDIS_ADDR", Value: fmt.Sprintf("redis://localhost:%d", kvPort)},
+			// The exporter reuses REDIS_PASSWORD; alias the shared secret key.
+			{Name: "REDIS_PASSWORD", ValueFrom: passwordEnv.ValueFrom},
+		},
+		Ports:           []corev1.ContainerPort{{ContainerPort: kvExporterPort, Name: "metrics"}},
+		Resources:       kvExporterResources(),
+		SecurityContext: tenantSecCtx(),
+	}}
+}
+
 func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var kv appv1alpha1.KeyValue
 	if err := r.Get(ctx, req.NamespacedName, &kv); err != nil {
@@ -479,158 +670,26 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if done || err != nil {
 		return result, err
 	}
-	internalHost := fmt.Sprintf("%s.%s.svc", kv.Name, kv.Namespace)
-	public := kv.Spec.Public && r.KvDomain != ""
-	tlsSecretName := kv.Name + "-kv-tls"
-	certificateName := tlsSecretName
+	intent := keyValueIntentFor(&kv, plan, storageGB, r.KvDomain)
 	// Validate public TLS before updating the workload. A missing issuer must
 	// fail closed without publishing a public host.
-	if reason, err := r.reconcileKeyValueTLS(ctx, &kv, public, certificateName, tlsSecretName); err != nil {
+	if reason, err := r.reconcileKeyValueTLS(ctx, &kv, intent.public, intent.tlsSecretName); err != nil {
 		return r.kvFail(ctx, &kv, reason, err)
-	}
-	// Suspended => scale to zero (the PVC, Secret, Service and route are kept, so
-	// resume restores the same data, password and endpoint). Render's KV suspend.
-	replicas := plan.Instances
-	if kv.Spec.Suspended {
-		replicas = 0
-	}
-	labels := map[string]string{labelKeyValue: kv.Name}
-	// Build pod-template labels: selector labels plus the workspace label so
-	// same-workspace NetworkPolicy selectors can reach the Valkey instance.
-	podLabels := map[string]string{labelKeyValue: kv.Name}
-	if ws := kv.Labels[labelWorkspace]; ws != "" {
-		podLabels[labelWorkspace] = ws
 	}
 
 	// --- credentials Secrets (created first so the StatefulSet's env ref resolves) ---
-	auth, result, done, err := r.reconcileKeyValueCredentials(ctx, &kv, internalHost)
+	auth, result, done, err := r.reconcileKeyValueCredentials(ctx, &kv, intent.internalHost)
 	if done || err != nil {
 		return result, err
 	}
-	authSecretName := auth.Name
+	intent.authSecretName = auth.Name
+	intent.credentialRevision = appv1alpha1.KeyValueCredentialRevision(auth.Data["password"])
+	authSecretName := intent.authSecretName
 
-	// --- headless Service: gives the internal DNS "<name>.<ns>.svc" and is the
-	// StatefulSet's serviceName (stable pod identity). ---
-	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: kv.Name, Namespace: kv.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, svc, func() error {
-		svc.Spec.ClusterIP = corev1.ClusterIPNone
-		svc.Spec.Selector = labels
-		svc.Spec.Ports = []corev1.ServicePort{{Port: kvPort, TargetPort: intstr.FromInt(kvPort), Name: "valkey"}}
-		if public {
-			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{Port: kvTLSPort, TargetPort: intstr.FromInt(kvTLSPort), Name: "valkey-tls"})
-		}
-		return controllerutil.SetControllerReference(&kv, svc, r.Scheme)
-	}); err != nil {
+	if err := r.reconcileKeyValueService(ctx, &kv, intent); err != nil {
 		return r.kvFail(ctx, &kv, "ServiceFailed", err)
 	}
-
-	// --- single-instance Valkey StatefulSet, sized to the tier ---
-	storageClass := kvStorageClass
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, sts, func() error {
-		// selector / serviceName / volumeClaimTemplates are immutable on a
-		// StatefulSet — set them once, at create. The pod template (resources,
-		// image, env) is reapplied every reconcile so a plan/version bump rolls.
-		if sts.CreationTimestamp.IsZero() {
-			sts.Spec.Selector = &metav1.LabelSelector{MatchLabels: labels}
-			sts.Spec.ServiceName = kv.Name
-			sts.Spec.VolumeClaimTemplates = []corev1.PersistentVolumeClaim{{
-				ObjectMeta: metav1.ObjectMeta{Name: "data", Labels: labels},
-				Spec: corev1.PersistentVolumeClaimSpec{
-					AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-					Resources: corev1.VolumeResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceStorage: resource.MustParse(fmt.Sprintf("%dGi", storageGB)),
-						},
-					},
-					StorageClassName: &storageClass,
-				},
-			}}
-		}
-		// PVC retention policy: delete PVCs when the StatefulSet is deleted (GA in
-		// k8s 1.30, StatefulSetAutoDeletePVC feature gate) so Valkey data doesn't
-		// orphan on KeyValue deletion. WhenScaled=Retain keeps PVCs on scale-down
-		// (they'd re-attach on scale-up). This is mutable on an existing StatefulSet.
-		sts.Spec.PersistentVolumeClaimRetentionPolicy = &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
-			WhenDeleted: appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
-			WhenScaled:  appsv1.RetainPersistentVolumeClaimRetentionPolicyType,
-		}
-		sts.Spec.Replicas = &replicas
-		sts.Spec.Template.Labels = podLabels
-		// A managed key-value store is a single-replica stateful service: an
-		// eviction is downtime, so the cluster-autoscaler must never bin-pack
-		// its node away. Manual/CAPI drains (node upgrades) still evict it —
-		// the StatefulSet reschedules it elsewhere.
-		sts.Spec.Template.Annotations = map[string]string{
-			"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
-			"app.bex.co/credential-revision":                 appv1alpha1.KeyValueCredentialRevision(auth.Data["password"]),
-		}
-		// The Valkey password, shared by the server (arg expansion) and the metrics
-		// exporter (authenticated INFO scrape).
-		passwordEnv := corev1.EnvVar{
-			Name: "VALKEY_PASSWORD",
-			ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{Name: authSecretName},
-				Key:                  "password",
-			}},
-		}
-		serverArgs := valkeyArgs(kv.Spec, plan)
-		serverPorts := []corev1.ContainerPort{{ContainerPort: kvPort, Name: "valkey"}}
-		var serverMounts []corev1.VolumeMount
-		sts.Spec.Template.Spec.Volumes = nil
-		if public {
-			serverArgs = append(serverArgs,
-				"--tls-port", strconv.Itoa(kvTLSPort),
-				"--tls-cert-file", "/tls/tls.crt",
-				"--tls-key-file", "/tls/tls.key",
-				"--tls-ca-cert-file", "/tls/tls.crt",
-				"--tls-auth-clients", "no",
-			)
-			serverPorts = append(serverPorts, corev1.ContainerPort{ContainerPort: kvTLSPort, Name: "valkey-tls"})
-			serverMounts = append(serverMounts, corev1.VolumeMount{Name: "public-tls", MountPath: "/tls", ReadOnly: true})
-			sts.Spec.Template.Spec.Volumes = []corev1.Volume{{Name: "public-tls", VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{SecretName: tlsSecretName},
-			}}}
-		}
-		// Harden the managed Valkey pod the same way tenant Deployments are (w1/m53):
-		// drop ALL caps, no privilege escalation, RuntimeDefault seccomp, and no
-		// ServiceAccount token mounted (Valkey never talks to the apiserver).
-		sts.Spec.Template.Spec.AutomountServiceAccountToken = ptr(false)
-		sts.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{
-			FSGroup:             ptr(valkeyRunAsGroup),
-			FSGroupChangePolicy: ptr(corev1.FSGroupChangeOnRootMismatch),
-		}
-		sts.Spec.Template.Spec.Containers = []corev1.Container{{
-			Name:  "valkey",
-			Image: valkeyImage(kv.Spec.Version),
-			// VALKEY_PASSWORD (env, below) expands in args — k8s substitutes
-			// $(VAR) from the container env list. appendonly persists to the PVC.
-			Args:            serverArgs,
-			Ports:           serverPorts,
-			Env:             []corev1.EnvVar{passwordEnv},
-			Resources:       kvResources(plan),
-			SecurityContext: valkeySecCtx(),
-			VolumeMounts:    append([]corev1.VolumeMount{{Name: "data", MountPath: kvDataPath}}, serverMounts...),
-			ReadinessProbe: &corev1.Probe{ProbeHandler: corev1.ProbeHandler{
-				TCPSocket: &corev1.TCPSocketAction{Port: intstr.FromInt(kvPort)},
-			}},
-		}, {
-			// redis_exporter sidecar: exposes Valkey's INFO stats as Prometheus
-			// metrics (redis_memory_used_bytes, redis_connected_clients, …) on
-			// :9121, scraped by the valkey-instances job (deploy/gitops/base/
-			// prometheus.yaml) and surfaced as the Key Value metrics tab (w5/011).
-			Name:  "metrics",
-			Image: kvExporterImage,
-			Env: []corev1.EnvVar{
-				{Name: "REDIS_ADDR", Value: fmt.Sprintf("redis://localhost:%d", kvPort)},
-				// The exporter reuses REDIS_PASSWORD; alias the shared secret key.
-				{Name: "REDIS_PASSWORD", ValueFrom: passwordEnv.ValueFrom},
-			},
-			Ports:           []corev1.ContainerPort{{ContainerPort: kvExporterPort, Name: "metrics"}},
-			Resources:       kvExporterResources(),
-			SecurityContext: tenantSecCtx(),
-		}}
-		return controllerutil.SetControllerReference(&kv, sts, r.Scheme)
-	}); err != nil {
+	if err := r.reconcileKeyValueWorkload(ctx, &kv, sts, intent); err != nil {
 		return r.kvFail(ctx, &kv, "StatefulSetFailed", err)
 	}
 
@@ -648,15 +707,14 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// The shared kv-sni-proxy watches this KeyValue directly and owns SNI,
 	// resource/environment IP allowlisting, TLS pass-through, and
 	// backend→client accounting.
-	if kv.Spec.Public && r.KvDomain != "" {
-		externalHost := fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
-		kv.Status.ExternalHost = externalHost
+	if intent.public {
+		kv.Status.ExternalHost = fmt.Sprintf("%s.%s", kv.Name, r.KvDomain)
 	} else {
 		kv.Status.ExternalHost = ""
 	}
 
 	// Surface the connection coordinates (the password stays in the Secret).
-	kv.Status.Host = internalHost
+	kv.Status.Host = intent.internalHost
 	kv.Status.Port = kvPort
 	kv.Status.SecretName = kv.Name
 	kv.Status.CredentialSecretName = authSecretName
@@ -670,7 +728,7 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return result, err
 	}
 
-	return r.updateKeyValueReadiness(ctx, &kv, sts, replicas, appv1alpha1.KeyValueCredentialRevision(auth.Data["password"]))
+	return r.updateKeyValueReadiness(ctx, &kv, sts, intent.replicas, intent.credentialRevision)
 }
 
 type keyValueStorageState struct {
