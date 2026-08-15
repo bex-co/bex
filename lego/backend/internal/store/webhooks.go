@@ -358,9 +358,14 @@ type WebhookEventRow struct {
 	Source      string // EventSourceDeploy | EventSourceAudit | EventSourceFact
 	Phase       string // deploy rows: EventPhaseStarted | EventPhaseEnded
 	DeployID    string
-	Status      string // the deploy's terminal status; the ended phase only
-	Verb        string // audit rows: e.g. "apps.Suspend"
-	FactType    string // fact rows: closed service_event_facts.fact_type
+	// Status is the deploy's terminal status on the ended phase, and the fact's
+	// own status on fact rows. Empty elsewhere.
+	Status   string
+	Verb     string // audit rows: e.g. "apps.Suspend"
+	FactType string // fact rows: closed service_event_facts.fact_type
+	// AppID is the app's internal control-plane id, as opposed to ServiceID's
+	// public composite. Empty on the datastore audit arm, which has no app.
+	AppID string
 }
 
 // webhookEventsQuery is serviceEventsQuery's workspace-wide, ascending twin
@@ -403,7 +408,8 @@ WITH feed AS (
            d.id                                AS deploy_id,
            ''::text                            AS status,
            ''::text                            AS verb,
-           ''::text                            AS fact_type
+           ''::text                            AS fact_type,
+           a.id                                AS app_id
     FROM deploys d
     JOIN apps a ON a.id = d.app_id
     JOIN tenants t ON t.id = a.tenant_id
@@ -420,7 +426,8 @@ WITH feed AS (
            d.id,
            d.status,
            ''::text,
-           ''::text
+           ''::text,
+           a.id
     FROM deploys d
     JOIN apps a ON a.id = d.app_id
     JOIN tenants t ON t.id = a.tenant_id
@@ -437,7 +444,8 @@ WITH feed AS (
            ''::text,
            ''::text,
            e.verb,
-           ''::text
+           ''::text,
+           a.id
     FROM audit_events e
     JOIN apps a ON a.tenant_id = ANY($5)
      AND (e.workspace_id = a.tenant_id OR e.workspace_id = '` + core.DefaultTenant + `')
@@ -456,6 +464,7 @@ WITH feed AS (
            ''::text,
            ''::text,
 		   e.verb,
+		   ''::text,
 		   ''::text
     FROM audit_events e
 	WHERE e.workspace_id = ANY($5)
@@ -472,15 +481,16 @@ WITH feed AS (
            '` + EventSourceFact + `'::text,
            ''::text,
            f.deploy_id,
+           COALESCE(f.status, ''),
            ''::text,
-           ''::text,
-           f.fact_type
+           f.fact_type,
+           a.id
     FROM service_event_facts f
     JOIN apps a ON a.id = f.app_id
     JOIN tenants t ON t.id = a.tenant_id
     WHERE a.tenant_id = ANY($5)
 )
-SELECT cursor_at, key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb, fact_type
+SELECT cursor_at, key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb, fact_type, app_id
 FROM feed
 WHERE (cursor_at, key) > ($1, $2) AND cursor_at <= $3
 ORDER BY cursor_at, key
@@ -500,7 +510,7 @@ func (s *PGStore) ListWebhookEvents(ctx context.Context, afterAt time.Time, afte
 	var out []WebhookEventRow
 	for rows.Next() {
 		var r WebhookEventRow
-		if err := rows.Scan(&r.CursorAt, &r.Key, &r.At, &r.TenantID, &r.ServiceID, &r.ServiceName, &r.Source, &r.Phase, &r.DeployID, &r.Status, &r.Verb, &r.FactType); err != nil {
+		if err := rows.Scan(&r.CursorAt, &r.Key, &r.At, &r.TenantID, &r.ServiceID, &r.ServiceName, &r.Source, &r.Phase, &r.DeployID, &r.Status, &r.Verb, &r.FactType, &r.AppID); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

@@ -380,34 +380,13 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	}
 	q := MetricQuery{Metric: metric}
 
-	var resources []string
-	if filters, ok := input["filters"].([]any); ok {
-		for _, f := range filters {
-			filter, ok := f.(map[string]any)
-			if !ok {
-				continue
-			}
-			field, _ := filter["field"].(string)
-			values := gqlutil.StringList(filter["values"])
-			switch field {
-			case filterFieldResource:
-				resources = values
-			case "STATUS_CODE":
-				if len(values) > 0 {
-					q.StatusCode = values[0]
-				}
-			// HOST/PATH are parsed only so Metrics can refuse them (see MetricQuery.Host).
-			case "HOST":
-				if len(values) > 0 {
-					q.Host = values[0]
-				}
-			case "PATH":
-				if len(values) > 0 {
-					q.Path = values[0]
-				}
-			}
-		}
-	}
+	filters := metricsFilterValues(input)
+	q.StatusCode = firstValue(filters[filterFieldStatusCode])
+	// HOST/PATH are parsed only so Metrics can refuse them (see MetricQuery.Host).
+	q.Host = firstValue(filters[filterFieldHost])
+	q.Path = firstValue(filters[filterFieldPath])
+
+	resources := filters[filterFieldResource]
 	if len(resources) == 0 {
 		return nil, MetricQuery{}, fmt.Errorf("filters must include a RESOURCE entry")
 	}
@@ -442,9 +421,9 @@ func metricsQueryInputFromArgs(raw any) ([]string, MetricQuery, error) {
 	// instance aggregateBy is a no-op (w3/m18).
 	for _, v := range gqlutil.StringList(input["aggregateBy"]) {
 		switch strings.ToUpper(v) {
-		case "STATUS_CODE":
+		case filterFieldStatusCode:
 			q.GroupBy = "status"
-		case "METHOD":
+		case filterFieldMethod:
 			q.GroupBy = "method"
 		}
 	}
@@ -484,6 +463,33 @@ func datastoreMetricsQueryInputFromArgs(raw any) (DatastoreMetricQuery, error) {
 	return q, nil
 }
 
+// metricsFilterValues indexes Render's `filters: [{field, values}]` array by
+// field name, shared by both GraphQL query inputs. Entries that aren't objects,
+// and entries naming a field bex doesn't honor, are ignored — Render's clients
+// send the full vocabulary regardless of which metric is being read.
+func metricsFilterValues(input map[string]any) map[string][]string {
+	filters, _ := input["filters"].([]any)
+	values := make(map[string][]string, len(filters))
+	for _, f := range filters {
+		filter, ok := f.(map[string]any)
+		if !ok {
+			continue
+		}
+		field, _ := filter["field"].(string)
+		values[field] = gqlutil.StringList(filter["values"])
+	}
+	return values
+}
+
+// firstValue takes the single value out of a filter that Render models as a
+// list but bex honors as a scalar.
+func firstValue(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
+}
+
 // windowFromInput parses the start/end/resolution window shared by both
 // GraphQL query inputs. Malformed timestamps error (core.ParseTime) rather
 // than silently falling back to the default window, which would bypass the
@@ -508,20 +514,7 @@ func metricsFiltersQueryFromArgs(raw any) (MetricsFiltersQuery, error) {
 	if !ok {
 		return MetricsFiltersQuery{}, fmt.Errorf("query is required")
 	}
-	var app string
-	if filters, ok := input["filters"].([]any); ok {
-		for _, f := range filters {
-			filter, ok := f.(map[string]any)
-			if !ok {
-				continue
-			}
-			if field, _ := filter["field"].(string); field == filterFieldResource {
-				if values := gqlutil.StringList(filter["values"]); len(values) > 0 {
-					app = values[0]
-				}
-			}
-		}
-	}
+	app := firstValue(metricsFilterValues(input)[filterFieldResource])
 	if app == "" {
 		return MetricsFiltersQuery{}, fmt.Errorf("filters must include a RESOURCE entry")
 	}

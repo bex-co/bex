@@ -1686,6 +1686,11 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 				if !r.At.Equal(lateOccurrence) || !r.CursorAt.After(r.At) {
 					t.Errorf("late-observed fact = %+v", r)
 				}
+				// The app-joined arms carry the internal app id, so the push
+				// dispatcher resolves nothing per row.
+				if r.AppID != app.ID {
+					t.Errorf("fact row carried app id %q, want %q", r.AppID, app.ID)
+				}
 				recoveries++
 			}
 			continue
@@ -1698,10 +1703,17 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 			if r.TenantID != ten.ID || r.ServiceID != core.CRName(ten.Name, app.Name) || r.ServiceName != app.Name {
 				t.Errorf("unexpected audit row in feed: %+v", r)
 			}
+			if r.AppID != app.ID {
+				t.Errorf("audit row carried app id %q, want %q", r.AppID, app.ID)
+			}
 			restarts++
 		case core.AuditVerbPostgresCreated:
 			if r.TenantID != ten.ID || r.ServiceID != "dpg-orders" || r.ServiceName != "orders" {
 				t.Errorf("unexpected datastore audit row in feed: %+v", r)
+			}
+			// The datastore arm has no apps join, so it carries no app id.
+			if r.AppID != "" {
+				t.Errorf("datastore audit row carried app id %q, want empty", r.AppID)
 			}
 			postgresCreates++
 		default:

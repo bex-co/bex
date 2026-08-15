@@ -1227,9 +1227,9 @@ func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1
 	base := strings.TrimRight(r.Backup.DestinationPath, "/")
 	jobName := cleanupJobName("purge-db-", db.Name, db.UID)
 	labels := map[string]string{
-		"app.bex.co/database":     db.Name,
-		"app.bex.co/database-uid": string(db.UID),
-		"app.bex.co/component":    "database-backup-purge",
+		"app.bex.co/database":      db.Name,
+		execution.LabelDatabaseUID: string(db.UID),
+		execution.LabelComponent:   "database-backup-purge",
 	}
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{

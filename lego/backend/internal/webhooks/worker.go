@@ -498,14 +498,15 @@ func (w *Worker) attempt(ctx context.Context, d store.DueWebhookDelivery) {
 func (w *Worker) post(ctx context.Context, d store.DueWebhookDelivery, at time.Time) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, d.URL, bytes.NewReader([]byte(d.Payload)))
+	payload := []byte(d.Payload) // one copy, shared by the body and the signature
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, d.URL, bytes.NewReader(payload))
 	if err != nil {
 		return 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("webhook-id", d.EventID)
 	req.Header.Set("webhook-timestamp", fmt.Sprintf("%d", at.Unix()))
-	req.Header.Set("webhook-signature", Sign(d.Secret, d.EventID, at, []byte(d.Payload)))
+	req.Header.Set("webhook-signature", Sign(d.Secret, d.EventID, at, payload))
 	resp, err := w.client().Do(req)
 	if err != nil {
 		return 0, err

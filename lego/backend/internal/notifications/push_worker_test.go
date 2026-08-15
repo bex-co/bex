@@ -100,6 +100,15 @@ func (f *fakePushWorkerStore) ListWebhookEvents(
 	for _, row := range f.events {
 		after := row.CursorAt.After(afterAt) || row.CursorAt.Equal(afterAt) && row.Key > afterKey
 		if after && !row.CursorAt.After(until) && tenantSet[row.TenantID] {
+			// Mirror the real query's joins: the feed carries the app id, and a
+			// fact row carries its own status, so the dispatcher needs no
+			// per-row lookups.
+			if row.AppID == "" {
+				row.AppID = f.serviceIDs[row.TenantID+"\x00"+row.ServiceName]
+			}
+			if row.Source == store.EventSourceFact && row.Status == "" {
+				row.Status = f.factStatuses[row.Key]
+			}
 			rows = append(rows, row)
 		}
 	}
@@ -125,26 +134,6 @@ func (f *fakePushWorkerStore) ListTerminalAgentSessionsForPush(_ context.Context
 		}
 	}
 	return out, nil
-}
-
-func (f *fakePushWorkerStore) ResolvePushServiceID(_ context.Context, tenantID, serviceName string) (string, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	serviceID := f.serviceIDs[tenantID+"\x00"+serviceName]
-	if serviceID == "" {
-		return "", errors.New("service not found")
-	}
-	return serviceID, nil
-}
-
-func (f *fakePushWorkerStore) PushFactStatus(_ context.Context, eventKey string) (string, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	status, ok := f.factStatuses[eventKey]
-	if !ok {
-		return "", errors.New("fact not found")
-	}
-	return status, nil
 }
 
 func pushNotificationKey(n store.PushNotification) string {

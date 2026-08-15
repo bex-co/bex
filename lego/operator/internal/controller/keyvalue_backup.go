@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -128,9 +129,9 @@ func keyValueBackupSchedule(name string) string {
 
 func keyValueBackupLabels(kv *appv1alpha1.KeyValue, component string) map[string]string {
 	labels := map[string]string{
-		labelKeyValue:             kv.Name,
-		"app.bex.co/component":    component,
-		"app.bex.co/keyvalue-uid": string(kv.UID),
+		labelKeyValue:              kv.Name,
+		execution.LabelComponent:   component,
+		execution.LabelKeyValueUID: string(kv.UID),
 	}
 	if workspace := kv.Labels[labelWorkspace]; workspace != "" {
 		labels[labelWorkspace] = workspace

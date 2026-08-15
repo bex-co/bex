@@ -166,11 +166,6 @@ func TestPGStorePushDeliveryQueue(t *testing.T) {
 	if len(own) != 2 || own[0].Token == "" || own[0].Role != "admin" {
 		t.Fatalf("active destinations = %+v", own)
 	}
-	resolved, err := store.ResolvePushServiceID(ctx, tenant.ID, app.Name)
-	if err != nil || resolved != app.ID {
-		t.Fatalf("resolved service = %q, error %v", resolved, err)
-	}
-
 	now := time.Now().UTC().Truncate(time.Microsecond)
 	if _, _, err := store.EnsurePushWatermark(ctx, now.Add(-time.Minute)); err != nil {
 		t.Fatal(err)

@@ -99,14 +99,9 @@ func rejectUnknownJSONFields(value any, target reflect.Type) error {
 		}
 		fields := jsonFieldTypes(target)
 		for name, child := range object {
-			fieldType, ok := fields[name]
+			fieldType, ok := fields.exact[name]
 			if !ok {
-				for candidate, candidateType := range fields {
-					if strings.EqualFold(candidate, name) {
-						fieldType, ok = candidateType, true
-						break
-					}
-				}
+				fieldType, ok = fields.lower[strings.ToLower(name)]
 			}
 			if !ok {
 				if safeJSONField.MatchString(name) {
@@ -142,16 +137,26 @@ func rejectUnknownJSONFields(value any, target reflect.Type) error {
 	return nil
 }
 
+// jsonFields is one struct type's JSON field set, indexed both ways. lower
+// mirrors exact by lowercased name because encoding/json matches object keys
+// case-insensitively — the walk has to accept every key the decoder already
+// accepted, and resolving that from a map beats rescanning the field list with
+// EqualFold once per unmatched key on every request.
+type jsonFields struct {
+	exact map[string]reflect.Type
+	lower map[string]reflect.Type
+}
+
 // jsonFieldCache memoizes jsonFieldTypes by reflect.Type. The strict-decode
 // walk visits every struct node of every request body — including once per
 // element of an array of structs — and the answer depends only on the Go type,
 // so without this each request rebuilt the same maps. Bounded by the number of
 // struct types in the binary.
-var jsonFieldCache sync.Map // reflect.Type -> map[string]reflect.Type
+var jsonFieldCache sync.Map // reflect.Type -> jsonFields
 
-func jsonFieldTypes(target reflect.Type) map[string]reflect.Type {
+func jsonFieldTypes(target reflect.Type) jsonFields {
 	if cached, ok := jsonFieldCache.Load(target); ok {
-		return cached.(map[string]reflect.Type)
+		return cached.(jsonFields)
 	}
 	fields := buildJSONFieldTypes(target)
 	jsonFieldCache.Store(target, fields)
@@ -160,8 +165,12 @@ func jsonFieldTypes(target reflect.Type) map[string]reflect.Type {
 
 // buildJSONFieldTypes is jsonFieldTypes' uncached body. Callers must treat the
 // result as read-only — it is shared by every request for this type.
-func buildJSONFieldTypes(target reflect.Type) map[string]reflect.Type {
-	fields := make(map[string]reflect.Type)
+func buildJSONFieldTypes(target reflect.Type) jsonFields {
+	fields := jsonFields{exact: map[string]reflect.Type{}, lower: map[string]reflect.Type{}}
+	add := func(name string, fieldType reflect.Type) {
+		fields.exact[name] = fieldType
+		fields.lower[strings.ToLower(name)] = fieldType
+	}
 	for i := 0; i < target.NumField(); i++ {
 		field := target.Field(i)
 		if field.PkgPath != "" && !field.Anonymous {
@@ -177,8 +186,8 @@ func buildJSONFieldTypes(target reflect.Type) map[string]reflect.Type {
 				embedded = embedded.Elem()
 			}
 			if embedded.Kind() == reflect.Struct {
-				for name, fieldType := range jsonFieldTypes(embedded) {
-					fields[name] = fieldType
+				for name, fieldType := range jsonFieldTypes(embedded).exact {
+					add(name, fieldType)
 				}
 				continue
 			}
@@ -186,7 +195,7 @@ func buildJSONFieldTypes(target reflect.Type) map[string]reflect.Type {
 		if tag == "" {
 			tag = field.Name
 		}
-		fields[tag] = field.Type
+		add(tag, field.Type)
 	}
 	return fields
 }

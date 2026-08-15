@@ -49,57 +49,67 @@ func cleanupJobName(prefix, parentName string, parentUID types.UID) string {
 // Pod are deleted and observed absent before done becomes true.
 func reconcileCleanupJob(ctx context.Context, cl client.Client, parent client.Object, job *batchv1.Job, completionAnnotation string) (bool, error) {
 	marker := string(parent.GetUID())
-	if parent.GetAnnotations()[completionAnnotation] == marker {
-		var current batchv1.Job
-		key := client.ObjectKeyFromObject(job)
-		if err := cl.Get(ctx, key, &current); err == nil {
-			if current.DeletionTimestamp.IsZero() {
-				if err := cl.Delete(ctx, &current, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
-					return false, fmt.Errorf("delete completed cleanup Job %s: %w", current.Name, err)
-				}
-			}
-			return false, nil
-		} else if !apierrors.IsNotFound(err) {
-			return false, fmt.Errorf("read completed cleanup Job %s: %w", job.Name, err)
-		}
-		var pods corev1.PodList
-		if err := cl.List(ctx, &pods, client.InNamespace(job.Namespace), client.MatchingLabels(job.Spec.Template.Labels)); err != nil {
-			return false, fmt.Errorf("list cleanup Pods for %s: %w", job.Name, err)
-		}
-		if len(pods.Items) > 0 {
-			for idx := range pods.Items {
-				if err := cl.Delete(ctx, &pods.Items[idx]); err != nil && !apierrors.IsNotFound(err) {
-					return false, fmt.Errorf("delete cleanup Pod %s: %w", pods.Items[idx].Name, err)
-				}
-			}
-			return false, nil
-		}
-		return true, nil
-	}
-
 	var current batchv1.Job
-	key := client.ObjectKeyFromObject(job)
-	if err := cl.Get(ctx, key, &current); apierrors.IsNotFound(err) {
+	err := cl.Get(ctx, client.ObjectKeyFromObject(job), &current)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return false, fmt.Errorf("read cleanup Job %s: %w", job.Name, err)
+	}
+	found := err == nil
+	// The annotation is the persisted phase: absent means the run is still being
+	// driven to completion, present means only teardown is left.
+	if parent.GetAnnotations()[completionAnnotation] == marker {
+		return teardownCleanupJob(ctx, cl, job, &current, found)
+	}
+	return driveCleanupJob(ctx, cl, parent, job, &current, found, completionAnnotation, marker)
+}
+
+// teardownCleanupJob deletes the finished Job and every Pod it left behind,
+// reporting done only once both are observed absent. Pods are swept explicitly
+// because the Job is deleted with background propagation.
+func teardownCleanupJob(ctx context.Context, cl client.Client, job *batchv1.Job, current *batchv1.Job, found bool) (bool, error) {
+	if found {
+		if current.DeletionTimestamp.IsZero() {
+			if err := cl.Delete(ctx, current, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
+				return false, fmt.Errorf("delete completed cleanup Job %s: %w", current.Name, err)
+			}
+		}
+		return false, nil
+	}
+	var pods corev1.PodList
+	if err := cl.List(ctx, &pods, client.InNamespace(job.Namespace), client.MatchingLabels(job.Spec.Template.Labels)); err != nil {
+		return false, fmt.Errorf("list cleanup Pods for %s: %w", job.Name, err)
+	}
+	for idx := range pods.Items {
+		if err := cl.Delete(ctx, &pods.Items[idx]); err != nil && !apierrors.IsNotFound(err) {
+			return false, fmt.Errorf("delete cleanup Pod %s: %w", pods.Items[idx].Name, err)
+		}
+	}
+	return len(pods.Items) == 0, nil
+}
+
+// driveCleanupJob creates the Job if absent and otherwise advances it, stamping
+// the parent's completion annotation once the run succeeds. It never reports
+// done — teardown does, on the next pass.
+func driveCleanupJob(ctx context.Context, cl client.Client, parent client.Object, job *batchv1.Job, current *batchv1.Job, found bool, completionAnnotation, marker string) (bool, error) {
+	if !found {
 		if err := cl.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
 			return false, fmt.Errorf("create cleanup Job %s: %w", job.Name, err)
 		}
 		return false, nil
-	} else if err != nil {
-		return false, fmt.Errorf("read cleanup Job %s: %w", job.Name, err)
 	}
-	if !cleanupJobOwnedByParent(&current, parent) {
+	if !cleanupJobOwnedByParent(current, parent) {
 		return false, fmt.Errorf("cleanup Job %s belongs to a different resource lifetime", current.Name)
 	}
-	if execution.JobHasCondition(&current, batchv1.JobFailed) {
-		message := execution.JobFailureMessage(&current, "unknown failure")
+	if execution.JobHasCondition(current, batchv1.JobFailed) {
+		message := execution.JobFailureMessage(current, "unknown failure")
 		if current.DeletionTimestamp.IsZero() {
-			if err := cl.Delete(ctx, &current, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
+			if err := cl.Delete(ctx, current, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
 				return false, fmt.Errorf("cleanup Job %s failed (%s) and could not be deleted: %w", current.Name, message, err)
 			}
 		}
 		return false, fmt.Errorf("cleanup Job %s failed: %s", current.Name, message)
 	}
-	if !execution.JobHasCondition(&current, batchv1.JobComplete) {
+	if !execution.JobHasCondition(current, batchv1.JobComplete) {
 		return false, nil
 	}
 	before := client.MergeFrom(parent.DeepCopyObject().(client.Object))
@@ -115,16 +125,15 @@ func reconcileCleanupJob(ctx context.Context, cl client.Client, parent client.Ob
 	return false, nil
 }
 
+// cleanupJobOwnedByParent reports whether the Job carries its parent's UID.
+// Exactly one of the three parent-kind labels is set on any given Job; a Job
+// carrying none is never adopted.
 func cleanupJobOwnedByParent(job *batchv1.Job, parent client.Object) bool {
 	uid := string(parent.GetUID())
-	if appUID := job.Labels["app.bex.co/app-uid"]; appUID != "" {
-		return appUID == uid
-	}
-	if databaseUID := job.Labels["app.bex.co/database-uid"]; databaseUID != "" {
-		return databaseUID == uid
-	}
-	if keyValueUID := job.Labels["app.bex.co/keyvalue-uid"]; keyValueUID != "" {
-		return keyValueUID == uid
+	for _, label := range []string{execution.LabelAppUID, execution.LabelDatabaseUID, execution.LabelKeyValueUID} {
+		if got := job.Labels[label]; got != "" {
+			return got == uid
+		}
 	}
 	return false
 }

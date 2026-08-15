@@ -21,8 +21,13 @@ package execution
 import corev1 "k8s.io/api/core/v1"
 
 const (
-	LabelApp           = "app.bex.co/app"
-	LabelAppUID        = "app.bex.co/app-uid"
+	LabelApp    = "app.bex.co/app"
+	LabelAppUID = "app.bex.co/app-uid"
+	// LabelDatabaseUID and LabelKeyValueUID are LabelAppUID's siblings for the
+	// two other parent kinds that own cleanup Jobs. All three bind a Job to one
+	// exact parent lifetime, so a recreated parent never adopts the old Job.
+	LabelDatabaseUID   = "app.bex.co/database-uid"
+	LabelKeyValueUID   = "app.bex.co/keyvalue-uid"
 	LabelComponent     = "app.bex.co/component"
 	LabelWorkspace     = "app.bex.co/workspace"
 	LabelAppNamespace  = "app.bex.co/app-namespace"
