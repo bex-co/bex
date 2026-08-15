@@ -113,19 +113,27 @@ func Verify(secret []byte, token string, now time.Time) (Claims, error) {
 		return Claims{}, ErrMalformed
 	}
 	var claims Claims
-	if json.Unmarshal(raw, &claims) != nil || claims.Subject == "" || claims.SessionID == "" ||
-		claims.SandboxID == "" || claims.Pod == "" || claims.Workspace == "" ||
-		claims.Namespace == "" || claims.ExpiresAt == 0 || claims.Nonce == "" {
+	if json.Unmarshal(raw, &claims) != nil || claims.ExpiresAt == 0 {
 		return Claims{}, ErrMalformed
 	}
-	// Validate Action field: if present, must be either "read" or "turn".
-	// Omitted action is treated as "read" for legacy ticket compatibility.
-	if claims.Action != "" && claims.Action != ActionRead && claims.Action != ActionTurn {
-		return Claims{}, ErrInvalidAction
+	// Every binding claim is required: a ticket missing any of them would not be
+	// scoped to an exact subject, session, sandbox pod, and workspace.
+	for _, required := range []string{
+		claims.Subject, claims.SessionID, claims.SandboxID,
+		claims.Pod, claims.Workspace, claims.Namespace, claims.Nonce,
+	} {
+		if required == "" {
+			return Claims{}, ErrMalformed
+		}
 	}
-	// Normalize omitted action to "read" for legacy tickets
-	if claims.Action == "" {
+	// An omitted action is "read" for legacy ticket compatibility; a present one
+	// must name a known action.
+	switch claims.Action {
+	case "":
 		claims.Action = ActionRead
+	case ActionRead, ActionTurn:
+	default:
+		return Claims{}, ErrInvalidAction
 	}
 	if now.Add(-clockSkew).After(time.Unix(claims.ExpiresAt, 0)) {
 		return Claims{}, ErrExpired

@@ -121,7 +121,7 @@ func (e *KubernetesEnforcer) enforceApp(ctx context.Context, a *appv1alpha1.App,
 	if a.Spec.Suspended && owned == "" {
 		return nil
 	} // user/operator-owned
-	entry, err := e.Store.EnsureBillingEnforcement(ctx, store.BillingEnforcement{WorkspaceID: workspaceID, ResourceKind: "service", ResourceName: a.Name, MarkerID: marker})
+	entry, err := e.Store.EnsureBillingEnforcement(ctx, store.BillingEnforcement{WorkspaceID: workspaceID, ResourceKind: store.ResourceKindService, ResourceName: a.Name, MarkerID: marker})
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func (e *KubernetesEnforcer) enforceDatabase(ctx context.Context, d *appv1alpha1
 	if d.Spec.Suspended && owned == "" {
 		return nil
 	}
-	entry, err := e.Store.EnsureBillingEnforcement(ctx, store.BillingEnforcement{WorkspaceID: workspaceID, ResourceKind: "postgres", ResourceName: d.Name, MarkerID: marker})
+	entry, err := e.Store.EnsureBillingEnforcement(ctx, store.BillingEnforcement{WorkspaceID: workspaceID, ResourceKind: store.ResourceKindPostgres, ResourceName: d.Name, MarkerID: marker})
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func (e *KubernetesEnforcer) enforceKeyValue(ctx context.Context, kv *appv1alpha
 	if kv.Spec.Suspended && owned == "" {
 		return nil
 	}
-	entry, err := e.Store.EnsureBillingEnforcement(ctx, store.BillingEnforcement{WorkspaceID: workspaceID, ResourceKind: "key_value", ResourceName: kv.Name, MarkerID: marker})
+	entry, err := e.Store.EnsureBillingEnforcement(ctx, store.BillingEnforcement{WorkspaceID: workspaceID, ResourceKind: store.ResourceKindKeyValue, ResourceName: kv.Name, MarkerID: marker})
 	if err != nil {
 		return err
 	}
@@ -200,71 +200,63 @@ func (e *KubernetesEnforcer) Recover(ctx context.Context, state store.BillingLif
 	return nil
 }
 
+// firstNamed returns the named item from a typed CR list as a client.Object, or
+// a nil interface when absent — the shared tail of the datastore kinds, which
+// are looked up by a labelled cluster-wide List rather than by namespaced key.
+func firstNamed[T any, PT interface {
+	*T
+	client.Object
+}](items []T, name string) client.Object {
+	for i := range items {
+		if item := PT(&items[i]); item.GetName() == name {
+			return item
+		}
+	}
+	return nil
+}
+
 func (e *KubernetesEnforcer) recoverOne(ctx context.Context, entry store.BillingEnforcement) error {
+	markRecovered := func() error {
+		return e.Store.MarkBillingEnforcementRecovered(ctx, entry.WorkspaceID, entry.ResourceKind, entry.ResourceName, e.now())
+	}
 	var obj client.Object
-	var namespace string
 	switch entry.ResourceKind {
-	case "service":
-		obj = &appv1alpha1.App{}
-		// Apps use per-tenant namespaces under ADR043
-		namespace = e.appNamespace(entry.WorkspaceID)
-	case "postgres":
-		// Databases moved to per-tenant namespaces under ADR043
-		// Search cluster-wide to handle both tenant-namespace and legacy resources
+	case store.ResourceKindService:
+		// Apps use per-tenant namespaces under ADR043, so a namespaced key resolves them.
+		app := &appv1alpha1.App{}
+		key := client.ObjectKey{Namespace: e.appNamespace(entry.WorkspaceID), Name: entry.ResourceName}
+		if err := e.Client.Get(ctx, key, app); err != nil {
+			if apierrors.IsNotFound(err) {
+				return markRecovered()
+			}
+			return err
+		}
+		obj = app
+	case store.ResourceKindPostgres:
+		// Databases moved to per-tenant namespaces under ADR043; search
+		// cluster-wide to handle both tenant-namespace and legacy resources.
 		var dbs appv1alpha1.DatabaseList
 		if err := e.Client.List(ctx, &dbs, client.MatchingLabels{core.LabelTenant: entry.WorkspaceID}); err != nil {
 			return err
 		}
-		// Find the database with matching name
-		for i := range dbs.Items {
-			if dbs.Items[i].Name == entry.ResourceName {
-				obj = &dbs.Items[i]
-				namespace = obj.GetNamespace()
-				break
-			}
-		}
-		if obj == nil {
-			return e.Store.MarkBillingEnforcementRecovered(ctx, entry.WorkspaceID, entry.ResourceKind, entry.ResourceName, e.now())
-		}
-	case "key_value":
-		// KeyValues moved to per-tenant namespaces under ADR043
-		// Search cluster-wide to handle both tenant-namespace and legacy resources
+		obj = firstNamed(dbs.Items, entry.ResourceName)
+	case store.ResourceKindKeyValue:
+		// KeyValues moved to per-tenant namespaces under ADR043; same cluster-wide search.
 		var kvs appv1alpha1.KeyValueList
 		if err := e.Client.List(ctx, &kvs, client.MatchingLabels{core.LabelTenant: entry.WorkspaceID}); err != nil {
 			return err
 		}
-		// Find the keyvalue with matching name
-		for i := range kvs.Items {
-			if kvs.Items[i].Name == entry.ResourceName {
-				obj = &kvs.Items[i]
-				namespace = obj.GetNamespace()
-				break
-			}
-		}
-		if obj == nil {
-			return e.Store.MarkBillingEnforcementRecovered(ctx, entry.WorkspaceID, entry.ResourceKind, entry.ResourceName, e.now())
-		}
+		obj = firstNamed(kvs.Items, entry.ResourceName)
 	default:
 		return fmt.Errorf("unknown billing resource kind %q", entry.ResourceKind)
 	}
-
-	// For databases and keyvalues, we've already found the object via cluster-wide search
-	if entry.ResourceKind == "postgres" || entry.ResourceKind == "key_value" {
-		// Object already found and set above, proceed with recovery
-	} else {
-		// For services, use namespace-based lookup
-		key := client.ObjectKey{Namespace: namespace, Name: entry.ResourceName}
-		if err := e.Client.Get(ctx, key, obj); err != nil {
-			if apierrors.IsNotFound(err) {
-				return e.Store.MarkBillingEnforcementRecovered(ctx, entry.WorkspaceID, entry.ResourceKind, entry.ResourceName, e.now())
-			}
-			return err
-		}
+	if obj == nil {
+		return markRecovered()
 	}
 	// Losing/replacing the exact annotation is an explicit independent operator
 	// action. Release the marker without overriding current intent.
 	if obj.GetAnnotations()[BillingEnforcementAnnotation] != entry.MarkerID {
-		return e.Store.MarkBillingEnforcementRecovered(ctx, entry.WorkspaceID, entry.ResourceKind, entry.ResourceName, e.now())
+		return markRecovered()
 	}
 	base := client.MergeFrom(obj.DeepCopyObject().(client.Object))
 	annotations := obj.GetAnnotations()
@@ -286,5 +278,5 @@ func (e *KubernetesEnforcer) recoverOne(ctx context.Context, entry store.Billing
 	if err := e.Client.Patch(ctx, obj, base); err != nil {
 		return err
 	}
-	return e.Store.MarkBillingEnforcementRecovered(ctx, entry.WorkspaceID, entry.ResourceKind, entry.ResourceName, e.now())
+	return markRecovered()
 }

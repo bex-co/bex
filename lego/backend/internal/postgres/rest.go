@@ -19,6 +19,7 @@ package postgres
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 
@@ -81,6 +82,39 @@ func (s *Service) toPostgresList(ctx context.Context, pgs []PostgresView) []post
 	return out
 }
 
+// postgresListFilter parses GET /v1/postgres' query filters into one predicate,
+// so the route registers its paging and rendering alone (the envGroupListFilter
+// precedent). A malformed filter is a named 400 before anything is listed.
+func postgresListFilter(q url.Values) (func(PostgresView) bool, error) {
+	// name filters by exact name, OR'd across repeated ?name= values (Render's
+	// documented "Filter by name" — the official CLI resolves a bare name/id
+	// argument to a database id by calling this with ?name=, and requires it to
+	// narrow to exactly one match).
+	names := core.QueryList(q, "name")
+	envIDs := core.QueryList(q, "environmentId")
+	// suspended= filters by Render's string enum (w2/m53). Unknown value → 400.
+	suspended, err := core.ParseEnum("suspended", q.Get("suspended"), core.RenderSuspended, core.RenderNotSuspended)
+	if err != nil {
+		return nil, err
+	}
+	// Time-window filters (w2/m53): RFC3339, named 400 on malformed, empty
+	// timestamp passes (legacy DBs without stored timestamps are never excluded).
+	created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
+	if err != nil {
+		return nil, err
+	}
+	updated, err := core.QueryTimeWindow(q, "updatedBefore", "updatedAfter")
+	if err != nil {
+		return nil, err
+	}
+	return func(p PostgresView) bool {
+		return (len(names) == 0 || slices.Contains(names, p.Name) || slices.Contains(names, p.ID)) &&
+			(len(envIDs) == 0 || slices.Contains(envIDs, p.EnvironmentID)) &&
+			(suspended == "" || p.Suspended == suspended) &&
+			created.Contains(p.CreatedAt) && updated.Contains(p.UpdatedAt)
+	}, nil
+}
+
 // decodeOr400 decodes the JSON body into dst, answering the flat 400 this
 // surface uses on a malformed body; reports whether decoding succeeded.
 func decodeOr400(w http.ResponseWriter, r *http.Request, dst any) bool {
@@ -114,52 +148,25 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 	}
 	const base = "/v1/postgres"
-	mux.HandleFunc("GET "+base, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET "+base, core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
 		out, err := s.ListPostgres(r.Context(), q.Get("ownerId"))
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		// name filters by exact name, OR'd across repeated ?name= values (Render's
-		// documented "Filter by name" — the official CLI resolves a bare
-		// name/id argument to a database id by calling this with ?name=, and
-		// requires it to narrow to exactly one match).
-		names := core.QueryList(q, "name")
-		envIDs := core.QueryList(q, "environmentId")
-		// suspended= filters by Render's string enum (w2/m53). Unknown value → 400.
-		suspended, err := core.ParseEnum("suspended", q.Get("suspended"), core.RenderSuspended, core.RenderNotSuspended)
+		keep, err := postgresListFilter(q)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		// Time-window filters (w2/m53): RFC3339, named 400 on malformed, empty
-		// timestamp passes (legacy DBs without stored timestamps are never excluded).
-		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		updated, err := core.QueryTimeWindow(q, "updatedBefore", "updatedAfter")
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		out = core.Filter(out, func(p PostgresView) bool {
-			return (len(names) == 0 || slices.Contains(names, p.Name) || slices.Contains(names, p.ID)) &&
-				(len(envIDs) == 0 || slices.Contains(envIDs, p.EnvironmentID)) &&
-				(suspended == "" || p.Suspended == suspended) &&
-				created.Contains(p.CreatedAt) && updated.Contains(p.UpdatedAt)
-		})
 		// Render's cursor-pagination envelope (components.schemas.postgresWithCursor),
 		// verified against the render-oss/cli generated client: a bare array of
 		// Postgres objects breaks the official CLI's list decode. Omission of both
 		// paging params preserves bex's original complete-list behavior; once either
 		// is present the stable id order makes a full walk gap/duplicate-free.
 		after, limit := core.PageParams(q)
-		page := core.StablePage(out, after, limit, q.Has("cursor") || q.Has("limit"), func(p PostgresView) string { return p.ID })
-		core.WriteJSON(w, http.StatusOK, s.toPostgresList(r.Context(), page)) // [{postgres, cursor}, ...]
-	})
+		page := core.StablePage(core.Filter(out, keep), after, limit, q.Has("cursor") || q.Has("limit"), func(p PostgresView) string { return p.ID })
+		return s.toPostgresList(r.Context(), page), nil // [{postgres, cursor}, ...]
+	}))
 	mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
 		var req CreatePostgresRequest
 		if !decodeOr400(w, r, &req) {
@@ -339,7 +346,7 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		IPAllowList:        req.IPAllowList,
 		ParameterOverrides: req.ParameterOverrides,
 	}
-	if req.DryRun || r.URL.Query().Get("dryRun") == "true" {
+	if core.DryRunRequested(r, req.DryRun) {
 		pg, err := s.PreviewUpdatePostgres(r.Context(), id, patch)
 		s.respondPostgres(w, r, http.StatusOK, pg, err)
 		return

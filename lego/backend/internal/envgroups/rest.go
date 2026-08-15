@@ -67,156 +67,86 @@ func envGroupList(groups []EnvGroupView) []envGroupWithCursor {
 // RegisterREST mounts the env-groups endpoints. Store unconfigured => the Service
 // returns core.ErrSecretsUnavailable => 503 on these routes only.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	mux.HandleFunc("GET /v1/env-groups", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /v1/env-groups", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
 		filter, err := envGroupListFilter(q)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
 		out, err := s.ListEnvGroupsFiltered(r.Context(), filter)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
 		after, limit := core.PageParams(q)
-		page := pageEnvGroups(out, after, limit, true)
-		core.WriteJSON(w, http.StatusOK, envGroupList(page))
-	})
-	mux.HandleFunc("POST /v1/env-groups", func(w http.ResponseWriter, r *http.Request) {
-		var req CreateEnvGroupRequest
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		g, err := s.CreateEnvGroup(r.Context(), req)
+		return envGroupList(pageEnvGroups(out, after, limit, true)), nil
+	}))
+	mux.HandleFunc("POST /v1/env-groups", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+		req, err := core.DecodeBody[CreateEnvGroupRequest](r)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusCreated, g) // Render: create => 201
-	})
-	mux.HandleFunc("GET /v1/env-groups/{id}", func(w http.ResponseWriter, r *http.Request) {
-		g, err := s.GetEnvGroup(r.Context(), r.PathValue("id"))
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, g)
-	})
-	mux.HandleFunc("PATCH /v1/env-groups/{id}", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
+		return s.CreateEnvGroup(r.Context(), req) // Render: create => 201
+	}))
+	mux.HandleFunc("GET /v1/env-groups/{id}", core.HandleByID(s.GetEnvGroup))
+	mux.HandleFunc("PATCH /v1/env-groups/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		req, err := core.DecodeBody[struct {
 			Name string `json:"name"`
-		}
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		g, err := s.RenameEnvGroup(r.Context(), r.PathValue("id"), req.Name)
+		}](r)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, g)
-	})
-	mux.HandleFunc("DELETE /v1/env-groups/{id}", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.DeleteEnvGroup(r.Context(), r.PathValue("id")); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
+		return s.RenameEnvGroup(r.Context(), r.PathValue("id"), req.Name)
+	}))
+	mux.HandleFunc("DELETE /v1/env-groups/{id}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteEnvGroup(r.Context(), r.PathValue("id"))
+	}))
 
 	// Group env vars: replace-all plus Render's per-key reveal/upsert/delete.
-	mux.HandleFunc("PUT /v1/env-groups/{id}/env-vars", func(w http.ResponseWriter, r *http.Request) {
-		var in []EnvVarView
-		if err := core.DecodeJSON(r, &in); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		vars, err := s.SetEnvGroupVars(r.Context(), r.PathValue("id"), in)
+	mux.HandleFunc("PUT /v1/env-groups/{id}/env-vars", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		in, err := core.DecodeBody[[]EnvVarView](r)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, vars)
-	})
-	mux.HandleFunc("GET /v1/env-groups/{id}/env-vars/{key}", func(w http.ResponseWriter, r *http.Request) {
-		v, err := s.GetEnvGroupVar(r.Context(), r.PathValue("id"), r.PathValue("key"))
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, v)
-	})
-	mux.HandleFunc("PUT /v1/env-groups/{id}/env-vars/{key}", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
+		return s.SetEnvGroupVars(r.Context(), r.PathValue("id"), in)
+	}))
+	mux.HandleFunc("GET /v1/env-groups/{id}/env-vars/{key}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.GetEnvGroupVar(r.Context(), r.PathValue("id"), r.PathValue("key"))
+	}))
+	mux.HandleFunc("PUT /v1/env-groups/{id}/env-vars/{key}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		req, err := core.DecodeBody[struct {
 			Value string `json:"value"`
-		}
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		v, err := s.SetEnvGroupVar(r.Context(), r.PathValue("id"), r.PathValue("key"), req.Value)
+		}](r)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, v)
-	})
-	mux.HandleFunc("DELETE /v1/env-groups/{id}/env-vars/{key}", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.DeleteEnvGroupVar(r.Context(), r.PathValue("id"), r.PathValue("key")); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
+		return s.SetEnvGroupVar(r.Context(), r.PathValue("id"), r.PathValue("key"), req.Value)
+	}))
+	mux.HandleFunc("DELETE /v1/env-groups/{id}/env-vars/{key}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteEnvGroupVar(r.Context(), r.PathValue("id"), r.PathValue("key"))
+	}))
 
 	// Group secret files: upsert one, reveal one, delete one.
-	mux.HandleFunc("PUT /v1/env-groups/{id}/secret-files/{name}", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
+	mux.HandleFunc("PUT /v1/env-groups/{id}/secret-files/{name}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		req, err := core.DecodeBody[struct {
 			Content string `json:"content"`
-		}
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		f, err := s.SetEnvGroupFile(r.Context(), r.PathValue("id"), r.PathValue("name"), req.Content)
+		}](r)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, f)
-	})
-	mux.HandleFunc("GET /v1/env-groups/{id}/secret-files/{name}", func(w http.ResponseWriter, r *http.Request) {
-		f, err := s.GetEnvGroupFile(r.Context(), r.PathValue("id"), r.PathValue("name"))
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, f)
-	})
-	mux.HandleFunc("DELETE /v1/env-groups/{id}/secret-files/{name}", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.DeleteEnvGroupFile(r.Context(), r.PathValue("id"), r.PathValue("name")); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
+		return s.SetEnvGroupFile(r.Context(), r.PathValue("id"), r.PathValue("name"), req.Content)
+	}))
+	mux.HandleFunc("GET /v1/env-groups/{id}/secret-files/{name}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.GetEnvGroupFile(r.Context(), r.PathValue("id"), r.PathValue("name"))
+	}))
+	mux.HandleFunc("DELETE /v1/env-groups/{id}/secret-files/{name}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteEnvGroupFile(r.Context(), r.PathValue("id"), r.PathValue("name"))
+	}))
 
 	// Link / unlink a service to the group.
-	mux.HandleFunc("POST /v1/env-groups/{id}/services/{serviceId}", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.LinkService(r.Context(), r.PathValue("id"), r.PathValue("serviceId")); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
-	mux.HandleFunc("DELETE /v1/env-groups/{id}/services/{serviceId}", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.UnlinkService(r.Context(), r.PathValue("id"), r.PathValue("serviceId")); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-	})
+	mux.HandleFunc("POST /v1/env-groups/{id}/services/{serviceId}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.LinkService(r.Context(), r.PathValue("id"), r.PathValue("serviceId"))
+	}))
+	mux.HandleFunc("DELETE /v1/env-groups/{id}/services/{serviceId}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.UnlinkService(r.Context(), r.PathValue("id"), r.PathValue("serviceId"))
+	}))
 }

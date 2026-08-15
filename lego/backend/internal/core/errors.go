@@ -30,47 +30,55 @@ import "errors"
 var (
 	// ErrNotFound is returned when a resource (App/Database) does not exist.
 	ErrNotFound = errors.New("app not found")
+	// ErrUnavailable is the class every "…Unavailable" sentinel below belongs to:
+	// the verb exists but its backing dependency isn't wired. WriteErr maps the
+	// class once (503) instead of naming each sentinel, so a feature declaring a
+	// new one through Unavailable is mapped without editing this leaf package —
+	// which is what let internal/projects and internal/environments delete their
+	// package-local 503 shims. Deliberately NOT applied to members/jobs/blueprint
+	// sentinels: those answer 500 today, and opting them in would change statuses.
+	ErrUnavailable = errors.New("service unavailable")
 	// ErrLogsUnavailable is returned by the logs verbs when no pod-log source is
 	// wired (adapters surface it as 503, not 404 — the App exists, the source
 	// doesn't).
-	ErrLogsUnavailable = errors.New("logs source not configured")
+	ErrLogsUnavailable = Unavailable("logs source not configured")
 	// ErrLogStoreUnavailable is returned by the logs verbs when a caller asks for
 	// something only the durable log store can answer — request logs, or a
 	// structured filter (level/statusCode/method/path/host) — while bex-api runs
 	// in pod-log fallback mode (BEX_LOKI_URL unset). Adapters surface it as 503:
 	// refusing beats silently ignoring the filter and returning unfiltered lines
 	// (docs/ADR010-observability.md § Log filters).
-	ErrLogStoreUnavailable = errors.New("request logs and structured log filters require the durable log store")
+	ErrLogStoreUnavailable = Unavailable("request logs and structured log filters require the durable log store")
 	// ErrMetricsUnavailable is returned by the metrics verbs when the backend a
 	// metric needs isn't wired (adapters surface it as 503).
-	ErrMetricsUnavailable = errors.New("metrics source not configured")
+	ErrMetricsUnavailable = Unavailable("metrics source not configured")
 	// ErrAPIKeysUnavailable is returned by the api-key verbs when no store is wired.
-	ErrAPIKeysUnavailable = errors.New("api-key store not configured")
+	ErrAPIKeysUnavailable = Unavailable("api-key store not configured")
 	// ErrSSHKeysUnavailable is returned by the SSH-key verbs when the control-plane
 	// store is not wired. SSH authentication cannot safely degrade to an in-memory
 	// key registry because a restart would revoke access unpredictably.
-	ErrSSHKeysUnavailable = errors.New("ssh-key store not configured")
+	ErrSSHKeysUnavailable = Unavailable("ssh-key store not configured")
 	// ErrSecretsUnavailable is returned by the env-vars verbs when no secret store
 	// is wired (BEX_OPENBAO_URL unset); adapters surface it as 503.
-	ErrSecretsUnavailable = errors.New("secret store not configured")
+	ErrSecretsUnavailable = Unavailable("secret store not configured")
 	// ErrWorkspacesUnavailable is returned by the workspace verbs when the
 	// control-plane store isn't wired (bex-api running without BEX_CP_DB_URI);
 	// adapters surface it as 503 (the owners read API exists, the backing store
 	// doesn't).
-	ErrWorkspacesUnavailable = errors.New("workspaces store not configured")
+	ErrWorkspacesUnavailable = Unavailable("workspaces store not configured")
 	// ErrDeploysUnavailable is returned by the deploy-history verbs when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503 — deploy history has no CR-only equivalent to fall back to.
-	ErrDeploysUnavailable = errors.New("deploy history store not configured")
+	ErrDeploysUnavailable = Unavailable("deploy history store not configured")
 	// ErrSandboxesUnavailable is returned by the sandbox verbs when the
 	// OpenSandbox lifecycle client isn't wired (BEX_OPENSANDBOX_URL unset);
 	// adapters surface it as 503 (pillar 5, ADR042/w3/m32).
-	ErrSandboxesUnavailable = errors.New("sandbox runtime not configured")
+	ErrSandboxesUnavailable = Unavailable("sandbox runtime not configured")
 	// ErrAgentSessionsUnavailable is returned when any required session control
 	// plane dependency is absent: Postgres, OpenSandbox, ticket signer, or the
 	// browser-reachable gateway origin. A partially configured session cannot be
 	// created safely, so the feature fails closed as one unit.
-	ErrAgentSessionsUnavailable = errors.New("agent sessions not configured")
+	ErrAgentSessionsUnavailable = Unavailable("agent sessions not configured")
 	// ErrBadRequest is returned for invalid caller input (adapters map it to 400).
 	ErrBadRequest = errors.New("bad request")
 	// ErrForbidden is returned when the caller lacks the permission a verb requires
@@ -82,15 +90,15 @@ var (
 	ErrConflict = errors.New("conflict")
 	// ErrAuthzUnavailable is returned when a wired authorization checker cannot be
 	// consulted — requests fail closed (503), never pass through.
-	ErrAuthzUnavailable = errors.New("authorization service unavailable")
+	ErrAuthzUnavailable = Unavailable("authorization service unavailable")
 	// ErrUsageUnavailable is returned by the usage verb when the store isn't
 	// wired (BEX_CP_DB_URI unset); adapters surface it as 503.
-	ErrUsageUnavailable = errors.New("usage unavailable")
+	ErrUsageUnavailable = Unavailable("usage unavailable")
 	// ErrBillingUnavailable is returned by the customer-billing onboarding
 	// verbs when Stripe is disabled or cannot be reached. It is deliberately
 	// distinct from ErrUsageUnavailable: advisory usage remains available while
 	// hosted Checkout, Portal, and payment readiness fail closed.
-	ErrBillingUnavailable = errors.New("billing integration unavailable")
+	ErrBillingUnavailable = Unavailable("billing integration unavailable")
 	// ErrBillingEnforced blocks new billable work and tenant-driven resumes
 	// while the durable dunning lifecycle owns reversible suspension.
 	ErrBillingEnforced = errors.New("workspace billing enforcement is active")
@@ -101,38 +109,38 @@ var (
 	// ErrAuditUnavailable is returned by the audit-log read verb when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503 — omitted, not faked (the deploy-history/env-vars precedent).
-	ErrAuditUnavailable = errors.New("audit log store not configured")
+	ErrAuditUnavailable = Unavailable("audit log store not configured")
 	// ErrGitHubUnavailable is returned by the git-connect verbs when the GitHub
 	// App is not configured (BEX_GITHUB_APP_* unset) or the control-plane store
 	// isn't wired (BEX_CP_DB_URI unset) — adapters surface it as 503
 	// (docs/ADR026-github-integration.md).
-	ErrGitHubUnavailable = errors.New("github integration not configured")
+	ErrGitHubUnavailable = Unavailable("github integration not configured")
 	// ErrEventsUnavailable is returned by the service-events feed when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503. BOTH of the feed's sources (deploys, audit_events) are control-plane
 	// tables, so there is no CR-only feed to degrade to — omitted, not faked
 	// (w3/m7, the deploy-history precedent).
-	ErrEventsUnavailable = errors.New("events store not configured")
+	ErrEventsUnavailable = Unavailable("events store not configured")
 	// ErrNotificationsUnavailable is returned by the notification-settings verbs
 	// when the control-plane store isn't wired (BEX_CP_DB_URI unset); adapters
 	// surface it as 503 (w3/m9, the deploy-history precedent).
-	ErrNotificationsUnavailable = errors.New("notification settings store not configured")
+	ErrNotificationsUnavailable = Unavailable("notification settings store not configured")
 	// ErrPushUnavailable is returned when a caller attempts to register a push
 	// destination while the server transport is deliberately disabled. Reading
 	// notification preferences and supervision remains available.
-	ErrPushUnavailable = errors.New("mobile push transport not configured")
+	ErrPushUnavailable = Unavailable("mobile push transport not configured")
 	// ErrRegistryCredentialsUnavailable is returned by the registry-credentials
 	// verbs when the control-plane store (BEX_CP_DB_URI) or the secret store
 	// (BEX_OPENBAO_URL) isn't wired — either is required, since a credential's
 	// metadata lives in one and its secret in the other; adapters surface it
 	// as 503.
-	ErrRegistryCredentialsUnavailable = errors.New("registry credential store not configured")
+	ErrRegistryCredentialsUnavailable = Unavailable("registry credential store not configured")
 	// ErrWebhooksUnavailable is returned by the outbound-webhook verbs when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503 (w3/m11, the deploy-history precedent) — both the endpoint registry
 	// and the delivery queue are control-plane tables, so there is nothing to
 	// degrade to.
-	ErrWebhooksUnavailable = errors.New("webhook store not configured")
+	ErrWebhooksUnavailable = Unavailable("webhook store not configured")
 	// ErrLogoutUnavailable is returned by the CLI-logout revoke verb
 	// (POST /v1/oauth/revoke) when the Hydra admin endpoint that clears a human's
 	// consent chain is unwired (BEX_HYDRA_ADMIN_URL unset) or unreachable;
@@ -140,14 +148,27 @@ var (
 	// REST endpoint — speaks the one Render error dialect on every branch (w9/m38,
 	// w9/008), unlike the RFC 8628 device endpoints whose OAuth-shaped bodies the
 	// CLI parses as token responses.
-	ErrLogoutUnavailable = errors.New("logout revocation service unavailable")
+	ErrLogoutUnavailable = Unavailable("logout revocation service unavailable")
 	// ErrShellUnavailable is returned by the Web Shell ticket verb when the
 	// browser-terminal transport is not configured (BEX_SHELL_TICKET_SECRET or
 	// BEX_SHELL_WS_URL unset); adapters surface it as 503. Native `ssh` is
 	// unaffected — the copy-ready command still works (docs/ADR035-ssh.md
 	// § Browser Web Shell).
-	ErrShellUnavailable = errors.New("web shell transport not configured")
+	ErrShellUnavailable = Unavailable("web shell transport not configured")
 )
+
+// unavailableErr carries its own message while reporting membership in the
+// ErrUnavailable class. It is a pointer type so two sentinels that happen to
+// share a message stay distinct under errors.Is, exactly like errors.New.
+type unavailableErr struct{ msg string }
+
+func (e *unavailableErr) Error() string { return e.msg }
+func (e *unavailableErr) Unwrap() error { return ErrUnavailable }
+
+// Unavailable declares a "dependency not wired" sentinel that WriteErr answers
+// with 503. A feature package uses it for its own sentinel instead of a local
+// response shim, since core (a leaf) cannot import the feature to name it.
+func Unavailable(msg string) error { return &unavailableErr{msg: msg} }
 
 // constErr is a comparable string error for fixed messages (config refusals,
 // upstream "not found" summaries) — like the standard library's errors.New but
