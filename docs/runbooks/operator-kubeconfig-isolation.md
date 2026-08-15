@@ -1,6 +1,6 @@
 # Runbook: isolate the cluster-admin kubeconfig from the operator (codex #5)
 
-**Status:** repository desired state implemented; live cluster migration + cert rotation remain an operator procedure. Production manifests, rollout checks, autoscaler placement, and CI now use `bex-capi`; CI refuses to apply them over an unmigrated `default/bex` Cluster.
+**Status:** production namespace migration completed 2026-08-14; admin-cert rotation remains a separate operator procedure. Production manifests, rollout checks, autoscaler placement, and CI use `bex-capi`; CI refuses to apply them over an unmigrated `default/bex` Cluster.
 
 ## Finding
 
@@ -28,13 +28,13 @@ Move the CAPI `Cluster`/`Machine*`/related resources into a dedicated namespace 
    kubectl create namespace bex-capi
    ```
 
-2. **Move the CAPI resources** into it during a maintenance window. Kubernetes namespaces are immutable, and the `clusterctl` CLI preserves an object's namespace. The one-time protected workflow `.github/workflows/capi-namespace-migration.yml` therefore calls clusterctl v1.13.2's library `Move` operation with its experimental resource-mutator hook. The mutator rewrites only `default` object namespaces and known namespaced CAPI references to `bex-capi`; clusterctl creates the complete target graph, rebuilds owner-reference UIDs, force-deletes the paused source graph with its `delete-for-move` annotation, and then resumes the target.
+2. **Move the CAPI resources** into it during a maintenance window. Kubernetes namespaces are immutable, and the `clusterctl` CLI preserves an object's namespace. Production was moved on 2026-08-14 by a one-time protected workflow using clusterctl v1.13.2's library `Move` operation with its experimental resource-mutator hook. The mutator rewrote only `default` object namespaces and known namespaced CAPI references to `bex-capi`; clusterctl created the complete target graph, rebuilt owner-reference UIDs, force-deleted the paused source graph with its `delete-for-move` annotation, and then resumed the target.
 
-   Dispatch it only from reviewed `main`, with the protected `production-infra` environment and the exact confirmation `MOVE-default-TO-bex-capi`. Before the move it requires one healthy `default/bex` Cluster, no target Cluster, a converged fleet, a fresh successful off-cluster etcd snapshot, a credential-bearing in-run graph backup, and a successful clusterctl dry run. Afterward it requires the target graph and five PKI/admin Secrets, no source copies, a converged fleet, and a negative operator `can-i` check for every target Secret.
+   The implementation is preserved in the history beginning at commit `83cf22c3`; the intentionally temporary workflow and Go mutator were removed after the migration and should not be replayed blindly. Before the move it required one healthy `default/bex` Cluster, no target Cluster, a converged fleet, a fresh successful off-cluster etcd snapshot, a credential-bearing in-run graph backup, and a successful clusterctl dry run. Afterward a separate read-only pass required the target graph and five PKI/admin Secrets, no source copies, a converged fleet, and a negative operator `can-i` check for every target Secret. The migration completed in [Actions run 31861196794](https://github.com/bex-co/bex/actions/runs/31861196794), the corrected read-only verification passed in [run 31861540662](https://github.com/bex-co/bex/actions/runs/31861540662), and the canonical app-cluster workflow passed in [run 31861593153](https://github.com/bex-co/bex/actions/runs/31861593153).
 
    > **Do not use `clusterctl move --to-directory` followed by `--from-directory` for namespace relocation.** In clusterctl v1.13.2, `to-directory` is a backup operation: it pauses, serializes, and then resumes the source objects without deleting them. Restoring a namespace-rewritten directory would create a second live controller graph. The library `Move` path is required because it couples target creation and owner-UID repair with source deletion.
 
-   If the atomic move fails, the workflow resumes the sole surviving graph. If both roots exist it pauses both rather than allowing competing reconciliation; if neither root exists it restores the original graph from the protected in-run backup. The fresh off-cluster etcd snapshot remains the final recovery boundary.
+   The one-time workflow was designed to resume the sole surviving graph on failure. If both roots existed it paused both rather than allowing competing reconciliation; if neither root existed it restored the original graph from the protected in-run backup. The fresh off-cluster etcd snapshot was the final recovery boundary.
 
 3. **Cert-expiry alert** — deploy the repository version after the move. `AdminCertExpiringSoon` now selects only `bex-capi/bex-kubeconfig`.
 
