@@ -48,12 +48,18 @@ type Store interface {
 	RecordAgentSessionDispatch(context.Context, string, string, string, string, string) (store.AgentSession, error)
 	FinalizeAgentSession(context.Context, string, string, string, string, int, json.RawMessage, string) (store.AgentSession, error)
 	DeleteAgentSession(context.Context, string) error
-	// Deferred-teardown reaping (ADR054 D6): the Completer defers a finished
-	// session's sandbox teardown while an editor SSH session is open, then reaps
-	// it once the connection closes.
-	HasOpenSSHSession(ctx context.Context, resourceID string, since time.Time) (bool, error)
+	// Deferred-teardown reaping (ADR054 D6, generalized by ADR059 D2 / w2/m67):
+	// the Completer defers a finished session's sandbox teardown while an editor
+	// SSH session is open AND for the Active-tier idle grace after the last
+	// interaction. AgentSessionSSHActivity returns both signals: whether a fresh
+	// still-open editor session pins the sandbox, and the last SSH disconnect time
+	// (feeding the idle clock alongside the session's turn-end).
+	AgentSessionSSHActivity(ctx context.Context, resourceID string, freshSince time.Time) (hasFreshOpen bool, lastEnded *time.Time, err error)
 	ListTerminalAgentSessionsWithSandbox(ctx context.Context, since time.Time) ([]store.AgentSession, error)
 	ClearAgentSessionSandbox(ctx context.Context, id string) error
+	// CountLiveAgentSessionSandboxes bounds the ADR059 D6 per-workspace live-
+	// sandbox cap: sessions in a live phase holding a sandbox id for the workspace.
+	CountLiveAgentSessionSandboxes(ctx context.Context, workspaceID string, phases []string) (int, error)
 	// Transcript persistence (ADR051): the Completer harvests the driver's log
 	// at completion and appends it here (idempotent, keyed by session+seq).
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
@@ -139,11 +145,43 @@ type Service struct {
 	// readiness). *github.Service satisfies it; only the already-safe Connection
 	// projection is consumed, never installation tokens/ids.
 	GitHub GitHubReadiness
+	// MaxLiveSandboxes caps the concurrent live agent-session sandboxes one
+	// workspace may hold (ADR059 D6 / w2/m67, BEX_AGENT_MAX_LIVE_SANDBOXES_PER_
+	// WORKSPACE). A create/steer/resume that would exceed it is refused with
+	// AGENT_SESSION_LIVE_LIMIT rather than silently queued. 0 => uncapped
+	// (byte-identical to before this field existed).
+	MaxLiveSandboxes int
 	// dispatchRunner runs the slow background provisioning half of create/steer/
 	// resume (w2/m64). Left nil in production => a detached goroutine, so the
 	// mutation returns before the sandbox exists; tests inject a synchronous (or
 	// gated) runner so the async lifecycle is deterministic without sleeps.
 	dispatchRunner func(func())
+}
+
+// liveSandboxPhases are the phases that hold a provisioned (or provisioning)
+// sandbox and thus count against the per-workspace live cap — the same set the
+// Completer treats as active. A terminal session in its idle grace is excluded.
+var liveSandboxPhases = activePhases
+
+// enforceLiveSandboxCap refuses a create/steer/resume that would push the
+// workspace past MaxLiveSandboxes concurrent live sandboxes (ADR059 D6). It is a
+// best-effort pre-check (no lock): the dispatch CAS and the reconcile loop bound
+// any small overshoot from a race. 0 => uncapped. A store error is surfaced (the
+// caller fails closed) rather than silently allowing an unbounded fan-out.
+func (s *Service) enforceLiveSandboxCap(ctx context.Context, workspaceID string) error {
+	if s.MaxLiveSandboxes <= 0 {
+		return nil
+	}
+	n, err := s.Store.CountLiveAgentSessionSandboxes(ctx, workspaceID, liveSandboxPhases)
+	if err != nil {
+		return mapStoreError("", err)
+	}
+	if n >= s.MaxLiveSandboxes {
+		return core.NewConflictError("AGENT_SESSION_LIVE_LIMIT",
+			fmt.Sprintf("this workspace already has %d live agent-session sandboxes (limit %d); stop or cancel an idle session before starting another", n, s.MaxLiveSandboxes),
+			map[string]any{"live": n, "limit": s.MaxLiveSandboxes})
+	}
+	return nil
 }
 
 // dispatchTimeout bounds one background provisioning attempt (sandbox create +
@@ -315,6 +353,11 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	// codex #6: enforce the billing lifecycle gate — a delinquent/enforced
 	// workspace must not provision new agent-session sandbox compute.
 	if err := s.RequireBillingMutation(ctx, workspaceID); err != nil {
+		return View{}, err
+	}
+	// ADR059 D6: bound the workspace's concurrent live sandboxes before minting a
+	// row + sandbox, so a longer idle grace can't let one workspace exhaust the pool.
+	if err := s.enforceLiveSandboxCap(ctx, workspaceID); err != nil {
 		return View{}, err
 	}
 	modelAPIKey, err := s.modelAPIKey(ctx, workspaceID)
@@ -520,6 +563,11 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 	if record.Phase == PhaseCanceled || record.Phase == PhaseCanceling || record.SandboxID == "" {
 		return View{}, core.NewConflictError("AGENT_SESSION_NOT_RESUMABLE", "agent session cannot be resumed from its current phase", map[string]any{"phase": record.Phase})
 	}
+	// ADR059 D6: a terminal session resuming re-enters a live phase, so it counts
+	// toward the workspace's live-sandbox cap; refuse rather than exceed it.
+	if err := s.enforceLiveSandboxCap(ctx, record.WorkspaceID); err != nil {
+		return View{}, err
+	}
 	record, err = s.Store.SetAgentSessionLifecycle(ctx, sessionID, "", PhaseResuming, "resuming", false)
 	if err != nil {
 		return View{}, mapStoreError(sessionID, err)
@@ -669,6 +717,11 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	// codex #6: enforce the billing lifecycle gate — steering dispatches a fresh
 	// sandbox with a caller-supplied prompt, so a delinquent workspace is blocked.
 	if err := s.RequireBillingMutation(ctx, record.WorkspaceID); err != nil {
+		return View{}, err
+	}
+	// ADR059 D6: steering a terminal session re-enters a live phase and dispatches
+	// a fresh sandbox, so it counts toward the workspace's live-sandbox cap.
+	if err := s.enforceLiveSandboxCap(ctx, record.WorkspaceID); err != nil {
 		return View{}, err
 	}
 	config, err := decodeAgentConfig(record)

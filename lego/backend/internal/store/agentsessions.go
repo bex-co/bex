@@ -214,6 +214,22 @@ func (s *PGStore) ListTerminalAgentSessionsWithSandbox(ctx context.Context, sinc
 	return out, rows.Err()
 }
 
+// CountLiveAgentSessionSandboxes counts the workspace's sessions currently in a
+// live phase (`phases`) that hold a sandbox id — the concurrent live-sandbox
+// working set the ADR059 D6 per-workspace cap bounds. A terminal session in its
+// idle grace still carries a sandbox_id but is not in a live phase, so it does
+// not count against the create/steer/resume cap. Trusted read used by the
+// dispatch-time admission check; a small best-effort overshoot is acceptable
+// (the dispatch CAS and reconcile bound it), so it takes no lock.
+func (s *PGStore) CountLiveAgentSessionSandboxes(ctx context.Context, workspaceID string, phases []string) (int, error) {
+	var n int
+	err := s.Pool.QueryRow(ctx, `
+		SELECT count(*) FROM agent_sessions
+		WHERE workspace_id = $1 AND phase = ANY($2) AND sandbox_id <> ''`,
+		workspaceID, phases).Scan(&n)
+	return n, err
+}
+
 // ClearAgentSessionSandbox blanks a session's sandbox_id after its sandbox has
 // been torn down (ADR054 D6), dropping it from the deferred-teardown reaper's
 // working set and releasing the live-sandbox unique index. It never changes

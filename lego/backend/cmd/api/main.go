@@ -122,6 +122,37 @@ func positiveIntEnv(name string, def any) (int, bool) {
 	return n, true
 }
 
+// zeroableDurationEnv parses a duration tuning knob that accepts an explicit
+// disabling zero: unset ⇒ def; a valid non-negative duration ⇒ that value (0 is
+// a legal "disabled"); malformed or negative ⇒ warn and keep def.
+func zeroableDurationEnv(name string, def time.Duration) time.Duration {
+	v := os.Getenv(name)
+	if v == "" {
+		return def
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d < 0 {
+		log.Printf("%s=%q invalid (want a non-negative Go duration, 0 to disable); using default %s", name, v, def)
+		return def
+	}
+	return d
+}
+
+// zeroableIntEnv parses an integer tuning knob that accepts an explicit
+// disabling zero: unset ⇒ def; a valid n ≥ 0 ⇒ n (0 disables); invalid ⇒ def.
+func zeroableIntEnv(name string, def int) int {
+	v := os.Getenv(name)
+	if v == "" {
+		return def
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		log.Printf("%s=%q invalid (want an integer >= 0, 0 to disable); using default %d", name, v, def)
+		return def
+	}
+	return n
+}
+
 // minuteDurationEnv parses a duration env var with a floor of one minute,
 // startup-fatal when malformed or shorter.
 func minuteDurationEnv(name, def string) time.Duration {
@@ -362,6 +393,12 @@ func main() {
 	// Optional override of the in-cluster Git smart-HTTP proxy origin. The
 	// sandbox receives this non-secret URL, never a GitHub credential.
 	deps.AgentGitProxyURL = os.Getenv("BEX_AGENT_GIT_PROXY_URL")
+	// Active-tier sandbox lifecycle (ADR059 D2/D6, w2/m67): idle grace before a
+	// finished session's sandbox is reaped (default 30m; 0 ⇒ ADR054 D6 immediate
+	// reap), and the per-workspace concurrent live-sandbox cap (default 5; 0 ⇒
+	// uncapped).
+	deps.AgentSandboxIdleTTL = zeroableDurationEnv("BEX_AGENT_SANDBOX_IDLE_TTL", 30*time.Minute)
+	deps.AgentMaxLiveSandboxesPerWorkspace = zeroableIntEnv("BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE", 5)
 
 	srv := api.NewServer(base, deps)
 	// Membership rows and exact OpenFGA roles are joined by a transactional

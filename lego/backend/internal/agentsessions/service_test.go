@@ -33,6 +33,10 @@ type fakeStore struct {
 	// openSSH models the ssh_sessions table for the teardown-deferral tests
 	// (ADR054 D6): resource id -> the started_at of a still-open editor session.
 	openSSH map[string]time.Time
+	// lastSSHEnd models the most recent editor SSH disconnect for the idle-grace
+	// tests (ADR059 D2 / w2/m67): resource id -> ended_at of the last closed
+	// session. Absent ⇒ no prior SSH disconnect for that resource.
+	lastSSHEnd map[string]time.Time
 }
 
 func newFakeStore() *fakeStore {
@@ -41,6 +45,7 @@ func newFakeStore() *fakeStore {
 		now:        time.Unix(1_800_000_000, 0).UTC(),
 		transcript: map[string]map[int64]store.AgentSessionTranscriptPart{},
 		openSSH:    map[string]time.Time{},
+		lastSSHEnd: map[string]time.Time{},
 	}
 }
 
@@ -66,9 +71,29 @@ func TestAgentSelectorIsClosedAndResolvesOnlyAbsoluteImagePaths(t *testing.T) {
 	}
 }
 
-func (f *fakeStore) HasOpenSSHSession(_ context.Context, resourceID string, since time.Time) (bool, error) {
+func (f *fakeStore) AgentSessionSSHActivity(_ context.Context, resourceID string, freshSince time.Time) (bool, *time.Time, error) {
 	started, ok := f.openSSH[resourceID]
-	return ok && !started.Before(since), nil
+	hasFreshOpen := ok && !started.Before(freshSince)
+	var lastEnded *time.Time
+	if ended, ok := f.lastSSHEnd[resourceID]; ok {
+		e := ended
+		lastEnded = &e
+	}
+	return hasFreshOpen, lastEnded, nil
+}
+
+func (f *fakeStore) CountLiveAgentSessionSandboxes(_ context.Context, workspaceID string, phases []string) (int, error) {
+	live := map[string]bool{}
+	for _, p := range phases {
+		live[p] = true
+	}
+	n := 0
+	for _, row := range f.rows {
+		if row.WorkspaceID == workspaceID && row.SandboxID != "" && live[row.Phase] {
+			n++
+		}
+	}
+	return n, nil
 }
 
 func (f *fakeStore) ListTerminalAgentSessionsWithSandbox(_ context.Context, since time.Time) ([]store.AgentSession, error) {
@@ -368,6 +393,105 @@ func fixture() (*Service, *fakeStore, *fakeFGA, *fakeLifecycle) {
 
 func caller(subject string) context.Context {
 	return core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
+}
+
+// seedLiveSession injects a workspace session already in a live phase holding a
+// sandbox id — the state the ADR059 D6 per-workspace cap counts. Used to bring a
+// workspace to its cap without driving full dispatch.
+func seedLiveSession(st *fakeStore, ws string) string {
+	id := ids.New(ids.AgentSession)
+	st.rows[id] = store.AgentSession{ID: id, WorkspaceID: ws, Phase: PhaseRunning, SandboxID: "sb-" + id, UpdatedAt: st.now}
+	return id
+}
+
+// --- ADR059 D6: per-workspace live-sandbox cap ------------------------------
+
+func TestCreateRefusedAtLiveSandboxCap(t *testing.T) {
+	svc, st, _, lc := fixture()
+	svc.MaxLiveSandboxes = 2
+	seedLiveSession(st, "tea-a")
+	seedLiveSession(st, "tea-a") // tea-a now at cap
+
+	_, err := svc.Create(caller("alice"), createInput())
+	if !isCode(err, "AGENT_SESSION_LIVE_LIMIT") {
+		t.Fatalf("create at cap = %v, want AGENT_SESSION_LIVE_LIMIT", err)
+	}
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("cap refusal should wrap ErrConflict for a 409, got %v", err)
+	}
+	if lc.created != 0 {
+		t.Fatalf("sandbox provisioned despite cap refusal (created=%d)", lc.created)
+	}
+	if len(st.rows) != 2 {
+		t.Fatalf("a session row was minted despite the pre-provision cap refusal: rows=%d", len(st.rows))
+	}
+}
+
+func TestCreateUnderLiveSandboxCapAllowed(t *testing.T) {
+	svc, st, _, _ := fixture()
+	svc.MaxLiveSandboxes = 3
+	seedLiveSession(st, "tea-a")
+	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+		t.Fatalf("create under cap = %v, want success", err)
+	}
+}
+
+func TestLiveSandboxCapZeroDisabled(t *testing.T) {
+	svc, st, _, _ := fixture()
+	svc.MaxLiveSandboxes = 0
+	for i := 0; i < 5; i++ {
+		seedLiveSession(st, "tea-a")
+	}
+	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+		t.Fatalf("create with cap disabled (0) = %v, want success", err)
+	}
+}
+
+func TestLiveSandboxCapIsPerWorkspace(t *testing.T) {
+	svc, st, _, _ := fixture()
+	svc.MaxLiveSandboxes = 2
+	seedLiveSession(st, "tea-a")
+	seedLiveSession(st, "tea-a") // tea-a at cap, tea-b empty
+
+	req := createInput()
+	req.OwnerID = "tea-b"
+	if _, err := svc.Create(caller("bob"), req); err != nil {
+		t.Fatalf("create in an under-cap peer workspace = %v, want success (cap must not leak across workspaces)", err)
+	}
+}
+
+// A terminal session in its idle grace holds a sandbox_id but is NOT in a live
+// phase, so it does not count toward the cap — only actively live turns do.
+func TestLiveSandboxCapIgnoresIdleGraceSandboxes(t *testing.T) {
+	svc, st, _, _ := fixture()
+	svc.MaxLiveSandboxes = 1
+	// A completed session still holding its sandbox during the idle grace.
+	id := seedLiveSession(st, "tea-a")
+	row := st.rows[id]
+	row.Phase = PhaseCompleted
+	st.rows[id] = row
+
+	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+		t.Fatalf("create with only an idle-grace (terminal) sandbox present = %v, want success", err)
+	}
+}
+
+func TestSteerRefusedAtLiveSandboxCap(t *testing.T) {
+	svc, st, _, id := steerableFixture(t)
+	svc.MaxLiveSandboxes = 1
+	seedLiveSession(st, "tea-a") // tea-a at cap; the steerable session itself is terminal
+	if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: id, Prompt: "go"}); !isCode(err, "AGENT_SESSION_LIVE_LIMIT") {
+		t.Fatalf("steer at cap = %v, want AGENT_SESSION_LIVE_LIMIT", err)
+	}
+}
+
+func TestResumeRefusedAtLiveSandboxCap(t *testing.T) {
+	svc, st, _, id := steerableFixture(t)
+	svc.MaxLiveSandboxes = 1
+	seedLiveSession(st, "tea-a")
+	if _, err := svc.Resume(caller("alice"), id); !isCode(err, "AGENT_SESSION_LIVE_LIMIT") {
+		t.Fatalf("resume at cap = %v, want AGENT_SESSION_LIVE_LIMIT", err)
+	}
 }
 
 // fakeModelKeys is a minimal core.SecretKV for pinning the BYO model-key fetch

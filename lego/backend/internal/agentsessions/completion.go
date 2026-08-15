@@ -88,12 +88,27 @@ type Completer struct {
 	// Tests set it small to exercise the quota without 64 MiB payloads.
 	MaxTranscriptBytes int64
 
-	// SSHGraceTTL bounds the "Open in Zed" teardown deferral (ADR054 D6): a
-	// finished session's sandbox is kept alive while an editor SSH session is
-	// open, and an ssh_sessions row older than this is treated as leaked (a
-	// crashed gateway replica) and ignored. It equals the gateway's SSH session
-	// cap; 0 => the 4h default (matching BEX_SSH_SESSION_TIMEOUT's default).
+	// SSHGraceTTL bounds how long an OPEN editor SSH session pins a finished
+	// session's sandbox (ADR054 D6): an ssh_sessions row older than this is
+	// treated as leaked (a crashed gateway replica) and ignored. It equals the
+	// gateway's SSH session cap; 0 => the 4h default (BEX_SSH_SESSION_TIMEOUT's).
 	SSHGraceTTL time.Duration
+
+	// IdleTTL is the Active-tier idle grace (ADR059 D2, w2/m67): a finished
+	// session's sandbox is kept alive until it has been idle this long, where
+	// idle = now − max(last turn end, last SSH disconnect) and a currently-open
+	// editor SSH session pins idle at zero regardless. 0 ⇒ no extra grace (reap
+	// as soon as no editor is connected — byte-identical to ADR054 D6). Set from
+	// BEX_AGENT_SANDBOX_IDLE_TTL (main.go default 30m); the zero value here keeps
+	// tests on the pre-m67 behavior so the ADR054 D6 suite is unchanged.
+	IdleTTL time.Duration
+}
+
+func (c *Completer) idleTTL() time.Duration {
+	if c.IdleTTL > 0 {
+		return c.IdleTTL
+	}
+	return 0
 }
 
 // transcriptQuota is the per-session cumulative transcript byte cap the
@@ -167,17 +182,19 @@ func (c *Completer) Reconcile(ctx context.Context) {
 	for _, row := range rows {
 		c.finalize(ctx, row)
 	}
-	c.reapDeferredSandboxes(ctx)
+	c.reapIdleSandboxes(ctx)
 }
 
-// reapDeferredSandboxes tears down the sandboxes of already-finished sessions
-// whose teardown was deferred for an open editor SSH session (ADR054 D6). A
-// terminal session drops out of activePhases, so its sandbox would otherwise
-// linger forever; each tick this retries teardown for the small set of terminal
-// sessions still holding a sandbox id, and teardown itself re-checks the
-// deferral so it fires only once the connection has closed (or aged out).
-func (c *Completer) reapDeferredSandboxes(ctx context.Context) {
-	since := c.now().Add(-2 * c.sshGraceTTL())
+// reapIdleSandboxes tears down the sandboxes of already-finished sessions once
+// they pass the Active-tier idle grace (ADR059 D2 / ADR054 D6). A terminal
+// session drops out of activePhases, so its sandbox would otherwise linger
+// forever; each tick this re-evaluates the small set of terminal sessions still
+// holding a sandbox id — reading each row's FRESH updated_at (the turn-end time
+// FinalizeAgentSession stamped) so the idle clock is measured from completion,
+// not the stale record the completion path held.
+func (c *Completer) reapIdleSandboxes(ctx context.Context) {
+	// Widen the scan to cover the idle grace on top of the leaked-open window.
+	since := c.now().Add(-(2*c.sshGraceTTL() + c.idleTTL()))
 	rows, err := c.Store.ListTerminalAgentSessionsWithSandbox(ctx, since)
 	if err != nil {
 		return
@@ -273,22 +290,27 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 		c.fail(ctx, record, "draft pull request could not be opened")
 		return
 	}
-	if _, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted,
-		report.Delivery.HeadSHA, pr.HTMLURL, pr.Number, evidenceJSON, ""); err != nil {
+	final, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted,
+		report.Delivery.HeadSHA, pr.HTMLURL, pr.Number, evidenceJSON, "")
+	if err != nil {
 		log.Printf("agent-session completer: finalize failed (session=%s pr=%s): %v", record.ID, pr.HTMLURL, err)
 		return // retry next tick; the sandbox stays until the row is finalized
 	}
 	log.Printf("agent-session completer: completed session=%s pr=%s head=%s", record.ID, pr.HTMLURL, report.Delivery.HeadSHA)
-	c.teardown(ctx, record)
+	// Tear down against the FINALIZED row so the idle clock (record.UpdatedAt) is
+	// the turn-end time, not the stale pre-finalize timestamp; SandboxID survives
+	// finalize, so it is still present here.
+	c.teardown(ctx, final)
 }
 
 func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason string) {
-	if _, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseFailed, "", "", 0, nil, reason); err != nil {
+	final, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseFailed, "", "", 0, nil, reason)
+	if err != nil {
 		log.Printf("agent-session completer: finalize-failed write errored (session=%s reason=%q): %v", record.ID, reason, err)
 		return
 	}
 	log.Printf("agent-session completer: failed session=%s reason=%q", record.ID, reason)
-	c.teardown(ctx, record)
+	c.teardown(ctx, final)
 }
 
 // maxTranscriptParts bounds how many parts one turn's harvest persists — a
@@ -310,17 +332,33 @@ func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 		return
 	}
 	c.captureTranscript(ctx, record)
-	// Open in Zed (ADR054 D6): keep the sandbox alive while an editor SSH session
-	// is connected, so a finishing turn does not kill a live edit. The transcript
+	// Active-tier idle grace (ADR059 D2), generalizing ADR054 D6. The sandbox is
+	// kept alive while an editor SSH session is connected (never kill a live edit)
+	// AND for IdleTTL past the last interaction, where idle is measured from the
+	// later of this session's turn-end (record.UpdatedAt, stamped by the finalize
+	// that produced this row) and the last editor SSH disconnect. The transcript
 	// is already captured above, delivery already happened, and the session is
 	// already finalized — only the physical teardown waits. The reaper retries
 	// each tick; an explicit Cancel (its own teardown path) is not gated by this,
 	// so a user asking to kill the session always wins.
-	if open, err := c.Store.HasOpenSSHSession(ctx, record.ID, c.now().Add(-c.sshGraceTTL())); err != nil {
-		log.Printf("agent-session completer: ssh-session check failed (session=%s): %v", record.ID, err)
+	hasOpen, lastEnded, err := c.Store.AgentSessionSSHActivity(ctx, record.ID, c.now().Add(-c.sshGraceTTL()))
+	if err != nil {
+		log.Printf("agent-session completer: ssh-activity check failed (session=%s): %v", record.ID, err)
 		return // transient store error: retry next tick rather than tear down blind
-	} else if open {
+	}
+	if hasOpen {
 		log.Printf("agent-session completer: deferring teardown, editor SSH open (session=%s)", record.ID)
+		return
+	}
+	// idleSince is the most recent interaction: the turn end (this finalized row's
+	// updated_at) or a later SSH disconnect. IdleTTL=0 reduces this to "reap as
+	// soon as no editor is connected" — byte-identical to ADR054 D6.
+	idleSince := record.UpdatedAt
+	if lastEnded != nil && lastEnded.After(idleSince) {
+		idleSince = *lastEnded
+	}
+	if grace := c.idleTTL(); grace > 0 && c.now().Sub(idleSince) < grace {
+		log.Printf("agent-session completer: deferring teardown, idle grace not elapsed (session=%s)", record.ID)
 		return
 	}
 	_ = c.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID)
