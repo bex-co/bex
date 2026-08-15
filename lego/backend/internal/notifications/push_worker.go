@@ -33,11 +33,13 @@ import (
 const (
 	// A property of the feed, not of this worker: store.FeedCommitLag explains
 	// why a tailer must read behind now, and every tailer shares it.
-	pushDispatchLag         = store.FeedCommitLag
-	pushDispatchBatch       = 200
-	pushSendBatch           = 50
-	pushClaimLease          = time.Minute
-	pushParkInterval        = time.Minute
+	pushDispatchLag   = store.FeedCommitLag
+	pushDispatchBatch = 200
+	pushSendBatch     = 50
+	pushClaimLease    = time.Minute
+	// Also a property of the feed, shared with every other tailer of it:
+	// store.DefaultFeedPark explains the write-amplification trade.
+	pushParkInterval        = store.DefaultFeedPark
 	pushDefaultPollInterval = 2 * time.Second
 	pushMinimumPollInterval = 100 * time.Millisecond
 	pushMaximumPollInterval = time.Minute
@@ -126,10 +128,10 @@ type PushWorker struct {
 	// a bounded ticker derived from PollInterval.
 	Tick <-chan time.Time
 
-	watermarkLoaded bool
-	watermarkAt     time.Time
-	watermarkKey    string
-	lastSweep       time.Time
+	// cursor is this worker's cached position in the composed feed, loaded once
+	// and advanced by every committed page (store.FeedCursor).
+	cursor    store.FeedCursor
+	lastSweep time.Time
 	// agentSessionCursor is the newest session UpdatedAt already projected to
 	// push, and agentSessionBoundary the source keys sitting at exactly that
 	// instant. Terminal sessions stay in the 6h scan window, so without them
@@ -392,7 +394,7 @@ func projectAgentSessionPush(s store.AgentSession) (projectedPush, bool) {
 // evaluates the SAME recipients/policy, and enqueues a session-deep-linked push
 // deduped by (session, phase). It never advances the feed watermark.
 func (w *PushWorker) dispatchAgentSessions(ctx context.Context, destinations []store.ActivePushSubscription) error {
-	if !w.watermarkLoaded {
+	if !w.cursor.Loaded() {
 		return nil // the feed dispatch anchors the watermark first
 	}
 	byTenant, tenants := w.buildPushRecipients(ctx, destinations)
@@ -450,7 +452,8 @@ func (w *PushWorker) dispatchAgentSessions(ctx context.Context, destinations []s
 	}
 	// Pass the CURRENT watermark: the monotonic guard makes the cursor UPDATE a
 	// no-op while the notification inserts commit (deduped by source_event_key).
-	if err := w.Store.EnqueuePushNotifications(ctx, batch, w.watermarkAt, w.watermarkKey); err != nil {
+	watermarkAt, watermarkKey := w.cursor.Position()
+	if err := w.Store.EnqueuePushNotifications(ctx, batch, watermarkAt, watermarkKey); err != nil {
 		return err
 	}
 	// Advance only after the write commits, so a failed enqueue is retried.
@@ -470,12 +473,8 @@ func (w *PushWorker) agentSessionProjected(updatedAt time.Time, sourceKey string
 
 func (w *PushWorker) dispatch(ctx context.Context, destinations []store.ActivePushSubscription) error {
 	until := w.now().Add(-pushDispatchLag)
-	if !w.watermarkLoaded {
-		at, key, err := w.Store.EnsurePushWatermark(ctx, until)
-		if err != nil {
-			return err
-		}
-		w.watermarkAt, w.watermarkKey, w.watermarkLoaded = at, key, true
+	if err := w.cursor.Load(ctx, w.Store.EnsurePushWatermark, until); err != nil {
+		return err
 	}
 
 	byTenant, tenants := w.buildPushRecipients(ctx, destinations)
@@ -483,60 +482,56 @@ func (w *PushWorker) dispatch(ctx context.Context, destinations []store.ActivePu
 		return nil
 	}
 
-	for {
-		rows, err := w.Store.ListWebhookEvents(
-			ctx, w.watermarkAt, w.watermarkKey, until, []string{}, tenants, pushDispatchBatch,
-		)
-		if err != nil {
-			return err
-		}
-		if len(rows) == 0 {
-			if until.Sub(w.watermarkAt) > pushParkInterval {
-				if err := w.Store.EnqueuePushNotifications(ctx, nil, until, ""); err != nil {
-					return err
-				}
-				w.watermarkAt, w.watermarkKey = until, ""
-			}
-			return nil
-		}
+	return store.TailFeed(ctx, &w.cursor, store.FeedPass[store.PushNotificationBatchItem]{
+		Until: until,
+		// No verbs => the feed's audit arms drop out entirely, which is what push
+		// wants: projectPushEvent handles deploy and fact sources only.
+		Verbs:   []string{},
+		Tenants: tenants,
+		Limit:   pushDispatchBatch,
+		Park:    pushParkInterval,
+		List:    w.Store.ListWebhookEvents,
+		Commit:  w.Store.EnqueuePushNotifications,
+		Project: func(ctx context.Context, rows []store.WebhookEventRow) ([]store.PushNotificationBatchItem, error) {
+			return w.fanOutPage(ctx, rows, byTenant)
+		},
+	})
+}
 
-		batch := make([]store.PushNotificationBatchItem, 0)
-		decisionTime := w.now()
-		evaluator := DeliveryPolicyEvaluator{Now: func() time.Time { return decisionTime }}
-		for _, row := range rows {
-			serviceID, err := w.Store.ResolvePushServiceID(ctx, row.TenantID, row.ServiceName)
+// fanOutPage turns one page of the feed into queue rows: each row is resolved to
+// its service, projected onto the push vocabulary, and evaluated against every
+// recipient's policy. One decision time is read per page so a policy window
+// (quiet hours) cannot shift underneath a single page's evaluations.
+func (w *PushWorker) fanOutPage(ctx context.Context, rows []store.WebhookEventRow, byTenant map[string]map[string]*pushRecipient) ([]store.PushNotificationBatchItem, error) {
+	batch := make([]store.PushNotificationBatchItem, 0)
+	decisionTime := w.now()
+	evaluator := DeliveryPolicyEvaluator{Now: func() time.Time { return decisionTime }}
+	for _, row := range rows {
+		serviceID, err := w.Store.ResolvePushServiceID(ctx, row.TenantID, row.ServiceName)
+		if err != nil {
+			return nil, err
+		}
+		factStatus := ""
+		if row.Source == store.EventSourceFact && row.FactType == string(store.EventFactJobRunEnded) {
+			factStatus, err = w.Store.PushFactStatus(ctx, row.Key)
 			if err != nil {
-				return err
-			}
-			factStatus := ""
-			if row.Source == store.EventSourceFact && row.FactType == string(store.EventFactJobRunEnded) {
-				factStatus, err = w.Store.PushFactStatus(ctx, row.Key)
-				if err != nil {
-					return err
-				}
-			}
-			projected, ok := projectPushEvent(row, serviceID, factStatus)
-			if !ok {
-				continue
-			}
-			batch, err = fanOutPush(batch, evaluator, byTenant[row.TenantID], pushTarget{
-				workspaceID: row.TenantID, sourceKey: row.Key, serviceID: serviceID,
-				resourceKind: "service", resourceID: serviceID,
-				deepLink: "/services/" + serviceID, occurredAt: row.At, projected: projected,
-			})
-			if err != nil {
-				return err
+				return nil, err
 			}
 		}
-		last := rows[len(rows)-1]
-		if err := w.Store.EnqueuePushNotifications(ctx, batch, last.CursorAt, last.Key); err != nil {
-			return err
+		projected, ok := projectPushEvent(row, serviceID, factStatus)
+		if !ok {
+			continue
 		}
-		w.watermarkAt, w.watermarkKey = last.CursorAt, last.Key
-		if len(rows) < pushDispatchBatch {
-			return nil
+		batch, err = fanOutPush(batch, evaluator, byTenant[row.TenantID], pushTarget{
+			workspaceID: row.TenantID, sourceKey: row.Key, serviceID: serviceID,
+			resourceKind: "service", resourceID: serviceID,
+			deepLink: "/services/" + serviceID, occurredAt: row.At, projected: projected,
+		})
+		if err != nil {
+			return nil, err
 		}
 	}
+	return batch, nil
 }
 
 func storedPushDeliveryPolicy(raw json.RawMessage) (DeliveryPolicy, error) {

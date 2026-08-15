@@ -21,6 +21,8 @@ limitations under the License.
 package gqlutil
 
 import (
+	"context"
+
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -46,6 +48,45 @@ func IDArg() graphql.FieldConfigArgument {
 	return graphql.FieldConfigArgument{
 		"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
 	}
+}
+
+// PatchMutation is the one shape a "change this one field of a resource"
+// mutation takes: `(id, <field>, dryRun)`, where dryRun routes to the PREVIEW
+// verb — which resolves the identical spec and writes nothing (w2/m29).
+//
+// Shared because the dryRun branch is a rule, not boilerplate. Six mutations
+// across three features carry it (updateServicePlan, updateDatabasePlan,
+// updateKeyValuePlan, renameDatabase, renameKeyValue,
+// setKeyValueMaxmemoryPolicy), and a seventh that reimplemented the field and
+// dropped the branch would silently APPLY a change the caller asked only to
+// preview — the response looks the same either way, so nothing would surface it.
+//
+// `patch` lifts the single string argument into the feature's patch struct;
+// apply and preview are that feature's write and preview verbs, which share a
+// signature and are therefore swappable at the call site. Each feature's
+// TestGraphQLDryRun* pins its own wiring in both directions.
+func PatchMutation[P, T any](out graphql.Output, argName string, patch func(string) P,
+	apply, preview func(ctx context.Context, id string, patch P) (T, error)) *graphql.Field {
+	args := IDArg()
+	args[argName] = &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)}
+	args["dryRun"] = &graphql.ArgumentConfig{Type: graphql.Boolean}
+	return &graphql.Field{
+		Type: out,
+		Args: args,
+		Resolve: func(p graphql.ResolveParams) (any, error) {
+			id, value := p.Args["id"].(string), p.Args[argName].(string)
+			if dryRun, _ := p.Args["dryRun"].(bool); dryRun {
+				return preview(p.Context, id, patch(value))
+			}
+			return apply(p.Context, id, patch(value))
+		},
+	}
+}
+
+// PlanMutation is PatchMutation for the plan-bearing resources, whose set and
+// preview verbs take the plan string directly rather than a patch struct.
+func PlanMutation[T any](out graphql.Output, set, preview func(ctx context.Context, id, plan string) (T, error)) *graphql.Field {
+	return PatchMutation(out, "plan", func(plan string) string { return plan }, set, preview)
 }
 
 // EnvVarInputType is the shared `{key, value|generateValue}` input object used by both

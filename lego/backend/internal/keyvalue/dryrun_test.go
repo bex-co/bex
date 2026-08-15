@@ -157,6 +157,57 @@ func TestGraphQLDryRunCreateKeyValue(t *testing.T) {
 	}
 }
 
+// renameKeyValue and setKeyValueMaxmemoryPolicy carry the same dryRun contract
+// as updateKeyValuePlan but had no test for it: only the applying direction was
+// covered, so a dry run that silently WROTE would have gone unnoticed — a
+// preview and an apply return identical responses, so nothing else surfaces it.
+func TestGraphQLDryRunRenameKeyValue(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "gql-rename-dry")
+	schema, err := kvGQLSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `mutation { renameKeyValue(id:"gql-rename-dry", name:"renamed", dryRun:true) { id name } }`,
+		Context:       context.Background(),
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql renameKeyValue dryRun: %v", res.Errors)
+	}
+	if preview := res.Data.(map[string]any)["renameKeyValue"].(map[string]any); preview["name"] != "renamed" {
+		t.Fatalf("preview name = %v, want renamed", preview["name"])
+	}
+	if got := getKeyValueCR(t, cl, "gql-rename-dry"); got.Spec.Name != "" {
+		t.Fatalf("dry-run must not modify the CR, got spec.name=%q", got.Spec.Name)
+	}
+}
+
+func TestGraphQLDryRunSetKeyValueMaxmemoryPolicy(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "gql-mm-dry")
+	schema, err := kvGQLSchema(svc)
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `mutation { setKeyValueMaxmemoryPolicy(id:"gql-mm-dry", maxmemoryPolicy:"noeviction", dryRun:true) { id maxmemoryPolicy } }`,
+		Context:       context.Background(),
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql setKeyValueMaxmemoryPolicy dryRun: %v", res.Errors)
+	}
+	preview := res.Data.(map[string]any)["setKeyValueMaxmemoryPolicy"].(map[string]any)
+	if preview["maxmemoryPolicy"] != "noeviction" {
+		t.Fatalf("preview maxmemoryPolicy = %v, want noeviction", preview["maxmemoryPolicy"])
+	}
+	if got := getKeyValueCR(t, cl, "gql-mm-dry"); got.Spec.MaxmemoryPolicy != "" {
+		t.Fatalf("dry-run must not modify the CR, got maxmemoryPolicy=%q", got.Spec.MaxmemoryPolicy)
+	}
+}
+
 func TestGraphQLDryRunUpdateKeyValuePlan(t *testing.T) {
 	svc, cl := newService()
 	seedKeyValue(t, cl, "gql-update")

@@ -24,14 +24,19 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// The push worker tails the same composed feed as internal/webhooks, through a
-// second copy of the same watermark-pager algorithm: lazy cursor load, park a
-// quiet window forward only past the park interval, advance the cursor in the
-// SAME store call that enqueues the page, and keep reading while pages come back
-// full. Two copies of one algorithm drift, and every rule here breaks silently
-// when it does — events skipped, or redelivered forever, with no error anywhere.
-// This is the counterpart of webhooks/watermark_test.go: the two files assert
-// the same invariants so a divergence shows up as a failure on one side.
+// The push worker tails the same composed feed as internal/webhooks, and since
+// the pager itself was hoisted to store.TailFeed the two no longer run separate
+// copies of the algorithm — internal/store/feedtail_test.go owns its rules.
+//
+// What these tests own now is this worker's WIRING of that seam, which the seam
+// test structurally cannot reach: the pager takes its page size, park interval
+// and tenant set as fields of a struct literal, so a knob can be dropped and
+// still compile. Asserting the rules end to end through RunOnce is what pins
+// them — deleting these as "duplicates" of the seam test loses that. (Verified:
+// mis-wiring the page size fails here and passes there.)
+//
+// Every failure below is silent in production — events skipped, or redelivered
+// forever, with no error anywhere.
 
 // countingPushStore observes how the pager drives the store.
 type countingPushStore struct {

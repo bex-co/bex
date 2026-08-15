@@ -557,22 +557,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return err == nil, err
 			},
 		},
-		"updateDatabasePlan": &graphql.Field{
-			Type: postgresGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"plan": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
-				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				dryRun, _ := p.Args["dryRun"].(bool)
-				if dryRun {
-					return s.PreviewSetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
-				}
-				return s.SetPlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
-			},
-		},
+		"updateDatabasePlan": gqlutil.PlanMutation(postgresGQLType, s.SetPlan, s.PreviewSetPlan),
 		"updateDatabaseVersion": &graphql.Field{
 			Type: postgresGQLType,
 			Args: graphql.FieldConfigArgument{
@@ -594,23 +579,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.UpdatePostgres(p.Context, p.Args["id"].(string), PostgresPatch{EnableDiskAutoscaling: &enabled})
 			},
 		},
-		"renameDatabase": &graphql.Field{
-			Type: postgresGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				name := p.Args["name"].(string)
-				patch := PostgresPatch{Name: &name}
-				dryRun, _ := p.Args["dryRun"].(bool)
-				if dryRun {
-					return s.PreviewUpdatePostgres(p.Context, p.Args["id"].(string), patch)
-				}
-				return s.UpdatePostgres(p.Context, p.Args["id"].(string), patch)
-			},
-		},
+		"renameDatabase": gqlutil.PatchMutation(postgresGQLType, "name",
+			func(name string) PostgresPatch { return PostgresPatch{Name: &name} },
+			s.UpdatePostgres, s.PreviewUpdatePostgres),
 
 		// --- failover (HA only) — Render's POST /postgres/{id}/failover → 202 ---
 		"failoverDatabase": &graphql.Field{
