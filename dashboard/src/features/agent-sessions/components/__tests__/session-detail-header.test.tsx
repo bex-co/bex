@@ -11,8 +11,14 @@ vi.mock("@tanstack/react-router", () => ({
     <a {...rest}>{children}</a>
   ),
 }));
+const pinMock = vi.fn().mockResolvedValue(undefined);
+const unpinMock = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
-  useAgentSessionMutations: () => ({ cancel: vi.fn() }),
+  useAgentSessionMutations: () => ({
+    cancel: vi.fn(),
+    pin: pinMock,
+    unpin: unpinMock,
+  }),
 }));
 
 function view(over: Partial<AgentSessionView> = {}): AgentSessionView {
@@ -50,5 +56,34 @@ describe("SessionDetailHeader", () => {
   it("renders no PR badge for a session that never asked for one", () => {
     render(<SessionDetailHeader session={view()} />);
     expect(screen.queryByText(/#\d/)).not.toBeInTheDocument();
+  });
+
+  // ADR059 D5/D6: a hibernated session shows its snapshot storage cost and a Pin
+  // toggle; a live/terminal session shows neither.
+  it("shows the storage size + Pin control only for a hibernated session", async () => {
+    const { rerender } = render(<SessionDetailHeader session={view()} />);
+    expect(
+      screen.queryByRole("button", { name: /pin/i }),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <SessionDetailHeader
+        session={view({ phase: "hibernated", snapshotBytes: 5 * 1024 * 1024 })}
+      />,
+    );
+    expect(screen.getByText(/Hibernated · 5\.0 MiB/)).toBeInTheDocument();
+    const pinBtn = screen.getByRole("button", { name: /^pin$/i });
+    pinBtn.click();
+    expect(pinMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers Unpin (not Pin) for an already-pinned hibernated session", () => {
+    render(
+      <SessionDetailHeader
+        session={view({ phase: "hibernated", pinned: true })}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /unpin/i })).toBeInTheDocument();
+    expect(screen.getByText(/Pinned/)).toBeInTheDocument();
   });
 });

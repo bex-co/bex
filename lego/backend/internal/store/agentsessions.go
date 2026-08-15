@@ -62,18 +62,31 @@ type AgentSession struct {
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	CanceledAt    *time.Time
+	// Hibernation (ADR059 D2/D3, w2/m68). Pinned removes the retention delete
+	// edge; SnapshotRef is the object-storage key (empty ⇒ no durable snapshot);
+	// SnapshotBytes is the storage-metering + quota dimension; HibernatedAt/
+	// RetainUntil drive the retention sweep (NULL while Active).
+	Pinned        bool
+	SnapshotRef   string
+	SnapshotBytes int64
+	SnapshotSHA   string
+	HibernatedAt  *time.Time
+	RetainUntil   *time.Time
 }
 
 const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandbox_id,
 	phase, status, head_sha, pr_url, pr_number, evidence, turns, delivery_mode,
-	failure_reason, created_at, updated_at, canceled_at`
+	failure_reason, created_at, updated_at, canceled_at,
+	pinned, snapshot_ref, snapshot_bytes, snapshot_sha, hibernated_at, retain_until`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
 	err := row.Scan(&s.ID, &s.WorkspaceID, &s.Repo, &s.Branch, &s.AgentConfig,
 		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
 		&s.Evidence, &s.Turns, &s.DeliveryMode, &s.FailureReason,
-		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt)
+		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt,
+		&s.Pinned, &s.SnapshotRef, &s.SnapshotBytes, &s.SnapshotSHA,
+		&s.HibernatedAt, &s.RetainUntil)
 	return s, err
 }
 
@@ -238,6 +251,179 @@ func (s *PGStore) ClearAgentSessionSandbox(ctx context.Context, id string) error
 	_, err := s.Pool.Exec(ctx,
 		`UPDATE agent_sessions SET sandbox_id = '', updated_at = now() WHERE id = $1 AND sandbox_id <> ''`, id)
 	return err
+}
+
+// ClaimAgentSessionForHibernation atomically claims a finished session for the
+// hibernation reclaim (ADR059 D3), moving it from a terminal phase holding a
+// sandbox into the transient `hibernating` phase so exactly one Completer
+// replica runs the snapshot. It is CAS-guarded like the reap path: only a
+// completed/failed row with a live sandbox_id matches, so a concurrent Cancel or
+// a second replica finds no row (ErrNotFound) and backs off. Returns the claimed
+// row (its sandbox_id still set — the snapshot exec needs it).
+func (s *PGStore) ClaimAgentSessionForHibernation(ctx context.Context, id string) (AgentSession, error) {
+	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET phase='hibernating', status='hibernating', updated_at=now()
+		WHERE id=$1 AND sandbox_id <> '' AND phase IN ('completed','failed')
+		RETURNING `+agentSessionColumns, id))
+	if err != nil {
+		return AgentSession{}, classify("agent session", err)
+	}
+	return out, nil
+}
+
+// HibernateAgentSession records a durable snapshot and moves the session to the
+// `hibernated` state (ADR059 D3): it stores the object-storage ref + size +
+// digest, stamps hibernated_at, and sets the retention deadline (NULL for a
+// pinned row). It deliberately KEEPS sandbox_id so the Completer can terminate
+// the (still-live) pod after this durable write; the Completer clears it once the
+// pod is gone (ClearAgentSessionSandbox). Guarded to the `hibernating` claim so a
+// stale writer can't hibernate a resurrected session.
+func (s *PGStore) HibernateAgentSession(ctx context.Context, id, snapshotRef string, snapshotBytes int64, snapshotSHA string, retainUntil time.Time) (AgentSession, error) {
+	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET phase='hibernated', status='hibernated',
+		    snapshot_ref=$2, snapshot_bytes=$3, snapshot_sha=$4,
+		    hibernated_at=now(),
+		    retain_until = CASE WHEN pinned THEN NULL ELSE $5 END,
+		    updated_at=now()
+		WHERE id=$1 AND phase='hibernating'
+		RETURNING `+agentSessionColumns, id, snapshotRef, snapshotBytes, snapshotSHA, retainUntil))
+	if err != nil {
+		return AgentSession{}, classify("agent session", err)
+	}
+	return out, nil
+}
+
+// BeginRehydrate claims a hibernated session for rehydration on Resume/Steer
+// (ADR059 D4), CAS-moving it hibernated → resuming while KEEPING the snapshot
+// fields (the fresh sandbox is provisioned in the background; the snapshot is
+// only consumed once it is up). A concurrent retention delete or double resume
+// finds no `hibernated` row (ErrNotFound). The row's sandbox_id stays empty
+// until RehydrateAgentSession adopts the new one.
+func (s *PGStore) BeginRehydrate(ctx context.Context, id string) (AgentSession, error) {
+	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET phase='resuming', status='rehydrating', updated_at=now()
+		WHERE id=$1 AND phase='hibernated' AND snapshot_ref <> ''
+		RETURNING `+agentSessionColumns, id))
+	if err != nil {
+		return AgentSession{}, classify("agent session", err)
+	}
+	return out, nil
+}
+
+// AbortRehydrate reverts a rehydrate whose background sandbox provisioning failed
+// (ADR059 D4), CAS-moving resuming → hibernated so the snapshot (still present)
+// can be retried by a later Resume. Guarded to a still-snapshot-bearing resuming
+// row so it can't clobber a session that already rehydrated or was canceled.
+func (s *PGStore) AbortRehydrate(ctx context.Context, id string) (AgentSession, error) {
+	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET phase='hibernated', status='hibernated', updated_at=now()
+		WHERE id=$1 AND phase='resuming' AND snapshot_ref <> '' AND sandbox_id=''
+		RETURNING `+agentSessionColumns, id))
+	if err != nil {
+		return AgentSession{}, classify("agent session", err)
+	}
+	return out, nil
+}
+
+// RehydrateAgentSession completes a rehydration (ADR059 D4): it adopts the fresh
+// sandbox id, advances to the live phase, increments the turn counter, and
+// clears the snapshot fields (the blob has been consumed into the new pod — a
+// re-hibernation writes a fresh one). Guarded to the `resuming` claim
+// BeginRehydrate set, so it can't race a retention delete or a double resume.
+func (s *PGStore) RehydrateAgentSession(ctx context.Context, id, sandboxID, phase, status, deliveryMode string) (AgentSession, error) {
+	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET sandbox_id=$2, phase=$3, status=$4, delivery_mode=$5, turns=turns+1,
+		    snapshot_ref='', snapshot_bytes=0, snapshot_sha='',
+		    hibernated_at=NULL, retain_until=NULL, updated_at=now()
+		WHERE id=$1 AND phase='resuming' AND sandbox_id=''
+		RETURNING `+agentSessionColumns, id, sandboxID, phase, status, deliveryMode))
+	if err != nil {
+		return AgentSession{}, classify("agent session", err)
+	}
+	return out, nil
+}
+
+// SetAgentSessionPinned toggles the never-expire pin (ADR059 D5). Pinning clears
+// retain_until (removes the delete edge); unpinning puts a hibernated row back
+// on the clock with the supplied deadline (retainUntil is ignored — left NULL —
+// while the row is not hibernated). It authorizes nothing; the caller gates it.
+func (s *PGStore) SetAgentSessionPinned(ctx context.Context, id string, pinned bool, retainUntil *time.Time) (AgentSession, error) {
+	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET pinned=$2,
+		    retain_until = CASE
+		        WHEN $2 THEN NULL
+		        WHEN phase='hibernated' THEN $3
+		        ELSE retain_until END,
+		    updated_at=now()
+		WHERE id=$1
+		RETURNING `+agentSessionColumns, id, pinned, retainUntil))
+	if err != nil {
+		return AgentSession{}, classify("agent session", err)
+	}
+	return out, nil
+}
+
+// ListHibernatedForRetention returns unpinned hibernated sessions whose
+// retention deadline has passed (ADR059 D5), oldest deadline first — the working
+// set the retention sweep deletes (snapshot + row). Pinned rows (retain_until
+// NULL) never match. Trusted background read; the partial index backs it.
+func (s *PGStore) ListHibernatedForRetention(ctx context.Context, now time.Time, limit int) ([]AgentSession, error) {
+	if limit <= 0 {
+		limit = 200
+	}
+	rows, err := s.Pool.Query(ctx, `
+		SELECT `+agentSessionColumns+` FROM agent_sessions
+		WHERE phase='hibernated' AND NOT pinned AND snapshot_ref <> ''
+		      AND retain_until IS NOT NULL AND retain_until <= $1
+		ORDER BY retain_until ASC, id ASC LIMIT $2`, now, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]AgentSession, 0)
+	for rows.Next() {
+		v, err := scanAgentSession(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, v)
+	}
+	return out, rows.Err()
+}
+
+// ExpireHibernatedAgentSession finalizes a retention-expired session after its
+// snapshot has been deleted from object storage (ADR059 D5): it clears the
+// snapshot fields and moves the row to the terminal `canceled` state with a
+// reason, keeping the conversation history. Guarded to the exact snapshot_ref
+// so it can't clobber a row a concurrent Resume already rehydrated.
+func (s *PGStore) ExpireHibernatedAgentSession(ctx context.Context, id, snapshotRef string) (AgentSession, error) {
+	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET phase='canceled', status='canceled', canceled_at=now(),
+		    failure_reason='hibernation retention window elapsed',
+		    snapshot_ref='', snapshot_bytes=0, snapshot_sha='',
+		    retain_until=NULL, updated_at=now()
+		WHERE id=$1 AND phase='hibernated' AND snapshot_ref=$2
+		RETURNING `+agentSessionColumns, id, snapshotRef))
+	if err != nil {
+		return AgentSession{}, classify("agent session", err)
+	}
+	return out, nil
+}
+
+// CountPinnedAgentSessions counts a workspace's pinned sessions — the ADR059 D5
+// pin-quota dimension. Best-effort like the live cap; no lock.
+func (s *PGStore) CountPinnedAgentSessions(ctx context.Context, workspaceID string) (int, error) {
+	var n int
+	err := s.Pool.QueryRow(ctx,
+		`SELECT count(*) FROM agent_sessions WHERE workspace_id=$1 AND pinned`, workspaceID).Scan(&n)
+	return n, err
 }
 
 // RecordAgentSessionDispatch stamps a newly dispatched turn: it advances the

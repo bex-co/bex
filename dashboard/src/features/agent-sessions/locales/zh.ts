@@ -90,6 +90,39 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "已取消",
     description: "Agent session phase chip — session was canceled",
   },
+  "agentSessions.phase.hibernating": {
+    message: "休眠中",
+    description: "Agent session phase chip — snapshot upload in progress",
+  },
+  "agentSessions.phase.hibernated": {
+    message: "已休眠",
+    description: "Agent session phase chip — reclaimed to a durable snapshot",
+  },
+  // --- Hibernation (ADR059 D5/D6) ---
+  "agentSessions.pin": {
+    message: "固定",
+    description: "Button — pin a hibernated session so it never expires",
+  },
+  "agentSessions.unpin": {
+    message: "取消固定",
+    description: "Button — remove a session's never-expire pin",
+  },
+  "agentSessions.pinned": {
+    message: "已固定",
+    description: "Badge — this session is pinned (never expires)",
+  },
+  "agentSessions.pinSuccess": {
+    message: "已固定 —— 此工作区不会过期。",
+    description: "Toast — pin succeeded",
+  },
+  "agentSessions.unpinSuccess": {
+    message: "已取消固定 —— 此工作区重新进入保留倒计时。",
+    description: "Toast — unpin succeeded",
+  },
+  "agentSessions.hibernatedStorage": {
+    message: "已休眠 · {size}",
+    description: "Meta — hibernated state with snapshot storage size",
+  },
   // --- Composer (prompt box) ---
   "agentSessions.promptHeading": {
     message: "让智能体做点什么？",

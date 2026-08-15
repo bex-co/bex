@@ -92,6 +92,32 @@ async function detectBaseBranch(cwd: string, fallback: string): Promise<string> 
   }
 }
 
+// restoreWorkspace hydrates the workspace from a hibernation snapshot (ADR059
+// D4) before the setup clone: it streams the presigned GET URL through tar,
+// restoring `/workspace` (+ `~/.zed_server`) with the working tree — uncommitted
+// edits and installed dependencies — intact, so ensureRepo then leaves the
+// pre-populated repo alone. The URL is passed via env (never argv/ps) so it is
+// not visible in process listings; it carries no durable credential. A restore
+// failure is fatal to setup on purpose: silently falling back to a clean clone
+// would lose the user's uncommitted work without a signal.
+export async function restoreWorkspace(
+  config: { restoreUrl: string },
+  destRoot = "/",
+): Promise<void> {
+  if (!config.restoreUrl) return;
+  await run(
+    "/bin/sh",
+    ["-c", 'curl -sf "$BEX_RESTORE_URL" | tar xzf - -C "$BEX_RESTORE_DEST"'],
+    {
+      env: {
+        ...process.env,
+        BEX_RESTORE_URL: config.restoreUrl,
+        BEX_RESTORE_DEST: destRoot,
+      },
+    },
+  );
+}
+
 // ensureRepo makes the workspace a checkout of the session branch. A pre-cloned
 // workspace is left alone; an empty one is cloned and switched to the branch
 // (created from the default when it does not exist remotely). The remote is the

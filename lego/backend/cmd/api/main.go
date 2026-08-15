@@ -399,6 +399,22 @@ func main() {
 	// uncapped).
 	deps.AgentSandboxIdleTTL = zeroableDurationEnv("BEX_AGENT_SANDBOX_IDLE_TTL", 30*time.Minute)
 	deps.AgentMaxLiveSandboxesPerWorkspace = zeroableIntEnv("BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE", 5)
+	// ADR059 D3/D5 hibernation (w2/m68): the object store enables the Hibernated
+	// tier (reclaim → snapshot, resume → rehydrate). Unset ⇒ the whole tier is off
+	// and reclaim stays Terminate (byte-identical to w2/m67).
+	if store := agentsessions.NewS3SnapshotStore(agentsessions.S3SnapshotConfig{
+		Endpoint:  os.Getenv("BEX_AGENT_SNAPSHOT_S3_ENDPOINT"),
+		Bucket:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_BUCKET"),
+		Region:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_REGION"),
+		Prefix:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_PREFIX"),
+		AccessKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_ACCESS_KEY"),
+		SecretKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_SECRET_KEY"),
+	}); store != nil {
+		deps.AgentSnapshotStore = store
+		log.Printf("bex-api: agent-session hibernation enabled (object store %s)", os.Getenv("BEX_AGENT_SNAPSHOT_S3_BUCKET"))
+	}
+	deps.AgentSnapshotRetentionTTL = zeroableDurationEnv("BEX_AGENT_SNAPSHOT_RETENTION", 7*24*time.Hour)
+	deps.AgentMaxPinnedSandboxesPerWorkspace = zeroableIntEnv("BEX_AGENT_MAX_PINNED_SANDBOXES_PER_WORKSPACE", 10)
 
 	srv := api.NewServer(base, deps)
 	// Membership rows and exact OpenFGA roles are joined by a transactional

@@ -102,6 +102,17 @@ type Completer struct {
 	// BEX_AGENT_SANDBOX_IDLE_TTL (main.go default 30m); the zero value here keeps
 	// tests on the pre-m67 behavior so the ADR054 D6 suite is unchanged.
 	IdleTTL time.Duration
+
+	// Snapshots, when set (BEX_AGENT_SNAPSHOT_S3_* wired), turns the reclaim
+	// action from Terminate into ADR059 D3 hibernation: the idle sandbox's mutable
+	// state is snapshotted to object storage and the row moves to `hibernated`
+	// instead of being torn down. nil ⇒ reclaim = Terminate, byte-identical to
+	// w2/m67 (the safe default).
+	Snapshots SnapshotStore
+	// RetentionTTL is the ADR059 D5 hibernation retention window: an unpinned
+	// hibernated session is deleted this long after it hibernated. 0 ⇒ the 7d
+	// default when hibernation is enabled.
+	RetentionTTL time.Duration
 }
 
 func (c *Completer) idleTTL() time.Duration {
@@ -109,6 +120,34 @@ func (c *Completer) idleTTL() time.Duration {
 		return c.IdleTTL
 	}
 	return 0
+}
+
+// defaultRetentionTTL is the ADR059 D5 hibernation retention window.
+const defaultRetentionTTL = 7 * 24 * time.Hour
+
+func (c *Completer) retentionTTL() time.Duration {
+	if c.RetentionTTL > 0 {
+		return c.RetentionTTL
+	}
+	return defaultRetentionTTL
+}
+
+// retentionWindow is the retention duration for a freshly hibernated session:
+// the base window, doubled when the git tree was dirty at hibernation so a user
+// with uncommitted work gets longer to come back before the snapshot is deleted
+// (ADR059 D5 dirty-git extension).
+func (c *Completer) retentionWindow(dirtyGit bool) time.Duration {
+	base := c.retentionTTL()
+	if dirtyGit {
+		return 2 * base
+	}
+	return base
+}
+
+// hibernationEnabled reports whether the reclaim action is hibernate (ADR059 D3)
+// rather than the default Terminate reap (w2/m67).
+func (c *Completer) hibernationEnabled() bool {
+	return c.Snapshots != nil
 }
 
 // transcriptQuota is the per-session cumulative transcript byte cap the
@@ -183,6 +222,35 @@ func (c *Completer) Reconcile(ctx context.Context) {
 		c.finalize(ctx, row)
 	}
 	c.reapIdleSandboxes(ctx)
+	c.sweepExpiredHibernations(ctx)
+}
+
+// sweepExpiredHibernations deletes the snapshots + finalizes the rows of
+// unpinned hibernated sessions past their retention deadline (ADR059 D5). It is
+// a no-op unless hibernation is enabled. The snapshot object is deleted first;
+// only on a successful delete is the row expired, so a failed object delete
+// retries next tick rather than orphaning the blob. Pinned rows never appear in
+// the store's retention list, so pinning alone removes the delete edge.
+func (c *Completer) sweepExpiredHibernations(ctx context.Context) {
+	if !c.hibernationEnabled() {
+		return
+	}
+	rows, err := c.Store.ListHibernatedForRetention(ctx, c.now(), 0)
+	if err != nil {
+		log.Printf("agent-session completer: list expired hibernations failed: %v", err)
+		return
+	}
+	for _, row := range rows {
+		if err := c.Snapshots.Delete(ctx, row.SnapshotRef); err != nil {
+			log.Printf("agent-session completer: delete expired snapshot failed (session=%s ref=%s): %v", row.ID, row.SnapshotRef, err)
+			continue // retry next tick; don't expire the row while the blob survives
+		}
+		if _, err := c.Store.ExpireHibernatedAgentSession(ctx, row.ID, row.SnapshotRef); err != nil {
+			log.Printf("agent-session completer: expire hibernated row failed (session=%s): %v", row.ID, err)
+			continue
+		}
+		log.Printf("agent-session completer: retention-expired hibernated session=%s ref=%s", row.ID, row.SnapshotRef)
+	}
 }
 
 // reapIdleSandboxes tears down the sandboxes of already-finished sessions once
@@ -361,9 +429,89 @@ func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 		log.Printf("agent-session completer: deferring teardown, idle grace not elapsed (session=%s)", record.ID)
 		return
 	}
+	c.reclaim(ctx, record)
+}
+
+// reclaim releases an idle finished session's compute. With hibernation enabled
+// (ADR059 D3) it snapshots the mutable state to object storage and moves the row
+// to `hibernated`, preserving resumability at storage cost; otherwise — or on
+// ANY hibernation failure — it falls back to the w2/m67 Terminate reap, so a
+// broken snapshot store never strands a sandbox or loses the reclaim. The two
+// paths are byte-identical when Snapshots is nil.
+func (c *Completer) reclaim(ctx context.Context, record store.AgentSession) {
+	if c.hibernationEnabled() {
+		if c.hibernate(ctx, record) {
+			return // hibernated; the pod is gone and the row holds the snapshot
+		}
+		log.Printf("agent-session completer: hibernation failed, falling back to terminate (session=%s)", record.ID)
+	}
+	c.terminate(ctx, record)
+}
+
+// terminate is the w2/m67 reap: tear the pod down and drop the sandbox id.
+func (c *Completer) terminate(ctx context.Context, record store.AgentSession) {
 	_ = c.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID)
 	if err := c.Store.ClearAgentSessionSandbox(ctx, record.ID); err != nil {
 		log.Printf("agent-session completer: clear sandbox id failed (session=%s): %v", record.ID, err)
+	}
+}
+
+// hibernate runs the ADR059 D3 reclaim: claim the row (CAS to `hibernating`),
+// mint a presigned upload URL, snapshot+terminate the sandbox, then record the
+// durable snapshot (ref/size/digest) and move the row to `hibernated` with a
+// retention deadline. Returns true only when the row is durably hibernated; any
+// failure returns false (and un-claims where safe) so the caller falls back to
+// Terminate. Idempotent per tick — a lost claim (concurrent Cancel/Resume) just
+// returns false.
+func (c *Completer) hibernate(ctx context.Context, record store.AgentSession) bool {
+	claimed, err := c.Store.ClaimAgentSessionForHibernation(ctx, record.ID)
+	if err != nil {
+		if !errors.Is(err, store.ErrNotFound) {
+			log.Printf("agent-session completer: hibernation claim failed (session=%s): %v", record.ID, err)
+		}
+		return false // lost the claim (cancel/resume raced) or transient — don't terminate blind
+	}
+	ref, putURL, err := c.Snapshots.PrepareUpload(ctx, claimed.WorkspaceID, claimed.ID)
+	if err != nil {
+		log.Printf("agent-session completer: presign upload failed (session=%s): %v", claimed.ID, err)
+		c.unclaimHibernation(ctx, claimed, record.Phase)
+		return false
+	}
+	snap, err := c.Sandbox.HibernateAgentSessionSandbox(ctx, claimed.WorkspaceID, claimed.ID, claimed.SandboxID, putURL)
+	if err != nil {
+		log.Printf("agent-session completer: snapshot exec failed (session=%s): %v", claimed.ID, err)
+		_ = c.Snapshots.Delete(ctx, ref) // best-effort: drop a partial upload
+		c.unclaimHibernation(ctx, claimed, record.Phase)
+		return false
+	}
+	// The snapshot is durable in object storage AND the pod is still alive. Record
+	// it on the row FIRST (keeping sandbox_id), so a crash here leaves a live pod
+	// for the fallback reap — never a stranded row with a lost pod handle. A dirty
+	// git tree (uncommitted work) extends the retention window (ADR059 D5).
+	retainUntil := c.now().Add(c.retentionWindow(snap.DirtyGit))
+	if _, err := c.Store.HibernateAgentSession(ctx, claimed.ID, ref, snap.Bytes, snap.SHA256, retainUntil); err != nil {
+		log.Printf("agent-session completer: hibernate row write failed (session=%s ref=%s): %v", claimed.ID, ref, err)
+		_ = c.Snapshots.Delete(ctx, ref) // orphaned blob; the pod stays for the fallback
+		c.unclaimHibernation(ctx, claimed, record.Phase)
+		return false
+	}
+	// Durable + hibernated. Terminate the now-idle pod and drop its id. A terminate
+	// failure leaves a lingering pod (OpenSandbox GCs it on its own timeout) but the
+	// row is already correct — never a double-billed *stranded* row.
+	_ = c.Sandbox.CancelAgentSessionSandbox(ctx, claimed.WorkspaceID, claimed.ID, claimed.SandboxID)
+	if err := c.Store.ClearAgentSessionSandbox(ctx, claimed.ID); err != nil {
+		log.Printf("agent-session completer: clear sandbox id after hibernate failed (session=%s): %v", claimed.ID, err)
+	}
+	log.Printf("agent-session completer: hibernated session=%s ref=%s bytes=%d dirty=%v", claimed.ID, ref, snap.Bytes, snap.DirtyGit)
+	return true
+}
+
+// unclaimHibernation returns a claimed row (now `hibernating`) to its original
+// terminal phase so the fallback Terminate — or a later retry — proceeds. A
+// failure is only logged (the reaper retries next tick).
+func (c *Completer) unclaimHibernation(ctx context.Context, claimed store.AgentSession, originalPhase string) {
+	if _, err := c.Store.FinalizeAgentSession(ctx, claimed.ID, originalPhase, "", "", 0, nil, claimed.FailureReason); err != nil {
+		log.Printf("agent-session completer: unclaim hibernation failed (session=%s): %v", claimed.ID, err)
 	}
 }
 

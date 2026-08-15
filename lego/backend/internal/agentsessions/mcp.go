@@ -75,6 +75,16 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.Cancel(ctx, in.ID)
 			return nil, out, core.MCPError(err)
 		})
+	mcp.AddTool(server, &mcp.Tool{Name: "pin_agent_session", Description: "Pin a cloud coding-agent session so its hibernated workspace never expires (still billed for snapshot storage and counted against the workspace pin quota)."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
+			out, err := s.Pin(ctx, in.ID)
+			return nil, out, core.MCPError(err)
+		})
+	mcp.AddTool(server, &mcp.Tool{Name: "unpin_agent_session", Description: "Remove a cloud coding-agent session's never-expire pin, putting its hibernated workspace back on the retention clock."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
+			out, err := s.Unpin(ctx, in.ID)
+			return nil, out, core.MCPError(err)
+		})
 	mcp.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in steerArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, EgressAllowlist: in.EgressAllowlist})

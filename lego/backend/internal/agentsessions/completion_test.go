@@ -27,6 +27,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -490,6 +491,117 @@ func TestCompleterIdleGraceMeasuredFromLastSSHDisconnect(t *testing.T) {
 		t.Fatalf("not reaped 31m after the last disconnect (canceled=%d)", lc.canceled)
 	}
 }
+
+// --- ADR059 D3/D5: hibernation reclaim + retention ---------------------------
+
+// With hibernation enabled, an idle finished session is reclaimed to an
+// object-storage snapshot (phase → hibernated, snapshot ref + size recorded, pod
+// terminated) instead of being torn down.
+func TestCompleterHibernatesIdleSessionWhenEnabled(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	snaps := newFakeSnapshots()
+	c.Snapshots = snaps
+	c.RetentionTTL = 7 * 24 * time.Hour
+	base := st.now
+	c.Now = func() time.Time { return base }
+
+	c.Reconcile(context.Background())
+
+	row := st.rows[id]
+	if row.Phase != PhaseHibernated {
+		t.Fatalf("session not hibernated, phase=%s", row.Phase)
+	}
+	if row.SnapshotRef == "" || row.SnapshotBytes == 0 {
+		t.Fatalf("snapshot not recorded: ref=%q bytes=%d", row.SnapshotRef, row.SnapshotBytes)
+	}
+	if row.SandboxID != "" {
+		t.Fatalf("sandbox id not cleared after hibernate: %q", row.SandboxID)
+	}
+	if lc.hibernated != 1 || lc.canceled != 1 {
+		t.Fatalf("expected 1 snapshot + 1 terminate, got hibernated=%d canceled=%d", lc.hibernated, lc.canceled)
+	}
+	if lc.lastPutURL == "" {
+		t.Fatal("presigned PUT URL was not threaded to the sandbox")
+	}
+	if row.RetainUntil == nil || !row.RetainUntil.Equal(base.Add(7*24*time.Hour)) {
+		t.Fatalf("retain_until = %v, want base+7d", row.RetainUntil)
+	}
+}
+
+// A dirty git tree at hibernation doubles the retention window so unpushed work
+// survives longer (ADR059 D5 dirty-git extension).
+func TestCompleterDirtyGitExtendsRetention(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	c.Snapshots = newFakeSnapshots()
+	c.RetentionTTL = 24 * time.Hour
+	lc.snapshot = sandbox.SnapshotResult{Bytes: 2048, SHA256: shaStub(), DirtyGit: true}
+	base := st.now
+	c.Now = func() time.Time { return base }
+
+	c.Reconcile(context.Background())
+
+	row := st.rows[id]
+	if row.RetainUntil == nil || !row.RetainUntil.Equal(base.Add(48*time.Hour)) {
+		t.Fatalf("dirty retain_until = %v, want base+48h (2x)", row.RetainUntil)
+	}
+}
+
+// A snapshot failure must not strand the sandbox: hibernation falls back to the
+// plain Terminate reap and the row stays terminal (not hibernated).
+func TestCompleterHibernationFailureFallsBackToTerminate(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	snaps := newFakeSnapshots()
+	c.Snapshots = snaps
+	lc.hibernateErr = errors.New("curl upload failed")
+
+	c.Reconcile(context.Background())
+
+	row := st.rows[id]
+	if row.Phase != PhaseCompleted {
+		t.Fatalf("failed hibernation should leave the row terminal, phase=%s", row.Phase)
+	}
+	if row.SandboxID != "" {
+		t.Fatalf("sandbox not reaped on hibernation fallback: %q", row.SandboxID)
+	}
+	if lc.canceled != 1 {
+		t.Fatalf("fallback terminate did not run (canceled=%d)", lc.canceled)
+	}
+	if len(snaps.deleted) != 1 {
+		t.Fatalf("partial upload not cleaned up (deleted=%v)", snaps.deleted)
+	}
+}
+
+// The retention sweep deletes the snapshot + expires the row of an unpinned
+// hibernated session past its deadline, and never touches a pinned one.
+func TestCompleterRetentionSweepExpiresUnpinnedOnly(t *testing.T) {
+	c, st, _, _, id := completerFixture(succeededStatus(true), nil)
+	snaps := newFakeSnapshots()
+	c.Snapshots = snaps
+	base := st.now
+	c.Now = func() time.Time { return base }
+
+	// Seed an expired unpinned hibernated row and a pinned one past the deadline.
+	past := base.Add(-time.Hour)
+	st.rows[id] = store.AgentSession{ID: id, WorkspaceID: "tea-a", Phase: PhaseHibernated,
+		SnapshotRef: "agent-snapshots/tea-a/one.tgz", SnapshotBytes: 10, RetainUntil: &past}
+	pinnedID := "ags-pinned0000000000000"
+	st.rows[pinnedID] = store.AgentSession{ID: pinnedID, WorkspaceID: "tea-a", Phase: PhaseHibernated,
+		SnapshotRef: "agent-snapshots/tea-a/pinned.tgz", SnapshotBytes: 20, Pinned: true}
+
+	c.Reconcile(context.Background())
+
+	if st.rows[id].Phase != PhaseCanceled || st.rows[id].SnapshotRef != "" {
+		t.Fatalf("expired row not reclaimed: phase=%s ref=%q", st.rows[id].Phase, st.rows[id].SnapshotRef)
+	}
+	if len(snaps.deleted) != 1 || snaps.deleted[0] != "agent-snapshots/tea-a/one.tgz" {
+		t.Fatalf("wrong snapshot deleted: %v", snaps.deleted)
+	}
+	if st.rows[pinnedID].Phase != PhaseHibernated {
+		t.Fatalf("pinned row was reclaimed (phase=%s) — pin must remove the delete edge", st.rows[pinnedID].Phase)
+	}
+}
+
+func shaStub() string { return strings.Repeat("a", 64) }
 
 // An OPEN editor session pins idle at zero regardless of how far past the grace
 // the clock has moved: a live edit is never killed by the idle reaper.

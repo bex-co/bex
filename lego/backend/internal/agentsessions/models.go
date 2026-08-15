@@ -31,7 +31,15 @@ const (
 	PhaseFailed        = "failed"
 	PhaseCanceling     = "canceling"
 	PhaseCanceled      = "canceled"
+	// ADR059 D2/D3 hibernation (w2/m68): the transient snapshot-upload window and
+	// the durable pod-less state holding a snapshot ref.
+	PhaseHibernating = "hibernating"
+	PhaseHibernated  = "hibernated"
 )
+
+// DeliveryRehydrate records a turn obtained by rehydrating a hibernated session
+// from its object-storage snapshot into a fresh sandbox (ADR059 D4).
+const DeliveryRehydrate = "rehydrate"
 
 // Delivery mode records how a turn's sandbox was obtained (ADR047 D8 phase 1):
 // resume of the existing sandbox, or a re-dispatch onto a fresh sandbox+clone
@@ -170,4 +178,12 @@ type View struct {
 	Ticket     string     `json:"ticket,omitempty"`
 	URL        string     `json:"url,omitempty"`
 	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`
+	// Hibernation (ADR059 D5/D6, w2/m68). Pinned marks the never-expire tier;
+	// SnapshotBytes is the durable storage cost the tenant sees (0 while live);
+	// HibernatedAt/RetainUntil expose when it hibernated and when an unpinned
+	// snapshot will be deleted (RetainUntil nil while live or pinned).
+	Pinned        bool       `json:"pinned,omitempty"`
+	SnapshotBytes int64      `json:"snapshotBytes,omitempty"`
+	HibernatedAt  *time.Time `json:"hibernatedAt,omitempty"`
+	RetainUntil   *time.Time `json:"retainUntil,omitempty"`
 }

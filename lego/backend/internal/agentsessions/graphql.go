@@ -113,6 +113,20 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return gqlTime(*v.ExpiresAt)
 		})},
+		"pinned":        &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v View) any { return v.Pinned })},
+		"snapshotBytes": &graphql.Field{Type: graphql.Float, Resolve: gqlutil.Field(func(v View) any { return v.SnapshotBytes })},
+		"hibernatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any {
+			if v.HibernatedAt == nil {
+				return nil
+			}
+			return gqlTime(*v.HibernatedAt)
+		})},
+		"retainUntil": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any {
+			if v.RetainUntil == nil {
+				return nil
+			}
+			return gqlTime(*v.RetainUntil)
+		})},
 	},
 })
 
@@ -197,6 +211,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		"cancelAgentSession": &graphql.Field{Type: agentSessionGQLType, Args: idArg, Resolve: func(p graphql.ResolveParams) (any, error) {
 			return s.Cancel(p.Context, stringArg(p.Args, "id"))
+		}},
+		"pinAgentSession": &graphql.Field{Type: agentSessionGQLType, Args: idArg, Resolve: func(p graphql.ResolveParams) (any, error) {
+			return s.Pin(p.Context, stringArg(p.Args, "id"))
+		}},
+		"unpinAgentSession": &graphql.Field{Type: agentSessionGQLType, Args: idArg, Resolve: func(p graphql.ResolveParams) (any, error) {
+			return s.Unpin(p.Context, stringArg(p.Args, "id"))
 		}},
 	}
 }
