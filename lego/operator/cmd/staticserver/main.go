@@ -46,10 +46,14 @@ var setupLog = ctrl.Log.WithName("staticserver")
 const (
 	// Public-server timeouts bound slow-header/slow-read/idle connections so a
 	// trickle client cannot pin a goroutine + fd open on the shared single-replica
-	// server (finding 12). ReadHeaderTimeout caps slow request headers;
-	// WriteTimeout caps the response phase (generous so a large-but-legitimate
-	// asset over a slow link still completes); IdleTimeout caps keep-alive idle.
+	// server (finding 12). ReadHeaderTimeout caps slow request headers; ReadTimeout
+	// caps the whole request read (this server only ever answers GET/HEAD, so a
+	// declared-but-withheld body must not pin a goroutine on Go's unread-body
+	// drain — w4/029.md #16); WriteTimeout caps the response phase (generous so a
+	// large-but-legitimate asset over a slow link still completes); IdleTimeout
+	// caps keep-alive idle.
 	readHeaderTimeout = 10 * time.Second
+	readTimeout       = 30 * time.Second
 	writeTimeout      = 120 * time.Second
 	idleTimeout       = 120 * time.Second
 )
@@ -68,6 +72,7 @@ func newServer(addr string, handler http.Handler) *http.Server {
 		Addr:              addr,
 		Handler:           handler,
 		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,
 		IdleTimeout:       idleTimeout,
 	}

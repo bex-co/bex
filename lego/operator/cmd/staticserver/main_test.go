@@ -29,6 +29,9 @@ func TestServerTimeoutsConfigured(t *testing.T) {
 	if srv.ReadHeaderTimeout <= 0 {
 		t.Errorf("ReadHeaderTimeout = %v, want > 0", srv.ReadHeaderTimeout)
 	}
+	if srv.ReadTimeout <= 0 {
+		t.Errorf("ReadTimeout = %v, want > 0", srv.ReadTimeout)
+	}
 	if srv.WriteTimeout <= 0 {
 		t.Errorf("WriteTimeout = %v, want > 0", srv.WriteTimeout)
 	}

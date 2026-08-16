@@ -298,6 +298,17 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 		return core.ErrRegistryCredentialsUnavailable
 	}
 	workspaceID := s.WorkspaceOrDefault(ctx)
+	cred, err := s.Store.GetRegistryCredential(ctx, workspaceID, id)
+	if err != nil {
+		return mapStoreErr(err)
+	}
+	if app, bound, err := s.appBoundToCredential(ctx, workspaceID, cred); err != nil {
+		return fmt.Errorf("checking registry credential %q for App bindings: %w", id, err)
+	} else if bound {
+		return core.NewConflictError("REGISTRY_CREDENTIAL_IN_USE",
+			fmt.Sprintf("registry credential %q is still used by service %q; remove it from the service first", id, app),
+			map[string]any{"appName": app})
+	}
 	if err := s.Store.DeleteRegistryCredential(ctx, workspaceID, id); err != nil {
 		return mapStoreErr(err)
 	}

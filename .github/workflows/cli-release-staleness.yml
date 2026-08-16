@@ -1,0 +1,59 @@
+name: CLI release staleness
+
+# w4/032.md piece 1: releasing the CLI depends on this reminder, not on
+# memory. Weekly, compares the latest bex-cli/v* tag against commits touching
+# cli/**, scripts/bex-cli-*, scripts/install-bex*, or this workflow's own
+# release workflow — opening/updating a tracking issue when a release is
+# owed, and closing it once /release catches the repo back up.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 7 * * 1"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  staleness:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Check CLI release staleness
+        id: check
+        run: |
+          if scripts/cli-release-staleness.sh > staleness.txt; then
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat staleness.txt
+      - name: Open or update the tracking issue
+        if: steps.check.outputs.stale == 'true'
+        run: |
+          gh label create cli-release-stale --repo "$GITHUB_REPOSITORY" \
+            --color FBCA04 --description "The CLI has unreleased commits (w4/032.md)" --force
+          body="$(cat staleness.txt)"
+          body+=$'\n\nRun `/release cli` to cut a release and close this out.'
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label cli-release-stale --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "CLI release is stale" \
+              --label cli-release-stale \
+              --body "$body"
+          fi
+      - name: Close the tracking issue once caught up
+        if: steps.check.outputs.stale == 'false'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label cli-release-stale --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "The CLI is caught up with the latest \`bex-cli/v*\` tag."
+          fi

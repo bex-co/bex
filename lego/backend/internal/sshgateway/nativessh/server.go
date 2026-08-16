@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/netip"
 	"sync"
 	"time"
 
@@ -37,6 +38,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/proxyproto"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -101,6 +103,15 @@ type Server struct {
 	// default (sshgateway.DefaultRevalidateInterval); negative disables the
 	// watchdog (the pre-round-9 admission-only behavior).
 	RevalidateInterval time.Duration
+
+	// TrustedProxies lists the immediate peers (Traefik's pod network) allowed
+	// to assert a PROXY protocol v1/v2 original-client address on the ssh
+	// entrypoint's forwarded connection. Empty (the default) leaves every
+	// connection's RemoteAddr as the immediate TCP peer, unchanged — the same
+	// gap w4/029.md #10 reported (ssh_sessions.remote_address recording
+	// Traefik's own pod IP). Set it once lego/operator/config/ssh/
+	// ingressroutetcp.yaml's service carries proxyProtocol.
+	TrustedProxies []netip.Prefix
 }
 
 func (s *Server) defaults() {
@@ -239,7 +250,12 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.ServerConfig, releasePreAuth func()) error {
 	defer raw.Close()
 	_ = raw.SetDeadline(time.Now().Add(s.HandshakeTimeout))
-	conn, channels, requests, err := ssh.NewServerConn(raw, config)
+	transport, err := proxyproto.Wrap(raw, s.TrustedProxies)
+	if err != nil {
+		releasePreAuth()
+		return err
+	}
+	conn, channels, requests, err := ssh.NewServerConn(transport, config)
 	if err != nil {
 		releasePreAuth()
 		return err
