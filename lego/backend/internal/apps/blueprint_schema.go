@@ -305,13 +305,18 @@ func collectRenderSchemaVocabulary(node any, path []string, fields map[string]st
 	}
 }
 
+// blueprintPointerEscaper is the RFC 6901 token escaper. It is package-level
+// because renderSchemaPointer runs twice per YAML node walked, and the walk
+// admits up to blueprintMaxNodes of them per Blueprint parse.
+var blueprintPointerEscaper = strings.NewReplacer("~", "~0", "/", "~1")
+
 func renderSchemaPointer(parts []string) string {
 	if len(parts) == 0 {
 		return "#"
 	}
 	escaped := make([]string, len(parts))
 	for i, part := range parts {
-		escaped[i] = strings.NewReplacer("~", "~0", "/", "~1").Replace(part)
+		escaped[i] = blueprintPointerEscaper.Replace(part)
 	}
 	return "#/" + strings.Join(escaped, "/")
 }

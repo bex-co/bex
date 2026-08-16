@@ -155,10 +155,10 @@ func (o *OpenSandbox) WaitState(ctx context.Context, id string, want []string, t
 		if err == nil {
 			var s sandbox
 			if json.Unmarshal(data, &s) == nil {
-				if contains(want, s.Status.State) {
+				if slices.Contains(want, s.Status.State) {
 					return nil
 				}
-				if contains(failedStates, s.Status.State) {
+				if slices.Contains(failedStates, s.Status.State) {
 					return fmt.Errorf("sandbox %s -> %s: %s", id, s.Status.State, s.Status.Message)
 				}
 			}
@@ -218,8 +218,4 @@ func (o *OpenSandbox) Resume(ctx context.Context, id string, port int) (Target, 
 func (o *OpenSandbox) Delete(ctx context.Context, id string) error {
 	_, _, err := o.do(ctx, http.MethodDelete, "/sandboxes/"+id, nil)
 	return err
-}
-
-func contains(s []string, v string) bool {
-	return slices.Contains(s, v)
 }

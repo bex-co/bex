@@ -30,116 +30,70 @@ import (
 
 // RegisterREST mounts the notification-settings endpoints on the shared mux.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	mux.HandleFunc("GET /v1/notifications", func(w http.ResponseWriter, r *http.Request) {
-		limit := defaultNotificationInboxLimit
-		if r.URL.Query().Has("limit") {
-			var err error
-			limit, err = strconv.Atoi(r.URL.Query().Get("limit"))
-			if err != nil || limit < 1 || limit > maxNotificationInboxLimit {
-				core.WriteErr(w, core.ErrBadRequest)
-				return
-			}
-		}
-		items, err := s.ListNotificationInbox(r.Context(), limit)
+	mux.HandleFunc("GET /v1/notifications", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		limit, err := inboxLimit(r)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, items)
-	})
-	mux.HandleFunc("POST /v1/notifications/{id}/read", func(w http.ResponseWriter, r *http.Request) {
+		return s.ListNotificationInbox(r.Context(), limit)
+	}))
+	mux.HandleFunc("POST /v1/notifications/{id}/read", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		read, err := s.MarkPushNotificationRead(r.Context(), r.PathValue("id"))
+		return map[string]bool{"read": read}, err
+	}))
+	mux.HandleFunc("GET /v1/notification-settings", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.GetSettings(r.Context())
+	}))
+	mux.HandleFunc("PATCH /v1/notification-settings", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		req, err := core.DecodeBody[SettingsView](r)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, map[string]bool{"read": read})
-	})
-	mux.HandleFunc("GET /v1/notification-settings", func(w http.ResponseWriter, r *http.Request) {
-		v, err := s.GetSettings(r.Context())
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, v)
-	})
-	mux.HandleFunc("PATCH /v1/notification-settings", func(w http.ResponseWriter, r *http.Request) {
-		var req SettingsView
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		v, err := s.UpdateSettings(r.Context(), req.DeployStarted, req.DeploySucceeded, req.DeployFailed)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, v)
-	})
-	mux.HandleFunc("GET /v1/notification-settings/push", func(w http.ResponseWriter, r *http.Request) {
-		v, err := s.GetPushSettings(r.Context())
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, v)
-	})
-	mux.HandleFunc("GET /v1/notification-settings/push/availability", func(w http.ResponseWriter, r *http.Request) {
+		return s.UpdateSettings(r.Context(), req.DeployStarted, req.DeploySucceeded, req.DeployFailed)
+	}))
+	mux.HandleFunc("GET /v1/notification-settings/push", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.GetPushSettings(r.Context())
+	}))
+	mux.HandleFunc("GET /v1/notification-settings/push/availability", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		available, err := s.IsPushAvailable(r.Context())
+		return map[string]bool{"available": available}, err
+	}))
+	mux.HandleFunc("PATCH /v1/notification-settings/push", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		req, err := core.DecodeBody[PushSettingsView](r)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, map[string]bool{"available": available})
-	})
-	mux.HandleFunc("PATCH /v1/notification-settings/push", func(w http.ResponseWriter, r *http.Request) {
-		var req PushSettingsView
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		v, err := s.UpdatePushSettings(r.Context(), req)
+		return s.UpdatePushSettings(r.Context(), req)
+	}))
+	mux.HandleFunc("GET /v1/notification-device-subscriptions", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.ListDeviceSubscriptions(r.Context())
+	}))
+	mux.HandleFunc("POST /v1/notification-device-subscriptions", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+		req, err := core.DecodeBody[RegisterDeviceInput](r)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, v)
-	})
-	mux.HandleFunc("GET /v1/notification-device-subscriptions", func(w http.ResponseWriter, r *http.Request) {
-		v, err := s.ListDeviceSubscriptions(r.Context())
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, v)
-	})
-	mux.HandleFunc("POST /v1/notification-device-subscriptions", func(w http.ResponseWriter, r *http.Request) {
-		var req RegisterDeviceInput
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		v, err := s.RegisterDeviceSubscription(r.Context(), req)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusCreated, v)
-	})
-	mux.HandleFunc("DELETE /v1/notification-device-subscriptions", func(w http.ResponseWriter, r *http.Request) {
+		return s.RegisterDeviceSubscription(r.Context(), req)
+	}))
+	mux.HandleFunc("DELETE /v1/notification-device-subscriptions", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		count, err := s.RevokeDeviceSubscriptions(r.Context())
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, map[string]int64{"revoked": count})
-	})
-	mux.HandleFunc("DELETE /v1/notification-device-subscriptions/{deviceId}", func(w http.ResponseWriter, r *http.Request) {
+		return map[string]int64{"revoked": count}, err
+	}))
+	mux.HandleFunc("DELETE /v1/notification-device-subscriptions/{deviceId}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		changed, err := s.UnregisterDeviceSubscription(r.Context(), r.PathValue("deviceId"))
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, map[string]bool{"revoked": changed})
-	})
+		return map[string]bool{"revoked": changed}, err
+	}))
+}
+
+// inboxLimit reads the optional inbox page size, rejecting anything outside the
+// supported range rather than silently clamping.
+func inboxLimit(r *http.Request) (int, error) {
+	if !r.URL.Query().Has("limit") {
+		return defaultNotificationInboxLimit, nil
+	}
+	limit, err := strconv.Atoi(r.URL.Query().Get("limit"))
+	if err != nil || limit < 1 || limit > maxNotificationInboxLimit {
+		return 0, core.ErrBadRequest
+	}
+	return limit, nil
 }

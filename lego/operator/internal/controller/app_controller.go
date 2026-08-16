@@ -463,17 +463,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	if app.Spec.Repo == "" {
 		return halt(r.fail(ctx, app, "BadSpec", fmt.Errorf("one of spec.image or spec.repo is required")))
 	}
-	ref := app.Spec.Branch
-	if ref == "" {
-		ref = appv1alpha1.DefaultBranch
-	}
-	// A commitId override from the deploy API (spec.BuildCommit) takes
-	// precedence over the tracked branch for this single build. The next
-	// trigger without a commitId resets BuildCommit to "" via the API patch,
-	// so Branch HEAD is the default for every subsequent deploy.
-	if app.Spec.BuildCommit != "" {
-		ref = app.Spec.BuildCommit
-	}
+	ref := effectiveDeployRef(app.Spec)
 	// Tag by release generation: a deploy trigger (including a webhook redeploy
 	// that stamps spec.restartedAt) yields a new tag, while an operational spec
 	// generation retains the current tag/artifact.
@@ -724,6 +714,23 @@ func effectiveBuilder(spec appv1alpha1.AppSpec) string {
 	default:
 		return spec.Builder
 	}
+}
+
+// effectiveDeployRef is the git ref a source clone checks out: the tracked
+// branch, overridden for one build by a commitId from the deploy API
+// (spec.BuildCommit). The next trigger without a commitId resets BuildCommit to
+// "" via the API patch, so Branch HEAD is the default for every subsequent
+// deploy. Both the build path and the static-site direct publish resolve
+// through here — they are required to agree, and drifted while they were two
+// copies.
+func effectiveDeployRef(spec appv1alpha1.AppSpec) string {
+	if spec.BuildCommit != "" {
+		return spec.BuildCommit
+	}
+	if spec.Branch == "" {
+		return appv1alpha1.DefaultBranch
+	}
+	return spec.Branch
 }
 
 // buildEnv selects literal App.spec.env entries for the active source builder.
@@ -2135,14 +2142,9 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 		}
 		if image == "" {
 			// Direct publish (w9/010): no build ran — the publish Job clones the
-			// repo and uploads rootDir/publishPath as-is. Same ref selection as
-			// the build path (branch, with a one-shot commit override).
-			ref := app.Spec.Branch
-			if app.Spec.BuildCommit != "" {
-				ref = app.Spec.BuildCommit
-			}
+			// repo and uploads rootDir/publishPath as-is.
 			opts.Repo = app.Spec.Repo
-			opts.Ref = ref
+			opts.Ref = effectiveDeployRef(app.Spec)
 			opts.RootDir = app.Spec.RootDir
 			opts.CloneSecret = app.Spec.CloneSecret
 			opts.PullSecret = "" // clone mode pulls only public platform images

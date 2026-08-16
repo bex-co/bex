@@ -17,6 +17,7 @@ limitations under the License.
 package secrets
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -68,131 +69,87 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	const base = "/v1/services"
 	// Bex's coherent environment-save extension. Existing Render-compatible
 	// env-var and secret-file routes below retain their immediate-roll behavior.
-	mux.HandleFunc("PATCH "+base+"/{id}/environment", func(w http.ResponseWriter, r *http.Request) {
-		var in EnvironmentPatch
-		if err := core.DecodeJSON(r, &in); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		result, err := s.PatchEnvironment(r.Context(), r.PathValue("id"), in)
+	mux.HandleFunc("PATCH "+base+"/{id}/environment", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		in, err := core.DecodeBody[EnvironmentPatch](r)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, result)
-	})
+		return s.PatchEnvironment(r.Context(), r.PathValue("id"), in)
+	}))
 
-	mux.HandleFunc("GET "+base+"/{id}/env-vars", func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
-		var vars []EnvVarView
-		var err error
-		if q.Has("cursor") || q.Has("limit") {
-			after, limit := core.PageParams(q)
-			vars, err = s.ListEnvVarsPage(r.Context(), r.PathValue("id"), after, limit)
-		} else {
-			// Compatibility with the pre-pagination endpoint: callers that omit
-			// both parameters still receive the complete list.
-			vars, err = s.ListEnvVars(r.Context(), r.PathValue("id"))
-		}
+	mux.HandleFunc("GET "+base+"/{id}/env-vars", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		vars, err := listPagedOrAll(r, s.ListEnvVarsPage, s.ListEnvVars)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, toEnvVarList(vars))
-	})
-	mux.HandleFunc("PUT "+base+"/{id}/env-vars", func(w http.ResponseWriter, r *http.Request) {
-		var in []EnvVarView
-		if err := core.DecodeJSON(r, &in); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
+		return toEnvVarList(vars), nil
+	}))
+	mux.HandleFunc("PUT "+base+"/{id}/env-vars", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		in, err := core.DecodeBody[[]EnvVarView](r)
+		if err != nil {
+			return nil, err
 		}
 		vars, err := s.SetEnvVars(r.Context(), r.PathValue("id"), in)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, toEnvVarList(vars))
-	})
-	mux.HandleFunc("GET "+base+"/{id}/env-vars/{key}", func(w http.ResponseWriter, r *http.Request) {
-		v, err := s.GetEnvVar(r.Context(), r.PathValue("id"), r.PathValue("key"))
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, v) // Render: bare {key,value}, no cursor envelope
-	})
-	mux.HandleFunc("PUT "+base+"/{id}/env-vars/{key}", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
+		return toEnvVarList(vars), nil
+	}))
+	// Render: bare {key,value}, no cursor envelope.
+	mux.HandleFunc("GET "+base+"/{id}/env-vars/{key}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.GetEnvVar(r.Context(), r.PathValue("id"), r.PathValue("key"))
+	}))
+	mux.HandleFunc("PUT "+base+"/{id}/env-vars/{key}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		req, err := core.DecodeBody[struct {
 			Value         string `json:"value"`
 			GenerateValue bool   `json:"generateValue"`
-		}
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		v, err := s.SetEnvVar(r.Context(), r.PathValue("id"), r.PathValue("key"), EnvVarWrite{Value: req.Value, GenerateValue: req.GenerateValue})
+		}](r)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, v)
-	})
-	mux.HandleFunc("DELETE "+base+"/{id}/env-vars/{key}", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.DeleteEnvVar(r.Context(), r.PathValue("id"), r.PathValue("key")); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent) // Render: delete => 204
-	})
+		return s.SetEnvVar(r.Context(), r.PathValue("id"), r.PathValue("key"), EnvVarWrite{Value: req.Value, GenerateValue: req.GenerateValue})
+	}))
+	// Render: delete => 204.
+	mux.HandleFunc("DELETE "+base+"/{id}/env-vars/{key}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteEnvVar(r.Context(), r.PathValue("id"), r.PathValue("key"))
+	}))
 
 	// Secret files (Render's /v1/services/{id}/secret-files) — names in the
 	// list, contents on a single GET, same store + roll mechanism as env vars.
-	mux.HandleFunc("GET "+base+"/{id}/secret-files", func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
-		var files []SecretFileView
-		var err error
-		if q.Has("cursor") || q.Has("limit") {
-			after, limit := core.PageParams(q)
-			files, err = s.ListSecretFilesPage(r.Context(), r.PathValue("id"), after, limit)
-		} else {
-			// Compatibility with the pre-pagination endpoint: callers that omit
-			// both parameters still receive the complete list.
-			files, err = s.ListSecretFiles(r.Context(), r.PathValue("id"))
-		}
+	mux.HandleFunc("GET "+base+"/{id}/secret-files", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		files, err := listPagedOrAll(r, s.ListSecretFilesPage, s.ListSecretFiles)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, toSecretFileList(files))
-	})
-	mux.HandleFunc("GET "+base+"/{id}/secret-files/{name}", func(w http.ResponseWriter, r *http.Request) {
-		f, err := s.GetSecretFile(r.Context(), r.PathValue("id"), r.PathValue("name"))
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, f) // bare {name, content}
-	})
-	mux.HandleFunc("PUT "+base+"/{id}/secret-files/{name}", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
+		return toSecretFileList(files), nil
+	}))
+	// Bare {name, content}.
+	mux.HandleFunc("GET "+base+"/{id}/secret-files/{name}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.GetSecretFile(r.Context(), r.PathValue("id"), r.PathValue("name"))
+	}))
+	mux.HandleFunc("PUT "+base+"/{id}/secret-files/{name}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		req, err := core.DecodeBody[struct {
 			Content string `json:"content"`
-		}
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErr(w, core.ErrBadRequest)
-			return
-		}
-		f, err := s.SetSecretFile(r.Context(), r.PathValue("id"), r.PathValue("name"), req.Content)
+		}](r)
 		if err != nil {
-			core.WriteErr(w, err)
-			return
+			return nil, err
 		}
-		core.WriteJSON(w, http.StatusOK, f)
-	})
-	mux.HandleFunc("DELETE "+base+"/{id}/secret-files/{name}", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.DeleteSecretFile(r.Context(), r.PathValue("id"), r.PathValue("name")); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent) // Render: delete => 204
-	})
+		return s.SetSecretFile(r.Context(), r.PathValue("id"), r.PathValue("name"), req.Content)
+	}))
+	// Render: delete => 204.
+	mux.HandleFunc("DELETE "+base+"/{id}/secret-files/{name}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteSecretFile(r.Context(), r.PathValue("id"), r.PathValue("name"))
+	}))
+}
+
+// listPagedOrAll routes a list read to its paged or unpaged verb. Callers that
+// omit both cursor and limit predate pagination and still get the complete
+// list, so the absence of the parameters — not their values — picks the verb.
+func listPagedOrAll[T any](r *http.Request, page func(context.Context, string, string, int) ([]T, error), all func(context.Context, string) ([]T, error)) ([]T, error) {
+	q := r.URL.Query()
+	if !q.Has("cursor") && !q.Has("limit") {
+		return all(r.Context(), r.PathValue("id"))
+	}
+	after, limit := core.PageParams(q)
+	return page(r.Context(), r.PathValue("id"), after, limit)
 }

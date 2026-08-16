@@ -328,7 +328,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		Status:                  status,
 		DatabaseName:            dbn,
 		DatabaseUser:            dbUser,
-		DiskSizeGB:              databaseStorageHighWater(d),
+		DiskSizeGB:              DatabaseStorageHighWater(d),
 		DiskAutoscalingEnabled:  d.Spec.DiskAutoscaling,
 		HighAvailabilityEnabled: d.Status.HighAvailabilityEnabled,
 		ReadReplicas:            replicas,
@@ -708,7 +708,11 @@ func (patch PostgresPatch) validate() error {
 	return nil
 }
 
-func databaseStorageHighWater(d *appv1alpha1.Database) int32 {
+// DatabaseStorageHighWater is the floor a storage resize may not go below: the
+// largest of the plan's included storage, the requested size, and the size
+// already allocated. Exported because the Blueprint apply path in internal/apps
+// enforces the same grow-only rule and must not drift from it.
+func DatabaseStorageHighWater(d *appv1alpha1.Database) int32 {
 	plan, ok := tiers.Postgres.ByID(d.Spec.Plan)
 	if !ok {
 		plan = tiers.Postgres.Default()
@@ -720,7 +724,7 @@ func validateDatabaseStorageResize(d *appv1alpha1.Database, requested *int32) er
 	if requested == nil {
 		return nil
 	}
-	current := databaseStorageHighWater(d)
+	current := DatabaseStorageHighWater(d)
 	if *requested < current {
 		return fmt.Errorf("%w: Postgres storage is grow-only: requested %d GB is below the allocated %d GB", core.ErrBadRequest, *requested, current)
 	}

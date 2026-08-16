@@ -248,6 +248,62 @@ func (r *Reconciler) Run(ctx context.Context) {
 	core.PollWake(ctx, "controlplane: reconcile", r.Resync, r.kick, r.ReconcileOnce)
 }
 
+// indexManagedApps keys the managed CRs by their app-id label so create /
+// update / delete matching is namespace-agnostic (the CRs are spread across
+// every `<ws>` namespace, ADR043).
+//
+// Two managed CRs sharing one id means a stray duplicate exists (see
+// core.AppInOwnWorkspaceNamespace). Index the canonical CR so spec updates and
+// status write-back target the live projection, never last-in-list order; log
+// the loser every pass (the nag is the point) — it is invisible to the caller's
+// update/delete matching and needs a manual finalizer-aware removal (its
+// name-keyed finalizer teardown would otherwise purge the LIVE twin's registry
+// repo + credentials).
+func indexManagedApps(items []appv1alpha1.App) map[string]*appv1alpha1.App {
+	byID := make(map[string]*appv1alpha1.App, len(items))
+	for i := range items {
+		id := items[i].Labels[LabelAppID]
+		if id == "" {
+			continue
+		}
+		cur, ok := byID[id]
+		if !ok {
+			byID[id] = &items[i]
+			continue
+		}
+		keep, drop := &items[i], cur
+		if core.AppInOwnWorkspaceNamespace(cur) {
+			keep, drop = cur, &items[i]
+		}
+		log.Printf("controlplane: duplicate App CRs for %s: keeping %s/%s, ignoring stray %s/%s",
+			id, keep.Namespace, keep.Name, drop.Namespace, drop.Name)
+		byID[id] = keep
+	}
+	return byID
+}
+
+// recordObservations writes back what this pass observed about one app: its
+// open deploy's completion, its debounced service state, and its autoscaling
+// facts.
+//
+// Deploy write-back (w2/m5): cur.Status still holds what this pass's List
+// observed — the caller's Update only patches spec (status is a separate
+// subresource) — so it's the right snapshot to decide the app's open deploy, if
+// any, is done.
+func (r *Reconciler) recordObservations(ctx context.Context, d DesiredApp, cur *appv1alpha1.App, open Deploy, hasOpenDeploy bool) {
+	if hasOpenDeploy {
+		r.recordDeploy(ctx, d, open, cur)
+	}
+	if r.unhealthyOnce == nil {
+		r.unhealthyOnce = make(map[string]bool)
+	}
+	obs := debounceUnhealthy(observedServiceStateFor(d.ID, cur, hasOpenDeploy), r.unhealthyOnce)
+	if _, err := r.Store.RecordObservedServiceState(ctx, obs); err != nil {
+		log.Printf("controlplane: record observed service state %s: %v", d.ID, err)
+	}
+	r.recordAutoscalingFacts(ctx, d.ID, cur.Status.Autoscaling)
+}
+
 // ReconcileOnce drives one full pass: desired rows vs. existing managed CRs →
 // create / update / delete, then copies each CR's status back to its row.
 // Per-app failures are collected, not fatal — one bad row can't block the rest.
@@ -264,31 +320,7 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 	if err := r.Client.List(ctx, &existing, client.MatchingLabels{LabelManagedBy: ManagedByValue}); err != nil {
 		return fmt.Errorf("list App CRs: %w", err)
 	}
-	byID := make(map[string]*appv1alpha1.App, len(existing.Items))
-	for i := range existing.Items {
-		id := existing.Items[i].Labels[LabelAppID]
-		if id == "" {
-			continue
-		}
-		// Two managed CRs sharing one id means a stray duplicate exists (see
-		// core.AppInOwnWorkspaceNamespace). Index the canonical CR so spec
-		// updates and status write-back target the live projection, never
-		// last-in-list order; log the loser every pass (the nag is the point) —
-		// it is invisible to this loop's update/delete matching and needs a
-		// manual finalizer-aware removal (its name-keyed finalizer teardown
-		// would otherwise purge the LIVE twin's registry repo + credentials).
-		if cur, ok := byID[id]; ok {
-			keep, drop := &existing.Items[i], cur
-			if core.AppInOwnWorkspaceNamespace(cur) {
-				keep, drop = cur, &existing.Items[i]
-			}
-			log.Printf("controlplane: duplicate App CRs for %s: keeping %s/%s, ignoring stray %s/%s",
-				id, keep.Namespace, keep.Name, drop.Namespace, drop.Name)
-			byID[id] = keep
-			continue
-		}
-		byID[id] = &existing.Items[i]
-	}
+	byID := indexManagedApps(existing.Items)
 	// One query for every app's open deploy (not one per app in the loop
 	// below) — at most one open deploy per app in practice, so the last
 	// write wins if that invariant is ever violated.
@@ -323,22 +355,8 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 				continue
 			}
 		}
-		// Deploy write-back (w2/m5): cur.Status still holds what this pass's
-		// List observed — Update above only patches spec (status is a separate
-		// subresource) — so it's the right snapshot to decide the app's open
-		// deploy, if any, is done.
 		open, hasOpenDeploy := openByApp[d.ID]
-		if hasOpenDeploy {
-			r.recordDeploy(ctx, d, open, cur)
-		}
-		if r.unhealthyOnce == nil {
-			r.unhealthyOnce = make(map[string]bool)
-		}
-		obs := debounceUnhealthy(observedServiceStateFor(d.ID, cur, hasOpenDeploy), r.unhealthyOnce)
-		if _, err := r.Store.RecordObservedServiceState(ctx, obs); err != nil {
-			log.Printf("controlplane: record observed service state %s: %v", d.ID, err)
-		}
-		r.recordAutoscalingFacts(ctx, d.ID, cur.Status.Autoscaling)
+		r.recordObservations(ctx, d, cur, open, hasOpenDeploy)
 	}
 	// Rows deleted from Postgres → delete their projected CR.
 	for id, cur := range byID {
