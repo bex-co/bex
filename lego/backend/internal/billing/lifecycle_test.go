@@ -98,3 +98,30 @@ func TestLifecycleIgnoresForeignContractsAndRejectsModeMismatch(t *testing.T) {
 		t.Fatalf("live event error = %v", err)
 	}
 }
+
+// The w7/m52 test-only fence is lifted (w4/m81 t002): a live-mode Lifecycle is
+// a supported configuration that records live events and rejects test-mode
+// ones — the exact wiring main.go now threads from the runtime key's mode.
+func TestLifecycleLiveModeRecordsLiveAndRejectsTestEvents(t *testing.T) {
+	capture := &lifecycleCapture{}
+	h := &Lifecycle{Store: capture, GracePeriod: time.Hour, ExpectedLivemode: true}
+
+	live := lifecycleEvent("evt_live_ok", stripe.EventTypeCustomerSubscriptionUpdated,
+		`{"id":"sub_live","object":"subscription","livemode":true,"customer":"cus_live","status":"past_due","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}`)
+	live.Livemode = true
+	if err := h.HandleStripeEvent(context.Background(), live); err != nil {
+		t.Fatalf("live lifecycle rejected a live event: %v", err)
+	}
+	if len(capture.events) != 1 || !capture.events[0].Livemode {
+		t.Fatalf("live event not recorded as live: %+v", capture.events)
+	}
+
+	test := lifecycleEvent("evt_test_leak", stripe.EventTypeCustomerSubscriptionUpdated,
+		`{"id":"sub_test","object":"subscription","livemode":false,"customer":"cus_test","status":"past_due","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}`)
+	if err := h.HandleStripeEvent(context.Background(), test); err == nil || !strings.Contains(err.Error(), "mode mismatch") {
+		t.Fatalf("test event against live lifecycle = %v, want mode mismatch", err)
+	}
+	if len(capture.events) != 1 {
+		t.Fatalf("test event persisted against live lifecycle: %+v", capture.events)
+	}
+}

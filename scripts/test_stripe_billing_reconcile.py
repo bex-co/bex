@@ -13,6 +13,37 @@ assert SPEC.loader
 SPEC.loader.exec_module(RECONCILE)
 
 
+class LiveModeGateTest(unittest.TestCase):
+    # w4/m81 t005: this tool is read-only, so a live key is permitted — but
+    # only under the explicit BEX_STRIPE_ALLOW_LIVE=1 go-live decision, and
+    # every Stripe/local object must match the key's mode.
+
+    def test_test_key_resolves_test_mode(self):
+        with mock.patch.dict(RECONCILE.os.environ, {"BEX_STRIPE_SECRET_KEY": "rk_test_x"}, clear=False):
+            self.assertIs(False, RECONCILE.expected_livemode())
+
+    def test_live_key_requires_explicit_opt_in(self):
+        env = {"BEX_STRIPE_SECRET_KEY": "rk_live_x", "BEX_STRIPE_ALLOW_LIVE": ""}
+        with mock.patch.dict(RECONCILE.os.environ, env, clear=False):
+            with self.assertRaisesRegex(RuntimeError, "BEX_STRIPE_ALLOW_LIVE"):
+                RECONCILE.expected_livemode()
+        env["BEX_STRIPE_ALLOW_LIVE"] = "1"
+        with mock.patch.dict(RECONCILE.os.environ, env, clear=False):
+            self.assertIs(True, RECONCILE.expected_livemode())
+
+    def test_non_stripe_key_is_refused(self):
+        with mock.patch.dict(RECONCILE.os.environ, {"BEX_STRIPE_SECRET_KEY": "sk_something"}, clear=False):
+            with self.assertRaisesRegex(RuntimeError, "rk_test_"):
+                RECONCILE.expected_livemode()
+
+    def test_stripe_json_refuses_cross_mode_objects(self):
+        result = mock.Mock(returncode=0, stdout='{"livemode": true, "data": []}', stderr="")
+        with mock.patch.dict(RECONCILE.os.environ, {"BEX_STRIPE_SECRET_KEY": "rk_test_x"}, clear=False):
+            with mock.patch.object(RECONCILE.subprocess, "run", return_value=result):
+                with self.assertRaisesRegex(RuntimeError, "refusing"):
+                    RECONCILE.stripe_json(["get", "/v1/billing/meters"])
+
+
 def row(kind, quantity, event, state="emitted", transaction="tx-1"):
     return {
         "kind": kind,

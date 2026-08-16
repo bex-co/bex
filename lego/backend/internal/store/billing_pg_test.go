@@ -419,6 +419,101 @@ func TestPGStorePaymentMarkerWithholdsThenBackfillsSealedUsage(t *testing.T) {
 	}
 }
 
+// A livemode flip on the provider mapping (test→live cutover, or a rollback)
+// must clear the payment-method marker and the cached subscription id: both
+// were proven against the other mode's Stripe objects, and the marker alone
+// gates paid intent and usage export locally (w4/m81 t001).
+func TestPGStoreModeFlipClearsPaymentMarker(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	ten, err := s.CreateTenant(ctx, "flipper", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC().Truncate(time.Hour)
+	if err := s.UpsertUsageHourly(ctx, HourlyRow{
+		WorkspaceID:  ten.ID,
+		ServiceID:    "srv-flipper",
+		Kind:         UsageKindInstanceSeconds,
+		Tier:         "starter",
+		ResourceKind: ResourceKindService,
+		WindowStart:  now.Add(-72 * time.Hour),
+		Quantity:     3600,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	floor, sealBefore := now.Add(-34*24*time.Hour), now.Add(-48*time.Hour)
+
+	if err := s.UpsertBillingProviderMapping(ctx, BillingProviderMapping{
+		WorkspaceID: ten.ID, CustomerID: "cus_test", SubscriptionID: "sub_test", Livemode: false,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPaymentMethodBound(ctx, ten.ID, now.Add(-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	eligibility, err := s.PaymentEligibility(ctx, ten.ID)
+	if err != nil || !eligibility.AllowsPaidIntent() {
+		t.Fatalf("test-mode bound eligibility = %+v err=%v", eligibility, err)
+	}
+
+	// Same-mode upsert (the idempotent EnsureCustomer path) preserves both the
+	// marker and, via COALESCE, a subscription id the upsert omits.
+	if err := s.UpsertBillingProviderMapping(ctx, BillingProviderMapping{
+		WorkspaceID: ten.ID, CustomerID: "cus_test", Livemode: false,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var sub *string
+	var marker *time.Time
+	if err := s.Pool.QueryRow(ctx, `SELECT subscription_id, payment_method_bound_at FROM billing_provider_mappings WHERE workspace_id=$1`, ten.ID).Scan(&sub, &marker); err != nil {
+		t.Fatal(err)
+	}
+	if sub == nil || *sub != "sub_test" || marker == nil {
+		t.Fatalf("same-mode upsert lost state: sub=%v marker=%v", sub, marker)
+	}
+
+	// The flip: a live-mode EnsureCustomer overwrites the row. Marker and
+	// subscription id must reset; the paid-intent gate and the gated outbox
+	// must close until a live checkout completes.
+	if err := s.UpsertBillingProviderMapping(ctx, BillingProviderMapping{
+		WorkspaceID: ten.ID, CustomerID: "cus_live", Livemode: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Pool.QueryRow(ctx, `SELECT subscription_id, payment_method_bound_at FROM billing_provider_mappings WHERE workspace_id=$1`, ten.ID).Scan(&sub, &marker); err != nil {
+		t.Fatal(err)
+	}
+	if sub != nil || marker != nil {
+		t.Fatalf("mode flip kept stale state: sub=%v marker=%v", sub, marker)
+	}
+	eligibility, err = s.PaymentEligibility(ctx, ten.ID)
+	if err != nil || eligibility.AllowsPaidIntent() {
+		t.Fatalf("post-flip eligibility = %+v err=%v, want paid intent refused", eligibility, err)
+	}
+	rows, err := s.SelectUnemittedUsage(ctx, floor, sealBefore, 100, true)
+	if err != nil || len(rows) != 0 {
+		t.Fatalf("post-flip gated outbox rows = %+v err=%v, want withheld", rows, err)
+	}
+
+	// A live checkout re-binds; a live-mode re-upsert keeps it.
+	if err := s.SetPaymentMethodBound(ctx, ten.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UpsertBillingProviderMapping(ctx, BillingProviderMapping{
+		WorkspaceID: ten.ID, CustomerID: "cus_live", SubscriptionID: "sub_live", Livemode: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	bound, err := s.PaymentMethodBound(ctx, ten.ID)
+	if err != nil || !bound {
+		t.Fatalf("live re-bind lost: bound=%v err=%v", bound, err)
+	}
+	rows, err = s.SelectUnemittedUsage(ctx, floor, sealBefore, 100, true)
+	if err != nil || len(rows) != 1 || rows[0].WorkspaceID != ten.ID {
+		t.Fatalf("live re-bind outbox rows = %+v err=%v", rows, err)
+	}
+}
+
 func TestPGStoreBillingExclusionAudited(t *testing.T) {
 	s, ctx := newBillingTestStore(t)
 	ten, err := s.CreateTenant(ctx, "acme", "hobby")

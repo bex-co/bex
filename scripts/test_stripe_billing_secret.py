@@ -80,6 +80,50 @@ class StripeBillingSecretTest(unittest.TestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("live restricted keys are refused by default", result.stderr)
 
+    def run_live(self, extra):
+        """DRY_RUN the installer with a live key + the explicit opt-in."""
+        env = os.environ.copy()
+        env.update(
+            {
+                "BEX_STRIPE_ENV_FILE": "/dev/null",
+                "BEX_STRIPE_SECRET_KEY": "rk_live_offline_fixture",
+                "BEX_STRIPE_ALLOW_LIVE": "1",
+                "BEX_STRIPE_WEBHOOK_SECRET": "whsec_offline_fixture",
+                "BEX_STRIPE_EPOCH": "2026-09-01T00:00:00Z",
+                "DRY_RUN": "1",
+            }
+        )
+        env.update(extra)
+        return subprocess.run(
+            ["bash", str(SCRIPT)], capture_output=True, text=True, env=env, check=False
+        )
+
+    def test_live_key_requires_the_scoped_portal_configuration(self):
+        # w4/m81 t003: the account-default portal allows subscription
+        # cancellation, so live without a bpc_* must fail closed.
+        result = self.run_live({})
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("BEX_STRIPE_PORTAL_CONFIGURATION_ID", result.stderr)
+
+        result = self.run_live({"BEX_STRIPE_PORTAL_CONFIGURATION_ID": "bpc_offline_fixture"})
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("mode=live", result.stdout)
+
+    def test_live_key_with_dunning_is_accepted(self):
+        # w4/m81 t002: the w7/m52 test-only dunning fence is lifted — live
+        # enforcement is an operator choice behind the same opt-in.
+        result = self.run_live(
+            {
+                "BEX_STRIPE_PORTAL_CONFIGURATION_ID": "bpc_offline_fixture",
+                "BEX_STRIPE_DUNNING_ENABLED": "1",
+                "BEX_STRIPE_GRACE_PERIOD": "168h",
+                "BEX_STRIPE_RECONCILE_INTERVAL": "5m",
+            }
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("dunning=1", result.stdout)
+        self.assertIn("mode=live", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

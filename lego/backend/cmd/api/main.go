@@ -834,17 +834,17 @@ func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl 
 			emitter.SealHours = clamped
 		}
 		var lifecycle *billing.Lifecycle
-		if os.Getenv("BEX_STRIPE_DUNNING_ENABLED") == "1" {
-			if stripeClient.ExpectedLivemode() {
-				log.Fatal("bex-api: BEX_STRIPE_DUNNING_ENABLED=1 is test-mode only at w7/m52; refusing live enforcement")
-			}
+		if dunningGate(os.Getenv, stripeClient.ExpectedLivemode()) {
+			// The mode threads through so webhook events from the other mode
+			// are rejected; BEX_STRIPE_ALLOW_LIVE at the installer remains the
+			// single deliberate live gate.
 			grace := minuteDurationEnv("BEX_STRIPE_GRACE_PERIOD", "168h")
 			reconcileEvery := minuteDurationEnv("BEX_STRIPE_RECONCILE_INTERVAL", "5m")
-			lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: false}
+			lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: stripeClient.ExpectedLivemode()}
 			enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: appsNS}
 			stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
 			stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics}
-			log.Printf("bex-api Stripe test-mode dunning enabled (grace %s, reconcile %s)", grace, reconcileEvery)
+			log.Printf("bex-api Stripe dunning enabled (livemode %t, grace %s, reconcile %s)", stripeClient.ExpectedLivemode(), grace, reconcileEvery)
 		}
 		if secret := os.Getenv("BEX_STRIPE_WEBHOOK_SECRET"); secret != "" {
 			handler := &billing.StripeWebhook{Secret: secret, ExpectedLivemode: stripeClient.ExpectedLivemode(), OnCheckoutCompleted: stripeClient.CompleteCheckoutSession, Metrics: billingMetrics}

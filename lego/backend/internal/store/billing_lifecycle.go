@@ -131,12 +131,26 @@ func (s *PGStore) UpsertBillingProviderMapping(ctx context.Context, m BillingPro
 	if m.WorkspaceID == "" || m.CustomerID == "" {
 		return fmt.Errorf("billing provider mapping requires workspace and customer")
 	}
+	// A livemode flip (test→live cutover or a rollback) invalidates the
+	// mode-bound halves of the row: the payment-method marker was proven
+	// against the other mode's Stripe objects yet alone gates paid intent and
+	// usage export locally, and the cached subscription id names an object the
+	// new mode cannot see. Both reset on flip so a fresh same-mode checkout /
+	// EnsureContract must re-establish them; customer_id self-heals by
+	// overwrite (w4/m81 t001).
 	_, err := s.Pool.Exec(ctx, `
 		INSERT INTO billing_provider_mappings (workspace_id, customer_id, subscription_id, livemode)
 		VALUES ($1, $2, NULLIF($3, ''), $4)
 		ON CONFLICT (workspace_id) DO UPDATE
 		SET customer_id = EXCLUDED.customer_id,
-		    subscription_id = COALESCE(EXCLUDED.subscription_id, billing_provider_mappings.subscription_id),
+		    subscription_id = CASE
+		        WHEN billing_provider_mappings.livemode <> EXCLUDED.livemode THEN EXCLUDED.subscription_id
+		        ELSE COALESCE(EXCLUDED.subscription_id, billing_provider_mappings.subscription_id)
+		    END,
+		    payment_method_bound_at = CASE
+		        WHEN billing_provider_mappings.livemode <> EXCLUDED.livemode THEN NULL
+		        ELSE billing_provider_mappings.payment_method_bound_at
+		    END,
 		    livemode = EXCLUDED.livemode,
 		    updated_at = now()`, m.WorkspaceID, m.CustomerID, m.SubscriptionID, m.Livemode)
 	return err

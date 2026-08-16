@@ -165,7 +165,7 @@ func (c *StripeClient) findSubscription(ctx context.Context, tenantID, customerI
 }
 
 // resolvePriceIDs validates the full active Stripe price catalog once per
-// process. Stripe accepts at most 10 lookup_keys per list request, so the 13
+// process. Stripe accepts at most 10 lookup_keys per list request, so the 14
 // current dimensions are fetched in bounded chunks. No subscription is created
 // until every expected key has exactly one metered monthly USD price.
 // validatePriceCompliance refuses a catalog Price that does not match the shape

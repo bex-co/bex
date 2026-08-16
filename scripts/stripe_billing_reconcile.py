@@ -166,12 +166,25 @@ def compare(local: dict, summaries: dict[str, object], invoice_lines: list[dict]
     }
 
 
+def expected_livemode() -> bool:
+    """Resolve the configured key's mode. This tool is read-only, so a live
+    key is permitted — but only under the explicit BEX_STRIPE_ALLOW_LIVE=1
+    go-live decision (w4/m81 t005); mutating tooling stays test-only."""
+    key = os.environ.get("BEX_STRIPE_SECRET_KEY", "")
+    if key.startswith(("rk_test_", "sk_test_")):
+        return False
+    if key.startswith(("rk_live_", "sk_live_")):
+        if os.environ.get("BEX_STRIPE_ALLOW_LIVE") == "1":
+            return True
+        raise RuntimeError(
+            "live Stripe keys require BEX_STRIPE_ALLOW_LIVE=1 even for read-only reconciliation")
+    raise RuntimeError("BEX_STRIPE_SECRET_KEY must be a Stripe rk_test_*/rk_live_* key")
+
+
 def stripe_json(args: list[str]) -> dict:
     env = os.environ.copy()
-    key = env.get("BEX_STRIPE_SECRET_KEY", "")
-    if not key.startswith(("rk_test_", "sk_test_")):
-        raise RuntimeError("BEX_STRIPE_SECRET_KEY must be a Stripe test-mode key; live mode is refused")
-    env["STRIPE_API_KEY"] = key
+    live = expected_livemode()
+    env["STRIPE_API_KEY"] = env.get("BEX_STRIPE_SECRET_KEY", "")
     completed = subprocess.run(
         ["stripe", *args, "--color", "off"],
         check=False,
@@ -186,9 +199,14 @@ def stripe_json(args: list[str]) -> dict:
     if completed.returncode != 0 or body.get("error"):
         error = body.get("error", {})
         code = error.get("code") or error.get("type") or "provider_error"
-        raise RuntimeError(f"Stripe test-mode API request failed: {code}")
-    if body.get("livemode") is True or any(item.get("livemode") is True for item in body.get("data", [])):
-        raise RuntimeError("Stripe response contained a live-mode object; refusing")
+        raise RuntimeError(f"Stripe API request failed: {code}")
+    mismatched = [body] if body.get("livemode") not in (None, live) else []
+    mismatched.extend(item for item in body.get("data", [])
+                      if item.get("livemode") not in (None, live))
+    if mismatched:
+        raise RuntimeError(
+            f"Stripe response contained a {'test' if live else 'live'}-mode object "
+            f"under a {'live' if live else 'test'}-mode key; refusing")
     return body
 
 
@@ -246,8 +264,8 @@ def invoice_preview_lines(customer: str, subscription: str) -> list[dict]:
 
 
 def provider_evidence(local: dict, start: str, end: str) -> tuple[dict[str, Decimal], list[dict]]:
-    if local.get("livemode") is True:
-        raise RuntimeError("local provider mapping is live mode; refusing")
+    if bool(local.get("livemode")) != expected_livemode():
+        raise RuntimeError("local provider mapping's mode does not match the configured Stripe key; refusing")
     customer = local.get("customerId", "")
     subscription = local.get("subscriptionId", "")
     names = sorted(

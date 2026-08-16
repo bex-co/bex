@@ -43,6 +43,16 @@ func stripeBillingGate(getenv func(string) string, now time.Time) (secret string
 	return secret, epoch, true, nil
 }
 
+// dunningGate decides whether the Stripe dunning lifecycle runs for the
+// resolved key mode. Live enforcement is an operator choice since w4/m81 t002
+// (the w7/m52 test-only fence is lifted): the mode is accepted as a parameter
+// precisely so this contract is pinned by a test — a reintroduced live fence
+// would have to fail here, not in an untestable Fatal inside the wiring.
+func dunningGate(getenv func(string) string, expectedLivemode bool) bool {
+	_ = expectedLivemode // any mode is supported; the installer's BEX_STRIPE_ALLOW_LIVE is the live gate
+	return getenv("BEX_STRIPE_DUNNING_ENABLED") == "1"
+}
+
 // paymentMethodGate validates the fail-closed configuration before any server
 // wiring. Enforcement needs both hosted Checkout (Stripe key) and the local
 // marker store (control-plane DB); enabling only one side would brick every
