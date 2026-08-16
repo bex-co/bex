@@ -99,6 +99,7 @@ function validPreview(): BlueprintPreviewResult {
         envGroups: [],
         totalActions: 3,
       },
+      estimatedPricing: null,
     },
   };
 }
@@ -229,6 +230,74 @@ describe("NewBlueprintPage", () => {
     );
     expect(await screen.findByText("blueprint detail")).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/blueprints/blp-new1");
+  });
+
+  it("renders the Estimated pricing panel from the preview payload", async () => {
+    reposState.repos = [repo()];
+    const preview = validPreview();
+    // The exact payload shape the live dev-8 API returned for the beancount
+    // fixture (standard web + basic-1gb postgres + standard keyvalue).
+    preview.validation!.estimatedPricing = {
+      totalUsd: "54.60",
+      lines: [
+        {
+          name: "beancount-forum",
+          tierLabel: "Standard",
+          monthlyUsd: "17.50",
+          instanceUsd: "17.50",
+          storageUsd: null,
+          storageGb: null,
+        },
+        {
+          name: "beancount-forum-db",
+          tierLabel: "Basic 1gb",
+          monthlyUsd: "15.05",
+          instanceUsd: "14.00",
+          storageUsd: "1.05",
+          storageGb: 5,
+        },
+        {
+          name: "beancount-forum-redis",
+          tierLabel: "Standard",
+          monthlyUsd: "22.05",
+          instanceUsd: "21.00",
+          storageUsd: "1.05",
+          storageGb: 5,
+        },
+      ],
+      variable: [],
+    };
+    previewState.preview = preview;
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByText("acme/hello-go"));
+
+    expect(await screen.findByText("Estimated pricing")).toBeInTheDocument();
+    expect(screen.getByText("(Standard) $17.50 / month")).toBeInTheDocument();
+    expect(screen.getByText("(Basic 1gb) $15.05 / month")).toBeInTheDocument();
+    expect(
+      screen.getByText("Instance $14.00 + Disk (5 GB) $1.05"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("$54.60 per month")).toBeInTheDocument();
+  });
+
+  it("hides the Estimated pricing panel for an all-free blueprint", async () => {
+    reposState.repos = [repo()];
+    const preview = validPreview();
+    preview.validation!.estimatedPricing = {
+      totalUsd: "0.00",
+      lines: [],
+      variable: [],
+    };
+    previewState.preview = preview;
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByText("acme/hello-go"));
+
+    expect(await screen.findByText(/parsed successfully/i)).toBeInTheDocument();
+    expect(screen.queryByText("Estimated pricing")).not.toBeInTheDocument();
   });
 
   it("accepts a public Git URL on the Public Git tab", async () => {

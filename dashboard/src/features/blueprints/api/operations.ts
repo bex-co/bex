@@ -159,6 +159,21 @@ export const BlueprintPreviewDocument = gql`
             message
           }
         }
+        estimatedPricing {
+          totalUsd
+          lines {
+            name
+            tierLabel
+            monthlyUsd
+            instanceUsd
+            storageUsd
+            storageGb
+          }
+          variable {
+            name
+            reason
+          }
+        }
       }
     }
   }

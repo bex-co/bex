@@ -1065,7 +1065,7 @@ func (s *Service) registerStaticSiteTools(srv *mcp.Server) {
 func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "validate_bex_yml",
-		Description: "Dry-run parse a render.yaml Blueprint and return structured per-entry errors plus a resource plan without applying anything — the safe pre-flight check before a deploy call. bex.yml remains a filename-only alias. Returns {valid, errors: [{code?, error, line?, column?, path?}], plan?}. Requires no store; always available. bex extension (pillar 4 agent safety).",
+		Description: "Dry-run parse a render.yaml Blueprint and return structured per-entry errors plus a resource plan without applying anything — the safe pre-flight check before a deploy call. bex.yml remains a filename-only alias. Returns {valid, errors: [{code?, error, line?, column?, path?}], plan?, estimatedPricing?: {totalUsd, lines, variable}} — the pricing object is the always-on monthly cost projection on bex's price sheet (free tiers filtered; cron/autoscaling/multi-instance listed as variable, excluded from the total). Requires no store; always available. bex extension (pillar 4 agent safety).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in validateBlueprintArgs) (*mcp.CallToolResult, BlueprintValidation, error) {
 		v, err := s.ValidateBlueprint(ctx, core.NamedWorkspace(ctx), in.BexYAML)
 		return nil, v, err
@@ -1073,7 +1073,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "preview_blueprint",
-		Description: "Fetch a repo's render.yaml and dry-run validate it WITHOUT creating anything — the pre-flight for create_blueprint. Empty path discovers render.yaml first, then the legacy bex.yml alias (with a warning); both files require an explicit path. Returns {found, manifest?, commitId?, warning?, error?, validation?: {valid, errors, plan}}; a missing file reports found=false with the fetch error instead of failing. bex extension.",
+		Description: "Fetch a repo's render.yaml and dry-run validate it WITHOUT creating anything — the pre-flight for create_blueprint. Empty path discovers render.yaml first, then the legacy bex.yml alias (with a warning); both files require an explicit path. Returns {found, manifest?, commitId?, warning?, error?, validation?: {valid, errors, plan, estimatedPricing?}}; estimatedPricing is the always-on monthly cost projection on bex's price sheet. A missing file reports found=false with the fetch error instead of failing. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in previewBlueprintArgs) (*mcp.CallToolResult, BlueprintPreview, error) {
 		p, err := s.PreviewBlueprint(ctx, core.NamedWorkspace(ctx), in.Repo, in.Branch, in.Path)
 		return nil, p, err
