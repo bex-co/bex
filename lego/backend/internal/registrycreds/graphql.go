@@ -27,17 +27,17 @@ import (
 var credentialGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "RegistryCredential",
 	Fields: graphql.Fields{
-		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v CredentialView) any { return v.ID })},
-		"name":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v CredentialView) any { return v.Name })},
-		"host":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v CredentialView) any { return v.Host })},
-		"username":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v CredentialView) any { return v.Username })},
-		"ownerId":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v CredentialView) any { return v.OwnerID })},
-		"expiresAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v CredentialView) any { return v.ExpiresAt })},
+		"id":        gqlutil.StrField(func(v CredentialView) any { return v.ID }),
+		"name":      gqlutil.StrField(func(v CredentialView) any { return v.Name }),
+		"host":      gqlutil.StrField(func(v CredentialView) any { return v.Host }),
+		"username":  gqlutil.StrField(func(v CredentialView) any { return v.Username }),
+		"ownerId":   gqlutil.StrField(func(v CredentialView) any { return v.OwnerID }),
+		"expiresAt": gqlutil.StrField(func(v CredentialView) any { return v.ExpiresAt }),
 		// status is a bex extension (w2/m14/t007) — Render's registryCredential
 		// object has no equivalent expiry-staleness field.
-		"status":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v CredentialView) any { return v.Status })},
-		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v CredentialView) any { return v.CreatedAt })},
-		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v CredentialView) any { return v.UpdatedAt })},
+		"status":    gqlutil.StrField(func(v CredentialView) any { return v.Status }),
+		"createdAt": gqlutil.StrField(func(v CredentialView) any { return v.CreatedAt }),
+		"updatedAt": gqlutil.StrField(func(v CredentialView) any { return v.UpdatedAt }),
 	},
 })
 
@@ -47,19 +47,13 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"registryCredentials": &graphql.Field{
 			Type: graphql.NewList(credentialGQLType),
 			Args: graphql.FieldConfigArgument{
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.List(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
-		"registryCredential": &graphql.Field{
-			Type: credentialGQLType,
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Get(p.Context, p.Args["id"].(string))
-			},
-		},
+		"registryCredential": gqlutil.IDVerb(credentialGQLType, s.Get),
 	}
 }
 
@@ -69,12 +63,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createRegistryCredential": &graphql.Field{
 			Type: credentialGQLType,
 			Args: graphql.FieldConfigArgument{
-				"ownerId":   &graphql.ArgumentConfig{Type: graphql.String},
-				"name":      &graphql.ArgumentConfig{Type: graphql.String},
-				"host":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"username":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"authToken": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"expiresAt": &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId":   gqlutil.Arg(graphql.String),
+				"name":      gqlutil.Arg(graphql.String),
+				"host":      gqlutil.ReqArg(graphql.String),
+				"username":  gqlutil.ReqArg(graphql.String),
+				"authToken": gqlutil.ReqArg(graphql.String),
+				"expiresAt": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				expiresAt, err := parseExpiresAt(gqlutil.Str(p.Args, "expiresAt"))
@@ -91,11 +85,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"updateRegistryCredential": &graphql.Field{
 			Type: credentialGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name":      &graphql.ArgumentConfig{Type: graphql.String},
-				"username":  &graphql.ArgumentConfig{Type: graphql.String},
-				"authToken": &graphql.ArgumentConfig{Type: graphql.String},
-				"expiresAt": &graphql.ArgumentConfig{Type: graphql.String},
+				"id":        gqlutil.ReqArg(graphql.String),
+				"name":      gqlutil.Arg(graphql.String),
+				"username":  gqlutil.Arg(graphql.String),
+				"authToken": gqlutil.Arg(graphql.String),
+				"expiresAt": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				req := UpdateRequest{

@@ -105,25 +105,10 @@ export function useCreateService(): UseCreateServiceResult {
         const res = await paymentGate.run(() =>
           mutate({
             variables: {
-              name: input.name,
+              ...input,
               ownerId: currentWorkspaceId,
-              type: input.type,
-              environmentId: input.environmentId,
-              repo: input.repo,
-              image: input.image,
-              registryCredentialId: input.registryCredentialId,
-              branch: input.branch,
-              rootDir: input.rootDir,
-              runtime: input.runtime,
-              buildCommand: input.buildCommand,
-              startCommand: input.startCommand,
-              dockerfilePath: input.dockerfilePath,
-              buildFilter: input.buildFilter,
-              plan: input.plan,
-              autoDeploy: input.autoDeploy,
-              schedule: input.schedule,
-              command: input.command,
-              publishPath: input.publishPath,
+              // An empty list is "no rows staged", not "clear them" — the
+              // create editors' blank placeholder row must not reach the wire.
               envVars: input.envVars?.length ? input.envVars : undefined,
               secretFiles: input.secretFiles?.length
                 ? input.secretFiles

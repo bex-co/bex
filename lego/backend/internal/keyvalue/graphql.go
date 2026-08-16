@@ -31,25 +31,25 @@ import (
 var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "KeyValue",
 	Fields: graphql.Fields{
-		"id":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.ID })},
-		"name":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Name })},
-		"plan":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Plan })},
-		"version":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Version })},
-		"status":             &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Status })},
-		"suspended":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Suspended })},
-		"createdAt":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.CreatedAt })},
-		"updatedAt":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.UpdatedAt })},
-		"region":             &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Region })},
-		"dashboardUrl":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.DashboardURL })},
-		"externalHost":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.ExternalHost })},
-		"public":             &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.Public })},
-		"ipAllowList":        &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v KeyValueView) any { return core.AllowListCIDRs(v.IPAllowList) })},
-		"ipAllowListEntries": &graphql.Field{Type: graphql.NewList(gqlutil.IPAllowEntryType), Resolve: gqlutil.Field(func(v KeyValueView) any { return v.IPAllowList })},
-		"maxmemoryPolicy":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.MaxmemoryPolicy })},
-		"persistenceMode":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.PersistenceMode })},
-		"ownerId":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.OwnerID })},
-		"projectId":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.ProjectID })},
-		"environmentId":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueView) any { return v.EnvironmentID })},
+		"id":                 gqlutil.StrField(func(v KeyValueView) any { return v.ID }),
+		"name":               gqlutil.StrField(func(v KeyValueView) any { return v.Name }),
+		"plan":               gqlutil.StrField(func(v KeyValueView) any { return v.Plan }),
+		"version":            gqlutil.StrField(func(v KeyValueView) any { return v.Version }),
+		"status":             gqlutil.StrField(func(v KeyValueView) any { return v.Status }),
+		"suspended":          gqlutil.StrField(func(v KeyValueView) any { return v.Suspended }),
+		"createdAt":          gqlutil.StrField(func(v KeyValueView) any { return v.CreatedAt }),
+		"updatedAt":          gqlutil.StrField(func(v KeyValueView) any { return v.UpdatedAt }),
+		"region":             gqlutil.StrField(func(v KeyValueView) any { return v.Region }),
+		"dashboardUrl":       gqlutil.StrField(func(v KeyValueView) any { return v.DashboardURL }),
+		"externalHost":       gqlutil.StrField(func(v KeyValueView) any { return v.ExternalHost }),
+		"public":             gqlutil.BoolField(func(v KeyValueView) any { return v.Public }),
+		"ipAllowList":        gqlutil.StrsField(func(v KeyValueView) any { return core.AllowListCIDRs(v.IPAllowList) }),
+		"ipAllowListEntries": gqlutil.Typed(graphql.NewList(gqlutil.IPAllowEntryType), func(v KeyValueView) any { return v.IPAllowList }),
+		"maxmemoryPolicy":    gqlutil.StrField(func(v KeyValueView) any { return v.MaxmemoryPolicy }),
+		"persistenceMode":    gqlutil.StrField(func(v KeyValueView) any { return v.PersistenceMode }),
+		"ownerId":            gqlutil.StrField(func(v KeyValueView) any { return v.OwnerID }),
+		"projectId":          gqlutil.StrField(func(v KeyValueView) any { return v.ProjectID }),
+		"environmentId":      gqlutil.StrField(func(v KeyValueView) any { return v.EnvironmentID }),
 	},
 })
 
@@ -60,20 +60,20 @@ var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 var keyValueInstanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "KeyValueInstanceType",
 	Fields: graphql.Fields{
-		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t KeyValueInstanceType) any { return t.ID })},
-		"name":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t KeyValueInstanceType) any { return t.Name })},
-		"cpu":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t KeyValueInstanceType) any { return t.CPU })},
-		"memory":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t KeyValueInstanceType) any { return t.Memory })},
-		"storageGB": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(t KeyValueInstanceType) any { return t.StorageGB })},
+		"id":        gqlutil.StrField(func(t KeyValueInstanceType) any { return t.ID }),
+		"name":      gqlutil.StrField(func(t KeyValueInstanceType) any { return t.Name }),
+		"cpu":       gqlutil.StrField(func(t KeyValueInstanceType) any { return t.CPU }),
+		"memory":    gqlutil.StrField(func(t KeyValueInstanceType) any { return t.Memory }),
+		"storageGB": gqlutil.IntField(func(t KeyValueInstanceType) any { return t.StorageGB }),
 	},
 })
 
 var keyValueConnectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "KeyValueConnectionInfo",
 	Fields: graphql.Fields{
-		"internalConnectionString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueConnectionInfo) any { return v.InternalConnectionString })},
-		"externalConnectionString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueConnectionInfo) any { return v.ExternalConnectionString })},
-		"cliCommand":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v KeyValueConnectionInfo) any { return v.CLICommand })},
+		"internalConnectionString": gqlutil.StrField(func(v KeyValueConnectionInfo) any { return v.InternalConnectionString }),
+		"externalConnectionString": gqlutil.StrField(func(v KeyValueConnectionInfo) any { return v.ExternalConnectionString }),
+		"cliCommand":               gqlutil.StrField(func(v KeyValueConnectionInfo) any { return v.CLICommand }),
 	},
 })
 
@@ -82,10 +82,10 @@ var keyValueConnectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 var keyValueLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "KeyValueLogEntry",
 	Fields: graphql.Fields{
-		"timestamp": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e KeyValueLogEntry) any { return e.Timestamp })},
-		"message":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e KeyValueLogEntry) any { return e.Message })},
-		"instance":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e KeyValueLogEntry) any { return e.Labels["instance"] })},
-		"type":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e KeyValueLogEntry) any { return e.Labels["type"] })},
+		"timestamp": gqlutil.StrField(func(e KeyValueLogEntry) any { return e.Timestamp }),
+		"message":   gqlutil.StrField(func(e KeyValueLogEntry) any { return e.Message }),
+		"instance":  gqlutil.StrField(func(e KeyValueLogEntry) any { return e.Labels["instance"] }),
+		"type":      gqlutil.StrField(func(e KeyValueLogEntry) any { return e.Labels["type"] }),
 	},
 })
 
@@ -94,16 +94,14 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"keyValues": &graphql.Field{
 			Type: graphql.NewList(keyValueGQLType),
-			Args: graphql.FieldConfigArgument{
+			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{
 				// ownerId mirrors Render's REST/MCP key-value list filter (w6/m4/t002).
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId": gqlutil.Arg(graphql.String),
 				// Keep the dashboard's existing [KeyValue] result shape; these optional
 				// args only select a stable page when a caller opts in.
-				"cursor": &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":  &graphql.ArgumentConfig{Type: graphql.Int},
-			},
+			}),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				ownerID, _ := p.Args["ownerId"].(string)
+				ownerID := gqlutil.Str(p.Args, "ownerId")
 				out, err := s.ListKeyValues(p.Context, ownerID)
 				if err != nil {
 					return nil, err
@@ -111,20 +109,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return gqlutil.Page(p, out, func(kv KeyValueView) string { return kv.ID }), nil
 			},
 		},
-		"keyValue": &graphql.Field{
-			Type: keyValueGQLType,
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetKeyValue(p.Context, p.Args["id"].(string))
-			},
-		},
-		"keyValueConnectionInfo": &graphql.Field{
-			Type: keyValueConnectionInfoGQLType,
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.KeyValueConnectionInfo(p.Context, p.Args["id"].(string))
-			},
-		},
+		"keyValue":               gqlutil.IDVerb(keyValueGQLType, s.GetKeyValue),
+		"keyValueConnectionInfo": gqlutil.IDVerb(keyValueConnectionInfoGQLType, s.KeyValueConnectionInfo),
 		"keyValueInstanceTypes": &graphql.Field{ // bex extension backing the create dialog's plan picker
 			Type:    graphql.NewList(keyValueInstanceTypeGQLType),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.InstanceTypes(p.Context) },
@@ -143,15 +129,14 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		// --- logs (w3/m30) ---
 		"keyValueLogs": &graphql.Field{
 			Type: graphql.NewList(keyValueLogGQLType),
-			Args: graphql.FieldConfigArgument{
-				"id":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"text":      &graphql.ArgumentConfig{Type: graphql.String},
-				"startTime": &graphql.ArgumentConfig{Type: graphql.String},
-				"endTime":   &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
-				"direction": &graphql.ArgumentConfig{Type: graphql.String},
-				"instance":  &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
-			},
+			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{
+				"id":        gqlutil.ReqArg(graphql.String),
+				"text":      gqlutil.Arg(graphql.String),
+				"startTime": gqlutil.Arg(graphql.String),
+				"endTime":   gqlutil.Arg(graphql.String),
+				"direction": gqlutil.Arg(graphql.String),
+				"instance":  gqlutil.Arg(graphql.NewList(graphql.String)),
+			}),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				since, end, err := core.ParseTimeWindow(gqlutil.Str(p.Args, "startTime"), gqlutil.Str(p.Args, "endTime"))
 				if err != nil {
@@ -180,59 +165,47 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createKeyValue": &graphql.Field{
 			Type: keyValueGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name": gqlutil.ReqArg(graphql.String),
 				// ownerId is the workspace to create IN (w6/m14) — the write-side
 				// twin of the key-value list filter; optional, defaulting to the
 				// caller's default workspace, forbidden for a non-member.
-				"ownerId":       &graphql.ArgumentConfig{Type: graphql.String},
-				"environmentId": &graphql.ArgumentConfig{Type: graphql.String},
-				"plan":          &graphql.ArgumentConfig{Type: graphql.String},
-				"version":       &graphql.ArgumentConfig{Type: graphql.String},
-				"storageGB":     &graphql.ArgumentConfig{Type: graphql.Int},
-				"public":        &graphql.ArgumentConfig{Type: graphql.Boolean},
-				"ipAllowList":   &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				"ownerId":       gqlutil.Arg(graphql.String),
+				"environmentId": gqlutil.Arg(graphql.String),
+				"plan":          gqlutil.Arg(graphql.String),
+				"version":       gqlutil.Arg(graphql.String),
+				"storageGB":     gqlutil.Arg(graphql.Int),
+				"public":        gqlutil.Arg(graphql.Boolean),
+				"ipAllowList":   gqlutil.Arg(graphql.NewList(graphql.String)),
 				// ipAllowListEntries is the description-carrying form (w4/m24);
 				// when present it wins over ipAllowList.
-				"ipAllowListEntries": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
-				"maxmemoryPolicy":    &graphql.ArgumentConfig{Type: graphql.String},
-				"persistenceMode":    &graphql.ArgumentConfig{Type: graphql.String},
+				"ipAllowListEntries": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))),
+				"maxmemoryPolicy":    gqlutil.Arg(graphql.String),
+				"persistenceMode":    gqlutil.Arg(graphql.String),
 				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
-				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"dryRun": gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				ownerID, _ := p.Args["ownerId"].(string)
-				req := CreateKeyValueRequest{Name: p.Args["name"].(string), OwnerID: ownerID}
-				if v, ok := p.Args["environmentId"].(string); ok {
-					req.EnvironmentID = v
-				}
-				if v, ok := p.Args["plan"].(string); ok {
-					req.Plan = v
-				}
-				if v, ok := p.Args["version"].(string); ok {
-					req.Version = v
-				}
-				if v, ok := p.Args["storageGB"].(int); ok {
-					req.StorageGB = int32(v)
-				}
-				if v, ok := p.Args["public"].(bool); ok {
-					req.Public = v
-				}
-				if v, ok := p.Args["maxmemoryPolicy"].(string); ok {
-					req.MaxmemoryPolicy = v
-				}
-				if v, ok := p.Args["persistenceMode"].(string); ok {
-					req.PersistenceMode = v
-				}
-				req.IPAllowList = core.AllowListOrCIDRs(gqlutil.AllowList(p.Args["ipAllowListEntries"]), gqlutil.StringList(p.Args["ipAllowList"]))
-				req.DryRun, _ = p.Args["dryRun"].(bool)
-				return s.CreateKeyValue(p.Context, req)
+				return s.CreateKeyValue(p.Context, CreateKeyValueRequest{
+					Name:            p.Args["name"].(string),
+					OwnerID:         gqlutil.Str(p.Args, "ownerId"),
+					EnvironmentID:   gqlutil.Str(p.Args, "environmentId"),
+					Plan:            gqlutil.Str(p.Args, "plan"),
+					Version:         gqlutil.Str(p.Args, "version"),
+					StorageGB:       int32(gqlutil.Int(p.Args, "storageGB")),
+					Public:          gqlutil.Bool(p.Args, "public"),
+					MaxmemoryPolicy: gqlutil.Str(p.Args, "maxmemoryPolicy"),
+					PersistenceMode: gqlutil.Str(p.Args, "persistenceMode"),
+					IPAllowList: core.AllowListOrCIDRs(
+						gqlutil.AllowList(p.Args["ipAllowListEntries"]), gqlutil.StringList(p.Args["ipAllowList"])),
+					DryRun: gqlutil.Bool(p.Args, "dryRun"),
+				})
 			},
 		},
 		"deleteKeyValue": &graphql.Field{
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"confirm": &graphql.ArgumentConfig{Type: graphql.String},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"confirm": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				err := s.DeleteKeyValue(core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm")), p.Args["id"].(string))
@@ -253,28 +226,22 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"suspendKeyValue": &graphql.Field{
 			Type: keyValueGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"confirm": &graphql.ArgumentConfig{Type: graphql.String},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"confirm": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Suspend(core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm")), p.Args["id"].(string))
 			},
 		},
-		"resumeKeyValue": &graphql.Field{
-			Type: keyValueGQLType,
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Resume(p.Context, p.Args["id"].(string))
-			},
-		},
+		"resumeKeyValue": gqlutil.IDVerb(keyValueGQLType, s.Resume),
 		"setKeyValueIpAllowList": &graphql.Field{
 			Type: keyValueGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"cidrs": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				"id":    gqlutil.ReqArg(graphql.String),
+				"cidrs": gqlutil.Arg(graphql.NewList(graphql.String)),
 				// entries is the description-carrying form; precedence over cidrs
 				// lives in core.AllowListOrCIDRs.
-				"entries": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
+				"entries": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				entries := core.AllowListOrCIDRs(gqlutil.AllowList(p.Args["entries"]), gqlutil.StringList(p.Args["cidrs"]))

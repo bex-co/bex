@@ -32,12 +32,12 @@ import (
 var memberGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WorkspaceMember",
 	Fields: graphql.Fields{
-		"subject":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.Subject })},
-		"userId":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.UserID })},
-		"email":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.Email })},
-		"role":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.Role })},
-		"createdAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m MemberView) any { return m.CreatedAt })},
-		"mfaEnabled": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(m MemberView) any { return m.MFAEnabled })},
+		"subject":    gqlutil.StrField(func(m MemberView) any { return m.Subject }),
+		"userId":     gqlutil.StrField(func(m MemberView) any { return m.UserID }),
+		"email":      gqlutil.StrField(func(m MemberView) any { return m.Email }),
+		"role":       gqlutil.StrField(func(m MemberView) any { return m.Role }),
+		"createdAt":  gqlutil.StrField(func(m MemberView) any { return m.CreatedAt }),
+		"mfaEnabled": gqlutil.BoolField(func(m MemberView) any { return m.MFAEnabled }),
 	},
 })
 
@@ -46,35 +46,35 @@ var memberGQLType = graphql.NewObject(graphql.ObjectConfig{
 var seatUsageGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WorkspaceSeatUsage",
 	Fields: graphql.Fields{
-		"used":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(u SeatUsageView) any { return u.Used })},
-		"limit": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(u SeatUsageView) any { return u.Limit })},
+		"used":  gqlutil.IntField(func(u SeatUsageView) any { return u.Used }),
+		"limit": gqlutil.IntField(func(u SeatUsageView) any { return u.Limit }),
 	},
 })
 
 var acceptedInviteGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AcceptedWorkspaceInvite",
 	Fields: graphql.Fields{
-		"workspaceId":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.WorkspaceID })},
-		"workspaceName":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.WorkspaceName })},
-		"role":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.Role })},
-		"authorizationPending": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a AcceptedInviteView) any { return a.AuthorizationPending })},
+		"workspaceId":          gqlutil.StrField(func(a AcceptedInviteView) any { return a.WorkspaceID }),
+		"workspaceName":        gqlutil.StrField(func(a AcceptedInviteView) any { return a.WorkspaceName }),
+		"role":                 gqlutil.StrField(func(a AcceptedInviteView) any { return a.Role }),
+		"authorizationPending": gqlutil.BoolField(func(a AcceptedInviteView) any { return a.AuthorizationPending }),
 	},
 })
 
 var inviteGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WorkspaceInvite",
 	Fields: graphql.Fields{
-		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i InviteView) any { return i.ID })},
-		"email":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i InviteView) any { return i.Email })},
-		"role":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i InviteView) any { return i.Role })},
-		"expiresAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i InviteView) any { return i.ExpiresAt })},
-		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i InviteView) any { return i.CreatedAt })},
+		"id":        gqlutil.StrField(func(i InviteView) any { return i.ID }),
+		"email":     gqlutil.StrField(func(i InviteView) any { return i.Email }),
+		"role":      gqlutil.StrField(func(i InviteView) any { return i.Role }),
+		"expiresAt": gqlutil.StrField(func(i InviteView) any { return i.ExpiresAt }),
+		"createdAt": gqlutil.StrField(func(i InviteView) any { return i.CreatedAt }),
 	},
 })
 
 func workspaceIDArg() graphql.FieldConfigArgument {
 	return graphql.FieldConfigArgument{
-		"workspaceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+		"workspaceId": gqlutil.ReqArg(graphql.String),
 	}
 }
 
@@ -111,9 +111,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"inviteWorkspaceMember": &graphql.Field{
 			Type: inviteGQLType,
 			Args: graphql.FieldConfigArgument{
-				"workspaceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"email":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"role":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"workspaceId": gqlutil.ReqArg(graphql.String),
+				"email":       gqlutil.ReqArg(graphql.String),
+				"role":        gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Invite(p.Context, p.Args["workspaceId"].(string), p.Args["email"].(string), p.Args["role"].(string))
@@ -122,9 +122,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"changeWorkspaceMemberRole": &graphql.Field{
 			Type: memberGQLType,
 			Args: graphql.FieldConfigArgument{
-				"workspaceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"subject":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"role":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"workspaceId": gqlutil.ReqArg(graphql.String),
+				"subject":     gqlutil.ReqArg(graphql.String),
+				"role":        gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ChangeRole(p.Context, p.Args["workspaceId"].(string), p.Args["subject"].(string), p.Args["role"].(string))
@@ -135,8 +135,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			// the affected id); a boolean would lose it.
 			Type: graphql.String,
 			Args: graphql.FieldConfigArgument{
-				"workspaceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"subject":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"workspaceId": gqlutil.ReqArg(graphql.String),
+				"subject":     gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				subject := p.Args["subject"].(string)
@@ -149,8 +149,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"revokeWorkspaceInvite": &graphql.Field{
 			Type: graphql.String,
 			Args: graphql.FieldConfigArgument{
-				"workspaceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"inviteId":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"workspaceId": gqlutil.ReqArg(graphql.String),
+				"inviteId":    gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				inviteID := p.Args["inviteId"].(string)
@@ -163,8 +163,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"resendWorkspaceInvite": &graphql.Field{
 			Type: inviteGQLType,
 			Args: graphql.FieldConfigArgument{
-				"workspaceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"inviteId":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"workspaceId": gqlutil.ReqArg(graphql.String),
+				"inviteId":    gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ResendInvite(p.Context, p.Args["workspaceId"].(string), p.Args["inviteId"].(string))
@@ -173,7 +173,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"acceptWorkspaceInvite": &graphql.Field{
 			Type: acceptedInviteGQLType,
 			Args: graphql.FieldConfigArgument{
-				"token": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"token": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.AcceptInvite(p.Context, p.Args["token"].(string))

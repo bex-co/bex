@@ -40,11 +40,11 @@ import (
 var autoscalingGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Autoscaling",
 	Fields: graphql.Fields{
-		"enabled":             &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a AutoscalingView) any { return a.Enabled })},
-		"minInstances":        &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AutoscalingView) any { return a.MinInstances })},
-		"maxInstances":        &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AutoscalingView) any { return a.MaxInstances })},
-		"targetCPUPercent":    &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AutoscalingView) any { return a.TargetCPUPercent })},
-		"targetMemoryPercent": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AutoscalingView) any { return a.TargetMemoryPercent })},
+		"enabled":             gqlutil.BoolField(func(a AutoscalingView) any { return a.Enabled }),
+		"minInstances":        gqlutil.IntField(func(a AutoscalingView) any { return a.MinInstances }),
+		"maxInstances":        gqlutil.IntField(func(a AutoscalingView) any { return a.MaxInstances }),
+		"targetCPUPercent":    gqlutil.IntField(func(a AutoscalingView) any { return a.TargetCPUPercent }),
+		"targetMemoryPercent": gqlutil.IntField(func(a AutoscalingView) any { return a.TargetMemoryPercent }),
 	},
 })
 
@@ -54,18 +54,18 @@ var autoscalingGQLType = graphql.NewObject(graphql.ObjectConfig{
 var staticRouteGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "StaticRoute",
 	Fields: graphql.Fields{
-		"type":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r StaticRouteView) any { return r.Type })},
-		"source":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r StaticRouteView) any { return r.Source })},
-		"destination": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r StaticRouteView) any { return r.Destination })},
+		"type":        gqlutil.StrField(func(r StaticRouteView) any { return r.Type }),
+		"source":      gqlutil.StrField(func(r StaticRouteView) any { return r.Source }),
+		"destination": gqlutil.StrField(func(r StaticRouteView) any { return r.Destination }),
 	},
 })
 
 var staticHeaderGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "StaticHeader",
 	Fields: graphql.Fields{
-		"path":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(h StaticHeaderView) any { return h.Path })},
-		"name":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(h StaticHeaderView) any { return h.Name })},
-		"value": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(h StaticHeaderView) any { return h.Value })},
+		"path":  gqlutil.StrField(func(h StaticHeaderView) any { return h.Path }),
+		"name":  gqlutil.StrField(func(h StaticHeaderView) any { return h.Name }),
+		"value": gqlutil.StrField(func(h StaticHeaderView) any { return h.Value }),
 	},
 })
 
@@ -92,8 +92,8 @@ var staticHeaderInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 var buildFilterGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BuildFilter",
 	Fields: graphql.Fields{
-		"paths":        &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(f BuildFilterView) any { return f.Paths })},
-		"ignoredPaths": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(f BuildFilterView) any { return f.IgnoredPaths })},
+		"paths":        gqlutil.StrsField(func(f BuildFilterView) any { return f.Paths }),
+		"ignoredPaths": gqlutil.StrsField(func(f BuildFilterView) any { return f.IgnoredPaths }),
 	},
 })
 
@@ -121,8 +121,8 @@ var secretFileInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 var maintenanceModeGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "MaintenanceMode",
 	Fields: graphql.Fields{
-		"enabled": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(m MaintenanceModeView) any { return m.Enabled })},
-		"uri":     &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(m MaintenanceModeView) any { return m.URI })},
+		"enabled": gqlutil.ReqBoolField(func(m MaintenanceModeView) any { return m.Enabled }),
+		"uri":     gqlutil.ReqStrField(func(m MaintenanceModeView) any { return m.URI }),
 	},
 })
 
@@ -294,38 +294,38 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// Routing accepts BOTH shapes: every verb funnels through
 		// core.Base.AuthorizeApp/GetApp, which resolve LabelAppID first and fall
 		// back to LabelServiceName, so pre-flip name URLs keep working.
-		"id":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.ID })},
-		"name": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Name })},
+		"id":   gqlutil.StrField(func(a AppView) any { return a.ID }),
+		"name": gqlutil.StrField(func(a AppView) any { return a.Name }),
 		// slug is the globally-unique platform-host segment (w4/m19/w4/m20/t002) —
 		// distinct from name, which is only workspace-unique.
-		"slug":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Slug })},
-		"displayName": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.DisplayName })},
-		"type":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Type })},
-		"suspended":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return core.SuspendedEnum(a.Suspended) })},
+		"slug":        gqlutil.StrField(func(a AppView) any { return a.Slug }),
+		"displayName": gqlutil.StrField(func(a AppView) any { return a.DisplayName }),
+		"type":        gqlutil.StrField(func(a AppView) any { return a.Type }),
+		"suspended":   gqlutil.StrField(func(a AppView) any { return core.SuspendedEnum(a.Suspended) }),
 		// suspenders lists WHO suspended the service (Render's array; w4/014):
 		// ["user"] while suspended — the suspend verb is bex's only suspend
 		// path — and [] otherwise.
-		"suspenders":   &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(a AppView) any { return suspenders(a.Suspended) })},
-		"dashboardUrl": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.DashboardURL })},
-		"url":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.URL })},
+		"suspenders":   gqlutil.StrsField(func(a AppView) any { return suspenders(a.Suspended) }),
+		"dashboardUrl": gqlutil.StrField(func(a AppView) any { return a.DashboardURL }),
+		"url":          gqlutil.StrField(func(a AppView) any { return a.URL }),
 		// internalAddress is the private-network "<slug>:<port>" for web/private
 		// services (empty otherwise) — the dashboard's Service Address / Connect
 		// data source; a bex extension (docs/ADR041-service-addresses.md D4).
-		"internalAddress": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.InternalAddress })},
-		"createdAt":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.CreatedAt })},
-		"updatedAt":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.UpdatedAt })},
-		"region":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Region })},
-		"sshAddress":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.SSHAddress })},
+		"internalAddress": gqlutil.StrField(func(a AppView) any { return a.InternalAddress }),
+		"createdAt":       gqlutil.StrField(func(a AppView) any { return a.CreatedAt }),
+		"updatedAt":       gqlutil.StrField(func(a AppView) any { return a.UpdatedAt }),
+		"region":          gqlutil.StrField(func(a AppView) any { return a.Region }),
+		"sshAddress":      gqlutil.StrField(func(a AppView) any { return a.SSHAddress }),
 		// bex-native extras.
-		"phase": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Phase })},
+		"phase": gqlutil.StrField(func(a AppView) any { return a.Phase }),
 		// Why an exposed service has no public address (w7/m79). Empty when it
 		// is routed or is not the kind that carries a public URL.
-		"publicRoutingNotice": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.PublicRoutingNotice })},
-		"replicas":            &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AppView) any { return a.Replicas })},
-		"revision":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Revision })},
+		"publicRoutingNotice": gqlutil.StrField(func(a AppView) any { return a.PublicRoutingNotice }),
+		"replicas":            gqlutil.IntField(func(a AppView) any { return a.Replicas }),
+		"revision":            gqlutil.StrField(func(a AppView) any { return a.Revision }),
 		// idleTTLSeconds is the free-tier auto-sleep window (bex extension, no
 		// Render counterpart); the Settings tab reads it and setIdleTimeout writes it.
-		"idleTTLSeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AppView) any { return a.IdleTTLSeconds })},
+		"idleTTLSeconds": gqlutil.IntField(func(a AppView) any { return a.IdleTTLSeconds }),
 		// Env vars are nested under the service, Render-dashboard-shaped (captured
 		// live: Render's `serviceEnvVarKeys` reads `service{ envVarKeys{ id key } }`):
 		// envVarKeys lists keys only; envVar(key) fetches one variable's value on
@@ -339,7 +339,7 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"envVar": &graphql.Field{
 			Type: envVarGQLType,
 			Args: graphql.FieldConfigArgument{
-				"key": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"key": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: envVarValueResolve,
 		},
@@ -353,7 +353,7 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"secretFile": &graphql.Field{
 			Type: secretFileGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: secretFileContentResolve,
 		},
@@ -361,34 +361,34 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// traffic — the instance-type field/mutation naming there is unconfirmed);
 		// it follows the existing suspendService/resumeService/restartServer
 		// convention rather than inventing a different shape.
-		"plan": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Plan })},
+		"plan": gqlutil.StrField(func(a AppView) any { return a.Plan }),
 		// schedule + command + runs describe a cron_job (empty/null for other
 		// types): the cron's schedule, its entrypoint override, and its recent
 		// run history (status.runs, newest first).
-		"schedule": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Schedule })},
-		"command":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Command })},
+		"schedule": gqlutil.StrField(func(a AppView) any { return a.Schedule }),
+		"command":  gqlutil.StrField(func(a AppView) any { return a.Command }),
 		"runs": &graphql.Field{
 			Type:    graphql.NewList(cronRunGQLType),
 			Resolve: gqlutil.Field(func(a AppView) any { return a.Runs }),
 		},
-		"lastSuccessfulRunAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.LastSuccessfulRunAt })},
+		"lastSuccessfulRunAt": gqlutil.StrField(func(a AppView) any { return a.LastSuccessfulRunAt }),
 		// ownerId mirrors Render's REST/MCP workspace-scoping field (w6/m2/t004).
-		"ownerId":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.OwnerID })},
-		"projectId":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.ProjectID })},
-		"environmentId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.EnvironmentID })},
+		"ownerId":       gqlutil.StrField(func(a AppView) any { return a.OwnerID }),
+		"projectId":     gqlutil.StrField(func(a AppView) any { return a.ProjectID }),
+		"environmentId": gqlutil.StrField(func(a AppView) any { return a.EnvironmentID }),
 		// rootDir is the subdirectory of the repo this App builds from (Render's
 		// Root Directory setting, monorepo support); empty is the repo root.
-		"rootDir":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.RootDir })},
-		"runtime":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Runtime })},
-		"buildCommand": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.BuildCommand })},
-		"startCommand": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.StartCommand })},
+		"rootDir":      gqlutil.StrField(func(a AppView) any { return a.RootDir }),
+		"runtime":      gqlutil.StrField(func(a AppView) any { return a.Runtime }),
+		"buildCommand": gqlutil.StrField(func(a AppView) any { return a.BuildCommand }),
+		"startCommand": gqlutil.StrField(func(a AppView) any { return a.StartCommand }),
 		// dockerfilePath is Render's Dockerfile Path setting, relative to rootDir;
 		// applies only when runtime is docker.
-		"dockerfilePath": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.DockerfilePath })},
-		"builder":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Builder })},
+		"dockerfilePath": gqlutil.StrField(func(a AppView) any { return a.DockerfilePath }),
+		"builder":        gqlutil.StrField(func(a AppView) any { return a.Builder }),
 		// repo/branch are the build-from-git source, empty for an image-backed App.
-		"repo":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Repo })},
-		"branch": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.Branch })},
+		"repo":   gqlutil.StrField(func(a AppView) any { return a.Repo }),
+		"branch": gqlutil.StrField(func(a AppView) any { return a.Branch }),
 		"registryCredentialId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any {
 			if a.RegistryCredentialID == nil {
 				return nil
@@ -406,24 +406,24 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 				return *a.BuildFilter
 			}),
 		},
-		"autoDeploy": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a AppView) any { return a.AutoDeploy })},
+		"autoDeploy": gqlutil.BoolField(func(a AppView) any { return a.AutoDeploy }),
 		// autoDeployTrigger is Render's newer enum for the same toggle
 		// ("commit"|"off", w5/m53) mapped from bex's boolean spec.autoDeploy —
 		// the dashboard's Auto-Deploy select reads it. bex never emits
 		// "checksPass" (documented divergence).
-		"autoDeployTrigger": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return triggerEnum(a.AutoDeploy) })},
+		"autoDeployTrigger": gqlutil.StrField(func(a AppView) any { return triggerEnum(a.AutoDeploy) }),
 		// notifyOnFail is Render's per-service deploy-failure notification
 		// override (default | notify | ignore, docs/render-artifacts/
 		// notify-on-fail.md); the Settings → Notifications section reads it and
 		// writes it via setNotifyOnFail.
-		"notifyOnFail":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.NotifyOnFail })},
-		"notificationsToSend": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.NotificationsToSend })},
+		"notifyOnFail":        gqlutil.StrField(func(a AppView) any { return a.NotifyOnFail }),
+		"notificationsToSend": gqlutil.StrField(func(a AppView) any { return a.NotificationsToSend }),
 		// renderSubdomainPolicy is Render's field controlling whether the platform
 		// subdomain <slug>.onbex.co is active (enabled|disabled, w7/m31). The
 		// Settings → Custom Domains section reads it and writes it via
 		// setSubdomainPolicy.
-		"renderSubdomainPolicy": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.RenderSubdomainPolicy })},
-		"healthCheckPath":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.HealthCheckPath })},
+		"renderSubdomainPolicy": gqlutil.StrField(func(a AppView) any { return a.RenderSubdomainPolicy }),
+		"healthCheckPath":       gqlutil.StrField(func(a AppView) any { return a.HealthCheckPath }),
 		"maxShutdownDelaySeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(a AppView) any {
 			if a.MaxShutdownDelaySeconds == 0 {
 				return nil
@@ -433,7 +433,7 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// preDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand);
 		// the Settings → Build & Deploy section reads it and writes via
 		// setPreDeployCommand (w1/m33).
-		"preDeployCommand": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.PreDeployCommand })},
+		"preDeployCommand": gqlutil.StrField(func(a AppView) any { return a.PreDeployCommand }),
 		// autoscaling is the per-service autoscaling config (Render's Scaling tab).
 		// Null when spec.autoscaling is unset (autoscaling never configured).
 		"autoscaling": &graphql.Field{
@@ -447,7 +447,7 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		},
 		// publishPath/routes/headers describe a static_site (empty/null for other
 		// types): the served output directory and its edge rules.
-		"publishPath": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any { return a.PublishPath })},
+		"publishPath": gqlutil.StrField(func(a AppView) any { return a.PublishPath }),
 		"routes": &graphql.Field{
 			Type:    graphql.NewList(staticRouteGQLType),
 			Resolve: gqlutil.Field(func(a AppView) any { return a.Routes }),
@@ -490,11 +490,11 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 var cronRunGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "CronRun",
 	Fields: graphql.Fields{
-		"id":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r CronRunView) any { return r.ID })},
-		"name":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r CronRunView) any { return r.Name })},
-		"startedAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r CronRunView) any { return r.StartedAt })},
-		"finishedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r CronRunView) any { return r.FinishedAt })},
-		"status":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r CronRunView) any { return r.Status })},
+		"id":         gqlutil.StrField(func(r CronRunView) any { return r.ID }),
+		"name":       gqlutil.StrField(func(r CronRunView) any { return r.Name }),
+		"startedAt":  gqlutil.StrField(func(r CronRunView) any { return r.StartedAt }),
+		"finishedAt": gqlutil.StrField(func(r CronRunView) any { return r.FinishedAt }),
+		"status":     gqlutil.StrField(func(r CronRunView) any { return r.Status }),
 	},
 })
 
@@ -505,10 +505,10 @@ var cronRunGQLType = graphql.NewObject(graphql.ObjectConfig{
 var instanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "InstanceType",
 	Fields: graphql.Fields{
-		"id":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t InstanceType) any { return t.ID })},
-		"name":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t InstanceType) any { return t.Name })},
-		"cpu":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t InstanceType) any { return t.CPU })},
-		"memory": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t InstanceType) any { return t.Memory })},
+		"id":     gqlutil.StrField(func(t InstanceType) any { return t.ID }),
+		"name":   gqlutil.StrField(func(t InstanceType) any { return t.Name }),
+		"cpu":    gqlutil.StrField(func(t InstanceType) any { return t.CPU }),
+		"memory": gqlutil.StrField(func(t InstanceType) any { return t.Memory }),
 	},
 })
 
@@ -518,8 +518,8 @@ var instanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 var serviceInstanceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ServiceInstance",
 	Fields: graphql.Fields{
-		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ServiceInstanceView) any { return v.ID })},
-		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ServiceInstanceView) any { return v.CreatedAt.UTC().Format(time.RFC3339) })},
+		"id":        gqlutil.StrField(func(v ServiceInstanceView) any { return v.ID }),
+		"createdAt": gqlutil.StrField(func(v ServiceInstanceView) any { return v.CreatedAt.UTC().Format(time.RFC3339) }),
 	},
 })
 
@@ -529,9 +529,9 @@ var serviceInstanceGQLType = graphql.NewObject(graphql.ObjectConfig{
 var shellSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ShellSession",
 	Fields: graphql.Fields{
-		"ticket":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ShellSessionView) any { return v.Ticket })},
-		"url":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ShellSessionView) any { return v.URL })},
-		"expiresAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ShellSessionView) any { return v.ExpiresAt })},
+		"ticket":    gqlutil.StrField(func(v ShellSessionView) any { return v.Ticket }),
+		"url":       gqlutil.StrField(func(v ShellSessionView) any { return v.URL }),
+		"expiresAt": gqlutil.StrField(func(v ShellSessionView) any { return v.ExpiresAt }),
 	},
 })
 
@@ -541,8 +541,8 @@ var shellSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 var nameAvailabilityGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "NameAvailability",
 	Fields: graphql.Fields{
-		"available":  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(a NameAvailability) any { return a.Available })},
-		"suggestion": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a NameAvailability) any { return a.Suggestion })},
+		"available":  gqlutil.BoolField(func(a NameAvailability) any { return a.Available }),
+		"suggestion": gqlutil.StrField(func(a NameAvailability) any { return a.Suggestion }),
 	},
 })
 
@@ -556,10 +556,10 @@ var nameAvailabilityGQLType = graphql.NewObject(graphql.ObjectConfig{
 var envVarGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "EnvVar",
 	Fields: graphql.Fields{
-		"id":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.ID })},
-		"key":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.Key })},
-		"value":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.Value })},
-		"revision": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v core.EnvVar) any { return v.Revision })},
+		"id":       gqlutil.StrField(func(v core.EnvVar) any { return v.ID }),
+		"key":      gqlutil.StrField(func(v core.EnvVar) any { return v.Key }),
+		"value":    gqlutil.StrField(func(v core.EnvVar) any { return v.Value }),
+		"revision": gqlutil.StrField(func(v core.EnvVar) any { return v.Revision }),
 	},
 })
 
@@ -583,20 +583,20 @@ func gqlInt32Ptr(args map[string]any, key string) *int32 {
 var dnsRecordGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DNSRecord",
 	Fields: graphql.Fields{
-		"type":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r DNSRecordView) any { return r.Type })},
-		"name":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r DNSRecordView) any { return r.Name })},
-		"value": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r DNSRecordView) any { return r.Value })},
+		"type":  gqlutil.StrField(func(r DNSRecordView) any { return r.Type }),
+		"name":  gqlutil.StrField(func(r DNSRecordView) any { return r.Name }),
+		"value": gqlutil.StrField(func(r DNSRecordView) any { return r.Value }),
 	},
 })
 
 var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "CustomDomain",
 	Fields: graphql.Fields{
-		"id":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.Name })},
-		"name":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.Name })},
-		"domainType":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.DomainType })},
-		"verificationStatus": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.VerificationStatus })},
-		"serverStatus":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any { return d.ServerStatus })},
+		"id":                 gqlutil.StrField(func(d DomainView) any { return d.Name }),
+		"name":               gqlutil.StrField(func(d DomainView) any { return d.Name }),
+		"domainType":         gqlutil.StrField(func(d DomainView) any { return d.DomainType }),
+		"verificationStatus": gqlutil.StrField(func(d DomainView) any { return d.VerificationStatus }),
+		"serverStatus":       gqlutil.StrField(func(d DomainView) any { return d.ServerStatus }),
 		"redirectForName": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DomainView) any {
 			if d.RedirectForName == "" {
 				return nil
@@ -605,7 +605,7 @@ var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 		})},
 		// dnsRecord is the record the tenant must create (bex extension; the target is
 		// the app's platform host <app>.<base-domain>).
-		"dnsRecord": &graphql.Field{Type: dnsRecordGQLType, Resolve: gqlutil.Field(func(d DomainView) any { return d.DNSRecord })},
+		"dnsRecord": gqlutil.Typed(dnsRecordGQLType, func(d DomainView) any { return d.DNSRecord }),
 	},
 })
 
@@ -639,9 +639,9 @@ func envVarValueResolve(p graphql.ResolveParams) (any, error) {
 var secretFileGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SecretFile",
 	Fields: graphql.Fields{
-		"id":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(f core.SecretFile) any { return f.ID })},
-		"name":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(f core.SecretFile) any { return f.Name })},
-		"content": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(f core.SecretFile) any { return f.Content })},
+		"id":      gqlutil.StrField(func(f core.SecretFile) any { return f.ID }),
+		"name":    gqlutil.StrField(func(f core.SecretFile) any { return f.Name }),
+		"content": gqlutil.StrField(func(f core.SecretFile) any { return f.Content }),
 	},
 })
 
@@ -673,9 +673,9 @@ func secretFileContentResolve(p graphql.ResolveParams) (any, error) {
 var blueprintResourceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintResource",
 	Fields: graphql.Fields{
-		"id":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintResource) any { return r.ID })},
-		"name": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintResource) any { return r.Name })},
-		"type": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintResource) any { return r.Type })},
+		"id":   gqlutil.StrField(func(r BlueprintResource) any { return r.ID }),
+		"name": gqlutil.StrField(func(r BlueprintResource) any { return r.Name }),
+		"type": gqlutil.StrField(func(r BlueprintResource) any { return r.Type }),
 	},
 })
 
@@ -683,11 +683,11 @@ var blueprintResourceGQLType = graphql.NewObject(graphql.ObjectConfig{
 var blueprintSyncGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintSync",
 	Fields: graphql.Fields{
-		"id":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintSyncView) any { return r.ID })},
-		"commitId":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintSyncView) any { return r.CommitID })},
-		"state":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintSyncView) any { return r.State })},
-		"startedAt":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintSyncView) any { return r.StartedAt })},
-		"completedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r BlueprintSyncView) any { return r.CompletedAt })},
+		"id":          gqlutil.StrField(func(r BlueprintSyncView) any { return r.ID }),
+		"commitId":    gqlutil.StrField(func(r BlueprintSyncView) any { return r.CommitID }),
+		"state":       gqlutil.StrField(func(r BlueprintSyncView) any { return r.State }),
+		"startedAt":   gqlutil.StrField(func(r BlueprintSyncView) any { return r.StartedAt }),
+		"completedAt": gqlutil.StrField(func(r BlueprintSyncView) any { return r.CompletedAt }),
 	},
 })
 
@@ -695,62 +695,62 @@ var blueprintSyncGQLType = graphql.NewObject(graphql.ObjectConfig{
 var blueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Blueprint",
 	Fields: graphql.Fields{
-		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.ID })},
-		"name":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Name })},
-		"repo":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Repo })},
-		"branch":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Branch })},
-		"path":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Path })},
-		"autoSync":  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.AutoSync })},
-		"manifest":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Manifest })},
-		"status":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Status })},
-		"lastSync":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.LastSync })},
-		"resources": &graphql.Field{Type: graphql.NewList(blueprintResourceGQLType), Resolve: gqlutil.Field(func(b BlueprintView) any { return b.Resources })},
-		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.CreatedAt })},
-		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(b BlueprintView) any { return b.UpdatedAt })},
+		"id":        gqlutil.StrField(func(b BlueprintView) any { return b.ID }),
+		"name":      gqlutil.StrField(func(b BlueprintView) any { return b.Name }),
+		"repo":      gqlutil.StrField(func(b BlueprintView) any { return b.Repo }),
+		"branch":    gqlutil.StrField(func(b BlueprintView) any { return b.Branch }),
+		"path":      gqlutil.StrField(func(b BlueprintView) any { return b.Path }),
+		"autoSync":  gqlutil.BoolField(func(b BlueprintView) any { return b.AutoSync }),
+		"manifest":  gqlutil.StrField(func(b BlueprintView) any { return b.Manifest }),
+		"status":    gqlutil.StrField(func(b BlueprintView) any { return b.Status }),
+		"lastSync":  gqlutil.StrField(func(b BlueprintView) any { return b.LastSync }),
+		"resources": gqlutil.Typed(graphql.NewList(blueprintResourceGQLType), func(b BlueprintView) any { return b.Resources }),
+		"createdAt": gqlutil.StrField(func(b BlueprintView) any { return b.CreatedAt }),
+		"updatedAt": gqlutil.StrField(func(b BlueprintView) any { return b.UpdatedAt }),
 	},
 })
 
 var blueprintValidationErrorGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintValidationError",
 	Fields: graphql.Fields{
-		"code":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e BlueprintValidationError) any { return e.Code })},
-		"error":  &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(e BlueprintValidationError) any { return e.Error })},
-		"line":   &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(e BlueprintValidationError) any { return e.Line })},
-		"column": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(e BlueprintValidationError) any { return e.Column })},
-		"path":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e BlueprintValidationError) any { return e.Path })},
+		"code":   gqlutil.StrField(func(e BlueprintValidationError) any { return e.Code }),
+		"error":  gqlutil.ReqStrField(func(e BlueprintValidationError) any { return e.Error }),
+		"line":   gqlutil.IntField(func(e BlueprintValidationError) any { return e.Line }),
+		"column": gqlutil.IntField(func(e BlueprintValidationError) any { return e.Column }),
+		"path":   gqlutil.StrField(func(e BlueprintValidationError) any { return e.Path }),
 	},
 })
 
 var blueprintValidationPlanGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintValidationPlan",
 	Fields: graphql.Fields{
-		"mode":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.Mode })},
-		"services":     &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.Services })},
-		"databases":    &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.Databases })},
-		"keyValue":     &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.KeyValue })},
-		"envGroups":    &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.EnvGroups })},
-		"totalActions": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.TotalActions })},
-		"actions":      &graphql.Field{Type: graphql.NewList(blueprintPlanActionGQLType), Resolve: gqlutil.Field(func(p BlueprintValidationPlan) any { return p.Actions })},
+		"mode":         gqlutil.StrField(func(p BlueprintValidationPlan) any { return p.Mode }),
+		"services":     gqlutil.StrsField(func(p BlueprintValidationPlan) any { return p.Services }),
+		"databases":    gqlutil.StrsField(func(p BlueprintValidationPlan) any { return p.Databases }),
+		"keyValue":     gqlutil.StrsField(func(p BlueprintValidationPlan) any { return p.KeyValue }),
+		"envGroups":    gqlutil.StrsField(func(p BlueprintValidationPlan) any { return p.EnvGroups }),
+		"totalActions": gqlutil.IntField(func(p BlueprintValidationPlan) any { return p.TotalActions }),
+		"actions":      gqlutil.Typed(graphql.NewList(blueprintPlanActionGQLType), func(p BlueprintValidationPlan) any { return p.Actions }),
 	},
 })
 
 var blueprintPlanFieldChangeGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintPlanFieldChange",
 	Fields: graphql.Fields{
-		"path": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(c BlueprintFieldChange) any { return c.Path })},
+		"path": gqlutil.StrField(func(c BlueprintFieldChange) any { return c.Path }),
 	},
 })
 
 var blueprintPlanActionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintPlanAction",
 	Fields: graphql.Fields{
-		"operation":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.Operation })},
-		"kind":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.Kind })},
-		"name":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.Name })},
-		"sourcePath":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.SourcePath })},
-		"resourceId":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.ResourceID })},
-		"changedFields": &graphql.Field{Type: graphql.NewList(blueprintPlanFieldChangeGQLType), Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.ChangedFields })},
-		"message":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a BlueprintPlanAction) any { return a.Message })},
+		"operation":     gqlutil.StrField(func(a BlueprintPlanAction) any { return a.Operation }),
+		"kind":          gqlutil.StrField(func(a BlueprintPlanAction) any { return a.Kind }),
+		"name":          gqlutil.StrField(func(a BlueprintPlanAction) any { return a.Name }),
+		"sourcePath":    gqlutil.StrField(func(a BlueprintPlanAction) any { return a.SourcePath }),
+		"resourceId":    gqlutil.StrField(func(a BlueprintPlanAction) any { return a.ResourceID }),
+		"changedFields": gqlutil.Typed(graphql.NewList(blueprintPlanFieldChangeGQLType), func(a BlueprintPlanAction) any { return a.ChangedFields }),
+		"message":       gqlutil.StrField(func(a BlueprintPlanAction) any { return a.Message }),
 	},
 })
 
@@ -760,14 +760,14 @@ var blueprintPlanActionGQLType = graphql.NewObject(graphql.ObjectConfig{
 var blueprintPricingLineGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintPricingLine",
 	Fields: graphql.Fields{
-		"name":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.Name })},
-		"resourceKind": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.ResourceKind })},
-		"tier":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.Tier })},
-		"tierLabel":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.TierLabel })},
-		"monthlyUsd":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.MonthlyUSD })},
-		"instanceUsd":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.InstanceUSD })},
-		"storageUsd":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.StorageUSD })},
-		"storageGb":    &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.StorageGB })},
+		"name":         gqlutil.StrField(func(l pricing.MonthlyLine) any { return l.Name }),
+		"resourceKind": gqlutil.StrField(func(l pricing.MonthlyLine) any { return l.ResourceKind }),
+		"tier":         gqlutil.StrField(func(l pricing.MonthlyLine) any { return l.Tier }),
+		"tierLabel":    gqlutil.StrField(func(l pricing.MonthlyLine) any { return l.TierLabel }),
+		"monthlyUsd":   gqlutil.StrField(func(l pricing.MonthlyLine) any { return l.MonthlyUSD }),
+		"instanceUsd":  gqlutil.StrField(func(l pricing.MonthlyLine) any { return l.InstanceUSD }),
+		"storageUsd":   gqlutil.StrField(func(l pricing.MonthlyLine) any { return l.StorageUSD }),
+		"storageGb":    gqlutil.IntField(func(l pricing.MonthlyLine) any { return l.StorageGB }),
 	},
 })
 
@@ -776,8 +776,8 @@ var blueprintPricingLineGQLType = graphql.NewObject(graphql.ObjectConfig{
 var blueprintVariableCostGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintVariableCost",
 	Fields: graphql.Fields{
-		"name":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v pricing.VariableCost) any { return v.Name })},
-		"reason": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v pricing.VariableCost) any { return v.Reason })},
+		"name":   gqlutil.StrField(func(v pricing.VariableCost) any { return v.Name }),
+		"reason": gqlutil.StrField(func(v pricing.VariableCost) any { return v.Reason }),
 	},
 })
 
@@ -786,9 +786,9 @@ var blueprintVariableCostGQLType = graphql.NewObject(graphql.ObjectConfig{
 var blueprintEstimatedPricingGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintEstimatedPricing",
 	Fields: graphql.Fields{
-		"totalUsd": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e pricing.MonthlyEstimate) any { return e.TotalUSD })},
-		"lines":    &graphql.Field{Type: graphql.NewList(blueprintPricingLineGQLType), Resolve: gqlutil.Field(func(e pricing.MonthlyEstimate) any { return e.Lines })},
-		"variable": &graphql.Field{Type: graphql.NewList(blueprintVariableCostGQLType), Resolve: gqlutil.Field(func(e pricing.MonthlyEstimate) any { return e.Variable })},
+		"totalUsd": gqlutil.StrField(func(e pricing.MonthlyEstimate) any { return e.TotalUSD }),
+		"lines":    gqlutil.Typed(graphql.NewList(blueprintPricingLineGQLType), func(e pricing.MonthlyEstimate) any { return e.Lines }),
+		"variable": gqlutil.Typed(graphql.NewList(blueprintVariableCostGQLType), func(e pricing.MonthlyEstimate) any { return e.Variable }),
 	},
 })
 
@@ -797,7 +797,7 @@ var blueprintEstimatedPricingGQLType = graphql.NewObject(graphql.ObjectConfig{
 var blueprintValidationGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintValidation",
 	Fields: graphql.Fields{
-		"valid": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v BlueprintValidation) any { return v.Valid })},
+		"valid": gqlutil.BoolField(func(v BlueprintValidation) any { return v.Valid }),
 		"errors": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v BlueprintValidation) any {
 			messages := make([]string, len(v.Errors))
 			for i, validationErr := range v.Errors {
@@ -805,7 +805,7 @@ var blueprintValidationGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return messages
 		})},
-		"errorDetails": &graphql.Field{Type: graphql.NewList(blueprintValidationErrorGQLType), Resolve: gqlutil.Field(func(v BlueprintValidation) any { return v.Errors })},
+		"errorDetails": gqlutil.Typed(graphql.NewList(blueprintValidationErrorGQLType), func(v BlueprintValidation) any { return v.Errors }),
 		"plan": &graphql.Field{Type: blueprintValidationPlanGQLType, Resolve: gqlutil.Field(func(v BlueprintValidation) any {
 			if v.Plan == nil {
 				return nil
@@ -826,11 +826,11 @@ var blueprintValidationGQLType = graphql.NewObject(graphql.ObjectConfig{
 var blueprintPreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintPreview",
 	Fields: graphql.Fields{
-		"found":    &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.Found })},
-		"manifest": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.Manifest })},
-		"commitId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.CommitID })},
-		"warning":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.Warning })},
-		"error":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(p BlueprintPreview) any { return p.Error })},
+		"found":    gqlutil.BoolField(func(p BlueprintPreview) any { return p.Found }),
+		"manifest": gqlutil.StrField(func(p BlueprintPreview) any { return p.Manifest }),
+		"commitId": gqlutil.StrField(func(p BlueprintPreview) any { return p.CommitID }),
+		"warning":  gqlutil.StrField(func(p BlueprintPreview) any { return p.Warning }),
+		"error":    gqlutil.StrField(func(p BlueprintPreview) any { return p.Error }),
 		"validation": &graphql.Field{Type: blueprintValidationGQLType, Resolve: gqlutil.Field(func(p BlueprintPreview) any {
 			if p.Validation == nil {
 				return nil
@@ -844,9 +844,9 @@ var blueprintPreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
 var syncBlueprintResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SyncBlueprintResult",
 	Fields: graphql.Fields{
-		"blueprint": &graphql.Field{Type: blueprintGQLType, Resolve: gqlutil.Field(func(r SyncBlueprintResult) any { return r.Blueprint })},
+		"blueprint": gqlutil.Typed(blueprintGQLType, func(r SyncBlueprintResult) any { return r.Blueprint }),
 		// services and databases from the stack apply — summary only (poll via server/postgres for full state).
-		"services": &graphql.Field{Type: graphql.NewList(serviceGQLType), Resolve: gqlutil.Field(func(r SyncBlueprintResult) any { return r.Stack.Services })},
+		"services": gqlutil.Typed(graphql.NewList(serviceGQLType), func(r SyncBlueprintResult) any { return r.Stack.Services }),
 		"databases": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(r SyncBlueprintResult) any {
 			names := make([]string, len(r.Stack.Databases))
 			for i, d := range r.Stack.Databases {
@@ -876,12 +876,10 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		},
 		"services": &graphql.Field{
 			Type: graphql.NewList(serviceGQLType),
-			Args: graphql.FieldConfigArgument{
+			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{
 				// ownerId mirrors Render's REST/MCP services list filter (w6/m2/t004).
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
-				"cursor":  &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":   &graphql.ArgumentConfig{Type: graphql.Int},
-			},
+				"ownerId": gqlutil.Arg(graphql.String),
+			}),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				out, err := s.List(p.Context, gqlutil.Str(p.Args, "ownerId"))
 				if err != nil {
@@ -890,30 +888,16 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return gqlutil.Page(p, out, func(a AppView) string { return a.ID }), nil
 			},
 		},
-		"server": &graphql.Field{ // Render's dashboard query name
-			Type: serviceGQLType,
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Get(p.Context, p.Args["id"].(string))
-			},
-		},
-		"service": &graphql.Field{ // Render's dashboard also queries service(id) (e.g. serviceEnvVarKeys)
-			Type: serviceGQLType,
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Get(p.Context, p.Args["id"].(string))
-			},
-		},
+		"server":  gqlutil.IDVerb(serviceGQLType, s.Get), // Render's dashboard query name
+		"service": gqlutil.IDVerb(serviceGQLType, s.Get), // Render's dashboard also queries service(id) (e.g. serviceEnvVarKeys)
 		// First-class cron run reads (bex extensions over Render's current public
 		// API, which only exposes trigger/cancel-current). Both delegate to the
 		// same status.runs verbs REST/MCP use.
 		"cronJobRuns": &graphql.Field{
 			Type: graphql.NewList(cronRunGQLType),
-			Args: graphql.FieldConfigArgument{
-				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"cursor":    &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
-			},
+			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{
+				"serviceId": gqlutil.ReqArg(graphql.String),
+			}),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ListCronRuns(p.Context, p.Args["serviceId"].(string), gqlutil.Str(p.Args, "cursor"), gqlutil.Int(p.Args, "limit"))
 			},
@@ -921,8 +905,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"cronJobRun": &graphql.Field{
 			Type: cronRunGQLType,
 			Args: graphql.FieldConfigArgument{
-				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"runId":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"serviceId": gqlutil.ReqArg(graphql.String),
+				"runId":     gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.GetCronRun(p.Context, p.Args["serviceId"].(string), p.Args["runId"].(string))
@@ -935,20 +919,14 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		// serviceInstances: Render's per-service instance list ({id, createdAt}) —
 		// the source for the Web Shell instance picker (w2/m55). Mirrors REST
 		// GET /v1/services/{id}/instances via the same ListInstances verb.
-		"serviceInstances": &graphql.Field{
-			Type: graphql.NewList(serviceInstanceGQLType),
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListInstances(p.Context, p.Args["id"].(string))
-			},
-		},
+		"serviceInstances": gqlutil.IDVerb(graphql.NewList(serviceInstanceGQLType), s.ListInstances),
 		// serviceNameAvailable: the create form's debounced availability check
 		// (w4/m19), a bex extension backing the "Name is already in use" +
 		// suggestion UX.
 		"serviceNameAvailable": &graphql.Field{
 			Type: nameAvailabilityGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.NameAvailable(p.Context, p.Args["name"].(string))
@@ -959,13 +937,11 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		// the REST filters w7/m38 shipped.
 		"customDomains": &graphql.Field{
 			Type: graphql.NewList(customDomainGQLType),
-			Args: graphql.FieldConfigArgument{
-				"id":                 &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"cursor":             &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":              &graphql.ArgumentConfig{Type: graphql.Int},
-				"verificationStatus": &graphql.ArgumentConfig{Type: graphql.String},
-				"domainType":         &graphql.ArgumentConfig{Type: graphql.String},
-			},
+			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{
+				"id":                 gqlutil.ReqArg(graphql.String),
+				"verificationStatus": gqlutil.Arg(graphql.String),
+				"domainType":         gqlutil.Arg(graphql.String),
+			}),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				out, err := s.ListDomains(p.Context, p.Args["id"].(string))
 				if err != nil {
@@ -978,21 +954,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return gqlutil.Page(p, out, func(d DomainView) string { return d.Name }), nil
 			},
 		},
-		"customDomain": &graphql.Field{
-			Type: customDomainGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetDomain(p.Context, p.Args["id"].(string), p.Args["name"].(string))
-			},
-		},
+		"customDomain": gqlutil.ArgMutation(customDomainGQLType, "name", s.GetDomain),
 		// blueprints: list known render.yaml stack sources for a workspace (w2/m15).
 		"blueprints": &graphql.Field{
 			Type: graphql.NewList(blueprintGQLType),
 			Args: graphql.FieldConfigArgument{
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ListBlueprints(p.Context, gqlutil.Str(p.Args, "ownerId"))
@@ -1002,8 +969,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"blueprint": &graphql.Field{
 			Type: blueprintGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.GetBlueprint(p.Context, p.Args["id"].(string), gqlutil.Str(p.Args, "ownerId"))
@@ -1013,8 +980,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"validateBlueprint": &graphql.Field{
 			Type: blueprintValidationGQLType,
 			Args: graphql.FieldConfigArgument{
-				"bexYaml": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"bexYaml": gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ValidateBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["bexYaml"].(string))
@@ -1025,10 +992,10 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"blueprintPreview": &graphql.Field{
 			Type: blueprintPreviewGQLType,
 			Args: graphql.FieldConfigArgument{
-				"repo":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"branch":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"path":    &graphql.ArgumentConfig{Type: graphql.String},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"repo":    gqlutil.ReqArg(graphql.String),
+				"branch":  gqlutil.ReqArg(graphql.String),
+				"path":    gqlutil.Arg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.PreviewBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"),
@@ -1038,14 +1005,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		// blueprintSyncs: sync run history for a blueprint (w2/m62).
 		"blueprintSyncs": &graphql.Field{
 			Type: graphql.NewList(blueprintSyncGQLType),
-			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
-				"cursor":  &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":   &graphql.ArgumentConfig{Type: graphql.Int},
-			},
+			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
+			}),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				limit, _ := p.Args["limit"].(int)
+				limit := gqlutil.Int(p.Args, "limit")
 				return s.ListBlueprintSyncs(p.Context, p.Args["id"].(string),
 					gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "cursor"), limit)
 			},
@@ -1062,13 +1027,13 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 	// Args omit it, since verb reads it with a safe comma-ok assert.
 	confirmIDArgs := func() graphql.FieldConfigArgument {
 		return graphql.FieldConfigArgument{
-			"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			"confirm": &graphql.ArgumentConfig{Type: graphql.String},
+			"id":      gqlutil.ReqArg(graphql.String),
+			"confirm": gqlutil.Arg(graphql.String),
 		}
 	}
 	verb := func(fn func(context.Context, string) (AppView, error)) graphql.FieldResolveFn {
 		return func(p graphql.ResolveParams) (any, error) {
-			confirm, _ := p.Args["confirm"].(string)
+			confirm := gqlutil.Str(p.Args, "confirm")
 			ctx := core.WithConfirm(p.Context, confirm)
 			return fn(ctx, p.Args["id"].(string))
 		}
@@ -1082,62 +1047,62 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createService": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"name": gqlutil.ReqArg(graphql.String),
 				// ownerId is the workspace to create IN (w6/m14) — the write-side
 				// twin of the services list filter above, and the same optional
 				// contract REST's create body has: omitted => the caller's default
 				// workspace; a workspace they don't belong to => forbidden.
-				"ownerId":              &graphql.ArgumentConfig{Type: graphql.String},
-				"environmentId":        &graphql.ArgumentConfig{Type: graphql.String},
-				"type":                 &graphql.ArgumentConfig{Type: graphql.String}, // web_service (default) | private_service | background_worker | cron_job
-				"schedule":             &graphql.ArgumentConfig{Type: graphql.String}, // cron expression, required when type is cron_job
-				"command":              &graphql.ArgumentConfig{Type: graphql.String}, // overrides the image's entrypoint for a cron_job
-				"repo":                 &graphql.ArgumentConfig{Type: graphql.String},
-				"image":                &graphql.ArgumentConfig{Type: graphql.String},
-				"registryCredentialId": &graphql.ArgumentConfig{Type: graphql.String},
-				"branch":               &graphql.ArgumentConfig{Type: graphql.String},
-				"rootDir":              &graphql.ArgumentConfig{Type: graphql.String},       // subdirectory of repo to build from (monorepo support)
-				"buildFilter":          &graphql.ArgumentConfig{Type: buildFilterInputType}, // Render's Build Filters: globs gating push auto-deploys
-				"runtime":              &graphql.ArgumentConfig{Type: graphql.String},       // Render runtime: native language | docker | image
-				"buildCommand":         &graphql.ArgumentConfig{Type: graphql.String},
-				"startCommand":         &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId":              gqlutil.Arg(graphql.String),
+				"environmentId":        gqlutil.Arg(graphql.String),
+				"type":                 gqlutil.Arg(graphql.String), // web_service (default) | private_service | background_worker | cron_job
+				"schedule":             gqlutil.Arg(graphql.String), // cron expression, required when type is cron_job
+				"command":              gqlutil.Arg(graphql.String), // overrides the image's entrypoint for a cron_job
+				"repo":                 gqlutil.Arg(graphql.String),
+				"image":                gqlutil.Arg(graphql.String),
+				"registryCredentialId": gqlutil.Arg(graphql.String),
+				"branch":               gqlutil.Arg(graphql.String),
+				"rootDir":              gqlutil.Arg(graphql.String),       // subdirectory of repo to build from (monorepo support)
+				"buildFilter":          gqlutil.Arg(buildFilterInputType), // Render's Build Filters: globs gating push auto-deploys
+				"runtime":              gqlutil.Arg(graphql.String),       // Render runtime: native language | docker | image
+				"buildCommand":         gqlutil.Arg(graphql.String),
+				"startCommand":         gqlutil.Arg(graphql.String),
 				// dockerfilePath is Render's Dockerfile Path, relative to rootDir; docker runtime only.
-				"dockerfilePath": &graphql.ArgumentConfig{Type: graphql.String},
-				"builder":        &graphql.ArgumentConfig{Type: graphql.String}, // auto (default) | buildpack | dockerfile
-				"plan":           &graphql.ArgumentConfig{Type: graphql.String},
-				"autoDeploy":     &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"dockerfilePath": gqlutil.Arg(graphql.String),
+				"builder":        gqlutil.Arg(graphql.String), // auto (default) | buildpack | dockerfile
+				"plan":           gqlutil.Arg(graphql.String),
+				"autoDeploy":     gqlutil.Arg(graphql.Boolean),
 				// notifyOnFail is Render's per-service deploy-failure notification
 				// override (default | notify | ignore); omitted => "default".
-				"notifyOnFail": &graphql.ArgumentConfig{Type: graphql.String},
-				"port":         &graphql.ArgumentConfig{Type: graphql.Int},
-				"replicas":     &graphql.ArgumentConfig{Type: graphql.Int},
+				"notifyOnFail": gqlutil.Arg(graphql.String),
+				"port":         gqlutil.Arg(graphql.Int),
+				"replicas":     gqlutil.Arg(graphql.Int),
 				// envVars sets literal (non-secret) environment variables at create time
 				// (Render parity, w5/m19): REST/MCP parity — those surfaces accepted
 				// envVars at create since w2/m2; GraphQL now reaches the same shape.
 				// envVars: reuses gqlutil.EnvVarInputType (shared with secrets.setEnvVars
 				// to avoid duplicate type names in the composed schema).
-				"envVars":     &graphql.ArgumentConfig{Type: graphql.NewList(gqlutil.EnvVarInputType)},
-				"secretFiles": &graphql.ArgumentConfig{Type: graphql.NewList(secretFileInputType)},
+				"envVars":     gqlutil.Arg(graphql.NewList(gqlutil.EnvVarInputType)),
+				"secretFiles": gqlutil.Arg(graphql.NewList(secretFileInputType)),
 				// static_site create fields.
-				"publishPath":             &graphql.ArgumentConfig{Type: graphql.String},
-				"routes":                  &graphql.ArgumentConfig{Type: graphql.NewList(staticRouteInputType)},
-				"headers":                 &graphql.ArgumentConfig{Type: graphql.NewList(staticHeaderInputType)},
-				"healthCheckPath":         &graphql.ArgumentConfig{Type: graphql.String},
-				"maxShutdownDelaySeconds": &graphql.ArgumentConfig{Type: graphql.Int},
+				"publishPath":             gqlutil.Arg(graphql.String),
+				"routes":                  gqlutil.Arg(graphql.NewList(staticRouteInputType)),
+				"headers":                 gqlutil.Arg(graphql.NewList(staticHeaderInputType)),
+				"healthCheckPath":         gqlutil.Arg(graphql.String),
+				"maxShutdownDelaySeconds": gqlutil.Arg(graphql.Int),
 				// preDeployCommand is Render's Pre-Deploy Command (spec.preDeployCommand, w1/m33).
-				"preDeployCommand": &graphql.ArgumentConfig{Type: graphql.String},
+				"preDeployCommand": gqlutil.Arg(graphql.String),
 				// maintenanceMode is Render's maintenanceMode object at create time
 				// (w1/m37); web_service only. Omitted => disabled.
-				"maintenanceMode": &graphql.ArgumentConfig{Type: maintenanceModeInputType},
+				"maintenanceMode": gqlutil.Arg(maintenanceModeInputType),
 				// Description-aware service allowlist plus the legacy CIDR list.
 				// Conflicting simultaneous values are rejected by Core.
-				"ipAllowList":        &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
-				"ipAllowListEntries": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
+				"ipAllowList":        gqlutil.Arg(graphql.NewList(graphql.String)),
+				"ipAllowListEntries": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))),
 				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
-				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"dryRun": gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				dryRun, _ := p.Args["dryRun"].(bool)
+				dryRun := gqlutil.Bool(p.Args, "dryRun")
 				env, err := gqlEnvVarInputs(p.Args, "envVars")
 				if err != nil {
 					return nil, err
@@ -1198,7 +1163,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			// guard (apps.ProtectedConfirmation) — a no-op otherwise.
 			Args: confirmIDArgs(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				confirm, _ := p.Args["confirm"].(string)
+				confirm := gqlutil.Str(p.Args, "confirm")
 				err := s.Delete(core.WithConfirm(p.Context, confirm), p.Args["id"].(string))
 				return err == nil, err
 			},
@@ -1209,9 +1174,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"updateCronJob": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"schedule": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"command":  &graphql.ArgumentConfig{Type: graphql.String},
+				"id":       gqlutil.ReqArg(graphql.String),
+				"schedule": gqlutil.ReqArg(graphql.String),
+				"command":  gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				sched := p.Args["schedule"].(string)
@@ -1229,8 +1194,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"cancelCronJobRun": &graphql.Field{
 			Type: cronRunGQLType,
 			Args: graphql.FieldConfigArgument{
-				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"runId":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"serviceId": gqlutil.ReqArg(graphql.String),
+				"runId":     gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.CancelCronRun(p.Context, p.Args["serviceId"].(string), p.Args["runId"].(string))
@@ -1248,36 +1213,18 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// setDisplayName relabels a service for humans while leaving its immutable
 		// App name/id, platform hostname, and derived Kubernetes resources alone.
 		// An empty displayName clears the label and restores the name fallback.
-		"setDisplayName": &graphql.Field{
-			Type: serviceGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"displayName": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetDisplayName(p.Context, p.Args["id"].(string), p.Args["displayName"].(string))
-			},
-		},
+		"setDisplayName": gqlutil.ArgMutation(serviceGQLType, "displayName", s.SetDisplayName),
 		// setRegistryCredential binds an image-backed service or Dockerfile build
 		// to one stored workspace credential. Empty clears the binding; the
 		// service verb owns the same membership/source checks used by REST/MCP.
-		"setRegistryCredential": &graphql.Field{
-			Type: serviceGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":                   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"registryCredentialId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetRegistryCredential(p.Context, p.Args["id"].(string), p.Args["registryCredentialId"].(string))
-			},
-		},
+		"setRegistryCredential": gqlutil.ArgMutation(serviceGQLType, "registryCredentialId", s.SetRegistryCredential),
 		// scaleService: Render's manual-scaling verb. numInstances mirrors the
 		// REST scale body field; out-of-range is a GraphQL error (core.ErrBadRequest).
 		"scaleService": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":           &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"numInstances": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Int)},
+				"id":           gqlutil.ReqArg(graphql.String),
+				"numInstances": gqlutil.ReqArg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Scale(p.Context, p.Args["id"].(string), int32(p.Args["numInstances"].(int)))
@@ -1291,11 +1238,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createShellSession": &graphql.Field{
 			Type: shellSessionGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"instanceId": &graphql.ArgumentConfig{Type: graphql.String},
+				"id":         gqlutil.ReqArg(graphql.String),
+				"instanceId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				instanceID, _ := p.Args["instanceId"].(string)
+				instanceID := gqlutil.Str(p.Args, "instanceId")
 				return s.CreateShellSession(p.Context, p.Args["id"].(string), instanceID)
 			},
 		},
@@ -1305,8 +1252,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setIdleTimeout": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":             &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"idleTTLSeconds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Int)},
+				"id":             gqlutil.ReqArg(graphql.String),
+				"idleTTLSeconds": gqlutil.ReqArg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetIdleTTL(p.Context, p.Args["id"].(string), int32(p.Args["idleTTLSeconds"].(int)))
@@ -1316,16 +1263,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// Render's Root Directory setting (spec.rootDir) on an existing App
 		// (create-time rootDir is handled by createService above). Rejected for
 		// an image-backed App (core.ErrBadRequest — nothing to build).
-		"setRootDir": &graphql.Field{
-			Type: serviceGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"rootDir": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetRootDir(p.Context, p.Args["id"].(string), p.Args["rootDir"].(string))
-			},
-		},
+		"setRootDir": gqlutil.ArgMutation(serviceGQLType, "rootDir", s.SetRootDir),
 		// setBranch changes the Git branch a repo-backed service builds and
 		// deploys from (Render's editable Branch field, w5/m48/t005). Delegates
 		// to the shared source verb — the same path Render's REST PATCH `branch`
@@ -1334,8 +1272,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setBranch": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"branch": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"id":     gqlutil.ReqArg(graphql.String),
+				"branch": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				branch := p.Args["branch"].(string)
@@ -1349,8 +1287,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setRepo": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"repo": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"id":   gqlutil.ReqArg(graphql.String),
+				"repo": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				repo := p.Args["repo"].(string)
@@ -1364,8 +1302,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setBuildCommand": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"command": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"command": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				command := p.Args["command"].(string)
@@ -1378,8 +1316,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setStartCommand": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"command": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"command": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				command := p.Args["command"].(string)
@@ -1388,16 +1326,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		// setDockerfilePath changes Render's Dockerfile Path on an existing
 		// repo-backed Docker service. Empty restores the default Dockerfile.
-		"setDockerfilePath": &graphql.Field{
-			Type: serviceGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":             &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"dockerfilePath": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetDockerfilePath(p.Context, p.Args["id"].(string), p.Args["dockerfilePath"].(string))
-			},
-		},
+		"setDockerfilePath": gqlutil.ArgMutation(serviceGQLType, "dockerfilePath", s.SetDockerfilePath),
 		// setBuildFilter: the Settings → Build & Deploy Build Filters rows (w1/m34)
 		// write Render's Build Filters (spec.buildFilter) — the glob patterns gating
 		// git-push auto-deploys — on an existing App. Passing an all-empty object
@@ -1406,8 +1335,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setBuildFilter": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"buildFilter": &graphql.ArgumentConfig{Type: graphql.NewNonNull(buildFilterInputType)},
+				"id":          gqlutil.ReqArg(graphql.String),
+				"buildFilter": gqlutil.ReqArg(buildFilterInputType),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetBuildFilter(p.Context, p.Args["id"].(string), gqlBuildFilterInput(p.Args, "buildFilter"))
@@ -1420,8 +1349,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setMaintenanceMode": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":              &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"maintenanceMode": &graphql.ArgumentConfig{Type: graphql.NewNonNull(maintenanceModeInputType)},
+				"id":              gqlutil.ReqArg(graphql.String),
+				"maintenanceMode": gqlutil.ReqArg(maintenanceModeInputType),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				in := gqlMaintenanceModeInput(p.Args, "maintenanceMode")
@@ -1434,23 +1363,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// selects the TCP probe instead (w7/m80), so this is the surface a caller
 		// uses to move a service off the strict HTTP check. Rejected for
 		// cron_job/background_worker (no HTTP port).
-		"setHealthCheckPath": &graphql.Field{
-			Type: serviceGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"path": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetHealthCheckPath(p.Context, p.Args["id"].(string), p.Args["path"].(string))
-			},
-		},
+		"setHealthCheckPath": gqlutil.ArgMutation(serviceGQLType, "path", s.SetHealthCheckPath),
 		// setMaxShutdownDelay changes Render's per-service SIGTERM grace window.
 		// The shared service verb enforces 1-300 and rejects cron/static services.
 		"setMaxShutdownDelay": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"seconds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Int)},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"seconds": gqlutil.ReqArg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetMaxShutdownDelay(p.Context, p.Args["id"].(string), int32(p.Args["seconds"].(int)))
@@ -1460,16 +1380,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// field (w1/m33). Changes spec.preDeployCommand — the command run against
 		// the new image before it serves traffic. An empty command clears the
 		// step. Rejected for cron_job/static_site (the field doesn't apply).
-		"setPreDeployCommand": &graphql.Field{
-			Type: serviceGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"command": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetPreDeployCommand(p.Context, p.Args["id"].(string), p.Args["command"].(string))
-			},
-		},
+		"setPreDeployCommand": gqlutil.ArgMutation(serviceGQLType, "command", s.SetPreDeployCommand),
 		// setAutoDeploy: the Settings → Build & Deploy Auto-Deploy toggle (w2/m9)
 		// flips whether a signed git push redeploys the App (spec.autoDeploy). A
 		// bex extension name (Render's dashboard mutation is uncaptured), following
@@ -1477,8 +1388,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setAutoDeploy": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"enabled": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"enabled": gqlutil.ReqArg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetAutoDeploy(p.Context, p.Args["id"].(string), p.Args["enabled"].(bool))
@@ -1488,49 +1399,22 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// (w4/m21, docs/render-artifacts/notify-on-fail.md). Changes
 		// spec.notifyOnFail — default | notify | ignore, Render's exact
 		// name/enum. Unrecognized value ⇒ core.ErrBadRequest.
-		"setNotifyOnFail": &graphql.Field{
-			Type: serviceGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"value": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetNotifyOnFail(p.Context, p.Args["id"].(string), p.Args["value"].(string))
-			},
-		},
-		"setNotificationsToSend": &graphql.Field{
-			Type: serviceGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"value": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetNotificationsToSend(p.Context, p.Args["id"].(string), p.Args["value"].(string))
-			},
-		},
+		"setNotifyOnFail":        gqlutil.ArgMutation(serviceGQLType, "value", s.SetNotifyOnFail),
+		"setNotificationsToSend": gqlutil.ArgMutation(serviceGQLType, "value", s.SetNotificationsToSend),
 		// setSubdomainPolicy: the Settings → Custom Domains platform-subdomain
 		// toggle (w7/m31). Changes spec.subdomainPolicy — enabled | disabled,
 		// Render's exact renderSubdomainPolicy enum. "disabled" without a custom
 		// domain ⇒ core.ErrBadRequest (would silently kill the service).
-		"setSubdomainPolicy": &graphql.Field{
-			Type: serviceGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"policy": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetSubdomainPolicy(p.Context, p.Args["id"].(string), p.Args["policy"].(string))
-			},
-		},
+		"setSubdomainPolicy": gqlutil.ArgMutation(serviceGQLType, "policy", s.SetSubdomainPolicy),
 		// setServiceIpAllowList replaces the inbound allowlist for a web_service
 		// or static_site. entries preserves descriptions; cidrs is the legacy
 		// compatibility input. Empty clears the list.
 		"setServiceIpAllowList": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"cidrs":   &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
-				"entries": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"cidrs":   gqlutil.Arg(graphql.NewList(graphql.String)),
+				"entries": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				_, entriesSet := p.Args["entries"]
@@ -1551,8 +1435,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setStaticRoutes": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"routes": &graphql.ArgumentConfig{Type: graphql.NewList(staticRouteInputType)},
+				"id":     gqlutil.ReqArg(graphql.String),
+				"routes": gqlutil.Arg(graphql.NewList(staticRouteInputType)),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetRoutes(p.Context, p.Args["id"].(string), gqlRouteInputs(p.Args, "routes"))
@@ -1561,39 +1445,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setStaticHeaders": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"headers": &graphql.ArgumentConfig{Type: graphql.NewList(staticHeaderInputType)},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"headers": gqlutil.Arg(graphql.NewList(staticHeaderInputType)),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetHeaders(p.Context, p.Args["id"].(string), gqlHeaderInputs(p.Args, "headers"))
 			},
 		},
-		"setPublishPath": &graphql.Field{
-			Type: serviceGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"publishPath": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetPublishPath(p.Context, p.Args["id"].(string), p.Args["publishPath"].(string))
-			},
-		},
+		"setPublishPath": gqlutil.ArgMutation(serviceGQLType, "publishPath", s.SetPublishPath),
 		// Custom domain mutations — Render-dashboard-shaped operation names.
-		"addCustomDomain": &graphql.Field{
-			Type: customDomainGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.AddDomain(p.Context, p.Args["id"].(string), p.Args["name"].(string))
-			},
-		},
+		"addCustomDomain": gqlutil.ArgMutation(customDomainGQLType, "name", s.AddDomain),
 		"deleteCustomDomain": &graphql.Field{
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"id":   gqlutil.ReqArg(graphql.String),
+				"name": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				err := s.DeleteDomain(p.Context, p.Args["id"].(string), p.Args["name"].(string))
@@ -1603,26 +1469,17 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// verifyCustomDomain re-checks a domain's DNS/cert state now and returns its
 		// fresh status (Render's Verify button / POST …/verify). bex verification is
 		// automatic, so this is an idempotent re-read, not a state trigger.
-		"verifyCustomDomain": &graphql.Field{
-			Type: customDomainGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.VerifyDomain(p.Context, p.Args["id"].(string), p.Args["name"].(string))
-			},
-		},
+		"verifyCustomDomain": gqlutil.ArgMutation(customDomainGQLType, "name", s.VerifyDomain),
 		// setAutoscaling: enable/update autoscaling on a service (mirrors Render's
 		// PUT /v1/services/{id}/autoscaling). Returns the updated autoscaling config.
 		"setAutoscaling": &graphql.Field{
 			Type: autoscalingGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":                  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"minInstances":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Int)},
-				"maxInstances":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Int)},
-				"targetCPUPercent":    &graphql.ArgumentConfig{Type: graphql.Int},
-				"targetMemoryPercent": &graphql.ArgumentConfig{Type: graphql.Int},
+				"id":                  gqlutil.ReqArg(graphql.String),
+				"minInstances":        gqlutil.ReqArg(graphql.Int),
+				"maxInstances":        gqlutil.ReqArg(graphql.Int),
+				"targetCPUPercent":    gqlutil.Arg(graphql.Int),
+				"targetMemoryPercent": gqlutil.Arg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				req := SetAutoscalingRequest{
@@ -1654,13 +1511,13 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createBlueprint": &graphql.Field{
 			Type: blueprintGQLType,
 			Args: graphql.FieldConfigArgument{
-				"repo":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"branch":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"path":         &graphql.ArgumentConfig{Type: graphql.String},
-				"name":         &graphql.ArgumentConfig{Type: graphql.String},
-				"ownerId":      &graphql.ArgumentConfig{Type: graphql.String},
-				"envVarValues": &graphql.ArgumentConfig{Type: graphql.NewList(blueprintEnvVarValueInputType)},
-				"confirm":      &graphql.ArgumentConfig{Type: graphql.String},
+				"repo":         gqlutil.ReqArg(graphql.String),
+				"branch":       gqlutil.ReqArg(graphql.String),
+				"path":         gqlutil.Arg(graphql.String),
+				"name":         gqlutil.Arg(graphql.String),
+				"ownerId":      gqlutil.Arg(graphql.String),
+				"envVarValues": gqlutil.Arg(graphql.NewList(blueprintEnvVarValueInputType)),
+				"confirm":      gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				values, err := blueprintEnvVarValues(p.Args["envVarValues"])
@@ -1682,10 +1539,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"syncBlueprint": &graphql.Field{
 			Type: syncBlueprintResultGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"bexYaml": &graphql.ArgumentConfig{Type: graphql.String},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
-				"confirm": &graphql.ArgumentConfig{Type: graphql.String},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"bexYaml": gqlutil.Arg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
+				"confirm": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SyncBlueprint(p.Context, p.Args["id"].(string),
@@ -1696,11 +1553,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"updateBlueprint": &graphql.Field{
 			Type: blueprintGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name":     &graphql.ArgumentConfig{Type: graphql.String},
-				"autoSync": &graphql.ArgumentConfig{Type: graphql.Boolean},
-				"path":     &graphql.ArgumentConfig{Type: graphql.String},
-				"ownerId":  &graphql.ArgumentConfig{Type: graphql.String},
+				"id":       gqlutil.ReqArg(graphql.String),
+				"name":     gqlutil.Arg(graphql.String),
+				"autoSync": gqlutil.Arg(graphql.Boolean),
+				"path":     gqlutil.Arg(graphql.String),
+				"ownerId":  gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				var name, bpPath *string
@@ -1725,8 +1582,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"disconnectBlueprint": &graphql.Field{
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				err := s.DisconnectBlueprint(p.Context, p.Args["id"].(string), gqlutil.Str(p.Args, "ownerId"))

@@ -92,10 +92,7 @@ func pageSchema(t *testing.T, count int) graphql.Schema {
 			Fields: graphql.Fields{
 				"items": &graphql.Field{
 					Type: graphql.NewList(itemType),
-					Args: graphql.FieldConfigArgument{
-						"cursor": &graphql.ArgumentConfig{Type: graphql.String},
-						"limit":  &graphql.ArgumentConfig{Type: graphql.Int},
-					},
+					Args: PageArgs(nil),
 					Resolve: func(p graphql.ResolveParams) (any, error) {
 						return Page(p, items, func(i pageItem) string { return i.ID }), nil
 					},

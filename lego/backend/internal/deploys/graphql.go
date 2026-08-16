@@ -32,42 +32,42 @@ import (
 var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Deploy",
 	Fields: graphql.Fields{
-		"id":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.ID })},
-		"serviceId":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.ServiceID })},
-		"status":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.Status })},
-		"trigger":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.Trigger })},
-		"image":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.Image })},
-		"rollbackOf": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.RollbackOf })},
+		"id":         gqlutil.StrField(func(d DeployView) any { return d.ID }),
+		"serviceId":  gqlutil.StrField(func(d DeployView) any { return d.ServiceID }),
+		"status":     gqlutil.StrField(func(d DeployView) any { return d.Status }),
+		"trigger":    gqlutil.StrField(func(d DeployView) any { return d.Trigger }),
+		"image":      gqlutil.StrField(func(d DeployView) any { return d.Image }),
+		"rollbackOf": gqlutil.StrField(func(d DeployView) any { return d.RollbackOf }),
 		// The resolved commit this deploy ran (w9/001 + w2/m42) — flat fields,
 		// the fragment's existing style (REST nests them as Render's commit
 		// object). Empty/nil when unresolved; clients omit rather than fake.
-		"commitId":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.CommitID })},
-		"commitMessage":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.CommitMessage })},
-		"commitCreatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.CommitAuthorAt) })},
-		"createdAt":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTime(d.CreatedAt) })},
-		"updatedAt":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTime(d.UpdatedAt) })},
-		"startedAt":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.StartedAt) })},
-		"finishedAt":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.FinishedAt) })},
+		"commitId":        gqlutil.StrField(func(d DeployView) any { return d.CommitID }),
+		"commitMessage":   gqlutil.StrField(func(d DeployView) any { return d.CommitMessage }),
+		"commitCreatedAt": gqlutil.StrField(func(d DeployView) any { return formatTimePtr(d.CommitAuthorAt) }),
+		"createdAt":       gqlutil.StrField(func(d DeployView) any { return formatTime(d.CreatedAt) }),
+		"updatedAt":       gqlutil.StrField(func(d DeployView) any { return formatTime(d.UpdatedAt) }),
+		"startedAt":       gqlutil.StrField(func(d DeployView) any { return formatTimePtr(d.StartedAt) }),
+		"finishedAt":      gqlutil.StrField(func(d DeployView) any { return formatTimePtr(d.FinishedAt) }),
 		// Pre-deploy step outcome (w1/m33): "running"|"succeeded"|"failed", empty
 		// when no pre-deploy step ran. Distinguishes a migration failure from a
 		// health-check failure (both status=update_failed).
-		"preDeployStatus": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.PreDeployStatus })},
+		"preDeployStatus": gqlutil.StrField(func(d DeployView) any { return d.PreDeployStatus }),
 		// Actionable cause of a failed deploy (w9/011): the operator's diagnosis
 		// (crash loop with the $PORT hint, image-pull failure, build error) or a
 		// health-gate-timeout line. Empty unless the deploy failed.
-		"failureReason": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.FailureReason })},
+		"failureReason": gqlutil.StrField(func(d DeployView) any { return d.FailureReason }),
 	},
 })
 
 var deployHookGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DeployHook",
 	Fields: graphql.Fields{
-		"url": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(h DeployHookView) any { return h.URL })},
+		"url": gqlutil.StrField(func(h DeployHookView) any { return h.URL }),
 	},
 })
 
 var deployHookArgs = graphql.FieldConfigArgument{
-	"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+	"serviceId": gqlutil.ReqArg(graphql.String),
 }
 
 // GraphQLQuery returns the deploys(serviceId, …) field for the composition
@@ -89,16 +89,16 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"deploys": &graphql.Field{
 			Type: graphql.NewList(deployGQLType),
 			Args: graphql.FieldConfigArgument{
-				"serviceId":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"status":         &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
-				"createdBefore":  &graphql.ArgumentConfig{Type: graphql.String},
-				"createdAfter":   &graphql.ArgumentConfig{Type: graphql.String},
-				"updatedBefore":  &graphql.ArgumentConfig{Type: graphql.String},
-				"updatedAfter":   &graphql.ArgumentConfig{Type: graphql.String},
-				"finishedBefore": &graphql.ArgumentConfig{Type: graphql.String},
-				"finishedAfter":  &graphql.ArgumentConfig{Type: graphql.String},
-				"cursor":         &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":          &graphql.ArgumentConfig{Type: graphql.Int},
+				"serviceId":      gqlutil.ReqArg(graphql.String),
+				"status":         gqlutil.Arg(graphql.NewList(graphql.String)),
+				"createdBefore":  gqlutil.Arg(graphql.String),
+				"createdAfter":   gqlutil.Arg(graphql.String),
+				"updatedBefore":  gqlutil.Arg(graphql.String),
+				"updatedAfter":   gqlutil.Arg(graphql.String),
+				"finishedBefore": gqlutil.Arg(graphql.String),
+				"finishedAfter":  gqlutil.Arg(graphql.String),
+				"cursor":         gqlutil.Arg(graphql.String),
+				"limit":          gqlutil.Arg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				filter, err := filterFromArgs(p.Args)
@@ -158,8 +158,8 @@ func filterFromArgs(args map[string]any) (ListFilter, error) {
 // deployMutationArgs is the (serviceId, deployId) argument shape cancelDeploy and
 // rollbackService share.
 var deployMutationArgs = graphql.FieldConfigArgument{
-	"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-	"deployId":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+	"serviceId": gqlutil.ReqArg(graphql.String),
+	"deployId":  gqlutil.ReqArg(graphql.String),
 }
 
 // GraphQLMutation returns triggerDeploy (w2/006), restartServer (consolidated
@@ -181,15 +181,15 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"triggerDeploy": &graphql.Field{
 			Type: deployGQLType,
 			Args: graphql.FieldConfigArgument{
-				"serviceId":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"commitId":   &graphql.ArgumentConfig{Type: graphql.String},
-				"deployMode": &graphql.ArgumentConfig{Type: graphql.String},
-				"imageUrl":   &graphql.ArgumentConfig{Type: graphql.String},
+				"serviceId":  gqlutil.ReqArg(graphql.String),
+				"commitId":   gqlutil.Arg(graphql.String),
+				"deployMode": gqlutil.Arg(graphql.String),
+				"imageUrl":   gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				commitID, _ := p.Args["commitId"].(string)
-				deployMode, _ := p.Args["deployMode"].(string)
-				imageURL, _ := p.Args["imageUrl"].(string)
+				commitID := gqlutil.Str(p.Args, "commitId")
+				deployMode := gqlutil.Str(p.Args, "deployMode")
+				imageURL := gqlutil.Str(p.Args, "imageUrl")
 				return s.Trigger(p.Context, p.Args["serviceId"].(string), TriggerParams{
 					CommitID:   commitID,
 					DeployMode: deployMode,
@@ -203,7 +203,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"restartServer": &graphql.Field{
 			Type: deployGQLType,
 			Args: graphql.FieldConfigArgument{
-				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"serviceId": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Trigger(p.Context, p.Args["serviceId"].(string), TriggerParams{})

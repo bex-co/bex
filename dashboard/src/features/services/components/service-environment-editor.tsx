@@ -57,6 +57,7 @@ import {
   classifyEnvVarError,
   useEnvVarKeys,
   useRevealEnvVar,
+  type EnvVarErrorKind,
 } from "@/features/services/hooks/use-env-vars";
 import {
   classifySecretFileError,
@@ -71,7 +72,9 @@ import {
   environmentDraftPatch,
   isDraftValid,
   isEnvironmentDraftDirty,
+  isNewDraftRow,
   isValidSecretFileName,
+  MASKED_VALUE,
   validateEnvironmentDraft,
   type EnvDraftRow,
   type EnvironmentDraft,
@@ -83,10 +86,26 @@ import {
   formatEnvExport,
 } from "@/features/services/lib/env-export";
 import type { DotenvEntry } from "@/features/services/lib/dotenv-import";
+import { useSensitiveReveals } from "@/features/services/hooks/use-sensitive-reveals";
 import { EnvImportDialog } from "./env-import-dialog";
 import { SecretFileContentDialog } from "./secret-file-content-dialog";
 
 type SaveChoice = "only" | "deploy" | "rebuild";
+
+// Spelled out rather than assembled from the kind, so every key is greppable
+// and a new EnvVarErrorKind fails to compile instead of rendering its own key.
+const ENV_ERROR_COPY: Record<EnvVarErrorKind, { title: string; body: string }> =
+  {
+    generic: { title: "services.envErrorTitle", body: "services.envErrorBody" },
+    forbidden: {
+      title: "services.envForbiddenTitle",
+      body: "services.envForbiddenBody",
+    },
+    unavailable: {
+      title: "services.envUnavailableTitle",
+      body: "services.envUnavailableBody",
+    },
+  };
 
 export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
@@ -99,11 +118,17 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
   const nextID = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<EnvironmentDraft | null>(null);
-  const [revealedEnv, setRevealedEnv] = useState<Record<string, string>>({});
-  const [revealedFiles, setRevealedFiles] = useState<Record<string, string>>(
-    {},
+  const reveals = useSensitiveReveals(
+    { env: revealEnv, file: revealFile },
+    (kind) =>
+      toast.error(
+        t(
+          kind === "env"
+            ? "services.envRevealError"
+            : "services.secretFileRevealError",
+        ),
+      ),
   );
-  const [revealing, setRevealing] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [contentRowID, setContentRowID] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -139,30 +164,25 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
     setUploadError(null);
   }
 
-  function updateEnvRow(id: string, update: Partial<EnvDraftRow>) {
+  // Deleting a row that was never on the server drops it outright; deleting a
+  // server-backed one only stages it, so the save can send the delete.
+  function updateRow<K extends "envVars" | "secretFiles">(
+    list: K,
+    id: string,
+    update: Partial<EnvironmentDraft[K][number]>,
+  ) {
     setDraft((current) =>
       current
         ? {
             ...current,
-            envVars: current.envVars.flatMap((row) =>
-              row.id === id && row.originalKey == null && update.deleted
-                ? []
-                : [row.id === id ? { ...row, ...update } : row],
-            ),
-          }
-        : current,
-    );
-  }
-
-  function updateFileRow(id: string, update: Partial<SecretFileDraftRow>) {
-    setDraft((current) =>
-      current
-        ? {
-            ...current,
-            secretFiles: current.secretFiles.flatMap((row) =>
-              row.id === id && row.originalName == null && update.deleted
-                ? []
-                : [row.id === id ? { ...row, ...update } : row],
+            [list]: (
+              current[list] as Array<EnvironmentDraft[K][number]>
+            ).flatMap((row) =>
+              row.id !== id
+                ? [row]
+                : isNewDraftRow(row) && update.deleted
+                  ? []
+                  : [{ ...row, ...update }],
             ),
           }
         : current,
@@ -294,27 +314,6 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
     setUploadError(rejected ? t("services.secretFileUploadError") : null);
   }
 
-  async function revealOne(kind: "env" | "file", name: string) {
-    setRevealing(`${kind}:${name}`);
-    try {
-      const value =
-        kind === "env" ? await revealEnv(name) : await revealFile(name);
-      if (kind === "env") {
-        setRevealedEnv((current) => ({ ...current, [name]: value }));
-      } else {
-        setRevealedFiles((current) => ({ ...current, [name]: value }));
-      }
-    } catch {
-      toast.error(
-        kind === "env"
-          ? t("services.envRevealError")
-          : t("services.secretFileRevealError"),
-      );
-    } finally {
-      setRevealing(null);
-    }
-  }
-
   async function exportEnvironment(kind: "copy" | "download") {
     setExporting(true);
     try {
@@ -352,8 +351,7 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
     // any refresh/deploy follow-up so a later failure can never cause a retry to
     // reapply an already-successful secret patch.
     setDraft(null);
-    setRevealedEnv({});
-    setRevealedFiles({});
+    reveals.clear();
     if (choice === "rebuild") {
       const deployID = await trigger(serviceId);
       if (!deployID) {
@@ -407,216 +405,148 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
 
       {errorKind ? (
         <Alert variant="destructive">
-          <AlertTitle>
-            {t(
-              `services.env${errorKind === "generic" ? "Error" : errorKind === "forbidden" ? "Forbidden" : "Unavailable"}Title`,
-            )}
-          </AlertTitle>
+          <AlertTitle>{t(ENV_ERROR_COPY[errorKind].title)}</AlertTitle>
           <AlertDescription>
-            {t(
-              `services.env${errorKind === "generic" ? "Error" : errorKind === "forbidden" ? "Forbidden" : "Unavailable"}Body`,
-            )}
+            {t(ENV_ERROR_COPY[errorKind].body)}
           </AlertDescription>
         </Alert>
       ) : null}
 
-      <Card>
-        <ResponsiveCardHeader>
-          <div>
-            <CardTitle>{t("services.envTitle")}</CardTitle>
-            <CardDescription className="mt-1.5">
-              {t("services.envDescription")}
-            </CardDescription>
-          </div>
-          <CardAction className="col-start-1 row-start-2 mt-2 justify-self-stretch sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
-            <div className="flex flex-wrap gap-2 sm:justify-end">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={loading || Boolean(errorKind) || exporting}
-                  >
-                    {exporting ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <Download />
-                    )}
-                    {t("services.envExport")}
-                    <ChevronDown />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onSelect={() => void exportEnvironment("copy")}
-                  >
-                    <Clipboard /> {t("services.envCopy")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => void exportEnvironment("download")}
-                  >
-                    <Download /> {t("services.envDownload")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {!draft ? (
-                <Button
-                  size="sm"
-                  disabled={loading || Boolean(errorKind)}
-                  onClick={beginEdit}
-                >
-                  <Pencil /> {t("services.environmentEdit")}
-                </Button>
-              ) : (
-                <AddVariableMenu
-                  onAdd={() => addVariable(false)}
-                  onGenerate={() => addVariable(true)}
-                  onImport={() => setImportOpen(true)}
-                />
-              )}
-            </div>
-          </CardAction>
-        </ResponsiveCardHeader>
-        <CardContent>
-          {loading ? (
-            <RowsSkeleton />
-          ) : draft ? (
-            <div className="divide-y">
-              {draft.envVars.map((row) => (
-                <EnvDraftItem
-                  key={row.id}
-                  row={row}
-                  error={validation.env[row.id]}
-                  onChange={(update) => updateEnvRow(row.id, update)}
-                />
-              ))}
-              {draft.envVars.length === 0 ? (
-                <EmptyCopy
-                  title={t("services.envEmptyTitle")}
-                  body={t("services.envEmptyBody")}
-                />
-              ) : null}
-            </div>
-          ) : (
-            <div className="divide-y">
-              {env.keys.map(({ id, key }) => (
-                <SensitiveViewItem
-                  key={id}
-                  name={key}
-                  value={revealedEnv[key]}
-                  loading={revealing === `env:${key}`}
-                  onToggle={() =>
-                    revealedEnv[key] !== undefined
-                      ? setRevealedEnv((current) => {
-                          const next = { ...current };
-                          delete next[key];
-                          return next;
-                        })
-                      : void revealOne("env", key)
-                  }
-                />
-              ))}
-              {env.keys.length === 0 ? (
-                <EmptyCopy
-                  title={t("services.envEmptyTitle")}
-                  body={t("services.envEmptyBody")}
-                />
-              ) : null}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <ResponsiveCardHeader>
-          <div>
-            <CardTitle>{t("services.secretFilesTitle")}</CardTitle>
-            <CardDescription className="mt-1.5">
-              {t("services.secretFilesDescription")}
-            </CardDescription>
-          </div>
-          {draft ? (
-            <CardAction className="col-start-1 row-start-2 mt-2 justify-self-stretch sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
-              <div className="flex flex-wrap gap-2 sm:justify-end">
-                <Button size="sm" variant="outline" onClick={addSecretFile}>
-                  <FilePlus2 /> {t("services.secretFileAdd")}
-                </Button>
+      <EnvironmentSection
+        title={t("services.envTitle")}
+        description={t("services.envDescription")}
+        empty={{
+          title: t("services.envEmptyTitle"),
+          body: t("services.envEmptyBody"),
+        }}
+        loading={loading}
+        action={
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => fileInput.current?.click()}
+                  disabled={loading || Boolean(errorKind) || exporting}
                 >
-                  <FileUp /> {t("services.secretFileUpload")}
+                  {exporting ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Download />
+                  )}
+                  {t("services.envExport")}
+                  <ChevronDown />
                 </Button>
-                <input
-                  ref={fileInput}
-                  className="sr-only"
-                  type="file"
-                  multiple
-                  onChange={(event) => {
-                    void uploadFiles(event.target.files);
-                    event.target.value = "";
-                  }}
-                />
-              </div>
-            </CardAction>
-          ) : null}
-        </ResponsiveCardHeader>
-        <CardContent>
-          {uploadError ? (
-            <p className="text-destructive mb-3 text-sm" role="alert">
-              {uploadError}
-            </p>
-          ) : null}
-          {loading ? (
-            <RowsSkeleton />
-          ) : draft ? (
-            <div className="divide-y">
-              {draft.secretFiles.map((row) => (
-                <FileDraftItem
-                  key={row.id}
-                  row={row}
-                  error={validation.files[row.id]}
-                  onChange={(update) => updateFileRow(row.id, update)}
-                  onContent={() => setContentRowID(row.id)}
-                />
-              ))}
-              {draft.secretFiles.length === 0 ? (
-                <EmptyCopy
-                  title={t("services.secretFilesEmptyTitle")}
-                  body={t("services.secretFilesEmptyBody")}
-                />
-              ) : null}
-            </div>
-          ) : (
-            <div className="divide-y">
-              {files.names.map(({ id, name }) => (
-                <SensitiveViewItem
-                  key={id}
-                  name={name}
-                  value={revealedFiles[name]}
-                  loading={revealing === `file:${name}`}
-                  onToggle={() =>
-                    revealedFiles[name] !== undefined
-                      ? setRevealedFiles((current) => {
-                          const next = { ...current };
-                          delete next[name];
-                          return next;
-                        })
-                      : void revealOne("file", name)
-                  }
-                />
-              ))}
-              {files.names.length === 0 ? (
-                <EmptyCopy
-                  title={t("services.secretFilesEmptyTitle")}
-                  body={t("services.secretFilesEmptyBody")}
-                />
-              ) : null}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onSelect={() => void exportEnvironment("copy")}
+                >
+                  <Clipboard /> {t("services.envCopy")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => void exportEnvironment("download")}
+                >
+                  <Download /> {t("services.envDownload")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {!draft ? (
+              <Button
+                size="sm"
+                disabled={loading || Boolean(errorKind)}
+                onClick={beginEdit}
+              >
+                <Pencil /> {t("services.environmentEdit")}
+              </Button>
+            ) : (
+              <AddVariableMenu
+                onAdd={() => addVariable(false)}
+                onGenerate={() => addVariable(true)}
+                onImport={() => setImportOpen(true)}
+              />
+            )}
+          </>
+        }
+        isEmpty={(draft ? draft.envVars : env.keys).length === 0}
+      >
+        {draft
+          ? draft.envVars.map((row) => (
+              <EnvDraftItem
+                key={row.id}
+                row={row}
+                error={validation.env[row.id]}
+                onChange={(update) => updateRow("envVars", row.id, update)}
+              />
+            ))
+          : env.keys.map(({ id, key }) => (
+              <SensitiveViewItem
+                key={id}
+                name={key}
+                value={reveals.value("env", key)}
+                loading={reveals.busy("env", key)}
+                onToggle={() => reveals.toggle("env", key)}
+              />
+            ))}
+      </EnvironmentSection>
+
+      <EnvironmentSection
+        title={t("services.secretFilesTitle")}
+        description={t("services.secretFilesDescription")}
+        empty={{
+          title: t("services.secretFilesEmptyTitle"),
+          body: t("services.secretFilesEmptyBody"),
+        }}
+        loading={loading}
+        notice={uploadError}
+        action={
+          draft ? (
+            <>
+              <Button size="sm" variant="outline" onClick={addSecretFile}>
+                <FilePlus2 /> {t("services.secretFileAdd")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => fileInput.current?.click()}
+              >
+                <FileUp /> {t("services.secretFileUpload")}
+              </Button>
+              <input
+                ref={fileInput}
+                className="sr-only"
+                type="file"
+                multiple
+                onChange={(event) => {
+                  void uploadFiles(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+            </>
+          ) : null
+        }
+        isEmpty={(draft ? draft.secretFiles : files.names).length === 0}
+      >
+        {draft
+          ? draft.secretFiles.map((row) => (
+              <FileDraftItem
+                key={row.id}
+                row={row}
+                error={validation.files[row.id]}
+                onChange={(update) => updateRow("secretFiles", row.id, update)}
+                onContent={() => setContentRowID(row.id)}
+              />
+            ))
+          : files.names.map(({ id, name }) => (
+              <SensitiveViewItem
+                key={id}
+                name={name}
+                value={reveals.value("file", name)}
+                loading={reveals.busy("file", name)}
+                onToggle={() => reveals.toggle("file", name)}
+              />
+            ))}
+      </EnvironmentSection>
 
       {draft ? (
         <Card className="sticky bottom-3 z-20 gap-4 py-4 shadow-lg">
@@ -702,7 +632,7 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
             if (!open) setContentRowID(null);
           }}
           onSave={(content, changed) =>
-            updateFileRow(contentRow.id, {
+            updateRow("secretFiles", contentRow.id, {
               content,
               contentChanged: contentRow.contentChanged || changed,
             })
@@ -739,11 +669,62 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
   );
 }
 
-function ResponsiveCardHeader({ children }: { children: React.ReactNode }) {
+/**
+ * One titled card of environment rows. The env-var and secret-file halves of
+ * this page are the same card down to the class strings — header, optional
+ * action cluster, loading skeleton, divided row list, empty copy — and differ
+ * only in their copy and which rows they render.
+ */
+function EnvironmentSection({
+  title,
+  description,
+  action,
+  notice,
+  loading,
+  isEmpty,
+  empty,
+  children,
+}: {
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+  notice?: string | null;
+  loading: boolean;
+  isEmpty: boolean;
+  empty: { title: string; body: string };
+  children: React.ReactNode;
+}) {
   return (
-    <CardHeader className="grid-cols-1 grid-rows-none sm:grid-cols-[minmax(0,1fr)_auto] sm:grid-rows-[auto_auto]">
-      {children}
-    </CardHeader>
+    <Card>
+      <CardHeader className="grid-cols-1 grid-rows-none sm:grid-cols-[minmax(0,1fr)_auto] sm:grid-rows-[auto_auto]">
+        <div>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription className="mt-1.5">{description}</CardDescription>
+        </div>
+        {action ? (
+          <CardAction className="col-start-1 row-start-2 mt-2 justify-self-stretch sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
+            <div className="flex flex-wrap gap-2 sm:justify-end">{action}</div>
+          </CardAction>
+        ) : null}
+      </CardHeader>
+      <CardContent>
+        {notice ? (
+          <p className="text-destructive mb-3 text-sm" role="alert">
+            {notice}
+          </p>
+        ) : null}
+        {loading ? (
+          <RowsSkeleton />
+        ) : (
+          <div className="divide-y">
+            {children}
+            {isEmpty ? (
+              <EmptyCopy title={empty.title} body={empty.body} />
+            ) : null}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -767,7 +748,7 @@ function SensitiveViewItem({
         className="min-w-0 break-all text-sm"
         aria-label={visible ? value : t("services.environmentMaskedValue")}
       >
-        {visible ? value : "••••••••••••"}
+        {visible ? value : MASKED_VALUE}
       </code>
       <Button size="sm" variant="ghost" disabled={loading} onClick={onToggle}>
         {loading ? (

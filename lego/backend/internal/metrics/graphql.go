@@ -279,7 +279,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"metrics": &graphql.Field{
 			Type: graphql.NewList(metricSeriesGQLType),
 			Args: graphql.FieldConfigArgument{
-				"query": &graphql.ArgumentConfig{Type: graphql.NewNonNull(metricsQueryInputType)},
+				"query": gqlutil.ReqArg(metricsQueryInputType),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				resources, q, err := metricsQueryInputFromArgs(p.Args["query"])
@@ -309,7 +309,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"datastoreMetrics": &graphql.Field{
 			Type: graphql.NewList(metricSeriesGQLType),
 			Args: graphql.FieldConfigArgument{
-				"query": &graphql.ArgumentConfig{Type: graphql.NewNonNull(datastoreMetricsQueryInputType)},
+				"query": gqlutil.ReqArg(datastoreMetricsQueryInputType),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				q, err := datastoreMetricsQueryInputFromArgs(p.Args["query"])
@@ -330,7 +330,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"monthToDateBandwidth": &graphql.Field{
 			Type: monthToDateBandwidthGQLType,
 			Args: graphql.FieldConfigArgument{
-				"resourceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"resourceId": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.MonthToDateBandwidth(p.Context, p.Args["resourceId"].(string))
@@ -339,7 +339,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"metricsFilters": &graphql.Field{
 			Type: metricsFiltersResultGQLType,
 			Args: graphql.FieldConfigArgument{
-				"query": &graphql.ArgumentConfig{Type: graphql.NewNonNull(metricsFiltersQueryInputType)},
+				"query": gqlutil.ReqArg(metricsFiltersQueryInputType),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				q, err := metricsFiltersQueryFromArgs(p.Args["query"])
@@ -356,7 +356,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"metricsPathFilterSuggestions": &graphql.Field{
 			Type: metricsPathFilterSuggestionsGQLType,
 			Args: graphql.FieldConfigArgument{
-				"query": &graphql.ArgumentConfig{Type: graphql.NewNonNull(metricsPathFilterSuggestionsInputType)},
+				"query": gqlutil.ReqArg(metricsPathFilterSuggestionsInputType),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return metricsPathFilterSuggestionsResult{Paths: []string{}}, nil

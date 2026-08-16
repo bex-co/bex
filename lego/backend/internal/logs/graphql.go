@@ -31,13 +31,13 @@ import (
 var logGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "LogEntry",
 	Fields: graphql.Fields{
-		"timestamp":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e LogEntry) any { return e.Timestamp })},
-		"message":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e LogEntry) any { return e.Message })},
-		"type":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e LogEntry) any { return e.Labels[LabelType] })},
-		"instance":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e LogEntry) any { return e.Labels["instance"] })},
-		"level":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e LogEntry) any { return e.Labels[LabelLevel] })},
-		"method":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e LogEntry) any { return e.Labels[LabelMethod] })},
-		"statusCode": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e LogEntry) any { return e.Labels[LabelStatusCode] })},
+		"timestamp":  gqlutil.StrField(func(e LogEntry) any { return e.Timestamp }),
+		"message":    gqlutil.StrField(func(e LogEntry) any { return e.Message }),
+		"type":       gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelType] }),
+		"instance":   gqlutil.StrField(func(e LogEntry) any { return e.Labels["instance"] }),
+		"level":      gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelLevel] }),
+		"method":     gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelMethod] }),
+		"statusCode": gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelStatusCode] }),
 	},
 })
 
@@ -47,26 +47,26 @@ var logGQLType = graphql.NewObject(graphql.ObjectConfig{
 // refuses service-only filters. `type` and `text` stay single-valued strings
 // (the shape the dashboard's query already sends); request filters are lists.
 func logFilterArgs() graphql.FieldConfigArgument {
-	list := &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String))}
+	list := gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String)))
 	return graphql.FieldConfigArgument{
-		"resource":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-		"type":       &graphql.ArgumentConfig{Type: graphql.String},
-		"text":       &graphql.ArgumentConfig{Type: graphql.String},
+		"resource":   gqlutil.ReqArg(graphql.String),
+		"type":       gqlutil.Arg(graphql.String),
+		"text":       gqlutil.Arg(graphql.String),
 		"level":      list,
 		"instance":   list,
 		"host":       list,
 		"statusCode": list,
 		"method":     list,
 		"path":       list,
-		"direction":  &graphql.ArgumentConfig{Type: graphql.String},
+		"direction":  gqlutil.Arg(graphql.String),
 		// startTime/endTime (w9/m1/t002): the RFC3339 window REST (?startTime=…&
 		// endTime=…) and MCP (list_logs) already accept — the deploy detail page
 		// scopes its log query to a deploy's createdAt..finishedAt window. Absent
 		// ⇒ prior unbounded behavior; BEX_MAX_QUERY_HOURS is enforced by the
 		// resolvers below (s.checkWindow), the same call REST's logsQuery/
 		// logsValues make — not duplicated here as a second cap.
-		"startTime": &graphql.ArgumentConfig{Type: graphql.String},
-		"endTime":   &graphql.ArgumentConfig{Type: graphql.String},
+		"startTime": gqlutil.Arg(graphql.String),
+		"endTime":   gqlutil.Arg(graphql.String),
 	}
 }
 
@@ -74,10 +74,10 @@ func logFilterArgs() graphql.FieldConfigArgument {
 // root's Query.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	logsArgs := logFilterArgs()
-	logsArgs["limit"] = &graphql.ArgumentConfig{Type: graphql.Int}
+	logsArgs["limit"] = gqlutil.Arg(graphql.Int)
 
 	valuesArgs := logFilterArgs()
-	valuesArgs["label"] = &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)}
+	valuesArgs["label"] = gqlutil.ReqArg(graphql.String)
 
 	return graphql.Fields{
 		"logs": &graphql.Field{
@@ -110,7 +110,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err := s.checkWindow(q); err != nil {
 					return nil, err
 				}
-				label, _ := p.Args["label"].(string)
+				label := gqlutil.Str(p.Args, "label")
 				return s.LogLabelValues(p.Context, label, q)
 			},
 		},

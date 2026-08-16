@@ -50,11 +50,11 @@ var auditMetadataGQLType = graphql.NewObject(graphql.ObjectConfig{
 var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AuditLog",
 	Fields: graphql.Fields{
-		"id":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.ID })},
-		"timestamp":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.At.UTC().Format(time.RFC3339) })},
-		"actor":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.Caller })},
-		"actorMethod": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.CallerMethod })},
-		"action":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return renderEvent(e.Verb) })},
+		"id":          gqlutil.StrField(func(e Event) any { return e.ID }),
+		"timestamp":   gqlutil.StrField(func(e Event) any { return e.At.UTC().Format(time.RFC3339) }),
+		"actor":       gqlutil.StrField(func(e Event) any { return e.Caller }),
+		"actorMethod": gqlutil.StrField(func(e Event) any { return e.CallerMethod }),
+		"action":      gqlutil.StrField(func(e Event) any { return renderEvent(e.Verb) }),
 		// status keeps bex's richer denied value here: GraphQL is bex's own
 		// dialect (Render has no public GraphQL), and the dashboard's badge
 		// distinguishes a denial from an error. REST maps it onto Render's
@@ -65,7 +65,7 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return "success"
 		})},
-		"resource": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.Resource })},
+		"resource": gqlutil.StrField(func(e Event) any { return e.Resource }),
 		// targetName is the target's stored display name (migration 0038);
 		// null for pre-0038 rows (stored "") so the dashboard falls back to
 		// the raw id rather than rendering an empty cell.
@@ -92,12 +92,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"auditLogs": &graphql.Field{
 			Type: graphql.NewList(auditLogGQLType),
 			Args: graphql.FieldConfigArgument{
-				"ownerId":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"startTime": &graphql.ArgumentConfig{Type: graphql.String},
-				"endTime":   &graphql.ArgumentConfig{Type: graphql.String},
-				"direction": &graphql.ArgumentConfig{Type: graphql.String},
-				"cursor":    &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
+				"ownerId":   gqlutil.ReqArg(graphql.String),
+				"startTime": gqlutil.Arg(graphql.String),
+				"endTime":   gqlutil.Arg(graphql.String),
+				"direction": gqlutil.Arg(graphql.String),
+				"cursor":    gqlutil.Arg(graphql.String),
+				"limit":     gqlutil.Arg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				f, err := FilterOf(

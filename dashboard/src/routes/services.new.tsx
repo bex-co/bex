@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2, ArrowUpRight } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -29,37 +28,25 @@ import {
   SelectValue,
 } from "@/common/components/ui/select";
 import { Skeleton } from "@/common/components/ui/skeleton";
-import { isValidGitUrl } from "@/common/lib/utils/git-url";
+import { TextField } from "@/common/components/text-field";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
-import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
-import {
-  VALID_ENV_KEY,
-  isValidSecretFileName,
-} from "@/features/services/lib/environment-draft";
 import { useCreateService } from "@/features/services/hooks/use-create-service";
-import type {
-  EnvVarEntry,
-  SecretFileEntry,
-} from "@/features/services/hooks/use-create-service";
 import { isValidCron } from "@/features/services/lib/cron";
-import type { RepoView } from "@/features/services/hooks/use-repos";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
 import { PathList } from "@/features/services/components/build-deploy-section";
 import { ServiceTypePicker } from "@/features/services/components/service-type-picker";
-import { useBuildRuntimeFields } from "@/features/services/hooks/use-build-runtime-fields";
-import { useServiceNameDraft } from "@/features/services/hooks/use-service-name-draft";
+import { useNewServiceForm } from "@/features/services/hooks/use-new-service-form";
 import { RUNTIME_DEFS, type GitRuntime } from "@/features/services/lib/runtime";
-import {
-  ServiceSourcePicker,
-  type SourceTab,
-} from "@/features/services/components/service-source-picker";
+import { ServiceSourcePicker } from "@/features/services/components/service-source-picker";
 import { CreateEnvVarEditor } from "@/features/services/components/create-env-var-editor";
 import { CreateSecretFileEditor } from "@/features/services/components/create-secret-file-editor";
 import {
-  parseNewServiceSearch,
-  type ServiceType,
-} from "@/features/services/lib/create-context";
+  buildCreateServiceInput,
+  buildShape,
+  isSubmittable,
+} from "@/features/services/lib/create-service-input";
+import { parseNewServiceSearch } from "@/features/services/lib/create-context";
 
 export const Route = createFileRoute("/services/new")({
   staticData: { chrome: true },
@@ -73,194 +60,34 @@ export function NewServicePage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const search = Route.useSearch();
-  const { instanceTypes } = useInstanceTypes();
   const { create, busy, capLimit, nameConflict, clearNameConflict } =
     useCreateService();
-  const [serviceType, setServiceType] = useState<ServiceType>(
-    search.type ?? "web_service",
-  );
-  const [tab, setTab] = useState<SourceTab>("github");
-  const [selectedRepo, setSelectedRepo] = useState<RepoView | null>(null);
-  const [gitUrl, setGitUrl] = useState("");
-  const [imageVal, setImageVal] = useState("");
-  const [registryCredentialId, setRegistryCredentialId] = useState("");
-  const [branch, setBranch] = useState("");
-  const [rootDir, setRootDir] = useState("");
-  const {
-    runtime,
-    setRuntime,
-    buildCommand,
-    setBuildCommand,
-    startCommand,
-    setStartCommand,
-    dockerfilePath,
-    setDockerfilePath,
-  } = useBuildRuntimeFields();
-  const [planOverride, setPlanOverride] = useState<string | null>(null);
-  const [autoDeploy, setAutoDeploy] = useState(true);
-  const [schedule, setSchedule] = useState("");
-  const [command, setCommand] = useState("");
-  const [publishPath, setPublishPath] = useState("");
-  const [staticBuildCommand, setStaticBuildCommand] = useState("");
-  const [buildFilterPaths, setBuildFilterPaths] = useState<string[]>([]);
-  const [buildFilterIgnored, setBuildFilterIgnored] = useState<string[]>([]);
-  const [envVars, setEnvVars] = useState<EnvVarEntry[]>([]);
-  const [secretFiles, setSecretFiles] = useState<SecretFileEntry[]>([]);
-  const [projectId, setProjectId] = useState<string | null>(
-    search.projectId ?? null,
-  );
-  const [environmentId, setEnvironmentId] = useState<string | null>(
-    search.environmentId ?? null,
-  );
-
-  const isCronType = serviceType === "cron_job";
-  const isStaticType = serviceType === "static_site";
-  const showNoUrlNote =
-    serviceType === "private_service" || serviceType === "background_worker";
-  const showPlan = !isStaticType;
-
-  const plan = planOverride ?? instanceTypes[0]?.id ?? "";
-  const isImageSource = tab === "image";
-  const isGitSource = tab === "github" || tab === "git";
-  // The four build shapes the form submits. Named once here because both the
-  // field JSX below and the create() payload have to agree on them exactly —
-  // re-deriving each condition inline is how a static site ends up submitting
-  // a dockerfilePath.
-  const isBuildableGit = isGitSource && !isStaticType;
-  const isDockerBuild = isBuildableGit && runtime === "docker";
-  const isNativeBuild = isBuildableGit && runtime !== "docker";
-  const isStaticBuild = isGitSource && isStaticType;
-  const usesRegistryCredential = isImageSource || isDockerBuild;
+  const { form, set, setTab, build, name, instanceTypes } =
+    useNewServiceForm(search);
+  const shape = buildShape(form);
 
   const scheduleError =
-    isCronType && schedule.trim() !== "" && !isValidCron(schedule);
-
-  const {
-    name,
-    nameValid,
-    nameTaken,
-    nameSuggestion,
-    checkingName,
-    editName,
-    acceptSuggestion,
-  } = useServiceNameDraft({
-    tab,
-    selectedRepo,
-    gitUrl,
-    image: imageVal,
-    onRepoDefaultBranch: (b) => setBranch((cur) => cur || b),
-  });
-
-  const showNameError = name.length > 0 && !nameValid;
-  const showNameTaken = nameValid && (nameTaken || nameConflict);
-
-  const sourceValid =
-    (tab === "github" && selectedRepo != null) ||
-    (tab === "git" && isValidGitUrl(gitUrl)) ||
-    (isImageSource && imageVal.trim().length > 0);
-
-  // Blank rows are the editors' "add" placeholder — they never submit, so they
-  // don't block submission either. Everything else must be valid, and the same
-  // list that passes the gate is the one that goes over the wire.
-  const submittableEnvVars = envVars.filter((r) => r.key !== "");
-  const submittableSecretFiles = secretFiles.filter((f) => f.name !== "");
-  const envVarsValid = submittableEnvVars.every((r) =>
-    VALID_ENV_KEY.test(r.key),
-  );
-  const secretFilesValid = submittableSecretFiles.every((f) =>
-    isValidSecretFileName(f.name),
-  );
-  const nativeCommandsValid =
-    !isNativeBuild ||
-    (buildCommand.trim() !== "" &&
-      (isCronType ? command.trim() !== "" : startCommand.trim() !== ""));
+    shape.isCronType &&
+    form.schedule.trim() !== "" &&
+    !isValidCron(form.schedule);
+  const showNameError = name.name.length > 0 && !name.nameValid;
+  const showNameTaken = name.nameValid && (name.nameTaken || nameConflict);
   const canSubmit =
-    nameValid &&
-    !showNameTaken &&
-    sourceValid &&
-    !busy &&
-    envVarsValid &&
-    secretFilesValid &&
-    nativeCommandsValid &&
-    (isStaticType || plan !== "") &&
-    (!isCronType || (schedule.trim() !== "" && !scheduleError));
+    name.nameValid && !showNameTaken && !busy && isSubmittable(form);
 
   async function handleSubmit() {
     if (!canSubmit) return;
-    let repo: string | undefined;
-    let image: string | undefined;
-    let branchVal: string | undefined;
-
-    if (tab === "github" && selectedRepo) {
-      repo = selectedRepo.cloneUrl;
-      branchVal = branch || selectedRepo.defaultBranch || undefined;
-    } else if (tab === "git") {
-      repo = gitUrl.trim();
-      branchVal = branch || undefined;
-    } else {
-      image = imageVal.trim();
-    }
-
-    const hasBuildFilter =
-      buildFilterPaths.some((p) => p.trim()) ||
-      buildFilterIgnored.some((p) => p.trim());
-    const result = await create({
-      name,
-      type: serviceType,
-      environmentId: environmentId || undefined,
-      repo,
-      image,
-      registryCredentialId: usesRegistryCredential
-        ? registryCredentialId
-        : undefined,
-      branch: branchVal,
-      rootDir: rootDir || undefined,
-      runtime: isImageSource ? "image" : isBuildableGit ? runtime : undefined,
-      buildCommand: isStaticBuild
-        ? staticBuildCommand.trim() || undefined
-        : isNativeBuild
-          ? buildCommand.trim()
-          : undefined,
-      startCommand: isBuildableGit
-        ? isCronType
-          ? command.trim()
-          : startCommand.trim() || undefined
-        : undefined,
-      dockerfilePath: isDockerBuild
-        ? dockerfilePath.trim() || undefined
-        : undefined,
-      buildFilter:
-        isStaticBuild && hasBuildFilter
-          ? {
-              paths: buildFilterPaths.map((p) => p.trim()).filter(Boolean),
-              ignoredPaths: buildFilterIgnored
-                .map((p) => p.trim())
-                .filter(Boolean),
-            }
-          : undefined,
-      plan: showPlan ? plan || undefined : undefined,
-      autoDeploy: isGitSource ? autoDeploy : undefined,
-      schedule: isCronType ? schedule.trim() || undefined : undefined,
-      command: isCronType ? command.trim() || undefined : undefined,
-      publishPath: isStaticType ? publishPath.trim() || undefined : undefined,
-      envVars: submittableEnvVars.length ? submittableEnvVars : undefined,
-      secretFiles: submittableSecretFiles.length
-        ? submittableSecretFiles
-        : undefined,
-    });
-    if (result) {
-      if (result.deployId) {
-        void navigate({
+    const result = await create(buildCreateServiceInput(form));
+    if (!result) return;
+    void (result.deployId
+      ? navigate({
           to: "/services/$serviceId/deploys/$deployId",
           params: { serviceId: result.id, deployId: result.deployId },
-        });
-      } else {
-        void navigate({
+        })
+      : navigate({
           to: "/services/$serviceId",
           params: { serviceId: result.id },
-        });
-      }
-    }
+        }));
   }
 
   return (
@@ -270,9 +97,7 @@ export function NewServicePage() {
           <Card>
             <CardHeader>
               <CardTitle>
-                <h1 className="text-xl font-semibold">
-                  {t("services.createTitle")}
-                </h1>
+                <h1 className="text-xl">{t("services.createTitle")}</h1>
               </CardTitle>
               <CardDescription>
                 {t("services.createDescription")}
@@ -282,27 +107,24 @@ export function NewServicePage() {
               <div className="space-y-3">
                 <Label>{t("services.createTypePickerTitle")}</Label>
                 <ServiceTypePicker
-                  value={serviceType}
-                  onChange={setServiceType}
+                  value={form.serviceType}
+                  onChange={(serviceType) => set({ serviceType })}
                 />
               </div>
 
               <ServiceSourcePicker
-                tab={tab}
-                onTabChange={(next) => {
-                  setTab(next);
-                  setSelectedRepo(null);
-                  setBranch("");
-                }}
-                selectedRepo={selectedRepo}
-                onSelectRepo={setSelectedRepo}
-                gitUrl={gitUrl}
-                onGitUrlChange={setGitUrl}
+                tab={form.tab}
+                onTabChange={setTab}
+                selectedRepo={form.selectedRepo}
+                onSelectRepo={(selectedRepo) => set({ selectedRepo })}
+                gitUrl={form.gitUrl}
+                onGitUrlChange={(gitUrl) => set({ gitUrl })}
                 image={{
-                  value: imageVal,
-                  onChange: setImageVal,
-                  registryCredentialId,
-                  onRegistryCredentialChange: setRegistryCredentialId,
+                  value: form.image,
+                  onChange: (image) => set({ image }),
+                  registryCredentialId: form.registryCredentialId,
+                  onRegistryCredentialChange: (registryCredentialId) =>
+                    set({ registryCredentialId }),
                 }}
               />
 
@@ -317,9 +139,9 @@ export function NewServicePage() {
                   </Label>
                   <Input
                     id="svc-name"
-                    value={name}
+                    value={name.name}
                     onChange={(e) => {
-                      editName(e.target.value);
+                      name.editName(e.target.value);
                       clearNameConflict();
                     }}
                     placeholder={t("services.createFieldNamePlaceholder")}
@@ -333,68 +155,54 @@ export function NewServicePage() {
                   ) : showNameTaken ? (
                     <p className="flex flex-wrap items-center gap-2 text-sm text-destructive">
                       <span>{t("services.createFieldNameTaken")}</span>
-                      {nameTaken && nameSuggestion ? (
+                      {name.nameTaken && name.nameSuggestion ? (
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           className="h-6 px-2 text-xs"
-                          onClick={acceptSuggestion}
+                          onClick={name.acceptSuggestion}
                         >
                           {t("services.createFieldNameUseSuggestion", {
-                            name: nameSuggestion,
+                            name: name.nameSuggestion,
                           })}
                         </Button>
                       ) : null}
                     </p>
-                  ) : checkingName ? (
+                  ) : name.checkingName ? (
                     <p className="text-sm text-muted-foreground">
                       {t("services.createFieldNameChecking")}
                     </p>
                   ) : null}
                 </div>
 
-                {isGitSource ? (
+                {shape.isGitSource ? (
                   <>
-                    <div className="space-y-2">
-                      <Label htmlFor="svc-branch">
-                        {t("services.createFieldBranch")}
-                      </Label>
-                      <Input
-                        id="svc-branch"
-                        value={branch}
-                        onChange={(e) => setBranch(e.target.value)}
-                        placeholder={t("services.createFieldBranchPlaceholder")}
-                        autoComplete="off"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="svc-rootdir">
-                        {t("services.createFieldRootDir")}
-                      </Label>
-                      <Input
-                        id="svc-rootdir"
-                        value={rootDir}
-                        onChange={(e) => setRootDir(e.target.value)}
-                        placeholder={t(
-                          "services.createFieldRootDirPlaceholder",
-                        )}
-                        autoComplete="off"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        {t("services.createFieldRootDirHint")}
-                      </p>
-                    </div>
-                    {isBuildableGit ? (
+                    <TextField
+                      id="svc-branch"
+                      label={t("services.createFieldBranch")}
+                      value={form.branch}
+                      onChange={(branch) => set({ branch })}
+                      placeholder={t("services.createFieldBranchPlaceholder")}
+                    />
+                    <TextField
+                      id="svc-rootdir"
+                      label={t("services.createFieldRootDir")}
+                      value={form.rootDir}
+                      onChange={(rootDir) => set({ rootDir })}
+                      placeholder={t("services.createFieldRootDirPlaceholder")}
+                      hint={t("services.createFieldRootDirHint")}
+                    />
+                    {shape.isBuildableGit ? (
                       <>
                         <div className="space-y-2">
                           <Label htmlFor="svc-runtime">
                             {t("services.createFieldRuntime")}
                           </Label>
                           <Select
-                            value={runtime}
+                            value={form.runtime}
                             onValueChange={(value) =>
-                              setRuntime(value as GitRuntime)
+                              build.setRuntime(value as GitRuntime)
                             }
                           >
                             <SelectTrigger id="svc-runtime" className="w-full">
@@ -409,83 +217,55 @@ export function NewServicePage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        {isNativeBuild ? (
+                        {shape.isNativeBuild ? (
                           <>
-                            <div className="space-y-2">
-                              <Label htmlFor="svc-build-command">
-                                {t("services.createFieldBuildCommand")}
-                              </Label>
-                              <Input
-                                id="svc-build-command"
-                                value={buildCommand}
-                                onChange={(e) =>
-                                  setBuildCommand(e.target.value)
-                                }
-                                autoComplete="off"
+                            <TextField
+                              id="svc-build-command"
+                              label={t("services.createFieldBuildCommand")}
+                              value={form.buildCommand}
+                              onChange={build.setBuildCommand}
+                            />
+                            {!shape.isCronType ? (
+                              <TextField
+                                id="svc-start-command"
+                                label={t("services.createFieldStartCommand")}
+                                value={form.startCommand}
+                                onChange={build.setStartCommand}
                               />
-                            </div>
-                            {!isCronType ? (
-                              <div className="space-y-2">
-                                <Label htmlFor="svc-start-command">
-                                  {t("services.createFieldStartCommand")}
-                                </Label>
-                                <Input
-                                  id="svc-start-command"
-                                  value={startCommand}
-                                  onChange={(e) =>
-                                    setStartCommand(e.target.value)
-                                  }
-                                  autoComplete="off"
-                                />
-                              </div>
                             ) : null}
                           </>
                         ) : (
                           <>
-                            <div className="space-y-2">
-                              <Label htmlFor="svc-dockerfile-path">
-                                {t("services.createFieldDockerfilePath")}
-                              </Label>
-                              <Input
-                                id="svc-dockerfile-path"
-                                value={dockerfilePath}
-                                onChange={(event) =>
-                                  setDockerfilePath(event.target.value)
-                                }
-                                placeholder={t(
-                                  "services.createFieldDockerfilePathPlaceholder",
-                                )}
-                                autoComplete="off"
-                              />
-                              <p className="text-sm text-muted-foreground">
-                                {t("services.createFieldDockerfilePathHint")}
-                              </p>
-                            </div>
+                            <TextField
+                              id="svc-dockerfile-path"
+                              label={t("services.createFieldDockerfilePath")}
+                              value={form.dockerfilePath}
+                              onChange={build.setDockerfilePath}
+                              placeholder={t(
+                                "services.createFieldDockerfilePathPlaceholder",
+                              )}
+                              hint={t("services.createFieldDockerfilePathHint")}
+                            />
                             <RegistryCredentialSelect
                               id="svc-registry-credential-docker"
-                              value={registryCredentialId}
-                              onValueChange={setRegistryCredentialId}
+                              value={form.registryCredentialId}
+                              onValueChange={(registryCredentialId) =>
+                                set({ registryCredentialId })
+                              }
                               description={t(
                                 "services.createRegistryCredentialDescription",
                               )}
                             />
-                            {!isCronType ? (
-                              <div className="space-y-2">
-                                <Label htmlFor="svc-docker-command">
-                                  {t("services.createFieldDockerCommand")}
-                                </Label>
-                                <Input
-                                  id="svc-docker-command"
-                                  value={startCommand}
-                                  onChange={(event) =>
-                                    setStartCommand(event.target.value)
-                                  }
-                                  placeholder={t(
-                                    "services.createFieldDockerCommandPlaceholder",
-                                  )}
-                                  autoComplete="off"
-                                />
-                              </div>
+                            {!shape.isCronType ? (
+                              <TextField
+                                id="svc-docker-command"
+                                label={t("services.createFieldDockerCommand")}
+                                value={form.startCommand}
+                                onChange={build.setStartCommand}
+                                placeholder={t(
+                                  "services.createFieldDockerCommandPlaceholder",
+                                )}
+                              />
                             ) : null}
                           </>
                         )}
@@ -494,69 +274,44 @@ export function NewServicePage() {
                   </>
                 ) : null}
 
-                {isCronType ? (
+                {shape.isCronType ? (
                   <>
-                    <div className="space-y-2">
-                      <Label htmlFor="svc-schedule">
-                        {t("services.createFieldSchedule")}
-                      </Label>
-                      <Input
-                        id="svc-schedule"
-                        value={schedule}
-                        onChange={(e) => setSchedule(e.target.value)}
-                        placeholder={t(
-                          "services.createFieldSchedulePlaceholder",
-                        )}
-                        autoComplete="off"
-                        aria-invalid={scheduleError}
-                      />
-                      {scheduleError ? (
-                        <p className="text-sm text-destructive">
-                          {t("services.createFieldScheduleError")}
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          {t("services.createFieldScheduleHint")}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="svc-command">
-                        {t("services.createFieldStartCommand")}
-                      </Label>
-                      <Input
-                        id="svc-command"
-                        value={command}
-                        onChange={(e) => setCommand(e.target.value)}
-                        placeholder={t(
-                          "services.createFieldCommandPlaceholder",
-                        )}
-                        autoComplete="off"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        {t("services.createFieldCommandHint")}
-                      </p>
-                    </div>
+                    <TextField
+                      id="svc-schedule"
+                      label={t("services.createFieldSchedule")}
+                      value={form.schedule}
+                      onChange={(schedule) => set({ schedule })}
+                      placeholder={t("services.createFieldSchedulePlaceholder")}
+                      hint={t("services.createFieldScheduleHint")}
+                      error={
+                        scheduleError
+                          ? t("services.createFieldScheduleError")
+                          : undefined
+                      }
+                    />
+                    <TextField
+                      id="svc-command"
+                      label={t("services.createFieldStartCommand")}
+                      value={form.command}
+                      onChange={(command) => set({ command })}
+                      placeholder={t("services.createFieldCommandPlaceholder")}
+                      hint={t("services.createFieldCommandHint")}
+                    />
                   </>
                 ) : null}
 
-                {isStaticBuild ? (
+                {shape.isStaticBuild ? (
                   <>
-                    <div className="space-y-2">
-                      <Label htmlFor="svc-static-build-command">
-                        {t("services.createFieldBuildCommand")}
-                      </Label>
-                      <Input
-                        id="svc-static-build-command"
-                        value={staticBuildCommand}
-                        onChange={(e) => setStaticBuildCommand(e.target.value)}
-                        placeholder={t("services.buildCommandPlaceholder")}
-                        autoComplete="off"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        {t("services.buildCommandHint")}
-                      </p>
-                    </div>
+                    <TextField
+                      id="svc-static-build-command"
+                      label={t("services.createFieldBuildCommand")}
+                      value={form.staticBuildCommand}
+                      onChange={(staticBuildCommand) =>
+                        set({ staticBuildCommand })
+                      }
+                      placeholder={t("services.buildCommandPlaceholder")}
+                      hint={t("services.buildCommandHint")}
+                    />
                     <div className="space-y-4 rounded-md border p-4">
                       <div>
                         <div className="text-sm font-medium">
@@ -574,8 +329,10 @@ export function NewServicePage() {
                         )}
                         addLabel={t("services.buildFilterAddIncluded")}
                         removeLabel={t("services.buildFilterRemoveIncluded")}
-                        values={buildFilterPaths}
-                        onChange={setBuildFilterPaths}
+                        values={form.buildFilterPaths}
+                        onChange={(buildFilterPaths) =>
+                          set({ buildFilterPaths })
+                        }
                       />
                       <PathList
                         title={t("services.buildFilterIgnoredTitle")}
@@ -585,40 +342,35 @@ export function NewServicePage() {
                         )}
                         addLabel={t("services.buildFilterAddIgnored")}
                         removeLabel={t("services.buildFilterRemoveIgnored")}
-                        values={buildFilterIgnored}
-                        onChange={setBuildFilterIgnored}
+                        values={form.buildFilterIgnored}
+                        onChange={(buildFilterIgnored) =>
+                          set({ buildFilterIgnored })
+                        }
                       />
                     </div>
                   </>
                 ) : null}
 
-                {isStaticType ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="svc-publish-path">
-                      {t("services.createFieldPublishPath")}
-                    </Label>
-                    <Input
-                      id="svc-publish-path"
-                      value={publishPath}
-                      onChange={(e) => setPublishPath(e.target.value)}
-                      placeholder={t(
-                        "services.createFieldPublishPathPlaceholder",
-                      )}
-                      autoComplete="off"
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      {t("services.createFieldPublishPathHint")}
-                    </p>
-                  </div>
+                {shape.isStaticType ? (
+                  <TextField
+                    id="svc-publish-path"
+                    label={t("services.createFieldPublishPath")}
+                    value={form.publishPath}
+                    onChange={(publishPath) => set({ publishPath })}
+                    placeholder={t(
+                      "services.createFieldPublishPathPlaceholder",
+                    )}
+                    hint={t("services.createFieldPublishPathHint")}
+                  />
                 ) : null}
 
-                {showNoUrlNote ? (
+                {shape.showNoUrlNote ? (
                   <p className="text-sm text-muted-foreground">
                     {t("services.createNoPublicUrlNote")}
                   </p>
                 ) : null}
 
-                {showPlan ? (
+                {shape.showPlan ? (
                   <div className="space-y-2">
                     <Label>{t("services.createFieldPlan")}</Label>
                     {instanceTypes.length === 0 ? (
@@ -626,21 +378,23 @@ export function NewServicePage() {
                     ) : (
                       <PlanCardGrid
                         instanceTypes={instanceTypes}
-                        value={plan}
-                        onChange={setPlanOverride}
+                        value={form.plan}
+                        onChange={(planOverride) => set({ planOverride })}
                       />
                     )}
                   </div>
                 ) : null}
 
                 <ProjectEnvironmentSelector
-                  projectId={projectId}
-                  environmentId={environmentId}
-                  onProjectChange={setProjectId}
-                  onEnvironmentChange={setEnvironmentId}
+                  projectId={form.projectId}
+                  environmentId={form.environmentId}
+                  onProjectChange={(projectId) => set({ projectId })}
+                  onEnvironmentChange={(environmentId) =>
+                    set({ environmentId })
+                  }
                 />
 
-                {isGitSource ? (
+                {shape.isGitSource ? (
                   <div className="flex items-center justify-between rounded-md border p-3">
                     <div className="space-y-0.5 pr-4">
                       <Label htmlFor="svc-autodeploy">
@@ -652,16 +406,19 @@ export function NewServicePage() {
                     </div>
                     <Switch
                       id="svc-autodeploy"
-                      checked={autoDeploy}
-                      onCheckedChange={setAutoDeploy}
+                      checked={form.autoDeploy}
+                      onCheckedChange={(autoDeploy) => set({ autoDeploy })}
                     />
                   </div>
                 ) : null}
 
-                <CreateEnvVarEditor rows={envVars} onChange={setEnvVars} />
+                <CreateEnvVarEditor
+                  rows={form.envVars}
+                  onChange={(envVars) => set({ envVars })}
+                />
                 <CreateSecretFileEditor
-                  rows={secretFiles}
-                  onChange={setSecretFiles}
+                  rows={form.secretFiles}
+                  onChange={(secretFiles) => set({ secretFiles })}
                 />
               </div>
 

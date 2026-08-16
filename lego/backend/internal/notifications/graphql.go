@@ -32,9 +32,9 @@ import (
 var notificationSettingsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "NotificationSettings",
 	Fields: graphql.Fields{
-		"deployStarted":   &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v SettingsView) any { return v.DeployStarted })},
-		"deploySucceeded": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v SettingsView) any { return v.DeploySucceeded })},
-		"deployFailed":    &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v SettingsView) any { return v.DeployFailed })},
+		"deployStarted":   gqlutil.BoolField(func(v SettingsView) any { return v.DeployStarted }),
+		"deploySucceeded": gqlutil.BoolField(func(v SettingsView) any { return v.DeploySucceeded }),
+		"deployFailed":    gqlutil.BoolField(func(v SettingsView) any { return v.DeployFailed }),
 	},
 })
 
@@ -78,16 +78,16 @@ var pushWeekdayGQLEnum = graphql.NewEnum(graphql.EnumConfig{
 var pushClockRangeGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "PushNotificationClockRange",
 	Fields: graphql.Fields{
-		"weekdays": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(pushWeekdayGQLEnum))), Resolve: gqlutil.Field(func(v PushClockRangeView) any { return v.Weekdays })},
-		"start":    &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v PushClockRangeView) any { return v.Start })},
-		"end":      &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v PushClockRangeView) any { return v.End })},
+		"weekdays": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(pushWeekdayGQLEnum))), func(v PushClockRangeView) any { return v.Weekdays }),
+		"start":    gqlutil.ReqStrField(func(v PushClockRangeView) any { return v.Start }),
+		"end":      gqlutil.ReqStrField(func(v PushClockRangeView) any { return v.End }),
 	},
 })
 
 var pushServiceOverrideGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "PushNotificationServiceOverride",
 	Fields: graphql.Fields{
-		"serviceId": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v PushServiceOverrideView) any { return v.ServiceID })},
+		"serviceId": gqlutil.ReqStrField(func(v PushServiceOverrideView) any { return v.ServiceID }),
 		"enabled": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PushServiceOverrideView) any {
 			if v.Enabled == nil {
 				return nil
@@ -112,14 +112,14 @@ var pushServiceOverrideGQLType = graphql.NewObject(graphql.ObjectConfig{
 var pushSettingsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "PushNotificationSettings",
 	Fields: graphql.Fields{
-		"enabled":            &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v PushSettingsView) any { return v.Enabled })},
-		"events":             &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(pushDeliveryEventGQLEnum))), Resolve: gqlutil.Field(func(v PushSettingsView) any { return gqlDeliveryEventOutput(v.Events) })},
-		"minimumUrgency":     &graphql.Field{Type: graphql.NewNonNull(pushUrgencyGQLEnum), Resolve: gqlutil.Field(func(v PushSettingsView) any { return string(v.MinimumUrgency) })},
-		"timeZone":           &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v PushSettingsView) any { return v.TimeZone })},
-		"workingHours":       &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(pushClockRangeGQLType))), Resolve: gqlutil.Field(func(v PushSettingsView) any { return v.WorkingHours })},
-		"quietHours":         &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(pushClockRangeGQLType))), Resolve: gqlutil.Field(func(v PushSettingsView) any { return v.QuietHours })},
-		"maxDeferralSeconds": &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v PushSettingsView) any { return v.MaxDeferralSeconds })},
-		"serviceOverrides":   &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(pushServiceOverrideGQLType))), Resolve: gqlutil.Field(func(v PushSettingsView) any { return v.ServiceOverrides })},
+		"enabled":            gqlutil.ReqBoolField(func(v PushSettingsView) any { return v.Enabled }),
+		"events":             gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(pushDeliveryEventGQLEnum))), func(v PushSettingsView) any { return gqlDeliveryEventOutput(v.Events) }),
+		"minimumUrgency":     gqlutil.Typed(graphql.NewNonNull(pushUrgencyGQLEnum), func(v PushSettingsView) any { return string(v.MinimumUrgency) }),
+		"timeZone":           gqlutil.ReqStrField(func(v PushSettingsView) any { return v.TimeZone }),
+		"workingHours":       gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(pushClockRangeGQLType))), func(v PushSettingsView) any { return v.WorkingHours }),
+		"quietHours":         gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(pushClockRangeGQLType))), func(v PushSettingsView) any { return v.QuietHours }),
+		"maxDeferralSeconds": gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(v PushSettingsView) any { return v.MaxDeferralSeconds }),
+		"serviceOverrides":   gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(pushServiceOverrideGQLType))), func(v PushSettingsView) any { return v.ServiceOverrides }),
 	},
 })
 
@@ -159,29 +159,29 @@ var pushSettingsGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 var deviceSubscriptionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "NotificationDeviceSubscription",
 	Fields: graphql.Fields{
-		"deviceId":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeviceSubscriptionView) any { return v.DeviceID })},
-		"provider":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeviceSubscriptionView) any { return v.Provider })},
-		"platform":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeviceSubscriptionView) any { return v.Platform })},
-		"preferenceRef":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeviceSubscriptionView) any { return v.PreferenceRef })},
-		"createdAt":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeviceSubscriptionView) any { return v.CreatedAt.Format(time.RFC3339Nano) })},
-		"updatedAt":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeviceSubscriptionView) any { return v.UpdatedAt.Format(time.RFC3339Nano) })},
-		"lastRegisteredAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeviceSubscriptionView) any { return v.LastRegisteredAt.Format(time.RFC3339Nano) })},
+		"deviceId":         gqlutil.StrField(func(v DeviceSubscriptionView) any { return v.DeviceID }),
+		"provider":         gqlutil.StrField(func(v DeviceSubscriptionView) any { return v.Provider }),
+		"platform":         gqlutil.StrField(func(v DeviceSubscriptionView) any { return v.Platform }),
+		"preferenceRef":    gqlutil.StrField(func(v DeviceSubscriptionView) any { return v.PreferenceRef }),
+		"createdAt":        gqlutil.StrField(func(v DeviceSubscriptionView) any { return v.CreatedAt.Format(time.RFC3339Nano) }),
+		"updatedAt":        gqlutil.StrField(func(v DeviceSubscriptionView) any { return v.UpdatedAt.Format(time.RFC3339Nano) }),
+		"lastRegisteredAt": gqlutil.StrField(func(v DeviceSubscriptionView) any { return v.LastRegisteredAt.Format(time.RFC3339Nano) }),
 	},
 })
 
 var pushNotificationGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "PushNotification",
 	Fields: graphql.Fields{
-		"id":           &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v PushNotificationView) any { return v.ID })},
-		"event":        &graphql.Field{Type: graphql.NewNonNull(pushDeliveryEventGQLEnum), Resolve: gqlutil.Field(func(v PushNotificationView) any { return v.Event })},
-		"title":        &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v PushNotificationView) any { return v.Title })},
-		"body":         &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v PushNotificationView) any { return v.Body })},
-		"urgency":      &graphql.Field{Type: graphql.NewNonNull(pushUrgencyGQLEnum), Resolve: gqlutil.Field(func(v PushNotificationView) any { return v.Urgency })},
-		"resourceKind": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v PushNotificationView) any { return v.ResourceKind })},
-		"resourceId":   &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v PushNotificationView) any { return v.ResourceID })},
-		"deepLink":     &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v PushNotificationView) any { return v.DeepLink })},
-		"occurredAt":   &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v PushNotificationView) any { return v.OccurredAt.UTC().Format(time.RFC3339Nano) })},
-		"createdAt":    &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v PushNotificationView) any { return v.CreatedAt.UTC().Format(time.RFC3339Nano) })},
+		"id":           gqlutil.ReqStrField(func(v PushNotificationView) any { return v.ID }),
+		"event":        gqlutil.Typed(graphql.NewNonNull(pushDeliveryEventGQLEnum), func(v PushNotificationView) any { return v.Event }),
+		"title":        gqlutil.ReqStrField(func(v PushNotificationView) any { return v.Title }),
+		"body":         gqlutil.ReqStrField(func(v PushNotificationView) any { return v.Body }),
+		"urgency":      gqlutil.Typed(graphql.NewNonNull(pushUrgencyGQLEnum), func(v PushNotificationView) any { return v.Urgency }),
+		"resourceKind": gqlutil.ReqStrField(func(v PushNotificationView) any { return v.ResourceKind }),
+		"resourceId":   gqlutil.ReqStrField(func(v PushNotificationView) any { return v.ResourceID }),
+		"deepLink":     gqlutil.ReqStrField(func(v PushNotificationView) any { return v.DeepLink }),
+		"occurredAt":   gqlutil.ReqStrField(func(v PushNotificationView) any { return v.OccurredAt.UTC().Format(time.RFC3339Nano) }),
+		"createdAt":    gqlutil.ReqStrField(func(v PushNotificationView) any { return v.CreatedAt.UTC().Format(time.RFC3339Nano) }),
 		"readAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PushNotificationView) any {
 			if v.ReadAt == nil {
 				return nil
@@ -236,9 +236,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"updateNotificationSettings": &graphql.Field{
 			Type: notificationSettingsGQLType,
 			Args: graphql.FieldConfigArgument{
-				"deployStarted":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
-				"deploySucceeded": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
-				"deployFailed":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
+				"deployStarted":   gqlutil.ReqArg(graphql.Boolean),
+				"deploySucceeded": gqlutil.ReqArg(graphql.Boolean),
+				"deployFailed":    gqlutil.ReqArg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.UpdateSettings(p.Context, p.Args["deployStarted"].(bool), p.Args["deploySucceeded"].(bool), p.Args["deployFailed"].(bool))
@@ -247,7 +247,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"updatePushNotificationSettings": &graphql.Field{
 			Type: pushSettingsGQLType,
 			Args: graphql.FieldConfigArgument{
-				"settings": &graphql.ArgumentConfig{Type: graphql.NewNonNull(pushSettingsGQLInput)},
+				"settings": gqlutil.ReqArg(pushSettingsGQLInput),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.UpdatePushSettings(p.Context, gqlPushSettings(p.Args["settings"].(map[string]any)))
@@ -256,10 +256,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"registerNotificationDeviceSubscription": &graphql.Field{
 			Type: deviceSubscriptionGQLType,
 			Args: graphql.FieldConfigArgument{
-				"deviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"provider": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"platform": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"token":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"deviceId": gqlutil.ReqArg(graphql.String),
+				"provider": gqlutil.ReqArg(graphql.String),
+				"platform": gqlutil.ReqArg(graphql.String),
+				"token":    gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.RegisterDeviceSubscription(p.Context, RegisterDeviceInput{
@@ -271,7 +271,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"unregisterNotificationDeviceSubscription": &graphql.Field{
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
-				"deviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"deviceId": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.UnregisterDeviceSubscription(p.Context, p.Args["deviceId"].(string))
@@ -287,7 +287,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"markPushNotificationRead": &graphql.Field{
 			Type: graphql.NewNonNull(graphql.Boolean),
 			Args: graphql.FieldConfigArgument{
-				"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"id": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.MarkPushNotificationRead(p.Context, p.Args["id"].(string))

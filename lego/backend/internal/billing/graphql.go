@@ -25,51 +25,51 @@ import (
 var taxReadinessGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BillingTaxReadiness",
 	Fields: graphql.Fields{
-		"configured":        &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(t TaxReadiness) any { return t.Configured })},
-		"enabled":           &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(t TaxReadiness) any { return t.Enabled })},
-		"reason":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t TaxReadiness) any { return t.Reason })},
-		"productTaxCode":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t TaxReadiness) any { return t.ProductTaxCode })},
-		"taxBehavior":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t TaxReadiness) any { return t.TaxBehavior })},
-		"registrationCount": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(t TaxReadiness) any { return t.RegistrationCount })},
+		"configured":        gqlutil.BoolField(func(t TaxReadiness) any { return t.Configured }),
+		"enabled":           gqlutil.BoolField(func(t TaxReadiness) any { return t.Enabled }),
+		"reason":            gqlutil.StrField(func(t TaxReadiness) any { return t.Reason }),
+		"productTaxCode":    gqlutil.StrField(func(t TaxReadiness) any { return t.ProductTaxCode }),
+		"taxBehavior":       gqlutil.StrField(func(t TaxReadiness) any { return t.TaxBehavior }),
+		"registrationCount": gqlutil.IntField(func(t TaxReadiness) any { return t.RegistrationCount }),
 	},
 })
 
 var billingReadinessGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WorkspaceBillingReadiness",
 	Fields: graphql.Fields{
-		"workspaceId":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r Readiness) any { return r.WorkspaceID })},
-		"mode":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r Readiness) any { return r.Mode })},
-		"customerReady":      &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(r Readiness) any { return r.CustomerReady })},
-		"subscriptionReady":  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(r Readiness) any { return r.SubscriptionReady })},
-		"paymentMethodReady": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(r Readiness) any { return r.PaymentMethodReady })},
-		"tax":                &graphql.Field{Type: taxReadinessGQLType, Resolve: gqlutil.Field(func(r Readiness) any { return r.Tax })},
-		"lifecycle":          &graphql.Field{Type: billingLifecycleGQLType, Resolve: gqlutil.Field(func(r Readiness) any { return r.Lifecycle })},
+		"workspaceId":        gqlutil.StrField(func(r Readiness) any { return r.WorkspaceID }),
+		"mode":               gqlutil.StrField(func(r Readiness) any { return r.Mode }),
+		"customerReady":      gqlutil.BoolField(func(r Readiness) any { return r.CustomerReady }),
+		"subscriptionReady":  gqlutil.BoolField(func(r Readiness) any { return r.SubscriptionReady }),
+		"paymentMethodReady": gqlutil.BoolField(func(r Readiness) any { return r.PaymentMethodReady }),
+		"tax":                gqlutil.Typed(taxReadinessGQLType, func(r Readiness) any { return r.Tax }),
+		"lifecycle":          gqlutil.Typed(billingLifecycleGQLType, func(r Readiness) any { return r.Lifecycle }),
 	},
 })
 
 var billingLifecycleGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BillingLifecycle",
 	Fields: graphql.Fields{
-		"status":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v LifecycleView) any { return v.Status })},
-		"reason":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v LifecycleView) any { return v.Reason })},
-		"graceDeadline":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v LifecycleView) any { return v.GraceDeadline })},
-		"enforcementOwned": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v LifecycleView) any { return v.EnforcementOwned })},
-		"recoveryPending":  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v LifecycleView) any { return v.RecoveryPending })},
-		"allowedActions":   &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v LifecycleView) any { return v.AllowedActions })},
-		"updatedAt":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v LifecycleView) any { return v.UpdatedAt })},
+		"status":           gqlutil.StrField(func(v LifecycleView) any { return v.Status }),
+		"reason":           gqlutil.StrField(func(v LifecycleView) any { return v.Reason }),
+		"graceDeadline":    gqlutil.StrField(func(v LifecycleView) any { return v.GraceDeadline }),
+		"enforcementOwned": gqlutil.BoolField(func(v LifecycleView) any { return v.EnforcementOwned }),
+		"recoveryPending":  gqlutil.BoolField(func(v LifecycleView) any { return v.RecoveryPending }),
+		"allowedActions":   gqlutil.StrsField(func(v LifecycleView) any { return v.AllowedActions }),
+		"updatedAt":        gqlutil.StrField(func(v LifecycleView) any { return v.UpdatedAt }),
 	},
 })
 
 var hostedSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BillingHostedSession",
 	Fields: graphql.Fields{
-		"url":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s HostedSession) any { return s.URL })},
-		"expiresAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s HostedSession) any { return s.ExpiresAt })},
+		"url":       gqlutil.StrField(func(s HostedSession) any { return s.URL }),
+		"expiresAt": gqlutil.StrField(func(s HostedSession) any { return s.ExpiresAt }),
 	},
 })
 
 func billingWorkspaceArg() graphql.FieldConfigArgument {
-	return graphql.FieldConfigArgument{"workspaceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)}}
+	return graphql.FieldConfigArgument{"workspaceId": gqlutil.ReqArg(graphql.String)}
 }
 
 func (s *Service) GraphQLQuery() graphql.Fields {
@@ -89,9 +89,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createBillingCheckoutSession": &graphql.Field{
 			Type: hostedSessionGQLType,
 			Args: graphql.FieldConfigArgument{
-				"workspaceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"successUrl":  &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"cancelUrl":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"workspaceId": gqlutil.ReqArg(graphql.String),
+				"successUrl":  gqlutil.ReqArg(graphql.String),
+				"cancelUrl":   gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Checkout(p.Context, gqlutil.Str(p.Args, "workspaceId"), CheckoutRequest{SuccessURL: gqlutil.Str(p.Args, "successUrl"), CancelURL: gqlutil.Str(p.Args, "cancelUrl")})
@@ -100,8 +100,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createBillingPortalSession": &graphql.Field{
 			Type: hostedSessionGQLType,
 			Args: graphql.FieldConfigArgument{
-				"workspaceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"returnUrl":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"workspaceId": gqlutil.ReqArg(graphql.String),
+				"returnUrl":   gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Portal(p.Context, gqlutil.Str(p.Args, "workspaceId"), PortalRequest{ReturnURL: gqlutil.Str(p.Args, "returnUrl")})

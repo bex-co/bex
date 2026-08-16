@@ -57,33 +57,33 @@ func envVarsFromArgs(raw []any) []EnvVarView {
 var envVarListValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "EnvVarListValue",
 	Fields: graphql.Fields{
-		"id":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EnvVarView) any { return v.Key })},
-		"key":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EnvVarView) any { return v.Key })},
-		"value": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EnvVarView) any { return v.Value })},
+		"id":    gqlutil.StrField(func(v EnvVarView) any { return v.Key }),
+		"key":   gqlutil.StrField(func(v EnvVarView) any { return v.Key }),
+		"value": gqlutil.StrField(func(v EnvVarView) any { return v.Value }),
 	},
 })
 
 var envVarWithCursorGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "EnvVarWithCursor",
 	Fields: graphql.Fields{
-		"envVar": &graphql.Field{Type: envVarListValueGQLType, Resolve: gqlutil.Field(func(v envVarWithCursor) any { return v.EnvVar })},
-		"cursor": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v envVarWithCursor) any { return v.Cursor })},
+		"envVar": gqlutil.Typed(envVarListValueGQLType, func(v envVarWithCursor) any { return v.EnvVar }),
+		"cursor": gqlutil.StrField(func(v envVarWithCursor) any { return v.Cursor }),
 	},
 })
 
 var secretFileListValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SecretFileListValue",
 	Fields: graphql.Fields{
-		"id":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(f SecretFileView) any { return f.Name })},
-		"name": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(f SecretFileView) any { return f.Name })},
+		"id":   gqlutil.StrField(func(f SecretFileView) any { return f.Name }),
+		"name": gqlutil.StrField(func(f SecretFileView) any { return f.Name }),
 	},
 })
 
 var secretFileWithCursorGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SecretFileWithCursor",
 	Fields: graphql.Fields{
-		"secretFile": &graphql.Field{Type: secretFileListValueGQLType, Resolve: gqlutil.Field(func(f secretFileWithCursor) any { return f.SecretFile })},
-		"cursor":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(f secretFileWithCursor) any { return f.Cursor })},
+		"secretFile": gqlutil.Typed(secretFileListValueGQLType, func(f secretFileWithCursor) any { return f.SecretFile }),
+		"cursor":     gqlutil.StrField(func(f secretFileWithCursor) any { return f.Cursor }),
 	},
 })
 
@@ -111,9 +111,9 @@ var secretFilePatchGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
 var environmentPatchResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "EnvironmentPatchResult",
 	Fields: graphql.Fields{
-		"envVarKeys":      &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Resolve: gqlutil.Field(func(v EnvironmentPatchResult) any { return v.EnvVarKeys })},
-		"secretFileNames": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Resolve: gqlutil.Field(func(v EnvironmentPatchResult) any { return v.SecretFileNames })},
-		"rolledOut":       &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v EnvironmentPatchResult) any { return v.RolledOut })},
+		"envVarKeys":      gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v EnvironmentPatchResult) any { return v.EnvVarKeys }),
+		"secretFileNames": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v EnvironmentPatchResult) any { return v.SecretFileNames }),
+		"rolledOut":       gqlutil.ReqBoolField(func(v EnvironmentPatchResult) any { return v.RolledOut }),
 	},
 })
 
@@ -157,12 +157,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"envVars": &graphql.Field{
 			Type: graphql.NewList(envVarWithCursorGQLType),
 			Args: graphql.FieldConfigArgument{
-				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"cursor":    &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
+				"serviceId": gqlutil.ReqArg(graphql.String),
+				"cursor":    gqlutil.Arg(graphql.String),
+				"limit":     gqlutil.Arg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				cursor, _ := p.Args["cursor"].(string)
+				cursor := gqlutil.Str(p.Args, "cursor")
 				limit, err := gqlutil.PositiveLimit(p.Args)
 				if err != nil {
 					return nil, err
@@ -177,12 +177,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"secretFiles": &graphql.Field{
 			Type: graphql.NewList(secretFileWithCursorGQLType),
 			Args: graphql.FieldConfigArgument{
-				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"cursor":    &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
+				"serviceId": gqlutil.ReqArg(graphql.String),
+				"cursor":    gqlutil.Arg(graphql.String),
+				"limit":     gqlutil.Arg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				cursor, _ := p.Args["cursor"].(string)
+				cursor := gqlutil.Str(p.Args, "cursor")
 				limit, err := gqlutil.PositiveLimit(p.Args)
 				if err != nil {
 					return nil, err
@@ -200,18 +200,18 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 // GraphQLMutation returns the env-var write mutations for the root to merge.
 func (s *Service) GraphQLMutation() graphql.Fields {
 	svcKey := graphql.FieldConfigArgument{
-		"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-		"key":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+		"serviceId": gqlutil.ReqArg(graphql.String),
+		"key":       gqlutil.ReqArg(graphql.String),
 	}
 	return graphql.Fields{
 		"patchServiceEnvironment": &graphql.Field{
 			Type: graphql.NewNonNull(environmentPatchResultGQLType),
 			Args: graphql.FieldConfigArgument{
-				"serviceId":           &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"envVars":             &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(envVarPatchGQLType))},
-				"secretFiles":         &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(secretFilePatchGQLType))},
-				"saveMode":            &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"expectedEnvRevision": &graphql.ArgumentConfig{Type: graphql.String},
+				"serviceId":           gqlutil.ReqArg(graphql.String),
+				"envVars":             gqlutil.Arg(graphql.NewList(graphql.NewNonNull(envVarPatchGQLType))),
+				"secretFiles":         gqlutil.Arg(graphql.NewList(graphql.NewNonNull(secretFilePatchGQLType))),
+				"saveMode":            gqlutil.ReqArg(graphql.String),
+				"expectedEnvRevision": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.PatchEnvironment(p.Context, p.Args["serviceId"].(string), environmentPatchFromArgs(p))
@@ -220,8 +220,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setEnvVars": &graphql.Field{ // Render's replace-all
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
-				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"envVars":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(gqlutil.EnvVarInputType)))},
+				"serviceId": gqlutil.ReqArg(graphql.String),
+				"envVars":   gqlutil.Arg(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(gqlutil.EnvVarInputType)))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				raw, _ := p.Args["envVars"].([]any)
@@ -232,14 +232,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setEnvVar": &graphql.Field{ // Render's add-or-update one
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
-				"serviceId":     &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"key":           &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"value":         &graphql.ArgumentConfig{Type: graphql.String},
-				"generateValue": &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"serviceId":     gqlutil.ReqArg(graphql.String),
+				"key":           gqlutil.ReqArg(graphql.String),
+				"value":         gqlutil.Arg(graphql.String),
+				"generateValue": gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				value, _ := p.Args["value"].(string)
-				generate, _ := p.Args["generateValue"].(bool)
+				value := gqlutil.Str(p.Args, "value")
+				generate := gqlutil.Bool(p.Args, "generateValue")
 				_, err := s.SetEnvVar(p.Context, p.Args["serviceId"].(string), p.Args["key"].(string), EnvVarWrite{Value: value, GenerateValue: generate})
 				return err == nil, err
 			},
@@ -255,12 +255,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setSecretFile": &graphql.Field{ // add or update one secret file (merged)
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
-				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"content":   &graphql.ArgumentConfig{Type: graphql.String},
+				"serviceId": gqlutil.ReqArg(graphql.String),
+				"name":      gqlutil.ReqArg(graphql.String),
+				"content":   gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				content, _ := p.Args["content"].(string)
+				content := gqlutil.Str(p.Args, "content")
 				_, err := s.SetSecretFile(p.Context, p.Args["serviceId"].(string), p.Args["name"].(string), content)
 				return err == nil, err
 			},
@@ -268,8 +268,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"deleteSecretFile": &graphql.Field{
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
-				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"serviceId": gqlutil.ReqArg(graphql.String),
+				"name":      gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				err := s.DeleteSecretFile(p.Context, p.Args["serviceId"].(string), p.Args["name"].(string))

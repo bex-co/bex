@@ -37,12 +37,12 @@ import (
 var triggerGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DeployTrigger",
 	Fields: graphql.Fields{
-		"firstBuild":       &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(t Trigger) any { return t.FirstBuild })},
-		"envUpdated":       &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(t Trigger) any { return t.EnvUpdated })},
-		"manual":           &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(t Trigger) any { return t.Manual })},
-		"deployedByRender": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(t Trigger) any { return t.DeployedByRender })},
-		"clearCache":       &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(t Trigger) any { return t.ClearCache })},
-		"rollback":         &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(t Trigger) any { return t.Rollback })},
+		"firstBuild":       gqlutil.BoolField(func(t Trigger) any { return t.FirstBuild }),
+		"envUpdated":       gqlutil.BoolField(func(t Trigger) any { return t.EnvUpdated }),
+		"manual":           gqlutil.BoolField(func(t Trigger) any { return t.Manual }),
+		"deployedByRender": gqlutil.BoolField(func(t Trigger) any { return t.DeployedByRender }),
+		"clearCache":       gqlutil.BoolField(func(t Trigger) any { return t.ClearCache }),
+		"rollback":         gqlutil.BoolField(func(t Trigger) any { return t.Rollback }),
 	},
 })
 
@@ -52,32 +52,32 @@ var triggerGQLType = graphql.NewObject(graphql.ObjectConfig{
 var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ServiceEventDetails",
 	Fields: graphql.Fields{
-		"deployId":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.DeployID })},
-		"deployStatus": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.DeployStatus })},
+		"deployId":     gqlutil.StrField(func(d Details) any { return d.DeployID }),
+		"deployStatus": gqlutil.StrField(func(d Details) any { return d.DeployStatus }),
 		// preDeployStatus is the deploy's pre-deploy step outcome (w1/m33) — the
 		// dashboard's Events tab shows it to tell a migration failure apart from a
 		// health-check failure. Empty when no pre-deploy step ran.
-		"preDeployStatus": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.PreDeployStatus })},
+		"preDeployStatus": gqlutil.StrField(func(d Details) any { return d.PreDeployStatus }),
 		// status is a lifecycle-step event's terminal outcome (w7/m66):
 		// build_ended / pre_deploy_ended / job_run_ended → succeeded|failed|canceled.
-		"status": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.Status })},
+		"status": gqlutil.StrField(func(d Details) any { return d.Status }),
 		// Deploy enrichment for dashboard Events view (w1/m47): image, commit info, timing
-		"image":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.Image })},
-		"commitId":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.CommitID })},
-		"commitMessage": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.CommitMessage })},
-		"startedAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return formatTime(d.StartedAt) })},
-		"finishedAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return formatTime(d.FinishedAt) })},
-		"actor":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.Actor })},
+		"image":         gqlutil.StrField(func(d Details) any { return d.Image }),
+		"commitId":      gqlutil.StrField(func(d Details) any { return d.CommitID }),
+		"commitMessage": gqlutil.StrField(func(d Details) any { return d.CommitMessage }),
+		"startedAt":     gqlutil.StrField(func(d Details) any { return formatTime(d.StartedAt) }),
+		"finishedAt":    gqlutil.StrField(func(d Details) any { return formatTime(d.FinishedAt) }),
+		"actor":         gqlutil.StrField(func(d Details) any { return d.Actor }),
 		"triggeredByUser": &graphql.Field{
 			Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.TriggeredByUser }),
 		},
-		"reasonCode": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.ReasonCode })},
-		"instanceId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.InstanceID })},
-		"commitUrl":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.CommitURL })},
-		"fromCount":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.FromCount })},
-		"toCount":    &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.ToCount })},
-		"branchFrom": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.BranchFrom })},
-		"branchTo":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.BranchTo })},
+		"reasonCode": gqlutil.StrField(func(d Details) any { return d.ReasonCode }),
+		"instanceId": gqlutil.StrField(func(d Details) any { return d.InstanceID }),
+		"commitUrl":  gqlutil.StrField(func(d Details) any { return d.CommitURL }),
+		"fromCount":  gqlutil.IntField(func(d Details) any { return d.FromCount }),
+		"toCount":    gqlutil.IntField(func(d Details) any { return d.ToCount }),
+		"branchFrom": gqlutil.StrField(func(d Details) any { return d.BranchFrom }),
+		"branchTo":   gqlutil.StrField(func(d Details) any { return d.BranchTo }),
 		"trigger": &graphql.Field{Type: triggerGQLType, Resolve: gqlutil.Field(func(d Details) any {
 			if d.Trigger == nil {
 				return nil
@@ -85,16 +85,16 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 			return *d.Trigger
 		})},
 		// plan_changed from/to plan name strings.
-		"planFrom": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.PlanFrom })},
-		"planTo":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d Details) any { return d.PlanTo })},
+		"planFrom": gqlutil.StrField(func(d Details) any { return d.PlanFrom }),
+		"planTo":   gqlutil.StrField(func(d Details) any { return d.PlanTo }),
 		// instance_count_changed from/to instance counts.
-		"instanceCountFrom": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.InstanceCountFrom })},
-		"instanceCountTo":   &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.InstanceCountTo })},
+		"instanceCountFrom": gqlutil.IntField(func(d Details) any { return d.InstanceCountFrom }),
+		"instanceCountTo":   gqlutil.IntField(func(d Details) any { return d.InstanceCountTo }),
 		// autoscaling_config_changed before/after min+max.
-		"autoscalingMinFrom": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.AutoscalingMinFrom })},
-		"autoscalingMaxFrom": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.AutoscalingMaxFrom })},
-		"autoscalingMinTo":   &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.AutoscalingMinTo })},
-		"autoscalingMaxTo":   &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(d Details) any { return d.AutoscalingMaxTo })},
+		"autoscalingMinFrom": gqlutil.IntField(func(d Details) any { return d.AutoscalingMinFrom }),
+		"autoscalingMaxFrom": gqlutil.IntField(func(d Details) any { return d.AutoscalingMaxFrom }),
+		"autoscalingMinTo":   gqlutil.IntField(func(d Details) any { return d.AutoscalingMinTo }),
+		"autoscalingMaxTo":   gqlutil.IntField(func(d Details) any { return d.AutoscalingMaxTo }),
 	},
 })
 
@@ -109,12 +109,12 @@ func formatTime(t *time.Time) string {
 var eventGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ServiceEvent",
 	Fields: graphql.Fields{
-		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.ID })},
-		"type":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.Type })},
-		"serviceId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.ServiceID })},
-		"timestamp": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.At.UTC().Format(time.RFC3339) })},
-		"cursor":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e Event) any { return e.Cursor })},
-		"details":   &graphql.Field{Type: eventDetailsGQLType, Resolve: gqlutil.Field(func(e Event) any { return e.Details })},
+		"id":        gqlutil.StrField(func(e Event) any { return e.ID }),
+		"type":      gqlutil.StrField(func(e Event) any { return e.Type }),
+		"serviceId": gqlutil.StrField(func(e Event) any { return e.ServiceID }),
+		"timestamp": gqlutil.StrField(func(e Event) any { return e.At.UTC().Format(time.RFC3339) }),
+		"cursor":    gqlutil.StrField(func(e Event) any { return e.Cursor }),
+		"details":   gqlutil.Typed(eventDetailsGQLType, func(e Event) any { return e.Details }),
 	},
 })
 
@@ -125,12 +125,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"serviceEvents": &graphql.Field{
 			Type: graphql.NewList(eventGQLType),
 			Args: graphql.FieldConfigArgument{
-				"serviceId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"type":      &graphql.ArgumentConfig{Type: graphql.String},
-				"startTime": &graphql.ArgumentConfig{Type: graphql.String},
-				"endTime":   &graphql.ArgumentConfig{Type: graphql.String},
-				"cursor":    &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
+				"serviceId": gqlutil.ReqArg(graphql.String),
+				"type":      gqlutil.Arg(graphql.String),
+				"startTime": gqlutil.Arg(graphql.String),
+				"endTime":   gqlutil.Arg(graphql.String),
+				"cursor":    gqlutil.Arg(graphql.String),
+				"limit":     gqlutil.Arg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.List(p.Context, p.Args["serviceId"].(string), filterFromArgs(p.Args))
