@@ -76,7 +76,7 @@ export const Route = createFileRoute("/databases/$databaseId")({
     ),
 });
 
-export function DatabaseDetailPage() {
+function DatabaseDetailPage() {
   const { databaseId } = Route.useParams();
   const { tab } = Route.useSearch();
   const { t } = useTranslations();

@@ -20,7 +20,7 @@ export const Route = createFileRoute("/services/$serviceId/plan")({
  * the query resolves would freeze the pre-selection at the not-yet-loaded
  * null value.
  */
-export function ServicePlanPage() {
+function ServicePlanPage() {
   const { serviceId } = Route.useParams();
   const { service, loading } = useServer(serviceId);
 

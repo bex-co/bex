@@ -27,7 +27,7 @@ export const Route = createFileRoute("/agents")({
  * path. The composer always renders — a 503/unconfigured backend shows its
  * house callout on the composer while the rail's list degrades on its own.
  */
-export function AgentSessionsPage() {
+function AgentSessionsPage() {
   const { view } = Route.useSearch();
 
   return (
