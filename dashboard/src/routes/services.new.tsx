@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Github, GitBranch, Box, Loader2, ArrowUpRight } from "lucide-react";
+import { Loader2, ArrowUpRight } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -28,18 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/common/components/ui/select";
-import { Badge } from "@/common/components/ui/badge";
 import { Skeleton } from "@/common/components/ui/skeleton";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/common/components/ui/tabs";
-import { isValidDnsLabel } from "@/common/lib/utils/dns-label";
 import { isValidGitUrl } from "@/common/lib/utils/git-url";
-import { repoNameSlug, gitUrlSlug, imageSlug } from "@/common/lib/utils/slug";
-import { cn } from "@/common/lib/utils/utils";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
 import {
@@ -47,59 +37,29 @@ import {
   isValidSecretFileName,
 } from "@/features/services/lib/environment-draft";
 import { useCreateService } from "@/features/services/hooks/use-create-service";
-import { useServiceNameAvailability } from "@/features/services/hooks/use-service-name-availability";
 import type {
   EnvVarEntry,
   SecretFileEntry,
 } from "@/features/services/hooks/use-create-service";
-import { useRepos } from "@/features/services/hooks/use-repos";
-import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { isValidCron } from "@/features/services/lib/cron";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
 import { PathList } from "@/features/services/components/build-deploy-section";
 import { ServiceTypePicker } from "@/features/services/components/service-type-picker";
+import { useBuildRuntimeFields } from "@/features/services/hooks/use-build-runtime-fields";
+import { useServiceNameDraft } from "@/features/services/hooks/use-service-name-draft";
+import { RUNTIME_DEFS, type GitRuntime } from "@/features/services/lib/runtime";
+import {
+  ServiceSourcePicker,
+  type SourceTab,
+} from "@/features/services/components/service-source-picker";
 import { CreateEnvVarEditor } from "@/features/services/components/create-env-var-editor";
 import { CreateSecretFileEditor } from "@/features/services/components/create-secret-file-editor";
 import {
   parseNewServiceSearch,
   type ServiceType,
 } from "@/features/services/lib/create-context";
-
-type SourceTab = "github" | "git" | "image";
-type NativeRuntime = "elixir" | "go" | "node" | "python" | "ruby" | "rust";
-type GitRuntime = NativeRuntime | "docker";
-
-const RUNTIME_COMMANDS: Record<
-  NativeRuntime,
-  { build: string; start: string }
-> = {
-  elixir: {
-    build: "mix deps.get --only prod && mix compile",
-    start: "mix phx.server",
-  },
-  go: { build: "go build -o app .", start: "./app" },
-  node: { build: "npm install", start: "npm start" },
-  python: {
-    build: "pip install -r requirements.txt",
-    start: "gunicorn app:app",
-  },
-  ruby: { build: "bundle install", start: "bundle exec puma" },
-  rust: { build: "cargo build --release", start: "cargo run --release" },
-};
-
-// Ladder order for the runtime picker — most-used first, `docker` last because
-// it swaps the whole build form. Deliberately not RUNTIME_COMMANDS' key order.
-const RUNTIME_DEFS: { id: GitRuntime; labelKey: string }[] = [
-  { id: "node", labelKey: "services.createRuntimeNode" },
-  { id: "python", labelKey: "services.createRuntimePython" },
-  { id: "go", labelKey: "services.createRuntimeGo" },
-  { id: "ruby", labelKey: "services.createRuntimeRuby" },
-  { id: "rust", labelKey: "services.createRuntimeRust" },
-  { id: "elixir", labelKey: "services.createRuntimeElixir" },
-  { id: "docker", labelKey: "services.createRuntimeDocker" },
-];
 
 export const Route = createFileRoute("/services/new")({
   staticData: { chrome: true },
@@ -116,25 +76,26 @@ export function NewServicePage() {
   const { instanceTypes } = useInstanceTypes();
   const { create, busy, capLimit, nameConflict, clearNameConflict } =
     useCreateService();
-  const { repos, loading: reposLoading } = useRepos();
-  const { connection, loading: connectionLoading } = useGitConnection();
   const [serviceType, setServiceType] = useState<ServiceType>(
     search.type ?? "web_service",
   );
   const [tab, setTab] = useState<SourceTab>("github");
   const [selectedRepo, setSelectedRepo] = useState<RepoView | null>(null);
-  const [repoSearch, setRepoSearch] = useState("");
   const [gitUrl, setGitUrl] = useState("");
   const [imageVal, setImageVal] = useState("");
   const [registryCredentialId, setRegistryCredentialId] = useState("");
-  const [name, setName] = useState("");
-  const [nameEdited, setNameEdited] = useState(false);
   const [branch, setBranch] = useState("");
   const [rootDir, setRootDir] = useState("");
-  const [runtime, setRuntime] = useState<GitRuntime>("node");
-  const [buildCommand, setBuildCommand] = useState(RUNTIME_COMMANDS.node.build);
-  const [startCommand, setStartCommand] = useState(RUNTIME_COMMANDS.node.start);
-  const [dockerfilePath, setDockerfilePath] = useState("");
+  const {
+    runtime,
+    setRuntime,
+    buildCommand,
+    setBuildCommand,
+    startCommand,
+    setStartCommand,
+    dockerfilePath,
+    setDockerfilePath,
+  } = useBuildRuntimeFields();
   const [planOverride, setPlanOverride] = useState<string | null>(null);
   const [autoDeploy, setAutoDeploy] = useState(true);
   const [schedule, setSchedule] = useState("");
@@ -174,56 +135,21 @@ export function NewServicePage() {
   const scheduleError =
     isCronType && schedule.trim() !== "" && !isValidCron(schedule);
 
-  // Auto-fill name + branch from source when user hasn't manually typed a name.
-  // `nameEdited` resets to false when the name is cleared (onChange uses
-  // `value !== ""`), so selecting a new source after clearing re-enables fill.
-  useEffect(() => {
-    if (nameEdited) return;
-    if (tab === "github" && selectedRepo) {
-      // Intentional sync of the name field to the selected source while the
-      // user hasn't hand-edited it (guarded by nameEdited); the effect reacts
-      // to selection changes, so a synchronous set here is the desired behavior.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setName(repoNameSlug(selectedRepo.fullName));
-      setBranch((b) => b || selectedRepo.defaultBranch);
-    } else if (tab === "git" && gitUrl) {
-      const slug = gitUrlSlug(gitUrl);
-      if (slug) setName(slug);
-    } else if (tab === "image" && imageVal) {
-      const slug = imageSlug(imageVal);
-      if (slug) setName(slug);
-    }
-  }, [tab, selectedRepo, gitUrl, imageVal, nameEdited]);
-
-  const nameValid = isValidDnsLabel(name);
   const {
-    taken: nameTaken,
-    suggestion: nameSuggestion,
-    checking: checkingName,
-  } = useServiceNameAvailability(nameValid ? name : "");
-
-  // Same repo connected twice (or any other auto-filled slug that's already
-  // taken): prefill the suggested free name instead of leaving the user to
-  // notice and fix it by hand — the auto-fill effect above just set `name` to
-  // a taken slug, this swaps it for the free alternative once the check
-  // settles. Never fires once the user has actually typed (nameEdited).
-  // Adjusted during render — React's own "store information from previous
-  // renders" pattern (state, not a ref: refs can't be read/written during
-  // render either) — rather than a useEffect, so it swaps at most once per
-  // taken name instead of looping.
-  const [lastAutoSwappedName, setLastAutoSwappedName] = useState<string | null>(
-    null,
-  );
-  if (
-    !nameEdited &&
-    nameTaken &&
-    nameSuggestion &&
-    name !== nameSuggestion &&
-    lastAutoSwappedName !== name
-  ) {
-    setLastAutoSwappedName(name);
-    setName(nameSuggestion);
-  }
+    name,
+    nameValid,
+    nameTaken,
+    nameSuggestion,
+    checkingName,
+    editName,
+    acceptSuggestion,
+  } = useServiceNameDraft({
+    tab,
+    selectedRepo,
+    gitUrl,
+    image: imageVal,
+    onRepoDefaultBranch: (b) => setBranch((cur) => cur || b),
+  });
 
   const showNameError = name.length > 0 && !nameValid;
   const showNameTaken = nameValid && (nameTaken || nameConflict);
@@ -258,16 +184,6 @@ export function NewServicePage() {
     nativeCommandsValid &&
     (isStaticType || plan !== "") &&
     (!isCronType || (schedule.trim() !== "" && !scheduleError));
-
-  const filteredRepos = useMemo(
-    () =>
-      repos.filter(
-        (r) =>
-          !repoSearch ||
-          r.fullName.toLowerCase().includes(repoSearch.toLowerCase()),
-      ),
-    [repos, repoSearch],
-  );
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -347,9 +263,6 @@ export function NewServicePage() {
     }
   }
 
-  const gitHubDisconnected =
-    !connectionLoading && connection?.connected !== true;
-
   return (
     <DashboardLayout>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
@@ -374,176 +287,22 @@ export function NewServicePage() {
                 />
               </div>
 
-              <div className="space-y-3">
-                <Label>{t("services.createSourceTitle")}</Label>
-                <Tabs
-                  value={tab}
-                  onValueChange={(v) => {
-                    setTab(v as SourceTab);
-                    setSelectedRepo(null);
-                    setBranch("");
-                  }}
-                >
-                  <TabsList className="grid h-auto w-full grid-cols-3">
-                    <TabsTrigger
-                      value="github"
-                      className="min-w-0 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm"
-                    >
-                      <Github className="hidden size-4 sm:block" />
-                      {t("services.createTabGitHub")}
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="git"
-                      className="min-w-0 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm"
-                    >
-                      <GitBranch className="hidden size-4 sm:block" />
-                      {t("services.createTabPublicGit")}
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="image"
-                      className="min-w-0 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm"
-                    >
-                      <Box className="hidden size-4 sm:block" />
-                      {t("services.createTabImage")}
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="github" className="mt-3">
-                    {connectionLoading ? (
-                      <Skeleton className="h-24 w-full" />
-                    ) : gitHubDisconnected ? (
-                      <div className="flex flex-col items-center gap-3 rounded-lg border p-6 text-center">
-                        <Github className="size-8 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">
-                            {t("services.createGitConnectPromptTitle")}
-                          </p>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {t("services.createGitConnectPromptBody")}
-                          </p>
-                        </div>
-                        <Button asChild>
-                          <a
-                            href={connection?.installUrl ?? ""}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {t("services.createGitConnectButton")}
-                          </a>
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Input
-                          placeholder={t(
-                            "services.createRepoSearchPlaceholder",
-                          )}
-                          value={repoSearch}
-                          onChange={(e) => setRepoSearch(e.target.value)}
-                          aria-label={t("services.createRepoSearchPlaceholder")}
-                        />
-                        <div className="max-h-64 overflow-y-auto rounded-md border divide-y">
-                          {reposLoading ? (
-                            Array.from({ length: 3 }).map((_, i) => (
-                              <div
-                                key={i}
-                                className="flex items-center gap-3 p-3"
-                              >
-                                <Skeleton className="h-4 w-full" />
-                              </div>
-                            ))
-                          ) : filteredRepos.length === 0 ? (
-                            <div className="p-6 text-center text-sm text-muted-foreground">
-                              {repoSearch
-                                ? t("services.createRepoNoMatch")
-                                : t("services.createRepoEmpty")}
-                            </div>
-                          ) : (
-                            filteredRepos.map((r) => (
-                              <button
-                                key={r.id}
-                                type="button"
-                                onClick={() => setSelectedRepo(r)}
-                                className={cn(
-                                  "flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted",
-                                  selectedRepo?.id === r.id &&
-                                    "bg-primary/5 hover:bg-primary/10",
-                                )}
-                              >
-                                <div className="flex min-w-0 items-center gap-2">
-                                  <Github className="size-4 shrink-0 text-muted-foreground" />
-                                  <span className="truncate text-sm font-medium">
-                                    {r.fullName}
-                                  </span>
-                                  {r.private && (
-                                    <Badge
-                                      variant="secondary"
-                                      className="shrink-0 text-xs"
-                                    >
-                                      {t("services.createRepoPrivateBadge")}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <span className="ml-3 shrink-0 text-xs text-muted-foreground">
-                                  {r.defaultBranch}
-                                </span>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="git" className="mt-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="svc-git-url">
-                        {t("services.createPublicUrlLabel")}
-                      </Label>
-                      <Input
-                        id="svc-git-url"
-                        value={gitUrl}
-                        onChange={(e) => setGitUrl(e.target.value)}
-                        placeholder={t("services.createPublicUrlPlaceholder")}
-                        autoComplete="off"
-                      />
-                      {gitUrl && !isValidGitUrl(gitUrl) ? (
-                        <p className="text-sm text-destructive">
-                          {t("services.createPublicUrlError")}
-                        </p>
-                      ) : null}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="image" className="mt-3">
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="svc-image">
-                          {t("services.createImageLabel")}
-                        </Label>
-                        <Input
-                          id="svc-image"
-                          value={imageVal}
-                          onChange={(e) => setImageVal(e.target.value)}
-                          placeholder={t("services.createImagePlaceholder")}
-                          autoComplete="off"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          {t("services.createImagePortHint")}
-                        </p>
-                      </div>
-                      <RegistryCredentialSelect
-                        id="svc-registry-credential-image"
-                        value={registryCredentialId}
-                        onValueChange={setRegistryCredentialId}
-                        description={t(
-                          "services.createRegistryCredentialDescription",
-                        )}
-                      />
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
+              <ServiceSourcePicker
+                tab={tab}
+                onTabChange={(next) => {
+                  setTab(next);
+                  setSelectedRepo(null);
+                  setBranch("");
+                }}
+                selectedRepo={selectedRepo}
+                onSelectRepo={setSelectedRepo}
+                gitUrl={gitUrl}
+                onGitUrlChange={setGitUrl}
+                image={imageVal}
+                onImageChange={setImageVal}
+                registryCredentialId={registryCredentialId}
+                onRegistryCredentialChange={setRegistryCredentialId}
+              />
 
               <div className="space-y-4">
                 <p className="text-base font-semibold">
@@ -558,8 +317,7 @@ export function NewServicePage() {
                     id="svc-name"
                     value={name}
                     onChange={(e) => {
-                      setName(e.target.value);
-                      setNameEdited(e.target.value !== "");
+                      editName(e.target.value);
                       clearNameConflict();
                     }}
                     placeholder={t("services.createFieldNamePlaceholder")}
@@ -579,10 +337,7 @@ export function NewServicePage() {
                           variant="outline"
                           size="sm"
                           className="h-6 px-2 text-xs"
-                          onClick={() => {
-                            setName(nameSuggestion);
-                            setNameEdited(true);
-                          }}
+                          onClick={acceptSuggestion}
                         >
                           {t("services.createFieldNameUseSuggestion", {
                             name: nameSuggestion,
@@ -636,18 +391,9 @@ export function NewServicePage() {
                           </Label>
                           <Select
                             value={runtime}
-                            onValueChange={(value) => {
-                              const next = value as GitRuntime;
-                              setRuntime(next);
-                              if (next === "docker") {
-                                setBuildCommand("");
-                                setStartCommand("");
-                              } else {
-                                setDockerfilePath("");
-                                setBuildCommand(RUNTIME_COMMANDS[next].build);
-                                setStartCommand(RUNTIME_COMMANDS[next].start);
-                              }
-                            }}
+                            onValueChange={(value) =>
+                              setRuntime(value as GitRuntime)
+                            }
                           >
                             <SelectTrigger id="svc-runtime" className="w-full">
                               <SelectValue />

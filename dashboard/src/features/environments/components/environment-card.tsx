@@ -224,68 +224,36 @@ export function EnvironmentCard({
     const selectedRows = rows.filter((row) =>
       selectedKeys.has(resourceSelectionKey(row)),
     );
-    const byKind = {
-      service: selectedRows.filter((row) => row.kind === "service"),
-      database: selectedRows.filter((row) => row.kind === "database"),
-      keyvalue: selectedRows.filter((row) => row.kind === "keyvalue"),
-      envgroup: selectedRows.filter((row) => row.kind === "envgroup"),
-    };
-    const operations: Array<{
-      keys: string[];
-      run: Promise<boolean>;
-    }> = [];
-    if (byKind.service.length > 0) {
-      operations.push({
-        keys: byKind.service.map(resourceSelectionKey),
-        run: setServices(
-          target.id,
-          target.name,
-          mergeIds(
-            target.serviceIds,
-            byKind.service.map((row) => row.id),
+    // One entry per resource kind: which of the target's ids that kind already
+    // holds, and the setter that replaces them. All four setters share the same
+    // (id, name, ids) => Promise<boolean> shape, so the move is one loop.
+    const kinds: Array<{
+      kind: ResourceRow["kind"];
+      current: string[];
+      set: (id: string, name: string, ids: string[]) => Promise<boolean>;
+    }> = [
+      { kind: "service", current: target.serviceIds, set: setServices },
+      { kind: "database", current: target.databaseIds, set: setDatabases },
+      { kind: "keyvalue", current: target.keyValueIds, set: setKeyValues },
+      { kind: "envgroup", current: target.envGroupIds, set: setEnvGroups },
+    ];
+    const operations = kinds.flatMap(({ kind, current, set }) => {
+      const moving = selectedRows.filter((row) => row.kind === kind);
+      if (moving.length === 0) return [];
+      return [
+        {
+          keys: moving.map(resourceSelectionKey),
+          run: set(
+            target.id,
+            target.name,
+            mergeIds(
+              current,
+              moving.map((row) => row.id),
+            ),
           ),
-        ),
-      });
-    }
-    if (byKind.database.length > 0) {
-      operations.push({
-        keys: byKind.database.map(resourceSelectionKey),
-        run: setDatabases(
-          target.id,
-          target.name,
-          mergeIds(
-            target.databaseIds,
-            byKind.database.map((row) => row.id),
-          ),
-        ),
-      });
-    }
-    if (byKind.keyvalue.length > 0) {
-      operations.push({
-        keys: byKind.keyvalue.map(resourceSelectionKey),
-        run: setKeyValues(
-          target.id,
-          target.name,
-          mergeIds(
-            target.keyValueIds,
-            byKind.keyvalue.map((row) => row.id),
-          ),
-        ),
-      });
-    }
-    if (byKind.envgroup.length > 0) {
-      operations.push({
-        keys: byKind.envgroup.map(resourceSelectionKey),
-        run: setEnvGroups(
-          target.id,
-          target.name,
-          mergeIds(
-            target.envGroupIds,
-            byKind.envgroup.map((row) => row.id),
-          ),
-        ),
-      });
-    }
+        },
+      ];
+    });
 
     const results = await Promise.all(
       operations.map(async (operation) => ({

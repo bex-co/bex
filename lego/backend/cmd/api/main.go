@@ -407,45 +407,7 @@ func main() {
 	// narrowing derives its port from this one value (single source of truth).
 	deps.AgentModelProxyURL = os.Getenv("BEX_AGENT_MODEL_PROXY_URL")
 	wireSandboxes(ctx, &deps, cl, st, sandboxExecSecret)
-	// Browser Web Shell (docs/ADR035-ssh.md § Browser Web Shell): the HMAC key
-	// shared only with the isolated gateway and the browser-reachable gateway
-	// WebSocket origin. Either unset => the ticket verb returns 503 and native
-	// `ssh` is unaffected.
-	if secret := os.Getenv("BEX_SHELL_TICKET_SECRET"); secret != "" {
-		deps.ShellTicketSecret = []byte(secret)
-		// Agent attach deliberately reuses the Browser Web Shell trust key and
-		// DB-backed nonce design. The claims are a distinct ticket type and bind
-		// the session sandbox pod/workspace instead of a service instance.
-		deps.AgentSessionTicketSecret = []byte(secret)
-	}
-	deps.ShellWSURL = os.Getenv("BEX_SHELL_WS_URL")
-	deps.AgentSessionGatewayURL = os.Getenv("BEX_AGENT_SESSION_GATEWAY_URL")
-	// Optional override of the in-cluster Git smart-HTTP proxy origin. The
-	// sandbox receives this non-secret URL, never a GitHub credential.
-	deps.AgentGitProxyURL = os.Getenv("BEX_AGENT_GIT_PROXY_URL")
-	// Active-tier sandbox lifecycle (ADR059 D2/D6, w2/m67): idle grace before a
-	// finished session's sandbox is reaped (default 30m; 0 ⇒ ADR054 D6 immediate
-	// reap), and the per-workspace concurrent live-sandbox cap (default 5; 0 ⇒
-	// uncapped).
-	deps.AgentSandboxIdleTTL = zeroableDurationEnv("BEX_AGENT_SANDBOX_IDLE_TTL", 30*time.Minute)
-	deps.AgentMaxLiveSandboxesPerWorkspace = zeroableIntEnv("BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE", 5)
-	// ADR059 D3/D5 hibernation (w2/m68): the object store enables the Hibernated
-	// tier (reclaim → snapshot, resume → rehydrate). Unset ⇒ the whole tier is off
-	// and reclaim stays Terminate (byte-identical to w2/m67).
-	if store := agentsessions.NewS3SnapshotStore(agentsessions.S3SnapshotConfig{
-		Endpoint:  os.Getenv("BEX_AGENT_SNAPSHOT_S3_ENDPOINT"),
-		Bucket:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_BUCKET"),
-		Region:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_REGION"),
-		Prefix:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_PREFIX"),
-		AccessKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_ACCESS_KEY"),
-		SecretKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_SECRET_KEY"),
-	}); store != nil {
-		deps.AgentSnapshotStore = store
-		log.Printf("bex-api: agent-session hibernation enabled (object store %s)", os.Getenv("BEX_AGENT_SNAPSHOT_S3_BUCKET"))
-	}
-	deps.AgentSnapshotRetentionTTL = zeroableDurationEnv("BEX_AGENT_SNAPSHOT_RETENTION", 7*24*time.Hour)
-	deps.AgentMaxPinnedSandboxesPerWorkspace = zeroableIntEnv("BEX_AGENT_MAX_PINNED_SANDBOXES_PER_WORKSPACE", 10)
-
+	wireAgentSessions(&deps)
 	srv := api.NewServer(base, deps)
 	// codex round-8 #9: the signed git webhook durably claims each processed
 	// delivery body so a captured (body, signature) pair cannot be replayed into
@@ -1009,6 +971,50 @@ func wireSandboxes(ctx context.Context, deps *api.Deps, cl client.Client, st *st
 
 // wireReconcilers wires the apps.Service ↔ reconciler seams and starts the
 // projector + namespace reconciler loops.
+// wireAgentSessions reads the agent-session and Browser Web Shell environment
+// contract onto deps: the shared gateway trust key, the browser-reachable
+// origins, the Active-tier lifecycle bounds, and the ADR059 hibernation store.
+func wireAgentSessions(deps *api.Deps) {
+	// Browser Web Shell (docs/ADR035-ssh.md § Browser Web Shell): the HMAC key
+	// shared only with the isolated gateway and the browser-reachable gateway
+	// WebSocket origin. Either unset => the ticket verb returns 503 and native
+	// `ssh` is unaffected.
+	if secret := os.Getenv("BEX_SHELL_TICKET_SECRET"); secret != "" {
+		deps.ShellTicketSecret = []byte(secret)
+		// Agent attach deliberately reuses the Browser Web Shell trust key and
+		// DB-backed nonce design. The claims are a distinct ticket type and bind
+		// the session sandbox pod/workspace instead of a service instance.
+		deps.AgentSessionTicketSecret = []byte(secret)
+	}
+	deps.ShellWSURL = os.Getenv("BEX_SHELL_WS_URL")
+	deps.AgentSessionGatewayURL = os.Getenv("BEX_AGENT_SESSION_GATEWAY_URL")
+	// Optional override of the in-cluster Git smart-HTTP proxy origin. The
+	// sandbox receives this non-secret URL, never a GitHub credential.
+	deps.AgentGitProxyURL = os.Getenv("BEX_AGENT_GIT_PROXY_URL")
+	// Active-tier sandbox lifecycle (ADR059 D2/D6, w2/m67): idle grace before a
+	// finished session's sandbox is reaped (default 30m; 0 ⇒ ADR054 D6 immediate
+	// reap), and the per-workspace concurrent live-sandbox cap (default 5; 0 ⇒
+	// uncapped).
+	deps.AgentSandboxIdleTTL = zeroableDurationEnv("BEX_AGENT_SANDBOX_IDLE_TTL", 30*time.Minute)
+	deps.AgentMaxLiveSandboxesPerWorkspace = zeroableIntEnv("BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE", 5)
+	// ADR059 D3/D5 hibernation (w2/m68): the object store enables the Hibernated
+	// tier (reclaim → snapshot, resume → rehydrate). Unset ⇒ the whole tier is off
+	// and reclaim stays Terminate (byte-identical to w2/m67).
+	if store := agentsessions.NewS3SnapshotStore(agentsessions.S3SnapshotConfig{
+		Endpoint:  os.Getenv("BEX_AGENT_SNAPSHOT_S3_ENDPOINT"),
+		Bucket:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_BUCKET"),
+		Region:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_REGION"),
+		Prefix:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_PREFIX"),
+		AccessKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_ACCESS_KEY"),
+		SecretKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_SECRET_KEY"),
+	}); store != nil {
+		deps.AgentSnapshotStore = store
+		log.Printf("bex-api: agent-session hibernation enabled (object store %s)", os.Getenv("BEX_AGENT_SNAPSHOT_S3_BUCKET"))
+	}
+	deps.AgentSnapshotRetentionTTL = zeroableDurationEnv("BEX_AGENT_SNAPSHOT_RETENTION", 7*24*time.Hour)
+	deps.AgentMaxPinnedSandboxesPerWorkspace = zeroableIntEnv("BEX_AGENT_MAX_PINNED_SANDBOXES_PER_WORKSPACE", 10)
+}
+
 func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler, st *store.PGStore, cl client.Client) {
 	// Wire the reconciler ↔ apps.Service now that both exist (w2/m11):
 	// - CloneSecrets: the projector mints clone Secrets for private-repo rows

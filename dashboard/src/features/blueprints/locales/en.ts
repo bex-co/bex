@@ -70,6 +70,10 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "Blueprint path",
     description: "New Blueprint page — render.yaml path input label",
   },
+  "blueprints.createNamePlaceholder": {
+    message: "my-stack",
+    description: "New Blueprint page — blueprint name placeholder",
+  },
   "blueprints.createPathPlaceholder": {
     message: "render.yaml",
     description: "New Blueprint page — manifest path placeholder",
