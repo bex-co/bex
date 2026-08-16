@@ -6,7 +6,7 @@ import { ShellComponent } from "@/common/root-route/shell-component";
 import { RootComponent } from "@/common/root-route/root-component";
 import { fetchSession } from "@/common/server-fn/session";
 import { detectLanguage } from "@/i18n/detect-language";
-import i18n from "@/i18n/init";
+import i18n, { ensureLanguage } from "@/i18n/init";
 import { getDashboardOrigin, globalMetadata } from "@/common/lib/document-head";
 import { getPersistedWorkspaceId } from "@/features/workspaces/lib/selection";
 
@@ -29,7 +29,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     // unchanged (the common case past the first navigation) to avoid paying
     // i18next's resource-swap/subscriber-notify cost on every route change;
     // run alongside the (independent) session fetch rather than after it.
-    if (i18n.language !== language) await i18n.changeLanguage(language);
+    if (i18n.language !== language) {
+      // Lazy-loaded non-default catalog must be registered before the switch,
+      // or SSR/first render would show raw keys (w9/m60 t003).
+      await ensureLanguage(language);
+      await i18n.changeLanguage(language);
+    }
     // `aal2Required` rides along with the session: it is the same whoami call's
     // other answer (a live session that owes a second factor), and `requireAuth`
     // needs it to redirect to the step-up (w4/m17).

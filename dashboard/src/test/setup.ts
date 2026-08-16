@@ -10,7 +10,15 @@ vi.mock("@tanstack/react-start", async (importOriginal) => {
   return { ...actual, createIsomorphicFn: stubs.createIsomorphicFn };
 });
 
-import "@/i18n/init";
+import i18n from "@/i18n/init";
+import zhResources from "@/i18n/resources-zh";
+
+// w9/m60 t003 made non-default locales lazy-loaded in the app (an `import()`
+// gated behind `ensureLanguage`), so `i18n.changeLanguage("zh")` alone no
+// longer has the zh catalog registered. Tests switch language synchronously
+// and assert translated strings, so preload the (statically importable in the
+// test runtime) zh bundle once here to restore eager availability.
+i18n.addResourceBundle("zh", "translation", zhResources, true, true);
 
 // Mock DOM-specific globals only in DOM environments
 if (typeof window !== "undefined") {

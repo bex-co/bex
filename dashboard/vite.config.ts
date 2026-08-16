@@ -9,6 +9,21 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
+import { visualizer } from "rollup-plugin-visualizer";
+
+// Peel stable, rarely-changing vendor libraries into their own chunks so a
+// tenant/app source change doesn't invalidate the (large) React/Radix/Apollo
+// download in every returning user's cache (w9/m60 t005). React and its
+// runtime deps must stay in ONE chunk to avoid a split-init cycle.
+function vendorChunk(id: string): string | undefined {
+  if (!id.includes("node_modules")) return undefined;
+  if (/[/\\]node_modules[/\\](react|react-dom|scheduler|use-sync-external-store)[/\\]/.test(id)) {
+    return "vendor-react";
+  }
+  if (/[/\\]node_modules[/\\]@radix-ui[/\\]/.test(id)) return "vendor-radix";
+  if (/[/\\]node_modules[/\\]@apollo[/\\]/.test(id)) return "vendor-apollo";
+  return undefined;
+}
 
 // Cap proxied request bodies (codex-security round-6 #15): these dev tunnels
 // forward credentials and buffer the whole body in memory, so an unbounded
@@ -349,6 +364,30 @@ function buildSecurityHeaders(
   return headers;
 }
 
+// Strip translator/dev `description:` fields from the locale catalogs in the
+// PRODUCTION bundle (w9/m60 t002). Every `**/locales/{en,zh}.ts` entry is
+// `{ message, description }`; `extractMessages()` (src/i18n/index.ts) keeps only
+// `message` at runtime, but the ~4,900 description string literals still ship in
+// the always-mounted entry chunk (~60–90 KB gzip of dead weight). This build-only
+// transform removes them from the emitted code while leaving the source files
+// (the authoring/translation docs) untouched; dev keeps descriptions. Every
+// description is a double-quoted string preceded by the entry's `message`, so a
+// comma-anchored strip is unambiguous; a malformed strip would fail the build
+// loudly rather than corrupt a catalog silently.
+function stripLocaleDescriptions(): Plugin {
+  const LOCALE_FILE = /\/locales\/(?:en|zh)\.ts$/;
+  const DESCRIPTION = /,\s*description:\s*"(?:[^"\\]|\\.)*"/g;
+  return {
+    name: "bex:strip-locale-descriptions",
+    apply: "build",
+    enforce: "pre",
+    transform(code, id) {
+      if (!LOCALE_FILE.test(id)) return null;
+      return { code: code.replace(DESCRIPTION, ""), map: null };
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   // Vite loads .env after config evaluation unless the config explicitly asks
@@ -365,6 +404,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [
+      stripLocaleDescriptions(),
       kratosDevProxy(kratosProxyTarget, kratosPublicURL),
       apiDevProxy(apiProxyTarget),
       devtools(),
@@ -411,6 +451,17 @@ export default defineConfig(({ mode }) => {
           },
         },
       }),
+      // `ANALYZE=1 yarn build` emits a gitignored treemap of the bundle; normal
+      // builds skip it (w9/m60 t005).
+      ...(process.env.ANALYZE
+        ? [
+            visualizer({
+              filename: ".output/bundle-analysis.html",
+              gzipSize: true,
+              brotliSize: true,
+            }) as Plugin,
+          ]
+        : []),
     ],
     ssr: {
       // @ory/elements-react ships extensionless relative imports
@@ -420,8 +471,19 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       assetsDir: "assets",
-      sourcemap: true, // Enable source maps for better error debugging in production
+      // No public sourcemaps (w9/m60 t005): the old `sourcemap: true` shipped
+      // `.map` files into `.output/public/assets`, exposing readable source and
+      // adding weight. `"hidden"` would still emit those files; the dashboard
+      // has no error-tracker map upload to justify keeping them, so `false`
+      // ships none. Debug prod stack traces against the committed source / a
+      // local sourcemapped build.
+      sourcemap: false,
       manifest: true, // Generate .vite/manifest.json for deterministic asset resolution
+      rollupOptions: {
+        output: {
+          manualChunks: vendorChunk,
+        },
+      },
     },
   };
 });

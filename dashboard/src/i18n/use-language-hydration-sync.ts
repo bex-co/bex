@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import i18n from "./init";
+import i18n, { ensureLanguage } from "./init";
 import { persistLanguage } from "./utils";
 import { asSupportedLanguage, resolveUrlLanguage } from "./config";
 import { getSearchParamOnClient } from "@/common/lib/search-params/client";
@@ -25,7 +25,10 @@ export function useLanguageHydrationSync(): void {
     const storedLang = asSupportedLanguage(localStorage.getItem("i18nextLng"));
     if (storedLang && storedLang !== i18n.language) {
       persistLanguage(storedLang);
-      void i18n.changeLanguage(storedLang);
+      // Register the lazy catalog before switching (w9/m60 t003).
+      void ensureLanguage(storedLang).then(() =>
+        i18n.changeLanguage(storedLang),
+      );
     }
   }, []);
 }
