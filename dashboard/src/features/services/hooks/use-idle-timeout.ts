@@ -1,8 +1,5 @@
-import { useCallback, useState } from "react";
-import { useMutation } from "@apollo/client/react";
-import { toast } from "sonner";
 import { SetIdleTimeoutDocument } from "@/graphql/definitions";
-import { useTranslations } from "@/common/hooks/use-translations";
+import { useFieldMutation } from "@/features/services/hooks/use-field-mutation";
 
 export interface UseIdleTimeoutResult {
   /** Fires setIdleTimeout; resolves true on success (toasted either way). */
@@ -18,26 +15,14 @@ export interface UseIdleTimeoutResult {
  * the setting rather than implying an instant sleep.
  */
 export function useIdleTimeout(): UseIdleTimeoutResult {
-  const { t } = useTranslations();
-  const [mutate] = useMutation(SetIdleTimeoutDocument);
-  const [busy, setBusy] = useState(false);
-
-  const setIdleTimeout = useCallback(
-    async (id: string, idleTTLSeconds: number) => {
-      setBusy(true);
-      try {
-        await mutate({ variables: { id, idleTTLSeconds } });
-        toast.success(t("services.idleTimeoutSuccess"));
-        return true;
-      } catch {
-        toast.error(t("services.idleTimeoutError"));
-        return false;
-      } finally {
-        setBusy(false);
-      }
+  const { run, busy } = useFieldMutation(
+    SetIdleTimeoutDocument,
+    (id: string, idleTTLSeconds: number) => ({ id, idleTTLSeconds }),
+    {
+      success: "services.idleTimeoutSuccess",
+      error: "services.idleTimeoutError",
     },
-    [mutate, t],
   );
 
-  return { setIdleTimeout, busy };
+  return { setIdleTimeout: run, busy };
 }

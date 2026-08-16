@@ -1,8 +1,5 @@
-import { useCallback, useState } from "react";
-import { useMutation } from "@apollo/client/react";
-import { toast } from "sonner";
 import { SetBranchDocument } from "@/graphql/definitions";
-import { useTranslations } from "@/common/hooks/use-translations";
+import { useFieldMutation } from "@/features/services/hooks/use-field-mutation";
 
 export interface UseBranchResult {
   /** Fires setBranch; resolves true on success (toasted either way). */
@@ -18,26 +15,14 @@ export interface UseBranchResult {
  * toast confirms the write rather than implying an instant rebuild.
  */
 export function useBranch(): UseBranchResult {
-  const { t } = useTranslations();
-  const [mutate] = useMutation(SetBranchDocument);
-  const [busy, setBusy] = useState(false);
-
-  const setBranch = useCallback(
-    async (id: string, branch: string) => {
-      setBusy(true);
-      try {
-        await mutate({ variables: { id, branch } });
-        toast.success(t("services.buildDeploySuccess"));
-        return true;
-      } catch {
-        toast.error(t("services.buildDeployError"));
-        return false;
-      } finally {
-        setBusy(false);
-      }
+  const { run, busy } = useFieldMutation(
+    SetBranchDocument,
+    (id: string, branch: string) => ({ id, branch }),
+    {
+      success: "services.buildDeploySuccess",
+      error: "services.buildDeployError",
     },
-    [mutate, t],
   );
 
-  return { setBranch, busy };
+  return { setBranch: run, busy };
 }

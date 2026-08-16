@@ -1,8 +1,5 @@
-import { useCallback, useState } from "react";
-import { useMutation } from "@apollo/client/react";
-import { toast } from "sonner";
 import { SetPreDeployCommandDocument } from "@/graphql/definitions";
-import { useTranslations } from "@/common/hooks/use-translations";
+import { useFieldMutation } from "@/features/services/hooks/use-field-mutation";
 
 export interface UsePreDeployCommandResult {
   /** Fires setPreDeployCommand; resolves true on success (toasted either way). */
@@ -18,26 +15,11 @@ export interface UsePreDeployCommandResult {
  * previous revision keeps serving. The toast confirms the write.
  */
 export function usePreDeployCommand(): UsePreDeployCommandResult {
-  const { t } = useTranslations();
-  const [mutate] = useMutation(SetPreDeployCommandDocument);
-  const [busy, setBusy] = useState(false);
-
-  const setPreDeployCommand = useCallback(
-    async (id: string, command: string) => {
-      setBusy(true);
-      try {
-        await mutate({ variables: { id, command } });
-        toast.success(t("services.preDeploySuccess"));
-        return true;
-      } catch {
-        toast.error(t("services.preDeployError"));
-        return false;
-      } finally {
-        setBusy(false);
-      }
-    },
-    [mutate, t],
+  const { run, busy } = useFieldMutation(
+    SetPreDeployCommandDocument,
+    (id: string, command: string) => ({ id, command }),
+    { success: "services.preDeploySuccess", error: "services.preDeployError" },
   );
 
-  return { setPreDeployCommand, busy };
+  return { setPreDeployCommand: run, busy };
 }

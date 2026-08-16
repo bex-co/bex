@@ -1,8 +1,5 @@
-import { useCallback, useState } from "react";
-import { useMutation } from "@apollo/client/react";
-import { toast } from "sonner";
 import { SetStartCommandDocument } from "@/graphql/definitions";
-import { useTranslations } from "@/common/hooks/use-translations";
+import { useFieldMutation } from "@/features/services/hooks/use-field-mutation";
 
 export interface UseStartCommandResult {
   setStartCommand: (id: string, command: string) => Promise<boolean>;
@@ -11,26 +8,14 @@ export interface UseStartCommandResult {
 
 /** Wires the Build & Deploy Start/Docker Command editor to bex-api. */
 export function useStartCommand(): UseStartCommandResult {
-  const { t } = useTranslations();
-  const [mutate] = useMutation(SetStartCommandDocument);
-  const [busy, setBusy] = useState(false);
-
-  const setStartCommand = useCallback(
-    async (id: string, command: string) => {
-      setBusy(true);
-      try {
-        await mutate({ variables: { id, command } });
-        toast.success(t("services.startCommandSuccess"));
-        return true;
-      } catch {
-        toast.error(t("services.startCommandError"));
-        return false;
-      } finally {
-        setBusy(false);
-      }
+  const { run, busy } = useFieldMutation(
+    SetStartCommandDocument,
+    (id: string, command: string) => ({ id, command }),
+    {
+      success: "services.startCommandSuccess",
+      error: "services.startCommandError",
     },
-    [mutate, t],
   );
 
-  return { setStartCommand, busy };
+  return { setStartCommand: run, busy };
 }

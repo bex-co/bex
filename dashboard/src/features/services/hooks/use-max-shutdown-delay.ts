@@ -1,8 +1,5 @@
-import { useCallback, useState } from "react";
-import { useMutation } from "@apollo/client/react";
-import { toast } from "sonner";
 import { SetMaxShutdownDelayDocument } from "@/graphql/definitions";
-import { useTranslations } from "@/common/hooks/use-translations";
+import { useFieldMutation } from "@/features/services/hooks/use-field-mutation";
 
 export interface UseMaxShutdownDelayResult {
   setMaxShutdownDelay: (id: string, seconds: number) => Promise<boolean>;
@@ -11,26 +8,14 @@ export interface UseMaxShutdownDelayResult {
 
 /** Wires Settings to the shared maxShutdownDelaySeconds service verb. */
 export function useMaxShutdownDelay(): UseMaxShutdownDelayResult {
-  const { t } = useTranslations();
-  const [mutate] = useMutation(SetMaxShutdownDelayDocument);
-  const [busy, setBusy] = useState(false);
-
-  const setMaxShutdownDelay = useCallback(
-    async (id: string, seconds: number) => {
-      setBusy(true);
-      try {
-        await mutate({ variables: { id, seconds } });
-        toast.success(t("services.maxShutdownDelaySuccess"));
-        return true;
-      } catch {
-        toast.error(t("services.maxShutdownDelayError"));
-        return false;
-      } finally {
-        setBusy(false);
-      }
+  const { run, busy } = useFieldMutation(
+    SetMaxShutdownDelayDocument,
+    (id: string, seconds: number) => ({ id, seconds }),
+    {
+      success: "services.maxShutdownDelaySuccess",
+      error: "services.maxShutdownDelayError",
     },
-    [mutate, t],
   );
 
-  return { setMaxShutdownDelay, busy };
+  return { setMaxShutdownDelay: run, busy };
 }

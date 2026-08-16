@@ -1,8 +1,5 @@
-import { useCallback, useState } from "react";
-import { useMutation } from "@apollo/client/react";
-import { toast } from "sonner";
 import { SetRepoDocument } from "@/graphql/definitions";
-import { useTranslations } from "@/common/hooks/use-translations";
+import { useFieldMutation } from "@/features/services/hooks/use-field-mutation";
 
 export interface UseSetRepoResult {
   /** Fires setRepo; resolves true on success (toasted either way). */
@@ -17,26 +14,14 @@ export interface UseSetRepoResult {
  * the change validates and triggers the documented rebuild path.
  */
 export function useSetRepo(): UseSetRepoResult {
-  const { t } = useTranslations();
-  const [mutate] = useMutation(SetRepoDocument);
-  const [busy, setBusy] = useState(false);
-
-  const setRepo = useCallback(
-    async (id: string, repo: string) => {
-      setBusy(true);
-      try {
-        await mutate({ variables: { id, repo } });
-        toast.success(t("services.buildDeploySuccess"));
-        return true;
-      } catch {
-        toast.error(t("services.buildDeployError"));
-        return false;
-      } finally {
-        setBusy(false);
-      }
+  const { run, busy } = useFieldMutation(
+    SetRepoDocument,
+    (id: string, repo: string) => ({ id, repo }),
+    {
+      success: "services.buildDeploySuccess",
+      error: "services.buildDeployError",
     },
-    [mutate, t],
   );
 
-  return { setRepo, busy };
+  return { setRepo: run, busy };
 }
