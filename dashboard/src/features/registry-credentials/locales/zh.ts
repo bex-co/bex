@@ -3,7 +3,8 @@ import type { TranslationEntry } from "@/i18n";
 const zhRegistryCredentials: Record<string, TranslationEntry> = {
   "registryCredentials.title": {
     message: "镜像仓库凭据",
-    description: "Settings Integrations → Registry Credentials section card title",
+    description:
+      "Settings Integrations → Registry Credentials section card title",
   },
   "registryCredentials.description": {
     message:
@@ -36,7 +37,8 @@ const zhRegistryCredentials: Record<string, TranslationEntry> = {
   },
   "registryCredentials.forbiddenTitle": {
     message: "无权限",
-    description: "Registry Credentials state when the caller lacks permission (403)",
+    description:
+      "Registry Credentials state when the caller lacks permission (403)",
   },
   "registryCredentials.forbiddenBody": {
     message: "您没有权限管理此工作区的镜像仓库凭据。",
@@ -165,7 +167,8 @@ const zhRegistryCredentials: Record<string, TranslationEntry> = {
   },
   "registryCredentials.expired": {
     message: "已过期",
-    description: "Expiry-status badge for a past-expiry credential (w2/m14/t007)",
+    description:
+      "Expiry-status badge for a past-expiry credential (w2/m14/t007)",
   },
   "registryCredentials.expiringSoon": {
     message: "即将过期",
@@ -173,7 +176,8 @@ const zhRegistryCredentials: Record<string, TranslationEntry> = {
   },
   "registryCredentials.expiresOn": {
     message: "{date} 到期",
-    description: "Expiry-status text for an active credential with a future expiry",
+    description:
+      "Expiry-status text for an active credential with a future expiry",
   },
   "registryCredentials.neverExpires": {
     message: "永不过期",

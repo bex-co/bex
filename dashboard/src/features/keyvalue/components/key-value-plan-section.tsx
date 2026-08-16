@@ -44,7 +44,11 @@ export function KeyValuePlanSection({
   async function handleConfirm() {
     setConfirming(false);
     if (!selectedType) return;
-    const ok = await updatePlan(keyValue.id, selectedType.id, selectedType.name);
+    const ok = await updatePlan(
+      keyValue.id,
+      selectedType.id,
+      selectedType.name,
+    );
     if (ok) onChanged();
   }
 

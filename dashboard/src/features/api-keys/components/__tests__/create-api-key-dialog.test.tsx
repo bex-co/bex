@@ -20,7 +20,11 @@ beforeEach(() => {
 
 describe("CreateApiKeyDialog — mint-once-visibility (w4/m8/t003)", () => {
   it("shows the secret exactly once after create, with a copy affordance", async () => {
-    create.mockResolvedValue({ id: "key-1", name: "deploy-agent", secret: "s3cret-value" });
+    create.mockResolvedValue({
+      id: "key-1",
+      name: "deploy-agent",
+      secret: "s3cret-value",
+    });
     const user = userEvent.setup();
     render(<CreateApiKeyDialog onCreated={vi.fn()} />);
 
@@ -37,7 +41,11 @@ describe("CreateApiKeyDialog — mint-once-visibility (w4/m8/t003)", () => {
   });
 
   it("the secret exists nowhere after the dialog is dismissed and reopened", async () => {
-    create.mockResolvedValue({ id: "key-1", name: "deploy-agent", secret: "s3cret-value" });
+    create.mockResolvedValue({
+      id: "key-1",
+      name: "deploy-agent",
+      secret: "s3cret-value",
+    });
     const onCreated = vi.fn();
     const user = userEvent.setup();
     render(<CreateApiKeyDialog onCreated={onCreated} />);
@@ -71,7 +79,9 @@ describe("CreateApiKeyDialog — mint-once-visibility (w4/m8/t003)", () => {
     await user.click(within(dialog).getByRole("button", { name: "Create" }));
 
     expect(within(dialog).getByLabelText("Name")).toBeInTheDocument();
-    expect(within(dialog).queryByText(/won't be able to see it again/i)).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByText(/won't be able to see it again/i),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps submit disabled for an empty/whitespace-only name", async () => {

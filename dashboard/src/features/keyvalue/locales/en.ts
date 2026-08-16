@@ -436,7 +436,8 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.maxmemoryEdit": {
     message: "Edit maxmemory policy",
-    description: "Accessible label for the maxmemory-policy edit-in-place pencil",
+    description:
+      "Accessible label for the maxmemory-policy edit-in-place pencil",
   },
   "keyvalue.maxmemorySuccess": {
     message: "Updating maxmemory policy to {policy}…",

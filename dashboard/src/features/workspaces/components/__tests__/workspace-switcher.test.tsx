@@ -19,7 +19,13 @@ vi.mock("@tanstack/react-router", () => ({
 
 const setCurrentWorkspaceId = vi.fn();
 const workspaceState: {
-  workspaces: { id: string; name: string; plan: string; role: string; createdAt: string | null }[];
+  workspaces: {
+    id: string;
+    name: string;
+    plan: string;
+    role: string;
+    createdAt: string | null;
+  }[];
   currentWorkspace: { id: string; name: string } | null;
   loading: boolean;
 } = {
@@ -32,8 +38,20 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
 }));
 
 const WORKSPACES = [
-  { id: "tea-1", name: "acme-hq", plan: "hobby", role: "admin", createdAt: null },
-  { id: "tea-2", name: "acme-staging", plan: "pro", role: "admin", createdAt: null },
+  {
+    id: "tea-1",
+    name: "acme-hq",
+    plan: "hobby",
+    role: "admin",
+    createdAt: null,
+  },
+  {
+    id: "tea-2",
+    name: "acme-staging",
+    plan: "pro",
+    role: "admin",
+    createdAt: null,
+  },
 ];
 
 beforeEach(() => {
@@ -55,7 +73,9 @@ describe("WorkspaceSwitcher", () => {
     renderSwitcher();
 
     await user.click(screen.getByRole("button", { name: /acme-hq/ }));
-    await user.click(await screen.findByRole("menuitem", { name: "acme-staging" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "acme-staging" }),
+    );
 
     expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-2");
   });
@@ -65,11 +85,15 @@ describe("WorkspaceSwitcher", () => {
     renderSwitcher();
 
     await user.click(screen.getByRole("button", { name: /acme-hq/ }));
-    await user.click(await screen.findByRole("menuitem", { name: "Workspace Settings" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Workspace Settings" }),
+    );
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/workspace/settings" });
 
     await user.click(screen.getByRole("button", { name: /acme-hq/ }));
-    await user.click(await screen.findByRole("menuitem", { name: "New Workspace" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "New Workspace" }),
+    );
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/new/workspace" });
   });
 });

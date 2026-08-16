@@ -53,7 +53,10 @@ describe("DatabaseDiskAutoscalingControl", () => {
     );
     const match = catalog.match(/^\s*diskAutoscalingCapGB:\s*(\d+)\s*$/m);
 
-    expect(match, "tiers.yaml must declare diskAutoscalingCapGB").not.toBeNull();
+    expect(
+      match,
+      "tiers.yaml must declare diskAutoscalingCapGB",
+    ).not.toBeNull();
     expect(DISK_AUTOSCALING_CAP_GB).toBe(Number(match?.[1]));
   });
 

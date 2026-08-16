@@ -6,7 +6,8 @@ const zhAudit: Record<string, TranslationEntry> = {
     description: "Settings Audit Log section card title",
   },
   "audit.description": {
-    message: "此工作区中谁做了什么，是否被允许——按时间从新到旧排列。仅工作区管理员可见。",
+    message:
+      "此工作区中谁做了什么，是否被允许——按时间从新到旧排列。仅工作区管理员可见。",
     description: "Settings Audit Log section card description",
   },
   "audit.columnTimestamp": {
@@ -39,7 +40,8 @@ const zhAudit: Record<string, TranslationEntry> = {
   },
   "audit.actorUnknown": {
     message: "未知",
-    description: "Audit Log actor cell placeholder for an unauthenticated caller",
+    description:
+      "Audit Log actor cell placeholder for an unauthenticated caller",
   },
   "audit.loadMore": {
     message: "加载更多",
@@ -63,7 +65,8 @@ const zhAudit: Record<string, TranslationEntry> = {
   },
   "audit.unavailableTitle": {
     message: "审计日志未配置",
-    description: "Audit Log state when the control-plane store isn't wired (503)",
+    description:
+      "Audit Log state when the control-plane store isn't wired (503)",
   },
   "audit.unavailableBody": {
     message: "此 bex 部署尚未配置审计日志存储。",

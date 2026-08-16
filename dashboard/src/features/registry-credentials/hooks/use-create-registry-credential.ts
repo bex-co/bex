@@ -45,7 +45,9 @@ export function useCreateRegistryCredential(): UseCreateRegistryCredentialResult
             expiresAt: input.expiresAt || null,
           },
         });
-        toast.success(t("registryCredentials.createSuccess", { host: input.host }));
+        toast.success(
+          t("registryCredentials.createSuccess", { host: input.host }),
+        );
         return true;
       } catch {
         toast.error(t("registryCredentials.createError", { host: input.host }));

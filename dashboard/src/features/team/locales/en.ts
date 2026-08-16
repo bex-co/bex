@@ -183,7 +183,8 @@ const enTeam: Record<string, TranslationEntry> = {
   },
   "team.mfaEnabled": {
     message: "2FA",
-    description: "Badge on a member row whose account has a second factor enrolled",
+    description:
+      "Badge on a member row whose account has a second factor enrolled",
   },
   "team.mfaEnabledTooltip": {
     message: "Two-factor authentication enabled",

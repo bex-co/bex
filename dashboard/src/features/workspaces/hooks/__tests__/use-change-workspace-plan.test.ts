@@ -26,7 +26,15 @@ beforeEach(() => {
 describe("useChangeWorkspacePlan", () => {
   it("resolves true and toasts success on a successful plan change", async () => {
     const mutate = vi.fn().mockResolvedValue({
-      data: { changeWorkspacePlan: { id: "tea-1", name: "acme", plan: "pro", role: "admin", createdAt: null } },
+      data: {
+        changeWorkspacePlan: {
+          id: "tea-1",
+          name: "acme",
+          plan: "pro",
+          role: "admin",
+          createdAt: null,
+        },
+      },
     });
     mockUseMutation.mockReturnValue([mutate]);
 
@@ -37,14 +45,18 @@ describe("useChangeWorkspacePlan", () => {
     });
 
     expect(ok).toBe(true);
-    expect(mutate).toHaveBeenCalledWith({ variables: { id: "tea-1", plan: "pro" } });
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { id: "tea-1", plan: "pro" },
+    });
     expect(toastSuccess).toHaveBeenCalledWith("Changed plan to pro");
   });
 
   it("resolves false and surfaces the backend's downgrade-guard message inline", async () => {
     const mutate = vi
       .fn()
-      .mockRejectedValue(new Error("workspace has 2 members, exceeds hobby plan's limit of 1"));
+      .mockRejectedValue(
+        new Error("workspace has 2 members, exceeds hobby plan's limit of 1"),
+      );
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useChangeWorkspacePlan());

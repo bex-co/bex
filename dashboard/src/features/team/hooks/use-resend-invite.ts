@@ -27,7 +27,9 @@ export function useResendInvite(workspaceId: string): UseResendInviteResult {
     async (inviteId: string) => {
       setResending(inviteId);
       try {
-        const { data } = await resendMut({ variables: { workspaceId, inviteId } });
+        const { data } = await resendMut({
+          variables: { workspaceId, inviteId },
+        });
         const email = data?.resendWorkspaceInvite?.email ?? "";
         toast.success(t("team.resendInviteSuccess", { email }));
         return true;

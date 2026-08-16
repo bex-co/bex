@@ -61,7 +61,11 @@ describe("useCreateWebhook", () => {
       );
     });
 
-    expect(endpoint).toEqual({ id: "whk-1", name: "slack-bot", secret: "whsec_s3cret" });
+    expect(endpoint).toEqual({
+      id: "whk-1",
+      name: "slack-bot",
+      secret: "whsec_s3cret",
+    });
     expect(mutate).toHaveBeenCalledWith({
       variables: {
         name: "slack-bot",
@@ -81,7 +85,9 @@ describe("useCreateWebhook", () => {
     const { result } = renderHook(() => useCreateWebhook());
     let endpoint;
     await act(async () => {
-      endpoint = await result.current.create("x", "https://x.example", ["deploy_started"]);
+      endpoint = await result.current.create("x", "https://x.example", [
+        "deploy_started",
+      ]);
     });
 
     // Sending a null ownerId would silently register in the caller's default
@@ -100,7 +106,9 @@ describe("useCreateWebhook", () => {
     const { result } = renderHook(() => useCreateWebhook());
     let endpoint;
     await act(async () => {
-      endpoint = await result.current.create("x", "https://x.example", ["deploy_started"]);
+      endpoint = await result.current.create("x", "https://x.example", [
+        "deploy_started",
+      ]);
     });
 
     expect(endpoint).toBeNull();

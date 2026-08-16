@@ -109,7 +109,8 @@ const zhAuth: Record<string, TranslationEntry> = {
   },
   "auth.logoutConfirmTitle": {
     message: "退出登录？",
-    description: "Logout page heading on the confirmation screen (codex #12 CSRF logout fix)",
+    description:
+      "Logout page heading on the confirmation screen (codex #12 CSRF logout fix)",
   },
   "auth.logoutConfirmSubtitle": {
     message: "确定要结束当前会话吗？",

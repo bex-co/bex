@@ -273,12 +273,8 @@ describe("CustomDomainsSection", () => {
     );
     render(<CustomDomainsSection serviceId="web" />);
 
-    expect(
-      screen.getByText("www.foo.com redirects here"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Redirects to foo.com"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("www.foo.com redirects here")).toBeInTheDocument();
+    expect(screen.getByText("Redirects to foo.com")).toBeInTheDocument();
   });
 
   it("deletes a domain after confirming from the row menu", async () => {

@@ -51,7 +51,9 @@ describe("MaintenanceModeSection", () => {
     );
     expect(screen.getByRole("switch")).toBeDisabled();
     expect(
-      screen.getByText("Maintenance mode is available on paid web service plans."),
+      screen.getByText(
+        "Maintenance mode is available on paid web service plans.",
+      ),
     ).toBeInTheDocument();
   });
 

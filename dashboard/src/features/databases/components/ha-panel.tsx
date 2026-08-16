@@ -88,7 +88,11 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
               <span className="text-sm font-medium">
                 {t("databases.haStatus")}
               </span>
-              <Badge variant={database.highAvailabilityEnabled ? "default" : "secondary"}>
+              <Badge
+                variant={
+                  database.highAvailabilityEnabled ? "default" : "secondary"
+                }
+              >
                 {database.highAvailabilityEnabled
                   ? t("databases.haEnabled")
                   : t("databases.haDisabled")}
@@ -115,10 +119,7 @@ export function HAPanel({ database, refetch }: HAPanelProps) {
               </p>
               <ul className="space-y-2">
                 {database.readReplicas.map((r) => (
-                  <li
-                    key={r.name}
-                    className="rounded-md border p-3 text-sm"
-                  >
+                  <li key={r.name} className="rounded-md border p-3 text-sm">
                     <p className="font-medium">{r.name}</p>
                     {r.connectionInfo ? (
                       <div className="mt-1 space-y-1 text-xs text-muted-foreground">

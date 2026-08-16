@@ -20,10 +20,5 @@ export function gitUrlSlug(url: string): string {
 }
 
 export function imageSlug(image: string): string {
-  return toSlug(
-    image
-      .split("/")
-      .pop()
-      ?.split(":")[0] ?? "",
-  );
+  return toSlug(image.split("/").pop()?.split(":")[0] ?? "");
 }

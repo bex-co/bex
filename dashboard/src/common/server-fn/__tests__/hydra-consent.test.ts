@@ -464,7 +464,10 @@ describe("PKCE S256 enforcement (w1/m66 F8)", () => {
   const refused: Array<[string, string]> = [
     ["plain", `${authorize}&code_challenge=abc&code_challenge_method=plain`],
     ["omitted method (RFC 7636 => plain)", `${authorize}&code_challenge=abc`],
-    ["lowercase s256", `${authorize}&code_challenge=abc&code_challenge_method=s256`],
+    [
+      "lowercase s256",
+      `${authorize}&code_challenge=abc&code_challenge_method=s256`,
+    ],
     // %20, not a literal space: the WHATWG URL parser strips trailing spaces
     // from the input string, so a literal one would never reach the check.
     [
@@ -479,8 +482,14 @@ describe("PKCE S256 enforcement (w1/m66 F8)", () => {
       "duplicated challenge",
       `${authorize}&code_challenge=abc&code_challenge=def&code_challenge_method=S256`,
     ],
-    ["empty challenge", `${authorize}&code_challenge=&code_challenge_method=S256`],
-    ["unknown method", `${authorize}&code_challenge=abc&code_challenge_method=SHA256`],
+    [
+      "empty challenge",
+      `${authorize}&code_challenge=&code_challenge_method=S256`,
+    ],
+    [
+      "unknown method",
+      `${authorize}&code_challenge=abc&code_challenge_method=SHA256`,
+    ],
     ["unparseable authorize URL", "not-a-url"],
   ];
 
@@ -496,7 +505,9 @@ describe("PKCE S256 enforcement (w1/m66 F8)", () => {
     });
 
     it(`refuses ${label} on the human-decision path`, async () => {
-      const calls = mockUpstreams({ lookupBody: consentRequest({ request_url }) });
+      const calls = mockUpstreams({
+        lookupBody: consentRequest({ request_url }),
+      });
       const res = await handleConsentDecision(decisionReq(approve));
       expect(res.status).toBe(400);
       expect(accepts(calls)).toHaveLength(0);
@@ -512,7 +523,9 @@ describe("PKCE S256 enforcement (w1/m66 F8)", () => {
     expect((res as Response).status).toBe(302);
     expect(accepts(headless)).toHaveLength(1);
 
-    const human = mockUpstreams({ lookupBody: consentRequest({ request_url }) });
+    const human = mockUpstreams({
+      lookupBody: consentRequest({ request_url }),
+    });
     const decided = await handleConsentDecision(decisionReq(approve));
     expect(decided.status).toBe(303);
     expect(accepts(human)).toHaveLength(1);

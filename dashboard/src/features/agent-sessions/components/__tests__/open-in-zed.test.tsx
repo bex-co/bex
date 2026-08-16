@@ -99,15 +99,11 @@ describe("Open in Zed", () => {
     await userEvent.click(screen.getByRole("button", { name: /connect/i }));
 
     // The CTA replaces the zed:// link and the ssh command — no dead-end action.
-    expect(
-      screen.getByText("Add an SSH key to connect"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Add an SSH key to connect")).toBeInTheDocument();
     expect(
       screen.queryByRole("menuitem", { name: /open in zed/i }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("ssh ags-1@ssh.bex.co"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("ssh ags-1@ssh.bex.co")).not.toBeInTheDocument();
   });
 
   it("hides the whole control when the backend surfaces no address", () => {

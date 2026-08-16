@@ -179,7 +179,8 @@ const zhTeam: Record<string, TranslationEntry> = {
   },
   "team.mfaEnabled": {
     message: "两步验证",
-    description: "Badge on a member row whose account has a second factor enrolled",
+    description:
+      "Badge on a member row whose account has a second factor enrolled",
   },
   "team.mfaEnabledTooltip": {
     message: "已启用两步验证",

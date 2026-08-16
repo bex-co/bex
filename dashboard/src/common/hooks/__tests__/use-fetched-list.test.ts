@@ -3,7 +3,10 @@ import { renderHook, waitFor, act } from "@testing-library/react";
 import { useFetchedList } from "@/common/hooks/use-fetched-list";
 
 function stubFetch(impl: () => Response) {
-  vi.stubGlobal("fetch", vi.fn(async () => impl()));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => impl()),
+  );
 }
 
 afterEach(() => {
@@ -55,6 +58,8 @@ describe("useFetchedList", () => {
     act(() => {
       result.current.refetch();
     });
-    await waitFor(() => expect(result.current.data).toEqual([{ id: "call-2" }]));
+    await waitFor(() =>
+      expect(result.current.data).toEqual([{ id: "call-2" }]),
+    );
   });
 });

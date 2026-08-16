@@ -40,7 +40,8 @@ const enAudit: Record<string, TranslationEntry> = {
   },
   "audit.actorUnknown": {
     message: "Unknown",
-    description: "Audit Log actor cell placeholder for an unauthenticated caller",
+    description:
+      "Audit Log actor cell placeholder for an unauthenticated caller",
   },
   "audit.loadMore": {
     message: "Load more",
@@ -59,12 +60,14 @@ const enAudit: Record<string, TranslationEntry> = {
     description: "Audit Log generic error title",
   },
   "audit.errorBody": {
-    message: "Something went wrong loading this workspace's audit trail. Try again.",
+    message:
+      "Something went wrong loading this workspace's audit trail. Try again.",
     description: "Audit Log generic error body",
   },
   "audit.unavailableTitle": {
     message: "Audit log not configured",
-    description: "Audit Log state when the control-plane store isn't wired (503)",
+    description:
+      "Audit Log state when the control-plane store isn't wired (503)",
   },
   "audit.unavailableBody": {
     message: "This bex deployment doesn't have an audit-log store configured.",

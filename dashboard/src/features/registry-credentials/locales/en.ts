@@ -3,7 +3,8 @@ import type { TranslationEntry } from "@/i18n";
 const enRegistryCredentials: Record<string, TranslationEntry> = {
   "registryCredentials.title": {
     message: "Registry Credentials",
-    description: "Settings Integrations → Registry Credentials section card title",
+    description:
+      "Settings Integrations → Registry Credentials section card title",
   },
   "registryCredentials.description": {
     message:
@@ -37,7 +38,8 @@ const enRegistryCredentials: Record<string, TranslationEntry> = {
   },
   "registryCredentials.forbiddenTitle": {
     message: "Not authorized",
-    description: "Registry Credentials state when the caller lacks permission (403)",
+    description:
+      "Registry Credentials state when the caller lacks permission (403)",
   },
   "registryCredentials.forbiddenBody": {
     message:
@@ -170,7 +172,8 @@ const enRegistryCredentials: Record<string, TranslationEntry> = {
   },
   "registryCredentials.expired": {
     message: "Expired",
-    description: "Expiry-status badge for a past-expiry credential (w2/m14/t007)",
+    description:
+      "Expiry-status badge for a past-expiry credential (w2/m14/t007)",
   },
   "registryCredentials.expiringSoon": {
     message: "Expiring soon",
@@ -178,7 +181,8 @@ const enRegistryCredentials: Record<string, TranslationEntry> = {
   },
   "registryCredentials.expiresOn": {
     message: "Expires {date}",
-    description: "Expiry-status text for an active credential with a future expiry",
+    description:
+      "Expiry-status text for an active credential with a future expiry",
   },
   "registryCredentials.neverExpires": {
     message: "Never expires",

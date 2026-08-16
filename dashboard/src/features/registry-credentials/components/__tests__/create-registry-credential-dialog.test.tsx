@@ -4,9 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { CreateRegistryCredentialDialog } from "@/features/registry-credentials/components/create-registry-credential-dialog";
 
 const create = vi.fn();
-vi.mock("@/features/registry-credentials/hooks/use-create-registry-credential", () => ({
-  useCreateRegistryCredential: () => ({ create, busy: false }),
-}));
+vi.mock(
+  "@/features/registry-credentials/hooks/use-create-registry-credential",
+  () => ({
+    useCreateRegistryCredential: () => ({ create, busy: false }),
+  }),
+);
 
 beforeEach(() => {
   create.mockReset();
@@ -21,10 +24,7 @@ describe("CreateRegistryCredentialDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Add credential" }));
     const dialog = await screen.findByRole("dialog");
-    await user.type(
-      within(dialog).getByLabelText("Registry host"),
-      "ghcr.io",
-    );
+    await user.type(within(dialog).getByLabelText("Registry host"), "ghcr.io");
     await user.type(within(dialog).getByLabelText("Username"), "alice");
     await user.type(
       within(dialog).getByLabelText("Password or access token"),

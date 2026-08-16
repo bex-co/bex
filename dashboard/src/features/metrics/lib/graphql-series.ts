@@ -23,9 +23,7 @@ export function isLogStoreUnavailable(error: unknown): boolean {
   return Boolean(
     error &&
     CombinedGraphQLErrors.is(error) &&
-    error.errors.some((e) =>
-      e.message.includes(LOG_STORE_UNAVAILABLE_MARKER),
-    ),
+    error.errors.some((e) => e.message.includes(LOG_STORE_UNAVAILABLE_MARKER)),
   );
 }
 

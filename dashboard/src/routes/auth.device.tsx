@@ -13,15 +13,13 @@ export const Route = createFileRoute("/auth/device")({
     handlers: ({ createHandlers }) =>
       createHandlers({
         GET: async ({ request }) => {
-          const { handleDeviceVerification } = await import(
-            "@/common/server-fn/hydra-device"
-          );
+          const { handleDeviceVerification } =
+            await import("@/common/server-fn/hydra-device");
           return handleDeviceVerification(request);
         },
         POST: async ({ request }) => {
-          const { handleDeviceConfirm } = await import(
-            "@/common/server-fn/hydra-device"
-          );
+          const { handleDeviceConfirm } =
+            await import("@/common/server-fn/hydra-device");
           return handleDeviceConfirm(request);
         },
       }),

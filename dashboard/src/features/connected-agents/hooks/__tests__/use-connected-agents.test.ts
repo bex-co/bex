@@ -11,7 +11,10 @@ const AGENT: ConnectedAgentView = {
 };
 
 function stubFetch(impl: (url: string, init?: RequestInit) => Response) {
-  vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => impl(url, init)));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => impl(url, init)),
+  );
 }
 
 afterEach(() => {

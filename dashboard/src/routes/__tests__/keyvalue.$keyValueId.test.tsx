@@ -77,17 +77,14 @@ vi.mock("@/features/keyvalue/hooks/use-update-key-value-plan", () => ({
 
 // KeyValueMaxmemoryPolicySection (w7/007) reads + writes via Apollo — mocked at
 // the hook boundary like the plan section above (no ApolloProvider here).
-vi.mock(
-  "@/features/keyvalue/hooks/use-set-key-value-maxmemory-policy",
-  () => ({
-    useSetKeyValueMaxmemoryPolicy: () => ({
-      policy: "allkeys-lru",
-      loading: false,
-      saving: false,
-      save: vi.fn(),
-    }),
+vi.mock("@/features/keyvalue/hooks/use-set-key-value-maxmemory-policy", () => ({
+  useSetKeyValueMaxmemoryPolicy: () => ({
+    policy: "allkeys-lru",
+    loading: false,
+    saving: false,
+    save: vi.fn(),
   }),
-);
+}));
 
 // KeyValueNameSection's rename hook wraps Apollo's useMutation — mocked at the
 // hook boundary like every other data hook above (no ApolloProvider here).

@@ -10,15 +10,13 @@ export const Route = createFileRoute("/api/sessions")({
     handlers: ({ createHandlers }) =>
       createHandlers({
         GET: async ({ request }) => {
-          const { listSessions } = await import(
-            "@/common/server-fn/kratos-sessions"
-          );
+          const { listSessions } =
+            await import("@/common/server-fn/kratos-sessions");
           return listSessions(request);
         },
         POST: async ({ request }) => {
-          const { revokeSession } = await import(
-            "@/common/server-fn/kratos-sessions"
-          );
+          const { revokeSession } =
+            await import("@/common/server-fn/kratos-sessions");
           return revokeSession(request);
         },
       }),

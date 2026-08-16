@@ -25,7 +25,9 @@ beforeEach(() => {
 
 describe("useDeleteWorkspace", () => {
   it("resolves true and toasts success once the confirmation matches", async () => {
-    const mutate = vi.fn().mockResolvedValue({ data: { deleteWorkspace: "tea-1" } });
+    const mutate = vi
+      .fn()
+      .mockResolvedValue({ data: { deleteWorkspace: "tea-1" } });
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useDeleteWorkspace());
@@ -46,9 +48,13 @@ describe("useDeleteWorkspace", () => {
   });
 
   it("surfaces a mismatched-confirmation refusal inline", async () => {
-    const mutate = vi.fn().mockRejectedValue(
-      new Error('bad request: confirmation must be "sudo delete workspace acme-hq"'),
-    );
+    const mutate = vi
+      .fn()
+      .mockRejectedValue(
+        new Error(
+          'bad request: confirmation must be "sudo delete workspace acme-hq"',
+        ),
+      );
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useDeleteWorkspace());

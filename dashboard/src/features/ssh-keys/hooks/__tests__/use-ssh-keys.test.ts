@@ -12,9 +12,7 @@ vi.mock("@apollo/client/react", () => ({
     definitions?: Array<{ name?: { value?: string } }>;
   }) => {
     const operation = document.definitions?.[0]?.name?.value;
-    return operation === "CreateSSHKey"
-      ? [createMutation]
-      : [deleteMutation];
+    return operation === "CreateSSHKey" ? [createMutation] : [deleteMutation];
   },
 }));
 
@@ -77,15 +75,14 @@ describe("useSSHKeys", () => {
   });
 
   it("creates, refetches, and reports success", async () => {
-    createMutation.mockResolvedValue({ data: { createSSHKey: { id: "ssk-1" } } });
+    createMutation.mockResolvedValue({
+      data: { createSSHKey: { id: "ssk-1" } },
+    });
     const { result } = renderHook(() => useSSHKeys());
 
     let ok = false;
     await act(async () => {
-      ok = await result.current.create(
-        "laptop",
-        "ssh-ed25519 AAAATEST",
-      );
+      ok = await result.current.create("laptop", "ssh-ed25519 AAAATEST");
     });
 
     expect(ok).toBe(true);
@@ -93,9 +90,7 @@ describe("useSSHKeys", () => {
       variables: { name: "laptop", publicKey: "ssh-ed25519 AAAATEST" },
     });
     expect(refetch).toHaveBeenCalledOnce();
-    expect(toastSuccess).toHaveBeenCalledWith(
-      "sshKeys.createSuccess:laptop",
-    );
+    expect(toastSuccess).toHaveBeenCalledWith("sshKeys.createSuccess:laptop");
     expect(result.current.busy).toBeNull();
   });
 

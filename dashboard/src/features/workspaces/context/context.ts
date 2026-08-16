@@ -27,4 +27,5 @@ const initialState: WorkspaceContextValue = {
   refetch: () => Promise.resolve(),
 };
 
-export const WorkspaceContext = createContext<WorkspaceContextValue>(initialState);
+export const WorkspaceContext =
+  createContext<WorkspaceContextValue>(initialState);

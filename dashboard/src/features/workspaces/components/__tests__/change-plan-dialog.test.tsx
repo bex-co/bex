@@ -61,7 +61,9 @@ describe("ChangePlanDialog (w6/m12/t005)", () => {
     );
 
     expect(
-      screen.getByText("workspace has 2 members, exceeds hobby plan's limit of 1"),
+      screen.getByText(
+        "workspace has 2 members, exceeds hobby plan's limit of 1",
+      ),
     ).toBeInTheDocument();
   });
 });

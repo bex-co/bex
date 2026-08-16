@@ -31,7 +31,8 @@ import {
 } from "@/common/lib/polling";
 
 export type SaveParametersResult =
-  { ok: true } | { ok: false; error: string | null };
+  | { ok: true }
+  | { ok: false; error: string | null };
 
 /**
  * Returns all five insight datasets for a managed-Postgres database.

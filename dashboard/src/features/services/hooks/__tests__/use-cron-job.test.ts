@@ -31,12 +31,20 @@ describe("useCronJob", () => {
     const { result } = renderHook(() => useCronJob());
     let ok: boolean | undefined;
     await act(async () => {
-      ok = await result.current.updateCronJob("nightly", "0 6 * * *", "node daily.js");
+      ok = await result.current.updateCronJob(
+        "nightly",
+        "0 6 * * *",
+        "node daily.js",
+      );
     });
 
     expect(ok).toBe(true);
     expect(mutate).toHaveBeenCalledWith({
-      variables: { id: "nightly", schedule: "0 6 * * *", command: "node daily.js" },
+      variables: {
+        id: "nightly",
+        schedule: "0 6 * * *",
+        command: "node daily.js",
+      },
     });
     expect(toastSuccess).toHaveBeenCalled();
     expect(toastError).not.toHaveBeenCalled();
@@ -73,7 +81,12 @@ describe("useCronJob", () => {
 
   it("tracks busy only for the duration of the in-flight mutation", async () => {
     let resolve: (v: unknown) => void = () => {};
-    const mutate = vi.fn(() => new Promise((r) => { resolve = r; }));
+    const mutate = vi.fn(
+      () =>
+        new Promise((r) => {
+          resolve = r;
+        }),
+    );
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useCronJob());

@@ -24,7 +24,9 @@ export interface UseCreateApiKeyResult {
 export function useCreateApiKey(): UseCreateApiKeyResult {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
-  const [mutate] = useMutation(CreateApiKeyDocument, { fetchPolicy: "no-cache" });
+  const [mutate] = useMutation(CreateApiKeyDocument, {
+    fetchPolicy: "no-cache",
+  });
   const [busy, setBusy] = useState(false);
 
   const create = useCallback(
@@ -39,7 +41,9 @@ export function useCreateApiKey(): UseCreateApiKeyResult {
       }
       setBusy(true);
       try {
-        const res = await mutate({ variables: { name, ownerId: currentWorkspaceId } });
+        const res = await mutate({
+          variables: { name, ownerId: currentWorkspaceId },
+        });
         const key = res.data?.createApiKey;
         if (!key?.id || !key.secret) {
           throw new Error("createApiKey returned no secret");

@@ -20,7 +20,9 @@ describe("MaxShutdownDelayRow", () => {
       <MaxShutdownDelayRow serviceId="web" maxShutdownDelaySeconds={null} />,
     );
 
-    const input = screen.getByRole("spinbutton", { name: "Max shutdown delay" });
+    const input = screen.getByRole("spinbutton", {
+      name: "Max shutdown delay",
+    });
     expect(input).toHaveValue(30);
     expect(input).toBeDisabled();
     expect(screen.getByText(/1–300 seconds/)).toBeInTheDocument();

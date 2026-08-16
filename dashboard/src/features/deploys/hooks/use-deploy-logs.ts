@@ -128,7 +128,12 @@ export function useDeployLogs(
 
   const poll = useWindowPolling(endTime);
   const build = useTypedDeployLogs("build", window, poll);
-  const predeploy = useTypedDeployLogs("predeploy", window, poll, !hasPreDeploy);
+  const predeploy = useTypedDeployLogs(
+    "predeploy",
+    window,
+    poll,
+    !hasPreDeploy,
+  );
   const app = useTypedDeployLogs("app", window, poll);
   const liveBuild = useLiveLogs({
     resource,

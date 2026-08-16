@@ -69,17 +69,17 @@ describe("custom range (w5/m56)", () => {
   });
 
   it("rejects a non-ascending window and one past the max query window", () => {
-    expect(makeCustomRange("2026-07-02T00:00:00Z", "2026-07-01T00:00:00Z")).toBe(
-      "order",
-    );
+    expect(
+      makeCustomRange("2026-07-02T00:00:00Z", "2026-07-01T00:00:00Z"),
+    ).toBe("order");
     expect(makeCustomRange("bad", "also-bad")).toBe("order");
     const start = new Date("2026-07-01T00:00:00Z");
     const tooLong = new Date(
       start.getTime() + (MAX_CUSTOM_RANGE_HOURS + 1) * 60 * 60 * 1000,
     );
-    expect(
-      makeCustomRange(start.toISOString(), tooLong.toISOString()),
-    ).toBe("tooLong");
+    expect(makeCustomRange(start.toISOString(), tooLong.toISOString())).toBe(
+      "tooLong",
+    );
   });
 
   it("round-trips a stored custom window and rejects an invalid one", () => {
@@ -89,7 +89,9 @@ describe("custom range (w5/m56)", () => {
     );
     expect(custom?.id).toBe("custom");
     expect(custom?.startTime).toBe("2026-07-01T00:00:00.000Z");
-    expect(parseCustomRange("2026-07-02T00:00:00Z", "2026-07-01T00:00:00Z")).toBeNull();
+    expect(
+      parseCustomRange("2026-07-02T00:00:00Z", "2026-07-01T00:00:00Z"),
+    ).toBeNull();
     expect(parseCustomRange(undefined, undefined)).toBeNull();
   });
 });

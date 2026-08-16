@@ -20,7 +20,8 @@ describe("useConnectionInfo", () => {
       data: {
         keyValueConnectionInfo: {
           __typename: "KeyValueConnectionInfo",
-          internalConnectionString: "redis://default:s3cret@kv.default.svc:6379",
+          internalConnectionString:
+            "redis://default:s3cret@kv.default.svc:6379",
           externalConnectionString: "",
           cliCommand: "redis-cli -u redis://default:s3cret@kv.default.svc:6379",
         },

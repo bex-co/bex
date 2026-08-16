@@ -46,7 +46,9 @@ export function useUpdateWebhook(): UseUpdateWebhookResult {
         // instead of a generic failure — parity with how Create toasts.
         const detail = err instanceof Error && err.message ? err.message : "";
         toast.error(
-          detail ? `${t("webhooks.updateError")}: ${detail}` : t("webhooks.updateError"),
+          detail
+            ? `${t("webhooks.updateError")}: ${detail}`
+            : t("webhooks.updateError"),
         );
         return false;
       } finally {

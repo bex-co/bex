@@ -97,7 +97,8 @@ const zhSSHKeys: Record<string, TranslationEntry> = {
     description: "RequiresSshKey gate — CTA title when no key is registered",
   },
   "sshKeys.gateBody": {
-    message: "此功能使用你自己的密钥通过 SSH 连接。添加一次公钥后即可返回连接。",
+    message:
+      "此功能使用你自己的密钥通过 SSH 连接。添加一次公钥后即可返回连接。",
     description: "RequiresSshKey gate — CTA body",
   },
   "sshKeys.gateAddKey": {

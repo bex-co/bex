@@ -53,9 +53,7 @@ describe("LogFilterBar (w5/008, simplified w7/m42)", () => {
     expect(screen.getByLabelText("Search logs")).toBeInTheDocument();
     expect(screen.getByLabelText("Log history range")).toBeInTheDocument();
     expect(screen.getByRole("switch")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Filters" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
     // The structured filters are behind the popover, not always visible.
     expect(screen.queryByLabelText("Level")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Method")).not.toBeInTheDocument();

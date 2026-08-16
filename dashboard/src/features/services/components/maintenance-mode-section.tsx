@@ -120,9 +120,7 @@ export function MaintenanceModeSection({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t("services.confirmCancel")}
-            </AlertDialogCancel>
+            <AlertDialogCancel>{t("services.confirmCancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 void setMaintenanceMode(serviceId, true, current);

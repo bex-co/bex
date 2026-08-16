@@ -25,7 +25,9 @@ const ALL_INSTANCES = "all";
 
 export function KeyValueLogViewer({ resource }: { resource: string }) {
   const { t } = useTranslations();
-  const [range, setRange] = useState<RangeSelection>(DEFAULT_DATASTORE_LOG_RANGE);
+  const [range, setRange] = useState<RangeSelection>(
+    DEFAULT_DATASTORE_LOG_RANGE,
+  );
   const [text, setText] = useState("");
   const [instance, setInstance] = useState("");
   const debouncedText = useDebounce(text, 300);

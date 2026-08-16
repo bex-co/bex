@@ -22,11 +22,13 @@ const h = vi.hoisted(() => {
     rows: 30,
   };
   class ShellUnavailableError extends Error {}
-  const createShellSession = vi.fn(async (_id: string, _instanceId?: string) => ({
-    ticket: "tkt-123",
-    url: "wss://ssh.bex.co/shell",
-    expiresAt: "",
-  }));
+  const createShellSession = vi.fn(
+    async (_id: string, _instanceId?: string) => ({
+      ticket: "tkt-123",
+      url: "wss://ssh.bex.co/shell",
+      expiresAt: "",
+    }),
+  );
   return {
     term,
     writes,
@@ -117,7 +119,9 @@ describe("WebShellTerminal", () => {
     expect(ws.protocols).toEqual(["bex.shell", "bex.ticket.tkt-123"]);
     // On open it sends an initial resize control frame.
     expect(
-      ws.sent.some((m) => typeof m === "string" && m.includes('"type":"resize"')),
+      ws.sent.some(
+        (m) => typeof m === "string" && m.includes('"type":"resize"'),
+      ),
     ).toBe(true);
     expect(await screen.findByText("Connected")).toBeInTheDocument();
   });
@@ -140,7 +144,10 @@ describe("WebShellTerminal", () => {
 
     act(() => h.typeInto("ls\n"));
     const stdin = ws.sent.find((m) => typeof m !== "string");
-    expect(stdin, "keystrokes should be sent as a binary stdin frame").toBeDefined();
+    expect(
+      stdin,
+      "keystrokes should be sent as a binary stdin frame",
+    ).toBeDefined();
     expect(new TextDecoder().decode(stdin as ArrayBufferView)).toBe("ls\n");
   });
 
@@ -157,7 +164,9 @@ describe("WebShellTerminal", () => {
       });
     });
 
-    expect(await screen.findByText(/session limit reached/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/session limit reached/i),
+    ).toBeInTheDocument();
     const reconnect = screen.getByRole("button", { name: /reconnect/i });
 
     createShellSession.mockClear();

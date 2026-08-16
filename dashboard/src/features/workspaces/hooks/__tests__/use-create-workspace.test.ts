@@ -52,7 +52,9 @@ describe("useCreateWorkspace", () => {
       role: "admin",
       createdAt: "2026-07-09T00:00:00Z",
     });
-    expect(mutate).toHaveBeenCalledWith({ variables: { name: "acme-staging", plan: "hobby" } });
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { name: "acme-staging", plan: "hobby" },
+    });
     expect(toastSuccess).toHaveBeenCalledWith("Created acme-staging");
     expect(result.current.error).toBeNull();
   });
@@ -60,7 +62,9 @@ describe("useCreateWorkspace", () => {
   it("surfaces the backend's plan-limit refusal inline (not just a toast) — the 6th Hobby workspace", async () => {
     const mutate = vi.fn().mockRejectedValue(
       new CombinedGraphQLErrors({
-        errors: [{ message: "bad request: at most 5 hobby workspaces per user" }],
+        errors: [
+          { message: "bad request: at most 5 hobby workspaces per user" },
+        ],
       } as never),
     );
     mockUseMutation.mockReturnValue([mutate]);
@@ -72,7 +76,9 @@ describe("useCreateWorkspace", () => {
     });
 
     expect(workspace).toBeNull();
-    expect(result.current.error).toBe("bad request: at most 5 hobby workspaces per user");
+    expect(result.current.error).toBe(
+      "bad request: at most 5 hobby workspaces per user",
+    );
   });
 
   it("falls back to a generic error message for a non-GraphQL failure", async () => {
@@ -92,7 +98,15 @@ describe("useCreateWorkspace", () => {
       .fn()
       .mockRejectedValueOnce(new Error("first failure"))
       .mockResolvedValueOnce({
-        data: { createWorkspace: { id: "tea-2", name: "acme-2", plan: "hobby", role: "admin", createdAt: null } },
+        data: {
+          createWorkspace: {
+            id: "tea-2",
+            name: "acme-2",
+            plan: "hobby",
+            role: "admin",
+            createdAt: null,
+          },
+        },
       });
     mockUseMutation.mockReturnValue([mutate]);
 

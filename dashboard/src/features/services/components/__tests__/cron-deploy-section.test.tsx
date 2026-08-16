@@ -32,7 +32,11 @@ describe("CronDeploySection", () => {
 
   it("shows an empty command input when command is not set", () => {
     render(
-      <CronDeploySection serviceId="nightly" schedule="0 6 * * *" command={null} />,
+      <CronDeploySection
+        serviceId="nightly"
+        schedule="0 6 * * *"
+        command={null}
+      />,
     );
     expect(screen.getByRole("textbox", { name: "Command" })).toHaveValue("");
   });
@@ -86,7 +90,11 @@ describe("CronDeploySection", () => {
   it("blocks save and shows an error for an invalid cron expression", async () => {
     const user = userEvent.setup();
     render(
-      <CronDeploySection serviceId="nightly" schedule="0 6 * * *" command={null} />,
+      <CronDeploySection
+        serviceId="nightly"
+        schedule="0 6 * * *"
+        command={null}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Edit schedule" }));
@@ -102,7 +110,11 @@ describe("CronDeploySection", () => {
   it("blocks save and shows a required error for an empty schedule", async () => {
     const user = userEvent.setup();
     render(
-      <CronDeploySection serviceId="nightly" schedule="0 6 * * *" command={null} />,
+      <CronDeploySection
+        serviceId="nightly"
+        schedule="0 6 * * *"
+        command={null}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Edit schedule" }));
@@ -116,7 +128,11 @@ describe("CronDeploySection", () => {
   it("cancel discards the schedule draft without calling updateCronJob", async () => {
     const user = userEvent.setup();
     render(
-      <CronDeploySection serviceId="nightly" schedule="0 6 * * *" command={null} />,
+      <CronDeploySection
+        serviceId="nightly"
+        schedule="0 6 * * *"
+        command={null}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Edit schedule" }));
@@ -135,7 +151,11 @@ describe("CronDeploySection", () => {
     updateCronJob.mockResolvedValue(false);
     const user = userEvent.setup();
     render(
-      <CronDeploySection serviceId="nightly" schedule="0 6 * * *" command={null} />,
+      <CronDeploySection
+        serviceId="nightly"
+        schedule="0 6 * * *"
+        command={null}
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Edit schedule" }));

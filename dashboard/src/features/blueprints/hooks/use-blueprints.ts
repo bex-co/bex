@@ -1,8 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
-import {
-  BlueprintsDocument,
-} from "@/features/blueprints/api/operations";
+import { BlueprintsDocument } from "@/features/blueprints/api/operations";
 import type { BlueprintView } from "@/features/blueprints/types";
 import {
   RESOURCE_POLL_INTERVAL_MS,
@@ -30,8 +28,7 @@ export function useBlueprints(): UseBlueprintsResult {
   });
 
   const blueprints = useMemo(
-    () =>
-      (data?.blueprints ?? []).filter((b): b is BlueprintView => b != null),
+    () => (data?.blueprints ?? []).filter((b): b is BlueprintView => b != null),
     [data],
   );
 

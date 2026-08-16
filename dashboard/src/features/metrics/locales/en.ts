@@ -362,7 +362,8 @@ const enMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.rangeLast30Days": {
     message: "Last 30 days",
-    description: "Metrics time-range filter option (w5/m56; Render plan-gates it)",
+    description:
+      "Metrics time-range filter option (w5/m56; Render plan-gates it)",
   },
   "metrics.rangeCustom": {
     message: "Custom…",
@@ -373,7 +374,8 @@ const enMetrics: Record<string, TranslationEntry> = {
     description: "Custom time-range picker dialog title",
   },
   "metrics.rangeCustomDescription": {
-    message: "Choose an absolute start and end. Windows over 30 days aren't available.",
+    message:
+      "Choose an absolute start and end. Windows over 30 days aren't available.",
     description: "Custom time-range picker dialog description",
   },
   "metrics.rangeCustomStart": {

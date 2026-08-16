@@ -61,7 +61,11 @@ export function SuspendServiceCard({
     <Card>
       <CardHeader>
         <CardTitle>
-          {t(isSuspended ? "services.resumeCardTitle" : "services.suspendCardTitle")}
+          {t(
+            isSuspended
+              ? "services.resumeCardTitle"
+              : "services.suspendCardTitle",
+          )}
         </CardTitle>
         <CardDescription>
           {t(
@@ -73,10 +77,7 @@ export function SuspendServiceCard({
       </CardHeader>
       <CardContent>
         {isSuspended ? (
-          <Button
-            onClick={() => void handleResume()}
-            disabled={busy}
-          >
+          <Button onClick={() => void handleResume()} disabled={busy}>
             {busy && pending === "resume" ? (
               <Loader2 className="animate-spin" />
             ) : null}

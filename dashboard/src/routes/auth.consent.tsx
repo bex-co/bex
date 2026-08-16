@@ -16,18 +16,16 @@ export const Route = createFileRoute("/auth/consent")({
     handlers: ({ createHandlers }) =>
       createHandlers({
         GET: async ({ request, next }) => {
-          const { handleConsent } = await import(
-            "@/common/server-fn/hydra-consent"
-          );
+          const { handleConsent } =
+            await import("@/common/server-fn/hydra-consent");
           const result = await handleConsent(request);
           return result instanceof Response
             ? result
             : next({ context: { consent: result } });
         },
         POST: async ({ request }) => {
-          const { handleConsentDecision } = await import(
-            "@/common/server-fn/hydra-consent"
-          );
+          const { handleConsentDecision } =
+            await import("@/common/server-fn/hydra-consent");
           return handleConsentDecision(request);
         },
       }),

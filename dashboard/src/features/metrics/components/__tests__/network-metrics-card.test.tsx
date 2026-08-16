@@ -443,11 +443,11 @@ describe("NetworkMetricsCard", () => {
 
     const badge = screen.getByText("Partial data");
     expect(badge).toBeInTheDocument();
-    expect(badge.closest("[title]")?.getAttribute("title")).toContain(
-      "direct",
-    );
+    expect(badge.closest("[title]")?.getAttribute("title")).toContain("direct");
     // The chart renders (no bandwidth error state, no unavailable state).
-    expect(screen.queryByText(/Couldn't load bandwidth/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Couldn't load bandwidth/),
+    ).not.toBeInTheDocument();
   });
 
   it("renders a distinct error state for a failed bandwidth query — not 'No data in range'", () => {

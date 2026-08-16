@@ -432,7 +432,8 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.maxmemoryEdit": {
     message: "编辑内存淘汰策略",
-    description: "Accessible label for the maxmemory-policy edit-in-place pencil",
+    description:
+      "Accessible label for the maxmemory-policy edit-in-place pencil",
   },
   "keyvalue.maxmemorySuccess": {
     message: "正在将内存淘汰策略更新为 {policy}……",
