@@ -28,6 +28,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // Instant evaluates one Prometheus instant query and returns the sum of all
@@ -45,7 +47,7 @@ func Instant(ctx context.Context, hc *http.Client, base, query string, at time.T
 // vector result.
 func fetchInstantVector(ctx context.Context, hc *http.Client, base, query string, at time.Time) ([]instantSample, error) {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = core.UpstreamClient
 	}
 	u := fmt.Sprintf("%s/api/v1/query?%s", strings.TrimRight(base, "/"), url.Values{
 		"query": {query},
@@ -64,7 +66,7 @@ func fetchInstantVector(ctx context.Context, hc *http.Client, base, query string
 		return nil, fmt.Errorf("prometheus: status %d", resp.StatusCode)
 	}
 	var result instantResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := core.DecodeUpstreamJSON(resp.Body, &result); err != nil {
 		return nil, fmt.Errorf("decode prometheus response: %w", err)
 	}
 	if result.Status != "success" {

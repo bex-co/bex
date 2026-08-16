@@ -206,14 +206,23 @@ func TestBillingAdminAuthorizationAndDegradedProvider(t *testing.T) {
 
 // billingRecordChecker is a core.Checker that records every relation asked for
 // and answers from a fixed grant set — the seam for pinning WHICH relation each
-// billing verb gates on.
+// billing verb gates on. It also answers the uncached FreshChecker path from
+// the same grant set (recording separately), so the cached-path assertion
+// below stays "exactly one decision" now that Checkout/Portal re-assert
+// uncached (codex round-8 #8).
 type billingRecordChecker struct {
-	grant     map[string]bool
-	relations []string
+	grant          map[string]bool
+	relations      []string
+	freshRelations []string
 }
 
 func (c *billingRecordChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
 	c.relations = append(c.relations, relation)
+	return c.grant[relation], nil
+}
+
+func (c *billingRecordChecker) CheckFresh(_ context.Context, _, relation, _ string) (bool, error) {
+	c.freshRelations = append(c.freshRelations, relation)
 	return c.grant[relation], nil
 }
 
@@ -229,8 +238,14 @@ func TestBillingVerbsGateOnCanManageBilling(t *testing.T) {
 		call func(*Service, context.Context) error
 	}{
 		{"Status", func(s *Service, ctx context.Context) error { _, err := s.Status(ctx, "tea-a"); return err }},
-		{"Checkout", func(s *Service, ctx context.Context) error { _, err := s.Checkout(ctx, "tea-a", CheckoutRequest{}); return err }},
-		{"Portal", func(s *Service, ctx context.Context) error { _, err := s.Portal(ctx, "tea-a", PortalRequest{}); return err }},
+		{"Checkout", func(s *Service, ctx context.Context) error {
+			_, err := s.Checkout(ctx, "tea-a", CheckoutRequest{})
+			return err
+		}},
+		{"Portal", func(s *Service, ctx context.Context) error {
+			_, err := s.Portal(ctx, "tea-a", PortalRequest{})
+			return err
+		}},
 	}
 	for _, v := range verbs {
 		t.Run(v.name, func(t *testing.T) {

@@ -47,6 +47,13 @@ import (
 // PodMetrics from metrics-server's aggregated API (metrics.k8s.io/v1beta1).
 func NewResourceMetricsSource(cs kubernetes.Interface) ResourceMetricsSource {
 	return func(ctx context.Context, namespace, app string) ([]PodResourceUsage, error) {
+		// Bound the read like every other upstream (codex round-8 #10): the
+		// shared clientset carries no request deadline of its own, and a wedged
+		// aggregated API would otherwise hold this handler indefinitely. (The
+		// buffered DoRaw body has no size cap — an in-cluster platform service,
+		// documented residual.)
+		ctx, cancel := context.WithTimeout(ctx, core.UpstreamTimeout)
+		defer cancel()
 		raw, err := cs.Discovery().RESTClient().Get().
 			AbsPath("/apis/metrics.k8s.io/v1beta1/namespaces", namespace, "pods").
 			Param("labelSelector", core.PodLabelApp+"="+app).
@@ -119,7 +126,7 @@ const LabelMetric = "metric"
 // by a Prometheus range query over Traefik's metrics.
 func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSource {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {
@@ -188,7 +195,7 @@ func queryRangeMatrix(ctx context.Context, hc *http.Client, u, store string) ([]
 		return nil, fmt.Errorf("%s: status %d", store, resp.StatusCode)
 	}
 	var pr promRangeResponse
-	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
+	if err := core.DecodeUpstreamJSON(resp.Body, &pr); err != nil {
 		return nil, fmt.Errorf("decode %s response: %w", store, err)
 	}
 	return parsePromMatrix(pr)
@@ -209,7 +216,7 @@ func stepSeconds(res time.Duration) int64 {
 // (deploy/gitops/base/prometheus.yaml). base/hc as NewPrometheusRequestSource.
 func NewPrometheusResourceSource(base string, hc *http.Client) ResourceMetricsRangeSource {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req ResourceMetricsRangeRequest) ([]MetricSeries, error) {
@@ -365,7 +372,7 @@ type promRangeResponse struct {
 // degraded list instead of rejecting the whole month.
 func NewMonthToDateBandwidthSource(base string, hc *http.Client) MonthToDateBandwidthSource {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, appID string, routers []string, direct bool, since, at time.Time) (BandwidthBytes, []string, error) {
@@ -409,7 +416,7 @@ func NewMonthToDateBandwidthSource(base string, hc *http.Client) MonthToDateBand
 // is needed for this series).
 func NewPrometheusDiskUsageSource(base string, hc *http.Client) DiskUsageSource {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req DiskUsageRequest) ([]MetricSeries, error) {
@@ -444,7 +451,7 @@ func NewPrometheusDiskUsageSource(base string, hc *http.Client) DiskUsageSource 
 // (deploy/gitops/base/prometheus.yaml) labels each series with pod + namespace.
 func NewPrometheusKeyValueStatsSource(base string, hc *http.Client) KeyValueStatsSource {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req KeyValueStatsRequest) ([]MetricSeries, error) {
@@ -498,7 +505,7 @@ func cnpgInstanceQuery(ctx context.Context, hc *http.Client, base, query, cluste
 // across every datname/usename/state combination for one cluster).
 func NewPrometheusDBConnectionsSource(base string, hc *http.Client) DBConnectionsSource {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req DBConnectionsRequest) ([]MetricSeries, error) {
@@ -518,7 +525,7 @@ func NewPrometheusDBConnectionsSource(base string, hc *http.Client) DBConnection
 // caller gates against.
 func NewPrometheusReplicationLagSource(base string, hc *http.Client) ReplicationLagSource {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req ReplicationLagRequest) ([]MetricSeries, error) {
@@ -534,7 +541,7 @@ func NewPrometheusReplicationLagSource(base string, hc *http.Client) Replication
 // backed by Prometheus's /api/v1/label/<name>/values endpoint.
 func NewPrometheusFilterValuesSource(base string, hc *http.Client) MetricsFilterValuesSource {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, _, app, label string) ([]string, error) {
@@ -554,7 +561,7 @@ func NewPrometheusFilterValuesSource(base string, hc *http.Client) MetricsFilter
 			return nil, fmt.Errorf("prometheus: status %d", resp.StatusCode)
 		}
 		var lr promLabelValuesResponse
-		if err := json.NewDecoder(resp.Body).Decode(&lr); err != nil {
+		if err := core.DecodeUpstreamJSON(resp.Body, &lr); err != nil {
 			return nil, fmt.Errorf("decode prometheus response: %w", err)
 		}
 		if lr.Status != "" && lr.Status != promStatusSuccess {

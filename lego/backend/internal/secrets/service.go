@@ -188,8 +188,14 @@ func (s *Service) ListEnvVars(ctx context.Context, service string) ([]EnvVarView
 // SecretKV implementations keep returning an empty revision so old callers and
 // test doubles remain compatible.
 func (s *Service) readAuthorizedEnvMap(ctx context.Context, service string) (map[string]string, string, error) {
-	_, ctx, service, err := s.scope(ctx, core.RelCanViewSensitive, service)
+	a, ctx, service, err := s.scope(ctx, core.RelCanViewSensitive, service)
 	if err != nil {
+		return nil, "", err
+	}
+	// codex round-8 #8: every env value is a secret reveal, so re-assert the
+	// relation uncached before reading OpenBao — a member revoked within the
+	// last PositiveTTL must not reveal one last value off a stale positive.
+	if err := s.AuthorizeAppFresh(ctx, core.RelCanViewSensitive, a); err != nil {
 		return nil, "", err
 	}
 	versioned, ok := s.Store.(core.VersionedSecretKV)

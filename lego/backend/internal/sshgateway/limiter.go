@@ -72,3 +72,66 @@ func (l *SessionLimiter) Release(subject string) {
 		delete(l.perIdentity, subject)
 	}
 }
+
+// ChannelLimiter bounds concurrent exec STREAMS (SSH session channels), not
+// transports. The session limiter counts connections, but one agent-session
+// connection multiplexes many pods/exec streams (ADR054 D3), so transport caps
+// alone let one identity fan out to connections × channels streams (codex
+// round-8 #7: 5 × 16 = 80 pods/exec streams at the defaults). Every accepted
+// session channel — single- and multi-channel paths alike — acquires a slot
+// here and releases it when its exec ends. The single-exec-per-connection
+// transports (webshell, sandboxsse, agentattach) are bounded by the session
+// limiter instead: their one exec IS their session slot.
+type ChannelLimiter struct {
+	maxGlobal      int
+	maxPerIdentity int
+
+	mu          sync.Mutex
+	global      int
+	perIdentity map[string]int
+}
+
+// NewChannelLimiter builds a channel limiter; non-positive values take the
+// defaults (512 global, 32 per identity — two fully-multiplexed connections'
+// worth — BEX_SSH_MAX_CHANNELS[_PER_IDENTITY]).
+func NewChannelLimiter(maxGlobal, maxPerIdentity int) *ChannelLimiter {
+	if maxGlobal <= 0 {
+		maxGlobal = 512
+	}
+	if maxPerIdentity <= 0 {
+		maxPerIdentity = 32
+	}
+	return &ChannelLimiter{
+		maxGlobal:      maxGlobal,
+		maxPerIdentity: maxPerIdentity,
+		perIdentity:    map[string]int{},
+	}
+}
+
+// AcquireChannel reserves one exec-stream slot for subject. On refusal the
+// second return names the exhausted scope: "channel_global" or
+// "channel_identity".
+func (l *ChannelLimiter) AcquireChannel(subject string) (bool, string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.global >= l.maxGlobal {
+		return false, "channel_global"
+	}
+	if l.perIdentity[subject] >= l.maxPerIdentity {
+		return false, "channel_identity"
+	}
+	l.global++
+	l.perIdentity[subject]++
+	return true, ""
+}
+
+// ReleaseChannel returns subject's slot acquired by a successful AcquireChannel.
+func (l *ChannelLimiter) ReleaseChannel(subject string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.global--
+	l.perIdentity[subject]--
+	if l.perIdentity[subject] == 0 {
+		delete(l.perIdentity, subject)
+	}
+}

@@ -154,6 +154,13 @@ func (s *Service) Checkout(ctx context.Context, workspaceID string, req Checkout
 	if err != nil {
 		return HostedSession{}, err
 	}
+	// codex round-8 #8: a hosted Checkout Session binds a payment method to the
+	// workspace — durable financial-capability issuance, so re-assert
+	// can_manage_billing uncached (a member revoked inside PositiveTTL must not
+	// mint one last session).
+	if err := s.AuthorizeFresh(ctx, core.RelCanManageBilling); err != nil {
+		return HostedSession{}, err
+	}
 	session, err := s.Provider.CreateCheckoutSession(ctx, tenantID, req)
 	if err != nil {
 		return HostedSession{}, classifyProviderError(err)
@@ -164,6 +171,11 @@ func (s *Service) Checkout(ctx context.Context, workspaceID string, req Checkout
 func (s *Service) Portal(ctx context.Context, workspaceID string, req PortalRequest) (HostedSession, error) {
 	ctx, tenantID, err := s.authorize(ctx, workspaceID)
 	if err != nil {
+		return HostedSession{}, err
+	}
+	// codex round-8 #8: same class as Checkout — the Portal Session is a durable
+	// financial surface, re-asserted uncached.
+	if err := s.AuthorizeFresh(ctx, core.RelCanManageBilling); err != nil {
 		return HostedSession{}, err
 	}
 	session, err := s.Provider.CreatePortalSession(ctx, tenantID, req)

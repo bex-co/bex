@@ -417,6 +417,12 @@ func main() {
 	deps.AgentMaxPinnedSandboxesPerWorkspace = zeroableIntEnv("BEX_AGENT_MAX_PINNED_SANDBOXES_PER_WORKSPACE", 10)
 
 	srv := api.NewServer(base, deps)
+	// codex round-8 #9: the signed git webhook durably claims each processed
+	// delivery body so a captured (body, signature) pair cannot be replayed into
+	// repeated deploys. Store-less operation keeps the prior behavior.
+	if st != nil {
+		srv.WebhookReplays = st
+	}
 	// Membership rows and exact OpenFGA roles are joined by a transactional
 	// Postgres outbox. Drain it independently of request retries so an invite or
 	// downgrade survives transient OpenFGA failures and process restarts.

@@ -96,12 +96,12 @@ type BillingReader interface {
 }
 
 // NewService constructs a Service, normalising PromBase (strips trailing slash
-// so every Prometheus URL is canonical) and resolving a nil HTTP client to
-// http.DefaultClient. Callers in tests may pass their own *http.Client to
-// target an httptest.Server.
+// so every Prometheus URL is canonical) and resolving a nil HTTP client to the
+// bounded core.UpstreamClient (codex round-8 #10). Callers in tests may pass
+// their own *http.Client to target an httptest.Server.
 func NewService(base *core.Base, st UsageStore, promBase string, hc *http.Client) *Service {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = core.UpstreamClient
 	}
 	return &Service{
 		Base:         base,

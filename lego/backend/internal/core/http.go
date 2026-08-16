@@ -350,10 +350,18 @@ func DecodeBody[T any](r *http.Request) (T, error) {
 // that today answers 400, and would lose encoding/json's case-insensitive
 // field matching.
 type (
-	ServiceLinks  struct{ ServiceIDs []string `json:"serviceIds"` }
-	DatabaseLinks struct{ DatabaseIDs []string `json:"databaseIds"` }
-	KeyValueLinks struct{ KeyValueIDs []string `json:"keyValueIds"` }
-	EnvGroupLinks struct{ EnvGroupIDs []string `json:"envGroupIds"` }
+	ServiceLinks struct {
+		ServiceIDs []string `json:"serviceIds"`
+	}
+	DatabaseLinks struct {
+		DatabaseIDs []string `json:"databaseIds"`
+	}
+	KeyValueLinks struct {
+		KeyValueIDs []string `json:"keyValueIds"`
+	}
+	EnvGroupLinks struct {
+		EnvGroupIDs []string `json:"envGroupIds"`
+	}
 )
 
 func (b ServiceLinks) IDs() []string  { return b.ServiceIDs }
@@ -459,6 +467,56 @@ var OryTransport = func() *http.Transport {
 func DrainClose(resp *http.Response) {
 	_, _ = io.Copy(io.Discard, resp.Body)
 	_ = resp.Body.Close()
+}
+
+const (
+	// UpstreamTimeout bounds one operator-configured upstream observability read
+	// (Loki, Prometheus, egress rollups) end to end. The API server's own
+	// WriteTimeout does not create an upstream request deadline, so without this
+	// a slow or wedged shared backend holds handler goroutines and sockets
+	// indefinitely (codex round-8 #10). Generous by design: log/metrics range
+	// queries legitimately take seconds; 30s is beyond every healthy response.
+	UpstreamTimeout = 30 * time.Second
+	// MaxUpstreamResponseBytes bounds one upstream JSON response before decode.
+	// A query SHAPE is capped at the API layer, but the backend's actual byte
+	// output is tenant-data-dependent; a compromised or misbehaving backend must
+	// not be able to allocate unbounded API memory through the decode path. 64
+	// MiB is comfortably above a maximal 5000-entry Loki range response.
+	MaxUpstreamResponseBytes = 64 << 20
+)
+
+// ErrUpstreamResponseTooLarge reports a bounded upstream decode that exceeded
+// MaxUpstreamResponseBytes — rejected before the large allocation, never a
+// silent truncation.
+var ErrUpstreamResponseTooLarge = errors.New("upstream response exceeds size limit")
+
+// UpstreamClient is the bounded default for the observability sources (Loki,
+// Prometheus, egress queries) when one is not injected: total request timeout
+// over the shared pooled transport. These are buffered JSON reads, not streams,
+// so a total Timeout is the right bound (the agentcred dialer-style bounds are
+// for long-lived streaming bodies, a different class).
+var UpstreamClient = &http.Client{Timeout: UpstreamTimeout, Transport: OryTransport}
+
+// DecodeUpstreamJSON decodes one bounded upstream JSON response into out. The
+// body is read through a size limit and an oversized response is rejected
+// explicitly — json.Decoder over a bare body would happily allocate whatever the
+// backend sent (codex round-8 #10).
+func DecodeUpstreamJSON(r io.Reader, out any) error {
+	return DecodeLimitedJSON(r, MaxUpstreamResponseBytes, out)
+}
+
+// DecodeLimitedJSON is DecodeUpstreamJSON with an explicit byte bound — the
+// size check runs before the unmarshal, so an oversized body is rejected
+// without the decode ever seeing it.
+func DecodeLimitedJSON(r io.Reader, max int64, out any) error {
+	body, err := io.ReadAll(io.LimitReader(r, max+1))
+	if err != nil {
+		return err
+	}
+	if int64(len(body)) > max {
+		return ErrUpstreamResponseTooLarge
+	}
+	return json.Unmarshal(body, out)
 }
 
 // HTTPStatusError is DoJSON's unexpected-status error; callers may map specific

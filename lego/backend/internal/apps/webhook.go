@@ -73,6 +73,19 @@ type GitWebhook struct {
 	// deliveries are confined via Installations. Set when the control-plane store
 	// is active (BEX_CP_DB_URI set), i.e. genuine multitenant operation.
 	Multitenant bool
+	// Replays durably claims each processed delivery body so the exact signed
+	// bytes can never be replayed (codex round-8 #9) — the HMAC authenticates
+	// bytes, not freshness, and X-GitHub-Delivery is unsigned. Nil (store-less
+	// single-tenant operation) keeps the prior replayable behavior: there is
+	// nothing durable to claim with.
+	Replays WebhookReplayGuard
+}
+
+// WebhookReplayGuard is the durable replay ledger the mutating git-webhook
+// deliveries claim before acting. Implemented by *store.PGStore.
+type WebhookReplayGuard interface {
+	ClaimGitWebhookDelivery(ctx context.Context, digest string) (bool, error)
+	ReleaseGitWebhookDelivery(ctx context.Context, digest string) error
 }
 
 // InstallationResolver maps a GitHub App installation id to the workspace that
@@ -283,6 +296,14 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}})
 		return
 	}
+	// codex round-8 #9: claim the exact signed bytes before either mutation
+	// branch. Everything below may mutate Apps (redeploy or branch-delete
+	// handling); without the claim a captured delivery replays.
+	w, finishClaim, ok := h.claimReplay(r.Context(), w, key, body)
+	if !ok {
+		return
+	}
+	defer finishClaim()
 	// A branch-delete push (git push --delete: deleted=true, or an all-zero
 	// `after`) carries no commit to build — record branch_deleted and disable
 	// auto-deploy for services tracking it rather than attempting a redeploy.
@@ -333,6 +354,13 @@ func (h *GitWebhook) serveDelete(w http.ResponseWriter, r *http.Request, body []
 		core.WriteJSON(w, http.StatusOK, map[string]any{"branchDeleted": []string{}})
 		return
 	}
+	// codex round-8 #9: branch-delete handling mutates Apps (facts +
+	// autoDeploy-off patches), so it claims the delivery like the push path.
+	w, finishClaim, ok := h.claimReplay(r.Context(), w, key, body)
+	if !ok {
+		return
+	}
+	defer finishClaim()
 	branch := strings.TrimPrefix(ev.Ref, "refs/heads/")
 	urls := []string{ev.Repository.CloneURL, ev.Repository.SSHURL, ev.Repository.HTMLURL, ev.Repository.URL}
 	h.writeBranchDeleted(r.Context(), w, urls, branch, deliveryKey(r, body), scope)
@@ -358,6 +386,66 @@ func deliveryKey(r *http.Request, body []byte) string {
 	}
 	digest := sha256.Sum256(body)
 	return hex.EncodeToString(digest[:])
+}
+
+// replayDigest is a mutating delivery's durable identity: the verified key class
+// plus the exact signed bytes. The delivery HEADER is deliberately excluded —
+// it is unsigned, so keying on it would let a replay change headers and slip
+// past (codex round-8 #9). Two installations pushing byte-identical bodies
+// cannot collide in practice (the payload embeds installation.id and repo
+// URLs), and the key byte keeps a manual-key and an app-key acceptance of the
+// same bytes distinct.
+func replayDigest(key verifiedKey, body []byte) string {
+	h := sha256.New()
+	_, _ = h.Write([]byte{byte(key)})
+	_, _ = h.Write(body)
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// claimReplay durably claims the signed body before a mutation branch runs
+// (codex round-8 #9). ok=false means the response is already written (the claim
+// errored, or the body was already processed — a replay — answered 200 so the
+// git host stops retrying); the caller returns. On ok=true the caller writes
+// through the returned recorder and MUST call finish after the branch: finish
+// releases the claim when the branch answered 5xx (the host will redeliver, and
+// that retry must not be swallowed by a claim whose work never happened). A
+// delivery that completed — even with per-app failures, which this handler
+// deliberately 200-swallows — keeps its claim: that IS the processed state.
+func (h *GitWebhook) claimReplay(ctx context.Context, w http.ResponseWriter, key verifiedKey, body []byte) (http.ResponseWriter, func(), bool) {
+	if h.Replays == nil {
+		return w, func() {}, true
+	}
+	digest := replayDigest(key, body)
+	fresh, err := h.Replays.ClaimGitWebhookDelivery(ctx, digest)
+	if err != nil {
+		core.WriteErr(w, err)
+		return w, func() {}, false
+	}
+	if !fresh {
+		core.WriteJSON(w, http.StatusOK, map[string]any{"redeployed": []string{}, "replayed": true})
+		return w, func() {}, false
+	}
+	rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+	return rec, func() {
+		if rec.status >= http.StatusInternalServerError {
+			releaseCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
+			defer cancel()
+			_ = h.Replays.ReleaseGitWebhookDelivery(releaseCtx, digest)
+		}
+	}, true
+}
+
+// statusRecorder observes the status a mutation branch wrote so claimReplay can
+// release on hard failure. A plain success (2xx) or the handler's deliberate
+// 200-with-partial-list answers all leave the claim in place.
+type statusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	r.status = code
+	r.ResponseWriter.WriteHeader(code)
 }
 
 // isZeroSHA reports whether sha is git's all-zero object id, which a push

@@ -32,6 +32,8 @@ type Metrics struct {
 	durations       *prometheus.HistogramVec
 	limitRejections *prometheus.CounterVec
 	channels        prometheus.Counter
+	activeChannels  prometheus.Gauge
+	reauths         *prometheus.CounterVec
 }
 
 func NewMetrics(registerer prometheus.Registerer) *Metrics {
@@ -61,8 +63,16 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "channels_total",
 			Help: "Session channels accepted on multi-channel (agent-session sandbox) connections.",
 		}),
+		activeChannels: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "active_channels",
+			Help: "Session channels (pods/exec streams) currently held open by the gateway, single- and multi-channel paths alike.",
+		}),
+		reauths: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "channel_reauthorizations_total",
+			Help: "Per-channel reassertions of the transport-auth-time key + target authorization (codex round-8 #5) by bounded result.",
+		}, []string{"result"}),
 	}
-	registerer.MustRegister(m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels)
+	registerer.MustRegister(m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths)
 	return m
 }
 
@@ -95,5 +105,22 @@ func (m *Metrics) LimitRejected(scope string) {
 func (m *Metrics) ChannelOpened() {
 	if m != nil {
 		m.channels.Inc()
+		m.activeChannels.Inc()
+	}
+}
+
+// ChannelClosed pairs with ChannelOpened once the channel's exec stream ends.
+func (m *Metrics) ChannelClosed() {
+	if m != nil {
+		m.activeChannels.Dec()
+	}
+}
+
+// Reauthorization records one per-channel reassertion outcome ("accepted" /
+// "rejected") — the transport may live for hours, so each channel re-checks the
+// key and the authorization that admitted the transport (codex round-8 #5).
+func (m *Metrics) Reauthorization(result string) {
+	if m != nil {
+		m.reauths.WithLabelValues(result).Inc()
 	}
 }

@@ -1871,6 +1871,12 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	if err := s.requireUnprotected(ctx, a, "delete"); err != nil {
 		return err
 	}
+	// codex round-8 #8: deletion is irreversible (store row + CR cascade + OpenBao
+	// purge) — re-assert can_create uncached so a member revoked inside
+	// PositiveTTL cannot tear down one last service.
+	if err := s.AuthorizeAppFresh(ctx, core.RelCanCreate, a); err != nil {
+		return err
+	}
 	if s.Store != nil {
 		if id := managedAppID(a); id != "" {
 			// An already-gone row is the intended end state, not an error (a

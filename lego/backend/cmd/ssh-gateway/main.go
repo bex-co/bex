@@ -130,6 +130,13 @@ func main() {
 		intEnv("BEX_SSH_MAX_SESSIONS", 100),
 		intEnv("BEX_SSH_MAX_SESSIONS_PER_IDENTITY", 5),
 	)
+	// Exec-stream (channel) caps: the session limiter counts transports, but a
+	// multiplexed agent-session connection holds many pods/exec streams (codex
+	// round-8 #7). Native SSH acquires one slot per accepted session channel.
+	channelLimits := sshgateway.NewChannelLimiter(
+		intEnv("BEX_SSH_MAX_CHANNELS", 512),
+		intEnv("BEX_SSH_MAX_CHANNELS_PER_IDENTITY", 32),
+	)
 	nonces := &sshgateway.NonceGuard{Store: st}
 	executor := &sshgateway.KubeExecutor{Config: restConfig, Client: clientset}
 	handshakeTimeout := durationEnv("BEX_SSH_HANDSHAKE_TIMEOUT", 10*time.Second)
@@ -141,6 +148,7 @@ func main() {
 		Signer:           signer,
 		Metrics:          metrics,
 		Limits:           limits,
+		ChannelLimits:    channelLimits,
 		HandshakeTimeout: handshakeTimeout,
 		SessionTimeout:   sessionTimeout,
 		// Bound concurrent pre-auth handshakes so an anonymous connection flood
