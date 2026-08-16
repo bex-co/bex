@@ -72,9 +72,16 @@ func TestRevocationAfterTransportAuthEndsTransportAndActiveChannels(t *testing.T
 	}
 	// The revocation must also tear down the ACTIVE channel (mctx cancels
 	// before the channel goroutines are waited on), not merely gate new ones.
-	waitFor(t, func() bool { return exec.activeNow() == 0 })
-	ended := st.EndedSessions()
-	if len(ended) != 1 || !endsWith(ended[0], ":revoked") {
+	// The audit row lands after the channel goroutines unwind, so wait for the
+	// row itself rather than polling the executor — the two events race.
+	waitFor(t, func() bool {
+		if exec.activeNow() != 0 {
+			return false
+		}
+		ended := st.EndedSessions()
+		return len(ended) == 1 && endsWith(ended[0], ":revoked")
+	})
+	if ended := st.EndedSessions(); len(ended) != 1 || !endsWith(ended[0], ":revoked") {
 		t.Fatalf("session audit result = %v, want one entry ending :revoked", ended)
 	}
 }
@@ -106,9 +113,14 @@ func TestKeyDeletionAfterTransportAuthEndsTransport(t *testing.T) {
 	if _, err := client.NewSession(); err == nil {
 		t.Fatal("a channel opened after key deletion must be rejected")
 	}
-	waitFor(t, func() bool { return exec.activeNow() == 0 })
-	ended := st.EndedSessions()
-	if len(ended) != 1 || !endsWith(ended[0], ":revoked") {
+	waitFor(t, func() bool {
+		if exec.activeNow() != 0 {
+			return false
+		}
+		ended := st.EndedSessions()
+		return len(ended) == 1 && endsWith(ended[0], ":revoked")
+	})
+	if ended := st.EndedSessions(); len(ended) != 1 || !endsWith(ended[0], ":revoked") {
 		t.Fatalf("session audit result = %v, want one entry ending :revoked", ended)
 	}
 }
@@ -134,10 +146,12 @@ func TestSingleChannelPathReauthorizesBeforeAccept(t *testing.T) {
 	if _, err := client.NewSession(); err == nil {
 		t.Fatal("the App path must re-authorize before accepting its one channel")
 	}
-	ended := st.EndedSessions()
-	if len(ended) != 1 || !endsWith(ended[0], ":revoked") {
-		t.Fatalf("session audit result = %v, want one entry ending :revoked", ended)
-	}
+	// The audit row races the channel rejection (it lands in serveConn's
+	// defer), so wait for it rather than asserting immediately.
+	waitFor(t, func() bool {
+		ended := st.EndedSessions()
+		return len(ended) == 1 && endsWith(ended[0], ":revoked")
+	})
 }
 
 // codex round-8 #7: the per-identity channel budget bounds exec STREAMS, not
