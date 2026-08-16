@@ -69,6 +69,12 @@ const (
 // not process config: it comes from that session's selected agent/provider.
 type Config struct {
 	SetupRegistryDomains []string
+	// ModelProxyPort, when non-zero (BEX_AGENT_MODEL_PROXY_URL wired), turns on the
+	// ADR062 narrowing: the tenant pod's egress no longer admits the vendor model
+	// host directly (the agent reaches it only through the gateway proxy), and a
+	// gateway rule for this port is added instead. 0 ⇒ direct vendor egress
+	// (byte-identical to pre-ADR062).
+	ModelProxyPort uint16
 }
 
 // Manager converges namespaced, per-session Cilium policies. A nil Client is
@@ -296,13 +302,22 @@ func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint
 		}
 	}
 	allowJSON, _ := json.Marshal(extra)
+	// The model host stays in the immutable identity/hash (it is still the
+	// session's logical model target) even when the proxy narrowing omits it from
+	// the reachable domains, so the allowlist-immutability check is unaffected.
 	identityJSON, _ := json.Marshal(struct {
 		Model string   `json:"model"`
 		Extra []string `json:"extra"`
 	}{Model: modelHost, Extra: extra})
 	digest := sha256.Sum256(identityJSON)
 	domains := append([]string{}, githubDomains...)
-	domains = append(domains, modelHost)
+	// ADR062 narrowing: with the model proxy on, the tenant pod cannot resolve or
+	// reach the vendor host directly — the agent talks to it only through the
+	// gateway proxy (the gateway rule below), so a stolen credential inside the
+	// sandbox has no vendor destination to use it against.
+	if m.Config.ModelProxyPort == 0 {
+		domains = append(domains, modelHost)
+	}
 	if phase == PhaseSetup {
 		domains = append(domains, m.setupRegistryDomains()...)
 	}
@@ -310,6 +325,15 @@ func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint
 	domains = uniqueSorted(domains)
 	dnsNames := append(slices.Clone(domains), credentialGatewayHost)
 	dnsNames = uniqueSorted(dnsNames)
+
+	egressRules := []any{
+		dnsRule(dnsNames),
+		fqdnRule(domains),
+		gatewayRule(credentialGatewayPort),
+	}
+	if m.Config.ModelProxyPort != 0 {
+		egressRules = append(egressRules, gatewayRule(m.Config.ModelProxyPort))
+	}
 
 	obj := &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": "cilium.io/v2",
@@ -330,11 +354,7 @@ func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint
 		},
 		"spec": map[string]any{
 			"endpointSelector": map[string]any{"matchLabels": map[string]any{SessionLabel: sessionID}},
-			"egress": []any{
-				dnsRule(dnsNames),
-				fqdnRule(domains),
-				gatewayRule(credentialGatewayPort),
-			},
+			"egress":           egressRules,
 		},
 	}}
 	obj.SetGroupVersionKind(ciliumPolicyGVK)

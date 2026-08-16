@@ -299,6 +299,50 @@ func getPolicy(t *testing.T, cl client.Client, namespace, sessionID string) *uns
 	return obj
 }
 
+// ADR062: with the model proxy on, the tenant pod must NOT be able to reach the
+// vendor host directly — it disappears from the DNS and FQDN allows — and a
+// gateway rule for the proxy port is added instead. Off (the default) is
+// byte-identical to before.
+func TestModelProxyNarrowingDropsVendorHostAndAddsGatewayPort(t *testing.T) {
+	proxied := &Manager{Config: Config{ModelProxyPort: 8084}}
+	agent, err := proxied.policy("tea-test-sandbox", "ags-test", PhaseAgent, "https://api.anthropic.com/v1", []string{"docs.example.com"})
+	if err != nil {
+		t.Fatalf("proxied policy: %v", err)
+	}
+	if slices.Contains(fqdnNames(t, agent), "api.anthropic.com") {
+		t.Fatal("the vendor host is still directly reachable under the proxy narrowing")
+	}
+	if slices.Contains(dnsNames(t, agent), "api.anthropic.com") {
+		t.Fatal("the vendor host is still DNS-resolvable under the proxy narrowing")
+	}
+	if !slices.Contains(fqdnNames(t, agent), "docs.example.com") {
+		t.Fatal("an explicit tenant widening must survive the narrowing")
+	}
+	rules, _, _ := unstructured.NestedSlice(agent.Object, "spec", "egress")
+	if len(rules) != 4 {
+		t.Fatalf("egress = %d rules, want dns+fqdn+gitGateway+modelGateway", len(rules))
+	}
+	model := rules[3].(map[string]any)
+	endpoint := model["toEndpoints"].([]any)[0].(map[string]any)["matchLabels"].(map[string]any)
+	port := model["toPorts"].([]any)[0].(map[string]any)["ports"].([]any)[0].(map[string]any)["port"]
+	if endpoint["k8s:app.kubernetes.io/name"] != "bex-ssh-gateway" || port != "8084" {
+		t.Fatalf("model gateway rule = %#v port=%v, want the gateway on 8084", endpoint, port)
+	}
+	// The gateway host itself stays DNS-resolvable (the agent reaches the proxy by
+	// that FQDN), and the digest still records the vendor host as the logical target.
+	if !slices.Contains(dnsNames(t, agent), credentialGatewayHost) {
+		t.Fatal("gateway host must remain DNS-resolvable so the agent can reach the proxy")
+	}
+	if agent.GetAnnotations()[modelAnnotation] != "api.anthropic.com" {
+		t.Fatalf("model annotation = %q, want the vendor host recorded for audit", agent.GetAnnotations()[modelAnnotation])
+	}
+	// A tenant must not be able to re-open the vendor host by listing it as an
+	// explicit widening — the already-baseline check rejects it even when narrowed.
+	if _, err := proxied.policy("tea-test-sandbox", "ags-test", PhaseAgent, "https://api.anthropic.com/v1", []string{"api.anthropic.com"}); err == nil {
+		t.Fatal("a tenant re-added the vendor host as an extra destination under the proxy")
+	}
+}
+
 func fqdnNames(t *testing.T, obj *unstructured.Unstructured) []string {
 	t.Helper()
 	rules, found, err := unstructured.NestedSlice(obj.Object, "spec", "egress")

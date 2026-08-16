@@ -266,6 +266,12 @@ type Deps struct {
 	AgentSessionTicketSecret []byte
 	AgentSessionGatewayURL   string
 	AgentGitProxyURL         string
+	// AgentModelProxyURL, when set (BEX_AGENT_MODEL_PROXY_URL), is the internal
+	// gateway model-proxy origin (ADR062). Set ⇒ sessions receive a placeholder
+	// model credential + this per-session base URL instead of the real BYO key, and
+	// the session egress policy admits the proxy in place of the vendor host. Empty
+	// ⇒ the real key rides pod env (byte-identical to pre-ADR062).
+	AgentModelProxyURL string
 	// AgentSandboxIdleTTL is the Active-tier idle grace (ADR059 D2 / w2/m67): a
 	// finished session's sandbox lives until it has been idle this long. Zero ⇒
 	// no grace (reap as soon as no editor is connected, ADR054 D6 behavior).
@@ -663,7 +669,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Base: base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
 			Sandbox: agentLifecycle, TicketSecret: d.AgentSessionTicketSecret,
 			GatewayURL: d.AgentSessionGatewayURL, GitProxyURL: d.AgentGitProxyURL,
-			SSHHost: sshHost, ModelKeys: d.Secrets, GitHub: gh,
+			ModelProxyURL: d.AgentModelProxyURL,
+			SSHHost:       sshHost, ModelKeys: d.Secrets, GitHub: gh,
 			MaxLiveSandboxes:   d.AgentMaxLiveSandboxesPerWorkspace,
 			Snapshots:          d.AgentSnapshotStore,
 			MaxPinnedSandboxes: d.AgentMaxPinnedSandboxesPerWorkspace,

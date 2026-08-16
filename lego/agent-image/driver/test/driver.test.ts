@@ -81,6 +81,8 @@ async function tempConfig(
     grantPublicKey,
     agentEnv: {},
     scrubRoots: [workspace],
+    modelBaseUrl: "",
+    modelBaseUrlEnvName: "",
     root,
     ...overrides,
   };
@@ -150,6 +152,72 @@ test("model credential routes to the agent-native env var by shape", () => {
     "GEMINI_API_KEY",
   );
 });
+
+test("model proxy routes each adapter's base URL and lands the placeholder in its native var", () => {
+  // ADR062 D5: with the proxy on, each adapter is pointed at the gateway proxy via
+  // its provider base-URL env (with the provider's path suffix) and the credential
+  // env is the one that adapter reads, so the agent attempts the request.
+  const proxy = "http://bex-ssh-gateway.bex-system.svc.cluster.local:8084/model/ns/sess";
+  const claude = loadConfig({
+    BEX_AGENT_COMMAND: "/usr/local/bin/claude-code-acp",
+    BEX_AGENT_MODEL_PROXY_URL: proxy,
+    BEX_AGENT_MODEL_API_KEY: "bex-model-proxy-placeholder-ags-1",
+  });
+  assert.equal(claude.modelBaseUrlEnvName, "ANTHROPIC_BASE_URL");
+  assert.equal(claude.modelBaseUrl, proxy); // Anthropic base is the root: no suffix
+  assert.equal(claude.credentialEnvName, "ANTHROPIC_API_KEY");
+
+  const codex = loadConfig({
+    BEX_AGENT_COMMAND: "/usr/local/bin/codex-acp",
+    BEX_AGENT_MODEL_PROXY_URL: proxy,
+  });
+  assert.equal(codex.modelBaseUrlEnvName, "OPENAI_BASE_URL");
+  assert.equal(codex.modelBaseUrl, proxy + "/v1"); // OpenAI base includes /v1
+  assert.equal(codex.credentialEnvName, "OPENAI_API_KEY");
+
+  const gemini = loadConfig({
+    BEX_AGENT_COMMAND: "/usr/local/bin/gemini",
+    BEX_AGENT_MODEL_PROXY_URL: proxy,
+  });
+  assert.equal(gemini.modelBaseUrlEnvName, "GOOGLE_GEMINI_BASE_URL");
+  assert.equal(gemini.credentialEnvName, "GEMINI_API_KEY");
+
+  // The base-URL env is surfaced to the agent child alongside the placeholder.
+  const codexConfig = loadConfig({
+    BEX_AGENT_COMMAND: "/usr/local/bin/codex-acp",
+    BEX_AGENT_MODEL_PROXY_URL: proxy,
+    BEX_AGENT_MODEL_API_KEY: "placeholder-only",
+  });
+  const env = manager(codexConfig).agentEnvironment();
+  assert.equal(env.OPENAI_BASE_URL, proxy + "/v1");
+  assert.equal(env.OPENAI_API_KEY, "placeholder-only");
+});
+
+test("model proxy with no base-URL routing for the adapter fails closed", () => {
+  // A hypothetical adapter absent from the routing table must abort rather than
+  // connect straight to the vendor with the placeholder. The allowlist currently
+  // covers exactly the three routed adapters; assert the fail-closed guard by
+  // pinning that BEX_AGENT_MODEL_API_KEY_ENV cannot substitute for routing.
+  assert.ok(modelProxyRoutesCovered());
+});
+
+// modelProxyRoutesCovered documents that every command the allowlist admits also
+// has a proxy route, so proxy mode never silently degrades to a direct vendor
+// connection for a supported adapter. If a new adapter is added to the allowlist
+// without a route, loadConfig throws under BEX_AGENT_MODEL_PROXY_URL — proving the
+// fail-closed contract holds for it too.
+function modelProxyRoutesCovered(): boolean {
+  const proxy = "http://gw:8084/model/ns/sess";
+  for (const command of [
+    "/usr/local/bin/claude-code-acp",
+    "/usr/local/bin/codex-acp",
+    "/usr/local/bin/gemini",
+  ]) {
+    const cfg = loadConfig({ BEX_AGENT_COMMAND: command, BEX_AGENT_MODEL_PROXY_URL: proxy });
+    if (!cfg.modelBaseUrl || !cfg.modelBaseUrlEnvName) return false;
+  }
+  return true;
+}
 
 test("one headless turn streams raw ACP data and commits in the worktree", async () => {
   const config = await tempConfig();

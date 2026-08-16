@@ -117,21 +117,15 @@ type ConnectionStore interface {
 	GetGitConnection(context.Context, string) (store.GitConnection, error)
 }
 
-// modelKeySecretPath is the OpenBao KV v2 path a workspace's BYO agent-session
-// model provider key is stored at (ADR047 D7). core.SecretKV's concrete store
-// only tenant-scopes a path via an unexported context key private to the
-// secrets package (internal/secrets's withTenant) — envgroups, a different
-// package sharing this same store, works around that by baking its own opaque
-// unguessable id (envg-<xid>) directly into the path instead of relying on
-// that mechanism, and this follows the identical precedent: workspaceID
-// (tea-<xid>) is exactly as opaque and unguessable, so folding it into the
-// path achieves the same per-workspace isolation. v1 provisioning is
-// operator/manual (`bao kv put`) — no REST/GraphQL/MCP surface exists yet to
-// let a tenant self-serve this, matching m37's explicit no-API-surface scope.
-// The stored map's one key is sandbox.ModelAPIKeyEnvVar so the fetch needs no
-// name translation before landing in the sandbox pod's env.
+// modelKeySecretPath delegates to the one shared definition in the agentsession
+// contract (ADR047 D7), which the ADR062 model-credential mint also reads
+// through so the create-time pod-env path and the proxy path can never drift on
+// where the BYO key lives. workspaceID (tea-<xid>) is opaque and unguessable, so
+// folding it into the OpenBao path achieves per-workspace isolation without the
+// store's tenant-context mechanism. v1 provisioning stays operator/manual
+// (`bao kv put`); there is no self-serve REST/GraphQL/MCP surface yet.
 func modelKeySecretPath(workspaceID string) string {
-	return "agent-sessions/" + workspaceID + "/model-key"
+	return agentsession.ModelKeySecretPath(workspaceID)
 }
 
 type Service struct {
@@ -149,6 +143,12 @@ type Service struct {
 	// GitProxyURL is the trusted in-cluster smart-HTTP origin. Empty uses the
 	// gateway default; the derived repository URL carries no credential.
 	GitProxyURL string
+	// ModelProxyURL, when set (BEX_AGENT_MODEL_PROXY_URL), routes agent model
+	// traffic through the gateway's credential-injecting proxy (ADR062): the
+	// sandbox receives only a placeholder + this per-session base URL, and the real
+	// BYO key is injected on the gateway→vendor hop. Empty ⇒ the real key rides pod
+	// env as before (byte-identical to pre-ADR062).
+	ModelProxyURL string
 	// ModelKeys, when set (BEX_OPENBAO_URL wired), sources each workspace's BYO
 	// agent-session model provider key at session-create time (ADR047 D7). nil
 	// => sessions start with no model key (byte-identical to before this field
@@ -388,9 +388,14 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := s.enforceLiveSandboxCap(ctx, workspaceID); err != nil {
 		return View{}, err
 	}
-	modelAPIKey, err := s.modelAPIKey(ctx, workspaceID)
-	if err != nil {
-		return View{}, err
+	// Read the real BYO key BEFORE the row so an OpenBao failure fails closed
+	// without stranding a session. In proxy mode no real key is read at all — the
+	// session-bound placeholder is set once the row (and its id) exist, below.
+	var modelAPIKey string
+	if s.modelProxyBaseURL() == "" {
+		if modelAPIKey, err = s.modelAPIKey(ctx, workspaceID); err != nil {
+			return View{}, err
+		}
 	}
 	config, err := json.Marshal(req.AgentConfig)
 	if err != nil {
@@ -411,12 +416,15 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		_ = s.Store.DeleteAgentSession(ctx, record.ID)
 		return View{}, fmt.Errorf("%w: establish agent session authorization: %v", core.ErrAuthzUnavailable, err)
 	}
+	if s.modelProxyBaseURL() != "" {
+		modelAPIKey = agentsession.ModelKeyPlaceholder(record.ID)
+	}
 	spec := dispatchSpec{
 		template:      strings.TrimSpace(req.AgentConfig.Template),
 		modelEndpoint: modelEndpoint,
 		modelAPIKey:   modelAPIKey,
 		egress:        egressAllowlist,
-		env:           driverEnv(req.AgentConfig, record.Repo, record.Branch, record.ID, store.SandboxNamespace(record.WorkspaceID), s.gitProxyURL(), s.driverGrantPublicKey()),
+		env:           s.driverEnv(req.AgentConfig, record),
 	}
 	s.detach(ctx, func(ctx context.Context) { s.runDispatch(ctx, record, spec) })
 	return s.toView(record)
@@ -659,7 +667,7 @@ func (s *Service) rehydrate(ctx context.Context, record store.AgentSession, stee
 		return View{}, err
 	}
 	config.ModelEndpoint = modelEndpoint
-	modelAPIKey, err := s.modelAPIKey(ctx, record.WorkspaceID)
+	modelAPIKey, err := s.modelCredential(ctx, record.WorkspaceID, record.ID)
 	if err != nil {
 		return View{}, err
 	}
@@ -669,7 +677,7 @@ func (s *Service) rehydrate(ctx context.Context, record store.AgentSession, stee
 	if err != nil {
 		return View{}, mapStoreError(record.ID, err)
 	}
-	env := driverEnv(config, record.Repo, record.Branch, record.ID, store.SandboxNamespace(record.WorkspaceID), s.gitProxyURL(), s.driverGrantPublicKey())
+	env := s.driverEnv(config, record)
 	env[restoreEnvVar] = restoreURL
 	if steerPrompt != "" {
 		env["BEX_AGENT_PROMPT"] = steerPrompt
@@ -880,25 +888,53 @@ func (s *Service) gitProxyURL() string {
 
 // driverEnv renders the non-secret environment the sandbox driver reads to run
 // one headless delivery turn (lego/agent-image/driver). The BYO model key is
-// NOT here: it is sourced from OpenBao and injected as pod-spec env by the
-// sandbox lifecycle (ADR047 D7), so no secret flows through this map. The Git
-// remote is a non-secret, Pod-bound gateway proxy URL; the raw GitHub token is
-// minted and consumed only by the gateway. The driver-grant value is likewise
-// only an Ed25519 public verification key.
-func driverEnv(config AgentConfig, repo, branch, sessionID, namespace, credentialURL, grantPublicKey string) map[string]string {
-	repoURL, _ := agentsession.ProxyRepositoryURL(credentialURL, namespace, sessionID, repo, branch)
-	return map[string]string{
+// NOT here: it is either sourced from OpenBao and injected as pod-spec env by the
+// sandbox lifecycle (ADR047 D7), or — when the model proxy is active (ADR062) —
+// never enters the sandbox at all and only a placeholder does, with modelProxyBase
+// pointing the agent's base URL at the gateway proxy. Either way no secret flows
+// through this map. The Git remote is a non-secret, Pod-bound gateway proxy URL;
+// the raw GitHub token is minted and consumed only by the gateway. The
+// driver-grant value is likewise only an Ed25519 public verification key.
+func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[string]string {
+	namespace := store.SandboxNamespace(record.WorkspaceID)
+	repoURL, _ := agentsession.ProxyRepositoryURL(s.gitProxyURL(), namespace, record.ID, record.Repo, record.Branch)
+	env := map[string]string{
 		"BEX_AGENT_COMMAND":          agentCommand(config.Agent),
 		"BEX_AGENT_PROMPT":           config.Task,
-		"BEX_AGENT_BRANCH":           branch,
+		"BEX_AGENT_BRANCH":           record.Branch,
 		"BEX_AGENT_REPO_URL":         repoURL,
 		"BEX_AGENT_DELIVER":          "1",
 		"BEX_AGENT_EXIT_AFTER_TURN":  "0",
 		"BEX_SANDBOX_NAMESPACE":      namespace,
-		"BEX_AGENT_SESSION_ID":       sessionID,
-		"BEX_AGENT_REPOSITORY":       repo,
-		"BEX_AGENT_GRANT_PUBLIC_KEY": grantPublicKey,
+		"BEX_AGENT_SESSION_ID":       record.ID,
+		"BEX_AGENT_REPOSITORY":       record.Repo,
+		"BEX_AGENT_GRANT_PUBLIC_KEY": s.driverGrantPublicKey(),
 	}
+	if base := s.modelProxyBaseURL(); base != "" {
+		// The per-session model base URL carries no credential; the driver appends
+		// the per-provider path suffix and points the agent at it (ADR062 D5).
+		if url, err := agentsession.ModelProxyURL(base, namespace, record.ID); err == nil {
+			env["BEX_AGENT_MODEL_PROXY_URL"] = url
+		}
+	}
+	return env
+}
+
+// modelProxyBaseURL is the internal gateway model-proxy origin (BEX_AGENT_MODEL_
+// PROXY_URL). Empty ⇒ the proxy is off and the real BYO key rides pod env as
+// before (byte-identical to pre-ADR062).
+func (s *Service) modelProxyBaseURL() string { return strings.TrimSpace(s.ModelProxyURL) }
+
+// modelCredential returns what lands in the sandbox pod's BEX_AGENT_MODEL_API_KEY
+// env. With the proxy off, that is the workspace's real BYO key from OpenBao
+// (ADR047 D7). With the proxy on (ADR062), it is only a placeholder — the real
+// key stays on the gateway and is never read here — so a genuine OpenBao outage
+// no longer strands create, and no durable credential enters the sandbox.
+func (s *Service) modelCredential(ctx context.Context, workspaceID, sessionID string) (string, error) {
+	if s.modelProxyBaseURL() != "" {
+		return agentsession.ModelKeyPlaceholder(sessionID), nil
+	}
+	return s.modelAPIKey(ctx, workspaceID)
 }
 
 func (s *Service) driverGrantPublicKey() string {
@@ -969,9 +1005,10 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		return View{}, err
 	}
 	config.ModelEndpoint = modelEndpoint
-	// Read the BYO model key before flipping the phase so a store failure can't
-	// strand the session in redispatching.
-	modelAPIKey, err := s.modelAPIKey(ctx, record.WorkspaceID)
+	// Resolve the model credential before flipping the phase so a store failure
+	// can't strand the session in redispatching. With the proxy on this is a
+	// placeholder and reads no OpenBao (ADR062); with it off, the real BYO key.
+	modelAPIKey, err := s.modelCredential(ctx, record.WorkspaceID, record.ID)
 	if err != nil {
 		return View{}, err
 	}
@@ -979,7 +1016,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err != nil {
 		return View{}, mapStoreError(record.ID, err)
 	}
-	env := driverEnv(config, record.Repo, record.Branch, record.ID, store.SandboxNamespace(record.WorkspaceID), s.gitProxyURL(), s.driverGrantPublicKey())
+	env := s.driverEnv(config, record)
 	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task
 	spec := dispatchSpec{
 		template:      strings.TrimSpace(config.Template),

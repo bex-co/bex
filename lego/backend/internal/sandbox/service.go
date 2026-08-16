@@ -398,7 +398,7 @@ func NewAgentSessionLifecycle(service *Service) *AgentSessionLifecycle {
 // BYO model provider credential from (lego/agent-image/driver/src/config.mjs,
 // ADR047 D7). The tenant secret's OpenBao value must be stored under this same
 // key so the fetch-to-injection path needs no translation.
-const ModelAPIKeyEnvVar = "BEX_AGENT_MODEL_API_KEY"
+const ModelAPIKeyEnvVar = agentsession.ModelKeyField
 
 // CreateAgentSessionSandbox is the narrow trusted lifecycle seam used by the
 // agent-sessions feature after it has performed the first-class session FGA
