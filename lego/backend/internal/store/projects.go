@@ -22,8 +22,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-
-	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // Project is a row of `projects` — a named grouping of services within a
@@ -36,15 +34,7 @@ type Project struct {
 }
 
 func (s *PGStore) CreateProject(ctx context.Context, tenantID, name string) (Project, error) {
-	p := Project{ID: ids.New(ids.Project), TenantID: tenantID, Name: name}
-	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO projects (id, tenant_id, name) VALUES ($1, $2, $3) RETURNING created_at`,
-		p.ID, tenantID, name,
-	).Scan(&p.CreatedAt)
-	if err != nil {
-		return Project{}, classify("project", err)
-	}
-	return p, nil
+	return createProject(ctx, s.Pool, tenantID, name)
 }
 
 func (s *PGStore) GetProject(ctx context.Context, id string) (Project, error) {
@@ -59,21 +49,7 @@ func (s *PGStore) GetProject(ctx context.Context, id string) (Project, error) {
 }
 
 func (s *PGStore) ListProjects(ctx context.Context, tenantID string) ([]Project, error) {
-	rows, err := s.Pool.Query(ctx,
-		`SELECT id, tenant_id, name, created_at FROM projects WHERE tenant_id = $1 ORDER BY created_at`, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []Project
-	for rows.Next() {
-		var p Project
-		if err := rows.Scan(&p.ID, &p.TenantID, &p.Name, &p.CreatedAt); err != nil {
-			return nil, err
-		}
-		out = append(out, p)
-	}
-	return out, rows.Err()
+	return listProjects(ctx, s.Pool, tenantID)
 }
 
 func (s *PGStore) RenameProject(ctx context.Context, id, name string) error {

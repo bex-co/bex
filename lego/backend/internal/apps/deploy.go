@@ -132,12 +132,18 @@ type EnvSeeder interface {
 // projects[].environments[] Blueprint vocabulary. The apply path resolves or
 // creates groups by name, then threads the resulting environment id through the
 // same resource-create paths as REST/GraphQL/MCP.
-type BlueprintGroupingStore interface {
-	ListProjects(ctx context.Context, tenantID string) ([]store.Project, error)
-	CreateProject(ctx context.Context, tenantID, name string) (store.Project, error)
-	ListEnvironments(ctx context.Context, projectID string) ([]store.Environment, error)
-	CreateEnvironment(ctx context.Context, projectID, tenantID, name string) (store.Environment, error)
-	SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) error
+// BlueprintGroupingStore is the store surface the grouping apply loop writes
+// through — an alias of store.GroupingStore so the same loop runs against the
+// pool-backed store and RunGroupingTx's transaction-scoped facade (w8/m20).
+type BlueprintGroupingStore = store.GroupingStore
+
+// BlueprintGroupingTxRunner runs a grouping apply atomically: every grouping
+// row written inside fn commits together or rolls back together (w8/m20 t001
+// — a mid-loop failure must not persist a partial set). *store.PGStore
+// satisfies it; a Service without it applies groupings non-transactionally
+// (test fakes, legacy wiring).
+type BlueprintGroupingTxRunner interface {
+	RunGroupingTx(ctx context.Context, fn func(store.GroupingStore) error) error
 }
 
 // EnvironmentAssigner is the narrow store seam the Blueprint apply path uses to
@@ -1150,9 +1156,8 @@ func (s *Service) validateBlueprintServices(ctx context.Context, st parsedStack)
 // parse/preflight gate and before resource writes, so every newborn resource
 // receives the real environment id through its normal create path.
 func (s *Service) applyBlueprintGroupings(ctx context.Context, groupings []parsedGrouping) (map[string]core.EnvironmentAssignment, error) {
-	out := make(map[string]core.EnvironmentAssignment, len(groupings))
 	if len(groupings) == 0 {
-		return out, nil
+		return map[string]core.EnvironmentAssignment{}, nil
 	}
 	if s.BlueprintGroups == nil {
 		return nil, core.ErrWorkspacesUnavailable
@@ -1161,9 +1166,86 @@ func (s *Service) applyBlueprintGroupings(ctx context.Context, groupings []parse
 	if !ok {
 		return nil, core.ErrWorkspacesUnavailable
 	}
-	projects, err := s.BlueprintGroups.ListProjects(ctx, tenantID)
+	if s.BlueprintGroupsTx != nil {
+		// One transaction for the whole grouping set: a mid-loop failure
+		// (store error, quota refusal, cancellation) rolls back every row
+		// from this sync instead of persisting a partial set (w8/m20 t001).
+		var out map[string]core.EnvironmentAssignment
+		var audits []groupingAuditEntry
+		err := s.BlueprintGroupsTx.RunGroupingTx(ctx, func(groups store.GroupingStore) error {
+			var applyErr error
+			out, audits, applyErr = s.applyBlueprintGroupingsWith(ctx, groups, tenantID, groupings)
+			return applyErr
+		})
+		if err != nil {
+			return nil, err
+		}
+		s.emitGroupingAudits(ctx, tenantID, audits)
+		return out, nil
+	}
+	out, audits, err := s.applyBlueprintGroupingsWith(ctx, s.BlueprintGroups, tenantID, groupings)
 	if err != nil {
-		return nil, fmt.Errorf("listing Blueprint projects: %w", err)
+		return nil, err
+	}
+	s.emitGroupingAudits(ctx, tenantID, audits)
+	return out, nil
+}
+
+// groupingAuditEntry is one grouping mutation collected during the apply loop
+// and recorded post-commit (w8/m20 t003) — audit rows must never describe a
+// rolled-back transaction.
+type groupingAuditEntry struct {
+	action      string
+	project     string
+	environment string
+}
+
+// emitGroupingAudits records the sync's grouping mutations in the audit log.
+// Audit-log-only (not the per-service events feed): groupings are
+// workspace-scoped. Blueprint-driven grouping writes previously bypassed
+// audit entirely (w1/049 #5).
+func (s *Service) emitGroupingAudits(ctx context.Context, tenantID string, audits []groupingAuditEntry) {
+	identity, _ := core.IdentityFrom(ctx)
+	for _, entry := range audits {
+		target := "project:" + entry.project
+		name := entry.project
+		if entry.environment != "" {
+			target = "environment:" + entry.project + "/" + entry.environment
+			name = entry.environment
+		}
+		core.RecordAuditEvent(ctx, s.Audit, core.AuditEvent{
+			Caller: identity.Subject, CallerMethod: identity.Method,
+			Verb:     "apps.BlueprintGrouping." + entry.action,
+			Resource: core.WorkspaceObject(tenantID),
+			Target:   target, TargetName: name,
+			Outcome: core.AuditAllowed, At: s.Now(),
+		})
+	}
+}
+
+// blueprintGroupingQuota refuses a grouping apply that would push the
+// workspace's durable project or environment count past MaxGroupings — an
+// abuse bound (BEX_MAX_BLUEPRINT_GROUPINGS, default 1000), not a plan tier;
+// 0 disables. One coded refusal shared verbatim by REST/GraphQL/MCP.
+func (s *Service) blueprintGroupingQuota(projects, environments int) error {
+	if s.MaxGroupings > 0 && (projects > s.MaxGroupings || environments > s.MaxGroupings) {
+		return core.NewConflictError("BLUEPRINT_GROUPING_LIMIT",
+			fmt.Sprintf("applying this Blueprint would give the workspace %d projects and %d environments (limit %d each); remove unused groupings or raise the limit", projects, environments, s.MaxGroupings),
+			map[string]any{"projects": projects, "environments": environments, "limit": s.MaxGroupings})
+	}
+	return nil
+}
+
+func (s *Service) applyBlueprintGroupingsWith(ctx context.Context, groups BlueprintGroupingStore, tenantID string, groupings []parsedGrouping) (map[string]core.EnvironmentAssignment, []groupingAuditEntry, error) {
+	out := make(map[string]core.EnvironmentAssignment, len(groupings))
+	var audits []groupingAuditEntry
+	projectCount, environmentCount, err := groups.CountWorkspaceGroupings(ctx, tenantID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("counting Blueprint groupings: %w", err)
+	}
+	projects, err := groups.ListProjects(ctx, tenantID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("listing Blueprint projects: %w", err)
 	}
 	byName := make(map[string]store.Project, len(projects))
 	for _, project := range projects {
@@ -1176,17 +1258,22 @@ func (s *Service) applyBlueprintGroupings(ctx context.Context, groupings []parse
 	for _, grouping := range groupings {
 		project, exists := byName[grouping.projectName]
 		if !exists {
-			project, err = s.BlueprintGroups.CreateProject(ctx, tenantID, grouping.projectName)
-			if err != nil {
-				return nil, fmt.Errorf("creating Blueprint project %q: %w", grouping.projectName, err)
+			if err := s.blueprintGroupingQuota(projectCount+1, environmentCount); err != nil {
+				return nil, nil, err
 			}
+			project, err = groups.CreateProject(ctx, tenantID, grouping.projectName)
+			if err != nil {
+				return nil, nil, fmt.Errorf("creating Blueprint project %q: %w", grouping.projectName, err)
+			}
+			projectCount++
 			byName[grouping.projectName] = project
+			audits = append(audits, groupingAuditEntry{action: "project_created", project: grouping.projectName})
 		}
 		environments, listed := environmentsByProject[project.ID]
 		if !listed {
-			environments, err = s.BlueprintGroups.ListEnvironments(ctx, project.ID)
+			environments, err = groups.ListEnvironments(ctx, project.ID)
 			if err != nil {
-				return nil, fmt.Errorf("listing Blueprint environments for project %q: %w", grouping.projectName, err)
+				return nil, nil, fmt.Errorf("listing Blueprint environments for project %q: %w", grouping.projectName, err)
 			}
 			environmentsByProject[project.ID] = environments
 		}
@@ -1197,20 +1284,34 @@ func (s *Service) applyBlueprintGroupings(ctx context.Context, groupings []parse
 				break
 			}
 		}
+		created := false
 		if environment.ID == "" {
-			environment, err = s.BlueprintGroups.CreateEnvironment(ctx, project.ID, tenantID, grouping.environmentName)
-			if err != nil {
-				return nil, fmt.Errorf("creating Blueprint environment %q: %w", grouping.environmentName, err)
+			if err := s.blueprintGroupingQuota(projectCount, environmentCount+1); err != nil {
+				return nil, nil, err
 			}
+			environment, err = groups.CreateEnvironment(ctx, project.ID, tenantID, grouping.environmentName)
+			if err != nil {
+				return nil, nil, fmt.Errorf("creating Blueprint environment %q: %w", grouping.environmentName, err)
+			}
+			environmentCount++
+			created = true
 			environmentsByProject[project.ID] = append(environmentsByProject[project.ID], environment)
+			audits = append(audits, groupingAuditEntry{action: "environment_created", project: grouping.projectName, environment: grouping.environmentName})
 		}
 		// Render's Blueprint schema declares protection/isolation but no
 		// environment IP rules, so the ACL write PRESERVES the row's current
 		// ipAllowList (the fresh-create seed, or the rules an operator set) —
 		// passing nil would full-replace to empty, which is deny-all since
 		// w4/m28 and would silently cut every blueprint-grouped service off.
-		if err := s.BlueprintGroups.SetEnvironmentACL(ctx, environment.ID, grouping.protectedStatus, grouping.networkIsolationEnabled, environment.IPAllowList); err != nil {
-			return nil, fmt.Errorf("applying Blueprint environment %q controls: %w", grouping.environmentName, err)
+		// The write is conditional (w8/m20 t003): an unchanged re-sync skips
+		// it entirely, so idempotent syncs stop churning rows.
+		if created || environment.ProtectedStatus != grouping.protectedStatus || environment.NetworkIsolationEnabled != grouping.networkIsolationEnabled {
+			if err := groups.SetEnvironmentACL(ctx, environment.ID, grouping.protectedStatus, grouping.networkIsolationEnabled, environment.IPAllowList); err != nil {
+				return nil, nil, fmt.Errorf("applying Blueprint environment %q controls: %w", grouping.environmentName, err)
+			}
+			if !created {
+				audits = append(audits, groupingAuditEntry{action: "environment_controls_updated", project: grouping.projectName, environment: grouping.environmentName})
+			}
 		}
 		out[blueprintGroupingKey(grouping.projectName, grouping.environmentName)] = core.EnvironmentAssignment{
 			ID:                      environment.ID,
@@ -1220,7 +1321,7 @@ func (s *Service) applyBlueprintGroupings(ctx context.Context, groupings []parse
 			IPAllowList:             environment.IPAllowList,
 		}
 	}
-	return out, nil
+	return out, audits, nil
 }
 
 // preflightBlueprintEnv validates the blueprint's env-groups + env-vars needs

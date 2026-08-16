@@ -130,6 +130,17 @@ type Service struct {
 	// BlueprintGroups resolves/creates Render Blueprint projects and
 	// environments by name for projects[].environments[] manifests.
 	BlueprintGroups BlueprintGroupingStore
+	// BlueprintGroupsTx, when set (*store.PGStore), makes the grouping apply
+	// atomic: every grouping row from one sync commits together or rolls back
+	// together (w8/m20 t001). nil (test fakes) applies non-transactionally.
+	BlueprintGroupsTx BlueprintGroupingTxRunner
+	// MaxGroupings caps a workspace's durable project and environment counts
+	// at Blueprint-apply time (BEX_MAX_BLUEPRINT_GROUPINGS, default 1000) — an
+	// abuse bound, not a plan tier (w1/049 #5). 0 disables.
+	MaxGroupings int
+	// GroupingReclaim, when set (*store.PGStore), lets DisconnectBlueprint
+	// sweep the empty grouping rows the blueprint minted (w8/m20 t004).
+	GroupingReclaim GroupingReclaimer
 	// SecretsEraser, when set, purges the app's OpenBao env-var and secret-file
 	// paths on delete. nil => OpenBao paths are not purged on service delete
 	// (they are purged on workspace delete via WorkspacePurger). Satisfied

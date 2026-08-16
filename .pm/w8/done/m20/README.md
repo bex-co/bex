@@ -1,19 +1,19 @@
 # w8 · m20 — Blueprint grouping hardening: transactional writes, quota, audit, disconnect reclaim
 
-**Worker:** worker8 **Goal:** the blueprint `projects`/`environments` grouping path stops being the board's known soft spot — grouping writes become transactional (no partial rows on mid-loop failure), per-workspace grouping creation is quota-capped with a coded refusal identical across REST/GraphQL/MCP, grouping writes emit audit events like every other mutating verb, and `DisconnectBlueprint` reclaims the empty grouping rows + ACL tuples it created (never deployed resources — Render disconnect semantics preserved). **Status:** todo
+**Worker:** worker8 **Goal:** the blueprint `projects`/`environments` grouping path stops being the board's known soft spot — grouping writes become transactional (no partial rows on mid-loop failure), per-workspace grouping creation is quota-capped with a coded refusal identical across REST/GraphQL/MCP, grouping writes emit audit events like every other mutating verb, and `DisconnectBlueprint` reclaims the empty grouping rows + ACL tuples it created (never deployed resources — Render disconnect semantics preserved). **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                        | est | depends_on       |
 | ---- | ---------------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Transactional grouping writes (no partial project/environment rows)          | 45m | —                |
-| t002 | Per-workspace grouping quota + coded refusal across surfaces                 | 45m | t001             |
-| t003 | Audit events for grouping writes + conditional per-grouping ACL writes       | 30m | t001             |
-| t004 | `DisconnectBlueprint` reclaims orphaned grouping rows + ACL tuples           | 30m | t001             |
-| t005 | Render parity check (refusal/error shapes consistent REST/GraphQL/MCP/UI)    | 30m | t002, t003, t004 |
-| t006 | Simplify (`/simplify` over the changed code)                                 | 30m | t005             |
-| t007 | Test coverage (tx rollback, quota refusal, audit emission, disconnect sweep) | 45m | t005             |
-| t008 | Closeout                                                                     | 15m | t007             |
+| t001 | Transactional grouping writes (no partial project/environment rows) — **DONE**          | 45m | —                |
+| t002 | Per-workspace grouping quota + coded refusal across surfaces — **DONE**                 | 45m | t001             |
+| t003 | Audit events for grouping writes + conditional per-grouping ACL writes — **DONE**       | 30m | t001             |
+| t004 | `DisconnectBlueprint` reclaims orphaned grouping rows + ACL tuples — **DONE**           | 30m | t001             |
+| t005 | Render parity check (refusal/error shapes consistent REST/GraphQL/MCP/UI) — **DONE**    | 30m | t002, t003, t004 |
+| t006 | Simplify (`/simplify` over the changed code) — **DONE**                                 | 30m | t005             |
+| t007 | Test coverage (tx rollback, quota refusal, audit emission, disconnect sweep) — **DONE** | 45m | t005             |
+| t008 | Closeout — **DONE**                                                                     | 15m | t007             |
 
 ## Definition of done
 

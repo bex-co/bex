@@ -35,6 +35,7 @@ type blueprintGroupingTestStore struct {
 	*recordingStore
 	projects     []store.Project
 	environments []store.Environment
+	aclWrites    int
 }
 
 func (s *blueprintGroupingTestStore) ListProjects(_ context.Context, tenantID string) ([]store.Project, error) {
@@ -70,6 +71,7 @@ func (s *blueprintGroupingTestStore) CreateEnvironment(_ context.Context, projec
 }
 
 func (s *blueprintGroupingTestStore) SetEnvironmentACL(_ context.Context, environmentID, protectedStatus string, isolated bool, ipAllowList []core.IPAllowListEntry) error {
+	s.aclWrites++
 	for i := range s.environments {
 		if s.environments[i].ID == environmentID {
 			s.environments[i].ProtectedStatus = protectedStatus
@@ -79,6 +81,21 @@ func (s *blueprintGroupingTestStore) SetEnvironmentACL(_ context.Context, enviro
 		}
 	}
 	return store.ErrNotFound
+}
+
+func (s *blueprintGroupingTestStore) CountWorkspaceGroupings(_ context.Context, tenantID string) (int, int, error) {
+	var projects, environments int
+	for _, project := range s.projects {
+		if project.TenantID == tenantID {
+			projects++
+		}
+	}
+	for _, environment := range s.environments {
+		if environment.TenantID == tenantID {
+			environments++
+		}
+	}
+	return projects, environments, nil
 }
 
 func (*blueprintGroupingTestStore) SetAppEnvironment(context.Context, string, string, string) error {

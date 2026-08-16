@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"regexp"
@@ -2753,5 +2754,154 @@ func TestSandboxKeyCascadesOnTenantDelete(t *testing.T) {
 	}
 	if _, err := s.WorkspaceForSandboxKey(ctx, key); !errors.Is(err, ErrNotFound) {
 		t.Errorf("post-delete resolve err = %v, want ErrNotFound", err)
+	}
+}
+
+// TestPGGroupingTxRollsBackPartialSets proves w8/m20 t001's whole point: a
+// grouping apply that fails mid-loop persists NOTHING from that sync.
+func TestPGGroupingTxRollsBackPartialSets(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	s := &PGStore{Pool: pool}
+	ten, err := s.CreateTenant(ctx, "grouping-tx", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tenant := ten.ID
+
+	injected := fmt.Errorf("injected mid-loop failure")
+	err = s.RunGroupingTx(ctx, func(g GroupingStore) error {
+		p1, err := g.CreateProject(ctx, tenant, "tx-alpha")
+		if err != nil {
+			return err
+		}
+		if _, err := g.CreateEnvironment(ctx, p1.ID, tenant, "staging"); err != nil {
+			return err
+		}
+		if _, err := g.CreateProject(ctx, tenant, "tx-beta"); err != nil {
+			return err
+		}
+		return injected
+	})
+	if !errors.Is(err, injected) {
+		t.Fatalf("RunGroupingTx error = %v, want the injected failure", err)
+	}
+	projects, environments, err := s.CountWorkspaceGroupings(ctx, tenant)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projects != 0 || environments != 0 {
+		t.Fatalf("rolled-back sync persisted rows: %d projects, %d environments", projects, environments)
+	}
+
+	// A successful run commits everything it wrote.
+	if err := s.RunGroupingTx(ctx, func(g GroupingStore) error {
+		p, err := g.CreateProject(ctx, tenant, "tx-alpha")
+		if err != nil {
+			return err
+		}
+		_, err = g.CreateEnvironment(ctx, p.ID, tenant, "staging")
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if projects, environments, _ = s.CountWorkspaceGroupings(ctx, tenant); projects != 1 || environments != 1 {
+		t.Fatalf("committed sync counts = %d projects, %d environments", projects, environments)
+	}
+}
+
+// TestPGReclaimEmptyBlueprintGroupings proves the disconnect sweep deletes
+// only empty, unreferenced groupings (w8/m20 t004): a populated environment
+// (apps member) and a CR-referenced one survive; the reclaimed project goes
+// only once it is empty of environments and members.
+func TestPGReclaimEmptyBlueprintGroupings(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	s := &PGStore{Pool: pool}
+	ten, err := s.CreateTenant(ctx, "grouping-reclaim", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tenant := ten.ID
+
+	empty, err := s.CreateProject(ctx, tenant, "rc-empty")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateEnvironment(ctx, empty.ID, tenant, "staging"); err != nil {
+		t.Fatal(err)
+	}
+	populated, err := s.CreateProject(ctx, tenant, "rc-populated")
+	if err != nil {
+		t.Fatal(err)
+	}
+	popEnv, err := s.CreateEnvironment(ctx, populated.ID, tenant, "production")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app, err := s.CreateApp(ctx, App{TenantID: tenant, Name: "rc-web", Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetEnvironmentServices(ctx, popEnv.ID, populated.ID, tenant, []string{app.ID}); err != nil {
+		t.Fatal(err)
+	}
+	referenced, err := s.CreateProject(ctx, tenant, "rc-referenced")
+	if err != nil {
+		t.Fatal(err)
+	}
+	refEnv, err := s.CreateEnvironment(ctx, referenced.ID, tenant, "production")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pairs := []GroupingPair{
+		{Project: "rc-empty", Environment: "staging"},
+		{Project: "rc-populated", Environment: "production"},
+		{Project: "rc-referenced", Environment: "production"},
+		{Project: "rc-missing", Environment: "gone"},
+	}
+	removedEnvs, removedProjects, err := s.ReclaimEmptyBlueprintGroupings(ctx, tenant, pairs,
+		map[string]bool{refEnv.ID: true}, map[string]bool{referenced.ID: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(removedEnvs) != 1 || removedEnvs[0] != "rc-empty/staging" {
+		t.Fatalf("removed environments = %v", removedEnvs)
+	}
+	if len(removedProjects) != 1 || removedProjects[0] != "rc-empty" {
+		t.Fatalf("removed projects = %v", removedProjects)
+	}
+	// Survivors intact: the populated environment and the CR-referenced one.
+	if _, err := s.GetEnvironment(ctx, popEnv.ID); err != nil {
+		t.Fatalf("populated environment must survive: %v", err)
+	}
+	if _, err := s.GetEnvironment(ctx, refEnv.ID); err != nil {
+		t.Fatalf("referenced environment must survive: %v", err)
+	}
+	if _, err := s.GetProject(ctx, populated.ID); err != nil {
+		t.Fatalf("populated project must survive: %v", err)
 	}
 }
