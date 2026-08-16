@@ -45,9 +45,17 @@ path = "/var/lib/opensandbox/opensandbox.db"
 namespace = "opensandbox-system"
 informer_enabled = true
 informer_resync_seconds = 300
-informer_watch_timeout_seconds = 300
+informer_watch_timeout_seconds = 60
 workload_provider = "batchsandbox"
 image_pull_policy = "IfNotPresent"
+# Wait up to 5 min for a new sandbox Pod to be Running with an IP. The default
+# (60s) is too short for the FIRST session after a deploy: the agent image gets a
+# fresh digest every deploy and its cold pull of that large image on the sandbox
+# node routinely exceeds 60s, which surfaced as KUBERNETES::POD_READY_TIMEOUT and
+# a failed session before it ever cloned. Later creates use the cached image
+# (imagePullPolicy IfNotPresent) and are fast, so this only lengthens the wait for
+# a genuinely-cold pull rather than every create.
+sandbox_create_timeout_seconds = 300
 snapshot_create_timeout_seconds = 900
 # Mounted from the batchsandbox-template ConfigMap; gVisor + sandbox-pool
 # scheduling are pinned in both the template and secure_runtime block.
