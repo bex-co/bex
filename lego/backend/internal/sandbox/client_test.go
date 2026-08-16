@@ -62,6 +62,36 @@ func TestClientCreateSendsTenantKeyAndMapsStatus(t *testing.T) {
 	if gotBody.Timeout != 600 || gotBody.Env["A"] != "b" || gotBody.Metadata[metadataOwner] != "id-a" {
 		t.Errorf("create body = %+v, want timeout/env/security metadata", gotBody)
 	}
+	// The limit is sent verbatim; the request is the overcommit fraction so the
+	// pod schedules on a fraction of its cap (see requestFor).
+	if gotBody.ResourceLimits.CPU != "500m" || gotBody.ResourceLimits.Memory != "512Mi" {
+		t.Errorf("limits = %+v, want 500m/512Mi", gotBody.ResourceLimits)
+	}
+	if gotBody.ResourceRequests.CPU != "125m" || gotBody.ResourceRequests.Memory != "128Mi" {
+		t.Errorf("requests = %+v, want overcommit 125m/128Mi", gotBody.ResourceRequests)
+	}
+}
+
+func TestRequestForQuartersLimitWithFloors(t *testing.T) {
+	cases := []struct {
+		cpu, mem      string
+		wantCPU, wMem string
+	}{
+		// Agent template: a quarter lets ~4x as many pods schedule on a node.
+		{"2", "4Gi", "500m", "1Gi"},
+		// Base template: a quarter of a small limit, above the floors.
+		{"500m", "512Mi", "125m", "128Mi"},
+		// Floors keep a tiny limit's request non-trivial (never below 50m/128Mi).
+		{"100m", "256Mi", "50m", "128Mi"},
+		// An unparseable value falls through to the limit (pre-overcommit behaviour).
+		{"garbage", "4Gi", "garbage", "1Gi"},
+	}
+	for _, tc := range cases {
+		gotCPU, gotMem := requestFor(tc.cpu, tc.mem)
+		if gotCPU != tc.wantCPU || gotMem != tc.wMem {
+			t.Errorf("requestFor(%q,%q) = %q/%q, want %q/%q", tc.cpu, tc.mem, gotCPU, gotMem, tc.wantCPU, tc.wMem)
+		}
+	}
 }
 
 func TestClientGetMapsRunningAndNotFound(t *testing.T) {

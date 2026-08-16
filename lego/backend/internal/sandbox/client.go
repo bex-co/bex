@@ -80,12 +80,13 @@ type osSandbox struct {
 // pool is referenced. bex resolves all of these from a template (never an
 // arbitrary caller image), so this is server-facing only.
 type createRequest struct {
-	Image          osImageSpec       `json:"image"`
-	Entrypoint     []string          `json:"entrypoint"`
-	ResourceLimits osResourceLimits  `json:"resourceLimits"`
-	Env            map[string]string `json:"env,omitempty"`
-	Metadata       map[string]string `json:"metadata,omitempty"`
-	Timeout        int               `json:"timeout,omitempty"`
+	Image            osImageSpec       `json:"image"`
+	Entrypoint       []string          `json:"entrypoint"`
+	ResourceLimits   osResourceLimits  `json:"resourceLimits"`
+	ResourceRequests osResourceLimits  `json:"resourceRequests,omitempty"`
+	Env              map[string]string `json:"env,omitempty"`
+	Metadata         map[string]string `json:"metadata,omitempty"`
+	Timeout          int               `json:"timeout,omitempty"`
 }
 
 type osImageSpec struct {
@@ -133,13 +134,19 @@ func (c *Client) do(ctx context.Context, method, path, tenantKey string, body an
 // Create starts a sandbox from a resolved template image and returns its id and
 // mapped status. tenantKey scopes it to the caller's `<ws>-sandbox` namespace.
 func (c *Client) Create(ctx context.Context, tenantKey, image string, entrypoint []string, cpu, memory string, timeout int, env, metadata map[string]string) (osSandbox, error) {
+	// Overcommit: request a fraction of the limit so bursty, mostly-idle sandboxes
+	// pack the node instead of each reserving its full limit at schedule time
+	// (which capped a node at ~2 sandboxes and produced "Insufficient cpu/memory"
+	// scheduling failures at low real load). The limit still caps a burst.
+	reqCPU, reqMem := requestFor(cpu, memory)
 	data, code, err := c.do(ctx, http.MethodPost, "/sandboxes", tenantKey, createRequest{
-		Image:          osImageSpec{URI: image},
-		Entrypoint:     entrypoint,
-		ResourceLimits: osResourceLimits{CPU: cpu, Memory: memory},
-		Env:            env,
-		Metadata:       metadata,
-		Timeout:        timeout,
+		Image:            osImageSpec{URI: image},
+		Entrypoint:       entrypoint,
+		ResourceLimits:   osResourceLimits{CPU: cpu, Memory: memory},
+		ResourceRequests: osResourceLimits{CPU: reqCPU, Memory: reqMem},
+		Env:              env,
+		Metadata:         metadata,
+		Timeout:          timeout,
 	})
 	if err != nil {
 		return osSandbox{}, err
