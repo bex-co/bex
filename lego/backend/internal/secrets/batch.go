@@ -536,6 +536,35 @@ type mapPatchWording struct {
 	deleteConflicts string
 }
 
+// applyRenameOp moves m[fromKey] to m[key]. It carries most of a patch's
+// refusal cases — an unusable source name, a rename combined with a
+// delete/write, a source another op in the same batch already touched, a
+// missing source, and an occupied destination — so it is checked in one place
+// rather than interleaved with the delete and write arms. m and seen are maps,
+// so the mutations are visible to the caller.
+func applyRenameOp(m map[string]string, seen map[string]struct{}, op mapPatchOp, key, fromKey string, valid func(string) bool, wording mapPatchWording) error {
+	if !valid(fromKey) {
+		return fmt.Errorf("%w: invalid source %s name %q", core.ErrBadRequest, wording.noun, fromKey)
+	}
+	if op.remove || op.hasPayload {
+		return fmt.Errorf("%w: %s rename %q cannot combine with %s", core.ErrBadRequest, wording.noun, key, wording.renameConflicts)
+	}
+	if _, duplicate := seen[fromKey]; duplicate && fromKey != key {
+		return fmt.Errorf("%w: conflicting %s operation for %q", core.ErrBadRequest, wording.noun, fromKey)
+	}
+	value, ok := m[fromKey]
+	if !ok {
+		return fmt.Errorf("%w: source %s %q", core.ErrNotFound, wording.noun, fromKey)
+	}
+	if _, occupied := m[key]; occupied && key != fromKey {
+		return fmt.Errorf("%w: %s rename destination %q already exists", core.ErrBadRequest, wording.noun, key)
+	}
+	seen[fromKey] = struct{}{}
+	delete(m, fromKey)
+	m[key] = value
+	return nil
+}
+
 func applyMapPatch(m map[string]string, ops []mapPatchOp, valid func(string) bool, wording mapPatchWording) error {
 	seen := make(map[string]struct{}, len(ops))
 	for _, op := range ops {
@@ -549,25 +578,9 @@ func applyMapPatch(m map[string]string, ops []mapPatchOp, valid func(string) boo
 		}
 		seen[key] = struct{}{}
 		if fromKey != "" {
-			if !valid(fromKey) {
-				return fmt.Errorf("%w: invalid source %s name %q", core.ErrBadRequest, wording.noun, fromKey)
+			if err := applyRenameOp(m, seen, op, key, fromKey, valid, wording); err != nil {
+				return err
 			}
-			if op.remove || op.hasPayload {
-				return fmt.Errorf("%w: %s rename %q cannot combine with %s", core.ErrBadRequest, wording.noun, key, wording.renameConflicts)
-			}
-			if _, duplicate := seen[fromKey]; duplicate && fromKey != key {
-				return fmt.Errorf("%w: conflicting %s operation for %q", core.ErrBadRequest, wording.noun, fromKey)
-			}
-			value, ok := m[fromKey]
-			if !ok {
-				return fmt.Errorf("%w: source %s %q", core.ErrNotFound, wording.noun, fromKey)
-			}
-			if _, occupied := m[key]; occupied && key != fromKey {
-				return fmt.Errorf("%w: %s rename destination %q already exists", core.ErrBadRequest, wording.noun, key)
-			}
-			seen[fromKey] = struct{}{}
-			delete(m, fromKey)
-			m[key] = value
 			continue
 		}
 		if op.remove {

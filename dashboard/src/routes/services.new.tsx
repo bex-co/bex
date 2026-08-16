@@ -298,10 +298,12 @@ export function NewServicePage() {
                 onSelectRepo={setSelectedRepo}
                 gitUrl={gitUrl}
                 onGitUrlChange={setGitUrl}
-                image={imageVal}
-                onImageChange={setImageVal}
-                registryCredentialId={registryCredentialId}
-                onRegistryCredentialChange={setRegistryCredentialId}
+                image={{
+                  value: imageVal,
+                  onChange: setImageVal,
+                  registryCredentialId,
+                  onRegistryCredentialChange: setRegistryCredentialId,
+                }}
               />
 
               <div className="space-y-4">
