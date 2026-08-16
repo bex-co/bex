@@ -1,8 +1,24 @@
+import { createContext, useContext } from "react";
 import { SidebarProvider } from "@/common/components/ui/sidebar.tsx";
 import { Authenticated } from "@/common/components/authenticated";
 import { useInviteRedemption } from "@/features/team/hooks/use-invite-redemption";
 import { DashboardSidebar } from "./dashboard-sidebar";
 import { DashboardHeader } from "./dashboard-header";
+
+/**
+ * True once a `DashboardLayout` has mounted the real shell above us. The shell
+ * now lives ONCE at the root (`RootComponent`, gated on `staticData.chrome`)
+ * and persists across every navigation, so only the content region swaps — no
+ * remount of the sidebar/header/provider, and the pending fallback paints
+ * inside the shell instead of blanking the whole viewport (the "white flash").
+ *
+ * Any `DashboardLayout` rendered *inside* a page (the legacy per-page wrapper)
+ * therefore reads this context and becomes a pass-through — it renders just its
+ * children rather than a second sidebar/header. That keeps the fix correct even
+ * while those inner wrappers are being removed, and guarantees a page can never
+ * double up the chrome.
+ */
+const InShellContext = createContext(false);
 
 /** Redeems a pending workspace-invite token once the caller is authenticated
  *  (w1/m33) — a child component (not a hook call inside DashboardLayout) so it
@@ -26,18 +42,26 @@ function InviteRedemption() {
  * against the regression.
  */
 export function DashboardLayout({ children }: { children?: React.ReactNode }) {
+  const inShell = useContext(InShellContext);
+  // Already inside the persistent root shell → pass the content straight
+  // through so we never render a second sidebar/header.
+  if (inShell) {
+    return <>{children}</>;
+  }
   return (
-    <SidebarProvider>
-      <Authenticated>
-        <InviteRedemption />
-      </Authenticated>
-      <div className="flex h-(--visual-viewport-height,100vh) w-full">
-        <DashboardSidebar />
-        <main className="flex flex-1 flex-col min-w-0 w-full">
-          <DashboardHeader />
-          {children}
-        </main>
-      </div>
-    </SidebarProvider>
+    <InShellContext.Provider value={true}>
+      <SidebarProvider>
+        <Authenticated>
+          <InviteRedemption />
+        </Authenticated>
+        <div className="flex h-(--visual-viewport-height,100vh) w-full">
+          <DashboardSidebar />
+          <main className="flex flex-1 flex-col min-w-0 w-full">
+            <DashboardHeader />
+            {children}
+          </main>
+        </div>
+      </SidebarProvider>
+    </InShellContext.Provider>
   );
 }

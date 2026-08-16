@@ -20,6 +20,7 @@ import {
 } from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/webhook/$webhookId")({
+  staticData: { chrome: true },
   component: WebhookDetailShell,
   // The page doubles as its own pending state at 0ms: it renders full
   // chrome + its skeleton stack while its Apollo read loads (tolerating the

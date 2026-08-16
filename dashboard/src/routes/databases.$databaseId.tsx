@@ -44,6 +44,7 @@ import {
 } from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/databases/$databaseId")({
+  staticData: { chrome: true },
   component: DatabaseDetailPage,
   // The page doubles as its own pending state at 0ms: it renders full
   // chrome + its skeleton stack while its Apollo read loads (tolerating the

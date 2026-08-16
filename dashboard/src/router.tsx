@@ -53,4 +53,12 @@ declare module "@tanstack/react-router" {
   interface Register {
     router: ReturnType<typeof getRouter>;
   }
+  // Per-route opt-in to the dashboard chrome. `RootComponent` mounts the ONE
+  // persistent `DashboardLayout` (sidebar + header) when any active match sets
+  // `chrome: true`, and renders a bare `<Outlet/>` otherwise (auth, health,
+  // redirect shims, 404). Set it on top-level authenticated routes and on each
+  // detail *parent* — detail children inherit it through the match tree.
+  interface StaticDataRouteOption {
+    chrome?: boolean;
+  }
 }

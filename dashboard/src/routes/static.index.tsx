@@ -7,6 +7,7 @@ import { redirectRenderAlias } from "@/common/lib/render-alias";
  * lives under `/static/$serviceId`; `/static/new` is the create URL.
  */
 export const Route = createFileRoute("/static/")({
+  staticData: { chrome: true },
   beforeLoad: ({ location }) => {
     redirectRenderAlias("static", undefined, location);
   },

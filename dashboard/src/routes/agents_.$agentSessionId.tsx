@@ -25,6 +25,7 @@ import type { ConversationChatHandle } from "@/features/agent-sessions/component
 // Metadata (header/PR/failure) comes from phase-aware GraphQL polling and the
 // conversation rides the m43 stream — the two degrade independently.
 export const Route = createFileRoute("/agents_/$agentSessionId")({
+  staticData: { chrome: true },
   component: AgentSessionDetailPage,
   // A DEDICATED pending component (layout shell + skeleton, NO conversation
   // column) — the frame still shows during the blocking title load with no white

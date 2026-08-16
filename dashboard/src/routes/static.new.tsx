@@ -8,6 +8,7 @@ import { redirectRenderAlias } from "@/common/lib/render-alias";
  * static_site (RENDER_CREATE_LANDINGS.static, w5/m47/m57).
  */
 export const Route = createFileRoute("/static/new")({
+  staticData: { chrome: true },
   beforeLoad: ({ location }) => {
     redirectRenderAlias("static", "new", location);
   },

@@ -102,6 +102,7 @@ const RUNTIME_DEFS: { id: GitRuntime; labelKey: string }[] = [
 ];
 
 export const Route = createFileRoute("/services/new")({
+  staticData: { chrome: true },
   component: NewServicePage,
   beforeLoad: requireAuth(),
   validateSearch: parseNewServiceSearch,

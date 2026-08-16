@@ -30,6 +30,7 @@ function ProjectPending() {
 }
 
 export const Route = createFileRoute("/project/$projectId")({
+  staticData: { chrome: true },
   component: RouteComponent,
   pendingComponent: ProjectPending,
   pendingMs: 0,

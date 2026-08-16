@@ -53,6 +53,7 @@ import {
 } from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/blueprints/$blueprintId")({
+  staticData: { chrome: true },
   component: BlueprintDetailPage,
   pendingComponent: BlueprintDetailPage,
   pendingMs: 0,

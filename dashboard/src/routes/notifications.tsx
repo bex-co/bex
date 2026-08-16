@@ -11,6 +11,7 @@ import { PushNotificationSettingsPanel } from "@/features/notifications/componen
  * capture 2026-07-16); the panel lived on account `/settings` since w3/m9.
  */
 export const Route = createFileRoute("/notifications")({
+  staticData: { chrome: true },
   component: NotificationsPage,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("notifications.title", match),

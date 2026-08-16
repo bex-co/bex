@@ -28,6 +28,7 @@ import {
 import { useServices } from "@/features/services/hooks/use-services";
 
 export const Route = createFileRoute("/env-groups")({
+  staticData: { chrome: true },
   component: EnvGroupsPage,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("envGroups.pageTitle", match),
