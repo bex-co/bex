@@ -83,22 +83,64 @@ function AgentSessionDetailPending() {
 
 function DetailSkeleton() {
   return (
-    <>
-      <div className="flex items-center gap-3 border-b px-4 py-3">
-        <Skeleton className="h-6 w-16" />
-        <Skeleton className="h-6 w-48" />
-        <div className="flex-1" />
-        <Skeleton className="h-8 w-20" />
+    <div
+      aria-hidden="true"
+      className="flex min-h-0 flex-1 flex-col"
+      data-testid="agent-session-detail-skeleton"
+    >
+      {/* Keep this frame aligned with SessionDetailHeader's spacing: compact
+          two-line metadata at the left, actions at the right, and the
+          mobile-only back control. */}
+      <div className="bg-background/95 supports-backdrop-filter:bg-background/60 flex shrink-0 items-center gap-3 border-b px-4 py-2 backdrop-blur">
+        <Skeleton className="size-9 shrink-0 rounded-md lg:hidden" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-20 rounded-md" />
+            <Skeleton className="h-4 w-40 max-w-[45vw]" />
+          </div>
+          <div className="mt-0.5 flex items-center gap-3">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-3 w-12" />
+          </div>
+        </div>
+        <Skeleton className="h-8 w-20 shrink-0 rounded-md" />
       </div>
-      <div className="min-h-0 flex-1 space-y-6 p-6">
-        <Skeleton className="h-24 w-full max-w-3xl" />
-        <Skeleton className="ml-auto h-16 w-64" />
-        <Skeleton className="h-40 w-full max-w-3xl" />
+
+      {/* Mirror SessionConversationImpl's centered transcript gutter and its
+          actual row shapes: assistant prose is unboxed; user turns are a
+          right-aligned bubble followed by a circular avatar. */}
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="mx-auto w-full max-w-3xl space-y-2.5 px-4 py-3">
+          <div className="space-y-2 py-1">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-[88%]" />
+            <Skeleton className="h-4 w-[68%]" />
+          </div>
+          <div className="flex w-full justify-end gap-2 pl-8">
+            <Skeleton className="h-10 w-64 max-w-[92%] rounded-xl rounded-br-md sm:max-w-md" />
+            <Skeleton className="size-8 shrink-0 rounded-full" />
+          </div>
+          <div className="space-y-2 py-1">
+            <Skeleton className="h-4 w-[94%]" />
+            <Skeleton className="h-4 w-[76%]" />
+            <Skeleton className="h-4 w-[52%]" />
+          </div>
+        </div>
       </div>
-      <div className="border-t p-4">
-        <Skeleton className="h-14 w-full max-w-3xl" />
+
+      {/* Match SteeringComposer's dock, including the bordered input shell,
+          send button, and the hint line beneath it. */}
+      <div className="bg-background shrink-0 border-t">
+        <div className="mx-auto w-full max-w-3xl space-y-1.5 px-4 py-2">
+          <div className="border-input bg-background flex items-end gap-2 rounded-xl border px-2.5 py-1.5 shadow-xs">
+            <Skeleton className="my-1.5 h-4 flex-1" />
+            <Skeleton className="h-8 w-20 shrink-0 rounded-xl" />
+          </div>
+          <Skeleton className="mx-1 h-3 w-52 max-w-[70%]" />
+        </div>
       </div>
-    </>
+    </div>
   );
 }
 
