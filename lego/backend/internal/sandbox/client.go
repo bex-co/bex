@@ -44,10 +44,21 @@ type Client struct {
 }
 
 // NewClient builds a Client against an OpenSandbox server base URL.
+//
+// The timeout must exceed the server's own pod-ready wait
+// (informer_watch_timeout_seconds in sandbox-cluster.toml): OpenSandbox's
+// create is SYNCHRONOUS — it holds the HTTP request open until the sandbox pod
+// is Running with an IP, which on a cold agent-image pull (a fresh digest after
+// every deploy, ~minutes for the large image) legitimately takes longer than a
+// short client budget. A 30s timeout here gave up before the server responded,
+// surfacing as "sandbox create failed: context deadline exceeded" and a failed
+// session even though the pod was coming up fine. 330s comfortably covers the
+// 300s pod-ready wait; list/stop/status still return in milliseconds, so this is
+// only a higher ceiling for the one synchronous create path.
 func NewClient(baseURL string) *Client {
 	return &Client{
 		BaseURL: baseURL,
-		HTTP:    &http.Client{Timeout: 30 * time.Second},
+		HTTP:    &http.Client{Timeout: 330 * time.Second},
 	}
 }
 
