@@ -26,7 +26,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -257,25 +256,19 @@ func upstreamURL(host, path, rawQuery, scheme string) (string, error) {
 	return parsed.String(), nil
 }
 
+// modelResponseHeaderTimeout bounds time-to-first-response-header for the
+// upstream model hop; the SSE body itself is deliberately unbounded (see
+// sshgateway.NewUpstreamClient).
+const modelResponseHeaderTimeout = 60 * time.Second
+
 func (b *Broker) httpClient() *http.Client {
 	if b.HTTP != nil {
 		return b.HTTP
 	}
-	// Built once so the vendor connection pool (IdleConnTimeout) survives across
-	// requests — a per-turn model path re-dials otherwise. Like the Git proxy, it
-	// bounds dial/TLS/response-header against a hung upstream but NOT the total
-	// exchange: a model SSE response streams for the length of a turn and a total
-	// timeout would truncate it. The request context still bounds the lifetime.
+	// Built once so the vendor connection pool survives across requests — a
+	// per-turn model path re-dials otherwise.
 	b.clientOnce.Do(func() {
-		b.client = &http.Client{
-			Transport: &http.Transport{
-				DialContext:           (&net.Dialer{Timeout: 15 * time.Second}).DialContext,
-				TLSHandshakeTimeout:   15 * time.Second,
-				ResponseHeaderTimeout: 60 * time.Second,
-				IdleConnTimeout:       90 * time.Second,
-			},
-			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-		}
+		b.client = sshgateway.NewUpstreamClient(modelResponseHeaderTimeout)
 	})
 	return b.client
 }

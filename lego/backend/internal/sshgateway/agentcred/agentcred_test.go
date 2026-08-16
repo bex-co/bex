@@ -197,7 +197,7 @@ func TestGitProxyConcurrencySlotPrecedesPodLookup(t *testing.T) {
 		Pods:    resolver,
 		// Enabled() requires a non-nil API client; the blocked resolver never
 		// lets a request reach the mint, so an unreachable URL is fine.
-		API:    &agentsession.Client{URL: "http://mint.invalid", Secret: []byte("x")},
+		API: &agentsession.Client{URL: "http://mint.invalid", Secret: []byte("x")},
 		// Per-source cap of 1: the second concurrent request from the same
 		// source IP must shed before reaching the resolver.
 		Limits: sshgateway.NewSessionLimiter(64, 1),
@@ -239,5 +239,37 @@ func TestGitProxyConcurrencySlotPrecedesPodLookup(t *testing.T) {
 	close(resolver.release)
 	if code := <-done; code == http.StatusTooManyRequests {
 		t.Fatal("the admitted request was wrongly refused")
+	}
+}
+
+// The default upstream client must be built once and reused: a per-request
+// client discards its connection pool, so every clone/push re-dials and re-runs
+// the TLS handshake to the forge. The sibling model proxy memoizes for the same
+// reason; this proxy did not, and nothing failed when it didn't.
+func TestGitProxyReusesOneUpstreamClient(t *testing.T) {
+	b := &Broker{}
+	first, second := b.httpClient(), b.httpClient()
+	if first != second {
+		t.Fatal("httpClient built a new client per call: the upstream connection pool is discarded between requests")
+	}
+	if first.Timeout != 0 {
+		t.Fatalf("upstream client must not carry a total timeout (it truncates a streaming pack); got %s", first.Timeout)
+	}
+}
+
+// An injected test client still gets the no-follow policy forced onto a copy —
+// a redirect would replay the injected GitHub token to the redirect target.
+func TestGitProxyForcesNoRedirectOnInjectedClient(t *testing.T) {
+	injected := &http.Client{}
+	b := &Broker{HTTP: injected}
+	got := b.httpClient()
+	if got == injected {
+		t.Fatal("injected client must be copied, not mutated in place")
+	}
+	if got.CheckRedirect == nil {
+		t.Fatal("injected client must still refuse to auto-follow redirects")
+	}
+	if err := got.CheckRedirect(nil, nil); err != http.ErrUseLastResponse {
+		t.Fatalf("CheckRedirect = %v, want ErrUseLastResponse", err)
 	}
 }

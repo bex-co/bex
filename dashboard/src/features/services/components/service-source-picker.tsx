@@ -24,13 +24,26 @@ export type SourceTab = "github" | "git" | "image";
 const TAB_TRIGGER_CLASS =
   "min-w-0 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm" as const;
 
+/** The image tab's own state. Supplying it is what adds the tab. */
+export type ImageSourceOption = {
+  value: string;
+  onChange: (image: string) => void;
+  registryCredentialId: string;
+  onRegistryCredentialChange: (id: string) => void;
+};
+
 /**
- * Source selection for the create-service form: a connected GitHub repo, a
- * public git URL, or a prebuilt image.
+ * Source selection shared by the create-service and create-Blueprint forms: a
+ * connected GitHub repo, a public git URL, and — for services — a prebuilt
+ * image.
  *
  * The repo search box, the repo list, and the GitHub connection state live
- * here because nothing outside this picker reads them. The selection itself
- * stays lifted — the create payload and the name auto-fill both depend on it.
+ * here because no caller reads them. The selection itself stays lifted: both
+ * forms' submit payloads and name auto-fill depend on it.
+ *
+ * `image` carries the third tab's state, so its presence is what decides
+ * whether that tab exists — a caller that cannot deploy an image (Blueprints)
+ * simply omits it rather than passing a flag plus unused handlers.
  */
 export function ServiceSourcePicker({
   tab,
@@ -40,9 +53,8 @@ export function ServiceSourcePicker({
   gitUrl,
   onGitUrlChange,
   image,
-  onImageChange,
-  registryCredentialId,
-  onRegistryCredentialChange,
+  titleKey = "services.createSourceTitle",
+  idPrefix = "svc",
 }: {
   tab: SourceTab;
   onTabChange: (tab: SourceTab) => void;
@@ -50,10 +62,9 @@ export function ServiceSourcePicker({
   onSelectRepo: (repo: RepoView) => void;
   gitUrl: string;
   onGitUrlChange: (url: string) => void;
-  image: string;
-  onImageChange: (image: string) => void;
-  registryCredentialId: string;
-  onRegistryCredentialChange: (id: string) => void;
+  image?: ImageSourceOption;
+  titleKey?: string;
+  idPrefix?: string;
 }) {
   const { t } = useTranslations();
   const { repos, loading: reposLoading } = useRepos();
@@ -75,9 +86,14 @@ export function ServiceSourcePicker({
 
   return (
     <div className="space-y-3">
-      <Label>{t("services.createSourceTitle")}</Label>
+      <Label>{t(titleKey)}</Label>
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as SourceTab)}>
-        <TabsList className="grid h-auto w-full grid-cols-3">
+        <TabsList
+          className={cn(
+            "grid h-auto w-full",
+            image ? "grid-cols-3" : "grid-cols-2",
+          )}
+        >
           <TabsTrigger value="github" className={TAB_TRIGGER_CLASS}>
             <Github className="hidden size-4 sm:block" />
             {t("services.createTabGitHub")}
@@ -86,10 +102,12 @@ export function ServiceSourcePicker({
             <GitBranch className="hidden size-4 sm:block" />
             {t("services.createTabPublicGit")}
           </TabsTrigger>
-          <TabsTrigger value="image" className={TAB_TRIGGER_CLASS}>
-            <Box className="hidden size-4 sm:block" />
-            {t("services.createTabImage")}
-          </TabsTrigger>
+          {image && (
+            <TabsTrigger value="image" className={TAB_TRIGGER_CLASS}>
+              <Box className="hidden size-4 sm:block" />
+              {t("services.createTabImage")}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="github" className="mt-3">
@@ -176,11 +194,11 @@ export function ServiceSourcePicker({
 
         <TabsContent value="git" className="mt-3">
           <div className="space-y-2">
-            <Label htmlFor="svc-git-url">
+            <Label htmlFor={`${idPrefix}-git-url`}>
               {t("services.createPublicUrlLabel")}
             </Label>
             <Input
-              id="svc-git-url"
+              id={`${idPrefix}-git-url`}
               value={gitUrl}
               onChange={(e) => onGitUrlChange(e.target.value)}
               placeholder={t("services.createPublicUrlPlaceholder")}
@@ -194,31 +212,33 @@ export function ServiceSourcePicker({
           </div>
         </TabsContent>
 
-        <TabsContent value="image" className="mt-3">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="svc-image">
-                {t("services.createImageLabel")}
-              </Label>
-              <Input
-                id="svc-image"
-                value={image}
-                onChange={(e) => onImageChange(e.target.value)}
-                placeholder={t("services.createImagePlaceholder")}
-                autoComplete="off"
+        {image && (
+          <TabsContent value="image" className="mt-3">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor={`${idPrefix}-image`}>
+                  {t("services.createImageLabel")}
+                </Label>
+                <Input
+                  id={`${idPrefix}-image`}
+                  value={image.value}
+                  onChange={(e) => image.onChange(e.target.value)}
+                  placeholder={t("services.createImagePlaceholder")}
+                  autoComplete="off"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("services.createImagePortHint")}
+                </p>
+              </div>
+              <RegistryCredentialSelect
+                id={`${idPrefix}-registry-credential-image`}
+                value={image.registryCredentialId}
+                onValueChange={image.onRegistryCredentialChange}
+                description={t("services.createRegistryCredentialDescription")}
               />
-              <p className="text-xs text-muted-foreground">
-                {t("services.createImagePortHint")}
-              </p>
             </div>
-            <RegistryCredentialSelect
-              id="svc-registry-credential-image"
-              value={registryCredentialId}
-              onValueChange={onRegistryCredentialChange}
-              description={t("services.createRegistryCredentialDescription")}
-            />
-          </div>
-        </TabsContent>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

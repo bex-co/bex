@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Github, GitBranch, Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -21,21 +21,15 @@ import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Badge } from "@/common/components/ui/badge";
-import { Skeleton } from "@/common/components/ui/skeleton";
 import { Combobox } from "@/common/components/ui/combobox";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/common/components/ui/tabs";
-import { cn } from "@/common/lib/utils/utils";
 import { repoNameSlug, gitUrlSlug } from "@/common/lib/utils/slug";
 import { isValidGitUrl } from "@/common/lib/utils/git-url";
-import { useRepos } from "@/features/services/hooks/use-repos";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
-import { useGitConnection } from "@/features/git/hooks/use-git-connection";
+import {
+  ServiceSourcePicker,
+  type SourceTab,
+} from "@/features/services/components/service-source-picker";
 import { useCreateBlueprint } from "@/features/blueprints/hooks/use-create-blueprint";
 import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-preview";
 import { EstimatedPricingPanel } from "@/features/blueprints/components/estimated-pricing-panel";
@@ -49,7 +43,6 @@ export const Route = createFileRoute("/blueprints/new")({
   head: ({ match }) => translatedTitleHead("blueprints.createTitle", match),
 });
 
-type SourceTab = "github" | "git";
 
 /** One named group of planned resources in the pre-create review. */
 function PlanGroup({ label, names }: { label: string; names: string[] }) {
@@ -69,13 +62,10 @@ function PlanGroup({ label, names }: { label: string; names: string[] }) {
 export function NewBlueprintPage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { repos, loading: reposLoading } = useRepos();
-  const { connection, loading: connectionLoading } = useGitConnection();
   const { create, busy } = useCreateBlueprint();
 
   const [tab, setTab] = useState<SourceTab>("github");
   const [selectedRepo, setSelectedRepo] = useState<RepoView | null>(null);
-  const [repoSearch, setRepoSearch] = useState("");
   const [gitUrl, setGitUrl] = useState("");
   const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
@@ -116,16 +106,6 @@ export function NewBlueprintPage() {
     }
   }, [tab, selectedRepo, gitUrl, nameEdited]);
 
-  const filteredRepos = useMemo(
-    () =>
-      repos.filter(
-        (r) =>
-          !repoSearch ||
-          r.fullName.toLowerCase().includes(repoSearch.toLowerCase()),
-      ),
-    [repos, repoSearch],
-  );
-
   const branchOptions = useMemo(
     () => branches.map((b) => ({ value: b, label: b })),
     [branches],
@@ -165,8 +145,6 @@ export function NewBlueprintPage() {
     }
   }
 
-  const gitHubDisconnected =
-    !connectionLoading && connection?.connected !== true;
 
   const plan = preview?.validation?.plan;
   const validationErrors = (preview?.validation?.errors ?? []).filter(
@@ -189,144 +167,21 @@ export function NewBlueprintPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Source picker — same GitHub-integration pattern as services.new */}
-              <div className="space-y-3">
-                <Label>{t("blueprints.createSourceTitle")}</Label>
-                <Tabs
-                  value={tab}
-                  onValueChange={(v) => {
-                    setTab(v as SourceTab);
-                    setSelectedRepo(null);
-                    setBranch("");
-                  }}
-                >
-                  <TabsList className="grid h-auto w-full grid-cols-2">
-                    <TabsTrigger
-                      value="github"
-                      className="min-w-0 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm"
-                    >
-                      <Github className="hidden size-4 sm:block" />
-                      {t("services.createTabGitHub")}
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="git"
-                      className="min-w-0 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm"
-                    >
-                      <GitBranch className="hidden size-4 sm:block" />
-                      {t("services.createTabPublicGit")}
-                    </TabsTrigger>
-                  </TabsList>
+              <ServiceSourcePicker
+                titleKey="blueprints.createSourceTitle"
+                idPrefix="bp"
+                tab={tab}
+                onTabChange={(next) => {
+                  setTab(next);
+                  setSelectedRepo(null);
+                  setBranch("");
+                }}
+                selectedRepo={selectedRepo}
+                onSelectRepo={setSelectedRepo}
+                gitUrl={gitUrl}
+                onGitUrlChange={setGitUrl}
+              />
 
-                  {/* GitHub tab */}
-                  <TabsContent value="github" className="mt-3">
-                    {connectionLoading ? (
-                      <Skeleton className="h-24 w-full" />
-                    ) : gitHubDisconnected ? (
-                      <div className="flex flex-col items-center gap-3 rounded-lg border p-6 text-center">
-                        <Github className="size-8 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">
-                            {t("services.createGitConnectPromptTitle")}
-                          </p>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {t("services.createGitConnectPromptBody")}
-                          </p>
-                        </div>
-                        <Button asChild>
-                          <a
-                            href={connection?.installUrl ?? ""}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {t("services.createGitConnectButton")}
-                          </a>
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Input
-                          placeholder={t(
-                            "services.createRepoSearchPlaceholder",
-                          )}
-                          value={repoSearch}
-                          onChange={(e) => setRepoSearch(e.target.value)}
-                          aria-label={t("services.createRepoSearchPlaceholder")}
-                        />
-                        <div className="max-h-64 overflow-y-auto rounded-md border divide-y">
-                          {reposLoading ? (
-                            Array.from({ length: 3 }).map((_, i) => (
-                              <div
-                                key={i}
-                                className="flex items-center gap-3 p-3"
-                              >
-                                <Skeleton className="h-4 w-full" />
-                              </div>
-                            ))
-                          ) : filteredRepos.length === 0 ? (
-                            <div className="p-6 text-center text-sm text-muted-foreground">
-                              {repoSearch
-                                ? t("services.createRepoNoMatch")
-                                : t("services.createRepoEmpty")}
-                            </div>
-                          ) : (
-                            filteredRepos.map((r) => (
-                              <button
-                                key={r.id}
-                                type="button"
-                                onClick={() => setSelectedRepo(r)}
-                                className={cn(
-                                  "flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted",
-                                  selectedRepo?.id === r.id &&
-                                    "bg-primary/5 hover:bg-primary/10",
-                                )}
-                              >
-                                <div className="flex min-w-0 items-center gap-2">
-                                  <Github className="size-4 shrink-0 text-muted-foreground" />
-                                  <span className="truncate text-sm font-medium">
-                                    {r.fullName}
-                                  </span>
-                                  {r.private && (
-                                    <Badge
-                                      variant="secondary"
-                                      className="shrink-0 text-xs"
-                                    >
-                                      {t("services.createRepoPrivateBadge")}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <span className="ml-3 shrink-0 text-xs text-muted-foreground">
-                                  {r.defaultBranch}
-                                </span>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  {/* Public Git URL tab */}
-                  <TabsContent value="git" className="mt-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="bp-git-url">
-                        {t("services.createPublicUrlLabel")}
-                      </Label>
-                      <Input
-                        id="bp-git-url"
-                        value={gitUrl}
-                        onChange={(e) => setGitUrl(e.target.value)}
-                        placeholder={t("services.createPublicUrlPlaceholder")}
-                        autoComplete="off"
-                      />
-                      {gitUrl && !isValidGitUrl(gitUrl) ? (
-                        <p className="text-sm text-destructive">
-                          {t("services.createPublicUrlError")}
-                        </p>
-                      ) : null}
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
 
               {/* Settings */}
               <div className="space-y-4">

@@ -783,6 +783,32 @@ function SensitiveViewItem({
   );
 }
 
+/** A row staged for deletion on save, with the Undo affordance that reverts it. */
+function StagedDeleteRow({
+  label,
+  onUndo,
+}: {
+  // Nullable: a row staged for delete before its server name is known renders
+  // an empty label rather than crashing.
+  label: string | null;
+  onUndo: () => void;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
+      <code className="min-w-0 break-all text-sm line-through opacity-60">
+        {label}
+      </code>
+      <div className="flex items-center gap-2">
+        <Badge variant="outline">{t("services.environmentStagedDelete")}</Badge>
+        <Button size="sm" variant="ghost" onClick={onUndo}>
+          <Undo2 /> {t("services.environmentUndo")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function EnvDraftItem({
   row,
   error,
@@ -795,23 +821,10 @@ function EnvDraftItem({
   const { t } = useTranslations();
   if (row.deleted) {
     return (
-      <div className="flex min-w-0 items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
-        <code className="min-w-0 break-all text-sm line-through opacity-60">
-          {row.originalKey}
-        </code>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline">
-            {t("services.environmentStagedDelete")}
-          </Badge>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => onChange({ deleted: false })}
-          >
-            <Undo2 /> {t("services.environmentUndo")}
-          </Button>
-        </div>
-      </div>
+      <StagedDeleteRow
+        label={row.originalKey}
+        onUndo={() => onChange({ deleted: false })}
+      />
     );
   }
   return (
@@ -874,23 +887,10 @@ function FileDraftItem({
   const { t } = useTranslations();
   if (row.deleted) {
     return (
-      <div className="flex min-w-0 items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
-        <code className="min-w-0 break-all text-sm line-through opacity-60">
-          {row.originalName}
-        </code>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline">
-            {t("services.environmentStagedDelete")}
-          </Badge>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => onChange({ deleted: false })}
-          >
-            <Undo2 /> {t("services.environmentUndo")}
-          </Button>
-        </div>
-      </div>
+      <StagedDeleteRow
+        label={row.originalName}
+        onUndo={() => onChange({ deleted: false })}
+      />
     );
   }
   return (

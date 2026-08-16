@@ -60,30 +60,38 @@ func mcpWorkspaceMiddleware(base *core.Base) mcp.Middleware {
 				}
 				return toolsWithWorkspaceID(listed), nil
 			case "tools/call":
-				call, ok := req.(*mcp.CallToolRequest)
-				if !ok || call.Params == nil {
-					return next(ctx, method, req)
-				}
-				if _, callerScoped := mcpCallerScopedTools[call.Params.Name]; callerScoped {
-					return next(ctx, method, req)
-				}
-
-				resolved, workspaceID, err := takeMCPWorkspaceID(call)
-				if err != nil {
-					return mcpCallError(err), nil
-				}
-				if workspaceID != "" {
-					ctx = core.WithWorkspace(ctx, workspaceID)
-					if err := base.ValidateNamedWorkspace(ctx); err != nil {
-						return mcpCallError(fmt.Errorf("cannot access workspace %s: %w", workspaceID, err)), nil
-					}
-				}
-				return next(ctx, method, resolved)
+				return mcpBindCallWorkspace(ctx, base, method, req, next)
 			default:
 				return next(ctx, method, req)
 			}
 		}
 	}
+}
+
+// mcpBindCallWorkspace binds a tool call's explicit workspaceId onto the context
+// after checking the caller may act in it, and strips the argument before the
+// tool sees it. A caller-scoped tool (one that answers about the caller rather
+// than a workspace) passes straight through, as does any request shape that
+// isn't a tool call.
+func mcpBindCallWorkspace(ctx context.Context, base *core.Base, method string, req mcp.Request, next mcp.MethodHandler) (mcp.Result, error) {
+	call, ok := req.(*mcp.CallToolRequest)
+	if !ok || call.Params == nil {
+		return next(ctx, method, req)
+	}
+	if _, callerScoped := mcpCallerScopedTools[call.Params.Name]; callerScoped {
+		return next(ctx, method, req)
+	}
+	resolved, workspaceID, err := takeMCPWorkspaceID(call)
+	if err != nil {
+		return mcpCallError(err), nil
+	}
+	if workspaceID != "" {
+		ctx = core.WithWorkspace(ctx, workspaceID)
+		if err := base.ValidateNamedWorkspace(ctx); err != nil {
+			return mcpCallError(fmt.Errorf("cannot access workspace %s: %w", workspaceID, err)), nil
+		}
+	}
+	return next(ctx, method, resolved)
 }
 
 func toolsWithWorkspaceID(in *mcp.ListToolsResult) *mcp.ListToolsResult {

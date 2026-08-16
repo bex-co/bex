@@ -32,6 +32,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -99,6 +100,11 @@ type Broker struct {
 	// which fixes every credential-bearing request to HTTPS github.com.
 	UpstreamOrigin string
 	HTTP           *http.Client
+
+	// clientOnce/client memoize the default upstream client so its connection
+	// pool is reused across requests (see httpClient).
+	clientOnce sync.Once
+	client     *http.Client
 }
 
 func (b *Broker) limiter() *sshgateway.SessionLimiter {
@@ -329,29 +335,26 @@ func (b *Broker) upstreamURL(repository, service, query string) (string, error) 
 	return parsed.String(), nil
 }
 
+// gitResponseHeaderTimeout bounds time-to-first-response-header for the
+// upstream Git hop; the pack body itself is deliberately unbounded (see
+// sshgateway.NewUpstreamClient).
+const gitResponseHeaderTimeout = 30 * time.Second
+
 func (b *Broker) httpClient() *http.Client {
-	// A total http.Client.Timeout is WRONG for this proxy: it bounds the whole
-	// exchange INCLUDING streaming the response body, so a full `git clone` of a
-	// large repository whose upload-pack legitimately streams for longer than the
-	// budget is truncated mid-transfer ("fatal: early EOF" / "unexpected disconnect
-	// while reading sideband packet"). Bound the parts that guard against a hung
-	// upstream instead — dial, TLS handshake, and time-to-first-response-header —
-	// while letting a healthy pack stream to completion. The request already
-	// carries the sandbox request's context, so the overall lifetime is still
-	// bounded (a disconnected sandbox cancels the upstream fetch).
-	client := http.Client{
-		Transport: &http.Transport{
-			DialContext:           (&net.Dialer{Timeout: 15 * time.Second}).DialContext,
-			TLSHandshakeTimeout:   15 * time.Second,
-			ResponseHeaderTimeout: 30 * time.Second,
-			IdleConnTimeout:       90 * time.Second,
-		},
-	}
+	// An injected client is copied so the no-follow policy is forced even on a
+	// caller-supplied transport — a redirect would replay the injected GitHub
+	// token to whatever host the upstream names.
 	if b.HTTP != nil {
-		client = *b.HTTP
+		client := *b.HTTP
+		client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+		return &client
 	}
-	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	return &client
+	// Built once so the connection pool survives across requests: a per-request
+	// client re-dials and re-handshakes TLS to the forge on every clone/push.
+	b.clientOnce.Do(func() {
+		b.client = sshgateway.NewUpstreamClient(gitResponseHeaderTimeout)
+	})
+	return b.client
 }
 
 func (b *Broker) now() time.Time {

@@ -287,57 +287,66 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 // WebSocket. It returns true when the shell ran to completion (any exit code),
 // false when it could not start or the context ended. The terminal always
 // receives an exit or error control frame.
+// pumpBrowserInput forwards the browser's frames to the shell: binary frames are
+// stdin bytes, text frames are resize control messages. Any read error ends the
+// exec stream via cancel — that is how a closed browser tab tears the session
+// down. Each frame also re-arms the read deadline the pong handler maintains, so
+// a live session is never reaped as silent.
+func pumpBrowserInput(ws *wsConn, pw *io.PipeWriter, sizes *sshgateway.SizeQueue, cancel context.CancelFunc) {
+	defer func() { _ = pw.Close() }()
+	ws.conn.SetReadLimit(wsReadLimit)
+	_ = ws.conn.SetReadDeadline(time.Now().Add(wsPongWait))
+	ws.conn.SetPongHandler(func(string) error {
+		return ws.conn.SetReadDeadline(time.Now().Add(wsPongWait))
+	})
+	for {
+		mt, data, err := ws.conn.ReadMessage()
+		if err != nil {
+			cancel()
+			return
+		}
+		_ = ws.conn.SetReadDeadline(time.Now().Add(wsPongWait))
+		switch mt {
+		case websocket.BinaryMessage:
+			if _, err := pw.Write(data); err != nil {
+				return
+			}
+		case websocket.TextMessage:
+			var ctrl clientControl
+			if json.Unmarshal(data, &ctrl) == nil && ctrl.Type == "resize" && sshgateway.ValidTerminalSize(uint32(ctrl.Cols), uint32(ctrl.Rows)) {
+				sizes.Push(remotecommand.TerminalSize{Width: ctrl.Cols, Height: ctrl.Rows})
+			}
+		}
+	}
+}
+
+// pumpKeepalive pings the browser on a timer so a silently dead connection is
+// detected and the session closed rather than pinned open.
+func pumpKeepalive(ctx context.Context, ws *wsConn, cancel context.CancelFunc) {
+	ticker := time.NewTicker(wsPingPeriod)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := ws.ping(); err != nil {
+				cancel()
+				return
+			}
+		}
+	}
+}
+
 func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, executor sshgateway.Executor, target apps.SSHInstanceTarget) bool {
 	pr, pw := io.Pipe()
 	sizes := sshgateway.NewSizeQueue(ctx, &remotecommand.TerminalSize{Width: 80, Height: 24})
 
-	// Reader goroutine: browser → stdin / resize. Cancelling ends the exec stream.
-	go func() {
-		defer func() { _ = pw.Close() }()
-		ws.conn.SetReadLimit(wsReadLimit)
-		_ = ws.conn.SetReadDeadline(time.Now().Add(wsPongWait))
-		ws.conn.SetPongHandler(func(string) error {
-			return ws.conn.SetReadDeadline(time.Now().Add(wsPongWait))
-		})
-		for {
-			mt, data, err := ws.conn.ReadMessage()
-			if err != nil {
-				cancel()
-				return
-			}
-			_ = ws.conn.SetReadDeadline(time.Now().Add(wsPongWait))
-			switch mt {
-			case websocket.BinaryMessage:
-				if _, err := pw.Write(data); err != nil {
-					return
-				}
-			case websocket.TextMessage:
-				var ctrl clientControl
-				if json.Unmarshal(data, &ctrl) == nil && ctrl.Type == "resize" && sshgateway.ValidTerminalSize(uint32(ctrl.Cols), uint32(ctrl.Rows)) {
-					sizes.Push(remotecommand.TerminalSize{Width: ctrl.Cols, Height: ctrl.Rows})
-				}
-			}
-		}
-	}()
+	go pumpBrowserInput(ws, pw, sizes, cancel)
 
-	// Keepalive pings so a silent connection is detected and closed.
 	pingCtx, stopPing := context.WithCancel(ctx)
 	defer stopPing()
-	go func() {
-		ticker := time.NewTicker(wsPingPeriod)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-pingCtx.Done():
-				return
-			case <-ticker.C:
-				if err := ws.ping(); err != nil {
-					cancel()
-					return
-				}
-			}
-		}
-	}()
+	go pumpKeepalive(pingCtx, ws, cancel)
 
 	// One WebSocket maps to one interactive /bin/sh with a TTY. stderr is nil for
 	// a TTY (Kubernetes merges it into stdout), matching the native SSH shell path.
