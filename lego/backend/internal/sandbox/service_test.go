@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -163,7 +164,7 @@ func TestAgentSessionPolicyPrecedesSandboxCreateAndTransitionUsesDurableAllowlis
 	})
 	svc.SessionEgress = eg
 	lifecycle := NewAgentSessionLifecycle(svc)
-	_, err := lifecycle.CreateAgentSessionSandbox(callerCtx(), "tea-a", "node", "ags-one", "bex-co/example", "bex-agent/session-test", "https://models.example.com/v1", "", []string{"docs.example.com"}, nil)
+	_, err := lifecycle.CreateAgentSessionSandbox(callerCtx(), "tea-a", "node", "ags-one", "bex-co/example", "bex-agent/session-test", "https://models.example.com/v1", agentsession.ModelKeyPlaceholder("ags-one"), []string{"docs.example.com"}, nil)
 	if err != nil {
 		t.Fatalf("CreateAgentSessionSandbox: %v", err)
 	}
@@ -192,7 +193,7 @@ func TestAgentSessionCreateRollsPolicyBackOnSandboxFailure(t *testing.T) {
 		http.Error(w, "boom", http.StatusBadGateway)
 	})
 	svc.SessionEgress = eg
-	_, err := NewAgentSessionLifecycle(svc).CreateAgentSessionSandbox(callerCtx(), "tea-a", "node", "ags-one", "bex-co/example", "bex-agent/session-test", "https://models.example.com/v1", "", nil, nil)
+	_, err := NewAgentSessionLifecycle(svc).CreateAgentSessionSandbox(callerCtx(), "tea-a", "node", "ags-one", "bex-co/example", "bex-agent/session-test", "https://models.example.com/v1", agentsession.ModelKeyPlaceholder("ags-one"), nil, nil)
 	if err == nil {
 		t.Fatal("CreateAgentSessionSandbox succeeded against failed upstream")
 	}

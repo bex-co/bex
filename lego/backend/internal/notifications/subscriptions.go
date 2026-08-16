@@ -18,6 +18,7 @@ package notifications
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -86,7 +87,18 @@ func (s *Service) RegisterDeviceSubscription(ctx context.Context, in RegisterDev
 		Provider: in.Provider, Platform: in.Platform, Token: in.Token,
 	})
 	if err != nil {
-		return DeviceSubscriptionView{}, err
+		switch {
+		case errors.Is(err, store.ErrPushDeviceSubjectLimit):
+			return DeviceSubscriptionView{}, core.NewConflictError(
+				"PUSH_DEVICE_SUBJECT_LIMIT",
+				fmt.Sprintf("a member may register at most %d active push devices", store.MaxActivePushDevicesPerSubject), nil)
+		case errors.Is(err, store.ErrPushDeviceWorkspaceLimit):
+			return DeviceSubscriptionView{}, core.NewConflictError(
+				"PUSH_DEVICE_WORKSPACE_LIMIT",
+				fmt.Sprintf("a workspace may register at most %d active push devices", store.MaxActivePushDevicesPerWorkspace), nil)
+		default:
+			return DeviceSubscriptionView{}, store.MapError(err)
+		}
 	}
 	s.recordDeviceAudit(ctx, tenantID, auditRegisterDevice, in.DeviceID)
 	return deviceSubscriptionView(row), nil

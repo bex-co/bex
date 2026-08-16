@@ -71,6 +71,15 @@ func TestAgentSelectorIsClosedAndResolvesOnlyAbsoluteImagePaths(t *testing.T) {
 	}
 }
 
+func TestAgentProfileRejectsProviderEndpointOverride(t *testing.T) {
+	if endpoint, _, err := createEgress(AgentConfig{Agent: "claude"}, nil); err != nil || endpoint != "https://api.anthropic.com/v1" {
+		t.Fatalf("registered claude endpoint = %q, err=%v", endpoint, err)
+	}
+	if _, _, err := createEgress(AgentConfig{Agent: "claude", ModelEndpoint: "https://models.attacker.example/v1"}, nil); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("custom provider endpoint error = %v, want bad request", err)
+	}
+}
+
 func (f *fakeStore) AgentSessionSSHActivity(_ context.Context, resourceID string, freshSince time.Time) (bool, *time.Time, error) {
 	started, ok := f.openSSH[resourceID]
 	hasFreshOpen := ok && !started.Before(freshSince)
@@ -556,6 +565,7 @@ func fixture() (*Service, *fakeStore, *fakeFGA, *fakeLifecycle) {
 	svc := &Service{
 		Base:  &core.Base{Authz: fga, Workspace: resolver{fga.members}, Clock: func() time.Time { return st.now }},
 		Store: st, Tuples: fga, Sandbox: lifecycle, TicketSecret: []byte("session-secret"), GatewayURL: "wss://ssh.bex.co/agent-sessions",
+		ModelProxyURL: "http://bex-ssh-gateway.bex-system.svc.cluster.local:8084",
 		// Run the background provisioning half synchronously so create/steer/resume
 		// side effects (sandbox lifecycle, final phase) are settled by the time the
 		// verb returns — deterministic asserts without sleeps (w2/m64).
@@ -1045,13 +1055,7 @@ func TestAttachTicketMintsWithoutChangingLifecycle(t *testing.T) {
 	}
 }
 
-// TestCreateInjectsWorkspaceScopedModelKey pins ADR047 D7: a workspace's BYO
-// model key is fetched from a workspace-scoped OpenBao path at session-create
-// time and threaded through to the sandbox lifecycle — and a DIFFERENT
-// workspace's key at the same logical path never leaks across, proving the
-// path really is workspace-scoped (internal/sandbox's ModelAPIKeyEnvVar
-// convention, service.go's modelKeySecretPath).
-func TestCreateInjectsWorkspaceScopedModelKey(t *testing.T) {
+func TestCreateKeepsWorkspaceModelKeyBehindProxy(t *testing.T) {
 	svc, _, _, lifecycle := fixture()
 	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{
 		modelKeySecretPath("tea-a"): {sandbox.ModelAPIKeyEnvVar: "sk-tea-a-secret"},
@@ -1060,36 +1064,32 @@ func TestCreateInjectsWorkspaceScopedModelKey(t *testing.T) {
 	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
 		t.Fatal(err)
 	}
-	if lifecycle.modelAPIKey != "sk-tea-a-secret" {
-		t.Fatalf("modelAPIKey = %q, want tea-a's own key (not tea-b's, not empty)", lifecycle.modelAPIKey)
+	if lifecycle.modelAPIKey == "sk-tea-a-secret" || lifecycle.modelAPIKey == "sk-tea-b-secret" || !strings.HasPrefix(lifecycle.modelAPIKey, "bex-model-proxy-placeholder-") {
+		t.Fatalf("modelAPIKey = %q, want only a session-bound proxy placeholder", lifecycle.modelAPIKey)
 	}
 }
 
-// TestCreateWithNoProvisionedModelKeyStartsAnyway pins the common case: most
-// workspaces have not provisioned a BYO key yet, and that must never block
-// session creation — only a genuine store error should.
+// The proxy fetches credentials lazily, so provisioning state does not block
+// sandbox creation.
 func TestCreateWithNoProvisionedModelKeyStartsAnyway(t *testing.T) {
 	svc, _, _, lifecycle := fixture()
 	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{}}
 	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
 		t.Fatal(err)
 	}
-	if lifecycle.modelAPIKey != "" {
-		t.Fatalf("modelAPIKey = %q, want empty (nothing provisioned)", lifecycle.modelAPIKey)
+	if !strings.HasPrefix(lifecycle.modelAPIKey, "bex-model-proxy-placeholder-") {
+		t.Fatalf("modelAPIKey = %q, want proxy placeholder", lifecycle.modelAPIKey)
 	}
 }
 
-// TestCreateFailsClosedOnModelKeyStoreError proves a genuine OpenBao failure
-// refuses the create rather than silently starting a keyless session the
-// agent could never authenticate from.
-func TestCreateFailsClosedOnModelKeyStoreError(t *testing.T) {
+func TestCreateDefersModelKeyStoreErrorsToProxy(t *testing.T) {
 	svc, _, _, lifecycle := fixture()
 	svc.ModelKeys = &fakeModelKeys{err: errors.New("openbao unreachable")}
-	if _, err := svc.Create(caller("alice"), createInput()); !errors.Is(err, core.ErrSecretsUnavailable) {
-		t.Fatalf("create with a broken model-key store = %v, want ErrSecretsUnavailable", err)
+	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+		t.Fatalf("create with a broken model-key store = %v, want deferred lookup", err)
 	}
-	if lifecycle.created != 0 {
-		t.Fatal("sandbox was created despite the model-key store failing")
+	if lifecycle.created != 1 {
+		t.Fatalf("sandbox created = %d, want 1", lifecycle.created)
 	}
 }
 
@@ -1118,22 +1118,36 @@ func TestCreateProxyModeKeepsRealKeyOutOfTheSandbox(t *testing.T) {
 	}
 }
 
-// TestCreateWithoutProxyIsByteIdentical pins ADR062's off-by-default contract:
-// with no ModelProxyURL, the real key rides pod env and NO proxy base URL is
-// injected into the driver env (byte-identical to pre-ADR062).
-func TestCreateWithoutProxyIsByteIdentical(t *testing.T) {
+func TestCreateWithoutProxyFailsClosed(t *testing.T) {
 	svc, _, _, lifecycle := fixture()
+	svc.ModelProxyURL = ""
 	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{
 		modelKeySecretPath("tea-a"): {sandbox.ModelAPIKeyEnvVar: "sk-REAL-tea-a"},
 	}}
-	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
-		t.Fatal(err)
+	if _, err := svc.Create(caller("alice"), createInput()); !errors.Is(err, core.ErrAgentSessionsUnavailable) {
+		t.Fatalf("create without model proxy = %v, want unavailable", err)
 	}
-	if lifecycle.modelAPIKey != "sk-REAL-tea-a" {
-		t.Fatalf("modelAPIKey = %q, want the real key on the pod-env path", lifecycle.modelAPIKey)
+	if lifecycle.created != 0 {
+		t.Fatal("sandbox was created without the credential proxy")
 	}
-	if _, ok := lifecycle.driverEnv["BEX_AGENT_MODEL_PROXY_URL"]; ok {
-		t.Fatal("proxy base URL was injected while the proxy is off")
+}
+
+func TestReadAvailabilityDoesNotDependOnModelProxy(t *testing.T) {
+	svc, _, _, _ := fixture()
+	svc.ModelProxyURL = ""
+	views, err := svc.List(caller("alice"), "tea-a")
+	if err != nil {
+		t.Fatalf("list without model proxy = %v, want stored-session reads available", err)
+	}
+	if len(views) != 0 {
+		t.Fatalf("list without model proxy = %+v, want empty fixture", views)
+	}
+	caps, err := svc.Capabilities(caller("alice"), "tea-a")
+	if err != nil {
+		t.Fatalf("capabilities without model proxy = %v", err)
+	}
+	if caps.Enabled {
+		t.Fatal("capabilities reported agent-session provisioning enabled without the model proxy")
 	}
 }
 

@@ -107,6 +107,22 @@ spec:
               value: ":8082"
             - name: BEX_AGENT_CREDENTIAL_API_URL
               value: http://bex-api.bex-system.svc:8091/v1/agent-session-credentials
+            # Credential-injecting model proxy (ADR062 / security round 10).
+            # Internal-only: sandbox Pods reach :8084 through their exact Cilium
+            # policy; the listener HMAC-mints the workspace key from bex-api and
+            # permits only registered inference operations.
+            - name: BEX_AGENT_MODEL_PROXY_ADDR
+              value: ":8084"
+            - name: BEX_AGENT_MODEL_CREDENTIAL_API_URL
+              value: http://bex-api.bex-system.svc:8091/v1/agent-session-model-credentials
+            - name: BEX_AGENT_MODEL_MAX_CONNS
+              value: "32"
+            - name: BEX_AGENT_MODEL_MAX_CONNS_PER_POD
+              value: "2"
+            - name: BEX_AGENT_MODEL_READ_TIMEOUT
+              value: 2m
+            - name: BEX_AGENT_MODEL_MAX_DURATION
+              value: 2h
             # Agent-session conversation transport (ADR047 D9, w3/m43). A
             # browser-facing plain-HTTP SSE listener Traefik terminates TLS onto:
             # the edge path-routes api.bex.co/v1/agent-sessions/{id}/stream here
@@ -143,6 +159,9 @@ spec:
               protocol: TCP
             - name: agent-attach
               containerPort: 8083
+              protocol: TCP
+            - name: agent-model
+              containerPort: 8084
               protocol: TCP
           readinessProbe:
             httpGet:

@@ -362,9 +362,9 @@ spec:
             - port: "8081"
               protocol: TCP
 ---
-# Agent credential refresh is cluster-internal and sandbox-originated. Network
-# identity is the first gate; the gateway then maps the direct source IP to a Pod
-# and verifies its session/repository/branch label digests before minting.
+# Agent Git/model credential hops are cluster-internal and sandbox-originated.
+# Network identity is the first gate; the gateway then maps the direct source IP
+# to a Pod and verifies its exact session binding before minting.
 apiVersion: cilium.io/v2
 kind: CiliumClusterwideNetworkPolicy
 metadata:
@@ -385,6 +385,8 @@ spec:
         - ports:
             - port: "8082"
               protocol: TCP
+            - port: "8084"
+              protocol: TCP
     - fromEntities:
         - world
         - host
@@ -393,6 +395,8 @@ spec:
         - ports:
             - port: "8082"
               protocol: TCP
+            - port: "8084"
+              protocol: TCP
   ingress:
     - fromEndpoints:
         - matchLabels:
@@ -400,6 +404,8 @@ spec:
       toPorts:
         - ports:
             - port: "8082"
+              protocol: TCP
+            - port: "8084"
               protocol: TCP
 ---
 # A lifecycle-server compromise must not turn its control-plane bearer into an

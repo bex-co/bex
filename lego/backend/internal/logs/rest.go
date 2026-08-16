@@ -257,9 +257,9 @@ func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, q LogQ
 func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 	v := r.URL.Query()
 
-	resources := v["resource"]
-	if len(resources) == 0 {
-		return nil, LogQuery{}, fmt.Errorf("%w: resource is required", core.ErrBadRequest)
+	resources, err := boundedResources(v["resource"])
+	if err != nil {
+		return nil, LogQuery{}, err
 	}
 
 	q := LogQuery{
@@ -291,4 +291,32 @@ func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 	}
 
 	return resources, q, nil
+}
+
+// maxLogResources bounds the per-request authorization + Loki/Kubernetes fan-out
+// of Render's repeatable resource filter. Twenty is deliberately generous for a
+// human dashboard/CLI query while keeping one request's upstream work finite.
+const maxLogResources = 20
+
+// boundedResources rejects oversized raw arrays before doing any upstream work,
+// then de-duplicates in first-seen order. Checking the raw length first matters:
+// repeating one valid resource thousands of times must be refused, not accepted
+// as a cheap-looking one-element set after compaction.
+func boundedResources(resources []string) ([]string, error) {
+	if len(resources) == 0 {
+		return nil, fmt.Errorf("%w: resource is required", core.ErrBadRequest)
+	}
+	if len(resources) > maxLogResources {
+		return nil, fmt.Errorf("%w: resource accepts at most %d entries", core.ErrBadRequest, maxLogResources)
+	}
+	seen := make(map[string]struct{}, len(resources))
+	out := make([]string, 0, len(resources))
+	for _, resource := range resources {
+		if _, ok := seen[resource]; ok {
+			continue
+		}
+		seen[resource] = struct{}{}
+		out = append(out, resource)
+	}
+	return out, nil
 }

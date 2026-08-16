@@ -219,6 +219,11 @@ func main() {
 		modelAPIURL := envOr("BEX_AGENT_MODEL_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalModelMintPath)
 		model.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
 		model.API = &agentsession.ModelClient{URL: modelAPIURL, Secret: []byte(secret)}
+		model.Limits = sshgateway.NewSessionLimiter(
+			intEnv("BEX_AGENT_MODEL_MAX_CONNS", 32),
+			intEnv("BEX_AGENT_MODEL_MAX_CONNS_PER_POD", 2),
+		)
+		model.MaxDuration = durationEnv("BEX_AGENT_MODEL_MAX_DURATION", 2*time.Hour)
 	}
 	// Agent-session conversation transport (ADR047 D9). Shares the web-shell
 	// ticket secret (BEX_SHELL_TICKET_SECRET): bex-api mints agent-session
@@ -314,8 +319,12 @@ func main() {
 	// Started only when BEX_SANDBOX_EXEC_SECRET is set (same gate as the Git proxy).
 	if model.Enabled() {
 		modelMux := http.NewServeMux()
-		modelMux.Handle(agentsession.ModelProxyPath, model.Handler())
-		defer startAuxListener("agent model proxy", "agent model proxy", envOr("BEX_AGENT_MODEL_PROXY_ADDR", ":8084"), modelMux, stop)()
+		modelMux.Handle("POST "+agentsession.ModelProxyPath, model.Handler())
+		defer startAuxListener("agent model proxy", "agent model proxy", envOr("BEX_AGENT_MODEL_PROXY_ADDR", ":8084"), modelMux, stop,
+			func(server *http.Server) {
+				server.ReadTimeout = durationEnv("BEX_AGENT_MODEL_READ_TIMEOUT", 2*time.Minute)
+				server.IdleTimeout = 2 * time.Minute
+			})()
 	}
 	// Agent-session conversation listener (ADR047 D9, w3/m43). Browser-facing via
 	// the platform edge, which path-routes api.bex.co/v1/agent-sessions/{id}/stream

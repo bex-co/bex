@@ -6,7 +6,7 @@
 # all sharing the types module (the CRD contract). Each non-default Deployment
 # overrides command (/api, /activator, /staticserver, /pg-sni-proxy,
 # /ssh-gateway).
-FROM golang:1.25 AS builder
+FROM golang:1.25@sha256:d7ae6dbb143c4eb97788a53a2bfa879cdde91f793c1d44d9f3bc7cb0df2e4e5f AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -39,7 +39,7 @@ RUN cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go
 
 # Use distroless as minimal base image to package the binaries
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+FROM gcr.io/distroless/static:nonroot@sha256:f7f8f729987ad0fdf6b05eeeae94b26e6a0f613bdf46feea7fc40f7bd72953e6
 WORKDIR /
 COPY --from=builder /workspace/manager .
 COPY --from=builder /workspace/bexapi /api

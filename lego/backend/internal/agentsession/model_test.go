@@ -43,9 +43,14 @@ func (fakeModelKeys) Delete(context.Context, string) error                 { ret
 func (fakeModelKeys) List(context.Context, string) ([]string, error)       { return nil, nil }
 
 func modelSession(endpoint string) store.AgentSession {
+	agent := map[string]string{
+		"https://api.anthropic.com/v1":                     "claude",
+		"https://api.openai.com/v1":                        "codex",
+		"https://generativelanguage.googleapis.com/v1beta": "gemini",
+	}[endpoint]
 	return store.AgentSession{
 		ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running",
-		AgentConfig: json.RawMessage(`{"modelEndpoint":"` + endpoint + `"}`),
+		AgentConfig: json.RawMessage(`{"agent":"` + agent + `","modelEndpoint":"` + endpoint + `"}`),
 	}
 }
 
@@ -162,6 +167,15 @@ func TestModelMinterRejectsSSRFEndpoint(t *testing.T) {
 		if _, err := m.Mint(context.Background(), validModelRequest()); err == nil {
 			t.Fatalf("endpoint %q was accepted, want rejected", endpoint)
 		}
+	}
+}
+
+func TestModelMinterRejectsUnregisteredProviderOverride(t *testing.T) {
+	session := modelSession("https://api.anthropic.com/v1")
+	session.AgentConfig = json.RawMessage(`{"agent":"claude","modelEndpoint":"https://api.openai.com/v1"}`)
+	m := &ModelMinter{Keys: modelKeysFor("sk-ant-api03-xyz"), Sessions: fakeSessions{session: session}, Audit: &auditRecorder{}}
+	if _, err := m.Mint(context.Background(), validModelRequest()); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("cross-provider endpoint override error = %v, want bad request", err)
 	}
 }
 

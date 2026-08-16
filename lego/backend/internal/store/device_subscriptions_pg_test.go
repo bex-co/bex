@@ -19,6 +19,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -155,5 +156,43 @@ func TestPGStoreDevicePushSubscriptions(t *testing.T) {
 	}
 	if count, err = st.RevokeAllDevicePushSubscriptions(ctx, tenant.ID, bob); err != nil || count != 0 {
 		t.Fatalf("idempotent logout revoke count=%d err=%v", count, err)
+	}
+
+	// Nine registrations plus two concurrent final attempts may create only ten
+	// active devices. The workspace advisory lock serializes the count-and-write
+	// boundary, so exactly one racer is refused instead of both slipping through.
+	for i := 0; i < MaxActivePushDevicesPerSubject-1; i++ {
+		if _, err := st.UpsertDevicePushSubscription(ctx, DevicePushSubscription{
+			TenantID: tenant.ID, Subject: bob, DeviceID: fmt.Sprintf("quota-%d", i),
+			Provider: "expo", Platform: "android", Token: fmt.Sprintf("ExponentPushToken[quota-%s-%d]", stamp, i),
+		}); err != nil {
+			t.Fatalf("seed quota device %d: %v", i, err)
+		}
+	}
+	start = make(chan struct{})
+	errs = make([]error, 2)
+	for i := range errs {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			<-start
+			_, errs[i] = st.UpsertDevicePushSubscription(ctx, DevicePushSubscription{
+				TenantID: tenant.ID, Subject: bob, DeviceID: fmt.Sprintf("quota-race-%d", i),
+				Provider: "expo", Platform: "android", Token: fmt.Sprintf("ExponentPushToken[quota-race-%s-%d]", stamp, i),
+			})
+		}(i)
+	}
+	close(start)
+	wg.Wait()
+	refused := 0
+	for _, err := range errs {
+		if errors.Is(err, ErrPushDeviceSubjectLimit) {
+			refused++
+		} else if err != nil {
+			t.Fatalf("quota race unexpected error: %v", err)
+		}
+	}
+	if refused != 1 {
+		t.Fatalf("quota race errors = %v, want exactly one subject-limit refusal", errs)
 	}
 }

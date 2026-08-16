@@ -416,6 +416,9 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	if workspaceID == "" || sessionID == "" {
 		return Sandbox{}, fmt.Errorf("%w: workspace and agent session id are required", core.ErrBadRequest)
 	}
+	if !agentsession.IsModelKeyPlaceholder(modelAPIKey, sessionID) {
+		return Sandbox{}, fmt.Errorf("%w: agent session model-proxy placeholder is required", core.ErrAgentSessionsUnavailable)
+	}
 	if template == "" {
 		template = "agent"
 	}
@@ -444,15 +447,10 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	// (EnterAgentSessionPhase), which already holds them, so nothing needs to
 	// round-trip through a label.
 	// driverEnv carries the non-secret run env (prompt, agent, branch, repo,
-	// delivery toggle — ADR047 D4). The BYO model key (ADR047 D7) is pod-spec env
-	// too, but is never echoed back by OpenSandbox's create response nor stamped
-	// into bindings/metadata — metadata lands in status reads and audit, which
-	// must never carry a secret. Resume needs no re-injection: OpenSandbox resumes
-	// the SAME pod (its k8s-level env persists independent of the rootfs snapshot
-	// the pre-snapshot hook scrubs), so create-time injection covers the whole
-	// session lifetime.
-	// Keep env nil (omitted from the create request) when neither driver env nor
-	// a model key is present, so the no-config path stays byte-identical.
+	// delivery toggle — ADR047 D4). modelAPIKey is required to be the exact
+	// session-bound proxy placeholder above; the reusable BYO key never enters a
+	// sandbox Pod spec. Metadata lands in status reads and audit, so neither value
+	// is stamped there.
 	var env map[string]string
 	if len(driverEnv) > 0 || modelAPIKey != "" {
 		env = map[string]string{}

@@ -267,11 +267,10 @@ type Deps struct {
 	AgentSessionTicketSecret []byte
 	AgentSessionGatewayURL   string
 	AgentGitProxyURL         string
-	// AgentModelProxyURL, when set (BEX_AGENT_MODEL_PROXY_URL), is the internal
-	// gateway model-proxy origin (ADR062). Set ⇒ sessions receive a placeholder
-	// model credential + this per-session base URL instead of the real BYO key, and
-	// the session egress policy admits the proxy in place of the vendor host. Empty
-	// ⇒ the real key rides pod env (byte-identical to pre-ADR062).
+	// AgentModelProxyURL (BEX_AGENT_MODEL_PROXY_URL) is the mandatory internal
+	// gateway model-proxy origin (ADR062/ADR064). Sessions receive a placeholder
+	// model credential + this per-session base URL, and the session egress policy
+	// admits the proxy in place of the vendor host. Empty disables session mutation.
 	AgentModelProxyURL string
 	// AgentSandboxIdleTTL is the Active-tier idle grace (ADR059 D2 / w2/m67): a
 	// finished session's sandbox lives until it has been idle this long. Zero ⇒
@@ -934,7 +933,10 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 	// buffered, so an unauthenticated or throttled caller is rejected without the
 	// server reading up to MaxBodyBytes (codex F11).
 	mux.Handle("/v1/", auth(rl(bodyLimit(rest))))
-	mux.Handle("/graphql", auth(rl(bodyLimit(s.graphqlHandler()))))
+	// GraphQL is body-bearing JSON and supports POST only. A method-qualified
+	// pattern makes ServeMux return 405 before auth/body decoding for GET (whose
+	// generic body limiter intentionally skips bodies).
+	mux.Handle("POST /graphql", auth(rl(bodyLimit(s.graphqlHandler()))))
 	mux.Handle("/mcp", auth(rl(bodyLimit(s.mcpHTTPHandler()))))
 
 	// RFC 9728 protected-resource metadata (w4/m9): open by design — it's how an

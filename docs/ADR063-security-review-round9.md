@@ -36,7 +36,7 @@ Fixed at both layers (`lego/agent-image/driver/src/credentials.ts`, `delivery.ts
 
 Tests (`test/delivery.test.ts`): a base64-encoded credential in a text file and the raw key between NUL bytes in a binary blob both refuse the push and leave the remote untouched; a clean branch with the full needle set active pushes unchanged.
 
-**Residual:** pattern DLP remains defense-in-depth. The finding's full remediation — keep reusable provider keys out of the agent environment entirely and route model traffic through a proxy minting per-session credentials — landed the same day as [ADR062-sandbox-credential-vault.md](ADR062-sandbox-credential-vault.md) phase 1 (the gateway's credential-injecting model proxy, env-gated by `BEX_AGENT_MODEL_PROXY_URL`; unset ⇒ the real key still rides pod env). This round's DLP hardening covers exactly that unset path and stays as defense in depth behind the proxy.
+**Residual:** pattern DLP remains defense-in-depth. The finding's full remediation landed in [ADR062-sandbox-credential-vault.md](ADR062-sandbox-credential-vault.md); [ADR064](ADR064-security-review-round10.md) subsequently made the proxy mandatory and removed the direct-key path entirely.
 
 ## 2 — Routine operator `jobs:create` (high): fixed in place
 

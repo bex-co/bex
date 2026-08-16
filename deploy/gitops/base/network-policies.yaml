@@ -12,6 +12,144 @@
 # Tenant execution runs only in the dedicated bex-build namespace.
 
 ---
+# auth: Hydra, Kratos, OpenFGA, and their CNPG databases. The admin APIs have no
+# ingress, but lack application-layer authentication; make the network boundary
+# explicit instead of trusting that every cluster-internal workload is benign.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-auth-ingress
+  namespace: auth
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    # Identity components and their migration Jobs communicate internally.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: auth
+
+---
+# Only bex-api administers/introspects identities and authorization; the SSH
+# gateway needs OpenFGA only. Ports are the pods' target ports (Kratos public /
+# admin are 4433/4434 even though their Services expose 80).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-bex-auth-clients
+  namespace: auth
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bex-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: bex-api
+      ports:
+        - { protocol: TCP, port: 4433 }
+        - { protocol: TCP, port: 4434 }
+        - { protocol: TCP, port: 4445 }
+        - { protocol: TCP, port: 8080 }
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bex-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: bex-ssh-gateway
+      ports:
+        - { protocol: TCP, port: 8080 }
+    # Dashboard SSR talks to Kratos public; its OAuth consent/device routes talk
+    # to Hydra admin. It has no path to either product's admin sibling.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: dashboard
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: bex-dashboard
+      ports:
+        - { protocol: TCP, port: 4433 }
+        - { protocol: TCP, port: 4445 }
+
+---
+# Public Hydra/Kratos traffic reaches only their public container ports through
+# Traefik. Neither admin port is admitted from the edge namespace.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-auth-public-edge
+  namespace: auth
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: traefik
+      ports:
+        - { protocol: TCP, port: 4433 }
+        - { protocol: TCP, port: 4444 }
+
+---
+# CNPG observes the three auth database instance managers on 8000.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-cnpg-auth-db-management
+  namespace: auth
+spec:
+  podSelector:
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: In
+        values: [hydra-db, kratos-db, openfga-db]
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cnpg-system
+      ports:
+        - protocol: TCP
+          port: 8000
+
+---
+# Prometheus scrapes only the CNPG SQL-exporter port used for platform backup
+# freshness. This does not expose Postgres (5432) or any identity admin API.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-auth-db-metrics
+  namespace: auth
+spec:
+  podSelector:
+    matchExpressions:
+      - key: cnpg.io/cluster
+        operator: In
+        values: [hydra-db, kratos-db, openfga-db]
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9187
+
+---
 # bex-system: operator + bex-api
 # Allowed: bex-system itself (internal), traefik (HTTP to bex-api :8090),
 #   and monitoring (Prometheus scrape of bex-api metrics). The narrower policy

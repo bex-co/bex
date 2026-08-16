@@ -4,8 +4,9 @@
 # brings its own ingress/gateway; this node only needs to host CAPI controllers.
 runcmd:
   - PUBIP=$(curl -s --max-time 5 http://169.254.169.254/hetzner/v1/metadata/public-ipv4)
-  # INSTALL_K3S_VERSION pins the k3s binary to an immutable release instead of
-  # the mutable "stable" channel (codex-security #27). The installer script itself
-  # (get.k3s.io) is still fetched over HTTPS; pinning the version makes the
-  # installed binary deterministic.
-  - curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=${k3s_version} sh -s - --disable traefik --write-kubeconfig-mode 644 --tls-san "$PUBIP"
+  # Fetch install.sh from the exact release tag, verify its repository-pinned
+  # digest, and only then execute it as root. INSTALL_K3S_VERSION independently
+  # pins the binary the verified installer downloads.
+  - curl -fsSL -o /run/k3s-install.sh "https://raw.githubusercontent.com/k3s-io/k3s/${k3s_version}/install.sh"
+  - printf '%s  %s\n' '${k3s_install_sha256}' /run/k3s-install.sh | sha256sum --check --strict
+  - INSTALL_K3S_VERSION=${k3s_version} sh /run/k3s-install.sh --disable traefik --write-kubeconfig-mode 644 --tls-san "$PUBIP"

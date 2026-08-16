@@ -51,7 +51,13 @@ const (
 	maxExtraDestinations = 32
 )
 
-var ciliumPolicyGVK = schema.GroupVersionKind{Group: "cilium.io", Version: "v2", Kind: "CiliumNetworkPolicy"}
+var (
+	ciliumPolicyGVK = schema.GroupVersionKind{Group: "cilium.io", Version: "v2", Kind: "CiliumNetworkPolicy"}
+	// Registered model-provider API hosts are never tenant widening destinations:
+	// model traffic must traverse the credential proxy even when the selected
+	// profile uses a different provider.
+	modelProviderDomains = []string{"api.anthropic.com", "api.openai.com", "generativelanguage.googleapis.com"}
+)
 
 // Phase is the network posture of an agent session. A phase transition is
 // intentionally one-way: setup can become agent, but agent can never reopen
@@ -72,8 +78,9 @@ type Config struct {
 	// ModelProxyPort, when non-zero (BEX_AGENT_MODEL_PROXY_URL wired), turns on the
 	// ADR062 narrowing: the tenant pod's egress no longer admits the vendor model
 	// host directly (the agent reaches it only through the gateway proxy), and a
-	// gateway rule for this port is added instead. 0 ⇒ direct vendor egress
-	// (byte-identical to pre-ADR062).
+	// gateway rule for this port is added instead. 0 retains the legacy policy
+	// renderer for tests/migrations, but the agent-session service refuses new
+	// mutation/rehydration work when the proxy is absent (ADR064).
 	ModelProxyPort uint16
 }
 
@@ -126,6 +133,8 @@ func ExtraDestinations(entries []string) ([]string, error) {
 			return nil, invalidAllowlist("whitespace", raw, "destination must not contain surrounding whitespace")
 		case strings.ContainsAny(raw, ":/*?#@"):
 			return nil, invalidAllowlist("not_a_hostname", raw, "use an exact hostname without a scheme, port, path, query, or wildcard")
+		case slices.Contains(modelProviderDomains, host):
+			return nil, invalidAllowlist("already_baseline", raw, "model-provider APIs are reachable only through the credential proxy")
 		case net.ParseIP(host) != nil:
 			return nil, invalidAllowlist("ip_literal", raw, "IP literals are not supported")
 		case len(validation.IsDNS1123Subdomain(host)) != 0 || !strings.Contains(host, "."):
@@ -297,7 +306,7 @@ func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint
 		return nil, err
 	}
 	for _, domain := range extra {
-		if domain == modelHost || slices.Contains(githubDomains, domain) {
+		if domain == modelHost || slices.Contains(modelProviderDomains, domain) || slices.Contains(githubDomains, domain) {
 			return nil, invalidAllowlist("already_baseline", domain, "destination is already part of the agent baseline")
 		}
 	}

@@ -118,9 +118,9 @@ type ConnectionStore interface {
 }
 
 // modelKeySecretPath delegates to the one shared definition in the agentsession
-// contract (ADR047 D7), which the ADR062 model-credential mint also reads
-// through so the create-time pod-env path and the proxy path can never drift on
-// where the BYO key lives. workspaceID (tea-<xid>) is opaque and unguessable, so
+// contract (ADR047 D7), shared by readiness and the ADR062 model-credential mint
+// so they cannot drift on where the BYO key lives. workspaceID (tea-<xid>) is
+// opaque and unguessable, so
 // folding it into the OpenBao path achieves per-workspace isolation without the
 // store's tenant-context mechanism. v1 provisioning stays operator/manual
 // (`bao kv put`); there is no self-serve REST/GraphQL/MCP surface yet.
@@ -143,17 +143,16 @@ type Service struct {
 	// GitProxyURL is the trusted in-cluster smart-HTTP origin. Empty uses the
 	// gateway default; the derived repository URL carries no credential.
 	GitProxyURL string
-	// ModelProxyURL, when set (BEX_AGENT_MODEL_PROXY_URL), routes agent model
+	// ModelProxyURL (BEX_AGENT_MODEL_PROXY_URL) routes agent model
 	// traffic through the gateway's credential-injecting proxy (ADR062): the
 	// sandbox receives only a placeholder + this per-session base URL, and the real
-	// BYO key is injected on the gateway→vendor hop. Empty ⇒ the real key rides pod
-	// env as before (byte-identical to pre-ADR062).
+	// BYO key is injected on the gateway→vendor hop. It is mandatory: an empty
+	// value disables agent-session create/steer/rehydrate rather than placing the
+	// reusable key in an untrusted sandbox environment.
 	ModelProxyURL string
-	// ModelKeys, when set (BEX_OPENBAO_URL wired), sources each workspace's BYO
-	// agent-session model provider key at session-create time (ADR047 D7). nil
-	// => sessions start with no model key (byte-identical to before this field
-	// existed) — a missing/never-provisioned key is not an error, since the key
-	// is optional per workspace.
+	// ModelKeys supplies key-readiness for Capabilities. The gateway-only
+	// ModelMinter reads the same store lazily for each provider exchange; session
+	// creation never reads or receives the reusable credential.
 	ModelKeys core.SecretKV
 	// GitHub, when set, supplies the workspace's GitHub App connection readiness
 	// for the mobile Capabilities projection (w11/m6 t001). nil => GitHub is
@@ -273,12 +272,11 @@ type GitHubReadiness interface {
 	GetConnection(ctx context.Context, ownerID string) (github.Connection, error)
 }
 
-// modelAPIKey best-effort reads the workspace's BYO model key. A missing path
-// returns "" (core.SecretKV.Get's documented not-found behavior), which is the
-// common case until a workspace provisions one — never an error. A genuine
-// OpenBao failure DOES fail the create: silently starting a keyless session
-// when the store is actually reachable-but-erroring would waste a sandbox the
-// agent can never authenticate from, with no signal to the caller why.
+// modelAPIKey reads only the workspace readiness signal for Capabilities. A
+// missing path returns "" (core.SecretKV.Get's documented not-found behavior),
+// while a genuine OpenBao failure fails the readiness call instead of falsely
+// reporting that configuration is merely absent. The value never enters create
+// or a sandbox Pod; the gateway's minter reads it only during a provider exchange.
 func (s *Service) modelAPIKey(ctx context.Context, workspaceID string) (string, error) {
 	if s.ModelKeys == nil {
 		return "", nil
@@ -293,6 +291,8 @@ func (s *Service) modelAPIKey(ctx context.Context, workspaceID string) (string, 
 func (s *Service) enabled() bool {
 	return s.Store != nil && s.Tuples != nil && s.Sandbox != nil
 }
+
+func (s *Service) modelProxyEnabled() bool { return s.modelProxyBaseURL() != "" }
 
 func (s *Service) ticketEnabled() bool {
 	return len(s.TicketSecret) > 0 && strings.TrimSpace(s.GatewayURL) != ""
@@ -342,8 +342,8 @@ func validateCreate(req *CreateRequest) error {
 // gate that could disagree with the resource's own parent tuple.
 //
 // Accept fast, provision async (w2/m64): everything cheap and fail-fast —
-// authorization, input validation, egress derivation, the BYO model-key read,
-// the durable row, and the OpenFGA parent tuple — runs synchronously, then the
+// authorization, input validation, egress derivation, the durable row, and the
+// OpenFGA parent tuple — runs synchronously, then the
 // caller returns immediately in the creating phase. The slow sandbox provisioning
 // (pod schedule + image pull, tens of seconds) runs in the background so the
 // dashboard can navigate to the session and render progress instead of blocking
@@ -354,16 +354,14 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		return s.Resume(ctx, req.ResumeSessionID)
 	}
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
-	// SECURITY (codex #1): a new session provisions a sandbox that receives the
-	// workspace's reusable BYO model key and runs attacker-chosen tasks against
-	// repo content, so creation is gated on can_create (developer and up), not the
-	// lifecycle can_operate. Operating an already-created session (resume/cancel/
-	// steer/read) stays can_operate — the credential entered the sandbox at create
-	// time, authorized by a developer.
+	// SECURITY: a new session provisions a sandbox that runs attacker-chosen tasks
+	// against repo content and may use the workspace's provider credential through
+	// the operation-scoped proxy, so creation is can_create (developer and up), not
+	// the lifecycle can_operate relation.
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return View{}, err
 	}
-	if !s.enabled() || !s.ticketEnabled() {
+	if !s.enabled() || !s.modelProxyEnabled() || !s.ticketEnabled() {
 		return View{}, core.ErrAgentSessionsUnavailable
 	}
 	if err := validateCreate(&req); err != nil {
@@ -388,15 +386,6 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := s.enforceLiveSandboxCap(ctx, workspaceID); err != nil {
 		return View{}, err
 	}
-	// Read the real BYO key BEFORE the row so an OpenBao failure fails closed
-	// without stranding a session. In proxy mode no real key is read at all — the
-	// session-bound placeholder is set once the row (and its id) exist, below.
-	var modelAPIKey string
-	if s.modelProxyBaseURL() == "" {
-		if modelAPIKey, err = s.modelAPIKey(ctx, workspaceID); err != nil {
-			return View{}, err
-		}
-	}
 	config, err := json.Marshal(req.AgentConfig)
 	if err != nil {
 		return View{}, err
@@ -416,9 +405,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		_ = s.Store.DeleteAgentSession(ctx, record.ID)
 		return View{}, fmt.Errorf("%w: establish agent session authorization: %v", core.ErrAuthzUnavailable, err)
 	}
-	if s.modelProxyBaseURL() != "" {
-		modelAPIKey = agentsession.ModelKeyPlaceholder(record.ID)
-	}
+	modelAPIKey := agentsession.ModelKeyPlaceholder(record.ID)
 	spec := dispatchSpec{
 		template:      strings.TrimSpace(req.AgentConfig.Template),
 		modelEndpoint: modelEndpoint,
@@ -432,7 +419,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 
 // dispatchSpec is the immutable provisioning input a background turn carries from
 // its accepting verb (Create/Steer) through the run*/dispatch chain — the model
-// endpoint/key, egress allowlist, driver env, sandbox template, and delivery mode.
+// endpoint/placeholder, egress allowlist, driver env, sandbox template, and delivery mode.
 type dispatchSpec struct {
 	template      string
 	modelEndpoint string
@@ -464,7 +451,7 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		// Log the underlying reason: dispatch failures were previously invisible
 		// (the row records only "sandbox create failed" and the 500 body is
 		// unreadable cross-origin), which hid a real create failure during the
-		// w3/m43 live E2E. Never logs the model key or any env value.
+		// w3/m43 live E2E. Never logs the model placeholder or any env value.
 		log.Printf("agent-session dispatch: sandbox create failed (session=%s repo=%s): %v", record.ID, record.Repo, err)
 		s.setLifecycleIfActive(ctx, record.ID, "", PhaseFailed, "sandbox create failed")
 		return store.AgentSession{}, err
@@ -504,7 +491,7 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
 		return Capabilities{}, err
 	}
-	caps := Capabilities{Enabled: s.enabled() && s.ticketEnabled()}
+	caps := Capabilities{Enabled: s.enabled() && s.modelProxyEnabled() && s.ticketEnabled()}
 	if !caps.Enabled {
 		return caps, nil
 	}
@@ -644,6 +631,9 @@ const restoreEnvVar = "BEX_AGENT_RESTORE_URL"
 // steerPrompt, when non-empty, rides the turn (a hibernated Steer). It fails
 // closed when the snapshot store is unwired or the row carries no snapshot.
 func (s *Service) rehydrate(ctx context.Context, record store.AgentSession, steerPrompt, delivery string) (View, error) {
+	if !s.modelProxyEnabled() {
+		return View{}, core.ErrAgentSessionsUnavailable
+	}
 	if s.Snapshots == nil || record.SnapshotRef == "" {
 		return View{}, core.NewConflictError("AGENT_SESSION_NOT_RESUMABLE",
 			"hibernated session has no restorable snapshot", map[string]any{"phase": record.Phase})
@@ -887,12 +877,9 @@ func (s *Service) gitProxyURL() string {
 }
 
 // driverEnv renders the non-secret environment the sandbox driver reads to run
-// one headless delivery turn (lego/agent-image/driver). The BYO model key is
-// NOT here: it is either sourced from OpenBao and injected as pod-spec env by the
-// sandbox lifecycle (ADR047 D7), or — when the model proxy is active (ADR062) —
-// never enters the sandbox at all and only a placeholder does, with modelProxyBase
-// pointing the agent's base URL at the gateway proxy. Either way no secret flows
-// through this map. The Git remote is a non-secret, Pod-bound gateway proxy URL;
+// one headless delivery turn (lego/agent-image/driver). The BYO model key never
+// enters this map or the sandbox; a session-bound placeholder is paired with the
+// mandatory gateway base URL. The Git remote is a non-secret, Pod-bound proxy URL;
 // the raw GitHub token is minted and consumed only by the gateway. The
 // driver-grant value is likewise only an Ed25519 public verification key.
 func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[string]string {
@@ -921,20 +908,17 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[s
 }
 
 // modelProxyBaseURL is the internal gateway model-proxy origin (BEX_AGENT_MODEL_
-// PROXY_URL). Empty ⇒ the proxy is off and the real BYO key rides pod env as
-// before (byte-identical to pre-ADR062).
+// PROXY_URL). Agent-session mutation verbs fail closed when it is empty.
 func (s *Service) modelProxyBaseURL() string { return strings.TrimSpace(s.ModelProxyURL) }
 
 // modelCredential returns what lands in the sandbox pod's BEX_AGENT_MODEL_API_KEY
-// env. With the proxy off, that is the workspace's real BYO key from OpenBao
-// (ADR047 D7). With the proxy on (ADR062), it is only a placeholder — the real
-// key stays on the gateway and is never read here — so a genuine OpenBao outage
-// no longer strands create, and no durable credential enters the sandbox.
-func (s *Service) modelCredential(ctx context.Context, workspaceID, sessionID string) (string, error) {
-	if s.modelProxyBaseURL() != "" {
-		return agentsession.ModelKeyPlaceholder(sessionID), nil
+// env: always a session-bound placeholder. The real key stays on the gateway;
+// there is deliberately no direct-key fallback.
+func (s *Service) modelCredential(_ context.Context, _, sessionID string) (string, error) {
+	if s.modelProxyBaseURL() == "" {
+		return "", core.ErrAgentSessionsUnavailable
 	}
-	return s.modelAPIKey(ctx, workspaceID)
+	return agentsession.ModelKeyPlaceholder(sessionID), nil
 }
 
 func (s *Service) driverGrantPublicKey() string {
@@ -949,19 +933,13 @@ func (s *Service) driverGrantPublicKey() string {
 // runs the new prompt; the Completer then updates the same draft PR. The
 // delivery mode is recorded on the row.
 func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
-	// SECURITY (codex round-4 #3): Create gates on can_create because a session
-	// sandbox receives the workspace's reusable BYO model key and runs
-	// attacker-chosen tasks. Steering does exactly that again — it reloads the same
-	// key below and dispatches a FRESH sandbox with a caller-supplied prompt and
-	// egress allowlist — so Create's "the credential entered the sandbox at create
-	// time, authorized by a developer" rationale does not cover it. Gate on the same
-	// can_create (developer and up), against the session object so the decision
-	// follows the resource's own parent tuple. Lifecycle verbs that touch no fresh
-	// credential (resume/cancel/read) stay can_operate.
+	// SECURITY: steering dispatches a fresh attacker-directed task with provider
+	// access through the credential proxy and caller-supplied egress. Gate on the
+	// same can_create relation as Create, against the session's own parent tuple.
 	if err := s.AuthorizeOn(ctx, core.RelCanCreate, sessionObject(req.SessionID)); err != nil {
 		return View{}, err
 	}
-	if !s.enabled() || !s.ticketEnabled() {
+	if !s.enabled() || !s.modelProxyEnabled() || !s.ticketEnabled() {
 		return View{}, core.ErrAgentSessionsUnavailable
 	}
 	if err := validateSessionID(req.SessionID); err != nil {
@@ -1005,9 +983,9 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		return View{}, err
 	}
 	config.ModelEndpoint = modelEndpoint
-	// Resolve the model credential before flipping the phase so a store failure
-	// can't strand the session in redispatching. With the proxy on this is a
-	// placeholder and reads no OpenBao (ADR062); with it off, the real BYO key.
+	// Resolve the session-bound placeholder before flipping the phase so a
+	// configuration error cannot strand the session in redispatching. The real
+	// BYO key remains in OpenBao and is minted only to the gateway (ADR062).
 	modelAPIKey, err := s.modelCredential(ctx, record.WorkspaceID, record.ID)
 	if err != nil {
 		return View{}, err

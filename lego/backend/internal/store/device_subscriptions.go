@@ -28,6 +28,22 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+const (
+	// A member normally has one phone and perhaps a tablet/test install. Ten
+	// leaves ample headroom while bounding the persistent dimension one viewer
+	// can project into every push event.
+	MaxActivePushDevicesPerSubject = 10
+	// The workspace cap is a second, race-safe ceiling across many subjects. It
+	// protects the global worker even if a workspace legitimately has a large
+	// membership or several compromised members.
+	MaxActivePushDevicesPerWorkspace = 1000
+)
+
+var (
+	ErrPushDeviceSubjectLimit   = fmt.Errorf("member has the maximum number of active push devices: %w", ErrConflict)
+	ErrPushDeviceWorkspaceLimit = fmt.Errorf("workspace has the maximum number of active push devices: %w", ErrConflict)
+)
+
 // DevicePushSubscription is one opaque provider destination. Token is an
 // internal delivery capability: it is deliberately excluded from JSON and
 // never projected by the caller-facing notifications service.
@@ -47,9 +63,10 @@ type DevicePushSubscription struct {
 }
 
 // UpsertDevicePushSubscription atomically registers or replaces one app
-// installation. The token digest lock serializes account-switch races for the
-// same provider capability; the device primary key serializes token rotation.
-// A token moved to another member/device revokes its old row before activation.
+// installation. The workspace lock makes both cumulative quotas race-safe; the
+// token digest lock serializes account-switch races for the same provider
+// capability. A token moved to another member/device revokes its old row before
+// activation.
 func (s *PGStore) UpsertDevicePushSubscription(ctx context.Context, sub DevicePushSubscription) (DevicePushSubscription, error) {
 	digest := pushTokenDigest(sub.Provider, sub.Token)
 	tx, err := s.Pool.Begin(ctx)
@@ -58,7 +75,13 @@ func (s *PGStore) UpsertDevicePushSubscription(ctx context.Context, sub DevicePu
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	// Advisory locks use only the one-way digest, never the bearer token.
+	// Always take workspace then token locks in this order. The first serializes
+	// quota checks across every member of one workspace; both lock inputs are
+	// non-secret (the second is a one-way digest), so no bearer token reaches SQL
+	// diagnostics.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "push-workspace\x00"+sub.TenantID); err != nil {
+		return DevicePushSubscription{}, classifyPushSubscriptionError(err)
+	}
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, digest); err != nil {
 		return DevicePushSubscription{}, classifyPushSubscriptionError(err)
 	}
@@ -70,6 +93,24 @@ func (s *PGStore) UpsertDevicePushSubscription(ctx context.Context, sub DevicePu
 		sub.Provider, digest, sub.TenantID, sub.Subject, sub.DeviceID,
 	); err != nil {
 		return DevicePushSubscription{}, classifyPushSubscriptionError(err)
+	}
+
+	var subjectCount, workspaceCount int
+	var alreadyActive bool
+	if err := tx.QueryRow(ctx, `
+		SELECT count(*) FILTER (WHERE subject = $2), count(*),
+		       COALESCE(bool_or(subject = $2 AND device_id = $3), false)
+		FROM device_push_subscriptions
+		WHERE tenant_id = $1 AND revoked_at IS NULL`,
+		sub.TenantID, sub.Subject, sub.DeviceID,
+	).Scan(&subjectCount, &workspaceCount, &alreadyActive); err != nil {
+		return DevicePushSubscription{}, classifyPushSubscriptionError(err)
+	}
+	if !alreadyActive && subjectCount >= MaxActivePushDevicesPerSubject {
+		return DevicePushSubscription{}, ErrPushDeviceSubjectLimit
+	}
+	if !alreadyActive && workspaceCount >= MaxActivePushDevicesPerWorkspace {
+		return DevicePushSubscription{}, ErrPushDeviceWorkspaceLimit
 	}
 
 	sub.TokenDigest = digest

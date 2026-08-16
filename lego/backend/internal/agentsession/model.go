@@ -52,12 +52,44 @@ const (
 	ModelProxyPath = "/model/"
 
 	// ModelKeyField is the single map key a workspace's BYO model key is stored
-	// under in OpenBao, shared by the create-time pod-env path (sandbox.
-	// ModelAPIKeyEnvVar references this) and the proxy mint. Keeping it here, in
-	// the contract both bex-api and the gateway import, is what lets the fetch
-	// need no name translation.
+	// under in OpenBao and read by the proxy mint. Keeping it here, in the
+	// contract both bex-api and the gateway import, prevents key-name drift.
 	ModelKeyField = "BEX_AGENT_MODEL_API_KEY"
 )
+
+// registeredModelEndpoints is the platform-owned profile-to-provider binding.
+// The workspace currently stores one reusable BYO credential, so a caller may
+// select a profile/model but may not redirect that credential to a custom host.
+// Supporting custom providers requires a separately registered credential that
+// is explicitly bound to its verified origin.
+var registeredModelEndpoints = map[string]string{
+	"claude": "https://api.anthropic.com/v1",
+	"codex":  "https://api.openai.com/v1",
+	"gemini": "https://generativelanguage.googleapis.com/v1beta",
+}
+
+// RegisteredModelEndpoint resolves a supported agent profile server-side and
+// rejects caller-supplied endpoint overrides. It is shared by create/rehydrate
+// and the credential minter, so legacy rows cannot bypass the registration
+// boundary after a new-create check is deployed.
+func RegisteredModelEndpoint(agent, requested string) (string, error) {
+	expected, ok := registeredModelEndpoints[strings.ToLower(strings.TrimSpace(agent))]
+	if !ok {
+		return "", core.NewBadRequestError(
+			"AGENT_SESSION_MODEL_ENDPOINT_INVALID",
+			"agentConfig.agent has no registered model provider", nil)
+	}
+	requested = strings.TrimRight(strings.TrimSpace(requested), "/")
+	if requested != "" && requested != expected {
+		return "", core.NewBadRequestError(
+			"AGENT_SESSION_MODEL_ENDPOINT_INVALID",
+			"agentConfig.modelEndpoint must match the selected agent's registered provider", nil)
+	}
+	if _, err := sessionegress.ModelEndpointHost(expected); err != nil {
+		return "", err
+	}
+	return expected, nil
+}
 
 // ModelKeyPlaceholder is the deliberately-fake value the sandbox's agent-native
 // credential env holds when the model proxy is active (ADR062 D2). It is useless
@@ -66,6 +98,12 @@ const (
 // fail loudly rather than look like a real key.
 func ModelKeyPlaceholder(sessionID string) string {
 	return "bex-model-proxy-placeholder-" + sessionID
+}
+
+// IsModelKeyPlaceholder is the final admission guard at the sandbox lifecycle
+// seam: only the exact session-bound fake credential may enter a Pod spec.
+func IsModelKeyPlaceholder(value, sessionID string) bool {
+	return value != "" && value == ModelKeyPlaceholder(sessionID)
 }
 
 // ModelKeySecretPath is the OpenBao KV v2 path a workspace's BYO agent-session
@@ -96,10 +134,8 @@ const (
 	AuthSchemeGoogleKey = "google-key"
 )
 
-// AuditVerbMintModelCredential records credential issuance (once per session per
-// TTL window, thanks to the gateway proxy's cache). The proxy hop itself is not
-// separately audited: issuance is the security-relevant event, and a per-request
-// audit would be pure noise.
+// AuditVerbMintModelCredential records credential issuance. The gateway mints
+// once per provider exchange so every request revalidates the session lifecycle.
 const AuditVerbMintModelCredential = "agentsessions.MintModelCredential"
 
 // ModelProxyURL binds an agent's model base URL to the exact session identity
@@ -261,6 +297,7 @@ func (m *ModelMinter) now() time.Time {
 // depth at credential-release time.
 func modelEndpointHostOf(config json.RawMessage) (string, error) {
 	var decoded struct {
+		Agent         string `json:"agent"`
 		ModelEndpoint string `json:"modelEndpoint"`
 	}
 	if len(config) > 0 {
@@ -268,7 +305,11 @@ func modelEndpointHostOf(config json.RawMessage) (string, error) {
 			return "", fmt.Errorf("%w: decode agent config", ErrInvalidRequest)
 		}
 	}
-	host, err := sessionegress.ModelEndpointHost(decoded.ModelEndpoint)
+	endpoint, err := RegisteredModelEndpoint(decoded.Agent, decoded.ModelEndpoint)
+	if err != nil {
+		return "", err
+	}
+	host, err := sessionegress.ModelEndpointHost(endpoint)
 	if err != nil {
 		return "", err
 	}

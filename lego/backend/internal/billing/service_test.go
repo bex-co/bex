@@ -207,9 +207,9 @@ func TestBillingAdminAuthorizationAndDegradedProvider(t *testing.T) {
 // billingRecordChecker is a core.Checker that records every relation asked for
 // and answers from a fixed grant set — the seam for pinning WHICH relation each
 // billing verb gates on. It also answers the uncached FreshChecker path from
-// the same grant set (recording separately), so the cached-path assertion
-// below stays "exactly one decision" now that Checkout/Portal re-assert
-// uncached (codex round-8 #8).
+// the same grant set (recording separately). Write relations now enter through
+// the fresh path centrally; Checkout/Portal retain their sink-adjacent second
+// check from round 8.
 type billingRecordChecker struct {
 	grant          map[string]bool
 	relations      []string
@@ -250,15 +250,20 @@ func TestBillingVerbsGateOnCanManageBilling(t *testing.T) {
 	for _, v := range verbs {
 		t.Run(v.name, func(t *testing.T) {
 			// Granting ONLY can_manage_billing must allow, and it must be the sole
-			// relation the verb checks.
+			// relation the verb checks (one or more fresh assertions are fine).
 			rec := &billingRecordChecker{grant: map[string]bool{core.RelCanManageBilling: true}}
 			svc := billingTestService(&billingProviderFake{})
 			svc.Authz = rec
 			if err := v.call(svc, billingIdentity(context.Background())); err != nil {
 				t.Fatalf("%s with can_manage_billing granted: %v — want allowed", v.name, err)
 			}
-			if len(rec.relations) != 1 || rec.relations[0] != core.RelCanManageBilling {
-				t.Fatalf("%s checked %v, want exactly [%s] — the billing role must reach this verb", v.name, rec.relations, core.RelCanManageBilling)
+			if len(rec.relations) != 0 || len(rec.freshRelations) == 0 {
+				t.Fatalf("%s cached=%v fresh=%v, want fresh %s checks only", v.name, rec.relations, rec.freshRelations, core.RelCanManageBilling)
+			}
+			for _, relation := range rec.freshRelations {
+				if relation != core.RelCanManageBilling {
+					t.Fatalf("%s checked relation %q, want only %s", v.name, relation, core.RelCanManageBilling)
+				}
 			}
 
 			// Granting the admin-only can_manage but NOT can_manage_billing must DENY —

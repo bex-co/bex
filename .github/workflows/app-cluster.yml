@@ -35,6 +35,7 @@ env:
   POD_CIDR: 10.244.0.0/16 # must match the overlay's clusterNetwork.pods.cidrBlocks
   CAPH_VERSION: v1.1.7 # v1.0.x webhook had a stale server-type enum (rejected cx33); v1.1.x dropped it
   CLUSTERCTL_VERSION: v1.13.2
+  CLUSTERCTL_LINUX_AMD64_SHA256: ae1d0a60e7101eb6c5cea650740b3d8d3b50cd8c724a2a375ddd5744df6ea544
 
 jobs:
   bootstrap-app-cluster:
@@ -87,6 +88,7 @@ jobs:
             curl -fsSL -o /tmp/clusterctl \
               "https://github.com/kubernetes-sigs/cluster-api/releases/download/${CLUSTERCTL_VERSION}/clusterctl-linux-amd64"
           fi
+          printf '%s  %s\n' "$CLUSTERCTL_LINUX_AMD64_SHA256" /tmp/clusterctl | sha256sum --check --strict
           sudo install -m755 /tmp/clusterctl /usr/local/bin/clusterctl
           clusterctl version
 

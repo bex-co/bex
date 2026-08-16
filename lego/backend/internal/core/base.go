@@ -79,11 +79,11 @@ type Checker interface {
 }
 
 // FreshChecker is an optional Checker capability: an authoritative decision that
-// bypasses the positive-check cache. AuthorizeFreshOn uses it so a
-// security-critical ISSUANCE verb — mint a durable API key, seat/raise a member,
-// create an admin invite — is evaluated against the source of truth, closing the
-// window (up to PositiveTTL) where a just-revoked or just-downgraded caller could
-// ride a cached allow to create durable replacement access (round-5 finding 4).
+// bypasses the positive-check cache. Every write relation uses it at the shared
+// authorization seam, while AuthorizeFreshOn remains available for sensitive
+// reads and for a second sink-adjacent assertion. This closes the recurring class
+// where one mutation path forgot an ad-hoc fresh check and a recently revoked
+// caller rode another replica's cached allow (round-10 finding 5).
 // A checker that does not implement it (e.g. a test fake with no cache) is
 // already authoritative, so AuthorizeFreshOn falls back to the cached path.
 type FreshChecker interface {
@@ -603,7 +603,16 @@ func (b *Base) authorizeAndAudit(ctx context.Context, relation, object, target, 
 func (b *Base) authorizeAndRecord(ctx context.Context, relation, object, target, verb string, resolveErr error, recordDenial bool) error {
 	err := resolveErr
 	if err == nil {
-		err = b.checkAuthz(ctx, relation, object)
+		// Mutations never consume a positive cache entry. Centralizing this at the
+		// same relation classification that drives write auditing prevents new
+		// service verbs from silently reopening the cross-replica revocation
+		// window; explicit sink-adjacent AuthorizeFresh calls remain defense in
+		// depth for especially sensitive operations.
+		if writeRelations[relation] {
+			err = b.checkAuthzFresh(ctx, relation, object)
+		} else {
+			err = b.checkAuthz(ctx, relation, object)
+		}
 	}
 	switch {
 	case err == nil:

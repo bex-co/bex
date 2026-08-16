@@ -17,29 +17,14 @@ limitations under the License.
 package agentsessions
 
 import (
-	"strings"
-
-	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 )
 
 func createEgress(config AgentConfig, requested []string) (string, []string, error) {
-	endpoint := config.ModelEndpoint
-	if endpoint == "" {
-		switch strings.ToLower(strings.TrimSpace(config.Agent)) {
-		case "codex", "openai":
-			endpoint = "https://api.openai.com/v1"
-		case "claude", "claude-code", "anthropic":
-			endpoint = "https://api.anthropic.com/v1"
-		case "gemini", "google":
-			endpoint = "https://generativelanguage.googleapis.com/v1beta"
-		default:
-			return "", nil, core.NewBadRequestError(
-				"AGENT_SESSION_MODEL_ENDPOINT_INVALID",
-				"agentConfig.modelEndpoint is required for this agent provider",
-				map[string]any{"field": "agentConfig.modelEndpoint"},
-			)
-		}
+	endpoint, err := agentsession.RegisteredModelEndpoint(config.Agent, config.ModelEndpoint)
+	if err != nil {
+		return "", nil, err
 	}
 	if _, err := sessionegress.ModelEndpointHost(endpoint); err != nil {
 		return "", nil, err

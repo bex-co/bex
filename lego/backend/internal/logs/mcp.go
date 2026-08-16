@@ -133,6 +133,10 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "List log lines for one or more services or managed Postgres databases (Render's `resource` array), filtered by text, time range, and instance; service logs also support type, level, host, statusCode, method, and path. " +
 			"Timestamp-sorted and aggregated across instances. Use list_log_label_values to discover which filter values exist for a resource.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogsArgs) (*mcp.CallToolResult, listLogsResult, error) {
+		resources, err := boundedResources(in.Resource)
+		if err != nil {
+			return nil, listLogsResult{}, err
+		}
 		q, err := in.query()
 		if err != nil {
 			return nil, listLogsResult{}, err
@@ -146,7 +150,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		q.Limit = in.Limit
 
 		var all []LogEntry
-		for _, id := range in.Resource {
+		for _, id := range resources {
 			q.App = id
 			entries, err := s.QueryLogs(ctx, q)
 			if err != nil {
@@ -167,6 +171,10 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			"Use it to discover what values are available for filtering with list_logs, instead of guessing. " +
 			"The label filters (type/level/instance/statusCode/method) and the time range narrow the search; the line filters (text/path/host) do not affect which values are returned.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listLogLabelValuesArgs) (*mcp.CallToolResult, listLogLabelValuesResult, error) {
+		resources, err := boundedResources(in.Resource)
+		if err != nil {
+			return nil, listLogLabelValuesResult{}, err
+		}
 		q, err := in.query()
 		if err != nil {
 			return nil, listLogLabelValuesResult{}, err
@@ -175,7 +183,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, listLogLabelValuesResult{}, err
 		}
 		all := []string{}
-		for _, id := range in.Resource {
+		for _, id := range resources {
 			q.App = id
 			values, err := s.LogLabelValues(ctx, in.Label, q)
 			if err != nil {
