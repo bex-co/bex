@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -181,6 +182,11 @@ type BlueprintValidation struct {
 	Valid  bool                       `json:"valid"`
 	Errors []BlueprintValidationError `json:"errors,omitempty"`
 	Plan   *BlueprintValidationPlan   `json:"plan,omitempty"`
+	// EstimatedPricing is the always-on monthly cost projection for the
+	// declared resources, on bex's price sheet (internal/pricing). Present
+	// only when the manifest is valid; an all-free stack carries empty lines
+	// and a "0.00" total (the dashboard hides the panel).
+	EstimatedPricing *pricing.MonthlyEstimate `json:"estimatedPricing,omitempty"`
 }
 
 // SyncBlueprintResult is returned by sync and create.
@@ -257,7 +263,7 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 			plan.Actions = actionPlan.Actions
 			plan.TotalActions = len(actionPlan.Actions)
 		}
-		return BlueprintValidation{Valid: true, Plan: &plan}, nil
+		return BlueprintValidation{Valid: true, Plan: &plan, EstimatedPricing: blueprintEstimatedPricing(st)}, nil
 	}
 	if !errors.Is(err, core.ErrBadRequest) {
 		return BlueprintValidation{}, err

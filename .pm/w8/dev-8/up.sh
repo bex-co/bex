@@ -130,6 +130,14 @@ hostDsn() {
 }
 
 echo "==> starting bex-api on :$BEX_API_PORT (namespace $DEV_NS)"
+# Throwaway GitHub-App identity: a locally minted RSA key + fake id/slug make
+# wireGitHubApp construct the API client, which is all the blueprint fetcher
+# needs for ANONYMOUS public-repo fetches (token minting is never reached
+# without a stored git connection). No real credential is involved; real
+# git-connect flows simply fail against the fake app, which dev-8 never uses.
+if [ ! -f "$ENVDIR/.github-app-dev.pem" ]; then
+  openssl genrsa -out "$ENVDIR/.github-app-dev.pem" 2048 2>/dev/null
+fi
 kill_if_running "$ENVDIR/.pids/bex-api.pid"
 api_started=0
 for attempt in $(seq 1 5); do
@@ -145,6 +153,11 @@ for attempt in $(seq 1 5); do
     BEX_CP_DB_URI="$(hostDsn bex-db bex "$BEX_DB_PORT")" \
     BEX_CP_APPS_NAMESPACE="$DEV_NS" \
     BEX_BASE_DOMAIN="onbex.co" \
+    BEX_ALLOW_INSECURE_AUTHZ=1 \
+    BEX_CP_INSECURE=1 \
+    BEX_GITHUB_APP_ID="0" \
+    BEX_GITHUB_APP_PRIVATE_KEY="$(cat "$ENVDIR/.github-app-dev.pem")" \
+    BEX_GITHUB_APP_SLUG="dev-local" \
     "./$ENVDIR/bin/bex-api" > "$ENVDIR/logs/bex-api.log" 2>&1 & echo $! > "$ENVDIR/.pids/bex-api.pid"
   sleep 3
   if kill -0 "$(cat "$ENVDIR/.pids/bex-api.pid")" 2>/dev/null; then

@@ -165,6 +165,79 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description:
       "Review section error shown when the preview query itself fails (network)",
   },
+  // --- Estimated pricing (Render's Blueprint pricing panel, w8/m18) ---
+  "blueprints.pricingTitle": {
+    message: "Estimated pricing",
+    description: "Review section — estimated-pricing panel heading",
+  },
+  "blueprints.pricingSubtitle": {
+    message:
+      "Compute costs are prorated by the second. Billing occurs at the start of the month.",
+    description:
+      "Estimated-pricing panel subtitle explaining billing semantics (Render parity)",
+  },
+  "blueprints.pricingLineAmount": {
+    message: "({tier}) ${amount} / month",
+    description:
+      "Estimated-pricing row amount — plan label + monthly dollar cost",
+  },
+  "blueprints.pricingLineBreakdown": {
+    message: "Instance ${instance} + Disk ({gb} GB) ${storage}",
+    description:
+      "Estimated-pricing datastore row sub-line — instance vs provisioned-storage cost breakdown",
+  },
+  "blueprints.pricingVariable": {
+    message: "Variable",
+    description:
+      "Estimated-pricing row amount for resources whose cost depends on runtime behavior",
+  },
+  "blueprints.pricingReasonAutoscaling": {
+    message: "Autoscaling",
+    description:
+      "Estimated-pricing variable-row badge — service has autoscaling enabled",
+  },
+  "blueprints.pricingReasonMultiInstance": {
+    message: "Multiple instances",
+    description:
+      "Estimated-pricing variable-row badge — service declares numInstances > 1",
+  },
+  "blueprints.pricingReasonCron": {
+    message: "Cron job",
+    description:
+      "Estimated-pricing variable-row badge — cron jobs bill only while runs execute",
+  },
+  "blueprints.pricingTotalLabel": {
+    message: "Total",
+    description: "Estimated-pricing panel total row label",
+  },
+  "blueprints.pricingTotalAmount": {
+    message: "${amount}{marker} per month",
+    description:
+      "Estimated-pricing panel total amount; marker is an asterisk when variable costs are excluded",
+  },
+  "blueprints.pricingExclusions": {
+    message: "* Excluding {items}.",
+    description:
+      "Estimated-pricing footnote listing the variable costs excluded from the total",
+  },
+  "blueprints.pricingExcludeAutoscaling": {
+    message: "autoscaling",
+    description: "Excluded-cost phrase in the estimated-pricing footnote",
+  },
+  "blueprints.pricingExcludeMultiInstance": {
+    message: "additional fixed instances",
+    description: "Excluded-cost phrase in the estimated-pricing footnote",
+  },
+  "blueprints.pricingExcludeCron": {
+    message: "cron jobs",
+    description: "Excluded-cost phrase in the estimated-pricing footnote",
+  },
+  "blueprints.pricingEstimateNote": {
+    message:
+      "Estimate only — storage is priced on provisioned size; your invoice meters actual usage.",
+    description:
+      "Estimated-pricing disclaimer: forward estimate is an upper bound of metered billing",
+  },
   // --- Empty state ---
   "blueprints.emptyTitle": {
     message: "No blueprints yet",

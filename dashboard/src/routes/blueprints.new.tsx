@@ -38,6 +38,7 @@ import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { useCreateBlueprint } from "@/features/blueprints/hooks/use-create-blueprint";
 import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-preview";
+import { EstimatedPricingPanel } from "@/features/blueprints/components/estimated-pricing-panel";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
 
@@ -429,32 +430,37 @@ export function NewBlueprintPage() {
                     </AlertDescription>
                   </Alert>
                 ) : preview ? (
-                  <div className="space-y-3 rounded-md border p-4">
-                    <p className="text-sm font-medium">
-                      {t("blueprints.previewValid", {
-                        count: plan?.totalActions ?? 0,
-                      })}
-                    </p>
-                    <PlanGroup
-                      label={t("blueprints.previewServices")}
-                      names={(plan?.services ?? []).filter(Boolean)}
+                  <>
+                    <div className="space-y-3 rounded-md border p-4">
+                      <p className="text-sm font-medium">
+                        {t("blueprints.previewValid", {
+                          count: plan?.totalActions ?? 0,
+                        })}
+                      </p>
+                      <PlanGroup
+                        label={t("blueprints.previewServices")}
+                        names={(plan?.services ?? []).filter(Boolean)}
+                      />
+                      <PlanGroup
+                        label={t("blueprints.previewDatabases")}
+                        names={(plan?.databases ?? []).filter(Boolean)}
+                      />
+                      <PlanGroup
+                        label={t("blueprints.previewKeyValue")}
+                        names={(plan?.keyValue ?? []).filter(Boolean)}
+                      />
+                      <PlanGroup
+                        label={t("blueprints.previewEnvGroups")}
+                        names={(plan?.envGroups ?? []).filter(Boolean)}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        {t("blueprints.previewAutoSyncNote")}
+                      </p>
+                    </div>
+                    <EstimatedPricingPanel
+                      pricing={preview.validation?.estimatedPricing}
                     />
-                    <PlanGroup
-                      label={t("blueprints.previewDatabases")}
-                      names={(plan?.databases ?? []).filter(Boolean)}
-                    />
-                    <PlanGroup
-                      label={t("blueprints.previewKeyValue")}
-                      names={(plan?.keyValue ?? []).filter(Boolean)}
-                    />
-                    <PlanGroup
-                      label={t("blueprints.previewEnvGroups")}
-                      names={(plan?.envGroups ?? []).filter(Boolean)}
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      {t("blueprints.previewAutoSyncNote")}
-                    </p>
-                  </div>
+                  </>
                 ) : previewError ? (
                   <Alert variant="destructive">
                     <AlertDescription className="flex flex-col gap-2">

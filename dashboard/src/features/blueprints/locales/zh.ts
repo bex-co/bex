@@ -163,6 +163,77 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description:
       "Review section error shown when the preview query itself fails (network)",
   },
+  // --- Estimated pricing (Render's Blueprint pricing panel, w8/m18) ---
+  "blueprints.pricingTitle": {
+    message: "预估价格",
+    description: "Review section — estimated-pricing panel heading",
+  },
+  "blueprints.pricingSubtitle": {
+    message: "计算费用按秒计费。账单在每月初生成。",
+    description:
+      "Estimated-pricing panel subtitle explaining billing semantics (Render parity)",
+  },
+  "blueprints.pricingLineAmount": {
+    message: "({tier}) ${amount} / 月",
+    description:
+      "Estimated-pricing row amount — plan label + monthly dollar cost",
+  },
+  "blueprints.pricingLineBreakdown": {
+    message: "实例 ${instance} + 磁盘（{gb} GB）${storage}",
+    description:
+      "Estimated-pricing datastore row sub-line — instance vs provisioned-storage cost breakdown",
+  },
+  "blueprints.pricingVariable": {
+    message: "浮动",
+    description:
+      "Estimated-pricing row amount for resources whose cost depends on runtime behavior",
+  },
+  "blueprints.pricingReasonAutoscaling": {
+    message: "自动扩缩容",
+    description:
+      "Estimated-pricing variable-row badge — service has autoscaling enabled",
+  },
+  "blueprints.pricingReasonMultiInstance": {
+    message: "多实例",
+    description:
+      "Estimated-pricing variable-row badge — service declares numInstances > 1",
+  },
+  "blueprints.pricingReasonCron": {
+    message: "定时任务",
+    description:
+      "Estimated-pricing variable-row badge — cron jobs bill only while runs execute",
+  },
+  "blueprints.pricingTotalLabel": {
+    message: "合计",
+    description: "Estimated-pricing panel total row label",
+  },
+  "blueprints.pricingTotalAmount": {
+    message: "${amount}{marker} / 月",
+    description:
+      "Estimated-pricing panel total amount; marker is an asterisk when variable costs are excluded",
+  },
+  "blueprints.pricingExclusions": {
+    message: "* 不含{items}。",
+    description:
+      "Estimated-pricing footnote listing the variable costs excluded from the total",
+  },
+  "blueprints.pricingExcludeAutoscaling": {
+    message: "自动扩缩容",
+    description: "Excluded-cost phrase in the estimated-pricing footnote",
+  },
+  "blueprints.pricingExcludeMultiInstance": {
+    message: "额外固定实例",
+    description: "Excluded-cost phrase in the estimated-pricing footnote",
+  },
+  "blueprints.pricingExcludeCron": {
+    message: "定时任务",
+    description: "Excluded-cost phrase in the estimated-pricing footnote",
+  },
+  "blueprints.pricingEstimateNote": {
+    message: "仅为预估——存储按预配容量估算；实际账单按用量计费。",
+    description:
+      "Estimated-pricing disclaimer: forward estimate is an upper bound of metered billing",
+  },
   // --- Empty state ---
   "blueprints.emptyTitle": {
     message: "暂无蓝图",

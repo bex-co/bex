@@ -2,3 +2,4 @@
 .pids/
 logs/
 bin/
+.github-app-dev.pem

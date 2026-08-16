@@ -25,6 +25,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -753,6 +754,44 @@ var blueprintPlanActionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// blueprintPricingLineGQLType is one priced row of the estimated-pricing
+// projection (w8/m18) — plan label + monthly cost, with the instance/storage
+// breakdown the panel's tooltip renders for datastores.
+var blueprintPricingLineGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BlueprintPricingLine",
+	Fields: graphql.Fields{
+		"name":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.Name })},
+		"resourceKind": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.ResourceKind })},
+		"tier":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.Tier })},
+		"tierLabel":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.TierLabel })},
+		"monthlyUsd":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.MonthlyUSD })},
+		"instanceUsd":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.InstanceUSD })},
+		"storageUsd":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.StorageUSD })},
+		"storageGb":    &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(l pricing.MonthlyLine) any { return l.StorageGB })},
+	},
+})
+
+// blueprintVariableCostGQLType is a resource listed but excluded from the
+// estimated total because its cost depends on runtime behavior.
+var blueprintVariableCostGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BlueprintVariableCost",
+	Fields: graphql.Fields{
+		"name":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v pricing.VariableCost) any { return v.Name })},
+		"reason": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v pricing.VariableCost) any { return v.Reason })},
+	},
+})
+
+// blueprintEstimatedPricingGQLType is the always-on monthly projection attached
+// to a valid dry-run (the dashboard's Estimated pricing panel).
+var blueprintEstimatedPricingGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BlueprintEstimatedPricing",
+	Fields: graphql.Fields{
+		"totalUsd": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e pricing.MonthlyEstimate) any { return e.TotalUSD })},
+		"lines":    &graphql.Field{Type: graphql.NewList(blueprintPricingLineGQLType), Resolve: gqlutil.Field(func(e pricing.MonthlyEstimate) any { return e.Lines })},
+		"variable": &graphql.Field{Type: graphql.NewList(blueprintVariableCostGQLType), Resolve: gqlutil.Field(func(e pricing.MonthlyEstimate) any { return e.Variable })},
+	},
+})
+
 // blueprintValidationGQLType preserves the dashboard's original errors:
 // [String] field while also exposing Render's structured error details and plan.
 var blueprintValidationGQLType = graphql.NewObject(graphql.ObjectConfig{
@@ -772,6 +811,12 @@ var blueprintValidationGQLType = graphql.NewObject(graphql.ObjectConfig{
 				return nil
 			}
 			return *v.Plan
+		})},
+		"estimatedPricing": &graphql.Field{Type: blueprintEstimatedPricingGQLType, Resolve: gqlutil.Field(func(v BlueprintValidation) any {
+			if v.EstimatedPricing == nil {
+				return nil
+			}
+			return *v.EstimatedPricing
 		})},
 	},
 })

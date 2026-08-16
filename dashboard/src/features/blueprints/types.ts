@@ -52,10 +52,37 @@ export interface BlueprintPlanAction {
   message: string | null;
 }
 
+/** One priced row of the estimated-pricing projection (w8/m18). */
+export interface BlueprintPricingLine {
+  name: string;
+  tierLabel: string;
+  monthlyUsd: string;
+  instanceUsd: string | null;
+  storageUsd: string | null;
+  storageGb: number | null;
+}
+
+/** Why a resource's cost is runtime-dependent — mirrors the backend's VariableCost reasons. */
+export type BlueprintVariableReason = "autoscaling" | "multi_instance" | "cron";
+
+/** A resource listed but excluded from the estimated total (runtime-dependent cost). */
+export interface BlueprintVariableCost {
+  name: string;
+  reason: BlueprintVariableReason;
+}
+
+/** Always-on monthly cost projection attached to a valid dry-run. */
+export interface BlueprintEstimatedPricing {
+  totalUsd: string | null;
+  lines: BlueprintPricingLine[] | null;
+  variable: BlueprintVariableCost[] | null;
+}
+
 export interface BlueprintPreviewValidation {
   valid: boolean | null;
   errors: string[] | null;
   plan: BlueprintPreviewPlan | null;
+  estimatedPricing: BlueprintEstimatedPricing | null;
 }
 
 export interface BlueprintPreviewResult {
