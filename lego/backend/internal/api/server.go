@@ -276,6 +276,12 @@ type Deps struct {
 	// finished session's sandbox lives until it has been idle this long. Zero ⇒
 	// no grace (reap as soon as no editor is connected, ADR054 D6 behavior).
 	AgentSandboxIdleTTL time.Duration
+	// MaxBlueprintGroupings caps a workspace's durable Blueprint project and
+	// environment counts (BEX_MAX_BLUEPRINT_GROUPINGS, default 1000; 0
+	// disables) — the w1/049 #5 abuse bound, refused with
+	// BLUEPRINT_GROUPING_LIMIT identically across REST/GraphQL/MCP.
+	MaxBlueprintGroupings int
+
 	// AgentMaxLiveSandboxesPerWorkspace caps the concurrent live agent-session
 	// sandboxes one workspace may hold (ADR059 D6 / w2/m67). Zero ⇒ uncapped.
 	AgentMaxLiveSandboxesPerWorkspace int
@@ -598,6 +604,16 @@ func NewServer(base *core.Base, d Deps) *Server {
 	if groups, ok := d.Store.(apps.BlueprintGroupingStore); ok {
 		blueprintGroups = groups
 	}
+	// The same store, when it can, also supplies the transactional grouping
+	// runner (w8/m20 t001) so a blueprint sync's grouping writes are atomic.
+	var blueprintGroupsTx apps.BlueprintGroupingTxRunner
+	if runner, ok := d.Store.(apps.BlueprintGroupingTxRunner); ok {
+		blueprintGroupsTx = runner
+	}
+	var groupingReclaim apps.GroupingReclaimer
+	if reclaimer, ok := d.Store.(apps.GroupingReclaimer); ok {
+		groupingReclaim = reclaimer
+	}
 	// Environment membership is stored with the env group, while validation
 	// belongs to environments.Service. Wire the two narrow seams once here so
 	// create_env_group(environmentId) and set_environment_env_groups share the
@@ -632,7 +648,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		agentLifecycle = sandbox.NewAgentSessionLifecycle(sandboxSvc)
 	}
 	srv := &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
+		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: logSvc,
 		Metrics: &metrics.Service{
 			Base:                       base,

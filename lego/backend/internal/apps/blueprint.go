@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"path"
 	"regexp"
 	"strconv"
@@ -755,7 +756,112 @@ func (s *Service) DisconnectBlueprint(ctx context.Context, bpID, ownerID string)
 		return ErrBlueprintsUnavailable
 	}
 	tenantID := s.resolveTenantID(ctx)
-	return s.Blueprints.DisconnectBlueprint(ctx, bpID, tenantID)
+	// Read the stored manifest before the row disappears — it names the
+	// groupings this blueprint minted, which the post-disconnect sweep may
+	// reclaim (w8/m20 t004).
+	manifest := ""
+	if b, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID); err == nil {
+		manifest = b.Manifest
+	}
+	if err := s.Blueprints.DisconnectBlueprint(ctx, bpID, tenantID); err != nil {
+		return err
+	}
+	s.reclaimBlueprintGroupings(ctx, tenantID, manifest)
+	return nil
+}
+
+// GroupingReclaimer is the optional store seam DisconnectBlueprint sweeps
+// orphaned grouping rows through (*store.PGStore satisfies it). nil ⇒ no
+// reclaim, the pre-w8/m20 behavior.
+type GroupingReclaimer interface {
+	ReclaimEmptyBlueprintGroupings(ctx context.Context, tenantID string, pairs []store.GroupingPair, referencedEnvironments, referencedProjects map[string]bool) (removedEnvironments, removedProjects []string, err error)
+}
+
+// reclaimBlueprintGroupings deletes the empty grouping rows the disconnected
+// blueprint's stored manifest declared. Best-effort by design: disconnect has
+// already succeeded, deployed resources are never touched (Render disconnect
+// semantics), a populated or externally-referenced grouping survives with a
+// log line, and a stale/unparseable manifest simply skips the sweep.
+func (s *Service) reclaimBlueprintGroupings(ctx context.Context, tenantID, manifest string) {
+	if s.GroupingReclaim == nil || manifest == "" {
+		return
+	}
+	source, ir, problems := CompileBlueprintIR(manifest)
+	if len(problems) > 0 {
+		log.Printf("blueprint disconnect: stored manifest no longer compiles; skipping grouping reclaim (workspace %s)", tenantID)
+		return
+	}
+	st, err := parseCompiledStack(blueprintParseOverrides{}, source, ir)
+	if err != nil {
+		log.Printf("blueprint disconnect: stored manifest no longer parses; skipping grouping reclaim (workspace %s): %v", tenantID, err)
+		return
+	}
+	seen := map[store.GroupingPair]bool{}
+	var pairs []store.GroupingPair
+	for _, grouping := range st.groupings {
+		pair := store.GroupingPair{Project: grouping.projectName, Environment: grouping.environmentName}
+		if !seen[pair] {
+			seen[pair] = true
+			pairs = append(pairs, pair)
+		}
+	}
+	if len(pairs) == 0 {
+		return
+	}
+	referencedEnvironments, referencedProjects, err := s.datastoreGroupingRefs(ctx, tenantID)
+	if err != nil {
+		// Fail closed: the CR labels are the ONLY guard for datastore-populated
+		// groupings — an incomplete reference snapshot must skip the sweep
+		// (recoverable) rather than risk deleting a populated grouping
+		// (irreversible).
+		log.Printf("blueprint disconnect: datastore reference scan failed; skipping grouping reclaim (workspace %s): %v", tenantID, err)
+		return
+	}
+	removedEnvironments, removedProjects, err := s.GroupingReclaim.ReclaimEmptyBlueprintGroupings(ctx, tenantID, pairs, referencedEnvironments, referencedProjects)
+	if err != nil {
+		log.Printf("blueprint disconnect: grouping reclaim failed (workspace %s): %v", tenantID, err)
+		return
+	}
+	var audits []groupingAuditEntry
+	for _, name := range removedEnvironments {
+		audits = append(audits, groupingAuditEntry{action: "environment_reclaimed", project: name})
+	}
+	for _, name := range removedProjects {
+		audits = append(audits, groupingAuditEntry{action: "project_reclaimed", project: name})
+	}
+	s.emitGroupingAudits(ctx, tenantID, audits)
+}
+
+// datastoreGroupingRefs collects the environment/project ids the workspace's
+// Database and KeyValue CRs still reference through their membership labels —
+// a datastore-populated grouping must survive the reclaim sweep.
+func (s *Service) datastoreGroupingRefs(ctx context.Context, tenantID string) (map[string]bool, map[string]bool, error) {
+	environments, projects := map[string]bool{}, map[string]bool{}
+	databases, err := s.listWorkspaceDatabases(ctx, tenantID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("listing workspace databases: %w", err)
+	}
+	for _, db := range databases.Items {
+		if id := db.Labels[core.LabelEnvironment]; id != "" {
+			environments[id] = true
+		}
+		if id := db.Labels[core.LabelProject]; id != "" {
+			projects[id] = true
+		}
+	}
+	keyValues, err := s.listWorkspaceKeyValues(ctx, tenantID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("listing workspace key values: %w", err)
+	}
+	for _, kv := range keyValues.Items {
+		if id := kv.Labels[core.LabelEnvironment]; id != "" {
+			environments[id] = true
+		}
+		if id := kv.Labels[core.LabelProject]; id != "" {
+			projects[id] = true
+		}
+	}
+	return environments, projects, nil
 }
 
 // upsertBlueprint auto-registers a blueprint row after a successful deployStack

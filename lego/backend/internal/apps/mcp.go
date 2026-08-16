@@ -1140,7 +1140,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "disconnect_blueprint",
-		Description: "Disconnect a Blueprint from its Git repo: stops auto-sync on push and hides it from list_blueprints. Resources created by the blueprint remain untouched. bex extension (w2/m62).",
+		Description: "Disconnect a Blueprint from its Git repo: stops auto-sync on push and hides it from list_blueprints. Resources created by the blueprint remain untouched; empty project/environment groupings the blueprint minted (no member services or datastores) are reclaimed (w8/m20). bex extension (w2/m62).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in disconnectBlueprintArgs) (*mcp.CallToolResult, disconnectedBlueprintResult, error) {
 		err := s.DisconnectBlueprint(ctx, in.ID, core.NamedWorkspace(ctx))
 		return nil, disconnectedBlueprintResult{Disconnected: err == nil}, err

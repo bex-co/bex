@@ -23,9 +23,9 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // Environment is a row of `environments` — a named subset of a Project's
@@ -77,15 +77,7 @@ func scanEnvironment(row pgx.Row) (Environment, error) {
 // 0.0.0.0/0 the same way). CreateWithACL's explicit list — including an
 // explicit deny-all [] — overwrites the seed via SetEnvironmentACL.
 func (s *PGStore) CreateEnvironment(ctx context.Context, projectID, tenantID, name string) (Environment, error) {
-	seed, err := json.Marshal(core.DefaultEnvironmentAllowList())
-	if err != nil {
-		return Environment{}, err
-	}
-	return scanEnvironment(s.Pool.QueryRow(ctx,
-		`INSERT INTO environments (id, project_id, tenant_id, name, ip_allow_list) VALUES ($1, $2, $3, $4, $5)
-		 RETURNING `+environmentColumns,
-		ids.New(ids.Environment), projectID, tenantID, name, seed,
-	))
+	return createEnvironment(ctx, s.Pool, projectID, tenantID, name)
 }
 
 func (s *PGStore) GetEnvironment(ctx context.Context, id string) (Environment, error) {
@@ -94,21 +86,7 @@ func (s *PGStore) GetEnvironment(ctx context.Context, id string) (Environment, e
 }
 
 func (s *PGStore) ListEnvironments(ctx context.Context, projectID string) ([]Environment, error) {
-	rows, err := s.Pool.Query(ctx,
-		`SELECT `+environmentColumns+` FROM environments WHERE project_id = $1 ORDER BY created_at`, projectID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []Environment
-	for rows.Next() {
-		e, err := scanEnvironment(rows)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, e)
-	}
-	return out, rows.Err()
+	return listEnvironments(ctx, s.Pool, projectID)
 }
 
 func (s *PGStore) RenameEnvironment(ctx context.Context, id, name string) error {
@@ -129,6 +107,16 @@ func (s *PGStore) RenameEnvironment(ctx context.Context, id, name string) error 
 // (SetEnvironmentServices, postgres.SetIPAllowList): the caller always
 // supplies all three fields, never a partial patch.
 func (s *PGStore) SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) error {
+	return setEnvironmentACL(ctx, s.Pool, id, protectedStatus, networkIsolationEnabled, ipAllowList)
+}
+
+// aclExecer is the Exec surface shared by *pgxpool.Pool and pgx.Tx so the ACL
+// write runs identically inside a grouping transaction (w8/m20).
+type aclExecer interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
+func setEnvironmentACL(ctx context.Context, q aclExecer, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) error {
 	if ipAllowList == nil {
 		ipAllowList = []core.IPAllowListEntry{}
 	}
@@ -136,7 +124,7 @@ func (s *PGStore) SetEnvironmentACL(ctx context.Context, id, protectedStatus str
 	if err != nil {
 		return fmt.Errorf("environment: encoding ip_allow_list: %w", err)
 	}
-	tag, err := s.Pool.Exec(ctx,
+	tag, err := q.Exec(ctx,
 		`UPDATE environments SET protected_status = $2, network_isolation_enabled = $3, ip_allow_list = $4, updated_at = now() WHERE id = $1`,
 		id, protectedStatus, networkIsolationEnabled, allowList)
 	if err != nil {
