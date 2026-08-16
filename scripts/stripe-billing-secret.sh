@@ -90,10 +90,9 @@ case "$BEX_REQUIRE_PAYMENT_METHOD" in
   0|1) ;;
   *) echo "error: BEX_REQUIRE_PAYMENT_METHOD must be 0 or 1" >&2; exit 1 ;;
 esac
-if [ "$BEX_STRIPE_DUNNING_ENABLED" = 1 ] && [ "$stripe_mode" != test ]; then
-  echo "error: Stripe dunning is test-mode only at w7/m52; refusing rk_live_*" >&2
-  exit 1
-fi
+# Live dunning is an operator choice since w4/m81 t002 (the w7/m52 test-only
+# fence is lifted): BEX_STRIPE_ALLOW_LIVE=1 remains the single deliberate live
+# gate, and BEX_STRIPE_DUNNING_ENABLED opts enforcement in or out per mode.
 if [ "$BEX_STRIPE_DUNNING_ENABLED" = 1 ]; then
   python3 - "$BEX_STRIPE_GRACE_PERIOD" "$BEX_STRIPE_RECONCILE_INTERVAL" <<'PY'
 from decimal import Decimal
@@ -131,6 +130,16 @@ if duration_seconds("BEX_STRIPE_RECONCILE_INTERVAL", sys.argv[2]) < 60:
 PY
 fi
 
+# Live mode requires the operator-owned scoped portal configuration (w4/m81
+# t003): without it, portal sessions fall back to the account's default
+# configuration, which either errors (none activated) or allows subscription
+# cancellation/plan changes — breaking the one-subscription-per-workspace
+# invariant the scoped bpc_* disables. Provision it with
+# `stripe-billing-setup.py --live --dashboard-url https://dashboard.bex.co`.
+if [ "$stripe_mode" = live ] && [ -z "${BEX_STRIPE_PORTAL_CONFIGURATION_ID:-}" ]; then
+  echo "error: live mode requires BEX_STRIPE_PORTAL_CONFIGURATION_ID (the scoped bpc_* from stripe-billing-setup.py --live --dashboard-url ...); the account-default portal allows subscription cancellation" >&2
+  exit 1
+fi
 if [ -n "${BEX_STRIPE_PORTAL_CONFIGURATION_ID:-}" ]; then
   case "$BEX_STRIPE_PORTAL_CONFIGURATION_ID" in
     bpc_*) ;;

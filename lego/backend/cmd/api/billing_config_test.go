@@ -94,6 +94,21 @@ func TestPaymentMethodGateRequiresStripeAndControlPlaneStore(t *testing.T) {
 	}
 }
 
+// The w7/m52 test-only dunning fence is lifted (w4/m81 t002): live and test
+// modes are equally bootable dunning configurations, gated only by the opt-in
+// env. A reintroduced live fence would have to fail this contract.
+func TestDunningGateAcceptsBothModes(t *testing.T) {
+	enabledEnv := envGetter(map[string]string{"BEX_STRIPE_DUNNING_ENABLED": "1"})
+	for _, live := range []bool{false, true} {
+		if !dunningGate(enabledEnv, live) {
+			t.Fatalf("dunning enabled with livemode=%t = false, want true", live)
+		}
+		if dunningGate(envGetter(nil), live) {
+			t.Fatalf("dunning default with livemode=%t = true, want false", live)
+		}
+	}
+}
+
 func envGetter(values map[string]string) func(string) string {
 	return func(key string) string { return values[key] }
 }

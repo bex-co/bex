@@ -209,6 +209,64 @@ class StripeBillingSetupTest(unittest.TestCase):
                 stripe.call_args.args[:4],
             )
 
+    def test_webhook_endpoint_created_with_pinned_version_and_secret_file(self):
+        # w4/m81 t004: creation pins the API version + the exact ten events and
+        # writes the one-time signing secret to a mode-0600 file, never stdout.
+        import os
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(SETUP, "WEBHOOK_SECRET_DIR", Path(tmp)), mock.patch.object(
+                SETUP, "list_all", return_value=[]
+            ), mock.patch.object(
+                SETUP,
+                "stripe",
+                return_value={"id": "we_new", "secret": "whsec_fixture"},
+            ) as stripe:
+                endpoint_id, status = SETUP.ensure_webhook_endpoint(
+                    "https://api.bex.co/v1/webhooks/stripe", live=False
+                )
+                self.assertEqual("we_new", endpoint_id)
+                self.assertIn("created", status)
+                self.assertNotIn("whsec_fixture", status)
+                args = stripe.call_args.args
+                self.assertEqual(("webhook_endpoints", "create"), args[:2])
+                self.assertIn(f"api_version={SETUP.WEBHOOK_API_VERSION}", args)
+                for i, event in enumerate(SETUP.WEBHOOK_EVENTS):
+                    self.assertIn(f"enabled_events[{i}]={event}", args)
+            secret_file = Path(tmp) / "stripe-webhook-secret-test.env"
+            self.assertEqual(
+                "BEX_STRIPE_WEBHOOK_SECRET=whsec_fixture\n", secret_file.read_text()
+            )
+            self.assertEqual(0o600, os.stat(secret_file).st_mode & 0o777)
+
+    def test_webhook_endpoint_is_idempotent_and_refuses_drift(self):
+        matching = {
+            "id": "we_ok",
+            "url": "https://api.bex.co/v1/webhooks/stripe",
+            "status": "enabled",
+            "api_version": SETUP.WEBHOOK_API_VERSION,
+            "enabled_events": list(reversed(SETUP.WEBHOOK_EVENTS)),
+        }
+        with mock.patch.object(SETUP, "list_all", return_value=[matching]), mock.patch.object(
+            SETUP, "stripe"
+        ) as stripe:
+            self.assertEqual(
+                ("we_ok", "exists"),
+                SETUP.ensure_webhook_endpoint("https://api.bex.co/v1/webhooks/stripe", live=False),
+            )
+            stripe.assert_not_called()
+
+        for drifted in (
+            {**matching, "api_version": "2020-08-27"},
+            {**matching, "enabled_events": SETUP.WEBHOOK_EVENTS[:-1]},
+        ):
+            with mock.patch.object(SETUP, "list_all", return_value=[drifted]):
+                with self.assertRaisesRegex(RuntimeError, "drifted"):
+                    SETUP.ensure_webhook_endpoint(
+                        "https://api.bex.co/v1/webhooks/stripe", live=False
+                    )
+
     def test_portal_configuration_rejects_non_origin_urls(self):
         for url in (
             "http://dashboard.bex.co",

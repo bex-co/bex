@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Reconcile or explicitly repair the production-hosted Stripe test-mode outbox.
-# `report` and `issues` are read-only. `repair` is dry-run unless APPLY=1.
+# Reconcile or explicitly repair the production-hosted Stripe outbox.
+# `report` and `issues` are read-only and may run against a live key under the
+# explicit BEX_STRIPE_ALLOW_LIVE=1 go-live decision (w4/m81 t005). `repair` is
+# dry-run unless APPLY=1 and refuses live keys unconditionally — a misfired
+# re-emission bills real money; a guarded live repair needs its own decision.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck source=scripts/lib/stripe-billing.sh
@@ -33,8 +36,8 @@ case "$command_name" in
   report)
     [ "$#" -eq 4 ] || usage
     workspace="$2" start="$3" end="$4"
-    case "$workspace" in tea-*) ;; *) echo "error: workspace must be a disposable tea-* id" >&2; exit 2 ;; esac
-    bex_stripe_require_test_key "${BEX_STRIPE_SECRET_KEY:-}"
+    case "$workspace" in tea-*) ;; *) echo "error: workspace must be a tea-* workspace id" >&2; exit 2 ;; esac
+    bex_stripe_require_key_for read-only "${BEX_STRIPE_SECRET_KEY:-}"
     command -v stripe >/dev/null || { echo "error: stripe CLI is required" >&2; exit 2; }
     local_json="$tmp_dir/local.json"
     cp_curl --get --data-urlencode "start=$start" --data-urlencode "end=$end" \
@@ -47,6 +50,13 @@ case "$command_name" in
     ;;
   repair)
     [ "$#" -eq 5 ] || usage
+    # w4/m81 t005: repair re-emits through the target bex-api — a mutating
+    # path. A shell carrying a live key is refused regardless of
+    # BEX_STRIPE_ALLOW_LIVE; a guarded live repair needs its own decision
+    # (a misfired re-emission bills real money).
+    if [ -n "${BEX_STRIPE_SECRET_KEY:-}" ]; then
+      bex_stripe_require_key_for mutating "$BEX_STRIPE_SECRET_KEY"
+    fi
     transaction_id="$2" action="$3" actor="$4" reason="$5"
     case "$transaction_id" in *[!A-Za-z0-9_-]*|'') echo "error: invalid transaction id" >&2; exit 2 ;; esac
     case "$action" in acknowledge|retry|mark_repaired) ;; *) usage ;; esac

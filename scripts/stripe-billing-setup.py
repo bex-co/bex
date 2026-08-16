@@ -26,6 +26,7 @@
 # event_names + re-bases the same way — the two must agree.
 import argparse
 import json
+import os
 import subprocess
 import sys
 from decimal import Decimal
@@ -40,6 +41,25 @@ SUPERSEDED = ["instance_seconds", "egress_bytes", "storage_gb_seconds"]
 COMP_COUPON_ID = "bex-comp-100"
 STRIPE_GLOBAL_ARGS = []
 PORTAL_METADATA_KEY = "bex_billing_portal"
+# The webhook receiver pins stripe-go v86's API version and consumes exactly
+# these events (docs/runbooks/stripe-billing-setup.md §3); a drifted endpoint
+# silently breaks intake, so provisioning refuses drift instead of patching.
+WEBHOOK_API_VERSION = "2026-06-24.dahlia"
+# Where a newly created endpoint's one-time signing secret lands (mode-0600,
+# *.env so gitignored); module-level so tests can point it at a temp dir.
+WEBHOOK_SECRET_DIR = Path(__file__).resolve().parents[1] / "infra/local"
+WEBHOOK_EVENTS = [
+    "checkout.session.completed",
+    "invoice.payment_failed",
+    "invoice.payment_action_required",
+    "invoice.payment_succeeded",
+    "invoice.paid",
+    "customer.subscription.created",
+    "customer.subscription.updated",
+    "customer.subscription.deleted",
+    "customer.subscription.paused",
+    "customer.subscription.resumed",
+]
 
 
 def dec(s):
@@ -305,7 +325,61 @@ def ensure_portal_configuration(dashboard_url):
     return config["id"], "created"
 
 
-def main(live=False, tax_code=None, tax_behavior=None, dashboard_url=None):
+def ensure_webhook_endpoint(webhook_url, live):
+    """Create or verify the billing webhook endpoint (w4/m81 t004).
+
+    Idempotent by URL within the run's mode; an existing endpoint must match
+    the pinned API version and the exact event set or the run fails. On
+    creation the one-time signing secret is written to a mode-0600 file for
+    stripe-billing-secret.sh — never echoed or passed on argv.
+    """
+    if not webhook_url:
+        return None, "skipped"
+    parsed = urlsplit(webhook_url)
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+        raise RuntimeError("--webhook-url must be an absolute HTTPS URL")
+    endpoints = list_all("webhook_endpoints")
+    matching = [e for e in endpoints
+                if e.get("url") == webhook_url and e.get("status") != "disabled"]
+    if len(matching) > 1:
+        raise RuntimeError(f"multiple enabled webhook endpoints already target {webhook_url}")
+    if matching:
+        endpoint = matching[0]
+        drift = []
+        if endpoint.get("api_version") != WEBHOOK_API_VERSION:
+            drift.append(f"api_version={endpoint.get('api_version')!r} want {WEBHOOK_API_VERSION!r}")
+        have_events = sorted(endpoint.get("enabled_events") or [])
+        if have_events != sorted(WEBHOOK_EVENTS):
+            drift.append(f"enabled_events={have_events} want {sorted(WEBHOOK_EVENTS)}")
+        if drift:
+            raise RuntimeError(
+                f"webhook endpoint {endpoint['id']} for {webhook_url} drifted: "
+                + "; ".join(drift)
+                + "; repair or delete it in Stripe before enabling billing")
+        return endpoint["id"], "exists"
+    args = ["webhook_endpoints", "create",
+            "-d", f"url={webhook_url}",
+            "-d", f"api_version={WEBHOOK_API_VERSION}",
+            "-d", "description=bex billing webhook (stripe-billing-setup.py)"]
+    for i, event in enumerate(WEBHOOK_EVENTS):
+        args.extend(["-d", f"enabled_events[{i}]={event}"])
+    endpoint = stripe(*args)
+    secret = endpoint.get("secret")
+    if not secret:
+        raise RuntimeError(
+            f"webhook endpoint {endpoint.get('id')} created but Stripe returned no "
+            "signing secret; retrieve it from the Stripe Dashboard")
+    mode = "live" if live else "test"
+    secret_path = WEBHOOK_SECRET_DIR / f"stripe-webhook-secret-{mode}.env"
+    secret_path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(secret_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(f"BEX_STRIPE_WEBHOOK_SECRET={secret}\n")
+    secret_path.chmod(0o600)
+    return endpoint["id"], f"created (signing secret written to {secret_path}, mode 0600)"
+
+
+def main(live=False, tax_code=None, tax_behavior=None, dashboard_url=None, webhook_url=None):
     global STRIPE_GLOBAL_ARGS
     STRIPE_GLOBAL_ARGS = ["--live"] if live else []
     dims = parse_pricing()
@@ -339,6 +413,14 @@ def main(live=False, tax_code=None, tax_behavior=None, dashboard_url=None):
     else:
         print("  skipped (pass --dashboard-url to provision the scoped portal)")
 
+    print("\n== Billing webhook endpoint ==")
+    webhook_id, webhook_status = ensure_webhook_endpoint(webhook_url, live)
+    if webhook_id:
+        print(f"  endpoint: {webhook_status} ({webhook_id})")
+        print("  feed the signing secret to stripe-billing-secret.sh as BEX_STRIPE_WEBHOOK_SECRET")
+    else:
+        print("  skipped (pass --webhook-url to provision the pinned ten-event endpoint)")
+
     print("\n== Stripe Tax gate ==")
     if tax_code:
         print(f"  ready: code={tax_code} behavior={tax_behavior} active_registrations={registration_count}")
@@ -370,10 +452,15 @@ if __name__ == "__main__":
         "--dashboard-url",
         help="trusted HTTPS dashboard origin; provisions a scoped Customer Portal configuration",
     )
+    parser.add_argument(
+        "--webhook-url",
+        help="absolute HTTPS billing webhook URL (e.g. https://api.bex.co/v1/webhooks/stripe); "
+             "provisions the pinned-version ten-event endpoint idempotently",
+    )
     args = parser.parse_args()
     try:
         main(live=args.live, tax_code=args.tax_code, tax_behavior=args.tax_behavior,
-             dashboard_url=args.dashboard_url)
+             dashboard_url=args.dashboard_url, webhook_url=args.webhook_url)
     except RuntimeError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)

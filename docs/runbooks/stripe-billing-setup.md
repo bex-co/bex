@@ -147,7 +147,7 @@ This creates or updates `bex-system/bex-stripe` and rolls bex-api when its Deplo
 Verify all of the following before live activation:
 
 1. Startup logs say Stripe Billing is enabled without printing either secret.
-2. A non-excluded workspace with sealed paid usage gains exactly one Customer with `bex_workspace=tea-…` and one live `bex_billing_contract=true` Subscription containing all 13 items.
+2. A non-excluded workspace with sealed paid usage gains exactly one Customer with `bex_workspace=tea-…` and one live `bex_billing_contract=true` Subscription containing all 14 items.
 3. Meter events use the expected per-tier/rebased event names and deterministic 64-character identifiers.
 4. The usage REST, GraphQL, MCP, and dashboard surfaces retain the same fields and show a Stripe invoice preview; a simulated Stripe read failure falls back to `estimatedCost`.
 5. A Mode-A excluded workspace creates no Customer or Subscription.
@@ -253,25 +253,64 @@ To disable, remove the out-of-band `bex-stripe` Secret and roll bex-api. Confirm
 
 ## 6. Activate live mode
 
-Live catalog mutation is explicit and irreversible enough to require a second operator:
+Live catalog mutation is explicit and irreversible enough to require a second operator. This section is the executable go-live checklist (w4/m81): run it top to bottom in a staffed window; every prerequisite and decision is settled **before** the window opens.
+
+### 6.0 Out-of-band prerequisites (days before)
+
+1. **Stripe account live activation** — business verification complete and a payout bank account attached in the Stripe Dashboard. Without it, live charges fail regardless of anything below.
+2. **Tax decision** — an accountable operator (with tax counsel as needed) confirms the canonical product tax code and behavior. Researched recommendation on record (2026-08-15): `txcd_10102000` (Platform as a Service — business use; bex is Render-class app hosting), alternative `txcd_10101000` (IaaS — business use) if positioned as raw metered compute; behavior `exclusive` (the USD/US/B2B convention). Both are effectively immutable once stamped on the catalog — the setup script refuses behavior changes after the fact. Then create the **live** Tax registration(s) per jurisdiction (Dashboard → Tax → Registrations; status must be Collecting). A test registration does not authorize live collection, and Stripe silently calculates **zero tax** in unregistered jurisdictions. Skipping tax entirely is a supported, explicitly-accepted-risk configuration: omit the pair and collection stays off.
+3. **Epoch decision** — pick the exact cutover instant for `BEX_STRIPE_EPOCH` (RFC3339, with timezone). The emitter floor is `max(epoch, now − 34d)`: with epoch = cutover, every pre-cutover (test-period) `usage_hourly` row is permanently below the floor and is never billed to live customers. ⚠️ If the variable is omitted, the binary defaults the floor to `now − 34d` and would backfill up to 34 days of pre-cutover usage onto live cards — `scripts/stripe-billing-secret.sh` requires the variable, so **never** deploy the live Secret by raw `kubectl` edit, only through the installer.
+4. **Dunning decision** — live enforcement is an operator choice (the w7/m52 test-only fence is lifted): `BEX_STRIPE_DUNNING_ENABLED=1` runs the grace → enforcement → recovery lifecycle against live non-payment; `0` means invoices are collected by Stripe's own retries only and nothing suspends a non-paying workspace. Record the choice.
+
+Also note the cycle-anchor semantics: every subscription the client creates backdates its start to the **global epoch** (`BackdateStartDate`), so a workspace onboarded months after cutover still gets invoice periods aligned to the cutover anchor, not to its own signup. This bills only actual metered usage — it is a period-boundary alignment, not a retroactive charge.
+
+### 6.1 Provision live Stripe objects (second operator present)
 
 ```bash
-python3 scripts/stripe-billing-setup.py --live
-python3 scripts/stripe-billing-setup.py --live
+python3 scripts/stripe-billing-setup.py --live \
+  --dashboard-url https://dashboard.bex.co \
+  --webhook-url https://api.bex.co/v1/webhooks/stripe \
+  # plus, if the tax decision is a go:
+  --tax-code txcd_OPERATOR_CONFIRMED --tax-behavior exclusive
+python3 scripts/stripe-billing-setup.py --live --dashboard-url ... --webhook-url ...   # identical second run
 ```
 
-The second run must reuse every object. Then create a **live** restricted key and webhook endpoint with the same permissions/version/events, and store their live secrets separately from test secrets. Tax still requires a separately confirmed live registration and the same explicit code/behavior gate; test registration does not authorize live collection.
+The second run must reuse every object (`exists` on all 14 meters/prices, the coupon, the portal configuration, and the webhook endpoint). The run emits two values to carry into the live `.env`: the scoped portal id (`BEX_STRIPE_PORTAL_CONFIGURATION_ID=bpc_…` — **required** in live mode; the installer refuses a live key without it because the account-default portal allows subscription cancellation) and the webhook signing secret (written to a mode-0600 file under `infra/local/`, never echoed — feed it to the installer as `BEX_STRIPE_WEBHOOK_SECRET`, then delete the file).
 
-Before deploying:
+Separately create the **live** restricted key with the §2 permission inventory and store it out of band, never alongside test secrets.
+
+### 6.2 Pre-deploy checklist
 
 1. Compare all 14 live lookup keys and rates with `pricing.yaml`.
 2. Confirm `bex-comp-100` is valid, perpetual, and exactly 100% off.
-3. Confirm the webhook URL, API version, and exact ten-event allowlist from §3.
-4. Confirm Stripe's account-level invoice, retry/dunning, and email settings.
+3. Confirm the webhook endpoint URL, API version, and exact ten-event allowlist from §3 (the `--webhook-url` provisioning enforces these; this is the human double-check).
+4. Confirm Stripe's account-level invoice, retry, and email settings, and that the recorded dunning decision matches `BEX_STRIPE_DUNNING_ENABLED`.
 5. Confirm Checkout setup and the scoped Customer Portal round trip in test mode, including replay-safe completion and trusted returns.
-6. Set an explicit `BEX_STRIPE_EPOCH`; understand that sealed rows after that instant and within the 34-day safety window can be backfilled and charged.
+6. Confirm `BEX_STRIPE_EPOCH` in the live `.env` equals the decided cutover instant; understand that sealed rows after that instant and within the 34-day safety window can be backfilled and charged.
 
-Deploying a live runtime Secret additionally requires `BEX_STRIPE_ALLOW_LIVE=1`; that variable is authorization for a future go-live, not part of this test-mode handoff. Deploy live secrets only during a staffed window. Watch provisioning errors, event rejects, outbox backlog/stamp failures, invoice-read degradation, duplicate Customer/Subscription alarms, and webhook signature failures.
+### 6.3 Cutover window (staffed)
+
+1. **Reset the test-mode payment markers** so no workspace keeps paid access or usage export without a live card (the mode-flip upsert clears them lazily; this closes the window for workspaces not touched immediately):
+
+   ```sql
+   UPDATE billing_provider_mappings SET payment_method_bound_at = NULL WHERE livemode = false;
+   ```
+
+2. Fill the live `.env`: `BEX_STRIPE_SECRET_KEY=rk_live_…`, `BEX_STRIPE_WEBHOOK_SECRET=whsec_…`, `BEX_STRIPE_EPOCH=<cutover>`, `BEX_STRIPE_PORTAL_CONFIGURATION_ID=bpc_…`, the dunning decision, and the tax pair if activated. Export `BEX_STRIPE_ALLOW_LIVE=1` — the single deliberate live gate.
+3. `DRY_RUN=1 bash scripts/stripe-billing-secret.sh`, review the key list and mode line, then run it for real (it writes `bex-system/bex-stripe` and rolls bex-api).
+4. Verify startup: the log line reports Stripe Billing enabled with the decided epoch and webhook `true`; `bex_billing_enabled` is 1.
+
+### 6.4 Post-cutover verification
+
+1. Watch the eight `bex_billing_*` alerts through the window: provisioning errors, event rejects, outbox backlog/stamp failures, invoice-read degradation, duplicate Customer/Subscription alarms, and webhook signature/version/mode drift.
+2. Confirm readiness self-healed: `workspaceBillingReadiness` reports `customerReady=false` for previously test-bound workspaces until they complete a live Checkout, and (if tax activated) `readiness.tax.configured=true` with `reason=payment_setup_required` until then.
+3. Run the read-only drift report against live (allowed under the same flag; mutating `repair` still refuses live keys):
+
+   ```bash
+   BEX_STRIPE_ALLOW_LIVE=1 bash scripts/stripe-billing-reconcile.sh report <tea-workspace> <start> <end>
+   ```
+
+4. Drive one real workspace through live Checkout with a real card, confirm the portal round trip is scoped (no cancel/plan-change controls), and confirm the first invoice preview shows only post-epoch usage.
 
 ## 7. Rollback and incident response
 
