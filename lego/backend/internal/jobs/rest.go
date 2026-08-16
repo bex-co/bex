@@ -19,7 +19,6 @@ package jobs
 import (
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -82,15 +81,12 @@ func toJobList(views []JobView) []jobWithCursor {
 // ListFilter. Absent limit stays 0 and the store bounds it at
 // core.MaxPageLimit (codex-security round-6 #7 — Render defaults to 20; bex
 // returns the larger newest-first cap and pages with the cursor, same as
-// deploys).
+// deploys). core.QueryLimit rejects a present-but-bad one; see
+// FilterFromStrings for why presence has to be judged here.
 func filterFromQuery(q url.Values) (ListFilter, error) {
-	limit := 0
-	if v := q.Get("limit"); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil || n < 1 {
-			return ListFilter{}, core.ErrBadRequest
-		}
-		limit = n
+	limit, err := core.QueryLimit(q)
+	if err != nil {
+		return ListFilter{}, err
 	}
 	return FilterFromStrings(
 		q["status"],

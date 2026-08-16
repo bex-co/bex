@@ -22,7 +22,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -157,15 +156,12 @@ func toDeployList(deploys []DeployView) []deployWithCursor {
 // docs/ADR018-render-parity.md), which is why this parses limit itself
 // instead of core.PageParams (whose absent-means-20 default and silent
 // unparseable-means-default reading are both wrong here: a limit the caller
-// spelled wrong must 400, not silently return the default page).
+// spelled wrong must 400, not silently return the default page) — that is
+// core.QueryLimit's whole job.
 func filterFromQuery(q url.Values) (ListFilter, error) {
-	limit := 0
-	if v := q.Get("limit"); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil || n < 1 {
-			return ListFilter{}, fmt.Errorf("%w: limit must be a positive integer", core.ErrBadRequest)
-		}
-		limit = n
+	limit, err := core.QueryLimit(q)
+	if err != nil {
+		return ListFilter{}, err
 	}
 	return FilterOf(
 		q["status"],

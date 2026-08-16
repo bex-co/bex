@@ -193,10 +193,8 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	if err := s.ensureDatabaseNameAvailable(ctx, tenantID, req.Name, ""); err != nil {
 		return PostgresView{}, err
 	}
-	if req.TargetTime != "" {
-		if _, err := time.Parse(time.RFC3339, req.TargetTime); err != nil {
-			return PostgresView{}, fmt.Errorf("%w: targetTime must be an RFC3339 timestamp", core.ErrBadRequest)
-		}
+	if _, err := core.ParseTime("targetTime", req.TargetTime); err != nil {
+		return PostgresView{}, err
 	}
 	if !src.Status.BackupsEnabled {
 		return PostgresView{}, fmt.Errorf("%w: %q has no backups to recover from", core.ErrBadRequest, name)

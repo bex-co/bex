@@ -248,42 +248,29 @@ type ListFilter struct {
 // (store.DeployFilter), not re-clamped here.
 func FilterOf(statuses []string, createdBefore, createdAfter, updatedBefore, updatedAfter, finishedBefore, finishedAfter, cursor string, limit int) (ListFilter, error) {
 	if limit < 0 {
-		return ListFilter{}, fmt.Errorf("%w: limit must be a positive integer", core.ErrBadRequest)
+		return ListFilter{}, core.ErrLimitNotPositive
 	}
 	f := ListFilter{Statuses: statuses, Cursor: cursor, Limit: limit}
 	var err error
-	if f.CreatedBefore, err = parseTime("createdBefore", createdBefore); err != nil {
+	if f.CreatedBefore, err = core.ParseTime("createdBefore", createdBefore); err != nil {
 		return ListFilter{}, err
 	}
-	if f.CreatedAfter, err = parseTime("createdAfter", createdAfter); err != nil {
+	if f.CreatedAfter, err = core.ParseTime("createdAfter", createdAfter); err != nil {
 		return ListFilter{}, err
 	}
-	if f.UpdatedBefore, err = parseTime("updatedBefore", updatedBefore); err != nil {
+	if f.UpdatedBefore, err = core.ParseTime("updatedBefore", updatedBefore); err != nil {
 		return ListFilter{}, err
 	}
-	if f.UpdatedAfter, err = parseTime("updatedAfter", updatedAfter); err != nil {
+	if f.UpdatedAfter, err = core.ParseTime("updatedAfter", updatedAfter); err != nil {
 		return ListFilter{}, err
 	}
-	if f.FinishedBefore, err = parseTime("finishedBefore", finishedBefore); err != nil {
+	if f.FinishedBefore, err = core.ParseTime("finishedBefore", finishedBefore); err != nil {
 		return ListFilter{}, err
 	}
-	if f.FinishedAfter, err = parseTime("finishedAfter", finishedAfter); err != nil {
+	if f.FinishedAfter, err = core.ParseTime("finishedAfter", finishedAfter); err != nil {
 		return ListFilter{}, err
 	}
 	return f, nil
-}
-
-// parseTime reads one optional RFC3339 param — empty stays the zero time
-// (bound unset), anything else must parse.
-func parseTime(name, value string) (time.Time, error) {
-	if value == "" {
-		return time.Time{}, nil
-	}
-	t, err := time.Parse(time.RFC3339, value)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("%w: %s must be RFC3339 (e.g. 2026-01-02T15:04:05Z)", core.ErrBadRequest, name)
-	}
-	return t, nil
 }
 
 // List returns a service's deploy history, newest first (Render's

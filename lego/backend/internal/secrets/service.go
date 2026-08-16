@@ -234,7 +234,7 @@ func (s *Service) ListEnvVarsPage(ctx context.Context, service, after string, li
 		limit = core.DefaultPageLimit
 	}
 	if limit < 0 {
-		return nil, fmt.Errorf("%w: limit must be a positive integer", core.ErrBadRequest)
+		return nil, core.ErrLimitNotPositive
 	}
 	if limit > core.MaxPageLimit {
 		limit = core.MaxPageLimit

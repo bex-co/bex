@@ -90,14 +90,17 @@ type patchCredentialRequest struct {
 	ExpiresAt *string `json:"expiresAt"`
 }
 
-// parseExpiresAt parses an RFC3339 timestamp, "" => nil (no expiry).
+// parseExpiresAt parses an RFC3339 timestamp, "" => nil (no expiry). The nil
+// is why this wraps core.ParseTime rather than being replaced by it: here
+// "absent" has to stay distinguishable from the zero time, because a nil means
+// "never expires" while a zero time would mean "expired at the epoch".
 func parseExpiresAt(s string) (*time.Time, error) {
 	if s == "" {
 		return nil, nil
 	}
-	t, err := time.Parse(time.RFC3339, s)
+	t, err := core.ParseTime("expiresAt", s)
 	if err != nil {
-		return nil, core.ErrBadRequest
+		return nil, err
 	}
 	return &t, nil
 }

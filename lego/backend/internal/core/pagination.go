@@ -47,13 +47,16 @@ func QueryList(q url.Values, key string) []string {
 // GraphQL/MCP adapters that receive strings rather than query values. A
 // malformed value must never be silently ignored: falling back to a default
 // widens the effective window past caps like BEX_MAX_QUERY_HOURS.
+//
+// The message carries a worked example because a caller who spelled a
+// timestamp wrong has no other way to see the expected shape.
 func ParseTime(field, value string) (time.Time, error) {
 	if value == "" {
 		return time.Time{}, nil
 	}
 	parsed, err := time.Parse(time.RFC3339, value)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("%w: %s must be an RFC3339 timestamp", ErrBadRequest, field)
+		return time.Time{}, fmt.Errorf("%w: %s must be an RFC3339 timestamp (e.g. 2026-01-02T15:04:05Z)", ErrBadRequest, field)
 	}
 	return parsed, nil
 }
@@ -168,9 +171,44 @@ const (
 	MaxPageLimit     = 100
 )
 
+// ErrLimitNotPositive is the 400 for a `limit` the caller explicitly supplied
+// as zero or a negative number.
+//
+// Which of the two limit policies here a list wants is decided by ONE question:
+// does its store read limit <= 0 as "absent" and substitute a cap of its own?
+// If so it must REJECT (QueryLimit / this sentinel) — letting the value through
+// answers with the full cap dressed as the page the caller asked for, and the
+// response looks identical either way, so nothing surfaces the mistake. If
+// instead the adapter substitutes a real default, CLAMP (PageParams/PageLimit).
+//
+// Only a surface that can still see PRESENCE may reject an explicit zero: by
+// the time a list filter holds an int, zero is also how "omitted" arrives.
+var ErrLimitNotPositive = fmt.Errorf("%w: limit must be a positive integer", ErrBadRequest)
+
+// QueryLimit parses the `limit` query param for a REJECT-policy list (see
+// ErrLimitNotPositive). Absent stays 0 — the store's own cap applies — while a
+// present-but-unparseable or non-positive value is a 400 rather than a silent
+// fall-back to a default page.
+//
+// This is the deliberate counterpart to PageParams, not a duplicate of it:
+// PageParams' absent-means-DefaultPageLimit and unparseable-means-default
+// readings are both wrong for these lists.
+func QueryLimit(q url.Values) (int, error) {
+	v := q.Get("limit")
+	if v == "" {
+		return 0, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 1 {
+		return 0, ErrLimitNotPositive
+	}
+	return n, nil
+}
+
 // PageParams parses Render's `cursor` + `limit` query params. after is the
 // opaque cursor to resume after (empty ⇒ first page); limit is clamped to
 // [1, MaxPageLimit], defaulting to DefaultPageLimit when absent or unparseable.
+// This is the CLAMP policy; see ErrLimitNotPositive for when to reject instead.
 func PageParams(q url.Values) (after string, limit int) {
 	after = q.Get("cursor")
 	limit = DefaultPageLimit

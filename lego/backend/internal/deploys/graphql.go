@@ -17,11 +17,8 @@ limitations under the License.
 package deploys
 
 import (
-	"fmt"
-
 	"github.com/graphql-go/graphql"
 
-	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -35,9 +32,9 @@ import (
 var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Deploy",
 	Fields: graphql.Fields{
-		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.ID })},
-		"serviceId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.ServiceID })},
-		"status":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.Status })},
+		"id":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.ID })},
+		"serviceId":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.ServiceID })},
+		"status":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.Status })},
 		"trigger":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.Trigger })},
 		"image":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.Image })},
 		"rollbackOf": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.RollbackOf })},
@@ -47,10 +44,10 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"commitId":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.CommitID })},
 		"commitMessage":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return d.CommitMessage })},
 		"commitCreatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.CommitAuthorAt) })},
-		"createdAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTime(d.CreatedAt) })},
-		"updatedAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTime(d.UpdatedAt) })},
-		"startedAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.StartedAt) })},
-		"finishedAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.FinishedAt) })},
+		"createdAt":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTime(d.CreatedAt) })},
+		"updatedAt":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTime(d.UpdatedAt) })},
+		"startedAt":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.StartedAt) })},
+		"finishedAt":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(d DeployView) any { return formatTimePtr(d.FinishedAt) })},
 		// Pre-deploy step outcome (w1/m33): "running"|"succeeded"|"failed", empty
 		// when no pre-deploy step ran. Distinguishes a migration failure from a
 		// health-check failure (both status=update_failed).
@@ -145,15 +142,9 @@ func filterFromArgs(args map[string]any) (ListFilter, error) {
 			}
 		}
 	}
-	// An EXPLICIT limit below 1 is rejected here (REST's ?limit=0 rejection);
-	// an absent limit stays 0 = the full history. FilterOf can't tell the two
-	// apart once limit is an int, so presence is checked at the arg map.
-	limit := 0
-	if v, ok := args["limit"].(int); ok {
-		if v < 1 {
-			return ListFilter{}, fmt.Errorf("%w: limit must be a positive integer", core.ErrBadRequest)
-		}
-		limit = v
+	limit, err := gqlutil.PositiveLimit(args)
+	if err != nil {
+		return ListFilter{}, err
 	}
 	return FilterOf(
 		statuses,
