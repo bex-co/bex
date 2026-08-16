@@ -1690,24 +1690,16 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 // from the store's narrower projection of the desired spec (for example after
 // a stale CRD rejects a newly added field). That applies to the stack path
 // too: "the next apply re-converges" only helps if a next apply ever comes.
-func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, environment core.EnvironmentAssignment) (AppView, error) {
-	var createdRowID string
-	rollbackStoreRow := func(cause error) error {
-		if createdRowID == "" || s.Store == nil {
-			return cause
-		}
-		if err := s.Store.DeleteApp(ctx, createdRowID); err != nil && !errors.Is(err, store.ErrNotFound) {
-			return errors.Join(cause, fmt.Errorf("rolling back service record: %w", err))
-		}
-		if s.Kick != nil {
-			s.Kick()
-		}
-		return cause
+// provisionAppIdentity opens the control-plane row (when the store is on and a
+// tenant is resolved) and stamps the CR's identity: the managed-by/app-id/
+// workspace labels the projector and lifecycle verbs key on, plus the globally
+// unique slug that drives the platform host. It returns the created row's id
+// (empty when no row was written, so the caller knows whether to roll back) and
+// the first deploy id the create opened.
+func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, environment core.EnvironmentAssignment) (createdRowID, firstDeployID string, err error) {
+	if a.Labels == nil {
+		a.Labels = map[string]string{}
 	}
-	// Write the store row when the store is on + a tenant is resolved, so the
-	// create populates deploy history and the projector recognises the CR as
-	// store-managed (unified create path, w2/m11).
-	var firstDeployID string
 	if s.Store != nil && tenantID != "" {
 		row, err := s.Store.CreateApp(ctx, store.App{
 			TenantID:             tenantID,
@@ -1727,35 +1719,50 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 		})
 		if err != nil {
 			if errors.Is(err, store.ErrConflict) {
-				return AppView{}, fmt.Errorf("%w: name %q is already in use", core.ErrConflict, req.Name)
+				return "", "", fmt.Errorf("%w: name %q is already in use", core.ErrConflict, req.Name)
 			}
-			return AppView{}, fmt.Errorf("creating service record: %w", err)
+			return "", "", fmt.Errorf("creating service record: %w", err)
 		}
 		// Stamp the managed-by + app-id labels so the projector's byID index
 		// finds this CR on its next pass (avoiding a duplicate create) and
 		// lifecycle verbs (suspend/scale/plan) have an app-id to write through.
-		if a.Labels == nil {
-			a.Labels = map[string]string{}
-		}
 		a.Labels[store.LabelManagedBy] = store.ManagedByValue
 		a.Labels[store.LabelAppID] = row.ID
-		createdRowID = row.ID
 		a.Labels[store.LabelWorkspace] = tenantID
 		// The globally-unique slug (w4/m19) drives the platform host
 		// (operator effectiveHosts) — never req.Name, which is only
 		// workspace-unique and can collide across tenants.
 		a.Spec.Subdomain = row.Slug
-		firstDeployID = row.FirstDeployID
+		createdRowID, firstDeployID = row.ID, row.FirstDeployID
 	}
 	// The control-plane row already supplied its canonical id above. A direct
 	// API create has no row, so persist an equally Render-shaped service id on
 	// the CR; all later reads and lifecycle verbs can resolve it by label.
-	if a.Labels == nil {
-		a.Labels = map[string]string{}
-	}
 	if a.Labels[core.LabelAppID] == "" {
 		a.Labels[core.LabelAppID] = ids.New(ids.Service)
 	}
+	return createdRowID, firstDeployID, nil
+}
+
+func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, environment core.EnvironmentAssignment) (AppView, error) {
+	var createdRowID string
+	rollbackStoreRow := func(cause error) error {
+		if createdRowID == "" || s.Store == nil {
+			return cause
+		}
+		if err := s.Store.DeleteApp(ctx, createdRowID); err != nil && !errors.Is(err, store.ErrNotFound) {
+			return errors.Join(cause, fmt.Errorf("rolling back service record: %w", err))
+		}
+		if s.Kick != nil {
+			s.Kick()
+		}
+		return cause
+	}
+	rowID, firstDeployID, err := s.provisionAppIdentity(ctx, req, a, tenantID, environment)
+	if err != nil {
+		return AppView{}, err
+	}
+	createdRowID = rowID
 	if err := s.ensureHostsClaimable(ctx, a); err != nil {
 		return AppView{}, rollbackStoreRow(err)
 	}

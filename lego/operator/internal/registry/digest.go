@@ -43,6 +43,17 @@ const manifestAccept = "application/vnd.oci.image.manifest.v1+json, " +
 	"application/vnd.docker.distribution.manifest.v2+json, " +
 	"application/vnd.docker.distribution.manifest.list.v2+json"
 
+// NormalizeBase turns a configured registry host into a request base URL,
+// defaulting to plain HTTP when no scheme is given (the in-cluster Zot default).
+// Shared so the digest read and the repo teardown cannot disagree on what a
+// bare host means.
+func NormalizeBase(registryHost string) string {
+	if strings.HasPrefix(registryHost, "http://") || strings.HasPrefix(registryHost, "https://") {
+		return registryHost
+	}
+	return "http://" + registryHost
+}
+
 // ResolveDigest asks the registry which immutable manifest digest it currently
 // serves for repo:tag (HEAD /v2/<repo>/manifests/<tag> → Docker-Content-Digest).
 // username may be empty for an unauthenticated registry (the dev default).
@@ -55,10 +66,7 @@ func ResolveDigest(ctx context.Context, httpClient *http.Client, registryHost, r
 	if httpClient == nil {
 		httpClient = defaultHTTPClient
 	}
-	base := registryHost
-	if !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
-		base = "http://" + base
-	}
+	base := NormalizeBase(registryHost)
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead,
 		fmt.Sprintf("%s/v2/%s/manifests/%s", base, repo, tag), nil)
 	if err != nil {

@@ -98,6 +98,24 @@ type MetricSeries struct {
 	Points []MetricPoint     `json:"points"`
 }
 
+// SetLabel sets one label, allocating the map on first use. Series arrive from
+// Prometheus with a nil Labels map whenever aggregation dropped every selector,
+// so every caller that tags a series has to handle that — this is the one place
+// that does.
+func (s *MetricSeries) SetLabel(key, value string) {
+	if s.Labels == nil {
+		s.Labels = map[string]string{}
+	}
+	s.Labels[key] = value
+}
+
+// setLabelOnEach tags every series in a result set with one label.
+func setLabelOnEach(series []MetricSeries, key, value string) {
+	for i := range series {
+		series[i].SetLabel(key, value)
+	}
+}
+
 // MetricQuery is the resolved request for the Metrics verb, shared by every
 // adapter. Metric selects which series to return; the rest are filters/options.
 type MetricQuery struct {
@@ -600,10 +618,7 @@ func (s *Service) rangedResourceSeries(ctx context.Context, q MetricQuery, app *
 		return nil, err
 	}
 	for i := range series {
-		if series[i].Labels == nil {
-			series[i].Labels = map[string]string{}
-		}
-		series[i].Labels["resource"] = q.App
+		series[i].SetLabel(LabelResource, q.App)
 		series[i].Unit = unit
 	}
 	return series, nil
@@ -781,14 +796,11 @@ func (s *Service) readRequestSeries(ctx context.Context, source RequestMetricsSo
 	}
 	unit := requestUnit(q.Metric)
 	for i := range series {
-		if series[i].Labels == nil {
-			series[i].Labels = map[string]string{}
-		}
 		// Aggregation commonly removes every selector label. Restore the
 		// caller-facing resource identity here: operational selectors use the
 		// resolved App name, but multi-resource REST/GraphQL/MCP responses must
 		// remain attributable to the public id or name the caller requested.
-		series[i].Labels["resource"] = q.App
+		series[i].SetLabel(LabelResource, q.App)
 		if series[i].Unit == "" {
 			series[i].Unit = unit
 		}

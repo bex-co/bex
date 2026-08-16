@@ -177,24 +177,27 @@ func (s *Service) StreamExec(ctx context.Context, req ExecRequest, w http.Respon
 	if flush != nil {
 		flush()
 	}
-	buf := make([]byte, 4096)
-	for {
-		n, rerr := resp.Body.Read(buf)
-		if n > 0 {
-			if _, werr := w.Write(buf[:n]); werr != nil {
-				return nil // client disconnected; nothing more to do
-			}
-			if flush != nil {
-				flush()
-			}
-		}
-		if rerr != nil {
-			if rerr == io.EOF {
-				return nil
-			}
-			return nil // upstream ended (context cancel/timeout); stream is closed
-		}
+	// Either end failing — client disconnect, or upstream ending on context
+	// cancel/timeout — closes the stream with nothing left to report, so the
+	// copy's error is deliberately discarded.
+	_, _ = io.Copy(flushingWriter{w: w, flush: flush}, resp.Body)
+	return nil
+}
+
+// flushingWriter flushes the transport after every chunk, so an SSE consumer
+// sees each event as it arrives rather than at the transport's buffering
+// boundary.
+type flushingWriter struct {
+	w     io.Writer
+	flush func()
+}
+
+func (f flushingWriter) Write(p []byte) (int, error) {
+	n, err := f.w.Write(p)
+	if err == nil && f.flush != nil {
+		f.flush()
 	}
+	return n, err
 }
 
 // ExecResult is the buffered outcome of a sandbox exec (MCP surface): the full

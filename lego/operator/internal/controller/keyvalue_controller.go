@@ -76,8 +76,11 @@ const (
 	kvExporterImage = "oliver006/redis_exporter:alpine"
 	// labelKeyValue marks the workload/Service a KeyValue creates, and is the
 	// StatefulSet selector + Service selector so the two stay coupled.
-	labelKeyValue           = "app.bex.co/keyvalue"
-	kvStorageRequeue        = 10 * time.Second
+	labelKeyValue    = "app.bex.co/keyvalue"
+	kvStorageRequeue = 10 * time.Second
+	// conditionStorageReady is the KeyValue status condition tracking PVC
+	// provisioning and growth, alongside appv1alpha1.ConditionReady.
+	conditionStorageReady   = "StorageReady"
 	kvStorageFailureRequeue = 5 * time.Minute
 )
 
@@ -871,7 +874,7 @@ func (r *KeyValueReconciler) rejectKeyValueStorageShrink(ctx context.Context, kv
 	kv.Status.AllocatedStorageGB = current
 	message := fmt.Sprintf("Valkey storage is grow-only: requested %d GB is below the allocated %d GB", requested, current)
 	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
-		Type: "StorageReady", Status: metav1.ConditionFalse, Reason: "StorageShrinkRejected",
+		Type: conditionStorageReady, Status: metav1.ConditionFalse, Reason: "StorageShrinkRejected",
 		Message: message, ObservedGeneration: kv.Generation,
 	})
 	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
@@ -881,6 +884,9 @@ func (r *KeyValueReconciler) rejectKeyValueStorageShrink(ctx context.Context, kv
 	return r.Status().Update(ctx, kv)
 }
 
+// reconcileKeyValueStorage converges the Valkey PVC toward desiredGB in three
+// phases: await the PVC's creation, grow it if the request is behind, then
+// report the observed capacity.
 func (r *KeyValueReconciler) reconcileKeyValueStorage(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, desiredGB int32) (keyValueStorageState, error) {
 	pvc := &corev1.PersistentVolumeClaim{}
 	key := client.ObjectKey{Namespace: kv.Namespace, Name: keyValuePVCName(kv.Name)}
@@ -888,90 +894,117 @@ func (r *KeyValueReconciler) reconcileKeyValueStorage(ctx context.Context, kv *a
 		if !apierrors.IsNotFound(err) {
 			return keyValueStorageState{}, err
 		}
-		kv.Status.AllocatedStorageGB = max(desiredGB, statefulSetStorageGB(sts))
-		kv.Status.ObservedStorageGB = kv.Spec.StorageGB
-		kv.Status.StorageCapacityGB = 0
-		state := keyValueStorageState{reason: "WaitingForPVC", message: "waiting for the Valkey PVC to be created", requeue: kvStorageRequeue}
-		setKeyValueStorageCondition(kv, state)
-		return state, nil
+		return awaitKeyValuePVC(kv, sts, desiredGB), nil
 	}
 
 	requestedGB := pvcRequestedStorageGB(pvc)
 	capacityGB := pvcCapacityStorageGB(pvc)
 	desiredGB = max(desiredGB, requestedGB, capacityGB)
 	if desiredGB > requestedGB {
-		if pvc.Status.Phase != corev1.ClaimBound {
-			state := keyValueStorageState{reason: "WaitingForPVCBinding", message: "waiting for the Valkey PVC to bind before requesting expansion", requeue: kvStorageRequeue}
-			setKeyValueStorageCondition(kv, state)
-			return state, nil
-		}
-		if pvc.Spec.StorageClassName == nil || *pvc.Spec.StorageClassName == "" {
-			state := keyValueStorageState{failed: true, reason: "StorageClassMissing", message: "Valkey PVC has no StorageClass; online expansion is unavailable", requeue: kvStorageFailureRequeue}
-			setKeyValueStorageCondition(kv, state)
-			return state, nil
-		}
-		var storageClass storagev1.StorageClass
-		if err := r.Get(ctx, client.ObjectKey{Name: *pvc.Spec.StorageClassName}, &storageClass); err != nil {
-			if apierrors.IsNotFound(err) {
-				state := keyValueStorageState{failed: true, reason: "StorageClassNotFound", message: fmt.Sprintf("StorageClass %q was not found; cannot expand Valkey PVC", *pvc.Spec.StorageClassName), requeue: kvStorageFailureRequeue}
-				setKeyValueStorageCondition(kv, state)
-				return state, nil
-			}
+		blocked, err := r.expandKeyValuePVC(ctx, kv, pvc, desiredGB)
+		if err != nil {
 			return keyValueStorageState{}, err
 		}
-		if storageClass.AllowVolumeExpansion == nil || !*storageClass.AllowVolumeExpansion {
-			state := keyValueStorageState{failed: true, reason: "StorageClassNotExpandable", message: fmt.Sprintf("StorageClass %q does not allow volume expansion", storageClass.Name), requeue: kvStorageFailureRequeue}
-			setKeyValueStorageCondition(kv, state)
-			return state, nil
-		}
-		before := pvc.DeepCopy()
-		if pvc.Spec.Resources.Requests == nil {
-			pvc.Spec.Resources.Requests = corev1.ResourceList{}
-		}
-		pvc.Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse(fmt.Sprintf("%dGi", desiredGB))
-		if err := r.Patch(ctx, pvc, client.MergeFrom(before)); err != nil {
-			// Unlike Postgres (whose PVC CNPG owns, so the operator pre-flights the
-			// quota), the KeyValue reconciler patches the PVC itself — a namespace
-			// requests.storage quota rejection therefore reaches us directly as a
-			// Forbidden. Surface it and back off instead of hot-looping a bare error
-			// (ADR045 Finding 4, w7/m59); the resize resumes once quota headroom
-			// returns. This grow seam is user-initiated (a plan/storage change), not
-			// an autoscale loop, so there is no periodic-retry storm to debounce.
-			if isQuotaExceeded(err) {
-				state := keyValueStorageState{
-					failed:  true,
-					reason:  "StorageBlockedByQuota",
-					message: fmt.Sprintf("Valkey PVC expansion to %d GB is blocked by the namespace storage quota; growth resumes when quota headroom is available", desiredGB),
-					requeue: kvStorageFailureRequeue,
-				}
-				setKeyValueStorageCondition(kv, state)
-				return state, nil
-			}
-			return keyValueStorageState{}, err
+		if blocked != nil {
+			return *blocked, nil
 		}
 		requestedGB = desiredGB
 	}
+	return finalizeKeyValueStorage(kv, pvc, desiredGB, requestedGB, capacityGB), nil
+}
 
+// awaitKeyValuePVC records the pre-creation state: the StatefulSet's own
+// template size is the best allocation estimate until the PVC exists.
+func awaitKeyValuePVC(kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, desiredGB int32) keyValueStorageState {
+	kv.Status.AllocatedStorageGB = max(desiredGB, statefulSetStorageGB(sts))
+	kv.Status.ObservedStorageGB = kv.Spec.StorageGB
+	kv.Status.StorageCapacityGB = 0
+	state := keyValueStorageState{reason: "WaitingForPVC", message: "waiting for the Valkey PVC to be created", requeue: kvStorageRequeue}
+	setKeyValueStorageCondition(kv, state)
+	return state
+}
+
+// expandKeyValuePVC raises the PVC's storage request to desiredGB. A non-nil
+// returned state means an eligibility gate blocked the grow (already recorded on
+// the CR) and the caller should return it; nil means the patch landed.
+func (r *KeyValueReconciler) expandKeyValuePVC(ctx context.Context, kv *appv1alpha1.KeyValue, pvc *corev1.PersistentVolumeClaim, desiredGB int32) (*keyValueStorageState, error) {
+	block := func(state keyValueStorageState) (*keyValueStorageState, error) {
+		setKeyValueStorageCondition(kv, state)
+		return &state, nil
+	}
+	if pvc.Status.Phase != corev1.ClaimBound {
+		return block(keyValueStorageState{reason: "WaitingForPVCBinding", message: "waiting for the Valkey PVC to bind before requesting expansion", requeue: kvStorageRequeue})
+	}
+	if pvc.Spec.StorageClassName == nil || *pvc.Spec.StorageClassName == "" {
+		return block(keyValueStorageState{failed: true, reason: "StorageClassMissing", message: "Valkey PVC has no StorageClass; online expansion is unavailable", requeue: kvStorageFailureRequeue})
+	}
+	var storageClass storagev1.StorageClass
+	if err := r.Get(ctx, client.ObjectKey{Name: *pvc.Spec.StorageClassName}, &storageClass); err != nil {
+		if apierrors.IsNotFound(err) {
+			return block(keyValueStorageState{failed: true, reason: "StorageClassNotFound", message: fmt.Sprintf("StorageClass %q was not found; cannot expand Valkey PVC", *pvc.Spec.StorageClassName), requeue: kvStorageFailureRequeue})
+		}
+		return nil, err
+	}
+	if storageClass.AllowVolumeExpansion == nil || !*storageClass.AllowVolumeExpansion {
+		return block(keyValueStorageState{failed: true, reason: "StorageClassNotExpandable", message: fmt.Sprintf("StorageClass %q does not allow volume expansion", storageClass.Name), requeue: kvStorageFailureRequeue})
+	}
+	before := pvc.DeepCopy()
+	if pvc.Spec.Resources.Requests == nil {
+		pvc.Spec.Resources.Requests = corev1.ResourceList{}
+	}
+	pvc.Spec.Resources.Requests[corev1.ResourceStorage] = resource.MustParse(fmt.Sprintf("%dGi", desiredGB))
+	if err := r.Patch(ctx, pvc, client.MergeFrom(before)); err != nil {
+		// Unlike Postgres (whose PVC CNPG owns, so the operator pre-flights the
+		// quota), the KeyValue reconciler patches the PVC itself — a namespace
+		// requests.storage quota rejection therefore reaches us directly as a
+		// Forbidden. Surface it and back off instead of hot-looping a bare error
+		// (ADR045 Finding 4, w7/m59); the resize resumes once quota headroom
+		// returns. This grow seam is user-initiated (a plan/storage change), not
+		// an autoscale loop, so there is no periodic-retry storm to debounce.
+		if isQuotaExceeded(err) {
+			return block(keyValueStorageState{
+				failed:  true,
+				reason:  "StorageBlockedByQuota",
+				message: fmt.Sprintf("Valkey PVC expansion to %d GB is blocked by the namespace storage quota; growth resumes when quota headroom is available", desiredGB),
+				requeue: kvStorageFailureRequeue,
+			})
+		}
+		return nil, err
+	}
+	return nil, nil
+}
+
+// finalizeKeyValueStorage records the observed allocation and reports whether
+// the volume (and its filesystem) has caught up with the request.
+func finalizeKeyValueStorage(kv *appv1alpha1.KeyValue, pvc *corev1.PersistentVolumeClaim, desiredGB, requestedGB, capacityGB int32) keyValueStorageState {
 	kv.Status.AllocatedStorageGB = max(desiredGB, requestedGB)
 	kv.Status.ObservedStorageGB = kv.Spec.StorageGB
 	kv.Status.StorageCapacityGB = capacityGB
-	if capacityGB < desiredGB {
-		reason := "PVCResizePending"
-		message := fmt.Sprintf("Valkey PVC expansion is pending: requested %d GB, observed capacity %d GB", desiredGB, capacityGB)
-		for _, condition := range pvc.Status.Conditions {
-			if condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending && condition.Status == corev1.ConditionTrue {
-				reason = "FileSystemResizePending"
-				message = fmt.Sprintf("Valkey filesystem resize is pending: requested %d GB, observed capacity %d GB", desiredGB, capacityGB)
-				break
-			}
-		}
-		state := keyValueStorageState{reason: reason, message: message, requeue: kvStorageRequeue}
-		setKeyValueStorageCondition(kv, state)
-		return state, nil
-	}
 	state := keyValueStorageState{ready: true, reason: "StorageProvisioned", message: fmt.Sprintf("Valkey PVC capacity is %d GB", capacityGB)}
+	if capacityGB < desiredGB {
+		reason, subject := "PVCResizePending", "Valkey PVC expansion"
+		if pvcFileSystemResizePending(pvc) {
+			reason, subject = "FileSystemResizePending", "Valkey filesystem resize"
+		}
+		state = keyValueStorageState{
+			reason:  reason,
+			message: fmt.Sprintf("%s is pending: requested %d GB, observed capacity %d GB", subject, desiredGB, capacityGB),
+			requeue: kvStorageRequeue,
+		}
+	}
 	setKeyValueStorageCondition(kv, state)
-	return state, nil
+	return state
+}
+
+// pvcFileSystemResizePending reports whether the volume itself has grown and
+// only the filesystem expansion is outstanding.
+func pvcFileSystemResizePending(pvc *corev1.PersistentVolumeClaim) bool {
+	for _, condition := range pvc.Status.Conditions {
+		if condition.Type == corev1.PersistentVolumeClaimFileSystemResizePending && condition.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }
 
 // isQuotaExceeded reports whether err is an API-server ResourceQuota rejection —
@@ -988,7 +1021,7 @@ func setKeyValueStorageCondition(kv *appv1alpha1.KeyValue, state keyValueStorage
 		status = metav1.ConditionTrue
 	}
 	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
-		Type: "StorageReady", Status: status, Reason: state.reason,
+		Type: conditionStorageReady, Status: status, Reason: state.reason,
 		Message: state.message, ObservedGeneration: kv.Generation,
 	})
 }

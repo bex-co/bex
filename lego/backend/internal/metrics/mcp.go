@@ -91,10 +91,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 				// Tag each series with its metric so multi-metric results stay distinct.
 				for i := range series {
 					ser := series[i].MetricSeries
-					if ser.Labels == nil {
-						ser.Labels = map[string]string{}
-					}
-					ser.Labels["metric"] = metric
+					ser.SetLabel(LabelMetric, metric)
 					all = append(all, ser)
 				}
 			}
@@ -152,12 +149,7 @@ func RegisterDatastoreMetricsMCP(s *Service, srv *mcp.Server) {
 			if err != nil {
 				return nil, getMetricsResult{}, err
 			}
-			for i := range series {
-				if series[i].Labels == nil {
-					series[i].Labels = map[string]string{}
-				}
-				series[i].Labels["metric"] = metric
-			}
+			setLabelOnEach(series, LabelMetric, metric)
 			all = append(all, series...)
 		}
 		return nil, getMetricsResult{Series: all}, nil

@@ -21,6 +21,7 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { Switch } from "@/common/components/ui/switch";
+import { cn } from "@/common/lib/utils/utils";
 import { PanelCenteredState } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServices } from "@/features/services/hooks/use-services";
@@ -73,6 +74,23 @@ const weekdayKeys: Record<PushNotificationWeekday, string> = {
   [PushNotificationWeekday.Saturday]: "notifications.weekdaySaturday",
   [PushNotificationWeekday.Sunday]: "notifications.weekdaySunday",
 };
+
+/**
+ * Native select styled to match the Input/Button kit. Native rather than the
+ * Radix `Select` on purpose: these are dense settings controls where the OS
+ * picker is the better affordance, especially on mobile.
+ */
+function NativeSelect({ className, ...props }: React.ComponentProps<"select">) {
+  return (
+    <select
+      className={cn(
+        "border-input h-9 w-full rounded-md border bg-transparent px-3 text-sm",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
 
 export function PushNotificationSettingsPanel() {
   const { t } = useTranslations();
@@ -207,9 +225,8 @@ function PushSettingsForm({
             <Label htmlFor="push-urgency">
               {t("notifications.pushMinimumUrgency")}
             </Label>
-            <select
+            <NativeSelect
               id="push-urgency"
-              className="border-input h-9 w-full rounded-md border bg-transparent px-3 text-sm"
               value={draft.minimumUrgency}
               disabled={busy || !draft.enabled}
               onChange={(event) =>
@@ -224,7 +241,7 @@ function PushSettingsForm({
                   {t(urgencyKeys[urgency])}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
           <div className="space-y-2">
             <Label htmlFor="push-timezone">
@@ -500,8 +517,7 @@ function ServiceOverridesEditor({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="space-y-1 text-xs">
               {t("notifications.pushOverrideEnabled")}
-              <select
-                className="border-input h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+              <NativeSelect
                 value={
                   override.enabled == null
                     ? "inherit"
@@ -524,12 +540,11 @@ function ServiceOverridesEditor({
                 </option>
                 <option value="on">{t("notifications.pushOn")}</option>
                 <option value="off">{t("notifications.pushOff")}</option>
-              </select>
+              </NativeSelect>
             </label>
             <label className="space-y-1 text-xs">
               {t("notifications.pushMinimumUrgency")}
-              <select
-                className="border-input h-9 w-full rounded-md border bg-transparent px-3 text-sm"
+              <NativeSelect
                 value={override.minimumUrgency ?? "inherit"}
                 onChange={(event) =>
                   update(index, {
@@ -549,7 +564,7 @@ function ServiceOverridesEditor({
                     {t(urgencyKeys[urgency])}
                   </option>
                 ))}
-              </select>
+              </NativeSelect>
             </label>
           </div>
           <label className="flex items-center gap-2 text-sm">
@@ -585,9 +600,8 @@ function ServiceOverridesEditor({
         </div>
       ))}
       {availableServices.length > 0 && (
-        <select
+        <NativeSelect
           aria-label={t("notifications.pushAddOverride")}
-          className="border-input h-9 w-full rounded-md border bg-transparent px-3 text-sm"
           value=""
           onChange={(event) => {
             if (!event.target.value) return;
@@ -603,7 +617,7 @@ function ServiceOverridesEditor({
               {service.name} ({service.id})
             </option>
           ))}
-        </select>
+        </NativeSelect>
       )}
     </fieldset>
   );

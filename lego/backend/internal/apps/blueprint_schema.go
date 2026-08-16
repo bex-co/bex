@@ -21,7 +21,8 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 )
@@ -270,12 +271,7 @@ func collectRenderSchemaVocabulary(node any, path []string, fields map[string]st
 		}
 	case map[string]any:
 		if properties, ok := value["properties"].(map[string]any); ok {
-			keys := make([]string, 0, len(properties))
-			for name := range properties {
-				keys = append(keys, name)
-			}
-			sort.Strings(keys)
-			for _, name := range keys {
+			for _, name := range slices.Sorted(maps.Keys(properties)) {
 				fields[renderSchemaPointer(append(path, "properties", name))] = struct{}{}
 			}
 		}
@@ -294,12 +290,7 @@ func collectRenderSchemaVocabulary(node any, path []string, fields map[string]st
 				registered[string(encoded)] = struct{}{}
 			}
 		}
-		keys := make([]string, 0, len(value))
-		for key := range value {
-			keys = append(keys, key)
-		}
-		sort.Strings(keys)
-		for _, key := range keys {
+		for _, key := range slices.Sorted(maps.Keys(value)) {
 			collectRenderSchemaVocabulary(value[key], append(path, key), fields, enumValues)
 		}
 	}

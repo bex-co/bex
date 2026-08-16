@@ -20,7 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -348,6 +349,44 @@ func (s *PGStore) CurrentUsageCoverage(ctx context.Context, workspaceID string, 
 	return aggregateUsageCoverage(streamByKey, streamOrder, monthStart, latestClosed, sandboxTotals), nil
 }
 
+// maxDegradedSources caps how many degraded source names a coverage answer
+// names individually; the rest collapse into a trailing "other".
+const maxDegradedSources = 7
+
+// evaluateStreamCoverage walks one stream's expected window range and reports
+// how far it is contiguously observed-healthy (observedThrough), how far it was
+// expected to reach (target), and whether every window it does have is healthy.
+//
+// The watermark and the health scan are deliberately separate passes: the
+// watermark must stop at the first gap or degraded window, while degradation
+// *after* an earlier gap is still useful diagnostic evidence and must not be
+// lost just because the watermark already stopped short of it.
+func evaluateStreamCoverage(stream *usageCoverageStream, monthStart, latestClosed time.Time) (observedThrough, target time.Time, healthy bool) {
+	expectedStart := stream.ExpectedFrom.UTC().Truncate(time.Hour)
+	if expectedStart.Before(monthStart) {
+		expectedStart = monthStart
+	}
+	target = latestClosed
+	if stream.ExpectedThrough != nil && stream.ExpectedThrough.Before(target) {
+		target = stream.ExpectedThrough.UTC().Truncate(time.Hour)
+	}
+	observedThrough = expectedStart
+	for observedThrough.Before(target) {
+		if state, exists := stream.Windows[observedThrough]; !exists || state != UsageSourceHealthy {
+			break
+		}
+		observedThrough = observedThrough.Add(time.Hour)
+	}
+	healthy = true
+	for _, state := range stream.Windows {
+		if state != UsageSourceHealthy {
+			healthy = false
+			break
+		}
+	}
+	return observedThrough, target, healthy
+}
+
 func aggregateUsageCoverage(streamByKey map[string]*usageCoverageStream, streamOrder []string, monthStart, latestClosed time.Time, sandboxTotals bool) UsageCoverage {
 	if len(streamOrder) == 0 {
 		return UsageCoverage{}
@@ -361,40 +400,17 @@ func aggregateUsageCoverage(streamByKey map[string]*usageCoverageStream, streamO
 	activeStreams := 0
 	for _, key := range streamOrder {
 		stream := streamByKey[key]
-		expectedStart := stream.ExpectedFrom.UTC().Truncate(time.Hour)
-		if expectedStart.Before(monthStart) {
-			expectedStart = monthStart
+		observedThrough, target, healthy := evaluateStreamCoverage(stream, monthStart, latestClosed)
+		if !healthy {
+			degraded[stream.Source] = struct{}{}
 		}
-		target := latestClosed
-		if stream.ExpectedThrough != nil && stream.ExpectedThrough.Before(target) {
-			target = stream.ExpectedThrough.UTC().Truncate(time.Hour)
-		}
-		observedThrough := expectedStart
-		streamHealthy := true
-		for observedThrough.Before(target) {
-			state, exists := stream.Windows[observedThrough]
-			if !exists {
-				break
-			}
-			if state != UsageSourceHealthy {
-				// The second pass below records the degradation; stop the
-				// watermark here.
-				break
-			}
-			observedThrough = observedThrough.Add(time.Hour)
-		}
-		// Preserve degradation after an earlier gap too: the watermark stops at
-		// the gap, but later evidence remains useful diagnostic data.
-		for _, state := range stream.Windows {
-			if state != UsageSourceHealthy {
-				streamHealthy = false
-				degraded[stream.Source] = struct{}{}
-			}
-		}
-		if observedThrough.Before(target) || !streamHealthy {
+		behind := observedThrough.Before(target)
+		if behind || !healthy {
 			coverage.Complete = false
 		}
-		if stream.ExpectedThrough == nil || observedThrough.Before(target) || !streamHealthy {
+		// A stream with an open-ended expectation, or one still catching up, keeps
+		// dragging `through` back to what it has actually observed.
+		if stream.ExpectedThrough == nil || behind || !healthy {
 			activeStreams++
 			if observedThrough.Before(coverage.Through) {
 				coverage.Through = observedThrough
@@ -407,12 +423,9 @@ func aggregateUsageCoverage(streamByKey map[string]*usageCoverageStream, streamO
 		// hour; otherwise it remains partial but no stale stream drags `through`.
 		coverage.Through = latestClosed
 	}
-	for source := range degraded {
-		coverage.DegradedSources = append(coverage.DegradedSources, source)
-	}
-	sort.Strings(coverage.DegradedSources)
-	if len(coverage.DegradedSources) > 7 {
-		coverage.DegradedSources = append(coverage.DegradedSources[:7], "other")
+	coverage.DegradedSources = slices.Sorted(maps.Keys(degraded))
+	if len(coverage.DegradedSources) > maxDegradedSources {
+		coverage.DegradedSources = append(coverage.DegradedSources[:maxDegradedSources], "other")
 	}
 	if coverage.Through.Before(monthStart) {
 		coverage.Through = time.Time{}
