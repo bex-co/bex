@@ -29,40 +29,40 @@ import (
 var endpointGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WebhookEndpoint",
 	Fields: graphql.Fields{
-		"id":             &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EndpointView) any { return v.ID })},
-		"name":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EndpointView) any { return v.Name })},
-		"url":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EndpointView) any { return v.URL })},
-		"ownerId":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EndpointView) any { return v.OwnerID })},
-		"eventTypes":     &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v EndpointView) any { return v.EventTypes })},
-		"enabled":        &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v EndpointView) any { return v.Enabled })},
-		"disabledReason": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EndpointView) any { return v.DisabledReason })},
+		"id":             gqlutil.StrField(func(v EndpointView) any { return v.ID }),
+		"name":           gqlutil.StrField(func(v EndpointView) any { return v.Name }),
+		"url":            gqlutil.StrField(func(v EndpointView) any { return v.URL }),
+		"ownerId":        gqlutil.StrField(func(v EndpointView) any { return v.OwnerID }),
+		"eventTypes":     gqlutil.StrsField(func(v EndpointView) any { return v.EventTypes }),
+		"enabled":        gqlutil.BoolField(func(v EndpointView) any { return v.Enabled }),
+		"disabledReason": gqlutil.StrField(func(v EndpointView) any { return v.DisabledReason }),
 		// secret is non-null only on the create mutation's result — the
 		// mint-once rule (see rest.go's endpointWire).
-		"secret":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EndpointView) any { return v.Secret })},
-		"createdBy": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EndpointView) any { return v.CreatedBy })},
-		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EndpointView) any { return v.CreatedAt })},
-		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v EndpointView) any { return v.UpdatedAt })},
+		"secret":    gqlutil.StrField(func(v EndpointView) any { return v.Secret }),
+		"createdBy": gqlutil.StrField(func(v EndpointView) any { return v.CreatedBy }),
+		"createdAt": gqlutil.StrField(func(v EndpointView) any { return v.CreatedAt }),
+		"updatedAt": gqlutil.StrField(func(v EndpointView) any { return v.UpdatedAt }),
 	},
 })
 
 var deliveryGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WebhookDelivery",
 	Fields: graphql.Fields{
-		"id":              &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeliveryView) any { return v.ID })},
-		"eventId":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeliveryView) any { return v.EventID })},
-		"eventType":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeliveryView) any { return v.EventType })},
-		"serviceId":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeliveryView) any { return v.ServiceID })},
-		"status":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeliveryView) any { return v.Status })},
-		"attemptCount":    &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v DeliveryView) any { return v.AttemptCount })},
-		"lastStatusCode":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v DeliveryView) any { return v.LastStatusCode })},
-		"lastError":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeliveryView) any { return v.LastError })},
-		"nextAttemptAt":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeliveryView) any { return v.NextAttemptAt })},
-		"lastAttemptedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeliveryView) any { return v.LastAttemptedAt })},
-		"deliveredAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeliveryView) any { return v.DeliveredAt })},
-		"createdAt":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeliveryView) any { return v.CreatedAt })},
+		"id":              gqlutil.StrField(func(v DeliveryView) any { return v.ID }),
+		"eventId":         gqlutil.StrField(func(v DeliveryView) any { return v.EventID }),
+		"eventType":       gqlutil.StrField(func(v DeliveryView) any { return v.EventType }),
+		"serviceId":       gqlutil.StrField(func(v DeliveryView) any { return v.ServiceID }),
+		"status":          gqlutil.StrField(func(v DeliveryView) any { return v.Status }),
+		"attemptCount":    gqlutil.IntField(func(v DeliveryView) any { return v.AttemptCount }),
+		"lastStatusCode":  gqlutil.IntField(func(v DeliveryView) any { return v.LastStatusCode }),
+		"lastError":       gqlutil.StrField(func(v DeliveryView) any { return v.LastError }),
+		"nextAttemptAt":   gqlutil.StrField(func(v DeliveryView) any { return v.NextAttemptAt }),
+		"lastAttemptedAt": gqlutil.StrField(func(v DeliveryView) any { return v.LastAttemptedAt }),
+		"deliveredAt":     gqlutil.StrField(func(v DeliveryView) any { return v.DeliveredAt }),
+		"createdAt":       gqlutil.StrField(func(v DeliveryView) any { return v.CreatedAt }),
 		// cursor rides each item (the serviceEvents convention) — echo the last
 		// one back to page.
-		"cursor": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DeliveryView) any { return v.Cursor })},
+		"cursor": gqlutil.StrField(func(v DeliveryView) any { return v.Cursor }),
 	},
 })
 
@@ -75,7 +75,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"webhookEndpoints": &graphql.Field{
 			Type: graphql.NewList(endpointGQLType),
 			Args: graphql.FieldConfigArgument{
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.List(p.Context, gqlutil.Str(p.Args, "ownerId"))
@@ -84,8 +84,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"webhookEndpoint": &graphql.Field{
 			Type: endpointGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Get(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["id"].(string))
@@ -94,10 +94,10 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"webhookDeliveries": &graphql.Field{
 			Type: graphql.NewList(deliveryGQLType),
 			Args: graphql.FieldConfigArgument{
-				"endpointId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"ownerId":    &graphql.ArgumentConfig{Type: graphql.String},
-				"cursor":     &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":      &graphql.ArgumentConfig{Type: graphql.Int},
+				"endpointId": gqlutil.ReqArg(graphql.String),
+				"ownerId":    gqlutil.Arg(graphql.String),
+				"cursor":     gqlutil.Arg(graphql.String),
+				"limit":      gqlutil.Arg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ListDeliveries(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["endpointId"].(string), gqlutil.Str(p.Args, "cursor"), gqlutil.Int(p.Args, "limit"))
@@ -118,10 +118,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createWebhookEndpoint": &graphql.Field{
 			Type: endpointGQLType,
 			Args: graphql.FieldConfigArgument{
-				"ownerId":    &graphql.ArgumentConfig{Type: graphql.String},
-				"name":       &graphql.ArgumentConfig{Type: graphql.String},
-				"url":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"eventTypes": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.String))},
+				"ownerId":    gqlutil.Arg(graphql.String),
+				"name":       gqlutil.Arg(graphql.String),
+				"url":        gqlutil.ReqArg(graphql.String),
+				"eventTypes": gqlutil.Arg(graphql.NewNonNull(graphql.NewList(graphql.String))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Create(p.Context, CreateRequest{
@@ -133,12 +133,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"updateWebhookEndpoint": &graphql.Field{
 			Type: endpointGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"ownerId":    &graphql.ArgumentConfig{Type: graphql.String},
-				"name":       &graphql.ArgumentConfig{Type: graphql.String},
-				"url":        &graphql.ArgumentConfig{Type: graphql.String},
-				"eventTypes": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
-				"enabled":    &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"id":         gqlutil.ReqArg(graphql.String),
+				"ownerId":    gqlutil.Arg(graphql.String),
+				"name":       gqlutil.Arg(graphql.String),
+				"url":        gqlutil.Arg(graphql.String),
+				"eventTypes": gqlutil.Arg(graphql.NewList(graphql.String)),
+				"enabled":    gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				var enabledPtr *bool
@@ -156,9 +156,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setWebhookEndpointEnabled": &graphql.Field{
 			Type: endpointGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
-				"enabled": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
+				"enabled": gqlutil.ReqArg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetEnabled(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["id"].(string), p.Args["enabled"].(bool))
@@ -167,8 +167,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"deleteWebhookEndpoint": &graphql.Field{
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				err := s.Delete(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["id"].(string))

@@ -35,31 +35,31 @@ import (
 var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Database",
 	Fields: graphql.Fields{
-		"id":                      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.ID })},
-		"name":                    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.Name })},
-		"plan":                    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.Plan })},
-		"version":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.Version })},
-		"status":                  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.Status })},
-		"databaseName":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.DatabaseName })},
-		"databaseUser":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.DatabaseUser })},
-		"diskSizeGB":              &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v PostgresView) any { return v.DiskSizeGB })},
-		"diskAutoscalingEnabled":  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.DiskAutoscalingEnabled })},
-		"highAvailabilityEnabled": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.HighAvailabilityEnabled })},
-		"readReplicas":            &graphql.Field{Type: graphql.NewList(readReplicaViewGQLType), Resolve: gqlutil.Field(func(v PostgresView) any { return v.ReadReplicas })},
-		"suspended":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.Suspended })},
-		"createdAt":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.CreatedAt })},
-		"updatedAt":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.UpdatedAt })},
-		"region":                  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.Region })},
-		"dashboardUrl":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.DashboardURL })},
-		"externalHost":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.ExternalHost })},
-		"public":                  &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.Public })},
-		"ipAllowList":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v PostgresView) any { return core.AllowListCIDRs(v.IPAllowList) })},
-		"ipAllowListEntries":      &graphql.Field{Type: graphql.NewList(gqlutil.IPAllowEntryType), Resolve: gqlutil.Field(func(v PostgresView) any { return v.IPAllowList })},
-		"poolerEnabled":           &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.PoolerEnabled })},
-		"backupsEnabled":          &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v PostgresView) any { return v.BackupsEnabled })},
-		"ownerId":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.OwnerID })},
-		"projectId":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.ProjectID })},
-		"environmentId":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresView) any { return v.EnvironmentID })},
+		"id":                      gqlutil.StrField(func(v PostgresView) any { return v.ID }),
+		"name":                    gqlutil.StrField(func(v PostgresView) any { return v.Name }),
+		"plan":                    gqlutil.StrField(func(v PostgresView) any { return v.Plan }),
+		"version":                 gqlutil.StrField(func(v PostgresView) any { return v.Version }),
+		"status":                  gqlutil.StrField(func(v PostgresView) any { return v.Status }),
+		"databaseName":            gqlutil.StrField(func(v PostgresView) any { return v.DatabaseName }),
+		"databaseUser":            gqlutil.StrField(func(v PostgresView) any { return v.DatabaseUser }),
+		"diskSizeGB":              gqlutil.IntField(func(v PostgresView) any { return v.DiskSizeGB }),
+		"diskAutoscalingEnabled":  gqlutil.BoolField(func(v PostgresView) any { return v.DiskAutoscalingEnabled }),
+		"highAvailabilityEnabled": gqlutil.BoolField(func(v PostgresView) any { return v.HighAvailabilityEnabled }),
+		"readReplicas":            gqlutil.Typed(graphql.NewList(readReplicaViewGQLType), func(v PostgresView) any { return v.ReadReplicas }),
+		"suspended":               gqlutil.StrField(func(v PostgresView) any { return v.Suspended }),
+		"createdAt":               gqlutil.StrField(func(v PostgresView) any { return v.CreatedAt }),
+		"updatedAt":               gqlutil.StrField(func(v PostgresView) any { return v.UpdatedAt }),
+		"region":                  gqlutil.StrField(func(v PostgresView) any { return v.Region }),
+		"dashboardUrl":            gqlutil.StrField(func(v PostgresView) any { return v.DashboardURL }),
+		"externalHost":            gqlutil.StrField(func(v PostgresView) any { return v.ExternalHost }),
+		"public":                  gqlutil.BoolField(func(v PostgresView) any { return v.Public }),
+		"ipAllowList":             gqlutil.StrsField(func(v PostgresView) any { return core.AllowListCIDRs(v.IPAllowList) }),
+		"ipAllowListEntries":      gqlutil.Typed(graphql.NewList(gqlutil.IPAllowEntryType), func(v PostgresView) any { return v.IPAllowList }),
+		"poolerEnabled":           gqlutil.BoolField(func(v PostgresView) any { return v.PoolerEnabled }),
+		"backupsEnabled":          gqlutil.BoolField(func(v PostgresView) any { return v.BackupsEnabled }),
+		"ownerId":                 gqlutil.StrField(func(v PostgresView) any { return v.OwnerID }),
+		"projectId":               gqlutil.StrField(func(v PostgresView) any { return v.ProjectID }),
+		"environmentId":           gqlutil.StrField(func(v PostgresView) any { return v.EnvironmentID }),
 	},
 })
 
@@ -69,8 +69,8 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 var readReplicaConnectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ReadReplicaConnectionInfo",
 	Fields: graphql.Fields{
-		"internalHost": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ReadReplicaConnectionInfo) any { return v.InternalHost })},
-		"externalHost": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ReadReplicaConnectionInfo) any { return v.ExternalHost })},
+		"internalHost": gqlutil.StrField(func(v ReadReplicaConnectionInfo) any { return v.InternalHost }),
+		"externalHost": gqlutil.StrField(func(v ReadReplicaConnectionInfo) any { return v.ExternalHost }),
 	},
 })
 
@@ -79,8 +79,8 @@ var readReplicaConnectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 var readReplicaViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ReadReplicaView",
 	Fields: graphql.Fields{
-		"name":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ReadReplicaView) any { return v.Name })},
-		"connectionInfo": &graphql.Field{Type: readReplicaConnectionInfoGQLType, Resolve: gqlutil.Field(func(v ReadReplicaView) any { return v.ConnectionInfo })},
+		"name":           gqlutil.StrField(func(v ReadReplicaView) any { return v.Name }),
+		"connectionInfo": gqlutil.Typed(readReplicaConnectionInfoGQLType, func(v ReadReplicaView) any { return v.ConnectionInfo }),
 	},
 })
 
@@ -90,9 +90,9 @@ var readReplicaViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 var replicaConnectionStringsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ReplicaConnectionStrings",
 	Fields: graphql.Fields{
-		"name":                     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ReplicaConnectionStrings) any { return v.Name })},
-		"internalConnectionString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ReplicaConnectionStrings) any { return v.InternalConnectionString })},
-		"externalConnectionString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ReplicaConnectionStrings) any { return v.ExternalConnectionString })},
+		"name":                     gqlutil.StrField(func(v ReplicaConnectionStrings) any { return v.Name }),
+		"internalConnectionString": gqlutil.StrField(func(v ReplicaConnectionStrings) any { return v.InternalConnectionString }),
+		"externalConnectionString": gqlutil.StrField(func(v ReplicaConnectionStrings) any { return v.ExternalConnectionString }),
 	},
 })
 
@@ -100,9 +100,9 @@ var replicaConnectionStringsGQLType = graphql.NewObject(graphql.ObjectConfig{
 var databaseBackupGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseBackup",
 	Fields: graphql.Fields{
-		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v BackupView) any { return v.ID })},
-		"status":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v BackupView) any { return v.Status })},
-		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v BackupView) any { return v.CreatedAt })},
+		"id":        gqlutil.StrField(func(v BackupView) any { return v.ID }),
+		"status":    gqlutil.StrField(func(v BackupView) any { return v.Status }),
+		"createdAt": gqlutil.StrField(func(v BackupView) any { return v.CreatedAt }),
 	},
 })
 
@@ -111,14 +111,14 @@ var databaseBackupGQLType = graphql.NewObject(graphql.ObjectConfig{
 var databaseExportGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseExport",
 	Fields: graphql.Fields{
-		"id":            &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.ID })},
-		"createdAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.CreatedAt })},
-		"status":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.Status })},
-		"url":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.URL })},
-		"urlExpiresAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.URLExpiresAt })},
-		"expiresAt":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.ExpiresAt })},
-		"filename":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.Filename })},
-		"failureReason": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ExportView) any { return v.FailureReason })},
+		"id":            gqlutil.StrField(func(v ExportView) any { return v.ID }),
+		"createdAt":     gqlutil.StrField(func(v ExportView) any { return v.CreatedAt }),
+		"status":        gqlutil.StrField(func(v ExportView) any { return v.Status }),
+		"url":           gqlutil.StrField(func(v ExportView) any { return v.URL }),
+		"urlExpiresAt":  gqlutil.StrField(func(v ExportView) any { return v.URLExpiresAt }),
+		"expiresAt":     gqlutil.StrField(func(v ExportView) any { return v.ExpiresAt }),
+		"filename":      gqlutil.StrField(func(v ExportView) any { return v.Filename }),
+		"failureReason": gqlutil.StrField(func(v ExportView) any { return v.FailureReason }),
 	},
 })
 
@@ -126,10 +126,10 @@ var databaseExportGQLType = graphql.NewObject(graphql.ObjectConfig{
 var databaseRecoveryInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseRecoveryInfo",
 	Fields: graphql.Fields{
-		"enabled":              &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v RecoveryInfoView) any { return v.Enabled })},
-		"earliestRecoveryTime": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v RecoveryInfoView) any { return v.EarliestRecoveryTime })},
-		"latestRecoveryTime":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v RecoveryInfoView) any { return v.LatestRecoveryTime })},
-		"backups":              &graphql.Field{Type: graphql.NewList(databaseBackupGQLType), Resolve: gqlutil.Field(func(v RecoveryInfoView) any { return v.Backups })},
+		"enabled":              gqlutil.BoolField(func(v RecoveryInfoView) any { return v.Enabled }),
+		"earliestRecoveryTime": gqlutil.StrField(func(v RecoveryInfoView) any { return v.EarliestRecoveryTime }),
+		"latestRecoveryTime":   gqlutil.StrField(func(v RecoveryInfoView) any { return v.LatestRecoveryTime }),
+		"backups":              gqlutil.Typed(graphql.NewList(databaseBackupGQLType), func(v RecoveryInfoView) any { return v.Backups }),
 	},
 })
 
@@ -137,7 +137,7 @@ var databaseRecoveryInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 var databaseUserGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseUser",
 	Fields: graphql.Fields{
-		"name": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresUserView) any { return v.Name })},
+		"name": gqlutil.StrField(func(v PostgresUserView) any { return v.Name }),
 	},
 })
 
@@ -146,8 +146,8 @@ var databaseUserGQLType = graphql.NewObject(graphql.ObjectConfig{
 var databaseUserWithPasswordGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseUserWithPassword",
 	Fields: graphql.Fields{
-		"name":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v CreateUserResult) any { return v.Name })},
-		"password": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v CreateUserResult) any { return v.Password })},
+		"name":     gqlutil.StrField(func(v CreateUserResult) any { return v.Name }),
+		"password": gqlutil.StrField(func(v CreateUserResult) any { return v.Password }),
 	},
 })
 
@@ -159,24 +159,24 @@ var databaseUserWithPasswordGQLType = graphql.NewObject(graphql.ObjectConfig{
 var databaseInstanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseInstanceType",
 	Fields: graphql.Fields{
-		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t DatabaseInstanceType) any { return t.ID })},
-		"name":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t DatabaseInstanceType) any { return t.Name })},
-		"cpu":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t DatabaseInstanceType) any { return t.CPU })},
-		"memory":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(t DatabaseInstanceType) any { return t.Memory })},
-		"storageGB": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(t DatabaseInstanceType) any { return t.StorageGB })},
+		"id":        gqlutil.StrField(func(t DatabaseInstanceType) any { return t.ID }),
+		"name":      gqlutil.StrField(func(t DatabaseInstanceType) any { return t.Name }),
+		"cpu":       gqlutil.StrField(func(t DatabaseInstanceType) any { return t.CPU }),
+		"memory":    gqlutil.StrField(func(t DatabaseInstanceType) any { return t.Memory }),
+		"storageGB": gqlutil.IntField(func(t DatabaseInstanceType) any { return t.StorageGB }),
 	},
 })
 
 var connectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "PostgresConnectionInfo",
 	Fields: graphql.Fields{
-		"password":                     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.Password })},
-		"internalConnectionString":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.InternalConnectionString })},
-		"externalConnectionString":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.ExternalConnectionString })},
-		"internalConnectionPoolString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.InternalConnectionPoolString })},
-		"externalConnectionPoolString": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.ExternalConnectionPoolString })},
-		"psqlCommand":                  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.PSQLCommand })},
-		"readReplicaConnectionStrings": &graphql.Field{Type: graphql.NewList(replicaConnectionStringsGQLType), Resolve: gqlutil.Field(func(v PostgresConnectionInfo) any { return v.ReadReplicaConnectionStrings })},
+		"password":                     gqlutil.StrField(func(v PostgresConnectionInfo) any { return v.Password }),
+		"internalConnectionString":     gqlutil.StrField(func(v PostgresConnectionInfo) any { return v.InternalConnectionString }),
+		"externalConnectionString":     gqlutil.StrField(func(v PostgresConnectionInfo) any { return v.ExternalConnectionString }),
+		"internalConnectionPoolString": gqlutil.StrField(func(v PostgresConnectionInfo) any { return v.InternalConnectionPoolString }),
+		"externalConnectionPoolString": gqlutil.StrField(func(v PostgresConnectionInfo) any { return v.ExternalConnectionPoolString }),
+		"psqlCommand":                  gqlutil.StrField(func(v PostgresConnectionInfo) any { return v.PSQLCommand }),
+		"readReplicaConnectionStrings": gqlutil.Typed(graphql.NewList(replicaConnectionStringsGQLType), func(v PostgresConnectionInfo) any { return v.ReadReplicaConnectionStrings }),
 	},
 })
 
@@ -195,10 +195,10 @@ var parameterInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
 var databaseLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseLogEntry",
 	Fields: graphql.Fields{
-		"timestamp": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e DatabaseLogEntry) any { return e.Timestamp })},
-		"message":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e DatabaseLogEntry) any { return e.Message })},
-		"instance":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e DatabaseLogEntry) any { return e.Labels["instance"] })},
-		"type":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e DatabaseLogEntry) any { return e.Labels["type"] })},
+		"timestamp": gqlutil.StrField(func(e DatabaseLogEntry) any { return e.Timestamp }),
+		"message":   gqlutil.StrField(func(e DatabaseLogEntry) any { return e.Message }),
+		"instance":  gqlutil.StrField(func(e DatabaseLogEntry) any { return e.Labels["instance"] }),
+		"type":      gqlutil.StrField(func(e DatabaseLogEntry) any { return e.Labels["type"] }),
 	},
 })
 
@@ -207,79 +207,79 @@ var databaseLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 var processViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseProcess",
 	Fields: graphql.Fields{
-		"pid":             &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v ProcessView) any { return v.PID })},
-		"userName":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ProcessView) any { return v.UserName })},
-		"applicationName": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ProcessView) any { return v.ApplicationName })},
-		"state":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ProcessView) any { return v.State })},
-		"query":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ProcessView) any { return v.Query })},
-		"waitEventType":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ProcessView) any { return v.WaitEventType })},
-		"waitEvent":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ProcessView) any { return v.WaitEvent })},
-		"durationSeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v ProcessView) any { return v.DurationSeconds })},
+		"pid":             gqlutil.IntField(func(v ProcessView) any { return v.PID }),
+		"userName":        gqlutil.StrField(func(v ProcessView) any { return v.UserName }),
+		"applicationName": gqlutil.StrField(func(v ProcessView) any { return v.ApplicationName }),
+		"state":           gqlutil.StrField(func(v ProcessView) any { return v.State }),
+		"query":           gqlutil.StrField(func(v ProcessView) any { return v.Query }),
+		"waitEventType":   gqlutil.StrField(func(v ProcessView) any { return v.WaitEventType }),
+		"waitEvent":       gqlutil.StrField(func(v ProcessView) any { return v.WaitEvent }),
+		"durationSeconds": gqlutil.IntField(func(v ProcessView) any { return v.DurationSeconds }),
 	},
 })
 
 var topQueryViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseTopQuery",
 	Fields: graphql.Fields{
-		"query":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.Query })},
-		"calls":          &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.Calls })},
-		"totalTimeMs":    &graphql.Field{Type: graphql.Float, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.TotalTimeMs })},
-		"meanTimeMs":     &graphql.Field{Type: graphql.Float, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.MeanTimeMs })},
-		"rows":           &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.Rows })},
-		"sharedHitBlks":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.SharedHitBlks })},
-		"sharedReadBlks": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TopQueryView) any { return v.SharedReadBlks })},
+		"query":          gqlutil.StrField(func(v TopQueryView) any { return v.Query }),
+		"calls":          gqlutil.IntField(func(v TopQueryView) any { return v.Calls }),
+		"totalTimeMs":    gqlutil.FloatField(func(v TopQueryView) any { return v.TotalTimeMs }),
+		"meanTimeMs":     gqlutil.FloatField(func(v TopQueryView) any { return v.MeanTimeMs }),
+		"rows":           gqlutil.IntField(func(v TopQueryView) any { return v.Rows }),
+		"sharedHitBlks":  gqlutil.IntField(func(v TopQueryView) any { return v.SharedHitBlks }),
+		"sharedReadBlks": gqlutil.IntField(func(v TopQueryView) any { return v.SharedReadBlks }),
 	},
 })
 
 var databaseSizeViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseSizeInfo",
 	Fields: graphql.Fields{
-		"name":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DatabaseSizeView) any { return v.Name })},
-		"sizeBytes":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v DatabaseSizeView) any { return v.SizeBytes })},
-		"sizePretty": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v DatabaseSizeView) any { return v.SizePretty })},
+		"name":       gqlutil.StrField(func(v DatabaseSizeView) any { return v.Name }),
+		"sizeBytes":  gqlutil.IntField(func(v DatabaseSizeView) any { return v.SizeBytes }),
+		"sizePretty": gqlutil.StrField(func(v DatabaseSizeView) any { return v.SizePretty }),
 	},
 })
 
 var tableSizeViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "TableSizeInfo",
 	Fields: graphql.Fields{
-		"schema":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v TableSizeView) any { return v.Schema })},
-		"name":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v TableSizeView) any { return v.Name })},
-		"sizeBytes":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableSizeView) any { return v.SizeBytes })},
-		"sizePretty": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v TableSizeView) any { return v.SizePretty })},
+		"schema":     gqlutil.StrField(func(v TableSizeView) any { return v.Schema }),
+		"name":       gqlutil.StrField(func(v TableSizeView) any { return v.Name }),
+		"sizeBytes":  gqlutil.IntField(func(v TableSizeView) any { return v.SizeBytes }),
+		"sizePretty": gqlutil.StrField(func(v TableSizeView) any { return v.SizePretty }),
 	},
 })
 
 var sizesViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseSizes",
 	Fields: graphql.Fields{
-		"database": &graphql.Field{Type: databaseSizeViewGQLType, Resolve: gqlutil.Field(func(v SizesView) any { return v.Database })},
-		"tables":   &graphql.Field{Type: graphql.NewList(tableSizeViewGQLType), Resolve: gqlutil.Field(func(v SizesView) any { return v.Tables })},
+		"database": gqlutil.Typed(databaseSizeViewGQLType, func(v SizesView) any { return v.Database }),
+		"tables":   gqlutil.Typed(graphql.NewList(tableSizeViewGQLType), func(v SizesView) any { return v.Tables }),
 	},
 })
 
 var tableScanViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseTableScan",
 	Fields: graphql.Fields{
-		"schema":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v TableScanView) any { return v.Schema })},
-		"name":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v TableScanView) any { return v.Name })},
-		"seqScans":      &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableScanView) any { return v.SeqScans })},
-		"seqScanRows":   &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableScanView) any { return v.SeqScanRows })},
-		"indexScans":    &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableScanView) any { return v.IndexScans })},
-		"indexScanRows": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableScanView) any { return v.IndexScanRows })},
-		"liveRows":      &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableScanView) any { return v.LiveRows })},
-		"deadRows":      &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v TableScanView) any { return v.DeadRows })},
+		"schema":        gqlutil.StrField(func(v TableScanView) any { return v.Schema }),
+		"name":          gqlutil.StrField(func(v TableScanView) any { return v.Name }),
+		"seqScans":      gqlutil.IntField(func(v TableScanView) any { return v.SeqScans }),
+		"seqScanRows":   gqlutil.IntField(func(v TableScanView) any { return v.SeqScanRows }),
+		"indexScans":    gqlutil.IntField(func(v TableScanView) any { return v.IndexScans }),
+		"indexScanRows": gqlutil.IntField(func(v TableScanView) any { return v.IndexScanRows }),
+		"liveRows":      gqlutil.IntField(func(v TableScanView) any { return v.LiveRows }),
+		"deadRows":      gqlutil.IntField(func(v TableScanView) any { return v.DeadRows }),
 	},
 })
 
 var parameterOverrideViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseParameterOverride",
 	Fields: graphql.Fields{
-		"name":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ParameterOverrideView) any { return v.Name })},
-		"setting":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ParameterOverrideView) any { return v.Setting })},
-		"unit":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ParameterOverrideView) any { return v.Unit })},
-		"source":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ParameterOverrideView) any { return v.Source })},
-		"description": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v ParameterOverrideView) any { return v.Description })},
+		"name":        gqlutil.StrField(func(v ParameterOverrideView) any { return v.Name }),
+		"setting":     gqlutil.StrField(func(v ParameterOverrideView) any { return v.Setting }),
+		"unit":        gqlutil.StrField(func(v ParameterOverrideView) any { return v.Unit }),
+		"source":      gqlutil.StrField(func(v ParameterOverrideView) any { return v.Source }),
+		"description": gqlutil.StrField(func(v ParameterOverrideView) any { return v.Description }),
 	},
 })
 
@@ -297,17 +297,17 @@ type databaseQueryResult struct {
 var databaseQueryRowGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseQueryRow",
 	Fields: graphql.Fields{
-		"values": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v databaseQueryRow) any { return v.Values })},
+		"values": gqlutil.StrsField(func(v databaseQueryRow) any { return v.Values }),
 	},
 })
 
 var databaseQueryResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "DatabaseQueryResult",
 	Fields: graphql.Fields{
-		"columns":   &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(v databaseQueryResult) any { return v.Columns })},
-		"rows":      &graphql.Field{Type: graphql.NewList(databaseQueryRowGQLType), Resolve: gqlutil.Field(func(v databaseQueryResult) any { return v.Rows })},
-		"rowCount":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v databaseQueryResult) any { return v.RowCount })},
-		"truncated": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v databaseQueryResult) any { return v.Truncated })},
+		"columns":   gqlutil.StrsField(func(v databaseQueryResult) any { return v.Columns }),
+		"rows":      gqlutil.Typed(graphql.NewList(databaseQueryRowGQLType), func(v databaseQueryResult) any { return v.Rows }),
+		"rowCount":  gqlutil.IntField(func(v databaseQueryResult) any { return v.RowCount }),
+		"truncated": gqlutil.BoolField(func(v databaseQueryResult) any { return v.Truncated }),
 	},
 })
 
@@ -353,16 +353,14 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"databases": &graphql.Field{ // list; Render lists via env, bex offers a top-level list
 			Type: graphql.NewList(postgresGQLType),
-			Args: graphql.FieldConfigArgument{
+			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{
 				// ownerId mirrors Render's REST/MCP databases list filter (w6/m2/t004).
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId": gqlutil.Arg(graphql.String),
 				// cursor/limit are bex's paged twin of this top-level dashboard list.
 				// The result remains [Database], so existing dashboard selections stay valid.
-				"cursor": &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":  &graphql.ArgumentConfig{Type: graphql.Int},
-			},
+			}),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				ownerID, _ := p.Args["ownerId"].(string)
+				ownerID := gqlutil.Str(p.Args, "ownerId")
 				out, err := s.ListPostgres(p.Context, ownerID)
 				if err != nil {
 					return nil, err
@@ -370,45 +368,15 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return gqlutil.Page(p, out, func(pg PostgresView) string { return pg.ID }), nil
 			},
 		},
-		"database": &graphql.Field{ // Render's dashboard query name
-			Type: postgresGQLType,
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetPostgres(p.Context, p.Args["id"].(string))
-			},
-		},
-		"databaseConnectionInfo": &graphql.Field{
-			Type: connectionInfoGQLType,
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.PostgresConnectionInfo(p.Context, p.Args["id"].(string))
-			},
-		},
+		"database":               gqlutil.IDVerb(postgresGQLType, s.GetPostgres), // Render's dashboard query name
+		"databaseConnectionInfo": gqlutil.IDVerb(connectionInfoGQLType, s.PostgresConnectionInfo),
 		"databaseInstanceTypes": &graphql.Field{ // bex extension backing the create dialog's plan picker
 			Type:    graphql.NewList(databaseInstanceTypeGQLType),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.InstanceTypes(p.Context) },
 		},
-		"databaseRecoveryInfo": &graphql.Field{ // PITR window + backup list
-			Type: databaseRecoveryInfoGQLType,
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.RecoveryInfo(p.Context, p.Args["id"].(string))
-			},
-		},
-		"databaseExports": &graphql.Field{ // logical pg_dump exports
-			Type: graphql.NewList(databaseExportGQLType),
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListExports(p.Context, p.Args["id"].(string))
-			},
-		},
-		"databaseUsers": &graphql.Field{ // additional managed login roles
-			Type: graphql.NewList(databaseUserGQLType),
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListUsers(p.Context, p.Args["id"].(string))
-			},
-		},
+		"databaseRecoveryInfo": gqlutil.IDVerb(databaseRecoveryInfoGQLType, s.RecoveryInfo),           // PITR window + backup list
+		"databaseExports":      gqlutil.IDVerb(graphql.NewList(databaseExportGQLType), s.ListExports), // logical pg_dump exports
+		"databaseUsers":        gqlutil.IDVerb(graphql.NewList(databaseUserGQLType), s.ListUsers),     // additional managed login roles
 		"databaseIpAllowList": &graphql.Field{ // external-endpoint CIDR allowlist (strings; the Database type's ipAllowListEntries carries descriptions)
 			Type: graphql.NewList(graphql.String),
 			Args: gqlutil.IDArg(),
@@ -421,53 +389,22 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 		// --- insights (m25) ---
-		"databaseProcesses": &graphql.Field{
-			Type: graphql.NewList(processViewGQLType),
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Processes(p.Context, p.Args["id"].(string))
-			},
-		},
-		"databaseTopQueries": &graphql.Field{
-			Type: graphql.NewList(topQueryViewGQLType),
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.TopQueries(p.Context, p.Args["id"].(string))
-			},
-		},
-		"databaseSizes": &graphql.Field{
-			Type: sizesViewGQLType,
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Sizes(p.Context, p.Args["id"].(string))
-			},
-		},
-		"databaseTableScans": &graphql.Field{
-			Type: graphql.NewList(tableScanViewGQLType),
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.TableScans(p.Context, p.Args["id"].(string))
-			},
-		},
-		"databaseParameterOverrides": &graphql.Field{
-			Type: graphql.NewList(parameterOverrideViewGQLType),
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ParameterOverrides(p.Context, p.Args["id"].(string))
-			},
-		},
+		"databaseProcesses":          gqlutil.IDVerb(graphql.NewList(processViewGQLType), s.Processes),
+		"databaseTopQueries":         gqlutil.IDVerb(graphql.NewList(topQueryViewGQLType), s.TopQueries),
+		"databaseSizes":              gqlutil.IDVerb(sizesViewGQLType, s.Sizes),
+		"databaseTableScans":         gqlutil.IDVerb(graphql.NewList(tableScanViewGQLType), s.TableScans),
+		"databaseParameterOverrides": gqlutil.IDVerb(graphql.NewList(parameterOverrideViewGQLType), s.ParameterOverrides),
 		// --- logs (w3/m28) ---
 		"databaseLogs": &graphql.Field{
 			Type: graphql.NewList(databaseLogGQLType),
-			Args: graphql.FieldConfigArgument{
-				"id":        &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"text":      &graphql.ArgumentConfig{Type: graphql.String},
-				"startTime": &graphql.ArgumentConfig{Type: graphql.String},
-				"endTime":   &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
-				"direction": &graphql.ArgumentConfig{Type: graphql.String},
-				"instance":  &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
-			},
+			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{
+				"id":        gqlutil.ReqArg(graphql.String),
+				"text":      gqlutil.Arg(graphql.String),
+				"startTime": gqlutil.Arg(graphql.String),
+				"endTime":   gqlutil.Arg(graphql.String),
+				"direction": gqlutil.Arg(graphql.String),
+				"instance":  gqlutil.Arg(graphql.NewList(graphql.String)),
+			}),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				since, end, err := core.ParseTimeWindow(gqlutil.Str(p.Args, "startTime"), gqlutil.Str(p.Args, "endTime"))
 				if err != nil {
@@ -496,83 +433,64 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createDatabase": &graphql.Field{
 			Type: postgresGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"databaseName": &graphql.ArgumentConfig{Type: graphql.String},
-				"databaseUser": &graphql.ArgumentConfig{Type: graphql.String},
+				"name":         gqlutil.ReqArg(graphql.String),
+				"databaseName": gqlutil.Arg(graphql.String),
+				"databaseUser": gqlutil.Arg(graphql.String),
 				// ownerId is the workspace to create IN (w6/m14) — the write-side
 				// twin of the databases list filter; optional, defaulting to the
 				// caller's default workspace, forbidden for a non-member.
-				"ownerId":               &graphql.ArgumentConfig{Type: graphql.String},
-				"environmentId":         &graphql.ArgumentConfig{Type: graphql.String},
-				"plan":                  &graphql.ArgumentConfig{Type: graphql.String},
-				"version":               &graphql.ArgumentConfig{Type: graphql.String},
-				"diskSizeGB":            &graphql.ArgumentConfig{Type: graphql.Int},
-				"enableDiskAutoscaling": &graphql.ArgumentConfig{Type: graphql.Boolean},
-				"public":                &graphql.ArgumentConfig{Type: graphql.Boolean},
-				"ipAllowList":           &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				"ownerId":               gqlutil.Arg(graphql.String),
+				"environmentId":         gqlutil.Arg(graphql.String),
+				"plan":                  gqlutil.Arg(graphql.String),
+				"version":               gqlutil.Arg(graphql.String),
+				"diskSizeGB":            gqlutil.Arg(graphql.Int),
+				"enableDiskAutoscaling": gqlutil.Arg(graphql.Boolean),
+				"public":                gqlutil.Arg(graphql.Boolean),
+				"ipAllowList":           gqlutil.Arg(graphql.NewList(graphql.String)),
 				// ipAllowListEntries is the description-carrying form (w4/m24);
 				// when present it wins over ipAllowList.
-				"ipAllowListEntries":     &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
-				"enableHighAvailability": &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"ipAllowListEntries":     gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))),
+				"enableHighAvailability": gqlutil.Arg(graphql.Boolean),
 				// dryRun, when true, returns the resolved spec without any writes (w2/m29).
-				"dryRun": &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"dryRun": gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				ownerID, _ := p.Args["ownerId"].(string)
-				environmentID, _ := p.Args["environmentId"].(string)
-				req := CreatePostgresRequest{Name: p.Args["name"].(string), OwnerID: ownerID, EnvironmentID: environmentID}
-				req.DatabaseName, _ = p.Args["databaseName"].(string)
-				req.DatabaseUser, _ = p.Args["databaseUser"].(string)
-				if v, ok := p.Args["plan"].(string); ok {
-					req.Plan = v
-				}
-				if v, ok := p.Args["version"].(string); ok {
-					req.Version = v
-				}
-				if v, ok := p.Args["diskSizeGB"].(int); ok {
-					req.DiskSizeGB = int32(v)
-				}
-				if v, ok := p.Args["enableDiskAutoscaling"].(bool); ok {
-					req.EnableDiskAutoscaling = v
-				}
-				if v, ok := p.Args["public"].(bool); ok {
-					req.Public = v
-				}
-				req.IPAllowList = core.AllowListOrCIDRs(gqlutil.AllowList(p.Args["ipAllowListEntries"]), gqlutil.StringList(p.Args["ipAllowList"]))
-				if v, ok := p.Args["enableHighAvailability"].(bool); ok {
-					req.EnableHighAvailability = v
-				}
-				req.DryRun, _ = p.Args["dryRun"].(bool)
-				return s.CreatePostgres(p.Context, req)
+				return s.CreatePostgres(p.Context, CreatePostgresRequest{
+					Name:                  p.Args["name"].(string),
+					OwnerID:               gqlutil.Str(p.Args, "ownerId"),
+					EnvironmentID:         gqlutil.Str(p.Args, "environmentId"),
+					DatabaseName:          gqlutil.Str(p.Args, "databaseName"),
+					DatabaseUser:          gqlutil.Str(p.Args, "databaseUser"),
+					Plan:                  gqlutil.Str(p.Args, "plan"),
+					Version:               gqlutil.Str(p.Args, "version"),
+					DiskSizeGB:            int32(gqlutil.Int(p.Args, "diskSizeGB")),
+					EnableDiskAutoscaling: gqlutil.Bool(p.Args, "enableDiskAutoscaling"),
+					Public:                gqlutil.Bool(p.Args, "public"),
+					IPAllowList: core.AllowListOrCIDRs(
+						gqlutil.AllowList(p.Args["ipAllowListEntries"]), gqlutil.StringList(p.Args["ipAllowList"])),
+					EnableHighAvailability: gqlutil.Bool(p.Args, "enableHighAvailability"),
+					DryRun:                 gqlutil.Bool(p.Args, "dryRun"),
+				})
 			},
 		},
 		"deleteDatabase": &graphql.Field{
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"confirm": &graphql.ArgumentConfig{Type: graphql.String},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"confirm": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				err := s.DeletePostgres(core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm")), p.Args["id"].(string))
 				return err == nil, err
 			},
 		},
-		"updateDatabasePlan": gqlutil.PlanMutation(postgresGQLType, s.SetPlan, s.PreviewSetPlan),
-		"updateDatabaseVersion": &graphql.Field{
-			Type: postgresGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"version": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetVersion(p.Context, p.Args["id"].(string), p.Args["version"].(string))
-			},
-		},
+		"updateDatabasePlan":    gqlutil.PlanMutation(postgresGQLType, s.SetPlan, s.PreviewSetPlan),
+		"updateDatabaseVersion": gqlutil.ArgMutation(postgresGQLType, "version", s.SetVersion),
 		"updateDatabaseDiskAutoscaling": &graphql.Field{
 			Type: postgresGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"enabled": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"enabled": gqlutil.ReqArg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				enabled := p.Args["enabled"].(bool)
@@ -597,90 +515,58 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"suspendDatabase": &graphql.Field{
 			Type: postgresGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"confirm": &graphql.ArgumentConfig{Type: graphql.String},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"confirm": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Suspend(core.WithConfirm(p.Context, gqlutil.Str(p.Args, "confirm")), p.Args["id"].(string))
 			},
 		},
-		"resumeDatabase": &graphql.Field{
-			Type: postgresGQLType,
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Resume(p.Context, p.Args["id"].(string))
-			},
-		},
-		"restartDatabase": &graphql.Field{
-			Type: postgresGQLType,
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Restart(p.Context, p.Args["id"].(string))
-			},
-		},
+		"resumeDatabase":  gqlutil.IDVerb(postgresGQLType, s.Resume),
+		"restartDatabase": gqlutil.IDVerb(postgresGQLType, s.Restart),
 
 		// --- recovery / exports ---
 		"recoverDatabase": &graphql.Field{ // restore to a NEW instance (PITR)
 			Type: postgresGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)}, // source
-				"name":       &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)}, // new instance
-				"targetTime": &graphql.ArgumentConfig{Type: graphql.String},
-				"plan":       &graphql.ArgumentConfig{Type: graphql.String},
-				"version":    &graphql.ArgumentConfig{Type: graphql.String},
+				"id":         gqlutil.ReqArg(graphql.String), // source
+				"name":       gqlutil.ReqArg(graphql.String), // new instance
+				"targetTime": gqlutil.Arg(graphql.String),
+				"plan":       gqlutil.Arg(graphql.String),
+				"version":    gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				req := RecoverRequest{Name: p.Args["name"].(string)}
-				if v, ok := p.Args["targetTime"].(string); ok {
-					req.TargetTime = v
-				}
-				if v, ok := p.Args["plan"].(string); ok {
-					req.Plan = v
-				}
-				if v, ok := p.Args["version"].(string); ok {
-					req.Version = v
-				}
-				return s.Recover(p.Context, p.Args["id"].(string), req)
+				return s.Recover(p.Context, p.Args["id"].(string), RecoverRequest{
+					Name:       p.Args["name"].(string),
+					TargetTime: gqlutil.Str(p.Args, "targetTime"),
+					Plan:       gqlutil.Str(p.Args, "plan"),
+					Version:    gqlutil.Str(p.Args, "version"),
+				})
 			},
 		},
-		"createDatabaseExport": &graphql.Field{
-			Type: databaseExportGQLType,
-			Args: gqlutil.IDArg(),
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.CreateExport(p.Context, p.Args["id"].(string))
-			},
-		},
+		"createDatabaseExport": gqlutil.IDVerb(databaseExportGQLType, s.CreateExport),
 
 		// --- access: IP allowlist + users ---
 		"setDatabaseIpAllowList": &graphql.Field{
 			Type: postgresGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"cidrs": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.String)},
+				"id":    gqlutil.ReqArg(graphql.String),
+				"cidrs": gqlutil.Arg(graphql.NewList(graphql.String)),
 				// entries is the description-carrying form; precedence over cidrs
 				// lives in core.AllowListOrCIDRs.
-				"entries": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
+				"entries": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				entries := core.AllowListOrCIDRs(gqlutil.AllowList(p.Args["entries"]), gqlutil.StringList(p.Args["cidrs"]))
 				return s.SetIPAllowList(p.Context, p.Args["id"].(string), entries)
 			},
 		},
-		"createDatabaseUser": &graphql.Field{
-			Type: databaseUserWithPasswordGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.CreateUser(p.Context, p.Args["id"].(string), p.Args["name"].(string))
-			},
-		},
+		"createDatabaseUser": gqlutil.ArgMutation(databaseUserWithPasswordGQLType, "name", s.CreateUser),
 		"deleteDatabaseUser": &graphql.Field{
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"id":   gqlutil.ReqArg(graphql.String),
+				"name": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				err := s.DeleteUser(p.Context, p.Args["id"].(string), p.Args["name"].(string))
@@ -692,9 +578,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setDatabaseParameterOverrides": &graphql.Field{
 			Type: postgresGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"id": gqlutil.ReqArg(graphql.String),
 				// parameters is a list of {name, value} pairs (GraphQL has no map type).
-				"parameters": &graphql.ArgumentConfig{Type: graphql.NewList(parameterInputGQLType)},
+				"parameters": gqlutil.Arg(graphql.NewList(parameterInputGQLType)),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				items, _ := p.Args["parameters"].([]any)
@@ -713,12 +599,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"executeDatabaseQuery": &graphql.Field{
 			Type: databaseQueryResultGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"sql":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"allowWrites": &graphql.ArgumentConfig{Type: graphql.Boolean},
+				"id":          gqlutil.ReqArg(graphql.String),
+				"sql":         gqlutil.ReqArg(graphql.String),
+				"allowWrites": gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				allowWrites, _ := p.Args["allowWrites"].(bool)
+				allowWrites := gqlutil.Bool(p.Args, "allowWrites")
 				result, err := s.ExecuteQuery(p.Context, p.Args["id"].(string), p.Args["sql"].(string), allowWrites)
 				if err != nil {
 					return nil, err

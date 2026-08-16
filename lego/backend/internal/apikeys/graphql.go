@@ -28,12 +28,12 @@ import (
 var apiKeyGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ApiKey",
 	Fields: graphql.Fields{
-		"id":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.ID })},
-		"name":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.Name })},
-		"secret":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.Secret })},
-		"createdAt":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.CreatedAt })},
-		"createdBy":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.CreatedBy })},
-		"lastUsedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(k APIKey) any { return k.LastUsedAt })},
+		"id":         gqlutil.StrField(func(k APIKey) any { return k.ID }),
+		"name":       gqlutil.StrField(func(k APIKey) any { return k.Name }),
+		"secret":     gqlutil.StrField(func(k APIKey) any { return k.Secret }),
+		"createdAt":  gqlutil.StrField(func(k APIKey) any { return k.CreatedAt }),
+		"createdBy":  gqlutil.StrField(func(k APIKey) any { return k.CreatedBy }),
+		"lastUsedAt": gqlutil.StrField(func(k APIKey) any { return k.LastUsedAt }),
 	},
 })
 
@@ -44,7 +44,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"apiKeys": &graphql.Field{
 			Type: graphql.NewList(apiKeyGQLType),
 			Args: graphql.FieldConfigArgument{
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ListAPIKeys(p.Context, gqlutil.Str(p.Args, "ownerId"))
@@ -61,8 +61,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createApiKey": &graphql.Field{
 			Type: apiKeyGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"name":    gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.CreateAPIKey(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["name"].(string))
@@ -71,8 +71,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"revokeApiKey": &graphql.Field{
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
-				"id":      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				err := s.RevokeAPIKey(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["id"].(string))

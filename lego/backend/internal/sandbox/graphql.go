@@ -25,7 +25,7 @@ import (
 var sandboxNetworkPolicyGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SandboxNetworkPolicy",
 	Fields: graphql.Fields{
-		"default": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(p *NetworkPolicy) any { return string(p.Default) })},
+		"default": gqlutil.ReqStrField(func(p *NetworkPolicy) any { return string(p.Default) }),
 	},
 })
 
@@ -43,13 +43,13 @@ var sandboxNetworkPolicyInput = graphql.NewInputObject(graphql.InputObjectConfig
 var sandboxGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Sandbox",
 	Fields: graphql.Fields{
-		"id":        &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(s Sandbox) any { return s.ID })},
-		"plan":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Sandbox) any { return string(s.Plan) })},
-		"status":    &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(s Sandbox) any { return string(s.Status) })},
-		"owner":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Sandbox) any { return s.Owner })},
-		"workspace": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Sandbox) any { return s.Workspace })},
-		"image":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Sandbox) any { return s.Image })},
-		"region":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Sandbox) any { return s.Region })},
+		"id":        gqlutil.ReqStrField(func(s Sandbox) any { return s.ID }),
+		"plan":      gqlutil.StrField(func(s Sandbox) any { return string(s.Plan) }),
+		"status":    gqlutil.ReqStrField(func(s Sandbox) any { return string(s.Status) }),
+		"owner":     gqlutil.StrField(func(s Sandbox) any { return s.Owner }),
+		"workspace": gqlutil.StrField(func(s Sandbox) any { return s.Workspace }),
+		"image":     gqlutil.StrField(func(s Sandbox) any { return s.Image }),
+		"region":    gqlutil.StrField(func(s Sandbox) any { return s.Region }),
 		"timeoutSeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(s Sandbox) any {
 			return s.TimeoutSeconds
 		})},
@@ -72,12 +72,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createSandbox": &graphql.Field{
 			Type: sandboxGQLType,
 			Args: graphql.FieldConfigArgument{
-				"template":       &graphql.ArgumentConfig{Type: graphql.String},
-				"plan":           &graphql.ArgumentConfig{Type: graphql.String},
-				"ownerId":        &graphql.ArgumentConfig{Type: graphql.String},
-				"region":         &graphql.ArgumentConfig{Type: graphql.String},
-				"timeoutSeconds": &graphql.ArgumentConfig{Type: graphql.Int},
-				"networkPolicy":  &graphql.ArgumentConfig{Type: sandboxNetworkPolicyInput},
+				"template":       gqlutil.Arg(graphql.String),
+				"plan":           gqlutil.Arg(graphql.String),
+				"ownerId":        gqlutil.Arg(graphql.String),
+				"region":         gqlutil.Arg(graphql.String),
+				"timeoutSeconds": gqlutil.Arg(graphql.Int),
+				"networkPolicy":  gqlutil.Arg(sandboxNetworkPolicyInput),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				var policy *NetworkPolicy
@@ -96,7 +96,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		"terminateSandbox": &graphql.Field{
 			Type: graphql.NewNonNull(graphql.Boolean),
-			Args: graphql.FieldConfigArgument{"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)}},
+			Args: gqlutil.IDArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				if err := s.Terminate(p.Context, p.Args["id"].(string)); err != nil {
 					return false, err

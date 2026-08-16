@@ -28,11 +28,11 @@ import (
 var gitConnectionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "GitConnection",
 	Fields: graphql.Fields{
-		"connected":      &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(c Connection) any { return c.Connected })},
-		"accountLogin":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(c Connection) any { return c.AccountLogin })},
-		"installationId": &graphql.Field{Type: graphql.Float, Resolve: gqlutil.Field(func(c Connection) any { return c.InstallationID })},
-		"createdAt":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(c Connection) any { return c.CreatedAt })},
-		"installUrl":     &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(c Connection) any { return c.InstallURL })},
+		"connected":      gqlutil.BoolField(func(c Connection) any { return c.Connected }),
+		"accountLogin":   gqlutil.StrField(func(c Connection) any { return c.AccountLogin }),
+		"installationId": gqlutil.FloatField(func(c Connection) any { return c.InstallationID }),
+		"createdAt":      gqlutil.StrField(func(c Connection) any { return c.CreatedAt }),
+		"installUrl":     gqlutil.StrField(func(c Connection) any { return c.InstallURL }),
 	},
 })
 
@@ -41,19 +41,19 @@ var gitConnectionGQLType = graphql.NewObject(graphql.ObjectConfig{
 var repoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Repo",
 	Fields: graphql.Fields{
-		"id":            &graphql.Field{Type: graphql.Float, Resolve: gqlutil.Field(func(r Repo) any { return r.ID })},
-		"fullName":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r Repo) any { return r.FullName })},
-		"private":       &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(r Repo) any { return r.Private })},
-		"defaultBranch": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r Repo) any { return r.DefaultBranch })},
-		"htmlUrl":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r Repo) any { return r.HTMLURL })},
-		"cloneUrl":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r Repo) any { return r.CloneURL })},
+		"id":            gqlutil.FloatField(func(r Repo) any { return r.ID }),
+		"fullName":      gqlutil.StrField(func(r Repo) any { return r.FullName }),
+		"private":       gqlutil.BoolField(func(r Repo) any { return r.Private }),
+		"defaultBranch": gqlutil.StrField(func(r Repo) any { return r.DefaultBranch }),
+		"htmlUrl":       gqlutil.StrField(func(r Repo) any { return r.HTMLURL }),
+		"cloneUrl":      gqlutil.StrField(func(r Repo) any { return r.CloneURL }),
 	},
 })
 
 // ownerIDArg is the optional workspace-scoping arg (Render's `ownerId`,
 // w6/m18) every git-connect query/mutation takes; omitted means the caller's
 // default workspace.
-var ownerIDArg = graphql.FieldConfigArgument{"ownerId": &graphql.ArgumentConfig{Type: graphql.String}}
+var ownerIDArg = graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)}
 
 // GraphQLQuery returns the gitConnection + repos queries.
 func (s *Service) GraphQLQuery() graphql.Fields {
@@ -86,8 +86,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"repoBranches": &graphql.Field{
 			Type: graphql.NewList(graphql.String),
 			Args: graphql.FieldConfigArgument{
-				"repo":    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"repo":    gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				branches, err := s.ListBranches(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "repo"))

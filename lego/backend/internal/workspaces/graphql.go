@@ -35,11 +35,11 @@ import (
 var workspaceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Workspace",
 	Fields: graphql.Fields{
-		"id":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(w WorkspaceView) any { return w.ID })},
-		"name":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(w WorkspaceView) any { return w.Name })},
-		"plan":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(w WorkspaceView) any { return w.Plan })},
-		"role":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(w WorkspaceView) any { return w.Role })},
-		"createdAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(w WorkspaceView) any { return w.CreatedAt })},
+		"id":        gqlutil.StrField(func(w WorkspaceView) any { return w.ID }),
+		"name":      gqlutil.StrField(func(w WorkspaceView) any { return w.Name }),
+		"plan":      gqlutil.StrField(func(w WorkspaceView) any { return w.Plan }),
+		"role":      gqlutil.StrField(func(w WorkspaceView) any { return w.Role }),
+		"createdAt": gqlutil.StrField(func(w WorkspaceView) any { return w.CreatedAt }),
 	},
 })
 
@@ -47,8 +47,8 @@ var workspaceGQLType = graphql.NewObject(graphql.ObjectConfig{
 var resourceCapGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ResourceCap",
 	Fields: graphql.Fields{
-		"used":  &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(c ResourceCapView) any { return c.Used })},
-		"limit": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(c ResourceCapView) any { return c.Limit })},
+		"used":  gqlutil.IntField(func(c ResourceCapView) any { return c.Used }),
+		"limit": gqlutil.IntField(func(c ResourceCapView) any { return c.Limit }),
 	},
 })
 
@@ -56,9 +56,9 @@ var resourceCapGQLType = graphql.NewObject(graphql.ObjectConfig{
 var resourceLimitsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ResourceLimits",
 	Fields: graphql.Fields{
-		"services":  &graphql.Field{Type: resourceCapGQLType, Resolve: gqlutil.Field(func(r ResourceLimitsView) any { return r.Services })},
-		"postgres":  &graphql.Field{Type: resourceCapGQLType, Resolve: gqlutil.Field(func(r ResourceLimitsView) any { return r.Postgres })},
-		"keyValues": &graphql.Field{Type: resourceCapGQLType, Resolve: gqlutil.Field(func(r ResourceLimitsView) any { return r.KeyValues })},
+		"services":  gqlutil.Typed(resourceCapGQLType, func(r ResourceLimitsView) any { return r.Services }),
+		"postgres":  gqlutil.Typed(resourceCapGQLType, func(r ResourceLimitsView) any { return r.Postgres }),
+		"keyValues": gqlutil.Typed(resourceCapGQLType, func(r ResourceLimitsView) any { return r.KeyValues }),
 	},
 })
 
@@ -76,7 +76,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"workspaceLimits": &graphql.Field{
 			Type: resourceLimitsGQLType,
 			Args: graphql.FieldConfigArgument{
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"ownerId": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ResourceLimits(p.Context, p.Args["ownerId"].(string))
@@ -91,24 +91,15 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createWorkspace": &graphql.Field{
 			Type: workspaceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"plan": &graphql.ArgumentConfig{Type: graphql.String},
+				"name": gqlutil.ReqArg(graphql.String),
+				"plan": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				plan, _ := p.Args["plan"].(string)
+				plan := gqlutil.Str(p.Args, "plan")
 				return s.Create(p.Context, p.Args["name"].(string), plan)
 			},
 		},
-		"renameWorkspace": &graphql.Field{
-			Type: workspaceGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Rename(p.Context, p.Args["id"].(string), p.Args["name"].(string))
-			},
-		},
+		"renameWorkspace": gqlutil.ArgMutation(workspaceGQLType, "name", s.Rename),
 		"changeWorkspacePlan": &graphql.Field{
 			// w6/m12: upgrade/downgrade a workspace's plan
 			// (docs/render-artifacts/workspace-plan-change.md). GraphQL-only —
@@ -117,8 +108,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			// nothing here (parity by absence).
 			Type: workspaceGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"plan": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"id":   gqlutil.ReqArg(graphql.String),
+				"plan": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ChangePlan(p.Context, p.Args["id"].(string), p.Args["plan"].(string))
@@ -129,7 +120,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			// delete mutations echo the affected id); a boolean would lose it.
 			Type: graphql.String,
 			Args: graphql.FieldConfigArgument{
-				"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"id": gqlutil.ReqArg(graphql.String),
 				"confirmation": &graphql.ArgumentConfig{
 					Type: graphql.NewNonNull(graphql.String),
 					// Render's live delete guard: "sudo delete workspace <name>"

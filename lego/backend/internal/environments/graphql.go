@@ -31,19 +31,19 @@ import (
 var environmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Environment",
 	Fields: graphql.Fields{
-		"id":                      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ID })},
-		"projectId":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ProjectID })},
-		"name":                    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.Name })},
-		"ownerId":                 &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.OwnerID })},
-		"createdAt":               &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.CreatedAt })},
-		"serviceIds":              &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ServiceIDs })},
-		"databaseIds":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.DatabaseIDs })},
-		"keyValueIds":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.KeyValueIDs })},
-		"envGroupIds":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.EnvGroupIDs })},
-		"protectedStatus":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.ProtectedStatus })},
-		"networkIsolationEnabled": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.NetworkIsolationEnabled })},
-		"ipAllowList":             &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e EnvironmentView) any { return core.AllowListCIDRs(e.IPAllowList) })},
-		"ipAllowListEntries":      &graphql.Field{Type: graphql.NewList(gqlutil.IPAllowEntryType), Resolve: gqlutil.Field(func(e EnvironmentView) any { return e.IPAllowList })},
+		"id":                      gqlutil.StrField(func(e EnvironmentView) any { return e.ID }),
+		"projectId":               gqlutil.StrField(func(e EnvironmentView) any { return e.ProjectID }),
+		"name":                    gqlutil.StrField(func(e EnvironmentView) any { return e.Name }),
+		"ownerId":                 gqlutil.StrField(func(e EnvironmentView) any { return e.OwnerID }),
+		"createdAt":               gqlutil.StrField(func(e EnvironmentView) any { return e.CreatedAt }),
+		"serviceIds":              gqlutil.StrsField(func(e EnvironmentView) any { return e.ServiceIDs }),
+		"databaseIds":             gqlutil.StrsField(func(e EnvironmentView) any { return e.DatabaseIDs }),
+		"keyValueIds":             gqlutil.StrsField(func(e EnvironmentView) any { return e.KeyValueIDs }),
+		"envGroupIds":             gqlutil.StrsField(func(e EnvironmentView) any { return e.EnvGroupIDs }),
+		"protectedStatus":         gqlutil.StrField(func(e EnvironmentView) any { return e.ProtectedStatus }),
+		"networkIsolationEnabled": gqlutil.BoolField(func(e EnvironmentView) any { return e.NetworkIsolationEnabled }),
+		"ipAllowList":             gqlutil.StrsField(func(e EnvironmentView) any { return core.AllowListCIDRs(e.IPAllowList) }),
+		"ipAllowListEntries":      gqlutil.Typed(graphql.NewList(gqlutil.IPAllowEntryType), func(e EnvironmentView) any { return e.IPAllowList }),
 	},
 })
 
@@ -52,11 +52,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"environments": &graphql.Field{
 			Type: graphql.NewList(environmentGQLType),
-			Args: graphql.FieldConfigArgument{
-				"projectId": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"cursor":    &graphql.ArgumentConfig{Type: graphql.String},
-				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
-			},
+			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{
+				"projectId": gqlutil.ReqArg(graphql.String),
+			}),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				out, err := s.List(p.Context, p.Args["projectId"].(string))
 				if err != nil {
@@ -68,7 +66,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"environment": &graphql.Field{
 			Type: environmentGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"id": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Get(p.Context, p.Args["id"].(string))
@@ -99,14 +97,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createEnvironment": &graphql.Field{
 			Type: environmentGQLType,
 			Args: graphql.FieldConfigArgument{
-				"name":                    &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"projectId":               &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"protectedStatus":         &graphql.ArgumentConfig{Type: graphql.String},
-				"networkIsolationEnabled": &graphql.ArgumentConfig{Type: graphql.Boolean},
-				"ipAllowList":             &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
+				"name":                    gqlutil.ReqArg(graphql.String),
+				"projectId":               gqlutil.ReqArg(graphql.String),
+				"protectedStatus":         gqlutil.Arg(graphql.String),
+				"networkIsolationEnabled": gqlutil.Arg(graphql.Boolean),
+				"ipAllowList":             gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				isolated, _ := p.Args["networkIsolationEnabled"].(bool)
+				isolated := gqlutil.Bool(p.Args, "networkIsolationEnabled")
 				return s.CreateWithACL(p.Context, CreateEnvironmentRequest{
 					Name: p.Args["name"].(string), ProjectID: p.Args["projectId"].(string),
 					ProtectedStatus: gqlutil.Str(p.Args, "protectedStatus"), NetworkIsolationEnabled: isolated,
@@ -114,16 +112,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				})
 			},
 		},
-		"renameEnvironment": &graphql.Field{
-			Type: environmentGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id":   &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Rename(p.Context, p.Args["id"].(string), p.Args["name"].(string))
-			},
-		},
+		"renameEnvironment": gqlutil.ArgMutation(environmentGQLType, "name", s.Rename),
 		// updateEnvironment is the partial-update verb (w4/m30): every field
 		// optional, absent fields untouched, riding the core Update verb — the
 		// GraphQL/MCP counterpart to REST PATCH /v1/environments/{id}. The
@@ -132,12 +121,12 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"updateEnvironment": &graphql.Field{
 			Type: environmentGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":                      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"name":                    &graphql.ArgumentConfig{Type: graphql.String},
-				"protectedStatus":         &graphql.ArgumentConfig{Type: graphql.String},
-				"networkIsolationEnabled": &graphql.ArgumentConfig{Type: graphql.Boolean},
-				"ipAllowList":             &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String))},
-				"ipAllowListEntries":      &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
+				"id":                      gqlutil.ReqArg(graphql.String),
+				"name":                    gqlutil.Arg(graphql.String),
+				"protectedStatus":         gqlutil.Arg(graphql.String),
+				"networkIsolationEnabled": gqlutil.Arg(graphql.Boolean),
+				"ipAllowList":             gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				"ipAllowListEntries":      gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.Update(p.Context, p.Args["id"].(string), EnvironmentPatch{
@@ -151,7 +140,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"deleteEnvironment": &graphql.Field{
 			Type: graphql.String,
 			Args: graphql.FieldConfigArgument{
-				"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+				"id": gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				id := p.Args["id"].(string)
@@ -164,8 +153,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setEnvironmentServices": &graphql.Field{
 			Type: environmentGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"serviceIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
+				"id":         gqlutil.ReqArg(graphql.String),
+				"serviceIds": gqlutil.Arg(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetServices(p.Context, p.Args["id"].(string), gqlutil.StringList(p.Args["serviceIds"]))
@@ -174,8 +163,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setEnvironmentDatabases": &graphql.Field{
 			Type: environmentGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"databaseIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
+				"id":          gqlutil.ReqArg(graphql.String),
+				"databaseIds": gqlutil.Arg(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetDatabases(p.Context, p.Args["id"].(string), gqlutil.StringList(p.Args["databaseIds"]))
@@ -184,8 +173,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setEnvironmentKeyValues": &graphql.Field{
 			Type: environmentGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"keyValueIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
+				"id":          gqlutil.ReqArg(graphql.String),
+				"keyValueIds": gqlutil.Arg(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetKeyValues(p.Context, p.Args["id"].(string), gqlutil.StringList(p.Args["keyValueIds"]))
@@ -194,8 +183,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setEnvironmentEnvGroups": &graphql.Field{
 			Type: environmentGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":          &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"envGroupIds": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))},
+				"id":          gqlutil.ReqArg(graphql.String),
+				"envGroupIds": gqlutil.Arg(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String)))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetEnvGroups(p.Context, p.Args["id"].(string), gqlutil.StringList(p.Args["envGroupIds"]))
@@ -206,13 +195,13 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"setEnvironmentACL": &graphql.Field{
 			Type: environmentGQLType,
 			Args: graphql.FieldConfigArgument{
-				"id":                      &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"protectedStatus":         &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
-				"networkIsolationEnabled": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.Boolean)},
-				"ipAllowList":             &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String))},
+				"id":                      gqlutil.ReqArg(graphql.String),
+				"protectedStatus":         gqlutil.ReqArg(graphql.String),
+				"networkIsolationEnabled": gqlutil.ReqArg(graphql.Boolean),
+				"ipAllowList":             gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				// ipAllowListEntries is the description-carrying form; precedence
 				// over ipAllowList lives in core.AllowListOrCIDRs.
-				"ipAllowListEntries": &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))},
+				"ipAllowListEntries": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryInputType))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				entries := core.AllowListOrCIDRs(gqlutil.AllowList(p.Args["ipAllowListEntries"]), gqlutil.StringList(p.Args["ipAllowList"]))

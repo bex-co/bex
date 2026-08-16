@@ -25,6 +25,14 @@ export interface EnvironmentDraft {
   secretFiles: SecretFileDraftRow[];
 }
 
+/** True for a row added in this draft — one with no counterpart on the server. */
+export function isNewDraftRow(row: EnvDraftRow | SecretFileDraftRow): boolean {
+  return ("originalKey" in row ? row.originalKey : row.originalName) == null;
+}
+
+/** The mask standing in for an unrevealed value, shared by every row renderer. */
+export const MASKED_VALUE = "••••••••••••";
+
 export interface EnvironmentPatchInput {
   envVars: Array<{
     key: string;
@@ -69,37 +77,74 @@ export function createEnvironmentDraft(
   };
 }
 
+// Env vars and secret files are the same row algorithm under two field names
+// (key/value/valueChanged vs name/content/contentChanged). A lens names the
+// four members once per kind so validation and patch derivation are written
+// once — the two spellings had drifted apart before only by luck.
+interface RowLens<R> {
+  original: (row: R) => string | null;
+  name: (row: R) => string;
+  value: (row: R) => string | null;
+  changed: (row: R) => boolean;
+}
+
+const ENV_LENS: RowLens<EnvDraftRow> = {
+  original: (row) => row.originalKey,
+  name: (row) => row.key,
+  value: (row) => row.value,
+  changed: (row) => row.valueChanged,
+};
+
+const FILE_LENS: RowLens<SecretFileDraftRow> = {
+  original: (row) => row.originalName,
+  name: (row) => row.name,
+  value: (row) => row.content,
+  changed: (row) => row.contentChanged,
+};
+
+function validateRows<
+  R extends { id: string; deleted: boolean },
+  E extends string,
+>(
+  rows: readonly R[],
+  lens: RowLens<R>,
+  isValidName: (name: string) => boolean,
+  missingValue: E,
+): Record<string, E | "invalid" | "duplicate"> {
+  const errors: Record<string, E | "invalid" | "duplicate"> = {};
+  const seen = new Map<string, string>();
+  for (const row of rows.filter((row) => !row.deleted)) {
+    const name = lens.name(row).trim();
+    if (!isValidName(name)) errors[row.id] = "invalid";
+    const prior = seen.get(name);
+    if (prior) {
+      errors[prior] = "duplicate";
+      errors[row.id] = "duplicate";
+    } else seen.set(name, row.id);
+    if (lens.original(row) == null && lens.value(row) == null) {
+      errors[row.id] = missingValue;
+    }
+  }
+  return errors;
+}
+
 export function validateEnvironmentDraft(
   draft: EnvironmentDraft,
 ): DraftValidation {
-  const validation: DraftValidation = { env: {}, files: {} };
-  const envNames = new Map<string, string>();
-  for (const row of draft.envVars.filter((row) => !row.deleted)) {
-    const key = row.key.trim();
-    if (!VALID_ENV_KEY.test(key)) validation.env[row.id] = "invalid";
-    const prior = envNames.get(key);
-    if (prior) {
-      validation.env[prior] = "duplicate";
-      validation.env[row.id] = "duplicate";
-    } else envNames.set(key, row.id);
-    if (row.originalKey == null && row.value == null) {
-      validation.env[row.id] = "value";
-    }
-  }
-  const fileNames = new Map<string, string>();
-  for (const row of draft.secretFiles.filter((row) => !row.deleted)) {
-    const name = row.name.trim();
-    if (!isValidSecretFileName(name)) validation.files[row.id] = "invalid";
-    const prior = fileNames.get(name);
-    if (prior) {
-      validation.files[prior] = "duplicate";
-      validation.files[row.id] = "duplicate";
-    } else fileNames.set(name, row.id);
-    if (row.originalName == null && row.content == null) {
-      validation.files[row.id] = "content";
-    }
-  }
-  return validation;
+  return {
+    env: validateRows(
+      draft.envVars,
+      ENV_LENS,
+      (key) => VALID_ENV_KEY.test(key),
+      "value",
+    ),
+    files: validateRows(
+      draft.secretFiles,
+      FILE_LENS,
+      isValidSecretFileName,
+      "content",
+    ),
+  };
 }
 
 export function isDraftValid(validation: DraftValidation): boolean {
@@ -109,57 +154,61 @@ export function isDraftValid(validation: DraftValidation): boolean {
   );
 }
 
+// One patch operation in the neutral vocabulary the two kinds share; each call
+// site below renames the two members to its own wire keys.
+interface RowPatch {
+  name: string;
+  from?: string;
+  value?: string;
+  delete?: boolean;
+}
+
+function patchRows<R extends { deleted: boolean }>(
+  rows: readonly R[],
+  lens: RowLens<R>,
+): RowPatch[] {
+  const patch: RowPatch[] = [];
+  for (const row of rows) {
+    const original = lens.original(row);
+    const name = lens.name(row).trim();
+    const value = lens.value(row) ?? "";
+    if (row.deleted) {
+      if (original) patch.push({ name: original, delete: true });
+    } else if (!original) {
+      patch.push({ name, value });
+    } else if (name !== original) {
+      // A rename with no new value moves the opaque value server-side; a rename
+      // that also sets one cannot, so it becomes delete + create.
+      if (!lens.changed(row)) patch.push({ name, from: original });
+      else patch.push({ name: original, delete: true }, { name, value });
+    } else if (lens.changed(row)) {
+      patch.push({ name, value });
+    }
+  }
+  return patch;
+}
+
 export function environmentDraftPatch(
   draft: EnvironmentDraft,
 ): EnvironmentPatchInput {
-  const envVars: EnvironmentPatchInput["envVars"] = [];
-  for (const row of draft.envVars) {
-    const key = row.key.trim();
-    if (row.deleted) {
-      if (row.originalKey) envVars.push({ key: row.originalKey, delete: true });
-      continue;
-    }
-    if (!row.originalKey) {
-      envVars.push({ key, value: row.value ?? "" });
-      continue;
-    }
-    if (key !== row.originalKey) {
-      if (!row.valueChanged) {
-        envVars.push({ key, fromKey: row.originalKey });
-      } else {
-        envVars.push({ key: row.originalKey, delete: true });
-        envVars.push({ key, value: row.value ?? "" });
-      }
-    } else if (row.valueChanged) {
-      envVars.push({ key, value: row.value ?? "" });
-    }
-  }
-
-  const secretFiles: EnvironmentPatchInput["secretFiles"] = [];
-  for (const row of draft.secretFiles) {
-    const name = row.name.trim();
-    if (row.deleted) {
-      if (row.originalName) {
-        secretFiles.push({ name: row.originalName, delete: true });
-      }
-      continue;
-    }
-    if (!row.originalName) {
-      secretFiles.push({ name, content: row.content ?? "" });
-      continue;
-    }
-    if (name !== row.originalName) {
-      if (!row.contentChanged) {
-        secretFiles.push({ name, fromName: row.originalName });
-      } else {
-        secretFiles.push({ name: row.originalName, delete: true });
-        secretFiles.push({ name, content: row.content ?? "" });
-      }
-    } else if (row.contentChanged) {
-      secretFiles.push({ name, content: row.content ?? "" });
-    }
-  }
-  return { envVars, secretFiles };
+  return {
+    envVars: patchRows(draft.envVars, ENV_LENS).map(
+      ({ name, from, value, delete: deleted }) => ({
+        key: name,
+        ...(from !== undefined && { fromKey: from }),
+        ...(value !== undefined && { value }),
+        ...(deleted !== undefined && { delete: deleted }),
+      }),
+    ),
+    secretFiles: patchRows(draft.secretFiles, FILE_LENS).map(
+      ({ name, from, value, delete: deleted }) => ({
+        name,
+        ...(from !== undefined && { fromName: from }),
+        ...(value !== undefined && { content: value }),
+        ...(deleted !== undefined && { delete: deleted }),
+      }),
+    ),
+  };
 }
 
 export function isEnvironmentDraftDirty(draft: EnvironmentDraft): boolean {

@@ -35,40 +35,40 @@ import (
 var usageRowGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "UsageRow",
 	Fields: graphql.Fields{
-		"kind": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r store.UsageSummaryRow) any { return r.Kind })},
-		"tier": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(r store.UsageSummaryRow) any { return r.Tier })},
+		"kind": gqlutil.StrField(func(r store.UsageSummaryRow) any { return r.Kind }),
+		"tier": gqlutil.StrField(func(r store.UsageSummaryRow) any { return r.Tier }),
 		// GraphQL Int is signed 32-bit. Storage GB-seconds (and egress bytes)
 		// routinely exceed that, so expose the int64 quantity through Float;
 		// IEEE-754 remains exact for every realistic monthly counter here.
-		"total": &graphql.Field{Type: graphql.Float, Resolve: gqlutil.Field(func(r store.UsageSummaryRow) any { return r.Total })},
+		"total": gqlutil.FloatField(func(r store.UsageSummaryRow) any { return r.Total }),
 	},
 })
 
 var serviceUsageGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ServiceUsage",
 	Fields: graphql.Fields{
-		"serviceId":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s ServiceUsage) any { return s.ServiceID })},
-		"serviceName":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s ServiceUsage) any { return s.ServiceName })},
-		"resourceKind": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s ServiceUsage) any { return s.ResourceKind })},
-		"rows":         &graphql.Field{Type: graphql.NewList(usageRowGQLType), Resolve: gqlutil.Field(func(s ServiceUsage) any { return s.Rows })},
+		"serviceId":    gqlutil.StrField(func(s ServiceUsage) any { return s.ServiceID }),
+		"serviceName":  gqlutil.StrField(func(s ServiceUsage) any { return s.ServiceName }),
+		"resourceKind": gqlutil.StrField(func(s ServiceUsage) any { return s.ResourceKind }),
+		"rows":         gqlutil.Typed(graphql.NewList(usageRowGQLType), func(s ServiceUsage) any { return s.Rows }),
 	},
 })
 
 var meterEstimateGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "MeterEstimate",
 	Fields: graphql.Fields{
-		"kind":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m pricing.MeterEstimate) any { return m.Kind })},
-		"tier":         &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m pricing.MeterEstimate) any { return m.Tier })},
-		"resourceKind": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m pricing.MeterEstimate) any { return m.ResourceKind })},
-		"costUsd":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(m pricing.MeterEstimate) any { return m.CostUSD })},
+		"kind":         gqlutil.StrField(func(m pricing.MeterEstimate) any { return m.Kind }),
+		"tier":         gqlutil.StrField(func(m pricing.MeterEstimate) any { return m.Tier }),
+		"resourceKind": gqlutil.StrField(func(m pricing.MeterEstimate) any { return m.ResourceKind }),
+		"costUsd":      gqlutil.StrField(func(m pricing.MeterEstimate) any { return m.CostUSD }),
 	},
 })
 
 var estimatedCostGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "EstimatedCost",
 	Fields: graphql.Fields{
-		"totalUsd": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(e pricing.EstimatedCost) any { return e.TotalUSD })},
-		"meters":   &graphql.Field{Type: graphql.NewList(meterEstimateGQLType), Resolve: gqlutil.Field(func(e pricing.EstimatedCost) any { return e.Meters })},
+		"totalUsd": gqlutil.StrField(func(e pricing.EstimatedCost) any { return e.TotalUSD }),
+		"meters":   gqlutil.Typed(graphql.NewList(meterEstimateGQLType), func(e pricing.EstimatedCost) any { return e.Meters }),
 	},
 })
 
@@ -102,22 +102,22 @@ var usageCoverageGQLType = graphql.NewObject(graphql.ObjectConfig{
 var billingAmountGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BillingAmount",
 	Fields: graphql.Fields{
-		"amountUsd":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a billing.Amount) any { return a.AmountUSD })},
-		"currency":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a billing.Amount) any { return a.Currency })},
-		"periodStart": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a billing.Amount) any { return a.PeriodStart })},
-		"periodEnd":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a billing.Amount) any { return a.PeriodEnd })},
+		"amountUsd":   gqlutil.StrField(func(a billing.Amount) any { return a.AmountUSD }),
+		"currency":    gqlutil.StrField(func(a billing.Amount) any { return a.Currency }),
+		"periodStart": gqlutil.StrField(func(a billing.Amount) any { return a.PeriodStart }),
+		"periodEnd":   gqlutil.StrField(func(a billing.Amount) any { return a.PeriodEnd }),
 	},
 })
 
 var billingInvoiceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BillingInvoice",
 	Fields: graphql.Fields{
-		"id":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i billing.Invoice) any { return i.ID })},
-		"status":      &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i billing.Invoice) any { return i.Status })},
-		"amountUsd":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i billing.Invoice) any { return i.AmountUSD })},
-		"currency":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i billing.Invoice) any { return i.Currency })},
-		"periodStart": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i billing.Invoice) any { return i.PeriodStart })},
-		"periodEnd":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(i billing.Invoice) any { return i.PeriodEnd })},
+		"id":          gqlutil.StrField(func(i billing.Invoice) any { return i.ID }),
+		"status":      gqlutil.StrField(func(i billing.Invoice) any { return i.Status }),
+		"amountUsd":   gqlutil.StrField(func(i billing.Invoice) any { return i.AmountUSD }),
+		"currency":    gqlutil.StrField(func(i billing.Invoice) any { return i.Currency }),
+		"periodStart": gqlutil.StrField(func(i billing.Invoice) any { return i.PeriodStart }),
+		"periodEnd":   gqlutil.StrField(func(i billing.Invoice) any { return i.PeriodEnd }),
 	},
 })
 
@@ -131,18 +131,18 @@ var billingGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return *b.CurrentCost
 		})},
-		"invoices": &graphql.Field{Type: graphql.NewList(billingInvoiceGQLType), Resolve: gqlutil.Field(func(b billing.Billing) any { return b.Invoices })},
+		"invoices": gqlutil.Typed(graphql.NewList(billingInvoiceGQLType), func(b billing.Billing) any { return b.Invoices }),
 	},
 })
 
 var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "UsageSummary",
 	Fields: graphql.Fields{
-		"workspaceId":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Summary) any { return s.WorkspaceID })},
-		"period":        &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Summary) any { return s.Period })},
-		"services":      &graphql.Field{Type: graphql.NewList(serviceUsageGQLType), Resolve: gqlutil.Field(func(s Summary) any { return s.Services })},
-		"estimatedCost": &graphql.Field{Type: estimatedCostGQLType, Resolve: gqlutil.Field(func(s Summary) any { return s.EstimatedCost })},
-		"coverage":      &graphql.Field{Type: graphql.NewNonNull(usageCoverageGQLType), Resolve: gqlutil.Field(func(s Summary) any { return s.Coverage })},
+		"workspaceId":   gqlutil.StrField(func(s Summary) any { return s.WorkspaceID }),
+		"period":        gqlutil.StrField(func(s Summary) any { return s.Period }),
+		"services":      gqlutil.Typed(graphql.NewList(serviceUsageGQLType), func(s Summary) any { return s.Services }),
+		"estimatedCost": gqlutil.Typed(estimatedCostGQLType, func(s Summary) any { return s.EstimatedCost }),
+		"coverage":      gqlutil.Typed(graphql.NewNonNull(usageCoverageGQLType), func(s Summary) any { return s.Coverage }),
 		// billing is the real Stripe cost/invoices (m48/m50); null ⇒ estimate-only.
 		"billing": &graphql.Field{Type: billingGQLType, Resolve: gqlutil.Field(func(s Summary) any {
 			if s.Billing == nil {
@@ -165,7 +165,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					Type:        graphql.String,
 					Description: "Calendar month YYYY-MM; defaults to the current month.",
 				},
-				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
+				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				asOf, err := ResolvePeriodEnd(gqlutil.Str(p.Args, "period"), s.Now().UTC())

@@ -41,12 +41,103 @@ func Field[T any](f func(T) any) graphql.FieldResolveFn {
 	}
 }
 
+// Typed is a whole view field: the GraphQL output type paired with the Field
+// resolver that projects one member off the typed source. Every object field in
+// every feature fragment is this one shape — 663 of them carried the
+// `&graphql.Field{Type: X, Resolve: gqlutil.Field(...)}` literal by hand, and
+// not one carried any other key (no Description, Args, or DeprecationReason),
+// so the literal was pure ceremony around the Type↔resolver pairing.
+//
+// StrField and its siblings below are the spellings for the scalar types; Typed
+// takes the output type directly for object, list, and enum fields.
+func Typed[T any](out graphql.Output, f func(T) any) *graphql.Field {
+	return &graphql.Field{Type: out, Resolve: Field(f)}
+}
+
+// StrField, IntField, BoolField, and FloatField are Typed for the four scalar
+// output types, which together cover the overwhelming majority of view fields.
+func StrField[T any](f func(T) any) *graphql.Field   { return Typed(graphql.String, f) }
+func IntField[T any](f func(T) any) *graphql.Field   { return Typed(graphql.Int, f) }
+func BoolField[T any](f func(T) any) *graphql.Field  { return Typed(graphql.Boolean, f) }
+func FloatField[T any](f func(T) any) *graphql.Field { return Typed(graphql.Float, f) }
+
+// ReqStrField and ReqBoolField are the non-null spellings, StrsField the
+// `[String]` one — the three composed types common enough to name.
+func ReqStrField[T any](f func(T) any) *graphql.Field {
+	return Typed(graphql.NewNonNull(graphql.String), f)
+}
+func ReqBoolField[T any](f func(T) any) *graphql.Field {
+	return Typed(graphql.NewNonNull(graphql.Boolean), f)
+}
+func StrsField[T any](f func(T) any) *graphql.Field {
+	return Typed(graphql.NewList(graphql.String), f)
+}
+
 // IDArg is the `(id: String!)` argument shared by the single-resource queries and
 // mutations (server(id), database(id), suspendService(id), ...). A fresh map per
 // call so graphql-go never shares argument state across fields.
-func IDArg() graphql.FieldConfigArgument {
-	return graphql.FieldConfigArgument{
-		"id": &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)},
+func IDArg() graphql.FieldConfigArgument { return KeyArg("id") }
+
+// Arg and ReqArg are the optional and non-null spellings of a single argument
+// declaration — the `&graphql.ArgumentConfig{Type: ...}` literal that every
+// argument map repeats. A fresh pointer per call, for the same reason IDArg
+// returns a fresh map.
+func Arg(t graphql.Input) *graphql.ArgumentConfig { return &graphql.ArgumentConfig{Type: t} }
+func ReqArg(t graphql.Input) *graphql.ArgumentConfig {
+	return &graphql.ArgumentConfig{Type: graphql.NewNonNull(t)}
+}
+
+// KeyArg is IDArg for a single required string key under another name
+// (serviceId, workspaceId, name, ...).
+func KeyArg(name string) graphql.FieldConfigArgument {
+	return graphql.FieldConfigArgument{name: ReqArg(graphql.String)}
+}
+
+// PageArgs adds the shared `cursor`/`limit` pagination pair to a list query's
+// arguments, whether the window is then applied in-process by Page or pushed
+// down to the store. It is the declaring half of the contract Page consumes:
+// before this, every list declared the two arguments by hand and separately
+// read them, so a list that declared neither (or only one) silently never
+// paginated and nothing failed.
+func PageArgs(args graphql.FieldConfigArgument) graphql.FieldConfigArgument {
+	if args == nil {
+		args = graphql.FieldConfigArgument{}
+	}
+	args["cursor"] = Arg(graphql.String)
+	args["limit"] = Arg(graphql.Int)
+	return args
+}
+
+// KeyVerb is a whole `(<key>: String!) -> fn(ctx, key)` field: the shape every
+// single-resource query and every argument-less lifecycle mutation takes.
+// IDVerb is its "id" spelling, which is nearly all of them.
+func KeyVerb[T any](out graphql.Output, key string, fn func(context.Context, string) (T, error)) *graphql.Field {
+	return &graphql.Field{
+		Type: out,
+		Args: KeyArg(key),
+		Resolve: func(p graphql.ResolveParams) (any, error) {
+			return fn(p.Context, p.Args[key].(string))
+		},
+	}
+}
+
+func IDVerb[T any](out graphql.Output, fn func(context.Context, string) (T, error)) *graphql.Field {
+	return KeyVerb(out, "id", fn)
+}
+
+// ArgMutation is PatchMutation without the preview branch: the `(id, <arg>)`
+// setter shape taken by every verb that writes one string field and has no
+// dryRun counterpart (setRootDir, setPublishPath, renameProject, ...).
+func ArgMutation[T any](out graphql.Output, argName string,
+	set func(ctx context.Context, id, value string) (T, error)) *graphql.Field {
+	args := IDArg()
+	args[argName] = ReqArg(graphql.String)
+	return &graphql.Field{
+		Type: out,
+		Args: args,
+		Resolve: func(p graphql.ResolveParams) (any, error) {
+			return set(p.Context, p.Args["id"].(string), p.Args[argName].(string))
+		},
 	}
 }
 
@@ -68,8 +159,8 @@ func IDArg() graphql.FieldConfigArgument {
 func PatchMutation[P, T any](out graphql.Output, argName string, patch func(string) P,
 	apply, preview func(ctx context.Context, id string, patch P) (T, error)) *graphql.Field {
 	args := IDArg()
-	args[argName] = &graphql.ArgumentConfig{Type: graphql.NewNonNull(graphql.String)}
-	args["dryRun"] = &graphql.ArgumentConfig{Type: graphql.Boolean}
+	args[argName] = ReqArg(graphql.String)
+	args["dryRun"] = Arg(graphql.Boolean)
 	return &graphql.Field{
 		Type: out,
 		Args: args,
@@ -112,8 +203,8 @@ var EnvVarInputType = graphql.NewInputObject(graphql.InputObjectConfig{
 var IPAllowEntryType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "IPAllowListEntry",
 	Fields: graphql.Fields{
-		"cidrBlock":   &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: Field(func(e core.IPAllowListEntry) any { return e.CIDRBlock })},
-		"description": &graphql.Field{Type: graphql.String, Resolve: Field(func(e core.IPAllowListEntry) any { return e.Description })},
+		"cidrBlock":   ReqStrField(func(e core.IPAllowListEntry) any { return e.CIDRBlock }),
+		"description": StrField(func(e core.IPAllowListEntry) any { return e.Description }),
 	},
 })
 
@@ -237,6 +328,14 @@ func Int(args map[string]any, key string) int {
 		return v
 	}
 	return 0
+}
+
+// Bool reads an optional Boolean argument, false when absent — Str's
+// boolean-typed sibling, for the create verbs that want a plain flag rather
+// than BoolPtr's tri-state.
+func Bool(args map[string]any, key string) bool {
+	v, _ := args[key].(bool)
+	return v
 }
 
 // PositiveLimit reads a `limit` GraphQL argument for a REJECT-policy list — one
