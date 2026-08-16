@@ -685,6 +685,12 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.MemberTarget(subject)); err != nil {
 		return err
 	}
+	// codex round-8 #8: removing a member revokes their access irreversibly —
+	// re-assert can_manage uncached (the Invite/ChangeRole pattern) so a caller
+	// demoted or revoked inside PositiveTTL cannot drop one last member.
+	if err := s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
+		return err
+	}
 	if s.Store == nil {
 		return ErrMembersUnavailable
 	}

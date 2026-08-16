@@ -114,6 +114,12 @@ func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUser
 	if err != nil {
 		return CreateUserResult{}, err
 	}
+	// codex round-8 #8: minting a login (and returning its one-time password)
+	// is durable-credential issuance — re-assert can_create uncached so a member
+	// revoked within the last PositiveTTL cannot mint one last role.
+	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanCreate, d); err != nil {
+		return CreateUserResult{}, err
+	}
 	if !pgRoleName.MatchString(role) {
 		return CreateUserResult{}, fmt.Errorf("%w: role must match %s", core.ErrBadRequest, pgRoleName.String())
 	}

@@ -705,6 +705,32 @@ func (b *Base) AuthorizeAppFresh(ctx context.Context, relation string, app *appv
 	return b.checkAuthzFresh(ctx, relation, object)
 }
 
+// AuthorizeDatabaseFresh is AuthorizeAppFresh for a managed Database — the
+// datastore credential sinks (connection-info reveals, login minting) reassert
+// against the Database's own workspace, uncached (codex round-8 #8).
+func (b *Base) AuthorizeDatabaseFresh(ctx context.Context, relation string, d *appv1alpha1.Database) error {
+	if d == nil {
+		return ErrForbidden
+	}
+	object, err := b.resourceWorkspace(ctx, d.Labels)
+	if err != nil {
+		return err
+	}
+	return b.checkAuthzFresh(ctx, relation, object)
+}
+
+// AuthorizeKeyValueFresh is AuthorizeDatabaseFresh for a managed KeyValue.
+func (b *Base) AuthorizeKeyValueFresh(ctx context.Context, relation string, kv *appv1alpha1.KeyValue) error {
+	if kv == nil {
+		return ErrForbidden
+	}
+	object, err := b.resourceWorkspace(ctx, kv.Labels)
+	if err != nil {
+		return err
+	}
+	return b.checkAuthzFresh(ctx, relation, object)
+}
+
 // AuthorizeMintClass gates a durable-credential mint verb (API-key creation,
 // SSH-key enrollment) on the caller's CREDENTIAL CLASS, not a relation: the
 // minted key later authenticates independently, so whatever mints it must

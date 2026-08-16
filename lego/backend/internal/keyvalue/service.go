@@ -765,6 +765,12 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 	if err != nil {
 		return KeyValueConnectionInfo{}, err
 	}
+	// codex round-8 #8: the connection URIs embed the password — re-assert
+	// can_view_sensitive uncached before assembling them, so a revocation inside
+	// PositiveTTL cannot surface one last credential.
+	if err := s.AuthorizeKeyValueFresh(ctx, core.RelCanViewSensitive, kv); err != nil {
+		return KeyValueConnectionInfo{}, err
+	}
 	internal := string(sec.Data["uri"])         // legacy connection Secret
 	external := string(sec.Data["externalUri"]) // legacy connection Secret (public only)
 	if kv.Status.CredentialSecretName != "" {

@@ -18,7 +18,6 @@ package logs
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -47,10 +46,11 @@ const lokiLookback = 7 * 24 * time.Hour
 // NewLokiSource returns the production LogHistorySource, backed by a Loki
 // query_range over the streams the log-shipper DaemonSet labels with
 // namespace/app/container (deploy/gitops/base/loki.yaml). base is BEX_LOKI_URL;
-// hc nil => http.DefaultClient (mirrors NewPrometheusRequestSource).
+// hc nil => core.UpstreamClient (bounded, codex round-8 #10 — mirrors
+// NewPrometheusRequestSource).
 func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, namespace string, q LogQuery) ([]LogEntry, error) {
@@ -79,7 +79,7 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 // (tenancy: an unscoped label-values call would enumerate every tenant's pods).
 func NewLokiLabelValuesSource(base string, hc *http.Client) LogLabelValuesSource {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, namespace, label string, q LogQuery) ([]string, error) {
@@ -119,7 +119,7 @@ func lokiGet(ctx context.Context, hc *http.Client, u string, out any) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("loki: status %d", resp.StatusCode)
 	}
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+	if err := core.DecodeUpstreamJSON(resp.Body, out); err != nil {
 		return fmt.Errorf("decode loki response: %w", err)
 	}
 	return nil

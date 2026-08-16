@@ -556,6 +556,12 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	if err != nil {
 		return PostgresConnectionInfo{}, err
 	}
+	// codex round-8 #8: the connection strings ARE the password — re-assert
+	// can_view_sensitive uncached before assembling them, so a revocation inside
+	// PositiveTTL cannot surface one last credential.
+	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanViewSensitive, d); err != nil {
+		return PostgresConnectionInfo{}, err
+	}
 	user := string(sec.Data["username"])
 	pass := string(sec.Data["password"])
 	dbn := string(sec.Data["dbname"])
@@ -793,7 +799,7 @@ var sensitiveLoggingParameters = map[string]bool{
 // auto_explain.log_analyze but not debug_print_plan, whose parse/rewrite/plan
 // trees carry every literal — the enumeration-completeness failure this fixes).
 var sensitiveLoggingParameterPrefixes = []string{
-	"debug_print_", // debug_print_parse/rewritten/plan: raw trees, literals included
+	"debug_print_",  // debug_print_parse/rewritten/plan: raw trees, literals included
 	"auto_explain.", // the module's whole knob family logs query text/plans
 }
 

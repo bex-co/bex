@@ -41,14 +41,27 @@ type FakeStore struct {
 	Missing  bool
 	ClaimErr error
 
-	mu      sync.Mutex
-	started []store.SSHSessionAudit
-	ended   []string
-	nonces  map[string]bool
+	mu             sync.Mutex
+	failKeyLookups bool
+	started        []store.SSHSessionAudit
+	ended          []string
+	nonces         map[string]bool
+}
+
+// SetFailKeyLookups flips subsequent SSHKeyByFingerprint calls to not-found —
+// the mid-connection key-deletion case (codex round-8 #5's per-channel
+// re-read). Safe to call while the server goroutines are serving.
+func (f *FakeStore) SetFailKeyLookups(v bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.failKeyLookups = v
 }
 
 func (f *FakeStore) SSHKeyByFingerprint(context.Context, string) (store.SSHKey, error) {
-	if f.Missing {
+	f.mu.Lock()
+	fail := f.failKeyLookups
+	f.mu.Unlock()
+	if fail || f.Missing {
 		return store.SSHKey{}, store.ErrNotFound
 	}
 	return f.Key, nil
@@ -105,11 +118,29 @@ type FakeResolver struct {
 	Target   apps.SSHInstanceTarget
 	Subject  string
 	Username string
+
+	mu   sync.Mutex
+	flip error // when set, overrides Err — the mid-connection revocation case
+}
+
+// SetFlip makes subsequent ResolveSSHSession calls fail with err — the
+// membership-revoked-after-transport-auth case (codex round-8 #5). Safe to call
+// while the server goroutines are serving.
+func (f *FakeResolver) SetFlip(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.flip = err
 }
 
 func (f *FakeResolver) ResolveSSHSession(ctx context.Context, username string) (apps.SSHInstanceTarget, error) {
 	identity, _ := core.IdentityFrom(ctx)
 	f.Subject, f.Username = identity.Subject, username
+	f.mu.Lock()
+	flip := f.flip
+	f.mu.Unlock()
+	if flip != nil {
+		return apps.SSHInstanceTarget{}, flip
+	}
 	if f.Err != nil {
 		return apps.SSHInstanceTarget{}, f.Err
 	}

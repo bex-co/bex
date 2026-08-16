@@ -90,8 +90,13 @@ func (s *Service) ListSecretFilesPage(ctx context.Context, service, after string
 // GetSecretFile returns one file's name + content (Render's GET
 // .../secret-files/{name}). Unknown service or file => core.ErrNotFound. Sensitive.
 func (s *Service) GetSecretFile(ctx context.Context, service, name string) (SecretFileView, error) {
-	_, ctx, service, err := s.scope(ctx, core.RelCanViewSensitive, service)
+	a, ctx, service, err := s.scope(ctx, core.RelCanViewSensitive, service)
 	if err != nil {
+		return SecretFileView{}, err
+	}
+	// codex round-8 #8: secret-file content is a reveal — re-assert uncached so
+	// a revocation inside PositiveTTL cannot surface one last file body.
+	if err := s.AuthorizeAppFresh(ctx, core.RelCanViewSensitive, a); err != nil {
 		return SecretFileView{}, err
 	}
 	files, err := s.readMap(ctx, filesPath(service))

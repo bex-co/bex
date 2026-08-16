@@ -23,6 +23,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // lokisource.go is the request-log metrics backend: a RequestMetricsSource that
@@ -46,7 +48,7 @@ const lokiLatencyNanoDivisor = "1000000000"
 // query (an unsupported metric) yields no series rather than an error.
 func NewLokiRequestMetricsSource(base string, hc *http.Client) RequestMetricsSource {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req RequestMetricsRequest) ([]MetricSeries, error) {

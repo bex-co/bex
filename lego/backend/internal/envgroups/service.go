@@ -634,7 +634,20 @@ func (s *Service) SetEnvGroupVars(ctx context.Context, gid string, vars []EnvVar
 
 // GetEnvGroupVar reveals one variable's value (sensitive read).
 func (s *Service) GetEnvGroupVar(ctx context.Context, gid, key string) (EnvVarView, error) {
-	if _, err := s.authorizeGroup(ctx, core.RelCanViewSensitive, gid); err != nil {
+	m, err := s.authorizeGroup(ctx, core.RelCanViewSensitive, gid)
+	if err != nil {
+		return EnvVarView{}, err
+	}
+	// codex round-8 #8: per-key reveal — re-assert uncached against the group's
+	// owning workspace (the object authorizeGroup's AuthorizeLabeled effectively
+	// checked) so a revocation inside PositiveTTL cannot reveal one last value.
+	// A legacy group with no recorded workspace re-asserts against the acting
+	// workspace, mirroring the cached path's fallback.
+	if m.workspace != "" {
+		if err := s.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, core.WorkspaceObject(m.workspace)); err != nil {
+			return EnvVarView{}, err
+		}
+	} else if err := s.AuthorizeFresh(ctx, core.RelCanViewSensitive); err != nil {
 		return EnvVarView{}, err
 	}
 	env, err := s.Store.Get(ctx, envPath(gid))
