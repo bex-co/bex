@@ -578,11 +578,16 @@ func TestBlueprintFilenameDiscovery(t *testing.T) {
 func TestBlueprintExplicitPathAllowsOnlyBlueprintFilenames(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	files := blueprintFilesFetcher{"deploy/render.yaml": stackManifest}
-	if _, _, gotPath, err := discoverBlueprintFile(ctx, files, "tea-test", "https://github.com/a/app", "main", "deploy/render.yaml"); err != nil || gotPath != "deploy/render.yaml" {
-		t.Fatalf("approved nested Blueprint path = %q, %v", gotPath, err)
+	files := blueprintFilesFetcher{"deploy/render.yaml": stackManifest, "infra/bex/stack.yaml": stackManifest}
+	// Any clean repo-relative YAML path is fetchable since w8/m19 t006
+	// (Render's custom Blueprint paths, 2026-02-09).
+	for _, ok := range []string{"deploy/render.yaml", "infra/bex/stack.yaml"} {
+		if _, _, gotPath, err := discoverBlueprintFile(ctx, files, "tea-test", "https://github.com/a/app", "main", ok); err != nil || gotPath != ok {
+			t.Fatalf("approved Blueprint path %q = %q, %v", ok, gotPath, err)
+		}
 	}
-	for _, unsafePath := range []string{".github/workflows/release.yml", ".env", "../render.yaml", "./render.yaml", `deploy\render.yaml`} {
+	// Non-YAML files and escapes stay rejected before any repository fetch.
+	for _, unsafePath := range []string{".env", "Makefile", "../render.yaml", "./render.yaml", `deploy\render.yaml`} {
 		if _, _, _, err := discoverBlueprintFile(ctx, files, "tea-test", "https://github.com/a/app", "main", unsafePath); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("path %q error = %v, want ErrBadRequest before repository fetch", unsafePath, err)
 		}
@@ -1412,8 +1417,8 @@ func (f *recordingBlueprintFetcher) FetchBlueprintFile(_ context.Context, _, _, 
 }
 
 // TestUpdateBlueprintEnforcesApprovedPath pins round-6 #14: the discovery-time
-// filename allowlist must hold on the mutable update path too — otherwise a
-// member with Blueprint create rights could point the stored path at any
+// YAML-bounded path rule must hold on the mutable update path too — otherwise
+// a member with Blueprint create rights could point the stored path at any
 // private-repository file and read it through the workspace installation token
 // at the next sync.
 func TestUpdateBlueprintEnforcesApprovedPath(t *testing.T) {
@@ -1426,7 +1431,7 @@ func TestUpdateBlueprintEnforcesApprovedPath(t *testing.T) {
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
-	for _, bad := range []string{".github/workflows/release.yml", ".env", "../render.yaml", "./render.yaml", `deploy\render.yaml`} {
+	for _, bad := range []string{".env", "Makefile", "../render.yaml", "./render.yaml", `deploy\render.yaml`} {
 		p := bad
 		if _, err := svc.UpdateBlueprint(ctx, "blp-1", "tea-a", UpdateBlueprintRequest{Path: &p}); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("UpdateBlueprint path %q: want ErrBadRequest, got %v", bad, err)
@@ -1468,5 +1473,196 @@ func TestSyncBlueprintRefusesLegacyUnapprovedPath(t *testing.T) {
 	}
 	if len(fetcher.paths) != 0 {
 		t.Errorf("sync fetched %v before validating the stored path", fetcher.paths)
+	}
+}
+
+// TestValidateBlueprintStaticBuildCommand covers the w8/m19 t003 promotion:
+// Render's near-universal static-site shape (runtime static + buildCommand +
+// staticPublishPath) validates, and the projected App spec routes the build
+// through the native static path so the declared command actually runs —
+// builder native, runtime left empty (the build plane defaults the toolchain),
+// no start command.
+func TestValidateBlueprintStaticBuildCommand(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	manifest := `services:
+  - name: site
+    type: web
+    runtime: static
+    repo: https://github.com/bex/site
+    buildCommand: npm run build
+    staticPublishPath: dist
+`
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	if err != nil || !v.Valid {
+		t.Fatalf("static buildCommand must validate: validation=%+v err=%v", v, err)
+	}
+
+	source, ir, problems := CompileBlueprintIR(manifest)
+	if len(problems) > 0 {
+		t.Fatalf("compile: %+v", problems)
+	}
+	st, err := parseCompiledStack(blueprintParseOverrides{}, source, ir)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	spec, err := specFromCreate(st.services[0].req)
+	if err != nil {
+		t.Fatalf("specFromCreate: %v", err)
+	}
+	if spec.Type != appv1alpha1.TypeStaticSite || spec.BuildCommand != "npm run build" ||
+		spec.Builder != "native" || spec.Runtime != "" || spec.PublishPath != "dist" || spec.StartCommand != "" {
+		t.Errorf("static spec projection = type %q build %q builder %q runtime %q publish %q start %q",
+			spec.Type, spec.BuildCommand, spec.Builder, spec.Runtime, spec.PublishPath, spec.StartCommand)
+	}
+}
+
+// TestValidateBlueprintDockerContext covers the w8/m19 t004 promotion: the
+// monorepo shape (dockerContext independent of rootDir) validates on server
+// and cron services and threads to App.spec.dockerContext; traversal inputs
+// are rejected at the exact field with the create boundary's error.
+func TestValidateBlueprintDockerContext(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	manifest := `services:
+  - name: api
+    type: web
+    runtime: docker
+    repo: https://github.com/bex/mono
+    rootDir: apps/api
+    dockerfilePath: Dockerfile
+    dockerContext: apps/api/ctx
+  - name: nightly
+    type: cron
+    runtime: docker
+    repo: https://github.com/bex/mono
+    dockerfilePath: Dockerfile
+    dockerContext: apps/nightly
+    schedule: "0 0 * * *"
+`
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	if err != nil || !v.Valid {
+		t.Fatalf("dockerContext must validate: validation=%+v err=%v", v, err)
+	}
+
+	source, ir, problems := CompileBlueprintIR(manifest)
+	if len(problems) > 0 {
+		t.Fatalf("compile: %+v", problems)
+	}
+	st, err := parseCompiledStack(blueprintParseOverrides{}, source, ir)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	for i, want := range []string{"apps/api/ctx", "apps/nightly"} {
+		spec, err := specFromCreate(st.services[i].req)
+		if err != nil {
+			t.Fatalf("specFromCreate[%d]: %v", i, err)
+		}
+		if spec.DockerContext != want {
+			t.Errorf("service %d DockerContext = %q, want %q", i, spec.DockerContext, want)
+		}
+	}
+
+	escape := strings.Replace(manifest, "apps/api/ctx", "../escape", 1)
+	v, err = svc.ValidateBlueprint(context.Background(), "", escape)
+	if err != nil {
+		t.Fatalf("ValidateBlueprint(escape): %v", err)
+	}
+	if v.Valid || len(v.Errors) == 0 || !strings.Contains(v.Errors[0].Error, "dockerContext") {
+		t.Errorf("traversal dockerContext must be rejected by name, got %+v", v)
+	}
+}
+
+// TestValidateBlueprintRegistryCredential covers the w8/m19 t005 promotion:
+// render.yaml's by-name workspace registry-credential references — the
+// service-level registryCredential and image.creds forms — resolve to the
+// stored credential's id and bind App.spec.registryCredentialId; an unknown
+// or self-contradictory reference fails before any write.
+func TestValidateBlueprintRegistryCredential(t *testing.T) {
+	svc := &Service{
+		Base:          &core.Base{Client: fakeClient(), Namespace: "default"},
+		RegistryCreds: &fakePullSecrets{credentialIDsByName: map[string]string{"acme-registry": "rgc-abc123"}},
+	}
+	manifest := `services:
+  - name: api
+    type: web
+    runtime: image
+    image:
+      url: registry.example.com/acme/api:1
+      creds: {fromRegistryCreds: {name: acme-registry}}
+  - name: worker
+    type: worker
+    runtime: image
+    image: {url: registry.example.com/acme/worker:1}
+    registryCredential: {fromRegistryCreds: {name: acme-registry}}
+`
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	if err != nil || !v.Valid {
+		t.Fatalf("registry credentials must validate: validation=%+v err=%v", v, err)
+	}
+
+	source, ir, problems := CompileBlueprintIR(manifest)
+	if len(problems) > 0 {
+		t.Fatalf("compile: %+v", problems)
+	}
+	st, err := parseCompiledStack(blueprintParseOverrides{}, source, ir)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if err := svc.resolveBlueprintRegistryCredentials(context.Background(), &st); err != nil {
+		t.Fatalf("resolve: %v", err)
+	}
+	for i := range st.services {
+		got := st.services[i].req.RegistryCredentialID
+		if got == nil || *got != "rgc-abc123" {
+			t.Errorf("service %d RegistryCredentialID = %v, want rgc-abc123", i, got)
+		}
+	}
+
+	unknown := strings.ReplaceAll(manifest, "acme-registry", "no-such-credential")
+	v, err = svc.ValidateBlueprint(context.Background(), "", unknown)
+	if err != nil {
+		t.Fatalf("ValidateBlueprint(unknown): %v", err)
+	}
+	if v.Valid || len(v.Errors) == 0 || !strings.Contains(v.Errors[0].Error, "no-such-credential") {
+		t.Errorf("unknown credential name must fail by name, got %+v", v)
+	}
+
+	conflicting := `services:
+  - name: api
+    type: web
+    runtime: image
+    image:
+      url: registry.example.com/acme/api:1
+      creds: {fromRegistryCreds: {name: acme-registry}}
+    registryCredential: {fromRegistryCreds: {name: other-registry}}
+`
+	v, err = svc.ValidateBlueprint(context.Background(), "", conflicting)
+	if err != nil {
+		t.Fatalf("ValidateBlueprint(conflicting): %v", err)
+	}
+	if v.Valid || len(v.Errors) == 0 || !strings.Contains(v.Errors[0].Error, "different registry credentials") {
+		t.Errorf("conflicting references must fail, got %+v", v)
+	}
+}
+
+// TestApprovedBlueprintPathCustomFilenames pins the w8/m19 t006 relaxation
+// (Render's 2026-02-09 custom Blueprint paths): any clean repo-relative
+// .yaml/.yml path is accepted; containment rejections and the implicit
+// discovery defaults are unchanged.
+func TestApprovedBlueprintPathCustomFilenames(t *testing.T) {
+	for _, ok := range []string{
+		"render.yaml", "bex.yml", "infra/bex/stack.yaml", "deploy/bex-beancount.yaml", "one.yml",
+	} {
+		got, err := approvedBlueprintPath(ok)
+		if err != nil || got != ok {
+			t.Errorf("approvedBlueprintPath(%q) = %q, %v; want accepted", ok, got, err)
+		}
+	}
+	for _, bad := range []string{
+		"", ".", "../escape.yaml", "/abs/render.yaml", "infra/../../up.yaml",
+		"stack.json", "render.yaml.txt", `win\path.yaml`, "dir/",
+	} {
+		if _, err := approvedBlueprintPath(bad); err == nil {
+			t.Errorf("approvedBlueprintPath(%q) must be rejected", bad)
+		}
 	}
 }

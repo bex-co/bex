@@ -938,3 +938,40 @@ func TestBuildQueuedSeparatesWaitingForCapacityFromBuilding(t *testing.T) {
 		}
 	})
 }
+
+func TestBuildJobDockerContextMovesOnlyTheContext(t *testing.T) {
+	o := Options{
+		Repo: "https://github.com/example/mono", Ref: "main", Name: "api",
+		Registry: "zot:5000", Revision: "gen-1", Namespace: "bex-system",
+		RootDir: "apps/api", DockerfilePath: "Dockerfile",
+		DockerContext: "apps/api/build-ctx",
+	}
+	joinedArgs := func(o Options) string {
+		job := BuildJob(o, o.ImageRef())
+		bk := containerByName(job.Spec.Template.Spec.InitContainers, "buildkit")
+		return strings.Join(bk.Args, " ")
+	}
+
+	joined := joinedArgs(o)
+	if !strings.Contains(joined, "context=/source/apps/api/build-ctx") {
+		t.Errorf("dockerContext must move the build context: %q", joined)
+	}
+	// The dockerfile local stays RootDir-derived — Docker's own
+	// context-vs-dockerfile split (Render's dockerContext semantics).
+	if !strings.Contains(joined, "dockerfile=/source/apps/api") {
+		t.Errorf("dockerfile dir must stay RootDir-derived: %q", joined)
+	}
+
+	// A traversal context cleans to a repo-root-bounded path (the same
+	// containment RootDir uses) instead of escaping the source mount.
+	o.DockerContext = "../../escape"
+	if joined := joinedArgs(o); !strings.Contains(joined, "context=/source/escape") {
+		t.Errorf("traversal context must clean inside the source mount: %q", joined)
+	}
+
+	// Empty keeps the prior RootDir-derived context byte-identical.
+	o.DockerContext = ""
+	if joined := joinedArgs(o); !strings.Contains(joined, "context=/source/apps/api ") && !strings.Contains(joined, "context=/source/apps/api") {
+		t.Errorf("empty dockerContext must keep the RootDir context: %q", joined)
+	}
+}

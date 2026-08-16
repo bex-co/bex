@@ -409,7 +409,7 @@ func preferTopLevel(top, nested string) string {
 func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerID string) (CreateRequest, error) {
 	plan, health, schedule, command, publishPath := r.Plan, "", r.Schedule, r.Command, r.PublishPath
 	rootDir := r.RootDir
-	var runtime, buildCommand, startCommand, dockerfilePath string
+	var runtime, buildCommand, startCommand, dockerfilePath, dockerContext string
 	var nestedRegistryCredentialID json.RawMessage
 	preDeploy := r.PreDeployCommand
 	var replicas int32
@@ -435,9 +435,10 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 			if strings.EqualFold(runtime, "docker") {
 				startCommand = r.ServiceDetails.EnvSpecificDetails.DockerCommand
 				dockerfilePath = r.ServiceDetails.EnvSpecificDetails.DockerfilePath
-				if rootDir == "" {
-					rootDir = r.ServiceDetails.EnvSpecificDetails.DockerContext
-				}
+				// dockerContext is its own spec field (repo-root-relative,
+				// independent of rootDir) — the pre-w8/m19 rootDir fold was a
+				// lossy approximation.
+				dockerContext = r.ServiceDetails.EnvSpecificDetails.DockerContext
 			}
 		}
 		if r.ServiceDetails.BuildCommand != "" {
@@ -504,6 +505,7 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 		BuildFilter:             r.BuildFilter,
 		MaintenanceMode:         maintenanceMode,
 		DockerfilePath:          dockerfilePath,
+		DockerContext:           dockerContext,
 		Port:                    r.Port,
 		Replicas:                replicas,
 		Plan:                    plan,

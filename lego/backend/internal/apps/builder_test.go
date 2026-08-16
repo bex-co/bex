@@ -125,8 +125,11 @@ func TestRenderDockerDetailsMapToDockerfileBuild(t *testing.T) {
 		t.Fatalf("create => %d: %s", rec.Code, rec.Body)
 	}
 	app := getApp(t, cl, "web")
+	// dockerContext is its own spec field since w8/m19 — the pre-m19 fold into
+	// RootDir was a lossy approximation of Render's semantics.
 	if app.Spec.Builder != "dockerfile" || app.Spec.Runtime != "docker" ||
-		app.Spec.RootDir != "services/web" || app.Spec.DockerfilePath != "docker/Dockerfile.prod" ||
+		app.Spec.RootDir != "" || app.Spec.DockerContext != "services/web" ||
+		app.Spec.DockerfilePath != "docker/Dockerfile.prod" ||
 		app.Spec.StartCommand != "bin/server" {
 		t.Fatalf("spec = %+v", app.Spec)
 	}

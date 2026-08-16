@@ -319,3 +319,81 @@ func TestMCPValidateBlueprintEstimatedPricing(t *testing.T) {
 		t.Errorf("MCP lines = %+v, want 3", est["lines"])
 	}
 }
+
+// TestValidateBlueprintPromotedFieldsCrossSurface (w8/m19 t008) runs one
+// fixture exercising every field this milestone promoted — static
+// buildCommand, dockerContext, image.creds — through REST, GraphQL, and the
+// actual MCP tool, asserting all three surfaces accept it identically; a
+// still-unsupported field (a service disk) is rejected at the same exact
+// field path on all three.
+func TestValidateBlueprintPromotedFieldsCrossSurface(t *testing.T) {
+	svc := &Service{
+		Base:          &core.Base{Client: fakeClient(), Namespace: "default"},
+		RegistryCreds: &fakePullSecrets{credentialIDsByName: map[string]string{"acme-registry": "rgc-abc123"}},
+	}
+	manifest := `services:
+  - name: site
+    type: web
+    runtime: static
+    repo: https://github.com/bex/site
+    buildCommand: npm run build
+    staticPublishPath: dist
+  - name: api
+    type: web
+    runtime: docker
+    repo: https://github.com/bex/mono
+    dockerfilePath: Dockerfile
+    dockerContext: apps/api
+  - name: worker
+    type: worker
+    runtime: image
+    image:
+      url: registry.example.com/acme/worker:1
+      creds: {fromRegistryCreds: {name: acme-registry}}
+`
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, manifest))))
+	var rest BlueprintValidation
+	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil || !rest.Valid {
+		t.Fatalf("REST promoted fields: valid=%v err=%v body=%s", rest.Valid, err, rec.Body)
+	}
+
+	schema := blueprintSchema(t, svc)
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { valid errors } }`, manifest)})
+	if len(res.Errors) > 0 {
+		t.Fatalf("GraphQL: %v", res.Errors)
+	}
+	if v := res.Data.(map[string]any)["validateBlueprint"].(map[string]any); v["valid"] != true {
+		t.Fatalf("GraphQL promoted fields: %+v", v)
+	}
+
+	call, cleanup := appsMCPClient(t, svc)
+	defer cleanup()
+	if result := call("validate_bex_yml", map[string]any{"bexYaml": manifest}); result["valid"] != true {
+		t.Fatalf("MCP promoted fields: %+v", result)
+	}
+
+	// A still-unsupported field rejects at the identical path on all three.
+	disk := manifest + `    disk: {name: data, mountPath: /data, sizeGB: 10}
+`
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, disk))))
+	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil || rest.Valid || len(rest.Errors) == 0 || rest.Errors[0].Path == nil || *rest.Errors[0].Path != "services[2].disk" {
+		t.Fatalf("REST disk rejection = %+v err=%v", rest, err)
+	}
+	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: fmt.Sprintf(`{ validateBlueprint(bexYaml: %q) { valid errorDetails { path } } }`, disk)})
+	if len(res.Errors) > 0 {
+		t.Fatalf("GraphQL disk: %v", res.Errors)
+	}
+	gv := res.Data.(map[string]any)["validateBlueprint"].(map[string]any)
+	details, _ := gv["errorDetails"].([]any)
+	if gv["valid"] != false || len(details) == 0 || details[0].(map[string]any)["path"] != "services[2].disk" {
+		t.Fatalf("GraphQL disk rejection = %+v", gv)
+	}
+	mcpResult := call("validate_bex_yml", map[string]any{"bexYaml": disk})
+	if mcpResult["valid"] != false {
+		t.Fatalf("MCP disk rejection = %+v", mcpResult)
+	}
+}

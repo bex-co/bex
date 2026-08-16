@@ -79,7 +79,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.createPathHint": {
     message:
-      "蓝图文件在仓库中的路径（例如 infra/render.yaml）。默认为仓库根目录下的 render.yaml。",
+      "蓝图文件在仓库中的路径——任何 .yaml/.yml 文件均可（例如 infra/bex/stack.yaml）。默认为仓库根目录下的 render.yaml。",
     description: "New Blueprint page — manifest path helper text",
   },
   "blueprints.createNameLabel": {

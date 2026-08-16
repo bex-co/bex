@@ -232,6 +232,14 @@ type AppSpec struct {
 	// +kubebuilder:validation:MaxLength=512
 	DockerfilePath string `json:"dockerfilePath,omitempty"`
 
+	// DockerContext is Render's Docker Build Context Directory, relative to
+	// the repository root and resolved independently of RootDir (Docker's own
+	// context-vs-dockerfile split). Empty uses RootDir as the context — the
+	// prior behavior. Docker builds only (w8/m19).
+	// +optional
+	// +kubebuilder:validation:MaxLength=512
+	DockerContext string `json:"dockerContext,omitempty"`
+
 	// Branch to track. Defaults to "main". A git ref (no shell metacharacters,
 	// no leading dash) — enforced at the CRD schema (w6/m6 t003).
 	// +optional

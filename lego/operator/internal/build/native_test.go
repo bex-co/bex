@@ -128,3 +128,36 @@ func containsPair(items []string, first, second string) bool {
 	}
 	return false
 }
+
+func TestNativeStaticSiteBuild(t *testing.T) {
+	o := nativeOptions()
+	o.StaticSite = true
+	o.Runtime = ""      // static blueprints declare no toolchain — node is the default
+	o.StartCommand = "" // a static site's image is never run
+
+	if err := validateNativeOptions(o); err != nil {
+		t.Fatalf("static native options must validate without startCommand/runtime: %v", err)
+	}
+	dockerfile := nativeDockerfile(o)
+	for _, want := range []string{
+		"FROM node:24-bookworm",
+		"npm ci && npm run build",
+		"--mount=type=secret,id=render-env",
+	} {
+		if !strings.Contains(dockerfile, want) {
+			t.Errorf("static Dockerfile missing %q:\n%s", want, dockerfile)
+		}
+	}
+	for _, reject := range []string{"CMD", "ENV PORT"} {
+		if strings.Contains(dockerfile, reject) {
+			t.Errorf("static Dockerfile must not carry %q (extract-only image):\n%s", reject, dockerfile)
+		}
+	}
+
+	// A non-static native build still requires its start command.
+	o.StaticSite = false
+	o.Runtime = "node"
+	if err := validateNativeOptions(o); err == nil {
+		t.Fatal("non-static native build without startCommand must be rejected")
+	}
+}

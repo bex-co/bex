@@ -80,7 +80,7 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.createPathHint": {
     message:
-      "The path to the Blueprint file in your repo (e.g. infra/render.yaml). Defaults to render.yaml at the root of your repository.",
+      "The path to the Blueprint file in your repo — any .yaml/.yml file works (e.g. infra/bex/stack.yaml). Defaults to render.yaml at the root of your repository.",
     description: "New Blueprint page — manifest path helper text",
   },
   "blueprints.createNameLabel": {

@@ -242,15 +242,6 @@ func TestBlueprintCompilerEnforcesCapabilityRegistryAtNestedPaths(t *testing.T) 
 		manifest string
 		path     string
 	}{
-		"image registry credential": {
-			manifest: `services:
-  - type: web
-    name: api
-    runtime: image
-    image: {url: nginx:1.27, creds: private-registry}
-`,
-			path: "#/services/0/image/creds",
-		},
 		"persistent disk": {
 			manifest: `services:
   - type: web
@@ -300,17 +291,6 @@ func TestBlueprintCompilerEnforcesCapabilityRegistryAtNestedPaths(t *testing.T) 
     preDeployCommand: ./migrate
 `,
 			path: "#/services/0/preDeployCommand",
-		},
-		"static build command": {
-			manifest: `services:
-  - type: web
-    name: site
-    runtime: static
-    repo: https://github.com/bex/site
-    staticPublishPath: dist
-    buildCommand: npm run build
-`,
-			path: "#/services/0/buildCommand",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

@@ -213,6 +213,32 @@ func (p pullSecretSource) ResolveCredentialNames(ctx context.Context, ids []stri
 	return out
 }
 
+// FindCredentialIDByName resolves a workspace registry credential by display
+// name — the reference form render.yaml's fromRegistryCreds uses (w8/m19).
+// found=false with nil err means no credential carries the name; two sharing
+// it is an error (the reference would be ambiguous). Deploy-adapter seam like
+// the rest: the blueprint caller has already authorized the workspace verb.
+func (p pullSecretSource) FindCredentialIDByName(ctx context.Context, workspaceID, name string) (string, bool, error) {
+	if p.s.Store == nil {
+		return "", false, core.ErrRegistryCredentialsUnavailable
+	}
+	rows, err := p.s.Store.ListRegistryCredentials(ctx, workspaceID)
+	if err != nil {
+		return "", false, err
+	}
+	var id string
+	for _, c := range rows {
+		if c.Name != name {
+			continue
+		}
+		if id != "" {
+			return "", false, fmt.Errorf("%w: registry credential name %q is ambiguous (multiple credentials share it); bind by id through the service API instead", core.ErrBadRequest, name)
+		}
+		id = c.ID
+	}
+	return id, id != "", nil
+}
+
 // DeployPullSecretSource returns the deploy path's pull-secret seam (wired
 // onto apps.Service in the composition root).
 func (s *Service) DeployPullSecretSource() pullSecretSource { return pullSecretSource{s} }

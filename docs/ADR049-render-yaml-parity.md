@@ -1,6 +1,6 @@
 # ADR049 — `render.yaml` is bex's Blueprint contract
 
-**Status:** Accepted 2026-08-02; implemented and production-verified by `w1/m63` on 2026-08-03.
+**Status:** Accepted 2026-08-02; implemented and production-verified by `w1/m63` on 2026-08-03. Schema pin re-verified byte-identical to upstream 2026-08-16 (`w8/m19` t001; digest `665539cb…`); the weekly drift check (`.github/workflows/render-schema-drift.yml`, Mondays 06:17 UTC) has green scheduled runs (latest 2026-08-10).
 
 ---
 
@@ -152,6 +152,8 @@ Fields whose semantics bex cannot truthfully provide are rejected. In particular
 - service `disk` is unsupported under the stateless-first persistent-disk anti-goal;
 - root and per-resource preview configuration is unsupported under the explicit PR-preview-environment anti-goal;
 - a newly discovered upstream field is unsupported-by-default until classified.
+
+The registry itself now states these dispositions verbatim (`w8/m19` t002, 2026-08-16): every `unsupported` entry's reason is either an anti-goal citation (previews → the w2/m11 rejection; disks → ADR018's stateless-first row; one-off `job` references), a concrete semantic mismatch (per-resource `region` vs the single-placement `BEX_REGION` model, `checksPass` without a CI-checks integration, `dpg` fromService references, Postgres majors below 13), or a promoted handler — the original m63 "audit baseline" placeholder text no longer appears.
 
 If a supposedly adapter-backed field cannot meet the observable Render semantics during implementation, its registry entry changes to `unsupported`; the milestone must not ship a lossy approximation.
 

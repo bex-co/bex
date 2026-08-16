@@ -650,10 +650,12 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	}
 	res, err := build.Build(ctx, build.Options{
 		Repo: app.Spec.Repo, Ref: ref, RootDir: app.Spec.RootDir,
-		DockerfilePath: app.Spec.DockerfilePath, Name: app.Name, AppUID: string(app.UID),
+		DockerfilePath: app.Spec.DockerfilePath, DockerContext: app.Spec.DockerContext,
+		Name: app.Name, AppUID: string(app.UID),
 		Registry: r.Registry, KpackRegistry: r.KpackRegistry,
 		Builder:          builder,
 		Runtime:          app.Spec.Runtime,
+		StaticSite:       app.Spec.Type == appv1alpha1.TypeStaticSite,
 		BuildCommand:     app.Spec.BuildCommand,
 		StartCommand:     app.Spec.StartCommand,
 		BuildEnv:         buildEnv(builder, app.Spec.Env),
@@ -797,6 +799,14 @@ func directStaticPublish(app *appv1alpha1.App) bool {
 // API performs the same projection before persistence, while this final mapping
 // makes the mechanism robust for hand-applied Apps and older control planes.
 func effectiveBuilder(spec appv1alpha1.AppSpec) string {
+	// A static site with a declared buildCommand and no other strategy input
+	// builds natively so the command actually runs — the auto/CNB path would
+	// silently ignore it (ADR029; the API performs the same projection).
+	if spec.Type == appv1alpha1.TypeStaticSite && strings.TrimSpace(spec.BuildCommand) != "" &&
+		strings.TrimSpace(spec.DockerfilePath) == "" && spec.Runtime == "" &&
+		(spec.Builder == "" || spec.Builder == build.BuilderAuto) {
+		return build.BuilderNative
+	}
 	switch spec.Runtime {
 	case runtimeDocker:
 		return build.BuilderDockerfile
