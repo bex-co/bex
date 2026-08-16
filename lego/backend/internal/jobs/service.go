@@ -427,18 +427,6 @@ func IsCancellable(status string) bool {
 	return status != store.JobSucceeded && status != store.JobFailed && status != store.JobCanceled
 }
 
-// parseTime parses an optional RFC3339 time string, returning zero on "".
-func parseTime(name, value string) (time.Time, error) {
-	if value == "" {
-		return time.Time{}, nil
-	}
-	t, err := time.Parse(time.RFC3339, value)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("%w: %s must be RFC3339 (e.g. 2026-01-02T15:04:05Z)", core.ErrBadRequest, name)
-	}
-	return t, nil
-}
-
 // StatusValid reports whether s is one of the Render job status values.
 func StatusValid(s string) bool {
 	switch s {
@@ -450,9 +438,17 @@ func StatusValid(s string) bool {
 
 // FilterFromStrings builds a ListFilter from string-typed values coming from
 // REST query params or GraphQL/MCP args. All time fields accept RFC3339;
-// statuses is a list of JobStatus strings. Cursor and Limit flow through
-// unchanged.
+// statuses is a list of JobStatus strings. Cursor flows through unchanged.
+//
+// A NEGATIVE limit is rejected here, not in each adapter, so every surface is
+// covered by construction — this is the backstop, and MCP has no other guard.
+// Zero stays legal: it is how an omitted limit arrives, and only an adapter
+// that can still see presence may reject an explicit one. See
+// core.ErrLimitNotPositive for why these lists reject rather than clamp.
 func FilterFromStrings(statuses []string, createdBefore, createdAfter, startedBefore, startedAfter, finishedBefore, finishedAfter, cursor string, limit int) (ListFilter, error) {
+	if limit < 0 {
+		return ListFilter{}, core.ErrLimitNotPositive
+	}
 	f := ListFilter{Statuses: statuses, Cursor: cursor, Limit: limit}
 	var err error
 	pairs := []struct {
@@ -468,7 +464,7 @@ func FilterFromStrings(statuses []string, createdBefore, createdAfter, startedBe
 		{"finishedAfter", finishedAfter, &f.FinishedAfter},
 	}
 	for _, p := range pairs {
-		if *p.dst, err = parseTime(p.name, p.val); err != nil {
+		if *p.dst, err = core.ParseTime(p.name, p.val); err != nil {
 			return ListFilter{}, err
 		}
 	}

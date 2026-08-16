@@ -954,45 +954,66 @@ func canonicalAppTarget(a *appv1alpha1.App) string {
 // AuthorizeApp's doc for the design; the two are siblings because Database (and
 // KeyValue, below) carry the same core.LabelTenant contract as an App.
 func (b *Base) AuthorizeDatabase(ctx context.Context, relation, name string) (*appv1alpha1.Database, error) {
-	verb := callerVerb(verbFrameSkip)
-	d, getErr := b.findDatabase(ctx, name)
-	if apierrors.IsNotFound(getErr) {
-		object, resolveErr := b.callerWorkspace(ctx)
-		if err := b.authorizeAndAudit(ctx, relation, object, DatabaseTarget(name), verb, resolveErr); err != nil {
-			return nil, err
-		}
-		return nil, ErrNotFound
-	}
-	if getErr != nil {
-		return nil, getErr
-	}
-	object, resolveErr := b.resourceWorkspace(ctx, d.Labels)
-	if err := b.authorizeAndAudit(ctx, relation, object, DatabaseTarget(name), verb, resolveErr); err != nil {
-		return nil, err
-	}
-	return d, nil
+	return authorizeDatastore(b, ctx, relation, DatabaseTarget(name), callerVerb(verbFrameSkip),
+		func(ctx context.Context) (*appv1alpha1.Database, error) { return b.findDatabase(ctx, name) })
 }
 
 // AuthorizeKeyValue is AuthorizeApp for a managed KeyValue — see AuthorizeApp
 // and AuthorizeDatabase.
 func (b *Base) AuthorizeKeyValue(ctx context.Context, relation, name string) (*appv1alpha1.KeyValue, error) {
-	verb := callerVerb(verbFrameSkip)
-	kv, getErr := b.findKeyValue(ctx, name)
+	return authorizeDatastore(b, ctx, relation, KeyValueTarget(name), callerVerb(verbFrameSkip),
+		func(ctx context.Context) (*appv1alpha1.KeyValue, error) { return b.findKeyValue(ctx, name) })
+}
+
+// authorizeDatastore is the authorization POLICY the two datastore seams share,
+// held in one place so it cannot drift between them: authorize a miss against
+// the CALLER's workspace and only then report absence (403-before-404), and
+// authorize a hit against the RESOURCE's own workspace (the w6/m17 fix — see
+// AuthorizeApp). Both arms record exactly one audit event against target.
+//
+// It is one function rather than two copies because every line of it is a
+// security decision: a copy that authorized the not-found arm against the
+// resource's workspace would leak existence, and one that authorized the found
+// arm against the caller's would reintroduce the two-workspace intersection
+// bug. Neither mistake fails to compile, and neither is visible in a diff of
+// the sibling alone. find, target, and the returned type are the only things
+// that legitimately differ, so they are the only things passed in.
+//
+// find must return a non-nil object whenever it returns a nil error (both
+// finders do): the hit arm reads the object's labels to decide WHICH workspace
+// authorizes, so a (nil, nil) result would be an unauthorized read, not a
+// missing one. It panics rather than silently falling back — the same property
+// the inlined `d.Labels` had before the fold.
+//
+// verb is a parameter, not derived here: see verbFrameSkip.
+func authorizeDatastore[PT client.Object](b *Base, ctx context.Context, relation, target, verb string,
+	find func(context.Context) (PT, error)) (PT, error) {
+	var zero PT
+	// Resolve the acting workspace ONCE for the whole seam. find resolves it to
+	// pick namespace candidates and the arms below resolve it again to decide
+	// which workspace authorizes; same ctx, same answer, but the tenant resolver
+	// deliberately does not cache NEGATIVES, so an unbound machine caller
+	// otherwise pays two identical TenantForIdentity queries on every managed
+	// Postgres/KeyValue request. Memoizing (rather than threading the value)
+	// keeps callerWorkspace/resourceWorkspace on their normal paths — the
+	// GetApp precedent, w4/027.
+	ctx, _, _ = b.resolveWorkspaceMemo(ctx)
+	obj, getErr := find(ctx)
 	if apierrors.IsNotFound(getErr) {
 		object, resolveErr := b.callerWorkspace(ctx)
-		if err := b.authorizeAndAudit(ctx, relation, object, KeyValueTarget(name), verb, resolveErr); err != nil {
-			return nil, err
+		if err := b.authorizeAndAudit(ctx, relation, object, target, verb, resolveErr); err != nil {
+			return zero, err
 		}
-		return nil, ErrNotFound
+		return zero, ErrNotFound
 	}
 	if getErr != nil {
-		return nil, getErr
+		return zero, getErr
 	}
-	object, resolveErr := b.resourceWorkspace(ctx, kv.Labels)
-	if err := b.authorizeAndAudit(ctx, relation, object, KeyValueTarget(name), verb, resolveErr); err != nil {
-		return nil, err
+	object, resolveErr := b.resourceWorkspace(ctx, obj.GetLabels())
+	if err := b.authorizeAndAudit(ctx, relation, object, target, verb, resolveErr); err != nil {
+		return zero, err
 	}
-	return kv, nil
+	return obj, nil
 }
 
 // findDatabase locates a Database CR by its (globally unique) name without
@@ -1008,16 +1029,13 @@ func (b *Base) AuthorizeKeyValue(ctx context.Context, relation, name string) (*a
 // Returns a NotFound error when no CR matches, so callers keep their existing
 // 403-before-404 handling unchanged.
 func (b *Base) findDatabase(ctx context.Context, name string) (*appv1alpha1.Database, error) {
-	acting, _ := b.resolveWorkspace(ctx)
 	var d appv1alpha1.Database
-	for _, ns := range b.DatastoreNamespaces(acting) {
-		err := b.Client.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &d)
-		if err == nil {
-			return &d, nil
-		}
-		if !apierrors.IsNotFound(err) {
-			return nil, err
-		}
+	found, err := b.getInDatastoreNamespaces(ctx, name, &d)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		return &d, nil
 	}
 	var list appv1alpha1.DatabaseList
 	if err := b.Client.List(ctx, &list); err != nil {
@@ -1033,16 +1051,13 @@ func (b *Base) findDatabase(ctx context.Context, name string) (*appv1alpha1.Data
 
 // findKeyValue is findDatabase for a managed KeyValue — see its doc.
 func (b *Base) findKeyValue(ctx context.Context, name string) (*appv1alpha1.KeyValue, error) {
-	acting, _ := b.resolveWorkspace(ctx)
 	var kv appv1alpha1.KeyValue
-	for _, ns := range b.DatastoreNamespaces(acting) {
-		err := b.Client.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &kv)
-		if err == nil {
-			return &kv, nil
-		}
-		if !apierrors.IsNotFound(err) {
-			return nil, err
-		}
+	found, err := b.getInDatastoreNamespaces(ctx, name, &kv)
+	if err != nil {
+		return nil, err
+	}
+	if found {
+		return &kv, nil
 	}
 	var list appv1alpha1.KeyValueList
 	if err := b.Client.List(ctx, &list); err != nil {
@@ -1054,6 +1069,29 @@ func (b *Base) findKeyValue(ctx context.Context, name string) (*appv1alpha1.KeyV
 		}
 	}
 	return nil, notFoundFor("keyvalues", name)
+}
+
+// getInDatastoreNamespaces is the direct-candidate half of findDatabase and
+// findKeyValue: try name in each namespace a datastore may live in (the acting
+// workspace's own, then the shared apps namespace), reporting found=false only
+// once every candidate came back NotFound. A non-NotFound error stops the
+// sweep — an unreachable API server is not an absent resource.
+//
+// The cluster-wide sweep stays in each caller: it needs the typed List, and
+// keeping it there is what makes the "indexed reads first, unindexed sweep
+// last" ordering visible at the call site where the cost lives.
+func (b *Base) getInDatastoreNamespaces(ctx context.Context, name string, out client.Object) (bool, error) {
+	acting, _ := b.resolveWorkspace(ctx)
+	for _, ns := range b.DatastoreNamespaces(acting) {
+		err := b.Client.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, out)
+		if err == nil {
+			return true, nil
+		}
+		if !apierrors.IsNotFound(err) {
+			return false, err
+		}
+	}
+	return false, nil
 }
 
 // notFoundFor builds the apierrors NotFound the direct Get would have returned,
@@ -1101,7 +1139,9 @@ func (b *Base) resourceWorkspace(ctx context.Context, labels map[string]string) 
 // SAME acting workspace) and passing it into every iteration avoids N
 // identical Workspace.Tenant store queries for N candidates (w4/m30).
 // resourceWorkspace above remains the single-shot entry point for call sites
-// with nothing to hoist (AuthorizeDatabase, AuthorizeKeyValue).
+// with nothing to hoist; the datastore seams reach it through resourceWorkspace
+// but pay only one resolution, because authorizeDatastore memoizes the acting
+// workspace into the ctx first.
 func (b *Base) resourceWorkspaceFor(ctx context.Context, acting string, actingErr error, labels map[string]string) (string, error) {
 	if actingErr != nil {
 		named, _ := WorkspaceFrom(ctx)

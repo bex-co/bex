@@ -576,7 +576,7 @@ var receiverRE = regexp.MustCompile(`\(\*?\w+\)\.`)
 // is the verb that called it — CLAUDE.md's "every verb starts with s.Authorize"
 // invariant is what makes this constant, not a per-call guess.
 //
-// Named so all FOUR entry points in base.go can't drift to different skip
+// Named so every entry point in base.go cannot drift to different skip
 // counts — and note this is why each of them calls callerVerb(verbFrameSkip)
 // itself rather than delegating to a sibling: one entry point implemented in
 // terms of another would add a frame, silently rename every recorded verb to

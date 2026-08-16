@@ -19,7 +19,6 @@ package secrets
 import (
 	"github.com/graphql-go/graphql"
 
-	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -164,12 +163,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				cursor, _ := p.Args["cursor"].(string)
-				limit := 0
-				if value, ok := p.Args["limit"].(int); ok {
-					if value < 1 {
-						return nil, core.ErrBadRequest
-					}
-					limit = value
+				limit, err := gqlutil.PositiveLimit(p.Args)
+				if err != nil {
+					return nil, err
 				}
 				vars, err := s.ListEnvVarsPage(p.Context, p.Args["serviceId"].(string), cursor, limit)
 				if err != nil {
@@ -187,12 +183,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				cursor, _ := p.Args["cursor"].(string)
-				limit := 0
-				if value, ok := p.Args["limit"].(int); ok {
-					if value < 1 {
-						return nil, core.ErrBadRequest
-					}
-					limit = value
+				limit, err := gqlutil.PositiveLimit(p.Args)
+				if err != nil {
+					return nil, err
 				}
 				files, err := s.ListSecretFilesPage(p.Context, p.Args["serviceId"].(string), cursor, limit)
 				if err != nil {

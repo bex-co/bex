@@ -105,6 +105,12 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		// The default is an intentional w2/m31 behavior change from bex's prior
 		// always-the-full-history tool — an agent polling a long-lived service
 		// should not re-fetch hundreds of deploys per call; page with cursor.
+		//
+		// This tool therefore CLAMPS a non-positive limit where the jobs tool
+		// REJECTS one — a deliberate divergence, not drift: having a real
+		// default to fall back to is exactly what makes clamping safe here (see
+		// core.ErrLimitNotPositive), and jobs' tool documents "default: all",
+		// so it has nothing to fall back to.
 		limit := in.Limit
 		if limit < 1 {
 			limit = 10

@@ -17,6 +17,8 @@ limitations under the License.
 package jobs
 
 import (
+	"time"
+
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
@@ -34,18 +36,18 @@ var jobGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"startCommand": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any { return v.StartCommand })},
 		"planId":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any { return v.PlanID })},
 		"status":       &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any { return v.Status })},
-		"createdAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any { return v.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00") })},
+		"createdAt":    &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any { return v.CreatedAt.UTC().Format(time.RFC3339) })},
 		"startedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any {
 			if v.StartedAt == nil {
 				return ""
 			}
-			return v.StartedAt.UTC().Format("2006-01-02T15:04:05Z07:00")
+			return v.StartedAt.UTC().Format(time.RFC3339)
 		})},
 		"finishedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v JobView) any {
 			if v.FinishedAt == nil {
 				return ""
 			}
-			return v.FinishedAt.UTC().Format("2006-01-02T15:04:05Z07:00")
+			return v.FinishedAt.UTC().Format(time.RFC3339)
 		})},
 	},
 })
@@ -65,9 +67,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				limit := 0
-				if v, ok := p.Args["limit"].(int); ok {
-					limit = v
+				limit, err := gqlutil.PositiveLimit(p.Args)
+				if err != nil {
+					return nil, err
 				}
 				cursor, _ := p.Args["cursor"].(string)
 				filter, err := FilterFromStrings(nil, "", "", "", "", "", "", cursor, limit)

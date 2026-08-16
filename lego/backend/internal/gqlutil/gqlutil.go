@@ -238,3 +238,25 @@ func Int(args map[string]any, key string) int {
 	}
 	return 0
 }
+
+// PositiveLimit reads a `limit` GraphQL argument for a REJECT-policy list — one
+// whose store reads limit <= 0 as "absent" and substitutes its own cap, so a
+// bad value must 400 rather than come back as a full page (see
+// core.ErrLimitNotPositive for the full rule).
+//
+// The presence check is the whole point, and Int cannot express it: an omitted
+// argument and an explicit 0 are the same int once read, but only one of them
+// is legal. graphql-go omits an unset optional arg from the map entirely, which
+// is what makes the distinction recoverable here and nowhere downstream.
+//
+// Absent ⇒ (0, nil), meaning "no caller-supplied cap".
+func PositiveLimit(args map[string]any) (int, error) {
+	v, ok := args["limit"].(int)
+	if !ok {
+		return 0, nil
+	}
+	if v < 1 {
+		return 0, core.ErrLimitNotPositive
+	}
+	return v, nil
+}
