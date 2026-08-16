@@ -25,11 +25,21 @@ function responseMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
+// Cumulative byte budget for one live-tail XHR (codex round-9 #11): React
+// Native's XHR keeps every received byte in responseText for the lifetime of
+// the request, so a long-lived high-volume stream grows the JS heap until the
+// process dies — the visible LogBuffer cap cannot release it. When the budget
+// trips, the connection recycles through the session's existing reconnect
+// path, which resumes from the newest buffered timestamp on a fresh XHR (the
+// old one, and its responseText, become garbage).
+export const defaultMaxStreamBytes = 32 * 1024 * 1024;
+
 export class RestLogTransport implements LogTransport {
   constructor(
     private readonly apiOrigin: string,
     private readonly credentials: LogCredentials,
     private readonly fetchImpl: FetchLike = fetch,
+    private readonly maxStreamBytes: number = defaultMaxStreamBytes,
   ) {}
 
   async history(
@@ -116,6 +126,7 @@ export class RestLogTransport implements LogTransport {
         },
       },
       signal,
+      this.maxStreamBytes,
     );
   }
 }
@@ -125,6 +136,7 @@ function openXHRStream(
   accessToken: string,
   callbacks: LogTailCallbacks,
   signal: AbortSignal,
+  maxStreamBytes: number = defaultMaxStreamBytes,
 ): LogTailConnection {
   const xhr = new XMLHttpRequest();
   const parser = new SSEParser();
@@ -141,6 +153,17 @@ function openXHRStream(
   xhr.setRequestHeader("Accept", "text/event-stream");
   xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
   xhr.onprogress = () => {
+    // codex round-9 #11: responseText is cumulative and cannot be released
+    // while the request lives; past the budget, recycle the connection instead
+    // of growing the heap. The emitted error is a normal network-class error,
+    // so the session reconnects and resumes from the newest buffered line.
+    if (maxStreamBytes > 0 && xhr.responseText.length > maxStreamBytes) {
+      close();
+      callbacks.onError(
+        new LogApiError("network", "Log stream byte budget reached."),
+      );
+      return;
+    }
     const chunk = xhr.responseText.slice(consumed);
     consumed = xhr.responseText.length;
     for (const event of parser.feed(chunk)) {

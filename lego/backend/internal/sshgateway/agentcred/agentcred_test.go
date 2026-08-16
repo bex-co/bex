@@ -167,3 +167,77 @@ func TestAgentCredentialInternalMintRejectsUnsignedRequest(t *testing.T) {
 		t.Fatalf("unsigned status=%d", recorder.Code)
 	}
 }
+
+// blockingPodResolver holds each lookup open until released, counting how
+// many reached it — the seam that proves the concurrency slot is acquired
+// BEFORE the Kubernetes lookup (codex round-9 #4).
+type blockingPodResolver struct {
+	entered chan struct{} // one send per ResolveSessionPod call
+	release chan struct{}
+}
+
+func (r *blockingPodResolver) ResolveSessionPod(ctx context.Context, _, _ string) (SessionPod, error) {
+	r.entered <- struct{}{}
+	select {
+	case <-r.release:
+		return SessionPod{}, agentsession.ErrForbidden
+	case <-ctx.Done():
+		return SessionPod{}, agentsession.ErrForbidden
+	}
+}
+
+// codex round-9 #4: a hostile session Pod must not stack unbounded in-flight
+// proxy requests. The per-source cap is enforced before ANY stateful work —
+// the over-limit request is refused 429 without a second Pod lookup, a
+// credential mint, or an upstream hop.
+func TestGitProxyConcurrencySlotPrecedesPodLookup(t *testing.T) {
+	resolver := &blockingPodResolver{entered: make(chan struct{}, 8), release: make(chan struct{})}
+	broker := &Broker{
+		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
+		Pods:    resolver,
+		// Enabled() requires a non-nil API client; the blocked resolver never
+		// lets a request reach the mint, so an unreachable URL is fine.
+		API:    &agentsession.Client{URL: "http://mint.invalid", Secret: []byte("x")},
+		// Per-source cap of 1: the second concurrent request from the same
+		// source IP must shed before reaching the resolver.
+		Limits: sshgateway.NewSessionLimiter(64, 1),
+	}
+	repoURL, err := agentsession.ProxyRepositoryURL("http://gateway.internal:8082", "tea-a-sandbox", "ags-one", "octo/repo", "bex-agent/task-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan int, 2)
+	for range 2 {
+		go func() {
+			req := httptest.NewRequest(http.MethodGet, repoURL+"/info/refs?service=git-upload-pack", nil)
+			req.RemoteAddr = "10.0.0.1:43210"
+			rec := httptest.NewRecorder()
+			broker.Handler().ServeHTTP(rec, req)
+			done <- rec.Code
+		}()
+	}
+
+	// The first request enters the resolver and blocks, holding its slot.
+	<-resolver.entered
+	// The second must come back 429 without a second resolver entry.
+	select {
+	case code := <-done:
+		if code != http.StatusTooManyRequests {
+			t.Fatalf("over-limit request status=%d, want 429", code)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("over-limit request was not refused promptly")
+	}
+	select {
+	case <-resolver.entered:
+		t.Fatal("over-limit request reached the Pod lookup — the slot must be acquired first")
+	default:
+	}
+	// Release the admitted request and let it finish (the fake resolver
+	// answers ErrForbidden, so the admitted path is 403, never 429).
+	close(resolver.release)
+	if code := <-done; code == http.StatusTooManyRequests {
+		t.Fatal("the admitted request was wrongly refused")
+	}
+}

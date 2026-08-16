@@ -197,3 +197,38 @@ func TestDatabaseDeletionRetainsFinalizerAndRetriesCleanupError(t *testing.T) {
 		t.Fatalf("database remained after successful retry: %v", err)
 	}
 }
+
+// codex round-9 #13: the backup-purge Job runs in a tenant hosting namespace,
+// where the extended workload-admission grammar now denies added capabilities,
+// privilege escalation, and non-RuntimeDefault seccomp — the generated Job must
+// carry the same tenantSecCtx the export Jobs already stamp.
+func TestDatabaseBackupPurgeJobCarriesTenantHardening(t *testing.T) {
+	r := &DatabaseReconciler{Backup: BackupStore{
+		DestinationPath: "s3://backups/postgres", EndpointURL: "https://s3.example", S3Secret: "backup-creds",
+	}}
+	job := r.dbBackupPurgeJob(&appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{
+		Name: "purge-hardening", Namespace: "default", UID: "uid-purge-hardening",
+	}})
+	if len(job.Spec.Template.Spec.Containers) != 1 {
+		t.Fatalf("purge Job containers = %d, want 1", len(job.Spec.Template.Spec.Containers))
+	}
+	sc := job.Spec.Template.Spec.Containers[0].SecurityContext
+	if sc == nil {
+		t.Fatal("purge container carries no SecurityContext — admission would deny the Job")
+	}
+	if sc.AllowPrivilegeEscalation == nil || *sc.AllowPrivilegeEscalation {
+		t.Fatal("purge container must not allow privilege escalation")
+	}
+	if sc.Capabilities == nil || len(sc.Capabilities.Drop) == 0 || sc.Capabilities.Drop[0] != "ALL" {
+		t.Fatal("purge container must drop ALL capabilities")
+	}
+	if sc.SeccompProfile == nil || sc.SeccompProfile.Type != corev1.SeccompProfileTypeRuntimeDefault {
+		t.Fatal("purge container must pin RuntimeDefault seccomp")
+	}
+	if job.Spec.Template.Spec.AutomountServiceAccountToken == nil || *job.Spec.Template.Spec.AutomountServiceAccountToken {
+		t.Fatal("purge pod must disable ServiceAccount token automount")
+	}
+	if job.Spec.Template.Spec.NodeName != "" {
+		t.Fatal("purge pod must not pin a node directly")
+	}
+}

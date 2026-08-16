@@ -22,7 +22,10 @@ import (
 	"strings"
 	"testing"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // staleAllowChecker models the codex round-8 #8 window: the cached path (Check)
@@ -52,5 +55,23 @@ func TestKeyValueConnectionInfoFailsClosedOnFreshRevocation(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), "s3cret") {
 		t.Errorf("denial leaked the password: %v", err)
+	}
+}
+
+// codex round-9 #7: deleting a managed key-value store (and its PVC) is
+// irreversible — the fresh gate must stop a stale positive before the CR
+// delete, leaving the store in place.
+func TestDeleteKeyValueFailsClosedOnFreshRevocation(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "fresh-kvdel")
+	svc.Authz = staleAllowChecker{}
+	ctx := ctxAs("user-a")
+
+	if err := svc.DeleteKeyValue(ctx, "fresh-kvdel"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("DeleteKeyValue on a stale positive: %v, want ErrForbidden", err)
+	}
+	var kv appv1alpha1.KeyValue
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "fresh-kvdel"}, &kv); err != nil {
+		t.Fatalf("denied DeleteKeyValue must leave the CR in place: %v", err)
 	}
 }

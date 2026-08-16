@@ -23,6 +23,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { deliverBranch, ensureRepo, extractEvidence, restoreWorkspace, type DeliveryConfig } from "../src/delivery.js";
+import { createCredentialManager } from "../src/credentials.js";
+import type { AgentDriverConfig } from "../src/config.js";
 
 function git(cwd: string, args: string[]): string {
   return execFileSync("git", args, { cwd }).toString().trim();
@@ -149,6 +151,105 @@ test("deliverBranch refuses to push when a commit carries the model credential",
   await assert.rejects(deliverBranch(config), /model credential found in commit history/);
   // The branch must NOT have reached the remote.
   assert.throws(() => git(remote, ["rev-parse", "bex-agent/session-1"]));
+});
+
+// The credential manager's full needle set, built the way session.ts wires it
+// into delivery (codex round-9 #1): literal renderings plus reversible
+// encodings, as byte needles for the object-level scan.
+function needleConfig(secret: string) {
+  const manager = createCredentialManager(
+    {
+      command: "",
+      args: [],
+      cwd: "",
+      prompt: "",
+      branch: "",
+      repoUrl: "",
+      baseBranch: "",
+      deliver: false,
+      gitName: "",
+      gitEmail: "",
+      existingSessionId: "",
+      persistSession: false,
+      listenHost: "",
+      listenPort: 0,
+      sessionLogPath: "",
+      statusPath: "",
+      exitAfterTurn: false,
+      turnTimeoutMs: 0,
+      credentialEnvName: "ANTHROPIC_API_KEY",
+      modelCredential: secret,
+      sessionID: "",
+      grantPublicKey: "",
+      agentEnv: {},
+      scrubRoots: [],
+    } as unknown as AgentDriverConfig,
+    {},
+  );
+  return {
+    containsSecret: (text: string) => manager.containsSecret(text),
+    secretNeedles: () => manager.secretNeedles(),
+  };
+}
+
+const longSecret = "sk-ant-api03-" + "x".repeat(48);
+
+test("deliverBranch refuses to push a base64-encoded credential (round-9 #1)", async () => {
+  // The raw literal never appears — only its base64 rendering, which passes the
+  // textual `git log -p` containsSecret scan of round-5 finding 6 but must be
+  // caught by the encoded needles in both the textual and object scans.
+  const { root, remote } = await bareRemote();
+  const cwd = path.join(root, "workspace");
+  await mkdir(cwd);
+  const needles = needleConfig(longSecret);
+  const config = baseConfig(cwd, { repoUrl: remote, ...needles });
+  await ensureRepo(config);
+  await writeFile(path.join(cwd, "encoded.txt"), `KEY_B64=${Buffer.from(longSecret).toString("base64")}\n`);
+  // The textual scan already knows this encoding (containsSecret carries the
+  // encoded forms); the object scan covers the binary case below.
+  assert.ok(config.containsSecret!(await readFile(path.join(cwd, "encoded.txt"), "utf8")));
+
+  await assert.rejects(deliverBranch(config), /model credential found in commit history/);
+  assert.throws(() => git(remote, ["rev-parse", "bex-agent/session-1"]));
+});
+
+test("deliverBranch refuses to push raw credential bytes inside a binary blob (round-9 #1)", async () => {
+  // `git log -p` omits binary blob bytes ("Binary files differ"), and the file
+  // content never renders the key as text — only the object-level byte scan of
+  // every newly reachable blob can catch it.
+  const { root, remote } = await bareRemote();
+  const cwd = path.join(root, "workspace");
+  await mkdir(cwd);
+  const needles = needleConfig(longSecret);
+  const config = baseConfig(cwd, { repoUrl: remote, ...needles });
+  await ensureRepo(config);
+  // NUL bytes make git classify the blob binary; the secret sits between them.
+  await writeFile(path.join(cwd, "blob.bin"), Buffer.concat([
+    Buffer.from([0, 0, 1, 2]),
+    Buffer.from(longSecret, "utf8"),
+    Buffer.from([3, 0, 0]),
+  ]));
+  // The textual scan genuinely cannot see it: the patch output has no secret.
+  const patch = git(cwd, ["log", "-p", "--no-color", "--text", "HEAD..HEAD"]);
+  assert.equal(patch, "");
+
+  await assert.rejects(deliverBranch(config), /model credential found in commit history/);
+  assert.throws(() => git(remote, ["rev-parse", "bex-agent/session-1"]));
+});
+
+test("deliverBranch pushes a clean branch while secret needles are active (round-9 #1)", async () => {
+  // Fail-closed scanning must not fail OPEN branches: an ordinary delivery with
+  // the full needle set wired pushes exactly as before.
+  const { root, remote } = await bareRemote();
+  const cwd = path.join(root, "workspace");
+  await mkdir(cwd);
+  const config = baseConfig(cwd, { repoUrl: remote, ...needleConfig(longSecret) });
+  await ensureRepo(config);
+  await writeFile(path.join(cwd, "fix.txt"), "clean work, no key material\n");
+
+  const delivery = await deliverBranch(config);
+  assert.equal(delivery.pushed, true);
+  assert.ok(git(remote, ["rev-parse", "bex-agent/session-1"]));
 });
 
 test("deliverBranch is an honest no-op when the turn changed nothing", async () => {

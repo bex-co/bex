@@ -44,6 +44,13 @@ export interface DeliveryConfig {
   // still carries the model credential (round-5 finding 6). Optional so direct
   // callers/tests that never handle a credential are unaffected.
   containsSecret?: (text: string) => boolean;
+  // secretNeedles, when set, supplies every byte form of the credential (raw,
+  // JSON-escaped, and the reversible encodings) for the object-level scan
+  // (codex round-9 #1): every blob newly reachable from the branch is read and
+  // searched byte-for-byte, so an encoded credential — or one inside a binary
+  // blob `git log -p` omits — still fails the push. Optional for the same
+  // reason as containsSecret; either may be set alone.
+  secretNeedles?: () => Buffer[];
 }
 
 export interface DeliveryResult {
@@ -226,11 +233,75 @@ export async function deliverBranch(config: DeliveryConfig): Promise<DeliveryRes
         throw new Error("refusing to push: model credential found in commit history");
       }
     }
+    // codex round-9 #1: the textual patch scan misses reversible ENCODINGS of
+    // the credential (base64/hex render as ordinary text) and binary blobs
+    // (`git log -p` prints "Binary files differ" without the bytes). Enumerate
+    // every object the branch newly reaches, read each blob's actual bytes,
+    // and search every needle form. A blob too large to inspect — or a payload
+    // whose total exceeds the scan budget — refuses the push: uninspectable
+    // new objects are exactly what an exfiltration hides behind.
+    if (config.secretNeedles) {
+      await scanBranchObjects(cwd, base, config.branch, config.secretNeedles());
+    }
     await git(cwd, ["push", "origin", `${config.branch}:${config.branch}`]);
     pushed = true;
     headSha = await git(cwd, ["rev-parse", "HEAD"]);
   }
   return { branch: config.branch, baseBranch: base, headSha, pushed, commits, changedFiles };
+}
+
+// One blob larger than this is refused rather than scanned (matching the
+// persisted-state scrubber's per-file ceiling); the total budget bounds the
+// whole delivery's scan cost. Both are fail-closed refusals, not skips.
+const maxScanBlobBytes = 32 * 1024 * 1024;
+const maxScanTotalBytes = 256 * 1024 * 1024;
+
+// scanBranchObjects reads every blob reachable from branch but not base and
+// fails (throws) when any needle appears — or when the payload cannot be fully
+// inspected. Commit and tree objects are structural and carry no free bytes an
+// attacker controls beyond the blob contents already scanned (plus the commit
+// message, which the textual patch scan above covers), so only blobs are read.
+async function scanBranchObjects(
+  cwd: string,
+  base: string,
+  branch: string,
+  needles: Buffer[],
+): Promise<void> {
+  if (needles.length === 0) return;
+  const objects = await git(cwd, [
+    "rev-list",
+    "--objects",
+    "--no-object-names",
+    `${base}..${branch}`,
+  ]);
+  let total = 0;
+  for (const oid of objects.split("\n").map((line) => line.trim()).filter(Boolean)) {
+    let type: string;
+    try {
+      type = await git(cwd, ["cat-file", "-t", oid]);
+    } catch {
+      continue; // object disappeared between listing and typing (concurrent gc)
+    }
+    if (type !== "blob") continue;
+    const size = Number(await git(cwd, ["cat-file", "-s", oid])) || 0;
+    if (size > maxScanBlobBytes) {
+      throw new Error(`refusing to push: object ${oid} is too large to inspect for the model credential`);
+    }
+    total += size;
+    if (total > maxScanTotalBytes) {
+      throw new Error("refusing to push: branch payload is too large to inspect for the model credential");
+    }
+    // encoding:"buffer" keeps the blob's raw bytes — a utf8 string decode would
+    // mangle binary content and the byte-needle match with it.
+    const { stdout } = await run("git", ["cat-file", "blob", oid], {
+      cwd,
+      maxBuffer: maxScanBlobBytes + 1024 * 1024,
+      encoding: "buffer",
+    });
+    if (needles.some((needle) => stdout.includes(needle))) {
+      throw new Error("refusing to push: model credential found in commit history");
+    }
+  }
 }
 
 function pushLine(list: string[], value: unknown, marker: { truncated: boolean }): void {

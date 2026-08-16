@@ -85,3 +85,59 @@ func TestPostgresConnectionInfoFailsClosedOnFreshRevocation(t *testing.T) {
 		t.Errorf("denial leaked the password: %v", err)
 	}
 }
+
+// codex round-9 #7: arbitrary SQL — read or write — is a sensitive/destructive
+// sink; a stale positive must not resolve the credential or run one last
+// statement. The executor stub records any attempt to reach the database.
+func TestQueryFailsClosedOnFreshRevocation(t *testing.T) {
+	svc, cl := newService()
+	seedDatabase(t, cl, "fresh-q")
+	svc.Authz = staleAllowChecker{}
+	ctx := ctxAs("user-a")
+	executed := false
+	svc.queryExecutor = func(context.Context, string, string, queryLimits, bool) (QueryResult, error) {
+		executed = true
+		return QueryResult{}, nil
+	}
+
+	if _, err := svc.Query(ctx, "fresh-q", "select secret from t"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("Query on a stale positive: %v, want ErrForbidden", err)
+	}
+	if _, err := svc.ExecuteQuery(ctx, "fresh-q", "delete from t", true); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("ExecuteQuery(write) on a stale positive: %v, want ErrForbidden", err)
+	}
+	if executed {
+		t.Fatal("a fresh-denied query must never resolve the credential or execute SQL")
+	}
+}
+
+// codex round-9 #7: deleting a managed Postgres is irreversible — the fresh
+// gate must stop a stale positive before the CR delete, leaving it in place.
+func TestDeletePostgresFailsClosedOnFreshRevocation(t *testing.T) {
+	svc, cl := newService()
+	seedDatabase(t, cl, "fresh-del")
+	svc.Authz = staleAllowChecker{}
+	ctx := ctxAs("user-a")
+
+	if err := svc.DeletePostgres(ctx, "fresh-del"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("DeletePostgres on a stale positive: %v, want ErrForbidden", err)
+	}
+	var db appv1alpha1.Database
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "fresh-del"}, &db); err != nil {
+		t.Fatalf("denied DeletePostgres must leave the CR in place: %v", err)
+	}
+}
+
+// codex round-9 #7: every available export row is presigned into a fresh
+// 15-minute bearer download URL — a bearer-capability mint that must not ride
+// a stale positive, denied before any URL is signed.
+func TestListExportsFailsClosedOnFreshRevocation(t *testing.T) {
+	svc, cl := newService()
+	seedDatabase(t, cl, "fresh-x")
+	svc.Authz = staleAllowChecker{}
+	ctx := ctxAs("user-a")
+
+	if _, err := svc.ListExports(ctx, "fresh-x"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("ListExports on a stale positive: %v, want ErrForbidden", err)
+	}
+}

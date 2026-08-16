@@ -1248,9 +1248,15 @@ func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1
 					RestartPolicy:                corev1.RestartPolicyNever,
 					AutomountServiceAccountToken: ptr(false),
 					Containers: []corev1.Container{{
-						Name:    "purge",
-						Image:   publish.DefaultAWSCLIImage,
-						Command: []string{"/bin/sh", "-ec"},
+						Name:  "purge",
+						Image: publish.DefaultAWSCLIImage,
+						// Hardened like every other operator-authored container
+						// that runs in a tenant hosting namespace (codex round-9
+						// #13): the extended workload-admission grammar denies
+						// added capabilities, privilege escalation, and non-
+						// RuntimeDefault seccomp outside the build boundary.
+						SecurityContext: tenantSecCtx(),
+						Command:         []string{"/bin/sh", "-ec"},
 						Args: []string{
 							`for suffix in '' -pg13 -pg14 -pg15 -pg16 -pg17 -pg18; do
   aws s3 rm "${DESTINATION}/${DATABASE}${suffix}/" --recursive --endpoint-url "${ENDPOINT}"

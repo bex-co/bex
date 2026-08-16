@@ -142,6 +142,11 @@ func main() {
 	executor := &sshgateway.KubeExecutor{Config: restConfig, Client: clientset}
 	handshakeTimeout := durationEnv("BEX_SSH_HANDSHAKE_TIMEOUT", 10*time.Second)
 	sessionTimeout := durationEnv("BEX_SSH_SESSION_TIMEOUT", 4*time.Hour)
+	// codex round-9 #6: every established stream (native-SSH exec, web shell,
+	// agent attach) re-runs its fresh authorization on this interval, so a
+	// revocation ends LIVE streams too — not just the next admission. Negative
+	// disables the watchdog (admission-only, the pre-round-9 behavior).
+	revalidateInterval := durationEnv("BEX_SSH_REVALIDATE_INTERVAL", sshgateway.DefaultRevalidateInterval)
 
 	gateway := &nativessh.Server{
 		Store: st, Apps: sshResolver,
@@ -160,6 +165,8 @@ func main() {
 		// bounds that fan-out for sandbox targets only; 0 disables the exception and
 		// restores single-channel everywhere. srv-… App targets are always single.
 		MaxChannelsPerConn: intEnvAllowZero("BEX_SSH_MAX_CHANNELS_PER_CONN", 16),
+		// Live-stream revalidation cadence for every accepted channel (round-9 #6).
+		RevalidateInterval: revalidateInterval,
 	}
 	shell := &webshell.Server{
 		TicketSecret:     []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),
@@ -171,6 +178,8 @@ func main() {
 		Nonces:           nonces,
 		HandshakeTimeout: handshakeTimeout,
 		SessionTimeout:   sessionTimeout,
+		// Live-shell revalidation cadence for the browser bridge (round-9 #6).
+		RevalidateInterval: revalidateInterval,
 	}
 	sandbox := &sandboxsse.Server{
 		Secret:         []byte(os.Getenv("BEX_SANDBOX_EXEC_SECRET")),
@@ -190,6 +199,12 @@ func main() {
 		credentials.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
 		credentials.API = &agentsession.Client{URL: apiURL, Secret: []byte(secret)}
 		credentials.Audit = st
+		// codex round-9 #4: bound concurrent git-proxy exchanges per source Pod
+		// and process-wide, acquired before the Pod lookup and credential mint.
+		credentials.Limits = sshgateway.NewSessionLimiter(
+			intEnv("BEX_AGENT_GIT_MAX_CONNS", 64),
+			intEnv("BEX_AGENT_GIT_MAX_CONNS_PER_POD", 4),
+		)
 
 		modelAPIURL := envOr("BEX_AGENT_MODEL_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalModelMintPath)
 		model.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
@@ -215,6 +230,8 @@ func main() {
 		Limits:         limits,
 		Nonces:         nonces,
 		SessionTimeout: sessionTimeout,
+		// Live-stream revalidation cadence for read/turn streams (round-9 #6).
+		RevalidateInterval: revalidateInterval,
 	}
 	addr := envOr("BEX_SSH_ADDR", ":2222")
 	listener, err := net.Listen("tcp", addr)
@@ -265,11 +282,21 @@ func main() {
 	// through this listener but never receive the GitHub installation token. The
 	// gateway verifies the direct source Pod and confines receive-pack to the
 	// session's exact branch before injecting credentials on the upstream hop.
+	// The listener additionally carries a whole-request read deadline (codex
+	// round-9 #4): the pkt-line validator's blocking reads may otherwise be
+	// dripped indefinitely by a hostile Pod, and a per-request body budget
+	// without a duration budget still pins a goroutine per drip. Ten minutes is
+	// orders of magnitude past any in-cluster pack exchange; response streaming
+	// (the clone direction) is a write and stays unbounded.
 	if credentials.Enabled() {
 		credentialMux := http.NewServeMux()
 		credentialMux.Handle("GET "+agentsession.GitProxyPath, credentials.Handler())
 		credentialMux.Handle("POST "+agentsession.GitProxyPath, credentials.Handler())
-		defer startAuxListener("agent git proxy", "agent git proxy", envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop)()
+		defer startAuxListener("agent git proxy", "agent git proxy", envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop,
+			func(server *http.Server) {
+				server.ReadTimeout = durationEnv("BEX_AGENT_GIT_READ_TIMEOUT", 10*time.Minute)
+				server.IdleTimeout = 2 * time.Minute
+			})()
 	}
 	// Agent-session model proxy (ADR062). Internal-only (sandbox → gateway → vendor
 	// on :8084 by default); the sandbox's agent base URL points here so the BYO
@@ -309,9 +336,14 @@ func main() {
 // startAuxListener runs one auxiliary HTTP listener (health-checked mux, fatal
 // on bind failure, stop() on serve failure) and returns the shutdown closure
 // the caller defers, keeping the process-exit LIFO order at the call sites.
-func startAuxListener(name, logName, addr string, mux *http.ServeMux, stop context.CancelFunc) func() {
+// Each opt may still shape the server (e.g. a request-read deadline for a
+// body-carrying proxy listener); the defaults suit streaming listeners.
+func startAuxListener(name, logName, addr string, mux *http.ServeMux, stop context.CancelFunc, opts ...func(*http.Server)) func() {
 	mux.HandleFunc("GET /healthz", healthzOK)
 	server := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+	for _, opt := range opts {
+		opt(server)
+	}
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalf("ssh gateway: %s listen %s: %v", name, addr, err)

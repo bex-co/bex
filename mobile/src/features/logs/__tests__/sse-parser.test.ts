@@ -1,4 +1,8 @@
-import { classifyLogError, SSEParser } from "../sse-parser";
+import {
+  classifyLogError,
+  maxPendingFrameBytes,
+  SSEParser,
+} from "../sse-parser";
 
 describe("SSEParser", () => {
   it("parses lines split across arbitrary network chunks", () => {
@@ -47,5 +51,21 @@ describe("SSEParser", () => {
       "request logs and structured log filters require the durable log store",
     );
     expect(error.code).toBe("store_unavailable");
+  });
+
+  it("drops an unterminated oversized frame instead of buffering it forever (round-9 #11)", () => {
+    const subject = new SSEParser();
+    // Feed a frame with no event boundary past the pending budget: the parser
+    // must surface an error and reset, never keep accumulating the bytes.
+    const events = subject.feed(
+      "data: " + "x".repeat(maxPendingFrameBytes + 1),
+    );
+    expect(events.length).toBe(1);
+    expect(events[0].type).toBe("error");
+    // The reset is real: the very next frame parses cleanly.
+    const next = subject.feed(
+      'data: {"id":"b","message":"ok","timestamp":"2026-08-02T00:00:00Z","labels":[]}\n\n',
+    );
+    expect(next[0].type).toBe("line");
   });
 });

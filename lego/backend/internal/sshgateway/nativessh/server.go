@@ -93,6 +93,14 @@ type Server struct {
 	// single-channel App path. App (srv-…) targets are always single-channel
 	// regardless of this value.
 	MaxChannelsPerConn int
+
+	// RevalidateInterval is how often an ESTABLISHED exec stream re-runs the
+	// fresh key + target authorization the channel-open path performs (codex
+	// round-9 #6): a revocation mid-stream cancels the stream's context instead
+	// of waiting for a disconnect or the 4h session cap. 0 => the platform
+	// default (sshgateway.DefaultRevalidateInterval); negative disables the
+	// watchdog (the pre-round-9 admission-only behavior).
+	RevalidateInterval time.Duration
 }
 
 func (s *Server) defaults() {
@@ -104,6 +112,9 @@ func (s *Server) defaults() {
 	}
 	if s.MaxPreAuthConns <= 0 {
 		s.MaxPreAuthConns = 256
+	}
+	if s.RevalidateInterval == 0 {
+		s.RevalidateInterval = sshgateway.DefaultRevalidateInterval
 	}
 	if s.Limits == nil {
 		s.Limits = sshgateway.NewSessionLimiter(0, 0)
@@ -339,11 +350,22 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		// queue a second shell behind a long-running first one and consume server
 		// resources indefinitely. Closing conn below ends this goroutine.
 		go rejectAdditionalChannels(channels)
-		err = serveSession(sessionCtx, channel, channelRequests, s.Executor, resolved)
+		// codex round-9 #6: keep re-running the channel-open reauthorization
+		// while the exec is LIVE, not only at admission — a revocation cancels
+		// the stream's context from below. sessionCtx still bounds the lifetime.
+		streamCtx, cancelStream := sshgateway.WithRevalidation(sessionCtx, s.RevalidateInterval, func(c context.Context) error {
+			_, err := s.reauthorize(c, subject, fingerprint, connUser)
+			return err
+		})
+		err = serveSession(streamCtx, channel, channelRequests, s.Executor, resolved)
+		cancelStream()
 		s.ChannelLimits.ReleaseChannel(subject)
 		s.Metrics.ChannelClosed()
 		if err != nil {
 			result = "failed"
+			if sessionCtx.Err() == nil && streamCtx.Err() != nil {
+				result = "revoked" // the watchdog, not the client, ended the stream
+			}
 			return err
 		}
 		// One SSH connection maps to one exec stream. This bounds resource use and
@@ -372,14 +394,24 @@ func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewC
 	// never blocks on channels that only end with their context.
 	var wg sync.WaitGroup
 	defer wg.Wait()
-	mctx, mcancel := context.WithCancel(ctx)
+	// codex round-9 #6: the transport-level watchdog re-runs the channel-open
+	// reauthorization on the interval, so a revocation ends EVERY live channel
+	// at once (each new channel still rechecks on open, round-8 #5). One
+	// watchdog per connection, not per channel.
+	mctx, mcancel := sshgateway.WithRevalidation(ctx, s.RevalidateInterval, func(c context.Context) error {
+		_, err := s.reauthorize(c, subject, fingerprint, connUser)
+		return err
+	})
 	defer mcancel()
 	sem := make(chan struct{}, s.MaxChannelsPerConn)
 	for {
 		var newChannel ssh.NewChannel
 		select {
 		case <-mctx.Done():
-			return "failed"
+			if ctx.Err() != nil {
+				return "failed"
+			}
+			return "revoked" // the watchdog, not the client, ended the transport
 		case channel, ok := <-channels:
 			if !ok {
 				return "completed"

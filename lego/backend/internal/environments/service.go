@@ -683,10 +683,33 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+	// codex round-9 #5: deleting a protected/ACL-bearing environment removes
+	// the same administrator governance boundary SetACL guards — member
+	// protection, network isolation, and the inbound-IP layer are all cleared
+	// on the way to the row delete, so a developer's can_create must not be
+	// enough to dismantle them. Elevate to can_manage (the relation SetACL
+	// requires) and assert it FRESH immediately before the destructive fan-out,
+	// so neither a stale cached positive nor a mid-flight revocation slips a
+	// protected environment through. A bare environment (no ACL state) keeps
+	// the historical developer-level delete.
+	if aclBearing(e) {
+		if err := s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(e.TenantID)); err != nil {
+			return err
+		}
+	}
 	if err := s.clearEnvironmentMembers(ctx, e); err != nil {
 		return err
 	}
 	return store.MapError(s.Store.DeleteEnvironment(ctx, e.ID))
+}
+
+// aclBearing reports whether an environment carries protected-environment ACL
+// state whose removal is an administrator action (codex round-9 #5): an armed
+// protectedStatus, network isolation, or a non-empty inbound IP allowlist.
+func aclBearing(e store.Environment) bool {
+	return e.ProtectedStatus == ProtectedStatusProtected ||
+		e.NetworkIsolationEnabled ||
+		len(e.IPAllowList) > 0
 }
 
 // clearEnvironmentMembers clears the environment-projected layer — the

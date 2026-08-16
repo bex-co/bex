@@ -19,6 +19,7 @@ package nativessh
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 
@@ -88,6 +89,67 @@ func TestRevocationAfterTransportAuthEndsTransportAndActiveChannels(t *testing.T
 
 func endsWith(s, suffix string) bool {
 	return len(s) >= len(suffix) && s[len(s)-len(suffix):] == suffix
+}
+
+// codex round-9 #6: channel-open reauthorization alone leaves an ADMITTED exec
+// running until the client disconnects or the 4h cap. The watchdog re-runs the
+// same reauthorization on the interval and cancels the LIVE stream — here a
+// revocation lands while the only channel's exec is mid-flight, with no new
+// channel to carry the check.
+func TestMidStreamRevocationEndsActiveMultiChannelExec(t *testing.T) {
+	clientSigner := signer(t)
+	exec := &countingExecutor{release: make(chan struct{})}
+	resolver := &gatewaytest.FakeResolver{Target: sandboxTarget()}
+	st := &gatewaytest.FakeStore{}
+	addr, stop := startGatewayConfigured(t, st, resolver, exec, clientSigner,
+		func(s *Server) { s.MaxChannelsPerConn = 4; s.RevalidateInterval = 10 * time.Millisecond })
+	defer stop()
+
+	client, err := dialGateway(addr, "ags-abcdeabcdeabcdeabcde", clientSigner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+
+	holdChannel(t, client, exec)
+	resolver.SetFlip(errors.New("revoked"))
+
+	waitFor(t, func() bool {
+		if exec.activeNow() != 0 {
+			return false
+		}
+		ended := st.EndedSessions()
+		return len(ended) == 1 && endsWith(ended[0], ":revoked")
+	})
+}
+
+// The same watchdog on the single-channel App path: the admitted exec dies
+// with a revoked audit result, without the client opening anything new.
+func TestMidStreamRevocationEndsActiveSingleChannelExec(t *testing.T) {
+	clientSigner := signer(t)
+	exec := &countingExecutor{release: make(chan struct{})}
+	resolver := &gatewaytest.FakeResolver{} // default srv- target: single-channel
+	st := &gatewaytest.FakeStore{}
+	addr, stop := startGatewayConfigured(t, st, resolver, exec, clientSigner,
+		func(s *Server) { s.RevalidateInterval = 10 * time.Millisecond })
+	defer stop()
+
+	client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+
+	holdChannel(t, client, exec)
+	resolver.SetFlip(errors.New("revoked"))
+
+	waitFor(t, func() bool {
+		if exec.activeNow() != 0 {
+			return false
+		}
+		ended := st.EndedSessions()
+		return len(ended) == 1 && endsWith(ended[0], ":revoked")
+	})
 }
 
 // Deleting the SSH key mid-connection is the same revocation: the credential

@@ -415,3 +415,47 @@ func TestWebSocketResolveFailureSendsErrorFrame(t *testing.T) {
 		t.Errorf("resolve failure must not start a session: %v", started)
 	}
 }
+
+// codex round-9 #6: admission-time revalidation alone leaves an admitted shell
+// open until the browser disconnects or the 4h cap. The watchdog re-runs the
+// target resolution (and its fresh can_operate check) on the interval and
+// cancels the LIVE exec when it fails — here with the shell blocked mid-stream
+// and the client sending nothing.
+func TestWebSocketMidStreamRevocationEndsShell(t *testing.T) {
+	st := &gatewaytest.FakeStore{}
+	resolver := &gatewaytest.FakeResolver{}
+	exec := &gatewaytest.FakeExecutor{
+		Block:   true,
+		Started: make(chan struct{}, 1),
+		Stopped: make(chan error, 1),
+	}
+	gw := newWSGateway(t, st, resolver, exec)
+	gw.RevalidateInterval = 10 * time.Millisecond
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
+	conn, _, err := dialWS(t, srv, token)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+
+	select {
+	case <-exec.Started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("shell exec never started")
+	}
+
+	resolver.SetFlip(errors.New("revoked"))
+
+	select {
+	case <-exec.Stopped:
+	case <-time.After(2 * time.Second):
+		t.Fatal("a mid-stream revocation did not cancel the live exec")
+	}
+	ended := waitEndedSessions(t, st, 1)
+	if len(ended) != 1 || !strings.HasSuffix(ended[0], ":revoked") {
+		t.Fatalf("session audit result = %v, want one entry ending :revoked", ended)
+	}
+}

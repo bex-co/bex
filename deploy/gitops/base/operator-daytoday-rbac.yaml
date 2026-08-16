@@ -7,12 +7,24 @@
 #   - Read all workload and platform state (status, describe, events)
 #   - Interactive debugging: exec, port-forward, logs
 #   - Pod delete (soft restart without touching the controller)
-#   - One-shot Job creation from CronJobs (manual backup trigger)
+#   - Job/CronJob read + Job delete (stuck-run cleanup)
 # What is intentionally omitted (break-glass territory):
 #   - Create/update/patch/delete Deployments, StatefulSets, Services, Ingresses
 #   - Create/modify ClusterRoles, ClusterRoleBindings, CRDs, Namespaces
 #   - Scale, drain, or label Nodes
-# docs/ADR019-infra-credentials.md, w7/m37
+#   - Job CREATION (codex-security round-9 #2): `jobs: create` cluster-wide is
+#     arbitrary pod-template authoring — a Job can be privileged, host-mounted,
+#     or target any node, which is node-root/cluster-admin impact from a
+#     routine credential. The workload admission policies
+#     (operator-workload-admission.yaml) constrain only
+#     bex-controller-manager, not this identity, and RBAC cannot express a Pod
+#     grammar. Manual one-shot triggers (`kubectl create job --from=cronjob/...`
+#     in the backup/rekey runbooks, docs/ADR011/ADR015/ADR037) now use the
+#     break-glass admin kubeconfig — they are rare, deliberate, restore-grade
+#     operations. w7/020 retired this to .pm/FUTURE-MAYBE.md with the trigger
+#     "the ops role is broadened, or a privileged platform SA appears"; the
+#     round-9 high IS that trigger.
+# docs/ADR019-infra-credentials.md, w7/m37, codex round-9 #2
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -50,10 +62,12 @@ rules:
   - apiGroups: [batch]
     resources: [cronjobs, jobs]
     verbs: [get, list, watch]
-  # One-shot Job creation for manual maintenance triggers (e.g. kubectl create job --from=cronjob/etcd-backup)
+  # Job cleanup only (stuck manual/batch runs). Creation is break-glass: see
+  # the header note — a cluster-wide jobs:create is unconstrained pod-template
+  # authoring (codex round-9 #2).
   - apiGroups: [batch]
     resources: [jobs]
-    verbs: [create, delete]
+    verbs: [delete]
   # Bex CRDs read
   - apiGroups: [app.bex.co]
     resources: [apps, databases, keyvalues]

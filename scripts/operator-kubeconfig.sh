@@ -5,8 +5,10 @@
 # for break-glass only (docs/ADR019-infra-credentials.md). This script generates a
 # token-based kubeconfig for the bex-operator ServiceAccount (ClusterRole
 # bex-operator-day-to-day, deployed by Argo from
-# deploy/gitops/base/operator-daytoday-rbac.yaml): read + exec + one-shot-job
-# access without cluster-admin.
+# deploy/gitops/base/operator-daytoday-rbac.yaml): read + exec + job-cleanup
+# access without cluster-admin. Job CREATION is break-glass since codex-security
+# round-9 #2: `kubectl create job --from=cronjob/...` (backup/rekey runbooks)
+# requires the admin kubeconfig.
 #
 # Usage:
 #   KUBECONFIG=/path/to/admin.kubeconfig scripts/operator-kubeconfig.sh [output-path]
@@ -74,6 +76,15 @@ fi
 if KUBECONFIG="$OUT" kubectl auth can-i create clusterroles 2>/dev/null \
     | grep -q '^yes$'; then
   echo "ERROR: scoped credential can create ClusterRoles — RBAC misconfigured" >&2
+  rm -f "$OUT"
+  exit 1
+fi
+# codex round-9 #2: a cluster-wide jobs:create is arbitrary pod-template
+# authoring (privileged/host-mounted/any node) — the routine credential must
+# never hold it; manual one-shot CronJob triggers are break-glass.
+if KUBECONFIG="$OUT" kubectl auth can-i create jobs --all-namespaces 2>/dev/null \
+    | grep -q '^yes$'; then
+  echo "ERROR: scoped credential can create Jobs — RBAC misconfigured" >&2
   rm -f "$OUT"
   exit 1
 fi

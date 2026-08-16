@@ -1,6 +1,30 @@
 import { RestLogTransport } from "../rest-transport";
 import { LogApiError } from "../types";
 
+// A minimal XMLHttpRequest stand-in: node has no XHR, and the live-tail path
+// under test only needs open/setRequestHeader/send/onprogress/abort.
+class FakeXHR {
+  static last: FakeXHR | undefined;
+  onprogress: (() => void) | undefined;
+  responseText = "";
+  private aborted = false;
+  open() {}
+  setRequestHeader() {}
+  send() {
+    FakeXHR.last = this;
+  }
+  abort() {
+    this.aborted = true;
+  }
+  get isAborted() {
+    return this.aborted;
+  }
+  deliver(chunk: string) {
+    this.responseText += chunk;
+    this.onprogress?.();
+  }
+}
+
 const emptyPage = {
   hasMore: false,
   nextStartTime: "2026-08-02T00:00:00Z",
@@ -83,5 +107,52 @@ describe("RestLogTransport history", () => {
       expect(caught.code).toBe("store_unavailable");
       expect(caught.status).toBe(503);
     }
+  });
+});
+
+describe("RestLogTransport live tail bounds (round-9 #11)", () => {
+  beforeEach(() => {
+    (globalThis as { XMLHttpRequest?: unknown }).XMLHttpRequest =
+      FakeXHR as unknown;
+  });
+
+  it("recycles the stream when the cumulative response budget is exceeded", async () => {
+    const transport = new RestLogTransport(
+      "https://api.bex.co",
+      {
+        getAccessToken: async () => "token",
+        forceRefresh: async () => undefined,
+      },
+      fetch,
+      1024, // a tiny budget so one frame trips it
+    );
+    const errors: LogApiError[] = [];
+    const lines: unknown[] = [];
+    const connection = await transport.subscribe(
+      { resource: "srv-1", types: ["app"] },
+      {
+        onLine: (line) => lines.push(line),
+        onError: (error) => errors.push(error),
+        onClose: () => undefined,
+      },
+      new AbortController().signal,
+    );
+    const xhr = FakeXHR.last!;
+    // A well-formed frame first, so the happy path is proven…
+    xhr.deliver(
+      'data: {"id":"a","message":"ok","timestamp":"2026-08-02T00:00:00Z","labels":[]}\n\n',
+    );
+    expect(lines.length).toBe(1);
+    // …then more bytes than the budget: the connection must abort and surface
+    // a network-class error (which the session turns into reconnect-from-newest),
+    // never keep buffering into an unbounded responseText.
+    xhr.deliver("x".repeat(2048));
+    expect(xhr.isAborted).toBe(true);
+    expect(errors.length).toBe(1);
+    expect(errors[0].code).toBe("network");
+    // The recycled stream is terminal: no further delivery does anything.
+    xhr.deliver('data: {"id":"z"');
+    expect(lines.length).toBe(1);
+    connection.close();
   });
 });

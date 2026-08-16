@@ -98,7 +98,9 @@ bash scripts/bao-init.sh
 scripts/operator-kubeconfig.sh ~/.kube/bex-operator.kubeconfig \
   || export KUBECONFIG=infra/local/bex.kubeconfig  # need admin for snapshot
 
-# Snapshot before re-key.
+# Snapshot before re-key. Manual Job creation is break-glass since codex
+# round-9 #2 (the routine credential no longer holds jobs:create) — make sure
+# the admin kubeconfig above is the active one for this step.
 kubectl -n secrets create job --from=cronjob/openbao-backup openbao-backup-prerekey
 kubectl -n secrets wait --for=condition=complete job/openbao-backup-prerekey --timeout=5m
 ```
