@@ -457,25 +457,40 @@ func blueprintGroupingKey(projectName, environmentName string) string {
 	return projectName + "\x00" + environmentName
 }
 
+const (
+	// Database property names from render.yaml fromDatabase references
+	dbPropertyConnectionString     = "connectionString"
+	dbPropertyConnectionPoolString = "connectionPoolString"
+	dbPropertyHost                 = "host"
+	dbPropertyPort                 = "port"
+	dbPropertyUser                 = "user"
+	dbPropertyPassword             = "password"
+	dbPropertyDatabase             = "database"
+
+	// Key-value property names from render.yaml fromKeyValue references
+	kvPropertyConnectionString = "connectionString"
+	kvPropertyHost             = "host"
+	kvPropertyPort             = "port"
+
+	// Service reference property names from render.yaml fromService references
+	serviceRefPropertyHost     = "host"
+	serviceRefPropertyPort     = "port"
+	serviceRefPropertyHostPort = "hostport"
+)
+
 // dbPropertyKey maps a render.yaml fromDatabase property to the key in the CNPG
 // "<stable-id>-app" connection Secret (the Secret vocabulary
 // docs/ADR009-postgresql-management.md documents: username, password, dbname,
 // host, port, uri).
 var dbPropertyKey = map[string]string{
-	"connectionString":     "uri",
-	"connectionPoolString": "uri",
-	"host":                 "host",
-	"port":                 "port",
-	"user":                 "username",
-	"password":             "password",
-	"database":             "dbname",
+	dbPropertyConnectionString:     "uri",
+	dbPropertyConnectionPoolString: "uri",
+	dbPropertyHost:                 "host",
+	dbPropertyPort:                 "port",
+	dbPropertyUser:                 "username",
+	dbPropertyPassword:             "password",
+	dbPropertyDatabase:             "dbname",
 }
-
-const (
-	serviceRefPropertyHost     = "host"
-	serviceRefPropertyPort     = "port"
-	serviceRefPropertyHostPort = "hostport"
-)
 
 // serviceRefProperty is the set of fromService properties bex honors for a
 // web/private service (host/port/hostport), resolved to literal env values:
@@ -544,6 +559,17 @@ func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (
 // deployParsedStack applies the exact validated stack produced by compileStack.
 // It is deliberately separate from deployStack for flows (Blueprint create and
 // sync) that must preflight before recording state, then apply that same result.
+//
+// Orchestration sequence (all-or-nothing, with dependencies):
+// 1. Validate service specs (URL ownership, maintenance mode)
+// 2. Gate on payment method (if any resource uses a paid plan)
+// 3. Fetch workspace datastore snapshots (databases, key-values) in parallel
+// 4. Resolve cross-references to existing resources (by name → id/CR name)
+// 5. Preflight env-groups and env-vars (seam availability checks)
+// 6. Apply groupings (projects, environments)
+// 7. Apply env-groups → datastores → services (in dependency order)
+// 8. Patch forward-referenced services (deferred fromService host slugs)
+// 9. Auto-register Blueprint row (enables subsequent sync operations)
 func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st parsedStack) (StackResult, error) {
 	if err := s.validateBlueprintServices(ctx, st); err != nil {
 		return StackResult{}, err
@@ -628,21 +654,57 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 // targets an object this same apply creates.
 func (s *Service) stackDatastoreSnapshots(ctx context.Context, st parsedStack) (*appv1alpha1.DatabaseList, *appv1alpha1.KeyValueList, error) {
 	tenantID, _ := s.Tenant(ctx)
-	var databases *appv1alpha1.DatabaseList
-	if len(st.databases) > 0 {
-		var err error
-		if databases, err = s.listWorkspaceDatabases(ctx, tenantID); err != nil {
-			return nil, nil, err
-		}
+
+	// Fetch databases and key-values in parallel when both are needed
+	type result struct {
+		databases *appv1alpha1.DatabaseList
+		keyValues *appv1alpha1.KeyValueList
+		err       error
 	}
-	var keyValues *appv1alpha1.KeyValueList
-	if len(st.keyValues) > 0 {
-		var err error
-		if keyValues, err = s.listWorkspaceKeyValues(ctx, tenantID); err != nil {
-			return nil, nil, err
-		}
+
+	var (
+		needDatabases = len(st.databases) > 0
+		needKeyValues = len(st.keyValues) > 0
+	)
+
+	// If only one type needed, fetch sequentially (no benefit to goroutine overhead)
+	if !needDatabases && !needKeyValues {
+		return nil, nil, nil
 	}
-	return databases, keyValues, nil
+	if needDatabases && !needKeyValues {
+		databases, err := s.listWorkspaceDatabases(ctx, tenantID)
+		return databases, nil, err
+	}
+	if !needDatabases && needKeyValues {
+		keyValues, err := s.listWorkspaceKeyValues(ctx, tenantID)
+		return nil, keyValues, err
+	}
+
+	// Both needed: fetch in parallel
+	dbCh := make(chan result, 1)
+	kvCh := make(chan result, 1)
+
+	go func() {
+		databases, err := s.listWorkspaceDatabases(ctx, tenantID)
+		dbCh <- result{databases: databases, err: err}
+	}()
+
+	go func() {
+		keyValues, err := s.listWorkspaceKeyValues(ctx, tenantID)
+		kvCh <- result{keyValues: keyValues, err: err}
+	}()
+
+	dbRes := <-dbCh
+	kvRes := <-kvCh
+
+	if dbRes.err != nil {
+		return nil, nil, dbRes.err
+	}
+	if kvRes.err != nil {
+		return nil, nil, kvRes.err
+	}
+
+	return dbRes.databases, kvRes.keyValues, nil
 }
 
 // applyStackEnvGroups applies the stack's env groups. Env groups first: a
@@ -888,7 +950,7 @@ func requirePoolerForRefs(st parsedStack, name string, found *appv1alpha1.Databa
 	}
 	for _, service := range st.services {
 		for _, ref := range service.databaseRefs {
-			if ref.FromDatabase != nil && ref.FromDatabase.Name == name && ref.FromDatabase.Property == "connectionPoolString" {
+			if ref.FromDatabase != nil && ref.FromDatabase.Name == name && ref.FromDatabase.Property == dbPropertyConnectionPoolString {
 				return poolerRequiredError(service.req.Name, name)
 			}
 		}
@@ -1470,7 +1532,7 @@ func newStackIndex(serviceCount, databaseCount int) *stackIndex {
 func (idx *stackIndex) classifyRefs(svc parsedService, refVars []bexEnvVar) (parsedService, error) {
 	for _, r := range refVars {
 		if r.FromDatabase != nil {
-			if idx.databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == "connectionPoolString" && !idx.databasePoolers[r.FromDatabase.Name] {
+			if idx.databaseNames[r.FromDatabase.Name] && r.FromDatabase.Property == dbPropertyConnectionPoolString && !idx.databasePoolers[r.FromDatabase.Name] {
 				return parsedService{}, poolerRequiredError(svc.req.Name, r.FromDatabase.Name)
 			}
 			svc.databaseRefs = append(svc.databaseRefs, r)
@@ -2058,7 +2120,7 @@ func resolveDatabaseRef(e bexEnvVar, databaseIDs map[string]string) (appv1alpha1
 		return appv1alpha1.EnvVar{}, fmt.Errorf("fromDatabase references unresolved database %q", ref.Name)
 	}
 	secretName := databaseID + "-app"
-	if ref.Property == "connectionPoolString" {
+	if ref.Property == dbPropertyConnectionPoolString {
 		secretName = databaseID + "-pooler-app"
 	}
 	return appv1alpha1.EnvVar{
