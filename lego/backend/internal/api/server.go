@@ -885,7 +885,7 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 	// authGate.invalidate lets logout evict this pod's introspection cache.
 	cliAuth := cliauth.New(s.OAuthIssuer, s.HydraAdminURL, s.APIKeys, authGate.invalidate)
 	cliAuth.RateLimiter = s.DeviceRateLimiter
-	cliAuth.RegisterPublic(mux)
+	cliAuth.RegisterPublic(mux, bodyLimit)
 	// The git push webhook authenticates by HMAC signature, not the OAuth gate,
 	// so it mounts directly (ahead of the /v1/ wildcard — a more specific pattern
 	// wins in net/http's mux). A git host can't present a bearer token. The

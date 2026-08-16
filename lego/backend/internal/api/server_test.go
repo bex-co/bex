@@ -252,6 +252,58 @@ func TestRenderCLIProtocolRoutesAreTheOnlyPublicV1AuthRoutes(t *testing.T) {
 	}
 }
 
+func TestRenderCLIProtocolRoutesEnforceBodyLimit(t *testing.T) {
+	upstreamCalls := 0
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		upstreamCalls++
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer upstream.Close()
+
+	srv := NewServer(&core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
+	srv.HydraAdminURL = fakeHydraURL(t)
+	srv.OAuthIssuer = upstream.URL
+	srv.MaxBodyBytes = 64
+	h := buildHandler(t, srv)
+
+	for _, path := range []string{"/v1/device-grant", "/v1/device-token", "/v1/token/refresh/"} {
+		t.Run(path, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodPost, path, strings.NewReader(strings.Repeat("x", 65)))
+			r.ContentLength = -1 // Exercise the chunked/unknown-length path too.
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, r)
+			if w.Code != http.StatusRequestEntityTooLarge {
+				t.Fatalf("oversized request = %d %s, want 413", w.Code, w.Body.String())
+			}
+		})
+	}
+	if upstreamCalls != 0 {
+		t.Fatalf("oversized requests reached Hydra %d times, want 0", upstreamCalls)
+	}
+}
+
+func TestRenderCLIDeviceRateLimitPrecedesBodyLimit(t *testing.T) {
+	srv := NewServer(&core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
+	srv.HydraAdminURL = fakeHydraURL(t)
+	srv.MaxBodyBytes = 1
+	srv.DeviceRateLimiter = cliauth.NewDeviceRateLimiter(60, 1)
+	h := buildHandler(t, srv)
+
+	request := func() *httptest.ResponseRecorder {
+		r := httptest.NewRequest(http.MethodPost, "/v1/device-grant", strings.NewReader("xx"))
+		r.RemoteAddr = "203.0.113.10:54321"
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	if got := request(); got.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("first admitted oversized request = %d, want 413", got.Code)
+	}
+	if got := request(); got.Code != http.StatusTooManyRequests {
+		t.Fatalf("second oversized request = %d, want 429 before body read", got.Code)
+	}
+}
+
 func TestRenderCLILogoutImmediatelyInvalidatesCachedAccessToken(t *testing.T) {
 	revoked := false
 	admin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
