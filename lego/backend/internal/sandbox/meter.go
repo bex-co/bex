@@ -87,6 +87,35 @@ func computeWeightMilli(cpu, memory string) (int64, error) {
 	return int64(math.Round(weight)), nil
 }
 
+// requestFor derives a conservative resource REQUEST (a quarter of the limit,
+// with floors) so sandbox pods overcommit the node. Sandbox compute is bursty
+// and mostly idle — a session spends most of its life waiting on the model — so
+// scheduling on a full-size request (the agent template's 2 CPU / 4Gi) wastes
+// the node: only ~2 pods fit even though actual use is a fraction of that
+// ("Insufficient cpu/memory" scheduling failures at ~7% real load). Requesting a
+// quarter lets several times as many pods schedule while each limit still caps a
+// burst; CPU overcommit merely throttles, and memory stays conservative (a
+// quarter, not a sliver) to bound OOM risk when several bursts coincide. An
+// unparseable value falls through to the limit (previous behaviour).
+func requestFor(cpu, memory string) (reqCPU, reqMem string) {
+	reqCPU, reqMem = cpu, memory
+	if q, err := resource.ParseQuantity(cpu); err == nil && q.MilliValue() > 0 {
+		milli := q.MilliValue() / 4
+		if milli < 50 {
+			milli = 50
+		}
+		reqCPU = resource.NewMilliQuantity(milli, resource.DecimalSI).String()
+	}
+	if q, err := resource.ParseQuantity(memory); err == nil && q.Value() > 0 {
+		bytes := q.Value() / 4
+		if bytes < 128*1024*1024 {
+			bytes = 128 * 1024 * 1024
+		}
+		reqMem = resource.NewQuantity(bytes, resource.BinarySI).String()
+	}
+	return reqCPU, reqMem
+}
+
 func canonicalMeterPhase(state string) string {
 	switch mapOpenSandboxStatus(state) {
 	case StatusRunning:
