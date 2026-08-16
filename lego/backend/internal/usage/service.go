@@ -185,7 +185,7 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 	}
 	sum := summarise(tenantID, rows)
 	s.resolveServiceNames(ctx, sum.Services)
-	sum.Period = now.Format("2006-01")
+	sum.Period = now.Format(periodLayout)
 	sum.EstimatedCost = pricing.Default.Estimate(rows)
 	sum.Billing = s.readBilling(ctx, tenantID, now)
 	sum.Coverage = Coverage{State: CoverageUnknown, DegradedSources: []string{}}
@@ -215,7 +215,7 @@ func (s *Service) readBilling(ctx context.Context, tenantID string, now time.Tim
 	if s.Billing == nil {
 		return nil
 	}
-	key := tenantID + "|" + now.Format("2006-01")
+	key := tenantID + "|" + now.Format(periodLayout)
 	if s.billingCache != nil {
 		if b, ok := s.billingCache.Get(key); ok {
 			return b

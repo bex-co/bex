@@ -168,9 +168,11 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": &graphql.ArgumentConfig{Type: graphql.String},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				period, _ := p.Args["period"].(string)
-				now := resolvePeriodEnd(period, s.Now().UTC())
-				return s.monthToDateAt(p.Context, gqlutil.Str(p.Args, "ownerId"), now)
+				asOf, err := ResolvePeriodEnd(gqlutil.Str(p.Args, "period"), s.Now().UTC())
+				if err != nil {
+					return nil, err
+				}
+				return s.monthToDateAt(p.Context, gqlutil.Str(p.Args, "ownerId"), asOf)
 			},
 		},
 	}

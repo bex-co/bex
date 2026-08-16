@@ -138,7 +138,7 @@ Optional query parameters:
 | Parameter | Description |
 | --- | --- |
 | `ownerId` | Accepted but ignored; the response always reflects the caller's own workspace. |
-| `period` | Calendar month as `YYYY-MM`. Defaults to the current month. For a past month the full month is returned; for the current month, data up to now is returned. Months older than the hot window are served from monthly aggregates with identical totals (see Retention above). |
+| `period` | Calendar month as `YYYY-MM`. Defaults to the current month. A value that is not a well-formed `YYYY-MM` is rejected with `400` on all three surfaces rather than silently answered with the current month; a well-formed month that is not in the past (the current one, or a future one) resolves to "as of now", and the response echoes the period actually used. For a past month the full month is returned; for the current month, data up to now is returned. Months older than the hot window are served from monthly aggregates with identical totals (see Retention above). |
 
 Response:
 

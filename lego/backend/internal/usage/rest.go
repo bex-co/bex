@@ -71,8 +71,12 @@ type usageCoverage struct {
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/usage", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
-		now := resolvePeriodEnd(q.Get("period"), s.Now().UTC())
-		summary, err := s.monthToDateAt(r.Context(), q.Get("ownerId"), now)
+		asOf, err := ResolvePeriodEnd(q.Get("period"), s.Now().UTC())
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		summary, err := s.monthToDateAt(r.Context(), q.Get("ownerId"), asOf)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -111,26 +115,4 @@ func toUsageResponse(sum Summary) usageResponse {
 		Billing:       sum.Billing,
 		Coverage:      coverage,
 	}
-}
-
-// resolvePeriodEnd maps an optional "YYYY-MM" period string to the effective
-// upper-bound for a usage query. For a past month it returns the last nanosecond
-// of that month; for the current or future month (or empty string) it returns
-// now unchanged.
-func resolvePeriodEnd(period string, now time.Time) time.Time {
-	if period != "" {
-		if end, err := parsePeriod(period); err == nil && end.Before(now) {
-			return end
-		}
-	}
-	return now
-}
-
-// parsePeriod parses "YYYY-MM" and returns the last nanosecond of that month.
-func parsePeriod(period string) (time.Time, error) {
-	t, err := time.Parse("2006-01", period)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return t.AddDate(0, 1, 0).Add(-time.Nanosecond), nil
 }

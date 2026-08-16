@@ -26,6 +26,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
@@ -63,10 +64,22 @@ type PushNotification struct {
 	ReadAt         *time.Time
 }
 
+// defaultPushInboxPage is the mobile inbox's default page — deliberately
+// larger than core.DefaultPageLimit because the inbox is normally read whole,
+// not paged through. The MAXIMUM stays core.MaxPageLimit, shared with every
+// other list.
+const defaultPushInboxPage = 50
+
 func (s *PGStore) ListOwnPushNotifications(ctx context.Context, tenantID, subject string, limit int) ([]PushNotification, error) {
-	if limit < 1 || limit > 100 {
-		limit = 50
+	// Defense in depth only: the sole caller (notifications.Service) rejects an
+	// out-of-range limit with a 400 before reaching here, so neither arm is
+	// reachable today. Kept as a normalization rather than deleted — a store
+	// method must not depend on one caller's validation — but spelled with the
+	// shared maximum and a named default instead of bare 50/100 literals.
+	if limit < 1 {
+		limit = defaultPushInboxPage
 	}
+	limit = min(limit, core.MaxPageLimit)
 	rows, err := s.Pool.Query(ctx, `SELECT tenant_id,subject,source_event_key,event_id,event_type,title,body,urgency,resource_kind,resource_id,deep_link,occurred_at,deliver_at,created_at,read_at
 	 FROM push_notifications WHERE tenant_id=$1 AND subject=$2 ORDER BY occurred_at DESC,event_id DESC LIMIT $3`, tenantID, subject, limit)
 	if err != nil {

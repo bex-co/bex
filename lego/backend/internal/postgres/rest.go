@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"strconv"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
@@ -277,7 +276,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// --- logs (w3/m28) ---
 	mux.HandleFunc("GET "+base+"/{id}/logs", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
-		limit, _ := strconv.ParseInt(q.Get("limit"), 10, 64)
+		limit, err := core.QueryLimit64(q, "limit")
+		if err != nil {
+			return nil, err
+		}
 		since, end, err := core.ParseTimeWindow(q.Get("startTime"), q.Get("endTime"))
 		if err != nil {
 			return nil, err

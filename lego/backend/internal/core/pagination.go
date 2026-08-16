@@ -233,19 +233,34 @@ func PageParams(q url.Values) (after string, limit int) {
 // (found in list_environments). Three sibling MCP tools had already hand-rolled
 // this two-line branch to avoid that; this is the seam they were reinventing.
 //
-// Deliberately keyed on == 0, not < 1. The `pageLimit` helpers in events and
-// apps look like more copies but treat any value below one — negatives
-// included — as absent, which is a different and more forgiving rule; folding
-// them in would silently turn their negative-limit answer from a default page
-// into a one-item page. gqlutil.Page is likewise left alone: it already
-// detects absence from the ARGUMENT MAP, which is strictly better than
-// inferring it from a zero, and switching it would change what an explicit
-// `limit: 0` returns.
+// Deliberately keyed on == 0, not < 1 — the more forgiving rule is
+// PageLimitOrAbsent below. Folding the two together would silently turn a
+// negative limit's answer from a default page into a one-item page.
+// gqlutil.Page is left on neither: it already detects absence from the
+// ARGUMENT MAP, which is strictly better than inferring it from a zero, and
+// switching it would change what an explicit `limit: 0` returns.
 func PageLimitOrDefault(limit int) int {
 	if limit == 0 {
 		return DefaultPageLimit
 	}
 	return PageLimit(limit)
+}
+
+// PageLimitOrAbsent is PageLimitOrDefault for a list that reads ANY value
+// below one as "absent" — negatives included — rather than only zero. That is
+// the more forgiving of the two rules: a caller who sends a nonsensical
+// negative gets the default page instead of the one-row floor PageLimit would
+// clamp them to.
+//
+// Neither rule is wrong; what is wrong is a list inventing a third. Each of the
+// three feature lists on this rule had spelled it out itself, and one of them
+// (blueprint syncs) folded the absent and oversized arms into a single branch,
+// so asking for 500 rows returned 20 — fewer than asking for none.
+func PageLimitOrAbsent(limit int) int {
+	if limit < 1 {
+		return DefaultPageLimit
+	}
+	return min(limit, MaxPageLimit)
 }
 
 // PageLimit clamps a caller-supplied page size to Render's public bounds.
@@ -306,4 +321,26 @@ func StablePage[T any](items []T, after string, limit int, requested bool, curso
 		return cmp.Compare(cursorOf(a), cursorOf(b))
 	})
 	return Page(ordered, after, limit, cursorOf)
+}
+
+// QueryLimit64 parses an optional `limit` query param for the log endpoints,
+// whose downstream takes an int64 and applies its own default. Absent ⇒ 0 (the
+// downstream default); present but unparseable ⇒ a named 400.
+//
+// The named 400 is the whole point. The generic logs route already rejected a
+// mistyped limit while the managed Postgres and Key Value log routes — the same
+// param, the same shape of endpoint — discarded the error with `limit, _ :=`
+// and answered with the default page, so `?limit=abc` was a 400 on one and a
+// silent 20 rows on the others. The message is byte-identical to the one the
+// generic route already returned, so unifying them changed nothing on the wire.
+func QueryLimit64(q url.Values, key string) (int64, error) {
+	raw := q.Get(key)
+	if raw == "" {
+		return 0, nil
+	}
+	n, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%w: %s: %s", ErrBadRequest, key, err)
+	}
+	return n, nil
 }
