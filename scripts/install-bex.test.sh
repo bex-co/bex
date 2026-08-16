@@ -112,7 +112,8 @@ echo "$out" | grep -q "no entry for" || fail "missing-entry error not reported:\
 cp "$tmp/checksums.orig" "$release_dir/checksums.txt"
 
 # ── installer: checksum mismatch must abort before installing ───────────────
-sed 's/^./0/' "$release_dir/checksums.txt" > "$release_dir/checksums.bad" &&
+awk '{ replacement = substr($1, 1, 1) == "0" ? "1" : "0"; print replacement substr($1, 2) "  " $2 }' \
+  "$release_dir/checksums.txt" > "$release_dir/checksums.bad" &&
   mv "$release_dir/checksums.bad" "$release_dir/checksums.txt"
 if out="$(BEX_VERSION="$version" BEX_API_URL="$base" BEX_DOWNLOAD_URL="$base/dl" BEX_INSTALL_DIR="$tmp/bin3" sh "$INSTALL" 2>&1)"; then
   fail "installer accepted a corrupted checksum:\n$out"
