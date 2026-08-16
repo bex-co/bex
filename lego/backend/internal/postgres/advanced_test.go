@@ -338,6 +338,12 @@ func TestUsersCRUD(t *testing.T) {
 	if len(db.Spec.Users) != 0 {
 		t.Fatal("DeleteUser did not remove the role from spec.users")
 	}
+	// A revoke must leave an ensure:absent tombstone (spec.deletedUsers) so the
+	// operator drops the live PostgreSQL role — removing it from spec.users alone
+	// only stops CNPG managing it, leaving the login valid (codex #8/#2).
+	if len(db.Spec.DeletedUsers) != 1 || db.Spec.DeletedUsers[0] != "reporting" {
+		t.Fatalf("DeleteUser did not record the drop tombstone: %+v", db.Spec.DeletedUsers)
+	}
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "usr-db-user-reporting"}, &sec); err == nil {
 		t.Fatal("DeleteUser did not delete the user secret")
 	}
