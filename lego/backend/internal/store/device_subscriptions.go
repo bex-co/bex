@@ -79,7 +79,7 @@ func (s *PGStore) UpsertDevicePushSubscription(ctx context.Context, sub DevicePu
 	// quota checks across every member of one workspace; both lock inputs are
 	// non-secret (the second is a one-way digest), so no bearer token reaches SQL
 	// diagnostics.
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "push-workspace\x00"+sub.TenantID); err != nil {
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "push-workspace:"+sub.TenantID); err != nil {
 		return DevicePushSubscription{}, classifyPushSubscriptionError(err)
 	}
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, digest); err != nil {
