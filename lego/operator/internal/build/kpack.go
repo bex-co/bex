@@ -65,6 +65,12 @@ func KpackImage(o Options) *unstructured.Unstructured {
 	build := map[string]any{
 		"buildTimeout": int64(buildTimeout / time.Second),
 		"nodeSelector": map[string]any{execution.NodePoolLabel: execution.UntrustedNodePool},
+		"tolerations": []any{map[string]any{
+			"key":      execution.BuildPoolTaintKey,
+			"operator": "Equal",
+			"value":    execution.BuildPoolTaintValue,
+			"effect":   "NoSchedule",
+		}},
 		"resources": map[string]any{
 			"requests": map[string]any{"cpu": buildCPURequest, "memory": buildMemoryRequest},
 			"limits":   map[string]any{"cpu": buildCPULimit, "memory": buildMemoryLimit},

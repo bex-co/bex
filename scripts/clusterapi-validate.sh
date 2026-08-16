@@ -182,8 +182,13 @@ burst_max="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-t
 burst_labels="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-burst") | .metadata.annotations."capacity.cluster-autoscaler.kubernetes.io/labels"' "$OVERLAY")"
 burst_infra="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-burst") | .spec.template.spec.infrastructureRef.name' "$OVERLAY")"
 burst_type="$(yq -N "select(.kind==\"HCloudMachineTemplate\" and .metadata.name==\"$burst_infra\") | .spec.template.spec.type" "$OVERLAY")"
-if [ "$tenant_min" != "1" ] || [ "$tenant_max" != "1" ]; then
-  echo "FAIL: bex-tenant-0 must remain the non-scaling cx33 baseline (want min=1 max=1, got min=$tenant_min max=$tenant_max)" >&2
+# min=1 keeps one stable serving node always warm; max=2 (docs/ADR060
+# § dedicated build pool, 2026-08-15) lets serving OVERFLOW grow this stable
+# pool instead of leaking onto the tainted lg/burst build pools and pinning
+# them (observed: single-instance CNPG PDBs kept bex-tenant-burst undrainable
+# for 6 days).
+if [ "$tenant_min" != "1" ] || [ "$tenant_max" != "2" ]; then
+  echo "FAIL: bex-tenant-0 must stay the elastic serving baseline (want min=1 max=2 per docs/ADR060, got min=$tenant_min max=$tenant_max)" >&2
   fail=1
 fi
 if [ "$burst_min" != "0" ] || [ "$burst_max" != "2" ]; then
@@ -194,6 +199,21 @@ if [ "$burst_type" != "cx33" ]; then
   echo "FAIL: bex-tenant-burst uses '$burst_type' (want cx33, the cheaper default now that fsn1 stock returned; during an fsn1 cx stock-out flip to cpx32 here and in the overlay — docs/ADR053)" >&2
   fail=1
 fi
+# The dedicated build pools must boot from the tainted bootstrap template
+# (docs/ADR060 § dedicated build pool) — a silent revert to bex-tenant-0
+# would let serving pods land on (and pin) elastic build nodes again.
+for build_md in bex-tenant-burst bex-tenant-lg; do
+  build_cfg="$(yq -N "select(.kind==\"MachineDeployment\" and .metadata.name==\"$build_md\") | .spec.template.spec.bootstrap.configRef.name" "$OVERLAY")"
+  build_taint="$(yq -N "select(.kind==\"MachineDeployment\" and .metadata.name==\"$build_md\") | .metadata.annotations.\"capacity.cluster-autoscaler.kubernetes.io/taints\"" "$OVERLAY")"
+  if [ "$build_cfg" != "bex-tenant-build" ]; then
+    echo "FAIL: $build_md must bootstrap from bex-tenant-build (the build-only taint), got '$build_cfg' (docs/ADR060)" >&2
+    fail=1
+  fi
+  if [ "$build_taint" != "bex.co/build-only=true:NoSchedule" ]; then
+    echo "FAIL: $build_md scale-from-zero taints hint is '$build_taint' (want bex.co/build-only=true:NoSchedule, docs/ADR060)" >&2
+    fail=1
+  fi
+done
 if [ "$burst_labels" != "bex.co/pool=tenant" ]; then
   echo "FAIL: bex-tenant-burst scale-from-zero labels are '$burst_labels' (want bex.co/pool=tenant)" >&2
   fail=1
