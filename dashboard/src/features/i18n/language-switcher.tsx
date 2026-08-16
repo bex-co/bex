@@ -13,6 +13,7 @@ import {
   persistLanguage,
   type SupportedLanguage,
 } from "@/i18n";
+import { ensureLanguage } from "@/i18n/init";
 
 /**
  * Self-contained language switcher — no dependency on the dashboard sidebar,
@@ -24,7 +25,8 @@ export function LanguageSwitcher() {
 
   const handleSelect = (lang: SupportedLanguage) => {
     persistLanguage(lang);
-    void i18n.changeLanguage(lang);
+    // Register the lazy catalog before switching (w9/m60 t003).
+    void ensureLanguage(lang).then(() => i18n.changeLanguage(lang));
   };
 
   return (

@@ -1,48 +1,16 @@
+import { lazy, Suspense } from "react";
 import { I18nextProvider } from "react-i18next";
-import { IntlProvider } from "react-intl";
-import { OryLocales } from "@ory/elements-react";
 import { ThemeProvider } from "@/common/providers/theme-provider";
-import { Toaster } from "@/common/components/ui/sonner";
 import { VisualViewportHeight } from "@/common/providers/visual-viewport-height";
 import { WorkspaceProvider } from "@/features/workspaces/context";
 import { PaymentRequiredProvider } from "@/features/usage/context/payment-required";
-import { useTranslations } from "@/common/hooks/use-translations";
 import i18n from "@/i18n/init";
 
-/**
- * The `<Toaster/>`, wrapped in the intl context Ory Elements' toasts need.
- *
- * Ory's flow components raise their messages as toasts via sonner's `toast()`,
- * which PORTALS the toast into `<Toaster/>` — so the toast renders in the
- * Toaster's tree, not under the `<Settings>`/`<Login>` that fired it, and
- * therefore *outside* the IntlProvider those flow components mount internally.
- * Ory's `DefaultToast` calls `useIntl()`, so with no intl context above the
- * Toaster it throws "Could not find required `intl` object" and the root error
- * boundary takes down the entire page. That made /settings unusable the moment
- * a flow produced any message — e.g. landing there from a completed recovery,
- * or a rejected password — which is exactly how it shipped broken.
- *
- * Ory's own catalog (`OryLocales`) is passed so the toast stays translated
- * rather than falling back to the hardcoded English defaults; the locale
- * follows i18next, matching `useOryConfig()`'s `intl.locale`.
- */
-function OryToaster() {
-  const { i18n: i18next } = useTranslations();
-  const locale = i18next.language;
-  const messages = (OryLocales as Record<string, Record<string, string>>)[
-    locale
-  ];
-
-  return (
-    <IntlProvider
-      locale={locale}
-      defaultLocale="en"
-      messages={messages ?? OryLocales.en}
-    >
-      <Toaster />
-    </IntlProvider>
-  );
-}
+// Lazy so react-intl/formatjs (only OryToaster needs it) ships as its own async
+// chunk instead of sitting in the always-mounted entry chunk (w9/m60 t004). The
+// toaster is a portal target with nothing to paint until a flow raises a toast,
+// so a `null` fallback is invisible and correct.
+const OryToaster = lazy(() => import("./ory-toaster"));
 
 // WorkspaceProvider lives here, not inside DashboardLayout: every authenticated
 // route calls its data hooks (useServices, useDatabases, ...) in the PAGE
@@ -70,7 +38,9 @@ export const RootProvider = ({
           <PaymentRequiredProvider>{children}</PaymentRequiredProvider>
         </WorkspaceProvider>
         <VisualViewportHeight />
-        <OryToaster />
+        <Suspense fallback={null}>
+          <OryToaster />
+        </Suspense>
       </ThemeProvider>
     </I18nextProvider>
   );

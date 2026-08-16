@@ -41,6 +41,11 @@ describe("RootProvider", () => {
   it("gives sonner-portaled Ory toasts an intl context (no IntlProvider => full-page crash)", async () => {
     render(<RootProvider>{null}</RootProvider>);
 
+    // OryToaster is lazy-loaded (w9/m60 t004 keeps react-intl out of the entry
+    // chunk); wait for its <Toaster/> region to mount before firing — real Ory
+    // flow toasts always fire after user interaction, long after this resolves.
+    await screen.findByLabelText(/Notifications/);
+
     // Fire the toast the way Ory Elements does — the content renders inside
     // <Toaster/>'s tree, not where toast() was called.
     toast.custom(() => <OryStyleToast />);
@@ -53,6 +58,7 @@ describe("RootProvider", () => {
 
   it("translates the toast through Ory's own catalog, not just English defaults", async () => {
     render(<RootProvider>{null}</RootProvider>);
+    await screen.findByLabelText(/Notifications/);
     toast.custom(() => <OryStyleToast />);
 
     // OryLocales supplies this id, so the rendered text comes from the catalog.
