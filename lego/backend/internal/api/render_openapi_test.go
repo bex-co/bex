@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -134,7 +135,7 @@ func TestRenderOpenAPICompatibilityIsOperationScoped(t *testing.T) {
 		_, operation := findRenderOperation(t, contract.document, operationID)
 		media := operation.RequestBody.Value.Content.Get("application/json")
 		for _, field := range fields {
-			if containsString(media.Schema.Value.Required, field) {
+			if slices.Contains(media.Schema.Value.Required, field) {
 				t.Errorf("%s still requires compatibility field %q", operationID, field)
 			}
 		}
@@ -163,7 +164,7 @@ func TestRenderOpenAPICompatibilityIsOperationScoped(t *testing.T) {
 		route := &routers.Route{PathItem: item, Operation: operation}
 		for extension := range extensions {
 			req := httptest.NewRequest(http.MethodGet, "/?"+extension+"=true", nil)
-			if hasUnknownRenderQuery(route, req) {
+			if contract.hasUnknownRenderQuery(route, req) {
 				t.Errorf("%s rejects documented query extension %s", operationID, extension)
 			}
 		}

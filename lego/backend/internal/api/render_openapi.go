@@ -22,7 +22,9 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 
@@ -51,6 +53,10 @@ var renderOpenAPISource []byte
 type renderOpenAPIContract struct {
 	document *openapi3.T
 	router   routers.Router
+	// allowedQuery is the per-operation set of accepted query names, resolved
+	// once at load time. Keyed by the operation pointer rather than its id so
+	// operations the upstream document leaves unnamed cannot collide on "".
+	allowedQuery map[*openapi3.Operation]map[string]struct{}
 }
 
 var renderContractOnce = sync.OnceValues(loadRenderOpenAPIContract)
@@ -127,7 +133,30 @@ func loadRenderOpenAPIContractData(data []byte, expectedSHA256 string) (*renderO
 	if err != nil {
 		return nil, fmt.Errorf("validate embedded Render OpenAPI: %w", err)
 	}
-	return &renderOpenAPIContract{document: doc, router: router}, nil
+	return &renderOpenAPIContract{document: doc, router: router, allowedQuery: buildAllowedQueryNames(doc)}, nil
+}
+
+// buildAllowedQueryNames resolves every operation's accepted query names — its
+// own parameters, its path item's, and any deliberate bex extension — once at
+// load time. The inputs are immutable after the one-shot contract load, and
+// hasUnknownRenderQuery runs on every request to the Render-compatible surface.
+func buildAllowedQueryNames(doc *openapi3.T) map[*openapi3.Operation]map[string]struct{} {
+	index := map[*openapi3.Operation]map[string]struct{}{}
+	for _, item := range doc.Paths.Map() {
+		for _, operation := range item.Operations() {
+			allowed := map[string]struct{}{}
+			for _, parameters := range []openapi3.Parameters{item.Parameters, operation.Parameters} {
+				for _, ref := range parameters {
+					if ref != nil && ref.Value != nil && ref.Value.In == openapi3.ParameterInQuery {
+						allowed[ref.Value.Name] = struct{}{}
+					}
+				}
+			}
+			maps.Copy(allowed, renderQueryExtensions[operation.OperationID])
+			index[operation] = allowed
+		}
+	}
+	return index
 }
 
 func applyRenderCompatibility(doc *openapi3.T) {
@@ -136,7 +165,7 @@ func applyRenderCompatibility(doc *openapi3.T) {
 			optional := renderOptionalParameterCompatibility[operation.OperationID]
 			for _, parameters := range []openapi3.Parameters{item.Parameters, operation.Parameters} {
 				for _, ref := range parameters {
-					if ref != nil && ref.Value != nil && containsString(optional, ref.Value.Name) {
+					if ref != nil && ref.Value != nil && slices.Contains(optional, ref.Value.Name) {
 						ref.Value.Required = false
 					}
 				}
@@ -151,13 +180,9 @@ func applyRenderCompatibility(doc *openapi3.T) {
 				continue
 			}
 			if len(remove) > 0 {
-				required := media.Schema.Value.Required[:0]
-				for _, name := range media.Schema.Value.Required {
-					if !containsString(remove, name) {
-						required = append(required, name)
-					}
-				}
-				media.Schema.Value.Required = required
+				media.Schema.Value.Required = slices.DeleteFunc(media.Schema.Value.Required, func(name string) bool {
+					return slices.Contains(remove, name)
+				})
 			}
 			applyRenderSchemaCompatibility(operation.OperationID, media.Schema.Value)
 		}
@@ -188,26 +213,12 @@ func extendSchemaEnum(schema *openapi3.SchemaRef, values []string) {
 		return
 	}
 	for _, value := range values {
-		present := false
-		for _, existing := range schema.Value.Enum {
-			if existing == value {
-				present = true
-				break
-			}
-		}
-		if !present {
+		// ContainsFunc, not Contains: Enum is []any, and == on an interface
+		// holding an uncomparable dynamic type panics.
+		if !slices.ContainsFunc(schema.Value.Enum, func(existing any) bool { return existing == value }) {
 			schema.Value.Enum = append(schema.Value.Enum, value)
 		}
 	}
-}
-
-func containsString(values []string, want string) bool {
-	for _, value := range values {
-		if value == want {
-			return true
-		}
-	}
-	return false
 }
 
 type renderRequestValidator struct {
@@ -253,7 +264,7 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		core.WriteErrStatus(w, http.StatusBadRequest, "request body is not allowed for this operation")
 		return
 	}
-	if hasUnknownRenderQuery(route, r) {
+	if v.contract.hasUnknownRenderQuery(route, r) {
 		core.WriteErrStatus(w, http.StatusBadRequest, "request contains an unsupported query parameter")
 		return
 	}
@@ -330,20 +341,8 @@ func requestHasBody(r *http.Request) bool {
 	return r.Body != nil && r.Body != http.NoBody && r.ContentLength != 0
 }
 
-func hasUnknownRenderQuery(route *routers.Route, r *http.Request) bool {
-	allowed := make(map[string]struct{})
-	addQueryParameters := func(parameters openapi3.Parameters) {
-		for _, ref := range parameters {
-			if ref != nil && ref.Value != nil && ref.Value.In == openapi3.ParameterInQuery {
-				allowed[ref.Value.Name] = struct{}{}
-			}
-		}
-	}
-	addQueryParameters(route.PathItem.Parameters)
-	addQueryParameters(route.Operation.Parameters)
-	for name := range renderQueryExtensions[route.Operation.OperationID] {
-		allowed[name] = struct{}{}
-	}
+func (c *renderOpenAPIContract) hasUnknownRenderQuery(route *routers.Route, r *http.Request) bool {
+	allowed := c.allowedQuery[route.Operation]
 	for name := range r.URL.Query() {
 		if _, ok := allowed[name]; !ok {
 			return true

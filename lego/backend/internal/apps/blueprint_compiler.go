@@ -690,6 +690,27 @@ func (b *blueprintWalkBudget) fail(code, pointer, message string, node *yaml.Nod
 	return []BlueprintSourceProblem{{Code: code, Path: pointer, Message: message, Line: node.Line, Column: node.Column}}
 }
 
+// countNode charges one node against the walk budget, returning nil while the
+// document stays inside it and the breach diagnostic once it does not. Both the
+// value walk and the mapping-key loop charge through here so the two cannot
+// drift on the limit or its message.
+func (b *blueprintWalkBudget) countNode(pointer string, node *yaml.Node) []BlueprintSourceProblem {
+	b.nodes++
+	if b.nodes <= blueprintMaxNodes {
+		return nil
+	}
+	return b.fail("BLUEPRINT_YAML_NODES", pointer, fmt.Sprintf("Blueprint contains more than %d YAML nodes", blueprintMaxNodes), node)
+}
+
+// countCollection checks one sequence's or mapping's entry count against the
+// per-collection budget.
+func (b *blueprintWalkBudget) countCollection(pointer string, node *yaml.Node, entries int) []BlueprintSourceProblem {
+	if entries <= blueprintMaxCollectionEntries {
+		return nil
+	}
+	return b.fail("BLUEPRINT_YAML_COLLECTION", pointer, fmt.Sprintf("Blueprint collections are limited to %d entries", blueprintMaxCollectionEntries), node)
+}
+
 var yamlSyntaxLine = regexp.MustCompile(`(?i)line\s+(\d+)`)
 
 func yamlSyntaxLocation(err error) (line, column int) {
@@ -709,9 +730,8 @@ func yamlNodeToBlueprintValue(node *yaml.Node, path []string, locations map[stri
 	if depth > blueprintMaxDepth {
 		return nil, budget.fail("BLUEPRINT_YAML_DEPTH", pointer, fmt.Sprintf("Blueprint nests deeper than the supported %d levels", blueprintMaxDepth), node)
 	}
-	budget.nodes++
-	if budget.nodes > blueprintMaxNodes {
-		return nil, budget.fail("BLUEPRINT_YAML_NODES", pointer, fmt.Sprintf("Blueprint contains more than %d YAML nodes", blueprintMaxNodes), node)
+	if breach := budget.countNode(pointer, node); breach != nil {
+		return nil, breach
 	}
 	if len(locations) >= blueprintMaxLocations {
 		return nil, budget.fail("BLUEPRINT_YAML_LOCATIONS", pointer, fmt.Sprintf("Blueprint maps more than %d source locations", blueprintMaxLocations), node)
@@ -726,8 +746,8 @@ func yamlNodeToBlueprintValue(node *yaml.Node, path []string, locations map[stri
 	case yaml.AliasNode:
 		return nil, []BlueprintSourceProblem{{Code: "BLUEPRINT_YAML_ALIAS", Path: pointer, Message: "YAML aliases are not supported in Blueprints", Line: node.Line, Column: node.Column}}
 	case yaml.SequenceNode:
-		if len(node.Content) > blueprintMaxCollectionEntries {
-			return nil, budget.fail("BLUEPRINT_YAML_COLLECTION", pointer, fmt.Sprintf("Blueprint collections are limited to %d entries", blueprintMaxCollectionEntries), node)
+		if breach := budget.countCollection(pointer, node, len(node.Content)); breach != nil {
+			return nil, breach
 		}
 		values := make([]any, len(node.Content))
 		var problems []BlueprintSourceProblem
@@ -741,20 +761,20 @@ func yamlNodeToBlueprintValue(node *yaml.Node, path []string, locations map[stri
 		}
 		return values, problems
 	case yaml.MappingNode:
-		if len(node.Content)/2 > blueprintMaxCollectionEntries {
-			return nil, budget.fail("BLUEPRINT_YAML_COLLECTION", pointer, fmt.Sprintf("Blueprint collections are limited to %d entries", blueprintMaxCollectionEntries), node)
+		entries := len(node.Content) / 2
+		if breach := budget.countCollection(pointer, node, entries); breach != nil {
+			return nil, breach
 		}
-		values := map[string]any{}
-		seen := map[string]BlueprintSourceLocation{}
+		values := make(map[string]any, entries)
+		seen := make(map[string]BlueprintSourceLocation, entries)
 		var problems []BlueprintSourceProblem
 		for i := 0; i < len(node.Content); i += 2 {
 			if budget.bailed {
 				break
 			}
 			key, value := node.Content[i], node.Content[i+1]
-			budget.nodes++
-			if budget.nodes > blueprintMaxNodes {
-				problems = append(problems, budget.fail("BLUEPRINT_YAML_NODES", pointer, fmt.Sprintf("Blueprint contains more than %d YAML nodes", blueprintMaxNodes), key)...)
+			if breach := budget.countNode(pointer, key); breach != nil {
+				problems = append(problems, breach...)
 				break
 			}
 			if key.Kind != yaml.ScalarNode || key.Tag != "!!str" {

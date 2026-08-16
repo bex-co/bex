@@ -33,6 +33,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
@@ -2461,11 +2462,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 			return StackDatabaseView{}, fmt.Errorf("%w: database %q user is immutable after creation", core.ErrBadRequest, db.name)
 		}
 		if _, diskSizeDeclared := db.fields["diskSizeGB"]; diskSizeDeclared {
-			plan, ok := tiers.Postgres.ByID(existing.Spec.Plan)
-			if !ok {
-				plan = tiers.Postgres.Default()
-			}
-			allocated := max(plan.StorageGB, existing.Spec.StorageGB, existing.Status.AllocatedStorageGB)
+			allocated := postgres.DatabaseStorageHighWater(existing)
 			if db.spec.StorageGB < allocated {
 				return StackDatabaseView{}, fmt.Errorf("%w: database %q storage is grow-only: requested %d GB is below the allocated %d GB", core.ErrBadRequest, db.name, db.spec.StorageGB, allocated)
 			}

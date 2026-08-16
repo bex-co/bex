@@ -616,7 +616,17 @@ type serviceConfirmArgs struct {
 }
 
 // RegisterMCP adds the service and custom-domain tools to the shared MCP server.
+// The tools group into five independent families; each registers its own so no
+// one function carries the whole surface.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
+	s.registerServiceTools(srv)
+	s.registerAutoscalingTools(srv)
+	s.registerCustomDomainTools(srv)
+	s.registerStaticSiteTools(srv)
+	s.registerBlueprintTools(srv)
+}
+
+func (s *Service) registerServiceTools(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_services",
 		Description: "List all services (bex Apps) in a workspace with their status.",
@@ -638,13 +648,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Create a web service from a repo or a prebuilt image and get back the service to poll until its url is live. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, renderService, error) {
 		in.OwnerID = core.NamedWorkspace(ctx)
-		allowList, err := core.ResolveAllowListInputs(in.IPAllowListEntries, in.IPAllowListEntries != nil, in.IPAllowList, in.IPAllowList != nil)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		createReq := in.toCreateRequest()
-		createReq.IPAllowList = allowList
-		return renderServiceResult(s.Create(ctx, createReq))
+		return s.createWithAllowList(ctx, in.toCreateRequest(), in.IPAllowListEntries, in.IPAllowList)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -660,13 +664,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Create a static site: build a repo and serve its publishPath output from the object-store origin (no running container). Redirects/rewrites (routes) and custom response headers apply at the edge. A name already used in the target workspace is rejected (name already in use) rather than republished — use restart_service to republish an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createStaticSiteArgs) (*mcp.CallToolResult, renderService, error) {
 		in.OwnerID = core.NamedWorkspace(ctx)
-		allowList, err := core.ResolveAllowListInputs(in.IPAllowListEntries, in.IPAllowListEntries != nil, in.IPAllowList, in.IPAllowList != nil)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		createReq := in.toCreateRequest()
-		createReq.IPAllowList = allowList
-		return renderServiceResult(s.Create(ctx, createReq))
+		return s.createWithAllowList(ctx, in.toCreateRequest(), in.IPAllowListEntries, in.IPAllowList)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -838,7 +836,10 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return renderServiceResult(s.SetMaintenanceMode(ctx, in.ServiceID, MaintenanceModeView{Enabled: in.MaintenanceMode.Enabled, URI: in.MaintenanceMode.URI}))
 	})
 
-	// Autoscaling tools — tracking Render's PUT/DELETE .../autoscaling contract.
+}
+
+// registerAutoscalingTools tracks Render's PUT/DELETE .../autoscaling contract.
+func (s *Service) registerAutoscalingTools(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "get_autoscaling",
 		Description: "Get the autoscaling configuration for a service (minInstances, maxInstances, targetCPUPercent, targetMemoryPercent). Returns enabled:false when autoscaling is not configured. bex extension over Render's MCP.",
@@ -941,7 +942,10 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return renderServiceResult(s.SetIPAllowList(ctx, in.ServiceID, entries))
 	})
 
-	// Custom domain tools — tracking render-oss/render-mcp-server tool names.
+}
+
+// registerCustomDomainTools tracks render-oss/render-mcp-server tool names.
+func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_custom_domains",
 		Description: "List custom domains configured for a service. Optional verificationStatus (pending|verified) and domainType (apex|subdomain) filters narrow the result; cursor/limit page it (default 20 per page).",
@@ -1002,9 +1006,13 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return customDomainResult(s.VerifyDomain(ctx, in.ServiceID, in.Name))
 	})
 
-	// Static-site edge-rule tools. Render's official MCP ships only a
-	// non-functional update_static_site stub; bex makes routes/headers/publishPath
-	// real, delegating to the same Service verbs REST/GraphQL use.
+}
+
+// registerStaticSiteTools adds the static-site edge-rule tools. Render's
+// official MCP ships only a non-functional update_static_site stub; bex makes
+// routes/headers/publishPath real, delegating to the same Service verbs
+// REST/GraphQL use.
+func (s *Service) registerStaticSiteTools(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_static_routes",
 		Description: "List a static site's redirect/rewrite rules (in order, first match wins).",
@@ -1056,7 +1064,10 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return renderServiceResult(s.SetPublishPath(ctx, in.ServiceID, in.PublishPath))
 	})
 
-	// Blueprint verbs (w2/m15 + w2/m41 + w2/m62).
+}
+
+// registerBlueprintTools adds the Blueprint verbs (w2/m15 + w2/m41 + w2/m62).
+func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "validate_bex_yml",
 		Description: "Dry-run parse a render.yaml Blueprint and return structured per-entry errors plus a resource plan without applying anything — the safe pre-flight check before a deploy call. bex.yml remains a filename-only alias. Returns {valid, errors: [{code?, error, line?, column?, path?}], plan?}. Requires no store; always available. bex extension (pillar 4 agent safety).",
@@ -1148,6 +1159,18 @@ func (s *Service) serviceTool(fn func(context.Context, string) (AppView, error))
 	return func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, renderService, error) {
 		return renderServiceResult(fn(ctx, in.ServiceID))
 	}
+}
+
+// createWithAllowList is the shared tail of the create tools that accept an IP
+// allow list: reconcile Render's two spellings (a nil slice means the caller
+// omitted that spelling) onto the request, then create.
+func (s *Service) createWithAllowList(ctx context.Context, req CreateRequest, entries []core.IPAllowListEntry, cidrs []string) (*mcp.CallToolResult, renderService, error) {
+	allowList, err := core.ResolveAllowListInputs(entries, entries != nil, cidrs, cidrs != nil)
+	if err != nil {
+		return nil, renderService{}, err
+	}
+	req.IPAllowList = allowList
+	return renderServiceResult(s.Create(ctx, req))
 }
 
 // renderServiceResult adapts a service verb's (AppView, error) return into the
