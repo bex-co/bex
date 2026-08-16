@@ -28,9 +28,12 @@ kubeconfig_path = "/Users/tianpan/projects/bex/deploy/opensandbox/vcluster-acme.
 namespace = "opensandbox"
 informer_enabled = true
 informer_resync_seconds = 300
-informer_watch_timeout_seconds = 300
+informer_watch_timeout_seconds = 60
 workload_provider = "batchsandbox"
 image_pull_policy = "IfNotPresent"
+# See sandbox-cluster.toml: 5-min pod-ready wait so a cold agent-image pull after
+# a deploy doesn't fail sandbox creation (KUBERNETES::POD_READY_TIMEOUT).
+sandbox_create_timeout_seconds = 300
 snapshot_create_timeout_seconds = 900
 batchsandbox_template_file = "/Users/tianpan/projects/bex/deploy/opensandbox/batchsandbox-template.yaml"
 
