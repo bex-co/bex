@@ -398,7 +398,7 @@ func (c *Client) RepoAccessible(ctx context.Context, token, owner, repo string) 
 	if err != nil {
 		return false, err
 	}
-	req.Header.Set("Authorization", "token "+token)
+	setTokenAuth(req, token)
 	req.Header.Set("Accept", acceptHeader)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -435,7 +435,7 @@ func (c *Client) GetCommit(ctx context.Context, token, owner, repo, ref string) 
 	if err != nil {
 		return Commit{}, err
 	}
-	req.Header.Set("Authorization", "token "+token)
+	setTokenAuth(req, token)
 	req.Header.Set("Accept", acceptHeader)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -575,13 +575,23 @@ type FileContents struct {
 // the supplied installation access token (GitHub GET /repos/{owner}/{repo}/contents/{path}).
 // Returns ErrNotFound when the file does not exist; any other non-2xx is an *APIError.
 // The response body is bounded to 1 MiB (same as render.yaml in practice).
+// setTokenAuth sets the token Authorization header, omitting it entirely for
+// an empty token: the blueprint fetcher's documented anonymous public-repo
+// path passes "" — an empty "Authorization: token " header makes GitHub
+// return 401 where sending no header at all succeeds.
+func setTokenAuth(req *http.Request, token string) {
+	if token != "" {
+		req.Header.Set("Authorization", "token "+token)
+	}
+}
+
 func (c *Client) GetFileContents(ctx context.Context, token, owner, repo, path, ref string) (FileContents, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/contents/%s?ref=%s", c.baseURL, owner, repo, neturl.PathEscape(path), neturl.QueryEscape(ref))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return FileContents{}, err
 	}
-	req.Header.Set("Authorization", "token "+token)
+	setTokenAuth(req, token)
 	// Ask for the raw file directly — avoids base64 decoding.
 	req.Header.Set("Accept", "application/vnd.github.raw+json")
 	resp, err := c.httpClient.Do(req)
@@ -608,7 +618,7 @@ func (c *Client) GetRepoCommitSHA(ctx context.Context, token, owner, repo, branc
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Authorization", "token "+token)
+	setTokenAuth(req, token)
 	req.Header.Set("Accept", acceptHeader)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
