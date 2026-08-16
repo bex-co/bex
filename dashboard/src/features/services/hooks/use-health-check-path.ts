@@ -1,8 +1,5 @@
-import { useCallback, useState } from "react";
-import { useMutation } from "@apollo/client/react";
-import { toast } from "sonner";
 import { SetHealthCheckPathDocument } from "@/graphql/definitions";
-import { useTranslations } from "@/common/hooks/use-translations";
+import { useFieldMutation } from "@/features/services/hooks/use-field-mutation";
 
 export interface UseHealthCheckPathResult {
   setHealthCheckPath: (id: string, path: string) => Promise<boolean>;
@@ -16,26 +13,14 @@ export interface UseHealthCheckPathResult {
  * row for cron_job / background_worker / static_site.
  */
 export function useHealthCheckPath(): UseHealthCheckPathResult {
-  const { t } = useTranslations();
-  const [mutate] = useMutation(SetHealthCheckPathDocument);
-  const [busy, setBusy] = useState(false);
-
-  const setHealthCheckPath = useCallback(
-    async (id: string, path: string) => {
-      setBusy(true);
-      try {
-        await mutate({ variables: { id, path } });
-        toast.success(t("services.healthCheckPathSuccess"));
-        return true;
-      } catch {
-        toast.error(t("services.healthCheckPathError"));
-        return false;
-      } finally {
-        setBusy(false);
-      }
+  const { run, busy } = useFieldMutation(
+    SetHealthCheckPathDocument,
+    (id: string, path: string) => ({ id, path }),
+    {
+      success: "services.healthCheckPathSuccess",
+      error: "services.healthCheckPathError",
     },
-    [mutate, t],
   );
 
-  return { setHealthCheckPath, busy };
+  return { setHealthCheckPath: run, busy };
 }

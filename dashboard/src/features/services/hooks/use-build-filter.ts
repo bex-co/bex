@@ -1,8 +1,5 @@
-import { useCallback, useState } from "react";
-import { useMutation } from "@apollo/client/react";
-import { toast } from "sonner";
 import { SetBuildFilterDocument } from "@/graphql/definitions";
-import { useTranslations } from "@/common/hooks/use-translations";
+import { useFieldMutation } from "@/features/services/hooks/use-field-mutation";
 
 export interface UseBuildFilterResult {
   /**
@@ -24,28 +21,17 @@ export interface UseBuildFilterResult {
  * pushes redeploy), so the toast confirms the write rather than implying a deploy.
  */
 export function useBuildFilter(): UseBuildFilterResult {
-  const { t } = useTranslations();
-  const [mutate] = useMutation(SetBuildFilterDocument);
-  const [busy, setBusy] = useState(false);
-
-  const setBuildFilter = useCallback(
-    async (id: string, paths: string[], ignoredPaths: string[]) => {
-      setBusy(true);
-      try {
-        await mutate({
-          variables: { id, buildFilter: { paths, ignoredPaths } },
-        });
-        toast.success(t("services.buildFilterSuccess"));
-        return true;
-      } catch {
-        toast.error(t("services.buildFilterError"));
-        return false;
-      } finally {
-        setBusy(false);
-      }
+  const { run, busy } = useFieldMutation(
+    SetBuildFilterDocument,
+    (id: string, paths: string[], ignoredPaths: string[]) => ({
+      id,
+      buildFilter: { paths, ignoredPaths },
+    }),
+    {
+      success: "services.buildFilterSuccess",
+      error: "services.buildFilterError",
     },
-    [mutate, t],
   );
 
-  return { setBuildFilter, busy };
+  return { setBuildFilter: run, busy };
 }

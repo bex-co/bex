@@ -1,23 +1,12 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import {
-  Activity,
-  AlertCircle,
-  Ban,
-  CheckCircle2,
-  CircleDot,
-  GitBranch,
-  Hammer,
-  ListFilter,
-  PauseCircle,
-  PlayCircle,
-  RefreshCcw,
-  Rocket,
-  Scale,
-  Terminal,
-  XCircle,
-} from "lucide-react";
+import { Activity, AlertCircle, ListFilter, RefreshCcw } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { EventIcon } from "@/features/events/components/event-icon";
+import {
+  eventIconClass,
+  lifecycleStatusVariant,
+} from "@/features/events/lib/event-presentation";
 import {
   Card,
   CardDescription,
@@ -41,7 +30,10 @@ import {
   isCancelableDeployStatus,
 } from "@/features/deploys/lib/deploy-status";
 import { DeployActions } from "@/features/deploys/components/deploy-actions";
-import { useServiceEvents } from "@/features/events/hooks/use-service-events";
+import {
+  useServiceEvents,
+  type ServiceEventView,
+} from "@/features/events/hooks/use-service-events";
 import { ServiceEventFilter } from "@/features/events/components/service-event-filter";
 import {
   SERVICE_EVENT_TYPES,
@@ -78,102 +70,6 @@ function triggerKey(trigger: TriggerFlags): string | null {
   if (trigger.clearCache) return "services.eventsTriggerClearCache";
   if (trigger.deployedByRender) return "services.eventsTriggerDeployedByRender";
   return null;
-}
-
-function EventIcon({
-  type,
-  status,
-  factStatus,
-}: {
-  type: string;
-  status: string;
-  factStatus: string;
-}) {
-  const iconProps = { className: "size-4", "aria-hidden": true } as const;
-
-  if (type === "deploy_started") return <Rocket {...iconProps} />;
-  if (type === "build_started") return <Hammer {...iconProps} />;
-  if (type === "pre_deploy_started") return <Terminal {...iconProps} />;
-  // Lifecycle-step endings (w7/m66) render by their outcome: check / cross / ban.
-  if (
-    type === "build_ended" ||
-    type === "pre_deploy_ended" ||
-    type === "job_run_ended"
-  ) {
-    if (factStatus === "failed") return <XCircle {...iconProps} />;
-    if (factStatus === "canceled") return <Ban {...iconProps} />;
-    return <CheckCircle2 {...iconProps} />;
-  }
-  if (type === "branch_deleted") return <GitBranch {...iconProps} />;
-  if (type === "image_pull_failed" || type === "server_failed") {
-    return <XCircle {...iconProps} />;
-  }
-  if (type === "deploy_ended") {
-    return status === "update_failed" ? (
-      <XCircle {...iconProps} />
-    ) : (
-      <CheckCircle2 {...iconProps} />
-    );
-  }
-  if (type === "suspender_added" || type === "service_suspended") {
-    return <PauseCircle {...iconProps} />;
-  }
-  if (
-    type === "suspender_removed" ||
-    type === "service_resumed" ||
-    type === "server_available"
-  ) {
-    return <PlayCircle {...iconProps} />;
-  }
-  if (type === "server_restarted") return <RefreshCcw {...iconProps} />;
-  if (
-    type === "instance_count_changed" ||
-    type === "autoscaling_config_changed" ||
-    type === "autoscaling_started" ||
-    type === "autoscaling_ended"
-  ) {
-    return <Scale {...iconProps} />;
-  }
-  return <CircleDot {...iconProps} />;
-}
-
-function eventIconClass(
-  type: string,
-  status: string,
-  factStatus: string,
-): string {
-  if (
-    status === "update_failed" ||
-    factStatus === "failed" ||
-    type === "image_pull_failed" ||
-    type === "server_failed"
-  ) {
-    return "bg-destructive/10 text-destructive";
-  }
-  if (
-    factStatus === "succeeded" ||
-    (type === "deploy_ended" && status === "live")
-  ) {
-    return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
-  }
-  if (
-    type === "deploy_started" ||
-    type === "build_started" ||
-    type === "pre_deploy_started"
-  ) {
-    return "bg-primary/10 text-primary";
-  }
-  return "bg-muted text-muted-foreground";
-}
-
-// A lifecycle-step fact's status (w7/m66) → a Badge variant. succeeded reads as
-// the default (accent), failed as destructive, canceled as a muted outline.
-function lifecycleStatusVariant(
-  status: string,
-): "default" | "destructive" | "outline" {
-  if (status === "failed") return "destructive";
-  if (status === "canceled") return "outline";
-  return "default";
 }
 
 export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
@@ -330,18 +226,7 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                     preDeployStatus={details?.preDeployStatus ?? ""}
                     preDeploy={preDeploy}
                     timestamp={event.timestamp}
-                    image={details?.image || null}
-                    commitId={details?.commitId || null}
-                    commitMessage={details?.commitMessage || null}
-                    startedAt={details?.startedAt || null}
-                    finishedAt={details?.finishedAt || null}
-                    reasonCode={details?.reasonCode || null}
-                    instanceId={details?.instanceId || null}
-                    fromCount={details?.fromCount ?? null}
-                    toCount={details?.toCount ?? null}
-                    branchFrom={details?.branchFrom || null}
-                    branchTo={details?.branchTo || null}
-                    commitUrl={details?.commitUrl || null}
+                    details={details}
                   />
                 );
                 const hasAction =
@@ -421,18 +306,7 @@ function EventSummary({
   preDeployStatus,
   preDeploy,
   timestamp,
-  image,
-  commitId,
-  commitMessage,
-  startedAt,
-  finishedAt,
-  reasonCode,
-  instanceId,
-  fromCount,
-  toCount,
-  branchFrom,
-  branchTo,
-  commitUrl,
+  details,
 }: {
   type: string;
   status: string;
@@ -443,20 +317,24 @@ function EventSummary({
   preDeployStatus: string;
   preDeploy: string | null;
   timestamp: string | null;
-  image?: string | null;
-  commitId?: string | null;
-  commitMessage?: string | null;
-  startedAt?: string | null;
-  finishedAt?: string | null;
-  reasonCode?: string | null;
-  instanceId?: string | null;
-  fromCount?: number | null;
-  toCount?: number | null;
-  branchFrom?: string | null;
-  branchTo?: string | null;
-  commitUrl?: string | null;
+  // The event's own payload. Its fields were previously re-spelled as twelve
+  // pass-through props, so a rename on ServiceEventView had to be mirrored in
+  // two more places to keep compiling.
+  details: ServiceEventView["details"];
 }) {
   const { t } = useTranslations();
+  const image = details?.image || null;
+  const commitId = details?.commitId || null;
+  const commitMessage = details?.commitMessage || null;
+  const startedAt = details?.startedAt || null;
+  const finishedAt = details?.finishedAt || null;
+  const reasonCode = details?.reasonCode || null;
+  const instanceId = details?.instanceId || null;
+  const fromCount = details?.fromCount ?? null;
+  const toCount = details?.toCount ?? null;
+  const branchFrom = details?.branchFrom || null;
+  const branchTo = details?.branchTo || null;
+  const commitUrl = details?.commitUrl || null;
   const isDeploy = type === "deploy_started" || type === "deploy_ended";
   const exactTimestamp = formatDateTime(timestamp);
   // Compute deploy duration (w1/m47): startedAt → finishedAt
