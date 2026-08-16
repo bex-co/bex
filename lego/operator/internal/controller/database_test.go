@@ -298,6 +298,22 @@ func TestCnpgClusterSpecManagedRoles(t *testing.T) {
 	if _, has := bare["managed"]; has {
 		t.Error("no users => no managed block")
 	}
+
+	// A deleted user projects an ensure:absent tombstone so CNPG drops the live
+	// role from PostgreSQL (codex #8/#2) — even with no remaining present users,
+	// the managed block must still carry the drop.
+	dropped := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, dbname: "d", owner: "d_user", deletedUsers: []string{"reporting"}})
+	dropRoles := dropped["managed"].(map[string]any)["roles"].([]any)
+	if len(dropRoles) != 1 {
+		t.Fatalf("deleted user => one absent role, got %v", dropRoles)
+	}
+	drop := dropRoles[0].(map[string]any)
+	if drop["name"] != "reporting" || drop["ensure"] != "absent" {
+		t.Errorf("tombstone role = %v, want ensure:absent reporting", drop)
+	}
+	if _, has := drop["login"]; has {
+		t.Errorf("absent tombstone must not assert login: %v", drop)
+	}
 }
 
 func TestScheduledBackupSpec(t *testing.T) {

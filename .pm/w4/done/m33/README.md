@@ -1,6 +1,6 @@
 # w4 · m33 — Codex round-4 security remediation: authorize the sink, finish the revoke
 
-**Worker:** worker4 **Goal:** Close the six P0/P1 findings from the round-4 codex-security scan (`e815388e`). Three are one-relation authorization bugs where a second path to a sensitive sink kept the weaker relation; two are revocation paths that report success without revoking; one is a CI trust boundary. **Status:** todo (t001–t003 done)
+**Worker:** worker4 **Goal:** Close the six P0/P1 findings from the round-4 codex-security scan (`e815388e`). Three are one-relation authorization bugs where a second path to a sensitive sink kept the weaker relation; two are revocation paths that report success without revoking; one is a CI trust boundary. **Status:** done — t001–t003 landed in the original pass; t004/t005/t006 were resolved by later codex rounds (#8/#9/#11) that re-found and re-fixed the same shapes, verified against HEAD 2026-08-15; two missing t005 test assertions backfilled here
 
 ## Tasks (in order)
 
@@ -9,13 +9,13 @@
 | t001 | Native SSH: gate the `pods/exec` sink on `can_view_sensitive` (finding #8) | 30m | —          | — **DONE** |
 | t002 | Agent-session `Steer`: gate on `can_create` (finding #3)                   | 45m | —          | — **DONE** |
 | t003 | `ChangeRole` retry: converge to the exact role, not just the grant (#4)    | 30m | —          | — **DONE** |
-| t004 | Device flow: never pair a grant on the signed-out GET (finding #7)         | 1.5h | —         | todo   |
-| t005 | Managed Postgres `DeleteUser`: revoke the login before success (#2)        | 1.5h | —         | todo   |
-| t006 | Pin every credentialed `workflow_dispatch` job to main (finding #1)        | 45m | —          | todo   |
-| t007 | Render parity                                                             | 20m | t004, t005, t006 | todo |
-| t008 | Simplify                                                                  | 15m | t007       | todo   |
-| t009 | Test coverage                                                             | 45m | t007       | todo   |
-| t010 | Closeout                                                                  | 15m | t009       | todo   |
+| t004 | Device flow: never pair a grant on the signed-out GET (finding #7)         | 1.5h | —         | — **DONE** |
+| t005 | Managed Postgres `DeleteUser`: revoke the login before success (#2)        | 1.5h | —         | — **DONE** |
+| t006 | Pin every credentialed `workflow_dispatch` job to main (finding #1)        | 45m | —          | — **DONE** |
+| t007 | Render parity                                                             | 20m | t004, t005, t006 | — **DONE** |
+| t008 | Simplify                                                                  | 15m | t007       | — **DONE** |
+| t009 | Test coverage                                                             | 45m | t007       | — **DONE** |
+| t010 | Closeout                                                                  | 15m | t009       | — **DONE** |
 
 ## Definition of done
 
