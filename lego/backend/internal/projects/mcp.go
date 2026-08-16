@@ -76,10 +76,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, projectsResult{}, err
 		}
 		requested := in.Cursor != "" || in.Limit != 0
-		limit := core.DefaultPageLimit
-		if in.Limit != 0 {
-			limit = core.PageLimit(in.Limit)
-		}
+		limit := core.PageLimitOrDefault(in.Limit)
 		ps = core.StablePage(ps, in.Cursor, limit, requested, func(project ProjectView) string { return project.ID })
 		result := projectsResult{Projects: ps}
 		if requested && len(ps) > 0 {

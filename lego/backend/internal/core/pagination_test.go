@@ -250,3 +250,37 @@ func TestStablePage(t *testing.T) {
 		t.Fatalf("StablePage mutated input: %v", items)
 	}
 }
+
+// TestPageLimitOrDefaultTreatsZeroAsAbsent pins the distinction that makes this
+// a separate function from PageLimit, which is the whole reason it exists: for
+// a typed adapter argument 0 means OMITTED, and PageLimit would clamp it UP to
+// 1 rather than defaulting it — serving one item per page. list_environments
+// shipped that way (it called PageLimit directly), and it is invisible except
+// in the page size, so the seam is pinned here for every consumer at once.
+func TestPageLimitOrDefaultTreatsZeroAsAbsent(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		limit int
+		want  int
+	}{
+		{"absent defaults", 0, DefaultPageLimit},
+		{"in range passes through", 7, 7},
+		{"oversized clamps", MaxPageLimit + 50, MaxPageLimit},
+		{"exactly the max is kept", MaxPageLimit, MaxPageLimit},
+		// A negative is a caller error, not an absence: it clamps to the floor
+		// like any other out-of-range value rather than silently becoming a
+		// default page. Callers that want negatives treated as absent keep
+		// their own `< 1` branch (see this function's doc).
+		{"negative clamps to the floor", -5, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := PageLimitOrDefault(tc.limit); got != tc.want {
+				t.Errorf("PageLimitOrDefault(%d) = %d, want %d", tc.limit, got, tc.want)
+			}
+		})
+	}
+	// The contrast that motivates the function at all.
+	if PageLimit(0) == PageLimitOrDefault(0) {
+		t.Error("PageLimit and PageLimitOrDefault agree on 0; the distinction this function exists for is gone")
+	}
+}

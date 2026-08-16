@@ -432,8 +432,14 @@ type Filter struct {
 // string form every adapter has them in (a query value, a GraphQL argument, an
 // MCP tool field). One translator for all three, so a REST call and a tool call
 // with the same params cannot page differently. An unparseable timestamp is left
-// zero — the Service then applies Render's default window — rather than 400,
-// which is the permissive reading every other bex list fragment takes.
+// zero — the Service then applies Render's default window — rather than 400.
+//
+// That is this fragment ALONE, not the house style: every other caller-supplied
+// time filter answers a named 400, and core.ParseTime's own doc states the rule
+// — a silently dropped bound widens the effective window past caps like
+// BEX_MAX_QUERY_HOURS. What justifies the permissiveness HERE is the default
+// window below: a dropped bound still yields a defined, bounded result. A list
+// with no default window has nothing to land on and must be strict.
 func FilterOf(eventType, startTime, endTime, cursor string, limit int) Filter {
 	f := Filter{Type: eventType, Cursor: cursor, Limit: pageLimit(limit)}
 	if t, err := time.Parse(time.RFC3339, startTime); err == nil {

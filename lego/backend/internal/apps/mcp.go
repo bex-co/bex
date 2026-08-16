@@ -958,12 +958,7 @@ func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 		if err != nil {
 			return nil, domainListResult{}, err
 		}
-		limit := in.Limit
-		if limit == 0 {
-			limit = core.DefaultPageLimit
-		} else {
-			limit = core.PageLimit(limit)
-		}
+		limit := core.PageLimitOrDefault(in.Limit)
 		page := core.StablePage(domains, in.Cursor, limit, in.Cursor != "" || in.Limit != 0,
 			func(d DomainView) string { return d.Name })
 		out := make([]renderCustomDomain, 0, len(page))

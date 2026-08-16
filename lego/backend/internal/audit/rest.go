@@ -145,29 +145,22 @@ func toAuditLogList(events []Event) []auditLogWithCursor {
 }
 
 // filterFromQuery translates Render's startTime/endTime/direction/cursor/
-// limit query params into Filter. direction is honored (w4/013): backward
-// (default) is newest-first, forward oldest-first, anything else a named 400
-// — validated in Service.List so REST and GraphQL share one check.
-func filterFromQuery(q url.Values) Filter {
-	var f Filter
-	if v := q.Get("startTime"); v != "" {
-		if t, err := time.Parse(time.RFC3339, v); err == nil {
-			f.Since = t
-		}
-	}
-	if v := q.Get("endTime"); v != "" {
-		if t, err := time.Parse(time.RFC3339, v); err == nil {
-			f.Until = t
-		}
-	}
-	f.Direction = q.Get("direction")
-	f.Cursor = q.Get("cursor")
+// limit query params into Filter, over the one shared translator (FilterOf)
+// the GraphQL fragment also uses. direction is honored (w4/013) and validated
+// in Service.List; the time bounds are validated in FilterOf.
+//
+// limit keeps the tolerant Atoi reading: this list clamps rather than rejects
+// (see Filter.Limit), so an unparseable one falls through to the store's real
+// default page. Contrast deploys and jobs, whose stores read <=0 as absent and
+// answer with the MAX page — which is why they reject instead.
+func filterFromQuery(q url.Values) (Filter, error) {
+	limit := 0
 	if v := q.Get("limit"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
-			f.Limit = n
+			limit = n
 		}
 	}
-	return f
+	return FilterOf(q.Get("startTime"), q.Get("endTime"), q.Get("direction"), q.Get("cursor"), limit)
 }
 
 // RegisterREST mounts GET /v1/owners/{ownerId}/audit-logs. Store unconfigured
@@ -175,7 +168,12 @@ func filterFromQuery(q url.Values) Filter {
 // 403 (core.ErrForbidden) — both via the shared core.WriteErr mapper.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/owners/{ownerId}/audit-logs", func(w http.ResponseWriter, r *http.Request) {
-		events, err := s.List(r.Context(), r.PathValue("ownerId"), filterFromQuery(r.URL.Query()))
+		filter, err := filterFromQuery(r.URL.Query())
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		events, err := s.List(r.Context(), r.PathValue("ownerId"), filter)
 		if err != nil {
 			core.WriteErr(w, err)
 			return

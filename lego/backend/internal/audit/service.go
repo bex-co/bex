@@ -162,7 +162,41 @@ type Filter struct {
 	// so REST and GraphQL cannot diverge.
 	Direction string
 	Cursor    string
-	Limit     int
+	// Limit is clamped, not rejected, when non-positive or above the audit cap
+	// (both fall back to the default page, not to the cap): the
+	// store substitutes a real default page (store.DefaultAuditPageSize)
+	// rather than reading <=0 as "unbounded", which is the discriminator
+	// core.ErrLimitNotPositive documents between the two limit policies. The
+	// deploys/jobs lists reject for exactly the opposite reason.
+	Limit int
+}
+
+// FilterOf builds a Filter from the params in the string form every adapter
+// has them in (a query value, a GraphQL argument) — one translator for both
+// surfaces, the deploys.FilterOf/jobs.FilterFromStrings precedent, so a REST
+// call and a GraphQL query with the same params cannot page differently.
+//
+// A malformed time bound is a named 400, NOT a silently dropped filter. Both
+// adapters used to parse these inline with `if err == nil { assign }`, so
+// `?startTime=yesterday` answered with the store's default page of the
+// caller's whole history, UNFILTERED by the window they asked for — a wrong
+// answer shaped exactly like the right one, with no error to notice. (The read
+// was never row-unbounded: Limit stayed 0 and the store substitutes
+// store.DefaultAuditPageSize. It is the dropped FILTER that is the defect.)
+//
+// That is the same rule the Direction field above already carries (w3/m8,
+// "nothing accepted is ignored"); it had simply never been applied to the time
+// bounds beside it.
+func FilterOf(startTime, endTime, direction, cursor string, limit int) (Filter, error) {
+	f := Filter{Direction: direction, Cursor: cursor, Limit: limit}
+	var err error
+	if f.Since, err = core.ParseTime("startTime", startTime); err != nil {
+		return Filter{}, err
+	}
+	if f.Until, err = core.ParseTime("endTime", endTime); err != nil {
+		return Filter{}, err
+	}
+	return f, nil
 }
 
 // List returns ownerID's audit trail — newest-first unless
