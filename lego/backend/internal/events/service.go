@@ -454,12 +454,7 @@ func FilterOf(eventType, startTime, endTime, cursor string, limit int) Filter {
 // pageLimit clamps a caller's limit to Render's bounds — the same clamp
 // core.PageParams applies to a query string, for the two adapters that don't
 // have one.
-func pageLimit(limit int) int {
-	if limit < 1 {
-		return core.DefaultPageLimit
-	}
-	return min(limit, core.MaxPageLimit)
-}
+func pageLimit(limit int) int { return core.PageLimitOrAbsent(limit) }
 
 // Service is the events feature. Store nil (BEX_CP_DB_URI unset) ⇒ every read
 // reports core.ErrEventsUnavailable: the feed's sources are control-plane

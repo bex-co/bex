@@ -666,10 +666,7 @@ func (s *Service) ListBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor 
 	if _, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID); err != nil {
 		return nil, err
 	}
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
-	runs, err := s.Blueprints.ListBlueprintSyncs(ctx, bpID, cursor, limit)
+	runs, err := s.Blueprints.ListBlueprintSyncs(ctx, bpID, cursor, core.PageLimitOrAbsent(limit))
 	if err != nil {
 		return nil, err
 	}

@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
@@ -243,9 +244,13 @@ func (s *PGStore) UpdateBlueprintSync(ctx context.Context, id, state string, com
 // ListBlueprintSyncs returns sync runs for a blueprint, newest first, with
 // cursor-based paging (exclusive, by started_at DESC + id).
 func (s *PGStore) ListBlueprintSyncs(ctx context.Context, blueprintID, cursor string, limit int) ([]BlueprintSync, error) {
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
+	// core's shared bounds, not hand-spelled literals. The previous form
+	// (`<= 0 || > 100 ⇒ 20`) folded the oversized arm in with the absent one,
+	// so an oversized limit got the default page instead of the max. The
+	// service layer clamps before calling and can no longer pass an oversized
+	// value down, so this was the same defect one layer deeper — latent rather
+	// than live, and the copy the service's own version was written from.
+	limit = core.PageLimitOrAbsent(limit)
 	var rows interface {
 		Next() bool
 		Scan(...any) error

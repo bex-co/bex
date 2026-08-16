@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
-	"strconv"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
@@ -296,7 +295,11 @@ func (s *Service) handleSetIPAllowList(w http.ResponseWriter, r *http.Request) {
 // handleKeyValueLogs is GET /v1/key-value/{id}/logs (w3/m30).
 func (s *Service) handleKeyValueLogs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	limit, _ := strconv.ParseInt(q.Get("limit"), 10, 64)
+	limit, err := core.QueryLimit64(q, "limit")
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
 	since, end, err := core.ParseTimeWindow(q.Get("startTime"), q.Get("endTime"))
 	if err != nil {
 		core.WriteErr(w, err)

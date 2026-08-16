@@ -2532,14 +2532,8 @@ func (s *Service) ListCronRuns(ctx context.Context, name, cursor string, limit i
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return nil, core.ErrNotFound
 	}
-	if limit < 1 {
-		limit = core.DefaultPageLimit
-	}
-	if limit > core.MaxPageLimit {
-		limit = core.MaxPageLimit
-	}
 	runs := cronRunViews(a.Status.Runs)
-	return core.Page(runs, cursor, limit, func(run CronRunView) string { return run.ID }), nil
+	return core.Page(runs, cursor, core.PageLimitOrAbsent(limit), func(run CronRunView) string { return run.ID }), nil
 }
 
 // GetCronRun fetches one run by its stable derived id, scoped to its cron_job.

@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"slices"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -287,12 +286,8 @@ func parseLogParams(r *http.Request) ([]string, LogQuery, error) {
 	if err != nil {
 		return nil, LogQuery{}, err
 	}
-	if l := v.Get("limit"); l != "" {
-		n, err := strconv.ParseInt(l, 10, 64)
-		if err != nil {
-			return nil, LogQuery{}, fmt.Errorf("%w: limit: %s", core.ErrBadRequest, err)
-		}
-		q.Limit = n
+	if q.Limit, err = core.QueryLimit64(v, "limit"); err != nil {
+		return nil, LogQuery{}, err
 	}
 
 	return resources, q, nil

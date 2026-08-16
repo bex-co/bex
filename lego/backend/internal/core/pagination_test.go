@@ -284,3 +284,39 @@ func TestPageLimitOrDefaultTreatsZeroAsAbsent(t *testing.T) {
 		t.Error("PageLimit and PageLimitOrDefault agree on 0; the distinction this function exists for is gone")
 	}
 }
+
+// TestPageLimitOrAbsentTreatsAnyNonPositiveAsAbsent pins the second, more
+// forgiving of core's two limit rules, and — crucially — pins how it DIFFERS
+// from PageLimitOrDefault. The two are one character apart at the call site and
+// disagree on exactly one input, the negative: this one answers with a default
+// page, the other with the one-row floor. A list that picks the wrong one is
+// not a compile error and not a visible failure, only a differently sized page.
+func TestPageLimitOrAbsentTreatsAnyNonPositiveAsAbsent(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		limit int
+		want  int
+	}{
+		{"absent defaults", 0, DefaultPageLimit},
+		{"negative is absent too", -5, DefaultPageLimit},
+		{"in range passes through", 7, 7},
+		{"exactly the max is kept", MaxPageLimit, MaxPageLimit},
+		// The arm three separate lists got wrong by folding it in with "absent":
+		// an oversized limit must clamp DOWN TO THE MAX, never back to the
+		// default, or asking for more returns less than asking for nothing.
+		{"oversized clamps to the max, not the default", MaxPageLimit + 400, MaxPageLimit},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := PageLimitOrAbsent(tc.limit); got != tc.want {
+				t.Errorf("PageLimitOrAbsent(%d) = %d, want %d", tc.limit, got, tc.want)
+			}
+		})
+	}
+
+	// The one input the two rules disagree on. If this ever passes, they have
+	// collapsed into each other and one of the call sites is now wrong.
+	if PageLimitOrAbsent(-5) == PageLimitOrDefault(-5) {
+		t.Error("PageLimitOrAbsent and PageLimitOrDefault agree on a negative; " +
+			"the distinction the two helpers exist for is gone")
+	}
+}

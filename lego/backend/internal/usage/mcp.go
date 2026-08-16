@@ -39,8 +39,11 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name:        "get_usage",
 		Description: "Get month-to-date usage (instance-seconds by tier, egress bytes, build seconds, managed-datastore storage GB-seconds, and weighted sandbox compute seconds) for the caller's workspace, plus an estimated cost in USD (estimate only — not an invoice). When the workspace has a bex Stripe subscription, the response also carries a `billing` object with the real current-period invoice preview and finalized invoices (absent for estimate-only workspaces). Returns the same quantities, cost estimate, and billing as GET /v1/usage.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getUsageArgs) (*mcp.CallToolResult, usageResponse, error) {
-		now := resolvePeriodEnd(in.Period, s.Now().UTC())
-		summary, err := s.monthToDateAt(ctx, core.NamedWorkspace(ctx), now)
+		asOf, err := ResolvePeriodEnd(in.Period, s.Now().UTC())
+		if err != nil {
+			return nil, usageResponse{}, err
+		}
+		summary, err := s.monthToDateAt(ctx, core.NamedWorkspace(ctx), asOf)
 		if err != nil {
 			return nil, usageResponse{}, err
 		}

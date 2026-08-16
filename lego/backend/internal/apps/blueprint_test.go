@@ -45,6 +45,9 @@ import (
 
 type fakeBlueprintStore struct {
 	blueprints map[string]store.Blueprint // key: id
+	// gotSyncLimit records the limit ListBlueprintSyncs was called with, so the
+	// service's clamp is asserted where it is applied rather than re-derived.
+	gotSyncLimit int
 }
 
 func newFakeBlueprintStore(bs ...store.Blueprint) *fakeBlueprintStore {
@@ -147,6 +150,7 @@ func (f *fakeBlueprintStore) UpdateBlueprintSync(_ context.Context, id, state st
 
 func (f *fakeBlueprintStore) ListBlueprintSyncs(_ context.Context, blueprintID, _ string, limit int) ([]store.BlueprintSync, error) {
 	_ = blueprintID
+	f.gotSyncLimit = limit
 	return nil, nil
 }
 
