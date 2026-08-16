@@ -223,12 +223,7 @@ func matchesEnvGroupFilter(group scopedMeta, filter EnvGroupListFilter) bool {
 // requested=false when neither cursor nor limit was supplied, preserving the
 // historical complete-list behavior; an explicit page is stable by group id.
 func pageEnvGroups(groups []EnvGroupView, cursor string, limit int, requested bool) []EnvGroupView {
-	if limit == 0 {
-		limit = core.DefaultPageLimit
-	} else {
-		limit = core.PageLimit(limit)
-	}
-	return core.StablePage(groups, cursor, limit, requested, func(group EnvGroupView) string { return group.ID })
+	return core.StablePage(groups, cursor, core.PageLimitOrDefault(limit), requested, func(group EnvGroupView) string { return group.ID })
 }
 
 // EnvironmentMembership is the non-secret, narrow projection the Environments

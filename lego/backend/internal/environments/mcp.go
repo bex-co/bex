@@ -103,7 +103,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err != nil {
 			return nil, environmentsResult{}, err
 		}
-		limit := core.PageLimit(in.Limit)
+		limit := core.PageLimitOrDefault(in.Limit)
 		paged := core.StablePage(es, in.Cursor, limit, in.Cursor != "" || in.Limit != 0, func(e EnvironmentView) string { return e.ID })
 		return nil, environmentsResult{Environments: paged}, nil
 	})

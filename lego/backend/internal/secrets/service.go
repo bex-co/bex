@@ -218,28 +218,42 @@ func envSourceUnavailable() error {
 }
 
 // ListEnvVarsPage returns a stable keyset page of a service's environment
-// variables. limit == 0 with no cursor preserves the original unbounded-list
-// behavior; cursor with no limit uses Render's default. A positive limit is
-// clamped to Render's public API maximum. after is the prior page's item cursor
-// (the env-var key).
+// variables. after is the prior page's item cursor (the env-var key). Paging
+// policy: see applyPageLimits.
 func (s *Service) ListEnvVarsPage(ctx context.Context, service, after string, limit int) ([]EnvVarView, error) {
 	vars, err := s.ListEnvVars(ctx, service)
 	if err != nil {
 		return nil, err
 	}
+	return applyPageLimits(vars, after, limit, func(v EnvVarView) string { return v.Key })
+}
+
+// applyPageLimits is the paging contract both sensitive list verbs share
+// (ListEnvVarsPage and ListSecretFilesPage): naming NEITHER cursor nor limit
+// returns the whole list, preserving the pre-pagination clients' complete
+// response; naming either opts into Render's window, where an absent limit is
+// DefaultPageLimit and an oversized one clamps to MaxPageLimit.
+//
+// A NEGATIVE limit is refused rather than clamped. These lists page in memory
+// over an already-sorted slice, so a negative would otherwise flow into
+// core.Page's `start + limit` and silently yield an empty tail — a caller who
+// mistyped a limit would read "this service has no env vars", which is the
+// same class of invisible wrong answer core.ErrLimitNotPositive exists for.
+//
+// Shared because it is four policy branches, not boilerplate: the two verbs
+// carried it verbatim, so fixing one and not the other would silently give a
+// service's env vars and its secret files different paging.
+func applyPageLimits[T any](items []T, after string, limit int, cursorOf func(T) string) ([]T, error) {
 	if limit == 0 && after == "" {
-		return vars, nil
-	}
-	if limit == 0 {
-		limit = core.DefaultPageLimit
+		return items, nil
 	}
 	if limit < 0 {
 		return nil, core.ErrLimitNotPositive
 	}
-	if limit > core.MaxPageLimit {
-		limit = core.MaxPageLimit
+	if limit == 0 {
+		limit = core.DefaultPageLimit
 	}
-	return core.Page(vars, after, limit, func(v EnvVarView) string { return v.Key }), nil
+	return core.Page(items, after, core.PageLimit(limit), cursorOf), nil
 }
 
 // GetEnvVar returns a single variable (Render's GET .../env-vars/{key}), the bare

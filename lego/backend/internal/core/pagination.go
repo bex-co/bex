@@ -220,9 +220,38 @@ func PageParams(q url.Values) (after string, limit int) {
 	return after, PageLimit(limit)
 }
 
+// PageLimitOrDefault is PageLimit for a typed adapter, where 0 means the
+// argument was OMITTED rather than set to zero: absent ⇒ DefaultPageLimit, and
+// anything else clamps through PageLimit.
+//
+// It exists because PageLimit alone is the wrong function for that job and
+// fails quietly. PageLimit(0) is 1 — correct for a query string, where
+// PageParams has already substituted the default before clamping, and wrong
+// for an MCP/GraphQL int, where 0 IS the absent value. A list that reached for
+// PageLimit directly therefore served one item per page while its own schema
+// advertised twenty, and paged correctly, so only the page size gave it away
+// (found in list_environments). Three sibling MCP tools had already hand-rolled
+// this two-line branch to avoid that; this is the seam they were reinventing.
+//
+// Deliberately keyed on == 0, not < 1. The `pageLimit` helpers in events and
+// apps look like more copies but treat any value below one — negatives
+// included — as absent, which is a different and more forgiving rule; folding
+// them in would silently turn their negative-limit answer from a default page
+// into a one-item page. gqlutil.Page is likewise left alone: it already
+// detects absence from the ARGUMENT MAP, which is strictly better than
+// inferring it from a zero, and switching it would change what an explicit
+// `limit: 0` returns.
+func PageLimitOrDefault(limit int) int {
+	if limit == 0 {
+		return DefaultPageLimit
+	}
+	return PageLimit(limit)
+}
+
 // PageLimit clamps a caller-supplied page size to Render's public bounds.
 // Adapters with typed arguments (GraphQL/MCP) use this to apply the same
-// semantics as PageParams without round-tripping through URL strings.
+// semantics as PageParams without round-tripping through URL strings. When 0
+// means "omitted" rather than "zero", use PageLimitOrDefault instead.
 func PageLimit(limit int) int {
 	switch {
 	case limit < 1:

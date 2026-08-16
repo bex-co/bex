@@ -100,21 +100,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"limit":     &graphql.ArgumentConfig{Type: graphql.Int},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				var f Filter
-				if v, _ := p.Args["startTime"].(string); v != "" {
-					if t, err := time.Parse(time.RFC3339, v); err == nil {
-						f.Since = t
-					}
-				}
-				if v, _ := p.Args["endTime"].(string); v != "" {
-					if t, err := time.Parse(time.RFC3339, v); err == nil {
-						f.Until = t
-					}
-				}
-				f.Direction, _ = p.Args["direction"].(string)
-				f.Cursor, _ = p.Args["cursor"].(string)
-				if v, ok := p.Args["limit"].(int); ok {
-					f.Limit = v
+				f, err := FilterOf(
+					gqlutil.Str(p.Args, "startTime"), gqlutil.Str(p.Args, "endTime"),
+					gqlutil.Str(p.Args, "direction"), gqlutil.Str(p.Args, "cursor"), gqlutil.Int(p.Args, "limit"),
+				)
+				if err != nil {
+					return nil, err
 				}
 				return s.List(p.Context, p.Args["ownerId"].(string), f)
 			},
