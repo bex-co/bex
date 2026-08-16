@@ -34,7 +34,7 @@ export const Route = createFileRoute("/workspace/settings")({
  * `/settings` (account settings, Kratos-backed) since a workspace and a user
  * account are different objects with different owners.
  */
-export function WorkspaceSettingsPage() {
+function WorkspaceSettingsPage() {
   const { t } = useTranslations();
   const { currentWorkspace, loading } = useWorkspace();
   const { plan } = Route.useSearch();
