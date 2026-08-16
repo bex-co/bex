@@ -272,6 +272,13 @@ func (s *Service) ListExports(ctx context.Context, name string) ([]ExportView, e
 	if err != nil {
 		return nil, err
 	}
+	// codex round-9 #7: every available row below is presigned into a fresh
+	// 15-minute bearer download URL — a bearer-capability mint. Reassert
+	// can_view_sensitive uncached so a revocation inside PositiveTTL cannot
+	// ride a cached positive to one last full-dump URL.
+	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanViewSensitive, d); err != nil {
+		return nil, err
+	}
 	statusByID := make(map[string]appv1alpha1.DatabaseExportStatus, len(d.Status.Exports))
 	for _, status := range d.Status.Exports {
 		statusByID[status.ID] = status

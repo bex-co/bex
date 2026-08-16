@@ -48,14 +48,19 @@ import (
 //
 // WHERE THE CLASS ENDS. A verb is in it when the API accepts code from OUTSIDE
 // the service's already-approved source: an arbitrary command string, an
-// arbitrary image reference, an arbitrary commit to resurrect. Verbs that only
-// select among content already inside the approved repo at the approved
-// revision are build configuration, not executable selection, and stay on
-// can_operate — SetRootDir and SetDockerfilePath were both examined for this
-// pass and deliberately left as lifecycle on that reasoning. The line matters
-// because it is what a future reviewer needs in order to place a new verb, and
-// because bex's role boundary cannot govern repo contents anyway: a contributor
-// with git write already changes the code that auto-deploys. What bex CAN
+// arbitrary image reference, an arbitrary commit to resurrect — or when it
+// repoints the build at DIFFERENT in-repo content. SetRootDir and
+// SetDockerfilePath were examined for the m68 pass and deliberately left on
+// can_operate ("selects among content already inside the approved repo");
+// codex round-9 #8 reversed that: an API role and git access are independent
+// axes — a workspace contributor may hold no write access to the bound
+// repository at all, and every pre-existing subtree or Dockerfile (vendored
+// examples, an old branch's file, anyone's historical commit) is selectable
+// by them — so pointing BuildKit's context and Dockerfile at chosen in-repo
+// bytes IS choosing what executes, and both verbs gate on can_create. Verbs
+// that only select WHEN the approved content runs (a cron schedule, a bare
+// redeploy) remain lifecycle on can_operate. The line matters because it is
+// what a future reviewer needs in order to place a new verb. What bex CAN
 // govern is what it accepts as input, which is exactly this class.
 
 // execSelectionCase is one call into the class: how to invoke it, and the
@@ -141,6 +146,23 @@ func execSelectionCases() []execSelectionCase {
 			_, err := (&deploys.Service{Base: base}).Trigger(ctx, "web", deploys.TriggerParams{})
 			return err
 		},
+	}, {
+		// codex round-9 #8: the build root selects which repository subtree
+		// BuildKit executes — in-repo bytes, but chosen by the caller (see the
+		// class-boundary note above for why that is executable selection).
+		name:              "build root directory",
+		selectsExecutable: true,
+		invoke: func(ctx context.Context, base *core.Base) error {
+			_, err := (&apps.Service{Base: base}).SetRootDir(ctx, "web", "vendor/example")
+			return err
+		},
+	}, {
+		name:              "dockerfile path",
+		selectsExecutable: true,
+		invoke: func(ctx context.Context, base *core.Base) error {
+			_, err := (&apps.Service{Base: base}).SetDockerfilePath(ctx, "web", "vendor/example/Dockerfile.pwn")
+			return err
+		},
 	}}
 }
 
@@ -222,6 +244,8 @@ func TestExecutableSelectionClassIsComplete(t *testing.T) {
 		"*apps.Service.SetCronJob":          "cron command",
 		"*jobs.Service.Create":              "one-off job command",
 		"*deploys.Service.Trigger":          "deploy trigger with imageUrl",
+		"*apps.Service.SetRootDir":          "build root directory",
+		"*apps.Service.SetDockerfilePath":   "dockerfile path",
 	}
 
 	covered := map[string]bool{}

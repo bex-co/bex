@@ -45,6 +45,13 @@ import (
 
 const maxPacketBytes = 65520
 
+// maxRequestBodyBytes caps one git smart-HTTP request body (a pack upload). A
+// legitimate session exchange is source-code sized; the cap exists so a
+// hostile Pod cannot drip an unbounded body at the shared gateway (codex
+// round-9 #4) — the server read deadline bounds its duration, this bounds its
+// bytes.
+const maxRequestBodyBytes = 256 << 20
+
 type SessionPod struct {
 	Name   string
 	UID    string
@@ -81,10 +88,24 @@ type Broker struct {
 	Audit   core.AuditSink
 	Metrics *sshgateway.Metrics
 	Now     func() time.Time
+	// Limits bounds concurrent in-flight proxy requests, globally and per
+	// source Pod IP (codex round-9 #4): the slot is acquired BEFORE the Pod
+	// lookup and credential mint and held for the whole exchange, so a hostile
+	// session Pod dripping request bodies cannot stack unbounded goroutines,
+	// file descriptors, and Kubernetes API lookups on the shared gateway. nil
+	// gets a private limiter with the defaults (64 global, 4 per source).
+	Limits *sshgateway.SessionLimiter
 	// UpstreamOrigin and HTTP are test seams. Production leaves the origin empty,
 	// which fixes every credential-bearing request to HTTPS github.com.
 	UpstreamOrigin string
 	HTTP           *http.Client
+}
+
+func (b *Broker) limiter() *sshgateway.SessionLimiter {
+	if b.Limits != nil {
+		return b.Limits
+	}
+	return sshgateway.NewSessionLimiter(0, 0)
 }
 
 func (b *Broker) Enabled() bool         { return b != nil && b.Pods != nil && b.API != nil }
@@ -105,6 +126,17 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
+	// Admission before any stateful work (codex round-9 #4): the concurrency
+	// slot is held across the Pod lookup, credential mint, pkt-line
+	// validation, and the upstream exchange, and the body is byte-capped, so
+	// slow or stacked requests cost at most one bounded slot each.
+	if ok, scope := b.limiter().Acquire(sourceIP); !ok {
+		b.Metrics.LimitRejected(scope)
+		http.Error(w, "too many concurrent git requests from this sandbox", http.StatusTooManyRequests)
+		return
+	}
+	defer b.limiter().Release(sourceIP)
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
 	pod, err := b.Pods.ResolveSessionPod(r.Context(), namespace, sourceIP)
 	if err != nil {
 		b.Metrics.Authentication("rejected_key")

@@ -761,3 +761,83 @@ func TestAgentAttachRevalidatesAtRedemption(t *testing.T) {
 		t.Fatalf("revalidator calls = %v, want exactly one", allow.calls)
 	}
 }
+
+// flipRevalidator allows every revalidation until flipped, then denies — the
+// mid-stream revocation seam for round-9 #6.
+type flipRevalidator struct {
+	mu  sync.Mutex
+	err error
+}
+
+func (f *flipRevalidator) flip(err error) {
+	f.mu.Lock()
+	f.err = err
+	f.mu.Unlock()
+}
+
+func (f *flipRevalidator) RevalidateAttach(context.Context, string, string, string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.err
+}
+
+// codex round-9 #6: redemption-time revalidation alone leaves an attached
+// stream reading the driver until it finishes or the 4h cap. The watchdog
+// re-runs the revalidation on the interval and cancels the LIVE stream — here
+// the driver holds /stream open (no [DONE]) and only the revocation can end
+// the response.
+func TestAgentAttachMidStreamRevocationAbortsLiveStream(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-00000000000000000000r"
+	revalidator := &flipRevalidator{}
+
+	// A driver that emits one part and then holds the stream open until its
+	// request context is canceled — a live session mid-conversation.
+	unblocked := make(chan struct{})
+	mux := http.NewServeMux()
+	mux.HandleFunc("/stream", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		fl := w.(http.Flusher)
+		_, _ = io.WriteString(w, "data: {\"type\":\"start\"}\n\n")
+		fl.Flush()
+		<-r.Context().Done()
+		close(unblocked)
+	})
+	driver := httptest.NewServer(mux)
+	defer driver.Close()
+	host, portStr, _ := net.SplitHostPort(strings.TrimPrefix(driver.URL, "http://"))
+	port, _ := strconv.Atoi(portStr)
+
+	gw := newAttachGateway(newFakeAttachStore(), fixedPodIP{ip: host}, secret, port)
+	gw.RevalidateInterval = 10 * time.Millisecond
+	gw.Revalidator = revalidator
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req.Header.Set(TicketHeader, attachTicket(t, secret, session))
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	// The stream is live (the part arrived); revoke mid-stream.
+	buf := make([]byte, 64)
+	if _, err := io.ReadAtLeast(resp.Body, buf, 1); err != nil {
+		t.Fatalf("stream never delivered its first part: %v", err)
+	}
+	revalidator.flip(errors.New("membership revoked"))
+
+	// The watchdog must cancel the splice: the response ends (EOF) well inside
+	// the client timeout, and the driver's request context is canceled too.
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("response did not end cleanly after revocation: %v", err)
+	}
+	select {
+	case <-unblocked:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the driver's request context was not canceled by the revocation")
+	}
+}

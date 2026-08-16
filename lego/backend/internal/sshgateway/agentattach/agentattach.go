@@ -191,6 +191,13 @@ type Server struct {
 
 	SessionTimeout time.Duration
 
+	// RevalidateInterval is how often an ESTABLISHED read/turn stream re-runs
+	// the redemption-time revalidation (codex round-9 #6): a membership
+	// revocation or session cancellation mid-stream aborts the replay/splice
+	// instead of waiting for the driver to finish or the session cap. 0 => the
+	// platform default; negative disables (pre-round-9 behavior).
+	RevalidateInterval time.Duration
+
 	// MaxTranscriptBytes overrides the per-session cumulative transcript quota
 	// (maxSessionTranscriptBytes); zero => the platform default. Tests set it
 	// small to exercise the quota without 64 MiB payloads.
@@ -210,6 +217,9 @@ type Server struct {
 func (s *Server) defaults() {
 	if s.SessionTimeout <= 0 {
 		s.SessionTimeout = 4 * time.Hour
+	}
+	if s.RevalidateInterval == 0 {
+		s.RevalidateInterval = sshgateway.DefaultRevalidateInterval
 	}
 	if s.Limits == nil {
 		s.Limits = sshgateway.NewSessionLimiter(0, 0)
@@ -358,8 +368,20 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 	defer s.Limits.Release(claims.Subject)
 	s.Metrics.Authentication("accepted")
 
-	ctx, cancel := context.WithTimeout(r.Context(), s.SessionTimeout)
-	defer cancel()
+	// codex round-9 #6: keep re-running the redemption-time revalidation while
+	// the stream is LIVE — a membership revocation or session cancellation
+	// aborts the replay/splice (every pump runs on this ctx) instead of riding
+	// until the driver finishes or the session cap.
+	timedCtx, cancelTimeout := context.WithTimeout(r.Context(), s.SessionTimeout)
+	defer cancelTimeout()
+	revalidator := s.Revalidator
+	ctx, cancelExec := sshgateway.WithRevalidation(timedCtx, s.RevalidateInterval, func(c context.Context) error {
+		if revalidator == nil {
+			return nil
+		}
+		return revalidator.RevalidateAttach(c, claims.Subject, claims.SessionID, claims.Action)
+	})
+	defer cancelExec()
 
 	podIP, ipErr := s.Pods.PodIP(ctx, claims.Namespace, claims.Pod)
 

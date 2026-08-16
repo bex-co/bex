@@ -127,7 +127,19 @@ func (s *Service) ExecuteQuery(ctx context.Context, dbID, sql string, allowWrite
 	return s.executeAuthorizedQuery(ctx, db, sql, !allowWrites)
 }
 
+// executeAuthorizedQuery resolves the connection credential and runs one
+// statement. The caller's AuthorizeDatabase already ran (and audited); codex
+// round-9 #7 adds an uncached reassertion here — arbitrary SQL is a
+// sensitive/destructive sink, so a membership revoked inside PositiveTTL must
+// not ride a cached positive to one last query against the Database.
 func (s *Service) executeAuthorizedQuery(ctx context.Context, db *appv1alpha1.Database, sql string, readOnly bool) (QueryResult, error) {
+	relation := core.RelCanViewSensitive
+	if !readOnly {
+		relation = core.RelCanCreate
+	}
+	if err := s.AuthorizeDatabaseFresh(ctx, relation, db); err != nil {
+		return QueryResult{}, err
+	}
 	if strings.TrimSpace(sql) == "" {
 		return QueryResult{}, fmt.Errorf("%w: sql is required", core.ErrBadRequest)
 	}

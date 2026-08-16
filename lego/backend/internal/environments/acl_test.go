@@ -226,6 +226,89 @@ func TestACLMutationsRequireCanManage(t *testing.T) {
 	}
 }
 
+// codex round-9 #5: deleting an ACL-bearing environment removes exactly the
+// administrator boundary SetACL guards — member protection, network isolation,
+// and the inbound-IP layer are cleared on the way to the row delete — so the
+// developer's can_create must not be enough, and the refusal must leave the
+// environment and its member controls untouched.
+func TestDeleteACLBearerEnvironmentRequiresCanManage(t *testing.T) {
+	cases := []struct {
+		name string
+		acl  CreateEnvironmentRequest
+	}{
+		{
+			name: "protected status",
+			acl:  CreateEnvironmentRequest{ProtectedStatus: ProtectedStatusProtected},
+		},
+		{
+			name: "network isolation",
+			acl:  CreateEnvironmentRequest{NetworkIsolationEnabled: true},
+		},
+		{
+			name: "inbound ip allowlist",
+			acl:  CreateEnvironmentRequest{IPAllowList: []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8"}}},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newFakeStore()
+			st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+			admin, cl := newServiceWithClient(st, sampleApp("web"))
+			dev := &Service{Base: &core.Base{Authz: developerChecker{}}, Store: st}
+			ctx := ctxAs("user-a")
+
+			req := CreateEnvironmentRequest{ProjectID: "prj-1", Name: "prod"}
+			req.ProtectedStatus = tc.acl.ProtectedStatus
+			req.NetworkIsolationEnabled = tc.acl.NetworkIsolationEnabled
+			req.IPAllowList = tc.acl.IPAllowList
+			e, err := admin.CreateWithACL(ctx, req)
+			if err != nil {
+				t.Fatalf("admin CreateWithACL: %v", err)
+			}
+			if _, err := admin.SetServices(ctx, e.ID, []string{"web"}); err != nil {
+				t.Fatalf("admin SetServices: %v", err)
+			}
+
+			// A developer (can_create, not can_manage) is refused the delete…
+			if err := dev.Delete(ctx, e.ID); !errors.Is(err, core.ErrForbidden) {
+				t.Fatalf("developer Delete of an ACL-bearing environment = %v, want ErrForbidden", err)
+			}
+			// …and the refusal changed nothing: the row survives…
+			if _, err := st.GetEnvironment(ctx, e.ID); err != nil {
+				t.Fatalf("refused delete must leave the environment row: %v", err)
+			}
+			// …and, when isolation is armed, the member's isolation label
+			// (the environment id) survives with it.
+			if tc.name == "network isolation" {
+				if got := getApp(t, cl, "web").Labels[core.LabelNetworkIsolation]; got != e.ID {
+					t.Fatalf("refused delete must leave member labels intact: got %q, want %q", got, e.ID)
+				}
+			}
+
+			// An admin (can_manage) deletes the same environment cleanly.
+			if err := admin.Delete(ctx, e.ID); err != nil {
+				t.Fatalf("admin Delete of an ACL-bearing environment: %v", err)
+			}
+		})
+	}
+}
+
+// A bare environment (no ACL state) keeps the historical developer-level
+// delete — round-9 #5 elevates only ACL-bearing environments.
+func TestDeletePlainEnvironmentStaysDeveloperLevel(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	dev := &Service{Base: &core.Base{Authz: developerChecker{}}, Store: st}
+
+	e, err := dev.Create(ctxAs("user-a"), "prj-1", "staging")
+	if err != nil {
+		t.Fatalf("developer Create: %v", err)
+	}
+	if err := dev.Delete(ctxAs("user-a"), e.ID); err != nil {
+		t.Fatalf("developer Delete of a plain environment: %v", err)
+	}
+}
+
 // --- ipAllowList propagation (t006) ---
 //
 // Reuses fakeDatabaseIndex/fakeKeyValueIndex (databases_test.go, w6/m20) —

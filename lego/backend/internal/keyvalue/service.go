@@ -449,6 +449,12 @@ func (s *Service) DeleteKeyValue(ctx context.Context, name string) error {
 	if err := s.requireUnprotected(ctx, kv, "delete"); err != nil {
 		return err
 	}
+	// codex round-9 #7: deletion is irreversible — reassert can_create uncached
+	// immediately before the CR delete, so a revocation inside PositiveTTL
+	// cannot ride a cached positive to destroy the store and its data.
+	if err := s.AuthorizeKeyValueFresh(ctx, core.RelCanCreate, kv); err != nil {
+		return err
+	}
 	return s.Client.Delete(ctx, kv)
 }
 

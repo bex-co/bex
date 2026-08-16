@@ -90,6 +90,13 @@ type Server struct {
 
 	HandshakeTimeout time.Duration
 	SessionTimeout   time.Duration
+
+	// RevalidateInterval is how often an ESTABLISHED shell bridge re-runs the
+	// target resolution + fresh can_operate authorization the upgrade path
+	// performs (codex round-9 #6): a revocation mid-shell cancels the exec
+	// context instead of waiting for the browser to disconnect or the 4h cap.
+	// 0 => the platform default; negative disables (pre-round-9 behavior).
+	RevalidateInterval time.Duration
 }
 
 func (s *Server) defaults() {
@@ -98,6 +105,9 @@ func (s *Server) defaults() {
 	}
 	if s.SessionTimeout <= 0 {
 		s.SessionTimeout = 4 * time.Hour
+	}
+	if s.RevalidateInterval == 0 {
+		s.RevalidateInterval = sshgateway.DefaultRevalidateInterval
 	}
 	if s.Limits == nil {
 		s.Limits = sshgateway.NewSessionLimiter(0, 0)
@@ -246,11 +256,29 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 		}
 	}()
 
-	execCtx, cancel := context.WithTimeout(ctx, s.SessionTimeout)
-	defer cancel()
-	if bridgeShell(execCtx, cancel, ws, s.Executor, target) {
+	// codex round-9 #6: keep re-running the ticket-time resolution + fresh
+	// authorization while the shell is LIVE — a revocation cancels the exec
+	// context (the bridge and both pump goroutines end with it) instead of
+	// waiting for the browser to disconnect or the session cap. The watchdog
+	// owns execCtx exclusively (the bridge pumps cancel only bridgeCtx), so a
+	// canceled execCtx under a live request context is unambiguously revoked.
+	timedCtx, cancelTimeout := context.WithTimeout(ctx, s.SessionTimeout)
+	defer cancelTimeout()
+	execCtx, cancelExec := sshgateway.WithRevalidation(timedCtx, s.RevalidateInterval, func(c context.Context) error {
+		resolveCtx := core.WithIdentity(c, core.Identity{Subject: claims.Subject, Method: "shell"})
+		_, err := s.Apps.ResolveSSHSession(resolveCtx, claims.Username())
+		return err
+	})
+	defer cancelExec()
+	bridgeCtx, cancelBridge := context.WithCancel(execCtx)
+	defer cancelBridge()
+	completed := bridgeShell(bridgeCtx, cancelBridge, ws, s.Executor, target)
+	switch {
+	case execCtx.Err() != nil && timedCtx.Err() == nil:
+		result = "revoked" // the watchdog ended the stream, not the client
+	case completed:
 		result = "completed"
-	} else {
+	default:
 		result = "failed"
 	}
 }

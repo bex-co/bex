@@ -5,6 +5,15 @@
 # author workloads only in tenant hosting / isolated execution namespaces, with
 # no Kubernetes credential, host namespace, hostPath, privileged container, or
 # direct mount of known CAPI crown-jewel Secrets.
+#
+# codex round-9 #13 extends the grammar to the fields the generators already
+# set, so a compromised controller cannot regress them: no direct nodeName
+# placement, no Unmasked procMount, no wildcard/control-plane tolerations; in
+# the isolated execution namespaces every pod MUST run in a user namespace
+# (hostUsers=false — that is what confines BuildKit's mount capabilities and
+# unconfined seccomp to a pod user namespace); outside them (tenant hosting +
+# legacy bootstrap) every container is restricted — no added capabilities, no
+# privilege escalation, RuntimeDefault seccomp.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -36,6 +45,10 @@ spec:
           variables.target.spec.template.spec
     - name: workspace
       expression: namespaceObject.metadata.?labels['app.bex.co/workspace'].orValue('')
+    - name: untrustedExecutionNamespace
+      expression: >-
+        namespaceObject != null &&
+        namespaceObject.metadata.?labels['app.bex.co/execution-boundary'].orValue('') == 'untrusted'
     - name: canonicalNamespace
       expression: >-
         variables.target.metadata.namespace == 'default' ||
@@ -61,21 +74,57 @@ spec:
         !variables.pod.?hostNetwork.orValue(false) &&
         !variables.pod.?hostPID.orValue(false) &&
         !variables.pod.?hostIPC.orValue(false) &&
+        !has(variables.pod.nodeName) &&
         (!has(variables.pod.volumes) || variables.pod.volumes.all(v,
           !has(v.hostPath) && (!has(v.secret) || !(v.secret.secretName in variables.crownSecrets))))
       reason: Forbidden
-      message: operator-authored workloads may not join host namespaces, mount host paths, or mount CAPI administrator Secrets
+      message: operator-authored workloads may not join host namespaces, pin a node directly, mount host paths, or mount CAPI administrator Secrets
+    # Placement grammar: tolerations must name a key — an empty-key Exists
+    # toleration tolerates every taint (control-plane included), and the
+    # control-plane/master keys reach the etcd nodes directly.
+    - expression: >-
+        (!has(variables.pod.tolerations) || variables.pod.tolerations.all(t,
+          (has(t.key) && t.key != '' && !t.key.startsWith('node-role.kubernetes.io/control-plane') && t.key != 'node-role.kubernetes.io/master')))
+      reason: Forbidden
+      message: operator-authored workloads may not carry wildcard or control-plane tolerations
     - expression: >-
         variables.pod.containers.all(c,
           !c.?securityContext.?privileged.orValue(false) &&
+          c.?securityContext.?procMount.orValue('Default') != 'Unmasked' &&
           (!has(c.envFrom) || c.envFrom.all(e, !has(e.secretRef) || !(e.secretRef.name in variables.crownSecrets))) &&
           (!has(c.env) || c.env.all(e, !has(e.valueFrom) || !has(e.valueFrom.secretKeyRef) || !(e.valueFrom.secretKeyRef.name in variables.crownSecrets)))) &&
         (!has(variables.pod.initContainers) || variables.pod.initContainers.all(c,
           !c.?securityContext.?privileged.orValue(false) &&
+          c.?securityContext.?procMount.orValue('Default') != 'Unmasked' &&
           (!has(c.envFrom) || c.envFrom.all(e, !has(e.secretRef) || !(e.secretRef.name in variables.crownSecrets))) &&
           (!has(c.env) || c.env.all(e, !has(e.valueFrom) || !has(e.valueFrom.secretKeyRef) || !(e.valueFrom.secretKeyRef.name in variables.crownSecrets)))))
       reason: Forbidden
-      message: operator-authored containers may not be privileged or consume CAPI administrator Secrets
+      message: operator-authored containers may not be privileged, use an unmasked procMount, or consume CAPI administrator Secrets
+    # In the isolated execution namespaces (BuildKit's mount capabilities and
+    # unconfined seccomp live there), a pod user namespace is REQUIRED: it is
+    # what confines those powers off the host kernel.
+    - expression: >-
+        !variables.untrustedExecutionNamespace ||
+        (has(variables.pod.hostUsers) && variables.pod.hostUsers == false)
+      reason: Forbidden
+      message: operator-authored workloads in isolated execution namespaces must run in a pod user namespace (hostUsers=false)
+    # Outside the execution boundary (tenant hosting + legacy bootstrap), every
+    # container is restricted: no added capabilities, no privilege escalation,
+    # RuntimeDefault seccomp at the container or pod level.
+    - expression: >-
+        variables.untrustedExecutionNamespace ||
+        (variables.pod.containers.all(c,
+          !c.?securityContext.?allowPrivilegeEscalation.orValue(false) &&
+          c.?securityContext.?capabilities.?add.orValue([]).size() == 0 &&
+          (c.?securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault' ||
+           variables.pod.?securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault')) &&
+        (!has(variables.pod.initContainers) || variables.pod.initContainers.all(c,
+          !c.?securityContext.?allowPrivilegeEscalation.orValue(false) &&
+          c.?securityContext.?capabilities.?add.orValue([]).size() == 0 &&
+          (c.?securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault' ||
+           variables.pod.?securityContext.?seccompProfile.?type.orValue('') == 'RuntimeDefault'))))
+      reason: Forbidden
+      message: operator-authored containers outside the execution boundary must be restricted (no added capabilities, no privilege escalation, RuntimeDefault seccomp)
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

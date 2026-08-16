@@ -25,10 +25,42 @@ export interface CredentialManager {
   agentEnvironment(): Record<string, string>;
   scrubPersistedState(roots?: string[]): Promise<string[]>;
   containsSecret(value: string): boolean;
+  // secretNeedles returns every byte form the credential can plausibly be
+  // re-encoded into — the raw and JSON-escaped renderings plus the common
+  // reversible encodings (base64 std/url, padded and not, hex both cases).
+  // Delivery's object-level scan (codex round-9 #1) searches every newly
+  // pushed git blob for each, so a base64- or hex-encoded credential, or one
+  // hiding in a binary blob that `git log -p` omits, still fails the push.
+  secretNeedles(): Buffer[];
   forget(): void;
   redact(value: unknown): string;
   redactPart<T>(value: T): T;
   configured(): boolean;
+}
+
+// minEncodedNeedleBytes gates the reversible-encoding needles: encoding a very
+// short string produces a short needle that can appear in unrelated base64 or
+// hex content by chance. Real model credentials are long API keys; below this
+// length only the literal renderings are matched.
+const minEncodedNeedleBytes = 16;
+
+function encodedForms(value: string): string[] {
+  if (!value) return [];
+  const forms: string[] = [];
+  const raw = Buffer.from(value, "utf8");
+  if (raw.length >= minEncodedNeedleBytes) {
+    const b64 = raw.toString("base64");
+    const b64url = raw.toString("base64url");
+    forms.push(
+      b64,
+      b64.replace(/=+$/, ""),
+      b64url,
+      b64url.replace(/=+$/, ""),
+      raw.toString("hex"),
+      raw.toString("hex").toUpperCase(),
+    );
+  }
+  return forms;
 }
 
 function processCouldWrite(info: Stats): boolean {
@@ -64,7 +96,7 @@ function replaceAll(data: Buffer, needle: Buffer, replacement: Buffer): Buffer {
   return Buffer.concat(chunks);
 }
 
-async function largeFileContains(target: string, needle: Buffer): Promise<boolean> {
+async function largeFileContains(target: string, needles: Buffer[]): Promise<boolean> {
   const file = await open(target, "r");
   const buffer = Buffer.allocUnsafe(scanChunkBytes);
   let tail = Buffer.alloc(0);
@@ -73,9 +105,12 @@ async function largeFileContains(target: string, needle: Buffer): Promise<boolea
       const { bytesRead } = await file.read(buffer, 0, buffer.length, null);
       if (bytesRead === 0) return false;
       const window = Buffer.concat([tail, buffer.subarray(0, bytesRead)]);
-      if (window.includes(needle)) return true;
-      const overlap = Math.min(needle.length - 1, window.length);
-      tail = Buffer.from(window.subarray(window.length - overlap));
+      if (needles.some((needle) => window.includes(needle))) return true;
+      const overlap = needles.reduce(
+        (max, needle) => Math.max(max, needle.length - 1),
+        0,
+      );
+      tail = Buffer.from(window.subarray(window.length - Math.min(overlap, window.length)));
     }
   } finally {
     await file.close();
@@ -84,7 +119,7 @@ async function largeFileContains(target: string, needle: Buffer): Promise<boolea
 
 async function scrubPath(
   target: string,
-  needle: Buffer,
+  needles: Buffer[],
   findings: string[],
 ): Promise<void> {
   let info: Stats;
@@ -104,7 +139,7 @@ async function scrubPath(
       throw error;
     }
     for await (const entry of dir) {
-      await scrubPath(`${target}/${entry.name}`, needle, findings);
+      await scrubPath(`${target}/${entry.name}`, needles, findings);
     }
     return;
   }
@@ -112,7 +147,7 @@ async function scrubPath(
   if (info.size > maxScannedFileBytes) {
     let containsCredential: boolean;
     try {
-      containsCredential = await largeFileContains(target, needle);
+      containsCredential = await largeFileContains(target, needles);
     } catch (error) {
       if (ignoreInaccessibleImmutablePath(target, info, error as NodeJS.ErrnoException)) return;
       throw error;
@@ -132,8 +167,11 @@ async function scrubPath(
     if (ignoreInaccessibleImmutablePath(target, info, error as NodeJS.ErrnoException)) return;
     throw error;
   }
-  if (!data.includes(needle)) return;
-  const scrubbed = replaceAll(data, needle, Buffer.from("[REDACTED]"));
+  if (!needles.some((needle) => data.includes(needle))) return;
+  let scrubbed = data;
+  for (const needle of needles) {
+    scrubbed = replaceAll(scrubbed, needle, Buffer.from("[REDACTED]"));
+  }
   await writeFile(target, scrubbed, { mode: info.mode });
   findings.push(target);
 }
@@ -147,6 +185,16 @@ export function createCredentialManager(
   // changes on forget): a credential containing `"` or `\` appears escaped
   // inside serialized parts, so both forms must be scrubbed everywhere.
   let escapedSecret = secret ? JSON.stringify(secret).slice(1, -1) : "";
+  // Every string form of the credential: the literal renderings plus the
+  // reversible encodings (codex round-9 #1) — an agent that cannot print the
+  // raw key can still print base64(key) or hex(key), and a byte-scan of git
+  // objects must catch those as reliably as the literals. Recomputed on forget.
+  let secretForms: string[] = [];
+  const resetForms = () => {
+    secretForms = secret ? [secret, ...encodedForms(secret)] : [];
+    if (secret && escapedSecret !== secret) secretForms.push(escapedSecret);
+  };
+  resetForms();
   const credentialEnvName = config.credentialEnvName;
 
   // The generic injection variable is for the driver only. The child receives
@@ -155,10 +203,10 @@ export function createCredentialManager(
   if (credentialEnvName) delete env[credentialEnvName];
 
   // scrub is the one string-level redactor behind redact and redactPart, so
-  // escaped-form handling can never live in only one of them.
+  // escaped- and encoded-form handling can never live in only one of them.
   const scrub = (text: string): string => {
-    let out = text.split(secret).join("[REDACTED]");
-    if (escapedSecret !== secret) out = out.split(escapedSecret).join("[REDACTED]");
+    let out = text;
+    for (const form of secretForms) out = out.split(form).join("[REDACTED]");
     return out;
   };
 
@@ -180,23 +228,29 @@ export function createCredentialManager(
     async scrubPersistedState(roots = config.scrubRoots) {
       if (!secret) return [];
       const findings: string[] = [];
-      const needle = Buffer.from(secret);
-      for (const root of roots) await scrubPath(root, needle, findings);
+      const needles = secretForms.map((form) => Buffer.from(form, "utf8"));
+      for (const root of roots) await scrubPath(root, needles, findings);
       return findings;
     },
 
-    // containsSecret reports whether text carries the raw model credential (or
-    // its JSON-escaped rendering). It is the pre-push fail-closed check's needle
-    // (round-5 finding 6) — matching what redactPart scrubs — without exposing
-    // the closed-over secret to the caller.
+    // containsSecret reports whether text carries any form of the model
+    // credential: the raw and JSON-escaped renderings plus the reversible
+    // encodings (codex round-9 #1). It is the pre-push fail-closed check's
+    // needle set (round-5 finding 6) — matching what redactPart scrubs —
+    // without exposing the closed-over secret to the caller.
     containsSecret(value: string) {
       if (!secret) return false;
-      return value.includes(secret) || (escapedSecret !== secret && value.includes(escapedSecret));
+      return secretForms.some((form) => value.includes(form));
+    },
+
+    secretNeedles() {
+      return secretForms.map((form) => Buffer.from(form, "utf8"));
     },
 
     forget() {
       secret = "";
       escapedSecret = "";
+      resetForms();
     },
 
     redact(value: unknown) {

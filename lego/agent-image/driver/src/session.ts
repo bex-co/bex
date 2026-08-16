@@ -217,6 +217,7 @@ export async function runHeadlessTurn(
       ? await deliverBranch({
           ...config,
           containsSecret: (text) => credentialManager.containsSecret(text),
+          secretNeedles: () => credentialManager.secretNeedles(),
         })
       : null;
     const evidence: EvidenceResult = await extractEvidence(config);

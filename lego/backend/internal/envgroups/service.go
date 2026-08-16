@@ -783,7 +783,20 @@ func (s *Service) DeleteEnvGroupFile(ctx context.Context, gid, name string) erro
 
 // GetEnvGroupFile reveals one file's content (sensitive read).
 func (s *Service) GetEnvGroupFile(ctx context.Context, gid, name string) (SecretFileView, error) {
-	if _, err := s.authorizeGroup(ctx, core.RelCanViewSensitive, gid); err != nil {
+	m, err := s.authorizeGroup(ctx, core.RelCanViewSensitive, gid)
+	if err != nil {
+		return SecretFileView{}, err
+	}
+	// codex round-9 #7: file content is secret reveal — the same uncached
+	// reassertion GetEnvGroupValue (round-8 #8) applies, so a revocation
+	// inside PositiveTTL cannot ride a cached positive to one last read.
+	// A legacy group with no recorded workspace re-asserts against the acting
+	// workspace, mirroring the cached path's fallback.
+	if m.workspace != "" {
+		if err := s.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, core.WorkspaceObject(m.workspace)); err != nil {
+			return SecretFileView{}, err
+		}
+	} else if err := s.AuthorizeFresh(ctx, core.RelCanViewSensitive); err != nil {
 		return SecretFileView{}, err
 	}
 	files, err := s.Store.Get(ctx, filesPath(gid))

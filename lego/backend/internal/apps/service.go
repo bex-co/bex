@@ -2778,8 +2778,11 @@ func (s *Service) SetIdleTTL(ctx context.Context, name string, seconds int32) (A
 // push. Not projection-owned (mirrors Builder): the control-plane row never
 // carries it, so this is a direct CR patch like Restart, not
 // writeThroughStore. Rejected for an image-backed App (nothing to build).
+// Release identity (codex round-9 #8): rootDir selects which repository
+// subtree BuildKit executes, so it is a can_create (developer) input like
+// Builder — not an operational can_operate one a contributor holds.
 func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}
@@ -2801,9 +2804,11 @@ func (s *Service) SetRootDir(ctx context.Context, name, rootDir string) (AppView
 // "Dockerfile" lookup. Like SetRootDir, changing it starts a fresh build by
 // bumping restartedAt. Explicit native/buildpack runtimes are rejected; legacy
 // auto/dockerfile Apps remain supported because they can still be Dockerfile
-// builds without carrying spec.runtime="docker".
+// builds without carrying spec.runtime="docker". Release identity (codex
+// round-9 #8): the Dockerfile is the exact instruction set BuildKit executes,
+// so the verb requires can_create (developer) like Builder and SetRootDir.
 func (s *Service) SetDockerfilePath(ctx context.Context, name, dockerfilePath string) (AppView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, name)
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, name)
 	if err != nil {
 		return AppView{}, err
 	}

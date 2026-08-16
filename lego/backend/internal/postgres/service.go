@@ -545,6 +545,12 @@ func (s *Service) DeletePostgres(ctx context.Context, name string) error {
 	if err := s.requireUnprotected(ctx, d, "delete"); err != nil {
 		return err
 	}
+	// codex round-9 #7: deletion is irreversible — reassert can_create uncached
+	// immediately before the CR delete, so a revocation inside PositiveTTL
+	// cannot ride a cached positive to destroy the database.
+	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanCreate, d); err != nil {
+		return err
+	}
 	return s.Client.Delete(ctx, d)
 }
 

@@ -69,3 +69,30 @@ func TestGetEnvGroupVarFailsClosedOnFreshRevocation(t *testing.T) {
 		t.Errorf("denial leaked the value: %v", err)
 	}
 }
+
+// codex round-9 #7: a group secret FILE is the same reveal sink as a var — a
+// revoked member riding a stale positive must not read one last file either.
+func TestGetEnvGroupFileFailsClosedOnFreshRevocation(t *testing.T) {
+	svc := &Service{
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: multiWorkspace{"dana": {"tea-a"}}},
+		Store: newFakeStore(),
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+
+	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+	if err != nil {
+		t.Fatalf("seed group: %v", err)
+	}
+	if _, err := svc.SetEnvGroupFile(ctx, g.ID, "credentials.json", `{"token":"topsecret"}`); err != nil {
+		t.Fatalf("seed file: %v", err)
+	}
+	svc.Authz = staleAllowChecker{}
+
+	_, err = svc.GetEnvGroupFile(ctx, g.ID, "credentials.json")
+	if !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("GetEnvGroupFile on a stale positive: %v, want ErrForbidden", err)
+	}
+	if strings.Contains(err.Error(), "topsecret") {
+		t.Errorf("denial leaked the file content: %v", err)
+	}
+}

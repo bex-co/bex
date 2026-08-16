@@ -205,7 +205,12 @@ func TestExecuteQueryAuthorization(t *testing.T) {
 	if _, err := svc.ExecuteQuery(ctx, "auth-db", "SELECT 1", true); err != nil {
 		t.Fatalf("allowed write: %v", err)
 	}
-	if got, want := strings.Join(allow.relations, ","), core.RelCanViewSensitive+","+core.RelCanCreate; got != want {
+	// round-9 #7: each mode re-asserts its relation uncached at the sink, so a
+	// plain Checker (no FreshChecker — already authoritative) records it twice:
+	// the admission gate plus the reassertion, the same relation both times.
+	want := core.RelCanViewSensitive + "," + core.RelCanViewSensitive + "," +
+		core.RelCanCreate + "," + core.RelCanCreate
+	if got := strings.Join(allow.relations, ","); got != want {
 		t.Fatalf("relations = %q, want %q", got, want)
 	}
 }

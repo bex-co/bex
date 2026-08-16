@@ -348,6 +348,13 @@ var representativeVerbRelations = map[string]string{
 	// projections, reaching the identical sink as SetCommands above.
 	"*apps.Service.SetPreDeployCommand": core.RelCanCreate,
 	"*jobs.Service.Create":              core.RelCanCreate,
+	// Build-root selection, reclassified from can_operate by codex round-9 #8
+	// (the m68 "in-repo content" carve-out ignored that an API role is
+	// independent of git access — see m68_executable_selection_test.go): the
+	// root directory and Dockerfile path choose which repository bytes
+	// BuildKit executes.
+	"*apps.Service.SetRootDir":        core.RelCanCreate,
+	"*apps.Service.SetDockerfilePath": core.RelCanCreate,
 	// Steering re-dispatches a FRESH sandbox with the same reusable model key and
 	// a caller-supplied prompt + egress allowlist, so it is as create-like as
 	// Create itself — not a lifecycle verb (codex round-4 #3).

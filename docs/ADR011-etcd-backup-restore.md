@@ -56,7 +56,7 @@ source .env && kubectl -n kube-system create secret generic etcd-backup-s3 \
   --from-literal=AWS_SECRET_ACCESS_KEY="$TF_STATE_SECRET_KEY"
 ```
 
-Verify a backup landed (or trigger one now):
+Verify a backup landed (or trigger one now). Manual one-shot Job creation is break-glass since codex-security round-9 #2 (cluster-wide `jobs:create` is unconstrained pod-template authoring, so the routine operator credential no longer holds it) — use the admin kubeconfig from `fetch-app-kubeconfig.sh` here, not `scripts/operator-kubeconfig.sh`:
 
 ```sh
 kubectl -n kube-system create job --from=cronjob/etcd-backup etcd-backup-now

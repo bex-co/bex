@@ -3,6 +3,14 @@ import { LogApiError, type LogLine } from "./types";
 export type SSEEvent =
   { type: "line"; line: LogLine } | { type: "error"; error: LogApiError };
 
+// An event frame that cannot complete inside this budget is dropped with an
+// error (codex round-9 #11): without the cap, a hostile or broken producer can
+// stream an unterminated frame and grow the parser's pending buffer — and the
+// transport's cumulative response body — without bound. The error routes the
+// session through its reconnect path, which resumes from the newest buffered
+// timestamp on a fresh connection.
+export const maxPendingFrameBytes = 1024 * 1024;
+
 function parseLine(raw: string): SSEEvent {
   let value: unknown;
   try {
@@ -36,6 +44,21 @@ export class SSEParser {
     // Normalize after concatenating so a CRLF split across two network chunks
     // is still recognized as one line ending.
     this.pending = (this.pending + chunk).replace(/\r\n/g, "\n");
+    if (
+      this.pending.length > maxPendingFrameBytes &&
+      this.pending.indexOf("\n\n") === -1
+    ) {
+      this.pending = "";
+      return [
+        {
+          type: "error",
+          error: new LogApiError(
+            "unknown",
+            "The log stream sent an oversized event frame.",
+          ),
+        },
+      ];
+    }
     const events: SSEEvent[] = [];
     let boundary = this.pending.indexOf("\n\n");
     while (boundary >= 0) {
