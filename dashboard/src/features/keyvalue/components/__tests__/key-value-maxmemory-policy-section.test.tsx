@@ -11,12 +11,9 @@ let hookState = {
   save,
 };
 
-vi.mock(
-  "@/features/keyvalue/hooks/use-set-key-value-maxmemory-policy",
-  () => ({
-    useSetKeyValueMaxmemoryPolicy: () => hookState,
-  }),
-);
+vi.mock("@/features/keyvalue/hooks/use-set-key-value-maxmemory-policy", () => ({
+  useSetKeyValueMaxmemoryPolicy: () => hookState,
+}));
 
 beforeEach(() => {
   save.mockReset();
@@ -42,7 +39,9 @@ describe("KeyValueMaxmemoryPolicySection", () => {
     // Editable now; Save disabled until the policy actually changes.
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
 
-    await user.click(screen.getByRole("combobox", { name: "Maxmemory policy" }));
+    await user.click(
+      screen.getByRole("combobox", { name: "Maxmemory policy" }),
+    );
     await user.click(screen.getByRole("option", { name: "volatile-lru" }));
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
@@ -56,7 +55,9 @@ describe("KeyValueMaxmemoryPolicySection", () => {
     await user.click(
       screen.getByRole("button", { name: "Edit maxmemory policy" }),
     );
-    await user.click(screen.getByRole("combobox", { name: "Maxmemory policy" }));
+    await user.click(
+      screen.getByRole("combobox", { name: "Maxmemory policy" }),
+    );
     await user.click(screen.getByRole("option", { name: "noeviction" }));
     expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
 

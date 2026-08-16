@@ -138,7 +138,9 @@ export function CreateRegistryCredentialDialog({
               id="rc-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={host || t("registryCredentials.fieldHostPlaceholder")}
+              placeholder={
+                host || t("registryCredentials.fieldHostPlaceholder")
+              }
             />
           </div>
         </div>
@@ -148,7 +150,10 @@ export function CreateRegistryCredentialDialog({
               {t("registryCredentials.createCancel")}
             </Button>
           </DialogClose>
-          <Button onClick={() => void handleSubmit()} disabled={!canSubmit || busy}>
+          <Button
+            onClick={() => void handleSubmit()}
+            disabled={!canSubmit || busy}
+          >
             {busy ? <Loader2 className="animate-spin" /> : null}
             {t("registryCredentials.createSubmit")}
           </Button>

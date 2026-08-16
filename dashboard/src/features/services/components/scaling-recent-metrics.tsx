@@ -21,10 +21,7 @@ import {
 } from "@/features/metrics/hooks/use-metrics";
 import { useLiveRange } from "@/features/metrics/hooks/use-live-range";
 import { latestValue } from "@/features/metrics/lib/series";
-import type {
-  ChartPoint,
-  ChartSeries,
-} from "@/features/metrics/types";
+import type { ChartPoint, ChartSeries } from "@/features/metrics/types";
 import type { RangeWindow } from "@/features/metrics/lib/range";
 
 // Render's Recent Metrics window is a fixed "past 48 hours" (live capture

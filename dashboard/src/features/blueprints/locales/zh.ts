@@ -223,7 +223,8 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.metaPath": {
     message: "清单路径",
-    description: "Blueprint detail metadata label — path to render.yaml in repo",
+    description:
+      "Blueprint detail metadata label — path to render.yaml in repo",
   },
   "blueprints.metaAutoSync": {
     message: "自动同步",

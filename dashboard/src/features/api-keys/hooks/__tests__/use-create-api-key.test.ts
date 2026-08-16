@@ -43,7 +43,14 @@ describe("useCreateApiKey", () => {
 
   it("resolves the minted key (with secret) and toasts success", async () => {
     const mutate = vi.fn().mockResolvedValue({
-      data: { createApiKey: { id: "key-1", name: "deploy-agent", secret: "s3cret", createdAt: null } },
+      data: {
+        createApiKey: {
+          id: "key-1",
+          name: "deploy-agent",
+          secret: "s3cret",
+          createdAt: null,
+        },
+      },
     });
     mockUseMutation.mockReturnValue([mutate]);
 
@@ -53,7 +60,11 @@ describe("useCreateApiKey", () => {
       key = await result.current.create("deploy-agent");
     });
 
-    expect(key).toEqual({ id: "key-1", name: "deploy-agent", secret: "s3cret" });
+    expect(key).toEqual({
+      id: "key-1",
+      name: "deploy-agent",
+      secret: "s3cret",
+    });
     expect(mutate).toHaveBeenCalledWith({
       variables: { name: "deploy-agent", ownerId: "tea-1" },
     });
@@ -94,7 +105,9 @@ describe("useCreateApiKey", () => {
 
   it("treats a response with no secret as a failure (server contract violated)", async () => {
     const mutate = vi.fn().mockResolvedValue({
-      data: { createApiKey: { id: "key-1", name: "x", secret: null, createdAt: null } },
+      data: {
+        createApiKey: { id: "key-1", name: "x", secret: null, createdAt: null },
+      },
     });
     mockUseMutation.mockReturnValue([mutate]);
 

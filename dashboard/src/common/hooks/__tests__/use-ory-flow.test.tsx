@@ -258,7 +258,9 @@ describe("useOryFlow", () => {
     // Any unhandled Kratos failure falls back to its redirect-based bootstrap.
     // That bootstrap used to drop the challenge, quietly abandoning the
     // authorization the user was in the middle of.
-    mockApi.createBrowserLoginFlow.mockRejectedValue(new Error("kratos is down"));
+    mockApi.createBrowserLoginFlow.mockRejectedValue(
+      new Error("kratos is down"),
+    );
 
     renderHook(() =>
       useOryFlow("login", undefined, { loginChallenge: "challenge-123" }),

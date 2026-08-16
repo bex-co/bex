@@ -25,7 +25,9 @@ beforeEach(() => {
 describe("useTriggerDeploy", () => {
   it("resolves the new deploy's id on success (w9/m1/t004 — callers navigate to it)", async () => {
     const triggerDeploy = vi.fn().mockResolvedValue({
-      data: { triggerDeploy: { id: "dep-new-1", status: "update_in_progress" } },
+      data: {
+        triggerDeploy: { id: "dep-new-1", status: "update_in_progress" },
+      },
     });
     mockUseMutation.mockReturnValue([triggerDeploy, { loading: false }]);
 
@@ -41,7 +43,9 @@ describe("useTriggerDeploy", () => {
   });
 
   it("resolves null and toasts an error on a rejected trigger — never a deploy id to navigate to", async () => {
-    const triggerDeploy = vi.fn().mockRejectedValue(new Error("service is suspended"));
+    const triggerDeploy = vi
+      .fn()
+      .mockRejectedValue(new Error("service is suspended"));
     mockUseMutation.mockReturnValue([triggerDeploy, { loading: false }]);
 
     const { result } = renderHook(() => useTriggerDeploy());
@@ -56,7 +60,9 @@ describe("useTriggerDeploy", () => {
   });
 
   it("resolves null when the mutation succeeds but the server omits an id (contract violation)", async () => {
-    const triggerDeploy = vi.fn().mockResolvedValue({ data: { triggerDeploy: null } });
+    const triggerDeploy = vi
+      .fn()
+      .mockResolvedValue({ data: { triggerDeploy: null } });
     mockUseMutation.mockReturnValue([triggerDeploy, { loading: false }]);
 
     const { result } = renderHook(() => useTriggerDeploy());
@@ -76,11 +82,18 @@ describe("useTriggerDeploy", () => {
 
     const { result } = renderHook(() => useTriggerDeploy());
     await act(async () => {
-      await result.current.trigger("web", { commitId: "abc123", deployMode: "deploy_only" });
+      await result.current.trigger("web", {
+        commitId: "abc123",
+        deployMode: "deploy_only",
+      });
     });
 
     expect(triggerDeploy).toHaveBeenCalledWith({
-      variables: { serviceId: "web", commitId: "abc123", deployMode: "deploy_only" },
+      variables: {
+        serviceId: "web",
+        commitId: "abc123",
+        deployMode: "deploy_only",
+      },
     });
   });
 });

@@ -54,8 +54,15 @@ function matchesFilter(
 export function WebhookDeliveriesCard({ endpointId }: { endpointId: string }) {
   const { t } = useTranslations();
   const [filter, setFilter] = useState<DeliveryFilter>("all");
-  const { deliveries, loading, loadingMore, error, hasMore, loadMore, refresh } =
-    useWebhookDeliveries(endpointId);
+  const {
+    deliveries,
+    loading,
+    loadingMore,
+    error,
+    hasMore,
+    loadMore,
+    refresh,
+  } = useWebhookDeliveries(endpointId);
 
   const visible = deliveries.filter((d) => matchesFilter(d, filter));
 

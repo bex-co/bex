@@ -76,7 +76,9 @@ const postReq = (
 ) => {
   const origin = opts.origin === undefined ? DASHBOARD : opts.origin;
   const cookie = opts.cookie === undefined ? "ory_session=live" : opts.cookie;
-  const headers: Record<string, string> = { "content-type": "application/json" };
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
   if (origin) headers.origin = origin;
   if (cookie) headers.cookie = cookie;
   return new Request(`${DASHBOARD}/api/sessions`, {

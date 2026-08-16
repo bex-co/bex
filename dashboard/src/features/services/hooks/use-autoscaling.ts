@@ -52,7 +52,9 @@ export function useAutoscaling(serviceId: string): UseAutoscalingResult {
             targetCPUPercent: values.targetCPUPercent ?? undefined,
             targetMemoryPercent: values.targetMemoryPercent ?? undefined,
           },
-          refetchQueries: [{ query: AutoscalingConfigDocument, variables: { id: serviceId } }],
+          refetchQueries: [
+            { query: AutoscalingConfigDocument, variables: { id: serviceId } },
+          ],
         });
         toast.success(t("services.scalingSaved"));
         return true;
@@ -71,7 +73,9 @@ export function useAutoscaling(serviceId: string): UseAutoscalingResult {
     try {
       await mutateDisable({
         variables: { id: serviceId },
-        refetchQueries: [{ query: AutoscalingConfigDocument, variables: { id: serviceId } }],
+        refetchQueries: [
+          { query: AutoscalingConfigDocument, variables: { id: serviceId } },
+        ],
       });
       toast.success(t("services.scalingDisabled"));
       return true;

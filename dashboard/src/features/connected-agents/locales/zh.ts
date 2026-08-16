@@ -6,7 +6,8 @@ const zh: Record<string, TranslationEntry> = {
     description: "Connected Agents settings card title",
   },
   "connectedAgents.description": {
-    message: "您已授权代表您行事的 OAuth 客户端。撤销后将立即使其访问令牌失效。",
+    message:
+      "您已授权代表您行事的 OAuth 客户端。撤销后将立即使其访问令牌失效。",
     description: "Connected Agents settings card description",
   },
   "connectedAgents.colClient": {

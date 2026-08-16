@@ -111,7 +111,10 @@ export function InviteMemberDialog({
         </div>
         <div className="space-y-2">
           <Label htmlFor="invite-role">{t("team.fieldRole")}</Label>
-          <Select value={role} onValueChange={(value) => setRole(value as Role)}>
+          <Select
+            value={role}
+            onValueChange={(value) => setRole(value as Role)}
+          >
             <SelectTrigger id="invite-role" className="w-full">
               <SelectValue />
             </SelectTrigger>

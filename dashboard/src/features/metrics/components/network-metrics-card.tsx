@@ -101,7 +101,9 @@ export function NetworkMetricsCard({
   // toolbar), so its state lives here with the chart.
   const [groupBy, setGroupBy] = useState<GroupBy>(undefined);
   // Percentile pick as a string so the "All" overlay sentinel shares the state.
-  const [percentile, setPercentile] = useState<string>(String(DEFAULT_QUANTILE));
+  const [percentile, setPercentile] = useState<string>(
+    String(DEFAULT_QUANTILE),
+  );
   const isAllPercentiles = percentile === PERCENTILE_ALL;
   const [statusCode, setStatusCode] = useState(""); // "" = all
   const discoveredStatusCodes = useMetricsFilterValues(resource, "STATUS_CODE");

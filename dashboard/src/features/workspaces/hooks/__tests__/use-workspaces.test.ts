@@ -30,7 +30,14 @@ describe("useWorkspaces", () => {
             createdAt: "2026-06-01T00:00:00Z",
           },
           null,
-          { __typename: "Workspace", id: null, name: "orphan", plan: null, role: null, createdAt: null },
+          {
+            __typename: "Workspace",
+            id: null,
+            name: "orphan",
+            plan: null,
+            role: null,
+            createdAt: null,
+          },
         ],
       },
       loading: false,
@@ -54,7 +61,14 @@ describe("useWorkspaces", () => {
     mockUseQuery.mockReturnValue({
       data: {
         workspaces: [
-          { __typename: "Workspace", id: "tea-1", name: "acme-hq", plan: null, role: "admin", createdAt: null },
+          {
+            __typename: "Workspace",
+            id: "tea-1",
+            name: "acme-hq",
+            plan: null,
+            role: "admin",
+            createdAt: null,
+          },
         ],
       },
       loading: false,

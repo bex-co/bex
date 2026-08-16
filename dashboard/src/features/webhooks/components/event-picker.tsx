@@ -183,7 +183,10 @@ function GroupRows({
 }: GroupRowsProps) {
   const { t } = useTranslations();
   const types = events.map((e) => e.type);
-  const state = triState(types.filter((e) => value.has(e)).length, types.length);
+  const state = triState(
+    types.filter((e) => value.has(e)).length,
+    types.length,
+  );
 
   return (
     <li>

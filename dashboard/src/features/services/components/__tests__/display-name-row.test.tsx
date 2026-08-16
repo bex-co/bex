@@ -53,7 +53,11 @@ describe("DisplayNameRow", () => {
   it("clearing an already-empty label back to the id fallback is not a change", async () => {
     const user = userEvent.setup();
     render(
-      <DisplayNameRow serviceId="stable-id" displayName={null} name="docs-site" />,
+      <DisplayNameRow
+        serviceId="stable-id"
+        displayName={null}
+        name="docs-site"
+      />,
     );
 
     await user.click(screen.getByRole("button", { name: "Edit service name" }));

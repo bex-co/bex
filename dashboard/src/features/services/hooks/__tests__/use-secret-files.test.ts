@@ -103,8 +103,14 @@ describe("useSecretFileNames", () => {
     mockClientQuery.mockResolvedValue({
       data: {
         secretFiles: [
-          { secretFile: { id: "file_100", name: "file_100" }, cursor: "file_100" },
-          { secretFile: { id: "file_101", name: "file_101" }, cursor: "file_101" },
+          {
+            secretFile: { id: "file_100", name: "file_100" },
+            cursor: "file_100",
+          },
+          {
+            secretFile: { id: "file_101", name: "file_101" },
+            cursor: "file_101",
+          },
         ],
       },
     });
@@ -148,9 +154,7 @@ describe("useSecretFileMutations", () => {
     mockUseMutation.mockImplementation(() => [setSecretFile]);
     const refetch = vi.fn().mockResolvedValue([]);
 
-    const { result } = renderHook(() =>
-      useSecretFileMutations("web", refetch),
-    );
+    const { result } = renderHook(() => useSecretFileMutations("web", refetch));
     let ok: boolean | undefined;
     await act(async () => {
       ok = await result.current.setFile("cert.pem", "body");
@@ -174,9 +178,7 @@ describe("useSecretFileMutations", () => {
     mockUseMutation.mockImplementation(() => [setSecretFile]);
     const refetch = vi.fn().mockResolvedValue([]);
 
-    const { result } = renderHook(() =>
-      useSecretFileMutations("web", refetch),
-    );
+    const { result } = renderHook(() => useSecretFileMutations("web", refetch));
     let ok: boolean | undefined;
     await act(async () => {
       ok = await result.current.setFile("cert.pem", "body");

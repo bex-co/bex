@@ -33,7 +33,11 @@ describe("classifyHref", () => {
   });
 
   it("refuses active/unsupported schemes by returning no href", () => {
-    for (const href of ["javascript:alert(1)", "data:text/html,x", "vbscript:x"]) {
+    for (const href of [
+      "javascript:alert(1)",
+      "data:text/html,x",
+      "vbscript:x",
+    ]) {
       expect(classifyHref(href).safeHref, href).toBeUndefined();
     }
   });

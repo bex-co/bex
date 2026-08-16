@@ -28,7 +28,8 @@ export function WebShellPanel({ serviceId }: { serviceId: string }) {
 
   // A selection that no longer exists (an instance was replaced by a deploy)
   // falls back to "any" so the terminal never targets a vanished pod.
-  const known = selected === ANY_INSTANCE || instances.some((i) => i.id === selected);
+  const known =
+    selected === ANY_INSTANCE || instances.some((i) => i.id === selected);
   const effective = known ? selected : ANY_INSTANCE;
   const instanceId = effective === ANY_INSTANCE ? undefined : effective;
 

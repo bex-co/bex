@@ -15,7 +15,12 @@ export interface CopyButtonProps {
  * strings, API-key secrets, …); callers supply their own i18n'd toast text
  * rather than this component owning a translation namespace.
  */
-export function CopyButton({ value, label, successText, errorText }: CopyButtonProps) {
+export function CopyButton({
+  value,
+  label,
+  successText,
+  errorText,
+}: CopyButtonProps) {
   const { copied, copy } = useCopyToClipboard({ successText, errorText });
 
   return (

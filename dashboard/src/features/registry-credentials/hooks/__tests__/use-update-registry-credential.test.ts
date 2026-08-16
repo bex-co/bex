@@ -34,7 +34,11 @@ describe("useUpdateRegistryCredential", () => {
 
     const { result } = renderHook(() => useUpdateRegistryCredential());
     await act(async () => {
-      await result.current.update({ id: "rgc-1", name: "New", username: "bob" });
+      await result.current.update({
+        id: "rgc-1",
+        name: "New",
+        username: "bob",
+      });
     });
 
     expect(mutate).toHaveBeenCalledWith({
@@ -76,7 +80,11 @@ describe("useUpdateRegistryCredential", () => {
     const { result } = renderHook(() => useUpdateRegistryCredential());
     let ok: boolean | undefined;
     await act(async () => {
-      ok = await result.current.update({ id: "rgc-1", name: "x", username: "y" });
+      ok = await result.current.update({
+        id: "rgc-1",
+        name: "x",
+        username: "y",
+      });
     });
 
     expect(ok).toBe(false);

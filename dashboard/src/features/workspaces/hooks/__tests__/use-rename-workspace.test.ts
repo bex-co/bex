@@ -26,7 +26,15 @@ beforeEach(() => {
 describe("useRenameWorkspace", () => {
   it("resolves true and toasts success on a successful rename", async () => {
     const mutate = vi.fn().mockResolvedValue({
-      data: { renameWorkspace: { id: "tea-1", name: "acme-renamed", plan: "hobby", role: "admin", createdAt: null } },
+      data: {
+        renameWorkspace: {
+          id: "tea-1",
+          name: "acme-renamed",
+          plan: "hobby",
+          role: "admin",
+          createdAt: null,
+        },
+      },
     });
     mockUseMutation.mockReturnValue([mutate]);
 
@@ -37,7 +45,9 @@ describe("useRenameWorkspace", () => {
     });
 
     expect(ok).toBe(true);
-    expect(mutate).toHaveBeenCalledWith({ variables: { id: "tea-1", name: "acme-renamed" } });
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { id: "tea-1", name: "acme-renamed" },
+    });
     expect(toastSuccess).toHaveBeenCalledWith("Renamed to acme-renamed");
   });
 

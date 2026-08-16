@@ -74,10 +74,7 @@ describe("DeleteWorkspaceCard — sudo-phrase confirm guard (w6/m3/t004, w6/m5/t
     const user = userEvent.setup();
     render(<DeleteWorkspaceCard workspace={WORKSPACE} />);
 
-    await user.type(
-      screen.getByLabelText("Sudo Command"),
-      `${PHRASE} `,
-    );
+    await user.type(screen.getByLabelText("Sudo Command"), `${PHRASE} `);
     const button = screen.getByRole("button", { name: "Delete Workspace" });
     expect(button).toBeDisabled();
 
@@ -89,10 +86,7 @@ describe("DeleteWorkspaceCard — sudo-phrase confirm guard (w6/m3/t004, w6/m5/t
     const user = userEvent.setup();
     render(<DeleteWorkspaceCard workspace={WORKSPACE} />);
 
-    await user.type(
-      screen.getByLabelText("Sudo Command"),
-      PHRASE,
-    );
+    await user.type(screen.getByLabelText("Sudo Command"), PHRASE);
     await user.click(screen.getByRole("button", { name: "Delete Workspace" }));
 
     expect(remove).toHaveBeenCalledWith("tea-1", "acme-hq", PHRASE);
@@ -105,10 +99,7 @@ describe("DeleteWorkspaceCard — sudo-phrase confirm guard (w6/m3/t004, w6/m5/t
     const user = userEvent.setup();
     render(<DeleteWorkspaceCard workspace={WORKSPACE} />);
 
-    await user.type(
-      screen.getByLabelText("Sudo Command"),
-      PHRASE,
-    );
+    await user.type(screen.getByLabelText("Sudo Command"), PHRASE);
     await user.click(screen.getByRole("button", { name: "Delete Workspace" }));
 
     expect(setCurrentWorkspaceId).not.toHaveBeenCalled();

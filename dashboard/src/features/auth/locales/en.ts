@@ -110,7 +110,8 @@ const enAuth: Record<string, TranslationEntry> = {
   },
   "auth.logoutConfirmTitle": {
     message: "Sign out?",
-    description: "Logout page heading on the confirmation screen (codex #12 CSRF logout fix)",
+    description:
+      "Logout page heading on the confirmation screen (codex #12 CSRF logout fix)",
   },
   "auth.logoutConfirmSubtitle": {
     message: "Are you sure you want to end your session?",

@@ -17,7 +17,10 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useChangeWorkspacePlan } from "@/features/workspaces/hooks/use-change-workspace-plan";
 import { PlanPicker } from "@/features/workspaces/components/plan-picker";
-import type { WorkspacePlanId, WorkspaceView } from "@/features/workspaces/types";
+import type {
+  WorkspacePlanId,
+  WorkspaceView,
+} from "@/features/workspaces/types";
 
 export interface ChangePlanDialogProps {
   workspace: WorkspaceView;

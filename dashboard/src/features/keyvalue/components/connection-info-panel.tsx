@@ -7,7 +7,11 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/common/components/ui/alert";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/common/components/ui/alert";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useConnectionInfo } from "@/features/keyvalue/hooks/use-connection-info";
 import { ConnectionField } from "@/common/components/connection-field";

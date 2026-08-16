@@ -39,7 +39,10 @@ describe("InviteMemberDialog", () => {
     const user = userEvent.setup();
     await openDialog(user);
 
-    await user.type(screen.getByLabelText("Email address"), "carol@example.com");
+    await user.type(
+      screen.getByLabelText("Email address"),
+      "carol@example.com",
+    );
     await user.click(screen.getByRole("button", { name: "Send invite" }));
 
     expect(invite).toHaveBeenCalledWith("carol@example.com", "DEVELOPER");
@@ -66,7 +69,8 @@ describe("InviteMemberDialog", () => {
     });
 
     it("the CTA routes to the plan section and opens the change-plan dialog", async () => {
-      inviteState.planLimit = "The hobby plan is limited to 1 workspace member(s). Upgrade to invite more.";
+      inviteState.planLimit =
+        "The hobby plan is limited to 1 workspace member(s). Upgrade to invite more.";
       const user = userEvent.setup();
       await openDialog(user);
 

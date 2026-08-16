@@ -178,7 +178,8 @@ const zhMetrics: Record<string, TranslationEntry> = {
       "Badge on the Outbound Bandwidth chart when an egress source's health check failed inside the window (w1/m50)",
   },
   "metrics.bandwidthDegradedDetail": {
-    message: "{sources} 出口数据源在此时间窗口内部分时间不健康——带宽可能被低估。",
+    message:
+      "{sources} 出口数据源在此时间窗口内部分时间不健康——带宽可能被低估。",
     description:
       "Tooltip expanding the Partial data badge; {sources} is the comma-joined raw source tokens (http/websocket/direct)",
   },
@@ -360,7 +361,8 @@ const zhMetrics: Record<string, TranslationEntry> = {
   },
   "metrics.rangeLast30Days": {
     message: "过去 30 天",
-    description: "Metrics time-range filter option (w5/m56; Render plan-gates it)",
+    description:
+      "Metrics time-range filter option (w5/m56; Render plan-gates it)",
   },
   "metrics.rangeCustom": {
     message: "自定义…",

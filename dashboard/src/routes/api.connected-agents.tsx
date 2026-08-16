@@ -10,15 +10,13 @@ export const Route = createFileRoute("/api/connected-agents")({
     handlers: ({ createHandlers }) =>
       createHandlers({
         GET: async ({ request }) => {
-          const { listConnectedAgents } = await import(
-            "@/common/server-fn/hydra-connected-agents"
-          );
+          const { listConnectedAgents } =
+            await import("@/common/server-fn/hydra-connected-agents");
           return listConnectedAgents(request);
         },
         POST: async ({ request }) => {
-          const { revokeConnectedAgent } = await import(
-            "@/common/server-fn/hydra-connected-agents"
-          );
+          const { revokeConnectedAgent } =
+            await import("@/common/server-fn/hydra-connected-agents");
           return revokeConnectedAgent(request);
         },
       }),

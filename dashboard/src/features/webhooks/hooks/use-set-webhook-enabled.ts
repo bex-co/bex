@@ -27,7 +27,9 @@ export function useSetWebhookEnabled(): UseSetWebhookEnabledResult {
     async (id: string, name: string, enabled: boolean) => {
       setToggling(id);
       try {
-        await mutate({ variables: { id, enabled, ownerId: currentWorkspaceId } });
+        await mutate({
+          variables: { id, enabled, ownerId: currentWorkspaceId },
+        });
         toast.success(
           t(enabled ? "webhooks.enableSuccess" : "webhooks.disableSuccess", {
             name,

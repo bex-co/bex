@@ -207,7 +207,10 @@ describe("useMetrics", () => {
     });
 
     renderHook(() =>
-      useMetrics("app", "http_requests", { host: "web.onbex.co", path: "/api" }),
+      useMetrics("app", "http_requests", {
+        host: "web.onbex.co",
+        path: "/api",
+      }),
     );
 
     expect(mockUseQuery).toHaveBeenCalledWith(

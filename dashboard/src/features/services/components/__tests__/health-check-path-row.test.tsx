@@ -42,7 +42,9 @@ describe("HealthCheckPathRow", () => {
     await user.click(
       screen.getByRole("button", { name: "Edit Health Check Path" }),
     );
-    await user.clear(screen.getByRole("textbox", { name: "Health Check Path" }));
+    await user.clear(
+      screen.getByRole("textbox", { name: "Health Check Path" }),
+    );
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 
     expect(setHealthCheckPath).toHaveBeenCalledWith("web", "");

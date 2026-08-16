@@ -5,8 +5,7 @@ import { vi } from "vitest";
 // one before anything imports it (hoisted above the imports below) — tests
 // are the client environment. See src/test/tanstack-start-fn-stubs.ts.
 vi.mock("@tanstack/react-start", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@tanstack/react-start")>();
+  const actual = await importOriginal<typeof import("@tanstack/react-start")>();
   const stubs = await import("./tanstack-start-fn-stubs");
   return { ...actual, createIsomorphicFn: stubs.createIsomorphicFn };
 });

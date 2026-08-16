@@ -10,7 +10,9 @@ export function rootDirPrefix(rootDir: string | null | undefined): string {
 // Render's command-input prompt (w5/m51): the "<rootDir>/ $" prefix shown inside
 // the Build / Pre-Deploy / Start Command inputs so a command reads as relative to
 // the root directory. Falls back to a bare "$" prompt when no root dir is set.
-export function commandPromptPrefix(rootDir: string | null | undefined): string {
+export function commandPromptPrefix(
+  rootDir: string | null | undefined,
+): string {
   const prefix = rootDirPrefix(rootDir);
   return prefix ? `${prefix} $` : "$";
 }

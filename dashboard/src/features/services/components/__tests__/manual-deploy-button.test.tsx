@@ -48,9 +48,7 @@ describe("ManualDeployButton — navigate to the new deploy's page (w9/m1/t004)"
     const user = userEvent.setup();
     render(<ManualDeployButton service={svc()} pending={false} />);
 
-    await user.click(
-      screen.getByRole("button", { name: /Manual Deploy/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /Manual Deploy/i }));
     await user.click(screen.getByText("Deploy latest image"));
 
     expect(trigger).toHaveBeenCalledWith("web");
@@ -68,9 +66,7 @@ describe("ManualDeployButton — navigate to the new deploy's page (w9/m1/t004)"
     const user = userEvent.setup();
     render(<ManualDeployButton service={svc()} pending={false} />);
 
-    await user.click(
-      screen.getByRole("button", { name: /Manual Deploy/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /Manual Deploy/i }));
     await user.click(screen.getByText("Deploy latest image"));
 
     expect(trigger).toHaveBeenCalledWith("web");
@@ -82,9 +78,7 @@ describe("ManualDeployButton — navigate to the new deploy's page (w9/m1/t004)"
     const user = userEvent.setup();
     render(<ManualDeployButton service={svc()} pending={false} />);
 
-    await user.click(
-      screen.getByRole("button", { name: /Manual Deploy/i }),
-    );
+    await user.click(screen.getByRole("button", { name: /Manual Deploy/i }));
     await user.click(screen.getByText("Restart service"));
 
     await waitFor(() =>

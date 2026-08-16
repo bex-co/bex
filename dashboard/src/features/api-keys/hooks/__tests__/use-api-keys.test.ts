@@ -34,7 +34,14 @@ describe("useApiKeys", () => {
             lastUsedAt: "2026-07-05T00:00:00Z",
           },
           null,
-          { __typename: "ApiKey", id: null, name: "orphan", createdAt: null, createdBy: null, lastUsedAt: null },
+          {
+            __typename: "ApiKey",
+            id: null,
+            name: "orphan",
+            createdAt: null,
+            createdBy: null,
+            lastUsedAt: null,
+          },
         ],
       },
       loading: false,
@@ -56,7 +63,18 @@ describe("useApiKeys", () => {
 
   it("never requests or surfaces a secret field — the view type has none", () => {
     mockUseQuery.mockReturnValue({
-      data: { apiKeys: [{ __typename: "ApiKey", id: "key-1", name: "x", createdAt: null, createdBy: null, lastUsedAt: null }] },
+      data: {
+        apiKeys: [
+          {
+            __typename: "ApiKey",
+            id: "key-1",
+            name: "x",
+            createdAt: null,
+            createdBy: null,
+            lastUsedAt: null,
+          },
+        ],
+      },
       loading: false,
       error: undefined,
       refetch: vi.fn(),

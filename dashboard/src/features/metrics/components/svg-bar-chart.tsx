@@ -69,7 +69,8 @@ export function SvgBarChart({
     const xForT = (t: number) =>
       tN === t0
         ? PAD.left + innerWidth / 2
-        : PAD.left + (((t - t0) / (tN - t0)) * (frames.length - 1) + 0.5) * slot;
+        : PAD.left +
+          (((t - t0) / (tN - t0)) * (frames.length - 1) + 0.5) * slot;
     return clusterMarkers(markers, xForT, PAD.left, WIDTH - PAD.right);
   }, [markers, markersServiceId, frames]);
 

@@ -225,7 +225,8 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.metaPath": {
     message: "Manifest path",
-    description: "Blueprint detail metadata label — path to render.yaml in repo",
+    description:
+      "Blueprint detail metadata label — path to render.yaml in repo",
   },
   "blueprints.metaAutoSync": {
     message: "Auto-sync",

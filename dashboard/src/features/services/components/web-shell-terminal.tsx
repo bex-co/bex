@@ -90,7 +90,10 @@ export function WebShellTerminal({
       // request line lands in the edge proxy's access log, headers don't
       // (w1/042 L8). The gateway selects the bare "bex.shell" marker, so the
       // credential isn't echoed in the handshake response either.
-      ws = new WebSocket(session.url, ["bex.shell", `bex.ticket.${session.ticket}`]);
+      ws = new WebSocket(session.url, [
+        "bex.shell",
+        `bex.ticket.${session.ticket}`,
+      ]);
       ws.binaryType = "arraybuffer";
 
       const sendResize = () => {

@@ -40,7 +40,12 @@ export function RevokeIconButton({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button size="icon" variant="ghost" aria-label={label} disabled={pending}>
+        <Button
+          size="icon"
+          variant="ghost"
+          aria-label={label}
+          disabled={pending}
+        >
           {pending ? (
             <Loader2 className="animate-spin" />
           ) : (

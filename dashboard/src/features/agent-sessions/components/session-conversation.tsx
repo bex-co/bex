@@ -52,11 +52,11 @@ export function SessionConversation({
 
   useEffect(() => {
     let live = true;
-    void import(
-      "@/features/agent-sessions/components/session-conversation-impl"
-    ).then((module) => {
-      if (live) setImpl(() => module.SessionConversationImpl);
-    });
+    void import("@/features/agent-sessions/components/session-conversation-impl").then(
+      (module) => {
+        if (live) setImpl(() => module.SessionConversationImpl);
+      },
+    );
     return () => {
       live = false;
     };

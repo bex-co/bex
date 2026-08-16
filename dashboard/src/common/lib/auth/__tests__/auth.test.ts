@@ -14,8 +14,9 @@ function guard(
     requireAuth(path)({ context });
     return null; // let through
   } catch (thrown) {
-    return (thrown as { options: { to: string; search: Record<string, unknown> } })
-      .options;
+    return (
+      thrown as { options: { to: string; search: Record<string, unknown> } }
+    ).options;
   }
 }
 

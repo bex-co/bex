@@ -80,9 +80,7 @@ describe("dedicated Redirects/Rewrites + Headers pages (w5/m48)", () => {
     const user = userEvent.setup();
     renderPage("redirects");
 
-    expect(
-      await screen.findByText("Redirects/Rewrites"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Redirects/Rewrites")).toBeInTheDocument();
     expect(screen.getByDisplayValue("/index.html")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Add rule" }));

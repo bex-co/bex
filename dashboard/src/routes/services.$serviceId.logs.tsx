@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LogViewer } from "@/features/logs/components/log-viewer";
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
-import { isCustomRange, type RangeSelection } from "@/features/metrics/lib/range";
+import {
+  isCustomRange,
+  type RangeSelection,
+} from "@/features/metrics/lib/range";
 import {
   CLEARED_LOG_SEARCH,
   logFiltersFromSearch,

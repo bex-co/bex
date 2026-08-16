@@ -74,9 +74,7 @@ describe("DeployActions", () => {
     const user = userEvent.setup();
     const router = renderActions("live");
 
-    await user.click(
-      await screen.findByRole("button", { name: "Rollback" }),
-    );
+    await user.click(await screen.findByRole("button", { name: "Rollback" }));
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
 
@@ -97,9 +95,7 @@ describe("DeployActions", () => {
     const user = userEvent.setup();
     const router = renderActions("live");
 
-    await user.click(
-      await screen.findByRole("button", { name: "Rollback" }),
-    );
+    await user.click(await screen.findByRole("button", { name: "Rollback" }));
     await user.click(
       within(await screen.findByRole("alertdialog")).getByRole("button", {
         name: "Proceed",

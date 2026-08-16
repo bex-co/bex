@@ -68,7 +68,9 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
           <>
             <DialogHeader>
               <DialogTitle>{t("apiKeys.createdTitle")}</DialogTitle>
-              <DialogDescription>{t("apiKeys.createdWarning")}</DialogDescription>
+              <DialogDescription>
+                {t("apiKeys.createdWarning")}
+              </DialogDescription>
             </DialogHeader>
             <div className="flex items-center gap-2 rounded-md border bg-muted/50 p-3">
               <code className="flex-1 overflow-x-auto font-mono text-sm break-all">
@@ -91,7 +93,9 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
           <>
             <DialogHeader>
               <DialogTitle>{t("apiKeys.createTitle")}</DialogTitle>
-              <DialogDescription>{t("apiKeys.createDescription")}</DialogDescription>
+              <DialogDescription>
+                {t("apiKeys.createDescription")}
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
               <Label htmlFor="api-key-name">{t("apiKeys.fieldName")}</Label>

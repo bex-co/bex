@@ -16,7 +16,11 @@ const modules = import.meta.glob<{ default: Record<string, Entry> }>(
 );
 
 // Group by locale directory (e.g. "features/metrics") -> { en, zh } modules.
-type Pair = { name: string; en?: Record<string, Entry>; zh?: Record<string, Entry> };
+type Pair = {
+  name: string;
+  en?: Record<string, Entry>;
+  zh?: Record<string, Entry>;
+};
 const byDir: Record<string, Pair> = {};
 for (const [path, mod] of Object.entries(modules)) {
   const m = path.match(/\/([^/]+)\/locales\/(en|zh)\.ts$/);
@@ -24,7 +28,9 @@ for (const [path, mod] of Object.entries(modules)) {
   const [, name, lang] = m;
   (byDir[name] ??= { name })[lang as "en" | "zh"] = mod.default;
 }
-const NAMESPACES = Object.values(byDir).sort((a, b) => a.name.localeCompare(b.name));
+const NAMESPACES = Object.values(byDir).sort((a, b) =>
+  a.name.localeCompare(b.name),
+);
 
 // Intentional gaps: keys allowed in one language but not the other. Keep empty
 // — add a key here (with a why) only for a deliberate divergence.
@@ -45,8 +51,12 @@ describe("locale key parity", () => {
   it.each(NAMESPACES)("$name: en and zh have the same keys", ({ en, zh }) => {
     const enKeys = Object.keys(en ?? {});
     const zhKeys = Object.keys(zh ?? {});
-    const onlyEn = enKeys.filter((k) => !zh?.[k] && !ALLOW_ONLY_EN.has(k)).sort();
-    const onlyZh = zhKeys.filter((k) => !en?.[k] && !ALLOW_ONLY_ZH.has(k)).sort();
+    const onlyEn = enKeys
+      .filter((k) => !zh?.[k] && !ALLOW_ONLY_EN.has(k))
+      .sort();
+    const onlyZh = zhKeys
+      .filter((k) => !en?.[k] && !ALLOW_ONLY_ZH.has(k))
+      .sort();
     expect(onlyEn, "keys in en but missing from zh").toEqual([]);
     expect(onlyZh, "keys in zh but missing from en").toEqual([]);
   });
@@ -60,13 +70,22 @@ describe("locale key parity", () => {
     if (keys.length === 0) return;
     const prefix = keys[0].split(".")[0];
     for (const key of keys) {
-      expect(key.startsWith(`${prefix}.`), `key "${key}" is not prefixed "${prefix}."`).toBe(true);
+      expect(
+        key.startsWith(`${prefix}.`),
+        `key "${key}" is not prefixed "${prefix}."`,
+      ).toBe(true);
     }
   });
 
-  it.each(NAMESPACES)("$name: every entry has a non-empty message", ({ en, zh }) => {
-    for (const entry of [...Object.values(en ?? {}), ...Object.values(zh ?? {})]) {
-      expect(entry.message.length).toBeGreaterThan(0);
-    }
-  });
+  it.each(NAMESPACES)(
+    "$name: every entry has a non-empty message",
+    ({ en, zh }) => {
+      for (const entry of [
+        ...Object.values(en ?? {}),
+        ...Object.values(zh ?? {}),
+      ]) {
+        expect(entry.message.length).toBeGreaterThan(0);
+      }
+    },
+  );
 });

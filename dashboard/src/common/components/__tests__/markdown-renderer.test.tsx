@@ -114,6 +114,8 @@ describe("MarkdownRenderer", () => {
     expect(anchor).toHaveAttribute("rel", "noopener noreferrer");
     // Resolved to an absolute origin — never navigates the current tab as a
     // silent "internal" relative link.
-    expect(anchor?.getAttribute("href")).toMatch(/^https?:\/\/attacker\.example\//);
+    expect(anchor?.getAttribute("href")).toMatch(
+      /^https?:\/\/attacker\.example\//,
+    );
   });
 });

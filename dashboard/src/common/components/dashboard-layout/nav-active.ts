@@ -6,7 +6,9 @@ const PROJECTS_PREFIXES = ["/project/", "/services", "/databases", "/keyvalue"];
 
 export function isNavItemActive(pathname: string, to: string): boolean {
   if (to === "/") {
-    return pathname === "/" || PROJECTS_PREFIXES.some((p) => pathname.startsWith(p));
+    return (
+      pathname === "/" || PROJECTS_PREFIXES.some((p) => pathname.startsWith(p))
+    );
   }
   return pathname === to || pathname.startsWith(`${to}/`);
 }

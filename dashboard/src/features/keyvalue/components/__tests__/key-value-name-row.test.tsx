@@ -38,7 +38,9 @@ describe("KeyValueNameRow", () => {
     expect(input).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "Edit Key Value name" }));
+    await user.click(
+      screen.getByRole("button", { name: "Edit Key Value name" }),
+    );
     expect(input).toBeEnabled();
     await user.clear(input);
     await user.type(input, "new-name");
@@ -52,7 +54,9 @@ describe("KeyValueNameRow", () => {
     const user = userEvent.setup();
     render(<KeyValueNameRow keyValue={keyValue} onRenamed={vi.fn()} />);
 
-    await user.click(screen.getByRole("button", { name: "Edit Key Value name" }));
+    await user.click(
+      screen.getByRole("button", { name: "Edit Key Value name" }),
+    );
     const input = screen.getByLabelText("Name");
     await user.clear(input);
     await user.type(input, "Bad Name");

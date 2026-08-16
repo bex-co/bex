@@ -26,7 +26,9 @@ beforeEach(() => {
 describe("ValidatePanel", () => {
   it("shows the validate button and no result before running", () => {
     render(<ValidatePanel manifest="services:\n  - name: api" />);
-    expect(screen.getByRole("button", { name: /run validate/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /run validate/i }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/manifest is valid/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/manifest has errors/i)).not.toBeInTheDocument();
   });
@@ -38,7 +40,9 @@ describe("ValidatePanel", () => {
     });
 
     render(<ValidatePanel manifest="services:\n  - name: api" />);
-    await userEvent.click(screen.getByRole("button", { name: /run validate/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /run validate/i }),
+    );
 
     expect(await screen.findByText(/manifest is valid/i)).toBeInTheDocument();
   });
@@ -47,21 +51,32 @@ describe("ValidatePanel", () => {
     validateState.validate = vi.fn(async () => {
       validateState.result = {
         valid: false,
-        errors: ["missing required field: name", "unknown field: fromService.envVarKey"],
+        errors: [
+          "missing required field: name",
+          "unknown field: fromService.envVarKey",
+        ],
       };
       return validateState.result;
     });
 
     render(<ValidatePanel manifest="bad yaml" />);
-    await userEvent.click(screen.getByRole("button", { name: /run validate/i }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /run validate/i }),
+    );
 
     expect(await screen.findByText(/manifest has errors/i)).toBeInTheDocument();
-    expect(screen.getByText("missing required field: name")).toBeInTheDocument();
-    expect(screen.getByText("unknown field: fromService.envVarKey")).toBeInTheDocument();
+    expect(
+      screen.getByText("missing required field: name"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("unknown field: fromService.envVarKey"),
+    ).toBeInTheDocument();
   });
 
   it("disables the button when manifest is empty", () => {
     render(<ValidatePanel manifest="" />);
-    expect(screen.getByRole("button", { name: /run validate/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /run validate/i }),
+    ).toBeDisabled();
   });
 });

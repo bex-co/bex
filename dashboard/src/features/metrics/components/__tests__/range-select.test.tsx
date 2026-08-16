@@ -22,7 +22,10 @@ describe("RangeSelect custom range (w5/m56)", () => {
     const user = userEvent.setup();
     const onRangeChange = vi.fn();
     render(
-      <RangeSelect range={DEFAULT_RANGE_PRESET} onRangeChange={onRangeChange} />,
+      <RangeSelect
+        range={DEFAULT_RANGE_PRESET}
+        onRangeChange={onRangeChange}
+      />,
     );
 
     await user.click(screen.getByLabelText("Time range"));
@@ -37,7 +40,10 @@ describe("RangeSelect custom range (w5/m56)", () => {
     const user = userEvent.setup();
     const onRangeChange = vi.fn();
     render(
-      <RangeSelect range={DEFAULT_RANGE_PRESET} onRangeChange={onRangeChange} />,
+      <RangeSelect
+        range={DEFAULT_RANGE_PRESET}
+        onRangeChange={onRangeChange}
+      />,
     );
 
     await user.click(screen.getByLabelText("Time range"));
@@ -68,7 +74,10 @@ describe("RangeSelect custom range (w5/m56)", () => {
     const user = userEvent.setup();
     const onRangeChange = vi.fn();
     render(
-      <RangeSelect range={DEFAULT_RANGE_PRESET} onRangeChange={onRangeChange} />,
+      <RangeSelect
+        range={DEFAULT_RANGE_PRESET}
+        onRangeChange={onRangeChange}
+      />,
     );
 
     await user.click(screen.getByLabelText("Time range"));

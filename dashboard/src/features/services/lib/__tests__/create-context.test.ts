@@ -26,9 +26,9 @@ describe("parseNewServiceSearch", () => {
         environmentId: "env-1",
       }),
     ).toEqual({ type: "cron_job", projectId: "prj-1", environmentId: "env-1" });
-    expect(
-      parseNewServiceSearch({ projectId: "", environmentId: 0 }),
-    ).toEqual({});
+    expect(parseNewServiceSearch({ projectId: "", environmentId: 0 })).toEqual(
+      {},
+    );
   });
 });
 

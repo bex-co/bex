@@ -29,9 +29,9 @@ describe("redirectRenderAlias", () => {
       "static",
       "cron",
     ] as const) {
-      expect(hrefOf(segment, "srv-abc123", locationOf(`/${segment}/srv-abc123`))).toBe(
-        "/services/srv-abc123",
-      );
+      expect(
+        hrefOf(segment, "srv-abc123", locationOf(`/${segment}/srv-abc123`)),
+      ).toBe("/services/srv-abc123");
     }
   });
 
@@ -52,9 +52,9 @@ describe("redirectRenderAlias", () => {
         locationOf("/web/srv-abc/deploys/dep-xyz"),
       ),
     ).toBe("/services/srv-abc/deploys/dep-xyz");
-    expect(hrefOf("cron", "srv-abc/settings", locationOf("/cron/srv-abc/settings"))).toBe(
-      "/services/srv-abc/settings",
-    );
+    expect(
+      hrefOf("cron", "srv-abc/settings", locationOf("/cron/srv-abc/settings")),
+    ).toBe("/services/srv-abc/settings");
   });
 
   it("preserves the query string and hash", () => {
@@ -85,7 +85,13 @@ describe("redirectRenderAlias", () => {
       static: "/services/new?type=static_site",
       cron: "/services/new?type=cron_job",
     };
-    for (const segment of ["web", "worker", "pserv", "static", "cron"] as const) {
+    for (const segment of [
+      "web",
+      "worker",
+      "pserv",
+      "static",
+      "cron",
+    ] as const) {
       expect(hrefOf(segment, "new", locationOf(`/${segment}/new`))).toBe(
         expected[segment],
       );
@@ -109,9 +115,9 @@ describe("redirectRenderAlias", () => {
     try {
       redirectRenderAlias("web", "srv-abc", locationOf("/web/srv-abc"));
     } catch (thrown) {
-      expect((thrown as { options?: { replace?: boolean } }).options?.replace).toBe(
-        true,
-      );
+      expect(
+        (thrown as { options?: { replace?: boolean } }).options?.replace,
+      ).toBe(true);
     }
   });
 });

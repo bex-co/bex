@@ -49,7 +49,11 @@ export function DatabasePlanSection({
   async function handleConfirm() {
     setConfirming(false);
     if (!selectedType) return;
-    const ok = await updatePlan(database.id, selectedType.id, selectedType.name);
+    const ok = await updatePlan(
+      database.id,
+      selectedType.id,
+      selectedType.name,
+    );
     if (ok) onChanged();
   }
 

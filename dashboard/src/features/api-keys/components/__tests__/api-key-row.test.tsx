@@ -76,7 +76,9 @@ describe("ApiKeyRow — revoke with confirmation (w4/m8/t002)", () => {
 
     await user.click(screen.getByRole("button", { name: "Revoke" }));
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getAllByRole("button", { name: "Revoke" })[0]);
+    await user.click(
+      within(dialog).getAllByRole("button", { name: "Revoke" })[0],
+    );
 
     expect(onRevoke).toHaveBeenCalledWith("key-1", "deploy-agent");
   });

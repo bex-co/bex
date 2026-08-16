@@ -11,7 +11,10 @@ import {
   isMetricsUnavailable,
   toChartSeries,
 } from "@/features/metrics/lib/graphql-series";
-import type { UseMetricsOptions, UseMetricsResult } from "@/features/metrics/hooks/use-metrics";
+import type {
+  UseMetricsOptions,
+  UseMetricsResult,
+} from "@/features/metrics/hooks/use-metrics";
 
 /**
  * Reads one bex-api datastore metric (disk/db_connections/replication_lag)

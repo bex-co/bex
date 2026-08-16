@@ -24,15 +24,13 @@ type RawPageItem = {
 } | null;
 
 function mapPage(raw: Array<RawPageItem> | null | undefined) {
-  const items = (raw ?? []).filter(
-    (item): item is NonNullable<RawPageItem> =>
-      Boolean(item?.secretFile?.name),
+  const items = (raw ?? []).filter((item): item is NonNullable<RawPageItem> =>
+    Boolean(item?.secretFile?.name),
   );
   const names = items
     .map((item) => item.secretFile)
     .filter(
-      (file): file is { id: string | null; name: string } =>
-        file?.name != null,
+      (file): file is { id: string | null; name: string } => file?.name != null,
     )
     .map((file) => ({ id: file.id ?? file.name, name: file.name }));
   return { items, names };
