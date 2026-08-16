@@ -44,6 +44,7 @@ import {
 // The list is a page, not a layout, so nesting the detail beneath it would leave
 // the list mounted because it has no <Outlet />.
 export const Route = createFileRoute("/env-groups_/$groupId")({
+  staticData: { chrome: true },
   component: EnvGroupDetailPage,
   // The page doubles as its own pending state at 0ms: it renders full
   // chrome + its skeleton stack while its Apollo read loads (tolerating the

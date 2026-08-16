@@ -8,6 +8,7 @@ import { NewSessionComposer } from "@/features/agent-sessions/components/new-ses
 import { SessionList } from "@/features/agent-sessions/components/session-list";
 
 export const Route = createFileRoute("/agents")({
+  staticData: { chrome: true },
   component: AgentSessionsPage,
   beforeLoad: requireAuth(),
   // `?view=list` keeps the standalone sessions table reachable (the sidebar's

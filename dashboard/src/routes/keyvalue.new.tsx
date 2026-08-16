@@ -66,6 +66,7 @@ const PERSISTENCE_LABEL_KEYS: Record<
 const FREE_PLAN = "free";
 
 export const Route = createFileRoute("/keyvalue/new")({
+  staticData: { chrome: true },
   component: NewKeyValuePage,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("keyvalue.createTitle", match),

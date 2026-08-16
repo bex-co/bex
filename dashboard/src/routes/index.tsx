@@ -35,6 +35,7 @@ import { ProjectCard } from "@/features/projects/components/project-card";
 import { NewProjectCard } from "@/features/projects/components/new-project-card";
 
 export const Route = createFileRoute("/")({
+  staticData: { chrome: true },
   component: HomePage,
   // No-arg requireAuth: `next` defaults to the requested href, so
   // `?new=database` — the create-dialog param Render's New-menu aliases land

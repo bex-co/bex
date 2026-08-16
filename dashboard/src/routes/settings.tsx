@@ -4,6 +4,7 @@ import { translatedTitleHead } from "@/common/lib/document-head";
 import SettingsPage from "@/features/auth/pages/settings-page";
 
 export const Route = createFileRoute("/settings")({
+  staticData: { chrome: true },
   component: SettingsPage,
   beforeLoad: requireAuth(),
   // GitHub's cross-site install callback redirects failures here with one

@@ -30,6 +30,7 @@ import { useBlueprints } from "@/features/blueprints/hooks/use-blueprints";
 import { formatRelativeAge } from "@/features/services/lib/format";
 
 export const Route = createFileRoute("/blueprints")({
+  staticData: { chrome: true },
   component: BlueprintsPage,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("blueprints.pageTitle", match),

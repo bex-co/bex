@@ -30,6 +30,7 @@ import {
 } from "@/features/workspaces/types";
 
 export const Route = createFileRoute("/new/workspace")({
+  staticData: { chrome: true },
   component: NewWorkspacePage,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("workspaces.newTitle", match),

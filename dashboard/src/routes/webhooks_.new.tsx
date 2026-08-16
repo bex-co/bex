@@ -26,6 +26,7 @@ import { translatedTitleHead } from "@/common/lib/document-head";
 // is a page without an <Outlet />, so nesting would leave it mounted (the
 // env-groups_.$groupId precedent).
 export const Route = createFileRoute("/webhooks_/new")({
+  staticData: { chrome: true },
   component: NewWebhookPage,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("webhooks.newTitle", match),

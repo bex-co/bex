@@ -16,6 +16,7 @@ import {
 } from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/services/$serviceId")({
+  staticData: { chrome: true },
   component: RouteComponent,
   // The page doubles as its own pending state at 0ms: ServiceDetailLayout
   // renders full chrome + a header skeleton while its Apollo read loads

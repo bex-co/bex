@@ -37,6 +37,7 @@ import {
 } from "@/common/lib/document-head";
 
 export const Route = createFileRoute("/keyvalue/$keyValueId")({
+  staticData: { chrome: true },
   component: KeyValueDetailPage,
   // The page doubles as its own pending state at 0ms: it renders full
   // chrome + its skeleton stack while its Apollo read loads (tolerating the

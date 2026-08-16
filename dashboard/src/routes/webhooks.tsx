@@ -11,6 +11,7 @@ import { WebhooksPanel } from "@/features/webhooks/components/webhooks-panel";
  * placement-parity move m44 made for Team.
  */
 export const Route = createFileRoute("/webhooks")({
+  staticData: { chrome: true },
   component: WebhooksPage,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("webhooks.title", match),

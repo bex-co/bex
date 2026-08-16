@@ -10,6 +10,7 @@ import { DeleteWorkspaceCard } from "@/features/workspaces/components/delete-wor
 import { TeamPanel } from "@/features/team/components/team-panel";
 
 export const Route = createFileRoute("/workspace/settings")({
+  staticData: { chrome: true },
   component: WorkspaceSettingsPage,
   // No-arg requireAuth (w1/m45): `next` keeps the full href so the
   // `?plan=change` deep link (blocked-invite CTA, /billing/update-plan alias)

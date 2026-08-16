@@ -22,6 +22,7 @@ import {
  * `/services` tree renders every type).
  */
 export const Route = createFileRoute("/static/$serviceId")({
+  staticData: { chrome: true },
   component: RouteComponent,
   // The page doubles as its own pending state at 0ms — same rationale as
   // /services/$serviceId: ServiceDetailLayout's own skeleton chrome replaces

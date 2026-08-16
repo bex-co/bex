@@ -42,6 +42,7 @@ import { ProtectedConfirmationDialog } from "@/common/components/protected-confi
 import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
 
 export const Route = createFileRoute("/blueprints/new")({
+  staticData: { chrome: true },
   component: NewBlueprintPage,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("blueprints.createTitle", match),
