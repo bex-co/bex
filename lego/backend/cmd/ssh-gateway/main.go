@@ -48,6 +48,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentattach"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/modelproxy"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/nativessh"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxsse"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/webshell"
@@ -180,11 +181,19 @@ func main() {
 		SessionTimeout: sessionTimeout,
 	}
 	credentials := &agentcred.Broker{Metrics: metrics}
+	// The ADR062 model proxy shares the Git proxy's trust model: the same
+	// gateway-only HMAC secret, the same source-pod resolver, an internal-only
+	// listener. It keeps the BYO model key on the gateway→vendor hop.
+	model := &modelproxy.Broker{Metrics: metrics}
 	if secret := os.Getenv("BEX_SANDBOX_EXEC_SECRET"); secret != "" {
 		apiURL := envOr("BEX_AGENT_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalMintPath)
 		credentials.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
 		credentials.API = &agentsession.Client{URL: apiURL, Secret: []byte(secret)}
 		credentials.Audit = st
+
+		modelAPIURL := envOr("BEX_AGENT_MODEL_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalModelMintPath)
+		model.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
+		model.API = &agentsession.ModelClient{URL: modelAPIURL, Secret: []byte(secret)}
 	}
 	// Agent-session conversation transport (ADR047 D9). Shares the web-shell
 	// ticket secret (BEX_SHELL_TICKET_SECRET): bex-api mints agent-session
@@ -261,6 +270,15 @@ func main() {
 		credentialMux.Handle("GET "+agentsession.GitProxyPath, credentials.Handler())
 		credentialMux.Handle("POST "+agentsession.GitProxyPath, credentials.Handler())
 		defer startAuxListener("agent git proxy", "agent git proxy", envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop)()
+	}
+	// Agent-session model proxy (ADR062). Internal-only (sandbox → gateway → vendor
+	// on :8084 by default); the sandbox's agent base URL points here so the BYO
+	// model key is injected on the upstream hop and never enters the sandbox.
+	// Started only when BEX_SANDBOX_EXEC_SECRET is set (same gate as the Git proxy).
+	if model.Enabled() {
+		modelMux := http.NewServeMux()
+		modelMux.Handle(agentsession.ModelProxyPath, model.Handler())
+		defer startAuxListener("agent model proxy", "agent model proxy", envOr("BEX_AGENT_MODEL_PROXY_ADDR", ":8084"), modelMux, stop)()
 	}
 	// Agent-session conversation listener (ADR047 D9, w3/m43). Browser-facing via
 	// the platform edge, which path-routes api.bex.co/v1/agent-sessions/{id}/stream

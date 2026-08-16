@@ -162,10 +162,19 @@ export function createCredentialManager(
     return out;
   };
 
+  // ADR062: when the model proxy is active, the agent is pointed at the gateway
+  // proxy via its provider base-URL env; the credential the agent carries is only
+  // the placeholder (config.modelCredential), which the proxy strips and replaces
+  // with the real key on the vendor hop.
+  const modelProxyEnv: Record<string, string> =
+    config.modelBaseUrl && config.modelBaseUrlEnvName
+      ? { [config.modelBaseUrlEnvName]: config.modelBaseUrl }
+      : {};
+
   return {
     agentEnvironment() {
-      if (!secret) return { ...config.agentEnv };
-      return { ...config.agentEnv, [credentialEnvName]: secret };
+      if (!secret) return { ...config.agentEnv, ...modelProxyEnv };
+      return { ...config.agentEnv, ...modelProxyEnv, [credentialEnvName]: secret };
     },
 
     async scrubPersistedState(roots = config.scrubRoots) {

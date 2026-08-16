@@ -49,6 +49,12 @@ export interface AgentDriverConfig {
   grantPublicKey: string;
   agentEnv: Record<string, string>;
   scrubRoots: string[];
+  // ADR062 model proxy: when active, the agent's provider base URL is pointed at
+  // the gateway proxy (per-agent env name + composed URL) and the credential env
+  // holds only a placeholder. Empty ⇒ the proxy is off and the agent talks to its
+  // default vendor endpoint with whatever credential is set.
+  modelBaseUrl: string;
+  modelBaseUrlEnvName: string;
 }
 
 const envNamePattern = /^[A-Z_][A-Z0-9_]*$/;
@@ -123,6 +129,35 @@ function defaultCredentialEnvName(credential: string): string {
     : "ANTHROPIC_API_KEY";
 }
 
+// modelProxyRoutes maps each supported adapter (ADR062 D5) to how its provider
+// SDK is pointed at the gateway proxy: the base-URL env var, the path suffix that
+// makes the SDK emit the vendor's full path under the proxy prefix (Anthropic's
+// base is the root so no suffix; OpenAI's base includes /v1), and the credential
+// env var the placeholder must land in so the agent attempts the request (which
+// the proxy then authenticates by pod identity). An adapter absent here cannot
+// join the proxy path — proxy mode fails closed rather than leaking a direct
+// vendor connection.
+const modelProxyRoutes: Record<
+  string,
+  { baseUrlEnv: string; baseUrlSuffix: string; credentialEnv: string }
+> = {
+  "/usr/local/bin/claude-code-acp": {
+    baseUrlEnv: "ANTHROPIC_BASE_URL",
+    baseUrlSuffix: "",
+    credentialEnv: "ANTHROPIC_API_KEY",
+  },
+  "/usr/local/bin/codex-acp": {
+    baseUrlEnv: "OPENAI_BASE_URL",
+    baseUrlSuffix: "/v1",
+    credentialEnv: "OPENAI_API_KEY",
+  },
+  "/usr/local/bin/gemini": {
+    baseUrlEnv: "GOOGLE_GEMINI_BASE_URL",
+    baseUrlSuffix: "",
+    credentialEnv: "GEMINI_API_KEY",
+  },
+};
+
 export function loadConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): AgentDriverConfig {
@@ -132,8 +167,40 @@ export function loadConfig(
   const statusPath =
     env.BEX_AGENT_STATUS_FILE || "/var/run/bex-agent/status.json";
   const modelCredential = env.BEX_AGENT_MODEL_API_KEY || "";
+
+  const command = env.BEX_AGENT_COMMAND || "/usr/local/bin/claude-code-acp";
+  const allowedCommands = new Set([
+    "/usr/local/bin/claude-code-acp",
+    "/usr/local/bin/codex-acp",
+    "/usr/local/bin/gemini",
+  ]);
+  if (!path.isAbsolute(command) || !allowedCommands.has(command)) {
+    throw new Error("BEX_AGENT_COMMAND must be an installed agent adapter path");
+  }
+
+  // ADR062 model proxy: when a proxy base URL is present, route the selected
+  // adapter's provider SDK at it and land the placeholder credential in the var
+  // that adapter reads. An adapter with no known routing fails closed here rather
+  // than silently connecting straight to the vendor with the placeholder.
+  const modelProxyUrl = env.BEX_AGENT_MODEL_PROXY_URL || "";
+  let modelBaseUrl = "";
+  let modelBaseUrlEnvName = "";
+  let routedCredentialEnv = "";
+  if (modelProxyUrl) {
+    const route = modelProxyRoutes[command];
+    if (!route) {
+      throw new Error(
+        `BEX_AGENT_MODEL_PROXY_URL is set but agent ${command} has no model base-URL routing`,
+      );
+    }
+    modelBaseUrlEnvName = route.baseUrlEnv;
+    modelBaseUrl = modelProxyUrl.replace(/\/+$/, "") + route.baseUrlSuffix;
+    routedCredentialEnv = route.credentialEnv;
+  }
+
   const credentialEnvName =
     env.BEX_AGENT_MODEL_API_KEY_ENV ||
+    routedCredentialEnv ||
     defaultCredentialEnvName(modelCredential);
   if (!envNamePattern.test(credentialEnvName)) {
     throw new Error(
@@ -146,21 +213,12 @@ export function loadConfig(
   const agentEnv = jsonObject(env.BEX_AGENT_ENV_JSON, "BEX_AGENT_ENV_JSON");
   if (
     Object.hasOwn(agentEnv, "BEX_AGENT_MODEL_API_KEY") ||
-    Object.hasOwn(agentEnv, credentialEnvName)
+    Object.hasOwn(agentEnv, credentialEnvName) ||
+    (modelBaseUrlEnvName && Object.hasOwn(agentEnv, modelBaseUrlEnvName))
   ) {
     throw new Error(
       "model credentials must use BEX_AGENT_MODEL_API_KEY, not BEX_AGENT_ENV_JSON",
     );
-  }
-
-  const command = env.BEX_AGENT_COMMAND || "/usr/local/bin/claude-code-acp";
-  const allowedCommands = new Set([
-    "/usr/local/bin/claude-code-acp",
-    "/usr/local/bin/codex-acp",
-    "/usr/local/bin/gemini",
-  ]);
-  if (!path.isAbsolute(command) || !allowedCommands.has(command)) {
-    throw new Error("BEX_AGENT_COMMAND must be an installed agent adapter path");
   }
 
   return {
@@ -207,5 +265,7 @@ export function loadConfig(
           .map((item) => path.resolve(item)),
       ),
     ],
+    modelBaseUrl,
+    modelBaseUrlEnvName,
   };
 }

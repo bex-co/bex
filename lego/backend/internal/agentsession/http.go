@@ -29,20 +29,18 @@ import (
 
 const maxCredentialBody = 16 << 10
 
-// Handler authenticates the gateway→bex-api internal mint request. It is
-// mounted only on :8091 and never under the public bex-api router.
-type Handler struct {
-	Secret []byte
-	Minter *Minter
-	Now    func() time.Time
-}
-
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// serveSignedMint is the shared HMAC-authenticated mint HTTP envelope for every
+// gateway→bex-api credential verb (the Git and model flavors). It verifies the
+// signed request, unmarshals Req, runs the flavor's mint, and maps the domain
+// error to a status — so the skew window, body cap, and status mapping live in
+// exactly one place (backend/CLAUDE.md's anti-drift rule). A nil mint (an unwired
+// Minter) reports the feature unavailable.
+func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secret []byte, now time.Time, mint func(context.Context, Req) (Resp, error)) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if len(h.Secret) == 0 || h.Minter == nil {
+	if len(secret) == 0 || mint == nil {
 		http.Error(w, "agent credentials unavailable", http.StatusServiceUnavailable)
 		return
 	}
@@ -51,16 +49,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	if err := Verify(h.Secret, body, r.Header.Get(TimestampHeader), r.Header.Get(SignatureHeader), h.now(), 30*time.Second); err != nil {
+	if err := Verify(secret, body, r.Header.Get(TimestampHeader), r.Header.Get(SignatureHeader), now, 30*time.Second); err != nil {
 		http.Error(w, "invalid signature", http.StatusUnauthorized)
 		return
 	}
-	var req MintRequest
+	var req Req
 	if err := json.Unmarshal(body, &req); err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	response, err := h.Minter.Mint(r.Context(), req)
+	response, err := mint(r.Context(), req)
 	if err != nil {
 		status := http.StatusBadGateway
 		switch {
@@ -75,6 +73,61 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(response)
+}
+
+// postSignedMint is the shared client half: sign the request, POST it, and
+// decode a validated response. valid rejects a well-formed-but-empty response so
+// a broker bug can't hand back a credential-less body.
+func postSignedMint[Req, Resp any](ctx context.Context, url string, secret []byte, now time.Time, httpClient *http.Client, req Req, valid func(Resp) bool) (Resp, error) {
+	var zero Resp
+	body, err := json.Marshal(req)
+	if err != nil {
+		return zero, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return zero, err
+	}
+	timestamp, signature := Sign(secret, body, now)
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set(TimestampHeader, timestamp)
+	httpReq.Header.Set(SignatureHeader, signature)
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: 30 * time.Second}
+	}
+	resp, err := httpClient.Do(httpReq)
+	if err != nil {
+		return zero, fmt.Errorf("agent credential broker unavailable")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized {
+			return zero, ErrForbidden
+		}
+		return zero, fmt.Errorf("agent credential broker returned status %d", resp.StatusCode)
+	}
+	var out Resp
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxCredentialBody)).Decode(&out); err != nil || !valid(out) {
+		return zero, fmt.Errorf("agent credential broker returned an invalid response")
+	}
+	return out, nil
+}
+
+// Handler authenticates the gateway→bex-api internal mint request. It is
+// mounted only on :8091 and never under the public bex-api router.
+type Handler struct {
+	Secret []byte
+	Minter *Minter
+	Now    func() time.Time
+}
+
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	var mint func(context.Context, MintRequest) (MintResponse, error)
+	if h.Minter != nil {
+		mint = h.Minter.Mint
+	}
+	serveSignedMint(w, r, h.Secret, h.now(), mint)
 }
 
 func (h *Handler) now() time.Time {
@@ -94,39 +147,7 @@ type Client struct {
 }
 
 func (c *Client) Mint(ctx context.Context, req MintRequest) (MintResponse, error) {
-	body, err := json.Marshal(req)
-	if err != nil {
-		return MintResponse{}, err
-	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.URL, bytes.NewReader(body))
-	if err != nil {
-		return MintResponse{}, err
-	}
-	timestamp, signature := Sign(c.Secret, body, c.now())
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set(TimestampHeader, timestamp)
-	httpReq.Header.Set(SignatureHeader, signature)
-	client := c.HTTP
-	if client == nil {
-		client = &http.Client{Timeout: 30 * time.Second}
-	}
-	resp, err := client.Do(httpReq)
-	if err != nil {
-		return MintResponse{}, fmt.Errorf("agent credential broker unavailable")
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized {
-			return MintResponse{}, ErrForbidden
-		}
-		return MintResponse{}, fmt.Errorf("agent credential broker returned status %d", resp.StatusCode)
-	}
-	var out MintResponse
-	if err := json.NewDecoder(io.LimitReader(resp.Body, maxCredentialBody)).Decode(&out); err != nil || out.Token == "" {
-		return MintResponse{}, fmt.Errorf("agent credential broker returned an invalid response")
-	}
-	return out, nil
+	return postSignedMint(ctx, c.URL, c.Secret, c.now(), c.HTTP, req, func(out MintResponse) bool { return out.Token != "" })
 }
 
 func (c *Client) now() time.Time {

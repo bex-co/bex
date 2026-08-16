@@ -1093,6 +1093,65 @@ func TestCreateFailsClosedOnModelKeyStoreError(t *testing.T) {
 	}
 }
 
+// TestCreateProxyModeKeepsRealKeyOutOfTheSandbox pins ADR062: with the model
+// proxy configured, the sandbox pod env receives ONLY a placeholder (never the
+// workspace's real BYO key) plus the per-session proxy base URL, so repo/tool
+// code inside the sandbox cannot read a reusable credential.
+func TestCreateProxyModeKeepsRealKeyOutOfTheSandbox(t *testing.T) {
+	svc, _, _, lifecycle := fixture()
+	svc.ModelProxyURL = "http://bex-ssh-gateway.bex-system.svc.cluster.local:8084"
+	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{
+		modelKeySecretPath("tea-a"): {sandbox.ModelAPIKeyEnvVar: "sk-REAL-tea-a"},
+	}}
+	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+		t.Fatal(err)
+	}
+	if lifecycle.modelAPIKey == "sk-REAL-tea-a" {
+		t.Fatal("the real BYO key was injected into the sandbox pod env under proxy mode")
+	}
+	if !strings.HasPrefix(lifecycle.modelAPIKey, "bex-model-proxy-placeholder-") {
+		t.Fatalf("modelAPIKey = %q, want a proxy placeholder", lifecycle.modelAPIKey)
+	}
+	proxyURL := lifecycle.driverEnv["BEX_AGENT_MODEL_PROXY_URL"]
+	if !strings.HasPrefix(proxyURL, "http://bex-ssh-gateway.bex-system.svc.cluster.local:8084/model/") {
+		t.Fatalf("driver BEX_AGENT_MODEL_PROXY_URL = %q, want the per-session gateway base URL", proxyURL)
+	}
+}
+
+// TestCreateWithoutProxyIsByteIdentical pins ADR062's off-by-default contract:
+// with no ModelProxyURL, the real key rides pod env and NO proxy base URL is
+// injected into the driver env (byte-identical to pre-ADR062).
+func TestCreateWithoutProxyIsByteIdentical(t *testing.T) {
+	svc, _, _, lifecycle := fixture()
+	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{
+		modelKeySecretPath("tea-a"): {sandbox.ModelAPIKeyEnvVar: "sk-REAL-tea-a"},
+	}}
+	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+		t.Fatal(err)
+	}
+	if lifecycle.modelAPIKey != "sk-REAL-tea-a" {
+		t.Fatalf("modelAPIKey = %q, want the real key on the pod-env path", lifecycle.modelAPIKey)
+	}
+	if _, ok := lifecycle.driverEnv["BEX_AGENT_MODEL_PROXY_URL"]; ok {
+		t.Fatal("proxy base URL was injected while the proxy is off")
+	}
+}
+
+// TestCreateProxyModeDoesNotRequireOpenBao proves the proxy path never reads the
+// BYO key at create time, so an OpenBao outage no longer strands a create — the
+// gateway fetches the key lazily at request time instead.
+func TestCreateProxyModeDoesNotRequireOpenBao(t *testing.T) {
+	svc, _, _, lifecycle := fixture()
+	svc.ModelProxyURL = "http://gw:8084"
+	svc.ModelKeys = &fakeModelKeys{err: errors.New("openbao unreachable")}
+	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+		t.Fatalf("create under proxy mode with OpenBao down = %v, want success (key read is deferred to the gateway)", err)
+	}
+	if lifecycle.created != 1 {
+		t.Fatalf("sandbox created = %d, want 1", lifecycle.created)
+	}
+}
+
 func TestCrossWorkspaceSessionDeniedByTuple(t *testing.T) {
 	svc, st, _, lifecycle := fixture()
 	created, err := svc.Create(caller("alice"), createInput())

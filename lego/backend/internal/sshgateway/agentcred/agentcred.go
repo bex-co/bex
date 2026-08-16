@@ -100,7 +100,7 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid git request", http.StatusBadRequest)
 		return
 	}
-	sourceIP, err := remoteIP(r.RemoteAddr)
+	sourceIP, err := RemoteIP(r.RemoteAddr)
 	if err != nil {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
@@ -329,7 +329,9 @@ func (b *Broker) now() time.Time {
 	return time.Now().UTC()
 }
 
-func remoteIP(remoteAddr string) (string, error) {
+// RemoteIP extracts the validated source IP from a request RemoteAddr. Shared
+// with the model proxy (ADR062), which resolves the same source Pod.
+func RemoteIP(remoteAddr string) (string, error) {
 	host, _, err := net.SplitHostPort(remoteAddr)
 	if err != nil {
 		host = remoteAddr

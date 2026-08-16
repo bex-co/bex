@@ -32,6 +32,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -86,6 +87,30 @@ func envOr(k, def string) string {
 		return v
 	}
 	return def
+}
+
+// modelProxyPort derives the sessionegress model-proxy port from the
+// BEX_AGENT_MODEL_PROXY_URL origin (ADR062), so the egress narrowing and the
+// agentsessions Service always agree on the port. Empty ⇒ 0 (proxy off); a URL
+// without an explicit port defaults to the gateway's :8084 listener; a malformed
+// URL or non-numeric port fails startup rather than silently disabling the proxy.
+func modelProxyPort(raw string) uint16 {
+	if raw == "" {
+		return 0
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		log.Fatalf("bex-api: bad BEX_AGENT_MODEL_PROXY_URL %q: %v", raw, err)
+	}
+	port := u.Port()
+	if port == "" {
+		return 8084
+	}
+	n, err := strconv.ParseUint(port, 10, 16)
+	if err != nil || n == 0 {
+		log.Fatalf("bex-api: bad BEX_AGENT_MODEL_PROXY_URL port %q", port)
+	}
+	return uint16(n)
 }
 
 // rateLimitEnv parses one of the requests/min rate-limit env pairs: the fill
@@ -358,7 +383,7 @@ func main() {
 		deps.Audit = auditSvc
 		go auditSvc.Run(ctx)
 
-		startControlPlaneServer(ctx, st, rec, granter, stripeBillingAdmin, metricRegistry, ghClient, sandboxExecSecret, appsNS, ready)
+		startControlPlaneServer(ctx, st, rec, granter, stripeBillingAdmin, metricRegistry, ghClient, deps.Secrets, sandboxExecSecret, appsNS, ready)
 	}
 
 	// Invite delivery (w4/m12): the members feature emails invites over the same
@@ -376,6 +401,11 @@ func main() {
 	deps.DashboardURL = dashboardURL
 	deps.DeployHookBaseURL = os.Getenv("BEX_API_PUBLIC_URL")
 	deps.SSHHost = os.Getenv("BEX_SSH_HOST")
+	// ADR062 model proxy: the internal gateway origin agent model traffic is routed
+	// through so the BYO key never enters the sandbox. Unset ⇒ off (real key rides
+	// pod env, byte-identical). Set before wireSandboxes so the session-egress
+	// narrowing derives its port from this one value (single source of truth).
+	deps.AgentModelProxyURL = os.Getenv("BEX_AGENT_MODEL_PROXY_URL")
 	wireSandboxes(ctx, &deps, cl, st, sandboxExecSecret)
 	// Browser Web Shell (docs/ADR035-ssh.md § Browser Web Shell): the HMAC key
 	// shared only with the isolated gateway and the browser-reachable gateway
@@ -864,7 +894,7 @@ func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl 
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, ghClient *github.Client, sandboxExecSecret, appsNS string, ready *serve.Readiness) {
+func startControlPlaneServer(ctx context.Context, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, ghClient *github.Client, modelKeys core.SecretKV, sandboxExecSecret, appsNS string, ready *serve.Readiness) {
 	cpToken := os.Getenv("BEX_CP_TOKEN")
 	if err := requireCPAuth(cpToken, os.Getenv("BEX_CP_INSECURE")); err != nil {
 		log.Fatalf("control plane: %v", err)
@@ -880,6 +910,16 @@ func startControlPlaneServer(ctx context.Context, st *store.PGStore, rec *store.
 			Secret: []byte(sandboxExecSecret),
 			Minter: &agentsession.Minter{GitHub: ghClient, Connections: st, Sessions: st, Audit: st},
 		})
+		// ADR062: the model-credential mint. Same gateway-only HMAC + internal-only
+		// listener as the Git mint, path-domain-separated. Wired only when OpenBao is
+		// reachable (modelKeys non-nil), so a deployment without the BYO key store
+		// simply 503s the model proxy — byte-identical to the pre-ADR062 pod-env path.
+		if modelKeys != nil {
+			internalRoot.Handle(agentsession.InternalModelMintPath, &agentsession.ModelHandler{
+				Secret: []byte(sandboxExecSecret),
+				Minter: &agentsession.ModelMinter{Keys: modelKeys, Sessions: st, Audit: st},
+			})
+		}
 	}
 	internalRoot.Handle("/", internal.Handler())
 	cpAddr := envOr("BEX_CP_ADDR", ":8091")
@@ -921,6 +961,11 @@ func wireSandboxes(ctx context.Context, deps *api.Deps, cl client.Client, st *st
 		// selected per session by its agent/provider config and validated at create.
 		egress, err := sessionegress.NewManager(cl, sessionegress.Config{
 			SetupRegistryDomains: sessionegress.RegistryConfig(os.Getenv("BEX_AGENT_SETUP_REGISTRIES")),
+			// ADR062: when the model proxy is on, narrow the session policy to admit
+			// the gateway proxy port instead of the vendor host. The port is derived
+			// from the same deps.AgentModelProxyURL the agentsessions Service uses, so
+			// the two can never disagree on which port to open.
+			ModelProxyPort: modelProxyPort(deps.AgentModelProxyURL),
 		})
 		if err != nil {
 			log.Fatalf("bex-api: %v", err)
