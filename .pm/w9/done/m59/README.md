@@ -1,6 +1,6 @@
 # w9 · m59 — Native `bex` CLI launcher
 
-**Worker:** worker9 **Goal:** Ship a `bex` executable that imports the pinned upstream Render CLI, targets bex-api by default, and keeps its authenticated local state isolated under `~/.bex/cli.yaml`. **Status:** todo (t001–t006 done; release pending)
+**Worker:** worker9 **Goal:** Ship a `bex` executable that imports the pinned upstream Render CLI, targets bex-api by default, and keeps its authenticated local state isolated under `~/.bex/cli.yaml`. **Status:** done (released `bex-cli/v0.1.0` 2026-08-15 — 4 platform binaries + checksums + sigstore signature)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Add an upstream-version and end-to-end compatibility release gate — **DONE** | 45m | t001, t002, t003 |
 | t005 | Simplify — **DONE** | 30m | t004 |
 | t006 | Test coverage — **DONE** | 45m | t005 |
-| t007 | Closeout | 15m | t006 |
+| t007 | Closeout — **DONE** | 15m | t006 |
 
 ## Definition of done
 
