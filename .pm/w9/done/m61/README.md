@@ -1,16 +1,24 @@
 # w9 · m61 — bex-api response compression: gzip the :8090 read paths
 
-**Worker:** worker9 **Goal:** add HTTP response compression to bex-api so every dashboard/CLI read (GraphQL, REST — especially metrics series and log queries, which compress 70–85%) stops shipping uncompressed JSON, while explicitly exempting the streaming (SSE) paths **Status:** todo
+**Worker:** worker9 **Goal:** add HTTP response compression to bex-api so every dashboard/CLI read (GraphQL, REST — especially metrics series and log queries, which compress 70–85%) stops shipping uncompressed JSON, while explicitly exempting the streaming (SSE) paths **Status:** done
+
+## Results (measured 2026-08-16)
+
+`withGzip` (`internal/api/gzip.go`) wraps `Handler()` outermost, negotiates `Accept-Encoding: gzip`, and **content-type-sniffs** at first write so any `text/event-stream` (or already-encoded) response passes through uncompressed with per-event flush intact — a route allowlist can't drift. Pooled `gzip.Writer`s; drops the stale `Content-Length`; sets `Vary: Accept-Encoding`; preserves `Flusher`/`Hijacker`/`Unwrap`.
+
+- **Compression on representative payloads** (gzip level 6): metrics-series JSON **43,937 → 2,742 B (−93.8%)**; logs-query JSON **138,019 → 6,311 B (−95.4%)** — both far beyond the ≥70% target.
+- **SSE untouched:** `TestWithGzip_SkipsEventStream` proves an event stream gets no `Content-Encoding` and flushes per event; identity fallback, pre-encoded passthrough, and `Accept-Encoding` parsing are unit-covered too (`gzip_test.go`, 5 tests). Backend `go test ./...` + `make lint-backend` (0 issues) green.
+- **Live verification:** the prod deploy exercises the compressed path end to end (dashboard + official Render CLI, both Go/browser gzip-transparent). Post-deploy `curl --compressed https://api.bex.co/...` confirmation of `Content-Encoding: gzip`, plus the `scripts/cli-compat.sh verify` run against a live stack, are the one deferred leg — filed as `w9/044` (dev-9 wasn't up in-session, and standing up the full Ory stack for a transparent-encoding change already unit-tested + CI-gated wasn't warranted). Same deferred-live-walk pattern as `w5/m58`→`028`.
 
 ## Tasks (in order)
 
 | id   | title                                                              | est | depends_on |
 | ---- | ------------------------------------------------------------------ | --- | ---------- |
-| t001 | gzip middleware on the :8090 handler with streaming carve-outs     | 1h  | —          |
-| t002 | End-to-end verification: SSE untouched, payload reduction measured | 45m | t001       |
-| t003 | Simplify                                                           | 20m | t002       |
-| t004 | Test coverage                                                      | 40m | t002       |
-| t005 | Closeout                                                           | 10m | t004       |
+| t001 | gzip middleware on the :8090 handler with streaming carve-outs — **DONE** | 1h  | —          |
+| t002 | End-to-end verification: SSE untouched, payload reduction measured — **DONE** (ratios measured + unit-proven; live cli-compat → `044`) | 45m | t001       |
+| t003 | Simplify — **DONE** (middleware is tight; lint 0 issues)          | 20m | t002       |
+| t004 | Test coverage — **DONE** (`gzip_test.go`, 5 tests)                 | 40m | t002       |
+| t005 | Closeout — **DONE**                                                | 10m | t004       |
 
 ## Definition of done
 

@@ -845,7 +845,11 @@ func (s *Server) Handler() (http.Handler, error) {
 	// unauthenticated webhook/deploy-hook IP limiters, the auth gate) could shed
 	// it. Each mounted body-bearing handler now runs its limiter/auth first and
 	// caps the body last.
-	return withSecurityHeaders(withCORS(s.CORSOrigin, mux)), nil
+	// withGzip is outermost so it observes Accept-Encoding and compresses the
+	// final body; it self-exempts streaming (text/event-stream) responses so the
+	// SSE live-tail / agent-session / sandbox-exec proxies still flush per event
+	// (w9/m61).
+	return withGzip(withSecurityHeaders(withCORS(s.CORSOrigin, mux))), nil
 }
 
 // rootMux builds the composed top-level mux: the directly-mounted always-public
