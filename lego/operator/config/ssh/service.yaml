@@ -43,3 +43,8 @@ spec:
       port: 8083
       targetPort: agent-attach
       protocol: TCP
+    # Credential-injecting model proxy. Cluster-internal only; no edge route.
+    - name: agent-model
+      port: 8084
+      targetPort: agent-model
+      protocol: TCP

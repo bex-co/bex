@@ -23,28 +23,34 @@ limitations under the License.
 package modelproxy
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
-	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
 )
 
-// credentialTTL bounds how long a minted model credential is reused from the
-// gateway's process memory (ADR062 D2/D3). It collapses the per-request bex-api
-// mint round-trip (and its audit event) to at most one per session per window,
-// so a chatty turn does not fan out a mint per HTTP call. The backing TTLCache
-// drops an expired entry on its next lookup and sweeps at CacheMax, so a dead
-// session's credential does not linger unbounded.
-const credentialTTL = 60 * time.Second
+const (
+	// Model requests are JSON prompts, not file uploads. Reading the bounded body
+	// before opening the credential-bearing upstream request ensures an oversized
+	// client cannot stream a prefix to the provider and fail only after the cap.
+	maxModelRequestBodyBytes = 4 << 20
+	// Provider streams are copied, not accumulated; this byte ceiling still
+	// prevents one exchange from consuming unbounded gateway bandwidth.
+	maxModelResponseBodyBytes = 64 << 20
+	// Long agent turns remain supported, but every stream has a finite lifetime.
+	defaultModelRequestDuration = 2 * time.Hour
+)
 
 // Broker is the model proxy. It is disabled (Enabled()==false) unless both the
 // source-pod resolver and the bex-api model-mint client are wired, so an
@@ -53,16 +59,21 @@ type Broker struct {
 	Pods    agentcred.SessionPodResolver
 	API     *agentsession.ModelClient
 	Metrics *sshgateway.Metrics
-	Now     func() time.Time
 	// HTTP is a test seam; production leaves it nil and the streaming client below
-	// is built once (no total timeout, so a long SSE model response is never
-	// truncated mid-stream, and the connection pool survives across requests).
+	// is built once; the request context supplies the finite stream lifetime while
+	// the connection pool survives across requests.
 	HTTP *http.Client
+	// Limits bounds concurrent exchanges globally and per source sandbox Pod IP.
+	// Production wires configurable values; nil gets secure defaults (32/2).
+	Limits *sshgateway.SessionLimiter
+	// MaxDuration is a test/config seam for the total request + response lifetime.
+	// Zero uses defaultModelRequestDuration.
+	MaxDuration time.Duration
 
 	clientOnce sync.Once
 	client     *http.Client
-	credsOnce  sync.Once
-	creds      *core.TTLCache[agentsession.ModelMintResponse]
+	limitsOnce sync.Once
+	limits     *sshgateway.SessionLimiter
 }
 
 func (b *Broker) Enabled() bool         { return b != nil && b.Pods != nil && b.API != nil }
@@ -81,6 +92,28 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 	sourceIP, err := agentcred.RemoteIP(r.RemoteAddr)
 	if err != nil {
 		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	if ok, scope := b.limiter().Acquire(sourceIP); !ok {
+		b.Metrics.LimitRejected(scope)
+		http.Error(w, "too many concurrent model requests from this sandbox", http.StatusTooManyRequests)
+		return
+	}
+	defer b.limiter().Release(sourceIP)
+	ctx, cancel := context.WithTimeout(r.Context(), b.maxDuration())
+	defer cancel()
+	r = r.WithContext(ctx)
+	if r.ContentLength > maxModelRequestBodyBytes {
+		http.Error(w, "model request body too large", http.StatusRequestEntityTooLarge)
+		return
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxModelRequestBodyBytes+1))
+	if err != nil {
+		http.Error(w, "invalid model request body", http.StatusBadRequest)
+		return
+	}
+	if len(body) > maxModelRequestBodyBytes {
+		http.Error(w, "model request body too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 	pod, err := b.Pods.ResolveSessionPod(r.Context(), namespace, sourceIP)
@@ -105,17 +138,21 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "model proxy unavailable", http.StatusBadGateway)
 		return
 	}
+	if !allowedProviderOperation(credential.EndpointHost, r.Method, upstreamPath, r.URL.RawQuery, r.Header.Get("Content-Type")) {
+		http.Error(w, "model operation is not allowed", http.StatusForbidden)
+		return
+	}
 	upstream, err := upstreamURL(credential.EndpointHost, upstreamPath, r.URL.RawQuery, credential.Scheme)
 	if err != nil {
 		http.Error(w, "model proxy unavailable", http.StatusBadGateway)
 		return
 	}
-	request, err := http.NewRequestWithContext(r.Context(), r.Method, upstream, r.Body)
+	request, err := http.NewRequestWithContext(r.Context(), r.Method, upstream, bytes.NewReader(body))
 	if err != nil {
 		http.Error(w, "model proxy unavailable", http.StatusBadGateway)
 		return
 	}
-	request.ContentLength = r.ContentLength
+	request.ContentLength = int64(len(body))
 	copyForwardableHeaders(request.Header, r.Header)
 	// Strip any client-supplied auth (the sandbox holds only a placeholder), then
 	// inject the real credential — so the placeholder never reaches the vendor and
@@ -131,33 +168,31 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 	defer response.Body.Close()
 	copyResponseHeaders(w.Header(), response.Header)
 	w.WriteHeader(response.StatusCode)
-	flushingCopy(w, response.Body)
+	flushingCopy(w, io.LimitReader(response.Body, maxModelResponseBodyBytes))
 	b.Metrics.Authentication("accepted")
 }
 
-// mint returns the session's model credential, served from the short-TTL memory
-// cache when fresh, otherwise from a fresh bex-api mint. Caching bounds the
-// gateway→bex-api round-trip, the mint's audit-event volume, and (via TTLCache's
-// expiry-drop + CacheMax sweep) the in-memory residency of the credential.
+// mint always revalidates the current session lifecycle through bex-api. Model
+// requests are turn-scale, so one internal check per provider exchange is a
+// better boundary than allowing a canceled session to ride a credential cache.
 func (b *Broker) mint(ctx context.Context, namespace string, req agentsession.ModelMintRequest) (agentsession.ModelMintResponse, error) {
-	// The cache key is workspace-scoped: namespace encodes the workspace, and thus
-	// the OpenBao path, so no two sessions can alias each other's credential.
-	key := namespace + "\x00" + req.SessionID
-	cache := b.credCache()
-	if hit, ok := cache.Get(key); ok {
-		return hit, nil
-	}
-	resp, err := b.API.Mint(ctx, req)
-	if err != nil {
-		return agentsession.ModelMintResponse{}, err
-	}
-	cache.Put(key, resp, b.now().Add(credentialTTL))
-	return resp, nil
+	_ = namespace // retained in the signature to keep the verified call shape explicit.
+	return b.API.Mint(ctx, req)
 }
 
-func (b *Broker) credCache() *core.TTLCache[agentsession.ModelMintResponse] {
-	b.credsOnce.Do(func() { b.creds = core.NewTTLCache[agentsession.ModelMintResponse]() })
-	return b.creds
+func (b *Broker) limiter() *sshgateway.SessionLimiter {
+	if b.Limits != nil {
+		return b.Limits
+	}
+	b.limitsOnce.Do(func() { b.limits = sshgateway.NewSessionLimiter(32, 2) })
+	return b.limits
+}
+
+func (b *Broker) maxDuration() time.Duration {
+	if b.MaxDuration > 0 {
+		return b.MaxDuration
+	}
+	return defaultModelRequestDuration
 }
 
 // forwardableHeaders are the request headers the proxy relays verbatim to the
@@ -225,6 +260,46 @@ func mergeBeta(existing, flag string) string {
 	return existing + "," + flag
 }
 
+var googleInferencePath = regexp.MustCompile(`^/v1beta/models/[A-Za-z0-9._:-]+:(generateContent|streamGenerateContent|countTokens)$`)
+
+// allowedProviderOperation is the confused-deputy boundary: the sandbox can
+// invoke only inference operations needed by the three installed adapters, not
+// account, file, batch, fine-tune, key-management, or deletion APIs that happen
+// to share the credential's origin.
+func allowedProviderOperation(host, method, path, rawQuery, contentType string) bool {
+	if method != http.MethodPost || !jsonContentType(contentType) {
+		return false
+	}
+	switch strings.ToLower(host) {
+	case "api.openai.com":
+		return rawQuery == "" && (path == "/v1/responses" || path == "/v1/responses/compact" || path == "/v1/chat/completions")
+	case "api.anthropic.com":
+		return rawQuery == "" && (path == "/v1/messages" || path == "/v1/messages/count_tokens")
+	case "generativelanguage.googleapis.com":
+		if !googleInferencePath.MatchString(path) {
+			return false
+		}
+		if rawQuery == "" {
+			return true
+		}
+		query, err := url.ParseQuery(rawQuery)
+		if err != nil {
+			return false
+		}
+		// Gemini SDKs commonly carry the placeholder in ?key=. It is never
+		// forwarded: upstreamURL strips it before the real key is injected.
+		query.Del("key")
+		return len(query) == 0 || (len(query) == 1 && len(query["alt"]) == 1 && query.Get("alt") == "sse")
+	default:
+		return false
+	}
+}
+
+func jsonContentType(value string) bool {
+	mediaType, _, err := mime.ParseMediaType(value)
+	return err == nil && mediaType == "application/json"
+}
+
 // upstreamURL composes the vendor request from the mint's host and the exact
 // subpath the agent produced. Only the host comes from the trusted mint; the
 // path/query come from the sandbox, so a compromised sandbox can vary the path
@@ -257,8 +332,8 @@ func upstreamURL(host, path, rawQuery, scheme string) (string, error) {
 }
 
 // modelResponseHeaderTimeout bounds time-to-first-response-header for the
-// upstream model hop; the SSE body itself is deliberately unbounded (see
-// sshgateway.NewUpstreamClient).
+// upstream model hop; the exchange context and response byte cap bound the SSE
+// body after headers arrive.
 const modelResponseHeaderTimeout = 60 * time.Second
 
 func (b *Broker) httpClient() *http.Client {
@@ -271,13 +346,6 @@ func (b *Broker) httpClient() *http.Client {
 		b.client = sshgateway.NewUpstreamClient(modelResponseHeaderTimeout)
 	})
 	return b.client
-}
-
-func (b *Broker) now() time.Time {
-	if b.Now != nil {
-		return b.Now().UTC()
-	}
-	return time.Now().UTC()
 }
 
 // flushingCopy streams the upstream body to the client, flushing after each

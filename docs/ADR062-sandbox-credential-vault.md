@@ -1,14 +1,14 @@
 # ADR062 — Sandbox credential vault: keep the BYO model key out of the untrusted agent process tree
 
-**Status:** Accepted (2026-08-15). Phase 1 (D1–D5, D7) shipped in **w2/m69**: the credential-injecting model proxy on the SSH gateway (`internal/sshgateway/modelproxy`), the gateway-only model-credential mint on bex-api's internal :8091 (`agentsession.ModelMinter`/`ModelHandler`), the placeholder-env + egress narrowing in dispatch (`agentsessions.Service.ModelProxyURL`, `sessionegress.Config.ModelProxyPort`), and per-agent base-URL routing in the driver. Env-gated by `BEX_AGENT_MODEL_PROXY_URL`; unset ⇒ the real BYO key rides pod env, byte-identical to pre-ADR062. Phase 2 (token metering, ADR047 D6 `agent_token_units`) rides the same choke point and is a later milestone. Decides how the tenant's reusable model-provider credential (ADR047 D7 BYO key) stops being readable by repository code and tool processes inside the agent sandbox. Evaluates OpenSandbox's Credential Vault (egress-sidecar MITM injection) against a bex-owned credential-injecting model proxy, and picks the proxy — the same choke point ADR047 D6 phase 2 already reserves for token metering. Closes the residual risk recorded in w3/m35/t003 ("Credential Vault/MITM proxying … documented as residual risk"). Refines [ADR047](ADR047-cloud-coding-agent-sessions.md) (D5 egress, D6 billing, D7 BYO key); composes with [ADR059](ADR059-agent-sandbox-hibernation.md) (rehydration) and the ADR042 gVisor substrate.
+**Status:** Accepted (2026-08-15), hardened by [ADR064](ADR064-security-review-round10.md) (2026-08-16). Phase 1 (D1–D5, D7) shipped in **w2/m69** and is now mandatory for agent-session mutation: unset `BEX_AGENT_MODEL_PROXY_URL` disables create/steer/rehydrate; the direct-key fallback was removed and the sandbox lifecycle admits only the exact session placeholder. ADR064 additionally binds each agent profile to a platform-registered provider origin, authorizes only inference operations, bounds bodies/streams/concurrency, and revalidates lifecycle on every provider exchange. Phase 2 (token metering, ADR047 D6 `agent_token_units`) rides the same choke point and is a later milestone. This ADR decides how the tenant's reusable model-provider credential stops being readable by repository code and tool processes inside the agent sandbox.
 
 ---
 
 ## Context
 
-### The exposure, from the code
+### The historical exposure, from the pre-ADR062 code
 
-The BYO model key's custody chain is strong until the last hop, where it enters the untrusted process tree in the clear:
+Before phase 1 shipped, the BYO model key's custody chain was strong until the last hop, where it entered the untrusted process tree in the clear:
 
 1. **At rest** — OpenBao, workspace-scoped path `agent-sessions/<ws>/model-key` (`lego/backend/internal/agentsessions/service.go` `modelKeySecretPath`). Fetch is fail-closed (`ErrSecretsUnavailable` aborts the create); the key never lands in the DB, audit events, OpenSandbox metadata/labels, or the create response.
 2. **Delivery** — bex-api injects the plaintext as pod-spec env `BEX_AGENT_MODEL_API_KEY` in the sandbox create request (`lego/backend/internal/sandbox/service.go` `CreateAgentSessionSandbox`).
@@ -61,7 +61,7 @@ The sandbox authenticates to the proxy the way it does to the Git proxy: the gat
 
 ### D3 — Key custody: unchanged OpenBao path, gateway fetches through bex-api on demand
 
-The key stays at `agent-sessions/<ws>/model-key` in OpenBao. The gateway does not get OpenBao access: it requests the credential for a verified session from bex-api's gateway-only internal mint endpoint (the `BEX_AGENT_CREDENTIAL_API_URL` pattern), and holds it only in process memory with a short TTL cache. Injection happens on the upstream hop only, onto the session's **registered model endpoint** — the exact `ModelEndpointHost`-validated HTTPS host recorded at dispatch (which already rejects IP literals, private and cluster-local names, closing the SSRF surface). The proxy forwards to that one host per session, nothing else.
+The key stays at `agent-sessions/<ws>/model-key` in OpenBao. The gateway does not get OpenBao access: it requests the credential for a verified session from bex-api's gateway-only internal mint endpoint (the `BEX_AGENT_CREDENTIAL_API_URL` pattern) on every provider exchange, so a terminal/canceled session cannot ride a cached credential. Injection happens on the upstream hop only, onto the platform-registered provider origin for the selected agent profile. The proxy accepts only the profile's inference methods and paths and never follows the sandbox to a caller-selected host.
 
 ### D4 — Egress narrowing: vendor hosts leave the tenant policy
 
@@ -86,8 +86,8 @@ The OpenSandbox Credential Vault is the right design on a substrate its egress s
 ## Consequences
 
 - **Positive:** the last reusable credential inside the sandbox becomes a non-credential; the tenant egress allowlist loses its only high-value destination; token metering gets its seam for free; hibernation/rehydration needs no credential re-provisioning; every mechanism reused (source-pod auth, gateway custody, internal mint, Cilium carve-out) already has a shipped, tested precedent in this repo.
-- **Negative / accepted:** the model path gains a platform hop — gateway availability now gates agent turns (mitigation: the listener is as thin as the Git proxy, horizontally scaled with the gateway); the gateway's blast radius grows by transient model-key custody (bounded by the short-TTL memory cache and the existing isolated-deployment posture); per-agent base-URL support becomes a hard onboarding criterion for new agent profiles.
-- **Residual, out of scope here:** in-session confused-deputy use — tenant code inside the sandbox can still drive requests through the proxy while the session lives. That is a metering/limits problem (phase 2 + provider-side spend caps + the C guidance), not a confinement problem; no injection design (vault included) removes it.
+- **Negative / accepted:** the model path gains a platform hop — gateway availability now gates agent turns (mitigation: the listener is horizontally scaled); the gateway's blast radius grows by request-lifetime model-key custody; per-agent base-URL and registered-operation support become hard onboarding criteria for new profiles.
+- **Residual:** tenant code can use the approved inference APIs while its session is live. Concurrency, byte, duration, and provider-operation limits bound the platform/confused-deputy surface; phase-2 metering and provider-side spend caps bound economic use.
 
 ## Non-goals
 

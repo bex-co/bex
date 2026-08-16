@@ -602,6 +602,20 @@ func TestMetricsFiltersOfferNoHostPathValues(t *testing.T) {
 	}
 }
 
+func TestMetricsFiltersRejectUnboundedOrDuplicateOutput(t *testing.T) {
+	svc := newService(nil, nil, sampleApp("web"))
+	tooMany := make([]string, maxMetricsOutputFilters+1)
+	for i := range tooMany {
+		tooMany[i] = fmt.Sprintf("FIELD_%d", i)
+	}
+	if _, err := svc.MetricsFilters(context.Background(), MetricsFiltersQuery{App: "web", OutputFilters: tooMany}); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("oversized outputFilters error = %v, want bad request", err)
+	}
+	if _, err := svc.MetricsFilters(context.Background(), MetricsFiltersQuery{App: "web", OutputFilters: []string{"RESOURCE", "RESOURCE"}}); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("duplicate outputFilters error = %v, want bad request", err)
+	}
+}
+
 // TestMetricsSnapshotAndFilterDiscoveryUseAppNamespace: the metrics-server
 // snapshot fallback and the Prometheus filter-value discovery must read from
 // the App's per-tenant `<ws>` namespace (ADR043), never the shared s.Namespace

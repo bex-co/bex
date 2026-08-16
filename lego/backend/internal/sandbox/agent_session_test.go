@@ -3,6 +3,7 @@ package sandbox
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -42,7 +43,8 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	svc.SessionEgress = eg
 	lifecycle := NewAgentSessionLifecycle(svc)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "session"})
-	created, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", "sk-tenant-secret", []string{"docs.example.com"}, map[string]string{"BEX_AGENT_PROMPT": "do it"})
+	placeholder := agentsession.ModelKeyPlaceholder("ags-session")
+	created, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", placeholder, []string{"docs.example.com"}, map[string]string{"BEX_AGENT_PROMPT": "do it"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,14 +68,14 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 			t.Fatalf("sandbox metadata %q=%q is not a valid k8s label value", k, v)
 		}
 	}
-	// The BYO model key (ADR047 D7) is pod-spec env only — never metadata, which
-	// surfaces in status reads and audit.
-	if create.Env[ModelAPIKeyEnvVar] != "sk-tenant-secret" {
-		t.Fatalf("create env[%s] = %q, want the tenant model key", ModelAPIKeyEnvVar, create.Env[ModelAPIKeyEnvVar])
+	// Only the session-bound proxy placeholder enters pod env; the reusable BYO
+	// key remains behind the gateway and neither value enters metadata.
+	if create.Env[ModelAPIKeyEnvVar] != placeholder {
+		t.Fatalf("create env[%s] = %q, want the proxy placeholder", ModelAPIKeyEnvVar, create.Env[ModelAPIKeyEnvVar])
 	}
 	for _, v := range create.Metadata {
-		if v == "sk-tenant-secret" {
-			t.Fatal("model key leaked into sandbox metadata")
+		if v == placeholder {
+			t.Fatal("model proxy placeholder leaked into sandbox metadata")
 		}
 	}
 	if err := lifecycle.EnterAgentSessionPhase(ctx, "tea-a", "ags-session", "sandbox-1", "https://api.openai.com/v1", []string{"docs.example.com"}); err != nil {
@@ -93,20 +95,10 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	}
 }
 
-// TestAgentSessionLifecycleSendsNoEnvWithoutAModelKey pins the common case
-// (most workspaces have not provisioned a BYO key yet, ADR047 D7): the create
-// request must carry no env map at all, not one with an empty-string value.
-func TestAgentSessionLifecycleSendsNoEnvWithoutAModelKey(t *testing.T) {
-	var create createRequest
+func TestAgentSessionLifecycleRejectsReusableOrMissingModelCredential(t *testing.T) {
+	calls := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost && r.URL.Path == "/sandboxes" {
-			if err := json.NewDecoder(r.Body).Decode(&create); err != nil {
-				t.Fatal(err)
-			}
-			_, _ = fmt.Fprint(w, `{"id":"sandbox-1","status":{"state":"Running"}}`)
-			return
-		}
-		http.NotFound(w, r)
+		calls++
 	}))
 	t.Cleanup(upstream.Close)
 
@@ -115,10 +107,12 @@ func TestAgentSessionLifecycleSendsNoEnvWithoutAModelKey(t *testing.T) {
 	svc.SessionEgress = &fakeSessionEgress{}
 	lifecycle := NewAgentSessionLifecycle(svc)
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "session"})
-	if _, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", "", nil, nil); err != nil {
-		t.Fatal(err)
+	for _, credential := range []string{"", "sk-tenant-secret", agentsession.ModelKeyPlaceholder("ags-other")} {
+		if _, err := lifecycle.CreateAgentSessionSandbox(ctx, "tea-a", "agent", "ags-session", "bex-co/example", "bex-agent/session-test", "https://api.openai.com/v1", credential, nil, nil); !errors.Is(err, core.ErrAgentSessionsUnavailable) {
+			t.Fatalf("credential %q error = %v, want agent sessions unavailable", credential, err)
+		}
 	}
-	if create.Env != nil {
-		t.Fatalf("create env = %#v, want nil (no model key configured)", create.Env)
+	if calls != 0 {
+		t.Fatalf("invalid credential reached OpenSandbox %d time(s)", calls)
 	}
 }

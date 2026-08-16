@@ -931,6 +931,11 @@ type MetricsFilterValues struct {
 	Values []string
 }
 
+// maxMetricsOutputFilters bounds the GraphQL dropdown-discovery fan-out. A
+// legitimate query names only Render's small filter vocabulary; eight leaves
+// room for extensions while preventing repeated Kubernetes/Prometheus scans.
+const maxMetricsOutputFilters = 8
+
 // MetricsFilters resolves available values for each requested output filter.
 // RESOURCE/INSTANCE are answered from data the service already has;
 // STATUS_CODE needs MetricsFilterValuesSource; BUILD/HOST/PATH always report
@@ -940,6 +945,16 @@ type MetricsFilterValues struct {
 // discovered from the logs label-values read instead (host from the App's URLs,
 // path is a free-text filter), never from this verb.
 func (s *Service) MetricsFilters(ctx context.Context, q MetricsFiltersQuery) ([]MetricsFilterValues, error) {
+	if len(q.OutputFilters) > maxMetricsOutputFilters {
+		return nil, fmt.Errorf("%w: outputFilters accepts at most %d entries", core.ErrBadRequest, maxMetricsOutputFilters)
+	}
+	seen := make(map[string]struct{}, len(q.OutputFilters))
+	for _, field := range q.OutputFilters {
+		if _, ok := seen[field]; ok {
+			return nil, fmt.Errorf("%w: outputFilters contains duplicate %q", core.ErrBadRequest, field)
+		}
+		seen[field] = struct{}{}
+	}
 	app, err := s.AuthorizeApp(ctx, core.RelCanView, q.App)
 	if err != nil {
 		return nil, err

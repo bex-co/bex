@@ -165,6 +165,15 @@ if grep -q 'KUBERNETES_MIN_VERSION' <<<"$kpack_render"; then
   echo "FAIL: rendered kpack still carries the retired KUBERNETES_MIN_VERSION override" >&2
   fail=1
 fi
+for kpack_input in \
+  paketobuildpacks/builder-jammy-base \
+  paketobuildpacks/build-jammy-base \
+  paketobuildpacks/run-jammy-base; do
+  if ! grep -qE "${kpack_input//\//\\/}(@sha256:)[a-f0-9]{64}" <<<"$kpack_render"; then
+    echo "FAIL: rendered kpack input is not digest-pinned: $kpack_input" >&2
+    fail=1
+  fi
+done
 for component in kpack-controller kpack-webhook; do
   placement="$(yq -N \
     "select(.kind == \"Deployment\" and .metadata.name == \"$component\") |
@@ -212,8 +221,23 @@ barman_deployment="$(yq -N '
    .spec.template.spec.tolerations[0].value,
    .spec.template.spec.tolerations[0].effect] | join("|")' \
   - <<<"$barman_render" | tr -d '\n')"
-if [ "$barman_deployment" != "cnpg-system|ghcr.io/cloudnative-pg/plugin-barman-cloud:v0.13.0|platform|bex.co/platform|true|NoSchedule" ]; then
+if [ "$barman_deployment" != "cnpg-system|ghcr.io/cloudnative-pg/plugin-barman-cloud:v0.13.0@sha256:71589dbac582333442812b07b31f7ea4d00324a8358aac7ca507dabf9f4b6c96|platform|bex.co/platform|true|NoSchedule" ]; then
   echo "FAIL: Barman plugin deployment contract is '$barman_deployment'" >&2
+  fail=1
+fi
+barman_sidecar_image="$(yq -N '
+  select(.kind == "Secret" and .metadata.namespace == "cnpg-system" and
+    .metadata.name == "plugin-barman-cloud-m5m67kfh8f") |
+  .data.SIDECAR_IMAGE | @base64d' - <<<"$barman_render" | tr -d '\n')"
+if [ "$barman_sidecar_image" != "ghcr.io/cloudnative-pg/plugin-barman-cloud-sidecar:v0.13.0@sha256:990361af3319f9e23aafa0f6d7981f99bf1f69b4e6a85cf1bc7d71d6f09bb288" ]; then
+  echo "FAIL: Barman sidecar image is not digest-pinned: '$barman_sidecar_image'" >&2
+  fail=1
+fi
+if yq -e '
+  select(.kind == "ClusterRole" and .metadata.name == "plugin-barman-cloud") |
+  .rules[] | select(.apiGroups == [""] and (.resources | index("secrets")))' \
+  - <<<"$barman_render" >/dev/null 2>&1; then
+  echo "FAIL: Barman controller regained cluster-wide Secret access" >&2
   fail=1
 fi
 for resource in \
@@ -489,12 +513,12 @@ if [ "$ssh_namespace" != 'default' ] || [ "$ssh_namespaced_rules" != $'app.bex.c
   fail=1
 fi
 # Traefik reaches 2222 (native SSH) + 8080 (Browser Web Shell); monitoring
-# scrapes 9090; sandbox-regime namespaces reach only ADR047's source-Pod-bound
-# credential listener on 8082. Enumerate every port per rule so a stray added
-# port can't slip past a ports[0]-only check.
+# scrapes 9090; sandbox-regime namespaces reach only ADR047/ADR062's source-Pod-
+# bound Git/model credential listeners on 8082/8084. Enumerate every port per
+# rule so a stray added port can't slip past a ports[0]-only check.
 ssh_ingress="$(yq -N '.spec.ingress[] | [(.from[0].namespaceSelector.matchLabels."kubernetes.io/metadata.name" // .from[0].namespaceSelector.matchLabels."app.bex.co/regime"), (.ports | map(.port | tostring) | join(","))] | join(":")' lego/operator/config/ssh/networkpolicy.yaml)"
-if [ "$ssh_ingress" != $'traefik:2222,8080\nmonitoring:9090\nsandbox:8082' ]; then
-  echo "FAIL: SSH gateway ingress must remain Traefik SSH+shell + monitoring metrics + sandbox credential refresh only" >&2
+if [ "$ssh_ingress" != $'traefik:2222,8080\nmonitoring:9090\nsandbox:8082,8084' ]; then
+  echo "FAIL: SSH gateway ingress must remain Traefik SSH+shell + monitoring metrics + sandbox Git/model credential hops only" >&2
   fail=1
 fi
 ssh_rendered="$(kubectl kustomize lego/operator/config/default)"
@@ -1114,16 +1138,20 @@ if [ -f "$EGRESS" ]; then
        .spec.endpointSelector.matchLabels."k8s:app.kubernetes.io/name",
        (.spec.ingressDeny | length | tostring),
        .spec.ingress[0].fromEndpoints[0].matchLabels."app.bex.co/regime",
-       .spec.ingress[0].toPorts[0].ports[0].protocol,
-       .spec.ingress[0].toPorts[0].ports[0].port] | join(":")' \
+       (.spec.ingress[0].toPorts[0].ports | map(.protocol + ":" + .port) | join(","))] | join(":")' \
     "$EGRESS" | tr -d '\n')"
-  [ "$credential_gateway_ingress" = "bex-system:bex-ssh-gateway:bex-ssh-gateway:2:sandbox:TCP:8082" ] \
+  [ "$credential_gateway_ingress" = "bex-system:bex-ssh-gateway:bex-ssh-gateway:2:sandbox:TCP:8082,TCP:8084" ] \
     || { echo "FAIL: agent credential-gateway ingress identity is '$credential_gateway_ingress'" >&2; fail=1; }
   credential_gateway_deny_key="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "agent-credential-gateway-ingress") |
       .spec.ingressDeny[].fromEndpoints[]?.matchExpressions[]?.key' "$EGRESS" | tr -d '\n')"
   [ "$credential_gateway_deny_key" = "app.bex.co/regime" ] \
     || { echo "FAIL: agent credential-gateway deny complement drifted: '$credential_gateway_deny_key'" >&2; fail=1; }
+  credential_gateway_deny_ports="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "agent-credential-gateway-ingress") |
+      .spec.ingressDeny[].toPorts[].ports[].port' "$EGRESS" | sort -u | paste -sd, -)"
+  [ "$credential_gateway_deny_ports" = "8082,8084" ] \
+    || { echo "FAIL: agent credential-gateway deny ports drifted: '$credential_gateway_deny_ports'" >&2; fail=1; }
 
   server_selector="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "opensandbox-server-egress") |
@@ -1429,6 +1457,8 @@ for required_guard in \
   "!has(rule.toCIDR) && !has(rule.toCIDRSet) && !has(rule.toEntities)" \
   "rule.toPorts[0].ports[0].port == '443'" \
   "rule.toPorts[0].ports[0].port == '8082'" \
+  "rule.toPorts[0].ports[0].port == '8084'" \
+  "variables.model in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com']" \
   "request.resource.resource != 'rolebindings'" \
   "request.operation == 'DELETE'" \
   "variables.target.metadata.name == variables.target.roleRef.name" \
@@ -1740,6 +1770,9 @@ for required_operator_workload_guard in \
   "app.bex.co/execution-boundary" \
   "app.bex.co/regime'].orValue('') == 'hosting'" \
   "automountServiceAccountToken == false" \
+  "request.operation == 'DELETE' ? oldObject : object" \
+  'resources: ["persistentvolumeclaims"]' \
+  'resources: ["images", "builds"]' \
   "!has(v.hostPath)" \
   "!c.?securityContext.?privileged.orValue(false)" \
   "bex-kubeconfig" \
@@ -1749,6 +1782,15 @@ for required_operator_workload_guard in \
     fail=1
   }
 done
+# DELETE is namespace-confined above, but must not re-validate the old Pod
+# against today's CREATE/UPDATE grammar: doing so could make a legacy workload
+# impossible for the operator to clean up. Each of the six shape validations
+# explicitly short-circuits on DELETE.
+operator_delete_shape_bypasses="$(grep -Fc "request.operation == 'DELETE' ||" deploy/gitops/base/operator-workload-admission.yaml || true)"
+if [ "$operator_delete_shape_bypasses" -ne 6 ]; then
+  echo "FAIL: operator workload admission has $operator_delete_shape_bypasses DELETE shape bypasses, want 6" >&2
+  fail=1
+fi
 # w7/m57: the bex-tenant-api / bex-tenant-operator ClusterRoles grant cluster-wide
 # `secrets` write — safe ONLY because they are bound per-tenant-namespace by
 # RoleBinding (never a ClusterRoleBinding). A ClusterRoleBinding to either would

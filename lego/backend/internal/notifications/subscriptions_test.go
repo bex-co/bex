@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 const testPushToken = "ExponentPushToken[secret-device-capability]"
@@ -198,6 +199,35 @@ func TestDeviceRegistrationValidationIsBoundedAndRedacted(t *testing.T) {
 				t.Fatalf("error leaked token: %v", err)
 			}
 		})
+	}
+}
+
+type registrationErrorStore struct {
+	NotificationsStore
+	err error
+}
+
+func (s registrationErrorStore) UpsertDevicePushSubscription(context.Context, store.DevicePushSubscription) (store.DevicePushSubscription, error) {
+	return store.DevicePushSubscription{}, s.err
+}
+
+func TestDeviceRegistrationMapsQuotaErrors(t *testing.T) {
+	for _, test := range []struct {
+		err  error
+		code string
+	}{
+		{store.ErrPushDeviceSubjectLimit, "PUSH_DEVICE_SUBJECT_LIMIT"},
+		{store.ErrPushDeviceWorkspaceLimit, "PUSH_DEVICE_WORKSPACE_LIMIT"},
+	} {
+		base := newFakeStore()
+		svc := subscriptionService(registrationErrorStore{NotificationsStore: base, err: test.err}, fakeWorkspace{"alice": "tea-a"}, nil)
+		_, err := svc.RegisterDeviceSubscription(identity("alice"), RegisterDeviceInput{
+			DeviceID: "device", Provider: "expo", Platform: "ios", Token: testPushToken,
+		})
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != test.code || !errors.Is(err, core.ErrConflict) {
+			t.Fatalf("quota error = %#v, want conflict code %s", err, test.code)
+		}
 	}
 }
 

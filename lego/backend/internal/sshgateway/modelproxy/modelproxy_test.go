@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/modelproxy"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -70,6 +71,13 @@ func (f fakePods) ResolveSessionPod(context.Context, string, string) (agentcred.
 	return f.pod, f.err
 }
 
+type countingPods struct{ calls int }
+
+func (p *countingPods) ResolveSessionPod(context.Context, string, string) (agentcred.SessionPod, error) {
+	p.calls++
+	return sandboxPod("ags-one"), nil
+}
+
 // captureTransport records the outgoing upstream request and returns a canned
 // SSE response, so tests assert what reached the vendor without any network.
 type captureTransport struct {
@@ -99,9 +107,14 @@ func sandboxPod(session string) agentcred.SessionPod {
 }
 
 func liveSession(endpoint string) store.AgentSession {
+	agent := map[string]string{
+		"https://api.anthropic.com/v1":                     "claude",
+		"https://api.openai.com/v1":                        "codex",
+		"https://generativelanguage.googleapis.com/v1beta": "gemini",
+	}[endpoint]
 	return store.AgentSession{
 		ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "running",
-		AgentConfig: json.RawMessage(`{"modelEndpoint":"` + endpoint + `"}`),
+		AgentConfig: json.RawMessage(`{"agent":"` + agent + `","modelEndpoint":"` + endpoint + `"}`),
 	}
 }
 
@@ -245,7 +258,7 @@ func TestProxyRefusesNonLiveSession(t *testing.T) {
 	// and the credential is never released even though the pod identity is intact.
 	proxy, capture, _ := harness(t, fakePods{pod: sandboxPod("ags-one")},
 		store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "completed",
-			AgentConfig: json.RawMessage(`{"modelEndpoint":"https://api.anthropic.com/v1"}`)}, "sk-ant-api03-REAL")
+			AgentConfig: json.RawMessage(`{"agent":"claude","modelEndpoint":"https://api.anthropic.com/v1"}`)}, "sk-ant-api03-REAL")
 	resp := request(t, proxy, "ags-one", "/v1/messages", "X-Api-Key", "placeholder")
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusForbidden {
@@ -256,15 +269,80 @@ func TestProxyRefusesNonLiveSession(t *testing.T) {
 	}
 }
 
-func TestProxyCachesCredentialWithinTTL(t *testing.T) {
+func TestProxyRevalidatesCredentialForEveryExchange(t *testing.T) {
 	proxy, _, st := harness(t, fakePods{pod: sandboxPod("ags-one")}, liveSession("https://api.anthropic.com/v1"), "sk-ant-api03-REAL")
 	for i := 0; i < 3; i++ {
 		resp := request(t, proxy, "ags-one", "/v1/messages", "X-Api-Key", "placeholder")
 		resp.Body.Close()
 	}
-	// Three proxied calls, one mint: the short-TTL cache collapses the bex-api
-	// round-trip (and its audit event) rather than minting per request.
-	if st.calls != 1 {
-		t.Fatalf("session store reads = %d, want 1 (cached mint)", st.calls)
+	if st.calls != 3 {
+		t.Fatalf("session store reads = %d, want 3 (fresh lifecycle check per exchange)", st.calls)
+	}
+}
+
+func TestProxyRejectsProviderControlPlaneOperations(t *testing.T) {
+	proxy, capture, _ := harness(t, fakePods{pod: sandboxPod("ags-one")}, liveSession("https://api.openai.com/v1"), "sk-proj-REAL")
+	for _, path := range []string{"/v1/files", "/v1/batches", "/v1/fine_tuning/jobs", "/v1/models"} {
+		resp := request(t, proxy, "ags-one", path, "Authorization", "Bearer placeholder")
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden {
+			t.Fatalf("%s status = %d, want 403", path, resp.StatusCode)
+		}
+	}
+	if capture.last != nil {
+		t.Fatal("a refused provider operation reached the upstream")
+	}
+}
+
+func TestProxyRejectsOversizedRequestBeforePodOrCredentialLookup(t *testing.T) {
+	proxy, capture, st := harness(t, fakePods{pod: sandboxPod("ags-one")}, liveSession("https://api.openai.com/v1"), "sk-proj-REAL")
+	base, err := agentsession.ModelProxyURL(proxy.URL, "tea-a-sandbox", "ags-one")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequest(http.MethodPost, base+"/v1/responses", strings.NewReader(strings.Repeat("x", (4<<20)+1)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := proxy.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want 413", resp.StatusCode)
+	}
+	if st.calls != 0 || capture.last != nil {
+		t.Fatalf("oversized request crossed admission boundary: session reads=%d upstream=%v", st.calls, capture.last != nil)
+	}
+}
+
+func TestProxyConcurrencyLimitPrecedesPodAndCredentialLookup(t *testing.T) {
+	limits := sshgateway.NewSessionLimiter(1, 1)
+	if ok, _ := limits.Acquire("10.0.0.7"); !ok {
+		t.Fatal("failed to seed limiter")
+	}
+	defer limits.Release("10.0.0.7")
+	pods := &countingPods{}
+	broker := &modelproxy.Broker{
+		Pods:   pods,
+		API:    &agentsession.ModelClient{URL: "http://unused", Secret: secret},
+		Limits: limits,
+	}
+	path, err := agentsession.ModelProxyURL("http://proxy", "tea-a-sandbox", "ags-one")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodPost, path+"/v1/responses", strings.NewReader(`{}`))
+	req.RemoteAddr = "10.0.0.7:12345"
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	broker.Handler().ServeHTTP(w, req)
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, want 429", w.Code)
+	}
+	if pods.calls != 0 {
+		t.Fatalf("over-limit request performed %d Pod lookups", pods.calls)
 	}
 }

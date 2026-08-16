@@ -49,10 +49,10 @@ export interface AgentDriverConfig {
   grantPublicKey: string;
   agentEnv: Record<string, string>;
   scrubRoots: string[];
-  // ADR062 model proxy: when active, the agent's provider base URL is pointed at
-  // the gateway proxy (per-agent env name + composed URL) and the credential env
-  // holds only a placeholder. Empty ⇒ the proxy is off and the agent talks to its
-  // default vendor endpoint with whatever credential is set.
+  // ADR062 model proxy: the hosted agent-session path points the provider base URL
+  // at the gateway (per-agent env name + composed URL), and the credential env
+  // holds only a placeholder. Empty remains supported by the standalone driver,
+  // but the control-plane service does not provision hosted sessions that way.
   modelBaseUrl: string;
   modelBaseUrlEnvName: string;
 }

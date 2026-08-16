@@ -91,9 +91,9 @@ func envOr(k, def string) string {
 
 // modelProxyPort derives the sessionegress model-proxy port from the
 // BEX_AGENT_MODEL_PROXY_URL origin (ADR062), so the egress narrowing and the
-// agentsessions Service always agree on the port. Empty ⇒ 0 (proxy off); a URL
-// without an explicit port defaults to the gateway's :8084 listener; a malformed
-// URL or non-numeric port fails startup rather than silently disabling the proxy.
+// agentsessions Service always agree on the port. Empty ⇒ 0 and agent-session
+// mutation stays unavailable; a URL without an explicit port defaults to the
+// gateway's :8084 listener. A malformed URL or port fails startup.
 func modelProxyPort(raw string) uint16 {
 	if raw == "" {
 		return 0
@@ -401,10 +401,10 @@ func main() {
 	deps.DashboardURL = dashboardURL
 	deps.DeployHookBaseURL = os.Getenv("BEX_API_PUBLIC_URL")
 	deps.SSHHost = os.Getenv("BEX_SSH_HOST")
-	// ADR062 model proxy: the internal gateway origin agent model traffic is routed
-	// through so the BYO key never enters the sandbox. Unset ⇒ off (real key rides
-	// pod env, byte-identical). Set before wireSandboxes so the session-egress
-	// narrowing derives its port from this one value (single source of truth).
+	// ADR062/ADR064 model proxy: the internal gateway origin agent model traffic is
+	// routed through so the BYO key never enters the sandbox. Unset keeps session
+	// mutation unavailable. Set before wireSandboxes so session egress derives its
+	// port from this one value (single source of truth).
 	deps.AgentModelProxyURL = os.Getenv("BEX_AGENT_MODEL_PROXY_URL")
 	wireSandboxes(ctx, &deps, cl, st, sandboxExecSecret)
 	wireAgentSessions(&deps)
@@ -875,7 +875,7 @@ func startControlPlaneServer(ctx context.Context, st *store.PGStore, rec *store.
 		// ADR062: the model-credential mint. Same gateway-only HMAC + internal-only
 		// listener as the Git mint, path-domain-separated. Wired only when OpenBao is
 		// reachable (modelKeys non-nil), so a deployment without the BYO key store
-		// simply 503s the model proxy — byte-identical to the pre-ADR062 pod-env path.
+		// simply 503s the model proxy and never falls back to sandbox key injection.
 		if modelKeys != nil {
 			internalRoot.Handle(agentsession.InternalModelMintPath, &agentsession.ModelHandler{
 				Secret: []byte(sandboxExecSecret),

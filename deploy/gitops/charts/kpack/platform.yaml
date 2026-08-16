@@ -29,7 +29,7 @@ metadata:
   name: bex-kpack-config
   namespace: bex-system
 data:
-  cnbBuilder: paketobuildpacks/builder-jammy-base
+  cnbBuilder: paketobuildpacks/builder-jammy-base@sha256:5799343cd316c1a03fa3ff7ab0915d9e6d134e95df4583016d70c6f5330d3898
   clusterBuilderTag: zot.local:5000/bex-cnb-builder:latest
 ---
 # The out-of-band registry bootstrap creates bex-registry-push-kpack as a
@@ -57,7 +57,7 @@ spec:
     namespace: bex-system
   # Replaced from bex-kpack-config by kustomize.
   sources:
-    - image: paketobuildpacks/builder-jammy-base
+    - image: paketobuildpacks/builder-jammy-base@sha256:5799343cd316c1a03fa3ff7ab0915d9e6d134e95df4583016d70c6f5330d3898
 ---
 apiVersion: kpack.io/v1alpha2
 kind: ClusterStack
@@ -68,9 +68,9 @@ metadata:
 spec:
   id: io.buildpacks.stacks.jammy
   buildImage:
-    image: paketobuildpacks/build-jammy-base
+    image: paketobuildpacks/build-jammy-base@sha256:28074573683875fcb332cd22c406afd16974f298aafb155d6cb9887642c4abd3
   runImage:
-    image: paketobuildpacks/run-jammy-base
+    image: paketobuildpacks/run-jammy-base@sha256:20cc50011753022514c54388ad9bd5790766d738fc711a6d6a49104a33d45cc3
 ---
 # kpack v0.18 does not accept a complete builder image directly on Image.
 # Instead, ClusterStore imports its buildpackages and this ClusterBuilder

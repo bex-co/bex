@@ -5,6 +5,7 @@ import { useOryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { invalidateSessionCache } from "@/common/server-fn/session";
+import { getClient } from "@/common/apollo/client";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 import { useAuthFeatures } from "@/features/auth/components/auth-page-shell/auth-features";
 
@@ -32,6 +33,11 @@ export default function RegisterPage() {
           components={oryHideCardLogo}
           onSuccess={async () => {
             clearStoredOryFlow("registration");
+            // Registration is an authenticated-subject transition just like
+            // login. The CSR Apollo client is a tab-lifetime singleton, so clear
+            // any prior account's normalized data before the new session can
+            // render authenticated routes.
+            await getClient().clearStore();
             // The root route's beforeLoad cached the (unauthenticated)
             // session on first load — force it to refetch before navigating
             // to an authenticated route, or requireAuth bounces us right

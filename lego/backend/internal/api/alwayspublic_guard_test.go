@@ -18,6 +18,8 @@ package api
 
 import (
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -123,9 +125,21 @@ var alwaysPublicInventory = map[string]string{
 // RateLimiter. They are present on rootMux but are NOT always-public, so the
 // census skips them (they are not an unmetered outside-gate hazard).
 var gatedWildcards = map[string]bool{
-	"/v1/":     true,
-	"/graphql": true,
-	"/mcp":     true,
+	"/v1/":          true,
+	"POST /graphql": true,
+	"/mcp":          true,
+}
+
+func TestGraphQLIsPostOnly(t *testing.T) {
+	mux := fullyMountedRootMux(t)
+	for _, method := range []string{http.MethodGet, http.MethodPut, http.MethodPatch} {
+		req := httptest.NewRequest(method, "/graphql", strings.NewReader(`{"query":"{ services { id } }"}`))
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+		if w.Code != http.StatusMethodNotAllowed {
+			t.Errorf("%s /graphql = %d, want 405", method, w.Code)
+		}
+	}
 }
 
 // fullyMountedRootMux builds a rootMux with every optional dep present so every

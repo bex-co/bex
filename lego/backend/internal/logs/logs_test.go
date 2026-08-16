@@ -285,6 +285,22 @@ func TestRESTLogsEnvelopeAndFilters(t *testing.T) {
 	}
 }
 
+func TestLogResourceFanoutIsBoundedAndDeduplicated(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "/v1/logs?resource=web&resource=web&resource=worker", nil)
+	resources, _, err := parseLogParams(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(resources, []string{"web", "worker"}) {
+		t.Fatalf("resources = %v, want first-seen unique values", resources)
+	}
+
+	request = httptest.NewRequest(http.MethodGet, "/v1/logs?"+strings.Repeat("resource=web&", maxLogResources+1), nil)
+	if _, _, err := parseLogParams(request); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("oversized resource array error = %v, want bad request", err)
+	}
+}
+
 func TestManagedPostgresLogsAcrossRESTGraphQLAndMCP(t *testing.T) {
 	pod := postgresID + "-1"
 	otherPod := "dpg-d185th5c2rvvnhbfiltg-1"

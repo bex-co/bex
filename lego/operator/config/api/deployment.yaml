@@ -85,6 +85,11 @@ spec:
             # builds and publishes this image from lego/agent-image/.
             - name: BEX_AGENT_SESSION_IMAGE
               value: ghcr.io/bex-co/bex-agent-sandbox@sha256:236e20aec024d4826cafa8d946cdd70b47782534274308a00565e2ff0e9c4773
+            # ADR062 / security round 10: mandatory credential-injecting model
+            # proxy. Agent-session sandboxes receive only a session placeholder;
+            # the reusable workspace key stays on the gateway→vendor hop.
+            - name: BEX_AGENT_MODEL_PROXY_URL
+              value: http://bex-ssh-gateway.bex-system.svc.cluster.local:8084
             # Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's
             # admin API; Kratos sessions for humans. No shared static token —
             # the bootstrap client is seeded by scripts/auth-bootstrap-client.sh.

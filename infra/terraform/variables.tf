@@ -51,6 +51,12 @@ variable "k3s_version" {
   default     = "v1.34.9+k3s1"
 }
 
+variable "k3s_install_sha256" {
+  description = "SHA-256 of install.sh at the exact k3s_version Git tag. Update this together with k3s_version; cloud-init verifies before root execution."
+  type        = string
+  default     = "40b487f0d8ef4f5d1bf422e7bb6228cc7789c40ecc66c5ab067d396bbee9816e"
+}
+
 variable "network_cidr" {
   description = "Private network CIDR for the bootstrap cluster (the app cluster has its own CAPH-owned network)."
   type        = string

@@ -73,8 +73,11 @@ func TestAuthorizeFreshBypassesStalePositive(t *testing.T) {
 	ws := fakeWorkspace{"identity-a": "tea-a"}
 	// Cached says allow (stale positive), source of truth says deny (revoked).
 	b := &Base{Authz: staleFreshChecker{cached: true, fresh: false}, Workspace: ws}
-	if err := b.Authorize(ctx, RelCanManage); err != nil {
-		t.Fatalf("cached Authorize should still allow the stale positive: %v", err)
+	if err := b.Authorize(ctx, RelCanView); err != nil {
+		t.Fatalf("read-only Authorize should still allow the cached positive: %v", err)
+	}
+	if err := b.Authorize(ctx, RelCanManage); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("write-capable Authorize must fail closed on a revoked source of truth, got %v", err)
 	}
 	if err := b.AuthorizeFresh(ctx, RelCanManage); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("AuthorizeFresh must fail closed on a revoked source of truth, got %v", err)

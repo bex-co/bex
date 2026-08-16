@@ -4,6 +4,29 @@ resources:
   # Exact upstream v0.13.0 release manifest. Its SHA-256 is recorded in README.
   - upstream/manifest-0.13.0.yaml
 patches:
+  # Upstream v0.13.0 grants the controller create/delete/get/list/watch on every
+  # Secret cluster-wide, but its ObjectStore reconciler never reads or mutates a
+  # Secret. It creates per-cluster Roles whose resourceNames contain only each
+  # ObjectStore's referenced credential; the CNPG instance sidecar uses those
+  # namespaced Roles. Drop the unused controller-wide rule entirely.
+  - target:
+      group: rbac.authorization.k8s.io
+      version: v1
+      kind: ClusterRole
+      name: plugin-barman-cloud
+    patch: |-
+      - op: remove
+        path: /rules/0
+  # Keep upstream source byte-for-byte reproducible while pinning both executed
+  # images in the rendered deployment contract.
+  - target:
+      version: v1
+      kind: Secret
+      name: plugin-barman-cloud-m5m67kfh8f
+    patch: |-
+      - op: replace
+        path: /data/SIDECAR_IMAGE
+        value: Z2hjci5pby9jbG91ZG5hdGl2ZS1wZy9wbHVnaW4tYmFybWFuLWNsb3VkLXNpZGVjYXI6djAuMTMuMEBzaGEyNTY6OTkwMzYxYWYzMzE5ZjllMjNhYWZhMGY2ZDc5ODFmOTliZjFmNjliNGU2YTg1Y2YxYmM3ZDcxZDZmMDliYjI4OA==
   # The plugin controller is platform infrastructure. Backup/restore sidecars
   # are injected into the CNPG instance pods and retain each database's own
   # placement; only this control-plane Deployment is pinned here.
@@ -27,3 +50,6 @@ patches:
         value:
           requests: { cpu: 50m, memory: 64Mi }
           limits: { cpu: 500m, memory: 256Mi }
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: ghcr.io/cloudnative-pg/plugin-barman-cloud:v0.13.0@sha256:71589dbac582333442812b07b31f7ea4d00324a8358aac7ca507dabf9f4b6c96

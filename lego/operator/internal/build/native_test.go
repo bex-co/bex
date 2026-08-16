@@ -42,13 +42,22 @@ func TestNativeDockerfilePreservesRenderCommands(t *testing.T) {
 	o := nativeOptions()
 	dockerfile := nativeDockerfile(o)
 	for _, want := range []string{
-		"FROM node:24-bookworm",
+		"FROM node:24-bookworm@sha256:",
 		"npm ci && npm run build",
 		`CMD ["/bin/bash","-lc","node dist/server.js --flag='quoted'"]`,
 		"--mount=type=secret,id=render-env",
 	} {
 		if !strings.Contains(dockerfile, want) {
 			t.Errorf("Dockerfile missing %q:\n%s", want, dockerfile)
+		}
+	}
+}
+
+func TestNativeRuntimeImagesAreDigestPinned(t *testing.T) {
+	for runtime, image := range nativeRuntimeImages {
+		parts := strings.Split(image, "@sha256:")
+		if len(parts) != 2 || len(parts[1]) != 64 {
+			t.Errorf("native runtime %s image is not digest-pinned: %q", runtime, image)
 		}
 	}
 }

@@ -54,6 +54,9 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
+const defaultCNBBuilder = "paketobuildpacks/builder-jammy-base@" +
+	"sha256:5799343cd316c1a03fa3ff7ab0915d9e6d134e95df4583016d70c6f5330d3898"
+
 // envOr returns the env var k or a default.
 func envOr(k, def string) string {
 	if v := os.Getenv(k); v != "" {
@@ -310,7 +313,7 @@ func setupAppReconciler(mgr ctrl.Manager, uncachedClient client.Client, cs *kube
 		Mode:                    envOr("BEX_RUNTIME", controller.ModeOpenSandbox),
 		Registry:                envOr("BEX_REGISTRY", "127.0.0.1:5050"),
 		KpackRegistry:           os.Getenv("BEX_KPACK_REGISTRY"),
-		CNBBuilder:              envOr("BEX_CNB_BUILDER", "paketobuildpacks/builder-jammy-base"),
+		CNBBuilder:              envOr("BEX_CNB_BUILDER", defaultCNBBuilder),
 		BuildNamespace:          os.Getenv("BEX_BUILD_NAMESPACE"),
 		Runtime:                 bexruntime.New(envOr("BEX_OPENSANDBOX_URL", "http://127.0.0.1:8077")),
 		BaseDomain:              baseDomain,
