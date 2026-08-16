@@ -160,6 +160,177 @@ spec:
         - echo 'source <(kubectl completion bash)' >>/root/.bashrc
         - echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >>/root/.bashrc
 ---
+# Bootstrap for the DEDICATED BUILD pools (bex-tenant-lg, bex-tenant-burst):
+# byte-identical to bex-tenant-0 above except for the registered taint below.
+# Keep the two templates in sync when touching files/preKubeadmCommands.
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: bex-tenant-build
+  namespace: bex-capi
+spec:
+  template:
+    spec:
+      files:
+        - content: |
+            net.ipv4.conf.lxc*.rp_filter = 0
+          owner: root:root
+          path: /etc/sysctl.d/99-cilium.conf
+          permissions: "0744"
+        - content: |
+            overlay
+            br_netfilter
+          owner: root:root
+          path: /etc/modules-load.d/crio.conf
+          permissions: "0744"
+        - content: |
+            net.bridge.bridge-nf-call-iptables  = 1
+            net.bridge.bridge-nf-call-ip6tables = 1
+            net.ipv4.ip_forward                 = 1
+          owner: root:root
+          path: /etc/sysctl.d/99-kubernetes-cri.conf
+          permissions: "0744"
+        - content: |
+            vm.overcommit_memory=1
+            kernel.panic=10
+            kernel.panic_on_oops=1
+          owner: root:root
+          path: /etc/sysctl.d/99-kubelet.conf
+          permissions: "0744"
+        - content: |
+            nameserver 1.1.1.1
+            nameserver 1.0.0.1
+            nameserver 2606:4700:4700::1111
+          owner: root:root
+          path: /etc/kubernetes/resolv.conf
+          permissions: "0744"
+        - content: |
+            # Copyright The containerd Authors.
+            #
+            # Licensed under the Apache License, Version 2.0 (the "License");
+            # you may not use this file except in compliance with the License.
+            # You may obtain a copy of the License at
+            #
+            #     http://www.apache.org/licenses/LICENSE-2.0
+            #
+            # Unless required by applicable law or agreed to in writing, software
+            # distributed under the License is distributed on an "AS IS" BASIS,
+            # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+            # See the License for the specific language governing permissions and
+            # limitations under the License.
+            #
+            # https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+
+            [Unit]
+            Description=containerd container runtime
+            Documentation=https://containerd.io
+            After=network.target local-fs.target dbus.service
+
+            [Service]
+            ExecStartPre=-/sbin/modprobe overlay
+            ExecStart=/usr/local/bin/containerd
+
+            Type=notify
+            Delegate=yes
+            KillMode=process
+            Restart=always
+            RestartSec=5
+
+            # Having non-zero Limit*s causes performance problems due to accounting overhead
+            # in the kernel. We recommend using cgroups to do container-local accounting.
+            LimitNPROC=infinity
+            LimitCORE=infinity
+
+            # Comment TasksMax if your systemd version does not supports it.
+            # Only systemd 226 and above support this version.
+            TasksMax=infinity
+            OOMScoreAdjust=-999
+
+            [Install]
+            WantedBy=multi-user.target
+          owner: root:root
+          path: /etc/systemd/system/containerd.service
+          permissions: "0744"
+      joinConfiguration:
+        nodeRegistration:
+          # The build pools' one divergence from bex-tenant-0: nodes register
+          # with the build-only taint so ONLY build pods (which tolerate it,
+          # lego/operator/internal/execution/security.go) can schedule here.
+          # Serving/pre-deploy/publish/datastore pods are repelled, so a
+          # long-lived pod can never pin an elastic build node (docs/ADR060
+          # § dedicated build pool; observed 2026-08: single-instance CNPG
+          # PDBs kept bex-tenant-burst undrainable for 6 days).
+          # ⚠️ Ordering: the operator toleration must be DEPLOYED before any
+          # machine boots from this template, or builds go Pending/mis-scale
+          # the serving pool.
+          taints:
+            - key: bex.co/build-only
+              value: "true"
+              effect: NoSchedule
+          kubeletExtraArgs:
+            anonymous-auth: "false"
+            authentication-token-webhook: "true"
+            authorization-mode: Webhook
+            cloud-provider: external
+            event-qps: "5"
+            feature-gates: UserNamespacesSupport=true
+            kubeconfig: /etc/kubernetes/kubelet.conf
+            max-pods: "220"
+            # Tenant Apps and every tenant-controlled execution Job are pinned
+            # here; the separately tainted bex.co/pool=platform pool is never
+            # eligible for them.
+            node-labels: bex.co/pool=tenant
+            read-only-port: "0"
+            resolv-conf: /etc/kubernetes/resolv.conf
+            rotate-server-certificates: "true"
+            tls-cipher-suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
+      # runc, containerd, and kubelet/kubeadm/kubectl are baked into the worker
+      # snapshot this pool boots (HCloudMachineTemplate bex-tenant-0-baked,
+      # imageName: bex-worker — recipe infra/packer/bex-worker.pkr.hcl, w1/m36 t001).
+      # That took the ~350MB of github.com/pkgs.k8s.io downloads (runc+containerd
+      # +kubelet, ~150MB) AND the CP image pre-pull (`kubeadm config images pull`,
+      # ~200MB — t002) off the autoscaler scale-up hot path. What remains only
+      # wires the runtime up from the baked binaries + the cloud-init files: above;
+      # none of it touches the network. apt list trimmed to nothing here (socat/
+      # logrotate are baked; at/jq/unzip/mtr/apt-transport-https were unused — t003).
+      # ⚠️ These commands assume the baked image — a change that points imageName
+      # back at ubuntu-24.04 boots a node with no container runtime (guarded by
+      # scripts/clusterapi-validate.sh).
+      preKubeadmCommands:
+        - set -x
+        - grep VERSION= /etc/os-release; uname -a
+        # Fail closed if the labelled snapshot is stale: hostUsers=false build
+        # Pods require containerd 2.x user-namespace support.
+        - /usr/local/bin/containerd --version | grep -q ' v2.3.3 '
+        - sed -i '/swap/d' /etc/fstab
+        - swapoff -a
+        - modprobe overlay && modprobe br_netfilter && sysctl --system
+        - mkdir -p /etc/containerd
+        - containerd config default > /etc/containerd/config.toml
+        - sed -i  "s/SystemdCgroup = false/SystemdCgroup = true/" /etc/containerd/config.toml
+        # w1/m26 t001: kubelet resolves "zot.bex-registry.svc" via host DNS
+        # (not kube-dns), so the ClusterIP is unreachable. NodePort 30500 on
+        # 127.0.0.1 is always reachable from any node; skip_verify permits the
+        # plain-HTTP internal registry. Written here (not files:) because the
+        # parent dir doesn't exist yet when cloud-init write_files runs.
+        - mkdir -p /etc/containerd/certs.d/zot.bex-registry.svc:5000 /etc/containerd/certs.d/zot.local:5000
+        - printf 'server = "http://127.0.0.1:30500"\n[host."http://127.0.0.1:30500"]\n  skip_verify = true\n  capabilities = ["pull", "resolve"]\n' > /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml
+        - cp /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml /etc/containerd/certs.d/zot.local:5000/hosts.toml
+        # Enable per-registry config so the hosts.toml above takes effect.
+        # containerd 1.x and 2.x use different CRI plugin section names and
+        # quote styles. Both also have an unrelated transfer config_path, so
+        # update and verify only the CRI registry section.
+        - sed -i -E '/^[[:space:]]*\[plugins\..*cri.*\.registry\]$/,/^[[:space:]]*\[/ s#^([[:space:]]*)config_path =.*#\1config_path = "/etc/containerd/certs.d"#' /etc/containerd/config.toml
+        - test "$(sed -n '/^[[:space:]]*\[plugins\..*cri.*\.registry\]$/,/^[[:space:]]*\[/ { /^[[:space:]]*config_path = "/p; }' /etc/containerd/config.toml | wc -l)" -eq 1
+        - sed -n '/^[[:space:]]*\[plugins\..*cri.*\.registry\]$/,/^[[:space:]]*\[/ { /^[[:space:]]*config_path = "/p; }' /etc/containerd/config.toml | grep -q 'config_path = "/etc/containerd/certs.d"'
+        # containerd.io's package post-install may already have started the
+        # service against its old config. Restart so the generated CRI config
+        # above is loaded before kubeadm checks RuntimeService.
+        - systemctl daemon-reload && systemctl enable containerd && systemctl restart containerd
+        - systemctl enable kubelet
+        - echo 'source <(kubectl completion bash)' >>/root/.bashrc
+        - echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >>/root/.bashrc
+---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: Cluster
 metadata:
@@ -195,8 +366,12 @@ metadata:
     # fsn1 (checked 2026-08-08; ~4.7x cheaper than cpx32 at identical specs), so
     # the immutable template is rotated back to cx33 (docs/ADR053). cpx32 stays
     # the documented fallback for the next fsn1 cx stock-out.
+    # max 2 (2026-08-15, docs/ADR060 § dedicated build pool): serving overflow
+    # must add a STABLE node here instead of leaking onto the burst/lg build
+    # pools and pinning them (observed: single-instance CNPG PDBs made
+    # bex-tenant-burst undrainable for 6 days).
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "1"
-    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "1"
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "2"
     # Capacity hints (kept for DR bring-up / if min ever returns to 0):
     # cx33 = 4 vCPU / 8 GB (Hetzner API, 2026-08-08).
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
@@ -245,6 +420,10 @@ metadata:
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
     capacity.cluster-autoscaler.kubernetes.io/labels: "bex.co/pool=tenant"
     capacity.cluster-autoscaler.kubernetes.io/memory: "8G"
+    # Scale-from-zero simulation must know the build-only taint registered by
+    # bex-tenant-build, or CA would scale this pool up for pods that then
+    # cannot schedule on the real (tainted) node (docs/ADR060).
+    capacity.cluster-autoscaler.kubernetes.io/taints: "bex.co/build-only=true:NoSchedule"
 spec:
   clusterName: bex
   # replicas is deliberately unset: Cluster Autoscaler owns it and the CAPI
@@ -261,7 +440,10 @@ spec:
         configRef:
           apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
           kind: KubeadmConfigTemplate
-          name: bex-tenant-0
+          # bex-tenant-build = the tenant bootstrap + the build-only taint
+          # (docs/ADR060 § dedicated build pool): only build pods land here,
+          # so nothing long-lived can pin this pool above min-size 0.
+          name: bex-tenant-build
       clusterName: bex
       failureDomain: fsn1
       infrastructureRef:
@@ -288,15 +470,21 @@ metadata:
     # where a build sat Pending 22 minutes and its deploy was failed by the
     # control-plane gate while the build itself was still healthy.
     #
-    # 16 GB changes the arithmetic: one build leaves ~8 GB for ordinary tenant
-    # workloads, or two builds fit side by side. min=max=1 keeps it always-on so
-    # a build never waits for a cold scale-from-zero.
+    # 16 GB changes the arithmetic: two builds fit side by side (2 x 7Gi).
+    # min=max=1 keeps it always-on so a build never waits for a cold
+    # scale-from-zero. Since docs/ADR060 § dedicated build pool, the node is
+    # build-only (taint via bex-tenant-build): the earlier "one build + ~8 GB
+    # of ordinary tenant workloads" sharing mode is retired — a long-lived
+    # serving pod here would eat the second warm build slot.
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "1"
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "1"
     # cx43 = 8 vCPU / 16 GB (Hetzner API, 2026-08-11).
     capacity.cluster-autoscaler.kubernetes.io/cpu: "8"
     capacity.cluster-autoscaler.kubernetes.io/labels: "bex.co/pool=tenant"
     capacity.cluster-autoscaler.kubernetes.io/memory: "16G"
+    # Scale-from-zero simulation hint mirrored from bex-tenant-burst; also
+    # documents this pool's taint for operators reading the file.
+    capacity.cluster-autoscaler.kubernetes.io/taints: "bex.co/build-only=true:NoSchedule"
 spec:
   clusterName: bex
   # replicas deliberately unset, as in the sibling tenant pools: the autoscaler
@@ -313,10 +501,11 @@ spec:
         configRef:
           apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
           kind: KubeadmConfigTemplate
-          # Reuses the tenant bootstrap unchanged — that is what stamps
-          # node-labels: bex.co/pool=tenant, so build pods (which select on it)
-          # can land here exactly as they do on the other two tenant pools.
-          name: bex-tenant-0
+          # bex-tenant-build (docs/ADR060 § dedicated build pool) still stamps
+          # node-labels: bex.co/pool=tenant, and additionally registers the
+          # build-only taint: this node is reserved for the two warm build
+          # slots (2 x 7Gi fits the cx43), serving never lands here.
+          name: bex-tenant-build
       clusterName: bex
       failureDomain: fsn1
       infrastructureRef:

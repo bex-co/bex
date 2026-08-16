@@ -36,6 +36,16 @@ const (
 	NodePoolLabel      = "bex.co/pool"
 	UntrustedNodePool  = "tenant"
 
+	// BuildPoolTaintKey/Value name the taint the dedicated build node pools
+	// (bex-tenant-lg, bex-tenant-burst) register with at bootstrap
+	// (docs/ADR060 § dedicated build pool). Only build pods tolerate it:
+	// serving, pre-deploy, and publish pods must keep being repelled so a
+	// long-lived workload can never land on — and pin — an elastic build node
+	// (observed 2026-08: single-instance CNPG PDBs kept bex-tenant-burst
+	// undrainable for 6 days).
+	BuildPoolTaintKey   = "bex.co/build-only"
+	BuildPoolTaintValue = "true"
+
 	// LabelProtectedFromTenantMount marks an operator-projected Secret that a
 	// tenant workload must never mount (codex F1) — e.g. the shared S3 backup
 	// credential the Database/KeyValue reconcilers copy into a datastore's own
@@ -83,6 +93,19 @@ func HardenPod(spec *corev1.PodSpec) {
 	if spec.SecurityContext.SeccompProfile == nil {
 		spec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}
 	}
+}
+
+// TolerateBuildPool lets a build pod schedule onto the tainted dedicated
+// build node pools in addition to the untainted tenant pool. It widens
+// eligibility within the untrusted `bex.co/pool=tenant` selector set by
+// HardenPod, never beyond it.
+func TolerateBuildPool(spec *corev1.PodSpec) {
+	spec.Tolerations = append(spec.Tolerations, corev1.Toleration{
+		Key:      BuildPoolTaintKey,
+		Operator: corev1.TolerationOpEqual,
+		Value:    BuildPoolTaintValue,
+		Effect:   corev1.TaintEffectNoSchedule,
+	})
 }
 
 func ptr[T any](v T) *T { return &v }

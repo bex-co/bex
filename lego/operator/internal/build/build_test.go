@@ -101,6 +101,18 @@ func TestBuildJobShape(t *testing.T) {
 	if pod.NodeSelector["bex.co/pool"] != "tenant" {
 		t.Errorf("node selector = %v, want tenant pool", pod.NodeSelector)
 	}
+	// Build pods (and only build pods) tolerate the dedicated build-pool taint
+	// (docs/ADR060 § dedicated build pool): serving/pre-deploy/publish pods must
+	// keep being repelled so they can never pin an elastic build node.
+	tolerated := false
+	for _, tol := range pod.Tolerations {
+		if tol.Key == "bex.co/build-only" && tol.Value == "true" && tol.Effect == corev1.TaintEffectNoSchedule {
+			tolerated = true
+		}
+	}
+	if !tolerated {
+		t.Errorf("build pod must tolerate the build-pool taint, tolerations = %v", pod.Tolerations)
+	}
 	// The tenant-burst pool scales from zero for exactly this Job and reclaims
 	// nodes after 5m of low utilization; without this the node can be deleted
 	// mid-build (BackoffLimit 1 means that fails the build outright).
@@ -599,6 +611,17 @@ func TestBuildpackImageShapeAndSuccess(t *testing.T) {
 	nodes, _, _ := unstructured.NestedStringMap(image.Object, "spec", "build", "nodeSelector")
 	if nodes["bex.co/pool"] != "tenant" {
 		t.Errorf("kpack node selector = %#v", nodes)
+	}
+	tolerations, _, _ := unstructured.NestedSlice(image.Object, "spec", "build", "tolerations")
+	kpackTolerated := false
+	for _, item := range tolerations {
+		tol, ok := item.(map[string]any)
+		if ok && tol["key"] == "bex.co/build-only" && tol["value"] == "true" && tol["effect"] == "NoSchedule" {
+			kpackTolerated = true
+		}
+	}
+	if !kpackTolerated {
+		t.Errorf("kpack build must tolerate the build-pool taint, tolerations = %#v", tolerations)
 	}
 
 	ready := kpackImageWithCondition(o, corev1.ConditionTrue, "BuildSuccess", "", "zot.local:5000/hello@sha256:abc")

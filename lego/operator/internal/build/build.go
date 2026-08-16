@@ -564,6 +564,7 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	}
 	podSpec.InitContainers = append(podSpec.InitContainers, buildkit)
 	execution.HardenPod(&podSpec)
+	execution.TolerateBuildPool(&podSpec)
 	podSpec.SecurityContext.FSGroup = ptr(int64(0))
 	annotations := map[string]string{
 		"container.apparmor.security.beta.kubernetes.io/buildkit": "unconfined",
