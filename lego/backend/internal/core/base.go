@@ -698,7 +698,17 @@ func (b *Base) AuthorizeAppFresh(ctx context.Context, relation string, app *appv
 	if app == nil {
 		return ErrForbidden
 	}
-	object, err := b.resourceWorkspace(ctx, app.Labels)
+	return b.authorizeLabeledFresh(ctx, relation, app.Labels)
+}
+
+// authorizeLabeledFresh is the uncached re-check the three Fresh seams share:
+// resolve the resource's OWN workspace from its labels, then decide against it
+// bypassing the decision cache. Held in one place for the same reason
+// authorizeDatastore is — resolving against the caller's workspace instead of
+// the resource's would reintroduce the w6/m17 intersection bug, and that
+// mistake neither fails to compile nor shows up in a diff of one sibling.
+func (b *Base) authorizeLabeledFresh(ctx context.Context, relation string, labels map[string]string) error {
+	object, err := b.resourceWorkspace(ctx, labels)
 	if err != nil {
 		return err
 	}
@@ -712,11 +722,7 @@ func (b *Base) AuthorizeDatabaseFresh(ctx context.Context, relation string, d *a
 	if d == nil {
 		return ErrForbidden
 	}
-	object, err := b.resourceWorkspace(ctx, d.Labels)
-	if err != nil {
-		return err
-	}
-	return b.checkAuthzFresh(ctx, relation, object)
+	return b.authorizeLabeledFresh(ctx, relation, d.Labels)
 }
 
 // AuthorizeKeyValueFresh is AuthorizeDatabaseFresh for a managed KeyValue.
@@ -724,11 +730,7 @@ func (b *Base) AuthorizeKeyValueFresh(ctx context.Context, relation string, kv *
 	if kv == nil {
 		return ErrForbidden
 	}
-	object, err := b.resourceWorkspace(ctx, kv.Labels)
-	if err != nil {
-		return err
-	}
-	return b.checkAuthzFresh(ctx, relation, object)
+	return b.authorizeLabeledFresh(ctx, relation, kv.Labels)
 }
 
 // AuthorizeMintClass gates a durable-credential mint verb (API-key creation,

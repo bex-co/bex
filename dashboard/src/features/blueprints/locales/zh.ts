@@ -69,6 +69,10 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "蓝图路径",
     description: "New Blueprint page — render.yaml path input label",
   },
+  "blueprints.createNamePlaceholder": {
+    message: "my-stack",
+    description: "New Blueprint page — blueprint name placeholder",
+  },
   "blueprints.createPathPlaceholder": {
     message: "render.yaml",
     description: "New Blueprint page — manifest path placeholder",

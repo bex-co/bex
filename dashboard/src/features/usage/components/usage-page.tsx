@@ -155,25 +155,43 @@ function SkeletonTable({ cols }: { cols: number }) {
   );
 }
 
-function ComputeSection({
+/**
+ * One usage table: a card, a loading skeleton, an empty state, and a table with
+ * a trailing total row. The four usage categories differ only in their label
+ * columns and how the numeric total is formatted, so they share this shape
+ * instead of four near-identical copies.
+ */
+function UsageTableSection<T extends { total: number }>({
+  title,
+  description,
   rows,
   loading,
+  rowKey,
+  labelColumns,
+  valueHeader,
+  format,
 }: {
-  rows: ComputeRow[];
+  title: string;
+  description: string;
+  rows: T[];
   loading: boolean;
+  rowKey: (row: T) => string;
+  labelColumns: { header: string; cell: (row: T) => React.ReactNode }[];
+  valueHeader: string;
+  format: (total: number) => string;
 }) {
   const { t } = useTranslations();
-  const totalSeconds = rows.reduce((s, r) => s + r.total, 0);
+  const total = rows.reduce((sum, r) => sum + r.total, 0);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("usage.computeTitle")}</CardTitle>
-        <CardDescription>{t("usage.computeDescription")}</CardDescription>
+        <CardTitle>{t(title)}</CardTitle>
+        <CardDescription>{t(description)}</CardDescription>
       </CardHeader>
       <CardContent>
         {loading && rows.length === 0 ? (
-          <SkeletonTable cols={4} />
+          <SkeletonTable cols={labelColumns.length + 1} />
         ) : rows.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             {t("usage.empty")}
@@ -182,35 +200,35 @@ function ComputeSection({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t("usage.colService")}</TableHead>
-                <TableHead>{t("usage.colKind")}</TableHead>
-                <TableHead>{t("usage.colPlan")}</TableHead>
+                {labelColumns.map((col) => (
+                  <TableHead key={col.header}>{t(col.header)}</TableHead>
+                ))}
                 <TableHead className="text-right tabular-nums">
-                  {t("usage.colHours")}
+                  {t(valueHeader)}
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((r) => (
-                <TableRow key={`${r.resourceKind}:${r.serviceId}:${r.tier}`}>
-                  <TableCell className="font-medium">
-                    {serviceLabel(r)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {r.resourceKind || "service"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground capitalize">
-                    {r.tier || "—"}
-                  </TableCell>
+                <TableRow key={rowKey(r)}>
+                  {labelColumns.map((col) => (
+                    <TableCell key={col.header}>{col.cell(r)}</TableCell>
+                  ))}
                   <TableCell className="text-right tabular-nums">
-                    {instanceSecondsToHours(r.total)}
+                    {format(r.total)}
                   </TableCell>
                 </TableRow>
               ))}
               <TableRow className="border-t-2 font-semibold">
-                <TableCell colSpan={3}>{t("usage.totalRow")}</TableCell>
+                <TableCell
+                  colSpan={
+                    labelColumns.length > 1 ? labelColumns.length : undefined
+                  }
+                >
+                  {t("usage.totalRow")}
+                </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {instanceSecondsToHours(totalSeconds)}
+                  {format(total)}
                 </TableCell>
               </TableRow>
             </TableBody>
@@ -218,6 +236,48 @@ function ComputeSection({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function ComputeSection({
+  rows,
+  loading,
+}: {
+  rows: ComputeRow[];
+  loading: boolean;
+}) {
+  return (
+    <UsageTableSection
+      title="usage.computeTitle"
+      description="usage.computeDescription"
+      rows={rows}
+      loading={loading}
+      rowKey={(r) => `${r.resourceKind}:${r.serviceId}:${r.tier}`}
+      labelColumns={[
+        {
+          header: "usage.colService",
+          cell: (r) => <span className="font-medium">{serviceLabel(r)}</span>,
+        },
+        {
+          header: "usage.colKind",
+          cell: (r) => (
+            <span className="text-muted-foreground">
+              {r.resourceKind || "service"}
+            </span>
+          ),
+        },
+        {
+          header: "usage.colPlan",
+          cell: (r) => (
+            <span className="text-muted-foreground capitalize">
+              {r.tier || "—"}
+            </span>
+          ),
+        },
+      ]}
+      valueHeader="usage.colHours"
+      format={instanceSecondsToHours}
+    />
   );
 }
 
@@ -228,54 +288,22 @@ function BandwidthSection({
   rows: ServiceTotalRow[];
   loading: boolean;
 }) {
-  const { t } = useTranslations();
-  const totalBytes = rows.reduce((s, r) => s + r.total, 0);
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("usage.bandwidthTitle")}</CardTitle>
-        <CardDescription>{t("usage.bandwidthDescription")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading && rows.length === 0 ? (
-          <SkeletonTable cols={2} />
-        ) : rows.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            {t("usage.empty")}
-          </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("usage.colService")}</TableHead>
-                <TableHead className="text-right tabular-nums">
-                  {t("usage.colBandwidth")}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={r.serviceId}>
-                  <TableCell className="font-medium">
-                    {serviceLabel(r)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {egressBytesToDisplay(r.total)}
-                  </TableCell>
-                </TableRow>
-              ))}
-              <TableRow className="border-t-2 font-semibold">
-                <TableCell>{t("usage.totalRow")}</TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {egressBytesToDisplay(totalBytes)}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+    <UsageTableSection
+      title="usage.bandwidthTitle"
+      description="usage.bandwidthDescription"
+      rows={rows}
+      loading={loading}
+      rowKey={(r) => r.serviceId}
+      labelColumns={[
+        {
+          header: "usage.colService",
+          cell: (r) => <span className="font-medium">{serviceLabel(r)}</span>,
+        },
+      ]}
+      valueHeader="usage.colBandwidth"
+      format={egressBytesToDisplay}
+    />
   );
 }
 
@@ -286,54 +314,22 @@ function BuildSection({
   rows: ServiceTotalRow[];
   loading: boolean;
 }) {
-  const { t } = useTranslations();
-  const totalSeconds = rows.reduce((s, r) => s + r.total, 0);
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("usage.buildTitle")}</CardTitle>
-        <CardDescription>{t("usage.buildDescription")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading && rows.length === 0 ? (
-          <SkeletonTable cols={2} />
-        ) : rows.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            {t("usage.empty")}
-          </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("usage.colService")}</TableHead>
-                <TableHead className="text-right tabular-nums">
-                  {t("usage.colMinutes")}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={r.serviceId}>
-                  <TableCell className="font-medium">
-                    {serviceLabel(r)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {buildSecondsToMinutes(r.total)}
-                  </TableCell>
-                </TableRow>
-              ))}
-              <TableRow className="border-t-2 font-semibold">
-                <TableCell>{t("usage.totalRow")}</TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {buildSecondsToMinutes(totalSeconds)}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+    <UsageTableSection
+      title="usage.buildTitle"
+      description="usage.buildDescription"
+      rows={rows}
+      loading={loading}
+      rowKey={(r) => r.serviceId}
+      labelColumns={[
+        {
+          header: "usage.colService",
+          cell: (r) => <span className="font-medium">{serviceLabel(r)}</span>,
+        },
+      ]}
+      valueHeader="usage.colMinutes"
+      format={buildSecondsToMinutes}
+    />
   );
 }
 
@@ -344,58 +340,28 @@ function StorageSection({
   rows: StorageRow[];
   loading: boolean;
 }) {
-  const { t } = useTranslations();
-  const totalGBSeconds = rows.reduce((s, r) => s + r.total, 0);
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("usage.storageTitle")}</CardTitle>
-        <CardDescription>{t("usage.storageDescription")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {loading && rows.length === 0 ? (
-          <SkeletonTable cols={3} />
-        ) : rows.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">
-            {t("usage.empty")}
-          </p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("usage.colService")}</TableHead>
-                <TableHead>{t("usage.colKind")}</TableHead>
-                <TableHead className="text-right tabular-nums">
-                  {t("usage.colGBHours")}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={`${r.resourceKind}:${r.serviceId}`}>
-                  <TableCell className="font-medium">
-                    {serviceLabel(r)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {r.resourceKind}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {storageGBSecondsToGBHours(r.total)}
-                  </TableCell>
-                </TableRow>
-              ))}
-              <TableRow className="border-t-2 font-semibold">
-                <TableCell colSpan={2}>{t("usage.totalRow")}</TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {storageGBSecondsToGBHours(totalGBSeconds)}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+    <UsageTableSection
+      title="usage.storageTitle"
+      description="usage.storageDescription"
+      rows={rows}
+      loading={loading}
+      rowKey={(r) => `${r.resourceKind}:${r.serviceId}`}
+      labelColumns={[
+        {
+          header: "usage.colService",
+          cell: (r) => <span className="font-medium">{serviceLabel(r)}</span>,
+        },
+        {
+          header: "usage.colKind",
+          cell: (r) => (
+            <span className="text-muted-foreground">{r.resourceKind}</span>
+          ),
+        },
+      ]}
+      valueHeader="usage.colGBHours"
+      format={storageGBSecondsToGBHours}
+    />
   );
 }
 

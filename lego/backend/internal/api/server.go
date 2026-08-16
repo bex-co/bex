@@ -42,6 +42,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/cliauth"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/datastorelogs"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/environments"
@@ -451,6 +452,35 @@ func hostOf(rawURL string) string {
 	return u.Hostname()
 }
 
+// datastoreLogsAdapter projects the shared log service onto the datastore log
+// seam. Postgres and Key Value both alias datastorelogs.Query/Entry, so one
+// concrete adapter serves both fields rather than a copy per datastore.
+func datastoreLogsAdapter(logSvc *logs.Service) func(context.Context, string, datastorelogs.Query) ([]datastorelogs.Entry, error) {
+	return func(ctx context.Context, name string, q datastorelogs.Query) ([]datastorelogs.Entry, error) {
+		entries, err := logSvc.QueryLogs(ctx, logs.LogQuery{
+			App:       name,
+			Search:    q.Search,
+			Since:     q.Since,
+			End:       q.End,
+			Limit:     q.Limit,
+			Direction: q.Direction,
+			Instance:  q.Instance,
+		})
+		if err != nil {
+			return nil, err
+		}
+		out := make([]datastorelogs.Entry, len(entries))
+		for i := range entries {
+			out[i] = datastorelogs.Entry{
+				Timestamp: entries[i].Timestamp,
+				Message:   entries[i].Message,
+				Labels:    entries[i].Labels,
+			}
+		}
+		return out, nil
+	}
+}
+
 // NewServer wires the five feature services over one core.Base + deps. Callers
 // set the HTTP config fields (CORSOrigin/HydraAdminURL/KratosURL) on the result.
 func NewServer(base *core.Base, d Deps) *Server {
@@ -530,54 +560,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Metadata:     resourceMetadata,
 		PodLogs:      d.PodLogs,
 	}
-	pg.DatabaseLogs = func(ctx context.Context, name string, q postgres.DatabaseLogQuery) ([]postgres.DatabaseLogEntry, error) {
-		entries, err := logSvc.QueryLogs(ctx, logs.LogQuery{
-			App:       name,
-			Search:    q.Search,
-			Since:     q.Since,
-			End:       q.End,
-			Limit:     q.Limit,
-			Direction: q.Direction,
-			Instance:  q.Instance,
-		})
-		if err != nil {
-			return nil, err
-		}
-		out := make([]postgres.DatabaseLogEntry, len(entries))
-		for i := range entries {
-			out[i] = postgres.DatabaseLogEntry{
-				Timestamp: entries[i].Timestamp,
-				Message:   entries[i].Message,
-				Labels:    entries[i].Labels,
-			}
-		}
-		return out, nil
-	}
+	pg.DatabaseLogs = datastoreLogsAdapter(logSvc)
 	kv := &keyvalue.Service{Base: base, Protection: protectionStore, Owners: workspaceSvc, Metadata: resourceMetadata}
 	kv.PodLogs = d.PodLogs
-	kv.KeyValueLogs = func(ctx context.Context, name string, q keyvalue.KeyValueLogQuery) ([]keyvalue.KeyValueLogEntry, error) {
-		entries, err := logSvc.QueryLogs(ctx, logs.LogQuery{
-			App:       name,
-			Search:    q.Search,
-			Since:     q.Since,
-			End:       q.End,
-			Limit:     q.Limit,
-			Direction: q.Direction,
-			Instance:  q.Instance,
-		})
-		if err != nil {
-			return nil, err
-		}
-		out := make([]keyvalue.KeyValueLogEntry, len(entries))
-		for i := range entries {
-			out[i] = keyvalue.KeyValueLogEntry{
-				Timestamp: entries[i].Timestamp,
-				Message:   entries[i].Message,
-				Labels:    entries[i].Labels,
-			}
-		}
-		return out, nil
-	}
+	kv.KeyValueLogs = datastoreLogsAdapter(logSvc)
 	// secrets + env-groups are also the blueprint apply path's seams (w1/m35:
 	// apps.EnvSeeder / apps.EnvGroupApplier) — built once and shared. They are
 	// wired onto Apps ONLY when OpenBao (d.Secrets) is on, so a nil seam is the

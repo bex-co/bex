@@ -341,7 +341,7 @@ export function NewBlueprintPage() {
                       setName(e.target.value);
                       setNameEdited(e.target.value !== "");
                     }}
-                    placeholder="my-stack"
+                    placeholder={t("blueprints.createNamePlaceholder")}
                     autoComplete="off"
                   />
                 </div>

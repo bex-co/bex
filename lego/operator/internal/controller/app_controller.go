@@ -635,15 +635,13 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	// GIT_AUTH_TOKEN — otherwise the build pod is CreateContainerConfigError
 	// ("secret not found"). Mechanism-only: the operator just copies an opaque
 	// Secret across namespaces; it never mints or inspects the token.
-	if app.Spec.CloneSecret != "" && buildNs != app.Namespace {
-		if err := r.copyCloneSecret(ctx, app, app.Namespace, buildNs, app.Spec.CloneSecret); err != nil {
-			return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("relocating clone secret to %s: %w", buildNs, err)))
-		}
+	if err := r.relocateBuildSecret(ctx, app, buildNs, app.Spec.CloneSecret, "clone secret"); err != nil {
+		return halt(r.fail(ctx, app, "BuildFailed", err))
 	}
 	runtimeSecret := runtimeEnvSecret(app)
-	if builder == build.BuilderNative && runtimeSecret != "" && buildNs != app.Namespace {
-		if err := r.copyCloneSecret(ctx, app, app.Namespace, buildNs, runtimeSecret); err != nil {
-			return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("relocating native build env to %s: %w", buildNs, err)))
+	if builder == build.BuilderNative {
+		if err := r.relocateBuildSecret(ctx, app, buildNs, runtimeSecret, "native build env"); err != nil {
+			return halt(r.fail(ctx, app, "BuildFailed", err))
 		}
 	}
 	buildRegistryPullSecret, err := r.prepareBuildRegistrySecret(ctx, app, buildNs, builder)
@@ -807,6 +805,20 @@ func effectiveBuilder(spec appv1alpha1.AppSpec) string {
 	default:
 		return spec.Builder
 	}
+}
+
+// relocateBuildSecret copies one App-namespace Secret next to the build Job
+// when the build runs in a different namespace. A missing name or a same-
+// namespace build is a no-op, so callers need no guard of their own. label
+// names the secret in the error a failure produces.
+func (r *AppReconciler) relocateBuildSecret(ctx context.Context, app *appv1alpha1.App, buildNs, secretName, label string) error {
+	if secretName == "" || buildNs == app.Namespace {
+		return nil
+	}
+	if err := r.copyCloneSecret(ctx, app, app.Namespace, buildNs, secretName); err != nil {
+		return fmt.Errorf("relocating %s to %s: %w", label, buildNs, err)
+	}
+	return nil
 }
 
 // effectiveDeployRef is the git ref a source clone checks out: the tracked
