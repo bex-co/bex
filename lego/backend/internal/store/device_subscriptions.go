@@ -79,6 +79,11 @@ func (s *PGStore) UpsertDevicePushSubscription(ctx context.Context, sub DevicePu
 	// quota checks across every member of one workspace; both lock inputs are
 	// non-secret (the second is a one-way digest), so no bearer token reaches SQL
 	// diagnostics.
+	//
+	// The namespace separator is ":" and not a NUL: this string is bound as a
+	// Postgres `text` parameter, which cannot carry 0x00 (SQLSTATE 22021), and a
+	// tenant id is `tea-<xid>` so ":" cannot occur inside one. It also cannot
+	// collide with the digest key below, which is always 64 hex characters.
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "push-workspace:"+sub.TenantID); err != nil {
 		return DevicePushSubscription{}, classifyPushSubscriptionError(err)
 	}
