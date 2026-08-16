@@ -213,6 +213,14 @@ spec:
                   identity, platform hostname, or derived resource names. Empty falls back
                   to Name in human-facing clients so existing Apps remain unchanged.
                 type: string
+              dockerContext:
+                description: |-
+                  DockerContext is Render's Docker Build Context Directory, relative to
+                  the repository root and resolved independently of RootDir (Docker's own
+                  context-vs-dockerfile split). Empty uses RootDir as the context — the
+                  prior behavior. Docker builds only (w8/m19).
+                maxLength: 512
+                type: string
               dockerfilePath:
                 description: |-
                   DockerfilePath is Render's Dockerfile Path setting, relative to RootDir.

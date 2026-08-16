@@ -105,8 +105,11 @@ func discoverBlueprintFile(ctx context.Context, fetcher BlueprintFetcher, worksp
 }
 
 // approvedBlueprintPath keeps Blueprint discovery from becoming an arbitrary
-// private-repository file reader. A Blueprint may live in a subdirectory, but
-// its basename must be one of the filenames the product actually parses.
+// private-repository file reader. Since Render's 2026-02-09 custom Blueprint
+// paths (w8/m19 t006), an explicit path may use any YAML filename in any
+// subdirectory — the containment checks (clean, relative, no escapes) and the
+// yaml/yml extension are what bound the readable surface; implicit discovery
+// still looks only for render.yaml / the legacy bex.yml alias.
 func approvedBlueprintPath(filePath string) (string, error) {
 	filePath = strings.TrimSpace(filePath)
 	clean := path.Clean(filePath)
@@ -114,11 +117,11 @@ func approvedBlueprintPath(filePath string) (string, error) {
 		clean == ".." || strings.HasPrefix(clean, "../") || strings.Contains(clean, `\`) {
 		return "", fmt.Errorf("%w: Blueprint path must be a clean repository-relative path", core.ErrBadRequest)
 	}
-	switch path.Base(clean) {
-	case CanonicalBlueprintFilename, LegacyBlueprintFilename:
+	switch path.Ext(clean) {
+	case ".yaml", ".yml":
 		return clean, nil
 	default:
-		return "", fmt.Errorf("%w: Blueprint path must end in %s or %s", core.ErrBadRequest, CanonicalBlueprintFilename, LegacyBlueprintFilename)
+		return "", fmt.Errorf("%w: Blueprint path must be a .yaml or .yml file", core.ErrBadRequest)
 	}
 }
 
@@ -247,6 +250,9 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
 	}
 	st, err := parseCompiledStack(blueprintParseOverrides{repo: repo, branch: branch}, source, ir)
+	if err == nil {
+		err = s.resolveBlueprintRegistryCredentials(ctx, &st)
+	}
 	if err == nil {
 		err = s.validateBlueprintServices(ctx, st)
 	}

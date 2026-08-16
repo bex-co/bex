@@ -240,7 +240,10 @@ type bexService struct {
 	// field can never be mistaken for a bex extension.
 	Builder string        `json:"builder"`
 	XBex    *bexExtension `json:"x-bex,omitempty"`
-	RootDir string        `json:"rootDir"`
+	// RegistryCredential is render.yaml's service-level private-registry
+	// credential reference (w8/m19 t005).
+	RegistryCredential *bexRegistryCredentialRef `json:"registryCredential"`
+	RootDir            string                    `json:"rootDir"`
 	// BuildFilter is render.yaml's Build Filters (paths/ignoredPaths globs) — the
 	// same {paths, ignoredPaths} shape every surface uses (BuildFilterView).
 	BuildFilter             *BuildFilterView    `json:"buildFilter"`
@@ -248,6 +251,7 @@ type bexService struct {
 	StartCommand            string              `json:"startCommand"`
 	DockerCommand           string              `json:"dockerCommand"`
 	DockerfilePath          string              `json:"dockerfilePath"` // Render's Dockerfile Path, relative to rootDir; docker runtime only
+	DockerContext           string              `json:"dockerContext"`  // Render's Docker build context dir, repo-root-relative (w8/m19)
 	Routes                  []StaticRouteView   `json:"routes"`
 	Headers                 []StaticHeaderView  `json:"headers"`
 	NumInstances            int32               `json:"numInstances"` // render.yaml manual instance count
@@ -295,12 +299,24 @@ type bexScaling struct {
 
 // bexImage is render.yaml's `image: {url, creds}` — bex honors just the url.
 type bexImage struct {
-	URL   string `json:"url"`
-	Creds string `json:"creds"`
+	URL   string                    `json:"url"`
+	Creds *bexRegistryCredentialRef `json:"creds"`
 }
 
 type bexExtension struct {
 	Builder string `json:"builder"`
+}
+
+// bexRegistryCredentialRef is render.yaml's registryCredential / image.creds
+// shape: a by-name reference to a registry credential already configured in
+// the workspace (the /v1/registrycredentials objects). The name resolves to a
+// credential id at validate/apply time (w8/m19 t005).
+type bexRegistryCredentialRef struct {
+	FromRegistryCreds bexFromRegistryCreds `json:"fromRegistryCreds"`
+}
+
+type bexFromRegistryCreds struct {
+	Name string `json:"name"`
 }
 
 // bexDatabase is one entry in databases:. Field names follow render.yaml; bex
@@ -412,8 +428,12 @@ type parsedService struct {
 	seedLiterals  map[string]string // sync:false literals, seeded once
 	seedGenerates []string          // generateValue keys, minted + seeded once
 	promptKeys    []string          // sync:false keys without a manifest value
-	grouping      string
-	ungrouped     bool
+	// registryCredentialName is the declared fromRegistryCreds name (service
+	// registryCredential or image.creds), resolved to a credential id by
+	// resolveBlueprintRegistryCredentials before validate/apply (w8/m19 t005).
+	registryCredentialName string
+	grouping               string
+	ungrouped              bool
 }
 
 // hostRef is a deferred fromService host/hostport reference: the env key, the
@@ -571,6 +591,9 @@ func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (
 // 8. Patch forward-referenced services (deferred fromService host slugs)
 // 9. Auto-register Blueprint row (enables subsequent sync operations)
 func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st parsedStack) (StackResult, error) {
+	if err := s.resolveBlueprintRegistryCredentials(ctx, &st); err != nil {
+		return StackResult{}, err
+	}
 	if err := s.validateBlueprintServices(ctx, st); err != nil {
 		return StackResult{}, err
 	}
@@ -1043,6 +1066,68 @@ func stackHasPaidPlan(st parsedStack) bool {
 	return false
 }
 
+// blueprintRegistryCredentialName extracts the by-name registry-credential
+// reference a services[] entry declares — the service-level registryCredential
+// or image.creds; both name the same workspace object, so declaring different
+// names in the two places is a contradiction, not a choice.
+func blueprintRegistryCredentialName(a bexService) (string, error) {
+	var svcName, imgName string
+	if a.RegistryCredential != nil {
+		svcName = strings.TrimSpace(a.RegistryCredential.FromRegistryCreds.Name)
+		if svcName == "" {
+			return "", fmt.Errorf("%w: service %q registryCredential.fromRegistryCreds.name is required", core.ErrBadRequest, a.Name)
+		}
+	}
+	if a.Image != nil && a.Image.Creds != nil {
+		imgName = strings.TrimSpace(a.Image.Creds.FromRegistryCreds.Name)
+		if imgName == "" {
+			return "", fmt.Errorf("%w: service %q image.creds.fromRegistryCreds.name is required", core.ErrBadRequest, a.Name)
+		}
+	}
+	if svcName != "" && imgName != "" && svcName != imgName {
+		return "", fmt.Errorf("%w: service %q declares different registry credentials on registryCredential (%q) and image.creds (%q)", core.ErrBadRequest, a.Name, svcName, imgName)
+	}
+	if svcName != "" {
+		return svcName, nil
+	}
+	return imgName, nil
+}
+
+// resolveBlueprintRegistryCredentials binds each declared fromRegistryCreds
+// name to the workspace credential's id (the same binding Render's dashboard
+// performs when a Blueprint references workspace registry credentials). An
+// unknown name fails before any write; a declared reference with the
+// registry-credential feature unwired fails closed rather than deploying a
+// private image without its credential.
+func (s *Service) resolveBlueprintRegistryCredentials(ctx context.Context, st *parsedStack) error {
+	resolved := map[string]string{} // name → id, one lookup per distinct name per stack
+	for i := range st.services {
+		name := st.services[i].registryCredentialName
+		if name == "" {
+			continue
+		}
+		if s.RegistryCreds == nil {
+			return fmt.Errorf("%w: service %q: registry credentials are not configured on this deployment", core.ErrBadRequest, st.services[i].req.Name)
+		}
+		id, hit := resolved[name]
+		if !hit {
+			var found bool
+			var err error
+			id, found, err = s.RegistryCreds.FindCredentialIDByName(ctx, s.WorkspaceOrDefault(ctx), name)
+			if err != nil {
+				return err
+			}
+			if !found {
+				return fmt.Errorf("%w: service %q: registry credential %q not found in this workspace", core.ErrBadRequest, st.services[i].req.Name, name)
+			}
+			resolved[name] = id
+		}
+		credentialID := id
+		st.services[i].req.RegistryCredentialID = &credentialID
+	}
+	return nil
+}
+
 // validateBlueprintServices runs the ordinary create boundary over every
 // parsed service before deployStack writes groupings or resources. URL
 // ownership needs the configured base domain, so it lives here rather than in
@@ -1419,8 +1504,12 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		if err := registerUniqueName(req.Name, idx.names); err != nil {
 			return parsedStack{}, err
 		}
+		credName, err := blueprintRegistryCredentialName(a.value)
+		if err != nil {
+			return parsedStack{}, err
+		}
 		pendings = append(pendings, pending{
-			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, grouping: a.grouping, ungrouped: a.ungrouped},
+			svc:     parsedService{req: req, fields: blueprintServiceFields(fieldsByResource[BlueprintResourceService][req.Name]), groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, registryCredentialName: credName, grouping: a.grouping, ungrouped: a.ungrouped},
 			refVars: se.refVars,
 		})
 		idx.serviceKnownEnv[req.Name] = se.known
@@ -1736,6 +1825,7 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		RootDir:                 a.RootDir,
 		BuildFilter:             a.BuildFilter,
 		DockerfilePath:          a.DockerfilePath,
+		DockerContext:           a.DockerContext,
 		Port:                    0,
 		Replicas:                replicas,
 		Plan:                    plan,
@@ -1771,9 +1861,6 @@ func validateManifestServiceFields(a bexService) error {
 	}
 	if a.Builder != "" {
 		return fmt.Errorf("%w: service %q uses retired Blueprint field builder; move it to x-bex.builder", core.ErrBadRequest, a.Name)
-	}
-	if a.Image != nil && a.Image.Creds != "" {
-		return fmt.Errorf("%w: service %q image.creds is unsupported; bind an authorized registry credential through the service API", core.ErrBadRequest, a.Name)
 	}
 	return nil
 }

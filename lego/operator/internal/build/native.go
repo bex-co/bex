@@ -46,15 +46,28 @@ var nativeRuntimeImages = map[string]string{
 	"rust":   "rust:1-bookworm@sha256:0e2bcaef56d041a486784e54104a81aebe0da44bd03019bd70bc0401e42e4a97",
 }
 
+// nativeRuntime resolves the toolchain a native build runs in. A static
+// site's build usually declares no runtime — Render's static build
+// environment is Node-based, so node is the default toolchain there.
+func nativeRuntime(o Options) string {
+	if o.StaticSite && o.Runtime == "" {
+		return "node"
+	}
+	return o.Runtime
+}
+
 func validateNativeOptions(o Options) error {
-	if _, ok := nativeRuntimeImages[o.Runtime]; !ok {
-		return fmt.Errorf("build: unsupported native runtime %q", o.Runtime)
+	runtime := nativeRuntime(o)
+	if _, ok := nativeRuntimeImages[runtime]; !ok {
+		return fmt.Errorf("build: unsupported native runtime %q", runtime)
 	}
 	if strings.TrimSpace(o.BuildCommand) == "" {
-		return fmt.Errorf("build: native runtime %s requires buildCommand", o.Runtime)
+		return fmt.Errorf("build: native runtime %s requires buildCommand", runtime)
 	}
-	if strings.TrimSpace(o.StartCommand) == "" {
-		return fmt.Errorf("build: native runtime %s requires startCommand", o.Runtime)
+	// A static site's image is only the publish Job's extract source — it is
+	// never run, so no start command exists or is required.
+	if !o.StaticSite && strings.TrimSpace(o.StartCommand) == "" {
+		return fmt.Errorf("build: native runtime %s requires startCommand", runtime)
 	}
 	return nil
 }
@@ -71,15 +84,21 @@ func nativeDockerfile(o Options) string {
 done < /run/secrets/render-env
 ` + o.BuildCommand
 	run := shellJSON(buildScript)
-	start := shellJSON(o.StartCommand)
-	return fmt.Sprintf(`# syntax=docker/dockerfile:1.7
+	base := fmt.Sprintf(`# syntax=docker/dockerfile:1.7
 FROM %s
 WORKDIR /opt/render/project/src
 COPY . .
 RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env %s
-ENV PORT=10000
+`, nativeRuntimeImages[nativeRuntime(o)], run)
+	if o.StaticSite {
+		// No PORT/CMD: the image only carries the built site for the publish
+		// Job's extract initContainer (ADR029) and never runs as a workload.
+		return base
+	}
+	start := shellJSON(o.StartCommand)
+	return base + fmt.Sprintf(`ENV PORT=10000
 CMD %s
-`, nativeRuntimeImages[o.Runtime], run, start)
+`, start)
 }
 
 func shellJSON(command string) string {

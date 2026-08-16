@@ -558,10 +558,6 @@ func blueprintUnsupportedCapabilityMessage(field, pointer string) string {
 	switch pointer {
 	case "#/definitions/serverService/properties/disk":
 		return "persistent service disks are not available on bex"
-	case "#/definitions/serverService/properties/dockerContext", "#/definitions/cronService/properties/dockerContext":
-		return "dockerContext is not available on bex because its build-context semantics cannot be represented exactly"
-	case "#/definitions/serverService/properties/registryCredential", "#/definitions/cronService/properties/registryCredential", "#/definitions/image/properties/creds", "#/definitions/registryCredential/properties/fromRegistryCreds":
-		return "Blueprint registry credentials are not available on bex; bind an authorized registry credential through the service API"
 	case "#/allOf/1/properties/previews", "#/allOf/1/properties/previewsEnabled", "#/allOf/1/properties/previewsExpireAfterDays", "#/definitions/serverService/properties/previews", "#/definitions/serverService/properties/previewPlan", "#/definitions/serverService/properties/pullRequestPreviewsEnabled", "#/definitions/staticService/properties/previews", "#/definitions/staticService/properties/pullRequestPreviewsEnabled", "#/definitions/database/properties/previewPlan", "#/definitions/database/properties/previewDiskSizeGB", "#/definitions/redisServer/properties/previewPlan":
 		return "preview environments are not available on bex"
 	case "#/definitions/envVarFromKeyValue/properties/previewValue":

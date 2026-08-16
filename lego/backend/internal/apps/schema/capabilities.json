@@ -2,21 +2,21 @@
   "version": 1,
   "schema": {
     "source": "https://render.com/schema/render.yaml.json",
-    "retrievedAt": "2026-08-02",
+    "retrievedAt": "2026-08-16",
     "sha256": "665539cb0c191856ba38d292b985a963880bb69b030d666e5fe7788e78e7e696"
   },
   "fields": {
     "#/allOf/1/properties/previews": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/allOf/1/properties/previewsEnabled": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/allOf/1/properties/previewsExpireAfterDays": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/allOf/1/properties/projects": {
       "state": "translated",
@@ -85,8 +85,10 @@
       "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/cronService/properties/dockerContext": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintDockerContext",
+      "reason": "maps to App.spec.dockerContext: the BuildKit Job's repo-root-relative build context, independent of rootDir (Docker's context-vs-dockerfile split; w8/m19 t004)"
     },
     "#/definitions/cronService/properties/dockerfilePath": {
       "state": "translated",
@@ -124,11 +126,13 @@
     },
     "#/definitions/cronService/properties/region": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
     },
     "#/definitions/cronService/properties/registryCredential": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintRegistryCredential",
+      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId — the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
     },
     "#/definitions/cronService/properties/repo": {
       "state": "translated",
@@ -216,11 +220,11 @@
     },
     "#/definitions/database/properties/previewDiskSizeGB": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/database/properties/previewPlan": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/database/properties/readReplicas": {
       "state": "translated",
@@ -230,7 +234,7 @@
     },
     "#/definitions/database/properties/region": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
     },
     "#/definitions/database/properties/storageAutoscalingEnabled": {
       "state": "translated",
@@ -252,15 +256,15 @@
     },
     "#/definitions/disk/properties/mountPath": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "persistent service disks are a deliberate non-goal (ADR018 — row: bex is stateless-first; disks disable multi-instance + zero-downtime deploys): fail-closed so data-bearing intent is never silently dropped"
     },
     "#/definitions/disk/properties/name": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "persistent service disks are a deliberate non-goal (ADR018 — row: bex is stateless-first; disks disable multi-instance + zero-downtime deploys): fail-closed so data-bearing intent is never silently dropped"
     },
     "#/definitions/disk/properties/sizeGB": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "persistent service disks are a deliberate non-goal (ADR018 — row: bex is stateless-first; disks disable multi-instance + zero-downtime deploys): fail-closed so data-bearing intent is never silently dropped"
     },
     "#/definitions/envVarFromDatabase/properties/fromDatabase": {
       "state": "translated",
@@ -306,7 +310,7 @@
     },
     "#/definitions/envVarFromKeyValue/properties/previewValue": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/envVarFromKeyValue/properties/sync": {
       "state": "translated",
@@ -417,8 +421,10 @@
       "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/image/properties/creds": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintRegistryCredential",
+      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId — the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
     },
     "#/definitions/image/properties/url": {
       "state": "translated",
@@ -488,11 +494,11 @@
     },
     "#/definitions/redisServer/properties/previewPlan": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/redisServer/properties/region": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
     },
     "#/definitions/redisServer/properties/type": {
       "state": "translated",
@@ -501,12 +507,16 @@
       "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/registryCredential/properties/fromRegistryCreds": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintRegistryCredential",
+      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId — the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
     },
     "#/definitions/registryCredential/properties/fromRegistryCreds/properties/name": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintRegistryCredential",
+      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId — the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
     },
     "#/definitions/resources/properties/databases": {
       "state": "translated",
@@ -528,11 +538,11 @@
     },
     "#/definitions/rootPreviews/properties/expireAfterDays": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/rootPreviews/properties/generation": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/route/properties/destination": {
       "state": "translated",
@@ -584,7 +594,7 @@
     },
     "#/definitions/serverService/properties/disk": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "persistent service disks are a deliberate non-goal (ADR018 — row: bex is stateless-first; disks disable multi-instance + zero-downtime deploys): fail-closed so data-bearing intent is never silently dropped"
     },
     "#/definitions/serverService/properties/dockerCommand": {
       "state": "translated",
@@ -593,8 +603,10 @@
       "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/serverService/properties/dockerContext": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintDockerContext",
+      "reason": "maps to App.spec.dockerContext: the BuildKit Job's repo-root-relative build context, independent of rootDir (Docker's context-vs-dockerfile split; w8/m19 t004)"
     },
     "#/definitions/serverService/properties/dockerfilePath": {
       "state": "translated",
@@ -682,23 +694,25 @@
     },
     "#/definitions/serverService/properties/previewPlan": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/serverService/properties/previews": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/serverService/properties/pullRequestPreviewsEnabled": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/serverService/properties/region": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
     },
     "#/definitions/serverService/properties/registryCredential": {
-      "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintRegistryCredential",
+      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId — the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
     },
     "#/definitions/serverService/properties/renderSubdomainPolicy": {
       "state": "translated",
@@ -780,15 +794,15 @@
     },
     "#/definitions/servicePreviews/properties/generation": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/servicePreviews/properties/numInstances": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/servicePreviews/properties/plan": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/staticService/properties/autoDeploy": {
       "state": "translated",
@@ -809,8 +823,10 @@
       "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
     },
     "#/definitions/staticService/properties/buildCommand": {
-      "state": "unsupported",
-      "reason": "static-site builds do not execute Render's buildCommand contract; reject until an observable adapter exists"
+      "state": "translated",
+      "handler": "parseService",
+      "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintStaticBuildCommand",
+      "reason": "runs in the native static build (node toolchain, no start command); the built image's publishPath is what the publish Job extracts (ADR029, w8/m19 t003)"
     },
     "#/definitions/staticService/properties/buildFilter": {
       "state": "translated",
@@ -860,11 +876,11 @@
     },
     "#/definitions/staticService/properties/previews": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/staticService/properties/pullRequestPreviewsEnabled": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/definitions/staticService/properties/renderSubdomainPolicy": {
       "state": "translated",
@@ -910,7 +926,7 @@
     },
     "#/definitions/staticServicePreviews/properties/generation": {
       "state": "unsupported",
-      "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+      "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     }
   },
   "enumValues": {
@@ -929,7 +945,7 @@
       },
       "\"checksPass\"": {
         "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "reason": "requires a commit-status/CI-checks integration bex does not have; collapsing checksPass to commit would deploy earlier than the author intended (ADR049 D7 forbids the lossy collapse)"
       }
     },
     "#/definitions/connectionPool/enum": {
@@ -1247,15 +1263,15 @@
     "#/definitions/previewsGeneration/enum": {
       "\"automatic\"": {
         "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
       },
       "\"manual\"": {
         "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
       },
       "\"off\"": {
         "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
       }
     },
     "#/definitions/redisServer/properties/maxmemoryPolicy/enum": {
@@ -1345,23 +1361,23 @@
     "#/definitions/region/enum": {
       "\"oregon\"": {
         "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
       },
       "\"ohio\"": {
         "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
       },
       "\"frankfurt\"": {
         "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
       },
       "\"singapore\"": {
         "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
       },
       "\"virginia\"": {
         "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "reason": "bex installations are single-region (BEX_REGION names platform placement, ADR006); a per-resource Render region selector cannot be honored, and accepting-then-ignoring placement intent would be a lossy approximation (ADR049 D7)"
       }
     },
     "#/definitions/route/properties/type/enum": {
@@ -1527,11 +1543,11 @@
       },
       "\"dpg\"": {
         "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "reason": "database references use fromDatabase in bex; a fromService reference of type 'dpg' has no resolver and is rejected rather than mis-resolved to a service"
       },
       "\"job\"": {
         "state": "unsupported",
-        "reason": "m63 audit baseline: fail closed until a reviewed handler is implemented"
+        "reason": "one-off jobs are a deliberate non-goal (ADR018 — row, execution products beyond running services); a fromService reference to a job target cannot resolve"
       },
       "\"redis\"": {
         "state": "translated",

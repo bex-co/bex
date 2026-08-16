@@ -48,6 +48,11 @@ type PullSecretSource interface {
 	// ResolveCredentialNames batch-resolves names for a slice of credential ids
 	// (one query for the page). Unknown ids are silently omitted.
 	ResolveCredentialNames(ctx context.Context, ids []string) map[string]string
+	// FindCredentialIDByName resolves a workspace credential by its display
+	// name — the reference form render.yaml's registryCredential/image.creds
+	// use (fromRegistryCreds: {name}). found=false (nil err) means no such
+	// name; an ambiguous name (two credentials sharing it) is an error.
+	FindCredentialIDByName(ctx context.Context, workspaceID, name string) (id string, found bool, err error)
 }
 
 // ensureExternalRegistryPullSecret resolves and materializes the docker-config

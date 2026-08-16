@@ -376,6 +376,10 @@ type AppView struct {
 	// Root Directory setting, for monorepos; spec.rootDir). Empty is the repo root.
 	RootDir        string `json:"rootDir,omitempty"`
 	DockerfilePath string `json:"dockerfilePath,omitempty"`
+	// DockerContext is Render's Docker Build Context Directory
+	// (repo-root-relative, independent of RootDir); empty means the RootDir
+	// context (w8/m19).
+	DockerContext string `json:"dockerContext,omitempty"`
 	// Repo and Branch are the build-from-git source (spec.repo/spec.branch),
 	// empty for an image-backed App. The dashboard's Settings → Build & Deploy
 	// section reads all three; only RootDir is editable after create
@@ -782,6 +786,7 @@ func view(a *appv1alpha1.App) AppView {
 		EnvironmentID:        a.Labels[core.LabelEnvironment],
 		RootDir:              a.Spec.RootDir,
 		DockerfilePath:       a.Spec.DockerfilePath,
+		DockerContext:        a.Spec.DockerContext,
 		// Redact any legacy embedded userinfo before the URL reaches a viewer
 		// (round-6 #13); create/update now reject such URLs outright.
 		Repo:                  store.RedactRepoURL(a.Spec.Repo),
@@ -1387,8 +1392,11 @@ type CreateRequest struct {
 	// glob patterns gating git-push auto-deploys. nil means unset (every matching
 	// push deploys). Validated + canonicalized by normalizeBuildFilter; editable
 	// later via SetBuildFilter.
-	BuildFilter     *BuildFilterView
-	DockerfilePath  string
+	BuildFilter    *BuildFilterView
+	DockerfilePath string
+	// DockerContext is Render's Docker build context directory, relative to
+	// the repo root and independent of RootDir (docker builds only).
+	DockerContext   string
 	Port            int32
 	Replicas        int32
 	Plan            string
@@ -1944,6 +1952,16 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
+	// A static site that declares buildCommand builds through the native
+	// toolchain so the declared command actually runs (Render's static build
+	// environment); the auto/CNB path would silently ignore it (ADR029). The
+	// toolchain default is the build plane's choice — runtime stays empty so
+	// Render-shaped reads never surface an internal toolchain name.
+	if svcType == appv1alpha1.TypeStaticSite && strings.TrimSpace(req.BuildCommand) != "" &&
+		strings.TrimSpace(req.DockerfilePath) == "" && runtime == "" &&
+		(builder == "" || builder == "auto") {
+		builder = "native"
+	}
 	buildFilter, err := normalizeBuildFilter(req.BuildFilter)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
@@ -1976,6 +1994,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		BuildFilter:     buildFilter,
 		MaintenanceMode: maintenanceMode,
 		DockerfilePath:  req.DockerfilePath,
+		DockerContext:   req.DockerContext,
 		Port:            port,
 		Replicas:        replicas,
 		Tier:            tier,
@@ -2031,6 +2050,9 @@ func validateCreateSource(req CreateRequest) error {
 	}
 	if req.DockerfilePath != "" && !store.ValidRootDir(req.DockerfilePath) {
 		return fmt.Errorf("%w: dockerfilePath must be a relative path with no '..' components", core.ErrBadRequest)
+	}
+	if req.DockerContext != "" && !store.ValidRootDir(req.DockerContext) {
+		return fmt.Errorf("%w: dockerContext must be a relative path with no '..' components", core.ErrBadRequest)
 	}
 	return nil
 }
@@ -2327,6 +2349,7 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 	dst.RootDir = want.RootDir
 	dst.BuildFilter = want.BuildFilter
 	dst.DockerfilePath = want.DockerfilePath
+	dst.DockerContext = want.DockerContext
 	dst.Port = want.Port
 	dst.Replicas = want.Replicas
 	dst.Tier = want.Tier

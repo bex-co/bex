@@ -79,7 +79,6 @@ func TestCreateOwnedSpecFieldParity(t *testing.T) {
 			// apply never recomputes it (type is immutable on the upsert path).
 			"Expose": "derived from type at create, never recomputed on apply",
 			// Same asymmetry as the applyCreateToSpec list above.
-			"RegistryCredentialID": "set at create only, preserved on the upsert path",
 		})
 }
 
@@ -134,6 +133,7 @@ func createProbeRequests() []CreateRequest {
 			RootDir:                 "apps/web",
 			BuildFilter:             &BuildFilterView{Paths: []string{"apps/web/**"}},
 			DockerfilePath:          "docker/Dockerfile",
+			DockerContext:           "services/api",
 			Port:                    8080,
 			Replicas:                2,
 			Plan:                    "starter",

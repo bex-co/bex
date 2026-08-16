@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"cmp"
 	"context"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -357,7 +358,7 @@ func envSpecificDetails(a AppView, svcType string) (map[string]any, bool) {
 	if a.Runtime == "docker" {
 		docker := map[string]any{
 			"dockerCommand":  a.StartCommand,
-			"dockerContext":  a.RootDir,
+			"dockerContext":  cmp.Or(a.DockerContext, a.RootDir),
 			"dockerfilePath": a.DockerfilePath,
 		}
 		if a.RegistryCredentialID != nil && *a.RegistryCredentialID != "" {

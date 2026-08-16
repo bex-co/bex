@@ -43,7 +43,16 @@ type fakePullSecrets struct {
 	// credNames, when non-nil, backs ResolveCredentialNames batch lookups.
 	credNames map[string]string
 	// resolveCalls counts ResolveCredentialNames invocations.
-	resolveCalls int
+	resolveCalls        int
+	credentialIDsByName map[string]string
+}
+
+func (f *fakePullSecrets) FindCredentialIDByName(_ context.Context, _, name string) (string, bool, error) {
+	if f.credentialIDsByName == nil {
+		return "", false, nil
+	}
+	id, ok := f.credentialIDsByName[name]
+	return id, ok, nil
 }
 
 func (f *fakePullSecrets) ResolveCredentialNames(_ context.Context, ids []string) map[string]string {

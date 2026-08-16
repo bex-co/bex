@@ -60,6 +60,7 @@ var appSpecIdentityClasses = map[string]appSpecIdentityClass{
 	"RootDir":                    identityArtifact | identityRelease,
 	"BuildFilter":                identityOperational,
 	"DockerfilePath":             identityArtifact | identityRelease,
+	"DockerContext":              identityArtifact | identityRelease,
 	"Branch":                     identityArtifact | identityRelease,
 	"BuildCommit":                identityArtifact | identityRelease,
 	"CloneSecret":                identityOperational,
@@ -111,6 +112,7 @@ type artifactIdentityInput struct {
 	Image                      string          `json:"image,omitempty"`
 	RootDir                    string          `json:"rootDir,omitempty"`
 	DockerfilePath             string          `json:"dockerfilePath,omitempty"`
+	DockerContext              string          `json:"dockerContext,omitempty"`
 	Branch                     string          `json:"branch,omitempty"`
 	BuildCommit                string          `json:"buildCommit,omitempty"`
 	ExternalRegistryPullSecret string          `json:"externalRegistryPullSecret,omitempty"`
@@ -156,6 +158,7 @@ func desiredAppReleaseIdentity(spec appv1alpha1.AppSpec) appReleaseIdentity {
 		Image:                      spec.Image,
 		RootDir:                    spec.RootDir,
 		DockerfilePath:             spec.DockerfilePath,
+		DockerContext:              spec.DockerContext,
 		Branch:                     branch,
 		BuildCommit:                spec.BuildCommit,
 		ExternalRegistryPullSecret: spec.ExternalRegistryPullSecret,

@@ -62,6 +62,8 @@ var BlueprintServiceFieldPolicies = []BlueprintServiceFieldPolicy{
 	{Name: "startCommand", Omission: BlueprintPreserveOnOmission},
 	{Name: "dockerCommand", Omission: BlueprintPreserveOnOmission},
 	{Name: "dockerfilePath", Omission: BlueprintPreserveOnOmission},
+	{Name: "dockerContext", Omission: BlueprintPreserveOnOmission},
+	{Name: "registryCredential", Omission: BlueprintPreserveOnOmission},
 	{Name: "numInstances", Omission: BlueprintPreserveOnOmission},
 	{Name: "scaling", Omission: BlueprintPreserveOnOmission},
 	{Name: "plan", Omission: BlueprintPreserveOnOmission},
@@ -104,7 +106,15 @@ var blueprintServiceFieldAppliers = []struct {
 	{names: []string{"runtime"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Runtime = want.Runtime }},
 	{names: []string{"schedule"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Schedule = want.Schedule }},
 	{names: []string{"repo"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Repo = want.Repo }},
-	{names: []string{"image"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Image = want.Image }},
+	{names: []string{"image"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		dst.Image = want.Image
+		// image.creds rides the image field's presence: a resolved credential
+		// rebinding applies with it, while a creds-less image change leaves an
+		// existing binding untouched (preserve-on-omission, like the field).
+		if want.RegistryCredentialID != nil {
+			dst.RegistryCredentialID = clonePtr(want.RegistryCredentialID)
+		}
+	}},
 	{names: []string{"branch"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Branch = want.Branch }},
 	{names: []string{"builder"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Builder = want.Builder }},
 	{names: []string{"rootDir"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.RootDir = want.RootDir }},
@@ -112,6 +122,10 @@ var blueprintServiceFieldAppliers = []struct {
 	{names: []string{"startCommand"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.StartCommand = want.StartCommand }},
 	{names: []string{"dockerCommand"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.StartCommand = want.StartCommand }},
 	{names: []string{"dockerfilePath"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.DockerfilePath = want.DockerfilePath }},
+	{names: []string{"dockerContext"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.DockerContext = want.DockerContext }},
+	{names: []string{"registryCredential"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		dst.RegistryCredentialID = clonePtr(want.RegistryCredentialID)
+	}},
 	{names: []string{"plan"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Tier = want.Tier }},
 	{names: []string{"healthCheckPath"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.HealthCheckPath = want.HealthCheckPath }},
 	{names: []string{"maxShutdownDelaySeconds"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {

@@ -161,6 +161,15 @@ type Options struct {
 	Runtime       string // Render native runtime: node | python | ruby | go | rust | elixir
 	BuildCommand  string // Render native build command (BuilderNative only)
 	StartCommand  string // Render native start command (BuilderNative only)
+	// StaticSite marks a static_site App's build: a native build then needs no
+	// startCommand (the image is only the publish Job's extract source, never
+	// run) and an undeclared runtime defaults to the node toolchain — Render's
+	// static build environment (ADR029, w8/m19).
+	StaticSite bool
+	// DockerContext moves the Docker build context to this repo-root-relative
+	// directory (Render's dockerContext; independent of RootDir). Empty keeps
+	// the RootDir-derived context. Dockerfile builds only.
+	DockerContext string
 	// BuildEnv carries selected literal build-time environment. Kpack receives
 	// BP_*/BPE_* entries in Image.spec.build.env; native builds encode all
 	// literals into a BuildKit secret alongside RuntimeEnvSecret.
@@ -413,17 +422,31 @@ func secretVolume(name, secretName string) corev1.Volume {
 	}
 }
 
+// boundedSourceDir resolves a repo-relative directory inside the source
+// mount, structurally containing traversal input (path.Clean under a rooted
+// prefix) — the shared rule for RootDir and DockerContext.
+func boundedSourceDir(dir string) string {
+	if clean := strings.TrimPrefix(path.Clean("/"+dir), "/"); clean != "." && clean != "" {
+		return path.Join(sourceMount, clean)
+	}
+	return sourceMount
+}
+
 func BuildJob(o Options, image string) *batchv1.Job {
 	buildkitImage := cmp.Or(o.BuildkitImage, defaultBuildkitImage)
 	gitImage := cmp.Or(o.GitImage, defaultGitImage)
 	pushImage := cmp.Or(o.PushImage, defaultPushImage)
 	signImage := cmp.Or(o.SignImage, defaultSignImage)
 
-	contextDir := sourceMount
-	if root := strings.TrimPrefix(path.Clean("/"+o.RootDir), "/"); root != "." && root != "" {
-		contextDir = path.Join(sourceMount, root)
-	}
+	contextDir := boundedSourceDir(o.RootDir)
+	// The Dockerfile keeps resolving against RootDir even when DockerContext
+	// moves the build context — Docker's own context-vs-dockerfile split, and
+	// Render's dockerContext semantics (repo-root-relative, independent of
+	// rootDir).
 	dockerfileDir := contextDir
+	if o.DockerContext != "" {
+		contextDir = boundedSourceDir(o.DockerContext)
+	}
 	args := []string{
 		"build",
 		"--frontend", "dockerfile.v0",
