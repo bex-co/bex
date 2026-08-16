@@ -83,13 +83,13 @@ func New(publicURL, adminURL string, apiKeys APIKeyRevoker, invalidate func(stri
 
 // RegisterPublic mounts only the protocol initiation/exchange routes. They are
 // public by design; every resource route and logout remain behind bex auth.
-// Each is wrapped by the IP-keyed device rate limiter (w4/m31/t002) — these
-// routes mount outside the auth gate, so nothing else meters them, and each
-// hit costs a full Hydra round trip before this fix.
-func (s *Service) RegisterPublic(mux *http.ServeMux) {
-	mux.HandleFunc("POST /v1/device-grant", s.rateLimited(s.deviceGrant))
-	mux.HandleFunc("POST /v1/device-token", s.rateLimited(s.deviceToken))
-	mux.HandleFunc("POST /v1/token/refresh/", s.rateLimited(s.refreshToken))
+// Each route runs the IP-keyed device rate limiter (w4/m31/t002) before the
+// composition root's bodyLimit middleware: a flood is shed without reading its
+// body, while every admitted request is capped before JSON decoding or Hydra.
+func (s *Service) RegisterPublic(mux *http.ServeMux, bodyLimit func(http.Handler) http.Handler) {
+	mux.Handle("POST /v1/device-grant", s.rateLimited(bodyLimit(http.HandlerFunc(s.deviceGrant))))
+	mux.Handle("POST /v1/device-token", s.rateLimited(bodyLimit(http.HandlerFunc(s.deviceToken))))
+	mux.Handle("POST /v1/token/refresh/", s.rateLimited(bodyLimit(http.HandlerFunc(s.refreshToken))))
 }
 
 // rateLimited wraps handler with the device rate limiter check, never
@@ -99,8 +99,8 @@ func (s *Service) RegisterPublic(mux *http.ServeMux) {
 // back off on — never Render's REST error shape (these are OAuth protocol
 // routes, w9/done/m39's one deliberate dialect exception). s.RateLimiter nil
 // (the default) disables limiting entirely — behavior identical to before.
-func (s *Service) rateLimited(handler http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func (s *Service) rateLimited(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.RateLimiter != nil {
 			if ok, wait := s.RateLimiter.allow(r); !ok {
 				w.Header().Set("Retry-After", strconv.Itoa(wait))
@@ -108,8 +108,8 @@ func (s *Service) rateLimited(handler http.HandlerFunc) http.HandlerFunc {
 				return
 			}
 		}
-		handler(w, r)
-	}
+		handler.ServeHTTP(w, r)
+	})
 }
 
 // RegisterREST contributes Render's authenticated POST /v1/oauth/revoke to the

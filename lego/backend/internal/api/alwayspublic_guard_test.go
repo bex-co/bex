@@ -109,9 +109,9 @@ func TestWebhookRateLimiterShedsBeforeHandler(t *testing.T) {
 // red, forcing a classification decision rather than a silent outside-gate mount.
 var alwaysPublicInventory = map[string]string{
 	"GET /healthz":                              "liveness probe; no credential; constant-cost, unmetered",
-	"POST /v1/device-grant":                     "RFC 8628 device flow; IP-keyed DeviceRateLimiter (OAuth slow_down 429)",
-	"POST /v1/device-token":                     "RFC 8628 device flow; IP-keyed DeviceRateLimiter",
-	"POST /v1/token/refresh/":                   "RFC 8628 device flow; IP-keyed DeviceRateLimiter",
+	"POST /v1/device-grant":                     "RFC 8628 device flow; IP-keyed DeviceRateLimiter (OAuth slow_down 429) + post-admission body cap",
+	"POST /v1/device-token":                     "RFC 8628 device flow; IP-keyed DeviceRateLimiter + post-admission body cap",
+	"POST /v1/token/refresh/":                   "RFC 8628 device flow; IP-keyed DeviceRateLimiter + post-admission body cap",
 	"POST /v1/webhooks/git":                     "HMAC signature; IP-keyed WebhookRateLimiter, sheds pre-HMAC (w7/m60)",
 	"POST /v1/webhooks/stripe":                  "Stripe-Signature HMAC; IP-keyed WebhookRateLimiter, sheds pre-HMAC (w7/m60)",
 	"/v1/deploy-hooks":                          "unguessable URL token; IP-keyed pre-lookup limiter + per-hook token bucket",

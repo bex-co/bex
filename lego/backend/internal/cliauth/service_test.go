@@ -40,6 +40,8 @@ func renderRequest(method, path, body string) *http.Request {
 	return r
 }
 
+func noMiddleware(next http.Handler) http.Handler { return next }
+
 func TestRenderProtocolAdapters(t *testing.T) {
 	var calls []url.Values
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +75,7 @@ func TestRenderProtocolAdapters(t *testing.T) {
 
 	svc := New(upstream.URL, "", nil, nil)
 	mux := http.NewServeMux()
-	svc.RegisterPublic(mux)
+	svc.RegisterPublic(mux, noMiddleware)
 
 	cases := []struct {
 		path string
@@ -108,7 +110,7 @@ func TestRenderProtocolRejectsWrongClientBeforeHydra(t *testing.T) {
 	defer upstream.Close()
 	svc := New(upstream.URL, "", nil, nil)
 	mux := http.NewServeMux()
-	svc.RegisterPublic(mux)
+	svc.RegisterPublic(mux, noMiddleware)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, renderRequest(http.MethodPost, "/v1/device-grant", `{"client_id":"attacker"}`))
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "invalid_client") || called {
@@ -267,7 +269,7 @@ func newDeviceLimitedMux(t *testing.T, rpm float64, burst int) (*http.ServeMux, 
 	svc := New(upstream.URL, "", nil, nil)
 	svc.RateLimiter = NewDeviceRateLimiter(rpm, burst)
 	mux := http.NewServeMux()
-	svc.RegisterPublic(mux)
+	svc.RegisterPublic(mux, noMiddleware)
 	return mux, &calls
 }
 
