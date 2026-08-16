@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
+import { skipPollWhenHidden } from "@/common/lib/polling";
 import { DatastoreMetricsDocument } from "@/graphql/definitions";
 import {
   RENDER_DATASTORE_METRIC_NAMES,
@@ -55,6 +56,7 @@ export function useDatastoreMetrics(
     },
     skip,
     pollInterval: pollIntervalMs,
+    skipPollAttempt: skipPollWhenHidden,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
   });

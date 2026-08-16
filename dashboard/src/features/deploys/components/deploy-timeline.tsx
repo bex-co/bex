@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { DeployView } from "@/features/deploys/hooks/use-deploy";
 import { useDeployTimeline } from "@/features/deploys/hooks/use-deploy-timeline";
@@ -27,19 +28,23 @@ const STEP_KEYS: Record<DeployTimelineStepKind, string> = {
 
 export interface DeployTimelineProps {
   serviceId: string;
-  deploy: DeployView;
+  /** Nullish while the header `deploy` query is still in flight (w9/m62 t002). */
+  deploy?: DeployView | null;
 }
 
 /** A deploy-row + matching-service-events timeline with no inferred phases. */
 export function DeployTimeline({ serviceId, deploy }: DeployTimelineProps) {
   const { t } = useTranslations();
+  // Mounted in parallel with the header query; its own query stays skipped
+  // until the deploy's window arrives (w9/m62 t002), then fires — no serialized
+  // extra mount behind the header round trip.
   const { events, error } = useDeployTimeline(
     serviceId,
-    deploy.id,
-    deploy.createdAt ?? undefined,
-    deploy.finishedAt ?? undefined,
+    deploy?.id ?? "",
+    deploy?.createdAt ?? undefined,
+    deploy?.finishedAt ?? undefined,
+    !deploy,
   );
-  const steps = buildDeployTimeline(deploy, events);
 
   return (
     <Card>
@@ -47,8 +52,15 @@ export function DeployTimeline({ serviceId, deploy }: DeployTimelineProps) {
         <CardTitle>{t("deploys.timelineTitle")}</CardTitle>
       </CardHeader>
       <CardContent>
-        <ol className="ml-2 border-l">
-          {steps.map((step) => (
+        {!deploy ? (
+          <div className="space-y-3" role="status" aria-label={t("common.loading")}>
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="h-4 w-36" />
+          </div>
+        ) : (
+          <ol className="ml-2 border-l">
+          {buildDeployTimeline(deploy, events).map((step) => (
             <li key={step.id} className="relative pb-5 pl-6 last:pb-0">
               <span
                 className={`absolute -left-1.5 top-1 h-3 w-3 rounded-full border-2 border-background ${dotClass(step.kind)}`}
@@ -71,6 +83,7 @@ export function DeployTimeline({ serviceId, deploy }: DeployTimelineProps) {
             </li>
           ))}
         </ol>
+        )}
         {error ? (
           <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
             <AlertCircle className="h-3.5 w-3.5" />

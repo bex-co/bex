@@ -49,15 +49,32 @@ export function PaymentRequiredProvider({
   const { currentWorkspaceId } = useWorkspace();
   const [open, setOpen] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  // Arms the fast (2s) readiness poll; cleared once a payment method is bound so
+  // the dialog stops hammering bex-api after it's satisfied, re-armed on reopen
+  // (w9/m62 t003). Driven by adjust-state-during-render below (not an effect).
+  const [pollActive, setPollActive] = useState(true);
+  const [prevOpen, setPrevOpen] = useState(open);
   const pendingRef = useRef<PendingAction | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const billing = useBillingOnboarding({
-    active: open,
+    active: open && pollActive,
     pollInterval: 2_000,
     checkoutTarget: "new-tab",
   });
   const paymentMethodReady = billing.readiness?.paymentMethodReady ?? false;
   const refetchBilling = billing.refetch;
+
+  // Re-arm the poll when the dialog (re)opens, then stop it the moment a payment
+  // method is bound — adjusted during render (guarded so it converges), the same
+  // sanctioned prop-change pattern as use-deploy-logs' useWindowPolling, so no
+  // effect calls setState (w9/m62 t003).
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) setPollActive(true);
+  }
+  if (pollActive && paymentMethodReady) {
+    setPollActive(false);
+  }
 
   const clearRetryTimer = useCallback(() => {
     if (retryTimerRef.current != null) {

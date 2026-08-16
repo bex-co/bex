@@ -1,18 +1,26 @@
 # w9 · m62 — Polling hygiene + hydration fetch-policy: stop paying for tabs nobody is looking at
 
-**Worker:** worker9 **Goal:** close the dashboard's remaining ungated pollers (metrics, deploy detail, usage/billing) with the existing `skipPollWhenHidden` pattern, unwind the deploy-detail fetch waterfall, and stop loader/SSR-primed queries from immediately refetching on hydration — so background tabs go quiet and the m68 prefetch investment isn't thrown away on mount **Status:** todo
+**Worker:** worker9 **Goal:** close the dashboard's remaining ungated pollers (metrics, deploy detail, usage/billing) with the existing `skipPollWhenHidden` pattern, unwind the deploy-detail fetch waterfall, and stop loader/SSR-primed queries from immediately refetching on hydration — so background tabs go quiet and the m68 prefetch investment isn't thrown away on mount **Status:** done
+
+## Results (2026-08-16)
+
+- **Poll gating (t001/t003):** added `skipPollAttempt: skipPollWhenHidden` to the metrics stack (`use-metrics`, `use-datastore-metrics`, `use-month-to-date-bandwidth`), the usage/billing hooks (`use-resource-limits`, `use-usage`, `use-billing-onboarding`), and the `use-database-insights` `parameterOverrides` leg its four siblings already gated. A backgrounded Metrics/usage tab now fires zero polls.
+- **Payment poll stop (t003):** the payment-required dialog polls readiness at 2s only while `open && !paymentMethodReady`, stopping the moment a method binds and re-arming on reopen — via adjust-state-during-render (no `setState`-in-effect), the codebase's sanctioned prop-change pattern.
+- **Deploy-detail waterfall (t002):** header, timeline, and log panel now mount in parallel, each with its own skeleton, instead of the page blank-waiting on the header `deploy` query; the timeline/log queries `skip` until the deploy's window is known (a `?r=` range lets the log panel query immediately). The three deploy pollers are visibility-gated; terminal settling unchanged. Note: the window-dependent child queries still fire _after_ the header resolves — a genuine data dependency (they need `deploy.createdAt`), not artificial serialization — so the win is per-region skeletons + no page blank + the ranged-log parallel case.
+- **Cache-first primed mount (t004):** new `PRIMED_FETCH_POLICY` (`common/lib/fetch-policy.ts`, `cache-first`) applied to the overview list hooks (`useServices`/`useDatabases`/`useKeyValues`/`useProjects`, all of which poll for freshness); the service/static detail primary (`use-server`) was already cache-first. An SSR/prefetch-primed navigation renders from the warm cache with no duplicate mount fetch; the m68 loaders will land on this seam.
+- **Coverage (t006):** `polling.test.ts` (skipPollWhenHidden hidden/visible + `PRIMED_FETCH_POLICY` = cache-first) + wiring guards on `useMetrics` (gate) and `useServices` (primed policy). **2,136 dashboard tests green, ESLint + tsc clean.**
 
 ## Tasks (in order)
 
 | id   | title                                                                | est | depends_on       |
 | ---- | -------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Visibility-gate the metrics pollers (one edit in the shared hooks)   | 30m | —                |
-| t002 | Deploy detail: gate its pollers + unwind the 2-hop fetch waterfall   | 1h  | —                |
-| t003 | Usage/billing pollers: gate, and stop the 2s poll once satisfied     | 30m | —                |
-| t004 | Hydration fetch-policy: loader-primed queries mount cache-first      | 1h  | t001, t002, t003 |
-| t005 | Simplify                                                             | 20m | t004             |
-| t006 | Test coverage                                                        | 40m | t004             |
-| t007 | Closeout                                                             | 10m | t006             |
+| t001 | Visibility-gate the metrics pollers — **DONE**                       | 30m | —                |
+| t002 | Deploy detail: gate pollers + unwind the 2-hop waterfall — **DONE**  | 1h  | —                |
+| t003 | Usage/billing pollers: gate + stop the 2s poll once satisfied — **DONE** | 30m | —            |
+| t004 | Hydration fetch-policy: loader-primed queries mount cache-first — **DONE** | 1h | t001, t002, t003 |
+| t005 | Simplify — **DONE** (clean diff; shared helper; lint 0)             | 20m | t004             |
+| t006 | Test coverage — **DONE**                                            | 40m | t004             |
+| t007 | Closeout — **DONE**                                                 | 10m | t006             |
 
 ## Definition of done
 

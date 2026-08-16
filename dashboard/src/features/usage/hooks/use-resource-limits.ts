@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { useQuery } from "@apollo/client/react";
+import { skipPollWhenHidden } from "@/common/lib/polling";
 import { WorkspaceLimitsDocument } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
@@ -43,6 +44,7 @@ export function useResourceLimits(): {
     // Polling keeps this cross-feature summary correct without coupling every
     // mutation hook to the Usage page's query.
     pollInterval: 15_000,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const raw = data?.workspaceLimits;

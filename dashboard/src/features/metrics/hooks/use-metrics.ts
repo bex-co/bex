@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
+import { skipPollWhenHidden } from "@/common/lib/polling";
 import { MetricsDocument } from "@/graphql/definitions";
 import {
   RENDER_METRIC_NAMES,
@@ -148,6 +149,7 @@ export function useMetrics(
       },
     },
     pollInterval: pollIntervalMs,
+    skipPollAttempt: skipPollWhenHidden,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
   });

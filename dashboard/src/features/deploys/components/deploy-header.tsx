@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/common/components/ui/card";
 import { Badge } from "@/common/components/ui/badge";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { ReactNode } from "react";
 type Translate = ReturnType<typeof useTranslations>["t"];
@@ -26,7 +27,8 @@ function triggerLabel(
 }
 
 export interface DeployHeaderProps {
-  deploy: DeployView;
+  /** Nullish while the header `deploy` query is still in flight (w9/m62 t002). */
+  deploy?: DeployView | null;
   actions?: ReactNode;
 }
 
@@ -39,6 +41,23 @@ export interface DeployHeaderProps {
  */
 export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
   const { t } = useTranslations();
+  if (!deploy) {
+    return (
+      <Card>
+        <CardContent className="flex items-start justify-between gap-4 pt-6">
+          <div
+            className="space-y-2"
+            role="status"
+            aria-label={t("common.loading")}
+          >
+            <Skeleton className="h-6 w-64" />
+            <Skeleton className="h-4 w-40" />
+          </div>
+          {actions}
+        </CardContent>
+      </Card>
+    );
+  }
   const preDeploy = preDeployStatusKey(deploy.preDeployStatus);
   const commitCreatedAt = formatDeployTimestamp(deploy.commitCreatedAt);
   const facts = [

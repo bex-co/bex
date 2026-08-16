@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@apollo/client/react";
+import { skipPollWhenHidden } from "@/common/lib/polling";
 import { LogsDocument } from "@/graphql/definitions";
 import { toLogLines, dedupeLogLines } from "@/features/logs/lib/map";
 import {
@@ -72,6 +73,7 @@ function useTypedDeployLogs(
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
     pollInterval: poll ? POLL_INTERVAL_MS : 0,
+    skipPollAttempt: skipPollWhenHidden,
     skip,
   });
 }
@@ -126,15 +128,20 @@ export function useDeployLogs(
     [resource, startTime, endTime],
   );
 
+  // Skip every leg until the deploy's window (its `startTime`) is known — the
+  // page mounts the panel in parallel with the header query (w9/m62 t002), and
+  // a windowless logs query would read the wrong range. A `?r=` range supplies
+  // `startTime` directly, so a ranged panel queries immediately.
+  const hasWindow = startTime !== undefined;
   const poll = useWindowPolling(endTime);
-  const build = useTypedDeployLogs("build", window, poll);
+  const build = useTypedDeployLogs("build", window, poll, !hasWindow);
   const predeploy = useTypedDeployLogs(
     "predeploy",
     window,
     poll,
-    !hasPreDeploy,
+    !hasPreDeploy || !hasWindow,
   );
-  const app = useTypedDeployLogs("app", window, poll);
+  const app = useTypedDeployLogs("app", window, poll, !hasWindow);
   const liveBuild = useLiveLogs({
     resource,
     enabled: followBuild,

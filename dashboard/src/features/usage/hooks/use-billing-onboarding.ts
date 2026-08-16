@@ -14,6 +14,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
+import { skipPollWhenHidden } from "@/common/lib/polling";
 import { toast } from "sonner";
 import {
   BillingReadinessDocument,
@@ -88,6 +89,7 @@ export function useBillingOnboarding({
     skip: !active || !resolved,
     fetchPolicy: "cache-and-network",
     pollInterval: active ? pollInterval : 0,
+    skipPollAttempt: skipPollWhenHidden,
     errorPolicy: "all",
   });
   const [createCheckout] = useMutation(CreateBillingCheckoutSessionDocument, {

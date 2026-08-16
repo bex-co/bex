@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
+import { skipPollWhenHidden } from "@/common/lib/polling";
 import {
   DeployTimelineEventsDocument,
   type DeployTimelineEventsQuery,
@@ -36,6 +37,7 @@ export function useDeployTimeline(
   deployId: string,
   startTime: string | undefined,
   endTime: string | undefined,
+  skip = false,
 ): UseDeployTimelineResult {
   const { data, loading, error } = useQuery(DeployTimelineEventsDocument, {
     variables: {
@@ -44,9 +46,14 @@ export function useDeployTimeline(
       endTime,
       limit: TIMELINE_LIMIT,
     },
+    // Skip until the deploy's window is known — the page mounts this in parallel
+    // with the header query (w9/m62 t002); a windowless fire would query the
+    // wrong range.
+    skip,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
     pollInterval: endTime ? 0 : POLL_INTERVAL_MS,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const events = useMemo(

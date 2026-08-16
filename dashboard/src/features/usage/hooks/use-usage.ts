@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import { useQuery } from "@apollo/client/react";
+import { skipPollWhenHidden } from "@/common/lib/polling";
 import { useMemo } from "react";
 import { UsageDocument } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
@@ -99,6 +100,7 @@ export function useUsage(period?: string): UseUsageResult {
       : { ownerId: currentWorkspaceId },
     skip: !resolved,
     pollInterval: 60_000,
+    skipPollAttempt: skipPollWhenHidden,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
   });
