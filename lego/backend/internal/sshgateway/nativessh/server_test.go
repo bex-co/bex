@@ -24,6 +24,8 @@ import (
 	"errors"
 	"io"
 	"net"
+	"net/netip"
+	"strings"
 	"testing"
 	"time"
 
@@ -563,5 +565,78 @@ func TestGatewayCancelsExecOnTimeoutAndDisconnect(t *testing.T) {
 			}
 			_ = client.Close()
 		})
+	}
+}
+
+// TestServeConnHonorsPROXYHeaderFromTrustedPeer proves w4/029.md #10's fix: a
+// PROXY v1 header from a peer inside TrustedProxies (standing in for
+// Traefik's ssh entrypoint forwarding a real client via
+// lego/operator/config/ssh/ingressroutetcp.yaml's proxyProtocol) makes the
+// session audit record the ORIGINAL client, not the immediate TCP peer.
+func TestServeConnHonorsPROXYHeaderFromTrustedPeer(t *testing.T) {
+	clientSigner := signer(t)
+	st := &gatewaytest.FakeStore{}
+	addr, stop := startGatewayConfigured(t, st, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}, clientSigner, func(server *Server) {
+		server.TrustedProxies = []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}
+	})
+	defer stop()
+
+	raw, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := raw.Write([]byte("PROXY TCP4 203.0.113.9 127.0.0.1 49152 22\r\n")); err != nil {
+		t.Fatal(err)
+	}
+	sshConn, chans, reqs, err := ssh.NewClientConn(raw, addr, &ssh.ClientConfig{
+		User: "srv-abcdeabcdeabcdeabcde", Auth: []ssh.AuthMethod{ssh.PublicKeys(clientSigner)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), Timeout: 2 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := ssh.NewClient(sshConn, chans, reqs)
+	defer client.Close()
+	session, err := client.NewSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = session.Close()
+
+	time.Sleep(20 * time.Millisecond)
+	started := st.StartedSessions()
+	if len(started) != 1 || !strings.HasPrefix(started[0].RemoteAddress, "203.0.113.9:") {
+		t.Fatalf("started sessions = %+v, want RemoteAddress from the PROXY header", started)
+	}
+}
+
+// TestServeConnKeepsImmediatePeerWithoutTrustedProxies proves the default
+// (unconfigured TrustedProxies) behavior is unchanged: a raw PROXY-shaped
+// prefix is treated as opaque SSH banner bytes, not parsed, so the connection
+// fails exactly as it would against any pre-proxyproto gateway.
+func TestServeConnKeepsImmediatePeerWithoutTrustedProxies(t *testing.T) {
+	clientSigner := signer(t)
+	st := &gatewaytest.FakeStore{}
+	addr, stop := startGateway(t, st, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}, clientSigner)
+	defer stop()
+
+	client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	session, err := client.NewSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = session.Close()
+
+	time.Sleep(20 * time.Millisecond)
+	started := st.StartedSessions()
+	if len(started) != 1 || strings.HasPrefix(started[0].RemoteAddress, "203.0.113.9:") {
+		t.Fatalf("started sessions = %+v, want the immediate 127.0.0.1 peer", started)
+	}
+	if !strings.HasPrefix(started[0].RemoteAddress, "127.0.0.1:") {
+		t.Fatalf("started sessions = %+v, want the immediate 127.0.0.1 peer", started)
 	}
 }

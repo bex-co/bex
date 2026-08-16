@@ -22,9 +22,12 @@ import (
 	"testing"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // --- fakes ---
@@ -169,7 +172,7 @@ func (f *fakeSecretKV) List(context.Context, string) ([]string, error) { return 
 func newTestService() (*Service, *fakeStore, *fakeSecretKV) {
 	st := newFakeStore()
 	kv := newFakeSecretKV()
-	return &Service{Base: &core.Base{Namespace: "default"}, Store: st, Secret: kv}, st, kv
+	return &Service{Base: &core.Base{Namespace: "default", Client: fakeK8sClient()}, Store: st, Secret: kv}, st, kv
 }
 
 func ptrTime(t time.Time) *time.Time { return &t }
@@ -341,6 +344,84 @@ func TestDeleteUnknownIsNotFound(t *testing.T) {
 	s, _, _ := newTestService()
 	if err := s.Delete(context.Background(), "rgc-doesnotexist0000"); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("delete unknown id = %v, want ErrNotFound", err)
+	}
+}
+
+// TestDeleteRefusesWhileExplicitlyBound proves w4/029.md #12's fix: deleting a
+// credential an App still names via spec.registryCredentialId must not orphan
+// that App's derived <app>-registry-pull Secret with a now-unrecoverable
+// password.
+func TestDeleteRefusesWhileExplicitlyBound(t *testing.T) {
+	st := newFakeStore()
+	kv := newFakeSecretKV()
+	created, err := (&Service{Base: &core.Base{Namespace: "default"}, Store: st, Secret: kv}).Create(
+		context.Background(), CreateRequest{Host: "ghcr.io", Username: "alice", Secret: "hunter2"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	credID := created.ID
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "bound-app", Namespace: "default"},
+		Spec:       appv1alpha1.AppSpec{RegistryCredentialID: &credID},
+	}
+	s := &Service{Base: &core.Base{Namespace: "default", Client: fakeK8sClient(app)}, Store: st, Secret: kv}
+
+	if err := s.Delete(context.Background(), credID); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("Delete while explicitly bound = %v, want ErrConflict", err)
+	}
+	if _, err := st.GetRegistryCredential(context.Background(), core.DefaultTenant, credID); err != nil {
+		t.Errorf("row must survive a refused delete: %v", err)
+	}
+}
+
+// TestDeleteRefusesWhileImplicitlyBoundByHostMatch covers the legacy
+// host-match binding path (no explicit registryCredentialId), which
+// materializePullSecret also resolves credentials through.
+func TestDeleteRefusesWhileImplicitlyBoundByHostMatch(t *testing.T) {
+	st := newFakeStore()
+	kv := newFakeSecretKV()
+	created, err := (&Service{Base: &core.Base{Namespace: "default"}, Store: st, Secret: kv}).Create(
+		context.Background(), CreateRequest{Host: "ghcr.io", Username: "alice", Secret: "hunter2"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "host-match-app", Namespace: "default"},
+		Spec:       appv1alpha1.AppSpec{Image: "ghcr.io/acme/private-app:1.0"},
+	}
+	s := &Service{Base: &core.Base{Namespace: "default", Client: fakeK8sClient(app)}, Store: st, Secret: kv}
+
+	if err := s.Delete(context.Background(), created.ID); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("Delete while host-matched = %v, want ErrConflict", err)
+	}
+}
+
+// TestDeleteProceedsWhenExplicitBindingPointsElsewhere proves an App whose
+// explicit binding was cleared or points at a different credential does not
+// spuriously block deletion via host matching (explicit overrides implicit).
+func TestDeleteProceedsWhenExplicitBindingPointsElsewhere(t *testing.T) {
+	st := newFakeStore()
+	kv := newFakeSecretKV()
+	svc := &Service{Base: &core.Base{Namespace: "default"}, Store: st, Secret: kv}
+	target, err := svc.Create(context.Background(), CreateRequest{Host: "ghcr.io", Username: "alice", Secret: "hunter2"})
+	if err != nil {
+		t.Fatalf("Create target: %v", err)
+	}
+	other, err := svc.Create(context.Background(), CreateRequest{Host: "ghcr.io", Username: "bob", Secret: "hunter3"})
+	if err != nil {
+		t.Fatalf("Create other: %v", err)
+	}
+	otherID := other.ID
+	// Same host as target, but explicitly bound elsewhere — must not count as a
+	// host-match binding to target.
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "elsewhere-app", Namespace: "default"},
+		Spec:       appv1alpha1.AppSpec{Image: "ghcr.io/acme/app:1.0", RegistryCredentialID: &otherID},
+	}
+	s := &Service{Base: &core.Base{Namespace: "default", Client: fakeK8sClient(app)}, Store: st, Secret: kv}
+
+	if err := s.Delete(context.Background(), target.ID); err != nil {
+		t.Fatalf("Delete unbound-in-practice credential = %v, want nil", err)
 	}
 }
 

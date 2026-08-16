@@ -45,6 +45,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/authz"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/proxyproto"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentattach"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
@@ -147,6 +148,10 @@ func main() {
 	// revocation ends LIVE streams too — not just the next admission. Negative
 	// disables the watchdog (admission-only, the pre-round-9 behavior).
 	revalidateInterval := durationEnv("BEX_SSH_REVALIDATE_INTERVAL", sshgateway.DefaultRevalidateInterval)
+	trustedProxies, err := proxyproto.ParseTrustedProxyCIDRs(os.Getenv("BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS"))
+	if err != nil {
+		log.Fatalf("ssh gateway: invalid BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS: %v", err)
+	}
 
 	gateway := &nativessh.Server{
 		Store: st, Apps: sshResolver,
@@ -167,6 +172,11 @@ func main() {
 		MaxChannelsPerConn: intEnvAllowZero("BEX_SSH_MAX_CHANNELS_PER_CONN", 16),
 		// Live-stream revalidation cadence for every accepted channel (round-9 #6).
 		RevalidateInterval: revalidateInterval,
+		// Traefik's pod network, so ssh_sessions.remote_address records the real
+		// client instead of Traefik's own pod IP (w4/029.md #10); empty (the
+		// default) leaves every connection's RemoteAddr as the immediate peer,
+		// unchanged.
+		TrustedProxies: trustedProxies,
 	}
 	shell := &webshell.Server{
 		TicketSecret:     []byte(os.Getenv("BEX_SHELL_TICKET_SECRET")),

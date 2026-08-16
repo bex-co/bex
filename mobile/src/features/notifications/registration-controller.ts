@@ -98,10 +98,14 @@ export class NotificationRegistrationController {
   }
 
   async unregisterCurrent(accessToken?: string): Promise<void> {
-    await this.preference.setEnabled(false).catch(() => undefined);
-    this.setState("disabled");
+    // Remote unregister must succeed before the local preference flips: doing it
+    // the other way round leaves the server-side device row bound to this
+    // subject forever on a failure, while the local "disabled" state makes
+    // inspectAndRepair refuse to ever re-register it (w4/029.md #15).
     const deviceId = await this.installationId();
     await this.subscriptions.unregister(deviceId, accessToken);
+    await this.preference.setEnabled(false).catch(() => undefined);
+    this.setState("disabled");
   }
 
   dispose(): void {

@@ -26,6 +26,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -215,3 +216,38 @@ func (p pullSecretSource) ResolveCredentialNames(ctx context.Context, ids []stri
 // DeployPullSecretSource returns the deploy path's pull-secret seam (wired
 // onto apps.Service in the composition root).
 func (s *Service) DeployPullSecretSource() pullSecretSource { return pullSecretSource{s} }
+
+// appBoundToCredential reports whether any App in workspaceID's namespace
+// still resolves to cred — either explicitly (spec.registryCredentialId) or
+// implicitly (an image whose registry host matches cred.Host with no explicit
+// override), the same two paths materializePullSecret resolves from. Deleting
+// a credential still bound to an App would leave that App's derived
+// <app>-registry-pull Secret live with a now-unrecoverable password forever:
+// the Secret carries no ownerRef (see materializePullSecret's doc comment) and
+// is only reaped on the App's own delete, not the credential's (w4/029.md
+// #12).
+func (s *Service) appBoundToCredential(ctx context.Context, workspaceID string, cred store.RegistryCredential) (string, bool, error) {
+	var list appv1alpha1.AppList
+	opts := []client.ListOption{client.InNamespace(s.AppNamespace(workspaceID))}
+	// DefaultTenant is the legacy store-off/shared-namespace mode (mirrors
+	// TenantNamespace's own special case): Apps there carry no LabelTenant, so
+	// namespace scoping alone is correct and a label filter would find nothing.
+	if workspaceID != "" && workspaceID != core.DefaultTenant {
+		opts = append(opts, client.MatchingLabels{core.LabelTenant: workspaceID})
+	}
+	if err := s.Client.List(ctx, &list, opts...); err != nil {
+		return "", false, err
+	}
+	for _, a := range list.Items {
+		if a.Spec.RegistryCredentialID != nil {
+			if strings.TrimSpace(*a.Spec.RegistryCredentialID) == cred.ID {
+				return a.Name, true, nil
+			}
+			continue // explicit binding to a different (or cleared) credential overrides host matching
+		}
+		if a.Spec.Image != "" && strings.EqualFold(registryHost(a.Spec.Image), cred.Host) {
+			return a.Name, true, nil
+		}
+	}
+	return "", false, nil
+}

@@ -146,7 +146,7 @@ describe("NotificationRegistrationController", () => {
     ]);
   });
 
-  it("disables locally before a best-effort remote unregister fails", async () => {
+  it("keeps the local preference enabled when the remote unregister fails", async () => {
     const { controller, subscriptions, setEnabled, isEnabled } = setup();
     setEnabled(true);
     subscriptions.unregisterError = new Error("offline");
@@ -157,7 +157,21 @@ describe("NotificationRegistrationController", () => {
       failed = true;
     }
     expect(failed).toBe(true);
+    // A failed remote unregister must not flip local state to "disabled": that
+    // would strand the server-side device row bound to this subject forever,
+    // since inspectAndRepair only ever re-registers when wasEnabled() is true.
+    expect(controller.state).not.toBe("disabled");
+    expect(isEnabled()).toBe(true);
+  });
+
+  it("disables locally once the remote unregister succeeds", async () => {
+    const { controller, subscriptions, setEnabled, isEnabled } = setup();
+    setEnabled(true);
+    await controller.unregisterCurrent();
     expect(controller.state).toBe("disabled");
     expect(isEnabled()).toBe(false);
+    expect(subscriptions.calls).toEqual([
+      "unregister:11111111-1111-4111-8111-111111111111",
+    ]);
   });
 });

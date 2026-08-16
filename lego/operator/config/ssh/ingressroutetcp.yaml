@@ -11,3 +11,9 @@ spec:
       services:
         - name: ssh-gateway
           port: 2222
+          # Forward the real client address to the gateway instead of letting
+          # it see Traefik's own pod IP as the TCP peer (w4/029.md #10):
+          # BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS must cover Traefik's pod
+          # network for the gateway to honor this header.
+          proxyProtocol:
+            version: 2
