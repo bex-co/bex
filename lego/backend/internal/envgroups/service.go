@@ -29,7 +29,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
+	"maps"
 	"slices"
 	"sort"
 	"strings"
@@ -993,7 +993,7 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 	}
 	// A freshly created group still needs its (possibly empty) projection Secret so
 	// a link can reference it; an existing group with an unchanged set is a no-op.
-	if found && reflect.DeepEqual(env, next) {
+	if found && maps.Equal(env, next) {
 		return nil
 	}
 	if err := s.storeMap(ctx, envPath(gid), next); err != nil {
@@ -1323,20 +1323,15 @@ func fileNameViews(files map[string]string) []SecretFileView {
 }
 
 func addString(list []string, s string) []string {
-	for _, v := range list {
-		if v == s {
-			return list
-		}
+	if slices.Contains(list, s) {
+		return list
 	}
 	return append(list, s)
 }
 
+// removeString returns list without any occurrence of s. It clones rather than
+// compacting in place so no caller's retained slice is mutated behind its back
+// (the same contract secrets.removeString keeps).
 func removeString(list []string, s string) []string {
-	out := make([]string, 0, len(list))
-	for _, v := range list {
-		if v != s {
-			out = append(out, v)
-		}
-	}
-	return out
+	return slices.DeleteFunc(slices.Clone(list), func(v string) bool { return v == s })
 }

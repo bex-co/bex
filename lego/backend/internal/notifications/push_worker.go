@@ -250,20 +250,22 @@ func (w *PushWorker) buildPushRecipients(ctx context.Context, destinations []sto
 		}
 		recipient := bySubject[destination.Subject]
 		if recipient == nil {
-			role, ok := deliveryWorkspaceRole(destination.Role)
-			if !ok {
+			// A recipient whose stored role or policy no longer parses is dropped
+			// rather than delivered to under a guessed policy.
+			markInvalid := func(code string) {
 				invalidRecipients[recipientKey] = true
 				delete(bySubject, destination.Subject)
-				w.evidence(ctx, "policy", "invalid", "invalid_role")
+				w.evidence(ctx, "policy", "invalid", code)
 				w.Metrics.Operation("policy", "invalid")
+			}
+			role, ok := deliveryWorkspaceRole(destination.Role)
+			if !ok {
+				markInvalid("invalid_role")
 				continue
 			}
 			policy, err := storedPushDeliveryPolicy(destination.PushPolicy)
 			if err != nil {
-				invalidRecipients[recipientKey] = true
-				delete(bySubject, destination.Subject)
-				w.evidence(ctx, "policy", "invalid", "invalid_policy")
-				w.Metrics.Operation("policy", "invalid")
+				markInvalid("invalid_policy")
 				continue
 			}
 			recipient = &pushRecipient{subject: destination.Subject, role: role, policy: policy}
@@ -779,25 +781,24 @@ func (w *PushWorker) checkReceipts(ctx context.Context) error {
 	}
 	for _, d := range due {
 		ambiguous := d.AcceptedAt != nil && !now.Before(d.AcceptedAt.Add(pushReceiptWindow))
-		if checkErr != nil {
-			_, e := w.Store.RecordPushReceipt(ctx, d, "receipt_transient", now, now.Add(pushReceiptDelay), false, false, ambiguous)
+		// A receipt we could not resolve this pass is rescheduled, metered as
+		// "ambiguous" once its acceptance window has closed and the outcome can
+		// no longer be settled, and as a plain retry until then.
+		reschedule := func(code, outcome string) {
+			_, e := w.Store.RecordPushReceipt(ctx, d, code, now, now.Add(pushReceiptDelay), false, false, ambiguous)
 			failures = append(failures, e)
 			if ambiguous {
-				w.Metrics.Operation("receipt", "ambiguous")
-			} else {
-				w.Metrics.Operation("receipt", "retry")
+				outcome = "ambiguous"
 			}
+			w.Metrics.Operation("receipt", outcome)
+		}
+		if checkErr != nil {
+			reschedule("receipt_transient", "retry")
 			continue
 		}
 		r, found := receipts[d.ProviderTicketID]
 		if !found {
-			_, e := w.Store.RecordPushReceipt(ctx, d, "receipt_pending", now, now.Add(pushReceiptDelay), false, false, ambiguous)
-			failures = append(failures, e)
-			if ambiguous {
-				w.Metrics.Operation("receipt", "ambiguous")
-			} else {
-				w.Metrics.Operation("receipt", "pending")
-			}
+			reschedule("receipt_pending", "pending")
 			continue
 		}
 		if r.Err == nil {

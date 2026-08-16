@@ -598,7 +598,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		// CNPG creates source credentials after accepting its bootstrap spec.
 		// Keep retrying until the derived Secret exists; consumers can never
 		// observe a plaintext pooler URL in a Blueprint.
-		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: settleRequeue}, nil
 	}
 
 	// --- external SNI endpoint status (rw + pooler + read replicas) ---
@@ -1206,7 +1206,7 @@ func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Requ
 				return ctrl.Result{}, err
 			}
 			if !done {
-				return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+				return ctrl.Result{RequeueAfter: settleRequeue}, nil
 			}
 		} else if db.Status.BackupsEnabled {
 			return ctrl.Result{}, fmt.Errorf("database backup purge configuration is unavailable")

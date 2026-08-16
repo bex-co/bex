@@ -168,6 +168,27 @@ func (c *StripeClient) findSubscription(ctx context.Context, tenantID, customerI
 // process. Stripe accepts at most 10 lookup_keys per list request, so the 13
 // current dimensions are fetched in bounded chunks. No subscription is created
 // until every expected key has exactly one metered monthly USD price.
+// validatePriceCompliance refuses a catalog Price that does not match the shape
+// bex meters against: a USD metered recurring price bound to a meter, and — once
+// Tax is configured — carrying the operator-confirmed tax behavior and product
+// tax code. Refusing here is what keeps a misconfigured catalog from silently
+// billing at the wrong shape.
+func (c *StripeClient) validatePriceCompliance(price *stripe.Price) error {
+	if price.Recurring == nil || price.Recurring.UsageType != stripe.PriceRecurringUsageTypeMetered || price.Recurring.Meter == "" || price.Currency != stripe.CurrencyUSD {
+		return fmt.Errorf("stripe: price %s (%s) is not a USD metered recurring price with a meter", price.ID, price.LookupKey)
+	}
+	if c.taxCode == "" {
+		return nil
+	}
+	if string(price.TaxBehavior) != c.taxBehavior {
+		return fmt.Errorf("stripe: price %s (%s) tax_behavior=%q, want %q", price.ID, price.LookupKey, price.TaxBehavior, c.taxBehavior)
+	}
+	if price.Product == nil || price.Product.TaxCode == nil || price.Product.TaxCode.ID != c.taxCode {
+		return fmt.Errorf("stripe: price %s (%s) product is not expanded with tax_code %s", price.ID, price.LookupKey, c.taxCode)
+	}
+	return nil
+}
+
 func (c *StripeClient) resolvePriceIDs(ctx context.Context) ([]string, error) {
 	c.mu.Lock()
 	if len(c.priceIDs) > 0 {
@@ -179,10 +200,9 @@ func (c *StripeClient) resolvePriceIDs(ctx context.Context) ([]string, error) {
 
 	lookupKeys := pricing.Default.BillableMeterNames()
 	found := make(map[string]string, len(lookupKeys))
-	for start := 0; start < len(lookupKeys); start += stripeLookupKeyLimit {
-		end := min(start+stripeLookupKeyLimit, len(lookupKeys))
-		keys := make([]*string, 0, end-start)
-		for _, key := range lookupKeys[start:end] {
+	for chunk := range slices.Chunk(lookupKeys, stripeLookupKeyLimit) {
+		keys := make([]*string, 0, len(chunk))
+		for _, key := range chunk {
 			keys = append(keys, stripe.String(key))
 		}
 		params := &stripe.PriceListParams{
@@ -200,16 +220,8 @@ func (c *StripeClient) resolvePriceIDs(ctx context.Context) ([]string, error) {
 			if prior, exists := found[price.LookupKey]; exists && prior != price.ID {
 				return nil, fmt.Errorf("stripe: duplicate active price lookup key %s (%s, %s)", price.LookupKey, prior, price.ID)
 			}
-			if price.Recurring == nil || price.Recurring.UsageType != stripe.PriceRecurringUsageTypeMetered || price.Recurring.Meter == "" || price.Currency != stripe.CurrencyUSD {
-				return nil, fmt.Errorf("stripe: price %s (%s) is not a USD metered recurring price with a meter", price.ID, price.LookupKey)
-			}
-			if c.taxCode != "" {
-				if string(price.TaxBehavior) != c.taxBehavior {
-					return nil, fmt.Errorf("stripe: price %s (%s) tax_behavior=%q, want %q", price.ID, price.LookupKey, price.TaxBehavior, c.taxBehavior)
-				}
-				if price.Product == nil || price.Product.TaxCode == nil || price.Product.TaxCode.ID != c.taxCode {
-					return nil, fmt.Errorf("stripe: price %s (%s) product is not expanded with tax_code %s", price.ID, price.LookupKey, c.taxCode)
-				}
+			if err := c.validatePriceCompliance(price); err != nil {
+				return nil, err
 			}
 			found[price.LookupKey] = price.ID
 		}

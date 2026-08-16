@@ -190,10 +190,57 @@ func runReadOnlyQuery(ctx context.Context, connString, sql string, lim queryLimi
 // BEGIN READ ONLY block SET transaction_read_write escapes. Writable mode still
 // gets the same statement_timeout, request deadline, single-statement extended
 // protocol, and row cap, but commits the transaction on success.
-func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, readOnly bool) (QueryResult, error) {
+// collectQueryRows streams the result set into out, enforcing the per-cell,
+// per-row, whole-result and encoded-size budgets as it goes. Reading stops at
+// the row cap (marking the result truncated) so an unbounded result set is never
+// materialized.
+func collectQueryRows(rows pgx.Rows, lim queryLimits, out *QueryResult) error {
+	rawResult := budget{cap: queryRawResultByteCap}
+	jsonResult := budget{cap: queryJSONResultCap}
+	for rows.Next() {
+		if len(out.Rows) >= lim.rowCap {
+			out.Truncated = true // a row beyond the cap exists; stop reading
+			break
+		}
+		row := budget{cap: queryRowByteCap}
+		for _, cell := range rows.RawValues() {
+			if len(cell) > queryCellByteCap {
+				return errQueryResultTooLarge
+			}
+			if err := row.add(len(cell)); err != nil {
+				return err
+			}
+		}
+		if err := rawResult.add(row.used); err != nil {
+			return err
+		}
+
+		vals, err := rows.Values()
+		if err != nil {
+			return mapPGError(err)
+		}
+		out.Rows = append(out.Rows, vals)
+	}
+	// rows.Err surfaces read-only violations / timeouts that fire mid-stream.
+	if err := rows.Err(); err != nil {
+		return mapPGError(err)
+	}
+	// One encoding for the whole result, not one per row thrown away for its
+	// length: rawResult already bounded the loop, so this is bounded work.
+	encoded, err := json.Marshal(out.Rows)
+	if err != nil {
+		return errQueryFailed
+	}
+	return jsonResult.add(len(encoded))
+}
+
+// buildQueryConnConfig pins the session's safety rails onto the connection
+// itself — the read-only default and the server-side statement timeout — so they
+// apply from the first statement rather than depending on a later SET.
+func buildQueryConnConfig(connString string, lim queryLimits, readOnly bool) (*pgx.ConnConfig, error) {
 	cfg, err := pgx.ParseConfig(connString)
 	if err != nil {
-		return QueryResult{}, errQueryConnClose
+		return nil, errQueryConnClose
 	}
 	if cfg.RuntimeParams == nil {
 		cfg.RuntimeParams = map[string]string{}
@@ -203,6 +250,14 @@ func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, r
 	}
 	cfg.RuntimeParams["statement_timeout"] = strconv.FormatInt(lim.statementTimeout.Milliseconds(), 10)
 	cfg.BuildFrontend = newQueryFrontend
+	return cfg, nil
+}
+
+func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, readOnly bool) (QueryResult, error) {
+	cfg, err := buildQueryConnConfig(connString, lim, readOnly)
+	if err != nil {
+		return QueryResult{}, err
+	}
 
 	// Bound the whole round-trip a little past the server-side timeout so a hung
 	// dial or a server that ignores statement_timeout can't wedge the request.
@@ -244,43 +299,7 @@ func runSQLQuery(ctx context.Context, connString, sql string, lim queryLimits, r
 		cols[i] = f.Name
 	}
 	out := QueryResult{Columns: cols, Rows: [][]any{}}
-	rawResult := budget{cap: queryRawResultByteCap}
-	jsonResult := budget{cap: queryJSONResultCap}
-	for rows.Next() {
-		if len(out.Rows) >= lim.rowCap {
-			out.Truncated = true // a row beyond the cap exists; stop reading
-			break
-		}
-		row := budget{cap: queryRowByteCap}
-		for _, cell := range rows.RawValues() {
-			if len(cell) > queryCellByteCap {
-				return QueryResult{}, errQueryResultTooLarge
-			}
-			if err := row.add(len(cell)); err != nil {
-				return QueryResult{}, err
-			}
-		}
-		if err := rawResult.add(row.used); err != nil {
-			return QueryResult{}, err
-		}
-
-		vals, err := rows.Values()
-		if err != nil {
-			return QueryResult{}, mapPGError(err)
-		}
-		out.Rows = append(out.Rows, vals)
-	}
-	// rows.Err surfaces read-only violations / timeouts that fire mid-stream.
-	if err := rows.Err(); err != nil {
-		return QueryResult{}, mapPGError(err)
-	}
-	// One encoding for the whole result, not one per row thrown away for its
-	// length: rawResult already bounded the loop, so this is bounded work.
-	encoded, err := json.Marshal(out.Rows)
-	if err != nil {
-		return QueryResult{}, errQueryFailed
-	}
-	if err := jsonResult.add(len(encoded)); err != nil {
+	if err := collectQueryRows(rows, lim, &out); err != nil {
 		return QueryResult{}, err
 	}
 	rows.Close()

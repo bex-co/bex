@@ -1,20 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import {
-  Github,
-  GitBranch,
-  Box,
-  Loader2,
-  Globe,
-  Lock,
-  Cpu,
-  Clock,
-  Layers,
-  Plus,
-  Trash2,
-  ArrowUpRight,
-  Sparkles,
-} from "lucide-react";
+import { Github, GitBranch, Box, Loader2, ArrowUpRight } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -33,7 +19,6 @@ import {
 } from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
-import { Textarea } from "@/common/components/ui/textarea";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
 import {
@@ -71,10 +56,12 @@ import { useRepos } from "@/features/services/hooks/use-repos";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { isValidCron } from "@/features/services/lib/cron";
 import type { RepoView } from "@/features/services/hooks/use-repos";
-import { generateEnvValue } from "@/features/services/lib/generate-env-value";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
 import { PathList } from "@/features/services/components/build-deploy-section";
+import { ServiceTypePicker } from "@/features/services/components/service-type-picker";
+import { CreateEnvVarEditor } from "@/features/services/components/create-env-var-editor";
+import { CreateSecretFileEditor } from "@/features/services/components/create-secret-file-editor";
 import {
   parseNewServiceSearch,
   type ServiceType,
@@ -120,266 +107,6 @@ export const Route = createFileRoute("/services/new")({
   validateSearch: parseNewServiceSearch,
   head: ({ match }) => translatedTitleHead("services.createTitle", match),
 });
-
-const SERVICE_TYPE_DEFS: {
-  type: ServiceType;
-  icon: React.ReactNode;
-  labelKey: string;
-  descKey: string;
-}[] = [
-  {
-    type: "web_service",
-    icon: <Globe className="size-4" />,
-    labelKey: "services.typeWeb",
-    descKey: "services.createTypeWebDesc",
-  },
-  {
-    type: "private_service",
-    icon: <Lock className="size-4" />,
-    labelKey: "services.typePrivate",
-    descKey: "services.createTypePrivateDesc",
-  },
-  {
-    type: "background_worker",
-    icon: <Cpu className="size-4" />,
-    labelKey: "services.typeWorker",
-    descKey: "services.createTypeWorkerDesc",
-  },
-  {
-    type: "cron_job",
-    icon: <Clock className="size-4" />,
-    labelKey: "services.typeCron",
-    descKey: "services.createTypeCronDesc",
-  },
-  {
-    type: "static_site",
-    icon: <Layers className="size-4" />,
-    labelKey: "services.typeStatic",
-    descKey: "services.createTypeStaticDesc",
-  },
-];
-
-function ServiceTypePicker({
-  value,
-  onChange,
-}: {
-  value: ServiceType;
-  onChange: (type: ServiceType) => void;
-}) {
-  const { t } = useTranslations();
-  return (
-    <div role="radiogroup" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {SERVICE_TYPE_DEFS.map(({ type, icon, labelKey, descKey }) => {
-        const selected = type === value;
-        return (
-          <button
-            key={type}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            onClick={() => onChange(type)}
-            className={cn(
-              "flex items-start gap-3 rounded-lg border p-3 text-left transition-colors",
-              selected
-                ? "border-primary ring-1 ring-primary"
-                : "border-border hover:border-muted-foreground/50",
-            )}
-          >
-            <span className="mt-0.5 shrink-0 text-muted-foreground">
-              {icon}
-            </span>
-            <div>
-              <div className="text-sm font-medium">{t(labelKey)}</div>
-              <div className="text-xs text-muted-foreground">{t(descKey)}</div>
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Inline key-value editor for create-time env vars (Render parity, w5/m19). */
-function EnvVarEditor({
-  rows,
-  onChange,
-}: {
-  rows: EnvVarEntry[];
-  onChange: (rows: EnvVarEntry[]) => void;
-}) {
-  const { t } = useTranslations();
-
-  function addRow() {
-    onChange([...rows, { key: "", value: "" }]);
-  }
-
-  function removeRow(i: number) {
-    onChange(rows.filter((_, idx) => idx !== i));
-  }
-
-  function updateRow(i: number, field: keyof EnvVarEntry, val: string) {
-    onChange(rows.map((r, idx) => (idx === i ? { ...r, [field]: val } : r)));
-  }
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label>{t("services.createFieldEnvVarsTitle")}</Label>
-        <Button type="button" variant="outline" size="sm" onClick={addRow}>
-          <Plus className="size-3.5" />
-          {t("services.createFieldEnvVarsAdd")}
-        </Button>
-      </div>
-      {rows.length > 0 && (
-        <div className="space-y-1.5">
-          <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 px-0.5">
-            <span className="text-xs text-muted-foreground">
-              {t("services.createFieldEnvVarsKey")}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {t("services.createFieldEnvVarsValue")}
-            </span>
-            <span />
-            <span />
-          </div>
-          {rows.map((row, i) => {
-            const keyInvalid = row.key !== "" && !VALID_ENV_KEY.test(row.key);
-            return (
-              <div key={i} className="space-y-1">
-                <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2">
-                  <Input
-                    value={row.key}
-                    onChange={(e) => updateRow(i, "key", e.target.value)}
-                    placeholder={t("services.createFieldEnvVarsKeyPlaceholder")}
-                    aria-label={t("services.createFieldEnvVarsKey")}
-                    aria-invalid={keyInvalid}
-                    className="font-mono text-sm"
-                  />
-                  <Input
-                    value={row.value}
-                    onChange={(e) => updateRow(i, "value", e.target.value)}
-                    placeholder={t(
-                      "services.createFieldEnvVarsValuePlaceholder",
-                    )}
-                    aria-label={t("services.createFieldEnvVarsValue")}
-                    className="font-mono text-sm"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => updateRow(i, "value", generateEnvValue())}
-                  >
-                    <Sparkles className="size-3.5" />
-                    {t("services.envGenerate")}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeRow(i)}
-                    aria-label={t("services.createFieldEnvVarsRemove")}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </div>
-                {keyInvalid && (
-                  <p className="text-xs text-destructive">
-                    {t("services.createFieldEnvVarsKeyError")}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Create-time files mounted read-only at /etc/secrets from first boot. */
-function SecretFileEditor({
-  rows,
-  onChange,
-}: {
-  rows: SecretFileEntry[];
-  onChange: (rows: SecretFileEntry[]) => void;
-}) {
-  const { t } = useTranslations();
-
-  function addRow() {
-    onChange([...rows, { name: "", content: "" }]);
-  }
-
-  function removeRow(i: number) {
-    onChange(rows.filter((_, idx) => idx !== i));
-  }
-
-  function updateRow(i: number, field: keyof SecretFileEntry, val: string) {
-    onChange(rows.map((r, idx) => (idx === i ? { ...r, [field]: val } : r)));
-  }
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div>
-          <Label>{t("services.createFieldSecretFilesTitle")}</Label>
-          <p className="text-sm text-muted-foreground">
-            {t("services.createFieldSecretFilesHint")}
-          </p>
-        </div>
-        <Button type="button" variant="outline" size="sm" onClick={addRow}>
-          <Plus className="size-3.5" />
-          {t("services.createFieldSecretFilesAdd")}
-        </Button>
-      </div>
-      {rows.map((row, i) => {
-        const invalid = row.name !== "" && !isValidSecretFileName(row.name);
-        return (
-          <div key={i} className="space-y-1 rounded-md border p-3">
-            <div className="flex items-start gap-2">
-              <div className="flex-1 space-y-2">
-                <Input
-                  value={row.name}
-                  onChange={(e) => updateRow(i, "name", e.target.value)}
-                  placeholder={t(
-                    "services.createFieldSecretFilesNamePlaceholder",
-                  )}
-                  aria-label={t("services.createFieldSecretFilesName")}
-                  aria-invalid={invalid}
-                  className="font-mono text-sm"
-                />
-                <Textarea
-                  value={row.content}
-                  onChange={(e) => updateRow(i, "content", e.target.value)}
-                  placeholder={t(
-                    "services.createFieldSecretFilesContentPlaceholder",
-                  )}
-                  aria-label={t("services.createFieldSecretFilesContent")}
-                  className="min-h-20 font-mono text-sm"
-                />
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => removeRow(i)}
-                aria-label={t("services.createFieldSecretFilesRemove")}
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
-            </div>
-            {invalid ? (
-              <p className="text-xs text-destructive">
-                {t("services.createFieldSecretFilesNameError")}
-              </p>
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 export function NewServicePage() {
   const { t } = useTranslations();
@@ -1182,8 +909,8 @@ export function NewServicePage() {
                   </div>
                 ) : null}
 
-                <EnvVarEditor rows={envVars} onChange={setEnvVars} />
-                <SecretFileEditor
+                <CreateEnvVarEditor rows={envVars} onChange={setEnvVars} />
+                <CreateSecretFileEditor
                   rows={secretFiles}
                   onChange={setSecretFiles}
                 />

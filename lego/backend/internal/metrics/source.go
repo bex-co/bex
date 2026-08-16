@@ -107,6 +107,14 @@ func parsePodMetrics(raw []byte) ([]PodResourceUsage, error) {
 // means every applicable source was healthy for the whole window.
 const LabelDegradedSources = "degraded_sources"
 
+// LabelResource carries the public id or name the caller asked about, restored
+// onto every series because aggregation commonly drops the selector labels.
+const LabelResource = "resource"
+
+// LabelMetric names which metric a series came from, so a multi-metric result
+// stays distinguishable after the per-metric results are concatenated.
+const LabelMetric = "metric"
+
 // NewPrometheusRequestSource returns the production RequestMetricsSource, backed
 // by a Prometheus range query over Traefik's metrics.
 func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSource {
@@ -143,12 +151,7 @@ func NewPrometheusRequestSource(base string, hc *http.Client) RequestMetricsSour
 			return nil, err
 		}
 		if len(degraded) > 0 {
-			for i := range series {
-				if series[i].Labels == nil {
-					series[i].Labels = map[string]string{}
-				}
-				series[i].Labels[LabelDegradedSources] = strings.Join(degraded, ",")
-			}
+			setLabelOnEach(series, LabelDegradedSources, strings.Join(degraded, ","))
 		}
 		return series, nil
 	}

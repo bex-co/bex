@@ -72,6 +72,10 @@ const (
 	finalizer                    = "app.bex.co/finalizer"
 	registryCredentialRotateTrue = "true"
 	childHealthRequeue           = 30 * time.Second
+	// settleRequeue is the short retry every reconciler in this package uses
+	// while a dependency settles — an optimistic-conflict retry, a child still
+	// being torn down, a Secret a controller has not derived yet.
+	settleRequeue = 2 * time.Second
 
 	// Ready-condition reasons for the two halves of a source build. They are a
 	// shared vocabulary, not local strings: the control plane keys on them to
@@ -287,6 +291,67 @@ var traefikHTTPMiddlewareGVK = schema.GroupVersionKind{Group: "traefik.io", Vers
 
 const traefikRouterMiddlewaresAnnotation = "traefik.ingress.kubernetes.io/router.middlewares"
 
+// legacyTraefikRouterMiddlewaresAnnotation is the pre-m30 nonstandard key. It is
+// deleted on every Ingress write: Traefik's Kubernetes Ingress provider only
+// reads the traefik.ingress.kubernetes.io namespace.
+const legacyTraefikRouterMiddlewaresAnnotation = "traefik.io/router.middlewares"
+
+const (
+	ingressClassTraefik                = "traefik"
+	certManagerClusterIssuerAnnotation = "cert-manager.io/cluster-issuer"
+)
+
+// traefikMiddlewareRef is how a Traefik Ingress annotation addresses a
+// Middleware CR in a namespace.
+func traefikMiddlewareRef(namespace, name string) string {
+	return namespace + "-" + name + "@kubernetescrd"
+}
+
+// applyIngressRouting stamps the shape every App-owned Ingress shares: the
+// cert-manager issuer, the Traefik middleware refs (or their removal), the
+// legacy key's removal, the ingress class, and a cleared TLS/rule set ready for
+// appendIngressHostRoute. The serving Ingress and the host-redirect Ingress both
+// go through here so their routing contract cannot drift.
+func (r *AppReconciler) applyIngressRouting(ing *networkingv1.Ingress, middlewareRefs []string) {
+	if ing.Annotations == nil {
+		ing.Annotations = map[string]string{}
+	}
+	if r.ClusterIssuer != "" {
+		ing.Annotations[certManagerClusterIssuerAnnotation] = r.ClusterIssuer
+	}
+	if len(middlewareRefs) > 0 {
+		ing.Annotations[traefikRouterMiddlewaresAnnotation] = strings.Join(middlewareRefs, ",")
+	} else {
+		delete(ing.Annotations, traefikRouterMiddlewaresAnnotation)
+	}
+	delete(ing.Annotations, legacyTraefikRouterMiddlewaresAnnotation)
+	class := ingressClassTraefik
+	ing.Spec.IngressClassName = &class
+	ing.Spec.TLS = nil
+	ing.Spec.Rules = nil
+}
+
+// appendIngressHostRoute adds one host's TLS entry plus its catch-all rule
+// routing to svc:port. tlsIndex picks the host's TLS Secret name.
+func appendIngressHostRoute(ing *networkingv1.Ingress, appName, host string, tlsIndex int, svc string, port int32) {
+	pathType := networkingv1.PathTypePrefix
+	ing.Spec.TLS = append(ing.Spec.TLS, networkingv1.IngressTLS{
+		Hosts:      []string{host},
+		SecretName: tlsSecretName(appName, tlsIndex, host),
+	})
+	ing.Spec.Rules = append(ing.Spec.Rules, networkingv1.IngressRule{
+		Host: host,
+		IngressRuleValue: networkingv1.IngressRuleValue{HTTP: &networkingv1.HTTPIngressRuleValue{
+			Paths: []networkingv1.HTTPIngressPath{{
+				Path: "/", PathType: &pathType,
+				Backend: networkingv1.IngressBackend{Service: &networkingv1.IngressServiceBackend{
+					Name: svc, Port: networkingv1.ServiceBackendPort{Number: port},
+				}},
+			}},
+		}},
+	})
+}
+
 // canonicalNamespace reports whether app lives in a namespace the reconciler is
 // allowed to act on: the shared/bootstrap apps namespace (AppsNamespace, default
 // "default") or its own per-workspace namespace. The control plane projects each
@@ -351,26 +416,8 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return r.fail(ctx, &app, "ProtectedSecretReference", err)
 	}
 
-	// Registry auth is operator-level configuration, so converge it before a
-	// source build can halt this pass. A failed newer build deliberately leaves
-	// the previous Deployment/CronJob serving; without this early backfill that
-	// older workload could retain an unauthenticated pod template forever and
-	// fail as soon as Kubernetes reschedules it onto a fresh node.
-	if r.Mode == ModeKubernetes {
-		// Per-App pull credentials (w7/m36): mint before the backfill so the
-		// "reg-pull-<name>" Secret exists by the time backfill patches workloads.
-		if err := r.ensurePerAppRegistryCreds(ctx, &app); err != nil {
-			if errors.Is(err, registry.ErrConflictRequeue) {
-				return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
-			}
-			return r.fail(ctx, &app, "PerAppRegistryCredsFailed", err)
-		}
-		if err := r.mirrorPerAppRegistryCredential(ctx, &app); err != nil {
-			return r.fail(ctx, &app, "PerAppRegistryCredsFailed", err)
-		}
-		if err := r.backfillWorkloadPullSecrets(ctx, &app); err != nil {
-			return r.fail(ctx, &app, "RegistryPullSecretFailed", err)
-		}
+	if res, halted, err := r.convergeRegistryCredentials(ctx, &app); halted {
+		return res, err
 	}
 
 	// NOTE: intentionally NO early-return on ObservedGeneration==Generation here.
@@ -389,26 +436,71 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// manual scale therefore keep using the active artifact and release.
 	releaseDecision := prepareAppReleaseDecision(&app)
 	if releaseDecision.canceled {
-		// The backend already deleted this generation's build artifact. Preserve
-		// the last healthy release (if any) and acknowledge the current App
-		// generation without ever dispatching the canceled build again.
-		if app.Status.Image == "" {
-			app.Status.Phase = appv1alpha1.PhaseFailed
-			app.Status.ObservedGeneration = app.Generation
-			meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-				Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "BuildCanceled",
-				Message: "build canceled before a release became available", ObservedGeneration: app.Generation,
-			})
-			if err := r.Status().Update(ctx, &app); err != nil {
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, nil
-		}
-		return r.dispatchRuntime(ctx, &app, app.Status.Image, port)
+		return r.settleCanceledRelease(ctx, &app, port)
 	}
 
-	// --- resolve the image: prebuilt, cached artifact, or build from git ---
-	image, artifactResolved := reusableArtifactImage(&app, releaseDecision)
+	image, res, halted, err := r.resolveDeployImage(ctx, &app, releaseDecision, port)
+	if halted {
+		return res, err
+	}
+	return r.dispatchRuntime(ctx, &app, image, port)
+}
+
+// convergeRegistryCredentials mints this App's per-App pull credentials, mirrors
+// them, and backfills them onto already-running workloads. Registry auth is
+// operator-level configuration, so it converges before a source build can halt
+// the pass: a failed newer build deliberately leaves the previous
+// Deployment/CronJob serving, and without this early backfill that older
+// workload could retain an unauthenticated pod template forever and fail as soon
+// as Kubernetes reschedules it onto a fresh node. halted reports that the caller
+// should return (res, err) as this reconcile's outcome.
+func (r *AppReconciler) convergeRegistryCredentials(ctx context.Context, app *appv1alpha1.App) (res ctrl.Result, halted bool, err error) {
+	if r.Mode != ModeKubernetes {
+		return ctrl.Result{}, false, nil
+	}
+	// Per-App pull credentials (w7/m36): mint before the backfill so the
+	// "reg-pull-<name>" Secret exists by the time backfill patches workloads.
+	if err := r.ensurePerAppRegistryCreds(ctx, app); err != nil {
+		if errors.Is(err, registry.ErrConflictRequeue) {
+			return ctrl.Result{RequeueAfter: settleRequeue}, true, nil
+		}
+		res, err := r.fail(ctx, app, "PerAppRegistryCredsFailed", err)
+		return res, true, err
+	}
+	if err := r.mirrorPerAppRegistryCredential(ctx, app); err != nil {
+		res, err := r.fail(ctx, app, "PerAppRegistryCredsFailed", err)
+		return res, true, err
+	}
+	if err := r.backfillWorkloadPullSecrets(ctx, app); err != nil {
+		res, err := r.fail(ctx, app, "RegistryPullSecretFailed", err)
+		return res, true, err
+	}
+	return ctrl.Result{}, false, nil
+}
+
+// settleCanceledRelease handles a generation whose build artifact the backend
+// already deleted: preserve the last healthy release (if any) and acknowledge
+// the current App generation without ever dispatching the canceled build again.
+func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alpha1.App, port int) (ctrl.Result, error) {
+	if app.Status.Image != "" {
+		return r.dispatchRuntime(ctx, app, app.Status.Image, port)
+	}
+	app.Status.Phase = appv1alpha1.PhaseFailed
+	app.Status.ObservedGeneration = app.Generation
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "BuildCanceled",
+		Message: "build canceled before a release became available", ObservedGeneration: app.Generation,
+	})
+	return ctrl.Result{}, r.Status().Update(ctx, app)
+}
+
+// resolveDeployImage settles which image this pass deploys — prebuilt, a reused
+// artifact, or one built from git — and stamps the resolved artifact identity on
+// status. halted reports that the phase already produced this reconcile's
+// terminal outcome (a direct static publish, or a build that halted the pass),
+// so the caller must return (res, err) instead of dispatching.
+func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1.App, decision appReleaseDecision, port int) (image string, res ctrl.Result, halted bool, err error) {
+	image, artifactResolved := reusableArtifactImage(app, decision)
 	// Direct static publish (w9/010): a repo-backed static_site with no
 	// Dockerfile path, no build command, and no native runtime has nothing to
 	// build — Render publishes the repo's publish directory as-is. Skip the
@@ -416,30 +508,31 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	// Job (image stays ""). An explicit dockerfilePath/buildCommand/runtime/
 	// builder keeps the build path (the built image's publishPath holds the
 	// site).
-	if directStaticPublish(&app) {
+	if directStaticPublish(app) {
 		// Direct static publishing has no OCI image, but ActiveRevision remains the
 		// success gate. Recording its source identity here is safe: a failed publish
 		// keeps the old ActiveRevision and is retried on the next reconcile.
-		app.Status.ArtifactFingerprint = releaseDecision.desired.artifact
+		app.Status.ArtifactFingerprint = decision.desired.artifact
 		app.Status.ArtifactImage = ""
-		if r.Mode == ModeKubernetes {
-			return r.reconcileKubernetes(ctx, &app, "", port)
+		if r.Mode != ModeKubernetes {
+			res, err := r.fail(ctx, app, "BadSpec", fmt.Errorf("static_site requires the kubernetes runtime"))
+			return "", res, true, err
 		}
-		return r.fail(ctx, &app, "BadSpec", fmt.Errorf("static_site requires the kubernetes runtime"))
+		res, err := r.reconcileKubernetes(ctx, app, "", port)
+		return "", res, true, err
 	}
 	if image == "" {
-		built, res, halted, err := r.buildFromSource(ctx, &app)
-		if halted {
-			return res, err
+		built, res, buildHalted, err := r.buildFromSource(ctx, app)
+		if buildHalted {
+			return "", res, true, err
 		}
 		image, artifactResolved = built, true
 	}
 	if artifactResolved {
-		app.Status.ArtifactFingerprint = releaseDecision.desired.artifact
+		app.Status.ArtifactFingerprint = decision.desired.artifact
 		app.Status.ArtifactImage = image
 	}
-
-	return r.dispatchRuntime(ctx, &app, image, port)
+	return image, ctrl.Result{}, false, nil
 }
 
 // dispatchRuntime hands the resolved image to the configured runtime.
@@ -1871,56 +1964,18 @@ func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.A
 		}
 		return nil
 	}
-	ingressClass := "traefik"
-	pathType := networkingv1.PathTypePrefix
+	refs := make([]string, len(middlewareNames))
+	for i, name := range middlewareNames {
+		refs[i] = traefikMiddlewareRef(app.Namespace, name)
+	}
 	ing := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
 	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
-		if ing.Annotations == nil {
-			ing.Annotations = map[string]string{}
-		}
-		if r.ClusterIssuer != "" {
-			ing.Annotations["cert-manager.io/cluster-issuer"] = r.ClusterIssuer
-		}
-		if len(middlewareNames) > 0 {
-			refs := make([]string, len(middlewareNames))
-			for i, name := range middlewareNames {
-				refs[i] = app.Namespace + "-" + name + "@kubernetescrd"
-			}
-			ing.Annotations[traefikRouterMiddlewaresAnnotation] = strings.Join(refs, ",")
-		} else {
-			delete(ing.Annotations, traefikRouterMiddlewaresAnnotation)
-		}
-		// Remove the pre-m30 nonstandard key. Traefik's Kubernetes Ingress
-		// provider only reads the traefik.ingress.kubernetes.io namespace.
-		delete(ing.Annotations, "traefik.io/router.middlewares")
-		ing.Spec.IngressClassName = &ingressClass
-		ing.Spec.TLS = nil
-		ing.Spec.Rules = nil
+		r.applyIngressRouting(ing, refs)
 		for i, host := range hosts {
 			if redirectSources[host] {
 				continue
 			}
-			ing.Spec.TLS = append(ing.Spec.TLS, networkingv1.IngressTLS{
-				Hosts:      []string{host},
-				SecretName: tlsSecretName(app.Name, i, host),
-			})
-			ing.Spec.Rules = append(ing.Spec.Rules, networkingv1.IngressRule{
-				Host: host,
-				IngressRuleValue: networkingv1.IngressRuleValue{
-					HTTP: &networkingv1.HTTPIngressRuleValue{
-						Paths: []networkingv1.HTTPIngressPath{{
-							Path:     "/",
-							PathType: &pathType,
-							Backend: networkingv1.IngressBackend{
-								Service: &networkingv1.IngressServiceBackend{
-									Name: svc,
-									Port: networkingv1.ServiceBackendPort{Number: port},
-								},
-							},
-						}},
-					},
-				},
-			})
+			appendIngressHostRoute(ing, app.Name, host, i, svc, port)
 		}
 		return controllerutil.SetControllerReference(app, ing, r.Scheme)
 	})
@@ -1991,7 +2046,7 @@ func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1al
 	for _, source := range sources {
 		name := hostRedirectResourceName(app.Name, source)
 		desiredMiddleware[name] = true
-		middlewareNames = append(middlewareNames, app.Namespace+"-"+name+"@kubernetescrd")
+		middlewareNames = append(middlewareNames, traefikMiddlewareRef(app.Namespace, name))
 		o := &unstructured.Unstructured{}
 		o.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
 		o.SetName(name)
@@ -2012,17 +2067,17 @@ func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1al
 
 	list := &unstructured.UnstructuredList{}
 	list.SetGroupVersionKind(schema.GroupVersionKind{Group: traefikHTTPMiddlewareGVK.Group, Version: traefikHTTPMiddlewareGVK.Version, Kind: "MiddlewareList"})
-	if err := r.List(ctx, list, client.InNamespace(app.Namespace), client.MatchingLabels{labelHostRedirectOwner: app.Name}); err != nil {
-		if !meta.IsNoMatchError(err) {
-			return nil, err
+	// A NoMatchError means the Middleware CRD isn't installed, which leaves Items
+	// empty — so the prune loop below is safe to run unconditionally.
+	if err := r.List(ctx, list, client.InNamespace(app.Namespace), client.MatchingLabels{labelHostRedirectOwner: app.Name}); err != nil && !meta.IsNoMatchError(err) {
+		return nil, err
+	}
+	for i := range list.Items {
+		if desiredMiddleware[list.Items[i].GetName()] {
+			continue
 		}
-	} else {
-		for i := range list.Items {
-			if !desiredMiddleware[list.Items[i].GetName()] {
-				if err := deleteOptionalObject(ctx, r.Client, &list.Items[i]); err != nil {
-					return nil, err
-				}
-			}
+		if err := deleteOptionalObject(ctx, r.Client, &list.Items[i]); err != nil {
+			return nil, err
 		}
 	}
 
@@ -2041,46 +2096,20 @@ func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1al
 		return map[string]bool{}, nil
 	}
 
-	ingressClass := "traefik"
-	pathType := networkingv1.PathTypePrefix
 	ing := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: ingressName, Namespace: app.Namespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
-		if ing.Annotations == nil {
-			ing.Annotations = map[string]string{}
-		}
-		if r.ClusterIssuer != "" {
-			ing.Annotations["cert-manager.io/cluster-issuer"] = r.ClusterIssuer
-		}
-		ing.Annotations[traefikRouterMiddlewaresAnnotation] = strings.Join(middlewareNames, ",")
-		delete(ing.Annotations, "traefik.io/router.middlewares")
+		r.applyIngressRouting(ing, middlewareNames)
 		ing.Labels = map[string]string{labelHostRedirectOwner: app.Name}
-		ing.Spec.IngressClassName = &ingressClass
-		ing.Spec.TLS = nil
-		ing.Spec.Rules = nil
 		for _, source := range sources {
-			index := slices.Index(hosts, source)
-			ing.Spec.TLS = append(ing.Spec.TLS, networkingv1.IngressTLS{
-				Hosts: []string{source}, SecretName: tlsSecretName(app.Name, index, source),
-			})
-			ing.Spec.Rules = append(ing.Spec.Rules, networkingv1.IngressRule{
-				Host: source,
-				IngressRuleValue: networkingv1.IngressRuleValue{HTTP: &networkingv1.HTTPIngressRuleValue{
-					Paths: []networkingv1.HTTPIngressPath{{
-						Path: "/", PathType: &pathType,
-						Backend: networkingv1.IngressBackend{Service: &networkingv1.IngressServiceBackend{
-							Name: svc, Port: networkingv1.ServiceBackendPort{Number: port},
-						}},
-					}},
-				}},
-			})
+			appendIngressHostRoute(ing, app.Name, source, slices.Index(hosts, source), svc, port)
 		}
 		return controllerutil.SetControllerReference(app, ing, r.Scheme)
 	}); err != nil {
 		return nil, err
 	}
 
-	redirectSources := make(map[string]bool, len(redirects))
-	for source := range redirects {
+	redirectSources := make(map[string]bool, len(sources))
+	for _, source := range sources {
 		redirectSources[source] = true
 	}
 	return redirectSources, nil
@@ -2092,6 +2121,58 @@ func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1al
 // live on the CR and the static-server reads them live, so an edge-rule edit
 // takes effect on the next resolver refresh without a republish. The image is
 // already resolved (built from git or prebuilt) by Reconcile.
+// publishStaticRevision uploads one revision's output to the object store —
+// either extracted from the built image, or (direct publish, w9/010) cloned from
+// the repo when no build ran. It reports its own failure through r.fail, so a
+// non-nil error carries the reconcile result the caller must return.
+func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alpha1.App, image, rev string) (ctrl.Result, error) {
+	publishNamespace := r.buildNamespace(app.Namespace)
+	if err := validateStaticCredentialSecret(ctx, r.buildPlaneClient(), publishNamespace, r.StaticStore.Secret); err != nil {
+		return r.fail(ctx, app, "StaticCredentialUnavailable", err)
+	}
+	r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Publishing", "Publishing static output to object store")
+	opts := publish.Options{
+		Image:        image,
+		PublishPath:  app.Spec.PublishPath,
+		AppID:        app.Name,
+		AppUID:       string(app.UID),
+		Revision:     rev,
+		Store:        r.StaticStore,
+		Namespace:    publishNamespace,
+		Workspace:    app.Labels[labelWorkspace],
+		AppNamespace: app.Namespace,
+		VerifyImage:  r.TenantSignKeySecret != "",
+		// The extract initContainer pulls the built image from authed Zot. Use
+		// the BUILD-namespace pull credential: the per-App/shared tenant pull
+		// secret lives in the App namespace, unreachable when the publish Job
+		// runs in a separate BEX_BUILD_NAMESPACE (w9/m44 — static-site publish
+		// failed on prod pulling with the apps-ns secret; docs/ADR029).
+		PullSecret: r.buildJobPullSecret(app),
+		Client:     r.Client,
+	}
+	if image == "" {
+		// Direct publish (w9/010): no build ran — the publish Job clones the
+		// repo and uploads rootDir/publishPath as-is.
+		opts.Repo = app.Spec.Repo
+		opts.Ref = effectiveDeployRef(app.Spec)
+		opts.RootDir = app.Spec.RootDir
+		opts.CloneSecret = app.Spec.CloneSecret
+		opts.PullSecret = "" // clone mode pulls only public platform images
+		// A private repo's clone Secret lives in the App namespace; relocate
+		// it beside the publish Job when the build namespace differs (the
+		// same seam the build plane uses).
+		if app.Spec.CloneSecret != "" && opts.Namespace != app.Namespace {
+			if err := r.copyCloneSecret(ctx, app, app.Namespace, opts.Namespace, app.Spec.CloneSecret); err != nil {
+				return r.fail(ctx, app, "PublishFailed", fmt.Errorf("relocating clone secret to %s: %w", opts.Namespace, err))
+			}
+		}
+	}
+	if err := publish.Publish(ctx, opts); err != nil {
+		return r.fail(ctx, app, "PublishFailed", err)
+	}
+	return ctrl.Result{}, nil
+}
+
 func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha1.App, image string) (ctrl.Result, error) {
 	if app.Spec.PublishPath == "" {
 		return r.fail(ctx, app, "BadSpec", fmt.Errorf("static_site requires spec.publishPath"))
@@ -2112,53 +2193,12 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 
 	rev := releaseRevision(app)
 
-	// Publish this revision's built output to the object store, unless it is
-	// already the active revision (idempotent: the publish Job is named per
-	// revision, so a retry reuses the exact-lifetime Job rather than re-uploading).
+	// Publishing is skipped when rev is already active (idempotent: the publish
+	// Job is named per revision, so a retry reuses the exact-lifetime Job rather
+	// than re-uploading).
 	if app.Status.ActiveRevision != rev {
-		publishNamespace := r.buildNamespace(app.Namespace)
-		if err := validateStaticCredentialSecret(ctx, r.buildPlaneClient(), publishNamespace, r.StaticStore.Secret); err != nil {
-			return r.fail(ctx, app, "StaticCredentialUnavailable", err)
-		}
-		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Publishing", "Publishing static output to object store")
-		opts := publish.Options{
-			Image:        image,
-			PublishPath:  app.Spec.PublishPath,
-			AppID:        app.Name,
-			AppUID:       string(app.UID),
-			Revision:     rev,
-			Store:        r.StaticStore,
-			Namespace:    publishNamespace,
-			Workspace:    app.Labels[labelWorkspace],
-			AppNamespace: app.Namespace,
-			VerifyImage:  r.TenantSignKeySecret != "",
-			// The extract initContainer pulls the built image from authed Zot. Use
-			// the BUILD-namespace pull credential: the per-App/shared tenant pull
-			// secret lives in the App namespace, unreachable when the publish Job
-			// runs in a separate BEX_BUILD_NAMESPACE (w9/m44 — static-site publish
-			// failed on prod pulling with the apps-ns secret; docs/ADR029).
-			PullSecret: r.buildJobPullSecret(app),
-			Client:     r.Client,
-		}
-		if image == "" {
-			// Direct publish (w9/010): no build ran — the publish Job clones the
-			// repo and uploads rootDir/publishPath as-is.
-			opts.Repo = app.Spec.Repo
-			opts.Ref = effectiveDeployRef(app.Spec)
-			opts.RootDir = app.Spec.RootDir
-			opts.CloneSecret = app.Spec.CloneSecret
-			opts.PullSecret = "" // clone mode pulls only public platform images
-			// A private repo's clone Secret lives in the App namespace; relocate
-			// it beside the publish Job when the build namespace differs (the
-			// same seam the build plane uses).
-			if app.Spec.CloneSecret != "" && opts.Namespace != app.Namespace {
-				if err := r.copyCloneSecret(ctx, app, app.Namespace, opts.Namespace, app.Spec.CloneSecret); err != nil {
-					return r.fail(ctx, app, "PublishFailed", fmt.Errorf("relocating clone secret to %s: %w", opts.Namespace, err))
-				}
-			}
-		}
-		if err := publish.Publish(ctx, opts); err != nil {
-			return r.fail(ctx, app, "PublishFailed", err)
+		if res, err := r.publishStaticRevision(ctx, app, image, rev); err != nil {
+			return res, err
 		}
 	}
 
@@ -3355,7 +3395,7 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 		if executionPending || externalPending {
 			log.Info("App finalization cleanup pending; preserving registry credentials",
 				"app", app.Name, "executionPending", executionPending, "externalPending", externalPending)
-			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: settleRequeue}, nil
 		}
 
 		// Per-App registry credentials are the least-privilege authority used to
@@ -3369,7 +3409,7 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 		}
 		if credentialsPending {
 			log.Info("App finalization credential revocation pending", "app", app.Name)
-			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: settleRequeue}, nil
 		}
 		controllerutil.RemoveFinalizer(app, finalizer)
 		if err := r.Update(ctx, app); err != nil {
@@ -3675,11 +3715,7 @@ func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1
 	requestCtx, cancel := boundedhttp.WithTimeout(ctx)
 	defer cancel()
 	ctx = requestCtx
-	registryHost := r.Registry
-	base := "http://" + registryHost
-	if strings.HasPrefix(registryHost, "http://") || strings.HasPrefix(registryHost, "https://") {
-		base = registryHost
-	}
+	base := registry.NormalizeBase(r.Registry)
 	repo := app.Name
 
 	authHdr, ready, err := r.registryAuthHeader(ctx, app)

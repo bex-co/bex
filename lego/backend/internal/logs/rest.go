@@ -164,36 +164,46 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 		defer s.sseConns.Add(-1)
 	}
 
-	// WebSocket path: Render CLI v2+ sends an upgrade request.
+	// Render CLI v2+ sends an upgrade request; everyone else gets SSE or NDJSON.
 	if websocket.IsWebSocketUpgrade(r) {
-		conn, wsErr := wsUpgrader.Upgrade(w, r, nil)
-		if wsErr != nil {
-			return // upgrader already wrote the error response
-		}
-		defer conn.Close()
-		// Read pump: keep-alive + detect client disconnect.
-		go func() {
-			for {
-				if _, _, err := conn.NextReader(); err != nil {
-					conn.Close()
-					return
-				}
-			}
-		}()
-		followErr := s.FollowLogs(r.Context(), q, func(e LogEntry) error {
-			payload, mErr := json.Marshal(toRenderLog(e))
-			if mErr != nil {
-				return mErr
-			}
-			return conn.WriteMessage(websocket.TextMessage, payload)
-		})
-		if errors.Is(followErr, core.ErrLogsUnavailable) || errors.Is(followErr, core.ErrLogStoreUnavailable) {
-			msg, _ := json.Marshal(map[string]string{"error": followErr.Error()})
-			_ = conn.WriteMessage(websocket.TextMessage, msg)
-		}
+		s.subscribeWebSocket(w, r, q)
 		return
 	}
+	s.subscribeStream(w, r, q)
+}
 
+// subscribeWebSocket streams the follow as WS text frames, one per log line.
+func (s *Service) subscribeWebSocket(w http.ResponseWriter, r *http.Request, q LogQuery) {
+	conn, wsErr := wsUpgrader.Upgrade(w, r, nil)
+	if wsErr != nil {
+		return // upgrader already wrote the error response
+	}
+	defer conn.Close()
+	// Read pump: keep-alive + detect client disconnect.
+	go func() {
+		for {
+			if _, _, err := conn.NextReader(); err != nil {
+				conn.Close()
+				return
+			}
+		}
+	}()
+	followErr := s.FollowLogs(r.Context(), q, func(e LogEntry) error {
+		payload, mErr := json.Marshal(toRenderLog(e))
+		if mErr != nil {
+			return mErr
+		}
+		return conn.WriteMessage(websocket.TextMessage, payload)
+	})
+	if errors.Is(followErr, core.ErrLogsUnavailable) || errors.Is(followErr, core.ErrLogStoreUnavailable) {
+		msg, _ := json.Marshal(map[string]string{"error": followErr.Error()})
+		_ = conn.WriteMessage(websocket.TextMessage, msg)
+	}
+}
+
+// subscribeStream streams the follow as SSE (Accept: text/event-stream) or
+// NDJSON. The two differ only in content type and per-line framing.
+func (s *Service) subscribeStream(w http.ResponseWriter, r *http.Request, q LogQuery) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		core.WriteErrStatus(w, http.StatusInternalServerError, "streaming unsupported")
@@ -205,28 +215,24 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	_ = rc.SetWriteDeadline(time.Time{})
 
 	useSSE := r.Header.Get("Accept") == "text/event-stream"
+	lineFormat, errorFormat := "%s\n", "{\"error\":%q}\n"
+	contentType := "application/x-ndjson"
 	if useSSE {
-		w.Header().Set("Content-Type", "text/event-stream")
-	} else {
-		w.Header().Set("Content-Type", "application/x-ndjson")
+		lineFormat, errorFormat = "data: %s\n\n", "event: error\ndata: %q\n\n"
+		contentType = "text/event-stream"
 	}
+	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 
-	err = s.FollowLogs(r.Context(), q, func(e LogEntry) error {
+	err := s.FollowLogs(r.Context(), q, func(e LogEntry) error {
 		payload, mErr := json.Marshal(toRenderLog(e))
 		if mErr != nil {
 			return mErr
 		}
-		var wErr error
-		if useSSE {
-			_, wErr = fmt.Fprintf(w, "data: %s\n\n", payload)
-		} else {
-			_, wErr = fmt.Fprintf(w, "%s\n", payload)
-		}
-		if wErr != nil {
+		if _, wErr := fmt.Fprintf(w, lineFormat, payload); wErr != nil {
 			return wErr
 		}
 		flusher.Flush()
@@ -238,11 +244,7 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	// Cancellation/disconnect is normal and silent; named refusals such as
 	// ErrBuildNotRunning must reach the client instead of leaving an empty stream.
 	if err != nil && !errors.Is(err, context.Canceled) {
-		if useSSE {
-			_, _ = fmt.Fprintf(w, "event: error\ndata: %q\n\n", err.Error())
-		} else {
-			_, _ = fmt.Fprintf(w, "{\"error\":%q}\n", err.Error())
-		}
+		_, _ = fmt.Fprintf(w, errorFormat, err.Error())
 		flusher.Flush()
 	}
 }

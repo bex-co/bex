@@ -316,7 +316,7 @@ func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *app
 	if gone, err := deleteAndWait(ctx, r.Client, cron); err != nil {
 		return result, fmt.Errorf("delete KeyValue backup CronJob: %w", err)
 	} else if !gone {
-		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: settleRequeue}, nil
 	}
 
 	jobsGone, err := r.deleteKeyValueBackupJobs(ctx, kv)
@@ -324,7 +324,7 @@ func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *app
 		return result, err
 	}
 	if !jobsGone {
-		return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+		return ctrl.Result{RequeueAfter: settleRequeue}, nil
 	}
 
 	if r.Backup.configured() {
@@ -333,7 +333,7 @@ func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *app
 			return result, err
 		}
 		if !done {
-			return ctrl.Result{RequeueAfter: 2 * time.Second}, nil
+			return ctrl.Result{RequeueAfter: settleRequeue}, nil
 		}
 	}
 

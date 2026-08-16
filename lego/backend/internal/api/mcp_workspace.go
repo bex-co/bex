@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -122,12 +123,9 @@ func workspaceInputSchema(schema any) any {
 	}
 	object["properties"] = properties
 	if required, ok := object["required"].([]any); ok {
-		filtered := required[:0]
-		for _, name := range required {
-			if name != "workspaceId" && name != "ownerId" && name != "ownerID" {
-				filtered = append(filtered, name)
-			}
-		}
+		filtered := slices.DeleteFunc(required, func(name any) bool {
+			return name == "workspaceId" || name == "ownerId" || name == "ownerID"
+		})
 		if len(filtered) == 0 {
 			delete(object, "required")
 		} else {

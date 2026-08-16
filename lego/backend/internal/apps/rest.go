@@ -285,17 +285,22 @@ func (r createServiceRequest) unsupportedField() string {
 	if r.ServiceDetails == nil {
 		return ""
 	}
-	if len(r.ServiceDetails.Previews) > 0 {
-		return "previews"
-	}
-	return ""
+	return unsupportedPreviewsField(r.ServiceDetails.Previews)
 }
 
 func (r patchServiceRequest) unsupportedField() string {
 	if r.ServiceDetails == nil {
 		return ""
 	}
-	if len(r.ServiceDetails.Previews) > 0 {
+	return unsupportedPreviewsField(r.ServiceDetails.Previews)
+}
+
+// unsupportedPreviewsField names the Render serviceDetails field bex cannot
+// honor, so create and patch refuse it identically rather than one silently
+// dropping it. The two requests spell serviceDetails with different Go types,
+// so the shared part is the field, not the struct.
+func unsupportedPreviewsField(previews json.RawMessage) string {
+	if len(previews) > 0 {
 		return "previews"
 	}
 	return ""
