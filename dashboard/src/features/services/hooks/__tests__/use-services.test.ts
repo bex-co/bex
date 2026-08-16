@@ -56,4 +56,18 @@ describe("useServices", () => {
     expect(result.current.services).toEqual([]);
     expect(result.current.loading).toBe(true);
   });
+
+  it("mounts cache-first so an SSR/prefetch-primed cache isn't refetched (w9/m62 t004)", () => {
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+    renderHook(() => useServices());
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ fetchPolicy: "cache-first" }),
+    );
+  });
 });

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useQuery } from "@apollo/client/react";
+import { skipPollWhenHidden } from "@/common/lib/polling";
 import { DeployDocument, type DeployQuery } from "@/graphql/definitions";
 import { isTerminalDeployStatus } from "@/features/deploys/lib/deploy-status";
 
@@ -52,6 +53,7 @@ export function useDeploy(
       fetchPolicy: "cache-and-network",
       errorPolicy: "all",
       pollInterval: POLL_INTERVAL_MS,
+      skipPollAttempt: skipPollWhenHidden,
     },
   );
 

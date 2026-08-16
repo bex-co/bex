@@ -1,4 +1,5 @@
 import { useQuery } from "@apollo/client/react";
+import { skipPollWhenHidden } from "@/common/lib/polling";
 import { MonthToDateBandwidthDocument } from "@/graphql/definitions";
 
 export interface UseMonthToDateBandwidthResult {
@@ -22,6 +23,7 @@ export function useMonthToDateBandwidth(
   const { data, loading, error } = useQuery(MonthToDateBandwidthDocument, {
     variables: { resourceId: resource },
     pollInterval: 60_000,
+    skipPollAttempt: skipPollWhenHidden,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
   });

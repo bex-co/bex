@@ -1,6 +1,4 @@
 import { useMemo } from "react";
-import { Skeleton } from "@/common/components/ui/skeleton";
-import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { EmptyState } from "@/common/components/empty-state";
 import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -37,7 +35,7 @@ export function DeployDetailPage({
 }: DeployDetailPageProps) {
   const { t } = useTranslations();
   const base = useServiceBase();
-  const { deploy, loading, error, notFound } = useDeploy(serviceId, deployId);
+  const { deploy, error, notFound } = useDeploy(serviceId, deployId);
 
   // A dead deploy id under a live service redirects to that service's Deploys
   // tab — the nearest live parent — not all the way home (w9/m55). A dead
@@ -73,39 +71,32 @@ export function DeployDetailPage({
     );
   }
 
-  if (loading || !deploy) {
-    return (
-      <div className="space-y-6">
-        {/* header (id + status + timestamps), timeline, then the log panel */}
-        <div className="space-y-2">
-          <Skeleton className="h-6 w-64" />
-          <Skeleton className="h-4 w-40" />
-        </div>
-        <CardSkeleton rows={2} />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-
+  // Each region renders (and skeletons) on its own instead of the whole page
+  // blank-waiting on the header `deploy` query (w9/m62 t002): the header,
+  // timeline, and log panel mount in parallel; the timeline/log queries stay
+  // skipped until the deploy's window arrives (a `?r=` range lets the log panel
+  // query immediately), so nothing serializes behind the header round trip.
   return (
     <div className="space-y-6">
       <DeployHeader
         deploy={deploy}
         actions={
-          <DeployActions
-            serviceId={serviceId}
-            deployId={deploy.id}
-            status={deploy.status}
-          />
+          deploy ? (
+            <DeployActions
+              serviceId={serviceId}
+              deployId={deploy.id}
+              status={deploy.status}
+            />
+          ) : undefined
         }
       />
       <DeployTimeline serviceId={serviceId} deploy={deploy} />
       <DeployLogPanel
         resource={serviceId}
-        startTime={window ? window.start : (deploy.createdAt ?? undefined)}
-        endTime={window ? window.end : (deploy.finishedAt ?? undefined)}
-        hasPreDeploy={!!deploy.preDeployStatus}
-        followBuild={deploy.status === "build_in_progress"}
+        startTime={window ? window.start : (deploy?.createdAt ?? undefined)}
+        endTime={window ? window.end : (deploy?.finishedAt ?? undefined)}
+        hasPreDeploy={!!deploy?.preDeployStatus}
+        followBuild={deploy?.status === "build_in_progress"}
         range={range}
         onRangeChange={onRangeChange}
       />

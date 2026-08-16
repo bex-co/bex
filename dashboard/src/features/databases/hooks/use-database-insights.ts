@@ -76,6 +76,7 @@ export function useDatabaseInsights(id: string) {
     // The operator applies postgresql.conf changes asynchronously. Keep the
     // live pg_settings view moving until the saved setting/source appears.
     pollInterval: 15_000,
+    skipPollAttempt: skipPollWhenHidden,
   });
 
   const [setParameters, { loading: saving }] = useMutation(

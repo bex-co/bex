@@ -252,4 +252,22 @@ describe("useMetrics", () => {
     expect(result.current.unavailable).toBe(false);
     expect(result.current.error).toBeUndefined();
   });
+
+  it("gates polling on tab visibility (w9/m62 t001)", () => {
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+    });
+    renderHook(() => useMetrics("svc", "cpu", { quantile: 0.95 }));
+    const opts = mockUseQuery.mock.calls[0][1] as {
+      skipPollAttempt?: () => boolean;
+    };
+    // The gate must be wired so a hidden tab skips the poll tick; assert it's
+    // the shared predicate and that it reflects document visibility.
+    expect(typeof opts.skipPollAttempt).toBe("function");
+    vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+    expect(opts.skipPollAttempt!()).toBe(true);
+    vi.restoreAllMocks();
+  });
 });

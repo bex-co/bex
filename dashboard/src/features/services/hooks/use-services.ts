@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
+import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 import { ServicesDocument } from "@/graphql/definitions";
 import {
   RESOURCE_POLL_INTERVAL_MS,
@@ -32,7 +33,7 @@ export function useServices(): UseServicesResult {
   const { data, loading, error, refetch } = useQuery(ServicesDocument, {
     variables: { ownerId: currentWorkspaceId },
     skip: !resolved,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: PRIMED_FETCH_POLICY,
     errorPolicy: "all",
     pollInterval: RESOURCE_POLL_INTERVAL_MS,
     skipPollAttempt: skipPollWhenHidden,

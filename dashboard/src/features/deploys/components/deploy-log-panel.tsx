@@ -145,7 +145,10 @@ export function DeployLogPanel({
         description={error.message}
       />
     );
-  } else if (loading && lines.length === 0) {
+  } else if ((loading || startTime === undefined) && lines.length === 0) {
+    // `startTime === undefined` = still awaiting the deploy's window (the panel
+    // mounts in parallel with the header query, w9/m62 t002); show the same
+    // loading affordance rather than a premature "no logs" empty state.
     body = (
       <div className="flex h-64 items-center justify-center rounded-md border text-muted-foreground">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

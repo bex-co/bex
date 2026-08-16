@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
+import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 import { DatabasesDocument } from "@/graphql/definitions";
 import {
   RESOURCE_POLL_INTERVAL_MS,
@@ -34,7 +35,7 @@ export function useDatabases(): UseDatabasesResult {
     {
       variables: { ownerId: currentWorkspaceId },
       skip: !resolved,
-      fetchPolicy: "cache-and-network",
+      fetchPolicy: PRIMED_FETCH_POLICY,
       errorPolicy: "all",
       pollInterval: RESOURCE_POLL_INTERVAL_MS,
       skipPollAttempt: skipPollWhenHidden,
