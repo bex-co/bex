@@ -7,9 +7,10 @@ import { join } from "node:path";
  *
  * `inline-mention-editor` pulls the whole @tiptap stack (~100 KB gzip). It must
  * stay behind the dynamic import in `lazy-mention-editor`, or the /agents
- * route chunk pays for it even on the `?view=list` pane that never mounts a
- * composer — the same reason `session-conversation` wraps its impl. This guard
- * asserts the eager import never creeps back into the composer's static graph.
+ * route's combined create + history page pays for it before the composer
+ * mounts in the browser — the same reason `session-conversation` wraps its
+ * impl. This guard asserts the eager import never creeps back into the
+ * composer's static graph.
  */
 const COMPONENTS_DIR = join(import.meta.dirname, "..");
 

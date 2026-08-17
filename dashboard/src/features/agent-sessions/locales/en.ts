@@ -54,7 +54,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.emptyBody": {
     message:
-      "Start a session from New session — describe a task and @-mention a repository, and the agent works it in a cloud sandbox, then opens a draft PR.",
+      "Describe a task above and @-mention a repository. The agent will work in a cloud sandbox and open a draft PR.",
     description: "Agent sessions list empty-state body",
   },
   // --- Phase chips ---
@@ -621,10 +621,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.sidebarSearchPlaceholder": {
     message: "Search sessions…",
     description: "Sessions sidebar — search input placeholder",
-  },
-  "agentSessions.sidebarMore": {
-    message: "View all sessions",
-    description: "Sessions sidebar — More action reaching the standalone list",
   },
   "agentSessions.sidebarNoMatches": {
     message: "No matching sessions",

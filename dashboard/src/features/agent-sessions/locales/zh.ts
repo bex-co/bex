@@ -54,7 +54,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.emptyBody": {
     message:
-      "从「新建会话」开始——描述任务并用 @ 提及一个仓库，智能体就会在云端沙箱中完成任务，并提交草稿 PR。",
+      "在上方描述任务并用 @ 提及一个仓库。智能体会在云端沙箱中完成任务，并提交草稿 PR。",
     description: "Agent sessions list empty-state body",
   },
   // --- Phase chips ---
@@ -610,10 +610,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.sidebarSearchPlaceholder": {
     message: "搜索会话…",
     description: "Sessions sidebar — search input placeholder",
-  },
-  "agentSessions.sidebarMore": {
-    message: "查看全部会话",
-    description: "Sessions sidebar — More action reaching the standalone list",
   },
   "agentSessions.sidebarNoMatches": {
     message: "没有匹配的会话",

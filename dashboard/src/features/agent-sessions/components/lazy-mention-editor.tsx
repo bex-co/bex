@@ -17,8 +17,8 @@ export type { InlineMentionEditorHandle, InlineMentionEditorProps };
 // wrapper loads via a dynamic import in an effect — the session-conversation /
 // web-shell-terminal precedent. On the server (and the first client render) it
 // renders only a min-height placeholder, so neither the SSR bundle nor the
-// /agents route chunk pays for Tiptap until a composer actually mounts (the
-// ?view=list pane never mounts one).
+// /agents route chunk pays for Tiptap until the combined page's composer
+// actually mounts in the browser.
 
 type InlineMentionEditorImpl =
   typeof import("@/features/agent-sessions/components/inline-mention-editor").InlineMentionEditor;

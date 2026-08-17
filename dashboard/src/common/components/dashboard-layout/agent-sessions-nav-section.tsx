@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
-import { Archive, GitPullRequest, MoreHorizontal, Search } from "lucide-react";
+import { Archive, GitPullRequest, Search } from "lucide-react";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   SidebarGroup,
@@ -31,10 +31,9 @@ import type { AgentSessionView } from "@/features/agent-sessions/types";
  *
  * Replaces the standalone `<aside>` w3/m45 t004 shipped, which made `/agents`
  * the only route in the dashboard rendering a second sidebar. Affordances:
- * search over title + repo, the More/view-all target, human status phrases, and
- * the direct GitHub PR link. (There is no "New session" row: the global "Agents"
- * nav item already routes to `/agents`, which is the new-session surface — a
- * second link to the same route was redundant.)
+ * search over title + repo, human status phrases, and the direct GitHub PR
+ * link. (There is no "New session" or "View all" row: the global "Agents" nav
+ * item opens the combined create + history page, so both would be redundant.)
  *
  * The whole group hides in icon mode — sessions have no meaningful icon
  * representation, which is Devin's own answer (its collapsed rail keeps nav
@@ -42,8 +41,8 @@ import type { AgentSessionView } from "@/features/agent-sessions/types";
  *
  * Below `lg` it rides `SidebarProvider`'s mobile Sheet, so sessions stay
  * reachable from the drawer. That is a deliberate improvement on the rail this
- * replaced, which set `hidden … lg:flex` and left small screens with no route
- * to the list at all beyond `?view=list`.
+ * replaced, which set `hidden … lg:flex`; the combined main page also keeps the
+ * full history available at every viewport size.
  */
 export function AgentSessionsNavSection() {
   const { t } = useTranslations();
@@ -82,14 +81,6 @@ export function AgentSessionsNavSection() {
           >
             <Search className="size-3.5" />
           </button>
-          <Link
-            to="/agents"
-            search={{ view: "list" }}
-            aria-label={t("agentSessions.sidebarMore")}
-            className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex size-6 items-center justify-center rounded-md"
-          >
-            <MoreHorizontal className="size-3.5" />
-          </Link>
         </div>
       </div>
 
@@ -139,7 +130,7 @@ export function AgentSessionsNavSection() {
           their one navigation home. */}
       <Link
         to="/agents"
-        search={{ view: "list", archived: "true" }}
+        search={{ archived: "true" }}
         className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs"
       >
         <Archive className="size-3.5" />
