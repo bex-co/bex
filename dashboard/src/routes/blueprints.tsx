@@ -6,6 +6,7 @@ import {
   useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
+import { ListPageSkeleton } from "@/common/components/detail-skeletons";
 import { requireAuth } from "@/common/lib/auth/auth";
 import {
   translatedTitleHead,
@@ -39,6 +40,7 @@ import { formatRelativeAge } from "@/features/services/lib/format";
 export const Route = createFileRoute("/blueprints")({
   staticData: { chrome: true },
   component: BlueprintsPage,
+  pendingComponent: ListPageSkeleton,
   beforeLoad: requireAuth(),
   // Prefetch the list on hover-intent so it renders warm on mount (w9/m68);
   // `useBlueprints` is cache-first, so it reads this loader's result. The loader

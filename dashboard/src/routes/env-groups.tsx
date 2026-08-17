@@ -1,4 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ListPageSkeleton } from "@/common/components/detail-skeletons";
 import {
   AlertTriangle,
   FileLock2,
@@ -30,6 +31,7 @@ import { useServices } from "@/features/services/hooks/use-services";
 export const Route = createFileRoute("/env-groups")({
   staticData: { chrome: true },
   component: EnvGroupsPage,
+  pendingComponent: ListPageSkeleton,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("envGroups.pageTitle", match),
 });

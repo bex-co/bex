@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ListPageSkeleton } from "@/common/components/detail-skeletons";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -13,6 +14,7 @@ import { WebhooksPanel } from "@/features/webhooks/components/webhooks-panel";
 export const Route = createFileRoute("/webhooks")({
   staticData: { chrome: true },
   component: WebhooksPage,
+  pendingComponent: ListPageSkeleton,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("webhooks.title", match),
 });
