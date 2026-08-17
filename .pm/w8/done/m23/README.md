@@ -1,17 +1,17 @@
 # w8 · m23 — Blueprint resource ownership: stop silent cross-blueprint overwrite
 
-**Worker:** worker8 **Goal:** a resource adopted or created by one blueprint carries an ownership marker, and a second blueprint whose manifest names the same resource gets a loud coded conflict (with an explicit takeover confirmation) instead of silently adopting and overwriting it — safer than Render's documented "unpredictable behavior, last sync wins", with the divergence documented. **Status:** todo
+**Worker:** worker8 **Goal:** a resource adopted or created by one blueprint carries an ownership marker, and a second blueprint whose manifest names the same resource gets a loud coded conflict (with an explicit takeover confirmation) instead of silently adopting and overwriting it — safer than Render's documented "unpredictable behavior, last sync wins", with the divergence documented. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                        | est | depends_on |
 | ---- | ----------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Ownership record: mark resources with the blueprint that manages them         | 45m | —          |
-| t002 | Conflict detection + coded refusal with explicit takeover confirmation        | 45m | t001       |
-| t003 | Render parity check (conflict shape across surfaces; divergence documented)   | 30m | t002       |
-| t004 | Simplify (`/simplify` over the changed code)                                  | 30m | t003       |
-| t005 | Test coverage (ownership stamping, conflict refusal, takeover, disconnect)    | 45m | t003       |
-| t006 | Closeout                                                                      | 15m | t005       |
+| t001 | Ownership record: mark resources with the blueprint that manages them — **DONE**         | 45m | —          |
+| t002 | Conflict detection + coded refusal with explicit takeover confirmation — **DONE**        | 45m | t001       |
+| t003 | Render parity check (conflict shape across surfaces; divergence documented) — **DONE**   | 30m | t002       |
+| t004 | Simplify (`/simplify` over the changed code) — **DONE**                                  | 30m | t003       |
+| t005 | Test coverage (ownership stamping, conflict refusal, takeover, disconnect) — **DONE**    | 45m | t003       |
+| t006 | Closeout — **DONE**                                                                      | 15m | t005       |
 
 ## Definition of done
 

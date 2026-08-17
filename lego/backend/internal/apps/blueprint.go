@@ -257,6 +257,14 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 	if err == nil {
 		err = s.validateBlueprintServices(ctx, st)
 	}
+	if err == nil && repo != "" && s.Blueprints != nil {
+		// Ownership conflicts surface in the preview/validation result (the
+		// dashboard's create review + pre-sync dialog) so nobody discovers
+		// them at apply time; the apply-path preflight still enforces.
+		if entries := s.previewOwnershipConflicts(ctx, repo, branch, st); len(entries) > 0 {
+			return BlueprintValidation{Errors: entries}, nil
+		}
+	}
 	if err == nil {
 		plan := blueprintValidationPlanFromIR(ir, st)
 		if actionPlan, available, planErr := s.blueprintActionPlan(ctx, ir, st); planErr != nil {
@@ -422,6 +430,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	})
 
 	prepareReq.Confirm = req.Confirm
+	prepareReq.BlueprintID = b.ID
 	_, applyErr := s.deployParsedStack(ctx, prepareReq, parsed)
 
 	finalStatus := store.BlueprintStatusInSync
@@ -615,10 +624,11 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	})
 
 	deployReq := DeployRequest{
-		Repo:     b.Repo,
-		Branch:   b.Branch,
-		Manifest: b.Manifest,
-		Confirm:  confirm,
+		BlueprintID: b.ID,
+		Repo:        b.Repo,
+		Branch:      b.Branch,
+		Manifest:    b.Manifest,
+		Confirm:     confirm,
 	}
 	var stack StackResult
 	var applyErr error
@@ -767,6 +777,7 @@ func (s *Service) DisconnectBlueprint(ctx context.Context, bpID, ownerID string)
 		return err
 	}
 	s.reclaimBlueprintGroupings(ctx, tenantID, manifest)
+	s.clearBlueprintOwnership(ctx, tenantID, bpID)
 	return nil
 }
 

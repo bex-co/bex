@@ -12,7 +12,15 @@ export type ProtectedActionResult =
  */
 export function protectedConfirmationFromError(err: unknown): string | null {
   const message = graphQLErrorMessage(err);
-  if (!message || !message.includes("protected environment")) return null;
+  if (!message) return null;
+  // Two server handshakes share the confirm-phrase convention: the
+  // protected-environment guard and the blueprint ownership takeover (w8/m23).
+  if (
+    !message.includes("protected environment") &&
+    !message.includes("is managed by blueprint")
+  ) {
+    return null;
+  }
   const match = message.match(/retry with confirm=(?:"([^"]+)"|'([^']+)')/i);
   return match?.[1] ?? match?.[2] ?? null;
 }
