@@ -88,14 +88,15 @@ func TestLoopbackFakeProviderRoundTripUsesTheDefaultClient(t *testing.T) {
 		t.Fatal("New() = nil transport, want the configured environment to enable push")
 	}
 
+	// validTestData() rather than a literal: the envelope's required-field set
+	// grows (Subject/WorkspaceID/SessionID were added after this test landed),
+	// and sharing the helper keeps this case from silently drifting into the
+	// PayloadError path instead of exercising the round trip it exists for.
 	ticket, err := transport.Send(context.Background(), Message{
 		Token: testToken,
 		Title: "Deploy failed",
 		Body:  "Open the service for evidence.",
-		Data: EnvelopeData{
-			Schema: "bex.notification.v1", NotificationID: "evt-loopback",
-			Event: "deploy_failed", Route: "/services/srv-1",
-		},
+		Data:  validTestData(),
 	})
 	if err != nil {
 		t.Fatalf("Send(): %v", err)
