@@ -51,6 +51,12 @@ function WorkspaceTabs() {
   }
   return (
     <Tabs
+      // Detail routes (sessions/[sessionId], services/[serviceId], …) are hidden
+      // tabs, not stacked screens. The tab router's default `firstRoute` back
+      // behavior sent every detail's back button to the first tab (Status)
+      // instead of the list it was opened from; `history` retraces the actual
+      // visit order so a session's back returns to Sessions.
+      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarButton: HapticTab,
