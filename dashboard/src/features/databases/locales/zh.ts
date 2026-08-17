@@ -1173,6 +1173,16 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "数据库详情",
     description: "Accessible label for the managed Postgres detail tabs",
   },
+  "databases.sectionNavigation": {
+    message: "数据库区块",
+    description:
+      "Accessible label for the database detail page section navigation",
+  },
+  "databases.dangerZoneTitle": {
+    message: "危险区域",
+    description:
+      "Database detail section-nav label for the destructive actions",
+  },
   "databases.overviewTab": {
     message: "概览",
     description: "Managed Postgres overview tab",
