@@ -274,7 +274,15 @@ func allowedProviderOperation(host, method, path, rawQuery, contentType string) 
 	case "api.openai.com":
 		return rawQuery == "" && (path == "/v1/responses" || path == "/v1/responses/compact" || path == "/v1/chat/completions")
 	case "api.anthropic.com":
-		return rawQuery == "" && (path == "/v1/messages" || path == "/v1/messages/count_tokens")
+		if path != "/v1/messages" && path != "/v1/messages/count_tokens" {
+			return false
+		}
+		// The Anthropic SDK's beta namespace — the one Claude Code actually uses —
+		// addresses the SAME inference operations as `POST /v1/messages?beta=true`
+		// (and the count_tokens sibling). Requiring an empty query here therefore
+		// refused every real Claude turn with "403 model operation is not allowed",
+		// so the flag is admitted explicitly rather than by widening the paths.
+		return allowedQuery(rawQuery, map[string]string{"beta": "true"})
 	case "generativelanguage.googleapis.com":
 		if !googleInferencePath.MatchString(path) {
 			return false
@@ -289,10 +297,34 @@ func allowedProviderOperation(host, method, path, rawQuery, contentType string) 
 		// Gemini SDKs commonly carry the placeholder in ?key=. It is never
 		// forwarded: upstreamURL strips it before the real key is injected.
 		query.Del("key")
-		return len(query) == 0 || (len(query) == 1 && len(query["alt"]) == 1 && query.Get("alt") == "sse")
+		return allowedQueryValues(query, map[string]string{"alt": "sse"})
 	default:
 		return false
 	}
+}
+
+// allowedQuery admits a query string only when every parameter it carries is
+// named in allowed and holds exactly that one value. An empty query always
+// passes; an unparseable one never does.
+func allowedQuery(rawQuery string, allowed map[string]string) bool {
+	if rawQuery == "" {
+		return true
+	}
+	query, err := url.ParseQuery(rawQuery)
+	if err != nil {
+		return false
+	}
+	return allowedQueryValues(query, allowed)
+}
+
+func allowedQueryValues(query url.Values, allowed map[string]string) bool {
+	for name, values := range query {
+		want, ok := allowed[name]
+		if !ok || len(values) != 1 || values[0] != want {
+			return false
+		}
+	}
+	return true
 }
 
 func jsonContentType(value string) bool {

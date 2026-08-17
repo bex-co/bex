@@ -121,6 +121,33 @@ export function sessionTitle(
   return view.agentConfig.task || view.id;
 }
 
+/**
+ * The reason text a failed session's callout should show, or null when the
+ * session carries nothing worth reading and the caller should use its generic
+ * copy instead.
+ *
+ * `failureReason` is the Completer's named reason and `status` the lifecycle
+ * line a background-provisioning failure stamps, but neither is guaranteed to
+ * be informative. Two values in particular are noise: a reason that merely
+ * restates the phase ("failed" — the callout's own title already says that),
+ * and the literal `[object Object]`, which sessions failed before the driver
+ * learned to describe a rejected JSON-RPC error (its SDK rejects with the raw
+ * protocol object, which `String()` coerced to exactly that). Both are dead
+ * text on a callout whose only job is to say what went wrong.
+ */
+export function agentSessionFailureReason(
+  view: Pick<AgentSessionView, "phase" | "failureReason" | "status">,
+): string | null {
+  for (const candidate of [view.failureReason, view.status]) {
+    const reason = candidate?.trim() ?? "";
+    if (reason === "" || reason === "[object Object]" || reason === view.phase) {
+      continue;
+    }
+    return reason;
+  }
+  return null;
+}
+
 /** The i18n keys a status phrase resolves to; the settled phases reuse the
  *  phase chip's own copy rather than restating it. */
 export type AgentSessionStatusPhraseKey =

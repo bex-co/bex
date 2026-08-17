@@ -10,6 +10,7 @@ import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
 import { agentSessionErrorMessage } from "@/features/agent-sessions/lib/errors";
+import { agentSessionFailureReason } from "@/features/agent-sessions/lib/mapper";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 
 export interface FailureCalloutProps {
@@ -22,7 +23,8 @@ export interface FailureCalloutProps {
  * The inline failure callout for a `failed` session (w2/m64). It surfaces the
  * recorded reason — `failureReason` when the Completer named one, else the
  * lifecycle `status` a background-provisioning failure stamps ("sandbox create
- * failed"), else a generic fallback so the callout is never empty — and offers a
+ * failed"), else a generic fallback so the callout is never empty or filled with
+ * noise (see `agentSessionFailureReason`) — and offers a
  * one-click **Retry** that re-runs the session's original task through the steer
  * (redispatch) mutation. Retry rides the same fast, accept-then-provision path,
  * so the button releases as soon as the new turn is accepted; the header refetch
@@ -36,8 +38,7 @@ export function FailureCallout({ session, onRetried }: FailureCalloutProps) {
   if (session.phase !== "failed") return null;
 
   const reason =
-    session.failureReason ||
-    session.status ||
+    agentSessionFailureReason(session) ??
     t("agentSessions.failureReasonFallback");
 
   async function handleRetry() {

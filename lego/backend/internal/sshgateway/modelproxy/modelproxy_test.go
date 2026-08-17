@@ -294,6 +294,48 @@ func TestProxyRejectsProviderControlPlaneOperations(t *testing.T) {
 	}
 }
 
+// Claude Code reaches the very same inference operations through the Anthropic
+// SDK's beta namespace, which addresses them as `?beta=true`. Refusing a
+// non-empty query therefore 403'd every real Claude turn ("403 model operation
+// is not allowed" in the agent's own log) while the operation itself was
+// allowed — the whole point of the boundary is WHICH operation, not the flag.
+func TestProxyAllowsAnthropicBetaNamespaceInferenceCalls(t *testing.T) {
+	for _, subpath := range []string{
+		"/v1/messages?beta=true",
+		"/v1/messages/count_tokens?beta=true",
+	} {
+		proxy, capture, _ := harness(t, fakePods{pod: sandboxPod("ags-one")}, liveSession("https://api.anthropic.com/v1"), "sk-ant-api03-REAL")
+		resp := request(t, proxy, "ags-one", subpath, "X-Api-Key", "placeholder-inside-sandbox")
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("%s status = %d, want 200", subpath, resp.StatusCode)
+		}
+		if capture.last == nil || capture.last.URL.RawQuery != "beta=true" {
+			t.Fatalf("%s: the beta flag must reach the vendor verbatim; got %v", subpath, capture.last)
+		}
+	}
+}
+
+// Admitting the beta flag must not admit arbitrary query parameters: only the
+// exact name/value pairs each provider's inference operations legitimately use.
+func TestProxyRejectsUnknownAnthropicQueryParameters(t *testing.T) {
+	proxy, capture, _ := harness(t, fakePods{pod: sandboxPod("ags-one")}, liveSession("https://api.anthropic.com/v1"), "sk-ant-api03-REAL")
+	for _, subpath := range []string{
+		"/v1/messages?beta=false",
+		"/v1/messages?beta=true&redirect=https%3A%2F%2Fevil.example",
+		"/v1/messages?beta=true&beta=true",
+	} {
+		resp := request(t, proxy, "ags-one", subpath, "X-Api-Key", "placeholder-inside-sandbox")
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusForbidden {
+			t.Fatalf("%s status = %d, want 403", subpath, resp.StatusCode)
+		}
+	}
+	if capture.last != nil {
+		t.Fatal("a refused provider operation reached the upstream")
+	}
+}
+
 func TestProxyRejectsOversizedRequestBeforePodOrCredentialLookup(t *testing.T) {
 	proxy, capture, st := harness(t, fakePods{pod: sandboxPod("ags-one")}, liveSession("https://api.openai.com/v1"), "sk-proj-REAL")
 	base, err := agentsession.ModelProxyURL(proxy.URL, "tea-a-sandbox", "ags-one")
