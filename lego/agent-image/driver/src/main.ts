@@ -18,6 +18,7 @@
 import { createCredentialManager } from "./credentials.js";
 import { loadConfig } from "./config.js";
 import { ensureRepo, restoreWorkspace } from "./delivery.js";
+import { describeError } from "./errors.js";
 import { markTurnFailed, runHeadlessTurn } from "./session.js";
 import { startDriverServer } from "./server.js";
 import { UIMessageStreamHub } from "./stream-hub.js";
@@ -65,9 +66,7 @@ async function main(): Promise<void> {
     // Release the single-flight guard on any error so the server can accept
     // subsequent turns (codex #9).
     listener.setTurnInFlight(false);
-    console.error(
-      credentials.redact(error instanceof Error ? error.message : error),
-    );
+    console.error(credentials.redact(describeError(error)));
     // Guarantee a `failed` status file even when the failure preceded the turn
     // (e.g. the setup clone) — runHeadlessTurn already wrote one on a turn error,
     // so this is idempotent. Scrub the model credential from the workspace now,

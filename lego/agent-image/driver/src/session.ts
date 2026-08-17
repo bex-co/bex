@@ -20,6 +20,7 @@ import { createUIMessageStream } from "ai";
 import { createSessionProvider, type SessionProvider } from "./acp.js";
 import { createUpdateMapper } from "./acp-map.js";
 import { deliverBranch, extractEvidence, type DeliveryResult, type EvidenceResult } from "./delivery.js";
+import { describeError } from "./errors.js";
 import type { AgentDriverConfig } from "./config.js";
 import type { CredentialManager } from "./credentials.js";
 import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
@@ -64,7 +65,7 @@ export async function markTurnFailed(
 ): Promise<void> {
   await writeStatus(config.statusPath, {
     state: "failed",
-    error: credentialManager.redact(error instanceof Error ? error.message : String(error)),
+    error: credentialManager.redact(describeError(error)),
   });
 }
 
@@ -192,8 +193,7 @@ export async function runHeadlessTurn(
             throw error; // also surfaces an error chunk to attached clients
           }
         },
-        onError: (error) =>
-          credentialManager.redact(error instanceof Error ? error.message : String(error)),
+        onError: (error) => credentialManager.redact(describeError(error)),
       });
       for await (const chunk of stream) {
         const sanitized = publish(chunk as UIMessagePart);
@@ -236,9 +236,7 @@ export async function runHeadlessTurn(
     if (closeHub) hub.close();
     await writeStatus(config.statusPath, {
       state: "failed",
-      error: credentialManager.redact(
-        error instanceof Error ? error.message : String(error),
-      ),
+      error: credentialManager.redact(describeError(error)),
     });
     throw error;
   } finally {

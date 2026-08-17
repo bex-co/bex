@@ -76,6 +76,26 @@ describe("FailureCallout", () => {
     ).toBeInTheDocument();
   });
 
+  it("falls back to generic copy rather than showing an uninformative reason", () => {
+    // Sessions that failed before the driver learned to describe a rejected
+    // JSON-RPC error stored the literal "[object Object]"; `status` then only
+    // restates the phase. Neither belongs under a heading that already reads
+    // "Session failed".
+    render(
+      <FailureCallout
+        session={view("failed", {
+          failureReason: "[object Object]",
+          status: "failed",
+        })}
+      />,
+    );
+    expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
+    expect(screen.queryByText("failed")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("The session failed to start."),
+    ).toBeInTheDocument();
+  });
+
   it("retries by re-running the original task through the steer mutation", async () => {
     const onRetried = vi.fn();
     const user = userEvent.setup();

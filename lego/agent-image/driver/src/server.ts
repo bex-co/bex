@@ -17,6 +17,7 @@
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import type { AgentDriverConfig } from "./config.js";
 import type { CredentialManager } from "./credentials.js";
+import { describeError } from "./errors.js";
 import { DriverGrantVerifier } from "./grant.js";
 import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
 
@@ -153,7 +154,7 @@ export async function startDriverServer(
           if (!response.headersSent) {
             response.writeHead(500, { "content-type": "application/json" });
             response.end(
-              `${JSON.stringify({ error: credentialManager.redact(error instanceof Error ? error.message : String(error)) })}\n`,
+              `${JSON.stringify({ error: credentialManager.redact(describeError(error)) })}\n`,
             );
           } else {
             response.end("data: [DONE]\n\n");
@@ -179,7 +180,7 @@ export async function startDriverServer(
         })
         .catch((error) => {
           response.writeHead(500, { "content-type": "application/json" });
-          response.end(`${JSON.stringify({ error: error instanceof Error ? error.message : String(error) })}\n`);
+          response.end(`${JSON.stringify({ error: describeError(error) })}\n`);
         });
       return;
     }
