@@ -5,6 +5,7 @@ import { DeployLogPanel } from "../deploy-log-panel";
 import type { UseDeployLogsResult } from "../../hooks/use-deploy-logs";
 import type { LogLine } from "@/features/logs/types";
 import { needsAnsiParse, parseAnsi } from "@/features/logs/lib/ansi";
+import { setupVirtualGeometry } from "@/test/virtual-geometry";
 
 const logState: UseDeployLogsResult = {
   lines: [],
@@ -17,6 +18,10 @@ const logState: UseDeployLogsResult = {
 vi.mock("../../hooks/use-deploy-logs", () => ({
   useDeployLogs: () => logState,
 }));
+
+// The panel embeds the virtualized LogLineList (w9/m83): give jsdom the layout
+// geometry the virtualizer needs, or the rendered rows never mount.
+setupVirtualGeometry();
 
 beforeEach(() => {
   logState.lines = [];
