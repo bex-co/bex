@@ -263,18 +263,28 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "no deadline reported",
     description: "Fallback when a malformed grace state has no deadline",
   },
-  "usage.billingTaxUnconfigured": {
-    message:
-      "Tax is not configured. Collection stays off until an operator confirms a canonical product tax code and an active test registration.",
-    description: "Fail-closed tax setup explanation",
+  "usage.billingOff": {
+    message: "Off",
+    description:
+      "Neutral status for a deliberately disabled billing capability (e.g. tax not activated)",
   },
   "usage.billingAddPayment": {
-    message: "Add test payment method",
-    description: "Button opening setup-mode Stripe Checkout",
+    message: "Add payment method",
+    description: "Button opening setup-mode Stripe Checkout (live mode)",
   },
   "usage.billingUpdatePayment": {
+    message: "Update payment method",
+    description: "Button reopening setup-mode Stripe Checkout (live mode)",
+  },
+  "usage.billingAddPaymentTest": {
+    message: "Add test payment method",
+    description:
+      "Button opening setup-mode Stripe Checkout when Stripe is in test mode",
+  },
+  "usage.billingUpdatePaymentTest": {
     message: "Update test payment method",
-    description: "Button reopening setup-mode Stripe Checkout",
+    description:
+      "Button reopening setup-mode Stripe Checkout when Stripe is in test mode",
   },
   "usage.billingOpenPortal": {
     message: "Open billing portal",

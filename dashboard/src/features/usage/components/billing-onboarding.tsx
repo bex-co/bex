@@ -40,18 +40,38 @@ interface BillingOnboardingViewProps {
   onPortal: () => void;
 }
 
-function StatusRow({ label, ready }: { label: string; ready: boolean }) {
+function StatusRow({
+  label,
+  ready,
+  off = false,
+}: {
+  label: string;
+  ready: boolean;
+  off?: boolean;
+}) {
   const { t } = useTranslations();
+  // `off` marks a deliberately disabled capability (e.g. the operator has not
+  // activated Stripe Tax): a neutral state, not a pending action.
+  const showOff = !ready && off;
   return (
     <div className="flex items-center justify-between gap-4 py-1.5 text-sm">
       <span className="text-muted-foreground">{label}</span>
       <span className="flex items-center gap-1.5 font-medium">
         {ready ? (
           <CircleCheck aria-hidden="true" className="size-4 text-emerald-600" />
+        ) : showOff ? (
+          <CircleDashed
+            aria-hidden="true"
+            className="size-4 text-muted-foreground"
+          />
         ) : (
           <CircleDashed aria-hidden="true" className="size-4 text-amber-600" />
         )}
-        {ready ? t("usage.billingReady") : t("usage.billingActionNeeded")}
+        {ready
+          ? t("usage.billingReady")
+          : showOff
+            ? t("usage.billingOff")
+            : t("usage.billingActionNeeded")}
       </span>
     </div>
   );
@@ -134,6 +154,7 @@ export function BillingOnboardingView({
               <StatusRow
                 label={t("usage.billingTaxStatus")}
                 ready={readiness.tax.enabled}
+                off={!readiness.tax.configured}
               />
               <StatusRow
                 label={t("usage.billingLifecycleStatus")}
@@ -141,19 +162,19 @@ export function BillingOnboardingView({
               />
             </div>
             <LifecycleAlert readiness={readiness} />
-            {!readiness.tax.configured && (
-              <Alert>
-                <TriangleAlert aria-hidden="true" />
-                <AlertDescription>
-                  {t("usage.billingTaxUnconfigured")}
-                </AlertDescription>
-              </Alert>
-            )}
             <div className="flex flex-wrap gap-2">
               <Button loading={checkoutBusy} onClick={onCheckout}>
                 {readiness.paymentMethodReady
-                  ? t("usage.billingUpdatePayment")
-                  : t("usage.billingAddPayment")}
+                  ? t(
+                      readiness.mode === "test"
+                        ? "usage.billingUpdatePaymentTest"
+                        : "usage.billingUpdatePayment",
+                    )
+                  : t(
+                      readiness.mode === "test"
+                        ? "usage.billingAddPaymentTest"
+                        : "usage.billingAddPayment",
+                    )}
               </Button>
               <Button
                 variant="outline"
