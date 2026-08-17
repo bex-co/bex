@@ -10,13 +10,13 @@ import {
 import { SidebarProvider } from "@/common/components/ui/sidebar.tsx";
 import { DashboardSidebar } from "../dashboard-sidebar";
 
-function renderAt(pathname: string) {
+function renderAt(pathname: string, defaultOpen = true) {
   const rootRoute = createRootRoute();
   const route = createRoute({
     getParentRoute: () => rootRoute,
     path: pathname,
     component: () => (
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={defaultOpen}>
         <DashboardSidebar />
       </SidebarProvider>
     ),
@@ -68,5 +68,17 @@ describe("DashboardSidebar (w1/m45 — Render's nav grouping)", () => {
       .closest('[data-slot="sidebar-group"]') as HTMLElement;
     expect(within(workspace).getByText("Usage")).toBeInTheDocument();
     expect(within(workspace).getByText("Settings")).toBeInTheDocument();
+  });
+
+  it("keeps collapsed group labels from intercepting the preceding icon links", async () => {
+    renderAt("/", false);
+
+    const labels = await screen.findAllByText(/^(Integrations|Workspace)$/);
+    expect(labels).toHaveLength(2);
+    for (const label of labels) {
+      expect(label).toHaveClass(
+        "group-data-[collapsible=icon]:pointer-events-none",
+      );
+    }
   });
 });
