@@ -173,7 +173,7 @@ export function KeyValueDetailPage() {
               <section id="metrics" className="scroll-mt-6">
                 <DatastoreMetricsPanel
                   kind="keyvalue"
-                  resource={keyValue.name}
+                  resource={keyValue.id}
                 />
               </section>
               <section id="danger-zone" className="scroll-mt-6">

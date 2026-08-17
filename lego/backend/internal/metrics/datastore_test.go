@@ -246,6 +246,58 @@ func TestReplicationLagUnavailableWhenHAButNoSource(t *testing.T) {
 	}
 }
 
+// --- w5/m71: matchers derive from the resolved CR's metadata.name ---
+
+// The datastore-metrics identifier contract: `resource` is the CR name (the
+// typed id), and every Prometheus matcher is built from the authorized CR's
+// metadata.name — never from a display name or a raw input the finder didn't
+// resolve. These tests pin both halves: an id-named CR yields id-derived
+// matchers, and a display-name input fails closed (an explicit error, not the
+// silent empty series the dashboard's empty charts hid — w5/044).
+func TestDatastoreMatchersUseResolvedCRName(t *testing.T) {
+	kv := sampleKeyValue("red-cache")
+	kv.Spec.Name = "sessions-cache" // display name must never reach a matcher
+	var gotDisk DiskUsageRequest
+	var gotStats KeyValueStatsRequest
+	svc := newService(nil, nil, kv)
+	svc.DiskUsage = func(_ context.Context, req DiskUsageRequest) ([]MetricSeries, error) {
+		gotDisk = req
+		return nil, nil
+	}
+	svc.KeyValueStats = func(_ context.Context, req KeyValueStatsRequest) ([]MetricSeries, error) {
+		gotStats = req
+		return nil, nil
+	}
+
+	if _, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{Kind: DatastoreKeyValue, Resource: "red-cache", Metric: MetricDisk}); err != nil {
+		t.Fatalf("disk by id: %v", err)
+	}
+	if gotDisk.Resource != "red-cache" || gotDisk.PVCPattern != `^data-red-cache-\d+$` {
+		t.Errorf("disk request = %+v, want resource red-cache + id-derived pvc pattern", gotDisk)
+	}
+	if _, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{Kind: DatastoreKeyValue, Resource: "red-cache", Metric: MetricKVMemory}); err != nil {
+		t.Fatalf("kv_memory by id: %v", err)
+	}
+	if gotStats.Resource != "red-cache" {
+		t.Errorf("kv stats request resource = %q, want the CR name red-cache", gotStats.Resource)
+	}
+}
+
+func TestDatastoreDisplayNameFailsClosed(t *testing.T) {
+	kv := sampleKeyValue("red-cache")
+	kv.Spec.Name = "sessions-cache"
+	svc := newService(nil, nil, kv)
+	svc.DiskUsage = func(context.Context, DiskUsageRequest) ([]MetricSeries, error) {
+		t.Fatal("a display-name input must never reach a source — fail closed before querying")
+		return nil, nil
+	}
+	// The original dashboard bug (w5/044) sent Spec.Name here; it must be an
+	// explicit lookup error, not silently-empty series.
+	if _, err := svc.DatastoreMetrics(context.Background(), DatastoreMetricQuery{Kind: DatastoreKeyValue, Resource: "sessions-cache", Metric: MetricDisk}); err == nil {
+		t.Error("display-name resource should error (not empty series)")
+	}
+}
+
 // --- REST fragment ---
 
 func TestRESTDatastoreMetrics(t *testing.T) {

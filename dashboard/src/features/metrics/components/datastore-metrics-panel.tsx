@@ -32,7 +32,7 @@ function toLineSeries(series: ChartSeries[]): LineSeriesInput[] {
 
 interface DatastoreMetricsPanelProps {
   kind: DatastoreKind;
-  /** The Database or KeyValue name. */
+  /** The Database or KeyValue typed id (`dpg-…`/`red-…`) — bex-api resolves it as the CR name; never the display name. */
   resource: string;
   /**
    * Gates the replication-lag chart: omitted for a non-HA instance (no standby

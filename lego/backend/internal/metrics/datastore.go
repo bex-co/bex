@@ -177,6 +177,12 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 	// migrated datastore returns an empty series rather than an error — the same
 	// silent-empty failure the App-side metrics path already had to fix.
 	namespace := s.Namespace
+	// The same silent-empty class applies to the RESOURCE half of the matchers
+	// (w5/m71): the caller's raw input only AUTHORIZES the read — every matcher
+	// below is built from the resolved CR's metadata.name, so the identity the
+	// query authorizes is the identity it measures. `var` (not := q.Resource)
+	// keeps that structural: a branch that forgets the assignment measures "".
+	var resource string
 	switch q.Kind {
 	case DatastoreDatabase:
 		db, err := s.AuthorizeDatabase(ctx, core.RelCanView, q.Resource)
@@ -184,6 +190,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			return nil, err
 		}
 		namespace = db.Namespace
+		resource = db.Name
 		isHA = db.Status.HighAvailabilityEnabled
 		if q.Metric == MetricKVMemory || q.Metric == MetricKVConnections {
 			return nil, fmt.Errorf("metric %q is key-value-only, not valid for a database resource", q.Metric)
@@ -194,6 +201,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			return nil, err
 		}
 		namespace = kv.Namespace
+		resource = kv.Name
 		if q.Metric == MetricDBConnections || q.Metric == MetricReplicationLag {
 			return nil, fmt.Errorf("metric %q is Postgres-only, not valid for a key-value resource", q.Metric)
 		}
@@ -219,8 +227,8 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		}
 		return s.DiskUsage(ctx, DiskUsageRequest{
 			Namespace:  namespace,
-			Resource:   q.Resource,
-			PVCPattern: pvcPattern(q.Kind, q.Resource),
+			Resource:   resource,
+			PVCPattern: pvcPattern(q.Kind, resource),
 			Metric:     q.Metric,
 			Start:      q.Start,
 			End:        q.End,
@@ -231,7 +239,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			return nil, core.ErrMetricsUnavailable
 		}
 		return s.DBConnections(ctx, DBConnectionsRequest{
-			Namespace: namespace, Cluster: q.Resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
+			Namespace: namespace, Cluster: resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
 	case MetricReplicationLag:
 		// Gated on HighAvailabilityEnabled: a non-HA instance has no standby, and
@@ -245,7 +253,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			return nil, core.ErrMetricsUnavailable
 		}
 		return s.ReplicationLag(ctx, ReplicationLagRequest{
-			Namespace: namespace, Cluster: q.Resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
+			Namespace: namespace, Cluster: resource, Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
 	case MetricKVMemory, MetricKVConnections:
 		if s.KeyValueStats == nil {
@@ -256,7 +264,7 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 			dimension = "connections"
 		}
 		return s.KeyValueStats(ctx, KeyValueStatsRequest{
-			Namespace: namespace, Resource: q.Resource, Dimension: dimension,
+			Namespace: namespace, Resource: resource, Dimension: dimension,
 			Start: q.Start, End: q.End, Resolution: q.Resolution,
 		})
 	default:

@@ -52,14 +52,21 @@ vi.mock("@/features/keyvalue/hooks/use-key-value-networking", () => ({
 // DatastoreMetricsPanel (w3/m10) reads via Apollo's useQuery directly, which
 // needs an ApolloProvider this route's test tree doesn't set up (no other
 // panel here touches Apollo) — mocked at the hook boundary like every other
-// panel's data hook above.
+// panel's data hook above. Calls are recorded so a test can assert the panel
+// receives the KeyValue's typed id (w5/m71: bex-api resolves
+// datastoreMetrics.query.resource as the CR name, and CR names are the ids —
+// passing the display name 404s into silent empty charts).
+const datastoreMetricsCalls: { kind: string; resource: string }[] = [];
 vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
-  useDatastoreMetrics: () => ({
-    series: [],
-    loading: false,
-    unavailable: false,
-    error: undefined,
-  }),
+  useDatastoreMetrics: (kind: string, resource: string) => {
+    datastoreMetricsCalls.push({ kind, resource });
+    return {
+      series: [],
+      loading: false,
+      unavailable: false,
+      error: undefined,
+    };
+  },
 }));
 
 // KeyValuePlanSection (m16) calls useKeyValueInstanceTypes (Apollo) and
@@ -137,6 +144,7 @@ beforeEach(() => {
   keyValueState.error = undefined;
   lifecycleRun.mockReset();
   reveal.mockReset();
+  datastoreMetricsCalls.length = 0;
 });
 
 describe("KeyValueDetailPage", () => {
@@ -219,5 +227,19 @@ describe("KeyValueDetailPage", () => {
 
     await screen.findByRole("heading", { name: "sessions-cache" });
     expect(screen.queryByText("Region")).not.toBeInTheDocument();
+  });
+
+  it("feeds the metrics panel the typed id, not the display name (w5/m71)", async () => {
+    // bex-api resolves datastoreMetrics.query.resource as the KeyValue CR
+    // name, and CR names are the typed ids — a display name 404s into charts
+    // that silently render "No data in range".
+    keyValueState.keyValue = kv({ id: "red-sessions", name: "sessions-cache" });
+    renderPage();
+
+    await screen.findByRole("heading", { name: "sessions-cache" });
+    expect(datastoreMetricsCalls.length).toBeGreaterThan(0);
+    for (const call of datastoreMetricsCalls) {
+      expect(call).toEqual({ kind: "keyvalue", resource: "red-sessions" });
+    }
   });
 });
