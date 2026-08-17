@@ -68,3 +68,16 @@ func JobFailureMessage(j *batchv1.Job, fallback string) string {
 	}
 	return fallback
 }
+
+// JobFailedReason returns the JobFailed condition's Reason (empty when the Job
+// has not failed). It lets a caller distinguish an activeDeadlineSeconds reap
+// ("DeadlineExceeded") from a tenant/infra build fault so the two are metered
+// and surfaced differently (ADR060 §D1a/§D5).
+func JobFailedReason(j *batchv1.Job) string {
+	for _, c := range j.Status.Conditions {
+		if c.Type == batchv1.JobFailed && c.Status == corev1.ConditionTrue {
+			return c.Reason
+		}
+	}
+	return ""
+}

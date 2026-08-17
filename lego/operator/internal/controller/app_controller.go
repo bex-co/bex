@@ -482,6 +482,14 @@ func (r *AppReconciler) convergeRegistryCredentials(ctx context.Context, app *ap
 // already deleted: preserve the last healthy release (if any) and acknowledge
 // the current App generation without ever dispatching the canceled build again.
 func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alpha1.App, port int) (ctrl.Result, error) {
+	// Meter the user Cancel once. Reconciliation is level-triggered, so gate on
+	// the first pass that processes this generation (ObservedGeneration is still
+	// the previous release's until this pass acknowledges it below / in dispatch).
+	// This keeps the canceled series a true count of user cancels — the tripwire
+	// that must stay flat under supersede churn (ADR060 §D5).
+	if app.Status.ObservedGeneration != app.Generation {
+		recordBuildOutcome(buildOutcomeCanceled)
+	}
 	if app.Status.Image != "" {
 		return r.dispatchRuntime(ctx, app, app.Status.Image, port)
 	}
@@ -543,12 +551,25 @@ func (r *AppReconciler) dispatchRuntime(ctx context.Context, app *appv1alpha1.Ap
 	return r.reconcileOpenSandbox(ctx, app, image, port)
 }
 
+// buildObserveRequeue is how often a reconcile re-reads an in-flight build's
+// Job/Image while it runs — the non-blocking cadence internal/predeploy uses for
+// pre-deploy Jobs (ADR060 §D1). A build takes minutes, so a few-second poll is
+// cheap and frees the reconcile worker between reads.
+const buildObserveRequeue = 5 * time.Second
+
 // buildFromSource resolves the image for a repo-backed App by dispatching an
-// in-cluster build and waiting for it. halted=true means this reconcile pass
-// must stop and return (res, err): the credential gate, the per-workspace
-// build cap, an interrupted wait, or a build failure has already recorded its
-// status. Pure extraction from Reconcile — the pinned image is its only
-// output.
+// in-cluster build and OBSERVING it without blocking (ADR060 §D1): one
+// create-if-absent + one read per reconcile, requeuing while the build runs.
+// halted=true means this reconcile pass must stop and return (res, err): the
+// credential gate, the per-workspace cap, a still-running build (requeue), or a
+// build failure has already recorded its status. The image is the only output on
+// success.
+//
+// Supersede semantics (ADR060 §D1a): this never cancels a running build. The
+// generation whose build is in flight is pinned by prepareAppReleaseDecision
+// until it resolves, so releaseBuildRevision here is always the running build's
+// revision — a newer push is coalesced into the pending slot and picked up once
+// this build completes and the release advances.
 func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.App) (string, ctrl.Result, bool, error) {
 	halt := func(res ctrl.Result, err error) (string, ctrl.Result, bool, error) {
 		return "", res, true, err
@@ -582,53 +603,35 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		}
 	}
 
-	// Newest-wins per App (w7/m9): cancel any active build Job for this service
-	// so a push-spam burst never runs more than one build at a time per App,
-	// matching Render's "Render cancels any in-progress build for the same service".
 	buildClient := r.buildPlaneClient()
-	if err := build.CancelActiveBuilds(ctx, app.Name, string(app.UID), buildNs, buildClient); err != nil {
-		return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("cancelling superseded build: %w", err)))
-	}
 
 	// Per-workspace concurrent-build cap (w7/m9): hold off when the workspace is
 	// at its limit — requeue until a slot opens rather than starting another.
-	// Byte-identical when MaxConcurrentBuilds == 0 (unset) or workspace absent.
+	// The cap gates only a NEW dispatch: once builds are observed across many
+	// reconciles (§D1), an App already building must never be stalled by the cap
+	// (it would deadlock on its own build), so skip the gate when this App already
+	// has an active build. Byte-identical when MaxConcurrentBuilds == 0 (unset) or
+	// workspace absent.
 	if r.MaxConcurrentBuilds > 0 {
 		if workspace := app.Labels[labelWorkspace]; workspace != "" {
-			active, err := build.ActiveWorkspaceBuilds(ctx, workspace, buildNs, buildClient)
+			mine, err := build.ActiveAppBuilds(ctx, app.Name, string(app.UID), buildNs, buildClient)
 			if err != nil {
-				return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("counting workspace builds: %w", err)))
+				return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("counting app builds: %w", err)))
 			}
-			if active >= r.MaxConcurrentBuilds {
-				r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
-					fmt.Sprintf("workspace has %d/%d concurrent builds active; waiting for a slot", active, r.MaxConcurrentBuilds))
-				return halt(ctrl.Result{RequeueAfter: 30 * time.Second}, nil)
+			if mine == 0 {
+				active, err := build.ActiveWorkspaceBuilds(ctx, workspace, buildNs, buildClient)
+				if err != nil {
+					return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("counting workspace builds: %w", err)))
+				}
+				if active >= r.MaxConcurrentBuilds {
+					r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
+						fmt.Sprintf("workspace has %d/%d concurrent builds active; waiting for a slot", active, r.MaxConcurrentBuilds))
+					return halt(ctrl.Result{RequeueAfter: 30 * time.Second}, nil)
+				}
 			}
 		}
 	}
 
-	// Open at BuildQueued, not Building: at this instant the Job does not
-	// exist yet, so nothing is building. buildWaitReporter flips it to
-	// Building the moment a pod is actually placed on a node, and the
-	// control plane's budget restarts on that edge — which is the whole
-	// point, since a build that waits 20 minutes for capacity must not
-	// spend that wait from the time allowed for the build itself.
-	//
-	// The reason must be honest from the FIRST status the control plane
-	// samples. Its deploy row may only enter queued from created, so an
-	// optimistic "Building" here would let a poll landing in the gap
-	// between dispatch and the first wait callback lock the row into
-	// build_in_progress, and the queued→building edge that resets the clock
-	// would never happen.
-	//
-	// Buildpack (kpack) is exempt: build.Build returns down a different path
-	// that never reports waiting, so opening it queued would strand it there
-	// until the gate fired. It keeps the previous immediate Building.
-	buildOpenReason, buildOpenMessage := reasonBuildQueued, "waiting for build capacity: dispatching build"
-	if builder == build.BuilderBuildpack {
-		buildOpenReason, buildOpenMessage = reasonBuilding, "Building image from "+app.Spec.Repo
-	}
-	r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, buildOpenReason, buildOpenMessage)
 	// The clone Secret (docs/ADR026-github-integration.md) that bex-api wrote lives
 	// in the App's namespace, but the build Job runs in buildNs
 	// (BEX_BUILD_NAMESPACE). When they differ, relocate it so BuildKit can read
@@ -648,7 +651,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	if err != nil {
 		return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("preparing Docker-build registry credential: %w", err)))
 	}
-	res, err := build.Build(ctx, build.Options{
+	obs, err := build.EnsureBuild(ctx, build.Options{
 		Repo: app.Spec.Repo, Ref: ref, RootDir: app.Spec.RootDir,
 		DockerfilePath: app.Spec.DockerfilePath, DockerContext: app.Spec.DockerContext,
 		Name: app.Name, AppUID: string(app.UID),
@@ -671,50 +674,35 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		PullSecret:       buildRegistryPullSecret,
 		RegistryConfig:   usesBuildRegistryConfig(app, builder),
 		Client:           buildClient,
-		OnWaiting:        r.buildWaitReporter(ctx, app),
 	})
 	if err != nil {
-		if errors.Is(err, build.ErrAppDeleting) {
-			logf.FromContext(ctx).Info("build wait interrupted because App is deleting", "app", app.Name)
-			return halt(ctrl.Result{Requeue: true}, nil)
-		}
-		return halt(r.fail(ctx, app, "BuildFailed", err))
+		return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("dispatching build: %w", err)))
 	}
-	return r.pinBuiltImage(ctx, app, res.Image), ctrl.Result{}, false, nil
-}
-
-// buildWaitReporter returns the callback build.Build invokes while it waits,
-// which keeps the App's Ready reason honest about whether the build is QUEUED
-// (dispatched, but the scheduler has not placed a pod) or actually Building.
-//
-// This is what separates "waiting for capacity" from "building" for everyone
-// downstream. The control plane maps reason=BuildQueued to the deploy row's
-// queued status and reason=Building to build_in_progress, and its phase budgets
-// restart on each legal transition — so the queued→building edge hands the real
-// build its full build-gate window instead of whatever the queue left over.
-// Before this, a dispatched build reported Building immediately and a long wait
-// for a node was spent from the build's own budget: on 2026-08-11 a build sat
-// Pending 22 minutes and the control plane closed its deploy build_failed while
-// the build was still running and went on to succeed, leaving the deploy record
-// contradicting the revision actually serving.
-//
-// Writes only on a CHANGE of state. The wait loop polls every few seconds and a
-// build runs for minutes; re-stamping an unchanged reason each pass would be a
-// needless status write per poll, per building App.
-func (r *AppReconciler) buildWaitReporter(ctx context.Context, app *appv1alpha1.App) func(bool, string) {
-	last := ""
-	return func(queued bool, reason string) {
-		state := reasonBuilding
-		message := "Building image from " + app.Spec.Repo
-		if queued {
-			state = reasonBuildQueued
-			message = "waiting for build capacity: " + reason
+	switch obs.Phase {
+	case build.PhaseSucceeded:
+		recordBuildOutcome(buildOutcomeSucceeded)
+		recordBuildRunSeconds(obs.RunSeconds)
+		return r.pinBuiltImage(ctx, app, obs.Image), ctrl.Result{}, false, nil
+	case build.PhaseFailed:
+		recordBuildRunSeconds(obs.RunSeconds)
+		if obs.Timeout {
+			recordBuildOutcome(buildOutcomeTimeout)
+			return halt(r.fail(ctx, app, "BuildFailed",
+				fmt.Errorf("build exceeded its time limit: %s", obs.Message)))
 		}
-		if state == last {
-			return
-		}
-		last = state
-		r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, state, message)
+		recordBuildOutcome(buildOutcomeFailed)
+		return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("build failed: %s", obs.Message)))
+	case build.PhaseWaiting:
+		// Dispatched, but no pod placed yet — capacity wait. Report BuildQueued so
+		// the control plane's build budget restarts on the queued→building edge
+		// (a build that waits for a node must not spend that wait from its own
+		// budget; the 2026-08-11 misattribution incident, ADR034 §3).
+		r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
+			"waiting for build capacity: "+obs.Message)
+		return halt(ctrl.Result{RequeueAfter: buildObserveRequeue}, nil)
+	default: // build.PhaseBuilding — a pod is placed and compiling
+		r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuilding, "Building image from "+app.Spec.Repo)
+		return halt(ctrl.Result{RequeueAfter: buildObserveRequeue}, nil)
 	}
 }
 
@@ -3108,8 +3096,8 @@ func (r *AppReconciler) statusSettled(ctx context.Context, app *appv1alpha1.App)
 // setPhase stamps a transitional phase + Ready=False condition. The write is
 // skipped when the persisted phase and condition already match: a no-op pass
 // re-stamping an unchanged state would otherwise issue a status write per
-// reconcile, per App (the same diff-before-write discipline as
-// buildWaitReporter).
+// reconcile, per App (a diff-before-write discipline that matters now that the
+// build phase requeues every few seconds instead of blocking).
 func (r *AppReconciler) setPhase(ctx context.Context, app *appv1alpha1.App, p appv1alpha1.AppPhase, reason, msg string) {
 	samePhase := app.Status.Phase == p
 	app.Status.Phase = p

@@ -18,10 +18,8 @@ package build
 
 import (
 	"context"
-	"errors"
 	"strings"
 	"testing"
-	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -323,12 +321,15 @@ func completedJob(o Options, cond batchv1.JobConditionType) *batchv1.Job {
 func TestBuildReusesOwnedCompletedJobAndReturnsImage(t *testing.T) {
 	o := opts()
 	o.Client = fakeClient(completedJob(o, batchv1.JobComplete)) // pre-seeded, already Complete
-	res, err := Build(context.Background(), o)
+	obs, err := EnsureBuild(context.Background(), o)
 	if err != nil {
-		t.Fatalf("Build: %v", err)
+		t.Fatalf("EnsureBuild: %v", err)
 	}
-	if res.Image != "zot.bex-registry.svc:5000/hello:gen-7" {
-		t.Errorf("image = %q", res.Image)
+	if obs.Phase != PhaseSucceeded {
+		t.Fatalf("phase = %v, want PhaseSucceeded", obs.Phase)
+	}
+	if obs.Image != "zot.bex-registry.svc:5000/hello:gen-7" {
+		t.Errorf("image = %q", obs.Image)
 	}
 }
 
@@ -336,8 +337,8 @@ func TestBuildRequiresAppUID(t *testing.T) {
 	o := opts()
 	o.AppUID = ""
 	o.Client = fakeClient()
-	if _, err := Build(context.Background(), o); err == nil || !strings.Contains(err.Error(), "empty App UID") {
-		t.Fatalf("Build error = %v, want missing-identity rejection", err)
+	if _, err := EnsureBuild(context.Background(), o); err == nil || !strings.Contains(err.Error(), "empty App UID") {
+		t.Fatalf("EnsureBuild error = %v, want missing-identity rejection", err)
 	}
 }
 
@@ -347,8 +348,8 @@ func TestBuildRejectsExistingJobWithoutAppUID(t *testing.T) {
 	delete(job.Labels, "app.bex.co/app-uid")
 	o.Client = fakeClient(job)
 
-	if _, err := Build(context.Background(), o); err == nil || !strings.Contains(err.Error(), "different App lifetime") {
-		t.Fatalf("Build error = %v, want strict lifetime ownership rejection", err)
+	if _, err := EnsureBuild(context.Background(), o); err == nil || !strings.Contains(err.Error(), "different App lifetime") {
+		t.Fatalf("EnsureBuild error = %v, want strict lifetime ownership rejection", err)
 	}
 	var got batchv1.Job
 	if err := o.Client.Get(context.Background(), client.ObjectKeyFromObject(job), &got); err != nil {
@@ -362,54 +363,56 @@ func TestBuildRejectsExistingJobWithoutAppUID(t *testing.T) {
 func TestBuildReportsFailedJob(t *testing.T) {
 	o := opts()
 	o.Client = fakeClient(completedJob(o, batchv1.JobFailed))
-	if _, err := Build(context.Background(), o); err == nil || !strings.Contains(err.Error(), "failed") {
-		t.Fatalf("want a build-failed error, got %v", err)
+	obs, err := EnsureBuild(context.Background(), o)
+	if err != nil {
+		t.Fatalf("EnsureBuild: %v", err)
+	}
+	if obs.Phase != PhaseFailed {
+		t.Fatalf("phase = %v, want PhaseFailed", obs.Phase)
+	}
+	// A generic failure is not a timeout — the caller meters it as `failed`.
+	if obs.Timeout {
+		t.Error("a generic build failure must not be classified as a timeout")
 	}
 }
 
-func TestBuildCreatesJobWhenAbsent(t *testing.T) {
-	// No pre-seeded Job: Build creates it. With a fake client the Job never
-	// completes, so Build blocks in its wait loop — assert the Job got created,
-	// then cancel to end the (otherwise 20-min) wait.
+// TestBuildTimeoutClassification pins the timeout branch (ADR060 §D1a/§D5): a Job
+// failed via activeDeadlineSeconds reports Timeout=true so the caller meters it
+// as `timeout`, distinct from a tenant/infra `failed`.
+func TestBuildTimeoutClassification(t *testing.T) {
+	o := opts()
+	j := BuildJob(o, o.ImageRef())
+	j.Status.Conditions = []batchv1.JobCondition{{
+		Type: batchv1.JobFailed, Status: corev1.ConditionTrue,
+		Reason: "DeadlineExceeded", Message: "Job was active longer than specified deadline",
+	}}
+	o.Client = fakeClient(j)
+	obs, err := EnsureBuild(context.Background(), o)
+	if err != nil {
+		t.Fatalf("EnsureBuild: %v", err)
+	}
+	if obs.Phase != PhaseFailed || !obs.Timeout {
+		t.Fatalf("observation = %+v, want PhaseFailed with Timeout=true", obs)
+	}
+}
+
+func TestBuildCreatesJobWhenAbsentAndReportsNonTerminal(t *testing.T) {
+	// No pre-seeded Job: EnsureBuild creates it and returns immediately (ADR060
+	// §D1 non-blocking — no wait loop). The fresh Job has no pod, so it reports a
+	// non-terminal phase and the caller requeues.
 	o := opts()
 	o.Client = fakeClient()
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	go func() { _, _ = Build(ctx, o) }()
-
+	obs, err := EnsureBuild(context.Background(), o)
+	if err != nil {
+		t.Fatalf("EnsureBuild: %v", err)
+	}
+	if obs.Phase == PhaseSucceeded || obs.Phase == PhaseFailed {
+		t.Fatalf("phase = %v, want a non-terminal phase for a just-created build", obs.Phase)
+	}
+	var j batchv1.Job
 	key := client.ObjectKey{Namespace: o.Namespace, Name: JobName(o.Name, o.Revision)}
-	found := false
-	for range 200 {
-		var j batchv1.Job
-		if err := o.Client.Get(ctx, key, &j); err == nil {
-			found = true
-			break
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-	if !found {
-		t.Fatal("Build did not create the build Job")
-	}
-}
-
-func TestBuildStopsWaitingWhenOwningAppIsDeleting(t *testing.T) {
-	o := opts()
-	o.AppNamespace = "apps"
-	now := metav1.Now()
-	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
-		Name: o.Name, Namespace: o.AppNamespace, UID: "uid-current",
-		Finalizers: []string{"app.bex.co/finalizer"}, DeletionTimestamp: &now,
-	}}
-	o.AppUID = string(app.UID)
-	o.Client = fakeClient(app)
-
-	if _, err := Build(context.Background(), o); !errors.Is(err, ErrAppDeleting) {
-		t.Fatalf("Build error = %v, want ErrAppDeleting", err)
-	}
-	var job batchv1.Job
-	key := client.ObjectKey{Namespace: o.Namespace, Name: JobName(o.Name, o.Revision)}
-	if err := o.Client.Get(context.Background(), key, &job); err != nil {
-		t.Fatalf("build artifact must remain for finalizer inventory: %v", err)
+	if err := o.Client.Get(context.Background(), key, &j); err != nil {
+		t.Fatalf("EnsureBuild did not create the build Job: %v", err)
 	}
 }
 
@@ -658,12 +661,15 @@ func TestBuildpackImageShapeAndSuccess(t *testing.T) {
 
 	ready := kpackImageWithCondition(o, corev1.ConditionTrue, "BuildSuccess", "", "zot.local:5000/hello@sha256:abc")
 	o.Client = fakeClient(ready)
-	res, err := Build(context.Background(), o)
+	obs, err := EnsureBuild(context.Background(), o)
 	if err != nil {
-		t.Fatalf("Build: %v", err)
+		t.Fatalf("EnsureBuild: %v", err)
 	}
-	if res.Image != "zot.bex-registry.svc:5000/hello@sha256:abc" {
-		t.Errorf("resolved image = %q", res.Image)
+	if obs.Phase != PhaseSucceeded {
+		t.Fatalf("phase = %v, want PhaseSucceeded", obs.Phase)
+	}
+	if obs.Image != "zot.bex-registry.svc:5000/hello@sha256:abc" {
+		t.Errorf("resolved image = %q", obs.Image)
 	}
 	var job batchv1.Job
 	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: JobName(o.Name, o.Revision)}, &job); !apierrors.IsNotFound(err) {
@@ -691,59 +697,32 @@ func TestBuildpackFailureUsesBuildCondition(t *testing.T) {
 		"reason": "BuildpackDetectFailed", "message": "no buildpack groups passed detection",
 	}}}
 	o.Client = fakeClient(image, build)
-	if _, err := Build(context.Background(), o); err == nil || !strings.Contains(err.Error(), "BuildpackDetectFailed: no buildpack groups passed detection") {
-		t.Fatalf("failure = %v", err)
+	obs, err := EnsureBuild(context.Background(), o)
+	if err != nil {
+		t.Fatalf("EnsureBuild: %v", err)
+	}
+	if obs.Phase != PhaseFailed || !strings.Contains(obs.Message, "BuildpackDetectFailed: no buildpack groups passed detection") {
+		t.Fatalf("observation = %+v", obs)
 	}
 }
 
-func TestBuildpackCreatesImageWhenAbsent(t *testing.T) {
+func TestBuildpackCreatesImageWhenAbsentAndReportsNonTerminal(t *testing.T) {
+	// EnsureBuild creates the kpack Image and returns immediately (ADR060 §D1
+	// non-blocking); a fresh Image has no Ready condition, so it reports building.
 	o := opts()
 	o.Builder = BuilderBuildpack
 	o.Client = fakeClient()
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		_, _ = Build(ctx, o)
-	}()
-
-	key := client.ObjectKey{Namespace: o.Namespace, Name: kpackImageName(o)}
-	found := false
-	for range 200 {
-		image := newKpackImage()
-		if err := o.Client.Get(ctx, key, image); err == nil {
-			found = true
-			break
-		}
-		time.Sleep(5 * time.Millisecond)
+	obs, err := EnsureBuild(context.Background(), o)
+	if err != nil {
+		t.Fatalf("EnsureBuild: %v", err)
 	}
-	if !found {
-		t.Fatal("Build did not create the kpack Image")
-	}
-	cancel()
-	<-done
-}
-
-func TestBuildpackStopsWaitingWhenOwningAppIsDeleting(t *testing.T) {
-	o := opts()
-	o.Builder = BuilderBuildpack
-	o.AppNamespace = "apps"
-	now := metav1.Now()
-	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
-		Name: o.Name, Namespace: o.AppNamespace, UID: "uid-current",
-		Finalizers: []string{"app.bex.co/finalizer"}, DeletionTimestamp: &now,
-	}}
-	o.AppUID = string(app.UID)
-	o.Client = fakeClient(app)
-
-	if _, err := Build(context.Background(), o); !errors.Is(err, ErrAppDeleting) {
-		t.Fatalf("Build error = %v, want ErrAppDeleting", err)
+	if obs.Phase != PhaseBuilding {
+		t.Fatalf("phase = %v, want PhaseBuilding for a just-created kpack Image", obs.Phase)
 	}
 	image := newKpackImage()
 	key := client.ObjectKey{Namespace: o.Namespace, Name: kpackImageName(o)}
 	if err := o.Client.Get(context.Background(), key, image); err != nil {
-		t.Fatalf("kpack artifact must remain for finalizer inventory: %v", err)
+		t.Fatalf("EnsureBuild did not create the kpack Image: %v", err)
 	}
 }
 
@@ -820,7 +799,7 @@ func TestKpackCredentialObjectsRejectMismatchedIdentity(t *testing.T) {
 func TestBuildNilClient(t *testing.T) {
 	o2 := opts() // nil client
 	o2.Builder = BuilderDockerfile
-	if _, err := Build(context.Background(), o2); err == nil || !strings.Contains(err.Error(), "nil client") {
+	if _, err := EnsureBuild(context.Background(), o2); err == nil || !strings.Contains(err.Error(), "nil client") {
 		t.Errorf("nil client should error, got %v", err)
 	}
 }
@@ -847,9 +826,12 @@ func TestBuildJobWorkspaceLabel(t *testing.T) {
 	}
 }
 
-// TestCancelActiveBuilds pins w7/m9 newest-wins: active Jobs are deleted,
-// complete/failed Jobs are left untouched, and a not-found on delete is tolerated.
-func TestCancelActiveBuilds(t *testing.T) {
+// TestActiveAppBuilds pins the per-App active-build count that gates the
+// workspace cap without stalling an App's own in-flight build (ADR060 §D1a): a
+// running Job counts, a complete/failed one does not, and — the round-5 finding-5
+// cross-tenant guard — a same-named App in ANOTHER workspace (same build label,
+// different UID) is never counted.
+func TestActiveAppBuilds(t *testing.T) {
 	o := opts()
 	active := BuildJob(o, o.ImageRef()) // active: no conditions
 	active.Name = JobName(o.Name, "gen-5")
@@ -857,9 +839,8 @@ func TestCancelActiveBuilds(t *testing.T) {
 	done := completedJob(o, batchv1.JobComplete)
 	done.Name = JobName(o.Name, "gen-4")
 
-	// round-5 finding 5: a same-named App in ANOTHER workspace carries the same
-	// "app.bex.co/build" label value in the shared build namespace but a distinct
-	// UID. UID-scoped cancellation must leave that foreign Job untouched.
+	// A same-named App in ANOTHER workspace carries the same "app.bex.co/build"
+	// label value in the shared build namespace but a distinct UID.
 	foreign := BuildJob(o, o.ImageRef())
 	foreign.Name = JobName(o.Name, "gen-9")
 	foreign.Labels["app.bex.co/app-uid"] = "uid-foreign"
@@ -867,22 +848,12 @@ func TestCancelActiveBuilds(t *testing.T) {
 	cl := fakeClient(active, done, foreign)
 	ctx := context.Background()
 
-	if err := CancelActiveBuilds(ctx, o.Name, o.AppUID, o.Namespace, cl); err != nil {
-		t.Fatalf("CancelActiveBuilds: %v", err)
+	n, err := ActiveAppBuilds(ctx, o.Name, o.AppUID, o.Namespace, cl)
+	if err != nil {
+		t.Fatalf("ActiveAppBuilds: %v", err)
 	}
-
-	// Active Job deleted.
-	var j batchv1.Job
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: o.Namespace, Name: active.Name}, &j); err == nil {
-		t.Error("active build Job should have been deleted")
-	}
-	// Completed Job untouched.
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: o.Namespace, Name: done.Name}, &j); err != nil {
-		t.Errorf("completed build Job should not be deleted: %v", err)
-	}
-	// Foreign same-named App's Job (different UID) untouched — the cross-tenant guard.
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: o.Namespace, Name: foreign.Name}, &j); err != nil {
-		t.Errorf("foreign-workspace build Job (different UID) must not be deleted: %v", err)
+	if n != 1 {
+		t.Errorf("ActiveAppBuilds = %d, want 1 (only this App's one running build; the completed one and the foreign-UID one excluded)", n)
 	}
 }
 

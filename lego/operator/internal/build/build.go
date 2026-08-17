@@ -28,7 +28,6 @@ import (
 	"cmp"
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"path"
 	"strings"
@@ -42,7 +41,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Builder strategies (mirror App.spec.builder).
@@ -111,16 +109,6 @@ func mustSizeLimit(s string) *resource.Quantity {
 	q := resource.MustParse(s)
 	return &q
 }
-
-// pollInterval is how often Build re-reads the Job while waiting for it.
-const pollInterval = 3 * time.Second
-
-// ErrAppDeleting terminates a synchronous build wait when its owning App has
-// entered deletion (or is already gone). The build artifact is intentionally
-// left behind: the App finalizer inventories and removes it with the immutable
-// App UID, while the controller is freed to observe deletion immediately
-// instead of holding the reconcile worker for the full build timeout.
-var ErrAppDeleting = errors.New("build: owning App is deleting")
 
 const (
 	dockerConfigMount = "/docker-config"
@@ -221,28 +209,41 @@ type Options struct {
 	PullSecret string
 	// RegistryConfig makes buildkitd consume buildkitd.toml from PullSecret.
 	RegistryConfig bool
-	// OnWaiting, when set, is called on each poll of the wait loop with whether
-	// the build is still QUEUED — dispatched but with no pod yet placed on a
-	// node — plus the scheduler's own explanation.
-	//
-	// It exists because "we dispatched a Job" and "the build is running" are
-	// different facts, and only the second should start a build clock. A build
-	// requests 2 CPU + 7Gi and is therefore node-exclusive by design, so it can
-	// sit Pending for many minutes waiting for capacity. Charging that wait to
-	// the build's budget is what let a healthy build be reported failed
-	// (2026-08-11: 22 minutes Pending consumed most of the control plane's
-	// 35-minute build gate, which then closed the deploy while the build was
-	// still running and about to succeed).
-	//
-	// Mechanism only: this package reports the distinction and does not know
-	// what a caller does with it. The App controller maps it onto the
-	// BuildQueued/Building phase reasons the control plane already understands.
-	OnWaiting func(queued bool, reason string)
 }
 
-// Result is a successful build.
-type Result struct {
-	Image string // <registry>/<name>:<revision>
+// Phase is the observed lifecycle of a dispatched build (ADR060 §D1: the
+// operator observes builds non-blocking, one create + one read per reconcile,
+// mirroring internal/predeploy).
+type Phase int
+
+const (
+	// PhaseBuilding: the build is running — a pod is placed on a node (Dockerfile/
+	// native) or kpack reports it building. This is the "build clock is ticking"
+	// state.
+	PhaseBuilding Phase = iota
+	// PhaseWaiting: dispatched, but no pod has been placed on a node yet — waiting
+	// for capacity. A build requests 2 CPU + 7Gi and is node-exclusive by design,
+	// so it can sit Pending for many minutes; charging that wait to the build's own
+	// budget is what let a healthy build be reported failed (2026-08-11: 22 minutes
+	// Pending closed the deploy while the build was still running). The control
+	// plane maps this to the deploy row's queued status and restarts the build
+	// budget on the Waiting→Building edge.
+	PhaseWaiting
+	// PhaseSucceeded: terminal — Image is set.
+	PhaseSucceeded
+	// PhaseFailed: terminal — Message explains why; Timeout distinguishes an
+	// activeDeadlineSeconds reap from a tenant/infra build failure.
+	PhaseFailed
+)
+
+// Observation is the non-blocking result of EnsureBuild: the build's current
+// phase plus, when terminal, the resolved image or a failure message.
+type Observation struct {
+	Phase      Phase
+	Image      string  // set when Phase == PhaseSucceeded (<registry>/<name>:<revision>, or kpack's canonical digest)
+	Message    string  // failure detail (PhaseFailed) or capacity reason (PhaseWaiting)
+	Timeout    bool    // PhaseFailed via activeDeadlineSeconds — classify as timeout, not a user/infra fault
+	RunSeconds float64 // terminal build run duration from the Job's own status timestamps (0 = unknown / kpack)
 }
 
 // ImageRef is the deterministic image reference a build produces — the operator
@@ -272,23 +273,27 @@ func (o Options) KpackImageRef() string {
 	return fmt.Sprintf("%s/%s:%s", registry, o.Name, rev)
 }
 
-// Build dispatches the selected in-cluster builder and blocks until it returns
-// an immutable image reference or a useful failure. Re-invocation for one App
-// generation is idempotent because both mechanisms use the same deterministic
-// build name and reuse an existing Job/Image only after exact UID validation.
-func Build(ctx context.Context, o Options) (Result, error) {
+// EnsureBuild dispatches the selected in-cluster builder if it is not already
+// running and returns its current Observation without blocking — one create +
+// one read per call, the shape internal/predeploy uses (ADR060 §D1). The caller
+// requeues while the phase is non-terminal, so a reconcile worker is never
+// parked for the minutes a build takes and a newer generation's reconcile can
+// run promptly. Re-invocation for one App generation is idempotent: both
+// mechanisms use the same deterministic build name and adopt an existing
+// Job/Image only after exact UID validation.
+func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 	if o.Client == nil {
-		return Result{}, fmt.Errorf("build: nil client (in-cluster builds require a cluster client)")
+		return Observation{}, fmt.Errorf("build: nil client (in-cluster builds require a cluster client)")
 	}
 	if o.AppUID == "" {
-		return Result{}, fmt.Errorf("build: empty App UID")
+		return Observation{}, fmt.Errorf("build: empty App UID")
 	}
 	if o.Builder == BuilderBuildpack {
-		return buildpack(ctx, o)
+		return ensureBuildpack(ctx, o)
 	}
 	if o.Builder == BuilderNative {
 		if err := validateNativeOptions(o); err != nil {
-			return Result{}, err
+			return Observation{}, err
 		}
 	}
 
@@ -299,46 +304,44 @@ func Build(ctx context.Context, o Options) (Result, error) {
 
 	// Create the Job if it doesn't already exist (idempotent per revision).
 	if err := o.Client.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
-		return Result{}, fmt.Errorf("build: create job %s: %w", key.Name, err)
+		return Observation{}, fmt.Errorf("build: create job %s: %w", key.Name, err)
 	}
-	if deleting, err := appDeleting(ctx, o); err != nil {
-		return Result{}, err
-	} else if deleting {
-		return Result{}, ErrAppDeleting
+	var cur batchv1.Job
+	if err := o.Client.Get(ctx, key, &cur); err != nil {
+		return Observation{}, fmt.Errorf("build: get job %s: %w", key.Name, err)
 	}
+	if err := identity.CheckOwner(&cur); err != nil {
+		return Observation{}, fmt.Errorf("build: check job owner %s: %w", key.Name, err)
+	}
+	switch {
+	case execution.JobHasCondition(&cur, batchv1.JobComplete):
+		return Observation{Phase: PhaseSucceeded, Image: image, RunSeconds: jobRunSeconds(&cur)}, nil
+	case execution.JobHasCondition(&cur, batchv1.JobFailed):
+		return Observation{
+			Phase:      PhaseFailed,
+			Message:    execution.JobFailureMessage(&cur, "unknown build failure"),
+			Timeout:    execution.JobFailedReason(&cur) == "DeadlineExceeded",
+			RunSeconds: jobRunSeconds(&cur),
+		}, nil
+	}
+	if queued, reason := buildQueued(ctx, o, key.Name); queued {
+		return Observation{Phase: PhaseWaiting, Message: reason}, nil
+	}
+	return Observation{Phase: PhaseBuilding}, nil
+}
 
-	// Wait for the Job to finish, bounded by buildTimeout.
-	wctx, cancel := context.WithTimeout(ctx, buildTimeout)
-	defer cancel()
-	for {
-		if deleting, err := appDeleting(wctx, o); err != nil {
-			return Result{}, err
-		} else if deleting {
-			return Result{}, ErrAppDeleting
-		}
-		var cur batchv1.Job
-		if err := o.Client.Get(wctx, key, &cur); err != nil {
-			return Result{}, fmt.Errorf("build: get job %s: %w", key.Name, err)
-		}
-		if err := identity.CheckOwner(&cur); err != nil {
-			return Result{}, fmt.Errorf("build: check job owner %s: %w", key.Name, err)
-		}
-		switch {
-		case execution.JobHasCondition(&cur, batchv1.JobComplete):
-			return Result{Image: image}, nil
-		case execution.JobHasCondition(&cur, batchv1.JobFailed):
-			return Result{}, fmt.Errorf("build: job %s failed: %s", key.Name, execution.JobFailureMessage(&cur, "unknown build failure"))
-		}
-		if o.OnWaiting != nil {
-			queued, reason := buildQueued(wctx, o, key.Name)
-			o.OnWaiting(queued, reason)
-		}
-		select {
-		case <-wctx.Done():
-			return Result{}, fmt.Errorf("build: job %s did not finish within %s", key.Name, buildTimeout)
-		case <-time.After(pollInterval):
-		}
+// jobRunSeconds is a finished build Job's run duration from its own status
+// timestamps (0 when either is unset). Reading the Job's clock, not the
+// operator's, is what makes the duration survive a manager restart mid-build.
+func jobRunSeconds(j *batchv1.Job) float64 {
+	if j.Status.StartTime == nil || j.Status.CompletionTime == nil {
+		return 0
 	}
+	s := j.Status.CompletionTime.Sub(j.Status.StartTime.Time).Seconds()
+	if s < 0 {
+		return 0
+	}
+	return s
 }
 
 // buildQueued reports whether the Job's build is still waiting for capacity
@@ -380,24 +383,6 @@ func buildQueued(ctx context.Context, o Options, jobName string) (bool, string) 
 		reason = "waiting for a node with capacity for the build"
 	}
 	return true, reason
-}
-
-// appDeleting reads the uncached client supplied to the build plane so a
-// deletion update can interrupt the synchronous polling loop even while the
-// controller-runtime reconcile that dispatched the build is still running.
-// Empty AppNamespace preserves the package's standalone/test behavior.
-func appDeleting(ctx context.Context, o Options) (bool, error) {
-	if o.AppNamespace == "" {
-		return false, nil
-	}
-	var app appv1alpha1.App
-	if err := o.Client.Get(ctx, client.ObjectKey{Namespace: o.AppNamespace, Name: o.Name}, &app); err != nil {
-		if apierrors.IsNotFound(err) {
-			return true, nil
-		}
-		return false, fmt.Errorf("build: check owning App deletion: %w", err)
-	}
-	return !app.DeletionTimestamp.IsZero(), nil
 }
 
 // BuildJob constructs the credential-separated source build Job for o. Its
@@ -772,46 +757,6 @@ func stableKubernetesName(raw string, identity ...string) string {
 	return raw + "-" + suffix
 }
 
-// jobCondition reports whether the Job carries condition t with status True.
-
-// jobFailureMessage extracts the JobFailed condition's reason/message for the
-// error surfaced to the App's status.
-
-// CancelActiveBuilds deletes all active (not Complete, not Failed) build Jobs
-// for the named service in namespace. This implements the newest-wins policy
-// (w7/m9): before dispatching a fresh build for a new revision, the operator
-// cancels any superseded in-progress build so push-spam never runs more than
-// one build at a time per App. Not-found on delete is tolerated (concurrent GC).
-//
-// appUID scopes the selection to this App's immutable, globally-unique UID
-// (round-5 finding 5): the build namespace is shared, so a name-only selector
-// would also delete a same-named App's builds in ANOTHER workspace. A non-empty
-// appUID is guaranteed for any dispatched build (build.Build rejects an empty
-// one); an empty appUID degrades to the prior name-only behavior for safety.
-func CancelActiveBuilds(ctx context.Context, name, appUID, namespace string, cl client.Client) error {
-	sel := client.MatchingLabels{"app.bex.co/build": name}
-	if appUID != "" {
-		sel[execution.LabelAppUID] = appUID
-	}
-	var jobs batchv1.JobList
-	if err := cl.List(ctx, &jobs, client.InNamespace(namespace), sel); err != nil {
-		return fmt.Errorf("list builds for %s: %w", name, err)
-	}
-	for i := range jobs.Items {
-		j := &jobs.Items[i]
-		if execution.JobFinished(j) {
-			continue
-		}
-		if err := cl.Delete(ctx, j, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("cancel build %s: %w", j.Name, err)
-		}
-	}
-	if err := cancelActiveKpackImages(ctx, name, appUID, namespace, cl); err != nil {
-		return err
-	}
-	return nil
-}
-
 // ActiveWorkspaceBuilds counts active (not Complete, not Failed) build Jobs in
 // namespace that carry the given workspace label — used by the operator to
 // enforce the per-workspace concurrent-build cap (w7/m9). Returns 0 for an
@@ -836,6 +781,36 @@ func ActiveWorkspaceBuilds(ctx context.Context, workspace, namespace string, cl 
 		}
 	}
 	kpackActive, err := activeWorkspaceKpackImages(ctx, workspace, namespace, cl)
+	if err != nil {
+		return 0, err
+	}
+	return active + kpackActive, nil
+}
+
+// ActiveAppBuilds counts active (not Complete, not Failed) build Jobs + kpack
+// Images that belong to this exact App (name + immutable UID). Once builds are
+// observed non-blocking across many reconciles (ADR060 §D1), the per-workspace
+// cap must gate only a NEW dispatch, never stall observation of a build this App
+// already started — so the caller skips the cap when this returns non-zero.
+// appUID scopes to the App's globally-unique UID (round-5 finding 5): the build
+// namespace is shared, so a name-only selector would also count a same-named
+// App's builds in ANOTHER workspace.
+func ActiveAppBuilds(ctx context.Context, name, appUID, namespace string, cl client.Client) (int, error) {
+	sel := client.MatchingLabels{"app.bex.co/build": name}
+	if appUID != "" {
+		sel[execution.LabelAppUID] = appUID
+	}
+	var jobs batchv1.JobList
+	if err := cl.List(ctx, &jobs, client.InNamespace(namespace), sel); err != nil {
+		return 0, fmt.Errorf("list app builds for %s: %w", name, err)
+	}
+	active := 0
+	for i := range jobs.Items {
+		if !execution.JobFinished(&jobs.Items[i]) {
+			active++
+		}
+	}
+	kpackActive, err := activeAppKpackImages(ctx, name, appUID, namespace, cl)
 	if err != nil {
 		return 0, err
 	}

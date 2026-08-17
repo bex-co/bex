@@ -30,7 +30,7 @@ Each admitted source build runs as an isolated Kubernetes workload:
 - The buildpack extension remains a kpack Image/Build.
 - A successful builder pushes an immutable generation image to Zot; workloads pull by the resolved image reference.
 - Build names are deterministic per App generation, so a manager restart adopts the existing work instead of starting a duplicate.
-- Superseded builds are newest-wins per App: a newer revision cancels the older active build before starting.
+- Superseded builds are newest-wins per App: a newer revision cancels the older active build before starting. **Superseded by [ADR060 §D1a](ADR060-build-worker-reliability-and-performance.md) (w2/m72):** canceling the in-flight build livelocks under sustained pushes (nothing ever completes). Supersede now acts on _pending_ work only — the active build runs to completion and rolls out, newer generations coalesce into one latest-pending slot, and only the explicit user Cancel verb (w2/m10) or `activeDeadlineSeconds` preempts a running build.
 
 #### Current synchronous build-to-deploy handoff
 
