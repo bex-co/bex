@@ -148,8 +148,19 @@ spec:
           # -> re-pulls :latest -> re-reconciles Apps with the new issuer).
           - name: BEX_CLUSTER_ISSUER
             value: letsencrypt-prod
-          # BEX_BASE_DOMAIN intentionally remains unset until a dedicated suffix
-          # is present in the PSL PRIVATE section and passes the browser gate.
+          # Shared platform hosting suffix: exposed web services auto-serve
+          # "<slug>.onbex.co" (derived by effectiveHosts, kept out of spec.hosts).
+          #
+          # DO NOT UNSET THIS TO "FIX" THE PSL FINDING. onbex.co is not in the
+          # browser Public Suffix List, and that gap is an ACCEPTED risk, not an
+          # open remediation — see `.pm/DO_NOT_DO.md` #PSL. Unsetting it does not
+          # narrow the risk, it deletes platform hosting for every App and takes
+          # production down; it has now done so twice (e0468cf2 2026-08-08,
+          # 815e003b 2026-08-16). The manager warns loudly and keeps serving
+          # (84ec2a9d). `scripts/gitops-validate.sh` fails closed if this value
+          # goes missing from the prod render.
+          - name: BEX_BASE_DOMAIN
+            value: onbex.co
           # Managed-Postgres external endpoints: Database{public:true} is exposed
           # at "<name>.db.bex.co" via Traefik TCP/SNI. Needs a DNS-only (gray-cloud)
           # wildcard *.db.bex.co -> node IP (Cloudflare can't proxy raw TCP:5432).

@@ -65,8 +65,13 @@ spec:
                   optional: true
             - name: BEX_DASHBOARD_URL # trusted browser origin for callbacks, invites, and resource links
               value: https://dashboard.bex.co
-            # BEX_BASE_DOMAIN intentionally remains unset until a dedicated suffix
-            # passes the operator/static-server PSL and real-browser gates.
+            # Shared platform hosting suffix — must match the operator so
+            # platformHost() derives "<slug>.onbex.co" and it drops out of the
+            # Custom Domains list. bex-api does not crash-gate on the PSL.
+            # Do not unset: the PSL gap is an accepted risk (`.pm/DO_NOT_DO.md`
+            # #PSL), and an empty value here reports a null URL for every App.
+            - name: BEX_BASE_DOMAIN
+              value: onbex.co
             - name: BEX_REGION # explicit platform placement for Render resource metadata
               value: fsn1
             - name: BEX_API_NAMESPACE # Apps live in the default namespace
