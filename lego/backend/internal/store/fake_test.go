@@ -603,7 +603,7 @@ func (m *memStore) CreateDeploy(_ context.Context, appID, trigger, image string,
 	}
 	now := time.Now()
 	status := m.prepareDeployCreate(appID, generation, now)
-	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, CreatedAt: now, UpdatedAt: now}
+	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now}
 	if status == DeployCanceled {
 		d.FinishedAt = &now
 	}
@@ -621,7 +621,7 @@ func (m *memStore) CreateRollbackDeploy(_ context.Context, appID, image, rollbac
 	status := m.prepareDeployCreate(appID, generation, now)
 	d := Deploy{
 		ID: ids.New(ids.Deploy), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
-		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, CreatedAt: now, UpdatedAt: now,
+		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, OverlapPending: status == DeployQueued, CreatedAt: now, UpdatedAt: now,
 	}
 	if status == DeployCanceled {
 		d.FinishedAt = &now
@@ -636,16 +636,22 @@ func (m *memStore) prepareDeployCreate(appID string, generation int64, now time.
 			return DeployCanceled
 		}
 	}
-	m.cancelOpenDeploys(appID, now)
+	m.cancelPendingDeploys(appID, now)
+	for _, d := range m.deploys {
+		if d.AppID == appID && IsOpenDeployStatus(d.Status) && !d.OverlapPending {
+			return DeployQueued
+		}
+	}
 	return DeployCreated
 }
 
-func (m *memStore) cancelOpenDeploys(appID string, now time.Time) {
+func (m *memStore) cancelPendingDeploys(appID string, now time.Time) {
 	for id, d := range m.deploys {
-		if d.AppID != appID || !IsOpenDeployStatus(d.Status) {
+		if d.AppID != appID || d.Status != DeployQueued || !d.OverlapPending {
 			continue
 		}
 		d.Status = DeployCanceled
+		d.OverlapPending = false
 		d.UpdatedAt = now
 		d.FinishedAt = &now
 		m.deploys[id] = d
@@ -728,6 +734,21 @@ func (m *memStore) ListOpenDeploys(_ context.Context) ([]Deploy, error) {
 			out = append(out, d)
 		}
 	}
+	slices.SortFunc(out, func(x, y Deploy) int {
+		if x.AppID != y.AppID {
+			return strings.Compare(x.AppID, y.AppID)
+		}
+		if x.Generation < y.Generation {
+			return -1
+		}
+		if x.Generation > y.Generation {
+			return 1
+		}
+		if c := x.CreatedAt.Compare(y.CreatedAt); c != 0 {
+			return c
+		}
+		return strings.Compare(x.ID, y.ID)
+	})
 	return out, nil
 }
 
@@ -735,11 +756,22 @@ func (m *memStore) TransitionDeploy(_ context.Context, id, status, resolvedImage
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.deploys[id]
-	if !ok || !CanTransitionDeploy(d.Status, status) {
+	if !ok {
+		return false, nil
+	}
+	if d.Status == status && status == DeployQueued && d.OverlapPending {
+		d.OverlapPending = false
+		m.deploys[id] = d
+		return true, nil
+	}
+	if !CanTransitionDeploy(d.Status, status) {
 		return false, nil
 	}
 	now := time.Now()
 	d.Status = status
+	if status != DeployQueued {
+		d.OverlapPending = false
+	}
 	d.UpdatedAt = now
 	if resolvedImage != "" {
 		d.ResolvedImage = resolvedImage

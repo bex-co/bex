@@ -890,8 +890,8 @@ func TestObservedDeployStatusUsesCurrentGenerationEvidence(t *testing.T) {
 // git-push redeploy, env-var change, or restart can mint a newer release
 // identity without adopting the open row, after which the operator reports
 // releaseGeneration past the row's. Generations are monotonic, so that row can
-// never advance again — it closes canceled (the CR-side mirror of
-// CreateDeploy's newest-wins cancel) instead of stranding open forever. An
+// never advance again — it closes canceled as the missed-observation fallback
+// instead of stranding open forever. An
 // operator merely lagging BEHIND the row keeps waiting, and a legacy operator
 // (no status.releaseGeneration) keeps today's conservative wait: its metadata
 // generation also moves for operational churn, which must never cancel.
@@ -918,6 +918,9 @@ func TestObservedDeployStatusCancelsSupersededRow(t *testing.T) {
 	lagging.Status.ReleaseGeneration = gen - 1
 	if got := observedDeployStatus(Deploy{Generation: gen, Status: DeployCreated}, lagging, false); got != "" {
 		t.Errorf("lagging operator => %q, want no transition", got)
+	}
+	if got := observedDeployStatus(Deploy{Generation: gen, Status: DeployQueued, OverlapPending: true}, lagging, true); got != "" {
+		t.Errorf("latest-pending queued deploy after active gate => %q, want no transition", got)
 	}
 
 	// Legacy operator: metadata generation ahead, no releaseGeneration — the
@@ -1005,6 +1008,119 @@ func TestRecordDeployCancelsSupersededRow(t *testing.T) {
 	}
 	if deploys[0].FailureReason != "" {
 		t.Errorf("failure_reason = %q, want empty — canceled is not a failure", deploys[0].FailureReason)
+	}
+}
+
+// TestReconcileOverlapRecordsActiveLiveBeforeLatestQueuedDeploy proves the
+// w2/018 history fix end to end through the reconciler. A newer trigger does
+// not repaint the release that is already building as canceled: generation 1
+// reaches live, generation 2 remains queued without inheriting generation 1's
+// evidence, then generation 2 advances and deactivates generation 1.
+func TestReconcileOverlapRecordsActiveLiveBeforeLatestQueuedDeploy(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	ten, _ := st.CreateTenant(ctx, "acme", "free")
+	row, _ := st.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "web", Repo: "https://example.com/acme/web.git",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "free",
+	})
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("create projection: %v", err)
+	}
+
+	app := getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseBuilding
+	app.Status.ReleaseGeneration = 1
+	app.Status.Conditions = []metav1.Condition{{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+		Reason: "Building", ObservedGeneration: app.Generation,
+	}}
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe generation 1 building: %v", err)
+	}
+
+	history, _ := st.ListDeploys(ctx, row.ID, DeployFilter{})
+	first := history[0]
+	if first.Status != DeployBuildInProgress {
+		t.Fatalf("generation 1 status = %q, want build_in_progress", first.Status)
+	}
+	second, err := st.CreateDeploy(ctx, row.ID, TriggerNewCommit, "", 2, CommitInfo{})
+	if err != nil || second.Status != DeployQueued {
+		t.Fatalf("overlapping generation 2 = %+v (err %v), want queued", second, err)
+	}
+
+	app = getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	app.Status.ReleaseGeneration = 1
+	app.Status.ActiveRevision = "rev-1"
+	app.Status.Image = "registry.example/acme/web:gen-1"
+	app.Status.Conditions = nil
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe generation 1 live: %v", err)
+	}
+	first, _ = st.GetDeploy(ctx, row.ID, first.ID)
+	second, _ = st.GetDeploy(ctx, row.ID, second.ID)
+	if first.Status != DeployLive || first.ResolvedImage != "registry.example/acme/web:gen-1" || second.Status != DeployQueued {
+		t.Fatalf("after generation 1 rollout: first=%+v second=%+v, want live then queued", first, second)
+	}
+	if second.PreDeployStatus != "" || second.StartedAt != nil || second.FinishedAt != nil {
+		t.Fatalf("future queued row inherited active evidence: %+v", second)
+	}
+
+	app = getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseBuilding
+	app.Status.ReleaseGeneration = 2
+	app.Status.ActiveRevision = "rev-1"
+	app.Status.Conditions = []metav1.Condition{{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+		Reason: "BuildQueued", ObservedGeneration: app.Generation,
+	}}
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe generation 2 capacity-queued: %v", err)
+	}
+	second, _ = st.GetDeploy(ctx, row.ID, second.ID)
+	if second.Status != DeployQueued || second.OverlapPending || second.StartedAt != nil {
+		t.Fatalf("adopted generation 2 = %+v, want queued active without a start timestamp", second)
+	}
+
+	app = getApp(t, cl)
+	app.Status.Conditions[0].Reason = "Building"
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe generation 2 building: %v", err)
+	}
+	second, _ = st.GetDeploy(ctx, row.ID, second.ID)
+	if second.Status != DeployBuildInProgress || second.StartedAt == nil {
+		t.Fatalf("generation 2 = %+v, want started build_in_progress", second)
+	}
+
+	app = getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	app.Status.ReleaseGeneration = 2
+	app.Status.ActiveRevision = "rev-2"
+	app.Status.Image = "registry.example/acme/web:gen-2"
+	app.Status.Conditions = nil
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("observe generation 2 live: %v", err)
+	}
+	first, _ = st.GetDeploy(ctx, row.ID, first.ID)
+	second, _ = st.GetDeploy(ctx, row.ID, second.ID)
+	if first.Status != DeployDeactivated || second.Status != DeployLive {
+		t.Fatalf("final history: first=%+v second=%+v, want deactivated/live", first, second)
 	}
 }
 

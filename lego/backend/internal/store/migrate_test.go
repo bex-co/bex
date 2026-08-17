@@ -219,6 +219,75 @@ func TestDeployLifecycleMigrationBackfillsOldRows(t *testing.T) {
 	}
 }
 
+func TestDeployOverlapQueueMigrationPreservesActiveOnDown(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+
+	up, err := migrationsFS.ReadFile("migrations/0080_deploy_overlap_queue.up.sql")
+	if err != nil {
+		t.Fatalf("read up migration: %v", err)
+	}
+	down, err := migrationsFS.ReadFile("migrations/0080_deploy_overlap_queue.down.sql")
+	if err != nil {
+		t.Fatalf("read down migration: %v", err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0080_deploy_overlap_queue;
+		SET LOCAL search_path TO migration_0080_deploy_overlap_queue;
+		CREATE TABLE deploys (
+			id text PRIMARY KEY,
+			app_id text NOT NULL,
+			status text NOT NULL,
+			created_at timestamptz NOT NULL,
+			updated_at timestamptz NOT NULL,
+			finished_at timestamptz
+		);
+		CREATE UNIQUE INDEX deploys_one_open_per_app_idx ON deploys (app_id)
+		WHERE status IN ('created', 'queued', 'build_in_progress', 'pre_deploy_in_progress', 'update_in_progress');
+		INSERT INTO deploys (id, app_id, status, created_at, updated_at)
+		VALUES ('dep-active', 'srv-1', 'queued', '2026-08-16T00:00:00Z', '2026-08-16T00:00:00Z');
+	`); err != nil {
+		t.Fatalf("prepare old schema: %v", err)
+	}
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("apply up migration: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO deploys (id, app_id, status, overlap_pending, created_at, updated_at)
+		VALUES ('dep-queued', 'srv-1', 'queued', true, '2026-08-16T00:01:00Z', '2026-08-16T00:01:00Z')
+	`); err != nil {
+		t.Fatalf("active plus queued should satisfy new indexes: %v", err)
+	}
+	if _, err := tx.Exec(ctx, string(down)); err != nil {
+		t.Fatalf("apply down migration: %v", err)
+	}
+
+	var activeStatus, queuedStatus string
+	var queuedFinished *time.Time
+	if err := tx.QueryRow(ctx, `SELECT status FROM deploys WHERE id = 'dep-active'`).Scan(&activeStatus); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT status, finished_at FROM deploys WHERE id = 'dep-queued'`).Scan(&queuedStatus, &queuedFinished); err != nil {
+		t.Fatal(err)
+	}
+	if activeStatus != DeployQueued || queuedStatus != DeployCanceled || queuedFinished == nil {
+		t.Fatalf("down-migrated active/queued = %q / %q finished=%v, want queued-active / canceled+finished", activeStatus, queuedStatus, queuedFinished)
+	}
+}
+
 func TestEnvironmentAllowListMigrationNormalizesLegacyRows(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {

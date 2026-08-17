@@ -110,17 +110,24 @@ func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string
 	}
 	if status == store.DeployCreated {
 		for i, existing := range f.byApp[appID] {
-			if !store.IsOpenDeployStatus(existing.Status) {
+			if existing.Status != store.DeployQueued || !existing.OverlapPending {
 				continue
 			}
 			existing.Status = store.DeployCanceled
+			existing.OverlapPending = false
 			existing.UpdatedAt = now
 			existing.FinishedAt = &now
 			f.byApp[appID][i] = existing
 		}
+		for _, existing := range f.byApp[appID] {
+			if store.IsOpenDeployStatus(existing.Status) && !existing.OverlapPending {
+				status = store.DeployQueued
+				break
+			}
+		}
 	}
 	f.nextID++
-	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, CreatedAt: now, UpdatedAt: now}
+	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now}
 	if status == store.DeployCanceled {
 		d.FinishedAt = &now
 	}
@@ -141,19 +148,26 @@ func (f *fakeStore) CreateRollbackDeploy(_ context.Context, appID, image, rollba
 	}
 	if status == store.DeployCreated {
 		for i, existing := range f.byApp[appID] {
-			if !store.IsOpenDeployStatus(existing.Status) {
+			if existing.Status != store.DeployQueued || !existing.OverlapPending {
 				continue
 			}
 			existing.Status = store.DeployCanceled
+			existing.OverlapPending = false
 			existing.UpdatedAt = now
 			existing.FinishedAt = &now
 			f.byApp[appID][i] = existing
+		}
+		for _, existing := range f.byApp[appID] {
+			if store.IsOpenDeployStatus(existing.Status) && !existing.OverlapPending {
+				status = store.DeployQueued
+				break
+			}
 		}
 	}
 	f.nextID++
 	d := store.Deploy{
 		ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
-		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, CreatedAt: now, UpdatedAt: now,
+		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now,
 	}
 	if status == store.DeployCanceled {
 		d.FinishedAt = &now
@@ -238,6 +252,7 @@ func (f *fakeStore) CloseDeploy(_ context.Context, id, status, resolvedImage str
 			}
 			now := time.Now()
 			d.Status = status
+			d.OverlapPending = false
 			d.UpdatedAt = now
 			if resolvedImage != "" {
 				d.ResolvedImage = resolvedImage
@@ -344,7 +359,7 @@ func TestListGetTriggerLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Trigger: %v", err)
 	}
-	if triggered.Trigger != "api" || triggered.Status != store.DeployCreated {
+	if triggered.Trigger != "api" || triggered.Status != store.DeployQueued {
 		t.Errorf("triggered deploy = %+v", triggered)
 	}
 	app := getApp(t, cl, "web")
