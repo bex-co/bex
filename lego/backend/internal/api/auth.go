@@ -574,7 +574,11 @@ func withCORS(origins string, next http.Handler) http.Handler {
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if len(allowed) > 0 {
-			w.Header().Set("Vary", "Origin")
+			// Add, not Set: an outer middleware (withGzip) may already have
+			// contributed Vary: Accept-Encoding, and Set would clobber it —
+			// dropping the cache-safety header that keeps a shared cache from
+			// handing a gzip body to an identity-only client (w9/m61, w9/044).
+			w.Header().Add("Vary", "Origin")
 			if origin := r.Header.Get("Origin"); allowed[origin] {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Session-Token")
