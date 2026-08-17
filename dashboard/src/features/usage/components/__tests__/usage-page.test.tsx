@@ -287,7 +287,10 @@ describe("UsagePage", () => {
 
     render(<UsagePage />);
 
-    expect(screen.getByText("Estimated Cost")).toBeInTheDocument();
+    // Also a section-nav link label — the card title is one of several matches.
+    expect(screen.getAllByText("Estimated Cost").length).toBeGreaterThanOrEqual(
+      1,
+    );
   });
 
   it("shows the no-billable-usage empty state when estimatedCost is null", () => {
@@ -402,7 +405,10 @@ describe("UsagePage", () => {
 
     render(<UsagePage />);
 
-    expect(screen.getByText("3-Month Trend")).toBeInTheDocument();
+    // Also a section-nav link label — the card title is one of several matches.
+    expect(screen.getAllByText("3-Month Trend").length).toBeGreaterThanOrEqual(
+      1,
+    );
     // Four trend charts — one per meter kind.
     expect(screen.getAllByTestId("svg-line-chart")).toHaveLength(4);
   });
