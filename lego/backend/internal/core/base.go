@@ -204,6 +204,13 @@ const LabelProject = "app.bex.co/project-id"
 // cleared by postgres.Service.SetEnvironmentID / keyvalue.Service.SetEnvironmentID.
 const LabelEnvironment = "app.bex.co/environment-id"
 
+// LabelBlueprint records the Git-connected Blueprint that manages a Service,
+// Database, or KeyValue (w8/m23): stamped on blueprint create/adopt, cleared
+// on disconnect (resources become unmanaged, Render semantics). A second
+// blueprint naming the same resource is refused with
+// BLUEPRINT_RESOURCE_CONFLICT unless the takeover confirmation transfers it.
+const LabelBlueprint = "bex.co/blueprint-id"
+
 // LabelNetworkIsolation carries an App CR's environment id (w6/m19
 // protected-environment ACLs), but ONLY while that environment currently has
 // networkIsolationEnabled=true — unlike LabelEnvironment above (unconditional

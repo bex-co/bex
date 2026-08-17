@@ -84,10 +84,15 @@ type DeployRequest struct {
 	// workspace. Deploy creates a service, so an MCP call's explicit workspaceId
 	// must land its deploy there, not in whichever workspace the caller happens
 	// to resolve to.
-	OwnerID  string
-	Repo     string
-	Branch   string
-	Manifest string
+	OwnerID string
+	// BlueprintID is the Git-connected Blueprint this apply runs FOR (runSync /
+	// CreateBlueprint); it drives ownership stamping and the cross-blueprint
+	// conflict preflight (w8/m23). Empty = a non-blueprint deploy: no stamping,
+	// no ownership enforcement (manual resources adopt freely, unchanged).
+	BlueprintID string
+	Repo        string
+	Branch      string
+	Manifest    string
 	// EnvVarValues supplies sync:false values collected by an interactive
 	// Blueprint create flow. They are never included in a validation plan or an
 	// App spec; apply seeds them once into the mutable env store.
@@ -603,6 +608,9 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.validateBlueprintServices(ctx, st); err != nil {
 		return StackResult{}, err
 	}
+	if err := s.preflightBlueprintOwnership(ctx, req, st); err != nil {
+		return StackResult{}, err
+	}
 	if err := s.requireStackPaymentMethod(ctx, st); err != nil {
 		return StackResult{}, err
 	}
@@ -672,6 +680,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if req.Repo != "" {
 		s.upsertBlueprint(ctx, req)
 	}
+	s.stampBlueprintOwnership(ctx, req.BlueprintID, st)
 	return res, nil
 }
 
