@@ -437,9 +437,10 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 }
 
 // assertConcurrentDeployTriggers proves the App-row lock and partial unique
-// index turn overlapping API triggers into deterministic newest-wins history:
-// both callers succeed, exactly one row stays open, and it has the highest App
-// generation even if the older request reaches Postgres last.
+// indexes turn overlapping API triggers into deterministic
+// active-plus-latest-pending history: both callers succeed, the original row
+// remains active, exactly one trigger stays queued, and the queued row has the
+// highest generation even if the older request reaches Postgres last.
 func assertConcurrentDeployTriggers(ctx context.Context, t *testing.T, s *PGStore, tenantID string) {
 	t.Helper()
 	app, err := s.CreateApp(ctx, App{
@@ -483,12 +484,18 @@ func assertConcurrentDeployTriggers(ctx context.Context, t *testing.T, s *PGStor
 	for _, d := range history {
 		statusCounts[d.Status]++
 	}
-	if statusCounts[DeployCreated] != 1 || statusCounts[DeployCanceled] != 2 {
-		t.Fatalf("race statuses = %v, want one created and two superseded canceled rows", statusCounts)
+	if statusCounts[DeployCreated] != 1 || statusCounts[DeployQueued] != 1 || statusCounts[DeployCanceled] != 1 {
+		t.Fatalf("race statuses = %v, want one active create, latest queued, and skipped queued row canceled", statusCounts)
 	}
-	open, ok, err := openDeployFor(ctx, s, app.ID)
-	if err != nil || !ok || open.Generation != 3 {
-		t.Fatalf("race open deploy = %+v ok=%v (err %v), want highest App generation 3", open, ok, err)
+	var open Deploy
+	for _, d := range history {
+		if d.Generation == 3 && d.Status == DeployQueued {
+			open = d
+			break
+		}
+	}
+	if open.ID == "" {
+		t.Fatalf("race history = %+v, want highest App generation 3 queued", history)
 	}
 
 	// Cancel and convergence use the same row-locked transition writer. Let

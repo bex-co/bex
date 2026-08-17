@@ -290,10 +290,11 @@ func indexManagedApps(items []appv1alpha1.App) map[string]*appv1alpha1.App {
 // observed — the caller's Update only patches spec (status is a separate
 // subresource) — so it's the right snapshot to decide the app's open deploy, if
 // any, is done.
-func (r *Reconciler) recordObservations(ctx context.Context, d DesiredApp, cur *appv1alpha1.App, open Deploy, hasOpenDeploy bool) {
-	if hasOpenDeploy {
-		r.recordDeploy(ctx, d, open, cur)
+func (r *Reconciler) recordObservations(ctx context.Context, d DesiredApp, cur *appv1alpha1.App, open []Deploy) {
+	for _, deploy := range open {
+		r.recordDeploy(ctx, d, deploy, cur)
 	}
+	hasOpenDeploy := len(open) > 0
 	if r.unhealthyOnce == nil {
 		r.unhealthyOnce = make(map[string]bool)
 	}
@@ -385,15 +386,15 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 	}
 	byID := indexManagedApps(existing.Items)
 	// One query for every app's open deploy (not one per app in the loop
-	// below) — at most one open deploy per app in practice, so the last
-	// write wins if that invariant is ever violated.
+	// below). Overlap handling intentionally permits one executing row plus one
+	// latest-pending row for an App, so retain the full per-App slice.
 	openDeploys, err := r.Store.ListOpenDeploys(ctx)
 	if err != nil {
 		return fmt.Errorf("list open deploys: %w", err)
 	}
-	openByApp := make(map[string]Deploy, len(openDeploys))
+	openByApp := make(map[string][]Deploy, len(openDeploys))
 	for _, d := range openDeploys {
-		openByApp[d.AppID] = d
+		openByApp[d.AppID] = append(openByApp[d.AppID], d)
 	}
 
 	var errs []error
@@ -418,8 +419,7 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 				continue
 			}
 		}
-		open, hasOpenDeploy := openByApp[d.ID]
-		r.recordObservations(ctx, d, cur, open, hasOpenDeploy)
+		r.recordObservations(ctx, d, cur, openByApp[d.ID])
 	}
 	// Rows deleted from Postgres → delete their projected CR.
 	for id, cur := range byID {
@@ -442,26 +442,40 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 // ImagePullBackOff that otherwise stays Deploying forever). Store errors are
 // logged, not fatal: deploy bookkeeping must never block App CR reconciliation.
 func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy, cur *appv1alpha1.App) {
-	// Project the pre-deploy step's outcome (w1/m33) onto the open row first, so a
-	// migration failure is recorded even on the same pass that closes the deploy
-	// update_failed — that's what lets a client tell a failed migration apart from
-	// a failed health check. SetDeployPreDeployStatus is a no-op when unchanged.
-	if pds := preDeployStatusFor(cur); pds != "" {
-		if _, err := r.Store.SetDeployPreDeployStatus(ctx, open.ID, pds); err != nil {
-			log.Printf("controlplane: set pre-deploy status %s: %v", open.ID, err)
-		}
-	}
-	if fact, ok := observedImagePullFailure(open, cur); ok {
-		if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
-			log.Printf("controlplane: record image-pull failure %s: %v", open.ID, err)
-		}
-	}
-
 	status := observedDeployStatus(open, cur, r.deployTimedOut(d, open))
-	// Build and pre-deploy beats surface as distinct timeline events (w7/m66),
-	// derived from the same observed state — emitted before the no-transition
-	// early return so a still-building or still-pre-deploying deploy is recorded.
-	r.recordLifecycleFacts(ctx, d, open, cur, status)
+	observedGeneration := appReleaseGeneration(cur)
+	matchesObservedRelease := observedGeneration == 0 || open.Generation == 0 || observedGeneration == open.Generation
+	if matchesObservedRelease {
+		// Project the pre-deploy step's outcome (w1/m33) onto the matching row
+		// first, so a migration failure is recorded even on the same pass that
+		// closes the deploy update_failed. A future queued row must never inherit
+		// the executing release's pre-deploy evidence.
+		if pds := preDeployStatusFor(cur); pds != "" {
+			if _, err := r.Store.SetDeployPreDeployStatus(ctx, open.ID, pds); err != nil {
+				log.Printf("controlplane: set pre-deploy status %s: %v", open.ID, err)
+			}
+		}
+		if fact, ok := observedImagePullFailure(open, cur); ok {
+			if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
+				log.Printf("controlplane: record image-pull failure %s: %v", open.ID, err)
+			}
+		}
+
+		// Build and pre-deploy beats surface as distinct timeline events (w7/m66),
+		// derived from the same observed state — emitted before the no-transition
+		// early return so a still-building or still-pre-deploying deploy is recorded.
+		r.recordLifecycleFacts(ctx, d, open, cur, status)
+	} else if status != "" && d.Repo != "" {
+		// A lower-generation row can be settled canceled after the reconciler
+		// missed its final observation. Its own stored phase is enough to close
+		// the build lifecycle, but the current release's pre-deploy/image evidence
+		// must not be copied onto it.
+		for _, fact := range buildLifecycleFacts(open, status) {
+			if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
+				log.Printf("controlplane: record lifecycle fact %s: %v", fact.SourceKey, err)
+			}
+		}
+	}
 	if status == "" {
 		return
 	}
@@ -471,7 +485,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// straight from spec.image. Left "" on a failed/timed-out close: a deploy
 	// that never went live is correctly never a valid rollback target.
 	resolvedImage := ""
-	if status == DeployLive {
+	if matchesObservedRelease && status == DeployLive {
 		resolvedImage = cur.Status.Image
 	}
 	// w9/011: a failing close carries its actionable cause — the generation's
@@ -481,9 +495,11 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// opaque terminal state.
 	failureReason := ""
 	failureCode := ""
-	switch status {
-	case DeployBuildFailed, DeployPreDeployFailed, DeployUpdateFailed:
-		failureReason, failureCode = failureReasonFor(cur)
+	if matchesObservedRelease {
+		switch status {
+		case DeployBuildFailed, DeployPreDeployFailed, DeployUpdateFailed:
+			failureReason, failureCode = failureReasonFor(cur)
+		}
 	}
 	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, resolvedImage, failureReason, failureCode)
 	if err != nil {
@@ -782,7 +798,8 @@ func supersededDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) (s
 	// was superseded before it could finish — a git-push redeploy, env-var
 	// change, or restart minted a newer release identity without adopting the
 	// row. Generations are monotonic, so the row can never advance again; close
-	// it canceled, the CR-side mirror of CreateDeploy's newest-wins cancel.
+	// it canceled. Under normal overlap handling the active row is observed live
+	// before the queued row is adopted; this is the missed-observation fallback.
 	// Only status.releaseGeneration is trusted here: the legacy metadata-
 	// generation fallback below also moves for operational churn (manual
 	// scale), which must keep waiting, not cancel a live rollout's row.
@@ -792,6 +809,14 @@ func supersededDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) (s
 	generation := appReleaseGeneration(app)
 	if generation == 0 || open.Generation == 0 || generation == open.Generation {
 		return "", false
+	}
+	// A queued row ahead of the operator's reported release is the intentional
+	// latest-pending slot. It may wait through the active release's entire build
+	// and rollout budget, so elapsed time is not evidence that it is orphaned.
+	// A newer trigger replaces it transactionally; the operator eventually
+	// adopts its generation after the active release settles.
+	if open.OverlapPending && open.Status == DeployQueued && generation < open.Generation {
+		return "", true
 	}
 	// The CR's release generation no longer matches this open row. Usually a
 	// brief transient while the operator catches up to a just-patched spec, so

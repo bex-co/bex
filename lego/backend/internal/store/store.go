@@ -223,6 +223,10 @@ type Deploy struct {
 	CommitMessage  string     `json:"commitMessage,omitempty"`
 	CommitAuthorAt *time.Time `json:"commitAuthorAt,omitempty"`
 	Status         string     `json:"status"`
+	// OverlapPending distinguishes the one latest-pending overlap slot from an
+	// active release that may itself report Render status queued while waiting
+	// for build capacity. It is store-internal and never exposed on a surface.
+	OverlapPending bool       `json:"-"`
 	CreatedAt      time.Time  `json:"createdAt"`
 	UpdatedAt      time.Time  `json:"updatedAt"`
 	StartedAt      *time.Time `json:"startedAt,omitempty"`
@@ -416,8 +420,8 @@ type Store interface {
 	// GetDeploy fetches one deploy scoped to appID — a deployID belonging to a
 	// different app is ErrNotFound, not a cross-app leak.
 	GetDeploy(ctx context.Context, appID, deployID string) (Deploy, error)
-	// ListOpenDeploys returns every non-terminal deploy
-	// deploy across all apps in one query — the reconciler's write-back hook
+	// ListOpenDeploys returns every non-terminal deploy across all apps in one
+	// query — the reconciler's write-back hook
 	// calls this once per ReconcileOnce pass and looks apps up in the result,
 	// rather than one query per app in its per-app loop.
 	ListOpenDeploys(ctx context.Context) ([]Deploy, error)
@@ -1100,11 +1104,12 @@ func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string
 			return err
 		}
 		d.Status = status
+		d.OverlapPending = status == DeployQueued
 		return tx.QueryRow(ctx,
-			`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, status, finished_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CASE WHEN $9 = $10 THEN clock_timestamp() END)
+			`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, status, overlap_pending, finished_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CASE WHEN $9 = $11 THEN clock_timestamp() END)
 			 RETURNING created_at, updated_at, finished_at`,
-			d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.Status, DeployCanceled,
+			d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.Status, d.OverlapPending, DeployCanceled,
 		).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
 	})
 	if err != nil {
@@ -1116,9 +1121,10 @@ func (s *PGStore) CreateDeploy(ctx context.Context, appID, trigger, image string
 // prepareDeployCreate serializes creation for one App, then compares App
 // generations before choosing the visible initial status. A delayed request
 // for an older generation records itself canceled without disturbing the
-// higher-generation open row. Otherwise the new generation cancels every
-// older open row and starts created. The partial unique index is the final
-// one-open-row guard.
+// higher-generation open row. Otherwise the new generation replaces only the
+// previous overlap-pending row: it starts queued while an active deploy is
+// running, or created when the active slot is free. Partial unique indexes are
+// the final one-active-plus-one-pending guard.
 func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generation int64) (string, error) {
 	var lockedID string
 	if err := tx.QueryRow(ctx, `SELECT id FROM apps WHERE id = $1 FOR UPDATE`, appID).Scan(&lockedID); err != nil {
@@ -1136,23 +1142,37 @@ func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generatio
 	if superseded {
 		return DeployCanceled, nil
 	}
-	if err := cancelOpenDeploys(ctx, tx, appID); err != nil {
+	if err := cancelPendingDeploys(ctx, tx, appID); err != nil {
 		return "", err
+	}
+	var active bool
+	if err := tx.QueryRow(ctx,
+		`SELECT EXISTS (
+			SELECT 1 FROM deploys
+			WHERE app_id = $1 AND status = ANY($2) AND NOT overlap_pending
+		)`, appID, openDeployStatuses,
+	).Scan(&active); err != nil {
+		return "", err
+	}
+	if active {
+		return DeployQueued, nil
 	}
 	return DeployCreated, nil
 }
 
-// cancelOpenDeploys applies bex's newest-wins policy before a newer row is
-// inserted. Keeping the cancellation and insert in one transaction prevents a
-// trigger race from leaving two open deploys for one App.
-func cancelOpenDeploys(ctx context.Context, tx pgx.Tx, appID string) error {
+// cancelPendingDeploys coalesces overlapping triggers into one latest-pending
+// slot without preempting the deploy already executing. Keeping cancellation
+// and insert in one App-row-locked transaction makes concurrent triggers
+// deterministic.
+func cancelPendingDeploys(ctx context.Context, tx pgx.Tx, appID string) error {
 	_, err := tx.Exec(ctx,
 		`UPDATE deploys
 		 SET status = $2,
 		     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()),
-		     finished_at = clock_timestamp()
-		 WHERE app_id = $1 AND status = ANY($3)`,
-		appID, DeployCanceled, openDeployStatuses)
+		     finished_at = clock_timestamp(),
+		     overlap_pending = false
+		 WHERE app_id = $1 AND status = $3 AND overlap_pending`,
+		appID, DeployCanceled, DeployQueued)
 	return err
 }
 
@@ -1171,11 +1191,12 @@ func (s *PGStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollba
 			return err
 		}
 		d.Status = status
+		d.OverlapPending = status == DeployQueued
 		return tx.QueryRow(ctx,
-			`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, status, finished_at)
-			 VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, CASE WHEN $10 = $11 THEN clock_timestamp() END)
+			`INSERT INTO deploys (id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, status, overlap_pending, finished_at)
+			 VALUES ($1, $2, $3, $4, $4, $5, $6, $7, $8, $9, $10, $11, CASE WHEN $10 = $12 THEN clock_timestamp() END)
 			 RETURNING created_at, updated_at, finished_at`,
-			d.ID, d.AppID, d.Trigger, image, rollbackOf, generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.Status, DeployCanceled,
+			d.ID, d.AppID, d.Trigger, image, rollbackOf, generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.Status, d.OverlapPending, DeployCanceled,
 		).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
 	})
 	if err != nil {
@@ -1247,11 +1268,11 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, status, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason`
+const deployColumns = `id, app_id, trigger, image, resolved_image, rollback_of, generation, commit, commit_message, commit_author_at, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason`
 
 func scanDeploy(row pgx.Row) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.Status, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason)
+	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason)
 	return d, err
 }
 
@@ -1314,7 +1335,8 @@ func (s *PGStore) GetDeploy(ctx context.Context, appID, deployID string) (Deploy
 
 func (s *PGStore) ListOpenDeploys(ctx context.Context) ([]Deploy, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT `+deployColumns+` FROM deploys WHERE status = ANY($1)`, openDeployStatuses)
+		`SELECT `+deployColumns+` FROM deploys WHERE status = ANY($1)
+		 ORDER BY app_id, generation, created_at, id`, openDeployStatuses)
 	if err != nil {
 		return nil, err
 	}
@@ -1334,13 +1356,26 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 	transitioned := false
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var appID, current string
+		var overlapPending bool
 		if err := tx.QueryRow(ctx,
-			`SELECT app_id, status FROM deploys WHERE id = $1 FOR UPDATE`, id,
-		).Scan(&appID, &current); err != nil {
+			`SELECT app_id, status, overlap_pending FROM deploys WHERE id = $1 FOR UPDATE`, id,
+		).Scan(&appID, &current, &overlapPending); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return nil
 			}
 			return err
+		}
+		// Adoption can be a real internal transition without a wire-status
+		// change: the latest overlap was already exposed as queued, and the
+		// operator has now advanced to that release while it still reports
+		// BuildQueued. Free the pending slot without churning updated_at.
+		if current == status && current == DeployQueued && overlapPending {
+			tag, err := tx.Exec(ctx, `UPDATE deploys SET overlap_pending = false WHERE id = $1 AND overlap_pending`, id)
+			if err != nil {
+				return err
+			}
+			transitioned = tag.RowsAffected() > 0
+			return nil
 		}
 		if !CanTransitionDeploy(current, status) {
 			return nil
@@ -1351,13 +1386,14 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status, resolvedImag
 		if _, err := tx.Exec(ctx,
 			`UPDATE deploys
 			 SET status = $2,
+			     overlap_pending = CASE WHEN $2 = $7 THEN overlap_pending ELSE false END,
 			     resolved_image = COALESCE(NULLIF($3, ''), resolved_image),
 			     failure_reason = COALESCE(NULLIF($6, ''), failure_reason),
 			     started_at = CASE WHEN $4 THEN COALESCE(started_at, clock_timestamp()) ELSE started_at END,
 			     finished_at = CASE WHEN $5 THEN COALESCE(finished_at, clock_timestamp()) ELSE finished_at END,
 			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
 			 WHERE id = $1`,
-			id, status, resolvedImage, starts, terminal, failureReason); err != nil {
+			id, status, resolvedImage, starts, terminal, failureReason, DeployQueued); err != nil {
 			return err
 		}
 		if status == DeployLive {

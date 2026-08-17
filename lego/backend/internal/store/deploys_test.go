@@ -174,7 +174,7 @@ func TestLiveTransitionDeactivatesPriorLiveDeploy(t *testing.T) {
 	}
 }
 
-func TestCreateDeployCancelsOlderOpenDeployNewestWins(t *testing.T) {
+func TestCreateDeployKeepsActiveAndQueuesLatestOverlap(t *testing.T) {
 	ctx := context.Background()
 	s := newMemStore()
 	ten, _ := s.CreateTenant(ctx, "acme", "free")
@@ -188,12 +188,87 @@ func TestCreateDeployCancelsOlderOpenDeployNewestWins(t *testing.T) {
 		t.Fatal(err)
 	}
 	old, _ := s.GetDeploy(ctx, app.ID, first.ID)
-	if old.Status != DeployCanceled || old.FinishedAt == nil {
-		t.Fatalf("superseded deploy = %+v, want canceled terminal", old)
+	if old.Status != DeployBuildInProgress || old.FinishedAt != nil {
+		t.Fatalf("active deploy = %+v, want build_in_progress and unfinished", old)
 	}
-	open, ok, _ := openDeployFor(ctx, s, app.ID)
-	if !ok || open.ID != second.ID || open.Status != DeployCreated {
-		t.Fatalf("newest open deploy = %+v ok=%v, want %s created", open, ok, second.ID)
+	if second.Status != DeployQueued || !second.OverlapPending || second.FinishedAt != nil {
+		t.Fatalf("overlapping deploy = %+v, want queued and unfinished", second)
+	}
+	third, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "", 3, CommitInfo{})
+	if err != nil || third.Status != DeployQueued || !third.OverlapPending {
+		t.Fatalf("latest overlapping deploy = %+v (err %v), want queued", third, err)
+	}
+	second, _ = s.GetDeploy(ctx, app.ID, second.ID)
+	if second.Status != DeployCanceled || second.FinishedAt == nil {
+		t.Fatalf("replaced queued deploy = %+v, want canceled terminal", second)
+	}
+	old, _ = s.GetDeploy(ctx, app.ID, first.ID)
+	if old.Status != DeployBuildInProgress || old.FinishedAt != nil {
+		t.Fatalf("active deploy after coalescing = %+v, want still build_in_progress", old)
+	}
+	open, err := s.ListOpenDeploys(ctx)
+	if err != nil || len(open) != 2 || open[0].ID != first.ID || open[1].ID != third.ID {
+		t.Fatalf("open deploys = %+v (err %v), want active %s then latest queued %s", open, err, first.ID, third.ID)
+	}
+}
+
+func TestActiveBuildCapacityQueueCoexistsWithOverlapQueue(t *testing.T) {
+	ctx := context.Background()
+	s := newMemStore()
+	ten, _ := s.CreateTenant(ctx, "acme", "free")
+	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Repo: "https://example.com/repo.git", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	first, _, _ := openDeployFor(ctx, s, app.ID)
+	if changed, err := s.TransitionDeploy(ctx, first.ID, DeployQueued, "", "", ""); err != nil || !changed {
+		t.Fatalf("queue active build for capacity: changed=%v err=%v", changed, err)
+	}
+	second, err := s.CreateDeploy(ctx, app.ID, TriggerNewCommit, "", 2, CommitInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, _ = s.GetDeploy(ctx, app.ID, first.ID)
+	if first.Status != DeployQueued || first.OverlapPending {
+		t.Fatalf("active capacity-wait row = %+v, want queued but not overlap-pending", first)
+	}
+	if second.Status != DeployQueued || !second.OverlapPending {
+		t.Fatalf("latest overlap row = %+v, want queued and overlap-pending", second)
+	}
+	if changed, err := s.TransitionDeploy(ctx, first.ID, DeployBuildInProgress, "", "", ""); err != nil || !changed {
+		t.Fatalf("start active build: changed=%v err=%v", changed, err)
+	}
+	first, _ = s.GetDeploy(ctx, app.ID, first.ID)
+	second, _ = s.GetDeploy(ctx, app.ID, second.ID)
+	if first.Status != DeployBuildInProgress || first.OverlapPending || second.Status != DeployQueued || !second.OverlapPending {
+		t.Fatalf("active/pending after capacity clears = %+v / %+v", first, second)
+	}
+}
+
+func TestQueuedOverlapAdoptionKeepsStatusAndFreesPendingSlot(t *testing.T) {
+	ctx := context.Background()
+	s := newMemStore()
+	ten, _ := s.CreateTenant(ctx, "acme", "free")
+	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Repo: "https://example.com/repo.git", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	first, _, _ := openDeployFor(ctx, s, app.ID)
+	second, err := s.CreateDeploy(ctx, app.ID, TriggerNewCommit, "", 2, CommitInfo{})
+	if err != nil || !second.OverlapPending {
+		t.Fatalf("overlap = %+v (err %v), want pending", second, err)
+	}
+	if changed, err := s.TransitionDeploy(ctx, first.ID, DeployLive, "img:1", "", ""); err != nil || !changed {
+		t.Fatalf("finish active deploy: changed=%v err=%v", changed, err)
+	}
+	if changed, err := s.TransitionDeploy(ctx, second.ID, DeployQueued, "", "", ""); err != nil || !changed {
+		t.Fatalf("adopt still-capacity-queued overlap: changed=%v err=%v", changed, err)
+	}
+	second, _ = s.GetDeploy(ctx, app.ID, second.ID)
+	if second.Status != DeployQueued || second.OverlapPending || !second.UpdatedAt.Equal(second.CreatedAt) {
+		t.Fatalf("adopted overlap = %+v, want queued active without public timestamp churn", second)
+	}
+	third, err := s.CreateDeploy(ctx, app.ID, TriggerNewCommit, "", 3, CommitInfo{})
+	if err != nil || third.Status != DeployQueued || !third.OverlapPending {
+		t.Fatalf("next overlap = %+v (err %v), want new pending slot", third, err)
+	}
+	second, _ = s.GetDeploy(ctx, app.ID, second.ID)
+	if second.Status != DeployQueued || second.OverlapPending || second.FinishedAt != nil {
+		t.Fatalf("adopted capacity-queued deploy was preempted: %+v", second)
 	}
 }
 
@@ -203,16 +278,16 @@ func TestDelayedLowerGenerationDeployCannotSupersedeNewerOpenDeploy(t *testing.T
 	ten, _ := s.CreateTenant(ctx, "acme", "free")
 	app, _ := s.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
 	newer, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "img:3", 3, CommitInfo{})
-	if err != nil || newer.Status != DeployCreated {
-		t.Fatalf("newer deploy = %+v (err %v), want created", newer, err)
+	if err != nil || newer.Status != DeployQueued {
+		t.Fatalf("newer deploy = %+v (err %v), want queued behind the active create deploy", newer, err)
 	}
 	delayed, err := s.CreateDeploy(ctx, app.ID, TriggerAPI, "img:2", 2, CommitInfo{})
 	if err != nil || delayed.Status != DeployCanceled || delayed.FinishedAt == nil {
 		t.Fatalf("delayed deploy = %+v (err %v), want immediately canceled", delayed, err)
 	}
-	open, ok, err := openDeployFor(ctx, s, app.ID)
-	if err != nil || !ok || open.ID != newer.ID || open.Generation != 3 {
-		t.Fatalf("open deploy = %+v ok=%v (err %v), want higher-generation %s", open, ok, err, newer.ID)
+	open, err := s.ListOpenDeploys(ctx)
+	if err != nil || len(open) != 2 || open[0].Generation != 1 || open[1].ID != newer.ID || open[1].Generation != 3 {
+		t.Fatalf("open deploys = %+v (err %v), want generation 1 active plus higher-generation %s queued", open, err, newer.ID)
 	}
 }
 

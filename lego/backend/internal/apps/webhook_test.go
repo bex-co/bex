@@ -593,8 +593,8 @@ func contains(ss []string, want string) bool {
 // release generation, and the pushed head commit as provenance — plus the
 // release-generation annotation on the CR, the same stamp deploys.Trigger
 // writes. The row is what puts push-to-deploy in the deploy history and what
-// cancels (via CreateDeploy's newest-wins) any still-open deploy the push
-// supersedes; without it that open row stranded in build_in_progress forever.
+// replaces (via CreateDeploy's latest-pending slot) any queued deploy the push
+// supersedes, without preempting the release already executing.
 func TestWebhookPushOpensDeployRow(t *testing.T) {
 	const secret, repo = "s3cr3t", "https://github.com/x/app"
 	app := autoDeployApp("api", repo)

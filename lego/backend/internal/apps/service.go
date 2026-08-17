@@ -209,8 +209,9 @@ type IntentStore interface {
 	// moment the public-surface create returns (unified create path, w2/m11).
 	// ErrConflict if (tenant_id, name) already exists.
 	CreateApp(ctx context.Context, a store.App) (store.App, error)
-	// CreateDeploy opens a new deploy row (status update_in_progress) — called
-	// on redeploy of a store-managed App so the deploys API reflects the push.
+	// CreateDeploy opens a new deploy row (created when idle, queued behind an
+	// active release) — called on redeploy of a store-managed App so the deploys
+	// API reflects the push.
 	// generation is the App CR's metadata.generation this deploy runs under,
 	// captured after the redeploy's own patch (w2/m10: Cancel's build-Job
 	// identity is derived from this stored value, not a fresh re-fetch, so it
@@ -2423,11 +2424,10 @@ func normalizeTierOrPlan(v string) (string, error) {
 // A store-managed App also gets a deploy row (trigger "new_commit"), stamped
 // with the release generation this bump requests — the same discipline as
 // deploys.Trigger. That both puts push-to-deploy in the deploy history and lets
-// CreateDeploy's newest-wins cancel close any still-open row from an earlier
-// trigger this push supersedes. Without the row, that open deploy stranded in
-// build_in_progress forever: the reconciler refuses to project status onto a
-// row whose release generation the operator has moved past
-// (store/reconciler.go, observedDeployStatus). commit is the pushed head
+// CreateDeploy's latest-pending slot replace any older queued trigger without
+// preempting the release already executing. Without the row, the pending
+// release would have no history record to adopt after the active release
+// settles. commit is the pushed head
 // commit from the webhook payload; empty falls back to the GitHub resolver.
 // A CR-only App (no store id) keeps the plain bump.
 func (s *Service) redeploy(ctx context.Context, name string, commit store.CommitInfo) (AppView, error) {

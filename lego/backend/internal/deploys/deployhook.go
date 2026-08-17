@@ -292,7 +292,7 @@ func deployHookServiceName(a *appv1alpha1.App) string {
 // design: with bex-api's two replicas (w1/m52) the effective per-token ceiling
 // is up to 2× DefaultDeployHookRPM. That is an accepted, bounded over-provision
 // (w1/m58 audit): the endpoint is credential-gated (a leaked dhk- token, never
-// an anonymous flood) and its action is newest-wins idempotent — extra triggers
+// an anonymous flood) and its action is latest-pending idempotent — extra triggers
 // are superseded, not multiplied into extra builds — so a coarse per-replica
 // ceiling is an abuse damper, not a security boundary. A shared control-plane
 // counter was considered and rejected as disproportionate (a DB round trip per

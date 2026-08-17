@@ -312,7 +312,7 @@ func TestDeployHookHandlerHasIndependentPerTokenRateLimit(t *testing.T) {
 // limiter is intentionally replica-local (see DeployHookRateLimiter's doc), so
 // two bex-api replicas each grant the same token its own bucket — an effective
 // per-token ceiling of up to 2× DefaultDeployHookRPM, accepted as a bounded
-// over-provision for a credential-gated, newest-wins-idempotent endpoint.
+// over-provision for a credential-gated, latest-pending-idempotent endpoint.
 func TestDeployHookRateLimiterIsPerReplica(t *testing.T) {
 	const token = "dhk-sametoken0000000"
 	replicaA := NewDeployHookRateLimiter(0.01, 1) // burst 1, effectively no refill
