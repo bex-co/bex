@@ -167,6 +167,22 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description:
       "Review section error shown when the preview query itself fails (network)",
   },
+  // --- sync:false secret prompts (w8/m21, Render's create-time prompt) ---
+  "blueprints.promptTitle": {
+    message: "机密值",
+    description:
+      "Review section — heading for the sync:false env var prompt inputs",
+  },
+  "blueprints.promptHint": {
+    message:
+      "此蓝图声明了 sync: false 的环境变量——其值只存于 bex，不入仓库。现在填写；仅在首次创建时写入，后续同步不会覆盖。",
+    description: "sync:false prompt section helper text",
+  },
+  "blueprints.promptEmptyWarning": {
+    message: "留空的值将不会设置——服务可能启动失败，可稍后在其 Environment 页补填。",
+    description:
+      "Warning below the sync:false inputs when at least one is blank",
+  },
   // --- Estimated pricing (Render's Blueprint pricing panel, w8/m18) ---
   "blueprints.pricingTitle": {
     message: "预估价格",
@@ -382,6 +398,20 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "取消",
     description: "Sync confirm dialog cancel button label",
   },
+  "blueprints.syncPreviewLoading": {
+    message: "正在从仓库计算同步计划…",
+    description: "Pre-sync dialog — loading line while blueprintPreview runs",
+  },
+  "blueprints.syncPreviewInvalid": {
+    message: "分支上当前的蓝图文件存在问题——现在同步可能失败或回退到已存储的清单：",
+    description:
+      "Pre-sync dialog — heading above validation errors from the fetched manifest",
+  },
+  "blueprints.syncPreviewUnavailable": {
+    message: "无法计算同步计划（预览不可用）。仍可同步——后端会在应用前重新校验。",
+    description:
+      "Pre-sync dialog — graceful-degrade warning when the preview query fails",
+  },
   "blueprints.syncSuccess": {
     message: "蓝图同步成功",
     description: "Toast shown after a successful syncBlueprint call",
@@ -391,6 +421,22 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "Toast shown when syncBlueprint returns an error",
   },
   // --- Update action ---
+  "blueprints.editField": {
+    message: "编辑{field}",
+    description: "Aria label for the inline-edit pencil button",
+  },
+  "blueprints.saveField": {
+    message: "保存{field}",
+    description: "Aria label for the inline-edit save button",
+  },
+  "blueprints.cancelEdit": {
+    message: "取消编辑",
+    description: "Aria label for the inline-edit cancel button",
+  },
+  "blueprints.pathInvalid": {
+    message: "必须是干净的仓库相对 .yaml/.yml 路径（不能以 / 开头，不能包含 ..）。",
+    description: "Inline path editor client-side validation message",
+  },
   "blueprints.updateSuccess": {
     message: "蓝图已更新",
     description: "Toast shown after a successful updateBlueprint call",

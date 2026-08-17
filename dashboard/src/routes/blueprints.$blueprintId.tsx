@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Check, Loader2, Pencil, X } from "lucide-react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -13,6 +14,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
+import { Input } from "@/common/components/ui/input";
 import { Switch } from "@/common/components/ui/switch";
 import {
   Table,
@@ -36,6 +38,8 @@ import {
 import { BlueprintStatusBadge } from "@/features/blueprints/components/blueprint-status-badge";
 import { ValidatePanel } from "@/features/blueprints/components/validate-panel";
 import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
+import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-preview";
+import { BlueprintPlanSummary } from "@/features/blueprints/components/blueprint-plan-summary";
 import { useSyncBlueprint } from "@/features/blueprints/hooks/use-sync-blueprint";
 import { useUpdateBlueprint } from "@/features/blueprints/hooks/use-update-blueprint";
 import { useDisconnectBlueprint } from "@/features/blueprints/hooks/use-disconnect-blueprint";
@@ -82,6 +86,103 @@ export const Route = createFileRoute("/blueprints/$blueprintId")({
     ),
 });
 
+/** Client-side mirror of the backend's approvedBlueprintPath rule (m19):
+ * clean repo-relative .yaml/.yml, no escapes. The backend re-validates. */
+function validBlueprintPath(path: string): boolean {
+  const p = path.trim();
+  if (!p || p.startsWith("/") || p.includes("\\")) return false;
+  if (p.split("/").some((seg) => seg === "" || seg === "." || seg === "..")) {
+    return false;
+  }
+  return /\.(yaml|yml)$/.test(p);
+}
+
+/** Inline value editor for the metadata card (w8/m21 t003): pencil toggles
+ * an input; save PATCHes only the changed field. */
+function InlineEdit({
+  value,
+  label,
+  mono,
+  validate,
+  invalidMessage,
+  onSave,
+  disabled,
+}: {
+  value: string;
+  label: string;
+  mono?: boolean;
+  validate?: (next: string) => boolean;
+  invalidMessage?: string;
+  onSave: (next: string) => Promise<void>;
+  disabled: boolean;
+}) {
+  const { t } = useTranslations();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const invalid = editing && validate ? !validate(draft) : false;
+  if (!editing) {
+    return (
+      <span className="flex items-center gap-1.5">
+        <span className={mono ? "font-mono font-medium" : "font-medium"}>
+          {value}
+        </span>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="size-6"
+          aria-label={t("blueprints.editField", { field: label })}
+          disabled={disabled}
+          onClick={() => {
+            setDraft(value);
+            setEditing(true);
+          }}
+        >
+          <Pencil className="size-3.5" />
+        </Button>
+      </span>
+    );
+  }
+  return (
+    <span className="flex flex-col gap-1">
+      <span className="flex items-center gap-1.5">
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          className={mono ? "h-8 font-mono" : "h-8"}
+          aria-label={label}
+          autoFocus
+        />
+        <Button
+          size="icon"
+          variant="ghost"
+          className="size-6"
+          aria-label={t("blueprints.saveField", { field: label })}
+          disabled={disabled || invalid || draft.trim() === ""}
+          onClick={() => {
+            const next = draft.trim();
+            setEditing(false);
+            if (next !== value) void onSave(next);
+          }}
+        >
+          <Check className="size-3.5" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="size-6"
+          aria-label={t("blueprints.cancelEdit")}
+          onClick={() => setEditing(false)}
+        >
+          <X className="size-3.5" />
+        </Button>
+      </span>
+      {invalid && invalidMessage ? (
+        <span className="text-xs text-destructive">{invalidMessage}</span>
+      ) : null}
+    </span>
+  );
+}
+
 export function BlueprintDetailPage() {
   const { blueprintId } = Route.useParams();
   const { t } = useTranslations();
@@ -93,6 +194,18 @@ export function BlueprintDetailPage() {
   const { syncs } = useBlueprintSyncs(blueprintId);
 
   const [confirming, setConfirming] = useState(false);
+  // Pre-sync plan (w8/m21 t002): fetched only while the dialog is open — an
+  // empty repo skips the query. Render shows a computed diff before sync;
+  // applying blindly is the pre-m21 behavior this replaces.
+  const {
+    preview: syncPreview,
+    loading: syncPreviewLoading,
+    error: syncPreviewError,
+  } = useBlueprintPreview(
+    confirming && blueprint ? blueprint.repo : "",
+    confirming && blueprint ? blueprint.branch : "",
+    confirming ? (blueprint?.path ?? "") : "",
+  );
   const [disconnecting, setDisconnecting] = useState(false);
   const [protectedConfirmation, setProtectedConfirmation] = useState<
     string | null
@@ -170,7 +283,17 @@ export function BlueprintDetailPage() {
             <>
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">{blueprint.name}</CardTitle>
+                  <CardTitle className="text-base">
+                    <InlineEdit
+                      value={blueprint.name}
+                      label={t("blueprints.createNameLabel")}
+                      onSave={async (next) => {
+                        await update(blueprintId, { name: next });
+                        void router.invalidate();
+                      }}
+                      disabled={busy}
+                    />
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
@@ -190,8 +313,19 @@ export function BlueprintDetailPage() {
                       <dt className="text-muted-foreground">
                         {t("blueprints.metaPath")}
                       </dt>
-                      <dd className="font-mono font-medium">
-                        {blueprint.path || "render.yaml"}
+                      <dd>
+                        <InlineEdit
+                          value={blueprint.path || "render.yaml"}
+                          label={t("blueprints.metaPath")}
+                          mono
+                          validate={validBlueprintPath}
+                          invalidMessage={t("blueprints.pathInvalid")}
+                          onSave={async (next) => {
+                            await update(blueprintId, { path: next });
+                            void router.invalidate();
+                          }}
+                          disabled={busy}
+                        />
                       </dd>
                     </div>
                     <div>
@@ -352,7 +486,7 @@ export function BlueprintDetailPage() {
       </div>
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
           <AlertDialogHeader>
             <AlertDialogTitle>
               {t("blueprints.syncConfirmTitle")}
@@ -361,9 +495,42 @@ export function BlueprintDetailPage() {
               {t("blueprints.syncConfirmBody")}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {syncPreviewLoading ? (
+            <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              {t("blueprints.syncPreviewLoading")}
+            </div>
+          ) : syncPreview?.found && syncPreview.validation?.valid === true ? (
+            <div className="space-y-3">
+              <BlueprintPlanSummary
+                plan={syncPreview.validation.plan}
+                pricing={syncPreview.validation.estimatedPricing}
+              />
+            </div>
+          ) : syncPreview ? (
+            <div className="space-y-2 rounded-md border border-destructive/50 p-3 text-sm">
+              <p className="font-medium text-destructive">
+                {t("blueprints.syncPreviewInvalid")}
+              </p>
+              <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+                {(syncPreview.validation?.errors ?? [syncPreview.error])
+                  .filter((e): e is string => !!e)
+                  .map((e, i) => (
+                    <li key={i}>{e}</li>
+                  ))}
+              </ul>
+            </div>
+          ) : syncPreviewError ? (
+            <p className="text-sm text-amber-600 dark:text-amber-500">
+              {t("blueprints.syncPreviewUnavailable")}
+            </p>
+          ) : null}
           <AlertDialogFooter>
             <AlertDialogCancel>{t("blueprints.syncCancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void handleSync()}>
+            <AlertDialogAction
+              onClick={() => void handleSync()}
+              disabled={syncPreviewLoading}
+            >
               {t("blueprints.syncConfirmAction")}
             </AlertDialogAction>
           </AlertDialogFooter>

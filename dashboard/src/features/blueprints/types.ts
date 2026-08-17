@@ -38,6 +38,8 @@ export interface BlueprintPreviewPlan {
   databases: string[] | null;
   keyValue: string[] | null;
   envGroups: string[] | null;
+  /** sync:false env var prompt keys ("service/KEY") awaiting first-create values. */
+  syncFalseVars: string[] | null;
   totalActions: number | null;
   actions: BlueprintPlanAction[] | null;
 }

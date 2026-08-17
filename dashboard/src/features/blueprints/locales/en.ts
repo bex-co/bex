@@ -169,6 +169,23 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description:
       "Review section error shown when the preview query itself fails (network)",
   },
+  // --- sync:false secret prompts (w8/m21, Render's create-time prompt) ---
+  "blueprints.promptTitle": {
+    message: "Secret values",
+    description:
+      "Review section — heading for the sync:false env var prompt inputs",
+  },
+  "blueprints.promptHint": {
+    message:
+      "This Blueprint declares environment variables with sync: false — their values live only in bex, never in the repo. Set them now; they are seeded once and later syncs never overwrite them.",
+    description: "sync:false prompt section helper text",
+  },
+  "blueprints.promptEmptyWarning": {
+    message:
+      "Blank values deploy as unset — the service may fail until you set them in its Environment tab.",
+    description:
+      "Warning below the sync:false inputs when at least one is blank",
+  },
   // --- Estimated pricing (Render's Blueprint pricing panel, w8/m18) ---
   "blueprints.pricingTitle": {
     message: "Estimated pricing",
@@ -386,6 +403,22 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "Cancel",
     description: "Sync confirm dialog cancel button label",
   },
+  "blueprints.syncPreviewLoading": {
+    message: "Computing the sync plan from the repository…",
+    description: "Pre-sync dialog — loading line while blueprintPreview runs",
+  },
+  "blueprints.syncPreviewInvalid": {
+    message:
+      "The Blueprint file currently on the branch has problems — syncing now may fail or fall back to the stored manifest:",
+    description:
+      "Pre-sync dialog — heading above validation errors from the fetched manifest",
+  },
+  "blueprints.syncPreviewUnavailable": {
+    message:
+      "Couldn't compute the sync plan (preview unavailable). You can still sync — the backend re-validates before applying.",
+    description:
+      "Pre-sync dialog — graceful-degrade warning when the preview query fails",
+  },
   "blueprints.syncSuccess": {
     message: "Blueprint synced",
     description: "Toast shown after a successful syncBlueprint call",
@@ -395,6 +428,23 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description: "Toast shown when syncBlueprint returns an error",
   },
   // --- Update action ---
+  "blueprints.editField": {
+    message: "Edit {field}",
+    description: "Aria label for the inline-edit pencil button",
+  },
+  "blueprints.saveField": {
+    message: "Save {field}",
+    description: "Aria label for the inline-edit save button",
+  },
+  "blueprints.cancelEdit": {
+    message: "Cancel edit",
+    description: "Aria label for the inline-edit cancel button",
+  },
+  "blueprints.pathInvalid": {
+    message:
+      "Must be a clean repository-relative .yaml or .yml path (no leading slash, no '..').",
+    description: "Inline path editor client-side validation message",
+  },
   "blueprints.updateSuccess": {
     message: "Blueprint updated",
     description: "Toast shown after a successful updateBlueprint call",

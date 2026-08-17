@@ -146,6 +146,7 @@ export const BlueprintPreviewDocument = gql`
           databases
           keyValue
           envGroups
+          syncFalseVars
           totalActions
           actions {
             operation
@@ -184,6 +185,11 @@ export const BlueprintPreviewDocument = gql`
 
 // --- mutations ---
 
+export interface BlueprintEnvVarValueInput {
+  key: string;
+  value: string;
+}
+
 export interface CreateBlueprintVars {
   repo: string;
   branch: string;
@@ -191,6 +197,7 @@ export interface CreateBlueprintVars {
   name?: string | null;
   confirm?: string | null;
   ownerId?: string | null;
+  envVarValues?: BlueprintEnvVarValueInput[] | null;
 }
 export interface CreateBlueprintMutation {
   createBlueprint: BlueprintView | null;
@@ -203,6 +210,7 @@ export const CreateBlueprintDocument = gql`
     $name: String
     $confirm: String
     $ownerId: String
+    $envVarValues: [BlueprintEnvVarValueInput]
   ) {
     createBlueprint(
       repo: $repo
@@ -211,6 +219,7 @@ export const CreateBlueprintDocument = gql`
       name: $name
       confirm: $confirm
       ownerId: $ownerId
+      envVarValues: $envVarValues
     ) {
       id
       name
