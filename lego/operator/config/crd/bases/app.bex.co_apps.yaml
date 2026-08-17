@@ -356,7 +356,7 @@ spec:
                 description: |-
                   Headers are the custom response-header rules a static_site applies at the
                   edge (Render's /headers), scoped by request-path pattern. Ignored for every
-                  other type.
+                  other type. Count-capped like Routes (codex-security round 12, finding 3).
                 items:
                   description: |-
                     StaticHeader is one custom response-header rule for a static_site, matching
@@ -365,19 +365,23 @@ spec:
                   properties:
                     name:
                       description: Name is the response header name (e.g. "X-Frame-Options").
+                      maxLength: 256
                       type: string
                     path:
                       description: Path is the request path pattern the header applies
                         to (e.g. "/*").
+                      maxLength: 2048
                       type: string
                     value:
                       description: Value is the response header value (e.g. "DENY").
+                      maxLength: 4096
                       type: string
                   required:
                   - name
                   - path
                   - value
                   type: object
+                maxItems: 100
                 type: array
               healthCheckPath:
                 description: |-
@@ -626,6 +630,9 @@ spec:
                 description: |-
                   Routes are the ordered redirect/rewrite rules a static_site applies at the
                   edge (Render's /routes), first match wins. Ignored for every other type.
+                  Count-capped (codex-security round 12, finding 3): the shared static
+                  server linearly scans the list on every public request, so the durable
+                  per-site rule state must stay bounded.
                 items:
                   description: |-
                     StaticRoute is one redirect/rewrite rule for a static_site, matching Render's
@@ -638,10 +645,12 @@ spec:
                       description: |-
                         Destination is the target path ("/new", "/index.html"). A trailing "/*" in
                         Source is appended to a Destination that ends in "/*".
+                      maxLength: 2048
                       type: string
                     source:
                       description: Source is the request path pattern to match (e.g.
                         "/old", "/app/*").
+                      maxLength: 2048
                       type: string
                     type:
                       description: Type is "redirect" (301 Location) or "rewrite"
@@ -655,6 +664,7 @@ spec:
                   - source
                   - type
                   type: object
+                maxItems: 100
                 type: array
               runAt:
                 description: |-

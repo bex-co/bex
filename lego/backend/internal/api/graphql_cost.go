@@ -36,11 +36,22 @@ const gqlExecTimeout = 30 * time.Second
 // database, or provider call — so a near-limit request can't be amplified into a
 // memory or upstream-work DoS against the shared API. Generous enough that no
 // legitimate dashboard/CLI query trips them.
+//
+// codex-security round 12, finding 4 tightened the alias budgets: the original
+// 500-alias allowance let ONE accepted document run a full-workspace list
+// resolver (projects — all rows + per-project membership enrichment) hundreds
+// of times while the limiter charged a single request token. Aliases are now
+// bounded in total AND per field name, the shape of real amplification: no
+// legitimate client aliases one field more than a handful of times.
 const (
 	gqlMaxDepth      = 15   // nesting depth
-	gqlMaxAliases    = 500  // aliased fields (alias amplification)
+	gqlMaxAliases    = 50   // aliased fields in total (alias amplification)
 	gqlMaxFields     = 2000 // total selected fields across the document
 	gqlMaxOperations = 10   // operations in one document
+	// gqlMaxAliasesPerField caps how many times ONE field name may be aliased
+	// in a document — `p1: projects{…} p2: projects{…} …` is the amplification
+	// shape; diverse aliased reads across different fields are not.
+	gqlMaxAliasesPerField = 10
 )
 
 // validateGraphQLComplexity parses query and rejects it when it exceeds any
@@ -86,6 +97,8 @@ type gqlCost struct {
 	fragments map[string]*ast.FragmentDefinition
 	fields    int
 	aliases   int
+	// perField counts aliases by field name — the per-field-name budget's input.
+	perField map[string]int
 }
 
 func (c *gqlCost) walk(sel *ast.SelectionSet, depth int, visiting map[string]bool) error {
@@ -98,6 +111,17 @@ func (c *gqlCost) walk(sel *ast.SelectionSet, depth int, visiting map[string]boo
 			c.fields++
 			if f.Alias != nil {
 				c.aliases++
+				name := "(anonymous)"
+				if f.Name != nil {
+					name = f.Name.Value
+				}
+				if c.perField == nil {
+					c.perField = map[string]int{}
+				}
+				c.perField[name]++
+				if c.perField[name] > gqlMaxAliasesPerField {
+					return fmt.Errorf("query rejected: aliases field %q more than %d times", name, gqlMaxAliasesPerField)
+				}
 			}
 			if c.fields > gqlMaxFields {
 				return fmt.Errorf("query rejected: selects more than %d fields", gqlMaxFields)

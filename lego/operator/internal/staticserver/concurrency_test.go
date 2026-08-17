@@ -18,6 +18,7 @@ package staticserver
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -184,6 +185,28 @@ func TestCacheEnforcesPerSiteBudget(t *testing.T) {
 	}
 	if c.siteUsed["site-a"] > 32<<20 {
 		t.Fatalf("site A cache use = %d, exceeds 32 MiB share", c.siteUsed["site-a"])
+	}
+}
+
+// TestCacheChargesEntryMetadata proves the entry-cost model (codex-security
+// round 12, finding 2): a zero-byte body still consumes budget — key,
+// content type, and the fixed per-entry overhead — so a tenant cannot park
+// unbounded zero-cost entries by publishing and warming empty files. The
+// per-site budget is the eviction trigger here; the same charge guards the
+// global budget.
+func TestCacheChargesEntryMetadata(t *testing.T) {
+	c := newCache(1 << 20) // per-site share min(1 MiB, 32 MiB) = 1 MiB
+	empty := Object{Body: nil, ContentType: "text/plain"}
+	// Each entry costs len(key)+len(type)+entryOverhead ≈ 330 bytes, so ~3300
+	// zero-byte entries exhaust the 1 MiB per-site budget.
+	for i := range 8000 {
+		c.put("site-a", fmt.Sprintf("a/rev-1/f%d", i), empty)
+	}
+	if n := len(c.entries); int64(n)*entryOverhead > c.perSiteBudget+entryOverhead {
+		t.Fatalf("cache held %d zero-byte entries past its per-site byte budget", n)
+	}
+	if c.siteUsed["site-a"] > c.perSiteBudget {
+		t.Fatalf("site A cache use = %d exceeds per-site budget %d", c.siteUsed["site-a"], c.perSiteBudget)
 	}
 }
 

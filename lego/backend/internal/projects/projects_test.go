@@ -176,6 +176,69 @@ func TestGetNonexistentIsNotFound(t *testing.T) {
 	}
 }
 
+// txProjectStore adds the transactional grouping runner to the plain fake —
+// the capability the direct-create quota keys on (the production *store.PGStore
+// has it structurally).
+type txProjectStore struct{ *fakeProjectStore }
+
+func (t txProjectStore) RunGroupingTx(ctx context.Context, fn func(store.GroupingStore) error) error {
+	return fn(fakeProjectGroupings{t.fakeProjectStore})
+}
+
+// fakeProjectGroupings adapts the fake to the tx-scoped GroupingStore the
+// quota path reads; only the project half is real, the environment half inert.
+type fakeProjectGroupings struct{ f *fakeProjectStore }
+
+func (g fakeProjectGroupings) ListProjects(ctx context.Context, tenantID string) ([]store.Project, error) {
+	return g.f.ListProjects(ctx, tenantID)
+}
+func (g fakeProjectGroupings) CreateProject(ctx context.Context, tenantID, name string) (store.Project, error) {
+	return g.f.CreateProject(ctx, tenantID, name)
+}
+func (fakeProjectGroupings) ListEnvironments(context.Context, string) ([]store.Environment, error) {
+	return nil, nil
+}
+func (fakeProjectGroupings) CreateEnvironment(context.Context, string, string, string) (store.Environment, error) {
+	return store.Environment{}, nil
+}
+func (fakeProjectGroupings) SetEnvironmentACL(context.Context, string, string, bool, []core.IPAllowListEntry) error {
+	return nil
+}
+func (g fakeProjectGroupings) CountWorkspaceGroupings(ctx context.Context, tenantID string) (int, int, error) {
+	ps, err := g.f.ListProjects(ctx, tenantID)
+	return len(ps), 0, err
+}
+
+// TestCreateEnforcesGroupingQuota pins codex-security round 12, finding 5: the
+// direct project create shares the Blueprint grouping quota — an over-cap
+// workspace is refused with the same coded BLUEPRINT_GROUPING_LIMIT error
+// across every surface, and 0 disables the bound.
+func TestCreateEnforcesGroupingQuota(t *testing.T) {
+	st := &txProjectStore{newFakeProjectStore(store.Project{ID: "prj-held", TenantID: "tea-a", Name: "held"})}
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st, MaxGroupings: 1}
+	ctx := ctxAs("user-a")
+
+	_, err := svc.Create(ctx, "tea-a", "next")
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "BLUEPRINT_GROUPING_LIMIT" {
+		t.Fatalf("over-quota create = %v, want BLUEPRINT_GROUPING_LIMIT", err)
+	}
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("quota refusal must be conflict-class, got %v", err)
+	}
+
+	// 0 disables the cap (the documented boundary), and one below-cap create
+	// still succeeds through the transactional path.
+	svc.MaxGroupings = 0
+	if _, err := svc.Create(ctx, "tea-a", "next"); err != nil {
+		t.Fatalf("uncapped create: %v", err)
+	}
+	svc.MaxGroupings = 3 // workspace now holds 2 projects — one more fits
+	if _, err := svc.Create(ctx, "tea-a", "another"); err != nil {
+		t.Fatalf("below-cap create through the tx path: %v", err)
+	}
+}
+
 func TestCrossTenantGetIsForbiddenAcrossAdapters(t *testing.T) {
 	st := newFakeProjectStore(store.Project{ID: "prj-other", TenantID: "tea-other", Name: "other"})
 	svc := &Service{

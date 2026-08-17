@@ -34,6 +34,22 @@ type cache struct {
 	entries       map[string]Object
 }
 
+// entryOverhead is the fixed per-entry allocation charged on top of the body:
+// the key and content-type strings, the two map slots, and the Object struct.
+// Without it a zero-byte body would cost nothing to cache, and a tenant could
+// publish millions of empty files and warm them into entries that never
+// trigger eviction — the byte budget would read as unexhausted while the
+// metadata alone grows the shared server toward its memory limit
+// (codex-security round 12, finding 2).
+const entryOverhead = 256
+
+// entryCharge is the budget cost of caching obj under key: body bytes plus the
+// entry's own metadata. It is the ONE cost model — put and evictOne share it —
+// so an entry is always released for exactly what it was charged.
+func entryCharge(key string, obj Object) int64 {
+	return int64(len(obj.Body)) + int64(len(key)) + int64(len(obj.ContentType)) + entryOverhead
+}
+
 func newCache(budget int64) *cache {
 	perSiteBudget := min(budget, 32<<20)
 	return &cache{
@@ -59,7 +75,7 @@ func (c *cache) put(site, key string, obj Object) {
 	if c == nil || c.budget <= 0 {
 		return
 	}
-	size := int64(len(obj.Body))
+	size := entryCharge(key, obj)
 	if size > c.budget || size > c.perSiteBudget {
 		return // too big to cache; served uncached
 	}
@@ -91,7 +107,7 @@ func (c *cache) evictOne(site string) bool {
 		if site != "" && entrySite != site {
 			continue
 		}
-		size := int64(len(obj.Body))
+		size := entryCharge(key, obj)
 		delete(c.entries, key)
 		delete(c.entrySites, key)
 		c.used -= size

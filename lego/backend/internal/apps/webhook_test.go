@@ -451,6 +451,83 @@ func postPush(t *testing.T, h *GitWebhook, sigSecret, event string, body []byte)
 	return rec
 }
 
+// TestWebhookRejectsHeaderSwappedDeleteBodyAsPush pins codex-security round 12,
+// finding 10: the HMAC covers the body, not the X-GitHub-Event header, so a
+// captured signed delete delivery replayed with the header stripped (the
+// pre-fix Gitea fallback) or forced to "push" must NOT be reinterpreted as a
+// push — it is a 400 before scope resolution, never redeploys, and the
+// legitimate delete delivery afterwards still processes (the replays were
+// rejected before claiming anything).
+func TestWebhookRejectsHeaderSwappedDeleteBodyAsPush(t *testing.T) {
+	const secret, repo = "s3cr3t", "https://github.com/x/mono"
+	app := autoDeployApp("api", repo)
+	app.Labels = map[string]string{store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-api"}
+	svc, cl := newService(nil, app)
+	writer := &recordingFactWriter{}
+	svc.EventFacts = writer
+	h := &GitWebhook{Svc: svc, Secret: secret}
+
+	deleteBody, err := json.Marshal(map[string]any{
+		"ref":        "main",
+		"ref_type":   "branch",
+		"repository": map[string]string{"clone_url": repo},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, event := range []string{"", "push"} {
+		rec := postPush(t, h, secret, event, deleteBody)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("header %q on delete body => 400, got %d: %s", event, rec.Code, rec.Body)
+		}
+		if getApp(t, cl, "api").Spec.RestartedAt != "" {
+			t.Fatalf("header %q reinterpreted a delete body as a push", event)
+		}
+	}
+	// A body with no ref at all (e.g. a ping payload) is likewise not a push.
+	pingBody, _ := json.Marshal(map[string]any{"zen": "Keep it logically awesome.", "hook_id": 1})
+	if rec := postPush(t, h, secret, "push", pingBody); rec.Code != http.StatusBadRequest {
+		t.Fatalf("ping body under push header => 400, got %d: %s", rec.Code, rec.Body)
+	}
+
+	// The legitimate delete delivery still processes after the replays.
+	req := httptest.NewRequest("POST", "/v1/webhooks/git", strings.NewReader(string(deleteBody)))
+	req.Header.Set("X-Hub-Signature-256", sign(secret, deleteBody))
+	req.Header.Set("X-GitHub-Event", "delete")
+	req.Header.Set("X-GitHub-Delivery", "del-legit")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("legitimate delete => 200, got %d: %s", rec.Code, rec.Body)
+	}
+	if getApp(t, cl, "api").Spec.AutoDeploy {
+		t.Error("legitimate branch delete must disable auto-deploy")
+	}
+}
+
+// A push-shaped body replayed under the delete header is a signed no-op, not a
+// branch deletion (the symmetric half of the shape binding).
+func TestWebhookDeleteHeaderOnPushBodyIsNoOp(t *testing.T) {
+	const secret, repo = "s3cr3t", "https://github.com/x/mono"
+	app := autoDeployApp("api", repo)
+	app.Labels = map[string]string{store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-api"}
+	svc, cl := newService(nil, app)
+	writer := &recordingFactWriter{}
+	svc.EventFacts = writer
+	h := &GitWebhook{Svc: svc, Secret: secret}
+
+	rec := postPush(t, h, secret, "delete", pushBody(t, repo, "refs/heads/main"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("delete header on push body => 200 no-op, got %d: %s", rec.Code, rec.Body)
+	}
+	if len(writer.facts) != 0 {
+		t.Fatalf("push body under delete header recorded %+v, want none", writer.facts)
+	}
+	if !getApp(t, cl, "api").Spec.AutoDeploy {
+		t.Error("push body under delete header must not disable auto-deploy")
+	}
+}
+
 func TestWebhookAcceptsEitherKey(t *testing.T) {
 	const repo = "https://github.com/x/app"
 	body := pushBody(t, repo, "refs/heads/main")

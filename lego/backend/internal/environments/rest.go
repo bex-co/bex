@@ -104,6 +104,13 @@ func toRenderEnvironment(e EnvironmentView) renderEnvironment {
 	}
 }
 
+// maxListProjectIDs bounds how many distinct projectId values one environment
+// list request may fan out into — each value runs a full list + enrichment
+// pass, and the multi-value form is a REST-only convenience (Render's own API
+// and the GraphQL/MCP surfaces take exactly one), so a generous small cap is
+// enough (codex-security round 12, finding 5).
+const maxListProjectIDs = 20
+
 // RegisterREST mounts the environment CRUD endpoints.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/environments", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
@@ -112,8 +119,21 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if len(projectIDs) == 0 {
 			return nil, core.ErrBadRequest
 		}
+		// Deduplicate (repeat query keys multiply the identical list run) and
+		// refuse past the fan-out cap before the first list runs.
+		seen := make(map[string]bool, len(projectIDs))
+		distinct := make([]string, 0, len(projectIDs))
+		for _, id := range projectIDs {
+			if !seen[id] {
+				seen[id] = true
+				distinct = append(distinct, id)
+			}
+		}
+		if len(distinct) > maxListProjectIDs {
+			return nil, fmt.Errorf("%w: at most %d distinct projectId values per list", core.ErrBadRequest, maxListProjectIDs)
+		}
 		var environments []EnvironmentView
-		for _, projectID := range projectIDs {
+		for _, projectID := range distinct {
 			es, err := s.List(r.Context(), projectID)
 			if err != nil {
 				return nil, err

@@ -190,6 +190,42 @@ func TestStaticSetterValidationHardening(t *testing.T) {
 	}
 }
 
+// codex-security round 12, finding 3: routes/headers are durable per-site rule
+// state the shared static server linearly scans on every public request, so an
+// over-budget list is a clean 400 across every surface — and the caps mirror
+// the CRD schema's MaxItems/MaxLength so a hand-applied CR is bounded too.
+func TestStaticEdgeRuleBudgets(t *testing.T) {
+	tooManyRoutes := make([]StaticRouteView, maxStaticRoutes+1)
+	for i := range tooManyRoutes {
+		tooManyRoutes[i] = StaticRouteView{Type: "redirect", Source: "/a", Destination: "/b"}
+	}
+	if err := validateRoutes(tooManyRoutes); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("routes over cap => ErrBadRequest, got %v", err)
+	}
+	tooManyHeaders := make([]StaticHeaderView, maxStaticHeaders+1)
+	for i := range tooManyHeaders {
+		tooManyHeaders[i] = StaticHeaderView{Path: "/*", Name: "X-A", Value: "1"}
+	}
+	if err := validateHeaders(tooManyHeaders); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("headers over cap => ErrBadRequest, got %v", err)
+	}
+	long := strings.Repeat("a", maxStaticPathLen+1)
+	if err := validateRoutes([]StaticRouteView{{Type: "redirect", Source: "/" + long, Destination: "/b"}}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("oversized route source => ErrBadRequest, got %v", err)
+	}
+	if err := validateHeaders([]StaticHeaderView{{Path: "/*", Name: "X-" + strings.Repeat("a", maxStaticHeaderNameLen), Value: "1"}}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("oversized header name => ErrBadRequest, got %v", err)
+	}
+	if err := validateHeaders([]StaticHeaderView{{Path: "/*", Name: "X-A", Value: strings.Repeat("a", maxStaticHeaderValueLen+1)}}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("oversized header value => ErrBadRequest, got %v", err)
+	}
+	// At-cap lists still pass — the budget bounds, it does not shave.
+	atCapRoutes := tooManyRoutes[:maxStaticRoutes]
+	if err := validateRoutes(atCapRoutes); err != nil {
+		t.Errorf("routes at cap must pass, got %v", err)
+	}
+}
+
 func TestRESTCreateStaticSite(t *testing.T) {
 	svc, _ := newService(nil)
 	mux := http.NewServeMux()

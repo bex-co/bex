@@ -19,6 +19,7 @@ package environments
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -276,6 +277,9 @@ func TestREST_ListEnvironmentDocumentedFiltersHonoredOrRejected(t *testing.T) {
 		wantError string
 	}{
 		{name: "projectId", query: "projectId=prj-1", wantNames: []string{"alpha", "bravo"}},
+		// codex-security round 12, finding 5: duplicate ids dedupe to one list
+		// run (repeat query keys must not multiply the fan-out).
+		{name: "duplicate projectIds dedupe", query: "projectId=prj-1,prj-1&projectId=prj-1", wantNames: []string{"alpha", "bravo"}},
 		{name: "name", query: "projectId=prj-1,prj-2&name=bravo", wantNames: []string{"bravo"}},
 		{name: "repeated names", query: "projectId=prj-1,prj-2&name=alpha&name=charlie", wantNames: []string{"alpha", "charlie"}},
 		{name: "environmentId", query: "projectId=prj-1,prj-2&environmentId=env-charlie", wantNames: []string{"charlie"}},
@@ -319,6 +323,27 @@ func TestREST_ListEnvironmentDocumentedFiltersHonoredOrRejected(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestREST_ListEnvironmentProjectIDFanOutCap pins codex-security round 12,
+// finding 5: one list request may fan out into at most maxListProjectIDs
+// distinct projectId values (each runs a full list + enrichment pass); past the
+// cap it is a clean 400 before the first list runs.
+func TestREST_ListEnvironmentProjectIDFanOutCap(t *testing.T) {
+	_, mux := restHarness(t)
+	ids := make([]string, maxListProjectIDs+1)
+	for i := range ids {
+		ids[i] = fmt.Sprintf("prj-%02d", i)
+	}
+	rec := doREST(t, mux, http.MethodGet, "/v1/environments?projectId="+strings.Join(ids, ","), "")
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "projectId") {
+		t.Fatalf("over-cap fan-out = %d %s, want 400 naming projectId", rec.Code, rec.Body.String())
+	}
+	atCap := strings.Join(ids[:maxListProjectIDs], ",")
+	rec = doREST(t, mux, http.MethodGet, "/v1/environments?projectId="+atCap, "")
+	if rec.Code == http.StatusBadRequest {
+		t.Fatalf("at-cap fan-out must not be a 400: %s", rec.Body.String())
 	}
 }
 

@@ -22,6 +22,7 @@ package projects
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -97,6 +98,22 @@ type Service struct {
 	Databases    DatabaseIndex
 	KeyValues    KeyValueIndex
 	Environments EnvironmentIndex
+	// MaxGroupings is the workspace's durable grouping quota
+	// (BEX_MAX_BLUEPRINT_GROUPINGS, default 1000) — the same abuse bound the
+	// Blueprint apply loop enforces, applied to DIRECT project creates too
+	// (codex-security round 12, finding 5: only the Blueprint path was gated,
+	// so a workspace member could grow unbounded grouping rows — and the
+	// un-paginated list-enrichment work they force — through plain
+	// REST/GraphQL/MCP creates). 0 disables, matching the Blueprint path.
+	MaxGroupings int
+}
+
+// groupingQuotaStore is the optional store capability behind the direct-create
+// grouping quota: it runs the workspace's durable grouping count and the
+// insert in ONE transaction, so concurrent creates cannot race past the cap
+// the way a count-then-insert would. *store.PGStore satisfies it structurally.
+type groupingQuotaStore interface {
+	RunGroupingTx(ctx context.Context, fn func(store.GroupingStore) error) error
 }
 
 // ErrProjectsUnavailable is returned when the control-plane store is not wired
@@ -317,6 +334,30 @@ func (s *Service) Create(ctx context.Context, workspaceID, name string) (Project
 	}
 	if s.Store == nil {
 		return ProjectView{}, ErrProjectsUnavailable
+	}
+	// codex-security round 12, finding 5: direct creates share the Blueprint
+	// grouping quota. Enforced transactionally (count + insert in one tx) when
+	// the store offers the runner; a store without it falls back to the plain
+	// create (test fakes) — the production store always has it.
+	if runner, ok := s.Store.(groupingQuotaStore); ok && s.MaxGroupings > 0 {
+		var p store.Project
+		err := runner.RunGroupingTx(ctx, func(g store.GroupingStore) error {
+			projects, _, err := g.CountWorkspaceGroupings(ctx, workspaceID)
+			if err != nil {
+				return err
+			}
+			if projects >= s.MaxGroupings {
+				return core.NewConflictError("BLUEPRINT_GROUPING_LIMIT",
+					fmt.Sprintf("workspace already has the maximum number of projects (%d); remove unused projects or raise the limit", s.MaxGroupings),
+					map[string]any{"ownerId": workspaceID, "limit": s.MaxGroupings})
+			}
+			p, err = g.CreateProject(ctx, workspaceID, name)
+			return err
+		})
+		if err != nil {
+			return ProjectView{}, store.MapError(err)
+		}
+		return toView(p, nil, nil, nil), nil
 	}
 	p, err := s.Store.CreateProject(ctx, workspaceID, name)
 	if err != nil {

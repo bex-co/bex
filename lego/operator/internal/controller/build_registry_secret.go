@@ -58,6 +58,9 @@ func (r *AppReconciler) prepareBuildRegistrySecret(ctx context.Context, app *app
 	name := build.JobName(app.Name, "registry-auth")
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: buildNS}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, cl, secret, func() error {
+		if err := checkOwnedArtifact(secret, app); err != nil {
+			return err
+		}
 		secret.Type = corev1.SecretTypeOpaque
 		secret.Data = map[string][]byte{
 			buildRegistryConfigKey:    externalConfig,
@@ -100,6 +103,9 @@ func (r *AppReconciler) copyBuildRegistryCredential(ctx context.Context, app *ap
 	}
 	dst := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: dstNS}}
 	_, err = controllerutil.CreateOrUpdate(ctx, cl, dst, func() error {
+		if err := checkOwnedArtifact(dst, app); err != nil {
+			return err
+		}
 		dst.Type = src.Type
 		dst.Data = maps.Clone(src.Data)
 		dst.Data[buildRegistryConfigKey] = config
@@ -107,6 +113,30 @@ func (r *AppReconciler) copyBuildRegistryCredential(ctx context.Context, app *ap
 		return nil
 	})
 	return err
+}
+
+// checkOwnedArtifact is the shared CreateOrUpdate mutate-guard for objects the
+// reconciler writes into the SHARED build namespace under a name derived from
+// the workspace-local App name (codex-security round 12, finding 1). App names
+// are unique only per workspace, so a same-named App in another workspace
+// resolves to the same deterministic object name; without this gate its
+// reconcile would silently overwrite this App's credential bytes (and relabel
+// ownership), swapping one tenant's external-registry credential into the
+// other's BuildKit pod. Fail closed exactly like the build/pre-deploy Jobs
+// (build.EnsureBuild's CheckOwner): a foreign-owned object is an error, never
+// an adoption. A not-yet-existing object (empty ResourceVersion) is a plain
+// create and always passes.
+func checkOwnedArtifact(obj metav1.Object, app *appv1alpha1.App) error {
+	if obj.GetResourceVersion() == "" {
+		return nil // fresh create — nothing to own yet
+	}
+	identity := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+		Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
+	if err := identity.CheckOwner(obj); err != nil {
+		return fmt.Errorf("refusing to overwrite %s/%s owned by a different App lifetime: %w",
+			obj.GetNamespace(), obj.GetName(), err)
+	}
+	return nil
 }
 
 func artifactLabels(app *appv1alpha1.App, component string) map[string]string {

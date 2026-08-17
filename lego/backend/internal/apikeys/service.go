@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -401,20 +402,96 @@ func (h *hydraAPIKeys) Create(ctx context.Context, name, createdBy string) (APIK
 	return apiKeyFromHydra(out), nil
 }
 
+// hydraClientPageSize is Hydra's documented maximum admin list page.
+const hydraClientPageSize = 500
+
+// hydraClientMaxPages bounds the pagination loop (10k clients) so a server that
+// always advertises a next cursor cannot loop the caller forever.
+const hydraClientMaxPages = 20
+
+// List enumerates every Hydra OAuth2 client, following Hydra's cursor (the
+// Link header, rel="next") page by page. The old single page_size=500 request
+// silently under-counted once the deployment passed 500 clients: the
+// active-key quota and the workspace key inventory only ever saw the first
+// global page (codex-security round 12, finding 7). A server that returns no
+// Link header degrades to the old one-page behavior.
 func (h *hydraAPIKeys) List(ctx context.Context) ([]APIKey, error) {
-	var clients []hydraClient
-	if err := h.do(ctx, http.MethodGet, "/admin/clients?page_size=500", nil, http.StatusOK, &clients); err != nil {
-		return nil, err
-	}
-	keys := make([]APIKey, 0, len(clients))
-	for _, c := range clients {
-		if !isAPIKey(c) {
-			continue // platform clients (bootstrap, OIDC apps) are not API keys
+	var keys []APIKey
+	next := fmt.Sprintf("/admin/clients?limit=%d", hydraClientPageSize)
+	for range hydraClientMaxPages {
+		var clients []hydraClient
+		link, err := h.doList(ctx, next, &clients)
+		if err != nil {
+			return nil, err
 		}
-		c.ClientSecret = "" // never surface secrets from list (Hydra omits them anyway)
-		keys = append(keys, apiKeyFromHydra(c))
+		for _, c := range clients {
+			if !isAPIKey(c) {
+				continue // platform clients (bootstrap, OIDC apps) are not API keys
+			}
+			c.ClientSecret = "" // never surface secrets from list (Hydra omits them anyway)
+			keys = append(keys, apiKeyFromHydra(c))
+		}
+		// The Link header is the only termination signal — a short page may
+		// still carry a cursor (Hydra's page is `limit`-sized only when the
+		// deployment has that many clients to give).
+		if link == "" {
+			break
+		}
+		next = link
 	}
 	return keys, nil
+}
+
+// doList runs one Hydra admin GET and returns the decoded body plus the
+// rel="next" cursor from the Link header ("" when absent). Only the
+// path?query of the advertised URL is kept, so the loop stays pinned to this
+// admin endpoint even if Hydra advertises absolute URLs.
+func (h *hydraAPIKeys) doList(ctx context.Context, path string, out any) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, h.adminURL+path, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := h.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer core.DrainClose(resp)
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return "", core.ErrNotFound
+		}
+		return "", &core.HTTPStatusError{Code: resp.StatusCode,
+			Summary: "GET " + h.adminURL + path + " returned " + resp.Status}
+	}
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return "", err
+	}
+	return nextLink(resp.Header.Values("Link")), nil
+}
+
+// nextLink extracts the rel="next" target from RFC 8288 Link header values,
+// reduced to its path?query form.
+func nextLink(values []string) string {
+	for _, v := range values {
+		for _, part := range strings.Split(v, ",") {
+			fields := strings.Split(part, ";")
+			if len(fields) < 2 {
+				continue
+			}
+			target := strings.TrimSpace(fields[0])
+			if !strings.HasPrefix(target, "<") || !strings.HasSuffix(target, ">") {
+				continue
+			}
+			for _, param := range fields[1:] {
+				if strings.Contains(strings.TrimSpace(param), `rel="next"`) {
+					if u, err := url.Parse(strings.Trim(target, "<>")); err == nil && u.Path != "" {
+						return u.Path + "?" + u.RawQuery
+					}
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // getAPIKey fetches one Hydra client and gates on the bex API-key marker — the

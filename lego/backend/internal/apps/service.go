@@ -3491,20 +3491,44 @@ func headersFromViews(views []StaticHeaderView) []appv1alpha1.StaticHeader {
 	return out
 }
 
+// Static edge-rule budgets (codex-security round 12, finding 3): the shared
+// static server linearly scans a site's routes on every unauthenticated request
+// and applies every matching header rule, so the durable per-site rule state
+// must stay bounded before it reaches that path. The CRD schema carries the
+// same numbers (MaxItems/MaxLength in lego/types/v1alpha1/app_types.go); this
+// is the surface-side rejection so an over-budget config is a clean 400 across
+// REST/GraphQL/MCP before any CR write.
+const (
+	maxStaticRoutes         = 100
+	maxStaticHeaders        = 100
+	maxStaticPathLen        = 2048
+	maxStaticHeaderNameLen  = 256
+	maxStaticHeaderValueLen = 4096
+)
+
 // validateRoutes rejects a malformed redirect/rewrite list: each rule needs a
-// known type and a rooted source + destination path (Render's contract).
+// known type and a rooted source + destination path (Render's contract), and
+// the whole list stays inside the edge-rule budgets above.
 func validateRoutes(routes []StaticRouteView) error {
+	if len(routes) > maxStaticRoutes {
+		return fmt.Errorf("%w: routes must not exceed %d items", core.ErrBadRequest, maxStaticRoutes)
+	}
 	for i, r := range routes {
 		t := strings.TrimSpace(r.Type)
 		if t != "redirect" && t != "rewrite" {
 			return fmt.Errorf("%w: routes[%d].type must be redirect or rewrite", core.ErrBadRequest, i)
 		}
-		if !strings.HasPrefix(strings.TrimSpace(r.Source), "/") {
+		if source := strings.TrimSpace(r.Source); !strings.HasPrefix(source, "/") {
 			return fmt.Errorf("%w: routes[%d].source must be a path starting with /", core.ErrBadRequest, i)
+		} else if len(source) > maxStaticPathLen {
+			return fmt.Errorf("%w: routes[%d].source must not exceed %d characters", core.ErrBadRequest, i, maxStaticPathLen)
 		}
 		dest := strings.TrimSpace(r.Destination)
 		if !strings.HasPrefix(dest, "/") {
 			return fmt.Errorf("%w: routes[%d].destination must be a path starting with /", core.ErrBadRequest, i)
+		}
+		if len(dest) > maxStaticPathLen {
+			return fmt.Errorf("%w: routes[%d].destination must not exceed %d characters", core.ErrBadRequest, i, maxStaticPathLen)
 		}
 		// round-5 finding 11: a leading "/" is not enough. "//host" (protocol-
 		// relative) and "/\host" (browsers normalize backslash to slash) are
@@ -3531,17 +3555,29 @@ func isNetworkPathReference(p string) bool {
 // validateHeaders rejects a malformed custom-header list: each rule needs a
 // rooted path pattern and a well-formed header name + value. Name/value are
 // token/CRLF-validated so a rule cannot inject a second header or split the
-// response once the static server emits it via h.Set (round-5 finding 11).
+// response once the static server emits it via h.Set (round-5 finding 11), and
+// the whole list stays inside the edge-rule budgets above.
 func validateHeaders(headers []StaticHeaderView) error {
+	if len(headers) > maxStaticHeaders {
+		return fmt.Errorf("%w: headers must not exceed %d items", core.ErrBadRequest, maxStaticHeaders)
+	}
 	for i, h := range headers {
 		if !strings.HasPrefix(strings.TrimSpace(h.Path), "/") {
 			return fmt.Errorf("%w: headers[%d].path must be a path starting with /", core.ErrBadRequest, i)
 		}
-		if strings.TrimSpace(h.Name) == "" {
+		if len(strings.TrimSpace(h.Path)) > maxStaticPathLen {
+			return fmt.Errorf("%w: headers[%d].path must not exceed %d characters", core.ErrBadRequest, i, maxStaticPathLen)
+		}
+		if name := strings.TrimSpace(h.Name); name == "" {
 			return fmt.Errorf("%w: headers[%d].name is required", core.ErrBadRequest, i)
+		} else if len(name) > maxStaticHeaderNameLen {
+			return fmt.Errorf("%w: headers[%d].name must not exceed %d characters", core.ErrBadRequest, i, maxStaticHeaderNameLen)
 		}
 		if !httpguts.ValidHeaderFieldName(h.Name) {
 			return fmt.Errorf("%w: headers[%d].name %q is not a valid HTTP header name", core.ErrBadRequest, i, h.Name)
+		}
+		if len(h.Value) > maxStaticHeaderValueLen {
+			return fmt.Errorf("%w: headers[%d].value must not exceed %d characters", core.ErrBadRequest, i, maxStaticHeaderValueLen)
 		}
 		if !httpguts.ValidHeaderFieldValue(h.Value) {
 			return fmt.Errorf("%w: headers[%d].value contains an invalid character", core.ErrBadRequest, i)

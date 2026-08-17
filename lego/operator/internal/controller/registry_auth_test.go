@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -223,6 +225,155 @@ func TestCopyBuildRegistryCredentialAddsSkopeoFilename(t *testing.T) {
 	}
 	if got.Type != corev1.SecretTypeDockerConfigJson || got.Labels[labelApp] != "web" || got.Labels["app.bex.co/component"] != buildRegistryComponent || got.Labels["app.bex.co/app-uid"] != "uid-web" {
 		t.Fatalf("mirrored metadata = type %s labels %v", got.Type, got.Labels)
+	}
+}
+
+// TestBuildNamespaceSecretsRefuseForeignOwner pins codex-security round 12,
+// finding 1: the shared build namespace derives deterministic Secret names from
+// the workspace-local App name, so a same-named App in another workspace
+// resolves to the SAME object. The CreateOrUpdate mutate-guard must fail closed
+// on a foreign-owned object (no silent credential swap, no ownership relabel)
+// while an own or fresh object still writes.
+func TestBuildNamespaceSecretsRefuseForeignOwner(t *testing.T) {
+	const (
+		appNS   = "apps"
+		buildNS = "bex-build"
+	)
+	newScheme := func() *runtime.Scheme {
+		s := runtime.NewScheme()
+		_ = clientgoscheme.AddToScheme(s)
+		return s
+	}
+	t.Run("prepare refuses a foreign registry-auth Secret", func(t *testing.T) {
+		name := build.JobName("web", "registry-auth")
+		foreign := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name, Namespace: buildNS,
+				Labels: map[string]string{labelApp: "web", "app.bex.co/app-uid": "uid-victim"},
+			},
+			Data: map[string][]byte{buildRegistryConfigKey: []byte(`{"auths":{"victim.example":{"auth":"kept"}}}`)},
+		}
+		external := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "web-registry-pull", Namespace: appNS},
+			Type:       corev1.SecretTypeDockerConfigJson,
+			Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte(`{"auths":{"attacker.example":{"auth":"swap"}}}`)},
+		}
+		cl := fake.NewClientBuilder().WithScheme(newScheme()).WithObjects(foreign, external).Build()
+		r := &AppReconciler{Client: cl, BuildClient: cl, Registry: "zot.example"}
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: appNS, UID: "uid-attacker"},
+			Spec:       appv1alpha1.AppSpec{ExternalRegistryPullSecret: "web-registry-pull"},
+		}
+		if _, err := r.prepareBuildRegistrySecret(context.Background(), app, buildNS, build.BuilderDockerfile); err == nil {
+			t.Fatal("prepareBuildRegistrySecret overwrote a foreign-owned registry-auth Secret")
+		}
+		var got corev1.Secret
+		if err := cl.Get(context.Background(), client.ObjectKey{Namespace: buildNS, Name: name}, &got); err != nil {
+			t.Fatal(err)
+		}
+		if string(got.Data[buildRegistryConfigKey]) != `{"auths":{"victim.example":{"auth":"kept"}}}` {
+			t.Fatalf("foreign Secret data was modified: %s", got.Data[buildRegistryConfigKey])
+		}
+		if got.Labels["app.bex.co/app-uid"] != "uid-victim" {
+			t.Fatalf("foreign Secret ownership was relabeled: %v", got.Labels)
+		}
+	})
+	t.Run("prepare still updates its own Secret", func(t *testing.T) {
+		external := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "web-registry-pull", Namespace: appNS},
+			Type:       corev1.SecretTypeDockerConfigJson,
+			Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte(`{"auths":{"private.example":{"auth":"external"}}}`)},
+		}
+		cl := fake.NewClientBuilder().WithScheme(newScheme()).WithObjects(external).Build()
+		r := &AppReconciler{Client: cl, BuildClient: cl, Registry: "zot.example"}
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: appNS, UID: "uid-web"},
+			Spec:       appv1alpha1.AppSpec{ExternalRegistryPullSecret: "web-registry-pull"},
+		}
+		for range 2 { // second pass hits the own-owned branch of the guard
+			if _, err := r.prepareBuildRegistrySecret(context.Background(), app, buildNS, build.BuilderDockerfile); err != nil {
+				t.Fatalf("own-owned update pass failed: %v", err)
+			}
+		}
+		var got corev1.Secret
+		if err := cl.Get(context.Background(), client.ObjectKey{Namespace: buildNS, Name: build.JobName("web", "registry-auth")}, &got); err != nil {
+			t.Fatal(err)
+		}
+		if got.Labels["app.bex.co/app-uid"] != "uid-web" {
+			t.Fatalf("own Secret labels = %v", got.Labels)
+		}
+	})
+	t.Run("mirror refuses a foreign reg-pull Secret", func(t *testing.T) {
+		foreign := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "reg-pull-web", Namespace: buildNS,
+				Labels: map[string]string{labelApp: "web", "app.bex.co/app-uid": "uid-victim"},
+			},
+			Type: corev1.SecretTypeDockerConfigJson,
+			Data: map[string][]byte{corev1.DockerConfigJsonKey: []byte(`{"auths":{"victim.example":{"auth":"kept"}}}`)},
+		}
+		src := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "reg-pull-web", Namespace: appNS},
+			Type:       corev1.SecretTypeDockerConfigJson,
+			Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte(`{"auths":{"attacker.example":{"auth":"swap"}}}`)},
+		}
+		cl := fake.NewClientBuilder().WithScheme(newScheme()).WithObjects(foreign, src).Build()
+		r := &AppReconciler{Client: cl, BuildClient: cl}
+		app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: appNS, UID: "uid-attacker"}}
+		if err := r.copyBuildRegistryCredential(context.Background(), app, appNS, buildNS, src.Name); err == nil {
+			t.Fatal("copyBuildRegistryCredential overwrote a foreign-owned reg-pull mirror")
+		}
+		var got corev1.Secret
+		if err := cl.Get(context.Background(), client.ObjectKey{Namespace: buildNS, Name: src.Name}, &got); err != nil {
+			t.Fatal(err)
+		}
+		if string(got.Data[corev1.DockerConfigJsonKey]) != `{"auths":{"victim.example":{"auth":"kept"}}}` {
+			t.Fatalf("foreign mirror data was modified: %s", got.Data[corev1.DockerConfigJsonKey])
+		}
+	})
+}
+
+// TestDeleteOwnedObjectLeavesForeignArtifacts pins the finalizer half of round
+// 12, finding 1: deleting by the App-derived name in the shared build namespace
+// must not remove a same-named App's object — only one carrying this App
+// lifetime's ownership labels.
+func TestDeleteOwnedObjectLeavesForeignArtifacts(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	foreign := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: build.JobName("web", "execution-egress"), Namespace: "bex-build",
+			Labels: map[string]string{labelApp: "web", "app.bex.co/app-uid": "uid-victim"},
+		},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(foreign).Build()
+	identity := execution.ArtifactIdentity{Name: "web", UID: "uid-attacker"}
+
+	done, err := deleteOwnedObject(context.Background(), cl, "bex-build", foreign.Name, &networkingv1.NetworkPolicy{}, identity)
+	if err != nil || !done {
+		t.Fatalf("foreign delete = done %v err %v; want done, nil", done, err)
+	}
+	var got networkingv1.NetworkPolicy
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(foreign), &got); err != nil {
+		t.Fatal(err)
+	}
+
+	own := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "reg-pull-web", Namespace: "bex-build",
+			Labels: map[string]string{labelApp: "web", "app.bex.co/app-uid": "uid-attacker"},
+		},
+	}
+	if err := cl.Create(context.Background(), own); err != nil {
+		t.Fatal(err)
+	}
+	if done, err := deleteOwnedObject(context.Background(), cl, "bex-build", own.Name, &corev1.Secret{}, identity); err != nil || done {
+		t.Fatalf("own delete = done %v err %v; want pending, nil", done, err)
+	}
+	var gone corev1.Secret
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(own), &gone); !apierrors.IsNotFound(err) {
+		t.Fatalf("own-owned Secret survived the owned delete: %v", err)
 	}
 }
 

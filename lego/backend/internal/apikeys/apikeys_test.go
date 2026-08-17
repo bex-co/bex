@@ -744,3 +744,63 @@ func TestTouchAPIKeyThrottleAndAsync(t *testing.T) {
 	svc.TouchAPIKey("")
 	noTouch()
 }
+
+// TestHydraListFollowsCursorPages pins codex-security round 12, finding 7: the
+// Hydra admin list is cursor-paginated, and the store must follow the Link
+// header's rel="next" to the last page — the old single request under-counted
+// the active-key quota and hid inventory once a deployment passed one page.
+// A Link-free response still terminates after one page (the degraded shape).
+func TestHydraListFollowsCursorPages(t *testing.T) {
+	// Pages of two, cursor-keyed — page 1: platform + a bex key, page 2: the
+	// bex key the old code never saw, then no next link.
+	pages := map[string][]hydraClient{
+		"": {
+			{ClientID: "platform-client", ClientName: "bex bootstrap"},
+			{ClientID: "k1", Metadata: map[string]any{apiKeyMarker: true}},
+		},
+		"cursor-2": {
+			{ClientID: "k2", Metadata: map[string]any{apiKeyMarker: true}},
+			{ClientID: "k3", Metadata: map[string]any{apiKeyMarker: true}},
+		},
+	}
+	nextFor := map[string]string{"": "/admin/clients?limit=500&page_token=cursor-2"}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/admin/clients" {
+			http.NotFound(w, r)
+			return
+		}
+		token := r.URL.Query().Get("page_token")
+		page, ok := pages[token]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		if next, ok := nextFor[token]; ok {
+			w.Header().Set("Link", fmt.Sprintf("<%s>; rel=\"next\"", srvURL(r)+next))
+		}
+		_ = json.NewEncoder(w).Encode(page)
+	}))
+	defer srv.Close()
+
+	keys, err := NewHydraAPIKeys(srv.URL).List(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]bool{}
+	for _, k := range keys {
+		got[k.ID] = true
+	}
+	if len(keys) != 3 || !got["k1"] || !got["k2"] || !got["k3"] {
+		t.Fatalf("paginated List = %v, want k1 k2 k3 (platform client filtered)", keys)
+	}
+}
+
+// srvURL rebuilds the request's own origin so the Link header mirrors Hydra's
+// absolute-URL shape without the test needing the server URL up front.
+func srvURL(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	return scheme + "://" + r.Host
+}
