@@ -244,7 +244,7 @@ The live-substrate E2E leg (extending `scripts/agent-session-verify.sh` with att
 - **The contextual list is section-scoped.** Sessions render on `/agents*` only, never on Projects/Services/Settings — mirroring Devin, whose slot carries sessions on session routes, pull requests on `/review`, and nothing on `/automations`/`/wiki`.
 - **A second panel goes on the RIGHT.** Devin's session view pairs the chat column with a right-hand workspace panel (Progress/Changes/PR tabs); bex's equivalent was the w3/m44 evidence/PR panel, **removed in w5/m65** (the digest it showed was superseded by the durable transcript), so the session view is chat-only today. The placement rule stands for whatever earns a second panel next — it belongs on the right, not in a second left rail.
 
-Devin affordances **not** ported, because bex has no backend capability behind them (gaps, not drift): session **folders** and the **Filter** control (both in Devin's `Recent` overflow menu), and per-row **archive**. Devin's `More` → "View all sessions" maps onto the shipped `/agents?view=list`.
+Devin affordances **not** ported in w5/m64 because bex had no backend capability behind them were session **folders**, the **Filter** control, and per-row **archive**. ADR065 subsequently shipped filtering and archive. On 2026-08-17, `/agents` was consolidated into one create + history page: the sidebar's now-redundant More/View-all action was removed, and the former `/agents?view=list` URL remains accepted as a compatibility alias for the same view.
 
 ### D10 — Phase-1 transcript persistence: the headless recorder → [ADR051](ADR051-agent-session-transcript.md)
 

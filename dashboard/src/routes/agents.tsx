@@ -24,6 +24,7 @@ import type { AgentSessionPhase } from "@/features/agent-sessions/types";
 type ArchivedParam = "true" | "all";
 
 export interface AgentsSearch {
+  /** Legacy pane selector; accepted so saved `?view=list` URLs keep working. */
   view?: "list";
   archived?: ArchivedParam;
 }
@@ -33,10 +34,9 @@ export const Route = createFileRoute("/agents")({
   component: AgentSessionsPage,
   pendingComponent: ListPageSkeleton,
   beforeLoad: requireAuth(),
-  // `?view=list` keeps the standalone sessions table reachable (the sidebar's
-  // More/view-all target) without a second route file; `?archived=true|all`
-  // widens it past the default unarchived working set (ADR065 D3 — the
-  // sidebar's Archived entry targets `?view=list&archived=true`).
+  // `?view=list` is a compatibility no-op now that creation and history share
+  // one page. `?archived=true|all` widens the default unarchived working set
+  // (ADR065 D3 — the sidebar's Archived entry targets `?archived=true`).
   validateSearch: (search: Record<string, unknown>): AgentsSearch => {
     const out: AgentsSearch = {};
     if (search.view === "list") out.view = "list";
@@ -48,70 +48,70 @@ export const Route = createFileRoute("/agents")({
   head: ({ match }) => translatedTitleHead("agentSessions.pageTitle", match),
 });
 
-
 /**
- * The `/agents` page (ADR047 D9): a main pane that is either the Devin-style
- * centered prompt box or, under `?view=list`, the standalone sessions table.
- * The sessions list lives in the ONE dashboard rail (`AgentSessionsNavSection`,
- * w5/m64) — this page renders no sidebar of its own. Workspace scoping comes
- * from the switcher (`useAgentSessions` reads `useWorkspace()`), never the
- * path. The composer always renders — a 503/unconfigured backend shows its
- * house callout on the composer while the rail's list degrades on its own.
+ * The `/agents` page (ADR047 D9): one workspace for creating a session and
+ * browsing its history. The recent working set also lives in the ONE dashboard
+ * rail (`AgentSessionsNavSection`, w5/m64) — this page renders no sidebar of its
+ * own. Workspace scoping comes from the switcher (`useAgentSessions` reads
+ * `useWorkspace()`), never the path. The composer always renders — a
+ * 503/unconfigured backend shows its house callout while the list degrades on
+ * its own.
  */
 function AgentSessionsPage() {
-  const { view, archived } = Route.useSearch();
+  const { archived } = Route.useSearch();
 
   return (
     <DashboardLayout>
-      <div className="flex min-w-0 min-h-0 flex-1 flex-col">
-        {view === "list" ? (
-          <SessionListPane archived={archived} />
-        ) : (
-          <ComposerPane />
-        )}
+      <div className="min-h-0 min-w-0 flex-1 overflow-auto">
+        <div className="mx-auto w-full max-w-5xl space-y-8 p-4 sm:p-6">
+          <PageHeader />
+          <ComposerSection />
+          <SessionListSection archived={archived} />
+        </div>
       </div>
     </DashboardLayout>
   );
 }
 
-function ComposerPane() {
+function PageHeader() {
   const { t } = useTranslations();
   return (
-    <div className="flex flex-1 items-center justify-center overflow-auto p-4 sm:p-6">
-      <div className="w-full max-w-2xl space-y-4 pb-16">
-        <div className="space-y-1.5 text-center">
-          <h1 className="text-xl font-semibold">
-            {t("agentSessions.promptHeading")}
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            {t("agentSessions.pageSubtitle")}
-          </p>
-        </div>
-        <NewSessionComposer />
-      </div>
-    </div>
+    <header className="space-y-1">
+      <h1 className="text-xl font-semibold">{t("agentSessions.pageTitle")}</h1>
+      <p className="text-muted-foreground max-w-2xl text-sm">
+        {t("agentSessions.pageSubtitle")}
+      </p>
+    </header>
   );
 }
 
-function SessionListPane({ archived }: { archived?: ArchivedParam }) {
+function ComposerSection() {
+  const { t } = useTranslations();
+  return (
+    <section
+      className="max-w-3xl space-y-3"
+      aria-labelledby="new-session-title"
+    >
+      <h2 id="new-session-title" className="text-sm font-medium">
+        {t("agentSessions.promptHeading")}
+      </h2>
+      <NewSessionComposer />
+    </section>
+  );
+}
+
+function SessionListSection({ archived }: { archived?: ArchivedParam }) {
   const { t } = useTranslations();
   const [phase, setPhase] = useState<AgentSessionPhase | "all">("all");
   // The rail's AgentSessionsNavSection renders alongside and owns the poll for
   // the default working-set variables; every widened/filtered read here is its
   // own cache entry, refreshed by `refetch` after row mutations — never polled.
-  const {
-    sessions,
-    loading,
-    error,
-    refetch,
-    loadMore,
-    loadingMore,
-    hasMore,
-  } = useAgentSessions({
-    poll: false,
-    archived,
-    phases: phase === "all" ? undefined : [phase],
-  });
+  const { sessions, loading, error, refetch, loadMore, loadingMore, hasMore } =
+    useAgentSessions({
+      poll: false,
+      archived,
+      phases: phase === "all" ? undefined : [phase],
+    });
 
   const membershipTabs: Array<{
     key: string;
@@ -130,85 +130,79 @@ function SessionListPane({ archived }: { archived?: ArchivedParam }) {
     archived === "true" ? "archived" : archived === "all" ? "all" : "active";
 
   return (
-    <>
-      <div className="border-b px-4 py-3 sm:px-6">
-        <h1 className="text-xl font-semibold">
-          {t("agentSessions.pageTitle")}
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {t("agentSessions.pageSubtitle")}
-        </p>
-      </div>
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-4xl space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-1" role="group">
-              {membershipTabs.map((tab) => (
-                <Button
-                  key={tab.key}
-                  asChild
-                  size="sm"
-                  variant={activeKey === tab.key ? "secondary" : "ghost"}
-                >
-                  <Link
-                    to="/agents"
-                    search={{ view: "list", archived: tab.archived }}
-                  >
-                    {tab.label}
-                  </Link>
-                </Button>
-              ))}
-            </div>
-            <Select
-              value={phase}
-              onValueChange={(v) => setPhase(v as AgentSessionPhase | "all")}
-            >
-              <SelectTrigger
-                size="sm"
-                className="w-44"
-                aria-label={t("agentSessions.filterPhase")}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">
-                  {t("agentSessions.filterPhaseAll")}
-                </SelectItem>
-                {AGENT_SESSION_PHASES.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {t(`agentSessions.phase.${p}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <SessionList
-            sessions={sessions}
-            loading={loading}
-            error={error}
-            onChanged={() => void refetch()}
-          />
-          {hasMore ? (
-            <div className="flex justify-center">
+    <section className="space-y-3" aria-labelledby="session-list-title">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="session-list-title" className="text-base font-semibold">
+          {t("agentSessions.listTitle")}
+        </h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="bg-muted/50 flex items-center gap-0.5 rounded-lg p-0.5"
+            role="group"
+          >
+            {membershipTabs.map((tab) => (
               <Button
-                variant="outline"
+                key={tab.key}
+                asChild
                 size="sm"
-                disabled={loadingMore}
-                onClick={() => void loadMore()}
+                variant={activeKey === tab.key ? "secondary" : "ghost"}
+                className="h-7 px-2.5 shadow-none"
               >
-                {loadingMore ? (
-                  <>
-                    <Loader2 className="animate-spin" />
-                    {t("agentSessions.loadingMore")}
-                  </>
-                ) : (
-                  t("agentSessions.loadMore")
-                )}
+                <Link to="/agents" search={{ archived: tab.archived }}>
+                  {tab.label}
+                </Link>
               </Button>
-            </div>
-          ) : null}
+            ))}
+          </div>
+          <Select
+            value={phase}
+            onValueChange={(v) => setPhase(v as AgentSessionPhase | "all")}
+          >
+            <SelectTrigger
+              size="sm"
+              className="h-8 w-40"
+              aria-label={t("agentSessions.filterPhase")}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                {t("agentSessions.filterPhaseAll")}
+              </SelectItem>
+              {AGENT_SESSION_PHASES.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {t(`agentSessions.phase.${p}`)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
-    </>
+      <SessionList
+        sessions={sessions}
+        loading={loading}
+        error={error}
+        onChanged={() => void refetch()}
+      />
+      {hasMore ? (
+        <div className="flex justify-center pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={loadingMore}
+            onClick={() => void loadMore()}
+          >
+            {loadingMore ? (
+              <>
+                <Loader2 className="animate-spin" />
+                {t("agentSessions.loadingMore")}
+              </>
+            ) : (
+              t("agentSessions.loadMore")
+            )}
+          </Button>
+        </div>
+      ) : null}
+    </section>
   );
 }

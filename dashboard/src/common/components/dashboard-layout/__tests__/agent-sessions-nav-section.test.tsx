@@ -172,13 +172,13 @@ describe("AgentSessionsNavSection (w5/m64 — one rail, contextual slot)", () =>
     expect(screen.queryByText("tighten hero copy")).not.toBeInTheDocument();
   });
 
-  it("exposes a view-all action reaching the standalone list", async () => {
+  it("omits a redundant view-all action on the combined agents page", async () => {
     sessionsState.sessions = [view()];
     renderAt("/agents");
-    const viewAll = await screen.findByRole("link", {
-      name: /view all sessions/i,
-    });
-    expect(viewAll.getAttribute("href")).toContain("view=list");
+    await screen.findByText("Recent");
+    expect(
+      screen.queryByRole("link", { name: /view all sessions/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("degrades the list without taking the global nav down with it", async () => {

@@ -8,12 +8,7 @@ import {
   TooltipTrigger,
 } from "@/common/components/ui/tooltip";
 import { useArchiveToggle } from "@/features/agent-sessions/hooks/use-archive-toggle";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
+import { Card, CardContent } from "@/common/components/ui/card";
 import {
   Table,
   TableBody,
@@ -164,9 +159,10 @@ function ArchiveRowAction({
 }
 
 /**
- * The workspace's agent sessions as a table: each row shows a phase chip, the
- * task prompt + repo/branch, the driver agent, a draft-PR badge, and the
- * relative created age. Clicking a row opens its detail page (`/agents/{id}`).
+ * The workspace's agent sessions as a compact table. Repository, branch, and
+ * driver sit under the task instead of occupying three competing columns;
+ * lifecycle, pull request, and age stay scannable at the right. Clicking a
+ * task opens its detail page (`/agents/{id}`).
  */
 export function SessionList({
   sessions,
@@ -192,20 +188,19 @@ export function SessionList({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("agentSessions.listTitle")}</CardTitle>
-      </CardHeader>
+    <Card className="gap-0 overflow-hidden py-0 shadow-none">
       <CardContent className="p-0">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted/30">
             <TableRow>
-              <TableHead>{t("agentSessions.colTask")}</TableHead>
-              <TableHead>{t("agentSessions.colRepo")}</TableHead>
-              <TableHead>{t("agentSessions.colAgent")}</TableHead>
+              <TableHead className="pl-4">
+                {t("agentSessions.colTask")}
+              </TableHead>
               <TableHead>{t("agentSessions.colPhase")}</TableHead>
               <TableHead>{t("agentSessions.colPr")}</TableHead>
-              <TableHead>{t("agentSessions.colCreated")}</TableHead>
+              <TableHead className="hidden sm:table-cell">
+                {t("agentSessions.colCreated")}
+              </TableHead>
               <TableHead>
                 <span className="sr-only">{t("agentSessions.colActions")}</span>
               </TableHead>
@@ -214,7 +209,7 @@ export function SessionList({
           <TableBody>
             {sessions.map((s) => (
               <TableRow key={s.id} className="group">
-                <TableCell className="max-w-[280px] font-medium">
+                <TableCell className="max-w-[420px] py-3 pl-4 font-medium">
                   <Link
                     to="/agents/$agentSessionId"
                     params={{ agentSessionId: s.id }}
@@ -226,15 +221,10 @@ export function SessionList({
                   >
                     {s.agentConfig.task || s.id}
                   </Link>
-                </TableCell>
-                <TableCell className="max-w-[200px] text-sm text-muted-foreground">
-                  <span className="block truncate">{s.repo}</span>
-                  <span className="block truncate font-mono text-xs">
-                    {s.branch}
+                  <span className="text-muted-foreground mt-1 block truncate text-xs font-normal">
+                    {s.repo} · <span className="font-mono">{s.branch}</span> ·{" "}
+                    <span className="capitalize">{s.agentConfig.agent}</span>
                   </span>
-                </TableCell>
-                <TableCell className="text-sm capitalize">
-                  {s.agentConfig.agent}
                 </TableCell>
                 <TableCell>
                   <span className="inline-flex items-center gap-1.5">
@@ -250,7 +240,7 @@ export function SessionList({
                 <TableCell>
                   <PrBadge session={s} />
                 </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
+                <TableCell className="text-muted-foreground hidden text-sm sm:table-cell">
                   {formatRelativeAge(s.createdAt)}
                 </TableCell>
                 <TableCell className="text-right">

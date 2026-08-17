@@ -77,7 +77,7 @@ The one automatic archive edge: `ExpireHibernatedAgentSession` additionally stam
 ### D6 — Dashboard surface
 
 - **Per-row archive** (list + session header) and unarchive; archived sessions move to an **Archived** section reachable from the sidebar (Devin's Folder → Archived), excluded from the working-set rail and its fuzzy search.
-- The `/agents?view=list` table gains the D3 filter controls (archived/phase/repo/date) and pagination.
+- The `/agents` create + history page carries the D3 filter controls (archived/phase/repo/date) and pagination. The former `?view=list` selector remains a compatibility no-op after the 2026-08-17 page consolidation.
 - Delete lives behind a confirmation dialog on the session detail page only (destructive verbs stay off the list rows), desktop-only per ADR048's mobile rule.
 - Deferred, recorded: bulk archive-all + undo (Devin has it; bex ships single-row first — undo is just `unarchive`, so a later bulk verb is additive), folders and drag-and-drop organization, tags.
 
