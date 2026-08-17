@@ -118,6 +118,17 @@ describe("useUsage", () => {
               },
               null, // a null invoice is filtered out
             ],
+            credits: {
+              availableUsd: "25.00",
+              currency: "USD",
+              grants: [
+                {
+                  name: "welcome",
+                  remainingUsd: "25.00",
+                  expiresAt: "2026-11-15T00:00:00Z",
+                },
+              ],
+            },
           },
         },
       }),
@@ -142,6 +153,17 @@ describe("useUsage", () => {
           periodEnd: "2026-07-01T00:00:00Z",
         },
       ],
+      credits: {
+        availableUsd: "25.00",
+        currency: "USD",
+        grants: [
+          {
+            name: "welcome",
+            remainingUsd: "25.00",
+            expiresAt: "2026-11-15T00:00:00Z",
+          },
+        ],
+      },
     });
   });
 

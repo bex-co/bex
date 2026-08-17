@@ -37,15 +37,15 @@ export const Route = createFileRoute("/w/$")({
   component: WorkspaceAliasPage,
 });
 
-/** The bex landing for each Render workspace sub-page. Billing lands on Usage
- *  (bex's deliberate usage-not-billing counterpart, ADR023); the bare
- *  workspace root is the overview; unknown sub-pages fall back to settings —
- *  the workspace-scoped page that exists. */
+/** The bex landing for each Render workspace sub-page. Billing lands on bex's
+ *  own /billing page (renamed from /usage in w5/m70; the usage API keeps its
+ *  ADR023 name); the bare workspace root is the overview; unknown sub-pages
+ *  fall back to settings — the workspace-scoped page that exists. */
 function landingFor(
   sub: string | undefined,
-): "/" | "/usage" | "/workspace/settings" {
+): "/" | "/billing" | "/workspace/settings" {
   if (sub === undefined) return "/";
-  if (sub === "billing") return "/usage";
+  if (sub === "billing") return "/billing";
   return "/workspace/settings";
 }
 

@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
-  BarChart3,
   Bell,
   Boxes,
+  CreditCard,
   Database,
   FolderKanban,
   Globe2,
@@ -130,8 +130,8 @@ function SearchResults({ close }: { close: () => void }) {
     },
     {
       label: t("common.navUsage"),
-      icon: BarChart3,
-      run: () => void navigate({ to: "/usage" }),
+      icon: CreditCard,
+      run: () => void navigate({ to: "/billing" }),
     },
     {
       label: t("common.topbarWorkspaceSettings"),

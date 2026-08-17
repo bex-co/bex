@@ -49,6 +49,10 @@ func sampleBilling() *billing.Billing {
 		Invoices: []billing.Invoice{
 			{ID: "inv_1", Status: "FINALIZED", AmountUSD: "40.00", Currency: "USD", PeriodStart: "2026-06-01T00:00:00Z", PeriodEnd: "2026-07-01T00:00:00Z"},
 		},
+		Credits: &billing.Credits{
+			AvailableUSD: "25.00", Currency: "USD",
+			Grants: []billing.CreditGrant{{Name: "welcome", RemainingUSD: "25.00", ExpiresAt: "2026-11-15T00:00:00Z"}},
+		},
 	}
 }
 
@@ -168,6 +172,9 @@ func TestBillingCrossSurfaceParity(t *testing.T) {
 	if rest.Billing.Invoices[0].Status != "FINALIZED" || rest.Billing.Invoices[0].AmountUSD != "40.00" {
 		t.Fatalf("REST invoice = %+v", rest.Billing.Invoices[0])
 	}
+	if rest.Billing.Credits == nil || rest.Billing.Credits.AvailableUSD != "25.00" || len(rest.Billing.Credits.Grants) != 1 {
+		t.Fatalf("REST credits = %+v", rest.Billing.Credits)
+	}
 
 	// GraphQL: the same values under usage.billing.
 	schema, err := buildTestSchema(newSvc())
@@ -177,7 +184,7 @@ func TestBillingCrossSurfaceParity(t *testing.T) {
 	res := graphql.Do(graphql.Params{
 		Schema:        schema,
 		Context:       ctx,
-		RequestString: `{ usage { billing { currentCost { amountUsd currency } invoices { id status amountUsd } } } }`,
+		RequestString: `{ usage { billing { currentCost { amountUsd currency } invoices { id status amountUsd } credits { availableUsd currency grants { name remainingUsd expiresAt } } } } }`,
 	})
 	if len(res.Errors) > 0 {
 		t.Fatalf("graphql errors: %v", res.Errors)
@@ -194,5 +201,14 @@ func TestBillingCrossSurfaceParity(t *testing.T) {
 	gqlInv0 := gqlInvoices[0].(map[string]any)
 	if gqlInv0["status"] != rest.Billing.Invoices[0].Status || gqlInv0["amountUsd"] != rest.Billing.Invoices[0].AmountUSD {
 		t.Errorf("GraphQL invoice %v vs REST %+v (surfaces disagree)", gqlInv0, rest.Billing.Invoices[0])
+	}
+	gqlCredits := gqlBilling["credits"].(map[string]any)
+	if gqlCredits["availableUsd"] != rest.Billing.Credits.AvailableUSD || gqlCredits["currency"] != rest.Billing.Credits.Currency {
+		t.Errorf("GraphQL credits %v vs REST %+v (surfaces disagree)", gqlCredits, rest.Billing.Credits)
+	}
+	gqlGrant0 := gqlCredits["grants"].([]any)[0].(map[string]any)
+	restGrant0 := rest.Billing.Credits.Grants[0]
+	if gqlGrant0["name"] != restGrant0.Name || gqlGrant0["remainingUsd"] != restGrant0.RemainingUSD || gqlGrant0["expiresAt"] != restGrant0.ExpiresAt {
+		t.Errorf("GraphQL grant %v vs REST %+v (surfaces disagree)", gqlGrant0, restGrant0)
 	}
 }

@@ -21,7 +21,7 @@ import { Route as ProjectSettingsRoute } from "@/routes/project.$projectId.setti
 import { Route as ServiceRoute } from "@/routes/services.$serviceId";
 import { Route as NewServiceRoute } from "@/routes/services.new";
 import { Route as SettingsRoute } from "@/routes/settings";
-import { Route as UsageRoute } from "@/routes/usage";
+import { Route as BillingRoute } from "@/routes/billing";
 import { Route as WebhookRoute } from "@/routes/webhook.$webhookId";
 import { Route as WebhooksRoute } from "@/routes/webhooks";
 import { Route as NewWebhookRoute } from "@/routes/webhooks_.new";
@@ -176,7 +176,7 @@ const staticRouteCases: Array<
   ],
   ["new service", NewServiceRoute, { search: {} }, "New Service", "新建服务"],
   ["account settings", SettingsRoute, { search: {} }, "Settings", "设置"],
-  ["usage", UsageRoute, { search: {} }, "Usage", "用量"],
+  ["billing", BillingRoute, { search: {} }, "Billing", "账单"],
   ["webhooks", WebhooksRoute, { search: {} }, "Webhooks", "Webhooks"],
   [
     "new webhook",

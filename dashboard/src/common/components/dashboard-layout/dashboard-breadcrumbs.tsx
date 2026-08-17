@@ -1,10 +1,10 @@
 import { Link, useParams, useRouterState } from "@tanstack/react-router";
 import {
-  BarChart3,
   Bell,
   Boxes,
   ChevronDown,
   ChevronRight,
+  CreditCard,
   Database,
   FolderKanban,
   Globe2,
@@ -343,9 +343,9 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
     icon: Bell,
   },
   {
-    match: (path) => path.startsWith("/usage"),
+    match: (path) => path.startsWith("/billing"),
     labelKey: "common.navUsage",
-    icon: BarChart3,
+    icon: CreditCard,
   },
   {
     match: (path) => path.startsWith("/workspace/settings"),

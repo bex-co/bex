@@ -74,12 +74,12 @@ describe("AgentSessionsNavSection (w5/m64 — one rail, contextual slot)", () =>
     // The contextual list AND the global nav, in the same rail.
     expect(await screen.findByText("Recent")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Projects" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Usage" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Billing" })).toBeInTheDocument();
   });
 
   it("keeps the slot out of every non-agent route", async () => {
     sessionsState.sessions = [view()];
-    for (const path of ["/", "/blueprints", "/usage", "/webhooks"]) {
+    for (const path of ["/", "/blueprints", "/billing", "/webhooks"]) {
       const { unmount } = renderAt(path);
       expect(
         await screen.findByRole("link", { name: "Projects" }),

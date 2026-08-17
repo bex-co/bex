@@ -1,9 +1,9 @@
 import { useParams, useRouterState } from "@tanstack/react-router";
 import {
-  BarChart3,
   Bell,
   Bot,
   Boxes,
+  CreditCard,
   FolderKanban,
   Layers,
   Settings,
@@ -58,7 +58,7 @@ const NAV_GROUPS: SidebarNavGroup[] = [
   {
     labelKey: "common.navWorkspaceGroup",
     items: [
-      { labelKey: "common.navUsage", to: "/usage", icon: BarChart3 },
+      { labelKey: "common.navUsage", to: "/billing", icon: CreditCard },
       {
         labelKey: "common.navSettings",
         to: "/workspace/settings",

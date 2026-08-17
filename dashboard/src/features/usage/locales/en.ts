@@ -2,12 +2,22 @@ import type { TranslationEntry } from "@/i18n";
 
 const enUsage: Record<string, TranslationEntry> = {
   "usage.pageTitle": {
-    message: "Usage",
-    description: "Usage page heading and browser title",
+    message: "Billing",
+    description:
+      "Billing page heading and browser title (renamed from Usage in w5/m70)",
   },
   "usage.pageSubtitle": {
-    message: "Month-to-date workspace consumption",
-    description: "Usage page subtitle beneath the heading",
+    message: "Payment, invoices, and month-to-date workspace consumption",
+    description: "Billing page subtitle beneath the heading",
+  },
+  "usage.sectionBilling": {
+    message: "Billing",
+    description: "Heading for the payment/invoice section of the billing page",
+  },
+  "usage.sectionUsage": {
+    message: "Usage",
+    description:
+      "Heading for the metered-consumption section of the billing page",
   },
   "usage.resourceCapsTitle": {
     message: "Resource limits",
@@ -154,6 +164,31 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "No billable usage this period.",
     description:
       "Empty-state message when there is no billable usage to estimate",
+  },
+  "usage.creditsTitle": {
+    message: "Credits remaining",
+    description: "Heading of the remaining billing-credit card (w5/m70)",
+  },
+  "usage.creditsDescription": {
+    message:
+      "Promotional credit applied to invoices before your payment method is charged",
+    description: "Subtitle of the remaining billing-credit card",
+  },
+  "usage.creditsExpiryNote": {
+    message: "${amount} of it expires {date}",
+    description:
+      "Earliest-expiring grant note beside the credit balance; amount is a $ value, date is YYYY-MM-DD",
+  },
+  "usage.creditsCardStillRequired": {
+    message:
+      "A payment method is still required even with credit: credit covers invoices first, and your card pays any remainder.",
+    description:
+      "ADR046 clarification on the credit card — credit does not replace payment onboarding",
+  },
+  "usage.creditsAppliedLine": {
+    message: "Credits applied \u2212${applied} \u2192 amount due ${due}",
+    description:
+      "Credit-adjusted line under the current invoice preview total; applied/due are numeric USD strings",
   },
   "usage.currentSpendTitle": {
     message: "Current Spend",

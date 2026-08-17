@@ -437,6 +437,122 @@ func TestStripeBillingForReadsPreviewAndFinalizedInvoices(t *testing.T) {
 	}
 }
 
+// Credit-route bodies shared by the w5/m70 credit tests. The stub routes on
+// path only, so the aggregate and per-grant balance-summary calls return the
+// same body — values chosen so both reads still assert meaningfully.
+const (
+	creditSummaryBody = `{"object":"billing.credit_balance_summary","livemode":false,"balances":[{"available_balance":{"type":"monetary","monetary":{"currency":"usd","value":2500}},"ledger_balance":{"type":"monetary","monetary":{"currency":"usd","value":2500}}}]}`
+	creditGrantsBody  = `{"object":"list","data":[` +
+		`{"id":"credgr_forever","object":"billing.credit_grant","name":"comp","effective_at":1,"expires_at":0},` +
+		`{"id":"credgr_expiring","object":"billing.credit_grant","name":"welcome","effective_at":1,"expires_at":4102444800},` +
+		`{"id":"credgr_voided","object":"billing.credit_grant","name":"revoked","effective_at":1,"voided_at":5},` +
+		`{"id":"credgr_expired","object":"billing.credit_grant","name":"old","effective_at":1,"expires_at":10}` +
+		`],"has_more":false,"url":"/v1/billing/credit_grants"}`
+)
+
+func TestStripeBillingForIncludesCreditBalance(t *testing.T) {
+	c, _ := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodPost && path == "/v1/invoices/create_preview":
+			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","total":1234,"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
+		case method == http.MethodGet && path == "/v1/invoices":
+			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/invoices"}`
+		case method == http.MethodGet && path == "/v1/billing/credit_balance_summary":
+			return 200, creditSummaryBody
+		case method == http.MethodGet && path == "/v1/billing/credit_grants":
+			return 200, creditGrantsBody
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	b, err := c.BillingFor(context.Background(), "tea-a", time.Time{}, time.Time{})
+	if err != nil {
+		t.Fatalf("BillingFor: %v", err)
+	}
+	if b == nil || b.Credits == nil {
+		t.Fatalf("billing = %+v, want credits block", b)
+	}
+	if b.Credits.AvailableUSD != "25.00" || b.Credits.Currency != "USD" {
+		t.Fatalf("credits = %+v", b.Credits)
+	}
+	// Voided and already-expired grants are skipped; earliest-expiring active
+	// grant sorts first and a never-expiring grant last.
+	if len(b.Credits.Grants) != 2 {
+		t.Fatalf("grants = %+v, want 2 active", b.Credits.Grants)
+	}
+	if b.Credits.Grants[0].Name != "welcome" || b.Credits.Grants[0].ExpiresAt != "2100-01-01T00:00:00Z" {
+		t.Fatalf("first grant = %+v, want the expiring one first", b.Credits.Grants[0])
+	}
+	if b.Credits.Grants[1].Name != "comp" || b.Credits.Grants[1].ExpiresAt != "" {
+		t.Fatalf("second grant = %+v, want the never-expiring one last", b.Credits.Grants[1])
+	}
+	if b.Credits.Grants[0].RemainingUSD != "25.00" {
+		t.Fatalf("grant remaining = %+v", b.Credits.Grants[0])
+	}
+}
+
+func TestStripeBillingForZeroCreditBalanceOmitsCredits(t *testing.T) {
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodPost && path == "/v1/invoices/create_preview":
+			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","total":1234,"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
+		case method == http.MethodGet && path == "/v1/invoices":
+			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/invoices"}`
+		case method == http.MethodGet && path == "/v1/billing/credit_balance_summary":
+			return 200, `{"object":"billing.credit_balance_summary","livemode":false,"balances":[{"available_balance":{"type":"monetary","monetary":{"currency":"usd","value":0}}}]}`
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	b, err := c.BillingFor(context.Background(), "tea-a", time.Time{}, time.Time{})
+	if err != nil || b == nil {
+		t.Fatalf("BillingFor = %+v,%v", b, err)
+	}
+	if b.Credits != nil {
+		t.Fatalf("credits = %+v, want omitted at zero balance", b.Credits)
+	}
+	// A zero aggregate short-circuits before any per-grant reads.
+	if got := stub.count("/billing/credit_grants"); got != 0 {
+		t.Fatalf("credit_grants calls = %d, want 0", got)
+	}
+}
+
+func TestStripeBillingForCreditReadFailureDegradesToOmitted(t *testing.T) {
+	// e.g. a runtime key without the credit read permission: the credits block
+	// is omitted but the invoice preview and history stay intact.
+	c, _ := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodPost && path == "/v1/invoices/create_preview":
+			return 200, `{"id":"upcoming_in_1","object":"invoice","currency":"usd","total":1234,"period_start":1782864000,"period_end":1785542400,"status":"draft"}`
+		case method == http.MethodGet && path == "/v1/invoices":
+			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/invoices"}`
+		case method == http.MethodGet && path == "/v1/billing/credit_balance_summary":
+			return 403, `{"error":{"type":"invalid_request_error","code":"more_permissions_required","message":"key lacks billing credit read"}}`
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	b, err := c.BillingFor(context.Background(), "tea-a", time.Time{}, time.Time{})
+	if err != nil {
+		t.Fatalf("BillingFor must not fail on a credit-only error: %v", err)
+	}
+	if b == nil || b.CurrentCost == nil || b.CurrentCost.AmountUSD != "12.34" {
+		t.Fatalf("billing = %+v, want invoice preview intact", b)
+	}
+	if b.Credits != nil {
+		t.Fatalf("credits = %+v, want omitted on read failure", b.Credits)
+	}
+}
+
 func TestStripeBillingForMissingCustomerDoesNotCreate(t *testing.T) {
 	c, stub := newStripeTest(t, func(method, path string) (int, string) {
 		if method == http.MethodGet && strings.Contains(path, "/customers/search") {

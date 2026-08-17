@@ -35,7 +35,7 @@ function renderAt(initialPath: string) {
     path: "/w/$",
     component: WAliasRoute.options.component!,
   });
-  const landings = ["/workspace/settings", "/usage"].map((path) =>
+  const landings = ["/workspace/settings", "/billing"].map((path) =>
     createRoute({
       getParentRoute: () => rootRoute,
       path,
@@ -74,9 +74,9 @@ describe("/w/{tea-id} alias (w1/m45)", () => {
     expect(router.history.length).toBe(1);
   });
 
-  it("lands billing on Usage (bex's deliberate counterpart)", async () => {
+  it("lands billing on bex's own /billing page (renamed w5/m70)", async () => {
     const router = renderAt("/w/tea-mine/billing");
-    await waitFor(() => expect(router.state.location.pathname).toBe("/usage"));
+    await waitFor(() => expect(router.state.location.pathname).toBe("/billing"));
   });
 
   it("lands the bare workspace root on the overview", async () => {

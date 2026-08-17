@@ -62,6 +62,24 @@ export interface BillingInvoice {
   periodEnd: string;
 }
 
+/** One active credit grant's remaining balance (w5/m70). */
+export interface BillingCreditGrant {
+  name: string;
+  remainingUsd: string;
+  /** RFC3339; empty for a grant that never expires. Earliest-expiring first. */
+  expiresAt: string;
+}
+
+/**
+ * Remaining Stripe billing-credit balance (w5/m70). null when the balance is
+ * zero or the read degrades — the UI hides credit chrome entirely then.
+ */
+export interface BillingCredits {
+  availableUsd: string;
+  currency: string;
+  grants: BillingCreditGrant[];
+}
+
 /**
  * Real Stripe billing (m48/m50). Distinct from the advisory estimatedCost:
  * this is what the workspace is actually charged. null when there is no bex
@@ -70,6 +88,7 @@ export interface BillingInvoice {
 export interface Billing {
   currentCost: BillingAmount | null;
   invoices: BillingInvoice[];
+  credits: BillingCredits | null;
 }
 
 export interface UsageSummary {
@@ -155,6 +174,20 @@ export function useUsage(period?: string): UseUsageResult {
                       periodStart: i!.periodStart ?? "",
                       periodEnd: i!.periodEnd ?? "",
                     })),
+                  credits: raw.billing.credits
+                    ? {
+                        availableUsd:
+                          raw.billing.credits.availableUsd ?? "0.00",
+                        currency: raw.billing.credits.currency ?? "USD",
+                        grants: (raw.billing.credits.grants ?? [])
+                          .filter(Boolean)
+                          .map((g) => ({
+                            name: g!.name ?? "",
+                            remainingUsd: g!.remainingUsd ?? "0.00",
+                            expiresAt: g!.expiresAt ?? "",
+                          })),
+                      }
+                    : null,
                 }
               : null,
           }
