@@ -1,0 +1,37 @@
+# Child Applications may consume only the reviewed bex repository or the
+# controlled, digest-addressed Helm mirror. Namespace destinations are the
+# finite platform set; tenant namespaces are reconciled by bex-api/operator,
+# never by Argo. Cluster resources remain necessary for the reviewed controller
+# charts (CRDs, webhooks, and scoped RBAC), so source identity is the hard gate.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: bex-platform
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-100"
+spec:
+  description: Reviewed bex platform sources and destinations
+  sourceRepos:
+    - git@github.com:bex-co/bex.git
+    - oci://ghcr.io/bex-co/bex-charts/*
+  destinations:
+    - { server: https://kubernetes.default.svc, namespace: auth }
+    - { server: https://kubernetes.default.svc, namespace: bex-capi }
+    - { server: https://kubernetes.default.svc, namespace: bex-registry }
+    - { server: https://kubernetes.default.svc, namespace: bex-system }
+    - { server: https://kubernetes.default.svc, namespace: cert-manager }
+    - { server: https://kubernetes.default.svc, namespace: cnpg-system }
+    - { server: https://kubernetes.default.svc, namespace: dashboard }
+    - { server: https://kubernetes.default.svc, namespace: kpack }
+    - { server: https://kubernetes.default.svc, namespace: kube-system }
+    - { server: https://kubernetes.default.svc, namespace: monitoring }
+    - { server: https://kubernetes.default.svc, namespace: opensandbox-system }
+    - { server: https://kubernetes.default.svc, namespace: secrets }
+    - { server: https://kubernetes.default.svc, namespace: traefik }
+  clusterResourceWhitelist:
+    - { group: "*", kind: "*" }
+  namespaceResourceWhitelist:
+    - { group: "*", kind: "*" }
+  orphanedResources:
+    warn: true

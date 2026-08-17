@@ -57,8 +57,11 @@ const (
 	// value of 0 disables that dimension.
 	defaultMaxConns          = 1024      // BEX_KV_PROXY_MAX_CONNS
 	defaultMaxConnsPerSource = 128       // BEX_KV_PROXY_MAX_CONNS_PER_SOURCE
+	defaultMaxConnsWorkspace = 256       // BEX_KV_PROXY_MAX_CONNS_PER_WORKSPACE
+	defaultMaxConnsResource  = 64        // BEX_KV_PROXY_MAX_CONNS_PER_RESOURCE
 	defaultIdleTimeout       = time.Hour // BEX_KV_PROXY_IDLE_TIMEOUT
 	defaultMaxLifetime       = 24 * time.Hour
+	labelWorkspace           = "app.bex.co/workspace"
 )
 
 var scheme = runtime.NewScheme()
@@ -67,6 +70,7 @@ func init() { utilruntime.Must(appv1alpha1.AddToScheme(scheme)) }
 
 type kvRoute struct {
 	ResourceID string
+	Workspace  string
 	Backend    string
 	Allow      []netip.Prefix
 	EnvAllow   []netip.Prefix
@@ -89,8 +93,13 @@ func (r *kvRouter) set(kv *appv1alpha1.KeyValue) error {
 		r.delete(kv.Name)
 		return nil
 	}
+	workspace := kv.Labels[labelWorkspace]
+	if workspace == "" {
+		workspace = kv.Namespace
+	}
 	route := kvRoute{
 		ResourceID: kv.Name,
+		Workspace:  workspace,
 		Backend:    fmt.Sprintf("%s.%s.svc.cluster.local:6380", kv.Name, kv.Namespace),
 	}
 	allow, envAllow, err := sniproxy.ParseAllowList(kv.Spec.IPAllowList, kv.Spec.EnvironmentIPAllowList)
@@ -181,6 +190,10 @@ func main() {
 	limiter := sniproxy.NewLimiter(
 		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_CONNS", defaultMaxConns),
 		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_CONNS_PER_SOURCE", defaultMaxConnsPerSource),
+	)
+	limiter.SetRouteLimits(
+		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_CONNS_PER_WORKSPACE", defaultMaxConnsWorkspace),
+		sniproxy.EnvInt(logger, "BEX_KV_PROXY_MAX_CONNS_PER_RESOURCE", defaultMaxConnsResource),
 	)
 	idleTimeout := sniproxy.EnvDuration(logger, "BEX_KV_PROXY_IDLE_TIMEOUT", defaultIdleTimeout)
 	maxLifetime := sniproxy.EnvDuration(logger, "BEX_KV_PROXY_MAX_LIFETIME", defaultMaxLifetime)
@@ -294,6 +307,13 @@ func handleConn(
 		logger.Info("no allowed route", "sni", sni)
 		return
 	}
+	releaseRoute, rejectedScope, ok := limiter.AcquireRoute(route.Workspace, route.Workspace+"/"+route.ResourceID)
+	if !ok {
+		meter.Reject(rejectedScope)
+		logger.Info("connection rejected: routed limit reached", "scope", rejectedScope, "resource", route.ResourceID)
+		return
+	}
+	defer releaseRoute()
 	backend, err := net.DialTimeout("tcp", route.Backend, dialTimeout)
 	if err != nil {
 		logger.Error(err, "dial backend", "resource", route.ResourceID)

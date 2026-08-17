@@ -10,11 +10,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1" # operator + CRDs before the Cluster (wave 2)
 spec:
-  project: default
+  project: bex-platform
   source:
-    repoURL: https://cloudnative-pg.github.io/charts
-    chart: cloudnative-pg
-    targetRevision: "0.29.0" # pin exact for reproducibility
+    repoURL: oci://ghcr.io/bex-co/bex-charts/cloudnative-pg
+    path: .
+    targetRevision: "sha256:4f2ad68fc28edf31ab86b151493e2d33a5c6b29ff537f2b9ee7c2018709218c1"
     helm:
       values: |
         # w1/m19 t003: platform pool

@@ -26,13 +26,10 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
-// ErrUnlistedSharedSuffix is the recoverable rejection: domain is a well-formed
+// ErrUnlistedSharedSuffix reports that domain is a well-formed
 // registrable domain that is not (yet) a private entry in the Public Suffix List
-// embedded in this build of golang.org/x/net. The manager treats it as a loud
-// warning rather than a fatal error (onbex.co runs today; cross-tenant cookie
-// isolation firms up once the suffix is submitted to publicsuffix/list and a
-// newer x/net embeds it). Malformed input never wraps this sentinel, so it stays
-// fatal.
+// embedded in this build of golang.org/x/net. Every hosting process treats it
+// as fatal; the sentinel exists so tests and startup diagnostics stay precise.
 var ErrUnlistedSharedSuffix = errors.New("shared tenant domain is not a private Public Suffix")
 
 // ValidateSharedSuffix permits an empty (disabled) platform domain or a
@@ -41,8 +38,7 @@ var ErrUnlistedSharedSuffix = errors.New("shared tenant domain is not a private 
 // by every sibling tenant; a browser-recognized private suffix prevents that.
 //
 // A well-formed-but-unlisted domain fails with ErrUnlistedSharedSuffix (the
-// caller may proceed with a warning); a malformed domain fails with a plain,
-// fatal error.
+// caller must fail closed); a malformed domain fails with a plain error.
 func ValidateSharedSuffix(domain string) error {
 	if domain == "" {
 		return nil

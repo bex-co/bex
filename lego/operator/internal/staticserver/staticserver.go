@@ -127,7 +127,7 @@ func New(resolver Resolver, origin Origin, cacheBytes int64) *Handler {
 		resolver:   resolver,
 		origin:     origin,
 		cache:      newCache(cacheBytes),
-		gate:       newFetchGate(defaultMaxConcurrentFetches, defaultMaxInflightBytes),
+		gate:       newFetchGate(defaultMaxConcurrentFetches, defaultMaxInflightBytes, defaultMaxSiteFetches),
 		liveBodies: semaphore.NewWeighted(defaultMaxLiveBodyBytes),
 	}
 }
@@ -265,15 +265,15 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 		if obj, ok := h.cache.get(key); ok {
 			return obj, nil
 		}
-		if !h.gate.acquire() {
+		if !h.gate.acquire(site.AppID) {
 			return Object{}, ErrOverloaded
 		}
-		defer h.gate.release()
+		defer h.gate.release(site.AppID)
 		obj, gerr := h.origin.Get(ctx, key)
 		if gerr != nil {
 			return Object{}, gerr
 		}
-		h.cache.put(key, obj)
+		h.cache.put(site.AppID, key, obj)
 		return obj, nil
 	})
 	if err != nil {

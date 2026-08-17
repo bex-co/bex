@@ -40,25 +40,42 @@ export class DriverGrantVerifier {
     this.sessionID = sessionID;
   }
 
-  consume(request: IncomingMessage, now = Math.floor(Date.now() / 1000)): boolean {
+  consume(
+    request: IncomingMessage,
+    action: "turn" | "snapshot",
+    now = Math.floor(Date.now() / 1000),
+  ): boolean {
     const token = request.headers[grantHeader];
     if (typeof token !== "string") return false;
     const [body, signature, extra] = token.split(".");
     if (!body || !signature || extra !== undefined) return false;
-    if (!verify(null, Buffer.from(body), this.publicKey, decodeBase64URL(signature))) {
+    if (
+      !verify(
+        null,
+        Buffer.from(body),
+        this.publicKey,
+        decodeBase64URL(signature),
+      )
+    ) {
       return false;
     }
     let claims: GrantClaims;
     try {
-      claims = JSON.parse(decodeBase64URL(body).toString("utf8")) as GrantClaims;
+      claims = JSON.parse(
+        decodeBase64URL(body).toString("utf8"),
+      ) as GrantClaims;
     } catch {
       return false;
     }
     if (
-      claims.ses !== this.sessionID || claims.act !== "turn" ||
-      typeof claims.iat !== "number" || typeof claims.exp !== "number" ||
-      typeof claims.jti !== "string" || !claims.jti ||
-      claims.exp < now - clockSkewSeconds || claims.iat > now + clockSkewSeconds
+      claims.ses !== this.sessionID ||
+      claims.act !== action ||
+      typeof claims.iat !== "number" ||
+      typeof claims.exp !== "number" ||
+      typeof claims.jti !== "string" ||
+      !claims.jti ||
+      claims.exp < now - clockSkewSeconds ||
+      claims.iat > now + clockSkewSeconds
     ) {
       return false;
     }

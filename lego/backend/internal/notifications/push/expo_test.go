@@ -105,6 +105,7 @@ func TestExpoSendSuccessMapsBoundedPayload(t *testing.T) {
 		Data: EnvelopeData{
 			Schema: "bex.notification.v1", NotificationID: "evt-1",
 			Event: "deploy_failed", Route: "/services/srv-1",
+			Subject: "identity-1", WorkspaceID: "tea-1", SessionID: "session-1",
 		},
 		CollapseKey: "deploy:srv-1",
 		Tag:         "deploy",
@@ -273,6 +274,7 @@ func validTestData() EnvelopeData {
 	return EnvelopeData{
 		Schema: "bex.notification.v1", NotificationID: "evt-test",
 		Event: "deploy_failed", Route: "/services/srv-test",
+		Subject: "identity-test", WorkspaceID: "tea-test", SessionID: "session-test",
 	}
 }
 

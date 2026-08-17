@@ -1,6 +1,6 @@
 # Ory Kratos — the platform identity service (registration, login, sessions;
-# see docs/ADR012-auth.md). Pinned upstream chart; values are vendored in this repo, so
-# this is a multi-source Application: the Helm repo provides the chart, the git
+# see docs/ADR012-auth.md). The reviewed chart is mirrored to controlled OCI;
+# this is a multi-source Application: the immutable artifact provides the chart, the git
 # source (ref: values) provides base/values/kratos.values.yaml.
 # sync-wave 3: after the CNPG operator (1) and kratos-db (2). Runtime secrets
 # (DSN + cookie/cipher) are NOT in git — scripts/auth-secrets.sh creates the
@@ -13,11 +13,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 spec:
-  project: default
+  project: bex-platform
   sources:
-    - repoURL: https://k8s.ory.sh/helm/charts
-      chart: kratos
-      targetRevision: "0.62.1" # app v26.2.0; pin exact for reproducibility
+    - repoURL: oci://ghcr.io/bex-co/bex-charts/kratos
+      path: .
+      targetRevision: "sha256:56ed906cc00ff22b9c02ee2bf7bee8b95b31bf57a83d6059f08e44717f6b1d91"
       helm:
         valueFiles:
           - $values/deploy/gitops/base/values/kratos.values.yaml

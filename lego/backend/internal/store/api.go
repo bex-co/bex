@@ -702,15 +702,18 @@ func ValidGitRef(v string) bool { return refRE.MatchString(v) }
 // literal is refused (codex round-7 F6): the kubelet pulls tenant images from
 // the node's network context — outside every pod egress policy — so a private,
 // loopback, link-local, CGNAT, or metadata literal turns spec.Image into a
-// node-origin probe with tenant-visible pull-error detail. Public registries
-// (including public IP literals and DNS hostnames like ghcr.io) are unaffected;
-// the deliberate residual is that an internal DNS NAME is lexically
-// indistinguishable from a public one and remains allowed.
+// node-origin probe with tenant-visible pull-error detail. Explicit registry
+// hosts are additionally restricted to the platform's exact trusted set. A
+// one-time DNS lookup is insufficient because kubelet resolves later from the
+// node network and an attacker could rebind between the two lookups.
 func ValidImage(v string) bool {
 	if len(v) > 512 || !imageRE.MatchString(v) {
 		return false
 	}
-	first, _, _ := strings.Cut(v, "/")
+	first, _, hasSlash := strings.Cut(v, "/")
+	if !hasSlash {
+		return true // a short name such as nginx:1 uses the implicit docker.io registry
+	}
 	if !strings.ContainsAny(first, ".:") && !strings.EqualFold(first, "localhost") {
 		return true // no host component — the implicit docker.io registry
 	}
@@ -724,7 +727,18 @@ func ValidImage(v string) bool {
 	if ip := net.ParseIP(host); ip != nil && netutil.UnsafeOriginIP(ip) {
 		return false
 	}
-	return true
+	return trustedImageRegistry(host)
+}
+
+func trustedImageRegistry(host string) bool {
+	host = strings.ToLower(strings.TrimSuffix(host, "."))
+	switch host {
+	case "docker.io", "registry-1.docker.io", "ghcr.io", "quay.io", "gcr.io",
+		"registry.k8s.io", "public.ecr.aws", "mcr.microsoft.com",
+		"zot.bex-registry.svc", "zot.bex-registry.svc.cluster.local":
+		return true
+	}
+	return strings.HasSuffix(host, ".pkg.dev")
 }
 
 // ValidRootDir reports whether v is a safe build root directory: a relative path

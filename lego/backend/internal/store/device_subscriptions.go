@@ -51,6 +51,7 @@ type DevicePushSubscription struct {
 	TenantID         string     `json:"tenantId"`
 	Subject          string     `json:"subject"`
 	DeviceID         string     `json:"deviceId"`
+	SessionID        string     `json:"-"`
 	Provider         string     `json:"provider"`
 	Platform         string     `json:"platform"`
 	Token            string     `json:"-"`
@@ -121,10 +122,11 @@ func (s *PGStore) UpsertDevicePushSubscription(ctx context.Context, sub DevicePu
 	sub.TokenDigest = digest
 	err = tx.QueryRow(ctx, `
 		INSERT INTO device_push_subscriptions
-			(tenant_id, subject, device_id, provider, platform, token, token_digest, preference_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7,
+			(tenant_id, subject, device_id, session_id, provider, platform, token, token_digest, preference_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
 			(SELECT id FROM notification_settings WHERE tenant_id = $1 AND subject = $2))
 		ON CONFLICT (tenant_id, subject, device_id) DO UPDATE SET
+			session_id = EXCLUDED.session_id,
 			provider = EXCLUDED.provider,
 			platform = EXCLUDED.platform,
 			token = EXCLUDED.token,
@@ -134,7 +136,7 @@ func (s *PGStore) UpsertDevicePushSubscription(ctx context.Context, sub DevicePu
 			updated_at = now(),
 			last_registered_at = now()
 		RETURNING COALESCE(preference_id, ''), revoked_at, created_at, updated_at, last_registered_at`,
-		sub.TenantID, sub.Subject, sub.DeviceID, sub.Provider, sub.Platform, sub.Token, digest,
+		sub.TenantID, sub.Subject, sub.DeviceID, sub.SessionID, sub.Provider, sub.Platform, sub.Token, digest,
 	).Scan(&sub.PreferenceID, &sub.RevokedAt, &sub.CreatedAt, &sub.UpdatedAt, &sub.LastRegisteredAt)
 	if err != nil {
 		return DevicePushSubscription{}, classifyPushSubscriptionError(err)
@@ -150,7 +152,7 @@ func (s *PGStore) UpsertDevicePushSubscription(ctx context.Context, sub DevicePu
 // direct JSON encoding of the result cannot disclose the bearer capability.
 func (s *PGStore) ListOwnDevicePushSubscriptions(ctx context.Context, tenantID, subject string) ([]DevicePushSubscription, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT tenant_id, subject, device_id, provider, platform,
+		SELECT tenant_id, subject, device_id, session_id, provider, platform,
 		       COALESCE(preference_id, ''), created_at, updated_at, last_registered_at
 		FROM device_push_subscriptions
 		WHERE tenant_id = $1 AND subject = $2 AND revoked_at IS NULL
@@ -163,7 +165,7 @@ func (s *PGStore) ListOwnDevicePushSubscriptions(ctx context.Context, tenantID, 
 	for rows.Next() {
 		var sub DevicePushSubscription
 		if err := rows.Scan(
-			&sub.TenantID, &sub.Subject, &sub.DeviceID, &sub.Provider, &sub.Platform,
+			&sub.TenantID, &sub.Subject, &sub.DeviceID, &sub.SessionID, &sub.Provider, &sub.Platform,
 			&sub.PreferenceID, &sub.CreatedAt, &sub.UpdatedAt, &sub.LastRegisteredAt,
 		); err != nil {
 			return nil, fmt.Errorf("device push subscription scan: %w", err)

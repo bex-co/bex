@@ -6,11 +6,10 @@
 # a broken half-state. This asserts, over
 # infra/clusterapi/overlays/hetzner-caph/cluster.yaml + the packer bake:
 #   1. per worker MachineDeployment, the node image and its preKubeadmCommands are
-#      CONSISTENT — a baked snapshot (imageName: bex-worker) must carry NO runtime
+#      CONSISTENT — a versioned baked snapshot must carry NO runtime
 #      download / images-pull / trimmed-apt line, and an ubuntu-24.04 pool MUST
 #      still download its runtime at boot (else its nodes come up with no runtime).
-#      Any other imageName is rejected. (Control-plane uses KubeadmControlPlane, not
-#      a worker MachineDeployment, so it is out of scope here.)
+#      Any other imageName is rejected.
 #   2. the platform pool floor stays at three nodes — prod OpenBao has three
 #      required-anti-affinity Raft members, so a two-node floor is not viable.
 #   3. the packer bake (infra/packer/bex-worker.pkr.hcl) installs no trimmed package.
@@ -28,12 +27,14 @@ OVERLAY="infra/clusterapi/overlays/hetzner-caph/cluster.yaml"
 SANDBOX_OVERLAY="infra/clusterapi/overlays/hetzner-caph/sandbox-pool.yaml"
 PACKER="infra/packer/bex-worker.pkr.hcl"
 SNAPSHOT_WORKFLOW=".github/workflows/snapshot.yml"
+SNAPSHOT_RELEASE="infra/packer/release.conf"
 AUTOSCALER_VALUES="infra/clusterapi/autoscaler-values.yaml"
 AUTOSCALER_APP="deploy/gitops/base/autoscaler.yaml"
 fail=0
 
 pk_var() { grep -A4 "variable \"$1\"" "$PACKER" | grep -m1 -oE 'default[[:space:]]*=[[:space:]]*"[^"]+"' | grep -oE '"[^"]+"' | tr -d '"'; }
 pk_k8s="$(pk_var kubernetes_version)"; pk_containerd="$(pk_var containerd_version)"; pk_runc="$(pk_var runc_version)"
+pk_containerd_sha="$(pk_var containerd_amd64_sha256)"; pk_runc_sha="$(pk_var runc_amd64_sha256)"; pk_k8s_key_sha="$(pk_var kubernetes_release_key_sha256)"
 
 echo "==> production CAPI objects live only in the locked-down namespace"
 if [ "$(yq -N 'select(.kind == "Namespace" and .metadata.name == "bex-capi") | .metadata.name' "$OVERLAY")" != "bex-capi" ]; then
@@ -69,9 +70,27 @@ while read -r desired; do
     fail=1
   fi
 done < <(yq -N 'select(.kind == "KubeadmControlPlane" or .kind == "MachineDeployment") | (.spec.version // .spec.template.spec.version)' "$OVERLAY")
-snapshot_k8s="$(yq -N '.on.workflow_dispatch.inputs.kubernetes_version.default' "$SNAPSHOT_WORKFLOW")"
+snapshot_k8s="$(sed -n 's/^KUBERNETES_VERSION=//p' "$SNAPSHOT_RELEASE")"
 if [ "$snapshot_k8s" != "$pk_k8s" ]; then
-  echo "FAIL: snapshot default '$snapshot_k8s' differs from Packer '$pk_k8s'" >&2
+  echo "FAIL: reviewed snapshot release '$snapshot_k8s' differs from Packer '$pk_k8s'" >&2
+  fail=1
+fi
+snapshot_image="$(sed -n 's/^IMAGE_NAME=//p' "$SNAPSHOT_RELEASE")"
+if [[ ! "$snapshot_image" =~ ^bex-worker-k8s-[0-9]+-[0-9]+$ ]] \
+  || ! grep -Fq "imageName: $snapshot_image" "$OVERLAY"; then
+  echo "FAIL: reviewed snapshot image '$snapshot_image' is not the production CAPH selector" >&2
+  fail=1
+fi
+
+control_plane_infra="$(yq -N 'select(.kind=="KubeadmControlPlane") | .spec.machineTemplate.infrastructureRef.name' "$OVERLAY")"
+control_plane_image="$(yq -N "select(.kind==\"HCloudMachineTemplate\" and .metadata.name==\"$control_plane_infra\") | .spec.template.spec.imageName" "$OVERLAY")"
+if [ "$control_plane_image" != "$snapshot_image" ]; then
+  echo "FAIL: control-plane template '$control_plane_infra' must use reviewed snapshot '$snapshot_image', got '$control_plane_image'" >&2
+  fail=1
+fi
+if grep -q 'workflow_dispatch.inputs' "$SNAPSHOT_WORKFLOW" \
+  || grep -q '\${{ inputs\.' "$SNAPSHOT_WORKFLOW"; then
+  echo "FAIL: credentialed snapshot selection must come only from $SNAPSHOT_RELEASE, never dispatch input" >&2
   fail=1
 fi
 
@@ -92,7 +111,7 @@ while read -r md infra cfg; do
     echo "FAIL: MachineDeployment $md points at HCloudMachineTemplate '$infra' which is not defined in $OVERLAY" >&2; fail=1; continue
   fi
   case "$img" in
-    bex-worker | bex-worker-k8s-*)
+    bex-worker-k8s-*)
       if echo "$prek" | grep -qE "$FORBIDDEN"; then
         echo "FAIL: baked pool $md (KubeadmConfigTemplate $cfg) still has a download/pull/trimmed-apt line — the snapshot already carries the runtime:" >&2
         echo "$prek" | grep -nE "$FORBIDDEN" | sed 's/^/    /' >&2; fail=1
@@ -107,7 +126,7 @@ while read -r md infra cfg; do
       fi
       ;;
     *)
-      echo "FAIL: worker pool $md has unexpected imageName '$img' (want 'bex-worker' or 'ubuntu-24.04')" >&2; fail=1
+      echo "FAIL: worker pool $md has unexpected imageName '$img' (want a versioned 'bex-worker-k8s-*' snapshot or 'ubuntu-24.04')" >&2; fail=1
       ;;
   esac
 done < <(yq -N 'select(.kind=="MachineDeployment") | .metadata.name + " " + .spec.template.spec.infrastructureRef.name + " " + .spec.template.spec.bootstrap.configRef.name' "$OVERLAY")
@@ -153,7 +172,6 @@ fi
 
 # 2. Every replacement path must use server capacity fsn1 can still create.
 echo "==> $OVERLAY control-plane replacement capacity"
-control_plane_infra="$(yq -N 'select(.kind=="KubeadmControlPlane") | .spec.machineTemplate.infrastructureRef.name' "$OVERLAY")"
 control_plane_type="$(yq -N "select(.kind==\"HCloudMachineTemplate\" and .metadata.name==\"$control_plane_infra\") | .spec.template.spec.type" "$OVERLAY")"
 if [ "$control_plane_type" != "cx33" ]; then
   echo "FAIL: control-plane template '$control_plane_infra' uses '$control_plane_type' (want cx33, the cheaper default now that fsn1 stock returned; during an fsn1 cx stock-out flip to cpx32 here and in the overlay — docs/ADR053)" >&2
@@ -274,6 +292,40 @@ if [ -f "$PACKER" ]; then
       echo "FAIL: $name version drift — packer '$pk' != overlay '$ov'; bump both (infra/packer/README.md § Bumping)" >&2; fail=1
     fi
   done
+
+  echo "==> node-root artifacts use repository-reviewed trust anchors"
+  for pair in \
+    "containerd:$pk_containerd_sha" \
+    "runc:$pk_runc_sha" \
+    "kubernetes-key:$pk_k8s_key_sha"; do
+    name="${pair%%:*}"; digest="${pair##*:}"
+    if [[ ! "$digest" =~ ^[0-9a-f]{64}$ ]]; then
+      echo "FAIL: $name trust anchor is not a repository-pinned SHA-256" >&2
+      fail=1
+    fi
+  done
+  if grep -Eq '(runc\.sha256sum|\.tar\.gz\.sha256sum)' "$PACKER" "$OVERLAY"; then
+    echo "FAIL: node bootstrap must not co-fetch runtime checksum files" >&2
+    fail=1
+  fi
+  if [ "$(pk_var base_image)" != "161547269" ]; then
+    echo "FAIL: Packer base image must use the reviewed immutable Hetzner image id" >&2
+    fail=1
+  fi
+  control_plane_prek="$(yq -N 'select(.kind=="KubeadmControlPlane") | .spec.kubeadmConfigSpec.preKubeadmCommands[]' "$OVERLAY")"
+  if echo "$control_plane_prek" | grep -Eq 'github\.com/(opencontainers|containerd)|pkgs\.k8s\.io|apt-get (update|install)|kubeadm config images pull'; then
+    echo "FAIL: control-plane bootstrap must consume the reviewed snapshot, not download privileged node artifacts" >&2
+    fail=1
+  fi
+  for expected in \
+    "/usr/local/bin/containerd --version | grep -q \" v\$CONTAINERD \"" \
+    "/usr/local/sbin/runc --version | head -1 | grep -qx \"runc version \$RUNC\"" \
+    "kubeadm version -o short | grep -qx \"v\$KUBERNETES_VERSION\""; do
+    if ! grep -Fq "$expected" <<<"$control_plane_prek"; then
+      echo "FAIL: control-plane bootstrap lacks baked-version assertion: $expected" >&2
+      fail=1
+    fi
+  done
 fi
 
-[ "$fail" -eq 0 ] && echo "PASS: CAPH overlay is internally consistent (baked ⟺ no-download, ubuntu ⟺ download)" || { echo "FAIL: see errors above" >&2; exit 1; }
+[ "$fail" -eq 0 ] && echo "PASS: CAPH overlay is internally consistent (reviewed snapshot ⟺ no privileged bootstrap downloads)" || { echo "FAIL: see errors above" >&2; exit 1; }

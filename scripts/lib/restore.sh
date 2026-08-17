@@ -14,6 +14,15 @@ restore_require_command() {
   command -v "$1" >/dev/null 2>&1 || restore_die "required command not found: $1"
 }
 
+# Recovery helpers pass production object-store or decryption credentials into
+# fallback containers. A mutable tag is therefore never an acceptable identity
+# for one of those credential receivers.
+restore_require_digest_image() {
+  local image="$1" label="$2"
+  [[ "$image" =~ ^[^[:space:]@]+@sha256:[0-9a-f]{64}$ ]] || \
+    restore_die "$label must be pinned by an @sha256 digest"
+}
+
 restore_load_dotenv() {
   local repo_root="$1"
   if [ "${RESTORE_SKIP_DOTENV:-0}" != "1" ] && [ -f "$repo_root/.env" ]; then
@@ -70,33 +79,38 @@ restore_s3_args() {
 }
 
 restore_aws() {
+  local image
   if command -v aws >/dev/null 2>&1; then
     command aws "$@"
     return
   fi
   restore_require_command docker
+  image="${RESTORE_AWS_IMAGE:-amazon/aws-cli:2.22.35@sha256:6977c83ae3dc99f28fcf8276b9ea5eec33833cd5be40574b34112e98113ec7a2}"
+  restore_require_digest_image "$image" "RESTORE_AWS_IMAGE"
   # -e NAME forwards an already-exported value without placing the credential
-  # itself in argv. The pinned CLI matches the production backup Jobs.
+  # itself in argv. The digest-pinned CLI matches the production backup Jobs.
   docker run --rm \
     -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN \
     -e AWS_DEFAULT_REGION -e AWS_REGION -e AWS_EC2_METADATA_DISABLED=true \
-    "${RESTORE_AWS_IMAGE:-amazon/aws-cli:2.22.35}" "$@"
+    "$image" "$@"
 }
 
 restore_aws_download() {
-  local uri="$1" destination="$2" parent name
+  local uri="$1" destination="$2" parent name image
   if command -v aws >/dev/null 2>&1; then
     command aws "${RESTORE_S3_ARGS[@]}" s3 cp --only-show-errors "$uri" "$destination"
     return
   fi
   restore_require_command docker
+  image="${RESTORE_AWS_IMAGE:-amazon/aws-cli:2.22.35@sha256:6977c83ae3dc99f28fcf8276b9ea5eec33833cd5be40574b34112e98113ec7a2}"
+  restore_require_digest_image "$image" "RESTORE_AWS_IMAGE"
   parent="$(cd "$(dirname "$destination")" && pwd)"
   name="$(basename "$destination")"
   docker run --rm \
     -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_SESSION_TOKEN \
     -e AWS_DEFAULT_REGION -e AWS_REGION -e AWS_EC2_METADATA_DISABLED=true \
     -v "$parent:/restore" \
-    "${RESTORE_AWS_IMAGE:-amazon/aws-cli:2.22.35}" \
+    "$image" \
     "${RESTORE_S3_ARGS[@]}" s3 cp --only-show-errors "$uri" "/restore/$name"
 }
 
@@ -199,6 +213,7 @@ restore_decrypt_if_age() {
       || { rm -f "$keyfile"; restore_die "age decryption failed"; }
   elif [ -n "${RESTORE_AGE_IMAGE:-}" ]; then
     restore_require_command docker
+    restore_require_digest_image "$RESTORE_AGE_IMAGE" "RESTORE_AGE_IMAGE"
     docker run --rm -v "$dir:/work" "$RESTORE_AGE_IMAGE" \
       -d -i "/work/$(basename "$keyfile")" \
       -o "/work/$(basename "$destination")" "/work/$(basename "$fetched")" \

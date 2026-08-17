@@ -34,8 +34,8 @@ class Subscriptions implements DeviceSubscriptionClient {
     this.calls.push("list");
     return { available: this.available };
   }
-  async register(input: { deviceId: string }) {
-    this.calls.push(`register:${input.deviceId}`);
+  async register(input: { deviceId: string; sessionId: string }) {
+    this.calls.push(`register:${input.deviceId}:${input.sessionId}`);
   }
   async unregister(deviceId: string) {
     this.calls.push(`unregister:${deviceId}`);
@@ -47,6 +47,7 @@ function setup(projectId: string | null = "project-1") {
   const native = new Native();
   const subscriptions = new Subscriptions();
   let enabled = false;
+  const registered: string[] = [];
   const controller = new NotificationRegistrationController(
     projectId,
     "ios",
@@ -61,6 +62,16 @@ function setup(projectId: string | null = "project-1") {
     },
     () => true,
     () => true,
+    () => {},
+    () => ({
+      subject: "identity-1",
+      sessionId: "session-1",
+      workspaceId: "tea-1",
+    }),
+    (binding) =>
+      registered.push(
+        `${binding.subject}:${binding.workspaceId}:${binding.sessionId}`,
+      ),
   );
   return {
     controller,
@@ -70,6 +81,7 @@ function setup(projectId: string | null = "project-1") {
       enabled = value;
     },
     isEnabled: () => enabled,
+    registered,
   };
 }
 
@@ -101,7 +113,7 @@ describe("NotificationRegistrationController", () => {
     ]);
     expect(subscriptions.calls).toEqual([
       "list",
-      "register:11111111-1111-4111-8111-111111111111",
+      "register:11111111-1111-4111-8111-111111111111:session-1",
     ]);
   });
 
@@ -142,8 +154,14 @@ describe("NotificationRegistrationController", () => {
     await controller.repairAfterTokenRotation();
     expect(subscriptions.calls).toEqual([
       "list",
-      "register:11111111-1111-4111-8111-111111111111",
+      "register:11111111-1111-4111-8111-111111111111:session-1",
     ]);
+  });
+
+  it("publishes the exact binding only after registration succeeds", async () => {
+    const { controller, registered } = setup();
+    await controller.enableFromUserGesture();
+    expect(registered).toEqual(["identity-1:tea-1:session-1"]);
   });
 
   it("keeps the local preference enabled when the remote unregister fails", async () => {

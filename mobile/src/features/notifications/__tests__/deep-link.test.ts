@@ -1,10 +1,16 @@
-import { parseNotificationEnvelope } from "../deep-link";
+import {
+  notificationMatchesBinding,
+  parseNotificationEnvelope,
+} from "../deep-link";
 
 const valid = {
   schema: "bex.notification.v1",
   notificationId: "evt-123",
   event: "deploy_failed",
   route: "/services/srv-abc123",
+  subject: "identity-1",
+  workspaceId: "tea-1",
+  sessionId: "session-1",
 };
 
 describe("parseNotificationEnvelope", () => {
@@ -63,5 +69,26 @@ describe("parseNotificationEnvelope", () => {
     expect(
       parseNotificationEnvelope({ ...valid, url: "https://evil.test" }),
     ).toBe(null);
+  });
+
+  it("accepts only the exact authenticated account, workspace, and session epoch", () => {
+    const envelope = parseNotificationEnvelope(valid);
+    expect(envelope).not.toBe(null);
+    if (!envelope) return;
+    expect(
+      notificationMatchesBinding(envelope, {
+        subject: "identity-1",
+        workspaceId: "tea-1",
+        sessionId: "session-1",
+      }),
+    ).toBe(true);
+    for (const binding of [
+      null,
+      { subject: "identity-old", workspaceId: "tea-1", sessionId: "session-1" },
+      { subject: "identity-1", workspaceId: "tea-old", sessionId: "session-1" },
+      { subject: "identity-1", workspaceId: "tea-1", sessionId: "session-old" },
+    ]) {
+      expect(notificationMatchesBinding(envelope, binding)).toBe(false);
+    }
   });
 });

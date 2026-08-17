@@ -1,5 +1,5 @@
 # Zot OCI registry (the build->registry->deploy hop). In-cluster Deployment + Service.
-# Uses the upstream Zot Helm repo (a real Helm repo, so this one is apply-ready).
+# Uses the repository-reviewed Zot chart mirrored to controlled OCI.
 #
 # Auth is ON (w7/m8, docs/ADR022-tenant-isolation.md § Registry access control):
 # htpasswd + accessControl with anonymous DENIED (defaultPolicy []). Tenant build
@@ -15,11 +15,11 @@ metadata:
   name: zot
   namespace: argocd
 spec:
-  project: default
+  project: bex-platform
   source:
-    repoURL: https://zotregistry.dev/helm-charts
-    chart: zot
-    targetRevision: "0.1.121" # pinned (was "0.1.*"); bump deliberately
+    repoURL: oci://ghcr.io/bex-co/bex-charts/zot
+    path: .
+    targetRevision: "sha256:4de8e88fe286dd49124b166a4a0f2a83d729d646a8b2050d7d2e4843674bf535"
     helm:
       values: |
         # NodePort 30500 lets kubelet on tenant nodes pull images via

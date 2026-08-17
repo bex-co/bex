@@ -24,10 +24,14 @@ export type NotificationEnvelope = {
   notificationId: string;
   event: NotificationEvent;
   route: NotificationRoute;
+  subject: string;
+  workspaceId: string;
+  sessionId: string;
 };
 
 const eventSet = new Set<string>(notificationEvents);
 const notificationId = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const bindingID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/;
 const routes = [
   /^\/services\/srv-[a-z0-9]{1,64}$/,
   /^\/databases\/dpg-[a-z0-9]{1,64}$/,
@@ -41,7 +45,11 @@ export function parseNotificationEnvelope(
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
   const keys = Object.keys(record).sort();
-  if (keys.join(",") !== "event,notificationId,route,schema") return null;
+  if (
+    keys.join(",") !==
+    "event,notificationId,route,schema,sessionId,subject,workspaceId"
+  )
+    return null;
   if (record.schema !== "bex.notification.v1") return null;
   if (
     typeof record.notificationId !== "string" ||
@@ -50,6 +58,16 @@ export function parseNotificationEnvelope(
     return null;
   }
   if (typeof record.event !== "string" || !eventSet.has(record.event)) {
+    return null;
+  }
+  if (
+    typeof record.subject !== "string" ||
+    typeof record.workspaceId !== "string" ||
+    typeof record.sessionId !== "string" ||
+    !bindingID.test(record.subject) ||
+    !bindingID.test(record.workspaceId) ||
+    !bindingID.test(record.sessionId)
+  ) {
     return null;
   }
   const route = record.route;
@@ -63,4 +81,16 @@ export function parseNotificationEnvelope(
     return null;
   }
   return record as NotificationEnvelope;
+}
+
+export function notificationMatchesBinding(
+  envelope: NotificationEnvelope,
+  binding: { subject: string; workspaceId: string; sessionId: string } | null,
+): boolean {
+  return (
+    binding !== null &&
+    envelope.subject === binding.subject &&
+    envelope.workspaceId === binding.workspaceId &&
+    envelope.sessionId === binding.sessionId
+  );
 }

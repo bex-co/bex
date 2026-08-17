@@ -80,7 +80,7 @@ func TestDeviceSubscriptionRegisterReplaceAndLogoutRevocation(t *testing.T) {
 	ctx := identity("alice")
 
 	created, err := svc.RegisterDeviceSubscription(ctx, RegisterDeviceInput{
-		DeviceID: " device-ios ", Provider: " EXPO ", Platform: " IOS ", Token: " " + testPushToken + " ",
+		DeviceID: " device-ios ", SessionID: " session-a ", Provider: " EXPO ", Platform: " IOS ", Token: " " + testPushToken + " ",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -94,7 +94,7 @@ func TestDeviceSubscriptionRegisterReplaceAndLogoutRevocation(t *testing.T) {
 	}
 
 	replaced, err := svc.RegisterDeviceSubscription(ctx, RegisterDeviceInput{
-		DeviceID: "device-ios", Provider: "expo", Platform: "ios", Token: "ExponentPushToken[rotated]",
+		DeviceID: "device-ios", SessionID: "session-a", Provider: "expo", Platform: "ios", Token: "ExponentPushToken[rotated]",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -135,7 +135,7 @@ func TestDeviceSubscriptionsIsolateSubjectAndWorkspace(t *testing.T) {
 	register := func(ctx context.Context, deviceID, token string) {
 		t.Helper()
 		if _, err := svc.RegisterDeviceSubscription(ctx, RegisterDeviceInput{
-			DeviceID: deviceID, Provider: "expo", Platform: "android", Token: token,
+			DeviceID: deviceID, SessionID: "session-a", Provider: "expo", Platform: "android", Token: token,
 		}); err != nil {
 			t.Fatal(err)
 		}
@@ -166,7 +166,7 @@ func TestDeviceSubscriptionsIsolateSubjectAndWorkspace(t *testing.T) {
 func TestDeviceTokenAccountSwitchRevokesPriorOwner(t *testing.T) {
 	st := newFakeStore()
 	svc := subscriptionService(st, fakeWorkspace{"alice": "tea-a", "bob": "tea-a"}, nil)
-	input := RegisterDeviceInput{DeviceID: "shared-device", Provider: "expo", Platform: "ios", Token: testPushToken}
+	input := RegisterDeviceInput{DeviceID: "shared-device", SessionID: "session-a", Provider: "expo", Platform: "ios", Token: testPushToken}
 	if _, err := svc.RegisterDeviceSubscription(identity("alice"), input); err != nil {
 		t.Fatal(err)
 	}
@@ -184,11 +184,12 @@ func TestDeviceRegistrationValidationIsBoundedAndRedacted(t *testing.T) {
 	svc := subscriptionService(newFakeStore(), fakeWorkspace{"alice": "tea-a"}, nil)
 	ctx := identity("alice")
 	for name, input := range map[string]RegisterDeviceInput{
-		"device":         {DeviceID: strings.Repeat("d", maxDeviceIDBytes+1), Provider: "expo", Platform: "ios", Token: testPushToken},
-		"device control": {DeviceID: "device\ninjected", Provider: "expo", Platform: "ios", Token: testPushToken},
-		"provider":       {DeviceID: "device", Provider: "apns", Platform: "ios", Token: testPushToken},
-		"platform":       {DeviceID: "device", Provider: "expo", Platform: "web", Token: testPushToken},
-		"token":          {DeviceID: "device", Provider: "expo", Platform: "ios", Token: strings.Repeat("s", maxPushTokenBytes+1)},
+		"device":         {DeviceID: strings.Repeat("d", maxDeviceIDBytes+1), SessionID: "session-a", Provider: "expo", Platform: "ios", Token: testPushToken},
+		"device control": {DeviceID: "device\ninjected", SessionID: "session-a", Provider: "expo", Platform: "ios", Token: testPushToken},
+		"session":        {DeviceID: "device", SessionID: "bad session", Provider: "expo", Platform: "ios", Token: testPushToken},
+		"provider":       {DeviceID: "device", SessionID: "session-a", Provider: "apns", Platform: "ios", Token: testPushToken},
+		"platform":       {DeviceID: "device", SessionID: "session-a", Provider: "expo", Platform: "web", Token: testPushToken},
+		"token":          {DeviceID: "device", SessionID: "session-a", Provider: "expo", Platform: "ios", Token: strings.Repeat("s", maxPushTokenBytes+1)},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := svc.RegisterDeviceSubscription(ctx, input)
@@ -222,7 +223,7 @@ func TestDeviceRegistrationMapsQuotaErrors(t *testing.T) {
 		base := newFakeStore()
 		svc := subscriptionService(registrationErrorStore{NotificationsStore: base, err: test.err}, fakeWorkspace{"alice": "tea-a"}, nil)
 		_, err := svc.RegisterDeviceSubscription(identity("alice"), RegisterDeviceInput{
-			DeviceID: "device", Provider: "expo", Platform: "ios", Token: testPushToken,
+			DeviceID: "device", SessionID: "session-a", Provider: "expo", Platform: "ios", Token: testPushToken,
 		})
 		var coded *core.CodedError
 		if !errors.As(err, &coded) || coded.Code != test.code || !errors.Is(err, core.ErrConflict) {
@@ -243,7 +244,7 @@ func TestPushAvailabilityDisablesRegistrationButNotCleanup(t *testing.T) {
 		t.Fatalf("IsPushAvailable() = (%v, %v), want false", got, err)
 	}
 	_, err = svc.RegisterDeviceSubscription(ctx, RegisterDeviceInput{
-		DeviceID: "device", Provider: "expo", Platform: "ios", Token: testPushToken,
+		DeviceID: "device", SessionID: "session-a", Provider: "expo", Platform: "ios", Token: testPushToken,
 	})
 	if !errors.Is(err, core.ErrPushUnavailable) {
 		t.Fatalf("RegisterDeviceSubscription() error = %v, want push unavailable", err)

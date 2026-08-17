@@ -18,7 +18,11 @@ import { apolloClient } from "@/common/apollo/apollo-client";
 import { useNetworkState } from "@/common/apollo/network-state";
 import { authManager, useAuth } from "@/features/auth/auth-provider";
 import { mobileConfig } from "@/features/auth/config";
-import { parseNotificationEnvelope, type NotificationRoute } from "./deep-link";
+import {
+  notificationMatchesBinding,
+  parseNotificationEnvelope,
+  type NotificationRoute,
+} from "./deep-link";
 import { ExpoNotificationAdapter } from "./expo-adapter";
 import { ApolloNotificationSubscriptionClient } from "./graphql-client";
 import {
@@ -29,8 +33,10 @@ import { NotificationInstallationStore } from "./installation-store";
 import { NotificationRegistrationPreference } from "./preferences";
 import {
   NotificationRegistrationController,
+  type NotificationBinding,
   type NotificationRegistrationState,
 } from "./registration-controller";
+import { useWorkspace } from "@/features/workspaces/workspace-provider";
 
 type NotificationsContextValue = {
   state: NotificationRegistrationState;
@@ -49,6 +55,24 @@ const native = new ExpoNotificationAdapter();
 const subscriptions = new ApolloNotificationSubscriptionClient(apolloClient);
 const installation = new NotificationInstallationStore(SecureStore, randomUUID);
 const preference = new NotificationRegistrationPreference(AsyncStorage);
+let activeNotificationBinding: NotificationBinding | null = null;
+
+function currentNotificationBinding(): NotificationBinding | null {
+  return activeNotificationBinding;
+}
+
+function publishNotificationBinding(binding: NotificationBinding): void {
+  activeNotificationBinding = binding;
+}
+
+function clearNotificationBinding(sessionId?: string): void {
+  if (
+    sessionId === undefined ||
+    activeNotificationBinding?.sessionId === sessionId
+  ) {
+    activeNotificationBinding = null;
+  }
+}
 
 // codex-security round-7 F9: OS-level presentation is gated on a live session.
 // Logout's remote push unregistration is deliberately fire-and-forget (the
@@ -59,8 +83,20 @@ const preference = new NotificationRegistrationPreference(AsyncStorage);
 // with synchronous state; the cold-start "loading" phase fails closed (no
 // banners until a session is confirmed). In-app handling was already gated.
 Notifications.setNotificationHandler({
-  handleNotification: async () => {
-    const signedIn = authManager.getState().status === "signedIn";
+  handleNotification: async (notification) => {
+    const envelope = parseNotificationEnvelope(
+      notification.request.content.data,
+    );
+    const auth = authManager.getState();
+    const activeBinding = currentNotificationBinding();
+    const binding =
+      auth.status === "signedIn" &&
+      activeBinding?.subject === auth.session.subject &&
+      activeBinding.sessionId === auth.session.sessionId
+        ? activeBinding
+        : null;
+    const signedIn =
+      envelope !== null && notificationMatchesBinding(envelope, binding);
     return {
       shouldShowBanner: signedIn,
       shouldShowList: signedIn,
@@ -72,10 +108,13 @@ Notifications.setNotificationHandler({
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { state: auth } = useAuth();
+  const { selected } = useWorkspace();
   const network = useNetworkState();
   const router = useRouter();
   const signedIn = auth.status === "signedIn";
   const sessionId = signedIn ? auth.session.sessionId : "signed-out";
+  const subject = signedIn ? auth.session.subject : "signed-out";
+  const workspaceId = selected?.id ?? "no-workspace";
   const activeSessionRef = useRef(sessionId);
   const signingOutRef = useRef(false);
   activeSessionRef.current = sessionId;
@@ -86,9 +125,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       new NotificationInboxStore(
         AsyncStorage,
         { set: (count) => Notifications.setBadgeCountAsync(count) },
-        `bex.notifications.inbox.v1:${sessionId}`,
+        `bex.notifications.inbox.v1:${sessionId}:${workspaceId}`,
       ),
-    [sessionId],
+    [sessionId, workspaceId],
   );
   const storeRef = useRef(store);
   storeRef.current = store;
@@ -102,10 +141,19 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         () => installation.getOrCreate(),
         preference,
         () => network === "online",
-        () => signedIn,
+        () => signedIn && selected !== null,
         setState,
+        () => ({ subject, sessionId, workspaceId }),
+        (binding) => {
+          if (
+            authManager.getState().status === "signedIn" &&
+            activeSessionRef.current === binding.sessionId
+          ) {
+            publishNotificationBinding(binding);
+          }
+        },
       ),
-    [network, signedIn],
+    [network, selected, sessionId, signedIn, subject, workspaceId],
   );
   const controllerRef = useRef(controller);
   controllerRef.current = controller;
@@ -115,7 +163,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       const envelope = parseNotificationEnvelope(
         notification.request.content.data,
       );
-      if (!envelope || !signedIn || signingOutRef.current) return;
+      if (
+        !envelope ||
+        !notificationMatchesBinding(envelope, currentNotificationBinding()) ||
+        !signedIn ||
+        signingOutRef.current
+      )
+        return;
       const receivingSession = sessionId;
       const next = await store.record(envelope, {
         title: notification.request.content.title,
@@ -146,6 +200,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    clearNotificationBinding();
     if (!signedIn) {
       controller.dispose();
       return;
@@ -188,18 +243,20 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       void receive(response.notification, true);
     }
     return () => {
+      clearNotificationBinding(sessionId);
       active = false;
       controller.dispose();
       received.remove();
       tapped.remove();
       rotated.remove();
     };
-  }, [controller, receive, signedIn, store]);
+  }, [controller, receive, sessionId, signedIn, store]);
 
   useEffect(
     () =>
-      authManager.registerExplicitSignOutHook(async (session) => {
+      authManager.registerSessionClearHook(async (session) => {
         signingOutRef.current = true;
+        clearNotificationBinding(session?.sessionId);
         await storeRef.current.clear();
         setItems([]);
         if (!session) return;
@@ -232,6 +289,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         notificationId: item.id,
         event: item.event,
         route: item.route,
+        subject,
+        workspaceId,
+        sessionId,
       });
       if (!envelope || signingOutRef.current) return;
       const openingSession = sessionId;
@@ -246,7 +306,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       void subscriptions.markNotificationRead(item.id).catch(() => undefined);
       router.push(envelope.route as NotificationRoute);
     },
-    [router, sessionId, store],
+    [router, sessionId, store, subject, workspaceId],
   );
   const value = useMemo(
     () => ({

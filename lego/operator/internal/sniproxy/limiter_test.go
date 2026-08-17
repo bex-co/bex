@@ -87,6 +87,37 @@ func TestLimiterDisabledDimensionsAlwaysAdmit(t *testing.T) {
 	}
 }
 
+func TestLimiterRouteCapsPreserveOtherTenantCapacity(t *testing.T) {
+	l := NewLimiter(0, 0)
+	l.SetRouteLimits(2, 1)
+
+	releaseA, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-a")
+	if !ok || scope != "" {
+		t.Fatalf("first route rejected: scope=%q", scope)
+	}
+	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-a"); ok || scope != "resource" {
+		t.Fatalf("same resource admission = (%q, %v), want resource rejection", scope, ok)
+	}
+	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-b"); !ok || scope != "" {
+		t.Fatalf("second resource in workspace rejected: scope=%q", scope)
+	}
+	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-c"); ok || scope != "workspace" {
+		t.Fatalf("workspace admission = (%q, %v), want workspace rejection", scope, ok)
+	}
+	if _, scope, ok := l.AcquireRoute("tea-b", "tea-b/dpg-a"); !ok || scope != "" {
+		t.Fatalf("another tenant was starved: scope=%q", scope)
+	}
+
+	releaseA()
+	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-a"); !ok || scope != "" {
+		t.Fatalf("route rejected after release: scope=%q", scope)
+	}
+	releaseA() // double release must not create capacity.
+	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-d"); ok || scope != "workspace" {
+		t.Fatalf("double release leaked workspace capacity: scope=%q ok=%v", scope, ok)
+	}
+}
+
 // TestServeShedsBeyondGlobalCapWithoutDispatch proves the accept-loop admission
 // (finding 6): with both global slots held, a further connection is closed at
 // accept time — no handler goroutine is dispatched (so no backend dial), and the

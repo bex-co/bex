@@ -25,14 +25,27 @@ import "sync"
 // which Go randomizes) until it fits, then the object is stored if it fits at
 // all. A single object larger than the whole budget is served but not cached.
 type cache struct {
-	mu      sync.Mutex
-	budget  int64
-	used    int64
-	entries map[string]Object
+	mu            sync.Mutex
+	budget        int64
+	perSiteBudget int64
+	used          int64
+	siteUsed      map[string]int64
+	entrySites    map[string]string
+	entries       map[string]Object
 }
 
 func newCache(budget int64) *cache {
-	return &cache{budget: budget, entries: map[string]Object{}}
+	perSiteBudget := budget
+	if perSiteBudget > 32<<20 {
+		perSiteBudget = 32 << 20
+	}
+	return &cache{
+		budget:        budget,
+		perSiteBudget: perSiteBudget,
+		siteUsed:      map[string]int64{},
+		entrySites:    map[string]string{},
+		entries:       map[string]Object{},
+	}
 }
 
 func (c *cache) get(key string) (Object, bool) {
@@ -45,12 +58,12 @@ func (c *cache) get(key string) (Object, bool) {
 	return obj, ok
 }
 
-func (c *cache) put(key string, obj Object) {
+func (c *cache) put(site, key string, obj Object) {
 	if c == nil || c.budget <= 0 {
 		return
 	}
 	size := int64(len(obj.Body))
-	if size > c.budget {
+	if size > c.budget || size > c.perSiteBudget {
 		return // too big to cache; served uncached
 	}
 	c.mu.Lock()
@@ -58,13 +71,39 @@ func (c *cache) put(key string, obj Object) {
 	if _, exists := c.entries[key]; exists {
 		return
 	}
+	for c.siteUsed[site]+size > c.perSiteBudget {
+		if !c.evictOne(site) {
+			return
+		}
+	}
 	for c.used+size > c.budget {
-		for k, v := range c.entries { // evict an arbitrary entry
-			delete(c.entries, k)
-			c.used -= int64(len(v.Body))
-			break
+		if !c.evictOne("") {
+			return
 		}
 	}
 	c.entries[key] = obj
 	c.used += size
+	c.siteUsed[site] += size
+	c.entrySites[key] = site
+}
+
+// evictOne removes one entry, restricted to site when non-empty.
+func (c *cache) evictOne(site string) bool {
+	for key, obj := range c.entries {
+		entrySite := c.entrySites[key]
+		if site != "" && entrySite != site {
+			continue
+		}
+		size := int64(len(obj.Body))
+		delete(c.entries, key)
+		delete(c.entrySites, key)
+		c.used -= size
+		if c.siteUsed[entrySite] <= size {
+			delete(c.siteUsed, entrySite)
+		} else {
+			c.siteUsed[entrySite] -= size
+		}
+		return true
+	}
+	return false
 }

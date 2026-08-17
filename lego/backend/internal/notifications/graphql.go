@@ -256,15 +256,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"registerNotificationDeviceSubscription": &graphql.Field{
 			Type: deviceSubscriptionGQLType,
 			Args: graphql.FieldConfigArgument{
-				"deviceId": gqlutil.ReqArg(graphql.String),
-				"provider": gqlutil.ReqArg(graphql.String),
-				"platform": gqlutil.ReqArg(graphql.String),
-				"token":    gqlutil.ReqArg(graphql.String),
+				"deviceId":  gqlutil.ReqArg(graphql.String),
+				"sessionId": gqlutil.ReqArg(graphql.String),
+				"provider":  gqlutil.ReqArg(graphql.String),
+				"platform":  gqlutil.ReqArg(graphql.String),
+				"token":     gqlutil.ReqArg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.RegisterDeviceSubscription(p.Context, RegisterDeviceInput{
 					DeviceID: p.Args["deviceId"].(string), Provider: p.Args["provider"].(string),
-					Platform: p.Args["platform"].(string), Token: p.Args["token"].(string),
+					SessionID: p.Args["sessionId"].(string), Platform: p.Args["platform"].(string), Token: p.Args["token"].(string),
 				})
 			},
 		},

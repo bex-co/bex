@@ -30,7 +30,7 @@ EOF
 TARGET_NAMESPACE=""
 VERIFY_PATH=""
 SNAPSHOT="latest"
-IMAGE="quay.io/openbao/openbao:2.5.5"
+IMAGE="quay.io/openbao/openbao:2.5.5@sha256:6150c4a6b62067db6141c8da7a6a6b5763f4f47c315343d0c848b40fecdfd452"
 CONFIRM=""
 TEARDOWN=""
 TEARDOWN_ON_SUCCESS=0
@@ -68,7 +68,7 @@ fi
 restore_require_throwaway_namespace "$TARGET_NAMESPACE"
 [[ "$VERIFY_PATH" == tenants/* ]] || restore_die "--verify-path must identify a tenants/ KV path"
 [[ "$VERIFY_PATH" != *$'\n'* && "$VERIFY_PATH" != *'..'* ]] || restore_die "invalid verification path"
-[[ "$IMAGE" =~ ^[A-Za-z0-9./:@_-]+$ ]] || restore_die "invalid OpenBao image"
+restore_require_digest_image "$IMAGE" "OpenBao image"
 
 restore_load_dotenv "$REPO_ROOT"
 restore_prefer_reader_credential openbao
@@ -130,6 +130,17 @@ spec:
   ports:
     - {name: http, port: 8200, targetPort: 8200}
     - {name: raft, port: 8201, targetPort: 8201}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: openbao-restore-deny-all
+  namespace: $TARGET_NAMESPACE
+  labels: {bex.co/restore-target: "true"}
+spec:
+  podSelector:
+    matchLabels: {app: openbao-restore}
+  policyTypes: [Ingress, Egress]
 ---
 apiVersion: apps/v1
 kind: StatefulSet

@@ -13,11 +13,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 spec:
-  project: default
+  project: bex-platform
   sources:
-    - repoURL: https://openfga.github.io/helm-charts
-      chart: openfga
-      targetRevision: "0.3.10" # app v1.18.1; pin exact for reproducibility
+    - repoURL: oci://ghcr.io/bex-co/bex-charts/openfga
+      path: .
+      targetRevision: "sha256:e9d5bbd42bd7c45253bd9dd1fdb10da3bc899aab064118ddd07231a8f99e3e0e"
       helm:
         valueFiles:
           - $values/deploy/gitops/base/values/openfga.values.yaml

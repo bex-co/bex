@@ -819,7 +819,11 @@ func TestSyncBlueprintReappliesManifest(t *testing.T) {
 		Status:   "active",
 		Name:     "app",
 	})
-	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
+	svc := &Service{
+		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints:      fs,
+		DomainOwnership: allowDomainOwnership{},
+	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})
 
 	res, err := svc.SyncBlueprint(ctx, "blp-1", "tea-a", "", "")
@@ -1344,7 +1348,11 @@ func TestGraphQLSyncBlueprint(t *testing.T) {
 		Status:   "active",
 		Name:     "app",
 	})
-	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
+	svc := &Service{
+		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws},
+		Blueprints:      fs,
+		DomainOwnership: allowDomainOwnership{},
+	}
 	schema := blueprintSchema(t, svc)
 
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "oauth2"})

@@ -153,6 +153,37 @@ func TestFetchGateBoundsConcurrentDistinctKeyFetches(t *testing.T) {
 	done.Wait()
 }
 
+func TestFetchGateReservesCapacityForAnotherSite(t *testing.T) {
+	g := newFetchGate(3, 0, 2)
+	if !g.acquire("site-a") || !g.acquire("site-a") {
+		t.Fatal("site A could not acquire its two fair-share slots")
+	}
+	if g.acquire("site-a") {
+		t.Fatal("site A acquired past its per-site cap")
+	}
+	if !g.acquire("site-b") {
+		t.Fatal("site B could not use the reserved global slot")
+	}
+	g.release("site-b")
+	g.release("site-a")
+	g.release("site-a")
+}
+
+func TestCacheEnforcesPerSiteBudget(t *testing.T) {
+	c := newCache(128 << 20)
+	body := make([]byte, 20<<20)
+	c.put("site-a", "a/one", Object{Body: body})
+	c.put("site-a", "a/two", Object{Body: body})
+	c.put("site-b", "b/one", Object{Body: body})
+
+	if _, ok := c.get("b/one"); !ok {
+		t.Fatal("site A's cache pressure evicted site B within the global budget")
+	}
+	if c.siteUsed["site-a"] > 32<<20 {
+		t.Fatalf("site A cache use = %d, exceeds 32 MiB share", c.siteUsed["site-a"])
+	}
+}
+
 // blockingWriter is an http.ResponseWriter whose Write blocks until release is
 // closed, simulating a slow client that keeps the fetched body live after the
 // fetch gate has already released its reservation.

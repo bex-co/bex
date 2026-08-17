@@ -9,7 +9,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 spec:
-  project: default
+  project: bex-platform
   source:
     repoURL: git@github.com:bex-co/bex.git
     targetRevision: main

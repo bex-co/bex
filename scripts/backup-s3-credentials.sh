@@ -70,7 +70,11 @@ command -v docker >/dev/null || { echo "error: docker not found" >&2; exit 1; }
 command -v jq >/dev/null || { echo "error: jq not found" >&2; exit 1; }
 command -v kubectl >/dev/null || { echo "error: kubectl not found" >&2; exit 1; }
 
-AWS_CLI_IMAGE="${AWS_CLI_IMAGE:-amazon/aws-cli:2.22.35}"
+AWS_CLI_IMAGE="${AWS_CLI_IMAGE:-amazon/aws-cli:2.22.35@sha256:6977c83ae3dc99f28fcf8276b9ea5eec33833cd5be40574b34112e98113ec7a2}"
+[[ "$AWS_CLI_IMAGE" =~ ^[^[:space:]@]+@sha256:[0-9a-f]{64}$ ]] || {
+  echo "error: AWS_CLI_IMAGE must be pinned by sha256 digest" >&2
+  exit 1
+}
 IAM_ENDPOINT="${WASABI_IAM_ENDPOINT:-https://iam.wasabisys.com}"
 S3_ENDPOINT="${TF_STATE_ENDPOINT:-}"
 S3_REGION="${TF_STATE_REGION:-}"

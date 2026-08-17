@@ -508,14 +508,32 @@ jobs:
           bash scripts/fetch-app-kubeconfig.sh "$PWD/app.kubeconfig"
           echo "KUBECONFIG=$PWD/app.kubeconfig" >> "$GITHUB_ENV"
 
+      # Mirror only archives whose upstream bytes and resulting OCI manifests
+      # match deploy/helm-artifacts.lock. Argo consumes these packages by digest,
+      # never by an upstream chart-repository version label. GHCR chart packages
+      # must be public so Argo can pull without a durable registry credential.
+      - name: mirror reviewed Helm charts
+        if: ${{ env.SUPERSEDED != 'true' }}
+        run: |
+          chart_dir=$(mktemp -d)
+          trap 'rm -rf -- "$chart_dir"' EXIT
+          bash scripts/helm-artifact.sh mirror "$chart_dir"
+
       # --- 3. install Argo CD on the app cluster (idempotent) ---
       # --server-side: the argo install bundles CRDs (applicationsets) whose schema
       # exceeds kubectl's 256KB last-applied-config annotation limit; SSA avoids it.
       - name: install Argo CD
+        env:
+          ARGO_INSTALL_COMMIT: e1becb74c728a992804d39c3ceb2e9e6ae58f0ae
+          ARGO_INSTALL_SHA256: 752b5a2681f2522fc78ea12ba2d23be44a4523cfa5d9a55cf1907909cc23fc5d
         run: |
+          argo_manifest="$RUNNER_TEMP/argocd-install.yaml"
+          curl -fsSLo "$argo_manifest" \
+            "https://raw.githubusercontent.com/argoproj/argo-cd/${ARGO_INSTALL_COMMIT}/manifests/install.yaml"
+          printf '%s  %s\n' "$ARGO_INSTALL_SHA256" "$argo_manifest" | sha256sum -c -
           kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
           kubectl apply --server-side --force-conflicts -n argocd \
-            -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.4.6/manifests/install.yaml
+            -f "$argo_manifest"
           # w1/m19 t003: Argo CD itself rides the platform pool (upstream install
           # carries no scheduling; patching here keeps us on the stock manifest).
           # Idempotent: re-patching the same values causes no rollout.

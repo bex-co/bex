@@ -160,6 +160,11 @@ type Service struct {
 	// MaxSSEConns, when positive, caps concurrent GET /v1/logs/subscribe SSE
 	// connections. Excess connections receive 429. 0 = unlimited.
 	MaxSSEConns int64
+	// MaxSSEConnsPerSubject and MaxSSEConnsPerWorkspace partition the global
+	// stream pool so one caller or tenant cannot consume every slot. 0 disables
+	// the corresponding dimension.
+	MaxSSEConnsPerSubject   int
+	MaxSSEConnsPerWorkspace int
 	// BuildNamespace is BEX_BUILD_NAMESPACE — where the operator runs pre-deploy
 	// (and build) Job pods, so `type=predeploy` reads a migration's logs from the
 	// right namespace (w1/m33). Empty falls back to the API's own namespace, the
@@ -175,7 +180,10 @@ type Service struct {
 	// live build tail. nil => no synthesis (byte-identical prior behavior).
 	DeployProgress DeployProgressSource
 
-	sseConns atomic.Int64
+	sseConns       atomic.Int64
+	sseMu          sync.Mutex
+	sseBySubject   map[string]int
+	sseByWorkspace map[string]int
 }
 
 // Query directions — Render's `direction`: which end of the time window the

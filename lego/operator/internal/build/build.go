@@ -27,6 +27,7 @@ package build
 import (
 	"cmp"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"path"
@@ -747,11 +748,28 @@ func JobName(name, revision string) string {
 	if rev == "" {
 		rev = defaultRevision
 	}
-	n := "bld-" + name + "-" + rev
-	if len(n) > 63 {
-		n = n[:63]
+	n := strings.ToLower("bld-" + name + "-" + rev)
+	if len(n) <= 63 {
+		return n
 	}
-	return strings.ToLower(n)
+	return stableKubernetesName(n, n)
+}
+
+// stableKubernetesName preserves a readable prefix while binding every
+// truncated name to the complete identity tuple. Kubernetes' 63-character
+// DNS-label limit must never discard the revision/purpose that distinguishes
+// two security-sensitive resources.
+func stableKubernetesName(raw string, identity ...string) string {
+	const hashLength = 12
+	raw = strings.ToLower(raw)
+	sum := sha256.Sum256([]byte(strings.Join(identity, "\x00")))
+	suffix := fmt.Sprintf("%x", sum[:hashLength/2])
+	maxBase := 63 - 1 - len(suffix)
+	if len(raw) > maxBase {
+		raw = raw[:maxBase]
+	}
+	raw = strings.TrimRight(raw, "-.")
+	return raw + "-" + suffix
 }
 
 // jobCondition reports whether the Job carries condition t with status True.

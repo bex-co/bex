@@ -134,6 +134,17 @@ if [ "$AWS_ACCESS_KEY_ID" != fake-access ] || [ "$AWS_SECRET_ACCESS_KEY" != fake
   fail "TF_STATE credential aliasing with RESTORE_SKIP_DOTENV=1"
 fi
 ok "environment-only TF_STATE credentials map to AWS CLI names"
+
+restore_require_digest_image \
+  'registry.example/recovery@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+  fixture
+if (restore_require_digest_image 'registry.example/recovery:latest' fixture) \
+  >"$TMP/output" 2>"$TMP/error"; then
+  fail "mutable recovery image was accepted"
+fi
+grep -q 'must be pinned by an @sha256 digest' "$TMP/error" || \
+  fail "mutable recovery image failure was not specific"
+ok "credential-bearing recovery images require immutable sha256 digests"
 latest="$(restore_latest_s3_uri s3://fixture/fixture/ .rdb.gz)"
 [ "$latest" = 's3://fixture/fixture/2026-08-01T03:00:00Z.rdb.gz' ] || \
   fail "latest snapshot selection"
@@ -202,7 +213,21 @@ ok "etcd apply phase validates the full directory before any write"
 
 run_dry env DRY_RUN=1 "$HERE/restore-openbao.sh" \
   --target-namespace restore-bao-test --verify-path tenants/data/fixture
+grep -q 'image: quay.io/openbao/openbao:2.5.5@sha256:' "$TMP/output" || \
+  fail "OpenBao DRY_RUN did not render the reviewed digest"
+grep -q 'name: openbao-restore-deny-all' "$TMP/output" || \
+  fail "OpenBao DRY_RUN did not render the deny-all network policy"
 ok "OpenBao DRY_RUN validates its snapshot and does not mutate Kubernetes/S3"
+
+if env DRY_RUN=1 "$HERE/restore-openbao.sh" \
+  --target-namespace restore-bao-test --verify-path tenants/data/fixture \
+  --image quay.io/openbao/openbao:2.5.5 \
+  >"$TMP/output" 2>"$TMP/error"; then
+  fail "mutable OpenBao image override was accepted"
+fi
+grep -q 'must be pinned by an @sha256 digest' "$TMP/error" || \
+  fail "mutable OpenBao image failure was not specific"
+ok "OpenBao rejects tag-only image overrides before recovery"
 
 run_dry env DRY_RUN=1 "$HERE/restore-postgres.sh" \
   --source-namespace source --source-cluster source-pg --object-store source-store \

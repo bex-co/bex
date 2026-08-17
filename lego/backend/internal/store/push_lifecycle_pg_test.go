@@ -89,7 +89,7 @@ func TestPushWorkerEnqueuesObservedLifecycleFacts(t *testing.T) {
 		t.Fatalf("upsert push policy: %v", err)
 	}
 	if _, err := st.UpsertDevicePushSubscription(ctx, store.DevicePushSubscription{
-		TenantID: tenant.ID, Subject: alice, DeviceID: "ios-" + stamp,
+		TenantID: tenant.ID, Subject: alice, DeviceID: "ios-" + stamp, SessionID: "session-alice",
 		Provider: "expo", Platform: "ios", Token: "ExponentPushToken[m78-" + stamp + "]",
 	}); err != nil {
 		t.Fatalf("register device: %v", err)

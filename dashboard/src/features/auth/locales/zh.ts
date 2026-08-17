@@ -161,6 +161,23 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "{client} 请求代表你在 bex 中执行操作。",
     description: "OAuth2 consent page hero subtitle, names the OAuth client",
   },
+  "auth.consentUnverifiedClient": {
+    message: "未经验证的第三方应用",
+    description:
+      "Warning label for an OAuth client whose self-provided branding is not trusted",
+  },
+  "auth.consentClientId": {
+    message: "客户端 ID",
+    description: "Label for the immutable OAuth client identifier",
+  },
+  "auth.consentRedirectOrigin": {
+    message: "授权码接收地址",
+    description: "Label for the origin that will receive the OAuth code",
+  },
+  "auth.consentNoRedirectOrigin": {
+    message: "无重定向（设备流程）",
+    description: "Shown when an OAuth device flow has no redirect origin",
+  },
   "auth.consentScopesTitle": {
     message: "它请求的权限",
     description: "Heading above the list of requested OAuth scopes",

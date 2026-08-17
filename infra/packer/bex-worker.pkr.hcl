@@ -1,37 +1,35 @@
-# bex worker node image (w1/m36 t001) — a Hetzner Cloud snapshot that carries
+# bex node image (w1/m36 t001) — a Hetzner Cloud snapshot that carries
 # runc, containerd, and kubelet/kubeadm/kubectl preinstalled at the versions
 # kubeadm expects, so an autoscaled worker joins WITHOUT downloading ~150MB from
 # github.com + pkgs.k8s.io in the scale-up hot path (docs/ADR002-architecture.md,
 # FUTURE-MAYBE "Node bring-up efficiency").
 #
 # The versions and download/verify steps below are byte-identical to what the
-# worker KubeadmConfigTemplates used to run at boot (see the git history of
-# infra/clusterapi/overlays/hetzner-caph/cluster.yaml) — this only MOVES them
-# from every node's first boot to a one-time bake.
+# node bootstrap used to run at boot (see the git history of
+# infra/clusterapi/overlays/hetzner-caph/cluster.yaml) — this moves it from
+# every node's first boot to a one-time reviewed bake.
 #
 # Runtime CONFIG stays in cloud-init (the KubeadmConfigTemplate `files:` +
 # `preKubeadmCommands`): containerd.service, /etc/containerd/config.toml, the zot
 # certs.d, sysctls, and `systemctl enable kubelet`. The image is deliberately
-# just binaries + packages, so ONE snapshot serves both worker pools (tenant +
-# platform) and the pool-specific config (e.g. the zot registry, tenant-only)
-# lives where it belongs.
+# just binaries + packages, so ONE snapshot serves control-plane, tenant, and
+# platform nodes while pool-specific configuration lives where it belongs.
 #
 # Run it in CI (.github/workflows/snapshot.yml, workflow_dispatch) — never a
 # laptop; the HCLOUD_TOKEN is a CI secret. Reproduce at the next k8s bump by
-# bumping the versions below (and cluster.yaml's `version:` + the KCP images) and
-# re-running the workflow, then rotate the HCloudMachineTemplate names.
+# bumping the reviewed versions below, infra/packer/release.conf, and
+# cluster.yaml's `version:` + image selectors; then re-run the workflow and
+# rotate the HCloudMachineTemplate names.
 #
 # Local dry check:  packer init . && packer validate .
 # Local build:      HCLOUD_TOKEN=… packer build .
 
 packer {
   required_plugins {
-    # Pinned EXACTLY, with the resolved artifact checksums committed in
-    # .packer.lock.hcl (w1/m66 F12). `packer init` runs in the credentialed
-    # snapshot workflow immediately before `packer build`, so an open-ended
-    # constraint let identical repository revisions execute different plugin
-    # bytes next to HCLOUD_TOKEN. Bump deliberately: edit the version, re-run
-    # `packer init -upgrade`, and commit the regenerated lock.
+    # Pinned EXACTLY. The credentialed snapshot workflow installs this plugin
+    # with scripts/packer-plugin-install.sh, which verifies its repository-
+    # reviewed checksum before Packer starts (w1/m66 F12). Bump the version and
+    # infra/packer/plugin-checksums.txt together.
     hcloud = {
       source  = "github.com/hetznercloud/hcloud"
       version = "= 1.7.2"
@@ -62,11 +60,31 @@ variable "runc_version" {
   default = "1.5.1"
 }
 
-# The base Hetzner system image the snapshot is built from — the same image the
-# HCloudMachineTemplates used to boot directly (control-plane still does).
+# Independent repository-reviewed trust anchors. Never replace these with a
+# checksum fetched beside the artifact: a compromised publisher could replace
+# both in one transaction.
+variable "runc_amd64_sha256" {
+  type    = string
+  default = "177df879d50c913eb205e898d5c1c05a18f574053c0ce5524c471208eaf06f6f"
+}
+
+variable "containerd_amd64_sha256" {
+  type    = string
+  default = "ebf6e710056312628eaf6fb4a1c32f0a4ae5f812568321be4029389d66fc7c7c"
+}
+
+variable "kubernetes_release_key_sha256" {
+  type    = string
+  default = "7627818cf7bae52f9008c93e8b1f961f53dea11d40891778de216fb1b43be54d"
+}
+
+# The base Hetzner system image from which the shared node snapshot is baked.
+# Immutable Hetzner system-image id observed for the reviewed Ubuntu 24.04 x86
+# base. The human alias is mutable and must not select privileged bake input at
+# runtime.
 variable "base_image" {
   type    = string
-  default = "ubuntu-24.04"
+  default = "161547269"
 }
 
 # Cheap x86 server just for baking. The snapshot is tagged by ARCHITECTURE (x86),
@@ -104,7 +122,7 @@ source "hcloud" "worker" {
   snapshot_name = "${var.image_name}-k8s-${var.kubernetes_version}-containerd-${var.containerd_version}-runc-${var.runc_version}"
   snapshot_labels = {
     caph-image-name     = var.image_name
-    "bex.co/role"       = "worker"
+    "bex.co/role"       = "node"
     "bex.co/k8s"        = var.kubernetes_version
     "bex.co/containerd" = var.containerd_version
     "bex.co/runc"       = var.runc_version
@@ -123,11 +141,15 @@ build {
       "CONTAINERD=${var.containerd_version}",
       "RUNC=${var.runc_version}",
       "KUBERNETES_VERSION=${var.kubernetes_version}",
+      "CONTAINERD_AMD64_SHA256=${var.containerd_amd64_sha256}",
+      "RUNC_AMD64_SHA256=${var.runc_amd64_sha256}",
+      "KUBERNETES_RELEASE_KEY_SHA256=${var.kubernetes_release_key_sha256}",
     ]
     inline = [
       "set -euxo pipefail",
       "TRIMMED_KUBERNETES_VERSION=$(echo $KUBERNETES_VERSION | awk -F . '{print $1 \".\" $2}')",
       "ARCH=\"$(dpkg --print-architecture)\"",
+      "test \"$ARCH\" = amd64",
       "localectl set-locale LANG=en_US.UTF-8 || true",
       "localectl set-locale LANGUAGE=en_US.UTF-8 || true",
       "apt-get update -y",
@@ -140,19 +162,20 @@ build {
       # runs at bake time, so disabling swap on the throwaway bake server is a no-op.)
       # runc → /usr/local/sbin/runc (identical to the pre-bake preKubeadmCommands)
       "wget -q https://github.com/opencontainers/runc/releases/download/v$RUNC/runc.$ARCH",
-      "wget -q https://github.com/opencontainers/runc/releases/download/v$RUNC/runc.sha256sum",
-      "sha256sum --check --ignore-missing runc.sha256sum",
+      "echo \"$RUNC_AMD64_SHA256  runc.$ARCH\" | sha256sum --check -",
       "install runc.$ARCH /usr/local/sbin/runc",
-      "rm -f runc.$ARCH runc.sha256sum",
+      "rm -f runc.$ARCH",
       # containerd → /usr/local (bin)
       "wget -q https://github.com/containerd/containerd/releases/download/v$CONTAINERD/containerd-$CONTAINERD-linux-$ARCH.tar.gz",
-      "wget -q https://github.com/containerd/containerd/releases/download/v$CONTAINERD/containerd-$CONTAINERD-linux-$ARCH.tar.gz.sha256sum",
-      "sha256sum --check containerd-$CONTAINERD-linux-$ARCH.tar.gz.sha256sum",
+      "echo \"$CONTAINERD_AMD64_SHA256  containerd-$CONTAINERD-linux-$ARCH.tar.gz\" | sha256sum --check -",
       "tar -zxf containerd-$CONTAINERD-linux-$ARCH.tar.gz -C /usr/local",
-      "rm -f containerd-$CONTAINERD-linux-$ARCH.tar.gz containerd-$CONTAINERD-linux-$ARCH.tar.gz.sha256sum",
+      "rm -f containerd-$CONTAINERD-linux-$ARCH.tar.gz",
       # kubelet/kubeadm/kubectl from pkgs.k8s.io, pinned + held (as the nodes did)
       "mkdir -p /etc/apt/keyrings/",
-      "curl -fsSL https://pkgs.k8s.io/core:/stable:/v$TRIMMED_KUBERNETES_VERSION/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg",
+      "curl -fsSL https://pkgs.k8s.io/core:/stable:/v$TRIMMED_KUBERNETES_VERSION/deb/Release.key -o /tmp/kubernetes-release.key",
+      "echo \"$KUBERNETES_RELEASE_KEY_SHA256  /tmp/kubernetes-release.key\" | sha256sum --check -",
+      "gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg /tmp/kubernetes-release.key",
+      "rm -f /tmp/kubernetes-release.key",
       "echo \"deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v$TRIMMED_KUBERNETES_VERSION/deb/ /\" > /etc/apt/sources.list.d/kubernetes.list",
       "apt-get update",
       "apt-get install -y kubelet=\"$KUBERNETES_VERSION-*\" kubeadm=\"$KUBERNETES_VERSION-*\" kubectl=\"$KUBERNETES_VERSION-*\"",

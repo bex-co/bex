@@ -35,6 +35,7 @@ const (
 	MaxRouteBytes          = 512
 	MaxNotificationIDBytes = 128
 	MaxEventBytes          = 64
+	MaxBindingIDBytes      = 200
 	MaxCollapseBytes       = 64
 	MaxTagBytes            = 64
 
@@ -82,6 +83,9 @@ type EnvelopeData struct {
 	NotificationID string `json:"notificationId"`
 	Event          string `json:"event"`
 	Route          string `json:"route"`
+	Subject        string `json:"subject"`
+	WorkspaceID    string `json:"workspaceId"`
+	SessionID      string `json:"sessionId"`
 }
 
 // Ticket identifies a message accepted by the provider. Acceptance is not

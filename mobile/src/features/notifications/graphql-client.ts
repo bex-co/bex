@@ -22,6 +22,7 @@ export class ApolloNotificationSubscriptionClient implements DeviceSubscriptionC
 
   async register(input: {
     deviceId: string;
+    sessionId: string;
     provider: "expo";
     platform: "ios" | "android";
     token: string;

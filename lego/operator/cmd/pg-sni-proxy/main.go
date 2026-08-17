@@ -71,8 +71,11 @@ const (
 	// generous so real connection pools are unaffected; 0 disables a dimension.
 	defaultMaxConns          = 1024      // BEX_PROXY_MAX_CONNS
 	defaultMaxConnsPerSource = 128       // BEX_PROXY_MAX_CONNS_PER_SOURCE
+	defaultMaxConnsWorkspace = 256       // BEX_PROXY_MAX_CONNS_PER_WORKSPACE
+	defaultMaxConnsResource  = 64        // BEX_PROXY_MAX_CONNS_PER_RESOURCE
 	defaultIdleTimeout       = time.Hour // BEX_PROXY_IDLE_TIMEOUT
 	defaultMaxLifetime       = 24 * time.Hour
+	labelWorkspace           = "app.bex.co/workspace"
 )
 
 var scheme = runtime.NewScheme()
@@ -92,6 +95,7 @@ type dbRouter struct {
 }
 
 type dbRoutingEntry struct {
+	workspace string
 	namespace string
 	pooler    bool
 	replicas  map[string]bool
@@ -100,8 +104,9 @@ type dbRoutingEntry struct {
 }
 
 type dbRoute struct {
-	Database string
-	Backend  string
+	Database  string
+	Workspace string
+	Backend   string
 }
 
 func newRouter(domain string) *dbRouter {
@@ -117,7 +122,11 @@ func (r *dbRouter) set(db *appv1alpha1.Database) error {
 		r.delete(db.Name)
 		return nil
 	}
-	entry := dbRoutingEntry{namespace: db.Namespace, pooler: db.Spec.Pooler, replicas: map[string]bool{}}
+	workspace := db.Labels[labelWorkspace]
+	if workspace == "" {
+		workspace = db.Namespace
+	}
+	entry := dbRoutingEntry{workspace: workspace, namespace: db.Namespace, pooler: db.Spec.Pooler, replicas: map[string]bool{}}
 	for _, replica := range db.Spec.ReadReplicas {
 		entry.replicas[replica.Name] = true
 	}
@@ -186,7 +195,7 @@ func (r *dbRouter) resolve(sni string, source netip.Addr) (dbRoute, bool) {
 		if !sniproxy.AllowedBy(source, entry.allow) || !sniproxy.AllowedBy(source, entry.envAllow) {
 			continue
 		}
-		return dbRoute{Database: name, Backend: backend}, true
+		return dbRoute{Database: name, Workspace: entry.workspace, Backend: backend}, true
 	}
 	return dbRoute{}, false
 }
@@ -235,6 +244,10 @@ func main() {
 	limiter := sniproxy.NewLimiter(
 		sniproxy.EnvInt(log, "BEX_PROXY_MAX_CONNS", defaultMaxConns),
 		sniproxy.EnvInt(log, "BEX_PROXY_MAX_CONNS_PER_SOURCE", defaultMaxConnsPerSource),
+	)
+	limiter.SetRouteLimits(
+		sniproxy.EnvInt(log, "BEX_PROXY_MAX_CONNS_PER_WORKSPACE", defaultMaxConnsWorkspace),
+		sniproxy.EnvInt(log, "BEX_PROXY_MAX_CONNS_PER_RESOURCE", defaultMaxConnsResource),
 	)
 	idleTimeout := sniproxy.EnvDuration(log, "BEX_PROXY_IDLE_TIMEOUT", defaultIdleTimeout)
 	maxLifetime := sniproxy.EnvDuration(log, "BEX_PROXY_MAX_LIFETIME", defaultMaxLifetime)
@@ -407,6 +420,13 @@ func handleConn(
 		log.Info("no route for SNI", "sni", sni)
 		return
 	}
+	releaseRoute, rejectedScope, ok := limiter.AcquireRoute(route.Workspace, route.Workspace+"/"+route.Database)
+	if !ok {
+		meter.Reject(rejectedScope)
+		log.Info("connection rejected: routed limit reached", "scope", rejectedScope, "database", route.Database)
+		return
+	}
+	defer releaseRoute()
 
 	back, err := net.DialTimeout("tcp", route.Backend, dialTimeout)
 	if err != nil {

@@ -102,8 +102,11 @@ func TestValidImage(t *testing.T) {
 		{"metadata-host-rejected", "169.254.169.254/latest/meta-data", false},
 		{"cgnat-host-rejected", "100.64.0.9:5000/myapp", false},
 		{"linklocal-v6-rejected", "[fe80::1]:5000/myapp", false}, // bracket forms are regex-refused anyway
-		{"public-ip-literal-allowed", "1.2.3.4:5000/myapp", true},
-		{"internal-dns-name-residual", "zot.bex-registry.svc:5000/myapp", true}, // documented residual: names are indistinguishable
+		{"public-ip-literal-rejected", "1.2.3.4:5000/myapp", false},
+		{"arbitrary-dns-rejected", "registry.attacker.example/myapp", false},
+		{"metadata-dns-rejected", "metadata.google.internal/myapp", false},
+		{"platform-registry-allowed", "zot.bex-registry.svc:5000/myapp", true},
+		{"artifact-registry-allowed", "us-central1-docker.pkg.dev/org/repo/image:tag", true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

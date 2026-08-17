@@ -153,12 +153,12 @@ func createProbeRequests() []CreateRequest {
 			DryRun:                  true,
 		},
 		// Prebuilt image (repo and every build-from-git field must be absent).
-		{Name: "probe-image", Image: "registry.example.com/acme/api:1.2.3"},
+		{Name: "probe-image", Image: "ghcr.io/acme/api:1.2.3"},
 		// Cron: schedule + command are the only type-conditional projections.
 		{
 			Name:     "probe-cron",
 			Type:     appv1alpha1.TypeCronJob,
-			Image:    "registry.example.com/acme/job:1",
+			Image:    "ghcr.io/acme/job:1",
 			Schedule: "*/5 * * * *",
 			Command:  "bin/report",
 		},

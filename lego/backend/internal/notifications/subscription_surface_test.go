@@ -39,7 +39,7 @@ func TestDeviceSubscriptionRESTAndGraphQLStaySecretFree(t *testing.T) {
 	mux := http.NewServeMux()
 	restSvc.RegisterREST(mux)
 	req := httptest.NewRequest(http.MethodPost, "/v1/notification-device-subscriptions", strings.NewReader(`{
-		"deviceId":"phone", "provider":"expo", "platform":"ios",
+		"deviceId":"phone", "sessionId":"session-rest", "provider":"expo", "platform":"ios",
 		"token":"ExponentPushToken[rest-secret]"
 	}`)).WithContext(ctx)
 	rec := httptest.NewRecorder()
@@ -63,7 +63,7 @@ func TestDeviceSubscriptionRESTAndGraphQLStaySecretFree(t *testing.T) {
 		Schema: schema, Context: ctx,
 		RequestString: `mutation {
 			registerNotificationDeviceSubscription(
-				deviceId:"phone", provider:"expo", platform:"android",
+				deviceId:"phone", sessionId:"session-graphql", provider:"expo", platform:"android",
 				token:"ExponentPushToken[graphql-secret]"
 			) { deviceId provider platform preferenceRef createdAt updatedAt lastRegisteredAt }
 		}`,

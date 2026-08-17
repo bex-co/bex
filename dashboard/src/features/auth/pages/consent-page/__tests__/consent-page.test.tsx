@@ -23,6 +23,7 @@ const view = (overrides: Partial<ConsentView> = {}): ConsentView => ({
   challenge: "challenge-1",
   clientId: "51fb9b2c-agent",
   clientName: "Claude Code",
+  redirectOrigin: "https://agent.example",
   scopes: ["openid", "offline_access"],
   audiences: ["https://api.bex.co/mcp"],
   csrfToken: "csrf-token-1",
@@ -49,6 +50,9 @@ describe("ConsentPage", () => {
     render(<ConsentPage />);
 
     expect(screen.getAllByText("Claude Code").length).toBeGreaterThan(0);
+    expect(screen.getByText("Unverified third-party app")).toBeInTheDocument();
+    expect(screen.getByText("51fb9b2c-agent")).toBeInTheDocument();
+    expect(screen.getByText("https://agent.example")).toBeInTheDocument();
     expect(screen.getByText("openid")).toBeInTheDocument();
     expect(screen.getByText("offline_access")).toBeInTheDocument();
     expect(screen.getByText("https://api.bex.co/mcp")).toBeInTheDocument();

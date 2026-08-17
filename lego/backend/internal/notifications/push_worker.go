@@ -78,6 +78,9 @@ type PushEnvelopeData struct {
 	NotificationID string `json:"notificationId"`
 	Event          string `json:"event"`
 	Route          string `json:"route"`
+	Subject        string `json:"subject"`
+	WorkspaceID    string `json:"workspaceId"`
+	SessionID      string `json:"sessionId"`
 }
 
 // PushSendRequest is the narrow adapter seam for the provider transport.
@@ -650,6 +653,7 @@ func (w *PushWorker) send(ctx context.Context) error {
 			Data: PushEnvelopeData{
 				Schema: pushSchema, NotificationID: delivery.EventID,
 				Event: delivery.EventType, Route: delivery.DeepLink,
+				Subject: delivery.Subject, WorkspaceID: delivery.TenantID, SessionID: delivery.SessionID,
 			},
 		})
 		if sendErr != nil {

@@ -114,7 +114,7 @@ func TestExtractSNI_InvalidInputs(t *testing.T) {
 func TestRouterResolve(t *testing.T) {
 	r := newRouter("db.bex.co")
 	db := &appv1alpha1.Database{
-		ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "tenant-ns"},
+		ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "tenant-ns", Labels: map[string]string{labelWorkspace: "tea-one"}},
 		Spec: appv1alpha1.DatabaseSpec{
 			Public: true, Pooler: true,
 			ReadReplicas:           []appv1alpha1.DatabaseReadReplica{{Name: "east"}, {Name: "reader-a"}},
@@ -191,7 +191,7 @@ func TestRouterResolve(t *testing.T) {
 func TestTrustedProxySourceRoutesDatabaseAllowlist(t *testing.T) {
 	router := newRouter("db.bex.co")
 	db := &appv1alpha1.Database{
-		ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "tenant-ns"},
+		ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "tenant-ns", Labels: map[string]string{labelWorkspace: "tea-one"}},
 		Spec: appv1alpha1.DatabaseSpec{
 			Public:                 true,
 			IPAllowList:            []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.9/32"}},
@@ -210,8 +210,12 @@ func TestTrustedProxySourceRoutesDatabaseAllowlist(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := router.resolve("mydb.db.bex.co", source); !ok {
+	route, ok := router.resolve("mydb.db.bex.co", source)
+	if !ok {
 		t.Fatalf("trusted original source %s did not pass both allowlist layers", source)
+	}
+	if route.Workspace != "tea-one" {
+		t.Fatalf("workspace = %q, want tenant label", route.Workspace)
 	}
 }
 

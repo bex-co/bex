@@ -17,18 +17,68 @@ limitations under the License.
 package main
 
 import (
+	"bufio"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+func TestAdmissionListenerRejectsSlowHeadersBeforeHandler(t *testing.T) {
+	inner, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	listener := newAdmissionListener(inner, 1, 1)
+	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}), ReadHeaderTimeout: 5 * time.Second}
+	go func() { _ = server.Serve(listener) }()
+	defer func() { _ = server.Close() }()
+
+	first, err := net.Dial("tcp", inner.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = first.Close() }()
+	second, err := net.Dial("tcp", inner.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = second.SetReadDeadline(time.Now().Add(time.Second))
+	if _, err := second.Read(make([]byte, 1)); err == nil {
+		t.Fatal("connection above pre-parser cap remained open")
+	}
+	_ = second.Close()
+
+	_ = first.Close()
+	var response *http.Response
+	for attempt := 0; attempt < 20; attempt++ {
+		conn, dialErr := net.Dial("tcp", inner.Addr().String())
+		if dialErr == nil {
+			_, _ = io.WriteString(conn, "GET /healthz HTTP/1.1\r\nHost: test\r\nConnection: close\r\n\r\n")
+			response, err = http.ReadResponse(bufio.NewReader(conn), nil)
+			_ = conn.Close()
+			if err == nil {
+				break
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if response == nil || response.StatusCode != http.StatusOK {
+		t.Fatalf("admission did not recover after release: response=%v err=%v", response, err)
+	}
+}
 
 func TestMetricsHandlerServesHealthAndPrometheus(t *testing.T) {
 	registry := prometheus.NewRegistry()

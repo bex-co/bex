@@ -38,6 +38,9 @@ import (
 type ExecConfig struct {
 	// Secret is the HMAC key shared ONLY with the gateway (BEX_SANDBOX_EXEC_SECRET).
 	Secret []byte
+	// DriverGrantSecret signs action-bound calls into the in-sandbox driver.
+	// It is the gateway trust secret, never injected into the sandbox.
+	DriverGrantSecret []byte
 	// GatewayURL is the gateway's internal sandbox-exec endpoint
 	// (e.g. http://bex-ssh-gateway.bex-system.svc:8081/sandbox-exec).
 	GatewayURL string

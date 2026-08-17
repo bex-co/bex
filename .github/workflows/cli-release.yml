@@ -4,13 +4,49 @@ on:
   push:
     tags: ["bex-cli/v*"]
 
-permissions:
-  contents: write
-  id-token: write # cosign keyless signing (GitHub OIDC)
+permissions: {}
 
 jobs:
-  release:
+  authorize:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # This gate deliberately runs before checkout: malformed tag names are
+      # rejected without loading any repository-controlled files.
+      - name: validate exact release tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$TAG" =~ ^bex-cli/v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "release tag must be canonical bex-cli/vX.Y.Z semver" >&2
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: require a reviewed main commit
+        env:
+          TAGGED_SHA: ${{ github.sha }}
+        run: |
+          git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
+          tagged_commit="$(git rev-parse "${TAGGED_SHA}^{commit}")"
+          if ! git merge-base --is-ancestor "$tagged_commit" refs/remotes/origin/main; then
+            echo "release tag does not point to a commit reviewed on main" >&2
+            exit 1
+          fi
+
+  release:
+    needs: authorize
+    runs-on: ubuntu-latest
+    # Configure required reviewers and protected-main-only deployment rules on
+    # this environment. Publication authority is unavailable until approval.
+    environment: production-release
+    permissions:
+      contents: write
+      id-token: write # cosign keyless signing (GitHub OIDC)
     env:
       # secrets.* is not allowed in step-level `if` (contexts-availability
       # rule — the workflow file is rejected outright), so the presence check
@@ -18,6 +54,8 @@ jobs:
       HAS_TAP_KEY: ${{ secrets.BEX_TAP_PUSH_KEY != '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: cli/go.mod

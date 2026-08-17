@@ -80,19 +80,30 @@ export default function ConsentPage() {
             <ShieldCheck className="size-5 text-primary" />
             {consent.clientName}
           </CardTitle>
-          <CardDescription>
-            {consent.clientUri ? (
+          <CardDescription className="space-y-2">
+            <span className="block font-medium text-amber-700 dark:text-amber-400">
+              {t("auth.consentUnverifiedClient")}
+            </span>
+            {consent.clientUri && (
               <a
                 href={consent.clientUri}
                 rel="noreferrer noopener"
                 target="_blank"
-                className="underline underline-offset-4"
+                className="block underline underline-offset-4"
               >
                 {consent.clientUri}
               </a>
-            ) : (
-              <span className="font-mono text-xs">{consent.clientId}</span>
             )}
+            <span className="block">
+              {t("auth.consentClientId")}:{" "}
+              <span className="font-mono text-xs">{consent.clientId}</span>
+            </span>
+            <span className="block">
+              {t("auth.consentRedirectOrigin")}:{" "}
+              <span className="font-mono text-xs">
+                {consent.redirectOrigin ?? t("auth.consentNoRedirectOrigin")}
+              </span>
+            </span>
           </CardDescription>
         </CardHeader>
 

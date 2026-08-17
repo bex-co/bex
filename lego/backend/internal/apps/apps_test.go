@@ -63,8 +63,15 @@ func newService(st IntentStore, apps ...*appv1alpha1.App) (*Service, client.Clie
 		objs[i] = a
 	}
 	cl := fakeClient(objs...)
-	return &Service{Base: &core.Base{Client: cl, Namespace: "default"}, Store: st}, cl
+	return &Service{
+		Base: &core.Base{Client: cl, Namespace: "default"}, Store: st,
+		DomainOwnership: allowDomainOwnership{},
+	}, cl
 }
+
+type allowDomainOwnership struct{}
+
+func (allowDomainOwnership) VerifyTXT(context.Context, string, string) error { return nil }
 
 func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 	t.Helper()
@@ -394,7 +401,10 @@ func newTenantService(ws core.WorkspaceResolver, apps ...*appv1alpha1.App) (*Ser
 		objs[i] = a
 	}
 	cl := fakeClient(objs...)
-	return &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}}, cl
+	return &Service{
+		Base:            &core.Base{Client: cl, Namespace: "default", Workspace: ws},
+		DomainOwnership: allowDomainOwnership{},
+	}, cl
 }
 
 func TestListScopedToCallerTenant(t *testing.T) {

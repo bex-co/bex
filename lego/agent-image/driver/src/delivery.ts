@@ -23,7 +23,7 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { readFile, readdir, rm } from "node:fs/promises";
+import { open, readdir, rm } from "node:fs/promises";
 
 const run = promisify(execFile);
 
@@ -37,6 +37,7 @@ export interface DeliveryConfig {
   cwd: string;
   branch: string;
   baseBranch: string;
+  repoUrl: string;
   prompt: string;
   gitName: string;
   gitEmail: string;
@@ -51,6 +52,13 @@ export interface DeliveryConfig {
   // blob `git log -p` omits — still fails the push. Optional for the same
   // reason as containsSecret; either may be set alone.
   secretNeedles?: () => Buffer[];
+  deliveryBaseline?: DeliveryBaseline;
+}
+
+export interface DeliveryBaseline {
+  baseBranch: string;
+  baseOid: string;
+  remoteBranchOid: string;
 }
 
 export interface DeliveryResult {
@@ -73,10 +81,14 @@ interface EvidenceAccumulator {
   commands: string[];
   tests: string[];
   text: string;
+  truncated: boolean;
 }
 
 async function git(cwd: string, args: string[]): Promise<string> {
-  const { stdout } = await run("git", args, { cwd, maxBuffer: 32 * 1024 * 1024 });
+  const { stdout } = await run("git", args, {
+    cwd,
+    maxBuffer: 32 * 1024 * 1024,
+  });
   return stdout.trim();
 }
 
@@ -89,14 +101,79 @@ async function isGitRepo(cwd: string): Promise<boolean> {
   }
 }
 
-async function detectBaseBranch(cwd: string, fallback: string): Promise<string> {
-  if (fallback) return fallback;
-  try {
-    const ref = await git(cwd, ["symbolic-ref", "--short", "refs/remotes/origin/HEAD"]);
-    return ref.replace(/^origin\//, "");
-  } catch {
-    return "main";
+async function validBranch(cwd: string, branch: string): Promise<void> {
+  if (!branch || branch.startsWith("-")) throw new Error("invalid Git branch");
+  await git(cwd, ["check-ref-format", "--branch", branch]);
+}
+
+async function remoteBaseBranch(
+  cwd: string,
+  repoUrl: string,
+  fallback: string,
+): Promise<string> {
+  if (fallback) {
+    await validBranch(cwd, fallback);
+    return fallback;
   }
+  const advertised = await git(cwd, ["ls-remote", "--symref", repoUrl, "HEAD"]);
+  const match = advertised.match(/^ref: refs\/heads\/(.+)\tHEAD$/m);
+  const branch = match?.[1] || "main";
+  await validBranch(cwd, branch);
+  return branch;
+}
+
+async function remoteOid(
+  cwd: string,
+  repoUrl: string,
+  branch: string,
+): Promise<string> {
+  const output = await git(cwd, [
+    "ls-remote",
+    "--refs",
+    repoUrl,
+    `refs/heads/${branch}`,
+  ]);
+  if (!output) return "";
+  const oid = output.split(/\s+/, 1)[0];
+  if (!/^[0-9a-f]{40,64}$/.test(oid))
+    throw new Error("Git remote returned an invalid object ID");
+  return oid;
+}
+
+async function fetchOid(
+  cwd: string,
+  repoUrl: string,
+  oid: string,
+): Promise<void> {
+  try {
+    await git(cwd, ["cat-file", "-e", `${oid}^{commit}`]);
+  } catch {
+    await git(cwd, ["fetch", "--no-tags", repoUrl, oid]);
+  }
+  await git(cwd, ["cat-file", "-e", `${oid}^{commit}`]);
+}
+
+async function captureDeliveryBaseline(
+  config: DeliveryConfig,
+): Promise<DeliveryBaseline> {
+  const baseBranch = await remoteBaseBranch(
+    config.cwd,
+    config.repoUrl,
+    config.baseBranch,
+  );
+  await validBranch(config.cwd, config.branch);
+  const baseOid = await remoteOid(config.cwd, config.repoUrl, baseBranch);
+  if (!baseOid)
+    throw new Error(`remote base branch ${baseBranch} does not exist`);
+  const remoteBranchOid = await remoteOid(
+    config.cwd,
+    config.repoUrl,
+    config.branch,
+  );
+  await fetchOid(config.cwd, config.repoUrl, baseOid);
+  if (remoteBranchOid)
+    await fetchOid(config.cwd, config.repoUrl, remoteBranchOid);
+  return { baseBranch, baseOid, remoteBranchOid };
 }
 
 // restoreWorkspace hydrates the workspace from a hibernation snapshot (ADR059
@@ -156,7 +233,9 @@ async function cloneWithRetry(cwd: string, repoUrl: string): Promise<void> {
 async function cleanDirectory(cwd: string): Promise<void> {
   const entries = await readdir(cwd);
   await Promise.all(
-    entries.map((entry) => rm(`${cwd}/${entry}`, { recursive: true, force: true })),
+    entries.map((entry) =>
+      rm(`${cwd}/${entry}`, { recursive: true, force: true }),
+    ),
   );
 }
 
@@ -166,22 +245,38 @@ async function cleanDirectory(cwd: string): Promise<void> {
 // Pod-bound gateway smart-HTTP proxy; no GitHub credential enters this process.
 export async function ensureRepo(
   config: DeliveryConfig & { repoUrl: string },
-): Promise<void> {
-  if (await isGitRepo(config.cwd)) return;
+): Promise<DeliveryBaseline> {
   if (!config.repoUrl) {
-    throw new Error("workspace is not a git repository and BEX_AGENT_REPO_URL is unset");
+    throw new Error("BEX_AGENT_REPO_URL is required for delivery");
   }
-  await cloneWithRetry(config.cwd, config.repoUrl);
-  const base = await detectBaseBranch(config.cwd, config.baseBranch);
-  try {
-    await git(config.cwd, ["checkout", "-B", config.branch, `origin/${config.branch}`]);
-  } catch {
-    await git(config.cwd, ["checkout", "-B", config.branch, base]);
+  const existing = await isGitRepo(config.cwd);
+  if (!existing) {
+    await cloneWithRetry(config.cwd, config.repoUrl);
   }
+  // A restored workspace is tenant-controlled persisted state. Reset origin to
+  // the control-plane supplied proxy before reading any remote identity.
+  await git(config.cwd, ["remote", "set-url", "origin", config.repoUrl]);
+  const baseline = await captureDeliveryBaseline(config);
+  if (existing) {
+    // Preserve restored commits and working-tree edits, but put them on the
+    // session ref. Their full closure is scanned against baseOid at delivery.
+    await git(config.cwd, ["checkout", "-B", config.branch]);
+  } else {
+    await git(config.cwd, [
+      "checkout",
+      "-B",
+      config.branch,
+      baseline.remoteBranchOid || baseline.baseOid,
+    ]);
+  }
+  config.deliveryBaseline = baseline;
+  return baseline;
 }
 
 function commitMessage(config: DeliveryConfig): string {
-  const first = String(config.prompt || "").split("\n")[0].trim();
+  const first = String(config.prompt || "")
+    .split("\n")[0]
+    .trim();
   const subject = first ? first.slice(0, 72) : "agent session update";
   return `bex agent: ${subject}\n\nDelivered by bex cloud coding-agent session.`;
 }
@@ -189,9 +284,16 @@ function commitMessage(config: DeliveryConfig): string {
 // deliverBranch stages, commits, and pushes the session branch, returning the
 // delivery record the Completer consumes. A turn that produced no change pushes
 // nothing (pushed:false) — an honest no-op, not an error.
-export async function deliverBranch(config: DeliveryConfig): Promise<DeliveryResult> {
+export async function deliverBranch(
+  config: DeliveryConfig,
+): Promise<DeliveryResult> {
   const cwd = config.cwd;
-  const base = await detectBaseBranch(cwd, config.baseBranch);
+  const baseline = config.deliveryBaseline;
+  if (!baseline)
+    throw new Error(
+      "refusing to push: trusted remote baseline was not captured",
+    );
+  const base = baseline.baseBranch;
   // Stay on the session branch without disturbing the agent's working-tree edits.
   await git(cwd, ["checkout", "-B", config.branch]);
   await git(cwd, ["add", "-A"]);
@@ -213,7 +315,14 @@ export async function deliverBranch(config: DeliveryConfig): Promise<DeliveryRes
   }
   let commits = 0;
   try {
-    commits = Number(await git(cwd, ["rev-list", "--count", `${base}..${config.branch}`])) || 0;
+    commits =
+      Number(
+        await git(cwd, [
+          "rev-list",
+          "--count",
+          `${baseline.baseOid}..${config.branch}`,
+        ]),
+      ) || 0;
   } catch {
     commits = 0;
   }
@@ -228,9 +337,16 @@ export async function deliverBranch(config: DeliveryConfig): Promise<DeliveryRes
     // branch's full patch and refuse to push on a match (never on argv — the
     // needle stays inside containsSecret).
     if (config.containsSecret) {
-      const patch = await git(cwd, ["log", "-p", "--no-color", `${base}..${config.branch}`]);
+      const patch = await git(cwd, [
+        "log",
+        "-p",
+        "--no-color",
+        `${baseline.baseOid}..${config.branch}`,
+      ]);
       if (config.containsSecret(patch)) {
-        throw new Error("refusing to push: model credential found in commit history");
+        throw new Error(
+          "refusing to push: model credential found in commit history",
+        );
       }
     }
     // codex round-9 #1: the textual patch scan misses reversible ENCODINGS of
@@ -241,13 +357,45 @@ export async function deliverBranch(config: DeliveryConfig): Promise<DeliveryRes
     // whose total exceeds the scan budget — refuses the push: uninspectable
     // new objects are exactly what an exfiltration hides behind.
     if (config.secretNeedles) {
-      await scanBranchObjects(cwd, base, config.branch, config.secretNeedles());
+      await scanBranchObjects(
+        cwd,
+        baseline.baseOid,
+        config.branch,
+        config.secretNeedles(),
+      );
     }
-    await git(cwd, ["push", "origin", `${config.branch}:${config.branch}`]);
+    const candidateOid = await git(cwd, [
+      "rev-parse",
+      `${config.branch}^{commit}`,
+    ]);
+    // Push the exact object that was scanned. A force-with-lease binds the write
+    // to the remote session ref captured before tenant execution, so neither a
+    // local-ref rewrite nor a concurrent remote update can change the result.
+    const lease = `--force-with-lease=refs/heads/${config.branch}:${baseline.remoteBranchOid}`;
+    await git(cwd, [
+      "push",
+      lease,
+      config.repoUrl,
+      `${candidateOid}:refs/heads/${config.branch}`,
+    ]);
+    const publishedOid = await remoteOid(cwd, config.repoUrl, config.branch);
+    if (publishedOid !== candidateOid) {
+      throw new Error(
+        "refusing delivery: remote branch does not match the scanned object",
+      );
+    }
     pushed = true;
-    headSha = await git(cwd, ["rev-parse", "HEAD"]);
+    headSha = candidateOid;
+    baseline.remoteBranchOid = candidateOid;
   }
-  return { branch: config.branch, baseBranch: base, headSha, pushed, commits, changedFiles };
+  return {
+    branch: config.branch,
+    baseBranch: base,
+    headSha,
+    pushed,
+    commits,
+    changedFiles,
+  };
 }
 
 // One blob larger than this is refused rather than scanned (matching the
@@ -275,7 +423,10 @@ async function scanBranchObjects(
     `${base}..${branch}`,
   ]);
   let total = 0;
-  for (const oid of objects.split("\n").map((line) => line.trim()).filter(Boolean)) {
+  for (const oid of objects
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)) {
     let type: string;
     try {
       type = await git(cwd, ["cat-file", "-t", oid]);
@@ -285,11 +436,15 @@ async function scanBranchObjects(
     if (type !== "blob") continue;
     const size = Number(await git(cwd, ["cat-file", "-s", oid])) || 0;
     if (size > maxScanBlobBytes) {
-      throw new Error(`refusing to push: object ${oid} is too large to inspect for the model credential`);
+      throw new Error(
+        `refusing to push: object ${oid} is too large to inspect for the model credential`,
+      );
     }
     total += size;
     if (total > maxScanTotalBytes) {
-      throw new Error("refusing to push: branch payload is too large to inspect for the model credential");
+      throw new Error(
+        "refusing to push: branch payload is too large to inspect for the model credential",
+      );
     }
     // encoding:"buffer" keeps the blob's raw bytes — a utf8 string decode would
     // mangle binary content and the byte-needle match with it.
@@ -299,12 +454,18 @@ async function scanBranchObjects(
       encoding: "buffer",
     });
     if (needles.some((needle) => stdout.includes(needle))) {
-      throw new Error("refusing to push: model credential found in commit history");
+      throw new Error(
+        "refusing to push: model credential found in commit history",
+      );
     }
   }
 }
 
-function pushLine(list: string[], value: unknown, marker: { truncated: boolean }): void {
+function pushLine(
+  list: string[],
+  value: unknown,
+  marker: { truncated: boolean },
+): void {
   const text = String(value);
   if (text.length > MAX_LINE_LEN) {
     list.push(text.slice(0, MAX_LINE_LEN));
@@ -318,8 +479,13 @@ function pushLine(list: string[], value: unknown, marker: { truncated: boolean }
 // assume a specific provider schema, only that commands live under
 // command/commandLine (or a tool-call title) and terminal output under
 // output/stdout/stderr — a forward-compatible, honest extraction.
-function collectEvidence(node: unknown, acc: EvidenceAccumulator, depth = 0): void {
-  if (node == null || depth > MAX_WALK_DEPTH || typeof node !== "object") return;
+function collectEvidence(
+  node: unknown,
+  acc: EvidenceAccumulator,
+  depth = 0,
+): void {
+  if (node == null || depth > MAX_WALK_DEPTH || typeof node !== "object")
+    return;
   if (Array.isArray(node)) {
     for (const item of node) collectEvidence(item, acc, depth + 1);
     return;
@@ -327,21 +493,38 @@ function collectEvidence(node: unknown, acc: EvidenceAccumulator, depth = 0): vo
   const record = node as Record<string, unknown>;
   for (const key of ["command", "commandLine"]) {
     const value = record[key];
-    if (typeof value === "string" && value.trim()) acc.commands.push(value);
+    if (typeof value === "string" && value.trim()) {
+      if (acc.commands.length < MAX_COMMANDS) acc.commands.push(value);
+      else acc.truncated = true;
+    }
   }
   if (
     record.sessionUpdate === "tool_call" &&
     typeof record.title === "string" &&
     !record.command
   ) {
-    acc.commands.push(record.title);
+    if (acc.commands.length < MAX_COMMANDS) acc.commands.push(record.title);
+    else acc.truncated = true;
   }
   for (const key of ["output", "stdout", "stderr"]) {
     const value = record[key];
-    if (typeof value === "string" && value.trim()) acc.tests.push(value);
+    if (typeof value === "string" && value.trim()) {
+      acc.tests.push(value);
+      if (acc.tests.length > MAX_TEST_LINES) {
+        acc.tests.shift();
+        acc.truncated = true;
+      }
+    }
   }
-  if (record.type === "text" && typeof record.text === "string") acc.text += record.text;
-  for (const value of Object.values(record)) collectEvidence(value, acc, depth + 1);
+  if (record.type === "text" && typeof record.text === "string") {
+    acc.text += record.text;
+    if (acc.text.length > MAX_OUTPUT_TAIL) {
+      acc.text = acc.text.slice(-MAX_OUTPUT_TAIL);
+      acc.truncated = true;
+    }
+  }
+  for (const value of Object.values(record))
+    collectEvidence(value, acc, depth + 1);
 }
 
 // extractEvidence reads the redacted session log and returns the bounded,
@@ -351,12 +534,34 @@ export async function extractEvidence(config: {
   sessionLogPath: string;
 }): Promise<EvidenceResult> {
   let raw = "";
+  let inputTruncated = false;
   try {
-    raw = await readFile(config.sessionLogPath, "utf8");
+    const file = await open(config.sessionLogPath, "r");
+    try {
+      const info = await file.stat();
+      const maxEvidenceBytes = 16 << 20;
+      const length = Math.min(info.size, maxEvidenceBytes);
+      const offset = info.size - length;
+      const buffer = Buffer.alloc(length);
+      await file.read(buffer, 0, length, offset);
+      raw = buffer.toString("utf8");
+      if (offset > 0) {
+        inputTruncated = true;
+        const newline = raw.indexOf("\n");
+        raw = newline === -1 ? "" : raw.slice(newline + 1);
+      }
+    } finally {
+      await file.close();
+    }
   } catch {
     raw = "";
   }
-  const acc: EvidenceAccumulator = { commands: [], tests: [], text: "" };
+  const acc: EvidenceAccumulator = {
+    commands: [],
+    tests: [],
+    text: "",
+    truncated: inputTruncated,
+  };
   for (const line of raw.split("\n")) {
     if (!line.trim()) continue;
     let record: { part?: unknown } | unknown;
@@ -368,21 +573,14 @@ export async function extractEvidence(config: {
     collectEvidence((record as { part?: unknown })?.part ?? record, acc);
   }
 
-  const marker = { truncated: false };
+  const marker = { truncated: acc.truncated };
   const commandLog: string[] = [];
-  for (const command of acc.commands.slice(0, MAX_COMMANDS)) pushLine(commandLog, command, marker);
-  if (acc.commands.length > MAX_COMMANDS) marker.truncated = true;
+  for (const command of acc.commands) pushLine(commandLog, command, marker);
 
-  const testTail = acc.tests.slice(-MAX_TEST_LINES);
   const testOutput: string[] = [];
-  for (const line of testTail) pushLine(testOutput, line, marker);
-  if (acc.tests.length > MAX_TEST_LINES) marker.truncated = true;
+  for (const line of acc.tests) pushLine(testOutput, line, marker);
 
-  let outputTail = acc.text;
-  if (outputTail.length > MAX_OUTPUT_TAIL) {
-    outputTail = outputTail.slice(-MAX_OUTPUT_TAIL);
-    marker.truncated = true;
-  }
+  const outputTail = acc.text;
 
   return { commandLog, testOutput, outputTail, truncated: marker.truncated };
 }

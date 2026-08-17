@@ -57,10 +57,8 @@ spec:
           env:
             - name: BEX_STATIC_ADDR
               value: ":8080"
-            # Shared platform hosting suffix — must match the operator/bex-api so
-            # a static_site's platform host "<slug>.onbex.co" resolves.
-            - name: BEX_BASE_DOMAIN
-              value: onbex.co
+            # BEX_BASE_DOMAIN intentionally remains unset until a dedicated suffix
+            # passes the PSL and real-browser gates.
             # Never fall back to a node/cloud metadata credential if the
             # namespace-local reader Secret is malformed.
             - name: AWS_EC2_METADATA_DISABLED

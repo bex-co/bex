@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -103,7 +104,7 @@ func deployHookTokenDigest(token string) string {
 }
 
 func (s *Service) deployHookURL(token string) string {
-	path := "/v1/deploy-hooks/" + token
+	path := "/v1/deploy-hooks?key=" + url.QueryEscape(token)
 	if base := strings.TrimRight(s.DeployHookBaseURL, "/"); base != "" {
 		return base + path
 	}
@@ -341,15 +342,20 @@ func (s *Service) DeployHookHandler() http.Handler {
 		// browser or intermediary cache the credential-bearing request or replay a
 		// stale success without actually starting another deploy.
 		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		if r.URL.Path != "/v1/deploy-hooks" {
+			core.WriteErr(w, core.ErrNotFound)
+			return
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodPost {
 			w.Header().Set("Allow", "GET, POST")
 			core.WriteErrStatus(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
-		token := r.PathValue("token")
-		if token == "" { // makes direct handler tests useful outside a ServeMux
-			token = strings.TrimPrefix(r.URL.Path, "/v1/deploy-hooks/")
-		}
+		// Query parameters are explicitly dropped from Traefik access logs. Keeping
+		// the credential out of RequestPath prevents it from reaching either the
+		// raw edge log or the tenant request-log pipeline (finding 25).
+		token := r.URL.Query().Get("key")
 		if ok, retry := limiter.reserve(token); !ok {
 			seconds := max(1, int(math.Ceil(retry.Seconds())))
 			w.Header().Set("Retry-After", strconv.Itoa(seconds))

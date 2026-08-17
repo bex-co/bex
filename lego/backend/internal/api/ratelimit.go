@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"golang.org/x/time/rate"
 )
 
 // RateLimiter is a per-caller token-bucket limiter shared across all three API
@@ -43,6 +44,11 @@ import (
 // bucket) is the follow-up when bex-api scales out.
 type RateLimiter struct {
 	*core.KeyedRateLimiter[string]
+	// Workspace resolves authenticated callers to a shared aggregate bucket.
+	// When wired, a request must pass both its subject bucket and its workspace
+	// bucket, so minting more API keys cannot multiply workspace throughput.
+	Workspace core.WorkspaceResolver
+	workspace *core.KeyedRateLimiter[string]
 	// TrustedProxies, when set (BEX_TRUSTED_PROXY_CIDRS), lets the unauthenticated
 	// IP fallback derive the real client IP from X-Forwarded-For/X-Real-IP when
 	// the immediate peer is a trusted proxy, instead of keying every anonymous
@@ -64,28 +70,60 @@ func NewRateLimiter(rpm float64, burst int) *RateLimiter {
 	if inner == nil {
 		return nil
 	}
-	return &RateLimiter{KeyedRateLimiter: inner}
+	return &RateLimiter{
+		KeyedRateLimiter: inner,
+		workspace:        core.NewKeyedRateLimiter[string](rpm, burst, limiterIdle, limiterSweepEvery),
+	}
 }
 
 // Middleware returns an http.Handler wrapper that enforces the rate limit.
 // It must run inside the auth middleware so the caller Identity is in ctx.
 func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := rl.callerKey(r)
-		lim := rl.Bucket(key)
-		res := lim.Reserve()
-		if d := res.Delay(); d > 0 {
-			res.Cancel()
-			retryAfter := int(math.Ceil(d.Seconds()))
-			if retryAfter < 1 {
-				retryAfter = 1
+		keys := []struct {
+			lim *core.KeyedRateLimiter[string]
+			key string
+		}{{rl.KeyedRateLimiter, rl.callerKey(r)}}
+		if workspace := rl.workspaceKey(r); workspace != "" {
+			keys = append(keys, struct {
+				lim *core.KeyedRateLimiter[string]
+				key string
+			}{rl.workspace, workspace})
+		}
+		reservations := make([]*rate.Reservation, 0, len(keys))
+		for _, key := range keys {
+			res := key.lim.Bucket(key.key).Reserve()
+			reservations = append(reservations, res)
+			if d := res.Delay(); d > 0 {
+				for _, reservation := range reservations {
+					reservation.Cancel()
+				}
+				retryAfter := int(math.Ceil(d.Seconds()))
+				if retryAfter < 1 {
+					retryAfter = 1
+				}
+				w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
+				writeTooManyRequests(w, r)
+				return
 			}
-			w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
-			writeTooManyRequests(w, r)
-			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (rl *RateLimiter) workspaceKey(r *http.Request) string {
+	if rl.Workspace == nil {
+		return ""
+	}
+	id, ok := core.IdentityFrom(r.Context())
+	if !ok || id.Subject == "" {
+		return ""
+	}
+	workspace, ok := rl.Workspace.Tenant(r.Context(), id)
+	if !ok || workspace == "" {
+		return ""
+	}
+	return "workspace:" + workspace
 }
 
 // callerKey derives the rate-limit key from the request: the authenticated

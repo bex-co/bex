@@ -148,13 +148,8 @@ spec:
           # -> re-pulls :latest -> re-reconciles Apps with the new issuer).
           - name: BEX_CLUSTER_ISSUER
             value: letsencrypt-prod
-          # Shared platform hosting suffix: exposed web services auto-serve
-          # "<slug>.onbex.co" (derived by effectiveHosts, kept out of spec.hosts).
-          # onbex.co is not yet in the browser Public Suffix List, so the manager
-          # starts with a loud warning instead of refusing (cross-tenant cookie
-          # isolation firms up once onbex.co is submitted to publicsuffix/list).
-          - name: BEX_BASE_DOMAIN
-            value: onbex.co
+          # BEX_BASE_DOMAIN intentionally remains unset until a dedicated suffix
+          # is present in the PSL PRIVATE section and passes the browser gate.
           # Managed-Postgres external endpoints: Database{public:true} is exposed
           # at "<name>.db.bex.co" via Traefik TCP/SNI. Needs a DNS-only (gray-cloud)
           # wildcard *.db.bex.co -> node IP (Cloudflare can't proxy raw TCP:5432).

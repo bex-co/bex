@@ -174,6 +174,42 @@ func TestCreateAPIKeyBindsToCallerTenant(t *testing.T) {
 	}
 }
 
+func TestCreateAPIKeyEnforcesWorkspaceActiveQuota(t *testing.T) {
+	store := newFakeKeyStore()
+	binder := newFakeBinder()
+	svc := &Service{
+		Base:    &core.Base{Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}},
+		APIKeys: store, Binding: binder, MaxActiveKeys: 1,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+	if _, err := svc.CreateAPIKey(ctx, "", "first"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.CreateAPIKey(ctx, "", "second"); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("second key = %v, want active-key conflict", err)
+	}
+	if len(store.keys) != 1 {
+		t.Fatalf("Hydra keys = %d, want 1", len(store.keys))
+	}
+}
+
+func TestCreateAPIKeyEnforcesWorkspaceCreationRate(t *testing.T) {
+	store := newFakeKeyStore()
+	binder := newFakeBinder()
+	svc := &Service{
+		Base:    &core.Base{Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}},
+		APIKeys: store, Binding: binder,
+		CreationLimiter: core.NewKeyedRateLimiter[string](1, 1, time.Hour, time.Minute),
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+	if _, err := svc.CreateAPIKey(ctx, "", "first"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.CreateAPIKey(ctx, "", "second"); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("second key = %v, want creation-rate conflict", err)
+	}
+}
+
 func TestCreateAPIKeyNoTenantIsRefused(t *testing.T) {
 	// Binding wired (store on) but the caller resolves to no tenant — a
 	// mint-eligible caller with no workspace to bind into (a machine caller is

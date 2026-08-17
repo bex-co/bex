@@ -34,9 +34,10 @@ import (
 )
 
 const (
-	Header     = "X-Bex-Driver-Grant"
-	ActionTurn = "turn"
-	domain     = "bex-agent-driver-grant/v1"
+	Header         = "X-Bex-Driver-Grant"
+	ActionTurn     = "turn"
+	ActionSnapshot = "snapshot"
+	domain         = "bex-agent-driver-grant/v1"
 )
 
 type Claims struct {
@@ -60,7 +61,14 @@ func PublicKey(secret []byte) (string, error) {
 // Mint creates a short-lived single-action grant. The driver additionally
 // consumes jti once, so retrying or replaying a captured gateway request fails.
 func Mint(secret []byte, sessionID string, now time.Time, ttl time.Duration) (string, error) {
-	if len(secret) == 0 || sessionID == "" || ttl <= 0 {
+	return MintAction(secret, sessionID, ActionTurn, now, ttl)
+}
+
+// MintAction creates a grant for one of the small platform-owned driver
+// actions. Keeping the action in the signed claims prevents a live-turn grant
+// from authorizing terminal snapshot preparation, or vice versa.
+func MintAction(secret []byte, sessionID, action string, now time.Time, ttl time.Duration) (string, error) {
+	if len(secret) == 0 || sessionID == "" || ttl <= 0 || (action != ActionTurn && action != ActionSnapshot) {
 		return "", errors.New("invalid driver grant configuration")
 	}
 	nonce, err := hmacticket.Nonce()
@@ -69,7 +77,7 @@ func Mint(secret []byte, sessionID string, now time.Time, ttl time.Duration) (st
 	}
 	claims := Claims{
 		SessionID: sessionID,
-		Action:    ActionTurn,
+		Action:    action,
 		IssuedAt:  now.Unix(),
 		ExpiresAt: now.Add(ttl).Unix(),
 		Nonce:     nonce,

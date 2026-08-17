@@ -28,6 +28,9 @@ export type RunTurn = (
 
 export interface DriverServerOptions {
   runTurn?: RunTurn;
+  // terminalize permanently closes turn authority, kills/reaps an active ACP
+  // child, and waits for the turn pipeline to stop before snapshot scrubbing.
+  terminalize?: () => Promise<void>;
 }
 
 export interface DriverServer {
@@ -51,7 +54,11 @@ function streamHeaders(response: ServerResponse): void {
 }
 
 function isLoopback(address: string | undefined): boolean {
-  return address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
+  return (
+    address === "127.0.0.1" ||
+    address === "::1" ||
+    address === "::ffff:127.0.0.1"
+  );
 }
 
 async function readJSONBody(
@@ -73,12 +80,14 @@ async function readJSONBody(
 // Vercel AI SDK sendMessages body {messages:[...]} — the last user message's
 // text parts, joined. useChat posts the latter; a plain client posts the former.
 function promptFromBody(body: Record<string, unknown>): string {
-  if (typeof body?.prompt === "string" && body.prompt.trim()) return body.prompt;
+  if (typeof body?.prompt === "string" && body.prompt.trim())
+    return body.prompt;
   const messages = Array.isArray(body?.messages) ? body.messages : [];
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const message = messages[i] as Record<string, unknown> | undefined;
     if (message?.role !== "user") continue;
-    if (typeof message.content === "string" && message.content.trim()) return message.content;
+    if (typeof message.content === "string" && message.content.trim())
+      return message.content;
     const parts = Array.isArray(message.parts) ? message.parts : [];
     const text = parts
       .filter(
@@ -103,7 +112,10 @@ export async function startDriverServer(
   // (the fire-and-forget path serves only GET /stream). turnInFlight enforces
   // single-flight: the agent runs one turn at a time.
   const runTurn = options.runTurn;
-  const grants = new DriverGrantVerifier(config.grantPublicKey, config.sessionID);
+  const grants = new DriverGrantVerifier(
+    config.grantPublicKey,
+    config.sessionID,
+  );
   let turnInFlight = false;
   const server = http.createServer((request, response) => {
     const url = new URL(request.url || "/", "http://bex-agent-driver.invalid");
@@ -118,7 +130,7 @@ export async function startDriverServer(
       return;
     }
     if (request.method === "POST" && url.pathname === "/turn") {
-      if (!grants.consume(request)) {
+      if (!grants.consume(request, "turn")) {
         response.writeHead(401, { "content-type": "application/json" });
         response.end('{"error":"valid single-use driver grant required"}\n');
         return;
@@ -147,7 +159,9 @@ export async function startDriverServer(
           // The turn publishes to the hub (attached GET clients) and mirrors
           // each part onto THIS response so the gateway tees and forwards it.
           await runTurn(prompt, (part) => {
-            response.write(`data: ${JSON.stringify(part)}\n\n`);
+            if (!response.write(`data: ${JSON.stringify(part)}\n\n`)) {
+              response.destroy(new Error("turn stream client is not draining"));
+            }
           });
           response.end("data: [DONE]\n\n");
         } catch (error) {
@@ -171,12 +185,25 @@ export async function startDriverServer(
         response.end('{"error":"loopback only"}\n');
         return;
       }
-      void credentialManager
-        .scrubPersistedState()
+      if (!grants.consume(request, "snapshot")) {
+        response.writeHead(401, { "content-type": "application/json" });
+        response.end('{"error":"valid single-use snapshot grant required"}\n');
+        return;
+      }
+      if (!options.terminalize) {
+        response.writeHead(503, { "content-type": "application/json" });
+        response.end('{"error":"snapshot terminalization unavailable"}\n');
+        return;
+      }
+      void options
+        .terminalize()
+        .then(() => credentialManager.scrubPersistedState())
         .then((scrubbed) => {
           credentialManager.forget();
           response.writeHead(200, { "content-type": "application/json" });
-          response.end(`${JSON.stringify({ scrubbedFiles: scrubbed.length })}\n`);
+          response.end(
+            `${JSON.stringify({ scrubbedFiles: scrubbed.length })}\n`,
+          );
         })
         .catch((error) => {
           response.writeHead(500, { "content-type": "application/json" });

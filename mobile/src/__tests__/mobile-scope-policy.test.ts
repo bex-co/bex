@@ -120,7 +120,7 @@ const allowedGraphqlOperations: Record<string, string> = {
   MobilePostgresTableScans:
     "query|id|databaseTableScans,deadRows,indexScans,name,schema,seqScans",
   MobileRegisterNotificationDeviceSubscription:
-    "mutation|deviceId,platform,provider,token|createdAt,deviceId,lastRegisteredAt,platform,preferenceRef,provider,registerNotificationDeviceSubscription,updatedAt",
+    "mutation|deviceId,platform,provider,sessionId,token|createdAt,deviceId,lastRegisteredAt,platform,preferenceRef,provider,registerNotificationDeviceSubscription,updatedAt",
   MobileResourceStatus:
     "query|ownerId|databaseIds,databases,displayName,id,keyValueIds,keyValues,latestDeployId,name,phase,projectId,projects,runtime,serviceIds,services,status,suspended,type,updatedAt,version",
   MobileRestartPostgres:

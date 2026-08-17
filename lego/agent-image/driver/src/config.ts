@@ -27,6 +27,13 @@ export interface AgentDriverConfig {
   branch: string;
   repoUrl: string;
   baseBranch: string;
+  // Captured from the control-plane Git proxy before any tenant agent process
+  // runs. Delivery uses only these immutable OIDs; local refs are sandbox state.
+  deliveryBaseline?: {
+    baseBranch: string;
+    baseOid: string;
+    remoteBranchOid: string;
+  };
   // restoreUrl (ADR059 D4, w2/m68): a short-lived presigned GET URL the fresh
   // sandbox fetches its hibernation snapshot from and untars over the workspace
   // BEFORE the setup clone. Empty ⇒ a normal clone (byte-identical). The URL is
@@ -175,7 +182,9 @@ export function loadConfig(
     "/usr/local/bin/gemini",
   ]);
   if (!path.isAbsolute(command) || !allowedCommands.has(command)) {
-    throw new Error("BEX_AGENT_COMMAND must be an installed agent adapter path");
+    throw new Error(
+      "BEX_AGENT_COMMAND must be an installed agent adapter path",
+    );
   }
 
   // ADR062 model proxy: when a proxy base URL is present, route the selected

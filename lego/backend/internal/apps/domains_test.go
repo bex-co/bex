@@ -121,6 +121,42 @@ func TestAddDomainAppendsToHosts(t *testing.T) {
 	}
 }
 
+type recordingDomainOwnership struct {
+	err         error
+	name, value string
+}
+
+func (v *recordingDomainOwnership) VerifyTXT(_ context.Context, name, value string) error {
+	v.name, v.value = name, value
+	return v.err
+}
+
+func TestAddDomainRequiresCurrentAppBoundTXTBeforeRouting(t *testing.T) {
+	a := sampleApp("web")
+	a.Labels = map[string]string{core.LabelAppID: "srv-current"}
+	svc, cl := newService(nil, a)
+	proof := &recordingDomainOwnership{err: errors.New("stale CNAME only")}
+	svc.DomainOwnership = proof
+
+	if _, err := svc.AddDomain(context.Background(), "web", "app.example.com"); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("unproved domain = %v, want conflict", err)
+	}
+	if proof.name != "_bex-challenge.example.com" || !strings.HasPrefix(proof.value, "bex-domain-verification=") {
+		t.Fatalf("challenge = %q %q", proof.name, proof.value)
+	}
+	if got := getApp(t, cl, "web"); len(got.Spec.Hosts) != 0 {
+		t.Fatalf("unproved domain became routable: %v", got.Spec.Hosts)
+	}
+
+	proof.err = nil
+	if _, err := svc.AddDomain(context.Background(), "web", "app.example.com"); err != nil {
+		t.Fatalf("proved domain: %v", err)
+	}
+	if got := getApp(t, cl, "web"); !slices.Contains(got.Spec.Hosts, "app.example.com") {
+		t.Fatalf("proved domain not routed: %v", got.Spec.Hosts)
+	}
+}
+
 func TestAddDomainIdempotent(t *testing.T) {
 	svc, cl := newService(nil, sampleApp("web"))
 

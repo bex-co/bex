@@ -24,9 +24,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/drivergrant"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -651,7 +653,7 @@ func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, works
 // as "hibernation failed, fall back to Terminate". The URL is single-quoted; a
 // presigned URL is percent-encoded and never contains a single quote.
 const hibernateScript = `set -e
-/usr/local/bin/bex-pre-snapshot
+%s
 SNAP=/tmp/bex-hibernate.tgz
 HOME_DIR="${HOME:-/home/bex}"
 MEMBERS="/workspace"
@@ -692,7 +694,11 @@ func (l *AgentSessionLifecycle) HibernateAgentSessionSandbox(ctx context.Context
 	case StatusTerminated, StatusErrored:
 		return SnapshotResult{}, sandboxNotFound(sandboxID)
 	}
-	command := fmt.Sprintf(hibernateScript, "'"+putURL+"'")
+	snapshotCommand, err := s.agentSnapshotCommand(sessionID)
+	if err != nil {
+		return SnapshotResult{}, err
+	}
+	command := fmt.Sprintf(hibernateScript, snapshotCommand, "'"+putURL+"'")
 	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, []string{"/bin/sh", "-c", command})
 	if err != nil {
 		return SnapshotResult{}, err
@@ -833,9 +839,13 @@ func (s *Service) clientSuspend(ctx context.Context, key string, raw osSandbox) 
 	// the already-authorized gateway exec boundary. Generic EA sandboxes retain
 	// byte-identical suspend behavior.
 	if raw.Metadata[agentsession.LabelSession] != "" {
+		command, err := s.agentSnapshotCommand(raw.Metadata[agentsession.LabelSession])
+		if err != nil {
+			return fmt.Errorf("pre-snapshot credential scrub: %w", err)
+		}
 		result, err := s.ExecBuffered(ctx, ExecRequest{
 			OwnerID: raw.Metadata[metadataWorkspace], SandboxID: raw.ID,
-			Command: "/usr/local/bin/bex-pre-snapshot",
+			Command: command,
 		})
 		if err != nil {
 			return fmt.Errorf("pre-snapshot credential scrub: %w", err)
@@ -845,6 +855,25 @@ func (s *Service) clientSuspend(ctx context.Context, key string, raw osSandbox) 
 		}
 	}
 	return s.Client.Suspend(ctx, key, raw.ID)
+}
+
+func (s *Service) agentSnapshotCommand(sessionID string) (string, error) {
+	if s.Exec == nil || len(s.Exec.DriverGrantSecret) == 0 || sessionID == "" {
+		return "", errors.New("snapshot driver grant unavailable")
+	}
+	grant, err := drivergrant.MintAction(
+		s.Exec.DriverGrantSecret,
+		sessionID,
+		drivergrant.ActionSnapshot,
+		s.Now(),
+		60*time.Second,
+	)
+	if err != nil {
+		return "", err
+	}
+	// Ed25519 grant tokens contain only base64url bytes and a dot, so this
+	// environment assignment has no shell metacharacters or quoting ambiguity.
+	return "BEX_AGENT_SNAPSHOT_GRANT=" + grant + " /usr/local/bin/bex-pre-snapshot", nil
 }
 func (s *Service) clientResume(ctx context.Context, key string, raw osSandbox) error {
 	return s.Client.Resume(ctx, key, raw.ID)

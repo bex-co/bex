@@ -71,7 +71,7 @@ The guard in `clusterapi-validate.sh` pins control-plane and tenant-burst to cx3
 
 If cx33 becomes uncreatable in fsn1 again:
 
-1. Repoint each worker MachineDeployment back to its `…-k134-cpx32` template and the KCP back to `bex-control-plane-cpx32`.
+1. Repoint each worker MachineDeployment back to its `…-k134-cpx32` template and the KCP back to `bex-control-plane-cpx32-k134`.
 2. Flip the two `clusterapi-validate.sh` guards back to expect `cpx32`.
 3. Apply, workers first then control plane, as above.
 

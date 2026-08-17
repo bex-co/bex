@@ -18,10 +18,13 @@ package apps
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"net"
 	"slices"
 	"strings"
+	"time"
 
 	"golang.org/x/net/publicsuffix"
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +36,59 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+// DomainOwnershipVerifier checks one exact TXT value at a challenge name.
+// Implementations must treat resolver errors and absent/mismatched values as a
+// refusal. The narrow seam keeps DNS deterministic in tests.
+type DomainOwnershipVerifier interface {
+	VerifyTXT(ctx context.Context, name, value string) error
+}
+
+type systemDomainOwnershipVerifier struct{}
+
+func (systemDomainOwnershipVerifier) VerifyTXT(ctx context.Context, name, value string) error {
+	lookupCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	values, err := net.DefaultResolver.LookupTXT(lookupCtx, name)
+	if err != nil {
+		return err
+	}
+	if !slices.Contains(values, value) {
+		return errors.New("TXT challenge value not found")
+	}
+	return nil
+}
+
+func domainOwnershipChallenge(app *appv1alpha1.App, host string) (name, value string) {
+	root := registrableDomain(host)
+	if root == "" {
+		root = host
+	}
+	appID := managedAppID(app)
+	if appID == "" {
+		appID = app.Labels[core.LabelAppID]
+	}
+	if appID == "" {
+		appID = string(app.UID)
+	}
+	if appID == "" {
+		appID = app.Namespace + "/" + app.Name
+	}
+	digest := sha256.Sum256([]byte(appID + "\x00" + root))
+	return "_bex-challenge." + root, fmt.Sprintf("bex-domain-verification=%x", digest[:16])
+}
+
+func (s *Service) requireDomainOwnership(ctx context.Context, app *appv1alpha1.App, host string) error {
+	name, value := domainOwnershipChallenge(app, host)
+	verifier := s.DomainOwnership
+	if verifier == nil {
+		verifier = systemDomainOwnershipVerifier{}
+	}
+	if err := verifier.VerifyTXT(ctx, name, value); err != nil {
+		return fmt.Errorf("%w: domain ownership is unverified; create TXT %s with value %s and retry", core.ErrConflict, name, value)
+	}
+	return nil
+}
 
 // DomainView is the neutral bex projection of a custom domain on an App.
 type DomainView struct {
@@ -458,6 +514,9 @@ func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App
 		if hostClaimedInApps(apps, app, h) {
 			return errDomainInUse()
 		}
+		if err := s.requireDomainOwnership(ctx, app, h); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -526,6 +585,9 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 			return DomainView{}, false, err
 		} else if claimed {
 			return DomainView{}, false, errDomainInUse()
+		}
+		if err := s.requireDomainOwnership(ctx, app, hostname); err != nil {
+			return DomainView{}, false, err
 		}
 	}
 	if s.Store != nil {
