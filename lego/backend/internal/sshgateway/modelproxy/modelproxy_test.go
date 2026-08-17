@@ -17,6 +17,8 @@ limitations under the License.
 package modelproxy_test
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"io"
@@ -334,6 +336,97 @@ func TestProxyRejectsUnknownAnthropicQueryParameters(t *testing.T) {
 	if capture.last != nil {
 		t.Fatal("a refused provider operation reached the upstream")
 	}
+}
+
+// The proxy forwards the agent's own Accept-Encoding to the vendor (disabling
+// Go's transparent gzip handling), so a compressed response streams back
+// verbatim — and its Content-Encoding header MUST travel with it. Dropping the
+// header handed the agent's JSON parser raw gzip bytes: every Claude turn died
+// with `Unexpected token '\x1f'` (the gzip magic number) and the session
+// failed as "sandbox terminated before completion".
+func TestProxyRelaysContentEncodingWithCompressedBody(t *testing.T) {
+	plain := `{"id":"msg_1","content":[{"type":"text","text":"ok"}]}`
+	var compressed bytes.Buffer
+	zw := gzip.NewWriter(&compressed)
+	if _, err := zw.Write([]byte(plain)); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	gzipUpstream := &headerTransport{response: func(r *http.Request) *http.Response {
+		if r.Header.Get("Accept-Encoding") != "gzip" {
+			t.Fatalf("Accept-Encoding = %q did not reach the vendor", r.Header.Get("Accept-Encoding"))
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": {"application/json"}, "Content-Encoding": {"gzip"}},
+			Body:       io.NopCloser(bytes.NewReader(compressed.Bytes())),
+		}
+	}}
+	proxy, _ := gzipHarness(t, gzipUpstream)
+	base, err := agentsession.ModelProxyURL(proxy.URL, "tea-a-sandbox", "ags-one")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequest(http.MethodPost, base+"/v1/messages", strings.NewReader(`{"model":"x"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	// An explicit Accept-Encoding (what undici/fetch sends) means the Go test
+	// client will NOT transparently decompress either — exactly the agent's view.
+	req.Header.Set("Accept-Encoding", "gzip")
+	resp, err := proxy.Client().Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+	if got := resp.Header.Get("Content-Encoding"); got != "gzip" {
+		t.Fatalf("Content-Encoding = %q, want gzip — without it the agent parses raw gzip bytes as JSON", got)
+	}
+	zr, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		t.Fatalf("body is not the vendor's gzip stream: %v", err)
+	}
+	body, err := io.ReadAll(zr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(body) != plain {
+		t.Fatalf("decompressed body = %q, want %q", body, plain)
+	}
+}
+
+type headerTransport struct {
+	response func(*http.Request) *http.Response
+}
+
+func (h *headerTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	return h.response(r), nil
+}
+
+// gzipHarness mirrors harness but lets the test supply the upstream transport.
+func gzipHarness(t *testing.T, transport http.RoundTripper) (*httptest.Server, *fakeStore) {
+	t.Helper()
+	st := &fakeStore{session: liveSession("https://api.anthropic.com/v1")}
+	minter := &agentsession.ModelMinter{
+		Keys:     fakeKV{data: map[string]map[string]string{agentsession.ModelKeySecretPath("tea-a"): {agentsession.ModelKeyField: "sk-ant-api03-REAL"}}},
+		Sessions: st,
+	}
+	api := httptest.NewServer(&agentsession.ModelHandler{Secret: secret, Minter: minter})
+	t.Cleanup(api.Close)
+	broker := &modelproxy.Broker{
+		Pods: fakePods{pod: sandboxPod("ags-one")},
+		API:  &agentsession.ModelClient{URL: api.URL + agentsession.InternalModelMintPath, Secret: secret, HTTP: api.Client()},
+		HTTP: &http.Client{Transport: transport},
+	}
+	proxy := httptest.NewServer(broker.Handler())
+	t.Cleanup(proxy.Close)
+	return proxy, st
 }
 
 func TestProxyRejectsOversizedRequestBeforePodOrCredentialLookup(t *testing.T) {

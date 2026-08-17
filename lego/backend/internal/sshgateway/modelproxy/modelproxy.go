@@ -212,8 +212,14 @@ func copyForwardableHeaders(dst, src http.Header) {
 	}
 }
 
+// Content-Encoding must travel with the body: the request hop forwards the
+// agent's own Accept-Encoding (so Go's transparent gzip handling is disabled
+// and the vendor's compressed bytes stream through verbatim), which means a
+// gzip response relayed WITHOUT its Content-Encoding header hands the agent's
+// JSON parser raw gzip bytes — every Claude turn died on
+// `Unexpected token '\x1f'` (the gzip magic number) until it was forwarded.
 func copyResponseHeaders(dst, src http.Header) {
-	for _, name := range []string{"Content-Type", "Cache-Control", "Anthropic-Version", "X-Request-Id", "Retry-After"} {
+	for _, name := range []string{"Content-Type", "Content-Encoding", "Cache-Control", "Anthropic-Version", "X-Request-Id", "Retry-After"} {
 		if value := src.Get(name); value != "" {
 			dst.Set(name, value)
 		}
