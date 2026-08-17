@@ -31,3 +31,22 @@ func TestGrantUsesDerivedPublicKeyAndBindsAction(t *testing.T) {
 		t.Fatal("different ticket secrets derived the same grant key")
 	}
 }
+
+func TestSnapshotGrantIsActionBound(t *testing.T) {
+	secret := []byte("gateway-ticket-secret")
+	token, err := MintAction(secret, "ags-one", ActionSnapshot, time.Unix(1000, 0), 30*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _, _ := strings.Cut(token, ".")
+	payload, err := base64.RawURLEncoding.DecodeString(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(payload), `"act":"snapshot"`) {
+		t.Fatalf("snapshot action missing from claims: %s", payload)
+	}
+	if _, err := MintAction(secret, "ags-one", "arbitrary", time.Unix(1000, 0), time.Second); err == nil {
+		t.Fatal("arbitrary driver action was accepted")
+	}
+}

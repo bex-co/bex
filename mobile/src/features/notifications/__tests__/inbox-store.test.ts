@@ -17,6 +17,9 @@ class MemoryStorage implements KeyValueStorage {
 const envelope: NotificationEnvelope = {
   schema: "bex.notification.v1",
   notificationId: "notification-1",
+  subject: "identity-1",
+  workspaceId: "tea-a",
+  sessionId: "session-1",
   event: "server_failed",
   route: "/services/srv-abc",
 };

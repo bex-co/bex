@@ -252,6 +252,7 @@ func (c *Client) mintInstallationToken(ctx context.Context, installationID int64
 type Installation struct {
 	ID           int64  `json:"id"`
 	AccountLogin string `json:"accountLogin"`
+	AccountType  string `json:"accountType"`
 }
 
 // GetInstallation fetches one installation by id (GET /app/installations/{id}),
@@ -279,25 +280,26 @@ func (c *Client) GetInstallation(ctx context.Context, installationID int64) (Ins
 		return Installation{}, &APIError{Status: resp.StatusCode, Body: string(body)}
 	}
 	var out struct {
-		ID      int64 `json:"id"`
-		Account struct {
+		ID         int64  `json:"id"`
+		TargetType string `json:"target_type"`
+		Account    struct {
 			Login string `json:"login"`
 		} `json:"account"`
 	}
 	if err := json.Unmarshal(body, &out); err != nil {
 		return Installation{}, fmt.Errorf("github: decode installation response: %w", err)
 	}
-	return Installation{ID: out.ID, AccountLogin: out.Account.Login}, nil
+	return Installation{ID: out.ID, AccountLogin: out.Account.Login, AccountType: out.TargetType}, nil
 }
 
 // VerifyInstallationAdmin reports whether the GitHub user identified by the
-// install-callback OAuth `code` can actually access installationID — the
+// install-callback OAuth `code` actually administers installationID — the
 // principal proof the connect callback needs so an App-JWT lookup is never
 // mistaken for ownership (F2). It exchanges the code for a short-lived user
-// token, then checks GET /user/installations (which lists only the installations
-// the user administers/can access). (false, nil) means the user cannot see the
-// installation — reject without persisting; a transport/decode failure is a
-// non-nil error so the caller fails closed.
+// token, resolves the installation's owning account, and requires either the
+// exact personal-account owner or an active organization membership with role
+// `admin`. Merely seeing an installation or one selected repository is not an
+// administration proof.
 func (c *Client) VerifyInstallationAdmin(ctx context.Context, code string, installationID int64) (bool, error) {
 	if c.clientID == "" || c.clientSecret == "" {
 		return false, fmt.Errorf("github: installation-admin verification not configured")
@@ -312,7 +314,22 @@ func (c *Client) VerifyInstallationAdmin(ctx context.Context, code string, insta
 	if token == "" {
 		return false, nil
 	}
-	return c.userCanAccessInstallation(ctx, token, installationID)
+	installation, err := c.GetInstallation(ctx, installationID)
+	if err != nil {
+		return false, err
+	}
+	login, err := c.authenticatedUser(ctx, token)
+	if err != nil {
+		return false, err
+	}
+	switch installation.AccountType {
+	case "User":
+		return strings.EqualFold(login, installation.AccountLogin), nil
+	case "Organization":
+		return c.userIsOrganizationAdmin(ctx, token, installation.AccountLogin)
+	default:
+		return false, nil
+	}
 }
 
 // exchangeUserCode swaps an install-callback OAuth code for a user access token
@@ -349,43 +366,52 @@ func (c *Client) exchangeUserCode(ctx context.Context, code string) (string, err
 	return out.AccessToken, nil // "" when out.Error is set (GitHub declined)
 }
 
-// userCanAccessInstallation reports whether the user token's owner administers
-// installationID, paging GET /user/installations (per_page=100, Link rel=next).
-func (c *Client) userCanAccessInstallation(ctx context.Context, userToken string, installationID int64) (bool, error) {
-	url := c.baseURL + "/user/installations?per_page=100"
-	for url != "" {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-		if err != nil {
-			return false, err
-		}
-		req.Header.Set("Authorization", "token "+userToken)
-		req.Header.Set("Accept", acceptHeader)
-		resp, err := c.httpClient.Do(req)
-		if err != nil {
-			return false, fmt.Errorf("github: list user installations: %w", err)
-		}
-		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
-		nextURL := nextLink(resp.Header.Get("Link"))
-		resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			return false, &APIError{Status: resp.StatusCode, Body: string(raw)}
-		}
-		var page struct {
-			Installations []struct {
-				ID int64 `json:"id"`
-			} `json:"installations"`
-		}
-		if err := json.Unmarshal(raw, &page); err != nil {
-			return false, fmt.Errorf("github: decode user installations: %w", err)
-		}
-		for _, inst := range page.Installations {
-			if inst.ID == installationID {
-				return true, nil
-			}
-		}
-		url = nextURL
+func (c *Client) authenticatedUser(ctx context.Context, userToken string) (string, error) {
+	var out struct {
+		Login string `json:"login"`
 	}
-	return false, nil
+	if err := c.getAsUser(ctx, userToken, "/user", &out); err != nil {
+		return "", err
+	}
+	return out.Login, nil
+}
+
+func (c *Client) userIsOrganizationAdmin(ctx context.Context, userToken, organization string) (bool, error) {
+	var membership struct {
+		State string `json:"state"`
+		Role  string `json:"role"`
+	}
+	err := c.getAsUser(ctx, userToken, "/user/memberships/orgs/"+neturl.PathEscape(organization), &membership)
+	var apiErr *APIError
+	if errors.As(err, &apiErr) && apiErr.Status == http.StatusNotFound {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return membership.State == "active" && membership.Role == "admin", nil
+}
+
+func (c *Client) getAsUser(ctx context.Context, userToken, path string, out any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	req.Header.Set("Accept", acceptHeader)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("github: verify user authority: %w", err)
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode != http.StatusOK {
+		return &APIError{Status: resp.StatusCode, Body: string(raw)}
+	}
+	if err := json.Unmarshal(raw, out); err != nil {
+		return fmt.Errorf("github: decode user authority: %w", err)
+	}
+	return nil
 }
 
 // RepoAccessible reports whether the given installation token can reach

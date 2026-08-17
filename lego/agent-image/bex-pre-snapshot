@@ -12,7 +12,10 @@ scrub_home="${BEX_SCRUB_HOME:-/home/bex}"
 # in-memory copy before touching the enumerated Git credential locations below.
 # The root override is reserved for the hermetic filesystem-only unit test.
 if [ -z "$scrub_root" ]; then
+  : "${BEX_AGENT_SNAPSHOT_GRANT:?snapshot grant is required}"
   curl --fail --silent --show-error --request POST \
+    --connect-timeout 5 --max-time 45 \
+    --header "X-Bex-Driver-Grant: ${BEX_AGENT_SNAPSHOT_GRANT}" \
     "${BEX_AGENT_DRIVER_SCRUB_URL:-http://127.0.0.1:8787/snapshot/scrub}" \
     >/dev/null
 fi

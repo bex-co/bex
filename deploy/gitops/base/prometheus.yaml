@@ -47,11 +47,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1" # after traefik/metrics-server exist
 spec:
-  project: default
+  project: bex-platform
   source:
-    repoURL: https://prometheus-community.github.io/helm-charts
-    chart: prometheus
-    targetRevision: "25.27.0" # pinned exact (codex-security #20); server subchart serves /api/v1/query_range
+    repoURL: oci://ghcr.io/bex-co/bex-charts/prometheus
+    path: .
+    targetRevision: "sha256:ca111fd56feda5a2079d7db7a1ccf5f98d6f03b44eea6cdcce3cec5273481d02"
     helm:
       releaseName: prometheus
       values: |

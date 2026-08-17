@@ -83,10 +83,31 @@ type Service struct {
 	// Binding, when set (the control-plane store is on), ties each minted key to
 	// the caller's tenant. nil => legacy unbound mint (store off).
 	Binding KeyBinder
+	// MaxActiveKeys is the per-workspace credential quota (zero => secure
+	// default). CreationLimiter bounds credential churn independently of the
+	// ordinary request limiter; the composition root wires the production value.
+	MaxActiveKeys   int
+	CreationLimiter *core.KeyedRateLimiter[string]
+	createMu        sync.Mutex
 	// touch throttle: earliest next last-used write per key id. Guards against a
 	// chatty caller turning every introspection into a Hydra write (w4/m13).
 	touchMu   sync.Mutex
 	nextTouch map[string]time.Time
+}
+
+const defaultMaxActiveKeys = 20
+
+// NewCreationRateLimiter returns the production per-workspace issuance budget:
+// a small burst for setup/rotation, followed by steady bounded churn.
+func NewCreationRateLimiter() *core.KeyedRateLimiter[string] {
+	return core.NewKeyedRateLimiter[string](20, 5, 24*time.Hour, time.Hour)
+}
+
+func (s *Service) activeKeyQuota() int {
+	if s.MaxActiveKeys > 0 {
+		return s.MaxActiveKeys
+	}
+	return defaultMaxActiveKeys
 }
 
 // CreateAPIKey mints a new machine credential. The returned Secret is shown once,
@@ -133,6 +154,35 @@ func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKe
 	tenantID, ok := s.Tenant(ctx)
 	if !ok {
 		return APIKey{}, fmt.Errorf("%w: caller has no tenant to bind the key to", core.ErrBadRequest)
+	}
+	// Serialize count→create→bind in this API replica. bex-api currently runs one
+	// replica (the shared request limiter has the same documented boundary), so
+	// concurrent key requests cannot race past the quota.
+	s.createMu.Lock()
+	defer s.createMu.Unlock()
+	if s.CreationLimiter != nil && !s.CreationLimiter.Bucket(tenantID).Allow() {
+		return APIKey{}, core.NewConflictError(
+			"API_KEY_CREATION_RATE_LIMIT",
+			"API key creation rate exceeded for this workspace",
+			map[string]any{"ownerId": tenantID},
+		)
+	}
+	keys, err := s.APIKeys.List(ctx)
+	if err != nil {
+		return APIKey{}, err
+	}
+	active := 0
+	for _, existing := range keys {
+		if owner, bound := s.Binding.TenantForKey(ctx, existing.ID); bound && owner == tenantID {
+			active++
+		}
+	}
+	if active >= s.activeKeyQuota() {
+		return APIKey{}, core.NewConflictError(
+			"API_KEY_ACTIVE_LIMIT",
+			"workspace has the maximum number of active API keys",
+			map[string]any{"ownerId": tenantID, "limit": s.activeKeyQuota()},
+		)
 	}
 	key, err := s.APIKeys.Create(ctx, name, createdBy)
 	if err != nil {

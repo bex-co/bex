@@ -1049,6 +1049,41 @@ func TestLogsSubscribeCapSpeaksRenderErrorDialect(t *testing.T) {
 	}
 }
 
+func TestSubscriptionWorkspaceCapPreservesAnotherTenantsCapacity(t *testing.T) {
+	appA := sampleApp("a")
+	appA.Labels = map[string]string{core.LabelTenant: "tea-a"}
+	appB := sampleApp("b")
+	appB.Labels = map[string]string{core.LabelTenant: "tea-b"}
+	s := &Service{
+		Base:                    &core.Base{Client: fakeClientWith(appA, appB), Namespace: "default"},
+		MaxSSEConns:             3,
+		MaxSSEConnsPerWorkspace: 2,
+		MaxSSEConnsPerSubject:   0,
+	}
+
+	r1, err := s.acquireSubscription(context.Background(), LogQuery{App: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	r2, err := s.acquireSubscription(context.Background(), LogQuery{App: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.acquireSubscription(context.Background(), LogQuery{App: "a"}); !errors.Is(err, errSubscriptionLimit) {
+		t.Fatalf("third tenant A subscription = %v, want capacity error", err)
+	}
+	rb, err := s.acquireSubscription(context.Background(), LogQuery{App: "b"})
+	if err != nil {
+		t.Fatalf("tenant B could not use reserved capacity: %v", err)
+	}
+	rb()
+	r2()
+	r1()
+	if got := s.sseConns.Load(); got != 0 {
+		t.Fatalf("global subscriptions leaked: %d", got)
+	}
+}
+
 // TestLogLabelValuesHostAndPathForMetricsFilters pins the discovery the metrics
 // Network card's Host/Path filters reuse (w5/m58): `host` resolves from the App's
 // own URLs even with no store wired (so the Host dropdown always populates),

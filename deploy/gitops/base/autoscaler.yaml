@@ -16,11 +16,11 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: bex-platform
   sources:
-    - repoURL: https://kubernetes.github.io/autoscaler
-      chart: cluster-autoscaler
-      targetRevision: 9.58.0
+    - repoURL: oci://ghcr.io/bex-co/bex-charts/cluster-autoscaler
+      path: .
+      targetRevision: "sha256:5fe11e81e0c36bd5c9336339609f264e17e59498a89e576b953f11d505b2f9fd"
       helm:
         releaseName: cluster-autoscaler
         valueFiles:

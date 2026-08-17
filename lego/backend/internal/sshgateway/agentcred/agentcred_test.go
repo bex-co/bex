@@ -83,8 +83,8 @@ func TestGitProxyKeepsTokenOutOfSandboxAndBindsSourcePod(t *testing.T) {
 	broker := &Broker{
 		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
 		Pods: credentialPodResolver{pods: map[string]SessionPod{
-			"10.0.0.1": {Name: "sandbox-a", UID: "uid-a", Labels: credentialLabels(t, "tea-a")},
-			"10.0.0.2": {Name: "sandbox-b", UID: "uid-b", Labels: credentialLabels(t, "tea-b")},
+			"10.0.0.1": {Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a")},
+			"10.0.0.2": {Name: "sbx-a-0", UID: "uid-b", Labels: credentialLabels(t, "tea-b")},
 		}},
 		API:   &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client()},
 		Audit: audit, UpstreamOrigin: upstream.URL, HTTP: upstream.Client(),
@@ -130,7 +130,7 @@ func TestGitProxyReceivePackAllowsOnlyBoundBranch(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { upstreamCalls++; _, _ = io.WriteString(w, "0000") }))
 	defer upstream.Close()
 	broker := &Broker{Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
-		Pods: credentialPodResolver{pods: map[string]SessionPod{"10.0.0.1": {Name: "sandbox-a", UID: "uid-a", Labels: credentialLabels(t, "tea-a")}}},
+		Pods: credentialPodResolver{pods: map[string]SessionPod{"10.0.0.1": {Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a")}}},
 		API:  &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client()}, UpstreamOrigin: upstream.URL, HTTP: upstream.Client()}
 	base, _ := agentsession.ProxyRepositoryURL("http://gateway", "tea-a-sandbox", "ags-one", "octo/repo", "bex-agent/task-1")
 	push := func(ref string) int {

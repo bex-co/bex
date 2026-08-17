@@ -16,7 +16,11 @@ limitations under the License.
 
 package staticserver
 
-import "golang.org/x/sync/semaphore"
+import (
+	"sync"
+
+	"golang.org/x/sync/semaphore"
+)
 
 // Default origin-fetch admission bounds (finding 12). A cache miss buffers an
 // object up to maxOriginObjectBytes in memory; without a gate a burst of distinct
@@ -26,6 +30,7 @@ import "golang.org/x/sync/semaphore"
 // budget stays an independent hard ceiling.
 const (
 	defaultMaxConcurrentFetches = 32
+	defaultMaxSiteFetches       = 4
 	defaultMaxInflightBytes     = int64(defaultMaxConcurrentFetches) * maxOriginObjectBytes // 1 GiB
 )
 
@@ -36,19 +41,31 @@ const (
 // non-blocking: on overload acquire fails and the caller sheds with 503 rather
 // than parking unbounded goroutines/memory.
 type fetchGate struct {
-	slots  chan struct{}
-	bytes  *semaphore.Weighted
-	weight int64
+	mu         sync.Mutex
+	slots      chan struct{}
+	bytes      *semaphore.Weighted
+	weight     int64
+	perSite    map[string]int
+	maxPerSite int
 }
 
 // newFetchGate builds a gate. maxConcurrent <= 0 disables the gate entirely
 // (unbounded, the pre-fix behavior); maxInflightBytes <= 0 keeps the count bound
 // but drops the byte budget.
-func newFetchGate(maxConcurrent int, maxInflightBytes int64) *fetchGate {
+func newFetchGate(maxConcurrent int, maxInflightBytes int64, perSite ...int) *fetchGate {
 	if maxConcurrent <= 0 {
 		return nil
 	}
-	g := &fetchGate{slots: make(chan struct{}, maxConcurrent), weight: maxOriginObjectBytes}
+	maxPerSite := maxConcurrent
+	if len(perSite) > 0 {
+		maxPerSite = perSite[0]
+	}
+	g := &fetchGate{
+		slots:      make(chan struct{}, maxConcurrent),
+		weight:     maxOriginObjectBytes,
+		perSite:    make(map[string]int),
+		maxPerSite: maxPerSite,
+	}
 	if maxInflightBytes > 0 {
 		g.bytes = semaphore.NewWeighted(maxInflightBytes)
 	}
@@ -57,24 +74,33 @@ func newFetchGate(maxConcurrent int, maxInflightBytes int64) *fetchGate {
 
 // acquire reserves one fetch slot and its byte reservation. It returns false
 // immediately when either bound is at capacity (the caller must not fetch).
-func (g *fetchGate) acquire() bool {
+func (g *fetchGate) acquire(site string) bool {
 	if g == nil {
 		return true
 	}
+	g.mu.Lock()
+	if g.maxPerSite > 0 && g.perSite[site] >= g.maxPerSite {
+		g.mu.Unlock()
+		return false
+	}
+	g.perSite[site]++
+	g.mu.Unlock()
 	select {
 	case g.slots <- struct{}{}:
 	default:
+		g.releaseSite(site)
 		return false
 	}
 	if g.bytes != nil && !g.bytes.TryAcquire(g.weight) {
 		<-g.slots
+		g.releaseSite(site)
 		return false
 	}
 	return true
 }
 
 // release returns a slot and its byte reservation acquired by acquire.
-func (g *fetchGate) release() {
+func (g *fetchGate) release(site string) {
 	if g == nil {
 		return
 	}
@@ -82,4 +108,15 @@ func (g *fetchGate) release() {
 		g.bytes.Release(g.weight)
 	}
 	<-g.slots
+	g.releaseSite(site)
+}
+
+func (g *fetchGate) releaseSite(site string) {
+	g.mu.Lock()
+	if g.perSite[site] <= 1 {
+		delete(g.perSite, site)
+	} else {
+		g.perSite[site]--
+	}
+	g.mu.Unlock()
 }

@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -37,6 +38,15 @@ import (
 
 type staleDeployHookChecker struct {
 	freshCalls int
+}
+
+func deployHookTokenFromURL(t *testing.T, raw string) string {
+	t.Helper()
+	u, err := url.Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return u.Query().Get("key")
 }
 
 func (*staleDeployHookChecker) Check(context.Context, string, string, string) (bool, error) {
@@ -97,7 +107,7 @@ func TestDeployHookTokenIsStableOpaqueAndRotatable(t *testing.T) {
 	if first.URL != second.URL {
 		t.Fatalf("lazy read changed stable URL: %q != %q", first.URL, second.URL)
 	}
-	token := strings.TrimPrefix(first.URL, "https://api.bex.co/v1/deploy-hooks/")
+	token := deployHookTokenFromURL(t, first.URL)
 	if !validDeployHookToken(token) {
 		t.Fatalf("token is not a 256-bit deploy-hook credential: %q", token)
 	}
@@ -122,7 +132,7 @@ func TestDeployHookTokenIsStableOpaqueAndRotatable(t *testing.T) {
 	if _, err := svc.appForDeployHookToken(context.Background(), token); !errors.Is(err, core.ErrNotFound) {
 		t.Fatalf("old token after rotation = %v, want ErrNotFound", err)
 	}
-	newToken := strings.TrimPrefix(rotated.URL, "https://api.bex.co/v1/deploy-hooks/")
+	newToken := deployHookTokenFromURL(t, rotated.URL)
 	if _, err := svc.appForDeployHookToken(context.Background(), newToken); err != nil {
 		t.Fatalf("new token after rotation: %v", err)
 	}
@@ -175,11 +185,11 @@ func TestDeployHookHandlerTriggersGETAndPOSTWithoutAuth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token := strings.TrimPrefix(hook.URL, "/v1/deploy-hooks/")
+	token := deployHookTokenFromURL(t, hook.URL)
 	h := svc.DeployHookHandler()
 
 	for _, method := range []string{http.MethodGet, http.MethodPost} {
-		r := httptest.NewRequest(method, "/v1/deploy-hooks/"+token+"?ref=deadbeef", nil)
+		r := httptest.NewRequest(method, "/v1/deploy-hooks?key="+url.QueryEscape(token)+"&ref=deadbeef", nil)
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, r)
 		if w.Code != http.StatusOK {
@@ -234,6 +244,22 @@ func TestDeployHookHandlerCollapsesInvalidAndRotatedTokensTo404(t *testing.T) {
 	}
 }
 
+func TestDeployHookCredentialNeverOccupiesRequestPath(t *testing.T) {
+	svc, _ := newService(newFakeStore(), sampleApp("web", "srv-1"))
+	hook, err := svc.GetDeployHook(context.Background(), "web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := url.Parse(hook.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token := u.Query().Get("key")
+	if token == "" || strings.Contains(u.Path, token) || u.Path != "/v1/deploy-hooks" {
+		t.Fatalf("deploy hook URL retains credential in request path: %q", hook.URL)
+	}
+}
+
 // TestDeployHookHandlerMethodNotAllowedSpeaksTheOneErrorDialect pins w9/m38:
 // the 405 rejection is JSON with Content-Type application/json and Render's
 // `message` key, not a text/plain bare-`{"error"}` body.
@@ -242,7 +268,7 @@ func TestDeployHookHandlerMethodNotAllowedSpeaksTheOneErrorDialect(t *testing.T)
 	h := svc.DeployHookHandler()
 
 	w := httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest(http.MethodDelete, "/v1/deploy-hooks/whatever", nil))
+	h.ServeHTTP(w, httptest.NewRequest(http.MethodDelete, "/v1/deploy-hooks?key=whatever", nil))
 	if w.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("code = %d, want 405; body=%s", w.Code, w.Body.String())
 	}

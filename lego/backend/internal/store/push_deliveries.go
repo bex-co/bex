@@ -129,6 +129,7 @@ type PushNotificationBatchItem struct {
 type DuePushDelivery struct {
 	PushNotification
 	DeviceID         string
+	SessionID        string
 	Provider         string
 	Platform         string
 	Token            string `json:"-"`
@@ -288,7 +289,7 @@ func (s *PGStore) ClaimDuePushDeliveries(ctx context.Context, now, leaseUntil ti
 		SELECT n.tenant_id, n.subject, n.source_event_key, n.event_id,
 		       n.event_type, n.title, n.body, n.urgency, n.resource_kind,
 		       n.resource_id, n.deep_link, n.occurred_at, n.deliver_at, n.created_at,
-		       c.device_id, s.provider, s.platform, s.token, $2, d.attempt_count,
+		       c.device_id, s.session_id, s.provider, s.platform, s.token, $2, d.attempt_count,
 		       d.accepted_at, d.receipt_due_at, d.provider_ticket_id
 		FROM claimed c
 		JOIN push_notifications n USING (tenant_id, subject, source_event_key)
@@ -307,7 +308,7 @@ func (s *PGStore) ClaimDuePushDeliveries(ctx context.Context, now, leaseUntil ti
 			&delivery.EventID, &delivery.EventType, &delivery.Title, &delivery.Body,
 			&delivery.Urgency, &delivery.ResourceKind, &delivery.ResourceID,
 			&delivery.DeepLink, &delivery.OccurredAt, &delivery.DeliverAt,
-			&delivery.CreatedAt, &delivery.DeviceID, &delivery.Provider,
+			&delivery.CreatedAt, &delivery.DeviceID, &delivery.SessionID, &delivery.Provider,
 			&delivery.Platform, &delivery.Token, &delivery.ClaimedUntil,
 			&delivery.AttemptCount, &delivery.AcceptedAt, &delivery.ReceiptDueAt,
 			&delivery.ProviderTicketID,

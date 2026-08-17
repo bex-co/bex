@@ -59,6 +59,8 @@ func (s PushTransportSender) Send(ctx context.Context, request PushSendRequest) 
 		Data: push.EnvelopeData{
 			Schema: request.Data.Schema, NotificationID: request.Data.NotificationID,
 			Event: request.Data.Event, Route: request.Data.Route,
+			Subject: request.Data.Subject, WorkspaceID: request.Data.WorkspaceID,
+			SessionID: request.Data.SessionID,
 		},
 		// The logical notification id is stable across a lease crash/retry. Expo
 		// and the operating system can therefore coalesce a duplicate attempt.

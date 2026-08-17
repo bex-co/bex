@@ -181,6 +181,78 @@ func TestMintSessionInstallationTokenNarrowsRepositoryAndPermissions(t *testing.
 	}
 }
 
+func TestVerifyInstallationAdminRequiresExplicitOrganizationAdmin(t *testing.T) {
+	for _, tc := range []struct {
+		name, state, role string
+		want              bool
+	}{
+		{"active admin", "active", "admin", true},
+		{"repository-only member", "active", "member", false},
+		{"pending admin", "pending", "admin", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			keyPEM, _ := testKeyPEM(t)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/login/oauth/access_token":
+					fmt.Fprint(w, `{"access_token":"ghu_user"}`)
+				case "/app/installations/42":
+					fmt.Fprint(w, `{"id":42,"target_type":"Organization","account":{"login":"octo-org"}}`)
+				case "/user":
+					fmt.Fprint(w, `{"login":"octocat"}`)
+				case "/user/memberships/orgs/octo-org":
+					if r.Header.Get("Authorization") != "Bearer ghu_user" {
+						t.Fatalf("membership request auth = %q", r.Header.Get("Authorization"))
+					}
+					fmt.Fprintf(w, `{"state":%q,"role":%q}`, tc.state, tc.role)
+				default:
+					t.Fatalf("unexpected GitHub request %s", r.URL.Path)
+				}
+			}))
+			defer server.Close()
+
+			client, err := NewClient(Config{
+				AppID: "1", PrivateKey: keyPEM, Slug: "bex",
+				ClientID: "client", ClientSecret: "secret",
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			client.baseURL = server.URL
+			client.oauthBaseURL = server.URL
+			got, err := client.VerifyInstallationAdmin(context.Background(), "code", 42)
+			if err != nil || got != tc.want {
+				t.Fatalf("VerifyInstallationAdmin = %v, %v; want %v", got, err, tc.want)
+			}
+		})
+	}
+}
+
+func TestVerifyInstallationAdminRequiresPersonalInstallationOwner(t *testing.T) {
+	keyPEM, _ := testKeyPEM(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/login/oauth/access_token":
+			fmt.Fprint(w, `{"access_token":"ghu_user"}`)
+		case "/app/installations/42":
+			fmt.Fprint(w, `{"id":42,"target_type":"User","account":{"login":"owner"}}`)
+		case "/user":
+			fmt.Fprint(w, `{"login":"collaborator"}`)
+		default:
+			t.Fatalf("unexpected GitHub request %s", r.URL.Path)
+		}
+	}))
+	defer server.Close()
+	client, err := NewClient(Config{AppID: "1", PrivateKey: keyPEM, Slug: "bex", ClientID: "client", ClientSecret: "secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.baseURL, client.oauthBaseURL = server.URL, server.URL
+	if ok, err := client.VerifyInstallationAdmin(context.Background(), "code", 42); err != nil || ok {
+		t.Fatalf("collaborator accepted for personal installation: ok=%v err=%v", ok, err)
+	}
+}
+
 func TestListReposPagination(t *testing.T) {
 	keyPEM, _ := testKeyPEM(t)
 	var srv *httptest.Server

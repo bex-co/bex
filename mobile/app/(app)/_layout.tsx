@@ -11,6 +11,7 @@ import {
   WorkspaceProvider,
 } from "@/features/workspaces/workspace-provider";
 import { AppDrawerProvider } from "@/components/app-drawer";
+import { NotificationsProvider } from "@/features/notifications/notifications-provider";
 
 function WorkspaceTabs() {
   const { t } = useTranslations();
@@ -121,9 +122,11 @@ export default function AppLayout() {
   if (state.status !== "signedIn") return <Redirect href="/sign-in" />;
   return (
     <WorkspaceProvider>
-      <AppDrawerProvider>
-        <WorkspaceTabs />
-      </AppDrawerProvider>
+      <NotificationsProvider>
+        <AppDrawerProvider>
+          <WorkspaceTabs />
+        </AppDrawerProvider>
+      </NotificationsProvider>
     </WorkspaceProvider>
   );
 }

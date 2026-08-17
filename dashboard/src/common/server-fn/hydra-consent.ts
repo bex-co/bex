@@ -53,6 +53,9 @@ export type ConsentView = {
   clientId: string;
   clientName: string;
   clientUri?: string;
+  /** Exact web origin that receives the authorization code. Missing only for
+   * non-code flows (for example RFC 8628 device verification). */
+  redirectOrigin?: string;
   scopes: string[];
   audiences: string[];
   /** Bound to (challenge, session) — see consentCsrfToken. */
@@ -71,6 +74,31 @@ function trustedClients(): Set<string> {
       .map((c) => c.trim())
       .filter(Boolean),
   );
+}
+
+function consentRedirectOrigin(
+  consent: OAuth2ConsentRequest,
+): string | undefined {
+  let redirect = "";
+  try {
+    redirect = consent.request_url
+      ? new URL(consent.request_url).searchParams.get("redirect_uri") || ""
+      : "";
+  } catch {
+    return undefined;
+  }
+  if (!redirect && consent.client?.redirect_uris?.length === 1) {
+    redirect = consent.client.redirect_uris[0] ?? "";
+  }
+  if (!redirect) return undefined;
+  try {
+    const parsed = new URL(redirect);
+    return parsed.origin === "null"
+      ? `${parsed.protocol}${parsed.host ? `//${parsed.host}` : ""}`
+      : parsed.origin;
+  } catch {
+    return undefined;
+  }
 }
 
 function hydraAdmin(): OAuth2Api | null {
@@ -284,6 +312,7 @@ export async function handleConsent(
     clientId: clientID,
     clientName: consent.client?.client_name || clientID,
     clientUri: consent.client?.client_uri || undefined,
+    redirectOrigin: consentRedirectOrigin(consent),
     scopes: consent.requested_scope ?? [],
     audiences: consent.requested_access_token_audience ?? [],
     csrfToken: consentCsrfToken(consentChallenge, session.id),

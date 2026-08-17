@@ -43,6 +43,7 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 	kv := &appv1alpha1.KeyValue{}
 	kv.Name = "kv-one"
 	kv.Namespace = "default"
+	kv.Labels = map[string]string{labelWorkspace: "tea-one"}
 	kv.Spec.Public = true
 	kv.Status.ExternalHost = "kv-one.kv.bex.co"
 	kv.Spec.IPAllowList = []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24"}}
@@ -56,6 +57,9 @@ func TestRouterRoutesPublicKeyValueAndPreservesAllowlist(t *testing.T) {
 	}
 	if route.ResourceID != "kv-one" || route.Backend != "kv-one.default.svc.cluster.local:6380" {
 		t.Fatalf("route = %#v", route)
+	}
+	if route.Workspace != "tea-one" {
+		t.Fatalf("workspace = %q, want tenant label", route.Workspace)
 	}
 	if _, ok := router.resolve("kv-one.kv.bex.co", netip.MustParseAddr("198.51.100.9")); ok {
 		t.Fatal("non-allowlisted client resolved")

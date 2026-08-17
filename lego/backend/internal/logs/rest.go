@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"slices"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -150,18 +151,20 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The concurrency cap is acquired only after the request parses and is
-	// confirmed streamable, so malformed or producerless requests never take a slot.
-	if s.MaxSSEConns > 0 {
-		if s.sseConns.Add(1) > s.MaxSSEConns {
-			s.sseConns.Add(-1)
+	// Admission retains a final process ceiling and adds caller/workspace shares
+	// after resource authorization, leaving capacity for unrelated tenants.
+	release, err := s.acquireSubscription(r.Context(), q)
+	if err != nil {
+		if errors.Is(err, errSubscriptionLimit) {
 			// Render's one error dialect ({error,message,id}) on every branch, so a
 			// Render client reads .message here too, not a bare {error} (w9/m39).
 			core.WriteErrStatus(w, http.StatusTooManyRequests, "too many active log subscriptions")
-			return
+		} else {
+			core.WriteErr(w, err)
 		}
-		defer s.sseConns.Add(-1)
+		return
 	}
+	defer release()
 
 	// Render CLI v2+ sends an upgrade request; everyone else gets SSE or NDJSON.
 	if websocket.IsWebSocketUpgrade(r) {
@@ -169,6 +172,110 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.subscribeStream(w, r, q)
+}
+
+var errSubscriptionLimit = errors.New("log subscription capacity reached")
+
+func (s *Service) acquireSubscription(ctx context.Context, q LogQuery) (func(), error) {
+	global := false
+	if s.MaxSSEConns > 0 {
+		if s.sseConns.Add(1) > s.MaxSSEConns {
+			s.sseConns.Add(-1)
+			return nil, errSubscriptionLimit
+		}
+		global = true
+	}
+	releaseGlobal := func() {
+		if global {
+			s.sseConns.Add(-1)
+		}
+	}
+
+	workspace, err := s.subscriptionWorkspace(ctx, q.App)
+	if err != nil {
+		releaseGlobal()
+		return nil, err
+	}
+	identity, _ := core.IdentityFrom(ctx)
+	subject := identity.Subject
+
+	s.sseMu.Lock()
+	if s.sseBySubject == nil {
+		s.sseBySubject = make(map[string]int)
+		s.sseByWorkspace = make(map[string]int)
+	}
+	if s.MaxSSEConnsPerSubject > 0 && subject != "" && s.sseBySubject[subject] >= s.MaxSSEConnsPerSubject {
+		s.sseMu.Unlock()
+		releaseGlobal()
+		return nil, errSubscriptionLimit
+	}
+	if s.MaxSSEConnsPerWorkspace > 0 && s.sseByWorkspace[workspace] >= s.MaxSSEConnsPerWorkspace {
+		s.sseMu.Unlock()
+		releaseGlobal()
+		return nil, errSubscriptionLimit
+	}
+	if s.MaxSSEConnsPerSubject > 0 && subject != "" {
+		s.sseBySubject[subject]++
+	}
+	if s.MaxSSEConnsPerWorkspace > 0 {
+		s.sseByWorkspace[workspace]++
+	}
+	s.sseMu.Unlock()
+
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			s.sseMu.Lock()
+			if s.MaxSSEConnsPerSubject > 0 && subject != "" {
+				decrementSubscriptionKey(s.sseBySubject, subject)
+			}
+			if s.MaxSSEConnsPerWorkspace > 0 {
+				decrementSubscriptionKey(s.sseByWorkspace, workspace)
+			}
+			s.sseMu.Unlock()
+			releaseGlobal()
+		})
+	}, nil
+}
+
+func (s *Service) subscriptionWorkspace(ctx context.Context, resource string) (string, error) {
+	var labels map[string]string
+	var namespace string
+	switch {
+	case isPostgresResource(resource):
+		database, err := s.AuthorizeDatabase(ctx, core.RelCanViewLogs, resource)
+		if err != nil {
+			return "", err
+		}
+		labels, namespace = database.Labels, database.Namespace
+	case isKeyValueResource(resource):
+		kv, err := s.AuthorizeKeyValue(ctx, core.RelCanViewLogs, resource)
+		if err != nil {
+			return "", err
+		}
+		labels, namespace = kv.Labels, kv.Namespace
+	default:
+		app, err := s.AuthorizeApp(ctx, core.RelCanViewLogs, resource)
+		if err != nil {
+			return "", err
+		}
+		labels, namespace = app.Labels, app.Namespace
+	}
+	if workspace := labels[core.LabelTenant]; workspace != "" {
+		return workspace, nil
+	}
+	if namespace != "" {
+		return namespace, nil
+	}
+	return core.DefaultTenant, nil
+}
+
+func decrementSubscriptionKey(counts map[string]int, key string) {
+	if counts[key] <= 1 {
+		delete(counts, key)
+		return
+	}
+	counts[key]--
 }
 
 // subscribeWebSocket streams the follow as WS text frames, one per log line.

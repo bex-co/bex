@@ -18,20 +18,53 @@ import type { ServerResponse } from "node:http";
 
 export type UIMessagePart = Record<string, unknown>;
 
+interface HubLimits {
+  maxHistoryBytes?: number;
+  maxHistoryParts?: number;
+  maxPartBytes?: number;
+}
+
 function frame(value: unknown): string {
   return `data: ${JSON.stringify(value)}\n\n`;
 }
 
 export class UIMessageStreamHub {
   #history: UIMessagePart[] = [];
+  #historyBytes = 0;
   #clients = new Set<ServerResponse>();
   #closed = false;
+  readonly #maxHistoryBytes: number;
+  readonly #maxHistoryParts: number;
+  readonly #maxPartBytes: number;
+
+  constructor(limits: HubLimits = {}) {
+    this.#maxHistoryBytes = limits.maxHistoryBytes ?? 4 << 20;
+    this.#maxHistoryParts = limits.maxHistoryParts ?? 4096;
+    this.#maxPartBytes = limits.maxPartBytes ?? 1 << 20;
+  }
 
   publish(part: UIMessagePart): void {
     if (this.#closed) throw new Error("UI message stream is already closed");
+    let data = frame(part);
+    if (Buffer.byteLength(data) > this.#maxPartBytes) {
+      part = { type: "data-truncated", reason: "part exceeds stream limit" };
+      data = frame(part);
+    }
     this.#history.push(part);
-    const data = frame(part);
-    for (const response of this.#clients) response.write(data);
+    this.#historyBytes += Buffer.byteLength(data);
+    while (
+      this.#history.length > this.#maxHistoryParts ||
+      this.#historyBytes > this.#maxHistoryBytes
+    ) {
+      const dropped = this.#history.shift();
+      if (dropped) this.#historyBytes -= Buffer.byteLength(frame(dropped));
+    }
+    for (const response of this.#clients) {
+      if (!response.write(data)) {
+        this.#clients.delete(response);
+        response.destroy(new Error("UI message stream client is not draining"));
+      }
+    }
   }
 
   attach(response: ServerResponse): () => void {

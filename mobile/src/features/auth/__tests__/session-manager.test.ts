@@ -129,6 +129,10 @@ describe("SessionManager", () => {
     const transport = new FakeTransport();
     const subject = manager(storage, transport, () => 0);
     await subject.signIn();
+    let clearedSession = "";
+    subject.registerSessionClearHook((session) => {
+      clearedSession = session?.sessionId ?? "";
+    });
     transport.refreshError = new AuthFailure("invalid_grant");
     let failed = false;
     try {
@@ -139,6 +143,7 @@ describe("SessionManager", () => {
     expect(failed).toBe(true);
     expect(subject.getState().status).toBe("signedOut");
     expect(storage.value).toBe(null);
+    expect(clearedSession).not.toBe("");
   });
 
   it("revokes the issued token when secure storage denies sign-in", async () => {
@@ -345,7 +350,7 @@ describe("SessionManager", () => {
       release = resolve;
     });
     let cleanupToken: string | null = null;
-    subject.registerExplicitSignOutHook(async (session) => {
+    subject.registerSessionClearHook(async (session) => {
       cleanupToken = session?.accessToken ?? null;
       await cleanupGate;
     });

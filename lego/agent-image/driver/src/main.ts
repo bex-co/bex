@@ -27,39 +27,88 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const credentials = createCredentialManager(config);
   const hub = new UIMessageStreamHub();
+  let terminalized = false;
+  let activeAbort: AbortController | undefined;
+  let activeTurn:
+    | Promise<Awaited<ReturnType<typeof runHeadlessTurn>>>
+    | undefined;
+  // Capture the control-plane Git proxy's immutable base/session OIDs before a
+  // tenant process can run. Live POST /turn calls await the same setup promise.
+  const setup = (async () => {
+    await restoreWorkspace(config);
+    if (config.deliver) await ensureRepo(config);
+  })();
+  // main awaits setup below; attaching immediately also prevents a fast setup
+  // rejection from becoming an unhandled promise while the listener starts.
+  void setup.catch(() => undefined);
   // Live prompt turns (ADR047 D9): a POST /turn runs another turn on the same
   // session, keeping the UI-message stream open. The fire-and-forget path below
   // still runs its single headless turn and closes the stream.
-  const runTurn = (prompt: string, onPart: (part: Record<string, unknown>) => void) =>
-    runHeadlessTurn(config, credentials, hub, { prompt, closeHub: false, onPart });
-  const listener = await startDriverServer(config, credentials, hub, { runTurn });
+  const controlledTurn = (
+    prompt: string,
+    onPart: (part: Record<string, unknown>) => void,
+    closeHub: boolean,
+  ) => {
+    if (terminalized) throw new Error("agent session is terminalizing");
+    const controller = new AbortController();
+    activeAbort = controller;
+    const turn = runHeadlessTurn(config, credentials, hub, {
+      prompt,
+      closeHub,
+      onPart,
+      abortSignal: controller.signal,
+    });
+    activeTurn = turn;
+    void turn
+      .finally(() => {
+        if (activeTurn === turn) activeTurn = undefined;
+        if (activeAbort === controller) activeAbort = undefined;
+      })
+      .catch(() => undefined);
+    return turn;
+  };
+  const runTurn = async (
+    prompt: string,
+    onPart: (part: Record<string, unknown>) => void,
+  ) => {
+    await setup;
+    return controlledTurn(prompt, onPart, false);
+  };
+  const terminalize = async () => {
+    terminalized = true;
+    activeAbort?.abort();
+    try {
+      await activeTurn;
+    } catch {
+      // Expected when snapshot preparation interrupts an active agent. The
+      // turn's finally block reaps the child before this promise settles.
+    }
+  };
+  const listener = await startDriverServer(config, credentials, hub, {
+    runTurn,
+    terminalize,
+  });
 
   const shutdown = async () => {
+    await terminalize();
     await credentials.scrubPersistedState();
     credentials.forget();
     await listener.close();
   };
   process.once("SIGTERM", () => void shutdown().then(() => process.exit(0)));
   process.once("SIGINT", () => void shutdown().then(() => process.exit(0)));
-  // Local fallback for the HTTP hook used by the lifecycle layer immediately
-  // before pause/snapshot. The next driver starts with a fresh OpenBao value.
-  process.on("SIGUSR1", () =>
-    void credentials.scrubPersistedState().then(() => credentials.forget()),
-  );
-
-  if (!config.prompt) return;
   try {
     // Setup phase: rehydrate a hibernation snapshot when resuming (ADR059 D4),
     // then check out the session branch (cloning only when the workspace is still
     // empty — a restored workspace is left intact) before the agent runs.
     // Package-registry egress is open here; the agent phase then narrows it (D5).
-    await restoreWorkspace(config);
-    if (config.deliver) await ensureRepo(config);
+    await setup;
+    if (!config.prompt) return;
     // codex #9: hold the single-flight guard during the initial headless turn so
     // a concurrent POST /turn gets 409 instead of starting a second agent against
     // the same checkout, transcript, credentials, and Git branch.
     listener.setTurnInFlight(true);
-    await runHeadlessTurn(config, credentials, hub);
+    await controlledTurn(config.prompt, () => undefined, true);
     listener.setTurnInFlight(false);
     if (config.exitAfterTurn) await shutdown();
   } catch (error) {

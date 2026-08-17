@@ -55,6 +55,10 @@ import (
 // — the operator does the mechanism.
 type Service struct {
 	*core.Base
+	// DomainOwnership verifies an app-bound DNS TXT challenge before any custom
+	// host enters App.spec and becomes routable. nil uses the system resolver;
+	// tests inject a deterministic verifier.
+	DomainOwnership DomainOwnershipVerifier
 	// Owners and Metadata are the shared Render resource-metadata dependencies.
 	// The neutral AppView stays independent of nested REST owner wire shapes.
 	Owners   resourcemeta.OwnerResolver

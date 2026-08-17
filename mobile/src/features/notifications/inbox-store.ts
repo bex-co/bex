@@ -43,6 +43,9 @@ const isItem = (value: unknown): value is NotificationInboxItem => {
     notificationId: item.id,
     event: item.event,
     route: item.route,
+    subject: "stored-subject",
+    workspaceId: "stored-workspace",
+    sessionId: "stored-session",
   });
   return (
     envelope !== null &&
@@ -124,6 +127,9 @@ export class NotificationInboxStore {
           notificationId: candidate.id,
           event: candidate.event,
           route: candidate.route,
+          subject: "stored-subject",
+          workspaceId: "stored-workspace",
+          sessionId: "stored-session",
         });
         if (
           !envelope ||

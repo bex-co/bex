@@ -76,7 +76,7 @@ func (r *auditRecorder) Record(_ context.Context, event core.AuditEvent) error {
 func validMintRequest() MintRequest {
 	return MintRequest{
 		SessionID: "ags-one", Workspace: "tea-a", Repository: "octo/repo",
-		Branch: "bex-agent/task-1", PodName: "sandbox-one", PodUID: "uid-one",
+		Branch: "bex-agent/task-1", PodName: "sbx-1-0", PodUID: "uid-one",
 	}
 }
 
@@ -138,8 +138,12 @@ func TestMinterRefusesTerminalOrForeignSession(t *testing.T) {
 		// round-5 finding 10: Cancel persists "canceling" before external teardown
 		// and leaves it on a teardown failure, so a still-live sandbox must not mint.
 		"canceling":         {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "canceling"}},
+		"hibernating":       {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "hibernating"}},
+		"hibernated":        {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "hibernated"}},
+		"unknown phase":     {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-1", Phase: "future-phase"}},
 		"sandbox cleared":   {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "", Phase: "running"}},
 		"foreign workspace": {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-b", SandboxID: "sbx-1", Phase: "running"}},
+		"stale generation":  {session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-a", SandboxID: "sbx-2", Phase: "running"}},
 		"absent session":    {err: store.ErrNotFound},
 	}
 	for name, sessions := range cases {

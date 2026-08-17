@@ -11,7 +11,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  project: default
+  project: bex-platform
   source:
     # released as: https://github.com/alibaba/OpenSandbox/releases/download/helm/opensandbox-controller/0.2.0/opensandbox-controller-0.2.0.tgz
     # chart is vendored in THIS repo; Argo reads it via the SSH deploy key (bex-repo secret)

@@ -194,6 +194,9 @@ func encodeMessage(message Message) ([]byte, error) {
 		{"notificationId", message.Data.NotificationID, MaxNotificationIDBytes},
 		{"event", message.Data.Event, MaxEventBytes},
 		{"route", message.Data.Route, MaxRouteBytes},
+		{"subject", message.Data.Subject, MaxBindingIDBytes},
+		{"workspaceId", message.Data.WorkspaceID, MaxBindingIDBytes},
+		{"sessionId", message.Data.SessionID, MaxBindingIDBytes},
 		{"collapseKey", message.CollapseKey, MaxCollapseBytes},
 		{"tag", message.Tag, MaxTagBytes},
 	}
@@ -208,7 +211,8 @@ func encodeMessage(message Message) ([]byte, error) {
 	if message.Data.Schema != "bex.notification.v1" {
 		return nil, &PayloadError{Field: "schema", Reason: "unsupported"}
 	}
-	if message.Data.NotificationID == "" || message.Data.Event == "" || message.Data.Route == "" {
+	if message.Data.NotificationID == "" || message.Data.Event == "" || message.Data.Route == "" ||
+		message.Data.Subject == "" || message.Data.WorkspaceID == "" || message.Data.SessionID == "" {
 		return nil, &PayloadError{Field: "data", Reason: "required"}
 	}
 	if !strings.HasPrefix(message.Data.Route, "/") {

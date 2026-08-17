@@ -45,6 +45,7 @@ func TestPushTransportSenderMapsClosedEnvelopeAndUrgency(t *testing.T) {
 		Data: PushEnvelopeData{
 			Schema: "bex.notification.v1", NotificationID: "evt-abcdefghijklmnopqrst",
 			Event: "deploy_failed", Route: "/services/srv-abcdefghijklmnopqrst",
+			Subject: "identity-1", WorkspaceID: "tea-1", SessionID: "session-1",
 		},
 	})
 	if err != nil || ticket != "ticket-1" {

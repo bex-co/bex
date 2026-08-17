@@ -84,6 +84,36 @@ func TestRateLimiterPerCallerIsolation(t *testing.T) {
 	}
 }
 
+func TestRateLimiterAggregatesMultipleKeysInOneWorkspace(t *testing.T) {
+	rl := NewRateLimiter(1, 1)
+	rl.Workspace = fakeRateWorkspace{"key-one": "tea-a", "key-two": "tea-a"}
+	h := rl.Middleware(ok200)
+
+	first := reqWith("GET", "/v1/services", core.Identity{Subject: "key-one", Method: "oauth2"})
+	second := reqWith("GET", "/v1/services", core.Identity{Subject: "key-two", Method: "oauth2"})
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, first)
+	if w.Code != http.StatusOK {
+		t.Fatalf("first key: want 200, got %d", w.Code)
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, second)
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("second key in same workspace: want 429, got %d", w.Code)
+	}
+}
+
+type fakeRateWorkspace map[string]string
+
+func (f fakeRateWorkspace) Tenant(_ context.Context, id core.Identity) (string, bool) {
+	workspace, ok := f[id.Subject]
+	return workspace, ok
+}
+
+func (f fakeRateWorkspace) IsMember(_ context.Context, id core.Identity, workspace string) (bool, error) {
+	return f[id.Subject] == workspace, nil
+}
+
 func TestRateLimiterRetryAfterHeader(t *testing.T) {
 	rl := NewRateLimiter(60, 1)
 	h := rl.Middleware(ok200)

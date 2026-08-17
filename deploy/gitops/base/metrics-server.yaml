@@ -4,9 +4,9 @@
 # NewResourceMetricsSource) read. Without it those endpoints return 503
 # (ErrMetricsUnavailable); instance-count still works (it counts pods directly).
 #
-# --kubelet-insecure-tls is required on CAPD (local mock) and other clusters whose
-# kubelets serve certs the metrics-server can't verify; safe for dev, revisit for
-# a hardened prod (drop it once kubelet serving certs are signed by the cluster CA).
+# Production kubelets rotate serving certificates and Metrics Server verifies
+# them. The disposable CAPD environment adds its insecure compatibility flag in
+# the local overlay only; it can never flow through the production render.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -15,15 +15,14 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  project: default
+  project: bex-platform
   source:
-    repoURL: https://kubernetes-sigs.github.io/metrics-server
-    chart: metrics-server
-    targetRevision: "3.12.2" # pinned exact (codex-security #20); serves metrics.k8s.io/v1beta1
+    repoURL: oci://ghcr.io/bex-co/bex-charts/metrics-server
+    path: .
+    targetRevision: "sha256:d7f01ba2b1b2d9c3f5e505cf8cda6e9712ca145d073ebf28779e2973f2b45077"
     helm:
       values: |
         args:
-          - --kubelet-insecure-tls          # CAPD/dev kubelets: skip serving-cert verification
           - --kubelet-preferred-address-types=InternalIP,Hostname,ExternalIP
         # Fast enough resolution for a metrics page without hammering kubelets.
         metrics:

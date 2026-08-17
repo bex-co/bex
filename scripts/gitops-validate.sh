@@ -2,7 +2,7 @@
 # Validate the GitOps tree renders — pure client-side, no cluster:
 #   1. kustomize build of base and every kustomize dir under overlays/ and
 #      charts/ (globbed, so new components are covered automatically).
-#   2. helm template of the pinned Ory charts against the vendored values files
+#   2. helm template of checksum-locked charts against the vendored values files
 #      (catches values that drift from the chart's schema), for both the base
 #      values and the base+local layering the local overlay declares.
 #   3. promtool check + unit-test of the platform alerting rules embedded in
@@ -14,6 +14,65 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 fail=0
+
+echo "==> privileged manifests and charts have immutable source identities"
+if rg -n 'repoURL: https://|chart:' deploy/gitops/base/*.yaml; then
+  echo "FAIL: base Applications must not resolve live external Helm repositories" >&2
+  fail=1
+fi
+if rg -n 'raw\.githubusercontent\.com/.+/v[0-9].+/(manifests/)?install\.yaml|helm repo add' \
+  .github/workflows/deploy.yml .github/workflows/app-cluster.yml; then
+  echo "FAIL: production workflows retain a mutable privileged artifact resolver" >&2
+  fail=1
+fi
+for required in \
+  'ARGO_INSTALL_COMMIT: e1becb74c728a992804d39c3ceb2e9e6ae58f0ae' \
+  'ARGO_INSTALL_SHA256: 752b5a2681f2522fc78ea12ba2d23be44a4523cfa5d9a55cf1907909cc23fc5d' \
+  'bash scripts/helm-artifact.sh mirror'; do
+  grep -qF "$required" .github/workflows/deploy.yml || {
+    echo "FAIL: deploy workflow lost immutable artifact gate: $required" >&2
+    fail=1
+  }
+done
+for required in \
+  'HELM_REGISTRY_CONFIG="$anonymous_config" helm pull' \
+  'public OCI digest' \
+  'is not anonymously pullable'; do
+  grep -qF "$required" scripts/helm-artifact.sh || {
+    echo "FAIL: Helm mirror no longer proves Argo can anonymously pull reviewed packages: $required" >&2
+    fail=1
+  }
+done
+for app in deploy/gitops/base/*.yaml; do
+  [ "$(yq -r '.kind // ""' "$app")" = Application ] || continue
+  if [ "$(yq -r '.spec.project // ""' "$app")" != bex-platform ]; then
+    echo "FAIL: $app is outside the restricted bex-platform AppProject" >&2
+    fail=1
+  fi
+  while IFS=$'\t' read -r repo digest path; do
+    [ -n "$repo" ] || continue
+    chart=${repo##*/}
+    locked_digest=$(awk -F '|' -v chart="$chart" '$1 == chart { print $5 }' deploy/helm-artifacts.lock)
+    if [ "$repo" != "oci://ghcr.io/bex-co/bex-charts/$chart" ] \
+      || [ "$path" != . ] \
+      || ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
+      || [ "$digest" != "$locked_digest" ]; then
+      echo "FAIL: $app OCI source does not match the reviewed lock for $chart" >&2
+      fail=1
+    fi
+  done < <(yq -r '
+    [(.spec.source // {}), (.spec.sources[]?)][] |
+    select(.repoURL | test("^oci://")) |
+    [.repoURL, .targetRevision, .path] | @tsv' "$app")
+done
+for required in \
+  'git@github.com:bex-co/bex.git' \
+  'oci://ghcr.io/bex-co/bex-charts/*'; do
+  grep -qF "$required" deploy/gitops/base/appproject.yaml || {
+    echo "FAIL: bex-platform AppProject lost source restriction: $required" >&2
+    fail=1
+  }
+done
 
 echo "==> retired platform source/config paths remain absent"
 bash scripts/platform-deprecations-validate.sh || fail=1
@@ -592,10 +651,10 @@ done
 ZOT="deploy/gitops/base/zot.yaml"
 if [ -f "$ZOT" ]; then
   echo "==> $ZOT registry-auth shape"
-  # Chart pinned to an exact version (a bare * or x.* wildcard is a regression).
+  # Chart pinned to the repository-reviewed OCI manifest digest.
   rev="$(yq '.spec.source.targetRevision' "$ZOT")"
-  echo "$rev" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+' \
-    || { echo "FAIL: zot targetRevision is '$rev' — pin an exact chart version (no wildcard)" >&2; fail=1; }
+  [ "$rev" = "$(awk -F '|' '$1 == "zot" { print $5 }' deploy/helm-artifacts.lock)" ] \
+    || { echo "FAIL: zot targetRevision is '$rev' — require the reviewed OCI digest" >&2; fail=1; }
   vals="$(yq '.spec.source.helm.values' "$ZOT")"
   # Per-App pull credentials (w7/m36): the operator manages the full Zot config via
   # the zot-config Secret, so mountConfig must be false (chart must not override it).
@@ -636,29 +695,28 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 # For each multi-source base Application with vendored values (kratos, hydra,
-# openfga, openbao, traefik, ...): pull the pinned chart once from ITS repo, then
+# openfga, openbao, traefik, ...): authenticate the locked chart once, then
 # render it with the base values alone and with each overlay's values layered on
 # top (the same order Argo's valueFiles use — later wins). Globs every overlay
 # dir, so a prod-only layer (e.g. openbao's server.ha.replicas: 3 or traefik's
 # LoadBalancer) is rendered here, not first in prod. Namespace comes from the
 # Application itself so this generalizes across components in different namespaces
 # (auth vs secrets vs traefik).
+declare -A chart_archives
 for chart in kratos hydra openfga openbao traefik; do
   app="deploy/gitops/base/$chart.yaml"
-  version="$(yq '.spec.sources[0].targetRevision' "$app")"
-  repo="$(yq '.spec.sources[0].repoURL' "$app")"
   ns="$(yq '.spec.destination.namespace' "$app")"
-  helm pull "$chart" --repo "$repo" --version "$version" -d "$tmp" \
-    || { echo "FAIL: cannot pull $chart $version" >&2; fail=1; continue; }
+  chart_archives[$chart]=$(bash scripts/helm-artifact.sh pull "$chart" "$tmp/$chart") \
+    || { echo "FAIL: cannot authenticate locked $chart chart" >&2; fail=1; continue; }
   layerings=("deploy/gitops/base/values/$chart.values.yaml")
   for ov in deploy/gitops/overlays/*/values/$chart.values.yaml; do
     [ -f "$ov" ] && layerings+=("deploy/gitops/base/values/$chart.values.yaml -f $ov")
   done
   for values in "${layerings[@]}"; do
-    echo "==> helm template $chart $version -n $ns -f $values"
+    echo "==> helm template locked $chart -n $ns -f $values"
     # shellcheck disable=SC2086 — $values intentionally splits into -f args
-    helm template "$chart" "$tmp/$chart-$version.tgz" -n "$ns" -f $values >/dev/null \
-      || { echo "FAIL: $chart values do not render against chart $version" >&2; fail=1; }
+    helm template "$chart" "${chart_archives[$chart]}" -n "$ns" -f $values >/dev/null \
+      || { echo "FAIL: $chart values do not render against its locked chart" >&2; fail=1; }
   done
 done
 
@@ -668,16 +726,16 @@ done
 # proves the production-only bex-api overlay renders without making the one-node
 # local CAPD cluster permanently Progressing.
 echo "==> production auth/control-plane request path is drain-safe"
-helm template hydra "$tmp/hydra-$(yq '.spec.sources[0].targetRevision' deploy/gitops/base/hydra.yaml).tgz" -n auth \
+helm template hydra "${chart_archives[hydra]}" -n auth \
   -f deploy/gitops/base/values/hydra.values.yaml \
   -f deploy/gitops/overlays/prod/values/hydra.values.yaml >"$tmp/hydra-prod.yaml"
-helm template kratos "$tmp/kratos-$(yq '.spec.sources[0].targetRevision' deploy/gitops/base/kratos.yaml).tgz" -n auth \
+helm template kratos "${chart_archives[kratos]}" -n auth \
   -f deploy/gitops/base/values/kratos.values.yaml \
   -f deploy/gitops/overlays/prod/values/kratos.values.yaml >"$tmp/kratos-prod.yaml"
-helm template openfga "$tmp/openfga-$(yq '.spec.sources[0].targetRevision' deploy/gitops/base/openfga.yaml).tgz" -n auth \
+helm template openfga "${chart_archives[openfga]}" -n auth \
   -f deploy/gitops/base/values/openfga.values.yaml \
   -f deploy/gitops/overlays/prod/values/openfga.values.yaml >"$tmp/openfga-prod.yaml"
-helm template traefik "$tmp/traefik-$(yq '.spec.sources[0].targetRevision' deploy/gitops/base/traefik.yaml).tgz" -n traefik \
+helm template traefik "${chart_archives[traefik]}" -n traefik \
   -f deploy/gitops/base/values/traefik.values.yaml \
   -f deploy/gitops/overlays/prod/values/traefik.values.yaml >"$tmp/traefik-prod.yaml"
 kubectl kustomize deploy/gitops/overlays/prod >"$tmp/prod-apps.yaml"
@@ -1944,19 +2002,17 @@ if [ "$static_cfg_kv" != "$mgr_origin_kv" ]; then
   echo "FAIL: static serve origin (bex-static-config) != publish origin (manager env): '$static_cfg_kv' vs '$mgr_origin_kv'" >&2
   fail=1
 fi
-# onbex.co is the sanctioned shared platform hosting suffix (exposed web services
-# auto-serve <slug>.onbex.co). Its PSL private-section submission is pending, so
-# the operator starts with a warning (hostingdomain.ValidateSharedSuffix +
-# cmd/manager) rather than refusing it. Any OTHER shared domain in prod is still a
-# misconfiguration and fails closed here.
+# Production keeps shared hosting disabled until a dedicated suffix is in the
+# PSL PRIVATE section. Any committed production value is a release-blocking
+# regression; startup independently fails closed for unlisted runtime values.
 prod_shared_domain="$(
   {
     yq -N 'select(.kind == "Deployment" and (.metadata.name == "bex-controller-manager" or .metadata.name == "bex-api" or .metadata.name == "bex-static-server")) | .spec.template.spec.containers[].env[]? | select(.name == "BEX_BASE_DOMAIN") | .value' "$tmp/bex-operator-prod.yaml"
     yq -N 'select(.kind == "ConfigMap" and .metadata.name == "bex-static-config") | .data.BEX_BASE_DOMAIN // ""' "$tmp/bex-operator-prod.yaml"
-  } | grep -vxF 'onbex.co' | grep -v '^$' || true
+	} | grep -v '^$' || true
 )"
 if [ -n "$prod_shared_domain" ]; then
-  echo "FAIL: prod configures an unrecognized shared BEX_BASE_DOMAIN (want onbex.co or empty): $prod_shared_domain" >&2
+	echo "FAIL: prod configures BEX_BASE_DOMAIN before a PSL-listed suffix is approved: $prod_shared_domain" >&2
   fail=1
 fi
 kubectl kustomize lego/operator/config/default >"$tmp/bex-operator-default.yaml"

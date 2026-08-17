@@ -91,6 +91,11 @@ accessLog:
     defaultMode: keep
     headers:
       defaultMode: drop
+    # Deploy-hook credentials use the `key` query parameter so they remain
+    # copy/paste URLs without entering RequestPath. Drop every query parameter
+    # before the raw access-log sink; request-log filtering never depends on it.
+    queryParameters:
+      defaultMode: drop
 # Prometheus request metrics — the backend for bex-api's request metrics
 # (GET /v1/metrics/{http-requests,http-latency,bandwidth}). addServicesLabels
 # exposes the per-service counters (traefik_service_requests_total,

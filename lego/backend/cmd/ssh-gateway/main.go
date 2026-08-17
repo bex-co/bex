@@ -27,6 +27,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -367,6 +368,19 @@ func startAuxListener(name, logName, addr string, mux *http.ServeMux, stop conte
 	if err != nil {
 		log.Fatalf("ssh gateway: %s listen %s: %v", name, addr, err)
 	}
+	// Browser-facing listeners sit behind one edge peer and internal exec sits
+	// behind bex-api, so their immediate-source cap equals the global cap. The
+	// sandbox-direct proxies override this with a real per-Pod admission budget.
+	global, perSource := 128, 128
+	switch name {
+	case "agent git proxy":
+		global = intEnv("BEX_AGENT_GIT_MAX_PREAUTH_CONNS", global)
+		perSource = intEnv("BEX_AGENT_GIT_MAX_PREAUTH_CONNS_PER_SOURCE", perSource)
+	case "agent model proxy":
+		global = intEnv("BEX_AGENT_MODEL_MAX_PREAUTH_CONNS", global)
+		perSource = intEnv("BEX_AGENT_MODEL_MAX_PREAUTH_CONNS_PER_SOURCE", perSource)
+	}
+	listener = newAdmissionListener(listener, global, perSource)
 	go func() {
 		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			stop()
@@ -378,6 +392,72 @@ func startAuxListener(name, logName, addr string, mux *http.ServeMux, stop conte
 		defer cancel()
 		_ = server.Shutdown(shutdownCtx)
 	}
+}
+
+type admissionListener struct {
+	net.Listener
+	mu        sync.Mutex
+	active    int
+	bySource  map[string]int
+	max       int
+	perSource int
+}
+
+func newAdmissionListener(inner net.Listener, max, perSource int) net.Listener {
+	return &admissionListener{
+		Listener: inner, bySource: make(map[string]int), max: max, perSource: perSource,
+	}
+}
+
+func (l *admissionListener) Accept() (net.Conn, error) {
+	for {
+		conn, err := l.Listener.Accept()
+		if err != nil {
+			return nil, err
+		}
+		source := connectionSource(conn.RemoteAddr())
+		l.mu.Lock()
+		admitted := l.active < l.max && l.bySource[source] < l.perSource
+		if admitted {
+			l.active++
+			l.bySource[source]++
+		}
+		l.mu.Unlock()
+		if admitted {
+			return &admittedConn{Conn: conn, release: func() { l.release(source) }}, nil
+		}
+		_ = conn.Close()
+	}
+}
+
+func (l *admissionListener) release(source string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.active--
+	l.bySource[source]--
+	if l.bySource[source] == 0 {
+		delete(l.bySource, source)
+	}
+}
+
+type admittedConn struct {
+	net.Conn
+	once    sync.Once
+	release func()
+}
+
+func (c *admittedConn) Close() error {
+	err := c.Conn.Close()
+	c.once.Do(c.release)
+	return err
+}
+
+func connectionSource(addr net.Addr) string {
+	host, _, err := net.SplitHostPort(addr.String())
+	if err == nil {
+		return host
+	}
+	return addr.String()
 }
 
 func healthzOK(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }

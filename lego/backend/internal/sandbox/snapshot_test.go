@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -52,7 +53,7 @@ func TestAgentSuspendScrubsBeforeSnapshotAndFailsClosed(t *testing.T) {
 			execCalls := 0
 			gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				claims, err := sandboxexec.Verify(secret, r.Header.Get(sandboxexec.TicketHeader), time.Now())
-				if err != nil || len(claims.Command) != 3 || claims.Command[2] != "/usr/local/bin/bex-pre-snapshot" {
+				if err != nil || len(claims.Command) != 3 || !strings.Contains(claims.Command[2], "BEX_AGENT_SNAPSHOT_GRANT=") || !strings.HasSuffix(claims.Command[2], " /usr/local/bin/bex-pre-snapshot") {
 					t.Fatalf("scrub ticket claims=%+v err=%v", claims, err)
 				}
 				execCalls++
@@ -64,7 +65,7 @@ func TestAgentSuspendScrubsBeforeSnapshotAndFailsClosed(t *testing.T) {
 			service := &Service{
 				Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
 				Client: NewClient(upstream.URL),
-				Exec:   &ExecConfig{Secret: secret, GatewayURL: gateway.URL, Client: gateway.Client()},
+				Exec:   &ExecConfig{Secret: secret, DriverGrantSecret: []byte("driver-secret"), GatewayURL: gateway.URL, Client: gateway.Client()},
 			}
 			err := service.Suspend(callerCtx(), "os-agent")
 			if execCalls != 1 {

@@ -41,6 +41,8 @@ const (
 	kpackReadyCondition       = "Ready"
 	kpackSucceededCondition   = "Succeeded"
 	kpackServiceAccountPrefix = "bex-kpack-"
+	kpackPurposeLabel         = "app.bex.co/kpack-purpose"
+	kpackRevisionLabel        = "app.bex.co/build-revision"
 )
 
 var (
@@ -82,7 +84,7 @@ func KpackImage(o Options) *unstructured.Unstructured {
 
 	spec := map[string]any{
 		"tag":                o.KpackImageRef(),
-		"serviceAccountName": kpackServiceAccountName(o.Name),
+		"serviceAccountName": kpackServiceAccountName(o),
 		"builder": map[string]any{
 			"name": kpackClusterBuilder,
 			"kind": "ClusterBuilder",
@@ -117,12 +119,14 @@ func KpackImage(o Options) *unstructured.Unstructured {
 		labels[key] = value
 	}
 	labels["app.bex.co/build"] = o.Name
+	labels[kpackPurposeLabel] = kpackImagePurpose
+	labels[kpackRevisionLabel] = kpackRevision(o)
 
 	return &unstructured.Unstructured{Object: map[string]any{
 		"apiVersion": kpackAPIVersion,
 		"kind":       "Image",
 		"metadata": map[string]any{
-			"name":      JobName(o.Name, o.Revision),
+			"name":      kpackImageName(o),
 			"namespace": o.Namespace,
 			"labels":    labels,
 		},
@@ -136,7 +140,6 @@ func buildpack(ctx context.Context, o Options) (Result, error) {
 	}
 	image := KpackImage(o)
 	key := client.ObjectKeyFromObject(image)
-	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
 	if err := o.Client.Create(ctx, image); err != nil && !apierrors.IsAlreadyExists(err) {
 		return Result{}, fmt.Errorf("build: create kpack image %s: %w", key.Name, err)
 	}
@@ -163,8 +166,8 @@ func buildpack(ctx context.Context, o Options) (Result, error) {
 			}
 			return Result{}, fmt.Errorf("build: get kpack image %s: %w", key.Name, err)
 		}
-		if err := identity.CheckOwner(cur); err != nil {
-			return Result{}, fmt.Errorf("build: check kpack image owner %s: %w", key.Name, err)
+		if err := checkKpackArtifact(cur, o, kpackImagePurpose); err != nil {
+			return Result{}, fmt.Errorf("build: check kpack image identity %s: %w", key.Name, err)
 		}
 		condition, found := kpackCondition(cur, kpackReadyCondition)
 		if found {
@@ -283,12 +286,63 @@ func newKpackBuildList() *unstructured.UnstructuredList {
 	return u
 }
 
-func kpackServiceAccountName(app string) string {
-	name := kpackServiceAccountPrefix + app
-	if len(name) > 63 {
-		name = name[:63]
+const (
+	kpackImagePurpose          = "image"
+	kpackServiceAccountPurpose = "service-account"
+	kpackRegistrySecretPurpose = "registry-credential"
+	kpackGitSecretPurpose      = "git-credential"
+)
+
+func kpackRevision(o Options) string {
+	if o.Revision == "" {
+		return defaultRevision
 	}
-	return strings.ToLower(name)
+	return strings.ToLower(o.Revision)
+}
+
+func kpackArtifactName(o Options, readable, purpose string) string {
+	return stableKubernetesName(readable,
+		"kpack", strings.ToLower(o.Name), o.AppUID, kpackRevision(o), purpose)
+}
+
+func kpackImageName(o Options) string {
+	return kpackArtifactName(o, "bld-"+o.Name+"-"+kpackRevision(o), kpackImagePurpose)
+}
+
+func kpackServiceAccountName(o Options) string {
+	return kpackArtifactName(o, kpackServiceAccountPrefix+o.Name, kpackServiceAccountPurpose)
+}
+
+func kpackArtifactLabels(o Options, purpose string) map[string]string {
+	labels := buildLabels(o)
+	labels[kpackPurposeLabel] = purpose
+	labels[kpackRevisionLabel] = kpackRevision(o)
+	return labels
+}
+
+func checkKpackArtifact(obj metav1.Object, o Options, purpose string) error {
+	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
+	if err := identity.CheckOwner(obj); err != nil {
+		return err
+	}
+	labels := obj.GetLabels()
+	if labels[kpackPurposeLabel] != purpose || labels[kpackRevisionLabel] != kpackRevision(o) {
+		return fmt.Errorf("artifact %s/%s has mismatched kpack purpose or revision", obj.GetNamespace(), obj.GetName())
+	}
+	return nil
+}
+
+// claimKpackArtifact validates a deterministic name before CreateOrUpdate can
+// mutate it. Empty metadata denotes a new object; any persisted or labeled
+// object must already belong to the exact App UID, revision, and purpose.
+func claimKpackArtifact(obj metav1.Object, o Options, purpose string) error {
+	if obj.GetResourceVersion() != "" || obj.GetUID() != "" || len(obj.GetLabels()) > 0 {
+		if err := checkKpackArtifact(obj, o, purpose); err != nil {
+			return err
+		}
+	}
+	obj.SetLabels(kpackArtifactLabels(o, purpose))
+	return nil
 }
 
 func ensureKpackCredentials(ctx context.Context, o Options) error {
@@ -313,9 +367,11 @@ func ensureKpackCredentials(ctx context.Context, o Options) error {
 		secretRefs = append(secretRefs, corev1.ObjectReference{Name: o.SignKeySecret})
 	}
 
-	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: kpackServiceAccountName(o.Name), Namespace: o.Namespace}}
+	sa := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{Name: kpackServiceAccountName(o), Namespace: o.Namespace}}
 	_, err := controllerutil.CreateOrUpdate(ctx, o.Client, sa, func() error {
-		sa.Labels = buildLabels(o)
+		if err := claimKpackArtifact(sa, o, kpackServiceAccountPurpose); err != nil {
+			return err
+		}
 		sa.Secrets = secretRefs
 		sa.ImagePullSecrets = imagePullSecrets
 		sa.AutomountServiceAccountToken = ptr(false)
@@ -358,10 +414,12 @@ func ensureKpackRegistrySecret(ctx context.Context, o Options) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	name := JobName(o.Name, "kpack-registry")
+	name := kpackArtifactName(o, "bld-"+o.Name+"-kpack-registry", kpackRegistrySecretPurpose)
 	dst := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: o.Namespace}}
 	_, err = controllerutil.CreateOrUpdate(ctx, o.Client, dst, func() error {
-		dst.Labels = buildLabels(o)
+		if err := claimKpackArtifact(dst, o, kpackRegistrySecretPurpose); err != nil {
+			return err
+		}
 		dst.Type = corev1.SecretTypeDockerConfigJson
 		dst.Data = map[string][]byte{corev1.DockerConfigJsonKey: data}
 		return nil
@@ -391,10 +449,12 @@ func ensureKpackGitSecret(ctx context.Context, o Options) (string, error) {
 	if origin != "https://github.com" {
 		return "", fmt.Errorf("kpack clone token is github-scoped but repo origin is %q; refusing to send token to non-github origin", origin)
 	}
-	name := JobName(o.Name, "kpack-git")
+	name := kpackArtifactName(o, "bld-"+o.Name+"-kpack-git", kpackGitSecretPurpose)
 	dst := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: o.Namespace}}
 	_, err = controllerutil.CreateOrUpdate(ctx, o.Client, dst, func() error {
-		dst.Labels = buildLabels(o)
+		if err := claimKpackArtifact(dst, o, kpackGitSecretPurpose); err != nil {
+			return err
+		}
 		dst.Annotations = map[string]string{"kpack.io/git": origin}
 		dst.Type = corev1.SecretTypeBasicAuth
 		dst.Data = map[string][]byte{

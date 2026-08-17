@@ -9,9 +9,7 @@ import type {
 } from "./types";
 
 type Listener = (state: AuthState) => void;
-type ExplicitSignOutHook = (
-  session: StoredSession | null,
-) => Promise<void> | void;
+type SessionClearHook = (session: StoredSession | null) => Promise<void> | void;
 
 export class SessionManager {
   private state: AuthState = { status: "loading" };
@@ -19,7 +17,7 @@ export class SessionManager {
   private listeners = new Set<Listener>();
   private refreshPromise?: Promise<StoredSession>;
   private establishPromise?: Promise<void>;
-  private explicitSignOutHooks = new Set<ExplicitSignOutHook>();
+  private sessionClearHooks = new Set<SessionClearHook>();
   /**
    * Monotonic auth epoch. Bumped the instant sign-out begins clearing state, so
    * a token refresh that started under an earlier epoch can detect that the
@@ -43,9 +41,9 @@ export class SessionManager {
     return () => this.listeners.delete(listener);
   }
 
-  registerExplicitSignOutHook(hook: ExplicitSignOutHook): () => void {
-    this.explicitSignOutHooks.add(hook);
-    return () => this.explicitSignOutHooks.delete(hook);
+  registerSessionClearHook(hook: SessionClearHook): () => void {
+    this.sessionClearHooks.add(hook);
+    return () => this.sessionClearHooks.delete(hook);
   }
 
   getState(): AuthState {
@@ -120,6 +118,11 @@ export class SessionManager {
       this.state.status === "signedIn"
     ) {
       return;
+    }
+    const previous = this.current;
+    if (previous) {
+      this.authGeneration += 1;
+      await this.runSessionClearHooks(previous);
     }
     const session = this.toStored(tokens, this.newSessionId());
     try {
@@ -197,25 +200,36 @@ export class SessionManager {
   }
 
   async signOut(): Promise<void> {
-    // Invalidate any in-flight refresh BEFORE clearing state, so a token
-    // endpoint that resolves after this cannot resurrect the session.
-    this.authGeneration += 1;
     const current = this.current;
-    const featureCleanup = [...this.explicitSignOutHooks].map((hook) =>
-      Promise.resolve(hook(current)).catch(() => undefined),
-    );
     const revoke = current
       ? this.transport.revoke(current.accessToken).catch(() => undefined)
       : Promise.resolve();
     await this.clearLocalSession();
-    await Promise.all([revoke, ...featureCleanup]);
+    await revoke;
   }
 
   private async clearLocalSession(): Promise<void> {
+    // Every terminal path crosses the same boundary. This includes invalid_grant,
+    // invalid_response, and storage failures as well as explicit sign-out, so
+    // notification subscriptions/inboxes cannot survive a forced account clear.
+    this.authGeneration += 1;
+    const previous = this.current;
     this.current = null;
     this.setState({ status: "loading" });
+    const featureCleanup = this.runSessionClearHooks(previous);
     await this.storage.clear().catch(() => undefined);
     await this.onBoundaryReset();
     this.setState({ status: "signedOut" });
+    await featureCleanup;
+  }
+
+  private async runSessionClearHooks(
+    session: StoredSession | null,
+  ): Promise<void> {
+    await Promise.all(
+      [...this.sessionClearHooks].map((hook) =>
+        Promise.resolve(hook(session)).catch(() => undefined),
+      ),
+    );
   }
 }

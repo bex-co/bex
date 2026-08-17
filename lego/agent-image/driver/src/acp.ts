@@ -42,7 +42,7 @@ export interface SessionProvider {
   resume: "new" | "loaded" | "unsupported";
   prompt(text: string): Promise<PromptResponse>;
   cancel(): Promise<void>;
-  cleanup(): void;
+  cleanup(): Promise<void>;
 }
 
 export interface CreateSessionOptions {
@@ -54,7 +54,11 @@ export interface CreateSessionOptions {
   abortSignal?: AbortSignal;
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  message: string,
+): Promise<T> {
   let timer: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error(message)), ms);
@@ -66,7 +70,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 // autoApprove selects a permission option for a headless run. The sandbox is the
 // security boundary (ADR047 D5 egress + fs confinement), so the driver grants
 // the requested action rather than blocking a fire-and-forget turn on a prompt.
-function autoApprove(request: RequestPermissionRequest): RequestPermissionResponse {
+function autoApprove(
+  request: RequestPermissionRequest,
+): RequestPermissionResponse {
   const option =
     request.options.find((candidate) => candidate.kind === "allow_always") ??
     request.options.find((candidate) => candidate.kind === "allow_once") ??
@@ -86,20 +92,35 @@ export async function createSessionProvider(
     env: { ...process.env, ...agentEnv },
     stdio: ["pipe", "pipe", "pipe"],
   });
-  const stderr: string[] = [];
-  child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk.toString()));
-  const cleanup = () => {
-    if (!child.killed) child.kill("SIGKILL");
+  const maxStderrBytes = 64 << 10;
+  let stderr = Buffer.alloc(0);
+  child.stderr.on("data", (chunk: Buffer) => {
+    stderr = Buffer.concat([stderr, chunk]);
+    if (stderr.length > maxStderrBytes) {
+      stderr = stderr.subarray(stderr.length - maxStderrBytes);
+    }
+  });
+  const stopped = new Promise<void>((resolve) => {
+    if (child.exitCode !== null) resolve();
+    else child.once("exit", () => resolve());
+  });
+  const cleanup = async () => {
+    if (child.exitCode === null) child.kill("SIGKILL");
+    await stopped;
   };
   // Guarantee the child dies on turn timeout even if we never returned from
   // connect below (a hung initialize).
-  options.abortSignal?.addEventListener("abort", cleanup, { once: true });
+  options.abortSignal?.addEventListener("abort", () => void cleanup(), {
+    once: true,
+  });
 
   const client: Client = {
     async sessionUpdate(params: SessionNotification): Promise<void> {
       options.onUpdate(params.update);
     },
-    async requestPermission(params: RequestPermissionRequest): Promise<RequestPermissionResponse> {
+    async requestPermission(
+      params: RequestPermissionRequest,
+    ): Promise<RequestPermissionResponse> {
       return autoApprove(params);
     },
   };
@@ -114,18 +135,28 @@ export async function createSessionProvider(
   // stream-closed error.
   const exited = new Promise<never>((_, reject) => {
     child.once("exit", (code, signal) =>
-      reject(new Error(`ACP agent exited (code=${code}, signal=${signal}): ${stderr.join("").trim()}`)),
+      reject(
+        new Error(
+          `ACP agent exited (code=${code}, signal=${signal}): ${stderr.toString().trim()}`,
+        ),
+      ),
     );
     child.once("error", reject);
   });
   exited.catch(() => {}); // avoid an unhandled rejection when the turn ends first
 
-  const connectTimeoutMs = Math.min(config.turnTimeoutMs, maximumConnectTimeoutMs);
+  const connectTimeoutMs = Math.min(
+    config.turnTimeoutMs,
+    maximumConnectTimeoutMs,
+  );
   try {
     const initialize = await withTimeout(
       connection.initialize({
         protocolVersion: PROTOCOL_VERSION,
-        clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
+        clientCapabilities: {
+          fs: { readTextFile: false, writeTextFile: false },
+          terminal: false,
+        },
         clientInfo: { name: "bex-agent-driver", version: "0.1.0" },
       }),
       connectTimeoutMs,
@@ -136,12 +167,19 @@ export async function createSessionProvider(
     let resume: SessionProvider["resume"] = "new";
     const loadSupported = initialize.agentCapabilities?.loadSession === true;
     if (config.existingSessionId && loadSupported) {
-      await connection.loadSession({ sessionId: config.existingSessionId, cwd: config.cwd, mcpServers: [] });
+      await connection.loadSession({
+        sessionId: config.existingSessionId,
+        cwd: config.cwd,
+        mcpServers: [],
+      });
       sessionId = config.existingSessionId;
       resume = "loaded";
     } else {
       if (config.existingSessionId) resume = "unsupported";
-      const created = await connection.newSession({ cwd: config.cwd, mcpServers: [] });
+      const created = await connection.newSession({
+        cwd: config.cwd,
+        mcpServers: [],
+      });
       sessionId = created.sessionId;
     }
 
@@ -160,7 +198,7 @@ export async function createSessionProvider(
       cleanup,
     };
   } catch (error) {
-    cleanup();
+    await cleanup();
     throw error;
   }
 }

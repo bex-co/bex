@@ -29,7 +29,7 @@ function consentRequest(overrides: Record<string, unknown> = {}) {
     // request_url carries the original authorize URL incl. a PKCE code_challenge
     // (w6/003) — present by default so the existing happy-path tests pass.
     request_url:
-      "https://oauth.bex.co/oauth2/auth?response_type=code&code_challenge=abc&code_challenge_method=S256",
+      "https://oauth.bex.co/oauth2/auth?response_type=code&code_challenge=abc&code_challenge_method=S256&redirect_uri=https%3A%2F%2Fevil.example%2Foauth%2Fcallback",
     ...overrides,
   };
 }
@@ -177,6 +177,7 @@ describe("handleConsent (GET)", () => {
       challenge: CHALLENGE,
       clientId: "some-client",
       clientName: "Some Agent",
+      redirectOrigin: "https://evil.example",
       scopes: ["openid", "offline_access"],
       audiences: ["https://api.bex.co/mcp"],
       csrfToken: csrf(),

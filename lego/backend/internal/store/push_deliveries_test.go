@@ -147,7 +147,7 @@ func TestPGStorePushDeliveryQueue(t *testing.T) {
 	tokens := []string{"ExponentPushToken[queue-a-" + stamp + "]", "ExponentPushToken[queue-b-" + stamp + "]"}
 	for index, token := range tokens {
 		if _, err := store.UpsertDevicePushSubscription(ctx, DevicePushSubscription{
-			TenantID: tenant.ID, Subject: subject, DeviceID: fmt.Sprintf("device-%d", index),
+			TenantID: tenant.ID, Subject: subject, DeviceID: fmt.Sprintf("device-%d", index), SessionID: "session-subject",
 			Provider: "expo", Platform: "ios", Token: token,
 		}); err != nil {
 			t.Fatal(err)
@@ -279,7 +279,7 @@ func TestPGStorePushDeliveryQueue(t *testing.T) {
 	// revoke the replacement capability.
 	replacementToken := "ExponentPushToken[replacement-" + stamp + "]"
 	if _, err := store.UpsertDevicePushSubscription(ctx, DevicePushSubscription{
-		TenantID: tenant.ID, Subject: subject, DeviceID: reclaimed[0].DeviceID,
+		TenantID: tenant.ID, Subject: subject, DeviceID: reclaimed[0].DeviceID, SessionID: "session-replacement",
 		Provider: "expo", Platform: "ios", Token: replacementToken,
 	}); err != nil {
 		t.Fatal(err)

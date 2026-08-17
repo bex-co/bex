@@ -20,10 +20,25 @@ import type { AgentDriverConfig } from "./config.js";
 
 const maxScannedFileBytes = 32 * 1024 * 1024;
 const scanChunkBytes = 64 * 1024;
+const defaultMaxScannedFiles = 100_000;
+const defaultMaxScannedBytes = 1 << 30;
+const defaultMaxScanDepth = 64;
+const defaultScanTimeoutMs = 30_000;
+
+export interface ScrubOptions {
+  signal?: AbortSignal;
+  maxFiles?: number;
+  maxBytes?: number;
+  maxDepth?: number;
+  timeoutMs?: number;
+}
 
 export interface CredentialManager {
   agentEnvironment(): Record<string, string>;
-  scrubPersistedState(roots?: string[]): Promise<string[]>;
+  scrubPersistedState(
+    roots?: string[],
+    options?: ScrubOptions,
+  ): Promise<string[]>;
   containsSecret(value: string): boolean;
   // secretNeedles returns every byte form the credential can plausibly be
   // re-encoded into — the raw and JSON-escaped renderings plus the common
@@ -96,12 +111,37 @@ function replaceAll(data: Buffer, needle: Buffer, replacement: Buffer): Buffer {
   return Buffer.concat(chunks);
 }
 
-async function largeFileContains(target: string, needles: Buffer[]): Promise<boolean> {
+interface ScrubBudget {
+  files: number;
+  bytes: number;
+  deadline: number;
+  maxFiles: number;
+  maxBytes: number;
+  maxDepth: number;
+  signal?: AbortSignal;
+}
+
+function checkBudget(budget: ScrubBudget, depth: number): void {
+  if (budget.signal?.aborted)
+    throw new Error("persisted credential scan aborted");
+  if (Date.now() > budget.deadline)
+    throw new Error("persisted credential scan timed out");
+  if (depth > budget.maxDepth)
+    throw new Error("persisted credential scan exceeded depth limit");
+}
+
+async function largeFileContains(
+  target: string,
+  needles: Buffer[],
+  budget: ScrubBudget,
+  depth: number,
+): Promise<boolean> {
   const file = await open(target, "r");
   const buffer = Buffer.allocUnsafe(scanChunkBytes);
   let tail = Buffer.alloc(0);
   try {
     for (;;) {
+      checkBudget(budget, depth);
       const { bytesRead } = await file.read(buffer, 0, buffer.length, null);
       if (bytesRead === 0) return false;
       const window = Buffer.concat([tail, buffer.subarray(0, bytesRead)]);
@@ -110,7 +150,9 @@ async function largeFileContains(target: string, needles: Buffer[]): Promise<boo
         (max, needle) => Math.max(max, needle.length - 1),
         0,
       );
-      tail = Buffer.from(window.subarray(window.length - Math.min(overlap, window.length)));
+      tail = Buffer.from(
+        window.subarray(window.length - Math.min(overlap, window.length)),
+      );
     }
   } finally {
     await file.close();
@@ -121,7 +163,10 @@ async function scrubPath(
   target: string,
   needles: Buffer[],
   findings: string[],
+  budget: ScrubBudget,
+  depth: number,
 ): Promise<void> {
+  checkBudget(budget, depth);
   let info: Stats;
   try {
     info = await lstat(target);
@@ -135,21 +180,55 @@ async function scrubPath(
     try {
       dir = await opendir(target);
     } catch (error) {
-      if (ignoreInaccessibleImmutablePath(target, info, error as NodeJS.ErrnoException)) return;
+      if (
+        ignoreInaccessibleImmutablePath(
+          target,
+          info,
+          error as NodeJS.ErrnoException,
+        )
+      )
+        return;
       throw error;
     }
     for await (const entry of dir) {
-      await scrubPath(`${target}/${entry.name}`, needles, findings);
+      checkBudget(budget, depth);
+      await scrubPath(
+        `${target}/${entry.name}`,
+        needles,
+        findings,
+        budget,
+        depth + 1,
+      );
     }
     return;
   }
   if (!info.isFile()) return;
+  budget.files += 1;
+  budget.bytes += info.size;
+  if (budget.files > budget.maxFiles) {
+    throw new Error("persisted credential scan exceeded file limit");
+  }
+  if (budget.bytes > budget.maxBytes) {
+    throw new Error("persisted credential scan exceeded byte limit");
+  }
   if (info.size > maxScannedFileBytes) {
     let containsCredential: boolean;
     try {
-      containsCredential = await largeFileContains(target, needles);
+      containsCredential = await largeFileContains(
+        target,
+        needles,
+        budget,
+        depth,
+      );
     } catch (error) {
-      if (ignoreInaccessibleImmutablePath(target, info, error as NodeJS.ErrnoException)) return;
+      if (
+        ignoreInaccessibleImmutablePath(
+          target,
+          info,
+          error as NodeJS.ErrnoException,
+        )
+      )
+        return;
       throw error;
     }
     if (containsCredential) {
@@ -164,7 +243,14 @@ async function scrubPath(
   try {
     data = await readFile(target);
   } catch (error) {
-    if (ignoreInaccessibleImmutablePath(target, info, error as NodeJS.ErrnoException)) return;
+    if (
+      ignoreInaccessibleImmutablePath(
+        target,
+        info,
+        error as NodeJS.ErrnoException,
+      )
+    )
+      return;
     throw error;
   }
   if (!needles.some((needle) => data.includes(needle))) return;
@@ -222,14 +308,29 @@ export function createCredentialManager(
   return {
     agentEnvironment() {
       if (!secret) return { ...config.agentEnv, ...modelProxyEnv };
-      return { ...config.agentEnv, ...modelProxyEnv, [credentialEnvName]: secret };
+      return {
+        ...config.agentEnv,
+        ...modelProxyEnv,
+        [credentialEnvName]: secret,
+      };
     },
 
-    async scrubPersistedState(roots = config.scrubRoots) {
+    async scrubPersistedState(roots = config.scrubRoots, options = {}) {
       if (!secret) return [];
       const findings: string[] = [];
       const needles = secretForms.map((form) => Buffer.from(form, "utf8"));
-      for (const root of roots) await scrubPath(root, needles, findings);
+      const budget: ScrubBudget = {
+        files: 0,
+        bytes: 0,
+        deadline: Date.now() + (options.timeoutMs ?? defaultScanTimeoutMs),
+        maxFiles: options.maxFiles ?? defaultMaxScannedFiles,
+        maxBytes: options.maxBytes ?? defaultMaxScannedBytes,
+        maxDepth: options.maxDepth ?? defaultMaxScanDepth,
+        signal: options.signal,
+      };
+      for (const root of roots) {
+        await scrubPath(root, needles, findings, budget, 0);
+      }
       return findings;
     },
 

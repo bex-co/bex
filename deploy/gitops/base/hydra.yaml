@@ -1,6 +1,6 @@
 # Ory Hydra — the platform OAuth2/OIDC provider (token issuance + introspection;
-# see docs/ADR012-auth.md). Pinned upstream chart; values are vendored in this repo, so
-# this is a multi-source Application: the Helm repo provides the chart, the git
+# see docs/ADR012-auth.md). The reviewed chart is mirrored to controlled OCI;
+# this is a multi-source Application: the immutable artifact provides the chart, the git
 # source (ref: values) provides base/values/hydra.values.yaml.
 # sync-wave 3: after the CNPG operator (1) and hydra-db (2). Runtime secrets
 # (DSN + system/cookie/pairwise-salt) are NOT in git — scripts/auth-secrets.sh
@@ -13,11 +13,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "3"
 spec:
-  project: default
+  project: bex-platform
   sources:
-    - repoURL: https://k8s.ory.sh/helm/charts
-      chart: hydra
-      targetRevision: "0.62.1" # app v26.2.0; pin exact for reproducibility
+    - repoURL: oci://ghcr.io/bex-co/bex-charts/hydra
+      path: .
+      targetRevision: "sha256:5a53f7c2b0b86f810dcac8a1cb7c82a10340289861d522886bafbc8da88825ea"
       helm:
         valueFiles:
           - $values/deploy/gitops/base/values/hydra.values.yaml

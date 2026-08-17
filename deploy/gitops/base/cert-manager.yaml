@@ -10,11 +10,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  project: default
+  project: bex-platform
   source:
-    repoURL: https://charts.jetstack.io
-    chart: cert-manager
-    targetRevision: "v1.20.3"          # pin exact for reproducibility
+    repoURL: oci://ghcr.io/bex-co/bex-charts/cert-manager
+    path: .
+    targetRevision: "sha256:458ec8e95ed7628a316f4479e56174a577cf4c0eeed0e9b94a486a5544439553"
     helm:
       values: |
         crds:

@@ -30,21 +30,40 @@ import (
 // connection immediately rather than queueing unbounded work (finding 6). A
 // non-positive cap disables that dimension.
 type Limiter struct {
-	mu        sync.Mutex
-	global    int
-	maxGlobal int
-	perSource map[netip.Addr]int
-	maxSource int
+	mu           sync.Mutex
+	global       int
+	maxGlobal    int
+	perSource    map[netip.Addr]int
+	maxSource    int
+	perWorkspace map[string]int
+	maxWorkspace int
+	perResource  map[string]int
+	maxResource  int
 }
 
 // NewLimiter builds a Limiter with the given global and per-source concurrent
 // connection caps. A cap <= 0 disables that dimension.
 func NewLimiter(maxGlobal, maxSource int) *Limiter {
 	return &Limiter{
-		maxGlobal: maxGlobal,
-		maxSource: maxSource,
-		perSource: make(map[netip.Addr]int),
+		maxGlobal:    maxGlobal,
+		maxSource:    maxSource,
+		perSource:    make(map[netip.Addr]int),
+		perWorkspace: make(map[string]int),
+		perResource:  make(map[string]int),
 	}
+}
+
+// SetRouteLimits configures post-SNI fairness caps. It must be called before
+// the limiter is shared with connection handlers. A non-positive cap disables
+// that dimension.
+func (l *Limiter) SetRouteLimits(maxWorkspace, maxResource int) {
+	if l == nil {
+		return
+	}
+	l.mu.Lock()
+	l.maxWorkspace = maxWorkspace
+	l.maxResource = maxResource
+	l.mu.Unlock()
 }
 
 // AcquireGlobal reserves one of the global connection slots. ok is false when the
@@ -100,6 +119,54 @@ func (l *Limiter) AcquireSource(addr netip.Addr) (release func(), ok bool) {
 			l.mu.Unlock()
 		})
 	}, true
+}
+
+// AcquireRoute atomically reserves the post-SNI workspace and resource slots.
+// The resource key must include its workspace/namespace so identically named
+// tenant resources never share a bucket. Admission is all-or-nothing: a failed
+// resource check cannot leak a workspace reservation (finding 19).
+func (l *Limiter) AcquireRoute(workspace, resource string) (release func(), rejectedScope string, ok bool) {
+	if l == nil {
+		return func() {}, "", true
+	}
+	l.mu.Lock()
+	if l.maxWorkspace > 0 && l.perWorkspace[workspace] >= l.maxWorkspace {
+		l.mu.Unlock()
+		return func() {}, "workspace", false
+	}
+	if l.maxResource > 0 && l.perResource[resource] >= l.maxResource {
+		l.mu.Unlock()
+		return func() {}, "resource", false
+	}
+	if l.maxWorkspace > 0 {
+		l.perWorkspace[workspace]++
+	}
+	if l.maxResource > 0 {
+		l.perResource[resource]++
+	}
+	l.mu.Unlock()
+
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			l.mu.Lock()
+			if l.maxWorkspace > 0 {
+				decrementKey(l.perWorkspace, workspace)
+			}
+			if l.maxResource > 0 {
+				decrementKey(l.perResource, resource)
+			}
+			l.mu.Unlock()
+		})
+	}, "", true
+}
+
+func decrementKey(counts map[string]int, key string) {
+	if counts[key] <= 1 {
+		delete(counts, key)
+		return
+	}
+	counts[key]--
 }
 
 // Serve is the shared accept loop for the SNI proxies. It admits each accepted

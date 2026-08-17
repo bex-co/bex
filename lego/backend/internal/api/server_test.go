@@ -551,10 +551,10 @@ func TestDeployHookLookupLimiterShedsRandomTokensBeforeLookup(t *testing.T) {
 	// buckets. The second 429 can therefore only come from the outer IP budget.
 	firstToken := "dhk-" + strings.Repeat("A", 43)
 	secondToken := "dhk-" + strings.Repeat("B", 43)
-	if w := do(t, h, http.MethodPost, "/v1/deploy-hooks/"+firstToken, "", ""); w.Code != http.StatusNotFound {
+	if w := do(t, h, http.MethodPost, "/v1/deploy-hooks?key="+firstToken, "", ""); w.Code != http.StatusNotFound {
 		t.Fatalf("first random token = %d %s, want 404", w.Code, w.Body.String())
 	}
-	if w := do(t, h, http.MethodPost, "/v1/deploy-hooks/"+secondToken, "", ""); w.Code != http.StatusTooManyRequests {
+	if w := do(t, h, http.MethodPost, "/v1/deploy-hooks?key="+secondToken, "", ""); w.Code != http.StatusTooManyRequests {
 		t.Fatalf("second random token = %d %s, want pre-lookup 429", w.Code, w.Body.String())
 	}
 }

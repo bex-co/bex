@@ -42,10 +42,11 @@ var deviceIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$`)
 // RegisterDeviceInput is deliberately provider-neutral in shape while t001's
 // accepted vocabulary stays closed to the one configured transport, Expo.
 type RegisterDeviceInput struct {
-	DeviceID string `json:"deviceId"`
-	Provider string `json:"provider"`
-	Platform string `json:"platform"`
-	Token    string `json:"token"`
+	DeviceID  string `json:"deviceId"`
+	SessionID string `json:"sessionId"`
+	Provider  string `json:"provider"`
+	Platform  string `json:"platform"`
+	Token     string `json:"token"`
 }
 
 // DeviceSubscriptionView is safe to return to the owning member. It omits the
@@ -84,7 +85,7 @@ func (s *Service) RegisterDeviceSubscription(ctx context.Context, in RegisterDev
 	}
 	row, err := s.Store.UpsertDevicePushSubscription(ctx, store.DevicePushSubscription{
 		TenantID: tenantID, Subject: subject, DeviceID: in.DeviceID,
-		Provider: in.Provider, Platform: in.Platform, Token: in.Token,
+		SessionID: in.SessionID, Provider: in.Provider, Platform: in.Platform, Token: in.Token,
 	})
 	if err != nil {
 		switch {
@@ -189,11 +190,15 @@ func (s *Service) deviceOwner(ctx context.Context) (tenantID, subject string, er
 
 func normalizeDeviceInput(in RegisterDeviceInput) (RegisterDeviceInput, error) {
 	in.DeviceID = strings.TrimSpace(in.DeviceID)
+	in.SessionID = strings.TrimSpace(in.SessionID)
 	in.Provider = strings.ToLower(strings.TrimSpace(in.Provider))
 	in.Platform = strings.ToLower(strings.TrimSpace(in.Platform))
 	in.Token = strings.TrimSpace(in.Token)
 	if !deviceIDPattern.MatchString(in.DeviceID) {
 		return RegisterDeviceInput{}, fmt.Errorf("%w: deviceId must be a safe opaque identifier", core.ErrBadRequest)
+	}
+	if !deviceIDPattern.MatchString(in.SessionID) {
+		return RegisterDeviceInput{}, fmt.Errorf("%w: sessionId must be a safe opaque identifier", core.ErrBadRequest)
 	}
 	if in.Provider != "expo" {
 		return RegisterDeviceInput{}, fmt.Errorf("%w: provider must be expo", core.ErrBadRequest)

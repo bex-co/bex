@@ -16,13 +16,19 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, writeFile, readFile } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { deliverBranch, ensureRepo, extractEvidence, restoreWorkspace, type DeliveryConfig } from "../src/delivery.js";
+import {
+  deliverBranch,
+  ensureRepo,
+  extractEvidence,
+  restoreWorkspace,
+  type DeliveryConfig,
+} from "../src/delivery.js";
 import { createCredentialManager } from "../src/credentials.js";
 import type { AgentDriverConfig } from "../src/config.js";
 
@@ -94,12 +100,22 @@ test("restoreWorkspace fetches + untars a snapshot, leaving ensureRepo a no-op",
   const cwd = path.join(root, "restored");
   await mkdir(cwd);
   try {
-    await restoreWorkspace({ restoreUrl: `http://127.0.0.1:${port}/snap.tgz` }, cwd);
+    await restoreWorkspace(
+      { restoreUrl: `http://127.0.0.1:${port}/snap.tgz` },
+      cwd,
+    );
     // The uncommitted working-tree edit survived the snapshot round-trip.
-    assert.equal((await readFile(path.join(cwd, "uncommitted.txt"))).toString(), "unpushed work\n");
+    assert.equal(
+      (await readFile(path.join(cwd, "uncommitted.txt"))).toString(),
+      "unpushed work\n",
+    );
     // A restored workspace is already a git repo, so ensureRepo does not re-clone.
     await ensureRepo(baseConfig(cwd, { repoUrl: remote }));
-    assert.ok((await readFile(path.join(cwd, "uncommitted.txt"))).toString().includes("unpushed"));
+    assert.ok(
+      (await readFile(path.join(cwd, "uncommitted.txt")))
+        .toString()
+        .includes("unpushed"),
+    );
   } finally {
     server.close();
   }
@@ -111,7 +127,10 @@ test("ensureRepo clones an empty workspace onto the session branch", async () =>
   await mkdir(cwd);
   const config = baseConfig(cwd, { repoUrl: remote });
   await ensureRepo(config);
-  assert.equal(git(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]), "bex-agent/session-1");
+  assert.equal(
+    git(cwd, ["rev-parse", "--abbrev-ref", "HEAD"]),
+    "bex-agent/session-1",
+  );
 });
 
 test("deliverBranch commits changes and pushes the branch with a head SHA", async () => {
@@ -130,7 +149,88 @@ test("deliverBranch commits changes and pushes the branch with a head SHA", asyn
   assert.deepEqual(delivery.changedFiles, ["fix.txt"]);
   assert.match(delivery.headSha, /^[0-9a-f]{40}$/);
   // The branch really reached the remote.
-  assert.ok(git(remote, ["rev-parse", "bex-agent/session-1"]));
+  assert.equal(
+    git(remote, ["rev-parse", "bex-agent/session-1"]),
+    delivery.headSha,
+  );
+});
+
+test("deliverBranch scans against the pre-agent remote OID after local base ref rewrite", async () => {
+  const { root, remote } = await bareRemote();
+  const cwd = path.join(root, "workspace");
+  await mkdir(cwd);
+  const secret = "sk-ant-secret-hidden-in-an-ancestor";
+  const config = baseConfig(cwd, {
+    repoUrl: remote,
+    containsSecret: (text) => text.includes(secret),
+    secretNeedles: () => [Buffer.from(secret)],
+  });
+  await ensureRepo(config);
+
+  await writeFile(path.join(cwd, "leak.txt"), `${secret}\n`);
+  git(cwd, ["add", "-A"]);
+  git(cwd, [
+    "-c",
+    "user.name=attacker",
+    "-c",
+    "user.email=a@example.com",
+    "commit",
+    "-m",
+    "secret ancestor",
+  ]);
+  await rm(path.join(cwd, "leak.txt"));
+  git(cwd, ["add", "-A"]);
+  git(cwd, [
+    "-c",
+    "user.name=attacker",
+    "-c",
+    "user.email=a@example.com",
+    "commit",
+    "-m",
+    "hide secret",
+  ]);
+  // The old implementation trusted this mutable local ref and excluded both
+  // attacker commits from its scan. The captured remote base OID is immutable.
+  git(cwd, ["branch", "-f", "main", "HEAD"]);
+  await writeFile(path.join(cwd, "fix.txt"), "otherwise clean work\n");
+
+  await assert.rejects(
+    deliverBranch(config),
+    /model credential found in commit history/,
+  );
+  assert.throws(() => git(remote, ["rev-parse", "bex-agent/session-1"]));
+});
+
+test("deliverBranch refuses a concurrent remote update after baseline capture", async () => {
+  const { root, remote } = await bareRemote();
+  const cwd = path.join(root, "workspace");
+  await mkdir(cwd);
+  const config = baseConfig(cwd, { repoUrl: remote });
+  await ensureRepo(config);
+
+  const peer = path.join(root, "peer");
+  await mkdir(peer);
+  git(peer, ["clone", remote, "."]);
+  git(peer, ["checkout", "-B", config.branch]);
+  await writeFile(path.join(peer, "peer.txt"), "concurrent work\n");
+  git(peer, ["add", "-A"]);
+  git(peer, [
+    "-c",
+    "user.name=peer",
+    "-c",
+    "user.email=peer@example.com",
+    "commit",
+    "-m",
+    "peer update",
+  ]);
+  git(peer, ["push", "origin", `${config.branch}:${config.branch}`]);
+
+  await writeFile(path.join(cwd, "mine.txt"), "my work\n");
+  await assert.rejects(deliverBranch(config), /stale info|rejected/i);
+  assert.equal(
+    git(remote, ["show", `${config.branch}:peer.txt`]),
+    "concurrent work",
+  );
 });
 
 test("deliverBranch refuses to push when a commit carries the model credential", async () => {
@@ -148,7 +248,10 @@ test("deliverBranch refuses to push when a commit carries the model credential",
   await ensureRepo(config);
   await writeFile(path.join(cwd, "leak.txt"), `API_KEY=${secret}\n`);
 
-  await assert.rejects(deliverBranch(config), /model credential found in commit history/);
+  await assert.rejects(
+    deliverBranch(config),
+    /model credential found in commit history/,
+  );
   // The branch must NOT have reached the remote.
   assert.throws(() => git(remote, ["rev-parse", "bex-agent/session-1"]));
 });
@@ -204,12 +307,22 @@ test("deliverBranch refuses to push a base64-encoded credential (round-9 #1)", a
   const needles = needleConfig(longSecret);
   const config = baseConfig(cwd, { repoUrl: remote, ...needles });
   await ensureRepo(config);
-  await writeFile(path.join(cwd, "encoded.txt"), `KEY_B64=${Buffer.from(longSecret).toString("base64")}\n`);
+  await writeFile(
+    path.join(cwd, "encoded.txt"),
+    `KEY_B64=${Buffer.from(longSecret).toString("base64")}\n`,
+  );
   // The textual scan already knows this encoding (containsSecret carries the
   // encoded forms); the object scan covers the binary case below.
-  assert.ok(config.containsSecret!(await readFile(path.join(cwd, "encoded.txt"), "utf8")));
+  assert.ok(
+    config.containsSecret!(
+      await readFile(path.join(cwd, "encoded.txt"), "utf8"),
+    ),
+  );
 
-  await assert.rejects(deliverBranch(config), /model credential found in commit history/);
+  await assert.rejects(
+    deliverBranch(config),
+    /model credential found in commit history/,
+  );
   assert.throws(() => git(remote, ["rev-parse", "bex-agent/session-1"]));
 });
 
@@ -224,16 +337,22 @@ test("deliverBranch refuses to push raw credential bytes inside a binary blob (r
   const config = baseConfig(cwd, { repoUrl: remote, ...needles });
   await ensureRepo(config);
   // NUL bytes make git classify the blob binary; the secret sits between them.
-  await writeFile(path.join(cwd, "blob.bin"), Buffer.concat([
-    Buffer.from([0, 0, 1, 2]),
-    Buffer.from(longSecret, "utf8"),
-    Buffer.from([3, 0, 0]),
-  ]));
+  await writeFile(
+    path.join(cwd, "blob.bin"),
+    Buffer.concat([
+      Buffer.from([0, 0, 1, 2]),
+      Buffer.from(longSecret, "utf8"),
+      Buffer.from([3, 0, 0]),
+    ]),
+  );
   // The textual scan genuinely cannot see it: the patch output has no secret.
   const patch = git(cwd, ["log", "-p", "--no-color", "--text", "HEAD..HEAD"]);
   assert.equal(patch, "");
 
-  await assert.rejects(deliverBranch(config), /model credential found in commit history/);
+  await assert.rejects(
+    deliverBranch(config),
+    /model credential found in commit history/,
+  );
   assert.throws(() => git(remote, ["rev-parse", "bex-agent/session-1"]));
 });
 
@@ -243,7 +362,10 @@ test("deliverBranch pushes a clean branch while secret needles are active (round
   const { root, remote } = await bareRemote();
   const cwd = path.join(root, "workspace");
   await mkdir(cwd);
-  const config = baseConfig(cwd, { repoUrl: remote, ...needleConfig(longSecret) });
+  const config = baseConfig(cwd, {
+    repoUrl: remote,
+    ...needleConfig(longSecret),
+  });
   await ensureRepo(config);
   await writeFile(path.join(cwd, "fix.txt"), "clean work, no key material\n");
 
@@ -270,8 +392,26 @@ test("extractEvidence pulls a bounded command log, test output, and tail", async
   const root = await mkdtemp(path.join(tmpdir(), "bex-agent-evidence-"));
   const log = path.join(root, "session.jsonl");
   const lines = [
-    { part: { type: "data-acp", data: { sessionUpdate: "tool_call", title: "Run tests", kind: "execute", command: "go test ./..." } } },
-    { part: { type: "data-acp", data: { sessionUpdate: "tool_call_update", content: [{ type: "terminal", output: "ok  \tpkg\t0.10s" }] } } },
+    {
+      part: {
+        type: "data-acp",
+        data: {
+          sessionUpdate: "tool_call",
+          title: "Run tests",
+          kind: "execute",
+          command: "go test ./...",
+        },
+      },
+    },
+    {
+      part: {
+        type: "data-acp",
+        data: {
+          sessionUpdate: "tool_call_update",
+          content: [{ type: "terminal", output: "ok  \tpkg\t0.10s" }],
+        },
+      },
+    },
     { part: { type: "text", text: "All tests pass." } },
   ];
   await writeFile(log, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
@@ -288,7 +428,11 @@ test("extractEvidence marks truncation when caps drop content", async () => {
   const log = path.join(root, "session.jsonl");
   const many: string[] = [];
   for (let i = 0; i < 100; i++) {
-    many.push(JSON.stringify({ part: { type: "data-acp", data: { command: `cmd-${i}` } } }));
+    many.push(
+      JSON.stringify({
+        part: { type: "data-acp", data: { command: `cmd-${i}` } },
+      }),
+    );
   }
   await writeFile(log, many.join("\n") + "\n");
 

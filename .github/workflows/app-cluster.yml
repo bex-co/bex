@@ -22,7 +22,9 @@ on:
     paths:
       - "infra/clusterapi/overlays/hetzner-caph/**"
       - "scripts/fetch-app-kubeconfig.sh"
+      - "scripts/helm-artifact.sh"
       - "scripts/wait-capi-rollout.sh"
+      - "deploy/helm-artifacts.lock"
       - ".github/workflows/app-cluster.yml"
   workflow_dispatch: {}
 
@@ -168,12 +170,6 @@ jobs:
       # cluster-autoscaler is Argo-managed post-pivot (deploy/gitops/base/autoscaler.yaml).
 
       # ====== addons ======
-      - name: helm repos
-        run: |
-          helm repo add hcloud https://charts.hetzner.cloud
-          helm repo add cilium https://helm.cilium.io
-          helm repo update
-
       # hcloud token secret the CCM + CSI both read. `network` is the CAPH-managed
       # private network name (= the cluster name, w1/m7 t005); the CCM reads it as
       # HCLOUD_NETWORK when networking.enabled=true to program pod-CIDR routes and
@@ -200,8 +196,11 @@ jobs:
       # to the CP makes that its home (the recorded CP exemption, not platform pool).
       - name: install Hetzner CCM
         run: |
-          helm upgrade --install hccm hcloud/hcloud-cloud-controller-manager \
-            -n kube-system --version 1.33.0 \
+          chart_dir=$(mktemp -d)
+          trap 'rm -rf -- "$chart_dir"' EXIT
+          chart=$(bash scripts/helm-artifact.sh pull hcloud-cloud-controller-manager "$chart_dir")
+          helm upgrade --install hccm "$chart" \
+            -n kube-system \
             --set networking.enabled=true \
             --set networking.clusterCIDR="${POD_CIDR}" \
             --set-string env.HCLOUD_NETWORK_ROUTES_ENABLED.value=false \
@@ -228,8 +227,10 @@ jobs:
           # node addresses yet (CCM waits on cilium's own agent-not-ready taint),
           # cilium 1.19's auto-detection fails fatally — and east-west belongs on
           # the private net anyway (w1/m19 t006).
-          helm upgrade --install cilium cilium/cilium -n kube-system \
-            --version 1.19.5 \
+          chart_dir=$(mktemp -d)
+          trap 'rm -rf -- "$chart_dir"' EXIT
+          chart=$(bash scripts/helm-artifact.sh pull cilium "$chart_dir")
+          helm upgrade --install cilium "$chart" -n kube-system \
             --set ipam.mode=cluster-pool \
             --set ipam.operator.clusterPoolIPv4PodCIDRList="{${POD_CIDR}}" \
             --set encryption.enabled=true \
@@ -247,8 +248,10 @@ jobs:
       # charts, by which time the platform pool is Ready) → platform pool.
       - name: install hcloud CSI
         run: |
-          helm upgrade --install hcloud-csi hcloud/hcloud-csi -n kube-system \
-            --version 2.22.0 \
+          chart_dir=$(mktemp -d)
+          trap 'rm -rf -- "$chart_dir"' EXIT
+          chart=$(bash scripts/helm-artifact.sh pull hcloud-csi "$chart_dir")
+          helm upgrade --install hcloud-csi "$chart" -n kube-system \
             --set 'controller.nodeSelector.bex\.co/pool=platform' \
             --set 'controller.tolerations[0].key=bex.co/platform' \
             --set 'controller.tolerations[0].operator=Equal' \

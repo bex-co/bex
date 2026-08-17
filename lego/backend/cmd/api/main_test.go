@@ -16,7 +16,32 @@ limitations under the License.
 
 package main
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
+
+type replayStoreStub struct{}
+
+func (replayStoreStub) ClaimGitWebhookDelivery(context.Context, string) (bool, error) {
+	return true, nil
+}
+func (replayStoreStub) ReleaseGitWebhookDelivery(context.Context, string) error { return nil }
+
+func TestConfiguredWebhookRequiresDurableReplayStore(t *testing.T) {
+	if err := validateWebhookReplayConfig("manual", "", nil); err == nil {
+		t.Fatal("manual webhook without replay store was accepted")
+	}
+	if err := validateWebhookReplayConfig("", "github", nil); err == nil {
+		t.Fatal("GitHub webhook without replay store was accepted")
+	}
+	if err := validateWebhookReplayConfig("manual", "", replayStoreStub{}); err != nil {
+		t.Fatalf("configured replay store rejected: %v", err)
+	}
+	if err := validateWebhookReplayConfig("", "", nil); err != nil {
+		t.Fatalf("disabled webhook should not need a store: %v", err)
+	}
+}
 
 func TestSandboxTemplateRegistryIncludesPluggableAgentDriver(t *testing.T) {
 	templates := sandboxTemplateRegistry("alpine:3", "agent:test")

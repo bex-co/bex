@@ -2,6 +2,22 @@
 # installed on the app cluster; Argo then reconciles the prod overlay = the whole
 # platform (zot, opensandbox-controller, bex operator, …) continuously from git.
 apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: bex-bootstrap
+  namespace: argocd
+spec:
+  description: Production app-of-apps; only reviewed bex Git may define children
+  sourceRepos:
+    - git@github.com:bex-co/bex.git
+  destinations:
+    - { server: https://kubernetes.default.svc, namespace: "*" }
+  clusterResourceWhitelist:
+    - { group: "*", kind: "*" }
+  namespaceResourceWhitelist:
+    - { group: "*", kind: "*" }
+---
+apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: bex-platform-prod
@@ -9,7 +25,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: bex-bootstrap
   source:
     repoURL: git@github.com:bex-co/bex.git
     targetRevision: main

@@ -30,7 +30,10 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { loadConfig, type AgentDriverConfig } from "../src/config.js";
-import { createCredentialManager, type CredentialManager } from "../src/credentials.js";
+import {
+  createCredentialManager,
+  type CredentialManager,
+} from "../src/credentials.js";
 import { runHeadlessTurn } from "../src/session.js";
 import { startDriverServer } from "../src/server.js";
 import { UIMessageStreamHub } from "../src/stream-hub.js";
@@ -38,14 +41,29 @@ import { UIMessageStreamHub } from "../src/stream-hub.js";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fixture = path.join(here, "..", "fixtures", "acp-agent.mjs");
 const grantKeys = generateKeyPairSync("ed25519");
-const grantPublicKey = (grantKeys.publicKey.export({ format: "jwk" }) as JsonWebKey).x!;
+const grantPublicKey = (
+  grantKeys.publicKey.export({ format: "jwk" }) as JsonWebKey
+).x!;
+
+function driverGrant(
+  action: "turn" | "snapshot",
+  sessionID = "ags-test",
+): string {
+  const now = Math.floor(Date.now() / 1000);
+  const body = Buffer.from(
+    JSON.stringify({
+      ses: sessionID,
+      act: action,
+      iat: now,
+      exp: now + 30,
+      jti: randomUUID(),
+    }),
+  ).toString("base64url");
+  return `${body}.${sign(null, Buffer.from(body), grantKeys.privateKey).toString("base64url")}`;
+}
 
 function turnGrant(sessionID = "ags-test"): string {
-  const now = Math.floor(Date.now() / 1000);
-  const body = Buffer.from(JSON.stringify({
-    ses: sessionID, act: "turn", iat: now, exp: now + 30, jti: randomUUID(),
-  })).toString("base64url");
-  return `${body}.${sign(null, Buffer.from(body), grantKeys.privateKey).toString("base64url")}`;
+  return driverGrant("turn", sessionID);
 }
 
 type TestConfig = AgentDriverConfig & { root: string };
@@ -134,12 +152,14 @@ test("model credential routes to the agent-native env var by shape", () => {
   // reach claude-code as CLAUDE_CODE_OAUTH_TOKEN — delivering it as the x-api-key
   // ANTHROPIC_API_KEY is rejected upstream as "Invalid API key".
   assert.equal(
-    loadConfig({ BEX_AGENT_MODEL_API_KEY: "sk-ant-oat01-abc" }).credentialEnvName,
+    loadConfig({ BEX_AGENT_MODEL_API_KEY: "sk-ant-oat01-abc" })
+      .credentialEnvName,
     "CLAUDE_CODE_OAUTH_TOKEN",
   );
   // A conventional API key keeps the x-api-key default.
   assert.equal(
-    loadConfig({ BEX_AGENT_MODEL_API_KEY: "sk-ant-api03-abc" }).credentialEnvName,
+    loadConfig({ BEX_AGENT_MODEL_API_KEY: "sk-ant-api03-abc" })
+      .credentialEnvName,
     "ANTHROPIC_API_KEY",
   );
   assert.equal(loadConfig({}).credentialEnvName, "ANTHROPIC_API_KEY");
@@ -157,7 +177,8 @@ test("model proxy routes each adapter's base URL and lands the placeholder in it
   // ADR062 D5: with the proxy on, each adapter is pointed at the gateway proxy via
   // its provider base-URL env (with the provider's path suffix) and the credential
   // env is the one that adapter reads, so the agent attempts the request.
-  const proxy = "http://bex-ssh-gateway.bex-system.svc.cluster.local:8084/model/ns/sess";
+  const proxy =
+    "http://bex-ssh-gateway.bex-system.svc.cluster.local:8084/model/ns/sess";
   const claude = loadConfig({
     BEX_AGENT_COMMAND: "/usr/local/bin/claude-code-acp",
     BEX_AGENT_MODEL_PROXY_URL: proxy,
@@ -213,7 +234,10 @@ function modelProxyRoutesCovered(): boolean {
     "/usr/local/bin/codex-acp",
     "/usr/local/bin/gemini",
   ]) {
-    const cfg = loadConfig({ BEX_AGENT_COMMAND: command, BEX_AGENT_MODEL_PROXY_URL: proxy });
+    const cfg = loadConfig({
+      BEX_AGENT_COMMAND: command,
+      BEX_AGENT_MODEL_PROXY_URL: proxy,
+    });
     if (!cfg.modelBaseUrl || !cfg.modelBaseUrlEnvName) return false;
   }
   return true;
@@ -248,11 +272,19 @@ test("one headless turn streams raw ACP data and commits in the worktree", async
   const types = hub.history.map((part) => part.type);
   assert.ok(types.includes("data-acp-plan"), "plan maps to a typed data part");
   assert.ok(types.includes("data-acp-diff"), "diff maps to a typed data part");
-  assert.ok(types.includes("data-acp-terminal"), "terminal maps to a typed data part");
-  assert.ok(!types.includes("data-acp"), "the generic data-acp re-wrap is gone");
+  assert.ok(
+    types.includes("data-acp-terminal"),
+    "terminal maps to a typed data part",
+  );
+  assert.ok(
+    !types.includes("data-acp"),
+    "the generic data-acp re-wrap is gone",
+  );
   // The tool call rides a real dynamic tool part carrying its true title, not
   // the provider's old `acp_provider_agent_dynamic_tool` collapse.
-  const toolStart = hub.history.find((part) => part.type === "tool-input-start");
+  const toolStart = hub.history.find(
+    (part) => part.type === "tool-input-start",
+  );
   assert.equal(toolStart?.toolName, "Edit fixture");
   const serialized = JSON.stringify(hub.history);
   assert.doesNotMatch(serialized, /acp_provider_agent_dynamic_tool/);
@@ -279,7 +311,11 @@ test("credential emitted by the agent never reaches hub, mirror, or log", async 
     ["turn mirror", mirrored.join("\n")],
     ["session log", await readFile(config.sessionLogPath, "utf8")],
   ]) {
-    assert.doesNotMatch(text, /test-model-key-never-log/, `${sink} leaked the credential`);
+    assert.doesNotMatch(
+      text,
+      /test-model-key-never-log/,
+      `${sink} leaked the credential`,
+    );
     // The leak must have actually happened for the assertion above to mean
     // anything — the sanitized marker proves the fixture emitted the key.
     assert.match(text, /\[REDACTED\]/, `${sink} shows no redaction marker`);
@@ -296,7 +332,11 @@ test("redactPart sanitizes nested structured parts and fails closed", async () =
   const sanitized = credentials.redactPart(part);
   assert.doesNotMatch(JSON.stringify(sanitized), /test-model-key-never-log/);
   assert.match(JSON.stringify(sanitized), /\[REDACTED\]/);
-  assert.doesNotMatch(JSON.stringify(part), /REDACTED/, "input part must not be mutated");
+  assert.doesNotMatch(
+    JSON.stringify(part),
+    /REDACTED/,
+    "input part must not be mutated",
+  );
   // A clean part passes through untouched (same reference, no re-parse cost).
   const clean = { type: "text", text: "no secrets here" };
   assert.equal(credentials.redactPart(clean), clean);
@@ -305,6 +345,23 @@ test("redactPart sanitizes nested structured parts and fails closed", async () =
   // part rather than ever returning the raw representation.
   const hostile = manager(await tempConfig({ modelCredential: '":"' }));
   assert.deepEqual(hostile.redactPart({ a: "x" }), { type: "data-redacted" });
+});
+
+test("stream hub bounds oversized parts and retained history", () => {
+  const hub = new UIMessageStreamHub({
+    maxHistoryBytes: 256,
+    maxHistoryParts: 2,
+    maxPartBytes: 128,
+  });
+  hub.publish({ type: "text", text: "x".repeat(1000) });
+  assert.equal(hub.history[0]?.type, "data-truncated");
+  hub.publish({ type: "text", text: "one" });
+  hub.publish({ type: "text", text: "two" });
+  assert.equal(hub.history.length, 2);
+  assert.deepEqual(
+    hub.history.map((part) => part.text),
+    ["one", "two"],
+  );
 });
 
 for (const loadSession of [false, true]) {
@@ -458,9 +515,18 @@ test("POST /turn runs a live turn, streams its parts, and single-flights", async
   const config = await tempConfig();
   const credentials = manager(config);
   const hub = new UIMessageStreamHub();
-  const runTurn = (prompt: string, onPart: (part: Record<string, unknown>) => void) =>
-    runHeadlessTurn(config, credentials, hub, { prompt, closeHub: false, onPart });
-  const listener = await startDriverServer(config, credentials, hub, { runTurn });
+  const runTurn = (
+    prompt: string,
+    onPart: (part: Record<string, unknown>) => void,
+  ) =>
+    runHeadlessTurn(config, credentials, hub, {
+      prompt,
+      closeHub: false,
+      onPart,
+    });
+  const listener = await startDriverServer(config, credentials, hub, {
+    runTurn,
+  });
   try {
     const turnURL = `http://127.0.0.1:${(listener.address as { port: number }).port}/turn`;
 
@@ -477,7 +543,10 @@ test("POST /turn runs a live turn, streams its parts, and single-flights", async
     // A missing prompt is a 400.
     const empty = await fetch(turnURL, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-bex-driver-grant": turnGrant() },
+      headers: {
+        "content-type": "application/json",
+        "x-bex-driver-grant": turnGrant(),
+      },
       body: "{}",
     });
     assert.equal(empty.status, 400);
@@ -487,8 +556,15 @@ test("POST /turn runs a live turn, streams its parts, and single-flights", async
     // terminates with [DONE]; the hub is NOT closed, so the session stays live.
     const response = await fetch(turnURL, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-bex-driver-grant": turnGrant() },
-      body: JSON.stringify({ messages: [{ role: "user", parts: [{ type: "text", text: "make the change" }] }] }),
+      headers: {
+        "content-type": "application/json",
+        "x-bex-driver-grant": turnGrant(),
+      },
+      body: JSON.stringify({
+        messages: [
+          { role: "user", parts: [{ type: "text", text: "make the change" }] },
+        ],
+      }),
     });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("x-vercel-ai-ui-message-stream"), "v1");
@@ -501,7 +577,10 @@ test("POST /turn runs a live turn, streams its parts, and single-flights", async
     assert.ok(hub.history.some((part) => part.type === "data-acp-plan"));
     const second = await fetch(turnURL, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-bex-driver-grant": turnGrant() },
+      headers: {
+        "content-type": "application/json",
+        "x-bex-driver-grant": turnGrant(),
+      },
       body: JSON.stringify({ prompt: "another turn" }),
     });
     assert.equal(second.status, 200);
@@ -510,14 +589,20 @@ test("POST /turn runs a live turn, streams its parts, and single-flights", async
     const replayGrant = turnGrant();
     const accepted = await fetch(turnURL, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-bex-driver-grant": replayGrant },
+      headers: {
+        "content-type": "application/json",
+        "x-bex-driver-grant": replayGrant,
+      },
       body: JSON.stringify({ prompt: "one use" }),
     });
     assert.equal(accepted.status, 200);
     await accepted.text();
     const replayed = await fetch(turnURL, {
       method: "POST",
-      headers: { "content-type": "application/json", "x-bex-driver-grant": replayGrant },
+      headers: {
+        "content-type": "application/json",
+        "x-bex-driver-grant": replayGrant,
+      },
       body: JSON.stringify({ prompt: "replay" }),
     });
     assert.equal(replayed.status, 401);
@@ -610,23 +695,67 @@ test("snapshot scrub preserves binary bytes and blocks an oversized credential l
   );
 });
 
-test("loopback snapshot hook scrubs persisted key material and forgets it", async () => {
+test("persisted credential scan fails closed on aggregate, depth, and cancellation bounds", async () => {
+  const config = await tempConfig();
+  const credentials = manager(config);
+  await writeFile(path.join(config.cwd, "one"), "1");
+  await writeFile(path.join(config.cwd, "two"), "2");
+  await assert.rejects(
+    credentials.scrubPersistedState(undefined, { maxFiles: 1 }),
+    /file limit/,
+  );
+  await assert.rejects(
+    credentials.scrubPersistedState(undefined, { maxBytes: 1 }),
+    /byte limit/,
+  );
+  const nested = path.join(config.cwd, "a", "b", "c");
+  await mkdir(nested, { recursive: true });
+  await assert.rejects(
+    credentials.scrubPersistedState(undefined, { maxDepth: 1 }),
+    /depth limit/,
+  );
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(
+    credentials.scrubPersistedState(undefined, { signal: controller.signal }),
+    /aborted/,
+  );
+});
+
+test("snapshot hook requires an action-bound grant, terminalizes, scrubs, and forgets", async () => {
   const config = await tempConfig();
   const leaked = path.join(config.cwd, "agent-cache");
   await writeFile(leaked, `cached=${config.modelCredential}\n`);
   const credentials = manager(config);
+  let terminalized = false;
   const listener = await startDriverServer(
     config,
     credentials,
     new UIMessageStreamHub(),
+    {
+      terminalize: async () => {
+        terminalized = true;
+      },
+    },
   );
   try {
-    const response = await fetch(
-      `http://127.0.0.1:${(listener.address as { port: number }).port}/snapshot/scrub`,
-      { method: "POST" },
-    );
+    const url = `http://127.0.0.1:${(listener.address as { port: number }).port}/snapshot/scrub`;
+    const unauthorized = await fetch(url, { method: "POST" });
+    assert.equal(unauthorized.status, 401);
+    await unauthorized.text();
+    const wrongAction = await fetch(url, {
+      method: "POST",
+      headers: { "x-bex-driver-grant": turnGrant() },
+    });
+    assert.equal(wrongAction.status, 401);
+    await wrongAction.text();
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "x-bex-driver-grant": driverGrant("snapshot") },
+    });
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { scrubbedFiles: 1 });
+    assert.equal(terminalized, true);
     assert.equal(credentials.configured(), false);
     assert.doesNotMatch(
       await readFile(leaked, "utf8"),

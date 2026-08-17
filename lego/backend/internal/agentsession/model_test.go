@@ -61,7 +61,7 @@ func modelKeysFor(secret string) fakeModelKeys {
 }
 
 func validModelRequest() ModelMintRequest {
-	return ModelMintRequest{SessionID: "ags-one", Workspace: "tea-a", PodName: "sandbox-one", PodUID: "uid-one"}
+	return ModelMintRequest{SessionID: "ags-one", Workspace: "tea-a", PodName: "sbx-1-0", PodUID: "uid-one"}
 }
 
 func TestModelMinterInjectsSchemeByProviderAndAudits(t *testing.T) {
@@ -145,6 +145,10 @@ func TestModelMinterRefusesTerminalOrForeignSession(t *testing.T) {
 		"canceled":          base(func(s *store.AgentSession) { s.Phase = "canceled" }),
 		"canceling":         base(func(s *store.AgentSession) { s.Phase = "canceling" }),
 		"sandbox cleared":   base(func(s *store.AgentSession) { s.SandboxID = "" }),
+		"hibernating":       base(func(s *store.AgentSession) { s.Phase = "hibernating" }),
+		"hibernated":        base(func(s *store.AgentSession) { s.Phase = "hibernated" }),
+		"unknown phase":     base(func(s *store.AgentSession) { s.Phase = "future-phase" }),
+		"stale generation":  base(func(s *store.AgentSession) { s.SandboxID = "sbx-2" }),
 		"foreign workspace": base(func(s *store.AgentSession) { s.WorkspaceID = "tea-b" }),
 		"absent session":    {err: store.ErrNotFound},
 	}

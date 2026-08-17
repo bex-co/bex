@@ -50,7 +50,7 @@ export function InviteProvider({ children }: { children: ReactNode }) {
 
   useEffect(
     () =>
-      authManager.registerExplicitSignOutHook(() =>
+      authManager.registerSessionClearHook(() =>
         controller.clear().catch(() => undefined),
       ),
     [controller],

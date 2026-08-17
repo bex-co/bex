@@ -29,11 +29,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1" # before the shipper (log-shipper.yaml, wave 2)
 spec:
-  project: default
+  project: bex-platform
   source:
-    repoURL: https://grafana.github.io/helm-charts
-    chart: loki
-    targetRevision: "6.55.0" # pinned exact (codex-security #20); SingleBinary serves /loki/api/v1/query_range
+    repoURL: oci://ghcr.io/bex-co/bex-charts/loki
+    path: .
+    targetRevision: "sha256:56dff1080a34b4ded90b738cf7779afd03944548d05830ef3b4c273af4d12b91"
     helm:
       releaseName: loki
       values: |

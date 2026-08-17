@@ -63,7 +63,7 @@ func TestPGStoreDevicePushSubscriptions(t *testing.T) {
 
 	secret := "ExponentPushToken[pg-secret-" + stamp + "]"
 	created, err := st.UpsertDevicePushSubscription(ctx, DevicePushSubscription{
-		TenantID: tenant.ID, Subject: alice, DeviceID: "alice-ios",
+		TenantID: tenant.ID, Subject: alice, DeviceID: "alice-ios", SessionID: "session-alice",
 		Provider: "expo", Platform: "ios", Token: secret,
 	})
 	if err != nil {
@@ -88,7 +88,7 @@ func TestPGStoreDevicePushSubscriptions(t *testing.T) {
 	// Moving one opaque capability to Bob (account switch on the same phone)
 	// atomically revokes Alice's old destination.
 	if _, err := st.UpsertDevicePushSubscription(ctx, DevicePushSubscription{
-		TenantID: tenant.ID, Subject: bob, DeviceID: "bob-ios",
+		TenantID: tenant.ID, Subject: bob, DeviceID: "bob-ios", SessionID: "session-bob",
 		Provider: "expo", Platform: "ios", Token: secret,
 	}); err != nil {
 		t.Fatal(err)
@@ -110,7 +110,7 @@ func TestPGStoreDevicePushSubscriptions(t *testing.T) {
 			defer wg.Done()
 			<-start
 			_, errs[i] = st.UpsertDevicePushSubscription(ctx, DevicePushSubscription{
-				TenantID: tenant.ID, Subject: bob, DeviceID: "bob-ios",
+				TenantID: tenant.ID, Subject: bob, DeviceID: "bob-ios", SessionID: "session-bob",
 				Provider: "expo", Platform: "ios", Token: fmt.Sprintf("ExponentPushToken[race-%s-%d]", stamp, i),
 			})
 		}(i)
@@ -139,13 +139,13 @@ func TestPGStoreDevicePushSubscriptions(t *testing.T) {
 	}
 
 	if _, err := st.UpsertDevicePushSubscription(ctx, DevicePushSubscription{
-		TenantID: tenant.ID, Subject: bob, DeviceID: "bob-a",
+		TenantID: tenant.ID, Subject: bob, DeviceID: "bob-a", SessionID: "session-bob",
 		Provider: "expo", Platform: "android", Token: "ExponentPushToken[all-a-" + stamp + "]",
 	}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.UpsertDevicePushSubscription(ctx, DevicePushSubscription{
-		TenantID: tenant.ID, Subject: bob, DeviceID: "bob-b",
+		TenantID: tenant.ID, Subject: bob, DeviceID: "bob-b", SessionID: "session-bob",
 		Provider: "expo", Platform: "android", Token: "ExponentPushToken[all-b-" + stamp + "]",
 	}); err != nil {
 		t.Fatal(err)
@@ -163,7 +163,7 @@ func TestPGStoreDevicePushSubscriptions(t *testing.T) {
 	// boundary, so exactly one racer is refused instead of both slipping through.
 	for i := 0; i < MaxActivePushDevicesPerSubject-1; i++ {
 		if _, err := st.UpsertDevicePushSubscription(ctx, DevicePushSubscription{
-			TenantID: tenant.ID, Subject: bob, DeviceID: fmt.Sprintf("quota-%d", i),
+			TenantID: tenant.ID, Subject: bob, DeviceID: fmt.Sprintf("quota-%d", i), SessionID: "session-bob",
 			Provider: "expo", Platform: "android", Token: fmt.Sprintf("ExponentPushToken[quota-%s-%d]", stamp, i),
 		}); err != nil {
 			t.Fatalf("seed quota device %d: %v", i, err)
@@ -177,7 +177,7 @@ func TestPGStoreDevicePushSubscriptions(t *testing.T) {
 			defer wg.Done()
 			<-start
 			_, errs[i] = st.UpsertDevicePushSubscription(ctx, DevicePushSubscription{
-				TenantID: tenant.ID, Subject: bob, DeviceID: fmt.Sprintf("quota-race-%d", i),
+				TenantID: tenant.ID, Subject: bob, DeviceID: fmt.Sprintf("quota-race-%d", i), SessionID: "session-bob",
 				Provider: "expo", Platform: "android", Token: fmt.Sprintf("ExponentPushToken[quota-race-%s-%d]", stamp, i),
 			})
 		}(i)

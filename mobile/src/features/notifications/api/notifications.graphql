@@ -13,12 +13,14 @@ query MobileNotificationDeviceSubscriptions {
 
 mutation MobileRegisterNotificationDeviceSubscription(
   $deviceId: String!
+  $sessionId: String!
   $provider: String!
   $platform: String!
   $token: String!
 ) {
   registerNotificationDeviceSubscription(
     deviceId: $deviceId
+    sessionId: $sessionId
     provider: $provider
     platform: $platform
     token: $token

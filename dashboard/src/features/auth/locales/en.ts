@@ -163,6 +163,23 @@ const enAuth: Record<string, TranslationEntry> = {
     message: "{client} is asking to act on your behalf in bex.",
     description: "OAuth2 consent page hero subtitle, names the OAuth client",
   },
+  "auth.consentUnverifiedClient": {
+    message: "Unverified third-party app",
+    description:
+      "Warning label for an OAuth client whose self-provided branding is not trusted",
+  },
+  "auth.consentClientId": {
+    message: "Client ID",
+    description: "Label for the immutable OAuth client identifier",
+  },
+  "auth.consentRedirectOrigin": {
+    message: "Authorization code destination",
+    description: "Label for the origin that will receive the OAuth code",
+  },
+  "auth.consentNoRedirectOrigin": {
+    message: "No redirect (device flow)",
+    description: "Shown when an OAuth device flow has no redirect origin",
+  },
   "auth.consentScopesTitle": {
     message: "It is requesting",
     description: "Heading above the list of requested OAuth scopes",

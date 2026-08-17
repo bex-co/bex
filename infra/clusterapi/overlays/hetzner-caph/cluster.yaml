@@ -115,7 +115,8 @@ spec:
             tls-cipher-suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
       # runc, containerd, and kubelet/kubeadm/kubectl are baked into the worker
       # snapshot this pool boots (HCloudMachineTemplate bex-tenant-0-baked,
-      # imageName: bex-worker — recipe infra/packer/bex-worker.pkr.hcl, w1/m36 t001).
+      # imageName is selected by infra/packer/release.conf and baked by
+      # infra/packer/bex-worker.pkr.hcl (w1/m36 t001).
       # That took the ~350MB of github.com/pkgs.k8s.io downloads (runc+containerd
       # +kubelet, ~150MB) AND the CP image pre-pull (`kubeadm config images pull`,
       # ~200MB — t002) off the autoscaler scale-up hot path. What remains only
@@ -286,7 +287,8 @@ spec:
             tls-cipher-suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
       # runc, containerd, and kubelet/kubeadm/kubectl are baked into the worker
       # snapshot this pool boots (HCloudMachineTemplate bex-tenant-0-baked,
-      # imageName: bex-worker — recipe infra/packer/bex-worker.pkr.hcl, w1/m36 t001).
+      # imageName is selected by infra/packer/release.conf and baked by
+      # infra/packer/bex-worker.pkr.hcl (w1/m36 t001).
       # That took the ~350MB of github.com/pkgs.k8s.io downloads (runc+containerd
       # +kubelet, ~150MB) AND the CP image pre-pull (`kubeadm config images pull`,
       # ~200MB — t002) off the autoscaler scale-up hot path. What remains only
@@ -848,28 +850,20 @@ spec:
           tls-cipher-suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
     preKubeadmCommands:
       - set -x
+      - grep VERSION= /etc/os-release; uname -a
       - export CONTAINERD=2.3.3
       - export RUNC=1.5.1
       - export KUBERNETES_VERSION=$(echo v1.34.9 | sed 's/^v//')
-      - export TRIMMED_KUBERNETES_VERSION=$(echo v1.34.9 | sed 's/^v//' | awk -F . '{print $1 "." $2}')
-      - ARCH="$(dpkg --print-architecture)"
-      - localectl set-locale LANG=en_US.UTF-8
-      - localectl set-locale LANGUAGE=en_US.UTF-8
-      - apt-get update -y
-      - apt-get -y install at jq unzip wget socat mtr logrotate apt-transport-https
+      # The versioned node snapshot is baked from a reviewed Hetzner image ID
+      # and repository-pinned runtime/key digests. Bootstrap must use those
+      # bytes, never replace them from a live publisher before running as root.
+      - /usr/local/bin/containerd --version | grep -q " v$CONTAINERD "
+      - /usr/local/sbin/runc --version | head -1 | grep -qx "runc version $RUNC"
+      - kubeadm version -o short | grep -qx "v$KUBERNETES_VERSION"
+      - kubelet --version | grep -qx "Kubernetes v$KUBERNETES_VERSION"
       - sed -i '/swap/d' /etc/fstab
       - swapoff -a
       - modprobe overlay && modprobe br_netfilter && sysctl --system
-      - wget https://github.com/opencontainers/runc/releases/download/v$RUNC/runc.$ARCH
-      - wget https://github.com/opencontainers/runc/releases/download/v$RUNC/runc.sha256sum
-      - sha256sum --check --ignore-missing runc.sha256sum
-      - install runc.$ARCH /usr/local/sbin/runc
-      - rm -f runc.$ARCH runc.sha256sum
-      - wget https://github.com/containerd/containerd/releases/download/v$CONTAINERD/containerd-$CONTAINERD-linux-$ARCH.tar.gz
-      - wget https://github.com/containerd/containerd/releases/download/v$CONTAINERD/containerd-$CONTAINERD-linux-$ARCH.tar.gz.sha256sum
-      - sha256sum --check containerd-$CONTAINERD-linux-$ARCH.tar.gz.sha256sum
-      - tar -zxf containerd-$CONTAINERD-linux-$ARCH.tar.gz -C /usr/local
-      - rm -f containerd-$CONTAINERD-linux-$ARCH.tar.gz containerd-$CONTAINERD-linux-$ARCH.tar.gz.sha256sum
       - mkdir -p /etc/containerd
       - containerd config default > /etc/containerd/config.toml
       - sed -i  "s/SystemdCgroup = false/SystemdCgroup = true/" /etc/containerd/config.toml
@@ -877,15 +871,9 @@ spec:
       # service against its old config. Restart so the generated CRI config
       # above is loaded before kubeadm checks RuntimeService.
       - systemctl daemon-reload && systemctl enable containerd && systemctl restart containerd
-      - mkdir -p /etc/apt/keyrings/
-      - curl -fsSL https://pkgs.k8s.io/core:/stable:/v$TRIMMED_KUBERNETES_VERSION/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-      - echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v$TRIMMED_KUBERNETES_VERSION/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-      - apt-get update
-      - apt-get install -y kubelet="$KUBERNETES_VERSION-*" kubeadm="$KUBERNETES_VERSION-*" kubectl="$KUBERNETES_VERSION-*" bash-completion && apt-mark hold kubelet kubectl kubeadm && systemctl enable kubelet
-      - kubeadm config images pull --kubernetes-version $KUBERNETES_VERSION
+      - systemctl enable kubelet
       - echo 'source <(kubectl completion bash)' >>/root/.bashrc
       - echo 'export KUBECONFIG=/etc/kubernetes/admin.conf' >>/root/.bashrc
-      - apt-get -y autoremove && apt-get -y clean all
       # w1/m19 t006: patch the rendered kubeadm config to advertise the PRIVATE
       # IP (see initConfiguration.localAPIEndpoint above). The CAPH-attached
       # `bex` network interface carries 10.10.0.0/16; wait for it, then rewrite
@@ -903,8 +891,8 @@ spec:
       # the control plane is rotated back to the cx33 template below. Roll ONE
       # etcd member at a time and keep CP on 8 GB cx33 (never 4 GB cx23 — CP
       # live memory is ~3.8 GiB). cpx32 stays the fallback for the next
-      # stock-out (repoint back to bex-control-plane-cpx32).
-      name: bex-control-plane
+      # stock-out (repoint to bex-control-plane-cpx32-k134).
+      name: bex-control-plane-k134
   # 3 = etcd quorum (rearchitecture decision 2) — CP is HA and tainted; the KCP
   # webhook forbids even counts with stacked etcd.
   replicas: 3
@@ -916,24 +904,26 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
-  name: bex-control-plane
+  # HCloudMachineTemplate.Spec is immutable. The versioned name rotates the
+  # control plane from the live ubuntu alias to the reviewed node snapshot.
+  name: bex-control-plane-k134
   namespace: bex-capi
 spec:
   template:
     spec:
-      imageName: ubuntu-24.04
+      imageName: bex-worker-k8s-1-34
       placementGroupName: control-plane
       type: cx33
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
-  name: bex-control-plane-cpx32
+  name: bex-control-plane-cpx32-k134
   namespace: bex-capi
 spec:
   template:
     spec:
-      imageName: ubuntu-24.04
+      imageName: bex-worker-k8s-1-34
       placementGroupName: control-plane
       type: cpx32
 ---
@@ -958,7 +948,7 @@ spec:
       # ⚠️ Do NOT apply this overlay until the `bex-worker` snapshot exists in
       # the project (run .github/workflows/snapshot.yml) — otherwise CAPH cannot
       # resolve the image and new machines never provision.
-      imageName: bex-worker
+      imageName: bex-worker-k8s-1-34
       placementGroupName: tenant-0
       type: cx33
 ---
@@ -1047,7 +1037,7 @@ metadata:
 spec:
   template:
     spec:
-      imageName: bex-worker
+      imageName: bex-worker-k8s-1-34
       placementGroupName: tenant-0
       type: cpx32
 ---
@@ -1353,7 +1343,7 @@ metadata:
 spec:
   template:
     spec:
-      imageName: bex-worker
+      imageName: bex-worker-k8s-1-34
       placementGroupName: platform
       type: cx33
 ---

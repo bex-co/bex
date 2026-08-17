@@ -56,6 +56,38 @@ func TestImageRefAndJobName(t *testing.T) {
 	if len(long) > 63 || long != strings.ToLower(long) {
 		t.Errorf("JobName not clamped/lowercased: len=%d %q", len(long), long)
 	}
+	maxName := strings.Repeat("x", 55)
+	if a, b := JobName(maxName, "gen-1"), JobName(maxName, "gen-2"); a == b {
+		t.Fatalf("adjacent revisions collided after truncation: %q", a)
+	}
+}
+
+func TestKpackNamesBindUIDRevisionAndPurpose(t *testing.T) {
+	o := opts()
+	o.Name = strings.Repeat("x", 55)
+	otherRevision := o
+	otherRevision.Revision = "gen-8"
+	otherUID := o
+	otherUID.AppUID = "uid-sibling"
+
+	names := []string{
+		kpackImageName(o),
+		kpackImageName(otherRevision),
+		kpackImageName(otherUID),
+		kpackServiceAccountName(o),
+		kpackArtifactName(o, "bld-"+o.Name+"-kpack-registry", kpackRegistrySecretPurpose),
+		kpackArtifactName(o, "bld-"+o.Name+"-kpack-git", kpackGitSecretPurpose),
+	}
+	seen := map[string]bool{}
+	for _, name := range names {
+		if len(name) > 63 || name != strings.ToLower(name) {
+			t.Fatalf("invalid kpack name %q", name)
+		}
+		if seen[name] {
+			t.Fatalf("UID/revision/purpose collision for %q", name)
+		}
+		seen[name] = true
+	}
 }
 
 func TestCredentialBearingPlatformImagesAreDigestPinned(t *testing.T) {
@@ -597,7 +629,7 @@ func TestBuildpackImageShapeAndSuccess(t *testing.T) {
 	if len(env) != 1 || env[0].(map[string]any)["name"] != "BP_GO_TARGETS" {
 		t.Fatalf("build env = %#v", env)
 	}
-	if image.GetName() != "bld-hello-gen-7" || image.GetLabels()["app.bex.co/component"] != "build" || image.GetLabels()["app.bex.co/app-uid"] != o.AppUID {
+	if image.GetName() != kpackImageName(o) || image.GetLabels()["app.bex.co/component"] != "build" || image.GetLabels()["app.bex.co/app-uid"] != o.AppUID {
 		t.Errorf("image metadata = %s %#v", image.GetName(), image.GetLabels())
 	}
 	requests, _, _ := unstructured.NestedStringMap(image.Object, "spec", "build", "resources", "requests")
@@ -638,7 +670,7 @@ func TestBuildpackImageShapeAndSuccess(t *testing.T) {
 		t.Errorf("buildpack dispatch must not create a BuildKit Job, got %v", err)
 	}
 	var sa corev1.ServiceAccount
-	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: kpackServiceAccountName(o.Name)}, &sa); err != nil {
+	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: kpackServiceAccountName(o)}, &sa); err != nil {
 		t.Fatalf("kpack service account: %v", err)
 	}
 	if sa.AutomountServiceAccountToken == nil || *sa.AutomountServiceAccountToken {
@@ -676,7 +708,7 @@ func TestBuildpackCreatesImageWhenAbsent(t *testing.T) {
 		_, _ = Build(ctx, o)
 	}()
 
-	key := client.ObjectKey{Namespace: o.Namespace, Name: JobName(o.Name, o.Revision)}
+	key := client.ObjectKey{Namespace: o.Namespace, Name: kpackImageName(o)}
 	found := false
 	for range 200 {
 		image := newKpackImage()
@@ -709,7 +741,7 @@ func TestBuildpackStopsWaitingWhenOwningAppIsDeleting(t *testing.T) {
 		t.Fatalf("Build error = %v, want ErrAppDeleting", err)
 	}
 	image := newKpackImage()
-	key := client.ObjectKey{Namespace: o.Namespace, Name: JobName(o.Name, o.Revision)}
+	key := client.ObjectKey{Namespace: o.Namespace, Name: kpackImageName(o)}
 	if err := o.Client.Get(context.Background(), key, image); err != nil {
 		t.Fatalf("kpack artifact must remain for finalizer inventory: %v", err)
 	}
@@ -730,7 +762,7 @@ func TestKpackCredentialAdaptation(t *testing.T) {
 	}
 
 	var registry corev1.Secret
-	registryName := JobName(o.Name, "kpack-registry")
+	registryName := kpackArtifactName(o, "bld-"+o.Name+"-kpack-registry", kpackRegistrySecretPurpose)
 	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: registryName}, &registry); err != nil {
 		t.Fatal(err)
 	}
@@ -738,7 +770,7 @@ func TestKpackCredentialAdaptation(t *testing.T) {
 		t.Errorf("adapted registry secret = type %s data %s", registry.Type, registry.Data[corev1.DockerConfigJsonKey])
 	}
 	var git corev1.Secret
-	gitName := JobName(o.Name, "kpack-git")
+	gitName := kpackArtifactName(o, "bld-"+o.Name+"-kpack-git", kpackGitSecretPurpose)
 	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: gitName}, &git); err != nil {
 		t.Fatal(err)
 	}
@@ -746,7 +778,7 @@ func TestKpackCredentialAdaptation(t *testing.T) {
 		t.Errorf("adapted git secret = %#v", git)
 	}
 	var sa corev1.ServiceAccount
-	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: "bex-kpack-hello"}, &sa); err != nil {
+	if err := o.Client.Get(context.Background(), client.ObjectKey{Namespace: o.Namespace, Name: kpackServiceAccountName(o)}, &sa); err != nil {
 		t.Fatal(err)
 	}
 	gotSecrets := make([]string, len(sa.Secrets))
@@ -758,6 +790,30 @@ func TestKpackCredentialAdaptation(t *testing.T) {
 	}
 	if sa.AutomountServiceAccountToken == nil || *sa.AutomountServiceAccountToken {
 		t.Error("kpack ServiceAccount must disable token automount")
+	}
+}
+
+func TestKpackCredentialObjectsRejectMismatchedIdentity(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(map[string]string)
+	}{
+		{name: "uid", mutate: func(labels map[string]string) { labels["app.bex.co/app-uid"] = "uid-other" }},
+		{name: "revision", mutate: func(labels map[string]string) { labels[kpackRevisionLabel] = "gen-other" }},
+		{name: "purpose", mutate: func(labels map[string]string) { labels[kpackPurposeLabel] = kpackGitSecretPurpose }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			o := opts()
+			labels := kpackArtifactLabels(o, kpackServiceAccountPurpose)
+			tc.mutate(labels)
+			existing := &corev1.ServiceAccount{ObjectMeta: metav1.ObjectMeta{
+				Name: kpackServiceAccountName(o), Namespace: o.Namespace, Labels: labels,
+			}}
+			o.Client = fakeClient(existing)
+			if err := ensureKpackCredentials(context.Background(), o); err == nil {
+				t.Fatal("mismatched deterministic object was adopted")
+			}
+		})
 	}
 }
 

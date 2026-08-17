@@ -411,7 +411,8 @@ func main() {
 	srv := api.NewServer(base, deps)
 	// codex round-8 #9: the signed git webhook durably claims each processed
 	// delivery body so a captured (body, signature) pair cannot be replayed into
-	// repeated deploys. Store-less operation keeps the prior behavior.
+	// repeated deploys. A configured webhook without this durable store is
+	// rejected below; store-less deployments must leave webhook secrets unset.
 	if st != nil {
 		srv.WebhookReplays = st
 	}
@@ -460,6 +461,8 @@ func main() {
 	maxQueryHours := intEnv("BEX_MAX_QUERY_HOURS", "720")
 	srv.Logs.MaxQueryHours = maxQueryHours
 	srv.Logs.MaxSSEConns = int64(intEnv("BEX_MAX_SSE_CONNS", "100"))
+	srv.Logs.MaxSSEConnsPerSubject = intEnv("BEX_MAX_SSE_CONNS_PER_SUBJECT", "5")
+	srv.Logs.MaxSSEConnsPerWorkspace = intEnv("BEX_MAX_SSE_CONNS_PER_WORKSPACE", "20")
 	srv.Metrics.MaxQueryHours = maxQueryHours
 	srv.Events.MaxQueryHours = maxQueryHours
 
@@ -616,10 +619,20 @@ func configureServerAuthOptions(srv *api.Server, cpDBURI string) {
 	// second accepted key so installed repos redeploy hands-free
 	// (docs/ADR026-github-integration.md).
 	srv.GitHubWebhookSecret = os.Getenv("BEX_GITHUB_WEBHOOK_SECRET")
+	if err := validateWebhookReplayConfig(srv.WebhookSecret, srv.GitHubWebhookSecret, srv.WebhookReplays); err != nil {
+		log.Fatal(err)
+	}
 	// codex #4: in multitenant mode (control-plane store active), reject the shared
 	// manual webhook secret because it carries no per-workspace binding and would
 	// authorize cross-tenant deployment mutations. The GitHub App key is unaffected.
 	srv.MultitenantWebhook = cpDBURI != ""
+}
+
+func validateWebhookReplayConfig(manualSecret, githubSecret string, replays apps.WebhookReplayGuard) error {
+	if (manualSecret != "" || githubSecret != "") && replays == nil {
+		return errors.New("bex-api: Git webhooks require BEX_CP_DB_URI for durable replay protection")
+	}
+	return nil
 }
 
 // wireGitHubApp wires the GitHub App integration (docs/ADR026-github-integration.md): private-repo deploys +
@@ -985,6 +998,9 @@ func wireAgentSessions(deps *api.Deps) {
 		// DB-backed nonce design. The claims are a distinct ticket type and bind
 		// the session sandbox pod/workspace instead of a service instance.
 		deps.AgentSessionTicketSecret = []byte(secret)
+		if deps.SandboxExec != nil {
+			deps.SandboxExec.DriverGrantSecret = []byte(secret)
+		}
 	}
 	deps.ShellWSURL = os.Getenv("BEX_SHELL_WS_URL")
 	deps.AgentSessionGatewayURL = os.Getenv("BEX_AGENT_SESSION_GATEWAY_URL")
@@ -1116,6 +1132,9 @@ func configureRateLimiters(srv *api.Server) {
 	// Rate limiting + request caps (w7/m3). BEX_RATE_LIMIT=0 disables the limiter.
 	rpm, burst := rateLimitEnv("BEX_RATE_LIMIT", "500", "BEX_RATE_BURST", "0")
 	srv.RateLimiter = api.NewRateLimiter(rpm, burst) // nil when rpm=0 (disabled)
+	if srv.RateLimiter != nil && srv.APIKeys != nil && srv.APIKeys.Base != nil {
+		srv.RateLimiter.Workspace = srv.APIKeys.Base.Workspace
+	}
 
 	// Device-flow rate limiting (w4/m31/t002). BEX_DEVICE_RATE_LIMIT=0
 	// disables it. Set here, before Handler(), like every other cap: Handler()

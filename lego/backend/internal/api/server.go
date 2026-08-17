@@ -665,7 +665,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			ReplicationLag:             d.ReplicationLag,
 			KeyValueStats:              d.KeyValueStats,
 		},
-		APIKeys: &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder},
+		APIKeys: &apikeys.Service{Base: base, APIKeys: d.APIKeys, Binding: d.KeyBinder, CreationLimiter: apikeys.NewCreationRateLimiter()},
 		SSHKeys: &sshkeys.Service{Base: base, Store: d.SSHKeysStore},
 		Sandbox: sandboxSvc,
 		AgentSessions: &agentsessions.Service{

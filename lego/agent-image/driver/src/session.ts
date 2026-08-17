@@ -14,12 +14,24 @@
  * limitations under the License.
  */
 
-import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import {
+  appendFile,
+  mkdir,
+  readFile,
+  rename,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import { createUIMessageStream } from "ai";
 import { createSessionProvider, type SessionProvider } from "./acp.js";
 import { createUpdateMapper } from "./acp-map.js";
-import { deliverBranch, extractEvidence, type DeliveryResult, type EvidenceResult } from "./delivery.js";
+import {
+  deliverBranch,
+  extractEvidence,
+  type DeliveryResult,
+  type EvidenceResult,
+} from "./delivery.js";
 import { describeError } from "./errors.js";
 import type { AgentDriverConfig } from "./config.js";
 import type { CredentialManager } from "./credentials.js";
@@ -29,12 +41,15 @@ interface RunTurnOptions {
   prompt?: string;
   closeHub?: boolean;
   onPart?: (part: UIMessagePart) => void;
+  abortSignal?: AbortSignal;
 }
 
 interface StatusRecord {
   state: "running" | "succeeded" | "failed";
   [key: string]: unknown;
 }
+
+const maxSessionLogBytes = 16 << 20;
 
 export interface TurnResult extends StatusRecord {
   state: "succeeded";
@@ -47,7 +62,10 @@ async function ensureParent(filename: string): Promise<void> {
   await mkdir(path.dirname(filename), { recursive: true });
 }
 
-async function writeStatus(filename: string, status: StatusRecord): Promise<void> {
+async function writeStatus(
+  filename: string,
+  status: StatusRecord,
+): Promise<void> {
   await ensureParent(filename);
   const temporary = `${filename}.tmp`;
   await writeFile(temporary, `${JSON.stringify(status)}\n`, { mode: 0o600 });
@@ -73,14 +91,21 @@ async function logPart(
   filename: string,
   part: UIMessagePart,
   credentialManager: CredentialManager,
-): Promise<void> {
+  remaining: number,
+): Promise<number> {
   await ensureParent(filename);
   const record = JSON.stringify({
     at: new Date().toISOString(),
     type: "ui-message",
     part,
   });
-  await appendFile(filename, `${credentialManager.redact(record)}\n`, { mode: 0o600 });
+  const line = `${credentialManager.redact(record)}\n`;
+  const bytes = Buffer.byteLength(line);
+  if (bytes > remaining) return 0;
+  await appendFile(filename, line, {
+    mode: 0o600,
+  });
+  return bytes;
 }
 
 // A resumed sandbox restarts the driver on the restored rootfs, where the
@@ -135,7 +160,15 @@ export async function runHeadlessTurn(
   const prompt = options.prompt ?? config.prompt;
   const closeHub = options.closeHub ?? true;
   const onPart = options.onPart;
-  if (!prompt) throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
+  let logBytes = 0;
+  let logTruncated = false;
+  try {
+    logBytes = (await stat(config.sessionLogPath)).size;
+  } catch {
+    // A new session has no log yet.
+  }
+  if (!prompt)
+    throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
   // Sanitize at the single publication choke point (codex r7 #4): the hub
   // history, attached GET /stream clients, the POST /turn mirror — the
   // gateway's byte-transparent durable transcript tee — and (via the return
@@ -153,12 +186,23 @@ export async function runHeadlessTurn(
   await writeStatus(config.statusPath, { state: "running" });
 
   let provider: SessionProvider | undefined;
-  let promptResponse: Awaited<ReturnType<SessionProvider["prompt"]>> | undefined;
+  let promptResponse:
+    | Awaited<ReturnType<SessionProvider["prompt"]>>
+    | undefined;
   const turnAbort = new AbortController();
   let rejectDeadline!: (error: Error) => void;
   const deadline = new Promise<never>((_, reject) => {
     rejectDeadline = reject;
   });
+  const abortFromOutside = () => {
+    const error = new Error("agent turn terminated for snapshot");
+    turnAbort.abort(error);
+    rejectDeadline(error);
+  };
+  options.abortSignal?.addEventListener("abort", abortFromOutside, {
+    once: true,
+  });
+  if (options.abortSignal?.aborted) abortFromOutside();
   const turnTimer = setTimeout(() => {
     const error = new Error(`ACP turn exceeded ${config.turnTimeoutMs}ms`);
     turnAbort.abort(error);
@@ -197,12 +241,26 @@ export async function runHeadlessTurn(
       });
       for await (const chunk of stream) {
         const sanitized = publish(chunk as UIMessagePart);
-        await logPart(config.sessionLogPath, sanitized, credentialManager);
+        const written = await logPart(
+          config.sessionLogPath,
+          sanitized,
+          credentialManager,
+          Math.max(0, maxSessionLogBytes - logBytes),
+        );
+        if (written === 0) logTruncated = true;
+        logBytes += written;
       }
       if (turnError) throw turnError;
     };
     await Promise.race([execute(), deadline]);
     if (closeHub) hub.close();
+
+    // The agent must be dead before credential scrubbing, Git scanning/push, or
+    // snapshot preparation. Otherwise same-sandbox code can keep rewriting
+    // files/refs after inspection or re-persist a forgotten credential.
+    await provider!.cancel();
+    await provider!.cleanup();
+    if (turnAbort.signal.aborted) throw turnAbort.signal.reason;
 
     // Scrub the model credential out of persisted state BEFORE delivery, so a
     // credential the agent wrote into a workspace file is redacted in the pushed
@@ -221,6 +279,7 @@ export async function runHeadlessTurn(
         })
       : null;
     const evidence: EvidenceResult = await extractEvidence(config);
+    if (logTruncated) evidence.truncated = true;
     const status: StatusRecord = {
       state: "succeeded",
       sessionId: provider!.sessionId,
@@ -241,7 +300,8 @@ export async function runHeadlessTurn(
     throw error;
   } finally {
     clearTimeout(turnTimer);
+    options.abortSignal?.removeEventListener("abort", abortFromOutside);
     provider?.cancel();
-    provider?.cleanup();
+    await provider?.cleanup();
   }
 }

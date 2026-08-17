@@ -25,12 +25,19 @@ export interface DeviceSubscriptionClient {
   list(): Promise<{ available: boolean }>;
   register(input: {
     deviceId: string;
+    sessionId: string;
     provider: "expo";
     platform: "ios" | "android";
     token: string;
   }): Promise<void>;
   unregister(deviceId: string, accessToken?: string): Promise<void>;
 }
+
+export type NotificationBinding = {
+  subject: string;
+  sessionId: string;
+  workspaceId: string;
+};
 
 export interface RegistrationPreference {
   wasEnabled(): Promise<boolean>;
@@ -52,6 +59,14 @@ export class NotificationRegistrationController {
     private readonly signedIn: () => boolean,
     private readonly onState: (
       state: NotificationRegistrationState,
+    ) => void = () => {},
+    private readonly binding: () => NotificationBinding = () => ({
+      subject: "test-subject",
+      sessionId: "test-session",
+      workspaceId: "test-workspace",
+    }),
+    private readonly onRegistered: (
+      binding: NotificationBinding,
     ) => void = () => {},
   ) {}
 
@@ -118,12 +133,15 @@ export class NotificationRegistrationController {
     await this.native.ensureAndroidChannel();
     const token = await this.native.expoToken(this.projectId);
     const deviceId = await this.installationId();
+    const binding = this.binding();
     await this.subscriptions.register({
       deviceId,
+      sessionId: binding.sessionId,
       provider: "expo",
       platform: this.platform,
       token,
     });
+    if (this.active) this.onRegistered(binding);
     await this.preference.setEnabled(true);
     this.setState("enabled");
   }

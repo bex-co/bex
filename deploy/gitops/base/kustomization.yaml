@@ -3,6 +3,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
+  - appproject.yaml              # source/destination boundary for every child Application
   - sealed-secrets.yaml          # encrypt infra creds at rest -> committable SealedSecrets (docs/ADR016-sealed-secrets.md)
   - zot.yaml                     # OCI registry (build -> registry -> deploy)
   - kpack.yaml                   # CNB build controller + Paketo ClusterBuilder (spec.builder=buildpack)

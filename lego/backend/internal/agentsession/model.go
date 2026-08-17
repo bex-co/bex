@@ -261,7 +261,7 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	// bind to the session's CURRENT phase, not just the pod's immutable identity,
 	// so a retained or compromised sandbox in the grace window cannot pull a fresh
 	// model credential after the task is done/failed/canceled/canceling.
-	if session.WorkspaceID != req.Workspace || session.SandboxID == "" || terminalPhases[session.Phase] {
+	if !currentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
 		return ModelMintResponse{}, ErrForbidden
 	}
 	host, err := modelEndpointHostOf(session.AgentConfig)

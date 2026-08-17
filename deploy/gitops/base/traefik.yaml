@@ -21,7 +21,7 @@
 # LB, its private-network worker targets, and all listeners. Base stays hostNetwork
 # for local + single-node.
 #
-# Multi-source (like openbao.yaml): the Helm repo provides the chart, the git source
+# Multi-source (like openbao.yaml): immutable OCI provides the chart, the git source
 # (ref: values) provides base/values/traefik.values.yaml; overlays append their own.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -31,11 +31,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  project: default
+  project: bex-platform
   sources:
-    - repoURL: https://traefik.github.io/charts
-      chart: traefik
-      targetRevision: "41.0.0" # Traefik v3; pin exact for reproducibility
+    - repoURL: oci://ghcr.io/bex-co/bex-charts/traefik
+      path: .
+      targetRevision: "sha256:5f4abf67f2139cd77a0231415e66a7051876e85bffe73890cc2f78f749e7ffcf"
       helm:
         valueFiles:
           - $values/deploy/gitops/base/values/traefik.values.yaml

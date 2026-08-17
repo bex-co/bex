@@ -1,6 +1,7 @@
 # OpenBao — the platform secret store for tenant credentials (see
-# docs/ADR013-secrets.md). Pinned upstream chart; values are vendored in this repo, so
-# this is a multi-source Application: the Helm repo provides the chart, the git
+# docs/ADR013-secrets.md). The reviewed chart is mirrored to controlled OCI by
+# deploy.yml and selected by immutable digest; values are vendored in this repo, so
+# this is a multi-source Application: the OCI artifact provides the chart, the git
 # source (ref: values) provides base/values/openbao.values.yaml.
 # sync-wave 1: no dependency on the CNPG operator or any Cluster — OpenBao owns
 # its storage directly (integrated Raft). Init/unseal (keys + root token) and
@@ -13,11 +14,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  project: default
+  project: bex-platform
   sources:
-    - repoURL: https://openbao.github.io/openbao-helm
-      chart: openbao
-      targetRevision: "0.28.4" # app v2.5.5; pin exact for reproducibility
+    - repoURL: oci://ghcr.io/bex-co/bex-charts/openbao
+      path: .
+      targetRevision: "sha256:d2d895327319447dcacbd00f3c43a615ad40c110257fb1c830bcfc852dbb4be2"
       helm:
         valueFiles:
           - $values/deploy/gitops/base/values/openbao.values.yaml
