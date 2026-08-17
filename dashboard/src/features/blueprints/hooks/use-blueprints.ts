@@ -6,6 +6,7 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
+import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface UseBlueprintsResult {
@@ -21,7 +22,9 @@ export function useBlueprints(): UseBlueprintsResult {
   const { data, loading, error, refetch } = useQuery(BlueprintsDocument, {
     variables: { ownerId: currentWorkspaceId },
     skip: !resolved,
-    fetchPolicy: "cache-and-network",
+    // Read the route loader's warm cache on mount (w9/m68); freshness comes from
+    // the poll below and the loader's network-only fetch on every entry.
+    fetchPolicy: PRIMED_FETCH_POLICY,
     errorPolicy: "all",
     pollInterval: RESOURCE_POLL_INTERVAL_MS,
     skipPollAttempt: skipPollWhenHidden,

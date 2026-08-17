@@ -7,7 +7,12 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
-import { translatedTitleHead } from "@/common/lib/document-head";
+import {
+  translatedTitleHead,
+  titleLoaderFetchPolicy,
+} from "@/common/lib/document-head";
+import { prefetchInParallel } from "@/common/lib/prefetch";
+import { BlueprintsDocument } from "@/features/blueprints/api/operations";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
@@ -35,6 +40,23 @@ export const Route = createFileRoute("/blueprints")({
   staticData: { chrome: true },
   component: BlueprintsPage,
   beforeLoad: requireAuth(),
+  // Prefetch the list on hover-intent so it renders warm on mount (w9/m68);
+  // `useBlueprints` is cache-first, so it reads this loader's result. The loader
+  // fetches fresh on every entry (network-only), so cache-first carries no
+  // staleness.
+  loader: ({ context, cause }) => {
+    const ownerId = context.workspaceId;
+    if (ownerId == null) return;
+    return prefetchInParallel([
+      () =>
+        context.client.query({
+          query: BlueprintsDocument,
+          variables: { ownerId },
+          fetchPolicy: titleLoaderFetchPolicy(cause),
+          errorPolicy: "all",
+        }),
+    ]);
+  },
   head: ({ match }) => translatedTitleHead("blueprints.pageTitle", match),
 });
 
