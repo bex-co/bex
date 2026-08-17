@@ -17,7 +17,7 @@ spec:
   sources:
     - repoURL: oci://ghcr.io/bex-co/bex-charts/kratos
       path: .
-      targetRevision: "sha256:56ed906cc00ff22b9c02ee2bf7bee8b95b31bf57a83d6059f08e44717f6b1d91"
+      targetRevision: "sha256:6fc4825cba907d1972ffce1808ec32feb34e480b55a59a75b3f477381ed7a19d"
       helm:
         valueFiles:
           - $values/deploy/gitops/base/values/kratos.values.yaml

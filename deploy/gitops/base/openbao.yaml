@@ -18,7 +18,7 @@ spec:
   sources:
     - repoURL: oci://ghcr.io/bex-co/bex-charts/openbao
       path: .
-      targetRevision: "sha256:d2d895327319447dcacbd00f3c43a615ad40c110257fb1c830bcfc852dbb4be2"
+      targetRevision: "sha256:b9d2b1d8883857c362745645de62f29ad2f8e02a77a24e57ff0b5e365f5c008c"
       helm:
         valueFiles:
           - $values/deploy/gitops/base/values/openbao.values.yaml

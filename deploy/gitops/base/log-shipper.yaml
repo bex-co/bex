@@ -95,7 +95,7 @@ spec:
   source:
     repoURL: oci://ghcr.io/bex-co/bex-charts/alloy
     path: .
-    targetRevision: "sha256:2460e2cdd2654f659cabb441b3fb222b4d8fa34f02e52a15826ff45887b43064"
+    targetRevision: "sha256:66b76f583ddbe6f63aa10d8542131b0463a9a3d5cc0aa6128b1b215755e0e702"
     helm:
       releaseName: log-shipper
       values: |

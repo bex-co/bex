@@ -35,7 +35,7 @@ spec:
   sources:
     - repoURL: oci://ghcr.io/bex-co/bex-charts/traefik
       path: .
-      targetRevision: "sha256:5f4abf67f2139cd77a0231415e66a7051876e85bffe73890cc2f78f749e7ffcf"
+      targetRevision: "sha256:e0a2be6c76bd0592428cb00930ff6b3c8934e1f210c1095105fdb0f10ab8665b"
       helm:
         valueFiles:
           - $values/deploy/gitops/base/values/traefik.values.yaml

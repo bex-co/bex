@@ -20,7 +20,7 @@ spec:
   sources:
     - repoURL: oci://ghcr.io/bex-co/bex-charts/cluster-autoscaler
       path: .
-      targetRevision: "sha256:5fe11e81e0c36bd5c9336339609f264e17e59498a89e576b953f11d505b2f9fd"
+      targetRevision: "sha256:a846cf52eb0c767fe8cb65c894f9c80b915cb6a45f2a862d123d88c47f4c0f33"
       helm:
         releaseName: cluster-autoscaler
         valueFiles:

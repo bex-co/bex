@@ -1,23 +1,25 @@
 # Reviewed Helm archives used by production. Fields are:
 # chart|version|upstream repository|archive sha256|OCI manifest sha256
 #
-# The final digest is deterministic for Helm's OCI representation of the exact
-# archive. A dash means the chart is installed directly from the verified
-# archive during cluster bootstrap rather than mirrored for Argo CD.
+# The final digest is the deterministic Helm OCI manifest produced after the
+# mirror validates the exact archive layer and removes Helm's push-time
+# org.opencontainers.image.created annotation. A dash means the chart is
+# installed directly from the verified archive during cluster bootstrap rather
+# than mirrored for Argo CD.
 hcloud-cloud-controller-manager|1.33.0|https://charts.hetzner.cloud|b63437902639ffb24f38aa0847c69c30370dc41c3aef82c44ccb080127f9b3e6|-
 cilium|1.19.5|https://helm.cilium.io|56b60445a2c650b387ce2edb13cfd8d83219a9da693b0523915dba8be451a29e|-
 hcloud-csi|2.22.0|https://charts.hetzner.cloud|b8eb8ded7db70737251360dc0e1915542eb91ba2e0ebadefaa2ebb3af82b8345|-
-openbao|0.28.4|https://openbao.github.io/openbao-helm|783177e7925cb0d91ec3d5317a80826cb1e265ce17ba176d7a7ad578234c8a4e|sha256:d2d895327319447dcacbd00f3c43a615ad40c110257fb1c830bcfc852dbb4be2
-openfga|0.3.10|https://openfga.github.io/helm-charts|27f22d368309d8b184301b090509d130a615e4dea8fedcee7a72044391a83d1d|sha256:e9d5bbd42bd7c45253bd9dd1fdb10da3bc899aab064118ddd07231a8f99e3e0e
-kratos|0.62.1|https://k8s.ory.sh/helm/charts|27cf41ef5703a4f63b4d542cc4ea6ee9661fe5178d28ac55e19b027c8c05080c|sha256:56ed906cc00ff22b9c02ee2bf7bee8b95b31bf57a83d6059f08e44717f6b1d91
-hydra|0.62.1|https://k8s.ory.sh/helm/charts|a42f0621f09007b7f89d0ca0f48450e8ebf0d33679e8cf25ae88eb51004a9ca7|sha256:5a53f7c2b0b86f810dcac8a1cb7c82a10340289861d522886bafbc8da88825ea
-alloy|1.3.1|https://grafana.github.io/helm-charts|6f81df76a5f4239ec67b1a522262f8b1f0b18a4eaab96d4af579bdca0e190863|sha256:2460e2cdd2654f659cabb441b3fb222b4d8fa34f02e52a15826ff45887b43064
-metrics-server|3.12.2|https://kubernetes-sigs.github.io/metrics-server|e904ffa2fe33c429e12cac8aa013ba38f42d944e315d060e94230a53b98985cf|sha256:d7f01ba2b1b2d9c3f5e505cf8cda6e9712ca145d073ebf28779e2973f2b45077
-cluster-autoscaler|9.58.0|https://kubernetes.github.io/autoscaler|69516c14f2df547f73932820a918c84c210354305a845b2930f6ef03b7b26e97|sha256:5fe11e81e0c36bd5c9336339609f264e17e59498a89e576b953f11d505b2f9fd
-prometheus|25.27.0|https://prometheus-community.github.io/helm-charts|80f0d207bbfb37336b1b0a3fd6c7a60b42b8292eeb991c14a612b5759de01f95|sha256:ca111fd56feda5a2079d7db7a1ccf5f98d6f03b44eea6cdcce3cec5273481d02
-cloudnative-pg|0.29.0|https://cloudnative-pg.github.io/charts|668e065ff53508d58238788fd35b355a925060843629a951df0e6a9362e6d32f|sha256:4f2ad68fc28edf31ab86b151493e2d33a5c6b29ff537f2b9ee7c2018709218c1
-cert-manager|v1.20.3|https://charts.jetstack.io|ef5d707f5afbb2c3ce9892f5ff3fca0dec6864db8830a1c454b3d4822c485843|sha256:458ec8e95ed7628a316f4479e56174a577cf4c0eeed0e9b94a486a5544439553
-traefik|41.0.0|https://traefik.github.io/charts|2298d71aae3992a26d3317c8582e886e22f25f78386ec3332e76eda970c46796|sha256:5f4abf67f2139cd77a0231415e66a7051876e85bffe73890cc2f78f749e7ffcf
-sealed-secrets|2.19.1|https://bitnami.github.io/sealed-secrets|f2a3aa61638f1e23ef963be311e8d5ea75878d8e01ae3846285965b6dd985337|sha256:9b153ca7f980ac289a103e19440a3ac671a4173269c26dbf18858ee33d0d4727
-zot|0.1.121|https://zotregistry.dev/helm-charts|7e9fdfa18e4c9f370581eeae37c19a03ceb960857dc8f6f3db1dc3522b9d77ea|sha256:4de8e88fe286dd49124b166a4a0f2a83d729d646a8b2050d7d2e4843674bf535
-loki|6.55.0|https://grafana.github.io/helm-charts|f0026f251da5b49cea636a24143dbbadf15b39f51fc4639c9e0d08a4bc975ee3|sha256:56dff1080a34b4ded90b738cf7779afd03944548d05830ef3b4c273af4d12b91
+openbao|0.28.4|https://openbao.github.io/openbao-helm|783177e7925cb0d91ec3d5317a80826cb1e265ce17ba176d7a7ad578234c8a4e|sha256:b9d2b1d8883857c362745645de62f29ad2f8e02a77a24e57ff0b5e365f5c008c
+openfga|0.3.10|https://openfga.github.io/helm-charts|27f22d368309d8b184301b090509d130a615e4dea8fedcee7a72044391a83d1d|sha256:ff1152c0fcb5a3f9b5e0955bc77d0e01222cad1b93e5c5c45f9a2b4f889db9f7
+kratos|0.62.1|https://k8s.ory.sh/helm/charts|27cf41ef5703a4f63b4d542cc4ea6ee9661fe5178d28ac55e19b027c8c05080c|sha256:6fc4825cba907d1972ffce1808ec32feb34e480b55a59a75b3f477381ed7a19d
+hydra|0.62.1|https://k8s.ory.sh/helm/charts|a42f0621f09007b7f89d0ca0f48450e8ebf0d33679e8cf25ae88eb51004a9ca7|sha256:40704eadfffa49f76fc33bdda8e53cd454e1be9644fc484e15399e6531fa9e4d
+alloy|1.3.1|https://grafana.github.io/helm-charts|6f81df76a5f4239ec67b1a522262f8b1f0b18a4eaab96d4af579bdca0e190863|sha256:66b76f583ddbe6f63aa10d8542131b0463a9a3d5cc0aa6128b1b215755e0e702
+metrics-server|3.12.2|https://kubernetes-sigs.github.io/metrics-server|e904ffa2fe33c429e12cac8aa013ba38f42d944e315d060e94230a53b98985cf|sha256:6f84c5fc6e9ccf9535e6bd152db58ba59edc0d70705f1add93696f524a6553c7
+cluster-autoscaler|9.58.0|https://kubernetes.github.io/autoscaler|69516c14f2df547f73932820a918c84c210354305a845b2930f6ef03b7b26e97|sha256:a846cf52eb0c767fe8cb65c894f9c80b915cb6a45f2a862d123d88c47f4c0f33
+prometheus|25.27.0|https://prometheus-community.github.io/helm-charts|80f0d207bbfb37336b1b0a3fd6c7a60b42b8292eeb991c14a612b5759de01f95|sha256:79966b9d29997efc43b93b2df12b628479fcac2868d97a2d98b3e3d12d326ef7
+cloudnative-pg|0.29.0|https://cloudnative-pg.github.io/charts|668e065ff53508d58238788fd35b355a925060843629a951df0e6a9362e6d32f|sha256:67a2cb6e865168d0c211c76c1a10d4369c6465dac7ebda9172cb72bc46217a78
+cert-manager|v1.20.3|https://charts.jetstack.io|ef5d707f5afbb2c3ce9892f5ff3fca0dec6864db8830a1c454b3d4822c485843|sha256:85c3ea2b59210fd13efc17c98bca0b2b2b90775c5dcf5a7ef56a22e67b70716e
+traefik|41.0.0|https://traefik.github.io/charts|2298d71aae3992a26d3317c8582e886e22f25f78386ec3332e76eda970c46796|sha256:e0a2be6c76bd0592428cb00930ff6b3c8934e1f210c1095105fdb0f10ab8665b
+sealed-secrets|2.19.1|https://bitnami.github.io/sealed-secrets|f2a3aa61638f1e23ef963be311e8d5ea75878d8e01ae3846285965b6dd985337|sha256:0563572d052732a80123d067d6870266486cc649ee34b82c9b92aed8a20a7290
+zot|0.1.121|https://zotregistry.dev/helm-charts|7e9fdfa18e4c9f370581eeae37c19a03ceb960857dc8f6f3db1dc3522b9d77ea|sha256:4476fc31b06e14b9386a00b3c9309925b3cc02f7f8ce5105b0bc82b2603a5422
+loki|6.55.0|https://grafana.github.io/helm-charts|f0026f251da5b49cea636a24143dbbadf15b39f51fc4639c9e0d08a4bc975ee3|sha256:e0361dd45bbeedc12f18a0d4d55c81c92cdcda4475e21c316ebe8c379cc9fa54

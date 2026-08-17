@@ -17,7 +17,7 @@ spec:
   sources:
     - repoURL: oci://ghcr.io/bex-co/bex-charts/hydra
       path: .
-      targetRevision: "sha256:5a53f7c2b0b86f810dcac8a1cb7c82a10340289861d522886bafbc8da88825ea"
+      targetRevision: "sha256:40704eadfffa49f76fc33bdda8e53cd454e1be9644fc484e15399e6531fa9e4d"
       helm:
         valueFiles:
           - $values/deploy/gitops/base/values/hydra.values.yaml
