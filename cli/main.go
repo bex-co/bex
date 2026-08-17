@@ -14,6 +14,7 @@ import (
 	"github.com/bex-co/bex/cli/internal/bridge"
 	"github.com/bex-co/bex/cli/internal/code"
 	"github.com/bex-co/bex/cli/internal/update"
+	"github.com/bex-co/bex/cli/internal/upgrade"
 	"github.com/render-oss/cli/cmd"
 	"github.com/render-oss/cli/pkg/cfg"
 	"golang.org/x/term"
@@ -31,9 +32,11 @@ func main() {
 		fmt.Fprintf(os.Stderr, "bex: configure upstream CLI: %v\n", err)
 		os.Exit(1)
 	}
-	// The Bex-native coding commands (`bex code`, `bex glm`, …) are additions
-	// to the imported command tree; the upstream commands remain untouched.
+	// The Bex-native coding commands (`bex code`, `bex glm`, …) and the
+	// self-update command are additions to the imported command tree; the
+	// upstream commands remain untouched.
 	cmd.RootCmd.AddCommand(code.Commands()...)
+	cmd.RootCmd.AddCommand(upgrade.Command(bexVersion))
 
 	// Own the version path: upstream's handler compares against
 	// render-oss/cli releases (const cfg.RepoURL) and would direct bex users

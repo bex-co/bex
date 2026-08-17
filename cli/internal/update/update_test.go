@@ -191,6 +191,56 @@ func TestLatestWithoutCachePathStillFetches(t *testing.T) {
 	}
 }
 
+const releasesWithAssetsJSON = `[
+	{"tag_name": "bex-cli/v1.4.0", "html_url": "https://example.test/r/1.4.0", "draft": false, "prerelease": false,
+		"assets": [{"name": "bex-1.4.0-linux-amd64.tar.gz", "browser_download_url": "https://dl.test/old"}]},
+	{"tag_name": "bex-cli/v2.0.0", "html_url": "https://example.test/r/2.0.0-draft", "draft": true, "prerelease": false},
+	{"tag_name": "bex-cli/v1.5.2", "html_url": "https://example.test/r/1.5.2", "draft": false, "prerelease": false,
+		"assets": [
+			{"name": "bex-1.5.2-linux-amd64.tar.gz", "browser_download_url": "https://dl.test/archive"},
+			{"name": "checksums.txt", "browser_download_url": "https://dl.test/checksums"},
+			{"name": "checksums.txt.sigstore.json", "browser_download_url": "https://dl.test/sig"}
+		]}
+]`
+
+func TestLatestReleaseReturnsNewestWithAssetsUncached(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		_, _ = w.Write([]byte(releasesWithAssetsJSON))
+	}))
+	t.Cleanup(server.Close)
+
+	// A populated cache must be ignored: the upgrade path needs fresh assets.
+	c := &Checker{APIBase: server.URL, Repo: "bex-co/bex", CachePath: filepath.Join(t.TempDir(), "cache.json"), Now: time.Now}
+
+	rel, err := c.LatestRelease()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel.Version != "1.5.2" || rel.Tag != "bex-cli/v1.5.2" {
+		t.Errorf("release = %+v, want newest stable 1.5.2", rel)
+	}
+	url, ok := rel.Asset("checksums.txt.sigstore.json")
+	if !ok || url != "https://dl.test/sig" {
+		t.Errorf("signature asset = %q ok=%v", url, ok)
+	}
+	if url, ok := rel.Asset("bex-1.5.2-linux-amd64.tar.gz"); !ok || url != "https://dl.test/archive" {
+		t.Errorf("archive asset = %q ok=%v", url, ok)
+	}
+	if _, ok := rel.Asset("missing"); ok {
+		t.Error("Asset should report false for an absent name")
+	}
+
+	// Second call re-fetches (no caching on the upgrade path).
+	if _, err := c.LatestRelease(); err != nil {
+		t.Fatal(err)
+	}
+	if requests != 2 {
+		t.Errorf("LatestRelease must fetch fresh each call (requests = %d)", requests)
+	}
+}
+
 func TestNewer(t *testing.T) {
 	cases := []struct {
 		current, latest string

@@ -1,6 +1,6 @@
 # `bex` CLI
 
-`bex` is a Bex-configured executable of the upstream [Render CLI](https://github.com/render-oss/cli). It imports the pinned upstream command package: commands, flags, parsing, request construction, and most help text are upstream behavior. The small Bex bridge changes only the default API origin and local configuration location, and registers Bex-native commands (currently `bex code`) alongside the imported command tree without modifying it.
+`bex` is a Bex-configured executable of the upstream [Render CLI](https://github.com/render-oss/cli). It imports the pinned upstream command package: commands, flags, parsing, request construction, and most help text are upstream behavior. The small Bex bridge changes only the default API origin and local configuration location, and registers Bex-native commands (`bex code`, `bex upgrade`) alongside the imported command tree without modifying it.
 
 The current pin and its update procedure are recorded in [`cli/UPSTREAM_RENDER_CLI.md`](../cli/UPSTREAM_RENDER_CLI.md).
 
@@ -104,6 +104,15 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 - **Isolation:** every provider gets its own `CLAUDE_CONFIG_DIR` under `~/.bex/code/claude-<name>` (base overridable with `BEX_CODE_HOME`) — settings, history, and permissions are independent, instances run in parallel, and a personal `~/.claude` setup is neither read nor modified. Inherited `ANTHROPIC_*`/`CLAUDE_CONFIG_DIR` values are stripped so the personal environment cannot leak in.
 - **Keys are bring-your-own, captured once.** A provider's first launch opens its API-key console, takes one hidden paste, **verifies the key live** against the provider's Messages endpoint (only an explicit 401/403 fails), and stores it owner-only in `~/.bex/code/keys.toml` — the key is injected into the child process environment at launch and written into no configuration file. The environment (`ZAI_API_KEY`/`GLM_API_KEY`, `META_MODEL_API_KEY`/`META_API_KEY`, `MOONSHOT_API_KEY`/`KIMI_API_KEY`, `DEEPSEEK_API_KEY`) always overrides the store. `bex code` / `bex code keys` show status; `bex code keys set|unset <provider>` manage the store (piped stdin works for scripting).
 - **Passthrough:** everything after the provider name goes to `claude` unchanged — `bex glm --continue`, `bex glm -p "one prompt"`, `bex glm --help` for Claude Code's own flags. The catalog lives in `cli/internal/code/provider.go`; adding a provider is a data change. A Bex-served provider catalog and Bex-brokered keys (via `bex login`) are the forward path.
+
+### Self-update: `bex upgrade`
+
+`bex upgrade` updates a raw-binary install in place. It resolves the newest `bex-cli/v*` GitHub release, downloads the archive for the running OS/arch, **verifies it before installing** — the release's cosign keyless signature over `checksums.txt` (pinned to the bex-cli release workflow's Fulcio identity), then the archive's SHA-256 against that signed `checksums.txt` — and atomically replaces the running binary (a failure at any step leaves the original untouched).
+
+- **`bex upgrade -n` / `--check`** reports whether a newer release exists without installing it.
+- **Already current / dev builds:** a matching version no-ops with "already up to date"; a `dev` build (no release identity) refuses.
+- **Package-manager installs are left alone.** When the binary lives under a Homebrew path (Cellar / `opt/homebrew` / Linuxbrew), `bex upgrade` prints `brew upgrade bex` instead of overwriting files the package manager owns.
+- Signature verification is in-process (no `cosign` binary required) and **fail-closed**: if the sigstore trusted root can't be fetched, or the signature/identity/checksum doesn't verify, the upgrade aborts.
 
 ## Compatibility and branding limits
 
