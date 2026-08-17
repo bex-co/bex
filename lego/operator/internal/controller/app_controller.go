@@ -3550,14 +3550,14 @@ func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *ap
 	}
 	registryOwned := r.registryHosted(app.Status.Image) ||
 		r.registryHosted(app.Status.ArtifactImage) || app.Spec.Repo != ""
-	if r.Registry != "" && registryOwned && app.Annotations[annotRegistryPurgeComplete] != "true" {
+	if r.Registry != "" && registryOwned && app.Annotations[annotRegistryPurgeComplete] != registryCredentialRotateTrue {
 		done, registryErr := r.deleteRegistryRepo(ctx, app)
 		pending = pending || !done
 		if registryErr != nil {
 			errs = append(errs, fmt.Errorf("delete registry images: %w", registryErr))
 		} else if done {
 			before := client.MergeFrom(app.DeepCopy())
-			metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotRegistryPurgeComplete, "true")
+			metav1.SetMetaDataAnnotation(&app.ObjectMeta, annotRegistryPurgeComplete, registryCredentialRotateTrue)
 			if patchErr := r.Patch(ctx, app, before); patchErr != nil {
 				errs = append(errs, fmt.Errorf("record registry purge completion: %w", patchErr))
 			}
