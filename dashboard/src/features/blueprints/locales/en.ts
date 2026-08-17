@@ -259,6 +259,52 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description:
       "Estimated-pricing disclaimer: forward estimate is an upper bound of metered billing",
   },
+  "blueprints.generateButton": {
+    message: "Generate Blueprint",
+    description: "Blueprints list header — opens the export dialog (w8/m22)",
+  },
+  "blueprints.generateTitle": {
+    message: "Generate Blueprint",
+    description: "Generate dialog title",
+  },
+  "blueprints.generateDescription": {
+    message:
+      "Select existing resources to export as a render.yaml you can commit to a repo and connect as a Blueprint.",
+    description: "Generate dialog description",
+  },
+  "blueprints.generateEmptyHint": {
+    message: "Select at least one resource to generate from.",
+    description: "Generate dialog hint when nothing is selected",
+  },
+  "blueprints.generateAction": {
+    message: "Generate",
+    description: "Generate dialog primary action",
+  },
+  "blueprints.generateBack": {
+    message: "Back",
+    description: "Generate dialog — return from preview to selection",
+  },
+  "blueprints.generateCopy": {
+    message: "Copy",
+    description: "Generate dialog — copy the yaml to the clipboard",
+  },
+  "blueprints.generateCopied": {
+    message: "render.yaml copied",
+    description: "Toast after copying the generated manifest",
+  },
+  "blueprints.generateDownload": {
+    message: "Download render.yaml",
+    description: "Generate dialog — download the manifest file",
+  },
+  "blueprints.generateSecretsNote": {
+    message:
+      "Secret values are never exported — secret-backed variables appear as sync: false and are prompted for when the Blueprint is first created.",
+    description: "Generate dialog note under the yaml preview",
+  },
+  "blueprints.generateError": {
+    message: "Couldn't generate the Blueprint",
+    description: "Toast when the generate query fails",
+  },
   // --- Empty state ---
   "blueprints.emptyTitle": {
     message: "No blueprints yet",

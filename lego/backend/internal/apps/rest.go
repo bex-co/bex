@@ -1209,6 +1209,23 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			OwnerID: body.OwnerID, Repo: body.Repo, Branch: body.Branch, Manifest: body.BexYAML, Confirm: body.Confirm,
 		})
 	}))
+	mux.HandleFunc("POST /v1/blueprints/generate", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		var body struct {
+			OwnerID     string   `json:"ownerId"`
+			ServiceIDs  []string `json:"serviceIds"`
+			PostgresIDs []string `json:"postgresIds"`
+			KeyValueIDs []string `json:"keyValueIds"`
+		}
+		if err := core.DecodeJSON(r, &body); err != nil {
+			return nil, err
+		}
+		return s.GenerateBlueprint(r.Context(), GenerateBlueprintRequest{
+			OwnerID:     body.OwnerID,
+			ServiceIDs:  body.ServiceIDs,
+			PostgresIDs: body.PostgresIDs,
+			KeyValueIDs: body.KeyValueIDs,
+		})
+	}))
 	mux.HandleFunc("POST /v1/blueprints/preview", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
 			Repo    string `json:"repo"`

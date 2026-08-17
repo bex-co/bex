@@ -1,18 +1,18 @@
 # w8 · m22 — Generate Blueprint: export existing resources as render.yaml
 
-**Worker:** worker8 **Goal:** Render's "Generate Blueprint" has a bex equivalent — select existing workspace services/datastores and get a generated render.yaml (env var **names only**, secrets emitted as `sync: false`, `fromService`/`fromDatabase` links where derivable) over REST/GraphQL/MCP plus a dashboard entry point, giving existing click-ops users a one-step path into IaC. **Status:** todo
+**Worker:** worker8 **Goal:** Render's "Generate Blueprint" has a bex equivalent — select existing workspace services/datastores and get a generated render.yaml (env var **names only**, secrets emitted as `sync: false`, `fromService`/`fromDatabase` links where derivable) over REST/GraphQL/MCP plus a dashboard entry point, giving existing click-ops users a one-step path into IaC. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                       | est | depends_on |
 | ---- | ---------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Core generator: workspace resources → render.yaml manifest                   | 60m | —          |
-| t002 | Expose `generate` across REST/GraphQL/MCP                                    | 30m | t001       |
-| t003 | Dashboard entry: select resources → download render.yaml                     | 45m | t002       |
-| t004 | Render parity check (generated shape vs Render's export; round-trip surfaces) | 30m | t003       |
-| t005 | Simplify (`/simplify` over the changed code)                                 | 30m | t004       |
-| t006 | Test coverage (round-trip generate→validate, secret-absence, link derivation) | 45m | t004       |
-| t007 | Closeout                                                                     | 15m | t006       |
+| t001 | Core generator: workspace resources → render.yaml manifest — **DONE**                   | 60m | —          |
+| t002 | Expose `generate` across REST/GraphQL/MCP — **DONE**                                    | 30m | t001       |
+| t003 | Dashboard entry: select resources → download render.yaml — **DONE**                     | 45m | t002       |
+| t004 | Render parity check (generated shape vs Render's export; round-trip surfaces) — **DONE** | 30m | t003       |
+| t005 | Simplify (`/simplify` over the changed code) — **DONE**                                 | 30m | t004       |
+| t006 | Test coverage (round-trip generate→validate, secret-absence, link derivation) — **DONE** | 45m | t004       |
+| t007 | Closeout — **DONE**                                                                     | 15m | t006       |
 
 ## Definition of done
 

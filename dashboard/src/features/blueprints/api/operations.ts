@@ -183,6 +183,37 @@ export const BlueprintPreviewDocument = gql`
   BlueprintPreviewQueryVars
 >;
 
+export interface GenerateBlueprintVars {
+  ownerId?: string | null;
+  serviceIds?: string[];
+  postgresIds?: string[];
+  keyValueIds?: string[];
+}
+export interface GenerateBlueprintQuery {
+  generateBlueprint: { manifest: string; filename: string } | null;
+}
+export const GenerateBlueprintDocument = gql`
+  query GenerateBlueprint(
+    $ownerId: String
+    $serviceIds: [String]
+    $postgresIds: [String]
+    $keyValueIds: [String]
+  ) {
+    generateBlueprint(
+      ownerId: $ownerId
+      serviceIds: $serviceIds
+      postgresIds: $postgresIds
+      keyValueIds: $keyValueIds
+    ) {
+      manifest
+      filename
+    }
+  }
+` as unknown as TypedDocumentNode<
+  GenerateBlueprintQuery,
+  GenerateBlueprintVars
+>;
+
 // --- mutations ---
 
 export interface BlueprintEnvVarValueInput {

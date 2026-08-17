@@ -254,6 +254,50 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description:
       "Estimated-pricing disclaimer: forward estimate is an upper bound of metered billing",
   },
+  "blueprints.generateButton": {
+    message: "生成蓝图",
+    description: "Blueprints list header — opens the export dialog (w8/m22)",
+  },
+  "blueprints.generateTitle": {
+    message: "生成蓝图",
+    description: "Generate dialog title",
+  },
+  "blueprints.generateDescription": {
+    message: "选择现有资源导出为 render.yaml，可提交到仓库并连接为蓝图。",
+    description: "Generate dialog description",
+  },
+  "blueprints.generateEmptyHint": {
+    message: "请至少选择一个资源。",
+    description: "Generate dialog hint when nothing is selected",
+  },
+  "blueprints.generateAction": {
+    message: "生成",
+    description: "Generate dialog primary action",
+  },
+  "blueprints.generateBack": {
+    message: "返回",
+    description: "Generate dialog — return from preview to selection",
+  },
+  "blueprints.generateCopy": {
+    message: "复制",
+    description: "Generate dialog — copy the yaml to the clipboard",
+  },
+  "blueprints.generateCopied": {
+    message: "render.yaml 已复制",
+    description: "Toast after copying the generated manifest",
+  },
+  "blueprints.generateDownload": {
+    message: "下载 render.yaml",
+    description: "Generate dialog — download the manifest file",
+  },
+  "blueprints.generateSecretsNote": {
+    message: "机密值绝不导出——机密变量以 sync: false 形式出现，首次创建蓝图时会提示填写。",
+    description: "Generate dialog note under the yaml preview",
+  },
+  "blueprints.generateError": {
+    message: "无法生成蓝图",
+    description: "Toast when the generate query fails",
+  },
   // --- Empty state ---
   "blueprints.emptyTitle": {
     message: "暂无蓝图",

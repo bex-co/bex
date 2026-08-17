@@ -822,6 +822,15 @@ var blueprintValidationGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// generatedBlueprintGQLType is generateBlueprint's result (w8/m22).
+var generatedBlueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "GeneratedBlueprint",
+	Fields: graphql.Fields{
+		"manifest": gqlutil.StrField(func(r GenerateBlueprintResult) any { return r.Manifest }),
+		"filename": gqlutil.StrField(func(r GenerateBlueprintResult) any { return r.Filename }),
+	},
+})
+
 // blueprintPreviewGQLType is the GraphQL shape for a BlueprintPreview — the
 // pre-create fetch + dry-run behind the dashboard's Review step.
 var blueprintPreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
@@ -986,6 +995,24 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ValidateBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["bexYaml"].(string))
+			},
+		},
+		// generateBlueprint: export selected resources as render.yaml (w8/m22).
+		"generateBlueprint": &graphql.Field{
+			Type: generatedBlueprintGQLType,
+			Args: graphql.FieldConfigArgument{
+				"ownerId":     gqlutil.Arg(graphql.String),
+				"serviceIds":  gqlutil.Arg(graphql.NewList(graphql.String)),
+				"postgresIds": gqlutil.Arg(graphql.NewList(graphql.String)),
+				"keyValueIds": gqlutil.Arg(graphql.NewList(graphql.String)),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GenerateBlueprint(p.Context, GenerateBlueprintRequest{
+					OwnerID:     gqlutil.Str(p.Args, "ownerId"),
+					ServiceIDs:  gqlutil.StringList(p.Args["serviceIds"]),
+					PostgresIDs: gqlutil.StringList(p.Args["postgresIds"]),
+					KeyValueIDs: gqlutil.StringList(p.Args["keyValueIds"]),
+				})
 			},
 		},
 		// blueprintPreview: fetch a repo's render.yaml and dry-run validate it before

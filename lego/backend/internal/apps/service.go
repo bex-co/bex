@@ -157,6 +157,10 @@ type Service struct {
 	// later dashboard edit wins and a re-sync never overwrites/re-mints. nil => a
 	// manifest using those forms is rejected before any write.
 	EnvSeeder EnvSeeder
+	// EnvNames lists a service's mutable-store env var NAMES for Blueprint
+	// generation (w8/m22) — never values. nil ⇒ those vars are omitted from
+	// generated manifests.
+	EnvNames EnvNameSource
 	// SecretFileSeeder, when set (OpenBao is wired), persists and materializes
 	// the official CLI's create-time secretFiles payload. nil makes such a
 	// create fail before the App is written rather than silently discarding it.
@@ -2390,6 +2394,12 @@ func applyCreateToSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 func normalizeTierOrPlan(v string) (string, error) {
 	if v == "" {
 		return tiers.Compute.Default().ID, nil
+	}
+	// render.yaml spells multi-word plans with spaces ("pro plus") while the
+	// REST plan spelling uses underscores; the capability registry marks the
+	// schema spelling translated, so accept both (w8/m22 round-trip fix).
+	if t, ok := tiers.Compute.ByRenderPlan(strings.ReplaceAll(v, " ", "_")); ok {
+		return t.ID, nil
 	}
 	if t, ok := tiers.Compute.ByRenderPlan(v); ok {
 		return t.ID, nil

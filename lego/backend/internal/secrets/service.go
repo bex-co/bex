@@ -608,3 +608,19 @@ var (
 	_ core.EnvVarReader     = (*Service)(nil)
 	_ core.SecretFileReader = (*Service)(nil)
 )
+
+// ListEnvVarNames returns only the NAMES of a service's mutable-store env
+// vars — the Blueprint generator's seam (w8/m22): generated manifests emit
+// sync:false name-only entries, so values must never leave this package for
+// that path.
+func (s *Service) ListEnvVarNames(ctx context.Context, service string) ([]string, error) {
+	vars, err := s.ListEnvVars(ctx, service)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(vars))
+	for _, v := range vars {
+		names = append(names, v.Key)
+	}
+	return names, nil
+}
