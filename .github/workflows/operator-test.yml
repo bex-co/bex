@@ -24,6 +24,14 @@ permissions:
 jobs:
   operator:
     runs-on: ubuntu-latest
+    env:
+      # lego/go.work requires go >= 1.26.0 (lego/cli's pinned upstream CLI),
+      # but this job deliberately installs the 1.25 line the release image
+      # ships (lego/Dockerfile golang:1.25) and setup-go pins GOTOOLCHAIN=local.
+      # The operator module resolves standalone via its
+      # `replace …/lego/types => ../types` directive — exactly how the image
+      # build compiles it — so test with the workspace off, matching prod.
+      GOWORK: "off"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
