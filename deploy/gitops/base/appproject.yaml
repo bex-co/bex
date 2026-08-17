@@ -1,8 +1,10 @@
 # Child Applications may consume only the reviewed bex repository or the
 # controlled, digest-addressed Helm mirror. Namespace destinations are the
-# finite platform set; tenant namespaces are reconciled by bex-api/operator,
-# never by Argo. Cluster resources remain necessary for the reviewed controller
-# charts (CRDs, webhooks, and scoped RBAC), so source identity is the hard gate.
+# finite reviewed set. Tenant workloads are reconciled by bex-api/operator;
+# Argo's only tenant-namespace exception is the platform-owned Barman ObjectStore
+# contract in `default`. Cluster resources remain necessary for the reviewed
+# controller charts (CRDs, webhooks, and scoped RBAC), so source identity is the
+# hard gate.
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
@@ -23,8 +25,13 @@ spec:
     - { server: https://kubernetes.default.svc, namespace: cert-manager }
     - { server: https://kubernetes.default.svc, namespace: cnpg-system }
     - { server: https://kubernetes.default.svc, namespace: dashboard }
+    # Platform-owned tenant backup contract; the operator references this
+    # ObjectStore when it reconciles Database CRs in the apps namespace.
+    - { server: https://kubernetes.default.svc, namespace: default }
     - { server: https://kubernetes.default.svc, namespace: kpack }
     - { server: https://kubernetes.default.svc, namespace: kube-system }
+    # Local-name bridge used by the production kpack builder to reach Zot.
+    - { server: https://kubernetes.default.svc, namespace: local }
     - { server: https://kubernetes.default.svc, namespace: monitoring }
     # The OpenSandbox controller creates privileged snapshot Jobs and their
     # namespaced Role/RoleBinding here (ADR042 D5). Keep this destination
