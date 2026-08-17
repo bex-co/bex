@@ -19,6 +19,10 @@ const zhUsage: Record<string, TranslationEntry> = {
     description:
       "Heading for the metered-consumption section of the billing page",
   },
+  "usage.sectionNavigation": {
+    message: "账单区块",
+    description: "Accessible label for the billing page section navigation",
+  },
   "usage.resourceCapsTitle": {
     message: "资源限制",
     description: "Workspace creation-cap card title on the Usage page",

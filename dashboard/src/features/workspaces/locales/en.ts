@@ -135,6 +135,11 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     message: "No workspace selected.",
     description: "Workspace settings page empty state",
   },
+  "workspaces.settingsNavigation": {
+    message: "Settings sections",
+    description:
+      "Accessible label for the workspace settings section navigation",
+  },
   "workspaces.renameSubmit": {
     message: "Save",
     description: "Workspace rename form submit button",

@@ -19,6 +19,10 @@ const enUsage: Record<string, TranslationEntry> = {
     description:
       "Heading for the metered-consumption section of the billing page",
   },
+  "usage.sectionNavigation": {
+    message: "Billing sections",
+    description: "Accessible label for the billing page section navigation",
+  },
   "usage.resourceCapsTitle": {
     message: "Resource limits",
     description: "Workspace creation-cap card title on the Usage page",

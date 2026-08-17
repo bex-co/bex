@@ -7,6 +7,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { WorkspaceDetailsCard } from "@/features/workspaces/components/workspace-details-card";
 import { DeleteWorkspaceCard } from "@/features/workspaces/components/delete-workspace-card";
+import { WorkspaceSettingsNavigation } from "@/features/workspaces/components/workspace-settings-navigation";
 import { TeamPanel } from "@/features/team/components/team-panel";
 
 export const Route = createFileRoute("/workspace/settings")({
@@ -53,30 +54,41 @@ function WorkspaceSettingsPage() {
   return (
     <DashboardLayout>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-2xl space-y-6">
-          {!currentWorkspace && loading ? (
-            <>
-              <CardSkeleton rows={5} />
-              <CardSkeleton rows={3} />
-            </>
-          ) : !currentWorkspace ? (
-            <p className="text-muted-foreground text-sm">
-              {t("workspaces.settingsEmpty")}
-            </p>
-          ) : (
-            <>
-              <WorkspaceDetailsCard
-                workspace={currentWorkspace}
-                changePlanOpen={plan === "change"}
-                onChangePlanOpenChange={setChangePlanOpen}
-              />
-              {/* Team management lives here (w1/m33/t006) — members are
-                  workspace-scoped objects, and this is where Render puts them;
-                  it lived on account /settings from w4/m12 until now. */}
-              <TeamPanel />
-              <DeleteWorkspaceCard workspace={currentWorkspace} />
-            </>
-          )}
+        <div className="mx-auto grid w-full max-w-4xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
+          {/* Same right-rail quick nav as the service settings page. */}
+          <WorkspaceSettingsNavigation className="sticky top-0 z-20 -mx-4 border-y bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:top-6 lg:col-start-2 lg:row-start-1 lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none" />
+
+          <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
+            {!currentWorkspace && loading ? (
+              <>
+                <CardSkeleton rows={5} />
+                <CardSkeleton rows={3} />
+              </>
+            ) : !currentWorkspace ? (
+              <p className="text-muted-foreground text-sm">
+                {t("workspaces.settingsEmpty")}
+              </p>
+            ) : (
+              <>
+                <section id="general" className="scroll-mt-6">
+                  <WorkspaceDetailsCard
+                    workspace={currentWorkspace}
+                    changePlanOpen={plan === "change"}
+                    onChangePlanOpenChange={setChangePlanOpen}
+                  />
+                </section>
+                {/* Team management lives here (w1/m33/t006) — members are
+                    workspace-scoped objects, and this is where Render puts them;
+                    it lived on account /settings from w4/m12 until now. */}
+                <section id="team" className="scroll-mt-6">
+                  <TeamPanel />
+                </section>
+                <section id="danger-zone" className="scroll-mt-6">
+                  <DeleteWorkspaceCard workspace={currentWorkspace} />
+                </section>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </DashboardLayout>

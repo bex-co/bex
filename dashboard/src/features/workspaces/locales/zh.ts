@@ -133,6 +133,11 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "未选择工作区。",
     description: "Workspace settings page empty state",
   },
+  "workspaces.settingsNavigation": {
+    message: "设置区块",
+    description:
+      "Accessible label for the workspace settings section navigation",
+  },
   "workspaces.renameSubmit": {
     message: "保存",
     description: "Workspace rename form submit button",

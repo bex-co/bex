@@ -59,6 +59,7 @@ import {
 import { useUsageTrend, type TrendPoint } from "../hooks/use-usage-trend";
 import { WorkspaceResourceCaps } from "./resource-caps";
 import { BillingOnboardingCard } from "./billing-onboarding";
+import { UsageNavigation } from "./usage-navigation";
 
 // --- unit conversion helpers ---
 
@@ -705,62 +706,86 @@ export function UsagePage() {
   return (
     <DashboardLayout>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-4xl space-y-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="text-xl font-semibold">{t("usage.pageTitle")}</h1>
-              <p className="text-sm text-muted-foreground">
-                {t("usage.pageSubtitle")}
-              </p>
-            </div>
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-              <SelectTrigger
-                size="sm"
-                className="w-44"
-                aria-label={t("usage.monthPickerLabel")}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={CURRENT_MONTH_SENTINEL}>
-                  {t("usage.currentMonth")}
-                </SelectItem>
-                {MONTH_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
+        <div className="mx-auto grid w-full max-w-6xl items-start gap-8 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
+          <div className="min-w-0 space-y-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-xl font-semibold">
+                  {t("usage.pageTitle")}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {t("usage.pageSubtitle")}
+                </p>
+              </div>
+              <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                <SelectTrigger
+                  size="sm"
+                  className="w-44"
+                  aria-label={t("usage.monthPickerLabel")}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={CURRENT_MONTH_SENTINEL}>
+                    {t("usage.currentMonth")}
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  {MONTH_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Mobile section nav — the desktop right rail renders below. */}
+            <UsageNavigation className="sticky top-0 z-20 -mx-4 border-y bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:hidden" />
+
+            {error && !summary && (
+              <Alert variant="destructive">
+                <AlertTitle>{t("usage.errorTitle")}</AlertTitle>
+                <AlertDescription>{error.message}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Billing first, usage detail second — Render's workspace billing
+                page order, adopted with the w5/m70 rename. */}
+            <h2 id="billing" className="scroll-mt-6 text-base font-semibold">
+              {t("usage.sectionBilling")}
+            </h2>
+            <CreditsSection credits={summary?.billing?.credits ?? null} />
+            <BillingOnboardingCard />
+            <CurrentSpendSection billing={summary?.billing ?? null} />
+            <section id="estimated-cost" className="scroll-mt-6">
+              <EstimatedCostSection
+                estimatedCost={summary?.estimatedCost ?? null}
+                loading={loading}
+              />
+            </section>
+
+            <h2 id="usage" className="scroll-mt-6 text-base font-semibold">
+              {t("usage.sectionUsage")}
+            </h2>
+            <WorkspaceResourceCaps />
+            <section id="compute" className="scroll-mt-6">
+              <ComputeSection rows={computeRows} loading={loading} />
+            </section>
+            <section id="bandwidth" className="scroll-mt-6">
+              <BandwidthSection rows={bandwidthRows} loading={loading} />
+            </section>
+            <section id="build" className="scroll-mt-6">
+              <BuildSection rows={buildRows} loading={loading} />
+            </section>
+            <section id="storage" className="scroll-mt-6">
+              <StorageSection rows={storageRows} loading={loading} />
+            </section>
+            <section id="trend" className="scroll-mt-6">
+              <TrendSection points={trendPoints} loading={trendLoading} />
+            </section>
           </div>
 
-          {error && !summary && (
-            <Alert variant="destructive">
-              <AlertTitle>{t("usage.errorTitle")}</AlertTitle>
-              <AlertDescription>{error.message}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Billing first, usage detail second — Render's workspace billing
-              page order, adopted with the w5/m70 rename. */}
-          <h2 className="text-base font-semibold">
-            {t("usage.sectionBilling")}
-          </h2>
-          <CreditsSection credits={summary?.billing?.credits ?? null} />
-          <BillingOnboardingCard />
-          <CurrentSpendSection billing={summary?.billing ?? null} />
-          <EstimatedCostSection
-            estimatedCost={summary?.estimatedCost ?? null}
-            loading={loading}
-          />
-
-          <h2 className="text-base font-semibold">{t("usage.sectionUsage")}</h2>
-          <WorkspaceResourceCaps />
-          <ComputeSection rows={computeRows} loading={loading} />
-          <BandwidthSection rows={bandwidthRows} loading={loading} />
-          <BuildSection rows={buildRows} loading={loading} />
-          <StorageSection rows={storageRows} loading={loading} />
-          <TrendSection points={trendPoints} loading={trendLoading} />
+          {/* Desktop right rail — same quick nav as the service settings page. */}
+          <UsageNavigation className="sticky top-6 hidden lg:block" />
         </div>
       </div>
     </DashboardLayout>
