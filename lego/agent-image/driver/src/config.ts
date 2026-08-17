@@ -15,6 +15,7 @@
  */
 
 import path from "node:path";
+import { describeError } from "./errors.js";
 
 export interface AgentDriverConfig {
   command: string;
@@ -72,9 +73,7 @@ function jsonArray(value: string | undefined, name: string): string[] {
   try {
     parsed = JSON.parse(value);
   } catch (error) {
-    throw new Error(
-      `${name} must be a JSON array: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    throw new Error(`${name} must be a JSON array: ${describeError(error)}`);
   }
   if (
     !Array.isArray(parsed) ||
@@ -94,9 +93,7 @@ function jsonObject(
   try {
     parsed = JSON.parse(value);
   } catch (error) {
-    throw new Error(
-      `${name} must be a JSON object: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    throw new Error(`${name} must be a JSON object: ${describeError(error)}`);
   }
   if (
     parsed === null ||
