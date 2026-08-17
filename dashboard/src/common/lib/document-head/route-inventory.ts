@@ -87,7 +87,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "webhook.$webhookId.settings.tsx",
   ],
   "redirect-only": [
-    "billing_.$.tsx",
+    "billing_.$first.$.tsx",
     "cron.$.tsx",
     "d.$.tsx",
     "login.tsx",
