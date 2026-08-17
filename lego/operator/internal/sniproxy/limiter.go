@@ -41,6 +41,10 @@ type Limiter struct {
 	maxResource  int
 }
 
+// scopeWorkspace is the rejectedScope returned when the per-workspace cap
+// sheds a connection.
+const scopeWorkspace = "workspace"
+
 // NewLimiter builds a Limiter with the given global and per-source concurrent
 // connection caps. A cap <= 0 disables that dimension.
 func NewLimiter(maxGlobal, maxSource int) *Limiter {
@@ -132,7 +136,7 @@ func (l *Limiter) AcquireRoute(workspace, resource string) (release func(), reje
 	l.mu.Lock()
 	if l.maxWorkspace > 0 && l.perWorkspace[workspace] >= l.maxWorkspace {
 		l.mu.Unlock()
-		return func() {}, "workspace", false
+		return func() {}, scopeWorkspace, false
 	}
 	if l.maxResource > 0 && l.perResource[resource] >= l.maxResource {
 		l.mu.Unlock()

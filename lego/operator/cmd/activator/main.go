@@ -284,7 +284,9 @@ func serveMaintenanceWithFetcher(
 	}
 }
 
-func fetchCustomPage(ctx context.Context, app *appv1alpha1.App, rawURI string, platformHost func(string) bool) (*http.Response, error) {
+func fetchCustomPage(
+	ctx context.Context, app *appv1alpha1.App, rawURI string, platformHost func(string) bool,
+) (*http.Response, error) {
 	u, err := validateCustomPageURL(rawURI, app, platformHost)
 	if err != nil {
 		return nil, err
@@ -309,7 +311,9 @@ func fetchCustomPage(ctx context.Context, app *appv1alpha1.App, rawURI string, p
 	return hc.Do(req)
 }
 
-func customPageRedirectPolicy(app *appv1alpha1.App, platformHost func(string) bool) func(*http.Request, []*http.Request) error {
+func customPageRedirectPolicy(
+	app *appv1alpha1.App, platformHost func(string) bool,
+) func(*http.Request, []*http.Request) error {
 	return func(req *http.Request, via []*http.Request) error {
 		if len(via) > maxRedirects {
 			return errors.New("too many redirects")

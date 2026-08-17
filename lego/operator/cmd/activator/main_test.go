@@ -442,21 +442,23 @@ func TestWakeUnderConcurrentRequestsIsRaceFree(t *testing.T) {
 // singleflight window and prove they coalesce into a single patch.
 type blockingClient struct {
 	client.Client
-	appPatches  int64
-	depPatches  int64
+	appPatches  atomic.Int64
+	depPatches  atomic.Int64
 	entered     chan struct{} // closed when the leader is inside the App patch
 	release     chan struct{} // the leader blocks here until the test closes it
 	enteredOnce sync.Once
 }
 
-func (b *blockingClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (b *blockingClient) Patch(
+	ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption,
+) error {
 	switch obj.(type) {
 	case *appv1alpha1.App:
-		atomic.AddInt64(&b.appPatches, 1)
+		b.appPatches.Add(1)
 		b.enteredOnce.Do(func() { close(b.entered) })
 		<-b.release
 	case *appsv1.Deployment:
-		atomic.AddInt64(&b.depPatches, 1)
+		b.depPatches.Add(1)
 	}
 	return b.Client.Patch(ctx, obj, patch, opts...)
 }
@@ -493,10 +495,10 @@ func TestWakeCoalescesConcurrentRequestsIntoOnePatch(t *testing.T) {
 	close(bc.release) // the leader completes; waiters share its result
 	done.Wait()
 
-	if got := atomic.LoadInt64(&bc.appPatches); got != 1 {
+	if got := bc.appPatches.Load(); got != 1 {
 		t.Fatalf("app patches = %d, want exactly 1 (coalesced)", got)
 	}
-	if got := atomic.LoadInt64(&bc.depPatches); got != 1 {
+	if got := bc.depPatches.Load(); got != 1 {
 		t.Fatalf("deployment patches = %d, want exactly 1 (coalesced)", got)
 	}
 	var gotApp appv1alpha1.App

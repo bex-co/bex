@@ -246,12 +246,12 @@ func barmanCloudPlugin(serverName string, walArchiver bool) map[string]any {
 // per-workspace namespace (namespace == workspace label). Any other namespace is
 // a confused-deputy / cross-tenant write (codex #11). Shared by the Database and
 // KeyValue reconcilers.
-func canonicalNamespace(meta *metav1.ObjectMeta) bool {
-	if meta.Namespace == "default" {
+func canonicalNamespace(objMeta *metav1.ObjectMeta) bool {
+	if objMeta.Namespace == "default" {
 		return true
 	}
-	ws := meta.Labels[labelWorkspace]
-	return ws != "" && meta.Namespace == ws
+	ws := objMeta.Labels[labelWorkspace]
+	return ws != "" && objMeta.Namespace == ws
 }
 
 // managedRoles projects additional Database users onto CNPG spec.managed.roles —

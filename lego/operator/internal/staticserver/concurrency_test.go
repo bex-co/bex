@@ -35,11 +35,11 @@ type blockingOrigin struct {
 	release chan struct{}
 	entered chan string // one send per Get that reaches the origin
 	body    []byte
-	total   int64
+	total   atomic.Int64
 }
 
 func (b *blockingOrigin) Get(_ context.Context, key string) (Object, error) {
-	atomic.AddInt64(&b.total, 1)
+	b.total.Add(1)
 	b.entered <- key
 	<-b.release
 	return Object{Body: b.body, ContentType: "text/html"}, nil
@@ -89,7 +89,7 @@ func TestSingleflightCollapsesConcurrentSameKeyMisses(t *testing.T) {
 	close(origin.release)
 	done.Wait()
 
-	if got := atomic.LoadInt64(&origin.total); got != 1 {
+	if got := origin.total.Load(); got != 1 {
 		t.Fatalf("origin fetches = %d, want 1 (singleflight collapse)", got)
 	}
 	for i := range n {
@@ -145,7 +145,7 @@ func TestFetchGateBoundsConcurrentDistinctKeyFetches(t *testing.T) {
 		t.Fatalf("a third fetch reached the origin (%s) past the gate of 2", k)
 	case <-time.After(100 * time.Millisecond):
 	}
-	if got := atomic.LoadInt64(&origin.total); got != 2 {
+	if got := origin.total.Load(); got != 2 {
 		t.Fatalf("origin fetches = %d, want 2 (gate bound)", got)
 	}
 
@@ -155,7 +155,10 @@ func TestFetchGateBoundsConcurrentDistinctKeyFetches(t *testing.T) {
 
 func TestFetchGateReservesCapacityForAnotherSite(t *testing.T) {
 	g := newFetchGate(3, 0, 2)
-	if !g.acquire("site-a") || !g.acquire("site-a") {
+	if !g.acquire("site-a") {
+		t.Fatal("site A could not acquire its two fair-share slots")
+	}
+	if !g.acquire("site-a") {
 		t.Fatal("site A could not acquire its two fair-share slots")
 	}
 	if g.acquire("site-a") {
@@ -217,13 +220,11 @@ func TestLiveBodyLeaseBoundsSlowClientWrites(t *testing.T) {
 
 	blocked := &blockingWriter{header: http.Header{}, release: make(chan struct{}), writing: make(chan struct{}, 1)}
 	var done sync.WaitGroup
-	done.Add(1)
-	go func() {
-		defer done.Done()
+	done.Go(func() {
 		req := httptest.NewRequest(http.MethodGet, "http://"+testHost+"/a.html", nil)
 		req.Host = testHost
 		h.ServeHTTP(blocked, req)
-	}()
+	})
 	<-blocked.writing // the first response holds 8 of the 10 live-body bytes in Write
 
 	// A distinct miss still passes the fetch gate and reaches the origin, but

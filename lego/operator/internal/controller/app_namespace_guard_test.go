@@ -87,7 +87,7 @@ func TestReconcileRefusesForeignNamespaceApp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("guard returned error: %v", err)
 	}
-	if res.Requeue || res.RequeueAfter != 0 {
+	if res != (reconcile.Result{}) {
 		t.Fatalf("foreign App requeued: %+v", res)
 	}
 

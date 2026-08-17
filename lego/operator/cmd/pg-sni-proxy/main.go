@@ -126,7 +126,9 @@ func (r *dbRouter) set(db *appv1alpha1.Database) error {
 	if workspace == "" {
 		workspace = db.Namespace
 	}
-	entry := dbRoutingEntry{workspace: workspace, namespace: db.Namespace, pooler: db.Spec.Pooler, replicas: map[string]bool{}}
+	entry := dbRoutingEntry{
+		workspace: workspace, namespace: db.Namespace, pooler: db.Spec.Pooler, replicas: map[string]bool{},
+	}
 	for _, replica := range db.Spec.ReadReplicas {
 		entry.replicas[replica.Name] = true
 	}
