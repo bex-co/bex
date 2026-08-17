@@ -57,6 +57,9 @@ const (
 	kvStorageClass = "hcloud-volumes"
 	// kvPort is the Valkey listen + Service port.
 	kvPort = 6379
+	// kvDefaultUser is Valkey's built-in default ACL user; required by
+	// valkey-cli URI authentication.
+	kvDefaultUser = "default"
 	// kvTLSPort is private to the public pass-through proxy. Keeping plaintext on
 	// kvPort preserves existing in-cluster redis:// clients while external
 	// rediss:// clients terminate end-to-end TLS inside Valkey.
@@ -183,7 +186,7 @@ func generatePassword() (string, error) {
 
 func keyValueConnectionSecretData(password, internalHost string, public bool, name, domain string) map[string][]byte {
 	data := map[string][]byte{
-		"username": []byte("default"),
+		"username": []byte(kvDefaultUser),
 		"password": []byte(password),
 		"host":     []byte(internalHost),
 		"port":     []byte(strconv.Itoa(kvPort)),
@@ -342,7 +345,7 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 				auth.Data["password"] = []byte(password)
 			}
 		}
-		auth.Data["username"] = []byte("default")
+		auth.Data["username"] = []byte(kvDefaultUser)
 		auth.Immutable = ptr(true)
 		return controllerutil.SetControllerReference(kv, auth, r.Scheme)
 	}); err != nil {
