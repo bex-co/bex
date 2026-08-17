@@ -1,4 +1,4 @@
-module github.com/bex-co/bex/cli
+module github.com/bex-co/bex/lego/cli
 
 go 1.26.0
 

@@ -102,10 +102,12 @@ verify-tenant-isolation:
 	bash $(CURDIR)/../../scripts/verify-tenant-isolation.sh
 
 .PHONY: lint
-lint: golangci-lint ## Run golangci-lint over both modules (operator + backend); fails if either does
+lint: golangci-lint ## Run golangci-lint over all modules (operator + backend + types + cli); fails if any does
 	@rc=0; \
 	"$(GOLANGCI_LINT)" run || rc=1; \
 	( cd ../backend && "$(GOLANGCI_LINT)" run ) || rc=1; \
+	( cd ../types && "$(GOLANGCI_LINT)" run ) || rc=1; \
+	( cd ../cli && "$(GOLANGCI_LINT)" run ) || rc=1; \
 	exit $$rc
 
 .PHONY: lint-backend
@@ -113,9 +115,11 @@ lint-backend: golangci-lint ## Run golangci-lint over the backend module only (e
 	cd ../backend && "$(GOLANGCI_LINT)" run
 
 .PHONY: lint-fix
-lint-fix: golangci-lint ## Run golangci-lint --fix over both modules (operator + backend)
+lint-fix: golangci-lint ## Run golangci-lint --fix over all modules (operator + backend + types + cli)
 	"$(GOLANGCI_LINT)" run --fix
 	cd ../backend && "$(GOLANGCI_LINT)" run --fix
+	cd ../types && "$(GOLANGCI_LINT)" run --fix
+	cd ../cli && "$(GOLANGCI_LINT)" run --fix
 
 .PHONY: lint-config
 lint-config: golangci-lint ## Verify golangci-lint linter configuration

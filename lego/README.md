@@ -2,9 +2,9 @@
 
 All of bex's Go lives here, self-contained. The name is Latin **_legō_** ("I gather, I assemble") — bex is the glue that assembles bought bricks (Kubernetes, Cluster API, Zot, Cloud Native Buildpacks, OpenSandbox, Ory, OpenFGA) into a Render-style PaaS; the modules below are the bricks. This directory is the whole product; everything outside it (`infra/`, `deploy/`, `docs/`, `dashboard/`) is provisioning, GitOps, prose, or the separate frontend.
 
-## Three modules, one contract
+## Three platform modules, one contract — plus the CLI
 
-A Go workspace (`go.work`) of three modules. The dependency arrows point **one way** — both sides depend on the shared CRD contract, and the operator never imports the backend:
+A Go workspace (`go.work`) of four modules. Three of them are the platform: the dependency arrows point **one way** — both sides depend on the shared CRD contract, and the operator never imports the backend:
 
 ```
         types/            the contract; imports nothing
@@ -18,6 +18,7 @@ A Go workspace (`go.work`) of three modules. The dependency arrows point **one w
 | **types/** | `github.com/bex-co/bex/lego/types` | the **contract** — `App`/`Database` CRD Go types (`app.bex.co/v1alpha1`) | nothing (leaf) |
 | **operator/** | `…/lego/operator` | **mechanism** — the manager reconciles `App` CRs → Deployment/Service/Ingress (+TLS). No DB, no business logic. | `types/` |
 | **backend/** | `…/lego/backend` | **business logic** — **bex-api**: the Render REST/GraphQL/MCP surface (:8090) + OpenFGA authz + API-key auth + metrics + the opt-in control-plane store. | `types/` |
+| **cli/** | `…/lego/cli` | the **`bex` CLI launcher** — imports the pinned upstream `render-oss/cli` (no fork) and maps Bex defaults. Not a platform entrypoint: released as user-installed binaries via the `bex-cli/v*` tag train, excluded from the image build context. | nothing of the three above |
 
 `types/` is a struct definition, not an API surface — it's the shape both layers read and write, so it's the only thing they share. That boundary is compiler-enforced: `operator/go.mod` carries none of the backend's deps (graphql/mcp), so the operator physically cannot compile against backend code.
 
@@ -50,6 +51,14 @@ Build/test bex-api from its own module:
 ```bash
 cd lego/backend && go build ./... && go test ./...
 ```
+
+Build/test the CLI from its own module (its releases are the `bex-cli/v*` tag train, not the image):
+
+```bash
+cd lego/cli && go build ./... && go test ./...
+```
+
+> **Go-version split:** `cli/` and its pinned upstream `render-oss/cli` require Go 1.26, so `go.work` declares `go 1.26.0` and local workspace builds use the 1.26 toolchain. The three platform modules stay on `go 1.25.7`, and the shipped image still compiles them per-module with `golang:1.25` — the Docker build copies no `go.work`, so it is unaffected by the workspace bump.
 
 > **Codegen footgun:** the CRD types live in `types/`, not `operator/`. `make manifests generate` runs controller-gen against `../types/...`; the deepcopy lands in `types/v1alpha1/zz_generated.deepcopy.go` and the CRD YAML in `operator/config/crd/bases/`. Both are generated — never hand-edit. Details in [`operator/CLAUDE.md`](operator/CLAUDE.md).
 

@@ -141,8 +141,8 @@ func printStatus(w io.Writer) error {
 		default:
 			status = fmt.Sprintf("key from %s (environment)", source)
 		}
-		fmt.Fprintf(w, "bex %-8s  %-28s  %s\n", p.Name, p.DisplayName, status)
-		fmt.Fprintf(w, "              default %s · %s\n", p.DefaultModel, p.BaseURL)
+		_, _ = fmt.Fprintf(w, "bex %-8s  %-28s  %s\n", p.Name, p.DisplayName, status)
+		_, _ = fmt.Fprintf(w, "              default %s · %s\n", p.DefaultModel, p.BaseURL)
 	}
 	return nil
 }

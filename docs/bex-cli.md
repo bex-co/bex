@@ -2,7 +2,7 @@
 
 `bex` is a Bex-configured executable of the upstream [Render CLI](https://github.com/render-oss/cli). It imports the pinned upstream command package: commands, flags, parsing, request construction, and most help text are upstream behavior. The small Bex bridge changes only the default API origin and local configuration location, and registers Bex-native commands (`bex code`, `bex upgrade`) alongside the imported command tree without modifying it.
 
-The current pin and its update procedure are recorded in [`cli/UPSTREAM_RENDER_CLI.md`](../cli/UPSTREAM_RENDER_CLI.md).
+The current pin and its update procedure are recorded in [`lego/cli/UPSTREAM_RENDER_CLI.md`](../lego/cli/UPSTREAM_RENDER_CLI.md).
 
 ## Install
 
@@ -26,12 +26,12 @@ cosign verify-blob checksums.txt \
 For a checkout, build the same binary locally:
 
 ```bash
-cd cli
-go build -o ../bin/bex .
-../bin/bex --help
+cd lego/cli
+go build -o ../../bin/bex .
+../../bin/bex --help
 ```
 
-The importer requires the Go version declared in [`cli/go.mod`](../cli/go.mod).
+The importer requires the Go version declared in [`lego/cli/go.mod`](../lego/cli/go.mod).
 
 ## Interactive login
 
@@ -103,7 +103,7 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 - **Prerequisite:** `claude` on `PATH` (`npm install -g @anthropic-ai/claude-code`).
 - **Isolation:** every provider gets its own `CLAUDE_CONFIG_DIR` under `~/.bex/code/claude-<name>` (base overridable with `BEX_CODE_HOME`) — settings, history, and permissions are independent, instances run in parallel, and a personal `~/.claude` setup is neither read nor modified. Inherited `ANTHROPIC_*`/`CLAUDE_CONFIG_DIR` values are stripped so the personal environment cannot leak in.
 - **Keys are bring-your-own, captured once.** A provider's first launch opens its API-key console, takes one hidden paste, **verifies the key live** against the provider's Messages endpoint (only an explicit 401/403 fails), and stores it owner-only in `~/.bex/code/keys.toml` — the key is injected into the child process environment at launch and written into no configuration file. The environment (`ZAI_API_KEY`/`GLM_API_KEY`, `META_MODEL_API_KEY`/`META_API_KEY`, `MOONSHOT_API_KEY`/`KIMI_API_KEY`, `DEEPSEEK_API_KEY`) always overrides the store. `bex code` / `bex code keys` show status; `bex code keys set|unset <provider>` manage the store (piped stdin works for scripting).
-- **Passthrough:** everything after the provider name goes to `claude` unchanged — `bex glm --continue`, `bex glm -p "one prompt"`, `bex glm --help` for Claude Code's own flags. The catalog lives in `cli/internal/code/provider.go`; adding a provider is a data change. A Bex-served provider catalog and Bex-brokered keys (via `bex login`) are the forward path.
+- **Passthrough:** everything after the provider name goes to `claude` unchanged — `bex glm --continue`, `bex glm -p "one prompt"`, `bex glm --help` for Claude Code's own flags. The catalog lives in `lego/cli/internal/code/provider.go`; adding a provider is a data change. A Bex-served provider catalog and Bex-brokered keys (via `bex login`) are the forward path.
 
 ### Self-update: `bex upgrade`
 
@@ -116,6 +116,6 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 
 ## Compatibility and branding limits
 
-This is intentionally not a fork. Until Bex maintains a separate command implementation, upstream help text, interactive labels, and User-Agent behavior can say “Render.” Version and update messaging are the exception: `bex -v` is handled by the launcher itself and checks Bex's own release channel, never Render's. One remnant remains — the `bex login` TUI contains an upstream update banner comparing against render-oss/cli releases that the launcher cannot intercept; it stays dormant while the pin tracks upstream's latest release (see `cli/UPSTREAM_RENDER_CLI.md`). The server-side compatibility ledger, including known Bex non-goals such as workflows, ephemeral SSH, and `ea` objects, is [`docs/cli-compatibility-checklist.md`](cli-compatibility-checklist.md). The imported command can only work where Bex implements the corresponding API operation; it does not turn an unimplemented Bex feature into a supported one.
+This is intentionally not a fork. Until Bex maintains a separate command implementation, upstream help text, interactive labels, and User-Agent behavior can say “Render.” Version and update messaging are the exception: `bex -v` is handled by the launcher itself and checks Bex's own release channel, never Render's. One remnant remains — the `bex login` TUI contains an upstream update banner comparing against render-oss/cli releases that the launcher cannot intercept; it stays dormant while the pin tracks upstream's latest release (see `lego/cli/UPSTREAM_RENDER_CLI.md`). The server-side compatibility ledger, including known Bex non-goals such as workflows, ephemeral SSH, and `ea` objects, is [`docs/cli-compatibility-checklist.md`](cli-compatibility-checklist.md). The imported command can only work where Bex implements the corresponding API operation; it does not turn an unimplemented Bex feature into a supported one.
 
 If complete Bex branding or a dedicated OAuth public-client identity becomes a product requirement, make that explicit as a future fork/extension decision rather than silently changing the imported command surface.

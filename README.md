@@ -224,6 +224,7 @@ lego/
   types/       App, Database, and KeyValue CRD contracts
   operator/    Kubernetes manager: reconcile, build, runtime, config
   backend/     bex-api and the isolated SSH gateway
+  cli/         bex CLI launcher (imports the pinned upstream Render CLI)
 dashboard/     TanStack Start + Apollo + shadcn web application
 mobile/        Expo client for safe supervision workflows
 infra/         Terraform + Cluster API: local CAPD and Hetzner CAPH

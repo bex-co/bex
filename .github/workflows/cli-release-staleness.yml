@@ -2,7 +2,7 @@ name: CLI release staleness
 
 # w4/032.md piece 1: releasing the CLI depends on this reminder, not on
 # memory. Weekly, compares the latest bex-cli/v* tag against commits touching
-# cli/**, scripts/bex-cli-*, scripts/install-bex*, or this workflow's own
+# lego/cli/**, scripts/bex-cli-*, scripts/install-bex*, or this workflow's own
 # release workflow — opening/updating a tracking issue when a release is
 # owed, and closing it once /release catches the repo back up.
 

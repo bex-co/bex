@@ -40,7 +40,7 @@ import (
 func launch(p Provider, args []string, errOut io.Writer) error {
 	claudePath, err := exec.LookPath("claude")
 	if err != nil {
-		return fmt.Errorf("Claude Code is not installed (no `claude` on PATH); install it with `npm install -g @anthropic-ai/claude-code` or see https://claude.com/claude-code")
+		return fmt.Errorf("no `claude` on PATH; install Claude Code with `npm install -g @anthropic-ai/claude-code` or see https://claude.com/claude-code")
 	}
 
 	base, err := baseDir(os.LookupEnv, os.UserHomeDir)
@@ -127,7 +127,7 @@ func captureKey(p Provider, storePath string, errOut io.Writer) (string, error) 
 		return "", fmt.Errorf("no %s API key configured; run `bex code keys set %s` (or set one of %s)",
 			p.DisplayName, p.Name, strings.Join(p.KeyEnvs, ", "))
 	}
-	fmt.Fprintf(errOut, "No %s API key configured. Create one at:\n  %s\n", p.DisplayName, p.ConsoleURL)
+	_, _ = fmt.Fprintf(errOut, "No %s API key configured. Create one at:\n  %s\n", p.DisplayName, p.ConsoleURL)
 	openBrowser(p.ConsoleURL)
 	key, err := readSecret(errOut, fmt.Sprintf("Paste the %s API key (input hidden): ", p.Name))
 	if err != nil {
@@ -144,12 +144,12 @@ func verifyAndStoreKey(p Provider, storePath, key string, errOut io.Writer) erro
 	if key == "" {
 		return fmt.Errorf("empty key")
 	}
-	fmt.Fprintf(errOut, "Verifying against %s… ", p.BaseURL)
+	_, _ = fmt.Fprintf(errOut, "Verifying against %s… ", p.BaseURL)
 	if err := validateKey(p, key); err != nil {
-		fmt.Fprintln(errOut, "✗")
+		_, _ = fmt.Fprintln(errOut, "✗")
 		return err
 	}
-	fmt.Fprintln(errOut, "✓")
+	_, _ = fmt.Fprintln(errOut, "✓")
 	stored, err := loadStoredKeys(storePath)
 	if err != nil {
 		return err
@@ -158,7 +158,7 @@ func verifyAndStoreKey(p Provider, storePath, key string, errOut io.Writer) erro
 	if err := saveStoredKeys(storePath, stored); err != nil {
 		return err
 	}
-	fmt.Fprintf(errOut, "Stored in %s — the environment (%s) overrides it any time.\n",
+	_, _ = fmt.Fprintf(errOut, "Stored in %s — the environment (%s) overrides it any time.\n",
 		storePath, strings.Join(p.KeyEnvs, ", "))
 	return nil
 }
@@ -189,7 +189,7 @@ func validateKey(p Provider, key string) error {
 	if err != nil {
 		return fmt.Errorf("reach %s: %w", p.BaseURL, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 200))
 		return fmt.Errorf("%s rejected the key (HTTP %d): %s", p.DisplayName, resp.StatusCode, strings.TrimSpace(string(snippet)))
@@ -200,11 +200,11 @@ func validateKey(p Provider, key string) error {
 // readSecret reads a credential without echoing when stdin is a terminal,
 // falling back to a plain line read for piped input.
 func readSecret(errOut io.Writer, prompt string) (string, error) {
-	fmt.Fprint(errOut, prompt)
+	_, _ = fmt.Fprint(errOut, prompt)
 	fd := int(os.Stdin.Fd())
 	if term.IsTerminal(fd) {
 		b, err := term.ReadPassword(fd)
-		fmt.Fprintln(errOut)
+		_, _ = fmt.Fprintln(errOut)
 		if err != nil {
 			return "", fmt.Errorf("read key: %w", err)
 		}

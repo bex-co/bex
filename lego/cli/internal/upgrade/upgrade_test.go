@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bex-co/bex/cli/internal/update"
+	"github.com/bex-co/bex/lego/cli/internal/update"
 )
 
 const (

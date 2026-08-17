@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - "cli/**"
+      - "lego/cli/**"
       - "scripts/bex-cli-*.sh"
       - "docs/bex-cli.md"
       - "docs/cli-compatibility-checklist.md"
       - ".github/workflows/cli-test.yml"
   pull_request:
     paths:
-      - "cli/**"
+      - "lego/cli/**"
       - "scripts/bex-cli-*.sh"
       - "docs/bex-cli.md"
       - "docs/cli-compatibility-checklist.md"
@@ -27,12 +27,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: cli/go.mod
-          cache-dependency-path: cli/go.sum
+          go-version-file: lego/cli/go.mod
+          cache-dependency-path: lego/cli/go.sum
       - name: validate upstream import pin
         run: bash scripts/bex-cli-validate.sh
       - name: test launcher
-        working-directory: cli
+        working-directory: lego/cli
         run: go test ./...
       # The launcher test contains a complete local device-grant → token →
       # forced refresh → revoke lifecycle. These backend packages verify the

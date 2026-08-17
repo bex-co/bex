@@ -18,7 +18,7 @@ description: Cut a versioned release of a bex component (today: cli) — compute
 ## Step 2 — Determine the version
 
 1. Last tag: highest existing `bex-cli/v*` by semver (`git tag -l 'bex-cli/v*'`; also `git fetch --tags` first). No tags yet ⇒ this is the first release; default `0.1.0` unless an explicit version was given.
-2. List commits since that tag touching the component's paths — for `cli`: `cli/**`, `scripts/bex-cli-*`, `scripts/install-bex*`, `.github/workflows/cli-release.yml`. If there are none, say so and stop (nothing to release) unless the user explicitly insists.
+2. List commits since that tag touching the component's paths — for `cli`: `lego/cli/**`, `scripts/bex-cli-*`, `scripts/install-bex*`, `.github/workflows/cli-release.yml`. If there are none, say so and stop (nothing to release) unless the user explicitly insists.
 3. Suggested bump from Conventional Commits over those commits: any `!`/`BREAKING CHANGE` → major (while on `0.x`, propose minor instead and say why), else any `feat` → minor, else patch.
 4. If the user passed a level or exact version, that wins. Otherwise present the suggestion plus the commit list and **ask for confirmation** (`AskUserQuestion`) — the confirmed version is the authorization to publish.
 
