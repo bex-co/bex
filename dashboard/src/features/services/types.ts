@@ -136,9 +136,10 @@ export interface ServiceView {
   /** Render's service notification override: default | none | failure | all. */
   notificationsToSend: string | null;
   /**
-   * HTTP path the ReadinessProbe polls before routing traffic (`spec.healthCheckPath`,
-   * w1/m23/t001); null/empty means the platform default "/". Only applies to
-   * web_service and private_service; null when not selected (list query).
+   * HTTP path the health probes (readiness + liveness, w7/m81) GET
+   * (`spec.healthCheckPath`, w1/m23/t001); null/empty selects the TCP default
+   * — the platform checks only that the process is listening (w7/m80). Only
+   * applies to web_service and private_service; null when not selected (list query).
    */
   healthCheckPath: string | null;
   /**

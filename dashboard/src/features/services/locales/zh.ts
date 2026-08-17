@@ -1050,7 +1050,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.settingsHealthCheckPathHint": {
     message:
-      "bex 用来判断服务是否可以接收流量的 HTTP 路径，需在 5 秒内返回 2xx 或 3xx。留空则只检查进程是否在端口上监听 —— 当服务没有可以低成本返回 2xx 的路由时，应当留空。",
+      "bex 用来判断服务是否健康的 HTTP 路径，需在 5 秒内返回 2xx 或 3xx；连续失败 60 秒会重启实例，因此请指向低成本路由。留空则只检查进程是否在端口上监听 —— 当服务没有可以低成本返回 2xx 的路由时，应当留空。",
     description: "Settings tab: health-check path row hint text",
   },
   "services.settingsHealthCheckPathPlaceholder": {

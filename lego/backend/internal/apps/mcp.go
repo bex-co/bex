@@ -190,7 +190,7 @@ type displayNameArgs struct {
 // healthCheckPathArgs is set_health_check_path's input.
 type healthCheckPathArgs struct {
 	ServiceID       string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	HealthCheckPath string `json:"healthCheckPath" jsonschema:"HTTP path the platform GETs to gate pod readiness; must start with /. Empty clears it, which switches the service to a TCP check that only verifies the process is listening"`
+	HealthCheckPath string `json:"healthCheckPath" jsonschema:"HTTP path the platform GETs to gate pod readiness and liveness; must start with /. Empty clears it, which switches the service to a TCP check that only verifies the process is listening"`
 }
 
 // maxShutdownDelayArgs is set_max_shutdown_delay's input. Render's official
@@ -912,7 +912,7 @@ func (s *Service) registerAutoscalingTools(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_health_check_path",
-		Description: "Change the HTTP path the platform GETs to decide whether a web or private service is ready to receive traffic (spec.healthCheckPath). A 2xx/3xx response marks the pod ready. Pass an empty string to CLEAR the path, which switches the service to a TCP check that only verifies the process is listening — the platform default, and the right choice for a service with no cheap 2xx route (an API whose / is a 404 can never pass an HTTP check). Has no effect on cron_job or background_worker services.",
+		Description: "Change the HTTP path the platform GETs to decide whether a web or private service is healthy (spec.healthCheckPath). A 2xx/3xx response within 5 seconds is healthy; sustained failures remove the pod from rotation, and 60 seconds of consecutive failures restarts the instance. Point it at a cheap endpoint (e.g. /healthz), not an expensive route — the path is probed every 10 seconds for the life of the service. Pass an empty string to CLEAR the path, which switches the service to a TCP check that only verifies the process is listening — the platform default, and the right choice for a service with no cheap 2xx route (an API whose / is a 404 can never pass an HTTP check). Has no effect on cron_job or background_worker services.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in healthCheckPathArgs) (*mcp.CallToolResult, renderService, error) {
 		return renderServiceResult(s.SetHealthCheckPath(ctx, in.ServiceID, in.HealthCheckPath))
 	})

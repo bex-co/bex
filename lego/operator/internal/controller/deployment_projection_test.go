@@ -134,7 +134,7 @@ func TestWorkerHasNoHTTPSurface(t *testing.T) {
 	if len(container.Ports) != 0 {
 		t.Errorf("ports = %v; a worker declares none", container.Ports)
 	}
-	if container.ReadinessProbe != nil {
+	if container.ReadinessProbe != nil || container.StartupProbe != nil || container.LivenessProbe != nil {
 		t.Error("a worker has no HTTP surface to probe")
 	}
 }
@@ -173,6 +173,9 @@ func TestWebServiceReadinessProbe(t *testing.T) {
 		if got := container.ReadinessProbe.TCPSocket.Port.IntValue(); got != 8080 {
 			t.Errorf("probe port = %d; want the container port", got)
 		}
+		if container.LivenessProbe == nil || container.LivenessProbe.TCPSocket == nil {
+			t.Error("TCP mode carries the restart stage too — the m81/t001 contract is unconditional parity")
+		}
 	})
 
 	// Both probes must agree about what healthy means; they share one handler
@@ -205,14 +208,45 @@ func TestWebServiceReadinessProbe(t *testing.T) {
 		}
 	})
 
-	// Deliberate divergence: Render restarts an instance after 60s of
-	// consecutive failures. Adopting that unconditionally would let a service
-	// that merely slows under load be restarted into a cold start. See
-	// .pm/w7/027.md.
-	t.Run("carries no liveness probe", func(t *testing.T) {
+	// Render restarts an instance after 60s of consecutive failures; m81 ships
+	// that stage as a liveness probe on the shared handler. The contract is
+	// unconditional parity (the m81/t001 decision, recorded where the probes
+	// are built): the spiral hazard that deferred it is bounded by the startup
+	// probe below, and in TCP mode the probe never invokes the tenant handler.
+	t.Run("restarts a wedged instance after 60s (Render's second stage)", func(t *testing.T) {
 		app := projectionApp(func(a *appv1alpha1.App) { a.Spec.HealthCheckPath = "/healthz" })
-		if container := appContainerOf(t, project(app, webParams())); container.LivenessProbe != nil {
-			t.Error("no liveness probe until .pm/w7/027.md is promoted")
+		container := appContainerOf(t, project(app, webParams()))
+
+		if container.LivenessProbe == nil || container.LivenessProbe.HTTPGet == nil {
+			t.Fatal("a web service must carry a liveness probe — Render restarts after 60s of failures")
+		}
+		if container.LivenessProbe.HTTPGet.Path != container.ReadinessProbe.HTTPGet.Path {
+			t.Errorf("liveness probes %q but readiness probes %q; the three probes share one handler",
+				container.LivenessProbe.HTTPGet.Path, container.ReadinessProbe.HTTPGet.Path)
+		}
+		if got := container.LivenessProbe.TimeoutSeconds; got != 5 {
+			t.Errorf("liveness timeout = %ds; want Render's 5s", got)
+		}
+		if window := container.LivenessProbe.PeriodSeconds * container.LivenessProbe.FailureThreshold; window != 60 {
+			t.Errorf("liveness window = %ds; want Render's 60s restart threshold", window)
+		}
+	})
+
+	// Kubelet suspends liveness only while the startup probe runs, so a
+	// liveness probe without one would kill a slow-booting service — the
+	// restart spiral this milestone waited on m80 to make impossible. Pin the
+	// coexistence so a future edit cannot reintroduce boot-kill.
+	t.Run("liveness never fires during boot", func(t *testing.T) {
+		container := appContainerOf(t, project(projectionApp(), webParams()))
+
+		if container.LivenessProbe == nil {
+			t.Fatal("liveness missing — the restart stage above is the contract")
+		}
+		if container.StartupProbe == nil {
+			t.Fatal("liveness without a startup probe would kill a slow boot")
+		}
+		if boot := container.StartupProbe.PeriodSeconds * container.StartupProbe.FailureThreshold; boot != 900 {
+			t.Errorf("startup budget = %ds; liveness must stay suspended for the full 15m rollout budget", boot)
 		}
 	})
 
