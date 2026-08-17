@@ -137,7 +137,7 @@ export function SteeringComposer({
   }
 
   return (
-    <div className="bg-background shrink-0 border-t">
+    <div className="bg-background shrink-0">
       <div className="mx-auto w-full max-w-3xl space-y-1.5 px-4 py-2">
         {submitError ? (
           <Alert variant="destructive">
