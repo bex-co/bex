@@ -56,3 +56,65 @@ func TestNonceExpiryCoversVerifyWindow(t *testing.T) {
 		t.Fatalf("Verify just past the window = %v, want ErrExpired", err)
 	}
 }
+
+// TestPodTripleAllOrNothing pins the ADR065 D2 replay-only ticket shape: the
+// pod triple (sandbox/pod/namespace) is either fully present (a normal attach
+// ticket) or fully empty (a replay-only READ ticket for a reaped session). A
+// partially-filled triple is malformed, and a turn ticket must always bind a pod.
+func TestPodTripleAllOrNothing(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	base := Claims{Subject: "alice", SessionID: "ags-session", Workspace: "tea-a",
+		IssuedAt: now.Unix(), ExpiresAt: now.Add(time.Minute).Unix()}
+
+	// Fully-empty triple + read: valid (replay-only).
+	replay := base
+	replay.Action = ActionRead
+	tok, err := Mint([]byte("secret"), replay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := Verify([]byte("secret"), tok, now)
+	if err != nil || got.Pod != "" || got.SandboxID != "" || got.Namespace != "" {
+		t.Fatalf("replay-only verify = %+v err=%v", got, err)
+	}
+
+	// Fully-empty triple + turn: malformed (a turn must bind a pod).
+	turn := base
+	turn.Action = ActionTurn
+	tok, err = Mint([]byte("secret"), turn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Verify([]byte("secret"), tok, now); !errors.Is(err, ErrMalformed) {
+		t.Fatalf("pod-less turn ticket = %v, want ErrMalformed", err)
+	}
+
+	// Legacy empty action on a pod-less ticket defaults to read: valid.
+	legacy := base
+	tok, err = Mint([]byte("secret"), legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := Verify([]byte("secret"), tok, now); err != nil || got.Action != ActionRead {
+		t.Fatalf("legacy pod-less verify = %+v err=%v", got, err)
+	}
+
+	// A partially-filled triple is malformed in every combination.
+	for _, mutate := range []func(*Claims){
+		func(c *Claims) { c.SandboxID = "sandbox-1" },
+		func(c *Claims) { c.Pod = "sandbox-1-0" },
+		func(c *Claims) { c.Namespace = "tea-a-sandbox" },
+		func(c *Claims) { c.SandboxID, c.Pod = "sandbox-1", "sandbox-1-0" },
+	} {
+		partial := base
+		partial.Action = ActionRead
+		mutate(&partial)
+		tok, err := Mint([]byte("secret"), partial)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Verify([]byte("secret"), tok, now); !errors.Is(err, ErrMalformed) {
+			t.Fatalf("partial pod triple %+v = %v, want ErrMalformed", partial, err)
+		}
+	}
+}

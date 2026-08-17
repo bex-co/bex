@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import { agentSessionView } from "@/test/mocks/agent-session";
@@ -10,14 +11,21 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, ...rest }: { children: React.ReactNode }) => (
     <a {...rest}>{children}</a>
   ),
+  useNavigate: () => vi.fn(),
 }));
 const pinMock = vi.fn().mockResolvedValue(undefined);
 const unpinMock = vi.fn().mockResolvedValue(undefined);
+const archiveMock = vi.fn().mockResolvedValue(undefined);
+const unarchiveMock = vi.fn().mockResolvedValue(undefined);
+const deleteMock = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
   useAgentSessionMutations: () => ({
     cancel: vi.fn(),
     pin: pinMock,
     unpin: unpinMock,
+    archive: archiveMock,
+    unarchive: unarchiveMock,
+    deleteSession: deleteMock,
   }),
 }));
 
@@ -85,5 +93,50 @@ describe("SessionDetailHeader", () => {
     );
     expect(screen.getByRole("button", { name: /unpin/i })).toBeInTheDocument();
     expect(screen.getByText(/Pinned/)).toBeInTheDocument();
+  });
+
+  // ADR065 D1/D6: the overflow menu carries Archive (any phase) and, on a
+  // finished session, the destructive Delete behind a confirmation dialog.
+  it("archives through the overflow menu and badges an archived session", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<SessionDetailHeader session={view()} />);
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(screen.getByRole("menuitem", { name: /^archive$/i }));
+    expect(archiveMock).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <SessionDetailHeader
+        session={view({
+          archivedAt: new Date().toISOString(),
+          isArchived: true,
+        })}
+      />,
+    );
+    expect(screen.getByText("Archived")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(screen.getByRole("menuitem", { name: /unarchive/i }));
+    expect(unarchiveMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers Delete only on a finished session, behind a confirmation", async () => {
+    const user = userEvent.setup();
+    // A live session must cancel first — no Delete in the menu.
+    const { rerender } = render(
+      <SessionDetailHeader session={view({ phase: "running" })} />,
+    );
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      screen.queryByRole("menuitem", { name: /delete/i }),
+    ).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    rerender(<SessionDetailHeader session={view()} />); // completed
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(screen.getByRole("menuitem", { name: /delete/i }));
+    // The confirm dialog gates the destructive call.
+    expect(deleteMock).not.toHaveBeenCalled();
+    expect(screen.getByText("Delete this session?")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Delete session" }));
+    expect(deleteMock).toHaveBeenCalledTimes(1);
   });
 });

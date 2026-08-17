@@ -128,7 +128,7 @@ func TestCompleterHarvestsTranscriptBeforeTeardown(t *testing.T) {
 		t.Fatalf("sandbox not torn down: canceled=%d", lc.canceled)
 	}
 	// The parsed parts landed in the durable store at turn 1, seq 0..1.
-	parts, err := st.AgentSessionTranscript(context.Background(), id, -1, 1<<30)
+	parts, err := st.AgentSessionTranscript(context.Background(), id, -1, 1<<30, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestCompleterHarvestConcatenatesTurns(t *testing.T) {
 	lc.transcriptLog = `{"part":{"type":"text","text":"t2"}}`
 	c.Reconcile(context.Background())
 
-	parts, _ := st.AgentSessionTranscript(context.Background(), id, -1, 1<<30)
+	parts, _ := st.AgentSessionTranscript(context.Background(), id, -1, 1<<30, 0)
 	if len(parts) != 3 {
 		t.Fatalf("stored %d parts, want 3 (turn 2 appended)", len(parts))
 	}
@@ -185,7 +185,7 @@ func TestCompleterHarvestRespectsCumulativeQuota(t *testing.T) {
 	lc.transcriptLog = `{"part":{"type":"text","text":"` + strings.Repeat("y", 30) + `"}}`
 	c.Reconcile(context.Background())
 
-	parts, _ := st.AgentSessionTranscript(context.Background(), id, -1, 1<<30)
+	parts, _ := st.AgentSessionTranscript(context.Background(), id, -1, 1<<30, 0)
 	var total int64
 	for _, p := range parts {
 		total += int64(len(p.Part))

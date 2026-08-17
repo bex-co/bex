@@ -420,12 +420,15 @@ func (c *Completer) teardown(ctx context.Context, record store.AgentSession) {
 	}
 	// idleSince is the most recent interaction: the turn end (this finalized row's
 	// updated_at) or a later SSH disconnect. IdleTTL=0 reduces this to "reap as
-	// soon as no editor is connected" — byte-identical to ADR054 D6.
+	// soon as no editor is connected" — byte-identical to ADR054 D6. An ARCHIVED
+	// session skips the grace entirely (ADR065 D1): archive is an explicit
+	// disinterest signal, so its sandbox is reclaimed at this very tick (the
+	// still-open-editor pin above still applies — never kill a live edit).
 	idleSince := record.UpdatedAt
 	if lastEnded != nil && lastEnded.After(idleSince) {
 		idleSince = *lastEnded
 	}
-	if grace := c.idleTTL(); grace > 0 && c.now().Sub(idleSince) < grace {
+	if grace := c.idleTTL(); record.ArchivedAt == nil && grace > 0 && c.now().Sub(idleSince) < grace {
 		log.Printf("agent-session completer: deferring teardown, idle grace not elapsed (session=%s)", record.ID)
 		return
 	}

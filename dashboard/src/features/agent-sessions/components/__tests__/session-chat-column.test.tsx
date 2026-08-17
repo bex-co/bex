@@ -70,12 +70,36 @@ describe("SessionChatColumn provisioning gate (w2/m64)", () => {
     expect(screen.queryByText("Starting the sandbox…")).not.toBeInTheDocument();
   });
 
-  it("shows no provisioning spinner for a terminal session that never got a sandbox", () => {
-    // A dispatch failure leaves no sandbox; the fallback shows the footer (failure
-    // callout) but no "starting" spinner.
+  it("replays the conversation for a terminal session whose sandbox is gone (ADR065 D2)", () => {
+    // Before w2/m70 this rendered no conversation at all — the durable
+    // transcript existed but the gate keyed on sandboxId. A reaped terminal
+    // session now mounts the stream, which attaches via a replay-only ticket.
     render(column(view("failed", { sandboxId: null })));
     expect(screen.queryByText("Starting the sandbox…")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("conversation")).not.toBeInTheDocument();
+    expect(screen.getByTestId("conversation")).toBeInTheDocument();
+  });
+
+  it("replays the conversation for a hibernated session (ADR065 D2)", () => {
+    render(column(view("hibernated", { sandboxId: null })));
+    expect(screen.getByTestId("conversation")).toBeInTheDocument();
+  });
+});
+
+describe("SessionChatColumn archived gate (ADR065 D1)", () => {
+  it("hides the steering composer on an archived session", () => {
+    const archived = view("completed", {
+      sandboxId: null,
+      archivedAt: new Date().toISOString(),
+      isArchived: true,
+    });
+    render(column(archived));
+    // The composer stub renders as the "echo" button; archived sessions refuse
+    // steer/resume (AGENT_SESSION_ARCHIVED), so no dead input is offered.
+    expect(
+      screen.queryByRole("button", { name: "echo" }),
+    ).not.toBeInTheDocument();
+    // The conversation still replays — viewable is the point of the archive.
+    expect(screen.getByTestId("conversation")).toBeInTheDocument();
   });
 });
 

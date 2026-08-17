@@ -72,7 +72,10 @@ export function toAgentSessionView(
     snapshotBytes: wire.snapshotBytes ?? 0,
     hibernatedAt: wire.hibernatedAt ?? null,
     retainUntil: wire.retainUntil ?? null,
+    archivedAt: wire.archivedAt ?? null,
     isHibernated: phase === "hibernated",
+    isArchived: wire.archivedAt != null,
+    isFinished: isTerminalPhase(phase) || phase === "hibernated",
     isTerminal: isTerminalPhase(phase),
     isSteerable: isSteerablePhase(phase),
   };

@@ -92,7 +92,7 @@ func (f *fakeAttachStore) AppendAgentSessionTranscript(_ context.Context, id str
 	return nil
 }
 
-func (f *fakeAttachStore) AgentSessionTranscript(_ context.Context, id string, afterSeq int64, maxBytes int64) ([]store.AgentSessionTranscriptPart, error) {
+func (f *fakeAttachStore) AgentSessionTranscript(_ context.Context, id string, afterSeq int64, maxBytes int64, _ int) ([]store.AgentSessionTranscriptPart, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	out := make([]store.AgentSessionTranscriptPart, 0)
@@ -268,7 +268,7 @@ func TestAgentAttachReplaysThenSplicesLiveAndTees(t *testing.T) {
 		t.Fatalf("live part not forwarded verbatim:\n%q", got)
 	}
 	// The tee persisted the live part (seq 1) idempotently alongside the seed.
-	stored, _ := st.AgentSessionTranscript(context.Background(), session, -1, 1<<30)
+	stored, _ := st.AgentSessionTranscript(context.Background(), session, -1, 1<<30, 0)
 	if len(stored) != 2 || stored[1].Seq != 1 || string(stored[1].Part) != `{"type":"text-delta","delta":"hi"}` {
 		t.Fatalf("tee = %+v, want seed + live seq 1", stored)
 	}
@@ -582,7 +582,7 @@ func TestAgentTurnQuotaIsCumulative(t *testing.T) {
 	// this turn is appended — a fresh per-turn counter would have stored 60 more.
 	_ = postTurn()
 
-	stored, _ := st.AgentSessionTranscript(context.Background(), session, -1, 1<<30)
+	stored, _ := st.AgentSessionTranscript(context.Background(), session, -1, 1<<30, 0)
 	var total int64
 	for _, p := range stored {
 		total += int64(len(p.Part))
@@ -839,5 +839,73 @@ func TestAgentAttachMidStreamRevocationAbortsLiveStream(t *testing.T) {
 	case <-unblocked:
 	case <-time.After(2 * time.Second):
 		t.Fatal("the driver's request context was not canceled by the revocation")
+	}
+}
+
+// panicPods fails the test if the gateway ever tries to resolve a pod — the
+// replay-only contract (ADR065 D2) is that an empty pod claim never dials.
+type panicPods struct{ t *testing.T }
+
+func (p panicPods) PodIP(context.Context, string, string) (string, error) {
+	p.t.Fatal("replay-only ticket must never resolve a pod")
+	return "", nil
+}
+
+// A replay-only ticket (empty pod triple, minted for a reaped terminal or
+// hibernated session — ADR065 D2) serves the durable transcript + [DONE]
+// without any pod lookup or driver dial; a POST with it is refused outright
+// (its read action can never match the turn method).
+func TestAgentAttachReplayOnlyTicketNeverDials(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-000000000000000000009"
+	st := newFakeAttachStore()
+	_ = st.AppendAgentSessionTranscript(context.Background(), session, []store.AgentSessionTranscriptPart{
+		{Seq: 0, Part: []byte(`{"type":"start"}`)},
+		{Seq: 1, Part: []byte(`{"type":"finish"}`)},
+	})
+	gw := newAttachGateway(st, panicPods{t: t}, secret, 8787)
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	replayTicket, err := agentsessionticket.Mint(secret, agentsessionticket.Claims{
+		Subject: "alice", SessionID: session, Workspace: "tea-a",
+		Action: agentsessionticket.ActionRead,
+		IssuedAt: 1_800_000_000, ExpiresAt: 1_800_000_090,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req.Header.Set(TicketHeader, replayTicket)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	payloads := dataPayloads(string(body))
+	if fmt.Sprint(payloads) != fmt.Sprint([]string{`{"type":"start"}`, `{"type":"finish"}`}) {
+		t.Fatalf("replay-only payloads = %v", payloads)
+	}
+	if !strings.HasSuffix(strings.TrimSpace(string(body)), "data: [DONE]") {
+		t.Fatalf("replay-only stream did not end with [DONE]:\n%s", body)
+	}
+
+	// POST with a replay-only (read) ticket is refused at the action/method gate.
+	replayTicket2, _ := agentsessionticket.Mint(secret, agentsessionticket.Claims{
+		Subject: "alice", SessionID: session, Workspace: "tea-a",
+		Action: agentsessionticket.ActionRead,
+		IssuedAt: 1_800_000_000, ExpiresAt: 1_800_000_090,
+	})
+	post, _ := http.NewRequest(http.MethodPost, srv.URL, strings.NewReader(`{}`))
+	post.Header.Set(TicketHeader, replayTicket2)
+	postResp, err := http.DefaultClient.Do(post)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer postResp.Body.Close()
+	if postResp.StatusCode != http.StatusForbidden {
+		t.Fatalf("POST with replay-only ticket = %d, want 403", postResp.StatusCode)
 	}
 }

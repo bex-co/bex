@@ -59,6 +59,11 @@ func (r *AttachRevalidator) RevalidateAttach(ctx context.Context, subject, sessi
 	if err != nil {
 		return mapStoreError(sessionID, err)
 	}
+	// ADR065 D1: an archive landing inside the ticket's TTL window refuses the
+	// turn at redemption too, mirroring the mint-time gate.
+	if record.ArchivedAt != nil {
+		return errArchived(record.Phase)
+	}
 	if !liveSandboxPhase(record.Phase) {
 		return core.NewConflictError("AGENT_SESSION_NOT_LIVE",
 			"agent session is not accepting live turns", map[string]any{"phase": record.Phase})

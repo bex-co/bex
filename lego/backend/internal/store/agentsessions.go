@@ -72,12 +72,17 @@ type AgentSession struct {
 	SnapshotSHA   string
 	HibernatedAt  *time.Time
 	RetainUntil   *time.Time
+	// ArchivedAt is the ADR065 D1 archive flag: LIST-state, orthogonal to phase.
+	// NULL ⇒ the session is in the working set; set ⇒ it is archived (hidden from
+	// the default list, mutation verbs refused) but still viewable.
+	ArchivedAt *time.Time
 }
 
 const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandbox_id,
 	phase, status, head_sha, pr_url, pr_number, evidence, turns, delivery_mode,
 	failure_reason, created_at, updated_at, canceled_at,
-	pinned, snapshot_ref, snapshot_bytes, snapshot_sha, hibernated_at, retain_until`
+	pinned, snapshot_ref, snapshot_bytes, snapshot_sha, hibernated_at, retain_until,
+	archived_at`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
@@ -86,7 +91,7 @@ func scanAgentSession(row pgx.Row) (AgentSession, error) {
 		&s.Evidence, &s.Turns, &s.DeliveryMode, &s.FailureReason,
 		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt,
 		&s.Pinned, &s.SnapshotRef, &s.SnapshotBytes, &s.SnapshotSHA,
-		&s.HibernatedAt, &s.RetainUntil)
+		&s.HibernatedAt, &s.RetainUntil, &s.ArchivedAt)
 	return s, err
 }
 
@@ -117,9 +122,72 @@ func (s *PGStore) GetAgentSession(ctx context.Context, id string) (AgentSession,
 	return out, nil
 }
 
-func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string) ([]AgentSession, error) {
-	rows, err := s.Pool.Query(ctx, `SELECT `+agentSessionColumns+`
-		FROM agent_sessions WHERE workspace_id=$1 ORDER BY created_at DESC, id DESC`, workspaceID)
+// Archived-membership selector for ListAgentSessions (ADR065 D3). The zero
+// value excludes archived rows — the default working set.
+type ArchivedFilter int
+
+const (
+	ArchivedExclude ArchivedFilter = iota // archived_at IS NULL (default)
+	ArchivedOnly                          // archived_at IS NOT NULL
+	ArchivedInclude                       // no predicate — the full history
+)
+
+// AgentSessionListQuery is the ADR065 D3 filter + keyset-page contract for the
+// workspace session list. Cursor is the id of the prior page's last item
+// (Render's cursor idiom); an unknown or foreign cursor yields an empty page.
+// Limit must be normalized (>0) by the caller — the store never substitutes a
+// default, so an unbounded read is impossible by construction.
+type AgentSessionListQuery struct {
+	Archived      ArchivedFilter
+	Phases        []string
+	Repo          string
+	CreatedBefore time.Time
+	CreatedAfter  time.Time
+	Cursor        string
+	Limit         int
+}
+
+// ListAgentSessions returns one filtered page of a workspace's sessions,
+// newest first (created_at DESC, id DESC — the order the keyset cursor pages).
+// The default query (zero filters) is the unarchived working set.
+func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string, q AgentSessionListQuery) ([]AgentSession, error) {
+	if q.Limit <= 0 {
+		return nil, fmt.Errorf("agent session list: limit must be positive")
+	}
+	sql := `SELECT ` + agentSessionColumns + ` FROM agent_sessions WHERE workspace_id=$1`
+	args := []any{workspaceID}
+	arg := func(v any) string {
+		args = append(args, v)
+		return fmt.Sprintf("$%d", len(args))
+	}
+	switch q.Archived {
+	case ArchivedOnly:
+		sql += ` AND archived_at IS NOT NULL`
+	case ArchivedInclude:
+	default:
+		sql += ` AND archived_at IS NULL`
+	}
+	if len(q.Phases) > 0 {
+		sql += ` AND phase = ANY(` + arg(q.Phases) + `)`
+	}
+	if q.Repo != "" {
+		sql += ` AND repo = ` + arg(q.Repo)
+	}
+	if !q.CreatedBefore.IsZero() {
+		sql += ` AND created_at < ` + arg(q.CreatedBefore)
+	}
+	if !q.CreatedAfter.IsZero() {
+		sql += ` AND created_at > ` + arg(q.CreatedAfter)
+	}
+	if q.Cursor != "" {
+		// Keyset: strictly after the cursor row in (created_at DESC, id DESC)
+		// order. The subquery is workspace-scoped so a foreign/unknown cursor is
+		// an empty page (Render's end-of-list behavior), never an ordering oracle.
+		c := arg(q.Cursor)
+		sql += ` AND (created_at, id) < (SELECT created_at, id FROM agent_sessions WHERE id = ` + c + ` AND workspace_id = $1)`
+	}
+	sql += ` ORDER BY created_at DESC, id DESC LIMIT ` + arg(q.Limit)
+	rows, err := s.Pool.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -133,6 +201,23 @@ func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string) ([]
 		out = append(out, v)
 	}
 	return out, rows.Err()
+}
+
+// SetAgentSessionArchived flips the ADR065 D1 archive flag. Idempotent both
+// ways: re-archiving keeps the original archived_at (the first archive time is
+// the honest one), and unarchiving a working-set row is a no-op. It never
+// touches phase/status — archive is list-state, not lifecycle-state.
+func (s *PGStore) SetAgentSessionArchived(ctx context.Context, id string, archived bool) (AgentSession, error) {
+	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET archived_at = CASE WHEN $2 THEN COALESCE(archived_at, now()) ELSE NULL END,
+		    updated_at = now()
+		WHERE id=$1
+		RETURNING `+agentSessionColumns, id, archived))
+	if err != nil {
+		return AgentSession{}, classify("agent session", err)
+	}
+	return out, nil
 }
 
 // SetAgentSessionLifecycle advances the durable session state. canceled=true
@@ -285,7 +370,7 @@ func (s *PGStore) HibernateAgentSession(ctx context.Context, id, snapshotRef str
 		SET phase='hibernated', status='hibernated',
 		    snapshot_ref=$2, snapshot_bytes=$3, snapshot_sha=$4,
 		    hibernated_at=now(),
-		    retain_until = CASE WHEN pinned THEN NULL ELSE $5 END,
+		    retain_until = CASE WHEN pinned THEN NULL ELSE $5::timestamptz END,
 		    updated_at=now()
 		WHERE id=$1 AND phase='hibernating'
 		RETURNING `+agentSessionColumns, id, snapshotRef, snapshotBytes, snapshotSHA, retainUntil))
@@ -358,7 +443,7 @@ func (s *PGStore) SetAgentSessionPinned(ctx context.Context, id string, pinned b
 		SET pinned=$2,
 		    retain_until = CASE
 		        WHEN $2 THEN NULL
-		        WHEN phase='hibernated' THEN $3
+		        WHEN phase='hibernated' THEN $3::timestamptz
 		        ELSE retain_until END,
 		    updated_at=now()
 		WHERE id=$1
@@ -371,8 +456,10 @@ func (s *PGStore) SetAgentSessionPinned(ctx context.Context, id string, pinned b
 
 // ListHibernatedForRetention returns unpinned hibernated sessions whose
 // retention deadline has passed (ADR059 D5), oldest deadline first — the working
-// set the retention sweep deletes (snapshot + row). Pinned rows (retain_until
-// NULL) never match. Trusted background read; the partial index backs it.
+// set the retention sweep reclaims. The sweep deletes ONLY the snapshot object;
+// the row and its transcript are kept (ExpireHibernatedAgentSession moves the
+// row to canceled + archived). Pinned rows (retain_until NULL) never match.
+// Trusted background read; the partial index backs it.
 func (s *PGStore) ListHibernatedForRetention(ctx context.Context, now time.Time, limit int) ([]AgentSession, error) {
 	if limit <= 0 {
 		limit = 200
@@ -400,15 +487,17 @@ func (s *PGStore) ListHibernatedForRetention(ctx context.Context, now time.Time,
 // ExpireHibernatedAgentSession finalizes a retention-expired session after its
 // snapshot has been deleted from object storage (ADR059 D5): it clears the
 // snapshot fields and moves the row to the terminal `canceled` state with a
-// reason, keeping the conversation history. Guarded to the exact snapshot_ref
-// so it can't clobber a row a concurrent Resume already rehydrated.
+// reason, keeping the conversation history. It also stamps archived_at (ADR065
+// D5): a session whose snapshot aged out is one nobody came back for, so it
+// leaves the working set by itself. Guarded to the exact snapshot_ref so it
+// can't clobber a row a concurrent Resume already rehydrated.
 func (s *PGStore) ExpireHibernatedAgentSession(ctx context.Context, id, snapshotRef string) (AgentSession, error) {
 	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
 		UPDATE agent_sessions
 		SET phase='canceled', status='canceled', canceled_at=now(),
 		    failure_reason='hibernation retention window elapsed',
 		    snapshot_ref='', snapshot_bytes=0, snapshot_sha='',
-		    retain_until=NULL, updated_at=now()
+		    retain_until=NULL, archived_at=COALESCE(archived_at, now()), updated_at=now()
 		WHERE id=$1 AND phase='hibernated' AND snapshot_ref=$2
 		RETURNING `+agentSessionColumns, id, snapshotRef))
 	if err != nil {
@@ -526,15 +615,23 @@ func (s *PGStore) AppendAgentSessionTranscript(ctx context.Context, sessionID st
 // maxBytes of cumulative payload: rows are scanned in seq order and the read
 // stops before the part that would exceed the budget, so a replay never
 // materializes more than maxBytes even if the stored transcript ever outgrew
-// it. It is the replay source for reattach and for terminal-session history
-// (ADR047 D9): it reads the durable store, never the sandbox, so it works
-// after the sandbox is gone.
-func (s *PGStore) AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64) ([]AgentSessionTranscriptPart, error) {
-	rows, err := s.Pool.Query(ctx, `
+// it. limit additionally bounds the ROW count in SQL (ADR065 D2's poll-shaped
+// page; <=0 ⇒ unbounded, the gateway replay's paging is byte-budgeted). It is
+// the replay source for reattach and for terminal-session history (ADR047 D9):
+// it reads the durable store, never the sandbox, so it works after the sandbox
+// is gone.
+func (s *PGStore) AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]AgentSessionTranscriptPart, error) {
+	sql := `
 		SELECT seq, turn, part, created_at
 		FROM agent_session_transcripts
 		WHERE session_id=$1 AND seq > $2
-		ORDER BY seq ASC`, sessionID, afterSeq)
+		ORDER BY seq ASC`
+	args := []any{sessionID, afterSeq}
+	if limit > 0 {
+		sql += ` LIMIT $3`
+		args = append(args, limit)
+	}
+	rows, err := s.Pool.Query(ctx, sql, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -599,22 +696,17 @@ func (s *PGStore) AgentSessionTranscriptTurnRecorded(ctx context.Context, sessio
 	return exists, nil
 }
 
-// PruneAgentSessionTranscripts deletes parts older than the cutoff, returning
-// the number removed. It rides the same daily retention sweep as audit data
-// (BEX_AUDIT_RETENTION_DAYS lineage); the ON DELETE CASCADE already clears a
-// deleted session's parts, so this only bounds long-lived sessions' history.
-func (s *PGStore) PruneAgentSessionTranscripts(ctx context.Context, before time.Time) (int64, error) {
-	tag, err := s.Pool.Exec(ctx,
-		`DELETE FROM agent_session_transcripts WHERE created_at < $1`, before)
-	if err != nil {
-		return 0, err
-	}
-	return tag.RowsAffected(), nil
-}
+// Transcript retention is deliberate cascade-only (ADR065 D2): a session's
+// conversation is PRODUCT data that lives exactly as long as its row — deleted
+// only by the D4 delete verb or the workspace cascade, never by an age sweep.
+// (An unwired age-based prune previously sat here; removed rather than wired.)
 
-// DeleteAgentSession removes a row whose first-class OpenFGA parent tuple could
-// not be established. It is compensation for the pre-sandbox create path, not
-// a public lifecycle verb (Cancel preserves the audit/history row).
+// DeleteAgentSession removes a session row; its transcript parts cascade with
+// it. Two callers: the create-path compensation (a row whose OpenFGA parent
+// tuple could not be established) and the ADR065 D4 public delete verb — the
+// service layer owns the D4 guardrails (fresh authorization, no-live-sandbox
+// phase gate, snapshot-blob-before-row ordering). Cancel still preserves the
+// audit/history row.
 func (s *PGStore) DeleteAgentSession(ctx context.Context, id string) error {
 	tag, err := s.Pool.Exec(ctx, `DELETE FROM agent_sessions WHERE id=$1`, id)
 	if err != nil {

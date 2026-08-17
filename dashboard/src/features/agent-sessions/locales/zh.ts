@@ -680,6 +680,91 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "会话已取消",
     description: "Terminal transcript status line — canceled session",
   },
+  "agentSessions.archive": {
+    message: "归档",
+    description: "Action putting a session out of the working set (ADR065)",
+  },
+  "agentSessions.unarchive": {
+    message: "取消归档",
+    description: "Action returning an archived session to the working set",
+  },
+  "agentSessions.archiveSuccess": {
+    message: "会话已归档",
+    description: "Toast after archiving a session",
+  },
+  "agentSessions.unarchiveSuccess": {
+    message: "会话已取消归档",
+    description: "Toast after unarchiving a session",
+  },
+  "agentSessions.archivedBadge": {
+    message: "已归档",
+    description: "Badge marking a session as archived (out of the working set)",
+  },
+  "agentSessions.sidebarArchived": {
+    message: "已归档",
+    description: "Sidebar link to the archived-sessions list",
+  },
+  "agentSessions.delete": {
+    message: "删除",
+    description: "Destructive action permanently deleting a finished session",
+  },
+  "agentSessions.deleting": {
+    message: "正在删除…",
+    description: "Delete confirm button while the delete is in flight",
+  },
+  "agentSessions.deleteSuccess": {
+    message: "会话已删除",
+    description: "Toast after permanently deleting a session",
+  },
+  "agentSessions.deleteConfirmTitle": {
+    message: "删除此会话？",
+    description: "Delete confirmation dialog title",
+  },
+  "agentSessions.deleteConfirmBody": {
+    message:
+      "会话记录、对话转录以及任何休眠快照都将被永久删除。GitHub 上已推送的分支和拉取请求不受影响。此操作无法撤销。",
+    description: "Delete confirmation dialog body",
+  },
+  "agentSessions.deleteConfirmDismiss": {
+    message: "保留会话",
+    description: "Delete confirmation dialog dismiss button",
+  },
+  "agentSessions.deleteConfirmProceed": {
+    message: "删除会话",
+    description: "Delete confirmation dialog destructive proceed button",
+  },
+  "agentSessions.colActions": {
+    message: "操作",
+    description: "Screen-reader label of the list's trailing actions column",
+  },
+  "agentSessions.filterActive": {
+    message: "进行中",
+    description: "List membership tab — the unarchived working set",
+  },
+  "agentSessions.filterArchived": {
+    message: "已归档",
+    description: "List membership tab — archived sessions only",
+  },
+  "agentSessions.filterAll": {
+    message: "全部",
+    description: "List membership tab — archived and unarchived together",
+  },
+  "agentSessions.filterPhase": {
+    message: "按阶段筛选",
+    description: "Accessible label of the phase filter select",
+  },
+  "agentSessions.filterPhaseAll": {
+    message: "全部阶段",
+    description: "Phase filter option matching every phase",
+  },
+  "agentSessions.loadMore": {
+    message: "加载更多",
+    description: "Button fetching the next page of sessions",
+  },
+  "agentSessions.loadingMore": {
+    message: "加载中…",
+    description: "Load-more button while the next page is in flight",
+  },
 };
 
 export default zhAgentSessions;

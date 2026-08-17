@@ -692,6 +692,91 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Session was canceled",
     description: "Terminal transcript status line — canceled session",
   },
+  "agentSessions.archive": {
+    message: "Archive",
+    description: "Action putting a session out of the working set (ADR065)",
+  },
+  "agentSessions.unarchive": {
+    message: "Unarchive",
+    description: "Action returning an archived session to the working set",
+  },
+  "agentSessions.archiveSuccess": {
+    message: "Session archived",
+    description: "Toast after archiving a session",
+  },
+  "agentSessions.unarchiveSuccess": {
+    message: "Session unarchived",
+    description: "Toast after unarchiving a session",
+  },
+  "agentSessions.archivedBadge": {
+    message: "Archived",
+    description: "Badge marking a session as archived (out of the working set)",
+  },
+  "agentSessions.sidebarArchived": {
+    message: "Archived",
+    description: "Sidebar link to the archived-sessions list",
+  },
+  "agentSessions.delete": {
+    message: "Delete",
+    description: "Destructive action permanently deleting a finished session",
+  },
+  "agentSessions.deleting": {
+    message: "Deleting…",
+    description: "Delete confirm button while the delete is in flight",
+  },
+  "agentSessions.deleteSuccess": {
+    message: "Session deleted",
+    description: "Toast after permanently deleting a session",
+  },
+  "agentSessions.deleteConfirmTitle": {
+    message: "Delete this session?",
+    description: "Delete confirmation dialog title",
+  },
+  "agentSessions.deleteConfirmBody": {
+    message:
+      "The session record, its conversation transcript, and any hibernation snapshot will be permanently deleted. Pushed branches and pull requests on GitHub are not affected. This cannot be undone.",
+    description: "Delete confirmation dialog body",
+  },
+  "agentSessions.deleteConfirmDismiss": {
+    message: "Keep session",
+    description: "Delete confirmation dialog dismiss button",
+  },
+  "agentSessions.deleteConfirmProceed": {
+    message: "Delete session",
+    description: "Delete confirmation dialog destructive proceed button",
+  },
+  "agentSessions.colActions": {
+    message: "Actions",
+    description: "Screen-reader label of the list's trailing actions column",
+  },
+  "agentSessions.filterActive": {
+    message: "Active",
+    description: "List membership tab — the unarchived working set",
+  },
+  "agentSessions.filterArchived": {
+    message: "Archived",
+    description: "List membership tab — archived sessions only",
+  },
+  "agentSessions.filterAll": {
+    message: "All",
+    description: "List membership tab — archived and unarchived together",
+  },
+  "agentSessions.filterPhase": {
+    message: "Filter by phase",
+    description: "Accessible label of the phase filter select",
+  },
+  "agentSessions.filterPhaseAll": {
+    message: "All phases",
+    description: "Phase filter option matching every phase",
+  },
+  "agentSessions.loadMore": {
+    message: "Load more",
+    description: "Button fetching the next page of sessions",
+  },
+  "agentSessions.loadingMore": {
+    message: "Loading…",
+    description: "Load-more button while the next page is in flight",
+  },
 };
 
 export default enAgentSessions;

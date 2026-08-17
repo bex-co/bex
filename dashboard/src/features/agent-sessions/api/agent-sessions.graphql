@@ -41,6 +41,7 @@ fragment AgentSessionFields on AgentSession {
   snapshotBytes
   hibernatedAt
   retainUntil
+  archivedAt
 }
 
 # The short-lived attach ticket (+ gateway origin + expiry) the browser presents
@@ -51,8 +52,25 @@ fragment AgentSessionMintFields on AgentSession {
   expiresAt
 }
 
-query AgentSessions($ownerId: String) {
-  agentSessions(ownerId: $ownerId) {
+# One filtered page (ADR065 D3): the backend defaults to the unarchived
+# working set, newest first, limit 50. `archived` selects false|true|all;
+# `cursor` is the prior page's last session id (a shorter/empty page = end).
+query AgentSessions(
+  $ownerId: String
+  $archived: String
+  $phases: [String!]
+  $repo: String
+  $cursor: String
+  $limit: Int
+) {
+  agentSessions(
+    ownerId: $ownerId
+    archived: $archived
+    phases: $phases
+    repo: $repo
+    cursor: $cursor
+    limit: $limit
+  ) {
     ...AgentSessionFields
   }
 }
@@ -132,3 +150,25 @@ mutation UnpinAgentSession($id: String!) {
     ...AgentSessionFields
   }
 }
+
+# ADR065 D1 archive: list-state only — the session leaves the working set
+# (mutation verbs 409 AGENT_SESSION_ARCHIVED until unarchived) but stays
+# viewable, transcript included.
+mutation ArchiveAgentSession($id: String!) {
+  archiveAgentSession(id: $id) {
+    ...AgentSessionFields
+  }
+}
+
+mutation UnarchiveAgentSession($id: String!) {
+  unarchiveAgentSession(id: $id) {
+    ...AgentSessionFields
+  }
+}
+
+# ADR065 D4 hard delete: row + transcript + snapshot destroyed; terminal or
+# hibernated sessions only (live phases must cancel first). Irreversible.
+mutation DeleteAgentSession($id: String!) {
+  deleteAgentSession(id: $id)
+}
+
