@@ -1,6 +1,16 @@
 import { useEffect, useMemo } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { translatedTitleHead } from "@/common/lib/document-head";
+import {
+  translatedTitleHead,
+  titleLoaderFetchPolicy,
+} from "@/common/lib/document-head";
+import { prefetchInParallel } from "@/common/lib/prefetch";
+import {
+  ServicesDocument,
+  ProjectsDocument,
+  DatabasesDocument,
+  KeyValuesDocument,
+} from "@/graphql/definitions";
 import { RESOURCE_POLL_INTERVAL_MS } from "@/common/lib/polling";
 import { Plus } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -41,6 +51,47 @@ export const Route = createFileRoute("/")({
   // `?new=database` — the create-dialog param Render's New-menu aliases land
   // with (w1/m45) — survives the SSR login bounce.
   beforeLoad: requireAuth(),
+  // Prefetch the overview's four resource queries so `defaultPreload: "intent"`
+  // warms them on hover and the page renders from cache on mount instead of a
+  // skeleton (w9/m68). Keyed on the persisted workspace (the same `ownerId` the
+  // hooks resolve to); a workspace just-switched-not-yet-persisted is a cache
+  // miss, not a stale read. `cause` = network-only on entry/preload, cache-first
+  // on a retained-match re-run (tab/search-param change) so it doesn't refire.
+  loader: ({ context, cause }) => {
+    const ownerId = context.workspaceId;
+    if (ownerId == null) return;
+    const fetchPolicy = titleLoaderFetchPolicy(cause);
+    return prefetchInParallel([
+      () =>
+        context.client.query({
+          query: ServicesDocument,
+          variables: { ownerId },
+          fetchPolicy,
+          errorPolicy: "all",
+        }),
+      () =>
+        context.client.query({
+          query: ProjectsDocument,
+          variables: { ownerId },
+          fetchPolicy,
+          errorPolicy: "all",
+        }),
+      () =>
+        context.client.query({
+          query: DatabasesDocument,
+          variables: { ownerId },
+          fetchPolicy,
+          errorPolicy: "all",
+        }),
+      () =>
+        context.client.query({
+          query: KeyValuesDocument,
+          variables: { ownerId },
+          fetchPolicy,
+          errorPolicy: "all",
+        }),
+    ]);
+  },
   // `?new=database|project` opens the matching create dialog (w1/m45) — the
   // URL owns the dialog state (the `?plan=change` pattern,
   // routes/workspace.settings.tsx) so Render's New-menu URLs (`/new/database`,
