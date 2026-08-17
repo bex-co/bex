@@ -26,6 +26,11 @@ spec:
     - { server: https://kubernetes.default.svc, namespace: kpack }
     - { server: https://kubernetes.default.svc, namespace: kube-system }
     - { server: https://kubernetes.default.svc, namespace: monitoring }
+    # The OpenSandbox controller creates privileged snapshot Jobs and their
+    # namespaced Role/RoleBinding here (ADR042 D5). Keep this destination
+    # explicit: omitting it leaves the controller Application permanently
+    # OutOfSync even though its primary destination is opensandbox-system.
+    - { server: https://kubernetes.default.svc, namespace: opensandbox-snapshot }
     - { server: https://kubernetes.default.svc, namespace: opensandbox-system }
     - { server: https://kubernetes.default.svc, namespace: secrets }
     - { server: https://kubernetes.default.svc, namespace: traefik }

@@ -75,6 +75,15 @@ for required in \
     fail=1
   }
 done
+for required_namespace in opensandbox-snapshot opensandbox-system; do
+  if ! REQUIRED_NAMESPACE="$required_namespace" yq -e '
+    .spec.destinations[] |
+    select(.server == "https://kubernetes.default.svc" and .namespace == strenv(REQUIRED_NAMESPACE))' \
+    deploy/gitops/base/appproject.yaml >/dev/null; then
+    echo "FAIL: bex-platform AppProject blocks required namespace: $required_namespace" >&2
+    fail=1
+  fi
+done
 
 echo "==> retired platform source/config paths remain absent"
 bash scripts/platform-deprecations-validate.sh || fail=1
