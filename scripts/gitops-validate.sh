@@ -75,7 +75,7 @@ for required in \
     fail=1
   }
 done
-for required_namespace in opensandbox-snapshot opensandbox-system; do
+for required_namespace in default local opensandbox-snapshot opensandbox-system; do
   if ! REQUIRED_NAMESPACE="$required_namespace" yq -e '
     .spec.destinations[] |
     select(.server == "https://kubernetes.default.svc" and .namespace == strenv(REQUIRED_NAMESPACE))' \
