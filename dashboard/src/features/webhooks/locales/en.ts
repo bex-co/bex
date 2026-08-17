@@ -60,6 +60,11 @@ const enWebhooks: Record<string, TranslationEntry> = {
       "bex will POST a signed JSON payload to this URL whenever a subscribed event happens.",
     description: "Create dialog description",
   },
+  "webhooks.createEnabledHelp": {
+    message:
+      "Start delivering immediately. You can enable it later from Settings.",
+    description: "Create page initial enabled-state helper copy",
+  },
   "webhooks.fieldName": {
     message: "Name",
     description: "Create dialog name field label",
@@ -258,6 +263,10 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Deploy",
     description: "Event-picker group — deploy lifecycle events",
   },
+  "webhooks.group.autoDeploy": {
+    message: "Auto-Deploy",
+    description: "Event-picker group — automatic deploy setting events",
+  },
   "webhooks.group.serviceAvailability": {
     message: "Service Availability",
     description: "Event-picker group — observed service availability events",
@@ -290,6 +299,38 @@ const enWebhooks: Record<string, TranslationEntry> = {
   "webhooks.event.deploy_started": {
     message: "Deploy Started",
     description: "Event label — deploy_started",
+  },
+  "webhooks.event.branch_deleted": {
+    message: "Branch Deleted",
+    description: "Webhook event label",
+  },
+  "webhooks.event.build_started": {
+    message: "Build Started",
+    description: "Webhook event label",
+  },
+  "webhooks.event.build_ended": {
+    message: "Build Ended",
+    description: "Webhook event label",
+  },
+  "webhooks.event.pre_deploy_started": {
+    message: "Pre-Deploy Started",
+    description: "Webhook event label",
+  },
+  "webhooks.event.pre_deploy_ended": {
+    message: "Pre-Deploy Ended",
+    description: "Webhook event label",
+  },
+  "webhooks.event.job_run_ended": {
+    message: "Job Run Ended",
+    description: "Webhook event label",
+  },
+  "webhooks.event.auto_deploy_enabled": {
+    message: "Auto-Deploy Enabled",
+    description: "Webhook event label",
+  },
+  "webhooks.event.auto_deploy_disabled": {
+    message: "Auto-Deploy Disabled",
+    description: "Webhook event label",
   },
   "webhooks.event.deploy_ended": {
     message: "Deploy Ended",
@@ -482,6 +523,18 @@ const enWebhooks: Record<string, TranslationEntry> = {
   "webhooks.filterFailed": {
     message: "Failed",
     description: "Activity delivery filter tab — failed only",
+  },
+  "webhooks.sentAfter": {
+    message: "Sent after",
+    description: "Activity delivery-history lower timestamp bound",
+  },
+  "webhooks.sentBefore": {
+    message: "Sent before",
+    description: "Activity delivery-history upper timestamp bound",
+  },
+  "webhooks.transportError": {
+    message: "Transport error",
+    description: "Delivery evidence label when no HTTP response was received",
   },
   "webhooks.enabledBadge": {
     message: "Enabled",

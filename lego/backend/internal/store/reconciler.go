@@ -302,6 +302,69 @@ func (r *Reconciler) recordObservations(ctx context.Context, d DesiredApp, cur *
 		log.Printf("controlplane: record observed service state %s: %v", d.ID, err)
 	}
 	r.recordAutoscalingFacts(ctx, d.ID, cur.Status.Autoscaling)
+	r.recordCronRunFacts(ctx, d.ID, cur.Status.Runs)
+}
+
+// recordCronRunFacts projects the operator's level-triggered run history into
+// append-only facts. Both scheduled CronJob Jobs and manual RunAt Jobs appear in
+// status.runs, so this path does not special-case how a run was requested.
+// Stable source keys make every resync and process restart an idempotent replay.
+func (r *Reconciler) recordCronRunFacts(ctx context.Context, appID string, runs []appv1alpha1.CronRun) {
+	var facts []ServiceEventFact
+	for _, run := range runs {
+		facts = append(facts, cronRunFacts(appID, run)...)
+	}
+	if err := r.Store.InsertServiceEventFacts(ctx, facts); err != nil {
+		log.Printf("controlplane: record cron-run facts for %s: %v", appID, err)
+	}
+}
+
+// cronRunFacts returns only transitions the status proves happened. A start is
+// emitted only with an observed StartedAt; terminal intent alone is insufficient
+// and an ended fact waits for the operator's FinishedAt + terminal status.
+func cronRunFacts(appID string, run appv1alpha1.CronRun) []ServiceEventFact {
+	if appID == "" || run.Name == "" {
+		return nil
+	}
+	var facts []ServiceEventFact
+	if started, ok := parseObservedTime(run.StartedAt); ok {
+		facts = append(facts, ServiceEventFact{
+			SourceKey: "cron:" + appID + ":" + run.Name + ":started",
+			AppID:     appID,
+			Type:      EventFactCronRunStarted,
+			At:        started,
+		})
+	}
+	finished, ok := parseObservedTime(run.FinishedAt)
+	if !ok {
+		return facts
+	}
+	status := ""
+	switch run.Status {
+	case appv1alpha1.CronRunSucceeded:
+		status = EventStatusSucceeded
+	case appv1alpha1.CronRunFailed:
+		status = EventStatusFailed
+	case appv1alpha1.CronRunCanceled:
+		status = EventStatusCanceled
+	default:
+		return facts
+	}
+	return append(facts, ServiceEventFact{
+		SourceKey: "cron:" + appID + ":" + run.Name + ":ended",
+		AppID:     appID,
+		Type:      EventFactCronRunEnded,
+		At:        finished,
+		Status:    status,
+	})
+}
+
+func parseObservedTime(value string) (time.Time, bool) {
+	if value == "" {
+		return time.Time{}, false
+	}
+	at, err := time.Parse(time.RFC3339Nano, value)
+	return at.UTC(), err == nil
 }
 
 // ReconcileOnce drives one full pass: desired rows vs. existing managed CRs →

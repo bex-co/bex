@@ -148,6 +148,69 @@ func TestPreDeployLifecycleFacts(t *testing.T) {
 	}
 }
 
+func TestCronRunFactsAreObservedAndStable(t *testing.T) {
+	started := "2026-08-16T10:00:00.123Z"
+	finished := "2026-08-16T10:02:00.456Z"
+
+	running := cronRunFacts("srv-cron", appv1alpha1.CronRun{
+		Name: "nightly-100", StartedAt: started, Status: appv1alpha1.CronRunRunning,
+	})
+	if len(running) != 1 || running[0].Type != EventFactCronRunStarted ||
+		running[0].SourceKey != "cron:srv-cron:nightly-100:started" || running[0].Status != "" {
+		t.Fatalf("running facts = %+v, want one stable started fact", running)
+	}
+
+	for _, tc := range []struct {
+		mechanism string
+		want      string
+	}{
+		{appv1alpha1.CronRunSucceeded, EventStatusSucceeded},
+		{appv1alpha1.CronRunFailed, EventStatusFailed},
+		{appv1alpha1.CronRunCanceled, EventStatusCanceled},
+	} {
+		facts := cronRunFacts("srv-cron", appv1alpha1.CronRun{
+			Name: "nightly-100", StartedAt: started, FinishedAt: finished, Status: tc.mechanism,
+		})
+		if len(facts) != 2 || facts[1].Type != EventFactCronRunEnded ||
+			facts[1].SourceKey != "cron:srv-cron:nightly-100:ended" || facts[1].Status != tc.want {
+			t.Errorf("terminal %s facts = %+v, want ended(%s)", tc.mechanism, facts, tc.want)
+		}
+	}
+
+	// A cancellation request is not an observation. Until status converges to a
+	// terminal value with FinishedAt, there is no ended fact.
+	intentOnly := cronRunFacts("srv-cron", appv1alpha1.CronRun{
+		Name: "manual-200", StartedAt: started, FinishedAt: finished, Status: appv1alpha1.CronRunRunning,
+	})
+	if len(intentOnly) != 1 || intentOnly[0].Type != EventFactCronRunStarted {
+		t.Fatalf("cancel intent facts = %+v, want started only", intentOnly)
+	}
+}
+
+func TestRecordCronRunFactsIsIdempotentAcrossResyncAndRestart(t *testing.T) {
+	st := newMemStore()
+	run := appv1alpha1.CronRun{
+		Name:       "nightly-100",
+		StartedAt:  "2026-08-16T10:00:00Z",
+		FinishedAt: "2026-08-16T10:02:00Z",
+		Status:     appv1alpha1.CronRunSucceeded,
+	}
+	first := &Reconciler{Store: st}
+	first.recordCronRunFacts(context.Background(), "srv-cron", []appv1alpha1.CronRun{run})
+	first.recordCronRunFacts(context.Background(), "srv-cron", []appv1alpha1.CronRun{run})
+
+	// A new reconciler instance represents a process restart replaying the same
+	// level-triggered App status against the durable store.
+	second := &Reconciler{Store: st}
+	second.recordCronRunFacts(context.Background(), "srv-cron", []appv1alpha1.CronRun{run})
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if len(st.eventFacts) != 2 {
+		t.Fatalf("facts after replay = %d, want exactly started + ended", len(st.eventFacts))
+	}
+}
+
 func TestObservedServiceStateTreatsConcreteOpenDeployFailureAsInstanceFailure(t *testing.T) {
 	app := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Generation: 4},

@@ -20,13 +20,13 @@
 #      without an operator, ~3 min) produces a signed deploy_ended delivery.
 #      Skipped with BEX_VERIFY_FAST=1.
 #
-# Self-contained by design: it starts DISPOSABLE Hydra + Postgres containers on
-# the host (so it does not need the mock cluster's auth stack) and runs bex-api
-# from source; the only cluster dependency is a kubeconfig with the App CRD
-# installed (the CAPD mock cluster, or any kind cluster after
-# `make -C lego/operator install`) for the control-plane projector to talk to.
+# It starts disposable Hydra + Postgres containers on the host and runs bex-api
+# from source. Because production correctly requires public HTTPS destinations
+# and blocks private/loopback dialing, the caller supplies a temporary HTTPS
+# tunnel that forwards to this script's receiver on 127.0.0.1:19999.
 #
-# Usage: KUBECONFIG=$PWD/infra/local/bex.kubeconfig scripts/webhooks-verify.sh
+# Usage: BEX_VERIFY_RECEIVER_URL=https://<temporary-tunnel> \
+#          KUBECONFIG=$PWD/infra/local/bex.kubeconfig scripts/webhooks-verify.sh
 # Env:   BEX_VERIFY_FAST=1   skip the ~3-minute deploy_ended wait
 # Requires: docker, go, kubectl, curl, jq.
 set -euo pipefail
@@ -50,9 +50,16 @@ HYDRA_ADMIN=127.0.0.1:24447
 API=127.0.0.1:18093
 CP=127.0.0.1:18094
 RECEIVER=127.0.0.1:19999
+RECEIVER_URL="${BEX_VERIFY_RECEIVER_URL:-}"
+RECEIVER_URL="${RECEIVER_URL%/}"
 CP_TOKEN="webhooks-verify-$STAMP"
 CLIENT_ID=webhooks-verify
 CLIENT_SECRET="webhooks-verify-secret-$STAMP"
+
+case "$RECEIVER_URL" in
+  https://*) ;;
+  *) echo "error: BEX_VERIFY_RECEIVER_URL must be a public HTTPS tunnel forwarding to http://$RECEIVER" >&2; exit 1 ;;
+esac
 
 bindir="$(mktemp -d)"
 API_PID=""
@@ -261,14 +268,14 @@ verify_line_signature() { # RECV_LINE SECRET
 echo "==> 1. register: workspace + webhook endpoint (secret shown once)"
 TENANT_ID="$(cp_post /v1/tenants "{\"name\":\"$TENANT\",\"plan\":\"pro\",\"admin\":\"$CLIENT_ID\"}" | jq -r '.id // empty')"
 [ -n "$TENANT_ID" ] || fail "could not create tenant via the control-plane API"
-request POST "/v1/webhooks" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"ok-hook\",\"url\":\"http://$RECEIVER/ok\",\"eventFilter\":[\"deploy_started\",\"deploy_ended\",\"service_suspended\",\"service_resumed\"]}"
+request POST "/v1/webhooks" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"ok-hook\",\"url\":\"$RECEIVER_URL/ok\",\"enabled\":true,\"eventFilter\":[\"deploy_started\",\"deploy_ended\",\"service_suspended\",\"service_resumed\"]}"
 expect 201 "create webhook endpoint"
 EP1="$(echo "$LAST_BODY" | jq -r .id)"
 SECRET1="$(echo "$LAST_BODY" | jq -r .secret)"
 case "$SECRET1" in whsec_*) ;; *) fail "create did not return a whsec_… secret: $SECRET1" ;; esac
 request GET "/v1/webhooks?ownerId=$TENANT_ID" ''
 expect 200 "list webhook endpoints"
-echo "$LAST_BODY" | jq -e '.[0] | has("secret") | not' >/dev/null || fail "list response carries a secret field"
+echo "$LAST_BODY" | jq -e '.[0].webhook | has("secret") | not' >/dev/null || fail "list response carries a secret field"
 echo "$LAST_BODY" | grep -q "$SECRET1" && fail "list response leaked the secret"
 request GET "/v1/webhooks/$EP1?ownerId=$TENANT_ID" ''
 expect 200 "get webhook endpoint"
@@ -293,13 +300,13 @@ pass "service_suspended + service_resumed delivered and verified"
 
 request GET "/v1/webhooks/$EP1/events?ownerId=$TENANT_ID" ''
 expect 200 "delivery history"
-delivered="$(echo "$LAST_BODY" | jq '[.[] | select(.delivery.status=="delivered")] | length')"
+delivered="$(echo "$LAST_BODY" | jq '[.[] | select(.webhookEvent.statusCode >= 200 and .webhookEvent.statusCode < 300)] | length')"
 [ "$delivered" -ge 3 ] || fail "delivery history shows $delivered delivered, want >= 3 (body: $LAST_BODY)"
-echo "$LAST_BODY" | jq -e '.[0].delivery.attemptCount == 1' >/dev/null || fail "a delivered entry should show attemptCount 1"
-pass "delivery history records $delivered delivered entries, cursor envelope intact"
+echo "$LAST_BODY" | jq -e '.[0] | (.cursor | length > 0) and (.webhookEvent.sentAt | length > 0)' >/dev/null || fail "history cursor/sentAt missing"
+pass "Render-shaped history records $delivered delivered entries with stable sentAt/cursors"
 
 echo "==> 4. retry + auto-disable: a failing endpoint"
-request POST "/v1/webhooks" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"fail-hook\",\"url\":\"http://$RECEIVER/fail\",\"eventFilter\":[\"service_suspended\"]}"
+request POST "/v1/webhooks" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"fail-hook\",\"url\":\"$RECEIVER_URL/fail\",\"enabled\":true,\"eventFilter\":[\"service_suspended\"]}"
 expect 201 "create failing endpoint"
 EP2="$(echo "$LAST_BODY" | jq -r .id)"
 request POST "/v1/services/$SVC/suspend" '' ; expect 202 "suspend (for the failing endpoint)"
@@ -307,14 +314,14 @@ request POST "/v1/services/$SVC/suspend" '' ; expect 202 "suspend (for the faili
 deadline=$((SECONDS + 60))
 EP2_STATE=""
 while [ $SECONDS -lt $deadline ]; do
-  request GET "/v1/webhooks/$EP2/events?ownerId=$TENANT_ID" ''
-  EP2_STATE="$(echo "$LAST_BODY" | jq -c '[.[] | select(.delivery.eventType=="service_suspended")][0].delivery // empty')"
-  [ -n "$EP2_STATE" ] && [ "$(echo "$EP2_STATE" | jq -r .status)" = "failed" ] && break
+  EP2_STATE="$(docker exec "$PG_NAME" psql -U postgres -At -F, -c \
+    "SELECT attempt_count, COALESCE(last_status,0), failed_at IS NOT NULL FROM webhook_deliveries WHERE endpoint_id='$EP2' AND event_type='service_suspended' ORDER BY created_at DESC LIMIT 1" 2>/dev/null || true)"
+  [ "${EP2_STATE##*,}" = "t" ] && break
   sleep 2
 done
-[ "$(echo "$EP2_STATE" | jq -r .status)" = "failed" ] || fail "failing delivery never reached status=failed: $EP2_STATE"
-[ "$(echo "$EP2_STATE" | jq -r .attemptCount)" = "4" ] || fail "attemptCount = $(echo "$EP2_STATE" | jq -r .attemptCount), want 4 (initial + 3 retries)"
-[ "$(echo "$EP2_STATE" | jq -r .lastStatusCode)" = "500" ] || fail "lastStatusCode = $(echo "$EP2_STATE" | jq -r .lastStatusCode), want 500"
+[ "${EP2_STATE##*,}" = "t" ] || fail "failing delivery never reached terminal failure: $EP2_STATE"
+[ "${EP2_STATE%%,*}" = "4" ] || fail "attemptCount = ${EP2_STATE%%,*}, want 4 (initial + 3 retries)"
+case "$EP2_STATE" in 4,500,t) ;; *) fail "terminal delivery evidence = $EP2_STATE, want 4,500,t" ;; esac
 fails="$(jq -c 'select(.path=="/fail")' "$RECV_LOG" | wc -l | tr -d ' ')"
 [ "$fails" = "4" ] || fail "receiver saw $fails /fail attempts, want 4"
 request GET "/v1/webhooks/$EP2?ownerId=$TENANT_ID" ''

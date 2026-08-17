@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Inbox, Loader2, RotateCw } from "lucide-react";
+import { Fragment, useState } from "react";
+import { ChevronDown, ChevronUp, Inbox, Loader2, RotateCw } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
 import {
@@ -19,6 +19,8 @@ import {
   TableRow,
 } from "@/common/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/common/components/ui/tabs";
+import { Input } from "@/common/components/ui/input";
+import { Label } from "@/common/components/ui/label";
 import {
   PanelCenteredState,
   PanelTableSkeleton,
@@ -26,6 +28,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { useWebhookDeliveries } from "@/features/webhooks/hooks/use-webhook-deliveries";
+import { eventLabelKey } from "@/features/webhooks/event-catalog";
 import type {
   WebhookDeliveryStatus,
   WebhookDeliveryView,
@@ -33,27 +36,24 @@ import type {
 
 type DeliveryFilter = "all" | "successful" | "failed";
 
-function matchesFilter(
-  delivery: WebhookDeliveryView,
-  filter: DeliveryFilter,
-): boolean {
-  if (filter === "all") return true;
-  return filter === "successful"
-    ? delivery.status === "delivered"
-    : delivery.status === "failed";
+function toAPITime(value: string): string | undefined {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.valueOf()) ? undefined : parsed.toISOString();
 }
 
 /**
  * The Activity tab's "Recent deliveries" (w1/m49/t004) — Render's shape:
  * All/Successful/Failed filter tabs, a manual refresh, newest first, keyset
  * "Load more". Replaces the w3/m11 delivery-history dialog; same hook, so
- * paging state resets when the page unmounts. Filtering is client-side over
- * the loaded rows — the deliveries query has no status param (a divergence
- * only if a filtered view must page server-side; revisit if that bites).
+ * paging state resets when the page unmounts. Status and time bounds are sent
+ * to the server, so a filtered view pages only matching rows.
  */
 export function WebhookDeliveriesCard({ endpointId }: { endpointId: string }) {
   const { t } = useTranslations();
   const [filter, setFilter] = useState<DeliveryFilter>("all");
+  const [sentAfter, setSentAfter] = useState("");
+  const [sentBefore, setSentBefore] = useState("");
   const {
     deliveries,
     loading,
@@ -62,9 +62,16 @@ export function WebhookDeliveriesCard({ endpointId }: { endpointId: string }) {
     hasMore,
     loadMore,
     refresh,
-  } = useWebhookDeliveries(endpointId);
-
-  const visible = deliveries.filter((d) => matchesFilter(d, filter));
+  } = useWebhookDeliveries(endpointId, {
+    status:
+      filter === "successful"
+        ? "delivered"
+        : filter === "failed"
+          ? "failed"
+          : undefined,
+    sentAfter: toAPITime(sentAfter),
+    sentBefore: toAPITime(sentBefore),
+  });
 
   return (
     <Card>
@@ -97,6 +104,30 @@ export function WebhookDeliveriesCard({ endpointId }: { endpointId: string }) {
             </TabsTrigger>
           </TabsList>
         </Tabs>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label htmlFor="webhook-sent-after">
+              {t("webhooks.sentAfter")}
+            </Label>
+            <Input
+              id="webhook-sent-after"
+              type="datetime-local"
+              value={sentAfter}
+              onChange={(event) => setSentAfter(event.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="webhook-sent-before">
+              {t("webhooks.sentBefore")}
+            </Label>
+            <Input
+              id="webhook-sent-before"
+              type="datetime-local"
+              value={sentBefore}
+              onChange={(event) => setSentBefore(event.target.value)}
+            />
+          </div>
+        </div>
         {error ? (
           <PanelCenteredState
             icon={<Inbox />}
@@ -105,7 +136,7 @@ export function WebhookDeliveriesCard({ endpointId }: { endpointId: string }) {
           />
         ) : loading ? (
           <PanelTableSkeleton />
-        ) : visible.length === 0 ? (
+        ) : deliveries.length === 0 ? (
           <PanelCenteredState
             icon={<Inbox />}
             title={t("webhooks.historyEmptyTitle")}
@@ -125,7 +156,7 @@ export function WebhookDeliveriesCard({ endpointId }: { endpointId: string }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visible.map((d) => (
+                {deliveries.map((d) => (
                   <DeliveryRow key={d.id} delivery={d} />
                 ))}
               </TableBody>
@@ -163,27 +194,64 @@ function statusVariant(
 
 function DeliveryRow({ delivery }: { delivery: WebhookDeliveryView }) {
   const { t } = useTranslations();
+  const [expanded, setExpanded] = useState(false);
+  const labelKey = eventLabelKey(delivery.eventType);
+  const evidence = delivery.responseBody || delivery.lastError;
   return (
-    <TableRow>
-      <TableCell className="font-mono text-sm">{delivery.eventType}</TableCell>
-      <TableCell className="max-w-[10rem] truncate font-mono text-sm">
-        {delivery.serviceId || "—"}
-      </TableCell>
-      <TableCell>
-        <Badge variant={statusVariant(delivery.status)}>
-          {t(`webhooks.status.${delivery.status}`)}
-        </Badge>
-      </TableCell>
-      <TableCell className="text-sm">{delivery.attemptCount}</TableCell>
-      <TableCell
-        className="max-w-[12rem] truncate text-sm"
-        title={delivery.lastError || undefined}
-      >
-        {delivery.lastStatusCode > 0 ? delivery.lastStatusCode : "—"}
-      </TableCell>
-      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-        {formatRelativeAge(delivery.createdAt)}
-      </TableCell>
-    </TableRow>
+    <Fragment>
+      <TableRow>
+        <TableCell className="text-sm">
+          {labelKey ? t(labelKey) : delivery.eventType}
+        </TableCell>
+        <TableCell className="max-w-[10rem] truncate font-mono text-sm">
+          {delivery.serviceId || "—"}
+        </TableCell>
+        <TableCell>
+          <Badge variant={statusVariant(delivery.status)}>
+            {t(`webhooks.status.${delivery.status}`)}
+          </Badge>
+        </TableCell>
+        <TableCell className="text-sm">{delivery.attemptCount}</TableCell>
+        <TableCell className="text-sm">
+          {evidence ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2"
+              onClick={() => setExpanded((value) => !value)}
+              aria-expanded={expanded}
+            >
+              {delivery.lastStatusCode > 0
+                ? `HTTP ${delivery.lastStatusCode}`
+                : t("webhooks.transportError")}
+              {expanded ? <ChevronUp /> : <ChevronDown />}
+            </Button>
+          ) : delivery.lastStatusCode > 0 ? (
+            `HTTP ${delivery.lastStatusCode}`
+          ) : (
+            "—"
+          )}
+        </TableCell>
+        <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+          {formatRelativeAge(delivery.sentAt ?? delivery.createdAt)}
+        </TableCell>
+      </TableRow>
+      {expanded ? (
+        <TableRow>
+          <TableCell colSpan={6}>
+            {delivery.responseBody ? (
+              <pre className="bg-muted max-h-48 overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap break-words">
+                {delivery.responseBody}
+              </pre>
+            ) : null}
+            {delivery.lastError ? (
+              <p className="text-destructive mt-2 text-sm">
+                {delivery.lastError}
+              </p>
+            ) : null}
+          </TableCell>
+        </TableRow>
+      ) : null}
+    </Fragment>
   );
 }

@@ -30,6 +30,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/email"
@@ -59,14 +60,13 @@ import (
 // deliver each event exactly once and a crash mid-send re-delivers at-least-once
 // (receivers dedupe on webhook-id) rather than dropping it.
 
-// DefaultBackoff is the retry schedule after each failed attempt: 8 retries,
-// exponential, the last ~33h after the first attempt — Render's documented
-// envelope ("up to 8 times", "final retry ~33 hours after the first
-// attempt"). Overridable (BEX_WEBHOOK_BACKOFF) so a live verification run
-// can walk the whole path in seconds.
+// DefaultBackoff is the retry schedule between Render's eight total attempts:
+// the initial attempt plus seven retries, with the last at 32h40m30s (Render
+// documents it as approximately 33 hours after the first). Overridable
+// (BEX_WEBHOOK_BACKOFF) so a live verification run can walk the whole path in
+// seconds. An override of N delays likewise permits N+1 total attempts.
 var DefaultBackoff = []time.Duration{
 	30 * time.Second,
-	2 * time.Minute,
 	10 * time.Minute,
 	30 * time.Minute,
 	2 * time.Hour,
@@ -128,7 +128,7 @@ type WorkerStore interface {
 	EnqueueWebhookDeliveries(ctx context.Context, deliveries []store.WebhookDelivery, at time.Time, key string) error
 	ClaimDueWebhookDeliveries(ctx context.Context, now, leaseUntil time.Time, limit int) ([]store.DueWebhookDelivery, error)
 	SweepWebhookDeliveries(ctx context.Context, before time.Time, keepPerEndpoint, limit int) (int64, error)
-	RecordWebhookAttempt(ctx context.Context, id string, status int, errMsg string, at, next time.Time, delivered, failed bool) error
+	RecordWebhookAttempt(ctx context.Context, id string, status int, errMsg, responseBody string, at, next time.Time, delivered, failed bool) error
 	DisableWebhookEndpoint(ctx context.Context, id, reason string) error
 	ClaimWebhookFailureNotice(ctx context.Context, endpointID string, now, threshold time.Time) (bool, error)
 }
@@ -152,8 +152,8 @@ type Worker struct {
 	Store  WorkerStore
 	Mailer Mailer
 	Emails EmailLookup
-	// Backoff is the retry schedule (len = max retries after the first
-	// attempt); nil => DefaultBackoff.
+	// Backoff is the retry schedule (len = max retries after the initial
+	// attempt, so total attempts = len+1); nil => DefaultBackoff.
 	Backoff []time.Duration
 	// PollInterval paces ticks; 0 => defaultPollInterval.
 	PollInterval time.Duration
@@ -318,8 +318,8 @@ type payloadData struct {
 	ID          string `json:"id"`
 	ServiceID   string `json:"serviceId"`
 	ServiceName string `json:"serviceName"`
-	// Status is deploy_ended's outcome (succeeded|failed|canceled); omitted
-	// for every other type.
+	// Status is a checked terminal action outcome (succeeded|failed|canceled);
+	// omitted for nonterminal event types.
 	Status string `json:"status,omitempty"`
 }
 
@@ -380,7 +380,7 @@ func (w *Worker) fanOutPage(rows []store.WebhookEventRow, byTenant map[string][]
 		for _, e := range byTenant[r.TenantID] {
 			// CreatedAt guard: an endpoint never receives events from before
 			// it existed, however far back the watermark was when it appeared.
-			if r.At.Before(e.CreatedAt) || !slices.Contains(e.EventTypes, eventType) {
+			if r.At.Before(e.CreatedAt) || (len(e.EventTypes) > 0 && !slices.Contains(e.EventTypes, eventType)) {
 				continue
 			}
 			if body == "" {
@@ -423,10 +423,26 @@ func project(r store.WebhookEventRow) (string, payloadData, bool) {
 		data.Status = store.RenderDeployStatus(r.Status)
 		return TypeDeployEnded, data, true
 	case store.EventSourceAudit:
+		if r.Verb == autoDeployVerb {
+			if r.AutoDeployEnabled == nil {
+				return "", payloadData{}, false
+			}
+			if *r.AutoDeployEnabled {
+				return TypeAutoDeployEnabled, data, true
+			}
+			return TypeAutoDeployDisabled, data, true
+		}
 		t, ok := verbEvents[r.Verb]
 		return t, data, ok
 	case store.EventSourceFact:
 		t, ok := factEvents[r.FactType]
+		if !ok {
+			return "", payloadData{}, false
+		}
+		switch t {
+		case TypeBuildEnded, TypePreDeployEnded, TypeJobRunEnded, TypeCronJobRunEnded:
+			data.Status = r.Status
+		}
 		return t, data, ok
 	}
 	return "", payloadData{}, false
@@ -462,9 +478,9 @@ func (w *Worker) send(ctx context.Context) error {
 // simply retries the row.
 func (w *Worker) attempt(ctx context.Context, d store.DueWebhookDelivery) {
 	at := w.now()
-	status, err := w.post(ctx, d, at)
+	status, responseBody, err := w.post(ctx, d, at)
 	if err == nil {
-		if bookErr := w.Store.RecordWebhookAttempt(ctx, d.ID, status, "", at, d.NextAttemptAt, true, false); bookErr != nil {
+		if bookErr := w.Store.RecordWebhookAttempt(ctx, d.ID, status, "", responseBody, at, d.NextAttemptAt, true, false); bookErr != nil {
 			log.Printf("webhooks: record delivery %s: %v", d.ID, bookErr)
 		}
 		return
@@ -475,7 +491,7 @@ func (w *Worker) attempt(ctx context.Context, d store.DueWebhookDelivery) {
 	if attempt > len(backoff) {
 		// Out of retries: close the row and disable the endpoint until a human
 		// re-enables it (Render's documented endgame).
-		if bookErr := w.Store.RecordWebhookAttempt(ctx, d.ID, status, errMsg, at, at, false, true); bookErr != nil {
+		if bookErr := w.Store.RecordWebhookAttempt(ctx, d.ID, status, errMsg, responseBody, at, at, false, true); bookErr != nil {
 			log.Printf("webhooks: record delivery %s: %v", d.ID, bookErr)
 		}
 		if disErr := w.Store.DisableWebhookEndpoint(ctx, d.EndpointID, disabledReason); disErr != nil {
@@ -485,7 +501,7 @@ func (w *Worker) attempt(ctx context.Context, d store.DueWebhookDelivery) {
 		return
 	}
 	next := at.Add(backoff[attempt-1])
-	if bookErr := w.Store.RecordWebhookAttempt(ctx, d.ID, status, errMsg, at, next, false, false); bookErr != nil {
+	if bookErr := w.Store.RecordWebhookAttempt(ctx, d.ID, status, errMsg, responseBody, at, next, false, false); bookErr != nil {
 		log.Printf("webhooks: record delivery %s: %v", d.ID, bookErr)
 	}
 	if attempt == emailAfterFailures {
@@ -495,13 +511,13 @@ func (w *Worker) attempt(ctx context.Context, d store.DueWebhookDelivery) {
 
 // post makes the signed POST. A non-2xx response or transport error is the
 // attempt's failure; the returned status is 0 on a transport error.
-func (w *Worker) post(ctx context.Context, d store.DueWebhookDelivery, at time.Time) (int, error) {
+func (w *Worker) post(ctx context.Context, d store.DueWebhookDelivery, at time.Time) (int, string, error) {
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 	payload := []byte(d.Payload) // one copy, shared by the body and the signature
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, d.URL, bytes.NewReader(payload))
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("webhook-id", d.EventID)
@@ -509,14 +525,45 @@ func (w *Worker) post(ctx context.Context, d store.DueWebhookDelivery, at time.T
 	req.Header.Set("webhook-signature", Sign(d.Secret, d.EventID, at, payload))
 	resp, err := w.client().Do(req)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 	defer resp.Body.Close()
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return resp.StatusCode, fmt.Errorf("endpoint answered %d", resp.StatusCode)
+	responseBody, readErr := readResponseEvidence(resp.Body)
+	if readErr != nil {
+		return resp.StatusCode, responseBody, fmt.Errorf("read endpoint response: %w", readErr)
 	}
-	return resp.StatusCode, nil
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return resp.StatusCode, responseBody, fmt.Errorf("endpoint answered %d", resp.StatusCode)
+	}
+	return resp.StatusCode, responseBody, nil
+}
+
+const (
+	maxWebhookResponseBytes = 4096
+	responseTruncatedSuffix = "\n[bex: response truncated]"
+)
+
+// readResponseEvidence retains a UTF-8-safe prefix of the endpoint response.
+// It reads one byte past the cap to detect truncation, and the marker itself is
+// included inside the 4096-byte storage/wire bound.
+func readResponseEvidence(r io.Reader) (string, error) {
+	raw, err := io.ReadAll(io.LimitReader(r, maxWebhookResponseBytes+1))
+	truncated := len(raw) > maxWebhookResponseBytes
+	budget := maxWebhookResponseBytes
+	if truncated {
+		budget -= len(responseTruncatedSuffix)
+	}
+	clean := bytes.ToValidUTF8(raw, []byte("\uFFFD"))
+	if len(clean) > budget {
+		clean = clean[:budget]
+		for len(clean) > 0 && !utf8.Valid(clean) {
+			clean = clean[:len(clean)-1]
+		}
+	}
+	if truncated {
+		clean = append(clean, responseTruncatedSuffix...)
+	}
+	return string(clean), err
 }
 
 // notifyFailure emails the endpoint's creator that deliveries are failing

@@ -128,6 +128,22 @@ describe("WebhookSettingsCard (w1/m49/t005)", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it("compacts All events to an empty future-inclusive filter and reloads it selected", async () => {
+    const user = userEvent.setup();
+    const first = renderCard();
+    const save = await screen.findByRole("button", { name: "Save changes" });
+    await user.click(screen.getByRole("checkbox", { name: "All events" }));
+    await user.click(save);
+    expect(update).toHaveBeenCalledWith("whk-1", { eventTypes: [] });
+
+    first.unmount();
+    renderCard({ ...ENDPOINT, eventTypes: [] });
+    expect(
+      await screen.findByRole("checkbox", { name: "All events" }),
+    ).toBeChecked();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  });
+
   it("the status switch flips through setWebhookEndpointEnabled immediately", async () => {
     const user = userEvent.setup();
     renderCard();

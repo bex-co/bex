@@ -14,8 +14,8 @@ export interface WebhookEndpointView {
    * auto-disable writes its own reason here. */
   disabledReason: string;
   createdAt: string | null;
-  /** Creator identity (email) — "" when the API has none recorded. Only the
-   * detail query requests it; list rows leave it empty. */
+  /** Stored creator subject — resolved through the workspace member API for
+   * display; "" when none was recorded. List rows leave it empty. */
   createdBy: string;
 }
 
@@ -37,6 +37,10 @@ export interface WebhookDeliveryView {
   /** Last attempt's HTTP status; 0 = transport error or not yet attempted. */
   lastStatusCode: number;
   lastError: string;
+  /** UTF-8-safe, server-bounded prefix of the latest endpoint response. */
+  responseBody: string;
+  /** First delivery attempt time; stable across retries. */
+  sentAt: string | null;
   nextAttemptAt: string | null;
   deliveredAt: string | null;
   createdAt: string | null;

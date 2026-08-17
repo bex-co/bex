@@ -59,6 +59,10 @@ const zhWebhooks: Record<string, TranslationEntry> = {
       "每当订阅的事件发生时，bex 会向此 URL POST 一个带签名的 JSON 负载。",
     description: "Create dialog description",
   },
+  "webhooks.createEnabledHelp": {
+    message: "立即开始投递。你也可以稍后在设置中启用。",
+    description: "Create page initial enabled-state helper copy",
+  },
   "webhooks.fieldName": {
     message: "名称",
     description: "Create dialog name field label",
@@ -255,6 +259,10 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "部署",
     description: "Event-picker group — deploy lifecycle events",
   },
+  "webhooks.group.autoDeploy": {
+    message: "自动部署",
+    description: "Event-picker group — automatic deploy setting events",
+  },
   "webhooks.group.serviceAvailability": {
     message: "服务可用性",
     description: "Event-picker group — observed service availability events",
@@ -287,6 +295,38 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   "webhooks.event.deploy_started": {
     message: "部署开始",
     description: "Event label — deploy_started",
+  },
+  "webhooks.event.branch_deleted": {
+    message: "分支已删除",
+    description: "Webhook event label",
+  },
+  "webhooks.event.build_started": {
+    message: "构建已开始",
+    description: "Webhook event label",
+  },
+  "webhooks.event.build_ended": {
+    message: "构建已结束",
+    description: "Webhook event label",
+  },
+  "webhooks.event.pre_deploy_started": {
+    message: "预部署已开始",
+    description: "Webhook event label",
+  },
+  "webhooks.event.pre_deploy_ended": {
+    message: "预部署已结束",
+    description: "Webhook event label",
+  },
+  "webhooks.event.job_run_ended": {
+    message: "任务运行已结束",
+    description: "Webhook event label",
+  },
+  "webhooks.event.auto_deploy_enabled": {
+    message: "自动部署已启用",
+    description: "Webhook event label",
+  },
+  "webhooks.event.auto_deploy_disabled": {
+    message: "自动部署已停用",
+    description: "Webhook event label",
   },
   "webhooks.event.deploy_ended": {
     message: "部署结束",
@@ -478,6 +518,18 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   "webhooks.filterFailed": {
     message: "失败",
     description: "Activity delivery filter tab — failed only",
+  },
+  "webhooks.sentAfter": {
+    message: "发送时间晚于",
+    description: "Activity delivery-history lower timestamp bound",
+  },
+  "webhooks.sentBefore": {
+    message: "发送时间早于",
+    description: "Activity delivery-history upper timestamp bound",
+  },
+  "webhooks.transportError": {
+    message: "传输错误",
+    description: "Delivery evidence label when no HTTP response was received",
   },
   "webhooks.enabledBadge": {
     message: "已启用",

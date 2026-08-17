@@ -33,26 +33,37 @@ import (
 // the create response ONLY — the mint-once read; every other render omits it
 // (empty + omitempty, and no read query ever selects the column).
 type endpointWire struct {
-	ID             string   `json:"id"`
-	Name           string   `json:"name"`
-	URL            string   `json:"url"`
-	OwnerID        string   `json:"ownerId"`
-	EventFilter    []string `json:"eventFilter"`
-	Enabled        bool     `json:"enabled"`
-	DisabledReason string   `json:"disabledReason,omitempty"`
-	Secret         string   `json:"secret,omitempty"`
-	CreatedBy      string   `json:"createdBy,omitempty"`
-	CreatedAt      string   `json:"createdAt,omitempty"`
-	UpdatedAt      string   `json:"updatedAt,omitempty"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	URL         string   `json:"url"`
+	EventFilter []string `json:"eventFilter"`
+	Enabled     bool     `json:"enabled"`
+	Secret      string   `json:"secret,omitempty"`
 }
 
 func toWire(v EndpointView) endpointWire {
-	return endpointWire{
-		ID: v.ID, Name: v.Name, URL: v.URL, OwnerID: v.OwnerID,
-		EventFilter: v.EventTypes,
-		Enabled:     v.Enabled, DisabledReason: v.DisabledReason, Secret: v.Secret,
-		CreatedBy: v.CreatedBy, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt,
+	eventFilter := v.EventTypes
+	if eventFilter == nil {
+		eventFilter = []string{}
 	}
+	return endpointWire{
+		ID: v.ID, Name: v.Name, URL: v.URL,
+		EventFilter: eventFilter,
+		Enabled:     v.Enabled, Secret: v.Secret,
+	}
+}
+
+type endpointWithCursor struct {
+	Webhook endpointWire `json:"webhook"`
+	Cursor  string       `json:"cursor"`
+}
+
+func toWirePage(views []EndpointView) []endpointWithCursor {
+	out := make([]endpointWithCursor, 0, len(views))
+	for _, v := range views {
+		out = append(out, endpointWithCursor{Webhook: toWire(v), Cursor: v.Cursor})
+	}
+	return out
 }
 
 func toWireList(views []EndpointView) []endpointWire {
@@ -63,72 +74,75 @@ func toWireList(views []EndpointView) []endpointWire {
 	return out
 }
 
-// deliveryWire is one delivery-history entry; deliveryWithCursor is the
-// Render list envelope (the deploys/events {item, cursor} sibling shape).
-type deliveryWire struct {
-	ID              string `json:"id"`
-	EventID         string `json:"eventId"`
-	EventType       string `json:"eventType"`
-	ServiceID       string `json:"serviceId,omitempty"`
-	Status          string `json:"status"`
-	AttemptCount    int    `json:"attemptCount"`
-	LastStatusCode  int    `json:"lastStatusCode,omitempty"`
-	LastError       string `json:"lastError,omitempty"`
-	NextAttemptAt   string `json:"nextAttemptAt,omitempty"`
-	LastAttemptedAt string `json:"lastAttemptedAt,omitempty"`
-	DeliveredAt     string `json:"deliveredAt,omitempty"`
-	CreatedAt       string `json:"createdAt"`
+// webhookEventWire is Render's public delivery-history item. Rich bex retry
+// state remains on GraphQL/MCP; REST uses Render's exact supported fields.
+type webhookEventWire struct {
+	ID           string `json:"id"`
+	EventID      string `json:"eventId"`
+	EventType    string `json:"eventType"`
+	SentAt       string `json:"sentAt"`
+	StatusCode   int    `json:"statusCode,omitempty"`
+	ResponseBody string `json:"responseBody,omitempty"`
+	Error        string `json:"error,omitempty"`
 }
 
-type deliveryWithCursor struct {
-	Delivery deliveryWire `json:"delivery"`
-	Cursor   string       `json:"cursor"`
+type webhookEventWithCursor struct {
+	WebhookEvent webhookEventWire `json:"webhookEvent"`
+	Cursor       string           `json:"cursor"`
 }
 
-func toDeliveryWire(v DeliveryView) deliveryWire {
-	return deliveryWire{
-		ID: v.ID, EventID: v.EventID, EventType: v.EventType, ServiceID: v.ServiceID,
-		Status: v.Status, AttemptCount: v.AttemptCount, LastStatusCode: v.LastStatusCode,
-		LastError: v.LastError, NextAttemptAt: v.NextAttemptAt,
-		LastAttemptedAt: v.LastAttemptedAt, DeliveredAt: v.DeliveredAt, CreatedAt: v.CreatedAt,
+func toWebhookEventWire(v DeliveryView) webhookEventWire {
+	w := webhookEventWire{
+		ID: v.ID, EventID: v.EventID, EventType: v.EventType, SentAt: v.SentAt,
+		StatusCode: v.LastStatusCode, ResponseBody: v.ResponseBody,
 	}
+	// Render's `error` is for failures without an HTTP response. A non-2xx
+	// response is represented by statusCode + responseBody alone.
+	if v.LastStatusCode == 0 {
+		w.Error = v.LastError
+	}
+	return w
 }
 
-func toDeliveryList(views []DeliveryView) []deliveryWithCursor {
-	out := make([]deliveryWithCursor, 0, len(views))
+func toWebhookEventList(views []DeliveryView) []webhookEventWithCursor {
+	out := make([]webhookEventWithCursor, 0, len(views))
 	for _, v := range views {
-		out = append(out, deliveryWithCursor{Delivery: toDeliveryWire(v), Cursor: v.Cursor})
+		out = append(out, webhookEventWithCursor{WebhookEvent: toWebhookEventWire(v), Cursor: v.Cursor})
 	}
 	return out
 }
 
 // createEndpointRequest is POST /v1/webhooks' canonical Render body.
 type createEndpointRequest struct {
-	OwnerID     string   `json:"ownerId"`
-	Name        string   `json:"name"`
-	URL         string   `json:"url"`
-	EventFilter []string `json:"eventFilter"`
+	OwnerID     *string   `json:"ownerId"`
+	Name        string    `json:"name"`
+	URL         string    `json:"url"`
+	EventFilter *[]string `json:"eventFilter"`
+	Enabled     *bool     `json:"enabled"`
 }
 
 // updateEndpointRequest is PATCH /v1/webhooks/{id}'s body — Render's full-body
 // PATCH: any combination of name/url/enabled/eventFilter may be supplied;
 // omitted fields keep their current values.
 type updateEndpointRequest struct {
-	Name        string   `json:"name"`
-	URL         string   `json:"url"`
-	Enabled     *bool    `json:"enabled"`
-	EventFilter []string `json:"eventFilter"`
+	Name        *string   `json:"name"`
+	URL         *string   `json:"url"`
+	Enabled     *bool     `json:"enabled"`
+	EventFilter *[]string `json:"eventFilter"`
 }
 
 // RegisterREST mounts Render's webhook CRUD + delivery-history route family.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	listHandler := func(w http.ResponseWriter, r *http.Request) {
-		views, err := s.List(r.Context(), r.URL.Query().Get("ownerId"))
+		q := r.URL.Query()
+		cursor, limit := core.PageParams(q)
+		ownerIDs := append(core.QueryList(q, "ownerId"), core.QueryList(q, "ownerId[]")...)
+		views, err := s.ListPage(r.Context(), ownerIDs, cursor, limit)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, toWireList(views))
+		core.WriteJSON(w, http.StatusOK, toWirePage(views))
 	}
 	createHandler := func(w http.ResponseWriter, r *http.Request) {
 		var req createEndpointRequest
@@ -136,11 +150,24 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, core.ErrBadRequest)
 			return
 		}
+		if req.Enabled == nil {
+			core.WriteErr(w, core.NewBadRequestError("WEBHOOK_ENABLED_REQUIRED", "enabled is required", map[string]any{"field": "enabled"}))
+			return
+		}
+		if req.OwnerID == nil || *req.OwnerID == "" {
+			core.WriteErr(w, core.NewBadRequestError("WEBHOOK_OWNER_REQUIRED", "ownerId is required", map[string]any{"field": "ownerId"}))
+			return
+		}
+		if req.EventFilter == nil {
+			core.WriteErr(w, core.NewBadRequestError("WEBHOOK_EVENT_FILTER_REQUIRED", "eventFilter is required", map[string]any{"field": "eventFilter"}))
+			return
+		}
 		v, err := s.Create(r.Context(), CreateRequest{
-			OwnerID:    req.OwnerID,
+			OwnerID:    *req.OwnerID,
 			Name:       req.Name,
 			URL:        req.URL,
-			EventTypes: req.EventFilter,
+			EventTypes: *req.EventFilter,
+			Enabled:    *req.Enabled,
 		})
 		if err != nil {
 			core.WriteErr(w, err)
@@ -164,13 +191,21 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		w.WriteHeader(http.StatusNoContent)
 	}
 	deliveriesHandler := func(w http.ResponseWriter, r *http.Request) {
-		cursor, limit := core.PageParams(r.URL.Query())
-		views, err := s.ListDeliveries(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id"), cursor, limit)
+		q := r.URL.Query()
+		cursor, limit := core.PageParams(q)
+		window, err := core.QueryTimeWindow(q, "sentBefore", "sentAfter")
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, toDeliveryList(views))
+		views, err := s.ListDeliveriesFiltered(r.Context(), q.Get("ownerId"), r.PathValue("id"), DeliveryFilter{
+			Cursor: cursor, Limit: limit, SentAfter: window.After, SentBefore: window.Before,
+		})
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toWebhookEventList(views))
 	}
 
 	// Render's public route family (w3/m27).

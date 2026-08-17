@@ -45,16 +45,15 @@ limitations under the License.
 //
 // Thin payload {type, timestamp, data: {id, serviceId, serviceName, status?}};
 // Standard-Webhooks HMAC-SHA256 signing (webhook-id/-timestamp/-signature
-// headers); 2xx within 15s or the attempt failed; up to 8 retries on a
+// headers); 2xx within 15s or the attempt failed; up to 8 total attempts on a
 // bounded exponential backoff (final ~33h out); a failure notice emailed
 // after 3 consecutive failures; the endpoint auto-disabled (until manually
 // re-enabled) once retries are exhausted.
 //
 // # Deliberate divergences from Render
 //
-//   - No plan-tier gating: bex has no billing system (w6 non-goal), so any
-//     workspace may register any number of endpoints (Render: Pro=1,
-//     Scale=100).
+//   - No plan-tier gating: every workspace may register up to 25 endpoints,
+//     independent of plan (Render: Pro=1, Scale=100).
 //   - Endpoint management is a full REST/GraphQL/MCP/UI surface; Render's
 //     public docs manage webhooks from the dashboard only.
 //
@@ -68,6 +67,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -84,6 +84,14 @@ import (
 const (
 	TypeDeployStarted              = "deploy_started"
 	TypeDeployEnded                = "deploy_ended"
+	TypeBranchDeleted              = "branch_deleted"
+	TypeBuildStarted               = "build_started"
+	TypeBuildEnded                 = "build_ended"
+	TypePreDeployStarted           = "pre_deploy_started"
+	TypePreDeployEnded             = "pre_deploy_ended"
+	TypeJobRunEnded                = "job_run_ended"
+	TypeAutoDeployEnabled          = "auto_deploy_enabled"
+	TypeAutoDeployDisabled         = "auto_deploy_disabled"
 	TypeServerRestarted            = "server_restarted"
 	TypeServiceSuspended           = "service_suspended"
 	TypeServiceResumed             = "service_resumed"
@@ -119,9 +127,6 @@ var verbEvents = map[string]string{
 	"apps.Scale":                             TypeInstanceCountChanged,
 	"apps.SetAutoscaling":                    TypeAutoscalingConfigChanged,
 	"apps.DeleteAutoscaling":                 TypeAutoscalingConfigChanged,
-	"apps.TriggerCronRun":                    TypeCronJobRunStarted,
-	"apps.CancelCronRun":                     TypeCronJobRunEnded,
-	"apps.CancelCurrentCronRun":              TypeCronJobRunEnded,
 	core.AuditVerbMaintenanceModeEnabled:     TypeMaintenanceModeEnabled,
 	core.AuditVerbMaintenanceModeURIUpdated:  TypeMaintenanceModeURIUpdated,
 	core.AuditVerbSetPlan:                    TypePlanChanged,
@@ -134,6 +139,8 @@ var verbEvents = map[string]string{
 	core.AuditVerbKeyValuePlanChanged:        TypePlanChanged,
 }
 
+const autoDeployVerb = core.AuditVerbSetAutoDeploy
+
 var factEvents = map[string]string{
 	string(store.EventFactImagePullFailed):    TypeImagePullFailed,
 	string(store.EventFactServiceSuspended):   TypeServiceSuspended,
@@ -144,16 +151,31 @@ var factEvents = map[string]string{
 	string(store.EventFactCommitIgnored):      TypeCommitIgnored,
 	string(store.EventFactAutoscalingStarted): TypeAutoscalingStarted,
 	string(store.EventFactAutoscalingEnded):   TypeAutoscalingEnded,
+	string(store.EventFactBranchDeleted):      TypeBranchDeleted,
+	string(store.EventFactBuildStarted):       TypeBuildStarted,
+	string(store.EventFactBuildEnded):         TypeBuildEnded,
+	string(store.EventFactPreDeployStarted):   TypePreDeployStarted,
+	string(store.EventFactPreDeployEnded):     TypePreDeployEnded,
+	string(store.EventFactJobRunEnded):        TypeJobRunEnded,
+	string(store.EventFactCronRunStarted):     TypeCronJobRunStarted,
+	string(store.EventFactCronRunEnded):       TypeCronJobRunEnded,
 }
 
 // auditVerbs is verbEvents' key set — the dispatcher's push-down filter,
 // computed once.
-var auditVerbs = slices.Sorted(maps.Keys(verbEvents))
+var auditVerbs = func() []string {
+	verbs := slices.Collect(maps.Keys(verbEvents))
+	verbs = append(verbs, autoDeployVerb)
+	slices.Sort(verbs)
+	return verbs
+}()
 
 // EventTypes is the full subscribable vocabulary, sorted — what Create
 // validates against and what the dashboard's event-type picker lists.
 var EventTypes = func() []string {
 	set := map[string]bool{TypeDeployStarted: true, TypeDeployEnded: true}
+	set[TypeAutoDeployEnabled] = true
+	set[TypeAutoDeployDisabled] = true
 	for _, t := range verbEvents {
 		set[t] = true
 	}
@@ -167,13 +189,13 @@ var EventTypes = func() []string {
 // *store.PGStore satisfies it; a fake backs the tests. nil => the store is
 // off (BEX_CP_DB_URI unset).
 type EndpointStore interface {
-	CreateWebhookEndpoint(ctx context.Context, tenantID, name, url, secret string, eventTypes []string, createdBy string) (store.WebhookEndpoint, error)
-	ListWebhookEndpoints(ctx context.Context, tenantID string) ([]store.WebhookEndpoint, error)
+	CreateWebhookEndpoint(ctx context.Context, tenantID, name, url, secret string, eventTypes []string, enabled bool, createdBy string) (store.WebhookEndpoint, error)
+	ListWebhookEndpoints(ctx context.Context, tenantIDs []string, afterAt time.Time, afterKey string, limit int) ([]store.WebhookEndpoint, error)
 	GetWebhookEndpoint(ctx context.Context, tenantID, id string) (store.WebhookEndpoint, error)
 	SetWebhookEndpointEnabled(ctx context.Context, tenantID, id string, enabled bool, reason string) (store.WebhookEndpoint, error)
 	UpdateWebhookEndpoint(ctx context.Context, tenantID, id, name, url string, eventTypes []string, enabled bool) (store.WebhookEndpoint, error)
 	DeleteWebhookEndpoint(ctx context.Context, tenantID, id string) error
-	ListWebhookDeliveries(ctx context.Context, endpointID string, afterAt time.Time, afterKey string, limit int) ([]store.WebhookDelivery, error)
+	ListWebhookDeliveries(ctx context.Context, filter store.WebhookDeliveryFilter) ([]store.WebhookDelivery, error)
 }
 
 // Service is the webhook-endpoint management feature: CRUD + delivery
@@ -201,6 +223,7 @@ type EndpointView struct {
 	CreatedBy      string
 	CreatedAt      string
 	UpdatedAt      string
+	Cursor         string
 }
 
 // Delivery statuses a DeliveryView reports — derived from which terminal
@@ -216,19 +239,21 @@ const (
 // rows are updated in place by retries, so paging on a mutable field would
 // shift pages under the reader; (createdAt, id) never changes).
 type DeliveryView struct {
-	ID              string
-	EventID         string
-	EventType       string
-	ServiceID       string
-	Status          string
-	AttemptCount    int
-	LastStatusCode  int
-	LastError       string
-	NextAttemptAt   string // "" once the row is terminal
-	LastAttemptedAt string
-	DeliveredAt     string
-	CreatedAt       string
-	Cursor          string
+	ID              string `json:"id"`
+	EventID         string `json:"eventId"`
+	EventType       string `json:"eventType"`
+	ServiceID       string `json:"serviceId"`
+	Status          string `json:"status"`
+	AttemptCount    int    `json:"attemptCount"`
+	LastStatusCode  int    `json:"lastStatusCode"`
+	LastError       string `json:"lastError"`
+	ResponseBody    string `json:"responseBody"`
+	NextAttemptAt   string `json:"nextAttemptAt"` // "" once the row is terminal
+	SentAt          string `json:"sentAt"`
+	LastAttemptedAt string `json:"lastAttemptedAt"`
+	DeliveredAt     string `json:"deliveredAt"`
+	CreatedAt       string `json:"createdAt"`
+	Cursor          string `json:"cursor"`
 }
 
 // workspaceID is the store key for the caller's endpoints: the caller's
@@ -247,6 +272,7 @@ func toView(e store.WebhookEndpoint) EndpointView {
 		CreatedBy:      e.CreatedBy,
 		CreatedAt:      e.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:      e.UpdatedAt.UTC().Format(time.RFC3339),
+		Cursor:         core.EncodeKeysetCursor(e.CreatedAt, e.ID),
 	}
 }
 
@@ -260,8 +286,12 @@ func toDeliveryView(d store.WebhookDelivery) DeliveryView {
 		AttemptCount:   d.AttemptCount,
 		LastStatusCode: d.LastStatus,
 		LastError:      d.LastError,
+		ResponseBody:   d.ResponseBody,
 		CreatedAt:      d.CreatedAt.UTC().Format(time.RFC3339),
-		Cursor:         core.EncodeKeysetCursor(d.CreatedAt, d.ID),
+	}
+	if d.SentAt != nil {
+		v.SentAt = d.SentAt.UTC().Format(time.RFC3339)
+		v.Cursor = core.EncodeKeysetCursor(*d.SentAt, d.ID)
 	}
 	switch {
 	case d.DeliveredAt != nil:
@@ -278,8 +308,8 @@ func toDeliveryView(d store.WebhookDelivery) DeliveryView {
 	return v
 }
 
-// CreateRequest is Create's input. URL and EventTypes are required; Name is a
-// human display label defaulting to the URL. OwnerID is the workspace to
+// CreateRequest is Create's input. Name and URL are required. An empty
+// EventTypes slice is Render's all-events subscription. OwnerID is the workspace to
 // create in — Render's `ownerId` (empty means the caller's own resolved
 // default workspace).
 type CreateRequest struct {
@@ -287,6 +317,7 @@ type CreateRequest struct {
 	Name       string
 	URL        string
 	EventTypes []string
+	Enabled    bool
 }
 
 // Create registers a new endpoint and returns it WITH its freshly minted
@@ -301,6 +332,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, 
 	}
 	if s.Store == nil {
 		return EndpointView{}, core.ErrWebhooksUnavailable
+	}
+	name, err := normalizeName(req.Name)
+	if err != nil {
+		return EndpointView{}, err
 	}
 	dest, err := parseDestination(req.URL)
 	if err != nil {
@@ -318,7 +353,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, 
 	if id, ok := core.IdentityFrom(ctx); ok {
 		createdBy = id.Subject
 	}
-	e, err := s.Store.CreateWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), strings.TrimSpace(req.Name), dest, secret, types, createdBy)
+	e, err := s.Store.CreateWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), name, dest, secret, types, req.Enabled, createdBy)
 	if err != nil {
 		return EndpointView{}, mapCreateErr(err)
 	}
@@ -331,6 +366,12 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, 
 // message instead of a raw store error.
 const EndpointLimitCode = "WEBHOOK_ENDPOINT_LIMIT"
 
+const (
+	WebhookNameInvalidCode  = "WEBHOOK_NAME_INVALID"
+	WebhookNameConflictCode = "WEBHOOK_NAME_CONFLICT"
+	WebhookURLInvalidCode   = "WEBHOOK_URL_INVALID"
+)
+
 // mapCreateErr turns the store's typed quota refusal into a coded API error.
 // Every other store error passes through the shared mapping.
 func mapCreateErr(err error) error {
@@ -340,6 +381,10 @@ func mapCreateErr(err error) error {
 				store.MaxWebhookEndpointsPerWorkspace),
 			map[string]any{"limit": store.MaxWebhookEndpointsPerWorkspace})
 	}
+	if errors.Is(err, store.ErrConflict) {
+		return core.NewConflictError(WebhookNameConflictCode,
+			"a webhook with this name already exists in the workspace", nil)
+	}
 	return mapStoreErr(err)
 }
 
@@ -347,14 +392,51 @@ func mapCreateErr(err error) error {
 // optionally names the workspace (Render's `ownerId` filter); empty means the
 // caller's own resolved default. Member read.
 func (s *Service) List(ctx context.Context, ownerID string) ([]EndpointView, error) {
-	ctx = core.WithWorkspace(ctx, ownerID)
-	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return nil, err
+	return s.ListPage(ctx, []string{ownerID}, "", core.MaxPageLimit)
+}
+
+// ListPage returns a stable Render page across one or more authorized
+// workspaces. ownerIDs are repeated ownerId query values; absent means the
+// caller's resolved default workspace.
+func (s *Service) ListPage(ctx context.Context, ownerIDs []string, cursor string, limit int) ([]EndpointView, error) {
+	if len(ownerIDs) == 0 {
+		ownerIDs = []string{""}
+	}
+	ownerSet := make(map[string]bool, len(ownerIDs))
+	normalizedOwners := make([]string, 0, len(ownerIDs))
+	for _, ownerID := range ownerIDs {
+		ownerID = strings.TrimSpace(ownerID)
+		if ownerSet[ownerID] {
+			continue
+		}
+		ownerSet[ownerID] = true
+		normalizedOwners = append(normalizedOwners, ownerID)
+	}
+	if len(normalizedOwners) > core.MaxPageLimit {
+		return nil, core.NewBadRequestError("WEBHOOK_OWNER_FILTER_LIMIT",
+			fmt.Sprintf("ownerId accepts at most %d distinct values", core.MaxPageLimit),
+			map[string]any{"limit": core.MaxPageLimit})
+	}
+	tenantSet := make(map[string]bool, len(normalizedOwners))
+	for _, ownerID := range normalizedOwners {
+		scoped := core.WithWorkspace(ctx, ownerID)
+		if err := s.Authorize(scoped, core.RelCanView); err != nil {
+			return nil, err
+		}
+		tenantID := ownerID
+		if tenantID == "" {
+			tenantID = s.WorkspaceOrDefault(scoped)
+		}
+		tenantSet[tenantID] = true
 	}
 	if s.Store == nil {
 		return nil, core.ErrWebhooksUnavailable
 	}
-	rows, err := s.Store.ListWebhookEndpoints(ctx, s.WorkspaceOrDefault(ctx))
+	after, err := core.DecodeKeysetCursor(cursor)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.Store.ListWebhookEndpoints(ctx, slices.Sorted(maps.Keys(tenantSet)), after.At, after.Key, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -420,6 +502,20 @@ func (s *Service) Delete(ctx context.Context, ownerID, id string) error {
 // keyset-paged. The endpoint is fetched (workspace-scoped) first, so a
 // cross-workspace endpoint id 404s before any history is read. Member read.
 func (s *Service) ListDeliveries(ctx context.Context, ownerID, endpointID, cursor string, limit int) ([]DeliveryView, error) {
+	return s.ListDeliveriesFiltered(ctx, ownerID, endpointID, DeliveryFilter{Cursor: cursor, Limit: limit})
+}
+
+// DeliveryFilter is Render's webhook-event history filter. SentAfter and
+// SentBefore are strict bounds on the immutable first-attempt timestamp.
+type DeliveryFilter struct {
+	Cursor     string
+	Limit      int
+	SentAfter  time.Time
+	SentBefore time.Time
+	Status     string
+}
+
+func (s *Service) ListDeliveriesFiltered(ctx context.Context, ownerID, endpointID string, filter DeliveryFilter) ([]DeliveryView, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
@@ -430,13 +526,20 @@ func (s *Service) ListDeliveries(ctx context.Context, ownerID, endpointID, curso
 	if _, err := s.Store.GetWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), endpointID); err != nil {
 		return nil, mapStoreErr(err)
 	}
-	after, err := core.DecodeKeysetCursor(cursor)
+	after, err := core.DecodeKeysetCursor(filter.Cursor)
 	if err != nil {
 		return nil, err
 	}
+	if filter.Status != "" && filter.Status != DeliveryDelivered && filter.Status != DeliveryFailed {
+		return nil, core.NewBadRequestError("WEBHOOK_DELIVERY_STATUS_INVALID",
+			"status must be delivered or failed", map[string]any{"field": "status"})
+	}
 	// The store clamps limit to the shared page bounds (the ListServiceEvents
 	// convention) — no second feature-side clamp.
-	rows, err := s.Store.ListWebhookDeliveries(ctx, endpointID, after.At, after.Key, limit)
+	rows, err := s.Store.ListWebhookDeliveries(ctx, store.WebhookDeliveryFilter{
+		EndpointID: endpointID, SentAfter: filter.SentAfter, SentBefore: filter.SentBefore,
+		Status: filter.Status, AfterAt: after.At, AfterKey: after.Key, Limit: filter.Limit,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -447,18 +550,18 @@ func (s *Service) ListDeliveries(ctx context.Context, ownerID, endpointID, curso
 	return out, nil
 }
 
-// UpdateRequest is Update's input — Render's full-body PATCH (w3/m27):
-// any zero-value field means "keep the current value". Each adapter maps its
+// UpdateRequest is Update's input — Render's sparse PATCH (w3/m27):
+// any nil field means "keep the current value". Each adapter maps its
 // surface-native subscription field onto EventTypes before calling Update.
 type UpdateRequest struct {
-	Name       string
-	URL        string
-	EventTypes []string
+	Name       *string
+	URL        *string
+	EventTypes *[]string
 	Enabled    *bool
 }
 
-// Update applies a full-body update to an endpoint (Render's PATCH contract,
-// w3/m27). Non-zero fields replace the current value; zero fields keep it.
+// Update applies a sparse update to an endpoint (Render's PATCH contract,
+// w3/m27). Non-nil fields replace the current value; omitted fields keep it.
 // URL changes are re-validated; EventTypes changes are re-normalised.
 // Admin-only (RelCanManage), matching Create and SetEnabled.
 func (s *Service) Update(ctx context.Context, ownerID, id string, req UpdateRequest) (EndpointView, error) {
@@ -476,18 +579,20 @@ func (s *Service) Update(ctx context.Context, ownerID, id string, req UpdateRequ
 	}
 	// Merge: keep current values for omitted fields.
 	name := cur.Name
-	if req.Name != "" {
-		name = strings.TrimSpace(req.Name)
+	if req.Name != nil {
+		if name, err = normalizeName(*req.Name); err != nil {
+			return EndpointView{}, err
+		}
 	}
 	dest := cur.URL
-	if req.URL != "" {
-		if dest, err = parseDestination(req.URL); err != nil {
+	if req.URL != nil {
+		if dest, err = parseDestination(*req.URL); err != nil {
 			return EndpointView{}, err
 		}
 	}
 	types := cur.EventTypes
-	if len(req.EventTypes) > 0 {
-		if types, err = normalizeEventTypes(req.EventTypes); err != nil {
+	if req.EventTypes != nil {
+		if types, err = normalizeEventTypes(*req.EventTypes); err != nil {
 			return EndpointView{}, err
 		}
 	}
@@ -497,27 +602,42 @@ func (s *Service) Update(ctx context.Context, ownerID, id string, req UpdateRequ
 	}
 	e, err := s.Store.UpdateWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), id, name, dest, types, enabled)
 	if err != nil {
+		if errors.Is(err, store.ErrConflict) {
+			return EndpointView{}, core.NewConflictError(WebhookNameConflictCode,
+				"a webhook with this name already exists in the workspace", nil)
+		}
 		return EndpointView{}, mapStoreErr(err)
 	}
 	return toView(e), nil
 }
 
-// parseDestination validates a destination URL: absolute, http(s), with a
+// parseDestination validates a destination URL: absolute HTTPS, with a
 // host. Returned trimmed — what the store keeps and the sender POSTs to.
 func parseDestination(raw string) (string, error) {
 	dest := strings.TrimSpace(raw)
-	if !core.ValidAbsoluteHTTPURL(dest) {
-		return "", core.ErrNotAbsoluteHTTPURL("url")
+	u, err := url.Parse(dest)
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return "", core.NewBadRequestError(WebhookURLInvalidCode,
+			"url must be an absolute HTTPS URL", map[string]any{"field": "url"})
 	}
 	return dest, nil
 }
 
+func normalizeName(raw string) (string, error) {
+	name := strings.TrimSpace(raw)
+	if name == "" {
+		return "", core.NewBadRequestError(WebhookNameInvalidCode,
+			"name is required", map[string]any{"field": "name"})
+	}
+	return name, nil
+}
+
 // normalizeEventTypes validates and de-duplicates a subscription against the
-// vocabulary, preserving EventTypes' canonical order. Empty means "nothing
-// would ever fire" and is rejected rather than stored inert.
+// vocabulary, preserving EventTypes' canonical order. Empty is stored as the
+// compact Render representation of an all-current-and-future-events subscription.
 func normalizeEventTypes(types []string) ([]string, error) {
 	if len(types) == 0 {
-		return nil, fmt.Errorf("%w: at least one event type is required", core.ErrBadRequest)
+		return []string{}, nil
 	}
 	asked := make(map[string]bool, len(types))
 	for _, t := range types {

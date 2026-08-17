@@ -87,19 +87,16 @@ var ErrWebhookEndpointLimit = fmt.Errorf("workspace has the maximum number of we
 
 // CreateWebhookEndpoint mints a new endpoint row (id.New(id.Webhook)) and
 // inserts it. The secret is minted by the caller (internal/webhooks owns the
-// format) and returned on this one response only. An empty name defaults to
-// the URL.
+// format) and returned on this one response only. Name is already validated by
+// the service and is stored verbatim.
 //
 // The count check and the insert share ONE transaction, and the count takes a
 // row-level lock over the workspace's existing endpoints, so two concurrent
 // creates at the boundary cannot both observe "one slot left" and both take it.
-func (s *PGStore) CreateWebhookEndpoint(ctx context.Context, tenantID, name, url, secret string, eventTypes []string, createdBy string) (WebhookEndpoint, error) {
-	if name == "" {
-		name = url
-	}
+func (s *PGStore) CreateWebhookEndpoint(ctx context.Context, tenantID, name, url, secret string, eventTypes []string, enabled bool, createdBy string) (WebhookEndpoint, error) {
 	e := WebhookEndpoint{
 		ID: ids.New(ids.Webhook), TenantID: tenantID, Name: name, URL: url,
-		Secret: secret, EventTypes: eventTypes, Enabled: true, CreatedBy: createdBy,
+		Secret: secret, EventTypes: eventTypes, Enabled: enabled, CreatedBy: createdBy,
 	}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		// A transaction-scoped advisory lock keyed on the workspace serializes
@@ -122,9 +119,9 @@ func (s *PGStore) CreateWebhookEndpoint(ctx context.Context, tenantID, name, url
 			return ErrWebhookEndpointLimit
 		}
 		return tx.QueryRow(ctx,
-			`INSERT INTO webhook_endpoints (id, tenant_id, name, url, secret, event_types, created_by)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING created_at, updated_at`,
-			e.ID, e.TenantID, e.Name, e.URL, e.Secret, e.EventTypes, e.CreatedBy,
+			`INSERT INTO webhook_endpoints (id, tenant_id, name, url, secret, event_types, enabled, created_by)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING created_at, updated_at`,
+			e.ID, e.TenantID, e.Name, e.URL, e.Secret, e.EventTypes, e.Enabled, e.CreatedBy,
 		).Scan(&e.CreatedAt, &e.UpdatedAt)
 	})
 	if err != nil {
@@ -136,11 +133,16 @@ func (s *PGStore) CreateWebhookEndpoint(ctx context.Context, tenantID, name, url
 	return e, nil
 }
 
-// ListWebhookEndpoints returns a workspace's endpoints, newest first (secrets
-// omitted).
-func (s *PGStore) ListWebhookEndpoints(ctx context.Context, tenantID string) ([]WebhookEndpoint, error) {
+// ListWebhookEndpoints returns the requested workspaces' endpoints, newest
+// first, keyset-paged on immutable (created_at,id); secrets are omitted.
+func (s *PGStore) ListWebhookEndpoints(ctx context.Context, tenantIDs []string, afterAt time.Time, afterKey string, limit int) ([]WebhookEndpoint, error) {
+	limit = core.PageLimitOrAbsent(limit)
 	rows, err := s.Pool.Query(ctx,
-		`SELECT `+webhookEndpointColumns+` FROM webhook_endpoints WHERE tenant_id = $1 ORDER BY created_at DESC, id DESC`, tenantID)
+		`SELECT `+webhookEndpointColumns+` FROM webhook_endpoints
+		 WHERE tenant_id = ANY($1)
+		   AND ($2::timestamptz IS NULL OR (created_at, id) < ($2, $3))
+		 ORDER BY created_at DESC, id DESC
+		 LIMIT $4`, tenantIDs, nullTime(afterAt), afterKey, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -260,37 +262,53 @@ type WebhookDelivery struct {
 	AttemptCount    int
 	LastStatus      int
 	LastError       string
+	ResponseBody    string
 	NextAttemptAt   time.Time
+	SentAt          *time.Time
 	LastAttemptedAt *time.Time
 	DeliveredAt     *time.Time
 	FailedAt        *time.Time
 	CreatedAt       time.Time
 }
 
-const webhookDeliveryColumns = `id, endpoint_id, event_id, event_type, service_id, payload, attempt_count, last_status, last_error, next_attempt_at, last_attempted_at, delivered_at, failed_at, created_at`
+const webhookDeliveryColumns = `id, endpoint_id, event_id, event_type, service_id, payload, attempt_count, last_status, last_error, response_body, next_attempt_at, sent_at, last_attempted_at, delivered_at, failed_at, created_at`
 
 func scanWebhookDelivery(row pgx.Row) (WebhookDelivery, error) {
 	var d WebhookDelivery
 	err := row.Scan(&d.ID, &d.EndpointID, &d.EventID, &d.EventType, &d.ServiceID, &d.Payload,
-		&d.AttemptCount, &d.LastStatus, &d.LastError, &d.NextAttemptAt, &d.LastAttemptedAt,
+		&d.AttemptCount, &d.LastStatus, &d.LastError, &d.ResponseBody, &d.NextAttemptAt, &d.SentAt, &d.LastAttemptedAt,
 		&d.DeliveredAt, &d.FailedAt, &d.CreatedAt)
 	return d, err
 }
 
+// WebhookDeliveryFilter is one stable, bounded history query.
+type WebhookDeliveryFilter struct {
+	EndpointID string
+	SentAfter  time.Time
+	SentBefore time.Time
+	Status     string
+	AfterAt    time.Time
+	AfterKey   string
+	Limit      int
+}
+
 // ListWebhookDeliveries returns one endpoint's delivery history, newest
-// first, keyset-paged on (created_at, id) — the events-feed cursor shape, so
-// a page stays stable however rows are updated in place by retries.
-func (s *PGStore) ListWebhookDeliveries(ctx context.Context, endpointID string, afterAt time.Time, afterKey string, limit int) ([]WebhookDelivery, error) {
-	if limit < 1 || limit > core.MaxPageLimit {
-		limit = core.DefaultPageLimit
-	}
+// first, keyset-paged on (sent_at, id), which is immutable after the first
+// attempt and therefore stable while later retries update the row.
+func (s *PGStore) ListWebhookDeliveries(ctx context.Context, filter WebhookDeliveryFilter) ([]WebhookDelivery, error) {
+	filter.Limit = core.PageLimitOrAbsent(filter.Limit)
 	rows, err := s.Pool.Query(ctx,
 		`SELECT `+webhookDeliveryColumns+` FROM webhook_deliveries
 		 WHERE endpoint_id = $1
-		   AND ($2::timestamptz IS NULL OR (created_at, id) < ($2, $3))
-		 ORDER BY created_at DESC, id DESC
-		 LIMIT $4`,
-		endpointID, nullTime(afterAt), afterKey, limit)
+		   AND sent_at IS NOT NULL
+		   AND ($2::timestamptz IS NULL OR sent_at > $2)
+		   AND ($3::timestamptz IS NULL OR sent_at < $3)
+		   AND ($4 = '' OR ($4 = 'delivered' AND delivered_at IS NOT NULL) OR ($4 = 'failed' AND failed_at IS NOT NULL))
+		   AND ($5::timestamptz IS NULL OR (sent_at, id) < ($5, $6))
+		 ORDER BY sent_at DESC, id DESC
+		 LIMIT $7`,
+		filter.EndpointID, nullTime(filter.SentAfter), nullTime(filter.SentBefore), filter.Status,
+		nullTime(filter.AfterAt), filter.AfterKey, filter.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -360,9 +378,12 @@ type WebhookEventRow struct {
 	DeployID    string
 	// Status is the deploy's terminal status on the ended phase, and the fact's
 	// own status on fact rows. Empty elsewhere.
-	Status   string
-	Verb     string // audit rows: e.g. "apps.Suspend"
-	FactType string // fact rows: closed service_event_facts.fact_type
+	Status string
+	Verb   string // audit rows: e.g. "apps.Suspend"
+	// AutoDeployEnabled discriminates apps.SetAutoDeploy into Render's enabled
+	// and disabled event types. nil on every other row (and on legacy audit rows).
+	AutoDeployEnabled *bool
+	FactType          string // fact rows: closed service_event_facts.fact_type
 	// AppID is the app's internal control-plane id, as opposed to ServiceID's
 	// public composite. Empty on the datastore audit arm, which has no app.
 	AppID string
@@ -409,6 +430,7 @@ WITH feed AS (
            ''::text                            AS status,
            ''::text                            AS verb,
            ''::text                            AS fact_type,
+	       NULL::boolean                       AS auto_deploy_enabled,
            a.id                                AS app_id
     FROM deploys d
     JOIN apps a ON a.id = d.app_id
@@ -427,6 +449,7 @@ WITH feed AS (
            d.status,
            ''::text,
            ''::text,
+	       NULL::boolean,
            a.id
     FROM deploys d
     JOIN apps a ON a.id = d.app_id
@@ -445,6 +468,7 @@ WITH feed AS (
            ''::text,
            e.verb,
            ''::text,
+	       e.auto_deploy_enabled,
            a.id
     FROM audit_events e
     JOIN apps a ON a.tenant_id = ANY($5)
@@ -465,6 +489,7 @@ WITH feed AS (
            ''::text,
 		   e.verb,
 		   ''::text,
+		   NULL::boolean,
 		   ''::text
     FROM audit_events e
 	WHERE e.workspace_id = ANY($5)
@@ -484,13 +509,14 @@ WITH feed AS (
            COALESCE(f.status, ''),
            ''::text,
            f.fact_type,
+	       NULL::boolean,
            a.id
     FROM service_event_facts f
     JOIN apps a ON a.id = f.app_id
     JOIN tenants t ON t.id = a.tenant_id
     WHERE a.tenant_id = ANY($5)
 )
-SELECT cursor_at, key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb, fact_type, app_id
+SELECT cursor_at, key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb, fact_type, auto_deploy_enabled, app_id
 FROM feed
 WHERE (cursor_at, key) > ($1, $2) AND cursor_at <= $3
 ORDER BY cursor_at, key
@@ -510,7 +536,7 @@ func (s *PGStore) ListWebhookEvents(ctx context.Context, afterAt time.Time, afte
 	var out []WebhookEventRow
 	for rows.Next() {
 		var r WebhookEventRow
-		if err := rows.Scan(&r.CursorAt, &r.Key, &r.At, &r.TenantID, &r.ServiceID, &r.ServiceName, &r.Source, &r.Phase, &r.DeployID, &r.Status, &r.Verb, &r.FactType, &r.AppID); err != nil {
+		if err := rows.Scan(&r.CursorAt, &r.Key, &r.At, &r.TenantID, &r.ServiceID, &r.ServiceName, &r.Source, &r.Phase, &r.DeployID, &r.Status, &r.Verb, &r.FactType, &r.AutoDeployEnabled, &r.AppID); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -603,7 +629,7 @@ func (s *PGStore) ClaimDueWebhookDeliveries(ctx context.Context, now, leaseUntil
 	for rows.Next() {
 		var d DueWebhookDelivery
 		if err := rows.Scan(&d.ID, &d.EndpointID, &d.EventID, &d.EventType, &d.ServiceID, &d.Payload,
-			&d.AttemptCount, &d.LastStatus, &d.LastError, &d.NextAttemptAt, &d.LastAttemptedAt,
+			&d.AttemptCount, &d.LastStatus, &d.LastError, &d.ResponseBody, &d.NextAttemptAt, &d.SentAt, &d.LastAttemptedAt,
 			&d.DeliveredAt, &d.FailedAt, &d.CreatedAt,
 			&d.URL, &d.Secret, &d.TenantID, &d.EndpointName, &d.CreatedBy); err != nil {
 			return nil, err
@@ -632,15 +658,15 @@ func (s *PGStore) ClaimWebhookFailureNotice(ctx context.Context, endpointID stri
 // RecordWebhookAttempt books one attempt's outcome: increments the count,
 // records status/error/time, and either closes the row (delivered/failed) or
 // schedules the next try.
-func (s *PGStore) RecordWebhookAttempt(ctx context.Context, id string, status int, errMsg string, at, next time.Time, delivered, failed bool) error {
+func (s *PGStore) RecordWebhookAttempt(ctx context.Context, id string, status int, errMsg, responseBody string, at, next time.Time, delivered, failed bool) error {
 	_, err := s.Pool.Exec(ctx,
 		`UPDATE webhook_deliveries
-		 SET attempt_count = attempt_count + 1, last_status = $2, last_error = $3,
-		     last_attempted_at = $4, next_attempt_at = $5,
-		     delivered_at = CASE WHEN $6 THEN $4 ELSE delivered_at END,
-		     failed_at    = CASE WHEN $7 THEN $4 ELSE failed_at END
+		 SET attempt_count = attempt_count + 1, last_status = $2, last_error = $3, response_body = $4,
+		     sent_at = COALESCE(sent_at, $5), last_attempted_at = $5, next_attempt_at = $6,
+		     delivered_at = CASE WHEN $7 THEN $5 ELSE delivered_at END,
+		     failed_at    = CASE WHEN $8 THEN $5 ELSE failed_at END
 		 WHERE id = $1`,
-		id, status, errMsg, at, next, delivered, failed)
+		id, status, errMsg, responseBody, at, next, delivered, failed)
 	return err
 }
 

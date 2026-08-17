@@ -39,15 +39,26 @@ type listEndpointsResult struct {
 }
 
 type createEndpointArgs struct {
-	Name       string   `json:"name,omitempty" jsonschema:"a human display label; defaults to the URL when omitted"`
-	URL        string   `json:"url" jsonschema:"the absolute http(s) destination bex POSTs signed event notifications to"`
+	Name       string   `json:"name" jsonschema:"a unique non-empty name within the workspace"`
+	URL        string   `json:"url" jsonschema:"the absolute HTTPS destination bex POSTs signed event notifications to"`
 	EventTypes []string `json:"eventTypes" jsonschema:"the event types to subscribe to, e.g. deploy_started, deploy_ended, service_suspended — list_webhook_endpoints returns the full vocabulary"`
+	Enabled    bool     `json:"enabled" jsonschema:"whether delivery starts enabled"`
+}
+
+type listDeliveriesArgs struct {
+	ID     string `json:"id" jsonschema:"the webhook endpoint id (whk-…), as returned by list_webhook_endpoints"`
+	Cursor string `json:"cursor,omitempty" jsonschema:"opaque cursor from the final item of the previous page"`
+	Limit  int    `json:"limit,omitempty" jsonschema:"maximum delivery records to return (default 20, maximum 100)"`
+}
+
+type listDeliveriesResult struct {
+	Deliveries []DeliveryView `json:"deliveries"`
 }
 
 type updateEndpointArgs struct {
 	ID         string   `json:"id" jsonschema:"the webhook endpoint id (whk-…), as returned by list_webhook_endpoints"`
-	Name       string   `json:"name,omitempty" jsonschema:"new display label; omit to keep the current value"`
-	URL        string   `json:"url,omitempty" jsonschema:"new destination URL (must be absolute https or http); omit to keep the current value"`
+	Name       *string  `json:"name,omitempty" jsonschema:"new non-empty display label; omit to keep the current value"`
+	URL        *string  `json:"url,omitempty" jsonschema:"new absolute HTTPS destination URL; omit to keep the current value"`
 	EventTypes []string `json:"eventTypes,omitempty" jsonschema:"new subscription list (replaces current); omit to keep the current value"`
 	Enabled    *bool    `json:"enabled,omitempty" jsonschema:"enable or disable the endpoint; omit to keep the current state"`
 }
@@ -68,7 +79,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listEndpointsResult, error) {
 		views, err := s.List(ctx, core.NamedWorkspace(ctx))
 		if err != nil {
-			return nil, listEndpointsResult{}, err
+			return nil, listEndpointsResult{}, core.MCPError(err)
 		}
 		return nil, listEndpointsResult{Endpoints: toWireList(views), EventTypes: EventTypes}, nil
 	})
@@ -79,26 +90,41 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createEndpointArgs) (*mcp.CallToolResult, endpointWire, error) {
 		v, err := s.Create(ctx, CreateRequest{
 			OwnerID: core.NamedWorkspace(ctx),
-			Name:    in.Name, URL: in.URL, EventTypes: in.EventTypes,
+			Name:    in.Name, URL: in.URL, EventTypes: in.EventTypes, Enabled: in.Enabled,
 		})
 		if err != nil {
-			return nil, endpointWire{}, err
+			return nil, endpointWire{}, core.MCPError(err)
 		}
 		return nil, toWire(v), nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "list_webhook_deliveries",
+		Description: "List an endpoint's delivery history with retry status, attempt count, response status/body evidence, transport error, first-sent time, and an opaque cursor. bex extension — Render's own MCP server has no webhook tools.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listDeliveriesArgs) (*mcp.CallToolResult, listDeliveriesResult, error) {
+		views, err := s.ListDeliveries(ctx, core.NamedWorkspace(ctx), in.ID, in.Cursor, in.Limit)
+		if err != nil {
+			return nil, listDeliveriesResult{}, core.MCPError(err)
+		}
+		return nil, listDeliveriesResult{Deliveries: views}, nil
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_webhook_endpoint",
 		Description: "Update an outbound webhook endpoint's name, destination URL, event subscription, or enabled state. Supply only the fields to change; omitted fields keep their current values.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateEndpointArgs) (*mcp.CallToolResult, endpointWire, error) {
+		var eventTypes *[]string
+		if in.EventTypes != nil {
+			eventTypes = &in.EventTypes
+		}
 		v, err := s.Update(ctx, core.NamedWorkspace(ctx), in.ID, UpdateRequest{
 			Name:       in.Name,
 			URL:        in.URL,
-			EventTypes: in.EventTypes,
+			EventTypes: eventTypes,
 			Enabled:    in.Enabled,
 		})
 		if err != nil {
-			return nil, endpointWire{}, err
+			return nil, endpointWire{}, core.MCPError(err)
 		}
 		return nil, toWire(v), nil
 	})
@@ -108,6 +134,6 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Delete an outbound webhook endpoint and its delivery history. No further events are sent to it.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in deleteEndpointArgs) (*mcp.CallToolResult, deletedResult, error) {
 		err := s.Delete(ctx, core.NamedWorkspace(ctx), in.ID)
-		return nil, deletedResult{Deleted: err == nil}, err
+		return nil, deletedResult{Deleted: err == nil}, core.MCPError(err)
 	})
 }

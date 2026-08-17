@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { CreateWebhookEndpointDocument } from "@/graphql/definitions";
+import { CreateWebhookEndpointDocument } from "@/features/webhooks/api/operations";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { CreatedWebhookEndpoint } from "@/features/webhooks/types";
@@ -12,6 +12,7 @@ export interface UseCreateWebhookResult {
     name: string,
     url: string,
     eventTypes: string[],
+    enabled: boolean,
   ) => Promise<CreatedWebhookEndpoint | null>;
   busy: boolean;
 }
@@ -35,7 +36,12 @@ export function useCreateWebhook(): UseCreateWebhookResult {
   const [busy, setBusy] = useState(false);
 
   const create = useCallback(
-    async (name: string, url: string, eventTypes: string[]) => {
+    async (
+      name: string,
+      url: string,
+      eventTypes: string[],
+      enabled: boolean,
+    ) => {
       // Refused (never sent with a null ownerId, which the backend would
       // silently route to the caller's default workspace) until the workspace
       // list resolves, mirroring useCreateApiKey.
@@ -46,7 +52,13 @@ export function useCreateWebhook(): UseCreateWebhookResult {
       setBusy(true);
       try {
         const res = await mutate({
-          variables: { name, url, eventTypes, ownerId: currentWorkspaceId },
+          variables: {
+            name,
+            url,
+            eventTypes,
+            enabled,
+            ownerId: currentWorkspaceId,
+          },
         });
         const endpoint = res.data?.createWebhookEndpoint;
         if (!endpoint?.id || !endpoint.secret) {
@@ -58,8 +70,13 @@ export function useCreateWebhook(): UseCreateWebhookResult {
           name: endpoint.name ?? name,
           secret: endpoint.secret,
         };
-      } catch {
-        toast.error(t("webhooks.createError"));
+      } catch (err) {
+        const detail = err instanceof Error && err.message ? err.message : "";
+        toast.error(
+          detail
+            ? `${t("webhooks.createError")}: ${detail}`
+            : t("webhooks.createError"),
+        );
         return null;
       } finally {
         setBusy(false);
