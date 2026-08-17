@@ -71,7 +71,7 @@ export interface UseBillingOnboardingOptions {
 }
 
 function billingReturnURL(state?: "success" | "cancelled"): string {
-  const url = new URL("/usage", window.location.origin);
+  const url = new URL("/billing", window.location.origin);
   if (state) url.searchParams.set("billing", state);
   return url.toString();
 }

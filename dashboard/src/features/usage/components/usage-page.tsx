@@ -15,6 +15,7 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { formatDateISO } from "@/common/lib/format";
 import {
   Card,
   CardContent,
@@ -53,6 +54,7 @@ import {
   type UsageRow,
   type EstimatedCost,
   type Billing,
+  type BillingCredits,
 } from "../hooks/use-usage";
 import { useUsageTrend, type TrendPoint } from "../hooks/use-usage-trend";
 import { WorkspaceResourceCaps } from "./resource-caps";
@@ -435,6 +437,51 @@ function EstimatedCostSection({
   );
 }
 
+// --- credits section (remaining Stripe billing credit, w5/m70) ---
+
+/** Display-side USD math on backend-normalized "12.34" strings. */
+function usd(amount: string): number {
+  const n = Number.parseFloat(amount);
+  return Number.isFinite(n) ? n : 0;
+}
+
+// CreditsSection renders only when the workspace holds credit (the backend
+// omits the block at zero balance) — no empty-state card for everyone else.
+// Values come from Stripe's credit APIs, never derived from the invoice
+// preview. The card also carries the ADR046 clarification: credit pays
+// invoices first, but a payment method is still required.
+function CreditsSection({ credits }: { credits: BillingCredits | null }) {
+  const { t } = useTranslations();
+  if (!credits) return null;
+  const expiring = credits.grants.find((g) => g.expiresAt !== "");
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t("usage.creditsTitle")}</CardTitle>
+        <CardDescription>{t("usage.creditsDescription")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-baseline gap-2">
+          <span className="text-2xl font-semibold tabular-nums">
+            ${credits.availableUsd}
+          </span>
+          {expiring && (
+            <span className="text-xs text-muted-foreground">
+              {t("usage.creditsExpiryNote", {
+                amount: expiring.remainingUsd,
+                date: formatDateISO(expiring.expiresAt) ?? expiring.expiresAt,
+              })}
+            </span>
+          )}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {t("usage.creditsCardStillRequired")}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 // --- current spend section (real Stripe billing, m48/m50) ---
 
 // CurrentSpendSection shows the workspace's REAL billing — the current-period
@@ -448,6 +495,10 @@ function CurrentSpendSection({ billing }: { billing: Billing | null }) {
   if (!billing || (!billing.currentCost && billing.invoices.length === 0)) {
     return null;
   }
+  const cost = billing.currentCost ? usd(billing.currentCost.amountUsd) : 0;
+  const available = billing.credits ? usd(billing.credits.availableUsd) : 0;
+  const applied = Math.min(available, cost).toFixed(2);
+  const due = Math.max(0, cost - available).toFixed(2);
   return (
     <Card>
       <CardHeader>
@@ -459,13 +510,20 @@ function CurrentSpendSection({ billing }: { billing: Billing | null }) {
       </CardHeader>
       <CardContent>
         {billing.currentCost && (
-          <div className="mb-4 flex items-baseline gap-2">
-            <span className="text-2xl font-semibold tabular-nums">
-              ${billing.currentCost.amountUsd}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {t("usage.currentSpendNote")}
-            </span>
+          <div className="mb-4">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-semibold tabular-nums">
+                ${billing.currentCost.amountUsd}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {t("usage.currentSpendNote")}
+              </span>
+            </div>
+            {billing.credits && (
+              <p className="mt-1 text-sm text-muted-foreground tabular-nums">
+                {t("usage.creditsAppliedLine", { applied, due })}
+              </p>
+            )}
           </div>
         )}
         {billing.invoices.length > 0 && (
@@ -683,19 +741,25 @@ export function UsagePage() {
             </Alert>
           )}
 
-          <WorkspaceResourceCaps />
-
+          {/* Billing first, usage detail second — Render's workspace billing
+              page order, adopted with the w5/m70 rename. */}
+          <h2 className="text-base font-semibold">
+            {t("usage.sectionBilling")}
+          </h2>
+          <CreditsSection credits={summary?.billing?.credits ?? null} />
           <BillingOnboardingCard />
-
-          <ComputeSection rows={computeRows} loading={loading} />
-          <BandwidthSection rows={bandwidthRows} loading={loading} />
-          <BuildSection rows={buildRows} loading={loading} />
-          <StorageSection rows={storageRows} loading={loading} />
+          <CurrentSpendSection billing={summary?.billing ?? null} />
           <EstimatedCostSection
             estimatedCost={summary?.estimatedCost ?? null}
             loading={loading}
           />
-          <CurrentSpendSection billing={summary?.billing ?? null} />
+
+          <h2 className="text-base font-semibold">{t("usage.sectionUsage")}</h2>
+          <WorkspaceResourceCaps />
+          <ComputeSection rows={computeRows} loading={loading} />
+          <BandwidthSection rows={bandwidthRows} loading={loading} />
+          <BuildSection rows={buildRows} loading={loading} />
+          <StorageSection rows={storageRows} loading={loading} />
           <TrendSection points={trendPoints} loading={trendLoading} />
         </div>
       </div>

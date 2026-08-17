@@ -158,8 +158,9 @@ const enCommon: Record<string, TranslationEntry> = {
       "Sidebar nav link to the unified projects page (services, databases, key value grouped together)",
   },
   "common.navUsage": {
-    message: "Usage",
-    description: "Sidebar nav link to the workspace usage page",
+    message: "Billing",
+    description:
+      "Sidebar nav link to the workspace billing page (/billing, renamed from Usage in w5/m70; key kept to avoid churn)",
   },
   "common.navBlueprints": {
     message: "Blueprints",

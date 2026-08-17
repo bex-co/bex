@@ -121,6 +121,27 @@ var billingInvoiceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// billingCreditGrantGQLType and billingCreditsGQLType mirror
+// billing.CreditGrant / billing.Credits (the same fields the REST/MCP JSON
+// carries) so the three surfaces stay identical (ADR006, w5/m70).
+var billingCreditGrantGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BillingCreditGrant",
+	Fields: graphql.Fields{
+		"name":         gqlutil.StrField(func(g billing.CreditGrant) any { return g.Name }),
+		"remainingUsd": gqlutil.StrField(func(g billing.CreditGrant) any { return g.RemainingUSD }),
+		"expiresAt":    gqlutil.StrField(func(g billing.CreditGrant) any { return g.ExpiresAt }),
+	},
+})
+
+var billingCreditsGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BillingCredits",
+	Fields: graphql.Fields{
+		"availableUsd": gqlutil.StrField(func(c billing.Credits) any { return c.AvailableUSD }),
+		"currency":     gqlutil.StrField(func(c billing.Credits) any { return c.Currency }),
+		"grants":       gqlutil.Typed(graphql.NewList(billingCreditGrantGQLType), func(c billing.Credits) any { return c.Grants }),
+	},
+})
+
 // billingGQLType is the real Stripe billing object; null when estimate-only.
 var billingGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Billing",
@@ -132,6 +153,12 @@ var billingGQLType = graphql.NewObject(graphql.ObjectConfig{
 			return *b.CurrentCost
 		})},
 		"invoices": gqlutil.Typed(graphql.NewList(billingInvoiceGQLType), func(b billing.Billing) any { return b.Invoices }),
+		"credits": &graphql.Field{Type: billingCreditsGQLType, Resolve: gqlutil.Field(func(b billing.Billing) any {
+			if b.Credits == nil {
+				return nil
+			}
+			return *b.Credits
+		})},
 	},
 })
 

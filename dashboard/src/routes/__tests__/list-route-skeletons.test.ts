@@ -16,7 +16,7 @@ const LIST_ROUTES = [
   "env-groups.tsx",
   "webhooks.tsx",
   "notifications.tsx",
-  "usage.tsx",
+  "billing.tsx",
 ];
 const CREATE_ROUTES = ["blueprints.new.tsx", "webhooks_.new.tsx"];
 

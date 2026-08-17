@@ -2,12 +2,22 @@ import type { TranslationEntry } from "@/i18n";
 
 const zhUsage: Record<string, TranslationEntry> = {
   "usage.pageTitle": {
-    message: "用量",
-    description: "Usage page heading and browser title",
+    message: "账单",
+    description:
+      "Billing page heading and browser title (renamed from Usage in w5/m70)",
   },
   "usage.pageSubtitle": {
-    message: "工作区本月累计消耗",
-    description: "Usage page subtitle beneath the heading",
+    message: "付款、发票与工作区本月累计消耗",
+    description: "Billing page subtitle beneath the heading",
+  },
+  "usage.sectionBilling": {
+    message: "账单",
+    description: "Heading for the payment/invoice section of the billing page",
+  },
+  "usage.sectionUsage": {
+    message: "用量",
+    description:
+      "Heading for the metered-consumption section of the billing page",
   },
   "usage.resourceCapsTitle": {
     message: "资源限制",
@@ -153,6 +163,30 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "本期无计费用量。",
     description:
       "Empty-state message when there is no billable usage to estimate",
+  },
+  "usage.creditsTitle": {
+    message: "剩余额度",
+    description: "Heading of the remaining billing-credit card (w5/m70)",
+  },
+  "usage.creditsDescription": {
+    message: "促销额度会在扣款前先抵扣发票金额",
+    description: "Subtitle of the remaining billing-credit card",
+  },
+  "usage.creditsExpiryNote": {
+    message: "其中 ${amount} 将于 {date} 过期",
+    description:
+      "Earliest-expiring grant note beside the credit balance; amount is a $ value, date is YYYY-MM-DD",
+  },
+  "usage.creditsCardStillRequired": {
+    message:
+      "即使持有额度也仍需绑定付款方式：额度优先抵扣发票，剩余部分由银行卡支付。",
+    description:
+      "ADR046 clarification on the credit card — credit does not replace payment onboarding",
+  },
+  "usage.creditsAppliedLine": {
+    message: "额度抵扣 \u2212${applied} \u2192 应付 ${due}",
+    description:
+      "Credit-adjusted line under the current invoice preview total; applied/due are numeric USD strings",
   },
   "usage.currentSpendTitle": {
     message: "当前消费",

@@ -47,14 +47,14 @@ describe("DashboardSidebar (w1/m45 — Render's nav grouping)", () => {
       ["Environment Groups", "/env-groups"],
       ["Webhooks", "/webhooks"],
       ["Notifications", "/notifications"],
-      ["Usage", "/usage"],
+      ["Billing", "/billing"],
       ["Settings", "/workspace/settings"],
     ] as const) {
       expect(screen.getByRole("link", { name })).toHaveAttribute("href", href);
     }
   });
 
-  it("groups Webhooks/Notifications under Integrations and Usage/Settings under Workspace", async () => {
+  it("groups Webhooks/Notifications under Integrations and Billing/Settings under Workspace", async () => {
     renderAt("/");
 
     const integrations = (await screen.findByText("Integrations")).closest(
@@ -66,7 +66,7 @@ describe("DashboardSidebar (w1/m45 — Render's nav grouping)", () => {
     const workspace = screen
       .getByText("Workspace")
       .closest('[data-slot="sidebar-group"]') as HTMLElement;
-    expect(within(workspace).getByText("Usage")).toBeInTheDocument();
+    expect(within(workspace).getByText("Billing")).toBeInTheDocument();
     expect(within(workspace).getByText("Settings")).toBeInTheDocument();
   });
 

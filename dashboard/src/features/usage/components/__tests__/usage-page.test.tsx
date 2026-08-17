@@ -148,10 +148,18 @@ describe("UsagePage", () => {
     render(<UsagePage />);
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Usage",
+      "Billing",
     );
     expect(
-      screen.getByText("Month-to-date workspace consumption"),
+      screen.getByText(
+        "Payment, invoices, and month-to-date workspace consumption",
+      ),
+    ).toBeInTheDocument();
+    // The two-section order (w5/m70): Billing heading precedes Usage heading.
+    const sections = screen.getAllByRole("heading", { level: 2 });
+    expect(sections[0]).toHaveTextContent("Billing");
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Usage" }),
     ).toBeInTheDocument();
   });
 
@@ -409,5 +417,95 @@ describe("UsagePage", () => {
       "[class*='animate-pulse'], [data-slot='skeleton']",
     );
     expect(skeletons.length).toBeGreaterThan(0);
+  });
+});
+
+describe("credits (w5/m70)", () => {
+  beforeEach(() => {
+    mockUseUsageTrend.mockReturnValue(emptyTrendState());
+  });
+
+  function creditState(overrides?: {
+    availableUsd?: string;
+    expiresAt?: string;
+  }) {
+    return {
+      summary: {
+        workspaceId: "ws",
+        period: "2026-07",
+        services: [],
+        estimatedCost: null,
+        billing: {
+          currentCost: {
+            amountUsd: "12.34",
+            currency: "USD",
+            periodStart: "2026-08-16T00:00:00Z",
+            periodEnd: "2026-09-16T00:00:00Z",
+          },
+          invoices: [],
+          credits: {
+            availableUsd: overrides?.availableUsd ?? "25.00",
+            currency: "USD",
+            grants: [
+              {
+                name: "welcome",
+                remainingUsd: "20.00",
+                expiresAt: overrides?.expiresAt ?? "2026-11-15T00:00:00Z",
+              },
+            ],
+          },
+        },
+      },
+      loading: false,
+      error: undefined,
+    };
+  }
+
+  it("hides every piece of credit chrome when the workspace holds none", () => {
+    mockUseUsage.mockReturnValue(emptyState());
+
+    render(<UsagePage />);
+
+    expect(screen.queryByText("Credits remaining")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Credits applied/)).not.toBeInTheDocument();
+  });
+
+  it("renders balance, earliest expiry, applied line, and card-still-required copy", () => {
+    mockUseUsage.mockReturnValue(creditState());
+
+    render(<UsagePage />);
+
+    expect(screen.getByText("Credits remaining")).toBeInTheDocument();
+    expect(screen.getByText("$25.00")).toBeInTheDocument();
+    expect(
+      screen.getByText(/\$20\.00 of it expires 2026-11-15/),
+    ).toBeInTheDocument();
+    // Applied = min(available, current cost); due = remainder, floored at 0.
+    expect(
+      screen.getByText(/Credits applied −\$12\.34 → amount due \$0\.00/),
+    ).toBeInTheDocument();
+    // ADR046: credit never replaces payment onboarding.
+    expect(
+      screen.getByText(/payment method is still required even with credit/),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a positive amount due when credit only partially covers the period", () => {
+    mockUseUsage.mockReturnValue(creditState({ availableUsd: "10.00" }));
+
+    render(<UsagePage />);
+
+    expect(
+      screen.getByText(/Credits applied −\$10\.00 → amount due \$2\.34/),
+    ).toBeInTheDocument();
+  });
+
+  it("omits the expiry note for never-expiring grants", () => {
+    mockUseUsage.mockReturnValue(creditState({ expiresAt: "" }));
+
+    render(<UsagePage />);
+
+    expect(screen.getByText("Credits remaining")).toBeInTheDocument();
+    expect(screen.queryByText(/of it expires/)).not.toBeInTheDocument();
   });
 });
