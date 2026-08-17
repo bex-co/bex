@@ -67,6 +67,45 @@ func TestWithGzip_CompressesJSONWhenAccepted(t *testing.T) {
 	}
 }
 
+// TestWithGzip_VarySurvivesCORS composes the real middleware chain
+// (withGzip outermost, then withCORS) as server.go wires it. withCORS
+// contributes Vary: Origin; a naive Set would clobber the Vary:
+// Accept-Encoding withGzip added, letting a shared cache serve a gzip body
+// to an identity-only client. Both field values must survive. (Regression
+// for the w9/044 live-verification finding — the app dropped its own
+// Vary: Accept-Encoding whenever CORS was configured.)
+func TestWithGzip_VarySurvivesCORS(t *testing.T) {
+	body := strings.Repeat(`{"k":"v"},`, 200)
+	handler := withGzip(withCORS("https://dash.example", jsonHandler(body)))
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/graphql", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("Origin", "https://dash.example")
+
+	handler.ServeHTTP(rec, req)
+	res := rec.Result()
+
+	if got := res.Header.Get("Content-Encoding"); got != "gzip" {
+		t.Fatalf("Content-Encoding = %q, want gzip", got)
+	}
+	vary := res.Header.Values("Vary")
+	var haveAE, haveOrigin bool
+	for _, v := range vary {
+		for _, tok := range strings.Split(v, ",") {
+			switch strings.ToLower(strings.TrimSpace(tok)) {
+			case "accept-encoding":
+				haveAE = true
+			case "origin":
+				haveOrigin = true
+			}
+		}
+	}
+	if !haveAE || !haveOrigin {
+		t.Fatalf("Vary = %v, want to advertise both Accept-Encoding and Origin", vary)
+	}
+}
+
 func TestWithGzip_IdentityWhenNotAccepted(t *testing.T) {
 	body := `{"ok":true}`
 	rec := httptest.NewRecorder()
@@ -112,6 +151,49 @@ func TestWithGzip_SkipsEventStream(t *testing.T) {
 		t.Fatal("SSE response was not flushed per event")
 	}
 	if got := rec.Body.String(); got != strings.Repeat("data: event\n\n", 3) {
+		t.Fatalf("SSE body = %q, want the raw un-compressed events", got)
+	}
+}
+
+// TestWithGzip_SSEUntouchedThroughComposedChain wraps an SSE handler in the
+// EXACT middleware chain server.go builds — withGzip(withSecurityHeaders(
+// withCORS(...))) — and proves the real deployed wiring never compresses an
+// event stream and keeps flushing per event. The isolated TestWithGzip_
+// SkipsEventStream can't catch a regression where an inner wrapper hides the
+// gzipResponseWriter's Flusher; this exercises the whole stack the way prod
+// runs it (w9/044 live-verification, SSE leg).
+func TestWithGzip_SSEUntouchedThroughComposedChain(t *testing.T) {
+	events := 4
+	sse := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		fl, ok := w.(http.Flusher)
+		if !ok {
+			t.Error("SSE handler must still see an http.Flusher through the composed chain")
+			return
+		}
+		for i := 0; i < events; i++ {
+			_, _ = io.WriteString(w, "data: event\n\n")
+			fl.Flush()
+		}
+	})
+	handler := withGzip(withSecurityHeaders(withCORS("https://dash.example", sse)))
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	req.Header.Set("Origin", "https://dash.example")
+
+	handler.ServeHTTP(rec, req)
+	res := rec.Result()
+
+	if got := res.Header.Get("Content-Encoding"); got != "" {
+		t.Fatalf("SSE Content-Encoding = %q, want empty through the composed chain", got)
+	}
+	if !rec.Flushed {
+		t.Fatal("SSE response was not flushed per event through the composed chain")
+	}
+	if got := rec.Body.String(); got != strings.Repeat("data: event\n\n", events) {
 		t.Fatalf("SSE body = %q, want the raw un-compressed events", got)
 	}
 }
