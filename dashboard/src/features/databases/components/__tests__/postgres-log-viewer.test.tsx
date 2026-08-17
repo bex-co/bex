@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { UsePostgresLogsResult } from "../../hooks/use-postgres-logs";
 import { PostgresLogViewer } from "../postgres-log-viewer";
+import { setupVirtualGeometry } from "@/test/virtual-geometry";
 
 const state: UsePostgresLogsResult = {
   lines: [],
@@ -17,6 +18,10 @@ vi.mock("../../hooks/use-postgres-logs", () => ({
 vi.mock("@/features/logs/hooks/use-log-label-values", () => ({
   useLogLabelValues: () => ["dpg-example-1"],
 }));
+
+// The viewer embeds the virtualized LogLineList (w9/m83): give jsdom the layout
+// geometry the virtualizer needs, or the rendered rows never mount.
+setupVirtualGeometry();
 
 beforeEach(() => {
   state.lines = [];

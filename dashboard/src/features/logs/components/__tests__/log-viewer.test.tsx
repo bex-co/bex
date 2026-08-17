@@ -4,6 +4,7 @@ import { LogViewer } from "../log-viewer";
 import type { UseLogHistoryResult } from "../../hooks/use-log-history";
 import { RANGE_PRESETS } from "@/features/metrics/lib/range";
 import { EMPTY_LOG_FILTERS } from "../../types";
+import { setupVirtualGeometry } from "@/test/virtual-geometry";
 
 // Drive the viewer's states by stubbing its data layer, mirroring the
 // services.$serviceId routing test's approach.
@@ -26,6 +27,10 @@ vi.mock("../../hooks/use-live-logs", () => ({
 vi.mock("../../hooks/use-log-label-values", () => ({
   useLogLabelValues: () => [],
 }));
+
+// The viewer embeds the virtualized LogLineList (w9/m83): give jsdom the layout
+// geometry the virtualizer needs, or the rendered rows never mount.
+setupVirtualGeometry();
 
 beforeEach(() => {
   historyState.lines = [];

@@ -79,7 +79,13 @@ export interface UseLiveLogsResult {
   status: LiveStatus;
 }
 
-const DEFAULT_MAX_LINES = 1000;
+// Ring-buffer cap on retained live lines (oldest drop first). Raised from 1,000
+// to 5,000 by w9/m83: the log list is now virtualized, so the retained buffer no
+// longer maps 1:1 to DOM rows — only the visible window is mounted. The bound
+// that made 1,000 the ceiling (whole-buffer DOM reconciliation on every tail
+// frame) is gone, so a longer scrollback costs memory + one ANSI parse per line
+// at ingest, not per-frame rendering work.
+const DEFAULT_MAX_LINES = 5000;
 
 // How long incoming frames accumulate before one flush to state. A busy tail
 // can deliver a frame per log line; flushing each one re-renders the whole

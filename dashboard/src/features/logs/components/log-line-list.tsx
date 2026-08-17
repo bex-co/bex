@@ -1,5 +1,6 @@
-import { memo, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/common/components/ui/button.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
@@ -33,6 +34,20 @@ const PIN_THRESHOLD = 24;
 // Height of the scroll viewport; the list fills it and scrolls internally.
 const VIEWPORT_HEIGHT = 520;
 
+// Estimated row height before measurement — one `text-xs` line at
+// `leading-relaxed` plus the row's vertical padding. Dynamic measurement
+// (`virtualizer.measureElement`) refines each rendered row afterward, so a
+// wrapped multi-line row still lays out at its true height.
+const ROW_ESTIMATE = 24;
+
+// Rows rendered above/below the viewport so a fast scroll doesn't flash blank.
+const OVERSCAN = 12;
+
+// Vertical inset (previously the row container's `p-3` top/bottom padding),
+// applied through the virtualizer so it survives windowing at the very top and
+// very bottom of the list rather than being lost with the unrendered rows.
+const LIST_INSET = 12;
+
 interface LogLineListProps {
   lines: LogLine[];
   /** Select an application-log instance as a filter. When supplied, pod names
@@ -54,6 +69,20 @@ interface LogLineListProps {
  * isn't yanked away) and surfaces a "jump to latest" affordance. The wrap/
  * timestamp toggles (w9/003) are display-only knobs the deploy page's options
  * menu drives; both default to today's behavior.
+ *
+ * The rows are **virtualized** (`@tanstack/react-virtual`, w9/m83): only the
+ * visible window (plus overscan) is in the DOM, so a busy live tail no longer
+ * pays a DOM-reconciliation cost proportional to the whole retained buffer —
+ * the remaining per-frame cost after w9/m63 moved ANSI parsing to ingest and
+ * memoized each row. The mounted rows are still `LogRow`-memoized, so a window
+ * shift or append re-renders only the rows that actually changed.
+ *
+ * Text-selection tradeoff (the known cost of virtualization): selecting and
+ * copying works within the on-screen window, but a drag-select can no longer
+ * span rows that have scrolled out of the DOM. Whole-buffer copy is not
+ * supported; the retained buffer is available to the reader by scrolling. This
+ * is the deliberate, documented tradeoff for bounding the DOM on the platform's
+ * most-watched screen.
  */
 export function LogLineList({
   lines,
@@ -66,10 +95,28 @@ export function LogLineList({
   const viewportRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
 
-  const scrollToBottom = () => {
-    const el = viewportRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  };
+  // Keyed by the line's dedupe key so a row's measured height survives appends
+  // and reorders (a wrapped line keeps its true height when new lines arrive).
+  const getItemKey = useCallback((index: number) => lines[index].key, [lines]);
+
+  const virtualizer = useVirtualizer({
+    count: lines.length,
+    getScrollElement: () => viewportRef.current,
+    estimateSize: () => ROW_ESTIMATE,
+    getItemKey,
+    overscan: OVERSCAN,
+    paddingStart: LIST_INSET,
+    paddingEnd: LIST_INSET,
+  });
+
+  // Scroll the newest line to the viewport bottom through the virtualizer (which
+  // knows the total measured height even though most rows aren't in the DOM),
+  // rather than poking `scrollTop = scrollHeight` on the short windowed content.
+  const scrollToBottom = useCallback(() => {
+    if (lines.length > 0) {
+      virtualizer.scrollToIndex(lines.length - 1, { align: "end" });
+    }
+  }, [lines.length, virtualizer]);
 
   // Recompute the pin from the scroll position; releasing it while the user
   // reads up, restoring it the moment they return to the bottom.
@@ -84,12 +131,25 @@ export function LogLineList({
   // lines append.
   useLayoutEffect(() => {
     if (pinned) scrollToBottom();
-  }, [lines, pinned]);
+  }, [lines, pinned, scrollToBottom]);
+
+  const virtualRows = virtualizer.getVirtualItems();
+  const totalSize = virtualizer.getTotalSize();
+  // Spacer heights standing in for the unrendered rows above and below the
+  // window — this keeps every row in normal flow (so wrap/nowrap layout and
+  // in-window text selection behave exactly as before), unlike absolute
+  // positioning which would also break the nowrap horizontal scroll.
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? totalSize - virtualRows[virtualRows.length - 1].end
+      : 0;
 
   return (
     <div className={cn("relative", fill && "h-full")}>
       <div
         ref={viewportRef}
+        data-log-viewport=""
         onScroll={onScroll}
         style={fill ? undefined : { height: VIEWPORT_HEIGHT }}
         className={cn(
@@ -97,17 +157,21 @@ export function LogLineList({
           fill && "h-full",
         )}
       >
-        <div className={cn("p-3", wrap ? "min-w-full" : "w-max min-w-full")}>
-          {lines.map((line) => (
+        <div className={cn("px-3", wrap ? "min-w-full" : "w-max min-w-full")}>
+          <div aria-hidden style={{ height: paddingTop }} />
+          {virtualRows.map((virtualRow) => (
             <LogRow
-              key={line.key}
-              line={line}
+              key={virtualRow.key}
+              index={virtualRow.index}
+              measureRef={virtualizer.measureElement}
+              line={lines[virtualRow.index]}
               wrap={wrap}
               showTimestamps={showTimestamps}
               onInstanceFilter={onInstanceFilter}
               t={t}
             />
           ))}
+          <div aria-hidden style={{ height: paddingBottom }} />
         </div>
       </div>
 
@@ -129,17 +193,24 @@ export function LogLineList({
   );
 }
 
-// A single log row, memoized so an appended line re-renders only itself —
-// the ring buffer keeps line objects referentially stable, and the remaining
-// props are primitives or stable callbacks (t is useCallback-stable, changing
-// only with the language, which should re-render every row's aria-label).
+// A single log row, memoized so a window shift or an appended line re-renders
+// only the rows that changed — the ring buffer keeps line objects referentially
+// stable, and the remaining props are primitives or stable callbacks (`t` is
+// useCallback-stable, changing only with the language, which should re-render
+// every row's aria-label; `measureRef` is the virtualizer's stable bound
+// method). `index`/`measureRef` wire the row into the virtualizer's dynamic
+// measurement (w9/m83) — `data-index` is how it identifies the measured row.
 const LogRow = memo(function LogRow({
+  index,
+  measureRef,
   line,
   wrap,
   showTimestamps,
   onInstanceFilter,
   t,
 }: {
+  index: number;
+  measureRef: (node: Element | null) => void;
   line: LogLine;
   wrap: boolean;
   showTimestamps: boolean;
@@ -148,6 +219,8 @@ const LogRow = memo(function LogRow({
 }) {
   return (
     <div
+      data-index={index}
+      ref={measureRef}
       className={cn(
         "flex gap-3 px-1 py-0.5 hover:bg-muted/60",
         wrap ? "whitespace-pre-wrap break-words" : "whitespace-pre",

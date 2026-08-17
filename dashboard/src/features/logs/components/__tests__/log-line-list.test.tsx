@@ -1,8 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { LogLineList } from "../log-line-list";
 import { needsAnsiParse, parseAnsi } from "../../lib/ansi";
 import type { LogLine } from "../../types";
+import {
+  scrollViewport,
+  setupVirtualGeometry,
+  VIRTUAL_VIEWPORT_HEIGHT,
+} from "@/test/virtual-geometry";
 
 function line(over: Partial<LogLine> = {}): LogLine {
   const message = over.message ?? "hello world";
@@ -23,7 +28,26 @@ function line(over: Partial<LogLine> = {}): LogLine {
   };
 }
 
+// A buffer of n app lines with distinct keys/messages.
+function buffer(n: number): LogLine[] {
+  return Array.from({ length: n }, (_, i) =>
+    line({ key: `k${i}`, message: `line ${i}` }),
+  );
+}
+
+function viewportOf(container: HTMLElement): HTMLElement {
+  const el = container.querySelector<HTMLElement>("[data-log-viewport]");
+  if (!el) throw new Error("log viewport not found");
+  return el;
+}
+
+function renderedRowCount(container: HTMLElement): number {
+  return container.querySelectorAll("[data-index]").length;
+}
+
 describe("LogLineList request-line rendering (w5/008)", () => {
+  setupVirtualGeometry();
+
   it("shows method + status chips for a request line", () => {
     render(
       <LogLineList
@@ -105,5 +129,149 @@ describe("LogLineList request-line rendering (w5/008)", () => {
 
     fireEvent.click(instanceButton);
     expect(onInstanceFilter).toHaveBeenCalledWith(instance);
+  });
+});
+
+describe("LogLineList virtualization (w9/m83)", () => {
+  setupVirtualGeometry();
+
+  it("renders only the visible window of a 1,000-line buffer, not every row", () => {
+    const { container } = render(<LogLineList lines={buffer(1000)} />);
+
+    const rows = renderedRowCount(container);
+    // A realistic window plus overscan — on the order of viewport/rowHeight,
+    // nowhere near 1,000. The exact number depends on overscan; assert the
+    // range so the test survives an overscan tweak but fails if virtualization
+    // regresses (whole buffer) or renders nothing (the m63 0-height failure).
+    expect(rows).toBeGreaterThan(0);
+    expect(rows).toBeLessThan(120);
+  });
+
+  it("keeps the DOM bounded as the buffer grows an order of magnitude", () => {
+    const { container: small } = render(<LogLineList lines={buffer(100)} />);
+    const { container: large } = render(<LogLineList lines={buffer(1000)} />);
+
+    // 10× the lines must not mean ~10× the rows in the DOM.
+    const smallRows = renderedRowCount(small);
+    const largeRows = renderedRowCount(large);
+    expect(largeRows).toBeLessThan(smallRows * 2);
+  });
+
+  it("renders the first lines of the buffer at rest (top of the window)", () => {
+    render(<LogLineList lines={buffer(1000)} />);
+    // The window starts at the top (scrollTop 0), so early lines are present
+    // and far-down lines are not in the DOM.
+    expect(screen.getByText("line 0")).toBeInTheDocument();
+    expect(screen.queryByText("line 900")).not.toBeInTheDocument();
+  });
+});
+
+describe("LogLineList follow / pin (w9/m83)", () => {
+  setupVirtualGeometry();
+
+  it("starts pinned (no jump-to-latest affordance)", () => {
+    render(<LogLineList lines={buffer(1000)} />);
+    expect(
+      screen.queryByRole("button", { name: /jump to latest/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("scrolling up releases the pin and surfaces jump-to-latest", () => {
+    const { container } = render(<LogLineList lines={buffer(1000)} />);
+    const viewport = viewportOf(container);
+
+    scrollViewport(viewport, {
+      scrollTop: 0,
+      scrollHeight: 5000,
+      clientHeight: VIRTUAL_VIEWPORT_HEIGHT,
+    });
+
+    expect(
+      screen.getByRole("button", { name: /jump to latest/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("returning to the bottom re-pins and hides jump-to-latest", () => {
+    const { container } = render(<LogLineList lines={buffer(1000)} />);
+    const viewport = viewportOf(container);
+
+    scrollViewport(viewport, {
+      scrollTop: 0,
+      scrollHeight: 5000,
+      clientHeight: VIRTUAL_VIEWPORT_HEIGHT,
+    });
+    expect(
+      screen.getByRole("button", { name: /jump to latest/i }),
+    ).toBeInTheDocument();
+
+    // Scroll to the bottom: distance from bottom is within PIN_THRESHOLD.
+    scrollViewport(viewport, {
+      scrollTop: 5000 - VIRTUAL_VIEWPORT_HEIGHT,
+      scrollHeight: 5000,
+      clientHeight: VIRTUAL_VIEWPORT_HEIGHT,
+    });
+    expect(
+      screen.queryByRole("button", { name: /jump to latest/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clicking jump-to-latest re-pins", () => {
+    const { container } = render(<LogLineList lines={buffer(1000)} />);
+    const viewport = viewportOf(container);
+
+    scrollViewport(viewport, {
+      scrollTop: 0,
+      scrollHeight: 5000,
+      clientHeight: VIRTUAL_VIEWPORT_HEIGHT,
+    });
+    const jump = screen.getByRole("button", { name: /jump to latest/i });
+    fireEvent.click(jump);
+
+    expect(
+      screen.queryByRole("button", { name: /jump to latest/i }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("LogLineList wrap / nowrap (w9/m83)", () => {
+  setupVirtualGeometry();
+
+  it("wraps long lines by default (whitespace-pre-wrap rows)", () => {
+    const { container } = render(<LogLineList lines={buffer(10)} />);
+    const row = container.querySelector<HTMLElement>("[data-index]");
+    expect(row?.className).toContain("whitespace-pre-wrap");
+    expect(row?.className).not.toContain("whitespace-pre ");
+  });
+
+  it("uses single-line rows in nowrap mode", () => {
+    const { container } = render(
+      <LogLineList lines={buffer(10)} wrap={false} />,
+    );
+    const row = container.querySelector<HTMLElement>("[data-index]");
+    expect(row?.className).toContain("whitespace-pre");
+    expect(row?.className).not.toContain("whitespace-pre-wrap");
+    // nowrap keeps the content sizer intrinsically wide for horizontal scroll.
+    const sizer = viewportOf(container).firstElementChild as HTMLElement;
+    expect(sizer.className).toContain("w-max");
+  });
+});
+
+describe("LogLineList text selection tradeoff (w9/m83)", () => {
+  setupVirtualGeometry();
+
+  it("keeps on-screen rows selectable (their text is in the DOM)", () => {
+    const { container } = render(<LogLineList lines={buffer(1000)} />);
+    // The documented tradeoff: only the on-screen window is in the DOM, so its
+    // text is selectable/copyable; scrolled-away rows are not present (that is
+    // the cost, asserted by their absence in the virtualization suite).
+    const firstRow = container.querySelector<HTMLElement>(
+      '[data-index="0"]',
+    ) as HTMLElement;
+    expect(within(firstRow).getByText("line 0")).toBeInTheDocument();
+  });
+
+  it("does not keep far-offscreen rows in the DOM (the copy tradeoff)", () => {
+    render(<LogLineList lines={buffer(1000)} />);
+    expect(screen.queryByText("line 999")).not.toBeInTheDocument();
   });
 });
