@@ -48,7 +48,9 @@ export function EnvGroupsPanel({
   const { t } = useTranslations();
   const { groups, loading, error, refetch } = useEnvGroups();
   const { linkGroup, unlinkGroup, busy } = useEnvGroupMutations(refetch);
-  const { service, loading: serviceLoading } = useServer(serviceId);
+  const { service, loading: serviceLoading } = useServer(serviceId, {
+    poll: false,
+  });
   const [internalCreateOpen, setInternalCreateOpen] = useState(false);
   const createOpen = createOpenProp ?? internalCreateOpen;
   const setCreateOpen = onCreateOpenChange ?? setInternalCreateOpen;

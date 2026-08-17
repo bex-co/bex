@@ -5,8 +5,13 @@ import { PatchServiceEnvironmentDocument } from "@/graphql/definitions";
 export type EnvironmentSaveMode = "save_only" | "deploy";
 
 export function useEnvironmentDraftSave() {
+  // Refetch only the queries that display the patch's result — the env-var and
+  // secret-file lists the editor's read view renders, and Server (header/env
+  // state) — not every active query. Awaiting keeps the saving state up until
+  // the read view's data is fresh, so ending the draft never flashes pre-save
+  // values.
   const [mutate, { loading }] = useMutation(PatchServiceEnvironmentDocument, {
-    refetchQueries: "active",
+    refetchQueries: ["Server", "EnvVarKeys", "SecretFileNames"],
     awaitRefetchQueries: true,
   });
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { config } from "@/config/config";
 import { fromRenderLog, type RenderLog } from "../lib/map";
 import { LOG_TYPE_ALL, type LogLine, type LogTypeFilter } from "../types";
@@ -81,6 +81,12 @@ export interface UseLiveLogsResult {
 
 const DEFAULT_MAX_LINES = 1000;
 
+// How long incoming frames accumulate before one flush to state. A busy tail
+// can deliver a frame per log line; flushing each one re-renders the whole
+// ~1k-row list per line, so frames batch on a short timer — at most one
+// re-render per FLUSH_MS no matter how fast the stream speaks.
+const FLUSH_MS = 100;
+
 /**
  * Subscribes to bex-api's SSE log stream for one App and accumulates new lines
  * into a capped, deduped ring buffer. Reopening on any filter change (fresh
@@ -98,7 +104,6 @@ export function useLiveLogs({
 }: UseLiveLogsOptions): UseLiveLogsResult {
   // Status while the stream should be live but hasn't opened yet vs. paused.
   const pendingStatus: LiveStatus = enabled ? "connecting" : "idle";
-  const [lines, setLines] = useState<LogLine[]>([]);
   const [status, setStatus] = useState<LiveStatus>(pendingStatus);
   // Bumped to reopen a terminated stream (retryDelayMs); deliberately NOT part
   // of subKey below — a retry continues the same subscription, so the buffer
@@ -108,20 +113,87 @@ export function useLiveLogs({
   // Reset the tail the instant the subscription identity changes (or it
   // pauses) — during render, React's sanctioned "adjust state when a prop
   // changes" pattern, so a stale filter's lines never flash before the effect
-  // reconnects, and setState stays out of the effect body.
+  // reconnects, and setState stays out of the effect body. The buffer carries
+  // its subKey so a stale effect's final flush (cleanup ordering: the reset
+  // lands first) can tell it no longer owns the buffer and drop its batch.
   const subKey = `${resource}|${enabled}|${type}|${text}|${instance}`;
-  const [prevSubKey, setPrevSubKey] = useState(subKey);
-  if (prevSubKey !== subKey) {
-    setPrevSubKey(subKey);
-    setLines([]);
+  const [buffer, setBuffer] = useState<{ key: string; lines: LogLine[] }>({
+    key: subKey,
+    lines: [],
+  });
+  if (buffer.key !== subKey) {
+    setBuffer({ key: subKey, lines: [] });
     setStatus(pendingStatus);
   }
+
+  // O(1) dedupe index for the merge — the keys of every line currently in the
+  // buffer, replacing a per-frame linear scan of up to maxLines entries. The
+  // cap's evictions delete their keys (see flushPending), so a replayed
+  // evicted line re-appends exactly as the old scan semantics allowed. It is
+  // tagged with the subscription epoch below rather than subKey itself: a
+  // disable/enable round trip reproduces the same subKey string while the
+  // buffer was reset in between, and the set must reset with it.
+  const keysRef = useRef<{ epoch: number; set: Set<string> }>({
+    epoch: 0,
+    set: new Set(),
+  });
+  // Bumped after every subscription-identity change (a retry bumps `attempt`,
+  // not subKey, so a retried stream correctly keeps its dedupe set).
+  const epochRef = useRef(0);
+  useEffect(() => {
+    epochRef.current += 1;
+  }, [subKey]);
 
   useEffect(() => {
     if (!enabled) return;
 
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    // Frames received since the last flush; a short timer (same pattern as
+    // retryTimer below) batches a burst of frames into one state update.
+    let pending: LogLine[] = [];
+    let flushTimer: ReturnType<typeof setTimeout> | undefined;
     const es = createEventSource(subscribeUrl(resource, type, text, instance));
+
+    // Flush the pending batch into the ring buffer: dedupe against the key
+    // set (O(1) per line), append, and cap oldest-first — the same merge the
+    // pre-batch per-frame updater did, once per batch instead of per frame.
+    const flushPending = () => {
+      if (pending.length === 0) return;
+      if (keysRef.current.epoch !== epochRef.current) {
+        keysRef.current = { epoch: epochRef.current, set: new Set() };
+      }
+      const keys = keysRef.current.set;
+      const batch = pending.filter((line) => {
+        if (keys.has(line.key)) return false;
+        keys.add(line.key);
+        return true;
+      });
+      pending = [];
+      if (batch.length === 0) return;
+      setBuffer((prev) => {
+        // A stale tail flushing after a filter switch: the render-phase reset
+        // already swapped in the new subscription's empty buffer — drop the
+        // batch instead of resurrecting the old filter's lines.
+        if (prev.key !== subKey) return prev;
+        const next = [...prev.lines, ...batch];
+        if (next.length <= maxLines) return { key: prev.key, lines: next };
+        const kept = next.slice(next.length - maxLines);
+        // Keep the dedupe set in sync with the ring buffer: evicted lines no
+        // longer dedupe (idempotent under StrictMode's double-invoked
+        // updater — same prev computes the same evictions).
+        for (const line of next.slice(0, next.length - maxLines))
+          keys.delete(line.key);
+        return { key: prev.key, lines: kept };
+      });
+    };
+
+    const scheduleFlush = () => {
+      if (flushTimer !== undefined) return;
+      flushTimer = setTimeout(() => {
+        flushTimer = undefined;
+        flushPending();
+      }, FLUSH_MS);
+    };
 
     es.onopen = () => setStatus("open");
 
@@ -132,15 +204,8 @@ export function useLiveLogs({
       } catch {
         return; // a malformed frame shouldn't tear down a long-lived tail
       }
-      // Functional updater: dedupe against the current buffer and cap it (oldest
-      // lines drop first) without a ref — the buffer *is* the rendered state.
-      setLines((prev) => {
-        if (prev.some((l) => l.key === line.key)) return prev;
-        const next = [...prev, line];
-        return next.length > maxLines
-          ? next.slice(next.length - maxLines)
-          : next;
-      });
+      pending.push(line);
+      scheduleFlush();
     };
 
     es.onerror = (ev) => {
@@ -161,6 +226,11 @@ export function useLiveLogs({
 
     return () => {
       if (retryTimer !== undefined) clearTimeout(retryTimer);
+      if (flushTimer !== undefined) clearTimeout(flushTimer);
+      // Don't lose the trailing batch: on a retry it belongs to the same
+      // subscription and must land; on a filter switch flushPending's stale
+      // guard drops it (the buffer was already reset during render).
+      flushPending();
       es.close();
     };
   }, [
@@ -169,11 +239,14 @@ export function useLiveLogs({
     type,
     text,
     instance,
+    // Derived from the five above — listed for exhaustive-deps; it changes
+    // exactly when they do.
+    subKey,
     maxLines,
     retryDelayMs,
     createEventSource,
     attempt,
   ]);
 
-  return { lines, status };
+  return { lines: buffer.lines, status };
 }

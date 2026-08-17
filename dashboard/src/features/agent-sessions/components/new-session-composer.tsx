@@ -27,7 +27,7 @@ import { ConfigurationFields } from "@/features/agent-sessions/components/config
 import {
   InlineMentionEditor,
   type InlineMentionEditorHandle,
-} from "@/features/agent-sessions/components/inline-mention-editor";
+} from "@/features/agent-sessions/components/lazy-mention-editor";
 import {
   MAX_EGRESS,
   deriveBranch,

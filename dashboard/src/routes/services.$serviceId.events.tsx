@@ -76,7 +76,7 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
   const base = useServiceBase();
   // A cron_job's first-class run history hangs off the same landing tab.
-  const { service } = useServer(serviceId);
+  const { service } = useServer(serviceId, { poll: false });
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(
     () => new Set(SERVICE_EVENT_TYPES),
   );

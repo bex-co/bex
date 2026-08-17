@@ -41,7 +41,7 @@ export function StaticEdgeRulePage({
   ) => ReactNode;
 }) {
   const { t } = useTranslations();
-  const { service, loading, refetch } = useServer(serviceId);
+  const { service, loading, refetch } = useServer(serviceId, { poll: false });
   const mutations = useStaticSiteMutations(serviceId, refetch);
 
   if (service && !isStaticSite(service)) {

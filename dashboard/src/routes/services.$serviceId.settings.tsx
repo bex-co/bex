@@ -55,7 +55,7 @@ function RouteComponent() {
  * Custom Domains, and the platform subdomain (Render parity).
  */
 export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
-  const { service, loading, refetch } = useServer(serviceId);
+  const { service, loading, refetch } = useServer(serviceId, { poll: false });
   const router = useRouter();
   const { pending, run } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();

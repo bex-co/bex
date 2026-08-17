@@ -22,7 +22,7 @@ export const Route = createFileRoute("/services/$serviceId/plan")({
  */
 function ServicePlanPage() {
   const { serviceId } = Route.useParams();
-  const { service, loading } = useServer(serviceId);
+  const { service, loading } = useServer(serviceId, { poll: false });
 
   if (!service && loading) {
     // Mirror InstanceTypePicker's outer shape — titled card, tier grid, footer

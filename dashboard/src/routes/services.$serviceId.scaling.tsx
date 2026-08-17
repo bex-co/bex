@@ -29,7 +29,7 @@ function RouteComponent() {
  * so a routing test can mount it without the file Route's param context.
  */
 export function ServiceScalingPage({ serviceId }: { serviceId: string }) {
-  const { service } = useServer(serviceId);
+  const { service } = useServer(serviceId, { poll: false });
   // One hook instance for the page: the card renders from it and the manual
   // card's exclusion gate reads it, so `saving`/`enabled` can never disagree.
   const autoscaling = useAutoscaling(serviceId);

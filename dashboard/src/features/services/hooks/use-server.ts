@@ -8,6 +8,18 @@ import {
 import { toServiceView } from "@/features/services/lib/status";
 import type { ServiceView } from "@/features/services/types";
 
+export interface UseServerOptions {
+  /**
+   * Poll for out-of-band changes (default `true`). Pass `false` on a secondary
+   * consumer mounted alongside a polling one: every `useQuery` gets its own
+   * timer, and two timers reschedule off their own responses, so they drift
+   * apart into separate round trips instead of deduplicating. The designated
+   * polling owner is the service-detail layout (service-detail-layout.tsx);
+   * the sidebar, breadcrumbs, and tab pages all read the same cached document.
+   */
+  poll?: boolean;
+}
+
 export interface UseServerResult {
   /** The service, or null while loading / when no such App exists. */
   service: ServiceView | null;
@@ -27,12 +39,15 @@ export interface UseServerResult {
  * Presentation only — the same shared Core read the `services` list uses
  * (docs/ADR006-bex-api.md); mirrors `useServices` for one App.
  */
-export function useServer(id: string): UseServerResult {
+export function useServer(
+  id: string,
+  { poll = true }: UseServerOptions = {},
+): UseServerResult {
   const { data, loading, error, refetch } = useQuery(ServerDocument, {
     variables: { id },
     fetchPolicy: "cache-first",
     errorPolicy: "all",
-    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,
     skipPollAttempt: skipPollWhenHidden,
   });
 

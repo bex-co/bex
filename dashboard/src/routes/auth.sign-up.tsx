@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { translatedTitleHead } from "@/common/lib/document-head";
+import { oryThemeStyle } from "@/common/lib/ory/theme-styles";
 import RegisterPage from "@/features/auth/pages/register-page";
 
 export const Route = createFileRoute("/auth/sign-up")({
@@ -13,5 +14,8 @@ export const Route = createFileRoute("/auth/sign-up")({
         ? search.login_challenge
         : undefined,
   }),
-  head: ({ match }) => translatedTitleHead("auth.registerTitle", match),
+  head: ({ match }) => ({
+    ...translatedTitleHead("auth.registerTitle", match),
+    styles: [oryThemeStyle],
+  }),
 });
