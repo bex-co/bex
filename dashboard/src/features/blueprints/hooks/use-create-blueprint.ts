@@ -1,7 +1,10 @@
 import { useState, useCallback } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { CreateBlueprintDocument } from "@/features/blueprints/api/operations";
+import {
+  CreateBlueprintDocument,
+  type BlueprintEnvVarValueInput,
+} from "@/features/blueprints/api/operations";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { BlueprintView } from "@/features/blueprints/types";
@@ -23,6 +26,7 @@ export interface UseCreateBlueprintResult {
     path: string,
     name: string,
     confirmation?: string,
+    envVarValues?: BlueprintEnvVarValueInput[],
   ) => Promise<BlueprintCreateActionResult>;
   busy: boolean;
 }
@@ -41,6 +45,7 @@ export function useCreateBlueprint(): UseCreateBlueprintResult {
       path: string,
       name: string,
       confirmation?: string,
+      envVarValues?: BlueprintEnvVarValueInput[],
     ): Promise<BlueprintCreateActionResult> => {
       setBusy(true);
       try {
@@ -53,6 +58,7 @@ export function useCreateBlueprint(): UseCreateBlueprintResult {
               name: name || undefined,
               confirm: confirmation,
               ownerId: currentWorkspaceId,
+              envVarValues: envVarValues?.length ? envVarValues : undefined,
             },
           }),
         );

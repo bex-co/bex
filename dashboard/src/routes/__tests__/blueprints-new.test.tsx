@@ -97,6 +97,7 @@ function validPreview(): BlueprintPreviewResult {
         databases: ["db"],
         keyValue: [],
         envGroups: [],
+        syncFalseVars: null,
         totalActions: 3,
       },
       estimatedPricing: null,
@@ -227,9 +228,38 @@ describe("NewBlueprintPage", () => {
       "render.yaml",
       "hello-go",
       undefined,
+      [],
     );
     expect(await screen.findByText("blueprint detail")).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/blueprints/blp-new1");
+  });
+
+  it("prompts for sync:false values and sends them as envVarValues", async () => {
+    reposState.repos = [repo()];
+    const preview = validPreview();
+    preview.validation!.plan!.syncFalseVars = ["SMTP_PASSWORD", "API_TOKEN"];
+    previewState.preview = preview;
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByText("acme/hello-go"));
+
+    expect(await screen.findByText(/secret values/i)).toBeInTheDocument();
+    const smtp = screen.getByLabelText("SMTP_PASSWORD");
+    expect(smtp).toHaveAttribute("type", "password");
+    await user.type(smtp, "s3cret");
+    // API_TOKEN left blank: warned, allowed, omitted from the mutation.
+    expect(screen.getByText(/blank values deploy as unset/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /deploy blueprint/i }));
+    expect(create).toHaveBeenCalledWith(
+      "https://github.com/acme/hello-go.git",
+      "main",
+      "render.yaml",
+      "hello-go",
+      undefined,
+      [{ key: "SMTP_PASSWORD", value: "s3cret" }],
+    );
   });
 
   it("renders the Estimated pricing panel from the preview payload", async () => {
@@ -321,6 +351,7 @@ describe("NewBlueprintPage", () => {
       "render.yaml",
       "public-app",
       undefined,
+      [],
     );
   });
 

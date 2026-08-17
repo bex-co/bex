@@ -20,7 +20,6 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
-import { Badge } from "@/common/components/ui/badge";
 import { Combobox } from "@/common/components/ui/combobox";
 import { repoNameSlug, gitUrlSlug } from "@/common/lib/utils/slug";
 import { isValidGitUrl } from "@/common/lib/utils/git-url";
@@ -32,7 +31,7 @@ import {
 } from "@/features/services/components/service-source-picker";
 import { useCreateBlueprint } from "@/features/blueprints/hooks/use-create-blueprint";
 import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-preview";
-import { EstimatedPricingPanel } from "@/features/blueprints/components/estimated-pricing-panel";
+import { BlueprintPlanSummary } from "@/features/blueprints/components/blueprint-plan-summary";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
 
@@ -43,21 +42,6 @@ export const Route = createFileRoute("/blueprints/new")({
   head: ({ match }) => translatedTitleHead("blueprints.createTitle", match),
 });
 
-
-/** One named group of planned resources in the pre-create review. */
-function PlanGroup({ label, names }: { label: string; names: string[] }) {
-  if (names.length === 0) return null;
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-sm text-muted-foreground">{label}:</span>
-      {names.map((n) => (
-        <Badge key={n} variant="secondary" className="text-xs">
-          {n}
-        </Badge>
-      ))}
-    </div>
-  );
-}
 
 export function NewBlueprintPage() {
   const { t } = useTranslations();
@@ -74,6 +58,9 @@ export function NewBlueprintPage() {
   const [protectedConfirmation, setProtectedConfirmation] = useState<
     string | null
   >(null);
+  // sync:false prompt values, keyed by env var name. Secrets: kept only in
+  // this component's memory until submit, never in router state or URLs.
+  const [envVarValues, setEnvVarValues] = useState<Record<string, string>>({});
 
   const sourceRepo =
     tab === "github"
@@ -125,12 +112,16 @@ export function NewBlueprintPage() {
     !previewBlocks;
 
   async function handleCreate(confirmation?: string) {
+    const suppliedValues = Object.entries(envVarValues)
+      .map(([key, value]) => ({ key, value }))
+      .filter((entry) => entry.value !== "");
     const result = await create(
       sourceRepo,
       branch.trim(),
       path.trim() || "render.yaml",
       name.trim(),
       confirmation,
+      suppliedValues,
     );
     if (result.status === "confirmation_required") {
       setProtectedConfirmation(result.confirmation);
@@ -150,6 +141,7 @@ export function NewBlueprintPage() {
   const validationErrors = (preview?.validation?.errors ?? []).filter(
     (e): e is string => !!e,
   );
+  const promptKeys = (plan?.syncFalseVars ?? []).filter(Boolean);
 
   return (
     <DashboardLayout>
@@ -286,35 +278,51 @@ export function NewBlueprintPage() {
                   </Alert>
                 ) : preview ? (
                   <>
-                    <div className="space-y-3 rounded-md border p-4">
-                      <p className="text-sm font-medium">
-                        {t("blueprints.previewValid", {
-                          count: plan?.totalActions ?? 0,
-                        })}
-                      </p>
-                      <PlanGroup
-                        label={t("blueprints.previewServices")}
-                        names={(plan?.services ?? []).filter(Boolean)}
-                      />
-                      <PlanGroup
-                        label={t("blueprints.previewDatabases")}
-                        names={(plan?.databases ?? []).filter(Boolean)}
-                      />
-                      <PlanGroup
-                        label={t("blueprints.previewKeyValue")}
-                        names={(plan?.keyValue ?? []).filter(Boolean)}
-                      />
-                      <PlanGroup
-                        label={t("blueprints.previewEnvGroups")}
-                        names={(plan?.envGroups ?? []).filter(Boolean)}
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        {t("blueprints.previewAutoSyncNote")}
-                      </p>
-                    </div>
-                    <EstimatedPricingPanel
+                    <BlueprintPlanSummary
+                      plan={plan}
                       pricing={preview.validation?.estimatedPricing}
+                      note={
+                        <p className="text-sm text-muted-foreground">
+                          {t("blueprints.previewAutoSyncNote")}
+                        </p>
+                      }
                     />
+                    {promptKeys.length > 0 ? (
+                      <div className="space-y-3 rounded-md border p-4">
+                        <div>
+                          <p className="text-sm font-medium">
+                            {t("blueprints.promptTitle")}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {t("blueprints.promptHint")}
+                          </p>
+                        </div>
+                        {promptKeys.map((key) => (
+                          <div key={key} className="space-y-1">
+                            <Label htmlFor={`bp-secret-${key}`}>{key}</Label>
+                            <Input
+                              id={`bp-secret-${key}`}
+                              type="password"
+                              autoComplete="off"
+                              value={envVarValues[key] ?? ""}
+                              onChange={(e) =>
+                                setEnvVarValues((values) => ({
+                                  ...values,
+                                  [key]: e.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        ))}
+                        {promptKeys.some(
+                          (key) => !(envVarValues[key] ?? "").trim(),
+                        ) ? (
+                          <p className="text-sm text-amber-600 dark:text-amber-500">
+                            {t("blueprints.promptEmptyWarning")}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </>
                 ) : previewError ? (
                   <Alert variant="destructive">

@@ -724,13 +724,14 @@ var blueprintValidationErrorGQLType = graphql.NewObject(graphql.ObjectConfig{
 var blueprintValidationPlanGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintValidationPlan",
 	Fields: graphql.Fields{
-		"mode":         gqlutil.StrField(func(p BlueprintValidationPlan) any { return p.Mode }),
-		"services":     gqlutil.StrsField(func(p BlueprintValidationPlan) any { return p.Services }),
-		"databases":    gqlutil.StrsField(func(p BlueprintValidationPlan) any { return p.Databases }),
-		"keyValue":     gqlutil.StrsField(func(p BlueprintValidationPlan) any { return p.KeyValue }),
-		"envGroups":    gqlutil.StrsField(func(p BlueprintValidationPlan) any { return p.EnvGroups }),
-		"totalActions": gqlutil.IntField(func(p BlueprintValidationPlan) any { return p.TotalActions }),
-		"actions":      gqlutil.Typed(graphql.NewList(blueprintPlanActionGQLType), func(p BlueprintValidationPlan) any { return p.Actions }),
+		"mode":          gqlutil.StrField(func(p BlueprintValidationPlan) any { return p.Mode }),
+		"services":      gqlutil.StrsField(func(p BlueprintValidationPlan) any { return p.Services }),
+		"databases":     gqlutil.StrsField(func(p BlueprintValidationPlan) any { return p.Databases }),
+		"keyValue":      gqlutil.StrsField(func(p BlueprintValidationPlan) any { return p.KeyValue }),
+		"envGroups":     gqlutil.StrsField(func(p BlueprintValidationPlan) any { return p.EnvGroups }),
+		"syncFalseVars": gqlutil.StrsField(func(p BlueprintValidationPlan) any { return p.SyncFalseVars }),
+		"totalActions":  gqlutil.IntField(func(p BlueprintValidationPlan) any { return p.TotalActions }),
+		"actions":       gqlutil.Typed(graphql.NewList(blueprintPlanActionGQLType), func(p BlueprintValidationPlan) any { return p.Actions }),
 	},
 })
 

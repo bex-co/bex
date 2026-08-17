@@ -35,6 +35,18 @@ const blueprintDetailState: {
   error: Error | undefined;
   refetch: () => void;
 } = { blueprint: null, loading: false, error: undefined, refetch: vi.fn() };
+const syncPreviewState: {
+  preview: import("@/features/blueprints/types").BlueprintPreviewResult | null;
+  loading: boolean;
+  error: Error | undefined;
+  refetch: () => Promise<unknown>;
+} = {
+  preview: null,
+  loading: false,
+  error: undefined,
+  refetch: async () => undefined,
+};
+
 vi.mock("@/features/blueprints/hooks/use-blueprint", () => ({
   useBlueprint: () => blueprintDetailState,
 }));
@@ -55,8 +67,9 @@ vi.mock("@/features/blueprints/hooks/use-validate-blueprint", () => ({
 }));
 
 // --- update hook stub ---
+const update = vi.fn(async () => null);
 vi.mock("@/features/blueprints/hooks/use-update-blueprint", () => ({
-  useUpdateBlueprint: () => ({ update: vi.fn(async () => null), busy: false }),
+  useUpdateBlueprint: () => ({ update, busy: false }),
 }));
 
 // --- disconnect hook stub ---
@@ -68,6 +81,10 @@ vi.mock("@/features/blueprints/hooks/use-disconnect-blueprint", () => ({
 }));
 
 // --- syncs hook stub ---
+vi.mock("@/features/blueprints/hooks/use-blueprint-preview", () => ({
+  useBlueprintPreview: () => syncPreviewState,
+}));
+
 vi.mock("@/features/blueprints/hooks/use-blueprint-syncs", () => ({
   useBlueprintSyncs: () => ({ syncs: [], loading: false, error: undefined }),
 }));
@@ -235,6 +252,69 @@ describe("BlueprintDetailPage", () => {
     expect(blueprintDetailState.refetch).not.toHaveBeenCalled();
   });
 
+  it("shows the computed sync plan in the dialog before applying (w8/m21)", async () => {
+    blueprintDetailState.blueprint = bp();
+    syncPreviewState.preview = {
+      found: true,
+      commitId: "abc1234",
+      error: null,
+      validation: {
+        valid: true,
+        errors: [],
+        plan: {
+          mode: "current_state",
+          services: ["web"],
+          databases: ["db"],
+          keyValue: [],
+          envGroups: [],
+          syncFalseVars: null,
+          totalActions: 2,
+          actions: null,
+        },
+        estimatedPricing: {
+          totalUsd: "17.50",
+          lines: [
+            {
+              name: "web",
+              tierLabel: "Standard",
+              monthlyUsd: "17.50",
+              instanceUsd: "17.50",
+              storageUsd: null,
+              storageGb: null,
+            },
+          ],
+          variable: [],
+        },
+      },
+    };
+    renderDetailPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: /sync/i }));
+    expect(
+      await screen.findByText(/parsed successfully — 2 resources/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText("(Standard) $17.50 / month")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
+    expect(sync).toHaveBeenCalledWith("blp-abc123", undefined);
+    syncPreviewState.preview = null;
+  });
+
+  it("degrades to a proceed-anyway warning when the sync preview fails (w8/m21)", async () => {
+    blueprintDetailState.blueprint = bp();
+    syncPreviewState.error = new Error("network");
+    renderDetailPage();
+
+    await userEvent.click(await screen.findByRole("button", { name: /sync/i }));
+    expect(
+      await screen.findByText(/couldn't compute the sync plan/i),
+    ).toBeInTheDocument();
+    const confirm = screen.getByRole("button", { name: /^sync$/i });
+    expect(confirm).toBeEnabled();
+    await userEvent.click(confirm);
+    expect(sync).toHaveBeenCalledWith("blp-abc123", undefined);
+    syncPreviewState.error = undefined;
+  });
+
   it("does not call sync when the confirm dialog is cancelled", async () => {
     blueprintDetailState.blueprint = bp();
     renderDetailPage();
@@ -243,6 +323,45 @@ describe("BlueprintDetailPage", () => {
     await userEvent.click(screen.getByRole("button", { name: /cancel/i }));
 
     expect(sync).not.toHaveBeenCalled();
+  });
+
+  it("edits name and path via PATCH; branch stays read-only (w8/m21)", async () => {
+    blueprintDetailState.blueprint = bp();
+    const user = userEvent.setup();
+    renderDetailPage();
+
+    // Path edit: pencil → input → invalid rejected client-side → valid saves.
+    await user.click(
+      await screen.findByRole("button", { name: /edit manifest path/i }),
+    );
+    const pathInput = screen.getByRole("textbox", { name: /manifest path/i });
+    await user.clear(pathInput);
+    await user.type(pathInput, "../escape.yaml");
+    expect(
+      screen.getByRole("button", { name: /save manifest path/i }),
+    ).toBeDisabled();
+    expect(screen.getByText(/clean repository-relative/i)).toBeInTheDocument();
+    await user.clear(pathInput);
+    await user.type(pathInput, "infra/bex/stack.yaml");
+    await user.click(
+      screen.getByRole("button", { name: /save manifest path/i }),
+    );
+    expect(update).toHaveBeenCalledWith("blp-abc123", {
+      path: "infra/bex/stack.yaml",
+    });
+
+    // Name edit PATCHes only the name.
+    await user.click(screen.getByRole("button", { name: /edit blueprint name/i }));
+    const nameInput = screen.getByRole("textbox", { name: /blueprint name/i });
+    await user.clear(nameInput);
+    await user.type(nameInput, "renamed");
+    await user.click(screen.getByRole("button", { name: /save blueprint name/i }));
+    expect(update).toHaveBeenCalledWith("blp-abc123", { name: "renamed" });
+
+    // Branch has no edit affordance.
+    expect(
+      screen.queryByRole("button", { name: /edit branch/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("retries a protected deploy override only with the exact server phrase", async () => {
