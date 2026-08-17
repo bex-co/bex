@@ -431,8 +431,9 @@ type AppView struct {
 	// it so only custom domains in spec.hosts[] serve the App. The Settings →
 	// Custom Domains section reads it and writes it via SetSubdomainPolicy.
 	RenderSubdomainPolicy string `json:"renderSubdomainPolicy"`
-	// HealthCheckPath is the HTTP path the ReadinessProbe pings (spec.healthCheckPath,
-	// Render's healthCheckPath). Empty means the default "/". The Settings →
+	// HealthCheckPath is the HTTP path the health probes GET (spec.healthCheckPath,
+	// Render's healthCheckPath). Empty selects the TCP default — the platform
+	// checks only that the process is listening. The Settings →
 	// Health & Alerts section reads/writes it via SetHealthCheckPath (w5/009).
 	HealthCheckPath string `json:"healthCheckPath,omitempty"`
 	// MaxShutdownDelaySeconds is the effective SIGTERM grace window for a

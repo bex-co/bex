@@ -280,16 +280,27 @@ var _ = Describe("App Controller", func() {
 			})
 			Expect(c.ReadinessProbe).To(BeNil(), "a worker exposes no HTTP port, so no readiness probe")
 			Expect(c.StartupProbe).To(BeNil(), "…and no startup probe either")
+			Expect(c.LivenessProbe).To(BeNil(), "…and no liveness probe either")
 		})
 
-		// Deliberate divergence, recorded so it reads as a decision rather than
-		// an oversight: Render restarts an instance after 60s of failures.
-		// See .pm/w7/027.md for why that is not adopted unconditionally.
-		It("carries no livenessProbe", func() {
-			c := appContainer("no-liveness-app", appv1alpha1.AppSpec{
+		// Render's second steady-state stage (m81, unconditional parity — the
+		// m81/t001 decision recorded in deployment_projection.go): 60s of
+		// consecutive failures restarts the container. Kubelet suspends
+		// liveness while the startup probe runs, so this cannot kill a slow
+		// boot.
+		It("restarts a wedged instance after 60s via a livenessProbe on the shared handler", func() {
+			c := appContainer("liveness-app", appv1alpha1.AppSpec{
 				Image: "traefik/whoami", Port: 3000, HealthCheckPath: "/healthz",
 			})
-			Expect(c.LivenessProbe).To(BeNil())
+			Expect(c.LivenessProbe).NotTo(BeNil(), "Render restarts an instance after 60s of failures")
+			Expect(c.LivenessProbe.HTTPGet).NotTo(BeNil())
+			Expect(c.LivenessProbe.HTTPGet.Path).To(Equal(c.ReadinessProbe.HTTPGet.Path),
+				"the three probes share one handler and cannot disagree about what healthy means")
+			Expect(c.LivenessProbe.TimeoutSeconds).To(Equal(int32(5)))
+			Expect(c.LivenessProbe.PeriodSeconds*c.LivenessProbe.FailureThreshold).To(Equal(int32(60)),
+				"Render restarts after 60 seconds of consecutive failures")
+			Expect(c.StartupProbe).NotTo(BeNil(),
+				"liveness without a startup probe would kill a slow boot")
 		})
 
 		It("maps maxShutdownDelaySeconds onto the pod grace period for every long-running type", func() {

@@ -1386,8 +1386,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 		// setHealthCheckPath: the Settings → Health & Alerts health-check path
-		// (w5/009). Changes spec.healthCheckPath — the path the startup and
-		// readiness probes GET (w1/m23/t001). An empty path clears the field and
+		// (w5/009). Changes spec.healthCheckPath — the path the startup,
+		// readiness, and liveness probes GET (w1/m23/t001, w7/m81). An empty path clears the field and
 		// selects the TCP probe instead (w7/m80), so this is the surface a caller
 		// uses to move a service off the strict HTTP check. Rejected for
 		// cron_job/background_worker (no HTTP port).

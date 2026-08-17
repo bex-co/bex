@@ -60,8 +60,9 @@ const (
 	// flapping pod rather than an honest failure.
 	healthCheckTimeoutSeconds int32 = 5
 
-	// healthCheckPeriodSeconds is how often a probe runs, for both the startup
-	// and readiness probes.
+	// healthCheckPeriodSeconds is how often a probe runs. It is set on the
+	// startup and liveness probes; the readiness probe leaves it unset and
+	// inherits Kubernetes' identical 10s default.
 	healthCheckPeriodSeconds int32 = 10
 
 	// rolloutBudgetSeconds is how long a new pod may take to first report
@@ -94,6 +95,17 @@ const (
 	// healthCheckPeriodSeconds. Derived, never written as a literal, so the
 	// budget cannot drift away from progressDeadlineSeconds.
 	healthCheckStartupFailureThreshold = rolloutBudgetSeconds / healthCheckPeriodSeconds
+
+	// livenessRestartWindowSeconds is Render's restart stage: a check that
+	// keeps failing for 60 seconds gets the instance restarted.
+	livenessRestartWindowSeconds int32 = 60
+
+	// healthCheckLivenessFailureThreshold spends livenessRestartWindowSeconds
+	// at healthCheckPeriodSeconds. Derived, like the startup threshold, so the
+	// window cannot silently drift if the period ever changes. Set on the
+	// probe explicitly — unlike readiness, liveness cannot inherit
+	// Kubernetes' default threshold of 3 (30s), half the documented window.
+	healthCheckLivenessFailureThreshold = livenessRestartWindowSeconds / healthCheckPeriodSeconds
 )
 
 // deploymentParams bundles the inputs the Deployment projection needs beyond
@@ -183,11 +195,23 @@ func appContainer(app *appv1alpha1.App, p deploymentParams) corev1.Container {
 	//                   it runs kubelet suspends readiness (and liveness),
 	//                   which is what makes that budget real.
 	//   readinessProbe — owns steady state, strict, once boot has succeeded.
+	//   livenessProbe  — Render's restart stage: 60s of consecutive failures
+	//                    restarts the container in place.
 	//
-	// There is deliberately no livenessProbe: Render restarts an instance
-	// after 60s of failures, but adopting that unconditionally would let a
-	// service that merely slows under load be restarted into a cold start,
-	// making the next probe slower still. Tracked as .pm/w7/027.md.
+	// The liveness contract (decided in m81/t001) is unconditional parity —
+	// the same rule Render applies, with the same absence of per-service
+	// control. The restart-spiral hazard that deferred it from m80 (a service
+	// that merely slows under load gets restarted into a cold start, making
+	// the next probe slower still) is bounded two ways: kubelet suspends
+	// liveness while the startupProbe runs, so a slow boot gets the full 15
+	// minutes rather than a kill chain; and in TCP mode the probe is a
+	// kernel-level connect that never invokes the tenant's handler, so an
+	// expensive SSR route cannot fail it — in HTTP mode the hazard is
+	// Render's own documented behavior, carried as parity. The rejected
+	// alternative — liveness only on an explicit healthCheckPath — would deny
+	// TCP-mode services the restart Render gives them to avoid a hazard that
+	// mode does not have, at the price of a mode distinction Render users
+	// never have to learn.
 	if !p.worker {
 		handler := healthCheckHandler(app.Spec.HealthCheckPath, p.port)
 		container.StartupProbe = &corev1.Probe{
@@ -200,12 +224,18 @@ func appContainer(app *appv1alpha1.App, p deploymentParams) corev1.Container {
 			ProbeHandler:   handler,
 			TimeoutSeconds: healthCheckTimeoutSeconds,
 		}
+		container.LivenessProbe = &corev1.Probe{
+			ProbeHandler:     handler,
+			TimeoutSeconds:   healthCheckTimeoutSeconds,
+			PeriodSeconds:    healthCheckPeriodSeconds,
+			FailureThreshold: healthCheckLivenessFailureThreshold,
+		}
 	}
 	return container
 }
 
-// healthCheckHandler builds the probe handler both probes share, so they can
-// never disagree about what "healthy" means for a given App.
+// healthCheckHandler builds the probe handler all three probes share, so they
+// can never disagree about what "healthy" means for a given App.
 //
 // The two modes are Render's. An unset healthCheckPath means the platform has
 // not been told what healthy looks like, so it asks only the question it can
