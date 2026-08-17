@@ -55,13 +55,36 @@ describe("BillingOnboardingView", () => {
     );
 
     expect(screen.getByText("Stripe Test Mode")).toBeInTheDocument();
-    expect(screen.getByText(/Tax is not configured/)).toBeInTheDocument();
+    // Deliberately unconfigured tax is a neutral "Off", not a pending action.
+    expect(screen.getByText("Off")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Add test payment method" }),
     ).toBeEnabled();
     expect(
       screen.getByRole("button", { name: "Open billing portal" }),
     ).toBeEnabled();
+  });
+
+  it("drops the test qualifier from payment actions in live mode", () => {
+    render(
+      <BillingOnboardingView
+        readiness={{ ...baseReadiness, mode: "live" }}
+        loading={false}
+        checkoutBusy={false}
+        portalBusy={false}
+        onCheckout={() => undefined}
+        onPortal={() => undefined}
+      />,
+    );
+
+    expect(screen.queryByText("Stripe Test Mode")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add payment method" }),
+    ).toBeEnabled();
+    expect(screen.queryByText(/test payment method/)).not.toBeInTheDocument();
+    // Unconfigured tax stays a quiet "Off" — no amber call to action for a
+    // capability only an operator can change.
+    expect(screen.getByText("Off")).toBeInTheDocument();
   });
 
   it("invokes only the hosted Checkout and Portal actions", () => {

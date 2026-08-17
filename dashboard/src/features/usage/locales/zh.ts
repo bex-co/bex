@@ -258,18 +258,28 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "未报告截止时间",
     description: "Fallback when a malformed grace state has no deadline",
   },
-  "usage.billingTaxUnconfigured": {
-    message:
-      "税务尚未配置。在运营人员确认规范的产品税码和有效的测试注册前，税费收取会保持关闭。",
-    description: "Fail-closed tax setup explanation",
+  "usage.billingOff": {
+    message: "未启用",
+    description:
+      "Neutral status for a deliberately disabled billing capability (e.g. tax not activated)",
   },
   "usage.billingAddPayment": {
-    message: "添加测试付款方式",
-    description: "Button opening setup-mode Stripe Checkout",
+    message: "添加付款方式",
+    description: "Button opening setup-mode Stripe Checkout (live mode)",
   },
   "usage.billingUpdatePayment": {
+    message: "更新付款方式",
+    description: "Button reopening setup-mode Stripe Checkout (live mode)",
+  },
+  "usage.billingAddPaymentTest": {
+    message: "添加测试付款方式",
+    description:
+      "Button opening setup-mode Stripe Checkout when Stripe is in test mode",
+  },
+  "usage.billingUpdatePaymentTest": {
     message: "更新测试付款方式",
-    description: "Button reopening setup-mode Stripe Checkout",
+    description:
+      "Button reopening setup-mode Stripe Checkout when Stripe is in test mode",
   },
   "usage.billingOpenPortal": {
     message: "打开账单门户",
