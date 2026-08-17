@@ -36,6 +36,14 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    env:
+      # Same workspace/toolchain split as operator-test.yml: lego/go.work
+      # requires go >= 1.26.0 (lego/cli) while this job installs the 1.25 line
+      # the release image ships and setup-go pins GOTOOLCHAIN=local. The
+      # backend module resolves standalone via `replace …/lego/types =>
+      # ../types` — exactly how the image build compiles it — so test with
+      # the workspace off, matching prod.
+      GOWORK: "off"
     services:
       postgres:
         image: postgres:17
