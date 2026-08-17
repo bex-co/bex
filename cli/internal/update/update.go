@@ -92,12 +92,18 @@ func IsRootVersionRequest(args []string, rootFlags *pflag.FlagSet) bool {
 	return false
 }
 
+// IsReleaseBuild reports whether version is a real release identity rather
+// than a local/dev build. A "dev" (or empty) build has nothing to compare or
+// upgrade to, so both the passive notice and `bex upgrade` gate on this.
+func IsReleaseBuild(version string) bool {
+	return version != "" && version != "dev"
+}
+
 // Allowed reports whether an update check may run at all. A non-nil isTTY
 // adds the interactive gate used by the post-command notice; the explicit
-// version path passes nil (the user asked). A "dev" build has no release
-// identity to compare.
+// version path passes nil (the user asked).
 func Allowed(version string, lookup func(string) (string, bool), isTTY func() bool) bool {
-	if version == "" || version == "dev" {
+	if !IsReleaseBuild(version) {
 		return false
 	}
 	if v, _ := lookup("BEX_NO_UPDATE_NOTIFIER"); v != "" {
@@ -116,6 +122,48 @@ func Allowed(version string, lookup func(string) (string, bool), isTTY func() bo
 type Release struct {
 	Version string `json:"version"`
 	URL     string `json:"url"`
+}
+
+// An Asset is a file attached to a GitHub release (the per-target archive,
+// checksums.txt, or the cosign signature bundle).
+type Asset struct {
+	Name string
+	URL  string
+}
+
+// A FullRelease carries a release's downloadable assets. The passive notice
+// only needs Release's version+URL, but the explicit `bex upgrade` path needs
+// the asset download URLs, so it queries this uncached.
+type FullRelease struct {
+	Version string
+	Tag     string
+	URL     string
+	Assets  []Asset
+}
+
+// Asset returns the named asset's download URL and whether it was found.
+func (r FullRelease) Asset(name string) (string, bool) {
+	for _, a := range r.Assets {
+		if a.Name == name {
+			return a.URL, true
+		}
+	}
+	return "", false
+}
+
+// LatestRelease returns the newest matching release with its assets, always
+// from the network — the explicit upgrade path must see fresh asset URLs, not
+// the passive notice's day-old cache.
+func (c *Checker) LatestRelease() (FullRelease, error) {
+	releases, err := c.fetchReleases()
+	if err != nil {
+		return FullRelease{}, err
+	}
+	best, ok := newest(releases)
+	if !ok {
+		return FullRelease{}, fmt.Errorf("no %s* release found", TagPrefix)
+	}
+	return best, nil
 }
 
 // Checker finds the newest `bex-cli/v*` release, remembering the answer —
@@ -195,32 +243,45 @@ func (c *Checker) writeCache(entry cacheEntry) {
 }
 
 func (c *Checker) fetch() (Release, error) {
+	best, err := c.LatestRelease()
+	if err != nil {
+		return Release{}, err
+	}
+	return Release{Version: best.Version, URL: best.URL}, nil
+}
+
+// fetchReleases lists the published, non-draft/prerelease bex-cli releases,
+// normalizing each tag to a semver and capturing its assets. Malformed or
+// out-of-namespace releases are skipped, never fatal.
+func (c *Checker) fetchReleases() ([]FullRelease, error) {
 	url := strings.TrimRight(c.APIBase, "/") + "/repos/" + c.Repo + "/releases?per_page=30"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return Release{}, err
+		return nil, err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return Release{}, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return Release{}, fmt.Errorf("list releases: HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("list releases: HTTP %d", resp.StatusCode)
 	}
 	var releases []struct {
 		TagName    string `json:"tag_name"`
 		HTMLURL    string `json:"html_url"`
 		Draft      bool   `json:"draft"`
 		Prerelease bool   `json:"prerelease"`
+		Assets     []struct {
+			Name string `json:"name"`
+			URL  string `json:"browser_download_url"`
+		} `json:"assets"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
-		return Release{}, err
+		return nil, err
 	}
-	var best Release
-	var bestVersion semver.Version
-	found := false
+	var out []FullRelease
 	for _, r := range releases {
 		if r.Draft || r.Prerelease || !strings.HasPrefix(r.TagName, TagPrefix) {
 			continue
@@ -229,16 +290,30 @@ func (c *Checker) fetch() (Release, error) {
 		if err != nil {
 			continue
 		}
+		assets := make([]Asset, 0, len(r.Assets))
+		for _, a := range r.Assets {
+			assets = append(assets, Asset{Name: a.Name, URL: a.URL})
+		}
+		out = append(out, FullRelease{Version: v.String(), Tag: r.TagName, URL: r.HTMLURL, Assets: assets})
+	}
+	return out, nil
+}
+
+// newest returns the highest-semver release. ok is false for an empty slice.
+func newest(releases []FullRelease) (FullRelease, bool) {
+	var best FullRelease
+	var bestVersion semver.Version
+	found := false
+	for _, r := range releases {
+		v, err := semver.ParseTolerant(r.Version)
+		if err != nil {
+			continue
+		}
 		if !found || v.GT(bestVersion) {
-			best = Release{Version: v.String(), URL: r.HTMLURL}
-			bestVersion = v
-			found = true
+			best, bestVersion, found = r, v, true
 		}
 	}
-	if !found {
-		return Release{}, fmt.Errorf("no %s* release found", TagPrefix)
-	}
-	return best, nil
+	return best, found
 }
 
 // Newer reports whether latest is a strictly newer version than current.
