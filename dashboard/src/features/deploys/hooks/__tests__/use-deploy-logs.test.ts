@@ -202,43 +202,149 @@ describe("useDeployLogs", () => {
   );
 
   it("merges the active build SSE tail into history while followBuild is enabled", () => {
-    const calls: Call[] = [];
-    stubByType({}, calls);
+    vi.useFakeTimers();
+    try {
+      const calls: Call[] = [];
+      stubByType({}, calls);
 
-    const { result } = renderHook(() =>
-      useDeployLogs(
-        "web",
-        "2026-07-14T00:00:00Z",
-        undefined,
-        false,
-        true,
-        streamFactory,
-      ),
-    );
+      const { result } = renderHook(() =>
+        useDeployLogs(
+          "web",
+          "2026-07-14T00:00:00Z",
+          undefined,
+          false,
+          true,
+          streamFactory,
+        ),
+      );
 
-    expect(stream?.url).toContain("type=build");
-    act(() => stream?.onopen?.());
-    act(() =>
-      stream?.onmessage?.({
-        data: JSON.stringify({
-          timestamp: "2026-07-14T00:00:01Z",
-          message: "streamed build step",
-          labels: [
-            { name: "type", value: "build" },
-            { name: "instance", value: "bld-web-gen-1-pod" },
-          ],
+      expect(stream?.url).toContain("type=build");
+      act(() => stream?.onopen?.());
+      act(() =>
+        stream?.onmessage?.({
+          data: JSON.stringify({
+            timestamp: "2026-07-14T00:00:01Z",
+            message: "streamed build step",
+            labels: [
+              { name: "type", value: "build" },
+              { name: "instance", value: "bld-web-gen-1-pod" },
+            ],
+          }),
         }),
-      }),
-    );
+      );
+      // The tail batches frames; the 100ms flush lands them in the buffer.
+      act(() => vi.advanceTimersByTime(100));
 
-    expect(result.current.buildLiveStatus).toBe("open");
-    expect(result.current.lines.map((line) => line.message)).toEqual([
-      "streamed build step",
-    ]);
+      expect(result.current.buildLiveStatus).toBe("open");
+      expect(result.current.lines.map((line) => line.message)).toEqual([
+        "streamed build step",
+      ]);
 
-    act(() => stream?.onerror?.({ data: "no running build" }));
-    expect(result.current.buildLiveStatus).toBe("error");
-    expect(stream?.closed).toBe(true);
+      act(() => stream?.onerror?.({ data: "no running build" }));
+      expect(result.current.buildLiveStatus).toBe("error");
+      expect(stream?.closed).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("sorts a live line that predates the tail of history (ingest-lag fallback)", () => {
+    vi.useFakeTimers();
+    try {
+      const calls: Call[] = [];
+      stubByType(
+        {
+          build: {
+            logs: [entry("2026-07-14T00:00:05.000Z", "polled line", "build")],
+          },
+        },
+        calls,
+      );
+
+      const { result } = renderHook(() =>
+        useDeployLogs(
+          "web",
+          "2026-07-14T00:00:00Z",
+          undefined,
+          false,
+          true,
+          streamFactory,
+        ),
+      );
+      expect(result.current.lines.map((line) => line.message)).toEqual([
+        "polled line",
+      ]);
+
+      // The stream delivers a line EARLIER than the polled history — the
+      // append-only fast path would misorder it, so the full merge kicks in.
+      act(() =>
+        stream?.onmessage?.({
+          data: JSON.stringify({
+            timestamp: "2026-07-14T00:00:01Z",
+            message: "late streamed line",
+            labels: [
+              { name: "type", value: "build" },
+              { name: "instance", value: "bld-web-gen-1-pod" },
+            ],
+          }),
+        }),
+      );
+      act(() => vi.advanceTimersByTime(100));
+
+      expect(result.current.lines.map((line) => line.message)).toEqual([
+        "late streamed line",
+        "polled line",
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("appends a live line after history without re-sorting (fast path)", () => {
+    vi.useFakeTimers();
+    try {
+      const calls: Call[] = [];
+      stubByType(
+        {
+          build: {
+            logs: [entry("2026-07-14T00:00:01.000Z", "polled line", "build")],
+          },
+        },
+        calls,
+      );
+
+      const { result } = renderHook(() =>
+        useDeployLogs(
+          "web",
+          "2026-07-14T00:00:00Z",
+          undefined,
+          false,
+          true,
+          streamFactory,
+        ),
+      );
+
+      act(() =>
+        stream?.onmessage?.({
+          data: JSON.stringify({
+            timestamp: "2026-07-14T00:00:05Z",
+            message: "streamed line",
+            labels: [
+              { name: "type", value: "build" },
+              { name: "instance", value: "bld-web-gen-1-pod" },
+            ],
+          }),
+        }),
+      );
+      act(() => vi.advanceTimersByTime(100));
+
+      expect(result.current.lines.map((line) => line.message)).toEqual([
+        "polled line",
+        "streamed line",
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("reopens a terminated build tail while the build is still being followed", () => {

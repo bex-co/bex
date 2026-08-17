@@ -164,6 +164,27 @@ describe("useEnvironments", () => {
     expect(result.current.loading).toBe(true);
   });
 
+  it("polls at the baseline interval by default; poll: false mounts no timer", () => {
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+
+    renderHook(() => useEnvironments("prj-1"));
+    expect(mockUseQuery).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ pollInterval: 30_000 }),
+    );
+
+    renderHook(() => useEnvironments("prj-1", { poll: false }));
+    expect(mockUseQuery).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ pollInterval: 0 }),
+    );
+  });
+
   it("queries with the given projectId and does not skip", () => {
     mockUseQuery.mockReturnValue({
       data: undefined,

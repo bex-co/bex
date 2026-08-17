@@ -60,9 +60,9 @@ export function DashboardBreadcrumbs() {
 
 function ServiceBreadcrumbs({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
-  const { service } = useServer(serviceId);
-  const { services } = useServices();
-  const { projects } = useProjects();
+  const { service } = useServer(serviceId, { poll: false });
+  const { services } = useServices({ poll: false });
+  const { projects } = useProjects({ poll: false });
   const resolvedServiceId = service?.id ?? serviceId;
   const project = projects.find((item) =>
     item.serviceIds.includes(resolvedServiceId),
@@ -70,7 +70,9 @@ function ServiceBreadcrumbs({ serviceId }: { serviceId: string }) {
   const projectServices = project
     ? services.filter((item) => project.serviceIds.includes(item.id))
     : services;
-  const { environments } = useEnvironments(project?.id ?? null);
+  const { environments } = useEnvironments(project?.id ?? null, {
+    poll: false,
+  });
   const environment = environments.find((item) =>
     item.serviceIds.includes(resolvedServiceId),
   );
@@ -150,7 +152,7 @@ function ServiceBreadcrumbs({ serviceId }: { serviceId: string }) {
 
 function ProjectBreadcrumbs({ projectId }: { projectId: string }) {
   const { t } = useTranslations();
-  const { projects } = useProjects();
+  const { projects } = useProjects({ poll: false });
   return (
     <nav aria-label={t("common.topbarBreadcrumbs")} className="min-w-0">
       <ProjectMenu currentId={projectId} projects={projects} />

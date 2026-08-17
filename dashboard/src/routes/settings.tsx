@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
+import { oryThemeStyle } from "@/common/lib/ory/theme-styles";
 import SettingsPage from "@/features/auth/pages/settings-page";
 
 export const Route = createFileRoute("/settings")({
@@ -42,5 +43,8 @@ export const Route = createFileRoute("/settings")({
     }
     return validated;
   },
-  head: ({ match }) => translatedTitleHead("auth.settingsTitle", match),
+  head: ({ match }) => ({
+    ...translatedTitleHead("auth.settingsTitle", match),
+    styles: [oryThemeStyle],
+  }),
 });

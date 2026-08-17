@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { AlertCircle, WifiOff } from "lucide-react";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -118,6 +125,14 @@ export function LogViewer({
   // it's a pod name). A store-only filter with live on just pauses the tail.
   const liveSupported = !usesStoreOnlyFilters(queryFilters);
 
+  // Stable identity so LogLineList's memoized rows actually skip re-rendering
+  // when a live line appends (an inline arrow would defeat the memo).
+  const onInstanceFilter = useCallback(
+    (instance: string) =>
+      setFilters((previous) => ({ ...previous, instance })),
+    [],
+  );
+
   const historyWindow = useLiveRange(range);
   const history = useLogHistory(resource, queryFilters, historyWindow);
   const stream = useLiveLogs({
@@ -180,12 +195,7 @@ export function LogViewer({
             {t("logs.disconnected")}
           </div>
         ) : null}
-        <LogLineList
-          lines={lines}
-          onInstanceFilter={(instance) =>
-            setFilters((previous) => ({ ...previous, instance }))
-          }
-        />
+        <LogLineList lines={lines} onInstanceFilter={onInstanceFilter} />
         <StreamStatus
           live={live && liveSupported}
           liveSupported={liveSupported}

@@ -73,7 +73,12 @@ beforeEach(() => {
 
 /** Type a valid task into the prompt box. */
 async function typeTask(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText("Task"), "  refactor the mapper  ");
+  // The Tiptap editor mounts after its chunk's dynamic import resolves
+  // (lazy-mention-editor), so the first access of a test must await it.
+  await user.type(
+    await screen.findByLabelText("Task"),
+    "  refactor the mapper  ",
+  );
 }
 
 /**
@@ -144,7 +149,7 @@ describe("NewSessionComposer", () => {
     const send = screen.getByRole("button", { name: "Start session" });
     expect(send).toBeDisabled();
 
-    await user.type(screen.getByLabelText("Task"), "do a thing");
+    await user.type(await screen.findByLabelText("Task"), "do a thing");
     expect(send).toBeEnabled();
   });
 
@@ -164,7 +169,7 @@ describe("NewSessionComposer", () => {
   it("opens the toolbar mention after text without requiring manual whitespace", async () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);
-    await user.type(screen.getByLabelText("Task"), "fix this");
+    await user.type(await screen.findByLabelText("Task"), "fix this");
 
     await user.click(
       screen.getByRole("button", { name: "Mention a repository or session" }),
@@ -179,7 +184,7 @@ describe("NewSessionComposer", () => {
   it("opens categories on a typed @, filters, and inserts an atomic inline mention", async () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);
-    const task = screen.getByLabelText("Task");
+    const task = await screen.findByLabelText("Task");
 
     // A typed `@` at a word boundary opens the category level.
     await user.type(task, "fix the bug @");
@@ -224,7 +229,7 @@ describe("NewSessionComposer", () => {
   it("surfaces a repo directly on a typed @query and inserts it in one step", async () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);
-    const task = screen.getByLabelText("Task");
+    const task = await screen.findByLabelText("Task");
 
     // A typed name after @ filters straight to the repo — no @repos: hop.
     await user.type(task, "fix the bug @anv");
@@ -258,7 +263,7 @@ describe("NewSessionComposer", () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);
 
-    await user.type(screen.getByLabelText("Task"), "scope this @");
+    await user.type(await screen.findByLabelText("Task"), "scope this @");
 
     // The category drill-down rows survive for the @repos: shortcut…
     expect(
@@ -278,7 +283,7 @@ describe("NewSessionComposer", () => {
     priorSessions = [agentSession("as-prior", "Investigate flaky tests")];
     const user = userEvent.setup();
     render(<NewSessionComposer />);
-    const task = screen.getByLabelText("Task");
+    const task = await screen.findByLabelText("Task");
 
     // One step: type a title fragment, pick the session — no @sessions: hop.
     await user.type(task, "look into @flaky");
@@ -301,7 +306,7 @@ describe("NewSessionComposer", () => {
     priorSessions = [agentSession("as-prior", "Investigate flaky tests")];
     const user = userEvent.setup();
     render(<NewSessionComposer />);
-    const task = screen.getByLabelText("Task");
+    const task = await screen.findByLabelText("Task");
 
     await user.type(task, "note @flaky");
     await user.click(
@@ -323,7 +328,7 @@ describe("NewSessionComposer", () => {
     await typeTask(user);
     await pickRepo(user);
 
-    const task = screen.getByLabelText("Task");
+    const task = await screen.findByLabelText("Task");
     await pickRepo(user, /anvils/);
 
     expect(

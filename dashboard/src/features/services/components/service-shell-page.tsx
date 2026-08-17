@@ -26,7 +26,7 @@ import { WebShellPanel } from "@/features/services/components/web-shell-panel";
  * share (paid, non-suspended web/private/worker with the gateway configured).
  */
 export function ServiceShellPage({ serviceId }: { serviceId: string }) {
-  const { service, loading } = useServer(serviceId);
+  const { service, loading } = useServer(serviceId, { poll: false });
   const { t } = useTranslations();
   const command = service?.sshAddress ? `ssh ${service.sshAddress}` : "";
   const eligible = Boolean(service?.sshAddress);

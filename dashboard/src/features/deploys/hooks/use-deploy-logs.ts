@@ -162,14 +162,39 @@ export function useDeployLogs(
       !candidate.message.toLowerCase().includes(STORE_UNAVAILABLE_MARKER),
   );
 
-  const lines = useMemo(() => {
+  // History is the expensive leg — mapping, sorting, and deduping three
+  // windowed query results. Memoize it on the query data identities so a
+  // streamed live line never re-maps or re-sorts it.
+  const history = useMemo(() => {
     const merged = [build.data, predeploy.data, app.data].flatMap((d) =>
       toLogLines(d?.logs),
     );
-    merged.push(...liveBuild.lines);
     merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
     return dedupeLogLines(merged);
-  }, [build.data, predeploy.data, app.data, liveBuild.lines]);
+  }, [build.data, predeploy.data, app.data]);
+
+  const historyKeys = useMemo(
+    () => new Set(history.map((line) => line.key)),
+    [history],
+  );
+
+  const lines = useMemo(() => {
+    const live = liveBuild.lines;
+    if (live.length === 0) return history;
+    const last = history[history.length - 1];
+    // Fast path: the live tail arrives chronologically after history (it
+    // streams the same build pod the windowed query reads behind ingest lag),
+    // so merging is an append plus a key filter for the poll/stream straddle
+    // — O(live) per flush, no re-sort of history per streamed line.
+    if (!last || live[0].timestamp >= last.timestamp) {
+      return [...history, ...live.filter((line) => !historyKeys.has(line.key))];
+    }
+    // Correctness fallback: a live line predates the tail of history (the
+    // query won the race against the stream) — full chronological merge.
+    const merged = [...history, ...live];
+    merged.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    return dedupeLogLines(merged);
+  }, [history, historyKeys, liveBuild.lines]);
 
   return {
     lines,

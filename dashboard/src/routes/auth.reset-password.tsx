@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { translatedTitleHead } from "@/common/lib/document-head";
+import { oryThemeStyle } from "@/common/lib/ory/theme-styles";
 import { requireAuth } from "@/common/lib/auth/auth";
 import SettingsPage from "@/features/auth/pages/settings-page";
 
@@ -12,5 +13,8 @@ import SettingsPage from "@/features/auth/pages/settings-page";
 export const Route = createFileRoute("/auth/reset-password")({
   component: SettingsPage,
   beforeLoad: requireAuth(),
-  head: ({ match }) => translatedTitleHead("auth.forgotPasswordTitle", match),
+  head: ({ match }) => ({
+    ...translatedTitleHead("auth.forgotPasswordTitle", match),
+    styles: [oryThemeStyle],
+  }),
 });

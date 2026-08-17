@@ -27,6 +27,16 @@ export interface EnvironmentView {
   ipAllowListEntries: EnvironmentIPAllowListEntry[];
 }
 
+export interface UseEnvironmentsOptions {
+  /**
+   * Poll for out-of-band changes (default `true`). Pass `false` on a secondary
+   * consumer mounted alongside a polling one: every `useQuery` gets its own
+   * timer, and two timers reschedule off their own responses, so they drift
+   * apart into separate round trips instead of deduplicating.
+   */
+  poll?: boolean;
+}
+
 export interface UseEnvironmentsResult {
   environments: EnvironmentView[];
   loading: boolean;
@@ -42,6 +52,7 @@ export interface UseEnvironmentsResult {
  */
 export function useEnvironments(
   projectId: string | null,
+  { poll = true }: UseEnvironmentsOptions = {},
 ): UseEnvironmentsResult {
   const resolved = projectId != null && projectId !== "";
   const { data, loading, error, refetch } = useQuery(EnvironmentsDocument, {
@@ -49,7 +60,7 @@ export function useEnvironments(
     skip: !resolved,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
-    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,
     skipPollAttempt: skipPollWhenHidden,
   });
 

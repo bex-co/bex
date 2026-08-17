@@ -71,6 +71,34 @@ describe("useServer", () => {
     expect(result.current.loading).toBe(true);
   });
 
+  it("polls at the baseline interval by default", () => {
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+    renderHook(() => useServer("app"));
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ pollInterval: 30_000 }),
+    );
+  });
+
+  it("poll: false mounts a secondary consumer with no poll timer of its own", () => {
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+    renderHook(() => useServer("app", { poll: false }));
+    expect(mockUseQuery).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ pollInterval: 0 }),
+    );
+  });
+
   it("refetch resolves the fresh view as a one-element list (poll-to-converge shape)", async () => {
     const refetch = vi.fn().mockResolvedValue({
       data: {

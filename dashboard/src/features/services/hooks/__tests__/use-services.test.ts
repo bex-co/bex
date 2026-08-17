@@ -57,6 +57,26 @@ describe("useServices", () => {
     expect(result.current.loading).toBe(true);
   });
 
+  it("polls at the baseline interval by default; poll: false mounts no timer", () => {
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      loading: true,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+    renderHook(() => useServices());
+    expect(mockUseQuery).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ pollInterval: 30_000 }),
+    );
+
+    renderHook(() => useServices({ poll: false }));
+    expect(mockUseQuery).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({ pollInterval: 0 }),
+    );
+  });
+
   it("mounts cache-first so an SSR/prefetch-primed cache isn't refetched (w9/m62 t004)", () => {
     mockUseQuery.mockReturnValue({
       data: undefined,

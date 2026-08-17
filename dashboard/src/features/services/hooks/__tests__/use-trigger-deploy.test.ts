@@ -74,6 +74,20 @@ describe("useTriggerDeploy", () => {
     expect(id).toBeNull();
   });
 
+  it("refetches only the queries that show the deploy — never every active query", () => {
+    mockUseMutation.mockReturnValue([vi.fn(), { loading: false }]);
+
+    renderHook(() => useTriggerDeploy());
+
+    expect(mockUseMutation).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        refetchQueries: ["Server", "Deploys", "ServiceEvents"],
+        awaitRefetchQueries: true,
+      }),
+    );
+  });
+
   it("passes commitId/deployMode through to the mutation variables", async () => {
     const triggerDeploy = vi.fn().mockResolvedValue({
       data: { triggerDeploy: { id: "dep-new-2" } },

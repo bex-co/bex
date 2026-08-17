@@ -36,7 +36,7 @@ export function ServiceSidebar({ serviceId }: ServiceSidebarProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const base = useServiceBase();
   const { t } = useTranslations();
-  const { service, loading } = useServer(serviceId);
+  const { service, loading } = useServer(serviceId, { poll: false });
   // An id the caller can't see gets no service nav — the shell renders its
   // not-found state, and a sidebar of dead links would contradict it. While
   // still loading, keep the nav (a legit id must not flash empty→full).

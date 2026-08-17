@@ -17,6 +17,16 @@ export interface ProjectView {
   keyValueIds: string[];
 }
 
+export interface UseProjectsOptions {
+  /**
+   * Poll for out-of-band changes (default `true`). Pass `false` on a secondary
+   * consumer mounted alongside a polling one: every `useQuery` gets its own
+   * timer, and two timers reschedule off their own responses, so they drift
+   * apart into separate round trips instead of deduplicating.
+   */
+  poll?: boolean;
+}
+
 export interface UseProjectsResult {
   projects: ProjectView[];
   loading: boolean;
@@ -29,7 +39,9 @@ export interface UseProjectsResult {
  * Reads the projects for the current workspace. Returns an empty list when
  * the workspace hasn't resolved yet or when the store isn't configured.
  */
-export function useProjects(): UseProjectsResult {
+export function useProjects({
+  poll = true,
+}: UseProjectsOptions = {}): UseProjectsResult {
   const { currentWorkspaceId } = useWorkspace();
   const resolved = currentWorkspaceId != null;
   const { data, loading, error, refetch } = useQuery(ProjectsDocument, {
@@ -37,7 +49,7 @@ export function useProjects(): UseProjectsResult {
     skip: !resolved,
     fetchPolicy: PRIMED_FETCH_POLICY,
     errorPolicy: "all",
-    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,
     skipPollAttempt: skipPollWhenHidden,
   });
 

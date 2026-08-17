@@ -30,7 +30,7 @@ export function NonStaticRoute({
   loadingFallback?: ReactNode;
   children: ReactNode;
 }) {
-  const { service, loading } = useServer(serviceId);
+  const { service, loading } = useServer(serviceId, { poll: false });
   if (service && isStaticSite(service)) {
     return (
       <Navigate to="/static/$serviceId/events" params={{ serviceId }} replace />

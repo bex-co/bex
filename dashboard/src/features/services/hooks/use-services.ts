@@ -10,6 +10,16 @@ import { toServiceViews } from "@/features/services/lib/status";
 import type { ServiceView } from "@/features/services/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
+export interface UseServicesOptions {
+  /**
+   * Poll for out-of-band changes (default `true`). Pass `false` on a secondary
+   * consumer mounted alongside a polling one: every `useQuery` gets its own
+   * timer, and two timers reschedule off their own responses, so they drift
+   * apart into separate round trips instead of deduplicating.
+   */
+  poll?: boolean;
+}
+
 export interface UseServicesResult {
   services: ServiceView[];
   loading: boolean;
@@ -27,7 +37,9 @@ export interface UseServicesResult {
  * pair a still-null ownerId would cause — `loading` stays true for that same
  * window, so callers don't see a flash of the empty state first.
  */
-export function useServices(): UseServicesResult {
+export function useServices({
+  poll = true,
+}: UseServicesOptions = {}): UseServicesResult {
   const { currentWorkspaceId } = useWorkspace();
   const resolved = currentWorkspaceId != null;
   const { data, loading, error, refetch } = useQuery(ServicesDocument, {
@@ -35,7 +47,7 @@ export function useServices(): UseServicesResult {
     skip: !resolved,
     fetchPolicy: PRIMED_FETCH_POLICY,
     errorPolicy: "all",
-    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,
     skipPollAttempt: skipPollWhenHidden,
   });
 

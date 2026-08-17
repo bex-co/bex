@@ -11,7 +11,6 @@ import { getDashboardOrigin, globalMetadata } from "@/common/lib/document-head";
 import { getPersistedWorkspaceId } from "@/features/workspaces/lib/selection";
 
 import appCss from "../style.css?inline";
-import oryElementsCss from "@ory/elements-react/theme/styles.css?inline";
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   notFoundComponent: NotFoundPage,
@@ -71,17 +70,18 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       },
     ],
     styles: [
-      // Order matters: both sheets declare @layer, and layer precedence is
-      // set by declaration order. Ory's `ory-elements` layer must be declared
-      // after Tailwind's `base`, or our preflight (`button { background:
-      // transparent }`) outranks Ory's component styles and unstyles its
-      // forms. style.css's token bridge still wins from first position
-      // because it's unlayered (see the bridge block there).
+      // appCss must stay the first head style: both it and Ory's theme sheet
+      // declare @layer, and layer precedence is set by declaration order. The
+      // Ory sheet itself no longer ships on every page — only the routes that
+      // render Ory flow components add it via `oryThemeStyle`
+      // (common/lib/ory/theme-styles.ts), and the router emits route head
+      // styles after the root's, so its `ory-elements` layer is still declared
+      // after Tailwind's `base` there (or our preflight would outrank Ory's
+      // component styles and unstyle its forms). style.css's token bridge
+      // still wins from first position because it's unlayered (see the bridge
+      // block there).
       {
         children: appCss,
-      },
-      {
-        children: oryElementsCss,
       },
     ],
   }),

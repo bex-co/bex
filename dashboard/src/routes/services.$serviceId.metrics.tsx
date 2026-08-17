@@ -64,7 +64,7 @@ export function ServiceMetricsPage({ serviceId }: { serviceId: string }) {
   // card (its Traefik series attribute per-App: the operator names the static
   // site's Ingress after the App, w5/m48/t006). Gated on the loaded service so
   // a static site never fires the pod-metrics queries.
-  const { service } = useServer(serviceId);
+  const { service } = useServer(serviceId, { poll: false });
   const showApplicationCard = service != null && !isStaticSite(service);
 
   return (
