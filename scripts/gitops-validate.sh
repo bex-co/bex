@@ -432,6 +432,32 @@ check_base_domain_agreement() {
 check_base_domain_agreement "config/prod" "$prod_operator_render"
 check_base_domain_agreement "config/default" "$(kubectl kustomize lego/operator/config/default)"
 
+# Agreement alone is not enough: three EMPTY values agree perfectly, and that is
+# exactly how platform hosting has been deleted twice (e0468cf2 2026-08-08,
+# 815e003b 2026-08-16 — the second took production down for hours, since every
+# App that reconciled afterwards silently lost its "<slug>.<domain>" Ingress
+# while the already-created ones lingered, so nothing looked broken at first).
+# Both removals were security passes acting on the onbex.co Public Suffix List
+# finding. That gap is an ACCEPTED risk (`.pm/DO_NOT_DO.md` #PSL) — unsetting the
+# domain does not narrow it, it just removes the hosting product. So prod must
+# additionally carry a NON-EMPTY value.
+#
+# Deliberately domain-agnostic: this asserts the property "this installation
+# declares a platform suffix", never the literal onbex.co. A downstream operator
+# renders their own overlay with their own domain and this still holds. Local
+# (config/default) may stay empty — no wildcard DNS, no platform hosts.
+echo "==> prod render declares a non-empty BEX_BASE_DOMAIN"
+prod_base_domain="$(yq -N '
+  select(.kind == "Deployment" and .metadata.name == "bex-controller-manager") |
+  [.spec.template.spec.containers[].env[]? | select(.name == "BEX_BASE_DOMAIN") | .value] | .[0] // ""' \
+  - <<<"$prod_operator_render")"
+if [ -z "$prod_base_domain" ]; then
+  echo "FAIL: prod BEX_BASE_DOMAIN is empty/absent — platform hosting is off, every App loses its <slug>.<domain> address" >&2
+  echo "      This is almost certainly an attempt to remediate the onbex.co PSL finding. Don't: it is an accepted" >&2
+  echo "      risk (.pm/DO_NOT_DO.md #PSL), and removing the suffix deletes the hosting product instead of securing it." >&2
+  fail=1
+fi
+
 # w7/m58: universal platform-pod hardening. bex-system is deliberately
 # privileged-PSS (egress-meter needs BPF/NET_ADMIN caps + hostNetwork), so there
 # is NO namespace PodSecurity backstop — the per-pod securityContext is the only
@@ -2004,19 +2030,12 @@ if [ "$static_cfg_kv" != "$mgr_origin_kv" ]; then
   echo "FAIL: static serve origin (bex-static-config) != publish origin (manager env): '$static_cfg_kv' vs '$mgr_origin_kv'" >&2
   fail=1
 fi
-# Production keeps shared hosting disabled until a dedicated suffix is in the
-# PSL PRIVATE section. Any committed production value is a release-blocking
-# regression; startup independently fails closed for unlisted runtime values.
-prod_shared_domain="$(
-  {
-    yq -N 'select(.kind == "Deployment" and (.metadata.name == "bex-controller-manager" or .metadata.name == "bex-api" or .metadata.name == "bex-static-server")) | .spec.template.spec.containers[].env[]? | select(.name == "BEX_BASE_DOMAIN") | .value' "$tmp/bex-operator-prod.yaml"
-    yq -N 'select(.kind == "ConfigMap" and .metadata.name == "bex-static-config") | .data.BEX_BASE_DOMAIN // ""' "$tmp/bex-operator-prod.yaml"
-	} | grep -v '^$' || true
-)"
-if [ -n "$prod_shared_domain" ]; then
-	echo "FAIL: prod configures BEX_BASE_DOMAIN before a PSL-listed suffix is approved: $prod_shared_domain" >&2
-  fail=1
-fi
+# NOTE: this used to assert the OPPOSITE — that prod carries NO BEX_BASE_DOMAIN
+# "until a dedicated suffix is in the PSL PRIVATE section" (815e003b). That
+# inverted guard is gone: the PSL gap is an accepted risk (.pm/DO_NOT_DO.md
+# #PSL), and pinning the absence made an outage the only CI-passing state —
+# every App silently lost its platform host. The live assertion is now the
+# non-empty check earlier in this script; do not reintroduce an absence gate.
 kubectl kustomize lego/operator/config/default >"$tmp/bex-operator-default.yaml"
 if yq -e 'select(.kind == "ConfigMap" and .metadata.name == "bex-static-config")' - <"$tmp/bex-operator-default.yaml" >/dev/null 2>&1; then
   echo "FAIL: config/default (local) renders bex-static-config — the CAPD static-server would CrashLoop on a missing Wasabi read credential" >&2
