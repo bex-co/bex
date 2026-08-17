@@ -87,6 +87,16 @@ func TestCreateConnectedRepoWritesCloneSecret(t *testing.T) {
 	if v, ok := cloneSecretValue(t, cl, "web-clone"); !ok || v != "ghs_new" {
 		t.Fatalf("clone secret token = %q ok=%v", v, ok)
 	}
+	// Round-11 #1: the clone token is operational — it must carry the shared
+	// protected-from-tenant-mount label so the operator's App reconcile refuses
+	// any envFrom/secretKeyRef/filesFromSecrets reference to it.
+	var sec corev1.Secret
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web-clone"}, &sec); err != nil {
+		t.Fatalf("get clone secret: %v", err)
+	}
+	if sec.Labels[appv1alpha1.LabelProtectedFromTenantMount] != appv1alpha1.ProtectedFromTenantMount {
+		t.Fatalf("clone secret missing protected-from-tenant-mount label: %+v", sec.Labels)
+	}
 }
 
 func TestCreatePublicRepoNoCloneSecret(t *testing.T) {

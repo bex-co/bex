@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -1147,4 +1148,112 @@ func countString(list []string, s string) int {
 		}
 	}
 	return n
+}
+
+// countingStore counts List/Get fan-out so the round-11 #3 snapshot cache is
+// observable: request volume must stop translating into per-group OpenBao
+// metadata reads.
+type countingStore struct {
+	*fakeStore
+	lists     int
+	metaGets  int // sweep fan-out: one metadata read per GLOBAL group
+}
+
+func (c *countingStore) List(ctx context.Context, path string) ([]string, error) {
+	c.lists++
+	return c.fakeStore.List(ctx, path)
+}
+
+func (c *countingStore) Get(ctx context.Context, path string) (map[string]string, error) {
+	if strings.HasSuffix(path, "/meta") {
+		c.metaGets++
+	}
+	return c.fakeStore.Get(ctx, path)
+}
+
+// TestListEnvGroupsSweepIsSnapshotCached (round-11 #3): repeated list calls
+// within the TTL are served from one metadata sweep, and this replica's own
+// writes leave the snapshot immediately.
+func TestListEnvGroupsSweepIsSnapshotCached(t *testing.T) {
+	inner := newFakeStore()
+	store := &countingStore{fakeStore: inner}
+	svc := newService(store, sampleApp("web"))
+	ctx := context.Background()
+
+	for i := 0; i < 3; i++ {
+		if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "g" + strconv.Itoa(i)}); err != nil {
+			t.Fatalf("create g%d: %v", i, err)
+		}
+	}
+	store.lists, store.metaGets = 0, 0
+
+	for i := 0; i < 5; i++ {
+		groups, err := svc.ListEnvGroups(ctx, "")
+		if err != nil {
+			t.Fatalf("list %d: %v", i, err)
+		}
+		if len(groups) != 3 {
+			t.Fatalf("list %d saw %d groups, want 3", i, len(groups))
+		}
+	}
+	if store.lists != 1 || store.metaGets != 3 {
+		t.Fatalf("5 lists caused %d sweeps / %d metadata reads, want 1 sweep / 3 reads (snapshot cache)", store.lists, store.metaGets)
+	}
+
+	// A create on THIS replica invalidates: the next list re-sweeps and sees it.
+	if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "g-new"}); err != nil {
+		t.Fatalf("create g-new: %v", err)
+	}
+	groups, err := svc.ListEnvGroups(ctx, "")
+	if err != nil || len(groups) != 4 {
+		t.Fatalf("post-create list = %d groups err=%v, want 4 (local write visible at once)", len(groups), err)
+	}
+}
+
+// TestCreateEnvGroupPerWorkspaceQuota (round-11 #3): the per-workspace cap
+// refuses with ENV_GROUP_LIMIT before writing any state; deletion frees room.
+func TestCreateEnvGroupPerWorkspaceQuota(t *testing.T) {
+	inner := newFakeStore()
+	store := &countingStore{fakeStore: inner}
+	svc := newService(store, sampleApp("web"))
+	svc.MaxEnvGroups = 2
+	ctx := context.Background()
+
+	for i := 0; i < 2; i++ {
+		if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "g" + strconv.Itoa(i)}); err != nil {
+			t.Fatalf("create within cap %d: %v", i, err)
+		}
+	}
+	_, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "over"})
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "ENV_GROUP_LIMIT" {
+		t.Fatalf("over-quota create = %v, want ENV_GROUP_LIMIT", err)
+	}
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("quota refusal must be conflict-class, got %v", err)
+	}
+	if len(inner.m) == 0 {
+		t.Fatal("impossible: no state at all")
+	}
+	for path, m := range inner.m {
+		if m["name"] == "over" {
+			t.Fatalf("refused group reached the store at %s", path)
+		}
+	}
+
+	// Delete one group: the next create fits again.
+	var firstID string
+	for path := range inner.m {
+		if strings.Contains(path, "/meta") {
+			parts := strings.Split(path, "/")
+			firstID = parts[len(parts)-2]
+			break
+		}
+	}
+	if err := svc.DeleteEnvGroup(ctx, firstID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "fits"}); err != nil {
+		t.Fatalf("create after freeing a slot: %v", err)
+	}
 }

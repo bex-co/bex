@@ -33,6 +33,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -51,6 +52,13 @@ import (
 // (codex #10). 200 is well above any reasonable page limit.
 const maxHydratedEnvGroups = 200
 
+// Round-11 #3 knobs: the per-workspace create quota (default; 0 disables via
+// the env wiring) and the metadata-sweep snapshot TTL.
+const (
+	defaultMaxEnvGroups  = 100
+	envGroupMetaCacheTTL = 15 * time.Second
+)
+
 // Service manages environment groups over the shared core.SecretKV store and
 // projects them into linked services. Embeds *core.Base for the client, clock, and
 // authorization gate.
@@ -63,6 +71,23 @@ type Service struct {
 	// groups available while honestly refusing an association the process cannot
 	// validate.
 	EnvironmentWorkspace func(ctx context.Context, environmentID string) (string, error)
+
+	// MaxEnvGroups caps how many groups ONE workspace may own (round-11 #3,
+	// BEX_MAX_ENV_GROUPS_PER_WORKSPACE, default 100; 0 disables). Group metadata
+	// lives in one shared index, so an unbounded create loop would make every
+	// other tenant's list/name-resolution sweep pay for it.
+	MaxEnvGroups int
+
+	// metaCache bounds the metadata sweep that backs list/name-resolution
+	// (round-11 #3): the global id+meta sweep is served from a short-TTL
+	// snapshot instead of re-fanning out one OpenBao metadata read per global
+	// group per request. Writes on THIS replica invalidate immediately; another
+	// replica's write converges within the TTL. Secret contents never enter
+	// the cache — metadata only, already names-first.
+	metaCacheTTL time.Duration
+	metaCacheMu sync.Mutex
+	metaCache   []scopedMeta
+	metaCacheAt time.Time
 }
 
 // EnvVarView is a group env var ({key, value}); value is empty in list/get
@@ -256,7 +281,10 @@ type scopedMeta struct {
 
 // listScopedMeta is the shared metadata-only list core. Keeping it below both
 // public reads prevents Environment membership lookups from fetching secret
-// maps while preserving one scoping implementation.
+// maps while preserving one scoping implementation. Round-11 #3: the global
+// sweep backing it is served from a short-TTL snapshot (see Service.metaCache)
+// so request volume no longer translates into one OpenBao metadata read per
+// global group per request; the workspace filter still runs per call.
 func (s *Service) listScopedMeta(ctx context.Context, ownerID string) ([]scopedMeta, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
@@ -269,6 +297,39 @@ func (s *Service) listScopedMeta(ctx context.Context, ownerID string) ([]scopedM
 	if scoped && scopeTo == "" {
 		return []scopedMeta{}, nil
 	}
+	all, err := s.sweepMeta(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !scoped {
+		return all, nil
+	}
+	out := make([]scopedMeta, 0, len(all))
+	for _, g := range all {
+		if g.workspace != scopeTo {
+			continue
+		}
+		out = append(out, g)
+	}
+	return out, nil
+}
+
+// sweepMeta returns every group's id+metadata, from the TTL snapshot when one
+// is live and from a fresh OpenBao sweep otherwise. The snapshot is metadata
+// only (no env/file contents).
+func (s *Service) sweepMeta(ctx context.Context) ([]scopedMeta, error) {
+	ttl := s.metaCacheTTL
+	if ttl <= 0 {
+		ttl = envGroupMetaCacheTTL
+	}
+	s.metaCacheMu.Lock()
+	if s.metaCache != nil && s.Now().Sub(s.metaCacheAt) <= ttl {
+		cached := s.metaCache
+		s.metaCacheMu.Unlock()
+		return cached, nil
+	}
+	s.metaCacheMu.Unlock()
+
 	ids, err := s.Store.List(ctx, "env-groups")
 	if err != nil {
 		return nil, err
@@ -280,12 +341,20 @@ func (s *Service) listScopedMeta(ctx context.Context, ownerID string) ([]scopedM
 		if err != nil {
 			return nil, err
 		}
-		if scoped && m.workspace != scopeTo {
-			continue
-		}
 		out = append(out, scopedMeta{id: gid, meta: m})
 	}
+	s.metaCacheMu.Lock()
+	s.metaCache, s.metaCacheAt = out, s.Now()
+	s.metaCacheMu.Unlock()
 	return out, nil
+}
+
+// invalidateMetaCache drops the snapshot so the next list sees this replica's
+// own writes immediately.
+func (s *Service) invalidateMetaCache() {
+	s.metaCacheMu.Lock()
+	s.metaCache = nil
+	s.metaCacheMu.Unlock()
 }
 
 // GetEnvGroup returns one group (keys/names + links, no values); ErrForbidden
@@ -318,6 +387,12 @@ func (s *Service) CreateEnvGroup(ctx context.Context, req CreateEnvGroupRequest)
 	}
 	workspace, _ := s.Tenant(ctx) // "" with the store off, matching AppView.OwnerID
 	if err := s.validateEnvironment(ctx, req.EnvironmentID, workspace); err != nil {
+		return EnvGroupView{}, err
+	}
+	// Round-11 #3: per-workspace create quota, checked before the id is minted
+	// or any state written. Counted from the metadata snapshot, so it is
+	// best-effort under concurrent creates — an abuse bound, not a transaction.
+	if err := s.envGroupQuota(ctx, workspace); err != nil {
 		return EnvGroupView{}, err
 	}
 	env, err := prepareCreateEnv(req.EnvVars)
@@ -597,6 +672,7 @@ func (s *Service) DeleteEnvGroup(ctx context.Context, gid string) error {
 			return err
 		}
 	}
+	s.invalidateMetaCache() // round-11 #3: the deleted group leaves the snapshot now
 	return nil
 }
 
@@ -1257,14 +1333,43 @@ func (s *Service) readMeta(ctx context.Context, gid string) (meta, error) {
 }
 
 func (s *Service) writeMeta(ctx context.Context, gid string, m meta) error {
-	return s.Store.Put(ctx, metaPath(gid), map[string]string{
+	if err := s.Store.Put(ctx, metaPath(gid), map[string]string{
 		"name":        m.name,
 		"links":       strings.Join(m.links, ","),
 		"workspace":   m.workspace,
 		"environment": m.environment,
 		"createdAt":   m.createdAt,
 		"updatedAt":   m.updatedAt,
-	})
+	}); err != nil {
+		return err
+	}
+	s.invalidateMetaCache() // round-11 #3: this replica's writes are list-visible at once
+	return nil
+}
+
+// envGroupQuota refuses a create that would push workspace past its env-group
+// cap. MaxEnvGroups > 0 enables (production wires the env default of 100; 0
+// leaves tests and store-off mode uncapped).
+func (s *Service) envGroupQuota(ctx context.Context, workspace string) error {
+	if s.MaxEnvGroups <= 0 {
+		return nil
+	}
+	all, err := s.sweepMeta(ctx)
+	if err != nil {
+		return err
+	}
+	count := 0
+	for _, g := range all {
+		if g.workspace == workspace {
+			count++
+		}
+	}
+	if count >= s.MaxEnvGroups {
+		return core.NewConflictError("ENV_GROUP_LIMIT",
+			fmt.Sprintf("workspace already owns %d environment groups (limit %d); delete unused groups or raise the limit", count, s.MaxEnvGroups),
+			map[string]any{"count": count, "limit": s.MaxEnvGroups})
+	}
+	return nil
 }
 
 // validateEnvironment proves that an optional Environment belongs to the same

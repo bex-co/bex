@@ -129,6 +129,12 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 		return SecretFileView{}, err
 	}
 	files[name] = content
+	// Round-11 #6: bound the aggregate map before the source-of-truth write so
+	// a tenant cannot grow it without limit (and so a passing map can always
+	// materialize under Kubernetes' 1 MiB Secret ceiling).
+	if err := filesMapWithinQuota(files); err != nil {
+		return SecretFileView{}, err
+	}
 	if err := s.storeMap(ctx, filesPath(service), files); err != nil {
 		return SecretFileView{}, err
 	}

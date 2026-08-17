@@ -89,6 +89,16 @@ type Server struct {
 	// over) or fails. 0 gets the default (256).
 	MaxPreAuthConns int
 
+	// MaxPreAuthConnsPerSource bounds how many of the global pre-auth slots ONE
+	// resolved source address may hold at once (round-11 #2). Without it a single
+	// unauthenticated source can park silent connections in every global slot for
+	// the full HandshakeTimeout and force the gateway to shed every other
+	// tenant's handshakes. The source is the PROXY-protocol-resolved client when
+	// the immediate peer is trusted, else the immediate peer itself. 0 gets the
+	// default (32); negative disables per-source fairness (global-only, the
+	// pre-round-11 behavior).
+	MaxPreAuthConnsPerSource int
+
 	// MaxChannelsPerConn bounds concurrent session channels on ONE connection for
 	// agent-session sandbox targets (ADR054 D3), which Zed's ControlMaster remoting
 	// multiplexes. 0 disables the exception: sandbox targets fall back to the
@@ -123,6 +133,9 @@ func (s *Server) defaults() {
 	}
 	if s.MaxPreAuthConns <= 0 {
 		s.MaxPreAuthConns = 256
+	}
+	if s.MaxPreAuthConnsPerSource == 0 {
+		s.MaxPreAuthConnsPerSource = 32
 	}
 	if s.RevalidateInterval == 0 {
 		s.RevalidateInterval = sshgateway.DefaultRevalidateInterval
@@ -214,6 +227,11 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 	// connection flood cannot exhaust goroutines, descriptors, and store QPS ahead
 	// of the post-handshake session limiter. A full buffer sheds immediately.
 	preAuth := make(chan struct{}, s.MaxPreAuthConns)
+	// Per-source fairness inside that pool (round-11 #2): the global cap alone
+	// lets one silent source occupy every slot for the full HandshakeTimeout.
+	// serveConn acquires a source slot once the PROXY header resolves the real
+	// client, and holds it exactly as long as the global slot.
+	preAuthSources := sshgateway.NewSourceLimiter(s.MaxPreAuthConnsPerSource)
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -239,7 +257,7 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 					<-preAuth
 				}
 			}
-			if err := s.serveConn(ctx, conn, config, release); err != nil && ctx.Err() == nil {
+			if err := s.serveConn(ctx, conn, config, release, preAuthSources); err != nil && ctx.Err() == nil {
 				log.Printf("ssh gateway connection ended: %v", err)
 			}
 			release()
@@ -247,7 +265,7 @@ func (s *Server) Serve(ctx context.Context, listener net.Listener) error {
 	}
 }
 
-func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.ServerConfig, releasePreAuth func()) error {
+func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.ServerConfig, releasePreAuth func(), preAuthSources *sshgateway.SourceLimiter) error {
 	defer raw.Close()
 	_ = raw.SetDeadline(time.Now().Add(s.HandshakeTimeout))
 	transport, err := proxyproto.Wrap(raw, s.TrustedProxies)
@@ -255,16 +273,38 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		releasePreAuth()
 		return err
 	}
+	// Round-11 #2: per-source fairness inside the global pre-auth pool. The
+	// wrap has resolved the real client (Traefik-asserted for trusted peers, the
+	// immediate peer otherwise); a source at its cap is shed here, before the
+	// handshake reads anything.
+	source := ""
+	if addr, err := proxyproto.RemoteIP(transport.RemoteAddr()); err == nil {
+		source = addr.String()
+	}
+	if !preAuthSources.Acquire(source) {
+		s.Metrics.LimitRejected("preauth_source")
+		releasePreAuth()
+		return errors.New("pre-auth per-source connection limit reached")
+	}
+	sourceReleased := false
+	releaseSource := func() {
+		if !sourceReleased {
+			sourceReleased = true
+			preAuthSources.Release(source)
+		}
+	}
 	conn, channels, requests, err := ssh.NewServerConn(transport, config)
 	if err != nil {
 		releasePreAuth()
+		releaseSource()
 		return err
 	}
 	defer conn.Close()
 	_ = raw.SetDeadline(time.Time{})
 	// Handshake done: the authenticated session limiter now bounds this
-	// connection, so free the pre-auth slot for the next incoming handshake.
+	// connection, so free the pre-auth slots for the next incoming handshake.
 	releasePreAuth()
+	releaseSource()
 
 	subject := conn.Permissions.Extensions[permissionSubject]
 	fingerprint := conn.Permissions.Extensions[permissionFingerprint]

@@ -73,6 +73,17 @@ func TestRejectProtectedSecretRefs(t *testing.T) {
 			a.Spec.Env = []appv1alpha1.EnvVar{{Name: "X", ValueFrom: &appv1alpha1.EnvVarSource{
 				SecretKeyRef: &appv1alpha1.SecretKeySelector{Name: "bex-tenant-postgres", Key: "AWS_SECRET_ACCESS_KEY"}}}}
 		},
+		// Round-11 #1: the pending-projection annotations are runtime Secret
+		// references exactly like the spec fields (runtimeEnvSecret projects
+		// pending-env-secret into envFrom; secretFileMounts projects
+		// pending-files-secret into the /etc/secrets volume) — the validator
+		// must refuse them too.
+		"pending-env annotation": func(a *appv1alpha1.App) {
+			a.Annotations = map[string]string{appv1alpha1.PendingEnvSecretAnnotation: "bex-tenant-postgres"}
+		},
+		"pending-files annotation": func(a *appv1alpha1.App) {
+			a.Annotations = map[string]string{appv1alpha1.PendingFilesSecretAnnotation: "bex-tenant-postgres"}
+		},
 	} {
 		t.Run("rejects "+name, func(t *testing.T) {
 			app := base()
@@ -91,6 +102,42 @@ func TestRejectProtectedSecretRefs(t *testing.T) {
 	}
 	if err := r.rejectProtectedSecretRefs(context.Background(), base()); err != nil {
 		t.Fatalf("App with no secret references was refused: %v", err)
+	}
+}
+
+// TestRejectConfiguredOperationalSecretNames is the round-11 #1 guard for the
+// out-of-band operational Secrets: the shared registry pull/push credentials,
+// build-namespace pull credential, and tenant signing key are created by
+// scripts, so nothing stamps the protected label on them. The operator knows
+// their configured names and refuses them by name — no Secret lookup needed,
+// so the denial holds even before the Secret exists.
+func TestRejectConfiguredOperationalSecretNames(t *testing.T) {
+	scheme := protectedSecretScheme(t)
+	buildClient := fake.NewClientBuilder().WithScheme(scheme).Build()
+	r := &AppReconciler{
+		Client:              buildClient,
+		BuildClient:         buildClient,
+		RegistryPullSecret:  "zot-shared-pull",
+		RegistryPushSecret:  "bex-registry-push",
+		TenantSignKeySecret: "bex-tenant-sign",
+	}
+	app := func(field func(*appv1alpha1.App)) *appv1alpha1.App {
+		a := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-web"}}
+		field(a)
+		return a
+	}
+	for name, mutate := range map[string]func(*appv1alpha1.App){
+		"shared pull secret": func(a *appv1alpha1.App) { a.Spec.EnvFromSecret = "zot-shared-pull" },
+		"push secret":        func(a *appv1alpha1.App) { a.Spec.EnvFromSecrets = []string{"bex-registry-push"} },
+		"tenant signing key": func(a *appv1alpha1.App) {
+			a.Spec.FilesFromSecrets = []string{"bex-tenant-sign"}
+		},
+	} {
+		t.Run("rejects "+name, func(t *testing.T) {
+			if err := r.rejectProtectedSecretRefs(context.Background(), app(mutate)); err == nil {
+				t.Fatalf("%s reference was ACCEPTED — operational credential exfil", name)
+			}
+		})
 	}
 }
 

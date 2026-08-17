@@ -57,6 +57,23 @@ func (adminChecker) Check(_ context.Context, subject, relation, _ string) (bool,
 	return true, nil
 }
 
+// staleAdminChecker models a just-demoted administrator through the two API
+// replica caches: Check (the cached path another replica primed) still says
+// yes, CheckFresh (the authoritative decision) says no. Round-11 #5: the
+// cross-owner override must consult the fresh one.
+type staleAdminChecker struct{}
+
+func (staleAdminChecker) Check(_ context.Context, subject, relation, _ string) (bool, error) {
+	if relation == core.RelCanManage {
+		return subject == "user:id-admin", nil
+	}
+	return true, nil
+}
+
+func (staleAdminChecker) CheckFresh(_ context.Context, _, relation, _ string) (bool, error) {
+	return relation != core.RelCanManage, nil
+}
+
 type egressCall struct {
 	op, namespace, session, modelEndpoint string
 	extra                                 []string
@@ -382,6 +399,50 @@ func TestOwnerBoundaryAndWorkspaceAdminOverride(t *testing.T) {
 type staticKey string
 
 func (k staticKey) WorkspaceKey(context.Context, string) (string, error) { return string(k), nil }
+
+// TestStaleAdminOverrideUsesFreshDecision (round-11 #5): a demoted admin whose
+// can_manage positive is still live in another replica's cache must NOT retain
+// the cross-owner override — reads, lifecycle verbs, and exec all route through
+// ownedSandbox's fresh isWorkspaceAdmin, so every one fails closed as a
+// non-enumerating not-found while the owner's own access is untouched.
+func TestStaleAdminOverrideUsesFreshDecision(t *testing.T) {
+	var deletes int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-b":
+			_, _ = w.Write([]byte(`{"id":"os-b","metadata":{"bex.co/owner":"id-b","bex.co/workspace":"tea-a","bex.co/network-policy":"deny-all","app.bex.co/regime":"sandbox"},"status":{"state":"Running"}}`))
+		case r.Method == http.MethodDelete && r.URL.Path == "/sandboxes/os-b":
+			deletes++
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	svc := &Service{
+		Base: &core.Base{
+			Namespace: "default",
+			Workspace: fakeWorkspace{"id-a": "tea-a", "id-b": "tea-a", "id-admin": "tea-a"},
+			Authz:     staleAdminChecker{},
+		},
+		Client: NewClient(srv.URL),
+	}
+
+	if _, err := svc.Get(identityCtx("id-admin"), "os-b"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("stale-admin cross-owner get = %v, want non-enumerating not found", err)
+	}
+	if err := svc.Terminate(identityCtx("id-admin"), "os-b"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("stale-admin cross-owner terminate = %v, want non-enumerating not found", err)
+	}
+	if deletes != 0 {
+		t.Fatalf("stale-admin terminate issued %d delete(s)", deletes)
+	}
+	// The owner's own path never consults the admin override.
+	if _, err := svc.Get(identityCtx("id-b"), "os-b"); err != nil {
+		t.Fatalf("owner get despite stale admin: %v", err)
+	}
+}
 
 func contains(s, sub string) bool {
 	for i := 0; i+len(sub) <= len(s); i++ {

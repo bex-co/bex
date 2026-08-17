@@ -206,6 +206,12 @@ func sandboxNotFound(id string) error {
 	return core.NewNotFoundError("SANDBOX_NOT_FOUND", "sandbox not found", map[string]any{"id": id})
 }
 
+// isWorkspaceAdmin answers the cross-owner admin override with an authoritative
+// (uncached) decision whenever the wired checker supports core.FreshChecker
+// (round-11 #5): the override gates exec-ticket minting and lifecycle mutation
+// in another member's sandbox, so a just-demoted admin must not ride a positive
+// cached on a different API replica for up to core.PositiveTTL. An uncached
+// checker is already authoritative and degrades to plain Check.
 func (s *Service) isWorkspaceAdmin(ctx context.Context, workspace string) (bool, error) {
 	if s.Authz == nil {
 		return false, nil
@@ -214,7 +220,11 @@ func (s *Service) isWorkspaceAdmin(ctx context.Context, workspace string) (bool,
 	if !ok {
 		return false, core.ErrForbidden
 	}
-	allowed, err := s.Authz.Check(ctx, "user:"+id.Subject, core.RelCanManage, core.WorkspaceObject(workspace))
+	check := s.Authz.Check
+	if fresh, ok := s.Authz.(core.FreshChecker); ok {
+		check = fresh.CheckFresh
+	}
+	allowed, err := check(ctx, "user:"+id.Subject, core.RelCanManage, core.WorkspaceObject(workspace))
 	if err != nil {
 		return false, fmt.Errorf("%w: %v", core.ErrAuthzUnavailable, err)
 	}

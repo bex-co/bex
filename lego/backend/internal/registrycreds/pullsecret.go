@@ -142,6 +142,15 @@ func (s *Service) materializePullSecret(ctx context.Context, workspaceID string,
 	// this Secret by its deterministic name instead of relying on the App CR's
 	// delete cascade to reach it.
 	if _, err := controllerutil.CreateOrUpdate(ctx, s.Client, sec, func() error {
+		// Round-11 #1: the workspace's external-registry credential is
+		// operational — an App naming this Secret in envFrom would dump the
+		// dockerconfig into its environment. The operator's App reconcile
+		// refuses references to Secrets carrying this label; imagePullSecret
+		// resolution ignores labels.
+		if sec.Labels == nil {
+			sec.Labels = map[string]string{}
+		}
+		sec.Labels[appv1alpha1.LabelProtectedFromTenantMount] = appv1alpha1.ProtectedFromTenantMount
 		sec.Type = corev1.SecretTypeDockerConfigJson
 		sec.Data = map[string][]byte{corev1.DockerConfigJsonKey: auths}
 		return nil

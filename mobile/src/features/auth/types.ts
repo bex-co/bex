@@ -57,4 +57,11 @@ export interface OAuthTransport {
   completeAuthorization(redirectUrl: string): Promise<OAuthTokenSet>;
   refresh(refreshToken: string): Promise<OAuthTokenSet>;
   revoke(accessToken: string): Promise<void>;
+  /**
+   * Drops any memoized callback completion and pending authorization state.
+   * Called on every terminal session boundary (sign-out, forced account
+   * clear) so a replayed deep link cannot resurrect the previous login's
+   * token set (round-11 #10). Optional so test fakes stay minimal.
+   */
+  reset?(): void;
 }

@@ -135,3 +135,60 @@ func (l *ChannelLimiter) ReleaseChannel(subject string) {
 		delete(l.perIdentity, subject)
 	}
 }
+
+// SourceLimiter bounds concurrent in-flight entries per SOURCE address. The
+// native-SSH pre-auth pool is global (MaxPreAuthConns), and a global-only cap
+// admits admission starvation: one unauthenticated source holding every slot
+// with silent connections forces the gateway to shed everyone else's handshakes
+// for the full HandshakeTimeout (round-11 #2). The per-source cap is acquired
+// after the PROXY protocol header resolves the real client (Traefik asserts it;
+// an untrusted peer keys on its own address), so one source — however many
+// sockets it opens — can only ever occupy maxPerSource of the global pool. The
+// same shape the pg/kv SNI proxies and the git/model proxies already enforce.
+type SourceLimiter struct {
+	maxPerSource int
+
+	mu    sync.Mutex
+	count map[string]int
+}
+
+// NewSourceLimiter builds a per-source limiter; a non-positive value takes the
+// default (32 — BEX_SSH_MAX_PREAUTH_CONNS_PER_SOURCE). 0 never happens via the
+// env wiring (the default), but -1 explicitly disables per-source fairness,
+// restoring the global-only behavior.
+func NewSourceLimiter(maxPerSource int) *SourceLimiter {
+	if maxPerSource == 0 {
+		maxPerSource = 32
+	}
+	return &SourceLimiter{
+		maxPerSource: maxPerSource,
+		count:        map[string]int{},
+	}
+}
+
+// Acquire reserves one slot for source. false means the source is at its cap.
+func (l *SourceLimiter) Acquire(source string) bool {
+	if l.maxPerSource < 0 {
+		return true // disabled
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.count[source] >= l.maxPerSource {
+		return false
+	}
+	l.count[source]++
+	return true
+}
+
+// Release returns source's slot acquired by a successful Acquire.
+func (l *SourceLimiter) Release(source string) {
+	if l.maxPerSource < 0 {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.count[source]--
+	if l.count[source] <= 0 {
+		delete(l.count, source)
+	}
+}

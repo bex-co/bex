@@ -329,6 +329,46 @@ func (s *Service) ListExports(ctx context.Context, name string) ([]ExportView, e
 	return out, nil
 }
 
+// maxTerminalExportHistory bounds how many TERMINAL exports (failed/expired)
+// stay in spec.exports once newer ones exist (round-11 #9): every non-terminal
+// phase is always kept. Without the bound, spec.exports grows append-only, so
+// repeated create-export requests bloat the Database CR (etcd object size) and
+// make every reconcile and list traversal cost O(all history).
+const maxTerminalExportHistory = 10
+
+// pruneTerminalExports keeps every non-terminal request plus the most recent
+// maxTerminalExportHistory terminal ones. Requests append in order, so the
+// newest terminals are the last in the list; an entry whose status has not
+// caught up yet is non-terminal by definition and always kept. Artifacts of
+// pruned entries are unaffected: expiry is driven by the operator from the
+// entries it already observed.
+func pruneTerminalExports(spec []appv1alpha1.DatabaseExportRequest, statusByID map[string]appv1alpha1.DatabaseExportPhase) []appv1alpha1.DatabaseExportRequest {
+	terminal := func(id string) bool {
+		phase, observed := statusByID[id]
+		return observed && (phase == appv1alpha1.DatabaseExportFailed || phase == appv1alpha1.DatabaseExportExpired)
+	}
+	var terminalIdx []int
+	for i, request := range spec {
+		if terminal(request.ID) {
+			terminalIdx = append(terminalIdx, i)
+		}
+	}
+	if len(terminalIdx) <= maxTerminalExportHistory {
+		return spec
+	}
+	drop := make(map[int]bool, len(terminalIdx)-maxTerminalExportHistory)
+	for _, i := range terminalIdx[:len(terminalIdx)-maxTerminalExportHistory] {
+		drop[i] = true
+	}
+	kept := make([]appv1alpha1.DatabaseExportRequest, 0, len(spec)-len(drop))
+	for i, request := range spec {
+		if !drop[i] {
+			kept = append(kept, request)
+		}
+	}
+	return kept
+}
+
 // CreateExport appends logical-export intent to the Database CR. The operator
 // owns the pg_dump/upload Job and writes the lifecycle back to status; bex-api
 // never handles dump bytes. Render permits only one in-progress export per DB.
@@ -358,7 +398,8 @@ func (s *Service) CreateExport(ctx context.Context, name string) (ExportView, er
 	now := s.Now().UTC()
 	exportID := id.New(id.Export)
 	requestedAt := now.Format(time.RFC3339)
-	d.Spec.Exports = append(d.Spec.Exports, appv1alpha1.DatabaseExportRequest{ID: exportID, RequestedAt: requestedAt})
+	pruned := pruneTerminalExports(d.Spec.Exports, statusByID)
+	d.Spec.Exports = append(pruned, appv1alpha1.DatabaseExportRequest{ID: exportID, RequestedAt: requestedAt})
 	resourcemeta.Touch(d, now)
 	if err := s.Client.Update(ctx, d); err != nil {
 		return ExportView{}, err

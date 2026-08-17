@@ -1014,6 +1014,8 @@ func wireAgentSessions(deps *api.Deps) {
 	deps.AgentSandboxIdleTTL = zeroableDurationEnv("BEX_AGENT_SANDBOX_IDLE_TTL", 30*time.Minute)
 	deps.AgentMaxLiveSandboxesPerWorkspace = zeroableIntEnv("BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE", 5)
 	deps.MaxBlueprintGroupings = zeroableIntEnv("BEX_MAX_BLUEPRINT_GROUPINGS", 1000)
+	// Round-11 #3: per-workspace env-group quota (default 100; 0 disables).
+	deps.MaxEnvGroupsPerWorkspace = zeroableIntEnv("BEX_MAX_ENV_GROUPS_PER_WORKSPACE", 100)
 	// ADR059 D3/D5 hibernation (w2/m68): the object store enables the Hibernated
 	// tier (reclaim → snapshot, resume → rehydrate). Unset ⇒ the whole tier is off
 	// and reclaim stays Terminate (byte-identical to w2/m67).

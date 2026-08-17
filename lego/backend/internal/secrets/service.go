@@ -299,6 +299,11 @@ func (s *Service) SetEnvVars(ctx context.Context, service string, vars []EnvVarV
 		}
 		env[key] = value
 	}
+	// Round-11 #6: the whole replacement map must fit the aggregate quota
+	// before anything is written.
+	if err := envMapWithinQuota(env); err != nil {
+		return nil, err
+	}
 	if err := s.storeMap(ctx, envPath(service), env); err != nil {
 		return nil, err
 	}
@@ -338,15 +343,26 @@ func (s *Service) SetEnvVar(ctx context.Context, service, key string, write EnvV
 	if err != nil {
 		return EnvVarView{}, err
 	}
+	// Round-11 #6: enforce the aggregate quota inside the CAS mutate so it is
+	// re-checked against the fresh map on every retry; a quota breach mutates
+	// nothing (changed=false) and surfaces after the loop.
+	var quota error
 	env, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
 		if v, ok := current[key]; ok && v == value {
 			return false // no change
 		}
 		current[key] = value
+		if err := envMapWithinQuota(current); err != nil {
+			quota = err
+			return false
+		}
 		return true
 	})
 	if err != nil {
 		return EnvVarView{}, err
+	}
+	if quota != nil {
+		return EnvVarView{}, quota
 	}
 	if err := s.materializeEnv(ctx, a, env); err != nil {
 		return EnvVarView{}, err
@@ -428,6 +444,12 @@ func (s *Service) SeedEnvVars(ctx context.Context, service string, literals map[
 	if !changed {
 		return nil // every key already seeded — no Secret write, no roll
 	}
+	// Round-11 #6: the merged map must fit the aggregate quota (a blueprint
+	// seeding onto an already-large map is the same amplification a per-key
+	// write is).
+	if err := envMapWithinQuota(env); err != nil {
+		return err
+	}
 	if err := s.storeMap(ctx, envPath(service), env); err != nil {
 		return err
 	}
@@ -476,6 +498,52 @@ func (s *Service) storeMap(ctx context.Context, path string, data map[string]str
 // casMaxRetries bounds the optimistic-concurrency retry loop so a continuously
 // contended path fails rather than spinning (codex #7).
 const casMaxRetries = 3
+
+// Aggregate per-service secret-map quotas (round-11 #6): per-key writes merged
+// into one whole-map object made each write cost O(total map) in OpenBao AND in
+// the Kubernetes Secret projection, with no bound on count or bytes — repeated
+// SetEnvVar/SetSecretFile calls grew the map without limit. The byte quota
+// stays under Kubernetes' 1 MiB Secret ceiling, so a map that passes the quota
+// can always materialize; before this, a >1 MiB map wrote to OpenBao first and
+// then FAILED at the k8s projection (source/projection divergence).
+const (
+	maxEnvKeys        = 500
+	maxSecretFiles    = 500
+	maxSecretMapBytes = 512 << 10 // 512 KiB aggregate (keys + values)
+)
+
+// envMapWithinQuota reports a friendly error when an env map exceeds the
+// per-service aggregate quotas.
+func envMapWithinQuota(env map[string]string) error {
+	if len(env) > maxEnvKeys {
+		return fmt.Errorf("%w: environment variable limit of %d exceeded", core.ErrBadRequest, maxEnvKeys)
+	}
+	if mapBytes(env) > maxSecretMapBytes {
+		return fmt.Errorf("%w: total environment variable size limit of %d bytes exceeded", core.ErrBadRequest, maxSecretMapBytes)
+	}
+	return nil
+}
+
+// filesMapWithinQuota is envMapWithinQuota for a service's secret files.
+func filesMapWithinQuota(files map[string]string) error {
+	if len(files) > maxSecretFiles {
+		return fmt.Errorf("%w: secret file limit of %d exceeded", core.ErrBadRequest, maxSecretFiles)
+	}
+	if mapBytes(files) > maxSecretMapBytes {
+		return fmt.Errorf("%w: total secret file size limit of %d bytes exceeded", core.ErrBadRequest, maxSecretMapBytes)
+	}
+	return nil
+}
+
+// mapBytes measures a map's aggregate stored size: every key and value length
+// summed, the shape the KV engine and the Kubernetes projection both carry.
+func mapBytes(m map[string]string) int {
+	total := 0
+	for k, v := range m {
+		total += len(k) + len(v)
+	}
+	return total
+}
 
 // updateMapCAS performs a conflict-safe read-modify-write of one OpenBao KV path:
 // it reads the current map with its version, applies mutate, and writes back with

@@ -104,6 +104,11 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 // labelApp marks the workloads bex creates for an App.
 const labelApp = "app.bex.co/app"
 
+// createContainerConfigError is the kubelet pod-condition reason the stuck-pod
+// classifier surfaces as its own App condition (a referenced Secret/ConfigMap
+// that cannot be resolved). Named once: it is matched and re-emitted.
+const createContainerConfigError = "CreateContainerConfigError"
+
 // defaultAppsNamespace mirrors BEX_APPS_NAMESPACE's default: the shared
 // bootstrap apps namespace an unset field must never refuse.
 const defaultAppsNamespace = "default"
@@ -969,14 +974,19 @@ func (r *AppReconciler) predeployPullSecrets(ctx context.Context, app *appv1alph
 // skipped: the pod then behaves exactly as it would in-namespace (optional
 // refs tolerate it, the required one fails the pod the same way).
 // rejectProtectedSecretRefs fails the reconcile when a tenant App names an
-// operator-managed Secret marked LabelProtectedFromTenantMount in any of its
-// secret-mount fields (codex F1). It covers every kubelet-projected reference
+// operational Secret marked LabelProtectedFromTenantMount in any of its
+// secret-mount fields (codex F1), or names an operator-configured operational
+// Secret directly (round-11 #1). It covers every kubelet-projected reference
 // the App pod (or its pre-deploy Job) would resolve by name: spec.envFromSecret,
-// spec.envFromSecrets[], spec.filesFromSecrets[], and per-variable
-// env[].valueFrom.secretKeyRef. Reads use the uncached build-plane client so the
-// lookup is reliable in per-tenant namespaces the manager does not cache; a
-// referenced Secret that does not exist is not our concern here (it resolves to
-// nothing / fails the pod on its own). Zero secret references => no lookups.
+// spec.envFromSecrets[], spec.filesFromSecrets[], per-variable
+// env[].valueFrom.secretKeyRef, AND the two pending-projection annotations
+// (pending-env-secret, pending-files-secret) — runtimeEnvSecret and
+// secretFileMounts project those names exactly like the spec fields, so leaving
+// them out of the validator was a bypass. Reads use the uncached build-plane
+// client so the lookup is reliable in per-tenant namespaces the manager does
+// not cache; a referenced Secret that does not exist is not our concern here
+// (it resolves to nothing / fails the pod on its own). Zero secret references
+// => no lookups.
 func (r *AppReconciler) rejectProtectedSecretRefs(ctx context.Context, app *appv1alpha1.App) error {
 	names := make(map[string]bool)
 	add := func(n string) {
@@ -996,8 +1006,24 @@ func (r *AppReconciler) rejectProtectedSecretRefs(ctx context.Context, app *appv
 			add(e.ValueFrom.SecretKeyRef.Name)
 		}
 	}
+	// The pending annotations are runtime Secret references too (see godoc);
+	// they join the validated set so neither can smuggle a protected name.
+	add(app.Annotations[appv1alpha1.PendingEnvSecretAnnotation])
+	add(app.Annotations[appv1alpha1.PendingFilesSecretAnnotation])
 	if len(names) == 0 {
 		return nil
+	}
+	// Operator-configured operational Secrets (shared pull/push credentials,
+	// build-ns pull credential, tenant signing key) are created out of band by
+	// scripts, so no code path stamps the protected label on them — deny them
+	// by NAME, without a lookup, whether or not the Secret exists yet. They
+	// normally live in the build namespace, but with BEX_BUILD_NAMESPACE unset
+	// that IS the App namespace. Only an actual App-side reference is denied;
+	// configuring the name alone changes nothing.
+	for _, n := range []string{r.RegistryPullSecret, r.RegistryPushSecret, r.RegistryBuildPullSecret, r.TenantSignKeySecret} {
+		if n != "" && names[n] {
+			return fmt.Errorf("app references operational Secret %q which tenant workloads may not mount (round-11 #1)", n)
+		}
 	}
 	cl := r.buildPlaneClient()
 	for name := range names {
@@ -2994,7 +3020,7 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 				return "CrashLoopBackOff", msg
 			case "ImagePullBackOff", "ErrImagePull":
 				return "ImagePullBackOff", "image pull is failing: " + w.Message
-			case "CreateContainerConfigError":
+			case createContainerConfigError:
 				// The pod's configuration cannot be resolved — almost always an
 				// env var or file whose Secret/ConfigMap is absent from the
 				// service's namespace, or present without the referenced key.
@@ -3006,7 +3032,7 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 				// had no signal at all: the pod never starts, so it never crash-
 				// loops and never pulls badly, and the deploy simply timed out as
 				// an unexplained health-check failure minutes later (ADR043 D8).
-				return "CreateContainerConfigError",
+				return createContainerConfigError,
 					"container configuration cannot be resolved: " + w.Message +
 						" — a referenced Secret or ConfigMap must exist in this service's own namespace and carry the referenced key. " +
 						"A linked Postgres or Key Value provides its Secret once the instance is provisioned."
