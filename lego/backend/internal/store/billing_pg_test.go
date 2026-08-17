@@ -670,3 +670,40 @@ func TestPGStoreBillingExportRejectAmbiguityAndAuditedRepair(t *testing.T) {
 		t.Fatalf("resolved issue stats=%+v err=%v", stats, err)
 	}
 }
+
+func TestListBillingProviderMappingsFiltersByLivemode(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	testTen, err := s.CreateTenant(ctx, "mode-test", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	liveTen, err := s.CreateTenant(ctx, "mode-live", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	subless, err := s.CreateTenant(ctx, "mode-subless", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range []BillingProviderMapping{
+		{WorkspaceID: testTen.ID, CustomerID: "cus_t", SubscriptionID: "sub_t", Livemode: false},
+		{WorkspaceID: liveTen.ID, CustomerID: "cus_l", SubscriptionID: "sub_l", Livemode: true},
+		{WorkspaceID: subless.ID, CustomerID: "cus_s", Livemode: true},
+	} {
+		if err := s.UpsertBillingProviderMapping(ctx, m); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The reconcile poll must only see mappings whose mode the provider's key
+	// can retrieve — a test→live cutover's leftover test rows stay invisible
+	// to a live poller (and vice versa), and sub-less rows never poll.
+	live, err := s.ListBillingProviderMappings(ctx, true, 10)
+	if err != nil || len(live) != 1 || live[0].WorkspaceID != liveTen.ID || !live[0].Livemode {
+		t.Fatalf("live mappings = %+v err=%v, want only %s", live, err, liveTen.ID)
+	}
+	test, err := s.ListBillingProviderMappings(ctx, false, 10)
+	if err != nil || len(test) != 1 || test[0].WorkspaceID != testTen.ID || test[0].Livemode {
+		t.Fatalf("test mappings = %+v err=%v, want only %s", test, err, testTen.ID)
+	}
+}

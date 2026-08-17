@@ -848,7 +848,7 @@ func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl 
 			lifecycle = &billing.Lifecycle{Store: st, GracePeriod: grace, ExpectedLivemode: stripeClient.ExpectedLivemode()}
 			enforcer := &billing.KubernetesEnforcer{Client: cl, Store: st, Namespace: appsNS}
 			stripeLifecycleWorker = &billing.Worker{Store: st, Enforcer: enforcer}
-			stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics}
+			stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics, ExpectedLivemode: stripeClient.ExpectedLivemode()}
 			log.Printf("bex-api Stripe dunning enabled (livemode %t, grace %s, reconcile %s)", stripeClient.ExpectedLivemode(), grace, reconcileEvery)
 		}
 		if secret := os.Getenv("BEX_STRIPE_WEBHOOK_SECRET"); secret != "" {

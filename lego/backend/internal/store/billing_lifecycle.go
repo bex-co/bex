@@ -156,15 +156,18 @@ func (s *PGStore) UpsertBillingProviderMapping(ctx context.Context, m BillingPro
 	return err
 }
 
-func (s *PGStore) ListBillingProviderMappings(ctx context.Context, limit int) ([]BillingProviderMapping, error) {
+func (s *PGStore) ListBillingProviderMappings(ctx context.Context, livemode bool, limit int) ([]BillingProviderMapping, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
+	// A mapping from the other Stripe mode references objects the current
+	// client's key cannot retrieve (a test→live cutover leaves test-mode rows
+	// behind until each workspace re-onboards), so polling it can only 404.
 	rows, err := s.Pool.Query(ctx, `
 		SELECT workspace_id, customer_id, COALESCE(subscription_id, ''), livemode, updated_at
 		FROM billing_provider_mappings
-		WHERE subscription_id IS NOT NULL
-		ORDER BY updated_at, workspace_id LIMIT $1`, limit)
+		WHERE subscription_id IS NOT NULL AND livemode=$2
+		ORDER BY updated_at, workspace_id LIMIT $1`, limit, livemode)
 	if err != nil {
 		return nil, err
 	}

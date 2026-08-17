@@ -30,7 +30,7 @@ import (
 )
 
 type ReconcileStore interface {
-	ListBillingProviderMappings(context.Context, int) ([]store.BillingProviderMapping, error)
+	ListBillingProviderMappings(context.Context, bool, int) ([]store.BillingProviderMapping, error)
 	TouchBillingProviderMapping(context.Context, string, time.Time) error
 	RecordStripeBillingEvent(context.Context, store.StripeBillingEvent, time.Duration) (store.BillingLifecycle, bool, bool, error)
 }
@@ -47,6 +47,10 @@ type Reconciler struct {
 	Concurrency int
 	Clock       func() time.Time
 	Metrics     *Metrics
+	// ExpectedLivemode scopes the poll to mappings the provider's key can
+	// actually retrieve; other-mode leftovers (e.g. test rows after a live
+	// cutover) are excluded instead of 404ing every cycle.
+	ExpectedLivemode bool
 }
 
 func (r *Reconciler) now() time.Time {
@@ -68,7 +72,7 @@ func (r *Reconciler) RunOnce(ctx context.Context) error {
 	if r == nil || r.Store == nil || r.Provider == nil {
 		return fmt.Errorf("billing reconciler dependencies unavailable")
 	}
-	mappings, err := r.Store.ListBillingProviderMappings(ctx, 500)
+	mappings, err := r.Store.ListBillingProviderMappings(ctx, r.ExpectedLivemode, 500)
 	if err != nil {
 		return err
 	}
