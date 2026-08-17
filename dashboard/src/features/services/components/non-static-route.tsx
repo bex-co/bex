@@ -19,10 +19,15 @@ import { isStaticSite } from "@/features/services/lib/service-type";
 export function NonStaticRoute({
   serviceId,
   holdWhileLoading = false,
+  loadingFallback = null,
   children,
 }: {
   serviceId: string;
   holdWhileLoading?: boolean;
+  /** Held in place of `children` during the type-resolve phase (w9/m63 t003) —
+   *  a content-shaped skeleton so the tab never flashes a blank body. Defaults
+   *  to `null` for consumers that don't pass one. */
+  loadingFallback?: ReactNode;
   children: ReactNode;
 }) {
   const { service, loading } = useServer(serviceId);
@@ -32,7 +37,7 @@ export function NonStaticRoute({
     );
   }
   if (holdWhileLoading && !service && loading) {
-    return null;
+    return <>{loadingFallback}</>;
   }
   return <>{children}</>;
 }

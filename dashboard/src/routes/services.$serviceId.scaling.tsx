@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import { AutoscalingSection } from "@/features/services/components/autoscaling-section";
 import { ManualScalingSection } from "@/features/services/components/manual-scaling-section";
@@ -42,6 +43,9 @@ export function ServiceScalingPage({ serviceId }: { serviceId: string }) {
   return (
     <div className="space-y-6">
       <AutoscalingSection autoscaling={autoscaling} />
+      {/* Reserve the manual-card slot while autoscaling state resolves so the
+          card doesn't pop in and shift the layout (w9/m63 t003). */}
+      {scalable && autoscaling.loading && <CardSkeleton rows={2} />}
       {scalable && !autoscaling.loading && !autoscaling.enabled && (
         <ManualScalingSection
           serviceId={serviceId}

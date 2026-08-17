@@ -2,6 +2,7 @@ import type { LogsQuery } from "@/graphql/definitions";
 import type { LogLine } from "../types";
 import { LOG_TYPE_APP } from "../types";
 import { formatLogTimestamp } from "./format";
+import { needsAnsiParse, parseAnsi } from "./ansi";
 
 // map.ts is the log data layer: it turns bex-api's two log wire shapes — the
 // GraphQL `LogEntry` (history) and the SSE `renderLog` frame (live tail) — into
@@ -36,6 +37,8 @@ function makeLogLine(
     time: formatLogTimestamp(timestamp),
     instance,
     message,
+    // ANSI parsed once here at ingest, not per render (w9/m63 t001).
+    spans: needsAnsiParse(message) ? parseAnsi(message) : null,
     type: type || LOG_TYPE_APP,
     level: labels.level ?? "",
     method: labels.method ?? "",

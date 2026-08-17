@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { DeployLogPanel } from "../deploy-log-panel";
 import type { UseDeployLogsResult } from "../../hooks/use-deploy-logs";
 import type { LogLine } from "@/features/logs/types";
+import { needsAnsiParse, parseAnsi } from "@/features/logs/lib/ansi";
 
 const logState: UseDeployLogsResult = {
   lines: [],
@@ -142,6 +143,7 @@ describe("DeployLogPanel", () => {
       time: "20:16:14",
       instance: "",
       message,
+      spans: needsAnsiParse(message) ? parseAnsi(message) : null,
       type: "build",
       level: "",
       method: "",
