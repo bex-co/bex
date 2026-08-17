@@ -59,17 +59,17 @@ describe("SteeringComposer state routing", () => {
     expect(onSteered).toHaveBeenCalled();
   });
 
-  it("live (running) session → sends through the conversation useChat, not the mutation", async () => {
+  it("live (running) session refuses non-durable POST turns until it settles", async () => {
     const chat = chatHandle("ready");
-    const user = userEvent.setup();
     render(<SteeringComposer session={view("running")} chat={chat} />);
 
-    await user.type(screen.getByRole("textbox"), "focus on the parser");
-    await user.click(screen.getByRole("button", { name: "Send" }));
-
-    await waitFor(() =>
-      expect(chat.sendMessage).toHaveBeenCalledWith("focus on the parser"),
-    );
+    expect(screen.getByRole("textbox")).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Wait for the current turn to finish before sending a follow-up.",
+      ),
+    ).toBeInTheDocument();
+    expect(chat.sendMessage).not.toHaveBeenCalled();
     expect(steer).not.toHaveBeenCalled();
   });
 
@@ -97,17 +97,15 @@ describe("SteeringComposer state routing", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps the live path enabled but blocks submit while a turn is in flight", () => {
+  it("keeps the live path disabled while a turn is in flight", () => {
     render(
       <SteeringComposer
         session={view("running")}
         chat={chatHandle("streaming")}
       />,
     );
-    // Input stays enabled (you can compose the next message), but sending is
-    // blocked until the in-flight turn finishes.
-    expect(screen.getByRole("textbox")).not.toBeDisabled();
-    expect(screen.getByText(/A turn is in progress/)).toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toBeDisabled();
+    expect(screen.getByText(/Wait for the current turn/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sending…" })).toBeDisabled();
   });
 
@@ -175,10 +173,9 @@ describe("SteeringComposer state routing", () => {
     await waitFor(() => expect(onOptimisticSteer).toHaveBeenCalledWith(null));
   });
 
-  it("does not echo on the live (chat) path — useChat owns that optimism", async () => {
+  it("does not submit or echo on the disabled live path", () => {
     const onOptimisticSteer = vi.fn();
     const chat = chatHandle("ready");
-    const user = userEvent.setup();
     render(
       <SteeringComposer
         session={view("running")}
@@ -187,10 +184,8 @@ describe("SteeringComposer state routing", () => {
       />,
     );
 
-    await user.type(screen.getByRole("textbox"), "focus on the parser");
-    await user.click(screen.getByRole("button", { name: "Send" }));
-
-    await waitFor(() => expect(chat.sendMessage).toHaveBeenCalled());
+    expect(screen.getByRole("textbox")).toBeDisabled();
+    expect(chat.sendMessage).not.toHaveBeenCalled();
     expect(onOptimisticSteer).not.toHaveBeenCalled();
   });
 });

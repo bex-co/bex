@@ -140,8 +140,9 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 var transcriptPartGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSessionTranscriptPart",
 	Fields: graphql.Fields{
-		"seq":  &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptPart) any { return v.Seq })},
-		"turn": &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptPart) any { return v.Turn })},
+		"seq":       &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptPart) any { return v.Seq })},
+		"partIndex": &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptPart) any { return v.PartIndex })},
+		"turn":      &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptPart) any { return v.Turn })},
 		// The verbatim stored payload as JSON text — the exact bytes the stream
 		// replay would deliver; clients parse it themselves.
 		"part":      &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptPart) any { return string(v.Part) })},
@@ -149,10 +150,30 @@ var transcriptPartGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var transcriptTurnGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSessionTranscriptTurn",
+	Fields: graphql.Fields{
+		"turn":                &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.Turn })},
+		"prompt":              &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.Prompt })},
+		"deliveryMode":        &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.DeliveryMode })},
+		"transcriptComplete":  &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.TranscriptComplete })},
+		"transcriptTruncated": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.TranscriptTruncated })},
+		"truncationReason":    &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.TruncationReason })},
+		"createdAt":           &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return gqlTime(v.CreatedAt) })},
+		"completedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v TranscriptTurn) any {
+			if v.CompletedAt == nil {
+				return nil
+			}
+			return gqlTime(*v.CompletedAt)
+		})},
+	},
+})
+
 var transcriptPageGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSessionTranscriptPage",
 	Fields: graphql.Fields{
 		"parts":        &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(transcriptPartGQLType))), Resolve: gqlutil.Field(func(v TranscriptPage) any { return v.Parts })},
+		"turns":        &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(transcriptTurnGQLType))), Resolve: gqlutil.Field(func(v TranscriptPage) any { return v.Turns })},
 		"nextAfterSeq": &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptPage) any { return v.NextAfterSeq })},
 	},
 })

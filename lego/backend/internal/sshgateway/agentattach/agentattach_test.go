@@ -71,10 +71,11 @@ type fakeAttachStore struct {
 	mu     sync.Mutex
 	parts  map[string]map[int64]store.AgentSessionTranscriptPart
 	claims map[string]bool
+	turns  map[string][]store.AgentSessionTurn
 }
 
 func newFakeAttachStore() *fakeAttachStore {
-	return &fakeAttachStore{parts: map[string]map[int64]store.AgentSessionTranscriptPart{}, claims: map[string]bool{}}
+	return &fakeAttachStore{parts: map[string]map[int64]store.AgentSessionTranscriptPart{}, claims: map[string]bool{}, turns: map[string][]store.AgentSessionTurn{}}
 }
 
 func (f *fakeAttachStore) AppendAgentSessionTranscript(_ context.Context, id string, parts []store.AgentSessionTranscriptPart) error {
@@ -84,10 +85,22 @@ func (f *fakeAttachStore) AppendAgentSessionTranscript(_ context.Context, id str
 		f.parts[id] = map[int64]store.AgentSessionTranscriptPart{}
 	}
 	for _, p := range parts {
-		if _, exists := f.parts[id][p.Seq]; exists {
-			continue // idempotent on the driver-ordinal key
+		index := p.PartIndex
+		if index == 0 && p.Seq > 0 {
+			index = p.Seq
 		}
-		f.parts[id][p.Seq] = p
+		duplicate := false
+		for _, existing := range f.parts[id] {
+			if existing.Turn == p.Turn && existing.PartIndex == index {
+				duplicate = true
+			}
+		}
+		if duplicate {
+			continue
+		}
+		seq := int64(len(f.parts[id]))
+		p.Seq, p.PartIndex = seq, index
+		f.parts[id][seq] = p
 	}
 	return nil
 }
@@ -133,6 +146,24 @@ func (f *fakeAttachStore) AgentSessionTranscriptMaxSeq(_ context.Context, id str
 		}
 	}
 	return max, ok, nil
+}
+
+func (f *fakeAttachStore) AgentSessionTranscriptTurnMaxIndex(_ context.Context, id string, turn int) (int64, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	max, ok := int64(-1), false
+	for _, p := range f.parts[id] {
+		if p.Turn == turn && (!ok || p.PartIndex > max) {
+			max, ok = p.PartIndex, true
+		}
+	}
+	return max, ok, nil
+}
+
+func (f *fakeAttachStore) AgentSessionTurns(_ context.Context, id string) ([]store.AgentSessionTurn, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]store.AgentSessionTurn(nil), f.turns[id]...), nil
 }
 
 func (f *fakeAttachStore) ClaimShellNonce(_ context.Context, nonce string, _ time.Time) (bool, error) {
@@ -204,6 +235,7 @@ func turnTicket(t *testing.T, secret []byte, session string) string {
 	tok, err := agentsessionticket.Mint(secret, agentsessionticket.Claims{
 		Subject: "alice", SessionID: session, SandboxID: "sandbox-1", Pod: "sandbox-1-0",
 		Workspace: "tea-a", Namespace: "tea-a-sandbox", Action: agentsessionticket.ActionTurn,
+		Turn:     1,
 		IssuedAt: 1_800_000_000, ExpiresAt: 1_800_000_090,
 	})
 	if err != nil {
@@ -301,6 +333,41 @@ func TestAgentAttachTerminalSessionReplaysThenDone(t *testing.T) {
 	}
 	if !strings.HasSuffix(strings.TrimSpace(string(body)), "data: [DONE]") {
 		t.Fatalf("terminal stream did not end with [DONE]:\n%s", body)
+	}
+}
+
+func TestAgentAttachInterleavesDurableUserPromptsByTurn(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-00000000000000000002a"
+	st := newFakeAttachStore()
+	st.turns[session] = []store.AgentSessionTurn{
+		{SessionID: session, Turn: 1, Prompt: "first prompt", TranscriptComplete: true},
+		{SessionID: session, Turn: 2, Prompt: "second prompt", TranscriptTruncated: true, TruncationReason: "quota"},
+	}
+	_ = st.AppendAgentSessionTranscript(context.Background(), session, []store.AgentSessionTranscriptPart{
+		{Turn: 1, PartIndex: 0, Part: []byte(`{"type":"text","text":"first answer"}`)},
+		{Turn: 2, PartIndex: 0, Part: []byte(`{"type":"text","text":"second answer"}`)},
+	})
+	gw := newAttachGateway(st, fixedPodIP{err: fmt.Errorf("pod gone")}, secret, 8787)
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req.Header.Set(TicketHeader, attachTicket(t, secret, session))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	payloads := dataPayloads(string(body))
+	if len(payloads) != 6 || !strings.Contains(payloads[0], `"type":"start"`) || !strings.Contains(payloads[5], `"type":"finish"`) {
+		t.Fatalf("replay payloads = %v, want start + prompt/answer per turn + finish", payloads)
+	}
+	if !strings.Contains(payloads[1], `"type":"data-user-prompt"`) || !strings.Contains(payloads[1], `"first prompt"`) ||
+		!strings.Contains(payloads[2], `"first answer"`) ||
+		!strings.Contains(payloads[3], `"second prompt"`) || !strings.Contains(payloads[3], `"truncated":true`) ||
+		!strings.Contains(payloads[4], `"second answer"`) {
+		t.Fatalf("role/turn replay order = %v", payloads)
 	}
 }
 
@@ -869,7 +936,7 @@ func TestAgentAttachReplayOnlyTicketNeverDials(t *testing.T) {
 
 	replayTicket, err := agentsessionticket.Mint(secret, agentsessionticket.Claims{
 		Subject: "alice", SessionID: session, Workspace: "tea-a",
-		Action: agentsessionticket.ActionRead,
+		Action:   agentsessionticket.ActionRead,
 		IssuedAt: 1_800_000_000, ExpiresAt: 1_800_000_090,
 	})
 	if err != nil {
@@ -895,7 +962,7 @@ func TestAgentAttachReplayOnlyTicketNeverDials(t *testing.T) {
 	// POST with a replay-only (read) ticket is refused at the action/method gate.
 	replayTicket2, _ := agentsessionticket.Mint(secret, agentsessionticket.Claims{
 		Subject: "alice", SessionID: session, Workspace: "tea-a",
-		Action: agentsessionticket.ActionRead,
+		Action:   agentsessionticket.ActionRead,
 		IssuedAt: 1_800_000_000, ExpiresAt: 1_800_000_090,
 	})
 	post, _ := http.NewRequest(http.MethodPost, srv.URL, strings.NewReader(`{}`))

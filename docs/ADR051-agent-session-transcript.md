@@ -84,12 +84,13 @@ flowchart TB
 
 - **The Completer harvests-before-teardown** in `completion.go` `teardown`, immediately before `CancelAgentSessionSandbox`. It reads the driver's per-part log through **`ReadSessionTranscript`** — the exact same `mintAndDial` → gateway `:8081` `pods/exec` path it already uses each tick for `ReadSessionStatus`, just `tail`-ing `/var/log/bex-agent/session.jsonl` instead of `cat`-ing `status.json`. This is the decisive reliability choice: if a session finalizes at all, that exec path is working, so the harvest works too — no separate, unverified gateway→driver `:8787` dial.
 - **The driver already produces the source.** It writes every UI-message part to the log via `logPart` (`lego/agent-image/driver/src/session.ts`), redacted, and the log survives scrub (`credentials.ts` replaces credential bytes in place, never deletes). bex-api parses each `{…,"part":{…}}` line and keeps only the `.part` payload — the shape the `GET /stream` replay re-frames for a Vercel AI SDK client.
-- **Idempotent + seq-seeded.** The Completer skips a turn already present (`AgentSessionTranscriptTurnRecorded` — so a live-teed turn or a retry is a no-op) and seeds `seq` from `AgentSessionTranscriptMaxSeq`, so a redispatched (steered) turn concatenates onto prior turns instead of colliding. bex-api never gains `pods/exec` — the gateway alone holds it (unchanged ADR035 trust design).
-- **Failure is honest, never a hang.** The harvest is best-effort and logged; on any error the session still finalizes and tears down (empty transcript rather than a stranded `running` row). A lost sandbox (`ErrNotFound`) has no log to read — the same constraint the status read already lives with.
+- **Idempotent partial merge (w5/m71 amendment, 2026-08-17).** A fresh sandbox restarts its driver ordinal, so transcript identity is `(session_id, turn, part_index)` while the store allocates monotonic per-session `seq` cursors under an advisory lock. The Completer parses the whole current-turn log on every needed harvest and inserts missing local indexes. It never treats “one live-teed part exists” as proof the whole turn exists.
+- **Failure is explicit, never a hang.** The session still finalizes and tears down, but the durable turn records whether its assistant transcript is complete, truncated, and why. Provisioning, transport/read, parse/part-count, driver-log, store, and 64 MiB session-quota failures can therefore replay retained content without masquerading as complete history.
+- **One coherent bound.** The driver keeps a bounded 16 MiB JSONL log. `ReadSessionTranscript` tails the same 16 MiB and uses a dedicated 17 MiB trusted exec buffer; any buffer truncation is an error. The ordinary sandbox-exec response retains its independent 2 MiB cap.
 
-### No frontend change
+### Role-correct frontend replay
 
-The dashboard already renders terminal-session history through the `GET /stream` replay (`dashboard/src/features/agent-sessions`, `useChat` with `resume: true`); once the Completer populates `agent_session_transcripts`, "No conversation yet." is replaced by the real conversation with **zero client change**.
+The stored UI-message response chunks encode assistant output, not the submitted user role. The gateway therefore interleaves durable `agent_session_turns` as `data-user-prompt` parts and normalizes nested per-turn `start`/`finish` chunks into one response envelope. The dashboard renders those prompt parts as user messages and surfaces incomplete-history reasons. React optimistic state is only an in-flight echo, never history.
 
 ---
 
@@ -104,7 +105,7 @@ The dashboard already renders terminal-session history through the `GET /stream`
 ## Consequences
 
 - The gateway `/agent-record` route, `agentattach.Server.RecordSecret`, and `BEX_AGENT_RECORD_URL` are removed; capture is a bex-api-only concern riding the existing exec boundary. No new env var and no new gateway listener/route.
-- Phase-2 live attach is unaffected: the live tee optimizes real-time viewing; the harvest is the universal backstop; both write the same idempotent `(session_id, seq)` rows, and the turn guard keeps them from double-writing.
+- Phase-2 live attach optimizes real-time viewing; the harvest is the universal backstop; both write the same idempotent `(session_id, turn, part_index)` identity while `seq` remains the global replay cursor.
 - Retention rides the existing audit sweep (`PruneAgentSessionTranscripts`, `BEX_AUDIT_RETENTION_DAYS` lineage) and the `ON DELETE CASCADE` with the session.
-- Multi-turn/redispatch sessions concatenate because each turn's harvest seeds from `AgentSessionTranscriptMaxSeq`; the harvest is bounded (`tail -c` + a parts cap) against a pathological driver log.
-- Residual limit: capture happens at completion, so a session whose sandbox is lost before teardown (`ErrNotFound`) has no log to harvest — that one failure mode still yields an empty transcript.
+- Multi-turn/redispatch sessions concatenate by the store-allocated cursor; every driver log record carries its turn and local part index.
+- Residual limit: capture happens at completion, so a sandbox lost before teardown has no assistant log to harvest. Its accepted user prompt still survives and is settled visibly incomplete.

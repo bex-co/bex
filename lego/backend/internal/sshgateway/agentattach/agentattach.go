@@ -41,6 +41,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -125,7 +126,9 @@ var errReplayOnly = errors.New("agent attach: replay-only ticket, no pod to dial
 type Store interface {
 	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
 	AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID string) (int64, bool, error)
+	AgentSessionTranscriptTurnMaxIndex(ctx context.Context, sessionID string, turn int) (int64, bool, error)
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
+	AgentSessionTurns(ctx context.Context, sessionID string) ([]store.AgentSessionTurn, error)
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
 }
 
@@ -430,6 +433,43 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 // driver is reachable — splices the live driver stream and tees new parts into
 // the store. A terminal/gone session (ipErr) replays and closes with `[DONE]`.
 func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP string, ipErr error, sessionID string, turn int) {
+	turns, err := s.Store.AgentSessionTurns(ctx, sessionID)
+	if err != nil {
+		log.Printf("agent attach: durable turns unavailable (session=%s): %v", sessionID, err)
+		sse.errorAndDone("transcript unavailable")
+		return
+	}
+	// A UI-message response must start before custom data parts. Durable prompts
+	// are replay-adapter events (the raw assistant chunks cannot encode a user
+	// role), so establish one synthetic response message before interleaving them.
+	if len(turns) > 0 {
+		start, _ := json.Marshal(map[string]any{"type": "start", "messageId": "durable-" + sessionID})
+		if err := sse.frame(string(start)); err != nil {
+			return
+		}
+	}
+	nextTurn := 0
+	emitPromptsThrough := func(lastTurn int) bool {
+		for nextTurn < len(turns) && turns[nextTurn].Turn <= lastTurn {
+			payload, _ := json.Marshal(map[string]any{
+				"type": "data-user-prompt",
+				"data": map[string]any{
+					"turn":         turns[nextTurn].Turn,
+					"text":         turns[nextTurn].Prompt,
+					"complete":     turns[nextTurn].TranscriptComplete,
+					"settled":      turns[nextTurn].CompletedAt != nil,
+					"truncated":    turns[nextTurn].TranscriptTruncated,
+					"reason":       turns[nextTurn].TruncationReason,
+					"deliveryMode": turns[nextTurn].DeliveryMode,
+				},
+			})
+			if err := sse.frame(string(payload)); err != nil {
+				return false
+			}
+			nextTurn++
+		}
+		return true
+	}
 	// Replay the durable transcript in bounded pages rather than materializing the
 	// whole (up to 64 MiB) transcript at once (F10 follow-up). Peak memory per
 	// reader is one page, not the full session quota, so concurrent replays can't
@@ -438,7 +478,6 @@ func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP str
 	// instead of pinning them for the whole write.
 	quota := s.transcriptQuota()
 	pageBudget := s.replayPageQuota()
-	var replayedMax int64 = -1
 	var replayedBytes int64
 	after := int64(-1)
 replay:
@@ -457,40 +496,74 @@ replay:
 			break
 		}
 		for _, part := range page {
+			if !emitPromptsThrough(part.Turn) {
+				return
+			}
 			// Cap the cumulative replay at the session quota (a stored transcript
 			// that ever outgrew it is truncated rather than framed without limit).
 			if replayedBytes+int64(len(part.Part)) > quota {
 				log.Printf("agent attach: transcript replay truncated at cap (session=%s)", sessionID)
 				break replay
 			}
+			// Each driver turn carries its own start/finish chunks. The replay
+			// adapter has already opened one response message so durable prompts and
+			// all turns remain one ordered part stream; forwarding the nested
+			// structural chunks makes AI SDK duplicate cumulative messages.
+			if len(turns) > 0 && structuralUIChunk(part.Part) {
+				replayedBytes += int64(len(part.Part))
+				continue
+			}
 			if err := sse.frame(string(part.Part)); err != nil {
 				// Client gone or stalled past the write deadline: stop now so the
 				// deferred limiter release + this return free the reader's memory.
 				return
 			}
-			replayedMax = part.Seq
 			replayedBytes += int64(len(part.Part))
 		}
 		after = page[len(page)-1].Seq
 	}
+	// A prompt is durable before async dispatch, so it may legitimately have no
+	// assistant part yet (provisioning/failure). Emit it before the live splice or
+	// terminal sentinel rather than hiding the accepted user intent.
+	if !emitPromptsThrough(int(^uint(0) >> 1)) {
+		return
+	}
 	if ipErr != nil {
 		// No live driver: this is the terminal-session history path.
+		finishConversation(sse, turns)
 		sse.done()
 		return
 	}
-	if err := s.spliceDriverStream(ctx, sse, podIP, sessionID, turn, replayedMax, replayedBytes); err != nil {
+	if err := s.spliceDriverStream(ctx, sse, podIP, sessionID, turn, replayedBytes, len(turns) > 0); err != nil {
 		log.Printf("agent attach: live splice ended (session=%s): %v", sessionID, err)
 	}
+	finishConversation(sse, turns)
 	sse.done()
 }
 
+func structuralUIChunk(part []byte) bool {
+	var chunk struct {
+		Type string `json:"type"`
+	}
+	return json.Unmarshal(part, &chunk) == nil && (chunk.Type == "start" || chunk.Type == "finish")
+}
+
+func finishConversation(sse *agentSSE, turns []store.AgentSessionTurn) {
+	// No synthetic start was emitted for a legacy prompt-less transcript, so its
+	// original structural chunks remain the only safe framing.
+	if len(turns) > 0 {
+		_ = sse.frame(`{"type":"finish"}`)
+	}
+}
+
 // spliceDriverStream reads the driver's /stream (which replays its full history
-// then goes live), tees every part into the durable store keyed by the driver's
-// emission ordinal, and forwards to the client only the parts beyond what replay
-// already sent. The ordinal-keyed idempotent append means re-reading the
-// driver's replayed history (across reconnects/replicas) never duplicates a
-// stored part.
-func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, replayedMax int64, storedBytes int64) error {
+// then goes live), tees every part into the durable store under its turn-local
+// driver ordinal, and forwards only the parts beyond the persisted prefix.
+func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, storedBytes int64, adaptedReplay bool) error {
+	storedMaxIndex, _, err := s.Store.AgentSessionTranscriptTurnMaxIndex(ctx, sessionID, turn)
+	if err != nil {
+		return err
+	}
 	resp, err := s.dialDriverStream(ctx, podIP)
 	if err != nil {
 		return err
@@ -527,11 +600,14 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 		// Tee every part (idempotent on the driver-ordinal key); forward to the
 		// client only the parts replay did not already deliver.
 		if err := s.Store.AppendAgentSessionTranscript(ctx, sessionID, []store.AgentSessionTranscriptPart{
-			{Seq: ordinal, Turn: turn, Part: []byte(payload)},
+			{PartIndex: ordinal, Turn: turn, Part: []byte(payload)},
 		}); err != nil {
 			log.Printf("agent attach: tee failed (session=%s seq=%d): %v", sessionID, ordinal, err)
 		}
-		if ordinal > replayedMax {
+		// A durable turn means streamAgentAttach already emitted the replay
+		// adapter's synthetic start. Do not start/finish nested driver messages;
+		// the caller emits one finish when the splice ends.
+		if ordinal > storedMaxIndex && !(adaptedReplay && structuralUIChunk([]byte(payload))) {
 			if err := sse.frame(payload); err != nil {
 				// Client gone or stalled past the write deadline. The tee above
 				// already persisted this part; stop forwarding (the Completer's
@@ -543,8 +619,7 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 }
 
 // dialDriverStream opens the in-sandbox driver's GET /stream (which replays its
-// full history then goes live). Shared by the browser live-splice and the
-// headless recorder.
+// full history then goes live) for browser live-splice.
 func (s *Server) dialDriverStream(ctx context.Context, podIP string) (*http.Response, error) {
 	url := fmt.Sprintf("http://%s/stream", net.JoinHostPort(podIP, strconv.Itoa(s.driverPort())))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -614,6 +689,7 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 		return
 	}
 	ordinal := base
+	var partIndex int64 = -1
 	total := storedBytes
 	reader := bufio.NewReader(resp.Body)
 	for {
@@ -633,8 +709,9 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 		}
 		total += int64(len(payload))
 		ordinal++
+		partIndex++
 		if err := s.Store.AppendAgentSessionTranscript(ctx, sessionID, []store.AgentSessionTranscriptPart{
-			{Seq: ordinal, Turn: turn, Part: []byte(payload)},
+			{PartIndex: partIndex, Turn: turn, Part: []byte(payload)},
 		}); err != nil {
 			log.Printf("agent turn: tee failed (session=%s seq=%d): %v", sessionID, ordinal, err)
 		}

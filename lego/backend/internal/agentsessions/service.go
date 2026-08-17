@@ -47,6 +47,7 @@ type Store interface {
 	SetAgentSessionLifecycle(context.Context, string, string, string, string, bool) (store.AgentSession, error)
 	// Archive (ADR065 D1): the orthogonal list-state flag; never touches phase.
 	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
+	BeginAgentSessionTurn(context.Context, string, string, string, string, string) (store.AgentSession, error)
 	RecordAgentSessionDispatch(context.Context, string, string, string, string, string) (store.AgentSession, error)
 	FinalizeAgentSession(context.Context, string, string, string, string, int, json.RawMessage, string) (store.AgentSession, error)
 	DeleteAgentSession(context.Context, string) error
@@ -66,7 +67,7 @@ type Store interface {
 	// resume, pin/unpin, and the retention sweep.
 	ClaimAgentSessionForHibernation(ctx context.Context, id string) (store.AgentSession, error)
 	HibernateAgentSession(ctx context.Context, id, snapshotRef string, snapshotBytes int64, snapshotSHA string, retainUntil time.Time) (store.AgentSession, error)
-	BeginRehydrate(ctx context.Context, id string) (store.AgentSession, error)
+	BeginRehydrate(ctx context.Context, id, prompt, deliveryMode string) (store.AgentSession, error)
 	AbortRehydrate(ctx context.Context, id string) (store.AgentSession, error)
 	RehydrateAgentSession(ctx context.Context, id, sandboxID, phase, status, deliveryMode string) (store.AgentSession, error)
 	SetAgentSessionPinned(ctx context.Context, id string, pinned bool, retainUntil *time.Time) (store.AgentSession, error)
@@ -74,11 +75,11 @@ type Store interface {
 	ExpireHibernatedAgentSession(ctx context.Context, id, snapshotRef string) (store.AgentSession, error)
 	CountPinnedAgentSessions(ctx context.Context, workspaceID string) (int, error)
 	// Transcript persistence (ADR051): the Completer harvests the driver's log
-	// at completion and appends it here (idempotent, keyed by session+seq).
+	// at completion and appends it here (idempotent by session+turn+part index).
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
-	AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID string) (int64, bool, error)
+	AgentSessionTurns(ctx context.Context, sessionID string) ([]store.AgentSessionTurn, error)
+	CompleteAgentSessionTurn(ctx context.Context, sessionID string, turn int, complete, truncated bool, reason string) error
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
-	AgentSessionTranscriptTurnRecorded(ctx context.Context, sessionID string, turn int) (bool, error)
 	// Transcript read (ADR065 D2): the poll-shaped seq-keyset page backing the
 	// REST/GraphQL/MCP transcript verb (byte budget + row limit bound one page).
 	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
@@ -396,10 +397,11 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		return View{}, err
 	}
 	record, err := s.Store.CreateAgentSession(ctx, store.AgentSession{
-		WorkspaceID: workspaceID,
-		Repo:        req.Repo,
-		Branch:      req.Branch,
-		AgentConfig: config,
+		WorkspaceID:   workspaceID,
+		Repo:          req.Repo,
+		Branch:        req.Branch,
+		AgentConfig:   config,
+		InitialPrompt: strings.TrimSpace(req.AgentConfig.Task),
 	})
 	if err != nil {
 		return View{}, mapStoreError(record.ID, err)
@@ -417,6 +419,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		modelAPIKey:   modelAPIKey,
 		egress:        egressAllowlist,
 		env:           s.driverEnv(req.AgentConfig, record),
+		turn:          record.Turns,
 	}
 	s.detach(ctx, func(ctx context.Context) { s.runDispatch(ctx, record, spec) })
 	return s.toView(record)
@@ -426,12 +429,14 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 // its accepting verb (Create/Steer) through the run*/dispatch chain — the model
 // endpoint/placeholder, egress allowlist, driver env, sandbox template, and delivery mode.
 type dispatchSpec struct {
-	template      string
-	modelEndpoint string
-	modelAPIKey   string
-	egress        []string
-	env           map[string]string
-	delivery      string
+	template          string
+	modelEndpoint     string
+	modelAPIKey       string
+	egress            []string
+	env               map[string]string
+	delivery          string
+	turn              int
+	previousSandboxID string
 }
 
 // runDispatch executes the slow sandbox-provisioning half of a create/steer turn
@@ -459,12 +464,14 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		// w3/m43 live E2E. Never logs the model placeholder or any env value.
 		log.Printf("agent-session dispatch: sandbox create failed (session=%s repo=%s): %v", record.ID, record.Repo, err)
 		s.setLifecycleIfActive(ctx, record.ID, "", PhaseFailed, "sandbox create failed")
+		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox provisioning failed")
 		return store.AgentSession{}, err
 	}
 	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID, spec.modelEndpoint, spec.egress); err != nil {
 		log.Printf("agent-session dispatch: egress phase transition failed (session=%s): %v", record.ID, err)
 		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
 		s.setLifecycleIfActive(ctx, record.ID, sb.ID, PhaseFailed, "egress phase transition failed")
+		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox egress transition failed")
 		return store.AgentSession{}, err
 	}
 	phase := PhaseCreating
@@ -477,9 +484,19 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 	record, err = s.Store.RecordAgentSessionDispatch(ctx, record.ID, sb.ID, phase, string(sb.Status), spec.delivery)
 	if err != nil {
 		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
+		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox dispatch record failed")
 		return store.AgentSession{}, mapStoreError(record.ID, err)
 	}
 	return record, nil
+}
+
+func (s *Service) settleDispatchTurn(ctx context.Context, sessionID string, turn int, reason string) {
+	if turn <= 0 {
+		return
+	}
+	if err := s.Store.CompleteAgentSessionTurn(ctx, sessionID, turn, false, false, reason); err != nil {
+		log.Printf("agent-session dispatch: turn completeness write failed (session=%s turn=%d): %v", sessionID, turn, err)
+	}
 }
 
 // Capabilities projects the workspace's mobile-safe agent-composer readiness
@@ -774,7 +791,24 @@ func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int
 			return TranscriptPage{}, mapStoreError(sessionID, err)
 		}
 	}
-	page := TranscriptPage{Parts: make([]TranscriptPart, 0, len(parts)), NextAfterSeq: afterSeq}
+	turnRows, err := s.Store.AgentSessionTurns(ctx, sessionID)
+	if err != nil {
+		return TranscriptPage{}, err
+	}
+	page := TranscriptPage{
+		Parts:        make([]TranscriptPart, 0, len(parts)),
+		Turns:        make([]TranscriptTurn, 0, len(turnRows)),
+		NextAfterSeq: afterSeq,
+	}
+	for _, turn := range turnRows {
+		page.Turns = append(page.Turns, TranscriptTurn{
+			Turn: turn.Turn, Prompt: turn.Prompt, DeliveryMode: turn.DeliveryMode,
+			TranscriptComplete:  turn.TranscriptComplete,
+			TranscriptTruncated: turn.TranscriptTruncated,
+			TruncationReason:    turn.TruncationReason, CreatedAt: turn.CreatedAt,
+			CompletedAt: turn.CompletedAt,
+		})
+	}
 	for _, p := range parts {
 		part := json.RawMessage(p.Part)
 		if !json.Valid(part) {
@@ -783,7 +817,7 @@ func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int
 			quoted, _ := json.Marshal(string(p.Part))
 			part = quoted
 		}
-		page.Parts = append(page.Parts, TranscriptPart{Seq: p.Seq, Turn: p.Turn, Part: part, CreatedAt: p.CreatedAt})
+		page.Parts = append(page.Parts, TranscriptPart{Seq: p.Seq, PartIndex: p.PartIndex, Turn: p.Turn, Part: part, CreatedAt: p.CreatedAt})
 		page.NextAfterSeq = p.Seq
 	}
 	return page, nil
@@ -908,14 +942,19 @@ func (s *Service) rehydrate(ctx context.Context, record store.AgentSession, stee
 	}
 	// Claim the row (hibernated → resuming). The snapshot stays on the row so a
 	// background failure can AbortRehydrate back to hibernated and retry later.
-	record, err = s.Store.BeginRehydrate(ctx, record.ID)
+	record, err = s.Store.BeginRehydrate(ctx, record.ID, steerPrompt, delivery)
 	if err != nil {
 		return View{}, mapStoreError(record.ID, err)
 	}
 	env := s.driverEnv(config, record)
 	env[restoreEnvVar] = restoreURL
+	// Resume is restore-only: never rerun config.Task. A hibernated Steer carries
+	// exactly the durable prompt inserted by BeginRehydrate above.
+	env["BEX_AGENT_PROMPT"] = steerPrompt
+	acceptedTurn := 0
 	if steerPrompt != "" {
-		env["BEX_AGENT_PROMPT"] = steerPrompt
+		env["BEX_AGENT_TURN"] = fmt.Sprintf("%d", record.Turns)
+		acceptedTurn = record.Turns
 	}
 	spec := dispatchSpec{
 		template:      strings.TrimSpace(config.Template),
@@ -924,6 +963,7 @@ func (s *Service) rehydrate(ctx context.Context, record store.AgentSession, stee
 		egress:        egressAllowlist,
 		env:           env,
 		delivery:      delivery,
+		turn:          acceptedTurn,
 	}
 	s.detach(ctx, func(ctx context.Context) { s.runRehydrate(ctx, record, spec) })
 	return s.toView(record)
@@ -944,12 +984,14 @@ func (s *Service) runRehydrate(ctx context.Context, record store.AgentSession, s
 	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, ws, spec.template, record.ID, record.Repo, record.Branch, spec.modelEndpoint, spec.modelAPIKey, spec.egress, spec.env)
 	if err != nil {
 		log.Printf("agent-session rehydrate: sandbox create failed (session=%s): %v", record.ID, err)
+		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox restore provisioning failed")
 		s.abortRehydrate(ctx, record.ID)
 		return
 	}
 	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID, spec.modelEndpoint, spec.egress); err != nil {
 		log.Printf("agent-session rehydrate: egress phase transition failed (session=%s): %v", record.ID, err)
 		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
+		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox restore egress transition failed")
 		s.abortRehydrate(ctx, record.ID)
 		return
 	}
@@ -960,6 +1002,7 @@ func (s *Service) runRehydrate(ctx context.Context, record store.AgentSession, s
 	if _, err := s.Store.RehydrateAgentSession(ctx, record.ID, sb.ID, phase, string(sb.Status), spec.delivery); err != nil {
 		log.Printf("agent-session rehydrate: record dispatch failed (session=%s): %v", record.ID, err)
 		_ = s.Sandbox.CancelAgentSessionSandbox(ctx, ws, record.ID, sb.ID)
+		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox restore dispatch record failed")
 		s.abortRehydrate(ctx, record.ID)
 		return
 	}
@@ -1144,6 +1187,7 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[s
 		"BEX_AGENT_SESSION_ID":       record.ID,
 		"BEX_AGENT_REPOSITORY":       record.Repo,
 		"BEX_AGENT_GRANT_PUBLIC_KEY": s.driverGrantPublicKey(),
+		"BEX_AGENT_TURN":             fmt.Sprintf("%d", max(1, record.Turns)),
 	}
 	if base := s.modelProxyBaseURL(); base != "" {
 		// The per-session model base URL carries no credential; the driver appends
@@ -1241,19 +1285,22 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	record, err = s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseRedispatching, "redispatching", false)
+	previousSandboxID := record.SandboxID
+	record, err = s.Store.BeginAgentSessionTurn(ctx, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching")
 	if err != nil {
 		return View{}, mapStoreError(record.ID, err)
 	}
 	env := s.driverEnv(config, record)
 	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task
 	spec := dispatchSpec{
-		template:      strings.TrimSpace(config.Template),
-		modelEndpoint: modelEndpoint,
-		modelAPIKey:   modelAPIKey,
-		egress:        egressAllowlist,
-		env:           env,
-		delivery:      DeliveryRedispatch,
+		template:          strings.TrimSpace(config.Template),
+		modelEndpoint:     modelEndpoint,
+		modelAPIKey:       modelAPIKey,
+		egress:            egressAllowlist,
+		env:               env,
+		delivery:          DeliveryRedispatch,
+		turn:              record.Turns,
+		previousSandboxID: previousSandboxID,
 	}
 	// Accept fast: tear the previous turn's sandbox down and re-dispatch a fresh
 	// one in the background. In phase 1 a new prompt can't ride the old sandbox
@@ -1267,10 +1314,11 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 // runSteerDispatch tears the previous turn's sandbox down (idempotent) then
 // re-dispatches a fresh one for the steering prompt, in the background.
 func (s *Service) runSteerDispatch(ctx context.Context, record store.AgentSession, spec dispatchSpec) {
-	if record.SandboxID != "" {
-		if err := s.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID); err != nil {
-			log.Printf("agent-session steer: teardown of previous sandbox failed (session=%s sandbox=%s): %v", record.ID, record.SandboxID, err)
+	if spec.previousSandboxID != "" {
+		if err := s.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, spec.previousSandboxID); err != nil {
+			log.Printf("agent-session steer: teardown of previous sandbox failed (session=%s sandbox=%s): %v", record.ID, spec.previousSandboxID, err)
 			s.setLifecycleIfActive(ctx, record.ID, "", PhaseFailed, "steer teardown failed")
+			s.settleDispatchTurn(ctx, record.ID, spec.turn, "previous sandbox teardown failed")
 			return
 		}
 	}
@@ -1346,10 +1394,15 @@ func (s *Service) AttachTicket(ctx context.Context, sessionID, action string) (V
 		if err := s.RequireBillingMutation(ctx, record.WorkspaceID); err != nil {
 			return View{}, err
 		}
+		// w5/m71: the gateway POST path cannot transactionally persist a prompt
+		// with the control-plane lifecycle and turn counter. Refuse it rather than
+		// accept work that disappears on refresh; follow-ups use Steer after the
+		// current turn settles.
+		return View{}, core.NewConflictError("AGENT_SESSION_LIVE_TURN_UNAVAILABLE",
+			"wait for the current turn to finish, then steer the session", map[string]any{"phase": record.Phase})
 	}
 	return s.withTicket(ctx, record, action)
 }
-
 
 func (s *Service) withTicket(ctx context.Context, record store.AgentSession, action string) (View, error) {
 	identity, ok := core.IdentityFrom(ctx)
@@ -1441,6 +1494,12 @@ func viewOf(record store.AgentSession) (View, error) {
 }
 
 func mapStoreError(id string, err error) error {
+	if errors.Is(err, store.ErrAgentSessionPromptQuota) {
+		return core.NewConflictError("AGENT_SESSION_PROMPT_QUOTA", "agent session prompt history has reached its byte limit", map[string]any{"id": id, "maxBytes": store.MaxAgentSessionPromptBytes})
+	}
+	if errors.Is(err, store.ErrAgentSessionTurnState) {
+		return core.NewConflictError("AGENT_SESSION_TURN_IN_FLIGHT", "a turn is already running; wait for it to finish before steering", map[string]any{"id": id})
+	}
 	if errors.Is(err, store.ErrNotFound) {
 		return core.NewNotFoundError("AGENT_SESSION_NOT_FOUND", "agent session not found", map[string]any{"id": id})
 	}

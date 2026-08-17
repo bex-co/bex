@@ -417,6 +417,11 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Steering composer — disabled reason when the m43 stream is down",
   },
+  "agentSessions.steerDisabledWaitForTurn": {
+    message: "请等待当前轮次结束后再发送后续消息。",
+    description:
+      "Composer disabled reason while the current durable agent turn is running",
+  },
   "agentSessions.steerDisabledInFlight": {
     message: "有一轮正在进行。请等待其完成后再发送。",
     description: "Steering composer — disabled reason while a turn streams",
@@ -499,6 +504,11 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.conversationEnded": {
     message: "会话已结束。",
     description: "Footer note under a terminal session's replayed transcript",
+  },
+  "agentSessions.conversationIncomplete": {
+    message: "部分智能体输出未能完整保存",
+    description:
+      "Warning below a durable user turn whose assistant transcript is incomplete",
   },
   "agentSessions.conversationUnavailable": {
     message: "对话流当前不可用。",

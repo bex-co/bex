@@ -40,6 +40,7 @@ GRANT INSERT ON audit_events TO __ROLE__;
 -- the gateway's, so a stolen gateway credential can neither rewrite nor purge a
 -- transcript.
 GRANT SELECT, INSERT ON agent_session_transcripts TO __ROLE__;
+GRANT SELECT ON agent_session_turns TO __ROLE__;
 
 -- The agent-session row (ADR054 D7): the "Open in Zed" SSH resolver reads the
 -- session by its ags-<id> username (GetAgentSession) to derive the sandbox pod

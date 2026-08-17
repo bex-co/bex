@@ -19,6 +19,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -27,16 +28,43 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
+// MaxAgentSessionPromptBytes caps all durable user intent for one session.
+// Individual prompts are already limited to 100 KiB at the API and schema;
+// this aggregate bound prevents an unbounded number of valid turns from
+// growing Postgres independently of the assistant-transcript quota.
+const MaxAgentSessionPromptBytes = 8 << 20
+
+var (
+	ErrAgentSessionPromptQuota = fmt.Errorf("agent session prompt byte quota reached: %w", ErrConflict)
+	ErrAgentSessionTurnState   = fmt.Errorf("agent session cannot accept another turn in its current state: %w", ErrConflict)
+)
+
 // AgentSessionTranscriptPart is one durable UI-message-stream part (ADR047 D9,
-// w3/m43). Seq is the driver's emission ordinal on the /stream the gateway
-// proxies (0-based, stable across replays and replicas); Turn is the session
-// turn the part belongs to; Part is the verbatim `data:` payload — the exact
-// bytes forwarded to a Vercel AI SDK client.
+// w3/m43, amended by w5/m71). Seq is the store-allocated monotonic replay
+// cursor; PartIndex is the driver's turn-local emission ordinal. Part is the
+// verbatim `data:` payload forwarded to a Vercel AI SDK client.
 type AgentSessionTranscriptPart struct {
 	Seq       int64
+	PartIndex int64
 	Turn      int
 	Part      json.RawMessage
 	CreatedAt time.Time
+}
+
+// AgentSessionTurn is the durable user intent for one accepted agent turn.
+// Assistant output stays in AgentSessionTranscriptPart so the gateway can replay
+// its exact wire bytes; this row supplies the role and completeness facts the
+// byte stream itself cannot encode.
+type AgentSessionTurn struct {
+	SessionID           string
+	Turn                int
+	Prompt              string
+	DeliveryMode        string
+	TranscriptComplete  bool
+	TranscriptTruncated bool
+	TruncationReason    string
+	CreatedAt           time.Time
+	CompletedAt         *time.Time
 }
 
 // AgentSession is the durable control-plane record for one cloud coding-agent
@@ -76,6 +104,9 @@ type AgentSession struct {
 	// NULL ⇒ the session is in the working set; set ⇒ it is archived (hidden from
 	// the default list, mutation verbs refused) but still viewable.
 	ArchivedAt *time.Time
+	// InitialPrompt is create-only input used to atomically insert turn 1 with
+	// the session row. It is not an agent_sessions column and is never scanned.
+	InitialPrompt string
 }
 
 const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandbox_id,
@@ -102,11 +133,24 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 	if len(in.AgentConfig) == 0 {
 		in.AgentConfig = json.RawMessage(`{}`)
 	}
-	row, err := scanAgentSession(s.Pool.QueryRow(ctx, `
-		INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status)
-		VALUES ($1, $2, $3, $4, $5, 'creating', '')
-		RETURNING `+agentSessionColumns,
-		in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig))
+	var row AgentSession
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		var err error
+		row, err = scanAgentSession(tx.QueryRow(ctx, `
+			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns)
+			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END)
+			RETURNING `+agentSessionColumns,
+			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt))
+		if err != nil {
+			return err
+		}
+		if in.InitialPrompt != "" {
+			_, err = tx.Exec(ctx, `
+				INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode)
+				VALUES ($1, 1, $2, '')`, in.ID, in.InitialPrompt)
+		}
+		return err
+	})
 	if err != nil {
 		return AgentSession{}, classify("agent session", err)
 	}
@@ -120,6 +164,106 @@ func (s *PGStore) GetAgentSession(ctx context.Context, id string) (AgentSession,
 		return AgentSession{}, classify("agent session", err)
 	}
 	return out, nil
+}
+
+// BeginAgentSessionTurn atomically records an accepted follow-up prompt and
+// moves the session into its asynchronous dispatch phase. The public turn count
+// advances here, with prompt acceptance, so provisioning failure cannot erase
+// or renumber what the user submitted.
+func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliveryMode, phase, status string) (AgentSession, error) {
+	var out AgentSession
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		var turns int
+		var currentPhase string
+		var archivedAt *time.Time
+		if err := tx.QueryRow(ctx, `SELECT turns, phase, archived_at FROM agent_sessions WHERE id=$1 FOR UPDATE`, id).Scan(&turns, &currentPhase, &archivedAt); err != nil {
+			return err
+		}
+		// Recheck after taking the row lock. Two concurrent Steers can both pass
+		// the service's optimistic Get; only the first may persist a prompt.
+		if archivedAt != nil || (currentPhase != "completed" && currentPhase != "failed") {
+			return ErrAgentSessionTurnState
+		}
+		if err := enforceAgentSessionPromptQuota(ctx, tx, id, prompt); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode)
+			VALUES ($1, $2, $3, $4)`, id, turns+1, prompt, deliveryMode); err != nil {
+			return err
+		}
+		var err error
+		out, err = scanAgentSession(tx.QueryRow(ctx, `
+			UPDATE agent_sessions
+			SET sandbox_id='', phase=$2, status=$3, turns=turns+1, updated_at=now()
+			WHERE id=$1
+			RETURNING `+agentSessionColumns, id, phase, status))
+		return err
+	})
+	if err != nil {
+		if errors.Is(err, ErrAgentSessionPromptQuota) || errors.Is(err, ErrAgentSessionTurnState) {
+			return AgentSession{}, err
+		}
+		return AgentSession{}, classify("agent session turn", err)
+	}
+	return out, nil
+}
+
+func enforceAgentSessionPromptQuota(ctx context.Context, tx pgx.Tx, sessionID, prompt string) error {
+	var stored int64
+	if err := tx.QueryRow(ctx, `
+		SELECT COALESCE(sum(octet_length(prompt)), 0)
+		FROM agent_session_turns WHERE session_id=$1`, sessionID).Scan(&stored); err != nil {
+		return err
+	}
+	if stored+int64(len(prompt)) > MaxAgentSessionPromptBytes {
+		return ErrAgentSessionPromptQuota
+	}
+	return nil
+}
+
+// AgentSessionTurns returns the durable user intents in chronological order.
+// Prompt input is capped individually and by MaxAgentSessionPromptBytes across
+// the session; callers still stream assistant parts page-wise.
+func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]AgentSessionTurn, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT session_id, turn, prompt, delivery_mode,
+		       transcript_complete, transcript_truncated, truncation_reason,
+		       created_at, completed_at
+		FROM agent_session_turns WHERE session_id=$1 ORDER BY turn`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]AgentSessionTurn, 0)
+	for rows.Next() {
+		var turn AgentSessionTurn
+		if err := rows.Scan(&turn.SessionID, &turn.Turn, &turn.Prompt, &turn.DeliveryMode,
+			&turn.TranscriptComplete, &turn.TranscriptTruncated, &turn.TruncationReason,
+			&turn.CreatedAt, &turn.CompletedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, turn)
+	}
+	return out, rows.Err()
+}
+
+// CompleteAgentSessionTurn records whether the persisted assistant transcript
+// is complete. A false complete value is intentional: the row still preserves
+// the accepted user prompt while making loss/truncation visible to consumers.
+func (s *PGStore) CompleteAgentSessionTurn(ctx context.Context, sessionID string, turn int, complete, truncated bool, reason string) error {
+	tag, err := s.Pool.Exec(ctx, `
+		UPDATE agent_session_turns
+		SET transcript_complete=$3, transcript_truncated=$4,
+		    truncation_reason=$5, completed_at=now()
+		WHERE session_id=$1 AND turn=$2`, sessionID, turn, complete, truncated, reason)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("agent session turn: %w", ErrNotFound)
+	}
+	return nil
 }
 
 // Archived-membership selector for ListAgentSessions (ADR065 D3). The zero
@@ -386,13 +530,40 @@ func (s *PGStore) HibernateAgentSession(ctx context.Context, id, snapshotRef str
 // only consumed once it is up). A concurrent retention delete or double resume
 // finds no `hibernated` row (ErrNotFound). The row's sandbox_id stays empty
 // until RehydrateAgentSession adopts the new one.
-func (s *PGStore) BeginRehydrate(ctx context.Context, id string) (AgentSession, error) {
-	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
-		UPDATE agent_sessions
-		SET phase='resuming', status='rehydrating', updated_at=now()
-		WHERE id=$1 AND phase='hibernated' AND snapshot_ref <> ''
-		RETURNING `+agentSessionColumns, id))
+func (s *PGStore) BeginRehydrate(ctx context.Context, id, prompt, deliveryMode string) (AgentSession, error) {
+	var out AgentSession
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		var turns int
+		if err := tx.QueryRow(ctx, `
+			SELECT turns FROM agent_sessions
+			WHERE id=$1 AND phase='hibernated' AND snapshot_ref <> ''
+			FOR UPDATE`, id).Scan(&turns); err != nil {
+			return err
+		}
+		if prompt != "" {
+			if err := enforceAgentSessionPromptQuota(ctx, tx, id, prompt); err != nil {
+				return err
+			}
+			if _, err := tx.Exec(ctx, `
+				INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode)
+				VALUES ($1, $2, $3, $4)`, id, turns+1, prompt, deliveryMode); err != nil {
+				return err
+			}
+		}
+		var err error
+		out, err = scanAgentSession(tx.QueryRow(ctx, `
+			UPDATE agent_sessions
+			SET phase='resuming', status='rehydrating',
+			    turns=turns + CASE WHEN $2 <> '' THEN 1 ELSE 0 END,
+			    updated_at=now()
+			WHERE id=$1
+			RETURNING `+agentSessionColumns, id, prompt))
+		return err
+	})
 	if err != nil {
+		if errors.Is(err, ErrAgentSessionPromptQuota) {
+			return AgentSession{}, err
+		}
 		return AgentSession{}, classify("agent session", err)
 	}
 	return out, nil
@@ -415,14 +586,15 @@ func (s *PGStore) AbortRehydrate(ctx context.Context, id string) (AgentSession, 
 }
 
 // RehydrateAgentSession completes a rehydration (ADR059 D4): it adopts the fresh
-// sandbox id, advances to the live phase, increments the turn counter, and
+// sandbox id and advances to the live phase. A Steer's turn counter already
+// advanced atomically in BeginRehydrate; a prompt-less Resume does not advance.
 // clears the snapshot fields (the blob has been consumed into the new pod — a
 // re-hibernation writes a fresh one). Guarded to the `resuming` claim
 // BeginRehydrate set, so it can't race a retention delete or a double resume.
 func (s *PGStore) RehydrateAgentSession(ctx context.Context, id, sandboxID, phase, status, deliveryMode string) (AgentSession, error) {
 	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
 		UPDATE agent_sessions
-		SET sandbox_id=$2, phase=$3, status=$4, delivery_mode=$5, turns=turns+1,
+		SET sandbox_id=$2, phase=$3, status=$4, delivery_mode=$5,
 		    snapshot_ref='', snapshot_bytes=0, snapshot_sha='',
 		    hibernated_at=NULL, retain_until=NULL, updated_at=now()
 		WHERE id=$1 AND phase='resuming' AND sandbox_id=''
@@ -515,9 +687,10 @@ func (s *PGStore) CountPinnedAgentSessions(ctx context.Context, workspaceID stri
 	return n, err
 }
 
-// RecordAgentSessionDispatch stamps a newly dispatched turn: it advances the
+// RecordAgentSessionDispatch binds a newly dispatched accepted turn: it advances the
 // phase/status, adopts a fresh sandbox id when re-dispatched, records the
-// delivery mode ("resume" or "redispatch"), and increments the turn counter.
+// delivery mode ("resume" or "redispatch"). Prompt acceptance already advanced
+// the turn counter transactionally.
 //
 // It is CAS-guarded against a session a concurrent Cancel already took terminal
 // (w2/m64): sandbox provisioning runs in the background after the create/steer
@@ -530,7 +703,7 @@ func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID,
 	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
 		UPDATE agent_sessions
 		SET sandbox_id = CASE WHEN $2 <> '' THEN $2 ELSE sandbox_id END,
-		    phase=$3, status=$4, delivery_mode=$5, turns=turns+1, updated_at=now()
+		    phase=$3, status=$4, delivery_mode=$5, updated_at=now()
 		WHERE id=$1 AND phase NOT IN ('canceling', 'canceled')
 		RETURNING `+agentSessionColumns, id, sandboxID, phase, status, deliveryMode))
 	if err != nil {
@@ -577,37 +750,51 @@ func nullableJSON(v json.RawMessage) any {
 // by the same bound, so it never materializes more than the cap.
 const MaxAgentSessionTranscriptBytes = 64 << 20
 
-// AppendAgentSessionTranscript idempotently persists teed transcript parts
-// (ADR047 D9). The append is keyed by the driver's emission ordinal
-// (session_id, seq), so re-teeing the same part — from another gateway replica
-// or a re-attach that re-reads the driver's replayed history — is a no-op via
-// ON CONFLICT DO NOTHING, never a duplicate. A missing session (its row cascaded
-// away) surfaces as ErrNotFound rather than a silent FK error.
+// AppendAgentSessionTranscript idempotently persists teed transcript parts.
+// Driver ordinals restart at zero for every sandbox, so identity is the
+// turn-local (session_id, turn, part_index). seq remains a monotonic per-session
+// cursor allocated while holding a transaction-scoped advisory lock; concurrent
+// gateway replicas therefore cannot collide or reorder the replay cursor.
 func (s *PGStore) AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []AgentSessionTranscriptPart) error {
 	if len(parts) == 0 {
 		return nil
 	}
-	batch := &pgx.Batch{}
-	for _, p := range parts {
-		// part is a text column (verbatim bytes, not canonicalized jsonb): bind it
-		// as a string so pgx never re-encodes it as bytea.
-		part := string(p.Part)
-		if part == "" {
-			part = "null"
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		// Stable 64-bit hash lock, scoped to this transaction and session only.
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, sessionID); err != nil {
+			return err
 		}
-		batch.Queue(`
-			INSERT INTO agent_session_transcripts (session_id, seq, turn, part)
-			VALUES ($1, $2, $3, $4)
-			ON CONFLICT (session_id, seq) DO NOTHING`, sessionID, p.Seq, p.Turn, part)
-	}
-	results := s.Pool.SendBatch(ctx, batch)
-	defer func() { _ = results.Close() }()
-	for range parts {
-		if _, err := results.Exec(); err != nil {
-			return classify("agent session transcript", err)
+		var seq int64
+		if err := tx.QueryRow(ctx, `
+			SELECT COALESCE(max(seq), -1) FROM agent_session_transcripts WHERE session_id=$1`, sessionID).Scan(&seq); err != nil {
+			return err
 		}
-	}
-	return nil
+		for _, p := range parts {
+			partIndex := p.PartIndex
+			// Compatibility for internal callers/tests written before part_index:
+			// their per-turn Seq was the driver ordinal. New writers set PartIndex.
+			if partIndex == 0 && p.Seq > 0 {
+				partIndex = p.Seq
+			}
+			part := string(p.Part)
+			if part == "" {
+				part = "null"
+			}
+			tag, err := tx.Exec(ctx, `
+				INSERT INTO agent_session_transcripts (session_id, seq, turn, part_index, part)
+				VALUES ($1, $2, $3, $4, $5)
+				ON CONFLICT (session_id, turn, part_index) DO NOTHING`,
+				sessionID, seq+1, p.Turn, partIndex, part)
+			if err != nil {
+				return err
+			}
+			if tag.RowsAffected() > 0 {
+				seq++
+			}
+		}
+		return nil
+	})
+	return classify("agent session transcript", err)
 }
 
 // AgentSessionTranscript returns a session's stored parts in emission order,
@@ -622,7 +809,7 @@ func (s *PGStore) AppendAgentSessionTranscript(ctx context.Context, sessionID st
 // is gone.
 func (s *PGStore) AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]AgentSessionTranscriptPart, error) {
 	sql := `
-		SELECT seq, turn, part, created_at
+		SELECT seq, part_index, turn, part, created_at
 		FROM agent_session_transcripts
 		WHERE session_id=$1 AND seq > $2
 		ORDER BY seq ASC`
@@ -640,7 +827,7 @@ func (s *PGStore) AgentSessionTranscript(ctx context.Context, sessionID string, 
 	var total int64
 	for rows.Next() {
 		var p AgentSessionTranscriptPart
-		if err := rows.Scan(&p.Seq, &p.Turn, &p.Part, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.Seq, &p.PartIndex, &p.Turn, &p.Part, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		if total+int64(len(p.Part)) > maxBytes {
@@ -681,19 +868,20 @@ func (s *PGStore) AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID st
 	return *maxSeq, true, nil
 }
 
-// AgentSessionTranscriptTurnRecorded reports whether any transcript part is
-// already stored for a given session turn. The headless recorder (ADR051) uses
-// it as its idempotency + live-tee-overlap guard: a turn whose parts already
-// exist (a Completer retry, or a live viewer that teed the turn) is not
-// re-recorded, so the recorder never double-stores a conversation.
-func (s *PGStore) AgentSessionTranscriptTurnRecorded(ctx context.Context, sessionID string, turn int) (bool, error) {
-	var exists bool
-	if err := s.Pool.QueryRow(ctx,
-		`SELECT EXISTS(SELECT 1 FROM agent_session_transcripts WHERE session_id=$1 AND turn=$2)`,
-		sessionID, turn).Scan(&exists); err != nil {
-		return false, err
+// AgentSessionTranscriptTurnMaxIndex returns the largest stored local driver
+// ordinal for one turn. A reconnect uses it to skip the prefix already replayed
+// from Postgres while still accepting a fresh sandbox's ordinal zero.
+func (s *PGStore) AgentSessionTranscriptTurnMaxIndex(ctx context.Context, sessionID string, turn int) (int64, bool, error) {
+	var maxIndex *int64
+	if err := s.Pool.QueryRow(ctx, `
+		SELECT max(part_index) FROM agent_session_transcripts WHERE session_id=$1 AND turn=$2`,
+		sessionID, turn).Scan(&maxIndex); err != nil {
+		return 0, false, err
 	}
-	return exists, nil
+	if maxIndex == nil {
+		return -1, false, nil
+	}
+	return *maxIndex, true, nil
 }
 
 // Transcript retention is deliberate cascade-only (ADR065 D2): a session's

@@ -97,6 +97,8 @@ Converge the workspace's **mutable state** onto a known mount (`/workspace` + th
 
 Resume = **files intact, process cold-restarts** (Gitpod/Codespaces model), sufficient for "come back and edit `/workspace`." Memory-level resume (live processes, loaded models) is **out of v1** — needs Firecracker/CRIU (ADR042 watch item). Latency budget + SLOs are the **Performance** section below. `Steer` must stop clobbering an editable working tree: preserve the workspace's mutable state across a steer instead of re-cloning over it.
 
+**w5/m71 turn-accounting amendment (2026-08-17).** Resume-without-prompt restores only the workspace: it sets `BEX_AGENT_PROMPT` empty and does not advance `turns`, so it cannot silently rerun `agent_config.task`. Hibernated Steer first inserts exactly one durable prompt turn, advances once at acceptance, then restores and runs that prompt. If fresh-pod provisioning fails, the snapshot remains retriable and the accepted turn remains settled as incomplete rather than disappearing or being renumbered.
+
 ### D5 — Retention & the **pinned** primitive
 
 - **Default (unpinned)**: idle → hibernate → **delete after 7 days** (industry de-facto default; dirty git working tree extends it, à la Gitpod 14→28d). This is fire-and-forget, just cheaper.

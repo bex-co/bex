@@ -240,6 +240,14 @@ func (s *Service) ExecBuffered(ctx context.Context, req ExecRequest) (ExecResult
 // bufferExec drains one gateway SSE exec response into a collected result. It is
 // shared by the public MCP verb and the trusted session-status read.
 func bufferExec(resp *http.Response) (ExecResult, error) {
+	return bufferExecWithLimit(resp, maxExecOutputBytes)
+}
+
+// bufferExecWithLimit is the bounded collector shared by ordinary MCP exec
+// (2 MiB) and trusted agent-transcript harvest (the driver's 16 MiB log plus
+// framing headroom). Callers must still reject Truncated when completeness is
+// part of their contract.
+func bufferExecWithLimit(resp *http.Response, maxOutputBytes int) (ExecResult, error) {
 	var out ExecResult
 	exitSeen := false
 	total := 0 // combined stdout+stderr bytes accumulated so far
@@ -274,7 +282,7 @@ func bufferExec(resp *http.Response) (ExecResult, error) {
 					// remaining is always > 0 here: the loop returns the moment total
 					// reaches the cap, so it never re-enters at or past it.
 					data := ev.Data
-					if remaining := maxExecOutputBytes - total; len(data) > remaining {
+					if remaining := maxOutputBytes - total; len(data) > remaining {
 						data = data[:remaining]
 						out.Truncated = true
 					}

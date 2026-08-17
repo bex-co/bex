@@ -323,9 +323,9 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 	// A turn that pushed nothing is an honest no-op completion: record it (with
 	// evidence) but open no PR — there is nothing to review.
 	if !report.Delivery.Pushed || report.Delivery.HeadSHA == "" {
-		if _, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted, "", "", 0, evidenceJSON, ""); err == nil {
+		if final, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted, "", "", 0, evidenceJSON, ""); err == nil {
 			log.Printf("agent-session completer: completed session=%s (no-op, nothing pushed)", record.ID)
-			c.teardown(ctx, record)
+			c.teardown(ctx, final)
 		} else {
 			log.Printf("agent-session completer: finalize no-op failed (session=%s): %v", record.ID, err)
 		}
@@ -522,32 +522,21 @@ func (c *Completer) unclaimHibernation(ctx context.Context, claimed store.AgentS
 // pods/exec boundary the Completer already uses for the status read (ADR051), and
 // appends it to the durable transcript before teardown. Riding the proven
 // status-read path — rather than a separate gateway→driver stream dial — is what
-// makes persistence reliable. Idempotent per turn (a turn a live viewer already
-// teed, or a retry, is skipped) and seq-seeded so a steered turn concatenates.
+// makes persistence reliable. Every harvest parses the full bounded log and
+// idempotently merges by turn-local part index, so a live tee that stored only a
+// prefix cannot suppress the missing suffix.
 func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSession) {
-	recorded, err := c.Store.AgentSessionTranscriptTurnRecorded(ctx, record.ID, record.Turns)
-	if err != nil {
-		log.Printf("agent-session completer: transcript turn check failed (session=%s): %v", record.ID, err)
-		return
-	}
-	if recorded {
-		return // already captured (live tee or a prior tick)
-	}
 	raw, err := c.Sandbox.ReadSessionTranscript(ctx, record.WorkspaceID, record.ID, record.SandboxID)
 	if err != nil {
-		// A gone/unreachable sandbox has no log to harvest — honest empty, not a hang.
 		if !errors.Is(err, core.ErrNotFound) {
 			log.Printf("agent-session completer: transcript read failed (session=%s): %v", record.ID, err)
 		}
+		c.markTurnTranscript(ctx, record, false, true, "transcript read failed")
 		return
 	}
-	parts := parseTranscriptLog(raw, record.Turns)
+	parts, parseTruncated := parseTranscriptLog(raw, record.Turns)
 	if len(parts) == 0 {
-		return
-	}
-	base, _, err := c.Store.AgentSessionTranscriptMaxSeq(ctx, record.ID)
-	if err != nil {
-		log.Printf("agent-session completer: transcript max-seq failed (session=%s): %v", record.ID, err)
+		c.markTurnTranscript(ctx, record, !parseTruncated, parseTruncated, truncationReason(parseTruncated, "transcript parse/part limit reached"))
 		return
 	}
 	// Cumulative quota (w1/m65 F10): the harvest shares the session transcript
@@ -561,25 +550,56 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 	}
 	total := storedBytes
 	kept := parts[:0]
+	quotaTruncated := false
 	for _, p := range parts {
 		if total+int64(len(p.Part)) > c.transcriptQuota() {
 			log.Printf("agent-session completer: transcript quota reached, truncating harvest (session=%s)", record.ID)
+			quotaTruncated = true
 			break
 		}
 		total += int64(len(p.Part))
 		kept = append(kept, p)
 	}
 	if len(kept) == 0 {
+		c.markTurnTranscript(ctx, record, false, true, "session transcript byte quota reached")
 		return
-	}
-	for i := range kept {
-		kept[i].Seq = base + 1 + int64(i)
 	}
 	if err := c.Store.AppendAgentSessionTranscript(ctx, record.ID, kept); err != nil {
 		log.Printf("agent-session completer: transcript append failed (session=%s parts=%d): %v", record.ID, len(kept), err)
+		c.markTurnTranscript(ctx, record, false, true, "transcript store failed")
 		return
 	}
+	truncated := parseTruncated || quotaTruncated || transcriptEvidenceTruncated(record.Evidence)
+	reason := ""
+	if parseTruncated {
+		reason = "driver log parse/part limit reached"
+	} else if quotaTruncated {
+		reason = "session transcript byte quota reached"
+	} else if transcriptEvidenceTruncated(record.Evidence) {
+		reason = "driver session log truncated"
+	}
+	c.markTurnTranscript(ctx, record, !truncated, truncated, reason)
 	log.Printf("agent-session completer: captured transcript (session=%s turn=%d parts=%d)", record.ID, record.Turns, len(kept))
+}
+
+func (c *Completer) markTurnTranscript(ctx context.Context, record store.AgentSession, complete, truncated bool, reason string) {
+	if err := c.Store.CompleteAgentSessionTurn(ctx, record.ID, record.Turns, complete, truncated, reason); err != nil {
+		log.Printf("agent-session completer: transcript completeness write failed (session=%s turn=%d): %v", record.ID, record.Turns, err)
+	}
+}
+
+func truncationReason(truncated bool, reason string) string {
+	if truncated {
+		return reason
+	}
+	return ""
+}
+
+func transcriptEvidenceTruncated(raw json.RawMessage) bool {
+	var evidence struct {
+		Truncated bool `json:"truncated"`
+	}
+	return json.Unmarshal(raw, &evidence) == nil && evidence.Truncated
 }
 
 // parseTranscriptLog extracts the UI-message parts from the driver's redacted
@@ -588,25 +608,37 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 // the GET /stream replay re-frames for a Vercel AI SDK client — stamping the turn;
 // Seq is assigned by the caller. Unparseable lines (e.g. a partial leading line
 // from the byte-capped tail) are skipped.
-func parseTranscriptLog(raw string, turn int) []store.AgentSessionTranscriptPart {
+func parseTranscriptLog(raw string, turn int) ([]store.AgentSessionTranscriptPart, bool) {
 	out := make([]store.AgentSessionTranscriptPart, 0)
+	truncated := false
 	for _, line := range strings.Split(raw, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		var rec struct {
-			Part json.RawMessage `json:"part"`
+			Turn      int             `json:"turn"`
+			PartIndex *int64          `json:"partIndex"`
+			Part      json.RawMessage `json:"part"`
 		}
 		if json.Unmarshal([]byte(line), &rec) != nil || len(rec.Part) == 0 {
+			truncated = true
 			continue
 		}
-		out = append(out, store.AgentSessionTranscriptPart{Turn: turn, Part: rec.Part})
+		if rec.Turn != 0 && rec.Turn != turn {
+			continue
+		}
+		index := int64(len(out))
+		if rec.PartIndex != nil {
+			index = *rec.PartIndex
+		}
+		out = append(out, store.AgentSessionTranscriptPart{PartIndex: index, Turn: turn, Part: rec.Part})
 		if len(out) >= maxTranscriptParts {
+			truncated = true
 			break
 		}
 	}
-	return out
+	return out, truncated
 }
 
 func prTitle(config AgentConfig, sessionID string) string {

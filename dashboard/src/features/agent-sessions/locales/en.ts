@@ -424,6 +424,11 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Steering composer — disabled reason when the m43 stream is down",
   },
+  "agentSessions.steerDisabledWaitForTurn": {
+    message: "Wait for the current turn to finish before sending a follow-up.",
+    description:
+      "Composer disabled reason while the current durable agent turn is running",
+  },
   "agentSessions.steerDisabledInFlight": {
     message:
       "A turn is in progress. Wait for it to finish before sending another.",
@@ -510,6 +515,11 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.conversationEnded": {
     message: "Session ended.",
     description: "Footer note under a terminal session's replayed transcript",
+  },
+  "agentSessions.conversationIncomplete": {
+    message: "Some assistant output could not be preserved",
+    description:
+      "Warning below a durable user turn whose assistant transcript is incomplete",
   },
   "agentSessions.conversationUnavailable": {
     message: "The conversation stream is unavailable right now.",

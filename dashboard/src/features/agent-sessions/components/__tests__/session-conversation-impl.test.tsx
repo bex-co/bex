@@ -72,6 +72,56 @@ describe("SessionConversationImpl", () => {
     expect(screen.getByText(/committed by the agent/)).toBeInTheDocument();
   });
 
+  it("renders durable user prompts in turn order after refresh", async () => {
+    const transcript = [
+      { type: "start", messageId: "asm-durable" },
+      {
+        type: "data-user-prompt",
+        data: { turn: 1, text: "initial durable prompt", complete: true },
+      },
+      { type: "text-start", id: "t1" },
+      { type: "text-delta", id: "t1", delta: "first answer" },
+      { type: "text-end", id: "t1" },
+      {
+        type: "data-user-prompt",
+        data: {
+          turn: 2,
+          text: "follow-up survives refresh",
+          complete: false,
+          truncated: true,
+          reason: "quota",
+        },
+      },
+      { type: "text-start", id: "t2" },
+      { type: "text-delta", id: "t2", delta: "second answer" },
+      { type: "text-end", id: "t2" },
+      { type: "finish" },
+    ] as UIMessageChunk[];
+    const transport = createAgentSessionTransport({
+      sessionId: "as-durable-prompts",
+      mintTicket,
+      fetch: makeFixtureFetch(transcript, { terminal: true }),
+    });
+
+    render(
+      <SessionConversationImpl
+        sessionId="as-durable-prompts"
+        isTerminal
+        transport={transport}
+      />,
+    );
+
+    expect(
+      await screen.findByText("initial durable prompt"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("first answer")).toBeInTheDocument();
+    expect(screen.getByText("follow-up survives refresh")).toBeInTheDocument();
+    expect(screen.getByText("second answer")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Some assistant output could not be preserved: quota/),
+    ).toBeInTheDocument();
+  });
+
   it("appends parts incrementally as a running session live-tails", async () => {
     const manual = makeManualStream();
     const transport = createAgentSessionTransport({

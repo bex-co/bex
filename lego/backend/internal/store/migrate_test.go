@@ -288,6 +288,93 @@ func TestDeployOverlapQueueMigrationPreservesActiveOnDown(t *testing.T) {
 	}
 }
 
+func TestAgentSessionTurnPersistenceMigrationBackfillsRecoverableIntent(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+	up, err := migrationsFS.ReadFile("migrations/0081_agent_session_turn_persistence.up.sql")
+	if err != nil {
+		t.Fatalf("read up migration: %v", err)
+	}
+	down, err := migrationsFS.ReadFile("migrations/0081_agent_session_turn_persistence.down.sql")
+	if err != nil {
+		t.Fatalf("read down migration: %v", err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0081_agent_session_turns;
+		SET LOCAL search_path TO migration_0081_agent_session_turns;
+		CREATE TABLE agent_sessions (id text PRIMARY KEY, agent_config jsonb NOT NULL, turns int NOT NULL);
+		CREATE TABLE agent_session_transcripts (
+			session_id text NOT NULL REFERENCES agent_sessions(id) ON DELETE CASCADE,
+			seq bigint NOT NULL,
+			turn int NOT NULL,
+			part jsonb NOT NULL,
+			PRIMARY KEY (session_id, seq)
+		);
+		INSERT INTO agent_sessions VALUES
+			('ags-creating', '{"task":"accepted before dispatch"}', 0),
+			('ags-steered', '{"task":"recoverable initial only"}', 2),
+			('ags-empty', '{"task":""}', 0);
+		INSERT INTO agent_session_transcripts VALUES
+			('ags-steered', 5, 1, '{"type":"start"}'),
+			('ags-steered', 6, 1, '{"type":"text"}'),
+			('ags-steered', 9, 2, '{"type":"text"}');
+	`); err != nil {
+		t.Fatalf("prepare old schema: %v", err)
+	}
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("apply up migration: %v", err)
+	}
+	var turnRows int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM agent_session_turns`).Scan(&turnRows); err != nil || turnRows != 2 {
+		t.Fatalf("legacy prompt backfill rows=%d err=%v, want creating + dispatched initial prompts", turnRows, err)
+	}
+	var creatingPrompt string
+	if err := tx.QueryRow(ctx, `SELECT prompt FROM agent_session_turns WHERE session_id='ags-creating' AND turn=1`).Scan(&creatingPrompt); err != nil || creatingPrompt != "accepted before dispatch" {
+		t.Fatalf("creating-session prompt=%q err=%v", creatingPrompt, err)
+	}
+	rows, err := tx.Query(ctx, `SELECT part_index FROM agent_session_transcripts ORDER BY seq`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var indexes []int64
+	for rows.Next() {
+		var index int64
+		if err := rows.Scan(&index); err != nil {
+			t.Fatal(err)
+		}
+		indexes = append(indexes, index)
+	}
+	if len(indexes) != 3 || indexes[0] != 0 || indexes[1] != 1 || indexes[2] != 0 {
+		t.Fatalf("turn-local backfill indexes=%v, want [0 1 0]", indexes)
+	}
+	if _, err := tx.Exec(ctx, `SAVEPOINT duplicate_part_index`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO agent_session_transcripts (session_id, seq, turn, part_index, part) VALUES ('ags-steered', 10, 2, 0, '{}')`); err == nil {
+		t.Fatal("turn-local transcript identity accepted a duplicate part index")
+	}
+	if _, err := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT duplicate_part_index`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, string(down)); err != nil {
+		t.Fatalf("apply down migration: %v", err)
+	}
+}
+
 func TestEnvironmentAllowListMigrationNormalizesLegacyRows(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {

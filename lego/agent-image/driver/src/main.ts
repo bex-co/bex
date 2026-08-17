@@ -29,6 +29,7 @@ async function main(): Promise<void> {
   const hub = new UIMessageStreamHub();
   let terminalized = false;
   let activeAbort: AbortController | undefined;
+  let nextTurn = config.turn;
   let activeTurn:
     | Promise<Awaited<ReturnType<typeof runHeadlessTurn>>>
     | undefined;
@@ -51,9 +52,12 @@ async function main(): Promise<void> {
   ) => {
     if (terminalized) throw new Error("agent session is terminalizing");
     const controller = new AbortController();
+    const turnNumber = nextTurn;
+    nextTurn += 1;
     activeAbort = controller;
     const turn = runHeadlessTurn(config, credentials, hub, {
       prompt,
+      turn: turnNumber,
       closeHub,
       onPart,
       abortSignal: controller.signal,
