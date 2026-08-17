@@ -17,9 +17,9 @@ limitations under the License.
 package envgroups
 
 // seam_test.go covers the blueprint apply path's seam (w1/m35): GroupNames,
-// ApplyEnvGroup (create/update by name, generate-once), and LinkEnvGroup
-// (idempotent) — the methods apps' stack deploy drives envVarGroups/fromGroup
-// through.
+// GroupIDsByName, ApplyEnvGroup (create/update by name, generate-once), and
+// LinkEnvGroup (idempotent) — the methods apps' Blueprint flows drive
+// envVarGroups/fromGroup through.
 
 import (
 	"context"
@@ -90,6 +90,13 @@ func TestGroupNamesListsEveryGroup(t *testing.T) {
 	}
 	if len(names) != 2 || names[0] != "alpha" || names[1] != "beta" {
 		t.Errorf("GroupNames = %v, want [alpha beta] (sorted)", names)
+	}
+	ids, err := svc.GroupIDsByName(ctx)
+	if err != nil {
+		t.Fatalf("GroupIDsByName: %v", err)
+	}
+	if ids["alpha"] == "" || ids["beta"] == "" || ids["alpha"] == ids["beta"] {
+		t.Errorf("GroupIDsByName = %v, want distinct non-empty ids", ids)
 	}
 }
 

@@ -108,12 +108,16 @@ type DeployRequest struct {
 
 // EnvGroupApplier is the blueprint apply path's seam onto the env-groups feature
 // (*envgroups.Service satisfies it structurally): materialize a render.yaml's
-// envVarGroups: by name and link them to services via fromGroup. Kept to the three
-// methods the apply path needs so apps never imports envgroups.
+// envVarGroups: by name and link them to services via fromGroup. Kept to the
+// narrow read/apply methods Blueprint flows need so apps never imports envgroups.
 type EnvGroupApplier interface {
 	// GroupNames returns every existing env group's name, for pre-flighting an
 	// unknown fromGroup reference before any write (all-or-nothing).
 	GroupNames(ctx context.Context) ([]string, error)
+	// GroupIDsByName returns the acting workspace's non-secret env-group
+	// identity map. Blueprint reads use it for resources[] and current-state
+	// plans without crossing the env-group package boundary or reading values.
+	GroupIDsByName(ctx context.Context) (map[string]string, error)
 	// ApplyEnvGroup upserts a group by name (create if absent, reconcile its vars);
 	// literals re-sync to their value, generates mint once. Idempotent.
 	ApplyEnvGroup(ctx context.Context, name string, literals map[string]string, generates []string) error

@@ -930,6 +930,22 @@ func (s *Service) rollLinked(ctx context.Context, links []string) error {
 // apply path uses it to pre-flight `fromGroup` references (an unknown group name
 // is a per-entry validation error before any resource is written). View scope.
 func (s *Service) GroupNames(ctx context.Context) ([]string, error) {
+	groups, err := s.GroupIDsByName(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(groups))
+	for name := range groups {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// GroupIDsByName returns the acting workspace's non-secret env-group ids keyed
+// by name. It is the narrow read seam Blueprint resource inventories and
+// current-state plans need; secret values stay behind the reveal verbs.
+func (s *Service) GroupIDsByName(ctx context.Context) (map[string]string, error) {
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
 		return nil, err
 	}
@@ -941,7 +957,7 @@ func (s *Service) GroupNames(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	scopeTo, scoped := s.boundWorkspace(ctx)
-	out := make([]string, 0, len(ids))
+	out := make(map[string]string, len(ids))
 	for _, gid := range ids {
 		m, err := s.readMeta(ctx, gid)
 		if err != nil {
@@ -950,9 +966,8 @@ func (s *Service) GroupNames(ctx context.Context) ([]string, error) {
 		if scoped && m.workspace != scopeTo {
 			continue // another workspace's group — not this deploy's to see
 		}
-		out = append(out, m.name)
+		out[m.name] = gid
 	}
-	sort.Strings(out)
 	return out, nil
 }
 

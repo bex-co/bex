@@ -459,8 +459,15 @@ func TestResolveBlueprintResourcesUsesNormalizedAllLocationIR(t *testing.T) {
 		&appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "dpg-orders", Namespace: "tea-test", Labels: labels}, Spec: appv1alpha1.DatabaseSpec{Name: "orders"}},
 		&appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-cache", Namespace: "tea-test", Labels: labels}, Spec: appv1alpha1.KeyValueSpec{Name: "cache"}},
 	}
-	svc := &Service{Base: &core.Base{Client: fakeClient(objects...), Namespace: "default"}}
+	svc := &Service{
+		Base:      &core.Base{Client: fakeClient(objects...), Namespace: "default"},
+		EnvGroups: newFakeEnvGroups("shared"),
+	}
 	manifest := `
+envVarGroups:
+  - name: shared
+    envVars:
+      - {key: LOG_LEVEL, value: info}
 services:
   - name: root
     type: web
@@ -484,17 +491,22 @@ projects:
 		t.Fatalf("strict compiler rejected inventory fixture: %#v", problems)
 	}
 	resources := svc.resolveBlueprintResources(context.Background(), store.Blueprint{TenantID: "tea-test", Manifest: manifest})
-	if got, want := len(resources), 4; got != want {
+	if got, want := len(resources), 5; got != want {
 		t.Fatalf("resource inventory = %#v, want %d resources", resources, want)
 	}
 	got := map[string]string{}
+	gotIDs := map[string]string{}
 	for _, resource := range resources {
 		got[resource.Name] = resource.Type
+		gotIDs[resource.Name] = resource.ID
 	}
-	for name, wantType := range map[string]string{"root": "web_service", "nested": "web_service", "orders": "postgres", "cache": "key_value"} {
+	for name, wantType := range map[string]string{"root": "web_service", "nested": "web_service", "orders": "postgres", "cache": "key_value", "shared": "environment_group"} {
 		if got[name] != wantType {
 			t.Errorf("resource %q type = %q, want %q", name, got[name], wantType)
 		}
+	}
+	if gotIDs["shared"] != "evg-shared" {
+		t.Errorf("environment-group resource id = %q, want evg-shared", gotIDs["shared"])
 	}
 }
 

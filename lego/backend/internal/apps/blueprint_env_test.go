@@ -57,22 +57,34 @@ func newFakeEnvGroups(preexisting ...string) *fakeEnvGroups {
 	return &fakeEnvGroups{preexisting: preexisting, applied: map[string]appliedGroup{}, environments: map[string]string{}}
 }
 
-func (f *fakeEnvGroups) GroupNames(context.Context) ([]string, error) {
+func (f *fakeEnvGroups) GroupNames(ctx context.Context) ([]string, error) {
+	groups, err := f.GroupIDsByName(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(groups))
+	for name := range groups {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+func (f *fakeEnvGroups) GroupIDsByName(context.Context) (map[string]string, error) {
 	seen := map[string]bool{}
-	var out []string
+	out := map[string]string{}
 	for _, n := range f.preexisting {
 		if !seen[n] {
 			seen[n] = true
-			out = append(out, n)
+			out[n] = "evg-" + n
 		}
 	}
 	for n := range f.applied {
 		if !seen[n] {
 			seen[n] = true
-			out = append(out, n)
+			out[n] = "evg-" + n
 		}
 	}
-	sort.Strings(out)
 	return out, nil
 }
 
@@ -157,6 +169,43 @@ func TestValidateBlueprintAcceptsAllFiveForms(t *testing.T) {
 	}
 	if v.Plan == nil || len(v.Plan.EnvGroups) != 1 || v.Plan.EnvGroups[0] != "shared" || v.Plan.TotalActions != 3 {
 		t.Errorf("five-field blueprint: unexpected validation plan %+v", v.Plan)
+	}
+}
+
+func TestValidateBlueprintPlansEnvGroupCreateAndConservativeUpdate(t *testing.T) {
+	const manifest = `
+envVarGroups:
+  - name: shared
+    envVars:
+      - {key: LOG_LEVEL, value: info}
+`
+	groups := newFakeEnvGroups()
+	svc, _ := newBlueprintEnvService(groups, &fakeSeeder{})
+
+	created, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	if err != nil || !created.Valid || created.Plan == nil {
+		t.Fatalf("ValidateBlueprint(create): validation=%+v err=%v", created, err)
+	}
+	if created.Plan.Mode != "current_state" || len(created.Plan.Actions) != 1 {
+		t.Fatalf("create plan = %+v, want one current-state action", created.Plan)
+	}
+	if action := created.Plan.Actions[0]; action.Kind != BlueprintResourceEnvVarGroup || action.Operation != BlueprintPlanCreate {
+		t.Fatalf("create action = %+v, want env-var-group create", action)
+	}
+
+	if err := groups.ApplyEnvGroup(context.Background(), "shared", map[string]string{"LOG_LEVEL": "info"}, nil); err != nil {
+		t.Fatalf("ApplyEnvGroup: %v", err)
+	}
+	updated, err := svc.ValidateBlueprint(context.Background(), "", manifest)
+	if err != nil || !updated.Valid || updated.Plan == nil || len(updated.Plan.Actions) != 1 {
+		t.Fatalf("ValidateBlueprint(update): validation=%+v err=%v", updated, err)
+	}
+	action := updated.Plan.Actions[0]
+	if action.Operation != BlueprintPlanUpdate || action.ResourceID != "evg-shared" {
+		t.Fatalf("update action = %+v, want conservative update for evg-shared", action)
+	}
+	if len(action.ChangedFields) == 0 {
+		t.Fatalf("update action = %+v, want value-free changed field paths", action)
 	}
 }
 

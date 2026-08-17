@@ -29,10 +29,11 @@ import (
 
 // blueprintActionPlan returns an authorized current-state plan when the
 // complete non-secret state needed to make one is available. Env groups store
-// mutable secret values behind a deliberately write-only seam, so their plan
-// stays explicitly structural rather than falsely claiming an update/no-op.
+// mutable secret values behind a deliberately write-only seam: an absent group
+// is a create, while an existing group is conservatively an update because a
+// no-op cannot be proved without revealing its values.
 func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st parsedStack) (BlueprintPlan, bool, error) {
-	if s.Client == nil || len(st.envGroups) > 0 {
+	if s.Client == nil || (len(st.envGroups) > 0 && s.EnvGroups == nil) {
 		return BlueprintPlan{}, false, nil
 	}
 	resolver, err := newBlueprintActionResolver(ctx, s, st)
@@ -50,6 +51,7 @@ type blueprintActionResolver struct {
 	services  map[string]*appv1alpha1.App
 	databases map[string]*appv1alpha1.Database
 	keyValues map[string]*appv1alpha1.KeyValue
+	envGroups map[string]string
 	parsed    parsedStack
 }
 
@@ -58,7 +60,15 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		services:  map[string]*appv1alpha1.App{},
 		databases: map[string]*appv1alpha1.Database{},
 		keyValues: map[string]*appv1alpha1.KeyValue{},
+		envGroups: map[string]string{},
 		parsed:    parsed,
+	}
+	if len(parsed.envGroups) > 0 {
+		groups, err := s.EnvGroups.GroupIDsByName(ctx)
+		if err != nil {
+			return nil, err
+		}
+		resolver.envGroups = groups
 	}
 	tenantID, scoped := s.Tenant(ctx)
 	var apps appv1alpha1.AppList
@@ -127,6 +137,9 @@ func (r *blueprintActionResolver) ResolveBlueprintResource(_ context.Context, ki
 			return BlueprintCurrentResource{}, false, nil
 		}
 		return BlueprintCurrentResource{ID: keyValue.Name}, true, nil
+	case BlueprintResourceEnvVarGroup:
+		groupID, ok := r.envGroups[name]
+		return BlueprintCurrentResource{ID: groupID}, ok, nil
 	default:
 		return BlueprintCurrentResource{}, false, nil
 	}
@@ -183,6 +196,13 @@ func (r *blueprintActionResolver) PlanBlueprintResource(_ context.Context, resou
 			action.ChangedFields = blueprintPlanFieldChanges(resource.Fields)
 			return action, nil
 		}
+	case BlueprintResourceEnvVarGroup:
+		// Group values are write-only. ApplyEnvGroup reconciles declarations, so
+		// an existing group must be represented as a possible update rather than
+		// a false no-op; field paths are safe and values remain omitted.
+		action.Operation = BlueprintPlanUpdate
+		action.ChangedFields = blueprintPlanFieldChanges(resource.Fields)
+		return action, nil
 	}
 	action.Operation = BlueprintPlanNoop
 	return action, nil
