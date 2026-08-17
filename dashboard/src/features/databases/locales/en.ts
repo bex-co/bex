@@ -1193,6 +1193,16 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Database details",
     description: "Accessible label for the managed Postgres detail tabs",
   },
+  "databases.sectionNavigation": {
+    message: "Database sections",
+    description:
+      "Accessible label for the database detail page section navigation",
+  },
+  "databases.dangerZoneTitle": {
+    message: "Danger Zone",
+    description:
+      "Database detail section-nav label for the destructive actions",
+  },
   "databases.overviewTab": {
     message: "Overview",
     description: "Managed Postgres overview tab",

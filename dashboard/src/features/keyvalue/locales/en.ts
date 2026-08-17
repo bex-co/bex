@@ -540,6 +540,16 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Key Value detail navigation",
     description: "aria-label for the detail-page tab nav",
   },
+  "keyvalue.sectionNavigation": {
+    message: "Key Value sections",
+    description:
+      "Accessible label for the key-value detail page section navigation",
+  },
+  "keyvalue.dangerZoneTitle": {
+    message: "Danger Zone",
+    description:
+      "Key-value detail section-nav label for the destructive actions",
+  },
   "keyvalue.overviewTab": {
     message: "Overview",
     description: "Detail-page Overview tab label",

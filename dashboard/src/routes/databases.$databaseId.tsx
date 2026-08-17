@@ -29,6 +29,7 @@ import { InsightsPanel } from "@/features/databases/components/insights-panel";
 import { DatabasePlanSection } from "@/features/databases/components/database-plan-section";
 import { DatabaseVersionControl } from "@/features/databases/components/database-version-control";
 import { DatabaseNameRow } from "@/features/databases/components/database-name-row";
+import { DatabaseDetailNavigation } from "@/features/databases/components/database-detail-navigation";
 import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
 import { SQLConsole } from "@/features/databases/components/sql-console";
 import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
@@ -146,54 +147,81 @@ function DatabaseDetailPage() {
       </nav>
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-4xl space-y-6">
-          {showError ? (
+        {showError ? (
+          <div className="mx-auto w-full max-w-4xl space-y-6">
             <ResourceLoadError onRetry={() => void refetch()} />
-          ) : database && tab === "logs" ? (
+          </div>
+        ) : database && tab === "logs" ? (
+          <div className="mx-auto w-full max-w-4xl space-y-6">
             <PostgresLogViewer resource={database.id} />
-          ) : database ? (
-            <>
-              <MetadataCard
-                database={database}
-                onVersionChanged={() => void refetch()}
-                onRenamed={() => void router.invalidate()}
-              />
-              <ConnectionInfoPanel id={database.id} />
-              <SQLConsole key={`sql-${database.id}`} id={database.id} />
-              <HAPanel database={database} refetch={refetch} />
-              <DatastoreMetricsPanel
-                kind="database"
-                resource={database.id}
-                highAvailabilityEnabled={database.highAvailabilityEnabled}
-                diskHeaderExtra={
-                  <DatabaseDiskAutoscalingControl
-                    database={database}
-                    onChanged={() => void refetch()}
-                  />
-                }
-              />
-              <DatabasePlanSection
-                database={database}
-                onChanged={() => void refetch()}
-              />
-              <InsightsPanel id={database.id} />
-              <RecoveryPanel id={database.id} />
-              <AccessControlPanel id={database.id} />
-              <DatabaseDangerActions
-                database={database}
-                onDeleted={() => void navigate({ to: "/" })}
-                lifecycle={lifecycle}
-              />
-            </>
-          ) : (
-            <>
-              <MetadataListSkeleton rows={10} />
-              <CardSkeleton rows={3} />
-              <CardSkeleton rows={4} />
-              <CardSkeleton rows={3} />
-            </>
-          )}
-        </div>
+          </div>
+        ) : database ? (
+          <div className="mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
+            {/* Same right-rail quick nav as the service settings page. */}
+            <DatabaseDetailNavigation className="sticky top-0 z-20 -mx-4 border-y bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:top-6 lg:col-start-2 lg:row-start-1 lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none" />
+
+            <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
+              <section id="metadata" className="scroll-mt-6">
+                <MetadataCard
+                  database={database}
+                  onVersionChanged={() => void refetch()}
+                  onRenamed={() => void router.invalidate()}
+                />
+              </section>
+              <section id="connection" className="scroll-mt-6">
+                <ConnectionInfoPanel id={database.id} />
+              </section>
+              <section id="sql-console" className="scroll-mt-6">
+                <SQLConsole key={`sql-${database.id}`} id={database.id} />
+              </section>
+              <section id="high-availability" className="scroll-mt-6">
+                <HAPanel database={database} refetch={refetch} />
+              </section>
+              <section id="metrics" className="scroll-mt-6">
+                <DatastoreMetricsPanel
+                  kind="database"
+                  resource={database.id}
+                  highAvailabilityEnabled={database.highAvailabilityEnabled}
+                  diskHeaderExtra={
+                    <DatabaseDiskAutoscalingControl
+                      database={database}
+                      onChanged={() => void refetch()}
+                    />
+                  }
+                />
+              </section>
+              <section id="plan" className="scroll-mt-6">
+                <DatabasePlanSection
+                  database={database}
+                  onChanged={() => void refetch()}
+                />
+              </section>
+              <section id="insights" className="scroll-mt-6">
+                <InsightsPanel id={database.id} />
+              </section>
+              <section id="recovery" className="scroll-mt-6">
+                <RecoveryPanel id={database.id} />
+              </section>
+              <section id="access-control" className="scroll-mt-6">
+                <AccessControlPanel id={database.id} />
+              </section>
+              <section id="danger-zone" className="scroll-mt-6">
+                <DatabaseDangerActions
+                  database={database}
+                  onDeleted={() => void navigate({ to: "/" })}
+                  lifecycle={lifecycle}
+                />
+              </section>
+            </div>
+          </div>
+        ) : (
+          <div className="mx-auto w-full max-w-4xl space-y-6">
+            <MetadataListSkeleton rows={10} />
+            <CardSkeleton rows={3} />
+            <CardSkeleton rows={4} />
+            <CardSkeleton rows={3} />
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

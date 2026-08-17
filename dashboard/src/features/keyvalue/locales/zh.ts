@@ -533,6 +533,16 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "Key Value 详情导航",
     description: "aria-label for the detail-page tab nav",
   },
+  "keyvalue.sectionNavigation": {
+    message: "Key Value 区块",
+    description:
+      "Accessible label for the key-value detail page section navigation",
+  },
+  "keyvalue.dangerZoneTitle": {
+    message: "危险区域",
+    description:
+      "Key-value detail section-nav label for the destructive actions",
+  },
   "keyvalue.overviewTab": {
     message: "概览",
     description: "Detail-page Overview tab label",
