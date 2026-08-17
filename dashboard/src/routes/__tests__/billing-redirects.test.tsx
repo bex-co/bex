@@ -22,8 +22,9 @@ import {
   createRouter,
   type ParsedLocation,
 } from "@tanstack/react-router";
+import { routeTree } from "@/routeTree.gen";
 import { Route as UsageShimRoute } from "../usage";
-import { Route as BillingSplatRoute } from "../billing_.$";
+import { Route as BillingSplatRoute } from "../billing_.$first.$";
 
 /**
  * The w5/m70 rename made /billing the real money page and /usage a redirect
@@ -31,11 +32,11 @@ import { Route as BillingSplatRoute } from "../billing_.$";
  * return URLs (query included) keep working, and Render's sitewide
  * /billing/update-plan shape still opens the change-plan dialog.
  *
- * The /usage shim runs as a router integration; the /billing/$ splat's
- * beforeLoad is asserted directly (the render-alias.test.ts pattern) — a
- * hand-built route tree holding both an exact "/billing" and a "/billing/$"
- * splat ranks them insertion-order-sensitively, which made the integration
- * version flake in CI while the production file-based tree is unambiguous.
+ * The /usage shim runs as a router integration; the constrained
+ * /billing/$first/$ splat's beforeLoad is asserted directly (the
+ * render-alias.test.ts pattern). The generated production tree is also checked
+ * because an unconstrained /billing/$ splat matches the empty suffix and
+ * outranks the exact page during SSR, producing a /billing -> /billing loop.
  */
 function renderAt(initialPath: string) {
   const rootRoute = createRootRoute();
@@ -59,15 +60,15 @@ function renderAt(initialPath: string) {
 }
 
 /** beforeLoad throws a redirect; capture its href. */
-function splatRedirectHref(splat: string, href: string): string | undefined {
+function splatRedirectHref(first: string, href: string): string | undefined {
   const beforeLoad = BillingSplatRoute.options.beforeLoad as (ctx: {
-    params: { _splat: string };
+    params: { first: string; _splat: string };
     location: ParsedLocation;
   }) => never;
   const pathname = href.split("?")[0]!;
   try {
     beforeLoad({
-      params: { _splat: splat },
+      params: { first, _splat: "" },
       location: { pathname, href } as ParsedLocation,
     });
   } catch (thrown) {
@@ -77,6 +78,19 @@ function splatRedirectHref(splat: string, href: string): string | undefined {
 }
 
 describe("billing redirects (w5/m70)", () => {
+  it("matches bare /billing to the real page, never the redirect alias", () => {
+    const router = createRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ["/billing"] }),
+      context: { client: {} as never },
+    });
+
+    expect(router.matchRoutes("/billing").map((match) => match.routeId)).toEqual([
+      "__root__",
+      "/billing",
+    ]);
+  });
+
   it("redirects /usage to /billing preserving the query string", async () => {
     const router = renderAt("/usage?billing=success");
     await waitFor(() =>
@@ -94,7 +108,7 @@ describe("billing redirects (w5/m70)", () => {
   });
 
   it("folds any other /billing sub-path back to the billing page", () => {
-    expect(splatRedirectHref("whatever/else", "/billing/whatever/else")).toBe(
+    expect(splatRedirectHref("whatever", "/billing/whatever/else")).toBe(
       "/billing",
     );
     // Render appends its own query — it folds into the landing's.

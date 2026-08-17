@@ -38,7 +38,7 @@ describe("Render dashboard-route aliases", () => {
     // w1/m45: workspace/user-scoped + create-flow + auth shapes
     ["/w/$"],
     ["/u/$"],
-    ["/billing/$"],
+    ["/billing/$first/$"],
     ["/login"],
     ["/register"],
     ["/new/database"],
