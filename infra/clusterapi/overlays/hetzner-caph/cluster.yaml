@@ -114,9 +114,10 @@ spec:
             rotate-server-certificates: "true"
             tls-cipher-suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
       # runc, containerd, and kubelet/kubeadm/kubectl are baked into the worker
-      # snapshot this pool boots (HCloudMachineTemplate bex-tenant-0-baked,
-      # imageName is selected by infra/packer/release.conf and baked by
-      # infra/packer/bex-worker.pkr.hcl (w1/m36 t001).
+      # snapshot this pool boots (HCloudMachineTemplate
+      # bex-tenant-0-k134-cx33); imageName is selected by
+      # infra/packer/release.conf and baked by infra/packer/bex-worker.pkr.hcl
+      # (w1/m36 t001).
       # That took the ~350MB of github.com/pkgs.k8s.io downloads (runc+containerd
       # +kubelet, ~150MB) AND the CP image pre-pull (`kubeadm config images pull`,
       # ~200MB — t002) off the autoscaler scale-up hot path. What remains only
@@ -286,9 +287,10 @@ spec:
             rotate-server-certificates: "true"
             tls-cipher-suites: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
       # runc, containerd, and kubelet/kubeadm/kubectl are baked into the worker
-      # snapshot this pool boots (HCloudMachineTemplate bex-tenant-0-baked,
-      # imageName is selected by infra/packer/release.conf and baked by
-      # infra/packer/bex-worker.pkr.hcl (w1/m36 t001).
+      # snapshot this pool boots (HCloudMachineTemplate
+      # bex-tenant-burst-k134-cx33); imageName is selected by
+      # infra/packer/release.conf and baked by infra/packer/bex-worker.pkr.hcl
+      # (w1/m36 t001).
       # That took the ~350MB of github.com/pkgs.k8s.io downloads (runc+containerd
       # +kubelet, ~150MB) AND the CP image pre-pull (`kubeadm config images pull`,
       # ~200MB — t002) off the autoscaler scale-up hot path. What remains only
@@ -930,31 +932,6 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
-  # Rotated name (w1/m36 t001): HCloudMachineTemplate.Spec is immutable (CAPH
-  # v1.1.7 rejects any Spec update), so moving imageName off ubuntu-24.04 needs a
-  # NEW template the MachineDeployment repoints to — that repoint is what rolls
-  # the pool onto the baked snapshot. The old `bex-tenant-0` template lingers
-  # unreferenced after the roll; delete it by hand (see the roll runbook in
-  # .pm/w1/m36/README.md — `kubectl delete hcloudmachinetemplate bex-tenant-0`).
-  # Next image bump = rotate the name again (…-baked → …-baked2).
-  name: bex-tenant-0-baked
-  namespace: bex-capi
-spec:
-  template:
-    spec:
-      # Baked worker snapshot carrying runc/containerd/kubelet (recipe:
-      # infra/packer/bex-worker.pkr.hcl). CAPH matches imageName against the
-      # snapshot's `caph-image-name` label (docs/caph node-image convention).
-      # ⚠️ Do NOT apply this overlay until the `bex-worker` snapshot exists in
-      # the project (run .github/workflows/snapshot.yml) — otherwise CAPH cannot
-      # resolve the image and new machines never provision.
-      imageName: bex-worker-k8s-1-34
-      placementGroupName: tenant-0
-      type: cx33
----
-apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-kind: HCloudMachineTemplate
-metadata:
   name: bex-tenant-0-k132
   namespace: bex-capi
 spec:
@@ -1026,20 +1003,6 @@ spec:
       imageName: bex-worker-k8s-1-34
       placementGroupName: tenant-0
       type: cx43
----
-apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-kind: HCloudMachineTemplate
-metadata:
-  # CPX is the supported scale-out path in fsn1: the baked snapshot is x86 and
-  # therefore portable from the existing Intel cx33 baseline to AMD cpx32.
-  name: bex-tenant-burst-baked
-  namespace: bex-capi
-spec:
-  template:
-    spec:
-      imageName: bex-worker-k8s-1-34
-      placementGroupName: tenant-0
-      type: cpx32
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
@@ -1334,18 +1297,6 @@ spec:
         kind: HCloudMachineTemplate
         name: bex-platform-k134-cx33
       version: v1.34.9
----
-apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
-kind: HCloudMachineTemplate
-metadata:
-  name: bex-platform-baked
-  namespace: bex-capi
-spec:
-  template:
-    spec:
-      imageName: bex-worker-k8s-1-34
-      placementGroupName: platform
-      type: cx33
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
