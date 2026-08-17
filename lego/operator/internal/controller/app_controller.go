@@ -104,6 +104,10 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 // labelApp marks the workloads bex creates for an App.
 const labelApp = "app.bex.co/app"
 
+// defaultAppsNamespace mirrors BEX_APPS_NAMESPACE's default: the shared
+// bootstrap apps namespace an unset field must never refuse.
+const defaultAppsNamespace = "default"
+
 // labelAppID is the immutable Render-shaped service id propagated from the App
 // CR onto workload pods for node-local egress attribution. Kept in sync with
 // backend/core.LabelAppID without importing the backend.
@@ -362,7 +366,7 @@ func appendIngressHostRoute(ing *networkingv1.Ingress, appName, host string, tls
 func (r *AppReconciler) canonicalNamespace(app *appv1alpha1.App) bool {
 	appsNS := r.AppsNamespace
 	if appsNS == "" {
-		appsNS = "default" // mirror BEX_APPS_NAMESPACE's default so an unset field never refuses bootstrap Apps
+		appsNS = defaultAppsNamespace // an unset field never refuses bootstrap Apps
 	}
 	if app.Namespace == appsNS {
 		return true

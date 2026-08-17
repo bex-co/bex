@@ -247,7 +247,7 @@ func barmanCloudPlugin(serverName string, walArchiver bool) map[string]any {
 // a confused-deputy / cross-tenant write (codex #11). Shared by the Database and
 // KeyValue reconcilers.
 func canonicalNamespace(objMeta *metav1.ObjectMeta) bool {
-	if objMeta.Namespace == "default" {
+	if objMeta.Namespace == defaultAppsNamespace {
 		return true
 	}
 	ws := objMeta.Labels[labelWorkspace]
