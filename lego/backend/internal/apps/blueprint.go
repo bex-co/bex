@@ -923,7 +923,7 @@ func (s *Service) resolveTenantID(ctx context.Context) string {
 // resolveBlueprintResources resolves the manifest's declared resources to their
 // current live App / Database CRs within the workspace.
 func (s *Service) resolveBlueprintResources(ctx context.Context, b store.Blueprint) []BlueprintResource {
-	if b.Manifest == "" || s.Client == nil {
+	if b.Manifest == "" {
 		return nil
 	}
 	_, ir, problems := CompileBlueprintIR(b.Manifest)
@@ -934,7 +934,7 @@ func (s *Service) resolveBlueprintResources(ctx context.Context, b store.Bluepri
 }
 
 func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.Blueprint, ir BlueprintIR) []BlueprintResource {
-	if s.Client == nil || len(ir.Resources) == 0 {
+	if len(ir.Resources) == 0 {
 		return nil
 	}
 
@@ -945,29 +945,44 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 		client.MatchingLabels{core.LabelTenant: tenantID},
 	}
 
-	var appList appv1alpha1.AppList
 	appByName := map[string]*appv1alpha1.App{}
-	if err := s.Client.List(ctx, &appList, opts...); err == nil {
-		for i := range appList.Items {
-			a := &appList.Items[i]
-			appByName[a.Name] = a
-		}
-	}
-
-	var dbList appv1alpha1.DatabaseList
 	dbByName := map[string]*appv1alpha1.Database{}
-	if err := s.Client.List(ctx, &dbList, opts...); err == nil {
-		for i := range dbList.Items {
-			d := &dbList.Items[i]
-			dbByName[d.Spec.Name] = d
+	keyValueByName := map[string]*appv1alpha1.KeyValue{}
+	if s.Client != nil {
+		var appList appv1alpha1.AppList
+		if err := s.Client.List(ctx, &appList, opts...); err == nil {
+			for i := range appList.Items {
+				a := &appList.Items[i]
+				appByName[a.Name] = a
+			}
+		}
+
+		var dbList appv1alpha1.DatabaseList
+		if err := s.Client.List(ctx, &dbList, opts...); err == nil {
+			for i := range dbList.Items {
+				d := &dbList.Items[i]
+				dbByName[d.Spec.Name] = d
+			}
+		}
+		var keyValueList appv1alpha1.KeyValueList
+		if err := s.Client.List(ctx, &keyValueList, opts...); err == nil {
+			for i := range keyValueList.Items {
+				kv := &keyValueList.Items[i]
+				keyValueByName[kv.Spec.Name] = kv
+			}
 		}
 	}
-	var keyValueList appv1alpha1.KeyValueList
-	keyValueByName := map[string]*appv1alpha1.KeyValue{}
-	if err := s.Client.List(ctx, &keyValueList, opts...); err == nil {
-		for i := range keyValueList.Items {
-			kv := &keyValueList.Items[i]
-			keyValueByName[kv.Spec.Name] = kv
+	envGroupByName := map[string]string{}
+	hasEnvGroups := false
+	for _, resource := range ir.Resources {
+		if resource.Kind == BlueprintResourceEnvVarGroup {
+			hasEnvGroups = true
+			break
+		}
+	}
+	if hasEnvGroups && s.EnvGroups != nil {
+		if groups, err := s.EnvGroups.GroupIDsByName(ctx); err == nil {
+			envGroupByName = groups
 		}
 	}
 
@@ -996,6 +1011,12 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 				continue
 			}
 			resources = append(resources, BlueprintResource{ID: kv.Name, Name: resource.Name, Type: "key_value"})
+		case BlueprintResourceEnvVarGroup:
+			groupID, ok := envGroupByName[resource.Name]
+			if !ok {
+				continue
+			}
+			resources = append(resources, BlueprintResource{ID: groupID, Name: resource.Name, Type: "environment_group"})
 		}
 	}
 	return resources
