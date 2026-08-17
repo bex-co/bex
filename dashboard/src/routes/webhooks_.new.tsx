@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { FormPageSkeleton } from "@/common/components/detail-skeletons";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
@@ -29,6 +30,7 @@ import { translatedTitleHead } from "@/common/lib/document-head";
 export const Route = createFileRoute("/webhooks_/new")({
   staticData: { chrome: true },
   component: NewWebhookPage,
+  pendingComponent: FormPageSkeleton,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("webhooks.newTitle", match),
 });

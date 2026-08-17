@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ListPageSkeleton } from "@/common/components/detail-skeletons";
 import { Loader2 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
@@ -30,6 +31,7 @@ export interface AgentsSearch {
 export const Route = createFileRoute("/agents")({
   staticData: { chrome: true },
   component: AgentSessionsPage,
+  pendingComponent: ListPageSkeleton,
   beforeLoad: requireAuth(),
   // `?view=list` keeps the standalone sessions table reachable (the sidebar's
   // More/view-all target) without a second route file; `?archived=true|all`

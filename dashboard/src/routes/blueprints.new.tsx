@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { FormPageSkeleton } from "@/common/components/detail-skeletons";
 import { Loader2, RefreshCw } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
@@ -38,6 +39,7 @@ import { protectedServiceName } from "@/features/services/lib/protected-confirma
 export const Route = createFileRoute("/blueprints/new")({
   staticData: { chrome: true },
   component: NewBlueprintPage,
+  pendingComponent: FormPageSkeleton,
   beforeLoad: requireAuth(),
   head: ({ match }) => translatedTitleHead("blueprints.createTitle", match),
 });

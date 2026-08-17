@@ -9,6 +9,48 @@ import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
  */
 
 /**
+ * A top-level LIST route's pending state (w9/m69): the page's own content shape —
+ * a title + action row over a card grid — inside the persistent shell's content
+ * region, instead of the bare centered `RoutePending` spinner. Mounts only when
+ * a navigation is slow enough to pass `defaultPendingMs` (a prefetched/cached
+ * nav skips it), and matches the real list layout so the skeleton→data swap
+ * doesn't jump. Never a full-viewport element — the sidebar/header persist.
+ */
+export function ListPageSkeleton() {
+  return (
+    <div className="flex-1 overflow-auto p-4 sm:p-6">
+      <div className="w-full space-y-6">
+        <div className="flex items-center justify-between gap-2">
+          <Skeleton className="h-7 w-44" />
+          <Skeleton className="h-9 w-28" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <CardSkeleton rows={2} />
+          <CardSkeleton rows={2} />
+          <CardSkeleton rows={2} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A top-level CREATE (`*.new`) route's pending state (w9/m69): a title + a
+ * form-shaped card, so the create wizards don't fall back to the bare spinner
+ * either. Same content-region wrapper as `ListPageSkeleton`.
+ */
+export function FormPageSkeleton() {
+  return (
+    <div className="flex-1 overflow-auto p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-2xl space-y-6">
+        <Skeleton className="h-7 w-52" />
+        <CardSkeleton rows={5} />
+      </div>
+    </div>
+  );
+}
+
+/**
  * A titled card placeholder — real Card chrome with a skeleton title line and
  * `rows` body lines of varying width (so it reads as prose, not identical bars).
  * The generic stand-in for a detail-page panel while it loads.
