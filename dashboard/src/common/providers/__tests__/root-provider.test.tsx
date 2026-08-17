@@ -1,8 +1,19 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { useIntl } from "react-intl";
 import { toast } from "sonner";
 import { RootProvider } from "@/common/providers/root-provider";
+
+// RootProvider mounts OryToaster through `React.lazy(() => import(...))`, and
+// that import pulls in react-intl plus Ory's whole locale catalog. In a cold
+// worker it regularly takes longer than testing-library's 1s default timeout,
+// so the waits below were racing the module loader rather than the behavior
+// under test — an intermittent failure that took down a deploy run. Resolving
+// the module once up front warms the module cache, so the lazy boundary settles
+// on the first render flush and the suite tests only the intl context.
+beforeAll(async () => {
+  await import("@/common/providers/ory-toaster");
+});
 
 // The WorkspaceProvider pulls in Apollo/GraphQL; stub it out — this suite is
 // about the intl context around the Toaster, nothing else.
