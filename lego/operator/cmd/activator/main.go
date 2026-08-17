@@ -21,6 +21,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -56,6 +57,19 @@ const (
 	customPageTimeout = 5 * time.Second
 	customPageMaxSize = 1 << 20 // 1 MiB
 	maxRedirects      = 5
+
+	// Custom-page snapshot cache (round-11 #4): a maintenance host's custom
+	// page is fetched at most once per TTL no matter the public request volume,
+	// one fetch is shared by concurrent requests (singleflight), the process
+	// holds a bounded number of origin fetches in flight, and a failing origin
+	// keeps serving the last good snapshot for a short stale window instead of
+	// turning every public request into a fresh 5s timeout. A tenant pointing
+	// the page at a slow origin can therefore no longer convert unauthenticated
+	// traffic into unbounded activator sockets/goroutines.
+	customPageTTL        = 30 * time.Second
+	customPageMaxStale   = 10 * time.Minute
+	customPageMaxEntries = 256
+	customPageMaxFetches = 16
 
 	// Public-server timeouts bound slow-header/slowloris connections so a trickle
 	// client cannot hold a goroutine/fd open (codex-security #21).
@@ -241,10 +255,196 @@ func writeHTMLPage(w http.ResponseWriter, r *http.Request, status int, page stri
 }
 
 func serveMaintenance(w http.ResponseWriter, r *http.Request, app *appv1alpha1.App, platformHost func(string) bool) {
-	fetch := func(ctx context.Context, a *appv1alpha1.App, rawURI string) (*http.Response, error) {
-		return fetchCustomPage(ctx, a, rawURI, platformHost)
-	}
+	fetch := maintenancePages.fetcher(platformHost)
 	serveMaintenanceWithFetcher(w, r, app, fetch)
+}
+
+// maintenancePages is the process-wide custom-page snapshot cache shared by
+// every maintenance request (round-11 #4).
+var maintenancePages = newCustomPageCache()
+
+// customPageEntry is one cached origin snapshot. ok=false marks a fetch
+// failure, which is never cached — the stale window serves the previous good
+// entry instead.
+type customPageEntry struct {
+	body        []byte
+	contentType string
+	status      int
+	fetchedAt   time.Time
+}
+
+// customPageCache bounds the custom-page origin fan-out (round-11 #4): per-URI
+// singleflight + TTL snapshots, a process-wide cap on concurrent origin
+// fetches, a bounded entry map, and stale-on-error serving. All SSRF/redirect
+// validation stays in validateCustomPageURL/fetchOrigin — the cache sits above
+// it and stores only validated, size-bounded bytes.
+type customPageCache struct {
+	ttl        time.Duration
+	maxStale   time.Duration
+	maxEntries int
+	fetchSem   chan struct{}
+	inflight   singleflight.Group
+	transport  *http.Transport // pooled across requests (was: fresh per request)
+
+	mu      sync.Mutex
+	entries map[string]customPageEntry
+	// now and origin are injectable seams for tests.
+	now    func() time.Time
+	origin func(context.Context, *appv1alpha1.App, *url.URL, func(string) bool) (*http.Response, error)
+}
+
+func newCustomPageCache() *customPageCache {
+	c := &customPageCache{
+		ttl:        customPageTTL,
+		maxStale:   customPageMaxStale,
+		maxEntries: customPageMaxEntries,
+		fetchSem:   make(chan struct{}, customPageMaxFetches),
+		transport: &http.Transport{
+			ForceAttemptHTTP2:     true,
+			ResponseHeaderTimeout: customPageTimeout,
+			TLSHandshakeTimeout:   customPageTimeout,
+			DialContext:           netutil.SafeDialContext(customPageTimeout),
+		},
+		entries: map[string]customPageEntry{},
+		now:     time.Now,
+	}
+	c.origin = c.fetchOrigin
+	return c
+}
+
+// fetcher returns the fetch func serveMaintenanceWithFetcher consumes. Cache
+// hits synthesize an *http.Response over the snapshot, so the size cap and
+// status mapping in the responder stay exactly as they were.
+func (c *customPageCache) fetcher(
+	platformHost func(string) bool,
+) func(context.Context, *appv1alpha1.App, string) (*http.Response, error) {
+	return func(ctx context.Context, app *appv1alpha1.App, rawURI string) (*http.Response, error) {
+		u, err := validateCustomPageURL(rawURI, app, platformHost)
+		if err != nil {
+			return nil, err
+		}
+		key := u.String()
+		if e, ok := c.snapshot(key); ok {
+			return e.response(), nil
+		}
+		v, err, _ := c.inflight.Do(key, func() (any, error) {
+			// Another goroutine may have refreshed the entry while this caller
+			// waited on the flight group.
+			if e, ok := c.snapshot(key); ok {
+				return e, nil
+			}
+			select {
+			case c.fetchSem <- struct{}{}:
+			case <-ctx.Done():
+				return customPageEntry{}, ctx.Err()
+			}
+			defer func() { <-c.fetchSem }()
+			resp, err := c.origin(ctx, app, u, platformHost)
+			if err != nil {
+				return customPageEntry{}, err
+			}
+			defer func() { _ = resp.Body.Close() }()
+			body, err := io.ReadAll(io.LimitReader(resp.Body, customPageMaxSize+1))
+			if err != nil || len(body) > customPageMaxSize {
+				return customPageEntry{}, errors.New("custom page oversized or unreadable")
+			}
+			e := customPageEntry{
+				body:        body,
+				contentType: resp.Header.Get("Content-Type"),
+				status:      resp.StatusCode,
+				fetchedAt:   c.now(),
+			}
+			c.store(key, e)
+			return e, nil
+		})
+		if err != nil {
+			// Origin failed: serve the last good snapshot while it is younger
+			// than TTL+maxStale, so a flapping origin does not flap every
+			// public request.
+			if e, ok := c.staleSnapshot(key); ok {
+				return e.response(), nil
+			}
+			return nil, err
+		}
+		return v.(customPageEntry).response(), nil
+	}
+}
+
+// snapshot returns the cached entry when one exists and is younger than ttl.
+func (c *customPageCache) snapshot(key string) (customPageEntry, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e, ok := c.entries[key]
+	if !ok || c.now().Sub(e.fetchedAt) > c.ttl {
+		return customPageEntry{}, false
+	}
+	return e, true
+}
+
+// staleSnapshot returns the cached entry however old, up to ttl+maxStale.
+func (c *customPageCache) staleSnapshot(key string) (customPageEntry, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e, ok := c.entries[key]
+	if !ok || c.now().Sub(e.fetchedAt) > c.ttl+c.maxStale {
+		return customPageEntry{}, false
+	}
+	return e, true
+}
+
+func (c *customPageCache) store(key string, e customPageEntry) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.entries) >= c.maxEntries {
+		// Bound the map by dropping the oldest entry (distinct URIs track
+		// maintenance-enabled Apps; 256 covers them with headroom).
+		var oldestKey string
+		var oldest time.Time
+		first := true
+		for k, v := range c.entries {
+			if first || v.fetchedAt.Before(oldest) {
+				oldestKey, oldest, first = k, v.fetchedAt, false
+			}
+		}
+		if !first {
+			delete(c.entries, oldestKey)
+		}
+	}
+	c.entries[key] = e
+}
+
+// fetchOrigin performs the actual origin fetch on the shared pooled transport.
+func (c *customPageCache) fetchOrigin(
+	ctx context.Context,
+	app *appv1alpha1.App,
+	u *url.URL,
+	platformHost func(string) bool,
+) (*http.Response, error) {
+	hc := &http.Client{
+		Transport:     c.transport,
+		Timeout:       customPageTimeout,
+		CheckRedirect: customPageRedirectPolicy(app, platformHost),
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "bex-maintenance-responder/1.0")
+	return hc.Do(req)
+}
+
+// response materializes the cached snapshot as the *http.Response shape the
+// responder consumes.
+func (e customPageEntry) response() *http.Response {
+	header := http.Header{}
+	if e.contentType != "" {
+		header.Set("Content-Type", e.contentType)
+	}
+	return &http.Response{
+		StatusCode: e.status,
+		Header:     header,
+		Body:       io.NopCloser(bytes.NewReader(e.body)),
+	}
 }
 
 func serveMaintenanceWithFetcher(
@@ -282,33 +482,6 @@ func serveMaintenanceWithFetcher(
 	if r.Method != http.MethodHead {
 		_, _ = w.Write(body)
 	}
-}
-
-func fetchCustomPage(
-	ctx context.Context, app *appv1alpha1.App, rawURI string, platformHost func(string) bool,
-) (*http.Response, error) {
-	u, err := validateCustomPageURL(rawURI, app, platformHost)
-	if err != nil {
-		return nil, err
-	}
-	transport := &http.Transport{
-		ForceAttemptHTTP2:     true,
-		ResponseHeaderTimeout: customPageTimeout,
-		TLSHandshakeTimeout:   customPageTimeout,
-		DialContext:           netutil.SafeDialContext(customPageTimeout),
-	}
-	defer transport.CloseIdleConnections()
-	hc := &http.Client{
-		Transport:     transport,
-		Timeout:       customPageTimeout,
-		CheckRedirect: customPageRedirectPolicy(app, platformHost),
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "bex-maintenance-responder/1.0")
-	return hc.Do(req)
 }
 
 func customPageRedirectPolicy(

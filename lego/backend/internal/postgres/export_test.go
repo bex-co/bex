@@ -110,6 +110,75 @@ func TestCreateLogicalExportWritesIntentAndRejectsOverlap(t *testing.T) {
 	}
 }
 
+// TestCreateExportPrunesTerminalHistory (round-11 #9): spec.exports must not
+// grow append-only — a new export keeps every non-terminal request plus only
+// the newest maxTerminalExportHistory terminal ones, bounding the Database CR
+// object and reconcile cost no matter how many exports a tenant churns.
+func TestCreateExportPrunesTerminalHistory(t *testing.T) {
+	svc, cl := newService()
+	seedDatabaseSpec(t, cl, "churn-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)
+	now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
+	svc.Clock = func() time.Time { return now }
+
+	var db appv1alpha1.Database
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "churn-db"}, &db); err != nil {
+		t.Fatal(err)
+	}
+	// Fifteen terminal (expired) requests, one still-available artifact, in
+	// chronological order.
+	db.Spec.Exports = nil
+	db.Status.Exports = nil
+	base := now.Add(-48 * time.Hour)
+	for i := 0; i < maxTerminalExportHistory+5; i++ {
+		expID := id.New(id.Export)
+		at := base.Add(time.Duration(i) * time.Minute)
+		db.Spec.Exports = append(db.Spec.Exports, appv1alpha1.DatabaseExportRequest{ID: expID, RequestedAt: at.Format(time.RFC3339)})
+		db.Status.Exports = append(db.Status.Exports, appv1alpha1.DatabaseExportStatus{
+			ID: expID, Phase: appv1alpha1.DatabaseExportExpired,
+			CreatedAt: at.Format(time.RFC3339), ExpiresAt: now.Add(-time.Hour).Format(time.RFC3339),
+		})
+	}
+	keepID := id.New(id.Export)
+	db.Spec.Exports = append(db.Spec.Exports, appv1alpha1.DatabaseExportRequest{ID: keepID, RequestedAt: now.Add(-time.Hour).Format(time.RFC3339)})
+	db.Status.Exports = append(db.Status.Exports, appv1alpha1.DatabaseExportStatus{
+		ID: keepID, Phase: appv1alpha1.DatabaseExportAvailable,
+		CreatedAt: now.Add(-time.Hour).Format(time.RFC3339), ExpiresAt: now.Add(6 * 24 * time.Hour).Format(time.RFC3339),
+	})
+	db.Status.BackupEndpointURL = "https://objects.example.com"
+	db.Status.BackupS3SecretName = "pg-backup-s3"
+	if err := cl.Update(context.Background(), &db); err != nil {
+		t.Fatal(err)
+	}
+
+	export, err := svc.CreateExport(context.Background(), "churn-db")
+	if err != nil {
+		t.Fatalf("CreateExport: %v", err)
+	}
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "churn-db"}, &db); err != nil {
+		t.Fatal(err)
+	}
+	wantLen := maxTerminalExportHistory + 2 // newest 10 expired + the available one + the new one
+	if len(db.Spec.Exports) != wantLen {
+		t.Fatalf("spec.exports = %d entries, want %d (bounded terminal history)", len(db.Spec.Exports), wantLen)
+	}
+	if db.Spec.Exports[len(db.Spec.Exports)-1].ID != export.ID {
+		t.Fatalf("newest entry = %s, want the just-created export", db.Spec.Exports[len(db.Spec.Exports)-1].ID)
+	}
+	foundAvailable := false
+	for _, request := range db.Spec.Exports {
+		if request.ID == keepID {
+			foundAvailable = true
+		}
+	}
+	if !foundAvailable {
+		t.Fatal("the still-available export was pruned — only terminal history is bounded")
+	}
+	// The oldest expired entries are the ones pruned.
+	if db.Spec.Exports[0].ID == db.Spec.Exports[1].ID {
+		t.Fatal("impossible duplicate ids")
+	}
+}
+
 func TestRenderSingularExportCreateReturnsAcceptedWithoutBody(t *testing.T) {
 	svc, cl := newService()
 	seedDatabaseSpec(t, cl, "paid-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, true)

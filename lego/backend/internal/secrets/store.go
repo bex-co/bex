@@ -44,6 +44,11 @@ const (
 	baoTenant    = "default" // legacy single-tenant root; the ctx tenant (w7/m70) overrides it
 	baoJWTPath   = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	baoRenewSkew = 30 * time.Second // re-login this long before the lease expires
+
+	// maxStoreResponseBytes bounds one OpenBao response body decoded into
+	// memory (round-11 #6). Well above the tenant-map aggregate quotas, so it
+	// only ever trips on a pathological or foreign payload.
+	maxStoreResponseBytes = 8 << 20 // 8 MiB
 )
 
 // tenantCtxKey carries the workspace (tenant) id that scopes an OpenBao path. The
@@ -359,7 +364,11 @@ func (s *openBaoStore) do(ctx context.Context, method, url, token string, body [
 		return &core.HTTPStatusError{Code: resp.StatusCode, Summary: method + " " + url + " returned " + resp.Status}
 	}
 	if out != nil {
-		return json.NewDecoder(resp.Body).Decode(out)
+		// Round-11 #6: bound the decoded body so a runaway tenant map (or a
+		// misbehaving store) cannot allocate unbounded memory. Legit payloads
+		// are far under the bound (aggregate quotas cap tenant maps at
+		// 512 KiB); a truncated value fails JSON parsing naturally.
+		return json.NewDecoder(io.LimitReader(resp.Body, maxStoreResponseBytes)).Decode(out)
 	}
 	return nil
 }

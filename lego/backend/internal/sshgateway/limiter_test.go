@@ -68,3 +68,35 @@ func TestChannelLimitsDefaults(t *testing.T) {
 		t.Fatal("a second identity must not be affected by the first identity's channel budget")
 	}
 }
+
+// round-11 #2: the per-source pre-auth limiter caps one resolved source's
+// share of the global pre-auth pool, releases slots when handshakes resolve,
+// and can be disabled with a negative cap (global-only, pre-round-11).
+func TestSourceLimiterPreAuthFairness(t *testing.T) {
+	sources := NewSourceLimiter(2)
+	if !sources.Acquire("203.0.113.9") || !sources.Acquire("203.0.113.9") {
+		t.Fatal("first two connections from one source must be admitted")
+	}
+	if sources.Acquire("203.0.113.9") {
+		t.Fatal("third concurrent connection from the same source must be shed")
+	}
+	if !sources.Acquire("198.51.100.7") {
+		t.Fatal("an unrelated source must stay admissible — the cap is per-source, not global")
+	}
+	sources.Release("203.0.113.9")
+	if !sources.Acquire("203.0.113.9") {
+		t.Fatal("released per-source capacity was not reusable")
+	}
+	sources.Release("203.0.113.9")
+	sources.Release("203.0.113.9")
+	if len(sources.count) != 1 { // only 198.51.100.7 remains
+		t.Fatalf("fully-released sources must leave no map entries: %+v", sources.count)
+	}
+
+	disabled := NewSourceLimiter(-1)
+	for i := 0; i < 64; i++ {
+		if !disabled.Acquire("203.0.113.9") {
+			t.Fatal("negative cap disables per-source fairness")
+		}
+	}
+}

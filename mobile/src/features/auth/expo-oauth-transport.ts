@@ -192,6 +192,17 @@ export class ExpoOAuthTransport implements OAuthTransport {
     return this.completeAuthorization(result.url);
   }
 
+  /**
+   * Converges the two observers of one native callback (the active AuthSession
+   * and the Expo Router deep link both call this with the same URL) onto ONE
+   * code exchange — the second observer must not re-run exchangeRedirect,
+   * which would consume-fail the already-spent pending state. The memo is
+   * authorization-scoped, NOT session-scoped: authorize() clears it at the
+   * start of a new login and reset() clears it at every terminal session
+   * boundary (sign-out, forced clear), so a replayed deep link after logout
+   * cannot resurrect the old token set (round-11 #10) — it falls through to
+   * exchangeRedirect, whose pending-state/PKCE checks reject it.
+   */
   completeAuthorization(redirectUrl: string): Promise<OAuthTokenSet> {
     if (this.completion?.redirectUrl === redirectUrl) {
       return this.completion.result;
@@ -199,6 +210,11 @@ export class ExpoOAuthTransport implements OAuthTransport {
     const result = this.exchangeRedirect(redirectUrl);
     this.completion = { redirectUrl, result };
     return result;
+  }
+
+  /** OAuthTransport.reset — see the interface doc. */
+  reset(): void {
+    this.completion = undefined;
   }
 
   private async exchangeRedirect(redirectUrl: string): Promise<OAuthTokenSet> {

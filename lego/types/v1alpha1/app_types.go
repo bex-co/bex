@@ -45,6 +45,21 @@ const AnnotationReleaseGeneration = "app.bex.co/release-generation"
 // this marker.
 const AnnotationCanceledReleaseGeneration = "app.bex.co/canceled-release-generation"
 
+// LabelProtectedFromTenantMount marks an operational Secret (a clone token, a
+// registry credential, a backup writer, …) that a tenant workload must never
+// mount by name. Kubelet secret projection needs no pod-side API token, so pod
+// hardening alone does not stop a tenant App CR naming such a Secret in
+// envFrom/volume/env — the operator's App reconcile rejects every reference to
+// a Secret carrying this label. It lives in the shared types module (not the
+// operator's execution package) because BOTH sides stamp it: the operator on
+// the Secrets it mints, bex-api on the operational Secrets it writes (clone
+// tokens, external-registry pull credentials). Same lineage as codex F1;
+// annotation + coverage extended in round-11 #1.
+const (
+	LabelProtectedFromTenantMount = "app.bex.co/protected-from-tenant-mount"
+	ProtectedFromTenantMount      = "true"
+)
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 

@@ -53,6 +53,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"golang.org/x/crypto/bcrypt"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Creds manages per-App Zot pull credentials. A nil *Creds disables the
@@ -112,6 +114,13 @@ func (c *Creds) EnsureCreds(ctx context.Context, appName, appNS string) error {
 	password, err := c.ensurePullSecret(ctx, appNS, PullSecretName(appName), zotUser, map[string]string{
 		"app.bex.co/component": "registry-pull",
 		"app.bex.co/app":       appName,
+		// Round-11 #1: the per-App registry credential is operational — a
+		// tenant App naming it in envFrom/secretKeyRef would dump the
+		// dockerconfig credentials into its own environment. The App
+		// reconcile refuses any reference to a Secret carrying this label;
+		// imagePullSecret resolution ignores labels, so kubelet pulls are
+		// unaffected.
+		appv1alpha1.LabelProtectedFromTenantMount: appv1alpha1.ProtectedFromTenantMount,
 	})
 	if err != nil {
 		return err
@@ -236,6 +245,20 @@ func (c *Creds) ensurePullSecret(ctx context.Context, ns, name, zotUser string, 
 		}
 	case err != nil:
 		return "", fmt.Errorf("get pull secret: %w", err)
+	}
+
+	// Backfill the protected label on Secrets minted before round-11 #1 so the
+	// App-side validator covers them too. Failure is not fatal — the label only
+	// hardens the mount refusal — but it is loud.
+	if sec.Labels[appv1alpha1.LabelProtectedFromTenantMount] != appv1alpha1.ProtectedFromTenantMount {
+		patch := client.MergeFrom(sec.DeepCopy())
+		if sec.Labels == nil {
+			sec.Labels = map[string]string{}
+		}
+		sec.Labels[appv1alpha1.LabelProtectedFromTenantMount] = appv1alpha1.ProtectedFromTenantMount
+		if err := c.Client.Patch(ctx, &sec, patch); err != nil {
+			return "", fmt.Errorf("backfill protected label on pull secret: %w", err)
+		}
 	}
 
 	password, err := c.passwordFrom(sec.Data[corev1.DockerConfigJsonKey], zotUser)

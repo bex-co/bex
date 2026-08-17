@@ -166,6 +166,11 @@ func main() {
 		// Bound concurrent pre-auth handshakes so an anonymous connection flood
 		// can't exhaust the gateway before the post-handshake session limiter.
 		MaxPreAuthConns: intEnv("BEX_SSH_MAX_PREAUTH_CONNS", 256),
+		// …and bound how many of those slots ONE source may hold (round-11 #2):
+		// silent connections from a single address park slots for the full
+		// handshake deadline, so per-source fairness keeps everyone else's
+		// handshakes admissible. Negative disables (global-only, pre-round-11).
+		MaxPreAuthConnsPerSource: intEnvAllowNegative("BEX_SSH_MAX_PREAUTH_CONNS_PER_SOURCE", 32),
 		// Zed remoting into an agent-session sandbox multiplexes many session
 		// channels over one connection (ADR054 D3). This per-connection channel cap
 		// bounds that fan-out for sandbox targets only; 0 disables the exception and
@@ -541,6 +546,21 @@ func intEnvAllowZero(name string, fallback int) int {
 	n, err := strconv.Atoi(value)
 	if err != nil || n < 0 {
 		log.Fatalf("ssh gateway: %s must be a non-negative integer", name)
+	}
+	return n
+}
+
+// intEnvAllowNegative is intEnv for a knob whose negative value is a meaningful
+// "disable" (BEX_SSH_MAX_PREAUTH_CONNS_PER_SOURCE=-1 restores global-only
+// pre-auth admission).
+func intEnvAllowNegative(name string, fallback int) int {
+	value := os.Getenv(name)
+	if value == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(value)
+	if err != nil {
+		log.Fatalf("ssh gateway: %s must be an integer", name)
 	}
 	return n
 }

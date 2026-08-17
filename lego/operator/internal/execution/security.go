@@ -18,7 +18,11 @@ limitations under the License.
 // short-lived workload that executes tenant-controlled source or images.
 package execution
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	corev1 "k8s.io/api/core/v1"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
 
 const (
 	LabelApp    = "app.bex.co/app"
@@ -52,9 +56,12 @@ const (
 	// namespace. Kubelet secret projection needs no pod-side API token, so pod
 	// hardening alone does not stop a co-located tenant App from naming such a
 	// Secret in EnvFrom/volume/env; the App reconcile rejects any reference to a
-	// Secret carrying this label.
-	LabelProtectedFromTenantMount = "app.bex.co/protected-from-tenant-mount"
-	ProtectedFromTenantMount      = "true"
+	// Secret carrying this label. The canonical constant lives in the shared
+	// types module so bex-api stamps the same label on the operational Secrets
+	// it writes (round-11 #1); these aliases keep the operator's import sites
+	// stable.
+	LabelProtectedFromTenantMount = appv1alpha1.LabelProtectedFromTenantMount
+	ProtectedFromTenantMount      = appv1alpha1.ProtectedFromTenantMount
 )
 
 // PodLabels returns the common labels that let logging, admission, and network

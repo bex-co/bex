@@ -215,6 +215,10 @@ export class SessionManager {
     this.authGeneration += 1;
     const previous = this.current;
     this.current = null;
+    // Round-11 #10: drop the transport's memoized callback completion too, so
+    // replaying the exact prior OAuth deep link after logout cannot restore the
+    // old token set from the memo ahead of any pending-state validation.
+    this.transport.reset?.();
     this.setState({ status: "loading" });
     const featureCleanup = this.runSessionClearHooks(previous);
     await this.storage.clear().catch(() => undefined);

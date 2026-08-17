@@ -80,6 +80,12 @@ func (s *Service) writeCloneSecret(ctx context.Context, namespace, name, app, to
 		}
 		sec.Labels["app.kubernetes.io/managed-by"] = cloneSecretManagedBy
 		sec.Labels["app.bex.co/app"] = app
+		// Round-11 #1: the GitHub installation token is operational — any App
+		// in the namespace naming this Secret in envFrom/secretKeyRef would
+		// exfiltrate it. The operator's App reconcile refuses references to
+		// Secrets carrying this label; the build job's own git-clone mount is
+		// wired by the operator and never through the validated spec fields.
+		sec.Labels[appv1alpha1.LabelProtectedFromTenantMount] = appv1alpha1.ProtectedFromTenantMount
 		sec.Type = corev1.SecretTypeOpaque
 		sec.StringData = map[string]string{"token": token}
 		return nil

@@ -94,6 +94,12 @@ func TestMaterializePullSecretUpsertsDockerConfigJSON(t *testing.T) {
 	if sec.Type != corev1.SecretTypeDockerConfigJson {
 		t.Errorf("secret type = %s, want %s", sec.Type, corev1.SecretTypeDockerConfigJson)
 	}
+	// Round-11 #1: the workspace's external-registry credential is operational
+	// — the label makes the operator's App reconcile refuse envFrom/volume/env
+	// references to it (imagePullSecret resolution ignores labels).
+	if sec.Labels[appv1alpha1.LabelProtectedFromTenantMount] != appv1alpha1.ProtectedFromTenantMount {
+		t.Errorf("pull secret missing protected-from-tenant-mount label: %+v", sec.Labels)
+	}
 	var doc struct {
 		Auths map[string]struct {
 			Username, Password, Auth string

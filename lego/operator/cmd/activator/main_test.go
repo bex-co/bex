@@ -23,6 +23,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -522,4 +524,130 @@ func primedHostCache(t *testing.T, objs ...client.Object) (*hostCache, client.Cl
 
 func clientKey(name string) client.ObjectKey {
 	return client.ObjectKey{Name: name, Namespace: "bex-system"}
+}
+
+// TestCustomPageCacheBoundsOriginFanOut (round-11 #4): public request volume
+// must not translate into origin-fetch volume — within the TTL every request
+// for one URI is served from the snapshot and concurrent requests share one
+// in-flight fetch; after the TTL the next request refreshes it; a failing
+// origin keeps serving the last good snapshot inside the stale window.
+func TestCustomPageCacheBoundsOriginFanOut(t *testing.T) {
+	app := maintenanceApp("https://status.example.com/page")
+	c := newCustomPageCache()
+	c.ttl = 30 * time.Second
+	c.maxStale = time.Minute
+	fetches := 0
+	c.origin = func(_ context.Context, _ *appv1alpha1.App, _ *url.URL, _ func(string) bool) (*http.Response, error) {
+		fetches++
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"text/html"}},
+			Body:       io.NopCloser(strings.NewReader("page v1")),
+		}, nil
+	}
+	fetch := c.fetcher(nil)
+
+	var wg sync.WaitGroup
+	for range 50 { // a concurrent flood for one URI
+		wg.Go(func() {
+			resp, err := fetch(context.Background(), app, app.Spec.MaintenanceMode.URI)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			body, _ := io.ReadAll(resp.Body)
+			if string(body) != "page v1" {
+				t.Errorf("body = %q", body)
+			}
+		})
+	}
+	wg.Wait()
+	if fetches != 1 {
+		t.Fatalf("50 concurrent requests caused %d origin fetches, want 1 (singleflight + TTL)", fetches)
+	}
+
+	// Past the TTL the next request refetches (and sees the new body).
+	clock := time.Now().Add(time.Minute)
+	c.now = func() time.Time { return clock }
+	c.origin = func(_ context.Context, _ *appv1alpha1.App, _ *url.URL, _ func(string) bool) (*http.Response, error) {
+		fetches++
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"text/html"}},
+			Body:       io.NopCloser(strings.NewReader("page v2")),
+		}, nil
+	}
+	resp, err := fetch(context.Background(), app, app.Spec.MaintenanceMode.URI)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "page v2" || fetches != 2 {
+		t.Fatalf("expired snapshot was not refreshed: body=%q fetches=%d", body, fetches)
+	}
+
+	// Origin now fails: within ttl+maxStale the stale good snapshot serves.
+	clock = time.Now().Add(2 * time.Minute)
+	c.origin = func(_ context.Context, _ *appv1alpha1.App, _ *url.URL, _ func(string) bool) (*http.Response, error) {
+		fetches++
+		return nil, errors.New("origin down")
+	}
+	resp, err = fetch(context.Background(), app, app.Spec.MaintenanceMode.URI)
+	if err != nil {
+		t.Fatalf("stale snapshot not served on origin failure: %v", err)
+	}
+	body, _ = io.ReadAll(resp.Body)
+	if string(body) != "page v2" {
+		t.Fatalf("stale body = %q", body)
+	}
+
+	// Beyond the stale window the failure surfaces again (502 path).
+	clock = time.Now().Add(10 * time.Minute)
+	if _, err := fetch(context.Background(), app, app.Spec.MaintenanceMode.URI); err == nil {
+		t.Fatal("beyond the stale window an origin failure must surface")
+	}
+}
+
+// TestCustomPageCacheBoundsConcurrentOriginFetches: the process-wide semaphore
+// caps concurrent origin fetches regardless of request concurrency — 64
+// DISTINCT slow URIs may be requested at once, but at most
+// customPageMaxFetches reach the origin simultaneously.
+func TestCustomPageCacheBoundsConcurrentOriginFetches(t *testing.T) {
+	c := newCustomPageCache()
+	c.ttl = time.Hour // snapshots never expire inside the test
+	var inflight, maxInflight atomic.Int32
+	c.origin = func(_ context.Context, _ *appv1alpha1.App, _ *url.URL, _ func(string) bool) (*http.Response, error) {
+		cur := inflight.Add(1)
+		for {
+			old := maxInflight.Load()
+			if cur <= old || maxInflight.CompareAndSwap(old, cur) {
+				break
+			}
+		}
+		time.Sleep(50 * time.Millisecond)
+		inflight.Add(-1)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": []string{"text/html"}},
+			Body:       io.NopCloser(strings.NewReader("slow page")),
+		}, nil
+	}
+	fetch := c.fetcher(nil)
+
+	var wg sync.WaitGroup
+	for i := range 64 {
+		app := maintenanceApp("https://status.example.com/page-" + strconv.Itoa(i))
+		wg.Go(func() {
+			if _, err := fetch(context.Background(), app, app.Spec.MaintenanceMode.URI); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+	wg.Wait()
+	if got := maxInflight.Load(); got > customPageMaxFetches {
+		t.Fatalf("max concurrent origin fetches = %d, want <= %d", got, customPageMaxFetches)
+	}
+	if got := maxInflight.Load(); got < 2 {
+		t.Fatalf("max concurrent origin fetches = %d; the flood never overlapped, test proves nothing", got)
+	}
 }

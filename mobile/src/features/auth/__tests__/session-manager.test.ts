@@ -53,6 +53,7 @@ class FakeTransport implements OAuthTransport {
   refreshGate?: Promise<void>;
   refreshCalls = 0;
   revokeCalls = 0;
+  resets = 0;
   async authorize() {
     return this.authorizeResult;
   }
@@ -72,6 +73,9 @@ class FakeTransport implements OAuthTransport {
     this.revokeCalls += 1;
     await this.revokeGate;
     if (this.revokeError) throw this.revokeError;
+  }
+  reset() {
+    this.resets += 1;
   }
 }
 
@@ -364,5 +368,36 @@ describe("SessionManager", () => {
     expect(storage.value).toBe(null);
     release();
     await pending;
+  });
+});
+
+describe("SessionManager transport reset (round-11 #10)", () => {
+  it("clears the transport's memoized callback completion on every terminal boundary", async () => {
+    let now = 0;
+    const storage = new MemoryStorage();
+    const transport = new FakeTransport();
+    const subject = manager(storage, transport, () => now);
+
+    await subject.signIn();
+    expect(transport.resets).toBe(0);
+
+    // Sign-out is a terminal boundary: the replayed-deep-link memo must go.
+    await subject.signOut();
+    expect(transport.resets).toBe(1);
+    expect(subject.getState().status).toBe("signedOut");
+
+    // A forced clear (invalid refresh) crosses the same boundary.
+    await subject.signIn();
+    now = 500_000; // session expired
+    transport.refreshError = new AuthFailure("invalid_grant");
+    let failed = false;
+    try {
+      await subject.getAccessToken();
+    } catch {
+      failed = true;
+    }
+    expect(failed).toBe(true);
+    expect(subject.getState().status).toBe("signedOut");
+    expect(transport.resets).toBe(2);
   });
 });

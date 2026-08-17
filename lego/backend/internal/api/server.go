@@ -281,6 +281,11 @@ type Deps struct {
 	// disables) — the w1/049 #5 abuse bound, refused with
 	// BLUEPRINT_GROUPING_LIMIT identically across REST/GraphQL/MCP.
 	MaxBlueprintGroupings int
+	// MaxEnvGroupsPerWorkspace caps a workspace's environment-group count
+	// (BEX_MAX_ENV_GROUPS_PER_WORKSPACE, default 100; 0 disables) — round-11 #3:
+	// group metadata shares one index, so the cap bounds every tenant's
+	// list/name-resolution sweep; refused with ENV_GROUP_LIMIT across surfaces.
+	MaxEnvGroupsPerWorkspace int
 
 	// AgentMaxLiveSandboxesPerWorkspace caps the concurrent live agent-session
 	// sandboxes one workspace may hold (ADR059 D6 / w2/m67). Zero ⇒ uncapped.
@@ -576,7 +581,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// using envVarGroups/fromGroup/sync:false/generateValue then fails before any
 	// write, never silently drops the var).
 	secretsSvc := &secrets.Service{Base: base, Store: d.Secrets}
-	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets}
+	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets, MaxEnvGroups: d.MaxEnvGroupsPerWorkspace}
 	var envSeeder apps.EnvSeeder
 	var envNames apps.EnvNameSource
 	var secretFileSeeder apps.SecretFileSeeder

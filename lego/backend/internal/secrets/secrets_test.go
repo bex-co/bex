@@ -25,6 +25,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -740,5 +741,67 @@ func TestOpenBaoStore_LoginFailure(t *testing.T) {
 	s := newOpenBaoStoreForTest(t, srv.URL)
 	if _, err := s.Get(context.Background(), "services/web/env"); err == nil {
 		t.Fatal("login failure should surface as an error")
+	}
+}
+
+// TestSecretMapAggregateQuotas (round-11 #6): per-key writes cannot grow a
+// service's env map or file map without bound — the count and aggregate-byte
+// quotas reject before any OpenBao (or Kubernetes projection) write, and a
+// rejected write leaves the store unchanged.
+func TestSecretMapAggregateQuotas(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := newService(store, sampleApp("web"))
+	ctx := context.Background()
+
+	// Fill to exactly the env key cap.
+	for i := 0; i < maxEnvKeys; i++ {
+		key := "V" + strconv.Itoa(i)
+		if _, err := svc.SetEnvVar(ctx, "web", key, EnvVarWrite{Value: "x"}); err != nil {
+			t.Fatalf("SetEnvVar %d within cap: %v", i, err)
+		}
+	}
+	if _, err := svc.SetEnvVar(ctx, "web", "OVERFLOW", EnvVarWrite{Value: "x"}); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("key %d beyond the cap = %v, want ErrBadRequest", maxEnvKeys+1, err)
+	}
+	if _, ok := store.m[envPath("web")]["OVERFLOW"]; ok {
+		t.Fatal("rejected key must not reach the store")
+	}
+	// Deleting one key frees room again.
+	if err := svc.DeleteEnvVar(ctx, "web", "V0"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.SetEnvVar(ctx, "web", "AFTER_DELETE", EnvVarWrite{Value: "x"}); err != nil {
+		t.Fatalf("write after freeing a slot: %v", err)
+	}
+
+	// The aggregate-byte cap rejects a single oversized value outright.
+	big := strings.Repeat("y", maxSecretMapBytes+1)
+	if _, err := svc.SetEnvVar(ctx, "web", "BIG", EnvVarWrite{Value: big}); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("oversized value = %v, want ErrBadRequest", err)
+	}
+	// A batch replacement larger than the quota is rejected before the store write.
+	bigBatch := []EnvVarView{{Key: "B1", Value: big}, {Key: "B2", Value: big}}
+	if _, err := svc.SetEnvVars(ctx, "web", bigBatch); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("oversized batch = %v, want ErrBadRequest", err)
+	}
+	if _, ok := store.m[envPath("web")]["B1"]; ok {
+		t.Fatal("rejected batch must not reach the store")
+	}
+
+	// Secret files carry the same two caps.
+	for i := 0; i < maxSecretFiles; i++ {
+		name := "f" + strconv.Itoa(i)
+		if _, err := svc.SetSecretFile(ctx, "web", name, "x"); err != nil {
+			t.Fatalf("SetSecretFile %d within cap: %v", i, err)
+		}
+	}
+	if _, err := svc.SetSecretFile(ctx, "web", "overflow.txt", "x"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("file %d beyond the cap = %v, want ErrBadRequest", maxSecretFiles+1, err)
+	}
+	if _, err := svc.SetSecretFile(ctx, "web", "f0", big); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("oversized file = %v, want ErrBadRequest", err)
+	}
+	if _, ok := store.m[filesPath("web")]["overflow.txt"]; ok {
+		t.Fatal("rejected file must not reach the store")
 	}
 }
