@@ -1594,12 +1594,12 @@ func TestValidateBlueprintRegistryCredential(t *testing.T) {
     type: web
     runtime: image
     image:
-      url: registry.example.com/acme/api:1
+      url: ghcr.io/acme/api:1
       creds: {fromRegistryCreds: {name: acme-registry}}
   - name: worker
     type: worker
     runtime: image
-    image: {url: registry.example.com/acme/worker:1}
+    image: {url: ghcr.io/acme/worker:1}
     registryCredential: {fromRegistryCreds: {name: acme-registry}}
 `
 	v, err := svc.ValidateBlueprint(context.Background(), "", manifest)
@@ -1639,7 +1639,7 @@ func TestValidateBlueprintRegistryCredential(t *testing.T) {
     type: web
     runtime: image
     image:
-      url: registry.example.com/acme/api:1
+      url: ghcr.io/acme/api:1
       creds: {fromRegistryCreds: {name: acme-registry}}
     registryCredential: {fromRegistryCreds: {name: other-registry}}
 `

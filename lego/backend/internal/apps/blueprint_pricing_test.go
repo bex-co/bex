@@ -348,7 +348,7 @@ func TestValidateBlueprintPromotedFieldsCrossSurface(t *testing.T) {
     type: worker
     runtime: image
     image:
-      url: registry.example.com/acme/worker:1
+      url: ghcr.io/acme/worker:1
       creds: {fromRegistryCreds: {name: acme-registry}}
 `
 	mux := http.NewServeMux()
