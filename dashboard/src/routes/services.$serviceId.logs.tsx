@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { LogViewer } from "@/features/logs/components/log-viewer";
+import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import {
   isCustomRange,
@@ -52,8 +53,13 @@ function RouteComponent() {
   };
   return (
     // holdWhileLoading: the viewer fires its history query + SSE tail on
-    // mount — don't spend them while the type could still be static_site.
-    <NonStaticRoute serviceId={serviceId} holdWhileLoading>
+    // mount — don't spend them while the type could still be static_site. A
+    // log-shaped skeleton holds the space so the tab never flashes blank (w9/m63 t003).
+    <NonStaticRoute
+      serviceId={serviceId}
+      holdWhileLoading
+      loadingFallback={<LogPanelSkeleton />}
+    >
       <ServiceLogsPage
         serviceId={serviceId}
         range={logRangeFromSearch(search)}

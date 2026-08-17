@@ -1,5 +1,7 @@
 import { MetricUnavailable } from "@/features/metrics/components/metric-unavailable";
 import type { UseMetricsResult } from "@/features/metrics/hooks/use-metrics";
+import { CHART_HEIGHT } from "@/features/metrics/components/chart-layout";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 interface MetricSectionProps {
@@ -25,10 +27,22 @@ export function MetricSection({
   children,
 }: MetricSectionProps) {
   const { t } = useTranslations();
+  // While the first fetch is in flight (no series yet), show a chart-shaped
+  // shimmer at the exact chart height — NOT the child chart, which would render
+  // the "No data in range" empty state and read as broken data on the busiest
+  // detail tab (w9/m63 t002). A poll refetch over existing data keeps the chart.
+  const loadingEmpty = result.loading && result.series.length === 0;
   const body = result.storeUnavailable ? (
     <MetricUnavailable message={t("metrics.hostPathStoreUnavailable")} />
   ) : result.unavailable ? (
     <MetricUnavailable />
+  ) : loadingEmpty ? (
+    <Skeleton
+      role="status"
+      className="w-full rounded-md"
+      style={{ height: CHART_HEIGHT }}
+      aria-label={t("common.loading")}
+    />
   ) : (
     children
   );

@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { AlertCircle, CircleDot, Loader2 } from "lucide-react";
+import { AlertCircle, CircleDot } from "lucide-react";
+import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -46,9 +47,17 @@ export function EventTimeline({
       </CardHeader>
       <CardContent>
         {loading && events.length === 0 ? (
-          <div className="flex min-h-20 items-center justify-center text-sm text-muted-foreground">
-            <Loader2 className="mr-2 size-4 animate-spin" />
-            {t("metrics.eventsLoading")}
+          <div
+            className="space-y-2"
+            role="status"
+            aria-label={t("metrics.eventsLoading")}
+          >
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Skeleton className="size-4 shrink-0 rounded-full" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+            ))}
           </div>
         ) : error ? (
           <div className="flex min-h-20 items-center justify-center gap-2 text-sm text-muted-foreground">

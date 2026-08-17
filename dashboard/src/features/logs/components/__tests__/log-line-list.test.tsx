@@ -1,20 +1,25 @@
 import { describe, it, expect, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { LogLineList } from "../log-line-list";
+import { needsAnsiParse, parseAnsi } from "../../lib/ansi";
 import type { LogLine } from "../../types";
 
 function line(over: Partial<LogLine> = {}): LogLine {
+  const message = over.message ?? "hello world";
   return {
     key: over.key ?? "k",
     timestamp: "2026-07-05T10:36:01.709Z",
     time: "10:36:01",
     instance: "bv612",
-    message: "hello world",
     type: "app",
     level: "",
     method: "",
     statusCode: "",
     ...over,
+    message,
+    // Mirror ingest (makeLogLine): ANSI parsed once, so the list reads
+    // `line.spans` (w9/m63 t001).
+    spans: needsAnsiParse(message) ? parseAnsi(message) : null,
   };
 }
 

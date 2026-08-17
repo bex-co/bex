@@ -169,4 +169,15 @@ describe("formatLogTimestamp", () => {
     // Locale/timezone-independent shape: HH:MM:SS with an AM/PM marker.
     expect(out).toMatch(/\d{1,2}:\d{2}:\d{2}/);
   });
+
+  // w9/m63 t001: ANSI is parsed once at ingest (`spans`), not per render.
+  it("parses ANSI into spans at ingest, and leaves a plain line null", () => {
+    const esc = "\u001b";
+    const colored = fromRenderLog({ message: `${esc}[32mok${esc}[0m` });
+    expect(colored.spans).not.toBeNull();
+    expect(colored.spans!.map((s) => s.text).join("")).toBe("ok");
+
+    const plain = fromRenderLog({ message: "no escapes here" });
+    expect(plain.spans).toBeNull();
+  });
 });

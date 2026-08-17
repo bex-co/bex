@@ -1,3 +1,5 @@
+import type { AnsiSpan } from "./lib/ansi";
+
 // A single rendered log line — the flat shape the viewer draws, mapped from
 // either bex-api's GraphQL `LogEntry` (history) or an SSE `renderLog` frame
 // (live tail). `key` is a client-side dedupe key (timestamp|instance|message)
@@ -9,6 +11,11 @@ export interface LogLine {
   time: string; // `timestamp` formatted as Render's line clock, computed once
   instance: string; // replica id (Render's `[bv612]`), or ""
   message: string;
+  // Parsed ANSI spans, computed ONCE at ingest (`makeLogLine`) rather than
+  // re-parsing the whole buffer on every live-tail render (w9/m63 t001). `null`
+  // for a line with nothing to interpret — the common app line renders as a
+  // bare text node, byte-identical to the pre-parse DOM.
+  spans: AnsiSpan[] | null;
   type: string; // Render log type: `app`, `request`, `build`, or `postgres`
   // Request/HTTP-line labels (populated for `type=request`; empty for app
   // lines). The Logs viewer renders a request line as method/status chips

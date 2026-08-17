@@ -1,9 +1,9 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown } from "lucide-react";
 import { Button } from "@/common/components/ui/button.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
-import { needsAnsiParse, parseAnsi, type AnsiSpan } from "../lib/ansi";
+import { type AnsiSpan } from "../lib/ansi";
 import { LOG_TYPE_REQUEST, type LogLine } from "../types";
 
 // A request (HTTP access) line's status chip, tinted by response class — the
@@ -64,20 +64,6 @@ export function LogLineList({
   const viewportRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(true);
 
-  // Build output is dense with ANSI escapes (BuildKit, Vite, Tailwind); left
-  // uninterpreted the browser swallows the ESC byte and paints the parameter
-  // tail as literal `[2m` garbage. Parse once per `lines` identity rather than
-  // per render — this list re-renders on every live-tail frame. A message with
-  // nothing to interpret stays `null` and renders as the plain text node it
-  // always was.
-  const parsed = useMemo(
-    () =>
-      lines.map((l) =>
-        needsAnsiParse(l.message) ? parseAnsi(l.message) : null,
-      ),
-    [lines],
-  );
-
   const scrollToBottom = () => {
     const el = viewportRef.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -110,7 +96,7 @@ export function LogLineList({
         )}
       >
         <div className={cn("p-3", wrap ? "min-w-full" : "w-max min-w-full")}>
-          {lines.map((line, i) => (
+          {lines.map((line) => (
             <div
               key={line.key}
               className={cn(
@@ -161,7 +147,7 @@ export function LogLineList({
                 </span>
               ) : null}
               <span className="min-w-0 flex-1 text-foreground">
-                <LogMessage spans={parsed[i]} text={line.message} />
+                <LogMessage spans={line.spans} text={line.message} />
               </span>
             </div>
           ))}

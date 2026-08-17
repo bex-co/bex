@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AlertCircle, Loader2, WifiOff } from "lucide-react";
+import { AlertCircle, WifiOff } from "lucide-react";
+import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDebounce } from "@/common/hooks/use-debounce";
 import { EmptyState } from "@/common/components/empty-state";
@@ -159,12 +160,7 @@ export function LogViewer({
       />
     );
   } else if (history.loading && history.lines.length === 0) {
-    body = (
-      <div className="flex h-64 items-center justify-center rounded-md border text-muted-foreground">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        {t("logs.loading")}
-      </div>
-    );
+    body = <LogPanelSkeleton />;
   } else if (lines.length === 0) {
     body = (
       <EmptyState
