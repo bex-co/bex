@@ -20,7 +20,10 @@ limitations under the License.
 // isolated gateway remains the sole session ingress.
 package agentsessions
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 const (
 	PhaseCreating      = "creating"
@@ -186,4 +189,57 @@ type View struct {
 	SnapshotBytes int64      `json:"snapshotBytes,omitempty"`
 	HibernatedAt  *time.Time `json:"hibernatedAt,omitempty"`
 	RetainUntil   *time.Time `json:"retainUntil,omitempty"`
+	// ArchivedAt marks the session archived (ADR065 D1): out of the working set,
+	// mutation verbs refused, reads always allowed. Nil ⇒ in the working set.
+	ArchivedAt *time.Time `json:"archivedAt,omitempty"`
+}
+
+// Archived-filter wire vocabulary for the session list (ADR065 D3). Empty and
+// ArchivedFalse both mean the default working set (archived excluded).
+const (
+	ArchivedFalse = "false"
+	ArchivedTrue  = "true"
+	ArchivedAll   = "all"
+)
+
+// List page bounds (ADR065 D3). Agent sessions are a bex extension (no Render
+// twin), and the dashboard's working-set poll wants a fuller default page than
+// Render's public 20/100 contract — so the bounds are local, not core's.
+const (
+	defaultListLimit = 50
+	maxListLimit     = 200
+)
+
+// ListRequest is the cross-surface session-list contract (ADR065 D3): the
+// archived membership selector (default: unarchived — the working set), the
+// phase/repo/created filters, and Render-idiom keyset pagination (Cursor is the
+// prior page's last item id; a shorter/empty page signals the end). It is
+// never wire-decoded — each adapter builds it field-by-field.
+type ListRequest struct {
+	OwnerID       string
+	Archived      string
+	Phases        []string
+	Repo          string
+	CreatedBefore time.Time
+	CreatedAfter  time.Time
+	Cursor        string
+	Limit         int
+}
+
+// TranscriptPart is one durable conversation part in the poll-shaped transcript
+// read (ADR065 D2). Part is the verbatim stored payload — valid JSON from both
+// writers (the gateway tee and the Completer harvest) — surfaced raw so clients
+// consume the exact bytes the stream replay would deliver.
+type TranscriptPart struct {
+	Seq       int64           `json:"seq"`
+	Turn      int             `json:"turn"`
+	Part      json.RawMessage `json:"part"`
+	CreatedAt time.Time       `json:"createdAt"`
+}
+
+// TranscriptPage is one seq-keyset page of a session's transcript. Clients page
+// by echoing NextAfterSeq as afterSeq; an empty Parts signals the end.
+type TranscriptPage struct {
+	Parts        []TranscriptPart `json:"parts"`
+	NextAfterSeq int64            `json:"nextAfterSeq"`
 }

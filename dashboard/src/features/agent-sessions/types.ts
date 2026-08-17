@@ -7,18 +7,23 @@
 /**
  * The session lifecycle enum (backend `models.go` Phase* constants). Terminal
  * phases are completed/failed/canceled; every other phase is still converging.
+ * The const list is the single source (the list page's phase filter renders
+ * it); the union derives from it.
  */
-export type AgentSessionPhase =
-  | "creating"
-  | "running"
-  | "resuming"
-  | "redispatching"
-  | "hibernating"
-  | "hibernated"
-  | "completed"
-  | "failed"
-  | "canceling"
-  | "canceled";
+export const AGENT_SESSION_PHASES = [
+  "creating",
+  "running",
+  "resuming",
+  "redispatching",
+  "hibernating",
+  "hibernated",
+  "completed",
+  "failed",
+  "canceling",
+  "canceled",
+] as const;
+
+export type AgentSessionPhase = (typeof AGENT_SESSION_PHASES)[number];
 
 /** How a turn's sandbox was obtained (backend Delivery* constants). */
 export type AgentSessionDeliveryMode = "resume" | "redispatch";
@@ -79,8 +84,22 @@ export interface AgentSessionView {
   snapshotBytes: number;
   hibernatedAt: string | null;
   retainUntil: string | null;
+  /**
+   * Archive (ADR065 D1): set ⇒ out of the working set, mutation verbs refused
+   * (`AGENT_SESSION_ARCHIVED`) until unarchived; reads (transcript included)
+   * always work. Orthogonal to phase.
+   */
+  archivedAt: string | null;
   /** hibernated — pod-less but resumable from a durable snapshot (ADR059 D2). */
   isHibernated: boolean;
+  /** archivedAt non-null — the session is out of the working set (ADR065). */
+  isArchived: boolean;
+  /**
+   * Terminal or hibernated — past all live work. Gates the delete verb and the
+   * replay-only conversation attach (ADR065 D2/D4); the backend twin is
+   * `finishedPhase`.
+   */
+  isFinished: boolean;
   /** completed/failed/canceled — the session will not change further on its own. */
   isTerminal: boolean;
   /**

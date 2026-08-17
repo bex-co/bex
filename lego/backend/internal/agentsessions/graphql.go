@@ -6,6 +6,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -127,6 +128,32 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return gqlTime(*v.RetainUntil)
 		})},
+		"archivedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any {
+			if v.ArchivedAt == nil {
+				return nil
+			}
+			return gqlTime(*v.ArchivedAt)
+		})},
+	},
+})
+
+var transcriptPartGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSessionTranscriptPart",
+	Fields: graphql.Fields{
+		"seq":  &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptPart) any { return v.Seq })},
+		"turn": &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptPart) any { return v.Turn })},
+		// The verbatim stored payload as JSON text — the exact bytes the stream
+		// replay would deliver; clients parse it themselves.
+		"part":      &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptPart) any { return string(v.Part) })},
+		"createdAt": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptPart) any { return gqlTime(v.CreatedAt) })},
+	},
+})
+
+var transcriptPageGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSessionTranscriptPage",
+	Fields: graphql.Fields{
+		"parts":        &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(transcriptPartGQLType))), Resolve: gqlutil.Field(func(v TranscriptPage) any { return v.Parts })},
+		"nextAfterSeq": &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptPage) any { return v.NextAfterSeq })},
 	},
 })
 
@@ -138,9 +165,60 @@ func configArg(args map[string]any) AgentConfig {
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"agentSessions": &graphql.Field{
-			Type:    graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentSessionGQLType))),
-			Args:    graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
-			Resolve: func(p graphql.ResolveParams) (any, error) { return s.List(p.Context, gqlutil.Str(p.Args, "ownerId")) },
+			Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentSessionGQLType))),
+			Args: graphql.FieldConfigArgument{
+				"ownerId":       gqlutil.Arg(graphql.String),
+				"archived":      &graphql.ArgumentConfig{Type: graphql.String, Description: "Archive membership: false (default, the working set), true (archived only), all."},
+				"phases":        gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				"repo":          gqlutil.Arg(graphql.String),
+				"createdBefore": gqlutil.Arg(graphql.String),
+				"createdAfter":  gqlutil.Arg(graphql.String),
+				"cursor":        &graphql.ArgumentConfig{Type: graphql.String, Description: "The prior page's last session id; a shorter/empty page signals the end."},
+				"limit":         gqlutil.Arg(graphql.Int),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				before, err := core.ParseTime("createdBefore", gqlutil.Str(p.Args, "createdBefore"))
+				if err != nil {
+					return nil, err
+				}
+				after, err := core.ParseTime("createdAfter", gqlutil.Str(p.Args, "createdAfter"))
+				if err != nil {
+					return nil, err
+				}
+				limit, err := gqlutil.PositiveLimit(p.Args)
+				if err != nil {
+					return nil, err
+				}
+				return s.List(p.Context, ListRequest{
+					OwnerID:       gqlutil.Str(p.Args, "ownerId"),
+					Archived:      gqlutil.Str(p.Args, "archived"),
+					Phases:        gqlutil.StringList(p.Args["phases"]),
+					Repo:          gqlutil.Str(p.Args, "repo"),
+					CreatedBefore: before,
+					CreatedAfter:  after,
+					Cursor:        gqlutil.Str(p.Args, "cursor"),
+					Limit:         limit,
+				})
+			},
+		},
+		"agentSessionTranscript": &graphql.Field{
+			Type: graphql.NewNonNull(transcriptPageGQLType),
+			Args: graphql.FieldConfigArgument{
+				"id":       gqlutil.ReqArg(graphql.String),
+				"afterSeq": &graphql.ArgumentConfig{Type: graphql.Int, Description: "Resume strictly after this seq; omit (or -1) for the whole transcript."},
+				"limit":    gqlutil.Arg(graphql.Int),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				afterSeq := int64(-1)
+				if n, ok := p.Args["afterSeq"].(int); ok {
+					afterSeq = int64(n)
+				}
+				limit, err := gqlutil.PositiveLimit(p.Args)
+				if err != nil {
+					return nil, err
+				}
+				return s.Transcript(p.Context, gqlutil.Str(p.Args, "id"), afterSeq, limit)
+			},
 		},
 		"agentSession": gqlutil.IDVerb(agentSessionGQLType, s.Get),
 		"agentSessionCapabilities": &graphql.Field{
@@ -197,8 +275,22 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.AttachTicket(p.Context, gqlutil.Str(p.Args, "id"), action)
 			},
 		},
-		"cancelAgentSession": gqlutil.IDVerb(agentSessionGQLType, s.Cancel),
-		"pinAgentSession":    gqlutil.IDVerb(agentSessionGQLType, s.Pin),
-		"unpinAgentSession":  gqlutil.IDVerb(agentSessionGQLType, s.Unpin),
+		"cancelAgentSession":    gqlutil.IDVerb(agentSessionGQLType, s.Cancel),
+		"archiveAgentSession":   gqlutil.IDVerb(agentSessionGQLType, s.Archive),
+		"unarchiveAgentSession": gqlutil.IDVerb(agentSessionGQLType, s.Unarchive),
+		// Delete returns a bare Boolean (nothing survives to project), so it
+		// can't ride the View-shaped IDVerb helper.
+		"deleteAgentSession": &graphql.Field{
+			Type: graphql.Boolean,
+			Args: graphql.FieldConfigArgument{"id": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				if err := s.Delete(p.Context, gqlutil.Str(p.Args, "id")); err != nil {
+					return nil, err
+				}
+				return true, nil
+			},
+		},
+		"pinAgentSession":   gqlutil.IDVerb(agentSessionGQLType, s.Pin),
+		"unpinAgentSession": gqlutil.IDVerb(agentSessionGQLType, s.Unpin),
 	}
 }

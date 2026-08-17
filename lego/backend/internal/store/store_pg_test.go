@@ -167,7 +167,7 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 	if err != nil || got.WorkspaceID != tenant.ID || got.Repo != "bex-co/example" {
 		t.Fatalf("get agent session = %+v err=%v", got, err)
 	}
-	listed, err := s.ListAgentSessions(ctx, tenant.ID)
+	listed, err := s.ListAgentSessions(ctx, tenant.ID, AgentSessionListQuery{Limit: 50})
 	if err != nil || len(listed) != 1 || listed[0].ID != record.ID {
 		t.Fatalf("list agent sessions = %+v err=%v", listed, err)
 	}
@@ -202,6 +202,118 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 	if err != nil || record.CanceledAt == nil {
 		t.Fatalf("cancel agent session = %+v err=%v", record, err)
 	}
+
+	assertAgentSessionArchive(ctx, t, s, tenant, record.ID)
+}
+
+// assertAgentSessionArchive proves the ADR065 store contract: the idempotent
+// archive flag, the default-excludes-archived filtered list, keyset pagination,
+// and retention expiry stamping archived_at.
+func assertAgentSessionArchive(ctx context.Context, t *testing.T, s *PGStore, tenant Tenant, canceledID string) {
+	t.Helper()
+
+	// Two more sessions so the list has three rows to filter and page over.
+	second, err := s.CreateAgentSession(ctx, AgentSession{
+		WorkspaceID: tenant.ID, Repo: "bex-co/other", Branch: "main",
+		AgentConfig: []byte(`{"agent":"codex","task":"second"}`),
+	})
+	if err != nil {
+		t.Fatalf("create second session: %v", err)
+	}
+	third, err := s.CreateAgentSession(ctx, AgentSession{
+		WorkspaceID: tenant.ID, Repo: "bex-co/example", Branch: "main",
+		AgentConfig: []byte(`{"agent":"codex","task":"third"}`),
+	})
+	if err != nil {
+		t.Fatalf("create third session: %v", err)
+	}
+
+	// Archive is idempotent and keeps the FIRST archive time; unarchive clears it.
+	archived, err := s.SetAgentSessionArchived(ctx, second.ID, true)
+	if err != nil || archived.ArchivedAt == nil {
+		t.Fatalf("archive = %+v err=%v", archived, err)
+	}
+	firstArchivedAt := *archived.ArchivedAt
+	rearchived, err := s.SetAgentSessionArchived(ctx, second.ID, true)
+	if err != nil || rearchived.ArchivedAt == nil || !rearchived.ArchivedAt.Equal(firstArchivedAt) {
+		t.Fatalf("re-archive must keep the original archived_at: %+v err=%v", rearchived, err)
+	}
+	if rearchived.Phase != "creating" {
+		t.Fatalf("archive must not touch phase, got %q", rearchived.Phase)
+	}
+
+	// Default list = the unarchived working set; ArchivedOnly and ArchivedInclude
+	// widen it. Order is newest first.
+	working, err := s.ListAgentSessions(ctx, tenant.ID, AgentSessionListQuery{Limit: 50})
+	if err != nil || len(working) != 2 || working[0].ID != third.ID || working[1].ID != canceledID {
+		t.Fatalf("working-set list = %+v err=%v", working, err)
+	}
+	only, err := s.ListAgentSessions(ctx, tenant.ID, AgentSessionListQuery{Archived: ArchivedOnly, Limit: 50})
+	if err != nil || len(only) != 1 || only[0].ID != second.ID {
+		t.Fatalf("archived-only list = %+v err=%v", only, err)
+	}
+	all, err := s.ListAgentSessions(ctx, tenant.ID, AgentSessionListQuery{Archived: ArchivedInclude, Limit: 50})
+	if err != nil || len(all) != 3 {
+		t.Fatalf("all list = %d rows err=%v", len(all), err)
+	}
+
+	// Filters: phase and repo narrow; a filter matching nothing is empty.
+	if rows, err := s.ListAgentSessions(ctx, tenant.ID, AgentSessionListQuery{Archived: ArchivedInclude, Phases: []string{"canceled"}, Limit: 50}); err != nil || len(rows) != 1 || rows[0].ID != canceledID {
+		t.Fatalf("phase filter = %+v err=%v", rows, err)
+	}
+	if rows, err := s.ListAgentSessions(ctx, tenant.ID, AgentSessionListQuery{Archived: ArchivedInclude, Repo: "bex-co/other", Limit: 50}); err != nil || len(rows) != 1 || rows[0].ID != second.ID {
+		t.Fatalf("repo filter = %+v err=%v", rows, err)
+	}
+	if rows, err := s.ListAgentSessions(ctx, tenant.ID, AgentSessionListQuery{Archived: ArchivedInclude, CreatedBefore: all[2].CreatedAt, Limit: 50}); err != nil || len(rows) != 0 {
+		t.Fatalf("createdBefore oldest = %+v err=%v", rows, err)
+	}
+
+	// Keyset pagination: page of 2, cursor = last item's id, then the tail; an
+	// unknown/foreign cursor is an empty page, never an error.
+	page1, err := s.ListAgentSessions(ctx, tenant.ID, AgentSessionListQuery{Archived: ArchivedInclude, Limit: 2})
+	if err != nil || len(page1) != 2 || page1[0].ID != all[0].ID || page1[1].ID != all[1].ID {
+		t.Fatalf("page 1 = %+v err=%v", page1, err)
+	}
+	page2, err := s.ListAgentSessions(ctx, tenant.ID, AgentSessionListQuery{Archived: ArchivedInclude, Limit: 2, Cursor: page1[1].ID})
+	if err != nil || len(page2) != 1 || page2[0].ID != all[2].ID {
+		t.Fatalf("page 2 = %+v err=%v", page2, err)
+	}
+	if rows, err := s.ListAgentSessions(ctx, tenant.ID, AgentSessionListQuery{Archived: ArchivedInclude, Limit: 2, Cursor: "ags-doesnotexist000000000"}); err != nil || len(rows) != 0 {
+		t.Fatalf("unknown cursor = %+v err=%v", rows, err)
+	}
+
+	// Unarchive returns the row to the working set.
+	unarchived, err := s.SetAgentSessionArchived(ctx, second.ID, false)
+	if err != nil || unarchived.ArchivedAt != nil {
+		t.Fatalf("unarchive = %+v err=%v", unarchived, err)
+	}
+
+	// Retention expiry auto-archives (ADR065 D5): hibernate the third session,
+	// expire it, and the row is canceled + archived with the snapshot cleared —
+	// but its history (the row) survives.
+	if _, err := s.SetAgentSessionLifecycle(ctx, third.ID, "sandbox-arch", "completed", "completed", false); err != nil {
+		t.Fatalf("complete third: %v", err)
+	}
+	if _, err := s.ClaimAgentSessionForHibernation(ctx, third.ID); err != nil {
+		t.Fatalf("claim hibernation: %v", err)
+	}
+	if _, err := s.HibernateAgentSession(ctx, third.ID, "snapshots/x", 42, "sha", time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("hibernate: %v", err)
+	}
+	expired, err := s.ExpireHibernatedAgentSession(ctx, third.ID, "snapshots/x")
+	if err != nil || expired.Phase != "canceled" || expired.ArchivedAt == nil || expired.SnapshotRef != "" {
+		t.Fatalf("expire must cancel+archive+clear snapshot, got %+v err=%v", expired, err)
+	}
+	if expired.FailureReason != "hibernation retention window elapsed" {
+		t.Fatalf("expire reason = %q", expired.FailureReason)
+	}
+
+	// Clean up the extra rows so the surrounding flow's counts stay stable.
+	for _, id := range []string{second.ID, third.ID} {
+		if err := s.DeleteAgentSession(ctx, id); err != nil {
+			t.Fatalf("delete extra session %s: %v", id, err)
+		}
+	}
 }
 
 // assertAgentSessionTranscripts proves the w3/m43 transcript store: ordered
@@ -215,7 +327,7 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 	if _, ok, err := s.AgentSessionTranscriptMaxSeq(ctx, sessionID); err != nil || ok {
 		t.Fatalf("empty transcript max seq: ok=%v err=%v", ok, err)
 	}
-	if parts, err := s.AgentSessionTranscript(ctx, sessionID, -1, 1<<30); err != nil || len(parts) != 0 {
+	if parts, err := s.AgentSessionTranscript(ctx, sessionID, -1, 1<<30, 0); err != nil || len(parts) != 0 {
 		t.Fatalf("empty transcript replay = %+v err=%v", parts, err)
 	}
 	if total, err := s.AgentSessionTranscriptBytes(ctx, sessionID); err != nil || total != 0 {
@@ -239,7 +351,7 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 	if err != nil || !ok || maxSeq != 2 {
 		t.Fatalf("max seq after append = %d ok=%v err=%v", maxSeq, ok, err)
 	}
-	full, err := s.AgentSessionTranscript(ctx, sessionID, -1, 1<<30)
+	full, err := s.AgentSessionTranscript(ctx, sessionID, -1, 1<<30, 0)
 	if err != nil || len(full) != 3 {
 		t.Fatalf("full replay = %d parts err=%v (dedup failed if 6)", len(full), err)
 	}
@@ -255,9 +367,14 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 	// two parts returns exactly that prefix, in order, never the whole
 	// transcript — the cap is enforced by the store method, not the caller.
 	prefixBudget := int64(len(first[0].Part) + len(first[1].Part))
-	prefix, err := s.AgentSessionTranscript(ctx, sessionID, -1, prefixBudget)
+	prefix, err := s.AgentSessionTranscript(ctx, sessionID, -1, prefixBudget, 0)
 	if err != nil || len(prefix) != 2 || prefix[0].Seq != 0 || prefix[1].Seq != 1 {
 		t.Fatalf("bounded replay = %+v err=%v, want the 2-part prefix", prefix, err)
+	}
+	// The SQL row limit (ADR065 D2's poll-shaped page) bounds independently of
+	// the byte budget.
+	if page, err := s.AgentSessionTranscript(ctx, sessionID, -1, 1<<30, 2); err != nil || len(page) != 2 || page[1].Seq != 1 {
+		t.Fatalf("row-limited page = %+v err=%v, want 2 rows", page, err)
 	}
 	if full[0].Seq != 0 || full[2].Seq != 2 || string(full[1].Part) != `{"type":"text-delta","delta":"hi"}` {
 		t.Fatalf("replay order/verbatim wrong: %+v", full)
@@ -280,7 +397,7 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 	}); err != nil {
 		t.Fatalf("append tail: %v", err)
 	}
-	tail, err := s.AgentSessionTranscript(ctx, sessionID, maxSeq, 1<<30)
+	tail, err := s.AgentSessionTranscript(ctx, sessionID, maxSeq, 1<<30, 0)
 	if err != nil || len(tail) != 1 || tail[0].Seq != 3 || tail[0].Turn != 2 {
 		t.Fatalf("cursor tail = %+v err=%v", tail, err)
 	}
@@ -289,18 +406,9 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 		t.Fatalf("turn 2 recorded after tail append = %v err=%v, want true", rec, err)
 	}
 
-	// Retention prune removes aged parts; a future cutoff clears all four.
-	if n, err := s.PruneAgentSessionTranscripts(ctx, time.Now().Add(-time.Hour)); err != nil || n != 0 {
-		t.Fatalf("prune (nothing aged) = %d err=%v", n, err)
-	}
-	if n, err := s.PruneAgentSessionTranscripts(ctx, time.Now().Add(time.Hour)); err != nil || n != 4 {
-		t.Fatalf("prune (all) = %d err=%v", n, err)
-	}
-	if parts, err := s.AgentSessionTranscript(ctx, sessionID, -1, 1<<30); err != nil || len(parts) != 0 {
-		t.Fatalf("post-prune replay = %+v err=%v", parts, err)
-	}
-
 	// Cascade: a transcript on a throwaway session vanishes with the session row.
+	// (Cascade is the ONLY transcript deletion — ADR065 D2 removed the unwired
+	// age-based prune: a session's conversation lives as long as its row.)
 	throwaway, err := s.CreateAgentSession(ctx, AgentSession{
 		WorkspaceID: tenant.ID, Repo: "bex-co/example", Branch: "main",
 		AgentConfig: []byte(`{"agent":"codex","task":"cascade"}`),
@@ -316,7 +424,7 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 	if err := s.DeleteAgentSession(ctx, throwaway.ID); err != nil {
 		t.Fatalf("delete cascade session: %v", err)
 	}
-	if parts, err := s.AgentSessionTranscript(ctx, throwaway.ID, -1, 1<<30); err != nil || len(parts) != 0 {
+	if parts, err := s.AgentSessionTranscript(ctx, throwaway.ID, -1, 1<<30, 0); err != nil || len(parts) != 0 {
 		t.Fatalf("transcript survived session delete = %+v err=%v", parts, err)
 	}
 

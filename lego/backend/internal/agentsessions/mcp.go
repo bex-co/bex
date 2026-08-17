@@ -11,10 +11,33 @@ import (
 
 type listArgs struct {
 	OwnerID string `json:"ownerId,omitempty"`
+	// ADR065 D3 filters + keyset pagination (cursor = the prior page's last
+	// session id; a shorter/empty page signals the end).
+	Archived      string   `json:"archived,omitempty"`
+	Phases        []string `json:"phases,omitempty"`
+	Repo          string   `json:"repo,omitempty"`
+	CreatedBefore string   `json:"createdBefore,omitempty"`
+	CreatedAfter  string   `json:"createdAfter,omitempty"`
+	Cursor        string   `json:"cursor,omitempty"`
+	Limit         int      `json:"limit,omitempty"`
+}
+
+type capabilitiesArgs struct {
+	OwnerID string `json:"ownerId,omitempty"`
 }
 
 type idArgs struct {
 	ID string `json:"id"`
+}
+
+type transcriptArgs struct {
+	ID       string `json:"id"`
+	AfterSeq *int64 `json:"afterSeq,omitempty"`
+	Limit    int    `json:"limit,omitempty"`
+}
+
+type deleteResult struct {
+	Deleted bool `json:"deleted"`
 }
 
 type attachTicketArgs struct {
@@ -41,9 +64,21 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.Create(ctx, in)
 			return nil, out, core.MCPError(err)
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "list_agent_sessions", Description: "List cloud coding-agent sessions in a workspace."},
+	mcp.AddTool(server, &mcp.Tool{Name: "list_agent_sessions", Description: "List cloud coding-agent sessions in a workspace: one filtered page, newest first. Defaults to the unarchived working set; archived selects false|true|all; cursor is the prior page's last session id (a shorter/empty page is the end)."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in listArgs) (*mcp.CallToolResult, listResult, error) {
-			out, err := s.List(ctx, in.OwnerID)
+			before, err := core.ParseTime("createdBefore", in.CreatedBefore)
+			if err != nil {
+				return nil, listResult{}, core.MCPError(err)
+			}
+			after, err := core.ParseTime("createdAfter", in.CreatedAfter)
+			if err != nil {
+				return nil, listResult{}, core.MCPError(err)
+			}
+			out, err := s.List(ctx, ListRequest{
+				OwnerID: in.OwnerID, Archived: in.Archived, Phases: in.Phases,
+				Repo: in.Repo, CreatedBefore: before, CreatedAfter: after,
+				Cursor: in.Cursor, Limit: in.Limit,
+			})
 			return nil, listResult{AgentSessions: out}, core.MCPError(err)
 		})
 	mcp.AddTool(server, &mcp.Tool{Name: "get_agent_session", Description: "Inspect one cloud coding-agent session."},
@@ -52,9 +87,35 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			return nil, out, core.MCPError(err)
 		})
 	mcp.AddTool(server, &mcp.Tool{Name: "get_agent_session_capabilities", Description: "Report a workspace's selectable agent profiles and GitHub/model-key readiness for composing a cloud coding-agent session; never returns model endpoints, templates, egress, or credentials."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in listArgs) (*mcp.CallToolResult, Capabilities, error) {
+		func(ctx context.Context, _ *mcp.CallToolRequest, in capabilitiesArgs) (*mcp.CallToolResult, Capabilities, error) {
 			out, err := s.Capabilities(ctx, in.OwnerID)
 			return nil, out, core.MCPError(err)
+		})
+	mcp.AddTool(server, &mcp.Tool{Name: "get_agent_session_transcript", Description: "Read one page of a cloud coding-agent session's durable conversation transcript (verbatim stream parts, seq-ordered). Works for live, completed, and archived sessions; page by echoing nextAfterSeq as afterSeq until parts is empty."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in transcriptArgs) (*mcp.CallToolResult, TranscriptPage, error) {
+			afterSeq := int64(-1)
+			if in.AfterSeq != nil {
+				afterSeq = *in.AfterSeq
+			}
+			out, err := s.Transcript(ctx, in.ID, afterSeq, in.Limit)
+			return nil, out, core.MCPError(err)
+		})
+	mcp.AddTool(server, &mcp.Tool{Name: "archive_agent_session", Description: "Archive a cloud coding-agent session: it leaves the working-set list (still viewable; resume/steer/pin refused until unarchived) and any still-live sandbox is reclaimed at the next reaper tick without canceling an in-flight turn."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
+			out, err := s.Archive(ctx, in.ID)
+			return nil, out, core.MCPError(err)
+		})
+	mcp.AddTool(server, &mcp.Tool{Name: "unarchive_agent_session", Description: "Return an archived cloud coding-agent session to the working set, re-enabling resume/steer/pin."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
+			out, err := s.Unarchive(ctx, in.ID)
+			return nil, out, core.MCPError(err)
+		})
+	mcp.AddTool(server, &mcp.Tool{Name: "delete_agent_session", Description: "Permanently delete a finished (terminal or hibernated) cloud coding-agent session: its record, transcript, and hibernation snapshot are destroyed. Live sessions must be canceled first. Irreversible."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, deleteResult, error) {
+			if err := s.Delete(ctx, in.ID); err != nil {
+				return nil, deleteResult{}, core.MCPError(err)
+			}
+			return nil, deleteResult{Deleted: true}, nil
 		})
 	mcp.AddTool(server, &mcp.Tool{Name: "resume_agent_session", Description: "Resume a suspended cloud coding-agent session and mint a fresh attach ticket."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {

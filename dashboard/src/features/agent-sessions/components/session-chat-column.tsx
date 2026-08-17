@@ -74,7 +74,13 @@ export function SessionChatColumn({
     </>
   );
 
-  const conversation = session.sandboxId ? (
+  // Attachable = a live sandbox to splice, OR a finished (terminal/hibernated)
+  // session whose durable transcript replays through an ADR065 D2 replay-only
+  // ticket. Only the genuinely unattachable window (provisioning, pre-dispatch)
+  // shows the fallback — before m70 this gated on `sandboxId` alone, so every
+  // reaped session rendered no conversation at all.
+  const attachable = Boolean(session.sandboxId) || session.isFinished;
+  const conversation = attachable ? (
     <SessionConversation
       sessionId={session.id}
       isTerminal={session.isTerminal}
@@ -98,18 +104,23 @@ export function SessionChatColumn({
 
   return (
     <>
-      <SessionDetailHeader session={session} onCanceled={onChanged} />
+      <SessionDetailHeader session={session} onChanged={onChanged} />
 
       <div className="min-h-0 flex-1">{conversation}</div>
 
-      <SteeringComposer
-        session={session}
-        chat={chat}
-        onSteered={onChanged}
-        onOptimisticSteer={(prompt) =>
-          setPendingSteer(prompt ? { prompt, atTurns: session.turns } : null)
-        }
-      />
+      {/* An archived session refuses steer/resume (AGENT_SESSION_ARCHIVED), so
+          the composer would be a dead input — the header's Unarchive is the way
+          back (ADR065 D1). */}
+      {session.isArchived ? null : (
+        <SteeringComposer
+          session={session}
+          chat={chat}
+          onSteered={onChanged}
+          onOptimisticSteer={(prompt) =>
+            setPendingSteer(prompt ? { prompt, atTurns: session.turns } : null)
+          }
+        />
+      )}
     </>
   );
 }

@@ -17,7 +17,13 @@ export function agentSessionView({
   ...over
 }: Partial<AgentSessionView> & { task?: string } = {}): AgentSessionView {
   const phase = over.phase ?? "running";
+  const archivedAt = over.archivedAt ?? null;
   return {
+    archivedAt,
+    isArchived: archivedAt != null,
+    isFinished:
+      ["completed", "failed", "canceled"].includes(phase) ||
+      phase === "hibernated",
     id: "as-1",
     ownerId: "tea-1",
     repo: "acme/widgets",

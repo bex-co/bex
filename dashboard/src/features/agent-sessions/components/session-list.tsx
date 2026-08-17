@@ -1,6 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { GitPullRequest } from "lucide-react";
+import { Archive, ArchiveRestore, GitPullRequest } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
+import { Button } from "@/common/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/common/components/ui/tooltip";
+import { useArchiveToggle } from "@/features/agent-sessions/hooks/use-archive-toggle";
 import {
   Card,
   CardContent,
@@ -105,6 +112,55 @@ export interface SessionListProps {
   sessions: AgentSessionView[];
   loading: boolean;
   error?: Error;
+  /** Re-run the backing list after a row archive/unarchive (ADR065). */
+  onChanged?: () => void;
+}
+
+/**
+ * The per-row archive/unarchive toggle (ADR065 D1): one icon button that flips
+ * the session's working-set membership. Presentational — the list holds the
+ * single `useArchiveToggle` instance and passes it down, so 50+ rows don't
+ * each instantiate the mutations hook. Its own trailing cell keeps the row's
+ * navigation link untouched.
+ */
+function ArchiveRowAction({
+  session,
+  busy,
+  onToggle,
+}: {
+  session: AgentSessionView;
+  busy: boolean;
+  onToggle: (session: AgentSessionView) => void;
+}) {
+  const { t } = useTranslations();
+  const label = session.isArchived
+    ? t("agentSessions.unarchive")
+    : t("agentSessions.archive");
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="icon"
+          variant="ghost"
+          aria-label={label}
+          disabled={busy}
+          className="size-7"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle(session);
+          }}
+        >
+          {session.isArchived ? (
+            <ArchiveRestore className="size-4" />
+          ) : (
+            <Archive className="size-4" />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 /**
@@ -112,8 +168,14 @@ export interface SessionListProps {
  * task prompt + repo/branch, the driver agent, a draft-PR badge, and the
  * relative created age. Clicking a row opens its detail page (`/agents/{id}`).
  */
-export function SessionList({ sessions, loading, error }: SessionListProps) {
+export function SessionList({
+  sessions,
+  loading,
+  error,
+  onChanged,
+}: SessionListProps) {
   const { t } = useTranslations();
+  const { toggle, busyId } = useArchiveToggle(onChanged);
 
   if (loading && sessions.length === 0) {
     return <Skeleton className="h-40 w-full" />;
@@ -144,6 +206,9 @@ export function SessionList({ sessions, loading, error }: SessionListProps) {
               <TableHead>{t("agentSessions.colPhase")}</TableHead>
               <TableHead>{t("agentSessions.colPr")}</TableHead>
               <TableHead>{t("agentSessions.colCreated")}</TableHead>
+              <TableHead>
+                <span className="sr-only">{t("agentSessions.colActions")}</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -172,13 +237,28 @@ export function SessionList({ sessions, loading, error }: SessionListProps) {
                   {s.agentConfig.agent}
                 </TableCell>
                 <TableCell>
-                  <AgentSessionPhaseChip phase={s.phase} />
+                  <span className="inline-flex items-center gap-1.5">
+                    <AgentSessionPhaseChip phase={s.phase} />
+                    {s.isArchived ? (
+                      <Badge variant="outline" className="gap-1">
+                        <Archive className="size-3" />
+                        {t("agentSessions.archivedBadge")}
+                      </Badge>
+                    ) : null}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <PrBadge session={s} />
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
                   {formatRelativeAge(s.createdAt)}
+                </TableCell>
+                <TableCell className="text-right">
+                  <ArchiveRowAction
+                    session={s}
+                    busy={busyId === s.id}
+                    onToggle={(session) => void toggle(session)}
+                  />
                 </TableCell>
               </TableRow>
             ))}

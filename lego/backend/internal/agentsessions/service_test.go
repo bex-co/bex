@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -257,7 +258,7 @@ func (f *fakeStore) AppendAgentSessionTranscript(_ context.Context, id string, p
 // AgentSessionTranscript is a test-only read-back (not on the Store interface):
 // returns the session's parts in seq order, capped at maxBytes of payload like
 // the real store's bounded read.
-func (f *fakeStore) AgentSessionTranscript(_ context.Context, id string, afterSeq int64, maxBytes int64) ([]store.AgentSessionTranscriptPart, error) {
+func (f *fakeStore) AgentSessionTranscript(_ context.Context, id string, afterSeq int64, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error) {
 	out := make([]store.AgentSessionTranscriptPart, 0)
 	for seq, p := range f.transcript[id] {
 		if seq > afterSeq {
@@ -265,6 +266,9 @@ func (f *fakeStore) AgentSessionTranscript(_ context.Context, id string, afterSe
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Seq < out[j].Seq })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
 	var total int64
 	for i, p := range out {
 		if total+int64(len(p.Part)) > maxBytes {
@@ -315,14 +319,52 @@ func (f *fakeStore) GetAgentSession(_ context.Context, id string) (store.AgentSe
 	}
 	return row, nil
 }
-func (f *fakeStore) ListAgentSessions(_ context.Context, workspace string) ([]store.AgentSession, error) {
+func (f *fakeStore) ListAgentSessions(_ context.Context, workspace string, q store.AgentSessionListQuery) ([]store.AgentSession, error) {
 	out := []store.AgentSession{}
 	for _, row := range f.rows {
-		if row.WorkspaceID == workspace {
-			out = append(out, row)
+		if row.WorkspaceID != workspace {
+			continue
 		}
+		switch q.Archived {
+		case store.ArchivedOnly:
+			if row.ArchivedAt == nil {
+				continue
+			}
+		case store.ArchivedInclude:
+		default:
+			if row.ArchivedAt != nil {
+				continue
+			}
+		}
+		if len(q.Phases) > 0 && !slices.Contains(q.Phases, row.Phase) {
+			continue
+		}
+		if q.Repo != "" && row.Repo != q.Repo {
+			continue
+		}
+		out = append(out, row)
+	}
+	if q.Limit > 0 && len(out) > q.Limit {
+		out = out[:q.Limit]
 	}
 	return out, nil
+}
+
+func (f *fakeStore) SetAgentSessionArchived(_ context.Context, id string, archived bool) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	if archived {
+		if row.ArchivedAt == nil {
+			at := f.now
+			row.ArchivedAt = &at
+		}
+	} else {
+		row.ArchivedAt = nil
+	}
+	f.rows[id] = row
+	return row, nil
 }
 func (f *fakeStore) SetAgentSessionLifecycle(_ context.Context, id, sandboxID, phase, status string, canceled bool) (store.AgentSession, error) {
 	row, ok := f.rows[id]
@@ -1135,7 +1177,7 @@ func TestCreateWithoutProxyFailsClosed(t *testing.T) {
 func TestReadAvailabilityDoesNotDependOnModelProxy(t *testing.T) {
 	svc, _, _, _ := fixture()
 	svc.ModelProxyURL = ""
-	views, err := svc.List(caller("alice"), "tea-a")
+	views, err := svc.List(caller("alice"), ListRequest{OwnerID: "tea-a"})
 	if err != nil {
 		t.Fatalf("list without model proxy = %v, want stored-session reads available", err)
 	}

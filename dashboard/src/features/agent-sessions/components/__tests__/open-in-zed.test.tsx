@@ -11,6 +11,7 @@ import type { HasSSHKeyState } from "@/features/ssh-keys/hooks/use-has-ssh-key";
 // stub Link keeps the render provider-free.
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
+  useNavigate: () => vi.fn(),
 }));
 
 // Drives the RequiresSshKey gate: default has-a-key so the existing zed-link
@@ -38,7 +39,14 @@ beforeEach(() => {
 // The header calls the cancel mutation hook (Apollo); the Open-in-Zed control
 // doesn't touch it, so a stub keeps the test off the network.
 vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
-  useAgentSessionMutations: () => ({ cancel: vi.fn() }),
+  useAgentSessionMutations: () => ({
+    cancel: vi.fn(),
+    pin: vi.fn(),
+    unpin: vi.fn(),
+    archive: vi.fn(),
+    unarchive: vi.fn(),
+    deleteSession: vi.fn(),
+  }),
 }));
 
 function view(over: Partial<AgentSessionView> = {}): AgentSessionView {

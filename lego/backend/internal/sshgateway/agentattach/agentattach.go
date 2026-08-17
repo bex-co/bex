@@ -111,6 +111,10 @@ const maxSessionTranscriptBytes = store.MaxAgentSessionTranscriptBytes
 // maxSSEPartBytes; the caller ends the stream rather than buffering it.
 var errPartTooLarge = errors.New("agent attach: transcript part exceeds size limit")
 
+// errReplayOnly marks a ticket with no pod claim (ADR065 D2): the session's
+// sandbox is gone, so the attach serves the durable replay and never dials.
+var errReplayOnly = errors.New("agent attach: replay-only ticket, no pod to dial")
+
 // Store is the transport's narrow transcript authority: read the durable
 // transcript for replay and append teed parts idempotently. It reads/writes
 // only agent_session_transcripts — no session-row access is needed (a
@@ -119,7 +123,7 @@ var errPartTooLarge = errors.New("agent attach: transcript part exceeds size lim
 // nonce claim reaches shell_ticket_nonces through the injected
 // sshgateway.NonceGuard.)
 type Store interface {
-	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64) ([]store.AgentSessionTranscriptPart, error)
+	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
 	AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID string) (int64, bool, error)
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
@@ -383,7 +387,15 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 	})
 	defer cancelExec()
 
-	podIP, ipErr := s.Pods.PodIP(ctx, claims.Namespace, claims.Pod)
+	// A replay-only ticket (empty pod claim, ADR065 D2 — minted for a reaped
+	// terminal/hibernated session) never dials: the durable-transcript replay +
+	// `[DONE]` below is the whole response. Verify already guarantees a turn
+	// ticket always binds a pod, so POST can never reach the driver this way.
+	var podIP string
+	ipErr := errReplayOnly
+	if claims.Pod != "" {
+		podIP, ipErr = s.Pods.PodIP(ctx, claims.Namespace, claims.Pod)
+	}
 
 	// A POST turn's body must be read BEFORE the SSE response starts: Go's http
 	// server closes the request body the moment the handler writes a response
@@ -434,7 +446,8 @@ replay:
 		if ctx.Err() != nil {
 			return
 		}
-		page, err := s.Store.AgentSessionTranscript(ctx, sessionID, after, pageBudget)
+		// Row-unbounded (limit 0): the replay pages purely by byte budget.
+		page, err := s.Store.AgentSessionTranscript(ctx, sessionID, after, pageBudget, 0)
 		if err != nil {
 			log.Printf("agent attach: transcript replay failed (session=%s): %v", sessionID, err)
 			sse.errorAndDone("transcript unavailable")

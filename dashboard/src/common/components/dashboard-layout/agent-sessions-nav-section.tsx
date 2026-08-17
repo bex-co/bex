@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
-import { GitPullRequest, MoreHorizontal, Search } from "lucide-react";
+import { Archive, GitPullRequest, MoreHorizontal, Search } from "lucide-react";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   SidebarGroup,
@@ -133,6 +133,18 @@ export function AgentSessionsNavSection() {
           </SidebarMenu>
         )}
       </SidebarGroupContent>
+
+      {/* Devin's Folder → Archived: archived sessions leave the working set
+          above (the backend's default list excludes them, ADR065 D3); this is
+          their one navigation home. */}
+      <Link
+        to="/agents"
+        search={{ view: "list", archived: "true" }}
+        className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs"
+      >
+        <Archive className="size-3.5" />
+        {t("agentSessions.sidebarArchived")}
+      </Link>
     </SidebarGroup>
   );
 }

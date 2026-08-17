@@ -1,5 +1,7 @@
 import { useCallback } from "react";
 import { useMutation } from "@apollo/client/react";
+import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
+import type { AgentSessionFieldsFragment } from "@/graphql/definitions";
 import {
   CreateAgentSessionDocument,
   SteerAgentSessionDocument,
@@ -8,6 +10,9 @@ import {
   CancelAgentSessionDocument,
   PinAgentSessionDocument,
   UnpinAgentSessionDocument,
+  ArchiveAgentSessionDocument,
+  UnarchiveAgentSessionDocument,
+  DeleteAgentSessionDocument,
 } from "@/graphql/definitions";
 import {
   toAgentSessionTicket,
@@ -57,6 +62,12 @@ export interface UseAgentSessionMutationsResult {
   pin: (id: string) => Promise<AgentSessionView>;
   /** Removes the never-expire pin, back onto the retention clock. */
   unpin: (id: string) => Promise<AgentSessionView>;
+  /** Archives a session out of the working set (ADR065 D1); still viewable. */
+  archive: (id: string) => Promise<AgentSessionView>;
+  /** Returns an archived session to the working set. */
+  unarchive: (id: string) => Promise<AgentSessionView>;
+  /** Permanently deletes a finished session — row, transcript, snapshot (D4). */
+  deleteSession: (id: string) => Promise<void>;
 }
 
 /**
@@ -68,14 +79,49 @@ export interface UseAgentSessionMutationsResult {
  * Apollo error. bex-api authorizes + mints; the browser presents the returned
  * ticket to the m43 stream endpoint (t002).
  */
+
+/**
+ * Collapses the five `id → AgentSessionView` verbs (cancel/pin/unpin/archive/
+ * unarchive) onto one body: fire the mutation `no-cache`, unwrap the single
+ * result field, project it, and re-throw through `toAgentSessionError` — the
+ * exact shape previously retyped per verb (the field-mutation-factory move,
+ * c75a6811). The ticket verbs and delete keep their own bodies: their result
+ * shapes differ.
+ */
+function useByIdViewMutation<TData>(
+  document: TypedDocumentNode<TData, { id: string }>,
+  pick: (data: TData) => AgentSessionFieldsFragment | null | undefined,
+  name: string,
+): (id: string) => Promise<AgentSessionView> {
+  const [mutate] = useMutation(document);
+  return useCallback(
+    async (id: string) => {
+      try {
+        const res = await mutate({ variables: { id }, fetchPolicy: "no-cache" });
+        const session = res.data == null ? null : pick(res.data);
+        if (!session) throw new Error(`${name} returned no session`);
+        return toAgentSessionView(session);
+      } catch (err) {
+        throw toAgentSessionError(err);
+      }
+    },
+    // pick and name are call-site literals, stable per hook instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mutate],
+  );
+}
+
 export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
   const [createMutation] = useMutation(CreateAgentSessionDocument);
   const [steerMutation] = useMutation(SteerAgentSessionDocument);
   const [resumeMutation] = useMutation(ResumeAgentSessionDocument);
   const [attachMutation] = useMutation(AttachAgentSessionDocument);
-  const [cancelMutation] = useMutation(CancelAgentSessionDocument);
-  const [pinMutation] = useMutation(PinAgentSessionDocument);
-  const [unpinMutation] = useMutation(UnpinAgentSessionDocument);
+  const [deleteMutation] = useMutation(DeleteAgentSessionDocument);
+  const cancel = useByIdViewMutation(CancelAgentSessionDocument, (d) => d.cancelAgentSession, "cancelAgentSession");
+  const pin = useByIdViewMutation(PinAgentSessionDocument, (d) => d.pinAgentSession, "pinAgentSession");
+  const unpin = useByIdViewMutation(UnpinAgentSessionDocument, (d) => d.unpinAgentSession, "unpinAgentSession");
+  const archive = useByIdViewMutation(ArchiveAgentSessionDocument, (d) => d.archiveAgentSession, "archiveAgentSession");
+  const unarchive = useByIdViewMutation(UnarchiveAgentSessionDocument, (d) => d.unarchiveAgentSession, "unarchiveAgentSession");
 
   const create = useCallback(
     async (input: CreateAgentSessionInput): Promise<AgentSessionTicket> => {
@@ -169,56 +215,38 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     [attachMutation],
   );
 
-  const cancel = useCallback(
-    async (id: string): Promise<AgentSessionView> => {
+
+
+
+
+
+  const deleteSession = useCallback(
+    async (id: string): Promise<void> => {
       try {
-        const res = await cancelMutation({
+        const res = await deleteMutation({
           variables: { id },
           fetchPolicy: "no-cache",
         });
-        const session = res.data?.cancelAgentSession;
-        if (!session) throw new Error("cancelAgentSession returned no session");
-        return toAgentSessionView(session);
+        if (res.data?.deleteAgentSession !== true) {
+          throw new Error("deleteAgentSession did not confirm");
+        }
       } catch (err) {
         throw toAgentSessionError(err);
       }
     },
-    [cancelMutation],
+    [deleteMutation],
   );
 
-  const pin = useCallback(
-    async (id: string): Promise<AgentSessionView> => {
-      try {
-        const res = await pinMutation({
-          variables: { id },
-          fetchPolicy: "no-cache",
-        });
-        const session = res.data?.pinAgentSession;
-        if (!session) throw new Error("pinAgentSession returned no session");
-        return toAgentSessionView(session);
-      } catch (err) {
-        throw toAgentSessionError(err);
-      }
-    },
-    [pinMutation],
-  );
-
-  const unpin = useCallback(
-    async (id: string): Promise<AgentSessionView> => {
-      try {
-        const res = await unpinMutation({
-          variables: { id },
-          fetchPolicy: "no-cache",
-        });
-        const session = res.data?.unpinAgentSession;
-        if (!session) throw new Error("unpinAgentSession returned no session");
-        return toAgentSessionView(session);
-      } catch (err) {
-        throw toAgentSessionError(err);
-      }
-    },
-    [unpinMutation],
-  );
-
-  return { create, steer, resume, attach, cancel, pin, unpin };
+  return {
+    create,
+    steer,
+    resume,
+    attach,
+    cancel,
+    pin,
+    unpin,
+    archive,
+    unarchive,
+    deleteSession,
+  };
 }

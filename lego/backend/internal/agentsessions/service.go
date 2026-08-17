@@ -42,9 +42,11 @@ const ticketTTL = 90 * time.Second
 type Store interface {
 	CreateAgentSession(context.Context, store.AgentSession) (store.AgentSession, error)
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
-	ListAgentSessions(context.Context, string) ([]store.AgentSession, error)
+	ListAgentSessions(context.Context, string, store.AgentSessionListQuery) ([]store.AgentSession, error)
 	ListAgentSessionsByPhases(context.Context, []string) ([]store.AgentSession, error)
 	SetAgentSessionLifecycle(context.Context, string, string, string, string, bool) (store.AgentSession, error)
+	// Archive (ADR065 D1): the orthogonal list-state flag; never touches phase.
+	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
 	RecordAgentSessionDispatch(context.Context, string, string, string, string, string) (store.AgentSession, error)
 	FinalizeAgentSession(context.Context, string, string, string, string, int, json.RawMessage, string) (store.AgentSession, error)
 	DeleteAgentSession(context.Context, string) error
@@ -77,6 +79,9 @@ type Store interface {
 	AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID string) (int64, bool, error)
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
 	AgentSessionTranscriptTurnRecorded(ctx context.Context, sessionID string, turn int) (bool, error)
+	// Transcript read (ADR065 D2): the poll-shaped seq-keyset page backing the
+	// REST/GraphQL/MCP transcript verb (byte budget + row limit bound one page).
+	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
 }
 
 // TupleWriter establishes the resource-parent edge in OpenFGA. The production
@@ -520,19 +525,89 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	return caps, nil
 }
 
-func (s *Service) List(ctx context.Context, ownerID string) ([]View, error) {
-	ctx = core.WithWorkspace(ctx, ownerID)
+// validPhases is the closed phase vocabulary a list filter may name.
+var validPhases = map[string]bool{
+	PhaseCreating: true, PhaseRunning: true, PhaseResuming: true,
+	PhaseRedispatching: true, PhaseCompleted: true, PhaseFailed: true,
+	PhaseCanceling: true, PhaseCanceled: true,
+	PhaseHibernating: true, PhaseHibernated: true,
+}
+
+// normalizeLimit applies the shared page-bound policy of the ADR065 reads:
+// omitted (0) takes the default, negative is the coded 400 (never a silent
+// default page), oversized clamps to max. Kept local rather than on core's
+// clampers, which deliberately don't reject negatives.
+func normalizeLimit(limit, def, max int) (int, error) {
+	switch {
+	case limit == 0:
+		return def, nil
+	case limit < 0:
+		return 0, core.NewBadRequestError("AGENT_SESSION_FILTER_INVALID",
+			"limit must be a positive integer", map[string]any{"limit": limit})
+	case limit > max:
+		return max, nil
+	}
+	return limit, nil
+}
+
+// storeQuery validates the wire filters and normalizes the page bounds into the
+// store's typed query. Nothing accepted is ignored: an unknown archived value
+// or phase is a named 400, never a silent full (or empty) list.
+func (req *ListRequest) storeQuery() (store.AgentSessionListQuery, error) {
+	q := store.AgentSessionListQuery{
+		Repo:          strings.TrimSpace(req.Repo),
+		CreatedBefore: req.CreatedBefore,
+		CreatedAfter:  req.CreatedAfter,
+		Cursor:        strings.TrimSpace(req.Cursor),
+	}
+	switch req.Archived {
+	case "", ArchivedFalse:
+		q.Archived = store.ArchivedExclude
+	case ArchivedTrue:
+		q.Archived = store.ArchivedOnly
+	case ArchivedAll:
+		q.Archived = store.ArchivedInclude
+	default:
+		return store.AgentSessionListQuery{}, core.NewBadRequestError("AGENT_SESSION_FILTER_INVALID",
+			"archived must be one of false|true|all", map[string]any{"archived": req.Archived})
+	}
+	for _, phase := range req.Phases {
+		if !validPhases[phase] {
+			return store.AgentSessionListQuery{}, core.NewBadRequestError("AGENT_SESSION_FILTER_INVALID",
+				"unknown phase filter", map[string]any{"phase": phase})
+		}
+	}
+	q.Phases = req.Phases
+	limit, err := normalizeLimit(req.Limit, defaultListLimit, maxListLimit)
+	if err != nil {
+		return store.AgentSessionListQuery{}, err
+	}
+	q.Limit = limit
+	return q, nil
+}
+
+// List returns one filtered page of the workspace's sessions (ADR065 D3),
+// newest first. The default request is the unarchived working set, one page of
+// defaultListLimit; the prior unbounded full-history read no longer exists. The
+// next page's cursor is the returned page's last item id (Render's idiom: a
+// shorter or empty page signals the end).
+func (s *Service) List(ctx context.Context, req ListRequest) ([]View, error) {
+	ctx = core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
 		return nil, err
 	}
 	if !s.enabled() {
 		return nil, core.ErrAgentSessionsUnavailable
 	}
+	query, err := req.storeQuery()
+	if err != nil {
+		return nil, err
+	}
 	workspaceID, ok := s.Tenant(ctx)
 	if !ok {
 		return nil, core.ErrForbidden
 	}
-	rows, err := s.Store.ListAgentSessions(ctx, workspaceID)
+	rows, err := s.Store.ListAgentSessions(ctx, workspaceID, query)
 	if err != nil {
 		return nil, err
 	}
@@ -545,6 +620,173 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]View, error) {
 		out = append(out, view)
 	}
 	return out, nil
+}
+
+// errArchived is the coded refusal every mutation verb returns on an archived
+// session (ADR065 D1): identical across REST/GraphQL/MCP, matching Devin's
+// "archived sessions can be viewed but not modified or resumed". Unarchive
+// (and Cancel, the safety verb) stay allowed.
+func errArchived(phase string) error {
+	return core.NewConflictError("AGENT_SESSION_ARCHIVED",
+		"agent session is archived; unarchive it before modifying it", map[string]any{"phase": phase})
+}
+
+// Archive puts a session out of the working set (ADR065 D1). It is idempotent,
+// allowed in any phase, and never touches the lifecycle — but it zeroes the
+// Active-tier idle grace: an archived session's still-live sandbox is reclaimed
+// at the Completer's next tick (an in-flight turn is NOT canceled; the turn
+// finishes and delivers, then the sandbox is reclaimed immediately).
+func (s *Service) Archive(ctx context.Context, sessionID string) (View, error) {
+	return s.setArchived(ctx, sessionID, true)
+}
+
+// Unarchive returns an archived session to the working set, re-enabling the
+// mutation verbs. It does not rehydrate — the next Resume/Steer does.
+func (s *Service) Unarchive(ctx context.Context, sessionID string) (View, error) {
+	return s.setArchived(ctx, sessionID, false)
+}
+
+func (s *Service) setArchived(ctx context.Context, sessionID string, archived bool) (View, error) {
+	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
+		return View{}, err
+	}
+	if !s.enabled() {
+		return View{}, core.ErrAgentSessionsUnavailable
+	}
+	if err := validateSessionID(sessionID); err != nil {
+		return View{}, err
+	}
+	record, err := s.Store.SetAgentSessionArchived(ctx, sessionID, archived)
+	if err != nil {
+		return View{}, mapStoreError(sessionID, err)
+	}
+	return s.toView(record)
+}
+
+// finishedPhase reports a session past all live work: terminal (completed/
+// failed/canceled) or hibernated. Two ADR065 verbs key off it — Delete accepts
+// only finished sessions (a live one must Cancel first; deliberately no
+// archive/cancel escape hatch on a destructive verb), and a pod-less finished
+// session's history is replayable via a replay-only read ticket (D2).
+func finishedPhase(phase string) bool {
+	switch phase {
+	case PhaseCompleted, PhaseFailed, PhaseCanceled, PhaseHibernated:
+		return true
+	}
+	return false
+}
+
+// Delete hard-deletes a session (ADR065 D4): the row, its cascading transcript,
+// and — blob-before-row, mirroring the retention sweep — its hibernation
+// snapshot. It is the one destructive agent-session verb, so the irreversible
+// sink is gated by a FRESH (uncached) re-authorization per the ADR061 #8 /
+// ADR063 #7 seam. A terminal session still holding its idle-grace sandbox is
+// torn down first so the reaper (which works off the row) can never be left
+// with an orphaned pod. The session's OpenFGA parent tuple is left behind as an
+// accepted orphan: ids are never re-minted, and every verb 404s at the store
+// fetch, so the dangling tuple grants access to nothing.
+func (s *Service) Delete(ctx context.Context, sessionID string) error {
+	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
+		return err
+	}
+	if !s.enabled() {
+		return core.ErrAgentSessionsUnavailable
+	}
+	if err := validateSessionID(sessionID); err != nil {
+		return err
+	}
+	record, err := s.Store.GetAgentSession(ctx, sessionID)
+	if err != nil {
+		return mapStoreError(sessionID, err)
+	}
+	if !finishedPhase(record.Phase) {
+		return core.NewConflictError("AGENT_SESSION_NOT_DELETABLE",
+			"agent session is live; cancel it before deleting", map[string]any{"phase": record.Phase})
+	}
+	// Fresh re-check immediately before the destructive sink: a membership
+	// revoked within the positive-cache TTL must not ride a stale allow into an
+	// irreversible delete. The preceding AuthorizeOn already audited the verb.
+	if err := s.AuthorizeFreshOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
+		return err
+	}
+	if record.SandboxID != "" {
+		if err := s.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID); err != nil {
+			return err // retryable: never delete the row while its pod may survive
+		}
+	}
+	if record.SnapshotRef != "" {
+		// Blob BEFORE row (the sweep's ordering): a failed object delete refuses
+		// the whole verb (retryable) rather than orphaning an unreachable blob.
+		if s.Snapshots == nil {
+			return fmt.Errorf("%w: snapshot store unavailable to delete the session snapshot", core.ErrAgentSessionsUnavailable)
+		}
+		if err := s.Snapshots.Delete(ctx, record.SnapshotRef); err != nil {
+			return fmt.Errorf("%w: delete session snapshot: %v", core.ErrAgentSessionsUnavailable, err)
+		}
+	}
+	if err := s.Store.DeleteAgentSession(ctx, sessionID); err != nil {
+		return mapStoreError(sessionID, err)
+	}
+	return nil
+}
+
+// transcriptPageBytes bounds one transcript page's payload (ADR065 D2) — the
+// gateway replay's page budget, reused so a poll-shaped read can never
+// materialize the full 64 MiB session quota in one response.
+const transcriptPageBytes = 4 << 20
+
+// transcript part-count page bounds (ADR065 D2).
+const (
+	defaultTranscriptLimit = 200
+	maxTranscriptLimit     = 1000
+)
+
+// Transcript returns one seq-keyset page of a session's durable conversation
+// (ADR065 D2) — the poll-shaped REST/GraphQL/MCP twin of the gateway stream
+// replay, readable for live, terminal, and archived sessions alike (viewable is
+// the point of the archive). Parts are verbatim stored payloads.
+func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int64, limit int) (TranscriptPage, error) {
+	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
+		return TranscriptPage{}, err
+	}
+	if !s.enabled() {
+		return TranscriptPage{}, core.ErrAgentSessionsUnavailable
+	}
+	if err := validateSessionID(sessionID); err != nil {
+		return TranscriptPage{}, err
+	}
+	limit, err := normalizeLimit(limit, defaultTranscriptLimit, maxTranscriptLimit)
+	if err != nil {
+		return TranscriptPage{}, err
+	}
+	if afterSeq < -1 {
+		afterSeq = -1
+	}
+	parts, err := s.Store.AgentSessionTranscript(ctx, sessionID, afterSeq, transcriptPageBytes, limit)
+	if err != nil {
+		return TranscriptPage{}, err
+	}
+	// An empty page is the one case where "unknown session" and "no transcript
+	// yet" are ambiguous — resolve the row only then, so the common polled read
+	// costs a single query while an unknown id still answers 404.
+	if len(parts) == 0 {
+		if _, err := s.Store.GetAgentSession(ctx, sessionID); err != nil {
+			return TranscriptPage{}, mapStoreError(sessionID, err)
+		}
+	}
+	page := TranscriptPage{Parts: make([]TranscriptPart, 0, len(parts)), NextAfterSeq: afterSeq}
+	for _, p := range parts {
+		part := json.RawMessage(p.Part)
+		if !json.Valid(part) {
+			// Defensive: both writers store valid JSON, but a raw payload must
+			// never be able to corrupt the response envelope.
+			quoted, _ := json.Marshal(string(p.Part))
+			part = quoted
+		}
+		page.Parts = append(page.Parts, TranscriptPart{Seq: p.Seq, Turn: p.Turn, Part: part, CreatedAt: p.CreatedAt})
+		page.NextAfterSeq = p.Seq
+	}
+	return page, nil
 }
 
 func (s *Service) Get(ctx context.Context, sessionID string) (View, error) {
@@ -582,6 +824,9 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 	record, err := s.Store.GetAgentSession(ctx, sessionID)
 	if err != nil {
 		return View{}, mapStoreError(sessionID, err)
+	}
+	if record.ArchivedAt != nil {
+		return View{}, errArchived(record.Phase) // ADR065 D1: unarchive first
 	}
 	// ADR059 D4: a hibernated session has no live pod — rehydrate it from its
 	// object-storage snapshot into a fresh sandbox instead of waking a pod.
@@ -801,6 +1046,9 @@ func (s *Service) setPin(ctx context.Context, sessionID string, pinned bool) (Vi
 	if err != nil {
 		return View{}, mapStoreError(sessionID, err)
 	}
+	if record.ArchivedAt != nil {
+		return View{}, errArchived(record.Phase) // ADR065 D1: unarchive first
+	}
 	if pinned && !record.Pinned {
 		if err := s.enforcePinQuota(ctx, record.WorkspaceID); err != nil {
 			return View{}, err
@@ -953,6 +1201,9 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err != nil {
 		return View{}, mapStoreError(req.SessionID, err)
 	}
+	if record.ArchivedAt != nil {
+		return View{}, errArchived(record.Phase) // ADR065 D1: unarchive first
+	}
 	switch record.Phase {
 	case PhaseCanceled, PhaseCanceling:
 		return View{}, core.NewConflictError("AGENT_SESSION_NOT_STEERABLE", "a canceled agent session cannot be steered", map[string]any{"phase": record.Phase})
@@ -1033,8 +1284,9 @@ func (s *Service) runSteerDispatch(ctx context.Context, record store.AgentSessio
 // transcript replay — needs a ticket too, and those verbs don't fire again. The
 // ticket carries the same 90s TTL + single-use nonce + subject/session/pod/
 // namespace claims, so the gateway authorizes reattach and terminal replay
-// identically to a first connect. A session that never started a sandbox has
-// nothing to attach to.
+// identically to a first connect. A reaped terminal/hibernated session (empty
+// sandbox id) mints a replay-only read ticket instead (ADR065 D2); only a
+// session still provisioning its first sandbox has nothing to attach to.
 func (s *Service) AttachTicket(ctx context.Context, sessionID, action string) (View, error) {
 	// Determine required authorization based on requested action
 	var relation string
@@ -1065,6 +1317,15 @@ func (s *Service) AttachTicket(ctx context.Context, sessionID, action string) (V
 		return View{}, mapStoreError(sessionID, err)
 	}
 	if record.SandboxID == "" {
+		// ADR065 D2: a reaped session (terminal or hibernated, its sandbox gone)
+		// mints a REPLAY-ONLY read ticket with an empty pod claim — the gateway
+		// serves the durable-transcript replay and never dials. This is what makes
+		// "archived sessions can still be viewed" true after the idle grace. Only
+		// the genuinely unattachable window (provisioning/pre-dispatch, live
+		// phases with no sandbox yet) keeps the retryable refusal.
+		if action == agentsessionticket.ActionRead && finishedPhase(record.Phase) {
+			return s.withTicket(ctx, record, action)
+		}
 		return View{}, core.NewConflictError("AGENT_SESSION_NOT_ATTACHABLE",
 			"agent session has not started a sandbox yet", map[string]any{"phase": record.Phase})
 	}
@@ -1075,6 +1336,9 @@ func (s *Service) AttachTicket(ctx context.Context, sessionID, action string) (V
 	// turns on a "finished" session. Read tickets (transcript replay of a terminal
 	// session) are intentionally exempt — that is the feature.
 	if action == agentsessionticket.ActionTurn {
+		if record.ArchivedAt != nil {
+			return View{}, errArchived(record.Phase) // ADR065 D1: no turns while archived
+		}
 		if !liveSandboxPhase(record.Phase) {
 			return View{}, core.NewConflictError("AGENT_SESSION_NOT_LIVE",
 				"agent session is not accepting live turns", map[string]any{"phase": record.Phase})
@@ -1086,6 +1350,7 @@ func (s *Service) AttachTicket(ctx context.Context, sessionID, action string) (V
 	return s.withTicket(ctx, record, action)
 }
 
+
 func (s *Service) withTicket(ctx context.Context, record store.AgentSession, action string) (View, error) {
 	identity, ok := core.IdentityFrom(ctx)
 	if !ok || identity.Subject == "" {
@@ -1093,12 +1358,18 @@ func (s *Service) withTicket(ctx context.Context, record store.AgentSession, act
 	}
 	now := s.Now()
 	expires := now.Add(ticketTTL)
-	ticket, err := agentsessionticket.Mint(s.TicketSecret, agentsessionticket.Claims{
+	claims := agentsessionticket.Claims{
 		Subject: identity.Subject, SessionID: record.ID, SandboxID: record.SandboxID,
 		Pod: record.SandboxID + "-0", Workspace: record.WorkspaceID,
 		Namespace: record.WorkspaceID + "-sandbox", Action: action, Turn: record.Turns,
 		IssuedAt: now.Unix(), ExpiresAt: expires.Unix(),
-	})
+	}
+	if record.SandboxID == "" {
+		// Replay-only ticket (ADR065 D2): no pod to bind, so the pod triple is
+		// empty as a set — the gateway serves the durable replay and never dials.
+		claims.Pod, claims.Namespace = "", ""
+	}
+	ticket, err := agentsessionticket.Mint(s.TicketSecret, claims)
 	if err != nil {
 		return View{}, err
 	}
@@ -1165,7 +1436,8 @@ func viewOf(record store.AgentSession) (View, error) {
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, FailureReason: record.FailureReason,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,
 		Pinned: record.Pinned, SnapshotBytes: record.SnapshotBytes,
-		HibernatedAt: record.HibernatedAt, RetainUntil: record.RetainUntil}, nil
+		HibernatedAt: record.HibernatedAt, RetainUntil: record.RetainUntil,
+		ArchivedAt: record.ArchivedAt}, nil
 }
 
 func mapStoreError(id string, err error) error {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { SessionList } from "@/features/agent-sessions/components/session-list";
 import type {
   AgentSessionPhase,
@@ -19,6 +20,17 @@ vi.mock("@tanstack/react-router", () => ({
       {children}
     </a>
   ),
+}));
+
+// The per-row archive toggle drives Apollo mutations; the list's own rendering
+// is what's under test, so the hook is inert.
+const archiveMock = vi.fn().mockResolvedValue(undefined);
+const unarchiveMock = vi.fn().mockResolvedValue(undefined);
+vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
+  useAgentSessionMutations: () => ({
+    archive: archiveMock,
+    unarchive: unarchiveMock,
+  }),
 }));
 
 /** `task` is a convenience override for the nested `agentConfig.task`. */
@@ -114,5 +126,45 @@ describe("SessionList", () => {
       />,
     );
     expect(screen.getByText("as-empty")).toBeInTheDocument();
+  });
+
+  // ADR065 D1/D6: an archived row is marked, and each row carries the
+  // archive/unarchive toggle that drives the mutation + a list refresh.
+  it("marks archived rows and offers per-row archive/unarchive", async () => {
+    const user = userEvent.setup();
+    const onChanged = vi.fn();
+    render(
+      <SessionList
+        loading={false}
+        onChanged={onChanged}
+        sessions={[
+          view({ id: "as-live", task: "still working" }),
+          view({
+            id: "as-arch",
+            task: "put away",
+            phase: "completed",
+            archivedAt: new Date().toISOString(),
+            isArchived: true,
+          }),
+        ]}
+      />,
+    );
+
+    // The archived row is badged; the working-set row is not.
+    const archivedRow = screen.getByText("put away").closest("tr")!;
+    expect(within(archivedRow).getByText("Archived")).toBeInTheDocument();
+    const liveRow = screen.getByText("still working").closest("tr")!;
+    expect(within(liveRow).queryByText("Archived")).not.toBeInTheDocument();
+
+    // Row actions: archive on the live row, unarchive on the archived one.
+    await user.click(
+      within(liveRow).getByRole("button", { name: "Archive" }),
+    );
+    expect(archiveMock).toHaveBeenCalledWith("as-live");
+    await user.click(
+      within(archivedRow).getByRole("button", { name: "Unarchive" }),
+    );
+    expect(unarchiveMock).toHaveBeenCalledWith("as-arch");
+    expect(onChanged).toHaveBeenCalledTimes(2);
   });
 });

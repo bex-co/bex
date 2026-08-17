@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
+  Archive,
+  ArchiveRestore,
   ArrowLeft,
   ChevronDown,
   Code2,
@@ -11,9 +13,10 @@ import {
   MoreHorizontal,
   Pin,
   Terminal,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/common/components/ui/button";
+import { Button, buttonVariants } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
 import {
   AlertDialog,
@@ -42,6 +45,8 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
+import { useArchiveToggle } from "@/features/agent-sessions/hooks/use-archive-toggle";
+import { agentSessionErrorMessage } from "@/features/agent-sessions/lib/errors";
 import {
   agentSessionDurationMs,
   formatSnapshotBytes,
@@ -62,8 +67,8 @@ function formatDurationShort(ms: number): string {
 
 export interface SessionDetailHeaderProps {
   session: AgentSessionView;
-  /** Re-read the session once a cancel converges (the header owns no cache). */
-  onCanceled?: () => void;
+  /** Re-read the session after a lifecycle action (the header owns no cache). */
+  onChanged?: () => void;
 }
 
 /**
@@ -79,13 +84,36 @@ export interface SessionDetailHeaderProps {
  */
 export function SessionDetailHeader({
   session,
-  onCanceled,
+  onChanged,
 }: SessionDetailHeaderProps) {
   const { t } = useTranslations();
-  const { cancel, pin, unpin } = useAgentSessionMutations();
+  const navigate = useNavigate();
+  const { cancel, pin, unpin, deleteSession } = useAgentSessionMutations();
+  const { toggle: toggleArchive, busyId: archiveBusyId } =
+    useArchiveToggle(onChanged);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [pinning, setPinning] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Archive is list-state (ADR065 D1) — allowed in any phase; delete is the
+  // destructive verb, offered only once no sandbox work is possible
+  // (a live session must cancel first).
+  const deletable = session.isFinished;
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await deleteSession(session.id);
+      toast.success(t("agentSessions.deleteSuccess"));
+      void navigate({ to: "/agents" });
+    } catch (err) {
+      toast.error(agentSessionErrorMessage(err, t));
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  }
 
   async function handleTogglePin() {
     setPinning(true);
@@ -97,7 +125,7 @@ export function SessionDetailHeader({
         await pin(session.id);
         toast.success(t("agentSessions.pinSuccess"));
       }
-      onCanceled?.(); // re-read the session (the header owns no cache)
+      onChanged?.(); // re-read the session (the header owns no cache)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     } finally {
@@ -128,7 +156,7 @@ export function SessionDetailHeader({
     try {
       await cancel(session.id);
       toast.success(t("agentSessions.cancelSuccess"));
-      onCanceled?.();
+      onChanged?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     } finally {
@@ -177,6 +205,12 @@ export function SessionDetailHeader({
               {t("agentSessions.pinned")}
             </Badge>
           ) : null}
+          {session.isArchived ? (
+            <Badge variant="secondary" className="gap-1">
+              <Archive className="size-3" />
+              {t("agentSessions.archivedBadge")}
+            </Badge>
+          ) : null}
           {session.deliveryMode ? (
             <span className="hidden sm:inline">
               {t("agentSessions.metaDelivery", {
@@ -217,28 +251,91 @@ export function SessionDetailHeader({
         />
       ) : null}
 
-      {session.prUrl ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="shrink-0"
-              aria-label={t("agentSessions.menuMore")}
-            >
-              <MoreHorizontal className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="shrink-0"
+            aria-label={t("agentSessions.menuMore")}
+          >
+            <MoreHorizontal className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {session.prUrl ? (
             <DropdownMenuItem asChild>
               <a href={session.prUrl} target="_blank" rel="noreferrer">
                 <ExternalLink className="size-4" />
                 {t("agentSessions.openPr")}
               </a>
             </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
+          ) : null}
+          <DropdownMenuItem
+            disabled={archiveBusyId === session.id}
+            onClick={() => void toggleArchive(session)}
+          >
+            {session.isArchived ? (
+              <>
+                <ArchiveRestore className="size-4" />
+                {t("agentSessions.unarchive")}
+              </>
+            ) : (
+              <>
+                <Archive className="size-4" />
+                {t("agentSessions.archive")}
+              </>
+            )}
+          </DropdownMenuItem>
+          {deletable ? (
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="size-4" />
+              {t("agentSessions.delete")}
+            </DropdownMenuItem>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => !open && !deleting && setDeleteOpen(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("agentSessions.deleteConfirmTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("agentSessions.deleteConfirmBody")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>
+              {t("agentSessions.deleteConfirmDismiss")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDelete();
+              }}
+              disabled={deleting}
+              className={buttonVariants({ variant: "destructive" })}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="animate-spin" />
+                  {t("agentSessions.deleting")}
+                </>
+              ) : (
+                t("agentSessions.deleteConfirmProceed")
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={confirmOpen}
