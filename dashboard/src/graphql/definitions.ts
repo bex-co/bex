@@ -1209,6 +1209,7 @@ export type MutationCreateShellSessionArgs = {
 
 
 export type MutationCreateWebhookEndpointArgs = {
+  enabled?: InputMaybe<Scalars['Boolean']['input']>;
   eventTypes: Array<InputMaybe<Scalars['String']['input']>>;
   name?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
@@ -2604,6 +2605,9 @@ export type QueryWebhookDeliveriesArgs = {
   endpointId: Scalars['String']['input'];
   limit?: InputMaybe<Scalars['Int']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
+  sentAfter?: InputMaybe<Scalars['String']['input']>;
+  sentBefore?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2941,6 +2945,8 @@ export type WebhookDelivery = {
   lastError: Maybe<Scalars['String']['output']>;
   lastStatusCode: Maybe<Scalars['Int']['output']>;
   nextAttemptAt: Maybe<Scalars['String']['output']>;
+  responseBody: Maybe<Scalars['String']['output']>;
+  sentAt: Maybe<Scalars['String']['output']>;
   serviceId: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
 };
@@ -4542,16 +4548,20 @@ export type WebhookDeliveriesQueryVariables = Exact<{
   ownerId?: InputMaybe<Scalars['String']['input']>;
   cursor?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  sentAfter?: InputMaybe<Scalars['String']['input']>;
+  sentBefore?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
-export type WebhookDeliveriesQuery = { webhookDeliveries: Array<{ __typename: 'WebhookDelivery', id: string | null, eventType: string | null, serviceId: string | null, status: string | null, attemptCount: number | null, lastStatusCode: number | null, lastError: string | null, nextAttemptAt: string | null, deliveredAt: string | null, createdAt: string | null, cursor: string | null } | null> | null };
+export type WebhookDeliveriesQuery = { webhookDeliveries: Array<{ __typename: 'WebhookDelivery', id: string | null, eventType: string | null, serviceId: string | null, status: string | null, attemptCount: number | null, lastStatusCode: number | null, lastError: string | null, responseBody: string | null, sentAt: string | null, nextAttemptAt: string | null, deliveredAt: string | null, createdAt: string | null, cursor: string | null } | null> | null };
 
 export type CreateWebhookEndpointMutationVariables = Exact<{
   ownerId?: InputMaybe<Scalars['String']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
   url: Scalars['String']['input'];
   eventTypes: Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>;
+  enabled?: InputMaybe<Scalars['Boolean']['input']>;
 }>;
 
 

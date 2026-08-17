@@ -1,0 +1,134 @@
+# Render outbound webhooks API contract
+
+Captured 2026-08-16 from Render's [webhook guide](https://render.com/docs/webhooks), [public OpenAPI document](https://api-docs.render.com/openapi/render-public-api-1.json), and the create/list/retrieve/update/delete/history references linked from the OpenAPI operations. This is the dated compatibility fixture for `w2/m70`; later comparisons must not silently substitute the prose event list for the API enum because the two currently differ.
+
+## Wire contract
+
+All management routes are under `/v1/webhooks`.
+
+| Operation | Render request | Render success |
+| --- | --- | --- |
+| Create `POST /webhooks` | Required `ownerId`, unique non-empty `name`, public HTTPS `url`, `enabled`, and `eventFilter`. An empty `eventFilter` means every supported event. | `201` webhook object. |
+| List `GET /webhooks` | Optional repeated `ownerId`, opaque `cursor`, and `limit` (default 20, range 1–100). | `[{webhook, cursor}]`. |
+| Get `GET /webhooks/{id}` | Path id. | Webhook object. |
+| Patch `PATCH /webhooks/{id}` | Any subset of `name`, `url`, `enabled`, and `eventFilter`; an explicitly empty filter still means all events. | Updated webhook object. |
+| Delete `DELETE /webhooks/{id}` | Path id. | `204` with no body. |
+| History `GET /webhooks/{id}/events` | Optional ISO-8601 `sentBefore`/`sentAfter`, opaque `cursor`, and `limit` (default 20, range 1–100). | `[{webhookEvent, cursor}]`. |
+
+The Render webhook object requires `id`, `name`, `url`, `secret`, `enabled`, and `eventFilter`. A history item requires `id`, `eventId`, `eventType`, and `sentAt`, and can include `statusCode`, `responseBody`, or `error`. The list cursors are keyset tokens carried beside each object. Render's API schema returns `secret` on create, list, get, and patch because those operations share the same response schema.
+
+bex deliberately does **not** return the stored signing secret after create. Its `whsec_…` value is a mint-once credential, matching the existing API-key security precedent. List/get/patch therefore omit `secret`; this is an explicit security divergence, not strict Render response parity. GraphQL and MCP keep their native `eventTypes` spelling and mint-once response while calling the same core verbs.
+
+Render's prose requires a publicly reachable HTTPS destination. A notification is a Standard Webhooks signed HTTPS `POST` with `webhook-id`, `webhook-timestamp`, and `webhook-signature`. Its thin JSON body is `{type, timestamp, data: {id, serviceId, serviceName, status?}}`; `data.status` is documented for `build_ended`, `deploy_ended`, `cron_job_run_ended`, and `job_run_ended`, with `succeeded`, `failed`, or `canceled` values.
+
+The receiver must return 2xx within 15 seconds. Render makes **at most eight attempts total** per notification, emails after the third failure, uses exponential backoff with the last attempt about 33 hours after the first, and disables the webhook only after all attempts fail. “Eight attempts” is not an initial request plus eight retries.
+
+## Pinned 67-value API enum
+
+The following list is generated from the 2026-08-16 OpenAPI schema at `GET /events/{eventId}`. It is the fixture vocabulary, in the schema's order:
+
+1. `artifact_fetch_failed`
+2. `artifact_source_changed`
+3. `autoscaling_config_changed`
+4. `autoscaling_ended`
+5. `autoscaling_started`
+6. `branch_deleted`
+7. `build_ended`
+8. `build_started`
+9. `commit_ignored`
+10. `cron_job_run_ended`
+11. `cron_job_run_started`
+12. `deploy_ended`
+13. `deploy_started`
+14. `disk_created`
+15. `disk_updated`
+16. `disk_deleted`
+17. `image_pull_failed`
+18. `instance_count_changed`
+19. `job_run_ended`
+20. `maintenance_mode_enabled`
+21. `maintenance_mode_uri_updated`
+22. `maintenance_ended`
+23. `maintenance_started`
+24. `pipeline_minutes_exhausted`
+25. `plan_changed`
+26. `pre_deploy_ended`
+27. `pre_deploy_started`
+28. `server_available`
+29. `server_failed`
+30. `server_hardware_failure`
+31. `server_restarted`
+32. `service_resumed`
+33. `service_suspended`
+34. `zero_downtime_redeploy_ended`
+35. `zero_downtime_redeploy_started`
+36. `edge_cache_enabled`
+37. `edge_cache_disabled`
+38. `edge_cache_purged`
+39. `auto_deploy_disabled`
+40. `auto_deploy_enabled`
+41. `postgres_available`
+42. `postgres_backup_completed`
+43. `postgres_backup_failed`
+44. `postgres_backup_started`
+45. `postgres_cluster_leader_changed`
+46. `postgres_connection_pool_changed`
+47. `postgres_connection_pool_enabled_changed`
+48. `postgres_created`
+49. `postgres_disk_size_changed`
+50. `postgres_disk_autoscaling_enabled_changed`
+51. `postgres_ha_status_changed`
+52. `postgres_restarted`
+53. `postgres_unavailable`
+54. `postgres_upgrade_failed`
+55. `postgres_upgrade_started`
+56. `postgres_upgrade_succeeded`
+57. `postgres_restore_failed`
+58. `postgres_restore_succeeded`
+59. `postgres_read_replicas_changed`
+60. `postgres_pitr_checkpoint_started`
+61. `postgres_pitr_checkpoint_failed`
+62. `postgres_pitr_checkpoint_completed`
+63. `postgres_read_replica_stale`
+64. `postgres_wal_archive_failed`
+65. `key_value_available`
+66. `key_value_config_restart`
+67. `key_value_unhealthy`
+
+### Source drift inside Render's own contract
+
+Render's prose guide currently lists 62 event types. It includes `postgres_credentials_created` and `postgres_credentials_deleted`, which are absent from the 67-value OpenAPI enum. Conversely, the API enum includes `artifact_fetch_failed`, `artifact_source_changed`, all three edge-cache values, and both auto-deploy values, which the prose event catalog omits. bex keeps the two Postgres credential events because it has truthful audited producers and Render still documents them; API-enum fixtures classify them as documented extensions.
+
+## 2026-08-16 bex diff, implementation, and disposition
+
+The baseline was computed from `internal/webhooks.EventTypes`, not from prior ADR prose. Before m70, bex advertises 24 types: 21 overlap the API enum, 46 API values are missing, and three are absent from the API enum. The three are `branch_changed` (a bex extension) and the two prose-documented Postgres credential events above.
+
+| Disposition | Exact types / behavior | Reason |
+| --- | --- | --- |
+| Implement now from existing durable facts (`t002`) | `branch_deleted`, `build_started`, `build_ended`, `pre_deploy_started`, `pre_deploy_ended`, `job_run_ended` | `service_event_facts` already stores these transitions and checked terminal outcomes; the outbound projector currently drops them. |
+| Implement now from an existing discriminated audit row (`t002`) | `auto_deploy_enabled`, `auto_deploy_disabled` | `apps.SetAutoDeploy` already records the resulting boolean. One intent verb must project the correct outcome instead of inventing two verbs. |
+| Correct the producer (`t003`) | `cron_job_run_started`, `cron_job_run_ended` | Already advertised, but currently derived from trigger/cancel intent. Reconcile observed `App.status.runs` so scheduled and manual runs both emit, cancellation emits only after terminal observation, and the ended payload has status. |
+| Preserve truthful current coverage | `autoscaling_config_changed`, `autoscaling_started`, `autoscaling_ended`, `commit_ignored`, `deploy_started`, `deploy_ended`, `image_pull_failed`, `instance_count_changed`, `maintenance_mode_enabled`, `maintenance_mode_uri_updated`, `plan_changed`, `postgres_backup_started`, `postgres_created`, `postgres_restarted`, `server_available`, `server_failed`, `server_restarted`, `service_resumed`, `service_suspended` | Existing deploy, audit, or typed-fact sources. |
+| Preserve explicit bex extension | `branch_changed` | bex has a durable Git branch-change fact; Render's public API has only branch deletion. |
+| Preserve Render-prose/documented extensions | `postgres_credentials_created`, `postgres_credentials_deleted` | Truthful audited producers and still named in Render's webhook guide, despite omission from its OpenAPI enum. |
+| Repository anti-goal; document, do not fabricate | `disk_created`, `disk_updated`, `disk_deleted`; `edge_cache_enabled`, `edge_cache_disabled`, `edge_cache_purged`; `maintenance_started`, `maintenance_ended`; `server_hardware_failure`; `zero_downtime_redeploy_started`, `zero_downtime_redeploy_ended` | Persistent disks, explicit cache purge/CDN control, and provider maintenance/hardware lifecycle are rejected product surfaces in `.pm/DO_NOT_DO.md` or the m70 anti-goal boundary. |
+| No truthful producer; remain unsupported | `artifact_fetch_failed`, `artifact_source_changed`, `pipeline_minutes_exhausted`; `postgres_available`, `postgres_backup_completed`, `postgres_backup_failed`, `postgres_cluster_leader_changed`, `postgres_connection_pool_changed`, `postgres_connection_pool_enabled_changed`, `postgres_disk_size_changed`, `postgres_disk_autoscaling_enabled_changed`, `postgres_ha_status_changed`, `postgres_unavailable`, `postgres_upgrade_failed`, `postgres_upgrade_started`, `postgres_upgrade_succeeded`, `postgres_restore_failed`, `postgres_restore_succeeded`, `postgres_read_replicas_changed`, `postgres_pitr_checkpoint_started`, `postgres_pitr_checkpoint_failed`, `postgres_pitr_checkpoint_completed`, `postgres_read_replica_stale`, `postgres_wal_archive_failed`; `key_value_available`, `key_value_config_restart`, `key_value_unhealthy` | Some underlying products exist, but the outbound feed has no durable, exact transition row carrying the required identity/time/outcome. Advertising these before such a source exists would make the contract untruthful. |
+
+After m70, the advertised vocabulary is 32 types: 29 overlap the pinned API enum plus the same three documented extensions. Cron start/end now come from observed durable run state, including scheduled runs; terminal payloads use the checked `succeeded`, `failed`, or `canceled` status. Unsupported families stay visible in this ledger instead of appearing in the picker.
+
+## Final surface result
+
+| Gap found on 2026-08-16 | Implemented result |
+| --- | --- |
+| Create omits required `enabled`, permits an empty/defaulted name, accepts HTTP, and rejects an empty all-events filter. PATCH cannot distinguish omitted from explicitly empty `eventFilter`. | REST create now requires `ownerId`, a unique non-empty name, explicit enabled state and filter, accepts HTTPS only, and stores empty as a future-inclusive all-events subscription. Sparse PATCH distinguishes omission from explicit empty on REST, GraphQL, and MCP. Stable coded refusals include `WEBHOOK_OWNER_REQUIRED`, `WEBHOOK_NAME_INVALID`, `WEBHOOK_NAME_CONFLICT`, and `WEBHOOK_URL_INVALID`. |
+| List is unwrapped/unpaged, accepts one owner id, and get/patch expose bex-only fields while omitting Render's post-create secret. | REST returns the exact supported non-secret webhook fields in `[{webhook,cursor}]`, handles repeated `ownerId`, and pages on immutable `(created_at,id)`. The post-create secret omission is deliberately retained. |
+| History uses `{delivery,cursor}` and bex field names, lacks time filters and response evidence. | REST returns `[{webhookEvent,cursor}]`, filters on stable first-attempt `sentAt`, and exposes status/body/error evidence. Response bodies are valid UTF-8 and capped at 4096 bytes including an explicit truncation marker. GraphQL, MCP, and the dashboard retain the richer retry-state view. |
+| The worker has eight backoff delays after the initial delivery, producing nine attempts. | The default has seven delays and exactly eight total attempts. The final attempt is 32h40m30s after the first; the third-failure and terminal-disable notices remain distinct; no ninth POST is possible. |
+| Dashboard labels/counts and activity evidence consume the old contract; raw event keys leak in detail/list views. | Create and Settings preserve empty-filter all-events, creation can start disabled, known events use translated human labels, the destination and Settings status are links, creator subjects resolve through the authorized member read, and Activity exposes `sentAt`, status/response/error evidence plus server-side time/status predicates with matching cursor pages. |
+| ADR018 says Render manages webhooks only in the dashboard, marks full parity, calls the worker single-replica, and says endpoint count is unbounded. | ADR018 now records partial parity, current REST management/history, multi-replica-safe dispatch/claims, the fixed 25-endpoint bex cap, and the remaining source/product boundaries. |
+
+## Verification fixture
+
+`TestRenderRESTCreateReadPatchDeleteAndMintOnceFixture`, `TestRenderRESTWebhookListEnvelopeMultiOwnerAndCursor`, and `TestRenderRESTWebhookEventEnvelopeTimeFiltersAndEvidence` pin the supported Render REST fields, envelopes, filters, pagination, and deliberate create-only secret. Worker tests pin the full attempt clock and Standard Webhooks reference vector. The real-Postgres two-worker integration test verifies each signed POST exactly once and reads back matching stable `sentAt`, HTTP status, and bounded response evidence from the same history rows. `scripts/webhooks-verify.sh` exercises the live control plane through a caller-supplied public HTTPS tunnel; this is required because production correctly rejects HTTP destinations and private/loopback SSRF targets.
+
+The remaining product divergences are intentional or source-bound: bex never re-returns a signing secret, caps every workspace at 25 endpoints rather than Render's plan-specific 1/100 gates, exposes GraphQL/MCP management and retry diagnostics that Render does not, and does not advertise the unsupported families listed above.

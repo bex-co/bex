@@ -816,3 +816,12 @@ func (m *memStore) InsertServiceEventFact(_ context.Context, fact ServiceEventFa
 	m.eventFacts[fact.SourceKey] = fact
 	return true, nil
 }
+
+func (m *memStore) InsertServiceEventFacts(ctx context.Context, facts []ServiceEventFact) error {
+	for _, fact := range facts {
+		if _, err := m.InsertServiceEventFact(ctx, fact); err != nil {
+			return err
+		}
+	}
+	return nil
+}

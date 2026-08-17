@@ -6,7 +6,15 @@ import type { WebhookEndpointView } from "@/features/webhooks/types";
 // The back button is a router <Link>; the header itself never navigates in
 // these tests, so a bare anchor stands in.
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children }: { children: React.ReactNode }) => <a>{children}</a>,
+  Link: ({
+    children,
+    to,
+    ...props
+  }: React.ComponentProps<"a"> & { to?: string }) => (
+    <a href={to} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 function endpoint(
@@ -43,5 +51,37 @@ describe("WebhookDetailHeader", () => {
   it("omits the provenance line entirely without a created date", () => {
     render(<WebhookDetailHeader endpoint={endpoint({ createdAt: null })} />);
     expect(screen.queryByText(/^Created/)).not.toBeInTheDocument();
+  });
+
+  it("links the destination and settings status and uses human event labels", () => {
+    render(<WebhookDetailHeader endpoint={endpoint()} />);
+    expect(screen.getByRole("link", { name: "Status" })).toHaveAttribute(
+      "href",
+      "/webhook/$webhookId/settings",
+    );
+    expect(screen.getByRole("link", { name: endpoint().url })).toHaveAttribute(
+      "href",
+      endpoint().url,
+    );
+    expect(screen.getByText("Deploy Started")).toBeInTheDocument();
+    expect(screen.queryByText("deploy_started")).not.toBeInTheDocument();
+  });
+
+  it("renders an empty stored event filter as future-inclusive All events", () => {
+    render(<WebhookDetailHeader endpoint={endpoint({ eventTypes: [] })} />);
+    expect(screen.getByText("All events")).toBeInTheDocument();
+  });
+
+  it("uses the resolved creator identity instead of the stored subject", () => {
+    render(
+      <WebhookDetailHeader
+        endpoint={endpoint({ createdBy: "identity-123" })}
+        creatorIdentity="alice@example.com"
+      />,
+    );
+    expect(
+      screen.getByText("Created by alice@example.com on July 16, 2026"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/identity-123/)).not.toBeInTheDocument();
   });
 });

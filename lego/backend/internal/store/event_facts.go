@@ -50,6 +50,8 @@ const (
 	EventFactPreDeployStarted ServiceEventFactType = "pre_deploy_started"
 	EventFactPreDeployEnded   ServiceEventFactType = "pre_deploy_ended"
 	EventFactJobRunEnded      ServiceEventFactType = "job_run_ended"
+	EventFactCronRunStarted   ServiceEventFactType = "cron_job_run_started"
+	EventFactCronRunEnded     ServiceEventFactType = "cron_job_run_ended"
 )
 
 var serviceEventFactTypes = map[ServiceEventFactType]bool{
@@ -68,6 +70,8 @@ var serviceEventFactTypes = map[ServiceEventFactType]bool{
 	EventFactPreDeployStarted:   true,
 	EventFactPreDeployEnded:     true,
 	EventFactJobRunEnded:        true,
+	EventFactCronRunStarted:     true,
+	EventFactCronRunEnded:       true,
 }
 
 // Closed lifecycle-step outcomes for a *_ended fact's Status column — the same
@@ -141,6 +145,14 @@ func validateServiceEventFact(f ServiceEventFact) error {
 	if !serviceEventStatuses[f.Status] {
 		return fmt.Errorf("invalid service event status %q", f.Status)
 	}
+	terminal := f.Type == EventFactBuildEnded || f.Type == EventFactPreDeployEnded ||
+		f.Type == EventFactJobRunEnded || f.Type == EventFactCronRunEnded
+	if terminal && f.Status == "" {
+		return fmt.Errorf("terminal service event fact %q requires status", f.Type)
+	}
+	if !terminal && f.Status != "" {
+		return fmt.Errorf("nonterminal service event fact %q cannot carry status", f.Type)
+	}
 	return nil
 }
 
@@ -161,6 +173,40 @@ func (s *PGStore) InsertServiceEventFact(ctx context.Context, fact ServiceEventF
 		return false, classify("service event fact", err)
 	}
 	return tag.RowsAffected() > 0, nil
+}
+
+// InsertServiceEventFacts appends a producer's bounded observation set in one
+// database round trip. Each fact keeps InsertServiceEventFact's independent
+// source-key idempotency; validation completes before anything is queued.
+func (s *PGStore) InsertServiceEventFacts(ctx context.Context, facts []ServiceEventFact) error {
+	batch := &pgx.Batch{}
+	for i := range facts {
+		if err := validateServiceEventFact(facts[i]); err != nil {
+			return err
+		}
+		if facts[i].At.IsZero() {
+			facts[i].At = time.Now().UTC()
+		}
+		fact := facts[i]
+		batch.Queue(insertServiceEventFactSQL,
+			fact.SourceKey, fact.AppID, fact.Type, fact.At, fact.DeployID, fact.Image,
+			fact.ReasonCode, fact.InstanceID, fact.FromCount, fact.ToCount,
+			fact.BranchFrom, fact.BranchTo, fact.CommitID, fact.CommitURL, fact.Status)
+	}
+	if batch.Len() == 0 {
+		return nil
+	}
+	results := s.Pool.SendBatch(ctx, batch)
+	for range facts {
+		if _, err := results.Exec(); err != nil {
+			_ = results.Close()
+			return classify("service event fact", err)
+		}
+	}
+	if err := results.Close(); err != nil {
+		return classify("service event fact", err)
+	}
+	return nil
 }
 
 const insertServiceEventFactSQL = `

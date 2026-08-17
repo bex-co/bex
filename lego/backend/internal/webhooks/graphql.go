@@ -19,6 +19,7 @@ package webhooks
 import (
 	"github.com/graphql-go/graphql"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 )
 
@@ -56,6 +57,8 @@ var deliveryGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"attemptCount":    gqlutil.IntField(func(v DeliveryView) any { return v.AttemptCount }),
 		"lastStatusCode":  gqlutil.IntField(func(v DeliveryView) any { return v.LastStatusCode }),
 		"lastError":       gqlutil.StrField(func(v DeliveryView) any { return v.LastError }),
+		"responseBody":    gqlutil.StrField(func(v DeliveryView) any { return v.ResponseBody }),
+		"sentAt":          gqlutil.StrField(func(v DeliveryView) any { return v.SentAt }),
 		"nextAttemptAt":   gqlutil.StrField(func(v DeliveryView) any { return v.NextAttemptAt }),
 		"lastAttemptedAt": gqlutil.StrField(func(v DeliveryView) any { return v.LastAttemptedAt }),
 		"deliveredAt":     gqlutil.StrField(func(v DeliveryView) any { return v.DeliveredAt }),
@@ -98,9 +101,23 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId":    gqlutil.Arg(graphql.String),
 				"cursor":     gqlutil.Arg(graphql.String),
 				"limit":      gqlutil.Arg(graphql.Int),
+				"sentAfter":  gqlutil.Arg(graphql.String),
+				"sentBefore": gqlutil.Arg(graphql.String),
+				"status":     gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListDeliveries(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["endpointId"].(string), gqlutil.Str(p.Args, "cursor"), gqlutil.Int(p.Args, "limit"))
+				sentAfter, err := core.ParseTime("sentAfter", gqlutil.Str(p.Args, "sentAfter"))
+				if err != nil {
+					return nil, err
+				}
+				sentBefore, err := core.ParseTime("sentBefore", gqlutil.Str(p.Args, "sentBefore"))
+				if err != nil {
+					return nil, err
+				}
+				return s.ListDeliveriesFiltered(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["endpointId"].(string), DeliveryFilter{
+					Cursor: gqlutil.Str(p.Args, "cursor"), Limit: gqlutil.Int(p.Args, "limit"),
+					SentAfter: sentAfter, SentBefore: sentBefore, Status: gqlutil.Str(p.Args, "status"),
+				})
 			},
 		},
 		"webhookEventTypes": &graphql.Field{
@@ -122,11 +139,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"name":       gqlutil.Arg(graphql.String),
 				"url":        gqlutil.ReqArg(graphql.String),
 				"eventTypes": gqlutil.Arg(graphql.NewNonNull(graphql.NewList(graphql.String))),
+				// Optional for backward-compatible GraphQL dialect evolution; omitted
+				// means enabled, while false creates disabled like Render REST.
+				"enabled": gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				enabled := true
+				if value, ok := p.Args["enabled"].(bool); ok {
+					enabled = value
+				}
 				return s.Create(p.Context, CreateRequest{
 					OwnerID: gqlutil.Str(p.Args, "ownerId"), Name: gqlutil.Str(p.Args, "name"),
 					URL: p.Args["url"].(string), EventTypes: gqlutil.StringList(p.Args["eventTypes"]),
+					Enabled: enabled,
 				})
 			},
 		},
@@ -142,13 +167,25 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				var enabledPtr *bool
+				var eventTypesPtr *[]string
+				var namePtr, urlPtr *string
 				if v, ok := p.Args["enabled"].(bool); ok {
 					enabledPtr = &v
 				}
+				if raw, ok := p.Args["eventTypes"]; ok {
+					values := gqlutil.StringList(raw)
+					eventTypesPtr = &values
+				}
+				if value, ok := p.Args["name"].(string); ok {
+					namePtr = &value
+				}
+				if value, ok := p.Args["url"].(string); ok {
+					urlPtr = &value
+				}
 				return s.Update(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["id"].(string), UpdateRequest{
-					Name:       gqlutil.Str(p.Args, "name"),
-					URL:        gqlutil.Str(p.Args, "url"),
-					EventTypes: gqlutil.StringList(p.Args["eventTypes"]),
+					Name:       namePtr,
+					URL:        urlPtr,
+					EventTypes: eventTypesPtr,
 					Enabled:    enabledPtr,
 				})
 			},

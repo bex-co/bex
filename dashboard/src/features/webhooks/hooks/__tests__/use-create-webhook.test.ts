@@ -58,6 +58,7 @@ describe("useCreateWebhook", () => {
         "slack-bot",
         "https://example.com/hook",
         ["deploy_started"],
+        false,
       );
     });
 
@@ -71,6 +72,7 @@ describe("useCreateWebhook", () => {
         name: "slack-bot",
         url: "https://example.com/hook",
         eventTypes: ["deploy_started"],
+        enabled: false,
         ownerId: "tea-1",
       },
     });
@@ -85,9 +87,12 @@ describe("useCreateWebhook", () => {
     const { result } = renderHook(() => useCreateWebhook());
     let endpoint;
     await act(async () => {
-      endpoint = await result.current.create("x", "https://x.example", [
-        "deploy_started",
-      ]);
+      endpoint = await result.current.create(
+        "x",
+        "https://x.example",
+        ["deploy_started"],
+        true,
+      );
     });
 
     // Sending a null ownerId would silently register in the caller's default
@@ -106,12 +111,40 @@ describe("useCreateWebhook", () => {
     const { result } = renderHook(() => useCreateWebhook());
     let endpoint;
     await act(async () => {
-      endpoint = await result.current.create("x", "https://x.example", [
-        "deploy_started",
-      ]);
+      endpoint = await result.current.create(
+        "x",
+        "https://x.example",
+        ["deploy_started"],
+        true,
+      );
     });
 
     expect(endpoint).toBeNull();
     expect(toastError).toHaveBeenCalled();
+  });
+
+  it("surfaces coded validation and duplicate-name details", async () => {
+    const mutate = vi
+      .fn()
+      .mockRejectedValue(
+        new Error(
+          "WEBHOOK_NAME_CONFLICT: a webhook with this name already exists",
+        ),
+      );
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useCreateWebhook());
+    await act(async () => {
+      await result.current.create(
+        "duplicate",
+        "https://example.com/hook",
+        [],
+        true,
+      );
+    });
+
+    expect(toastError).toHaveBeenCalledWith(
+      expect.stringContaining("WEBHOOK_NAME_CONFLICT"),
+    );
   });
 });

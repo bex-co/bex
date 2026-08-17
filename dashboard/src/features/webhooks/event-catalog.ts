@@ -10,11 +10,16 @@
 const GROUPS: Record<string, string[]> = {
   cronJobRun: ["cron_job_run_started", "cron_job_run_ended"],
   deploy: [
+    "build_started",
+    "build_ended",
     "deploy_started",
     "deploy_ended",
     "image_pull_failed",
+    "pre_deploy_started",
+    "pre_deploy_ended",
     "commit_ignored",
   ],
+  autoDeploy: ["auto_deploy_enabled", "auto_deploy_disabled"],
   serviceAvailability: [
     "server_failed",
     "server_available",
@@ -40,7 +45,7 @@ const GROUPS: Record<string, string[]> = {
 };
 
 /** Keys Render lists as bare rows (no group); anything else unknown → "other". */
-const SINGLES = new Set<string>();
+const SINGLES = new Set<string>(["branch_deleted", "job_run_ended"]);
 
 const EVENT_GROUP: ReadonlyMap<string, string> = new Map(
   Object.entries(GROUPS).flatMap(([group, events]) =>
@@ -49,6 +54,11 @@ const EVENT_GROUP: ReadonlyMap<string, string> = new Map(
 );
 
 const KNOWN = new Set([...EVENT_GROUP.keys(), ...SINGLES]);
+
+/** Human-label translation key for a known event; unknown future keys remain raw. */
+export function eventLabelKey(type: string): string | null {
+  return KNOWN.has(type) ? `webhooks.event.${type}` : null;
+}
 
 export interface CatalogEvent {
   type: string;
@@ -65,7 +75,7 @@ export interface CatalogEntry {
 function toEvent(type: string): CatalogEvent {
   return {
     type,
-    labelKey: KNOWN.has(type) ? `webhooks.event.${type}` : null,
+    labelKey: eventLabelKey(type),
   };
 }
 

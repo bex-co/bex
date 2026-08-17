@@ -441,6 +441,7 @@ type Store interface {
 	// a typed checkpoint; repeated reconciler observations are no-ops.
 	RecordObservedServiceState(ctx context.Context, obs ObservedServiceState) ([]ServiceEventFact, error)
 	InsertServiceEventFact(ctx context.Context, fact ServiceEventFact) (bool, error)
+	InsertServiceEventFacts(ctx context.Context, facts []ServiceEventFact) error
 }
 
 // PGStore is the Postgres-backed Store over a pgx pool. It holds no business

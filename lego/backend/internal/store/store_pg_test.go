@@ -987,6 +987,21 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	if inserted, err := s.InsertServiceEventFact(ctx, buildFact); err != nil || !inserted {
 		t.Fatalf("insert build_ended fact: %v", err)
 	}
+	cronFacts := []ServiceEventFact{
+		{SourceKey: "cron:" + app.ID + ":run-1:started", AppID: app.ID, Type: EventFactCronRunStarted, At: base.Add(800 * time.Millisecond)},
+		{SourceKey: "cron:" + app.ID + ":run-1:ended", AppID: app.ID, Type: EventFactCronRunEnded, At: base.Add(900 * time.Millisecond), Status: EventStatusSucceeded},
+	}
+	if err := s.InsertServiceEventFacts(ctx, cronFacts); err != nil {
+		t.Fatalf("batch insert cron facts: %v", err)
+	}
+	if err := s.InsertServiceEventFacts(ctx, cronFacts); err != nil {
+		t.Fatalf("batch replay cron facts: %v", err)
+	}
+	var cronFactCount int
+	if err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM service_event_facts WHERE source_key = ANY($1)`,
+		[]string{cronFacts[0].SourceKey, cronFacts[1].SourceKey}).Scan(&cronFactCount); err != nil || cronFactCount != 2 {
+		t.Fatalf("batched cron fact count = %d (err %v), want exactly 2 after replay", cronFactCount, err)
+	}
 	buildOnly, err := s.ListServiceEvents(ctx, app.ID, target, ten.ID,
 		ServiceEventFilter{FactTypes: []string{string(EventFactBuildEnded)}})
 	if err != nil || len(buildOnly) != 1 || buildOnly[0].FactStatus != EventStatusFailed {
@@ -1587,12 +1602,19 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	}
 
 	// --- endpoint CRUD + scoping ---
-	ep, err := s.CreateWebhookEndpoint(ctx, ten.ID, "", "https://hooks.example.com/a", "whsec_secret-a", []string{"deploy_started", "deploy_ended"}, "user-x")
+	ep, err := s.CreateWebhookEndpoint(ctx, ten.ID, "primary", "https://hooks.example.com/a", "whsec_secret-a", []string{"deploy_started", "deploy_ended"}, true, "user-x")
 	if err != nil {
 		t.Fatalf("create webhook endpoint: %v", err)
 	}
-	if ep.ID[:4] != "whk-" || ep.Secret != "whsec_secret-a" || ep.Name != "https://hooks.example.com/a" || !ep.Enabled {
+	if ep.ID[:4] != "whk-" || ep.Secret != "whsec_secret-a" || ep.Name != "primary" || !ep.Enabled {
 		t.Errorf("created endpoint = %+v", ep)
+	}
+	if _, err := s.CreateWebhookEndpoint(ctx, ten.ID, " PRIMARY ", "https://hooks.example.com/duplicate", "s", []string{}, false, ""); !errors.Is(err, ErrConflict) {
+		t.Errorf("case-insensitive duplicate webhook name = %v, want ErrConflict", err)
+	}
+	ep2, err := s.CreateWebhookEndpoint(ctx, ten.ID, "secondary", "https://hooks.example.com/b", "whsec_secret-b", []string{}, false, "user-x")
+	if err != nil {
+		t.Fatalf("create second webhook endpoint: %v", err)
 	}
 	got, err := s.GetWebhookEndpoint(ctx, ten.ID, ep.ID)
 	if err != nil {
@@ -1604,9 +1626,17 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	if len(got.EventTypes) != 2 || got.EventTypes[0] != "deploy_started" {
 		t.Errorf("event types did not round-trip: %+v", got.EventTypes)
 	}
-	list, err := s.ListWebhookEndpoints(ctx, ten.ID)
-	if err != nil || len(list) != 1 || list[0].Secret != "" {
-		t.Errorf("list = %+v (err %v), want 1 endpoint with no secret", list, err)
+	list, err := s.ListWebhookEndpoints(ctx, []string{ten.ID}, time.Time{}, "", 20)
+	if err != nil || len(list) != 2 || list[0].Secret != "" || list[1].Secret != "" {
+		t.Errorf("list = %+v (err %v), want 2 endpoints with no secret", list, err)
+	}
+	page1, err := s.ListWebhookEndpoints(ctx, []string{ten.ID}, time.Time{}, "", 1)
+	if err != nil || len(page1) != 1 {
+		t.Fatalf("endpoint page 1 = %+v (err %v)", page1, err)
+	}
+	page2, err := s.ListWebhookEndpoints(ctx, []string{ten.ID}, page1[0].CreatedAt, page1[0].ID, 1)
+	if err != nil || len(page2) != 1 || page2[0].ID == page1[0].ID {
+		t.Fatalf("endpoint page 2 = %+v (err %v), page 1 = %+v", page2, err, page1)
 	}
 	if _, err := s.GetWebhookEndpoint(ctx, "tea-stranger00000000", ep.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("cross-workspace get = %v, want ErrNotFound", err)
@@ -1614,7 +1644,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	if err := s.DeleteWebhookEndpoint(ctx, "tea-stranger00000000", ep.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("cross-workspace delete = %v, want ErrNotFound", err)
 	}
-	if _, err := s.CreateWebhookEndpoint(ctx, "tea-doesnotexist0000", "x", "https://x", "s", []string{"deploy_started"}, ""); !errors.Is(err, ErrNotFound) {
+	if _, err := s.CreateWebhookEndpoint(ctx, "tea-doesnotexist0000", "x", "https://x", "s", []string{"deploy_started"}, true, ""); !errors.Is(err, ErrNotFound) {
 		t.Errorf("create under a missing tenant = %v, want ErrNotFound (FK)", err)
 	}
 
@@ -1765,7 +1795,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 		t.Errorf("due join = %+v, want the endpoint's secret/url/creator", due[0])
 	}
 	// A failed attempt reschedules; the row stays open but future-dated.
-	if err := s.RecordWebhookAttempt(ctx, d.ID, 502, "bad gateway", now, now.Add(time.Hour), false, false); err != nil {
+	if err := s.RecordWebhookAttempt(ctx, d.ID, 502, "bad gateway", "upstream down", now, now.Add(time.Hour), false, false); err != nil {
 		t.Fatalf("record attempt: %v", err)
 	}
 	if due, _ := s.ClaimDueWebhookDeliveries(ctx, now.Add(time.Second), now.Add(time.Second+time.Minute), 10); len(due) != 0 {
@@ -1782,16 +1812,40 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 		t.Fatalf("re-enable: %v", err)
 	}
 	// A delivered attempt closes the row.
-	if err := s.RecordWebhookAttempt(ctx, d.ID, 200, "", now.Add(2*time.Hour), now.Add(2*time.Hour), true, false); err != nil {
+	if err := s.RecordWebhookAttempt(ctx, d.ID, 200, "", "ok", now.Add(2*time.Hour), now.Add(2*time.Hour), true, false); err != nil {
 		t.Fatalf("record delivered: %v", err)
 	}
-	history, err := s.ListWebhookDeliveries(ctx, ep.ID, time.Time{}, "", 10)
+	history, err := s.ListWebhookDeliveries(ctx, WebhookDeliveryFilter{EndpointID: ep.ID, Limit: 10})
 	if err != nil || len(history) != 1 {
 		t.Fatalf("history = %+v (err %v)", history, err)
 	}
 	h := history[0]
 	if h.AttemptCount != 2 || h.DeliveredAt == nil || h.LastStatus != 200 {
 		t.Errorf("history row = %+v, want 2 attempts, delivered, 200", h)
+	}
+	failedAt := now.Add(3 * time.Hour)
+	failedDelivery := WebhookDelivery{
+		ID: "whd-failedhistory000", EndpointID: ep.ID, EventID: "evt-failedhistory0000",
+		EventType: "deploy_ended", ServiceID: app.Name, Payload: `{}`, NextAttemptAt: failedAt,
+	}
+	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{failedDelivery}, failedAt, "failed-key"); err != nil {
+		t.Fatalf("enqueue failed history fixture: %v", err)
+	}
+	if err := s.RecordWebhookAttempt(ctx, failedDelivery.ID, 503, "unavailable", "try later", failedAt, failedAt, false, true); err != nil {
+		t.Fatalf("record terminal failure: %v", err)
+	}
+	deliveredHistory, err := s.ListWebhookDeliveries(ctx, WebhookDeliveryFilter{EndpointID: ep.ID, Status: "delivered", Limit: 10})
+	if err != nil || len(deliveredHistory) != 1 || deliveredHistory[0].ID != d.ID {
+		t.Fatalf("delivered history = %+v (err %v)", deliveredHistory, err)
+	}
+	failedHistory, err := s.ListWebhookDeliveries(ctx, WebhookDeliveryFilter{
+		EndpointID: ep.ID, SentAfter: now.Add(2 * time.Hour), SentBefore: now.Add(4 * time.Hour), Status: "failed", Limit: 10,
+	})
+	if err != nil || len(failedHistory) != 1 || failedHistory[0].ID != failedDelivery.ID || failedHistory[0].ResponseBody != "try later" {
+		t.Fatalf("time/status-filtered failed history = %+v (err %v)", failedHistory, err)
+	}
+	if ep2.Enabled {
+		t.Fatal("secondary pagination fixture must remain disabled so it cannot receive fan-out")
 	}
 
 	// --- w1/m58 multi-replica correctness ---

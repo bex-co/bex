@@ -19,6 +19,7 @@ package webhooks
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -49,27 +50,45 @@ func redact(e store.WebhookEndpoint) store.WebhookEndpoint {
 	return e
 }
 
-func (f *fakeEndpointStore) CreateWebhookEndpoint(_ context.Context, tenantID, name, url, secret string, eventTypes []string, createdBy string) (store.WebhookEndpoint, error) {
-	if name == "" {
-		name = url
+func (f *fakeEndpointStore) CreateWebhookEndpoint(_ context.Context, tenantID, name, url, secret string, eventTypes []string, enabled bool, createdBy string) (store.WebhookEndpoint, error) {
+	for _, existing := range f.rows {
+		if existing.TenantID == tenantID && strings.EqualFold(existing.Name, name) {
+			return store.WebhookEndpoint{}, store.ErrConflict
+		}
 	}
 	now := time.Now().UTC()
 	e := store.WebhookEndpoint{
 		ID: ids.New(ids.Webhook), TenantID: tenantID, Name: name, URL: url, Secret: secret,
-		EventTypes: eventTypes, Enabled: true, CreatedBy: createdBy, CreatedAt: now, UpdatedAt: now,
+		EventTypes: eventTypes, Enabled: enabled, CreatedBy: createdBy, CreatedAt: now, UpdatedAt: now,
 	}
 	f.rows[e.ID] = e
 	return e, nil
 }
 
-func (f *fakeEndpointStore) ListWebhookEndpoints(_ context.Context, tenantID string) ([]store.WebhookEndpoint, error) {
+func (f *fakeEndpointStore) ListWebhookEndpoints(_ context.Context, tenantIDs []string, afterAt time.Time, afterKey string, limit int) ([]store.WebhookEndpoint, error) {
 	var out []store.WebhookEndpoint
 	for _, e := range f.rows {
-		if e.TenantID == tenantID {
+		if slices.Contains(tenantIDs, e.TenantID) {
 			out = append(out, redact(e))
 		}
 	}
-	return out, nil
+	slices.SortFunc(out, func(a, b store.WebhookEndpoint) int {
+		if c := b.CreatedAt.Compare(a.CreatedAt); c != 0 {
+			return c
+		}
+		return strings.Compare(b.ID, a.ID)
+	})
+	var page []store.WebhookEndpoint
+	for _, e := range out {
+		if !afterAt.IsZero() && (e.CreatedAt.After(afterAt) || (e.CreatedAt.Equal(afterAt) && e.ID >= afterKey)) {
+			continue
+		}
+		page = append(page, e)
+		if len(page) == limit {
+			break
+		}
+	}
+	return page, nil
 }
 
 func (f *fakeEndpointStore) GetWebhookEndpoint(_ context.Context, tenantID, id string) (store.WebhookEndpoint, error) {
@@ -100,6 +119,11 @@ func (f *fakeEndpointStore) UpdateWebhookEndpoint(_ context.Context, tenantID, i
 	if !ok || e.TenantID != tenantID {
 		return store.WebhookEndpoint{}, store.ErrNotFound
 	}
+	for otherID, existing := range f.rows {
+		if otherID != id && existing.TenantID == tenantID && strings.EqualFold(existing.Name, name) {
+			return store.WebhookEndpoint{}, store.ErrConflict
+		}
+	}
 	e.Name = name
 	e.URL = url
 	e.EventTypes = eventTypes
@@ -121,23 +145,32 @@ func (f *fakeEndpointStore) DeleteWebhookEndpoint(_ context.Context, tenantID, i
 	return nil
 }
 
-func (f *fakeEndpointStore) ListWebhookDeliveries(_ context.Context, endpointID string, afterAt time.Time, afterKey string, limit int) ([]store.WebhookDelivery, error) {
-	all := slices.Clone(f.deliveries[endpointID])
+func (f *fakeEndpointStore) ListWebhookDeliveries(_ context.Context, filter store.WebhookDeliveryFilter) ([]store.WebhookDelivery, error) {
+	all := slices.Clone(f.deliveries[filter.EndpointID])
 	slices.SortFunc(all, func(a, b store.WebhookDelivery) int {
-		if c := b.CreatedAt.Compare(a.CreatedAt); c != 0 {
+		if a.SentAt == nil || b.SentAt == nil {
+			return 0
+		}
+		if c := b.SentAt.Compare(*a.SentAt); c != 0 {
 			return c
 		}
 		return strings.Compare(b.ID, a.ID)
 	})
 	var out []store.WebhookDelivery
 	for _, d := range all {
-		if !afterAt.IsZero() {
-			if d.CreatedAt.After(afterAt) || (d.CreatedAt.Equal(afterAt) && d.ID >= afterKey) {
+		if d.SentAt == nil || (!filter.SentAfter.IsZero() && !d.SentAt.After(filter.SentAfter)) || (!filter.SentBefore.IsZero() && !d.SentAt.Before(filter.SentBefore)) {
+			continue
+		}
+		if filter.Status == DeliveryDelivered && d.DeliveredAt == nil || filter.Status == DeliveryFailed && d.FailedAt == nil {
+			continue
+		}
+		if !filter.AfterAt.IsZero() {
+			if d.SentAt.After(filter.AfterAt) || (d.SentAt.Equal(filter.AfterAt) && d.ID >= filter.AfterKey) {
 				continue
 			}
 		}
 		out = append(out, d)
-		if len(out) == limit {
+		if len(out) == core.PageLimitOrAbsent(filter.Limit) {
 			break
 		}
 	}
@@ -167,15 +200,15 @@ func TestCreateReturnsTheSecretOnceAndReadsNeverDo(t *testing.T) {
 	s, _ := newTestService()
 	ctx := context.Background()
 
-	created, err := s.Create(ctx, CreateRequest{URL: "https://example.com/hook", EventTypes: []string{TypeDeployStarted, TypeDeployEnded}})
+	created, err := s.Create(ctx, CreateRequest{Name: "primary", URL: "https://example.com/hook", EventTypes: []string{TypeDeployStarted, TypeDeployEnded}, Enabled: true})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	if created.Secret == "" || !Verify(created.Secret, "m", "1614265330", []byte("b"), Sign(created.Secret, "m", time.Unix(1614265330, 0), []byte("b"))) {
 		t.Errorf("Create must return a usable signing secret, got %q", created.Secret)
 	}
-	if created.Name != "https://example.com/hook" {
-		t.Errorf("empty name should default to the URL, got %q", created.Name)
+	if created.Name != "primary" {
+		t.Errorf("name = %q, want primary", created.Name)
 	}
 
 	list, err := s.List(ctx, "")
@@ -196,15 +229,65 @@ func TestCreateValidatesURLAndEventTypes(t *testing.T) {
 	ctx := context.Background()
 
 	for _, tc := range []CreateRequest{
-		{URL: "not-a-url", EventTypes: []string{TypeDeployStarted}},
-		{URL: "ftp://example.com/x", EventTypes: []string{TypeDeployStarted}},
-		{URL: "", EventTypes: []string{TypeDeployStarted}},
-		{URL: "https://example.com/hook", EventTypes: nil},
-		{URL: "https://example.com/hook", EventTypes: []string{"no_such_event"}},
+		{Name: "x", URL: "not-a-url", EventTypes: []string{TypeDeployStarted}},
+		{Name: "x", URL: "ftp://example.com/x", EventTypes: []string{TypeDeployStarted}},
+		{Name: "x", URL: "http://example.com/x", EventTypes: []string{TypeDeployStarted}},
+		{Name: "x", URL: "", EventTypes: []string{TypeDeployStarted}},
+		{Name: "", URL: "https://example.com/hook", EventTypes: []string{TypeDeployStarted}},
+		{Name: "x", URL: "https://example.com/hook", EventTypes: []string{"no_such_event"}},
 	} {
 		if _, err := s.Create(ctx, tc); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("Create(%+v) = %v, want ErrBadRequest", tc, err)
 		}
+	}
+}
+
+func TestCreateSupportsDisabledAllEventsAndRequiresUniqueName(t *testing.T) {
+	s, _ := newTestService()
+	ctx := context.Background()
+
+	created, err := s.Create(ctx, CreateRequest{
+		Name: "All Events", URL: "https://example.com/all", EventTypes: []string{}, Enabled: false,
+	})
+	if err != nil {
+		t.Fatalf("Create disabled all-events: %v", err)
+	}
+	if created.Enabled || created.EventTypes == nil || len(created.EventTypes) != 0 {
+		t.Fatalf("created = %+v, want disabled with explicit empty all-events filter", created)
+	}
+
+	_, err = s.Create(ctx, CreateRequest{
+		Name: " all events ", URL: "https://example.com/duplicate", EventTypes: []string{}, Enabled: true,
+	})
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != WebhookNameConflictCode || !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("duplicate name error = %#v, want %s conflict", err, WebhookNameConflictCode)
+	}
+}
+
+func TestUpdateDistinguishesOmittedAndExplicitEmptyEventTypes(t *testing.T) {
+	s, _ := newTestService()
+	ctx := context.Background()
+	created, err := s.Create(ctx, CreateRequest{
+		Name: "events", URL: "https://example.com/events", EventTypes: []string{TypeDeployStarted}, Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	omitted, err := s.Update(ctx, "", created.ID, UpdateRequest{})
+	if err != nil || !slices.Equal(omitted.EventTypes, []string{TypeDeployStarted}) {
+		t.Fatalf("omitted filter update = %+v, %v", omitted, err)
+	}
+	empty := []string{}
+	all, err := s.Update(ctx, "", created.ID, UpdateRequest{EventTypes: &empty})
+	if err != nil || all.EventTypes == nil || len(all.EventTypes) != 0 {
+		t.Fatalf("explicit empty filter update = %+v, %v", all, err)
+	}
+
+	blank := "   "
+	if _, err := s.Update(ctx, "", created.ID, UpdateRequest{Name: &blank}); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("blank rename = %v, want bad request", err)
 	}
 }
 
@@ -222,8 +305,10 @@ func TestMaintenanceEventTypesAreSubscribableAndMapped(t *testing.T) {
 	}
 	svc, _ := newTestService()
 	created, err := svc.Create(context.Background(), CreateRequest{
+		Name:       "maintenance",
 		URL:        "https://example.com/maintenance-hook",
 		EventTypes: []string{TypeMaintenanceModeURIUpdated, TypeMaintenanceModeEnabled},
+		Enabled:    true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -259,11 +344,50 @@ func TestDatastoreEventTypesAreSubscribableAndMapped(t *testing.T) {
 	}
 }
 
+func TestExistingLifecycleAndAutoDeployEventTypesAreSubscribable(t *testing.T) {
+	want := []string{
+		TypeBranchDeleted,
+		TypeBuildStarted,
+		TypeBuildEnded,
+		TypePreDeployStarted,
+		TypePreDeployEnded,
+		TypeJobRunEnded,
+		TypeAutoDeployEnabled,
+		TypeAutoDeployDisabled,
+	}
+	for _, eventType := range want {
+		if !slices.Contains(EventTypes, eventType) {
+			t.Errorf("EventTypes does not contain %q: %v", eventType, EventTypes)
+		}
+	}
+}
+
+func TestCronWebhookEventsComeFromObservedFactsNotIntentVerbs(t *testing.T) {
+	for _, verb := range []string{"apps.TriggerCronRun", "apps.CancelCronRun", "apps.CancelCurrentCronRun"} {
+		if eventType, ok := verbEvents[verb]; ok {
+			t.Errorf("intent verb %q unexpectedly maps to %q", verb, eventType)
+		}
+		if slices.Contains(auditVerbs, verb) {
+			t.Errorf("intent verb %q unexpectedly included in webhook query", verb)
+		}
+	}
+	for factType, want := range map[store.ServiceEventFactType]string{
+		store.EventFactCronRunStarted: TypeCronJobRunStarted,
+		store.EventFactCronRunEnded:   TypeCronJobRunEnded,
+	} {
+		if got := factEvents[string(factType)]; got != want {
+			t.Errorf("factEvents[%q] = %q, want %q", factType, got, want)
+		}
+	}
+}
+
 func TestCreateDeduplicatesEventTypesInCanonicalOrder(t *testing.T) {
 	s, _ := newTestService()
 	created, err := s.Create(context.Background(), CreateRequest{
+		Name:       "dedupe",
 		URL:        "https://example.com/hook",
 		EventTypes: []string{TypeServiceResumed, TypeDeployStarted, TypeServiceResumed},
+		Enabled:    true,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -280,7 +404,7 @@ func TestCrossWorkspaceAccessIsNotFound(t *testing.T) {
 	other := &Service{Base: &core.Base{Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-other"}}, Store: st}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "u1", Method: "session"})
 
-	created, err := mine.Create(ctx, CreateRequest{URL: "https://example.com/hook", EventTypes: []string{TypeDeployEnded}})
+	created, err := mine.Create(ctx, CreateRequest{Name: "mine", URL: "https://example.com/hook", EventTypes: []string{TypeDeployEnded}, Enabled: true})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -304,7 +428,7 @@ func TestCrossWorkspaceAccessIsNotFound(t *testing.T) {
 func TestStoreOffReports503Sentinel(t *testing.T) {
 	s := &Service{Base: &core.Base{Namespace: "default"}}
 	ctx := context.Background()
-	if _, err := s.Create(ctx, CreateRequest{URL: "https://example.com/h", EventTypes: []string{TypeDeployStarted}}); !errors.Is(err, core.ErrWebhooksUnavailable) {
+	if _, err := s.Create(ctx, CreateRequest{Name: "x", URL: "https://example.com/h", EventTypes: []string{TypeDeployStarted}, Enabled: true}); !errors.Is(err, core.ErrWebhooksUnavailable) {
 		t.Errorf("Create = %v, want ErrWebhooksUnavailable", err)
 	}
 	if _, err := s.List(ctx, ""); !errors.Is(err, core.ErrWebhooksUnavailable) {
@@ -318,7 +442,7 @@ func TestStoreOffReports503Sentinel(t *testing.T) {
 func TestSetEnabledClearsTheDisabledReason(t *testing.T) {
 	s, st := newTestService()
 	ctx := context.Background()
-	created, err := s.Create(ctx, CreateRequest{URL: "https://example.com/hook", EventTypes: []string{TypeDeployEnded}})
+	created, err := s.Create(ctx, CreateRequest{Name: "history", URL: "https://example.com/hook", EventTypes: []string{TypeDeployEnded}, Enabled: true})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -339,7 +463,7 @@ func TestSetEnabledClearsTheDisabledReason(t *testing.T) {
 func TestListDeliveriesPagesNewestFirstByCursor(t *testing.T) {
 	s, st := newTestService()
 	ctx := context.Background()
-	created, err := s.Create(ctx, CreateRequest{URL: "https://example.com/hook", EventTypes: []string{TypeDeployEnded}})
+	created, err := s.Create(ctx, CreateRequest{Name: "update", URL: "https://example.com/hook", EventTypes: []string{TypeDeployEnded}, Enabled: true})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -348,7 +472,7 @@ func TestListDeliveriesPagesNewestFirstByCursor(t *testing.T) {
 		st.deliveries[created.ID] = append(st.deliveries[created.ID], store.WebhookDelivery{
 			ID: ids.New(ids.WebhookDelivery), EndpointID: created.ID,
 			EventID: "evt-x", EventType: TypeDeployEnded,
-			CreatedAt: base.Add(time.Duration(i) * time.Minute), NextAttemptAt: base,
+			CreatedAt: base.Add(time.Duration(i) * time.Minute), SentAt: func() *time.Time { at := base.Add(time.Duration(i) * time.Minute); return &at }(), NextAttemptAt: base,
 		})
 	}
 
@@ -365,5 +489,34 @@ func TestListDeliveriesPagesNewestFirstByCursor(t *testing.T) {
 	}
 	if _, err := s.ListDeliveries(ctx, "", created.ID, "garbage-cursor", 3); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("malformed cursor = %v, want ErrBadRequest", err)
+	}
+}
+
+func TestListDeliveriesFiltersTerminalStatusBeforePaging(t *testing.T) {
+	s, st := newTestService()
+	created, err := s.Create(t.Context(), CreateRequest{Name: "filtered", URL: "https://example.com/hook", EventTypes: []string{}, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	delivered, failed := base, base
+	for i, terminal := range []*time.Time{&delivered, nil, &failed} {
+		sent := base.Add(time.Duration(i) * time.Minute)
+		row := store.WebhookDelivery{ID: fmt.Sprintf("whd-%d", i), EndpointID: created.ID, SentAt: &sent, CreatedAt: sent}
+		if i == 0 {
+			row.DeliveredAt = terminal
+		}
+		if i == 2 {
+			row.FailedAt = terminal
+		}
+		st.deliveries[created.ID] = append(st.deliveries[created.ID], row)
+	}
+
+	rows, err := s.ListDeliveriesFiltered(t.Context(), "", created.ID, DeliveryFilter{Status: DeliveryFailed, Limit: 1})
+	if err != nil || len(rows) != 1 || rows[0].Status != DeliveryFailed {
+		t.Fatalf("failed history = %+v (err %v)", rows, err)
+	}
+	if _, err := s.ListDeliveriesFiltered(t.Context(), "", created.ID, DeliveryFilter{Status: "pending"}); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("invalid terminal status = %v, want bad request", err)
 	}
 }

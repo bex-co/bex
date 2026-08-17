@@ -17,22 +17,31 @@ limitations under the License.
 package webhooks
 
 import (
+	"bytes"
 	"context"
-	"sort"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/email"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 // fakeWorkerStore is an in-memory WorkerStore: a fixed event feed, an
 // endpoint table, and the delivery queue the worker mutates.
@@ -217,13 +226,18 @@ func (f *fakeWorkerStore) endpointByID(id string) (store.WebhookEndpoint, bool) 
 	return store.WebhookEndpoint{}, false
 }
 
-func (f *fakeWorkerStore) RecordWebhookAttempt(_ context.Context, id string, status int, errMsg string, at, next time.Time, delivered, failed bool) error {
+func (f *fakeWorkerStore) RecordWebhookAttempt(_ context.Context, id string, status int, errMsg, responseBody string, at, next time.Time, delivered, failed bool) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	d := f.queue[id]
 	d.AttemptCount++
 	d.LastStatus = status
 	d.LastError = errMsg
+	d.ResponseBody = responseBody
+	if d.SentAt == nil {
+		sentAt := at
+		d.SentAt = &sentAt
+	}
 	attemptedAt := at
 	d.LastAttemptedAt = &attemptedAt
 	d.NextAttemptAt = next
@@ -367,6 +381,35 @@ func TestDispatchFansOutOnlyToSubscribedEndpointsOfTheEventsWorkspace(t *testing
 	}
 }
 
+func TestEmptyFilterSubscribesToNewlyIntroducedEvents(t *testing.T) {
+	st := newFakeWorkerStore()
+	now := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	eventAt := now.Add(-time.Minute)
+	st.wmSeeded, st.wmAt = true, eventAt.Add(-time.Hour)
+	st.events = []store.WebhookEventRow{{
+		Key: "fact:new-auto-deploy", At: eventAt, TenantID: "tea-a",
+		ServiceID: "acme-api", ServiceName: "api", Source: store.EventSourceAudit,
+		Verb: autoDeployVerb, AutoDeployEnabled: func() *bool { value := true; return &value }(),
+	}}
+	// The persisted empty slice is Render's all-events subscription. It predates
+	// auto_deploy_enabled yet must receive it without an endpoint update.
+	st.endpoints = []store.WebhookEndpoint{
+		endpoint("whk-all", "tea-a", "https://a.example/hook", "whsec_x"),
+	}
+	w := &Worker{Store: st, Clock: func() time.Time { return now }}
+	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+		t.Fatal(err)
+	}
+	if len(st.queue) != 1 {
+		t.Fatalf("all-events deliveries = %d, want 1", len(st.queue))
+	}
+	for _, delivery := range st.queue {
+		if delivery.EventType != TypeAutoDeployEnabled {
+			t.Fatalf("event type = %q, want %q", delivery.EventType, TypeAutoDeployEnabled)
+		}
+	}
+}
+
 func TestProjectDatastoreAuditEventUsesRenderThinPayload(t *testing.T) {
 	row := store.WebhookEventRow{
 		Key:         "aud-postgres-created:",
@@ -389,6 +432,65 @@ func TestProjectDatastoreAuditEventUsesRenderThinPayload(t *testing.T) {
 	row.Verb = core.AuditVerbPostgresUpdated
 	if eventType, _, ok := project(row); ok {
 		t.Fatalf("unrelated datastore update projected as %q", eventType)
+	}
+}
+
+func TestProjectExistingLifecycleFactsCarriesOnlyTerminalStatus(t *testing.T) {
+	tests := []struct {
+		factType store.ServiceEventFactType
+		status   string
+		wantType string
+		want     string
+	}{
+		{store.EventFactBranchDeleted, "", TypeBranchDeleted, ""},
+		{store.EventFactBuildStarted, "", TypeBuildStarted, ""},
+		{store.EventFactBuildEnded, store.EventStatusFailed, TypeBuildEnded, store.EventStatusFailed},
+		{store.EventFactPreDeployStarted, "", TypePreDeployStarted, ""},
+		{store.EventFactPreDeployEnded, store.EventStatusSucceeded, TypePreDeployEnded, store.EventStatusSucceeded},
+		{store.EventFactJobRunEnded, store.EventStatusCanceled, TypeJobRunEnded, store.EventStatusCanceled},
+	}
+	for _, tc := range tests {
+		t.Run(string(tc.factType), func(t *testing.T) {
+			eventType, data, ok := project(store.WebhookEventRow{
+				Key:         "fact:" + string(tc.factType),
+				ServiceID:   "acme-api",
+				ServiceName: "api",
+				Source:      store.EventSourceFact,
+				FactType:    string(tc.factType),
+				Status:      tc.status,
+			})
+			if !ok || eventType != tc.wantType || data.Status != tc.want {
+				t.Fatalf("project = (%q, %+v, %v), want type %q status %q", eventType, data, ok, tc.wantType, tc.want)
+			}
+		})
+	}
+}
+
+func TestProjectAutoDeployAuditDiscriminatesResult(t *testing.T) {
+	enabled, disabled := true, false
+	for _, tc := range []struct {
+		name   string
+		value  *bool
+		want   string
+		wantOK bool
+	}{
+		{name: "enabled", value: &enabled, want: TypeAutoDeployEnabled, wantOK: true},
+		{name: "disabled", value: &disabled, want: TypeAutoDeployDisabled, wantOK: true},
+		{name: "legacy missing discriminator", value: nil, wantOK: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			eventType, data, ok := project(store.WebhookEventRow{
+				Key:               "audit:auto-deploy",
+				ServiceID:         "acme-api",
+				ServiceName:       "api",
+				Source:            store.EventSourceAudit,
+				Verb:              autoDeployVerb,
+				AutoDeployEnabled: tc.value,
+			})
+			if ok != tc.wantOK || eventType != tc.want {
+				t.Fatalf("project = (%q, %+v, %v), want (%q, _, %v)", eventType, data, ok, tc.want, tc.wantOK)
+			}
+		})
 	}
 }
 
@@ -483,6 +585,51 @@ func TestSendDeliversWithAVerifiableSignature(t *testing.T) {
 	d := st.queue["whd-1"]
 	if d.DeliveredAt == nil || d.LastStatus != http.StatusOK || d.AttemptCount != 1 {
 		t.Errorf("delivery not booked as delivered: %+v", d)
+	}
+}
+
+func TestResponseEvidenceIsUTF8AndByteBounded(t *testing.T) {
+	// Include invalid UTF-8 before an oversized tail: Postgres text and JSON must
+	// still receive valid text, and the truncation marker lives inside the cap.
+	body := append([]byte{'o', 'k', 0xff}, bytes.Repeat([]byte("界"), 2000)...)
+	got, err := readResponseEvidence(bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) > maxWebhookResponseBytes {
+		t.Fatalf("evidence bytes = %d, cap %d", len(got), maxWebhookResponseBytes)
+	}
+	if !utf8.ValidString(got) {
+		t.Fatal("response evidence is not valid UTF-8")
+	}
+	if !strings.HasSuffix(got, responseTruncatedSuffix) {
+		t.Fatalf("truncated evidence missing marker: %q", got[len(got)-64:])
+	}
+}
+
+func TestSendStoresBoundedResponseEvidenceAndFirstSentAt(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write(bytes.Repeat([]byte("x"), maxWebhookResponseBytes+100))
+	}))
+	defer srv.Close()
+
+	st := newFakeWorkerStore()
+	st.endpoints = []store.WebhookEndpoint{endpoint("whk-1", "tea-a", srv.URL, "whsec_x", TypeDeployStarted)}
+	now := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	st.queue["whd-1"] = &store.WebhookDelivery{
+		ID: "whd-1", EndpointID: "whk-1", EventID: "evt-1", EventType: TypeDeployStarted,
+		Payload: `{}`, NextAttemptAt: now.Add(-time.Second),
+	}
+	st.queueOrder = []string{"whd-1"}
+	w := &Worker{Store: st, Backoff: []time.Duration{time.Second}, Clock: func() time.Time { return now }, Client: &http.Client{}}
+	if err := w.send(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	d := st.queue["whd-1"]
+	if d.SentAt == nil || !d.SentAt.Equal(now) || len(d.ResponseBody) > maxWebhookResponseBytes ||
+		!strings.HasSuffix(d.ResponseBody, responseTruncatedSuffix) {
+		t.Fatalf("recorded evidence = %+v", d)
 	}
 }
 
@@ -595,6 +742,137 @@ func TestFailingEndpointRetriesOnScheduleThenDisablesAndEmails(t *testing.T) {
 	}
 	if got := len(rc.requests()); got != 4 {
 		t.Errorf("receiver saw %d requests, want 4", got)
+	}
+}
+
+func TestDefaultRetryTimelineStopsAfterEightAttempts(t *testing.T) {
+	rc := &receiver{status: http.StatusInternalServerError}
+	srv := httptest.NewServer(rc.handler())
+	defer srv.Close()
+
+	st := newFakeWorkerStore()
+	st.endpoints = []store.WebhookEndpoint{endpoint("whk-1", "tea-a", srv.URL, "whsec_x", TypeDeployStarted)}
+	mailer := &fakeMailer{}
+	first := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	now := first
+	st.queue["whd-1"] = &store.WebhookDelivery{
+		ID: "whd-1", EndpointID: "whk-1", EventID: "evt-1", EventType: TypeDeployStarted,
+		Payload: `{}`, NextAttemptAt: first,
+	}
+	st.queueOrder = []string{"whd-1"}
+	w := &Worker{
+		Store: st, Mailer: mailer, Emails: fakeEmails{"user-1": "user-1@example.com"},
+		Clock: func() time.Time { return now }, Client: &http.Client{},
+	}
+
+	wantOffsets := []time.Duration{
+		0,
+		30 * time.Second,
+		10*time.Minute + 30*time.Second,
+		40*time.Minute + 30*time.Second,
+		2*time.Hour + 40*time.Minute + 30*time.Second,
+		7*time.Hour + 40*time.Minute + 30*time.Second,
+		17*time.Hour + 40*time.Minute + 30*time.Second,
+		32*time.Hour + 40*time.Minute + 30*time.Second,
+	}
+	for attempt, offset := range wantOffsets {
+		now = first.Add(offset)
+		if err := w.send(t.Context()); err != nil {
+			t.Fatalf("attempt %d: %v", attempt+1, err)
+		}
+		if got := st.queue["whd-1"].AttemptCount; got != attempt+1 {
+			t.Fatalf("after attempt %d count = %d", attempt+1, got)
+		}
+	}
+	d := st.queue["whd-1"]
+	if d.FailedAt == nil || !d.FailedAt.Equal(first.Add(wantOffsets[7])) {
+		t.Fatalf("terminal failure = %+v", d.FailedAt)
+	}
+	if got := st.disabled["whk-1"]; got != disabledReason {
+		t.Fatalf("disabled reason = %q", got)
+	}
+	if got := mailer.count(); got != 2 {
+		t.Fatalf("notices = %d, want third-failure plus disable", got)
+	}
+
+	// Even if the clock moves far beyond the final schedule, the disabled
+	// endpoint cannot produce a ninth POST or a second disable notice.
+	now = first.Add(7 * 24 * time.Hour)
+	if err := w.send(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(rc.requests()); got != 8 || d.AttemptCount != 8 || mailer.count() != 2 {
+		t.Fatalf("after exhaustion: posts=%d attempts=%d notices=%d", got, d.AttemptCount, mailer.count())
+	}
+}
+
+func TestDefaultRetryTimelineCanSucceedOnEighthAttempt(t *testing.T) {
+	posts := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		posts++
+		if posts < 8 {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	st := newFakeWorkerStore()
+	st.endpoints = []store.WebhookEndpoint{endpoint("whk-1", "tea-a", srv.URL, "whsec_x", TypeDeployStarted)}
+	first := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	now := first
+	st.queue["whd-1"] = &store.WebhookDelivery{
+		ID: "whd-1", EndpointID: "whk-1", EventID: "evt-1", EventType: TypeDeployStarted,
+		Payload: `{}`, NextAttemptAt: first,
+	}
+	st.queueOrder = []string{"whd-1"}
+	w := &Worker{Store: st, Clock: func() time.Time { return now }, Client: &http.Client{}}
+
+	for attempt := 0; attempt < 8; attempt++ {
+		if err := w.send(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		if attempt < 7 {
+			now = st.queue["whd-1"].NextAttemptAt
+		}
+	}
+	d := st.queue["whd-1"]
+	if posts != 8 || d.AttemptCount != 8 || d.DeliveredAt == nil || d.FailedAt != nil || len(st.disabled) != 0 {
+		t.Fatalf("last-attempt recovery: posts=%d delivery=%+v disabled=%v", posts, d, st.disabled)
+	}
+}
+
+func TestResponseBudgetAndBackoffOverrideContract(t *testing.T) {
+	if requestTimeout != 15*time.Second || defaultClient.Timeout != requestTimeout {
+		t.Fatalf("response budget = %v, client timeout = %v", requestTimeout, defaultClient.Timeout)
+	}
+	var remaining time.Duration
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		deadline, ok := req.Context().Deadline()
+		if !ok {
+			t.Fatal("delivery request has no context deadline")
+		}
+		remaining = time.Until(deadline)
+		return &http.Response{StatusCode: http.StatusNoContent, Body: io.NopCloser(strings.NewReader("")), Header: make(http.Header)}, nil
+	})}
+	w := &Worker{Client: client}
+	if _, _, err := w.post(t.Context(), store.DueWebhookDelivery{WebhookDelivery: store.WebhookDelivery{EventID: "evt-1", Payload: `{}`}, URL: "https://hooks.example.com", Secret: "whsec_x"}, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if remaining < 14*time.Second || remaining > requestTimeout {
+		t.Fatalf("request deadline remaining = %v", remaining)
+	}
+
+	got, err := ParseBackoff("5s, 10s,1m")
+	if err != nil || !slices.Equal(got, []time.Duration{5 * time.Second, 10 * time.Second, time.Minute}) {
+		t.Fatalf("ParseBackoff = %v, %v", got, err)
+	}
+	if got, err := ParseBackoff("  "); err != nil || got != nil {
+		t.Fatalf("empty ParseBackoff = %v, %v", got, err)
+	}
+	if _, err := ParseBackoff("5s,nope"); err == nil || !strings.Contains(err.Error(), "BEX_WEBHOOK_BACKOFF") {
+		t.Fatalf("malformed ParseBackoff error = %v", err)
 	}
 }
 

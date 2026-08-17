@@ -10,6 +10,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { WebhookDetailContext } from "@/features/webhooks/components/webhook-detail-context";
 import { WebhookDetailHeader } from "@/features/webhooks/components/webhook-detail-header";
 import { useWebhook } from "@/features/webhooks/hooks/use-webhook";
+import { useWebhookCreator } from "@/features/webhooks/hooks/use-webhook-creator";
 import { WebhookEndpointDocument } from "@/graphql/definitions";
 import {
   loadRouteResource,
@@ -71,6 +72,7 @@ function WebhookDetailShell() {
   const { t } = useTranslations();
   const detail = useWebhook(webhookId);
   const { endpoint, loading, notFound, error } = detail;
+  const creatorIdentity = useWebhookCreator(endpoint?.createdBy ?? "");
 
   // `notFound` also settles true when the query itself failed (errorPolicy
   // "all" leaves data empty), so exclude `error`: a dead id redirects home
@@ -83,7 +85,10 @@ function WebhookDetailShell() {
     <DashboardLayout>
       {endpoint ? (
         <>
-          <WebhookDetailHeader endpoint={endpoint} />
+          <WebhookDetailHeader
+            endpoint={endpoint}
+            creatorIdentity={creatorIdentity}
+          />
           <nav className="flex gap-4 border-b px-4 sm:px-6">
             <TabLink to="/webhook/$webhookId" webhookId={webhookId} exact>
               {t("webhooks.tabActivity")}

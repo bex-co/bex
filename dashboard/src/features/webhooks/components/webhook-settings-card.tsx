@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
@@ -35,6 +35,14 @@ function sameSet(a: Set<string>, b: string[]): boolean {
   return a.size === b.length && b.every((item) => a.has(item));
 }
 
+function validHTTPSURL(value: string): boolean {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The Settings tab (w1/m49/t005) — the dashboard's first webhook EDIT
  * surface, over `updateWebhookEndpoint` (shipped w3/m11, never wired until
@@ -61,12 +69,23 @@ export function WebhookSettingsCard({
   const [checked, setChecked] = useState<Set<string>>(
     () => new Set(endpoint.eventTypes),
   );
+  const [allEvents, setAllEvents] = useState(
+    () => endpoint.eventTypes.length === 0,
+  );
+  const pickerValue = useMemo(
+    () => (allEvents ? new Set(eventTypes) : checked),
+    [allEvents, checked, eventTypes],
+  );
+  const targetEventTypes = allEvents ? [] : [...checked];
 
   const dirty =
     name !== endpoint.name ||
     url !== endpoint.url ||
-    !sameSet(checked, endpoint.eventTypes);
-  const valid = url.trim() !== "" && checked.size > 0;
+    !sameSet(new Set(targetEventTypes), endpoint.eventTypes);
+  const valid =
+    name.trim() !== "" &&
+    validHTTPSURL(url.trim()) &&
+    (allEvents || checked.size > 0);
   const canSave = dirty && valid && !saving;
 
   async function handleSave() {
@@ -76,8 +95,8 @@ export function WebhookSettingsCard({
     await update(endpoint.id, {
       ...(name !== endpoint.name ? { name: name.trim() } : {}),
       ...(url !== endpoint.url ? { url: url.trim() } : {}),
-      ...(!sameSet(checked, endpoint.eventTypes)
-        ? { eventTypes: [...checked] }
+      ...(!sameSet(new Set(targetEventTypes), endpoint.eventTypes)
+        ? { eventTypes: targetEventTypes }
         : {}),
     });
   }
@@ -171,8 +190,13 @@ export function WebhookSettingsCard({
           ) : (
             <EventPicker
               eventTypes={eventTypes}
-              value={checked}
-              onChange={setChecked}
+              value={pickerValue}
+              onChange={(next) => {
+                const selectedAll =
+                  eventTypes.length > 0 && next.size === eventTypes.length;
+                setAllEvents(selectedAll);
+                setChecked(selectedAll ? new Set() : next);
+              }}
               disabled={saving}
             />
           )}

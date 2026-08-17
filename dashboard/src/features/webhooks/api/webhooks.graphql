@@ -43,12 +43,18 @@ query WebhookDeliveries(
   $ownerId: String
   $cursor: String
   $limit: Int
+  $sentAfter: String
+  $sentBefore: String
+  $status: String
 ) {
   webhookDeliveries(
     endpointId: $endpointId
     ownerId: $ownerId
     cursor: $cursor
     limit: $limit
+    sentAfter: $sentAfter
+    sentBefore: $sentBefore
+    status: $status
   ) {
     id
     eventType
@@ -57,6 +63,8 @@ query WebhookDeliveries(
     attemptCount
     lastStatusCode
     lastError
+    responseBody
+    sentAt
     nextAttemptAt
     deliveredAt
     createdAt
@@ -69,12 +77,14 @@ mutation CreateWebhookEndpoint(
   $name: String
   $url: String!
   $eventTypes: [String]!
+  $enabled: Boolean
 ) {
   createWebhookEndpoint(
     ownerId: $ownerId
     name: $name
     url: $url
     eventTypes: $eventTypes
+    enabled: $enabled
   ) {
     id
     name

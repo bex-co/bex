@@ -2,6 +2,8 @@
 
 Captured 2026-07-17 by walking both dashboards end to end (real create → inspect → delete on each side; probe webhooks removed afterwards). Screenshots referenced below live in `.playwright-mcp/` (gitignored, not committed): `render-webhooks-new.png`, `render-webhook-settings.png`, `bex-webhook-modal.png`, `bex-webhook-modal-overlap.png`, `bex-webhook-secret.png`. Owning milestone: `w1/m49`.
 
+> **2026-08-16 contract refresh and m70 result:** The API/wire comparison and current 67-value OpenAPI enum are pinned in [webhooks-api.md](webhooks-api.md). Render now publishes webhook CRUD and delivery-history endpoints. m70 aligned bex's supported non-secret REST fields/envelopes and refreshed the dashboard over that contract. This earlier walk remains the visual reference, but its ~60-event catalog and any API-absence inference must not be treated as the current wire contract.
+
 ## Render `/webhooks/new` — the create page
 
 A dedicated full page (not a modal), heading **"Create a new Webhook"**, reached from the Webhooks list's New button. Three fields, helper copy under each label:
@@ -54,11 +56,23 @@ Two sections + delete:
 | Surface | Render | bex | Disposition |
 | --- | --- | --- | --- |
 | Signing secret | Retrievable anytime in Settings (masked, Show/Copy) | **Mint-once**: returned only by the create verb, shown on the create page's secret step | **Keep mint-once** — user decision 2026-07-17 (w1/m49/t006): narrower exposure surface; Settings shows a "shown once at creation" note instead |
-| Event vocabulary | ~60 events across 11 groups | 17 events (the mechanisms bex actually emits) | Vocabulary grows with mechanisms in their owning milestones; the picker's grouping map degrades unknown keys to an "Other" group |
+| Event vocabulary | 67 OpenAPI values (the dashboard/prose grouping differs slightly) | 32 truthful values: 29 API overlaps plus `branch_changed` and two prose-documented Postgres credential events | Remaining provider/anti-goal/source-bound families are enumerated in [webhooks-api.md](webhooks-api.md); the picker degrades an unknown future key to "Other" rather than hiding it |
 | Post-create landing | Straight to the detail page | In-page secret step first (consequence of mint-once), then detail | Keep — forced by the secret contract |
 | `plan_changed` | Named "Instance Type Changed" | bex's plans replace instance types (w1/m8) | Label bex's `plan_changed` as "Plan Changed"; same semantic slot |
 | Per-webhook sidebar | Dedicated sidebar nav on the detail page | In-page tab nav (Activity/Settings), global sidebar retained | Accepted — bex's detail pages (services, env-groups) use in-page navigation |
-| Created-by identity | Email + avatar | Kratos identity UUID (what `EndpointView.createdBy` records) | Accepted for m49 (no-API-growth non-goal); an email enrichment via the owners API's Kratos lookup is possible follow-up work |
+| Created-by identity | Email + avatar | Stored subject resolved to the authorized workspace member's email; no avatar field exists in the current member contract | Email gap closed by m70; avatar remains a small presentation divergence rather than exposing the raw subject when resolution succeeds |
+
+## m70 dashboard verification (2026-08-16)
+
+The refreshed dashboard consumes the corrected GraphQL dialect over the same core semantics:
+
+- Create requires a name and selection, can start disabled, shows coded server validation/conflict detail, and compacts a full picker selection to the empty future-inclusive all-events representation.
+- List, detail chips, and Activity use translated human labels; an empty stored filter reloads as **All events**, not an empty subscription. The endpoint opens as an external link and the enabled badge links to Settings.
+- Detail resolves the creator subject through the workspace member query, falling back safely if the identity provider has no match.
+- Activity presents the stable first-attempt time, HTTP status or transport error, and expandable bounded response/error evidence. Successful/failed and timestamp predicates execute on the server, so each explicit page contains matching history without a browser-side history crawl.
+- Settings validates a non-empty name and HTTPS URL client-side, preserves sparse update semantics, and saves All events as `eventTypes: []`.
+
+Focused component/hook coverage contains 30 interaction assertions across the picker, create hook, header, Settings, and Activity; the repository locale-parity test enforces matching English/Chinese keys. The accepted layout and mint-once divergences below remain unchanged.
 
 ## w1/m49 verification (2026-07-17, dev-1)
 

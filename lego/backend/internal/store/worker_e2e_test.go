@@ -18,6 +18,7 @@ package store_test
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -72,17 +73,31 @@ func TestTwoWorkersDeliverEachEventExactlyOnce(t *testing.T) {
 		t.Fatalf("create tenant: %v", err)
 	}
 
+	type received struct {
+		count     int
+		timestamp string
+		signature string
+		body      []byte
+	}
 	var mu sync.Mutex
-	seen := map[string]int{} // webhook-id header -> delivery count
+	seen := map[string]received{} // webhook-id header -> signed delivery evidence
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
 		mu.Lock()
-		seen[r.Header.Get("webhook-id")]++
+		id := r.Header.Get("webhook-id")
+		entry := seen[id]
+		entry.count++
+		entry.timestamp = r.Header.Get("webhook-timestamp")
+		entry.signature = r.Header.Get("webhook-signature")
+		entry.body = append([]byte(nil), body...)
+		seen[id] = entry
 		mu.Unlock()
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("accepted"))
 	}))
 	defer srv.Close()
 
-	ep, err := s.CreateWebhookEndpoint(ctx, ten.ID, "e2e", srv.URL, "whsec_e2e", []string{webhooks.TypeDeployStarted}, "user-1")
+	ep, err := s.CreateWebhookEndpoint(ctx, ten.ID, "e2e", srv.URL, "whsec_e2e", []string{webhooks.TypeDeployStarted}, true, "user-1")
 	if err != nil {
 		t.Fatalf("create endpoint: %v", err)
 	}
@@ -130,13 +145,38 @@ func TestTwoWorkersDeliverEachEventExactlyOnce(t *testing.T) {
 	}
 
 	mu.Lock()
-	defer mu.Unlock()
 	if len(seen) != n {
 		t.Fatalf("delivered %d distinct events, want %d", len(seen), n)
 	}
 	for _, ev := range eventIDs {
-		if seen[ev] != 1 {
-			t.Errorf("event %s delivered %d times, want exactly 1 (two replicas must not double-deliver)", ev, seen[ev])
+		received := seen[ev]
+		if received.count != 1 {
+			t.Errorf("event %s delivered %d times, want exactly 1 (two replicas must not double-deliver)", ev, received.count)
+		}
+		if !webhooks.Verify(ep.Secret, ev, received.timestamp, received.body, received.signature) {
+			t.Errorf("event %s signature does not verify against its create-only secret", ev)
+		}
+	}
+	mu.Unlock()
+
+	// The same real rows exposed by REST history retain one stable first-sent
+	// instant and the latest bounded HTTP response evidence.
+	history, err := s.ListWebhookDeliveries(ctx, store.WebhookDeliveryFilter{EndpointID: ep.ID, Limit: 100})
+	if err != nil {
+		t.Fatalf("list history: %v", err)
+	}
+	if len(history) != n {
+		t.Fatalf("history rows = %d, want %d", len(history), n)
+	}
+	for _, delivery := range history {
+		if delivery.SentAt == nil || delivery.LastStatus != http.StatusOK || delivery.ResponseBody != "accepted" {
+			t.Errorf("history evidence for %s = sentAt %v status %d body %q", delivery.EventID, delivery.SentAt, delivery.LastStatus, delivery.ResponseBody)
+		}
+		mu.Lock()
+		received := seen[delivery.EventID]
+		mu.Unlock()
+		if received.count != 1 {
+			t.Errorf("history event %s has no matching receiver record", delivery.EventID)
 		}
 	}
 }

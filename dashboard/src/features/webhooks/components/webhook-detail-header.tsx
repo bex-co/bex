@@ -6,6 +6,7 @@ import { Button } from "@/common/components/ui/button";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatDateLong } from "@/common/lib/format";
+import { eventLabelKey } from "@/features/webhooks/event-catalog";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 
 /**
@@ -16,11 +17,14 @@ import type { WebhookEndpointView } from "@/features/webhooks/types";
  */
 export function WebhookDetailHeader({
   endpoint,
+  creatorIdentity,
 }: {
   endpoint: WebhookEndpointView;
+  creatorIdentity?: string;
 }) {
   const { t } = useTranslations();
   const createdDate = formatDateLong(endpoint.createdAt);
+  const creator = creatorIdentity ?? endpoint.createdBy;
 
   return (
     <div className="space-y-3 border-b px-4 py-4 sm:px-6">
@@ -36,14 +40,20 @@ export function WebhookDetailHeader({
           </p>
           <div className="flex items-center gap-2">
             <h1 className="truncate text-xl font-semibold">{endpoint.name}</h1>
-            <Badge
-              variant={endpoint.enabled ? "success" : "secondary"}
-              title={endpoint.enabled ? undefined : endpoint.disabledReason}
+            <Link
+              to="/webhook/$webhookId/settings"
+              params={{ webhookId: endpoint.id }}
+              aria-label={t("webhooks.settingsStatus")}
             >
-              {endpoint.enabled
-                ? t("webhooks.enabledBadge")
-                : t("webhooks.disabledBadge")}
-            </Badge>
+              <Badge
+                variant={endpoint.enabled ? "success" : "secondary"}
+                title={endpoint.enabled ? undefined : endpoint.disabledReason}
+              >
+                {endpoint.enabled
+                  ? t("webhooks.enabledBadge")
+                  : t("webhooks.disabledBadge")}
+              </Badge>
+            </Link>
           </div>
         </div>
       </div>
@@ -59,7 +69,14 @@ export function WebhookDetailHeader({
           />
         </span>
         <span className="flex min-w-0 items-center gap-1">
-          <code className="truncate font-mono text-xs">{endpoint.url}</code>
+          <a
+            href={endpoint.url}
+            target="_blank"
+            rel="noreferrer"
+            className="truncate font-mono text-xs underline-offset-2 hover:underline"
+          >
+            {endpoint.url}
+          </a>
           <CopyButton
             value={endpoint.url}
             label={t("webhooks.copyUrl")}
@@ -69,9 +86,9 @@ export function WebhookDetailHeader({
         </span>
         {createdDate ? (
           <span>
-            {endpoint.createdBy
+            {creator
               ? t("webhooks.createdByOn", {
-                  creator: endpoint.createdBy,
+                  creator,
                   date: createdDate,
                 })
               : t("webhooks.createdOn", { date: createdDate })}
@@ -94,16 +111,22 @@ const CHIP_PREVIEW = 5;
 function EventChips({ eventTypes }: { eventTypes: string[] }) {
   const { t } = useTranslations();
   const [expanded, setExpanded] = useState(false);
+  if (eventTypes.length === 0) {
+    return <Badge variant="secondary">{t("webhooks.allEvents")}</Badge>;
+  }
   const shown = expanded ? eventTypes : eventTypes.slice(0, CHIP_PREVIEW);
   const hidden = eventTypes.length - shown.length;
 
   return (
     <div className="flex flex-wrap items-center gap-1">
-      {shown.map((eventType) => (
-        <Badge key={eventType} variant="secondary" className="font-mono">
-          {eventType}
-        </Badge>
-      ))}
+      {shown.map((eventType) => {
+        const labelKey = eventLabelKey(eventType);
+        return (
+          <Badge key={eventType} variant="secondary">
+            {labelKey ? t(labelKey) : eventType}
+          </Badge>
+        );
+      })}
       {hidden > 0 ? (
         <Button
           variant="ghost"

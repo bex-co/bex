@@ -14,6 +14,7 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
+import { Switch } from "@/common/components/ui/switch";
 import { CopyButton } from "@/common/components/copy-button";
 import { EventPicker } from "@/features/webhooks/components/event-picker";
 import { useCreateWebhook } from "@/features/webhooks/hooks/use-create-webhook";
@@ -50,13 +51,24 @@ export function NewWebhookPage() {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
+  const [enabled, setEnabled] = useState(true);
   const [created, setCreated] = useState<CreatedWebhookEndpoint | null>(null);
 
-  const submittable = url.trim() !== "" && checked.size > 0 && !busy;
+  const submittable =
+    name.trim() !== "" && url.trim() !== "" && checked.size > 0 && !busy;
 
   async function handleSubmit() {
     if (!submittable) return;
-    const endpoint = await create(name.trim(), url.trim(), [...checked]);
+    // Render's empty eventFilter is the durable "all current and future events"
+    // representation. Keep partial selections explicit, but compact a checked
+    // All-events picker so newly introduced event types are included automatically.
+    const eventFilter = checked.size === eventTypes.length ? [] : [...checked];
+    const endpoint = await create(
+      name.trim(),
+      url.trim(),
+      eventFilter,
+      enabled,
+    );
     if (endpoint) setCreated(endpoint);
   }
 
@@ -138,6 +150,22 @@ export function NewWebhookPage() {
                       disabled={busy}
                     />
                   )}
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <Label htmlFor="webhook-create-enabled">
+                      {t("webhooks.settingsStatus")}
+                    </Label>
+                    <p className="text-muted-foreground text-sm">
+                      {t("webhooks.createEnabledHelp")}
+                    </p>
+                  </div>
+                  <Switch
+                    id="webhook-create-enabled"
+                    checked={enabled}
+                    onCheckedChange={setEnabled}
+                    disabled={busy}
+                  />
                 </div>
                 <div className="flex justify-end">
                   <Button

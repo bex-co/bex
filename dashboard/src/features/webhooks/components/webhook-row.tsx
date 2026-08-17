@@ -5,6 +5,7 @@ import { Button } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
 import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { eventLabelKey } from "@/features/webhooks/event-catalog";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 
 export interface WebhookRowProps {
@@ -22,6 +23,10 @@ export interface WebhookRowProps {
  */
 export function WebhookRow({ entry, onToggle, toggling }: WebhookRowProps) {
   const { t } = useTranslations();
+  const eventLabel = (eventType: string) => {
+    const key = eventLabelKey(eventType);
+    return key ? t(key) : eventType;
+  };
 
   return (
     <TableRow>
@@ -41,11 +46,15 @@ export function WebhookRow({ entry, onToggle, toggling }: WebhookRowProps) {
       </TableCell>
       <TableCell className="max-w-[14rem]">
         <div className="flex flex-wrap gap-1">
-          {entry.eventTypes.map((eventType) => (
-            <Badge key={eventType} variant="secondary" className="font-mono">
-              {eventType}
-            </Badge>
-          ))}
+          {entry.eventTypes.length === 0 ? (
+            <Badge variant="secondary">{t("webhooks.allEvents")}</Badge>
+          ) : (
+            entry.eventTypes.map((eventType) => (
+              <Badge key={eventType} variant="secondary">
+                {eventLabel(eventType)}
+              </Badge>
+            ))
+          )}
         </div>
       </TableCell>
       <TableCell className="whitespace-nowrap">

@@ -63,7 +63,7 @@ async function fillAndSubmit(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("NewWebhookPage — /webhooks/new (w1/m49/t003)", () => {
-  it("keeps submit disabled until a URL and at least one event are picked", async () => {
+  it("keeps submit disabled until name, URL, and at least one event are supplied", async () => {
     const user = userEvent.setup();
     renderPage();
     const submit = await screen.findByRole("button", {
@@ -71,6 +71,7 @@ describe("NewWebhookPage — /webhooks/new (w1/m49/t003)", () => {
     });
     expect(submit).toBeDisabled();
 
+    await user.type(screen.getByLabelText("Name"), "deploy-hook");
     await user.type(
       screen.getByLabelText("Destination URL"),
       "https://example.com/hook",
@@ -103,6 +104,7 @@ describe("NewWebhookPage — /webhooks/new (w1/m49/t003)", () => {
       "slack-bot",
       "https://example.com/hook",
       ["deploy_started"],
+      true,
     );
 
     await user.click(screen.getByLabelText("Copy"));
