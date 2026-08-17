@@ -25,9 +25,10 @@ import (
 )
 
 type reconcileCapture struct {
-	mappings []store.BillingProviderMapping
-	events   []store.StripeBillingEvent
-	touched  []string
+	mappings       []store.BillingProviderMapping
+	events         []store.StripeBillingEvent
+	touched        []string
+	listedLivemode []bool
 }
 
 func (s *reconcileCapture) TouchBillingProviderMapping(_ context.Context, workspaceID string, _ time.Time) error {
@@ -35,7 +36,8 @@ func (s *reconcileCapture) TouchBillingProviderMapping(_ context.Context, worksp
 	return nil
 }
 
-func (s *reconcileCapture) ListBillingProviderMappings(_ context.Context, _ int) ([]store.BillingProviderMapping, error) {
+func (s *reconcileCapture) ListBillingProviderMappings(_ context.Context, livemode bool, _ int) ([]store.BillingProviderMapping, error) {
+	s.listedLivemode = append(s.listedLivemode, livemode)
 	return s.mappings, nil
 }
 func (s *reconcileCapture) RecordStripeBillingEvent(_ context.Context, e store.StripeBillingEvent, _ time.Duration) (store.BillingLifecycle, bool, bool, error) {
@@ -68,5 +70,20 @@ func TestReconcilerFeedsMissedProviderStateThroughSharedTransitionStore(t *testi
 	}
 	if got := s.events[0]; got.EventType != "billing.subscription.reconciled" || got.Outcome != store.BillingOutcomeFailure || !got.ProviderCreatedAt.Equal(now) {
 		t.Fatalf("normalized poll event = %+v", got)
+	}
+}
+
+func TestReconcilerScopesThePollToTheProvidersLivemode(t *testing.T) {
+	// A test→live cutover leaves other-mode mappings behind; the poll must ask
+	// the store only for the mode the provider's key can retrieve.
+	for _, livemode := range []bool{false, true} {
+		s := &reconcileCapture{}
+		r := &Reconciler{Store: s, Provider: &snapshotCapture{}, ExpectedLivemode: livemode}
+		if err := r.RunOnce(context.Background()); err != nil {
+			t.Fatalf("RunOnce(livemode=%t): %v", livemode, err)
+		}
+		if len(s.listedLivemode) != 1 || s.listedLivemode[0] != livemode {
+			t.Fatalf("listed livemode = %v, want [%t]", s.listedLivemode, livemode)
+		}
 	}
 }
