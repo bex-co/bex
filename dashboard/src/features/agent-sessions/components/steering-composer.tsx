@@ -32,7 +32,7 @@ export interface SteeringComposerProps {
    * the instant a redispatch steer is submitted so the detail page can show the
    * message immediately (the idle path has no `useChat` optimism of its own),
    * and with `null` to roll it back if the steer is rejected synchronously. The
-   * live (chat) path is unaffected — `useChat` already appends optimistically.
+   * The disabled live path never calls this callback.
    */
   onOptimisticSteer?: (prompt: string | null) => void;
 }
@@ -42,16 +42,15 @@ export interface SteeringComposerProps {
  * textarea (Enter-to-send, Shift+Enter for a newline) with two destinations
  * decided by the session's phase:
  *
- * - a **live** (running/creating/resuming/redispatching) session → the message
- *   is sent as a chat `POST` through the conversation column's own `useChat`
- *   (`chat.sendMessage`), so it appears in the transcript on the same branch;
+ * - a **live** (running/creating/resuming/redispatching) session → disabled until
+ *   the current turn settles, because public live POST cannot atomically persist
+ *   its prompt with control-plane turn state;
  * - an **idle** (completed/failed) session → the message redispatches a new
  *   turn via t001's `steer` mutation, and the header refetch surfaces the
  *   incremented `turns`.
  *
  * It is always rendered but disabled with a stated reason while the session is
- * `canceling`/`canceled`, while a turn is in flight, or when the live stream is
- * unavailable (so the live path can't POST into a dead stream).
+ * `canceling`/`canceled` or while a turn is in flight.
  */
 export function SteeringComposer({
   session,
@@ -70,11 +69,15 @@ export function SteeringComposer({
   const turnInFlight =
     chat?.status === "streaming" || chat?.status === "submitted";
 
-  // Route: idle (completed/failed) → redispatch mutation; otherwise the live
-  // stream POST. Canceling/canceled fall through as fully disabled below.
+  // Route: idle (completed/failed) → durable redispatch mutation; every live
+  // phase stays disabled until it reaches one of those terminal states.
   const route: SteerRoute = session.isSteerable ? "redispatch" : "chat";
   const liveStreamMissing =
     route === "chat" && !isCanceling && !isCanceled && !chat;
+  // w5/m71 closes the gateway POST path because it could execute a prompt
+  // without atomically recording the turn. Follow-ups are accepted only after
+  // the current control-plane turn settles, through the durable Steer mutation.
+  const liveTurnUnavailable = route === "chat" && !isCanceling && !isCanceled;
 
   // A single reason string when the composer is hard-disabled; null when it's
   // ready to accept input.
@@ -84,11 +87,14 @@ export function SteeringComposer({
       ? t("agentSessions.steerDisabledCanceled")
       : liveStreamMissing
         ? t("agentSessions.steerDisabledStream")
-        : turnInFlight
-          ? t("agentSessions.steerDisabledInFlight")
-          : null;
+        : liveTurnUnavailable
+          ? t("agentSessions.steerDisabledWaitForTurn")
+          : turnInFlight
+            ? t("agentSessions.steerDisabledInFlight")
+            : null;
 
-  const hardDisabled = isCanceling || isCanceled || liveStreamMissing;
+  const hardDisabled =
+    isCanceling || isCanceled || liveStreamMissing || liveTurnUnavailable;
   const busy = pending || turnInFlight;
   const submitDisabled = hardDisabled || busy || value.trim().length === 0;
 
@@ -112,8 +118,8 @@ export function SteeringComposer({
         toast.success(t("agentSessions.steerSuccess"));
         onSteered?.();
       } else {
-        // Live path: append the turn to the conversation's own useChat stream
-        // (which appends optimistically itself — no echo needed here).
+        // Defensive dead branch while liveTurnUnavailable is true. Keep the
+        // handle seam for a future transactional live-turn protocol.
         if (!chat) return;
         await chat.sendMessage(prompt);
       }

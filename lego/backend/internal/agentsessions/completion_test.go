@@ -155,6 +155,7 @@ func TestCompleterHarvestConcatenatesTurns(t *testing.T) {
 	row := st.rows[id] // this reconcile finalizes turn 2
 	row.Turns = 2
 	st.rows[id] = row
+	st.recordTurn(id, 2, "turn two", DeliveryRedispatch)
 	lc.transcriptLog = `{"part":{"type":"text","text":"t2"}}`
 	c.Reconcile(context.Background())
 
@@ -164,6 +165,35 @@ func TestCompleterHarvestConcatenatesTurns(t *testing.T) {
 	}
 	if parts[2].Seq != 2 || parts[2].Turn != 2 {
 		t.Fatalf("turn-2 part = %+v, want seq 2 turn 2", parts[2])
+	}
+}
+
+// A live viewer may tee only a prefix before disconnecting. Completion must
+// merge the driver's full log by turn-local part index; the old any-row guard
+// permanently lost the suffix.
+func TestCompleterHarvestMergesAfterPartialLiveTee(t *testing.T) {
+	c, st, lc, _, id := completerFixture(succeededStatus(true), nil)
+	_ = st.AppendAgentSessionTranscript(context.Background(), id, []store.AgentSessionTranscriptPart{
+		{Turn: 1, PartIndex: 0, Part: []byte(`{"type":"start"}`)},
+	})
+	lc.transcriptLog = `{"turn":1,"partIndex":0,"part":{"type":"start"}}
+{"turn":1,"partIndex":1,"part":{"type":"text","text":"survives"}}
+{"turn":1,"partIndex":2,"part":{"type":"finish"}}`
+
+	c.Reconcile(context.Background())
+
+	parts, _ := st.AgentSessionTranscript(context.Background(), id, -1, 1<<30, 0)
+	if len(parts) != 3 {
+		t.Fatalf("partial tee merge stored %d parts, want complete 3: %+v", len(parts), parts)
+	}
+	for i, part := range parts {
+		if part.PartIndex != int64(i) || part.Turn != 1 {
+			t.Fatalf("part %d = %+v, want turn-local index %d", i, part, i)
+		}
+	}
+	turn := st.turns[id][1]
+	if !turn.TranscriptComplete || turn.TranscriptTruncated {
+		t.Fatalf("merged turn completeness = %+v", turn)
 	}
 }
 
@@ -180,6 +210,7 @@ func TestCompleterHarvestRespectsCumulativeQuota(t *testing.T) {
 	row := st.rows[id]
 	row.Turns = 2
 	st.rows[id] = row
+	st.recordTurn(id, 2, "turn two", DeliveryRedispatch)
 	// The harvested part (~56 bytes with its JSON envelope) exceeds the 20
 	// bytes left under the cap, so nothing is appended.
 	lc.transcriptLog = `{"part":{"type":"text","text":"` + strings.Repeat("y", 30) + `"}}`
@@ -198,6 +229,10 @@ func TestCompleterHarvestRespectsCumulativeQuota(t *testing.T) {
 	}
 	if st.rows[id].Phase != PhaseCompleted || lc.canceled != 1 {
 		t.Fatalf("quota truncation blocked finalize/teardown: phase=%s canceled=%d", st.rows[id].Phase, lc.canceled)
+	}
+	turn := st.turns[id][2]
+	if !turn.TranscriptTruncated || turn.TruncationReason == "" {
+		t.Fatalf("quota truncation not persisted: %+v", turn)
 	}
 }
 
@@ -324,7 +359,7 @@ func TestSteerRedispatchesFreshSandboxOnSameBranch(t *testing.T) {
 	}
 	// Steer returns FAST (w2/m64): the redispatching phase with no ticket; the
 	// fresh sandbox is provisioned in the background (the sync runner completes it).
-	if view.Phase != PhaseRedispatching || view.Ticket != "" || view.URL != "" {
+	if view.Phase != PhaseRedispatching || view.SandboxID != "" || view.Ticket != "" || view.URL != "" {
 		t.Fatalf("steer should return a fast, ticketless redispatching view: %+v", view)
 	}
 	if lc.created != beforeCreated+1 || lc.canceled != beforeCanceled+1 {

@@ -614,7 +614,7 @@ const agentSessionLogPath = "/var/log/bex-agent/session.jsonl"
 // maxTranscriptLogBytes bounds the exec payload when harvesting the log (the tail
 // is read; the parser drops a partial leading line). A turn's transcript is far
 // smaller in practice; this only guards a pathological driver.
-const maxTranscriptLogBytes = 4 << 20
+const maxTranscriptLogBytes = 16 << 20
 
 // ReadSessionTranscript returns the driver's session log (redacted JSONL, one
 // UI-message part per line) from the exact session sandbox through the SAME
@@ -645,9 +645,15 @@ func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, works
 		return "", err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	result, err := bufferExec(resp)
+	// The public buffered-exec cap is 2 MiB, but the driver's own redacted log is
+	// bounded at 16 MiB. Collect that full trusted artifact with framing headroom
+	// and fail explicitly if even this bound truncates it.
+	result, err := bufferExecWithLimit(resp, maxTranscriptLogBytes+1<<20)
 	if err != nil {
 		return "", err
+	}
+	if result.Truncated {
+		return "", fmt.Errorf("%w: agent session transcript exceeded harvest limit", core.ErrSandboxesUnavailable)
 	}
 	return result.Stdout, nil
 }

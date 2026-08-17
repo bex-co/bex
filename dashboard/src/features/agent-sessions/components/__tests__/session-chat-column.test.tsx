@@ -116,13 +116,13 @@ describe("SessionChatColumn optimistic redispatch echo (w2/m64)", () => {
     // The echo appears immediately, inside the (mocked) conversation footer.
     expect(screen.getByText("echoed prompt")).toBeInTheDocument();
 
-    // Re-dispatched turn recorded (turns advanced) AND settled → the durable
-    // transcript now carries it, so the optimistic echo is withdrawn.
-    rerender(column(view("completed", { sandboxId: "sandbox-1", turns: 2 })));
+    // Re-dispatched turn accepted: the keyed conversation remount replays the
+    // durable prompt, so the optimistic echo is withdrawn.
+    rerender(column(view("completed", { sandboxId: "sandbox-2", turns: 2 })));
     expect(screen.queryByText("echoed prompt")).not.toBeInTheDocument();
   });
 
-  it("keeps the echo visible while the redispatched turn is still in flight", async () => {
+  it("keeps the echo visible until the durable turn count advances", async () => {
     const user = userEvent.setup();
     const idle = view("completed", { sandboxId: "sandbox-1", turns: 1 });
     const { rerender } = render(column(idle));
@@ -130,10 +130,9 @@ describe("SessionChatColumn optimistic redispatch echo (w2/m64)", () => {
     await user.click(screen.getByRole("button", { name: "echo" }));
     expect(screen.getByText("echoed prompt")).toBeInTheDocument();
 
-    // Session flips to a non-terminal working phase (redispatching): the turn is
-    // not settled yet, so the echo must remain.
+    // A phase-only transition with no accepted-turn increment must not hide it.
     rerender(
-      column(view("redispatching", { sandboxId: "sandbox-1", turns: 1 })),
+      column(view("redispatching", { sandboxId: "", turns: 2 })),
     );
     expect(screen.getByText("echoed prompt")).toBeInTheDocument();
   });

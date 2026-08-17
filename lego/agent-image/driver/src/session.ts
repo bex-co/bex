@@ -39,6 +39,7 @@ import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
 
 interface RunTurnOptions {
   prompt?: string;
+  turn?: number;
   closeHub?: boolean;
   onPart?: (part: UIMessagePart) => void;
   abortSignal?: AbortSignal;
@@ -92,11 +93,15 @@ async function logPart(
   part: UIMessagePart,
   credentialManager: CredentialManager,
   remaining: number,
+  turn: number,
+  partIndex: number,
 ): Promise<number> {
   await ensureParent(filename);
   const record = JSON.stringify({
     at: new Date().toISOString(),
     type: "ui-message",
+    turn,
+    partIndex,
     part,
   });
   const line = `${credentialManager.redact(record)}\n`;
@@ -160,6 +165,8 @@ export async function runHeadlessTurn(
   const prompt = options.prompt ?? config.prompt;
   const closeHub = options.closeHub ?? true;
   const onPart = options.onPart;
+  const turn = options.turn ?? config.turn;
+  let partIndex = 0;
   let logBytes = 0;
   let logTruncated = false;
   try {
@@ -246,7 +253,10 @@ export async function runHeadlessTurn(
           sanitized,
           credentialManager,
           Math.max(0, maxSessionLogBytes - logBytes),
+          turn,
+          partIndex,
         );
+        partIndex += 1;
         if (written === 0) logTruncated = true;
         logBytes += written;
       }

@@ -151,13 +151,17 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 	t.Helper()
 	record, err := s.CreateAgentSession(ctx, AgentSession{
 		WorkspaceID: tenant.ID, Repo: "bex-co/example", Branch: "main",
-		AgentConfig: []byte(`{"agent":"codex","task":"test"}`),
+		AgentConfig: []byte(`{"agent":"codex","task":"test"}`), InitialPrompt: "test",
 	})
 	if err != nil {
 		t.Fatalf("create agent session: %v", err)
 	}
 	if kind, ok := ids.KindOf(record.ID); !ok || kind != ids.AgentSession || record.Phase != "creating" {
 		t.Fatalf("agent session id/phase = %q/%q", record.ID, record.Phase)
+	}
+	turns, err := s.AgentSessionTurns(ctx, record.ID)
+	if err != nil || len(turns) != 1 || turns[0].Turn != 1 || turns[0].Prompt != "test" {
+		t.Fatalf("atomic initial turn = %+v err=%v", turns, err)
 	}
 	record, err = s.SetAgentSessionLifecycle(ctx, record.ID, "sandbox-1", "running", "running", false)
 	if err != nil || record.SandboxID != "sandbox-1" || record.Phase != "running" {
@@ -204,6 +208,87 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 	}
 
 	assertAgentSessionArchive(ctx, t, s, tenant, record.ID)
+	assertAgentSessionPromptQuota(ctx, t, s, tenant)
+	assertAgentSessionTurnAcceptanceCAS(ctx, t, s, tenant)
+}
+
+func assertAgentSessionPromptQuota(ctx context.Context, t *testing.T, s *PGStore, tenant Tenant) {
+	t.Helper()
+	record, err := s.CreateAgentSession(ctx, AgentSession{
+		WorkspaceID: tenant.ID, Repo: "bex-co/quota", Branch: "main",
+		AgentConfig: []byte(`{"agent":"codex","task":"seed"}`), InitialPrompt: "seed",
+	})
+	if err != nil {
+		t.Fatalf("create prompt quota session: %v", err)
+	}
+	if _, err := s.SetAgentSessionLifecycle(ctx, record.ID, "", "completed", "completed", false); err != nil {
+		t.Fatalf("complete prompt quota session: %v", err)
+	}
+	// Fill the aggregate just below 8 MiB using schema-valid 100 KiB turns.
+	if _, err := s.Pool.Exec(ctx, `
+		INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode)
+		SELECT $1, n, repeat('x', 100000), 'redispatch'
+		FROM generate_series(2, 84) AS n`, record.ID); err != nil {
+		t.Fatalf("seed prompt quota: %v", err)
+	}
+	if _, err := s.Pool.Exec(ctx, `UPDATE agent_sessions SET turns=84 WHERE id=$1`, record.ID); err != nil {
+		t.Fatalf("advance prompt quota session: %v", err)
+	}
+	if _, err := s.BeginAgentSessionTurn(ctx, record.ID, strings.Repeat("y", 100000), "redispatch", "redispatching", "redispatching"); !errors.Is(err, ErrAgentSessionPromptQuota) {
+		t.Fatalf("prompt quota error = %v, want ErrAgentSessionPromptQuota", err)
+	}
+	got, err := s.GetAgentSession(ctx, record.ID)
+	if err != nil || got.Turns != 84 || got.Phase != "completed" {
+		t.Fatalf("prompt quota rejection mutated session = %+v err=%v", got, err)
+	}
+}
+
+func assertAgentSessionTurnAcceptanceCAS(ctx context.Context, t *testing.T, s *PGStore, tenant Tenant) {
+	t.Helper()
+	record, err := s.CreateAgentSession(ctx, AgentSession{
+		WorkspaceID: tenant.ID, Repo: "bex-co/concurrent-turn", Branch: "main",
+		AgentConfig: []byte(`{"agent":"codex","task":"initial"}`), InitialPrompt: "initial",
+	})
+	if err != nil {
+		t.Fatalf("create concurrent-turn session: %v", err)
+	}
+	if _, err := s.SetAgentSessionLifecycle(ctx, record.ID, "", "completed", "completed", false); err != nil {
+		t.Fatalf("complete concurrent-turn session: %v", err)
+	}
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	for _, prompt := range []string{"first contender", "second contender"} {
+		prompt := prompt
+		go func() {
+			<-start
+			_, err := s.BeginAgentSessionTurn(ctx, record.ID, prompt, "redispatch", "redispatching", "redispatching")
+			errs <- err
+		}()
+	}
+	close(start)
+	var successes, conflicts int
+	for range 2 {
+		err := <-errs
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, ErrAgentSessionTurnState):
+			conflicts++
+		default:
+			t.Fatalf("concurrent turn error = %v", err)
+		}
+	}
+	if successes != 1 || conflicts != 1 {
+		t.Fatalf("concurrent turn results success=%d conflict=%d, want 1/1", successes, conflicts)
+	}
+	got, err := s.GetAgentSession(ctx, record.ID)
+	if err != nil || got.Turns != 2 || got.Phase != "redispatching" {
+		t.Fatalf("concurrent accepted turn row = %+v err=%v", got, err)
+	}
+	turns, err := s.AgentSessionTurns(ctx, record.ID)
+	if err != nil || len(turns) != 2 {
+		t.Fatalf("concurrent accepted turns = %+v err=%v, want initial + one winner", turns, err)
+	}
 }
 
 // assertAgentSessionArchive proves the ADR065 store contract: the idempotent
@@ -317,9 +402,8 @@ func assertAgentSessionArchive(ctx context.Context, t *testing.T, s *PGStore, te
 }
 
 // assertAgentSessionTranscripts proves the w3/m43 transcript store: ordered
-// append + replay, cross-replica/re-attach idempotency (same seq is a no-op, not
-// a duplicate), the max-seq cursor, retention pruning, and cascade with the
-// session row.
+// append + replay, cross-replica/re-attach turn-local idempotency, the global
+// cursor, and cascade with the session row.
 func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore, tenant Tenant, sessionID string) {
 	t.Helper()
 
@@ -335,9 +419,9 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 	}
 
 	first := []AgentSessionTranscriptPart{
-		{Seq: 0, Turn: 1, Part: []byte(`{"type":"start"}`)},
-		{Seq: 1, Turn: 1, Part: []byte(`{"type":"text-delta","delta":"hi"}`)},
-		{Seq: 2, Turn: 1, Part: []byte(`{"type":"data-acp","data":{"kind":"plan"}}`)},
+		{PartIndex: 0, Turn: 1, Part: []byte(`{"type":"start"}`)},
+		{PartIndex: 1, Turn: 1, Part: []byte(`{"type":"text-delta","delta":"hi"}`)},
+		{PartIndex: 2, Turn: 1, Part: []byte(`{"type":"data-acp","data":{"kind":"plan"}}`)},
 	}
 	if err := s.AppendAgentSessionTranscript(ctx, sessionID, first); err != nil {
 		t.Fatalf("append transcript: %v", err)
@@ -380,20 +464,17 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 		t.Fatalf("replay order/verbatim wrong: %+v", full)
 	}
 
-	// The headless recorder's per-turn guard (ADR051): turn 1 now has parts; an
-	// unrecorded turn does not. This is what makes the recorder idempotent and
-	// keeps it from double-storing a turn a live viewer already teed.
-	if rec, err := s.AgentSessionTranscriptTurnRecorded(ctx, sessionID, 1); err != nil || !rec {
-		t.Fatalf("turn 1 recorded = %v err=%v, want true", rec, err)
+	if maxIndex, ok, err := s.AgentSessionTranscriptTurnMaxIndex(ctx, sessionID, 1); err != nil || !ok || maxIndex != 2 {
+		t.Fatalf("turn 1 max local index = %d ok=%v err=%v, want 2", maxIndex, ok, err)
 	}
-	if rec, err := s.AgentSessionTranscriptTurnRecorded(ctx, sessionID, 2); err != nil || rec {
-		t.Fatalf("turn 2 recorded = %v err=%v, want false (not yet appended)", rec, err)
+	if _, ok, err := s.AgentSessionTranscriptTurnMaxIndex(ctx, sessionID, 2); err != nil || ok {
+		t.Fatalf("turn 2 local index exists=%v err=%v before append", ok, err)
 	}
 
 	// The gateway resumes its live tee strictly after the stored max: append
 	// seq 3+ and read only the tail via the cursor.
 	if err := s.AppendAgentSessionTranscript(ctx, sessionID, []AgentSessionTranscriptPart{
-		{Seq: 3, Turn: 2, Part: []byte(`{"type":"finish"}`)},
+		{PartIndex: 0, Turn: 2, Part: []byte(`{"type":"finish"}`)},
 	}); err != nil {
 		t.Fatalf("append tail: %v", err)
 	}
@@ -401,9 +482,8 @@ func assertAgentSessionTranscripts(ctx context.Context, t *testing.T, s *PGStore
 	if err != nil || len(tail) != 1 || tail[0].Seq != 3 || tail[0].Turn != 2 {
 		t.Fatalf("cursor tail = %+v err=%v", tail, err)
 	}
-	// Turn 2 is now recorded too — the redispatched-turn concatenation the recorder relies on.
-	if rec, err := s.AgentSessionTranscriptTurnRecorded(ctx, sessionID, 2); err != nil || !rec {
-		t.Fatalf("turn 2 recorded after tail append = %v err=%v, want true", rec, err)
+	if maxIndex, ok, err := s.AgentSessionTranscriptTurnMaxIndex(ctx, sessionID, 2); err != nil || !ok || maxIndex != 0 {
+		t.Fatalf("turn 2 max local index = %d ok=%v err=%v, want 0", maxIndex, ok, err)
 	}
 
 	// Cascade: a transcript on a throwaway session vanishes with the session row.

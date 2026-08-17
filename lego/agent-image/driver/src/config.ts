@@ -54,6 +54,8 @@ export interface AgentDriverConfig {
   credentialEnvName: string;
   modelCredential: string;
   sessionID: string;
+  /** Control-plane turn number stamped into every durable log record. */
+  turn: number;
   grantPublicKey: string;
   agentEnv: Record<string, string>;
   scrubRoots: string[];
@@ -250,6 +252,7 @@ export function loadConfig(
     credentialEnvName,
     modelCredential,
     sessionID: env.BEX_AGENT_SESSION_ID || "",
+    turn: Math.max(1, Number.parseInt(env.BEX_AGENT_TURN || "1", 10) || 1),
     grantPublicKey: env.BEX_AGENT_GRANT_PUBLIC_KEY || "",
     agentEnv,
     scrubRoots: [

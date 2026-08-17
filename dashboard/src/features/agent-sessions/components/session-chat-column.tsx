@@ -25,10 +25,9 @@ export interface SessionChatColumnProps {
  *   would render a spurious error. Until a sandbox id appears (via the header's
  *   phase polling) a placeholder is shown instead: a provisioning spinner while
  *   non-terminal, or just the failure/PR footer once terminal.
- * - **Optimistic redispatch echo.** The idle→redispatch steer path has no
- *   `useChat` optimism, so the composer hands the prompt up here to echo it in the
- *   transcript immediately; it hides once the new turn is recorded AND settled
- *   (the durable transcript then carries it), or on a synchronous rejection.
+ * - **Optimistic redispatch echo.** The idle→redispatch steer path echoes while
+ *   provisioning. It hides as soon as the durable turn count advances; gateway
+ *   replay then projects the persisted prompt as a `data-user-prompt` part.
  */
 export function SessionChatColumn({
   session,
@@ -39,15 +38,15 @@ export function SessionChatColumn({
   const { t } = useTranslations();
 
   // Visibility is DERIVED, not cleared via an effect: the echo hides once the new
-  // turn is both recorded (turns advanced past the submit-time count) and settled
-  // (terminal), by which point the durable transcript carries the turn.
+  // turn is recorded (turns advanced past the submit-time count), by which point
+  // reconnect replay carries the durable prompt even while output is still live.
   const [pendingSteer, setPendingSteer] = useState<{
     prompt: string;
     atTurns: number;
   } | null>(null);
   const showPendingSteer =
     pendingSteer !== null &&
-    !(session.isTerminal && session.turns > pendingSteer.atTurns);
+    !(session.turns > pendingSteer.atTurns && session.sandboxId);
 
   // Phase-derived terminus label ("went to sleep" / error / canceled) — only a
   // terminal session shows it (the impl gates on isTerminal + settled).
@@ -82,6 +81,10 @@ export function SessionChatColumn({
   const attachable = Boolean(session.sandboxId) || session.isFinished;
   const conversation = attachable ? (
     <SessionConversation
+      // A durable turn is accepted before its replacement sandbox exists. Key
+      // on both identities so each transition remounts useChat and replays the
+      // newly persisted prompt, then attaches to the eventual fresh pod.
+      key={`${session.id}:${session.turns}:${session.sandboxId}`}
       sessionId={session.id}
       isTerminal={session.isTerminal}
       onChatStateChange={onChatStateChange}

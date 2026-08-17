@@ -206,5 +206,10 @@ export function isTrivialAck(output: unknown): boolean {
  * `data-acp-*` data parts the driver emits). */
 export type AgentUIMessage = UIMessage<
   unknown,
-  { "acp-plan": unknown; "acp-diff": unknown; "acp-terminal": unknown }
+  {
+    "acp-plan": unknown;
+    "acp-diff": unknown;
+    "acp-terminal": unknown;
+    "user-prompt": unknown;
+  }
 >;

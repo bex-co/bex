@@ -308,9 +308,9 @@ func TestAttachTicketReplayOnlyForReapedSessions(t *testing.T) {
 func TestTranscriptPagesVerbatimParts(t *testing.T) {
 	svc, st, _, id := steerableFixture(t)
 	parts := []store.AgentSessionTranscriptPart{
-		{Seq: 0, Turn: 1, Part: []byte(`{"type":"start"}`)},
-		{Seq: 1, Turn: 1, Part: []byte(`{"type":"text-delta","delta":"hi"}`)},
-		{Seq: 2, Turn: 2, Part: []byte(`{"type":"finish"}`)},
+		{Seq: 0, PartIndex: 0, Turn: 1, Part: []byte(`{"type":"start"}`)},
+		{Seq: 1, PartIndex: 1, Turn: 1, Part: []byte(`{"type":"text-delta","delta":"hi"}`)},
+		{Seq: 2, PartIndex: 0, Turn: 2, Part: []byte(`{"type":"finish"}`)},
 	}
 	if err := st.AppendAgentSessionTranscript(context.Background(), id, parts); err != nil {
 		t.Fatal(err)
@@ -322,6 +322,9 @@ func TestTranscriptPagesVerbatimParts(t *testing.T) {
 	}
 	if string(page.Parts[1].Part) != `{"type":"text-delta","delta":"hi"}` {
 		t.Fatalf("part not verbatim: %s", page.Parts[1].Part)
+	}
+	if len(page.Turns) != 1 || page.Turns[0].Prompt != "fix the tests" || page.Parts[1].PartIndex != 1 {
+		t.Fatalf("role/index transcript facts = turns=%+v parts=%+v", page.Turns, page.Parts)
 	}
 	tail, err := svc.Transcript(caller("alice"), id, page.NextAfterSeq, 0)
 	if err != nil || len(tail.Parts) != 1 || tail.Parts[0].Seq != 2 || tail.NextAfterSeq != 2 {

@@ -31,6 +31,7 @@ type fakeStore struct {
 	getCalls   int
 	now        time.Time
 	transcript map[string]map[int64]store.AgentSessionTranscriptPart
+	turns      map[string]map[int]store.AgentSessionTurn
 	// openSSH models the ssh_sessions table for the teardown-deferral tests
 	// (ADR054 D6): resource id -> the started_at of a still-open editor session.
 	openSSH map[string]time.Time
@@ -45,6 +46,7 @@ func newFakeStore() *fakeStore {
 		rows:       map[string]store.AgentSession{},
 		now:        time.Unix(1_800_000_000, 0).UTC(),
 		transcript: map[string]map[int64]store.AgentSessionTranscriptPart{},
+		turns:      map[string]map[int]store.AgentSessionTurn{},
 		openSSH:    map[string]time.Time{},
 		lastSSHEnd: map[string]time.Time{},
 	}
@@ -135,12 +137,16 @@ func (f *fakeStore) HibernateAgentSession(_ context.Context, id, ref string, byt
 	return row, nil
 }
 
-func (f *fakeStore) BeginRehydrate(_ context.Context, id string) (store.AgentSession, error) {
+func (f *fakeStore) BeginRehydrate(_ context.Context, id, prompt, delivery string) (store.AgentSession, error) {
 	row, ok := f.rows[id]
 	if !ok || row.Phase != PhaseHibernated || row.SnapshotRef == "" {
 		return store.AgentSession{}, store.ErrNotFound
 	}
 	row.Phase, row.Status = PhaseResuming, "rehydrating"
+	if prompt != "" {
+		f.recordTurn(id, row.Turns+1, prompt, delivery)
+		row.Turns++
+	}
 	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
 	f.rows[id] = row
 	return row, nil
@@ -163,7 +169,6 @@ func (f *fakeStore) RehydrateAgentSession(_ context.Context, id, sandboxID, phas
 		return store.AgentSession{}, store.ErrNotFound
 	}
 	row.SandboxID, row.Phase, row.Status, row.DeliveryMode = sandboxID, phase, status, delivery
-	row.Turns++
 	row.SnapshotRef, row.SnapshotBytes, row.SnapshotSHA = "", 0, ""
 	row.HibernatedAt, row.RetainUntil = nil, nil
 	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
@@ -247,10 +252,23 @@ func (f *fakeStore) AppendAgentSessionTranscript(_ context.Context, id string, p
 		f.transcript[id] = map[int64]store.AgentSessionTranscriptPart{}
 	}
 	for _, p := range parts {
-		if _, exists := f.transcript[id][p.Seq]; exists {
-			continue // idempotent on (session, seq)
+		index := p.PartIndex
+		if index == 0 && p.Seq > 0 {
+			index = p.Seq
 		}
-		f.transcript[id][p.Seq] = p
+		duplicate := false
+		for _, existing := range f.transcript[id] {
+			if existing.Turn == p.Turn && existing.PartIndex == index {
+				duplicate = true
+				break
+			}
+		}
+		if duplicate {
+			continue
+		}
+		seq := int64(len(f.transcript[id]))
+		p.Seq, p.PartIndex = seq, index
+		f.transcript[id][seq] = p
 	}
 	return nil
 }
@@ -297,19 +315,71 @@ func (f *fakeStore) AgentSessionTranscriptMaxSeq(_ context.Context, id string) (
 	return max, ok, nil
 }
 
-func (f *fakeStore) AgentSessionTranscriptTurnRecorded(_ context.Context, id string, turn int) (bool, error) {
+func (f *fakeStore) AgentSessionTranscriptTurnMaxIndex(_ context.Context, id string, turn int) (int64, bool, error) {
+	max, ok := int64(-1), false
 	for _, p := range f.transcript[id] {
-		if p.Turn == turn {
-			return true, nil
+		if p.Turn == turn && (!ok || p.PartIndex > max) {
+			max, ok = p.PartIndex, true
 		}
 	}
-	return false, nil
+	return max, ok, nil
+}
+
+func (f *fakeStore) AgentSessionTurns(_ context.Context, id string) ([]store.AgentSessionTurn, error) {
+	out := make([]store.AgentSessionTurn, 0, len(f.turns[id]))
+	for _, turn := range f.turns[id] {
+		out = append(out, turn)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Turn < out[j].Turn })
+	return out, nil
+}
+
+func (f *fakeStore) CompleteAgentSessionTurn(_ context.Context, id string, turn int, complete, truncated bool, reason string) error {
+	row, ok := f.turns[id][turn]
+	if !ok {
+		return store.ErrNotFound
+	}
+	row.TranscriptComplete, row.TranscriptTruncated, row.TruncationReason = complete, truncated, reason
+	at := f.now
+	row.CompletedAt = &at
+	f.turns[id][turn] = row
+	return nil
+}
+
+func (f *fakeStore) recordTurn(id string, turn int, prompt, delivery string) {
+	if f.turns[id] == nil {
+		f.turns[id] = map[int]store.AgentSessionTurn{}
+	}
+	f.turns[id][turn] = store.AgentSessionTurn{SessionID: id, Turn: turn, Prompt: prompt, DeliveryMode: delivery, CreatedAt: f.now}
 }
 
 func (f *fakeStore) CreateAgentSession(_ context.Context, in store.AgentSession) (store.AgentSession, error) {
 	in.ID, in.Phase, in.CreatedAt, in.UpdatedAt = ids.New(ids.AgentSession), PhaseCreating, f.now, f.now
 	f.rows[in.ID] = in
+	prompt := in.InitialPrompt
+	if prompt == "" {
+		var config AgentConfig
+		_ = json.Unmarshal(in.AgentConfig, &config)
+		prompt = config.Task
+	}
+	if prompt != "" {
+		f.recordTurn(in.ID, 1, prompt, "")
+		in.Turns = 1
+		f.rows[in.ID] = in
+	}
 	return in, nil
+}
+
+func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, delivery, phase, status string) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	f.recordTurn(id, row.Turns+1, prompt, delivery)
+	row.Turns++
+	row.SandboxID, row.Phase, row.Status = "", phase, status
+	f.rows[id] = row
+	return row, nil
 }
 func (f *fakeStore) GetAgentSession(_ context.Context, id string) (store.AgentSession, error) {
 	f.getCalls++
@@ -411,7 +481,6 @@ func (f *fakeStore) RecordAgentSessionDispatch(_ context.Context, id, sandboxID,
 		row.SandboxID = sandboxID
 	}
 	row.Phase, row.Status, row.DeliveryMode = phase, status, deliveryMode
-	row.Turns++
 	row.UpdatedAt = row.UpdatedAt.Add(time.Second)
 	f.rows[id] = row
 	return row, nil
@@ -735,10 +804,11 @@ func seedHibernated(st *fakeStore, id string) {
 // carrying the presigned restore URL, the phase converges to running, and the
 // snapshot fields are cleared (consumed into the new pod).
 func TestResumeRehydratesHibernatedSession(t *testing.T) {
-	svc, st, _, id := steerableFixture(t)
+	svc, st, lc, id := steerableFixture(t)
 	snaps := newFakeSnapshots()
 	svc.Snapshots = snaps
 	seedHibernated(st, id)
+	beforeTurns := st.rows[id].Turns
 
 	view, err := svc.Resume(caller("alice"), id)
 	if err != nil {
@@ -757,6 +827,31 @@ func TestResumeRehydratesHibernatedSession(t *testing.T) {
 	}
 	if row.DeliveryMode != DeliveryRehydrate {
 		t.Fatalf("delivery mode = %q, want rehydrate", row.DeliveryMode)
+	}
+	if row.Turns != beforeTurns {
+		t.Fatalf("resume-without-prompt advanced turns %d -> %d", beforeTurns, row.Turns)
+	}
+	if got := lc.driverEnv["BEX_AGENT_PROMPT"]; got != "" {
+		t.Fatalf("resume-without-prompt reruns task %q", got)
+	}
+}
+
+func TestHibernatedSteerPersistsAndRunsExactlyOneTurn(t *testing.T) {
+	svc, st, lc, id := steerableFixture(t)
+	svc.Snapshots = newFakeSnapshots()
+	seedHibernated(st, id)
+	beforeTurns := st.rows[id].Turns
+
+	if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: id, Prompt: "durable follow-up"}); err != nil {
+		t.Fatalf("hibernated steer = %v", err)
+	}
+	row := st.rows[id]
+	if row.Turns != beforeTurns+1 || lc.driverEnv["BEX_AGENT_PROMPT"] != "durable follow-up" {
+		t.Fatalf("rehydrated steer row=%+v env=%q", row, lc.driverEnv["BEX_AGENT_PROMPT"])
+	}
+	turn := st.turns[id][beforeTurns+1]
+	if turn.Prompt != "durable follow-up" || turn.DeliveryMode != DeliveryRehydrate {
+		t.Fatalf("durable rehydrate turn = %+v", turn)
 	}
 }
 
@@ -787,6 +882,26 @@ func TestRehydrateFailureRevertsToHibernated(t *testing.T) {
 	}
 	if row.SnapshotRef == "" {
 		t.Fatal("snapshot ref lost on failed rehydrate — the workspace would be unrecoverable")
+	}
+}
+
+func TestFailedHibernatedSteerKeepsSettledIncompleteTurn(t *testing.T) {
+	svc, st, lc, id := steerableFixture(t)
+	svc.Snapshots = newFakeSnapshots()
+	lc.createErr = errors.New("pod schedule timeout")
+	seedHibernated(st, id)
+	beforeTurns := st.rows[id].Turns
+
+	if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: id, Prompt: "keep this intent"}); err != nil {
+		t.Fatalf("hibernated steer (accept) = %v", err)
+	}
+	row := st.rows[id]
+	if row.Phase != PhaseHibernated || row.Turns != beforeTurns+1 || row.SnapshotRef == "" {
+		t.Fatalf("failed hibernated steer row = %+v", row)
+	}
+	turn := st.turns[id][beforeTurns+1]
+	if turn.Prompt != "keep this intent" || turn.CompletedAt == nil || turn.TranscriptComplete || turn.TranscriptTruncated || turn.TruncationReason != "sandbox restore provisioning failed" {
+		t.Fatalf("failed rehydrate durable turn = %+v", turn)
 	}
 }
 
@@ -899,6 +1014,10 @@ func TestLifecycleTicketClaimsAndFirstClassAuthorization(t *testing.T) {
 	}
 	if provisioned.SandboxID != "sandbox-1" || provisioned.Phase != PhaseRunning {
 		t.Fatalf("provisioned session = %+v", provisioned)
+	}
+	turns, _ := st.AgentSessionTurns(context.Background(), created.ID)
+	if len(turns) != 1 || turns[0].Prompt != "fix the tests" || turns[0].Turn != 1 {
+		t.Fatalf("create did not atomically preserve initial prompt: %+v", turns)
 	}
 
 	// The ticket is minted lazily via AttachTicket once a sandbox exists.
@@ -1044,6 +1163,20 @@ func TestAttachTicketTurnRequiresLivePhase(t *testing.T) {
 		if _, err := svc.AttachTicket(caller("alice"), created.ID, agentsessionticket.ActionRead); err != nil {
 			t.Errorf("phase %q read ticket must still succeed, got %v", phase, err)
 		}
+	}
+}
+
+func TestAttachTicketRefusesNonDurableLiveTurn(t *testing.T) {
+	svc, st, _, _ := fixture()
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := st.rows[created.ID]
+	row.Phase = PhaseRunning
+	st.rows[created.ID] = row
+	if _, err := svc.AttachTicket(caller("alice"), created.ID, agentsessionticket.ActionTurn); !isCode(err, "AGENT_SESSION_LIVE_TURN_UNAVAILABLE") {
+		t.Fatalf("live turn ticket = %v, want AGENT_SESSION_LIVE_TURN_UNAVAILABLE", err)
 	}
 }
 
@@ -1331,6 +1464,10 @@ func TestBackgroundDispatchFailureSurfacesFailedPhase(t *testing.T) {
 	}
 	if lc.created != 0 {
 		t.Fatalf("no sandbox should have been recorded on a create failure: %+v", lc)
+	}
+	turn := st.turns[created.ID][1]
+	if turn.CompletedAt == nil || turn.TranscriptComplete || turn.TranscriptTruncated || turn.TruncationReason != "sandbox provisioning failed" {
+		t.Fatalf("failed dispatch turn completeness = %+v", turn)
 	}
 }
 

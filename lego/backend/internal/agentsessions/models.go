@@ -232,14 +232,29 @@ type ListRequest struct {
 // consume the exact bytes the stream replay would deliver.
 type TranscriptPart struct {
 	Seq       int64           `json:"seq"`
+	PartIndex int64           `json:"partIndex"`
 	Turn      int             `json:"turn"`
 	Part      json.RawMessage `json:"part"`
 	CreatedAt time.Time       `json:"createdAt"`
+}
+
+// TranscriptTurn is the role-correct user side of a durable conversation turn,
+// plus the honest completeness result for its assistant transcript.
+type TranscriptTurn struct {
+	Turn                int        `json:"turn"`
+	Prompt              string     `json:"prompt"`
+	DeliveryMode        string     `json:"deliveryMode"`
+	TranscriptComplete  bool       `json:"transcriptComplete"`
+	TranscriptTruncated bool       `json:"transcriptTruncated"`
+	TruncationReason    string     `json:"truncationReason,omitempty"`
+	CreatedAt           time.Time  `json:"createdAt"`
+	CompletedAt         *time.Time `json:"completedAt,omitempty"`
 }
 
 // TranscriptPage is one seq-keyset page of a session's transcript. Clients page
 // by echoing NextAfterSeq as afterSeq; an empty Parts signals the end.
 type TranscriptPage struct {
 	Parts        []TranscriptPart `json:"parts"`
+	Turns        []TranscriptTurn `json:"turns"`
 	NextAfterSeq int64            `json:"nextAfterSeq"`
 }

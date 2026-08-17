@@ -157,6 +157,7 @@ export function SessionConversationImpl({
       "acp-plan": acpDataSchema,
       "acp-diff": acpDataSchema,
       "acp-terminal": acpDataSchema,
+      "user-prompt": acpDataSchema,
     },
   });
 
@@ -388,6 +389,13 @@ type DisplayBlock =
   | { type: "text"; key: string; text: string }
   | { type: "reasoning"; key: string; text: string }
   | { type: "plan"; key: string; entries: AcpPlanEntry[] }
+  | {
+      type: "user";
+      key: string;
+      text: string;
+      incomplete: boolean;
+      reason: string;
+    }
   | { type: "activity"; key: string; steps: ActivityStep[] };
 
 function buildBlocks(parts: PartLike[]): DisplayBlock[] {
@@ -412,6 +420,28 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
   };
 
   parts.forEach((part, index) => {
+    if (part.type === "data-user-prompt") {
+      const data =
+        part.data && typeof part.data === "object"
+          ? (part.data as Record<string, unknown>)
+          : {};
+      blocks.push({
+        type: "user",
+        key: `user-${index}`,
+        text: capText(str(data.text)),
+        incomplete:
+          data.truncated === true ||
+          (data.settled === true && data.complete !== true),
+        reason: str(data.reason),
+      });
+      // A new durable turn starts a new plan lifecycle. Without this reset, the
+      // latest plan snapshot from turn N+1 would overwrite turn N's plan block
+      // because replay intentionally adapts all raw chunks into one AI-SDK
+      // assistant message.
+      planBlock = null;
+      return;
+    }
+
     if (part.type === "text") {
       blocks.push({
         type: "text",
@@ -532,6 +562,16 @@ const MessageRow = memo(function MessageRow({
         )}
       >
         {blocks.map((block) => {
+          if (block.type === "user") {
+            return (
+              <DurableUserTurn
+                key={block.key}
+                text={block.text}
+                incomplete={block.incomplete}
+                reason={block.reason}
+              />
+            );
+          }
           if (block.type === "text") {
             return (
               <div key={block.key} className="min-w-0">
@@ -567,6 +607,34 @@ const MessageRow = memo(function MessageRow({
     </div>
   );
 });
+
+function DurableUserTurn({
+  text,
+  incomplete,
+  reason,
+}: {
+  text: string;
+  incomplete: boolean;
+  reason: string;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="my-2 flex w-full justify-end gap-2 pl-8">
+      <div className="max-w-[92%] sm:max-w-md">
+        <div className="border-border/70 bg-muted text-foreground rounded-xl rounded-br-md border px-3 py-1.5 shadow-xs dark:bg-muted/80">
+          <MarkdownRenderer content={text} />
+        </div>
+        {incomplete ? (
+          <p className="text-muted-foreground mt-1 text-right text-xs">
+            {t("agentSessions.conversationIncomplete")}
+            {reason ? `: ${reason}` : ""}
+          </p>
+        ) : null}
+      </div>
+      <UserAvatar />
+    </div>
+  );
+}
 
 // The agent's chain-of-thought, rendered with the vendored AI Elements
 // `Reasoning` disclosure. Collapsed by default so a long transcript stays
