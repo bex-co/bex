@@ -19,7 +19,7 @@ spec:
   source:
     repoURL: oci://ghcr.io/bex-co/bex-charts/zot
     path: .
-    targetRevision: "sha256:4de8e88fe286dd49124b166a4a0f2a83d729d646a8b2050d7d2e4843674bf535"
+    targetRevision: "sha256:4476fc31b06e14b9386a00b3c9309925b3cc02f7f8ce5105b0bc82b2603a5422"
     helm:
       values: |
         # NodePort 30500 lets kubelet on tenant nodes pull images via

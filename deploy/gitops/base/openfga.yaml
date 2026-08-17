@@ -17,7 +17,7 @@ spec:
   sources:
     - repoURL: oci://ghcr.io/bex-co/bex-charts/openfga
       path: .
-      targetRevision: "sha256:e9d5bbd42bd7c45253bd9dd1fdb10da3bc899aab064118ddd07231a8f99e3e0e"
+      targetRevision: "sha256:ff1152c0fcb5a3f9b5e0955bc77d0e01222cad1b93e5c5c45f9a2b4f889db9f7"
       helm:
         valueFiles:
           - $values/deploy/gitops/base/values/openfga.values.yaml

@@ -19,7 +19,7 @@ spec:
   source:
     repoURL: oci://ghcr.io/bex-co/bex-charts/metrics-server
     path: .
-    targetRevision: "sha256:d7f01ba2b1b2d9c3f5e505cf8cda6e9712ca145d073ebf28779e2973f2b45077"
+    targetRevision: "sha256:6f84c5fc6e9ccf9535e6bd152db58ba59edc0d70705f1add93696f524a6553c7"
     helm:
       values: |
         args:

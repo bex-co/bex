@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: oci://ghcr.io/bex-co/bex-charts/cert-manager
     path: .
-    targetRevision: "sha256:458ec8e95ed7628a316f4479e56174a577cf4c0eeed0e9b94a486a5544439553"
+    targetRevision: "sha256:85c3ea2b59210fd13efc17c98bca0b2b2b90775c5dcf5a7ef56a22e67b70716e"
     helm:
       values: |
         crds:

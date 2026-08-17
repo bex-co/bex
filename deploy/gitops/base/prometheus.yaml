@@ -51,7 +51,7 @@ spec:
   source:
     repoURL: oci://ghcr.io/bex-co/bex-charts/prometheus
     path: .
-    targetRevision: "sha256:ca111fd56feda5a2079d7db7a1ccf5f98d6f03b44eea6cdcce3cec5273481d02"
+    targetRevision: "sha256:79966b9d29997efc43b93b2df12b628479fcac2868d97a2d98b3e3d12d326ef7"
     helm:
       releaseName: prometheus
       values: |

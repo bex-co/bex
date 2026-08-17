@@ -96,6 +96,7 @@ docker/login-action@dbcb813823bdd20940b903addbd779551569679f
 docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c
 hashicorp/setup-packer@ce93c3c08a6c2ff2275bf4b54ff0d9a75f6c9789
 hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e
+oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d
 sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6'
 
 if ! diff -u <(printf '%s\n' "$expected_actions") <(third_party_refs); then

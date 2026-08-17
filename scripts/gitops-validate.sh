@@ -36,6 +36,8 @@ for required in \
 done
 for required in \
   'HELM_REGISTRY_CONFIG="$anonymous_config" helm pull' \
+  'del(.annotations["org.opencontainers.image.created"])' \
+  'oras manifest push' \
   'public OCI digest' \
   'is not anonymously pullable'; do
   grep -qF "$required" scripts/helm-artifact.sh || {

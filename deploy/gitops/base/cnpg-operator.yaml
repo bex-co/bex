@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: oci://ghcr.io/bex-co/bex-charts/cloudnative-pg
     path: .
-    targetRevision: "sha256:4f2ad68fc28edf31ab86b151493e2d33a5c6b29ff537f2b9ee7c2018709218c1"
+    targetRevision: "sha256:67a2cb6e865168d0c211c76c1a10d4369c6465dac7ebda9172cb72bc46217a78"
     helm:
       values: |
         # w1/m19 t003: platform pool
