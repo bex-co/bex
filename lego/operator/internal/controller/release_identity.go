@@ -228,6 +228,22 @@ type appReleaseDecision struct {
 	canceled        bool
 }
 
+// buildRunning reports whether a repo-backed source build for the pinned release
+// generation is actively running (ADR060 §D1a). While true, prepareAppReleaseDecision
+// pins the release identity so a newer push cannot abandon the running build:
+// the build finishes and rolls out, and the newer spec waits in the implicit
+// pending slot. Prebuilt-image, suspended, and direct-static-publish Apps have no
+// build Job to protect and never pin.
+func buildRunning(app *appv1alpha1.App) bool {
+	if app.Spec.Repo == "" || app.Spec.Image != "" || app.Spec.Suspended {
+		return false
+	}
+	if directStaticPublish(app) {
+		return false
+	}
+	return app.Status.Phase == appv1alpha1.PhaseBuilding
+}
+
 // prepareAppReleaseDecision mutates only operator-owned status. Missing or
 // changed fingerprints always request normal artifact/release reconciliation;
 // every retained App has been normalized to the canonical status shape.
@@ -238,12 +254,48 @@ func prepareAppReleaseDecision(app *appv1alpha1.App) appReleaseDecision {
 		// level-triggered. Keep the last successful generation active so this
 		// pass cannot recreate the canceled build or falsely promote its release.
 		app.Status.ReleaseGeneration = successfulReleaseGeneration(app)
+		app.Status.PendingReleaseGeneration = 0
 		return appReleaseDecision{desired: desired, canceled: true}
 	}
+
+	// ADR060 §D1a run-to-completion + latest-pending slot: while a source build is
+	// actively running and the spec has since moved to a newer release, do NOT
+	// advance. Pin the release identity to the running build so releaseBuildRevision
+	// stays on its revision (EnsureBuild observes it, never starts a second Job) and
+	// so the completing build records its artifact under its OWN fingerprint — not
+	// the coalesced newer spec's, which would make the next generation falsely reuse
+	// this image. The newer spec is the implicit pending slot, picked up on the next
+	// reconcile once this build resolves (phase leaves Building) and the release
+	// advances. This replaces ADR034's cancel-the-running-build newest-wins, which
+	// livelocked under sustained pushes.
+	if buildRunning(app) && app.Status.ReleaseFingerprint != desired.release {
+		if pending := requestedReleaseGeneration(app); pending > app.Status.PendingReleaseGeneration {
+			// A genuinely newer generation coalesced into the pending slot. Meter it
+			// once per new pending generation — the tripwire that separates a
+			// supersede (expected) from a user Cancel (canceled) in the SLIs.
+			recordBuildOutcome(buildOutcomeSuperseded)
+			app.Status.PendingReleaseGeneration = pending
+		}
+		pinned := appReleaseIdentity{
+			artifact: app.Status.ReleaseArtifactFingerprint,
+			release:  app.Status.ReleaseFingerprint,
+		}
+		return appReleaseDecision{
+			desired:         pinned,
+			artifactChanged: app.Status.ArtifactFingerprint != pinned.artifact,
+			releaseChanged:  false,
+		}
+	}
+	app.Status.PendingReleaseGeneration = 0
+
 	artifactChanged := app.Status.ArtifactFingerprint != desired.artifact
 	releaseChanged := app.Status.ReleaseFingerprint != desired.release
 	if releaseChanged {
 		app.Status.ReleaseFingerprint = desired.release
+		// Pin the artifact fingerprint of the release being dispatched, so a push
+		// that coalesces mid-build (above) can label the running build's resolved
+		// artifact correctly (ADR060 §D1a).
+		app.Status.ReleaseArtifactFingerprint = desired.artifact
 		app.Status.ReleaseGeneration = requestedReleaseGeneration(app)
 	}
 	if app.Status.ReleaseGeneration == 0 {

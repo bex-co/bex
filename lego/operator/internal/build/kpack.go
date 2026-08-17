@@ -134,60 +134,42 @@ func KpackImage(o Options) *unstructured.Unstructured {
 	}}
 }
 
-func buildpack(ctx context.Context, o Options) (Result, error) {
+// ensureBuildpack is the kpack (Cloud Native Buildpack) mirror of EnsureBuild:
+// it creates the per-generation kpack Image if absent and returns its current
+// Observation without blocking (ADR060 §D1). kpack reports a single Ready
+// condition rather than pod scheduling, so a not-yet-terminal Image is reported
+// PhaseBuilding — kpack owns its own queueing/caching. buildTimeout is enforced
+// by the Image's own spec.build.buildTimeout, not an operator-side clock.
+func ensureBuildpack(ctx context.Context, o Options) (Observation, error) {
 	if err := ensureKpackCredentials(ctx, o); err != nil {
-		return Result{}, fmt.Errorf("build: prepare kpack credentials: %w", err)
+		return Observation{}, fmt.Errorf("build: prepare kpack credentials: %w", err)
 	}
 	image := KpackImage(o)
 	key := client.ObjectKeyFromObject(image)
 	if err := o.Client.Create(ctx, image); err != nil && !apierrors.IsAlreadyExists(err) {
-		return Result{}, fmt.Errorf("build: create kpack image %s: %w", key.Name, err)
+		return Observation{}, fmt.Errorf("build: create kpack image %s: %w", key.Name, err)
 	}
-	if deleting, err := appDeleting(ctx, o); err != nil {
-		return Result{}, err
-	} else if deleting {
-		return Result{}, ErrAppDeleting
+	cur := newKpackImage()
+	if err := o.Client.Get(ctx, key, cur); err != nil {
+		return Observation{}, fmt.Errorf("build: get kpack image %s: %w", key.Name, err)
 	}
-
-	wctx, cancel := context.WithTimeout(ctx, buildTimeout)
-	defer cancel()
-	ticker := time.NewTicker(pollInterval)
-	defer ticker.Stop()
-	for {
-		if deleting, err := appDeleting(wctx, o); err != nil {
-			return Result{}, err
-		} else if deleting {
-			return Result{}, ErrAppDeleting
-		}
-		cur := newKpackImage()
-		if err := o.Client.Get(wctx, key, cur); err != nil {
-			if wctx.Err() != nil {
-				return Result{}, fmt.Errorf("build: kpack image %s did not finish within %s", key.Name, buildTimeout)
+	if err := checkKpackArtifact(cur, o, kpackImagePurpose); err != nil {
+		return Observation{}, fmt.Errorf("build: check kpack image identity %s: %w", key.Name, err)
+	}
+	condition, found := kpackCondition(cur, kpackReadyCondition)
+	if found {
+		switch condition.Status {
+		case corev1.ConditionTrue:
+			latest, _, _ := unstructured.NestedString(cur.Object, "status", "latestImage")
+			if latest == "" {
+				return Observation{}, fmt.Errorf("build: kpack image %s is Ready but status.latestImage is empty", key.Name)
 			}
-			return Result{}, fmt.Errorf("build: get kpack image %s: %w", key.Name, err)
-		}
-		if err := checkKpackArtifact(cur, o, kpackImagePurpose); err != nil {
-			return Result{}, fmt.Errorf("build: check kpack image identity %s: %w", key.Name, err)
-		}
-		condition, found := kpackCondition(cur, kpackReadyCondition)
-		if found {
-			switch condition.Status {
-			case corev1.ConditionTrue:
-				latest, _, _ := unstructured.NestedString(cur.Object, "status", "latestImage")
-				if latest == "" {
-					return Result{}, fmt.Errorf("build: kpack image %s is Ready but status.latestImage is empty", key.Name)
-				}
-				return Result{Image: canonicalKpackImage(o, latest)}, nil
-			case corev1.ConditionFalse:
-				return Result{}, fmt.Errorf("build: kpack image %s failed: %s", key.Name, kpackFailureMessage(wctx, o.Client, cur, condition))
-			}
-		}
-		select {
-		case <-wctx.Done():
-			return Result{}, fmt.Errorf("build: kpack image %s did not finish within %s", key.Name, buildTimeout)
-		case <-ticker.C:
+			return Observation{Phase: PhaseSucceeded, Image: canonicalKpackImage(o, latest)}, nil
+		case corev1.ConditionFalse:
+			return Observation{Phase: PhaseFailed, Message: kpackFailureMessage(ctx, o.Client, cur, condition)}, nil
 		}
 	}
+	return Observation{Phase: PhaseBuilding}, nil
 }
 
 // canonicalKpackImage maps the HTTP-only in-cluster alias back to the operator's
@@ -484,29 +466,29 @@ func buildLabels(o Options) map[string]string {
 	return labels
 }
 
-func cancelActiveKpackImages(ctx context.Context, name, appUID, namespace string, cl client.Client) error {
+// activeAppKpackImages counts this App's non-terminal kpack Images (the kpack
+// half of ActiveAppBuilds), selected by the app-build + UID labels. UID-scoping
+// (round-5 finding 5) keeps a same-named App in another workspace from being
+// counted, since the build namespace is shared.
+func activeAppKpackImages(ctx context.Context, name, appUID, namespace string, cl client.Client) (int, error) {
 	sel := client.MatchingLabels{"app.bex.co/build": name}
-	if appUID != "" { // finding 5: UID-scope (rationale in CancelActiveBuilds)
+	if appUID != "" {
 		sel[execution.LabelAppUID] = appUID
 	}
 	images := newKpackImageList()
 	if err := cl.List(ctx, images, client.InNamespace(namespace), sel); err != nil {
-		// The Dockerfile path remains usable before kpack is installed.
 		if apierrors.IsNotFound(err) || strings.Contains(err.Error(), "no matches for kind") {
-			return nil
+			return 0, nil
 		}
-		return fmt.Errorf("list kpack builds for %s: %w", name, err)
+		return 0, fmt.Errorf("list app kpack builds for %s: %w", name, err)
 	}
+	active := 0
 	for i := range images.Items {
-		image := &images.Items[i]
-		if kpackImageTerminal(image) {
-			continue
-		}
-		if err := cl.Delete(ctx, image); err != nil && !apierrors.IsNotFound(err) {
-			return fmt.Errorf("cancel kpack build %s: %w", image.GetName(), err)
+		if !kpackImageTerminal(&images.Items[i]) {
+			active++
 		}
 	}
-	return nil
+	return active, nil
 }
 
 func activeWorkspaceKpackImages(ctx context.Context, workspace, namespace string, cl client.Client) (int, error) {

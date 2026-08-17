@@ -1008,6 +1008,25 @@ type AppStatus struct {
 	// +optional
 	ReleaseGeneration int64 `json:"releaseGeneration,omitempty"`
 
+	// ReleaseArtifactFingerprint is the artifact identity of the in-flight release
+	// (the one whose build is running), pinned alongside ReleaseFingerprint at
+	// dispatch. While a build runs, a newer push is coalesced into the pending slot
+	// and the release identity stays pinned to the running build (ADR060 §D1a
+	// run-to-completion); this field lets the completing build record its resolved
+	// artifact with the correct fingerprint rather than the coalesced newer spec's,
+	// which would otherwise make the next generation falsely reuse this image. It
+	// holds a one-way digest only, never Secret contents.
+	// +optional
+	ReleaseArtifactFingerprint string `json:"releaseArtifactFingerprint,omitempty"`
+
+	// PendingReleaseGeneration is the newest requested release generation coalesced
+	// while a build is in flight (0 = none). It is observability + SLI bookkeeping:
+	// the pending spec itself remains the source of truth and is picked up once the
+	// in-flight build completes and the release advances (ADR060 §D1a latest-pending
+	// slot).
+	// +optional
+	PendingReleaseGeneration int64 `json:"pendingReleaseGeneration,omitempty"`
+
 	// SandboxID is the runtime handle of the active revision (OpenSandbox sandbox id).
 	// +optional
 	SandboxID string `json:"sandboxID,omitempty"`
