@@ -3325,13 +3325,22 @@ func (r *AppReconciler) reconcileExecutionNetworkPolicy(ctx context.Context, app
 	np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: buildNS}}
 	ws := app.Labels[labelWorkspace]
 	if ws == "" {
-		return client.IgnoreNotFound(r.buildPlaneClient().Delete(ctx, np))
+		// Owner-gated like the finalizer's delete (round 12, finding 1): the
+		// shared build namespace can hold a same-named App's policy, which a
+		// bare Delete would tear down cross-workspace.
+		identity := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+			Workspace: ws, Namespace: app.Namespace}
+		_, err := deleteOwnedObject(ctx, r.buildPlaneClient(), buildNS, name, &networkingv1.NetworkPolicy{}, identity)
+		return client.IgnoreNotFound(err)
 	}
 	scopeSelector := map[string]string{labelWorkspace: ws}
 	if env := app.Labels[labelNetworkIsolation]; env != "" {
 		scopeSelector = map[string]string{labelNetworkIsolation: env}
 	}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), np, func() error {
+		if err := checkOwnedArtifact(np, app); err != nil {
+			return err
+		}
 		np.Labels = artifactLabels(app, "execution-network-policy")
 		np.Spec = networkingv1.NetworkPolicySpec{
 			// round-5 finding 8: the build namespace is shared, so selecting source
@@ -3474,17 +3483,19 @@ func (r *AppReconciler) reclaimAppExecution(ctx context.Context, app *appv1alpha
 			// Delete only a Secret this App owns; a same-named foreign/platform
 			// Secret in the shared build namespace must survive the finalizer
 			// (codex-security #5 — the loop used to delete by name, no owner check).
-			done, deleteErr := deleteOwnedSecret(ctx, cl, namespace, name, identity)
+			done, deleteErr := deleteOwnedObject(ctx, cl, namespace, name, &corev1.Secret{}, identity)
 			pending = pending || !done
 			if deleteErr != nil {
 				errs = append(errs, fmt.Errorf("delete copied build Secret %s: %w", name, deleteErr))
 			}
 		}
 	}
-	execPolicy := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{
-		Name: build.JobName(app.Name, "execution-egress"), Namespace: namespace,
-	}}
-	if done, deleteErr := deleteAndWait(ctx, cl, execPolicy); deleteErr != nil {
+	// round 12, finding 1: the execution NetworkPolicy name derives from the
+	// workspace-local App name and lives in the shared build namespace, so the
+	// bare deleteAndWait below would also remove a SAME-NAMED App's policy in
+	// another workspace. Gate on the artifact ownership labels like the Secrets.
+	execPolicyName := build.JobName(app.Name, "execution-egress")
+	if done, deleteErr := deleteOwnedObject(ctx, cl, namespace, execPolicyName, &networkingv1.NetworkPolicy{}, identity); deleteErr != nil {
 		errs = append(errs, fmt.Errorf("delete execution NetworkPolicy: %w", deleteErr))
 	} else {
 		pending = pending || !done
@@ -3492,28 +3503,29 @@ func (r *AppReconciler) reclaimAppExecution(ctx context.Context, app *appv1alpha
 	return pending, errors.Join(errs...)
 }
 
-// deleteOwnedSecret deletes a Secret at namespace/name only if it belongs to the
-// given App identity (the artifactLabels UID). A foreign or platform Secret that
-// happens to share the App-controlled name is left untouched. NotFound and
-// not-owned are both "done" (true, nothing to wait on); false means a delete was
-// issued and the caller should requeue to observe it settle — the same semantics
-// as deleteAndWait, plus the ownership gate the finalizer loop lacked
-// (codex-security #5).
-func deleteOwnedSecret(ctx context.Context, cl client.Client, namespace, name string, identity execution.ArtifactIdentity) (bool, error) {
-	sec := &corev1.Secret{}
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, sec); err != nil {
+// deleteOwnedObject deletes the named object in namespace only if it belongs to
+// the given App identity (the artifactLabels UID). A foreign or platform object
+// that happens to share the App-controlled name — possible in the SHARED build
+// namespace, where object names derive from the workspace-local App name — is
+// left untouched. NotFound and not-owned are both "done" (true, nothing to wait
+// on); false means a delete was issued and the caller should requeue to observe
+// it settle — the same semantics as deleteAndWait, plus the ownership gate
+// (codex-security #5; extended to the execution NetworkPolicy and the
+// build-namespace reg-pull mirror in codex-security round 12, finding 1).
+func deleteOwnedObject(ctx context.Context, cl client.Client, namespace, name string, obj client.Object, identity execution.ArtifactIdentity) (bool, error) {
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, obj); err != nil {
 		if apierrors.IsNotFound(err) {
 			return true, nil
 		}
 		return false, err
 	}
-	if !identity.Owns(sec) {
-		return true, nil // not ours — leave a foreign/platform Secret intact
+	if !identity.Owns(obj) {
+		return true, nil // not ours — leave a foreign/platform object intact
 	}
-	if !sec.GetDeletionTimestamp().IsZero() {
+	if !obj.GetDeletionTimestamp().IsZero() {
 		return false, nil
 	}
-	if err := cl.Delete(ctx, sec); err != nil && !apierrors.IsNotFound(err) {
+	if err := cl.Delete(ctx, obj); err != nil && !apierrors.IsNotFound(err) {
 		return false, err
 	}
 	return false, nil
@@ -3600,8 +3612,14 @@ func (r *AppReconciler) revokeAppRegistryCredentials(ctx context.Context, app *a
 		pending = pending || !done
 	}
 	if namespace != app.Namespace {
-		buildPullSec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: pullSec.Name, Namespace: namespace}}
-		if done, deleteErr := deleteAndWait(ctx, cl, buildPullSec); deleteErr != nil {
+		// round 12, finding 1: the build-namespace reg-pull mirror carries the
+		// same workspace-local App name and a same-named App in another
+		// workspace builds and pulls with the object mirrored here — the bare
+		// deleteAndWait would revoke ITS credential too. Gate on ownership.
+		identity := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+			Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
+		done, deleteErr := deleteOwnedObject(ctx, cl, namespace, pullSec.Name, &corev1.Secret{}, identity)
+		if deleteErr != nil {
 			errs = append(errs, fmt.Errorf("delete build-namespace registry Secret: %w", deleteErr))
 		} else {
 			pending = pending || !done

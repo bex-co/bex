@@ -111,6 +111,20 @@ type Service struct {
 	Databases DatabaseIndex
 	KeyValues KeyValueIndex
 	EnvGroups EnvGroupIndex
+	// MaxGroupings is the workspace's durable grouping quota
+	// (BEX_MAX_BLUEPRINT_GROUPINGS, default 1000) — the same abuse bound the
+	// Blueprint apply loop enforces, applied to DIRECT environment creates too
+	// (codex-security round 12, finding 5). 0 disables, matching the Blueprint
+	// path.
+	MaxGroupings int
+}
+
+// groupingQuotaStore is the optional store capability behind the direct-create
+// grouping quota: it runs the workspace's durable grouping count and the
+// insert in ONE transaction, so concurrent creates cannot race past the cap
+// the way a count-then-insert would. *store.PGStore satisfies it structurally.
+type groupingQuotaStore interface {
+	RunGroupingTx(ctx context.Context, fn func(store.GroupingStore) error) error
 }
 
 // ErrEnvironmentsUnavailable is returned when the control-plane store is not
@@ -521,6 +535,31 @@ func (s *Service) create(ctx context.Context, projectID, name string) (store.Env
 	p, err := s.requireProject(ctx, core.RelCanCreate, projectID)
 	if err != nil {
 		return store.Environment{}, err
+	}
+	// codex-security round 12, finding 5: direct creates share the Blueprint
+	// grouping quota, counted against the project's OWN workspace. Transactional
+	// (count + insert in one tx) when the store offers the runner; a store
+	// without it falls back to the plain create (test fakes) — the production
+	// store always has it.
+	if runner, ok := s.Store.(groupingQuotaStore); ok && s.MaxGroupings > 0 {
+		var e store.Environment
+		err := runner.RunGroupingTx(ctx, func(g store.GroupingStore) error {
+			_, environments, err := g.CountWorkspaceGroupings(ctx, p.TenantID)
+			if err != nil {
+				return err
+			}
+			if environments >= s.MaxGroupings {
+				return core.NewConflictError("BLUEPRINT_GROUPING_LIMIT",
+					fmt.Sprintf("workspace already has the maximum number of environments (%d); remove unused environments or raise the limit", s.MaxGroupings),
+					map[string]any{"ownerId": p.TenantID, "limit": s.MaxGroupings})
+			}
+			e, err = g.CreateEnvironment(ctx, p.ID, p.TenantID, name)
+			return err
+		})
+		if err != nil {
+			return store.Environment{}, store.MapError(err)
+		}
+		return e, nil
 	}
 	e, err := s.Store.CreateEnvironment(ctx, p.ID, p.TenantID, name)
 	if err != nil {

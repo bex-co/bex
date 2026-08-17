@@ -102,21 +102,21 @@ func TestDeleteOwnedSecretLeavesForeignSecretIntact(t *testing.T) {
 	ctx := context.Background()
 
 	// A foreign secret is left intact (done=true — nothing to wait on).
-	if done, err := deleteOwnedSecret(ctx, cl, "bex-build", "web-clone", web); err != nil || !done {
-		t.Fatalf("deleteOwnedSecret(foreign) = done=%v err=%v; want done=true, nil", done, err)
+	if done, err := deleteOwnedObject(ctx, cl, "bex-build", "web-clone", &corev1.Secret{}, web); err != nil || !done {
+		t.Fatalf("deleteOwnedObject(foreign) = done=%v err=%v; want done=true, nil", done, err)
 	}
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "bex-build", Name: "web-clone"}, &corev1.Secret{}); err != nil {
 		t.Fatalf("foreign secret should survive the finalizer, got %v", err)
 	}
 	// An owned secret is deleted (done=false — delete issued).
-	if done, err := deleteOwnedSecret(ctx, cl, "bex-build", "web-env", web); err != nil || done {
-		t.Fatalf("deleteOwnedSecret(own) = done=%v err=%v; want done=false, nil", done, err)
+	if done, err := deleteOwnedObject(ctx, cl, "bex-build", "web-env", &corev1.Secret{}, web); err != nil || done {
+		t.Fatalf("deleteOwnedObject(own) = done=%v err=%v; want done=false, nil", done, err)
 	}
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "bex-build", Name: "web-env"}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
 		t.Fatalf("own secret should be deleted, got %v", err)
 	}
 	// A missing secret is a clean no-op (done=true).
-	if done, err := deleteOwnedSecret(ctx, cl, "bex-build", "never-existed", web); err != nil || !done {
-		t.Fatalf("deleteOwnedSecret(missing) = done=%v err=%v; want done=true, nil", done, err)
+	if done, err := deleteOwnedObject(ctx, cl, "bex-build", "never-existed", &corev1.Secret{}, web); err != nil || !done {
+		t.Fatalf("deleteOwnedObject(missing) = done=%v err=%v; want done=true, nil", done, err)
 	}
 }

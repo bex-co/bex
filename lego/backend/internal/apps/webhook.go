@@ -166,6 +166,7 @@ type pushEvent struct {
 	Ref         string `json:"ref"` // e.g. refs/heads/main
 	After       string `json:"after"`
 	Deleted     bool   `json:"deleted"` // true when this push deleted the branch (git push --delete)
+	RefType     string `json:"ref_type"` // push payloads never carry one; its presence marks a delete/create-shaped body
 	DeliveryKey string `json:"-"`
 	// Installation.ID is the GitHub App installation that delivered this event —
 	// bound to exactly one workspace (w1/m65 F2), which confines an app-signed
@@ -287,6 +288,19 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		core.WriteErrStatus(w, http.StatusBadRequest, "malformed push payload")
 		return
 	}
+	// codex-security round 12, finding 10: the signature authenticates the body
+	// but NOT the X-GitHub-Event header, so a captured signed delete/create/
+	// ping body replayed with the header stripped (or set to "push") used to
+	// reach this parser, where a delete payload unmarshals into a plausible
+	// pushEvent (short ref, empty after) and could redeploy — while consuming
+	// the replay claim the legitimate event would need. Bind the body to one
+	// grammar: a real push (GitHub and Gitea alike) carries a full refs/…
+	// ref and never a ref_type; anything else is rejected BEFORE any scope
+	// resolution or claim.
+	if !isPushShapedBody(&ev) {
+		core.WriteErrStatus(w, http.StatusBadRequest, "payload shape does not match a push event")
+		return
+	}
 	ev.DeliveryKey = deliveryKey(r, body)
 	branch := strings.TrimPrefix(ev.Ref, "refs/heads/")
 	// codex #7: confine a GitHub-App-signed delivery to its installation's
@@ -344,7 +358,10 @@ func (h *GitWebhook) serveDelete(w http.ResponseWriter, r *http.Request, body []
 		core.WriteErrStatus(w, http.StatusBadRequest, "malformed delete payload")
 		return
 	}
-	if ev.RefType != "branch" {
+	if ev.RefType != "branch" || strings.HasPrefix(ev.Ref, "refs/") {
+		// ref_type must name a branch, and GitHub's delete payload carries the
+		// bare branch name — a refs/-prefixed ref is a push-shaped body replayed
+		// under the delete header (round 12, finding 10), a signed no-op.
 		core.WriteJSON(w, http.StatusOK, map[string]string{"ignored": "delete " + ev.RefType})
 		return
 	}
@@ -455,6 +472,16 @@ func isZeroSHA(sha string) bool {
 		return false
 	}
 	return strings.Trim(sha, "0") == ""
+}
+
+// isPushShapedBody reports whether the decoded body carries the mutually
+// exclusive invariants of a push payload: a full refs/… ref (GitHub and Gitea
+// both send refs/heads/<branch>, never the bare name) and no ref_type (the
+// field that marks delete/create/tag payloads). This is what prevents an
+// unsigned event-header swap from reinterpreting one signed grammar as
+// another (codex-security round 12, finding 10).
+func isPushShapedBody(ev *pushEvent) bool {
+	return ev.RefType == "" && strings.HasPrefix(ev.Ref, "refs/")
 }
 
 // recordBranchDeleted records a branch_deleted event for every App tracking the

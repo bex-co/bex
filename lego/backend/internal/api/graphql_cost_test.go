@@ -67,3 +67,40 @@ func TestValidateGraphQLComplexity(t *testing.T) {
 		t.Errorf("parse error should pass through, got %v", err)
 	}
 }
+
+// TestGraphQLPerFieldAliasBudget pins codex-security round 12, finding 4: the
+// amplification shape is ONE expensive resolver aliased many times (projects —
+// a full-workspace list with per-project enrichment per call). A document that
+// aliases a single field name past gqlMaxAliasesPerField is rejected before
+// execution even though it stays inside the total alias/field budgets, while a
+// document spreading the same alias count across DISTINCT fields passes.
+func TestGraphQLPerFieldAliasBudget(t *testing.T) {
+	var oneField strings.Builder
+	oneField.WriteString("{ ")
+	for i := 0; i < gqlMaxAliasesPerField+1; i++ {
+		fmt.Fprintf(&oneField, "p%d: projects { id } ", i)
+	}
+	oneField.WriteString("}")
+	if err := validateGraphQLComplexity(oneField.String()); err == nil {
+		t.Error("document aliasing one field past the per-field budget should be rejected")
+	}
+
+	// Distinct field names, same total alias count — diverse reads are not the
+	// amplification shape and must stay accepted.
+	var diverse strings.Builder
+	diverse.WriteString("{ ")
+	for i := 0; i < gqlMaxAliasesPerField; i++ {
+		fmt.Fprintf(&diverse, "s%d: services { id } p%d: projects { id } ", i, i)
+	}
+	diverse.WriteString("}")
+	if err := validateGraphQLComplexity(diverse.String()); err != nil {
+		t.Errorf("diverse aliased reads within budgets should pass, got %v", err)
+	}
+
+	// The per-field cap is also enforced through a fragment spread — cost can't
+	// be hidden behind fragments.
+	frag := "fragment F on Query { f1: projects { id } f2: projects { id } f3: projects { id } f4: projects { id } f5: projects { id } f6: projects { id } f7: projects { id } f8: projects { id } f9: projects { id } f10: projects { id } f11: projects { id } }"
+	if err := validateGraphQLComplexity("query { ...F } " + frag); err == nil {
+		t.Error("per-field alias budget must hold through fragment spreads")
+	}
+}

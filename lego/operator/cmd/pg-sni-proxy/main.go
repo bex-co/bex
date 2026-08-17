@@ -88,10 +88,20 @@ func init() {
 // SNI hostname `<dbname>.<domain>` is resolved at connection time. The router is
 // kept up-to-date by a controller-runtime reconciler watching Database events.
 type dbRouter struct {
-	mu      sync.RWMutex
-	domain  string                    // BEX_DB_DOMAIN, e.g. "db.bex.co"
-	table   map[string]dbRoutingEntry // dbname → exact public routing intent
-	invalid map[string]bool           // malformed CRs keep global source health false
+	mu     sync.RWMutex
+	domain string                    // BEX_DB_DOMAIN, e.g. "db.bex.co"
+	table  map[string]dbRoutingEntry // dbname → exact public routing intent
+	// hosts maps every public hostname VARIANT (rw, -pool, -ro-<replica>) to
+	// the routes that can serve it, each with its backend precomputed. resolve()
+	// is then an O(1) map hit per unauthenticated handshake instead of an
+	// O(global database count) table scan under the read lock — an unknown-SNI
+	// flood used to pay the full scan before route-scoped admission applied
+	// (codex-security round 12, finding 9; the sibling kv-sni-proxy always
+	// resolved this way). A slice per key keeps the (rare, degenerate) case
+	// where two databases claim the same host label — e.g. "x" with pooler and
+	// a database literally named "x-pool" — falling through like the scan did.
+	hosts   map[string][]hostRoute
+	invalid map[string]bool // malformed CRs keep global source health false
 }
 
 type dbRoutingEntry struct {
@@ -101,6 +111,12 @@ type dbRoutingEntry struct {
 	replicas  map[string]bool
 	allow     []netip.Prefix
 	envAllow  []netip.Prefix
+}
+
+// hostRoute is one precomputed resolution of a public hostname label.
+type hostRoute struct {
+	db      string // owning database name (route + allowlist identity)
+	backend string // resolved backend address
 }
 
 type dbRoute struct {
@@ -113,6 +129,7 @@ func newRouter(domain string) *dbRouter {
 	return &dbRouter{
 		domain:  strings.ToLower(strings.TrimSuffix(domain, ".")),
 		table:   make(map[string]dbRoutingEntry),
+		hosts:   make(map[string][]hostRoute),
 		invalid: make(map[string]bool),
 	}
 }
@@ -135,24 +152,67 @@ func (r *dbRouter) set(db *appv1alpha1.Database) error {
 	allow, envAllow, err := sniproxy.ParseAllowList(db.Spec.IPAllowList, db.Spec.EnvironmentIPAllowList)
 	if err != nil {
 		r.mu.Lock()
-		delete(r.table, db.Name)
+		r.deleteLocked(db.Name)
 		r.invalid[db.Name] = true
 		r.mu.Unlock()
 		return err
 	}
 	entry.allow, entry.envAllow = allow, envAllow
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.table[db.Name] = entry
 	delete(r.invalid, db.Name)
-	r.mu.Unlock()
+	r.indexLocked(db.Name, entry)
 	return nil
+}
+
+// indexLocked (re)builds the hostname-variant index for one database. The
+// caller holds the write lock. Every replica label resolves to the one shared
+// -ro service, so all -ro-<replica> labels carry the same backend.
+func (r *dbRouter) indexLocked(name string, entry dbRoutingEntry) {
+	r.dropIndexLocked(name)
+	add := func(label, backend string) {
+		r.hosts[label] = append(r.hosts[label], hostRoute{db: name, backend: backend})
+	}
+	add(name, fmt.Sprintf("%s-rw.%s.svc.cluster.local:5432", name, entry.namespace))
+	if entry.pooler {
+		add(name+"-pool", fmt.Sprintf("%s-pooler.%s.svc.cluster.local:5432", name, entry.namespace))
+	}
+	for replica := range entry.replicas {
+		add(name+"-ro-"+replica, fmt.Sprintf("%s-ro.%s.svc.cluster.local:5432", name, entry.namespace))
+	}
+}
+
+// dropIndexLocked removes name's variants from the hostname index, preserving
+// other databases' claims to the same labels. The caller holds the write lock.
+func (r *dbRouter) dropIndexLocked(name string) {
+	for label, routes := range r.hosts {
+		kept := routes[:0]
+		for _, rt := range routes {
+			if rt.db != name {
+				kept = append(kept, rt)
+			}
+		}
+		if len(kept) == 0 {
+			delete(r.hosts, label)
+		} else {
+			r.hosts[label] = kept
+		}
+	}
 }
 
 func (r *dbRouter) delete(name string) {
 	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.deleteLocked(name)
+}
+
+// deleteLocked drops one database's route and hostname variants. The caller
+// holds the write lock.
+func (r *dbRouter) deleteLocked(name string) {
 	delete(r.table, name)
 	delete(r.invalid, name)
-	r.mu.Unlock()
+	r.dropIndexLocked(name)
 }
 
 func (r *dbRouter) healthy() bool {
@@ -176,28 +236,19 @@ func (r *dbRouter) resolve(sni string, source netip.Addr) (dbRoute, bool) {
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	for name, entry := range r.table {
-		var backend string
-		switch {
-		case base == name:
-			backend = fmt.Sprintf("%s-rw.%s.svc.cluster.local:5432", name, entry.namespace)
-		case base == name+"-pool" && entry.pooler:
-			backend = fmt.Sprintf("%s-pooler.%s.svc.cluster.local:5432", name, entry.namespace)
-		case strings.HasPrefix(base, name+"-ro-") && entry.replicas[strings.TrimPrefix(base, name+"-ro-")]:
-			backend = fmt.Sprintf("%s-ro.%s.svc.cluster.local:5432", name, entry.namespace)
-		default:
+	// round 12, finding 9: one map hit, not a table scan. Unknown labels — the
+	// pre-authentication flood shape — resolve in O(1); allowlists (round-5
+	// finding 15) are still scanned only for the matched route, and a name the
+	// source can't use still falls through to a differently-keyed claim.
+	for _, rt := range r.hosts[base] {
+		entry, ok := r.table[rt.db]
+		if !ok {
 			continue
 		}
-		// round-5 finding 15: scan the (tenant-controlled, now count-capped)
-		// allowlist ONLY for the entry whose exact SNI name matched — a name
-		// compare is O(1), an allowlist scan is not, so the prior "check every
-		// database's allowlist on every handshake" turned cheap TLS churn into
-		// shared-proxy CPU + router-lock pressure. Fall-through is preserved: a
-		// name match the source can't use lets a differently-keyed entry still win.
 		if !sniproxy.AllowedBy(source, entry.allow) || !sniproxy.AllowedBy(source, entry.envAllow) {
 			continue
 		}
-		return dbRoute{Database: name, Workspace: entry.workspace, Backend: backend}, true
+		return dbRoute{Database: rt.db, Workspace: entry.workspace, Backend: rt.backend}, true
 	}
 	return dbRoute{}, false
 }

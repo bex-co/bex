@@ -190,6 +190,72 @@ func TestRouterResolve(t *testing.T) {
 	}
 }
 
+// TestRouterHostnameIndexIsExact pins codex-security round 12, finding 9: the
+// precomputed hostname index must track the route table exactly — variants
+// disappear when the route is deleted or re-set without them, a re-set replaces
+// (never duplicates) a database's variants, and a degenerate label claimed by
+// two databases falls through to the surviving claim. Unknown labels then cost
+// one map miss instead of an O(databases) scan under the read lock.
+func TestRouterHostnameIndexIsExact(t *testing.T) {
+	r := newRouter("db.bex.co")
+	route := func(name string, pooler bool, replicas ...string) *appv1alpha1.Database {
+		spec := appv1alpha1.DatabaseSpec{Public: true, Pooler: pooler}
+		for _, rep := range replicas {
+			spec.ReadReplicas = append(spec.ReadReplicas, appv1alpha1.DatabaseReadReplica{Name: rep})
+		}
+		return &appv1alpha1.Database{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "ns-" + name},
+			Spec:       spec,
+		}
+	}
+	src := netip.MustParseAddr("10.0.0.1")
+
+	if err := r.set(route("mydb", true, "east")); err != nil {
+		t.Fatal(err)
+	}
+	// Re-set WITHOUT pooler or replicas: the -pool and -ro- labels must be gone,
+	// not linger from the previous reconcile.
+	if err := r.set(route("mydb", false)); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := r.resolve("mydb-pool.db.bex.co", src); ok {
+		t.Error("-pool label survived a re-set that disabled the pooler")
+	}
+	if _, ok := r.resolve("mydb-ro-east.db.bex.co", src); ok {
+		t.Error("-ro-<replica> label survived a re-set that dropped the replica")
+	}
+	if _, ok := r.resolve("mydb.db.bex.co", src); !ok {
+		t.Error("rw label missing after re-set")
+	}
+
+	// Deleting one database leaves a DIFFERENT database's claim to the same
+	// degenerate label intact (db "x" with pooler vs a database named "x-pool").
+	if err := r.set(route("x", true)); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.set(route("x-pool", false)); err != nil {
+		t.Fatal(err)
+	}
+	got, ok := r.resolve("x-pool.db.bex.co", src)
+	if !ok || got.Backend != "x-pooler.ns-x.svc.cluster.local:5432" {
+		t.Fatalf("degenerate label = %v ok=%v, want x's pooler route first", got.Backend, ok)
+	}
+	r.delete("x")
+	got, ok = r.resolve("x-pool.db.bex.co", src)
+	if !ok || got.Backend != "x-pool-rw.ns-x-pool.svc.cluster.local:5432" {
+		t.Fatalf("degenerate label after delete = %v ok=%v, want x-pool's own rw route", got.Backend, ok)
+	}
+	if len(r.hosts["x-pool"]) != 1 {
+		t.Fatalf("x-pool label candidates = %v, want only x-pool's own", r.hosts["x-pool"])
+	}
+
+	// A deleted database leaves no label residue at all.
+	r.delete("mydb")
+	if len(r.hosts) != 1 { // only "x-pool" remains
+		t.Fatalf("host index after deletes = %v, want only [x-pool]", r.hosts)
+	}
+}
+
 func TestTrustedProxySourceRoutesDatabaseAllowlist(t *testing.T) {
 	router := newRouter("db.bex.co")
 	db := &appv1alpha1.Database{

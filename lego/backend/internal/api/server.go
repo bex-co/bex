@@ -603,6 +603,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Databases: pg,
 		KeyValues: kv,
 		EnvGroups: environmentEnvGroups,
+		// The direct-create grouping quota shares the Blueprint bound
+		// (codex-security round 12, finding 5).
+		MaxGroupings: d.MaxBlueprintGroupings,
 	}
 	environmentCreateResolver := environments.NewCreateResolver(environmentsSvc)
 	pg.Environments = environmentCreateResolver
@@ -722,6 +725,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Databases:    pg,
 			KeyValues:    kv,
 			Environments: &environments.ProjectMemberClearer{Service: environmentsSvc},
+			// The direct-create grouping quota shares the Blueprint bound
+			// (codex-security round 12, finding 5).
+			MaxGroupings: d.MaxBlueprintGroupings,
 		},
 		Environments:  environmentsSvc,
 		GitHub:        gh,

@@ -191,13 +191,18 @@ type AppSpec struct {
 
 	// Routes are the ordered redirect/rewrite rules a static_site applies at the
 	// edge (Render's /routes), first match wins. Ignored for every other type.
+	// Count-capped (codex-security round 12, finding 3): the shared static
+	// server linearly scans the list on every public request, so the durable
+	// per-site rule state must stay bounded.
 	// +optional
+	// +kubebuilder:validation:MaxItems=100
 	Routes []StaticRoute `json:"routes,omitempty"`
 
 	// Headers are the custom response-header rules a static_site applies at the
 	// edge (Render's /headers), scoped by request-path pattern. Ignored for every
-	// other type.
+	// other type. Count-capped like Routes (codex-security round 12, finding 3).
 	// +optional
+	// +kubebuilder:validation:MaxItems=100
 	Headers []StaticHeader `json:"headers,omitempty"`
 
 	// Repo is the git repository URL to deploy from (https://, ssh://, or git@
@@ -804,11 +809,13 @@ type StaticRoute struct {
 
 	// Source is the request path pattern to match (e.g. "/old", "/app/*").
 	// +required
+	// +kubebuilder:validation:MaxLength=2048
 	Source string `json:"source"`
 
 	// Destination is the target path ("/new", "/index.html"). A trailing "/*" in
 	// Source is appended to a Destination that ends in "/*".
 	// +required
+	// +kubebuilder:validation:MaxLength=2048
 	Destination string `json:"destination"`
 }
 
@@ -818,14 +825,17 @@ type StaticRoute struct {
 type StaticHeader struct {
 	// Path is the request path pattern the header applies to (e.g. "/*").
 	// +required
+	// +kubebuilder:validation:MaxLength=2048
 	Path string `json:"path"`
 
 	// Name is the response header name (e.g. "X-Frame-Options").
 	// +required
+	// +kubebuilder:validation:MaxLength=256
 	Name string `json:"name"`
 
 	// Value is the response header value (e.g. "DENY").
 	// +required
+	// +kubebuilder:validation:MaxLength=4096
 	Value string `json:"value"`
 }
 

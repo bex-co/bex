@@ -179,6 +179,75 @@ func newService(st EnvironmentStore) *Service {
 	return &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st}
 }
 
+// txEnvironmentStore adds the transactional grouping runner to the plain fake
+// — the capability the direct-create quota keys on (the production
+// *store.PGStore has it structurally).
+type txEnvironmentStore struct{ *fakeStore }
+
+func (t txEnvironmentStore) RunGroupingTx(ctx context.Context, fn func(store.GroupingStore) error) error {
+	return fn(fakeEnvironmentGroupings{t.fakeStore})
+}
+
+// fakeEnvironmentGroupings adapts the fake to the tx-scoped GroupingStore the
+// quota path reads; only the environment half is real, the project half inert.
+type fakeEnvironmentGroupings struct{ f *fakeStore }
+
+func (fakeEnvironmentGroupings) ListProjects(context.Context, string) ([]store.Project, error) {
+	return nil, nil
+}
+func (fakeEnvironmentGroupings) CreateProject(context.Context, string, string) (store.Project, error) {
+	return store.Project{}, nil
+}
+func (g fakeEnvironmentGroupings) ListEnvironments(ctx context.Context, projectID string) ([]store.Environment, error) {
+	return g.f.ListEnvironments(ctx, projectID)
+}
+func (g fakeEnvironmentGroupings) CreateEnvironment(ctx context.Context, projectID, tenantID, name string) (store.Environment, error) {
+	return g.f.CreateEnvironment(ctx, projectID, tenantID, name)
+}
+func (fakeEnvironmentGroupings) SetEnvironmentACL(context.Context, string, string, bool, []core.IPAllowListEntry) error {
+	return nil
+}
+func (g fakeEnvironmentGroupings) CountWorkspaceGroupings(_ context.Context, tenantID string) (int, int, error) {
+	g.f.mu.Lock()
+	defer g.f.mu.Unlock()
+	envs := 0
+	for _, e := range g.f.envs {
+		if e.TenantID == tenantID {
+			envs++
+		}
+	}
+	return 0, envs, nil
+}
+
+// TestCreateEnvironmentEnforcesGroupingQuota pins codex-security round 12,
+// finding 5: the direct environment create shares the Blueprint grouping quota
+// — counted against the PROJECT'S OWN workspace — refusing over-cap with the
+// coded BLUEPRINT_GROUPING_LIMIT error; 0 disables the bound.
+func TestCreateEnvironmentEnforcesGroupingQuota(t *testing.T) {
+	st := &txEnvironmentStore{newFakeStore()}
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	if _, err := st.CreateEnvironment(context.Background(), "prj-1", "tea-a", "production"); err != nil {
+		t.Fatal(err)
+	}
+	svc := newService(st)
+	svc.MaxGroupings = 1
+	ctx := ctxAs("user-a")
+
+	_, err := svc.Create(ctx, "prj-1", "staging")
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "BLUEPRINT_GROUPING_LIMIT" {
+		t.Fatalf("over-quota create = %v, want BLUEPRINT_GROUPING_LIMIT", err)
+	}
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("quota refusal must be conflict-class, got %v", err)
+	}
+
+	svc.MaxGroupings = 0
+	if _, err := svc.Create(ctx, "prj-1", "staging"); err != nil {
+		t.Fatalf("uncapped create: %v", err)
+	}
+}
+
 // ctxAs attaches a caller identity — every Authorize/AuthorizeOn call
 // requires one in context regardless of what the checker would answer.
 func ctxAs(subject string) context.Context {
