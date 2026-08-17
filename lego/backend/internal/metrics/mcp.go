@@ -107,7 +107,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 // list_postgres_instances/get_postgres_instance MCP shape rather than
 // get_metrics' multi-resource array).
 type getDatastoreMetricsArgs struct {
-	Resource          string   `json:"resource" jsonschema:"the Database or KeyValue name to read metrics for"`
+	Resource          string   `json:"resource" jsonschema:"the Database or KeyValue id (dpg-…/red-…) — the CR name, not the display name"`
 	Kind              string   `json:"kind,omitempty" jsonschema:"database|keyvalue (default database)"`
 	MetricTypes       []string `json:"metricTypes" jsonschema:"metric ids: disk|disk_capacity (Database or KeyValue) | db_connections|replication_lag (Database only; replication_lag is omitted until Postgres HA is enabled, w1/m22) | kv_memory|kv_connections (KeyValue only)"`
 	StartTime         string   `json:"startTime,omitempty" jsonschema:"RFC3339 start of the window"`
