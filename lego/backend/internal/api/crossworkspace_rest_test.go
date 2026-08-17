@@ -187,6 +187,7 @@ var callerScopedRoutes = map[string]bool{
 	"POST /v1/blueprints":                          true, // creates a new git-connected blueprint; workspace from request context (w2/m62)
 	"POST /v1/blueprints/validate":                 true, // validates a posted manifest, no resource
 	"POST /v1/blueprints/preview":                  true, // dry-run fetch+validate; workspace from request context, no resource
+	"POST /v1/blueprints/generate":                 true, // export manifest; each body-named resource is authorized through AuthorizeApp/Database/KeyValue against its own workspace (w8/m22)
 	"PATCH /v1/notification-settings":              true, // the caller's own notification prefs
 	"PATCH /v1/notification-settings/push":         true, // caller's own push policy; workspace and subject come from auth context
 	"DELETE /v1/notification-device-subscriptions": true, // revokes only the caller's own devices

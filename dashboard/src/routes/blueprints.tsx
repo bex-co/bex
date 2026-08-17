@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Link,
   Outlet,
@@ -16,6 +17,7 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
+import { GenerateBlueprintDialog } from "@/features/blueprints/components/generate-blueprint-dialog";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   Table,
@@ -50,6 +52,7 @@ function BlueprintsListPage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { blueprints, loading, error } = useBlueprints();
+  const [generating, setGenerating] = useState(false);
 
   const showSkeleton = loading && blueprints.length === 0;
 
@@ -57,12 +60,21 @@ function BlueprintsListPage() {
     <DashboardLayout>
       <div className="flex items-center justify-between border-b px-4 py-4 sm:px-6">
         <h1 className="text-xl font-semibold">{t("blueprints.pageTitle")}</h1>
-        <Button
-          size="sm"
-          onClick={() => void navigate({ to: "/blueprints/new" })}
-        >
-          {t("blueprints.createButton")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setGenerating(true)}
+          >
+            {t("blueprints.generateButton")}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => void navigate({ to: "/blueprints/new" })}
+          >
+            {t("blueprints.createButton")}
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
@@ -127,6 +139,9 @@ function BlueprintsListPage() {
           )}
         </div>
       </div>
+      {generating ? (
+        <GenerateBlueprintDialog open onOpenChange={setGenerating} />
+      ) : null}
     </DashboardLayout>
   );
 }
