@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -481,7 +482,7 @@ func TestKeyValueBackupNetworkPolicyRestoresJobEgress(t *testing.T) {
 		case len(rule.To) == 1 && rule.To[0].IPBlock != nil && rule.To[0].IPBlock.CIDR == "0.0.0.0/0":
 			// Object-store upload, minus in-cluster/private + metadata ranges.
 			for _, private := range []string{"10.0.0.0/8", "169.254.0.0/16"} {
-				if !containsString(rule.To[0].IPBlock.Except, private) {
+				if !slices.Contains(rule.To[0].IPBlock.Except, private) {
 					t.Fatalf("internet egress must still except %s (metadata/private): %#v", private, rule.To[0].IPBlock.Except)
 				}
 			}
@@ -495,13 +496,4 @@ func TestKeyValueBackupNetworkPolicyRestoresJobEgress(t *testing.T) {
 	if len(np.OwnerReferences) != 1 || np.OwnerReferences[0].Name != kv.Name {
 		t.Fatalf("policy must be owned by its KeyValue for GC, got %#v", np.OwnerReferences)
 	}
-}
-
-func containsString(haystack []string, needle string) bool {
-	for _, s := range haystack {
-		if s == needle {
-			return true
-		}
-	}
-	return false
 }

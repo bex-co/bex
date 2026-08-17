@@ -1005,7 +1005,7 @@ func (r *AppReconciler) rejectProtectedSecretRefs(ctx context.Context, app *appv
 			return fmt.Errorf("validating secret reference %s/%s: %w", app.Namespace, name, err)
 		}
 		if sec.Labels[execution.LabelProtectedFromTenantMount] == execution.ProtectedFromTenantMount {
-			return fmt.Errorf("App references protected operator Secret %q which tenant workloads may not mount (codex F1)", name)
+			return fmt.Errorf("app references protected operator Secret %q which tenant workloads may not mount (codex F1)", name)
 		}
 	}
 	return nil

@@ -1,44 +1,57 @@
-name: go lint (backend)
+name: go lint
 
-# Enforces the backend module's golangci-lint config (lego/backend/.golangci.yml).
-# Its job today is the resource-id convention (docs/ADR020-identifiers.md): depguard
-# forbids importing github.com/rs/xid outside internal/id, so a hand-rolled id
-# ("tea-" + xid.New()…, bypassing id.New) fails CI. Fix locally with:
-#   cd lego/operator && make lint-backend
+# Runs `make lint` from lego/operator — golangci-lint over all four modules
+# (operator + backend + types + cli), exactly as locally. operator/backend carry
+# their own .golangci.yml; types/cli lint with the default linter set.
 #
-# golangci-lint is pinned to the same version the Makefile builds (v2.11.4). The
-# backend config uses only core linters (no custom plugin), so the standard
-# binary from `go install` suffices — the custom-plugin build is operator-only.
+# Notable enforced conventions: the backend config's depguard forbids importing
+# github.com/rs/xid outside internal/id (the resource-id convention,
+# docs/ADR020-identifiers.md — a hand-rolled id fails CI), and the operator
+# config gates line length (lll ≤120), complexity, modernization, and
+# staticcheck hygiene. Fix locally with:
+#   cd lego/operator && make lint        # check
+#   cd lego/operator && make lint-fix    # auto-fix what's fixable
+#
+# The Makefile builds its pinned custom golangci-lint (v2.11.4 + operator
+# plugins) on first use, so this job needs no separate tool install. Go comes
+# from lego/cli/go.mod (1.26): the workspace (lego/go.work) requires >= 1.26.0
+# because of the CLI's pinned upstream render-oss/cli, and a 1.26 toolchain
+# lints the 1.25.7 platform modules fine (language semantics come from each
+# module's own go directive).
 on:
   pull_request:
     paths:
+      - "lego/operator/**"
       - "lego/backend/**"
+      - "lego/types/**"
+      - "lego/cli/**"
       - ".github/workflows/go-lint.yml"
   push:
     branches: [main]
     paths:
+      - "lego/operator/**"
       - "lego/backend/**"
+      - "lego/types/**"
+      - "lego/cli/**"
       - ".github/workflows/go-lint.yml"
 
 permissions:
   contents: read
 
 jobs:
-  backend:
+  lint:
     runs-on: ubuntu-latest
-    env:
-      # GOWORK=off: lego/go.work requires go >= 1.26.0 (lego/cli) while this
-      # job installs the 1.25 line the release image ships; the backend module
-      # resolves standalone via its types/ replace (see operator-test.yml).
-      GOWORK: "off"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: lego/backend/go.mod
-          cache-dependency-path: lego/backend/go.sum
-      - name: Install golangci-lint (pinned to the Makefile version)
-        run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.4
-      - name: Lint backend (id convention + config)
-        working-directory: lego/backend
-        run: golangci-lint run
+          go-version-file: lego/cli/go.mod
+          cache-dependency-path: |
+            lego/go.work.sum
+            lego/cli/go.sum
+            lego/operator/go.sum
+            lego/backend/go.sum
+            lego/types/go.sum
+      - name: make lint (operator + backend + types + cli)
+        working-directory: lego/operator
+        run: make lint

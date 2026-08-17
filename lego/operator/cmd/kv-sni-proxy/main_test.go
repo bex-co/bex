@@ -236,14 +236,14 @@ func TestHandleConnRejectsSaturatedSourceWithoutDialing(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = backendListener.Close() }()
-	var backendDials int64
+	var backendDials atomic.Int64
 	go func() {
 		for {
 			conn, acceptErr := backendListener.Accept()
 			if acceptErr != nil {
 				return
 			}
-			atomic.AddInt64(&backendDials, 1)
+			backendDials.Add(1)
 			_ = conn.Close()
 		}
 	}()
@@ -293,7 +293,7 @@ func TestHandleConnRejectsSaturatedSourceWithoutDialing(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("handleConn did not return after a per-source rejection")
 	}
-	if got := atomic.LoadInt64(&backendDials); got != 0 {
+	if got := backendDials.Load(); got != 0 {
 		t.Fatalf("backend dials = %d, want 0 (rejection must skip the dial)", got)
 	}
 	if got := gatheredCounter(t, registry, "bex_kv_proxy_connections_rejected_total"); got != 1 {

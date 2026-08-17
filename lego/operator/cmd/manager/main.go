@@ -135,7 +135,8 @@ func parseManagerConfig() managerConfig {
 	flag.StringVar(&cfg.webhookCertKey, "webhook-cert-key", "tls.key", "The name of the webhook key file.")
 	flag.StringVar(&cfg.metricsCertPath, "metrics-cert-path", "",
 		"The directory that contains the metrics server certificate.")
-	flag.StringVar(&cfg.metricsCertName, "metrics-cert-name", "tls.crt", "The name of the metrics server certificate file.")
+	flag.StringVar(&cfg.metricsCertName, "metrics-cert-name", "tls.crt",
+		"The name of the metrics server certificate file.")
 	flag.StringVar(&cfg.metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&cfg.enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
@@ -158,7 +159,9 @@ func parseManagerConfig() managerConfig {
 		// to boot becomes an empty suffix, which silently deletes platform hosting
 		// for every App. That is what happened on 2026-08-16 (815e003b).
 		if errors.Is(err, hostingdomain.ErrUnlistedSharedSuffix) {
-			setupLog.Info("WARNING: BEX_BASE_DOMAIN is not a private Public Suffix in this build; enabling shared platform hosts anyway. Cross-tenant cookie isolation is not browser-enforced until this suffix is in the PSL — submit onbex.co to publicsuffix/list",
+			setupLog.Info("WARNING: BEX_BASE_DOMAIN is not a private Public Suffix in this build; "+
+				"enabling shared platform hosts anyway. Cross-tenant cookie isolation is not browser-enforced "+
+				"until this suffix is in the PSL — submit onbex.co to publicsuffix/list",
 				"baseDomain", cfg.baseDomain, "reason", err.Error())
 		} else {
 			setupLog.Error(err, "unsafe shared tenant hosting suffix")
@@ -196,7 +199,8 @@ func buildServerOptions(cfg managerConfig) (webhook.Server, metricsserver.Option
 
 	if len(cfg.webhookCertPath) > 0 {
 		setupLog.Info("Initializing webhook certificate watcher using provided certificates",
-			"webhook-cert-path", cfg.webhookCertPath, "webhook-cert-name", cfg.webhookCertName, "webhook-cert-key", cfg.webhookCertKey)
+			"webhook-cert-path", cfg.webhookCertPath, "webhook-cert-name", cfg.webhookCertName,
+			"webhook-cert-key", cfg.webhookCertKey)
 
 		webhookServerOptions.CertDir = cfg.webhookCertPath
 		webhookServerOptions.CertName = cfg.webhookCertName
@@ -220,10 +224,12 @@ func buildServerOptions(cfg managerConfig) (webhook.Server, metricsserver.Option
 		metricsServerOptions.FilterProvider = filters.WithAuthenticationAndAuthorization
 	}
 
-	// Without a certificate, controller-runtime auto-generates self-signed metrics-server certificates — not recommended for production.
+	// Without a certificate, controller-runtime auto-generates self-signed
+	// metrics-server certificates — not recommended for production.
 	if len(cfg.metricsCertPath) > 0 {
 		setupLog.Info("Initializing metrics certificate watcher using provided certificates",
-			"metrics-cert-path", cfg.metricsCertPath, "metrics-cert-name", cfg.metricsCertName, "metrics-cert-key", cfg.metricsCertKey)
+			"metrics-cert-path", cfg.metricsCertPath, "metrics-cert-name", cfg.metricsCertName,
+			"metrics-cert-key", cfg.metricsCertKey)
 
 		metricsServerOptions.CertDir = cfg.metricsCertPath
 		metricsServerOptions.CertName = cfg.metricsCertName
@@ -247,7 +253,8 @@ func main() {
 		HealthProbeBindAddress: cfg.probeAddr,
 		LeaderElection:         cfg.enableLeaderElection,
 		LeaderElectionID:       "36450c48.bex.co",
-		// LeaderElectionReleaseOnCancel: true, // voluntary step-down on stop; only safe when the binary exits immediately after the manager stops.
+		// LeaderElectionReleaseOnCancel: true, // voluntary step-down on stop;
+		// only safe when the binary exits immediately after the manager stops.
 	})
 	if err != nil {
 		setupLog.Error(err, "Failed to start manager")
@@ -308,7 +315,9 @@ func main() {
 // setupAppReconciler constructs and registers the App reconciler (and, when
 // per-App registry credentials are active, the sandbox-namespace registry
 // reconciler).
-func setupAppReconciler(mgr ctrl.Manager, uncachedClient client.Client, cs *kubernetes.Clientset, appsNamespace, baseDomain string) {
+func setupAppReconciler(
+	mgr ctrl.Manager, uncachedClient client.Client, cs *kubernetes.Clientset, appsNamespace, baseDomain string,
+) {
 	activatorPort := envInt("BEX_ACTIVATOR_PORT", 8888)
 	appReconciler := &controller.AppReconciler{
 		Client:                  mgr.GetClient(),

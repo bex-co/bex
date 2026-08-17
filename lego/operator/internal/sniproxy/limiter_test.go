@@ -101,7 +101,7 @@ func TestLimiterRouteCapsPreserveOtherTenantCapacity(t *testing.T) {
 	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-b"); !ok || scope != "" {
 		t.Fatalf("second resource in workspace rejected: scope=%q", scope)
 	}
-	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-c"); ok || scope != "workspace" {
+	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-c"); ok || scope != scopeWorkspace {
 		t.Fatalf("workspace admission = (%q, %v), want workspace rejection", scope, ok)
 	}
 	if _, scope, ok := l.AcquireRoute("tea-b", "tea-b/dpg-a"); !ok || scope != "" {
@@ -113,7 +113,7 @@ func TestLimiterRouteCapsPreserveOtherTenantCapacity(t *testing.T) {
 		t.Fatalf("route rejected after release: scope=%q", scope)
 	}
 	releaseA() // double release must not create capacity.
-	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-d"); ok || scope != "workspace" {
+	if _, scope, ok := l.AcquireRoute("tea-a", "tea-a/dpg-d"); ok || scope != scopeWorkspace {
 		t.Fatalf("double release leaked workspace capacity: scope=%q ok=%v", scope, ok)
 	}
 }
@@ -135,11 +135,11 @@ func TestServeShedsBeyondGlobalCapWithoutDispatch(t *testing.T) {
 
 	started := make(chan struct{}, 8)
 	release := make(chan struct{})
-	var handled int64
-	ctx, cancel := context.WithCancel(context.Background())
+	var handled atomic.Int64
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go Serve(ctx, ln, limiter, meter, func(c net.Conn) {
-		atomic.AddInt64(&handled, 1)
+		handled.Add(1)
 		started <- struct{}{}
 		<-release
 		_ = c.Close()
@@ -174,7 +174,7 @@ func TestServeShedsBeyondGlobalCapWithoutDispatch(t *testing.T) {
 		t.Fatal("shed connection was dispatched to a handler goroutine")
 	case <-time.After(100 * time.Millisecond):
 	}
-	if got := atomic.LoadInt64(&handled); got != 2 {
+	if got := handled.Load(); got != 2 {
 		t.Fatalf("handled = %d, want 2 (the third was shed)", got)
 	}
 	if got := testutil.ToFloat64(meter.rejected.WithLabelValues("global")); got != 1 {

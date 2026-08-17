@@ -105,6 +105,12 @@ func TestBuildJobShape(t *testing.T) {
 	o := opts()
 	j := BuildJob(o, o.ImageRef())
 
+	assertBuildJobMeta(t, o, j)
+	assertBuildJobContainers(t, o, j)
+}
+
+func assertBuildJobMeta(t *testing.T, o Options, j *batchv1.Job) {
+	t.Helper()
 	if j.Namespace != "default" || j.Name != "bld-hello-gen-7" {
 		t.Fatalf("job meta = %s/%s", j.Namespace, j.Name)
 	}
@@ -149,6 +155,11 @@ func TestBuildJobShape(t *testing.T) {
 	if j.Spec.Template.Annotations["cluster-autoscaler.kubernetes.io/safe-to-evict"] != "false" {
 		t.Errorf("build pod must opt out of cluster-autoscaler eviction, annotations = %v", j.Spec.Template.Annotations)
 	}
+}
+
+func assertBuildJobContainers(t *testing.T, o Options, j *batchv1.Job) {
+	t.Helper()
+	pod := j.Spec.Template.Spec
 	if got := contNames(pod.InitContainers); strings.Join(got, ",") != "clone,buildkit" {
 		t.Fatalf("init containers = %v, want clone,buildkit", got)
 	}

@@ -35,10 +35,7 @@ type cache struct {
 }
 
 func newCache(budget int64) *cache {
-	perSiteBudget := budget
-	if perSiteBudget > 32<<20 {
-		perSiteBudget = 32 << 20
-	}
+	perSiteBudget := min(budget, 32<<20)
 	return &cache{
 		budget:        budget,
 		perSiteBudget: perSiteBudget,
