@@ -24,8 +24,9 @@ projects-to-deploy
 !ports.env
 .playwright-mcp
 
-# `cli/` is the checked-in import-based bex launcher. Do not use this path for
-# an untracked Render CLI checkout; use a temporary directory or RENDER_BIN.
+# `lego/cli/` is the checked-in import-based bex launcher. Do not use that
+# path for an untracked Render CLI checkout; use a temporary directory or
+# RENDER_BIN.
 
 # Python bytecode caches
 __pycache__/

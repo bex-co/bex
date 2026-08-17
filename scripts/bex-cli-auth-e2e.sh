@@ -71,7 +71,7 @@ create_identity() {
 
 if [ -z "$BEX_BIN" ]; then
   BEX_BIN="$TMP/bex"
-  (cd cli && go build -o "$BEX_BIN" .)
+  (cd lego/cli && go build -o "$BEX_BIN" .)
 fi
 BEX_BIN="$(cd "$(dirname "$BEX_BIN")" && pwd)/$(basename "$BEX_BIN")"
 [ -x "$BEX_BIN" ] || fail "BEX_BIN is not executable"

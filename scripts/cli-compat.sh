@@ -56,7 +56,7 @@ if [ "${1:-}" = "services-parity-self-test" ]; then
 fi
 
 [ -f "$CLI_KEY_ENV" ] || { echo "error: $CLI_KEY_ENV missing — run: bash .pm/w9/dev-9/bootstrap-key.sh" >&2; exit 1; }
-[ -x "$RENDER_BIN" ] || { echo "error: $RENDER_BIN missing — run: (cd cli && go build -o ../$RENDER_BIN .)" >&2; exit 1; }
+[ -x "$RENDER_BIN" ] || { echo "error: $RENDER_BIN missing — run: (cd lego/cli && go build -o ../../$RENDER_BIN .)" >&2; exit 1; }
 # shellcheck disable=SC1090
 source "$CLI_KEY_ENV"
 

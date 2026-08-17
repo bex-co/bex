@@ -53,7 +53,7 @@ func verifySignature(checksums, sigBundle []byte) error {
 		return fmt.Errorf("parse signature bundle: %w", err)
 	}
 
-	verifier, err := verify.NewSignedEntityVerifier(trustedRoot,
+	verifier, err := verify.NewVerifier(trustedRoot,
 		verify.WithSignedCertificateTimestamps(1),
 		verify.WithTransparencyLog(1),
 		verify.WithObserverTimestamps(1),

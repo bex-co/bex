@@ -58,12 +58,12 @@ jobs:
           ref: ${{ github.sha }}
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: cli/go.mod
-          cache-dependency-path: cli/go.sum
+          go-version-file: lego/cli/go.mod
+          cache-dependency-path: lego/cli/go.sum
       - name: validate upstream import pin
         run: bash scripts/bex-cli-validate.sh
       - name: test launcher
-        working-directory: cli
+        working-directory: lego/cli
         run: go test ./...
       - name: test Bex device-flow adapter
         working-directory: lego/backend

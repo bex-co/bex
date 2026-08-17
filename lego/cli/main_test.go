@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	defer os.RemoveAll(dir)
+	defer func() { _ = os.RemoveAll(dir) }()
 
 	bexBinary = filepath.Join(dir, "bex")
 	build := exec.Command("go", "build",

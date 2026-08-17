@@ -20,6 +20,10 @@ on:
     branches: [main]
     paths:
       - "lego/**"
+      # The CLI (lego/cli/) ships as user-installed binaries via the
+      # bex-cli/v* tag train (cli-release.yml), not via the platform image —
+      # its commits must not trigger a production platform redeploy.
+      - "!lego/cli/**"
       - "dashboard/**"
       - "deploy/opensandbox/**"
       - "deploy/gitops/**"

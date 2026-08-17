@@ -22,19 +22,19 @@ brew install bex-co/tap/bex     # upgrades later via: brew upgrade bex
 
 Confirm the install with `bex -v` — it prints bex's release version (e.g. `bex v0.1.0 (Render CLI v2.22.0 compatible)`) and tells you when a newer release exists.
 
-Both channels consume the [`bex-cli/v*` GitHub releases](https://github.com/bex-co/bex/releases); every release ships four platform archives, `checksums.txt`, and a keyless cosign signature bundle — the provenance-verification command is in the [Bex CLI guide](../docs/bex-cli.md). Windows is not currently built; use WSL.
+Both channels consume the [`bex-cli/v*` GitHub releases](https://github.com/bex-co/bex/releases); every release ships four platform archives, `checksums.txt`, and a keyless cosign signature bundle — the provenance-verification command is in the [Bex CLI guide](../../docs/bex-cli.md). Windows is not currently built; use WSL.
 
 ## Install from a checkout (contributors)
 
 Install the Go version declared in [`go.mod`](go.mod), then build:
 
 ```bash
-cd cli
-go build -o ../bin/bex .
-../bin/bex --help
+cd lego/cli
+go build -o ../../bin/bex .
+../../bin/bex --help
 ```
 
-To make it available on your `PATH`, move or copy `../bin/bex` into a directory already on `PATH`.
+To make it available on your `PATH`, move or copy `../../bin/bex` into a directory already on `PATH`.
 
 ## Use
 
@@ -63,6 +63,6 @@ To update, replace the binary with the newer release:
 - **Homebrew:** `brew update && brew upgrade bex`.
 - **From a checkout:** `git pull`, then rebuild with the same `go build` above (such builds report `vdev` and never check for updates).
 
-Maintainer knobs live elsewhere: the pinned upstream version and its bump procedure in [`UPSTREAM_RENDER_CLI.md`](UPSTREAM_RENDER_CLI.md), and release-version injection (`BEX_CLI_VERSION` → `scripts/bex-cli-build.sh`, tagged `bex-cli/vX.Y.Z`) in the [Bex CLI guide](../docs/bex-cli.md).
+Maintainer knobs live elsewhere: the pinned upstream version and its bump procedure in [`UPSTREAM_RENDER_CLI.md`](UPSTREAM_RENDER_CLI.md), and release-version injection (`BEX_CLI_VERSION` → `scripts/bex-cli-build.sh`, tagged `bex-cli/vX.Y.Z`) in the [Bex CLI guide](../../docs/bex-cli.md).
 
-For release archives, configuration, CI credentials, and known upstream-branding limitations, use the canonical [Bex CLI guide](../docs/bex-cli.md).
+For release archives, configuration, CI credentials, and known upstream-branding limitations, use the canonical [Bex CLI guide](../../docs/bex-cli.md).

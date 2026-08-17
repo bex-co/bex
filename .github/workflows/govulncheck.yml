@@ -28,11 +28,15 @@ on:
   pull_request:
     paths:
       - "lego/**"
+      # lego/cli is the user-installed CLI (bex-cli/v* train), not part of the
+      # shipped platform image — it is outside this gate's scope.
+      - "!lego/cli/**"
       - ".github/workflows/govulncheck.yml"
   push:
     branches: [main]
     paths:
       - "lego/**"
+      - "!lego/cli/**"
       - ".github/workflows/govulncheck.yml"
 
 permissions:
@@ -70,12 +74,19 @@ jobs:
           cache: false
       - name: Install govulncheck (pinned, checksum-DB verified)
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
-      - name: Scan the Go workspace modules (fail on any reachable vuln)
+      - name: Scan the Go platform modules (fail on any reachable vuln)
+        # GOWORK=off: lego/go.work requires go >= 1.26.0 (lego/cli and its
+        # pinned upstream render-oss/cli), which would make the go command
+        # silently switch to a 1.26 toolchain and scan a stdlib the release
+        # image (golang:1.25) does not ship. Each platform module resolves
+        # standalone via its `replace …/lego/types => ../types` directive —
+        # exactly how lego/Dockerfile builds them — so disabling the workspace
+        # keeps this scan on the same stdlib production runs.
         run: |
           rc=0
           for mod in types operator backend; do
             echo "::group::govulncheck lego/$mod"
-            (cd "lego/$mod" && govulncheck ./...) || rc=1
+            (cd "lego/$mod" && GOWORK=off govulncheck ./...) || rc=1
             echo "::endgroup::"
           done
           exit $rc

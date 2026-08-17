@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Reports whether the CLI has unreleased commits: any commit touching cli/**,
-# scripts/bex-cli-*, scripts/install-bex*, or .github/workflows/cli-release.yml
+# Reports whether the CLI has unreleased commits: any commit touching
+# lego/cli/**, scripts/bex-cli-*, scripts/install-bex*, or
+# .github/workflows/cli-release.yml
 # newer than the latest bex-cli/v* tag (w4/032.md piece 1 — releasing depends
 # on this reminder, not on memory). Exit 0 with no output when up to date;
 # exit 1 with the stale commit list on stdout when a release is owed. Requires
@@ -19,7 +20,7 @@ if [[ -z "$latest_tag" ]]; then
 fi
 
 paths=(
-  "cli/**"
+  "lego/cli/**"
   "scripts/bex-cli-*"
   "scripts/install-bex*"
   ".github/workflows/cli-release.yml"

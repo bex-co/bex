@@ -38,3 +38,8 @@
 !agent-image/driver/tsconfig.json
 !agent-image/driver/package.json
 !agent-image/driver/package-lock.json
+
+# The CLI (cli/) is a user-installed binary released via the bex-cli/v* tag
+# train, not an image entrypoint — keep it out of the build context despite
+# the !**/*.go re-includes above.
+cli/

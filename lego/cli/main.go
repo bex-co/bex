@@ -11,10 +11,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/bex-co/bex/cli/internal/bridge"
-	"github.com/bex-co/bex/cli/internal/code"
-	"github.com/bex-co/bex/cli/internal/update"
-	"github.com/bex-co/bex/cli/internal/upgrade"
+	"github.com/bex-co/bex/lego/cli/internal/bridge"
+	"github.com/bex-co/bex/lego/cli/internal/code"
+	"github.com/bex-co/bex/lego/cli/internal/update"
+	"github.com/bex-co/bex/lego/cli/internal/upgrade"
 	"github.com/render-oss/cli/cmd"
 	"github.com/render-oss/cli/pkg/cfg"
 	"golang.org/x/term"
@@ -55,7 +55,7 @@ func main() {
 // printVersion prints bex's identity and, when permitted, the result of an
 // explicit (synchronous) update check against bex's own release channel.
 func printVersion(w io.Writer) {
-	fmt.Fprintf(w, "bex v%s (Render CLI v%s compatible)\n", bexVersion, cfg.Version)
+	_, _ = fmt.Fprintf(w, "bex v%s (Render CLI v%s compatible)\n", bexVersion, cfg.Version)
 	// The user asked, so no TTY gate — but CI stays silent and a dev build
 	// has nothing to compare.
 	if !update.Allowed(bexVersion, os.LookupEnv, nil) {
@@ -68,7 +68,7 @@ func printVersion(w io.Writer) {
 	if update.Newer(bexVersion, release.Version) {
 		printUpgradeHint(w, release)
 	} else {
-		fmt.Fprintln(w, "You are using the latest version")
+		_, _ = fmt.Fprintln(w, "You are using the latest version")
 	}
 }
 
@@ -108,7 +108,7 @@ func printUpdateNotice(w io.Writer, ch <-chan *update.Release) {
 }
 
 func printUpgradeHint(w io.Writer, release update.Release) {
-	fmt.Fprintf(w, "\nA new release of bex is available: v%s → v%s\n%s\n", bexVersion, release.Version, release.URL)
+	_, _ = fmt.Fprintf(w, "\nA new release of bex is available: v%s → v%s\n%s\n", bexVersion, release.Version, release.URL)
 }
 
 // latestRelease resolves the newest bex-cli release; ok is false when the

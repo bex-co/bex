@@ -32,7 +32,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/bex-co/bex/cli/internal/update"
+	"github.com/bex-co/bex/lego/cli/internal/update"
 	"github.com/spf13/cobra"
 )
 
@@ -108,7 +108,7 @@ func (u *upgrader) run() error {
 	// A package-manager-owned binary must never be overwritten out from under
 	// the manager — deflect before any network work.
 	if hint, owned := packageManagerHint(u.execPath); owned {
-		fmt.Fprint(u.stdout, hint)
+		_, _ = fmt.Fprint(u.stdout, hint)
 		return nil
 	}
 
@@ -117,11 +117,11 @@ func (u *upgrader) run() error {
 		return fmt.Errorf("resolve latest bex-cli release: %w", err)
 	}
 	if !update.Newer(u.currentVersion, release.Version) {
-		fmt.Fprintf(u.stdout, "bex is already up to date (v%s)\n", u.currentVersion)
+		_, _ = fmt.Fprintf(u.stdout, "bex is already up to date (v%s)\n", u.currentVersion)
 		return nil
 	}
 	if u.checkOnly {
-		fmt.Fprintf(u.stdout, "A new release of bex is available: v%s → v%s\n%s\nRun `bex upgrade` to install it.\n", u.currentVersion, release.Version, release.URL)
+		_, _ = fmt.Fprintf(u.stdout, "A new release of bex is available: v%s → v%s\n%s\nRun `bex upgrade` to install it.\n", u.currentVersion, release.Version, release.URL)
 		return nil
 	}
 
@@ -139,7 +139,7 @@ func (u *upgrader) run() error {
 		return err
 	}
 
-	fmt.Fprintf(u.stderr, "Downloading bex v%s (%s/%s)...\n", release.Version, u.goos, u.goarch)
+	_, _ = fmt.Fprintf(u.stderr, "Downloading bex v%s (%s/%s)...\n", release.Version, u.goos, u.goarch)
 	archive, err := u.download(archiveURL, maxDownloadBytes)
 	if err != nil {
 		return fmt.Errorf("download %s: %w", archiveName, err)
@@ -175,7 +175,7 @@ func (u *upgrader) run() error {
 	if err := replaceBinary(u.execPath, binary); err != nil {
 		return err
 	}
-	fmt.Fprintf(u.stdout, "Upgraded bex v%s → v%s\n", u.currentVersion, release.Version)
+	_, _ = fmt.Fprintf(u.stdout, "Upgraded bex v%s → v%s\n", u.currentVersion, release.Version)
 	return nil
 }
 
@@ -211,7 +211,7 @@ func httpDownload(url string, max int64) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
