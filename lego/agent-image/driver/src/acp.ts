@@ -30,6 +30,17 @@ import {
 import type { AgentDriverConfig } from "./config.js";
 
 const maximumConnectTimeoutMs = 60_000;
+const openAIBaseURLEnv = "OPENAI_BASE_URL";
+
+// codex-acp 1.4 exposes provider failures through its typed session-failure
+// extension when the client opts in. Without this capability it renders a
+// failed model exchange as ordinary assistant text and returns end_turn, which
+// can turn a blocked/direct provider request into a false-green no-op session.
+const typedSessionFailureCapabilities = {
+  jetbrains: {
+    air: { version: 1, capabilities: ["sessionFailure"] },
+  },
+};
 
 type ACPChildProcess = ChildProcessByStdio<Writable, Readable, Readable>;
 
@@ -56,6 +67,34 @@ export interface CreateSessionOptions {
   // the credential manager still holds its needles; the caller deliberately
   // forgets them after persisting a terminal verdict.
   redact: (value: unknown) => string;
+}
+
+function typedSessionFailure(
+  value: { _meta?: unknown },
+  redact: (value: unknown) => string,
+): Error | undefined {
+  const meta = value._meta;
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return;
+  const jetbrains = (meta as Record<string, unknown>).jetbrains;
+  if (!jetbrains || typeof jetbrains !== "object" || Array.isArray(jetbrains))
+    return;
+  const air = (jetbrains as Record<string, unknown>).air;
+  if (!air || typeof air !== "object" || Array.isArray(air)) return;
+  const failure = (air as Record<string, unknown>).sessionFailure;
+  if (!failure || typeof failure !== "object" || Array.isArray(failure)) return;
+  const record = failure as Record<string, unknown>;
+  if (record.severity !== "error") return;
+  const category =
+    typeof record.category === "string" ? ` (${record.category})` : "";
+  const title =
+    typeof record.title === "string" && record.title.trim()
+      ? record.title.trim()
+      : "provider exchange failed";
+  const details =
+    typeof record.details === "string" && record.details.trim()
+      ? `: ${record.details.trim().slice(0, 2_048)}`
+      : "";
+  return new Error(redact(`ACP session failed${category}: ${title}${details}`));
 }
 
 function withTimeout<T>(
@@ -177,6 +216,9 @@ export async function createSessionProvider(
 
   const client: Client = {
     async sessionUpdate(params: SessionNotification): Promise<void> {
+      if (promptInFlight) {
+        promptFailure ??= typedSessionFailure(params.update, options.redact);
+      }
       options.onUpdate(params.update);
     },
     async requestPermission(
@@ -223,6 +265,8 @@ export async function createSessionProvider(
     Readable.toWeb(child.stdout) as ReadableStream<Uint8Array>,
   );
   const connection = new ClientSideConnection(() => client, stream);
+  let promptInFlight = false;
+  let promptFailure: Error | undefined;
 
   const connectTimeoutMs = Math.min(
     config.turnTimeoutMs,
@@ -230,7 +274,11 @@ export async function createSessionProvider(
   );
   const setupCall = <T>(
     operation: Promise<T>,
-    phase: "connect" | "session load" | "session create",
+    phase:
+      | "connect"
+      | "provider routing"
+      | "session load"
+      | "session create",
   ) =>
     withTimeout(
       Promise.race([operation, terminal]),
@@ -244,11 +292,36 @@ export async function createSessionProvider(
         clientCapabilities: {
           fs: { readTextFile: false, writeTextFile: false },
           terminal: false,
+          _meta: typedSessionFailureCapabilities,
         },
         clientInfo: { name: "bex-agent-driver", version: "0.1.0" },
       }),
       "connect",
     );
+
+    // OPENAI_BASE_URL is not sufficient for codex-acp: its app-server can keep
+    // the built-in OpenAI provider and fall back to api.openai.com. Bind the
+    // pinned adapter's OpenAI slot explicitly before the session is created.
+    // The Authorization value is only the session-bound proxy placeholder; the
+    // gateway replaces it with the real BYO credential on its upstream hop.
+    if (
+      config.modelBaseUrl &&
+      config.modelBaseUrlEnvName === openAIBaseURLEnv
+    ) {
+      const placeholder = agentEnv[config.credentialEnvName];
+      if (!placeholder) {
+        throw new Error("Codex model proxy routing requires a placeholder");
+      }
+      await setupCall(
+        connection.extMethod("providers/set", {
+          providerId: "openai",
+          apiType: "openai",
+          baseUrl: config.modelBaseUrl,
+          headers: { Authorization: `Bearer ${placeholder}` },
+        }),
+        "provider routing",
+      );
+    }
 
     let sessionId: string;
     let resume: SessionProvider["resume"] = "new";
@@ -279,11 +352,24 @@ export async function createSessionProvider(
     return {
       sessionId,
       resume,
-      prompt(text: string) {
-        return Promise.race([
-          connection.prompt({ sessionId, prompt: [{ type: "text", text }] }),
-          terminal,
-        ]);
+      async prompt(text: string) {
+        promptFailure = undefined;
+        promptInFlight = true;
+        try {
+          const response = await Promise.race([
+            connection.prompt({
+              sessionId,
+              prompt: [{ type: "text", text }],
+            }),
+            terminal,
+          ]);
+          const failure =
+            promptFailure ?? typedSessionFailure(response, options.redact);
+          if (failure) throw failure;
+          return response;
+        } finally {
+          promptInFlight = false;
+        }
       },
       cancel() {
         return connection.cancel({ sessionId }).catch(() => {});

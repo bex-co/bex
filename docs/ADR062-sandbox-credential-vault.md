@@ -69,7 +69,7 @@ With the proxy live, `sessionegress` stops admitting the vendor model host from 
 
 ### D5 — Client routing: per-agent base-URL override, driver-owned
 
-Each supported agent adapter is pointed at the proxy via its native base-URL mechanism (`ANTHROPIC_BASE_URL` for claude-code-acp — which also covers the `sk-ant-oat` OAuth-token path, `OPENAI_BASE_URL` for codex-acp, the Gemini CLI equivalent), set by the driver alongside the placeholder credential. The driver's existing credential plumbing (`BEX_AGENT_MODEL_API_KEY`, `BEX_AGENT_MODEL_API_KEY_ENV`, the scrub manager) is retained; only the value it carries changes from the real key to the placeholder. An agent binary that cannot honor a base-URL override cannot join the proxy path and is not offered until it can (fail closed, per-profile).
+Each supported agent adapter is pointed at the proxy through its reviewed native provider mechanism: `ANTHROPIC_BASE_URL` for claude-code-acp (also covering the `sk-ant-oat` OAuth-token path), ACP `providers/set` for codex-acp, and the Gemini CLI base-URL equivalent. Codex is bound explicitly before `session/new` because `OPENAI_BASE_URL` alone can leave the app server on its built-in public OpenAI provider; the provider-set request supplies the exact session proxy URL and only the session placeholder as authorization. The driver's existing credential plumbing (`BEX_AGENT_MODEL_API_KEY`, `BEX_AGENT_MODEL_API_KEY_ENV`, the scrub manager) is retained; only the value it carries changes from the real key to the placeholder. An agent binary that cannot honor a base-URL override cannot join the proxy path and is not offered until it can (fail closed, per-profile).
 
 ### D6 — Phase 2 rides the same choke point: token metering
 

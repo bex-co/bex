@@ -67,6 +67,13 @@ lines.on("line", async (line) => {
   switch (message.method) {
     case "initialize":
       if (process.env.ACP_FIXTURE_HANG_INITIALIZE === "1") break;
+      if (process.env.ACP_FIXTURE_REQUIRE_TYPED_FAILURE === "1") {
+        const capabilities =
+          message.params.clientCapabilities?._meta?.jetbrains?.air?.capabilities;
+        if (!Array.isArray(capabilities) || !capabilities.includes("sessionFailure")) {
+          throw new Error("expected typed session-failure capability");
+        }
+      }
       result(message.id, {
         protocolVersion: 1,
         agentCapabilities: {
@@ -75,6 +82,21 @@ lines.on("line", async (line) => {
         agentInfo: { name: "bex-test-acp-agent", version: "1" },
       });
       break;
+    case "providers/set": {
+      const expected = process.env.ACP_FIXTURE_PROVIDER_BASE_URL;
+      if (expected && message.params.baseUrl !== expected) {
+        throw new Error("provider base URL was not bound to the model proxy");
+      }
+      if (
+        expected &&
+        message.params.headers?.Authorization !==
+          `Bearer ${process.env.OPENAI_API_KEY}`
+      ) {
+        throw new Error("provider did not receive the session placeholder");
+      }
+      result(message.id, {});
+      break;
+    }
     case "session/new":
       result(message.id, { sessionId: "fixture-session" });
       if (process.env.ACP_FIXTURE_CLOSE_INPUT_AFTER_SESSION === "1") {
@@ -96,6 +118,46 @@ lines.on("line", async (line) => {
         process.exit(23);
       }
       const sessionId = message.params.sessionId;
+      if (process.env.ACP_FIXTURE_TYPED_FAILURE === "1") {
+        update(sessionId, {
+          sessionUpdate: "session_info_update",
+          _meta: {
+            jetbrains: {
+              air: {
+                version: 1,
+                sessionFailure: {
+                  id: "fixture-retry",
+                  revision: 1,
+                  category: "transport_lost",
+                  severity: "warning",
+                  title: "model proxy transport retrying",
+                  actions: [],
+                },
+              },
+            },
+          },
+        });
+        result(message.id, {
+          stopReason: "end_turn",
+          _meta: {
+            jetbrains: {
+              air: {
+                version: 1,
+                sessionFailure: {
+                  id: "fixture-failure",
+                  revision: 1,
+                  category: "transport_lost",
+                  severity: "error",
+                  title: "model proxy transport failed",
+                  details: `near ${process.env.OPENAI_API_KEY}`,
+                  actions: [],
+                },
+              },
+            },
+          },
+        });
+        break;
+      }
       const delay = Number(process.env.ACP_FIXTURE_DELAY_MS || 0);
       if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
       update(sessionId, {
