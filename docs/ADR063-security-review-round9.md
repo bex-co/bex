@@ -3,7 +3,7 @@
 - **Status:** Accepted (remediation in place)
 - **Date:** 2026-08-15
 - **Scan:** codex-security `bex/codex-security-bex-5qGbtu` (standard single-pass static review at revision `4561a4e`; 13 findings — 2 high, 6 medium, 5 low, all high confidence)
-- **Lineage:** ninth pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR060 → ADR061 lineage. The four repeats below re-confirm standing diserrals rather than opening new ones.
+- **Lineage:** ninth pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR072 → ADR061 lineage. The four repeats below re-confirm standing diserrals rather than opening new ones.
 
 ## Summary
 

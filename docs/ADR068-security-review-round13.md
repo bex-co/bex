@@ -2,7 +2,7 @@
 
 - **Status**: Accepted (2026-08-17)
 - **Scan**: codex-security `X78KUu`, repository revision `69cdf9d7` (2026-08-17), 9 findings (1 high, 6 medium, 2 low)
-- **Lineage**: thirteenth pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR060 → ADR061 → ADR063 → ADR064 → ADR066 → ADR067 lineage
+- **Lineage**: thirteenth pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR072 → ADR061 → ADR063 → ADR064 → ADR066 → ADR067 lineage
 
 ## Summary
 
@@ -77,7 +77,7 @@ The ADR062/ADR064 proxy bounds each exchange (concurrency 32/2, request 4 MiB, r
 
 ## Re-confirmed residuals
 
-- **Finding 2 — onbex.co PSL (eighth report)**: unchanged from ADR067 #6 / ADR064 #6 / ADR063 #3 / ADR061 #4 / ADR060 #1 / ADR055 #9. `hostingdomain.ValidateSharedSuffix` correctly detects the unlisted suffix and the manager deliberately continues with a loud warning (hardening it back to fatal was tried and reverted on 2026-08-16, `815e003b` — it made the accepted risk unrepresentable and silently disabled platform hosting). The fix is the operator action: submit `onbex.co` to publicsuffix/list (`.pm/w1/050.md`).
+- **Finding 2 — onbex.co PSL (eighth report)**: unchanged from ADR067 #6 / ADR064 #6 / ADR063 #3 / ADR061 #4 / ADR072 #1 / ADR055 #9. `hostingdomain.ValidateSharedSuffix` correctly detects the unlisted suffix and the manager deliberately continues with a loud warning (hardening it back to fatal was tried and reverted on 2026-08-16, `815e003b` — it made the accepted risk unrepresentable and silently disabled platform hosting). The fix is the operator action: submit `onbex.co` to publicsuffix/list (`.pm/w1/050.md`).
 - **Finding 9 — digest-pinning inventory (sixth report)**: the KeyValue backup Job's snapshot (`valkey:<version>`), compress (`busybox:1.37`), and encrypt (`alpine:3.21` + runtime `apk add age`) stages remain tag-addressed over plaintext backup material; the upload image is pinned. Same deferral as ADR067 #8 / ADR066 #7 / ADR064 / ADR063 #12 / ADR061 #1 (ADR055 F7 family): a first-party reviewed backup helper image containing `valkey-cli` + `gzip` + `age`, digest-pinned, removes the runtime package install — tracked with the wider inventory (Dockerfile FROMs, kpack, barman, CNPG).
 
 ## Not changed (explicitly)

@@ -2,7 +2,7 @@
 
 - **Status**: Accepted (2026-08-17)
 - **Scan**: codex-security `4pPvyl`, repository revision `dfa381bb` (2026-08-17), 6 findings (1 high, 1 medium, 4 low)
-- **Lineage**: fourteenth pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR060 → ADR061 → ADR063 → ADR064 → ADR066 → ADR067 → ADR068 lineage
+- **Lineage**: fourteenth pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR072 → ADR061 → ADR063 → ADR064 → ADR066 → ADR067 → ADR068 lineage
 
 ## Summary
 

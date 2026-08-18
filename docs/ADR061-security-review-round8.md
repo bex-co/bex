@@ -1,6 +1,6 @@
 # Security review round 8: codex-security repository scan (2026-08-15)
 
-**Status:** implemented (5 of 12 fixed in place; the rest repeats or extensions of standing dispositions) · **Scope:** disposition of the 12 findings (3 high, 7 medium, 2 low) from the codex-security static repository scan `eW0p9o` against revision `4561a4e7` (HEAD). Eighth pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR060 lineage.
+**Status:** implemented (5 of 12 fixed in place; the rest repeats or extensions of standing dispositions) · **Scope:** disposition of the 12 findings (3 high, 7 medium, 2 low) from the codex-security static repository scan `eW0p9o` against revision `4561a4e7` (HEAD). Eighth pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR072 lineage.
 
 ## Round note
 

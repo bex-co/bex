@@ -2,7 +2,7 @@
 
 - **Status**: Accepted (2026-08-17)
 - **Scan**: codex-security `qVt3XO`, repository revision `9fdb394a` (2026-08-17), 10 findings (1 high, 5 medium, 4 low)
-- **Lineage**: twelfth pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR060 → ADR061 → ADR063 → ADR064 → ADR066 lineage
+- **Lineage**: twelfth pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR072 → ADR061 → ADR063 → ADR064 → ADR066 lineage
 
 ## Summary
 
@@ -75,7 +75,7 @@ The HMAC authenticates the body, but event-type selection read the unsigned `X-G
 
 ## Re-confirmed residuals
 
-- **6 (medium, accepted)** — `onbex.co` is not a browser-enforced Public Suffix, so sibling tenant origins can toss `Domain=onbex.co` cookies at each other. Seventh report (= ADR055 F9 → ADR060 1 → ADR061 4 → ADR063 3 → ADR064 → ADR066). The code already detects and warns loudly (`hostingdomain.ErrUnlistedSharedSuffix`); the fix is the PSL submission, blocked on operator action (`.pm/w1/050.md`). Startup stays deliberately non-fail-closed to avoid a self-outage.
+- **6 (medium, accepted)** — `onbex.co` is not a browser-enforced Public Suffix, so sibling tenant origins can toss `Domain=onbex.co` cookies at each other. Seventh report (= ADR055 F9 → ADR072 1 → ADR061 4 → ADR063 3 → ADR064 → ADR066). The code already detects and warns loudly (`hostingdomain.ErrUnlistedSharedSuffix`); the fix is the PSL submission, blocked on operator action (`.pm/w1/050.md`). Startup stays deliberately non-fail-closed to avoid a self-outage.
 - **8 (low, deferred)** — the Key Value backup pipeline runs mutable Valkey/BusyBox/Alpine tags and installs `age` at runtime via `apk add` in a stage that reads the plaintext RDB. Fifth report of the digest-pinning inventory deferral (ADR061 1 → ADR063 12 → ADR066 7 → ADR064), now explicitly extended to cover the age stage's runtime package install; the durable fix is the reviewed first-party backup helper ADR061 already scoped. Snapshot-stage `REDISCLI_AUTH` exposure is bounded by the same supply-chain prerequisite (upstream compromise).
 
 ## Deferred-with-evidence register (carried)
@@ -84,5 +84,5 @@ The HMAC authenticates the body, but event-type selection read the unsigned `X-G
 | --- | --- | --- |
 | OCI/Zot + static-prefix tenant identity migration | ADR055 F2/F3 | re-confirmed (finding 1) |
 | onbex.co PSL submission | ADR055 F9 | re-confirmed (finding 6, 7th) |
-| metrics-server kubelet TLS | ADR060 5 | not re-reported |
+| metrics-server kubelet TLS | ADR072 5 | not re-reported |
 | digest-pinning inventory (incl. `apk add age`) | ADR055 F7 | re-confirmed (finding 8, 5th) |

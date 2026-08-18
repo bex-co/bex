@@ -35,7 +35,7 @@ type Billing struct {
 	// Credits is the remaining promotional/purchased billing-credit balance
 	// (w5/m70): read-only display of Stripe credit grants, absent when the
 	// balance is zero or the read degrades. Granting stays operator-side
-	// (ADR049); credit never bypasses the ADR046 payment gate.
+	// (ADR071); credit never bypasses the ADR046 payment gate.
 	Credits *Credits `json:"credits,omitempty"`
 }
 

@@ -3,7 +3,7 @@
 - **Status:** Accepted (remediation in place)
 - **Date:** 2026-08-16
 - **Scan:** codex-security `bex/codex-security-bex-3w3XZc` (standard static review at revision `5ee9e8`; 20 findings — 3 high, 9 medium, 8 low, all high confidence)
-- **Lineage:** tenth pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR060 → ADR061 → ADR063 lineage.
+- **Lineage:** tenth pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR072 → ADR061 → ADR063 lineage.
 
 ## Summary
 
@@ -28,7 +28,7 @@
 | 17 | Barman controller can read/delete every Secret | low | **Fixed** — unused upstream Secret ClusterRole rule removed |
 | 18 | DNS registry names permit blind node-origin probes | low | Accepted constrained residual — repeat of ADR060/ADR061 |
 | 19 | Privileged inputs are mutable or unverified | low | **Fixed for every cited effective path** — checksums and image digests pinned; dashboard production was already digest-overridden |
-| 20 | Deploy-hook token appears in ingress request path | low | Accepted custody residual — repeat of ADR060 #4 |
+| 20 | Deploy-hook token appears in ingress request path | low | Accepted custody residual — repeat of ADR072 #4 |
 
 Fifteen findings changed code or deployment controls. One was not a distinct capability, and four are standing operational/external residuals with unchanged prerequisites.
 
@@ -122,7 +122,7 @@ Reviewed dependency updates now change the content identity explicitly. Automate
 
 ## 20 — deploy-hook token in request paths (low): accepted custody residual
 
-Unchanged repeat of ADR060 #4. Render compatibility requires the opaque hook token in the route path. It is redacted from application logs and responses; raw Traefik access logs remain node/admin custody, and Alloy drops non-tenant platform lines before Loki. Tenants cannot read raw edge logs. Moving the credential to a header would break the copy-ready webhook contract; an edge rewrite would still observe the original request target. Rotation/revocation and restricted raw-log custody remain the controls.
+Unchanged repeat of ADR072 #4. Render compatibility requires the opaque hook token in the route path. It is redacted from application logs and responses; raw Traefik access logs remain node/admin custody, and Alloy drops non-tenant platform lines before Loki. Tenants cannot read raw edge logs. Moving the credential to a header would break the copy-ready webhook contract; an edge rewrite would still observe the original request target. Rotation/revocation and restricted raw-log custody remain the controls.
 
 ## Verification
 

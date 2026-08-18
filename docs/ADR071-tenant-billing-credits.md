@@ -1,4 +1,6 @@
-# ADR049 — Tenant billing credits and privileged issuance
+# ADR071 — Tenant billing credits and privileged issuance
+
+> **Renumbered from ADR049 (2026-08-17, w6/m40).** `ADR049` was claimed by two documents; the number stays with [ADR049-render-yaml-parity.md](ADR049-render-yaml-parity.md), which carries ~3× the citations. Citations written before this date as "ADR049" may mean either document — read the context.
 
 **Status:** Proposed · 2026-08-02 · **Owner:** backend/control plane
 
