@@ -306,3 +306,44 @@ func TestGetAppCollisionFallbackResolvesActingWorkspaceOnce(t *testing.T) {
 		}
 	})
 }
+
+// TestActingTenantResolvesWithoutIdentity pins w1/m69: a background caller with
+// no request identity (the git-push webhook's Blueprint auto-sync) binds the
+// acting tenant from its durable store row, and resolveWorkspace honors it —
+// without it, the whole apply pipeline ran as nobody and created unlabeled CRs
+// in the shared namespace (round-15 scan).
+func TestActingTenantResolvesWithoutIdentity(t *testing.T) {
+	b := &Base{Workspace: aliceResolver()}
+
+	if got, ok := b.Tenant(context.Background()); ok {
+		t.Errorf("Tenant(background) = (%q, true), want ok=false", got)
+	}
+	ctx := WithActingTenant(context.Background(), "tea-a")
+	if got, ok := b.Tenant(ctx); !ok || got != "tea-a" {
+		t.Errorf("Tenant(acting tenant) = (%q, %v), want (tea-a, true)", got, ok)
+	}
+	// Agreeing named workspace is fine; the acting tenant stands in for it.
+	ctx = WithActingTenant(WithWorkspace(context.Background(), "tea-a"), "tea-a")
+	if got, err := b.resolveWorkspace(ctx); err != nil || got != "tea-a" {
+		t.Errorf("resolveWorkspace(acting + agreeing named) = (%q, %v), want (tea-a, nil)", got, err)
+	}
+	// A disagreement is a programming error — fail closed rather than pick one.
+	ctx = WithActingTenant(WithWorkspace(context.Background(), "tea-b"), "tea-a")
+	if _, err := b.resolveWorkspace(ctx); !errors.Is(err, ErrAuthzUnavailable) {
+		t.Errorf("resolveWorkspace(acting tea-a + named tea-b) err = %v, want ErrAuthzUnavailable", err)
+	}
+}
+
+// TestActingTenantYieldsToIdentity: request-shaped callers keep their identity
+// resolution even if an acting tenant is left on the context — the identity
+// path stays authoritative (w1/m69).
+func TestActingTenantYieldsToIdentity(t *testing.T) {
+	b := &Base{Workspace: aliceResolver()}
+
+	// Alice's default is tea-a; a stale acting tenant naming tea-b must NOT
+	// redirect her request.
+	ctx := WithActingTenant(aliceCtx(), "tea-b")
+	if got, err := b.resolveWorkspace(ctx); err != nil || got != "tea-a" {
+		t.Errorf("resolveWorkspace(identity + acting) = (%q, %v), want (tea-a, nil)", got, err)
+	}
+}
