@@ -66,7 +66,7 @@ limitations under the License.
 //	publish_path_changed        apps.SetPublishPath
 //	routes_changed              apps.SetRoutes
 //	headers_changed             apps.SetHeaders
-//	custom_domain_added/removed apps.Add/DeleteDomain
+//	custom_domain_added/removed/verified apps.Add/Delete/VerifyDomain
 //	notify_on_fail_changed      apps.SetNotifyOnFail/SetNotificationsToSend (w4/m21 + w3/m15, a bex-only name — Render has no dedicated event type)
 //	subdomain_policy_changed    apps.SetSubdomainPolicy         (w7/m31, a bex-only name — Render's renderSubdomainPolicy has no dedicated event type)
 //	maintenance_mode_enabled    apps.SetMaintenanceMode         (w1/m37, matching Render's webhook/audit vocabulary; audit metadata.to distinguishes enable from disable)
@@ -210,6 +210,7 @@ const (
 	TypeHeadersChanged            = "headers_changed"
 	TypeCustomDomainAdded         = "custom_domain_added"
 	TypeCustomDomainRemoved       = "custom_domain_removed"
+	TypeCustomDomainVerified      = "custom_domain_verified"
 	TypeDeployHookRegenerated     = "deploy_hook_regenerated"
 	TypeNotifyOnFailChanged       = "notify_on_fail_changed"
 	TypeSubdomainPolicyChanged    = "subdomain_policy_changed"
@@ -264,6 +265,7 @@ var eventTypes = map[string]string{
 	"apps.SetHeaders":                       TypeHeadersChanged,
 	"apps.AddDomain":                        TypeCustomDomainAdded,
 	"apps.DeleteDomain":                     TypeCustomDomainRemoved,
+	"apps.VerifyDomain":                     TypeCustomDomainVerified,
 	"secrets.SetEnvVars":                    TypeEnvVarsChanged,
 	"secrets.SetEnvVar":                     TypeEnvVarsChanged,
 	"secrets.DeleteEnvVar":                  TypeEnvVarsChanged,

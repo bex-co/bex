@@ -29,6 +29,85 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
+func TestDomainClaimMigrationRoundTrip(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	up, err := migrationsFS.ReadFile("migrations/0086_domain_claim_state.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	down, err := migrationsFS.ReadFile("migrations/0086_domain_claim_state.down.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0086_domain_claims;
+		SET LOCAL search_path TO migration_0086_domain_claims;
+		CREATE TABLE domains (
+			id text PRIMARY KEY,
+			app_id text NOT NULL,
+			host text NOT NULL UNIQUE,
+			is_primary boolean NOT NULL DEFAULT false,
+			created_at timestamptz NOT NULL DEFAULT now()
+		);
+		INSERT INTO domains (id, app_id, host) VALUES ('old', 'app', 'live.example.com');
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("apply 0086: %v", err)
+	}
+	var state string
+	var challenge *string
+	var verifiedAt *time.Time
+	if err := tx.QueryRow(ctx, `SELECT claim_state, challenge, verified_at FROM domains WHERE id = 'old'`).Scan(&state, &challenge, &verifiedAt); err != nil {
+		t.Fatal(err)
+	}
+	if state != "verified" || challenge != nil || verifiedAt == nil {
+		t.Fatalf("backfill = state %q challenge %v verifiedAt %v", state, challenge, verifiedAt)
+	}
+	// A pre-m84 replica omits the new columns after the schema lands. Its
+	// synchronous DNS proof remains the admission gate, so the rolling-safe
+	// default must accept and preserve that row as verified.
+	if _, err := tx.Exec(ctx, `INSERT INTO domains (id, app_id, host) VALUES ('rolling-old-writer', 'app', 'rolling.example.com')`); err != nil {
+		t.Fatalf("pre-m84 writer after migration: %v", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT claim_state FROM domains WHERE id = 'rolling-old-writer'`).Scan(&state); err != nil || state != "verified" {
+		t.Fatalf("pre-m84 writer state = %q err=%v, want verified", state, err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO domains (id, app_id, host, claim_state, challenge) VALUES ('new', 'app', 'pending.example.com', 'pending', 'proof')`); err != nil {
+		t.Fatalf("insert pending row: %v", err)
+	}
+	if _, err := tx.Exec(ctx, `SAVEPOINT before_unsafe_down`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, string(down)); err == nil {
+		t.Fatal("0086 down migration accepted a pending claim")
+	}
+	if _, err := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT before_unsafe_down`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM domains WHERE claim_state = 'pending'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, string(down)); err != nil {
+		t.Fatalf("safe 0086 rollback: %v", err)
+	}
+}
+
 // TestCLIRefreshMigrationRoundTrip applies and rolls back 0082 in an isolated
 // schema against real Postgres. It also guards the credential boundary: the
 // request key is fixed-width bytea and no raw inbound refresh-token column

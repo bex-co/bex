@@ -1218,7 +1218,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.domainVerified": {
     message: "已验证",
-    description: "Custom-domains status badge: TLS certificate has been issued",
+    description:
+      "Custom-domains status badge: ownership or TLS verification is complete",
   },
   "services.domainCertActive": {
     message: "已生效",
@@ -1228,7 +1229,7 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.domainPending": {
     message: "待处理",
     description:
-      "Custom-domains status badge: certificate not yet issued/serving",
+      "Custom-domains status badge: ownership or certificate is not complete",
   },
   "services.domainActionsMenu": {
     message: "打开域名操作菜单",
@@ -1306,6 +1307,10 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Toast description after a custom-domain add (async convergence)",
   },
+  "services.domainOwnershipNote": {
+    message: "请创建显示的 TXT 记录，然后重新检查所有权。",
+    description: "创建待验证自定义域名所有权声明后的提示说明",
+  },
   "services.domainDnsToggle": {
     message: "显示 DNS 配置",
     description:
@@ -1314,6 +1319,15 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.domainDnsTitle": {
     message: "DNS 配置",
     description: "Heading of the per-domain DNS-instructions panel",
+  },
+  "services.domainOwnershipGuidance": {
+    message:
+      "请先创建这条完全一致的 TXT 记录以证明所有权。验证成功前，平台不会路由此域名。",
+    description: "持久自定义域名所有权 TXT 挑战上方的说明",
+  },
+  "services.domainTrafficRecordTitle": {
+    message: "流量记录",
+    description: "所有权 TXT 记录后方 CNAME 或 ALIAS 记录的标题",
   },
   "services.domainDnsSubdomainGuidance": {
     message:
@@ -1354,11 +1368,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Toast when copying a DNS record value fails",
   },
   "services.domainAddedTitle": {
-    message: "域名已添加——请配置 DNS",
+    message: "域名声明已创建——请配置 DNS",
     description: "Title of the post-add DNS-record step in the add dialog",
   },
   "services.domainAddedDescription": {
-    message: "请在你的 DNS 服务商处创建此记录，以完成域名连接。",
+    message:
+      "请在你的 DNS 服务商处创建所有权 TXT 记录，然后重新检查以启用路由。",
     description: "Subtitle of the post-add DNS-record step in the add dialog",
   },
   "services.domainRedirectsTo": {

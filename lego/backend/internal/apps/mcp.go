@@ -490,7 +490,7 @@ type listCustomDomainsArgs struct {
 	ServiceID          string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	Cursor             string `json:"cursor,omitempty" jsonschema:"resume after this cursor; omit for the first page"`
 	Limit              int    `json:"limit,omitempty" jsonschema:"page size, 1-100 (default 20)"`
-	VerificationStatus string `json:"verificationStatus,omitempty" jsonschema:"filter by verification status: pending or verified"`
+	VerificationStatus string `json:"verificationStatus,omitempty" jsonschema:"filter by verification status: unverified/pending or verified"`
 	DomainType         string `json:"domainType,omitempty" jsonschema:"filter by domain type: apex or subdomain"`
 }
 
@@ -955,7 +955,7 @@ func (s *Service) registerAutoscalingTools(srv *mcp.Server) {
 func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_custom_domains",
-		Description: "List custom domains configured for a service. Optional verificationStatus (pending|verified) and domainType (apex|subdomain) filters narrow the result; cursor/limit page it (default 20 per page).",
+		Description: "List custom domains configured for a service. Optional verificationStatus (unverified|pending|verified; pending is the bex alias) and domainType (apex|subdomain) filters narrow the result; cursor/limit page it (default 20 per page).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listCustomDomainsArgs) (*mcp.CallToolResult, domainListResult, error) {
 		domains, err := s.ListDomains(ctx, in.ServiceID)
 		if err != nil {
@@ -988,7 +988,7 @@ func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "add_custom_domain",
-		Description: "Add a custom domain to a service. The domain must be CNAME'd to the service's platform hostname before TLS can be issued.",
+		Description: "Create a pending custom-domain claim. The result includes the exact ownership TXT record; the domain is not routed until verify_custom_domain promotes it.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
 		return customDomainResult(s.AddDomain(ctx, in.ServiceID, in.Name))
 	})
@@ -1003,7 +1003,7 @@ func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "verify_custom_domain",
-		Description: "Re-check a custom domain's DNS/certificate state now and return its fresh verification/serving status plus the DNS record to create (Render's verify). Verification is automatic on bex, so this is a re-read, not a trigger.",
+		Description: "Check a pending custom domain's exact ownership TXT record and atomically promote it into serving intent. Already-verified claims are idempotent.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
 		return customDomainResult(s.VerifyDomain(ctx, in.ServiceID, in.Name))
 	})

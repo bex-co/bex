@@ -307,7 +307,11 @@ func (m *memStore) CreateDomain(_ context.Context, appID, host string, primary b
 			return Domain{}, fmt.Errorf("domain: %w", ErrConflict)
 		}
 	}
-	d := Domain{ID: ids.New(ids.Domain), AppID: appID, Host: host, Primary: primary, CreatedAt: time.Now()}
+	now := time.Now()
+	d := Domain{
+		ID: ids.New(ids.Domain), AppID: appID, Host: host, Primary: primary,
+		ClaimState: "verified", VerifiedAt: &now, CreatedAt: now,
+	}
 	m.domains[d.ID] = d
 	return d, nil
 }
@@ -347,7 +351,11 @@ func (m *memStore) ReplaceDomains(_ context.Context, appID, primary string, host
 		}
 	}
 	for i, host := range wanted {
-		d := Domain{ID: ids.New(ids.Domain), AppID: appID, Host: host, Primary: primary != "" && i == 0, CreatedAt: time.Now()}
+		now := time.Now()
+		d := Domain{
+			ID: ids.New(ids.Domain), AppID: appID, Host: host, Primary: primary != "" && i == 0,
+			ClaimState: "verified", VerifiedAt: &now, CreatedAt: now,
+		}
 		m.domains[d.ID] = d
 	}
 	return nil
@@ -361,7 +369,7 @@ func (m *memStore) ListDesiredApps(context.Context) ([]DesiredApp, error) {
 		d := DesiredApp{App: a, TenantName: m.tenants[a.TenantID].Name}
 		var hosts []Domain
 		for _, dom := range m.domains {
-			if dom.AppID == a.ID {
+			if dom.AppID == a.ID && dom.ClaimState == "verified" {
 				hosts = append(hosts, dom)
 			}
 		}

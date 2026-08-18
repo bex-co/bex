@@ -1,8 +1,7 @@
-# bex-api's custom-domains surface, Render dashboard-shaped (backend/internal/apps
-# domains.go + graphql.go, docs/ADR006-bex-api.md). A service's custom domains are a thin
-# veneer over App.spec.hosts[]; the operator reconciles Traefik + cert-manager per
-# domain. bex-api uses the hostname as the opaque id (id == name).
-# `verificationStatus` is "verified"/"pending" (TLS cert issued?); `serverStatus`
+# bex-api's custom-domains surface, Render dashboard-shaped. Managed domains are
+# durable claims: `ownershipStatus` gates projection into App.spec.host(s), and
+# `ownershipDnsRecord` is the exact pending TXT proof. `verificationStatus` is
+# "verified"/"pending" (TLS cert issued?); `serverStatus`
 # is "active"/"pending" (cert issued and not suspended). `domainType` is
 # "apex"/"subdomain"; `dnsRecord` is the record the tenant must create to point the
 # domain at the service (CNAME/ALIAS -> the app's platform host, w5/m10).
@@ -10,35 +9,35 @@
 # deleteCustomDomain returns a success boolean; verifyCustomDomain re-checks the
 # domain's DNS/cert state now and returns its fresh status.
 
+fragment CustomDomainFields on CustomDomain {
+  id
+  name
+  domainType
+  ownershipStatus
+  verificationStatus
+  serverStatus
+  redirectForName
+  dnsRecord {
+    type
+    name
+    value
+  }
+  ownershipDnsRecord {
+    type
+    name
+    value
+  }
+}
+
 query CustomDomains($id: String!) {
   customDomains(id: $id) {
-    id
-    name
-    domainType
-    verificationStatus
-    serverStatus
-    redirectForName
-    dnsRecord {
-      type
-      name
-      value
-    }
+    ...CustomDomainFields
   }
 }
 
 mutation AddCustomDomain($id: String!, $name: String!) {
   addCustomDomain(id: $id, name: $name) {
-    id
-    name
-    domainType
-    verificationStatus
-    serverStatus
-    redirectForName
-    dnsRecord {
-      type
-      name
-      value
-    }
+    ...CustomDomainFields
   }
 }
 
@@ -48,16 +47,6 @@ mutation DeleteCustomDomain($id: String!, $name: String!) {
 
 mutation VerifyCustomDomain($id: String!, $name: String!) {
   verifyCustomDomain(id: $id, name: $name) {
-    id
-    name
-    domainType
-    verificationStatus
-    serverStatus
-    redirectForName
-    dnsRecord {
-      type
-      name
-      value
-    }
+    ...CustomDomainFields
   }
 }

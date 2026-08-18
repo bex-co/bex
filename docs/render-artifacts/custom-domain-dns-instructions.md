@@ -1,55 +1,47 @@
-# Capture — Render's add-domain DNS-instructions flow (w5/m10 t003)
+# Render custom-domain contract and Bex ownership extension
 
-**Captured:** 2026-07-09 · **Method:** docs-fallback (no live Render login available; grounded in Render's public docs — `render.com/docs/custom-domains` and `render.com/docs/configure-other-dns` — not a Playwright dashboard capture). The design source for t004 (backend DNS-record fields + verify verb) and t005 (dashboard DNS-instructions panel).
+**Rechecked:** 2026-08-17. **Primary evidence:** Render's current [custom-domain guide](https://render.com/docs/custom-domains), [public OpenAPI](https://api-docs.render.com/openapi/render-public-api-1.json), [Verify endpoint](https://api-docs.render.com/reference/refresh-custom-domain), [Blueprint reference](https://render.com/docs/blueprint-spec), and the repository-pinned official CLI module `github.com/render-oss/cli@v1.1.3-0.20260721145337-d8fd7c2bb09d`.
 
-## What Render shows after "Add custom domain"
+## Current Render behavior
 
-Render's dashboard lists each custom domain with its **verification status** and, until the domain verifies, the **DNS record(s) the user must create at their registrar**. The record shape depends on whether the domain is a subdomain or an apex (root) domain.
+- Dashboard workflow: Add domain → configure traffic DNS → Verify. The guide says the domain does not yet point to the service after Add; successful Verify starts TLS issuance, and routing can still converge briefly afterward.
+- Adding an apex auto-adds `www` redirecting to the apex; adding `www` auto-adds the apex redirecting to `www`. Blueprint `domains` has the same pairing rule.
+- Subdomains use CNAME to the service's `onrender.com` hostname. Provider-specific apex instructions use ALIAS/ANAME/CNAME flattening or Render's IPv4 load-balancer A record. Wildcards additionally use `_acme-challenge` and `_cf-custom-hostname` CNAMEs.
+- REST paths are list/add at `/services/{serviceId}/custom-domains`, get/delete at `/{customDomainNameOrID}`, and verify at `/verify`.
+- OpenAPI `customDomain` fields are `id`, `name`, `domainType`, `publicSuffix`, `redirectForName`, `verificationStatus`, `createdAt`, and optional server metadata. `verificationStatus` is `unverified | verified`; list filters use that vocabulary. Add returns `201` with an array because pairing can create two rows. Cross-service add can return `409`.
+- Verify is `POST` and returns `202` with no body. Render describes it as a manual trigger that is usually unnecessary because verification also runs automatically.
+- The pinned official CLI's generated client contains list/create/get/delete/refresh request builders and the same `unverified | verified` types. No command outside `pkg/client` exposes custom-domain management to a CLI user, so Bex claims REST-client compatibility, not a user-facing `bex domains` command.
 
-### Subdomain — e.g. `www.example.com`
+## Bex mapping
 
-| Field  | Value                                    |
-| ------ | ---------------------------------------- |
-| Type   | `CNAME`                                  |
-| Host   | `www` (the label(s) below the root zone) |
-| Target | `<your-service>.onrender.com`            |
+Traffic instructions remain:
 
-> "you should add a CNAME record for `www` and point it to `example.onrender.com`."
+| Domain kind | Type    | Name         | Value                         |
+| ----------- | ------- | ------------ | ----------------------------- |
+| subdomain   | `CNAME` | label prefix | `<service>.<BEX_BASE_DOMAIN>` |
+| apex        | `ALIAS` | `@`          | `<service>.<BEX_BASE_DOMAIN>` |
 
-### Apex / root domain — e.g. `example.com`
+Bex adds an ownership instruction for every new managed claim:
 
-Render gives two options, ALIAS/ANAME preferred:
+| Type | Name | Value |
+| --- | --- | --- |
+| `TXT` | `_bex-challenge.<registrable-domain>` | one durable random `bex-domain-verification=…` value |
 
-| Option        | Type            | Host       | Target                        |
-| ------------- | --------------- | ---------- | ----------------------------- |
-| 1 (preferred) | `ALIAS`/`ANAME` | `@` (root) | `<your-service>.onrender.com` |
-| 2 (fallback)  | `A`             | `@` (root) | `216.24.57.1` (LB IP)         |
+All Bex adapters expose the same neutral lifecycle:
 
-> "you can use `216.24.57.1` to point your root domain to Render's load balancer IP." "Remove any `AAAA` records from your domain while configuring DNS." (Render is IPv4-only.)
+| State | `ownershipStatus` | TLS `verificationStatus` | `serverStatus` | Serving spec |
+| --- | --- | --- | --- | --- |
+| New/wrong DNS | `pending` | `pending` | `pending` | Host absent |
+| TXT verified, cert issuing | `verified` | `pending` | `pending` | Host present |
+| Certificate ready | `verified` | `verified` | `active` | Host present |
 
-### www ⇄ apex redirect
+REST add/get/verify, GraphQL, MCP, and the dashboard intentionally return the authorized pending TXT instruction so it remains recoverable. Durable random values are excluded from URLs, errors, logs, metrics, Secrets, and desired-App projection. Missing/wrong/resolver-failed proofs return `DOMAIN_OWNERSHIP_PENDING`; a delete/recreate race returns `DOMAIN_CLAIM_STALE`.
 
-- Adding a `www` subdomain auto-adds the corresponding root domain and redirects root → `www`. Adding a root domain auto-adds `www` and redirects `www` → root. (bex does **not** replicate this auto-redirect today — out of scope; noted so the parity ledger stays honest.)
+## Deliberate divergences
 
-## Verification / re-check behavior
-
-- There is a manual **"Verify"** button next to each domain in the dashboard.
-- Clicking it re-checks DNS/cert state **now**: on failure Render hints "your DNS settings might not have propagated yet"; on success "Render issues a TLS certificate for your domain and updates the verification status."
-- Render's REST exposes `POST …/custom-domains/{idOrName}/verify` as the same re-check (confirmed in the 2026-07-09 API re-audit; the ledger row this milestone closes).
-
-## How bex maps this (the divergences t004/t005 encode)
-
-When a safe shared-hosting suffix is configured, bex serves every web App at the **platform host `<app>.<BEX_BASE_DOMAIN>`** — the direct analogue of `<service>.onrender.com` — and a tenant points their domain at that host. Production has left this setting unset since 2026-08-08 because `onbex.co` is a registrable domain, not a browser-recognized private Public Suffix. Manager/static-server reject that unsafe configuration; custom-domain DNS instructions require a future suffix that passes the Public Suffix and Chrome gates in [ADR029](../ADR029-static-sites.md). With such a suffix, bex's DNS-record projection is:
-
-| Domain kind | Type | Host | Target |
-| --- | --- | --- | --- |
-| subdomain | `CNAME` | label prefix (`www`, `api.stage`) | `<app>.<base-domain>` |
-| apex | `ALIAS` | `@` | `<app>.<base-domain>` |
-
-Divergences from Render, deliberate:
-
-1. **Apex → ALIAS to the platform host, not an A-record IP.** bex's edge is Cloudflare-proxied (`docs/ADR005-custom-domain.md`) with no stable tenant-facing anycast IP to surface, so bex emits an ALIAS/ANAME/CNAME-flattening target rather than a bare `A` record. The dashboard adds the apex guidance: use ALIAS/ANAME (or CNAME-flattening) if the provider supports it, otherwise redirect apex → `www` at the registrar. This matches `docs/ADR005-custom-domain.md`'s existing apex note.
-2. **Verify is an idempotent re-read, not a state trigger.** bex verification is automatic — cert-manager continuously reconciles a per-host TLS secret (`docs/ADR005-custom-domain.md`), so there is no verification job to kick. bex's verify verb (`POST …/custom-domains/{name}/verify`, GraphQL `verifyCustomDomain`, MCP `verify_custom_domain`) **re-evaluates the TLS-secret/serving state now** and returns the fresh `verificationStatus`/`serverStatus`. Same "click Verify → status refreshes" UX; bex just never has stale state to unblock.
-3. **No www⇄apex auto-redirect** (see above).
-
-Field spelling for the wire shape (all three surfaces): a `dnsRecord { type, name, value }` object nested on the custom-domain — `type` ∈ {`CNAME`,`ALIAS`}, `name` the record host, `value` the platform-host target.
+1. **Stronger admission.** Render verifies traffic DNS. Bex requires a separate random TXT before the hostname can enter any Ingress or Certificate input, preventing an unverified database declaration from becoming routable through another write path.
+2. **Synchronous Verify result.** Render accepts an asynchronous trigger with 202/no body. Bex checks now and returns the fresh view, enabling one shared REST/GraphQL/MCP/dashboard contract.
+3. **Explicit states.** Bex retains TLS `verificationStatus` and adds `ownershipStatus`; `pending` remains an accepted alias while REST filters also accept Render's official `unverified` spelling.
+4. **Apex record.** Bex has no stable public A record and emits ALIAS to the platform host.
+5. **Wildcards.** Render supports them with extra DNS machinery. Bex rejects tenant wildcards because a literal global unique index cannot arbitrate a wildcard safely against every concrete hostname.
+6. **Add response.** Bex's established REST add returns the requested domain object, while the paired sibling is discoverable from the list. Render's current OpenAPI declares an array. This remains a documented wire-shape gap; changing it would break existing Bex clients and is not required for the ownership invariant.

@@ -21,6 +21,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"slices"
 	"strings"
@@ -44,6 +45,18 @@ type DomainOwnershipVerifier interface {
 	VerifyTXT(ctx context.Context, name, value string) error
 }
 
+// domainClaimStore is the managed-App ownership state machine. It is separate
+// from IntentStore so a storeless bex-api keeps the historical verify-before-
+// add behavior, while the Postgres-backed service never projects pending rows.
+type domainClaimStore interface {
+	AddDomainClaim(ctx context.Context, appID, host, redirectForName string) (store.Domain, bool, error)
+	GetDomainClaim(ctx context.Context, appID, host string) (store.Domain, error)
+	ListDomainClaims(ctx context.Context, appID string) ([]store.Domain, error)
+	RecordDomainVerificationAttempt(ctx context.Context, appID, id string, at time.Time) error
+	PromoteDomainClaim(ctx context.Context, appID, id, expectedChallenge string, at time.Time) (store.Domain, error)
+	ReplaceDomainClaims(ctx context.Context, appID string, declarations []store.DomainDeclaration) ([]store.Domain, error)
+}
+
 type systemDomainOwnershipVerifier struct{}
 
 func (systemDomainOwnershipVerifier) VerifyTXT(ctx context.Context, name, value string) error {
@@ -59,11 +72,21 @@ func (systemDomainOwnershipVerifier) VerifyTXT(ctx context.Context, name, value 
 	return nil
 }
 
-func domainOwnershipChallenge(app *appv1alpha1.App, host string) (name, value string) {
+func ownershipDomain(host string) string {
 	root := registrableDomain(host)
 	if root == "" {
 		root = host
 	}
+	return root
+}
+
+func ownershipDNSRecordName(host string) string {
+	return "_bex-challenge." + ownershipDomain(host)
+}
+
+func domainOwnershipChallenge(app *appv1alpha1.App, host string) (name, value string) {
+	name = ownershipDNSRecordName(host)
+	root := ownershipDomain(host)
 	appID := managedAppID(app)
 	if appID == "" {
 		appID = app.Labels[core.LabelAppID]
@@ -75,7 +98,7 @@ func domainOwnershipChallenge(app *appv1alpha1.App, host string) (name, value st
 		appID = app.Namespace + "/" + app.Name
 	}
 	digest := sha256.Sum256([]byte(appID + "\x00" + root))
-	return "_bex-challenge." + root, fmt.Sprintf("bex-domain-verification=%x", digest[:16])
+	return name, fmt.Sprintf("bex-domain-verification=%x", digest[:16])
 }
 
 func (s *Service) requireDomainOwnership(ctx context.Context, app *appv1alpha1.App, host string) error {
@@ -94,9 +117,14 @@ func (s *Service) requireDomainOwnership(ctx context.Context, app *appv1alpha1.A
 type DomainView struct {
 	Name               string
 	DomainType         string // "apex" or "subdomain" (Render's enum)
+	OwnershipStatus    string // "pending" or "verified" (durable DNS-TXT claim)
 	VerificationStatus string // "pending" or "verified" (TLS cert issued?)
 	ServerStatus       string // "active" or "pending"
 	RedirectForName    string // canonical host for an auto-paired sibling; empty when served directly
+	// OwnershipDNSRecord is the TXT proof for a pending managed claim. It is
+	// omitted after promotion and for storeless domains already admitted by the
+	// legacy synchronous proof gate.
+	OwnershipDNSRecord *DNSRecordView
 	// DNSRecord is the record the tenant must create at their registrar to point
 	// this domain at the service (Render's post-add DNS instructions, w5/m10).
 	DNSRecord DNSRecordView
@@ -250,6 +278,13 @@ func dnsRecordFor(host, dtype, platformHost string) DNSRecordView {
 	return DNSRecordView{Type: "CNAME", Name: name, Value: platformHost}
 }
 
+func ownershipDNSRecordFor(host, challenge string) *DNSRecordView {
+	if challenge == "" {
+		return nil
+	}
+	return &DNSRecordView{Type: "TXT", Name: ownershipDNSRecordName(host), Value: challenge}
+}
+
 // tlsSecretForHost returns the TLS Secret name the operator creates for a host
 // in App.spec.hosts[], mirroring the operator's naming convention:
 // - first effective host → "<app>-tls"
@@ -297,6 +332,7 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 	return DomainView{
 		Name:               host,
 		DomainType:         dtype,
+		OwnershipStatus:    "verified",
 		VerificationStatus: vStatus,
 		ServerStatus:       sStatus,
 		RedirectForName:    app.Spec.HostRedirects[host],
@@ -304,13 +340,127 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 	}
 }
 
-// ListDomains returns the custom domains from App.spec.hosts[].
+func (s *Service) domainClaimView(ctx context.Context, app *appv1alpha1.App, claim store.Domain, platformHost string) DomainView {
+	view := DomainView{
+		Name:               claim.Host,
+		DomainType:         domainType(claim.Host),
+		OwnershipStatus:    claim.ClaimState,
+		VerificationStatus: "pending",
+		ServerStatus:       "pending",
+		RedirectForName:    claim.RedirectForName,
+	}
+	view.DNSRecord = dnsRecordFor(claim.Host, view.DomainType, platformHost)
+	if claim.ClaimState == "pending" {
+		view.OwnershipDNSRecord = ownershipDNSRecordFor(claim.Host, claim.Challenge)
+		return view
+	}
+	if s.domainVerified(ctx, app, claim.Host) {
+		view.VerificationStatus = "verified"
+		if !app.Spec.Suspended {
+			view.ServerStatus = "active"
+		}
+	}
+	return view
+}
+
+func (s *Service) managedDomainClaims(app *appv1alpha1.App) (domainClaimStore, string, bool) {
+	appID := managedAppID(app)
+	claims, ok := s.Store.(domainClaimStore)
+	return claims, appID, ok && appID != ""
+}
+
+func domainDeclarations(primary string, hosts []string, redirects map[string]string) []store.DomainDeclaration {
+	out := make([]store.DomainDeclaration, 0, len(hosts)+1)
+	if primary != "" {
+		out = append(out, store.DomainDeclaration{Host: primary, Primary: true, RedirectForName: redirects[primary]})
+	}
+	for _, host := range hosts {
+		if host != "" {
+			out = append(out, store.DomainDeclaration{Host: host, RedirectForName: redirects[host]})
+		}
+	}
+	return out
+}
+
+func sameDomainDeclarations(claims []store.Domain, declarations []store.DomainDeclaration) bool {
+	if len(claims) != len(declarations) {
+		return false
+	}
+	byHost := make(map[string]store.Domain, len(claims))
+	for _, claim := range claims {
+		byHost[claim.Host] = claim
+	}
+	for _, declaration := range declarations {
+		claim, ok := byHost[declaration.Host]
+		if !ok || claim.Primary != declaration.Primary || claim.RedirectForName != declaration.RedirectForName {
+			return false
+		}
+	}
+	return true
+}
+
+func applyVerifiedDomainClaims(spec *appv1alpha1.AppSpec, claims []store.Domain) {
+	verified := make(map[string]bool, len(claims))
+	for _, claim := range claims {
+		verified[claim.Host] = claim.ClaimState == "verified"
+	}
+	primary := ""
+	var hosts []string
+	redirects := map[string]string{}
+	for _, claim := range claims {
+		if !verified[claim.Host] {
+			continue
+		}
+		if claim.Primary && primary == "" {
+			primary = claim.Host
+		} else {
+			hosts = append(hosts, claim.Host)
+		}
+		if claim.RedirectForName != "" && verified[claim.RedirectForName] {
+			redirects[claim.Host] = claim.RedirectForName
+		}
+	}
+	if len(redirects) == 0 {
+		redirects = nil
+	}
+	spec.Host = primary
+	spec.Hosts = hosts
+	spec.HostRedirects = redirects
+}
+
+// projectDomainClaims is the only managed-claim bridge into serving intent.
+// Pending rows are absent from Host/Hosts/HostRedirects; a redirect is emitted
+// only when both source and target have verified ownership.
+func (s *Service) projectDomainClaims(ctx context.Context, app *appv1alpha1.App, claims []store.Domain) error {
+	baseObject := app.DeepCopy()
+	applyVerifiedDomainClaims(&app.Spec, claims)
+	if baseObject.Spec.Host == app.Spec.Host && slices.Equal(baseObject.Spec.Hosts, app.Spec.Hosts) && maps.Equal(baseObject.Spec.HostRedirects, app.Spec.HostRedirects) {
+		return nil
+	}
+	base := client.MergeFrom(baseObject)
+	resourcemeta.Touch(app, s.Now())
+	return s.Client.Patch(ctx, app, base)
+}
+
+// ListDomains returns durable managed claims (including pending rows) or, in
+// storeless mode, the custom domains already admitted into the App spec.
 func (s *Service) ListDomains(ctx context.Context, appName string) ([]DomainView, error) {
 	app, err := s.AuthorizeApp(ctx, core.RelCanView, appName)
 	if err != nil {
 		return nil, err
 	}
 	platformHost := s.platformHost(app) // host-independent — compute once for all hosts
+	if claims, appID, ok := s.managedDomainClaims(app); ok {
+		rows, err := claims.ListDomainClaims(ctx, appID)
+		if err != nil {
+			return nil, fmt.Errorf("list domain claims: %w", err)
+		}
+		out := make([]DomainView, 0, len(rows))
+		for _, row := range rows {
+			out = append(out, s.domainClaimView(ctx, app, row, platformHost))
+		}
+		return out, nil
+	}
 	out := make([]DomainView, 0, len(app.Spec.Hosts))
 	for _, h := range app.Spec.Hosts {
 		if h != "" {
@@ -325,6 +475,12 @@ func (s *Service) ListDomains(ctx context.Context, appName string) ([]DomainView
 // core.ErrBadRequest. REST, GraphQL, and MCP all route through here so the
 // accepted vocabulary and its 400 cannot drift between the three surfaces.
 func filterDomains(domains []DomainView, verificationStatus, domainType string) ([]DomainView, error) {
+	// Render's public API calls the pre-verification value "unverified". Keep
+	// bex's established "pending" spelling as an additive alias while accepting
+	// the official CLI's generated enum unchanged.
+	if verificationStatus == "unverified" {
+		verificationStatus = "pending"
+	}
 	status, err := core.ParseEnum("verificationStatus", verificationStatus, "pending", "verified")
 	if err != nil {
 		return nil, err
@@ -345,7 +501,18 @@ func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (Doma
 	if err != nil {
 		return DomainView{}, err
 	}
+	hostname = normalizeHostname(hostname)
 	platformHost := s.platformHost(app)
+	if claims, appID, ok := s.managedDomainClaims(app); ok {
+		row, err := claims.GetDomainClaim(ctx, appID, hostname)
+		if errors.Is(err, store.ErrNotFound) {
+			return DomainView{}, core.ErrNotFound
+		}
+		if err != nil {
+			return DomainView{}, err
+		}
+		return s.domainClaimView(ctx, app, row, platformHost), nil
+	}
 	for _, h := range app.Spec.Hosts {
 		if h == hostname {
 			return s.domainView(ctx, app, h, platformHost), nil
@@ -354,17 +521,69 @@ func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (Doma
 	return DomainView{}, core.ErrNotFound
 }
 
-// VerifyDomain re-checks a custom domain's DNS/cert state now and returns its
-// fresh view — bex's analogue of Render's POST …/custom-domains/{id}/verify. bex
-// verification is automatic (cert-manager continuously reconciles the per-host TLS
-// secret, docs/ADR005-custom-domain.md), so there is no verification job to trigger and
-// "verify" is a read at read altitude: it re-evaluates the TLS-secret/serving state
-// and reports the current status, giving the dashboard a "Verify / re-check" action
-// that refreshes a pending row without a mutation. Delegating to GetDomain keeps it
-// identical to a fresh read (same RelCanView authorization, same lookup). Idempotent;
-// unknown host → core.ErrNotFound.
 func (s *Service) VerifyDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
-	return s.GetDomain(ctx, appName, hostname)
+	app, err := s.AuthorizeApp(ctx, core.RelCanOperate, appName)
+	if err != nil {
+		return DomainView{}, err
+	}
+	hostname, err = canonicalHostname(hostname)
+	if err != nil {
+		return DomainView{}, err
+	}
+	claims, appID, managed := s.managedDomainClaims(app)
+	if !managed {
+		for _, host := range app.Spec.Hosts {
+			if host == hostname {
+				return s.domainView(ctx, app, host, s.platformHost(app)), nil
+			}
+		}
+		return DomainView{}, core.ErrNotFound
+	}
+	claim, err := claims.GetDomainClaim(ctx, appID, hostname)
+	if errors.Is(err, store.ErrNotFound) {
+		return DomainView{}, core.ErrNotFound
+	}
+	if err != nil {
+		return DomainView{}, err
+	}
+	if claim.ClaimState == "verified" {
+		return s.domainClaimView(ctx, app, claim, s.platformHost(app)), nil
+	}
+	name := ownershipDNSRecordFor(claim.Host, claim.Challenge).Name
+	verifier := s.DomainOwnership
+	if verifier == nil {
+		verifier = systemDomainOwnershipVerifier{}
+	}
+	if err := verifier.VerifyTXT(ctx, name, claim.Challenge); err != nil {
+		_ = claims.RecordDomainVerificationAttempt(ctx, appID, claim.ID, s.Now())
+		return DomainView{}, core.NewConflictError(
+			"DOMAIN_OWNERSHIP_PENDING",
+			"domain ownership TXT record is not verified",
+			map[string]any{"recordName": name},
+		)
+	}
+	claim, err = claims.PromoteDomainClaim(ctx, appID, claim.ID, claim.Challenge, s.Now())
+	if errors.Is(err, store.ErrConflict) {
+		return DomainView{}, core.NewConflictError(
+			"DOMAIN_CLAIM_STALE",
+			"domain claim changed while verification was in progress",
+			nil,
+		)
+	}
+	if err != nil {
+		return DomainView{}, err
+	}
+	rows, err := claims.ListDomainClaims(ctx, appID)
+	if err != nil {
+		return DomainView{}, err
+	}
+	if err := s.projectDomainClaims(ctx, app, rows); err != nil {
+		return DomainView{}, err
+	}
+	if s.Kick != nil {
+		s.Kick()
+	}
+	return s.domainClaimView(ctx, app, claim, s.platformHost(app)), nil
 }
 
 // ownPlatformHost is the App's own `<slug>.<base>` auto host — the single
@@ -491,6 +710,7 @@ func appClaimIdentity(app *appv1alpha1.App) string {
 // otherwise set to a victim's slug and hijack at create time too (codex F5).
 func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App) error {
 	ownHost := s.ownPlatformHost(app)
+	_, _, managedClaims := s.managedDomainClaims(app)
 	// One cluster-wide sweep serves every host in the set, fetched on first
 	// need so a hostless create still Lists nothing and a reserved first host
 	// still fails before any List.
@@ -514,8 +734,10 @@ func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App
 		if hostClaimedInApps(apps, app, h) {
 			return errDomainInUse()
 		}
-		if err := s.requireDomainOwnership(ctx, app, h); err != nil {
-			return err
+		if !managedClaims {
+			if err := s.requireDomainOwnership(ctx, app, h); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -570,6 +792,43 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 		return DomainView{}, false, err
 	}
 	redirectForName = normalizeHostname(redirectForName)
+	if claims, appID, managed := s.managedDomainClaims(app); managed {
+		existing, getErr := claims.GetDomainClaim(ctx, appID, hostname)
+		newClaim := errors.Is(getErr, store.ErrNotFound)
+		if getErr != nil && !newClaim {
+			return DomainView{}, false, getErr
+		}
+		if !newClaim && existing.RedirectForName == redirectForName {
+			return s.domainClaimView(ctx, app, existing, s.platformHost(app)), false, nil
+		}
+		if newClaim {
+			if s.reservedHost(s.ownPlatformHost(app), hostname) {
+				return DomainView{}, false, fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, hostname)
+			}
+			if claimed, err := s.hostClaimedElsewhere(ctx, app, hostname); err != nil {
+				return DomainView{}, false, err
+			} else if claimed {
+				return DomainView{}, false, errDomainInUse()
+			}
+		}
+		claim, created, err := claims.AddDomainClaim(ctx, appID, hostname, redirectForName)
+		if errors.Is(err, store.ErrConflict) {
+			return DomainView{}, false, errDomainInUse()
+		}
+		if err != nil {
+			return DomainView{}, false, fmt.Errorf("create domain claim: %w", err)
+		}
+		if claim.ClaimState == "verified" {
+			rows, listErr := claims.ListDomainClaims(ctx, appID)
+			if listErr != nil {
+				return DomainView{}, false, listErr
+			}
+			if projectErr := s.projectDomainClaims(ctx, app, rows); projectErr != nil {
+				return DomainView{}, false, projectErr
+			}
+		}
+		return s.domainClaimView(ctx, app, claim, s.platformHost(app)), created, nil
+	}
 	present := slices.Contains(app.Spec.Hosts, hostname)
 	// Already served with the redirect the caller asked for: nothing to write.
 	if present && app.Spec.HostRedirects[hostname] == redirectForName {
@@ -643,6 +902,26 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) er
 	if err != nil {
 		return err
 	}
+	hostname, err = canonicalHostname(hostname)
+	if err != nil {
+		return err
+	}
+	if claims, appID, managed := s.managedDomainClaims(app); managed {
+		if err := s.Store.RemoveDomain(ctx, appID, hostname); err != nil {
+			return fmt.Errorf("delete domain claim: %w", err)
+		}
+		rows, err := claims.ListDomainClaims(ctx, appID)
+		if err != nil {
+			return err
+		}
+		if err := s.projectDomainClaims(ctx, app, rows); err != nil {
+			return err
+		}
+		if s.Kick != nil {
+			s.Kick()
+		}
+		return nil
+	}
 	var updated []string
 	for _, h := range app.Spec.Hosts {
 		if h != hostname {
@@ -689,6 +968,7 @@ type renderCustomDomain struct {
 	ID                 string `json:"id"`   // hostname used as opaque id (Render ids are opaque)
 	Name               string `json:"name"` // the FQDN
 	DomainType         string `json:"domainType"`
+	OwnershipStatus    string `json:"ownershipStatus"`
 	VerificationStatus string `json:"verificationStatus"`
 	ServerStatus       string `json:"serverStatus"`
 	RedirectForName    string `json:"redirectForName,omitempty"`
@@ -696,6 +976,9 @@ type renderCustomDomain struct {
 	// record in the dashboard, not the API): the record the tenant must create to
 	// point this domain at the service. A safe superset, w5/m10.
 	DNSRecord renderDNSRecord `json:"dnsRecord"`
+	// OwnershipDNSRecord is deliberately returned only while the authorized
+	// claim is pending; it never appears in URLs, logs, metrics, or Secrets.
+	OwnershipDNSRecord *renderDNSRecord `json:"ownershipDnsRecord,omitempty"`
 }
 
 // renderDNSRecord is the wire shape of a DNSRecordView (the DNS record to create).
@@ -712,10 +995,11 @@ type customDomainWithCursor struct {
 }
 
 func toRenderCustomDomain(d DomainView) renderCustomDomain {
-	return renderCustomDomain{
+	out := renderCustomDomain{
 		ID:                 d.Name,
 		Name:               d.Name,
 		DomainType:         d.DomainType,
+		OwnershipStatus:    d.OwnershipStatus,
 		VerificationStatus: d.VerificationStatus,
 		ServerStatus:       d.ServerStatus,
 		RedirectForName:    d.RedirectForName,
@@ -725,6 +1009,12 @@ func toRenderCustomDomain(d DomainView) renderCustomDomain {
 			Value: d.DNSRecord.Value,
 		},
 	}
+	if d.OwnershipDNSRecord != nil {
+		out.OwnershipDNSRecord = &renderDNSRecord{
+			Type: d.OwnershipDNSRecord.Type, Name: d.OwnershipDNSRecord.Name, Value: d.OwnershipDNSRecord.Value,
+		}
+	}
+	return out
 }
 
 func toCustomDomainList(domains []DomainView) []customDomainWithCursor {

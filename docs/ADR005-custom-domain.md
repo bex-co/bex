@@ -1,63 +1,64 @@
-# Custom domains — CNAME onto the platform, SSL on our side
+# Custom domains — durable ownership before routing
 
-Every **`type: web`** App serves at **`<app>.<base-domain>`** — the platform hostname is auto-assigned and mandatory, like Render's `onrender.com` (mechanism: `render.yaml`'s `type: web` sets `App.spec.expose`; the operator's `BEX_BASE_DOMAIN` + wildcard DNS do the rest; `type: private` Apps have no ingress at all). A customer brings their own domain by pointing a CNAME at that hostname. They never touch certificates: **their one CNAME is also what authorizes us to issue TLS for their domain** (ACME HTTP-01 challenges for `www.theirdomain.com` land on our edge _because_ of the CNAME).
+A custom domain has two independent lifecycles:
 
-## What the customer does (their entire job)
+1. **Ownership admission** — bex stores a globally unique claim in Postgres. A new claim is `pending` and carries one cryptographically random TXT challenge. Only an exact fresh DNS match can atomically promote that same row to `verified`.
+2. **Serving convergence** — only verified rows project into `App.spec.host` / `App.spec.hosts`. The operator then creates the Ingress and per-host Certificate; certificate and server status remain pending until the cluster reports them active.
 
-```
-CNAME  www.theirdomain.com  ->  <app>.<base-domain>
-```
+This split is a control-plane invariant, not a dashboard convention: no supported direct add, service create, Blueprint sync, sibling add, or projector resync can route an ownership-pending host.
 
-- **Apex domains (`theirdomain.com`) can't CNAME** per the DNS spec. Options: ALIAS/CNAME-flattening if their DNS provider supports it, or redirect apex → `www` at their registrar. Instruct `www` by default.
-- Add the CNAME **first**, then tell us — issuance can only start once the record resolves (we retry, but the happy path is CNAME-first).
+## Tenant workflow
 
-## What we do
+After an authorized add, REST, GraphQL, MCP, and the dashboard return two separate instructions:
 
-```mermaid
-sequenceDiagram
-  participant C as customer DNS
-  participant CF as Cloudflare edge<br/>(base-domain zone, proxied)
-  participant O as operator and cert-manager<br/>(in-cluster)
-
-  Note over C: ① CNAME www.theirdomain.com -> app.base-domain
-  Note over CF: ② scripts/domain-add.sh — register the<br/>hostname (Cloudflare for SaaS). CF issues and<br/>renews the EDGE cert once the CNAME resolves
-  Note over O: ③ add domain to the app's render.yaml domains: then<br/>scripts/app-apply.sh — operator adds an Ingress<br/>rule and its own per-host ORIGIN cert (HTTP-01)
-  CF->>O: proxies Host: www.theirdomain.com to the origin
-```
-
-Two independent certs by design: Cloudflare's at the edge (browser-facing), cert-manager's at the origin (lets the zone run SSL mode Full (strict)).
-
-- **Step ② exists because the base-domain zone is proxied** (orange-cloud): the CF edge only answers for hostnames it knows, so each customer domain must be registered as a _custom hostname_ (Cloudflare for SaaS — free ≤ 100 hostnames; one-time zone setup: enable it + set the fallback origin). Without it, customer traffic dies at the edge with an SSL mismatch.
-- **Step ③ is ordinary bex mechanics**: `domains[1:]` in `render.yaml` becomes `App.spec.hosts`; the operator renders one Ingress rule and **one TLS secret per host**, so one customer's broken DNS can never block another domain's issuance or renewal (`<app>-tls` for the first host — never renamed — and `<app>-tls-<host>` for the rest).
-
-## API surface — DNS instructions & verify (w5/m10)
-
-Every custom domain the API returns carries a **`dnsRecord`** — the exact record the tenant creates at their registrar (Render's post-add DNS instructions; capture in [render-artifacts/custom-domain-dns-instructions.md](render-artifacts/custom-domain-dns-instructions.md)):
-
-| Domain kind | `dnsRecord.type` | `dnsRecord.name` | `dnsRecord.value` |
+| Purpose | Type | Name | Value |
 | --- | --- | --- | --- |
-| subdomain | `CNAME` | label prefix (`www`, `api.staging`) | `<app>.<base-domain>` |
-| apex | `ALIAS` | `@` | `<app>.<base-domain>` |
+| Prove ownership | `TXT` | `_bex-challenge.<registrable-domain>` | Durable random `bex-domain-verification=…` challenge |
+| Route a subdomain | `CNAME` | label prefix (`www`, `api.stage`) | `<service>.<BEX_BASE_DOMAIN>` |
+| Route an apex | `ALIAS` | `@` | `<service>.<BEX_BASE_DOMAIN>` |
 
-The target is the App's **platform host** `<app>.<BEX_BASE_DOMAIN>` — bex-api reads `BEX_BASE_DOMAIN` (falling back to the App's status URL). bex points apex at the platform host via ALIAS/ANAME/CNAME-flattening rather than a bare `A`-record IP (the edge is Cloudflare-proxied), and the dashboard adds the "ALIAS/ANAME, or redirect apex → `www`" guidance.
+The tenant creates the TXT record and invokes Verify. A missing value, mismatched value, resolver error, or timeout returns the named `DOMAIN_OWNERSHIP_PENDING` conflict and leaves both the claim and serving spec unchanged. A correct value promotes by claim id plus expected challenge; if the row was deleted/recreated during DNS lookup, `DOMAIN_CLAIM_STALE` wins and the replacement remains pending.
 
-A **verify** verb re-checks a domain's DNS/cert state now and returns its fresh status — `POST /v1/services/{id}/custom-domains/{name}/verify` (REST), `verifyCustomDomain(id, name)` (GraphQL), `verify_custom_domain` (MCP). bex verification is automatic (cert-manager reconciles the per-host TLS secret continuously), so this is an idempotent re-read, not a re-verification trigger — it gives the dashboard a "Verify / re-check" action that refreshes a pending row without a mutation. All three surfaces return the same `dnsRecord` fields and verify semantics. An auto-paired redirect sibling also carries Render's **`redirectForName`** field naming its canonical target; directly served domains omit it / return null.
+After ownership verifies, bex projects the traffic record into the App and cert-manager issues TLS. The visible states are therefore intentionally distinct:
 
-## Lifecycle / operational notes
+- ownership pending, certificate pending, server pending;
+- ownership verified, certificate pending, server pending;
+- ownership verified, certificate verified, server active.
 
-- **Pending window**: between "CNAME added" and "certs issued" (typically < 1 min after DNS resolves) the domain serves a mismatched cert. Every platform has this.
-- **Renewal depends on the CNAME staying put.** If the customer deletes or repoints it, renewal fails and the domain goes dark within ~90 days — looking like _our_ outage. Per-domain cert health belongs in monitoring / the future control plane.
-- **Ownership verification**: bex does **not** run a separate DNS-challenge state machine (Render doesn't either — its "Verify" is a DNS-resolution check, not a TXT challenge). External-domain ownership is proven by cert-manager's ACME challenge: no HTTPS is served until the tenant's DNS points at the platform and the cert issues — the same model Render relies on. What that model does **not** cover, and what **w7/m6** adds, are two guards on the add path:
-  - **Cross-App collision** — a host already registered on another App (any tenant) is refused with `409` (Render's "This domain already exists on another site."). Enforced in `apps/domains.go` (`hostClaimedElsewhere`, a namespace-wide CR scan) and durably by the `domains.host` UNIQUE index — `PGStore.AddDomain` now distinguishes a same-app conflict (idempotent) from a cross-app one (surfaced), closing the add-both-then-project race. **w6/m23** extends this guard to a host's www↔apex sibling too (below) — registering `www.foo.com` on one App now also reserves `foo.com` against every other App.
-  - **Reserved / platform hosts** — the `BEX_BASE_DOMAIN` apex, any foreign `<x>.<base>` platform host, and the `BEX_DASHBOARD_URL` host are refused with `400`. The `*.<base>` namespace resolves (platform-controlled DNS) to the shared ingress, so without this guard a tenant could pass ACME for another App's `<other>.<base>` and hijack it — the one hijack cert-manager cannot stop. A bex superset of Render's own `*.onrender.com` reservation.
-- Never probe a hostname before its DNS record exists — you'll poison resolver negative caches for up to an hour. Check with `dig @1.1.1.1` / `curl --resolve`.
+An already-verified Verify is idempotent but still freshly authorized. Failed verification records only bounded attempt metadata; the challenge never enters paths, query strings, logs, metrics, Kubernetes Secrets, or operator state. It is returned only on authorized domain reads/mutations because the dashboard must be able to recover the durable instruction after the add dialog closes.
 
-## www↔apex sibling pairing (w6/m23)
+## Persistence and rollout
 
-Render auto-pairs a custom domain with its www↔apex sibling: adding `example.org` also adds `www.example.org` (and adding `www.example.org` also adds `example.org`), captured in [render-artifacts/custom-domain-pairing.md](render-artifacts/custom-domain-pairing.md). bex now mirrors the auto-add half of this, built on a **real public-suffix list** (`golang.org/x/net/publicsuffix`), closing the "no public-suffix list" gap this ADR previously documented:
+Migration `0086_domain_claim_state` adds the closed `pending | verified` state, challenge/version, attempt timestamps, and verification timestamp. Every pre-migration row is backfilled `verified` with its existing primary/redirect ordering intact, so rollout cannot withdraw live traffic. The schema default remains `verified` for rolling compatibility with pre-m84 replicas, whose synchronous TXT gate still runs; claim-aware writers explicitly insert `pending` together with the random challenge. The down migration refuses to erase state while any pending row exists.
 
-- `AddDomain` computes the host's registrable domain (eTLD+1) via the PSL — correctly handling multi-label suffixes like `example.co.uk`, not just a dots-count heuristic — and, for an apex or its immediate `www.` form, auto-adds the sibling as a first-class `spec.hosts[]` entry alongside the one the tenant typed. One hop only: the auto-added sibling never triggers a further pairing. A non-www subdomain (`app.example.com`) gets no sibling, matching Render.
-- **The auto-added sibling redirects to the explicitly added canonical host.** `App.spec.hostRedirects` persists the source → canonical relationship. The operator removes the source from the plain serving Ingress and gives it a dedicated TLS-bearing Ingress with a Traefik `RedirectRegex` middleware. The live Render capture pins `301`, forced HTTPS, and byte-preserved path/query in both apex→www and www→apex directions; bex renders the same. Both hosts keep independent cert-manager TLS secrets, so HTTPS is valid before the redirect is returned.
-- **Explicitly adding the auto-created sibling clears its redirect.** Both hosts then serve the App directly; the operator removes the redirect Ingress/middleware on the next level-triggered reconcile. This is how the API distinguishes an actual auto-pair from two explicitly claimed adjacent hosts instead of inferring from names alone.
-- **Delete remains per-host** — Render doesn't document sibling-delete semantics, so bex deletes only the named half. If the deleted host was the canonical redirect target, the surviving sibling's `hostRedirects` entry is cleared and it becomes directly served; a redirect never dangles. Deleting the redirecting sibling simply removes its redirect resources and leaves the canonical host untouched.
-- **Collision guard covers the sibling too**: `hostClaimedElsewhere` now also matches a host that is the www↔apex sibling of something already registered on another App — so registering `www.foo.com` on App A blocks `foo.com` on App B (and vice versa) with the same `409`, closing the squatting gap this ADR previously flagged.
+`domains.host` remains globally unique across both states. Same-App add is idempotent and returns the same row/challenge; a different App receives the existing non-enumerating conflict. `ReplaceDomainClaims` preserves unchanged verified rows and challenges, inserts only new declarations pending, and deletes declarations removed by service/Blueprint intent. `ListDesiredApps` reads verified rows only and emits a redirect only when both source and target are verified.
+
+Storeless bex-api has nowhere durable to hold pending state, so it retains the older fail-closed behavior: verify the deterministic app-bound TXT before writing the App spec. It never serves an unverified host.
+
+## Projection and certificates
+
+The operator remains mechanism-only. It does not resolve DNS or transition domain business state. For each verified custom host it renders an Ingress rule and an independent TLS secret (`<app>-tls` for the first effective host, `<app>-tls-<host>` for later hosts), isolating certificate failures.
+
+When a safe shared-hosting suffix is configured, the traffic target is the App's platform host. Apex domains use provider ALIAS/ANAME/CNAME-flattening because bex has no stable tenant-facing load-balancer IP. Production must not enable an ordinary registrable `BEX_BASE_DOMAIN`; ADR029's Public Suffix/browser-isolation gate still applies.
+
+Cloudflare-for-SaaS registration, when used at the edge, remains an operational step outside this ownership state machine. The database claim gates Bex routing; edge custom-hostname registration and edge/origin certificate issuance are separate convergence mechanisms.
+
+## www ↔ apex pairing
+
+Direct add mirrors Render's pairing via the public-suffix list:
+
+- adding `example.org` creates pending claims for it and `www.example.org`;
+- adding `www.example.org` creates pending claims for it and `example.org`;
+- the auto-created sibling records `redirectForName` to the explicit host;
+- each row has its own durable challenge and must verify independently;
+- no redirect enters the App spec until both source and target are verified;
+- explicitly adding the sibling clears its redirect without rotating either claim;
+- deleting either pending or verified row is idempotent, and deleting a target clears dependent redirects before reprojection.
+
+Cross-App collision covers both halves because each sibling is a real globally unique row. Wildcard tenant domains remain rejected: literal uniqueness cannot safely arbitrate a wildcard against every concrete hostname beneath it.
+
+## Render compatibility
+
+Render's current documented workflow is also Add → configure DNS → Verify, auto-pairs apex/`www`, and begins TLS issuance after verification. Its public REST schema exposes `verificationStatus: unverified | verified`; bex accepts official `unverified` filters and retains `pending` as its established alias. The official Verify endpoint returns `202` with no domain body, while bex returns the fresh domain view so GraphQL, MCP, and the dashboard share one result.
+
+Bex's random ownership TXT, explicit `ownershipStatus` / `ownershipDnsRecord`, synchronous named pending conflicts, and hard non-serving pending invariant are deliberate security extensions. Render ordinarily proves service-domain control through traffic DNS and has additional TXT records only for wildcard machinery. See [the pinned comparison](render-artifacts/custom-domain-dns-instructions.md) and [ADR018](ADR018-render-parity.md).

@@ -18,6 +18,8 @@ package store
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -247,15 +249,30 @@ type Deploy struct {
 
 // Domain is a row of `domains` — a BYOD custom domain attached to an app.
 // The primary domain becomes the App CR's spec.host, the rest spec.hosts.
-// Verification + cert status are the operator's/cert-manager's concern (read
-// from the cluster), not stored here.
+// ClaimState is durable ownership admission; only verified rows are projected
+// into App CRs. TLS/cert status remains observed from the cluster.
 type Domain struct {
-	ID              string    `json:"id"`
-	AppID           string    `json:"appId"`
-	Host            string    `json:"host"`
-	Primary         bool      `json:"primary"`
-	RedirectForName string    `json:"redirectForName,omitempty"`
-	CreatedAt       time.Time `json:"createdAt"`
+	ID                   string     `json:"id"`
+	AppID                string     `json:"appId"`
+	Host                 string     `json:"host"`
+	Primary              bool       `json:"primary"`
+	RedirectForName      string     `json:"redirectForName,omitempty"`
+	ClaimState           string     `json:"claimState"`
+	Challenge            string     `json:"challenge,omitempty"`
+	ChallengeVersion     int64      `json:"challengeVersion"`
+	VerificationAttempts int64      `json:"verificationAttempts"`
+	LastVerificationAt   *time.Time `json:"lastVerificationAt,omitempty"`
+	VerifiedAt           *time.Time `json:"verifiedAt,omitempty"`
+	CreatedAt            time.Time  `json:"createdAt"`
+}
+
+// DomainDeclaration is one desired host plus projection metadata. Replacing a
+// declaration set preserves an unchanged row's claim state and challenge;
+// newly declared hosts enter pending.
+type DomainDeclaration struct {
+	Host            string
+	Primary         bool
+	RedirectForName string
 }
 
 // DesiredApp is an apps row joined with everything projection needs: the
@@ -808,16 +825,233 @@ func (s *PGStore) DeleteApp(ctx context.Context, id string) error {
 }
 
 func (s *PGStore) CreateDomain(ctx context.Context, appID, host string, primary bool) (Domain, error) {
-	d := Domain{ID: ids.New(ids.Domain), AppID: appID, Host: host, Primary: primary}
+	now := time.Now().UTC()
+	d := Domain{ID: ids.New(ids.Domain), AppID: appID, Host: host, Primary: primary, ClaimState: "verified", ChallengeVersion: 1, VerifiedAt: &now}
 	err := s.Pool.QueryRow(ctx,
-		`INSERT INTO domains (id, app_id, host, is_primary) VALUES ($1, $2, $3, $4)
+		`INSERT INTO domains (id, app_id, host, is_primary, claim_state, verified_at)
+		 VALUES ($1, $2, $3, $4, 'verified', $5)
 		 RETURNING created_at`,
-		d.ID, appID, host, primary,
+		d.ID, appID, host, primary, now,
 	).Scan(&d.CreatedAt)
 	if err != nil {
 		return Domain{}, classify("domain", err)
 	}
 	return d, nil
+}
+
+const domainClaimColumns = `id, app_id, host, is_primary, COALESCE(redirect_for_name, ''),
+	claim_state, COALESCE(challenge, ''), challenge_version, verification_attempts,
+	last_verification_at, verified_at, created_at`
+
+func scanDomainClaim(row rowScanner) (Domain, error) {
+	var d Domain
+	err := row.Scan(&d.ID, &d.AppID, &d.Host, &d.Primary, &d.RedirectForName,
+		&d.ClaimState, &d.Challenge, &d.ChallengeVersion, &d.VerificationAttempts,
+		&d.LastVerificationAt, &d.VerifiedAt, &d.CreatedAt)
+	return d, err
+}
+
+func newDomainChallenge() (string, error) {
+	raw := make([]byte, 24)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	return "bex-domain-verification=" + base64.RawURLEncoding.EncodeToString(raw), nil
+}
+
+// AddDomainClaim creates one globally-unique pending claim. A same-App retry
+// returns the exact existing row and challenge, updating only redirect intent;
+// a claim owned by another App remains a conflict regardless of claim state.
+func (s *PGStore) AddDomainClaim(ctx context.Context, appID, host, redirectForName string) (Domain, bool, error) {
+	challenge, err := newDomainChallenge()
+	if err != nil {
+		return Domain{}, false, err
+	}
+	var redirect any
+	if redirectForName != "" {
+		redirect = redirectForName
+	}
+	var d Domain
+	created := false
+	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var insertErr error
+		d, insertErr = scanDomainClaim(tx.QueryRow(ctx,
+			`INSERT INTO domains (id, app_id, host, is_primary, redirect_for_name, claim_state, challenge)
+			 VALUES ($1, $2, $3, false, $4, 'pending', $5)
+			 ON CONFLICT (host) DO NOTHING
+			 RETURNING `+domainClaimColumns,
+			ids.New(ids.Domain), appID, host, redirect, challenge))
+		if insertErr == nil {
+			created = true
+			return nil
+		}
+		if !errors.Is(insertErr, pgx.ErrNoRows) {
+			return insertErr
+		}
+		var owner string
+		if err := tx.QueryRow(ctx, `SELECT app_id FROM domains WHERE host = $1 FOR UPDATE`, host).Scan(&owner); err != nil {
+			return err
+		}
+		if owner != appID {
+			return ErrConflict
+		}
+		d, insertErr = scanDomainClaim(tx.QueryRow(ctx,
+			`UPDATE domains SET redirect_for_name = $3 WHERE app_id = $1 AND host = $2 RETURNING `+domainClaimColumns,
+			appID, host, redirect))
+		return insertErr
+	})
+	if err != nil {
+		return Domain{}, false, classify("domain", err)
+	}
+	return d, created, nil
+}
+
+// GetDomainClaim returns one exact host claim owned by appID.
+func (s *PGStore) GetDomainClaim(ctx context.Context, appID, host string) (Domain, error) {
+	d, err := scanDomainClaim(s.Pool.QueryRow(ctx,
+		`SELECT `+domainClaimColumns+` FROM domains WHERE app_id = $1 AND host = $2`, appID, host))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Domain{}, ErrNotFound
+	}
+	return d, err
+}
+
+// ListDomainClaims returns pending and verified claims in stable projection
+// order, primary first and then creation order.
+func (s *PGStore) ListDomainClaims(ctx context.Context, appID string) ([]Domain, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT `+domainClaimColumns+` FROM domains WHERE app_id = $1 ORDER BY is_primary DESC, created_at, id`, appID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Domain
+	for rows.Next() {
+		d, err := scanDomainClaim(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+// RecordDomainVerificationAttempt records a conservative failed-or-successful
+// resolver attempt without changing ownership state.
+func (s *PGStore) RecordDomainVerificationAttempt(ctx context.Context, appID, id string, at time.Time) error {
+	_, err := s.Pool.Exec(ctx,
+		`UPDATE domains SET verification_attempts = verification_attempts + 1, last_verification_at = $3
+		 WHERE app_id = $1 AND id = $2 AND claim_state = 'pending'`, appID, id, at)
+	return err
+}
+
+// PromoteDomainClaim atomically promotes the same pending row that supplied
+// expectedChallenge. A concurrent delete/recreate cannot promote the new row.
+// Already-verified rows are idempotent only when the id still matches.
+func (s *PGStore) PromoteDomainClaim(ctx context.Context, appID, id, expectedChallenge string, at time.Time) (Domain, error) {
+	d, err := scanDomainClaim(s.Pool.QueryRow(ctx,
+		`UPDATE domains
+		 SET claim_state = 'verified', verified_at = $4,
+		     verification_attempts = verification_attempts + 1, last_verification_at = $4
+		 WHERE app_id = $1 AND id = $2 AND claim_state = 'pending' AND challenge = $3
+		 RETURNING `+domainClaimColumns, appID, id, expectedChallenge, at))
+	if err == nil {
+		return d, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return Domain{}, err
+	}
+	d, err = scanDomainClaim(s.Pool.QueryRow(ctx,
+		`SELECT `+domainClaimColumns+` FROM domains WHERE app_id = $1 AND id = $2`, appID, id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Domain{}, ErrConflict
+	}
+	if err != nil {
+		return Domain{}, err
+	}
+	if d.ClaimState != "verified" {
+		return Domain{}, ErrConflict
+	}
+	return d, nil
+}
+
+// ReplaceDomainClaims atomically reconciles a declaration set while preserving
+// unchanged rows' ownership evidence. Newly introduced hosts start pending.
+func (s *PGStore) ReplaceDomainClaims(ctx context.Context, appID string, declarations []DomainDeclaration) ([]Domain, error) {
+	seen := make(map[string]struct{}, len(declarations))
+	for _, declaration := range declarations {
+		if declaration.Host == "" {
+			continue
+		}
+		if _, exists := seen[declaration.Host]; exists {
+			return nil, fmt.Errorf("domain: %w", ErrInvalid)
+		}
+		seen[declaration.Host] = struct{}{}
+	}
+	var out []Domain
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var locked string
+		if err := tx.QueryRow(ctx, `SELECT id FROM apps WHERE id = $1 FOR UPDATE`, appID).Scan(&locked); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE domains SET is_primary = false WHERE app_id = $1`, appID); err != nil {
+			return err
+		}
+		hosts := make([]string, 0, len(seen))
+		for _, declaration := range declarations {
+			if declaration.Host == "" {
+				continue
+			}
+			hosts = append(hosts, declaration.Host)
+			challenge, err := newDomainChallenge()
+			if err != nil {
+				return err
+			}
+			var redirect any
+			if declaration.RedirectForName != "" {
+				redirect = declaration.RedirectForName
+			}
+			tag, err := tx.Exec(ctx,
+				`INSERT INTO domains (id, app_id, host, is_primary, redirect_for_name, claim_state, challenge)
+				 VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+				 ON CONFLICT (host) DO UPDATE
+				 SET is_primary = EXCLUDED.is_primary, redirect_for_name = EXCLUDED.redirect_for_name
+				 WHERE domains.app_id = EXCLUDED.app_id`,
+				ids.New(ids.Domain), appID, declaration.Host, declaration.Primary, redirect, challenge)
+			if err != nil {
+				return err
+			}
+			if tag.RowsAffected() == 0 {
+				return ErrConflict
+			}
+		}
+		if len(hosts) == 0 {
+			if _, err := tx.Exec(ctx, `DELETE FROM domains WHERE app_id = $1`, appID); err != nil {
+				return err
+			}
+		} else if _, err := tx.Exec(ctx,
+			`DELETE FROM domains WHERE app_id = $1 AND NOT (host = ANY($2::text[]))`, appID, hosts); err != nil {
+			return err
+		}
+		rows, err := tx.Query(ctx,
+			`SELECT `+domainClaimColumns+` FROM domains WHERE app_id = $1 ORDER BY is_primary DESC, created_at, id`, appID)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			d, err := scanDomainClaim(rows)
+			if err != nil {
+				return err
+			}
+			out = append(out, d)
+		}
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, classify("domain", err)
+	}
+	return out, nil
 }
 
 func (s *PGStore) DeleteDomain(ctx context.Context, appID, host string) error {
@@ -843,8 +1077,8 @@ func (s *PGStore) AddDomain(ctx context.Context, appID, host, redirectForName st
 		redirect = redirectForName
 	}
 	_, err := s.Pool.Exec(ctx,
-		`INSERT INTO domains (id, app_id, host, is_primary, redirect_for_name)
-		 VALUES ($1, $2, $3, false, $4)`, d.ID, appID, host, redirect)
+		`INSERT INTO domains (id, app_id, host, is_primary, redirect_for_name, claim_state, verified_at)
+		 VALUES ($1, $2, $3, false, $4, 'verified', now())`, d.ID, appID, host, redirect)
 	if err == nil {
 		return nil
 	}
@@ -878,11 +1112,15 @@ func (s *PGStore) domainOwner(ctx context.Context, host string) (string, bool, e
 // RemoveDomain deletes a domain row for apps.IntentStore — idempotent
 // (not-found silently ignored).
 func (s *PGStore) RemoveDomain(ctx context.Context, appID, host string) error {
-	err := s.DeleteDomain(ctx, appID, host)
-	if errors.Is(err, ErrNotFound) {
-		return nil
-	}
-	return err
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx,
+			`UPDATE domains SET redirect_for_name = NULL WHERE app_id = $1 AND redirect_for_name = $2`, appID, host); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM domains WHERE app_id = $1 AND host = $2`, appID, host)
+		return err
+	})
+	return classify("domain", err)
 }
 
 // ReplaceDomains atomically reconciles one App's complete domain set. Locking
@@ -903,7 +1141,8 @@ func (s *PGStore) ReplaceDomains(ctx context.Context, appID, primary string, hos
 				return nil
 			}
 			_, err := tx.Exec(ctx,
-				`INSERT INTO domains (id, app_id, host, is_primary) VALUES ($1, $2, $3, $4)`,
+				`INSERT INTO domains (id, app_id, host, is_primary, claim_state, verified_at)
+				 VALUES ($1, $2, $3, $4, 'verified', now())`,
 				ids.New(ids.Domain), appID, host, primary)
 			return err
 		}
@@ -959,8 +1198,15 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 	// Attach the primary domain to PrimaryHost (projection's spec.host), keep
 	// non-primary domains in Hosts, and carry redirect metadata for either kind.
 	drows, err := s.Pool.Query(ctx,
-		`SELECT app_id, host, is_primary, COALESCE(redirect_for_name, '')
-		 FROM domains ORDER BY is_primary DESC, created_at`)
+		`SELECT d.app_id, d.host, d.is_primary, COALESCE(d.redirect_for_name, '')
+		 FROM domains d
+		 WHERE d.claim_state = 'verified'
+		   AND (d.redirect_for_name IS NULL OR EXISTS (
+		       SELECT 1 FROM domains target
+		       WHERE target.app_id = d.app_id
+		         AND target.host = d.redirect_for_name
+		         AND target.claim_state = 'verified'))
+		 ORDER BY d.is_primary DESC, d.created_at`)
 	if err != nil {
 		return nil, err
 	}

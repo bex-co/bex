@@ -1239,7 +1239,8 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.domainVerified": {
     message: "Verified",
-    description: "Custom-domains status badge: TLS certificate has been issued",
+    description:
+      "Custom-domains status badge: ownership or TLS verification is complete",
   },
   "services.domainCertActive": {
     message: "Active",
@@ -1249,7 +1250,7 @@ const enServices: Record<string, TranslationEntry> = {
   "services.domainPending": {
     message: "Pending",
     description:
-      "Custom-domains status badge: certificate not yet issued/serving",
+      "Custom-domains status badge: ownership or certificate is not complete",
   },
   "services.domainActionsMenu": {
     message: "Open domain actions menu",
@@ -1328,6 +1329,11 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Toast description after a custom-domain add (async convergence)",
   },
+  "services.domainOwnershipNote": {
+    message: "Create the shown TXT record, then re-check ownership.",
+    description:
+      "Toast description after creating a pending custom-domain ownership claim",
+  },
   "services.domainDnsToggle": {
     message: "Show DNS setup",
     description:
@@ -1336,6 +1342,17 @@ const enServices: Record<string, TranslationEntry> = {
   "services.domainDnsTitle": {
     message: "DNS setup",
     description: "Heading of the per-domain DNS-instructions panel",
+  },
+  "services.domainOwnershipGuidance": {
+    message:
+      "First, create this exact TXT record to prove ownership. The domain is not routed until verification succeeds.",
+    description:
+      "Guidance above the durable custom-domain ownership TXT challenge",
+  },
+  "services.domainTrafficRecordTitle": {
+    message: "Traffic record",
+    description:
+      "Heading above the CNAME or ALIAS record shown after the ownership TXT record",
   },
   "services.domainDnsSubdomainGuidance": {
     message:
@@ -1377,12 +1394,12 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Toast when copying a DNS record value fails",
   },
   "services.domainAddedTitle": {
-    message: "Domain added — set up DNS",
+    message: "Domain claim created — set up DNS",
     description: "Title of the post-add DNS-record step in the add dialog",
   },
   "services.domainAddedDescription": {
     message:
-      "Create this record at your DNS provider to finish connecting your domain.",
+      "Create the ownership TXT record at your DNS provider, then re-check to enable routing.",
     description: "Subtitle of the post-add DNS-record step in the add dialog",
   },
   "services.domainRedirectsTo": {

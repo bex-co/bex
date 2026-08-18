@@ -2455,6 +2455,24 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	domainsChanged := existing.Spec.Host != final.Spec.Host ||
 		!slices.Equal(existing.Spec.Hosts, final.Spec.Hosts) ||
 		!maps.Equal(existing.Spec.HostRedirects, final.Spec.HostRedirects)
+	// A pending declaration is intentionally absent from serving spec. Compare
+	// the Blueprint's declaration set to durable claims before deciding a repeat
+	// sync changed anything; otherwise every re-apply would spuriously require a
+	// protected-environment confirmation and open a deploy.
+	if domainsChanged {
+		if claims, appID, ok := s.managedDomainClaims(existing); ok {
+			rows, claimErr := claims.ListDomainClaims(ctx, appID)
+			if claimErr != nil {
+				return AppView{}, claimErr
+			}
+			declarations := domainDeclarations(final.Spec.Host, final.Spec.Hosts, final.Spec.HostRedirects)
+			if sameDomainDeclarations(rows, declarations) {
+				applyVerifiedDomainClaims(&final.Spec, rows)
+				domainsChanged = false
+				specChanged = !reflect.DeepEqual(existing.Spec, final.Spec)
+			}
+		}
+	}
 	if final.Spec.MaintenanceMode != nil {
 		if err := s.validateMaintenanceMode(ctx, final, maintenanceModeView(final.Spec.MaintenanceMode)); err != nil {
 			return AppView{}, err
@@ -2542,7 +2560,31 @@ type stackChanges struct {
 // deploy record, clone Secret, and restartedAt bump reserved for a
 // deploy-worthy spec change.
 func (s *Service) patchChangedStackService(ctx context.Context, req CreateRequest, existing, final *appv1alpha1.App, changes stackChanges) (AppView, error) {
-	maintenanceOnly := changes.specChanged && serviceSpecChangedOnlyByMaintenance(existing.Spec, final.Spec)
+	if changes.domainsChanged {
+		if err := s.ensureHostsClaimable(ctx, final); err != nil {
+			return AppView{}, err
+		}
+		if appID := managedAppID(existing); appID != "" && s.Store != nil {
+			if claims, _, ok := s.managedDomainClaims(existing); ok {
+				declarations := domainDeclarations(final.Spec.Host, final.Spec.Hosts, final.Spec.HostRedirects)
+				rows, err := claims.ReplaceDomainClaims(ctx, appID, declarations)
+				if errors.Is(err, store.ErrConflict) {
+					return AppView{}, errDomainInUse()
+				}
+				if err != nil {
+					return AppView{}, fmt.Errorf("claim Blueprint domains: %w", err)
+				}
+				applyVerifiedDomainClaims(&final.Spec, rows)
+			} else if err := s.Store.ReplaceDomains(ctx, appID, final.Spec.Host, final.Spec.Hosts); err != nil {
+				if errors.Is(err, store.ErrConflict) {
+					return AppView{}, errDomainInUse()
+				}
+				return AppView{}, fmt.Errorf("claim Blueprint domains: %w", err)
+			}
+		}
+	}
+	actualSpecChanged := !reflect.DeepEqual(existing.Spec, final.Spec)
+	maintenanceOnly := actualSpecChanged && serviceSpecChangedOnlyByMaintenance(existing.Spec, final.Spec)
 	if maintenanceOnly && !changes.environmentChanged {
 		return s.ConfigureMaintenanceMode(ctx, req.Name, maintenanceModeView(final.Spec.MaintenanceMode))
 	}
@@ -2551,20 +2593,7 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 	if existing.Spec.MaintenanceMode != nil {
 		currentMaintenance = existing.Spec.MaintenanceMode.DeepCopy()
 	}
-	deploySpecChanged := changes.specChanged && !maintenanceOnly
-	if changes.domainsChanged {
-		if err := s.ensureHostsClaimable(ctx, final); err != nil {
-			return AppView{}, err
-		}
-		if appID := managedAppID(existing); appID != "" && s.Store != nil {
-			if err := s.Store.ReplaceDomains(ctx, appID, final.Spec.Host, final.Spec.Hosts); err != nil {
-				if errors.Is(err, store.ErrConflict) {
-					return AppView{}, errDomainInUse()
-				}
-				return AppView{}, fmt.Errorf("claim Blueprint domains: %w", err)
-			}
-		}
-	}
+	deploySpecChanged := actualSpecChanged && !maintenanceOnly
 	base := client.MergeFrom(existing.DeepCopy())
 	if deploySpecChanged {
 		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, appv1alpha1.AnnotationReleaseGeneration, strconv.FormatInt(existing.Generation+1, 10))
