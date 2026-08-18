@@ -79,6 +79,9 @@ describe("EnvGroupsPanel", () => {
         {
           id: "eg1",
           name: "shared",
+          ownerId: "tea-1",
+          createdAt: null,
+          updatedAt: null,
           serviceLinks: ["other"],
           envVarKeys: ["FOO", "BAR"],
           secretFileNames: ["cert.pem"],
@@ -102,6 +105,9 @@ describe("EnvGroupsPanel", () => {
         {
           id: "eg1",
           name: "shared",
+          ownerId: "tea-1",
+          createdAt: null,
+          updatedAt: null,
           serviceLinks: ["web"],
           envVarKeys: [],
           secretFileNames: [],
@@ -119,6 +125,9 @@ describe("EnvGroupsPanel", () => {
         {
           id: "eg1",
           name: "shared",
+          ownerId: "tea-1",
+          createdAt: null,
+          updatedAt: null,
           serviceLinks: [],
           envVarKeys: [],
           secretFileNames: [],
@@ -168,6 +177,9 @@ describe("EnvGroupsPanel", () => {
         {
           id: "eg1",
           name: "shared",
+          ownerId: "tea-1",
+          createdAt: null,
+          updatedAt: null,
           serviceLinks: [],
           envVarKeys: [],
           secretFileNames: [],

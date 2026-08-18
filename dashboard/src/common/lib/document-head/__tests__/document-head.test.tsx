@@ -204,7 +204,7 @@ describe("dashboard title contract", () => {
     });
     const resourceRoute = createRoute({
       getParentRoute: () => rootRoute,
-      path: "/resource",
+      path: "/usage",
       component: () => null,
       loader: () => ready({ name: resourceName }),
       head: ({ loaderData }) =>
@@ -223,7 +223,7 @@ describe("dashboard title contract", () => {
     });
     const router = createRouter({
       routeTree: rootRoute.addChildren([resourceRoute, settingsRoute]),
-      history: createMemoryHistory({ initialEntries: ["/resource"] }),
+      history: createMemoryHistory({ initialEntries: ["/usage"] }),
       context: {},
     });
 
@@ -242,7 +242,7 @@ describe("dashboard title contract", () => {
 
     resourceName = "private-renamed";
     await act(async () => {
-      await router.navigate({ to: "/resource" });
+      await router.navigate({ to: "/usage" });
       await router.invalidate();
     });
     await waitFor(() =>
@@ -283,7 +283,7 @@ describe("dashboard title contract", () => {
     });
     const slowRoute = createRoute({
       getParentRoute: () => rootRoute,
-      path: "/slow",
+      path: "/billing",
       component: () => null,
       loader: () =>
         new Promise<ReturnType<typeof ready<{ name: string }>>>((resolve) => {
@@ -312,7 +312,7 @@ describe("dashboard title contract", () => {
     );
 
     act(() => {
-      navigation = router.navigate({ to: "/slow" });
+      navigation = router.navigate({ to: "/billing" });
     });
     await waitFor(() =>
       expect(document.title).toBe("Loading… ・ bex Dashboard"),

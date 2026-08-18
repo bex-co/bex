@@ -202,6 +202,6 @@ describe("logSearchEquals (the route's skip-when-unchanged guard)", () => {
   it("detects a real change on any filter key", () => {
     expect(logSearchEquals({ level: "error" }, { level: "warn" })).toBe(false);
     expect(logSearchEquals({}, { live: 0 })).toBe(false);
-    expect(logSearchEquals({ range: "1h" }, { range: "6h" })).toBe(false);
+    expect(logSearchEquals({ range: "1h" }, { range: "4h" })).toBe(false);
   });
 });

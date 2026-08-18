@@ -32,15 +32,15 @@ describe("useIsMobile Hook", () => {
         addListener: vi.fn(), // deprecated
         removeListener: vi.fn(), // deprecated
         addEventListener: vi.fn(
-          (event: string, handler: (event: MediaQueryListEvent) => void) => {
-            if (event === "change") {
+          (event: string, handler: EventListenerOrEventListenerObject) => {
+            if (event === "change" && typeof handler === "function") {
               listeners.push(handler);
             }
           },
         ),
         removeEventListener: vi.fn(
-          (event: string, handler: (event: MediaQueryListEvent) => void) => {
-            if (event === "change") {
+          (event: string, handler: EventListenerOrEventListenerObject) => {
+            if (event === "change" && typeof handler === "function") {
               listeners = listeners.filter((l) => l !== handler);
             }
           },

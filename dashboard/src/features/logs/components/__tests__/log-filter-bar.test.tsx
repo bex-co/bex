@@ -20,12 +20,14 @@ beforeAll(() => {
 });
 
 // The dropdowns discover values over Apollo — stub the hook.
-const discovered = vi.fn(() => [] as string[]);
+const discovered = vi.fn((_label: string) => [] as string[]);
 vi.mock("../../hooks/use-log-label-values", () => ({
   useLogLabelValues: (_resource: string, label: string) => discovered(label),
 }));
 
-function renderBar(over: Partial<Parameters<typeof LogFilterBar>[0]> = {}) {
+function renderBar(
+  over: { filters?: Partial<LogFilters>; liveSupported?: boolean } = {},
+) {
   const onChange = vi.fn();
   const onLiveChange = vi.fn();
   const filters: LogFilters = { ...EMPTY_LOG_FILTERS, ...over.filters };

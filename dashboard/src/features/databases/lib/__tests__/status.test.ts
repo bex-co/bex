@@ -19,6 +19,7 @@ describe("toDatabaseViews", () => {
         version: "16",
         status: "available",
         diskSizeGB: 5,
+        diskAutoscalingEnabled: false,
         suspended: "not_suspended",
         createdAt: "2026-07-01T00:00:00Z",
         updatedAt: "2026-07-02T00:00:00Z",
@@ -57,6 +58,7 @@ describe("toDatabaseViews", () => {
       version: null,
       status: null,
       diskSizeGB: null,
+      diskAutoscalingEnabled: null,
       suspended: null,
       createdAt: null,
       updatedAt: null,
@@ -84,12 +86,18 @@ describe("toDatabaseDetailView", () => {
       databaseName: "db1",
       databaseUser: "db1_user",
       diskSizeGB: 1,
+      diskAutoscalingEnabled: false,
       highAvailabilityEnabled: false,
       suspended: "not_suspended",
       createdAt: null,
+      updatedAt: null,
       externalHost: "db1.db.bex.co",
       public: true,
+      poolerEnabled: null,
+      backupsEnabled: null,
+      ipAllowList: null,
       region: null,
+      readReplicas: null,
     });
     expect(d.databaseName).toBe("db1");
     expect(d.databaseUser).toBe("db1_user");
@@ -109,12 +117,18 @@ describe("toDatabaseDetailView", () => {
       databaseName: "db2",
       databaseUser: "db2_user",
       diskSizeGB: 1,
+      diskAutoscalingEnabled: false,
       highAvailabilityEnabled: false,
       suspended: "not_suspended",
       createdAt: null,
+      updatedAt: null,
       externalHost: null,
       public: false,
+      poolerEnabled: null,
+      backupsEnabled: null,
+      ipAllowList: null,
       region: "fsn1",
+      readReplicas: null,
     });
     expect(d.region).toBe("fsn1");
   });

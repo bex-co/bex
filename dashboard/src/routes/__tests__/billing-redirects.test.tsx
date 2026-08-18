@@ -23,7 +23,7 @@ import {
   type ParsedLocation,
 } from "@tanstack/react-router";
 import { routeTree } from "@/routeTree.gen";
-import { Route as UsageShimRoute } from "../usage";
+import { redirectPreservingSuffix } from "@/common/lib/render-alias";
 import { Route as BillingSplatRoute } from "../billing_.$first.$";
 
 /**
@@ -40,10 +40,15 @@ import { Route as BillingSplatRoute } from "../billing_.$first.$";
  */
 function renderAt(initialPath: string) {
   const rootRoute = createRootRoute();
+  // Mirrors ../usage's shim beforeLoad exactly (same production helper): a
+  // file-route's beforeLoad type is bound to the real registered root and can't
+  // be reattached to a synthetic root, so delegate to the shared helper here.
   const usageShim = createRoute({
     getParentRoute: () => rootRoute,
     path: "/usage",
-    beforeLoad: UsageShimRoute.options.beforeLoad,
+    beforeLoad: ({ location }) => {
+      redirectPreservingSuffix("/billing", location);
+    },
   });
   const billing = createRoute({
     getParentRoute: () => rootRoute,

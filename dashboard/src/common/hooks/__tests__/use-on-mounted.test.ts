@@ -77,7 +77,10 @@ describe("useOnMounted", () => {
 
   it("should not use async callback return value as cleanup", async () => {
     const cleanup = vi.fn();
-    const callback = async () => {
+    // Typed as a void-returning callback (the hook's contract): an async
+    // callback's resolved value is never used as cleanup, which is what this
+    // test asserts. The void return position deliberately discards the Promise.
+    const callback: () => void = async () => {
       await Promise.resolve();
       return cleanup;
     };
@@ -134,7 +137,7 @@ describe("useOnMounted", () => {
 
   it("should handle callback that sets up interval with cleanup", () => {
     const intervalCallback = vi.fn();
-    let intervalId: NodeJS.Timeout | null = null;
+    let intervalId: number | null = null;
 
     const callback = () => {
       intervalId = setInterval(intervalCallback, 1000);

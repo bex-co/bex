@@ -67,6 +67,7 @@ describe("ConnectionInfoPanel", () => {
       internalConnectionString: "postgresql://u:s3cretpw@db-rw.default:5432/db",
       externalConnectionString: "",
       psqlCommand: "PGPASSWORD=s3cretpw psql …",
+      readReplicaConnectionStrings: [],
     };
     const user = userEvent.setup();
     render(<ConnectionInfoPanel id="db" />);

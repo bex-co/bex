@@ -134,6 +134,7 @@ describe("mergeLogLines", () => {
     level: "",
     method: "",
     statusCode: "",
+    spans: null,
   });
 
   it("appends live lines after history, in order", () => {

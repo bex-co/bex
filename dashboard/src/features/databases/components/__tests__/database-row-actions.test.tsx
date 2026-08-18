@@ -32,6 +32,7 @@ const DB: DatabaseView = {
   diskSizeGB: 1,
   createdAt: null,
   public: false,
+  suspended: "not_suspended",
 };
 
 beforeEach(() => {

@@ -26,16 +26,24 @@ const WINDOW = {
 };
 
 function emptyResult() {
-  return { series: [], loading: false, unavailable: false, error: undefined };
+  return {
+    series: [],
+    loading: false,
+    unavailable: false,
+    storeUnavailable: false,
+    error: undefined,
+    degradedSources: [],
+  };
 }
 
 /** A stepped series with real timestamps (the chart maps x by time). */
 function seriesResult(unit: string, values: number[], instance?: string) {
+  const labels: Record<string, string> = instance ? { instance } : {};
   return {
     series: [
       {
         unit,
-        labels: instance ? { instance } : {},
+        labels,
         points: values.map((value, i) => ({
           timestamp: new Date(1_751_800_000_000 + i * 60_000).toISOString(),
           value,
@@ -44,7 +52,9 @@ function seriesResult(unit: string, values: number[], instance?: string) {
     ],
     loading: false,
     unavailable: false,
+    storeUnavailable: false,
     error: undefined,
+    degradedSources: [],
   };
 }
 
@@ -239,7 +249,9 @@ describe("ApplicationMetricsCard", () => {
           ],
           loading: false,
           unavailable: false,
+          storeUnavailable: false,
           error: undefined,
+          degradedSources: [],
         };
       }
       return emptyResult();
@@ -259,7 +271,9 @@ describe("ApplicationMetricsCard", () => {
           series: [],
           loading: false,
           unavailable: true,
+          storeUnavailable: false,
           error: undefined,
+          degradedSources: [],
         };
       }
       return emptyResult();

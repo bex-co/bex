@@ -201,7 +201,10 @@ async function runRouteLoader(
   workspaceId: string | null = "tea-selfhost",
   error?: Error,
 ) {
-  const query = vi.fn(async () => ({ data, error }));
+  const query = vi.fn(async (_options: Record<string, unknown>) => ({
+    data,
+    error,
+  }));
   const loader = route.options.loader as (context: {
     context: { client: { query: typeof query }; workspaceId: string | null };
     params: Record<string, string>;

@@ -82,7 +82,13 @@ function loadingState() {
 
 function emptyState() {
   return {
-    summary: { workspaceId: "ws", period: "2026-07", services: [] },
+    summary: {
+      workspaceId: "ws",
+      period: "2026-07",
+      services: [],
+      estimatedCost: null,
+      billing: null,
+    },
     loading: false,
     error: undefined,
   };
@@ -129,6 +135,8 @@ function dataState() {
           ],
         },
       ],
+      estimatedCost: null,
+      billing: null,
     },
     loading: false,
     error: undefined,
@@ -355,6 +363,7 @@ describe("UsagePage", () => {
               periodEnd: "2026-07-01T00:00:00Z",
             },
           ],
+          credits: null,
         },
       },
     });

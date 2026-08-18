@@ -50,7 +50,6 @@ describe("useTranslations", () => {
     it("logs an error for an unprefixed key", () => {
       const { result } = renderHook(() => useTranslations());
 
-      // @ts-expect-error -- intentionally passing a key missing its namespace prefix
       result.current.t("appName");
 
       expect(errorSpy).toHaveBeenCalledOnce();
@@ -60,7 +59,6 @@ describe("useTranslations", () => {
     it("logs a warning for a key not present in the en resources", () => {
       const { result } = renderHook(() => useTranslations());
 
-      // @ts-expect-error -- intentionally passing a key that doesn't exist
       result.current.t("common.doesNotExist");
 
       expect(warnSpy).toHaveBeenCalledOnce();

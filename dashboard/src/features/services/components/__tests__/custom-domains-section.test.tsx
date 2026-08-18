@@ -200,6 +200,7 @@ describe("CustomDomainsSection", () => {
           domainType: "apex",
           verified: false,
           active: false,
+          redirectForName: null,
           dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
         },
       ]),

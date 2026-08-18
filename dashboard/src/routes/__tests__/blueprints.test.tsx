@@ -11,6 +11,7 @@ import {
 import { BlueprintsPage } from "../blueprints";
 import { BlueprintDetailPage } from "../blueprints.$blueprintId";
 import type { BlueprintView } from "@/features/blueprints/types";
+import type { BlueprintSyncActionResult } from "@/features/blueprints/hooks/use-sync-blueprint";
 
 // --- list hook mock ---
 const blueprintsState: {
@@ -52,7 +53,12 @@ vi.mock("@/features/blueprints/hooks/use-blueprint", () => ({
 }));
 
 // --- sync hook mock ---
-const sync = vi.fn(async () => ({ status: "success", result: null }));
+const sync = vi.fn(
+  async (): Promise<BlueprintSyncActionResult> => ({
+    status: "success",
+    result: null,
+  }),
+);
 vi.mock("@/features/blueprints/hooks/use-sync-blueprint", () => ({
   useSyncBlueprint: () => ({ sync, busy: false }),
 }));

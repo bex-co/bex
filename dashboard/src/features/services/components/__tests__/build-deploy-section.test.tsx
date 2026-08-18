@@ -842,6 +842,7 @@ describe("BuildDeploySection", () => {
         runtime="node"
         buildCommand="yarn build"
         startCommand="npm start"
+        preDeployCommand={null}
         autoDeploy={false}
         showPreDeployCommand={false}
         showStartCommand
@@ -861,6 +862,7 @@ describe("BuildDeploySection", () => {
         rootDir="backend"
         runtime="docker"
         startCommand="bin/run"
+        preDeployCommand={null}
         autoDeploy={false}
         showPreDeployCommand={false}
         showStartCommand

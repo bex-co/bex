@@ -97,6 +97,7 @@ describe("TeamPanel", () => {
         email: "admin@example.com",
         role: "ADMIN",
         createdAt: null,
+        mfaEnabled: false,
       },
       {
         subject: "id-bob",
@@ -104,6 +105,7 @@ describe("TeamPanel", () => {
         email: "",
         role: "VIEWER",
         createdAt: null,
+        mfaEnabled: false,
       },
     ];
     render(<TeamPanel />);
@@ -119,6 +121,7 @@ describe("TeamPanel", () => {
         email: "admin@example.com",
         role: "ADMIN",
         createdAt: null,
+        mfaEnabled: false,
       },
     ];
     render(<TeamPanel />);
@@ -135,6 +138,7 @@ describe("TeamPanel", () => {
         email: "",
         role: "VIEWER",
         createdAt: null,
+        mfaEnabled: false,
       },
     ];
     render(<TeamPanel />);
@@ -150,6 +154,7 @@ describe("TeamPanel", () => {
         email: "",
         role: "VIEWER",
         createdAt: null,
+        mfaEnabled: false,
       },
     ];
     render(<TeamPanel />);
@@ -164,6 +169,7 @@ describe("TeamPanel", () => {
         email: "",
         role: "VIEWER",
         createdAt: null,
+        mfaEnabled: false,
       },
     ];
     render(<TeamPanel />);
@@ -182,6 +188,7 @@ describe("TeamPanel", () => {
         email: "",
         role: "VIEWER",
         createdAt: null,
+        mfaEnabled: false,
       },
     ];
     render(<TeamPanel />);
@@ -276,6 +283,7 @@ describe("TeamPanel", () => {
         email: "alice@example.com",
         role: "ADMIN",
         createdAt: null,
+        mfaEnabled: false,
       },
       {
         subject: "id-bob",
@@ -283,6 +291,7 @@ describe("TeamPanel", () => {
         email: "bob@example.com",
         role: "VIEWER",
         createdAt: null,
+        mfaEnabled: false,
       },
     ];
     teamState.invites = [
@@ -318,6 +327,7 @@ describe("TeamPanel", () => {
         email: "alice@example.com",
         role: "ADMIN",
         createdAt: null,
+        mfaEnabled: false,
       },
     ];
     rerender(<TeamPanel />);
@@ -339,6 +349,7 @@ describe("TeamPanel", () => {
         email: "bob@example.com",
         role: "VIEWER",
         createdAt: null,
+        mfaEnabled: false,
       },
     ];
     removeMember.mockResolvedValue(true);

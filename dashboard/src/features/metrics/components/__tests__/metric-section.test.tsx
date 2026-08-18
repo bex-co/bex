@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MetricSection } from "../metric-section";
 import type { UseMetricsResult } from "@/features/metrics/hooks/use-metrics";
-import type { ChartSeries } from "@/features/metrics/lib/graphql-series";
+import type { ChartSeries } from "@/features/metrics/types";
 
 function result(over: Partial<UseMetricsResult> = {}): UseMetricsResult {
   return {

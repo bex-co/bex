@@ -16,7 +16,8 @@ vi.mock("@/common/hooks/use-cookie-storage-state/cookie", () => {
 });
 
 import {
-  __cookieStore,
+  getCookie,
+  removeCookie,
   setCookie as seedCookie,
 } from "@/common/hooks/use-cookie-storage-state/cookie";
 import {
@@ -61,11 +62,11 @@ const wrapperWidth = () =>
   (
     document.querySelector('[data-slot="sidebar-wrapper"]') as HTMLElement
   ).style.getPropertyValue("--sidebar-width");
-const persisted = () => __cookieStore.get(SIDEBAR_COOKIE_NAME);
+const persisted = () => getCookie(SIDEBAR_COOKIE_NAME);
 
 describe("Sidebar resize + collapse (w2/m63)", () => {
   beforeEach(() => {
-    __cookieStore.clear();
+    removeCookie(SIDEBAR_COOKIE_NAME);
   });
 
   describe("persisted-state first paint (SSR read-back)", () => {

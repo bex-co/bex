@@ -24,7 +24,14 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
 
 import { useCreateKeyValue } from "@/features/keyvalue/hooks/use-create-key-value";
 
-const input = { name: "cache", plan: "starter", version: "8", public: false };
+const input = {
+  name: "cache",
+  plan: "starter",
+  version: "8",
+  public: false,
+  maxmemoryPolicy: "",
+  persistenceMode: "",
+};
 
 beforeEach(() => {
   mockUseMutation.mockReset();

@@ -144,6 +144,7 @@ describe("NetworkMetricsCard", () => {
           })),
           loading: false,
           unavailable: false,
+          storeUnavailable: false,
           degradedSources: [],
           error: undefined,
         };
@@ -260,7 +261,7 @@ describe("NetworkMetricsCard", () => {
     const requestsCall = mockUseMetrics.mock.calls.find(
       ([, metric]) => metric === "http_requests",
     );
-    expect(requestsCall?.[2].path).toBeUndefined();
+    expect(requestsCall?.[2]?.path).toBeUndefined();
   });
 
   it("shows the store-unavailable state on the request sections when a host/path filter hits no log store (w5/m58)", () => {
@@ -294,6 +295,7 @@ describe("NetworkMetricsCard", () => {
           ],
           loading: false,
           unavailable: false,
+          storeUnavailable: false,
           degradedSources: [],
           error: undefined,
         };
@@ -324,6 +326,7 @@ describe("NetworkMetricsCard", () => {
           ],
           loading: false,
           unavailable: false,
+          storeUnavailable: false,
           degradedSources: [],
           error: undefined,
         };
@@ -363,6 +366,7 @@ describe("NetworkMetricsCard", () => {
           ],
           loading: false,
           unavailable: false,
+          storeUnavailable: false,
           degradedSources: [],
           error: undefined,
         };
@@ -387,7 +391,9 @@ describe("NetworkMetricsCard", () => {
           series: [],
           loading: false,
           unavailable: true,
+          storeUnavailable: false,
           error: undefined,
+          degradedSources: [],
         };
       }
       return emptyResult();
@@ -432,6 +438,7 @@ describe("NetworkMetricsCard", () => {
           ],
           loading: false,
           unavailable: false,
+          storeUnavailable: false,
           degradedSources: ["direct"],
           error: undefined,
         };

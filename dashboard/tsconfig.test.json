@@ -1,0 +1,16 @@
+{
+  // w9/m85: tsconfig.app.json excludes **/*.test.* and **/*.spec.* from `tsc -b`,
+  // and vitest does not typecheck — so a test fixture can drift out of sync with
+  // the type it claims to build and nothing fails. This project type-checks the
+  // whole tree INCLUDING the test files (no emit); `yarn typecheck` runs it after
+  // the app build so drift is a hard failure. The setup file (src/test/setup.ts)
+  // is picked up here too, so its `@testing-library/jest-dom/vitest` augmentation
+  // types the DOM matchers (.toBeInTheDocument, …) used in tests.
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    "noEmit": true
+  },
+  "include": ["src"],
+  "exclude": []
+}
