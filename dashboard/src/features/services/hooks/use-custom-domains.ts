@@ -6,7 +6,9 @@ import {
   AddCustomDomainDocument,
   DeleteCustomDomainDocument,
   VerifyCustomDomainDocument,
+  type CustomDomainFieldsFragment,
 } from "@/graphql/definitions";
+import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
@@ -17,39 +19,36 @@ import {
   type CustomDomainView,
 } from "@/features/services/types";
 
-// bex-api's custom-domains GraphQL is a thin veneer over App.spec.hosts[]
-// (docs/ADR006-bex-api.md): the operator reconciles Traefik + cert-manager per host, so
-// an add/delete converges asynchronously — the toast says the change is
-// propagating rather than implying an instant apply. The hostname is the opaque
-// id (id === name), and verification/serving status is read live from TLS state.
+// Managed custom domains are durable ownership claims. Pending claims are
+// intentionally absent from App.spec.host(s); an exact TXT match atomically
+// promotes them, after which the operator converges routing and TLS.
 
-type RawDomain = {
-  name: string | null;
-  domainType: string | null;
-  verificationStatus: string | null;
-  serverStatus: string | null;
-  redirectForName: string | null;
-  dnsRecord: {
-    type: string | null;
-    name: string | null;
-    value: string | null;
-  } | null;
-} | null;
+type RawDomain = CustomDomainFieldsFragment | null;
 
-function mapDomain(d: RawDomain & { name: string }): CustomDomainView {
+function mapDNSRecord(
+  record: CustomDomainFieldsFragment["dnsRecord"],
+): CustomDomainView["dnsRecord"] {
+  return record
+    ? {
+        type: record.type ?? "",
+        name: record.name ?? "",
+        value: record.value ?? "",
+      }
+    : null;
+}
+
+function mapDomain(
+  d: CustomDomainFieldsFragment & { name: string },
+): CustomDomainView {
   return {
     name: d.name,
     domainType: d.domainType ?? "subdomain",
+    ownershipVerified: d.ownershipStatus === "verified",
     verified: d.verificationStatus === "verified",
     active: d.serverStatus === "active",
     redirectForName: d.redirectForName,
-    dnsRecord: d.dnsRecord
-      ? {
-          type: d.dnsRecord.type ?? "",
-          name: d.dnsRecord.name ?? "",
-          value: d.dnsRecord.value ?? "",
-        }
-      : null,
+    dnsRecord: mapDNSRecord(d.dnsRecord),
+    ownershipDnsRecord: mapDNSRecord(d.ownershipDnsRecord),
   };
 }
 
@@ -57,14 +56,19 @@ function mapDomains(
   raw: Array<RawDomain> | null | undefined,
 ): CustomDomainView[] {
   return (raw ?? [])
-    .filter((d): d is RawDomain & { name: string } => d?.name != null)
+    .filter(
+      (d): d is CustomDomainFieldsFragment & { name: string } =>
+        d?.name != null,
+    )
     .map(mapDomain);
 }
 
 // mapRaw maps a single mutation result (add/verify return one domain or null) to a
 // view, or null when the domain/name is absent — the shared shape both write verbs use.
 function mapRaw(raw: RawDomain): CustomDomainView | null {
-  return raw?.name ? mapDomain(raw as RawDomain & { name: string }) : null;
+  return raw?.name
+    ? mapDomain(raw as CustomDomainFieldsFragment & { name: string })
+    : null;
 }
 
 // addDomainErrorKey classifies a failed add by bex-api's sentinel text so the
@@ -137,9 +141,8 @@ export interface UseCustomDomainMutationsResult {
 /**
  * Wires the custom-domain write mutations (`addCustomDomain` / `deleteCustomDomain`
  * / `verifyCustomDomain`), refetching the list after each write and toasting the
- * result. Each add/delete patches App.spec.hosts[], which the operator reconciles
- * into Traefik + a TLS certificate, so the success toast says the change is
- * propagating; verify is an idempotent re-read of the current DNS/cert state.
+ * result. Add creates a pending ownership claim; verify promotes an exact TXT
+ * match into serving intent; delete removes either pending or verified state.
  */
 export function useCustomDomainMutations(
   serviceId: string,
@@ -164,7 +167,7 @@ export function useCustomDomainMutations(
         const fresh = await refetch();
         const primary = mapRaw(res.data?.addCustomDomain ?? null);
         toast.success(t("services.domainAddSuccess", { name }), {
-          description: t("services.domainPropagateNote"),
+          description: t("services.domainOwnershipNote"),
         });
         return primary
           ? { primary, sibling: pairedSibling(primary, fresh) }
@@ -206,14 +209,18 @@ export function useCustomDomainMutations(
         });
         await refetch();
         const view = mapRaw(res.data?.verifyCustomDomain ?? null);
-        if (view?.verified) {
+        if (view?.ownershipVerified) {
           toast.success(t("services.domainVerifySuccess", { name }));
         } else {
           toast.info(t("services.domainVerifyPending", { name }));
         }
         return view;
-      } catch {
-        toast.error(t("services.domainVerifyError", { name }));
+      } catch (error) {
+        if (hasGraphQLErrorCode(error, "DOMAIN_OWNERSHIP_PENDING")) {
+          toast.info(t("services.domainVerifyPending", { name }));
+        } else {
+          toast.error(t("services.domainVerifyError", { name }));
+        }
         return null;
       } finally {
         setBusy(false);

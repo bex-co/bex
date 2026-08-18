@@ -1796,7 +1796,17 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 		return AppView{}, rollbackStoreRow(err)
 	}
 	if createdRowID != "" {
-		if err := s.Store.ReplaceDomains(ctx, createdRowID, a.Spec.Host, a.Spec.Hosts); err != nil {
+		if claims, _, ok := s.managedDomainClaims(a); ok {
+			declarations := domainDeclarations(a.Spec.Host, a.Spec.Hosts, a.Spec.HostRedirects)
+			rows, err := claims.ReplaceDomainClaims(ctx, createdRowID, declarations)
+			if err != nil {
+				if errors.Is(err, store.ErrConflict) {
+					err = errDomainInUse()
+				}
+				return AppView{}, rollbackStoreRow(fmt.Errorf("claim service domains: %w", err))
+			}
+			applyVerifiedDomainClaims(&a.Spec, rows)
+		} else if err := s.Store.ReplaceDomains(ctx, createdRowID, a.Spec.Host, a.Spec.Hosts); err != nil {
 			if errors.Is(err, store.ErrConflict) {
 				err = errDomainInUse()
 			}

@@ -19,6 +19,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -385,6 +386,12 @@ func TestReconcileUpdatesOwnedFieldsOnly(t *testing.T) {
 	if _, err := store.CreateDomain(ctx, row.ID, "web.example.com", true); err != nil {
 		t.Fatal(err)
 	}
+	store.mu.Lock()
+	store.domains["pending-domain"] = Domain{
+		ID: "pending-domain", AppID: row.ID, Host: "pending.example.com",
+		ClaimState: "pending", Challenge: "bex-domain-verification=test",
+	}
+	store.mu.Unlock()
 
 	if err := rec.ReconcileOnce(ctx); err != nil {
 		t.Fatalf("reconcile: %v", err)
@@ -395,6 +402,9 @@ func TestReconcileUpdatesOwnedFieldsOnly(t *testing.T) {
 	}
 	if app.Spec.Host != "web.example.com" || len(app.Spec.Hosts) != 1 || app.Spec.Hosts[0] != "extra.example.com" {
 		t.Errorf("hosts: host=%q hosts=%v", app.Spec.Host, app.Spec.Hosts)
+	}
+	if slices.Contains(app.Spec.Hosts, "pending.example.com") {
+		t.Errorf("pending ownership claim reached the reconciler projection: %v", app.Spec.Hosts)
 	}
 	if app.Spec.Builder != "dockerfile" || app.Spec.RestartedAt != "2026-07-05T00:00:00Z" {
 		t.Errorf("unowned fields stomped: builder=%q restartedAt=%q", app.Spec.Builder, app.Spec.RestartedAt)

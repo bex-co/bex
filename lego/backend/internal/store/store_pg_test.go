@@ -26,6 +26,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -98,6 +99,7 @@ func TestPGStore(t *testing.T) {
 	assertDeployLifecycle(ctx, t, s, app)
 	assertConcurrentDeployTriggers(ctx, t, s, ten.ID)
 	assertDomainUniqueness(ctx, t, s, ten.ID)
+	assertDomainClaimLifecycle(ctx, t, s, ten.ID)
 	assertMembershipRoleOutbox(ctx, t, s, ten.ID)
 	assertAuditEvents(ctx, t, s, ten)
 	assertServiceEvents(ctx, t, s, ten, app)
@@ -1800,6 +1802,95 @@ func assertDomainUniqueness(ctx context.Context, t *testing.T, s *PGStore, tenan
 	// (Render's "already exists on another site"), not swallowed.
 	if err := s.AddDomain(ctx, a2.ID, "shared.example.com", ""); !errors.Is(err, ErrConflict) {
 		t.Errorf("cross-app AddDomain => ErrConflict, got %v", err)
+	}
+}
+
+func assertDomainClaimLifecycle(ctx context.Context, t *testing.T, s *PGStore, tenantID string) {
+	t.Helper()
+	a1, err := s.CreateApp(ctx, App{TenantID: tenantID, Name: "claim-a", Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a2, err := s.CreateApp(ctx, App{TenantID: tenantID, Name: "claim-b", Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.DeleteApp(ctx, a1.ID); _ = s.DeleteApp(ctx, a2.ID) }()
+
+	start := make(chan struct{})
+	errs := make([]error, 2)
+	var claims [2]Domain
+	var wg sync.WaitGroup
+	for i, appID := range []string{a1.ID, a2.ID} {
+		wg.Add(1)
+		go func(i int, appID string) {
+			defer wg.Done()
+			<-start
+			claims[i], _, errs[i] = s.AddDomainClaim(ctx, appID, "claim-race.example.com", "")
+		}(i, appID)
+	}
+	close(start)
+	wg.Wait()
+	winner := -1
+	for i, err := range errs {
+		if err == nil {
+			winner = i
+		} else if !errors.Is(err, ErrConflict) {
+			t.Fatalf("concurrent AddDomainClaim[%d]: %v", i, err)
+		}
+	}
+	if winner < 0 || (errs[0] == nil) == (errs[1] == nil) {
+		t.Fatalf("concurrent claim results = %v, want one owner and one conflict", errs)
+	}
+	claim := claims[winner]
+	if claim.ClaimState != "pending" || !strings.HasPrefix(claim.Challenge, "bex-domain-verification=") {
+		t.Fatalf("new claim = %+v", claim)
+	}
+	if retry, created, err := s.AddDomainClaim(ctx, claim.AppID, claim.Host, ""); err != nil || created || retry.ID != claim.ID || retry.Challenge != claim.Challenge {
+		t.Fatalf("same-App retry = %+v created=%v err=%v", retry, created, err)
+	}
+	desired, err := s.ListDesiredApps(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, app := range desired {
+		if app.ID == claim.AppID && (app.PrimaryHost == claim.Host || slices.Contains(app.Hosts, claim.Host)) {
+			t.Fatal("pending claim entered desired serving projection")
+		}
+	}
+	if _, err := s.PromoteDomainClaim(ctx, claim.AppID, claim.ID, "wrong", time.Now()); !errors.Is(err, ErrConflict) {
+		t.Fatalf("wrong challenge promotion = %v", err)
+	}
+	verified, err := s.PromoteDomainClaim(ctx, claim.AppID, claim.ID, claim.Challenge, time.Now())
+	if err != nil || verified.ClaimState != "verified" {
+		t.Fatalf("correct promotion = %+v err=%v", verified, err)
+	}
+	desired, err = s.ListDesiredApps(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, app := range desired {
+		if app.ID == claim.AppID && slices.Contains(app.Hosts, claim.Host) {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("verified claim missing from desired serving projection")
+	}
+
+	if err := s.RemoveDomain(ctx, claim.AppID, claim.Host); err != nil {
+		t.Fatal(err)
+	}
+	replacement, _, err := s.AddDomainClaim(ctx, claim.AppID, claim.Host, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replacement.ID == claim.ID || replacement.Challenge == claim.Challenge {
+		t.Fatal("delete/recreate reused claim identity or challenge")
+	}
+	if _, err := s.PromoteDomainClaim(ctx, claim.AppID, claim.ID, claim.Challenge, time.Now()); !errors.Is(err, ErrConflict) {
+		t.Fatalf("stale promotion = %v", err)
 	}
 }
 

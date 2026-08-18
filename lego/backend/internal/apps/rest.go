@@ -1059,8 +1059,8 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 	deleteDomain := core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
 	})
-	// verifyDomain re-checks DNS/cert state now (Render's POST …/verify) and returns
-	// the fresh domain. 200 OK — bex verification is automatic, so this is a re-read.
+	// verifyDomain promotes a pending ownership claim after an exact TXT match,
+	// then returns the fresh ownership/TLS/serving state.
 	verifyDomain := core.HandleMapped(http.StatusOK, func(r *http.Request) (DomainView, error) {
 		return s.VerifyDomain(r.Context(), r.PathValue("id"), r.PathValue("name"))
 	}, toRenderCustomDomain)

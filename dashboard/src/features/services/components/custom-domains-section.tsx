@@ -193,9 +193,10 @@ function CustomDomainRow({
 }) {
   const { t } = useTranslations();
   const [confirming, setConfirming] = useState(false);
-  // Pending domains still need their DNS record created, so open them by default;
-  // a verified domain is done, so it starts collapsed. Toggling overrides this.
-  const [open, setOpen] = useState(() => !domain.verified);
+  // Pending ownership or TLS still needs action/visibility, so open it by default.
+  const [open, setOpen] = useState(
+    () => !domain.ownershipVerified || !domain.verified,
+  );
 
   return (
     <>
@@ -226,16 +227,15 @@ function CustomDomainRow({
         </TableCell>
         <TableCell>
           <StatusBadge
-            ok={domain.verified}
+            ok={domain.ownershipVerified}
             okLabel={t("services.domainVerified")}
             pendingLabel={t("services.domainPending")}
           />
         </TableCell>
         <TableCell>
-          <StatusBadge
-            ok={domain.active}
-            okLabel={t("services.domainCertActive")}
-            pendingLabel={t("services.domainPending")}
+          <CertificateStatusBadge
+            verified={domain.verified}
+            active={domain.active}
           />
         </TableCell>
         <TableCell className="text-right whitespace-nowrap">
@@ -323,33 +323,54 @@ function DnsRecordFields({ domain }: { domain: CustomDomainView }) {
   const record = domain.dnsRecord;
   return (
     <div className="space-y-3">
+      {!domain.ownershipVerified && domain.ownershipDnsRecord ? (
+        <>
+          <p className="text-muted-foreground text-sm">
+            {t("services.domainOwnershipGuidance")}
+          </p>
+          <DnsRecordFieldsRow record={domain.ownershipDnsRecord} />
+          <Separator />
+          <p className="text-sm font-medium">
+            {t("services.domainTrafficRecordTitle")}
+          </p>
+        </>
+      ) : null}
       <p className="text-muted-foreground text-sm">
         {domain.domainType === "apex"
           ? t("services.domainDnsApexGuidance")
           : t("services.domainDnsSubdomainGuidance")}
       </p>
       {record ? (
-        <div className="grid gap-2 sm:grid-cols-3">
-          <RecordField
-            label={t("services.domainRecordType")}
-            value={record.type}
-          />
-          <RecordField
-            label={t("services.domainRecordHost")}
-            value={record.name}
-            copy
-          />
-          <RecordField
-            label={t("services.domainRecordTarget")}
-            value={record.value}
-            copy
-          />
-        </div>
+        <DnsRecordFieldsRow record={record} />
       ) : (
         <p className="text-muted-foreground text-sm italic">
           {t("services.domainDnsUnavailable")}
         </p>
       )}
+    </div>
+  );
+}
+
+function DnsRecordFieldsRow({
+  record,
+}: {
+  record: CustomDomainView["dnsRecord"];
+}) {
+  const { t } = useTranslations();
+  if (!record) return null;
+  return (
+    <div className="grid gap-2 sm:grid-cols-3">
+      <RecordField label={t("services.domainRecordType")} value={record.type} />
+      <RecordField
+        label={t("services.domainRecordHost")}
+        value={record.name}
+        copy
+      />
+      <RecordField
+        label={t("services.domainRecordTarget")}
+        value={record.value}
+        copy
+      />
     </div>
   );
 }
@@ -438,6 +459,35 @@ function StatusBadge({
   return (
     <Badge variant="outline" className="text-muted-foreground">
       <Clock /> {pendingLabel}
+    </Badge>
+  );
+}
+
+function CertificateStatusBadge({
+  verified,
+  active,
+}: {
+  verified: boolean;
+  active: boolean;
+}) {
+  const { t } = useTranslations();
+  if (active) {
+    return (
+      <Badge variant="success">
+        <CheckCircle2 /> {t("services.domainCertActive")}
+      </Badge>
+    );
+  }
+  if (verified) {
+    return (
+      <Badge variant="secondary">
+        <CheckCircle2 /> {t("services.domainVerified")}
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className="text-muted-foreground">
+      <Clock /> {t("services.domainPending")}
     </Badge>
   );
 }

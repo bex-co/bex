@@ -23,8 +23,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -124,6 +126,265 @@ func TestAddDomainAppendsToHosts(t *testing.T) {
 type recordingDomainOwnership struct {
 	err         error
 	name, value string
+}
+
+type domainOwnershipFunc func(context.Context, string, string) error
+
+func (f domainOwnershipFunc) VerifyTXT(ctx context.Context, name, value string) error {
+	return f(ctx, name, value)
+}
+
+// memoryDomainClaimStore adds the new durable-claim methods to recordingStore
+// without changing legacy managed-App tests, which intentionally exercise the
+// old IntentStore fallback. Production's PGStore satisfies the same optional
+// interface.
+type memoryDomainClaimStore struct {
+	recordingStore
+	claims map[string]store.Domain
+	next   int
+}
+
+func newMemoryDomainClaimStore() *memoryDomainClaimStore {
+	return &memoryDomainClaimStore{claims: map[string]store.Domain{}}
+}
+
+func (m *memoryDomainClaimStore) AddDomainClaim(_ context.Context, appID, host, redirect string) (store.Domain, bool, error) {
+	if existing, ok := m.claims[host]; ok {
+		if existing.AppID != appID {
+			return store.Domain{}, false, store.ErrConflict
+		}
+		existing.RedirectForName = redirect
+		m.claims[host] = existing
+		return existing, false, nil
+	}
+	m.next++
+	claim := store.Domain{
+		ID: "cdm-test-" + host, AppID: appID, Host: host,
+		RedirectForName: redirect, ClaimState: "pending",
+		Challenge:        "bex-domain-verification=test-" + host,
+		ChallengeVersion: 1, CreatedAt: time.Unix(int64(m.next), 0),
+	}
+	m.claims[host] = claim
+	return claim, true, nil
+}
+
+func (m *memoryDomainClaimStore) GetDomainClaim(_ context.Context, appID, host string) (store.Domain, error) {
+	claim, ok := m.claims[host]
+	if !ok || claim.AppID != appID {
+		return store.Domain{}, store.ErrNotFound
+	}
+	return claim, nil
+}
+
+func (m *memoryDomainClaimStore) ListDomainClaims(_ context.Context, appID string) ([]store.Domain, error) {
+	var out []store.Domain
+	for _, claim := range m.claims {
+		if claim.AppID == appID {
+			out = append(out, claim)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Primary != out[j].Primary {
+			return out[i].Primary
+		}
+		return out[i].CreatedAt.Before(out[j].CreatedAt)
+	})
+	return out, nil
+}
+
+func (m *memoryDomainClaimStore) RecordDomainVerificationAttempt(_ context.Context, appID, id string, at time.Time) error {
+	for host, claim := range m.claims {
+		if claim.AppID == appID && claim.ID == id && claim.ClaimState == "pending" {
+			claim.VerificationAttempts++
+			claim.LastVerificationAt = &at
+			m.claims[host] = claim
+		}
+	}
+	return nil
+}
+
+func (m *memoryDomainClaimStore) PromoteDomainClaim(_ context.Context, appID, id, challenge string, at time.Time) (store.Domain, error) {
+	for host, claim := range m.claims {
+		if claim.AppID != appID || claim.ID != id {
+			continue
+		}
+		if claim.ClaimState == "verified" {
+			return claim, nil
+		}
+		if claim.Challenge != challenge {
+			return store.Domain{}, store.ErrConflict
+		}
+		claim.ClaimState = "verified"
+		claim.VerifiedAt = &at
+		claim.VerificationAttempts++
+		claim.LastVerificationAt = &at
+		m.claims[host] = claim
+		return claim, nil
+	}
+	return store.Domain{}, store.ErrConflict
+}
+
+func (m *memoryDomainClaimStore) ReplaceDomainClaims(_ context.Context, appID string, declarations []store.DomainDeclaration) ([]store.Domain, error) {
+	wanted := map[string]bool{}
+	for _, declaration := range declarations {
+		wanted[declaration.Host] = true
+		claim, _, err := m.AddDomainClaim(context.Background(), appID, declaration.Host, declaration.RedirectForName)
+		if err != nil {
+			return nil, err
+		}
+		claim.Primary = declaration.Primary
+		m.claims[declaration.Host] = claim
+	}
+	for host, claim := range m.claims {
+		if claim.AppID == appID && !wanted[host] {
+			delete(m.claims, host)
+		}
+	}
+	return m.ListDomainClaims(context.Background(), appID)
+}
+
+func (m *memoryDomainClaimStore) RemoveDomain(_ context.Context, appID, host string) error {
+	delete(m.claims, host)
+	for source, claim := range m.claims {
+		if claim.AppID == appID && claim.RedirectForName == host {
+			claim.RedirectForName = ""
+			m.claims[source] = claim
+		}
+	}
+	return nil
+}
+
+func TestManagedDomainClaimLifecycleNeverServesPending(t *testing.T) {
+	claims := newMemoryDomainClaimStore()
+	svc, cl := newService(claims, managedApp("web", "srv-1"))
+	resolver := &recordingDomainOwnership{err: errors.New("not propagated")}
+	svc.DomainOwnership = resolver
+
+	created, err := svc.AddDomain(context.Background(), "web", "app.example.com")
+	if err != nil {
+		t.Fatalf("AddDomain: %v", err)
+	}
+	if created.OwnershipStatus != "pending" || created.OwnershipDNSRecord == nil || created.OwnershipDNSRecord.Type != "TXT" {
+		t.Fatalf("pending view = %+v", created)
+	}
+	challenge := created.OwnershipDNSRecord.Value
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 0 {
+		t.Fatalf("pending claim reached serving spec: %v", got)
+	}
+	retried, err := svc.AddDomain(context.Background(), "web", "app.example.com")
+	if err != nil || retried.OwnershipDNSRecord == nil || retried.OwnershipDNSRecord.Value != challenge {
+		t.Fatalf("same-App retry did not preserve challenge: %+v err=%v", retried, err)
+	}
+
+	_, err = svc.VerifyDomain(context.Background(), "web", "app.example.com")
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "DOMAIN_OWNERSHIP_PENDING" {
+		t.Fatalf("wrong TXT = %v, want DOMAIN_OWNERSHIP_PENDING", err)
+	}
+	if strings.Contains(err.Error(), challenge) || len(getApp(t, cl, "web").Spec.Hosts) != 0 {
+		t.Fatal("failed verification leaked its challenge or served the pending host")
+	}
+
+	resolver.err = nil
+	verified, err := svc.VerifyDomain(context.Background(), "web", "app.example.com")
+	if err != nil {
+		t.Fatalf("VerifyDomain: %v", err)
+	}
+	if verified.OwnershipStatus != "verified" || verified.OwnershipDNSRecord != nil || verified.VerificationStatus != "pending" {
+		t.Fatalf("post-promotion view = %+v", verified)
+	}
+	if got := getApp(t, cl, "web").Spec.Hosts; !slices.Equal(got, []string{"app.example.com"}) {
+		t.Fatalf("verified claim not projected: %v", got)
+	}
+	if again, err := svc.VerifyDomain(context.Background(), "web", "app.example.com"); err != nil || again.OwnershipStatus != "verified" {
+		t.Fatalf("verified retry = %+v err=%v", again, err)
+	}
+}
+
+func TestManagedDomainVerificationCannotPromoteRecreatedClaim(t *testing.T) {
+	claims := newMemoryDomainClaimStore()
+	svc, cl := newService(claims, managedApp("web", "srv-1"))
+	if _, err := svc.AddDomain(context.Background(), "web", "app.example.com"); err != nil {
+		t.Fatalf("AddDomain: %v", err)
+	}
+	svc.DomainOwnership = domainOwnershipFunc(func(_ context.Context, _, _ string) error {
+		delete(claims.claims, "app.example.com")
+		claims.next++
+		claims.claims["app.example.com"] = store.Domain{
+			ID: "cdm-recreated", AppID: "srv-1", Host: "app.example.com",
+			ClaimState: "pending", Challenge: "bex-domain-verification=recreated",
+			ChallengeVersion: 2, CreatedAt: time.Unix(99, 0),
+		}
+		return nil
+	})
+
+	_, err := svc.VerifyDomain(context.Background(), "web", "app.example.com")
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "DOMAIN_CLAIM_STALE" {
+		t.Fatalf("stale proof = %v, want DOMAIN_CLAIM_STALE", err)
+	}
+	if claims.claims["app.example.com"].ClaimState != "pending" || len(getApp(t, cl, "web").Spec.Hosts) != 0 {
+		t.Fatal("stale proof promoted or served the replacement claim")
+	}
+}
+
+func TestManagedServiceCreatePersistsPendingWithoutServing(t *testing.T) {
+	claims := newMemoryDomainClaimStore()
+	svc, cl := newService(claims)
+	req := CreateRequest{
+		Name: "created", Image: "img:1", Hosts: []string{"created.example.com"},
+	}
+	spec, err := specFromCreate(req)
+	if err != nil {
+		t.Fatalf("specFromCreate: %v", err)
+	}
+	view, err := svc.materializeNewApp(context.Background(), req, &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: req.Name, Namespace: "default"},
+		Spec:       spec,
+	}, "tea-test", core.EnvironmentAssignment{})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	app := getApp(t, cl, view.Name)
+	if app.Spec.Host != "" || len(app.Spec.Hosts) != 0 {
+		t.Fatalf("pending create domain reached serving spec: host=%q hosts=%v", app.Spec.Host, app.Spec.Hosts)
+	}
+	rows, err := claims.ListDomainClaims(context.Background(), "srv-test")
+	if err != nil || len(rows) != 1 || rows[0].Host != "created.example.com" || rows[0].ClaimState != "pending" || !rows[0].Primary {
+		t.Fatalf("create claims = %+v err=%v", rows, err)
+	}
+}
+
+func TestManagedBlueprintDomainSyncPreservesPendingClaimWithoutServing(t *testing.T) {
+	claims := newMemoryDomainClaimStore()
+	existing := managedApp("web", "srv-1")
+	svc, cl := newService(claims, existing)
+	final := existing.DeepCopy()
+	final.Spec.Host = "blueprint.example.com"
+	if _, err := svc.patchChangedStackService(context.Background(), CreateRequest{Name: "web"}, existing, final, stackChanges{
+		specChanged: true, domainsChanged: true,
+	}); err != nil {
+		t.Fatalf("Blueprint domain sync: %v", err)
+	}
+	if app := getApp(t, cl, "web"); app.Spec.Host != "" || len(app.Spec.Hosts) != 0 {
+		t.Fatalf("pending Blueprint claim reached serving spec: %+v", app.Spec)
+	}
+	claim := claims.claims["blueprint.example.com"]
+	if claim.ClaimState != "pending" || !claim.Primary {
+		t.Fatalf("Blueprint claim = %+v", claim)
+	}
+	challenge := claim.Challenge
+	current := getApp(t, cl, "web")
+	retry := current.DeepCopy()
+	retry.Spec.Host = "blueprint.example.com"
+	if _, err := svc.patchChangedStackService(context.Background(), CreateRequest{Name: "web"}, current, retry, stackChanges{
+		specChanged: true, domainsChanged: true,
+	}); err != nil {
+		t.Fatalf("Blueprint retry: %v", err)
+	}
+	if got := claims.claims["blueprint.example.com"].Challenge; got != challenge {
+		t.Fatalf("Blueprint retry rotated challenge: %q -> %q", challenge, got)
+	}
 }
 
 func (v *recordingDomainOwnership) VerifyTXT(_ context.Context, name, value string) error {
@@ -907,6 +1168,57 @@ func TestRESTCustomDomainsUnknownApp(t *testing.T) {
 	}
 }
 
+func TestManagedPendingDomainSurfaceParity(t *testing.T) {
+	claims := newMemoryDomainClaimStore()
+	svc, _ := newService(claims, managedApp("web", "srv-1"))
+	if _, err := svc.AddDomain(context.Background(), "web", "app.example.com"); err != nil {
+		t.Fatal(err)
+	}
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/app.example.com", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("REST get = %d: %s", rec.Code, rec.Body)
+	}
+	var rest renderCustomDomain
+	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil {
+		t.Fatal(err)
+	}
+	if rest.OwnershipStatus != "pending" || rest.OwnershipDNSRecord == nil || rest.OwnershipDNSRecord.Type != "TXT" {
+		t.Fatalf("REST pending shape = %+v", rest)
+	}
+
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gql := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `{
+		customDomain(id: "web", name: "app.example.com") {
+			ownershipStatus ownershipDnsRecord { type name value }
+		}
+	}`})
+	if len(gql.Errors) != 0 {
+		t.Fatalf("GraphQL get: %v", gql.Errors)
+	}
+	gqlDomain := gql.Data.(map[string]any)["customDomain"].(map[string]any)
+	if gqlDomain["ownershipStatus"] != "pending" || gqlDomain["ownershipDnsRecord"].(map[string]any)["value"] != rest.OwnershipDNSRecord.Value {
+		t.Fatalf("GraphQL pending shape = %v", gqlDomain)
+	}
+
+	call, cleanup := appsMCPClient(t, svc)
+	defer cleanup()
+	mcpDomain := call("get_custom_domain", map[string]any{"serviceId": "web", "name": "app.example.com"})
+	proof, _ := mcpDomain["ownershipDnsRecord"].(map[string]any)
+	if mcpDomain["ownershipStatus"] != "pending" || proof["value"] != rest.OwnershipDNSRecord.Value {
+		t.Fatalf("MCP pending shape = %v", mcpDomain)
+	}
+}
+
 // --- GraphQL fragment ---
 
 func TestGraphQLCustomDomains(t *testing.T) {
@@ -1443,6 +1755,7 @@ func TestFilterDomainsComposesBothFilters(t *testing.T) {
 		{"", "apex", []string{"apex-pending.com", "apex-verified.com"}},
 		{"verified", "apex", []string{"apex-verified.com"}},
 		{"pending", "subdomain", []string{"www.sub-pending.com"}},
+		{"unverified", "subdomain", []string{"www.sub-pending.com"}},
 	}
 	for _, c := range cases {
 		got, err := filterDomains(domains, c.status, c.dtype)

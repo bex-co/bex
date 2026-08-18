@@ -311,12 +311,17 @@ export interface CustomDomainView {
   name: string;
   /** "apex" or "subdomain" — drives the apex vs subdomain DNS guidance. */
   domainType: string;
+  /** Durable DNS-TXT ownership admission; false means the host is not routed. */
+  ownershipVerified: boolean;
+  /** TLS certificate issued after ownership admission. */
   verified: boolean;
   active: boolean;
   /** Canonical host when this auto-paired sibling redirects; null when served directly. */
   redirectForName: string | null;
   /** The DNS record to create; null if the backend couldn't derive the target. */
   dnsRecord: DnsRecordView | null;
+  /** Exact TXT proof while ownership is pending; null after atomic promotion. */
+  ownershipDnsRecord: DnsRecordView | null;
 }
 
 /**

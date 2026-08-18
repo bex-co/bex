@@ -49,19 +49,27 @@ function domainsResult(
 const verifiedDomain: CustomDomainView = {
   name: "www.example.com",
   domainType: "subdomain",
+  ownershipVerified: true,
   verified: true,
   active: true,
   redirectForName: null,
   dnsRecord: { type: "CNAME", name: "www", value: "web.onbex.co" },
+  ownershipDnsRecord: null,
 };
 
 const pendingDomain: CustomDomainView = {
   name: "api.example.com",
   domainType: "subdomain",
+  ownershipVerified: false,
   verified: false,
   active: false,
   redirectForName: null,
   dnsRecord: { type: "CNAME", name: "api", value: "web.onbex.co" },
+  ownershipDnsRecord: {
+    type: "TXT",
+    name: "_bex-challenge.example.com",
+    value: "bex-domain-verification=test-api",
+  },
 };
 
 // w6/m23: an auto-paired www<->apex pair, as ListDomains returns after AddDomain
@@ -69,19 +77,31 @@ const pendingDomain: CustomDomainView = {
 const apexDomain: CustomDomainView = {
   name: "foo.com",
   domainType: "apex",
+  ownershipVerified: false,
   verified: false,
   active: false,
   redirectForName: null,
   dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
+  ownershipDnsRecord: {
+    type: "TXT",
+    name: "_bex-challenge.foo.com",
+    value: "bex-domain-verification=test-apex",
+  },
 };
 
 const wwwSiblingDomain: CustomDomainView = {
   name: "www.foo.com",
   domainType: "subdomain",
+  ownershipVerified: false,
   verified: false,
   active: false,
   redirectForName: "foo.com",
   dnsRecord: { type: "CNAME", name: "www", value: "web.onbex.co" },
+  ownershipDnsRecord: {
+    type: "TXT",
+    name: "_bex-challenge.foo.com",
+    value: "bex-domain-verification=test-www",
+  },
 };
 
 // Radix's DropdownMenu relies on pointer-capture APIs jsdom doesn't implement.
@@ -127,13 +147,39 @@ describe("CustomDomainsSection", () => {
         {
           ...verifiedDomain,
           name: "api.example.com",
+          ownershipVerified: false,
+          verified: false,
+          active: false,
+          ownershipDnsRecord: pendingDomain.ownershipDnsRecord,
+        },
+      ]),
+    );
+    render(<CustomDomainsSection serviceId="web" />);
+    expect(screen.getAllByText("Pending")).toHaveLength(2);
+  });
+
+  it("shows ownership verified while certificate activation is pending", () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([
+        {
+          ...verifiedDomain,
           verified: false,
           active: false,
         },
       ]),
     );
     render(<CustomDomainsSection serviceId="web" />);
-    expect(screen.getAllByText("Pending")).toHaveLength(2);
+    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(screen.getByText("Pending")).toBeInTheDocument();
+  });
+
+  it("keeps certificate verification distinct from inactive serving", () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([{ ...verifiedDomain, active: false }]),
+    );
+    render(<CustomDomainsSection serviceId="web" />);
+    expect(screen.getAllByText("Verified")).toHaveLength(2);
+    expect(screen.queryByText("Active")).not.toBeInTheDocument();
   });
 
   it("renders the error state when the query fails", () => {
@@ -179,17 +225,22 @@ describe("CustomDomainsSection", () => {
     expect(mockAddDomain).not.toHaveBeenCalled();
   });
 
-  it("auto-expands a pending domain and shows the DNS record to create", () => {
+  it("distinguishes ownership pending and shows TXT plus traffic records", () => {
     mockUseCustomDomains.mockReturnValue(domainsResult([pendingDomain]));
     render(<CustomDomainsSection serviceId="web" />);
 
     // Pending rows open by default, revealing the DNS-setup panel + record.
     expect(screen.getByText("DNS setup")).toBeInTheDocument();
+    expect(screen.getByText("TXT")).toBeInTheDocument();
     expect(screen.getByText("CNAME")).toBeInTheDocument();
+    expect(screen.getByText("_bex-challenge.example.com")).toBeInTheDocument();
+    expect(
+      screen.getByText("bex-domain-verification=test-api"),
+    ).toBeInTheDocument();
     expect(screen.getByText("api")).toBeInTheDocument();
     expect(screen.getByText("web.onbex.co")).toBeInTheDocument();
     // Copy affordances for the host + target (labels double as aria-labels).
-    expect(screen.getByRole("button", { name: "Target" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Target" })).toHaveLength(2);
   });
 
   it("shows apex guidance for an apex domain", () => {
@@ -198,10 +249,16 @@ describe("CustomDomainsSection", () => {
         {
           name: "example.com",
           domainType: "apex",
+          ownershipVerified: false,
           verified: false,
           active: false,
           redirectForName: null,
           dnsRecord: { type: "ALIAS", name: "@", value: "web.onbex.co" },
+          ownershipDnsRecord: {
+            type: "TXT",
+            name: "_bex-challenge.example.com",
+            value: "bex-domain-verification=apex",
+          },
         },
       ]),
     );
@@ -237,7 +294,10 @@ describe("CustomDomainsSection", () => {
 
     // The dialog swaps to the DNS-record step (mockAddDomain resolves a domain view).
     expect(
-      await within(dialog).findByText("Domain added — set up DNS"),
+      await within(dialog).findByText("Domain claim created — set up DNS"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("_bex-challenge.example.com"),
     ).toBeInTheDocument();
     expect(within(dialog).getByText("web.onbex.co")).toBeInTheDocument();
   });
