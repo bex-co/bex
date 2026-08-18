@@ -838,6 +838,13 @@ func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedSer
 	if !obs.AvailabilityObserved {
 		obs.Availability = previous.Availability
 	}
+	// Only an observed, timestamped healthy conclusion advances the recorded
+	// healthy-transition reference (PG: the change-guarded UPDATE's
+	// COALESCE($5, healthy_transition_at)); every other observation carries
+	// the previous one forward.
+	if !(obs.AvailabilityObserved && obs.Availability == "healthy" && !obs.ReadyTransitionAt.IsZero()) {
+		obs.ReadyTransitionAt = previous.ReadyTransitionAt
+	}
 	facts := observedStateFacts(obs, previous.ServicePhase, previous.Availability)
 	for _, fact := range facts {
 		m.eventFacts[fact.SourceKey] = fact
@@ -845,6 +852,16 @@ func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedSer
 	obs.ServicePhase = checkpointServicePhase(previous.ServicePhase, obs.ServicePhase)
 	m.eventCheckpoints[obs.AppID] = obs
 	return facts, nil
+}
+
+func (m *memStore) LastHealthyTransitionAt(_ context.Context, appID string) (time.Time, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	checkpoint, ok := m.eventCheckpoints[appID]
+	if !ok || checkpoint.Availability != "healthy" {
+		return time.Time{}, nil
+	}
+	return checkpoint.ReadyTransitionAt, nil
 }
 
 func (m *memStore) InsertServiceEventFact(_ context.Context, fact ServiceEventFact) (bool, error) {

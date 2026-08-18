@@ -225,6 +225,10 @@ type Reconciler struct {
 	// (notifications feature off / store off).
 	DeployNotifier DeployNotifier
 
+	// Metrics, when non-nil, counts the conclusions rejectStaleUnhealthy
+	// refuses (w6/m41). nil => rejections are logged but not metered.
+	Metrics *ReconcilerMetrics
+
 	// unhealthyOnce remembers, per app, that the previous pass observed
 	// unhealthy without recording it — the w3/m78 single-tick debounce (see
 	// debounceUnhealthy). Per-process memory is deliberate: a restart just
@@ -238,6 +242,19 @@ type Reconciler struct {
 // workspace's per-tenant hosting namespace (ADR043).
 func namespaceFor(d DesiredApp) string {
 	return WorkspaceNamespace(d.TenantID)
+}
+
+// suppressAvailability marks an observation as availability-unseen: the
+// checkpoint keeps its previous availability and no edge can fire. Shared by
+// debounceUnhealthy and rejectStaleUnhealthy — two distinct guards that must
+// blank exactly the same conclusion fields (the fourth, ReadyTransitionAt, was
+// added by w6/m41; a single clearing site keeps the guards from drifting).
+func suppressAvailability(obs ObservedServiceState) ObservedServiceState {
+	obs.AvailabilityObserved = false
+	obs.Availability = ""
+	obs.ReasonCode = ""
+	obs.ReadyTransitionAt = time.Time{}
+	return obs
 }
 
 // debounceUnhealthy suppresses a single-tick unhealthy observation: the first
@@ -254,13 +271,51 @@ func debounceUnhealthy(obs ObservedServiceState, unhealthyOnce map[string]bool) 
 	unhealthy := obs.AvailabilityObserved && obs.Availability == "unhealthy"
 	if unhealthy && !unhealthyOnce[obs.AppID] {
 		unhealthyOnce[obs.AppID] = true
-		obs.AvailabilityObserved = false
-		obs.Availability = ""
-		obs.ReasonCode = ""
-		return obs
+		return suppressAvailability(obs)
 	}
 	unhealthyOnce[obs.AppID] = unhealthy
 	return obs
+}
+
+// rejectReasonStaleTransition is the closed rejection-reason vocabulary for
+// ReconcilerMetrics.Rejection: the conclusion's condition transition predates
+// the last recorded healthy checkpoint, i.e. a time-traveled re-read.
+const rejectReasonStaleTransition = "stale_transition"
+
+// rejectStaleUnhealthy refuses a time-traveled unhealthy conclusion (w6/m41,
+// source .pm/w3/016.md — found by w3/m78's live crash leg). The operator
+// concludes App Ready from controller-runtime CACHED clients; when a
+// control-plane incident stalls the informer's watch stream for minutes, a
+// pass can re-conclude a crash-era Ready=False long after recovery — twice in
+// a row, which is exactly what the two-tick debounceUnhealthy then passes
+// through. The condition's LastTransitionTime orders the conclusion against
+// the last recorded healthy checkpoint: a transition OLDER than that
+// checkpoint is a stale re-read, not a new outage, so it records nothing and
+// never arms the debounce. Both timestamps come from the operator's own
+// condition clock, so the comparison carries no cross-process skew.
+//
+// Every unknown fails OPEN toward recording real outages, never toward
+// silence: no checkpoint row, a checkpoint that is not currently healthy or
+// predates the healthy_transition_at column, a condition without a timestamp,
+// and a lookup error all record normally. Runs before debounceUnhealthy so a
+// rejected phantom cannot consume the debounce's one free tick for the real
+// outage that may follow.
+func (r *Reconciler) rejectStaleUnhealthy(ctx context.Context, obs ObservedServiceState) ObservedServiceState {
+	if !obs.AvailabilityObserved || obs.Availability != "unhealthy" || obs.ReadyTransitionAt.IsZero() {
+		return obs
+	}
+	healthyAt, err := r.Store.LastHealthyTransitionAt(ctx, obs.AppID)
+	if err != nil {
+		log.Printf("controlplane: healthy checkpoint lookup for %s failed (%v); recording observation anyway", obs.AppID, err)
+		return obs
+	}
+	if healthyAt.IsZero() || !obs.ReadyTransitionAt.Before(healthyAt) {
+		return obs
+	}
+	r.Metrics.Rejection(rejectReasonStaleTransition)
+	log.Printf("controlplane: refusing time-traveled unhealthy conclusion for %s: ready transition %s predates the recorded healthy checkpoint %s",
+		obs.AppID, obs.ReadyTransitionAt, healthyAt)
+	return suppressAvailability(obs)
 }
 
 // identity is the control-plane identity this projector stamps and prunes
@@ -350,7 +405,7 @@ func (r *Reconciler) recordObservations(ctx context.Context, d DesiredApp, cur *
 	if r.unhealthyOnce == nil {
 		r.unhealthyOnce = make(map[string]bool)
 	}
-	obs := debounceUnhealthy(observedServiceStateFor(d.ID, cur, hasOpenDeploy), r.unhealthyOnce)
+	obs := debounceUnhealthy(r.rejectStaleUnhealthy(ctx, observedServiceStateFor(d.ID, cur, hasOpenDeploy)), r.unhealthyOnce)
 	if _, err := r.Store.RecordObservedServiceState(ctx, obs); err != nil {
 		log.Printf("controlplane: record observed service state %s: %v", d.ID, err)
 	}
@@ -1019,6 +1074,7 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 			if app.Status.Phase == appv1alpha1.PhaseRunning {
 				obs.Availability = "healthy"
 				obs.AvailabilityObserved = true
+				obs.ReadyTransitionAt = condition.LastTransitionTime.Time
 			}
 		case metav1.ConditionFalse:
 			// Ordinary rollout progress is not a service failure. A concrete
@@ -1037,6 +1093,7 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 				obs.Availability = "unhealthy"
 				obs.AvailabilityObserved = true
 				obs.ReasonCode = EventReasonReadinessFailed
+				obs.ReadyTransitionAt = condition.LastTransitionTime.Time
 			}
 		}
 		break
