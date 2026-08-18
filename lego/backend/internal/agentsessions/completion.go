@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -113,6 +114,58 @@ type Completer struct {
 	// hibernated session is deleted this long after it hibernated. 0 ⇒ the 7d
 	// default when hibernation is enabled.
 	RetentionTTL time.Duration
+
+	// StatusReadFailureTTL bounds a continuous ambiguous gateway/status-read
+	// failure before the session is terminalized honestly. A coded missing/dead
+	// target converges immediately. Zero uses two minutes; successful reads reset
+	// the streak, so a one-off gateway rollout remains transient.
+	StatusReadFailureTTL time.Duration
+	Metrics              *CompletionMetrics
+	statusFailuresMu     sync.Mutex
+	statusFailures       map[string]time.Time
+}
+
+const defaultStatusReadFailureTTL = 2 * time.Minute
+
+func (c *Completer) statusReadFailureTTL() time.Duration {
+	if c.StatusReadFailureTTL > 0 {
+		return c.StatusReadFailureTTL
+	}
+	return defaultStatusReadFailureTTL
+}
+
+func (c *Completer) noteStatusFailure(id string) bool {
+	c.statusFailuresMu.Lock()
+	defer c.statusFailuresMu.Unlock()
+	if c.statusFailures == nil {
+		c.statusFailures = map[string]time.Time{}
+	}
+	since, ok := c.statusFailures[id]
+	if !ok {
+		c.statusFailures[id] = c.now()
+		return false
+	}
+	return c.now().Sub(since) >= c.statusReadFailureTTL()
+}
+
+func (c *Completer) clearStatusFailure(id string) {
+	c.statusFailuresMu.Lock()
+	delete(c.statusFailures, id)
+	c.statusFailuresMu.Unlock()
+}
+
+func (c *Completer) pruneStatusFailures(rows []store.AgentSession) {
+	active := make(map[string]struct{}, len(rows))
+	for _, row := range rows {
+		active[row.ID] = struct{}{}
+	}
+	c.statusFailuresMu.Lock()
+	for id := range c.statusFailures {
+		if _, ok := active[id]; !ok {
+			delete(c.statusFailures, id)
+		}
+	}
+	c.statusFailuresMu.Unlock()
 }
 
 func (c *Completer) idleTTL() time.Duration {
@@ -218,6 +271,7 @@ func (c *Completer) Reconcile(ctx context.Context) {
 	if err != nil {
 		return
 	}
+	c.pruneStatusFailures(rows)
 	for _, row := range rows {
 		c.finalize(ctx, row)
 	}
@@ -283,12 +337,20 @@ func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
 		// silently strands a session in running forever (the exact failure mode the
 		// w3/m43 live E2E hit), so this loop must never be unobservable.
 		if errors.Is(err, core.ErrNotFound) {
-			c.fail(ctx, record, "sandbox terminated before completion")
+			c.Metrics.read(statusReadTerminal)
+			c.clearStatusFailure(record.ID)
+			c.failLostSandbox(ctx, record, "sandbox terminated before completion", convergenceTargetTerminated)
 		} else {
+			c.Metrics.read(statusReadTransientError)
 			log.Printf("agent-session completer: read status failed (session=%s sandbox=%s): %v", record.ID, record.SandboxID, err)
+			if c.noteStatusFailure(record.ID) {
+				c.failLostSandbox(ctx, record, "sandbox status remained unavailable beyond the retry window", convergenceStatusUnavailable)
+			}
 		}
 		return
 	}
+	c.Metrics.read(statusReadOK)
+	c.clearStatusFailure(record.ID)
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return // status file not written yet — the turn is still starting
@@ -372,13 +434,39 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 }
 
 func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason string) {
-	final, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseFailed, "", "", 0, nil, reason)
-	if err != nil {
-		log.Printf("agent-session completer: finalize-failed write errored (session=%s reason=%q): %v", record.ID, reason, err)
+	final, ok := c.finalizeFailure(ctx, record, reason)
+	if !ok {
 		return
 	}
 	log.Printf("agent-session completer: failed session=%s reason=%q", record.ID, reason)
 	c.teardown(ctx, final)
+}
+
+// failLostSandbox is the dead-target backstop. Unlike an ordinary driver-
+// reported failure, a terminal Pod cannot support editor reuse or transcript
+// harvest, so it records the incomplete turn and reclaims the exact sandbox
+// immediately instead of entering the Active-tier idle grace.
+func (c *Completer) failLostSandbox(ctx context.Context, record store.AgentSession, reason string, metricReason terminalConvergenceReason) {
+	c.clearStatusFailure(record.ID)
+	final, ok := c.finalizeFailure(ctx, record, reason)
+	if !ok {
+		return
+	}
+	c.Metrics.converged(metricReason)
+	c.markTurnTranscript(ctx, final, false, true, reason)
+	log.Printf("agent-session completer: terminal fallback converged session=%s reason=%q", record.ID, reason)
+	c.terminate(ctx, final)
+}
+
+func (c *Completer) finalizeFailure(ctx context.Context, record store.AgentSession, reason string) (store.AgentSession, bool) {
+	final, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseFailed, "", "", 0, nil, reason)
+	if err != nil {
+		if !errors.Is(err, store.ErrNotFound) {
+			log.Printf("agent-session completer: finalize failed-state write errored (session=%s reason=%q): %v", record.ID, reason, err)
+		}
+		return store.AgentSession{}, false
+	}
+	return final, true
 }
 
 // maxTranscriptParts bounds how many parts one turn's harvest persists — a

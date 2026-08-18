@@ -1,0 +1,44 @@
+name: test (OpenSandbox controller patches)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deploy/opensandbox/controller.Dockerfile"
+      - "deploy/opensandbox/patches/**"
+      - ".github/workflows/opensandbox-controller-test.yml"
+  pull_request:
+    paths:
+      - "deploy/opensandbox/controller.Dockerfile"
+      - "deploy/opensandbox/patches/**"
+      - ".github/workflows/opensandbox-controller-test.yml"
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  controller:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: upstream
+        name: Apply carried patches to the pinned upstream controller
+        run: |
+          commit="$(sed -n 's/^ARG OPENSANDBOX_COMMIT=//p' deploy/opensandbox/controller.Dockerfile)"
+          test "$(printf '%s' "$commit" | wc -c | tr -d ' ')" = 40
+          upstream="$GITHUB_WORKSPACE/.opensandbox-upstream"
+          echo "path=.opensandbox-upstream" >> "$GITHUB_OUTPUT"
+          git init -q "$upstream"
+          git -C "$upstream" remote add origin https://github.com/alibaba/OpenSandbox
+          git -C "$upstream" fetch -q --depth 1 origin "$commit"
+          git -C "$upstream" checkout -q FETCH_HEAD
+          git -C "$upstream" apply "$GITHUB_WORKSPACE/deploy/opensandbox/patches/controller-snapshot-job-namespace.patch"
+          git -C "$upstream" apply "$GITHUB_WORKSPACE/deploy/opensandbox/patches/controller-terminal-pod-status.patch"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.25.7
+          cache-dependency-path: ${{ steps.upstream.outputs.path }}/kubernetes/go.sum
+      - name: Real-controller envtest suite
+        working-directory: ${{ steps.upstream.outputs.path }}/kubernetes
+        run: make test

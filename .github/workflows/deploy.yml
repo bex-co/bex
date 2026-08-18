@@ -47,11 +47,11 @@ env:
   DASHBOARD_IMAGE: ghcr.io/bex-co/bex-dashboard
   OPENSANDBOX_IMAGE: ghcr.io/bex-co/opensandbox-server
   OPENSANDBOX_CONTROLLER_IMAGE: ghcr.io/bex-co/opensandbox-controller
-  OPENSANDBOX_CONTROLLER_TAG: v0.2.0-bex-snapjobns
+  OPENSANDBOX_CONTROLLER_TAG: v0.2.0-bex-snapjobns-terminalpod
   AGENT_SANDBOX_IMAGE: ghcr.io/bex-co/bex-agent-sandbox
 
 jobs:
-  # --- gates: all three test suites must pass before any image is built or deployed ---
+  # --- gates: all product + carried-controller tests pass before any image build ---
   test-backend:
     uses: ./.github/workflows/backend-test.yml
 
@@ -60,6 +60,9 @@ jobs:
 
   test-dashboard:
     uses: ./.github/workflows/dashboard-test.yml
+
+  test-opensandbox-controller:
+    uses: ./.github/workflows/opensandbox-controller-test.yml
 
   # --- secret scanning: gitleaks over the pushed commits (w7/002) ---
   # Runs in parallel with the test gates. Findings are warn-first and do not
@@ -128,7 +131,7 @@ jobs:
           fi
 
   build-and-deploy:
-    needs: [test-backend, test-operator, test-dashboard, secret-scan, check-supersession]
+    needs: [test-backend, test-operator, test-dashboard, test-opensandbox-controller, secret-scan, check-supersession]
     # A run superseded before its build starts is skipped here (neutral, no
     # build). A run superseded DURING its build is caught by the write-back guard
     # (it concludes neutral instead). w1/m59.
@@ -196,11 +199,10 @@ jobs:
             ${{ env.OPENSANDBOX_IMAGE }}:${{ github.sha }}
             ${{ env.OPENSANDBOX_IMAGE }}:0.2.2
 
-      # --- 1c'. build the patched OpenSandbox controller image (w3/m42) ---
+      # --- 1c'. build the patched OpenSandbox controller image ---
       # Upstream at a pinned commit plus the carried snapshot-job-namespace
-      # patch (deploy/opensandbox/patches/), which moves the privileged
-      # commit/unpause Jobs out of the tenant sandbox namespaces (ADR042 D5).
-      # Retire this step when an upstream release ships the flag.
+      # (w3/m42) and terminal-child-Pod (w5/m72) patches. The reusable envtest
+      # workflow above applies both to this exact pin before any image is built.
       - id: build_opensandbox_controller
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
@@ -210,7 +212,7 @@ jobs:
           push: true
           tags: |
             ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ github.sha }}
-            ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:v0.2.0-bex-snapjobns
+            ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ env.OPENSANDBOX_CONTROLLER_TAG }}
 
       # --- 1d. build the ADR047 agent sandbox template image (w3/m37) ---
       - id: build_agent_sandbox
@@ -454,14 +456,14 @@ jobs:
               raise SystemExit("expected exactly one opensandbox-server image override")
           path.write_text(rendered)
           PY
-          python3 - "${CONTROLLER_DIGEST}" <<'PY'
+          python3 - "${CONTROLLER_DIGEST}" "${OPENSANDBOX_CONTROLLER_TAG}" <<'PY'
           import re
           import sys
           from pathlib import Path
 
           path = Path("deploy/gitops/base/values/opensandbox-controller.values.yaml")
           text = path.read_text()
-          pattern = r"(?m)^(\s+tag: v0\.2\.0-bex-snapjobns@)sha256:[0-9a-f]{64}$"
+          pattern = rf"(?m)^(\s+tag: {re.escape(sys.argv[2])}@)sha256:[0-9a-f]{{64}}$"
           rendered, count = re.subn(pattern, rf"\g<1>{sys.argv[1]}", text)
           if count != 1:
               raise SystemExit("expected exactly one OpenSandbox controller digest")
@@ -470,7 +472,7 @@ jobs:
           grep -qF "controller=${IMAGE}@${OP_DIGEST}" deploy/gitops/base/bex.yaml
           grep -qF "dashboard=${DASHBOARD_IMAGE}@${DASH_DIGEST}" deploy/gitops/base/dashboard.yaml
           grep -qF "digest: ${OPENSANDBOX_DIGEST}" deploy/opensandbox/kustomization.yaml
-          grep -qF "tag: v0.2.0-bex-snapjobns@${CONTROLLER_DIGEST}" deploy/gitops/base/values/opensandbox-controller.values.yaml
+          grep -qF "tag: ${OPENSANDBOX_CONTROLLER_TAG}@${CONTROLLER_DIGEST}" deploy/gitops/base/values/opensandbox-controller.values.yaml
           grep -qF "value: ${AGENT_SANDBOX_IMAGE}@${AGENT_DIGEST}" lego/operator/config/api/deployment.yaml
           if git diff --quiet -- deploy/gitops/base/bex.yaml deploy/gitops/base/dashboard.yaml deploy/opensandbox/kustomization.yaml deploy/gitops/base/values/opensandbox-controller.values.yaml lego/operator/config/api/deployment.yaml; then
             echo "digests already pinned — nothing to write back"
@@ -805,6 +807,14 @@ jobs:
           kubectl -n bex-system rollout restart deploy/bex-controller-manager deploy/bex-api
           kubectl -n bex-system rollout status deploy/bex-controller-manager --timeout=300s
           kubectl -n bex-system rollout status deploy/bex-api --timeout=300s
+          # bex-api owns schema migration. Once its new pods are Ready, reconcile
+          # the existing gateway role to THIS release's exact dbrole.sql without
+          # rotating the credential/Secret, then roll the gateway onto the new
+          # image. A new gateway DB method can no longer reach users before its
+          # accompanying grant is installed (w5/m72).
+          GRANTS_ONLY=1 bash scripts/ssh-gateway-db-role.sh
+          kubectl -n bex-system rollout restart deploy/bex-ssh-gateway
+          kubectl -n bex-system rollout status deploy/bex-ssh-gateway --timeout=300s
 
       # The infra workflow may be waiting to enable PROXY protocol on the two
       # raw datastore listeners. Do not report this deploy successful until

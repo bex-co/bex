@@ -31,6 +31,7 @@ package sandboxsse
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"sync"
@@ -53,13 +54,13 @@ type Server struct {
 	// with 503.
 	Secret []byte
 
-	Executor  sshgateway.Executor
-	Metrics   *sshgateway.Metrics
-	Limits    *sshgateway.SessionLimiter
-	Nonces    *sshgateway.NonceGuard
+	Executor    sshgateway.Executor
+	Metrics     *sshgateway.Metrics
+	Limits      *sshgateway.SessionLimiter
+	Nonces      *sshgateway.NonceGuard
 	Revalidator Revalidator
 
-	SessionTimeout    time.Duration
+	SessionTimeout     time.Duration
 	RevalidateInterval time.Duration
 }
 
@@ -201,7 +202,7 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 	target := apps.SSHInstanceTarget{
 		PodName:   claims.PodName(),
 		Namespace: claims.Namespace,
-		Container: "sandbox", // OpenSandbox names the workload container "sandbox"
+		Container: sandboxexec.SandboxContainer,
 		ServiceID: claims.SandboxID,
 		OwnerID:   claims.Workspace,
 	}
@@ -210,6 +211,9 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 	code, err := s.Executor.Execute(execCtx, target, claims.Command, false, nil, nil,
 		sse.stream("stdout"), sse.stream("stderr"))
 	switch {
+	case err != nil && errors.Is(err, sshgateway.ErrTargetTerminated):
+		log.Printf("sandbox exec target terminal (sandbox=%s)", claims.SandboxID)
+		sse.emit("error", errorEvent{Error: "sandbox is no longer running", Code: sandboxexec.ErrorCodeTargetTerminated})
 	case err != nil && execCtx.Err() != nil && timedCtx.Err() == nil:
 		// The watchdog ended the stream (revocation), not the client or the cap.
 		log.Printf("sandbox exec revoked mid-stream (sandbox=%s subject=%s): %v", claims.SandboxID, claims.Subject, err)
@@ -236,6 +240,7 @@ type exitEvent struct {
 }
 type errorEvent struct {
 	Error string `json:"error"`
+	Code  string `json:"code,omitempty"`
 }
 
 // sseWriter serializes SSE writes to one HTTP response (output chunks and the

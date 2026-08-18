@@ -490,6 +490,11 @@ func (f *fakeStore) FinalizeAgentSession(_ context.Context, id, phase, headSHA, 
 	if !ok {
 		return store.AgentSession{}, store.ErrNotFound
 	}
+	switch row.Phase {
+	case PhaseCreating, PhaseRunning, PhaseResuming, PhaseRedispatching, PhaseHibernating:
+	default:
+		return store.AgentSession{}, store.ErrNotFound
+	}
 	row.Phase, row.Status, row.FailureReason = phase, phase, failureReason
 	if headSHA != "" {
 		row.HeadSHA = headSHA

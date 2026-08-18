@@ -1,14 +1,14 @@
-# OpenSandbox controller image with the carried snapshot-job-namespace patch
-# (w3/m42, docs/ADR047 gap 2 / ADR042 D5).
+# OpenSandbox controller image with bex's carried controller patches.
 #
 # The upstream controller creates its snapshot commit/unpause Jobs — which
 # hostPath-mount the node containerd socket — in the SandboxSnapshot's own
 # tenant namespace, where PodSecurity "baseline" rejects them, so pause hangs.
 # patches/controller-snapshot-job-namespace.patch adds a
 # --snapshot-job-namespace flag confining those privileged Jobs to one platform
-# namespace. This build clones upstream at a pinned commit, applies the patch,
-# and mirrors upstream kubernetes/Dockerfile's build flags. Drop this image
-# (back to the upstream-published one) once the patch lands in a release.
+# namespace. patches/controller-terminal-pod-status.patch makes a failed child
+# Pod terminalize its BatchSandbox (w5/m72). This build clones upstream at a
+# pinned commit, applies both patches, and mirrors upstream's build flags. Drop
+# each patch once its change lands in the pinned upstream release.
 #
 # Build (CI: deploy.yml step build_opensandbox_controller):
 #   docker build -f deploy/opensandbox/controller.Dockerfile \
@@ -31,7 +31,10 @@ RUN git init -q opensandbox \
     && git checkout -q FETCH_HEAD
 
 COPY patches/controller-snapshot-job-namespace.patch /tmp/snapshot-job-namespace.patch
-RUN cd opensandbox && git apply --stat --apply /tmp/snapshot-job-namespace.patch
+COPY patches/controller-terminal-pod-status.patch /tmp/terminal-pod-status.patch
+RUN cd opensandbox \
+    && git apply --stat --apply /tmp/snapshot-job-namespace.patch \
+    && git apply --stat --apply /tmp/terminal-pod-status.patch
 
 WORKDIR /src/opensandbox/kubernetes
 RUN go mod download
@@ -39,7 +42,7 @@ RUN go mod download
 # Mirror upstream kubernetes/Dockerfile: static, trimmed, no VCS stamping.
 RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH}" \
     go build -trimpath -buildvcs=false \
-    -ldflags "-buildid= -B none -X main.commitID=${OPENSANDBOX_COMMIT}-bex-snapshot-job-ns" \
+    -ldflags "-buildid= -B none -X main.commitID=${OPENSANDBOX_COMMIT}-bex-snapshot-job-ns-terminal-pod" \
     -o server ./cmd/controller
 
 # Upstream ships the runtime on golang:alpine (nsenter via util-linux

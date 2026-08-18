@@ -14,20 +14,22 @@
  * limitations under the License.
  */
 
+import { spawn } from "node:child_process";
 import { lstat, open, opendir, readFile, writeFile } from "node:fs/promises";
 import type { Stats } from "node:fs";
+import path from "node:path";
 import type { AgentDriverConfig } from "./config.js";
 
 const maxScannedFileBytes = 32 * 1024 * 1024;
 const scanChunkBytes = 64 * 1024;
 const defaultMaxScannedFiles = 100_000;
-const defaultMaxScannedBytes = 1 << 30;
 const defaultMaxScanDepth = 64;
-const defaultScanTimeoutMs = 30_000;
+const defaultScanTimeoutMs = 120_000;
 
 export interface ScrubOptions {
   signal?: AbortSignal;
   maxFiles?: number;
+  maxEntries?: number;
   maxBytes?: number;
   maxDepth?: number;
   timeoutMs?: number;
@@ -113,12 +115,16 @@ function replaceAll(data: Buffer, needle: Buffer, replacement: Buffer): Buffer {
 
 interface ScrubBudget {
   files: number;
+  entries: number;
   bytes: number;
   deadline: number;
   maxFiles: number;
+  maxEntries: number;
   maxBytes: number;
   maxDepth: number;
+  overlap: number;
   signal?: AbortSignal;
+  seen: Set<string>;
 }
 
 function checkBudget(budget: ScrubBudget, depth: number): void {
@@ -130,6 +136,28 @@ function checkBudget(budget: ScrubBudget, depth: number): void {
     throw new Error("persisted credential scan exceeded depth limit");
 }
 
+function accountBytes(budget: ScrubBudget, bytes: number): void {
+  budget.bytes += bytes;
+  if (budget.bytes > budget.maxBytes) {
+    throw new Error("persisted credential scan exceeded byte limit");
+  }
+}
+
+function scanWindow(
+  chunk: Buffer,
+  tail: Buffer,
+  needles: Buffer[],
+  overlap: number,
+): { found: boolean; tail: Buffer } {
+  const window = Buffer.concat([tail, chunk]);
+  return {
+    found: needles.some((needle) => window.includes(needle)),
+    tail: Buffer.from(
+      window.subarray(window.length - Math.min(overlap, window.length)),
+    ),
+  };
+}
+
 async function largeFileContains(
   target: string,
   needles: Buffer[],
@@ -138,25 +166,107 @@ async function largeFileContains(
 ): Promise<boolean> {
   const file = await open(target, "r");
   const buffer = Buffer.allocUnsafe(scanChunkBytes);
-  let tail = Buffer.alloc(0);
+  let tail: Buffer<ArrayBufferLike> = Buffer.alloc(0);
   try {
     for (;;) {
       checkBudget(budget, depth);
       const { bytesRead } = await file.read(buffer, 0, buffer.length, null);
       if (bytesRead === 0) return false;
-      const window = Buffer.concat([tail, buffer.subarray(0, bytesRead)]);
-      if (needles.some((needle) => window.includes(needle))) return true;
-      const overlap = needles.reduce(
-        (max, needle) => Math.max(max, needle.length - 1),
-        0,
+      accountBytes(budget, bytesRead);
+      const result = scanWindow(
+        buffer.subarray(0, bytesRead),
+        tail,
+        needles,
+        budget.overlap,
       );
-      tail = Buffer.from(
-        window.subarray(window.length - Math.min(overlap, window.length)),
-      );
+      if (result.found) return true;
+      tail = result.tail;
     }
   } finally {
     await file.close();
   }
+}
+
+// Git's loose and packed objects are compressed, so scanning .git/objects as
+// ordinary files cannot prove that a credential is absent. Ask Git to stream
+// every object (reachable and unreachable) in decompressed form and inspect the
+// stream with fixed memory. An object cannot be byte-rewritten without changing
+// repository identity, so a match fails the turn closed before delivery.
+async function scanGitObjects(
+  gitDir: string,
+  needles: Buffer[],
+  budget: ScrubBudget,
+  depth: number,
+): Promise<void> {
+  checkBudget(budget, depth);
+  budget.files += 1;
+  if (budget.files > budget.maxFiles) {
+    throw new Error("persisted credential scan exceeded file limit");
+  }
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(
+      "git",
+      [
+        "--git-dir",
+        gitDir,
+        "cat-file",
+        "--batch-all-objects",
+        "--unordered",
+        "--batch",
+      ],
+      { stdio: ["ignore", "pipe", "ignore"] },
+    );
+    let tail: Buffer<ArrayBufferLike> = Buffer.alloc(0);
+    let settled = false;
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      budget.signal?.removeEventListener("abort", abort);
+      if (error) reject(error);
+      else resolve();
+    };
+    const stop = (error: Error) => {
+      child.kill("SIGKILL");
+      finish(error);
+    };
+    const abort = () => stop(new Error("persisted credential scan aborted"));
+    const timer = setTimeout(
+      () => stop(new Error("persisted credential scan timed out")),
+      Math.max(1, budget.deadline - Date.now()),
+    );
+    budget.signal?.addEventListener("abort", abort, { once: true });
+    child.once("error", () =>
+      finish(new Error(`cannot inspect Git object database: ${gitDir}`)),
+    );
+    child.stdout.on("data", (raw: Buffer) => {
+      if (settled) return;
+      try {
+        checkBudget(budget, depth);
+        accountBytes(budget, raw.length);
+        const result = scanWindow(raw, tail, needles, budget.overlap);
+        if (result.found) {
+          stop(
+            new Error(
+              `model credential found in persisted Git object database: ${gitDir}`,
+            ),
+          );
+          return;
+        }
+        tail = result.tail;
+      } catch (error) {
+        stop(error as Error);
+      }
+    });
+    child.once("close", (code) => {
+      if (settled) return;
+      if (code !== 0) {
+        finish(new Error(`cannot inspect Git object database: ${gitDir}`));
+        return;
+      }
+      finish();
+    });
+  });
 }
 
 async function scrubPath(
@@ -175,6 +285,13 @@ async function scrubPath(
     throw error;
   }
   if (info.isSymbolicLink()) return;
+  const inode = `${info.dev}:${info.ino}`;
+  if (budget.seen.has(inode)) return;
+  budget.seen.add(inode);
+  budget.entries += 1;
+  if (budget.entries > budget.maxEntries) {
+    throw new Error("persisted credential scan exceeded entry limit");
+  }
   if (info.isDirectory()) {
     let dir;
     try {
@@ -190,10 +307,15 @@ async function scrubPath(
         return;
       throw error;
     }
+    const isGitDir = path.basename(target) === ".git";
+    if (isGitDir) await scanGitObjects(target, needles, budget, depth + 1);
     for await (const entry of dir) {
       checkBudget(budget, depth);
+      // scanGitObjects inspected the decompressed contents. Reading packfiles a
+      // second time is both expensive and ineffective against compressed data.
+      if (isGitDir && entry.name === "objects") continue;
       await scrubPath(
-        `${target}/${entry.name}`,
+        path.join(target, entry.name),
         needles,
         findings,
         budget,
@@ -204,12 +326,8 @@ async function scrubPath(
   }
   if (!info.isFile()) return;
   budget.files += 1;
-  budget.bytes += info.size;
   if (budget.files > budget.maxFiles) {
     throw new Error("persisted credential scan exceeded file limit");
-  }
-  if (budget.bytes > budget.maxBytes) {
-    throw new Error("persisted credential scan exceeded byte limit");
   }
   if (info.size > maxScannedFileBytes) {
     let containsCredential: boolean;
@@ -242,6 +360,7 @@ async function scrubPath(
   let data: Buffer;
   try {
     data = await readFile(target);
+    accountBytes(budget, data.length);
   } catch (error) {
     if (
       ignoreInaccessibleImmutablePath(
@@ -321,12 +440,25 @@ export function createCredentialManager(
       const needles = secretForms.map((form) => Buffer.from(form, "utf8"));
       const budget: ScrubBudget = {
         files: 0,
+        entries: 0,
         bytes: 0,
         deadline: Date.now() + (options.timeoutMs ?? defaultScanTimeoutMs),
         maxFiles: options.maxFiles ?? defaultMaxScannedFiles,
-        maxBytes: options.maxBytes ?? defaultMaxScannedBytes,
+        // Directory inodes count separately from files so a very broad empty
+        // tree cannot grow the deduplication set without an explicit bound.
+        maxEntries: options.maxEntries ?? 2 * defaultMaxScannedFiles,
+        // Runtime is bounded by timeout/file/depth controls. There is no default
+        // aggregate-byte rejection: that rejected legitimate large repositories
+        // even though the scanner's memory stays fixed. An explicit byte budget
+        // remains available for narrower callers.
+        maxBytes: options.maxBytes ?? Number.POSITIVE_INFINITY,
         maxDepth: options.maxDepth ?? defaultMaxScanDepth,
+        overlap: needles.reduce(
+          (max, needle) => Math.max(max, needle.length - 1),
+          0,
+        ),
         signal: options.signal,
+        seen: new Set<string>(),
       };
       for (const root of roots) {
         await scrubPath(root, needles, findings, budget, 0);

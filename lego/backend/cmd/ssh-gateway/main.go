@@ -50,6 +50,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentattach"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/dbrole"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/modelproxy"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/nativessh"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/sandboxsse"
@@ -74,15 +75,20 @@ func main() {
 	if err := waitForDB(ctx, pool); err != nil {
 		log.Fatalf("ssh gateway: database unreachable: %v", err)
 	}
+	if err := dbrole.CheckRequiredPrivileges(ctx, pool); err != nil {
+		log.Fatalf("ssh gateway: database privilege preflight: %v", err)
+	}
 	// The gateway is a least-privilege CONSUMER of the control-plane store, not
 	// its owner (w7/m56, docs/ADR035-ssh.md §116). Migrating and ownership-
 	// checking are DDL/authority operations reserved for bex-api, which runs on
 	// the full-privilege app role; the gateway connects as bex_ssh_gateway — a
 	// role scoped to key lookup + its own session/nonce/audit rows (see
 	// scripts/ssh-gateway-db-role.sh) — which by design cannot run them. bex-api
-	// has already migrated the schema by the time any tenant SSHes in; if a table
-	// is missing the gateway's first query fails and it restarts until bex-api
-	// converges, the standard startup-dependency behavior.
+	// has already migrated the schema by the time any tenant SSHes in. The
+	// privilege preflight above verifies the DEPLOYED role against every current
+	// method before listeners start, while deploy.yml applies dbrole.sql after the
+	// bex-api rollout; a missing table/grant is therefore a visible readiness
+	// failure rather than a user's first broken conversation stream.
 	st := store.NewPGStore(pool)
 
 	keyPEM, err := os.ReadFile(hostKeyPath)

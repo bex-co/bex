@@ -36,7 +36,11 @@ import (
 
 // TicketHeader carries the signed exec ticket from bex-api to the gateway. A
 // header (not a query param) keeps it out of edge access logs.
-const TicketHeader = "X-Bex-Sandbox-Exec-Ticket"
+const (
+	TicketHeader              = "X-Bex-Sandbox-Exec-Ticket"
+	SandboxContainer          = "sandbox"
+	ErrorCodeTargetTerminated = "sandbox_terminated"
+)
 
 // SystemSubject is the ticket subject the trusted Completer's status/transcript
 // reads mint under (no caller identity). The gateway requires a non-empty

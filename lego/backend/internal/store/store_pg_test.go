@@ -194,6 +194,9 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 	if err != nil || record.Phase != "completed" || record.HeadSHA != "abc123" || record.PRNumber != 7 {
 		t.Fatalf("finalize agent session = %+v err=%v", record, err)
 	}
+	if _, err := s.FinalizeAgentSession(ctx, record.ID, "failed", "", "", 0, nil, "stale observer"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("second terminal finalize = %v, want CAS ErrNotFound", err)
+	}
 	got, err = s.GetAgentSession(ctx, record.ID)
 	if err != nil || got.PRURL == "" || string(got.Evidence) == "{}" || got.Turns != 1 {
 		t.Fatalf("finalized read-back = %+v err=%v", got, err)

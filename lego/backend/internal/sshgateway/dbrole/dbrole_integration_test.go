@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentattach"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/nativessh"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -117,6 +119,18 @@ func TestGatewayScopedRoleAllowsOwnSurfaceDeniesTheRest(t *testing.T) {
 	}
 	defer scoped.Close()
 	st := store.NewPGStore(scoped)
+	if err := CheckRequiredPrivileges(ctx, scoped); err != nil {
+		t.Fatalf("gateway privilege preflight under scoped role: %v", err)
+	}
+	if _, err := admin.Exec(ctx, "REVOKE SELECT ON agent_session_turns FROM "+gatewayTestRole); err != nil {
+		t.Fatalf("revoke turn privilege: %v", err)
+	}
+	if err := CheckRequiredPrivileges(ctx, scoped); err == nil || !strings.Contains(err.Error(), "agent_session_turns:SELECT") {
+		t.Fatalf("privilege preflight after turn grant revoke = %v, want actionable missing privilege", err)
+	}
+	if _, err := admin.Exec(ctx, "GRANT SELECT ON agent_session_turns TO "+gatewayTestRole); err != nil {
+		t.Fatalf("restore turn privilege: %v", err)
+	}
 
 	// --- ALLOW: the whole gateway surface works under the role ---------------
 	exercised := map[string]bool{}
@@ -185,6 +199,23 @@ func TestGatewayScopedRoleAllowsOwnSurfaceDeniesTheRest(t *testing.T) {
 	if _, err := st.AgentSessionTranscript(ctx, "ags-nope000000000000000", -1, 1<<20, 0); permDenied(err) {
 		t.Errorf("transcript replay SELECT denied under scoped role: %v", err)
 	}
+	exercised["AgentSessionTranscript"] = true
+	exercised["AgentSessionTranscriptMaxSeq"] = true
+	exercised["AgentSessionTranscriptBytes"] = true
+	if _, _, err := st.AgentSessionTranscriptTurnMaxIndex(ctx, "ags-nope000000000000000", 1); permDenied(err) {
+		t.Errorf("transcript turn max-index SELECT denied under scoped role: %v", err)
+	}
+	exercised["AgentSessionTranscriptTurnMaxIndex"] = true
+	if _, err := st.AgentSessionTurns(ctx, "ags-nope000000000000000"); permDenied(err) {
+		t.Errorf("durable turns SELECT denied under scoped role: %v", err)
+	}
+	exercised["AgentSessionTurns"] = true
+	// A nonexistent parent session may make the append fail its FK check; it must
+	// get past PostgreSQL privilege admission first.
+	if err := st.AppendAgentSessionTranscript(ctx, "ags-nope000000000000000", []store.AgentSessionTranscriptPart{{Turn: 1, PartIndex: 0, Part: []byte(`{"type":"text"}`)}}); permDenied(err) {
+		t.Errorf("transcript append INSERT denied under scoped role: %v", err)
+	}
+	exercised["AppendAgentSessionTranscript"] = true
 
 	// The agent-session row (ADR054 D7): the "Open in Zed" SSH resolver reads it
 	// (GetAgentSession) to derive the sandbox pod after authorizing. A missing id
@@ -208,6 +239,7 @@ func TestGatewayScopedRoleAllowsOwnSurfaceDeniesTheRest(t *testing.T) {
 	for _, surface := range []reflect.Type{
 		reflect.TypeOf((*nativessh.Store)(nil)).Elem(),
 		reflect.TypeOf((*sshgateway.NonceStore)(nil)).Elem(),
+		reflect.TypeOf((*agentattach.Store)(nil)).Elem(),
 	} {
 		for i := 0; i < surface.NumMethod(); i++ {
 			name := surface.Method(i).Name

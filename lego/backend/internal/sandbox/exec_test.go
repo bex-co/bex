@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -170,6 +171,16 @@ func TestExecBufferedFailsClosedWithoutExitEvent(t *testing.T) {
 	_, err := svc.ExecBuffered(callerCtx(), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "echo hi"})
 	if !errors.Is(err, core.ErrSandboxesUnavailable) {
 		t.Fatalf("truncated buffered exec = %v, want ErrSandboxesUnavailable", err)
+	}
+}
+
+func TestBufferExecMapsTerminalGatewayCodeToNotFound(t *testing.T) {
+	resp := &http.Response{Body: io.NopCloser(strings.NewReader(
+		"event: error\ndata: {\"error\":\"sandbox is no longer running\",\"code\":\"sandbox_terminated\"}\n\n",
+	))}
+	_, err := bufferExec(resp)
+	if !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("terminal SSE err=%v, want ErrNotFound", err)
 	}
 }
 

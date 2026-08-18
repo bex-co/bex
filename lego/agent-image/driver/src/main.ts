@@ -30,9 +30,9 @@ async function main(): Promise<void> {
   let terminalized = false;
   let activeAbort: AbortController | undefined;
   let nextTurn = config.turn;
+  let initialTurnOwned = false;
   let activeTurn:
-    | Promise<Awaited<ReturnType<typeof runHeadlessTurn>>>
-    | undefined;
+    Promise<Awaited<ReturnType<typeof runHeadlessTurn>>> | undefined;
   // Capture the control-plane Git proxy's immutable base/session OIDs before a
   // tenant process can run. Live POST /turn calls await the same setup promise.
   const setup = (async () => {
@@ -76,7 +76,12 @@ async function main(): Promise<void> {
     onPart: (part: Record<string, unknown>) => void,
   ) => {
     await setup;
-    return controlledTurn(prompt, onPart, false);
+    try {
+      return await controlledTurn(prompt, onPart, false);
+    } catch (error) {
+      terminalized = true;
+      throw error;
+    }
   };
   const terminalize = async () => {
     terminalized = true;
@@ -93,14 +98,25 @@ async function main(): Promise<void> {
     terminalize,
   });
 
-  const shutdown = async () => {
-    await terminalize();
-    await credentials.scrubPersistedState();
-    credentials.forget();
-    await listener.close();
+  const shutdown = async (scrub = true) => {
+    try {
+      await terminalize();
+      if (scrub) await credentials.scrubPersistedState();
+    } finally {
+      credentials.forget();
+      await listener.close();
+    }
   };
-  process.once("SIGTERM", () => void shutdown().then(() => process.exit(0)));
-  process.once("SIGINT", () => void shutdown().then(() => process.exit(0)));
+  const signalShutdown = () =>
+    void shutdown().then(
+      () => process.exit(0),
+      (error) => {
+        console.error(describeError(error));
+        process.exit(1);
+      },
+    );
+  process.once("SIGTERM", signalShutdown);
+  process.once("SIGINT", signalShutdown);
   try {
     // Setup phase: rehydrate a hibernation snapshot when resuming (ADR059 D4),
     // then check out the session branch (cloning only when the workspace is still
@@ -112,31 +128,29 @@ async function main(): Promise<void> {
     // a concurrent POST /turn gets 409 instead of starting a second agent against
     // the same checkout, transcript, credentials, and Git branch.
     listener.setTurnInFlight(true);
+    initialTurnOwned = true;
     await controlledTurn(config.prompt, () => undefined, true);
     listener.setTurnInFlight(false);
-    if (config.exitAfterTurn) await shutdown();
+    // runHeadlessTurn already stopped the provider and scrubbed immediately
+    // before delivery, so a one-shot success can reuse that clean verdict.
+    if (config.exitAfterTurn) await shutdown(false);
   } catch (error) {
     // Release the single-flight guard on any error so the server can accept
     // subsequent turns (codex #9).
     listener.setTurnInFlight(false);
+    terminalized = true;
     console.error(credentials.redact(describeError(error)));
-    // Guarantee a `failed` status file even when the failure preceded the turn
-    // (e.g. the setup clone) — runHeadlessTurn already wrote one on a turn error,
-    // so this is idempotent. Scrub the model credential from the workspace now,
-    // since the success-path scrub inside runHeadlessTurn never ran.
-    try {
-      await markTurnFailed(config, credentials, error);
-    } catch {
-      /* status best-effort; do not mask the original error */
+    // Setup failures need the shared scrub/status/forget path. Once a turn owns
+    // the failure, runHeadlessTurn has already persisted that single verdict.
+    if (!initialTurnOwned) {
+      try {
+        await markTurnFailed(config, credentials, error);
+      } catch {
+        /* status best-effort; do not mask the original error */
+      }
     }
-    await credentials.scrubPersistedState();
-    credentials.forget();
-    // In fire-and-forget mode (exitAfterTurn=0) the Completer finalizes the
-    // session by reading this status file through the gateway exec boundary, so
-    // the driver must STAY ALIVE serving it — exactly as it does after a
-    // successful turn. Exiting here terminated the pod before the Completer could
-    // read the failure, stranding the session in `running` forever (w3/m43
-    // crash-leg E2E). Only tear down + exit when a one-shot turn was requested.
+    // Fire-and-forget keeps serving the status file until the Completer observes
+    // it. Only a one-shot turn tears down the listener here.
     if (config.exitAfterTurn) {
       await listener.close();
       process.exitCode = 1;

@@ -297,10 +297,66 @@ func TestCompleterPROpenFailureFailsSession(t *testing.T) {
 }
 
 func TestCompleterLostSandboxFailsSession(t *testing.T) {
-	c, st, _, _, id := completerFixture("", core.ErrNotFound)
+	c, st, lc, _, id := completerFixture("", core.ErrNotFound)
 	c.Reconcile(context.Background())
 	if st.rows[id].Phase != PhaseFailed || !strings.Contains(st.rows[id].FailureReason, "terminated") {
 		t.Fatalf("lost-sandbox row = %+v", st.rows[id])
+	}
+	if st.rows[id].SandboxID != "" || lc.canceled != 1 {
+		t.Fatalf("lost sandbox was not reclaimed immediately: row=%+v canceled=%d", st.rows[id], lc.canceled)
+	}
+	turn := st.turns[id][st.rows[id].Turns]
+	if turn.TranscriptComplete || !turn.TranscriptTruncated {
+		t.Fatalf("lost-sandbox turn completeness = %+v, want incomplete/truncated", turn)
+	}
+}
+
+func TestCompleterBoundsContinuousAmbiguousStatusFailure(t *testing.T) {
+	c, st, lc, _, id := completerFixture("", core.ErrSandboxesUnavailable)
+	now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
+	c.Now = func() time.Time { return now }
+	c.StatusReadFailureTTL = time.Minute
+	c.Reconcile(context.Background())
+	if st.rows[id].Phase != PhaseRunning {
+		t.Fatalf("first transient read finalized session: %+v", st.rows[id])
+	}
+	now = now.Add(2 * time.Minute)
+	c.Reconcile(context.Background())
+	if st.rows[id].Phase != PhaseFailed || !strings.Contains(st.rows[id].FailureReason, "retry window") {
+		t.Fatalf("bounded transient row = %+v", st.rows[id])
+	}
+	if lc.canceled != 1 || st.rows[id].SandboxID != "" {
+		t.Fatalf("bounded transient sandbox not reclaimed: canceled=%d row=%+v", lc.canceled, st.rows[id])
+	}
+}
+
+func TestCompleterPrunesStatusFailureForSessionThatLeftActiveSet(t *testing.T) {
+	c, st, _, _, id := completerFixture("", core.ErrSandboxesUnavailable)
+	c.Reconcile(context.Background())
+	if len(c.statusFailures) != 1 {
+		t.Fatalf("status failure streaks=%d, want 1", len(c.statusFailures))
+	}
+	row := st.rows[id]
+	row.Phase = PhaseCanceled
+	row.SandboxID = ""
+	st.rows[id] = row
+	c.Reconcile(context.Background())
+	if len(c.statusFailures) != 0 {
+		t.Fatalf("status failure streak leaked after cancel: %v", c.statusFailures)
+	}
+}
+
+func TestCompleterTerminalTransitionIsCASAcrossStaleObservers(t *testing.T) {
+	raw, _ := json.Marshal(statusReport{State: "failed", Error: "agent crashed"})
+	c, st, lc, _, id := completerFixture(string(raw), nil)
+	stale := st.rows[id]
+	c.finalize(context.Background(), stale)
+	c.finalize(context.Background(), stale) // a second replica's stale read
+	if lc.canceled != 1 {
+		t.Fatalf("terminal side effects=%d, want exactly one", lc.canceled)
+	}
+	if st.rows[id].Phase != PhaseFailed {
+		t.Fatalf("terminal row = %+v", st.rows[id])
 	}
 }
 

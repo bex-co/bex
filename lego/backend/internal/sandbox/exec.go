@@ -346,8 +346,12 @@ func bufferExecWithLimit(resp *http.Response, maxOutputBytes int) (ExecResult, e
 			case "error":
 				var ev struct {
 					Error string `json:"error"`
+					Code  string `json:"code"`
 				}
 				if json.Unmarshal([]byte(payload), &ev) == nil && ev.Error != "" {
+					if ev.Code == sandboxexec.ErrorCodeTargetTerminated {
+						return finish(), fmt.Errorf("%w: sandbox terminated", core.ErrNotFound)
+					}
 					return finish(), fmt.Errorf("%w: %s", core.ErrSandboxesUnavailable, ev.Error)
 				}
 			}
