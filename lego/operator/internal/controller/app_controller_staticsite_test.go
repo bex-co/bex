@@ -146,9 +146,9 @@ var _ = Describe("reconciling a static_site App", func() {
 		Expect(k8sClient.Create(ctx, credential)).To(Succeed())
 		DeferCleanup(func() { _ = k8sClient.Delete(ctx, credential) })
 
-		// The reconcile blocks inside publish.Publish waiting for the Job, so
-		// drive it from a goroutine and complete the Job by hand (envtest has no
-		// kubelet to run it).
+		// Round-13 #6: the reconcile no longer blocks inside publish — Ensure
+		// dispatches the Job and returns RequeueAfter, so the Job is completed by
+		// hand between two reconcile rounds (envtest has no kubelet to run it).
 		done := make(chan struct{})
 		go func() {
 			defer GinkgoRecover()
@@ -163,6 +163,7 @@ var _ = Describe("reconciling a static_site App", func() {
 		var job batchv1.Job
 		jobNN := types.NamespacedName{Name: "pub-" + name + "-rev-1", Namespace: ns}
 		Eventually(func() error { return k8sClient.Get(ctx, jobNN, &job) }, "30s", "250ms").Should(Succeed())
+		Eventually(done, "30s").Should(BeClosed())
 		Expect(job.Spec.Template.Spec.InitContainers).To(HaveLen(1))
 		clone := job.Spec.Template.Spec.InitContainers[0]
 		Expect(clone.Name).To(Equal("clone"))
@@ -178,7 +179,7 @@ var _ = Describe("reconciling a static_site App", func() {
 			k8sClient.Get(ctx, types.NamespacedName{Name: "bld-" + name + "-gen-1", Namespace: ns}, &bld),
 		)).To(BeTrue())
 
-		By("completing the publish Job by hand and letting the reconcile finish")
+		By("completing the publish Job by hand and reconciling again")
 		now := metav1.Now()
 		job.Status.StartTime = &now
 		job.Status.CompletionTime = &now
@@ -187,7 +188,8 @@ var _ = Describe("reconciling a static_site App", func() {
 			batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
 		)
 		Expect(k8sClient.Status().Update(ctx, &job)).To(Succeed())
-		Eventually(done, "30s").Should(BeClosed())
+		r := staticReconciler()
+		_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
 
 		By("serving from the static-server with no image recorded")
 		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())

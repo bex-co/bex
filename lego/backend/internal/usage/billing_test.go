@@ -142,6 +142,81 @@ func TestBillingNilReaderIsEstimateOnly(t *testing.T) {
 	}
 }
 
+// billingRoleChecker allows the workspace read relation and, when billing is
+// true, the billing relation — modeling a viewer/contributor versus a billing
+// member (or admin) of the same workspace.
+type billingRoleChecker struct{ billing bool }
+
+func (c billingRoleChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
+	if relation == core.RelCanView {
+		return true, nil
+	}
+	return c.billing && relation == core.RelCanManageBilling, nil
+}
+
+// TestBillingHiddenFromNonBillingRoles (round-13 #5): usage + the advisory
+// estimate stay readable by every can_view member, but the real Stripe
+// projection (current cost, invoices, credit grants) is a can_manage_billing
+// capability — a viewer/contributor/developer gets a null billing object and
+// the billing reader is never even consulted.
+func TestBillingHiddenFromNonBillingRoles(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		billing bool
+	}{
+		{"viewer/contributor/developer", false},
+		{"billing member", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := svcWithTenant(seedStore(), "tea-001")
+			svc.Base.Authz = billingRoleChecker{billing: tc.billing}
+			reader := &fakeBillingReader{result: sampleBilling()}
+			svc.Billing = reader
+
+			sum, err := svc.MonthToDate(withIdentity(context.Background()), "")
+			if err != nil {
+				t.Fatalf("MonthToDate: %v", err)
+			}
+			if sum.EstimatedCost.TotalUSD == "" {
+				t.Error("estimate must stay present for every can_view member")
+			}
+			if !tc.billing && sum.Billing != nil {
+				t.Fatalf("summary.Billing = %+v, want nil for a non-billing role", sum.Billing)
+			}
+			if !tc.billing && len(reader.calls) != 0 {
+				t.Fatalf("BillingFor called %d time(s) for a non-billing role, want 0", len(reader.calls))
+			}
+			if tc.billing && (sum.Billing == nil || sum.Billing.CurrentCost == nil) {
+				t.Fatalf("summary.Billing = %+v, want the sample for a billing member", sum.Billing)
+			}
+		})
+	}
+}
+
+// A billing member revoked moments ago (cached positive on another replica)
+// must not receive the projection — the reveal uses the authoritative fresh
+// decision, the round-5 finding-4 class.
+type staleBillingChecker struct{ billingRoleChecker }
+
+func (c staleBillingChecker) CheckFresh(_ context.Context, _, relation, _ string) (bool, error) {
+	return false, nil // just-revoked on the authoritative path
+}
+
+func TestBillingRevokedMidCacheWindow(t *testing.T) {
+	svc := svcWithTenant(seedStore(), "tea-001")
+	svc.Base.Authz = staleBillingChecker{billingRoleChecker{billing: true}}
+	reader := &fakeBillingReader{result: sampleBilling()}
+	svc.Billing = reader
+
+	sum, err := svc.MonthToDate(withIdentity(context.Background()), "")
+	if err != nil {
+		t.Fatalf("MonthToDate: %v", err)
+	}
+	if sum.Billing != nil {
+		t.Fatalf("summary.Billing = %+v, want nil for a just-revoked billing member", sum.Billing)
+	}
+}
+
 // TestBillingCrossSurfaceParity asserts REST, GraphQL, and MCP present the same
 // billing fields with the same values — the ADR006 one-core/thin-adapters
 // invariant for the m48 surface.

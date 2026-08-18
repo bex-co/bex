@@ -56,8 +56,12 @@ const DefaultGitImage = "alpine/git:v2.43.0@sha256:76fdb7210689fc26c6ff101c4adac
 // activeDeadlineSeconds matches so a stuck upload is reaped, not left lingering.
 const publishTimeout = 10 * time.Minute
 
-// pollInterval is how often Publish re-reads the Job while waiting for it.
-const pollInterval = 3 * time.Second
+// ObserveInterval is how often the App reconciler re-reads an in-flight
+// publish Job: Ensure never blocks (round-13 #6 — two slow publishes must not
+// occupy every App reconciler worker for the Job's whole lifetime), so the
+// controller returns RequeueAfter this and re-observes, exactly the build
+// plane's ADR060 §D1 shape.
+const ObserveInterval = 3 * time.Second
 
 // outVolume is the emptyDir the extract init-container copies PublishPath into
 // and the upload container syncs from.
@@ -164,11 +168,66 @@ func imagePullSecrets(pullSecret string) []corev1.LocalObjectReference {
 	return []corev1.LocalObjectReference{{Name: pullSecret}}
 }
 
-// Publish dispatches an in-cluster Job that extracts o.PublishPath from o.Image
-// and uploads it to the object-store origin under o.Prefix(); it blocks until
-// the Job succeeds or fails. Re-invocation for the same revision is idempotent:
-// the Job is named per revision, so a retry reuses it after exact UID validation.
-func Publish(ctx context.Context, o Options) error {
+// Phase is one publish Job's observed state — the build plane's Observation
+// shape (ADR060 §D1) applied to the publish plane.
+type Phase string
+
+const (
+	// PhasePublishing: the Job exists and has not reached a terminal condition;
+	// the reconciler requeues after ObserveInterval instead of blocking.
+	PhasePublishing Phase = "publishing"
+	// PhaseSucceeded: the Job completed — the revision is live at the origin.
+	PhaseSucceeded Phase = "succeeded"
+	// PhaseFailed: the Job failed (or its deadline reaped it). Message carries
+	// the surfaced reason.
+	PhaseFailed Phase = "failed"
+)
+
+// Observation is Ensure's non-blocking result: what the publish Job currently
+// looks like, never a wait.
+type Observation struct {
+	Phase   Phase
+	Message string
+}
+
+// Ensure dispatches the publish Job if absent and returns its CURRENT state
+// without blocking (round-13 #6): the pre-round-13 helper polled inside the
+// reconcile call for up to publishTimeout, so two slow tenant publishes
+// occupied both production App workers and stalled unrelated reconciles. The
+// Job's own activeDeadlineSeconds enforces the wall-clock bound the blocking
+// loop used to own. Re-invocation for the same revision is idempotent: the Job
+// is named per revision, so a retry reuses it after exact UID validation.
+func Ensure(ctx context.Context, o Options) (Observation, error) {
+	if err := validate(o); err != nil {
+		return Observation{}, err
+	}
+
+	job := PublishJob(o)
+	key := client.ObjectKeyFromObject(job)
+	identity := execution.ArtifactIdentity{Name: o.AppID, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
+
+	if err := o.Client.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
+		return Observation{}, fmt.Errorf("publish: create job %s: %w", key.Name, err)
+	}
+
+	var cur batchv1.Job
+	if err := o.Client.Get(ctx, key, &cur); err != nil {
+		return Observation{}, fmt.Errorf("publish: get job %s: %w", key.Name, err)
+	}
+	if err := identity.CheckOwner(&cur); err != nil {
+		return Observation{}, fmt.Errorf("publish: check job owner %s: %w", key.Name, err)
+	}
+	switch {
+	case execution.JobHasCondition(&cur, batchv1.JobComplete):
+		return Observation{Phase: PhaseSucceeded}, nil
+	case execution.JobHasCondition(&cur, batchv1.JobFailed):
+		return Observation{Phase: PhaseFailed, Message: execution.JobFailureMessage(&cur, "unknown publish failure")}, nil
+	}
+	return Observation{Phase: PhasePublishing}, nil
+}
+
+// validate holds Ensure's input rules (formerly Publish's prologue).
+func validate(o Options) error {
 	if o.Client == nil {
 		return fmt.Errorf("publish: nil client (in-cluster publish requires a cluster client)")
 	}
@@ -191,37 +250,7 @@ func Publish(ctx context.Context, o Options) error {
 	if !o.Store.Configured() {
 		return fmt.Errorf("publish: object store not configured (set BEX_STATIC_S3_ENDPOINT/BUCKET/SECRET)")
 	}
-
-	job := PublishJob(o)
-	key := client.ObjectKeyFromObject(job)
-	identity := execution.ArtifactIdentity{Name: o.AppID, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
-
-	if err := o.Client.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
-		return fmt.Errorf("publish: create job %s: %w", key.Name, err)
-	}
-
-	wctx, cancel := context.WithTimeout(ctx, publishTimeout)
-	defer cancel()
-	for {
-		var cur batchv1.Job
-		if err := o.Client.Get(wctx, key, &cur); err != nil {
-			return fmt.Errorf("publish: get job %s: %w", key.Name, err)
-		}
-		if err := identity.CheckOwner(&cur); err != nil {
-			return fmt.Errorf("publish: check job owner %s: %w", key.Name, err)
-		}
-		switch {
-		case execution.JobHasCondition(&cur, batchv1.JobComplete):
-			return nil
-		case execution.JobHasCondition(&cur, batchv1.JobFailed):
-			return fmt.Errorf("publish: job %s failed: %s", key.Name, execution.JobFailureMessage(&cur, "unknown publish failure"))
-		}
-		select {
-		case <-wctx.Done():
-			return fmt.Errorf("publish: job %s did not finish within %s", key.Name, publishTimeout)
-		case <-time.After(pollInterval):
-		}
-	}
+	return nil
 }
 
 // PublishJob constructs the extract+upload Job for o. It is a pure function (no

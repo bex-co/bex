@@ -22,6 +22,9 @@ import (
 	"strings"
 	"testing"
 
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -286,20 +289,20 @@ func TestPublishJobCloneMode(t *testing.T) {
 	}
 }
 
-// TestPublishSourceValidation pins Publish's source rules (w9/010): exactly one
+// TestPublishSourceValidation pins Ensure's source rules (w9/010): exactly one
 // of Image/Repo, and a rootDir/publishPath that cannot escape the checkout.
 func TestPublishSourceValidation(t *testing.T) {
 	ctx := context.Background()
 	both := testOptions()
 	both.Repo = "https://github.com/x/y"
 	both.Client = fake.NewClientBuilder().Build()
-	if err := Publish(ctx, both); err == nil || !strings.Contains(err.Error(), "exactly one") {
+	if _, err := Ensure(ctx, both); err == nil || !strings.Contains(err.Error(), "exactly one") {
 		t.Errorf("both sources => %v, want the exactly-one error", err)
 	}
 	neither := testOptions()
 	neither.Image = ""
 	neither.Client = fake.NewClientBuilder().Build()
-	if err := Publish(ctx, neither); err == nil || !strings.Contains(err.Error(), "exactly one") {
+	if _, err := Ensure(ctx, neither); err == nil || !strings.Contains(err.Error(), "exactly one") {
 		t.Errorf("no source => %v, want the exactly-one error", err)
 	}
 	escape := testOptions()
@@ -308,7 +311,7 @@ func TestPublishSourceValidation(t *testing.T) {
 	escape.RootDir = ".."
 	escape.PublishPath = "etc"
 	escape.Client = fake.NewClientBuilder().Build()
-	if err := Publish(ctx, escape); err == nil || !strings.Contains(err.Error(), "escapes") {
+	if _, err := Ensure(ctx, escape); err == nil || !strings.Contains(err.Error(), "escapes") {
 		t.Errorf("escaping path => %v, want the escape error", err)
 	}
 }
@@ -317,7 +320,61 @@ func TestPublishRequiresAppUID(t *testing.T) {
 	o := testOptions()
 	o.AppUID = ""
 	o.Client = fake.NewClientBuilder().Build()
-	if err := Publish(context.Background(), o); err == nil || !strings.Contains(err.Error(), "empty App UID") {
-		t.Fatalf("Publish error = %v, want missing-identity rejection", err)
+	if _, err := Ensure(context.Background(), o); err == nil || !strings.Contains(err.Error(), "empty App UID") {
+		t.Fatalf("Ensure error = %v, want missing-identity rejection", err)
+	}
+}
+
+// TestEnsureNeverBlocks (round-13 #6): Ensure reports an in-flight Job as
+// PhasePublishing immediately — no poll loop owns the reconcile worker — and
+// reports terminal Jobs by their conditions. The Job's own
+// activeDeadlineSeconds owns the wall-clock bound the old blocking loop held.
+func TestEnsureNeverBlocks(t *testing.T) {
+	ctx := context.Background()
+	o := testOptions()
+	cl := fake.NewClientBuilder().Build()
+	o.Client = cl
+
+	obs, err := Ensure(ctx, o)
+	if err != nil {
+		t.Fatalf("Ensure: %v", err)
+	}
+	if obs.Phase != PhasePublishing {
+		t.Fatalf("fresh Job phase = %q, want %q (no blocking wait)", obs.Phase, PhasePublishing)
+	}
+
+	// Drive the Job to Complete: Ensure then reports success without re-creating.
+	job := &batchv1.Job{}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(PublishJob(o)), job); err != nil {
+		t.Fatalf("get dispatched Job: %v", err)
+	}
+	job.Status.Conditions = append(job.Status.Conditions, batchv1.JobCondition{
+		Type: batchv1.JobComplete, Status: corev1.ConditionTrue,
+	})
+	if err := cl.Status().Update(ctx, job); err != nil {
+		t.Fatalf("complete Job: %v", err)
+	}
+	obs, err = Ensure(ctx, o)
+	if err != nil {
+		t.Fatalf("Ensure on completed Job: %v", err)
+	}
+	if obs.Phase != PhaseSucceeded {
+		t.Fatalf("completed Job phase = %q, want %q", obs.Phase, PhaseSucceeded)
+	}
+
+	// A failed Job surfaces its message.
+	job.Status.Conditions = []batchv1.JobCondition{{
+		Type: batchv1.JobFailed, Status: corev1.ConditionTrue, Reason: "DeadLineExceeded",
+		Message: "Job was active longer than specified deadline",
+	}}
+	if err := cl.Status().Update(ctx, job); err != nil {
+		t.Fatalf("fail Job: %v", err)
+	}
+	obs, err = Ensure(ctx, o)
+	if err != nil {
+		t.Fatalf("Ensure on failed Job: %v", err)
+	}
+	if obs.Phase != PhaseFailed || !strings.Contains(obs.Message, "deadline") {
+		t.Fatalf("failed Job = %+v, want PhaseFailed with the deadline message", obs)
 	}
 }

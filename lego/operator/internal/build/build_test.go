@@ -654,6 +654,15 @@ func TestBuildpackImageShapeAndSuccess(t *testing.T) {
 	if limits["cpu"] != buildCPULimit || limits["memory"] != buildMemoryLimit {
 		t.Errorf("kpack build limits = %#v", limits)
 	}
+	// Round-13 #4: kpack buildpack steps execute tenant-controlled source with
+	// no bex-build LimitRange/Quota behind them — the per-workload bound is the
+	// only disk cap, so it must match the Dockerfile/native build bound.
+	if requests["ephemeral-storage"] != buildEphemeralRequest {
+		t.Errorf("kpack build ephemeral-storage request = %q, want %q", requests["ephemeral-storage"], buildEphemeralRequest)
+	}
+	if limits["ephemeral-storage"] != buildEphemeralLimit {
+		t.Errorf("kpack build ephemeral-storage limit = %q, want %q", limits["ephemeral-storage"], buildEphemeralLimit)
+	}
 	nodes, _, _ := unstructured.NestedStringMap(image.Object, "spec", "build", "nodeSelector")
 	if nodes["bex.co/pool"] != "tenant" {
 		t.Errorf("kpack node selector = %#v", nodes)

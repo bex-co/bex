@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 )
@@ -61,10 +62,9 @@ type ExecRequest struct {
 }
 
 // systemExecSubject is the ticket subject the trusted Completer's status read
-// mints under (it has no caller identity). The gateway requires a non-empty
-// subject and uses it only for per-caller concurrency scoping + metrics — never
-// for authorization — so a stable sentinel is correct and self-describing.
-const systemExecSubject = "system:agent-session-completer"
+// mints under (it has no caller identity). It is the shared sentinel defined by
+// the ticket package; aliased here for the existing call sites' readability.
+const systemExecSubject = sandboxexec.SystemSubject
 
 func (s *Service) execEnabled() bool {
 	return s.Exec != nil && len(s.Exec.Secret) > 0 && s.Exec.GatewayURL != ""
@@ -93,17 +93,31 @@ func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Respo
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.ownedSandbox(ctx, key, ws, req.SandboxID); err != nil {
+	raw, err := s.ownedSandbox(ctx, key, ws, req.SandboxID)
+	if err != nil {
 		return nil, err
 	}
-	return s.mintAndDial(ctx, ws, req.SandboxID, []string{"/bin/sh", "-c", req.Command})
+	// An agent-session sandbox is a credential-capable pod (the Git-write and
+	// model proxies live behind it), and model.fga deliberately gates a real
+	// shell into it on the session object's can_view_sensitive — can_operate is
+	// documented as too weak (a contributor holds it). The generic exec verb
+	// must not become the weaker side door, so a sandbox carrying the session
+	// binding additionally requires that stronger relation, fresh (this gates a
+	// privilege exercise, the round-5 finding-4 class). The dedicated surfaces
+	// (ags-… SSH, agent attach) already enforce exactly this (round-13 #1).
+	if sessionID := raw.Metadata[metadataAgentSession]; sessionID != "" {
+		if err := s.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, agentsession.SessionObject(sessionID)); err != nil {
+			return nil, err
+		}
+	}
+	return s.mintAndDial(ctx, ws, req.SandboxID, raw.Metadata[metadataAgentSession], []string{"/bin/sh", "-c", req.Command})
 }
 
 // mintAndDial signs an exec ticket binding the exact pod/namespace/command and
 // opens the gateway SSE stream. It performs NO authorization or ownership check
 // — every caller (dialGateway for the public verb, ReadSessionStatus for the
 // trusted Completer) must gate the exact sandbox before calling it.
-func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID string, command []string) (*http.Response, error) {
+func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID, agentSessionID string, command []string) (*http.Response, error) {
 	// A caller-facing exec (dialGateway) always carries an identity; the trusted
 	// Completer's status read runs in a system loop with none. The gateway rejects
 	// an empty-subject ticket as malformed (sandboxexec.Verify), so fall back to a
@@ -128,8 +142,12 @@ func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID string, command
 		Namespace: ws + "-sandbox",
 		Command:   command,
 		Workspace: ws,
-		IssuedAt:  now.Unix(),
-		ExpiresAt: now.Add(ttl).Unix(),
+		// Signed into the claims (not re-derived at the gateway) so redemption and
+		// live-stream revalidation can re-require the session's stronger relation
+		// even though the gateway holds no OpenSandbox client (round-13 #1/#3).
+		AgentSessionID: agentSessionID,
+		IssuedAt:       now.Unix(),
+		ExpiresAt:      now.Add(ttl).Unix(),
 	})
 	if err != nil {
 		return nil, err
@@ -201,6 +219,27 @@ func (f flushingWriter) Write(p []byte) (int, error) {
 		f.flush()
 	}
 	return n, err
+}
+
+// systemBufferedExec runs ONE platform-fixed command in a sandbox through the
+// gateway boundary without the caller-facing exec gate (dialGateway). It exists
+// for trusted lifecycle mechanics — the agent-session pre-snapshot credential
+// scrub (clientSuspend) — whose command is assembled entirely platform-side
+// (agentSnapshotCommand); the caller controls only that it runs, never its
+// bytes, and the output is checked for exit code alone, never returned. The
+// agent-session can_view_sensitive gate in dialGateway must not reach this
+// path: a contributor (can_operate) may suspend a session sandbox, and the
+// scrub is what makes that suspend safe (round-13 #1 keeps the boundary on
+// CALLER-chosen commands, not platform-chosen ones). Unexported on purpose: it
+// is mechanics, not an API verb — the relation-guard sweep treats every
+// exported Service method as a verb.
+func (s *Service) systemBufferedExec(ctx context.Context, workspace, sandboxID, agentSessionID, command string) (ExecResult, error) {
+	resp, err := s.mintAndDial(ctx, workspace, sandboxID, agentSessionID, []string{"/bin/sh", "-c", command})
+	if err != nil {
+		return ExecResult{}, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	return bufferExec(resp)
 }
 
 // ExecResult is the buffered outcome of a sandbox exec (MCP surface): the full

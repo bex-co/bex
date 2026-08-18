@@ -2164,7 +2164,10 @@ func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1al
 // publishStaticRevision uploads one revision's output to the object store —
 // either extracted from the built image, or (direct publish, w9/010) cloned from
 // the repo when no build ran. It reports its own failure through r.fail, so a
-// non-nil error carries the reconcile result the caller must return.
+// non-nil error carries the reconcile result the caller must return; an
+// in-flight publish returns RequeueAfter with a nil error, which the caller
+// treats the same way (round-13 #6: the reconcile NEVER blocks on the Job —
+// two slow tenant publishes must not occupy every App reconciler worker).
 func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alpha1.App, image, rev string) (ctrl.Result, error) {
 	publishNamespace := r.buildNamespace(app.Namespace)
 	if err := validateStaticCredentialSecret(ctx, r.buildPlaneClient(), publishNamespace, r.StaticStore.Secret); err != nil {
@@ -2207,8 +2210,18 @@ func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alp
 			}
 		}
 	}
-	if err := publish.Publish(ctx, opts); err != nil {
+	obs, err := publish.Ensure(ctx, opts)
+	if err != nil {
 		return r.fail(ctx, app, "PublishFailed", err)
+	}
+	switch obs.Phase {
+	case publish.PhasePublishing:
+		// Keep the Deploying/Publishing phase visible and hand the worker back;
+		// the requeue re-observes the Job (Ensure is create/get, never a wait).
+		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Publishing", "Publishing static output to object store")
+		return ctrl.Result{RequeueAfter: publish.ObserveInterval}, nil
+	case publish.PhaseFailed:
+		return r.fail(ctx, app, "PublishFailed", errors.New(obs.Message))
 	}
 	return ctrl.Result{}, nil
 }
@@ -2235,9 +2248,11 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 
 	// Publishing is skipped when rev is already active (idempotent: the publish
 	// Job is named per revision, so a retry reuses the exact-lifetime Job rather
-	// than re-uploading).
+	// than re-uploading). An in-flight publish halts the reconcile with its
+	// RequeueAfter result (round-13 #6).
 	if app.Status.ActiveRevision != rev {
-		if res, err := r.publishStaticRevision(ctx, app, image, rev); err != nil {
+		res, err := r.publishStaticRevision(ctx, app, image, rev)
+		if err != nil || res.RequeueAfter > 0 {
 			return res, err
 		}
 	}
