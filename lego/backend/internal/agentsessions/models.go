@@ -121,9 +121,9 @@ type Capabilities struct {
 	Ready         bool                `json:"ready"`
 }
 
-// agentProfiles is the fixed, secret-free set of selectable agents, mirroring
-// the ACP adapters agentCommand installs (claude/codex/gemini). Adding a profile
-// here is the only place a new phone-selectable agent is exposed.
+// agentProfiles is the fixed, secret-free presentation metadata for the
+// operator-owned agentAdapters contract (claude/codex/gemini). Tests require
+// exact membership parity so an uninstalled adapter cannot be advertised.
 func agentProfiles() []AgentProfile {
 	return []AgentProfile{
 		{ID: "claude", Label: "Claude Code"},

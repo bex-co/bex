@@ -1,6 +1,6 @@
 # Agent sandbox image
 
-This image is ADR047's in-sandbox execution environment. It contains git, Node.js, Python, Go, build tools, `claude-code-acp`, the gateway-backed Git credential helper, and the bex session driver. The driver owns one ACP agent over stdio and exposes port `8787`:
+This image is ADR047's in-sandbox execution environment. It contains git, Node.js, Python, Go, build tools, the pinned Claude Code, Codex, and Gemini ACP adapters, the gateway-backed Git proxy path, and the bex session driver. The driver owns one ACP agent over stdio and exposes port `8787`:
 
 - `GET /stream` — AI SDK v6 UI-message SSE. Provider `raw` chunks are retained as standard `data-acp` parts so plans, diffs, and terminals survive the AI SDK's UI conversion.
 - `POST /turn` — accepted only with the gateway's signed, single-use driver grant; raw ACP launch is intentionally not exposed.
@@ -23,7 +23,7 @@ Agent choice is configuration, not image logic:
 | `BEX_AGENT_COMMAND` | ACP agent executable (default `claude-code-acp`) |
 | `BEX_AGENT_ARGS` | JSON string array of arguments |
 | `BEX_AGENT_CWD` | working directory / repository checkout (default `/workspace`) |
-| `BEX_AGENT_PROMPT` | starts one headless `streamText` turn when non-empty |
+| `BEX_AGENT_PROMPT` | starts one headless ACP turn when non-empty |
 | `BEX_AGENT_DELIVER` | `1` runs the delivery step (ADR047 D4): setup-phase clone of the session branch, then commit + push after the turn; requires `BEX_AGENT_BRANCH` |
 | `BEX_AGENT_BRANCH` | the `bex-agent/*` branch the driver commits + pushes |
 | `BEX_AGENT_REPO_URL` | HTTPS clone URL used when the workspace is empty (setup phase) |
