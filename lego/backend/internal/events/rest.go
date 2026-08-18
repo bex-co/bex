@@ -71,9 +71,9 @@ type renderEvent struct {
 // Deploy detail enrichment (w1/m47): image, commit info, timing — populated for
 // deploy events to enable rich dashboard display without additional queries.
 type renderDetails struct {
-	DeployID        string         `json:"deployId,omitempty"`
-	DeployStatus    string         `json:"deployStatus,omitempty"`
-	PreDeployStatus string         `json:"preDeployStatus,omitempty"` // bex extra (w1/m33): the deploy's pre-deploy step outcome
+	DeployID        string `json:"deployId,omitempty"`
+	DeployStatus    string `json:"deployStatus,omitempty"`
+	PreDeployStatus string `json:"preDeployStatus,omitempty"` // bex extra (w1/m33): the deploy's pre-deploy step outcome
 	// Status is the terminal outcome of a lifecycle-step event (w7/m66):
 	// build_ended / pre_deploy_ended / job_run_ended carry succeeded|failed|canceled.
 	Status  string         `json:"status,omitempty"`
@@ -205,8 +205,9 @@ func filterFromQuery(q url.Values) Filter {
 	return FilterOf(q.Get("type"), q.Get("startTime"), q.Get("endTime"), cursor, limit)
 }
 
-// RegisterREST mounts GET /v1/services/{id}/events. Store unwired ⇒ the
-// Service returns core.ErrEventsUnavailable ⇒ 503 on these routes only.
+// RegisterREST mounts Render's service-scoped list and global retrieve routes.
+// Store unwired ⇒ the Service returns core.ErrEventsUnavailable ⇒ 503 on these
+// routes only.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	const base = "/v1/services"
 	mux.HandleFunc("GET "+base+"/{id}/events", func(w http.ResponseWriter, r *http.Request) {
@@ -217,4 +218,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, toEventList(events))
 	})
+	mux.HandleFunc("GET /v1/events/{eventId}", core.HandleMapped(http.StatusOK, func(r *http.Request) (Event, error) {
+		return s.Get(r.Context(), r.PathValue("eventId"))
+	}, toRenderEvent))
 }

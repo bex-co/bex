@@ -130,8 +130,9 @@ func New(k Kind) string {
 // Derive returns the id of a DERIVED resource: same "<prefix>-<20 chars>" shape
 // as New, but a deterministic function of parts rather than a fresh xid. It is
 // the mint path for a resource that is a PROJECTION of rows the store already
-// holds and is never itself stored — service events (internal/events, w3/m7),
-// whose entries are composed from deploys + audit_events at read time.
+// holds — service events (internal/events), whose public identity is also
+// materialized in an owner-scoped lookup index while their typed data remains
+// in deploys, audit_events, and service_event_facts.
 //
 // Determinism is the whole point: an event's id must be identical on every read
 // (a client pages with it, re-fetches it, dedupes on it), so New's fresh xid

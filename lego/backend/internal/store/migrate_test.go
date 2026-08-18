@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // TestCLIRefreshMigrationRoundTrip applies and rolls back 0082 in an isolated
@@ -442,6 +444,188 @@ func TestAgentSessionTurnPersistenceMigrationBackfillsRecoverableIntent(t *testi
 	if _, err := tx.Exec(ctx, `ROLLBACK TO SAVEPOINT duplicate_part_index`); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := tx.Exec(ctx, string(down)); err != nil {
+		t.Fatalf("apply down migration: %v", err)
+	}
+}
+
+func TestServiceEventIndexMigrationBackfillsAndMaintainsEverySource(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer pool.Close()
+
+	up, err := migrationsFS.ReadFile("migrations/0083_service_event_index.up.sql")
+	if err != nil {
+		t.Fatalf("read up migration: %v", err)
+	}
+	down, err := migrationsFS.ReadFile("migrations/0083_service_event_index.down.sql")
+	if err != nil {
+		t.Fatalf("read down migration: %v", err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0083_service_events;
+		SET LOCAL search_path TO migration_0083_service_events;
+		CREATE TABLE tenants (id text PRIMARY KEY, name text NOT NULL);
+		CREATE TABLE apps (
+			id text PRIMARY KEY,
+			tenant_id text NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+			name text NOT NULL
+		);
+		CREATE TABLE deploys (
+			id text PRIMARY KEY,
+			app_id text NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
+			trigger text NOT NULL DEFAULT '',
+			image text NOT NULL DEFAULT '',
+			commit text NOT NULL DEFAULT '',
+			commit_message text NOT NULL DEFAULT '',
+			status text NOT NULL DEFAULT '',
+			created_at timestamptz NOT NULL DEFAULT now(),
+			started_at timestamptz,
+			finished_at timestamptz,
+			pre_deploy_status text NOT NULL DEFAULT ''
+		);
+		CREATE TABLE audit_events (
+			id text PRIMARY KEY,
+			workspace_id text NOT NULL,
+			caller text NOT NULL DEFAULT '',
+			verb text NOT NULL,
+			target text NOT NULL DEFAULT '',
+			target_name text NOT NULL DEFAULT '',
+			outcome text NOT NULL,
+			at timestamptz NOT NULL,
+			plan_from text,
+			plan_to text,
+			instance_count_from integer,
+			instance_count_to integer,
+			autoscaling_min_from integer,
+			autoscaling_max_from integer,
+			autoscaling_min_to integer,
+			autoscaling_max_to integer,
+			auto_deploy_enabled boolean
+		);
+		CREATE TABLE service_event_facts (
+			source_key text PRIMARY KEY,
+			app_id text NOT NULL REFERENCES apps(id) ON DELETE CASCADE,
+			fact_type text NOT NULL
+		);
+
+		INSERT INTO tenants VALUES ('tea-owner', 'acme');
+		INSERT INTO apps VALUES ('srv-app', 'tea-owner', 'api');
+		INSERT INTO deploys (id, app_id, status, finished_at)
+		VALUES ('dep-old', 'srv-app', 'live', '2026-08-17T12:00:00Z');
+		INSERT INTO audit_events (id, workspace_id, verb, target, outcome, at)
+		VALUES
+			('aud-service', 'tea-owner', 'apps.Restart', 'service:tea-owner-api', 'allowed', '2026-08-17T12:01:00Z'),
+			('aud-denied', 'tea-owner', 'apps.Restart', 'service:tea-owner-api', 'denied', '2026-08-17T12:02:00Z');
+		INSERT INTO audit_events (id, workspace_id, verb, target, target_name, outcome, at)
+		VALUES ('aud-database', 'tea-owner', 'postgres.CreatePostgres', 'database:dpg-orders', 'orders', 'allowed', '2026-08-17T12:03:00Z');
+		INSERT INTO service_event_facts VALUES ('observed:srv-app:available:1', 'srv-app', 'server_available');
+	`); err != nil {
+		t.Fatalf("prepare old schema: %v", err)
+	}
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("apply up migration: %v", err)
+	}
+
+	want := map[string]string{
+		"dep-old:started":                   ids.Derive(ids.Event, "dep-old:started"),
+		"dep-old:ended":                     ids.Derive(ids.Event, "dep-old:ended"),
+		"aud-service:":                      ids.Derive(ids.Event, "aud-service:"),
+		"aud-database:":                     ids.Derive(ids.Event, "aud-database:"),
+		"fact:observed:srv-app:available:1": ids.Derive(ids.Event, "fact:observed:srv-app:available:1"),
+	}
+	rows, err := tx.Query(ctx, `SELECT event_key, event_id FROM service_event_index ORDER BY event_key`)
+	if err != nil {
+		t.Fatalf("read backfill: %v", err)
+	}
+	got := map[string]string{}
+	for rows.Next() {
+		var key, eventID string
+		if err := rows.Scan(&key, &eventID); err != nil {
+			rows.Close()
+			t.Fatal(err)
+		}
+		got[key] = eventID
+	}
+	rows.Close()
+	if len(got) != len(want) {
+		t.Fatalf("backfilled events = %v, want %v", got, want)
+	}
+	for key, eventID := range want {
+		if got[key] != eventID {
+			t.Errorf("SQL id for %q = %q, want Go id %q", key, got[key], eventID)
+		}
+	}
+	var databaseID, databaseName, databaseAppID string
+	if err := tx.QueryRow(ctx, `
+		SELECT service_id, service_name, COALESCE(app_id, '')
+		FROM service_event_index WHERE event_key = 'aud-database:'
+	`).Scan(&databaseID, &databaseName, &databaseAppID); err != nil {
+		t.Fatal(err)
+	}
+	if databaseID != "dpg-orders" || databaseName != "orders" || databaseAppID != "" {
+		t.Errorf("datastore identity = (%q, %q, %q), want (dpg-orders, orders, empty app)", databaseID, databaseName, databaseAppID)
+	}
+	var foreign bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM service_event_index WHERE workspace_id = 'tea-foreign' AND event_id = $1)
+	`, want["dep-old:started"]).Scan(&foreign); err != nil || foreign {
+		t.Fatalf("foreign owner lookup = %v (err %v), want false", foreign, err)
+	}
+
+	// Triggers keep new rows and later deploy completion atomic with their source.
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO deploys (id, app_id, status) VALUES ('dep-new', 'srv-app', 'created');
+		UPDATE deploys SET status='live', finished_at='2026-08-17T13:00:00Z' WHERE id='dep-new';
+	`); err != nil {
+		t.Fatalf("write current deploy: %v", err)
+	}
+	var deployEntries int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM service_event_index WHERE source='deploy' AND source_row_id='dep-new'`).Scan(&deployEntries); err != nil || deployEntries != 2 {
+		t.Fatalf("current deploy index rows = %d (err %v), want started+ended", deployEntries, err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM deploys WHERE id='dep-new'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM service_event_index WHERE source='deploy' AND source_row_id='dep-new'`).Scan(&deployEntries); err != nil || deployEntries != 0 {
+		t.Fatalf("deleted deploy index rows = %d (err %v), want 0", deployEntries, err)
+	}
+
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO service_event_facts VALUES ('observed:new', 'srv-app', 'server_failed');
+		DELETE FROM service_event_facts WHERE source_key='observed:new';
+		INSERT INTO audit_events (id, workspace_id, verb, target, target_name, outcome, at)
+		VALUES ('aud-new-kv', 'tea-owner', 'keyvalue.SetPlan', 'keyvalue:red-cache', 'cache', 'allowed', now());
+	`); err != nil {
+		t.Fatalf("write current fact/audit: %v", err)
+	}
+	var factEntries int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM service_event_index WHERE source='fact' AND source_row_id='observed:new'`).Scan(&factEntries); err != nil || factEntries != 0 {
+		t.Fatalf("deleted fact index rows = %d (err %v), want 0", factEntries, err)
+	}
+	var kvEntries int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM service_event_index WHERE source='audit' AND source_row_id='aud-new-kv'`).Scan(&kvEntries); err != nil || kvEntries != 1 {
+		t.Fatalf("current datastore audit index rows = %d (err %v), want 1", kvEntries, err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM audit_events WHERE id='aud-new-kv'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM service_event_index WHERE source='audit' AND source_row_id='aud-new-kv'`).Scan(&kvEntries); err != nil || kvEntries != 0 {
+		t.Fatalf("deleted audit index rows = %d (err %v), want 0", kvEntries, err)
+	}
+
 	if _, err := tx.Exec(ctx, string(down)); err != nil {
 		t.Fatalf("apply down migration: %v", err)
 	}

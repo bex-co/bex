@@ -1264,7 +1264,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 	h, srv := serverWith(t, base, deps)
 
 	// REST: every feature's noun answers (2xx/empty, not 404-route-missing).
-	for _, path := range []string{"/v1/services", "/v1/postgres", "/v1/api-keys", "/v1/logs?resource=web", "/v1/metrics/instance-count?resource=web", "/v1/owners", "/v1/env-groups", "/v1/services/web/secret-files", "/v1/services/web/deploys"} {
+	for _, path := range []string{"/v1/services", "/v1/postgres", "/v1/api-keys", "/v1/logs?resource=web", "/v1/metrics/instance-count?resource=web", "/v1/owners", "/v1/env-groups", "/v1/services/web/secret-files", "/v1/services/web/deploys", "/v1/services/web/events", "/v1/events/evt-00000000000000000000"} {
 		if code := do(t, h, "GET", path, testToken, "").Code; code == 404 {
 			t.Errorf("REST route %q not registered (404)", path)
 		}
@@ -1276,7 +1276,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 	qFields := schema.QueryType().Fields()
-	for _, f := range []string{"services", "cronJobRuns", "cronJobRun", "databases", "apiKeys", "logs", "metrics", "workspaces", "envGroups", "envGroup", "envGroupVar", "envGroupSecretFile", "deploys", "workspaceMembers", "workspaceInvites"} {
+	for _, f := range []string{"services", "cronJobRuns", "cronJobRun", "databases", "apiKeys", "logs", "metrics", "workspaces", "envGroups", "envGroup", "envGroupVar", "envGroupSecretFile", "deploys", "serviceEvents", "serviceEvent", "workspaceMembers", "workspaceInvites"} {
 		if qFields[f] == nil {
 			t.Errorf("Query.%s not wired into the single schema", f)
 		}
@@ -1295,7 +1295,7 @@ func TestSurfaceParityAndWiring(t *testing.T) {
 	for _, tl := range tools.Tools {
 		have[tl.Name] = true
 	}
-	for _, name := range []string{"list_services", "list_cron_job_runs", "get_cron_job_run", "cancel_cron_job_run", "list_logs", "list_log_label_values", "get_metrics", "create_api_key", "list_workspaces", "list_env_groups", "rename_env_group", "get_env_group_var", "set_env_group_var", "delete_env_group_var", "get_env_group_secret_file", "list_secret_files", "list_deploys", "get_deploy", "list_workspace_members", "invite_workspace_member"} {
+	for _, name := range []string{"list_services", "list_cron_job_runs", "get_cron_job_run", "cancel_cron_job_run", "list_logs", "list_log_label_values", "get_metrics", "create_api_key", "list_workspaces", "list_env_groups", "rename_env_group", "get_env_group_var", "set_env_group_var", "delete_env_group_var", "get_env_group_secret_file", "list_secret_files", "list_deploys", "get_deploy", "list_service_events", "get_service_event", "list_workspace_members", "invite_workspace_member"} {
 		if !have[name] {
 			t.Errorf("MCP tool %q not registered into the single registry", name)
 		}

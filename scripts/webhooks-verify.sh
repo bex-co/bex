@@ -10,15 +10,19 @@
 #      webhook-id/webhook-timestamp/webhook-signature headers whose HMAC an
 #      INDEPENDENT verifier (its own ~20 lines of crypto, not bex's code)
 #      validates against the registered secret.
-#   3. LIFECYCLE: suspend + resume deliver service_suspended/service_resumed.
-#   4. RETRY + AUTO-DISABLE: an endpoint that answers 500 is retried on the
+#   3. HYDRATE: the delivered webhook-id/data.id retrieves the exact full event
+#      through GET /v1/events/{eventId}, matching the service-events list item.
+#   4. LIFECYCLE: suspend + resume deliver service_suspended/service_resumed.
+#   5. RETRY + AUTO-DISABLE: an endpoint that answers 500 is retried on the
 #      configured backoff (BEX_WEBHOOK_BACKOFF, shortened here to seconds),
 #      each attempt recorded in the delivery history, and after exhausting the
 #      schedule the delivery is failed, the endpoint auto-disabled with a
 #      reason, and the email notice attempted (logged — SMTP is unset here).
-#   5. deploy_ended: the reconciler's deploy-close write-back (gate timeout
+#   6. deploy_ended: the reconciler's deploy-close write-back (gate timeout
 #      without an operator, ~3 min) produces a signed deploy_ended delivery.
 #      Skipped with BEX_VERIFY_FAST=1.
+#   7. CLEANUP: both endpoints and the service are deleted through the product
+#      API; the exact App CR is removed as a failure-path fallback.
 #
 # It starts disposable Hydra + Postgres containers on the host and runs bex-api
 # from source. Because production correctly requires public HTTPS destinations
@@ -55,6 +59,11 @@ RECEIVER_URL="${RECEIVER_URL%/}"
 CP_TOKEN="webhooks-verify-$STAMP"
 CLIENT_ID=webhooks-verify
 CLIENT_SECRET="webhooks-verify-secret-$STAMP"
+TOKEN=""
+TENANT_ID=""
+APP_ID=""
+EP1=""
+EP2=""
 
 case "$RECEIVER_URL" in
   https://*) ;;
@@ -81,6 +90,23 @@ cleanup() {
   if [ "${BEX_VERIFY_KEEP:-}" = "1" ]; then
     echo "BEX_VERIFY_KEEP=1 — leaving the stack up for inspection (bindir: $bindir, api pid $API_PID)"
     return 0
+  fi
+  # Best-effort product cleanup on every failure path. The explicit success
+  # phase below asserts these deletes; the trap must stay non-failing so it
+  # cannot hide the original verifier error.
+  if [ -n "$TOKEN" ] && [ -n "$API_PID" ] && kill -0 "$API_PID" 2>/dev/null; then
+    for endpoint_id in "$EP1" "$EP2"; do
+      [ -n "$endpoint_id" ] || continue
+      curl -s -o /dev/null -X DELETE "http://$API/v1/webhooks/$endpoint_id?ownerId=$TENANT_ID" \
+        -H "Authorization: Bearer $TOKEN" || true
+    done
+    if [ -n "$APP_ID" ]; then
+      curl -s -o /dev/null -X DELETE "http://$API/v1/services/$SVC" \
+        -H "Authorization: Bearer $TOKEN" || true
+    fi
+  fi
+  if [ -n "$APP_ID" ]; then
+    kubectl -n default delete app.app.bex.co "$SVC" --ignore-not-found --wait=false >/dev/null 2>&1 || true
   fi
   reap "$API_PID"
   reap "$RECV_PID"
@@ -291,7 +317,33 @@ got_svc="$(echo "$RECV_LINE" | jq -r '.body|@base64d|fromjson|.data.serviceId')"
 [ "$got_svc" = "$SVC" ] || fail "deploy_started serviceId = $got_svc, want $SVC"
 pass "deploy_started delivered within seconds, HMAC independently verified, serviceId=$SVC"
 
-echo "==> 3. lifecycle: suspend + resume"
+echo "==> 3. hydrate: webhook data.id -> full event"
+DELIVERY_BODY="$(echo "$RECV_LINE" | jq -c '.body|@base64d|fromjson')"
+EVENT_ID="$(echo "$DELIVERY_BODY" | jq -r '.data.id')"
+request GET "/v1/events/$EVENT_ID" ''
+expect 200 "retrieve webhook event by data.id"
+HYDRATED_EVENT="$LAST_BODY"
+event_type="$(echo "$DELIVERY_BODY" | jq -r '.type')"
+event_timestamp="$(echo "$DELIVERY_BODY" | jq -r '.timestamp')"
+event_service_id="$(echo "$DELIVERY_BODY" | jq -r '.data.serviceId')"
+echo "$HYDRATED_EVENT" | jq -e \
+  --arg id "$EVENT_ID" --arg type "$event_type" --arg timestamp "$event_timestamp" --arg service "$event_service_id" \
+  '.id == $id and .type == $type and .timestamp == $timestamp and .serviceId == $service and
+   (.details | type == "object") and (.details.deployId | type == "string" and length > 0) and
+   (.details.trigger | type == "object")' >/dev/null \
+  || fail "hydrated event does not match the signed thin payload: $HYDRATED_EVENT"
+
+# The global read and the existing service-scoped feed must use one projection:
+# compare canonical JSON rather than repeating a weaker field-presence check.
+request GET "/v1/services/$SVC/events?type=deploy_started" ''
+expect 200 "list service events for hydration parity"
+LIST_EVENT="$(echo "$LAST_BODY" | jq -c --arg id "$EVENT_ID" '.[] | select(.event.id == $id) | .event' | head -1)"
+[ -n "$LIST_EVENT" ] || fail "service events list has no event $EVENT_ID"
+[ "$(echo "$HYDRATED_EVENT" | jq -S -c .)" = "$(echo "$LIST_EVENT" | jq -S -c .)" ] \
+  || fail "global and service-scoped event projections diverge (id=$EVENT_ID)"
+pass "webhook-id=data.id=$EVENT_ID hydrates to the exact service event"
+
+echo "==> 4. lifecycle: suspend + resume"
 request POST "/v1/services/$SVC/suspend" '' ; expect 202 suspend
 request POST "/v1/services/$SVC/resume" ''  ; expect 202 resume
 wait_delivery service_suspended /ok ; verify_line_signature "$RECV_LINE" "$SECRET1"
@@ -305,7 +357,7 @@ delivered="$(echo "$LAST_BODY" | jq '[.[] | select(.webhookEvent.statusCode >= 2
 echo "$LAST_BODY" | jq -e '.[0] | (.cursor | length > 0) and (.webhookEvent.sentAt | length > 0)' >/dev/null || fail "history cursor/sentAt missing"
 pass "Render-shaped history records $delivered delivered entries with stable sentAt/cursors"
 
-echo "==> 4. retry + auto-disable: a failing endpoint"
+echo "==> 5. retry + auto-disable: a failing endpoint"
 request POST "/v1/webhooks" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"fail-hook\",\"url\":\"$RECEIVER_URL/fail\",\"enabled\":true,\"eventFilter\":[\"service_suspended\"]}"
 expect 201 "create failing endpoint"
 EP2="$(echo "$LAST_BODY" | jq -r .id)"
@@ -332,7 +384,7 @@ grep -q "notice not emailed" "$bindir/api.log" || fail "no failure-notice log li
 pass "4 attempts on the 2s,3s,4s schedule, then failed + auto-disabled (reason recorded, email notice logged)"
 
 if [ "${BEX_VERIFY_FAST:-}" != "1" ]; then
-  echo "==> 5. deploy_ended (reconciler write-back; the gate timeout closes it in ~3 min without an operator)"
+  echo "==> 6. deploy_ended (reconciler write-back; the gate timeout closes it in ~3 min without an operator)"
   RECV_LINE=""
   for _ in $(seq 1 90); do
     RECV_LINE="$(jq -c 'select(.path=="/ok") | select((.body|@base64d|fromjson).type=="deploy_ended")' "$RECV_LOG" 2>/dev/null | head -1 || true)"
@@ -348,6 +400,25 @@ else
   info "BEX_VERIFY_FAST=1 — skipping the deploy_ended gate-timeout wait"
 fi
 
+echo "==> 7. cleanup: endpoints + service through product APIs"
+request DELETE "/v1/webhooks/$EP2?ownerId=$TENANT_ID" ''
+expect 204 "delete failing webhook endpoint"
+EP2=""
+request DELETE "/v1/webhooks/$EP1?ownerId=$TENANT_ID" ''
+expect 204 "delete webhook endpoint"
+EP1=""
+request DELETE "/v1/services/$SVC" ''
+expect 204 "delete verification service"
+for _ in $(seq 1 30); do
+  kubectl -n default get app.app.bex.co "$SVC" >/dev/null 2>&1 || break
+  sleep 1
+done
+kubectl -n default get app.app.bex.co "$SVC" >/dev/null 2>&1 \
+  && fail "verification App/$SVC still exists after product cleanup"
+APP_ID=""
+pass "webhook endpoints, service row, and App removed"
+
 echo
 echo "PASS: outbound webhooks verified live — register (secret once), signed delivery within"
-echo "      seconds of a real deploy, lifecycle events, retry schedule, auto-disable + notice."
+echo "      seconds of a real deploy, data.id hydration, lifecycle events, retry schedule,"
+echo "      auto-disable + notice, and exact resource cleanup."

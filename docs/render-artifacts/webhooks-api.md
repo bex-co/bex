@@ -1,6 +1,6 @@
 # Render outbound webhooks API contract
 
-Captured 2026-08-16 from Render's [webhook guide](https://render.com/docs/webhooks), [public OpenAPI document](https://api-docs.render.com/openapi/render-public-api-1.json), and the create/list/retrieve/update/delete/history references linked from the OpenAPI operations. This is the dated compatibility fixture for `w2/m70`; later comparisons must not silently substitute the prose event list for the API enum because the two currently differ.
+Captured 2026-08-16 from Render's [webhook guide](https://render.com/docs/webhooks), [public OpenAPI document](https://api-docs.render.com/openapi/render-public-api-1.json), and the create/list/retrieve/update/delete/history references linked from the OpenAPI operations. The single-event retrieval contract was rechecked against the live official OpenAPI on 2026-08-17 for `w8/m24`: the route, identifier pattern, required response fields, and error set were unchanged, while the event enum had added `artifact_fetch_failed` and `artifact_source_changed` to the repository's prior 65-value snapshot. That date records a contract comparison, not a live verifier run. This is the dated compatibility fixture for `w2/m70` and `w8/m24`; later comparisons must not silently substitute the prose event list for the API enum because the two currently differ.
 
 ## Wire contract
 
@@ -21,11 +21,17 @@ bex deliberately does **not** return the stored signing secret after create. Its
 
 Render's prose requires a publicly reachable HTTPS destination. A notification is a Standard Webhooks signed HTTPS `POST` with `webhook-id`, `webhook-timestamp`, and `webhook-signature`. Its thin JSON body is `{type, timestamp, data: {id, serviceId, serviceName, status?}}`; `data.status` is documented for `build_ended`, `deploy_ended`, `cron_job_run_ended`, and `job_run_ended`, with `succeeded`, `failed`, or `canceled` values.
 
+### Event hydration
+
+The notification is deliberately thin. Its `webhook-id` and `data.id` are the same `evt-…` identity, which an authenticated receiver passes to `GET /v1/events/{eventId}` to retrieve the full event. Render's pinned path parameter matches `^evt-[0-9a-z]{20}$`. A successful response is the bare event object—not a cursor wrapper—and requires `id`, `timestamp`, `serviceId`, `type`, and `details`. The OpenAPI operation also declares 400, 401, 403, 404, 406, 410, 429, 500, and 503 responses.
+
+bex keeps that receiver workflow across all 32 event types it advertises, including datastore audit events that have no service-scoped activity-list home. The global lookup is indexed and owner-scoped: it authorizes the caller's effective workspace before fetching its event, returns the same safe not-found response for missing and foreign IDs, and returns 503 when the control-plane store is unwired. REST uses Render's route and object; GraphQL `serviceEvent(id:)` and MCP `get_service_event` are bex extensions over the same lookup. The signing secret authenticates the webhook body only—it is not a credential for the retrieval request.
+
 The receiver must return 2xx within 15 seconds. Render makes **at most eight attempts total** per notification, emails after the third failure, uses exponential backoff with the last attempt about 33 hours after the first, and disables the webhook only after all attempts fail. “Eight attempts” is not an initial request plus eight retries.
 
-## Pinned 67-value API enum
+## 2026-08-17 live 67-value API enum
 
-The following list is generated from the 2026-08-16 OpenAPI schema at `GET /events/{eventId}`. It is the fixture vocabulary, in the schema's order:
+The following list is generated from the 2026-08-17 live OpenAPI schema at `GET /events/{eventId}`. It is the fixture vocabulary, in the schema's order:
 
 1. `artifact_fetch_failed`
 2. `artifact_source_changed`
@@ -118,17 +124,18 @@ After m70, the advertised vocabulary is 32 types: 29 overlap the pinned API enum
 
 ## Final surface result
 
-| Gap found on 2026-08-16 | Implemented result |
+| Gap found on 2026-08-16/17 | Implemented result |
 | --- | --- |
 | Create omits required `enabled`, permits an empty/defaulted name, accepts HTTP, and rejects an empty all-events filter. PATCH cannot distinguish omitted from explicitly empty `eventFilter`. | REST create now requires `ownerId`, a unique non-empty name, explicit enabled state and filter, accepts HTTPS only, and stores empty as a future-inclusive all-events subscription. Sparse PATCH distinguishes omission from explicit empty on REST, GraphQL, and MCP. Stable coded refusals include `WEBHOOK_OWNER_REQUIRED`, `WEBHOOK_NAME_INVALID`, `WEBHOOK_NAME_CONFLICT`, and `WEBHOOK_URL_INVALID`. |
 | List is unwrapped/unpaged, accepts one owner id, and get/patch expose bex-only fields while omitting Render's post-create secret. | REST returns the exact supported non-secret webhook fields in `[{webhook,cursor}]`, handles repeated `ownerId`, and pages on immutable `(created_at,id)`. The post-create secret omission is deliberately retained. |
 | History uses `{delivery,cursor}` and bex field names, lacks time filters and response evidence. | REST returns `[{webhookEvent,cursor}]`, filters on stable first-attempt `sentAt`, and exposes status/body/error evidence. Response bodies are valid UTF-8 and capped at 4096 bytes including an explicit truncation marker. GraphQL, MCP, and the dashboard retain the richer retry-state view. |
+| A receiver gets a thin `data.id`, but bex has no global retrieve-by-ID route; finding the full event requires a bounded service-list search and does not work for datastore events. | `GET /v1/events/{eventId}` resolves the unchanged ID through the owner-scoped event index and returns the same event projection as the list surface. GraphQL `serviceEvent(id:)` and MCP `get_service_event` share the lookup; missing and foreign IDs are indistinguishable. |
 | The worker has eight backoff delays after the initial delivery, producing nine attempts. | The default has seven delays and exactly eight total attempts. The final attempt is 32h40m30s after the first; the third-failure and terminal-disable notices remain distinct; no ninth POST is possible. |
 | Dashboard labels/counts and activity evidence consume the old contract; raw event keys leak in detail/list views. | Create and Settings preserve empty-filter all-events, creation can start disabled, known events use translated human labels, the destination and Settings status are links, creator subjects resolve through the authorized member read, and Activity exposes `sentAt`, status/response/error evidence plus server-side time/status predicates with matching cursor pages. |
 | ADR018 says Render manages webhooks only in the dashboard, marks full parity, calls the worker single-replica, and says endpoint count is unbounded. | ADR018 now records partial parity, current REST management/history, multi-replica-safe dispatch/claims, the fixed 25-endpoint bex cap, and the remaining source/product boundaries. |
 
 ## Verification fixture
 
-`TestRenderRESTCreateReadPatchDeleteAndMintOnceFixture`, `TestRenderRESTWebhookListEnvelopeMultiOwnerAndCursor`, and `TestRenderRESTWebhookEventEnvelopeTimeFiltersAndEvidence` pin the supported Render REST fields, envelopes, filters, pagination, and deliberate create-only secret. Worker tests pin the full attempt clock and Standard Webhooks reference vector. The real-Postgres two-worker integration test verifies each signed POST exactly once and reads back matching stable `sentAt`, HTTP status, and bounded response evidence from the same history rows. `scripts/webhooks-verify.sh` exercises the live control plane through a caller-supplied public HTTPS tunnel; this is required because production correctly rejects HTTP destinations and private/loopback SSRF targets.
+`TestRenderRESTCreateReadPatchDeleteAndMintOnceFixture`, `TestRenderRESTWebhookListEnvelopeMultiOwnerAndCursor`, and `TestRenderRESTWebhookEventEnvelopeTimeFiltersAndEvidence` pin the supported Render REST fields, envelopes, filters, pagination, and deliberate create-only secret. Event lookup tests pin the three durable source families, unchanged derived IDs, owner-safe not-found behavior, and REST/GraphQL/MCP parity. Worker tests pin the full attempt clock and Standard Webhooks reference vector. The real-Postgres two-worker integration test verifies each signed POST exactly once and reads back matching stable `sentAt`, HTTP status, and bounded response evidence from the same history rows. `scripts/webhooks-verify.sh` is the executable live fixture: through a caller-supplied public HTTPS tunnel it captures a signed delivery, checks `webhook-id == data.id == retrieved.id`, compares the global result with the service-list event, and removes its endpoints and service through product APIs. The script still requires an actual run with a public receiver to constitute live evidence; production correctly rejects HTTP destinations and private/loopback SSRF targets.
 
 The remaining product divergences are intentional or source-bound: bex never re-returns a signing secret, caps every workspace at 25 endpoints rather than Render's plan-specific 1/100 gates, exposes GraphQL/MCP management and retry diagnostics that Render does not, and does not advertise the unsupported families listed above.

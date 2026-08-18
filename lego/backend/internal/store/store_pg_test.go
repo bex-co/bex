@@ -1213,6 +1213,23 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 	if len(all) != 7 {
 		t.Fatalf("feed = %d events, want 7 (4 deploy + 2 audit + 1 fact; denied/cross-tenant/unmapped excluded)\n%+v", len(all), all)
 	}
+	// Every source row the bounded list can return resolves directly through the
+	// owner/event primary key, while the same opaque id in another workspace is
+	// indistinguishable from an absent event.
+	for _, event := range all {
+		eventID := ids.Derive(ids.Event, event.Key)
+		lookup, lookupErr := s.GetServiceEvent(ctx, ten.ID, eventID)
+		if lookupErr != nil {
+			t.Fatalf("get indexed event %s: %v", event.Key, lookupErr)
+		}
+		if lookup.Event.Key != event.Key || lookup.Event.Source != event.Source || lookup.Event.Phase != event.Phase ||
+			lookup.ServiceID != core.CRName(ten.Name, app.Name) {
+			t.Errorf("indexed lookup for %s = %+v, want source row %+v and service identity", event.Key, lookup, event)
+		}
+		if _, foreignErr := s.GetServiceEvent(ctx, "tea-foreign00000000", eventID); !errors.Is(foreignErr, ErrNotFound) {
+			t.Errorf("foreign lookup for %s = %v, want ErrNotFound", event.Key, foreignErr)
+		}
+	}
 	// Newest first, and the order is TOTAL: every adjacent pair is strictly
 	// ordered by (at, key), never merely equal — which is what makes the cursor
 	// below resumable.
@@ -1942,6 +1959,10 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 			// The datastore arm has no apps join, so it carries no app id.
 			if r.AppID != "" {
 				t.Errorf("datastore audit row carried app id %q, want empty", r.AppID)
+			}
+			lookup, lookupErr := s.GetServiceEvent(ctx, ten.ID, ids.Derive(ids.Event, r.Key))
+			if lookupErr != nil || lookup.Event.Key != r.Key || lookup.ServiceID != "dpg-orders" {
+				t.Errorf("datastore event lookup = %+v (err %v), want hydrated postgres audit row", lookup, lookupErr)
 			}
 			postgresCreates++
 		default:

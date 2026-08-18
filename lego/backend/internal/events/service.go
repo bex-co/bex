@@ -122,20 +122,23 @@ package events
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/eventvocab"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// EventStore is the Service's seam to the control-plane store — the one composed
-// read (internal/store/events.go). *store.PGStore satisfies it.
+// EventStore is the Service's seam to the control-plane store: one composed list
+// and one owner-indexed source lookup. *store.PGStore satisfies it.
 type EventStore interface {
 	ListServiceEvents(ctx context.Context, appID, target, ownerWorkspace string, f store.ServiceEventFilter) ([]store.ServiceEventRow, error)
+	GetServiceEvent(ctx context.Context, workspaceID, eventID string) (store.ServiceEventLookup, error)
 }
 
 // Render's event types (the subset bex can emit truthfully), spelled exactly as
@@ -146,7 +149,7 @@ const (
 	TypeSuspenderAdded           = "suspender_added"
 	TypeSuspenderRemoved         = "suspender_removed"
 	TypeServerRestarted          = "server_restarted"
-	TypePlanChanged              = "plan_changed"
+	TypePlanChanged              = eventvocab.TypePlanChanged
 	TypeInstanceCountChanged     = "instance_count_changed"
 	TypeAutoscalingConfigChanged = "autoscaling_config_changed"
 	TypeCronJobRunStarted        = "cron_job_run_started"
@@ -165,11 +168,16 @@ const (
 	// beats Render shows as distinct timeline entries. The *_ended types carry a
 	// details.status (succeeded|failed|canceled); observed via the control-plane
 	// reconciler + jobs sync, not an API write.
-	TypeBuildStarted     = "build_started"
-	TypeBuildEnded       = "build_ended"
-	TypePreDeployStarted = "pre_deploy_started"
-	TypePreDeployEnded   = "pre_deploy_ended"
-	TypeJobRunEnded      = "job_run_ended"
+	TypeBuildStarted               = "build_started"
+	TypeBuildEnded                 = "build_ended"
+	TypePreDeployStarted           = "pre_deploy_started"
+	TypePreDeployEnded             = "pre_deploy_ended"
+	TypeJobRunEnded                = "job_run_ended"
+	TypePostgresCreated            = eventvocab.TypePostgresCreated
+	TypePostgresRestarted          = eventvocab.TypePostgresRestarted
+	TypePostgresCredentialsCreated = eventvocab.TypePostgresCredentialsCreated
+	TypePostgresCredentialsDeleted = eventvocab.TypePostgresCredentialsDeleted
+	TypePostgresBackupStarted      = eventvocab.TypePostgresBackupStarted
 )
 
 // bex-named types — real writes Render's vocabulary has no name for. Named in
@@ -270,6 +278,12 @@ var eventTypes = map[string]string{
 	core.AuditVerbMaintenanceModeEnabled:    TypeMaintenanceModeEnabled,
 	core.AuditVerbMaintenanceModeURIUpdated: TypeMaintenanceModeURIUpdated,
 }
+
+// indexedAuditEventTypes are webhook-visible datastore effects that have no
+// service-scoped list home. They are intentionally separate from eventTypes:
+// adding them there would claim Postgres/Key Value rows can appear in
+// GET /services/{id}/events and would broaden that query's audit vocabulary.
+var indexedAuditEventTypes = eventvocab.DatastoreAuditTypes()
 
 // allVerbs is eventTypes' key set and allPhases the two deploy transitions —
 // the unfiltered query's push-down sets, computed once (they are constants).
@@ -470,6 +484,11 @@ type Service struct {
 	MaxQueryHours int
 }
 
+const (
+	EventIDInvalidCode = "EVENT_ID_INVALID"
+	EventNotFoundCode  = "EVENT_NOT_FOUND"
+)
+
 // List returns a service's activity feed, newest first (Render's
 // GET /services/{id}/events). A hand-applied App has no control-plane row, hence
 // no deploys and no audit target: an empty feed, not an error — the deploy-history
@@ -524,6 +543,43 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	return out, nil
 }
 
+// Get returns one globally-addressed event by its stable evt-… id. Unlike List,
+// the route has no service identifier from which to discover the owner, so the
+// lookup is scoped to the caller's effective workspace before the source row is
+// read. A miss in another workspace is therefore indistinguishable from an id
+// that never existed.
+func (s *Service) Get(ctx context.Context, eventID string) (Event, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return Event{}, err
+	}
+	kind, ok := ids.KindOf(eventID)
+	if !ok || kind != ids.Event {
+		return Event{}, core.NewBadRequestError(EventIDInvalidCode, "event id must be a valid evt-… identifier", nil)
+	}
+	if s.Store == nil {
+		return Event{}, core.ErrEventsUnavailable
+	}
+	lookup, err := s.Store.GetServiceEvent(ctx, s.WorkspaceOrDefault(ctx), eventID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return Event{}, eventNotFound(eventID)
+		}
+		return Event{}, err
+	}
+	event := view(lookup.Event, lookup.ServiceID)
+	// The trigger indexes every safe source row, while this package owns the
+	// closed public vocabulary. An indexed-but-unmapped audit effect stays hidden
+	// exactly as it does in List and webhook dispatch.
+	if event.Type == "" || event.ID != eventID {
+		return Event{}, eventNotFound(eventID)
+	}
+	return event, nil
+}
+
+func eventNotFound(eventID string) error {
+	return core.NewNotFoundError(EventNotFoundCode, "event not found", map[string]any{"id": eventID})
+}
+
 // checkWindow rejects a range wider than MaxQueryHours (BEX_MAX_QUERY_HOURS) —
 // the same guard logs and metrics apply, mapped to core.ErrBadRequest so all
 // three surfaces answer 400 identically.
@@ -574,6 +630,9 @@ func view(r store.ServiceEventRow, service string) Event {
 		}
 	case store.EventSourceAudit:
 		ev.Type = eventTypes[r.Verb]
+		if ev.Type == "" {
+			ev.Type = indexedAuditEventTypes[r.Verb]
+		}
 		switch ev.Type {
 		case TypeSuspenderAdded, TypeSuspenderRemoved:
 			ev.Details.Actor = r.Caller

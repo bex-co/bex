@@ -60,15 +60,24 @@ func sampleApp(name, storeID, tenant string) *appv1alpha1.App {
 var now = time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 
 type fakeStore struct {
-	rows     []store.ServiceEventRow
-	got      store.ServiceEventFilter
-	gotOwner string
+	rows              []store.ServiceEventRow
+	lookup            store.ServiceEventLookup
+	lookupErr         error
+	got               store.ServiceEventFilter
+	gotOwner          string
+	gotEventWorkspace string
+	gotEventID        string
 }
 
 func (f *fakeStore) ListServiceEvents(_ context.Context, _, _, ownerWorkspace string, fil store.ServiceEventFilter) ([]store.ServiceEventRow, error) {
 	f.gotOwner = ownerWorkspace
 	f.got = fil
 	return f.rows, nil
+}
+
+func (f *fakeStore) GetServiceEvent(_ context.Context, workspaceID, eventID string) (store.ServiceEventLookup, error) {
+	f.gotEventWorkspace, f.gotEventID = workspaceID, eventID
+	return f.lookup, f.lookupErr
 }
 
 func newService(st EventStore, objs ...client.Object) *Service {
@@ -274,6 +283,90 @@ func TestCursorRoundTrips(t *testing.T) {
 }
 
 // --- List ---------------------------------------------------------------------
+
+func TestGetReturnsIndexedServiceEvent(t *testing.T) {
+	eventID := ids.Derive(ids.Event, "dep-1:"+store.EventPhaseStarted)
+	st := &fakeStore{lookup: store.ServiceEventLookup{
+		Event:     store.ServiceEventRow{Key: "dep-1:" + store.EventPhaseStarted, At: now, Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-1", Trigger: store.TriggerAPI},
+		ServiceID: "web",
+	}}
+
+	got, err := newService(st).Get(context.Background(), eventID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != eventID || got.Type != TypeDeployStarted || got.ServiceID != "web" {
+		t.Errorf("Get = %+v, want the indexed deploy_started event", got)
+	}
+	if st.gotEventWorkspace != core.DefaultTenant || st.gotEventID != eventID {
+		t.Errorf("store lookup = workspace %q id %q, want %q / %q", st.gotEventWorkspace, st.gotEventID, core.DefaultTenant, eventID)
+	}
+}
+
+func TestGetReturnsIndexedPostgresEvent(t *testing.T) {
+	eventID := ids.Derive(ids.Event, "aud-pg:")
+	st := &fakeStore{lookup: store.ServiceEventLookup{
+		Event:     store.ServiceEventRow{Key: "aud-pg:", At: now, Source: store.EventSourceAudit, Verb: core.AuditVerbPostgresCreated, Caller: "user-x"},
+		ServiceID: "dpg-1",
+	}}
+
+	got, err := newService(st).Get(context.Background(), eventID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != eventID || got.Type != TypePostgresCreated || got.ServiceID != "dpg-1" {
+		t.Errorf("Get = %+v, want the indexed postgres_created event", got)
+	}
+}
+
+func TestGetErrorMatrix(t *testing.T) {
+	validID := ids.Derive(ids.Event, "missing:")
+
+	t.Run("malformed id", func(t *testing.T) {
+		st := &fakeStore{}
+		_, err := newService(st).Get(context.Background(), "not-an-event")
+		if !errors.Is(err, core.ErrBadRequest) {
+			t.Fatalf("Get malformed id = %v, want core.ErrBadRequest", err)
+		}
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != EventIDInvalidCode {
+			t.Errorf("Get malformed code = %v, want %s", err, EventIDInvalidCode)
+		}
+		if st.gotEventID != "" {
+			t.Errorf("malformed id reached store as %q", st.gotEventID)
+		}
+	})
+
+	t.Run("storeless", func(t *testing.T) {
+		_, err := newService(nil).Get(context.Background(), validID)
+		if !errors.Is(err, core.ErrEventsUnavailable) {
+			t.Errorf("store-less Get = %v, want core.ErrEventsUnavailable", err)
+		}
+	})
+
+	t.Run("missing is event-scoped not found", func(t *testing.T) {
+		st := &fakeStore{lookupErr: store.ErrNotFound}
+		_, err := newService(st).Get(context.Background(), validID)
+		if !errors.Is(err, core.ErrNotFound) {
+			t.Fatalf("missing Get = %v, want core.ErrNotFound", err)
+		}
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != EventNotFoundCode {
+			t.Errorf("missing Get code = %v, want %s", err, EventNotFoundCode)
+		}
+	})
+
+	t.Run("unmapped indexed row stays hidden", func(t *testing.T) {
+		st := &fakeStore{lookup: store.ServiceEventLookup{
+			Event:     store.ServiceEventRow{Key: "missing:", Source: store.EventSourceAudit, Verb: "unmapped.Verb"},
+			ServiceID: "web",
+		}}
+		_, err := newService(st).Get(context.Background(), validID)
+		if !errors.Is(err, core.ErrNotFound) {
+			t.Errorf("unmapped indexed event = %v, want core.ErrNotFound", err)
+		}
+	})
+}
 
 func TestListStoreLess503(t *testing.T) {
 	svc := newService(nil, sampleApp("web", "srv-1", "tea-a"))

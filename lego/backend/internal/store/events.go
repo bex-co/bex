@@ -126,6 +126,15 @@ type ServiceEventRow struct {
 	FactStatus string
 }
 
+// ServiceEventLookup is one globally-addressed event plus the resource identity
+// materialized beside its source key. ServiceID mirrors the outbound-webhook
+// payload: the public <workspace-name>-<app-name> address for a service, or the
+// typed dpg-/red- target for a datastore.
+type ServiceEventLookup struct {
+	Event     ServiceEventRow
+	ServiceID string
+}
+
 // AutoDeployFilter constrains the auto_deploy_enabled column on the audit arm.
 // It is used when the caller filters by an auto-deploy event type so that the
 // discrimination (enabled vs disabled vs legacy changed) runs in SQL before the
@@ -408,6 +417,104 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, target, ownerWor
 	return out, rows.Err()
 }
 
+// getServiceEventQuery starts from service_event_index's owner/event primary
+// key, then follows the recorded source identity to one row. The index stores
+// no details payload: deploy/audit/fact columns remain single-sourced and the
+// projection is deliberately identical to ListServiceEvents' row shape.
+const getServiceEventQuery = `
+WITH hit AS MATERIALIZED (
+    SELECT event_key, source, source_row_id, phase, service_id
+    FROM service_event_index
+    WHERE workspace_id = $1 AND event_id = $2
+)
+SELECT h.event_key AS key,
+       CASE
+           WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseStarted + `' THEN d.created_at
+           WHEN h.source = '` + EventSourceDeploy + `' THEN d.finished_at
+           WHEN h.source = '` + EventSourceAudit + `' THEN a.at
+           ELSE f.at
+       END AS at,
+       h.source,
+       h.phase,
+       CASE
+           WHEN h.source = '` + EventSourceDeploy + `' THEN d.id
+           WHEN h.source = '` + EventSourceFact + `' THEN f.deploy_id
+           ELSE ''
+       END AS deploy_id,
+       CASE
+           WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseStarted + `' THEN d.trigger
+           ELSE ''
+       END AS trigger,
+       CASE
+           WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseEnded + `' THEN d.status
+           ELSE ''
+       END AS status,
+       CASE
+           WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseEnded + `' THEN d.pre_deploy_status
+           ELSE ''
+       END AS pre_deploy_status,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.verb ELSE '' END AS verb,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.caller ELSE '' END AS caller,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.plan_from END AS plan_from,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.plan_to END AS plan_to,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.instance_count_from END AS instance_count_from,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.instance_count_to END AS instance_count_to,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.autoscaling_min_from END AS autoscaling_min_from,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.autoscaling_max_from END AS autoscaling_max_from,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.autoscaling_min_to END AS autoscaling_min_to,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.autoscaling_max_to END AS autoscaling_max_to,
+       CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.auto_deploy_enabled END AS auto_deploy_enabled,
+       CASE
+           WHEN h.source = '` + EventSourceDeploy + `' THEN d.image
+           WHEN h.source = '` + EventSourceFact + `' THEN f.image
+           ELSE ''
+       END AS image,
+       CASE
+           WHEN h.source = '` + EventSourceDeploy + `' THEN d.commit
+           WHEN h.source = '` + EventSourceFact + `' THEN f.commit_id
+           ELSE ''
+       END AS commit_id,
+       CASE WHEN h.source = '` + EventSourceDeploy + `' THEN d.commit_message ELSE '' END AS commit_message,
+       CASE WHEN h.source = '` + EventSourceDeploy + `' THEN d.started_at END AS started_at,
+       CASE WHEN h.source = '` + EventSourceDeploy + `' THEN d.finished_at END AS finished_at,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.fact_type ELSE '' END AS fact_type,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.reason_code ELSE '' END AS reason_code,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.instance_id ELSE '' END AS instance_id,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.from_count END AS fact_from_count,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.to_count END AS fact_to_count,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.branch_from ELSE '' END AS branch_from,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.branch_to ELSE '' END AS branch_to,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.commit_url ELSE '' END AS commit_url,
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN f.status ELSE '' END AS fact_status,
+       h.service_id
+FROM hit h
+LEFT JOIN deploys d
+  ON h.source = '` + EventSourceDeploy + `' AND d.id = h.source_row_id
+LEFT JOIN audit_events a
+  ON h.source = '` + EventSourceAudit + `' AND a.id = h.source_row_id
+LEFT JOIN service_event_facts f
+  ON h.source = '` + EventSourceFact + `' AND f.source_key = h.source_row_id
+WHERE (h.source = '` + EventSourceDeploy + `' AND d.id IS NOT NULL
+       AND (h.phase = '` + EventPhaseStarted + `'
+            OR (h.phase = '` + EventPhaseEnded + `' AND d.finished_at IS NOT NULL)))
+   OR (h.source = '` + EventSourceAudit + `' AND a.id IS NOT NULL AND a.outcome = 'allowed')
+   OR (h.source = '` + EventSourceFact + `' AND f.source_key IS NOT NULL)`
+
+// GetServiceEvent returns one event only when the owner workspace and public id
+// both match. A foreign id and an absent id therefore share ErrNotFound, and no
+// query hashes or scans historical source rows at request time.
+func (s *PGStore) GetServiceEvent(ctx context.Context, workspaceID, eventID string) (ServiceEventLookup, error) {
+	var out ServiceEventLookup
+	r := &out.Event
+	err := s.Pool.QueryRow(ctx, getServiceEventQuery, workspaceID, eventID).Scan(
+		serviceEventScanDestinations(r, &out.ServiceID)...,
+	)
+	if err != nil {
+		return ServiceEventLookup{}, classify("service event", err)
+	}
+	return out, nil
+}
+
 // nullAutoDeployFilter maps AutoDeployFilterNone to SQL NULL so the $11
 // predicate in serviceEventsQuery is a no-op when no discrimination is needed.
 func nullAutoDeployFilter(f AutoDeployFilter) *int16 {
@@ -430,11 +537,18 @@ func nullTime(t time.Time) *time.Time {
 
 func scanServiceEventRow(row pgx.Row) (ServiceEventRow, error) {
 	var r ServiceEventRow
-	err := row.Scan(&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.Verb, &r.Caller,
+	err := row.Scan(serviceEventScanDestinations(&r)...)
+	return r, err
+}
+
+func serviceEventScanDestinations(r *ServiceEventRow, trailing ...any) []any {
+	destinations := []any{
+		&r.Key, &r.At, &r.Source, &r.Phase, &r.DeployID, &r.Trigger, &r.Status, &r.PreDeployStatus, &r.Verb, &r.Caller,
 		&r.PlanFrom, &r.PlanTo, &r.InstanceCountFrom, &r.InstanceCountTo,
 		&r.AutoscalingMinFrom, &r.AutoscalingMaxFrom, &r.AutoscalingMinTo, &r.AutoscalingMaxTo,
 		&r.AutoDeployEnabled, &r.Image, &r.CommitID, &r.CommitMessage, &r.StartedAt, &r.FinishedAt,
 		&r.FactType, &r.ReasonCode, &r.InstanceID, &r.FromCount, &r.ToCount,
-		&r.BranchFrom, &r.BranchTo, &r.CommitURL, &r.FactStatus)
-	return r, err
+		&r.BranchFrom, &r.BranchTo, &r.CommitURL, &r.FactStatus,
+	}
+	return append(destinations, trailing...)
 }
