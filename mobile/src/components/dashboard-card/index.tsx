@@ -13,7 +13,6 @@ import {
   fontSizes,
   fontWeights,
   gutter,
-  maxFontSizeMultipliers,
   space,
   useTheme,
 } from "@/common/theme";
@@ -96,12 +95,7 @@ export function DashboardCard({
       {hasHeader && (
         <View style={styles.header}>
           {title ? (
-            <Text
-              maxFontSizeMultiplier={maxFontSizeMultipliers.heading}
-              style={styles.title}
-            >
-              {title}
-            </Text>
+            <Text style={styles.title}>{title}</Text>
           ) : (
             <View style={{ flex: 1 }} />
           )}
@@ -113,12 +107,7 @@ export function DashboardCard({
               accessibilityRole="button"
               accessibilityLabel={t("common.seeAll")}
             >
-              <Text
-                maxFontSizeMultiplier={maxFontSizeMultipliers.control}
-                style={styles.seeAllText}
-              >
-                {t("common.seeAll")}
-              </Text>
+              <Text style={styles.seeAllText}>{t("common.seeAll")}</Text>
               <Ionicons
                 name="chevron-forward"
                 size={16}

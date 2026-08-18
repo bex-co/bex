@@ -24,13 +24,11 @@
     "bundle:android": "expo export --platform android --output-dir dist/android"
   },
   "dependencies": {
-    "@ai-sdk/react": "3.0.243",
     "@apollo/client": "^4.2.9",
     "@callstack/react-theme-provider": "^3.0.9",
     "@expo/vector-icons": "^15.0.3",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "12.0.1",
-    "ai": "6.0.241",
     "d3-scale": "^4.0.2",
     "d3-shape": "^3.2.0",
     "expo": "~57.0.14",
@@ -59,8 +57,7 @@
     "react-native-safe-area-context": "5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
-    "rxjs": "^7.8.2",
-    "zod": "4.4.3"
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "^7.2.0",
@@ -76,7 +73,6 @@
     "eslint-config-expo": "~57.0.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-prettier": "^5.4.1",
-    "expo-mcp": "~0.2.1",
     "prettier": "^3.7.4",
     "typescript": "~6.0.3"
   }

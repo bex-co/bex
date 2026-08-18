@@ -83,7 +83,6 @@ export function SessionsListScreen() {
               <ActivityIndicator color={theme.primary} />
             ) : null}
             <Pressable
-              testID="agent-session-new"
               accessibilityRole="button"
               accessibilityLabel={t("agentSessions.composer.new")}
               onPress={() => setComposing(true)}
@@ -131,7 +130,6 @@ export function SessionsListScreen() {
               return (
                 <Pressable
                   key={session.id}
-                  testID={`agent-session-row-${session.id}`}
                   accessibilityRole="button"
                   onPress={() => router.push(`/sessions/${session.id}`)}
                   style={[

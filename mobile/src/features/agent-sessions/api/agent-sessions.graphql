@@ -64,7 +64,6 @@ query MobileAgentSession($id: String!) {
     id
     repo
     branch
-    sandboxId
     phase
     status
     headSha
@@ -85,79 +84,5 @@ mutation MobileCancelAgentSession($id: String!) {
     phase
     status
     canceledAt
-  }
-}
-
-query MobileAgentSessionConversation($id: String!) {
-  agentSessionConversation(id: $id) {
-    sessionId
-    cursor
-    turns {
-      turn
-      idempotencyKey
-      role
-      prompt
-      status
-      deliveryMode
-      assistantStartSeq
-      assistantEndSeq
-      assistantParts
-      failureReason
-      acceptedAt
-      completedAt
-      failedAt
-      canceledAt
-    }
-  }
-}
-
-mutation MobileAttachAgentSession($id: String!, $action: String!) {
-  attachAgentSession(id: $id, action: $action) {
-    id
-    ticket
-    url
-    expiresAt
-  }
-}
-
-query MobileAgentSessionDecisions($id: String!) {
-  agentSessionDecisions(id: $id) {
-    id
-    sessionId
-    turn
-    type
-    status
-    version
-    message
-    responseSchemaJson
-    actions {
-      id
-      label
-      kind
-    }
-    externalUrl
-    expiresAt
-    updatedAt
-  }
-}
-
-mutation MobileRespondAgentSessionDecision(
-  $id: String!
-  $decisionId: String!
-  $version: Int!
-  $action: String!
-  $valueJson: String
-) {
-  respondAgentSessionDecision(
-    id: $id
-    decisionId: $decisionId
-    version: $version
-    action: $action
-    valueJson: $valueJson
-  ) {
-    id
-    status
-    version
-    updatedAt
   }
 }
