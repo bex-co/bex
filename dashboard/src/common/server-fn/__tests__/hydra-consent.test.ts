@@ -24,7 +24,7 @@ function consentRequest(overrides: Record<string, unknown> = {}) {
       client_name: "Some Agent",
       skip_consent: false,
     },
-    requested_scope: ["openid", "offline_access"],
+    requested_scope: ["openid", "offline_access", "bex.api"],
     requested_access_token_audience: ["https://api.bex.co/mcp"],
     // request_url carries the original authorize URL incl. a PKCE code_challenge
     // (w6/003) — present by default so the existing happy-path tests pass.
@@ -140,7 +140,7 @@ describe("handleConsent (GET)", () => {
       "https://oauth.bex.co/continue",
     );
     const body = JSON.parse(accepts(calls)[0].init?.body as string);
-    expect(body.grant_scope).toEqual(["openid", "offline_access"]);
+    expect(body.grant_scope).toEqual(["openid", "offline_access", "bex.api"]);
     expect(body.grant_access_token_audience).toEqual([
       "https://api.bex.co/mcp",
     ]);
@@ -178,7 +178,7 @@ describe("handleConsent (GET)", () => {
       clientId: "some-client",
       clientName: "Some Agent",
       redirectOrigin: "https://evil.example",
-      scopes: ["openid", "offline_access"],
+      scopes: ["openid", "offline_access", "bex.api"],
       audiences: ["https://api.bex.co/mcp"],
       csrfToken: csrf(),
       retryAfterFailure: false,
@@ -267,6 +267,69 @@ describe("handleConsent (GET)", () => {
     expect(accepts(calls)).toHaveLength(0);
   });
 
+  // Round-14 #1: a dynamically registered client that requests the API
+  // resource AUDIENCE with identity-only SCOPES must never reach a grant —
+  // the consent screen would honestly say "openid offline_access" while the
+  // minted token carries the user's full control-plane authority.
+  it("refuses an audience request that lacks the API capability scope (round-14 #1)", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({
+        requested_scope: ["openid", "offline_access"],
+      }),
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).status).toBe(400);
+    expect(await (res as Response).text()).toContain("bex.api");
+    expect(accepts(calls)).toHaveLength(0);
+  });
+
+  it("renders consent for an audience request that carries the API scope", async () => {
+    mockUpstreams({ lookupBody: consentRequest() });
+    const view = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect(view).not.toBeInstanceOf(Response);
+  });
+
+  it("exempts a platform-marked client requesting the audience without the scope", async () => {
+    mockUpstreams({
+      lookupBody: consentRequest({
+        requested_scope: ["openid", "offline_access"],
+        client: {
+          client_id: "bex-mobile",
+          client_name: "bex mobile",
+          skip_consent: false,
+          metadata: { "bex.co/platform-client": true },
+        },
+      }),
+    });
+    const view = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect(view).not.toBeInstanceOf(Response);
+  });
+
+  it("honors an OAUTH_API_SCOPE override on both sides of the rule", async () => {
+    process.env.OAUTH_API_SCOPE = "custom.api.scope";
+    try {
+      // The default fixture carries only "bex.api", not the override.
+      mockUpstreams({ lookupBody: consentRequest() });
+      const refused = await handleConsent(
+        req(`?consent_challenge=${CHALLENGE}`),
+      );
+      expect(refused).toBeInstanceOf(Response);
+      expect((refused as Response).status).toBe(400);
+
+      mockUpstreams({
+        lookupBody: consentRequest({
+          requested_scope: ["openid", "offline_access", "custom.api.scope"],
+        }),
+      });
+      const allowed = await handleConsent(
+        req(`?consent_challenge=${CHALLENGE}`),
+      );
+      expect(allowed).not.toBeInstanceOf(Response);
+    } finally {
+      delete process.env.OAUTH_API_SCOPE;
+    }
+  });
+
   it("degrades to home on a missing challenge", async () => {
     mockUpstreams({});
     const res = await handleConsent(req(""));
@@ -313,12 +376,57 @@ describe("handleConsentDecision (POST)", () => {
     expect(res.status).toBe(303);
     expect(res.headers.get("Location")).toBe("https://oauth.bex.co/continue");
     const body = JSON.parse(accepts(calls)[0].init?.body as string);
-    expect(body.grant_scope).toEqual(["openid", "offline_access"]);
+    expect(body.grant_scope).toEqual([
+      "openid",
+      "offline_access",
+      "bex.api",
+    ]);
     expect(body.grant_access_token_audience).toEqual([
       "https://api.bex.co/mcp",
     ]);
     expect(body.remember).toBe(true);
     expect(body.remember_for).toBeGreaterThan(0);
+  });
+
+  // Round-14 #1: the POST decision enforces the audience⇒scope rule too — a
+  // client that asked for the audience with identity-only scopes cannot be
+  // approved even by the user (the token would carry full API authority).
+  it("refuses to approve an audience request lacking the API scope (round-14 #1)", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({
+        requested_scope: ["openid", "offline_access"],
+      }),
+    });
+
+    const res = await handleConsentDecision(decisionReq(approve));
+
+    expect(res.status).toBe(400);
+    expect(accepts(calls)).toHaveLength(0);
+  });
+
+  // Round-14 #1: only the recognized scope vocabulary is ever granted —
+  // unrecognized scope strings are dropped, not rubber-stamped.
+  it("drops unrecognized scopes from the grant", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({
+        requested_scope: [
+          "openid",
+          "offline_access",
+          "bex.api",
+          "trojan-scope",
+        ],
+      }),
+    });
+
+    const res = await handleConsentDecision(decisionReq(approve));
+
+    expect(res.status).toBe(303);
+    const body = JSON.parse(accepts(calls)[0].init?.body as string);
+    expect(body.grant_scope).toEqual([
+      "openid",
+      "offline_access",
+      "bex.api",
+    ]);
   });
 
   it("denies: rejects the request with access_denied and never accepts", async () => {

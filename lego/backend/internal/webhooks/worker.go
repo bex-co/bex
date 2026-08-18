@@ -131,6 +131,9 @@ type WorkerStore interface {
 	RecordWebhookAttempt(ctx context.Context, id string, status int, errMsg, responseBody string, at, next time.Time, delivered, failed bool) error
 	DisableWebhookEndpoint(ctx context.Context, id, reason string) error
 	ClaimWebhookFailureNotice(ctx context.Context, endpointID string, now, threshold time.Time) (bool, error)
+	// SubjectIsWorkspaceAdmin answers whether subject still holds the admin
+	// role in tenantID — the failure-notice recipient gate (round-14 #6).
+	SubjectIsWorkspaceAdmin(ctx context.Context, tenantID, subject string) (bool, error)
 }
 
 // Mailer sends the failure-notice email (text + optional HTML alternative) —
@@ -485,7 +488,7 @@ func (w *Worker) attempt(ctx context.Context, d store.DueWebhookDelivery) {
 		}
 		return
 	}
-	errMsg := err.Error()
+	errMsg := SanitizeDeliveryError(err)
 	attempt := d.AttemptCount + 1
 	backoff := w.backoff()
 	if attempt > len(backoff) {
@@ -572,12 +575,30 @@ func readResponseEvidence(r io.Reader) (string, error) {
 // emailSuppression, except that the final disable notice always goes out.
 // With no mailer, no lookup, or no resolvable address it logs instead — the
 // notifications feature's degrade-quietly convention.
+//
+// Round-14 #6 tightened two properties of the channel: the body never carries
+// the exact destination (email is an unauthenticated channel, and the URL may
+// be a capability another admin configured AFTER this creator's involvement —
+// it degrades to the same redacted origin non-admin reads see), and the
+// recipient is resolved from CURRENT authorization state: created_by is
+// immutable provenance, so a removed or demoted creator must not receive a
+// later administrator's capability. The creator must still be a workspace
+// admin at send time; anything else (or an unanswerable check) skips the
+// notice, fail-closed.
 func (w *Worker) notifyFailure(ctx context.Context, d store.DueWebhookDelivery, final bool) {
+	if admin, err := w.Store.SubjectIsWorkspaceAdmin(ctx, d.TenantID, d.CreatedBy); err != nil {
+		log.Printf("webhooks: failure notice for %s skipped: creator membership check failed: %v", d.EndpointID, err)
+		return
+	} else if !admin {
+		log.Printf("webhooks: failure notice for %s skipped: creator %s is no longer a workspace admin", d.EndpointID, d.CreatedBy)
+		return
+	}
 	// The 3rd-failure notice is suppressed to one per endpoint per window via a
 	// durable compare-and-set, so a restart or a second replica cannot re-send it
 	// (w1/m58). The final disable notice is not suppressed here — only one replica
 	// drives a delivery to exhaustion (it holds the SKIP LOCKED claim), so it is
-	// already sent once.
+	// already sent once. Checked AFTER the membership gate so a skipped notice
+	// does not consume the suppression window.
 	if !final {
 		now := w.now()
 		claimed, err := w.Store.ClaimWebhookFailureNotice(ctx, d.EndpointID, now, now.Add(-emailSuppression))
@@ -590,11 +611,15 @@ func (w *Worker) notifyFailure(ctx context.Context, d store.DueWebhookDelivery, 
 		}
 	}
 	subject := fmt.Sprintf("[bex] webhook %q is failing to deliver", d.EndpointName)
+	// Never the exact destination in the body (round-14 #6): the redacted
+	// origin + the endpoint's name/id is enough to act on from an email, and
+	// the exact URL stays behind the authenticated admin surface.
+	dest := RedactedURL(d.URL)
 	msg := email.Message{
 		Title: "Webhook delivery failing",
 		Paragraphs: []string{
-			fmt.Sprintf("Deliveries to your webhook %q (%s) have failed %d times in a row.", d.EndpointName, d.URL, emailAfterFailures),
-			fmt.Sprintf("Last error: %s", d.LastError),
+			fmt.Sprintf("Deliveries to your webhook %q (%s) have failed %d times in a row.", d.EndpointName, dest, emailAfterFailures),
+			fmt.Sprintf("Last error: %s", scrubDeliveryEvidence(d.LastError, d.URL)),
 			"bex will keep retrying on an exponential backoff.",
 		},
 	}
@@ -603,7 +628,7 @@ func (w *Worker) notifyFailure(ctx context.Context, d store.DueWebhookDelivery, 
 		msg = email.Message{
 			Title: "Webhook disabled",
 			Paragraphs: []string{
-				fmt.Sprintf("Deliveries to your webhook %q (%s) kept failing after every retry, and the endpoint has been disabled.", d.EndpointName, d.URL),
+				fmt.Sprintf("Deliveries to your webhook %q (%s) kept failing after every retry, and the endpoint has been disabled.", d.EndpointName, dest),
 				"No further events will be sent until you re-enable it from the dashboard or API.",
 			},
 		}

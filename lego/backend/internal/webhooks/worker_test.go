@@ -64,6 +64,19 @@ type fakeWorkerStore struct {
 	// sweeps records each retention pass's (before, keepPerEndpoint, limit) so a
 	// test can assert the policy the worker applies (w1/m67 F3).
 	sweeps []sweepCall
+
+	// nonAdmins marks subjects the admin gate (round-14 #6) must refuse: a
+	// subject absent from the set is a current workspace admin (the fixtures'
+	// default "user-1"), so the pre-existing email tests keep flowing.
+	nonAdmins map[string]bool
+}
+
+// SubjectIsWorkspaceAdmin fakes the failure-notice recipient gate: everyone is
+// a current admin except subjects listed in nonAdmins.
+func (f *fakeWorkerStore) SubjectIsWorkspaceAdmin(_ context.Context, _ string, subject string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return !f.nonAdmins[subject], nil
 }
 
 type sweepCall struct {
@@ -112,6 +125,7 @@ func newFakeWorkerStore() *fakeWorkerStore {
 		disabled:   map[string]string{},
 		notifiedAt: map[string]time.Time{},
 		seen:       map[string]bool{},
+		nonAdmins:  map[string]bool{},
 	}
 }
 

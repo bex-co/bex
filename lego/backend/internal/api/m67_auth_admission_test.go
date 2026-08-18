@@ -69,7 +69,7 @@ func newCountingIdentityProvider(t *testing.T, validToken, validSession string) 
 }
 
 func gateWithAdmission(p *countingIdentityProvider, adm *AuthAdmission) http.Handler {
-	return newOryAuth(p.url, p.url, "", "", "", false, adm, nil, nil).middleware(echoIdentity)
+	return newOryAuth(p.url, p.url, "", "", "", false, adm, nil, nil, "").middleware(echoIdentity)
 }
 
 func bearerRequest(token, sourceIP string) *http.Request {

@@ -37,6 +37,13 @@ type classHydra struct {
 }
 
 func newClassHydra(t *testing.T, sub, clientID string, aud []string, platformClients map[string]bool) *classHydra {
+	return newClassHydraScoped(t, sub, clientID, "", aud, platformClients)
+}
+
+// newClassHydraScoped additionally pins the introspected scope string — the
+// round-14 #1 dimension ("openid offline_access" vs one carrying the API
+// scope).
+func newClassHydraScoped(t *testing.T, sub, clientID, scope string, aud []string, platformClients map[string]bool) *classHydra {
 	t.Helper()
 	h := &classHydra{}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -49,6 +56,9 @@ func newClassHydra(t *testing.T, sub, clientID string, aud []string, platformCli
 				return
 			}
 			body := map[string]any{"active": true, "sub": sub, "client_id": clientID}
+			if scope != "" {
+				body["scope"] = scope
+			}
 			if len(aud) > 0 {
 				body["aud"] = aud
 			}
@@ -75,8 +85,14 @@ func newClassHydra(t *testing.T, sub, clientID string, aud []string, platformCli
 }
 
 func authStatus(t *testing.T, h *classHydra, resource string, requireAudience bool) int {
+	return authStatusScoped(t, h, resource, requireAudience, "")
+}
+
+// authStatusScoped drives the gate with the API scope dimension armed
+// (round-14 #1); "" keeps the scope rule inert (the m67 expectations).
+func authStatusScoped(t *testing.T, h *classHydra, resource string, requireAudience bool, apiScope string) int {
 	t.Helper()
-	mw := newOryAuth(h.url, "", resource, "", "", requireAudience, nil, nil, nil).middleware(echoIdentity)
+	mw := newOryAuth(h.url, "", resource, "", "", requireAudience, nil, nil, nil, apiScope).middleware(echoIdentity)
 	r := httptest.NewRequest(http.MethodGet, "/v1/services", nil)
 	r.Header.Set("Authorization", "Bearer "+testToken)
 	w := httptest.NewRecorder()

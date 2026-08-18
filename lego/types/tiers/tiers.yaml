@@ -5,7 +5,12 @@
 #             verified 2026-07-08). id is the App CRD's spec.tier value (and
 #             the store's app/tenant "plan" column); renderPlan is Render's
 #             own REST `plan` spelling, used only at the public API boundary.
-#             The operator sets pod requests == limits (Guaranteed QoS).
+#             The operator sets pod requests == limits (Guaranteed QoS) across
+#             cpu, memory, AND ephemeralStorage — the writable-layer/log disk
+#             bound every tenant execution mode (serving, cron, pre-deploy)
+#             carries, so tenant code cannot fill a node's filesystem
+#             (round-14 #2). 1→32Gi scales with the tier; a runaway writer is
+#             evicted at its own limit instead of pressuring co-tenants.
 #
 #   postgres: managed-Postgres instance types (the Database CRD's spec.plan),
 #             named in Render's newer family-size style (their Postgres
@@ -32,30 +37,37 @@ compute:
       renderPlan: free
       cpu: 100m
       memory: 512Mi
+      ephemeralStorage: 1Gi
     - id: starter
       renderPlan: starter
       cpu: 500m
       memory: 512Mi
+      ephemeralStorage: 2Gi
     - id: standard
       renderPlan: standard
       cpu: "1"
       memory: 2Gi
+      ephemeralStorage: 4Gi
     - id: pro
       renderPlan: pro
       cpu: "2"
       memory: 4Gi
+      ephemeralStorage: 8Gi
     - id: pro-plus
       renderPlan: pro_plus
       cpu: "4"
       memory: 8Gi
+      ephemeralStorage: 16Gi
     - id: pro-max
       renderPlan: pro_max
       cpu: "4"
       memory: 16Gi
+      ephemeralStorage: 16Gi
     - id: pro-ultra
       renderPlan: pro_ultra
       cpu: "8"
       memory: 32Gi
+      ephemeralStorage: 32Gi
 
 postgres:
   # Unknown/empty Database plans resolve to free (the operator's prior

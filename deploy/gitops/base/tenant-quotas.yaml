@@ -18,8 +18,10 @@ spec:
   hard:
     requests.cpu: "100" # 100 vCPUs aggregate across all tenant pods
     requests.memory: 200Gi # 200 GiB aggregate
+    requests.ephemeral-storage: 2Ti # aggregate writable-layer/log disk (round-14 #2)
     limits.cpu: "200" # 200 vCPUs burst ceiling
     limits.memory: 400Gi # 400 GiB burst ceiling
+    limits.ephemeral-storage: 4Ti # burst ceiling for the same disk axis
     pods: "1000" # max pods (across all tenant replicas)
     count/jobs.batch: "500" # cron + on-demand batch jobs combined
 ---
@@ -37,9 +39,12 @@ spec:
       defaultRequest:
         cpu: 100m
         memory: 128Mi
+        ephemeral-storage: 1Gi # even a tierless container gets a disk bound
       default:
         cpu: "2"
         memory: 4Gi
+        ephemeral-storage: 10Gi
       max:
         cpu: "8" # matches pro-ultra tier ceiling (lego/types/tiers/tiers.yaml)
         memory: 32Gi
+        ephemeral-storage: 32Gi

@@ -68,6 +68,15 @@ spec:
             # empty by default — unknown clients are denied.
             - name: OAUTH_TRUSTED_CLIENTS
               value: ""
+            # The control-plane capability OAuth scope (round-14 #1,
+            # docs/ADR069-security-review-round14.md): a client requesting an
+            # access-token audience must also request this scope, or consent
+            # refuses the flow — otherwise a dynamic client could show a
+            # consent screen of identity-only scopes while receiving a token
+            # with the user's full API authority. MUST equal bex-api's
+            # BEX_OAUTH_API_SCOPE (both default to bex.api).
+            - name: OAUTH_API_SCOPE
+              value: bex.api
           ports:
             - name: http
               containerPort: 3000

@@ -281,7 +281,14 @@ func toView(e store.WebhookEndpoint, exactURL bool) EndpointView {
 	return v
 }
 
-func toDeliveryView(d store.WebhookDelivery) DeliveryView {
+// toDeliveryView projects a stored delivery for a member read. destURL is the
+// endpoint's stored destination (round-14 #4): rows persisted before transport
+// errors were sanitized at the write seam may embed the exact capability URL
+// in last_error, so any literal occurrence is collapsed to the same redacted
+// origin non-admin endpoint reads show. New rows never carry it in the first
+// place — the worker sanitizes before persisting — so this is a migration-time
+// scrub, not a live leak.
+func toDeliveryView(d store.WebhookDelivery, destURL string) DeliveryView {
 	v := DeliveryView{
 		ID:             d.ID,
 		EventID:        d.EventID,
@@ -290,7 +297,7 @@ func toDeliveryView(d store.WebhookDelivery) DeliveryView {
 		Status:         DeliveryPending,
 		AttemptCount:   d.AttemptCount,
 		LastStatusCode: d.LastStatus,
-		LastError:      d.LastError,
+		LastError:      scrubDeliveryEvidence(d.LastError, destURL),
 		ResponseBody:   d.ResponseBody,
 		CreatedAt:      d.CreatedAt.UTC().Format(time.RFC3339),
 	}
@@ -534,7 +541,8 @@ func (s *Service) ListDeliveriesFiltered(ctx context.Context, ownerID, endpointI
 	if s.Store == nil {
 		return nil, core.ErrWebhooksUnavailable
 	}
-	if _, err := s.Store.GetWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), endpointID); err != nil {
+	ep, err := s.Store.GetWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), endpointID)
+	if err != nil {
 		return nil, mapStoreErr(err)
 	}
 	after, err := core.DecodeKeysetCursor(filter.Cursor)
@@ -556,7 +564,7 @@ func (s *Service) ListDeliveriesFiltered(ctx context.Context, ownerID, endpointI
 	}
 	out := make([]DeliveryView, 0, len(rows))
 	for _, d := range rows {
-		out = append(out, toDeliveryView(d))
+		out = append(out, toDeliveryView(d, ep.URL))
 	}
 	return out, nil
 }
@@ -657,6 +665,41 @@ func RedactedURL(raw string) string {
 		return u.Scheme + "://" + u.Host
 	}
 	return u.Scheme + "://" + u.Host + "/…"
+}
+
+// maxDeliveryErrorBytes bounds what one failed attempt may persist as its
+// diagnostic (round-14 #4): transport error text is member-facing display
+// data, not an operator log — the delivery history renders it verbatim.
+const maxDeliveryErrorBytes = 512
+
+// SanitizeDeliveryError renders a delivery failure as member-safe evidence
+// (round-14 #4): Go's http.Client returns *url.Error, whose message embeds the
+// FULL request URL — and a destination's path/query commonly IS the capability
+// — so an unredacted `Post "https://host/B000/xxx?token=…": dial tcp: …`
+// persisted as last_error hands ordinary members what endpoint list/get
+// reserve for admins (RedactedURL). The URL collapses to its origin; the
+// inner transport error (dial, TLS, timeout) is diagnostic and URL-free. The
+// result is byte-bounded so no error shape can smuggle a payload in bulk.
+func SanitizeDeliveryError(err error) string {
+	msg := err.Error()
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		msg = fmt.Sprintf("%s %q: %s", ue.Op, RedactedURL(ue.URL), ue.Err)
+	}
+	if len(msg) > maxDeliveryErrorBytes {
+		msg = msg[:maxDeliveryErrorBytes]
+	}
+	return msg
+}
+
+// scrubDeliveryEvidence collapses any literal occurrence of the exact
+// destination URL inside delivery evidence (round-14 #4). Rows written before
+// the worker sanitized at the write seam may carry it; new rows do not.
+func scrubDeliveryEvidence(text, destURL string) string {
+	if destURL == "" || !strings.Contains(text, destURL) {
+		return text
+	}
+	return strings.ReplaceAll(text, destURL, RedactedURL(destURL))
 }
 
 // mayManageWorkspace reports whether the caller holds can_manage on the named

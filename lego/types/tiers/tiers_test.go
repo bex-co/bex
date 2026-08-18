@@ -18,20 +18,23 @@ package tiers
 
 import (
 	"testing"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // wantCompute is the ladder this package replaces — the operator's former
 // tierResources map (lego/operator/internal/controller/app_controller.go) —
 // asserted byte-for-byte so the embedded catalog can never silently drift
-// from what shipped before it.
-var wantCompute = map[string]struct{ cpu, mem string }{
-	"free":      {"100m", "512Mi"},
-	"starter":   {"500m", "512Mi"},
-	"standard":  {"1", "2Gi"},
-	"pro":       {"2", "4Gi"},
-	"pro-plus":  {"4", "8Gi"},
-	"pro-max":   {"4", "16Gi"},
-	"pro-ultra": {"8", "32Gi"},
+// from what shipped before it. disk is the ephemeral-storage bound (round-14
+// #2), 1→32Gi scaling with the tier.
+var wantCompute = map[string]struct{ cpu, mem, disk string }{
+	"free":      {"100m", "512Mi", "1Gi"},
+	"starter":   {"500m", "512Mi", "2Gi"},
+	"standard":  {"1", "2Gi", "4Gi"},
+	"pro":       {"2", "4Gi", "8Gi"},
+	"pro-plus":  {"4", "8Gi", "16Gi"},
+	"pro-max":   {"4", "16Gi", "16Gi"},
+	"pro-ultra": {"8", "32Gi", "32Gi"},
 }
 
 // wantPostgres is the operator's former dbPlans map
@@ -69,8 +72,32 @@ func TestComputeCatalogMatchesFormerOperatorLadder(t *testing.T) {
 		if !ok {
 			t.Fatalf("compute tier %q missing from embedded catalog", id)
 		}
-		if got.CPU != want.cpu || got.Memory != want.mem {
-			t.Errorf("compute %q: got cpu=%s mem=%s, want cpu=%s mem=%s", id, got.CPU, got.Memory, want.cpu, want.mem)
+		if got.CPU != want.cpu || got.Memory != want.mem || got.EphemeralStorage != want.disk {
+			t.Errorf("compute %q: got cpu=%s mem=%s disk=%s, want cpu=%s mem=%s disk=%s", id, got.CPU, got.Memory, got.EphemeralStorage, want.cpu, want.mem, want.disk)
+		}
+	}
+}
+
+// TestComputeEphemeralStorageBoundedEveryTier (round-14 #2): every compute
+// rung must carry a positive ephemeral-storage quantity — the writable-layer
+// disk bound tenant code runs under — so a future rung added without one
+// fails here instead of shipping an unbounded tenant container.
+func TestComputeEphemeralStorageBoundedEveryTier(t *testing.T) {
+	for _, id := range Compute.IDs() {
+		cpu, mem, disk, ok := Compute.Resources(id)
+		if !ok {
+			t.Fatalf("Resources(%q) = ok=false for a catalog id", id)
+		}
+		if cpu == "" || mem == "" {
+			t.Errorf("Resources(%q) returned an empty cpu/memory", id)
+		}
+		q, err := resource.ParseQuantity(disk)
+		if err != nil {
+			t.Errorf("Resources(%q) ephemeral-storage %q unparseable: %v", id, disk, err)
+			continue
+		}
+		if q.Value() <= 0 {
+			t.Errorf("Resources(%q) ephemeral-storage = %s, want a positive bound", id, disk)
 		}
 	}
 }
@@ -150,15 +177,15 @@ func TestRenderPlansMatchesIDsPositionally(t *testing.T) {
 }
 
 func TestComputeResourcesOkFalseForEmptyOrUnknownTier(t *testing.T) {
-	if _, _, ok := Compute.Resources(""); ok {
+	if _, _, _, ok := Compute.Resources(""); ok {
 		t.Error(`Resources("") should report ok=false (best-effort fallback), not a resolved tier`)
 	}
-	if _, _, ok := Compute.Resources("gold"); ok {
+	if _, _, _, ok := Compute.Resources("gold"); ok {
 		t.Error(`Resources("gold") should report ok=false for an unknown tier`)
 	}
-	cpu, mem, ok := Compute.Resources("standard")
-	if !ok || cpu != "1" || mem != "2Gi" {
-		t.Errorf(`Resources("standard") = (%q, %q, %v), want ("1", "2Gi", true)`, cpu, mem, ok)
+	cpu, mem, disk, ok := Compute.Resources("standard")
+	if !ok || cpu != "1" || mem != "2Gi" || disk != "4Gi" {
+		t.Errorf(`Resources("standard") = (%q, %q, %q, %v), want ("1", "2Gi", "4Gi", true)`, cpu, mem, disk, ok)
 	}
 }
 
@@ -173,6 +200,7 @@ compute:
       renderPlan: starter
       cpu: 500m
       memory: 512Mi
+      ephemeralStorage: 1Gi
 postgres:
   default: free
   tiers:
@@ -222,7 +250,7 @@ postgres:
 compute:
   default: starter
   tiers:
-    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
 postgres:
   default: free
   tiers: []
@@ -231,7 +259,7 @@ postgres:
 compute:
   default: starter
   tiers:
-    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
 postgres:
   default: free
   tiers:
@@ -254,8 +282,8 @@ postgres:
 compute:
   default: starter
   tiers:
-    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
-    - {id: starter, renderPlan: starter2, cpu: "1", memory: 1Gi}
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
+    - {id: starter, renderPlan: starter2, cpu: "1", memory: 1Gi, ephemeralStorage: 2Gi}
 postgres:
   default: free
   tiers:
@@ -265,8 +293,8 @@ postgres:
 compute:
   default: starter
   tiers:
-    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
-    - {id: starter2, renderPlan: starter, cpu: "1", memory: 1Gi}
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
+    - {id: starter2, renderPlan: starter, cpu: "1", memory: 1Gi, ephemeralStorage: 2Gi}
 postgres:
   default: free
   tiers:
@@ -292,11 +320,31 @@ postgres:
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
 ` + validValkey,
+		"compute tier missing ephemeralStorage (round-14 #2)": `
+compute:
+  default: starter
+  tiers:
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
+postgres:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+` + validValkey,
+		"compute tier bad ephemeralStorage (round-14 #2)": `
+compute:
+  default: starter
+  tiers:
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: not-a-quantity}
+postgres:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+` + validValkey,
 		"compute default names undefined tier": `
 compute:
   default: nonexistent
   tiers:
-    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
 postgres:
   default: free
   tiers:
@@ -306,7 +354,7 @@ postgres:
 compute:
   default: starter
   tiers:
-    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
 postgres:
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
@@ -315,7 +363,7 @@ postgres:
 compute:
   default: starter
   tiers:
-    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
 postgres:
   default: free
   tiers:
@@ -326,7 +374,7 @@ postgres:
 compute:
   default: starter
   tiers:
-    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
 postgres:
   default: free
   tiers:
@@ -336,7 +384,7 @@ postgres:
 compute:
   default: starter
   tiers:
-    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
 postgres:
   default: free
   tiers:
@@ -346,7 +394,7 @@ postgres:
 compute:
   default: starter
   tiers:
-    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
 postgres:
   default: free
   tiers:
@@ -360,7 +408,7 @@ valkey:
 compute:
   default: starter
   tiers:
-    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi}
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
 postgres:
   default: free
   tiers:

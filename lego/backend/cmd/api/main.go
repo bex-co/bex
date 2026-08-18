@@ -611,6 +611,16 @@ func configureServerAuthOptions(srv *api.Server, cpDBURI string) {
 	// stamps the platform-client marker (scripts/auth-bootstrap-client.sh) — see
 	// docs/ADR012-auth.md §7.
 	srv.OAuthRequireAudience = os.Getenv("BEX_OAUTH_REQUIRE_AUDIENCE") == "1"
+	// Round-14 #1: the control-plane capability scope. Unlike the audience flag
+	// this one arms by default (DefaultAPIScope "bex.api") because its only
+	// exemption class — bex-provisioned platform clients — is exactly the class
+	// the audience flag's marker already identifies, and its effect on the
+	// official CLI is nil (device-flow tokens carry no audience, so the scope
+	// check never arms for them). bex-mobile DOES carry the API audience; it is
+	// platform-marked, so it rides the same exemption until its request adds
+	// the scope. The dashboard's consent gate must mirror the value
+	// (OAUTH_API_SCOPE) — see docs/ADR012-auth.md §7.
+	srv.OAuthAPIScope = os.Getenv("BEX_OAUTH_API_SCOPE")
 	// codex F6: an opt-in security control that ships off is invisible, and this
 	// one stayed off through three remediation rounds while the fail-open posture
 	// remained the deployed default. The narrowed audience check (auth.go) is

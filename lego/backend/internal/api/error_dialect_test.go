@@ -50,7 +50,7 @@ func TestErrorDialectIsRenderShaped(t *testing.T) {
 	}
 
 	t.Run("unauthenticated 401", func(t *testing.T) {
-		mw := newOryAuth(fakeHydraURL(t), "", "", "", "", false, nil, nil, nil).middleware(echoIdentity)
+		mw := newOryAuth(fakeHydraURL(t), "", "", "", "", false, nil, nil, nil, "").middleware(echoIdentity)
 		w := httptest.NewRecorder()
 		mw.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v1/services", nil))
 		assertRenderError(t, w, http.StatusUnauthorized)
