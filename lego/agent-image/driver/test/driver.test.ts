@@ -293,6 +293,35 @@ test("one headless turn streams raw ACP data and commits in the worktree", async
   assert.doesNotMatch(log, /test-model-key-never-log/);
 });
 
+test("Codex binds its provider to the session proxy and fails on typed transport errors", async () => {
+  const config = await tempConfig({
+    credentialEnvName: "OPENAI_API_KEY",
+    modelBaseUrl:
+      "http://bex-ssh-gateway.bex-system.svc.cluster.local:8084/model/ns/ags-test/v1",
+    modelBaseUrlEnvName: "OPENAI_BASE_URL",
+  });
+  const callLog = path.join(config.root, "acp-calls.log");
+  config.agentEnv = {
+    ACP_FIXTURE_LOG: callLog,
+    ACP_FIXTURE_PROVIDER_BASE_URL: config.modelBaseUrl,
+    ACP_FIXTURE_REQUIRE_TYPED_FAILURE: "1",
+    ACP_FIXTURE_TYPED_FAILURE: "1",
+  };
+  const credentials = manager(config);
+  await assert.rejects(
+    runHeadlessTurn(config, credentials, new UIMessageStreamHub()),
+    /ACP session failed \(transport_lost\): model proxy transport failed: near \[REDACTED\]/,
+  );
+  const calls = (await readFile(callLog, "utf8")).trim().split("\n");
+  assert.ok(calls.indexOf("providers/set") > calls.indexOf("initialize"));
+  assert.ok(calls.indexOf("providers/set") < calls.indexOf("session/new"));
+  const status = JSON.parse(await readFile(config.statusPath, "utf8"));
+  assert.equal(status.state, "failed");
+  assert.match(status.error, /transport_lost/);
+  assert.doesNotMatch(status.error, /test-model-key-never-log/);
+  assert.equal(credentials.configured(), false);
+});
+
 // codex r7 #4 — the model credential must be redacted BEFORE the first
 // fan-out: hub history (GET /stream attachers), the onPart mirror (the POST
 // /turn response the gateway tees into the durable transcript), and the
