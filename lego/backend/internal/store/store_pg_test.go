@@ -18,9 +18,11 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"reflect"
 	"regexp"
@@ -2492,6 +2494,79 @@ func TestClaimShellNonce(t *testing.T) {
 	}
 	if stale != 0 {
 		t.Errorf("expired nonce not pruned")
+	}
+}
+
+// TestCLIRefreshStore proves the hash-keyed response store round-trips exact
+// bytes while live and becomes an immediate logical miss after expiry.
+func TestCLIRefreshStore(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := NewPGStore(pool)
+	hash := sha256.Sum256([]byte(t.Name() + time.Now().String()))
+	defer func() {
+		_, _ = pool.Exec(context.Background(),
+			`DELETE FROM cli_refresh_idempotency WHERE token_hash = $1`, hash[:])
+	}()
+
+	want := cliRefreshResponse{
+		Body:   []byte(`{"access_token":"access-a","refresh_token":"refresh-b"}`),
+		Status: http.StatusOK,
+	}
+	body, status, err := st.IdempotentCLIRefresh(ctx, hash, time.Minute, func(context.Context) ([]byte, int, error) {
+		return want.Body, want.Status, nil
+	})
+	if err != nil || status != want.Status || string(body) != string(want.Body) {
+		t.Fatalf("mint = status %d body %q err %v, want status %d body %q", status, body, err, want.Status, want.Body)
+	}
+	got, ok, err := getCLIRefresh(ctx, pool, hash)
+	if err != nil || !ok {
+		t.Fatalf("get = (%+v, %v, %v), want hit", got, ok, err)
+	}
+	if got.Status != want.Status || string(got.Body) != string(want.Body) {
+		t.Fatalf("get = status %d body %q, want status %d body %q", got.Status, got.Body, want.Status, want.Body)
+	}
+
+	if _, err := pool.Exec(ctx,
+		`UPDATE cli_refresh_idempotency SET expires_at = now() - interval '1 second' WHERE token_hash = $1`, hash[:],
+	); err != nil {
+		t.Fatalf("expire: %v", err)
+	}
+	if got, ok, err := getCLIRefresh(ctx, pool, hash); err != nil || ok {
+		t.Fatalf("get expired = (%+v, %v, %v), want miss", got, ok, err)
+	}
+
+	// A fresh mint performs the bounded physical sweep. The logical expiry
+	// above is immediate; this assertion proves expired rows do not accumulate.
+	sweepHash := sha256.Sum256([]byte(t.Name() + "-sweep-" + time.Now().String()))
+	defer func() {
+		_, _ = pool.Exec(context.Background(),
+			`DELETE FROM cli_refresh_idempotency WHERE token_hash = $1`, sweepHash[:])
+	}()
+	if _, _, err := st.IdempotentCLIRefresh(ctx, sweepHash, time.Minute, func(context.Context) ([]byte, int, error) {
+		return []byte(`{"access_token":"sweep","refresh_token":"sweep"}`), http.StatusOK, nil
+	}); err != nil {
+		t.Fatalf("mint triggering sweep: %v", err)
+	}
+	var stale int
+	if err := pool.QueryRow(ctx,
+		`SELECT count(*) FROM cli_refresh_idempotency WHERE token_hash = $1`, hash[:],
+	).Scan(&stale); err != nil {
+		t.Fatal(err)
+	}
+	if stale != 0 {
+		t.Fatal("expired CLI refresh row survived the bounded sweep")
 	}
 }
 

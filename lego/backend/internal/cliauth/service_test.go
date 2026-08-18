@@ -17,19 +17,27 @@ limitations under the License.
 package cliauth
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 func renderRequest(method, path, body string) *http.Request {
@@ -102,6 +110,234 @@ func TestRenderProtocolAdapters(t *testing.T) {
 	if calls[1].Get("device_code") != "device-1" || calls[2].Get("client_id") != RenderCLIClientID {
 		t.Errorf("token forms = %v / %v", calls[1], calls[2])
 	}
+}
+
+type refreshResult struct {
+	status int
+	body   string
+}
+
+func refreshMux(publicURL string, refreshes RefreshIdempotencyStore) *http.ServeMux {
+	svc := New(publicURL, "", nil, nil)
+	svc.Refreshes = refreshes
+	mux := http.NewServeMux()
+	svc.RegisterPublic(mux, noMiddleware)
+	return mux
+}
+
+func issueRefresh(mux http.Handler, token string) refreshResult {
+	rec := httptest.NewRecorder()
+	body := fmt.Sprintf(`{"grant_type":"refresh_token","refresh_token":%q}`, token)
+	mux.ServeHTTP(rec, renderRequest(http.MethodPost, "/v1/token/refresh/", body))
+	return refreshResult{status: rec.Code, body: rec.Body.String()}
+}
+
+func awaitRefreshResult(t *testing.T, results <-chan refreshResult) refreshResult {
+	t.Helper()
+	select {
+	case result := <-results:
+		return result
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for refresh response")
+		return refreshResult{}
+	}
+}
+
+func openRefreshTestPool(t *testing.T) (*pgxpool.Pool, string) {
+	t.Helper()
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(context.Background(), uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pool, uri
+}
+
+// waitForAdvisoryWaiter makes the concurrency proof deterministic: the fake
+// Hydra mint remains blocked until Postgres reports that the second replica's
+// transaction is waiting on the exact 64-bit advisory key held by the first.
+func waitForAdvisoryWaiter(t *testing.T, pool *pgxpool.Pool, token string) {
+	t.Helper()
+	hash := sha256.Sum256([]byte(token))
+	high := int64(binary.BigEndian.Uint32(hash[:4]))
+	low := int64(binary.BigEndian.Uint32(hash[4:8]))
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		var waiting int
+		err := pool.QueryRow(context.Background(), `
+			SELECT count(*)
+			FROM pg_locks
+			WHERE locktype = 'advisory'
+			  AND classid::bigint = $1
+			  AND objid::bigint = $2
+			  AND objsubid = 1
+			  AND NOT granted`, high, low).Scan(&waiting)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if waiting == 1 {
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("second refresh never waited on the token's advisory lock")
+}
+
+func TestRefreshIdempotencyAcrossReplicas(t *testing.T) {
+	poolA, uri := openRefreshTestPool(t)
+	poolB, err := pgxpool.New(context.Background(), uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer poolA.Close()
+	defer poolB.Close()
+
+	token := fmt.Sprintf("refresh-concurrent-%d", time.Now().UnixNano())
+	var calls atomic.Int32
+	var liveAccess atomic.Value
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var enteredOnce sync.Once
+	var releaseOnce sync.Once
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		n := calls.Add(1)
+		// Model Hydra's rotating-family behavior: every mint replaces the one
+		// access token that remains live. If both requests reached this handler,
+		// the first response would immediately hold a revoked sibling token.
+		access := fmt.Sprintf("access-%d", n)
+		liveAccess.Store(access)
+		enteredOnce.Do(func() { close(entered) })
+		if n == 1 {
+			<-release
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprintf(w,
+			`{"access_token":%q,"refresh_token":"refresh-%d","token_type":"bearer","expires_in":604800}`,
+			access, n)
+	}))
+	defer upstream.Close()
+	defer releaseOnce.Do(func() { close(release) })
+
+	muxA := refreshMux(upstream.URL, store.NewPGStore(poolA))
+	muxB := refreshMux(upstream.URL, store.NewPGStore(poolB))
+	results := make(chan refreshResult, 2)
+	go func() { results <- issueRefresh(muxA, token) }()
+	select {
+	case <-entered: // replica A holds the transaction lock while Hydra is in flight.
+	case <-time.After(5 * time.Second):
+		t.Fatal("first refresh did not reach Hydra")
+	}
+	go func() { results <- issueRefresh(muxB, token) }()
+	waitForAdvisoryWaiter(t, poolA, token)
+	releaseOnce.Do(func() { close(release) })
+
+	first, second := awaitRefreshResult(t, results), awaitRefreshResult(t, results)
+	if first.status != http.StatusOK || second.status != http.StatusOK {
+		t.Fatalf("statuses = %d/%d, want 200/200; bodies %q / %q", first.status, second.status, first.body, second.body)
+	}
+	if first.body != second.body {
+		t.Fatalf("replicas returned different token pairs: %q / %q", first.body, second.body)
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("Hydra calls = %d, want 1", got)
+	}
+	var pair struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.Unmarshal([]byte(first.body), &pair); err != nil {
+		t.Fatal(err)
+	}
+	if pair.AccessToken == "" || liveAccess.Load() != pair.AccessToken {
+		t.Fatalf("returned access token %q is not Hydra's one live token %q", pair.AccessToken, liveAccess.Load())
+	}
+	var storedHash, storedBody []byte
+	tokenHash := sha256.Sum256([]byte(token))
+	if err := poolA.QueryRow(context.Background(), `
+		SELECT token_hash, response_body
+		FROM cli_refresh_idempotency
+		WHERE token_hash = $1`, tokenHash[:],
+	).Scan(&storedHash, &storedBody); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(storedHash, tokenHash[:]) || bytes.Contains(storedBody, []byte(token)) {
+		t.Fatalf("stored refresh identity is not hash-only: hash matches=%v raw token in response=%v",
+			bytes.Equal(storedHash, tokenHash[:]), bytes.Contains(storedBody, []byte(token)))
+	}
+
+	// A fresh service and fresh pool model a bex-api restart: the durable row,
+	// not process memory, must still answer with the identical bytes.
+	poolC, err := pgxpool.New(context.Background(), uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer poolC.Close()
+	afterRestart := issueRefresh(refreshMux(upstream.URL, store.NewPGStore(poolC)), token)
+	if afterRestart != first || calls.Load() != 1 {
+		t.Fatalf("after restart = %+v calls=%d, want %+v calls=1", afterRestart, calls.Load(), first)
+	}
+}
+
+func TestRefreshIdempotencyDistinctTokensAndErrors(t *testing.T) {
+	pool, _ := openRefreshTestPool(t)
+	defer pool.Close()
+
+	t.Run("distinct tokens mint independently", func(t *testing.T) {
+		var calls atomic.Int32
+		entered := make(chan struct{}, 2)
+		release := make(chan struct{})
+		var releaseOnce sync.Once
+		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			n := calls.Add(1)
+			entered <- struct{}{}
+			<-release
+			w.WriteHeader(http.StatusOK)
+			_, _ = fmt.Fprintf(w, `{"access_token":"access-%d","refresh_token":"refresh-%d"}`, n, n)
+		}))
+		defer upstream.Close()
+		defer releaseOnce.Do(func() { close(release) })
+		mux := refreshMux(upstream.URL, store.NewPGStore(pool))
+		prefix := fmt.Sprintf("%s-%d", t.Name(), time.Now().UnixNano())
+		results := make(chan refreshResult, 2)
+		go func() { results <- issueRefresh(mux, prefix+"-a") }()
+		go func() { results <- issueRefresh(mux, prefix+"-b") }()
+		for range 2 {
+			select {
+			case <-entered:
+			case <-time.After(5 * time.Second):
+				t.Fatal("distinct refresh tokens did not reach Hydra independently")
+			}
+		}
+		releaseOnce.Do(func() { close(release) })
+		one, two := awaitRefreshResult(t, results), awaitRefreshResult(t, results)
+		if calls.Load() != 2 || one.status != http.StatusOK || two.status != http.StatusOK || one.body == two.body {
+			t.Fatalf("calls=%d one=%+v two=%+v, want two independent successful mints", calls.Load(), one, two)
+		}
+	})
+
+	t.Run("Hydra errors stay verbatim and are not cached", func(t *testing.T) {
+		var calls atomic.Int32
+		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			calls.Add(1)
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"refresh token revoked"}`))
+		}))
+		defer upstream.Close()
+		mux := refreshMux(upstream.URL, store.NewPGStore(pool))
+		token := fmt.Sprintf("refresh-error-%d", time.Now().UnixNano())
+		first := issueRefresh(mux, token)
+		second := issueRefresh(mux, token)
+		wantBody := `{"error":"invalid_grant","error_description":"refresh token revoked"}`
+		if calls.Load() != 2 || first.status != http.StatusBadRequest || second.status != http.StatusBadRequest ||
+			first.body != wantBody || second.body != wantBody {
+			t.Fatalf("calls=%d first=%+v second=%+v, want two verbatim uncached 400s", calls.Load(), first, second)
+		}
+	})
 }
 
 func TestRenderProtocolRejectsWrongClientBeforeHydra(t *testing.T) {

@@ -152,11 +152,12 @@ start_port_forward
 
 # Per-client access-token lifespan for BOTH grants that mint CLI tokens (device
 # code = first login, refresh_token = every rotation). The unmodified CLI
-# refreshes whenever a token is within 24h of expiry; with the global 15m TTL
-# that is every command, and the interactive TUI's two concurrent clients then
-# race the rotation and revoke each other's access token. 25h (> the CLI's 24h
-# threshold) is a deliberate trial value — bump toward 7d if it proves out.
-CLI_TOKEN_LIFESPAN=25h
+# refreshes whenever a token is within 24h of expiry. Seven days matches
+# Render's standing posture, while bex-api's replica-shared refresh
+# idempotency store makes the TUI's concurrent refresh safe at any TTL instead
+# of letting one rotation revoke the sibling access token. Hydra accepts Go
+# duration syntax, so seven days is written as 168h.
+CLI_TOKEN_LIFESPAN=168h
 
 # skip_consent must ride every upsert: this is the operator-blessed trusted
 # client (docs/ADR012-auth.md §8a) — the dashboard consent route auto-accepts on
@@ -180,13 +181,21 @@ else
 fi
 
 # Guard against silent field drops (a typo'd lifespan key would be ignored, not
-# rejected): assert the lifespans round-trip on the stored client. Prefix match,
-# not exact — Hydra may normalize the duration (25h vs 25h0m0s).
-if ! curl -sf "$REST_ADMIN/admin/clients/$RENDER_CLI_CLIENT_ID" \
-    | grep -q "\"refresh_token_grant_access_token_lifespan\":\"$CLI_TOKEN_LIFESPAN"; then
-  echo "error: $RENDER_CLI_CLIENT_ID lifespans did not round-trip (hydra too old for per-client lifespans?)" >&2
+# rejected): assert BOTH grant lifespans round-trip on the stored client. Prefix
+# match, not exact — Hydra may normalize the duration (168h vs 168h0m0s).
+stored_render_client="$(curl -sf "$REST_ADMIN/admin/clients/$RENDER_CLI_CLIENT_ID")" || {
+  echo "error: reading back $RENDER_CLI_CLIENT_ID failed" >&2
   exit 1
-fi
+}
+for lifespan_field in \
+  device_authorization_grant_access_token_lifespan \
+  refresh_token_grant_access_token_lifespan; do
+  if ! printf '%s' "$stored_render_client" \
+      | grep -q "\"$lifespan_field\":\"$CLI_TOKEN_LIFESPAN"; then
+    echo "error: $RENDER_CLI_CLIENT_ID $lifespan_field did not round-trip (hydra too old for per-client lifespans?)" >&2
+    exit 1
+  fi
+done
 
 # ---- First-party native mobile client (ADR012 §8b) -------------------------
 # A store-distributed app cannot keep a client secret. The reverse-domain

@@ -21,6 +21,7 @@ package cliauth
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,9 +39,13 @@ const (
 	RenderCLIClientID = "429024F5E608930E2A65EF92591A25CC"
 	// MobileClientID is the permanent, secretless first-party native client
 	// provisioned by scripts/auth-bootstrap-client.sh (ADR012 §8b).
-	MobileClientID  = "bex-mobile"
-	deviceGrantType = "urn:ietf:params:oauth:grant-type:device_code"
-	maxUpstreamBody = 1 << 20
+	MobileClientID   = "bex-mobile"
+	deviceGrantType  = "urn:ietf:params:oauth:grant-type:device_code"
+	refreshGrantType = "refresh_token"
+	maxUpstreamBody  = 1 << 20
+	// One minute spans the official CLI TUI's concurrent refresh burst while
+	// keeping a replay window no wider than Hydra's configured rotation grace.
+	refreshIdempotencyTTL = time.Minute
 )
 
 // APIKeyRevoker is the existing machine-key self-revocation path. Keeping this
@@ -48,6 +53,19 @@ const (
 // callers without coupling the protocol adapter to the API-key implementation.
 type APIKeyRevoker interface {
 	RevokeAPIKey(context.Context, string, string) error
+}
+
+// RefreshIdempotencyStore collapses concurrent refreshes across API replicas.
+// The implementation owns the transaction and advisory lock; mint is invoked
+// exactly once on a cache miss and its successful response is returned
+// byte-for-byte to every duplicate caller.
+type RefreshIdempotencyStore interface {
+	IdempotentCLIRefresh(
+		context.Context,
+		[sha256.Size]byte,
+		time.Duration,
+		func(context.Context) ([]byte, int, error),
+	) ([]byte, int, error)
 }
 
 // Service owns the three public Render compatibility endpoints and the
@@ -61,6 +79,9 @@ type Service struct {
 	// introspection cache so logout takes effect immediately, not after its
 	// TTL. Injected by the composition root (the cache is the auth gate's).
 	invalidate func(string, core.Identity)
+	// Refreshes is the control-plane Postgres idempotency boundary for rotating
+	// CLI refresh tokens. nil retains direct proxying for DB-free local mode.
+	Refreshes RefreshIdempotencyStore
 	// RateLimiter guards the three public device-flow routes (w4/m31/t002).
 	// nil (the New default) disables limiting — set post-construction from
 	// the composition root once BEX_DEVICE_RATE_LIMIT is known, the same
@@ -216,15 +237,34 @@ func (s *Service) refreshToken(w http.ResponseWriter, r *http.Request) {
 	if !decodeRenderJSON(w, r, &in) {
 		return
 	}
-	if in.GrantType != "refresh_token" || in.RefreshToken == "" {
+	if in.GrantType != refreshGrantType || in.RefreshToken == "" {
 		writeOAuthError(w, http.StatusBadRequest, "invalid_request")
 		return
 	}
-	s.proxyForm(w, r, "/oauth2/token", url.Values{
+	form := url.Values{
 		"client_id":     {RenderCLIClientID},
-		"grant_type":    {"refresh_token"},
+		"grant_type":    {refreshGrantType},
 		"refresh_token": {in.RefreshToken},
-	})
+	}
+	if s.Refreshes == nil {
+		s.proxyForm(w, r, "/oauth2/token", form)
+		return
+	}
+
+	// Only the SHA-256 digest crosses the store boundary. The raw inbound
+	// refresh token exists solely in this request and the one upstream form.
+	tokenHash := sha256.Sum256([]byte(in.RefreshToken))
+	body, status, err := s.Refreshes.IdempotentCLIRefresh(
+		r.Context(), tokenHash, refreshIdempotencyTTL,
+		func(ctx context.Context) ([]byte, int, error) {
+			return s.postForm(ctx, "/oauth2/token", form)
+		},
+	)
+	if err != nil {
+		writeOAuthError(w, http.StatusServiceUnavailable, "temporarily_unavailable")
+		return
+	}
+	writeProxyResponse(w, status, body)
 }
 
 func decodeRenderJSON(w http.ResponseWriter, r *http.Request, out any) bool {
@@ -241,6 +281,10 @@ func (s *Service) proxyForm(w http.ResponseWriter, r *http.Request, path string,
 		writeOAuthError(w, http.StatusServiceUnavailable, "temporarily_unavailable")
 		return
 	}
+	writeProxyResponse(w, status, body)
+}
+
+func writeProxyResponse(w http.ResponseWriter, status int, body []byte) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, _ = w.Write(body)
