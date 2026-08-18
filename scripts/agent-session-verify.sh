@@ -172,7 +172,9 @@ steered="$(poll_terminal "$sid")"
 [ "$(jq -r '.turns' <<<"$steered")" -ge 2 ] || fail "turn count did not advance past 1"
 [ "$(jq -r '.deliveryMode' <<<"$steered")" = redispatch ] || fail "steering did not record a re-dispatch"
 new_head="$(jq -r '.headSha' <<<"$steered")"
-[ -n "$new_head" ] && [ "$new_head" != "$head_sha" ] || fail "steering produced no follow-up commit (head unchanged)"
+if [ -z "$new_head" ] || [ "$new_head" = "$head_sha" ]; then
+  fail "steering produced no follow-up commit (head unchanged)"
+fi
 ok "steering produced follow-up commit ${new_head} (turns=$(jq -r '.turns' <<<"$steered"))"
 
 # ---------------------------------------------------------------------------
