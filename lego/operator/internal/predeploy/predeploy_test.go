@@ -238,3 +238,26 @@ func TestCancelSupersededDeletesOtherActiveRunsButKeepsCurrent(t *testing.T) {
 		t.Errorf("foreign-workspace run (different UID) must not be deleted: %v", err)
 	}
 }
+
+// TestPreDeployKeepsZeroRetriesAndNoDisruptionIgnore guards pre-deploy against
+// w7/m82 t002's build-side change being "helpfully" generalized onto it.
+//
+// The asymmetry is deliberate and load-bearing (ADR004, docs/ADR060 D2): a build
+// is idempotent, so absorbing a disruption and re-running it is free. A
+// pre-deploy runs tenant migrations, which are not idempotent — a disruption
+// mid-migration must FAIL the deploy, because silently re-running a partially
+// applied migration is worse than a failed deploy. The reliability cliff here is
+// accepted and documented, not an oversight to be smoothed over.
+func TestPreDeployKeepsZeroRetriesAndNoDisruptionIgnore(t *testing.T) {
+	j := Job(Options{Name: "app", Namespace: "default", Generation: 3, Image: "img:1", Command: "./migrate.sh"})
+	if j.Spec.BackoffLimit == nil || *j.Spec.BackoffLimit != 0 {
+		t.Errorf("pre-deploy backoffLimit = %v, want 0: a re-run could re-apply a partial migration", j.Spec.BackoffLimit)
+	}
+	if j.Spec.PodFailurePolicy != nil {
+		for _, r := range j.Spec.PodFailurePolicy.Rules {
+			if r.Action == batchv1.PodFailurePolicyActionIgnore {
+				t.Error("pre-deploy must NOT Ignore disruptions: that would re-run a possibly half-applied migration")
+			}
+		}
+	}
+}

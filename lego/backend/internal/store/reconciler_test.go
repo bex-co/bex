@@ -1666,3 +1666,48 @@ func TestDevProjectorLeavesLegacyUnlabeledAppAlone(t *testing.T) {
 		t.Errorf("dev-6 deleted a pre-m39 App it did not create: %v", err)
 	}
 }
+
+// TestClassifiedBuildFailureReasonsStayBuildFailures guards the coupling
+// w7/m82 t003 exposed: the operator's build-failure condition reason gained two
+// classified variants, and both of bex-api's switches matched only the flat
+// "BuildFailed" literal. A classified build failure therefore fell through to
+// the default arm and was recorded as a generic UPDATE failure — wrong status,
+// wrong notification path, and it would have been invisible until someone
+// wondered why build failures stopped appearing.
+func TestClassifiedBuildFailureReasonsStayBuildFailures(t *testing.T) {
+	gen := int64(7)
+	app := func(reason string) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Generation: gen},
+			Status: appv1alpha1.AppStatus{
+				Phase: appv1alpha1.PhaseFailed,
+				Conditions: []metav1.Condition{{
+					Type: "Ready", Status: metav1.ConditionFalse, Reason: reason,
+					Message: "the build said why", ObservedGeneration: gen,
+				}},
+			},
+		}
+	}
+	open := Deploy{Generation: gen, Status: DeployBuildInProgress}
+
+	for _, reason := range []string{
+		appv1alpha1.ReasonBuildFailed,
+		appv1alpha1.ReasonBuildFailedUserError,
+		appv1alpha1.ReasonBuildFailedInfrastructure,
+	} {
+		if got := observedDeployStatus(open, app(reason), false); got != DeployBuildFailed {
+			t.Errorf("reason %q => deploy status %q, want %q", reason, got, DeployBuildFailed)
+		}
+		// The operator's message must survive too: it is the only place the
+		// tenant learns which class it was and what actually broke.
+		if msg, _ := failureReasonFor(app(reason)); msg != "the build said why" {
+			t.Errorf("reason %q => failure_reason %q, want the operator's message", reason, msg)
+		}
+	}
+
+	// Anti-tautology: a genuinely non-build failure must NOT be swept into the
+	// build bucket by an over-broad predicate.
+	if got := observedDeployStatus(open, app("IngressFailed"), false); got == DeployBuildFailed {
+		t.Error("IngressFailed must not be classified as a build failure")
+	}
+}

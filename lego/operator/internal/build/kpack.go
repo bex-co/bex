@@ -65,7 +65,7 @@ func KpackImage(o Options) *unstructured.Unstructured {
 	}
 
 	build := map[string]any{
-		"buildTimeout": int64(buildTimeout / time.Second),
+		"buildTimeout": int64(BuildTimeout / time.Second),
 		"nodeSelector": map[string]any{execution.NodePoolLabel: execution.UntrustedNodePool},
 		"tolerations": []any{map[string]any{
 			"key":      execution.BuildPoolTaintKey,
@@ -143,7 +143,7 @@ func KpackImage(o Options) *unstructured.Unstructured {
 // it creates the per-generation kpack Image if absent and returns its current
 // Observation without blocking (ADR060 §D1). kpack reports a single Ready
 // condition rather than pod scheduling, so a not-yet-terminal Image is reported
-// PhaseBuilding — kpack owns its own queueing/caching. buildTimeout is enforced
+// PhaseBuilding — kpack owns its own queueing/caching. BuildTimeout is enforced
 // by the Image's own spec.build.buildTimeout, not an operator-side clock.
 func ensureBuildpack(ctx context.Context, o Options) (Observation, error) {
 	if err := ensureKpackCredentials(ctx, o); err != nil {

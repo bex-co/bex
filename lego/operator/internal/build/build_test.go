@@ -18,6 +18,10 @@ package build
 
 import (
 	"context"
+	"errors"
+	"os"
+	"os/exec"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -117,9 +121,14 @@ func assertBuildJobMeta(t *testing.T, o Options, j *batchv1.Job) {
 	if j.Labels["app.bex.co/app-uid"] != o.AppUID || j.Spec.Template.Labels["app.bex.co/app-uid"] != o.AppUID {
 		t.Fatalf("build artifact missing App UID labels: job=%v pod=%v", j.Labels, j.Spec.Template.Labels)
 	}
-	// One-shot build, deadline set, TTL reaps it.
-	if j.Spec.BackoffLimit == nil || *j.Spec.BackoffLimit != 1 {
-		t.Error("build must not retry (backoffLimit 1)")
+	// Deadline set, TTL reaps it. Retry policy INVERTED by w7/m82 t002: the old
+	// pin asserted backoffLimit 1 as "a failed build is a user error, not a
+	// flake". Production disproved that in both directions -- deterministic
+	// tenant failures were retried anyway (two pods per failing build), while an
+	// autoscaler eviction failed the deploy outright. The budget is now 2 and
+	// applies ONLY to unclassified failures; see the podFailurePolicy tests.
+	if j.Spec.BackoffLimit == nil || *j.Spec.BackoffLimit != 2 {
+		t.Errorf("backoffLimit = %v, want 2 for unclassified failures", j.Spec.BackoffLimit)
 	}
 	if j.Spec.ActiveDeadlineSeconds == nil || *j.Spec.ActiveDeadlineSeconds != 30*60 || j.Spec.TTLSecondsAfterFinished == nil {
 		t.Error("deadline + TTL must be set")
@@ -149,11 +158,12 @@ func assertBuildJobMeta(t *testing.T, o Options, j *batchv1.Job) {
 	if !tolerated {
 		t.Errorf("build pod must tolerate the build-pool taint, tolerations = %v", pod.Tolerations)
 	}
-	// The tenant-burst pool scales from zero for exactly this Job and reclaims
-	// nodes after 5m of low utilization; without this the node can be deleted
-	// mid-build (BackoffLimit 1 means that fails the build outright).
-	if j.Spec.Template.Annotations["cluster-autoscaler.kubernetes.io/safe-to-evict"] != "false" {
-		t.Errorf("build pod must opt out of cluster-autoscaler eviction, annotations = %v", j.Spec.Template.Annotations)
+	// The safe-to-evict pin was REMOVED by w7/m82 t002 and its absence is now
+	// asserted in TestBuildJobNoLongerPinsNodesAgainstTheAutoscaler: eviction is
+	// absorbed by podFailurePolicy instead of prevented, so pinning the node only
+	// blocked consolidation. The apparmor annotation must survive that removal.
+	if j.Spec.Template.Annotations["container.apparmor.security.beta.kubernetes.io/buildkit"] != "unconfined" {
+		t.Errorf("buildkit apparmor annotation lost: %v", j.Spec.Template.Annotations)
 	}
 }
 
@@ -178,8 +188,13 @@ func assertBuildJobContainers(t *testing.T, o Options, j *batchv1.Job) {
 	if !strings.Contains(strings.Join(push.Args, " "), "docker://"+o.ImageRef()) {
 		t.Errorf("push args = %v", push.Args)
 	}
-	if bk.Command[0] != "buildctl-daemonless.sh" {
-		t.Errorf("command = %v, want buildctl-daemonless.sh", bk.Command)
+	// Since w7/m82 t001 buildkit runs under the classifier wrapper, so buildctl
+	// is invoked from the script rather than being argv[0]. What still matters
+	// is that buildctl is what actually runs, and that it receives the build
+	// arguments positionally rather than spliced into the script.
+	bkCmd := strings.Join(bk.Command, " ")
+	if bk.Command[0] != "sh" || !strings.Contains(bkCmd, `bex_run buildctl-daemonless.sh "$@"`) {
+		t.Errorf("command = %v, want sh running buildctl-daemonless.sh via bex_run", bk.Command)
 	}
 	// BuildKit gets only Pod-user-namespace capabilities and keeps its default
 	// OCI process sandbox. It must never become a host-privileged container.
@@ -382,14 +397,14 @@ func TestBuildReportsFailedJob(t *testing.T) {
 		t.Fatalf("phase = %v, want PhaseFailed", obs.Phase)
 	}
 	// A generic failure is not a timeout — the caller meters it as `failed`.
-	if obs.Timeout {
+	if obs.Fault == FaultTimeout {
 		t.Error("a generic build failure must not be classified as a timeout")
 	}
 }
 
 // TestBuildTimeoutClassification pins the timeout branch (ADR060 §D1a/§D5): a Job
-// failed via activeDeadlineSeconds reports Timeout=true so the caller meters it
-// as `timeout`, distinct from a tenant/infra `failed`.
+// failed via activeDeadlineSeconds reports FaultTimeout so the caller meters it
+// as `timeout`, distinct from a tenant or infra failure.
 func TestBuildTimeoutClassification(t *testing.T) {
 	o := opts()
 	j := BuildJob(o, o.ImageRef())
@@ -402,8 +417,8 @@ func TestBuildTimeoutClassification(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnsureBuild: %v", err)
 	}
-	if obs.Phase != PhaseFailed || !obs.Timeout {
-		t.Fatalf("observation = %+v, want PhaseFailed with Timeout=true", obs)
+	if obs.Phase != PhaseFailed || obs.Fault != FaultTimeout {
+		t.Fatalf("observation = %+v, want PhaseFailed with FaultTimeout", obs)
 	}
 }
 
@@ -1020,5 +1035,380 @@ func TestBuildJobDockerContextMovesOnlyTheContext(t *testing.T) {
 	o.DockerContext = ""
 	if joined := joinedArgs(o); !strings.Contains(joined, "context=/source/apps/api ") && !strings.Contains(joined, "context=/source/apps/api") {
 		t.Errorf("empty dockerContext must keep the RootDir context: %q", joined)
+	}
+}
+
+// --- w7/m82 t001: reserved exit codes ---------------------------------------
+
+func TestClassifyPreludeUsesReservedCodes(t *testing.T) {
+	// The prelude must exit with the reserved codes, not with literals that
+	// could drift from the constants podFailurePolicy matches on.
+	if !strings.Contains(classifyPrelude, "exit "+strconv.Itoa(ExitTenantError)) {
+		t.Errorf("prelude does not exit %d for the tenant class:\n%s", ExitTenantError, classifyPrelude)
+	}
+	if !strings.Contains(classifyPrelude, "exit "+strconv.Itoa(ExitTransient)) {
+		t.Errorf("prelude does not exit %d for the transient class:\n%s", ExitTransient, classifyPrelude)
+	}
+}
+
+func TestReservedExitCodesCannotCollideWithSignalsOrShellErrors(t *testing.T) {
+	// 126/127 are the shell's own "not executable"/"not found"; 128+N is a
+	// signal exit (137 OOM, 143 SIGTERM). A reserved code landing in either
+	// range would make a classified failure indistinguishable from one of
+	// those, which is exactly what the classification exists to prevent.
+	for name, code := range map[string]int{"ExitTenantError": ExitTenantError, "ExitTransient": ExitTransient} {
+		if code >= 126 {
+			t.Errorf("%s = %d must stay below 126 (shell errors) and 128 (signal exits)", name, code)
+		}
+		if code <= 1 {
+			t.Errorf("%s = %d must not collide with success or a generic failure", name, code)
+		}
+	}
+	if ExitTenantError == ExitTransient {
+		t.Fatal("the two classes must be distinguishable")
+	}
+}
+
+func TestClassifyingPhasesPassTenantArgsAsPositionalParameters(t *testing.T) {
+	// SECURITY: the whole point of the "$@" form is that tenant-controlled
+	// values reach the phase as discrete argv entries and never as script text.
+	// A regression here would be a shell-injection surface, so assert the
+	// tenant inputs are absent from the script and present in Args.
+	o := Options{
+		Name: "app", Revision: "r1", Repo: "https://github.com/o/r", Ref: "main",
+		RootDir: "svc/api", DockerfilePath: "build/Dockerfile.prod",
+	}
+	j := BuildJob(o, "zot.local:5000/app:r1")
+	var bk *corev1.Container
+	for i := range j.Spec.Template.Spec.InitContainers {
+		if j.Spec.Template.Spec.InitContainers[i].Name == "buildkit" {
+			bk = &j.Spec.Template.Spec.InitContainers[i]
+		}
+	}
+	if bk == nil {
+		t.Fatal("buildkit container not found")
+	}
+	script := strings.Join(bk.Command, " ")
+	for _, tenant := range []string{"svc/api", "build/Dockerfile.prod"} {
+		if strings.Contains(script, tenant) {
+			t.Errorf("tenant value %q was interpolated into the script text:\n%s", tenant, script)
+		}
+	}
+	if !strings.Contains(script, `bex_run buildctl-daemonless.sh "$@"`) {
+		t.Errorf("buildkit does not invoke buildctl through the positional form:\n%s", script)
+	}
+	joined := strings.Join(bk.Args, " ")
+	if !strings.Contains(joined, "svc/api") || !strings.Contains(joined, "build/Dockerfile.prod") {
+		t.Errorf("tenant values should reach buildctl via Args, got %q", joined)
+	}
+}
+
+func TestBuildPhasesCaptureFailureTail(t *testing.T) {
+	// Without FallbackToLogsOnError the controller can only report an exit
+	// code, so the tenant sees a number instead of the error they caused.
+	j := BuildJob(Options{Name: "app", Revision: "r1", Repo: "https://github.com/o/r", SignKeySecret: "signing"}, "img:1")
+	spec := j.Spec.Template.Spec
+	all := append(append([]corev1.Container{}, spec.InitContainers...), spec.Containers...)
+	if len(all) < 3 {
+		t.Fatalf("expected the signing layout to have several phases, got %d", len(all))
+	}
+	for _, c := range all {
+		if c.TerminationMessagePolicy != corev1.TerminationMessageFallbackToLogsOnError {
+			t.Errorf("phase %q has TerminationMessagePolicy %q, want FallbackToLogsOnError", c.Name, c.TerminationMessagePolicy)
+		}
+	}
+}
+
+func TestOnlyTenantInputPhasesClassify(t *testing.T) {
+	// push and sign are deliberately left with their natural exit codes: after
+	// push retries, a failure there is the platform's, and an unclassified
+	// non-zero exit is what the backoff budget should retry. If they ever start
+	// emitting ExitTenantError, a registry outage would be blamed on the tenant.
+	j := BuildJob(Options{Name: "app", Revision: "r1", Repo: "https://github.com/o/r", SignKeySecret: "signing", PushSecret: "push"}, "img:1")
+	spec := j.Spec.Template.Spec
+	for _, c := range append(append([]corev1.Container{}, spec.InitContainers...), spec.Containers...) {
+		// clone carries its script in Args, buildkit in Command; scan both so
+		// the assertion does not depend on which slot a phase happens to use.
+		classifies := strings.Contains(strings.Join(append(append([]string{}, c.Command...), c.Args...), " "), "bex_run")
+		switch c.Name {
+		case "clone", "buildkit":
+			if !classifies {
+				t.Errorf("phase %q must classify its failures", c.Name)
+			}
+		default:
+			if classifies {
+				t.Errorf("phase %q must NOT classify: a failure there is not the tenant's", c.Name)
+			}
+		}
+	}
+}
+
+// --- w7/m82 t002: podFailurePolicy ------------------------------------------
+
+func TestBuildPodFailurePolicyAbsorbsDisruptionAndFailsTenantErrors(t *testing.T) {
+	j := BuildJob(opts(), "img:1")
+	p := j.Spec.PodFailurePolicy
+	if p == nil {
+		t.Fatal("build Job has no podFailurePolicy: a node drain would fail the tenant's deploy")
+	}
+	var sawIgnoreDisruption, sawFailTenant bool
+	for _, r := range p.Rules {
+		for _, c := range r.OnPodConditions {
+			if c.Type == corev1.DisruptionTarget && r.Action == batchv1.PodFailurePolicyActionIgnore {
+				sawIgnoreDisruption = true
+			}
+		}
+		if r.OnExitCodes != nil && r.Action == batchv1.PodFailurePolicyActionFailJob {
+			for _, v := range r.OnExitCodes.Values {
+				if v == ExitTenantError {
+					sawFailTenant = true
+				}
+				if v == ExitTransient {
+					t.Error("a transient failure must NOT FailJob: a registry blip would be reported as the tenant's fault")
+				}
+				if v == 137 {
+					t.Error("OOM must not be in the FailJob set; it is bounded by the backoff budget, not fast-failed by exit code")
+				}
+			}
+		}
+	}
+	if !sawIgnoreDisruption {
+		t.Error("DisruptionTarget must be Ignored, or an autoscaler reclaim still burns the tenant's attempt budget")
+	}
+	if !sawFailTenant {
+		t.Errorf("exit %d (tenant error) must FailJob, or deterministic failures keep retrying", ExitTenantError)
+	}
+}
+
+func TestBuildJobNoLongerPinsNodesAgainstTheAutoscaler(t *testing.T) {
+	// safe-to-evict:"false" prevented eviction because eviction used to fail the
+	// build. Now the policy absorbs eviction, so the pin only blocks legitimate
+	// node consolidation for the build's whole duration.
+	j := BuildJob(opts(), "img:1")
+	if v, ok := j.Spec.Template.Annotations["cluster-autoscaler.kubernetes.io/safe-to-evict"]; ok {
+		t.Errorf("safe-to-evict is still set to %q; podFailurePolicy makes it unnecessary and it blocks consolidation", v)
+	}
+}
+
+func TestBuildBackoffAllowsRetryOnlyForUnclassifiedFailures(t *testing.T) {
+	j := BuildJob(opts(), "img:1")
+	if j.Spec.BackoffLimit == nil || *j.Spec.BackoffLimit != 2 {
+		t.Fatalf("backoffLimit = %v, want 2 (unclassified failures only)", j.Spec.BackoffLimit)
+	}
+	// The budget is only safe because tenant errors never reach it.
+	if j.Spec.PodFailurePolicy == nil {
+		t.Fatal("backoffLimit 2 without a podFailurePolicy would retry every tenant error twice")
+	}
+}
+
+// --- w7/m82 t003: fault classification --------------------------------------
+
+func TestFaultFromJobReadsTheClassOffTheJobReason(t *testing.T) {
+	// The classification is derived from the Job's own failure reason, which
+	// costs no extra API call: buildPodFailurePolicy's only FailJob rule matches
+	// ExitTenantError, so "PodFailurePolicy" IS the statement that a
+	// tenant-classified phase failed.
+	for _, tc := range []struct {
+		reason string
+		want   Fault
+	}{
+		{batchv1.JobReasonPodFailurePolicy, FaultTenant},
+		{batchv1.JobReasonBackoffLimitExceeded, FaultInfra},
+		{batchv1.JobReasonDeadlineExceeded, FaultTimeout}, // its own class, not a fault of either side
+		{"", FaultNone},
+	} {
+		if got := faultFromJob(tc.reason); got != tc.want {
+			t.Errorf("faultFromJob(%q) = %q, want %q", tc.reason, got, tc.want)
+		}
+	}
+}
+
+func TestFaultClassesAreDistinct(t *testing.T) {
+	// If tenant and infra ever collapse to the same value, the SLO silently
+	// starts counting tenant errors against the platform's error budget.
+	seen := map[Fault]bool{}
+	for _, f := range []Fault{FaultNone, FaultTenant, FaultInfra, FaultTimeout} {
+		if seen[f] {
+			t.Fatalf("fault class %q is duplicated; the SLO would count one class as another", f)
+		}
+		seen[f] = true
+	}
+}
+
+// --- w7/m82 t004: registry hardening ----------------------------------------
+
+func TestPushRetriesTransientRegistryFailures(t *testing.T) {
+	j := BuildJob(opts(), "img:1")
+	var push *corev1.Container
+	for i := range j.Spec.Template.Spec.Containers {
+		if j.Spec.Template.Spec.Containers[i].Name == "push" {
+			push = &j.Spec.Template.Spec.Containers[i]
+		}
+	}
+	if push == nil {
+		t.Fatal("push container not found")
+	}
+	args := strings.Join(push.Args, " ")
+	if !strings.Contains(args, "--retry-times 3") {
+		t.Errorf("push must retry transient registry failures, args = %q", args)
+	}
+	// Whole-blob retry only: resume paths are where registries corrupt uploads.
+	if strings.Contains(args, "resume") {
+		t.Errorf("push must not use chunked-upload resume, args = %q", args)
+	}
+}
+
+func TestPushTLSVerificationIsConditional(t *testing.T) {
+	// .pm/w1/046.md F11: --dest-tls-verify=false used to be unconditional, so
+	// pointing BEX_REGISTRY at a real TLS registry silently pushed tenant
+	// images, with the push credential, over an unverified connection.
+	pushArgsFor := func(registry string) string {
+		o := opts()
+		o.Registry = registry
+		j := BuildJob(o, registry+"/app:1")
+		for _, c := range j.Spec.Template.Spec.Containers {
+			if c.Name == "push" {
+				return strings.Join(c.Args, " ")
+			}
+		}
+		t.Fatalf("no push container for registry %q", registry)
+		return ""
+	}
+
+	// Cluster-local / dev endpoints legitimately speak HTTP — byte-identical
+	// to the shipped default.
+	for _, local := range []string{
+		"zot.bex-registry.svc:5000", "zot.bex-registry.svc.cluster.local:5000",
+		"zot.local:5000", "localhost:5000", "127.0.0.1:5000", "zot:5000",
+	} {
+		if !strings.Contains(pushArgsFor(local), "--dest-tls-verify=false") {
+			t.Errorf("registry %q is cluster-local and must keep plain HTTP push", local)
+		}
+	}
+	// A real registry must be verified.
+	for _, remote := range []string{
+		"registry.example.com:5000", "ghcr.io", "index.docker.io", "eu.gcr.io",
+	} {
+		if strings.Contains(pushArgsFor(remote), "--dest-tls-verify=false") {
+			t.Errorf("registry %q is external — TLS verification must NOT be disabled", remote)
+		}
+	}
+}
+
+// TestClassifyPreludeExecutes runs the prelude through a real shell under the
+// same `sh -eu` the build phases use. Every other test here string-matches the
+// script; this one is the only thing that would catch the script being subtly
+// wrong, which is exactly what happened: without `set +e` the brace group aborts
+// on failure, `echo $?` never runs, and the captured exit code is lost.
+func TestClassifyPreludeExecutes(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		phase string
+		want  int
+	}{
+		{"success passes through", "exit 0", 0},
+		{"tenant error by default", `echo "Dockerfile parse error" >&2; exit 1`, ExitTenantError},
+		{"network failure classified transient", `echo "dial tcp 10.0.0.1:5000: connect: connection refused" >&2; exit 1`, ExitTransient},
+		{"registry 5xx classified transient", `echo "unexpected status: 503 Service Unavailable" >&2; exit 1`, ExitTransient},
+		{"bad git ref stays tenant", `echo "fatal: couldn't find remote ref refs/heads/nope" >&2; exit 128`, ExitTenantError},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			script := classifyPrelude + `bex_run sh -c "$1"`
+			cmd := exec.Command("sh", "-eu", "-c", script, "bex-test", tc.phase)
+			cmd.Env = append(os.Environ(), "TMPDIR="+t.TempDir())
+			out, err := cmd.CombinedOutput()
+			got := 0
+			var ee *exec.ExitError
+			if errors.As(err, &ee) {
+				got = ee.ExitCode()
+			} else if err != nil {
+				t.Fatalf("running prelude: %v (output %q)", err, out)
+			}
+			if got != tc.want {
+				t.Errorf("exit = %d, want %d\nphase: %s\noutput:\n%s", got, tc.want, tc.phase, out)
+			}
+		})
+	}
+}
+
+// TestClassifyPreludeSurvivesRepeatedUse pins the failure mode the set +e bug
+// would have caused: a successful first call must not leave a stale 0 that makes
+// a later failing call report success.
+func TestClassifyPreludeSurvivesRepeatedUse(t *testing.T) {
+	script := classifyPrelude + `bex_run true
+bex_run sh -c 'echo "Dockerfile parse error" >&2; exit 1'
+echo REACHED_END_WITHOUT_FAILING`
+	cmd := exec.Command("sh", "-eu", "-c", script, "bex-test")
+	cmd.Env = append(os.Environ(), "TMPDIR="+t.TempDir())
+	out, err := cmd.CombinedOutput()
+	if strings.Contains(string(out), "REACHED_END_WITHOUT_FAILING") {
+		t.Fatalf("a failing phase after a successful one reported success:\n%s", out)
+	}
+	var ee *exec.ExitError
+	if !errors.As(err, &ee) || ee.ExitCode() != ExitTenantError {
+		t.Errorf("second (failing) call exit = %v, want %d\noutput:\n%s", err, ExitTenantError, out)
+	}
+}
+
+// TestTenantOutputCannotForgeAnInfraClassification closes an abuse vector the
+// classification opened: the buildkit phase's log is tenant-authored, so a
+// Dockerfile could print a network-error string and have its own deterministic
+// failure classified as transient — earning a free retry and, once the budget
+// is spent, landing in infra_failed where it moves the platform SLO and feeds
+// the correlated-failure page. BuildKit prefixes tenant RUN output with a step
+// marker, so classification excludes those lines.
+func TestTenantOutputCannotForgeAnInfraClassification(t *testing.T) {
+	run := func(phase string) int {
+		script := classifyPrelude + `bex_run sh -c "$1"`
+		cmd := exec.Command("sh", "-eu", "-c", script, "bex-test", phase)
+		cmd.Env = append(os.Environ(), "TMPDIR="+t.TempDir())
+		out, err := cmd.CombinedOutput()
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			return ee.ExitCode()
+		}
+		if err != nil {
+			t.Fatalf("running prelude: %v (%s)", err, out)
+		}
+		return 0
+	}
+
+	// A tenant RUN step printing a network error: BuildKit stamps it with a step
+	// marker, so it must NOT buy the tenant a transient classification.
+	forged := `echo '#12 0.482 connection refused'; echo '#12 ERROR: process did not complete successfully'; exit 1`
+	if got := run(forged); got != ExitTenantError {
+		t.Errorf("tenant-forged network text classified as %d, want %d (tenant): a Dockerfile can move the platform SLO", got, ExitTenantError)
+	}
+
+	// The toolchain's own unprefixed error must still classify as transient.
+	real := `echo 'ERROR: failed to solve: failed to do request: dial tcp 10.0.0.1:5000: connect: connection refused' >&2; exit 1`
+	if got := run(real); got != ExitTransient {
+		t.Errorf("genuine registry failure classified as %d, want %d (transient)", got, ExitTransient)
+	}
+}
+
+// TestClassifyBufferIsBounded pins the ephemeral-storage bound. An unbounded
+// classification log shares the phase's ephemeral-storage limit, and exceeding
+// that limit evicts the pod with DisruptionTarget set — which podFailurePolicy
+// Ignores, turning a deterministic disk-filling build into a retry loop that
+// ends only at activeDeadlineSeconds.
+func TestClassifyBufferIsBounded(t *testing.T) {
+	if classifyBufferBytes <= 0 || classifyBufferBytes > 4*1024*1024 {
+		t.Fatalf("classifyBufferBytes = %d; must be positive and small next to the ephemeral limit", classifyBufferBytes)
+	}
+	if !strings.Contains(classifyPrelude, "tail -c") {
+		t.Error("the prelude must bound what it retains for classification")
+	}
+
+	script := classifyPrelude + `bex_run sh -c "$1"`
+	// Emit far more than the buffer, ending with a transient marker so we can
+	// prove the tail (not the head) is what survives.
+	phase := `i=0; while [ $i -lt 60000 ]; do echo "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; i=$((i+1)); done; echo "dial tcp: connection refused" >&2; exit 1`
+	cmd := exec.Command("sh", "-eu", "-c", script, "bex-test", phase)
+	cmd.Env = append(os.Environ(), "TMPDIR="+t.TempDir())
+	_, err := cmd.CombinedOutput()
+	var ee *exec.ExitError
+	if !errors.As(err, &ee) || ee.ExitCode() != ExitTransient {
+		t.Errorf("classification over a large log = %v, want exit %d from the retained tail", err, ExitTransient)
 	}
 }

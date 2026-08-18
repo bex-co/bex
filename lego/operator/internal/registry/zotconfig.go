@@ -47,6 +47,19 @@ const (
 	// defaultRetentionCount is the image history kept per repository when
 	// BEX_ZOT_RETENTION_COUNT is unset.
 	defaultRetentionCount = 5
+
+	// zotGCDelay is how long an untagged/dangling blob survives before garbage
+	// collection may remove it. It MUST stay above the worst-case push duration
+	// or GC can delete blobs belonging to a push that is still in flight
+	// (docs/ADR060 D4). The bound that matters is the build Job's own deadline,
+	// since a push cannot outlive the build that produces it — the invariant
+	// zotGCDelay >= build.BuildTimeout is asserted by gc_invariant_test.go, so
+	// neither value can drift away from the other unnoticed.
+	// Pinned explicitly rather than left to Zot, whose GC defaults change.
+	zotGCDelay = "1h"
+	// gcInterval is how often GC runs; equal to the delay by design, so a blob
+	// is examined at most one interval after it becomes eligible.
+	zotGCInterval = zotGCDelay
 )
 
 var (
@@ -248,6 +261,13 @@ type (
 		GCInterval    string       `json:"gcInterval"`
 		Retention     zotRetention `json:"retention"`
 	}
+	zotScrub struct {
+		Enable   bool   `json:"enable"`
+		Interval string `json:"interval"`
+	}
+	zotExtensions struct {
+		Scrub zotScrub `json:"scrub"`
+	}
 	zotHTPasswdAuth struct {
 		Path string `json:"path"`
 	}
@@ -279,10 +299,11 @@ type (
 		Level string `json:"level"`
 	}
 	zotDocument struct {
-		DistSpecVersion string       `json:"distSpecVersion"`
-		Storage         zotStorage   `json:"storage"`
-		HTTP            zotHTTPBlock `json:"http"`
-		Log             zotLogBlock  `json:"log"`
+		DistSpecVersion string        `json:"distSpecVersion"`
+		Storage         zotStorage    `json:"storage"`
+		HTTP            zotHTTPBlock  `json:"http"`
+		Log             zotLogBlock   `json:"log"`
+		Extensions      zotExtensions `json:"extensions"`
 	}
 )
 
@@ -318,8 +339,8 @@ func (c *Creds) buildBaseZotConfig() {
 			RootDirectory: "/var/lib/registry",
 			Dedupe:        true,
 			GC:            true,
-			GCDelay:       "1h",
-			GCInterval:    "1h",
+			GCDelay:       zotGCDelay,
+			GCInterval:    zotGCInterval,
 			Retention: zotRetention{
 				Policies: []zotRetentionPolicy{{
 					Repositories:   []string{"**"},
@@ -331,6 +352,10 @@ func (c *Creds) buildBaseZotConfig() {
 				}},
 			},
 		},
+		// Scrub re-verifies blob digests against their content, so silent
+		// corruption surfaces as a log line rather than as a deploy pulling a
+		// corrupt layer. Single-replica Zot's integrity tripwire (ADR060 D4).
+		Extensions: zotExtensions{Scrub: zotScrub{Enable: true, Interval: "24h"}},
 		HTTP: zotHTTPBlock{
 			Address:      "0.0.0.0",
 			Port:         zotHTTPPort,

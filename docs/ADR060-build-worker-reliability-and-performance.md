@@ -117,6 +117,24 @@ The principle, applied uniformly by GitHub Actions/GitLab/Buildkite postmortem p
 - **Pre-deploy Jobs keep `backoffLimit: 0` with no `Ignore` rule.** A disruption can strike mid-migration; re-running a partially applied non-idempotent migration is worse than failing the deploy. ADR004's stance stands; the reliability cliff is accepted and documented.
 - The classified outcome — `succeeded | user_failed | infra_failed | canceled | timeout` — is surfaced in three places: the App CR condition reason (splitting today's flat `BuildFailed`), the deploy record in bex-api, and the D5 metrics. The infra/user split is what makes a build **SLO** definable at all.
 
+#### Reserved exit codes as implemented (w7/m82 t001)
+
+Two codes, not one per phase — **which** phase failed is already carried by the container name in the pod status, so a class plus that name is a complete classification with no per-phase code space to keep in sync.
+
+| code | class | meaning | podFailurePolicy |
+| --- | --- | --- | --- |
+| `90` | `ExitTenantError` | deterministic failure caused by tenant input | `FailJob` — no retry |
+| `91` | `ExitTransient` | network / registry 5xx / DNS; a retry may genuinely fix it | counts against `backoffLimit` |
+| anything else | unclassified | treated as possibly-transient | counts against `backoffLimit` |
+
+The band is deliberately below 126 (the shell's "not executable"/"not found") and below 128 (so it can never collide with a 128+N signal exit — 137 OOM and 143 SIGTERM must stay distinguishable from a classified failure).
+
+**Only the phases that can produce a tenant error classify:** `clone` (the repo URL and ref are tenant input) and `buildkit` (the Dockerfile and build command are tenant input). `push` and `sign` keep their natural exit codes on purpose — after D4's push retries a failure there is the platform's, and an unclassified non-zero exit is exactly what the backoff budget should retry. If they ever emitted `ExitTenantError`, a registry outage would be blamed on the tenant.
+
+**Classification is by matched error text, defaulting to tenant.** The two misclassifications are not symmetric: calling a transient failure "tenant" costs one free retry, while calling a tenant failure "transient" burns two doomed attempts each holding a 7 GiB node-exclusive slot — the exact production waste measured on 2026-08-17. Infrastructure disruption proper (eviction, preemption, drain) never reaches the classifier: it surfaces as the `DisruptionTarget` pod condition, which the policy ignores before any exit code is considered.
+
+The wrapper passes each phase's arguments through `"$@"` as discrete positional parameters, so tenant-controlled values (context dir, Dockerfile path) never become shell syntax — preserving the property the signing path's original comment protected by avoiding `sh -c` entirely. Phase output still streams unbuffered (the exit code is written inside the brace group rather than read from the pipeline, since `set -o pipefail` is not portable across the busybox shells these images ship), so build logs keep reaching the log shipper live.
+
 ### D3 — Per-App remote build cache in Zot (registry backend, `mode=max`)
 
 The Dockerfile and native paths gain what kpack already has. BuildKit is invoked with:
@@ -138,6 +156,7 @@ The Dockerfile and native paths gain what kpack already has. BuildKit is invoked
 - Skopeo pushes (image and, per D3, cache) run with `--retry-times 3`. Whole-blob retry, not chunked-upload resume — resume is unreliable across the registry ecosystem and nobody ships it.
 - The operator-managed `zot-config` pins `gcDelay` comfortably above the worst-case push duration (≥ the 30-minute build deadline), and each Zot upgrade gets a read of the release's GC-default changes before rollout — the recent untagged-manifest default flip is precisely the kind of change that would eat D3's cache or an in-flight push.
 - Zot's `scrub` extension (periodic hash verification) is enabled on the build registry.
+- **`bex_build_push_seconds`, `bex_build_push_errors_total` and `bex_build_retries_total{reason}` are deferred to the D5 milestone (w7/m83), not dropped.** `retries_total` joins them for the same reason: attributing a retry to `disruption` versus `transient` requires knowing which pod failed and why, which is pod-level state, and a `reason` label that cannot be populated correctly is worse than an absent series. True push duration and push-phase attribution need per-container states from the build pod, which is the same pod read `bex_build_queue_seconds` requires. Implementing them in w7/m82 would have meant either a second pod-read path or — worse — registering an always-zero `push_errors_total`, which reads as "no push errors have ever occurred" rather than "nothing measures this". One pod read now serves both series.
 - Single-replica Zot remains an **accepted** single point of failure at current scale; the D5 push-latency/error metrics are the tripwire that reopens HA (or a pull-through cache tier) as its own decision. Growing the PVC before it fills again is an operational duty, now alarmable.
 
 ### D5 — Build-plane SLIs, emitted by the operator
