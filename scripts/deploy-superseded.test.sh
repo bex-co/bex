@@ -33,7 +33,7 @@ seed deploy/opensandbox/kustomization.yaml \
   $'images:\n  - name: opensandbox-server\n    newName: ghcr.io/x\n    digest: sha256:'"$(printf 'a%.0s' {1..64})" \
   "base opensandbox kustomization"
 seed deploy/gitops/base/values/opensandbox-controller.values.yaml \
-  $'controller:\n  image:\n    repository: ghcr.io/x/controller\n    tag: v0.2.0-bex-snapjobns@sha256:'"$(printf 'a%.0s' {1..64})" \
+  $'controller:\n  image:\n    repository: ghcr.io/x/controller\n    tag: v0.2.0-bex-snapjobns-terminalpod@sha256:'"$(printf 'a%.0s' {1..64})" \
   "base OpenSandbox controller values"
 seed lego/operator/config/api/deployment.yaml \
   "  value: ghcr.io/bex-co/bex-agent-sandbox@sha256:$(printf 'c%.0s' {1..64})" \
@@ -79,7 +79,10 @@ run_case "generated digest only (excluded)" 1 advance deploy/gitops/base/bex.yam
 # the patched controller's generated digest write-back is excluded too
 run_case "generated controller digest only (excluded)" 1 advance \
   deploy/gitops/base/values/opensandbox-controller.values.yaml \
-  $'controller:\n  image:\n    repository: ghcr.io/x/controller\n    tag: v0.2.0-bex-snapjobns@sha256:'"$(printf 'b%.0s' {1..64})"
+  $'controller:\n  image:\n    repository: ghcr.io/x/controller\n    tag: v0.2.0-bex-snapjobns-terminalpod@sha256:'"$(printf 'b%.0s' {1..64})"
+run_case "controller tag change is substantive" 0 advance \
+  deploy/gitops/base/values/opensandbox-controller.values.yaml \
+  $'controller:\n  image:\n    repository: ghcr.io/x/controller\n    tag: v0.2.0-bex-next@sha256:'"$(printf 'b%.0s' {1..64})"
 run_case "generated agent digest only (excluded)" 1 advance lego/operator/config/api/deployment.yaml \
   "  value: ghcr.io/bex-co/bex-agent-sandbox@sha256:$(printf 'd%.0s' {1..64})"
 run_case "agent manifest drift beyond digest" 0 advance lego/operator/config/api/deployment.yaml \

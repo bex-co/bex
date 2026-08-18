@@ -1671,6 +1671,11 @@ for required in \
   grep -qF "$required" .github/workflows/deploy.yml \
     || { echo "FAIL: deploy workflow lost OpenSandbox supply-chain/secret step: $required" >&2; fail=1; }
 done
+controller_digest_pattern='r"(?m)^(\s+tag: [^@\s]+@sha256:)[0-9a-f]{64}$"'
+for path in .github/workflows/deploy.yml scripts/deploy-superseded.sh; do
+  grep -qF "$controller_digest_pattern" "$path" \
+    || { echo "FAIL: $path hard-codes or omits the generated controller digest matcher" >&2; fail=1; }
+done
 if grep -qF 'git reset --soft HEAD~1' .github/workflows/deploy.yml; then
   echo "FAIL: deploy workflow restored the broken digest write-back retry" >&2
   fail=1
