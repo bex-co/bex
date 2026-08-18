@@ -23,6 +23,13 @@ if [ -f "$ENVDIR/.kubeconfig" ]; then
   echo
   echo "== $DEV_NS resources =="
   kubectl -n "$DEV_NS" get apps.app.bex.co,keyvalues.app.bex.co,databases.app.bex.co 2>&1 || true
+  echo
+  # Control-plane identity (w6/m39). The orphan prune is cluster-scoped, so a
+  # harness whose OWNER column is not $DEV_NS is pruning outside its own lane —
+  # exactly the failure that let two dev-N stacks delete each other's tenants.
+  echo "== tenant namespaces by control-plane owner (this harness: $DEV_NS) =="
+  kubectl get ns -l app.kubernetes.io/managed-by=bex-controlplane \
+    -L app.bex.co/control-plane,app.bex.co/workspace 2>&1 || true
 fi
 
 echo

@@ -91,11 +91,16 @@ type NamespaceReconciler struct {
 	Client client.Client
 	Store  Store
 	Resync time.Duration
+	// Identity names this control-plane instance (BEX_CP_IDENTITY). It is
+	// stamped on every namespace this reconciler provisions and is the scope
+	// pruneOrphans deletes within. Empty is read as DefaultControlPlaneIdentity.
+	Identity string
 
 	kick chan struct{}
 }
 
 // NewNamespaceReconciler builds a reconciler with the default resync period.
+// Identity is left zero, which identity() reads as the default.
 func NewNamespaceReconciler(cl client.Client, store Store) *NamespaceReconciler {
 	return &NamespaceReconciler{
 		Client: cl,
@@ -103,6 +108,16 @@ func NewNamespaceReconciler(cl client.Client, store Store) *NamespaceReconciler 
 		Resync: defaultNamespaceResync,
 		kick:   make(chan struct{}, 1),
 	}
+}
+
+// identity is the control-plane identity this reconciler stamps and prunes
+// under. Exported Identity may be set after construction, so normalize here —
+// this is the single defaulting site.
+func (r *NamespaceReconciler) identity() string {
+	if r.Identity == "" {
+		return DefaultControlPlaneIdentity
+	}
+	return r.Identity
 }
 
 // Kick schedules an immediate reconcile (non-blocking, coalescing) — called
@@ -158,10 +173,10 @@ func namespaceName(workspaceID, regime string) string {
 // isolation objects (ResourceQuota, LimitRange, default-deny NetworkPolicy).
 func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, regime string) error {
 	name := namespaceName(t.ID, regime)
-	if err := r.applyObject(ctx, workspaceNamespaceObject(name, t, regime)); err != nil {
+	if err := r.applyObject(ctx, r.workspaceNamespaceObject(name, t, regime)); err != nil {
 		return fmt.Errorf("namespace: %w", err)
 	}
-	if err := r.applyObject(ctx, baseResourceQuota(name, t)); err != nil {
+	if err := r.applyObject(ctx, r.baseResourceQuota(name, t)); err != nil {
 		return fmt.Errorf("resourcequota: %w", err)
 	}
 	if err := r.applyObject(ctx, baseLimitRange(name)); err != nil {
@@ -269,13 +284,28 @@ func (r *NamespaceReconciler) applyObject(ctx context.Context, obj client.Object
 	if !isManaged(existing) {
 		return fmt.Errorf("object %s exists and is not bex-managed", client.ObjectKeyFromObject(obj))
 	}
+	// Refuse to converge another control plane's object (w6/m39). Without this
+	// the prune guard is bypassable in one hop: a harness that inherits another
+	// control plane's tenant rows (a bex-db dump — the .pm harness workflow this
+	// feature serves) would re-stamp those namespaces to its own identity, and
+	// could then legitimately prune them once the rows left its database.
+	//
+	// Deliberately NOT ownedBy: adoption and pruning need opposite answers for
+	// the unlabeled case. An unlabeled namespace must be ADOPTABLE by any
+	// identity (that is how a pre-m39 namespace gains its label at all), while
+	// it is only PRUNABLE by the default identity.
+	if owner := existing.GetLabels()[ControlPlaneLabel]; owner != "" && owner != r.identity() {
+		return fmt.Errorf("object %s belongs to control plane %q, not %q",
+			client.ObjectKeyFromObject(obj), owner, r.identity())
+	}
 	obj.SetResourceVersion(existing.GetResourceVersion())
 	return r.Client.Update(ctx, obj)
 }
 
 // pruneOrphans deletes managed tenant namespaces whose workspace is gone.
 // Only namespaces carrying the managed-by label and a workspace label are
-// considered — platform namespaces (bex-system, bex-build, …) never match.
+// considered — platform namespaces (bex-system, bex-build, …) never match —
+// and only those this control plane owns (ownedBy, ADR043 D9).
 func (r *NamespaceReconciler) pruneOrphans(ctx context.Context, desired map[string]bool) error {
 	var list corev1.NamespaceList
 	if err := r.Client.List(ctx, &list,
@@ -286,6 +316,9 @@ func (r *NamespaceReconciler) pruneOrphans(ctx context.Context, desired map[stri
 	for i := range list.Items {
 		ns := &list.Items[i]
 		if ns.Labels[LabelWorkspace] == "" || desired[ns.Name] {
+			continue
+		}
+		if !ownedBy(ns.Labels, r.identity()) {
 			continue
 		}
 		if ns.DeletionTimestamp != nil {
@@ -304,12 +337,16 @@ func isManaged(obj client.Object) bool {
 	return obj.GetLabels()[LabelManagedBy] == ManagedByValue
 }
 
-// managedLabels are stamped on every object the namespace reconciler owns, so
-// pruneOrphans and applyObject can recognize them and List can select them.
-func managedLabels(workspaceID string) map[string]string {
+// managedLabels is the full identity set for the two CLUSTER-scoped-pruned
+// objects — the Namespace itself and its ResourceQuota. The namespaced objects
+// (LimitRange, NetworkPolicy, RoleBinding) stamp LabelManagedBy alone, which is
+// sufficient: their prunes list InNamespace, so they can only ever see one
+// control plane's own namespaces and gain nothing from the identity.
+func (r *NamespaceReconciler) managedLabels(workspaceID string) map[string]string {
 	return map[string]string{
 		LabelManagedBy:              ManagedByValue,
 		core.LabelWorkspace:         workspaceID,
+		ControlPlaneLabel:           r.identity(),
 		"app.kubernetes.io/part-of": "bex",
 	}
 }
@@ -317,8 +354,8 @@ func managedLabels(workspaceID string) map[string]string {
 // workspaceNamespaceObject builds the Namespace for a workspace regime, with the
 // identity labels plus the Pod Security Admission baseline the shared tenant
 // namespace already enforces (deploy/gitops/base/tenant-namespace.yaml).
-func workspaceNamespaceObject(name string, t Tenant, regime string) *corev1.Namespace {
-	labels := managedLabels(t.ID)
+func (r *NamespaceReconciler) workspaceNamespaceObject(name string, t Tenant, regime string) *corev1.Namespace {
+	labels := r.managedLabels(t.ID)
 	labels[RegimeLabel] = regime
 	// PSS baseline enforced; restricted warned/audited (matches the shared
 	// tenant namespace — tenant images may legitimately run as root).
@@ -337,13 +374,13 @@ func workspaceNamespaceObject(name string, t Tenant, regime string) *corev1.Name
 // generous plan-scaled base (the per-namespace analog of the shared
 // tenant-apps-quota); t004 replaces the numbers with the exact plan-tier
 // catalog values and adds the count/<resource> caps that retire BEX_MAX_*.
-func baseResourceQuota(namespace string, t Tenant) *corev1.ResourceQuota {
+func (r *NamespaceReconciler) baseResourceQuota(namespace string, t Tenant) *corev1.ResourceQuota {
 	caps := quotaForPlan(t.Plan)
 	return &corev1.ResourceQuota{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "tenant-quota",
 			Namespace: namespace,
-			Labels:    managedLabels(t.ID),
+			Labels:    r.managedLabels(t.ID),
 		},
 		Spec: corev1.ResourceQuotaSpec{Hard: caps},
 	}

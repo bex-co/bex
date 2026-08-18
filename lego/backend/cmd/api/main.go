@@ -45,6 +45,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -1074,7 +1075,19 @@ func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler
 		// control plane also provisions each workspace's `<ws>` and `<ws>-sandbox`
 		// namespaces with base ResourceQuota/LimitRange/default-deny NetworkPolicy,
 		// and prunes them for deleted workspaces. App CRs project into `<ws>`.
+		// BEX_CP_IDENTITY scopes both cluster-scoped prunes to this control-plane
+		// instance; unset => "production" (docs/ADR043 D9). Fatal on a malformed
+		// value: it is projected into a label, and an invalid one would fail every
+		// namespace apply while ReconcileOnce collects those errors per-workspace
+		// without ever exiting — so the process would come up healthy, provision
+		// nothing, and keep pruning.
+		cpIdentity := os.Getenv("BEX_CP_IDENTITY")
+		if cpIdentity != "" && len(validation.IsValidLabelValue(cpIdentity)) != 0 {
+			log.Fatalf("bex-api: BEX_CP_IDENTITY %q is not a valid Kubernetes label value", cpIdentity)
+		}
 		nsRec := store.NewNamespaceReconciler(cl, st)
+		nsRec.Identity = cpIdentity
+		rec.Identity = cpIdentity
 		// Kick BOTH reconcilers on workspace create/delete for the same
 		// low-latency reason the projector is kicked on app writes: the
 		// projector prunes the deleted workspace's orphaned App CRs, the
