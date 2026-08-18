@@ -1,4 +1,6 @@
-# Security review round 7: codex-security repository scan (2026-08-14)
+# ADR072 — Security review round 7: codex-security repository scan (2026-08-14)
+
+> **Renumbered from ADR060 (2026-08-17, w6/m40)** — its second renumbering, after ADR058 → ADR060. `ADR060` was claimed by two documents; the number stays with [ADR060-build-worker-reliability-and-performance.md](ADR060-build-worker-reliability-and-performance.md), whose `D1`–`D8` decision references are cited ~3× more often. **The round-7 position in the security lineage is unchanged** — the chain is navigated by the explicit ADR028 → … → ADR069 references each round carries and by the `roundN` in these filenames, never by numeric order, so a round-7 document numbered 072 is not out of sequence.
 
 **Status:** implemented (7 of 10 addressed in place) · **Scope:** disposition of the 10 findings (3 medium, 7 low — no highs for the first time) from the codex-security static repository scan against revision `90061b3c`. Seventh pass in the ADR028 → w1/m53 → ADR045 → ADR055 → ADR056 → ADR057 → this lineage. Seven findings are addressed in place with regression tests; one is the fourth appearance of the standing PSL accepted risk; two carry accepted-risk notes or deferrals with concrete plans.
 

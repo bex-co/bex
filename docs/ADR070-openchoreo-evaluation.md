@@ -1,4 +1,6 @@
-# ADR040 — OpenChoreo whole-platform evaluation and plane ownership
+# ADR070 — OpenChoreo whole-platform evaluation and plane ownership
+
+> **Renumbered from ADR040 (2026-08-17, w6/m40).** `ADR040` was claimed by two documents; the number stays with [ADR040-billing-metronome.md](ADR040-billing-metronome.md), which carries ~5× the citations. Citations written before this date as "ADR040" may mean either document — read the context.
 
 **Status:** Accepted — **Reject whole-platform and per-plane adoption** at OpenChoreo v1.1.2; retain as a pattern source and future watch item · 2026-07-20
 

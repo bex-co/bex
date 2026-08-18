@@ -4,7 +4,7 @@
 
 ## Context
 
-Eleventh pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR060 → ADR061 → ADR063 → ADR064 lineage. The scan reported 10 findings (1 high, 5 medium, 4 low). Triage verified each against source; 7 were fixed in place with regression tests, 1 is a partial fix with a structural follow-up, 1 is a deferred repeat of the standing digest-pinning inventory, and 1 is accepted product behavior.
+Eleventh pass in the ADR028 → ADR045 → ADR055 → ADR056 → ADR057 → ADR072 → ADR061 → ADR063 → ADR064 lineage. The scan reported 10 findings (1 high, 5 medium, 4 low). Triage verified each against source; 7 were fixed in place with regression tests, 1 is a partial fix with a structural follow-up, 1 is a deferred repeat of the standing digest-pinning inventory, and 1 is accepted product behavior.
 
 Headline: the round's only high was a real bypass of the codex-F1 protected-secret guard — the validator enumerated the spec's secret-reference fields but not the two pending-projection annotations that `runtimeEnvSecret`/`secretFileMounts` project exactly like them, and the operational Secrets bex-api mints (`<app>-clone`, `<app>-registry-pull`) plus the operator's `reg-pull-<name>` carried no protected label at all. All three close under one contract change: the label moves to the shared `types/` module, every credential materializer stamps it, the validator covers annotations, and the operator's configured out-of-band secret names are denied by name.
 
