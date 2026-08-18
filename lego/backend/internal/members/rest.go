@@ -109,6 +109,18 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, inv)
 	})
+	// The caller's own effective permissions in a workspace (w9/m84, bex
+	// extension) — ownerId query param optional (absent => the caller's default
+	// workspace). The dashboard reads this to disable controls the server would
+	// refuse; a non-member gets the same 403 as any workspace-scoped read.
+	mux.HandleFunc("GET /v1/viewer/capabilities", func(w http.ResponseWriter, r *http.Request) {
+		caps, err := s.Capabilities(r.Context(), r.URL.Query().Get("ownerId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, caps)
+	})
 	// Redeem an invite token for the authenticated caller (w1/m33). Not
 	// workspace-scoped: the token identifies the invite; the caller may not
 	// (yet) be a member of the workspace it joins them to.

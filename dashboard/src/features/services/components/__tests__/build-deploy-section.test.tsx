@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BuildDeploySection } from "@/features/services/components/build-deploy-section";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 const setRootDir = vi.fn(async () => true);
 const setBranch = vi.fn(async () => true);
@@ -81,6 +83,7 @@ vi.mock("@/features/git/hooks/use-git-connection", () => ({
 }));
 
 beforeEach(() => {
+  vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   setRootDir.mockClear();
   setRootDir.mockResolvedValue(true);
   setBranch.mockClear();
@@ -113,6 +116,35 @@ async function confirmSave(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("BuildDeploySection", () => {
+  it("gates the create-only build config for a contributor, but not Auto-Deploy (w9/m84)", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={true}
+      />,
+    );
+    // A contributor cannot choose what the service runs: the create-gated rows
+    // hide their edit pencil and show the role reason instead of a 403-on-save.
+    expect(
+      screen.queryByRole("button", { name: "Edit Pre-Deploy Command" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText(/change what this service runs/i).length,
+    ).toBeGreaterThan(0);
+    // Auto-Deploy is can_operate — a contributor keeps it.
+    expect(
+      screen.getByRole("button", { name: "Edit Auto-Deploy" }),
+    ).toBeInTheDocument();
+  });
+
   it("shows the repo read-only and the current branch inside a disabled input", () => {
     render(
       <BuildDeploySection

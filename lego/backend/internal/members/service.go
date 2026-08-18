@@ -232,6 +232,28 @@ type AcceptedInviteView struct {
 	AuthorizationPending bool   `json:"authorizationPending,omitempty"`
 }
 
+// Capabilities is the calling user's effective authorization in ONE workspace —
+// the read-only projection the dashboard reads to gate controls the server would
+// refuse (w9/m84, docs/ADR024-members.md § the contributor boundary). A member
+// lacking a permission then sees a disabled control with a reason instead of an
+// editable field that 403s on save. Role is the caller's UPPERCASE workspace role
+// (omitted when the store is off or the membership can't be resolved); each
+// boolean is a non-auditing probe of the matching OpenFGA relation
+// (core.Base.Can), so the UI can never disagree with a real refusal and asking
+// "what can I do" records nothing. The server stays authoritative — this is a
+// courtesy hint, never a security boundary.
+type Capabilities struct {
+	Role             string `json:"role"`
+	CanView          bool   `json:"canView"`
+	CanViewLogs      bool   `json:"canViewLogs"`
+	CanOperate       bool   `json:"canOperate"`
+	CanCreate        bool   `json:"canCreate"`
+	CanViewSensitive bool   `json:"canViewSensitive"`
+	CanManageKeys    bool   `json:"canManageKeys"`
+	CanManage        bool   `json:"canManage"`
+	CanManageBilling bool   `json:"canManageBilling"`
+}
+
 func memberView(m store.TenantMember) MemberView {
 	return MemberView{Subject: m.Subject, Role: wireRole(m.Role), CreatedAt: rfc3339(m.CreatedAt)}
 }
@@ -265,6 +287,42 @@ func canonicalRole(s string) (string, bool) {
 
 // wireRole renders a stored role as Render's UPPERCASE enum.
 func wireRole(role string) string { return strings.ToUpper(role) }
+
+// Capabilities returns the caller's effective authorization in workspaceID — the
+// read-only projection the dashboard consumes to disable controls the server
+// would refuse (w9/m84). Empty workspaceID resolves the caller's default
+// workspace, exactly like a create. Requires can_view (any member); a non-member
+// is ErrForbidden, like every workspace-scoped verb. The booleans are
+// non-auditing Can-probes, so this read records nothing even though it touches
+// every relation. The role string is best-effort: a nil store (DB-less mode) or
+// an unresolvable membership just omits it — the booleans are the authoritative
+// part the UI gates on.
+func (s *Service) Capabilities(ctx context.Context, workspaceID string) (Capabilities, error) {
+	ctx = core.WithWorkspace(ctx, workspaceID)
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return Capabilities{}, err
+	}
+	caps := Capabilities{
+		CanView:          true, // the gate above proved it
+		CanViewLogs:      s.Can(ctx, core.RelCanViewLogs),
+		CanOperate:       s.Can(ctx, core.RelCanOperate),
+		CanCreate:        s.Can(ctx, core.RelCanCreate),
+		CanViewSensitive: s.Can(ctx, core.RelCanViewSensitive),
+		CanManageKeys:    s.Can(ctx, core.RelCanManageKeys),
+		CanManage:        s.Can(ctx, core.RelCanManage),
+		CanManageBilling: s.Can(ctx, core.RelCanManageBilling),
+	}
+	if s.Store != nil {
+		if tenantID, ok := s.Tenant(ctx); ok {
+			if idn, ok := core.IdentityFrom(ctx); ok {
+				if m, err := s.Store.GetTenantMember(ctx, tenantID, idn.Subject); err == nil {
+					caps.Role = wireRole(m.Role)
+				}
+			}
+		}
+	}
+	return caps, nil
+}
 
 // List returns a workspace's accepted members. Viewer-and-up (can_view on the
 // named workspace) — Render shows the members list to every role.

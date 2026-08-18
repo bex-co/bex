@@ -24,6 +24,7 @@ import enDeploys from "@/features/deploys/locales/en";
 import enSSHKeys from "@/features/ssh-keys/locales/en";
 import enInvites from "@/features/invites/locales/en";
 import enAgentSessions from "@/features/agent-sessions/locales/en";
+import enCapabilities from "@/features/capabilities/locales/en";
 import {
   DEFAULT_LANGUAGE,
   type SupportedLanguage,
@@ -80,6 +81,7 @@ export const en: Record<string, string> = {
   ...extractMessages(enSSHKeys),
   ...extractMessages(enInvites),
   ...extractMessages(enAgentSessions),
+  ...extractMessages(enCapabilities),
 };
 
 // Only the default language is bundled eagerly (into the entry chunk). Other

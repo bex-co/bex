@@ -8,6 +8,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useCronJob } from "@/features/services/hooks/use-cron-job";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { isValidCron } from "@/features/services/lib/cron";
 
 export interface CronDeploySectionProps {
@@ -32,7 +33,27 @@ export function CronDeploySection({
 }: CronDeploySectionProps) {
   const { t } = useTranslations();
   const { updateCronJob, busy } = useCronJob();
+  const { canCreate, canOperate } = useCapabilities();
   const loading = schedule === null;
+
+  // Setting the entrypoint command is can_create (it chooses code the job runs).
+  // The dashboard re-sends the existing command when saving the schedule, so
+  // editing the schedule of a command-bearing cron also needs can_create; a
+  // command-less schedule is a plain settings change (can_operate). Mirror that
+  // so a member sees a disabled row with a reason, not a 403 on save (w9/m84).
+  const hasCommand = (command ?? "").trim() !== "";
+  const scheduleNeedsCreate = hasCommand;
+  const scheduleBlocked = scheduleNeedsCreate ? !canCreate : !canOperate;
+  const scheduleReason = scheduleBlocked
+    ? t(
+        scheduleNeedsCreate
+          ? "capabilities.reasonCanCreate"
+          : "capabilities.reasonCanOperate",
+      )
+    : undefined;
+  const commandReason = !canCreate
+    ? t("capabilities.reasonCanCreate")
+    : undefined;
 
   return (
     <Card>
@@ -49,7 +70,8 @@ export function CronDeploySection({
           editLabel={t("services.deployScheduleEdit")}
           mono
           busy={busy}
-          disabled={loading}
+          disabled={loading || scheduleBlocked}
+          disabledReason={scheduleReason}
           validate={(draft) => {
             const sched = draft.trim();
             if (!sched) return t("services.deployScheduleRequired");
@@ -69,7 +91,8 @@ export function CronDeploySection({
           optional
           mono
           busy={busy}
-          disabled={loading}
+          disabled={loading || !canCreate}
+          disabledReason={commandReason}
           onSave={(value) =>
             updateCronJob(serviceId, (schedule ?? "").trim(), value)
           }

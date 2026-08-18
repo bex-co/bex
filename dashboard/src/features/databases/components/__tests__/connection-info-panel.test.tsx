@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConnectionInfoPanel } from "@/features/databases/components/connection-info-panel";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 import type { ConnectionInfoView } from "@/features/databases/types";
+
+const PERMISSIVE = mockCapabilities();
 
 const reveal = vi.fn();
 const hide = vi.fn();
@@ -22,6 +26,7 @@ beforeEach(() => {
   state.error = undefined;
   reveal.mockReset();
   hide.mockReset();
+  vi.mocked(useCapabilities).mockReturnValue(PERMISSIVE);
 });
 
 describe("ConnectionInfoPanel", () => {
@@ -42,6 +47,18 @@ describe("ConnectionInfoPanel", () => {
       screen.getByRole("button", { name: /reveal connection info/i }),
     );
     expect(reveal).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables Reveal for a member without can_view_sensitive (w9/m84)", () => {
+    vi.mocked(useCapabilities).mockReturnValue({
+      ...PERMISSIVE,
+      role: "CONTRIBUTOR",
+      canViewSensitive: false,
+    });
+    render(<ConnectionInfoPanel id="db" />);
+    expect(
+      screen.getByRole("button", { name: /reveal connection info/i }),
+    ).toBeDisabled();
   });
 
   it("masks the password until the show toggle, then unmasks the real value", async () => {

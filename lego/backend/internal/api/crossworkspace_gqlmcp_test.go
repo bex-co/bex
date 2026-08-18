@@ -238,6 +238,14 @@ var callerScopedMCPTools = map[string]bool{
 	// is unwired, so the matrix sees a success — still caller-scoped, never a
 	// cross-workspace read (TestCapabilitiesProjection proves the tea-b denial).
 	"get_agent_session_capabilities": true,
+	// The caller's OWN effective permissions in their active workspace (w9/m84):
+	// arg-less, so it resolves to the caller's workspace (NamedWorkspace) and
+	// reports what each relation evaluates to there. With no owner injected it
+	// returns the caller's own capabilities; a member gate (can_view) denies an
+	// ownerId naming a workspace the caller isn't in, so it can never read
+	// another workspace's data (members.TestViewerCapabilitiesProjection proves
+	// the non-member denial).
+	"get_viewer_capabilities": true,
 }
 
 func TestCrossWorkspaceMCPMatrix(t *testing.T) {

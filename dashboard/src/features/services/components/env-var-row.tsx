@@ -15,6 +15,7 @@ import {
   AlertDialogTrigger,
 } from "@/common/components/ui/alert-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import type { EnvVarKey } from "@/features/services/types";
 
 const MASK = "••••••••••••";
@@ -31,6 +32,12 @@ interface EnvVarRowProps {
   busy: boolean;
   /** Context-specific consequence shown in the delete confirmation. */
   deleteConfirmBody?: string;
+  /** Whether the caller may reveal secret values (can_view_sensitive); when
+   *  false the reveal button is disabled with a reason (w9/m84). Defaults true
+   *  so a caller that doesn't thread capabilities keeps prior behavior. */
+  canReveal?: boolean;
+  /** Reason shown on the disabled reveal button when `canReveal` is false. */
+  revealReason?: string;
 }
 
 /**
@@ -45,6 +52,8 @@ export function EnvVarRow({
   onDelete,
   busy,
   deleteConfirmBody,
+  canReveal = true,
+  revealReason,
 }: EnvVarRowProps) {
   const { t } = useTranslations();
   const [value, setValue] = useState<string | null>(null); // null = not revealed
@@ -148,25 +157,31 @@ export function EnvVarRow({
                     : value
                   : MASK}
             </span>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label={
-                value !== null
-                  ? t("services.envHideSecret")
-                  : t("services.envShowSecret")
-              }
-              disabled={revealing}
-              onClick={() => void toggleReveal()}
+            <PermissionTooltip
+              reason={value === null && !canReveal ? revealReason : undefined}
             >
-              {revealing ? (
-                <Loader2 className="animate-spin" />
-              ) : value !== null ? (
-                <EyeOff />
-              ) : (
-                <Eye />
-              )}
-            </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label={
+                  value !== null
+                    ? t("services.envHideSecret")
+                    : t("services.envShowSecret")
+                }
+                // Hiding an already-revealed value never needs permission; only
+                // revealing does (can_view_sensitive).
+                disabled={revealing || (value === null && !canReveal)}
+                onClick={() => void toggleReveal()}
+              >
+                {revealing ? (
+                  <Loader2 className="animate-spin" />
+                ) : value !== null ? (
+                  <EyeOff />
+                ) : (
+                  <Eye />
+                )}
+              </Button>
+            </PermissionTooltip>
           </div>
         )}
       </TableCell>

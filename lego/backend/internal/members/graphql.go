@@ -72,6 +72,25 @@ var inviteGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// viewerCapabilitiesGQLType is the caller's effective authorization in one
+// workspace — what the dashboard reads to disable controls the server would
+// refuse (w9/m84). role is UPPERCASE (or "" when unresolved); every can* is the
+// authoritative Can-probe of the matching relation.
+var viewerCapabilitiesGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ViewerCapabilities",
+	Fields: graphql.Fields{
+		"role":             gqlutil.StrField(func(c Capabilities) any { return c.Role }),
+		"canView":          gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanView }),
+		"canViewLogs":      gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanViewLogs }),
+		"canOperate":       gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanOperate }),
+		"canCreate":        gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanCreate }),
+		"canViewSensitive": gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanViewSensitive }),
+		"canManageKeys":    gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanManageKeys }),
+		"canManage":        gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanManage }),
+		"canManageBilling": gqlutil.ReqBoolField(func(c Capabilities) any { return c.CanManageBilling }),
+	},
+})
+
 func workspaceIDArg() graphql.FieldConfigArgument {
 	return graphql.FieldConfigArgument{
 		"workspaceId": gqlutil.ReqArg(graphql.String),
@@ -100,6 +119,19 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Args: workspaceIDArg(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SeatUsage(p.Context, p.Args["workspaceId"].(string))
+			},
+		},
+		// viewerCapabilities is the caller's own effective permissions in a
+		// workspace — ownerId optional (absent => the caller's default), the
+		// dashboard passes its active workspace. Distinct from workspaceMembers:
+		// that lists everyone; this answers "what can *I* do here".
+		"viewerCapabilities": &graphql.Field{
+			Type: viewerCapabilitiesGQLType,
+			Args: graphql.FieldConfigArgument{
+				"ownerId": gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Capabilities(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
 	}

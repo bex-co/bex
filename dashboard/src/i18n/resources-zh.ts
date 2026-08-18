@@ -24,6 +24,7 @@ import zhDeploys from "@/features/deploys/locales/zh";
 import zhSSHKeys from "@/features/ssh-keys/locales/zh";
 import zhInvites from "@/features/invites/locales/zh";
 import zhAgentSessions from "@/features/agent-sessions/locales/zh";
+import zhCapabilities from "@/features/capabilities/locales/zh";
 import { extractMessages } from "./index";
 
 /**
@@ -62,6 +63,7 @@ const zh: Record<string, string> = {
   ...extractMessages(zhSSHKeys),
   ...extractMessages(zhInvites),
   ...extractMessages(zhAgentSessions),
+  ...extractMessages(zhCapabilities),
 };
 
 export default zh;
