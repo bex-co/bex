@@ -249,6 +249,25 @@ mint_attach() {
   api POST "/v1/agent-sessions/$1/attach-ticket" ""
 }
 
+wait_attach() {
+  # wait_attach SESSION_ID -> waits for asynchronous sandbox provisioning, then
+  # prints the attach-ticket JSON. Any non-retryable mint error stays loud.
+  local sid="$1" deadline=$(( $(date +%s) + timeout_s )) mint code
+  while :; do
+    mint="$(mint_attach "$sid")"
+    if [ -n "$(jq -r '.ticket // empty' <<<"$mint")" ]; then
+      printf '%s\n' "$mint"
+      return 0
+    fi
+    code="$(jq -r '.code // empty' <<<"$mint")"
+    [ "$code" = AGENT_SESSION_NOT_ATTACHABLE ] \
+      || fail "attach-ticket failed for ${sid}: $(jq -c '{code,error}' <<<"$mint")"
+    [ "$(date +%s)" -lt "$deadline" ] \
+      || fail "session ${sid} did not become attachable within ${timeout_s}s"
+    sleep 5
+  done
+}
+
 # stream_get TICKET URL [max_seconds] -> prints "<http_code>\n<headers+body>";
 # reads the SSE with a hard cap so a stalled stream can never hang the verifier.
 stream_get() {
@@ -309,7 +328,7 @@ live_sid="$(jq -r '.id // empty' <<<"$(create_session "$live_branch" "Add VERIFY
 [ -n "$live_sid" ] || fail "live-attach session create returned no id"
 created_sessions+=("$live_sid")
 live_stream="$(stream_url_for "$live_sid")"
-live_ticket="$(jq -r '.ticket // empty' <<<"$(mint_attach "$live_sid")")"
+live_ticket="$(jq -r '.ticket // empty' <<<"$(wait_attach "$live_sid")")"
 [ -n "$live_ticket" ] || fail "live-attach ticket mint returned no ticket"
 # Attach during the live turn: the stream carries real parts and terminates with
 # [DONE] when the turn ends (bounded by the turn timeout).
