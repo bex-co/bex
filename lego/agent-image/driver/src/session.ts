@@ -284,6 +284,7 @@ export async function runHeadlessTurn(
                   for (const chunk of mapper.map(update)) writer.write(chunk);
                 },
                 abortSignal: turnAbort.signal,
+                redact: (value) => credentialManager.redact(value),
               },
             );
             promptResponse = await provider.prompt(prompt);

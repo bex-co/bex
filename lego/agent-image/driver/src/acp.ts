@@ -52,6 +52,10 @@ export interface CreateSessionOptions {
   // abortSignal, when aborted (turn timeout), SIGKILLs the child even if we are
   // still mid-connect — so a hung `initialize` cannot leak the process.
   abortSignal?: AbortSignal;
+  // Child stderr can contain the injected model credential. Sanitize it while
+  // the credential manager still holds its needles; the caller deliberately
+  // forgets them after persisting a terminal verdict.
+  redact: (value: unknown) => string;
 }
 
 function withTimeout<T>(
@@ -100,9 +104,47 @@ export async function createSessionProvider(
       stderr = stderr.subarray(stderr.length - maxStderrBytes);
     }
   });
+
+  // Install one terminal signal before constructing the protocol stream and
+  // race every ACP operation against it. The SDK's write path can log an EPIPE
+  // without rejecting the pending JSON-RPC request; the old lifecycle promise
+  // did not watch stdio, and only prompt raced child exit. Either case could
+  // leave status at `running` until the four-hour turn deadline.
+  let terminalSettled = false;
+  let rejectTerminal!: (error: Error) => void;
+  const terminal = new Promise<never>((_, reject) => {
+    rejectTerminal = reject;
+  });
+  terminal.catch(() => {}); // cleanup also closes stdio after a successful turn
+
+  const failTerminal = (error: Error) => {
+    if (terminalSettled) return;
+    terminalSettled = true;
+    rejectTerminal(error);
+  };
+  const exitError = (code: number | null, signal: NodeJS.Signals | null) => {
+    const detail = options.redact(stderr.toString().trim());
+    return new Error(
+      `ACP agent exited (code=${code}, signal=${signal})${detail ? `: ${detail}` : ""}`,
+    );
+  };
+  const onExit = (code: number | null, signal: NodeJS.Signals | null) =>
+    failTerminal(exitError(code, signal));
+  const onStreamError = (stream: "stdin" | "stdout", error: Error) =>
+    failTerminal(new Error(`ACP agent ${stream} failed: ${error.message}`));
+
+  child.once("exit", onExit);
+  child.once("error", failTerminal);
+  child.stdin.once("error", (error) => onStreamError("stdin", error));
+  child.stdout.once("error", (error) => onStreamError("stdout", error));
+  // Cover an exit observed between spawn() and listener installation.
+  if (child.exitCode !== null || child.signalCode !== null) {
+    onExit(child.exitCode, child.signalCode);
+  }
+
   const stopped = new Promise<void>((resolve) => {
-    if (child.exitCode !== null) resolve();
-    else child.once("exit", () => resolve());
+    if (child.exitCode !== null || child.signalCode !== null) resolve();
+    else child.once("close", () => resolve());
   });
   const cleanup = async () => {
     if (child.exitCode === null) child.kill("SIGKILL");
@@ -131,26 +173,21 @@ export async function createSessionProvider(
   );
   const connection = new ClientSideConnection(() => client, stream);
 
-  // If the child dies during setup, surface a diagnostic instead of a generic
-  // stream-closed error.
-  const exited = new Promise<never>((_, reject) => {
-    child.once("exit", (code, signal) =>
-      reject(
-        new Error(
-          `ACP agent exited (code=${code}, signal=${signal}): ${stderr.toString().trim()}`,
-        ),
-      ),
-    );
-    child.once("error", reject);
-  });
-  exited.catch(() => {}); // avoid an unhandled rejection when the turn ends first
-
   const connectTimeoutMs = Math.min(
     config.turnTimeoutMs,
     maximumConnectTimeoutMs,
   );
+  const setupCall = <T>(
+    operation: Promise<T>,
+    phase: "connect" | "session load" | "session create",
+  ) =>
+    withTimeout(
+      Promise.race([operation, terminal]),
+      connectTimeoutMs,
+      `ACP ${phase} timed out after ${connectTimeoutMs}ms`,
+    );
   try {
-    const initialize = await withTimeout(
+    const initialize = await setupCall(
       connection.initialize({
         protocolVersion: PROTOCOL_VERSION,
         clientCapabilities: {
@@ -159,27 +196,32 @@ export async function createSessionProvider(
         },
         clientInfo: { name: "bex-agent-driver", version: "0.1.0" },
       }),
-      connectTimeoutMs,
-      `ACP connect timed out after ${connectTimeoutMs}ms`,
+      "connect",
     );
 
     let sessionId: string;
     let resume: SessionProvider["resume"] = "new";
     const loadSupported = initialize.agentCapabilities?.loadSession === true;
     if (config.existingSessionId && loadSupported) {
-      await connection.loadSession({
-        sessionId: config.existingSessionId,
-        cwd: config.cwd,
-        mcpServers: [],
-      });
+      await setupCall(
+        connection.loadSession({
+          sessionId: config.existingSessionId,
+          cwd: config.cwd,
+          mcpServers: [],
+        }),
+        "session load",
+      );
       sessionId = config.existingSessionId;
       resume = "loaded";
     } else {
       if (config.existingSessionId) resume = "unsupported";
-      const created = await connection.newSession({
-        cwd: config.cwd,
-        mcpServers: [],
-      });
+      const created = await setupCall(
+        connection.newSession({
+          cwd: config.cwd,
+          mcpServers: [],
+        }),
+        "session create",
+      );
       sessionId = created.sessionId;
     }
 
@@ -189,7 +231,7 @@ export async function createSessionProvider(
       prompt(text: string) {
         return Promise.race([
           connection.prompt({ sessionId, prompt: [{ type: "text", text }] }),
-          exited,
+          terminal,
         ]);
       },
       cancel() {
