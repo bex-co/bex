@@ -373,6 +373,31 @@ func TestCreateSupportsDisabledAllEventsAndRequiresUniqueName(t *testing.T) {
 	}
 }
 
+func TestListProjectsLatestAttemptWithoutAHistoryLookup(t *testing.T) {
+	s, st := newTestService()
+	created, err := s.Create(context.Background(), CreateRequest{
+		Name: "latest", URL: "https://example.com/latest", EventTypes: []string{}, Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
+	row := st.rows[created.ID]
+	row.LatestAttemptStatus = store.WebhookAttemptFailed
+	row.LatestAttemptAt = &at
+	row.LatestParentStatus = store.WebhookAttemptPending
+	st.rows[created.ID] = row
+
+	views, err := s.List(context.Background(), "")
+	if err != nil || len(views) != 1 {
+		t.Fatalf("List = %+v, %v", views, err)
+	}
+	if views[0].LatestStatus != DeliveryFailed || views[0].LatestParentStatus != DeliveryPending ||
+		views[0].LatestSentAt != at.Format(time.RFC3339) {
+		t.Fatalf("latest projection = %+v", views[0])
+	}
+}
+
 func TestUpdateDistinguishesOmittedAndExplicitEmptyEventTypes(t *testing.T) {
 	s, _ := newTestService()
 	ctx := context.Background()

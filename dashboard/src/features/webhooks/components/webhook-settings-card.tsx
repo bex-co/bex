@@ -24,34 +24,20 @@ import {
   AlertDialogTrigger,
 } from "@/common/components/ui/alert-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { EventPicker } from "@/features/webhooks/components/event-picker";
+import { WebhookEventPickerField } from "@/features/webhooks/components/webhook-event-picker-field";
 import { useDeleteWebhook } from "@/features/webhooks/hooks/use-delete-webhook";
 import { useSetWebhookEnabled } from "@/features/webhooks/hooks/use-set-webhook-enabled";
 import { useUpdateWebhook } from "@/features/webhooks/hooks/use-update-webhook";
 import { useWebhookEventTypes } from "@/features/webhooks/hooks/use-webhook-event-types";
+import { useWebhookFormFeedback } from "@/features/webhooks/hooks/use-webhook-form-feedback";
+import { useWebhooks } from "@/features/webhooks/hooks/use-webhooks";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 
 function sameSet(a: Set<string>, b: string[]): boolean {
   return a.size === b.length && b.every((item) => a.has(item));
 }
 
-function validHTTPSURL(value: string): boolean {
-  try {
-    return new URL(value).protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-/**
- * The Settings tab (w1/m49/t005) — the dashboard's first webhook EDIT
- * surface, over `updateWebhookEndpoint` (shipped w3/m11, never wired until
- * now). Render's Settings shape (docs/render-artifacts/webhooks-ui.md):
- * General (status toggle, name, URL, signing-secret row), Subscribed Events
- * with Save changes disabled until dirty, and Delete behind Render's
- * type-to-confirm (`delete webhook <name>`). The secret row is a mint-once
- * note, not a reveal — the t006 decision keeps bex's contract.
- */
 export function WebhookSettingsCard({
   endpoint,
 }: {
@@ -59,10 +45,22 @@ export function WebhookSettingsCard({
 }) {
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { eventTypes, loading: typesLoading } = useWebhookEventTypes();
-  const { update, busy: saving } = useUpdateWebhook();
+  const {
+    eventTypes,
+    loading: typesLoading,
+    error: typesError,
+    retry: retryTypes,
+  } = useWebhookEventTypes();
+  const {
+    update,
+    busy: saving,
+    error: mutationError,
+    clearError,
+  } = useUpdateWebhook();
   const { setEnabled, toggling } = useSetWebhookEnabled();
   const { remove, deleting } = useDeleteWebhook();
+  const { endpoints } = useWebhooks({ poll: false });
+  const { canManage, loaded: capabilitiesLoaded } = useCapabilities();
 
   const [name, setName] = useState(endpoint.name);
   const [url, setUrl] = useState(endpoint.url);
@@ -72,6 +70,12 @@ export function WebhookSettingsCard({
   const [allEvents, setAllEvents] = useState(
     () => endpoint.eventTypes.length === 0,
   );
+  const { errors, nameRef, urlRef, eventsRef, validate, clearField } =
+    useWebhookFormFeedback({
+      mutationError,
+      fallbackMessage: t("webhooks.updateError"),
+      clearMutationError: clearError,
+    });
   const pickerValue = useMemo(
     () => (allEvents ? new Set(eventTypes) : checked),
     [allEvents, checked, eventTypes],
@@ -82,13 +86,20 @@ export function WebhookSettingsCard({
     name !== endpoint.name ||
     url !== endpoint.url ||
     !sameSet(new Set(targetEventTypes), endpoint.eventTypes);
-  const valid =
-    name.trim() !== "" &&
-    validHTTPSURL(url.trim()) &&
-    (allEvents || checked.size > 0);
-  const canSave = dirty && valid && !saving;
+  const catalogReady = !typesLoading && !typesError && eventTypes.length > 0;
+  const canSave = dirty && catalogReady && canManage && !saving;
 
   async function handleSave() {
+    const valid = validate({
+      name,
+      url,
+      selectedEventCount: allEvents ? eventTypes.length : checked.size,
+      existingNames: endpoints
+        .filter((candidate) => candidate.id !== endpoint.id)
+        .map((candidate) => candidate.name),
+      currentName: endpoint.name,
+    });
+    if (!valid) return;
     if (!canSave) return;
     // Send only what changed — the backend's Update keeps omitted fields
     // (service.Update's merge), same semantics as REST PATCH.
@@ -108,6 +119,16 @@ export function WebhookSettingsCard({
 
   return (
     <div className="space-y-6">
+      {capabilitiesLoaded && !canManage ? (
+        <p className="text-muted-foreground text-sm" role="status">
+          {t("webhooks.manageRequired")}
+        </p>
+      ) : null}
+      {Object.keys(errors).length > 0 ? (
+        <p className="text-destructive text-sm" role="alert">
+          {t("webhooks.formErrorsSummary")}
+        </p>
+      ) : null}
       <Card>
         <CardHeader>
           <CardTitle>{t("webhooks.settingsGeneral")}</CardTitle>
@@ -130,7 +151,7 @@ export function WebhookSettingsCard({
             <Switch
               id="webhook-status"
               checked={endpoint.enabled}
-              disabled={toggling === endpoint.id}
+              disabled={!canManage || toggling === endpoint.id}
               onCheckedChange={(v) =>
                 void setEnabled(endpoint.id, endpoint.name, v)
               }
@@ -145,10 +166,27 @@ export function WebhookSettingsCard({
             </p>
             <Input
               id="webhook-settings-name"
+              ref={nameRef}
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                clearField("name");
+              }}
               autoComplete="off"
+              disabled={!canManage}
+              aria-invalid={!!errors.name}
+              aria-describedby={
+                errors.name ? "webhook-settings-name-error" : undefined
+              }
             />
+            {errors.name ? (
+              <p
+                id="webhook-settings-name-error"
+                className="text-destructive text-sm"
+              >
+                {errors.name}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="webhook-settings-url">
@@ -159,11 +197,28 @@ export function WebhookSettingsCard({
             </p>
             <Input
               id="webhook-settings-url"
+              ref={urlRef}
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={(e) => {
+                setUrl(e.target.value);
+                clearField("url");
+              }}
               autoComplete="off"
               inputMode="url"
+              disabled={!canManage}
+              aria-invalid={!!errors.url}
+              aria-describedby={
+                errors.url ? "webhook-settings-url-error" : undefined
+              }
             />
+            {errors.url ? (
+              <p
+                id="webhook-settings-url-error"
+                className="text-destructive text-sm"
+              >
+                {errors.url}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-1">
             <Label>{t("webhooks.secretLabel")}</Label>
@@ -183,47 +238,67 @@ export function WebhookSettingsCard({
           <CardDescription>{t("webhooks.fieldEventsHelp")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {typesLoading && eventTypes.length === 0 ? (
-            <p className="text-muted-foreground py-2 text-sm">
-              {t("webhooks.eventsLoading")}
-            </p>
-          ) : (
-            <EventPicker
+          <div ref={eventsRef} tabIndex={-1} aria-invalid={!!errors.events}>
+            <WebhookEventPickerField
               eventTypes={eventTypes}
+              loading={typesLoading}
+              error={typesError}
+              retry={retryTypes}
               value={pickerValue}
               onChange={(next) => {
                 const selectedAll =
                   eventTypes.length > 0 && next.size === eventTypes.length;
                 setAllEvents(selectedAll);
                 setChecked(selectedAll ? new Set() : next);
+                clearField("events");
               }}
-              disabled={saving}
+              disabled={saving || !canManage}
+              describedBy={
+                errors.events ? "webhook-settings-events-error" : undefined
+              }
             />
-          )}
-          <div className="flex justify-end">
-            <Button onClick={() => void handleSave()} disabled={!canSave}>
-              {saving ? <Loader2 className="animate-spin" /> : null}
-              {t("webhooks.saveChanges")}
-            </Button>
           </div>
+          {errors.events ? (
+            <p
+              id="webhook-settings-events-error"
+              className="text-destructive text-sm"
+            >
+              {errors.events}
+            </p>
+          ) : null}
+          {canManage ? (
+            <div className="flex justify-end">
+              <Button onClick={() => void handleSave()} disabled={!canSave}>
+                {saving ? <Loader2 className="animate-spin" /> : null}
+                {t("webhooks.saveChanges")}
+              </Button>
+            </div>
+          ) : null}
+          {errors.form ? (
+            <p className="text-destructive text-sm" role="alert">
+              {errors.form}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-destructive">
-            {t("webhooks.deleteSection")}
-          </CardTitle>
-          <CardDescription>{t("webhooks.deleteConfirmBody")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DeleteWebhookConfirm
-            name={endpoint.name}
-            deleting={deleting === endpoint.id}
-            onConfirm={() => void handleDelete()}
-          />
-        </CardContent>
-      </Card>
+      {canManage ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-destructive">
+              {t("webhooks.deleteSection")}
+            </CardTitle>
+            <CardDescription>{t("webhooks.deleteConfirmBody")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DeleteWebhookConfirm
+              name={endpoint.name}
+              deleting={deleting === endpoint.id}
+              onConfirm={() => void handleDelete()}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

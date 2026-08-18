@@ -65,6 +65,9 @@ vi.mock("@/features/workspaces/context/hooks", () => ({
     currentWorkspaceId,
   }),
 }));
+vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
+  useCapabilities: () => ({ canManage: currentRole === "admin", loaded: true }),
+}));
 
 describe("WebhookDeliveriesCard", () => {
   beforeEach(() => {

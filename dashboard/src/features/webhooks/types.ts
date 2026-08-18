@@ -17,6 +17,11 @@ export interface WebhookEndpointView {
   /** Stored creator subject — resolved through the workspace member API for
    * display; "" when none was recorded. List rows leave it empty. */
   createdBy: string;
+  /** Newest completed immutable attempt, populated on list rows. */
+  latestStatus?: WebhookDeliveryStatus | "";
+  latestSentAt?: string | null;
+  /** Logical notification state for the newest attempt. */
+  latestParentStatus?: WebhookDeliveryStatus | "";
 }
 
 /** A freshly registered endpoint — the one and only time its secret is available. */

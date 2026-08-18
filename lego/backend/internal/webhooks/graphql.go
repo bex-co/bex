@@ -39,10 +39,13 @@ var endpointGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"disabledReason": gqlutil.StrField(func(v EndpointView) any { return v.DisabledReason }),
 		// secret is non-null only on the create mutation's result — the
 		// mint-once rule (see rest.go's endpointWire).
-		"secret":    gqlutil.StrField(func(v EndpointView) any { return v.Secret }),
-		"createdBy": gqlutil.StrField(func(v EndpointView) any { return v.CreatedBy }),
-		"createdAt": gqlutil.StrField(func(v EndpointView) any { return v.CreatedAt }),
-		"updatedAt": gqlutil.StrField(func(v EndpointView) any { return v.UpdatedAt }),
+		"secret":             gqlutil.StrField(func(v EndpointView) any { return v.Secret }),
+		"createdBy":          gqlutil.StrField(func(v EndpointView) any { return v.CreatedBy }),
+		"createdAt":          gqlutil.StrField(func(v EndpointView) any { return v.CreatedAt }),
+		"updatedAt":          gqlutil.StrField(func(v EndpointView) any { return v.UpdatedAt }),
+		"latestStatus":       gqlutil.StrField(func(v EndpointView) any { return v.LatestStatus }),
+		"latestSentAt":       gqlutil.StrField(func(v EndpointView) any { return v.LatestSentAt }),
+		"latestParentStatus": gqlutil.StrField(func(v EndpointView) any { return v.LatestParentStatus }),
 	},
 })
 

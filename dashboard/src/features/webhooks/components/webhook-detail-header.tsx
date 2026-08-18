@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
@@ -6,7 +5,7 @@ import { Button } from "@/common/components/ui/button";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatDateLong } from "@/common/lib/format";
-import { eventLabelKey } from "@/features/webhooks/event-catalog";
+import { WebhookEventChips } from "@/features/webhooks/components/webhook-event-chips";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 
 /**
@@ -96,57 +95,12 @@ export function WebhookDetailHeader({
         ) : null}
       </div>
       <div className="pl-12">
-        <EventChips eventTypes={endpoint.eventTypes} />
+        <WebhookEventChips
+          eventTypes={endpoint.eventTypes}
+          preview={5}
+          className="items-center"
+        />
       </div>
-    </div>
-  );
-}
-
-const CHIP_PREVIEW = 5;
-
-/**
- * Subscribed-event chips with Render's "Show N more" expander (5 visible by
- * default). Header-internal.
- */
-function EventChips({ eventTypes }: { eventTypes: string[] }) {
-  const { t } = useTranslations();
-  const [expanded, setExpanded] = useState(false);
-  if (eventTypes.length === 0) {
-    return <Badge variant="secondary">{t("webhooks.allEvents")}</Badge>;
-  }
-  const shown = expanded ? eventTypes : eventTypes.slice(0, CHIP_PREVIEW);
-  const hidden = eventTypes.length - shown.length;
-
-  return (
-    <div className="flex flex-wrap items-center gap-1">
-      {shown.map((eventType) => {
-        const labelKey = eventLabelKey(eventType);
-        return (
-          <Badge key={eventType} variant="secondary">
-            {labelKey ? t(labelKey) : eventType}
-          </Badge>
-        );
-      })}
-      {hidden > 0 ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 px-2 text-xs"
-          onClick={() => setExpanded(true)}
-        >
-          {t("webhooks.showMore", { count: hidden })}
-        </Button>
-      ) : null}
-      {expanded && eventTypes.length > CHIP_PREVIEW ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 px-2 text-xs"
-          onClick={() => setExpanded(false)}
-        >
-          {t("webhooks.showLess")}
-        </Button>
-      ) : null}
     </div>
   );
 }

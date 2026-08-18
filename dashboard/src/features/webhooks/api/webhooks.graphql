@@ -14,6 +14,9 @@ query WebhookEndpoints($ownerId: String) {
     enabled
     disabledReason
     createdAt
+    latestStatus
+    latestSentAt
+    latestParentStatus
   }
 }
 

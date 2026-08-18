@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { DeleteWebhookEndpointDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { webhookErrorMessageKey } from "@/features/webhooks/lib/errors";
 
 export interface UseDeleteWebhookResult {
   /** Fires deleteWebhookEndpoint; resolves true on success (toasted either way). */
@@ -30,8 +31,9 @@ export function useDeleteWebhook(): UseDeleteWebhookResult {
         await mutate({ variables: { id, ownerId: currentWorkspaceId } });
         toast.success(t("webhooks.deleteSuccess", { name }));
         return true;
-      } catch {
-        toast.error(t("webhooks.deleteError", { name }));
+      } catch (error) {
+        const key = webhookErrorMessageKey(error);
+        toast.error(key ? t(key) : t("webhooks.deleteError", { name }));
         return false;
       } finally {
         setDeleting(null);

@@ -2118,6 +2118,13 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	}); err != nil || !completed {
 		t.Fatalf("complete attempt = %v, %v", completed, err)
 	}
+	latestList, err := s.ListWebhookEndpoints(ctx, []string{ten.ID}, time.Time{}, "", 20)
+	latest := webhookEndpointByID(latestList, ep.ID)
+	if err != nil || latest == nil || latest.LatestAttemptStatus != WebhookAttemptFailed ||
+		latest.LatestParentStatus != WebhookAttemptPending || latest.LatestAttemptAt == nil ||
+		!latest.LatestAttemptAt.Equal(now) {
+		t.Fatalf("retrying endpoint latest attempt = %+v (err %v)", latest, err)
+	}
 	if due, _ := s.ClaimDueWebhookAttempts(ctx, now.Add(time.Second), now.Add(time.Second+time.Minute), 10); len(due) != 0 {
 		t.Errorf("rescheduled delivery must not be due, got %+v", due)
 	}
@@ -2137,6 +2144,13 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 		CompletedAt: now.Add(2 * time.Hour), NextAttemptAt: now.Add(2 * time.Hour), Delivered: true,
 	}); err != nil || !completed {
 		t.Fatalf("complete delivered = %v, %v", completed, err)
+	}
+	latestList, err = s.ListWebhookEndpoints(ctx, []string{ten.ID}, time.Time{}, "", 20)
+	latest = webhookEndpointByID(latestList, ep.ID)
+	if err != nil || latest == nil || latest.LatestAttemptStatus != WebhookAttemptDelivered ||
+		latest.LatestParentStatus != WebhookAttemptDelivered || latest.LatestAttemptAt == nil ||
+		!latest.LatestAttemptAt.Equal(now.Add(2*time.Hour)) {
+		t.Fatalf("delivered endpoint latest attempt = %+v (err %v)", latest, err)
 	}
 	history, err := s.ListWebhookAttempts(ctx, WebhookAttemptFilter{EndpointID: ep.ID, Limit: 10})
 	if err != nil || len(history) != 2 {
@@ -2161,6 +2175,13 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 		Exhausted: true, DisableReason: "too many failures",
 	}); err != nil || !completed {
 		t.Fatalf("complete terminal failure = %v, %v", completed, err)
+	}
+	latestList, err = s.ListWebhookEndpoints(ctx, []string{ten.ID}, time.Time{}, "", 20)
+	latest = webhookEndpointByID(latestList, ep.ID)
+	if err != nil || latest == nil || latest.LatestAttemptStatus != WebhookAttemptFailed ||
+		latest.LatestParentStatus != WebhookAttemptFailed || latest.LatestAttemptAt == nil ||
+		!latest.LatestAttemptAt.Equal(failedAt) {
+		t.Fatalf("failed endpoint latest attempt = %+v (err %v)", latest, err)
 	}
 	deliveredHistory, err := s.ListWebhookAttempts(ctx, WebhookAttemptFilter{EndpointID: ep.ID, Status: WebhookAttemptDelivered, Limit: 10})
 	if err != nil || len(deliveredHistory) != 1 || deliveredHistory[0].ID != retryID {
@@ -2330,6 +2351,15 @@ func containsAttempt(due []DueWebhookAttempt, id string) bool {
 		}
 	}
 	return false
+}
+
+func webhookEndpointByID(rows []WebhookEndpoint, id string) *WebhookEndpoint {
+	for i := range rows {
+		if rows[i].ID == id {
+			return &rows[i]
+		}
+	}
+	return nil
 }
 
 func deliveryExists(ctx context.Context, pool *pgxpool.Pool, id string) bool {

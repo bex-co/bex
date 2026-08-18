@@ -8,13 +8,24 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
-import type { WebhookEndpointView } from "@/features/webhooks/types";
+import type {
+  WebhookDeliveryStatus,
+  WebhookEndpointView,
+} from "@/features/webhooks/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 // Derived from the generated query so new fields can't drift from the schema.
 type RawEndpoint = NonNullable<
   WebhookEndpointsQuery["webhookEndpoints"]
 >[number];
+
+function toDeliveryStatus(
+  value: string | null | undefined,
+): WebhookDeliveryStatus | "" {
+  return value === "pending" || value === "delivered" || value === "failed"
+    ? value
+    : "";
+}
 
 function toViews(
   raw: WebhookEndpointsQuery["webhookEndpoints"] | undefined,
@@ -30,6 +41,9 @@ function toViews(
       disabledReason: e.disabledReason ?? "",
       createdAt: e.createdAt,
       createdBy: "", // list rows never request the creator; the detail query does
+      latestStatus: toDeliveryStatus(e.latestStatus),
+      latestSentAt: e.latestSentAt,
+      latestParentStatus: toDeliveryStatus(e.latestParentStatus),
     }));
 }
 
@@ -41,13 +55,20 @@ export interface UseWebhooksResult {
   refetch: () => Promise<unknown>;
 }
 
+interface UseWebhooksOptions {
+  /** Keep list status current while it is visible; forms only need one name snapshot. */
+  poll?: boolean;
+}
+
 /**
  * Reads bex-api's `webhookEndpoints` — the workspace's outbound-webhook
  * destinations (w3/m11). Signing secrets are never requested here (see the
  * feature's `.graphql` file); only the create mutation ever returns one.
  * Scoped to the switcher's selected workspace, mirroring useApiKeys.
  */
-export function useWebhooks(): UseWebhooksResult {
+export function useWebhooks({
+  poll = true,
+}: UseWebhooksOptions = {}): UseWebhooksResult {
   const { currentWorkspaceId } = useWorkspace();
   const resolved = currentWorkspaceId != null;
   const { data, loading, error, refetch } = useQuery(WebhookEndpointsDocument, {
@@ -55,7 +76,7 @@ export function useWebhooks(): UseWebhooksResult {
     skip: !resolved,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
-    pollInterval: RESOURCE_POLL_INTERVAL_MS,
+    pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,
     skipPollAttempt: skipPollWhenHidden,
   });
 

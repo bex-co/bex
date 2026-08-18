@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
 
 const mockUseMutation = vi.fn();
 vi.mock("@apollo/client/react", () => ({
@@ -124,13 +125,17 @@ describe("useCreateWebhook", () => {
   });
 
   it("surfaces coded validation and duplicate-name details", async () => {
-    const mutate = vi
-      .fn()
-      .mockRejectedValue(
-        new Error(
-          "WEBHOOK_NAME_CONFLICT: a webhook with this name already exists",
-        ),
-      );
+    const mutate = vi.fn().mockRejectedValue(
+      new CombinedGraphQLErrors({
+        data: null,
+        errors: [
+          {
+            message: "server prose is not the client contract",
+            extensions: { code: "WEBHOOK_NAME_CONFLICT", field: "name" },
+          },
+        ],
+      }),
+    );
     mockUseMutation.mockReturnValue([mutate]);
 
     const { result } = renderHook(() => useCreateWebhook());
@@ -143,8 +148,10 @@ describe("useCreateWebhook", () => {
       );
     });
 
-    expect(toastError).toHaveBeenCalledWith(
-      expect.stringContaining("WEBHOOK_NAME_CONFLICT"),
-    );
+    expect(result.current.error).toMatchObject({
+      code: "WEBHOOK_NAME_CONFLICT",
+      field: "name",
+    });
+    expect(toastError).not.toHaveBeenCalled();
   });
 });

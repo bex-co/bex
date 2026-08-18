@@ -17,9 +17,12 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
 import { CopyButton } from "@/common/components/copy-button";
-import { EventPicker } from "@/features/webhooks/components/event-picker";
+import { WebhookEventPickerField } from "@/features/webhooks/components/webhook-event-picker-field";
 import { useCreateWebhook } from "@/features/webhooks/hooks/use-create-webhook";
 import { useWebhookEventTypes } from "@/features/webhooks/hooks/use-webhook-event-types";
+import { useWebhookFormFeedback } from "@/features/webhooks/hooks/use-webhook-form-feedback";
+import { useWebhooks } from "@/features/webhooks/hooks/use-webhooks";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import type { CreatedWebhookEndpoint } from "@/features/webhooks/types";
 import { translatedTitleHead } from "@/common/lib/document-head";
 
@@ -35,32 +38,43 @@ export const Route = createFileRoute("/webhooks_/new")({
   head: ({ match }) => translatedTitleHead("webhooks.newTitle", match),
 });
 
-/**
- * Render's "Create a new Webhook" page (`/webhooks/new`,
- * docs/render-artifacts/webhooks-ui.md) — a full page, not a dialog (w1/m49;
- * the dialog it replaces additionally had a blocking hit-test bug, see t007).
- * Name + Endpoint URL + the grouped event picker; on success the signing
- * secret shows once in-page (the mint-once contract, kept by the t006
- * decision — Render redirects straight to the detail page because its secret
- * stays retrievable), then hands off to `/webhook/$webhookId`.
- */
 export function NewWebhookPage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { create, busy } = useCreateWebhook();
-  const { eventTypes, loading: typesLoading } = useWebhookEventTypes();
+  const { create, busy, error: mutationError, clearError } = useCreateWebhook();
+  const {
+    eventTypes,
+    loading: typesLoading,
+    error: typesError,
+    retry: retryTypes,
+  } = useWebhookEventTypes();
+  const { endpoints } = useWebhooks({ poll: false });
+  const { canManage, loaded: capabilitiesLoaded } = useCapabilities();
 
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [enabled, setEnabled] = useState(true);
   const [created, setCreated] = useState<CreatedWebhookEndpoint | null>(null);
+  const { errors, nameRef, urlRef, eventsRef, validate, clearField } =
+    useWebhookFormFeedback({
+      mutationError,
+      fallbackMessage: t("webhooks.createError"),
+      clearMutationError: clearError,
+    });
 
-  const submittable =
-    name.trim() !== "" && url.trim() !== "" && checked.size > 0 && !busy;
+  const catalogReady = !typesLoading && !typesError && eventTypes.length > 0;
+  const mutationAllowed = canManage && !busy;
 
   async function handleSubmit() {
-    if (!submittable) return;
+    const valid = validate({
+      name,
+      url,
+      selectedEventCount: checked.size,
+      existingNames: endpoints.map((endpoint) => endpoint.name),
+    });
+    if (!valid) return;
+    if (!catalogReady || !mutationAllowed) return;
     // Render's empty eventFilter is the durable "all current and future events"
     // representation. Keep partial selections explicit, but compact a checked
     // All-events picker so newly introduced event types are included automatically.
@@ -104,80 +118,171 @@ export function NewWebhookPage() {
                   {t("webhooks.createDescription")}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="webhook-name">
-                    {t("webhooks.fieldName")}
-                  </Label>
-                  <p className="text-muted-foreground text-sm">
-                    {t("webhooks.fieldNameHelp")}
+              <CardContent>
+                {capabilitiesLoaded && !canManage ? (
+                  <p className="text-muted-foreground text-sm" role="status">
+                    {t("webhooks.manageRequired")}
                   </p>
-                  <Input
-                    id="webhook-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={t("webhooks.fieldNamePlaceholder")}
-                    autoComplete="off"
-                    autoFocus
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="webhook-url">{t("webhooks.fieldUrl")}</Label>
-                  <p className="text-muted-foreground text-sm">
-                    {t("webhooks.fieldUrlHelp")}
-                  </p>
-                  <Input
-                    id="webhook-url"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder={t("webhooks.fieldUrlPlaceholder")}
-                    autoComplete="off"
-                    inputMode="url"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("webhooks.fieldEvents")}</Label>
-                  <p className="text-muted-foreground text-sm">
-                    {t("webhooks.fieldEventsHelp")}
-                  </p>
-                  {typesLoading && eventTypes.length === 0 ? (
-                    <p className="text-muted-foreground py-2 text-sm">
-                      {t("webhooks.eventsLoading")}
-                    </p>
-                  ) : (
-                    <EventPicker
-                      eventTypes={eventTypes}
-                      value={checked}
-                      onChange={setChecked}
-                      disabled={busy}
-                    />
-                  )}
-                </div>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <Label htmlFor="webhook-create-enabled">
-                      {t("webhooks.settingsStatus")}
-                    </Label>
-                    <p className="text-muted-foreground text-sm">
-                      {t("webhooks.createEnabledHelp")}
-                    </p>
-                  </div>
-                  <Switch
-                    id="webhook-create-enabled"
-                    checked={enabled}
-                    onCheckedChange={setEnabled}
-                    disabled={busy}
-                  />
-                </div>
-                <div className="flex justify-end">
-                  <Button
-                    onClick={() => void handleSubmit()}
-                    disabled={!submittable}
+                ) : (
+                  <form
+                    className="space-y-6"
+                    noValidate
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void handleSubmit();
+                    }}
                   >
-                    {busy ? <Loader2 className="animate-spin" /> : null}
-                    {t("webhooks.createSubmit")}
-                  </Button>
-                </div>
+                    {Object.keys(errors).length > 0 ? (
+                      <p className="text-destructive text-sm" role="alert">
+                        {t("webhooks.formErrorsSummary")}
+                      </p>
+                    ) : null}
+                    <div className="space-y-2">
+                      <Label htmlFor="webhook-name">
+                        {t("webhooks.fieldName")}
+                      </Label>
+                      <p
+                        id="webhook-name-help"
+                        className="text-muted-foreground text-sm"
+                      >
+                        {t("webhooks.fieldNameHelp")}
+                      </p>
+                      <Input
+                        id="webhook-name"
+                        ref={nameRef}
+                        value={name}
+                        onChange={(e) => {
+                          setName(e.target.value);
+                          clearField("name");
+                        }}
+                        placeholder={t("webhooks.fieldNamePlaceholder")}
+                        autoComplete="off"
+                        autoFocus
+                        aria-invalid={!!errors.name}
+                        aria-describedby={`webhook-name-help${errors.name ? " webhook-name-error" : ""}`}
+                      />
+                      {errors.name ? (
+                        <p
+                          id="webhook-name-error"
+                          className="text-destructive text-sm"
+                        >
+                          {errors.name}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="webhook-url">
+                        {t("webhooks.fieldUrl")}
+                      </Label>
+                      <p
+                        id="webhook-url-help"
+                        className="text-muted-foreground text-sm"
+                      >
+                        {t("webhooks.fieldUrlHelp")}
+                      </p>
+                      <Input
+                        id="webhook-url"
+                        ref={urlRef}
+                        value={url}
+                        onChange={(e) => {
+                          setUrl(e.target.value);
+                          clearField("url");
+                        }}
+                        placeholder={t("webhooks.fieldUrlPlaceholder")}
+                        autoComplete="off"
+                        inputMode="url"
+                        aria-invalid={!!errors.url}
+                        aria-describedby={`webhook-url-help${errors.url ? " webhook-url-error" : ""}`}
+                      />
+                      {errors.url ? (
+                        <p
+                          id="webhook-url-error"
+                          className="text-destructive text-sm"
+                        >
+                          {errors.url}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div
+                      ref={eventsRef}
+                      className="space-y-2"
+                      tabIndex={-1}
+                      aria-invalid={!!errors.events}
+                    >
+                      <Label id="webhook-events-label">
+                        {t("webhooks.fieldEvents")}
+                      </Label>
+                      <p
+                        id="webhook-events-help"
+                        className="text-muted-foreground text-sm"
+                      >
+                        {t("webhooks.fieldEventsHelp")}
+                      </p>
+                      <WebhookEventPickerField
+                        eventTypes={eventTypes}
+                        loading={typesLoading}
+                        error={typesError}
+                        retry={retryTypes}
+                        value={checked}
+                        onChange={(next) => {
+                          setChecked(next);
+                          clearField("events");
+                        }}
+                        disabled={busy}
+                        describedBy={`webhook-events-help${errors.events ? " webhook-events-error" : ""}`}
+                      />
+                      {errors.events ? (
+                        <p
+                          id="webhook-events-error"
+                          className="text-destructive text-sm"
+                        >
+                          {errors.events}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <Label htmlFor="webhook-create-enabled">
+                          {t("webhooks.settingsStatus")}
+                        </Label>
+                        <p className="text-muted-foreground text-sm">
+                          {t("webhooks.createEnabledHelp")}
+                        </p>
+                      </div>
+                      <Switch
+                        id="webhook-create-enabled"
+                        checked={enabled}
+                        onCheckedChange={setEnabled}
+                        disabled={busy}
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        type="submit"
+                        disabled={!catalogReady || !mutationAllowed}
+                        aria-describedby={
+                          !catalogReady ? "webhook-create-disabled" : undefined
+                        }
+                      >
+                        {busy ? <Loader2 className="animate-spin" /> : null}
+                        {t("webhooks.createSubmit")}
+                      </Button>
+                    </div>
+                    {!catalogReady ? (
+                      <p
+                        id="webhook-create-disabled"
+                        className="text-muted-foreground text-right text-xs"
+                      >
+                        {t("webhooks.formUnavailableEvents")}
+                      </p>
+                    ) : null}
+                    {errors.form ? (
+                      <p className="text-destructive text-sm" role="alert">
+                        {errors.form}
+                      </p>
+                    ) : null}
+                  </form>
+                )}
               </CardContent>
             </Card>
           )}
