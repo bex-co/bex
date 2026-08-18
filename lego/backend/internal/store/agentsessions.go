@@ -195,7 +195,8 @@ func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliver
 		var err error
 		out, err = scanAgentSession(tx.QueryRow(ctx, `
 			UPDATE agent_sessions
-			SET sandbox_id='', phase=$2, status=$3, turns=turns+1, updated_at=now()
+			SET sandbox_id='', phase=$2, status=$3, turns=turns+1,
+			    failure_reason='', updated_at=now()
 			WHERE id=$1
 			RETURNING `+agentSessionColumns, id, phase, status))
 		return err
@@ -703,7 +704,7 @@ func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID,
 	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
 		UPDATE agent_sessions
 		SET sandbox_id = CASE WHEN $2 <> '' THEN $2 ELSE sandbox_id END,
-		    phase=$3, status=$4, delivery_mode=$5, updated_at=now()
+		    phase=$3, status=$4, delivery_mode=$5, failure_reason='', updated_at=now()
 		WHERE id=$1 AND phase NOT IN ('canceling', 'canceled')
 		RETURNING `+agentSessionColumns, id, sandboxID, phase, status, deliveryMode))
 	if err != nil {

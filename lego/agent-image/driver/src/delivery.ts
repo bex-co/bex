@@ -368,16 +368,48 @@ export async function deliverBranch(
       "rev-parse",
       `${config.branch}^{commit}`,
     ]);
-    // Push the exact object that was scanned. A force-with-lease binds the write
-    // to the remote session ref captured before tenant execution, so neither a
-    // local-ref rewrite nor a concurrent remote update can change the result.
-    const lease = `--force-with-lease=refs/heads/${config.branch}:${baseline.remoteBranchOid}`;
-    await git(cwd, [
-      "push",
-      lease,
+    // Re-read the remote immediately before the write. A prior delivery whose
+    // response was lost (or an explicit retry of the same turn) may already
+    // have published the exact scanned object. Treat that as idempotent success
+    // instead of issuing a no-update receive-pack that can obscure the outcome
+    // with a transport error. Any different remote update remains a conflict.
+    const beforePushOid = await remoteOid(
+      cwd,
       config.repoUrl,
-      `${candidateOid}:refs/heads/${config.branch}`,
-    ]);
+      config.branch,
+    );
+    if (beforePushOid !== candidateOid) {
+      if (beforePushOid !== baseline.remoteBranchOid) {
+        throw new Error(
+          "refusing delivery: remote session branch changed after setup",
+        );
+      }
+      // Push the exact object that was scanned. A force-with-lease binds the
+      // write to the remote session ref captured before tenant execution, so
+      // neither a local-ref rewrite nor a concurrent remote update can change
+      // the result.
+      const lease = `--force-with-lease=refs/heads/${config.branch}:${baseline.remoteBranchOid}`;
+      try {
+        await git(cwd, [
+          "push",
+          lease,
+          config.repoUrl,
+          `${candidateOid}:refs/heads/${config.branch}`,
+        ]);
+      } catch (pushError) {
+        // A dropped HTTP response is ambiguous: the forge may have committed
+        // the ref update even though Git reported an RPC failure. Only suppress
+        // the transport error when a fresh read proves the exact scanned OID is
+        // now published; otherwise preserve the original diagnostic.
+        let observed = "";
+        try {
+          observed = await remoteOid(cwd, config.repoUrl, config.branch);
+        } catch {
+          throw pushError;
+        }
+        if (observed !== candidateOid) throw pushError;
+      }
+    }
     const publishedOid = await remoteOid(cwd, config.repoUrl, config.branch);
     if (publishedOid !== candidateOid) {
       throw new Error(
