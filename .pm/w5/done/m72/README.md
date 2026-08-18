@@ -1,31 +1,33 @@
 # w5 · m72 — Agent-session production recovery: stream grants, large-repo scrub, and terminal convergence
 
-**Worker:** worker5 **Goal:** restore trustworthy agent-session conversation replay and make every agent turn converge to a durable terminal state even when credential cleanup or the sandbox container fails **Status:** todo (t003–t006 done)
+**Worker:** worker5 **Goal:** restore trustworthy agent-session conversation replay and make every agent turn converge to a durable terminal state even when credential cleanup or the sandbox container fails **Status:** done (2026-08-18)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Restore the production gateway replay privilege | 45m | — |
-| t002 | Make gateway grants deploy-convergent and self-checking | 60m | t001 |
+| t001 | Restore the production gateway replay privilege — **DONE** | 45m | — |
+| t002 | Make gateway grants deploy-convergent and self-checking — **DONE** | 60m | t001 |
 | t003 | Make credential scrubbing safe for large repositories — **DONE** | 60m | — |
 | t004 | Preserve a readable failed turn when cleanup fails — **DONE** | 45m | t003 |
 | t005 | Project terminal child-Pod state through OpenSandbox — **DONE** | 60m | — |
 | t006 | Add a terminal-state fallback in gateway + Completer — **DONE** | 60m | t005 |
-| t007 | Deploy, repair the stranded session, and run the production workflow | 60m | t002, t004, t006 |
-| t008 | Render parity | 30m | t007 |
-| t009 | Simplify | 30m | t008 |
-| t010 | Test coverage | 60m | t008, t009 |
-| t011 | Closeout | 20m | t008, t010 |
+| t007 | Deploy, repair the stranded session, and run the production workflow — **DONE** | 60m | t002, t004, t006 |
+| t008 | Render parity — **DONE** | 30m | t007 |
+| t009 | Simplify — **DONE** | 30m | t008 |
+| t010 | Test coverage — **DONE** | 60m | t008, t009 |
+| t011 | Closeout — **DONE** | 20m | t008, t010 |
 
 ## Definition of done
 
-1. The production `bex_ssh_gateway` role can read `agent_session_turns`; an authenticated `GET /v1/agent-sessions/{id}/stream` replays durable user turns and assistant parts without SQLSTATE `42501`. Every deploy applies the current least-privilege grant set after migrations without rotating the gateway password or Secret, and a missing required privilege fails a visible preflight rather than a user's stream.
-2. A legitimate repository larger than 1 GiB can complete the persisted-credential cleanup under bounded CPU, memory, file-size, and time controls. Injected credential needles are still removed from every writable persistence root, including security-relevant Git metadata/object paths; the fix does not merely raise or disable the safety limit.
-3. Any scrub, ACP child, or top-level turn failure produces one durable/readable failed status, never delivers or pushes unsafe output, forgets in-memory credentials in `finally`, and cannot be converted into an unhandled duplicate-cleanup process exit before the control plane observes it.
-4. A terminal sandbox child Pod reaches an OpenSandbox terminal state. Independently, the gateway/control plane recognizes a failed or terminated Pod/container as terminal, so the Completer advances the session out of `creating`/`running` exactly once even if BatchSandbox status is stale; it does not poll `pods/exec` forever or flood `container not found` logs.
-5. The reported session `ags-da1prbt040bc73aj5230` no longer appears live, its dead sandbox residue is reclaimed, and a fresh run against `bex-co/beancount-cms-v2` reaches an honest terminal result with refreshable conversation history and no missing delivery hidden behind a green state.
-6. REST, GraphQL, MCP, dashboard, gateway, and operational metrics expose consistent terminal/error semantics. Focused DB-role, driver, controller, sandbox, Completer, attach, dashboard, and live workflow regressions pass; the normal backend, agent-image, dashboard, lint, and GitOps validation gates are green.
+1. [x] The production `bex_ssh_gateway` role can read `agent_session_turns`; an authenticated `GET /v1/agent-sessions/{id}/stream` replays durable user turns and assistant parts without SQLSTATE `42501`. Every deploy applies the current least-privilege grant set after migrations without rotating the gateway password or Secret, and a missing required privilege fails a visible preflight rather than a user's stream.
+2. [x] A legitimate repository larger than 1 GiB can complete the persisted-credential cleanup under bounded CPU, memory, file-size, and time controls. Injected credential needles are still removed from every writable persistence root, including security-relevant Git metadata/object paths; the fix does not merely raise or disable the safety limit.
+3. [x] Any scrub, ACP child, or top-level turn failure produces one durable/readable failed status, never delivers or pushes unsafe output, forgets in-memory credentials in `finally`, and cannot be converted into an unhandled duplicate-cleanup process exit before the control plane observes it.
+4. [x] A terminal sandbox child Pod reaches an OpenSandbox terminal state. Independently, the gateway/control plane recognizes a failed or terminated Pod/container as terminal, so the Completer advances the session out of `creating`/`running` exactly once even if BatchSandbox status is stale; it does not poll `pods/exec` forever or flood `container not found` logs.
+5. [x] The reported session `ags-da1prbt040bc73aj5230` no longer appears live, its dead sandbox residue is reclaimed, and a fresh run against `bex-co/beancount-cms-v2` reaches an honest terminal result with refreshable conversation history and no missing delivery hidden behind a green state.
+6. [x] REST, GraphQL, MCP, dashboard, gateway, and operational metrics expose consistent terminal/error semantics. Focused DB-role, driver, controller, sandbox, Completer, attach, dashboard, and live workflow regressions pass; the normal backend, agent-image, dashboard, lint, and GitOps validation gates are green.
+
+Completion evidence: [`evidence/2026-08-18-production-recovery.md`](evidence/2026-08-18-production-recovery.md).
 
 ## Source + Goal linkage
 
