@@ -254,3 +254,39 @@ func TestPushSettingsRESTAndGraphQLTypedRoundTrip(t *testing.T) {
 		t.Fatalf("GraphQL typed result = %s", raw)
 	}
 }
+
+// A policy written while usage_threshold was still selectable must survive the
+// event's retirement: reads drop it silently, writes can no longer re-enter it.
+func TestPushSettingsStoredRetiredEventIsDropped(t *testing.T) {
+	st := newFakeStore()
+	overrideEvents := `["deploy_failed","usage_threshold"]`
+	stored := `{"enabled":true,"events":["deploy_failed","usage_threshold","cron_failed"],` +
+		`"minimumUrgency":"important","timeZone":"UTC","workingHours":[],"quietHours":[],` +
+		`"maxDeferralSeconds":3600,"serviceOverrides":[{"serviceId":"` + testPushServiceID + `","events":` + overrideEvents + `}]}`
+	st.rows[[2]string{"tea-a", "alice"}] = store.NotificationSettings{
+		ID: "ntf-fake", TenantID: "tea-a", Subject: "alice", PushPolicy: json.RawMessage(stored),
+	}
+	svc := newTestService(st, fakeWorkspace{"alice": "tea-a"}, nil, nil)
+
+	got, err := svc.GetPushSettings(pushContext("alice"))
+	if err != nil {
+		t.Fatalf("stored policy with a retired event must still read: %v", err)
+	}
+	if !reflect.DeepEqual(got.Events, []DeliveryEvent{DeliveryEventDeployFailed, DeliveryEventCronFailed}) {
+		t.Fatalf("events = %#v, want usage_threshold dropped", got.Events)
+	}
+	if got.ServiceOverrides[0].Events == nil ||
+		!reflect.DeepEqual(*got.ServiceOverrides[0].Events, []DeliveryEvent{DeliveryEventDeployFailed}) {
+		t.Fatalf("override events = %#v, want usage_threshold dropped", got.ServiceOverrides[0])
+	}
+
+	if _, err := storedPushDeliveryPolicy(json.RawMessage(stored)); err != nil {
+		t.Fatalf("worker must still compile a policy carrying a retired event: %v", err)
+	}
+
+	write := clonePushSettings(defaultPushSettings)
+	write.Events = append(write.Events, DeliveryEvent("usage_threshold"))
+	if _, err := svc.UpdatePushSettings(pushContext("alice"), write); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("write error = %v, want ErrBadRequest", err)
+	}
+}

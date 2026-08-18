@@ -51,8 +51,6 @@ const eventKeys: Record<PushNotificationEvent, string> = {
     "notifications.pushEventServiceSuspended",
   [PushNotificationEvent.ServiceResumed]:
     "notifications.pushEventServiceResumed",
-  [PushNotificationEvent.UsageThreshold]:
-    "notifications.pushEventUsageThreshold",
   [PushNotificationEvent.AgentNeedsDecision]:
     "notifications.pushEventAgentNeedsDecision",
   [PushNotificationEvent.AgentPrReady]: "notifications.pushEventAgentPrReady",

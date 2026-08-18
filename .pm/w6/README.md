@@ -56,9 +56,9 @@ Develop against `.pm/w6/dev-6/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `021.md` — `usage_threshold` is advertised on the notification delivery-event enum but its producer (`w8/001`) was retired without implementation 2026-08-16
-- `022.md` — `.pm/w1/045.md` is stale: DNS ownership verification shipped (`apps/domains.go:517,589`); retire it to `w1/done/`
-- `023.md` — `.pm/w8/README.md` lists m25/m26 as open but neither milestone directory exists
+No open inbox notes.
+
+_(`021.md` implemented 2026-08-18 (inert `usage_threshold` event dropped from the notification vocabulary); `022.md` + `023.md` retired 2026-08-18 as already-resolved board hygiene — all three moved to `done/`)_
 
 _(`012.md` promoted to **m18** 2026-07-13; `018.md` promoted to **m35** 2026-07-15; `019.md` absorbed into **m36** (t002) 2026-07-15 — note moved to `done/`)_
 

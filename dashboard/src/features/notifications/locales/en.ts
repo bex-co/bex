@@ -116,10 +116,6 @@ const enNotifications: Record<string, TranslationEntry> = {
     message: "Service resumed",
     description: "Push event",
   },
-  "notifications.pushEventUsageThreshold": {
-    message: "Usage threshold",
-    description: "Push event",
-  },
   "notifications.pushEventAgentNeedsDecision": {
     message: "Agent needs a decision",
     description: "Push event",
