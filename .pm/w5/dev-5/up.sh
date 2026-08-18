@@ -240,6 +240,7 @@ for attempt in $(seq 1 5); do
     BEX_CP_DB_URI="$(hostDsn bex-db bex "$BEX_DB_PORT")" \
     BEX_CP_INSECURE="1" \
     BEX_CP_APPS_NAMESPACE="$DEV_NS" \
+    BEX_CP_IDENTITY="$DEV_NS" \
     BEX_ALLOW_INSECURE_AUTHZ="1" \
     BEX_BASE_DOMAIN="onbex.co" \
     BEX_LOKI_URL="http://localhost:$LOKI_PORT" \

@@ -49,7 +49,21 @@ import (
 const (
 	LabelManagedBy = "app.kubernetes.io/managed-by"
 	ManagedByValue = "bex-controlplane"
-	LabelAppID     = core.LabelAppID
+	// ControlPlaneLabel refines LabelManagedBy from "a bex control plane owns
+	// this" to "WHICH one owns it" (w6/m39). Both projectors here prune by
+	// ABSENCE from their own database using a CLUSTER-scoped List, so without an
+	// instance identity every bex-api holding a BEX_CP_DB_URI deletes every
+	// managed object it cannot account for — including another control plane's.
+	// That is not hypothetical: two `dev-N` harnesses sharing the CAPD mock
+	// cluster deleted each other's tenant namespaces within one resync, observed
+	// live in both directions (.pm/w3/017.md). Read it through ownedBy, never
+	// directly, so the deliberate unlabeled-legacy asymmetry stays in one place.
+	ControlPlaneLabel = "app.bex.co/control-plane"
+	// DefaultControlPlaneIdentity is the identity an unconfigured control plane
+	// runs under, so production behaves exactly as it did before w6/m39 and only
+	// a deliberately-configured harness narrows its own prune scope.
+	DefaultControlPlaneIdentity = "production"
+	LabelAppID                  = core.LabelAppID
 	// LabelTenant aliases core.LabelTenant — one label, one constant, so the
 	// stamp (here) and the gate (core.Base.GetApp) can never drift apart.
 	LabelTenant = core.LabelTenant
@@ -95,6 +109,30 @@ const (
 	// container even starts.
 	defaultDeployGateTimeout = 18 * time.Minute
 )
+
+// ownedBy reports whether an object carrying these labels belongs to the
+// control plane running under identity, and is the ONLY reader of
+// ControlPlaneLabel — both cluster-scoped prunes go through it.
+//
+// The rule is deliberately asymmetric about the unlabeled case. An object with
+// no identity label is ours only under the default identity: objects projected
+// before w6/m39 carry no label, and production must still reclaim those
+// orphans, while a `dev-N` harness must never delete something it cannot prove
+// it created. Both halves fail in the safe direction — a harness leaks rather
+// than deletes, and production keeps its pre-m39 reclamation.
+//
+// This cannot move into the server-side MatchingLabels selector: a `key=value`
+// requirement only matches objects where the key is PRESENT, so selecting on it
+// would silently drop the legacy-reclaim half. Kubernetes selectors are a pure
+// conjunction with no OR, so expressing "mine or unlabeled" needs two Lists.
+// Full rationale: docs/ADR043-tenant-namespace-isolation.md D9.
+func ownedBy(labels map[string]string, identity string) bool {
+	owner, labeled := labels[ControlPlaneLabel]
+	if !labeled {
+		return identity == DefaultControlPlaneIdentity
+	}
+	return owner == identity
+}
 
 // CloneSecreter is called by the Reconciler when projecting a new App CR for
 // a repo-backed row: it mints a GitHub installation token, writes the
@@ -164,6 +202,10 @@ type Reconciler struct {
 	Client client.Client
 	Store  Store
 	Resync time.Duration // full-resync interval
+	// Identity names this control-plane instance (BEX_CP_IDENTITY). It is
+	// stamped on every App CR this projector owns and scopes its delete-by-
+	// absence pass. Empty is read as DefaultControlPlaneIdentity.
+	Identity string
 	// DeployGateTimeout bounds how long a deploy may stay open before
 	// recordDeploy closes it as failed even though the CR's phase never
 	// reached Failed on its own (see defaultDeployGateTimeout).
@@ -219,6 +261,16 @@ func debounceUnhealthy(obs ObservedServiceState, unhealthyOnce map[string]bool) 
 	}
 	unhealthyOnce[obs.AppID] = unhealthy
 	return obs
+}
+
+// identity is the control-plane identity this projector stamps and prunes
+// under. Exported Identity may be set after construction, so normalize here —
+// this is the single defaulting site.
+func (r *Reconciler) identity() string {
+	if r.Identity == "" {
+		return DefaultControlPlaneIdentity
+	}
+	return r.Identity
 }
 
 func NewReconciler(cl client.Client, store Store) *Reconciler {
@@ -408,11 +460,20 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 			}
 			continue
 		}
+		// Never converge another control plane's App (w6/m39): re-stamping it to
+		// our identity would let the delete pass below legitimately reap it
+		// later, bypassing the ownership guard in one hop. Deliberately not
+		// ownedBy — an UNLABELED App must stay adoptable (that is how a pre-m39
+		// CR gains its label), while only the default identity may prune one.
+		if owner := cur.Labels[ControlPlaneLabel]; owner != "" && owner != r.identity() {
+			errs = append(errs, fmt.Errorf("App %s belongs to control plane %q, not %q", cur.Name, owner, r.identity()))
+			continue
+		}
 		// Project desired spec only; observed status (phase/url) is read from
 		// the CR by bex-api, never copied back into Postgres. Labels are
 		// re-stamped so a LabelTenant value change migrates without a relabel.
 		specChanged := applyOwnedSpec(&cur.Spec, projectSpec(d))
-		labelsChanged := stampLabels(cur, d)
+		labelsChanged := stampLabels(cur, d, r.identity())
 		if specChanged || labelsChanged {
 			if err := r.Client.Update(ctx, cur); err != nil {
 				errs = append(errs, fmt.Errorf("update App %s: %w", cur.Name, err))
@@ -421,9 +482,14 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		}
 		r.recordObservations(ctx, d, cur, openByApp[d.ID])
 	}
-	// Rows deleted from Postgres → delete their projected CR.
+	// Rows deleted from Postgres → delete their projected CR. The List above is
+	// CLUSTER-scoped and app ids are per-database xids, so another control
+	// plane's Apps are never in `seen` — without the ownership filter two
+	// `dev-N` harnesses delete and recreate each other's App CRs on every
+	// resync, flapping the tenant Deployments behind them (w6/m39, the App-side
+	// half of the namespace bug in .pm/w3/017.md).
 	for id, cur := range byID {
-		if seen[id] {
+		if seen[id] || !ownedBy(cur.Labels, r.identity()) {
 			continue
 		}
 		delete(r.unhealthyOnce, id)
@@ -1052,7 +1118,7 @@ func ManagedAppID(labels map[string]string) string {
 // next resync — and, for any App still on its pre-w4/m19 bare object name,
 // this is what backfills LabelServiceName without ever renaming the object
 // (core.GetApp's cross-workspace fallback needs the label to find it).
-func stampLabels(cur *appv1alpha1.App, d DesiredApp) bool {
+func stampLabels(cur *appv1alpha1.App, d DesiredApp, identity string) bool {
 	if cur.Labels == nil {
 		cur.Labels = map[string]string{}
 	}
@@ -1064,6 +1130,7 @@ func stampLabels(cur *appv1alpha1.App, d DesiredApp) bool {
 		}
 	}
 	set(LabelManagedBy, ManagedByValue)
+	set(ControlPlaneLabel, identity)
 	set(LabelAppID, d.ID)
 	set(LabelTenant, d.TenantID)       // the tenant id (tea-<id>), what List/Get filter on
 	set(LabelWorkspace, d.TenantID)    // workspace identity for NetworkPolicy selectors (t002)
@@ -1096,7 +1163,7 @@ func (r *Reconciler) projectApp(ctx context.Context, d DesiredApp) *appv1alpha1.
 		},
 		Spec: projectSpec(d),
 	}
-	stampLabels(a, d)
+	stampLabels(a, d, r.identity())
 	if r.CloneSecrets != nil && d.Repo != "" {
 		if secretName, err := r.CloneSecrets.EnsureCloneSecret(ctx, ns, a.Name, d.TenantID, d.Repo); err != nil {
 			log.Printf("controlplane: clone secret for %s: %v (proceeding without)", a.Name, err)

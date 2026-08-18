@@ -69,6 +69,25 @@ re-applies the CNPG Clusters / mailpit / Kratos / Hydra (helm
 KeyValue/App/Database CRs in the `dev-4` namespace survive as long as the
 underlying `bex` cluster (and its PVs) survive.
 
+## Tenant-namespace isolation between concurrent dev-N stacks
+
+`up.sh` sets **`BEX_CP_IDENTITY=dev-4`**, so every tenant namespace this
+control plane provisions is stamped `app.bex.co/control-plane: dev-4` and its
+orphan prune deletes only namespaces carrying that value (w6/m39, ADR043 D9).
+
+This matters because namespace *provisioning* is namespaced but the orphan
+*prune* is **cluster-scoped**: before m39 every bex-api holding a
+`BEX_CP_DB_URI` deleted every managed `tea-*` namespace absent from **its own**
+database, so two `dev-N` stacks on the shared cluster wiped each other's
+tenants within one 60-second resync (observed live in both directions,
+`.pm/w3/017.md`). **Running several `dev-N` control planes against the shared
+cluster at once is now safe.**
+
+`status.sh` prints every managed tenant namespace with its owner — if a row
+shows an owner other than `dev-4` it belongs to another harness and this one
+will leave it alone; if *this* harness's rows show anything but `dev-4`, its
+`BEX_CP_IDENTITY` is mis-set and it is pruning outside its lane.
+
 ## What's deliberately NOT duplicated
 
 - **The bex operator** — already cluster-scoped in the shared cluster,

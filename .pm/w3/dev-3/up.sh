@@ -166,6 +166,7 @@ for attempt in $(seq 1 5); do
     BEX_OAUTH_ISSUER="http://localhost:$HYDRA_PUBLIC_PORT" \
     BEX_CP_DB_URI="$(hostDsn bex-db bex "$BEX_DB_PORT")" \
     BEX_CP_APPS_NAMESPACE="$DEV_NS" \
+    BEX_CP_IDENTITY="$DEV_NS" \
     BEX_BUILD_NAMESPACE="bex-system" \
     BEX_BASE_DOMAIN="onbex.co" \
     "./$ENVDIR/bin/bex-api" > "$ENVDIR/logs/bex-api.log" 2>&1 & echo $! > "$ENVDIR/.pids/bex-api.pid"

@@ -1548,3 +1548,121 @@ func TestQueuedBuildDoesNotSpendTheBuildBudget(t *testing.T) {
 		t.Error("a build past its own budget must still time out")
 	}
 }
+
+// --- Control-plane identity on the App projector (w6/m39) ------------------
+
+// projectorOn builds a second App projector sharing cl but with its own store
+// and control-plane identity — two dev-N harnesses on one cluster.
+func projectorOn(cl client.Client, identity string) (*Reconciler, *memStore) {
+	store := newMemStore()
+	r := NewReconciler(cl, store)
+	r.Identity = identity
+	return r, store
+}
+
+// The App-side half of the w3/017 bug, found by w6/m39's own review: the
+// projector's delete-by-absence pass lists CLUSTER-wide and app ids are
+// per-database xids, so another control plane's Apps are never in `seen`.
+// Before the ownership filter, two dev-N harnesses deleted and recreated each
+// other's App CRs every 30s resync — flapping the tenant Deployments behind
+// them, which is worse than the namespace bug it accompanies.
+func TestTwoProjectorsOnOneClusterDeleteOnlyTheirOwnApps(t *testing.T) {
+	ctx := context.Background()
+	_, _, cl := newTestReconciler(t)
+	five, storeFive := projectorOn(cl, "dev-5")
+	six, storeSix := projectorOn(cl, "dev-6")
+
+	tenFive, _ := storeFive.CreateTenant(ctx, "five", "free")
+	rowFive, _ := storeFive.CreateApp(ctx, App{TenantID: tenFive.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	tenSix, _ := storeSix.CreateTenant(ctx, "six", "free")
+	rowSix, _ := storeSix.CreateApp(ctx, App{TenantID: tenSix.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+
+	for pass := 0; pass < 2; pass++ {
+		if err := five.ReconcileOnce(ctx); err != nil {
+			t.Fatalf("dev-5 reconcile: %v", err)
+		}
+		if err := six.ReconcileOnce(ctx); err != nil {
+			t.Fatalf("dev-6 reconcile: %v", err)
+		}
+	}
+
+	var apps appv1alpha1.AppList
+	if err := cl.List(ctx, &apps, client.MatchingLabels{LabelManagedBy: ManagedByValue}); err != nil {
+		t.Fatal(err)
+	}
+	owners := map[string]string{}
+	for i := range apps.Items {
+		owners[apps.Items[i].Labels[LabelAppID]] = apps.Items[i].Labels[ControlPlaneLabel]
+	}
+	if got, ok := owners[rowFive.ID]; !ok || got != "dev-5" {
+		t.Errorf("dev-5's App missing or mis-owned: present=%v owner=%q", ok, got)
+	}
+	if got, ok := owners[rowSix.ID]; !ok || got != "dev-6" {
+		t.Errorf("dev-6's App missing or mis-owned: present=%v owner=%q", ok, got)
+	}
+}
+
+// The identity narrows the delete pass; it must not disable it. A projector
+// still reaps its OWN App when the row leaves its database — and production
+// still reaps a pre-m39 App carrying no identity label at all.
+func TestProjectorStillDeletesOwnAndLegacyApps(t *testing.T) {
+	ctx := context.Background()
+	prod, storeProd, cl := newTestReconciler(t)
+	ten, _ := storeProd.CreateTenant(ctx, "acme", "free")
+	row, _ := storeProd.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "img", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	if err := prod.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	// A pre-m39 projected App: managed, but with no identity label.
+	legacy := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "legacy-web", Namespace: "default",
+			Labels: map[string]string{LabelManagedBy: ManagedByValue, LabelAppID: "srv-legacy0000000000000"},
+		},
+		Spec: appv1alpha1.AppSpec{Image: "img"},
+	}
+	if err := cl.Create(ctx, legacy); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := storeProd.DeleteApp(ctx, row.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := prod.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	var apps appv1alpha1.AppList
+	if err := cl.List(ctx, &apps, client.MatchingLabels{LabelManagedBy: ManagedByValue}); err != nil {
+		t.Fatal(err)
+	}
+	for i := range apps.Items {
+		t.Errorf("production failed to reap %s (owner %q)", apps.Items[i].Name, apps.Items[i].Labels[ControlPlaneLabel])
+	}
+}
+
+// A dev harness must leave a pre-m39 unlabeled App alone — the mirror of the
+// namespace rule, and the reason `ownedBy` is asymmetric.
+func TestDevProjectorLeavesLegacyUnlabeledAppAlone(t *testing.T) {
+	ctx := context.Background()
+	_, _, cl := newTestReconciler(t)
+	six, _ := projectorOn(cl, "dev-6")
+	legacy := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "legacy-web", Namespace: "default",
+			Labels: map[string]string{LabelManagedBy: ManagedByValue, LabelAppID: "srv-legacy0000000000000"},
+		},
+		Spec: appv1alpha1.AppSpec{Image: "img"},
+	}
+	if err := cl.Create(ctx, legacy); err != nil {
+		t.Fatal(err)
+	}
+	if err := six.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var got appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "legacy-web"}, &got); err != nil {
+		t.Errorf("dev-6 deleted a pre-m39 App it did not create: %v", err)
+	}
+}

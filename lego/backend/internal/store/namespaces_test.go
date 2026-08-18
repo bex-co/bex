@@ -281,14 +281,14 @@ func TestResourceQuotaConvergesExistingNamespaceToNewShape(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "tenant-quota",
 			Namespace: WorkspaceNamespace(tn.ID),
-			Labels:    managedLabels(tn.ID),
+			Labels:    r.managedLabels(tn.ID),
 		},
 		Spec: corev1.ResourceQuotaSpec{Hard: corev1.ResourceList{
 			corev1.ResourcePods: resource.MustParse("50"),
 		}},
 	}
 	// The namespace must exist first for the quota to live in it.
-	if err := cl.Create(ctx, workspaceNamespaceObject(WorkspaceNamespace(tn.ID), tn, RegimeHosting)); err != nil {
+	if err := cl.Create(ctx, r.workspaceNamespaceObject(WorkspaceNamespace(tn.ID), tn, RegimeHosting)); err != nil {
 		t.Fatal(err)
 	}
 	if err := cl.Create(ctx, stale); err != nil {
@@ -520,5 +520,268 @@ func TestApplyObjectRefusesToClobberUnmanaged(t *testing.T) {
 	err := r.ReconcileOnce(ctx)
 	if err == nil {
 		t.Fatal("expected an error when the namespace exists unmanaged")
+	}
+}
+
+// --- Control-plane identity (w6/m39) ---------------------------------------
+
+// reconcilerOn builds a second reconciler sharing cl but with its own store and
+// control-plane identity — the shape of two dev-N harnesses on one cluster.
+func reconcilerOn(cl client.Client, identity string) (*NamespaceReconciler, *memStore) {
+	store := newMemStore()
+	r := NewNamespaceReconciler(cl, store)
+	r.Identity = identity
+	return r, store
+}
+
+func namespaceExists(t *testing.T, cl client.Client, name string) bool {
+	t.Helper()
+	var ns corev1.Namespace
+	err := cl.Get(context.Background(), client.ObjectKey{Name: name}, &ns)
+	if apierrors.IsNotFound(err) {
+		return false
+	}
+	if err != nil {
+		t.Fatalf("get namespace %s: %v", name, err)
+	}
+	// The fake client honors deletion immediately when no finalizer is set, but
+	// treat a tombstoned namespace as gone either way.
+	return ns.DeletionTimestamp == nil
+}
+
+func TestNamespaceCarriesControlPlaneIdentity(t *testing.T) {
+	ctx := context.Background()
+	r, store, cl := newTestNamespaceReconciler(t)
+	tn, _ := store.CreateTenant(ctx, "acme", "free")
+	if err := r.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var ns corev1.Namespace
+	if err := cl.Get(ctx, client.ObjectKey{Name: WorkspaceNamespace(tn.ID)}, &ns); err != nil {
+		t.Fatal(err)
+	}
+	// An unconfigured control plane must stamp the default, not an empty value:
+	// an empty label would match nothing and silently disable its own prune.
+	if got := ns.Labels[ControlPlaneLabel]; got != DefaultControlPlaneIdentity {
+		t.Errorf("control-plane label = %q, want %q", got, DefaultControlPlaneIdentity)
+	}
+
+	// A configured harness stamps its own identity. Use a separate reconciler:
+	// flipping Identity on one that already owns production-stamped namespaces
+	// is precisely what applyObject's foreign-owner guard refuses.
+	six, storeSix := reconcilerOn(cl, "dev-6")
+	tn2, _ := storeSix.CreateTenant(ctx, "beta", "free")
+	if err := six.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Name: WorkspaceNamespace(tn2.ID)}, &ns); err != nil {
+		t.Fatal(err)
+	}
+	if got := ns.Labels[ControlPlaneLabel]; got != "dev-6" {
+		t.Errorf("control-plane label = %q, want dev-6", got)
+	}
+}
+
+// A control plane must refuse to CONVERGE another identity's namespace, not
+// just refuse to prune it: re-stamping it would let the delete pass reap it
+// later, bypassing the ownership guard in one hop. The hazard is concrete —
+// a harness raised from another control plane's bex-db dump inherits its
+// tenant rows and would otherwise steal every namespace they name.
+func TestApplyObjectRefusesAnotherControlPlanesNamespace(t *testing.T) {
+	ctx := context.Background()
+	_, _, cl := newTestNamespaceReconciler(t)
+	five, storeFive := reconcilerOn(cl, "dev-5")
+	tn, _ := storeFive.CreateTenant(ctx, "shared", "free")
+	if err := five.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	// dev-6 inherits the same tenant row (the bex-db dump case).
+	six, storeSix := reconcilerOn(cl, "dev-6")
+	storeSix.mu.Lock()
+	storeSix.tenants[tn.ID] = tn
+	storeSix.mu.Unlock()
+
+	if err := six.ReconcileOnce(ctx); err == nil {
+		t.Fatal("dev-6 converged a namespace owned by dev-5")
+	}
+	var ns corev1.Namespace
+	if err := cl.Get(ctx, client.ObjectKey{Name: WorkspaceNamespace(tn.ID)}, &ns); err != nil {
+		t.Fatal(err)
+	}
+	if got := ns.Labels[ControlPlaneLabel]; got != "dev-5" {
+		t.Errorf("namespace was re-stamped to %q; owner must stay dev-5", got)
+	}
+}
+
+// The mirror of the rule above: an UNLABELED namespace stays adoptable by any
+// identity, which is how a pre-m39 namespace gains its label at all. Adoption
+// and pruning deliberately disagree about the unlabeled case.
+func TestApplyObjectAdoptsUnlabeledNamespace(t *testing.T) {
+	ctx := context.Background()
+	_, _, cl := newTestNamespaceReconciler(t)
+	six, storeSix := reconcilerOn(cl, "dev-6")
+	tn, _ := storeSix.CreateTenant(ctx, "legacy", "free")
+	pre := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+		Name: WorkspaceNamespace(tn.ID),
+		Labels: map[string]string{
+			LabelManagedBy:              ManagedByValue,
+			core.LabelWorkspace:         tn.ID,
+			"app.kubernetes.io/part-of": "bex",
+		},
+	}}
+	if err := cl.Create(ctx, pre); err != nil {
+		t.Fatal(err)
+	}
+	if err := six.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("dev-6 refused to adopt an unlabeled namespace: %v", err)
+	}
+	var ns corev1.Namespace
+	if err := cl.Get(ctx, client.ObjectKey{Name: WorkspaceNamespace(tn.ID)}, &ns); err != nil {
+		t.Fatal(err)
+	}
+	if got := ns.Labels[ControlPlaneLabel]; got != "dev-6" {
+		t.Errorf("adopted namespace label = %q, want dev-6", got)
+	}
+}
+
+// TestTwoControlPlanesOnOneClusterPruneOnlyTheirOwn is the regression this
+// milestone exists for: two dev-N harnesses sharing the CAPD mock cluster used
+// to delete each other's tenant namespaces within one resync, because
+// pruneOrphans is cluster-scoped and each control plane sees only its own
+// database (.pm/w3/017.md, observed live in both directions).
+func TestTwoControlPlanesOnOneClusterPruneOnlyTheirOwn(t *testing.T) {
+	ctx := context.Background()
+	_, _, cl := newTestNamespaceReconciler(t)
+
+	five, storeFive := reconcilerOn(cl, "dev-5")
+	six, storeSix := reconcilerOn(cl, "dev-6")
+	tnFive, _ := storeFive.CreateTenant(ctx, "five-tenant", "free")
+	tnSix, _ := storeSix.CreateTenant(ctx, "six-tenant", "free")
+
+	if err := five.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := six.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	// Each harness's tenant is an "orphan" from the other's point of view — its
+	// workspace is absent from that database — so a prune pass in either
+	// direction must leave the other's namespaces alone.
+	for pass := 0; pass < 2; pass++ {
+		if err := five.ReconcileOnce(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if err := six.ReconcileOnce(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for _, tc := range []struct {
+		who string
+		id  string
+	}{{"dev-5", tnFive.ID}, {"dev-6", tnSix.ID}} {
+		for _, name := range []string{WorkspaceNamespace(tc.id), SandboxNamespace(tc.id)} {
+			if !namespaceExists(t, cl, name) {
+				t.Errorf("%s namespace %s was pruned by the other control plane", tc.who, name)
+			}
+		}
+	}
+}
+
+func TestPruneReclaimsOwnOrphanButNotFriendlyIdentities(t *testing.T) {
+	ctx := context.Background()
+	_, _, cl := newTestNamespaceReconciler(t)
+	six, storeSix := reconcilerOn(cl, "dev-6")
+	five, storeFive := reconcilerOn(cl, "dev-5")
+
+	mine, _ := storeSix.CreateTenant(ctx, "mine", "free")
+	theirs, _ := storeFive.CreateTenant(ctx, "theirs", "free")
+	if err := six.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := five.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+
+	// dev-6 loses its own workspace: its namespaces are a genuine orphan and
+	// must still be reclaimed — the identity filter narrows the prune, it must
+	// not disable it.
+	storeSix.mu.Lock()
+	delete(storeSix.tenants, mine.ID)
+	storeSix.mu.Unlock()
+	if err := six.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if namespaceExists(t, cl, WorkspaceNamespace(mine.ID)) {
+		t.Error("dev-6 failed to reclaim its OWN orphan namespace")
+	}
+	if !namespaceExists(t, cl, WorkspaceNamespace(theirs.ID)) {
+		t.Error("dev-6 pruned dev-5's live namespace")
+	}
+}
+
+// TestUnlabeledNamespaceIsPrunableOnlyByTheDefaultIdentity pins the deliberate
+// asymmetry: namespaces provisioned before w6/m39 carry no identity label, so
+// production must still reclaim them, while a dev-N harness must never delete a
+// namespace it cannot prove it created. Both halves fail in the safe direction.
+func TestUnlabeledNamespaceIsPrunableOnlyByTheDefaultIdentity(t *testing.T) {
+	ctx := context.Background()
+
+	legacyNamespace := func(cl client.Client, name string) {
+		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+			Labels: map[string]string{
+				LabelManagedBy:              ManagedByValue,
+				core.LabelWorkspace:         name,
+				"app.kubernetes.io/part-of": "bex",
+				// No ControlPlaneLabel — the pre-m39 shape.
+			},
+		}}
+		if err := cl.Create(ctx, ns); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("production reclaims it", func(t *testing.T) {
+		r, _, cl := newTestNamespaceReconciler(t)
+		legacyNamespace(cl, "tea-legacyorphan00000")
+		if err := r.ReconcileOnce(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if namespaceExists(t, cl, "tea-legacyorphan00000") {
+			t.Error("production must still reclaim a pre-m39 unlabeled orphan")
+		}
+	})
+
+	t.Run("a dev harness leaves it alone", func(t *testing.T) {
+		_, _, cl := newTestNamespaceReconciler(t)
+		legacyNamespace(cl, "tea-legacyorphan00000")
+		six, _ := reconcilerOn(cl, "dev-6")
+		if err := six.ReconcileOnce(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if !namespaceExists(t, cl, "tea-legacyorphan00000") {
+			t.Error("a dev-N harness must not delete a namespace it cannot prove it created")
+		}
+	})
+}
+
+// Production must not delete another identity's namespace either: leaking a
+// stale dev namespace is recoverable, deleting a live tenant's is not.
+func TestDefaultIdentityDoesNotPruneAnotherIdentitysNamespace(t *testing.T) {
+	ctx := context.Background()
+	prod, _, cl := newTestNamespaceReconciler(t)
+	six, storeSix := reconcilerOn(cl, "dev-6")
+	tn, _ := storeSix.CreateTenant(ctx, "devtenant", "free")
+	if err := six.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := prod.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if !namespaceExists(t, cl, WorkspaceNamespace(tn.ID)) {
+		t.Error("production pruned a dev-N harness's namespace")
 	}
 }
