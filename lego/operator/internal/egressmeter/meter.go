@@ -46,9 +46,6 @@ const (
 	PodLabelApp   = "app.bex.co/app"
 	PodLabelAppID = "bex.co/app-id"
 
-	nfProtoIPv4       = 2
-	nfProtoIPv6       = 10
-	nfInetPostRouting = 4
 	// Run after the raw table but before conntrack, mangle, and source NAT.
 	// Pod policy has already run at Cilium's host-facing veth ingress hook.
 	nfMeterPriority = -299
@@ -174,12 +171,12 @@ func (m *Meter) Load() error {
 
 func attachNetfilter(objects *bpfObjects, pinPath string) ([]link.Link, error) {
 	type hook struct {
-		family uint32
+		family link.NetfilterProtocolFamily
 		path   string
 	}
 	hooks := []hook{
-		{family: nfProtoIPv4, path: filepath.Join(pinPath, "postrouting-v1-ipv4")},
-		{family: nfProtoIPv6, path: filepath.Join(pinPath, "postrouting-v1-ipv6")},
+		{family: link.NetfilterProtoIPv4, path: filepath.Join(pinPath, "postrouting-v1-ipv4")},
+		{family: link.NetfilterProtoIPv6, path: filepath.Join(pinPath, "postrouting-v1-ipv6")},
 	}
 	var restored []link.Link
 	replace := false
@@ -199,7 +196,7 @@ func attachNetfilter(objects *bpfObjects, pinPath string) ([]link.Link, error) {
 				objects.PodV4Resources, objects.PodV6Resources, objects.ResourceBytes,
 				objects.ExcludedV4, objects.ExcludedV6, objects.Diagnostics)
 		}
-		if err != nil || !mapsMatch || info.Netfilter() == nil || info.Netfilter().Pf != hook.family || info.Netfilter().Hooknum != nfInetPostRouting || info.Netfilter().Priority != nfMeterPriority {
+		if err != nil || !mapsMatch || info.Netfilter() == nil || info.Netfilter().ProtocolFamily != hook.family || info.Netfilter().Hook != link.NetfilterInetPostRouting || info.Netfilter().Priority != nfMeterPriority {
 			_ = current.Close()
 			closeLinks(restored)
 			restored = nil
@@ -228,7 +225,7 @@ func attachNetfilter(objects *bpfObjects, pinPath string) ([]link.Link, error) {
 	for _, hook := range hooks {
 		current, err := link.AttachNetfilter(link.NetfilterOptions{
 			Program: objects.BexCountPublicEgress, ProtocolFamily: hook.family,
-			HookNumber: nfInetPostRouting, Priority: nfMeterPriority,
+			Hook: link.NetfilterInetPostRouting, Priority: nfMeterPriority,
 		})
 		if err != nil {
 			cleanupLinks(attached)
