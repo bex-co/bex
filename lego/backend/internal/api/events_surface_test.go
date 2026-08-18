@@ -275,6 +275,33 @@ func TestGetEventSurfaceParity(t *testing.T) {
 	}
 }
 
+func TestGetEventRESTHonorsNamedWorkspace(t *testing.T) {
+	at := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
+	eventID := ids.Derive(ids.Event, "aud-named-workspace:")
+	fake := &fakeEventStore{lookups: map[string]store.ServiceEventLookup{
+		"tea-b\x00" + eventID: {
+			Event: store.ServiceEventRow{
+				Key: "aud-named-workspace:", At: at, Source: store.EventSourceAudit,
+				Verb: core.AuditVerbPostgresCreated, Caller: "user-x",
+			},
+			ServiceID: "dpg-bravo",
+		},
+	}}
+	base := &core.Base{
+		Client: fakeClient(eventsApp()), Namespace: "default",
+		Authz: &fakeChecker{allow: true}, Workspace: twoWorkspaceResolver{},
+	}
+	h, _ := serverWith(t, base, Deps{EventStore: fake})
+
+	res := do(t, h, http.MethodGet, "/v1/events/"+eventID+"?ownerId=tea-b", testToken, "")
+	if res.Code != http.StatusOK {
+		t.Fatalf("named-workspace event: %d %s", res.Code, res.Body.String())
+	}
+	if fake.gotEventWorkspace != "tea-b" {
+		t.Fatalf("event lookup workspace = %q, want tea-b", fake.gotEventWorkspace)
+	}
+}
+
 // TestLifecycleFactStatusAcrossSurfaces proves a deploy-lifecycle fact's status
 // (w7/m66: build_ended / pre_deploy_ended / job_run_ended) surfaces identically
 // on all three adapters as details.status.

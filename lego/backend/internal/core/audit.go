@@ -258,6 +258,15 @@ func MemberTarget(subject string) string { return "member:" + subject }
 // acceptance). Invite ids are opaque inv-… identifiers.
 func InviteTarget(inviteID string) string { return "invite:" + inviteID }
 
+// WebhookAttemptTarget identifies a manual delivery action in the workspace
+// audit trail. Endpoint and attempt IDs are opaque, non-secret identifiers;
+// joining both prevents an attempt ID from losing its endpoint scope without
+// placing the request payload, destination URL, or idempotency key in audit
+// storage.
+func WebhookAttemptTarget(endpointID, attemptID string) string {
+	return "webhook_attempt:" + endpointID + "/" + attemptID
+}
+
 // SplitTarget is the constructors' inverse — the one place the
 // "<kind>:<name>" target format is decoded (the audit read surface keys its
 // Render metadata by kind, w4/m26), kept beside the mint sites above so the

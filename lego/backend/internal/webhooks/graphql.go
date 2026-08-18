@@ -49,20 +49,19 @@ var endpointGQLType = graphql.NewObject(graphql.ObjectConfig{
 var deliveryGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WebhookDelivery",
 	Fields: graphql.Fields{
-		"id":              gqlutil.StrField(func(v DeliveryView) any { return v.ID }),
-		"eventId":         gqlutil.StrField(func(v DeliveryView) any { return v.EventID }),
-		"eventType":       gqlutil.StrField(func(v DeliveryView) any { return v.EventType }),
-		"serviceId":       gqlutil.StrField(func(v DeliveryView) any { return v.ServiceID }),
-		"status":          gqlutil.StrField(func(v DeliveryView) any { return v.Status }),
-		"attemptCount":    gqlutil.IntField(func(v DeliveryView) any { return v.AttemptCount }),
-		"lastStatusCode":  gqlutil.IntField(func(v DeliveryView) any { return v.LastStatusCode }),
-		"lastError":       gqlutil.StrField(func(v DeliveryView) any { return v.LastError }),
-		"responseBody":    gqlutil.StrField(func(v DeliveryView) any { return v.ResponseBody }),
-		"sentAt":          gqlutil.StrField(func(v DeliveryView) any { return v.SentAt }),
-		"nextAttemptAt":   gqlutil.StrField(func(v DeliveryView) any { return v.NextAttemptAt }),
-		"lastAttemptedAt": gqlutil.StrField(func(v DeliveryView) any { return v.LastAttemptedAt }),
-		"deliveredAt":     gqlutil.StrField(func(v DeliveryView) any { return v.DeliveredAt }),
-		"createdAt":       gqlutil.StrField(func(v DeliveryView) any { return v.CreatedAt }),
+		"id":             gqlutil.StrField(func(v DeliveryView) any { return v.ID }),
+		"eventId":        gqlutil.StrField(func(v DeliveryView) any { return v.EventID }),
+		"eventType":      gqlutil.StrField(func(v DeliveryView) any { return v.EventType }),
+		"serviceId":      gqlutil.StrField(func(v DeliveryView) any { return v.ServiceID }),
+		"status":         gqlutil.StrField(func(v DeliveryView) any { return v.Status }),
+		"attemptNumber":  gqlutil.IntField(func(v DeliveryView) any { return v.AttemptNumber }),
+		"statusCode":     gqlutil.IntField(func(v DeliveryView) any { return v.StatusCode }),
+		"transportError": gqlutil.StrField(func(v DeliveryView) any { return v.TransportError }),
+		"responseBody":   gqlutil.StrField(func(v DeliveryView) any { return v.ResponseBody }),
+		"requestBody":    gqlutil.StrField(func(v DeliveryView) any { return v.RequestBody }),
+		"sentAt":         gqlutil.StrField(func(v DeliveryView) any { return v.SentAt }),
+		"nextAttemptAt":  gqlutil.StrField(func(v DeliveryView) any { return v.NextAttemptAt }),
+		"parentStatus":   gqlutil.StrField(func(v DeliveryView) any { return v.ParentStatus }),
 		// cursor rides each item (the serviceEvents convention) — echo the last
 		// one back to page.
 		"cursor": gqlutil.StrField(func(v DeliveryView) any { return v.Cursor }),
@@ -199,6 +198,19 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.SetEnabled(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["id"].(string), p.Args["enabled"].(bool))
+			},
+		},
+		"resendWebhookDelivery": &graphql.Field{
+			Type: deliveryGQLType,
+			Args: graphql.FieldConfigArgument{
+				"endpointId":     gqlutil.ReqArg(graphql.String),
+				"attemptId":      gqlutil.ReqArg(graphql.String),
+				"ownerId":        gqlutil.Arg(graphql.String),
+				"idempotencyKey": gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Resend(p.Context, gqlutil.Str(p.Args, "ownerId"), p.Args["endpointId"].(string),
+					p.Args["attemptId"].(string), p.Args["idempotencyKey"].(string))
 			},
 		},
 		"deleteWebhookEndpoint": &graphql.Field{

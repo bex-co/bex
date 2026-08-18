@@ -87,6 +87,30 @@ func scaleLikeVerb(ctx context.Context, b *Base, service string) error {
 	return b.AuthorizeOnTarget(ctx, RelCanOperate, DefaultWorkspace, ServiceTarget(service))
 }
 
+func resendWebhookLikeVerb(ctx context.Context, b *Base, endpointID, attemptID string) error {
+	return b.AuthorizeTarget(ctx, RelCanManage, WebhookAttemptTarget(endpointID, attemptID))
+}
+
+func TestAuthorizeTargetUsesActingWorkspaceAndRecordsOpaqueTarget(t *testing.T) {
+	sink := &fakeAuditSink{}
+	b := &Base{Authz: &fakeAllowChecker{}, Audit: sink}
+	ctx := WithIdentity(context.Background(), Identity{Subject: "user-1", Method: "oauth2"})
+
+	if err := resendWebhookLikeVerb(ctx, b, "whk-endpoint", "whd-source"); err != nil {
+		t.Fatalf("resendWebhookLikeVerb: %v", err)
+	}
+	if sink.len() != 1 {
+		t.Fatalf("got %d events, want 1", sink.len())
+	}
+	ev := sink.events[0]
+	if ev.Verb != "core.resendWebhookLikeVerb" || ev.Resource != DefaultWorkspace || ev.Target != "webhook_attempt:whk-endpoint/whd-source" {
+		t.Fatalf("audit event = %+v", ev)
+	}
+	if ev.Caller != "user-1" || ev.Outcome != AuditAllowed {
+		t.Fatalf("audit actor/outcome = %+v", ev)
+	}
+}
+
 // TestAuditTargetNamesTheResourceActedOn is w3/m7's write side: AuthorizeOnTarget
 // records WHICH service a verb changed (Resource stays the workspace it was
 // authorized against — the two are different questions), it resolves the verb

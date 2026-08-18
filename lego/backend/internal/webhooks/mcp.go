@@ -46,13 +46,22 @@ type createEndpointArgs struct {
 }
 
 type listDeliveriesArgs struct {
-	ID     string `json:"id" jsonschema:"the webhook endpoint id (whk-…), as returned by list_webhook_endpoints"`
-	Cursor string `json:"cursor,omitempty" jsonschema:"opaque cursor from the final item of the previous page"`
-	Limit  int    `json:"limit,omitempty" jsonschema:"maximum delivery records to return (default 20, maximum 100)"`
+	ID         string `json:"id" jsonschema:"the webhook endpoint id (whk-…), as returned by list_webhook_endpoints"`
+	Cursor     string `json:"cursor,omitempty" jsonschema:"opaque cursor from the final item of the previous page"`
+	Limit      int    `json:"limit,omitempty" jsonschema:"maximum delivery records to return (default 20, maximum 100)"`
+	SentAfter  string `json:"sentAfter,omitempty" jsonschema:"strict RFC3339 lower bound on attempt send time"`
+	SentBefore string `json:"sentBefore,omitempty" jsonschema:"strict RFC3339 upper bound on attempt send time"`
+	Status     string `json:"status,omitempty" jsonschema:"attempt outcome: delivered or failed; omit for all completed attempts"`
 }
 
 type listDeliveriesResult struct {
 	Deliveries []DeliveryView `json:"deliveries"`
+}
+
+type resendDeliveryArgs struct {
+	EndpointID     string `json:"endpointId" jsonschema:"required,the webhook endpoint id (whk-…)"`
+	AttemptID      string `json:"attemptId" jsonschema:"required,the failed or delivered attempt id (whd-…) to resend"`
+	IdempotencyKey string `json:"idempotencyKey" jsonschema:"required,8 to 128 safe characters; retry the same request with the same key"`
 }
 
 type updateEndpointArgs struct {
@@ -100,13 +109,31 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "list_webhook_deliveries",
-		Description: "List an endpoint's delivery history with retry status, attempt count, response status/body evidence, transport error, first-sent time, and an opaque cursor. bex extension — Render's own MCP server has no webhook tools.",
+		Description: "List every immutable send attempt for an endpoint with its request body, bounded response/transport evidence, exact send time, parent retry state, and opaque cursor. bex extension — Render's own MCP server has no webhook tools.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listDeliveriesArgs) (*mcp.CallToolResult, listDeliveriesResult, error) {
-		views, err := s.ListDeliveries(ctx, core.NamedWorkspace(ctx), in.ID, in.Cursor, in.Limit)
+		sentAfter, err := core.ParseTime("sentAfter", in.SentAfter)
+		if err != nil {
+			return nil, listDeliveriesResult{}, core.MCPError(err)
+		}
+		sentBefore, err := core.ParseTime("sentBefore", in.SentBefore)
+		if err != nil {
+			return nil, listDeliveriesResult{}, core.MCPError(err)
+		}
+		views, err := s.ListDeliveriesFiltered(ctx, core.NamedWorkspace(ctx), in.ID, DeliveryFilter{
+			Cursor: in.Cursor, Limit: in.Limit, SentAfter: sentAfter, SentBefore: sentBefore, Status: in.Status,
+		})
 		if err != nil {
 			return nil, listDeliveriesResult{}, core.MCPError(err)
 		}
 		return nil, listDeliveriesResult{Deliveries: views}, nil
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "resend_webhook_delivery",
+		Description: "Queue one immediate manual attempt using the source event's byte-identical request body. The endpoint must be enabled. Reusing the idempotency key returns the same reservation and never fans out another send. bex extension — Render exposes Resend only in its dashboard.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in resendDeliveryArgs) (*mcp.CallToolResult, DeliveryView, error) {
+		view, err := s.Resend(ctx, core.NamedWorkspace(ctx), in.EndpointID, in.AttemptID, in.IdempotencyKey)
+		return nil, view, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{

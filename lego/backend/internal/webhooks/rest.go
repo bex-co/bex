@@ -94,12 +94,12 @@ type webhookEventWithCursor struct {
 func toWebhookEventWire(v DeliveryView) webhookEventWire {
 	w := webhookEventWire{
 		ID: v.ID, EventID: v.EventID, EventType: v.EventType, SentAt: v.SentAt,
-		StatusCode: v.LastStatusCode, ResponseBody: v.ResponseBody,
+		StatusCode: v.StatusCode, ResponseBody: v.ResponseBody,
 	}
 	// Render's `error` is for failures without an HTTP response. A non-2xx
 	// response is represented by statusCode + responseBody alone.
-	if v.LastStatusCode == 0 {
-		w.Error = v.LastError
+	if v.StatusCode == 0 {
+		w.Error = v.TransportError
 	}
 	return w
 }
@@ -200,12 +200,22 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		views, err := s.ListDeliveriesFiltered(r.Context(), q.Get("ownerId"), r.PathValue("id"), DeliveryFilter{
 			Cursor: cursor, Limit: limit, SentAfter: window.After, SentBefore: window.Before,
+			Status: q.Get("status"),
 		})
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, toWebhookEventList(views))
+	}
+	resendHandler := func(w http.ResponseWriter, r *http.Request) {
+		v, err := s.Resend(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("id"),
+			r.PathValue("attemptId"), r.Header.Get("Idempotency-Key"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusAccepted, v)
 	}
 
 	// Render's public route family (w3/m27).
@@ -233,6 +243,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /v1/webhooks/{id}", deleteHandler)
 	// /events is Render's name for the delivery-history read.
 	mux.HandleFunc("GET /v1/webhooks/{id}/events", deliveriesHandler)
+	// Render exposes this action only in its dashboard. The authenticated route
+	// is a labeled bex extension over the same core attempt semantics.
+	mux.HandleFunc("POST /v1/webhooks/{id}/events/{attemptId}/resend", resendHandler)
 
 	// The subscribable vocabulary — what the dashboard's event-type picker
 	// lists, served rather than duplicated client-side.

@@ -256,6 +256,7 @@ func main() {
 	metricRegistry.MustRegister(prometheus.NewGoCollector(), prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	billingMetrics := billing.NewMetrics(metricRegistry)
 	pushMetrics := notifications.NewPushMetrics(metricRegistry)
+	webhookMetrics := webhooks.NewMetrics(metricRegistry)
 	pushMetrics.SetEnabled(mobilePush != nil)
 
 	scheme := runtime.NewScheme()
@@ -283,7 +284,8 @@ func main() {
 	ready := &serve.Readiness{}
 
 	deps := api.Deps{
-		PushAvailable: mobilePush != nil,
+		PushAvailable:  mobilePush != nil,
+		WebhookMetrics: webhookMetrics,
 		// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>` (docs/ADR005-custom-domain.md);
 		// unset falls back to deriving the platform host from an App's status URLs.
 		BaseDomain: os.Getenv("BEX_BASE_DOMAIN"),
@@ -445,7 +447,7 @@ func main() {
 	}
 
 	wireReconcilers(ctx, srv, rec, st, cl)
-	startDeliveryWorkers(ctx, srv, st, deps.Mailer, mobilePush, pushMetrics)
+	startDeliveryWorkers(ctx, srv, st, deps.Mailer, mobilePush, pushMetrics, webhookMetrics)
 	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")
 	srv.HydraAdminURL = hydraAdminURL
 	srv.KratosURL = os.Getenv("BEX_KRATOS_URL")
@@ -1113,7 +1115,7 @@ func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler
 
 // startDeliveryWorkers starts the outbound-webhook delivery worker and the
 // native-push consumer; each runs only when its wiring is present.
-func startDeliveryWorkers(ctx context.Context, srv *api.Server, st *store.PGStore, m members.Mailer, mobilePush pushtransport.Transport, pushMetrics *notifications.PushMetrics) {
+func startDeliveryWorkers(ctx context.Context, srv *api.Server, st *store.PGStore, m members.Mailer, mobilePush pushtransport.Transport, pushMetrics *notifications.PushMetrics, webhookMetrics *webhooks.Metrics) {
 	// Outbound event webhooks (w3/m11): the delivery worker tails the composed
 	// event feed (deploys + audit_events + service_event_facts — the same rows the events feed reads)
 	// through a durable watermark and POSTs signed notifications to subscribed
@@ -1136,6 +1138,7 @@ func startDeliveryWorkers(ctx context.Context, srv *api.Server, st *store.PGStor
 		whWorker := &webhooks.Worker{
 			Store: st, Mailer: m, Emails: srv.Notifications.Identities, Backoff: backoff,
 			RetentionDays: whRetentionDays, RetentionKeepPerEndpoint: whKeepPerEndpoint,
+			Attempts: webhookMetrics,
 		}
 		go whWorker.Run(ctx)
 	}

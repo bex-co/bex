@@ -219,6 +219,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, toEventList(events))
 	})
 	mux.HandleFunc("GET /v1/events/{eventId}", core.HandleMapped(http.StatusOK, func(r *http.Request) (Event, error) {
-		return s.Get(r.Context(), r.PathValue("eventId"))
+		// Render's route has no owner selector because its dashboard resolves the
+		// active workspace out of band. Bex accepts the same optional ownerId used
+		// by its other caller-scoped REST reads so a dashboard source-event link in
+		// a non-default workspace cannot silently fall back to the caller's oldest
+		// membership. Authorization still validates membership in Service.Get.
+		ctx := core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId"))
+		return s.Get(ctx, r.PathValue("eventId"))
 	}, toRenderEvent))
 }

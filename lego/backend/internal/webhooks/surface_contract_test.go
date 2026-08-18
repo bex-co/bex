@@ -19,6 +19,7 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -84,6 +85,62 @@ func TestGraphQLWebhookSemanticsShareCoreValidation(t *testing.T) {
 	}
 }
 
+func TestGraphQLWebhookAttemptEvidenceAndIdempotentResend(t *testing.T) {
+	svc, st := newTestService()
+	created, err := svc.Create(t.Context(), CreateRequest{
+		Name: "graphql-attempts", URL: "https://hooks.example.com", EventTypes: []string{}, Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sent := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	next := sent.Add(10 * time.Minute)
+	st.deliveries[created.ID] = []store.WebhookAttempt{{
+		ID: "whd-gql-source", NotificationID: "whd-gql-parent", EndpointID: created.ID,
+		EventID: "evt-gql", EventType: TypeDeployEnded, ServiceID: "srv-gql",
+		Status: store.WebhookAttemptFailed, AttemptNumber: 1, StatusCode: 503,
+		TransportError: "", ResponseBody: "unavailable", Payload: `{"type":"deploy_ended"}`,
+		SentAt: &sent, NextAttemptAt: &next, ParentStatus: store.WebhookAttemptPending, CreatedAt: sent,
+	}}
+	schema := webhookGraphQLSchema(t, svc)
+	history := graphql.Do(graphql.Params{
+		Schema: schema, Context: t.Context(),
+		RequestString: fmt.Sprintf(`{ webhookDeliveries(endpointId:%q, status:"failed") { id eventId eventType serviceId status attemptNumber statusCode transportError responseBody requestBody sentAt nextAttemptAt parentStatus cursor } }`, created.ID),
+	})
+	if len(history.Errors) != 0 {
+		t.Fatalf("history errors: %v", history.Errors)
+	}
+	raw, _ := json.Marshal(history.Data)
+	var got struct {
+		Deliveries []DeliveryView `json:"webhookDeliveries"`
+	}
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Deliveries) != 1 || got.Deliveries[0].RequestBody != `{"type":"deploy_ended"}` ||
+		got.Deliveries[0].ParentStatus != DeliveryPending || got.Deliveries[0].NextAttemptAt != next.Format(time.RFC3339) {
+		t.Fatalf("GraphQL history = %+v", got.Deliveries)
+	}
+
+	mutation := fmt.Sprintf(`mutation { resendWebhookDelivery(endpointId:%q, attemptId:"whd-gql-source", idempotencyKey:"graphql-resend-0001") { id eventId status attemptNumber requestBody } }`, created.ID)
+	first := graphql.Do(graphql.Params{Schema: schema, Context: t.Context(), RequestString: mutation})
+	second := graphql.Do(graphql.Params{Schema: schema, Context: t.Context(), RequestString: mutation})
+	if len(first.Errors) != 0 || len(second.Errors) != 0 {
+		t.Fatalf("resend errors: first=%v second=%v", first.Errors, second.Errors)
+	}
+	var one, two struct {
+		Delivery DeliveryView `json:"resendWebhookDelivery"`
+	}
+	raw, _ = json.Marshal(first.Data)
+	_ = json.Unmarshal(raw, &one)
+	raw, _ = json.Marshal(second.Data)
+	_ = json.Unmarshal(raw, &two)
+	if one.Delivery.ID == "" || one.Delivery.ID != two.Delivery.ID || one.Delivery.Status != DeliveryPending ||
+		one.Delivery.EventID != "evt-gql" || one.Delivery.RequestBody != `{"type":"deploy_ended"}` {
+		t.Fatalf("GraphQL idempotent resend = first %+v second %+v", one.Delivery, two.Delivery)
+	}
+}
+
 func TestMCPWebhookDeliveryDiagnosticsAndValidation(t *testing.T) {
 	svc, st := newTestService()
 	ctx := context.Background()
@@ -102,7 +159,7 @@ func TestMCPWebhookDeliveryDiagnosticsAndValidation(t *testing.T) {
 	createdResult, err := client.CallTool(ctx, &mcp.CallToolParams{
 		Name: "create_webhook_endpoint",
 		Arguments: map[string]any{
-			"name": "agent-hook", "url": "https://hooks.example.com", "eventTypes": []string{}, "enabled": false,
+			"name": "agent-hook", "url": "https://hooks.example.com", "eventTypes": []string{}, "enabled": true,
 		},
 	})
 	if err != nil || createdResult.IsError {
@@ -113,15 +170,16 @@ func TestMCPWebhookDeliveryDiagnosticsAndValidation(t *testing.T) {
 	if err := json.Unmarshal(raw, &created); err != nil {
 		t.Fatal(err)
 	}
-	if created.ID == "" || created.Enabled || len(created.EventFilter) != 0 || created.Secret == "" {
+	if created.ID == "" || !created.Enabled || len(created.EventFilter) != 0 || created.Secret == "" {
 		t.Fatalf("MCP create = %+v", created)
 	}
 
 	sent := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
-	st.deliveries[created.ID] = []store.WebhookDelivery{{
-		ID: "whd-1", EndpointID: created.ID, EventID: "evt-1", EventType: TypeBuildEnded,
-		ServiceID: "srv-1", AttemptCount: 8, LastStatus: 502, LastError: "endpoint answered 502",
-		ResponseBody: "upstream unavailable", SentAt: &sent, CreatedAt: sent,
+	st.deliveries[created.ID] = []store.WebhookAttempt{{
+		ID: "whd-1", NotificationID: "whd-parent", EndpointID: created.ID, EventID: "evt-1", EventType: TypeBuildEnded,
+		ServiceID: "srv-1", AttemptNumber: 1, Status: store.WebhookAttemptFailed,
+		StatusCode: 502, TransportError: "endpoint answered 502", ResponseBody: "upstream unavailable",
+		Payload: `{"type":"build_ended"}`, ParentStatus: store.WebhookAttemptPending, SentAt: &sent, CreatedAt: sent,
 	}}
 	historyResult, err := client.CallTool(ctx, &mcp.CallToolParams{
 		Name: "list_webhook_deliveries", Arguments: map[string]any{"id": created.ID},
@@ -134,8 +192,35 @@ func TestMCPWebhookDeliveryDiagnosticsAndValidation(t *testing.T) {
 	if err := json.Unmarshal(raw, &history); err != nil {
 		t.Fatal(err)
 	}
-	if len(history.Deliveries) != 1 || history.Deliveries[0].ResponseBody != "upstream unavailable" || history.Deliveries[0].SentAt != sent.Format(time.RFC3339) {
+	if len(history.Deliveries) != 1 || history.Deliveries[0].ResponseBody != "upstream unavailable" ||
+		history.Deliveries[0].RequestBody != `{"type":"build_ended"}` || history.Deliveries[0].ParentStatus != DeliveryPending ||
+		history.Deliveries[0].SentAt != sent.Format(time.RFC3339) {
 		t.Fatalf("MCP delivery diagnostics = %+v", history.Deliveries)
+	}
+
+	firstResendID := ""
+	for i := range 2 {
+		resendResult, err := client.CallTool(ctx, &mcp.CallToolParams{
+			Name: "resend_webhook_delivery", Arguments: map[string]any{
+				"endpointId": created.ID, "attemptId": "whd-1", "idempotencyKey": "mcp-resend-0001",
+			},
+		})
+		if err != nil || resendResult.IsError {
+			t.Fatalf("MCP resend %d: err=%v result=%+v", i, err, resendResult)
+		}
+		raw, _ = json.Marshal(resendResult.StructuredContent)
+		var resent DeliveryView
+		if err := json.Unmarshal(raw, &resent); err != nil {
+			t.Fatal(err)
+		}
+		if resent.Status != DeliveryPending || resent.EventID != "evt-1" || resent.RequestBody != `{"type":"build_ended"}` {
+			t.Fatalf("MCP resend = %+v", resent)
+		}
+		if i == 0 {
+			firstResendID = resent.ID
+		} else if resent.ID != firstResendID {
+			t.Fatalf("duplicate MCP resend id = %q, want %q", resent.ID, firstResendID)
+		}
 	}
 
 	bad, err := client.CallTool(ctx, &mcp.CallToolParams{

@@ -4,6 +4,8 @@ Captured 2026-07-17 by walking both dashboards end to end (real create → inspe
 
 > **2026-08-16 contract refresh and m70 result:** The API/wire comparison and current 67-value OpenAPI enum are pinned in [webhooks-api.md](webhooks-api.md). Render now publishes webhook CRUD and delivery-history endpoints. m70 aligned bex's supported non-secret REST fields/envelopes and refreshed the dashboard over that contract. This earlier walk remains the visual reference, but its ~60-event catalog and any API-absence inference must not be treated as the current wire contract.
 
+> **2026-08-17 attempt-history refresh (`w8/m25`):** Render's current official [webhook guide](https://render.com/docs/webhooks) still pins stable event/body identity across automatic retries with fresh send timestamps/signatures. Render's official [Recent deliveries walkthrough](https://render.com/blog/light-up-your-builds-with-render-webhooks) explicitly describes the dashboard table as every attempt, with expandable request JSON and endpoint response plus a Resend action. Together with the 2026-07-17 live walk below, this is the current UI contract used by m25. It is a dated official-source comparison, not a claim that the m25 verifier was run live against Render or bex on this date.
+
 ## Render `/webhooks/new` — the create page
 
 A dedicated full page (not a modal), heading **"Create a new Webhook"**, reached from the Webhooks list's New button. Three fields, helper copy under each label:
@@ -85,3 +87,15 @@ Walked live against dev-1 (`bash .pm/w1/dev-1/up.sh`, dashboard on :50010 → be
 5. Delete required typing `delete webhook m49-parity-probe-renamed` exactly (button disabled on a near-miss), then landed on `/webhooks` with the endpoint gone. Probe service deleted afterwards; screenshots: `.playwright-mcp/m49-webhooks-new-page.png`, `m49-webhook-secret-step.png`, `m49-webhook-detail-activity.png`.
 
 Cross-surface check: the dashboard's update payload sends only dirty fields over GraphQL `updateWebhookEndpoint` using that surface's `eventTypes` name, matching REST `PATCH /v1/webhooks/{id}` merge semantics with REST's `eventFilter` field and the MCP `update_webhook_endpoint` tool's `eventTypes`; the status toggle uses `setWebhookEndpointEnabled`, the same core verb REST PATCH's `enabled` maps to. No new drift introduced.
+
+## m25 attempt detail and Resend result (2026-08-17)
+
+The Activity view now treats a delivery row as one immutable network attempt rather than the latest mutable state of one notification:
+
+- Initial sends, automatic retries, and manual Resends render independently by attempt ID and exact send time. Relative time remains visible for scanning; the exact UTC timestamp is available in the row detail.
+- A failed exchange enters **Failed** immediately even if the logical notification still has a scheduled retry. Parent state and next-attempt time are diagnostics, not a replacement status for that failed row.
+- Expanding a row shows the bounded JSON request and the bounded endpoint response or transport error. The signing secret is neither returned by the API nor placed in browser state or logs.
+- Workspace admins can confirm **Resend** on a failed attempt while the endpoint is enabled. One user action generates one idempotency key, shows queued/progress/result states, and reconciles the returned reservation with the polled attempt list without a full-page reload. Non-admins and disabled endpoints do not expose the control; server authorization remains authoritative.
+- Activity polls only the newest page at a bounded cadence while the document is visible. Attempt-ID reconciliation prepends new rows without duplicating them or discarding already loaded keyset pages; changing filters/date bounds resets the relevant page set, and hidden/unmounted views stop polling. Manual Refresh remains available.
+
+Render exposes Resend in its dashboard but does not publish a corresponding public replay route. The Bex REST, GraphQL, and MCP replay operations are therefore labeled extensions. The visual workflow and evidence semantics match; the API availability is intentionally broader for automation and agents.

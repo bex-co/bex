@@ -103,13 +103,13 @@ func TestTransportFailurePersistsOriginOnlyEvidence(t *testing.T) {
 // write-side sanitizer may already embed the exact destination; the member
 // read collapses it to the redacted origin.
 func TestDeliveryViewScrubsLegacyRowsWithExactURLs(t *testing.T) {
-	d := store.WebhookDelivery{LastError: `Post "` + capabilityURL + `": dial tcp: no such host`}
+	d := store.WebhookAttempt{TransportError: `Post "` + capabilityURL + `": dial tcp: no such host`}
 	v := toDeliveryView(d, capabilityURL)
-	if strings.Contains(v.LastError, "sentinel-path-token") || strings.Contains(v.LastError, "sentinel-query-token") {
-		t.Errorf("delivery view leaks the legacy capability URL: %q", v.LastError)
+	if strings.Contains(v.TransportError, "sentinel-path-token") || strings.Contains(v.TransportError, "sentinel-query-token") {
+		t.Errorf("delivery view leaks the legacy capability URL: %q", v.TransportError)
 	}
-	if !strings.Contains(v.LastError, "hooks.example.test/…") {
-		t.Errorf("delivery view should show the redacted origin: %q", v.LastError)
+	if !strings.Contains(v.TransportError, "hooks.example.test/…") {
+		t.Errorf("delivery view should show the redacted origin: %q", v.TransportError)
 	}
 }
 

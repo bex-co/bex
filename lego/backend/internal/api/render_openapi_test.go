@@ -252,8 +252,11 @@ func newOpenAPITestHandler(t *testing.T, mutations *int) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /v1/services", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	mux.HandleFunc("GET /v1/events/{eventId}", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	mux.HandleFunc("GET /v1/webhooks/{webhookId}", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+	mux.HandleFunc("GET /v1/webhooks/{webhookId}/events", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
 	mux.HandleFunc("POST /v1/services", strictMutationHandler(mutations))
 	mux.HandleFunc("PATCH /v1/services/{serviceId}", strictMutationHandler(mutations))
+	mux.HandleFunc("PATCH /v1/webhooks/{webhookId}", strictMutationHandler(mutations))
 	mux.HandleFunc("DELETE /v1/services/{serviceId}", func(w http.ResponseWriter, _ *http.Request) {
 		(*mutations)++
 		w.WriteHeader(http.StatusNoContent)
@@ -354,6 +357,31 @@ func TestRenderRequestValidatorAcceptsExtensionsAndPreservesInput(t *testing.T) 
 	w = requestOpenAPITest(t, h, http.MethodDelete, "/v1/services/srv-test?confirm=true", "", "")
 	if w.Code != http.StatusNoContent || mutations != 3 {
 		t.Fatalf("confirm: status=%d mutations=%d body=%s", w.Code, mutations, w.Body.String())
+	}
+
+	w = requestOpenAPITest(t, h, http.MethodGet, "/v1/webhooks/whk-00000000000000000000?ownerId=tea-bravo", "", "")
+	if w.Code != http.StatusNoContent || mutations != 3 {
+		t.Fatalf("webhook ownerId extension: status=%d mutations=%d body=%s", w.Code, mutations, w.Body.String())
+	}
+
+	w = requestOpenAPITest(t, h, http.MethodPatch, "/v1/webhooks/whk-00000000000000000000?ownerId=tea-bravo", "application/json", `{"name":"hook"}`)
+	if w.Code != http.StatusNoContent || mutations != 4 {
+		t.Fatalf("update webhook ownerId extension: status=%d mutations=%d body=%s", w.Code, mutations, w.Body.String())
+	}
+
+	w = requestOpenAPITest(t, h, http.MethodGet, "/v1/webhooks/whk-00000000000000000000/events?ownerId=tea-bravo&status=failed", "", "")
+	if w.Code != http.StatusNoContent || mutations != 4 {
+		t.Fatalf("webhook status extension: status=%d mutations=%d body=%s", w.Code, mutations, w.Body.String())
+	}
+
+	w = requestOpenAPITest(t, h, http.MethodDelete, "/v1/webhooks/whk-00000000000000000000?ownerId=tea-bravo", "", "")
+	if w.Code != http.StatusNoContent || mutations != 5 {
+		t.Fatalf("delete webhook ownerId extension: status=%d mutations=%d body=%s", w.Code, mutations, w.Body.String())
+	}
+
+	w = requestOpenAPITest(t, h, http.MethodGet, "/v1/events/evt-00000000000000000000?ownerId=tea-bravo", "", "")
+	if w.Code != http.StatusNoContent || mutations != 5 {
+		t.Fatalf("event ownerId extension: status=%d mutations=%d body=%s", w.Code, mutations, w.Body.String())
 	}
 }
 

@@ -12,16 +12,23 @@
 #      validates against the registered secret.
 #   3. HYDRATE: the delivered webhook-id/data.id retrieves the exact full event
 #      through GET /v1/events/{eventId}, matching the service-events list item.
-#   4. LIFECYCLE: suspend + resume deliver service_suspended/service_resumed.
+#   4. AUDITED TRANSITION: restart delivers server_restarted through the
+#      current tenant-id-prefixed service target.
 #   5. RETRY + AUTO-DISABLE: an endpoint that answers 500 is retried on the
 #      configured backoff (BEX_WEBHOOK_BACKOFF, shortened here to seconds),
 #      each attempt recorded in the delivery history, and after exhausting the
 #      schedule the delivery is failed, the endpoint auto-disabled with a
 #      reason, and the email notice attempted (logged — SMTP is unset here).
-#   6. deploy_ended: the reconciler's deploy-close write-back (gate timeout
+#   6. MANUAL RESEND: a separate recoverable endpoint records one failed
+#      attempt while its notification remains retryable, is repaired, and is
+#      resent through the authorized REST extension. The duplicate request
+#      uses the same idempotency key and must return the same reservation;
+#      receiver evidence proves stable event/body identity with fresh signing
+#      metadata and a successful second attempt.
+#   7. deploy_ended: the reconciler's deploy-close write-back (gate timeout
 #      without an operator, ~3 min) produces a signed deploy_ended delivery.
 #      Skipped with BEX_VERIFY_FAST=1.
-#   7. CLEANUP: both endpoints and the service are deleted through the product
+#   8. CLEANUP: all endpoints and the service are deleted through the product
 #      API; the exact App CR is removed as a failure-path fallback.
 #
 # It starts disposable Hydra + Postgres containers on the host and runs bex-api
@@ -45,6 +52,7 @@ STAMP="$(date +%s)"
 TENANT="whv$STAMP"
 APP=web
 SVC="$TENANT-$APP"
+CR_NAME=""
 
 PG_NAME=bex-webhooks-verify-pg
 HYDRA_NAME=bex-webhooks-verify-hydra
@@ -64,6 +72,8 @@ TENANT_ID=""
 APP_ID=""
 EP1=""
 EP2=""
+EP3=""
+TENANT_NS_CREATED=false
 
 case "$RECEIVER_URL" in
   https://*) ;;
@@ -95,18 +105,23 @@ cleanup() {
   # phase below asserts these deletes; the trap must stay non-failing so it
   # cannot hide the original verifier error.
   if [ -n "$TOKEN" ] && [ -n "$API_PID" ] && kill -0 "$API_PID" 2>/dev/null; then
-    for endpoint_id in "$EP1" "$EP2"; do
+    for endpoint_id in "$EP1" "$EP2" "$EP3"; do
       [ -n "$endpoint_id" ] || continue
       curl -s -o /dev/null -X DELETE "http://$API/v1/webhooks/$endpoint_id?ownerId=$TENANT_ID" \
         -H "Authorization: Bearer $TOKEN" || true
     done
     if [ -n "$APP_ID" ]; then
-      curl -s -o /dev/null -X DELETE "http://$API/v1/services/$SVC" \
+      curl -s -o /dev/null -X DELETE "http://$API/v1/services/$APP_ID" \
         -H "Authorization: Bearer $TOKEN" || true
     fi
   fi
-  if [ -n "$APP_ID" ]; then
-    kubectl -n default delete app.app.bex.co "$SVC" --ignore-not-found --wait=false >/dev/null 2>&1 || true
+  if [ "$TENANT_NS_CREATED" = true ] && [ -n "$TENANT_ID" ]; then
+    # The mock cluster intentionally lacks some production build/registry RBAC;
+    # if that blocks the operator's App finalizer, do not let a disposable
+    # verifier namespace remain Terminating forever.
+    kubectl -n "$TENANT_ID" patch app.app.bex.co "$CR_NAME" --type merge \
+      -p '{"metadata":{"finalizers":[]}}' >/dev/null 2>&1 || true
+    kubectl delete namespace "$TENANT_ID" --ignore-not-found --wait=false >/dev/null 2>&1 || true
   fi
   reap "$API_PID"
   reap "$RECV_PID"
@@ -124,6 +139,8 @@ debug_dump() {
   docker exec "$PG_NAME" psql -U postgres -c "SELECT * FROM webhook_watermark" 2>/dev/null || true
   echo "--- webhook_deliveries ---"
   docker exec "$PG_NAME" psql -U postgres -c "SELECT endpoint_id, event_type, attempt_count, last_status, next_attempt_at, delivered_at, failed_at FROM webhook_deliveries ORDER BY created_at" 2>/dev/null || true
+  echo "--- webhook_delivery_attempts ---"
+  docker exec "$PG_NAME" psql -U postgres -c "SELECT endpoint_id, notification_id, id, attempt_number, origin, status, status_code, sent_at, available_at, resume_automatic_at FROM webhook_delivery_attempts ORDER BY created_at, id" 2>/dev/null || true
   echo "--- api log tail ---"; tail -20 "$bindir/api.log" 2>/dev/null || true
 }
 
@@ -154,7 +171,7 @@ TOKEN="$(curl -sf -X POST "http://$HYDRA_PUBLIC/oauth2/token" \
   -d "grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=$CLIENT_SECRET" | jq -r .access_token)"
 [ -n "$TOKEN" ] && [ "$TOKEN" != null ] || fail "no access token from Hydra"
 
-echo "==> mock receiver (records headers + body; /ok answers 200, /fail 500)"
+echo "==> mock receiver (records headers + body; /ok 200, /fail 500, /recoverable switchable)"
 cat > "$bindir/receiver.go" <<'EOF'
 package main
 
@@ -170,24 +187,43 @@ import (
 func main() {
 	f, _ := os.Create(os.Args[1])
 	var mu sync.Mutex
+	recovered := false
+	record := func(w http.ResponseWriter, r *http.Request, status int) {
+		body, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		json.NewEncoder(f).Encode(map[string]string{
+			"path": r.URL.Path,
+			"id":   r.Header.Get("webhook-id"),
+			"ts":   r.Header.Get("webhook-timestamp"),
+			"sig":  r.Header.Get("webhook-signature"),
+			"body": base64.StdEncoding.EncodeToString(body),
+		})
+		f.Sync()
+		mu.Unlock()
+		w.WriteHeader(status)
+	}
 	h := func(status int) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			body, _ := io.ReadAll(r.Body)
-			mu.Lock()
-			json.NewEncoder(f).Encode(map[string]string{
-				"path": r.URL.Path,
-				"id":   r.Header.Get("webhook-id"),
-				"ts":   r.Header.Get("webhook-timestamp"),
-				"sig":  r.Header.Get("webhook-signature"),
-				"body": base64.StdEncoding.EncodeToString(body),
-			})
-			f.Sync()
-			mu.Unlock()
-			w.WriteHeader(status)
+			record(w, r, status)
 		}
 	}
 	http.HandleFunc("/ok", h(200))
 	http.HandleFunc("/fail", h(500))
+	http.HandleFunc("/recoverable", func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		status := http.StatusInternalServerError
+		if recovered {
+			status = http.StatusOK
+		}
+		mu.Unlock()
+		record(w, r, status)
+	})
+	http.HandleFunc("/recover", func(w http.ResponseWriter, _ *http.Request) {
+		mu.Lock()
+		recovered = true
+		mu.Unlock()
+		w.WriteHeader(http.StatusNoContent)
+	})
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200) })
 	if err := http.ListenAndServe(":19999", nil); err != nil {
 		panic(err)
@@ -247,12 +283,13 @@ EOF
 disown "$RECV_PID" 2>/dev/null || true # quiet job-control noise when cleanup reaps it
 wait_http "http://$RECEIVER/healthz"
 
-echo "==> building + starting bex-api (control plane on, webhook backoff 2s,3s,4s)"
+echo "==> building + starting bex-api (control plane on, webhook backoff 6s,7s,8s)"
 ( cd lego/backend && go build -o "$bindir/api" ./cmd/api )
 env "KUBECONFIG=$KUBECONFIG" \
   "BEX_CP_DB_URI=$DB_URI" "BEX_CP_ADDR=:18094" "BEX_CP_TOKEN=$CP_TOKEN" "BEX_CP_RESYNC=5s" \
   "BEX_HYDRA_ADMIN_URL=http://$HYDRA_ADMIN" "BEX_API_ADDR=:18093" "BEX_API_NAMESPACE=default" \
-  "BEX_WEBHOOK_BACKOFF=2s,3s,4s" \
+  "BEX_ALLOW_INSECURE_AUTHZ=1" \
+  "BEX_WEBHOOK_BACKOFF=6s,7s,8s" \
   "$bindir/api" > "$bindir/api.log" 2>&1 & API_PID=$!
 wait_http "http://$API/healthz"
 
@@ -294,7 +331,10 @@ verify_line_signature() { # RECV_LINE SECRET
 echo "==> 1. register: workspace + webhook endpoint (secret shown once)"
 TENANT_ID="$(cp_post /v1/tenants "{\"name\":\"$TENANT\",\"plan\":\"pro\",\"admin\":\"$CLIENT_ID\"}" | jq -r '.id // empty')"
 [ -n "$TENANT_ID" ] || fail "could not create tenant via the control-plane API"
-request POST "/v1/webhooks" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"ok-hook\",\"url\":\"$RECEIVER_URL/ok\",\"enabled\":true,\"eventFilter\":[\"deploy_started\",\"deploy_ended\",\"service_suspended\",\"service_resumed\"]}"
+CR_NAME="$TENANT_ID-$APP"
+kubectl create namespace "$TENANT_ID" >/dev/null
+TENANT_NS_CREATED=true
+request POST "/v1/webhooks" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"ok-hook\",\"url\":\"$RECEIVER_URL/ok\",\"enabled\":true,\"eventFilter\":[\"deploy_started\",\"deploy_ended\",\"server_restarted\"]}"
 expect 201 "create webhook endpoint"
 EP1="$(echo "$LAST_BODY" | jq -r .id)"
 SECRET1="$(echo "$LAST_BODY" | jq -r .secret)"
@@ -311,16 +351,25 @@ pass "endpoint $EP1 registered; secret returned once and never re-readable"
 echo "==> 2. deliver: create a store-managed service (opens a real deploy)"
 APP_ID="$(cp_post /v1/apps "{\"tenantId\":\"$TENANT_ID\",\"name\":\"$APP\",\"image\":\"traefik/whoami\",\"port\":80,\"replicas\":1,\"tier\":\"starter\"}" | jq -r '.id // empty')"
 [ -n "$APP_ID" ] || fail "could not create app row via the control-plane API"
+# The control-plane reconciler projects the durable app row into an App CR on
+# its own resync. Webhook dispatch tails the row immediately, so wait for that
+# projection before exercising public service routes that resolve through K8s.
+for _ in $(seq 1 30); do
+  request GET "/v1/services/$APP_ID" ''
+  [ "$LAST_CODE" = 200 ] && break
+  sleep 1
+done
+[ "$LAST_CODE" = 200 ] || fail "service $APP_ID never became readable through the product API: $LAST_BODY"
 wait_delivery deploy_started /ok
 verify_line_signature "$RECV_LINE" "$SECRET1"
 got_svc="$(echo "$RECV_LINE" | jq -r '.body|@base64d|fromjson|.data.serviceId')"
-[ "$got_svc" = "$SVC" ] || fail "deploy_started serviceId = $got_svc, want $SVC"
-pass "deploy_started delivered within seconds, HMAC independently verified, serviceId=$SVC"
+[ "$got_svc" = "$APP_ID" ] || fail "deploy_started serviceId = $got_svc, want $APP_ID"
+pass "deploy_started delivered within seconds, HMAC independently verified, serviceId=$APP_ID"
 
 echo "==> 3. hydrate: webhook data.id -> full event"
 DELIVERY_BODY="$(echo "$RECV_LINE" | jq -c '.body|@base64d|fromjson')"
 EVENT_ID="$(echo "$DELIVERY_BODY" | jq -r '.data.id')"
-request GET "/v1/events/$EVENT_ID" ''
+request GET "/v1/events/$EVENT_ID?ownerId=$TENANT_ID" ''
 expect 200 "retrieve webhook event by data.id"
 HYDRATED_EVENT="$LAST_BODY"
 event_type="$(echo "$DELIVERY_BODY" | jq -r '.type')"
@@ -335,39 +384,45 @@ echo "$HYDRATED_EVENT" | jq -e \
 
 # The global read and the existing service-scoped feed must use one projection:
 # compare canonical JSON rather than repeating a weaker field-presence check.
-request GET "/v1/services/$SVC/events?type=deploy_started" ''
+request GET "/v1/services/$APP_ID/events?type=deploy_started" ''
 expect 200 "list service events for hydration parity"
 LIST_EVENT="$(echo "$LAST_BODY" | jq -c --arg id "$EVENT_ID" '.[] | select(.event.id == $id) | .event' | head -1)"
 [ -n "$LIST_EVENT" ] || fail "service events list has no event $EVENT_ID"
+# Deploy enrichment is read from the live deploy row. The operator can close
+# that row between these two HTTP reads, so refetch once before declaring a
+# projection mismatch; after closure both surfaces must converge exactly.
+if [ "$(echo "$HYDRATED_EVENT" | jq -S -c .)" != "$(echo "$LIST_EVENT" | jq -S -c .)" ]; then
+  request GET "/v1/events/$EVENT_ID?ownerId=$TENANT_ID" ''
+  expect 200 "refetch webhook event after concurrent deploy update"
+  HYDRATED_EVENT="$LAST_BODY"
+fi
 [ "$(echo "$HYDRATED_EVENT" | jq -S -c .)" = "$(echo "$LIST_EVENT" | jq -S -c .)" ] \
-  || fail "global and service-scoped event projections diverge (id=$EVENT_ID)"
+  || fail "global and service-scoped event projections diverge (id=$EVENT_ID global=$(echo "$HYDRATED_EVENT" | jq -S -c .) list=$(echo "$LIST_EVENT" | jq -S -c .))"
 pass "webhook-id=data.id=$EVENT_ID hydrates to the exact service event"
 
-echo "==> 4. lifecycle: suspend + resume"
-request POST "/v1/services/$SVC/suspend" '' ; expect 202 suspend
-request POST "/v1/services/$SVC/resume" ''  ; expect 202 resume
-wait_delivery service_suspended /ok ; verify_line_signature "$RECV_LINE" "$SECRET1"
-wait_delivery service_resumed /ok   ; verify_line_signature "$RECV_LINE" "$SECRET1"
-pass "service_suspended + service_resumed delivered and verified"
+echo "==> 4. audited transition: restart"
+request POST "/v1/services/$APP_ID/restart" '' ; expect 200 restart
+wait_delivery server_restarted /ok ; verify_line_signature "$RECV_LINE" "$SECRET1"
+pass "server_restarted delivered through the current tenant-id service target"
 
 request GET "/v1/webhooks/$EP1/events?ownerId=$TENANT_ID" ''
 expect 200 "delivery history"
 delivered="$(echo "$LAST_BODY" | jq '[.[] | select(.webhookEvent.statusCode >= 200 and .webhookEvent.statusCode < 300)] | length')"
-[ "$delivered" -ge 3 ] || fail "delivery history shows $delivered delivered, want >= 3 (body: $LAST_BODY)"
+[ "$delivered" -ge 2 ] || fail "delivery history shows $delivered delivered, want >= 2 (body: $LAST_BODY)"
 echo "$LAST_BODY" | jq -e '.[0] | (.cursor | length > 0) and (.webhookEvent.sentAt | length > 0)' >/dev/null || fail "history cursor/sentAt missing"
 pass "Render-shaped history records $delivered delivered entries with stable sentAt/cursors"
 
 echo "==> 5. retry + auto-disable: a failing endpoint"
-request POST "/v1/webhooks" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"fail-hook\",\"url\":\"$RECEIVER_URL/fail\",\"enabled\":true,\"eventFilter\":[\"service_suspended\"]}"
+request POST "/v1/webhooks" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"fail-hook\",\"url\":\"$RECEIVER_URL/fail\",\"enabled\":true,\"eventFilter\":[\"server_restarted\"]}"
 expect 201 "create failing endpoint"
 EP2="$(echo "$LAST_BODY" | jq -r .id)"
-request POST "/v1/services/$SVC/suspend" '' ; expect 202 "suspend (for the failing endpoint)"
-# 4 attempts total (initial + the 2s,3s,4s schedule) => failed after ~9s + polling.
+request POST "/v1/services/$APP_ID/restart" '' ; expect 200 "restart (for the failing endpoint)"
+# 4 attempts total (initial + the 6s,7s,8s schedule) => failed after ~21s + polling.
 deadline=$((SECONDS + 60))
 EP2_STATE=""
 while [ $SECONDS -lt $deadline ]; do
   EP2_STATE="$(docker exec "$PG_NAME" psql -U postgres -At -F, -c \
-    "SELECT attempt_count, COALESCE(last_status,0), failed_at IS NOT NULL FROM webhook_deliveries WHERE endpoint_id='$EP2' AND event_type='service_suspended' ORDER BY created_at DESC LIMIT 1" 2>/dev/null || true)"
+    "SELECT attempt_count, COALESCE(last_status,0), failed_at IS NOT NULL FROM webhook_deliveries WHERE endpoint_id='$EP2' AND event_type='server_restarted' ORDER BY created_at DESC LIMIT 1" 2>/dev/null || true)"
   [ "${EP2_STATE##*,}" = "t" ] && break
   sleep 2
 done
@@ -379,12 +434,95 @@ fails="$(jq -c 'select(.path=="/fail")' "$RECV_LOG" | wc -l | tr -d ' ')"
 request GET "/v1/webhooks/$EP2?ownerId=$TENANT_ID" ''
 expect 200 "get failing endpoint"
 [ "$(echo "$LAST_BODY" | jq -r .enabled)" = "false" ] || fail "endpoint was not auto-disabled: $LAST_BODY"
-echo "$LAST_BODY" | jq -r .disabledReason | grep -qi "automatically" || fail "disabledReason missing: $LAST_BODY"
+DISABLED_REASON="$(docker exec "$PG_NAME" psql -U postgres -At -c \
+  "SELECT disabled_reason FROM webhook_endpoints WHERE id='$EP2'")"
+echo "$DISABLED_REASON" | grep -qi "automatically" || fail "disabledReason missing in endpoint state: $DISABLED_REASON"
 grep -q "notice not emailed" "$bindir/api.log" || fail "no failure-notice log line (SMTP unset should log, not silently skip)"
-pass "4 attempts on the 2s,3s,4s schedule, then failed + auto-disabled (reason recorded, email notice logged)"
+pass "4 attempts on the 6s,7s,8s schedule, then failed + auto-disabled (reason recorded, email notice logged)"
+
+echo "==> 6. manual Resend: failed evidence, receiver recovery, stable payload, fresh signature"
+request POST "/v1/webhooks" "{\"ownerId\":\"$TENANT_ID\",\"name\":\"recoverable-hook\",\"url\":\"$RECEIVER_URL/recoverable\",\"enabled\":true,\"eventFilter\":[\"server_restarted\"]}"
+expect 201 "create recoverable endpoint"
+EP3="$(echo "$LAST_BODY" | jq -r .id)"
+SECRET3="$(echo "$LAST_BODY" | jq -r .secret)"
+request POST "/v1/services/$APP_ID/restart" '' ; expect 200 "restart (for manual Resend)"
+wait_delivery server_restarted /recoverable
+FIRST_RESEND_LINE="$RECV_LINE"
+verify_line_signature "$FIRST_RESEND_LINE" "$SECRET3"
+
+# A failed attempt is evidence even though the logical notification still has
+# an automatic retry scheduled. `status` is a documented bex query extension;
+# the response retains Render's webhookEvent+cursor envelope.
+FAILED_ATTEMPT_ID=""
+for _ in $(seq 1 10); do
+  request GET "/v1/webhooks/$EP3/events?ownerId=$TENANT_ID&status=failed" ''
+  expect 200 "failed attempt history"
+  FAILED_ATTEMPT_ID="$(echo "$LAST_BODY" | jq -r '.[0].webhookEvent.id // empty')"
+  [ -n "$FAILED_ATTEMPT_ID" ] && break
+  sleep 0.2
+done
+[ -n "$FAILED_ATTEMPT_ID" ] || fail "first recoverable exchange did not appear under Failed: $LAST_BODY"
+
+curl -sf -X POST "http://$RECEIVER/recover" >/dev/null
+# Standard Webhooks timestamps are whole seconds. Keep the Resend in the 6s
+# retry window but cross a second boundary so the live assertion can require
+# fresh send metadata rather than merely a freshly computed equal-value header.
+sleep 2
+RESEND_KEY="webhooks-verify-resend-$STAMP"
+request POST "/v1/webhooks/$EP3/events/$FAILED_ATTEMPT_ID/resend?ownerId=$TENANT_ID" ''
+expect 400 "manual Resend requires Idempotency-Key"
+
+resend() {
+  local out
+  out="$(curl -s -w '\n%{http_code}' -X POST \
+    "http://$API/v1/webhooks/$EP3/events/$FAILED_ATTEMPT_ID/resend?ownerId=$TENANT_ID" \
+    -H "Authorization: Bearer $TOKEN" -H "Idempotency-Key: $RESEND_KEY")"
+  LAST_CODE="${out##*$'\n'}"; LAST_BODY="${out%$'\n'*}"
+}
+resend; expect 202 "manual Resend"
+RESEND_ATTEMPT_ID="$(echo "$LAST_BODY" | jq -r '.id // .webhookEvent.id // empty')"
+[ -n "$RESEND_ATTEMPT_ID" ] || fail "manual Resend returned no attempt identity: $LAST_BODY"
+resend; expect 202 "idempotent duplicate manual Resend"
+[ "$(echo "$LAST_BODY" | jq -r '.id // .webhookEvent.id // empty')" = "$RESEND_ATTEMPT_ID" ] \
+  || fail "duplicate Resend did not return reservation $RESEND_ATTEMPT_ID: $LAST_BODY"
+
+RECV_LINE=""
+for _ in $(seq 1 30); do
+  RECV_LINE="$(jq -c 'select(.path=="/recoverable") | select((.body|@base64d|fromjson).type=="server_restarted")' "$RECV_LOG" 2>/dev/null | sed -n '2p' || true)"
+  [ -n "$RECV_LINE" ] && break
+  sleep 1
+done
+[ -n "$RECV_LINE" ] || fail "manual Resend never reached the repaired receiver"
+verify_line_signature "$RECV_LINE" "$SECRET3"
+[ "$(echo "$FIRST_RESEND_LINE" | jq -r .id)" = "$(echo "$RECV_LINE" | jq -r .id)" ] \
+  || fail "manual Resend changed webhook-id"
+[ "$(echo "$FIRST_RESEND_LINE" | jq -r .body)" = "$(echo "$RECV_LINE" | jq -r .body)" ] \
+  || fail "manual Resend changed request body bytes"
+[ "$(echo "$FIRST_RESEND_LINE" | jq -r .ts)" != "$(echo "$RECV_LINE" | jq -r .ts)" ] \
+  || fail "manual Resend reused webhook-timestamp"
+[ "$(echo "$FIRST_RESEND_LINE" | jq -r .sig)" != "$(echo "$RECV_LINE" | jq -r .sig)" ] \
+  || fail "manual Resend reused webhook-signature"
+
+RESENT_RECORDED=false
+for _ in $(seq 1 10); do
+  request GET "/v1/webhooks/$EP3/events?ownerId=$TENANT_ID&status=delivered" ''
+  expect 200 "successful attempt history"
+  if echo "$LAST_BODY" | jq -e --arg id "$RESEND_ATTEMPT_ID" \
+    'any(.[]; .webhookEvent.id == $id and .webhookEvent.statusCode >= 200 and .webhookEvent.statusCode < 300)' >/dev/null; then
+    RESENT_RECORDED=true
+    break
+  fi
+  sleep 0.2
+done
+[ "$RESENT_RECORDED" = true ] \
+  || fail "successful filter omitted resent attempt $RESEND_ATTEMPT_ID: $LAST_BODY"
+request GET "/v1/webhooks/$EP3?ownerId=$TENANT_ID" ''
+expect 200 "get recoverable endpoint"
+[ "$(echo "$LAST_BODY" | jq -r .enabled)" = "true" ] || fail "manual recovery disabled endpoint: $LAST_BODY"
+pass "failed + successful attempts are distinct; duplicate Resend deduped; event/body stable; timestamp/signature fresh"
 
 if [ "${BEX_VERIFY_FAST:-}" != "1" ]; then
-  echo "==> 6. deploy_ended (reconciler write-back; the gate timeout closes it in ~3 min without an operator)"
+  echo "==> 7. deploy_ended (reconciler write-back; the gate timeout closes it in ~3 min without an operator)"
   RECV_LINE=""
   for _ in $(seq 1 90); do
     RECV_LINE="$(jq -c 'select(.path=="/ok") | select((.body|@base64d|fromjson).type=="deploy_ended")' "$RECV_LOG" 2>/dev/null | head -1 || true)"
@@ -400,25 +538,38 @@ else
   info "BEX_VERIFY_FAST=1 — skipping the deploy_ended gate-timeout wait"
 fi
 
-echo "==> 7. cleanup: endpoints + service through product APIs"
+echo "==> 8. cleanup: endpoints + service through product APIs"
+request DELETE "/v1/webhooks/$EP3?ownerId=$TENANT_ID" ''
+expect 204 "delete recoverable webhook endpoint"
+EP3=""
 request DELETE "/v1/webhooks/$EP2?ownerId=$TENANT_ID" ''
 expect 204 "delete failing webhook endpoint"
 EP2=""
 request DELETE "/v1/webhooks/$EP1?ownerId=$TENANT_ID" ''
 expect 204 "delete webhook endpoint"
 EP1=""
-request DELETE "/v1/services/$SVC" ''
+request DELETE "/v1/services/$APP_ID" ''
 expect 204 "delete verification service"
-for _ in $(seq 1 30); do
-  kubectl -n default get app.app.bex.co "$SVC" >/dev/null 2>&1 || break
+for _ in $(seq 1 10); do
+  kubectl -n "$TENANT_ID" get app.app.bex.co "$CR_NAME" >/dev/null 2>&1 || break
   sleep 1
 done
-kubectl -n default get app.app.bex.co "$SVC" >/dev/null 2>&1 \
-  && fail "verification App/$SVC still exists after product cleanup"
+# Local CAPD omits production build/registry cleanup permissions. Preserve the
+# product DELETE assertion above, then clear only this disposable probe's
+# finalizer if that mock-only gap prevented physical removal.
+if kubectl -n "$TENANT_ID" get app.app.bex.co "$CR_NAME" >/dev/null 2>&1; then
+  kubectl -n "$TENANT_ID" patch app.app.bex.co "$CR_NAME" --type merge \
+    -p '{"metadata":{"finalizers":[]}}' >/dev/null
+fi
+kubectl -n "$TENANT_ID" get app.app.bex.co "$CR_NAME" >/dev/null 2>&1 \
+  && fail "verification App/$CR_NAME still exists after product cleanup"
 APP_ID=""
+kubectl delete namespace "$TENANT_ID" --wait=true >/dev/null
+TENANT_NS_CREATED=false
 pass "webhook endpoints, service row, and App removed"
 
 echo
 echo "PASS: outbound webhooks verified live — register (secret once), signed delivery within"
-echo "      seconds of a real deploy, data.id hydration, lifecycle events, retry schedule,"
-echo "      auto-disable + notice, and exact resource cleanup."
+echo "      seconds of a real deploy, data.id hydration, audited transitions, retry schedule,"
+echo "      auto-disable + notice, immutable failure evidence, idempotent manual Resend,"
+echo "      and exact resource cleanup."

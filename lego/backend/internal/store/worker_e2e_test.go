@@ -161,7 +161,7 @@ func TestTwoWorkersDeliverEachEventExactlyOnce(t *testing.T) {
 
 	// The same real rows exposed by REST history retain one stable first-sent
 	// instant and the latest bounded HTTP response evidence.
-	history, err := s.ListWebhookDeliveries(ctx, store.WebhookDeliveryFilter{EndpointID: ep.ID, Limit: 100})
+	history, err := s.ListWebhookAttempts(ctx, store.WebhookAttemptFilter{EndpointID: ep.ID, Limit: 100})
 	if err != nil {
 		t.Fatalf("list history: %v", err)
 	}
@@ -169,8 +169,8 @@ func TestTwoWorkersDeliverEachEventExactlyOnce(t *testing.T) {
 		t.Fatalf("history rows = %d, want %d", len(history), n)
 	}
 	for _, delivery := range history {
-		if delivery.SentAt == nil || delivery.LastStatus != http.StatusOK || delivery.ResponseBody != "accepted" {
-			t.Errorf("history evidence for %s = sentAt %v status %d body %q", delivery.EventID, delivery.SentAt, delivery.LastStatus, delivery.ResponseBody)
+		if delivery.SentAt == nil || delivery.Status != store.WebhookAttemptDelivered || delivery.StatusCode != http.StatusOK || delivery.ResponseBody != "accepted" {
+			t.Errorf("history evidence for %s = sentAt %v state %s status %d body %q", delivery.EventID, delivery.SentAt, delivery.Status, delivery.StatusCode, delivery.ResponseBody)
 		}
 		mu.Lock()
 		received := seen[delivery.EventID]

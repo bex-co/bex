@@ -1226,7 +1226,7 @@ func assertServiceEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tena
 			t.Fatalf("get indexed event %s: %v", event.Key, lookupErr)
 		}
 		if lookup.Event.Key != event.Key || lookup.Event.Source != event.Source || lookup.Event.Phase != event.Phase ||
-			lookup.ServiceID != core.CRName(ten.Name, app.Name) {
+			lookup.ServiceID != app.ID {
 			t.Errorf("indexed lookup for %s = %+v, want source row %+v and service identity", event.Key, lookup, event)
 		}
 		if _, foreignErr := s.GetServiceEvent(ctx, "tea-foreign00000000", eventID); !errors.Is(foreignErr, ErrNotFound) {
@@ -1893,6 +1893,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	// full service id "<tenantName>-<appName>" (the common one) and the bare
 	// app name (the LabelServiceName fallback) — the feed must match both.
 	fullTarget := core.ServiceTarget(core.CRName(ten.Name, app.Name))
+	currentTarget := core.ServiceTarget(core.CRName(ten.ID, app.Name))
 	bareTarget := core.ServiceTarget(app.Name)
 	// PostgreSQL stores timestamptz at microsecond precision. Keep occurrence
 	// fixtures on that boundary so equality assertions test persisted values,
@@ -1909,10 +1910,11 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	}
 	recordAudit(at, "apps.Restart", ten.ID, fullTarget, "", core.AuditAllowed)
 	recordAudit(at.Add(time.Second), "apps.Restart", ten.ID, bareTarget, "", core.AuditAllowed)
-	recordAudit(at.Add(2*time.Second), "apps.Restart", ten.ID, fullTarget, "", core.AuditDenied)                  // denied: excluded
-	recordAudit(at.Add(3*time.Second), "apps.Restart", "tea-stranger00000000", fullTarget, "", core.AuditAllowed) // cross-tenant: excluded
-	recordAudit(at.Add(4*time.Second), "apps.SetRoutes", ten.ID, fullTarget, "", core.AuditAllowed)               // verb not pushed down: excluded
-	recordAudit(at.Add(5*time.Second), core.AuditVerbPostgresCreated, ten.ID, core.DatabaseTarget("dpg-orders"), "orders", core.AuditAllowed)
+	recordAudit(at.Add(2*time.Second), "apps.Restart", ten.ID, currentTarget, "", core.AuditAllowed)
+	recordAudit(at.Add(3*time.Second), "apps.Restart", ten.ID, fullTarget, "", core.AuditDenied)                  // denied: excluded
+	recordAudit(at.Add(4*time.Second), "apps.Restart", "tea-stranger00000000", fullTarget, "", core.AuditAllowed) // cross-tenant: excluded
+	recordAudit(at.Add(5*time.Second), "apps.SetRoutes", ten.ID, fullTarget, "", core.AuditAllowed)               // verb not pushed down: excluded
+	recordAudit(at.Add(6*time.Second), core.AuditVerbPostgresCreated, ten.ID, core.DatabaseTarget("dpg-orders"), "orders", core.AuditAllowed)
 	lateOccurrence := at.Add(-time.Hour)
 	if inserted, err := s.InsertServiceEventFact(ctx, ServiceEventFact{
 		SourceKey: "observed:late-recovery", AppID: app.ID,
@@ -1972,8 +1974,8 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 			t.Errorf("unexpected audit verb in feed: %+v", r)
 		}
 	}
-	if restarts != 2 {
-		t.Errorf("feed carried %d apps.Restart events, want exactly 2 (both target spellings; denied/cross-tenant/unmapped excluded)\n%+v", restarts, rows)
+	if restarts != 3 {
+		t.Errorf("feed carried %d apps.Restart events, want exactly 3 (all target spellings; denied/cross-tenant/unmapped excluded)\n%+v", restarts, rows)
 	}
 	if postgresCreates != 1 {
 		t.Errorf("feed carried %d postgres.CreatePostgres events, want exactly 1\n%+v", postgresCreates, rows)
@@ -1997,7 +1999,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	// --- delivery queue lifecycle ---
 	now := time.Now().UTC().Truncate(time.Microsecond) // timestamptz keeps microseconds
 	d := WebhookDelivery{
-		ID: "whd-testdelivery00000", EndpointID: ep.ID, EventID: "evt-testevent00000000",
+		ID: ids.Derive(ids.WebhookDelivery, "store-pg-test-delivery"), EndpointID: ep.ID, EventID: "evt-testevent00000000",
 		EventType: "deploy_started", ServiceID: app.Name, Payload: `{"type":"deploy_started"}`,
 		NextAttemptAt: now,
 	}
@@ -2008,62 +2010,79 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	if err != nil || !wmAt3.Equal(now) || wmKey3 != "advance-key" {
 		t.Errorf("watermark after enqueue = (%v, %q, %v), want (%v, advance-key)", wmAt3, wmKey3, err, now)
 	}
-	due, err := s.ClaimDueWebhookDeliveries(ctx, now.Add(time.Second), now.Add(time.Second+time.Minute), 10)
+	due, err := s.ClaimDueWebhookAttempts(ctx, now.Add(time.Second), now.Add(time.Second+time.Minute), 10)
 	if err != nil || len(due) != 1 {
 		t.Fatalf("due = %+v (err %v), want the one enqueued delivery", due, err)
 	}
 	if due[0].Secret != "whsec_secret-a" || due[0].URL != "https://hooks.example.com/a" || due[0].CreatedBy != "user-x" {
 		t.Errorf("due join = %+v, want the endpoint's secret/url/creator", due[0])
 	}
-	// A failed attempt reschedules; the row stays open but future-dated.
-	if err := s.RecordWebhookAttempt(ctx, d.ID, 502, "bad gateway", "upstream down", now, now.Add(time.Hour), false, false); err != nil {
-		t.Fatalf("record attempt: %v", err)
+	// A failed attempt becomes immutable evidence and atomically reserves its
+	// future retry; the logical notification stays open.
+	retryID := ids.New(ids.WebhookDelivery)
+	if completed, err := s.CompleteWebhookAttempt(ctx, WebhookAttemptCompletion{
+		AttemptID: d.ID, NextAttemptID: retryID, StatusCode: 502,
+		TransportError: "bad gateway", ResponseBody: "upstream down",
+		CompletedAt: now, NextAttemptAt: now.Add(time.Hour),
+	}); err != nil || !completed {
+		t.Fatalf("complete attempt = %v, %v", completed, err)
 	}
-	if due, _ := s.ClaimDueWebhookDeliveries(ctx, now.Add(time.Second), now.Add(time.Second+time.Minute), 10); len(due) != 0 {
+	if due, _ := s.ClaimDueWebhookAttempts(ctx, now.Add(time.Second), now.Add(time.Second+time.Minute), 10); len(due) != 0 {
 		t.Errorf("rescheduled delivery must not be due, got %+v", due)
 	}
 	// Disabling the endpoint parks the queue even when the row is due.
-	if err := s.DisableWebhookEndpoint(ctx, ep.ID, "auto"); err != nil {
+	if _, err := s.SetWebhookEndpointEnabled(ctx, ten.ID, ep.ID, false, "auto"); err != nil {
 		t.Fatalf("disable: %v", err)
 	}
-	if due, _ := s.ClaimDueWebhookDeliveries(ctx, now.Add(2*time.Hour), now.Add(2*time.Hour+time.Minute), 10); len(due) != 0 {
+	if due, _ := s.ClaimDueWebhookAttempts(ctx, now.Add(2*time.Hour), now.Add(2*time.Hour+time.Minute), 10); len(due) != 0 {
 		t.Errorf("a disabled endpoint's deliveries must not be due, got %+v", due)
 	}
 	if _, err := s.SetWebhookEndpointEnabled(ctx, ten.ID, ep.ID, true, ""); err != nil {
 		t.Fatalf("re-enable: %v", err)
 	}
-	// A delivered attempt closes the row.
-	if err := s.RecordWebhookAttempt(ctx, d.ID, 200, "", "ok", now.Add(2*time.Hour), now.Add(2*time.Hour), true, false); err != nil {
-		t.Fatalf("record delivered: %v", err)
+	// A delivered retry closes the row without mutating the prior failed evidence.
+	if completed, err := s.CompleteWebhookAttempt(ctx, WebhookAttemptCompletion{
+		AttemptID: retryID, StatusCode: 200, ResponseBody: "ok",
+		CompletedAt: now.Add(2 * time.Hour), NextAttemptAt: now.Add(2 * time.Hour), Delivered: true,
+	}); err != nil || !completed {
+		t.Fatalf("complete delivered = %v, %v", completed, err)
 	}
-	history, err := s.ListWebhookDeliveries(ctx, WebhookDeliveryFilter{EndpointID: ep.ID, Limit: 10})
-	if err != nil || len(history) != 1 {
+	history, err := s.ListWebhookAttempts(ctx, WebhookAttemptFilter{EndpointID: ep.ID, Limit: 10})
+	if err != nil || len(history) != 2 {
 		t.Fatalf("history = %+v (err %v)", history, err)
 	}
-	h := history[0]
-	if h.AttemptCount != 2 || h.DeliveredAt == nil || h.LastStatus != 200 {
-		t.Errorf("history row = %+v, want 2 attempts, delivered, 200", h)
+	if history[0].ID != retryID || history[0].Status != WebhookAttemptDelivered || history[0].StatusCode != 200 ||
+		history[1].ID != d.ID || history[1].Status != WebhookAttemptFailed || history[1].StatusCode != 502 {
+		t.Errorf("immutable attempt history = %+v", history)
 	}
 	failedAt := now.Add(3 * time.Hour)
 	failedDelivery := WebhookDelivery{
-		ID: "whd-failedhistory000", EndpointID: ep.ID, EventID: "evt-failedhistory0000",
+		ID: ids.Derive(ids.WebhookDelivery, "store-pg-failed-history"), EndpointID: ep.ID, EventID: "evt-failedhistory0000",
 		EventType: "deploy_ended", ServiceID: app.Name, Payload: `{}`, NextAttemptAt: failedAt,
 	}
 	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{failedDelivery}, failedAt, "failed-key"); err != nil {
 		t.Fatalf("enqueue failed history fixture: %v", err)
 	}
-	if err := s.RecordWebhookAttempt(ctx, failedDelivery.ID, 503, "unavailable", "try later", failedAt, failedAt, false, true); err != nil {
-		t.Fatalf("record terminal failure: %v", err)
+	if completed, err := s.CompleteWebhookAttempt(ctx, WebhookAttemptCompletion{
+		AttemptID: failedDelivery.ID, StatusCode: 503,
+		TransportError: "unavailable", ResponseBody: "try later",
+		CompletedAt: failedAt, NextAttemptAt: failedAt,
+		Exhausted: true, DisableReason: "too many failures",
+	}); err != nil || !completed {
+		t.Fatalf("complete terminal failure = %v, %v", completed, err)
 	}
-	deliveredHistory, err := s.ListWebhookDeliveries(ctx, WebhookDeliveryFilter{EndpointID: ep.ID, Status: "delivered", Limit: 10})
-	if err != nil || len(deliveredHistory) != 1 || deliveredHistory[0].ID != d.ID {
+	deliveredHistory, err := s.ListWebhookAttempts(ctx, WebhookAttemptFilter{EndpointID: ep.ID, Status: WebhookAttemptDelivered, Limit: 10})
+	if err != nil || len(deliveredHistory) != 1 || deliveredHistory[0].ID != retryID {
 		t.Fatalf("delivered history = %+v (err %v)", deliveredHistory, err)
 	}
-	failedHistory, err := s.ListWebhookDeliveries(ctx, WebhookDeliveryFilter{
-		EndpointID: ep.ID, SentAfter: now.Add(2 * time.Hour), SentBefore: now.Add(4 * time.Hour), Status: "failed", Limit: 10,
+	failedHistory, err := s.ListWebhookAttempts(ctx, WebhookAttemptFilter{
+		EndpointID: ep.ID, SentAfter: now.Add(2 * time.Hour), SentBefore: now.Add(4 * time.Hour), Status: WebhookAttemptFailed, Limit: 10,
 	})
 	if err != nil || len(failedHistory) != 1 || failedHistory[0].ID != failedDelivery.ID || failedHistory[0].ResponseBody != "try later" {
 		t.Fatalf("time/status-filtered failed history = %+v (err %v)", failedHistory, err)
+	}
+	if _, err := s.SetWebhookEndpointEnabled(ctx, ten.ID, ep.ID, true, ""); err != nil {
+		t.Fatalf("re-enable after terminal failure fixture: %v", err)
 	}
 	if ep2.Enabled {
 		t.Fatal("secondary pagination fixture must remain disabled so it cannot receive fan-out")
@@ -2111,7 +2130,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 		wg.Add(1)
 		go func(g int) {
 			defer wg.Done()
-			got, err := s.ClaimDueWebhookDeliveries(ctx, cnow.Add(time.Second), cnow.Add(time.Minute), nRows)
+			got, err := s.ClaimDueWebhookAttempts(ctx, cnow.Add(time.Second), cnow.Add(time.Minute), nRows)
 			if err != nil {
 				t.Errorf("claim g%d: %v", g, err)
 				return
@@ -2145,13 +2164,13 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 		t.Fatalf("enqueue lease: %v", err)
 	}
 	leaseUntil := cnow.Add(30 * time.Second)
-	if got, err := s.ClaimDueWebhookDeliveries(ctx, cnow.Add(time.Second), leaseUntil, 100); err != nil || !containsDelivery(got, lease.ID) {
+	if got, err := s.ClaimDueWebhookAttempts(ctx, cnow.Add(time.Second), leaseUntil, 100); err != nil || !containsAttempt(got, lease.ID) {
 		t.Fatalf("lease claim did not return the row (err %v)", err)
 	}
-	if got, _ := s.ClaimDueWebhookDeliveries(ctx, leaseUntil.Add(-time.Second), leaseUntil.Add(time.Minute), 100); containsDelivery(got, lease.ID) {
+	if got, _ := s.ClaimDueWebhookAttempts(ctx, leaseUntil.Add(-time.Second), leaseUntil.Add(time.Minute), 100); containsAttempt(got, lease.ID) {
 		t.Error("leased row must not be re-claimable before the lease expires")
 	}
-	if got, err := s.ClaimDueWebhookDeliveries(ctx, leaseUntil.Add(time.Second), leaseUntil.Add(time.Minute), 100); err != nil || !containsDelivery(got, lease.ID) {
+	if got, err := s.ClaimDueWebhookAttempts(ctx, leaseUntil.Add(time.Second), leaseUntil.Add(time.Minute), 100); err != nil || !containsAttempt(got, lease.ID) {
 		t.Fatalf("expired lease must be re-claimable (err %v)", err)
 	}
 
@@ -2213,7 +2232,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	}
 }
 
-func containsDelivery(due []DueWebhookDelivery, id string) bool {
+func containsAttempt(due []DueWebhookAttempt, id string) bool {
 	for _, d := range due {
 		if d.ID == id {
 			return true

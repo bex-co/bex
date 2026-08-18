@@ -37,7 +37,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **m22** — Generate Blueprint: export existing resources as render.yaml (7 tasks) ← from blueprint lifecycle-semantics verification 2026-08-16 (Render's select-services→download render.yaml has no bex equivalent; the m19 registry allowlist + verified adoption-by-name make it a serialization exercise with a no-op round trip)
 - [x] **m23** — Blueprint resource ownership: stop silent cross-blueprint overwrite (6 tasks) ← from blueprint lifecycle-semantics verification 2026-08-16 (no ownership marker — two blueprints naming the same resource silently clobber each other; Render warns "last sync wins", bex refuses with takeover confirmation); best sequenced after m21/m22, which reuse the same review/confirmation surfaces
 - [x] **m24** — Webhook event hydration: retrieve a payload's `data.id` (9 tasks) ← from authenticated Bex↔Render webhook parity audit 2026-08-17; closes the event-detail residual after w2/m70
-- [ ] **m25** — Webhook immutable attempt history + manual Resend (13 tasks) ← from authenticated Bex↔Render webhook parity audit 2026-08-17, needs m24
+- [x] **m25** — Webhook immutable attempt history + manual Resend (13 tasks) ← from authenticated Bex↔Render webhook parity audit 2026-08-17, needs m24
 - [ ] **m26** — Webhook management UX + drift-proof dashboard parity (10 tasks) ← from authenticated Bex↔Render webhook parity audit 2026-08-17, needs m25
 
 ## Inbox

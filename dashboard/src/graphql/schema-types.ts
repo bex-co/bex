@@ -996,6 +996,7 @@ export type Mutation = {
   renameKeyValue: Maybe<KeyValue>;
   renameProject: Maybe<Project>;
   renameWorkspace: Maybe<Workspace>;
+  resendWebhookDelivery: Maybe<WebhookDelivery>;
   resendWorkspaceInvite: Maybe<WorkspaceInvite>;
   restartDatabase: Maybe<Database>;
   restartServer: Maybe<Deploy>;
@@ -1574,6 +1575,14 @@ export type MutationRenameProjectArgs = {
 export type MutationRenameWorkspaceArgs = {
   id: Scalars['String']['input'];
   name: Scalars['String']['input'];
+};
+
+
+export type MutationResendWebhookDeliveryArgs = {
+  attemptId: Scalars['String']['input'];
+  endpointId: Scalars['String']['input'];
+  idempotencyKey: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3136,21 +3145,20 @@ export type ViewerCapabilities = {
 
 export type WebhookDelivery = {
   __typename: 'WebhookDelivery';
-  attemptCount: Maybe<Scalars['Int']['output']>;
-  createdAt: Maybe<Scalars['String']['output']>;
+  attemptNumber: Maybe<Scalars['Int']['output']>;
   cursor: Maybe<Scalars['String']['output']>;
-  deliveredAt: Maybe<Scalars['String']['output']>;
   eventId: Maybe<Scalars['String']['output']>;
   eventType: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
-  lastAttemptedAt: Maybe<Scalars['String']['output']>;
-  lastError: Maybe<Scalars['String']['output']>;
-  lastStatusCode: Maybe<Scalars['Int']['output']>;
   nextAttemptAt: Maybe<Scalars['String']['output']>;
+  parentStatus: Maybe<Scalars['String']['output']>;
+  requestBody: Maybe<Scalars['String']['output']>;
   responseBody: Maybe<Scalars['String']['output']>;
   sentAt: Maybe<Scalars['String']['output']>;
   serviceId: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
+  statusCode: Maybe<Scalars['Int']['output']>;
+  transportError: Maybe<Scalars['String']['output']>;
 };
 
 export type WebhookEndpoint = {

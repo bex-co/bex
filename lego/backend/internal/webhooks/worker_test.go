@@ -54,6 +54,7 @@ type fakeWorkerStore struct {
 	wmAt       time.Time
 	wmKey      string
 	queue      map[string]*store.WebhookDelivery
+	attempts   map[string]*fakeAttempt
 	disabled   map[string]string    // endpoint id -> reason
 	notifiedAt map[string]time.Time // endpoint id -> last failure-notice CAS
 	queueOrder []string
@@ -77,6 +78,15 @@ func (f *fakeWorkerStore) SubjectIsWorkspaceAdmin(_ context.Context, _ string, s
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return !f.nonAdmins[subject], nil
+}
+
+type fakeAttempt struct {
+	parentID  string
+	origin    string
+	available time.Time
+	lease     time.Time
+	resume    *time.Time
+	done      bool
 }
 
 type sweepCall struct {
@@ -122,6 +132,7 @@ func (f *fakeWorkerStore) SweepWebhookDeliveries(_ context.Context, before time.
 func newFakeWorkerStore() *fakeWorkerStore {
 	return &fakeWorkerStore{
 		queue:      map[string]*store.WebhookDelivery{},
+		attempts:   map[string]*fakeAttempt{},
 		disabled:   map[string]string{},
 		notifiedAt: map[string]time.Time{},
 		seen:       map[string]bool{},
@@ -186,21 +197,31 @@ func (f *fakeWorkerStore) EnqueueWebhookDeliveries(_ context.Context, deliveries
 		f.seen[dedupKey] = true
 		cp := d
 		f.queue[d.ID] = &cp
+		f.attempts[d.ID] = &fakeAttempt{parentID: d.ID, origin: store.WebhookAttemptAutomatic, available: d.NextAttemptAt}
 		f.queueOrder = append(f.queueOrder, d.ID)
 	}
 	f.wmAt, f.wmKey = at, key
 	return nil
 }
 
-func (f *fakeWorkerStore) ClaimDueWebhookDeliveries(_ context.Context, now, leaseUntil time.Time, limit int) ([]store.DueWebhookDelivery, error) {
+func (f *fakeWorkerStore) ClaimDueWebhookAttempts(_ context.Context, now, leaseUntil time.Time, limit int) ([]store.DueWebhookAttempt, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	var out []store.DueWebhookDelivery
+	// Older tests seed the parent map directly. Materialize their initial
+	// reservation lazily so the fake follows the production two-level model.
 	for _, id := range f.queueOrder {
-		d := f.queue[id]
-		if d.DeliveredAt != nil || d.FailedAt != nil || d.NextAttemptAt.After(now) {
+		if _, ok := f.attempts[id]; !ok {
+			d := f.queue[id]
+			f.attempts[id] = &fakeAttempt{parentID: id, origin: store.WebhookAttemptAutomatic, available: d.NextAttemptAt}
+		}
+	}
+	var out []store.DueWebhookAttempt
+	for _, id := range f.queueOrder {
+		a := f.attempts[id]
+		if a == nil || a.done || a.available.After(now) || (!a.lease.IsZero() && a.lease.After(now)) {
 			continue
 		}
+		d := f.queue[a.parentID]
 		ep, ok := f.endpointByID(d.EndpointID)
 		if !ok {
 			continue
@@ -208,11 +229,17 @@ func (f *fakeWorkerStore) ClaimDueWebhookDeliveries(_ context.Context, now, leas
 		if _, off := f.disabled[ep.ID]; off || !ep.Enabled {
 			continue
 		}
-		d.NextAttemptAt = leaseUntil // lease the row, mirroring the SKIP LOCKED claim
-		out = append(out, store.DueWebhookDelivery{
-			WebhookDelivery: *d,
-			URL:             ep.URL, Secret: ep.Secret, TenantID: ep.TenantID,
-			EndpointName: ep.Name, CreatedBy: ep.CreatedBy,
+		a.lease = leaseUntil
+		nextAt := a.available
+		out = append(out, store.DueWebhookAttempt{
+			WebhookAttempt: store.WebhookAttempt{
+				ID: id, NotificationID: a.parentID, EndpointID: d.EndpointID,
+				EventID: d.EventID, EventType: d.EventType, ServiceID: d.ServiceID,
+				Payload: d.Payload, Status: store.WebhookAttemptPending,
+				Origin: a.origin, NextAttemptAt: &nextAt, ResumeAutomaticAt: a.resume,
+			},
+			URL: ep.URL, Secret: ep.Secret, TenantID: ep.TenantID,
+			EndpointName: ep.Name, CreatedBy: ep.CreatedBy, AutomaticAttemptCount: d.AttemptCount,
 		})
 		if len(out) == limit {
 			break
@@ -240,37 +267,51 @@ func (f *fakeWorkerStore) endpointByID(id string) (store.WebhookEndpoint, bool) 
 	return store.WebhookEndpoint{}, false
 }
 
-func (f *fakeWorkerStore) RecordWebhookAttempt(_ context.Context, id string, status int, errMsg, responseBody string, at, next time.Time, delivered, failed bool) error {
+func (f *fakeWorkerStore) CompleteWebhookAttempt(_ context.Context, completion store.WebhookAttemptCompletion) (bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	d := f.queue[id]
-	d.AttemptCount++
-	d.LastStatus = status
-	d.LastError = errMsg
-	d.ResponseBody = responseBody
+	a := f.attempts[completion.AttemptID]
+	if a == nil || a.done {
+		return false, nil
+	}
+	a.done = true
+	d := f.queue[a.parentID]
+	if a.origin == store.WebhookAttemptAutomatic {
+		d.AttemptCount++
+	}
+	d.LastStatus = completion.StatusCode
+	d.LastError = completion.TransportError
+	d.ResponseBody = completion.ResponseBody
 	if d.SentAt == nil {
-		sentAt := at
+		sentAt := completion.CompletedAt
 		d.SentAt = &sentAt
 	}
-	attemptedAt := at
+	attemptedAt := completion.CompletedAt
 	d.LastAttemptedAt = &attemptedAt
-	d.NextAttemptAt = next
-	if delivered {
-		deliveredAt := at
+	if a.origin == store.WebhookAttemptAutomatic {
+		d.NextAttemptAt = completion.NextAttemptAt
+	}
+	if completion.Delivered {
+		deliveredAt := completion.CompletedAt
 		d.DeliveredAt = &deliveredAt
+		d.FailedAt = nil
 	}
-	if failed {
-		failedAt := at
+	if completion.Exhausted {
+		failedAt := completion.CompletedAt
 		d.FailedAt = &failedAt
+		f.disabled[d.EndpointID] = completion.DisableReason
 	}
-	return nil
-}
-
-func (f *fakeWorkerStore) DisableWebhookEndpoint(_ context.Context, id, reason string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.disabled[id] = reason
-	return nil
+	if !completion.Delivered && a.origin == store.WebhookAttemptAutomatic && !completion.Exhausted {
+		f.attempts[completion.NextAttemptID] = &fakeAttempt{parentID: a.parentID, origin: store.WebhookAttemptAutomatic, available: completion.NextAttemptAt}
+		f.queueOrder = append(f.queueOrder, completion.NextAttemptID)
+	}
+	if !completion.Delivered && a.origin == store.WebhookAttemptManual && a.resume != nil {
+		f.attempts[completion.NextAttemptID] = &fakeAttempt{parentID: a.parentID, origin: store.WebhookAttemptAutomatic, available: *a.resume}
+		f.queueOrder = append(f.queueOrder, completion.NextAttemptID)
+		d.NextAttemptAt = *a.resume
+		d.DeliveredAt, d.FailedAt = nil, nil
+	}
+	return true, nil
 }
 
 // fakeMailer records sends, keeping the last text body for content assertions.
@@ -279,6 +320,23 @@ type fakeMailer struct {
 	sends    []string // "to: subject"
 	lastText string
 	lastHTML string
+}
+
+type fakeAttemptObserver struct {
+	mu     sync.Mutex
+	values []string
+}
+
+func (o *fakeAttemptObserver) ObserveWebhookAttempt(origin, result string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.values = append(o.values, origin+":"+result)
+}
+
+func (o *fakeAttemptObserver) snapshot() []string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return slices.Clone(o.values)
 }
 
 func (f *fakeMailer) Send(_ context.Context, to, subject, text, html string) error {
@@ -446,6 +504,17 @@ func TestProjectDatastoreAuditEventUsesRenderThinPayload(t *testing.T) {
 	row.Verb = core.AuditVerbPostgresUpdated
 	if eventType, _, ok := project(row); ok {
 		t.Fatalf("unrelated datastore update projected as %q", eventType)
+	}
+}
+
+func TestProjectServiceEventUsesCanonicalAppID(t *testing.T) {
+	eventType, data, ok := project(store.WebhookEventRow{
+		Key: "dep-canonical:started", ServiceID: "acme-api", ServiceName: "api",
+		AppID: "srv-00000000000000000000", Source: store.EventSourceDeploy,
+		Phase: store.EventPhaseStarted,
+	})
+	if !ok || eventType != TypeDeployStarted || data.ServiceID != "srv-00000000000000000000" {
+		t.Fatalf("project = (%q, %+v, %v), want canonical srv id", eventType, data, ok)
 	}
 }
 
@@ -644,6 +713,77 @@ func TestSendStoresBoundedResponseEvidenceAndFirstSentAt(t *testing.T) {
 	if d.SentAt == nil || !d.SentAt.Equal(now) || len(d.ResponseBody) > maxWebhookResponseBytes ||
 		!strings.HasSuffix(d.ResponseBody, responseTruncatedSuffix) {
 		t.Fatalf("recorded evidence = %+v", d)
+	}
+}
+
+func TestSendStoresBoundedUTF8TransportError(t *testing.T) {
+	st := newFakeWorkerStore()
+	st.endpoints = []store.WebhookEndpoint{endpoint("whk-1", "tea-a", "https://hooks.example.test/error", "whsec_x", TypeDeployStarted)}
+	now := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	st.queue["whd-1"] = &store.WebhookDelivery{
+		ID: "whd-1", EndpointID: "whk-1", EventID: "evt-1", EventType: TypeDeployStarted,
+		Payload: `{}`, NextAttemptAt: now,
+	}
+	st.queueOrder = []string{"whd-1"}
+	client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New(strings.Repeat("界", 1000))
+	})}
+	w := &Worker{Store: st, Backoff: []time.Duration{time.Second}, Clock: func() time.Time { return now }, Client: client}
+	if err := w.send(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	got := st.queue["whd-1"].LastError
+	if len(got) > 2048 || !utf8.ValidString(got) {
+		t.Fatalf("transport error bytes=%d valid=%v", len(got), utf8.ValidString(got))
+	}
+}
+
+func TestAttemptObserverDistinguishesAutomaticAndManualTerminalizations(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer srv.Close()
+	st := newFakeWorkerStore()
+	st.endpoints = []store.WebhookEndpoint{endpoint("whk-1", "tea-a", srv.URL, "whsec_x", TypeDeployStarted)}
+	now := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	st.queue["whd-auto"] = &store.WebhookDelivery{
+		ID: "whd-auto", EndpointID: "whk-1", EventID: "evt-auto", EventType: TypeDeployStarted,
+		Payload: `{}`, NextAttemptAt: now,
+	}
+	st.queue["whd-manual-parent"] = &store.WebhookDelivery{
+		ID: "whd-manual-parent", EndpointID: "whk-1", EventID: "evt-manual", EventType: TypeDeployStarted,
+		Payload: `{}`, NextAttemptAt: now,
+	}
+	st.attempts["whd-manual"] = &fakeAttempt{parentID: "whd-manual-parent", origin: store.WebhookAttemptManual, available: now}
+	st.queueOrder = []string{"whd-auto", "whd-manual"}
+	observer := &fakeAttemptObserver{}
+	w := &Worker{
+		Store: st, Backoff: []time.Duration{time.Hour}, Clock: func() time.Time { return now },
+		Client: &http.Client{}, Attempts: observer,
+	}
+	if err := w.send(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	got := observer.snapshot()
+	slices.Sort(got)
+	want := []string{
+		store.WebhookAttemptAutomatic + ":" + store.WebhookAttemptFailed,
+		store.WebhookAttemptManual + ":" + store.WebhookAttemptFailed,
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("attempt observations = %v, want %v", got, want)
+	}
+	// A losing/duplicate completion does not increment metrics a second time.
+	w.attempt(t.Context(), store.DueWebhookAttempt{
+		WebhookAttempt: store.WebhookAttempt{
+			ID: "whd-manual", NotificationID: "whd-manual-parent", EndpointID: "whk-1",
+			EventID: "evt-manual", EventType: TypeDeployStarted, Payload: `{}`,
+			Origin: store.WebhookAttemptManual,
+		},
+		URL: srv.URL,
+	})
+	if got := observer.snapshot(); len(got) != 2 {
+		t.Fatalf("duplicate completion observations = %v", got)
 	}
 }
 
@@ -871,7 +1011,7 @@ func TestResponseBudgetAndBackoffOverrideContract(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusNoContent, Body: io.NopCloser(strings.NewReader("")), Header: make(http.Header)}, nil
 	})}
 	w := &Worker{Client: client}
-	if _, _, err := w.post(t.Context(), store.DueWebhookDelivery{WebhookDelivery: store.WebhookDelivery{EventID: "evt-1", Payload: `{}`}, URL: "https://hooks.example.com", Secret: "whsec_x"}, time.Now()); err != nil {
+	if _, _, err := w.post(t.Context(), store.DueWebhookAttempt{WebhookAttempt: store.WebhookAttempt{EventID: "evt-1", Payload: `{}`}, URL: "https://hooks.example.com", Secret: "whsec_x"}, time.Now()); err != nil {
 		t.Fatal(err)
 	}
 	if remaining < 14*time.Second || remaining > requestTimeout {

@@ -92,7 +92,7 @@ const (
 	// requestTimeout is Render's documented per-attempt budget: respond 2xx
 	// within 15s or the attempt failed.
 	requestTimeout = 15 * time.Second
-	// claimLease is how long ClaimDueWebhookDeliveries hides a claimed row from
+	// claimLease is how long ClaimDueWebhookAttempts hides a claimed row from
 	// other workers while this one POSTs it. It must exceed the WORST-CASE time a
 	// row can wait inside one send pass before its own POST completes, not just a
 	// single requestTimeout: a row claimed in the first wave may not be POSTed
@@ -126,14 +126,20 @@ type WorkerStore interface {
 	ListWebhookEvents(ctx context.Context, afterAt time.Time, afterKey string, until time.Time, verbs, tenants []string, limit int) ([]store.WebhookEventRow, error)
 	ListEnabledWebhookEndpoints(ctx context.Context) ([]store.WebhookEndpoint, error)
 	EnqueueWebhookDeliveries(ctx context.Context, deliveries []store.WebhookDelivery, at time.Time, key string) error
-	ClaimDueWebhookDeliveries(ctx context.Context, now, leaseUntil time.Time, limit int) ([]store.DueWebhookDelivery, error)
+	ClaimDueWebhookAttempts(ctx context.Context, now, leaseUntil time.Time, limit int) ([]store.DueWebhookAttempt, error)
 	SweepWebhookDeliveries(ctx context.Context, before time.Time, keepPerEndpoint, limit int) (int64, error)
-	RecordWebhookAttempt(ctx context.Context, id string, status int, errMsg, responseBody string, at, next time.Time, delivered, failed bool) error
-	DisableWebhookEndpoint(ctx context.Context, id, reason string) error
+	CompleteWebhookAttempt(ctx context.Context, completion store.WebhookAttemptCompletion) (bool, error)
 	ClaimWebhookFailureNotice(ctx context.Context, endpointID string, now, threshold time.Time) (bool, error)
 	// SubjectIsWorkspaceAdmin answers whether subject still holds the admin
 	// role in tenantID — the failure-notice recipient gate (round-14 #6).
 	SubjectIsWorkspaceAdmin(ctx context.Context, tenantID, subject string) (bool, error)
+}
+
+// AttemptObserver receives only bounded attempt origin/outcome dimensions.
+// A Prometheus implementation is shared with the authorized Resend service;
+// endpoint, event, workspace, and caller identifiers are intentionally absent.
+type AttemptObserver interface {
+	ObserveWebhookAttempt(origin, result string)
 }
 
 // Mailer sends the failure-notice email (text + optional HTML alternative) —
@@ -164,6 +170,9 @@ type Worker struct {
 	Clock func() time.Time
 	// Client posts deliveries; nil => defaultClient.
 	Client *http.Client
+	// Attempts records one result only after the store wins the terminalization
+	// CAS. nil disables metrics without affecting delivery.
+	Attempts AttemptObserver
 	// RetentionDays is how long a TERMINAL delivery survives before the sweep
 	// purges it (BEX_WEBHOOK_RETENTION_DAYS). <1 => DefaultRetentionDays.
 	RetentionDays int
@@ -398,7 +407,7 @@ func (w *Worker) fanOutPage(rows []store.WebhookEventRow, byTenant map[string][]
 				EndpointID:    e.ID,
 				EventID:       data.ID,
 				EventType:     eventType,
-				ServiceID:     r.ServiceID,
+				ServiceID:     data.ServiceID,
 				Payload:       body,
 				NextAttemptAt: now,
 			})
@@ -413,9 +422,13 @@ func (w *Worker) fanOutPage(rows []store.WebhookEventRow, byTenant map[string][]
 // correlate a webhook with GET /v1/services/{id}/events, and every retry
 // carries the same webhook-id for the receiver to dedupe on.
 func project(r store.WebhookEventRow) (string, payloadData, bool) {
+	serviceID := r.ServiceID
+	if r.AppID != "" {
+		serviceID = r.AppID
+	}
 	data := payloadData{
 		ID:          ids.Derive(ids.Event, r.Key),
-		ServiceID:   r.ServiceID,
+		ServiceID:   serviceID,
 		ServiceName: r.ServiceName,
 	}
 	switch r.Source {
@@ -456,7 +469,7 @@ func project(r store.WebhookEventRow) (string, payloadData, bool) {
 // leases a disjoint batch, so no event is POSTed twice concurrently.
 func (w *Worker) send(ctx context.Context) error {
 	now := w.now()
-	due, err := w.Store.ClaimDueWebhookDeliveries(ctx, now, now.Add(claimLease), sendBatch)
+	due, err := w.Store.ClaimDueWebhookAttempts(ctx, now, now.Add(claimLease), sendBatch)
 	if err != nil {
 		return fmt.Errorf("claim due deliveries: %w", err)
 	}
@@ -479,42 +492,83 @@ func (w *Worker) send(ctx context.Context) error {
 // the backoff, or — after the schedule is exhausted — failed + endpoint
 // disabled. Booking errors are logged, never returned: the next due-poll
 // simply retries the row.
-func (w *Worker) attempt(ctx context.Context, d store.DueWebhookDelivery) {
+func (w *Worker) attempt(ctx context.Context, d store.DueWebhookAttempt) {
 	at := w.now()
 	status, responseBody, err := w.post(ctx, d, at)
+	completion := store.WebhookAttemptCompletion{
+		AttemptID: d.ID, StatusCode: status, ResponseBody: responseBody,
+		CompletedAt: at, NextAttemptAt: at,
+	}
 	if err == nil {
-		if bookErr := w.Store.RecordWebhookAttempt(ctx, d.ID, status, "", responseBody, at, d.NextAttemptAt, true, false); bookErr != nil {
-			log.Printf("webhooks: record delivery %s: %v", d.ID, bookErr)
+		completion.Delivered = true
+		completed, bookErr := w.Store.CompleteWebhookAttempt(ctx, completion)
+		if bookErr != nil {
+			log.Printf("webhooks: complete attempt %s: %v", d.ID, bookErr)
+		} else if completed {
+			w.observeAttempt(d.Origin, store.WebhookAttemptDelivered)
 		}
 		return
 	}
 	errMsg := SanitizeDeliveryError(err)
-	attempt := d.AttemptCount + 1
+	completion.TransportError = errMsg
+	if d.Origin == store.WebhookAttemptManual {
+		if d.ResumeAutomaticAt != nil {
+			completion.NextAttemptID = ids.New(ids.WebhookDelivery)
+		}
+		completed, bookErr := w.Store.CompleteWebhookAttempt(ctx, completion)
+		if bookErr != nil {
+			log.Printf("webhooks: complete manual attempt %s: %v", d.ID, bookErr)
+		} else if completed {
+			w.observeAttempt(d.Origin, store.WebhookAttemptFailed)
+		}
+		return
+	}
+
+	attempt := d.AutomaticAttemptCount + 1
 	backoff := w.backoff()
 	if attempt > len(backoff) {
 		// Out of retries: close the row and disable the endpoint until a human
 		// re-enables it (Render's documented endgame).
-		if bookErr := w.Store.RecordWebhookAttempt(ctx, d.ID, status, errMsg, responseBody, at, at, false, true); bookErr != nil {
-			log.Printf("webhooks: record delivery %s: %v", d.ID, bookErr)
+		completion.Exhausted = true
+		completion.DisableReason = disabledReason
+		completed, bookErr := w.Store.CompleteWebhookAttempt(ctx, completion)
+		if bookErr != nil {
+			log.Printf("webhooks: complete attempt %s: %v", d.ID, bookErr)
+			return
 		}
-		if disErr := w.Store.DisableWebhookEndpoint(ctx, d.EndpointID, disabledReason); disErr != nil {
-			log.Printf("webhooks: disable endpoint %s: %v", d.EndpointID, disErr)
+		if completed {
+			w.observeAttempt(d.Origin, store.WebhookAttemptFailed)
+			d.TransportError = errMsg
+			w.notifyFailure(ctx, d, true)
 		}
-		w.notifyFailure(ctx, d, true)
 		return
 	}
 	next := at.Add(backoff[attempt-1])
-	if bookErr := w.Store.RecordWebhookAttempt(ctx, d.ID, status, errMsg, responseBody, at, next, false, false); bookErr != nil {
-		log.Printf("webhooks: record delivery %s: %v", d.ID, bookErr)
+	completion.NextAttemptID = ids.New(ids.WebhookDelivery)
+	completion.NextAttemptAt = next
+	completed, bookErr := w.Store.CompleteWebhookAttempt(ctx, completion)
+	if bookErr != nil {
+		log.Printf("webhooks: complete attempt %s: %v", d.ID, bookErr)
+		return
 	}
-	if attempt == emailAfterFailures {
+	if completed {
+		w.observeAttempt(d.Origin, store.WebhookAttemptFailed)
+	}
+	if completed && attempt == emailAfterFailures {
+		d.TransportError = errMsg
 		w.notifyFailure(ctx, d, false)
+	}
+}
+
+func (w *Worker) observeAttempt(origin, result string) {
+	if w.Attempts != nil {
+		w.Attempts.ObserveWebhookAttempt(origin, result)
 	}
 }
 
 // post makes the signed POST. A non-2xx response or transport error is the
 // attempt's failure; the returned status is 0 on a transport error.
-func (w *Worker) post(ctx context.Context, d store.DueWebhookDelivery, at time.Time) (int, string, error) {
+func (w *Worker) post(ctx context.Context, d store.DueWebhookAttempt, at time.Time) (int, string, error) {
 	ctx, cancel := context.WithTimeout(ctx, requestTimeout)
 	defer cancel()
 	payload := []byte(d.Payload) // one copy, shared by the body and the signature
@@ -539,6 +593,18 @@ func (w *Worker) post(ctx context.Context, d store.DueWebhookDelivery, at time.T
 		return resp.StatusCode, responseBody, fmt.Errorf("endpoint answered %d", resp.StatusCode)
 	}
 	return resp.StatusCode, responseBody, nil
+}
+
+func boundUTF8(value string, limit int) string {
+	clean := bytes.ToValidUTF8([]byte(value), []byte("\uFFFD"))
+	if len(clean) <= limit {
+		return string(clean)
+	}
+	clean = clean[:limit]
+	for len(clean) > 0 && !utf8.Valid(clean) {
+		clean = clean[:len(clean)-1]
+	}
+	return string(clean)
 }
 
 const (
@@ -585,7 +651,7 @@ func readResponseEvidence(r io.Reader) (string, error) {
 // later administrator's capability. The creator must still be a workspace
 // admin at send time; anything else (or an unanswerable check) skips the
 // notice, fail-closed.
-func (w *Worker) notifyFailure(ctx context.Context, d store.DueWebhookDelivery, final bool) {
+func (w *Worker) notifyFailure(ctx context.Context, d store.DueWebhookAttempt, final bool) {
 	if admin, err := w.Store.SubjectIsWorkspaceAdmin(ctx, d.TenantID, d.CreatedBy); err != nil {
 		log.Printf("webhooks: failure notice for %s skipped: creator membership check failed: %v", d.EndpointID, err)
 		return
@@ -619,7 +685,7 @@ func (w *Worker) notifyFailure(ctx context.Context, d store.DueWebhookDelivery, 
 		Title: "Webhook delivery failing",
 		Paragraphs: []string{
 			fmt.Sprintf("Deliveries to your webhook %q (%s) have failed %d times in a row.", d.EndpointName, dest, emailAfterFailures),
-			fmt.Sprintf("Last error: %s", scrubDeliveryEvidence(d.LastError, d.URL)),
+			fmt.Sprintf("Last error: %s", scrubDeliveryEvidence(d.TransportError, d.URL)),
 			"bex will keep retrying on an exponential backoff.",
 		},
 	}

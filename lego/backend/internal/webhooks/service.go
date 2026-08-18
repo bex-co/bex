@@ -68,6 +68,7 @@ import (
 	"fmt"
 	"maps"
 	"net/url"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -191,7 +192,8 @@ type EndpointStore interface {
 	SetWebhookEndpointEnabled(ctx context.Context, tenantID, id string, enabled bool, reason string) (store.WebhookEndpoint, error)
 	UpdateWebhookEndpoint(ctx context.Context, tenantID, id, name, url string, eventTypes []string, enabled bool) (store.WebhookEndpoint, error)
 	DeleteWebhookEndpoint(ctx context.Context, tenantID, id string) error
-	ListWebhookDeliveries(ctx context.Context, filter store.WebhookDeliveryFilter) ([]store.WebhookDelivery, error)
+	ListWebhookAttempts(ctx context.Context, filter store.WebhookAttemptFilter) ([]store.WebhookAttempt, error)
+	QueueWebhookResend(ctx context.Context, request store.WebhookResendRequest) (store.WebhookAttempt, error)
 }
 
 // Service is the webhook-endpoint management feature: CRUD + delivery
@@ -200,7 +202,8 @@ type EndpointStore interface {
 // so it carries no verbs and no authorization.
 type Service struct {
 	*core.Base
-	Store EndpointStore
+	Store   EndpointStore
+	Metrics *Metrics
 }
 
 // EndpointView is the neutral shape every adapter renders. Secret is
@@ -222,34 +225,35 @@ type EndpointView struct {
 	Cursor         string
 }
 
-// Delivery statuses a DeliveryView reports — derived from which terminal
-// timestamp the row carries, not stored.
+// Delivery statuses a DeliveryView reports. Each value describes one immutable
+// attempt; ParentStatus separately describes the logical notification and its
+// remaining retry schedule.
 const (
-	DeliveryPending   = "pending"
-	DeliveryDelivered = "delivered"
-	DeliveryFailed    = "failed"
+	DeliveryPending   = store.WebhookAttemptPending
+	DeliveryDelivered = store.WebhookAttemptDelivered
+	DeliveryFailed    = store.WebhookAttemptFailed
 )
 
-// DeliveryView is one delivery-history entry. Cursor is the opaque keyset
-// position a client echoes back to resume (the events-feed cursor shape —
-// rows are updated in place by retries, so paging on a mutable field would
-// shift pages under the reader; (createdAt, id) never changes).
+// DeliveryView is one send attempt or a just-queued manual reservation. The
+// request/response evidence is bounded by the store and never carries the
+// endpoint signing secret. Cursor pages completed attempts on immutable
+// (sentAt,id); a pending Resend response has no cursor until the worker sends
+// it, and history omits it until then.
 type DeliveryView struct {
-	ID              string `json:"id"`
-	EventID         string `json:"eventId"`
-	EventType       string `json:"eventType"`
-	ServiceID       string `json:"serviceId"`
-	Status          string `json:"status"`
-	AttemptCount    int    `json:"attemptCount"`
-	LastStatusCode  int    `json:"lastStatusCode"`
-	LastError       string `json:"lastError"`
-	ResponseBody    string `json:"responseBody"`
-	NextAttemptAt   string `json:"nextAttemptAt"` // "" once the row is terminal
-	SentAt          string `json:"sentAt"`
-	LastAttemptedAt string `json:"lastAttemptedAt"`
-	DeliveredAt     string `json:"deliveredAt"`
-	CreatedAt       string `json:"createdAt"`
-	Cursor          string `json:"cursor"`
+	ID             string `json:"id"`
+	EventID        string `json:"eventId"`
+	EventType      string `json:"eventType"`
+	ServiceID      string `json:"serviceId"`
+	Status         string `json:"status"`
+	AttemptNumber  int    `json:"attemptNumber"`
+	StatusCode     int    `json:"statusCode"`
+	TransportError string `json:"transportError"`
+	ResponseBody   string `json:"responseBody"`
+	RequestBody    string `json:"requestBody"`
+	SentAt         string `json:"sentAt"`
+	NextAttemptAt  string `json:"nextAttemptAt"`
+	ParentStatus   string `json:"parentStatus"`
+	Cursor         string `json:"cursor"`
 }
 
 // workspaceID is the store key for the caller's endpoints: the caller's
@@ -281,41 +285,33 @@ func toView(e store.WebhookEndpoint, exactURL bool) EndpointView {
 	return v
 }
 
-// toDeliveryView projects a stored delivery for a member read. destURL is the
+// toDeliveryView projects a stored attempt for a member read. destURL is the
 // endpoint's stored destination (round-14 #4): rows persisted before transport
 // errors were sanitized at the write seam may embed the exact capability URL
-// in last_error, so any literal occurrence is collapsed to the same redacted
+// in transport_error, so any literal occurrence is collapsed to the same redacted
 // origin non-admin endpoint reads show. New rows never carry it in the first
 // place — the worker sanitizes before persisting — so this is a migration-time
 // scrub, not a live leak.
-func toDeliveryView(d store.WebhookDelivery, destURL string) DeliveryView {
+func toDeliveryView(d store.WebhookAttempt, destURL string) DeliveryView {
 	v := DeliveryView{
 		ID:             d.ID,
 		EventID:        d.EventID,
 		EventType:      d.EventType,
 		ServiceID:      d.ServiceID,
-		Status:         DeliveryPending,
-		AttemptCount:   d.AttemptCount,
-		LastStatusCode: d.LastStatus,
-		LastError:      scrubDeliveryEvidence(d.LastError, destURL),
+		Status:         d.Status,
+		AttemptNumber:  d.AttemptNumber,
+		StatusCode:     d.StatusCode,
+		TransportError: scrubDeliveryEvidence(d.TransportError, destURL),
 		ResponseBody:   d.ResponseBody,
-		CreatedAt:      d.CreatedAt.UTC().Format(time.RFC3339),
+		RequestBody:    d.Payload,
+		ParentStatus:   d.ParentStatus,
 	}
 	if d.SentAt != nil {
 		v.SentAt = d.SentAt.UTC().Format(time.RFC3339)
 		v.Cursor = core.EncodeKeysetCursor(*d.SentAt, d.ID)
 	}
-	switch {
-	case d.DeliveredAt != nil:
-		v.Status = DeliveryDelivered
-		v.DeliveredAt = d.DeliveredAt.UTC().Format(time.RFC3339)
-	case d.FailedAt != nil:
-		v.Status = DeliveryFailed
-	default:
+	if d.NextAttemptAt != nil {
 		v.NextAttemptAt = d.NextAttemptAt.UTC().Format(time.RFC3339)
-	}
-	if d.LastAttemptedAt != nil {
-		v.LastAttemptedAt = d.LastAttemptedAt.UTC().Format(time.RFC3339)
 	}
 	return v
 }
@@ -516,15 +512,15 @@ func (s *Service) Delete(ctx context.Context, ownerID, id string) error {
 	return mapStoreErr(s.Store.DeleteWebhookEndpoint(ctx, s.WorkspaceOrDefault(ctx), id))
 }
 
-// ListDeliveries returns one endpoint's delivery history, newest first,
-// keyset-paged. The endpoint is fetched (workspace-scoped) first, so a
-// cross-workspace endpoint id 404s before any history is read. Member read.
+// ListDeliveries returns one endpoint's immutable attempt history, newest
+// first and keyset-paged. The endpoint is fetched (workspace-scoped) first, so
+// a cross-workspace endpoint id 404s before any history is read. Member read.
 func (s *Service) ListDeliveries(ctx context.Context, ownerID, endpointID, cursor string, limit int) ([]DeliveryView, error) {
 	return s.ListDeliveriesFiltered(ctx, ownerID, endpointID, DeliveryFilter{Cursor: cursor, Limit: limit})
 }
 
 // DeliveryFilter is Render's webhook-event history filter. SentAfter and
-// SentBefore are strict bounds on the immutable first-attempt timestamp.
+// SentBefore are strict bounds on each immutable attempt's send timestamp.
 type DeliveryFilter struct {
 	Cursor     string
 	Limit      int
@@ -555,7 +551,7 @@ func (s *Service) ListDeliveriesFiltered(ctx context.Context, ownerID, endpointI
 	}
 	// The store clamps limit to the shared page bounds (the ListServiceEvents
 	// convention) — no second feature-side clamp.
-	rows, err := s.Store.ListWebhookDeliveries(ctx, store.WebhookDeliveryFilter{
+	rows, err := s.Store.ListWebhookAttempts(ctx, store.WebhookAttemptFilter{
 		EndpointID: endpointID, SentAfter: filter.SentAfter, SentBefore: filter.SentBefore,
 		Status: filter.Status, AfterAt: after.At, AfterKey: after.Key, Limit: filter.Limit,
 	})
@@ -567,6 +563,70 @@ func (s *Service) ListDeliveriesFiltered(ctx context.Context, ownerID, endpointI
 		out = append(out, toDeliveryView(d, ep.URL))
 	}
 	return out, nil
+}
+
+const (
+	WebhookResendIdempotencyKeyInvalidCode = "WEBHOOK_RESEND_IDEMPOTENCY_KEY_INVALID"
+	WebhookEndpointNotFoundCode            = "WEBHOOK_ENDPOINT_NOT_FOUND"
+	WebhookEndpointDisabledCode            = "WEBHOOK_ENDPOINT_DISABLED"
+	WebhookDeliveryNotFoundCode            = "WEBHOOK_DELIVERY_NOT_FOUND"
+	WebhookDeliveryPendingCode             = "WEBHOOK_DELIVERY_PENDING"
+)
+
+var resendIdempotencyKeyPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$`)
+
+// Resend reserves an immediate manual attempt for a previous exchange. The
+// store owns the cross-replica idempotency boundary: repeating the same key for
+// an endpoint returns the same reservation and cannot amplify sends. The
+// source event id and exact payload remain attached to the logical notification;
+// the worker supplies a fresh Standard Webhooks timestamp and signature when it
+// claims this attempt.
+func (s *Service) Resend(ctx context.Context, ownerID, endpointID, sourceAttemptID, idempotencyKey string) (_ DeliveryView, retErr error) {
+	defer func() { s.Metrics.observeResend(retErr) }()
+	ctx = core.WithWorkspace(ctx, ownerID)
+	if err := s.AuthorizeTarget(ctx, core.RelCanManage, core.WebhookAttemptTarget(endpointID, sourceAttemptID)); err != nil {
+		return DeliveryView{}, err
+	}
+	if s.Store == nil {
+		return DeliveryView{}, core.ErrWebhooksUnavailable
+	}
+	if !resendIdempotencyKeyPattern.MatchString(idempotencyKey) {
+		return DeliveryView{}, core.NewBadRequestError(WebhookResendIdempotencyKeyInvalidCode,
+			"Idempotency-Key must be 8 to 128 letters, digits, dots, underscores, colons, or hyphens",
+			map[string]any{"field": "idempotencyKey"})
+	}
+	tenantID := s.WorkspaceOrDefault(ctx)
+	requestedBy := ""
+	if identity, ok := core.IdentityFrom(ctx); ok {
+		requestedBy = identity.Subject
+	}
+	attempt, err := s.Store.QueueWebhookResend(ctx, store.WebhookResendRequest{
+		TenantID:        tenantID,
+		EndpointID:      endpointID,
+		SourceAttemptID: sourceAttemptID,
+		RequestedBy:     requestedBy,
+		IdempotencyKey:  idempotencyKey,
+		RequestedAt:     s.Now(),
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrWebhookEndpointNotFound):
+			return DeliveryView{}, core.NewNotFoundError(WebhookEndpointNotFoundCode,
+				"webhook endpoint not found", map[string]any{"id": endpointID})
+		case errors.Is(err, store.ErrWebhookEndpointDisabled):
+			return DeliveryView{}, core.NewConflictError(WebhookEndpointDisabledCode,
+				"enable the webhook endpoint before resending a delivery", map[string]any{"id": endpointID})
+		case errors.Is(err, store.ErrWebhookAttemptPending):
+			return DeliveryView{}, core.NewConflictError(WebhookDeliveryPendingCode,
+				"a pending delivery cannot be resent", map[string]any{"id": sourceAttemptID})
+		case errors.Is(err, store.ErrNotFound):
+			return DeliveryView{}, core.NewNotFoundError(WebhookDeliveryNotFoundCode,
+				"webhook delivery not found", map[string]any{"id": sourceAttemptID})
+		default:
+			return DeliveryView{}, err
+		}
+	}
+	return toDeliveryView(attempt, ""), nil
 }
 
 // UpdateRequest is Update's input — Render's sparse PATCH (w3/m27):
@@ -686,10 +746,7 @@ func SanitizeDeliveryError(err error) string {
 	if errors.As(err, &ue) {
 		msg = fmt.Sprintf("%s %q: %s", ue.Op, RedactedURL(ue.URL), ue.Err)
 	}
-	if len(msg) > maxDeliveryErrorBytes {
-		msg = msg[:maxDeliveryErrorBytes]
-	}
-	return msg
+	return boundUTF8(msg, maxDeliveryErrorBytes)
 }
 
 // scrubDeliveryEvidence collapses any literal occurrence of the exact
