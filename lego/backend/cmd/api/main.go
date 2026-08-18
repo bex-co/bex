@@ -1135,10 +1135,15 @@ func startDeliveryWorkers(ctx context.Context, srv *api.Server, st *store.PGStor
 		// forever. 0 keeps the documented defaults.
 		whRetentionDays := intEnv("BEX_WEBHOOK_RETENTION_DAYS", "0")
 		whKeepPerEndpoint := intEnv("BEX_WEBHOOK_RETENTION_KEEP", "0")
+		whMaxDeliveriesPerWorkspace := zeroableIntEnv(
+			"BEX_MAX_WEBHOOK_DELIVERIES_PER_WORKSPACE",
+			webhooks.DefaultMaxDeliveriesPerWorkspace,
+		)
 		whWorker := &webhooks.Worker{
 			Store: st, Mailer: m, Emails: srv.Notifications.Identities, Backoff: backoff,
 			RetentionDays: whRetentionDays, RetentionKeepPerEndpoint: whKeepPerEndpoint,
-			Attempts: webhookMetrics,
+			Attempts: webhookMetrics, Admissions: webhookMetrics,
+			MaxDeliveriesPerWorkspace: whMaxDeliveriesPerWorkspace,
 		}
 		go whWorker.Run(ctx)
 	}

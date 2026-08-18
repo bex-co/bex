@@ -60,9 +60,9 @@ func (c *countingStore) ListWebhookEvents(ctx context.Context, afterAt time.Time
 	return c.fakeWorkerStore.ListWebhookEvents(ctx, afterAt, afterKey, until, verbs, tenants, limit)
 }
 
-func (c *countingStore) EnqueueWebhookDeliveries(ctx context.Context, d []store.WebhookDelivery, at time.Time, key string) error {
+func (c *countingStore) EnqueueWebhookDeliveries(ctx context.Context, d []store.WebhookDelivery, at time.Time, key string, maxPerWorkspace int) (store.WebhookEnqueueResult, error) {
 	c.writes = append(c.writes, wmWrite{items: len(d), at: at, key: key})
-	return c.fakeWorkerStore.EnqueueWebhookDeliveries(ctx, d, at, key)
+	return c.fakeWorkerStore.EnqueueWebhookDeliveries(ctx, d, at, key, maxPerWorkspace)
 }
 
 func countingWorker(now time.Time) (*Worker, *countingStore) {
@@ -141,6 +141,37 @@ func TestBatchAndWatermarkAdvanceInOneStoreCall(t *testing.T) {
 	}
 	if got.key != "dep-2:started" || !got.at.Equal(eventAt.Add(time.Second)) {
 		t.Errorf("cursor advanced to (%v,%q), want the last row of the page", got.at, got.key)
+	}
+}
+
+// Reaching the open-backlog ceiling drops only the webhook projection. The
+// source feed must still advance through the whole committed page or every
+// later dispatch pass would replay the capped event and turn pressure into a
+// permanent hot loop.
+func TestCappedBatchStillAdvancesTheSourceWatermark(t *testing.T) {
+	now := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
+	eventAt := now.Add(-time.Minute)
+	w, st := countingWorker(now)
+	observer := &fakeAdmissionObserver{}
+	w.Admissions = observer
+	w.MaxDeliveriesPerWorkspace = 1
+	st.wmSeeded, st.wmAt = true, eventAt.Add(-time.Hour)
+	st.events = []store.WebhookEventRow{
+		deployRow("dep-1:started", eventAt),
+		deployRow("dep-2:started", eventAt.Add(time.Second)),
+	}
+
+	if err := w.dispatch(context.Background(), st.endpoints); err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if got := len(st.queue); got != 1 {
+		t.Fatalf("open deliveries = %d, want capped at 1", got)
+	}
+	if !st.wmAt.Equal(eventAt.Add(time.Second)) || st.wmKey != "dep-2:started" {
+		t.Fatalf("watermark = (%v,%q), want the capped page's final source event", st.wmAt, st.wmKey)
+	}
+	if got := observer.snapshot(); got.Admitted != 1 || got.Capped != 1 {
+		t.Fatalf("admission metrics = %#v, want admitted=1 capped=1", got)
 	}
 }
 

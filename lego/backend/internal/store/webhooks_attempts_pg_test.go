@@ -63,7 +63,7 @@ func TestWebhookAttemptLedgerAndResend(t *testing.T) {
 		EventID: "evt-ledger00000000000", EventType: "deploy_started", ServiceID: "acme-api",
 		Payload: `{"type":"deploy_started","data":{"id":"evt-ledger00000000000"}}`, NextAttemptAt: base,
 	}
-	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{notification}, base, "ledger-watermark"); err != nil {
+	if _, err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{notification}, base, "ledger-watermark", 0); err != nil {
 		t.Fatal(err)
 	}
 
@@ -299,7 +299,7 @@ func TestWebhookAttemptResendClaimAndCompletionRaces(t *testing.T) {
 			EventID: eventID, EventType: "deploy_started", ServiceID: "race-service",
 			Payload: `{"type":"deploy_started"}`, NextAttemptAt: at,
 		}
-		if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{notification}, at, eventID); err != nil {
+		if _, err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{notification}, at, eventID, 0); err != nil {
 			t.Fatal(err)
 		}
 		claimed, err := s.ClaimDueWebhookAttempts(ctx, at, at.Add(time.Minute), 10)

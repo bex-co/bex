@@ -8,6 +8,26 @@ rule_files:
 evaluation_interval: 1m
 
 tests:
+  - name: sustained webhook admission pressure fires and then clears
+    interval: 1m
+    input_series:
+      - series: 'bex_webhooks_delivery_admissions_total{result="capped",job="bex-api",instance="prod-a"}'
+        values: "0+20x30 600x20"
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: WebhookDeliveryAdmissionPressure
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: WebhookDeliveryAdmissionPressure
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "Outbound webhook admission is chronically hitting its workspace bound"
+              description: "More than 100 webhook notifications were capped in each rolling 15m window for >10m. First investigate event amplification and unhealthy endpoints/retry pressure; raise BEX_MAX_WEBHOOK_DELIVERIES_PER_WORKSPACE only after confirming database and worker capacity. Runbook: docs/ADR010-observability.md#webhook-admission-pressure"
+      - eval_time: 45m
+        alertname: WebhookDeliveryAdmissionPressure
+        exp_alerts: []
+
   - name: enabled billing exposes durable backlog reject and ambiguity
     interval: 1m
     input_series:

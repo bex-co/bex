@@ -837,6 +837,18 @@ spec:
                       summary: "bex-api has no available replicas"
                       description: "The bex-api control-plane surface (REST/GraphQL/MCP) has had zero available replicas for >5m. Debug: kubectl -n bex-system rollout status deploy/bex-api; kubectl -n bex-system logs deploy/bex-api"
 
+                  - alert: WebhookDeliveryAdmissionPressure
+                    expr: |
+                      sum(
+                        increase(bex_webhooks_delivery_admissions_total{result="capped"}[15m])
+                      ) > 100
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Outbound webhook admission is chronically hitting its workspace bound"
+                      description: "More than 100 webhook notifications were capped in each rolling 15m window for >10m. First investigate event amplification and unhealthy endpoints/retry pressure; raise BEX_MAX_WEBHOOK_DELIVERIES_PER_WORKSPACE only after confirming database and worker capacity. Runbook: docs/ADR010-observability.md#webhook-admission-pressure"
+
                   - alert: BillingExportBacklog
                     expr: |
                       bex_billing_enabled == 1

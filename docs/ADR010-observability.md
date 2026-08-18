@@ -223,10 +223,23 @@ Two groups, all with actionable `description`s (each carries the `kubectl` comma
 | `bex` | `BackupCronJobStale` | `etcd-backup`/`openbao-backup` last succeeded >26h ago (silent rot) | critical |
 | `bex` | `OpenBaoSealed` | any OpenBao member reports sealed >5m (⇒ 503s the env-vars API) | critical |
 | `bex` | `BexApiDown` | `bex-api` has zero available replicas >5m | critical |
+| `bex` | `WebhookDeliveryAdmissionPressure` | >100 outbound webhook notifications remain capped in rolling 15m windows for >10m | warning |
 | `bex` | `StrandedNodeLocalImages` | an App pod is ImagePullBackOff/ErrImageNeverPull >10m | warning |
 | `bex` | `TraefikHigh5xxRate` | >5% of edge requests are 5xx for >10m (above a traffic floor) | warning |
 
 `ControlPlaneNodeNotReady` vs `NodeNotReady` split on `kube_node_role{role="control-plane"}`: the CP pool is a single node until the quota lift restores 3 CP nodes, so its loss pages while a worker's only warns. `OpenBaoSealed` reads the **per-pod** telemetry gauge `vault_core_unsealed` (from the `openbao` scrape) — _not_ readiness or the Service: the chart's readiness probe keeps a sealed member in rotation (`sealedcode` 2xx) so the round-robin Service and a `kube_statefulset_ready` check would both miss a sealed follower; a sealed member still serves `/v1/sys/metrics` reporting `0`, and the alert fires on any member sealed. `StrandedNodeLocalImages` catches the node-local-image failure mode (App images are `ctr` imports, not registry-backed, so node replacement/scale-down strands them) — a platform defect, hence warn not page, even though it fires in the tenant `default` namespace. `BackupCronJobStale` reads `kube_cronjob_status_last_successful_time` from kube-state-metrics (the local overlay removes both backup CronJobs, so the series — and this alert — exist only where the jobs run: prod).
+
+#### Webhook admission pressure
+
+`bex_webhooks_delivery_admissions_total{result="admitted|capped|deduplicated"}` counts the dispatcher's committed queue decisions. The vocabulary is closed; workspace ids, endpoint ids, hostnames, URLs, event ids, and payloads are never labels. `bex_webhooks_delivery_capped_batch_size` is a bounded histogram of the aggregate capped count from one committed feed page. An overflow also produces at most one aggregate log line per dispatch pass, not one line or evidence row per notification.
+
+`WebhookDeliveryAdmissionPressure` intentionally ignores isolated cap hits and warns only when more than 100 notifications are capped in every rolling 15-minute window for ten minutes. Start with the two causes the limit is meant to contain:
+
+1. Check recent deploy/resource activity for event amplification or a runaway producer.
+2. Check webhook endpoint health and `bex_webhooks_delivery_attempts_total` for a retry backlog that is keeping logical notifications open.
+3. Confirm Postgres and webhook-worker capacity before raising `BEX_MAX_WEBHOOK_DELIVERIES_PER_WORKSPACE`; lowering the bound sheds more webhook projections, while `0` removes the safety boundary entirely.
+
+Capped events do not fail their source mutation and do not appear as attempted or failed delivery history. The source watermark advances in the same transaction as the aggregate admission result, so repeated alerting represents new pressure rather than replay of the same event.
 
 ### The receiver secret (out-of-band, never in git)
 
