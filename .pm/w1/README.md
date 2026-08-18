@@ -103,9 +103,10 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - `044` — one-off: cancel Stripe subscriptions orphaned by pre-m61 workspace deletes (conditional, operator-run; blocked until m61 ships to prod)
-- `045` — custom domains are served before DNS ownership is proven (scan F4; milestone-sized, promote when scheduled — sequence after m66/m67)
-- `046` — residual Tier-3 findings from the 2026-08-10 scan (supply-chain pass F11/F13/F14/F15 + small residuals F17/F18 + scan coverage caveat)
-- `048` — security-scan round 6 (`codex-security-bex-rYWVXe`, revision `bfe1376c`): 6 new findings **fixed in place** with tests (#11 md links, #5 SSH pre-auth cap, #7 transcript replay memory, #3 webhook no-op/lease/age-out slices, #2 CI ref-guard, #9 client render budget) + pointers to the 5 already-tracked (#1→045, #4/#6→m68, #8/#10→046). Deferred within #3: per-workspace delivery quota + fair scheduling. Uncommitted pending `/ship`
+- `046` — residual Tier-3 findings from the 2026-08-10 scan (supply-chain pass F11/F13/F14/F15 + small residual F17 + scan coverage caveat). F18 re-owned by `w4/034`; the per-subject/per-workspace cap half has already shipped.
+- `048` — security-scan round 6 (`codex-security-bex-rYWVXe`, revision `bfe1376c`): 6 new findings **fixed in place** with tests (#11 md links, #5 SSH pre-auth cap, #7 transcript replay memory, #3 webhook no-op/lease/age-out slices, #2 CI ref-guard, #9 client render budget) + pointers to the 5 already-tracked (#1→`w4/m84`, #4/#6→m68, #8/#10→046). Finding #3's deferred per-workspace delivery quota + fair scheduling is now `w4/m83`. Uncommitted pending `/ship`
+
+> **Promoted 2026-08-17:** `045` → `w4/m84`; source note moved to `done/045.md`. Current main already has deterministic app-bound TXT pre-proof, and m84 completes it into a durable non-serving pending lifecycle.
 
 > **Done 2026-07-31:** `043` (reprovision the shared CAPD mock cluster) — recreated, dev-5 verification inventory ALL GREEN, and every hand-applied piece of "walk-ready" codified into `scripts/mock-cluster.sh` / `dev-5/up.sh` / the mock-cluster skill; `w5/028`+`w5/029` walks unblocked locally. Note moved to `done/` with the full resolution.
 
