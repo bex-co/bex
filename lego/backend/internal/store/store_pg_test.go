@@ -217,6 +217,37 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 	assertAgentSessionArchive(ctx, t, s, tenant, record.ID)
 	assertAgentSessionPromptQuota(ctx, t, s, tenant)
 	assertAgentSessionTurnAcceptanceCAS(ctx, t, s, tenant)
+	assertAgentSessionRetryClearsFailure(ctx, t, s, tenant)
+}
+
+func assertAgentSessionRetryClearsFailure(ctx context.Context, t *testing.T, s *PGStore, tenant Tenant) {
+	t.Helper()
+	record, err := s.CreateAgentSession(ctx, AgentSession{
+		WorkspaceID: tenant.ID, Repo: "bex-co/retry", Branch: "main",
+		AgentConfig: []byte(`{"agent":"codex","task":"initial"}`), InitialPrompt: "initial",
+	})
+	if err != nil {
+		t.Fatalf("create retry session: %v", err)
+	}
+	if _, err := s.SetAgentSessionLifecycle(ctx, record.ID, "sandbox-1", "running", "running", false); err != nil {
+		t.Fatalf("start retry session: %v", err)
+	}
+	if _, err := s.FinalizeAgentSession(ctx, record.ID, "failed", "", "", 0, nil, "old push failure"); err != nil {
+		t.Fatalf("fail retry session: %v", err)
+	}
+	record, err = s.BeginAgentSessionTurn(ctx, record.ID, "retry", "redispatch", "redispatching", "redispatching")
+	if err != nil || record.FailureReason != "" {
+		t.Fatalf("accepted retry retained failure = %+v err=%v", record, err)
+	}
+	// RecordDispatch is also a lifecycle boundary used outside follow-up turns;
+	// make it independently clear a stale terminal diagnostic.
+	if _, err := s.Pool.Exec(ctx, `UPDATE agent_sessions SET failure_reason='stale dispatch failure' WHERE id=$1`, record.ID); err != nil {
+		t.Fatalf("seed stale dispatch failure: %v", err)
+	}
+	record, err = s.RecordAgentSessionDispatch(ctx, record.ID, "sandbox-2", "running", "running", "redispatch")
+	if err != nil || record.FailureReason != "" {
+		t.Fatalf("successful dispatch retained failure = %+v err=%v", record, err)
+	}
 }
 
 func assertAgentSessionPromptQuota(ctx context.Context, t *testing.T, s *PGStore, tenant Tenant) {

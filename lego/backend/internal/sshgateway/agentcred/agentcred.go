@@ -44,7 +44,10 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 )
 
-const maxPacketBytes = 65520
+const (
+	maxPacketBytes       = 65520
+	maxShallowBoundaries = 1024
+)
 
 // maxRequestBodyBytes caps one git smart-HTTP request body (a pack upload). A
 // legitimate session exchange is source-code sized; the cap exists so a
@@ -270,6 +273,7 @@ func validateReceivePack(body io.Reader, branch string) (io.Reader, error) {
 	reader := bufio.NewReader(body)
 	var prefix bytes.Buffer
 	commands := 0
+	shallows := 0
 	for {
 		header := make([]byte, 4)
 		if _, err := io.ReadFull(reader, header); err != nil {
@@ -289,10 +293,27 @@ func validateReceivePack(body io.Reader, branch string) (io.Reader, error) {
 		}
 		prefix.Write(packet)
 		line := strings.TrimSuffix(string(packet), "\n")
+		fields := strings.Fields(line)
+		// receive-pack permits zero or more `shallow <oid>` declarations
+		// before the command list. They describe clone history boundaries and
+		// do not name a ref, so preserve them while still validating and
+		// bounding their shape. A shallow declaration after a command, or one
+		// carrying a capability suffix, fails closed.
+		if commands == 0 && !strings.ContainsRune(line, 0) && len(fields) == 2 && fields[0] == "shallow" {
+			shallows++
+			if shallows > maxShallowBoundaries || !validObjectID(fields[1]) {
+				return nil, agentsession.ErrForbidden
+			}
+			continue
+		}
 		if nul := strings.IndexByte(line, 0); nul >= 0 {
+			// Only the first update command may advertise capabilities.
+			if commands != 0 {
+				return nil, agentsession.ErrForbidden
+			}
 			line = line[:nul]
 		}
-		fields := strings.Fields(line)
+		fields = strings.Fields(line)
 		if len(fields) != 3 || fields[2] != "refs/heads/"+branch || !validObjectID(fields[0]) || !validObjectID(fields[1]) || allZero(fields[1]) {
 			return nil, agentsession.ErrForbidden
 		}

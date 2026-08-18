@@ -2,6 +2,7 @@ package agentcred
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -156,6 +157,38 @@ func TestGitProxyReceivePackAllowsOnlyBoundBranch(t *testing.T) {
 	}
 	if gh.calls != 1 || upstreamCalls != 1 {
 		t.Fatalf("valid push mints=%d upstream=%d", gh.calls, upstreamCalls)
+	}
+}
+
+func TestValidateReceivePackAcceptsBoundedShallowMetadata(t *testing.T) {
+	pkt := func(line string) string {
+		return fmt.Sprintf("%04x%s", len(line)+4, line)
+	}
+	old := strings.Repeat("1", 40)
+	next := strings.Repeat("2", 40)
+	shallow := "shallow " + strings.Repeat("a", 40) + "\n"
+	command := old + " " + next + " refs/heads/bex-agent/task-1\x00report-status\n"
+	body := pkt(shallow) + pkt(command) + "0000PACK"
+
+	validated, err := validateReceivePack(strings.NewReader(body), "bex-agent/task-1")
+	if err != nil {
+		t.Fatalf("valid shallow push rejected: %v", err)
+	}
+	got, err := io.ReadAll(validated)
+	if err != nil || string(got) != body {
+		t.Fatalf("validated body changed: err=%v got=%q", err, got)
+	}
+
+	for name, invalid := range map[string]string{
+		"invalid oid":         pkt("shallow not-an-oid\n") + pkt(command) + "0000",
+		"metadata after ref":  pkt(command) + pkt(shallow) + "0000",
+		"metadata capability": pkt("shallow "+strings.Repeat("a", 40)+"\x00cap\n") + pkt(command) + "0000",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := validateReceivePack(strings.NewReader(invalid), "bex-agent/task-1"); !errors.Is(err, agentsession.ErrForbidden) {
+				t.Fatalf("error=%v, want forbidden", err)
+			}
+		})
 	}
 }
 

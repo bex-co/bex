@@ -226,11 +226,44 @@ test("deliverBranch refuses a concurrent remote update after baseline capture", 
   git(peer, ["push", "origin", `${config.branch}:${config.branch}`]);
 
   await writeFile(path.join(cwd, "mine.txt"), "my work\n");
-  await assert.rejects(deliverBranch(config), /stale info|rejected/i);
+  await assert.rejects(
+    deliverBranch(config),
+    /remote session branch changed after setup/,
+  );
   assert.equal(
     git(remote, ["show", `${config.branch}:peer.txt`]),
     "concurrent work",
   );
+});
+
+test("deliverBranch accepts an already-published exact candidate idempotently", async () => {
+  const { root, remote } = await bareRemote();
+  const cwd = path.join(root, "workspace");
+  await mkdir(cwd);
+  const config = baseConfig(cwd, { repoUrl: remote });
+  await ensureRepo(config);
+
+  await writeFile(path.join(cwd, "fix.txt"), "the completed work\n");
+  git(cwd, ["add", "-A"]);
+  git(cwd, [
+    "-c",
+    "user.name=bex agent",
+    "-c",
+    "user.email=agent@bex.co",
+    "commit",
+    "-m",
+    "completed work",
+  ]);
+  const candidate = git(cwd, ["rev-parse", "HEAD"]);
+  // Stand in for an earlier push whose success response was lost. Delivery
+  // still scans the candidate, then recognizes the exact remote OID as success
+  // without sending a second, empty receive-pack exchange.
+  git(cwd, ["push", "origin", `${candidate}:refs/heads/${config.branch}`]);
+
+  const delivery = await deliverBranch(config);
+  assert.equal(delivery.pushed, true);
+  assert.equal(delivery.headSha, candidate);
+  assert.equal(git(remote, ["rev-parse", config.branch]), candidate);
 });
 
 test("deliverBranch refuses to push when a commit carries the model credential", async () => {
