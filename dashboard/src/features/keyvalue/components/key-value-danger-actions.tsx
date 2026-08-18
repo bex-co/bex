@@ -10,6 +10,8 @@ import { useDeleteKeyValue } from "@/features/keyvalue/hooks/use-delete-key-valu
 import { useKeyValueLifecycle } from "@/features/keyvalue/hooks/use-key-value-lifecycle";
 import type { KeyValueView } from "@/features/keyvalue/types";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 
 export interface KeyValueDangerActionsProps {
   keyValue: KeyValueView;
@@ -30,6 +32,19 @@ export function KeyValueDangerActions({
   onChanged,
 }: KeyValueDangerActionsProps) {
   const { t } = useTranslations();
+  const {
+    canCreate,
+    canOperate,
+    loaded: capabilitiesLoaded,
+  } = useCapabilities();
+  const createDenied = capabilitiesLoaded && !canCreate;
+  const operateDenied = capabilitiesLoaded && !canOperate;
+  const createReason = createDenied
+    ? t("capabilities.reasonCanCreate")
+    : undefined;
+  const operateReason = operateDenied
+    ? t("capabilities.reasonCanOperate")
+    : undefined;
   const { remove, deleting } = useDeleteKeyValue();
   const { pending, run } = useKeyValueLifecycle();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -43,6 +58,7 @@ export function KeyValueDangerActions({
   const busy = deleteBusy || pending !== null;
 
   async function handleDelete(confirmation?: string) {
+    if (createDenied) return;
     const result = confirmation
       ? await remove(keyValue.id, keyValue.name, confirmation)
       : await remove(keyValue.id, keyValue.name);
@@ -60,6 +76,7 @@ export function KeyValueDangerActions({
   }
 
   async function handleSuspend(confirmation?: string) {
+    if (operateDenied) return;
     setSuspendOpen(false);
     const result = confirmation
       ? await run("suspend", keyValue.id, keyValue.name, confirmation)
@@ -76,61 +93,76 @@ export function KeyValueDangerActions({
   }
 
   async function handleResume() {
+    if (operateDenied) return;
     const result = await run("resume", keyValue.id, keyValue.name);
     if (result.status === "success") onChanged();
   }
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Button
-        variant="destructive"
-        disabled={busy}
-        onClick={() => setDeleteOpen(true)}
-      >
-        {deleteBusy ? <Loader2 className="animate-spin" /> : <Trash2 />}
-        {t("keyvalue.dangerDelete")}
-      </Button>
+      <PermissionTooltip reason={createReason}>
+        <Button
+          variant="destructive"
+          disabled={busy || createDenied}
+          onClick={() => {
+            if (!createDenied) setDeleteOpen(true);
+          }}
+        >
+          {deleteBusy ? <Loader2 className="animate-spin" /> : <Trash2 />}
+          {t("keyvalue.dangerDelete")}
+        </Button>
+      </PermissionTooltip>
 
       {keyValue.suspended ? (
-        <Button
-          variant="ghost"
-          disabled={busy}
-          onClick={() => void handleResume()}
-        >
-          {pending === "resume" ? (
-            <Loader2 className="animate-spin" />
-          ) : (
-            <Play />
-          )}
-          {t("keyvalue.actionResume")}
-        </Button>
+        <PermissionTooltip reason={operateReason}>
+          <Button
+            variant="ghost"
+            disabled={busy || operateDenied}
+            onClick={() => void handleResume()}
+          >
+            {pending === "resume" ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Play />
+            )}
+            {t("keyvalue.actionResume")}
+          </Button>
+        </PermissionTooltip>
       ) : (
-        <Button
-          variant="ghost"
-          className="text-destructive hover:text-destructive"
-          disabled={busy}
-          onClick={() => setSuspendOpen(true)}
-        >
-          {pending === "suspend" ? (
-            <Loader2 className="animate-spin" />
-          ) : (
-            <Pause />
-          )}
-          {t("keyvalue.actionSuspend")}
-        </Button>
+        <PermissionTooltip reason={operateReason}>
+          <Button
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            disabled={busy || operateDenied}
+            onClick={() => {
+              if (!operateDenied) setSuspendOpen(true);
+            }}
+          >
+            {pending === "suspend" ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Pause />
+            )}
+            {t("keyvalue.actionSuspend")}
+          </Button>
+        </PermissionTooltip>
       )}
 
       <DeleteKeyValueDialog
         keyValue={keyValue}
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
+        open={deleteOpen && !createDenied}
+        onOpenChange={(open) => {
+          if (!createDenied) setDeleteOpen(open);
+        }}
         busy={busy}
         onConfirm={handleDelete}
       />
       <SuspendKeyValueDialog
         keyValue={keyValue}
-        open={suspendOpen}
-        onOpenChange={setSuspendOpen}
+        open={suspendOpen && !operateDenied}
+        onOpenChange={(open) => {
+          if (!operateDenied) setSuspendOpen(open);
+        }}
         busy={busy}
         onConfirm={handleSuspend}
       />
@@ -138,7 +170,12 @@ export function KeyValueDangerActions({
         key={
           protectedConfirm ? `open:${protectedConfirm.confirmation}` : "closed"
         }
-        open={protectedConfirm !== null}
+        open={
+          protectedConfirm !== null &&
+          (protectedConfirm.action === "delete"
+            ? !createDenied
+            : !operateDenied)
+        }
         resourceName={keyValue.name}
         requiredConfirmation={protectedConfirm?.confirmation ?? ""}
         actionLabel={

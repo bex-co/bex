@@ -14,6 +14,8 @@ import type {
 } from "@/features/databases/hooks/use-database-lifecycle";
 import type { DatabaseView } from "@/features/databases/types";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 
 export interface DatabaseDangerActionsProps {
   database: DatabaseView;
@@ -34,6 +36,19 @@ export function DatabaseDangerActions({
   lifecycle,
 }: DatabaseDangerActionsProps) {
   const { t } = useTranslations();
+  const {
+    canCreate,
+    canOperate,
+    loaded: capabilitiesLoaded,
+  } = useCapabilities();
+  const createDenied = capabilitiesLoaded && !canCreate;
+  const operateDenied = capabilitiesLoaded && !canOperate;
+  const createReason = createDenied
+    ? t("capabilities.reasonCanCreate")
+    : undefined;
+  const operateReason = operateDenied
+    ? t("capabilities.reasonCanOperate")
+    : undefined;
   const { remove, deleting } = useDeleteDatabase();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmVerb, setConfirmVerb] = useState<Extract<
@@ -50,6 +65,7 @@ export function DatabaseDangerActions({
   const suspended = isSuspended(database);
 
   async function handleDelete(confirmation?: string) {
+    if (createDenied) return;
     const result = confirmation
       ? await remove(database.id, database.name, confirmation)
       : await remove(database.id, database.name);
@@ -70,6 +86,7 @@ export function DatabaseDangerActions({
     action: DatabaseLifecycleAction,
     confirmation?: string,
   ) {
+    if (operateDenied) return;
     const result = confirmation
       ? await lifecycle.run(action, database, confirmation)
       : await lifecycle.run(action, database);
@@ -82,59 +99,75 @@ export function DatabaseDangerActions({
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Button
-        variant="destructive"
-        disabled={busy}
-        onClick={() => setConfirmOpen(true)}
-      >
-        {busy && deleting === database.id ? (
-          <Loader2 className="animate-spin" />
-        ) : (
-          <Trash2 />
-        )}
-        {t("databases.dangerDelete")}
-      </Button>
-      <Button
-        variant="ghost"
-        className="text-destructive hover:text-destructive"
-        disabled={busy || suspended}
-        onClick={() => setConfirmVerb("restart")}
-      >
-        <RotateCw />
-        {t("databases.dangerRestart")}
-      </Button>
-      {suspended ? (
+      <PermissionTooltip reason={createReason}>
         <Button
-          variant="ghost"
-          disabled={busy}
-          onClick={() => void runLifecycle("resume")}
+          variant="destructive"
+          disabled={busy || createDenied}
+          onClick={() => {
+            if (!createDenied) setConfirmOpen(true);
+          }}
         >
-          {lifecycleBusy ? <Loader2 className="animate-spin" /> : <Play />}
-          {t("databases.dangerResume")}
+          {busy && deleting === database.id ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <Trash2 />
+          )}
+          {t("databases.dangerDelete")}
         </Button>
-      ) : (
+      </PermissionTooltip>
+      <PermissionTooltip reason={!suspended ? operateReason : undefined}>
         <Button
           variant="ghost"
           className="text-destructive hover:text-destructive"
-          disabled={busy}
-          onClick={() => setConfirmVerb("suspend")}
+          disabled={busy || suspended || operateDenied}
+          onClick={() => {
+            if (!operateDenied) setConfirmVerb("restart");
+          }}
         >
-          <Pause />
-          {t("databases.dangerSuspend")}
+          <RotateCw />
+          {t("databases.dangerRestart")}
         </Button>
+      </PermissionTooltip>
+      {suspended ? (
+        <PermissionTooltip reason={operateReason}>
+          <Button
+            variant="ghost"
+            disabled={busy || operateDenied}
+            onClick={() => void runLifecycle("resume")}
+          >
+            {lifecycleBusy ? <Loader2 className="animate-spin" /> : <Play />}
+            {t("databases.dangerResume")}
+          </Button>
+        </PermissionTooltip>
+      ) : (
+        <PermissionTooltip reason={operateReason}>
+          <Button
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            disabled={busy || operateDenied}
+            onClick={() => {
+              if (!operateDenied) setConfirmVerb("suspend");
+            }}
+          >
+            <Pause />
+            {t("databases.dangerSuspend")}
+          </Button>
+        </PermissionTooltip>
       )}
 
       <DeleteDatabaseDialog
         database={database}
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
+        open={confirmOpen && !createDenied}
+        onOpenChange={(open) => {
+          if (!createDenied) setConfirmOpen(open);
+        }}
         busy={busy}
         onConfirm={() => void handleDelete()}
       />
 
       <DatabaseLifecycleConfirmDialog
         database={database}
-        verb={confirmVerb}
+        verb={operateDenied ? null : confirmVerb}
         busy={lifecycleBusy}
         onClose={() => setConfirmVerb(null)}
         onConfirm={(verb) => void runLifecycle(verb)}
@@ -144,7 +177,12 @@ export function DatabaseDangerActions({
         key={
           protectedConfirm ? `open:${protectedConfirm.confirmation}` : "closed"
         }
-        open={protectedConfirm !== null}
+        open={
+          protectedConfirm !== null &&
+          (protectedConfirm.action === "delete"
+            ? !createDenied
+            : !operateDenied)
+        }
         resourceName={database.name}
         requiredConfirmation={protectedConfirm?.confirmation ?? ""}
         actionLabel={

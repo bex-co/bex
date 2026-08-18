@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -8,7 +8,11 @@ import {
 interface PermissionTooltipProps {
   /** The role reason to show; when falsy the child renders unwrapped (allowed). */
   reason?: ReactNode;
-  children: ReactNode;
+  /** Use the child itself as the trigger when it remains focusable (for example,
+   *  an aria-disabled menu item). Disabled native buttons need the default
+   *  focusable wrapper because they swallow pointer and focus events. */
+  triggerAsChild?: boolean;
+  children: ReactElement;
 }
 
 /**
@@ -18,14 +22,22 @@ interface PermissionTooltipProps {
  * a control the caller cannot use. When `reason` is falsy the child renders
  * unwrapped, so an allowed control keeps its normal markup and behavior.
  */
-export function PermissionTooltip({ reason, children }: PermissionTooltipProps) {
+export function PermissionTooltip({
+  reason,
+  triggerAsChild = false,
+  children,
+}: PermissionTooltipProps) {
   if (!reason) return <>{children}</>;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="inline-flex" tabIndex={0}>
-          {children}
-        </span>
+        {triggerAsChild ? (
+          children
+        ) : (
+          <span className="inline-flex" tabIndex={0}>
+            {children}
+          </span>
+        )}
       </TooltipTrigger>
       <TooltipContent>{reason}</TooltipContent>
     </Tooltip>

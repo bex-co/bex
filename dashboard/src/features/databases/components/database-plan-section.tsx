@@ -18,14 +18,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/common/components/ui/alert-dialog";
-import { cn } from "@/common/lib/utils/utils.ts";
+import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import { useUpdateDatabasePlan } from "@/features/databases/hooks/use-update-database-plan";
-import {
-  formatInstanceCPU,
-  formatInstanceMemory,
-} from "@/features/services/lib/instance-type";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 export interface DatabasePlanSectionProps {
@@ -38,6 +36,11 @@ export function DatabasePlanSection({
   onChanged,
 }: DatabasePlanSectionProps) {
   const { t } = useTranslations();
+  const { canOperate, loaded: capabilitiesLoaded } = useCapabilities();
+  const operateDenied = capabilitiesLoaded && !canOperate;
+  const operateReason = operateDenied
+    ? t("capabilities.reasonCanOperate")
+    : undefined;
   const { instanceTypes, loading } = useDatabaseInstanceTypes();
   const { updatePlan, busy } = useUpdateDatabasePlan();
   const [selected, setSelected] = useState<string | null>(database.plan);
@@ -47,6 +50,7 @@ export function DatabasePlanSection({
   const canSave = selected != null && selected !== database.plan;
 
   async function handleConfirm() {
+    if (operateDenied) return;
     setConfirming(false);
     if (!selectedType) return;
     const ok = await updatePlan(
@@ -64,6 +68,11 @@ export function DatabasePlanSection({
         <CardDescription>{t("databases.planDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {operateReason ? (
+          <p className="text-muted-foreground text-sm" role="status">
+            {operateReason}
+          </p>
+        ) : null}
         {loading && instanceTypes.length === 0 ? (
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -71,56 +80,42 @@ export function DatabasePlanSection({
             ))}
           </div>
         ) : (
-          <div
-            role="radiogroup"
-            aria-label={t("databases.planTitle")}
-            className="grid grid-cols-1 gap-2 sm:grid-cols-3"
-          >
-            {instanceTypes.map((it) => {
-              const sel = it.id === selected;
-              return (
-                <button
-                  key={it.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={sel}
-                  onClick={() => setSelected(it.id)}
-                  className={cn(
-                    "rounded-lg border p-3 text-left transition-colors",
-                    sel
-                      ? "border-primary ring-1 ring-primary"
-                      : "border-border hover:border-muted-foreground/50",
-                  )}
-                >
-                  <div className="font-medium">{it.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {formatInstanceMemory(it.memory)} RAM ·{" "}
-                    {formatInstanceCPU(it.cpu)}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          <PlanCardGrid
+            instanceTypes={instanceTypes}
+            value={selected ?? ""}
+            disabled={operateDenied}
+            ariaLabel={t("databases.planTitle")}
+            onChange={setSelected}
+          />
         )}
 
         <div className="flex justify-end gap-2 border-t pt-4">
           <Button
             variant="outline"
             onClick={() => setSelected(database.plan)}
-            disabled={!canSave || busy}
+            disabled={!canSave || busy || operateDenied}
           >
             {t("databases.planPickerCancel")}
           </Button>
-          <Button
-            disabled={!canSave || busy}
-            onClick={() => setConfirming(true)}
-          >
-            {t("databases.planPickerSave")}
-          </Button>
+          <PermissionTooltip reason={operateReason}>
+            <Button
+              disabled={!canSave || busy || operateDenied}
+              onClick={() => {
+                if (!operateDenied) setConfirming(true);
+              }}
+            >
+              {t("databases.planPickerSave")}
+            </Button>
+          </PermissionTooltip>
         </div>
       </CardContent>
 
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+      <AlertDialog
+        open={confirming && !operateDenied}
+        onOpenChange={(open) => {
+          if (!operateDenied) setConfirming(open);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>

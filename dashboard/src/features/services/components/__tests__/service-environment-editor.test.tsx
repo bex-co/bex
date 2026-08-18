@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -67,6 +69,7 @@ function renderEditor() {
 }
 
 beforeEach(() => {
+  vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   revealEnv
     .mockReset()
     .mockImplementation(async (key: string) => `${key}-value`);
@@ -82,6 +85,111 @@ beforeEach(() => {
 });
 
 describe("ServiceEnvironmentEditor", () => {
+  it("disables every write entry for a contributor while sensitive reads remain available", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    const user = userEvent.setup();
+    renderEditor();
+
+    const edit = await screen.findByRole("button", { name: "Edit" });
+    expect(edit).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
+    expect(screen.getAllByRole("button", { name: "Reveal" })[0]).toBeEnabled();
+
+    await user.hover(edit.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Your role can’t make this change.",
+    );
+    await user.click(edit);
+    expect(screen.queryByRole("textbox", { name: "Value" })).toBeNull();
+    expect(save).not.toHaveBeenCalled();
+
+    await user.click(screen.getAllByRole("button", { name: "Reveal" })[0]);
+    expect(await screen.findByText("ALPHA-value")).toBeInTheDocument();
+  });
+
+  it("keeps can_view_sensitive independent from can_create", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ canViewSensitive: false }),
+    );
+    const user = userEvent.setup();
+    renderEditor();
+
+    expect(await screen.findByRole("button", { name: "Edit" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
+    expect(
+      screen
+        .getAllByRole("button", { name: "Reveal" })
+        .every((button) => button.hasAttribute("disabled")),
+    ).toBe(true);
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getAllByRole("textbox", { name: "Value" })).not.toHaveLength(
+      0,
+    );
+    expect(revealEnv).not.toHaveBeenCalled();
+  });
+
+  it("stays permissive until capabilities are definitive", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({
+        role: null,
+        canCreate: false,
+        canViewSensitive: false,
+        loading: true,
+        loaded: false,
+      }),
+    );
+    const user = userEvent.setup();
+    renderEditor();
+
+    expect(await screen.findByRole("button", { name: "Edit" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getAllByRole("textbox", { name: "Value" })).not.toHaveLength(
+      0,
+    );
+  });
+
+  it("freezes an already-open draft if create permission is revoked", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.type(
+      screen.getAllByRole("textbox", { name: "Value" })[0],
+      "pending",
+    );
+
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    // This last pre-revocation input event schedules the component render that
+    // observes the freshly denied capability; all subsequent handlers are the
+    // guarded versions.
+    await user.type(screen.getAllByRole("textbox", { name: "Value" })[0], "x");
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Your role can’t make this change.",
+    );
+    expect(
+      screen
+        .getAllByRole("textbox", { name: "Value" })
+        .every((input) => input.hasAttribute("disabled")),
+    ).toBe(true);
+    expect(screen.getByRole("button", { name: "Add variable" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Add secret file" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Save and deploy" }),
+    ).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Save and deploy" }));
+    expect(save).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
+  });
+
   it("starts masked and reveals only the requested value", async () => {
     const user = userEvent.setup();
     renderEditor();

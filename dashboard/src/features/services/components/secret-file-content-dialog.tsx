@@ -16,6 +16,7 @@ export function SecretFileContentDialog({
   open,
   name,
   content,
+  disabled = false,
   reveal,
   onOpenChange,
   onSave,
@@ -23,6 +24,7 @@ export function SecretFileContentDialog({
   open: boolean;
   name: string;
   content: string | null;
+  disabled?: boolean;
   reveal?: () => Promise<string>;
   onOpenChange: (open: boolean) => void;
   onSave: (content: string, changed: boolean) => void;
@@ -72,6 +74,7 @@ export function SecretFileContentDialog({
         ) : (
           <Textarea
             value={value}
+            disabled={disabled}
             onChange={(event) => setValue(event.target.value)}
             className="min-h-64 font-mono text-sm"
             aria-label={t("services.secretFileColContent")}
@@ -89,8 +92,9 @@ export function SecretFileContentDialog({
             {t("services.envCancel")}
           </Button>
           <Button
-            disabled={loading || error}
+            disabled={loading || error || disabled}
             onClick={() => {
+              if (disabled) return;
               onSave(value, value !== initial);
               onOpenChange(false);
             }}

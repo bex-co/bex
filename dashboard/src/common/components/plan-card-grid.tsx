@@ -16,6 +16,8 @@ export interface PlanCardGridProps {
   instanceTypes: PlanCardTier[];
   value: string;
   onChange: (id: string) => void;
+  disabled?: boolean;
+  ariaLabel?: string;
 }
 
 /**
@@ -30,9 +32,16 @@ export function PlanCardGrid({
   instanceTypes,
   value,
   onChange,
+  disabled = false,
+  ariaLabel,
 }: PlanCardGridProps) {
   return (
-    <div role="radiogroup" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div
+      role="radiogroup"
+      aria-label={ariaLabel}
+      aria-disabled={disabled || undefined}
+      className="grid grid-cols-1 gap-3 sm:grid-cols-3"
+    >
       {instanceTypes.map((it) => {
         const selected = it.id === value;
         return (
@@ -41,6 +50,7 @@ export function PlanCardGrid({
             type="button"
             role="radio"
             aria-checked={selected}
+            disabled={disabled}
             onClick={() => onChange(it.id)}
             className={cn(
               "rounded-lg border p-3 text-left transition-colors",
