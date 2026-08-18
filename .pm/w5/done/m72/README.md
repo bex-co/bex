@@ -1,6 +1,6 @@
 # w5 · m72 — Agent-session production recovery: stream grants, large-repo scrub, and terminal convergence
 
-**Worker:** worker5 **Goal:** restore trustworthy agent-session conversation replay and make every agent turn converge to a durable terminal state even when credential cleanup, sandbox termination, or Git publication is ambiguous **Status:** todo (t001–t011 done; reopened 2026-08-18 after delivery regression)
+**Worker:** worker5 **Goal:** restore trustworthy agent-session conversation replay and make every agent turn converge to a durable terminal state even when credential cleanup, sandbox termination, or Git publication is ambiguous **Status:** done (2026-08-18; reopened delivery edge corrected and verified on `bex-co/bex`)
 
 ## Tasks (in order)
 
@@ -21,8 +21,8 @@
 | t013 | Recheck user-surface parity and amend ADR047 — **DONE** | 30m | t012 |
 | t014 | Simplify the delivery recovery patch — **DONE** | 30m | t013 |
 | t015 | Add and run delivery regression coverage — **DONE** | 45m | t013, t014 |
-| t016 | Deploy and verify the corrected `bex-co/bex` workflow | 60m | t015 |
-| t017 | Recovery closeout | 20m | t016 |
+| t016 | Deploy and verify the corrected `bex-co/bex` workflow — **DONE** | 60m | t015 |
+| t017 | Recovery closeout — **DONE** | 20m | t016 |
 
 ## Definition of done
 
@@ -32,10 +32,10 @@
 4. [x] A terminal sandbox child Pod reaches an OpenSandbox terminal state. Independently, the gateway/control plane recognizes a failed or terminated Pod/container as terminal, so the Completer advances the session out of `creating`/`running` exactly once even if BatchSandbox status is stale; it does not poll `pods/exec` forever or flood `container not found` logs.
 5. [x] The reported session `ags-da1prbt040bc73aj5230` no longer appears live, its dead sandbox residue is reclaimed, and a fresh run against `bex-co/beancount-cms-v2` reaches an honest terminal result with refreshable conversation history and no missing delivery hidden behind a green state.
 6. [x] REST, GraphQL, MCP, dashboard, gateway, and operational metrics expose consistent terminal/error semantics. Focused DB-role, driver, controller, sandbox, Completer, attach, dashboard, and live workflow regressions pass; the normal backend, agent-image, dashboard, lint, and GitOps validation gates are green.
-7. [ ] Git delivery treats the exact scanned candidate already present at the remote ref as idempotent success, rejects a different concurrent ref, and resolves an ambiguous push error only by freshly proving the exact candidate is published. A new retry never displays the previous terminal `failureReason` as its current state.
-8. [ ] The corrected image is deployed and a fresh `bex-co/bex` agent workflow reaches a truthful terminal result with its draft PR and refreshable transcript; no final-push 403 is hidden by `Everything up-to-date`.
+7. [x] Git delivery treats the exact scanned candidate already present at the remote ref as idempotent success, rejects a different concurrent ref, and resolves an ambiguous push error only by freshly proving the exact candidate is published. A new retry never displays the previous terminal `failureReason` as its current state.
+8. [x] The corrected image is deployed and a fresh `bex-co/bex` agent workflow reaches a truthful terminal result with its draft PR and refreshable transcript; no final-push 403 is hidden by `Everything up-to-date`.
 
-Completion evidence: [`evidence/2026-08-18-production-recovery.md`](evidence/2026-08-18-production-recovery.md).
+Completion evidence: [`evidence/2026-08-18-production-recovery.md`](evidence/2026-08-18-production-recovery.md) and [`evidence/2026-08-18-git-delivery-recovery.md`](evidence/2026-08-18-git-delivery-recovery.md).
 
 ## Source + Goal linkage
 
