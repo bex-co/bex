@@ -3,6 +3,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DatabaseRowActions } from "@/features/databases/components/database-row-actions";
 import type { DatabaseView } from "@/features/databases/types";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 const remove = vi.fn();
 vi.mock("@/features/databases/hooks/use-delete-database", () => ({
@@ -36,11 +38,65 @@ const DB: DatabaseView = {
 };
 
 beforeEach(() => {
+  vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   remove.mockReset();
   remove.mockResolvedValue({ status: "success" });
 });
 
 describe("DatabaseRowActions", () => {
+  it("keeps a denied delete focusable with a reason and suppresses selection", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    const user = userEvent.setup();
+    render(<DatabaseRowActions database={DB} onDeleted={vi.fn()} />);
+
+    await user.tab();
+    expect(
+      screen.getByRole("button", { name: "Open actions menu" }),
+    ).toHaveFocus();
+    await user.keyboard("{Enter}{ArrowDown}");
+    const removeItem = await screen.findByRole("menuitem", { name: "Delete" });
+    expect(removeItem).toHaveAttribute("aria-disabled", "true");
+    expect(removeItem).toHaveFocus();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Your role can’t make this change.",
+    );
+
+    await user.keyboard("{Enter}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("uses can_operate for lifecycle menu items and suppresses viewer selection", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({
+        role: "VIEWER",
+        canCreate: false,
+        canOperate: false,
+      }),
+    );
+    const run = vi.fn().mockResolvedValue({ status: "success" });
+    const user = userEvent.setup();
+    render(
+      <DatabaseRowActions
+        database={DB}
+        onDeleted={vi.fn()}
+        lifecycle={{ pending: null, run }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
+    const suspend = await screen.findByRole("menuitem", { name: "Suspend" });
+    const restart = screen.getByRole("menuitem", { name: "Restart" });
+    expect(suspend).toHaveAttribute("aria-disabled", "true");
+    expect(restart).toHaveAttribute("aria-disabled", "true");
+
+    await user.click(suspend);
+    expect(run).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("gates delete behind the sudo type-to-confirm phrase", async () => {
     const onDeleted = vi.fn();
     const user = userEvent.setup();

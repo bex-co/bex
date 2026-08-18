@@ -22,12 +22,14 @@ vi.mock("@/features/databases/components/database-status-badge", () => ({
 }));
 vi.mock("@/features/databases/components/database-row-actions", () => ({
   DatabaseRowActions: () => <button>database options</button>,
+  DatabaseRowActionsWithCapabilities: () => <button>database options</button>,
 }));
 vi.mock("@/features/keyvalue/components/key-value-status-badge", () => ({
   KeyValueStatusBadge: () => <span>Available</span>,
 }));
 vi.mock("@/features/keyvalue/components/key-value-row-actions", () => ({
   KeyValueRowActions: () => <button>key value options</button>,
+  KeyValueRowActionsWithCapabilities: () => <button>key value options</button>,
 }));
 
 const createdAt = "2020-01-01T00:00:00Z";

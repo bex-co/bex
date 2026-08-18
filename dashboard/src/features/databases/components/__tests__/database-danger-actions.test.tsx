@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { DatabaseDangerActions } from "@/features/databases/components/database-danger-actions";
 import type { UseDatabaseLifecycleResult } from "@/features/databases/hooks/use-database-lifecycle";
 import type { DatabaseView } from "@/features/databases/types";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 const remove = vi.fn();
 vi.mock("@/features/databases/hooks/use-delete-database", () => ({
@@ -29,11 +31,74 @@ function lifecycleStub(
 }
 
 beforeEach(() => {
+  vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   remove.mockReset();
   remove.mockResolvedValue({ status: "success" });
 });
 
 describe("DatabaseDangerActions — detail-page bottom action row", () => {
+  it("keeps can_operate lifecycle actions but disables can_create delete for a contributor", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    const lifecycle = lifecycleStub();
+    const user = userEvent.setup();
+    render(
+      <DatabaseDangerActions
+        database={DB}
+        onDeleted={vi.fn()}
+        lifecycle={lifecycle}
+      />,
+    );
+
+    const removeButton = screen.getByRole("button", {
+      name: "Delete Database",
+    });
+    expect(removeButton).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Suspend Database" }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Restart Database" }),
+    ).toBeEnabled();
+
+    await user.hover(removeButton.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Your role can’t make this change.",
+    );
+    await user.click(removeButton);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("disables lifecycle actions with the operate reason for a viewer", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({
+        role: "VIEWER",
+        canCreate: false,
+        canOperate: false,
+      }),
+    );
+    const lifecycle = lifecycleStub();
+    const user = userEvent.setup();
+    render(
+      <DatabaseDangerActions
+        database={DB}
+        onDeleted={vi.fn()}
+        lifecycle={lifecycle}
+      />,
+    );
+
+    const suspend = screen.getByRole("button", { name: "Suspend Database" });
+    expect(suspend).toBeDisabled();
+    await user.hover(suspend.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Your role can only view this service.",
+    );
+    await user.click(suspend);
+    expect(lifecycle.run).not.toHaveBeenCalled();
+  });
+
   it("renders Delete / Restart / Suspend Database buttons", () => {
     render(
       <DatabaseDangerActions

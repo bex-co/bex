@@ -15,9 +15,10 @@ import { serviceBaseForType } from "@/features/services/lib/service-base";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
 import { ServiceRowActions } from "@/features/services/components/service-row-actions";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
-import { DatabaseRowActions } from "@/features/databases/components/database-row-actions";
+import { DatabaseRowActionsWithCapabilities } from "@/features/databases/components/database-row-actions";
 import { KeyValueStatusBadge } from "@/features/keyvalue/components/key-value-status-badge";
-import { KeyValueRowActions } from "@/features/keyvalue/components/key-value-row-actions";
+import { KeyValueRowActionsWithCapabilities } from "@/features/keyvalue/components/key-value-row-actions";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { ResourceTypeBadge } from "@/features/projects/components/resource-type-badge";
 import {
   resourceSelectionKey,
@@ -55,6 +56,7 @@ export function ResourceTable({
   onSelectedKeysChange,
 }: ResourceTableProps) {
   const { t } = useTranslations();
+  const capabilities = useCapabilities();
   const selectable = selectedKeys != null && onSelectedKeysChange != null;
   const visibleKeys = rows.map(resourceSelectionKey);
   const selectedVisibleCount = selectable
@@ -150,6 +152,7 @@ export function ResourceTable({
                   onRunServiceAction={onRunServiceAction}
                   onDatabaseDeleted={onDatabaseDeleted}
                   onKeyValueDeleted={onKeyValueDeleted}
+                  capabilities={capabilities}
                 />
               );
             })}
@@ -167,6 +170,7 @@ function ResourceTableRow({
   onRunServiceAction,
   onDatabaseDeleted,
   onKeyValueDeleted,
+  capabilities,
 }: {
   row: ResourceRow;
   checked: boolean;
@@ -176,6 +180,7 @@ function ResourceTableRow({
   onRunServiceAction: RunServiceAction;
   onDatabaseDeleted: (id: string) => void;
   onKeyValueDeleted: (id: string) => void;
+  capabilities: ReturnType<typeof useCapabilities>;
 }) {
   const { t } = useTranslations();
   return (
@@ -237,6 +242,7 @@ function ResourceTableRow({
           onRunServiceAction={onRunServiceAction}
           onDatabaseDeleted={onDatabaseDeleted}
           onKeyValueDeleted={onKeyValueDeleted}
+          capabilities={capabilities}
         />
       </TableCell>
     </TableRow>
@@ -316,13 +322,17 @@ function ResourceActions({
   onRunServiceAction,
   onDatabaseDeleted,
   onKeyValueDeleted,
+  capabilities,
 }: Pick<
   ResourceTableProps,
   | "servicePending"
   | "onRunServiceAction"
   | "onDatabaseDeleted"
   | "onKeyValueDeleted"
-> & { row: ResourceRow }) {
+> & {
+  row: ResourceRow;
+  capabilities: ReturnType<typeof useCapabilities>;
+}) {
   if (row.kind === "service" && row.service) {
     return (
       <ServiceRowActions
@@ -334,17 +344,19 @@ function ResourceActions({
   }
   if (row.kind === "database" && row.database) {
     return (
-      <DatabaseRowActions
+      <DatabaseRowActionsWithCapabilities
         database={row.database}
         onDeleted={onDatabaseDeleted}
+        capabilities={capabilities}
       />
     );
   }
   if (row.kind === "keyvalue" && row.keyValue) {
     return (
-      <KeyValueRowActions
+      <KeyValueRowActionsWithCapabilities
         keyValue={row.keyValue}
         onDeleted={onKeyValueDeleted}
+        capabilities={capabilities}
       />
     );
   }

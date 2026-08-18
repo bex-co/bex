@@ -3,6 +3,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyValueRowActions } from "@/features/keyvalue/components/key-value-row-actions";
 import type { KeyValueView } from "@/features/keyvalue/types";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 const remove = vi.fn();
 vi.mock("@/features/keyvalue/hooks/use-delete-key-value", () => ({
@@ -36,11 +38,36 @@ const KV: KeyValueView = {
 };
 
 beforeEach(() => {
+  vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   remove.mockReset();
   remove.mockResolvedValue({ status: "success" });
 });
 
 describe("KeyValueRowActions", () => {
+  it("keeps a denied delete focusable with a reason and suppresses selection", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    const user = userEvent.setup();
+    render(<KeyValueRowActions keyValue={KV} onDeleted={vi.fn()} />);
+
+    await user.tab();
+    expect(
+      screen.getByRole("button", { name: "Open actions menu" }),
+    ).toHaveFocus();
+    await user.keyboard("{Enter}{ArrowDown}");
+    const removeItem = await screen.findByRole("menuitem", { name: "Delete" });
+    expect(removeItem).toHaveAttribute("aria-disabled", "true");
+    expect(removeItem).toHaveFocus();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Your role can’t make this change.",
+    );
+
+    await user.keyboard("{Enter}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
   it("gates delete behind Render's exact sudo confirmation", async () => {
     const onDeleted = vi.fn();
     const user = userEvent.setup();

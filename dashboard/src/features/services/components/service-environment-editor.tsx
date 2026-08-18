@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { useBlocker } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -53,6 +53,8 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
   classifyEnvVarError,
   useEnvVarKeys,
@@ -196,6 +198,20 @@ export function EnvironmentEditor({
   generateOnServer = false,
 }: EnvironmentEditorProps) {
   const { t } = useTranslations();
+  const {
+    canCreate,
+    canViewSensitive,
+    loaded: capabilitiesLoaded,
+  } = useCapabilities();
+  const createDenied = capabilitiesLoaded && !canCreate;
+  const sensitiveDenied = capabilitiesLoaded && !canViewSensitive;
+  const createReason = createDenied
+    ? t("capabilities.reasonCanCreate")
+    : undefined;
+  const sensitiveReason = sensitiveDenied
+    ? t("capabilities.reasonCanViewSensitive")
+    : undefined;
+  const writeReasonID = useId();
   const nextID = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<EnvironmentDraft | null>(null);
@@ -238,6 +254,7 @@ export function EnvironmentEditor({
   });
 
   function beginEdit() {
+    if (createDenied) return;
     setDraft(
       createEnvironmentDraft(
         envKeys.map((entry) => entry.key),
@@ -255,6 +272,7 @@ export function EnvironmentEditor({
     id: string,
     update: Partial<EnvironmentDraft[K][number]>,
   ) {
+    if (createDenied) return;
     setDraft((current) =>
       current
         ? {
@@ -274,7 +292,7 @@ export function EnvironmentEditor({
   }
 
   function addVariable(generated = false) {
-    if (!draft) return;
+    if (!draft || createDenied) return;
     const existing = new Set(draft.envVars.map((row) => row.key));
     let key = generated ? "NEW_SECRET" : "";
     let suffix = 2;
@@ -302,6 +320,7 @@ export function EnvironmentEditor({
   }
 
   function importVariables(entries: DotenvEntry[]) {
+    if (createDenied) return;
     setDraft((current) => {
       if (!current) return current;
       return {
@@ -330,6 +349,7 @@ export function EnvironmentEditor({
   }
 
   function addSecretFile() {
+    if (createDenied) return;
     setDraft((current) =>
       current
         ? {
@@ -351,7 +371,7 @@ export function EnvironmentEditor({
   }
 
   async function uploadFiles(selected: FileList | null) {
-    if (!selected || !draft) return;
+    if (!selected || !draft || createDenied) return;
     const names = new Set(
       draft.secretFiles
         .filter((row) => !row.deleted)
@@ -399,6 +419,7 @@ export function EnvironmentEditor({
   }
 
   async function exportEnvironment(kind: "copy" | "download") {
+    if (sensitiveDenied) return;
     setExporting(true);
     try {
       const values = await Promise.all(
@@ -420,7 +441,7 @@ export function EnvironmentEditor({
   }
 
   async function commit(choice: SaveChoice) {
-    if (!draft || !dirty || !isDraftValid(validation)) return;
+    if (createDenied || !draft || !dirty || !isDraftValid(validation)) return;
     setSaveError(false);
     let result: {
       affectedServiceIds?: readonly string[];
@@ -459,7 +480,7 @@ export function EnvironmentEditor({
   }
 
   async function retryDeploy() {
-    if (!pendingChoice) return;
+    if (!pendingChoice || createDenied) return;
     if (await retryRollout(pendingChoice)) {
       setPendingChoice(null);
     }
@@ -468,6 +489,7 @@ export function EnvironmentEditor({
   const contentRow = draft?.secretFiles.find((row) => row.id === contentRowID);
 
   async function copyFresh(kind: "env" | "file", name: string) {
+    if (sensitiveDenied) return;
     try {
       const value = await (kind === "env" ? revealEnv(name) : revealFile(name));
       await navigator.clipboard.writeText(value);
@@ -496,7 +518,7 @@ export function EnvironmentEditor({
             <Button
               size="sm"
               variant="outline"
-              disabled={saving}
+              disabled={saving || createDenied}
               onClick={() => void retryDeploy()}
             >
               {saving ? <Loader2 className="animate-spin" /> : <RotateCw />}
@@ -515,6 +537,16 @@ export function EnvironmentEditor({
         </Alert>
       ) : null}
 
+      {draft && createDenied ? (
+        <p
+          id={writeReasonID}
+          className="text-muted-foreground text-sm"
+          role="status"
+        >
+          {createReason}
+        </p>
+      ) : null}
+
       <EnvironmentSection
         title={t("services.envTitle")}
         description={t("services.envDescription")}
@@ -525,49 +557,63 @@ export function EnvironmentEditor({
         loading={loading}
         action={
           <>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <PermissionTooltip reason={sensitiveReason}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={
+                      loading ||
+                      Boolean(errorKind) ||
+                      exporting ||
+                      sensitiveDenied
+                    }
+                  >
+                    {exporting ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Download />
+                    )}
+                    {t("services.envExport")}
+                    <ChevronDown />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={() => void exportEnvironment("copy")}
+                  >
+                    <Clipboard /> {t("services.envCopy")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => void exportEnvironment("download")}
+                  >
+                    <Download /> {t("services.envDownload")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </PermissionTooltip>
+            {!draft ? (
+              <PermissionTooltip reason={createReason}>
                 <Button
                   size="sm"
-                  variant="outline"
-                  disabled={loading || Boolean(errorKind) || exporting}
+                  disabled={loading || Boolean(errorKind) || createDenied}
+                  onClick={beginEdit}
                 >
-                  {exporting ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Download />
-                  )}
-                  {t("services.envExport")}
-                  <ChevronDown />
+                  <Pencil /> {t("services.environmentEdit")}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onSelect={() => void exportEnvironment("copy")}
-                >
-                  <Clipboard /> {t("services.envCopy")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => void exportEnvironment("download")}
-                >
-                  <Download /> {t("services.envDownload")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {!draft ? (
-              <Button
-                size="sm"
-                disabled={loading || Boolean(errorKind)}
-                onClick={beginEdit}
-              >
-                <Pencil /> {t("services.environmentEdit")}
-              </Button>
+              </PermissionTooltip>
             ) : (
-              <AddVariableMenu
-                onAdd={() => addVariable(false)}
-                onGenerate={() => addVariable(true)}
-                onImport={() => setImportOpen(true)}
-              />
+              <PermissionTooltip reason={createReason}>
+                <AddVariableMenu
+                  disabled={createDenied}
+                  onAdd={() => addVariable(false)}
+                  onGenerate={() => addVariable(true)}
+                  onImport={() => {
+                    if (!createDenied) setImportOpen(true);
+                  }}
+                />
+              </PermissionTooltip>
             )}
           </>
         }
@@ -579,6 +625,8 @@ export function EnvironmentEditor({
                 key={row.id}
                 row={row}
                 error={validation.env[row.id]}
+                disabled={createDenied}
+                permissionDescriptionID={writeReasonID}
                 onChange={(update) => updateRow("envVars", row.id, update)}
               />
             ))
@@ -586,9 +634,13 @@ export function EnvironmentEditor({
               <SensitiveViewItem
                 key={id}
                 name={key}
-                value={reveals.value("env", key)}
+                value={sensitiveDenied ? undefined : reveals.value("env", key)}
                 loading={reveals.busy("env", key)}
-                onToggle={() => reveals.toggle("env", key)}
+                revealDisabled={sensitiveDenied}
+                revealReason={sensitiveReason}
+                onToggle={() => {
+                  if (!sensitiveDenied) reveals.toggle("env", key);
+                }}
                 onCopy={() => copyFresh("env", key)}
               />
             ))}
@@ -606,21 +658,32 @@ export function EnvironmentEditor({
         action={
           draft ? (
             <>
-              <Button size="sm" variant="outline" onClick={addSecretFile}>
-                <FilePlus2 /> {t("services.secretFileAdd")}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => fileInput.current?.click()}
-              >
-                <FileUp /> {t("services.secretFileUpload")}
-              </Button>
+              <PermissionTooltip reason={createReason}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={createDenied}
+                  onClick={addSecretFile}
+                >
+                  <FilePlus2 /> {t("services.secretFileAdd")}
+                </Button>
+              </PermissionTooltip>
+              <PermissionTooltip reason={createReason}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={createDenied}
+                  onClick={() => fileInput.current?.click()}
+                >
+                  <FileUp /> {t("services.secretFileUpload")}
+                </Button>
+              </PermissionTooltip>
               <input
                 ref={fileInput}
                 className="sr-only"
                 type="file"
                 multiple
+                disabled={createDenied}
                 onChange={(event) => {
                   void uploadFiles(event.target.files);
                   event.target.value = "";
@@ -637,17 +700,27 @@ export function EnvironmentEditor({
                 key={row.id}
                 row={row}
                 error={validation.files[row.id]}
+                disabled={createDenied}
+                permissionDescriptionID={writeReasonID}
                 onChange={(update) => updateRow("secretFiles", row.id, update)}
-                onContent={() => setContentRowID(row.id)}
+                onContent={() => {
+                  if (!createDenied) setContentRowID(row.id);
+                }}
               />
             ))
           : secretFileNames.map(({ id, name }) => (
               <SensitiveViewItem
                 key={id}
                 name={name}
-                value={reveals.value("file", name)}
+                value={
+                  sensitiveDenied ? undefined : reveals.value("file", name)
+                }
                 loading={reveals.busy("file", name)}
-                onToggle={() => reveals.toggle("file", name)}
+                revealDisabled={sensitiveDenied}
+                revealReason={sensitiveReason}
+                onToggle={() => {
+                  if (!sensitiveDenied) reveals.toggle("file", name);
+                }}
                 onCopy={() => copyFresh("file", name)}
               />
             ))}
@@ -680,47 +753,61 @@ export function EnvironmentEditor({
               >
                 {t("services.envCancel")}
               </Button>
-              <div className="flex">
-                <Button
-                  className="flex-1 rounded-r-none sm:flex-none"
-                  disabled={!dirty || !isDraftValid(validation) || busy}
-                  onClick={() => void commit("deploy")}
-                >
-                  {busy ? <Loader2 className="animate-spin" /> : <Check />}
-                  {t("services.environmentSaveDeploy")}
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      className="rounded-l-none border-l border-primary-foreground/30 px-2"
-                      disabled={!dirty || !isDraftValid(validation) || busy}
-                      aria-label={t("services.environmentSaveOptions")}
-                    >
-                      <ChevronDown />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => void commit("rebuild")}>
-                      {t("services.environmentSaveRebuild")}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => void commit("deploy")}>
-                      {t("services.environmentSaveDeploy")}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => void commit("only")}>
-                      {t("services.environmentSaveOnly")}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              <PermissionTooltip reason={createReason}>
+                <div className="flex">
+                  <Button
+                    className="flex-1 rounded-r-none sm:flex-none"
+                    disabled={
+                      !dirty ||
+                      !isDraftValid(validation) ||
+                      busy ||
+                      createDenied
+                    }
+                    onClick={() => void commit("deploy")}
+                  >
+                    {busy ? <Loader2 className="animate-spin" /> : <Check />}
+                    {t("services.environmentSaveDeploy")}
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        className="rounded-l-none border-l border-primary-foreground/30 px-2"
+                        disabled={
+                          !dirty ||
+                          !isDraftValid(validation) ||
+                          busy ||
+                          createDenied
+                        }
+                        aria-label={t("services.environmentSaveOptions")}
+                      >
+                        <ChevronDown />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => void commit("rebuild")}>
+                        {t("services.environmentSaveRebuild")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => void commit("deploy")}>
+                        {t("services.environmentSaveDeploy")}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={() => void commit("only")}>
+                        {t("services.environmentSaveOnly")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </PermissionTooltip>
             </div>
           </CardContent>
         </Card>
       ) : null}
 
       <EnvImportDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
+        open={importOpen && !createDenied}
+        onOpenChange={(open) => {
+          if (!createDenied) setImportOpen(open);
+        }}
         onImport={importVariables}
       />
       {contentRow ? (
@@ -728,8 +815,9 @@ export function EnvironmentEditor({
           open
           name={contentRow.name || t("services.secretFileUntitled")}
           content={contentRow.content}
+          disabled={createDenied}
           reveal={
-            contentRow.originalName
+            contentRow.originalName && !sensitiveDenied && !createDenied
               ? () => revealFile(contentRow.originalName as string)
               : undefined
           }
@@ -837,12 +925,16 @@ function SensitiveViewItem({
   name,
   value,
   loading,
+  revealDisabled,
+  revealReason,
   onToggle,
   onCopy,
 }: {
   name: string;
   value: string | undefined;
   loading: boolean;
+  revealDisabled: boolean;
+  revealReason?: string;
   onToggle: () => void;
   onCopy: () => Promise<void>;
 }) {
@@ -858,25 +950,36 @@ function SensitiveViewItem({
         {visible ? value : MASKED_VALUE}
       </code>
       <div className="flex flex-wrap justify-end gap-1">
-        <Button size="sm" variant="ghost" disabled={loading} onClick={onToggle}>
-          {loading ? (
-            <Loader2 className="animate-spin" />
-          ) : visible ? (
-            <EyeOff />
-          ) : (
-            <Eye />
-          )}
-          {visible ? t("services.envHide") : t("services.envReveal")}
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          disabled={loading}
-          aria-label={t("services.envCopy")}
-          onClick={() => void onCopy()}
+        <PermissionTooltip
+          reason={!visible && revealDisabled ? revealReason : undefined}
         >
-          <Clipboard />
-        </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={loading || (!visible && revealDisabled)}
+            onClick={onToggle}
+          >
+            {loading ? (
+              <Loader2 className="animate-spin" />
+            ) : visible ? (
+              <EyeOff />
+            ) : (
+              <Eye />
+            )}
+            {visible ? t("services.envHide") : t("services.envReveal")}
+          </Button>
+        </PermissionTooltip>
+        <PermissionTooltip reason={revealDisabled ? revealReason : undefined}>
+          <Button
+            size="icon"
+            variant="ghost"
+            disabled={loading || revealDisabled}
+            aria-label={t("services.envCopy")}
+            onClick={() => void onCopy()}
+          >
+            <Clipboard />
+          </Button>
+        </PermissionTooltip>
       </div>
     </div>
   );
@@ -885,11 +988,15 @@ function SensitiveViewItem({
 /** A row staged for deletion on save, with the Undo affordance that reverts it. */
 function StagedDeleteRow({
   label,
+  disabled,
+  permissionDescriptionID,
   onUndo,
 }: {
   // Nullable: a row staged for delete before its server name is known renders
   // an empty label rather than crashing.
   label: string | null;
+  disabled: boolean;
+  permissionDescriptionID?: string;
   onUndo: () => void;
 }) {
   const { t } = useTranslations();
@@ -900,7 +1007,13 @@ function StagedDeleteRow({
       </code>
       <div className="flex items-center gap-2">
         <Badge variant="outline">{t("services.environmentStagedDelete")}</Badge>
-        <Button size="sm" variant="ghost" onClick={onUndo}>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={disabled}
+          aria-describedby={disabled ? permissionDescriptionID : undefined}
+          onClick={onUndo}
+        >
           <Undo2 /> {t("services.environmentUndo")}
         </Button>
       </div>
@@ -911,10 +1024,14 @@ function StagedDeleteRow({
 function EnvDraftItem({
   row,
   error,
+  disabled,
+  permissionDescriptionID,
   onChange,
 }: {
   row: EnvDraftRow;
   error?: "invalid" | "duplicate" | "value";
+  disabled: boolean;
+  permissionDescriptionID?: string;
   onChange: (update: Partial<EnvDraftRow>) => void;
 }) {
   const { t } = useTranslations();
@@ -922,6 +1039,8 @@ function EnvDraftItem({
     return (
       <StagedDeleteRow
         label={row.originalKey}
+        disabled={disabled}
+        permissionDescriptionID={permissionDescriptionID}
         onUndo={() => onChange({ deleted: false })}
       />
     );
@@ -931,6 +1050,8 @@ function EnvDraftItem({
       <div className="min-w-0 space-y-1">
         <Input
           value={row.key}
+          disabled={disabled}
+          aria-describedby={disabled ? permissionDescriptionID : undefined}
           onChange={(event) => onChange({ key: event.target.value })}
           className="min-w-0 font-mono text-sm"
           aria-label={t("services.envColKey")}
@@ -949,6 +1070,8 @@ function EnvDraftItem({
       </div>
       <Input
         value={row.value ?? ""}
+        disabled={disabled}
+        aria-describedby={disabled ? permissionDescriptionID : undefined}
         onChange={(event) =>
           onChange({
             value: event.target.value,
@@ -967,6 +1090,8 @@ function EnvDraftItem({
       <Button
         size="icon"
         variant="ghost"
+        disabled={disabled}
+        aria-describedby={disabled ? permissionDescriptionID : undefined}
         aria-label={t("services.envDelete")}
         onClick={() => onChange({ deleted: true })}
       >
@@ -979,11 +1104,15 @@ function EnvDraftItem({
 function FileDraftItem({
   row,
   error,
+  disabled,
+  permissionDescriptionID,
   onChange,
   onContent,
 }: {
   row: SecretFileDraftRow;
   error?: "invalid" | "duplicate" | "content";
+  disabled: boolean;
+  permissionDescriptionID?: string;
   onChange: (update: Partial<SecretFileDraftRow>) => void;
   onContent: () => void;
 }) {
@@ -992,6 +1121,8 @@ function FileDraftItem({
     return (
       <StagedDeleteRow
         label={row.originalName}
+        disabled={disabled}
+        permissionDescriptionID={permissionDescriptionID}
         onUndo={() => onChange({ deleted: false })}
       />
     );
@@ -1001,6 +1132,8 @@ function FileDraftItem({
       <div className="min-w-0 space-y-1">
         <Input
           value={row.name}
+          disabled={disabled}
+          aria-describedby={disabled ? permissionDescriptionID : undefined}
           onChange={(event) => onChange({ name: event.target.value })}
           className="min-w-0 font-mono text-sm"
           aria-label={t("services.secretFileColName")}
@@ -1017,7 +1150,12 @@ function FileDraftItem({
           </p>
         ) : null}
       </div>
-      <Button variant="outline" onClick={onContent}>
+      <Button
+        variant="outline"
+        disabled={disabled}
+        aria-describedby={disabled ? permissionDescriptionID : undefined}
+        onClick={onContent}
+      >
         <Pencil />
         {row.contentChanged
           ? t("services.secretFileEditContent")
@@ -1026,6 +1164,8 @@ function FileDraftItem({
       <Button
         size="icon"
         variant="ghost"
+        disabled={disabled}
+        aria-describedby={disabled ? permissionDescriptionID : undefined}
         aria-label={t("services.secretFileDelete")}
         onClick={() => onChange({ deleted: true })}
       >
@@ -1036,10 +1176,12 @@ function FileDraftItem({
 }
 
 function AddVariableMenu({
+  disabled,
   onAdd,
   onGenerate,
   onImport,
 }: {
+  disabled: boolean;
   onAdd: () => void;
   onGenerate: () => void;
   onImport: () => void;
@@ -1048,7 +1190,7 @@ function AddVariableMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" disabled={disabled}>
           <Plus /> {t("services.envAdd")} <ChevronDown />
         </Button>
       </DropdownMenuTrigger>

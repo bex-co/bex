@@ -4,7 +4,6 @@ import { Button } from "@/common/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -13,6 +12,11 @@ import { useDeleteKeyValue } from "@/features/keyvalue/hooks/use-delete-key-valu
 import type { KeyValueView } from "@/features/keyvalue/types";
 import { MoveToProjectMenu } from "@/features/projects/components/move-to-project-menu";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
+import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
+import {
+  useCapabilities,
+  type Capabilities,
+} from "@/features/capabilities/hooks/use-capabilities";
 
 export interface KeyValueRowActionsProps {
   keyValue: KeyValueView;
@@ -28,11 +32,29 @@ export interface KeyValueRowActionsProps {
  * StatefulSet + PVC), so it uses the same exact typed sudo confirmation as
  * Render's Key Value detail page.
  */
-export function KeyValueRowActions({
+export function KeyValueRowActions(props: KeyValueRowActionsProps) {
+  const capabilities = useCapabilities();
+  return (
+    <KeyValueRowActionsWithCapabilities
+      {...props}
+      capabilities={capabilities}
+    />
+  );
+}
+
+export function KeyValueRowActionsWithCapabilities({
   keyValue,
   onDeleted,
-}: KeyValueRowActionsProps) {
+  capabilities,
+}: KeyValueRowActionsProps & {
+  capabilities: Pick<Capabilities, "canCreate" | "loaded">;
+}) {
   const { t } = useTranslations();
+  const { canCreate, loaded: capabilitiesLoaded } = capabilities;
+  const createDenied = capabilitiesLoaded && !canCreate;
+  const createReason = createDenied
+    ? t("capabilities.reasonCanCreate")
+    : undefined;
   const { remove, deleting } = useDeleteKeyValue();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [protectedConfirmation, setProtectedConfirmation] = useState<
@@ -42,6 +64,7 @@ export function KeyValueRowActions({
   const busy = deleting === keyValue.id;
 
   async function handleDelete(confirmation?: string) {
+    if (createDenied) return;
     const result = confirmation
       ? await remove(keyValue.id, keyValue.name, confirmation)
       : await remove(keyValue.id, keyValue.name);
@@ -69,12 +92,15 @@ export function KeyValueRowActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem
+          <PermissionMenuItem
+            permissionReason={createReason}
             variant="destructive"
-            onSelect={() => setConfirmOpen(true)}
+            onSelect={() => {
+              if (!createDenied) setConfirmOpen(true);
+            }}
           >
             {t("keyvalue.actionDelete")}
-          </DropdownMenuItem>
+          </PermissionMenuItem>
           <MoveToProjectMenu
             kind="keyvalue"
             resourceId={keyValue.id}
@@ -86,15 +112,17 @@ export function KeyValueRowActions({
 
       <DeleteKeyValueDialog
         keyValue={keyValue}
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
+        open={confirmOpen && !createDenied}
+        onOpenChange={(open) => {
+          if (!createDenied) setConfirmOpen(open);
+        }}
         busy={busy}
         onConfirm={handleDelete}
       />
 
       <ProtectedConfirmationDialog
         key={protectedConfirmation ? `open:${protectedConfirmation}` : "closed"}
-        open={protectedConfirmation !== null}
+        open={protectedConfirmation !== null && !createDenied}
         resourceName={keyValue.name}
         requiredConfirmation={protectedConfirmation ?? ""}
         actionLabel={t("keyvalue.deleteConfirm")}

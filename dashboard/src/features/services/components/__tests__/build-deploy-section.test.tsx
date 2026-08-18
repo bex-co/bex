@@ -137,7 +137,7 @@ describe("BuildDeploySection", () => {
       screen.queryByRole("button", { name: "Edit Pre-Deploy Command" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getAllByText(/change what this service runs/i).length,
+      screen.getAllByText(/can’t make this change/i).length,
     ).toBeGreaterThan(0);
     // Auto-Deploy is can_operate — a contributor keeps it.
     expect(

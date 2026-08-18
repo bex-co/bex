@@ -4,7 +4,6 @@ import { Button } from "@/common/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
@@ -22,6 +21,11 @@ import type {
 } from "@/features/databases/hooks/use-database-lifecycle";
 import type { DatabaseView } from "@/features/databases/types";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
+import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
+import {
+  useCapabilities,
+  type Capabilities,
+} from "@/features/capabilities/hooks/use-capabilities";
 
 export interface DatabaseRowActionsProps {
   database: DatabaseView;
@@ -33,16 +37,38 @@ export interface DatabaseRowActionsProps {
 
 /**
  * The per-database actions menu. Delete (a typed-name confirm, since it cascades
- * the CNPG cluster + PVC) is always available; when `lifecycle` is wired (the
+ * the CNPG cluster + PVC) is present for every database; when `lifecycle` is wired (the
  * detail page) the menu also offers suspend/resume/restart — resume runs
  * immediately, the disruptive verbs (suspend/restart) go through a confirm.
  */
-export function DatabaseRowActions({
+export function DatabaseRowActions(props: DatabaseRowActionsProps) {
+  const capabilities = useCapabilities();
+  return (
+    <DatabaseRowActionsWithCapabilities
+      {...props}
+      capabilities={capabilities}
+    />
+  );
+}
+
+export function DatabaseRowActionsWithCapabilities({
   database,
   onDeleted,
   lifecycle,
-}: DatabaseRowActionsProps) {
+  capabilities,
+}: DatabaseRowActionsProps & {
+  capabilities: Pick<Capabilities, "canCreate" | "canOperate" | "loaded">;
+}) {
   const { t } = useTranslations();
+  const { canCreate, canOperate, loaded: capabilitiesLoaded } = capabilities;
+  const createDenied = capabilitiesLoaded && !canCreate;
+  const operateDenied = capabilitiesLoaded && !canOperate;
+  const createReason = createDenied
+    ? t("capabilities.reasonCanCreate")
+    : undefined;
+  const operateReason = operateDenied
+    ? t("capabilities.reasonCanOperate")
+    : undefined;
   const { remove, deleting } = useDeleteDatabase();
   const [confirmOpen, setConfirmOpen] = useState(false);
   // The disruptive lifecycle verb awaiting confirmation (suspend | restart).
@@ -60,6 +86,7 @@ export function DatabaseRowActions({
   const suspended = isSuspended(database);
 
   async function handleDelete(confirmation?: string) {
+    if (createDenied) return;
     const result = confirmation
       ? await remove(database.id, database.name, confirmation)
       : await remove(database.id, database.name);
@@ -80,6 +107,7 @@ export function DatabaseRowActions({
     action: DatabaseLifecycleAction,
     confirmation?: string,
   ) {
+    if (operateDenied) return;
     const result = confirmation
       ? await lifecycle?.run(action, database, confirmation)
       : await lifecycle?.run(action, database);
@@ -107,32 +135,46 @@ export function DatabaseRowActions({
           {lifecycle ? (
             <>
               {suspended ? (
-                <DropdownMenuItem onSelect={() => void runLifecycle("resume")}>
+                <PermissionMenuItem
+                  permissionReason={operateReason}
+                  onSelect={() => void runLifecycle("resume")}
+                >
                   <Play />
                   {t("databases.actionResume")}
-                </DropdownMenuItem>
+                </PermissionMenuItem>
               ) : (
-                <DropdownMenuItem onSelect={() => setConfirmVerb("suspend")}>
+                <PermissionMenuItem
+                  permissionReason={operateReason}
+                  onSelect={() => {
+                    if (!operateDenied) setConfirmVerb("suspend");
+                  }}
+                >
                   <Pause />
                   {t("databases.actionSuspend")}
-                </DropdownMenuItem>
+                </PermissionMenuItem>
               )}
-              <DropdownMenuItem
-                onSelect={() => setConfirmVerb("restart")}
+              <PermissionMenuItem
+                permissionReason={suspended ? undefined : operateReason}
+                onSelect={() => {
+                  if (!operateDenied) setConfirmVerb("restart");
+                }}
                 disabled={suspended}
               >
                 <RotateCw />
                 {t("databases.actionRestart")}
-              </DropdownMenuItem>
+              </PermissionMenuItem>
               <DropdownMenuSeparator />
             </>
           ) : null}
-          <DropdownMenuItem
+          <PermissionMenuItem
+            permissionReason={createReason}
             variant="destructive"
-            onSelect={() => setConfirmOpen(true)}
+            onSelect={() => {
+              if (!createDenied) setConfirmOpen(true);
+            }}
           >
             {t("databases.actionDelete")}
-          </DropdownMenuItem>
+          </PermissionMenuItem>
           <MoveToProjectMenu
             kind="database"
             resourceId={database.id}
@@ -144,15 +186,17 @@ export function DatabaseRowActions({
 
       <DeleteDatabaseDialog
         database={database}
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
+        open={confirmOpen && !createDenied}
+        onOpenChange={(open) => {
+          if (!createDenied) setConfirmOpen(open);
+        }}
         busy={busy}
         onConfirm={() => void handleDelete()}
       />
 
       <DatabaseLifecycleConfirmDialog
         database={database}
-        verb={confirmVerb}
+        verb={operateDenied ? null : confirmVerb}
         busy={lifecycleBusy}
         onClose={() => setConfirmVerb(null)}
         onConfirm={(verb) => void runLifecycle(verb)}
@@ -162,7 +206,12 @@ export function DatabaseRowActions({
         key={
           protectedConfirm ? `open:${protectedConfirm.confirmation}` : "closed"
         }
-        open={protectedConfirm !== null}
+        open={
+          protectedConfirm !== null &&
+          (protectedConfirm.action === "delete"
+            ? !createDenied
+            : !operateDenied)
+        }
         resourceName={database.name}
         requiredConfirmation={protectedConfirm?.confirmation ?? ""}
         actionLabel={

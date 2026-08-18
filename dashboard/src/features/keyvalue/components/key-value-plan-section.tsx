@@ -18,6 +18,8 @@ import {
   AlertDialogTitle,
 } from "@/common/components/ui/alert-dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-value-instance-types";
 import { useUpdateKeyValuePlan } from "@/features/keyvalue/hooks/use-update-key-value-plan";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
@@ -33,6 +35,11 @@ export function KeyValuePlanSection({
   onChanged,
 }: KeyValuePlanSectionProps) {
   const { t } = useTranslations();
+  const { canOperate, loaded: capabilitiesLoaded } = useCapabilities();
+  const operateDenied = capabilitiesLoaded && !canOperate;
+  const operateReason = operateDenied
+    ? t("capabilities.reasonCanOperate")
+    : undefined;
   const { instanceTypes } = useKeyValueInstanceTypes();
   const { updatePlan, busy } = useUpdateKeyValuePlan();
   const [selected, setSelected] = useState<string>(keyValue.plan ?? "free");
@@ -42,6 +49,7 @@ export function KeyValuePlanSection({
   const canSave = selected !== keyValue.plan;
 
   async function handleConfirm() {
+    if (operateDenied) return;
     setConfirming(false);
     if (!selectedType) return;
     const ok = await updatePlan(
@@ -59,9 +67,15 @@ export function KeyValuePlanSection({
         <CardDescription>{t("keyvalue.planDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {operateReason ? (
+          <p className="text-muted-foreground text-sm" role="status">
+            {operateReason}
+          </p>
+        ) : null}
         <PlanCardGrid
           instanceTypes={instanceTypes}
           value={selected}
+          disabled={operateDenied}
           onChange={setSelected}
         />
 
@@ -69,20 +83,29 @@ export function KeyValuePlanSection({
           <Button
             variant="outline"
             onClick={() => setSelected(keyValue.plan ?? "free")}
-            disabled={!canSave || busy}
+            disabled={!canSave || busy || operateDenied}
           >
             {t("keyvalue.planPickerCancel")}
           </Button>
-          <Button
-            disabled={!canSave || busy}
-            onClick={() => setConfirming(true)}
-          >
-            {t("keyvalue.planPickerSave")}
-          </Button>
+          <PermissionTooltip reason={operateReason}>
+            <Button
+              disabled={!canSave || busy || operateDenied}
+              onClick={() => {
+                if (!operateDenied) setConfirming(true);
+              }}
+            >
+              {t("keyvalue.planPickerSave")}
+            </Button>
+          </PermissionTooltip>
         </div>
       </CardContent>
 
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+      <AlertDialog
+        open={confirming && !operateDenied}
+        onOpenChange={(open) => {
+          if (!operateDenied) setConfirming(open);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>

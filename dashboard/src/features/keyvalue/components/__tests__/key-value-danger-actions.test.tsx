@@ -3,6 +3,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyValueDangerActions } from "@/features/keyvalue/components/key-value-danger-actions";
 import type { KeyValueView } from "@/features/keyvalue/types";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 const remove = vi.fn();
 vi.mock("@/features/keyvalue/hooks/use-delete-key-value", () => ({
@@ -27,6 +29,7 @@ const KEY_VALUE: KeyValueView = {
 };
 
 beforeEach(() => {
+  vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   remove.mockReset();
   remove.mockResolvedValue({ status: "success" });
   run.mockReset();
@@ -34,6 +37,64 @@ beforeEach(() => {
 });
 
 describe("KeyValueDangerActions — Render-parity bottom action row", () => {
+  it("keeps can_operate lifecycle actions but disables can_create delete for a contributor", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    const user = userEvent.setup();
+    render(
+      <KeyValueDangerActions
+        keyValue={KEY_VALUE}
+        onDeleted={vi.fn()}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    const removeButton = screen.getByRole("button", {
+      name: "Delete Key Value Instance",
+    });
+    expect(removeButton).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Suspend Key Value Instance" }),
+    ).toBeEnabled();
+    await user.hover(removeButton.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Your role can’t make this change.",
+    );
+    await user.click(removeButton);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("disables lifecycle actions with the operate reason for a viewer", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({
+        role: "VIEWER",
+        canCreate: false,
+        canOperate: false,
+      }),
+    );
+    const user = userEvent.setup();
+    render(
+      <KeyValueDangerActions
+        keyValue={KEY_VALUE}
+        onDeleted={vi.fn()}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    const suspend = screen.getByRole("button", {
+      name: "Suspend Key Value Instance",
+    });
+    expect(suspend).toBeDisabled();
+    await user.hover(suspend.parentElement!);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Your role can only view this service.",
+    );
+    await user.click(suspend);
+    expect(run).not.toHaveBeenCalled();
+  });
+
   it("renders the discoverable Delete and Suspend Key Value Instance actions", () => {
     render(
       <KeyValueDangerActions
