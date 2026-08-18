@@ -33,7 +33,13 @@ Module.prototype.require = function (this: NodeModule, id: string) {
   return originalRequire.apply(this, arguments);
 };
 
-import { getSystemColorScheme, themes, space, gutter } from "../index";
+import {
+  getSystemColorScheme,
+  gutter,
+  maxFontSizeMultipliers,
+  space,
+  themes,
+} from "../index";
 
 describe("getSystemColorScheme", () => {
   it("returns light when system color scheme is light", () => {
@@ -109,6 +115,12 @@ describe("themes", () => {
   it("gutter is the canonical 16pt horizontal inset", () => {
     expect(gutter).toBe(16);
     expect(gutter).toBe(space.lg);
+  });
+
+  it("keeps fixed and single-line controls bounded under Dynamic Type", () => {
+    expect(maxFontSizeMultipliers.control).toBe(1.5);
+    expect(maxFontSizeMultipliers.content).toBe(2);
+    expect(maxFontSizeMultipliers.heading).toBe(2);
   });
 
   it("both themes have error colors", () => {

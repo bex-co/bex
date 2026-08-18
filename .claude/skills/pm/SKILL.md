@@ -33,11 +33,12 @@ allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*)
 - **Every milestone ends with standing closing tasks**, appended after the implementation tasks whenever a milestone is materialized:
 
   1. **Render parity** — _only when the milestone is feature development or a fix that touches a user/tenant-facing surface._ Check that the change is consistent across every surface it exposes: REST, GraphQL, and MCP in `lego/backend/` (same fields, semantics, error shapes — bex-api is meant to be Render-compatible, see `docs/ADR006-bex-api.md`) and the `dashboard/` UI (`dashboard/CLAUDE.md`). Compare against the equivalent render.com behavior/API and flag any drift as follow-up work rather than silently diverging. Omit this task only for milestones with no REST/GraphQL/MCP/UI surface change (pure infra, operator-internal mechanism, docs, etc.) — note why it was omitted in the milestone's `## Source + Goal linkage`.
-  2. **Simplify** — run `/simplify` over the code this milestone changed (reuse / simplification / efficiency; behavior-preserving).
-  3. **Test coverage** — add meaningful tests for the behavior this milestone shipped. Tests must assert real behavior and failure modes; never game coverage with trivial, tautological, or snapshot-everything tests.
-  4. **Closeout** — the final task, added last. When the milestone's other tasks are all complete **and its definition of done is actually met**, close the milestone: set every remaining task's `status: done`, move each `tNNN.md` to `wN/mN/done/`, mark every row `— **DONE**` and set `**Status:** done` in the milestone `README.md`, move the whole `wN/mN/` directory to `wN/done/mN/`, and check `- [x]` in the workstream `README.md`. Completing this task _is_ the move — running `/pm done <wN/mN/tNNN>` on it last triggers the milestone move (the `done` subcommand's step 4). Do **not** run it until the DoD holds: a milestone lands in `done/` when its observable end state is real, not merely when the code is written.
+  2. **Mobile UI visual verification + polish** — _only when the milestone changes user-visible UI under `mobile/`._ Use the Expo MCP to run the app, navigate every affected flow, interact with the real controls, and inspect the rendered result at representative phone sizes. Cover light/dark themes and the milestone's loading/empty/error/success states plus keyboard, safe-area, scrolling, truncation, and accessibility behavior where applicable. Fix every material visual or interaction defect found, then repeat the Expo MCP walkthrough until the polished result is clean and record the viewed routes/states as task evidence. Unit tests, snapshots, static exports, and code inspection do **not** substitute for this interactive pass. If Expo MCP is unavailable or cannot reach the required state, leave the task and milestone open rather than claiming visual completion. Omit this task only when no mobile UI changes; note why it was omitted in `## Source + Goal linkage`.
+  3. **Simplify** — run `/simplify` over the code this milestone changed (reuse / simplification / efficiency; behavior-preserving).
+  4. **Test coverage** — add meaningful tests for the behavior this milestone shipped. Tests must assert real behavior and failure modes; never game coverage with trivial, tautological, or snapshot-everything tests.
+  5. **Closeout** — the final task, added last. When the milestone's other tasks are all complete **and its definition of done is actually met**, close the milestone: set every remaining task's `status: done`, move each `tNNN.md` to `wN/mN/done/`, mark every row `— **DONE**` and set `**Status:** done` in the milestone `README.md`, move the whole `wN/mN/` directory to `wN/done/mN/`, and check `- [x]` in the workstream `README.md`. Completing this task _is_ the move — running `/pm done <wN/mN/tNNN>` on it last triggers the milestone move (the `done` subcommand's step 4). Do **not** run it until the DoD holds: a milestone lands in `done/` when its observable end state is real, not merely when the code is written.
 
-  Each `depends_on` the last implementation task(s) (Simplify and Test coverage depend on Render parity when it's present; Closeout depends on Test coverage) and all count toward the `(N tasks)` total. `add-task` inserts new work **before** these (before Closeout) and updates their `depends_on`.
+  Each `depends_on` the last implementation task(s). The conditional Mobile UI visual verification task depends on Render parity when present, otherwise the last implementation task(s); Simplify and Test coverage depend on Mobile UI visual verification when present, otherwise Render parity when present; Closeout depends on Test coverage. All count toward the `(N tasks)` total. `add-task` inserts new work **before** these standing tasks and updates their `depends_on`.
 
 - After editing any `.md`, run `npx prettier@3.4.2 --write "**/*.md"` (repo rule).
 
@@ -49,7 +50,8 @@ Read the tree (`find .pm -type f -name '*.md'`, skipping `done/`) and `.pm/DO_NO
 
 - items conflicting with `.pm/DO_NOT_DO.md`,
 - milestones missing `## Source + Goal linkage`,
-- milestones whose definition of done is vague/non-testable.
+- milestones whose definition of done is vague/non-testable,
+- open milestones that change user-visible `mobile/` UI but have no Expo MCP visual verification + polish task or whose definition of done does not require its interactive evidence.
 
 Touch no files.
 
@@ -65,7 +67,7 @@ Create the next free inbox note `wN/NNN.md` with the idea as plain terse markdow
 
 Apply the **sizing rule first.**
 
-- If the work is **> ~1h and splits into more than one task**: create `wN/mN/` with `README.md` (milestone template) + one `tNNN.md` per task (task template) **+ the standing closing tasks (Render parity when it's feature dev/a fix touching REST/GraphQL/MCP/UI, then Simplify, then Test coverage, then Closeout)**, add the `- [ ] **mN** — …` line to the workstream `README.md`, and fill `## Source + Goal linkage` with source + goal linkage + expected outcome + why-now rationale (note there why Render parity was included or omitted).
+- If the work is **> ~1h and splits into more than one task**: create `wN/mN/` with `README.md` (milestone template) + one `tNNN.md` per task (task template) **+ the standing closing tasks (Render parity when it's feature dev/a fix touching REST/GraphQL/MCP/UI; Mobile UI visual verification + polish when user-visible `mobile/` UI changes; then Simplify, Test coverage, and Closeout)**, add the `- [ ] **mN** — …` line to the workstream `README.md`, and fill `## Source + Goal linkage` with source + goal linkage + expected outcome + why-now rationale (note there why each conditional standing task was included or omitted).
 - If it is **≤ ~1h**: do NOT create a milestone. Keep/append it as an inbox note `wN/NNN.md` and tell the user why (too small for a milestone).
 
 ### `add-task <wN/mN> <title>`

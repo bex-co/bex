@@ -1,5 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import { Button } from "@/components/button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { space, useTheme } from "@/common/theme";
@@ -40,23 +46,39 @@ export type MobileActionOption = {
   ) => Promise<MobileActionRunResult>;
 };
 
+export type SafeActionTriggerProps = {
+  disabled: boolean;
+  label: string;
+  pending: boolean;
+  onPress: () => void;
+};
+
 let retrySequence = 0;
 function mobileRetryIdentity(): string {
   retrySequence += 1;
   return `mobile-${Date.now().toString(36)}-${retrySequence.toString(36)}`;
 }
 
-/** Shared confirmation, single-flight, and honest-result surface for m4. */
+/** Shared single-flight, optional confirmation, and honest-result surface. */
 export function SafeActionPanel({
   options,
   feedbackMessages,
+  renderTrigger,
+  emptyTriggerLabel,
+  confirmationMode = "always",
+  feedbackContainerStyle,
 }: {
   options: MobileActionOption[];
   feedbackMessages?: Partial<SafeActionFeedbackMessages>;
+  renderTrigger?: (props: SafeActionTriggerProps) => ReactNode;
+  emptyTriggerLabel?: string;
+  confirmationMode?: "always" | "server-only";
+  feedbackContainerStyle?: StyleProp<ViewStyle>;
 }) {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
   const executor = useRef(new SafeActionExecutor()).current;
+  const pendingRef = useRef(false);
   const [selected, setSelected] = useState<MobileActionOption | null>(null);
   const [intent, setIntent] = useState<SafeActionIntent | null>(null);
   const [serverConfirmation, setServerConfirmation] = useState<string | null>(
@@ -70,29 +92,36 @@ export function SafeActionPanel({
   useEffect(() => () => executor.cancelAll(), [executor]);
 
   function request(option: MobileActionOption) {
+    if (pendingRef.current) return;
+    const nextIntent = createSafeActionIntent(
+      option.definition,
+      option.target,
+      mobileRetryIdentity,
+    );
     setSelected(option);
     setServerConfirmation(null);
     setOutcome(null);
-    setIntent(
-      createSafeActionIntent(
-        option.definition,
-        option.target,
-        mobileRetryIdentity,
-      ),
-    );
+    if (confirmationMode === "server-only") {
+      void execute(option, confirmSafeAction(nextIntent), null);
+      return;
+    }
+    setIntent(nextIntent);
   }
 
-  async function confirm() {
-    if (!selected || !intent || pending) return;
-    const confirmed = intent.confirmed ? intent : confirmSafeAction(intent);
-    setIntent(confirmed);
+  async function execute(
+    option: MobileActionOption,
+    confirmed: SafeActionIntent,
+    confirmation: string | null,
+  ) {
+    if (pendingRef.current) return;
+    pendingRef.current = true;
     setPending(true);
     try {
       const next = await executor.execute<MobileActionRunResult>(
         confirmed,
         async () => {
-          const result = await selected.run(
-            serverConfirmation ?? undefined,
+          const result = await option.run(
+            confirmation ?? undefined,
             confirmed.retryIdentity,
           );
           switch (result.status) {
@@ -120,8 +149,8 @@ export function SafeActionPanel({
         setOutcome(null);
         setIntent(
           createSafeActionIntent(
-            selected.definition,
-            selected.target,
+            option.definition,
+            option.target,
             mobileRetryIdentity,
           ),
         );
@@ -130,8 +159,16 @@ export function SafeActionPanel({
       setOutcome(next);
       setIntent(null);
     } finally {
+      pendingRef.current = false;
       setPending(false);
     }
+  }
+
+  function confirm() {
+    if (!selected || !intent || pendingRef.current) return;
+    const confirmed = intent.confirmed ? intent : confirmSafeAction(intent);
+    setIntent(confirmed);
+    void execute(selected, confirmed, serverConfirmation);
   }
 
   const messages: SafeActionFeedbackMessages = {
@@ -151,18 +188,40 @@ export function SafeActionPanel({
     <View style={styles.container}>
       <View style={styles.buttons}>
         {options.length ? (
-          options.map((option) => (
-            <Button
-              key={option.key}
-              type="outline"
-              style={styles.button}
-              disabled={pending}
-              accessibilityLabel={option.label}
-              onPress={() => request(option)}
-            >
-              {option.label}
-            </Button>
-          ))
+          options.map((option) => {
+            const disabled = pending;
+            const onPress = () => {
+              if (!disabled) request(option);
+            };
+            return renderTrigger ? (
+              <Fragment key={option.key}>
+                {renderTrigger({
+                  disabled,
+                  label: option.label,
+                  pending,
+                  onPress,
+                })}
+              </Fragment>
+            ) : (
+              <Button
+                key={option.key}
+                type="outline"
+                style={styles.button}
+                disabled={disabled}
+                accessibilityLabel={option.label}
+                onPress={onPress}
+              >
+                {option.label}
+              </Button>
+            );
+          })
+        ) : renderTrigger && emptyTriggerLabel ? (
+          renderTrigger({
+            disabled: true,
+            label: emptyTriggerLabel,
+            pending: false,
+            onPress: () => undefined,
+          })
         ) : (
           <Text style={{ color: theme.mutedForeground }}>
             {t("safeActions.noneAvailable")}
@@ -184,21 +243,25 @@ export function SafeActionPanel({
         confirmLabel={t("safeActions.confirm")}
         cancelLabel={t("safeActions.cancel")}
         pendingLabel={t("safeActions.pending")}
-        onConfirm={() => void confirm()}
+        onConfirm={confirm}
         onCancel={() => {
           setIntent(null);
           setSelected(null);
           setServerConfirmation(null);
         }}
       />
-      <SafeActionFeedbackView
-        outcome={outcome}
-        messages={messages}
-        retryLabel={t("safeActions.refreshFirst")}
-        dismissLabel={t("safeActions.dismiss")}
-        onRetry={() => undefined}
-        onDismiss={() => setOutcome(null)}
-      />
+      {outcome ? (
+        <View style={feedbackContainerStyle}>
+          <SafeActionFeedbackView
+            outcome={outcome}
+            messages={messages}
+            retryLabel={t("safeActions.refreshFirst")}
+            dismissLabel={t("safeActions.dismiss")}
+            onRetry={() => undefined}
+            onDismiss={() => setOutcome(null)}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }

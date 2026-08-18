@@ -8,6 +8,7 @@ import {
   fontSizes,
   fontWeights,
   gutter,
+  maxFontSizeMultipliers,
   space,
   useTheme,
 } from "@/common/theme";
@@ -52,20 +53,23 @@ export function TopBar({
   title,
   right,
   showBell = true,
+  showDrawer = true,
 }: {
   title: string;
   right?: ReactNode;
   showBell?: boolean;
+  showDrawer?: boolean;
 }) {
   const theme = useTheme().colorTheme;
   return (
     <View style={styles.bar}>
       <View style={styles.side}>
-        <AppDrawerButton />
+        {showDrawer ? <AppDrawerButton /> : null}
         {showBell ? <NotificationsBellButton /> : null}
       </View>
       <Text
         numberOfLines={1}
+        maxFontSizeMultiplier={maxFontSizeMultipliers.heading}
         style={[styles.title, { color: theme.foreground }]}
       >
         {title}
