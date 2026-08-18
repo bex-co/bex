@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import { appendFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, closeSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import readline from "node:readline";
 
@@ -77,12 +77,24 @@ lines.on("line", async (line) => {
       break;
     case "session/new":
       result(message.id, { sessionId: "fixture-session" });
+      if (process.env.ACP_FIXTURE_CLOSE_INPUT_AFTER_SESSION === "1") {
+        // Reproduce an adapter that loses its ACP input while staying alive.
+        // The parent's next JSON-RPC write gets EPIPE, but no child exit exists
+        // to wake a prompt-only lifecycle watcher.
+        closeSync(0);
+        setInterval(() => {}, 1_000);
+      }
       break;
     case "session/load":
       result(message.id, {});
       break;
     case "session/prompt": {
-      if (process.env.ACP_FIXTURE_CRASH === "1") process.exit(23);
+      if (process.env.ACP_FIXTURE_CRASH === "1") {
+        if (process.env.ACP_FIXTURE_CRASH_WITH_CREDENTIAL === "1") {
+          console.error(process.env.ANTHROPIC_API_KEY);
+        }
+        process.exit(23);
+      }
       const sessionId = message.params.sessionId;
       const delay = Number(process.env.ACP_FIXTURE_DELAY_MS || 0);
       if (delay) await new Promise((resolve) => setTimeout(resolve, delay));

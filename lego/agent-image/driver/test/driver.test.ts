@@ -471,10 +471,43 @@ test("a corrupt status file adopts nothing", async () => {
 });
 
 test("agent crash becomes a failed status instead of hanging", async () => {
-  const config = await tempConfig({ agentEnv: { ACP_FIXTURE_CRASH: "1" } });
-  await assert.rejects(
-    runHeadlessTurn(config, manager(config), new UIMessageStreamHub()),
-  );
+  const config = await tempConfig({
+    agentEnv: {
+      ACP_FIXTURE_CRASH: "1",
+      ACP_FIXTURE_CRASH_WITH_CREDENTIAL: "1",
+    },
+  });
+  let failure: unknown;
+  try {
+    await runHeadlessTurn(config, manager(config), new UIMessageStreamHub());
+  } catch (error) {
+    failure = error;
+  }
+  assert.ok(failure instanceof Error);
+  assert.doesNotMatch(failure.message, /test-model-key-never-log/);
+  assert.match(failure.message, /\[REDACTED\]/);
+  const status = JSON.parse(await readFile(config.statusPath, "utf8"));
+  assert.equal(status.state, "failed");
+  assert.doesNotMatch(JSON.stringify(status), /test-model-key-never-log/);
+});
+
+test("agent input loss fails promptly instead of leaving a running turn", async () => {
+  const config = await tempConfig({
+    agentEnv: { ACP_FIXTURE_CLOSE_INPUT_AFTER_SESSION: "1" },
+    turnTimeoutMs: 10_000,
+  });
+  const abort = new AbortController();
+  const guard = setTimeout(() => abort.abort(), 1_500);
+  try {
+    await assert.rejects(
+      runHeadlessTurn(config, manager(config), new UIMessageStreamHub(), {
+        abortSignal: abort.signal,
+      }),
+      /ACP agent stdin failed: write EPIPE/,
+    );
+  } finally {
+    clearTimeout(guard);
+  }
   const status = JSON.parse(await readFile(config.statusPath, "utf8"));
   assert.equal(status.state, "failed");
 });
