@@ -81,10 +81,13 @@ const getStyles = (theme: ColorTheme) =>
       alignItems: "center",
       flexDirection: "row",
       gap: 8,
+      paddingHorizontal: 16,
     },
     wheelItemText: {
+      flexShrink: 1,
       fontSize: 18,
       color: theme.text01,
+      textAlign: "center",
     },
     selectedItemText: {
       fontSize: 20,
@@ -227,6 +230,7 @@ export const Picker: React.FC<PickerProps> = ({
         >
           {item.icon}
           <Text
+            numberOfLines={1}
             style={[
               styles.wheelItemText,
               isSelected && styles.selectedItemText,

@@ -28,6 +28,11 @@ export const fontSizes = {
 } as const;
 
 export const monoMinFontSize = 13;
+export const maxFontSizeMultipliers = {
+  control: 1.5,
+  content: 2,
+  heading: 2,
+} as const;
 export const fontWeights = {
   regular: "400",
   medium: "500",

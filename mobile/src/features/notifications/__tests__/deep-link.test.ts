@@ -55,6 +55,22 @@ describe("parseNotificationEnvelope", () => {
     }
   });
 
+  it("accepts agent lifecycle events on an exact session route", () => {
+    for (const event of [
+      "agent_needs_decision",
+      "agent_pr_ready",
+      "agent_failed",
+    ] as const) {
+      const envelope = parseNotificationEnvelope({
+        ...valid,
+        event,
+        route: "/sessions/ags-a1",
+      });
+      expect(envelope?.event).toBe(event);
+      expect(envelope?.route).toBe("/sessions/ags-a1");
+    }
+  });
+
   it("rejects unknown events, schemas, ids, and extra fields", () => {
     expect(parseNotificationEnvelope({ ...valid, event: "billing_due" })).toBe(
       null,

@@ -1,6 +1,12 @@
 import { NetworkStatus } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
-import { Linking, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Linking,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DashboardCard } from "@/components/dashboard-card";
 import { DashboardScrollView } from "@/components/dashboard-scroll-view";
@@ -25,6 +31,8 @@ import {
   MobileCancelAgentSessionDocument,
 } from "@/generated-graphql";
 import { isCancelablePhase, sessionPhaseView } from "../lifecycle";
+import { SessionConversation } from "../conversation/session-conversation";
+import { failureReasonText, failureStatusText } from "./failure-reason";
 import { isGitHubPrUrl } from "./github-links";
 
 const cancelAgentSession = defineSafeAction(
@@ -48,6 +56,9 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
 
   const session = data?.agentSession ?? null;
   const phase = sessionPhaseView(session?.phase);
+  const failureReason =
+    failureReasonText(session?.failureReason) ??
+    failureStatusText(session?.status);
 
   const options: MobileActionOption[] =
     session && isCancelablePhase(session.phase)
@@ -79,28 +90,13 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
         title={session?.repo ?? sessionId}
         subtitle={session?.branch ?? ""}
       />
-      <DashboardScrollView
-        refreshing={networkStatus === NetworkStatus.refetch}
-        onRefresh={() => void refetch()}
-        contentContainerStyle={styles.content}
-      >
-        {loading && !data ? null : error && !session ? (
-          <DashboardCard>
-            <Text
-              accessibilityRole="alert"
-              style={[styles.body, { color: theme.mutedForeground }]}
-            >
-              {t("agentSessions.detail.unavailable")}
-            </Text>
-          </DashboardCard>
-        ) : !session ? (
-          <DashboardCard>
-            <Text style={[styles.body, { color: theme.mutedForeground }]}>
-              {t("agentSessions.detail.notFound")}
-            </Text>
-          </DashboardCard>
-        ) : (
-          <>
+      {session ? (
+        <SessionConversation
+          sessionId={session.id}
+          liveEnabled={Boolean(session.sandboxId)}
+          refreshing={networkStatus === NetworkStatus.refetch}
+          onRefresh={() => void refetch()}
+          header={
             <DashboardCard title={t("agentSessions.detail.overview")}>
               <View style={styles.row}>
                 <Text style={[styles.body, { color: theme.mutedForeground }]}>
@@ -128,39 +124,69 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
                 })}
               </Text>
             </DashboardCard>
+          }
+          footer={
+            <View style={styles.footer}>
+              {session.phase === "failed" ? (
+                <DashboardCard title={t("agentSessions.detail.failure")}>
+                  <Text
+                    accessibilityRole="alert"
+                    style={[styles.body, { color: theme.warning }]}
+                  >
+                    {failureReason ?? t("agentSessions.detail.failureUnknown")}
+                  </Text>
+                </DashboardCard>
+              ) : null}
 
-            {session.phase === "failed" && session.failureReason ? (
-              <DashboardCard title={t("agentSessions.detail.failure")}>
-                <Text
-                  accessibilityRole="alert"
-                  style={[styles.body, { color: theme.warning }]}
-                >
-                  {session.failureReason}
-                </Text>
-              </DashboardCard>
-            ) : null}
+              {isGitHubPrUrl(session.prUrl) ? (
+                <DashboardCard title={t("agentSessions.detail.pullRequest")}>
+                  <Text style={[styles.body, { color: theme.mutedForeground }]}>
+                    {session.prNumber
+                      ? `#${session.prNumber}`
+                      : t("agentSessions.detail.draftPr")}
+                  </Text>
+                  <Button
+                    type="outline"
+                    onPress={() => void Linking.openURL(session.prUrl!)}
+                    accessibilityLabel={t("agentSessions.detail.openPr")}
+                  >
+                    {t("agentSessions.detail.openPr")}
+                  </Button>
+                </DashboardCard>
+              ) : null}
 
-            {isGitHubPrUrl(session.prUrl) ? (
-              <DashboardCard title={t("agentSessions.detail.pullRequest")}>
-                <Text style={[styles.body, { color: theme.mutedForeground }]}>
-                  {session.prNumber
-                    ? `#${session.prNumber}`
-                    : t("agentSessions.detail.draftPr")}
-                </Text>
-                <Button
-                  type="outline"
-                  onPress={() => void Linking.openURL(session.prUrl!)}
-                  accessibilityLabel={t("agentSessions.detail.openPr")}
-                >
-                  {t("agentSessions.detail.openPr")}
-                </Button>
-              </DashboardCard>
-            ) : null}
-
-            <SafeActionPanel options={options} />
-          </>
-        )}
-      </DashboardScrollView>
+              <SafeActionPanel options={options} />
+            </View>
+          }
+        />
+      ) : (
+        <DashboardScrollView
+          refreshing={networkStatus === NetworkStatus.refetch}
+          onRefresh={() => void refetch()}
+          contentContainerStyle={styles.content}
+        >
+          {loading && !data ? (
+            <DashboardCard>
+              <ActivityIndicator color={theme.primary} />
+            </DashboardCard>
+          ) : error ? (
+            <DashboardCard>
+              <Text
+                accessibilityRole="alert"
+                style={[styles.body, { color: theme.mutedForeground }]}
+              >
+                {t("agentSessions.detail.unavailable")}
+              </Text>
+            </DashboardCard>
+          ) : (
+            <DashboardCard>
+              <Text style={[styles.body, { color: theme.mutedForeground }]}>
+                {t("agentSessions.detail.notFound")}
+              </Text>
+            </DashboardCard>
+          )}
+        </DashboardScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -168,6 +194,7 @@ export function SessionDetailScreen({ sessionId }: { sessionId: string }) {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   content: { padding: gutter, gap: space.md },
+  footer: { gap: space.md },
   row: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,6 +1,6 @@
 # w11 · m6 — Phase-1 agent mission control
 
-**Worker:** worker11 **Goal:** let a configured tenant create, track, steer, and cancel a fire-and-forget coding-agent session from a phone, inspect bounded evidence, receive PR-ready push, and hand deep review to GitHub Mobile. **Status:** t001–t008 implemented, verified, **shipped + deployed to prod** (`3bbe956d`, `deploy (bex via Argo)` green 2026-08-08; mobile CI green on the `4f58e455` codegen fix). 8 of 9 tasks — the entire product surface (backend projection, mobile list/composer/detail, push). Only t009 closeout remains, **hard-blocked**: its DoD needs the live phone→draft-PR/evidence/push proof and its out-of-scope forbids closing before w3/m41 + w11/m5 truly close — both gated on live-prod + physical-device verification unavailable in a dev environment. m6 therefore stays open (box unchecked) pending that operator/QA step; nothing more is implementable here.
+**Worker:** worker11 **Goal:** let a configured tenant create, track, steer, and cancel a fire-and-forget coding-agent session from a phone, inspect bounded evidence, receive PR-ready push, and hand deep review to GitHub Mobile. **Status:** t001–t008 implemented, verified, **shipped + deployed to prod** (`3bbe956d`, `deploy (bex via Argo)` green 2026-08-08; mobile CI green on the `4f58e455` codegen fix). t010 Expo MCP visual verification/polish is actionable. t009 closeout remains **hard-blocked**: its DoD also needs the live phone→draft-PR/evidence/push proof and forbids closing before w3/m41 + w11/m5 truly close — both gated on live-prod + physical-device verification unavailable in a dev environment.
 
 ## Implementation status (2026-08-08)
 
@@ -14,7 +14,8 @@ Consuming the existing (code-complete) w3/m41 agent-session contracts and w11/m5
 - **t006 — DONE.** Cross-surface consistency for the agent-session capability/lifecycle/evidence/cancel/errors is enforced by `TestSurfaceParityAndWiring` + `TestCapabilitiesProjection` + the cross-workspace REST/MCP matrices (all green); ADR018's agent-sessions row updated with the w11/m6 mobile mission-control surface, the secret-free `agentSessionCapabilities` projection, and the `agent_pr_ready`/`agent_failed` push events. No drift found (Render has no agent-session counterpart).
 - **t007 — DONE + verified.** `/simplify` pass: the feature is already well-factored (pure `lifecycle`/`compose`/`evidence` helpers, thin screens, generated GraphQL is codegen output). Applied the one clear behavior-preserving win — consolidated the two GitHub-URL security guards (composer setup CTA + detail draft-PR) behind a shared `isGitHubUrl`/`isGitHubPrUrl` pair so all off-platform link validation lives in one place; dismissed the tone→color mapping "duplication" (list neutral=muted vs detail neutral=foreground are intentionally different, and it's a 2-site pattern — no over-abstraction). Verified: mobile suite green (316 `test:unit`).
 - **t008 — DONE (CI portion; live E2E gated).** Every acceptance failure mode has a regression test: secret leakage (`TestCapabilitiesProjection` + `compose.test` secret-free payload), duplicate submit (`compose.test` in-flight guard + `SafeActionPanel` single-flight), invalid phase action (`lifecycle.test` terminal/canceling not cancelable), unsafe PR link (`evidence.test` `isGitHubPrUrl`/`isGitHubUrl`), and missing/leaking terminal push (`TestPushWorkerProjectsTerminalAgentSessions`). All green across backend + mobile. **Remaining:** the live phase-1 phone→draft-PR E2E through the phone client needs the operator's live substrate (same gate as w3/m41/t004).
-- **t009 — blocked** (out of scope per its own DoD until w3/m41 + w11/m5 truly close on live-prod + physical-device evidence unavailable here).
+- **t010 — TODO and actionable.** Expo MCP visual verification/polish for the shipped list, composer, detail/evidence, failure, degraded, and GitHub handoff UI.
+- **t009 — blocked** (out of scope per its own DoD until t010 is complete and w3/m41 + w11/m5 truly close on live-prod + physical-device evidence unavailable here).
 
 ## Gating
 
@@ -32,11 +33,12 @@ Hard gate: `w3/m41/t008` and `w11/m5/t011`. Consume the agent image/credentials/
 | t006 | Render parity — **DONE** | 30m | t005 |
 | t007 | Simplify — **DONE** | 20m | t006 |
 | t008 | Test coverage — **DONE (CI portion; live E2E gated)** | 60m | t006 |
-| t009 | Closeout | 10m | t008 |
+| t010 | Verify and polish phase-1 agent UI with Expo MCP | 45m | t008 |
+| t009 | Closeout | 10m | t008, t010 |
 
 ## Definition of done
 
-A preconfigured user selects a repo/branch and approved agent profile, submits a prompt once, observes lifecycle state, cancels safely, inspects bounded command/test evidence, receives failed/PR-ready push, and opens the draft PR in GitHub Mobile. Missing GitHub/provider readiness gives a desktop-configuration callout rather than exposing secrets or infrastructure parameters. Cross-workspace access, duplicate submit, terminal-state steering, and absent gateway configuration fail honestly.
+A preconfigured user selects a repo/branch and approved agent profile, submits a prompt once, observes lifecycle state, cancels safely, inspects bounded command/test evidence, receives failed/PR-ready push, and opens the draft PR in GitHub Mobile. Missing GitHub/provider readiness gives a desktop-configuration callout rather than exposing secrets or infrastructure parameters. Cross-workspace access, duplicate submit, terminal-state steering, and absent gateway configuration fail honestly. Expo MCP evidence shows the list, composer, detail/evidence, failure/degraded, cancel, and GitHub handoff UI were interactively viewed and polished across representative phone sizes, themes, and locales.
 
 ## Source + Goal linkage
 
@@ -45,3 +47,4 @@ A preconfigured user selects a repo/branch and approved agent profile, submits a
 - **Expected outcome:** “assign from phone → get evidence and a draft PR” works without rebuilding PR review or agent infrastructure in the client track.
 - **Why now:** materialized now for dependency clarity, but blocked until the existing phase-1 integration and push close; this avoids parallel contract invention.
 - **Render parity:** included because agent sessions are a bex extension exposed consistently across REST/GraphQL/MCP, while repo/lifecycle primitives retain their established behavior.
+- **Mobile UI visual verification:** included retroactively because the shipped phase-1 list/composer/detail/evidence UI predates the Expo MCP standing gate; interactive viewing and polish are required before closeout.

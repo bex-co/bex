@@ -10,7 +10,12 @@ import {
 } from "react-native";
 import { useThemeStyle } from "@/common/hooks/use-theme-style";
 import { ColorTheme } from "@/types/theme-props";
-import { useTheme } from "@/common/theme";
+import {
+  maxFontSizeMultipliers,
+  rowMinHeight,
+  space,
+  useTheme,
+} from "@/common/theme";
 
 type ButtonType = "primary" | "outline";
 
@@ -27,9 +32,9 @@ type ButtonProps = {
 const getButtonStyles = (theme: ColorTheme) => {
   return StyleSheet.create({
     buttonBase: {
-      height: 44,
+      minHeight: rowMinHeight,
       borderRadius: 8,
-      // flex: 1,
+      paddingVertical: space.sm,
       alignItems: "center",
       justifyContent: "center",
       flexDirection: "row",
@@ -113,7 +118,12 @@ export const Button = (props: ButtonProps) => {
           style={styles.buttonLoading}
         />
       ) : null}
-      <Text style={buttonTextStyle}>{props.children}</Text>
+      <Text
+        maxFontSizeMultiplier={maxFontSizeMultipliers.control}
+        style={buttonTextStyle}
+      >
+        {props.children}
+      </Text>
     </Pressable>
   );
 };
