@@ -48,22 +48,11 @@ const (
 
 // EnvVarPatch is one explicit mutation in a service environment draft. Omitted
 // keys are preserved without being read by or returned to the caller.
-type EnvVarPatch struct {
-	Key           string `json:"key"`
-	FromKey       string `json:"fromKey,omitempty"`
-	Value         string `json:"value,omitempty"`
-	GenerateValue bool   `json:"generateValue,omitempty"`
-	Delete        bool   `json:"delete,omitempty"`
-}
+type EnvVarPatch = core.EnvVarPatch
 
 // SecretFilePatch is one explicit secret-file mutation. Omitted files are
 // preserved, and contents never appear in PatchEnvironment's result.
-type SecretFilePatch struct {
-	Name     string `json:"name"`
-	FromName string `json:"fromName,omitempty"`
-	Content  string `json:"content,omitempty"`
-	Delete   bool   `json:"delete,omitempty"`
-}
+type SecretFilePatch = core.SecretFilePatch
 
 // EnvironmentPatch applies env-var and secret-file changes as one logical save.
 type EnvironmentPatch struct {
@@ -149,7 +138,7 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 			nil,
 		)
 	}
-	env := cloneStringMap(oldEnv)
+	env := core.CloneStringMap(oldEnv)
 	if err := applyEnvPatch(env, patch.EnvVars); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
@@ -197,8 +186,8 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 	if err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	env := cloneStringMap(oldEnv)
-	files := cloneStringMap(oldFiles)
+	env := core.CloneStringMap(oldEnv)
+	files := core.CloneStringMap(oldFiles)
 	if err := applyEnvPatch(env, patch.EnvVars); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
@@ -479,124 +468,11 @@ func activatePendingProjectionReferences(a *appv1alpha1.App) {
 }
 
 func applyEnvPatch(env map[string]string, writes []EnvVarPatch) error {
-	ops := make([]mapPatchOp, len(writes))
-	for i, write := range writes {
-		ops[i] = mapPatchOp{
-			key:        write.Key,
-			fromKey:    write.FromKey,
-			remove:     write.Delete,
-			hasPayload: write.GenerateValue || write.Value != "",
-			value: func(key string) (string, error) {
-				return resolveValue(key, write.Value, write.GenerateValue)
-			},
-		}
-	}
-	return applyMapPatch(env, ops, core.ValidEnvKey, mapPatchWording{
-		noun:            "environment variable",
-		renameConflicts: "delete, value, or generateValue",
-		deleteConflicts: "a value or generateValue",
-	})
+	return core.ApplyEnvVarPatch(env, writes)
 }
 
 func applyFilePatch(files map[string]string, writes []SecretFilePatch) error {
-	ops := make([]mapPatchOp, len(writes))
-	for i, write := range writes {
-		ops[i] = mapPatchOp{
-			key:        write.Name,
-			fromKey:    write.FromName,
-			remove:     write.Delete,
-			hasPayload: write.Content != "",
-			value: func(string) (string, error) {
-				return write.Content, nil
-			},
-		}
-	}
-	return applyMapPatch(files, ops, core.ValidSecretFileName, mapPatchWording{
-		noun:            "secret file",
-		renameConflicts: "delete or content",
-		deleteConflicts: "content",
-	})
-}
-
-// mapPatchOp is one rename/delete/set mutation in applyMapPatch's shared
-// state machine; hasPayload reports whether the op carries any new value
-// (a literal value or generation request), which renames and deletes reject.
-type mapPatchOp struct {
-	key        string
-	fromKey    string
-	remove     bool
-	hasPayload bool
-	value      func(key string) (string, error)
-}
-
-// mapPatchWording keeps the two callers' wire error messages byte-identical.
-type mapPatchWording struct {
-	noun            string
-	renameConflicts string
-	deleteConflicts string
-}
-
-// applyRenameOp moves m[fromKey] to m[key]. It carries most of a patch's
-// refusal cases — an unusable source name, a rename combined with a
-// delete/write, a source another op in the same batch already touched, a
-// missing source, and an occupied destination — so it is checked in one place
-// rather than interleaved with the delete and write arms. m and seen are maps,
-// so the mutations are visible to the caller.
-func applyRenameOp(m map[string]string, seen map[string]struct{}, op mapPatchOp, key, fromKey string, valid func(string) bool, wording mapPatchWording) error {
-	if !valid(fromKey) {
-		return fmt.Errorf("%w: invalid source %s name %q", core.ErrBadRequest, wording.noun, fromKey)
-	}
-	if op.remove || op.hasPayload {
-		return fmt.Errorf("%w: %s rename %q cannot combine with %s", core.ErrBadRequest, wording.noun, key, wording.renameConflicts)
-	}
-	if _, duplicate := seen[fromKey]; duplicate && fromKey != key {
-		return fmt.Errorf("%w: conflicting %s operation for %q", core.ErrBadRequest, wording.noun, fromKey)
-	}
-	value, ok := m[fromKey]
-	if !ok {
-		return fmt.Errorf("%w: source %s %q", core.ErrNotFound, wording.noun, fromKey)
-	}
-	if _, occupied := m[key]; occupied && key != fromKey {
-		return fmt.Errorf("%w: %s rename destination %q already exists", core.ErrBadRequest, wording.noun, key)
-	}
-	seen[fromKey] = struct{}{}
-	delete(m, fromKey)
-	m[key] = value
-	return nil
-}
-
-func applyMapPatch(m map[string]string, ops []mapPatchOp, valid func(string) bool, wording mapPatchWording) error {
-	seen := make(map[string]struct{}, len(ops))
-	for _, op := range ops {
-		key := strings.TrimSpace(op.key)
-		if !valid(key) {
-			return fmt.Errorf("%w: invalid %s name %q", core.ErrBadRequest, wording.noun, key)
-		}
-		fromKey := strings.TrimSpace(op.fromKey)
-		if _, duplicate := seen[key]; duplicate {
-			return fmt.Errorf("%w: duplicate %s operation for %q", core.ErrBadRequest, wording.noun, key)
-		}
-		seen[key] = struct{}{}
-		if fromKey != "" {
-			if err := applyRenameOp(m, seen, op, key, fromKey, valid, wording); err != nil {
-				return err
-			}
-			continue
-		}
-		if op.remove {
-			if op.hasPayload {
-				return fmt.Errorf("%w: %s %q cannot combine delete with %s", core.ErrBadRequest, wording.noun, key, wording.deleteConflicts)
-			}
-			delete(m, key)
-			continue
-		}
-		value, err := op.value(key)
-		if err != nil {
-			return err
-		}
-		m[key] = value
-	}
-	return nil
+	return core.ApplySecretFilePatch(files, writes)
 }
 
 func (s *Service) compensateEnvironment(ctx context.Context, txn envPatchTxn, cause error) error {
@@ -714,13 +590,4 @@ func environmentPatchResult(env, files map[string]string, rolledOut bool) Enviro
 		SecretFileNames: slices.Sorted(maps.Keys(files)),
 		RolledOut:       rolledOut,
 	}
-}
-
-// cloneStringMap is maps.Clone that never returns nil: the clone is mutated by
-// the patch appliers, so a nil source must still produce a writable map.
-func cloneStringMap(in map[string]string) map[string]string {
-	if out := maps.Clone(in); out != nil {
-		return out
-	}
-	return map[string]string{}
 }

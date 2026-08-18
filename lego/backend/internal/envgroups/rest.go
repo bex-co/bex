@@ -100,6 +100,29 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /v1/env-groups/{id}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteEnvGroup(r.Context(), r.PathValue("id"))
 	}))
+	mux.HandleFunc("POST /v1/env-groups/{id}/clone", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+		request, err := core.DecodeBody[CloneEnvGroupRequest](r)
+		if err != nil {
+			return nil, err
+		}
+		return s.CloneEnvGroup(r.Context(), r.PathValue("id"), request)
+	}))
+	mux.HandleFunc("PATCH /v1/env-groups/{id}/contents", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		patch, err := core.DecodeBody[EnvironmentPatch](r)
+		if err != nil {
+			return nil, err
+		}
+		return s.PatchEnvironment(r.Context(), r.PathValue("id"), patch)
+	}))
+	mux.HandleFunc("PATCH /v1/env-groups/{id}/environment", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		request, err := core.DecodeBody[struct {
+			EnvironmentID string `json:"environmentId"`
+		}](r)
+		if err != nil {
+			return nil, err
+		}
+		return s.MoveEnvGroup(r.Context(), r.PathValue("id"), request.EnvironmentID)
+	}))
 
 	// Group env vars: replace-all plus Render's per-key reveal/upsert/delete.
 	mux.HandleFunc("PUT /v1/env-groups/{id}/env-vars", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
@@ -114,12 +137,19 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("PUT /v1/env-groups/{id}/env-vars/{key}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[struct {
-			Value string `json:"value"`
+			Value         *string `json:"value"`
+			GenerateValue bool    `json:"generateValue"`
 		}](r)
 		if err != nil {
 			return nil, err
 		}
-		return s.SetEnvGroupVar(r.Context(), r.PathValue("id"), r.PathValue("key"), req.Value)
+		value := ""
+		if req.Value != nil {
+			value = *req.Value
+		}
+		return s.SetEnvGroupVarInput(r.Context(), r.PathValue("id"), EnvVarView{
+			Key: r.PathValue("key"), Value: value, ValueSet: req.Value != nil, GenerateValue: req.GenerateValue,
+		})
 	}))
 	mux.HandleFunc("DELETE /v1/env-groups/{id}/env-vars/{key}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteEnvGroupVar(r.Context(), r.PathValue("id"), r.PathValue("key"))

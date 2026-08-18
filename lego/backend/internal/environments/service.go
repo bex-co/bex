@@ -53,10 +53,12 @@ type EnvironmentStore interface {
 	CreateEnvironment(ctx context.Context, projectID, tenantID, name string) (store.Environment, error)
 	GetEnvironment(ctx context.Context, id string) (store.Environment, error)
 	ListEnvironments(ctx context.Context, projectID string) ([]store.Environment, error)
+	ListWorkspaceEnvironments(ctx context.Context, tenantID string) ([]store.Environment, error)
 	RenameEnvironment(ctx context.Context, id, name string) error
 	DeleteEnvironment(ctx context.Context, id string) error
 	SetEnvironmentServices(ctx context.Context, environmentID, projectID, tenantID string, serviceNames []string) error
 	ListEnvironmentServices(ctx context.Context, environmentID, projectID string) ([]string, error)
+	ListWorkspaceEnvironmentServices(ctx context.Context, tenantID string) (map[string][]string, error)
 	// SetEnvironmentACL replaces the protected-environment ACL triple (w6/m19).
 	SetEnvironmentACL(ctx context.Context, id, protectedStatus string, networkIsolationEnabled bool, ipAllowList []core.IPAllowListEntry) error
 }
@@ -453,6 +455,39 @@ func (s *Service) List(ctx context.Context, projectID string) ([]EnvironmentView
 			return nil, err
 		}
 		out = append(out, toView(e, sids, dbsByEnv[e.ID], kvsByEnv[e.ID], groupsByEnv[e.ID]))
+	}
+	return out, nil
+}
+
+// ListWorkspace returns every Environment in an explicitly authorized
+// workspace. Both rows and service membership are fetched in batches, while
+// the label-backed resource scans remain one-per-kind for the whole workspace.
+// This is the backend for the dashboard's one-shot scope index.
+func (s *Service) ListWorkspace(ctx context.Context, workspaceID string) ([]EnvironmentView, error) {
+	if err := s.AuthorizeOn(ctx, core.RelCanView, core.WorkspaceObject(workspaceID)); err != nil {
+		return nil, err
+	}
+	if s.Store == nil {
+		return nil, ErrEnvironmentsUnavailable
+	}
+	rows, err := s.Store.ListWorkspaceEnvironments(ctx, workspaceID)
+	if err != nil {
+		return nil, store.MapError(err)
+	}
+	if len(rows) == 0 {
+		return []EnvironmentView{}, nil
+	}
+	servicesByEnv, err := s.Store.ListWorkspaceEnvironmentServices(ctx, workspaceID)
+	if err != nil {
+		return nil, store.MapError(err)
+	}
+	dbsByEnv, kvsByEnv, groupsByEnv, err := s.membersByEnvironment(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]EnvironmentView, 0, len(rows))
+	for _, e := range rows {
+		out = append(out, toView(e, servicesByEnv[e.ID], dbsByEnv[e.ID], kvsByEnv[e.ID], groupsByEnv[e.ID]))
 	}
 	return out, nil
 }

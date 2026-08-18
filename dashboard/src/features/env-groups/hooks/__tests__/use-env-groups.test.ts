@@ -4,9 +4,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockUseQuery = vi.fn();
 const mockUseMutation = vi.fn();
 const mockClientQuery = vi.fn();
+const mockCacheModify = vi.fn();
+const mockCacheIdentify = vi.fn(() => "EnvGroup:eg1");
+const mockCacheEvict = vi.fn();
+const mockCacheGC = vi.fn();
 
 vi.mock("@apollo/client/react", () => ({
-  useApolloClient: () => ({ query: mockClientQuery }),
+  useApolloClient: () => ({
+    query: mockClientQuery,
+    cache: {
+      modify: mockCacheModify,
+      identify: mockCacheIdentify,
+      evict: mockCacheEvict,
+      gc: mockCacheGC,
+    },
+  }),
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
 }));
@@ -32,6 +44,7 @@ import {
   classifyEnvGroupError,
   isEnvGroupNotFound,
   useEnvGroup,
+  useEnvGroupEnvironmentPatch,
   useEnvGroupMutations,
   useEnvGroupVarMutations,
   useEnvGroups,
@@ -43,6 +56,10 @@ beforeEach(() => {
   mockUseQuery.mockReset();
   mockUseMutation.mockReset();
   mockClientQuery.mockReset();
+  mockCacheModify.mockReset();
+  mockCacheIdentify.mockReset().mockReturnValue("EnvGroup:eg1");
+  mockCacheEvict.mockReset();
+  mockCacheGC.mockReset();
   toastSuccess.mockReset();
   toastError.mockReset();
   currentWorkspaceId = "tea-1";
@@ -53,8 +70,10 @@ const wireGroup = {
   id: "eg1",
   name: "shared",
   ownerId: "tea-1",
+  environmentId: "env-prod",
   createdAt: "2026-07-15T12:00:00Z",
   updatedAt: "2026-07-15T13:00:00Z",
+  revision: "egr1_test",
   serviceLinks: ["web", null, "worker"],
   envVars: [{ key: "FOO" }, null, { key: null }],
   secretFiles: [{ name: "cert.pem" }, null],
@@ -82,8 +101,10 @@ describe("environment-group queries", () => {
         id: "eg1",
         name: "shared",
         ownerId: "tea-1",
+        environmentId: "env-prod",
         createdAt: "2026-07-15T12:00:00Z",
         updatedAt: "2026-07-15T13:00:00Z",
+        revision: "egr1_test",
         serviceLinks: ["web", "worker"],
         envVarKeys: ["FOO"],
         secretFileNames: ["cert.pem"],
@@ -102,6 +123,21 @@ describe("environment-group queries", () => {
     const { result } = renderHook(() => useEnvGroups());
 
     expect(result.current.groups).toEqual([]);
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("keeps a cached empty list visible during a network refresh", () => {
+    mockUseQuery.mockReturnValue({
+      data: { envGroups: [] },
+      loading: true,
+      error: undefined,
+      refetch: vi.fn(),
+    });
+
+    const { result } = renderHook(() => useEnvGroups());
+
+    expect(result.current.groups).toEqual([]);
+    expect(result.current.loading).toBe(false);
   });
 
   it("sends the switcher's workspace as ownerId, skipped until it resolves", () => {
@@ -236,6 +272,48 @@ describe("useEnvGroupMutations", () => {
     );
   });
 
+  it("evicts cached Environment memberships after moving a group", async () => {
+    const mutate = vi.fn().mockResolvedValue({});
+    mockUseMutation.mockImplementation(() => [mutate]);
+    const refetch = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useEnvGroupMutations(refetch));
+
+    await act(async () => {
+      await result.current.moveGroup("eg1", "env-prod");
+    });
+
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { id: "eg1", environmentId: "env-prod" },
+    });
+    expect(mockCacheEvict).toHaveBeenCalledWith({
+      id: "ROOT_QUERY",
+      fieldName: "environments",
+    });
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it("invalidates the destination list after a server-side clone", async () => {
+    const mutate = vi.fn().mockResolvedValue({
+      data: { cloneEnvGroup: { id: "eg-clone" } },
+    });
+    mockUseMutation.mockImplementation(() => [mutate]);
+    const { result } = renderHook(() =>
+      useEnvGroupMutations(vi.fn().mockResolvedValue(undefined)),
+    );
+    let cloneID: string | null = null;
+
+    await act(async () => {
+      cloneID = await result.current.cloneGroup("eg1", "copy", "tea-2", null);
+    });
+
+    expect(cloneID).toBe("eg-clone");
+    expect(mockCacheEvict).toHaveBeenCalledWith({
+      id: "ROOT_QUERY",
+      fieldName: "envGroups",
+      args: { ownerId: "tea-2" },
+    });
+  });
+
   it("surfaces a delete failure and does not refetch", async () => {
     const mutate = vi.fn().mockRejectedValue(new Error("forbidden"));
     mockUseMutation.mockImplementation(() => [mutate]);
@@ -264,6 +342,9 @@ describe("useEnvGroupMutations", () => {
     });
 
     expect(ok).toBe(true);
+    expect(mockCacheModify).toHaveBeenCalled();
+    expect(mockCacheEvict).toHaveBeenCalledWith({ id: "EnvGroup:eg1" });
+    expect(mockCacheGC).toHaveBeenCalled();
     expect(toastSuccess).toHaveBeenCalledWith("Environment group deleted");
     expect(toastError).not.toHaveBeenCalled();
   });
@@ -280,7 +361,7 @@ describe("sensitive value reveal", () => {
     expect(mockClientQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: { id: "eg1", key: "TOKEN" },
-        fetchPolicy: "network-only",
+        fetchPolicy: "no-cache",
       }),
     );
   });
@@ -292,6 +373,12 @@ describe("sensitive value reveal", () => {
     const { result } = renderHook(() => useRevealEnvGroupSecretFile("eg1"));
 
     await expect(result.current("cert.pem")).resolves.toBe("pem");
+    expect(mockClientQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: { id: "eg1", name: "cert.pem" },
+        fetchPolicy: "no-cache",
+      }),
+    );
   });
 });
 
@@ -321,6 +408,113 @@ describe("useEnvGroupVarMutations", () => {
       },
     });
     expect(refetch).toHaveBeenCalled();
+  });
+
+  it("preserves generated-value intent instead of sending an empty literal", async () => {
+    const mutate = vi.fn().mockResolvedValue({});
+    mockUseMutation.mockImplementation(() => [mutate]);
+    const { result } = renderHook(() =>
+      useEnvGroupVarMutations("eg1", vi.fn().mockResolvedValue(undefined)),
+    );
+
+    await act(async () => {
+      await result.current.setVar("TOKEN", "", true);
+    });
+
+    expect(mutate).toHaveBeenCalledWith({
+      variables: {
+        id: "eg1",
+        key: "TOKEN",
+        value: undefined,
+        generateValue: true,
+      },
+    });
+    expect(toastSuccess).toHaveBeenCalledWith("Saved TOKEN");
+  });
+
+  it("mentions rollout only when an immediate write has linked services", async () => {
+    const mutate = vi.fn().mockResolvedValue({});
+    mockUseMutation.mockImplementation(() => [mutate]);
+    const { result } = renderHook(() =>
+      useEnvGroupVarMutations(
+        "eg1",
+        vi.fn().mockResolvedValue(undefined),
+        true,
+      ),
+    );
+
+    await act(async () => {
+      await result.current.setVar("TOKEN", "literal");
+    });
+
+    expect(toastSuccess).toHaveBeenCalledWith(
+      "Saved TOKEN",
+      expect.objectContaining({
+        description: "Linked services are redeploying to apply the change.",
+      }),
+    );
+  });
+});
+
+describe("useEnvGroupEnvironmentPatch", () => {
+  it("pins the opaque revision and retries rollout with an empty patch", async () => {
+    const mutate = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: {
+          patchEnvGroupEnvironment: {
+            revision: "egr1_next",
+            affectedServiceIds: ["web"],
+            failedServiceIds: ["web"],
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          patchEnvGroupEnvironment: {
+            revision: "egr1_retry",
+            affectedServiceIds: ["web"],
+            failedServiceIds: [],
+          },
+        },
+      });
+    mockUseMutation.mockImplementation(() => [mutate, { loading: false }]);
+    const refetch = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useEnvGroupEnvironmentPatch("eg1", "egr1_initial", refetch),
+    );
+
+    await act(async () => {
+      await result.current.save(
+        {
+          envVars: [{ key: "TOKEN", generateValue: true }],
+          secretFiles: [{ name: "old.pem", delete: true }],
+        },
+        "rebuild",
+      );
+    });
+    expect(mutate).toHaveBeenNthCalledWith(1, {
+      variables: {
+        id: "eg1",
+        envVars: [{ key: "TOKEN", generateValue: true }],
+        secretFiles: [{ name: "old.pem", delete: true }],
+        saveMode: "rebuild",
+        expectedRevision: "egr1_initial",
+      },
+    });
+
+    await act(async () => {
+      await expect(result.current.retryRollout("rebuild")).resolves.toBe(true);
+    });
+    expect(mutate).toHaveBeenNthCalledWith(2, {
+      variables: {
+        id: "eg1",
+        envVars: [],
+        secretFiles: [],
+        saveMode: "rebuild",
+        expectedRevision: "egr1_next",
+      },
+    });
   });
 });
 

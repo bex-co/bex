@@ -105,6 +105,38 @@ describe("NewEnvGroupDialog", () => {
     });
   });
 
+  it("imports dotenv entries into the unsaved create draft", async () => {
+    const user = userEvent.setup();
+    render(<NewEnvGroupDialog open onCreated={vi.fn()} />);
+
+    await user.type(screen.getByLabelText("Group name"), "Imported values");
+    await user.click(screen.getByRole("button", { name: "Import from .env" }));
+    await user.type(
+      screen.getByRole("textbox", { name: "Dotenv contents" }),
+      "API_URL=https://example.test\nTOKEN=opaque",
+    );
+    await user.click(screen.getByRole("button", { name: "Add variables" }));
+
+    expect(screen.getByDisplayValue("API_URL")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("TOKEN")).toBeInTheDocument();
+    expect(createGroup).not.toHaveBeenCalled();
+    await user.click(
+      screen.getByRole("button", { name: "Create Environment Group" }),
+    );
+    expect(createGroup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        envVars: [
+          {
+            key: "API_URL",
+            value: "https://example.test",
+            generateValue: undefined,
+          },
+          { key: "TOKEN", value: "opaque", generateValue: undefined },
+        ],
+      }),
+    );
+  });
+
   it("blocks invalid variable keys before calling create", async () => {
     const user = userEvent.setup();
     render(<NewEnvGroupDialog open onCreated={vi.fn()} />);

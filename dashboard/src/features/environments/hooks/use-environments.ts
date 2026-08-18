@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
-import { EnvironmentsDocument } from "@/graphql/definitions";
+import {
+  EnvironmentsDocument,
+  type EnvironmentsQuery,
+} from "@/graphql/definitions";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
@@ -45,6 +48,50 @@ export interface UseEnvironmentsResult {
   refetch: () => Promise<unknown>;
 }
 
+export function mapEnvironments(
+  raw: EnvironmentsQuery["environments"] | undefined,
+): EnvironmentView[] {
+  return (raw ?? [])
+    .filter(
+      (environment): environment is NonNullable<typeof environment> =>
+        environment != null,
+    )
+    .map((environment) => ({
+      id: environment.id ?? "",
+      projectId: environment.projectId ?? "",
+      name: environment.name ?? "",
+      ownerId: environment.ownerId ?? "",
+      createdAt: environment.createdAt ?? null,
+      serviceIds: (environment.serviceIds ?? []).filter(
+        (id): id is string => id != null,
+      ),
+      databaseIds: (environment.databaseIds ?? []).filter(
+        (id): id is string => id != null,
+      ),
+      keyValueIds: (environment.keyValueIds ?? []).filter(
+        (id): id is string => id != null,
+      ),
+      envGroupIds: (environment.envGroupIds ?? []).filter(
+        (id): id is string => id != null,
+      ),
+      protectedStatus: environment.protectedStatus ?? "unprotected",
+      networkIsolationEnabled: environment.networkIsolationEnabled ?? false,
+      ipAllowListEntries:
+        environment.ipAllowListEntries != null
+          ? environment.ipAllowListEntries
+              .filter((entry): entry is NonNullable<typeof entry> => {
+                return entry != null && entry.cidrBlock !== "";
+              })
+              .map((entry) => ({
+                cidrBlock: entry.cidrBlock,
+                description: entry.description ?? "",
+              }))
+          : (environment.ipAllowList ?? [])
+              .filter((cidr): cidr is string => cidr != null && cidr !== "")
+              .map((cidrBlock) => ({ cidrBlock, description: "" })),
+    }));
+}
+
 /**
  * Reads the environments under one project (docs/ADR032-environments.md — bex
  * extension, w1/m32). Environments are project-scoped, so this takes a
@@ -64,43 +111,10 @@ export function useEnvironments(
     skipPollAttempt: skipPollWhenHidden,
   });
 
-  const environments = useMemo((): EnvironmentView[] => {
-    if (!data?.environments) return [];
-    return data.environments
-      .filter((e): e is NonNullable<typeof e> => e != null)
-      .map((e) => ({
-        id: e.id ?? "",
-        projectId: e.projectId ?? "",
-        name: e.name ?? "",
-        ownerId: e.ownerId ?? "",
-        createdAt: e.createdAt ?? null,
-        serviceIds: (e.serviceIds ?? []).filter((s): s is string => s != null),
-        databaseIds: (e.databaseIds ?? []).filter(
-          (s): s is string => s != null,
-        ),
-        keyValueIds: (e.keyValueIds ?? []).filter(
-          (s): s is string => s != null,
-        ),
-        envGroupIds: (e.envGroupIds ?? []).filter(
-          (s): s is string => s != null,
-        ),
-        protectedStatus: e.protectedStatus ?? "unprotected",
-        networkIsolationEnabled: e.networkIsolationEnabled ?? false,
-        ipAllowListEntries:
-          e.ipAllowListEntries != null
-            ? e.ipAllowListEntries
-                .filter((entry): entry is NonNullable<typeof entry> => {
-                  return entry != null && entry.cidrBlock !== "";
-                })
-                .map((entry) => ({
-                  cidrBlock: entry.cidrBlock,
-                  description: entry.description ?? "",
-                }))
-            : (e.ipAllowList ?? [])
-                .filter((cidr): cidr is string => cidr != null && cidr !== "")
-                .map((cidrBlock) => ({ cidrBlock, description: "" })),
-      }));
-  }, [data]);
+  const environments = useMemo(
+    () => mapEnvironments(data?.environments),
+    [data],
+  );
 
   return { environments, loading: !resolved || loading, error, refetch };
 }

@@ -6,8 +6,10 @@ export interface EnvGroupView {
   id: string;
   name: string;
   ownerId: string | null;
+  environmentId: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  revision: string | null;
   serviceLinks: string[];
   envVarKeys: string[];
   secretFileNames: string[];

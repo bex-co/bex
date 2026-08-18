@@ -51,10 +51,36 @@ const renameGroup = vi.fn();
 const deleteGroup = vi.fn();
 const linkGroup = vi.fn();
 const unlinkGroup = vi.fn();
-const setVar = vi.fn();
-const deleteVar = vi.fn();
-const setFile = vi.fn();
-const deleteFile = vi.fn();
+const moveGroup = vi.fn();
+const cloneGroup = vi.fn();
+const savePatch = vi.fn();
+const retryRollout = vi.fn();
+const setCurrentWorkspaceId = vi.fn();
+
+const scopeState = {
+  projects: [],
+  environments: [],
+  byId: new Map<string, { id: string; name: string }>(),
+  serviceEnvironmentById: new Map<string, string>(),
+  loading: false,
+  error: undefined as Error | undefined,
+};
+
+vi.mock("@/features/env-groups/hooks/use-env-group-scope-index", () => ({
+  useEnvGroupScopeIndex: () => scopeState,
+  useWorkspaceEnvironmentIndex: () => scopeState,
+}));
+
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({
+    workspaces: [
+      { id: "tea-1", name: "Tea One" },
+      { id: "tea-2", name: "Tea Two" },
+    ],
+    currentWorkspaceId: "tea-1",
+    setCurrentWorkspaceId,
+  }),
+}));
 
 vi.mock("@/common/components/dashboard-layout", () => ({
   DashboardLayout: ({ children }: { children: ReactNode }) => (
@@ -79,19 +105,16 @@ vi.mock(
         deleteGroup,
         linkGroup,
         unlinkGroup,
+        moveGroup,
+        cloneGroup,
         busy: false,
       }),
       useRevealEnvGroupVar: () => vi.fn(async () => "revealed"),
       useRevealEnvGroupSecretFile: () => vi.fn(async () => "revealed"),
-      useEnvGroupVarMutations: () => ({
-        setVar,
-        deleteVar,
-        busy: false,
-      }),
-      useEnvGroupSecretFileMutations: () => ({
-        setFile,
-        deleteFile,
-        busy: false,
+      useEnvGroupEnvironmentPatch: () => ({
+        save: savePatch,
+        retryRollout,
+        saving: false,
       }),
     };
   },
@@ -119,8 +142,10 @@ function group(overrides: Partial<EnvGroupView> = {}): EnvGroupView {
     id: "eg1",
     name: "shared",
     ownerId: "tea-1",
+    environmentId: null,
     createdAt: "2026-07-15T12:00:00Z",
     updatedAt: "2026-07-15T13:00:00Z",
+    revision: "egr1_test",
     serviceLinks: [],
     envVarKeys: [],
     secretFileNames: [],
@@ -159,13 +184,18 @@ function renderDetail(groupId = "eg1") {
     path: "/",
     component: () => <div>services home</div>,
   });
+  const listRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/env-groups",
+    component: () => <div>environment groups list</div>,
+  });
   const route = createRoute({
     getParentRoute: () => rootRoute,
     path: "/env-groups/$groupId",
     component: EnvGroupDetailPage,
   });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([homeRoute, route]),
+    routeTree: rootRoute.addChildren([homeRoute, listRoute, route]),
     history: createMemoryHistory({
       initialEntries: [`/env-groups/${groupId}`],
     }),
@@ -185,19 +215,32 @@ beforeEach(() => {
   servicesState.services = [];
   servicesState.loading = false;
   servicesState.error = undefined;
+  scopeState.environments = [];
+  scopeState.byId = new Map();
+  scopeState.serviceEnvironmentById = new Map();
+  scopeState.loading = false;
+  scopeState.error = undefined;
+  setCurrentWorkspaceId.mockReset();
   createGroup.mockReset().mockResolvedValue("eg-new");
   for (const mutation of [
     renameGroup,
     deleteGroup,
     linkGroup,
     unlinkGroup,
-    setVar,
-    deleteVar,
-    setFile,
-    deleteFile,
+    moveGroup,
+    cloneGroup,
+    savePatch,
+    retryRollout,
   ]) {
-    mutation.mockReset().mockResolvedValue(true);
+    mutation
+      .mockReset()
+      .mockResolvedValue(
+        mutation === savePatch
+          ? { affectedServiceIds: [], failedServiceIds: [] }
+          : true,
+      );
   }
+  cloneGroup.mockResolvedValue("eg-clone");
 });
 
 describe("EnvGroupsPage", () => {
@@ -214,16 +257,16 @@ describe("EnvGroupsPage", () => {
     renderList();
 
     expect(await screen.findByText("production-shared")).toBeInTheDocument();
-    expect(screen.getByText("2 variable(s)")).toBeInTheDocument();
-    expect(screen.getByText("1 secret file(s)")).toBeInTheDocument();
-    expect(screen.getByText("3 linked service(s)")).toBeInTheDocument();
-    expect(screen.getByText("tea-1")).toBeInTheDocument();
-    // Timestamps render through the shared formatter ("July 15, 2026 at …"),
-    // not as raw ISO — computed via the helper so the assertion holds in any
-    // test-runner timezone.
+    expect(screen.getByText(/3 linked service/)).toBeInTheDocument();
+    expect(screen.getByText("Workspace (no Environment)")).toBeInTheDocument();
     expect(
-      screen.getByText(formatDateTime("2026-07-15T12:00:00Z")!),
+      screen.getByRole("columnheader", { name: "Env Vars" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Secret Files" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "2" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "1" })).toBeInTheDocument();
     expect(
       screen.getByText(formatDateTime("2026-07-15T13:00:00Z")!),
     ).toBeInTheDocument();
@@ -241,6 +284,48 @@ describe("EnvGroupsPage", () => {
 
     expect(
       await screen.findByText("Environment groups unavailable"),
+    ).toBeInTheDocument();
+  });
+
+  it("searches the complete workspace result and resets a no-match state", async () => {
+    listState.groups = [
+      group({ id: "eg-prod", name: "production" }),
+      group({ id: "eg-stage", name: "staging" }),
+    ];
+    const user = userEvent.setup();
+    renderList();
+
+    const search = await screen.findByRole("textbox", {
+      name: "Search environment groups by name",
+    });
+    await user.type(search, "prod");
+    expect(screen.getByText("production")).toBeInTheDocument();
+    expect(screen.queryByText("staging")).not.toBeInTheDocument();
+
+    await user.clear(search);
+    await user.type(search, "missing");
+    expect(
+      screen.getByText("No matching environment groups"),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getAllByRole("button", { name: "Reset search" }).at(-1)!,
+    );
+    expect(screen.getByText("staging")).toBeInTheDocument();
+  });
+
+  it("renders a known Environment name and an explicit missing-target fallback", async () => {
+    scopeState.byId = new Map([
+      ["env-prod", { id: "env-prod", name: "Production" }],
+    ]);
+    listState.groups = [
+      group({ id: "known", name: "known", environmentId: "env-prod" }),
+      group({ id: "gone", name: "gone", environmentId: "env-deleted" }),
+    ];
+    renderList();
+
+    expect(await screen.findByText("Production")).toBeInTheDocument();
+    expect(
+      screen.getByText("Unknown Environment (env-deleted)"),
     ).toBeInTheDocument();
   });
 
@@ -292,7 +377,6 @@ describe("EnvGroupsPage", () => {
 describe("EnvGroupDetailPage", () => {
   it("keeps an unlinked group fully editable", async () => {
     detailState.group = group();
-    const user = userEvent.setup();
     renderDetail();
 
     expect(
@@ -312,25 +396,40 @@ describe("EnvGroupDetailPage", () => {
       screen.getByText(formatDateTime("2026-07-15T13:00:00Z")!),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Add variable" }));
-    await user.type(screen.getByLabelText("Key"), "API_TOKEN");
-    await user.type(screen.getByLabelText("Value"), "secret");
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(setVar).toHaveBeenCalledWith("API_TOKEN", "secret");
+    expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+  });
 
-    await user.click(screen.getByRole("button", { name: "Add secret file" }));
-    await user.type(screen.getByLabelText("File name"), "cert.pem");
-    await user.type(screen.getByLabelText("Contents"), "pem-body");
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(setFile).toHaveBeenCalledWith("cert.pem", "pem-body");
+  it("stages a server-generated value and sends one group patch", async () => {
+    detailState.group = group();
+    const user = userEvent.setup();
+    renderDetail();
+
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Generated secret" }),
+    );
+    expect(screen.getByDisplayValue("NEW_SECRET")).toBeInTheDocument();
+    expect(savePatch).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Save and deploy" }));
+
+    expect(savePatch).toHaveBeenCalledTimes(1);
+    expect(savePatch).toHaveBeenCalledWith(
+      {
+        envVars: [{ key: "NEW_SECRET", generateValue: true }],
+        secretFiles: [],
+      },
+      "deploy",
+    );
   });
 
   it("renames and typed-confirms deletion using the immutable group id", async () => {
     detailState.group = group();
     const user = userEvent.setup();
-    renderDetail();
+    const router = renderDetail();
 
-    await user.click(await screen.findByRole("button", { name: "Rename" }));
+    await user.click(await screen.findByRole("button", { name: "Manage" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Rename" }));
     const renameDialog = screen.getByRole("dialog");
     const name = within(renameDialog).getByLabelText("Group name");
     await user.clear(name);
@@ -345,7 +444,8 @@ describe("EnvGroupDetailPage", () => {
         screen.queryByText("Rename environment group"),
       ).not.toBeInTheDocument(),
     );
-    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Manage" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     const deleteDialog = screen.getByRole("dialog");
     const confirm = within(deleteDialog).getByLabelText("Sudo Command");
     expect(
@@ -360,6 +460,51 @@ describe("EnvGroupDetailPage", () => {
       }),
     );
     expect(deleteGroup).toHaveBeenCalledWith("eg1");
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/env-groups"),
+    );
+  });
+
+  it("moves scope and clones through server-side management verbs", async () => {
+    detailState.group = group({ environmentId: null });
+    scopeState.environments = [{ id: "env-prod", name: "Production" } as never];
+    const user = userEvent.setup();
+    const router = renderDetail();
+
+    await user.click(await screen.findByRole("button", { name: "Manage" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Move group" }),
+    );
+    let dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "Production" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Move group" }),
+    );
+    expect(moveGroup).toHaveBeenCalledWith("eg1", "env-prod");
+
+    await user.click(screen.getByRole("button", { name: "Manage" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Clone group" }),
+    );
+    dialog = screen.getByRole("dialog");
+    const selects = within(dialog).getAllByRole("combobox");
+    await user.click(selects[0]);
+    await user.click(await screen.findByRole("option", { name: "Tea Two" }));
+    await user.click(
+      within(dialog).getByRole("button", { name: "Clone group" }),
+    );
+
+    expect(cloneGroup).toHaveBeenCalledWith(
+      "eg1",
+      "shared-copy",
+      "tea-2",
+      null,
+    );
+    expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-2");
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/env-groups/eg-clone"),
+    );
   });
 
   it("unlinks a linked service from the detail page", async () => {
@@ -387,6 +532,37 @@ describe("EnvGroupDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "Link Service" }));
 
     expect(linkGroup).toHaveBeenCalledWith("eg1", "worker");
+  });
+
+  it("offers only same-Environment services and flags legacy drift", async () => {
+    detailState.group = group({
+      environmentId: "env-a",
+      serviceLinks: ["legacy-b"],
+    });
+    servicesState.services = [
+      service("web-a", "Service A"),
+      service("web-b", "Service B"),
+      service("legacy-b", "Legacy B"),
+    ];
+    scopeState.byId = new Map([["env-a", { id: "env-a", name: "A" }]]);
+    scopeState.serviceEnvironmentById = new Map([
+      ["web-a", "env-a"],
+      ["web-b", "env-b"],
+      ["legacy-b", "env-b"],
+    ]);
+    const user = userEvent.setup();
+    renderDetail();
+
+    expect(
+      await screen.findByText("Legacy link outside this group's Environment"),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("combobox"));
+    expect(
+      await screen.findByRole("option", { name: "Service A" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Service B" }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps existing links visible when the workspace-service query fails", async () => {

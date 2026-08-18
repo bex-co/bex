@@ -89,6 +89,27 @@ func (s *PGStore) ListEnvironments(ctx context.Context, projectID string) ([]Env
 	return listEnvironments(ctx, s.Pool, projectID)
 }
 
+// ListWorkspaceEnvironments returns every Environment in one workspace. The
+// workspace scope index needs this shape directly; making the store express it
+// avoids issuing one ListEnvironments query per Project.
+func (s *PGStore) ListWorkspaceEnvironments(ctx context.Context, tenantID string) ([]Environment, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT `+environmentColumns+` FROM environments WHERE tenant_id = $1 ORDER BY created_at, id`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Environment{}
+	for rows.Next() {
+		e, err := scanEnvironment(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
 func (s *PGStore) RenameEnvironment(ctx context.Context, id, name string) error {
 	tag, err := s.Pool.Exec(ctx,
 		`UPDATE environments SET name = $2, updated_at = now() WHERE id = $1`,
@@ -196,6 +217,31 @@ func (s *PGStore) ListEnvironmentServices(ctx context.Context, environmentID, pr
 			return nil, err
 		}
 		out = append(out, name)
+	}
+	return out, rows.Err()
+}
+
+// ListWorkspaceEnvironmentServices batches the service-membership half of the
+// workspace scope index. Joining environments preserves the same project-id
+// consistency check as ListEnvironmentServices, so stale app rows are omitted.
+func (s *PGStore) ListWorkspaceEnvironmentServices(ctx context.Context, tenantID string) (map[string][]string, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT a.environment_id, a.id
+		FROM apps a
+		JOIN environments e ON e.id = a.environment_id AND e.project_id = a.project_id
+		WHERE a.tenant_id = $1
+		ORDER BY a.environment_id, a.name`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string][]string{}
+	for rows.Next() {
+		var environmentID, serviceID string
+		if err := rows.Scan(&environmentID, &serviceID); err != nil {
+			return nil, err
+		}
+		out[environmentID] = append(out[environmentID], serviceID)
 	}
 	return out, rows.Err()
 }

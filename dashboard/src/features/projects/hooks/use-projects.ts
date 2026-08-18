@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
-import { ProjectsDocument } from "@/graphql/definitions";
+import { ProjectsDocument, type ProjectsQuery } from "@/graphql/definitions";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
@@ -35,6 +35,30 @@ export interface UseProjectsResult {
   refetch: () => Promise<unknown>;
 }
 
+export function mapProjects(
+  raw: ProjectsQuery["projects"] | undefined,
+  ownerFallback = "",
+): ProjectView[] {
+  return (raw ?? [])
+    .filter(
+      (project): project is NonNullable<typeof project> => project != null,
+    )
+    .map((project) => ({
+      id: project.id ?? "",
+      name: project.name ?? "",
+      ownerId: project.ownerId ?? ownerFallback,
+      serviceIds: (project.serviceIds ?? []).filter(
+        (id): id is string => id != null,
+      ),
+      databaseIds: (project.databaseIds ?? []).filter(
+        (id): id is string => id != null,
+      ),
+      keyValueIds: (project.keyValueIds ?? []).filter(
+        (id): id is string => id != null,
+      ),
+    }));
+}
+
 /**
  * Reads the projects for the current workspace. Returns an empty list when
  * the workspace hasn't resolved yet or when the store isn't configured.
@@ -53,23 +77,7 @@ export function useProjects({
     skipPollAttempt: skipPollWhenHidden,
   });
 
-  const projects = useMemo((): ProjectView[] => {
-    if (!data?.projects) return [];
-    return data.projects
-      .filter((p): p is NonNullable<typeof p> => p != null)
-      .map((p) => ({
-        id: p.id ?? "",
-        name: p.name ?? "",
-        ownerId: p.ownerId ?? "",
-        serviceIds: (p.serviceIds ?? []).filter((s): s is string => s != null),
-        databaseIds: (p.databaseIds ?? []).filter(
-          (s): s is string => s != null,
-        ),
-        keyValueIds: (p.keyValueIds ?? []).filter(
-          (s): s is string => s != null,
-        ),
-      }));
-  }, [data]);
+  const projects = useMemo(() => mapProjects(data?.projects), [data]);
 
   return { projects, loading: !resolved || loading, error, refetch };
 }

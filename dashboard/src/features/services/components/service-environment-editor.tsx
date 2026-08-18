@@ -79,13 +79,17 @@ import {
   type EnvDraftRow,
   type EnvironmentDraft,
   type SecretFileDraftRow,
+  type EnvironmentPatchInput,
 } from "@/features/services/lib/environment-draft";
 import { generateEnvValue } from "@/features/services/lib/generate-env-value";
 import {
   downloadEnvFile,
   formatEnvExport,
 } from "@/features/services/lib/env-export";
-import type { DotenvEntry } from "@/features/services/lib/dotenv-import";
+import {
+  upsertDotenvEntries,
+  type DotenvEntry,
+} from "@/features/services/lib/dotenv-import";
 import { useSensitiveReveals } from "@/features/services/hooks/use-sensitive-reveals";
 import { EnvImportDialog } from "./env-import-dialog";
 import { SecretFileContentDialog } from "./secret-file-content-dialog";
@@ -108,13 +112,90 @@ const ENV_ERROR_COPY: Record<EnvVarErrorKind, { title: string; body: string }> =
   };
 
 export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
-  const { t } = useTranslations();
   const env = useEnvVarKeys(serviceId);
   const files = useSecretFileNames(serviceId);
   const revealEnv = useRevealEnvVar(serviceId);
   const revealFile = useRevealSecretFile(serviceId);
   const { save, saving } = useEnvironmentDraftSave();
   const { trigger, deploying } = useTriggerDeploy();
+
+  return (
+    <EnvironmentEditor
+      resourceId={serviceId}
+      envKeys={env.keys}
+      secretFileNames={files.names}
+      loading={
+        (env.loading && env.keys.length === 0) ||
+        (files.loading && files.names.length === 0)
+      }
+      errorKind={
+        classifyEnvVarError(env.error) ?? classifySecretFileError(files.error)
+      }
+      revealEnv={revealEnv}
+      revealFile={revealFile}
+      saving={saving || deploying}
+      save={async (patch, choice) => {
+        await save(
+          serviceId,
+          patch,
+          choice === "deploy" ? "deploy" : "save_only",
+        );
+        if (choice !== "rebuild") {
+          return {
+            affectedServiceIds: choice === "deploy" ? [serviceId] : [],
+          };
+        }
+        return {
+          affectedServiceIds: [serviceId],
+          rolloutFailed: (await trigger(serviceId)) == null,
+        };
+      }}
+      retryRollout={async () => (await trigger(serviceId)) != null}
+    />
+  );
+}
+
+export interface EnvironmentEditorProps {
+  resourceId: string;
+  envKeys: Array<{ id: string; key: string }>;
+  secretFileNames: Array<{ id: string; name: string }>;
+  loading: boolean;
+  errorKind: EnvVarErrorKind | null;
+  revealEnv: (key: string) => Promise<string>;
+  revealFile: (name: string) => Promise<string>;
+  save: (
+    patch: EnvironmentPatchInput,
+    choice: SaveChoice,
+  ) => Promise<{
+    affectedServiceIds?: readonly string[];
+    failedServiceIds?: readonly string[];
+    rolloutFailed?: boolean;
+  }>;
+  retryRollout: (choice: Exclude<SaveChoice, "only">) => Promise<boolean>;
+  saving: boolean;
+  generateOnServer?: boolean;
+}
+
+/**
+ * The staged, masked environment editor shared by services and environment
+ * groups. Resource-specific hooks stay in thin wrappers; draft validation,
+ * sparse patches, import/export, navigation blocking, and rollout recovery are
+ * intentionally one UI contract.
+ */
+export function EnvironmentEditor({
+  resourceId,
+  envKeys,
+  secretFileNames,
+  loading,
+  errorKind,
+  revealEnv,
+  revealFile,
+  save,
+  retryRollout,
+  saving,
+  generateOnServer = false,
+}: EnvironmentEditorProps) {
+  const { t } = useTranslations();
   const nextID = useRef(0);
   const fileInput = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<EnvironmentDraft | null>(null);
@@ -133,7 +214,10 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
   const [contentRowID, setContentRowID] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState(false);
-  const [savedPendingDeploy, setSavedPendingDeploy] = useState(false);
+  const [pendingChoice, setPendingChoice] = useState<Exclude<
+    SaveChoice,
+    "only"
+  > | null>(null);
   const [exporting, setExporting] = useState(false);
 
   const validation = useMemo(
@@ -146,7 +230,7 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
     [draft],
   );
   const dirty = draft ? isEnvironmentDraftDirty(draft) : false;
-  const busy = saving || deploying;
+  const busy = saving;
   const blocker = useBlocker({
     shouldBlockFn: () => dirty,
     enableBeforeUnload: dirty,
@@ -156,8 +240,8 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
   function beginEdit() {
     setDraft(
       createEnvironmentDraft(
-        env.keys.map((entry) => entry.key),
-        files.names.map((entry) => entry.name),
+        envKeys.map((entry) => entry.key),
+        secretFileNames.map((entry) => entry.name),
       ),
     );
     setSaveError(false);
@@ -206,8 +290,9 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
                 id,
                 originalKey: null,
                 key,
-                value: generated ? generateEnvValue() : "",
+                value: generated && !generateOnServer ? generateEnvValue() : "",
                 valueChanged: true,
+                generateValue: generated && generateOnServer,
                 deleted: false,
               },
             ],
@@ -219,29 +304,28 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
   function importVariables(entries: DotenvEntry[]) {
     setDraft((current) => {
       if (!current) return current;
-      const rows = [...current.envVars];
-      for (const entry of entries) {
-        const index = rows.findIndex(
-          (row) => !row.deleted && row.key.trim() === entry.key,
-        );
-        if (index >= 0) {
-          rows[index] = {
-            ...rows[index],
+      return {
+        ...current,
+        envVars: upsertDotenvEntries(
+          current.envVars,
+          entries,
+          (row) => (row.deleted ? null : row.key),
+          (row, entry) => ({
+            ...row,
             value: entry.value,
             valueChanged: true,
-          };
-        } else {
-          rows.push({
+            generateValue: false,
+          }),
+          (entry) => ({
             id: `import-env:${nextID.current++}`,
             originalKey: null,
             key: entry.key,
             value: entry.value,
             valueChanged: true,
             deleted: false,
-          });
-        }
-      }
-      return { ...current, envVars: rows };
+          }),
+        ),
+      };
     });
   }
 
@@ -318,14 +402,14 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
     setExporting(true);
     try {
       const values = await Promise.all(
-        env.keys.map(async ({ key }) => ({ key, value: await revealEnv(key) })),
+        envKeys.map(async ({ key }) => ({ key, value: await revealEnv(key) })),
       );
       const formatted = formatEnvExport(values);
       if (kind === "copy") {
         await navigator.clipboard.writeText(formatted);
         toast.success(t("services.envCopySuccess"));
       } else {
-        downloadEnvFile(`${serviceId}.env`, formatted);
+        downloadEnvFile(`${resourceId}.env`, formatted);
         toast.success(t("services.envExportSuccess"));
       }
     } catch {
@@ -338,9 +422,13 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
   async function commit(choice: SaveChoice) {
     if (!draft || !dirty || !isDraftValid(validation)) return;
     setSaveError(false);
+    let result: {
+      affectedServiceIds?: readonly string[];
+      failedServiceIds?: readonly string[];
+      rolloutFailed?: boolean;
+    };
     try {
-      const mode = choice === "deploy" ? "deploy" : "save_only";
-      await save(serviceId, patch, mode);
+      result = await save(patch, choice);
     } catch {
       setSaveError(true);
       toast.error(t("services.environmentSaveError"));
@@ -352,37 +440,52 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
     // reapply an already-successful secret patch.
     setDraft(null);
     reveals.clear();
-    if (choice === "rebuild") {
-      const deployID = await trigger(serviceId);
-      if (!deployID) {
-        setSavedPendingDeploy(true);
-        return;
-      }
-    } else {
+    const rolloutFailed =
+      result.rolloutFailed || Boolean(result.failedServiceIds?.length);
+    if (choice !== "only" && rolloutFailed) {
+      setPendingChoice(choice);
+      return;
+    }
+    if (choice !== "rebuild") {
+      const deployed =
+        choice === "deploy" && Boolean(result.affectedServiceIds?.length);
       toast.success(
-        choice === "deploy"
+        deployed
           ? t("services.environmentSaveDeploySuccess")
           : t("services.environmentSaveOnlySuccess"),
       );
     }
-    setSavedPendingDeploy(false);
+    setPendingChoice(null);
   }
 
   async function retryDeploy() {
-    const deployID = await trigger(serviceId);
-    if (deployID) setSavedPendingDeploy(false);
+    if (!pendingChoice) return;
+    if (await retryRollout(pendingChoice)) {
+      setPendingChoice(null);
+    }
   }
 
-  const errorKind =
-    classifyEnvVarError(env.error) ?? classifySecretFileError(files.error);
-  const loading =
-    (env.loading && env.keys.length === 0) ||
-    (files.loading && files.names.length === 0);
   const contentRow = draft?.secretFiles.find((row) => row.id === contentRowID);
+
+  async function copyFresh(kind: "env" | "file", name: string) {
+    try {
+      const value = await (kind === "env" ? revealEnv(name) : revealFile(name));
+      await navigator.clipboard.writeText(value);
+      toast.success(t("services.envCopySuccess"));
+    } catch {
+      toast.error(
+        t(
+          kind === "env"
+            ? "services.envRevealError"
+            : "services.secretFileRevealError",
+        ),
+      );
+    }
+  }
 
   return (
     <div className="space-y-6">
-      {savedPendingDeploy ? (
+      {pendingChoice ? (
         <Alert>
           <RotateCw />
           <AlertTitle>
@@ -393,10 +496,10 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
             <Button
               size="sm"
               variant="outline"
-              disabled={deploying}
+              disabled={saving}
               onClick={() => void retryDeploy()}
             >
-              {deploying ? <Loader2 className="animate-spin" /> : <RotateCw />}
+              {saving ? <Loader2 className="animate-spin" /> : <RotateCw />}
               {t("services.environmentRetryDeploy")}
             </Button>
           </AlertDescription>
@@ -468,7 +571,7 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
             )}
           </>
         }
-        isEmpty={(draft ? draft.envVars : env.keys).length === 0}
+        isEmpty={(draft ? draft.envVars : envKeys).length === 0}
       >
         {draft
           ? draft.envVars.map((row) => (
@@ -479,13 +582,14 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
                 onChange={(update) => updateRow("envVars", row.id, update)}
               />
             ))
-          : env.keys.map(({ id, key }) => (
+          : envKeys.map(({ id, key }) => (
               <SensitiveViewItem
                 key={id}
                 name={key}
                 value={reveals.value("env", key)}
                 loading={reveals.busy("env", key)}
                 onToggle={() => reveals.toggle("env", key)}
+                onCopy={() => copyFresh("env", key)}
               />
             ))}
       </EnvironmentSection>
@@ -525,7 +629,7 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
             </>
           ) : null
         }
-        isEmpty={(draft ? draft.secretFiles : files.names).length === 0}
+        isEmpty={(draft ? draft.secretFiles : secretFileNames).length === 0}
       >
         {draft
           ? draft.secretFiles.map((row) => (
@@ -537,13 +641,14 @@ export function ServiceEnvironmentEditor({ serviceId }: { serviceId: string }) {
                 onContent={() => setContentRowID(row.id)}
               />
             ))
-          : files.names.map(({ id, name }) => (
+          : secretFileNames.map(({ id, name }) => (
               <SensitiveViewItem
                 key={id}
                 name={name}
                 value={reveals.value("file", name)}
                 loading={reveals.busy("file", name)}
                 onToggle={() => reveals.toggle("file", name)}
+                onCopy={() => copyFresh("file", name)}
               />
             ))}
       </EnvironmentSection>
@@ -733,11 +838,13 @@ function SensitiveViewItem({
   value,
   loading,
   onToggle,
+  onCopy,
 }: {
   name: string;
   value: string | undefined;
   loading: boolean;
   onToggle: () => void;
+  onCopy: () => Promise<void>;
 }) {
   const { t } = useTranslations();
   const visible = value !== undefined;
@@ -750,16 +857,27 @@ function SensitiveViewItem({
       >
         {visible ? value : MASKED_VALUE}
       </code>
-      <Button size="sm" variant="ghost" disabled={loading} onClick={onToggle}>
-        {loading ? (
-          <Loader2 className="animate-spin" />
-        ) : visible ? (
-          <EyeOff />
-        ) : (
-          <Eye />
-        )}
-        {visible ? t("services.envHide") : t("services.envReveal")}
-      </Button>
+      <div className="flex flex-wrap justify-end gap-1">
+        <Button size="sm" variant="ghost" disabled={loading} onClick={onToggle}>
+          {loading ? (
+            <Loader2 className="animate-spin" />
+          ) : visible ? (
+            <EyeOff />
+          ) : (
+            <Eye />
+          )}
+          {visible ? t("services.envHide") : t("services.envReveal")}
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          disabled={loading}
+          aria-label={t("services.envCopy")}
+          onClick={() => void onCopy()}
+        >
+          <Clipboard />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -832,7 +950,11 @@ function EnvDraftItem({
       <Input
         value={row.value ?? ""}
         onChange={(event) =>
-          onChange({ value: event.target.value, valueChanged: true })
+          onChange({
+            value: event.target.value,
+            valueChanged: true,
+            generateValue: false,
+          })
         }
         className="min-w-0 font-mono text-sm"
         aria-label={t("services.envColValue")}

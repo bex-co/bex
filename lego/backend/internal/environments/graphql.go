@@ -63,6 +63,19 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return gqlutil.Page(p, out, func(e EnvironmentView) string { return e.ID }), nil
 			},
 		},
+		"workspaceEnvironments": &graphql.Field{
+			Type: graphql.NewList(environmentGQLType),
+			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{
+				"ownerId": gqlutil.ReqArg(graphql.String),
+			}),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				out, err := s.ListWorkspace(p.Context, p.Args["ownerId"].(string))
+				if err != nil {
+					return nil, err
+				}
+				return gqlutil.Page(p, out, func(e EnvironmentView) string { return e.ID }), nil
+			},
+		},
 		"environment": &graphql.Field{
 			Type: environmentGQLType,
 			Args: graphql.FieldConfigArgument{

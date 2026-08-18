@@ -373,6 +373,79 @@ func TestREST_CreateEnvGroupAcceptsInitialContentsAndLinks(t *testing.T) {
 	}
 }
 
+func TestREST_SetEnvGroupVarAcceptsGenerateValue(t *testing.T) {
+	svc := newService(newFakeStore())
+	g, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: "shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := serveREST(svc, http.MethodPut, "/v1/env-groups/"+g.ID+"/env-vars/TOKEN", `{"generateValue":true}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("generated PUT: got %d: %s", w.Code, w.Body.String())
+	}
+	if strings.Contains(w.Body.String(), `"value":`) {
+		t.Fatalf("generated PUT leaked a value: %s", w.Body.String())
+	}
+	got, err := svc.GetEnvGroupVar(context.Background(), g.ID, "TOKEN")
+	if err != nil || len(got.Value) != 44 {
+		t.Fatalf("generated reveal: len=%d err=%v", len(got.Value), err)
+	}
+	w = serveREST(svc, http.MethodPut, "/v1/env-groups/"+g.ID+"/env-vars/BAD", `{"value":"literal","generateValue":true}`)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("conflicting generated PUT: got %d: %s", w.Code, w.Body.String())
+	}
+	var coded map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &coded); err != nil || coded["code"] != "ENVIRONMENT_VALUE_INPUT_INVALID" {
+		t.Fatalf("conflicting generated PUT envelope: %v err=%v", coded, err)
+	}
+	w = serveREST(svc, http.MethodPut, "/v1/env-groups/"+g.ID+"/env-vars/MISSING", `{}`)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("missing value intent PUT: got %d: %s", w.Code, w.Body.String())
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &coded); err != nil || coded["code"] != "ENVIRONMENT_VALUE_INPUT_INVALID" {
+		t.Fatalf("missing value intent PUT envelope: %v err=%v", coded, err)
+	}
+	w = serveREST(svc, http.MethodPut, "/v1/env-groups/"+g.ID+"/env-vars/EMPTY", `{"value":""}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("empty literal PUT: got %d: %s", w.Code, w.Body.String())
+	}
+	if got, err := svc.GetEnvGroupVar(context.Background(), g.ID, "EMPTY"); err != nil || got.Value != "" {
+		t.Fatalf("empty literal reveal: %+v err=%v", got, err)
+	}
+	revealed := serveREST(svc, http.MethodGet, "/v1/env-groups/"+g.ID+"/env-vars/EMPTY", "")
+	if revealed.Code != http.StatusOK || !strings.Contains(revealed.Body.String(), `"value":""`) {
+		t.Fatalf("empty literal REST reveal: %d %s", revealed.Code, revealed.Body.String())
+	}
+}
+
+func TestREST_DuplicateNameIs409AndPatchEnvironmentIsNamesOnly(t *testing.T) {
+	svc := newService(newFakeStore())
+	first := serveREST(svc, http.MethodPost, "/v1/env-groups", `{"name":"shared","envVars":[{"key":"A","value":"secret"}]}`)
+	if first.Code != http.StatusCreated {
+		t.Fatalf("create: %d %s", first.Code, first.Body.String())
+	}
+	var group EnvGroupView
+	if err := json.Unmarshal(first.Body.Bytes(), &group); err != nil {
+		t.Fatal(err)
+	}
+	duplicate := serveREST(svc, http.MethodPost, "/v1/env-groups", `{"name":"shared"}`)
+	if duplicate.Code != http.StatusConflict {
+		t.Fatalf("duplicate status=%d body=%s", duplicate.Code, duplicate.Body.String())
+	}
+	patch := serveREST(svc, http.MethodPatch, "/v1/env-groups/"+group.ID+"/contents", `{
+		"saveMode":"save_only",
+		"expectedRevision":"`+group.Revision+`",
+		"envVars":[{"key":"B","fromKey":"A"},{"key":"GENERATED","generateValue":true}],
+		"secretFiles":[{"name":"token.txt","content":"file-secret"}]
+	}`)
+	if patch.Code != http.StatusOK {
+		t.Fatalf("patch status=%d body=%s", patch.Code, patch.Body.String())
+	}
+	if body := patch.Body.String(); strings.Contains(body, "file-secret") || strings.Contains(body, `"value"`) || strings.Contains(body, `"content"`) {
+		t.Fatalf("patch response leaked secret material: %s", body)
+	}
+}
+
 func TestREST_CreateEnvGroupInvalidServiceIsNamed404WithNoOrphan(t *testing.T) {
 	store := newFakeStore()
 	svc := newService(store)

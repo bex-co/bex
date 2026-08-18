@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Link,
   createFileRoute,
@@ -29,6 +30,7 @@ import {
   useEnvGroupMutations,
 } from "@/features/env-groups/hooks/use-env-groups";
 import { useServices } from "@/features/services/hooks/use-services";
+import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
 import { EnvGroupDocument } from "@/graphql/definitions";
 import {
   isNotFoundError,
@@ -86,8 +88,9 @@ export function EnvGroupDetailPage() {
     loading: servicesLoading,
     error: servicesError,
   } = useServices();
+  const scope = useEnvGroupScopeIndex();
+  const [deleteInFlight, setDeleteInFlight] = useState(false);
   const mutations = useEnvGroupMutations(refetch, {
-    skipDeleteRefetch: true,
     skipRenameRefetch: true,
   });
   const renameGroup = async (id: string, name: string) => {
@@ -95,14 +98,29 @@ export function EnvGroupDetailPage() {
     if (renamed) void router.invalidate();
     return renamed;
   };
+  const deleteGroup = async (id: string) => {
+    // Deleting evicts this detail query before the action callback navigates
+    // back to the collection. Suppress the generic dead-id redirect during
+    // that intentional gap so it cannot race the collection navigation.
+    setDeleteInFlight(true);
+    const deleted = await mutations.deleteGroup(id);
+    if (!deleted) setDeleteInFlight(false);
+    return deleted;
+  };
   const errorKind = classifyEnvGroupError(error);
   const notFound = isEnvGroupNotFound(error);
+  const environmentLabel = group?.environmentId
+    ? (scope.byId.get(group.environmentId)?.name ??
+      t("envGroups.unknownEnvironment", { id: group.environmentId }))
+    : t("envGroups.workspaceScope");
 
   // A dead id — a not-found-shaped error, or a null row with no error at all —
   // redirects home (w9/m55); any other failed query stays put on the inline
   // error state so an outage never masquerades as a deleted group. A
   // roll-window loader failure re-runs once (w1/m52) so the title recovers.
-  useNotFoundRedirect(!loading && !group && (notFound || !errorKind));
+  useNotFoundRedirect(
+    !deleteInFlight && !loading && !group && (notFound || !errorKind),
+  );
   useLoaderErrorRetry(Route.useLoaderData(), groupId);
 
   return (
@@ -126,10 +144,19 @@ export function EnvGroupDetailPage() {
         {group ? (
           <EnvGroupActions
             group={group}
+            environments={scope.environments}
             renameGroup={renameGroup}
-            deleteGroup={mutations.deleteGroup}
+            moveGroup={mutations.moveGroup}
+            cloneGroup={mutations.cloneGroup}
+            deleteGroup={deleteGroup}
             busy={mutations.busy}
             onDeleted={() => void navigate({ to: "/env-groups" })}
+            onCloned={(cloneId) =>
+              void navigate({
+                to: "/env-groups/$groupId",
+                params: { groupId: cloneId },
+              })
+            }
           />
         ) : null}
       </div>
@@ -156,7 +183,10 @@ export function EnvGroupDetailPage() {
                   <CardTitle>{t("envGroups.metadataTitle")}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <EnvGroupMetadata group={group} />
+                  <EnvGroupMetadata
+                    group={group}
+                    environmentLabel={environmentLabel}
+                  />
                 </CardContent>
               </Card>
               <EnvGroupEditors
@@ -170,8 +200,10 @@ export function EnvGroupDetailPage() {
                 services={services}
                 linkGroup={mutations.linkGroup}
                 unlinkGroup={mutations.unlinkGroup}
-                busy={mutations.busy || servicesLoading}
-                error={servicesError}
+                busy={mutations.busy || servicesLoading || scope.loading}
+                error={servicesError ?? scope.error}
+                serviceEnvironmentById={scope.serviceEnvironmentById}
+                scopeReady={!scope.loading && !scope.error}
               />
             </>
           )}

@@ -21,6 +21,27 @@ const sessionToken = process.env.CODEGEN_SESSION_TOKEN;
 // (internal/api/schema_dump_test.go). Unset => the live-endpoint path below.
 const schemaJSON = process.env.SCHEMA_JSON;
 
+const typeConfig = {
+  avoidOptionals: {
+    // Use `null` for nullable fields instead of optionals
+    field: true,
+    // Allow nullable input fields to remain unspecified
+    inputValue: false,
+  },
+  // Use `unknown` instead of `any` for unconfigured scalars
+  defaultScalarType: "unknown",
+  // Map DateTimeISO to string type
+  scalars: {
+    DateTimeISO: "string",
+    JSONObject: "Record<string, unknown>",
+  },
+  // Apollo Client always includes `__typename` fields
+  nonOptionalTypename: true,
+  // Apollo Client doesn't add `__typename` to root operation types.
+  skipTypeNameForRoot: true,
+  useTypeImports: true,
+} as const;
+
 const config: CodegenConfig = {
   overwrite: true,
   schema: schemaJSON
@@ -33,29 +54,29 @@ const config: CodegenConfig = {
   // Don't exit with non-zero status when there are no documents
   ignoreNoDocuments: true,
   generates: {
-    // Use a path that works the best for the structure of your application
+    // Keep the complete schema surface available to the few dashboard helpers
+    // that intentionally consume schema types rather than operation results.
+    "./src/graphql/schema-types.ts": {
+      plugins: ["typescript"],
+      config: typeConfig,
+    },
+    // GraphQL Codegen v6's operations plugin owns its utility/input types. Keep
+    // it separate from the full schema output, then re-export the schema types
+    // so existing dashboard imports continue to have one stable entry point.
     "./src/graphql/definitions.ts": {
-      plugins: ["typescript", "typescript-operations", "typed-document-node"],
+      plugins: [
+        {
+          add: {
+            content: 'export * from "./schema-types";',
+          },
+        },
+        "typescript-operations",
+        "typed-document-node",
+      ],
       config: {
-        avoidOptionals: {
-          // Use `null` for nullable fields instead of optionals
-          field: true,
-          // Allow nullable input fields to remain unspecified
-          inputValue: false,
-        },
-        // Use `unknown` instead of `any` for unconfigured scalars
-        defaultScalarType: "unknown",
-        // Map DateTimeISO to string type
-        scalars: {
-          DateTimeISO: "string",
-          JSONObject: "Record<string, unknown>",
-        },
-        // Apollo Client always includes `__typename` fields
-        nonOptionalTypename: true,
-        // Apollo Client doesn't add the `__typename` field to root types so
-        // don't generate a type for the `__typename` for root operation types.
-        skipTypeNameForRoot: true,
-        useTypeImports: true,
+        ...typeConfig,
+        importSchemaTypesFrom: "./src/graphql/schema-types.ts",
+        namespacedImportName: "Types",
       },
     },
   },

@@ -129,6 +129,7 @@ func environmentPatchFromArgs(p graphql.ResolveParams) EnvironmentPatch {
 			write.Key, _ = m["key"].(string)
 			write.FromKey, _ = m["fromKey"].(string)
 			write.Value, _ = m["value"].(string)
+			_, write.ValueSet = m["value"]
 			write.GenerateValue, _ = m["generateValue"].(bool)
 			write.Delete, _ = m["delete"].(bool)
 			patch.EnvVars = append(patch.EnvVars, write)

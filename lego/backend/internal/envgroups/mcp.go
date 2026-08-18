@@ -50,9 +50,29 @@ type renameEnvGroupArgs struct {
 	Name string `json:"name" jsonschema:"the new env group name"`
 }
 
+type moveEnvGroupArgs struct {
+	ID            string `json:"id" jsonschema:"the env group id (evg-...)"`
+	EnvironmentID string `json:"environmentId,omitempty" jsonschema:"target Environment id; omit to move to workspace scope"`
+}
+
+type cloneEnvGroupArgs struct {
+	ID            string `json:"id" jsonschema:"source env group id (evg-...)"`
+	Name          string `json:"name" jsonschema:"new group name"`
+	OwnerID       string `json:"ownerId,omitempty" jsonschema:"optional authorized target workspace id; defaults to the active workspace"`
+	EnvironmentID string `json:"environmentId,omitempty" jsonschema:"optional target Environment id"`
+}
+
 type setEnvGroupVarsArgs struct {
 	ID      string       `json:"id" jsonschema:"the env group id (evg-...)"`
 	EnvVars []EnvVarView `json:"envVars" jsonschema:"the complete desired set of {key,value} variables (replace semantics)"`
+}
+
+type patchEnvGroupEnvironmentArgs struct {
+	ID               string            `json:"id" jsonschema:"the env group id (evg-...)"`
+	EnvVars          []EnvVarPatch     `json:"envVars,omitempty" jsonschema:"sparse environment variable upsert, rename, generation, and delete operations"`
+	SecretFiles      []SecretFilePatch `json:"secretFiles,omitempty" jsonschema:"sparse secret-file upsert, rename, and delete operations"`
+	SaveMode         SaveMode          `json:"saveMode" jsonschema:"save_only, deploy, or rebuild"`
+	ExpectedRevision *string           `json:"expectedRevision,omitempty" jsonschema:"optional opaque revision returned by get_env_group"`
 }
 
 type envGroupVarArgs struct {
@@ -61,9 +81,10 @@ type envGroupVarArgs struct {
 }
 
 type setEnvGroupVarArgs struct {
-	ID    string `json:"id" jsonschema:"the env group id (evg-...)"`
-	Key   string `json:"key" jsonschema:"the environment variable key"`
-	Value string `json:"value" jsonschema:"the environment variable value"`
+	ID            string  `json:"id" jsonschema:"the env group id (evg-...)"`
+	Key           string  `json:"key" jsonschema:"the environment variable key"`
+	Value         *string `json:"value,omitempty" jsonschema:"the literal environment variable value; mutually exclusive with generateValue"`
+	GenerateValue bool    `json:"generateValue,omitempty" jsonschema:"generate a cryptographically random value server-side; mutually exclusive with value"`
 }
 
 type setEnvGroupFileArgs struct {
@@ -100,7 +121,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err == nil {
 			groups = pageEnvGroups(groups, in.Cursor, in.Limit, in.Cursor != "" || in.Limit != 0)
 		}
-		return nil, listEnvGroupsResult{EnvGroups: groups}, err
+		return nil, listEnvGroupsResult{EnvGroups: groups}, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -108,7 +129,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Get one environment group by id (keys/names + linked services, no values).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
 		g, err := s.GetEnvGroup(ctx, in.ID)
-		return nil, g, err
+		return nil, g, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -120,7 +141,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			EnvironmentID: in.EnvironmentID, EnvVars: in.EnvVars,
 			SecretFiles: in.SecretFiles, ServiceIDs: in.ServiceIDs,
 		})
-		return nil, g, err
+		return nil, g, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -128,7 +149,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Delete an environment group; it is unlinked from every service first, and linked services roll.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.DeleteEnvGroup(ctx, in.ID)
-		return nil, okResult{OK: err == nil}, err
+		return nil, okResult{OK: err == nil}, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -136,7 +157,29 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Rename an environment group without changing its id, contents, or service links.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in renameEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
 		g, err := s.RenameEnvGroup(ctx, in.ID, in.Name)
-		return nil, g, err
+		return nil, g, core.MCPError(err)
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "move_env_group",
+		Description: "Move an environment group to a compatible Environment or back to workspace scope without changing sibling memberships.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in moveEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
+		group, err := s.MoveEnvGroup(ctx, in.ID, in.EnvironmentID)
+		return nil, group, core.MCPError(err)
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "clone_env_group",
+		Description: "Clone variables and secret files server-side into a new group in the selected workspace without copying service links or returning values.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in cloneEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
+		ownerID := in.OwnerID
+		if ownerID == "" {
+			ownerID = core.NamedWorkspace(ctx)
+		}
+		group, err := s.CloneEnvGroup(ctx, in.ID, CloneEnvGroupRequest{
+			Name: in.Name, OwnerID: ownerID, EnvironmentID: in.EnvironmentID,
+		})
+		return nil, group, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -144,7 +187,17 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Replace an environment group's whole env-var set (replace semantics); every linked service rolls.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvGroupVarsArgs) (*mcp.CallToolResult, okResult, error) {
 		_, err := s.SetEnvGroupVars(ctx, in.ID, in.EnvVars)
-		return nil, okResult{OK: err == nil}, err
+		return nil, okResult{OK: err == nil}, core.MCPError(err)
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "patch_env_group_environment",
+		Description: "Apply one revision-aware sparse patch to an environment group's variables and files, then optionally deploy or rebuild each linked service once.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in patchEnvGroupEnvironmentArgs) (*mcp.CallToolResult, EnvironmentPatchResult, error) {
+		result, err := s.PatchEnvironment(ctx, in.ID, EnvironmentPatch{
+			EnvVars: in.EnvVars, SecretFiles: in.SecretFiles, SaveMode: in.SaveMode, ExpectedRevision: in.ExpectedRevision,
+		})
+		return nil, result, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -152,15 +205,19 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Reveal one environment variable value in an environment group.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupVarArgs) (*mcp.CallToolResult, EnvVarView, error) {
 		v, err := s.GetEnvGroupVar(ctx, in.ID, in.Key)
-		return nil, v, err
+		return nil, v, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "set_env_group_var",
-		Description: "Add or update one environment variable without replacing the group's other variables; linked services roll.",
+		Description: "Add, update, or generate one environment variable without replacing the group's other variables; linked services roll.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvGroupVarArgs) (*mcp.CallToolResult, EnvVarView, error) {
-		v, err := s.SetEnvGroupVar(ctx, in.ID, in.Key, in.Value)
-		return nil, v, err
+		value := ""
+		if in.Value != nil {
+			value = *in.Value
+		}
+		v, err := s.SetEnvGroupVarInput(ctx, in.ID, EnvVarView{Key: in.Key, Value: value, ValueSet: in.Value != nil, GenerateValue: in.GenerateValue})
+		return nil, v, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -168,7 +225,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Remove one environment variable from an environment group; linked services roll.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupVarArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.DeleteEnvGroupVar(ctx, in.ID, in.Key)
-		return nil, okResult{OK: err == nil}, err
+		return nil, okResult{OK: err == nil}, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -176,7 +233,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Add or update one secret file in an environment group (mounted at /etc/secrets/<name> on linked services); linked services roll.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvGroupFileArgs) (*mcp.CallToolResult, SecretFileView, error) {
 		f, err := s.SetEnvGroupFile(ctx, in.ID, in.Name, in.Content)
-		return nil, f, err
+		return nil, f, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -184,7 +241,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Remove one secret file from an environment group; linked services roll.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupFileArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.DeleteEnvGroupFile(ctx, in.ID, in.Name)
-		return nil, okResult{OK: err == nil}, err
+		return nil, okResult{OK: err == nil}, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -192,7 +249,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Reveal one secret file's contents in an environment group.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupFileArgs) (*mcp.CallToolResult, SecretFileView, error) {
 		f, err := s.GetEnvGroupFile(ctx, in.ID, in.Name)
-		return nil, f, err
+		return nil, f, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -200,7 +257,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Link an environment group to a service: the service gains the group's env vars + secret files and rolls.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in linkEnvGroupArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.LinkService(ctx, in.ID, in.ServiceID)
-		return nil, okResult{OK: err == nil}, err
+		return nil, okResult{OK: err == nil}, core.MCPError(err)
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
@@ -208,6 +265,6 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Description: "Unlink an environment group from a service: the group's vars + files are removed from the service and it rolls.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in linkEnvGroupArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.UnlinkService(ctx, in.ID, in.ServiceID)
-		return nil, okResult{OK: err == nil}, err
+		return nil, okResult{OK: err == nil}, core.MCPError(err)
 	})
 }

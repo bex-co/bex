@@ -1,21 +1,26 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
   CreateEnvGroupDocument,
+  CloneEnvGroupDocument,
   DeleteEnvGroupDocument,
   DeleteEnvGroupSecretFileDocument,
   DeleteEnvGroupVarDocument,
   EnvGroupDocument,
   EnvGroupSecretFileContentDocument,
-  EnvGroupsDocument,
   EnvGroupVarValueDocument,
+  EnvGroupsDocument,
   LinkEnvGroupDocument,
+  MoveEnvGroupDocument,
+  PatchEnvGroupEnvironmentDocument,
   RenameEnvGroupDocument,
   SetEnvGroupSecretFileDocument,
   SetEnvGroupVarDocument,
   SetEnvGroupVarsDocument,
   UnlinkEnvGroupDocument,
+  type EnvGroupQuery,
+  type PatchEnvGroupEnvironmentMutationVariables,
 } from "@/graphql/definitions";
 import {
   RESOURCE_POLL_INTERVAL_MS,
@@ -23,26 +28,28 @@ import {
 } from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
-import type { EnvGroupQuery, EnvGroupsQuery } from "@/graphql/definitions";
 import type {
   CreateEnvGroupInput,
   EnvGroupView,
 } from "@/features/env-groups/types";
 import type { EnvVarKey, SecretFileName } from "@/features/services/types";
+import type { EnvironmentPatchInput } from "@/features/services/lib/environment-draft";
 
-type RawGroup = NonNullable<NonNullable<EnvGroupsQuery["envGroups"]>[number]>;
+type RawGroup = NonNullable<EnvGroupQuery["envGroup"]>;
 
 /** Maps bex-api's deeply nullable EnvGroup wire shape to the UI view. */
 export function mapEnvGroup(
-  raw: RawGroup | NonNullable<EnvGroupQuery["envGroup"]> | null | undefined,
+  raw: RawGroup | null | undefined,
 ): EnvGroupView | null {
   if (!raw?.id || !raw.name) return null;
   return {
     id: raw.id,
     name: raw.name,
     ownerId: raw.ownerId ?? null,
+    environmentId: raw.environmentId ?? null,
     createdAt: raw.createdAt ?? null,
     updatedAt: raw.updatedAt ?? null,
+    revision: raw.revision ?? null,
     serviceLinks: (raw.serviceLinks ?? []).filter(
       (serviceId): serviceId is string => serviceId != null,
     ),
@@ -56,7 +63,7 @@ export function mapEnvGroup(
 }
 
 function mapEnvGroups(
-  raw: EnvGroupsQuery["envGroups"] | undefined,
+  raw: Array<RawGroup | null> | null | undefined,
 ): EnvGroupView[] {
   return (raw ?? [])
     .map((group) => mapEnvGroup(group))
@@ -93,7 +100,10 @@ export function useEnvGroups(): UseEnvGroupsResult {
 
   return {
     groups: mapEnvGroups(data?.envGroups),
-    loading: !resolved || loading,
+    // cache-and-network reports `loading` again while refreshing a cached
+    // result. Keep rendering that result — especially the empty list after a
+    // delete — and reserve the page skeleton for the true first load.
+    loading: !resolved || (loading && data === undefined),
     error,
     refetch: refetchGroups,
   };
@@ -146,13 +156,20 @@ export interface UseEnvGroupMutationsResult {
   deleteGroup: (id: string) => Promise<boolean>;
   linkGroup: (id: string, serviceId: string) => Promise<boolean>;
   unlinkGroup: (id: string, serviceId: string) => Promise<boolean>;
+  moveGroup: (id: string, environmentId: string | null) => Promise<boolean>;
+  cloneGroup: (
+    id: string,
+    name: string,
+    ownerId: string,
+    environmentId: string | null,
+  ) => Promise<string | null>;
   busy: boolean;
 }
 
 /** Group lifecycle and service-link mutations shared by both dashboard surfaces. */
 export function useEnvGroupMutations(
   refetch?: Refetch,
-  options: { skipDeleteRefetch?: boolean; skipRenameRefetch?: boolean } = {},
+  options: { skipRenameRefetch?: boolean } = {},
 ): UseEnvGroupMutationsResult {
   const { t } = useTranslations();
   const { currentWorkspaceId } = useWorkspace();
@@ -161,6 +178,9 @@ export function useEnvGroupMutations(
   const [deleteEnvGroup] = useMutation(DeleteEnvGroupDocument);
   const [linkEnvGroup] = useMutation(LinkEnvGroupDocument);
   const [unlinkEnvGroup] = useMutation(UnlinkEnvGroupDocument);
+  const [moveEnvGroup] = useMutation(MoveEnvGroupDocument);
+  const [cloneEnvGroup] = useMutation(CloneEnvGroupDocument);
+  const client = useApolloClient();
   const [busy, setBusy] = useState(false);
 
   const createGroup = useCallback(
@@ -189,8 +209,10 @@ export function useEnvGroupMutations(
         await bestEffortRefetch(refetch);
         toast.success(t("envGroups.createSuccess", { name: input.name }));
         return id;
-      } catch {
-        toast.error(t("envGroups.createError", { name: input.name }));
+      } catch (error) {
+        toast.error(t("envGroups.createError", { name: input.name }), {
+          description: error instanceof Error ? error.message : undefined,
+        });
         return null;
       } finally {
         setBusy(false);
@@ -209,8 +231,10 @@ export function useEnvGroupMutations(
         }
         toast.success(t("envGroups.renameSuccess", { name }));
         return true;
-      } catch {
-        toast.error(t("envGroups.renameError"));
+      } catch (error) {
+        toast.error(t("envGroups.renameError"), {
+          description: error instanceof Error ? error.message : undefined,
+        });
         return false;
       } finally {
         setBusy(false);
@@ -224,9 +248,21 @@ export function useEnvGroupMutations(
       setBusy(true);
       try {
         await deleteEnvGroup({ variables: { id } });
-        if (!options.skipDeleteRefetch) {
-          await bestEffortRefetch(refetch);
-        }
+        client.cache.modify({
+          fields: {
+            envGroups(existing, { readField }) {
+              if (!Array.isArray(existing)) return existing;
+              return existing.filter(
+                (reference) =>
+                  readField("id", reference as { __ref: string }) !== id,
+              );
+            },
+          },
+        });
+        const cacheID = client.cache.identify({ __typename: "EnvGroup", id });
+        if (cacheID) client.cache.evict({ id: cacheID });
+        client.cache.gc();
+        await bestEffortRefetch(refetch);
         toast.success(t("envGroups.deleteSuccess"));
         return true;
       } catch {
@@ -236,7 +272,7 @@ export function useEnvGroupMutations(
         setBusy(false);
       }
     },
-    [deleteEnvGroup, options.skipDeleteRefetch, refetch, t],
+    [client, deleteEnvGroup, refetch, t],
   );
 
   const linkGroup = useCallback(
@@ -279,14 +315,135 @@ export function useEnvGroupMutations(
     [refetch, t, unlinkEnvGroup],
   );
 
+  const moveGroup = useCallback(
+    async (id: string, environmentId: string | null) => {
+      setBusy(true);
+      try {
+        await moveEnvGroup({
+          variables: { id, environmentId: environmentId ?? "" },
+        });
+        // Environment reads also carry envGroupIds. Evict every argument-keyed
+        // page so active watchers and the next Project visit cannot retain the
+        // old source/target memberships after the normalized group updates.
+        client.cache.evict({ id: "ROOT_QUERY", fieldName: "environments" });
+        client.cache.gc();
+        await bestEffortRefetch(refetch);
+        toast.success(t("envGroups.moveSuccess"));
+        return true;
+      } catch (error) {
+        toast.error(t("envGroups.moveError"), {
+          description: error instanceof Error ? error.message : undefined,
+        });
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [client, moveEnvGroup, refetch, t],
+  );
+
+  const cloneGroup = useCallback(
+    async (
+      id: string,
+      name: string,
+      ownerId: string,
+      environmentId: string | null,
+    ) => {
+      setBusy(true);
+      try {
+        const result = await cloneEnvGroup({
+          variables: { id, name, ownerId, environmentId },
+        });
+        const cloneID = result.data?.cloneEnvGroup?.id ?? null;
+        if (!cloneID) throw new Error("cloneEnvGroup returned no id");
+        // The mutation returns the new object but does not append it to an
+        // argument-keyed target list. Force that workspace's next list read to
+        // the network before switching/navigating there.
+        client.cache.evict({
+          id: "ROOT_QUERY",
+          fieldName: "envGroups",
+          args: { ownerId },
+        });
+        client.cache.gc();
+        if (ownerId === currentWorkspaceId) {
+          await bestEffortRefetch(refetch);
+        }
+        toast.success(t("envGroups.cloneSuccess", { name }));
+        return cloneID;
+      } catch (error) {
+        toast.error(t("envGroups.cloneError"), {
+          description: error instanceof Error ? error.message : undefined,
+        });
+        return null;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [client, cloneEnvGroup, currentWorkspaceId, refetch, t],
+  );
+
   return {
     createGroup,
     renameGroup,
     deleteGroup,
     linkGroup,
     unlinkGroup,
+    moveGroup,
+    cloneGroup,
     busy,
   };
+}
+
+export type EnvGroupSaveMode = "save_only" | "deploy" | "rebuild";
+
+export function useEnvGroupEnvironmentPatch(
+  groupId: string,
+  revision: string | null,
+  refetch: Refetch,
+) {
+  const [mutate, { loading }] = useMutation(PatchEnvGroupEnvironmentDocument);
+  const revisionRef = useRef(revision);
+  useEffect(() => {
+    revisionRef.current = revision;
+  }, [groupId, revision]);
+
+  const save = useCallback(
+    async (patch: EnvironmentPatchInput, saveMode: EnvGroupSaveMode) => {
+      const variables: PatchEnvGroupEnvironmentMutationVariables = {
+        id: groupId,
+        ...patch,
+        saveMode,
+        expectedRevision: revisionRef.current,
+      };
+      const result = await mutate({ variables });
+      const saved = result.data?.patchEnvGroupEnvironment;
+      if (!saved?.revision) {
+        throw new Error("environment group patch returned no revision");
+      }
+      revisionRef.current = saved.revision;
+      await bestEffortRefetch(refetch);
+      return {
+        ...saved,
+        affectedServiceIds: (saved.affectedServiceIds ?? []).filter(
+          (id): id is string => id != null,
+        ),
+        failedServiceIds: (saved.failedServiceIds ?? []).filter(
+          (id): id is string => id != null,
+        ),
+      };
+    },
+    [groupId, mutate, refetch],
+  );
+
+  const retryRollout = useCallback(
+    async (saveMode: Exclude<EnvGroupSaveMode, "save_only">) => {
+      const result = await save({ envVars: [], secretFiles: [] }, saveMode);
+      return result.failedServiceIds.length === 0;
+    },
+    [save],
+  );
+
+  return { save, retryRollout, saving: loading };
 }
 
 export function useRevealEnvGroupVar(groupId: string) {
@@ -296,7 +453,7 @@ export function useRevealEnvGroupVar(groupId: string) {
       const result = await client.query({
         query: EnvGroupVarValueDocument,
         variables: { id: groupId, key },
-        fetchPolicy: "network-only",
+        fetchPolicy: "no-cache",
         errorPolicy: "none",
       });
       return result.data?.envGroupVar?.value ?? "";
@@ -305,7 +462,11 @@ export function useRevealEnvGroupVar(groupId: string) {
   );
 }
 
-export function useEnvGroupVarMutations(groupId: string, refetch: Refetch) {
+export function useEnvGroupVarMutations(
+  groupId: string,
+  refetch: Refetch,
+  hasLinkedServices = false,
+) {
   const { t } = useTranslations();
   const [setEnvGroupVars] = useMutation(SetEnvGroupVarsDocument);
   const [setEnvGroupVar] = useMutation(SetEnvGroupVarDocument);
@@ -318,9 +479,11 @@ export function useEnvGroupVarMutations(groupId: string, refetch: Refetch) {
       try {
         await setEnvGroupVars({ variables: { id: groupId, envVars } });
         await bestEffortRefetch(refetch);
-        toast.success(t("envGroups.varsSaveSuccess"), {
-          description: t("envGroups.rolloutNote"),
-        });
+        if (hasLinkedServices) {
+          toast.success(t("envGroups.varsSaveSuccess"), {
+            description: t("envGroups.rolloutNote"),
+          });
+        } else toast.success(t("envGroups.varsSaveSuccess"));
         return true;
       } catch {
         toast.error(t("envGroups.varsSaveError"));
@@ -329,18 +492,27 @@ export function useEnvGroupVarMutations(groupId: string, refetch: Refetch) {
         setBusy(false);
       }
     },
-    [groupId, refetch, setEnvGroupVars, t],
+    [groupId, hasLinkedServices, refetch, setEnvGroupVars, t],
   );
 
   const setVar = useCallback(
-    async (key: string, value: string) => {
+    async (key: string, value: string, generateValue?: boolean) => {
       setBusy(true);
       try {
-        await setEnvGroupVar({ variables: { id: groupId, key, value } });
-        await bestEffortRefetch(refetch);
-        toast.success(t("envGroups.varSaveSuccess", { key }), {
-          description: t("envGroups.rolloutNote"),
+        await setEnvGroupVar({
+          variables: {
+            id: groupId,
+            key,
+            value: generateValue ? undefined : value,
+            generateValue: generateValue || undefined,
+          },
         });
+        await bestEffortRefetch(refetch);
+        if (hasLinkedServices) {
+          toast.success(t("envGroups.varSaveSuccess", { key }), {
+            description: t("envGroups.rolloutNote"),
+          });
+        } else toast.success(t("envGroups.varSaveSuccess", { key }));
         return true;
       } catch {
         toast.error(t("envGroups.varSaveError", { key }));
@@ -349,7 +521,7 @@ export function useEnvGroupVarMutations(groupId: string, refetch: Refetch) {
         setBusy(false);
       }
     },
-    [groupId, refetch, setEnvGroupVar, t],
+    [groupId, hasLinkedServices, refetch, setEnvGroupVar, t],
   );
 
   const deleteVar = useCallback(
@@ -358,9 +530,11 @@ export function useEnvGroupVarMutations(groupId: string, refetch: Refetch) {
       try {
         await deleteEnvGroupVar({ variables: { id: groupId, key } });
         await bestEffortRefetch(refetch);
-        toast.success(t("envGroups.varDeleteSuccess", { key }), {
-          description: t("envGroups.rolloutNote"),
-        });
+        if (hasLinkedServices) {
+          toast.success(t("envGroups.varDeleteSuccess", { key }), {
+            description: t("envGroups.rolloutNote"),
+          });
+        } else toast.success(t("envGroups.varDeleteSuccess", { key }));
         return true;
       } catch {
         toast.error(t("envGroups.varDeleteError", { key }));
@@ -369,7 +543,7 @@ export function useEnvGroupVarMutations(groupId: string, refetch: Refetch) {
         setBusy(false);
       }
     },
-    [deleteEnvGroupVar, groupId, refetch, t],
+    [deleteEnvGroupVar, groupId, hasLinkedServices, refetch, t],
   );
 
   return { setVars, setVar, deleteVar, busy };
@@ -382,7 +556,7 @@ export function useRevealEnvGroupSecretFile(groupId: string) {
       const result = await client.query({
         query: EnvGroupSecretFileContentDocument,
         variables: { id: groupId, name },
-        fetchPolicy: "network-only",
+        fetchPolicy: "no-cache",
         errorPolicy: "none",
       });
       return result.data?.envGroupSecretFile?.content ?? "";
@@ -394,6 +568,7 @@ export function useRevealEnvGroupSecretFile(groupId: string) {
 export function useEnvGroupSecretFileMutations(
   groupId: string,
   refetch: Refetch,
+  hasLinkedServices = false,
 ) {
   const { t } = useTranslations();
   const [setEnvGroupSecretFile] = useMutation(SetEnvGroupSecretFileDocument);
@@ -410,9 +585,11 @@ export function useEnvGroupSecretFileMutations(
           variables: { id: groupId, name, content },
         });
         await bestEffortRefetch(refetch);
-        toast.success(t("envGroups.fileSaveSuccess", { name }), {
-          description: t("envGroups.rolloutNote"),
-        });
+        if (hasLinkedServices) {
+          toast.success(t("envGroups.fileSaveSuccess", { name }), {
+            description: t("envGroups.rolloutNote"),
+          });
+        } else toast.success(t("envGroups.fileSaveSuccess", { name }));
         return true;
       } catch {
         toast.error(t("envGroups.fileSaveError", { name }));
@@ -421,7 +598,7 @@ export function useEnvGroupSecretFileMutations(
         setBusy(false);
       }
     },
-    [groupId, refetch, setEnvGroupSecretFile, t],
+    [groupId, hasLinkedServices, refetch, setEnvGroupSecretFile, t],
   );
 
   const deleteFile = useCallback(
@@ -430,9 +607,11 @@ export function useEnvGroupSecretFileMutations(
       try {
         await deleteEnvGroupSecretFile({ variables: { id: groupId, name } });
         await bestEffortRefetch(refetch);
-        toast.success(t("envGroups.fileDeleteSuccess", { name }), {
-          description: t("envGroups.rolloutNote"),
-        });
+        if (hasLinkedServices) {
+          toast.success(t("envGroups.fileDeleteSuccess", { name }), {
+            description: t("envGroups.rolloutNote"),
+          });
+        } else toast.success(t("envGroups.fileDeleteSuccess", { name }));
         return true;
       } catch {
         toast.error(t("envGroups.fileDeleteError", { name }));
@@ -441,7 +620,7 @@ export function useEnvGroupSecretFileMutations(
         setBusy(false);
       }
     },
-    [deleteEnvGroupSecretFile, groupId, refetch, t],
+    [deleteEnvGroupSecretFile, groupId, hasLinkedServices, refetch, t],
   );
 
   return { setFile, deleteFile, busy };

@@ -4,13 +4,24 @@
 # ownerId (w6/m24): the workspace to list/create in — the dashboard always
 # sends the switcher's selection so a multi-workspace caller manages the right
 # workspace's groups, not just whichever workspace they resolve to implicitly.
+query EnvGroupScopeIndex($ownerId: String!) {
+  projects(ownerId: $ownerId) {
+    ...ProjectFields
+  }
+  workspaceEnvironments(ownerId: $ownerId) {
+    ...EnvironmentFields
+  }
+}
+
 query EnvGroups($ownerId: String) {
   envGroups(ownerId: $ownerId) {
     id
     name
     ownerId
+    environmentId
     createdAt
     updatedAt
+    revision
     serviceLinks
     envVars {
       key
@@ -26,8 +37,10 @@ query EnvGroup($id: String!) {
     id
     name
     ownerId
+    environmentId
     createdAt
     updatedAt
+    revision
     serviceLinks
     envVars {
       key
@@ -78,16 +91,76 @@ mutation RenameEnvGroup($id: String!, $name: String!) {
   }
 }
 
+mutation MoveEnvGroup($id: String!, $environmentId: String!) {
+  moveEnvGroup(id: $id, environmentId: $environmentId) {
+    id
+    environmentId
+    updatedAt
+  }
+}
+
+mutation CloneEnvGroup(
+  $id: String!
+  $name: String!
+  $ownerId: String
+  $environmentId: String
+) {
+  cloneEnvGroup(
+    id: $id
+    name: $name
+    ownerId: $ownerId
+    environmentId: $environmentId
+  ) {
+    id
+    name
+    ownerId
+    environmentId
+  }
+}
+
 mutation DeleteEnvGroup($id: String!) {
   deleteEnvGroup(id: $id)
+}
+
+mutation PatchEnvGroupEnvironment(
+  $id: String!
+  $envVars: [EnvGroupVarPatchInput!]
+  $secretFiles: [EnvGroupSecretFilePatchInput!]
+  $saveMode: String!
+  $expectedRevision: String
+) {
+  patchEnvGroupEnvironment(
+    id: $id
+    envVars: $envVars
+    secretFiles: $secretFiles
+    saveMode: $saveMode
+    expectedRevision: $expectedRevision
+  ) {
+    envVarKeys
+    secretFileNames
+    revision
+    affectedServiceIds
+    failedServiceIds
+    rolledOut
+  }
 }
 
 mutation SetEnvGroupVars($id: String!, $envVars: [EnvGroupVarInput!]!) {
   setEnvGroupVars(id: $id, envVars: $envVars)
 }
 
-mutation SetEnvGroupVar($id: String!, $key: String!, $value: String) {
-  setEnvGroupVar(id: $id, key: $key, value: $value)
+mutation SetEnvGroupVar(
+  $id: String!
+  $key: String!
+  $value: String
+  $generateValue: Boolean
+) {
+  setEnvGroupVar(
+    id: $id
+    key: $key
+    value: $value
+    generateValue: $generateValue
+  )
 }
 
 mutation DeleteEnvGroupVar($id: String!, $key: String!) {

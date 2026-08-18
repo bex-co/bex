@@ -198,11 +198,11 @@ describe("ServiceEnvironmentEditor", () => {
     );
 
     expect(
-      await screen.findByText("Configuration saved; deploy didn't start"),
+      await screen.findByText("Configuration saved; rollout incomplete"),
     ).toBeInTheDocument();
     expect(save).toHaveBeenCalledTimes(1);
     expect(save.mock.calls[0][2]).toBe("save_only");
-    await user.click(screen.getByRole("button", { name: "Retry deploy" }));
+    await user.click(screen.getByRole("button", { name: "Retry rollout" }));
     await waitFor(() => expect(trigger).toHaveBeenCalledTimes(2));
     expect(save).toHaveBeenCalledTimes(1);
   });
