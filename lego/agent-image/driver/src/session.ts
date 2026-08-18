@@ -73,19 +73,44 @@ async function writeStatus(
   await rename(temporary, filename);
 }
 
-// markTurnFailed records a fatal failure that happened OUTSIDE runHeadlessTurn
-// (e.g. the setup-phase clone), so the fire-and-forget Completer reads a `failed`
-// status file instead of an absent one and finalizes the session. runHeadlessTurn
-// writes its own `failed` status on a turn error; overwriting it here is harmless.
+function cleanupFailure(original: unknown, cleanup: unknown): Error {
+  return new Error(
+    `${describeError(original)}; persisted credential cleanup failed: ${describeError(cleanup)}`,
+  );
+}
+
+async function writeFailedStatusAndForget(
+  config: AgentDriverConfig,
+  credentialManager: CredentialManager,
+  error: unknown,
+): Promise<void> {
+  try {
+    await writeStatus(config.statusPath, {
+      state: "failed",
+      error: credentialManager.redact(describeError(error)),
+    });
+  } finally {
+    credentialManager.forget();
+  }
+}
+
+// markTurnFailed handles a fatal failure that happened BEFORE runHeadlessTurn
+// owns the turn (for example the setup clone). It gets exactly one persisted
+// scrub verdict, records that verdict in the status file, and always drops the
+// in-memory credential. Turn failures use the same sequence below without
+// returning through main.ts for a second cleanup attempt.
 export async function markTurnFailed(
   config: AgentDriverConfig,
   credentialManager: CredentialManager,
   error: unknown,
 ): Promise<void> {
-  await writeStatus(config.statusPath, {
-    state: "failed",
-    error: credentialManager.redact(describeError(error)),
-  });
+  let terminalError = error;
+  try {
+    await credentialManager.scrubPersistedState();
+  } catch (cleanupError) {
+    terminalError = cleanupFailure(error, cleanupError);
+  }
+  await writeFailedStatusAndForget(config, credentialManager, terminalError);
 }
 
 async function logPart(
@@ -193,9 +218,34 @@ export async function runHeadlessTurn(
   await writeStatus(config.statusPath, { state: "running" });
 
   let provider: SessionProvider | undefined;
+  let providerStopped = false;
+  let scrubPromise: Promise<string[]> | undefined;
+  const stopProvider = async (): Promise<void> => {
+    if (providerStopped || !provider) return;
+    providerStopped = true;
+    let stopError: unknown;
+    try {
+      await provider.cancel();
+    } catch (error) {
+      stopError = error;
+    }
+    try {
+      await provider.cleanup();
+    } catch (error) {
+      if (stopError === undefined) stopError = error;
+    }
+    if (stopError !== undefined) throw stopError;
+  };
+  const scrubOnce = async (): Promise<string[]> => {
+    scrubPromise ??= credentialManager.scrubPersistedState().catch((error) => {
+      throw new Error(
+        `persisted credential cleanup failed: ${describeError(error)}`,
+      );
+    });
+    return scrubPromise;
+  };
   let promptResponse:
-    | Awaited<ReturnType<SessionProvider["prompt"]>>
-    | undefined;
+    Awaited<ReturnType<SessionProvider["prompt"]>> | undefined;
   const turnAbort = new AbortController();
   let rejectDeadline!: (error: Error) => void;
   const deadline = new Promise<never>((_, reject) => {
@@ -268,8 +318,7 @@ export async function runHeadlessTurn(
     // The agent must be dead before credential scrubbing, Git scanning/push, or
     // snapshot preparation. Otherwise same-sandbox code can keep rewriting
     // files/refs after inspection or re-persist a forgotten credential.
-    await provider!.cancel();
-    await provider!.cleanup();
+    await stopProvider();
     if (turnAbort.signal.aborted) throw turnAbort.signal.reason;
 
     // Scrub the model credential out of persisted state BEFORE delivery, so a
@@ -280,7 +329,7 @@ export async function runHeadlessTurn(
     // compressed git object). Evidence comes from the already-redacted session
     // log, so scrub order does not affect it. A delivery (push) failure — including
     // the fail-closed refusal — throws here and is recorded as a failed turn.
-    const scrubbed = await credentialManager.scrubPersistedState();
+    const scrubbed = await scrubOnce();
     const delivery: DeliveryResult | null = config.deliver
       ? await deliverBranch({
           ...config,
@@ -303,15 +352,32 @@ export async function runHeadlessTurn(
     return { ...status, usage: promptResponse?.usage ?? {} } as TurnResult;
   } catch (error) {
     if (closeHub) hub.close();
-    await writeStatus(config.statusPath, {
-      state: "failed",
-      error: credentialManager.redact(describeError(error)),
-    });
-    throw error;
+    let terminalError = error;
+    try {
+      await stopProvider();
+    } catch (cleanupError) {
+      terminalError = cleanupFailure(terminalError, cleanupError);
+    }
+    try {
+      await scrubOnce();
+    } catch (cleanupError) {
+      // A memoized scrub rejection is the original turn error when the success
+      // path first discovered it. Do not append the same verdict to itself.
+      if (cleanupError !== error) {
+        terminalError = cleanupFailure(terminalError, cleanupError);
+      }
+    }
+    await writeFailedStatusAndForget(config, credentialManager, terminalError);
+    throw terminalError;
   } finally {
     clearTimeout(turnTimer);
     options.abortSignal?.removeEventListener("abort", abortFromOutside);
-    provider?.cancel();
-    await provider?.cleanup();
+    // Idempotent safety net for errors thrown before the success/catch path
+    // could stop the ACP child. Never replace the persisted failure verdict.
+    try {
+      await stopProvider();
+    } catch {
+      // The catch path already recorded a bounded failure when one was visible.
+    }
   }
 }

@@ -38,6 +38,7 @@ import (
 type echoExecutor struct {
 	stdout, stderr string
 	code           int
+	err            error
 	gotTarget      apps.SSHInstanceTarget
 	gotCommand     []string
 }
@@ -51,7 +52,28 @@ func (e *echoExecutor) Execute(_ context.Context, target apps.SSHInstanceTarget,
 	if e.stderr != "" && stderr != nil {
 		_, _ = stderr.Write([]byte(e.stderr))
 	}
-	return e.code, nil
+	return e.code, e.err
+}
+
+func TestSandboxExecCodesTerminalTarget(t *testing.T) {
+	secret := []byte("exec-secret")
+	srv := httptest.NewServer(newSandboxExecGateway(&echoExecutor{err: sshgateway.ErrTargetTerminated}, secret).Handler())
+	defer srv.Close()
+	tok, _ := sandboxexec.Mint(secret, sandboxexec.Claims{
+		Subject: "id-a", SandboxID: "os-1", Namespace: "tea-a-sandbox",
+		Command: []string{"true"}, ExpiresAt: time.Now().Add(time.Minute).Unix(),
+	})
+	req, _ := http.NewRequest(http.MethodPost, srv.URL, nil)
+	req.Header.Set(sandboxexec.TicketHeader, tok)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(body), `"code":"`+sandboxexec.ErrorCodeTargetTerminated+`"`) {
+		t.Fatalf("terminal SSE = %s", body)
+	}
 }
 
 func newSandboxExecGateway(exec sshgateway.Executor, secret []byte) *Server {
@@ -92,7 +114,7 @@ func TestSandboxExecStreamsSSE(t *testing.T) {
 		t.Errorf("missing exit event in:\n%s", got)
 	}
 	// The gateway targeted the sandbox pod in the ticket's namespace.
-	if exec.gotTarget.PodName != "os-1-0" || exec.gotTarget.Namespace != "tea-a-sandbox" || exec.gotTarget.Container != "sandbox" {
+	if exec.gotTarget.PodName != "os-1-0" || exec.gotTarget.Namespace != "tea-a-sandbox" || exec.gotTarget.Container != sandboxexec.SandboxContainer {
 		t.Errorf("target = %+v", exec.gotTarget)
 	}
 }

@@ -420,6 +420,7 @@ func main() {
 		log.Printf("bex-api: environment-group name-claim audit mode=%s scanned=%d missing=%d created=%d existing=%d conflicts=%d duplicates=%v",
 			mode, report.Scanned, report.Missing, report.Created, report.Existing, report.Conflicts, report.Duplicates)
 	}
+	srv.AgentSessionCompleter.Metrics = agentsessions.NewCompletionMetrics(metricRegistry)
 	// codex round-8 #9: the signed git webhook durably claims each processed
 	// delivery body so a captured (body, signature) pair cannot be replayed into
 	// repeated deploys. A configured webhook without this durable store is

@@ -18,10 +18,14 @@ package sshgateway
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -30,6 +34,40 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 )
+
+// ErrTargetTerminated is the stable gateway-internal signal that the exact Pod
+// or workload container bound into an exec ticket is already terminal. The SSE
+// transport maps it to a code; bex-api never has direct Pod access.
+var ErrTargetTerminated = errors.New("sandbox target terminated")
+
+// TargetTerminated reports whether the exact Pod/container can no longer serve
+// exec or attach traffic. Both transports use this predicate so they project
+// the same Kubernetes terminal states.
+func TargetTerminated(pod *corev1.Pod, container string) bool {
+	if pod == nil || pod.DeletionTimestamp != nil || pod.Status.Phase == corev1.PodFailed || pod.Status.Phase == corev1.PodSucceeded {
+		return true
+	}
+	for _, status := range pod.Status.ContainerStatuses {
+		if status.Name == container && status.State.Terminated != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func (e *KubeExecutor) checkTarget(ctx context.Context, target apps.SSHInstanceTarget) error {
+	pod, err := e.Client.CoreV1().Pods(target.Namespace).Get(ctx, target.PodName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return fmt.Errorf("%w: pod no longer exists", ErrTargetTerminated)
+	}
+	if err != nil {
+		return err
+	}
+	if TargetTerminated(pod, target.Container) {
+		return fmt.Errorf("%w: pod or container is terminal", ErrTargetTerminated)
+	}
+	return nil
+}
 
 // Executor is the single privileged pods/exec seam shared by every transport
 // (nativessh, webshell, sandboxsse). KubeExecutor is the production
@@ -62,6 +100,12 @@ func (e *KubeExecutor) Execute(ctx context.Context, target apps.SSHInstanceTarge
 	}
 	if exitErr, ok := err.(kubeexec.ExitError); ok {
 		return exitErr.ExitStatus(), nil
+	}
+	// Classify a failed exec against fresh Pod state. A dead target must converge
+	// as terminal instead of becoming a generic retrying "container not found"
+	// error forever; healthy execs avoid an extra Kubernetes GET.
+	if targetErr := e.checkTarget(ctx, target); errors.Is(targetErr, ErrTargetTerminated) {
+		return 126, targetErr
 	}
 	return 126, err
 }

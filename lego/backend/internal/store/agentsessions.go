@@ -715,7 +715,10 @@ func (s *PGStore) RecordAgentSessionDispatch(ctx context.Context, id, sandboxID,
 // FinalizeAgentSession records a terminal turn outcome. On success it stores the
 // pushed head SHA, the opened draft PR, and the bounded evidence extract; on
 // failure it stores a named reason. Evidence is left untouched when nil so a
-// failure does not erase a prior successful turn's evidence.
+// failure does not erase a prior successful turn's evidence. The phase guard is
+// the cross-replica CAS: two Completers may observe the same running row, but
+// only one can own its terminal transition. `hibernating` is admitted solely so
+// the snapshot reaper can unclaim its own transient phase.
 func (s *PGStore) FinalizeAgentSession(ctx context.Context, id, phase, headSHA, prURL string, prNumber int, evidence json.RawMessage, failureReason string) (AgentSession, error) {
 	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
 		UPDATE agent_sessions
@@ -725,7 +728,7 @@ func (s *PGStore) FinalizeAgentSession(ctx context.Context, id, phase, headSHA, 
 		    pr_number = CASE WHEN $6 <> 0 THEN $6 ELSE pr_number END,
 		    evidence = CASE WHEN $7::jsonb IS NOT NULL THEN $7::jsonb ELSE evidence END,
 		    failure_reason=$8, updated_at=now()
-		WHERE id=$1
+		WHERE id=$1 AND phase IN ('creating','running','resuming','redispatching','hibernating')
 		RETURNING `+agentSessionColumns,
 		id, phase, phase, headSHA, prURL, prNumber, nullableJSON(evidence), failureReason))
 	if err != nil {

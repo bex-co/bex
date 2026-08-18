@@ -1,0 +1,198 @@
+# Carried patch: project terminal sandbox Pods into BatchSandbox status.
+#
+# Upstream: https://github.com/alibaba/OpenSandbox
+# Base commit: e95681e791b33b3893033940cbeaa5ab192bf21b (main, 2026-08-02)
+# Why: upstream failure aggregation recognizes only a small set of Waiting
+# reasons. A sandbox container that exits non-zero leaves its Pod Failed while
+# BatchSandbox remains Pending forever, so the server and bex control plane keep
+# trying pods/exec against a nonexistent container. This patch treats failed,
+# succeeded, and non-zero-terminated long-lived sandbox Pods as terminal while
+# preserving pause/resume-owned phases. It records only bounded Kubernetes
+# reason/exit metadata, never the terminated process message/output.
+# Tracking: .pm/w5/m72/t005.
+#
+# git apply runs from the upstream repository root.
+diff --git a/kubernetes/internal/controller/batchsandbox_pause_resume_test.go b/kubernetes/internal/controller/batchsandbox_pause_resume_test.go
+index 6e5f728d..1931a7a0 100644
+--- a/kubernetes/internal/controller/batchsandbox_pause_resume_test.go
++++ b/kubernetes/internal/controller/batchsandbox_pause_resume_test.go
+@@ -1804,7 +1804,7 @@ func TestBuildRuntimeView_AggregatesPodFailuresInSteadyState(t *testing.T) {
+ 	require.NotNil(t, podFailed)
+ 	assert.Equal(t, sandboxv1alpha1.ConditionTrue, podFailed.Status)
+ 	assert.Equal(t, "ErrImagePull", podFailed.Reason)
+-	assert.Equal(t, "3/4 observed pods failed; primary reason=ErrImagePull; sample pod=err-image-0", podFailed.Message)
++	assert.Equal(t, "3/4 observed pods failed; primary reason=ErrImagePull; sample pod=err-image-0; detail=Pod err-image-0: ErrImagePull", podFailed.Message)
+ }
+ 
+ func TestBuildRuntimeView_AggregatesResumeFailures(t *testing.T) {
+@@ -1870,9 +1870,59 @@ func TestBuildRuntimeView_AggregatesResumeFailures(t *testing.T) {
+ 	require.NotNil(t, podFailed)
+ 	assert.Equal(t, sandboxv1alpha1.ConditionTrue, resumeFailed.Status)
+ 	assert.Equal(t, "ImagePullBackOff", resumeFailed.Reason)
+-	assert.Equal(t, "2/3 observed pods failed during resume; primary reason=ImagePullBackOff; sample pod=imgpull-0", resumeFailed.Message)
++	assert.Equal(t, "2/3 observed pods failed during resume; primary reason=ImagePullBackOff; sample pod=imgpull-0; detail=Pod imgpull-0: ImagePullBackOff", resumeFailed.Message)
+ 	assert.Equal(t, "ImagePullBackOff", podFailed.Reason)
+-	assert.Equal(t, "2/3 observed pods failed; primary reason=ImagePullBackOff; sample pod=imgpull-0", podFailed.Message)
++	assert.Equal(t, "2/3 observed pods failed; primary reason=ImagePullBackOff; sample pod=imgpull-0; detail=Pod imgpull-0: ImagePullBackOff", podFailed.Message)
++}
++
++func TestBuildRuntimeView_ProjectsTerminalPodFailure(t *testing.T) {
++	bs := &sandboxv1alpha1.BatchSandbox{
++		ObjectMeta: metav1.ObjectMeta{Name: "agent", Namespace: "default", Generation: 7},
++		Status:     sandboxv1alpha1.BatchSandboxStatus{Phase: sandboxv1alpha1.BatchSandboxPhasePending},
++	}
++	pod := &corev1.Pod{
++		ObjectMeta: metav1.ObjectMeta{Name: "agent-0", Namespace: "default"},
++		Status: corev1.PodStatus{
++			Phase: corev1.PodFailed,
++			ContainerStatuses: []corev1.ContainerStatus{{
++				Name: "sandbox",
++				State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
++					ExitCode: 137, Signal: 9, Reason: "Error",
++				}},
++			}},
++		},
++	}
++
++	view := buildRuntimeView(bs, []*corev1.Pod{pod})
++	assert.Equal(t, sandboxv1alpha1.BatchSandboxPhaseFailed, view.status.Phase)
++	assert.Equal(t, int64(7), view.status.ObservedGeneration)
++	assert.Equal(t, int32(1), view.status.TaskFailed)
++	assert.Contains(t, view.status.TaskLastErrorMessage, "primary reason=Error")
++	var podFailed *sandboxv1alpha1.BatchSandboxCondition
++	for i := range view.status.Conditions {
++		if view.status.Conditions[i].Type == sandboxv1alpha1.BatchSandboxConditionPodFailed {
++			podFailed = &view.status.Conditions[i]
++		}
++	}
++	require.NotNil(t, podFailed)
++	assert.Equal(t, sandboxv1alpha1.ConditionTrue, podFailed.Status)
++	assert.Equal(t, "Error", podFailed.Reason)
++	assert.Contains(t, podFailed.Message, "1/1 observed pods failed")
++	reason, message, failed := getPodFailureReasonAndMessage(pod)
++	assert.True(t, failed)
++	assert.Equal(t, "Error", reason)
++	assert.Contains(t, message, "exitCode=137 signal=9")
++}
++
++func TestBuildRuntimeView_CleanPodExitIsTerminalButPausedPhaseIsStable(t *testing.T) {
++	pod := &corev1.Pod{
++		ObjectMeta: metav1.ObjectMeta{Name: "agent-0", Namespace: "default"},
++		Status:     corev1.PodStatus{Phase: corev1.PodSucceeded},
++	}
++	pending := &sandboxv1alpha1.BatchSandbox{Status: sandboxv1alpha1.BatchSandboxStatus{Phase: sandboxv1alpha1.BatchSandboxPhasePending}}
++	assert.Equal(t, sandboxv1alpha1.BatchSandboxPhaseFailed, buildRuntimeView(pending, []*corev1.Pod{pod}).status.Phase)
++	paused := &sandboxv1alpha1.BatchSandbox{Status: sandboxv1alpha1.BatchSandboxStatus{Phase: sandboxv1alpha1.BatchSandboxPhasePaused}}
++	assert.Equal(t, sandboxv1alpha1.BatchSandboxPhasePaused, buildRuntimeView(paused, []*corev1.Pod{pod}).status.Phase)
+ }
+ 
+ func TestBuildRuntimeView_PreservesConditionTransitionTimeWhenUnchanged(t *testing.T) {
+diff --git a/kubernetes/internal/controller/batchsandbox_status.go b/kubernetes/internal/controller/batchsandbox_status.go
+index 0427df93..e78aca6c 100644
+--- a/kubernetes/internal/controller/batchsandbox_status.go
++++ b/kubernetes/internal/controller/batchsandbox_status.go
+@@ -109,14 +109,33 @@ func applyBatchSandboxPhaseConditions(status *sandboxv1alpha1.BatchSandboxStatus
+ 
+ func getPodFailureReasonAndMessage(pod *corev1.Pod) (string, string, bool) {
+ 	for _, cs := range pod.Status.ContainerStatuses {
+-		if cs.State.Waiting == nil {
+-			continue
++		if cs.State.Waiting != nil {
++			switch cs.State.Waiting.Reason {
++			case "CrashLoopBackOff", "ImagePullBackOff", "ErrImagePull", "CreateContainerConfigError":
++				return cs.State.Waiting.Reason, fmt.Sprintf("Pod %s: %s", pod.Name, cs.State.Waiting.Reason), true
++			}
+ 		}
+-		switch cs.State.Waiting.Reason {
+-		case "CrashLoopBackOff", "ImagePullBackOff", "ErrImagePull", "CreateContainerConfigError":
+-			return cs.State.Waiting.Reason, fmt.Sprintf("Pod %s: %s - %s", pod.Name, cs.State.Waiting.Reason, cs.State.Waiting.Message), true
++		if terminated := cs.State.Terminated; terminated != nil && terminated.ExitCode != 0 {
++			reason := terminated.Reason
++			if reason == "" {
++				if terminated.Signal != 0 {
++					reason = "ContainerSignaled"
++				} else {
++					reason = "ContainerExitNonZero"
++				}
++			}
++			return reason, fmt.Sprintf("Pod %s container %s terminated: exitCode=%d signal=%d", pod.Name, cs.Name, terminated.ExitCode, terminated.Signal), true
+ 		}
+ 	}
++	// A sandbox is a long-lived runtime, so even a clean workload exit makes it
++	// unavailable. Deliberate pause/termination flows are protected by
++	// buildRuntimeView's lifecycle-owned phase switch or by deleting the CR.
++	switch pod.Status.Phase {
++	case corev1.PodFailed:
++		return "PodFailed", fmt.Sprintf("Pod %s reached Failed phase", pod.Name), true
++	case corev1.PodSucceeded:
++		return "PodCompleted", fmt.Sprintf("Pod %s reached Succeeded phase", pod.Name), true
++	}
+ 	return "", "", false
+ }
+ 
+@@ -125,16 +144,18 @@ type podFailureSummary struct {
+ 	failed        int
+ 	primaryReason string
+ 	samplePod     string
++	sampleMessage string
+ }
+ 
+ func summarizePodFailures(pods []*corev1.Pod) (podFailureSummary, bool) {
+ 	summary := podFailureSummary{observed: len(pods)}
+ 	reasonCounts := make(map[string]int)
+ 	firstPodByReason := make(map[string]string)
++	firstMessageByReason := make(map[string]string)
+ 	primaryCount := 0
+ 
+ 	for _, pod := range pods {
+-		reason, _, failed := getPodFailureReasonAndMessage(pod)
++		reason, message, failed := getPodFailureReasonAndMessage(pod)
+ 		if !failed {
+ 			continue
+ 		}
+@@ -142,12 +163,14 @@ func summarizePodFailures(pods []*corev1.Pod) (podFailureSummary, bool) {
+ 		summary.failed++
+ 		if _, exists := firstPodByReason[reason]; !exists {
+ 			firstPodByReason[reason] = pod.Name
++			firstMessageByReason[reason] = message
+ 		}
+ 		reasonCounts[reason]++
+ 		if reasonCounts[reason] > primaryCount {
+ 			primaryCount = reasonCounts[reason]
+ 			summary.primaryReason = reason
+ 			summary.samplePod = firstPodByReason[reason]
++			summary.sampleMessage = firstMessageByReason[reason]
+ 		}
+ 	}
+ 
+@@ -159,7 +182,7 @@ func (s podFailureSummary) message(duringResume bool) string {
+ 	if duringResume {
+ 		scope = "observed pods failed during resume"
+ 	}
+-	return fmt.Sprintf("%d/%d %s; primary reason=%s; sample pod=%s", s.failed, s.observed, scope, s.primaryReason, s.samplePod)
++	return fmt.Sprintf("%d/%d %s; primary reason=%s; sample pod=%s; detail=%s", s.failed, s.observed, scope, s.primaryReason, s.samplePod, s.sampleMessage)
+ }
+ 
+ func buildRuntimeView(batchSbx *sandboxv1alpha1.BatchSandbox, pods []*corev1.Pod) runtimeView {
+@@ -201,6 +224,10 @@ func buildRuntimeView(batchSbx *sandboxv1alpha1.BatchSandbox, pods []*corev1.Pod
+ 
+ func applyResumingRuntimePhase(status *sandboxv1alpha1.BatchSandboxStatus, pods []*corev1.Pod) {
+ 	if summary, hasFailures := summarizePodFailures(pods); hasFailures {
++		if int32(summary.failed) > status.TaskFailed {
++			status.TaskFailed = int32(summary.failed)
++		}
++		status.TaskLastErrorMessage = summary.message(true)
+ 		setConditionInStatus(status, sandboxv1alpha1.BatchSandboxConditionResumeFailed, sandboxv1alpha1.ConditionTrue, summary.primaryReason, summary.message(true))
+ 		setConditionInStatus(status, sandboxv1alpha1.BatchSandboxConditionPodFailed, sandboxv1alpha1.ConditionTrue, summary.primaryReason, summary.message(false))
+ 		status.Phase = sandboxv1alpha1.BatchSandboxPhaseFailed
+@@ -214,6 +241,10 @@ func applyResumingRuntimePhase(status *sandboxv1alpha1.BatchSandboxStatus, pods
+ 
+ func applySteadyRuntimePhase(batchSbx *sandboxv1alpha1.BatchSandbox, status *sandboxv1alpha1.BatchSandboxStatus, pods []*corev1.Pod) {
+ 	if summary, hasFailures := summarizePodFailures(pods); hasFailures {
++		if int32(summary.failed) > status.TaskFailed {
++			status.TaskFailed = int32(summary.failed)
++		}
++		status.TaskLastErrorMessage = summary.message(false)
+ 		if batchSbx.Status.Phase != sandboxv1alpha1.BatchSandboxPhaseFailed {
+ 			setConditionInStatus(status, sandboxv1alpha1.BatchSandboxConditionPodFailed, sandboxv1alpha1.ConditionTrue, summary.primaryReason, summary.message(false))
+ 			status.Phase = sandboxv1alpha1.BatchSandboxPhaseFailed

@@ -40,7 +40,9 @@ set -euo pipefail
 #   BEX_VERIFY_OWNER_ID=<workspace id to bill/scope to>
 #   BEX_GITHUB_TOKEN=<token to independently confirm the PR on GitHub>
 #   BEX_VERIFY_TIMEOUT=1800          # seconds to wait for a turn (default 30m)
+#   BEX_VERIFY_CRASH_TIMEOUT=180      # terminal convergence bound for crash leg
 #   BEX_VERIFY_EGRESS_PROFILE=<label recorded in the log for the m40 policy in effect>
+#   BEX_VERIFY_KUBE_CONTEXT=<context> # additionally assert prod logs/reclamation
 
 cd "$(dirname "$0")/.."
 
@@ -63,10 +65,16 @@ model_endpoint="${BEX_VERIFY_MODEL_ENDPOINT:-}"
 owner_id="${BEX_VERIFY_OWNER_ID:-}"
 timeout_s="${BEX_VERIFY_TIMEOUT:-1800}"
 egress_profile="${BEX_VERIFY_EGRESS_PROFILE:-unspecified}"
+crash_timeout_s="${BEX_VERIFY_CRASH_TIMEOUT:-180}"
+kube_context="${BEX_VERIFY_KUBE_CONTEXT:-}"
+verify_started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 stamp="$(date -u +%Y%m%d%H%M%S)-$$"
 branch="bex-agent/verify-${stamp}"
 
 created_sessions=()
+stream_output="$(mktemp)"
+api_log_file="$(mktemp)"
+gateway_log_file="$(mktemp)"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 ok()   { echo "PASS: $*"; }
@@ -77,6 +85,7 @@ cleanup() {
     curl -sS -X POST -H "Authorization: Bearer ${BEX_API_TOKEN}" \
       "${api_url}/v1/agent-sessions/${sid}/cancel" >/dev/null 2>&1 || true
   done
+  rm -f "$stream_output" "$api_log_file" "$gateway_log_file"
 }
 trap cleanup EXIT
 
@@ -188,25 +197,31 @@ agent="$crash_agent"
 crash_sid="$(jq -r '.id // empty' <<<"$crash_resp")"
 if [ -n "$crash_sid" ]; then
   created_sessions+=("$crash_sid")
-  # Bounded soft poll: a clean failure reaches `failed` fast. A driver whose ACP
-  # adapter dies from an UNCAUGHT child-process spawn error (not a caught throw)
-  # exits the pod's container without writing status:failed; OpenSandbox keeps
-  # reporting the sandbox as pending, so the Completer cannot read a terminal
-  # status and the session lingers in `running`. That crash-path stranding is a
-  # known follow-up (driver: wire the ACP provider's child error/exit to reject
-  # the turn; and/or a gateway pod-state signal to the Completer) — orthogonal to
-  # the conversation API under test here. Flag it loudly, don't hard-fail.
-  crash_deadline=$(( $(date +%s) + 120 )); crash_phase=running
+  crash_view="$(api GET "/v1/agent-sessions/${crash_sid}")"
+  crash_sandbox="$(jq -r '.sandboxId // empty' <<<"$crash_view")"
+  # This is a hard regression leg: ACP/setup failure, child-Pod failure, and a
+  # stale BatchSandbox must all converge to one failed row within the bound.
+  crash_deadline=$(( $(date +%s) + crash_timeout_s )); crash_phase=running
   while :; do
-    crash_phase="$(jq -r '.phase // "?"' <<<"$(api GET "/v1/agent-sessions/${crash_sid}")")"
+    crash_view="$(api GET "/v1/agent-sessions/${crash_sid}")"
+    crash_phase="$(jq -r '.phase // "?"' <<<"$crash_view")"
+    if [ -z "$crash_sandbox" ]; then
+      crash_sandbox="$(jq -r '.sandboxId // empty' <<<"$crash_view")"
+    fi
     case "$crash_phase" in failed|completed|canceled) break ;; esac
     [ "$(date +%s)" -lt "$crash_deadline" ] || break
     sleep 10
   done
   if [ "$crash_phase" = failed ]; then
-    ok "crashing agent surfaced as failed"
+    [ -n "$(jq -r '.failureReason // empty' <<<"$crash_view")" ] \
+      || fail "crashing agent failed without a readable failureReason"
+    if [ -n "$kube_context" ]; then
+      [ -z "$(jq -r '.sandboxId // empty' <<<"$crash_view")" ] \
+        || fail "crashing agent retained sandboxId after terminal convergence"
+    fi
+    ok "crashing agent surfaced as failed and converged within ${crash_timeout_s}s"
   else
-    echo "WARN: crashing agent did not reach 'failed' within 120s (phase=${crash_phase}) — KNOWN crash-path stranding (uncaught ACP spawn error; see .pm follow-up). Conversation-API legs below are unaffected." >&2
+    fail "crashing agent did not reach failed within ${crash_timeout_s}s (phase=${crash_phase})"
   fi
 else
   # Some deployments reject an unknown adapter at create; that is also a clean,
@@ -237,9 +252,9 @@ mint_attach() {
 stream_get() {
   local ticket="$1" url="$2" max="${3:-60}"
   curl -sS -iN --max-time "$max" -H "${attach_hdr}: ${ticket}" "$url" \
-    -o /tmp/agent-stream-$$.out -w '%{http_code}' 2>/dev/null || true
-  cat /tmp/agent-stream-$$.out 2>/dev/null || true
-  rm -f /tmp/agent-stream-$$.out
+    -o "$stream_output" -w '%{http_code}' 2>/dev/null || true
+  cat "$stream_output" 2>/dev/null || true
+  : > "$stream_output"
 }
 
 echo "-- 5. conversation API (attach / replay / turn / reattach) --"
@@ -310,5 +325,30 @@ replay="$(stream_get "$rt2" "$live_stream" 60)"
 grep -q '^data: {' <<<"$replay" || fail "reattach replayed no teed parts (transcript empty?)"
 grep -q 'data: \[DONE\]' <<<"$replay" || fail "reattach replay did not terminate with [DONE]"
 ok "reattach replayed the teed transcript then [DONE]"
+
+# 5d. Optional cluster-backed assertions. Public API tests prove the installed
+# role can execute AgentSessionTurns; these log checks additionally prove the
+# forced crash did not fall back to repeated dead-container exec and that no
+# replay permission denial occurred during this verifier window.
+if [ -n "$kube_context" ]; then
+  command -v kubectl >/dev/null || fail "BEX_VERIFY_KUBE_CONTEXT requires kubectl"
+  kubectl --context "$kube_context" -n bex-system logs \
+    -l app.kubernetes.io/name=bex-api --all-containers=true --prefix --since-time="$verify_started" \
+    >"$api_log_file" 2>&1 || fail "could not read bex-api logs for verification"
+  kubectl --context "$kube_context" -n bex-system logs \
+    -l app.kubernetes.io/name=bex-ssh-gateway --all-containers=true --prefix --since-time="$verify_started" \
+    >"$gateway_log_file" 2>&1 || fail "could not read gateway logs for verification"
+  ! grep -Fq 'SQLSTATE 42501' "$gateway_log_file" \
+    || fail "gateway emitted SQLSTATE 42501 during authenticated replay"
+  if grep -F "$crash_sid" "$api_log_file" | grep -Fq 'read status failed'; then
+    fail "Completer retried the forced-crash status read after terminal signaling"
+  fi
+  if [ -n "${crash_sandbox:-}" ]; then
+    if grep -F "$crash_sandbox" "$gateway_log_file" | grep -Fq 'container not found'; then
+      fail "gateway polled a nonexistent crash sandbox container"
+    fi
+  fi
+  ok "cluster logs show no replay denial or dead-container retry storm"
+fi
 
 echo "== ALL AGENT-SESSION CHECKS PASSED (egress-profile=${egress_profile}) =="

@@ -57,6 +57,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/drivergrant"
+	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -160,7 +161,7 @@ func (r KubePodIPResolver) PodIP(ctx context.Context, namespace, podName string)
 	if err != nil {
 		return "", err
 	}
-	if pod.DeletionTimestamp != nil || pod.Status.PodIP == "" {
+	if pod.Status.PodIP == "" || sshgateway.TargetTerminated(pod, sandboxexec.SandboxContainer) {
 		return "", fmt.Errorf("pod %s/%s has no live IP", namespace, podName)
 	}
 	return pod.Status.PodIP, nil

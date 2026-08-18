@@ -1443,7 +1443,7 @@ controller_image="$(yq -N \
     .spec.template.spec.containers[0].image' - <<<"$opensandbox_controller_render" | tr -d '\n')"
 # The deploy workflow rebuilds and pins this patched controller by digest on
 # every rollout, so validate the trusted repository/tag and immutable shape.
-if ! grep -Eq '^ghcr\.io/bex-co/opensandbox-controller:v0\.2\.0-bex-snapjobns@sha256:[0-9a-f]{64}$' \
+if ! grep -Eq '^ghcr\.io/bex-co/opensandbox-controller:v0\.2\.0-bex-snapjobns-terminalpod@sha256:[0-9a-f]{64}$' \
     <<<"$controller_image"; then
   echo "FAIL: OpenSandbox patched controller image is '$controller_image'" >&2
   fail=1
@@ -1657,13 +1657,13 @@ for required in \
   'refusing stale digest write-back' \
   '[[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]' \
   'grep -qF "digest: ${OPENSANDBOX_DIGEST}"' \
-  'grep -qF "tag: v0.2.0-bex-snapjobns@${CONTROLLER_DIGEST}"' \
+  'grep -qF "tag: ${OPENSANDBOX_CONTROLLER_TAG}@${CONTROLLER_DIGEST}"' \
   'deploy/opensandbox/kustomization.yaml' \
   'git push origin HEAD:main' \
   'bash scripts/opensandbox-server-secret.sh' \
   'wait for OpenSandbox control plane' \
   'BEX_EXPECTED_OPENSANDBOX_IMAGE' \
-  'OPENSANDBOX_CONTROLLER_TAG: v0.2.0-bex-snapjobns' \
+  'OPENSANDBOX_CONTROLLER_TAG: v0.2.0-bex-snapjobns-terminalpod' \
   'BEX_EXPECTED_OPENSANDBOX_CONTROLLER_IMAGE: ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ env.OPENSANDBOX_CONTROLLER_TAG }}@${{ steps.build_opensandbox_controller.outputs.digest }}' \
   'rollout restart' \
   'for deployment in opensandbox-controller-manager opensandbox-server' \

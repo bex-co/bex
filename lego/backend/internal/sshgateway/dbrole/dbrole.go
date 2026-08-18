@@ -21,8 +21,13 @@ limitations under the License.
 package dbrole
 
 import (
+	"context"
 	_ "embed"
+	"fmt"
+	"regexp"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // roleGrantsSQL is the least-privilege grant surface for the gateway's
@@ -40,4 +45,61 @@ var roleGrantsSQL string
 // the CI test consume) and nowhere else.
 func RoleGrantsSQL(role string) string {
 	return strings.ReplaceAll(roleGrantsSQL, "__ROLE__", role)
+}
+
+type requiredPrivilege struct {
+	relation  string
+	privilege string
+	schema    bool
+}
+
+var grantPattern = regexp.MustCompile(`(?m)^GRANT ([A-Z]+(?:, [A-Z]+)*) ON (?:(SCHEMA) )?([a-z_]+) TO __ROLE__;$`)
+
+// requiredPrivileges derives the startup checks from the embedded DDL. The DDL
+// remains the single source: adding or removing a grant changes provisioning,
+// deploy reconciliation, scoped-role integration, and runtime preflight
+// together instead of requiring a second hand-maintained table list.
+func requiredPrivileges() ([]requiredPrivilege, error) {
+	matches := grantPattern.FindAllStringSubmatch(roleGrantsSQL, -1)
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("gateway grant DDL contains no recognized grants")
+	}
+	out := make([]requiredPrivilege, 0, len(matches)*2)
+	for _, match := range matches {
+		for _, privilege := range strings.Split(match[1], ", ") {
+			relation := match[3]
+			schema := match[2] == "SCHEMA"
+			if !schema {
+				relation = "public." + relation
+			}
+			out = append(out, requiredPrivilege{relation: relation, privilege: privilege, schema: schema})
+		}
+	}
+	return out, nil
+}
+
+// CheckRequiredPrivileges is the gateway's startup preflight. It checks the
+// installed role, not merely dbrole.sql in source, so a migration whose grant
+// reconciliation was skipped fails visibly before any user's SSH/attach request
+// reaches a latent SQLSTATE 42501. Error text contains only relation/privilege
+// names; it never includes the connection URI or tenant data.
+func CheckRequiredPrivileges(ctx context.Context, pool *pgxpool.Pool) error {
+	required, err := requiredPrivileges()
+	if err != nil {
+		return err
+	}
+	var allowed bool
+	for _, privilege := range required {
+		query := `SELECT has_table_privilege(current_user, $1, $2)`
+		if privilege.schema {
+			query = `SELECT has_schema_privilege(current_user, $1, $2)`
+		}
+		if err := pool.QueryRow(ctx, query, privilege.relation, privilege.privilege).Scan(&allowed); err != nil {
+			return fmt.Errorf("check required gateway privilege %s:%s: %w", privilege.relation, privilege.privilege, err)
+		}
+		if !allowed {
+			return fmt.Errorf("required gateway privilege missing: %s:%s", privilege.relation, privilege.privilege)
+		}
+	}
+	return nil
 }

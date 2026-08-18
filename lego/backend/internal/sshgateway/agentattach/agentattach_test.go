@@ -34,11 +34,26 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
+
+func TestKubePodIPResolverRejectsTerminalPodAndContainer(t *testing.T) {
+	for _, pod := range []*corev1.Pod{
+		{ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "ns"}, Status: corev1.PodStatus{Phase: corev1.PodFailed, PodIP: "10.0.0.1"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "pod", Namespace: "ns"}, Status: corev1.PodStatus{Phase: corev1.PodRunning, PodIP: "10.0.0.1", ContainerStatuses: []corev1.ContainerStatus{{Name: "sandbox", State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 1}}}}}},
+	} {
+		resolver := KubePodIPResolver{Client: fake.NewSimpleClientset(pod)}
+		if ip, err := resolver.PodIP(context.Background(), "ns", "pod"); err == nil || ip != "" {
+			t.Fatalf("phase=%s ip=%q err=%v, want terminal rejection", pod.Status.Phase, ip, err)
+		}
+	}
+}
 
 // TestReadSSEDataBounded pins w1/m65 F10: a single SSE part larger than the cap
 // is refused with errPartTooLarge (bounded read) instead of being buffered

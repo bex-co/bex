@@ -21,12 +21,9 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
-
-// sandboxContainer is the agent-session sandbox workload container the gateway
-// execs into — the same container sandboxsse targets from a signed exec ticket.
-const sandboxContainer = "sandbox"
 
 // SSHSessionReader is the resolver's minimal database dependency: read one
 // session row by id. *store.PGStore satisfies it. Deliberately narrower than the
@@ -87,7 +84,7 @@ func (r *SSHResolver) ResolveSSHSession(ctx context.Context, username string) (a
 		OwnerID:   record.WorkspaceID,
 		Namespace: record.WorkspaceID + "-sandbox",
 		PodName:   record.SandboxID + "-0",
-		Container: sandboxContainer,
+		Container: sandboxexec.SandboxContainer,
 		Sandbox:   true,
 	}, nil
 }

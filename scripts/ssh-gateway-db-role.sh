@@ -18,8 +18,10 @@ set -euo pipefail
 #
 # The scoped connection string is derived from bex-db-app's own URI with only the
 # userinfo swapped, so the gateway keeps byte-identical host/db/TLS parameters and
-# only its identity narrows. Set SKIP_SECRET=1 to apply the role DDL without
-# touching Kubernetes (what the local smoke test does).
+# only its identity narrows. Set GRANTS_ONLY=1 on routine deploys to reconcile the
+# existing role's privilege surface WITHOUT rotating its password, rewriting its
+# Secret, or restarting the gateway. Set SKIP_SECRET=1 only for isolated role-
+# creation tests whose scoped credential is not consumed by Kubernetes.
 
 role="${BEX_SSH_GATEWAY_ROLE:-bex_ssh_gateway}"
 namespace="${BEX_SYSTEM_NAMESPACE:-bex-system}"
@@ -28,34 +30,21 @@ database="${BEX_CP_DB_NAME:-bex}"
 app_secret="${BEX_CP_DB_APP_SECRET:-bex-db-app}"
 gateway_secret="${BEX_SSH_GATEWAY_DB_SECRET:-bex-db-ssh-gateway}"
 gateway_deploy="${BEX_SSH_GATEWAY_DEPLOYMENT:-bex-ssh-gateway}"
+grants_only="${GRANTS_ONLY:-0}"
+
+[[ "$role" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] \
+  || { echo "invalid PostgreSQL role name: $role" >&2; exit 1; }
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 grants_sql="$script_dir/../lego/backend/internal/sshgateway/dbrole/dbrole.sql"
 [[ -f "$grants_sql" ]] || { echo "missing grants DDL: $grants_sql" >&2; exit 1; }
 
-for command in psql openssl; do
-  command -v "$command" >/dev/null || { echo "missing required command: $command" >&2; exit 1; }
-done
-if [[ -z "${BEX_CP_ADMIN_URI:-}" || "${SKIP_SECRET:-}" != "1" ]]; then
+if [[ -n "${BEX_CP_ADMIN_URI:-}" ]]; then
+  command -v psql >/dev/null || { echo "missing required command: psql" >&2; exit 1; }
+fi
+if [[ -z "${BEX_CP_ADMIN_URI:-}" || ( "$grants_only" != "1" && "${SKIP_SECRET:-}" != "1" ) ]]; then
   command -v kubectl >/dev/null || { echo "missing required command: kubectl" >&2; exit 1; }
 fi
-
-# A strong URL-safe password (no shell/URI-hostile characters).
-password="$(openssl rand -base64 30 | tr -dc 'A-Za-z0-9' | head -c 32)"
-
-# The role DDL: idempotent create (preserving no stale password), then the
-# single-sourced grants. Reset the password on every run so rotation is a re-run.
-role_ddl="$(cat <<SQL
-DO \$\$ BEGIN
-  IF EXISTS (SELECT FROM pg_roles WHERE rolname = '${role}') THEN
-    EXECUTE format('ALTER ROLE ${role} LOGIN PASSWORD %L', '${password}');
-  ELSE
-    EXECUTE format('CREATE ROLE ${role} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT PASSWORD %L', '${password}');
-  END IF;
-END \$\$;
-$(sed "s/__ROLE__/${role}/g" "$grants_sql")
-SQL
-)"
 
 apply_sql() {
   if [[ -n "${BEX_CP_ADMIN_URI:-}" ]]; then
@@ -70,8 +59,50 @@ apply_sql() {
   fi
 }
 
+# Revoke the old table/schema surface before applying the release's exact grant
+# list. GRANT-only accumulation is not convergence: a privilege removed from
+# dbrole.sql would otherwise survive forever. The gateway owns no objects, so
+# this is safe and keeps least privilege symmetric in both directions.
+grants_ddl="$(cat <<SQL
+BEGIN;
+REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM ${role};
+REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${role};
+$(sed "s/__ROLE__/${role}/g" "$grants_sql")
+COMMIT;
+SQL
+)"
+
+if [[ "$grants_only" == "1" ]]; then
+  printf '%s\n' "$grants_ddl" | apply_sql
+  echo "reconciled least-privilege grants for existing role '${role}' (credential unchanged)"
+  exit 0
+fi
+
+command -v openssl >/dev/null || { echo "missing required command: openssl" >&2; exit 1; }
+if [[ "${SKIP_SECRET:-}" != "1" ]]; then
+  for command in base64 python3; do
+    command -v "$command" >/dev/null || { echo "missing required command: $command" >&2; exit 1; }
+  done
+fi
+
+# A strong URL-safe password (no shell/URI-hostile characters).
+password="$(openssl rand -base64 30 | tr -dc 'A-Za-z0-9' | head -c 32)"
+
+# Role creation/rotation is explicit provisioning, never the routine deploy path.
+role_ddl="$(cat <<SQL
+DO \$\$ BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = '${role}') THEN
+    EXECUTE format('ALTER ROLE ${role} LOGIN PASSWORD %L', '${password}');
+  ELSE
+    EXECUTE format('CREATE ROLE ${role} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT PASSWORD %L', '${password}');
+  END IF;
+END \$\$;
+${grants_ddl}
+SQL
+)"
+
 printf '%s\n' "$role_ddl" | apply_sql
-echo "applied least-privilege role '${role}' (create/alter + grants idempotent)"
+echo "provisioned least-privilege role '${role}' (credential rotated + grants reconciled)"
 
 if [[ "${SKIP_SECRET:-}" == "1" ]]; then
   echo "SKIP_SECRET=1 — role DDL applied; Kubernetes Secret not written"

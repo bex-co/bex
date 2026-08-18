@@ -705,6 +705,10 @@ test("persisted credential scan fails closed on aggregate, depth, and cancellati
     /file limit/,
   );
   await assert.rejects(
+    credentials.scrubPersistedState(undefined, { maxEntries: 1 }),
+    /entry limit/,
+  );
+  await assert.rejects(
     credentials.scrubPersistedState(undefined, { maxBytes: 1 }),
     /byte limit/,
   );
@@ -720,6 +724,99 @@ test("persisted credential scan fails closed on aggregate, depth, and cancellati
     credentials.scrubPersistedState(undefined, { signal: controller.signal }),
     /aborted/,
   );
+});
+
+test("persisted credential scan accepts a safe sparse repository larger than 1 GiB", async () => {
+  const config = await tempConfig();
+  const large = path.join(config.cwd, "large-safe-fixture");
+  const file = await open(large, "w");
+  try {
+    await file.truncate((1 << 30) + 1);
+  } finally {
+    await file.close();
+  }
+  await assert.doesNotReject(
+    manager(config).scrubPersistedState(undefined, { timeoutMs: 120_000 }),
+  );
+});
+
+for (const reachable of [true, false]) {
+  test(`persisted credential scan fails closed on a ${reachable ? "reachable" : "unreachable"} Git object`, async () => {
+    const config = await tempConfig();
+    execFileSync("git", ["init", "-q"], { cwd: config.cwd });
+    execFileSync("git", ["config", "user.name", "bex test"], {
+      cwd: config.cwd,
+    });
+    execFileSync("git", ["config", "user.email", "bex-test@example.invalid"], {
+      cwd: config.cwd,
+    });
+    const leaked = path.join(config.cwd, "credential-object");
+    await writeFile(leaked, `key=${config.modelCredential}\n`);
+    if (reachable) {
+      execFileSync("git", ["add", "credential-object"], { cwd: config.cwd });
+      execFileSync("git", ["commit", "-q", "-m", "credential fixture"], {
+        cwd: config.cwd,
+      });
+      await writeFile(leaked, "safe working tree\n");
+    } else {
+      execFileSync("git", ["hash-object", "-w", "credential-object"], {
+        cwd: config.cwd,
+      });
+      await writeFile(leaked, "safe working tree\n");
+    }
+    await assert.rejects(
+      manager(config).scrubPersistedState(),
+      /credential found in persisted Git object database/,
+    );
+  });
+}
+
+test("Git metadata paths are scrubbed after the decompressed object proof", async () => {
+  const config = await tempConfig();
+  execFileSync("git", ["init", "-q"], { cwd: config.cwd });
+  const targets = [
+    path.join(config.cwd, ".git", "config"),
+    path.join(config.cwd, ".git", "logs", "credential-fixture"),
+    path.join(config.cwd, ".git", "refs", "credential-fixture"),
+    path.join(config.cwd, ".git", "index"),
+  ];
+  await mkdir(path.dirname(targets[1]), { recursive: true });
+  await mkdir(path.dirname(targets[2]), { recursive: true });
+  for (const target of targets) {
+    await writeFile(target, `metadata=${config.modelCredential}\n`);
+  }
+  const scrubbed = await manager(config).scrubPersistedState();
+  for (const target of targets) {
+    assert.ok(scrubbed.includes(target));
+    assert.doesNotMatch(await readFile(target, "utf8"), /never-log/);
+  }
+});
+
+test("a scrub failure records one safe failed verdict and forgets credentials", async () => {
+  const config = await tempConfig();
+  const credentials = manager(config);
+  let scrubs = 0;
+  const failing: CredentialManager = {
+    ...credentials,
+    async scrubPersistedState() {
+      scrubs += 1;
+      throw new Error(`scan failed near ${config.modelCredential}`);
+    },
+  };
+  await assert.rejects(
+    runHeadlessTurn(config, failing, new UIMessageStreamHub()),
+    /persisted credential cleanup failed/,
+  );
+  assert.equal(
+    scrubs,
+    1,
+    "the failed scrub must not be retried in a catch path",
+  );
+  assert.equal(credentials.configured(), false);
+  const status = JSON.parse(await readFile(config.statusPath, "utf8"));
+  assert.equal(status.state, "failed");
+  assert.match(status.error, /persisted credential cleanup failed/);
+  assert.doesNotMatch(status.error, /test-model-key-never-log/);
 });
 
 test("snapshot hook requires an action-bound grant, terminalizes, scrubs, and forgets", async () => {
@@ -761,6 +858,37 @@ test("snapshot hook requires an action-bound grant, terminalizes, scrubs, and fo
       await readFile(leaked, "utf8"),
       /test-model-key-never-log/,
     );
+  } finally {
+    await listener.close();
+  }
+});
+
+test("snapshot scrub forgets credentials even when persisted cleanup fails", async () => {
+  const config = await tempConfig();
+  const credentials = manager(config);
+  const failing: CredentialManager = {
+    ...credentials,
+    async scrubPersistedState() {
+      throw new Error(`snapshot scrub failed for ${config.modelCredential}`);
+    },
+  };
+  const listener = await startDriverServer(
+    config,
+    failing,
+    new UIMessageStreamHub(),
+    { terminalize: async () => undefined },
+  );
+  try {
+    const url = `http://127.0.0.1:${(listener.address as { port: number }).port}/snapshot/scrub`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "x-bex-driver-grant": driverGrant("snapshot") },
+    });
+    assert.equal(response.status, 500);
+    const body = await response.text();
+    assert.match(body, /snapshot scrub failed/);
+    assert.doesNotMatch(body, /test-model-key-never-log/);
+    assert.equal(credentials.configured(), false);
   } finally {
     await listener.close();
   }

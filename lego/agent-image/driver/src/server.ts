@@ -195,20 +195,23 @@ export async function startDriverServer(
         response.end('{"error":"snapshot terminalization unavailable"}\n');
         return;
       }
-      void options
-        .terminalize()
-        .then(() => credentialManager.scrubPersistedState())
-        .then((scrubbed) => {
-          credentialManager.forget();
+      void (async () => {
+        try {
+          await options.terminalize!();
+          const scrubbed = await credentialManager.scrubPersistedState();
           response.writeHead(200, { "content-type": "application/json" });
           response.end(
             `${JSON.stringify({ scrubbedFiles: scrubbed.length })}\n`,
           );
-        })
-        .catch((error) => {
+        } catch (error) {
           response.writeHead(500, { "content-type": "application/json" });
-          response.end(`${JSON.stringify({ error: describeError(error) })}\n`);
-        });
+          response.end(
+            `${JSON.stringify({ error: credentialManager.redact(describeError(error)) })}\n`,
+          );
+        } finally {
+          credentialManager.forget();
+        }
+      })();
       return;
     }
     response.writeHead(404, { "content-type": "application/json" });
