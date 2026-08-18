@@ -445,6 +445,17 @@ func (b *Base) Authorize(ctx context.Context, relation string) error {
 	return b.authorizeAndAudit(ctx, relation, object, "", callerVerb(verbFrameSkip), err)
 }
 
+// AuthorizeTarget is Authorize for a verb that acts on one named
+// sub-resource of the caller's acting workspace. It preserves Authorize's
+// named-workspace membership check while recording the non-secret resource
+// identity in the audit event. Use AuthorizeOnTarget only when the caller is
+// authorizing an explicitly supplied OpenFGA object rather than the acting
+// workspace resolved from context.
+func (b *Base) AuthorizeTarget(ctx context.Context, relation, target string) error {
+	object, err := b.callerWorkspace(ctx)
+	return b.authorizeAndAudit(ctx, relation, object, target, callerVerb(verbFrameSkip), err)
+}
+
 // Can reports whether the caller holds relation on their acting workspace,
 // without Authorize's audit side effect. It is a response-shaping probe for
 // optional sensitive fields (a viewer listing blueprints did not ASK for the

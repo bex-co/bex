@@ -574,7 +574,7 @@ func mcpSession(t *testing.T, srv *Server) *mcp.ClientSession {
 	return cs
 }
 
-func TestMCP_ExposesRenderConsistentTools(t *testing.T) {
+func TestMCP_ExposesRenderConsistentAndBexExtensionTools(t *testing.T) {
 	srv := NewServer(&core.Base{Client: fakeClient(sampleApp("web")), Namespace: "default"}, Deps{})
 	cs := mcpSession(t, srv)
 
@@ -598,6 +598,32 @@ func TestMCP_ExposesRenderConsistentTools(t *testing.T) {
 		if !got[want] {
 			t.Errorf("missing Render-consistent tool %q (have %v)", want, got)
 		}
+	}
+	for _, want := range []string{"list_webhook_deliveries", "resend_webhook_delivery"} {
+		if !got[want] {
+			t.Errorf("missing bex webhook extension tool %q (have %v)", want, got)
+		}
+	}
+}
+
+func TestWebhookResendRESTAndGraphQLRoutesAreComposed(t *testing.T) {
+	h, _ := serverWith(t, &core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/whk-one/events/whd-one/resend", nil)
+	req.Header.Set("Authorization", "Bearer "+testToken)
+	req.Header.Set("Idempotency-Key", "server-resend-0001")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), "webhook store not configured") {
+		t.Fatalf("REST resend route = %d %s", w.Code, w.Body.String())
+	}
+
+	body, _ := json.Marshal(map[string]string{
+		"query": `mutation { resendWebhookDelivery(endpointId:"whk-one", attemptId:"whd-one", idempotencyKey:"server-resend-0001") { id status } }`,
+	})
+	w = do(t, h, http.MethodPost, "/graphql", testToken, string(body))
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "webhook store not configured") || strings.Contains(w.Body.String(), "Unknown field") {
+		t.Fatalf("GraphQL resend route = %d %s", w.Code, w.Body.String())
 	}
 }
 

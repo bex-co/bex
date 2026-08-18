@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -84,6 +83,20 @@ const MaxWebhookEndpointsPerWorkspace = 25
 // MaxWebhookEndpointsPerWorkspace. Wraps ErrConflict so existing REST/GraphQL/MCP
 // error mapping treats it like the other quota refusals (cf. ErrInvitePlanLimit).
 var ErrWebhookEndpointLimit = fmt.Errorf("workspace has the maximum number of webhook endpoints: %w", ErrConflict)
+
+// ErrWebhookEndpointDisabled refuses a manual resend while its destination is
+// disabled. It wraps ErrConflict so every adapter keeps the shared conflict
+// classification while exposing a stable feature-specific code.
+var ErrWebhookEndpointDisabled = fmt.Errorf("webhook endpoint is disabled: %w", ErrConflict)
+
+// ErrWebhookAttemptPending refuses a second, distinct resend while one attempt
+// for the same logical notification is already reserved. It bounds concurrent
+// replay fan-out without weakening idempotent repeats of the same request key.
+var ErrWebhookAttemptPending = fmt.Errorf("webhook attempt is already pending: %w", ErrConflict)
+
+// ErrWebhookEndpointNotFound distinguishes a missing owner-scoped endpoint
+// from a missing source attempt while preserving the shared not-found class.
+var ErrWebhookEndpointNotFound = fmt.Errorf("webhook endpoint not found: %w", ErrNotFound)
 
 // CreateWebhookEndpoint mints a new endpoint row (id.New(id.Webhook)) and
 // inserts it. The secret is minted by the caller (internal/webhooks owns the
@@ -187,15 +200,6 @@ func (s *PGStore) SetWebhookEndpointEnabled(ctx context.Context, tenantID, id st
 	return e, nil
 }
 
-// DisableWebhookEndpoint is the delivery worker's auto-disable path — not
-// tenant-scoped (the worker acts on the endpoint id it is delivering for, not
-// on behalf of a caller).
-func (s *PGStore) DisableWebhookEndpoint(ctx context.Context, id, reason string) error {
-	_, err := s.Pool.Exec(ctx,
-		`UPDATE webhook_endpoints SET enabled = false, disabled_reason = $2, updated_at = now() WHERE id = $1`, id, reason)
-	return err
-}
-
 // DeleteWebhookEndpoint removes an endpoint (its deliveries cascade).
 func (s *PGStore) DeleteWebhookEndpoint(ctx context.Context, tenantID, id string) error {
 	tag, err := s.Pool.Exec(ctx,
@@ -249,9 +253,8 @@ func (s *PGStore) ListEnabledWebhookEndpoints(ctx context.Context) ([]WebhookEnd
 	return out, rows.Err()
 }
 
-// WebhookDelivery is a row of `webhook_deliveries`: one event × one
-// subscribed endpoint, retried in place until delivered, exhausted, or its
-// endpoint is disabled.
+// WebhookDelivery is the logical parent row for one event × one subscribed
+// endpoint. Immutable send evidence lives in WebhookAttempt child rows.
 type WebhookDelivery struct {
 	ID              string
 	EndpointID      string
@@ -271,18 +274,46 @@ type WebhookDelivery struct {
 	CreatedAt       time.Time
 }
 
-const webhookDeliveryColumns = `id, endpoint_id, event_id, event_type, service_id, payload, attempt_count, last_status, last_error, response_body, next_attempt_at, sent_at, last_attempted_at, delivered_at, failed_at, created_at`
+const (
+	WebhookAttemptPending   = "pending"
+	WebhookAttemptDelivered = "delivered"
+	WebhookAttemptFailed    = "failed"
 
-func scanWebhookDelivery(row pgx.Row) (WebhookDelivery, error) {
-	var d WebhookDelivery
-	err := row.Scan(&d.ID, &d.EndpointID, &d.EventID, &d.EventType, &d.ServiceID, &d.Payload,
-		&d.AttemptCount, &d.LastStatus, &d.LastError, &d.ResponseBody, &d.NextAttemptAt, &d.SentAt, &d.LastAttemptedAt,
-		&d.DeliveredAt, &d.FailedAt, &d.CreatedAt)
-	return d, err
+	WebhookAttemptAutomatic = "automatic"
+	WebhookAttemptManual    = "manual"
+)
+
+// WebhookAttempt is one scheduled send and its immutable terminal evidence.
+// NotificationID identifies the logical endpoint/event parent. Pending rows
+// reserve an ID before a send; the worker fills SentAt and outcome exactly once.
+// Payload is joined from the parent so evidence never copies request bytes.
+type WebhookAttempt struct {
+	ID             string
+	NotificationID string
+	EndpointID     string
+	EventID        string
+	EventType      string
+	ServiceID      string
+	AttemptNumber  int
+	Status         string
+	StatusCode     int
+	TransportError string
+	ResponseBody   string
+	Payload        string
+	SentAt         *time.Time
+	Origin         string
+	RequestedBy    string
+	IdempotencyKey string
+	ParentStatus   string
+	NextAttemptAt  *time.Time
+	// ResumeAutomaticAt is internal queue state: a manual reservation parks an
+	// unsent automatic retry here and restores it only if the manual send fails.
+	ResumeAutomaticAt *time.Time
+	CreatedAt         time.Time
 }
 
-// WebhookDeliveryFilter is one stable, bounded history query.
-type WebhookDeliveryFilter struct {
+// WebhookAttemptFilter is one bounded immutable-attempt history query.
+type WebhookAttemptFilter struct {
 	EndpointID string
 	SentAfter  time.Time
 	SentBefore time.Time
@@ -292,20 +323,57 @@ type WebhookDeliveryFilter struct {
 	Limit      int
 }
 
-// ListWebhookDeliveries returns one endpoint's delivery history, newest
-// first, keyset-paged on (sent_at, id), which is immutable after the first
-// attempt and therefore stable while later retries update the row.
-func (s *PGStore) ListWebhookDeliveries(ctx context.Context, filter WebhookDeliveryFilter) ([]WebhookDelivery, error) {
+const webhookAttemptProjection = `
+    a.id, a.notification_id, a.endpoint_id,
+    d.event_id, d.event_type, d.service_id,
+    a.attempt_number, a.status, a.status_code, a.transport_error,
+    a.response_body, d.payload, a.sent_at, a.origin, a.requested_by,
+    a.idempotency_key,
+    CASE
+        WHEN EXISTS (
+            SELECT 1 FROM webhook_delivery_attempts pending
+            WHERE pending.notification_id = d.id AND pending.status = '` + WebhookAttemptPending + `'
+        ) THEN '` + WebhookAttemptPending + `'
+        WHEN d.delivered_at IS NOT NULL THEN '` + WebhookAttemptDelivered + `'
+        WHEN d.failed_at IS NOT NULL THEN '` + WebhookAttemptFailed + `'
+        ELSE '` + WebhookAttemptPending + `'
+    END,
+    (
+        SELECT min(pending.available_at) FROM webhook_delivery_attempts pending
+        WHERE pending.notification_id = d.id AND pending.status = '` + WebhookAttemptPending + `'
+    ),
+    a.resume_automatic_at, a.created_at`
+
+func scanWebhookAttempt(row pgx.Row) (WebhookAttempt, error) {
+	var a WebhookAttempt
+	err := row.Scan(
+		&a.ID, &a.NotificationID, &a.EndpointID,
+		&a.EventID, &a.EventType, &a.ServiceID,
+		&a.AttemptNumber, &a.Status, &a.StatusCode, &a.TransportError,
+		&a.ResponseBody, &a.Payload, &a.SentAt, &a.Origin, &a.RequestedBy,
+		&a.IdempotencyKey, &a.ParentStatus, &a.NextAttemptAt,
+		&a.ResumeAutomaticAt, &a.CreatedAt,
+	)
+	return a, err
+}
+
+// ListWebhookAttempts returns one endpoint's completed network exchanges,
+// newest first, keyset-paged on immutable (sent_at,id). Unsent reservations do
+// not pretend to have exchange evidence; QueueWebhookResend returns its pending
+// reservation directly and it joins history after the worker terminalizes it.
+func (s *PGStore) ListWebhookAttempts(ctx context.Context, filter WebhookAttemptFilter) ([]WebhookAttempt, error) {
 	filter.Limit = core.PageLimitOrAbsent(filter.Limit)
 	rows, err := s.Pool.Query(ctx,
-		`SELECT `+webhookDeliveryColumns+` FROM webhook_deliveries
-		 WHERE endpoint_id = $1
-		   AND sent_at IS NOT NULL
-		   AND ($2::timestamptz IS NULL OR sent_at > $2)
-		   AND ($3::timestamptz IS NULL OR sent_at < $3)
-		   AND ($4 = '' OR ($4 = 'delivered' AND delivered_at IS NOT NULL) OR ($4 = 'failed' AND failed_at IS NOT NULL))
-		   AND ($5::timestamptz IS NULL OR (sent_at, id) < ($5, $6))
-		 ORDER BY sent_at DESC, id DESC
+		`SELECT `+webhookAttemptProjection+`
+		 FROM webhook_delivery_attempts a
+		 JOIN webhook_deliveries d ON d.id = a.notification_id
+		 WHERE a.endpoint_id = $1
+		   AND a.sent_at IS NOT NULL
+		   AND ($2::timestamptz IS NULL OR a.sent_at > $2)
+		   AND ($3::timestamptz IS NULL OR a.sent_at < $3)
+		   AND ($4 = '' OR a.status = $4)
+		   AND ($5::timestamptz IS NULL OR (a.sent_at, a.id) < ($5, $6))
+		 ORDER BY a.sent_at DESC, a.id DESC
 		 LIMIT $7`,
 		filter.EndpointID, nullTime(filter.SentAfter), nullTime(filter.SentBefore), filter.Status,
 		nullTime(filter.AfterAt), filter.AfterKey, filter.Limit)
@@ -313,15 +381,159 @@ func (s *PGStore) ListWebhookDeliveries(ctx context.Context, filter WebhookDeliv
 		return nil, err
 	}
 	defer rows.Close()
-	var out []WebhookDelivery
+	var out []WebhookAttempt
 	for rows.Next() {
-		d, err := scanWebhookDelivery(rows)
+		a, err := scanWebhookAttempt(rows)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, d)
+		out = append(out, a)
 	}
 	return out, rows.Err()
+}
+
+func getWebhookAttempt(ctx context.Context, q queryRower, attemptID string) (WebhookAttempt, error) {
+	return scanWebhookAttempt(q.QueryRow(ctx,
+		`SELECT `+webhookAttemptProjection+`
+		 FROM webhook_delivery_attempts a
+		 JOIN webhook_deliveries d ON d.id = a.notification_id
+		 WHERE a.id = $1`, attemptID))
+}
+
+// WebhookResendRequest names the several identities at the store seam so owner,
+// endpoint, source-attempt, and caller IDs cannot be accidentally transposed.
+type WebhookResendRequest struct {
+	TenantID        string
+	EndpointID      string
+	SourceAttemptID string
+	RequestedBy     string
+	IdempotencyKey  string
+	RequestedAt     time.Time
+}
+
+// QueueWebhookResend reserves one immediate manual attempt for a source
+// attempt, owner-scoped through its endpoint. The caller key is durable: a
+// repeat returns the same pending or completed attempt forever. A scheduled,
+// unsent automatic retry is parked on the manual row and restored only when
+// that manual exchange fails, so Resend neither consumes nor races the normal
+// retry budget.
+func (s *PGStore) QueueWebhookResend(ctx context.Context, request WebhookResendRequest) (WebhookAttempt, error) {
+	if request.IdempotencyKey == "" || request.RequestedBy == "" {
+		return WebhookAttempt{}, fmt.Errorf("webhook resend identity and idempotency key are required: %w", ErrConflict)
+	}
+	reservedID := ids.New(ids.WebhookDelivery)
+	var out WebhookAttempt
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var enabled bool
+		if err := tx.QueryRow(ctx,
+			`SELECT enabled FROM webhook_endpoints
+			 WHERE id = $1 AND tenant_id = $2 FOR UPDATE`, request.EndpointID, request.TenantID).Scan(&enabled); errors.Is(err, pgx.ErrNoRows) {
+			return ErrWebhookEndpointNotFound
+		} else if err != nil {
+			return err
+		}
+
+		// The endpoint row lock serializes every resend for this endpoint. Check
+		// idempotency before enabled state so an exact repeat can retrieve the
+		// already-authorized result even if the endpoint was disabled afterwards.
+		var existingID string
+		err := tx.QueryRow(ctx,
+			`SELECT id FROM webhook_delivery_attempts
+			 WHERE endpoint_id = $1 AND origin = $2 AND idempotency_key = $3`,
+			request.EndpointID, WebhookAttemptManual, request.IdempotencyKey).Scan(&existingID)
+		switch {
+		case err == nil:
+			var getErr error
+			out, getErr = getWebhookAttempt(ctx, tx, existingID)
+			return getErr
+		case !errors.Is(err, pgx.ErrNoRows):
+			return err
+		}
+		if !enabled {
+			return ErrWebhookEndpointDisabled
+		}
+
+		var notificationID string
+		if err := tx.QueryRow(ctx,
+			`SELECT notification_id FROM webhook_delivery_attempts
+			 WHERE id = $1 AND endpoint_id = $2 AND sent_at IS NOT NULL`, request.SourceAttemptID, request.EndpointID).Scan(&notificationID); err != nil {
+			return err
+		}
+		// Lock the logical notification so queue/complete operations cannot both
+		// manipulate its one pending send slot.
+		var lockedID string
+		if err := tx.QueryRow(ctx,
+			`SELECT id FROM webhook_deliveries
+			 WHERE id = $1 AND endpoint_id = $2 FOR UPDATE`, notificationID, request.EndpointID).Scan(&lockedID); err != nil {
+			return err
+		}
+
+		var manualPending bool
+		if err := tx.QueryRow(ctx,
+			`SELECT EXISTS (
+			    SELECT 1 FROM webhook_delivery_attempts
+			    WHERE notification_id = $1 AND status = $2 AND origin = $3
+			)`, notificationID, WebhookAttemptPending, WebhookAttemptManual).Scan(&manualPending); err != nil {
+			return err
+		}
+		if manualPending {
+			return ErrWebhookAttemptPending
+		}
+
+		var resumeAt *time.Time
+		if err := tx.QueryRow(ctx,
+			`WITH deleted AS (
+			    DELETE FROM webhook_delivery_attempts
+			    WHERE notification_id = $1 AND status = $2 AND origin = $3
+			      AND (lease_until IS NULL OR lease_until <= $4)
+			    RETURNING available_at
+			 )
+			 SELECT min(available_at) FROM deleted`,
+			notificationID, WebhookAttemptPending, WebhookAttemptAutomatic, request.RequestedAt).Scan(&resumeAt); err != nil {
+			return err
+		}
+		// The DELETE predicate is rechecked after any concurrent child-row lock is
+		// released. If ClaimDue leased the reservation between our inspection and
+		// delete, it remains present and the replay must not race a POST whose
+		// evidence row the worker already holds.
+		var automaticPending bool
+		if err := tx.QueryRow(ctx,
+			`SELECT EXISTS (
+			    SELECT 1 FROM webhook_delivery_attempts
+			    WHERE notification_id = $1 AND status = $2 AND origin = $3
+			)`, notificationID, WebhookAttemptPending, WebhookAttemptAutomatic).Scan(&automaticPending); err != nil {
+			return err
+		}
+		if automaticPending {
+			return ErrWebhookAttemptPending
+		}
+
+		var attemptNumber int
+		if err := tx.QueryRow(ctx,
+			`SELECT COALESCE(max(attempt_number), 0) + 1
+			 FROM webhook_delivery_attempts WHERE notification_id = $1`, notificationID).Scan(&attemptNumber); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx,
+			`INSERT INTO webhook_delivery_attempts (
+			     id, notification_id, endpoint_id, attempt_number, status, origin,
+			     requested_by, idempotency_key, available_at, resume_automatic_at, created_at
+			 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $9)`,
+			reservedID, notificationID, request.EndpointID, attemptNumber, WebhookAttemptPending,
+			WebhookAttemptManual, request.RequestedBy, request.IdempotencyKey, request.RequestedAt, resumeAt); err != nil {
+			return err
+		}
+		var getErr error
+		out, getErr = getWebhookAttempt(ctx, tx, reservedID)
+		return getErr
+	})
+	if err != nil {
+		if errors.Is(err, ErrWebhookEndpointNotFound) || errors.Is(err, ErrWebhookEndpointDisabled) || errors.Is(err, ErrWebhookAttemptPending) {
+			return WebhookAttempt{}, err
+		}
+		return WebhookAttempt{}, classify("webhook attempt", err)
+	}
+	return out, nil
 }
 
 // EnsureWebhookWatermark seeds the dispatcher's watermark at `at` if none
@@ -403,13 +615,10 @@ type WebhookEventRow struct {
 //     per-service feeds).
 //   - Datastore audit rows need no control-plane join: their typed target holds
 //     the immutable dpg-/red- id and target_name holds the display name.
-//   - the target matches EITHER of a service's two addressable spellings
-//     (w4/m19, core.appCandidateNames): an audit row records the raw name the
-//     caller passed (core.AuthorizeApp → ServiceTarget), which is normally the
-//     full service id "<tenantName>-<appName>" (what list/create return) but
-//     can be the bare app name when a caller addressed the App by its
-//     LabelServiceName fallback. The per-service feed is handed the caller's
-//     spelling as a parameter; this query must recognize both itself.
+//   - the target matches every supported service spelling: the current CR name
+//     "<tenantID>-<appName>", the legacy "<tenantName>-<appName>", or the bare
+//     app-name fallback. The per-service feed is handed the caller's spelling;
+//     this workspace-wide query must recognize all of them itself.
 //   - ascending keyset from the watermark, bounded above by $3 (now minus the
 //     dispatcher's safety lag, so a row committed slightly out of timestamp
 //     order can't be skipped forever by an already-advanced watermark).
@@ -474,7 +683,11 @@ WITH feed AS (
     JOIN apps a ON a.tenant_id = ANY($5)
      AND (e.workspace_id = a.tenant_id OR e.workspace_id = '` + core.DefaultTenant + `')
     JOIN tenants t ON t.id = a.tenant_id
-     AND e.target IN ('service:' || t.name || '-' || a.name, 'service:' || a.name)
+     AND e.target IN (
+         'service:' || a.tenant_id || '-' || a.name,
+         'service:' || t.name || '-' || a.name,
+         'service:' || a.name
+     )
     WHERE e.outcome = 'allowed' AND e.verb = ANY($4)
   UNION ALL
     SELECT e.at,
@@ -559,84 +772,250 @@ func (s *PGStore) EnqueueWebhookDeliveries(ctx context.Context, deliveries []Web
 	// of event×endpoint rows), not one per insert while the txn sits open.
 	b := &pgx.Batch{}
 	for _, d := range deliveries {
-		// ON CONFLICT (endpoint_id, event_id) DO NOTHING makes dispatch idempotent
-		// across replicas and restarts (w1/m58): a second replica reading the same
-		// feed window — or this worker re-reading after a crash — inserts no
-		// duplicate delivery even though it mints a fresh delivery id each pass.
+		// The 0084 insert trigger reserves the initial immutable attempt only when
+		// this parent insert wins. Losing dispatch replicas do no row update and no
+		// duplicate child work for an already-enqueued endpoint/event.
 		b.Queue(
 			`INSERT INTO webhook_deliveries (id, endpoint_id, event_id, event_type, service_id, payload, next_attempt_at)
 			 VALUES ($1, $2, $3, $4, $5, $6, $7)
 			 ON CONFLICT (endpoint_id, event_id) DO NOTHING`,
 			d.ID, d.EndpointID, d.EventID, d.EventType, d.ServiceID, d.Payload, d.NextAttemptAt)
 	}
-	b.Queue(`UPDATE webhook_watermark SET at = $1, key = $2 WHERE id`, at, key)
+	b.Queue(`UPDATE webhook_watermark SET at = $1, key = $2 WHERE id AND (at, key) <> ($1, $2)`, at, key)
 	if err := tx.SendBatch(ctx, b).Close(); err != nil {
 		return classify("webhook delivery", err)
 	}
 	return tx.Commit(ctx)
 }
 
-// DueWebhookDelivery is a pending delivery joined with what the sender needs
-// from its endpoint: the destination, the signing secret, and who to notify
-// when it keeps failing.
-type DueWebhookDelivery struct {
-	WebhookDelivery
-	URL          string
-	Secret       string
-	TenantID     string
-	EndpointName string
-	CreatedBy    string
+// DueWebhookAttempt is one pending attempt joined with its immutable parent
+// request and endpoint delivery capability. AutomaticAttemptCount is the
+// completed automatic-send count used by the worker's fixed retry budget;
+// manual attempts never increment it.
+type DueWebhookAttempt struct {
+	WebhookAttempt
+	URL                   string
+	Secret                string
+	TenantID              string
+	EndpointName          string
+	CreatedBy             string
+	AutomaticAttemptCount int
 }
 
-// ClaimDueWebhookDeliveries atomically leases open, due deliveries for enabled
-// endpoints (oldest first) to exactly one caller and returns them with what the
-// sender needs. It is the multi-replica-safe replacement for a plain due-read
-// (w1/m58): `FOR UPDATE ... SKIP LOCKED` hands each concurrent worker a DISJOINT
-// batch (no two replicas claim the same row), and the claim bumps next_attempt_at
-// to leaseUntil so a row stays invisible to other workers for the whole POST
-// window — a worker that crashes mid-send simply releases the lease, and the row
-// becomes due again after leaseUntil (at-least-once; receivers dedupe on
-// webhook-id). The lease is not an attempt: attempt_count is untouched, so a
-// crashed claim does not consume a retry. Disabling an endpoint still parks its
-// queue (rows stay open but are never claimed) until it is re-enabled.
-func (s *PGStore) ClaimDueWebhookDeliveries(ctx context.Context, now, leaseUntil time.Time, limit int) ([]DueWebhookDelivery, error) {
+// ClaimDueWebhookAttempts leases disjoint pending reservations across worker
+// replicas. The attempt identity already exists before the claim; a crashed
+// worker leaves it pending and reclaimable after leaseUntil rather than
+// inventing evidence for a network exchange that might never have happened.
+func (s *PGStore) ClaimDueWebhookAttempts(ctx context.Context, now, leaseUntil time.Time, limit int) ([]DueWebhookAttempt, error) {
 	rows, err := s.Pool.Query(ctx,
 		`WITH due AS (
-		     SELECT d.id
-		     FROM webhook_deliveries d
-		     JOIN webhook_endpoints e ON e.id = d.endpoint_id
-		     WHERE d.delivered_at IS NULL AND d.failed_at IS NULL
-		       AND d.next_attempt_at <= $1 AND e.enabled
-		     ORDER BY d.next_attempt_at
-		     LIMIT $3
-		     FOR UPDATE OF d SKIP LOCKED
+		     SELECT a.id
+		     FROM webhook_delivery_attempts a
+		     JOIN webhook_endpoints e ON e.id = a.endpoint_id
+		     WHERE a.status = $3 AND a.available_at <= $1
+		       AND (a.lease_until IS NULL OR a.lease_until <= $1)
+		       AND e.enabled
+		     ORDER BY a.available_at, a.id
+		     LIMIT $4
+		     FOR UPDATE OF a SKIP LOCKED
 		 ), claimed AS (
-		     UPDATE webhook_deliveries d
-		     SET next_attempt_at = $2
+		     UPDATE webhook_delivery_attempts a
+		     SET lease_until = $2
 		     FROM due
-		     WHERE d.id = due.id
-		     RETURNING `+prefixColumns("d", webhookDeliveryColumns)+`
+		     WHERE a.id = due.id
+		     RETURNING a.*
 		 )
-		 SELECT `+prefixColumns("claimed", webhookDeliveryColumns)+`, e.url, e.secret, e.tenant_id, e.name, e.created_by
-		 FROM claimed
-		 JOIN webhook_endpoints e ON e.id = claimed.endpoint_id
-		 ORDER BY claimed.created_at, claimed.id`, now, leaseUntil, limit)
+		 SELECT `+webhookAttemptProjection+`,
+		        e.url, e.secret, e.tenant_id, e.name, e.created_by,
+		        d.attempt_count
+		 FROM claimed a
+		 JOIN webhook_deliveries d ON d.id = a.notification_id
+		 JOIN webhook_endpoints e ON e.id = a.endpoint_id
+		 ORDER BY a.available_at, a.id`, now, leaseUntil, WebhookAttemptPending, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []DueWebhookDelivery
+	var out []DueWebhookAttempt
 	for rows.Next() {
-		var d DueWebhookDelivery
-		if err := rows.Scan(&d.ID, &d.EndpointID, &d.EventID, &d.EventType, &d.ServiceID, &d.Payload,
-			&d.AttemptCount, &d.LastStatus, &d.LastError, &d.ResponseBody, &d.NextAttemptAt, &d.SentAt, &d.LastAttemptedAt,
-			&d.DeliveredAt, &d.FailedAt, &d.CreatedAt,
-			&d.URL, &d.Secret, &d.TenantID, &d.EndpointName, &d.CreatedBy); err != nil {
+		var a DueWebhookAttempt
+		if err := rows.Scan(
+			&a.ID, &a.NotificationID, &a.EndpointID,
+			&a.EventID, &a.EventType, &a.ServiceID,
+			&a.AttemptNumber, &a.Status, &a.StatusCode, &a.TransportError,
+			&a.ResponseBody, &a.Payload, &a.SentAt, &a.Origin, &a.RequestedBy,
+			&a.IdempotencyKey, &a.ParentStatus, &a.NextAttemptAt,
+			&a.ResumeAutomaticAt, &a.CreatedAt,
+			&a.URL, &a.Secret, &a.TenantID, &a.EndpointName, &a.CreatedBy,
+			&a.AutomaticAttemptCount,
+		); err != nil {
 			return nil, err
 		}
-		out = append(out, d)
+		out = append(out, a)
 	}
 	return out, rows.Err()
+}
+
+// WebhookAttemptCompletion names terminal evidence and parent-transition
+// controls that would otherwise be ambiguous adjacent values and booleans.
+type WebhookAttemptCompletion struct {
+	AttemptID      string
+	NextAttemptID  string
+	StatusCode     int
+	TransportError string
+	ResponseBody   string
+	CompletedAt    time.Time
+	NextAttemptAt  time.Time
+	Delivered      bool
+	Exhausted      bool
+	DisableReason  string
+}
+
+// CompleteWebhookAttempt performs the pending -> terminal transition exactly
+// once and updates the logical notification in the same transaction. A failed
+// automatic send reserves its next retry atomically. A failed manual send
+// restores the automatic reservation it parked, without consuming the parent's
+// automatic attempt_count; manual success closes the notification and drops it.
+func (s *PGStore) CompleteWebhookAttempt(ctx context.Context, completion WebhookAttemptCompletion) (bool, error) {
+	completed := false
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		// QueueWebhookResend takes the notification parent before inspecting or
+		// deleting a pending child. Complete uses the identical parent -> attempt
+		// lock order so a resend racing an in-flight completion cannot deadlock.
+		var notificationID, endpointID string
+		if err := tx.QueryRow(ctx,
+			`SELECT notification_id, endpoint_id FROM webhook_delivery_attempts WHERE id = $1`, completion.AttemptID,
+		).Scan(&notificationID, &endpointID); errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		} else if err != nil {
+			return err
+		}
+		// QueueWebhookResend locks endpoint -> notification -> attempt. Every
+		// completion uses the same order, and exhaustion can disable the endpoint
+		// before commit without leaving an enabled replay race window.
+		var lockedEndpoint string
+		if err := tx.QueryRow(ctx,
+			`SELECT id FROM webhook_endpoints WHERE id = $1 FOR UPDATE`, endpointID,
+		).Scan(&lockedEndpoint); errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		} else if err != nil {
+			return err
+		}
+		var lockedID string
+		if err := tx.QueryRow(ctx,
+			`SELECT id FROM webhook_deliveries WHERE id = $1 FOR UPDATE`, notificationID,
+		).Scan(&lockedID); errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		} else if err != nil {
+			return err
+		}
+
+		terminalStatus := WebhookAttemptFailed
+		if completion.Delivered {
+			terminalStatus = WebhookAttemptDelivered
+		}
+		var origin string
+		var attemptNumber int
+		var resumeAt *time.Time
+		err := tx.QueryRow(ctx,
+			`UPDATE webhook_delivery_attempts
+			 SET status = $2, sent_at = $3, status_code = $4,
+			     transport_error = $5, response_body = $6, lease_until = NULL
+			 WHERE id = $1 AND status = $7
+			 RETURNING attempt_number, origin, resume_automatic_at`,
+			completion.AttemptID, terminalStatus, completion.CompletedAt, completion.StatusCode, completion.TransportError, completion.ResponseBody,
+			WebhookAttemptPending,
+		).Scan(&attemptNumber, &origin, &resumeAt)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		completed = true
+
+		switch origin {
+		case WebhookAttemptAutomatic:
+			if _, err := tx.Exec(ctx,
+				`UPDATE webhook_deliveries
+				 SET attempt_count = attempt_count + 1,
+				     last_status = $2, last_error = $3, response_body = $4,
+				     sent_at = COALESCE(sent_at, $5), last_attempted_at = $5,
+				     next_attempt_at = CASE WHEN $6 OR $7 THEN $5 ELSE $8 END,
+				     delivered_at = CASE WHEN $6 THEN $5 ELSE NULL END,
+				     failed_at = CASE WHEN $7 THEN $5 ELSE NULL END
+				 WHERE id = $1`,
+				notificationID, completion.StatusCode, completion.TransportError, completion.ResponseBody, completion.CompletedAt,
+				completion.Delivered, completion.Exhausted, completion.NextAttemptAt); err != nil {
+				return err
+			}
+			if !completion.Delivered && !completion.Exhausted {
+				if completion.NextAttemptID == "" {
+					return errors.New("next automatic webhook attempt id is required")
+				}
+				if _, err := tx.Exec(ctx,
+					`INSERT INTO webhook_delivery_attempts (
+					     id, notification_id, endpoint_id, attempt_number, status,
+					     origin, available_at, created_at
+					 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+					completion.NextAttemptID, notificationID, endpointID, attemptNumber+1,
+					WebhookAttemptPending, WebhookAttemptAutomatic, completion.NextAttemptAt, completion.CompletedAt); err != nil {
+					return err
+				}
+			}
+			if completion.Exhausted {
+				if completion.DisableReason == "" {
+					return errors.New("webhook endpoint disable reason is required on exhaustion")
+				}
+				if _, err := tx.Exec(ctx,
+					`UPDATE webhook_endpoints
+					 SET enabled = false, disabled_reason = $2, updated_at = now()
+					 WHERE id = $1`, endpointID, completion.DisableReason); err != nil {
+					return err
+				}
+			}
+
+		case WebhookAttemptManual:
+			if _, err := tx.Exec(ctx,
+				`UPDATE webhook_deliveries
+				 SET last_status = $2, last_error = $3, response_body = $4,
+				     sent_at = COALESCE(sent_at, $5), last_attempted_at = $5,
+				     next_attempt_at = CASE WHEN $6 THEN $5 ELSE next_attempt_at END,
+				     delivered_at = CASE WHEN $6 THEN $5 ELSE delivered_at END,
+				     failed_at = CASE WHEN $6 THEN NULL ELSE failed_at END
+				 WHERE id = $1`,
+				notificationID, completion.StatusCode, completion.TransportError, completion.ResponseBody, completion.CompletedAt, completion.Delivered); err != nil {
+				return err
+			}
+			if !completion.Delivered && resumeAt != nil {
+				if completion.NextAttemptID == "" {
+					return errors.New("resumed automatic webhook attempt id is required")
+				}
+				if _, err := tx.Exec(ctx,
+					`INSERT INTO webhook_delivery_attempts (
+					     id, notification_id, endpoint_id, attempt_number, status,
+					     origin, available_at, created_at
+					 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+					completion.NextAttemptID, notificationID, endpointID, attemptNumber+1,
+					WebhookAttemptPending, WebhookAttemptAutomatic, *resumeAt, completion.CompletedAt); err != nil {
+					return err
+				}
+				if _, err := tx.Exec(ctx,
+					`UPDATE webhook_deliveries
+					 SET next_attempt_at = $2, delivered_at = NULL, failed_at = NULL
+					 WHERE id = $1`, notificationID, *resumeAt); err != nil {
+					return err
+				}
+			}
+		default:
+			return fmt.Errorf("unknown webhook attempt origin %q", origin)
+		}
+		return nil
+	})
+	if err != nil {
+		return false, classify("webhook attempt", err)
+	}
+	return completed, nil
 }
 
 // ClaimWebhookFailureNotice compare-and-sets the endpoint's notified_at marker:
@@ -655,40 +1034,25 @@ func (s *PGStore) ClaimWebhookFailureNotice(ctx context.Context, endpointID stri
 	return tag.RowsAffected() == 1, nil
 }
 
-// RecordWebhookAttempt books one attempt's outcome: increments the count,
-// records status/error/time, and either closes the row (delivered/failed) or
-// schedules the next try.
-func (s *PGStore) RecordWebhookAttempt(ctx context.Context, id string, status int, errMsg, responseBody string, at, next time.Time, delivered, failed bool) error {
-	_, err := s.Pool.Exec(ctx,
-		`UPDATE webhook_deliveries
-		 SET attempt_count = attempt_count + 1, last_status = $2, last_error = $3, response_body = $4,
-		     sent_at = COALESCE(sent_at, $5), last_attempted_at = $5, next_attempt_at = $6,
-		     delivered_at = CASE WHEN $7 THEN $5 ELSE delivered_at END,
-		     failed_at    = CASE WHEN $8 THEN $5 ELSE failed_at END
-		 WHERE id = $1`,
-		id, status, errMsg, responseBody, at, next, delivered, failed)
-	return err
-}
-
 // SweepWebhookDeliveries purges reclaimable delivery rows (w1/m67 F3). The table
 // is both the durable delivery QUEUE and the product's history surface, so before
 // m67 nothing ever reclaimed a finished row: ordinary tenant activity grew shared
 // table, index, and backup storage without bound.
 //
-// Terminal rows (delivered_at or failed_at set) are purged when either:
+// Terminal notifications (delivered_at or failed_at set, with no pending
+// child) are purged with all attempts when either:
 //
 //   - older than `before`, so history has a finite lifetime; or
 //   - beyond `keepPerEndpoint` most recent rows for their endpoint, so a burst
 //     inside the age window cannot evade the age rule alone.
 //
-// Abandoned PENDING rows older than `before` are also purged (scan finding #3):
-// a disabled endpoint's open deliveries are never claimed (ClaimDue requires
-// e.enabled) and never terminalized, so without this they park forever and grow
-// the shared table without bound — an attacker's disabled-endpoint backlog would
-// survive retention indefinitely. This is safe because a live retryable delivery
-// exhausts its ~33h schedule far inside the 90-day retention floor, so a still-open
-// row older than `before` is definitively dead, not mid-retry. Park-and-resume for
-// a recently disabled endpoint is unaffected (its rows are younger than `before`).
+// keepPerEndpoint counts immutable attempts, not parents: a notification with
+// eight retries consumes eight evidence slots. Whole-parent deletion prevents
+// orphaning payloads or leaving a partial forensic sequence.
+//
+// Notifications whose newest pending reservation is older than `before` are
+// abandoned and purged too. This includes a manual resend parked on a previously
+// terminal parent; recent reservations on old source events remain safe.
 //
 // Deletion is bounded per call (`limit` for each of the two passes) and safe to
 // run concurrently on two replicas — rows are claimed with FOR UPDATE SKIP LOCKED,
@@ -701,46 +1065,56 @@ func (s *PGStore) SweepWebhookDeliveries(ctx context.Context, before time.Time, 
 		keepPerEndpoint = 0
 	}
 	terminal, err := s.Pool.Exec(ctx,
-		`WITH ranked AS (
-		   SELECT id, created_at,
-		          row_number() OVER (PARTITION BY endpoint_id ORDER BY created_at DESC, id DESC) AS rn
-		     FROM webhook_deliveries
-		    WHERE delivered_at IS NOT NULL OR failed_at IS NOT NULL
+		`WITH terminal_notifications AS (
+		   SELECT d.id, d.endpoint_id, max(a.sent_at) AS latest_at, count(*) AS attempt_total
+		     FROM webhook_deliveries d
+		     JOIN webhook_delivery_attempts a ON a.notification_id = d.id
+		    WHERE (d.delivered_at IS NOT NULL OR d.failed_at IS NOT NULL)
+		      AND NOT EXISTS (
+		          SELECT 1 FROM webhook_delivery_attempts pending
+		          WHERE pending.notification_id = d.id AND pending.status = $4
+		      )
+		    GROUP BY d.id, d.endpoint_id
+		 ), ranked AS (
+		   SELECT id, latest_at,
+		          sum(attempt_total) OVER (
+		              PARTITION BY endpoint_id ORDER BY latest_at DESC, id DESC
+		          ) AS retained_attempts
+		     FROM terminal_notifications
 		 ),
 		 eligible AS (
 		   SELECT id FROM ranked
-		    WHERE rn > $2 OR created_at < $1
-		    ORDER BY created_at
+		    WHERE retained_attempts > $2 OR latest_at < $1
+		    ORDER BY latest_at
 		    LIMIT $3
 		    FOR UPDATE SKIP LOCKED
 		 )
 		 DELETE FROM webhook_deliveries d USING eligible e WHERE d.id = e.id`,
-		before, keepPerEndpoint, limit)
+		before, keepPerEndpoint, limit, WebhookAttemptPending)
 	if err != nil {
 		return 0, classify("webhook deliveries", err)
 	}
 	abandoned, err := s.Pool.Exec(ctx,
-		`WITH eligible AS (
-		   SELECT id FROM webhook_deliveries
-		    WHERE delivered_at IS NULL AND failed_at IS NULL AND created_at < $1
-		    ORDER BY created_at
+		`WITH allow_pending_delete AS (
+		   SELECT set_config('bex.webhook_pending_delete', 'on', true)
+		 ), pending_age AS (
+		   SELECT d.id, max(a.created_at) AS newest_reservation
+		     FROM webhook_deliveries d
+		     JOIN webhook_delivery_attempts a ON a.notification_id = d.id
+		     CROSS JOIN allow_pending_delete
+		    WHERE a.status = $3
+		    GROUP BY d.id
+		 ), eligible AS (
+		   SELECT id FROM pending_age
+		    WHERE newest_reservation < $1
+		    ORDER BY newest_reservation
 		    LIMIT $2
 		    FOR UPDATE SKIP LOCKED
 		 )
 		 DELETE FROM webhook_deliveries d USING eligible e WHERE d.id = e.id`,
-		before, limit)
+		before, limit, WebhookAttemptPending)
 	if err != nil {
 		return 0, classify("webhook deliveries", err)
 	}
 	return terminal.RowsAffected() + abandoned.RowsAffected(), nil
-}
-
-// prefixColumns qualifies a comma-separated column list with a table alias —
-// "id, at" -> "d.id, d.at" — so a joined query can reuse a scan's column list.
-func prefixColumns(alias, columns string) string {
-	parts := strings.Split(columns, ", ")
-	for i, p := range parts {
-		parts[i] = alias + "." + p
-	}
-	return strings.Join(parts, ", ")
 }

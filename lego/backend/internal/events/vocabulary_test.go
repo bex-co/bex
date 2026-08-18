@@ -104,6 +104,7 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"members.Remove":       "member: target on the workspace audit trail; members have no per-service events feed",
 		"members.RevokeInvite": "invite: target on the workspace audit trail; members have no per-service events feed",
 		"members.ResendInvite": "invite: target on the workspace audit trail; members have no per-service events feed",
+		"webhooks.Resend":      "webhook_attempt: target on the workspace audit trail; delivery recovery is not a service lifecycle event",
 	}
 	// w6/m17 moved every resource-scoped write verb off a separate Authorize
 	// call onto the single AuthorizeApp/AuthorizeDatabase/AuthorizeKeyValue seam

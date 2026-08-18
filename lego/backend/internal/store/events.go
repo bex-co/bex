@@ -127,9 +127,8 @@ type ServiceEventRow struct {
 }
 
 // ServiceEventLookup is one globally-addressed event plus the resource identity
-// materialized beside its source key. ServiceID mirrors the outbound-webhook
-// payload: the public <workspace-name>-<app-name> address for a service, or the
-// typed dpg-/red- target for a datastore.
+// materialized beside its source key. ServiceID is the canonical public id:
+// apps.id (srv-…) for a service, or the typed dpg-/red- target for a datastore.
 type ServiceEventLookup struct {
 	Event     ServiceEventRow
 	ServiceID string
@@ -423,7 +422,7 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, target, ownerWor
 // projection is deliberately identical to ListServiceEvents' row shape.
 const getServiceEventQuery = `
 WITH hit AS MATERIALIZED (
-    SELECT event_key, source, source_row_id, phase, service_id
+    SELECT event_key, source, source_row_id, phase, service_id, app_id
     FROM service_event_index
     WHERE workspace_id = $1 AND event_id = $2
 )
@@ -486,7 +485,7 @@ SELECT h.event_key AS key,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN f.branch_to ELSE '' END AS branch_to,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN f.commit_url ELSE '' END AS commit_url,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN f.status ELSE '' END AS fact_status,
-       h.service_id
+       COALESCE(h.app_id, h.service_id)
 FROM hit h
 LEFT JOIN deploys d
   ON h.source = '` + EventSourceDeploy + `' AND d.id = h.source_row_id

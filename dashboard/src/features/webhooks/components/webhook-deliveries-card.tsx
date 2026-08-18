@@ -1,7 +1,25 @@
 import { Fragment, useState } from "react";
-import { ChevronDown, ChevronUp, Inbox, Loader2, RotateCw } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Inbox,
+  Loader2,
+  RotateCw,
+} from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/common/components/ui/alert-dialog";
 import {
   Card,
   CardAction,
@@ -26,9 +44,13 @@ import {
   PanelTableSkeleton,
 } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { formatDateTime } from "@/common/lib/format";
+import { config } from "@/config/config";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { useWebhookDeliveries } from "@/features/webhooks/hooks/use-webhook-deliveries";
+import { useResendWebhookDelivery } from "@/features/webhooks/hooks/use-resend-webhook-delivery";
 import { eventLabelKey } from "@/features/webhooks/event-catalog";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type {
   WebhookDeliveryStatus,
   WebhookDeliveryView,
@@ -42,15 +64,16 @@ function toAPITime(value: string): string | undefined {
   return Number.isNaN(parsed.valueOf()) ? undefined : parsed.toISOString();
 }
 
-/**
- * The Activity tab's "Recent deliveries" (w1/m49/t004) — Render's shape:
- * All/Successful/Failed filter tabs, a manual refresh, newest first, keyset
- * "Load more". Replaces the w3/m11 delivery-history dialog; same hook, so
- * paging state resets when the page unmounts. Status and time bounds are sent
- * to the server, so a filtered view pages only matching rows.
- */
-export function WebhookDeliveriesCard({ endpointId }: { endpointId: string }) {
+export function WebhookDeliveriesCard({
+  endpointId,
+  endpointEnabled,
+}: {
+  endpointId: string;
+  endpointEnabled: boolean;
+}) {
   const { t } = useTranslations();
+  const { currentWorkspace, currentWorkspaceId } = useWorkspace();
+  const canResend = endpointEnabled && currentWorkspace?.role === "admin";
   const [filter, setFilter] = useState<DeliveryFilter>("all");
   const [sentAfter, setSentAfter] = useState("");
   const [sentBefore, setSentBefore] = useState("");
@@ -72,6 +95,13 @@ export function WebhookDeliveriesCard({ endpointId }: { endpointId: string }) {
     sentAfter: toAPITime(sentAfter),
     sentBefore: toAPITime(sentBefore),
   });
+  const { resend, resendingAttemptId } = useResendWebhookDelivery();
+
+  async function handleResend(attemptId: string) {
+    const queued = await resend(endpointId, attemptId);
+    if (queued) await refresh();
+    return queued;
+  }
 
   return (
     <Card>
@@ -128,7 +158,7 @@ export function WebhookDeliveriesCard({ endpointId }: { endpointId: string }) {
             />
           </div>
         </div>
-        {error ? (
+        {error && deliveries.length === 0 ? (
           <PanelCenteredState
             icon={<Inbox />}
             title={t("webhooks.historyErrorTitle")}
@@ -153,11 +183,21 @@ export function WebhookDeliveriesCard({ endpointId }: { endpointId: string }) {
                   <TableHead>{t("webhooks.colAttempts")}</TableHead>
                   <TableHead>{t("webhooks.colResponse")}</TableHead>
                   <TableHead>{t("webhooks.colWhen")}</TableHead>
+                  <TableHead>
+                    <span className="sr-only">{t("webhooks.colActions")}</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {deliveries.map((d) => (
-                  <DeliveryRow key={d.id} delivery={d} />
+                  <DeliveryRow
+                    key={d.id}
+                    delivery={d}
+                    ownerId={currentWorkspaceId}
+                    canResend={canResend}
+                    resending={resendingAttemptId === d.id}
+                    onResend={handleResend}
+                  />
                 ))}
               </TableBody>
             </Table>
@@ -192,16 +232,65 @@ function statusVariant(
   }
 }
 
-function DeliveryRow({ delivery }: { delivery: WebhookDeliveryView }) {
+function DeliveryRow({
+  delivery,
+  ownerId,
+  canResend,
+  resending,
+  onResend,
+}: {
+  delivery: WebhookDeliveryView;
+  ownerId: string | null;
+  canResend: boolean;
+  resending: boolean;
+  onResend: (attemptId: string) => Promise<boolean>;
+}) {
   const { t } = useTranslations();
   const [expanded, setExpanded] = useState(false);
+  const [resendOpen, setResendOpen] = useState(false);
   const labelKey = eventLabelKey(delivery.eventType);
-  const evidence = delivery.responseBody || delivery.lastError;
+  const eventLabel = labelKey ? t(labelKey) : delivery.eventType;
+  const evidence =
+    delivery.requestBody || delivery.responseBody || delivery.transportError;
+  const exactSentAt = formatDateTime(delivery.sentAt);
+  let resultSummary = t("webhooks.noResponseEvidence");
+  if (delivery.status === "pending") {
+    resultSummary = t("webhooks.status.pending");
+  } else if (delivery.statusCode > 0) {
+    resultSummary = t("webhooks.httpStatus", { status: delivery.statusCode });
+  } else if (delivery.transportError) {
+    resultSummary = t("webhooks.transportError");
+  }
+  const eventURL =
+    delivery.eventId && ownerId
+      ? `${config.apiBaseUrl}/v1/events/${encodeURIComponent(delivery.eventId)}?ownerId=${encodeURIComponent(ownerId)}`
+      : "";
+
+  async function confirmResend() {
+    const queued = await onResend(delivery.id);
+    if (queued) setResendOpen(false);
+  }
+
   return (
     <Fragment>
       <TableRow>
         <TableCell className="text-sm">
-          {labelKey ? t(labelKey) : delivery.eventType}
+          {eventURL ? (
+            <a
+              href={eventURL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 underline-offset-2 hover:underline"
+              aria-label={t("webhooks.openSourceEvent", {
+                id: delivery.eventId,
+              })}
+            >
+              {eventLabel}
+              <ExternalLink className="size-3" aria-hidden="true" />
+            </a>
+          ) : (
+            eventLabel
+          )}
         </TableCell>
         <TableCell className="max-w-[10rem] truncate font-mono text-sm">
           {delivery.serviceId || "—"}
@@ -211,7 +300,9 @@ function DeliveryRow({ delivery }: { delivery: WebhookDeliveryView }) {
             {t(`webhooks.status.${delivery.status}`)}
           </Badge>
         </TableCell>
-        <TableCell className="text-sm">{delivery.attemptCount}</TableCell>
+        <TableCell className="text-sm tabular-nums">
+          {delivery.attemptNumber}
+        </TableCell>
         <TableCell className="text-sm">
           {evidence ? (
             <Button
@@ -220,38 +311,137 @@ function DeliveryRow({ delivery }: { delivery: WebhookDeliveryView }) {
               className="h-7 px-2"
               onClick={() => setExpanded((value) => !value)}
               aria-expanded={expanded}
+              aria-controls={`webhook-attempt-${delivery.id}`}
             >
-              {delivery.lastStatusCode > 0
-                ? `HTTP ${delivery.lastStatusCode}`
-                : t("webhooks.transportError")}
+              {resultSummary}
               {expanded ? <ChevronUp /> : <ChevronDown />}
             </Button>
-          ) : delivery.lastStatusCode > 0 ? (
-            `HTTP ${delivery.lastStatusCode}`
+          ) : (
+            resultSummary
+          )}
+        </TableCell>
+        <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+          {delivery.sentAt ? (
+            <time dateTime={delivery.sentAt} className="flex flex-col">
+              <span>{formatRelativeAge(delivery.sentAt)}</span>
+              <span className="text-xs">{exactSentAt ?? delivery.sentAt}</span>
+            </time>
           ) : (
             "—"
           )}
         </TableCell>
-        <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-          {formatRelativeAge(delivery.sentAt ?? delivery.createdAt)}
+        <TableCell className="text-right">
+          {canResend && delivery.status === "failed" ? (
+            <AlertDialog open={resendOpen} onOpenChange={setResendOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={resending}>
+                  {resending ? <Loader2 className="animate-spin" /> : null}
+                  {t(resending ? "webhooks.resending" : "webhooks.resend")}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {t("webhooks.resendConfirmTitle")}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t("webhooks.resendConfirmBody")}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={resending}>
+                    {t("webhooks.resendCancel")}
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={resending}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void confirmResend();
+                    }}
+                  >
+                    {resending ? <Loader2 className="animate-spin" /> : null}
+                    {t(resending ? "webhooks.resending" : "webhooks.resend")}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : null}
         </TableCell>
       </TableRow>
       {expanded ? (
         <TableRow>
-          <TableCell colSpan={6}>
-            {delivery.responseBody ? (
-              <pre className="bg-muted max-h-48 overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap break-words">
-                {delivery.responseBody}
-              </pre>
-            ) : null}
-            {delivery.lastError ? (
-              <p className="text-destructive mt-2 text-sm">
-                {delivery.lastError}
-              </p>
-            ) : null}
+          <TableCell colSpan={7}>
+            <div
+              id={`webhook-attempt-${delivery.id}`}
+              className="grid gap-4 md:grid-cols-2"
+            >
+              <EvidencePanel
+                title={t("webhooks.requestPayload")}
+                body={delivery.requestBody}
+                empty={t("webhooks.noRequestEvidence")}
+              />
+              <EvidencePanel
+                title={t("webhooks.endpointResponse")}
+                body={delivery.responseBody}
+                error={delivery.transportError}
+                empty={t("webhooks.noResponseEvidence")}
+              />
+              <div className="text-muted-foreground space-y-1 text-xs md:col-span-2">
+                <p>
+                  {t("webhooks.attemptIdentity", {
+                    attemptId: delivery.id,
+                    eventId: delivery.eventId,
+                  })}
+                </p>
+                <p>
+                  {t("webhooks.parentDeliveryStatus", {
+                    status: t(`webhooks.status.${delivery.parentStatus}`),
+                  })}
+                </p>
+                {delivery.nextAttemptAt ? (
+                  <p>
+                    {t("webhooks.retryScheduled", {
+                      date:
+                        formatDateTime(delivery.nextAttemptAt) ??
+                        delivery.nextAttemptAt,
+                    })}
+                  </p>
+                ) : null}
+              </div>
+            </div>
           </TableCell>
         </TableRow>
       ) : null}
     </Fragment>
+  );
+}
+
+function EvidencePanel({
+  title,
+  body,
+  error,
+  empty,
+}: {
+  title: string;
+  body: string;
+  error?: string;
+  empty: string;
+}) {
+  return (
+    <section className="space-y-2" aria-label={title}>
+      <h3 className="text-sm font-medium">{title}</h3>
+      {body ? (
+        <pre className="bg-muted max-h-64 overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap break-words">
+          {body}
+        </pre>
+      ) : error ? null : (
+        <p className="text-muted-foreground text-sm">{empty}</p>
+      )}
+      {error ? (
+        <p className="text-destructive text-sm" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </section>
   );
 }

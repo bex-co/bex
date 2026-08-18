@@ -29,12 +29,19 @@ import (
 )
 
 func webhookREST(t *testing.T, svc *Service, method, target, body string) *httptest.ResponseRecorder {
+	return webhookRESTWithHeaders(t, svc, method, target, body, nil)
+}
+
+func webhookRESTWithHeaders(t *testing.T, svc *Service, method, target, body string, headers map[string]string) *httptest.ResponseRecorder {
 	t.Helper()
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	req := httptest.NewRequest(method, target, strings.NewReader(body))
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	for key, value := range headers {
+		req.Header.Set(key, value)
 	}
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
@@ -153,10 +160,11 @@ func TestRenderRESTWebhookEventEnvelopeTimeFiltersAndEvidence(t *testing.T) {
 	base := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
 	for i := range 3 {
 		sent := base.Add(time.Duration(i) * time.Hour)
-		st.deliveries[created.ID] = append(st.deliveries[created.ID], store.WebhookDelivery{
+		st.deliveries[created.ID] = append(st.deliveries[created.ID], store.WebhookAttempt{
 			ID: "whd-" + string(rune('a'+i)), EndpointID: created.ID,
-			EventID: "evt-" + string(rune('a'+i)), EventType: TypeDeployEnded,
-			LastStatus: 502, LastError: "endpoint answered 502", ResponseBody: "upstream unavailable",
+			NotificationID: "whd-parent", EventID: "evt-stable", EventType: TypeDeployEnded,
+			Status: store.WebhookAttemptFailed, AttemptNumber: i + 1,
+			StatusCode: 502, TransportError: "endpoint answered 502", ResponseBody: "upstream unavailable",
 			SentAt: &sent, CreatedAt: sent,
 		})
 	}
@@ -187,5 +195,47 @@ func TestRenderRESTWebhookEventEnvelopeTimeFiltersAndEvidence(t *testing.T) {
 	bad := webhookREST(t, svc, http.MethodGet, "/v1/webhooks/"+created.ID+"/events?sentAfter=not-a-time", "")
 	if bad.Code != http.StatusBadRequest {
 		t.Fatalf("bad sentAfter = %d %s", bad.Code, bad.Body.String())
+	}
+
+	filtered := webhookREST(t, svc, http.MethodGet, "/v1/webhooks/"+created.ID+"/events?status=failed", "")
+	if filtered.Code != http.StatusOK || !strings.Contains(filtered.Body.String(), `"eventId":"evt-stable"`) {
+		t.Fatalf("failed filter = %d %s", filtered.Code, filtered.Body.String())
+	}
+}
+
+func TestRESTWebhookResendRequiresKeyAndIsIdempotent(t *testing.T) {
+	svc, st := newTestService()
+	created, err := svc.Create(t.Context(), CreateRequest{
+		Name: "resend", URL: "https://events.example/h", EventTypes: []string{}, Enabled: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sent := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	st.deliveries[created.ID] = []store.WebhookAttempt{{
+		ID: "whd-source", NotificationID: "whd-parent", EndpointID: created.ID,
+		EventID: "evt-stable", EventType: TypeDeployEnded, ServiceID: "srv-1",
+		Status: store.WebhookAttemptFailed, AttemptNumber: 1, StatusCode: http.StatusBadGateway,
+		Payload: `{"type":"deploy_ended"}`, SentAt: &sent, CreatedAt: sent,
+	}}
+	path := "/v1/webhooks/" + created.ID + "/events/whd-source/resend"
+
+	missing := webhookREST(t, svc, http.MethodPost, path, "")
+	if missing.Code != http.StatusBadRequest || !strings.Contains(missing.Body.String(), WebhookResendIdempotencyKeyInvalidCode) {
+		t.Fatalf("missing key = %d %s", missing.Code, missing.Body.String())
+	}
+
+	headers := map[string]string{"Idempotency-Key": "resend-key-0001"}
+	first := webhookRESTWithHeaders(t, svc, http.MethodPost, path, "", headers)
+	second := webhookRESTWithHeaders(t, svc, http.MethodPost, path, "", headers)
+	if first.Code != http.StatusAccepted || second.Code != http.StatusAccepted {
+		t.Fatalf("resend statuses = %d/%d: %s / %s", first.Code, second.Code, first.Body.String(), second.Body.String())
+	}
+	one, two := decodeObject(t, first), decodeObject(t, second)
+	if one["id"] == "" || one["id"] != two["id"] || one["status"] != DeliveryPending || one["eventId"] != "evt-stable" {
+		t.Fatalf("idempotent resend = first %v second %v", one, two)
+	}
+	if one["requestBody"] != `{"type":"deploy_ended"}` || one["attemptNumber"] != float64(2) {
+		t.Fatalf("resend evidence = %v", one)
 	}
 }

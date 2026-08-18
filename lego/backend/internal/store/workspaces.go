@@ -179,11 +179,9 @@ func (s *PGStore) CountAppsForTenant(ctx context.Context, tenantID string) (int,
 	return n, err
 }
 
-// queryRower is the minimal shape CountTenantMembers needs — satisfied by both
-// *pgxpool.Pool (a standalone call) and pgx.Tx (a call inside an in-flight
-// transaction, e.g. planAllowsJoin's accept-time plan enforcement in
-// members.go) — so both call sites share one query instead of two copies that
-// can drift.
+// queryRower is the package's transaction-aware single-row query shape. It is
+// satisfied by both *pgxpool.Pool and pgx.Tx, so shared query helpers can run
+// either standalone or inside an in-flight transaction.
 type queryRower interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }

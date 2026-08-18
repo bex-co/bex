@@ -14,5 +14,10 @@ export const Route = createFileRoute("/webhook/$webhookId/")({
 function WebhookActivityTab() {
   const { endpoint } = useWebhookDetail();
   if (!endpoint) return null; // the shell renders loading/not-found states
-  return <WebhookDeliveriesCard endpointId={endpoint.id} />;
+  return (
+    <WebhookDeliveriesCard
+      endpointId={endpoint.id}
+      endpointEnabled={endpoint.enabled}
+    />
+  );
 }

@@ -206,8 +206,9 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     description: "Delivery-history table column header",
   },
   "webhooks.colAttempts": {
-    message: "尝试次数",
-    description: "Delivery-history table column header",
+    message: "第几次尝试",
+    description:
+      "Delivery-history table column header — one-based attempt number",
   },
   "webhooks.colResponse": {
     message: "响应",
@@ -215,7 +216,12 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   },
   "webhooks.colWhen": {
     message: "时间",
-    description: "Delivery-history table column header — event age",
+    description:
+      "Delivery-history table column header — relative and exact send time",
+  },
+  "webhooks.colActions": {
+    message: "操作",
+    description: "Accessible delivery-history table actions column header",
   },
   "webhooks.status.pending": {
     message: "等待中",
@@ -227,7 +233,72 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   },
   "webhooks.status.failed": {
     message: "已失败",
-    description: "Delivery status badge — retries exhausted",
+    description: "Delivery status badge — this individual attempt failed",
+  },
+  "webhooks.httpStatus": {
+    message: "HTTP {status}",
+    description: "Delivery attempt HTTP status summary",
+  },
+  "webhooks.openSourceEvent": {
+    message: "打开源事件 {id}",
+    description: "Accessible label for the event hydration link",
+  },
+  "webhooks.requestPayload": {
+    message: "请求负载",
+    description: "Expanded delivery-attempt request evidence heading",
+  },
+  "webhooks.endpointResponse": {
+    message: "端点响应",
+    description: "Expanded delivery-attempt response evidence heading",
+  },
+  "webhooks.noRequestEvidence": {
+    message: "没有可用的请求证据。",
+    description: "Expanded attempt with no retained request body",
+  },
+  "webhooks.noResponseEvidence": {
+    message: "未记录响应。",
+    description: "Expanded pending/transport attempt with no endpoint body",
+  },
+  "webhooks.attemptIdentity": {
+    message: "尝试 {attemptId} · 源事件 {eventId}",
+    description: "Immutable attempt and stable source-event identity",
+  },
+  "webhooks.parentDeliveryStatus": {
+    message: "通知状态：{status}",
+    description:
+      "Logical notification state shown separately from attempt outcome",
+  },
+  "webhooks.retryScheduled": {
+    message: "下次自动尝试：{date}",
+    description: "Parent notification retry schedule",
+  },
+  "webhooks.resend": {
+    message: "重新发送",
+    description: "Manual resend action for a failed attempt",
+  },
+  "webhooks.resending": {
+    message: "正在重新发送…",
+    description: "Manual resend action in progress",
+  },
+  "webhooks.resendConfirmTitle": {
+    message: "重新发送此 Webhook？",
+    description: "Manual resend confirmation title",
+  },
+  "webhooks.resendConfirmBody": {
+    message: "这将使用相同的源事件和请求负载排队一次新的签名尝试。",
+    description: "Manual resend confirmation consequence",
+  },
+  "webhooks.resendCancel": {
+    message: "取消",
+    description: "Manual resend confirmation cancel action",
+  },
+  "webhooks.resendSuccess": {
+    message: "Webhook 重新发送已排队",
+    description: "Toast after a manual resend reservation succeeds",
+  },
+  "webhooks.resendError": {
+    message: "无法重新发送此 Webhook",
+    description: "Toast after a manual resend is refused or fails",
   },
   "webhooks.loadMore": {
     message: "加载更多",
@@ -500,8 +571,8 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     description: "Activity tab heading",
   },
   "webhooks.recentDeliveriesHint": {
-    message: "刷新表格以获取最新事件",
-    description: "Activity tab heading hint",
+    message: "每一行代表一次投递尝试。此标签页可见时会自动显示新的尝试。",
+    description: "Activity tab heading hint for immutable attempts + polling",
   },
   "webhooks.refresh": {
     message: "刷新",

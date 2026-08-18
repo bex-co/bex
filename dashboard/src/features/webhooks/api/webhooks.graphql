@@ -38,6 +38,23 @@ query WebhookEventTypes {
   webhookEventTypes
 }
 
+fragment WebhookDeliveryFields on WebhookDelivery {
+  id
+  eventId
+  eventType
+  serviceId
+  status
+  attemptNumber
+  statusCode
+  transportError
+  responseBody
+  requestBody
+  sentAt
+  nextAttemptAt
+  parentStatus
+  cursor
+}
+
 query WebhookDeliveries(
   $endpointId: String!
   $ownerId: String
@@ -56,19 +73,23 @@ query WebhookDeliveries(
     sentBefore: $sentBefore
     status: $status
   ) {
-    id
-    eventType
-    serviceId
-    status
-    attemptCount
-    lastStatusCode
-    lastError
-    responseBody
-    sentAt
-    nextAttemptAt
-    deliveredAt
-    createdAt
-    cursor
+    ...WebhookDeliveryFields
+  }
+}
+
+mutation ResendWebhookDelivery(
+  $endpointId: String!
+  $attemptId: String!
+  $ownerId: String
+  $idempotencyKey: String!
+) {
+  resendWebhookDelivery(
+    endpointId: $endpointId
+    attemptId: $attemptId
+    ownerId: $ownerId
+    idempotencyKey: $idempotencyKey
+  ) {
+    ...WebhookDeliveryFields
   }
 }
 

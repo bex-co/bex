@@ -452,7 +452,8 @@ type Deps struct {
 	// those verbs report core.ErrWebhooksUnavailable (503). The delivery
 	// worker itself is constructed and started in cmd/api/main.go (a
 	// background loop, the usage/audit-sweep shape), not here.
-	WebhookStore webhooks.EndpointStore
+	WebhookStore   webhooks.EndpointStore
+	WebhookMetrics *webhooks.Metrics
 	// JobStore, when set (the control-plane store is wired), backs the
 	// one-off jobs feature (Render's /services/{id}/jobs). nil => every job
 	// verb reports jobs.ErrJobsUnavailable (503).
@@ -748,7 +749,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Environments:  environmentsSvc,
 		GitHub:        gh,
 		RegistryCreds: rc,
-		Webhooks:      &webhooks.Service{Base: base, Store: d.WebhookStore},
+		Webhooks:      &webhooks.Service{Base: base, Store: d.WebhookStore, Metrics: d.WebhookMetrics},
 		Jobs:          &jobs.Service{Base: base, Store: d.JobStore, EventFacts: d.EventFacts},
 		Onboard:       d.Onboard,
 		Usage:         d.Usage,

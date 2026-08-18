@@ -37,11 +37,20 @@ import (
 // secret-omitting on reads like the real column lists.
 type fakeEndpointStore struct {
 	rows       map[string]store.WebhookEndpoint // by id, WITH secret (the table)
-	deliveries map[string][]store.WebhookDelivery
+	deliveries map[string][]store.WebhookAttempt
+}
+
+type recordingWebhookAudit struct {
+	events []core.AuditEvent
+}
+
+func (r *recordingWebhookAudit) Record(_ context.Context, event core.AuditEvent) error {
+	r.events = append(r.events, event)
+	return nil
 }
 
 func newFakeEndpointStore() *fakeEndpointStore {
-	return &fakeEndpointStore{rows: map[string]store.WebhookEndpoint{}, deliveries: map[string][]store.WebhookDelivery{}}
+	return &fakeEndpointStore{rows: map[string]store.WebhookEndpoint{}, deliveries: map[string][]store.WebhookAttempt{}}
 }
 
 // redact mirrors the real store's reads, which never select the secret column.
@@ -142,12 +151,13 @@ func (f *fakeEndpointStore) DeleteWebhookEndpoint(_ context.Context, tenantID, i
 		return store.ErrNotFound
 	}
 	delete(f.rows, id)
+	delete(f.deliveries, id)
 	return nil
 }
 
-func (f *fakeEndpointStore) ListWebhookDeliveries(_ context.Context, filter store.WebhookDeliveryFilter) ([]store.WebhookDelivery, error) {
+func (f *fakeEndpointStore) ListWebhookAttempts(_ context.Context, filter store.WebhookAttemptFilter) ([]store.WebhookAttempt, error) {
 	all := slices.Clone(f.deliveries[filter.EndpointID])
-	slices.SortFunc(all, func(a, b store.WebhookDelivery) int {
+	slices.SortFunc(all, func(a, b store.WebhookAttempt) int {
 		if a.SentAt == nil || b.SentAt == nil {
 			return 0
 		}
@@ -156,12 +166,12 @@ func (f *fakeEndpointStore) ListWebhookDeliveries(_ context.Context, filter stor
 		}
 		return strings.Compare(b.ID, a.ID)
 	})
-	var out []store.WebhookDelivery
+	var out []store.WebhookAttempt
 	for _, d := range all {
 		if d.SentAt == nil || (!filter.SentAfter.IsZero() && !d.SentAt.After(filter.SentAfter)) || (!filter.SentBefore.IsZero() && !d.SentAt.Before(filter.SentBefore)) {
 			continue
 		}
-		if filter.Status == DeliveryDelivered && d.DeliveredAt == nil || filter.Status == DeliveryFailed && d.FailedAt == nil {
+		if filter.Status != "" && d.Status != filter.Status {
 			continue
 		}
 		if !filter.AfterAt.IsZero() {
@@ -175,6 +185,45 @@ func (f *fakeEndpointStore) ListWebhookDeliveries(_ context.Context, filter stor
 		}
 	}
 	return out, nil
+}
+
+func (f *fakeEndpointStore) QueueWebhookResend(_ context.Context, request store.WebhookResendRequest) (store.WebhookAttempt, error) {
+	endpoint, ok := f.rows[request.EndpointID]
+	if !ok || endpoint.TenantID != request.TenantID {
+		return store.WebhookAttempt{}, store.ErrWebhookEndpointNotFound
+	}
+	var source *store.WebhookAttempt
+	for i := range f.deliveries[request.EndpointID] {
+		attempt := &f.deliveries[request.EndpointID][i]
+		if attempt.Origin == store.WebhookAttemptManual && attempt.IdempotencyKey == request.IdempotencyKey {
+			return *attempt, nil
+		}
+		if attempt.ID == request.SourceAttemptID {
+			source = attempt
+		}
+		if attempt.Status == store.WebhookAttemptPending {
+			return store.WebhookAttempt{}, store.ErrWebhookAttemptPending
+		}
+	}
+	if !endpoint.Enabled {
+		return store.WebhookAttempt{}, store.ErrWebhookEndpointDisabled
+	}
+	if source == nil {
+		return store.WebhookAttempt{}, store.ErrNotFound
+	}
+	if source.Status == store.WebhookAttemptPending {
+		return store.WebhookAttempt{}, store.ErrWebhookAttemptPending
+	}
+	next := request.RequestedAt
+	attempt := store.WebhookAttempt{
+		ID: ids.New(ids.WebhookDelivery), NotificationID: source.NotificationID,
+		EndpointID: request.EndpointID, EventID: source.EventID, EventType: source.EventType, ServiceID: source.ServiceID,
+		AttemptNumber: source.AttemptNumber + 1, Status: store.WebhookAttemptPending, Payload: source.Payload,
+		Origin: store.WebhookAttemptManual, RequestedBy: request.RequestedBy, IdempotencyKey: request.IdempotencyKey,
+		ParentStatus: source.ParentStatus, NextAttemptAt: &next, CreatedAt: request.RequestedAt,
+	}
+	f.deliveries[request.EndpointID] = append(f.deliveries[request.EndpointID], attempt)
+	return attempt, nil
 }
 
 // fakeWorkspaceResolver resolves every caller to a fixed tenant, for the
@@ -479,6 +528,9 @@ func TestCrossWorkspaceAccessIsNotFound(t *testing.T) {
 	if _, err := other.ListDeliveries(ctx, "", created.ID, "", 0); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("cross-workspace ListDeliveries = %v, want ErrNotFound", err)
 	}
+	if _, err := other.Resend(ctx, "", created.ID, "whd-source", "foreign-resend-0001"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("cross-workspace Resend = %v, want ErrNotFound", err)
+	}
 	if list, err := other.List(ctx, ""); err != nil || len(list) != 0 {
 		t.Errorf("cross-workspace List = %+v (err %v), want empty", list, err)
 	}
@@ -495,6 +547,9 @@ func TestStoreOffReports503Sentinel(t *testing.T) {
 	}
 	if _, err := s.ListDeliveries(ctx, "", "whk-x", "", 0); !errors.Is(err, core.ErrWebhooksUnavailable) {
 		t.Errorf("ListDeliveries = %v, want ErrWebhooksUnavailable", err)
+	}
+	if _, err := s.Resend(ctx, "", "whk-x", "whd-x", "store-off-resend-0001"); !errors.Is(err, core.ErrWebhooksUnavailable) {
+		t.Errorf("Resend = %v, want ErrWebhooksUnavailable", err)
 	}
 }
 
@@ -528,10 +583,11 @@ func TestListDeliveriesPagesNewestFirstByCursor(t *testing.T) {
 	}
 	base := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
 	for i := range 5 {
-		st.deliveries[created.ID] = append(st.deliveries[created.ID], store.WebhookDelivery{
+		st.deliveries[created.ID] = append(st.deliveries[created.ID], store.WebhookAttempt{
 			ID: ids.New(ids.WebhookDelivery), EndpointID: created.ID,
 			EventID: "evt-x", EventType: TypeDeployEnded,
-			CreatedAt: base.Add(time.Duration(i) * time.Minute), SentAt: func() *time.Time { at := base.Add(time.Duration(i) * time.Minute); return &at }(), NextAttemptAt: base,
+			Status: store.WebhookAttemptDelivered, AttemptNumber: i + 1,
+			CreatedAt: base.Add(time.Duration(i) * time.Minute), SentAt: func() *time.Time { at := base.Add(time.Duration(i) * time.Minute); return &at }(),
 		})
 	}
 
@@ -539,7 +595,7 @@ func TestListDeliveriesPagesNewestFirstByCursor(t *testing.T) {
 	if err != nil || len(page1) != 3 {
 		t.Fatalf("page1 = %d items (err %v), want 3", len(page1), err)
 	}
-	if page1[0].CreatedAt < page1[2].CreatedAt {
+	if page1[0].SentAt < page1[2].SentAt {
 		t.Errorf("page1 not newest-first: %+v", page1)
 	}
 	page2, err := s.ListDeliveries(ctx, "", created.ID, page1[2].Cursor, 3)
@@ -558,16 +614,9 @@ func TestListDeliveriesFiltersTerminalStatusBeforePaging(t *testing.T) {
 		t.Fatal(err)
 	}
 	base := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
-	delivered, failed := base, base
-	for i, terminal := range []*time.Time{&delivered, nil, &failed} {
+	for i, status := range []string{store.WebhookAttemptDelivered, store.WebhookAttemptPending, store.WebhookAttemptFailed} {
 		sent := base.Add(time.Duration(i) * time.Minute)
-		row := store.WebhookDelivery{ID: fmt.Sprintf("whd-%d", i), EndpointID: created.ID, SentAt: &sent, CreatedAt: sent}
-		if i == 0 {
-			row.DeliveredAt = terminal
-		}
-		if i == 2 {
-			row.FailedAt = terminal
-		}
+		row := store.WebhookAttempt{ID: fmt.Sprintf("whd-%d", i), EndpointID: created.ID, SentAt: &sent, CreatedAt: sent, Status: status}
 		st.deliveries[created.ID] = append(st.deliveries[created.ID], row)
 	}
 
@@ -578,4 +627,151 @@ func TestListDeliveriesFiltersTerminalStatusBeforePaging(t *testing.T) {
 	if _, err := s.ListDeliveriesFiltered(t.Context(), "", created.ID, DeliveryFilter{Status: "pending"}); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("invalid terminal status = %v, want bad request", err)
 	}
+}
+
+func TestListDeliveriesPreservesEachAttemptAndParentRetryState(t *testing.T) {
+	s, st := newTestService()
+	created, err := s.Create(t.Context(), CreateRequest{Name: "attempts", URL: "https://example.com/hook", EventTypes: []string{}, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	next := base.Add(10 * time.Minute)
+	for i, statusCode := range []int{500, 502, 204} {
+		sent := base.Add(time.Duration(i) * time.Minute)
+		status := store.WebhookAttemptFailed
+		parentStatus := store.WebhookAttemptPending
+		if statusCode == 204 {
+			status = store.WebhookAttemptDelivered
+			parentStatus = "delivered"
+		}
+		st.deliveries[created.ID] = append(st.deliveries[created.ID], store.WebhookAttempt{
+			ID: fmt.Sprintf("whd-attempt-%d", i+1), NotificationID: "whd-parent", EndpointID: created.ID,
+			EventID: "evt-stable", EventType: TypeDeployEnded, ServiceID: "srv-1",
+			AttemptNumber: i + 1, Status: status, StatusCode: statusCode,
+			ResponseBody: fmt.Sprintf("response-%d", i+1), Payload: `{"type":"deploy_ended"}`,
+			SentAt: &sent, NextAttemptAt: &next, ParentStatus: parentStatus, CreatedAt: sent,
+		})
+	}
+
+	rows, err := s.ListDeliveriesFiltered(t.Context(), "", created.ID, DeliveryFilter{Status: DeliveryFailed})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 || rows[0].ID == rows[1].ID {
+		t.Fatalf("failed attempts = %+v", rows)
+	}
+	for _, row := range rows {
+		if row.EventID != "evt-stable" || row.Status != DeliveryFailed || row.ParentStatus != DeliveryPending ||
+			row.NextAttemptAt != next.Format(time.RFC3339) || row.RequestBody != `{"type":"deploy_ended"}` || row.Cursor == "" {
+			t.Fatalf("attempt evidence = %+v", row)
+		}
+	}
+}
+
+func TestResendIsAuthorizedAuditedAndIdempotent(t *testing.T) {
+	s, st := newTestService()
+	created, err := s.Create(t.Context(), CreateRequest{Name: "resend", URL: "https://example.com/hook", EventTypes: []string{}, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sent := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	st.deliveries[created.ID] = []store.WebhookAttempt{{
+		ID: "whd-source", NotificationID: "whd-parent", EndpointID: created.ID,
+		EventID: "evt-stable", EventType: TypeDeployEnded, ServiceID: "srv-1",
+		AttemptNumber: 1, Status: store.WebhookAttemptFailed, StatusCode: 502,
+		Payload: `{"type":"deploy_ended"}`, SentAt: &sent, ParentStatus: store.WebhookAttemptPending, CreatedAt: sent,
+	}}
+	audit := &recordingWebhookAudit{}
+	s.Base.Authz = manageChecker{admin: "admin-1"}
+	s.Base.Audit = audit
+	s.Base.Clock = func() time.Time { return sent.Add(time.Minute) }
+	ctx := core.WithIdentity(t.Context(), core.Identity{Subject: "admin-1", Method: "session"})
+
+	first, err := s.Resend(ctx, "", created.ID, "whd-source", "service-resend-0001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := s.Resend(ctx, "", created.ID, "whd-source", "service-resend-0001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := st.rows[created.ID]
+	row.Enabled = false
+	st.rows[created.ID] = row
+	third, err := s.Resend(ctx, "", created.ID, "whd-source", "service-resend-0001")
+	if err != nil {
+		t.Fatalf("ambiguous duplicate after disable: %v", err)
+	}
+	if first.ID == "" || first.ID != second.ID || first.Status != DeliveryPending || first.EventID != "evt-stable" ||
+		first.ID != third.ID || first.AttemptNumber != 2 || first.RequestBody != `{"type":"deploy_ended"}` {
+		t.Fatalf("idempotent resend = first %+v second %+v third %+v", first, second, third)
+	}
+	if len(st.deliveries[created.ID]) != 2 {
+		t.Fatalf("duplicate resend created %d attempts, want source + one manual", len(st.deliveries[created.ID]))
+	}
+	manual := st.deliveries[created.ID][1]
+	if manual.Origin != store.WebhookAttemptManual || manual.RequestedBy != "admin-1" || manual.IdempotencyKey != "service-resend-0001" {
+		t.Fatalf("manual attempt metadata = %+v", manual)
+	}
+	if len(audit.events) != 3 {
+		t.Fatalf("audit events = %d, want one per authorized request", len(audit.events))
+	}
+	for _, event := range audit.events {
+		if event.Verb != "webhooks.Resend" || event.Caller != "admin-1" || event.Outcome != core.AuditAllowed ||
+			event.Target != core.WebhookAttemptTarget(created.ID, "whd-source") {
+			t.Fatalf("resend audit = %+v", event)
+		}
+	}
+	viewerCtx := core.WithIdentity(t.Context(), core.Identity{Subject: "viewer-1", Method: "session"})
+	if _, err := s.Resend(viewerCtx, "", created.ID, "whd-source", "denied-resend-0001"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("unauthorized resend = %v, want forbidden", err)
+	}
+	denied := audit.events[len(audit.events)-1]
+	if denied.Verb != "webhooks.Resend" || denied.Caller != "viewer-1" || denied.Outcome != core.AuditDenied ||
+		denied.Target != core.WebhookAttemptTarget(created.ID, "whd-source") {
+		t.Fatalf("denied resend audit = %+v", denied)
+	}
+}
+
+func TestResendReturnsStableSafeRefusals(t *testing.T) {
+	s, st := newTestService()
+	created, err := s.Create(t.Context(), CreateRequest{Name: "resend-errors", URL: "https://example.com/hook", EventTypes: []string{}, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sent := time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC)
+	st.deliveries[created.ID] = []store.WebhookAttempt{{
+		ID: "whd-source", NotificationID: "whd-parent", EndpointID: created.ID,
+		EventID: "evt-1", EventType: TypeDeployEnded, AttemptNumber: 1,
+		Status: store.WebhookAttemptFailed, Payload: `{}`, SentAt: &sent, CreatedAt: sent,
+	}}
+	assertCode := func(err error, code string, class error) {
+		t.Helper()
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != code || !errors.Is(err, class) {
+			t.Fatalf("error = %#v, want %s wrapping %v", err, code, class)
+		}
+	}
+
+	_, err = s.Resend(t.Context(), "", created.ID, "whd-source", "short")
+	assertCode(err, WebhookResendIdempotencyKeyInvalidCode, core.ErrBadRequest)
+	_, err = s.Resend(t.Context(), "", created.ID, "whd-missing", "missing-attempt-0001")
+	assertCode(err, WebhookDeliveryNotFoundCode, core.ErrNotFound)
+	_, err = s.Resend(t.Context(), "", "whk-missing", "whd-source", "missing-endpoint-0001")
+	assertCode(err, WebhookEndpointNotFoundCode, core.ErrNotFound)
+
+	row := st.rows[created.ID]
+	row.Enabled = false
+	st.rows[created.ID] = row
+	_, err = s.Resend(t.Context(), "", created.ID, "whd-source", "disabled-endpoint-0001")
+	assertCode(err, WebhookEndpointDisabledCode, core.ErrConflict)
+	row.Enabled = true
+	st.rows[created.ID] = row
+
+	if _, err := s.Resend(t.Context(), "", created.ID, "whd-source", "pending-first-0001"); err != nil {
+		t.Fatal(err)
+	}
+	_, err = s.Resend(t.Context(), "", created.ID, "whd-source", "pending-second-0002")
+	assertCode(err, WebhookDeliveryPendingCode, core.ErrConflict)
 }

@@ -210,8 +210,9 @@ const enWebhooks: Record<string, TranslationEntry> = {
     description: "Delivery-history table column header",
   },
   "webhooks.colAttempts": {
-    message: "Attempts",
-    description: "Delivery-history table column header",
+    message: "Attempt",
+    description:
+      "Delivery-history table column header — one-based attempt number",
   },
   "webhooks.colResponse": {
     message: "Response",
@@ -219,7 +220,12 @@ const enWebhooks: Record<string, TranslationEntry> = {
   },
   "webhooks.colWhen": {
     message: "When",
-    description: "Delivery-history table column header — event age",
+    description:
+      "Delivery-history table column header — relative and exact send time",
+  },
+  "webhooks.colActions": {
+    message: "Actions",
+    description: "Accessible delivery-history table actions column header",
   },
   "webhooks.status.pending": {
     message: "Pending",
@@ -231,7 +237,73 @@ const enWebhooks: Record<string, TranslationEntry> = {
   },
   "webhooks.status.failed": {
     message: "Failed",
-    description: "Delivery status badge — retries exhausted",
+    description: "Delivery status badge — this individual attempt failed",
+  },
+  "webhooks.httpStatus": {
+    message: "HTTP {status}",
+    description: "Delivery attempt HTTP status summary",
+  },
+  "webhooks.openSourceEvent": {
+    message: "Open source event {id}",
+    description: "Accessible label for the event hydration link",
+  },
+  "webhooks.requestPayload": {
+    message: "Request payload",
+    description: "Expanded delivery-attempt request evidence heading",
+  },
+  "webhooks.endpointResponse": {
+    message: "Endpoint response",
+    description: "Expanded delivery-attempt response evidence heading",
+  },
+  "webhooks.noRequestEvidence": {
+    message: "No request evidence is available.",
+    description: "Expanded attempt with no retained request body",
+  },
+  "webhooks.noResponseEvidence": {
+    message: "No response was recorded.",
+    description: "Expanded pending/transport attempt with no endpoint body",
+  },
+  "webhooks.attemptIdentity": {
+    message: "Attempt {attemptId} · source event {eventId}",
+    description: "Immutable attempt and stable source-event identity",
+  },
+  "webhooks.parentDeliveryStatus": {
+    message: "Notification state: {status}",
+    description:
+      "Logical notification state shown separately from attempt outcome",
+  },
+  "webhooks.retryScheduled": {
+    message: "Next automatic attempt: {date}",
+    description: "Parent notification retry schedule",
+  },
+  "webhooks.resend": {
+    message: "Resend",
+    description: "Manual resend action for a failed attempt",
+  },
+  "webhooks.resending": {
+    message: "Resending…",
+    description: "Manual resend action in progress",
+  },
+  "webhooks.resendConfirmTitle": {
+    message: "Resend this webhook?",
+    description: "Manual resend confirmation title",
+  },
+  "webhooks.resendConfirmBody": {
+    message:
+      "This queues a new signed attempt with the same source event and request payload.",
+    description: "Manual resend confirmation consequence",
+  },
+  "webhooks.resendCancel": {
+    message: "Cancel",
+    description: "Manual resend confirmation cancel action",
+  },
+  "webhooks.resendSuccess": {
+    message: "Webhook resend queued",
+    description: "Toast after a manual resend reservation succeeds",
+  },
+  "webhooks.resendError": {
+    message: "Couldn't resend this webhook",
+    description: "Toast after a manual resend is refused or fails",
   },
   "webhooks.loadMore": {
     message: "Load more",
@@ -505,8 +577,9 @@ const enWebhooks: Record<string, TranslationEntry> = {
     description: "Activity tab heading",
   },
   "webhooks.recentDeliveriesHint": {
-    message: "Refresh the table to fetch the latest events",
-    description: "Activity tab heading hint",
+    message:
+      "Each row is one delivery attempt. New attempts appear automatically while this tab is visible.",
+    description: "Activity tab heading hint for immutable attempts + polling",
   },
   "webhooks.refresh": {
     message: "Refresh",

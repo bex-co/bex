@@ -105,6 +105,19 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	"suspend-postgres": {"confirm": {}},
 	"resume-postgres":  {"confirm": {}},
 	"restart-postgres": {"confirm": {}},
+
+	// Render's endpoint-id operations do not carry a workspace selector. Bex
+	// accepts one consistently so a caller can address a non-default workspace
+	// without weakening the endpoint-scoped store lookup.
+	"retrieve-webhook": {"ownerId": {}},
+	"update-webhook":   {"ownerId": {}},
+	"delete-webhook":   {"ownerId": {}},
+	// Render's public history envelope is unchanged; bex additionally lets the
+	// dashboard and live verifier select immutable attempt outcomes directly.
+	"list-webhook-events": {"ownerId": {}, "status": {}},
+	// Bex's dashboard carries its selected workspace explicitly. Render's event
+	// route has no owner selector, so this remains a labeled query extension.
+	"retrieve-event": {"ownerId": {}},
 }
 
 func loadRenderOpenAPIContract() (*renderOpenAPIContract, error) {
