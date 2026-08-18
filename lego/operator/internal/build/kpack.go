@@ -73,9 +73,14 @@ func KpackImage(o Options) *unstructured.Unstructured {
 			"value":    execution.BuildPoolTaintValue,
 			"effect":   "NoSchedule",
 		}},
+		// Ephemeral-storage matches the Dockerfile/native build bound (round-13
+		// #4): buildpack steps executing tenant-controlled Git source can fill
+		// node-local disk, and bex-build carries no namespace LimitRange/Quota —
+		// the per-workload spec is the only bound. Same 10Gi/16G the build Job's
+		// workspace containers carry.
 		"resources": map[string]any{
-			"requests": map[string]any{"cpu": buildCPURequest, "memory": buildMemoryRequest},
-			"limits":   map[string]any{"cpu": buildCPULimit, "memory": buildMemoryLimit},
+			"requests": map[string]any{"cpu": buildCPURequest, "memory": buildMemoryRequest, "ephemeral-storage": buildEphemeralRequest},
+			"limits":   map[string]any{"cpu": buildCPULimit, "memory": buildMemoryLimit, "ephemeral-storage": buildEphemeralLimit},
 		},
 	}
 	if len(env) > 0 {

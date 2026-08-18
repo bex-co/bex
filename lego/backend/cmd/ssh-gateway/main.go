@@ -198,12 +198,18 @@ func main() {
 		RevalidateInterval: revalidateInterval,
 	}
 	sandbox := &sandboxsse.Server{
-		Secret:         []byte(os.Getenv("BEX_SANDBOX_EXEC_SECRET")),
-		Executor:       executor,
-		Metrics:        metrics,
-		Limits:         limits,
-		Nonces:         nonces,
-		SessionTimeout: sessionTimeout,
+		Secret:   []byte(os.Getenv("BEX_SANDBOX_EXEC_SECRET")),
+		Executor: executor,
+		Metrics:  metrics,
+		Limits:   limits,
+		Nonces:   nonces,
+		// Redemption-time reauthorization + live-stream revalidation for caller
+		// exec tickets (round-13 #3): fresh can_operate on the ticket's workspace
+		// and, for agent-session sandboxes, can_view_sensitive on the session
+		// object (round-13 #1, defense in depth behind bex-api's mint gate).
+		Revalidator:       &sandboxsse.ExecRevalidator{Base: base},
+		SessionTimeout:    sessionTimeout,
+		RevalidateInterval: revalidateInterval,
 	}
 	credentials := &agentcred.Broker{Metrics: metrics}
 	// The ADR062 model proxy shares the Git proxy's trust model: the same
@@ -230,6 +236,12 @@ func main() {
 			intEnv("BEX_AGENT_MODEL_MAX_CONNS_PER_POD", 2),
 		)
 		model.MaxDuration = durationEnv("BEX_AGENT_MODEL_MAX_DURATION", 2*time.Hour)
+		// Cumulative exchange budgets (round-13 #8): every per-exchange bound
+		// resets on completion, so without these a live sandbox's tenant code
+		// could loop billable inference for the session's lifetime. 0 disables a
+		// dimension.
+		model.MaxRequestsPerSession = intEnv("BEX_AGENT_MODEL_MAX_REQUESTS_PER_SESSION", 1000)
+		model.MaxRequestsPerWorkspace = intEnv("BEX_AGENT_MODEL_MAX_REQUESTS_PER_WORKSPACE", 5000)
 	}
 	// Agent-session conversation transport (ADR047 D9). Shares the web-shell
 	// ticket secret (BEX_SHELL_TICKET_SECRET): bex-api mints agent-session

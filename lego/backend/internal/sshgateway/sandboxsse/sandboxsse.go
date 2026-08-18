@@ -36,7 +36,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 )
@@ -51,17 +53,65 @@ type Server struct {
 	// with 503.
 	Secret []byte
 
-	Executor sshgateway.Executor
-	Metrics  *sshgateway.Metrics
-	Limits   *sshgateway.SessionLimiter
-	Nonces   *sshgateway.NonceGuard
+	Executor  sshgateway.Executor
+	Metrics   *sshgateway.Metrics
+	Limits    *sshgateway.SessionLimiter
+	Nonces    *sshgateway.NonceGuard
+	Revalidator Revalidator
 
-	SessionTimeout time.Duration
+	SessionTimeout    time.Duration
+	RevalidateInterval time.Duration
+}
+
+// Revalidator re-runs a verified ticket's authorization at redemption and on
+// every live-stream revalidation tick (round-13 #3). Any error refuses the
+// exchange / ends the stream. The claims — never the request — supply the
+// subject, workspace, sandbox, and agent-session binding.
+type Revalidator interface {
+	RevalidateExec(ctx context.Context, claims sandboxexec.Claims) error
+}
+
+// ExecRevalidator is the authorization kernel implementing Revalidator: fresh
+// can_operate on the ticket's workspace for its subject, plus — when the
+// sandbox is agent-session-bound — the session object's stronger
+// can_view_sensitive (round-13 #1, the same relation the dedicated ags-… SSH
+// path enforces). Platform-internal tickets (the Completer's system sentinel)
+// are exempt: their authority is the HMAC itself, minted by trusted system
+// loops with no caller identity to re-check. Like agentsessions.AttachRevalidator
+// it holds only the kernel — no ticket minting, no store mutation.
+type ExecRevalidator struct {
+	*core.Base
+}
+
+// RevalidateExec re-authorizes a verified exec ticket as its signed subject,
+// uncached (a positive decision cached on another replica must not outlive a
+// revocation — the round-5 finding-4 class this transport joins late).
+func (r *ExecRevalidator) RevalidateExec(ctx context.Context, claims sandboxexec.Claims) error {
+	if r == nil || r.Base == nil {
+		return nil // authorization kernel not wired: admission-only (pre-round-13)
+	}
+	if claims.Subject == "" || claims.Subject == sandboxexec.SystemSubject {
+		return nil
+	}
+	if claims.Workspace == "" {
+		return core.ErrForbidden // a caller ticket always carries its workspace
+	}
+	ctx = core.WithIdentity(ctx, core.Identity{Subject: claims.Subject, Method: "sandbox-exec"})
+	if err := r.AuthorizeFreshOn(ctx, core.RelCanOperate, core.WorkspaceObject(claims.Workspace)); err != nil {
+		return err
+	}
+	if claims.AgentSessionID != "" {
+		return r.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, agentsession.SessionObject(claims.AgentSessionID))
+	}
+	return nil
 }
 
 func (s *Server) defaults() {
 	if s.SessionTimeout <= 0 {
 		s.SessionTimeout = 4 * time.Hour
+	}
+	if s.RevalidateInterval == 0 {
+		s.RevalidateInterval = sshgateway.DefaultRevalidateInterval
 	}
 	if s.Limits == nil {
 		s.Limits = sshgateway.NewSessionLimiter(0, 0)
@@ -110,6 +160,19 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer s.Limits.Release(claims.Subject)
+
+	// Redemption-time reauthorization (round-13 #3): the ticket froze bex-api's
+	// mint-time decision; re-run it here as the ticket's subject so a revocation
+	// inside the ticket's TTL+skew window is effective at the gateway too (the
+	// agentattach redemption pattern, round-6 #11). Refused before the SSE
+	// headers so the CLI sees a clean HTTP status.
+	if s.Revalidator != nil {
+		if err := s.Revalidator.RevalidateExec(r.Context(), claims); err != nil {
+			s.Metrics.Authentication("rejected_target")
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+	}
 	s.Metrics.Authentication("accepted")
 
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -119,8 +182,21 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 	flusher.Flush()
 
 	sse := &sseWriter{w: w, flusher: flusher}
-	execCtx, cancel := context.WithTimeout(r.Context(), s.SessionTimeout)
-	defer cancel()
+	// Live-stream revalidation (round-13 #3): without this watchdog an admitted
+	// exec ran to its disconnect or the 4h cap, so a membership/role revocation
+	// only took effect at the NEXT admission — the exact gap web shell, native
+	// SSH, and agent attach closed in round-9 #6. The watchdog re-runs the same
+	// redemption check every interval and cancels the exec context on refusal;
+	// a canceled execCtx under a live request context is unambiguously revoked.
+	timedCtx, cancelTimeout := context.WithTimeout(r.Context(), s.SessionTimeout)
+	defer cancelTimeout()
+	execCtx, cancelExec := sshgateway.WithRevalidation(timedCtx, s.RevalidateInterval, func(c context.Context) error {
+		if s.Revalidator == nil {
+			return nil
+		}
+		return s.Revalidator.RevalidateExec(c, claims)
+	})
+	defer cancelExec()
 
 	target := apps.SSHInstanceTarget{
 		PodName:   claims.PodName(),
@@ -133,12 +209,18 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 	// stdin — `ea sandbox exec` runs one non-interactive command.
 	code, err := s.Executor.Execute(execCtx, target, claims.Command, false, nil, nil,
 		sse.stream("stdout"), sse.stream("stderr"))
-	if err != nil {
+	switch {
+	case err != nil && execCtx.Err() != nil && timedCtx.Err() == nil:
+		// The watchdog ended the stream (revocation), not the client or the cap.
+		log.Printf("sandbox exec revoked mid-stream (sandbox=%s subject=%s): %v", claims.SandboxID, claims.Subject, err)
+		s.Metrics.Authentication("revoked")
+		sse.emit("error", errorEvent{Error: "access was revoked during this exec"})
+	case err != nil:
 		log.Printf("sandbox exec stream failed (sandbox=%s): %v", claims.SandboxID, err)
 		sse.emit("error", errorEvent{Error: "exec failed to start in this sandbox"})
-		return
+	default:
+		sse.emit("exit", exitEvent{ExitCode: sshgateway.ClampExit(code)})
 	}
-	sse.emit("exit", exitEvent{ExitCode: sshgateway.ClampExit(code)})
 }
 
 // The Render CLI reads the SSE `event:` line to discriminate, then unmarshals the

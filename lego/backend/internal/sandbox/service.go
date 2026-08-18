@@ -594,7 +594,7 @@ func (l *AgentSessionLifecycle) ReadSessionStatus(ctx context.Context, workspace
 	case StatusTerminated, StatusErrored:
 		return "", sandboxNotFound(sandboxID)
 	}
-	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID,
+	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, sessionID,
 		[]string{"/bin/sh", "-c", "cat " + agentSessionStatusPath + " 2>/dev/null || true"})
 	if err != nil {
 		return "", err
@@ -639,7 +639,7 @@ func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, works
 	case StatusTerminated, StatusErrored:
 		return "", sandboxNotFound(sandboxID)
 	}
-	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID,
+	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, sessionID,
 		[]string{"/bin/sh", "-c", fmt.Sprintf("tail -c %d %s 2>/dev/null || true", maxTranscriptLogBytes, agentSessionLogPath)})
 	if err != nil {
 		return "", err
@@ -715,7 +715,7 @@ func (l *AgentSessionLifecycle) HibernateAgentSessionSandbox(ctx context.Context
 		return SnapshotResult{}, err
 	}
 	command := fmt.Sprintf(hibernateScript, snapshotCommand, "'"+putURL+"'")
-	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, []string{"/bin/sh", "-c", command})
+	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, sessionID, []string{"/bin/sh", "-c", command})
 	if err != nil {
 		return SnapshotResult{}, err
 	}
@@ -855,14 +855,17 @@ func (s *Service) clientSuspend(ctx context.Context, key string, raw osSandbox) 
 	// the already-authorized gateway exec boundary. Generic EA sandboxes retain
 	// byte-identical suspend behavior.
 	if raw.Metadata[agentsession.LabelSession] != "" {
-		command, err := s.agentSnapshotCommand(raw.Metadata[agentsession.LabelSession])
+		sessionID := raw.Metadata[agentsession.LabelSession]
+		command, err := s.agentSnapshotCommand(sessionID)
 		if err != nil {
 			return fmt.Errorf("pre-snapshot credential scrub: %w", err)
 		}
-		result, err := s.ExecBuffered(ctx, ExecRequest{
-			OwnerID: raw.Metadata[metadataWorkspace], SandboxID: raw.ID,
-			Command: command,
-		})
+		// systemBufferedExec (not ExecBuffered): the scrub command is
+		// platform-fixed, so it deliberately does NOT pass through dialGateway's
+		// caller gate — a contributor (can_operate) may suspend a session
+		// sandbox, and dialGateway now requires can_view_sensitive for
+		// agent-session sandboxes on CALLER-chosen commands (round-13 #1).
+		result, err := s.systemBufferedExec(ctx, raw.Metadata[metadataWorkspace], raw.ID, sessionID, command)
 		if err != nil {
 			return fmt.Errorf("pre-snapshot credential scrub: %w", err)
 		}

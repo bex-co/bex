@@ -235,10 +235,69 @@ func TestCreateValidatesURLAndEventTypes(t *testing.T) {
 		{Name: "x", URL: "", EventTypes: []string{TypeDeployStarted}},
 		{Name: "", URL: "https://example.com/hook", EventTypes: []string{TypeDeployStarted}},
 		{Name: "x", URL: "https://example.com/hook", EventTypes: []string{"no_such_event"}},
+		// Round-13 #7: embedded userinfo is refused outright — the repo-URL
+		// invariant; a credential in the URL would be echoed to every viewer.
+		{Name: "x", URL: "https://key:secret@hooks.slack.com/services/T000/B000/x", EventTypes: []string{TypeDeployStarted}},
 	} {
 		if _, err := s.Create(ctx, tc); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("Create(%+v) = %v, want ErrBadRequest", tc, err)
 		}
+	}
+}
+
+// manageChecker models the workspace roles for the URL-redaction boundary:
+// can_view for everyone, can_manage only for the admin subject.
+type manageChecker struct{ admin string }
+
+func (c manageChecker) Check(_ context.Context, subject, relation, _ string) (bool, error) {
+	if relation == core.RelCanView {
+		return true, nil
+	}
+	return relation == core.RelCanManage && subject == "user:"+c.admin, nil
+}
+
+// TestDestinationURLRedactedForNonAdminReaders (round-13 #7): the exact
+// destination URL carries the integration capability (Slack/T000/B000/xxx,
+// ?token=…), but list/get are member reads — so ordinary members see the
+// origin only, while can_manage callers and the admin-gated write verbs still
+// see exactly what was configured. The delivery worker reads the stored row,
+// never this projection.
+func TestDestinationURLRedactedForNonAdminReaders(t *testing.T) {
+	const exact = "https://hooks.slack.com/services/T000/B000/0123456789abcdef"
+	st := newFakeEndpointStore()
+	viewer := &Service{Base: &core.Base{
+		Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-a"}, Authz: manageChecker{admin: "id-admin"},
+	}, Store: st}
+	admin := &Service{Base: &core.Base{
+		Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-a"}, Authz: manageChecker{admin: "id-admin"},
+	}, Store: st}
+	adminCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-admin", Method: "session"})
+	viewerCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-viewer", Method: "session"})
+
+	created, err := admin.Create(adminCtx, CreateRequest{Name: "slack", URL: exact, EventTypes: []string{TypeDeployEnded}, Enabled: true})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if created.URL != exact {
+		t.Fatalf("Create response URL = %q, want the exact destination (admin-gated verb)", created.URL)
+	}
+
+	if got, err := viewer.Get(viewerCtx, "", created.ID); err != nil {
+		t.Fatalf("viewer Get: %v", err)
+	} else if got.URL != "https://hooks.slack.com/…" {
+		t.Fatalf("viewer Get URL = %q, want the redacted origin", got.URL)
+	}
+	list, err := viewer.List(viewerCtx, "")
+	if err != nil || len(list) != 1 {
+		t.Fatalf("viewer List = %+v (err %v)", list, err)
+	}
+	if list[0].URL != "https://hooks.slack.com/…" {
+		t.Fatalf("viewer List URL = %q, want the redacted origin", list[0].URL)
+	}
+	if got, err := admin.Get(adminCtx, "", created.ID); err != nil {
+		t.Fatalf("admin Get: %v", err)
+	} else if got.URL != exact {
+		t.Fatalf("admin Get URL = %q, want the exact destination", got.URL)
 	}
 }
 

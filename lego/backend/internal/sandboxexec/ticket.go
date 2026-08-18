@@ -38,6 +38,15 @@ import (
 // header (not a query param) keeps it out of edge access logs.
 const TicketHeader = "X-Bex-Sandbox-Exec-Ticket"
 
+// SystemSubject is the ticket subject the trusted Completer's status/transcript
+// reads mint under (no caller identity). The gateway requires a non-empty
+// subject and uses it only for per-caller concurrency scoping + metrics — never
+// for authorization — so a stable sentinel is correct. It is defined HERE so
+// both processes share one definition, and so the gateway's revalidator can
+// distinguish platform-internal tickets (whose authority is the HMAC itself)
+// from caller tickets (which must re-verify their authorization while live).
+const SystemSubject = "system:agent-session-completer"
+
 var codec = hmacticket.New("sandbox exec ticket")
 
 var (
@@ -61,9 +70,15 @@ type Claims struct {
 	Namespace string   `json:"ns"`           // the resolved <ws>-sandbox namespace
 	Command   []string `json:"cmd"`          // the exact argv to run
 	Workspace string   `json:"ws,omitempty"` // owning workspace (audit)
-	IssuedAt  int64    `json:"iat"`          // unix seconds
-	ExpiresAt int64    `json:"exp"`          // unix seconds
-	Nonce     string   `json:"jti"`          // unique id for best-effort single-use
+	// AgentSessionID is set when the sandbox is bound to a durable agent session
+	// (metadata bex.co/agent-session, round-13 #1): carrying it in the signed
+	// claims lets the gateway re-require the session object's stronger
+	// can_view_sensitive relation at redemption and on every live-stream
+	// revalidation, instead of re-deriving the binding from cluster state.
+	AgentSessionID string `json:"ags,omitempty"`
+	IssuedAt       int64  `json:"iat"` // unix seconds
+	ExpiresAt      int64  `json:"exp"` // unix seconds
+	Nonce          string `json:"jti"` // unique id for best-effort single-use
 }
 
 // Mint returns a signed, URL-safe ticket for claims, filling a fresh Nonce when

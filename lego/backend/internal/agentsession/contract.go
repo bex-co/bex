@@ -53,6 +53,13 @@ const (
 	BranchPrefix = "bex-agent/"
 )
 
+// SessionObject is the OpenFGA object literal for one durable agent session
+// (deploy/gitops/authz/model.fga's agent_session type). Shared by the bex-api
+// sandbox-exec seam (round-13 #1) and the gateway's exec revalidator so both
+// sides check the identical object; the agentsessions feature's own
+// sessionObject helper is this same string.
+func SessionObject(sessionID string) string { return "agent_session:" + sessionID }
+
 // ProxyRepositoryURL binds a Git smart-HTTP remote to the exact immutable
 // session identity the gateway verifies against the direct source Pod. It
 // contains no credential.

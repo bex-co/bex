@@ -259,8 +259,13 @@ type DeliveryView struct {
 // workspaceID is the store key for the caller's endpoints: the caller's
 // tenant when resolvable, else the single-workspace default (mirrors
 // registrycreds.Service.workspaceID).
-func toView(e store.WebhookEndpoint) EndpointView {
-	return EndpointView{
+// toView projects a stored endpoint for a caller. exactURL is true only for
+// the admin-gated verbs (Create/Update/SetEnabled) and for read callers that
+// hold can_manage on the endpoint's workspace: the destination URL carries the
+// integration capability, so ordinary member reads get the redacted origin
+// (round-13 #7).
+func toView(e store.WebhookEndpoint, exactURL bool) EndpointView {
+	v := EndpointView{
 		ID:             e.ID,
 		Name:           e.Name,
 		URL:            e.URL,
@@ -274,6 +279,10 @@ func toView(e store.WebhookEndpoint) EndpointView {
 		UpdatedAt:      e.UpdatedAt.UTC().Format(time.RFC3339),
 		Cursor:         core.EncodeKeysetCursor(e.CreatedAt, e.ID),
 	}
+	if !exactURL {
+		v.URL = RedactedURL(e.URL)
+	}
+	return v
 }
 
 func toDeliveryView(d store.WebhookDelivery) DeliveryView {
@@ -357,7 +366,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, 
 	if err != nil {
 		return EndpointView{}, mapCreateErr(err)
 	}
-	return toView(e), nil
+	return toView(e, true), nil // Create is admin-gated: echo the exact destination
 }
 
 // EndpointLimitCode is the machine-readable refusal a caller sees when the
@@ -440,9 +449,15 @@ func (s *Service) ListPage(ctx context.Context, ownerIDs []string, cursor string
 	if err != nil {
 		return nil, err
 	}
+	// Resolve the exact-URL privilege per tenant once (a page can span several
+	// authorized workspaces): only can_manage callers see the full destination.
+	exact := make(map[string]bool, len(tenantSet))
+	for tenantID := range tenantSet {
+		exact[tenantID] = s.mayManageWorkspace(ctx, tenantID)
+	}
 	out := make([]EndpointView, 0, len(rows))
 	for _, e := range rows {
-		out = append(out, toView(e))
+		out = append(out, toView(e, exact[e.TenantID]))
 	}
 	return out, nil
 }
@@ -464,7 +479,7 @@ func (s *Service) Get(ctx context.Context, ownerID, id string) (EndpointView, er
 	if err != nil {
 		return EndpointView{}, mapStoreErr(err)
 	}
-	return toView(e), nil
+	return toView(e, s.mayManageWorkspace(ctx, e.TenantID)), nil
 }
 
 // SetEnabled flips an endpoint on or off — also how an auto-disabled endpoint
@@ -482,7 +497,7 @@ func (s *Service) SetEnabled(ctx context.Context, ownerID, id string, enabled bo
 	if err != nil {
 		return EndpointView{}, mapStoreErr(err)
 	}
-	return toView(e), nil
+	return toView(e, true), nil // admin-gated verb: echo the exact destination
 }
 
 // Delete removes an endpoint and (by cascade) its delivery history.
@@ -608,11 +623,14 @@ func (s *Service) Update(ctx context.Context, ownerID, id string, req UpdateRequ
 		}
 		return EndpointView{}, mapStoreErr(err)
 	}
-	return toView(e), nil
+	return toView(e, true), nil // admin-gated verb: echo the exact destination
 }
 
-// parseDestination validates a destination URL: absolute HTTPS, with a
-// host. Returned trimmed — what the store keeps and the sender POSTs to.
+// parseDestination validates a destination URL: absolute HTTPS, with a host
+// and no userinfo. Returned trimmed — what the store keeps and the sender
+// POSTs to. URL userinfo is refused outright (round-13 #7, the repo-URL
+// invariant in store/api.go): a credential embedded in the URL would be stored
+// verbatim and echoed to every workspace viewer through the read verbs.
 func parseDestination(raw string) (string, error) {
 	dest := strings.TrimSpace(raw)
 	u, err := url.Parse(dest)
@@ -620,7 +638,52 @@ func parseDestination(raw string) (string, error) {
 		return "", core.NewBadRequestError(WebhookURLInvalidCode,
 			"url must be an absolute HTTPS URL", map[string]any{"field": "url"})
 	}
+	if u.User != nil {
+		return "", core.NewBadRequestError(WebhookURLInvalidCode,
+			"url must not embed credentials in userinfo; provider tokens belong in the destination's own auth layer",
+			map[string]any{"field": "url"})
+	}
 	return dest, nil
+}
+
+// RedactedURL is the viewer-safe projection of a stored destination (round-13
+// #7): the exact path/query of a webhook destination commonly carries the
+// reusable capability itself (Slack/T000/B000/xxx, PagerDuty routing keys,
+// ?token=…), and list/get are member reads — so anything beyond the
+// scheme://host origin is collapsed. Admins (can_manage) still see the exact
+// URL they configured.
+func RedactedURL(raw string) string {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return raw // unparseable stored value: never improved, never widened
+	}
+	if (u.Path == "" || u.Path == "/") && u.RawQuery == "" && u.Fragment == "" && u.User == nil {
+		return u.Scheme + "://" + u.Host
+	}
+	return u.Scheme + "://" + u.Host + "/…"
+}
+
+// mayManageWorkspace reports whether the caller holds can_manage on the named
+// tenant, with an authoritative (uncached) decision when the checker supports
+// it — this decides whether the EXACT credential-bearing destination URL is
+// revealed, so a just-demoted admin must not ride a cached positive. Raw
+// checker, not Authorize: the read verbs' gate stays can_view (audited there),
+// and a per-viewer denial audit row on every list would be noise, not signal
+// (the sandbox isWorkspaceAdmin precedent).
+func (s *Service) mayManageWorkspace(ctx context.Context, tenantID string) bool {
+	if s.Authz == nil {
+		return false // authz off: nobody is distinguished — redact for everyone
+	}
+	id, ok := core.IdentityFrom(ctx)
+	if !ok {
+		return false
+	}
+	check := s.Authz.Check
+	if fresh, ok := s.Authz.(core.FreshChecker); ok {
+		check = fresh.CheckFresh
+	}
+	allowed, err := check(ctx, "user:"+id.Subject, core.RelCanManage, core.WorkspaceObject(tenantID))
+	return err == nil && allowed
 }
 
 func normalizeName(raw string) (string, error) {

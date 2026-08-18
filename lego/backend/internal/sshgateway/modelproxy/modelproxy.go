@@ -69,11 +69,25 @@ type Broker struct {
 	// MaxDuration is a test/config seam for the total request + response lifetime.
 	// Zero uses defaultModelRequestDuration.
 	MaxDuration time.Duration
+	// MaxRequestsPerSession bounds the cumulative provider exchanges ONE agent
+	// session may push through the proxy (round-13 #8): every per-exchange bound
+	// (concurrency, bytes, duration) resets on completion, so without a cumulative
+	// cap malicious repository code running in a live sandbox could loop billable
+	// inference for the session's whole lifetime. Process-local and atomic; a
+	// gateway restart resets it (accepted — it bounds runaway loops, not spend
+	// accounting). <= 0 disables the dimension.
+	MaxRequestsPerSession int
+	// MaxRequestsPerWorkspace is the same cumulative bound across every session
+	// of one workspace (all `<ws>-sandbox` pods share the delegated credential).
+	// <= 0 disables the dimension.
+	MaxRequestsPerWorkspace int
 
 	clientOnce sync.Once
 	client     *http.Client
 	limitsOnce sync.Once
 	limits     *sshgateway.SessionLimiter
+	budgetOnce sync.Once
+	budget     *requestBudget
 }
 
 func (b *Broker) Enabled() bool         { return b != nil && b.Pods != nil && b.API != nil }
@@ -126,6 +140,21 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		b.Metrics.Authentication("rejected_target")
 		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	// Cumulative budget (round-13 #8), charged before the mint so an exhausted
+	// session is refused before any credential is attached or the provider hit.
+	// The counter is atomic under the process-wide budget; a request later
+	// refused by the operation allowlist still consumes its charge (conservative
+	// by design — refunds would let a loop probe forever).
+	if !b.budgets().chargeSession(namespace, sessionID) {
+		b.Metrics.LimitRejected("model_session_budget")
+		http.Error(w, "model request budget exhausted for this session", http.StatusTooManyRequests)
+		return
+	}
+	if !b.budgets().chargeWorkspace(namespace) {
+		b.Metrics.LimitRejected("model_workspace_budget")
+		http.Error(w, "model request budget exhausted for this workspace", http.StatusTooManyRequests)
 		return
 	}
 	credential, err := b.mint(r.Context(), namespace, verified)
@@ -186,6 +215,82 @@ func (b *Broker) limiter() *sshgateway.SessionLimiter {
 	}
 	b.limitsOnce.Do(func() { b.limits = sshgateway.NewSessionLimiter(32, 2) })
 	return b.limits
+}
+
+// budgetSweepInterval / budgetIdleTTL keep the budget's key set bounded: agent
+// sessions are short-lived (minutes to hours), so entries idle for a day are
+// gone sessions and are pruned. The janitor stops with the process.
+const (
+	budgetSweepInterval = 30 * time.Minute
+	budgetIdleTTL       = 24 * time.Hour
+)
+
+// requestBudget is the process-wide cumulative exchange counter for the model
+// proxy (round-13 #8): per-session and per-workspace atomic counts. Sessions
+// are keyed by namespace+session id (the verified pair), workspaces by the
+// `<ws>` the `<ws>-sandbox` namespace derives from.
+type requestBudget struct {
+	perSession   int
+	perWorkspace int
+	mu           sync.Mutex
+	charged      map[string]int
+	lastUsed     map[string]time.Time
+	janitorOnce  sync.Once
+}
+
+func (b *requestBudget) charge(key string, max int) bool {
+	if max <= 0 {
+		return true // dimension disabled
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.charged == nil {
+		b.charged = make(map[string]int)
+		b.lastUsed = make(map[string]time.Time)
+		b.janitorOnce.Do(func() {
+			go func() {
+				ticker := time.NewTicker(budgetSweepInterval)
+				defer ticker.Stop()
+				for range ticker.C {
+					b.sweep(time.Now().Add(-budgetIdleTTL))
+				}
+			}()
+		})
+	}
+	if b.charged[key] >= max {
+		return false
+	}
+	b.charged[key]++
+	b.lastUsed[key] = time.Now()
+	return true
+}
+
+// sweep drops keys idle past the horizon so finished sessions do not accumulate
+// forever (the budget map must not become its own unbounded state).
+func (b *requestBudget) sweep(horizon time.Time) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for key, at := range b.lastUsed {
+		if at.Before(horizon) {
+			delete(b.charged, key)
+			delete(b.lastUsed, key)
+		}
+	}
+}
+
+func (b *requestBudget) chargeSession(namespace, sessionID string) bool {
+	return b.charge("session|"+namespace+"|"+sessionID, b.perSession)
+}
+
+func (b *requestBudget) chargeWorkspace(namespace string) bool {
+	return b.charge("workspace|"+strings.TrimSuffix(namespace, "-sandbox"), b.perWorkspace)
+}
+
+func (b *Broker) budgets() *requestBudget {
+	b.budgetOnce.Do(func() {
+		b.budget = &requestBudget{perSession: b.MaxRequestsPerSession, perWorkspace: b.MaxRequestsPerWorkspace}
+	})
+	return b.budget
 }
 
 func (b *Broker) maxDuration() time.Duration {

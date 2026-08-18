@@ -187,7 +187,14 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 	s.resolveServiceNames(ctx, sum.Services)
 	sum.Period = now.Format(periodLayout)
 	sum.EstimatedCost = pricing.Default.Estimate(rows)
-	sum.Billing = s.readBilling(ctx, tenantID, now)
+	// The Stripe projection (real cost, invoices, credit grants) is a billing
+	// capability, not part of the general usage read: model.fga reserves
+	// can_manage_billing for billing/admin, while can_view extends to viewers
+	// and contributors. Attach it only for callers holding the billing relation;
+	// everyone else still gets usage + the advisory estimate (round-13 #5).
+	if s.mayManageBilling(ctx, tenantID) {
+		sum.Billing = s.readBilling(ctx, tenantID, now)
+	}
 	sum.Coverage = Coverage{State: CoverageUnknown, DegradedSources: []string{}}
 	current := s.Now().UTC()
 	if now.Year() == current.Year() && now.Month() == current.Month() {
@@ -205,6 +212,31 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 		}
 	}
 	return sum, nil
+}
+
+// mayManageBilling reports whether the caller holds the workspace's billing
+// relation (billing or admin), with an authoritative (uncached) decision when
+// the wired checker supports core.FreshChecker — this gates the reveal of real
+// invoices and credit grants, so a just-revoked billing member must not ride a
+// positive cached on another replica. It deliberately uses the raw checker,
+// not Authorize: the verb's gate stays can_view (audited there), and this is a
+// field-level projection decision — a denial must not emit a denial audit row
+// for every ordinary viewer usage read (the isWorkspaceAdmin precedent).
+// No checker wired (authz off) keeps the prior billing-on behavior.
+func (s *Service) mayManageBilling(ctx context.Context, tenantID string) bool {
+	if s.Authz == nil {
+		return true
+	}
+	id, ok := core.IdentityFrom(ctx)
+	if !ok {
+		return false
+	}
+	check := s.Authz.Check
+	if fresh, ok := s.Authz.(core.FreshChecker); ok {
+		check = fresh.CheckFresh
+	}
+	allowed, err := check(ctx, "user:"+id.Subject, core.RelCanManageBilling, core.WorkspaceObject(tenantID))
+	return err == nil && allowed
 }
 
 // readBilling fetches the workspace's real Stripe cost for the month containing
