@@ -545,6 +545,7 @@ func storedPushDeliveryPolicy(raw json.RawMessage) (DeliveryPolicy, error) {
 		if err := json.Unmarshal(raw, &view); err != nil {
 			return DeliveryPolicy{}, fmt.Errorf("decode stored push policy")
 		}
+		dropRetiredDeliveryEvents(&view)
 	}
 	normalized, err := normalizePushSettings(view)
 	if err != nil {

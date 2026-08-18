@@ -116,10 +116,6 @@ const zhNotifications: Record<string, TranslationEntry> = {
     message: "服务已恢复运行",
     description: "Push event",
   },
-  "notifications.pushEventUsageThreshold": {
-    message: "用量阈值",
-    description: "Push event",
-  },
   "notifications.pushEventAgentNeedsDecision": {
     message: "智能体需要决策",
     description: "Push event",

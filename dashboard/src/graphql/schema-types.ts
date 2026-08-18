@@ -2022,7 +2022,6 @@ export enum PushNotificationEvent {
   ServerFailed = "SERVER_FAILED",
   ServiceResumed = "SERVICE_RESUMED",
   ServiceSuspended = "SERVICE_SUSPENDED",
-  UsageThreshold = "USAGE_THRESHOLD",
 }
 
 export type PushNotificationServiceOverride = {

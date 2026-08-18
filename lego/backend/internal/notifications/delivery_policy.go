@@ -68,7 +68,6 @@ const (
 	DeliveryEventServiceSuspended   DeliveryEvent = "service_suspended"
 	DeliveryEventServiceResumed     DeliveryEvent = "service_resumed"
 	DeliveryEventCronFailed         DeliveryEvent = "cron_failed"
-	DeliveryEventUsageThreshold     DeliveryEvent = "usage_threshold"
 	DeliveryEventAgentNeedsDecision DeliveryEvent = "agent_needs_decision"
 	DeliveryEventAgentPRReady       DeliveryEvent = "agent_pr_ready"
 	DeliveryEventAgentFailed        DeliveryEvent = "agent_failed"
@@ -438,6 +437,32 @@ var validDeliveryEvents = func() map[DeliveryEvent]bool {
 
 func validDeliveryEvent(event DeliveryEvent) bool {
 	return validDeliveryEvents[event]
+}
+
+// dropRetiredDeliveryEvents strips event values a past build accepted into a
+// stored policy but this build no longer enumerates — usage_threshold, whose
+// only producer (w8/001) was retired without implementation, is the first such
+// value. Read paths (GetPushSettings, storedPushDeliveryPolicy) apply it before
+// strict normalization so a stored policy survives the vocabulary shrinking;
+// the write path stays strict so retired values cannot re-enter.
+func dropRetiredDeliveryEvents(view *PushSettingsView) {
+	view.Events = keepValidDeliveryEvents(view.Events)
+	for i := range view.ServiceOverrides {
+		if view.ServiceOverrides[i].Events != nil {
+			filtered := keepValidDeliveryEvents(*view.ServiceOverrides[i].Events)
+			view.ServiceOverrides[i].Events = &filtered
+		}
+	}
+}
+
+func keepValidDeliveryEvents(events []DeliveryEvent) []DeliveryEvent {
+	kept := make([]DeliveryEvent, 0, len(events))
+	for _, event := range events {
+		if validDeliveryEvent(event) {
+			kept = append(kept, event)
+		}
+	}
+	return kept
 }
 
 func validDeliveryUrgency(urgency DeliveryUrgency) bool {

@@ -22,8 +22,7 @@ export type PushNotificationEvent =
   | 'SERVER_AVAILABLE'
   | 'SERVER_FAILED'
   | 'SERVICE_RESUMED'
-  | 'SERVICE_SUSPENDED'
-  | 'USAGE_THRESHOLD';
+  | 'SERVICE_SUSPENDED';
 
 export type MobileAgentSessionsQueryVariables = Exact<{
   ownerId: string;

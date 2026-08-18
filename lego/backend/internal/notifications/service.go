@@ -331,7 +331,6 @@ var orderedDeliveryEvents = []DeliveryEvent{
 	DeliveryEventServiceSuspended,
 	DeliveryEventServiceResumed,
 	DeliveryEventCronFailed,
-	DeliveryEventUsageThreshold,
 	DeliveryEventAgentNeedsDecision,
 	DeliveryEventAgentPRReady,
 	DeliveryEventAgentFailed,
@@ -381,6 +380,7 @@ func (s *Service) GetPushSettings(ctx context.Context) (PushSettingsView, error)
 	if err := json.Unmarshal(row.PushPolicy, &view); err != nil {
 		return PushSettingsView{}, fmt.Errorf("notification push policy: %w", err)
 	}
+	dropRetiredDeliveryEvents(&view)
 	return normalizePushSettings(view)
 }
 

@@ -14,7 +14,6 @@ export const pushEvents = [
   PushNotificationEvent.ServerAvailable,
   PushNotificationEvent.ServiceSuspended,
   PushNotificationEvent.ServiceResumed,
-  PushNotificationEvent.UsageThreshold,
   PushNotificationEvent.AgentNeedsDecision,
   PushNotificationEvent.AgentPrReady,
   PushNotificationEvent.AgentFailed,
