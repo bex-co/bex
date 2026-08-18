@@ -14,6 +14,7 @@ import {
 } from "@/features/metrics/components/svg-line-chart";
 import { MetricSection } from "@/features/metrics/components/metric-section";
 import { MetricUnavailable } from "@/features/metrics/components/metric-unavailable";
+import { MetricError } from "@/features/metrics/components/metric-error";
 import { seriesColor } from "@/features/metrics/components/chart-layout";
 import { useDatastoreMetrics } from "@/features/metrics/hooks/use-datastore-metrics";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -161,6 +162,11 @@ export function DatastoreMetricsPanel({
                 <EmptyChart message={t("metrics.replicationLagPendingHA")} />
               ) : replicationLag.unavailable ? (
                 <MetricUnavailable />
+              ) : replicationLag.error &&
+                replicationLag.series.length === 0 ? (
+                // This chart renders outside MetricSection, so it needs the same
+                // error-vs-empty distinction the shared seam gained (w9/m86).
+                <MetricError />
               ) : (
                 <SvgLineChart
                   unit={replicationLag.series[0]?.unit ?? "seconds"}

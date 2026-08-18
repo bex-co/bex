@@ -41,9 +41,24 @@ function seriesResult(unit: string, values: number[], instance?: string) {
   };
 }
 
+function errorResult() {
+  return { ...emptyResult(), error: new Error("boom") };
+}
+
 describe("DatastoreMetricsPanel", () => {
   beforeEach(() => {
     mockUseDatastoreMetrics.mockReset();
+  });
+
+  // w9/m86 / w5/045: a failed metrics query must render a distinct error card,
+  // not the empty "No data in range" chart that hid the wrong-identifier bug.
+  it("surfaces a distinct error card when a datastore metric query fails", () => {
+    mockUseDatastoreMetrics.mockReturnValue(errorResult());
+    render(<DatastoreMetricsPanel kind="database" resource="dpg-abc" />);
+    expect(screen.getAllByRole("alert").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Couldn't load this metric").length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("fetches disk usage for both database and keyvalue kinds, connections/lag only for database", () => {

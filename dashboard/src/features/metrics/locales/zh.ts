@@ -192,6 +192,11 @@ const zhMetrics: Record<string, TranslationEntry> = {
     message: "未配置指标数据源",
     description: "Shown when bex-api reports no metrics backend is wired up",
   },
+  "metrics.chartError": {
+    message: "无法加载此指标",
+    description:
+      "Shown when a metrics query fails with a real error (not a 503/no-data) — distinct from the empty 'No data in range' state (w9/m86)",
+  },
   "metrics.applicationTitle": {
     message: "应用指标",
     description: "Application metrics card title",

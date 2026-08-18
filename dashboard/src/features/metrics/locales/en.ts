@@ -192,6 +192,11 @@ const enMetrics: Record<string, TranslationEntry> = {
     message: "Metrics source not configured",
     description: "Shown when bex-api reports no metrics backend is wired up",
   },
+  "metrics.chartError": {
+    message: "Couldn't load this metric",
+    description:
+      "Shown when a metrics query fails with a real error (not a 503/no-data) — distinct from the empty 'No data in range' state (w9/m86)",
+  },
   "metrics.applicationTitle": {
     message: "Application Metrics",
     description: "Application metrics card title",

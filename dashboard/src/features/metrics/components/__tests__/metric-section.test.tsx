@@ -57,3 +57,72 @@ describe("MetricSection loading state", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 });
+
+// w9/m86: a query that FAILS (a real error, not the recognized 503s) with no
+// series must render a DISTINCT error card, not the child chart's "No data in
+// range" — the conflation that hid the w5/m71 wrong-identifier bug for months.
+describe("MetricSection error state", () => {
+  it("renders a distinct error card (not the chart) for a failed query", () => {
+    render(
+      <MetricSection
+        title="Disk"
+        result={result({ error: new Error("network down"), series: [] })}
+      >
+        {CHILD}
+      </MetricSection>,
+    );
+    expect(screen.queryByTestId("chart")).toBeNull();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't load this metric",
+    );
+  });
+
+  it("renders the child (empty 'No data in range') when the window is genuinely empty", () => {
+    render(
+      <MetricSection title="Disk" result={result({ series: [] })}>
+        {CHILD}
+      </MetricSection>,
+    );
+    expect(screen.getByTestId("chart")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps the chart when a refetch errors over existing data", () => {
+    render(
+      <MetricSection
+        title="Disk"
+        result={result({ error: new Error("blip"), series: [aSeries] })}
+      >
+        {CHILD}
+      </MetricSection>,
+    );
+    expect(screen.getByTestId("chart")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("uses the section-specific errorMessage when given (bandwidth)", () => {
+    render(
+      <MetricSection
+        title="Bandwidth"
+        result={result({ error: new Error("boom"), series: [] })}
+        errorMessage="Couldn't load bandwidth"
+      >
+        {CHILD}
+      </MetricSection>,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't load bandwidth",
+    );
+  });
+
+  it("still shows the not-configured 503 state, never the error card, when unavailable", () => {
+    render(
+      <MetricSection title="Disk" result={result({ unavailable: true })}>
+        {CHILD}
+      </MetricSection>,
+    );
+    // MetricUnavailable, not MetricError — the two states stay distinct.
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByTestId("chart")).toBeNull();
+  });
+});
