@@ -95,6 +95,10 @@ export async function createSessionProvider(
     cwd: config.cwd,
     env: { ...process.env, ...agentEnv },
     stdio: ["pipe", "pipe", "pipe"],
+    // ACP adapters may launch their provider CLI as a child. A distinct Unix
+    // process group lets cleanup terminate the whole tree so descendants cannot
+    // retain the model placeholder or keep stdio open after the adapter dies.
+    detached: process.platform !== "win32",
   });
   const maxStderrBytes = 64 << 10;
   let stderr = Buffer.alloc(0);
@@ -130,8 +134,11 @@ export async function createSessionProvider(
   };
   const onExit = (code: number | null, signal: NodeJS.Signals | null) =>
     failTerminal(exitError(code, signal));
-  const onStreamError = (stream: "stdin" | "stdout", error: Error) =>
-    failTerminal(new Error(`ACP agent ${stream} failed: ${error.message}`));
+  const onStreamError = (stream: "stdin" | "stdout", error: Error) => {
+    const failure = new Error(`ACP agent ${stream} failed: ${error.message}`);
+    failTerminal(failure);
+    return failure;
+  };
 
   child.once("exit", onExit);
   child.once("error", failTerminal);
@@ -146,8 +153,20 @@ export async function createSessionProvider(
     if (child.exitCode !== null || child.signalCode !== null) resolve();
     else child.once("close", () => resolve());
   });
+  const killProcessTree = () => {
+    if (child.exitCode !== null || child.signalCode !== null) return;
+    if (process.platform !== "win32" && child.pid !== undefined) {
+      try {
+        process.kill(-child.pid, "SIGKILL");
+        return;
+      } catch {
+        // A spawn failure has no process group; fall back to the child handle.
+      }
+    }
+    child.kill("SIGKILL");
+  };
   const cleanup = async () => {
-    if (child.exitCode === null) child.kill("SIGKILL");
+    killProcessTree();
     await stopped;
   };
   // Guarantee the child dies on turn timeout even if we never returned from
@@ -167,8 +186,40 @@ export async function createSessionProvider(
     },
   };
 
+  // Writable.toWeb logs some pipe-write failures without propagating them to
+  // the ChildProcess stream's `error` event. Own each write callback so an
+  // EPIPE rejects the shared terminal signal even when the ACP SDK leaves its
+  // JSON-RPC request pending.
+  const protocolInput = new WritableStream<Uint8Array>({
+    write(chunk) {
+      return new Promise<void>((resolve, reject) => {
+        try {
+          child.stdin.write(chunk, (error) => {
+            if (error) {
+              reject(onStreamError("stdin", error));
+              return;
+            }
+            resolve();
+          });
+        } catch (error) {
+          reject(
+            onStreamError(
+              "stdin",
+              error instanceof Error ? error : new Error(String(error)),
+            ),
+          );
+        }
+      });
+    },
+    close() {
+      child.stdin.end();
+    },
+    abort(reason) {
+      child.stdin.destroy(reason instanceof Error ? reason : undefined);
+    },
+  });
   const stream = ndJsonStream(
-    Writable.toWeb(child.stdin) as WritableStream<Uint8Array>,
+    protocolInput,
     Readable.toWeb(child.stdout) as ReadableStream<Uint8Array>,
   );
   const connection = new ClientSideConnection(() => client, stream);

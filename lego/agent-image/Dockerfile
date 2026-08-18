@@ -16,6 +16,8 @@ RUN npm run build
 FROM node:22-bookworm-slim
 
 ARG CLAUDE_CODE_ACP_VERSION=0.16.2
+ARG CODEX_ACP_VERSION=1.4.0
+ARG GEMINI_CLI_VERSION=0.55.1
 ARG NPM_VERSION=11.19.0
 
 RUN apt-get update \
@@ -36,6 +38,11 @@ ENV PATH="/usr/local/go/bin:${PATH}"
 
 RUN npm install --global --ignore-scripts "npm@${NPM_VERSION}" \
     && npm install --global --ignore-scripts "@zed-industries/claude-code-acp@${CLAUDE_CODE_ACP_VERSION}" \
+        "@agentclientprotocol/codex-acp@${CODEX_ACP_VERSION}" \
+        "@google/gemini-cli@${GEMINI_CLI_VERSION}" \
+    && command -v claude-code-acp \
+    && command -v codex-acp \
+    && command -v gemini \
     && npm cache clean --force
 
 WORKDIR /opt/bex-agent-driver

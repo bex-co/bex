@@ -53,6 +53,16 @@ func newFakeStore() *fakeStore {
 }
 
 func TestAgentSelectorIsClosedAndResolvesOnlyAbsoluteImagePaths(t *testing.T) {
+	advertised := make(map[string]struct{})
+	for _, profile := range agentProfiles() {
+		advertised[profile.ID] = struct{}{}
+		if _, ok := agentAdapters[profile.ID]; !ok {
+			t.Errorf("advertised agent %q has no installed adapter contract", profile.ID)
+		}
+	}
+	if len(advertised) != len(agentAdapters) {
+		t.Fatalf("advertised agents = %v, adapter contracts = %v", advertised, agentAdapters)
+	}
 	for id, want := range map[string]string{
 		"claude": "/usr/local/bin/claude-code-acp",
 		"codex":  "/usr/local/bin/codex-acp",
@@ -65,6 +75,14 @@ func TestAgentSelectorIsClosedAndResolvesOnlyAbsoluteImagePaths(t *testing.T) {
 		if got := agentCommand(req.AgentConfig.Agent); got != want || !strings.HasPrefix(got, "/") {
 			t.Errorf("agentCommand(%q) = %q, want absolute %q", id, got, want)
 		}
+	}
+	codexArgs, codexEnv := agentRuntimeConfig(" CODEX ")
+	if codexArgs != "" || codexEnv != `{"DEFAULT_AUTH_REQUEST":"{\"methodId\":\"api-key\"}","NO_BROWSER":"1"}` {
+		t.Fatalf("codex runtime config = args %q env %q", codexArgs, codexEnv)
+	}
+	geminiArgs, geminiEnv := agentRuntimeConfig("gemini")
+	if geminiArgs != `["--acp"]` || geminiEnv != "" {
+		t.Fatalf("gemini runtime config = args %q env %q", geminiArgs, geminiEnv)
 	}
 	for _, agent := range []string{"./adapter", "/workspace/adapter", "claude-code-acp", "unknown"} {
 		req := CreateRequest{Repo: "bex-co/example", Branch: "bex-agent/test", AgentConfig: AgentConfig{Agent: agent, Task: "test"}}
@@ -1117,6 +1135,13 @@ func TestCreateInjectsGitProxyAndTurnGrantConfig(t *testing.T) {
 	}
 	if env["BEX_AGENT_REPOSITORY"] != "bex-co/example" || env["BEX_AGENT_BRANCH"] != "bex-agent/session-test" {
 		t.Fatalf("repo/branch env = %q/%q", env["BEX_AGENT_REPOSITORY"], env["BEX_AGENT_BRANCH"])
+	}
+	var childEnv map[string]string
+	if err := json.Unmarshal([]byte(env["BEX_AGENT_ENV_JSON"]), &childEnv); err != nil {
+		t.Fatalf("codex child env = %q: %v", env["BEX_AGENT_ENV_JSON"], err)
+	}
+	if childEnv["DEFAULT_AUTH_REQUEST"] != `{"methodId":"api-key"}` || childEnv["NO_BROWSER"] != "1" {
+		t.Fatalf("codex child env = %#v", childEnv)
 	}
 }
 
