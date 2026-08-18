@@ -204,7 +204,7 @@ dcr() { # client_name -> client_id on stdout
     "grant_types": ["authorization_code", "refresh_token"],
     "response_types": ["code"],
     "token_endpoint_auth_method": "none",
-    "scope": "openid offline_access",
+    "scope": "openid offline_access bex.api",
     "audience": ["'"$RESOURCE"'"]
   }' "$REG_EP")"
   [ "$code" = "201" ] || { echo "error: DCR returned $code: $(cat "$TMP/reg.json")" >&2; return 1; }
@@ -289,7 +289,7 @@ print(next(n['attributes']['value'] for n in f['ui']['nodes'] if n['attributes']
 # callback (consent was headless) or the consent page (a human must decide).
 authorize() { # client_id state jar -> final url on stdout
   local client="$1" state="$2" jar="$3" final challenge cont
-  final="$(follow "$ISSUER/oauth2/auth?client_id=$client&response_type=code&scope=openid+offline_access&redirect_uri=$CALLBACK&state=$state&code_challenge=$CHALLENGE&code_challenge_method=S256&audience=$RESOURCE" "$jar")"
+  final="$(follow "$ISSUER/oauth2/auth?client_id=$client&response_type=code&scope=openid+offline_access+bex.api&redirect_uri=$CALLBACK&state=$state&code_challenge=$CHALLENGE&code_challenge_method=S256&audience=$RESOURCE" "$jar")"
   case "$final" in
     "$DASH/auth/login"*)
       challenge="$(qparam "$final" login_challenge)"

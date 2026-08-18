@@ -302,7 +302,7 @@ func autoscaleDesired(as *appv1alpha1.AutoscalingSpec, usage []PodUsage, tier st
 // tierLimits returns the CPU (cores) and memory (bytes) limits for a tier,
 // returning 0 for both on a best-effort tier (no resource constraints).
 func tierLimits(tier string) (cpuCores float64, memBytes float64) {
-	cpuStr, memStr, ok := tiers.Compute.Resources(tier)
+	cpuStr, memStr, _, ok := tiers.Compute.Resources(tier)
 	if !ok {
 		return 0, 0
 	}

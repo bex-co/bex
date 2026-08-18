@@ -21,6 +21,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+
+	"github.com/bex-co/bex/lego/types/tiers"
 )
 
 // TestResourcesForTierReadsTheSharedCatalog pins resourcesForTier's contract
@@ -33,12 +35,14 @@ func TestResourcesForTierReadsTheSharedCatalog(t *testing.T) {
 	got := resourcesForTier("standard")
 	want := corev1.ResourceRequirements{
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("1"),
-			corev1.ResourceMemory: resource.MustParse("2Gi"),
+			corev1.ResourceCPU:              resource.MustParse("1"),
+			corev1.ResourceMemory:           resource.MustParse("2Gi"),
+			corev1.ResourceEphemeralStorage: resource.MustParse("4Gi"),
 		},
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:    resource.MustParse("1"),
-			corev1.ResourceMemory: resource.MustParse("2Gi"),
+			corev1.ResourceCPU:              resource.MustParse("1"),
+			corev1.ResourceMemory:           resource.MustParse("2Gi"),
+			corev1.ResourceEphemeralStorage: resource.MustParse("4Gi"),
 		},
 	}
 	if !got.Requests.Cpu().Equal(*want.Requests.Cpu()) || !got.Requests.Memory().Equal(*want.Requests.Memory()) {
@@ -49,6 +53,35 @@ func TestResourcesForTierReadsTheSharedCatalog(t *testing.T) {
 	}
 	if got.Requests.Cpu().Cmp(*got.Limits.Cpu()) != 0 || got.Requests.Memory().Cmp(*got.Limits.Memory()) != 0 {
 		t.Error("requests must equal limits (Guaranteed QoS)")
+	}
+}
+
+// TestResourcesForTierBindsEphemeralStorage (round-14 #2): the tier
+// allocation must carry an equal nonzero ephemeral-storage request and limit
+// for EVERY tier in the catalog — tenant code controls its container's
+// writable layer and logs, and this is the ceiling that keeps a runaway
+// writer inside its own container (kubelet evicts at the limit) instead of on
+// the shared node (DiskPressure hits co-tenants). One loop over the catalog
+// so a future tier cannot ship unbounded.
+func TestResourcesForTierBindsEphemeralStorage(t *testing.T) {
+	for _, id := range tiers.Compute.IDs() {
+		got := resourcesForTier(id)
+		req, ok := got.Requests[corev1.ResourceEphemeralStorage]
+		if !ok {
+			t.Errorf("resourcesForTier(%q): no ephemeral-storage request", id)
+			continue
+		}
+		lim, ok := got.Limits[corev1.ResourceEphemeralStorage]
+		if !ok {
+			t.Errorf("resourcesForTier(%q): no ephemeral-storage limit", id)
+			continue
+		}
+		if req.Value() <= 0 {
+			t.Errorf("resourcesForTier(%q): ephemeral-storage request = %s, want a positive bound", id, req.String())
+		}
+		if req.Cmp(lim) != 0 {
+			t.Errorf("resourcesForTier(%q): ephemeral-storage request %s != limit %s", id, req.String(), lim.String())
+		}
 	}
 }
 

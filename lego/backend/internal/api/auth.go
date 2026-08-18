@@ -72,6 +72,21 @@ type oryAuth struct {
 	// (DCR) third-party client that never requested this resource — authorize a
 	// human's full workspace rights here.
 	resource string
+	// apiScope is the control-plane capability scope (round-14 #1, default
+	// "bex.api", BEX_OAUTH_API_SCOPE): a HUMAN token minted for this API's
+	// audience must have been granted it — identity-only scopes (openid,
+	// offline_access) are consent display and refresh metadata, never API
+	// authority. Before this check a dynamically registered client could ask
+	// for the resource AUDIENCE with identity-only SCOPES, walk the ordinary
+	// consent flow (the screen honestly said "openid"), and exercise every
+	// action the victim's OpenFGA subject may perform. Clients bex itself
+	// provisioned (platformClient marker — the CLI's device flow, bex-mobile)
+	// are exempt exactly as the narrowed empty-aud exception exempts them:
+	// they are platform binaries whose scope lists bex controls. The
+	// per-operation least-privilege scope matrix remains a documented
+	// deferral (ADR069 #1); this check makes "asked for identity" ≠ "may use
+	// the API".
+	apiScope string
 	// platformClients caches, per client_id, whether Hydra's client record carries
 	// the `bex.co/platform-client` marker that scripts/auth-bootstrap-client.sh
 	// stamps on the clients bex itself provisions (the official Render CLI's
@@ -147,7 +162,7 @@ type oryAuth struct {
 	admission *AuthAdmission
 }
 
-func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL string, requireAudience bool, admission *AuthAdmission, onboard Onboarding, touch func(string)) *oryAuth {
+func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL string, requireAudience bool, admission *AuthAdmission, onboard Onboarding, touch func(string), apiScope string) *oryAuth {
 	challenge := "Bearer"
 	if resourceMetadataURL != "" {
 		challenge = `Bearer resource_metadata="` + resourceMetadataURL + `"`
@@ -165,6 +180,7 @@ func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL 
 		requireAudience: requireAudience,
 		admission:       admission,
 		touch:           touch,
+		apiScope:        apiScope,
 	}
 }
 
@@ -208,6 +224,25 @@ func (a *oryAuth) platformClient(ctx context.Context, clientID string) (bool, er
 // platformClientMarker is the Hydra client-metadata key auth-bootstrap-client.sh
 // stamps on bex-provisioned OAuth clients.
 const platformClientMarker = "bex.co/platform-client"
+
+// DefaultAPIScope is the control-plane capability OAuth scope (round-14 #1):
+// the one scope whose presence on an API-audience human token says "this
+// client asked for API access, and the user saw it on the consent screen".
+// Overridable per deployment (BEX_OAUTH_API_SCOPE) — the dashboard's consent
+// gate (OAUTH_API_SCOPE) must be set to the SAME value, and the RFC 9728
+// metadata advertises it so discovery-driven MCP clients request it.
+const DefaultAPIScope = "bex.api"
+
+// scopeGranted parses Hydra's space-separated introspection scope string and
+// reports whether want was granted.
+func scopeGranted(granted, want string) bool {
+	for _, s := range strings.Fields(granted) {
+		if s == want {
+			return true
+		}
+	}
+	return false
+}
 
 // IsPlatformClient exposes the platform-client lookup as a
 // core.PlatformClientResolver so the durable-credential mint verbs
@@ -385,6 +420,7 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 		Iss      string   `json:"iss"`
 		Exp      float64  `json:"exp"`
 		Aud      []string `json:"aud"`
+		Scope    string   `json:"scope"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return err
@@ -402,6 +438,28 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 	// resource must not authorize this one.
 	if a.resource != "" && len(out.Aud) > 0 && !slices.Contains(out.Aud, a.resource) {
 		return nil
+	}
+	// Scope discipline (round-14 #1, see the apiScope field): a HUMAN token
+	// minted FOR THIS API must carry the control-plane capability scope.
+	// Identity-only scopes on an API-audience token are exactly the
+	// look-harmless consent a dynamic client used to obtain a victim's full
+	// subject authority. Machine (client_credentials) tokens are exempt — they
+	// are API keys whose authority comes from their workspace binding, not an
+	// OAuth consent — and platform-provisioned human clients are exempt via
+	// their marker, mirroring the empty-aud exception. Everything else that
+	// asked for this audience without asking for this scope is refused; the
+	// token simply introspects inactive (401), the same shape as any other
+	// unacceptable credential.
+	if a.resource != "" && a.apiScope != "" && human && slices.Contains(out.Aud, a.resource) &&
+		!scopeGranted(out.Scope, a.apiScope) {
+		platform, err := a.platformClient(ctx, out.ClientID)
+		if err != nil {
+			return err // Hydra unreachable => 503, never a silent downgrade
+		}
+		if !platform {
+			log.Printf("auth: rejecting %q-scoped token for API audience from non-platform client %q (round-14 #1)", out.Scope, out.ClientID)
+			return nil
+		}
 	}
 	// The empty-aud exception, narrowed (w1/m67 F1). It exists for
 	// client_credentials API keys, which carry no audience at all — but written as

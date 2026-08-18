@@ -20,6 +20,9 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+
+	"github.com/bex-co/bex/lego/types/tiers"
 )
 
 // datastore_quota_test.go guards w7/m77/t006 — the quota half of the ADR043 D8
@@ -69,5 +72,49 @@ func TestFreePlanDatastoreCapsAreTighterThanPaid(t *testing.T) {
 	}
 	if free.KeyValues >= paid.KeyValues {
 		t.Errorf("free Key Value cap %d is not below the paid cap %d", free.KeyValues, paid.KeyValues)
+	}
+}
+
+// TestQuotaBoundsEphemeralStorage (round-14 #2): the per-workspace aggregate
+// quota must carry the requests/limits.ephemeral-storage dimensions — the
+// writable-layer/log disk axis the PVC dimensions cannot see. Present and
+// positive on every plan, free strictly below paid, and the LimitRange
+// defaults tierless containers to a bounded value too.
+func TestQuotaBoundsEphemeralStorage(t *testing.T) {
+	for _, plan := range []string{PlanHobby, "free", "", "starter"} {
+		quota := quotaForPlan(plan)
+		for _, key := range []corev1.ResourceName{corev1.ResourceRequestsEphemeralStorage, corev1.ResourceLimitsEphemeralStorage} {
+			got, ok := quota[key]
+			if !ok {
+				t.Errorf("plan %q: quota has no %s dimension — tenant writable-layer disk is aggregate-uncapped", plan, key)
+				continue
+			}
+			if got.Value() <= 0 {
+				t.Errorf("plan %q: %s = %s, want a positive bound", plan, key, got.String())
+			}
+		}
+	}
+	free := quotaForPlan(PlanHobby)[corev1.ResourceRequestsEphemeralStorage]
+	paid := quotaForPlan("starter")[corev1.ResourceRequestsEphemeralStorage]
+	if free.Cmp(paid) >= 0 {
+		t.Errorf("free ephemeral-storage cap %s is not below the paid cap %s", free.String(), paid.String())
+	}
+	lr := baseLimitRange("ns")
+	item := lr.Spec.Limits[0]
+	for _, list := range []corev1.ResourceList{item.DefaultRequest, item.Default, item.Max} {
+		if q, ok := list[corev1.ResourceEphemeralStorage]; !ok || q.Value() <= 0 {
+			t.Errorf("LimitRange tierless-container defaults/max missing a positive ephemeral-storage bound: %+v", list)
+		}
+	}
+	// The LimitRange max must admit the compute ladder's largest tier or every
+	// pro-ultra container would be rejected at admission.
+	maxQ := item.Max[corev1.ResourceEphemeralStorage]
+	top, ok := tiers.Compute.ByID("pro-ultra")
+	if !ok {
+		t.Fatal("compute catalog has no pro-ultra rung")
+	}
+	tierQ := resource.MustParse(top.EphemeralStorage)
+	if maxQ.Cmp(tierQ) < 0 {
+		t.Errorf("LimitRange max ephemeral-storage %s < largest tier bound %s — top-tier containers would be refused", maxQ.String(), tierQ.String())
 	}
 }

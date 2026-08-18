@@ -869,12 +869,24 @@ func buildEnv(builder string, env []appv1alpha1.EnvVar) []corev1.EnvVar {
 // family, shared with the backend store's tier/plan validation. Empty/unknown
 // tier => no constraints (best-effort, prior behavior); the control plane
 // sets a tier explicitly.
+//
+// The allocation includes the tier's ephemeral-storage bound (round-14 #2):
+// tenant code controls what its container writes to the writable layer and
+// logs, so every execution mode fed from here — serving Deployments, cron and
+// one-off Jobs, pre-deploy Jobs — gets a disk ceiling with kubelet eviction
+// at the container instead of node DiskPressure falling on co-tenants.
 func resourcesForTier(tier string) corev1.ResourceRequirements {
-	cpu, mem, ok := tiers.Compute.Resources(tier)
+	cpu, mem, storage, ok := tiers.Compute.Resources(tier)
 	if !ok {
 		return corev1.ResourceRequirements{} // unset => best-effort, unchanged behavior
 	}
-	return guaranteedResources(cpu, mem)
+	out := guaranteedResources(cpu, mem)
+	// guaranteedResources aliases Requests and Limits to one list, so both
+	// writes land in the same map — belt and braces against the aliasing ever
+	// being "fixed" apart.
+	out.Requests[corev1.ResourceEphemeralStorage] = resource.MustParse(storage)
+	out.Limits[corev1.ResourceEphemeralStorage] = resource.MustParse(storage)
+	return out
 }
 
 // guaranteedResources builds a Guaranteed-QoS allocation (requests == limits)

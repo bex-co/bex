@@ -49,8 +49,15 @@ const (
 	// Tier A encrypt step. Alpine (already trusted as alpine/git elsewhere) keeps
 	// the trust surface off a third-party age image; swap for a pinned age image
 	// if runtime apk egress is undesirable. Only pulled/used when encryption is
-	// enabled (BackupStore.AgePublicKey set).
-	keyValueBackupAgeImage = "alpine:3.21"
+	// enabled (BackupStore.AgePublicKey set). Digest-pinned (round-14 #5): this
+	// container reads the plaintext backup volume, so a retagged upstream tag
+	// must not become its code. The runtime `apk add age` (the standing ADR060
+	// D7 internally-built-toolchain deferral) is the remaining unpinned surface.
+	keyValueBackupAgeImage = "alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d"
+	// keyValueBackupBusyboxImage compresses the plaintext RDB (round-14 #5):
+	// digest-pinned like the build preparer's busybox so the mutable tag cannot
+	// resolve to different bytes.
+	keyValueBackupBusyboxImage = "busybox:1.37@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0"
 )
 
 // keyValueBackupWorkHeadroomGiB is the slack added on top of the derived peak
@@ -225,7 +232,7 @@ test -s /backup/dump.rdb`},
 		},
 		{
 			Name:            "compress",
-			Image:           "busybox:1.37",
+			Image:           keyValueBackupBusyboxImage,
 			Command:         []string{"gzip", "-9", "/backup/dump.rdb"},
 			Resources:       backupResources("10m", "32Mi", workBudget),
 			SecurityContext: tenantSecCtx(),

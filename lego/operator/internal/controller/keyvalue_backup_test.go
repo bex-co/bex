@@ -121,6 +121,69 @@ func assertKeyValueUpload(t *testing.T, upload corev1.Container) {
 	}
 }
 
+// TestKeyValueBackupFixedImagesAreDigestPinned (round-14 #5): every backup
+// stage whose image is a reference BEX ITSELF chooses — busybox compress, the
+// alpine age encrypt step, the AWS CLI uploader, and the default-version
+// valkey snapshot — must carry an immutable sha256 digest. These containers
+// share the plaintext backup volume and (snapshot/uploader) the datastore and
+// S3 credentials, so a retagged mutable tag must not be able to become their
+// code.
+//
+// The one exemption is a snapshot stage whose image came from an EXPLICIT
+// tenant-chosen spec.version: bex cannot pre-resolve a digest for a major it
+// has not seen, so that stays the standing digest-inventory deferral (ADR069
+// #5, continuing the ADR060-D7 lineage). The empty-version case — what almost
+// every instance runs — is asserted pinned, so the exemption cannot quietly
+// widen back to the default path.
+func TestKeyValueBackupFixedImagesAreDigestPinned(t *testing.T) {
+	withAge := BackupStore{DestinationPath: "s3://b", EndpointURL: "https://s3.example.test", S3Secret: "s", AgePublicKey: "age1sentinel"}
+	for _, tc := range []struct {
+		name  string
+		store BackupStore
+	}{
+		{"plain", testKeyValueBackupStore},
+		{"age-encrypted", withAge},
+	} {
+		for _, vc := range []struct {
+			name           string
+			version        string
+			snapshotPinned bool
+		}{
+			// The default path bex owns end to end: everything pinned.
+			{"default-version", "", true},
+			// Tenant asked for a specific major: snapshot is the deferral.
+			{"explicit-version", "8", false},
+		} {
+			t.Run(tc.name+"/"+vc.name, func(t *testing.T) {
+				kv := &appv1alpha1.KeyValue{
+					ObjectMeta: metav1.ObjectMeta{Name: "red-paid-kv", Namespace: "default", UID: "paid-kv-uid"},
+					Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: vc.version},
+				}
+				r := &KeyValueReconciler{Backup: tc.store}
+				spec := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-paid-kv-auth")
+				pod := spec.JobTemplate.Spec.Template.Spec
+				sawSnapshot := false
+				for _, c := range append(append([]corev1.Container{}, pod.InitContainers...), pod.Containers...) {
+					pinned := strings.Contains(c.Image, "@sha256:")
+					if c.Name == "snapshot" {
+						sawSnapshot = true
+						if pinned != vc.snapshotPinned {
+							t.Errorf("snapshot image %q digest-pinned=%v, want %v", c.Image, pinned, vc.snapshotPinned)
+						}
+						continue
+					}
+					if !pinned {
+						t.Errorf("backup stage %q image %q is not digest-pinned — a mutable tag in the credential-bearing pipeline", c.Name, c.Image)
+					}
+				}
+				if !sawSnapshot {
+					t.Fatal("no snapshot stage in the rendered backup job")
+				}
+			})
+		}
+	}
+}
+
 func TestKeyValueBackupCronJobSpec(t *testing.T) {
 	kv := &appv1alpha1.KeyValue{
 		ObjectMeta: metav1.ObjectMeta{Name: "red-paid-kv", Namespace: "default", UID: "paid-kv-uid"},

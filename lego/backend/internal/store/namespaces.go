@@ -417,30 +417,42 @@ func (r *NamespaceReconciler) baseResourceQuota(namespace string, t Tenant) *cor
 // included) plus slack. services.loadbalancers/nodeports are zeroed because bex
 // only ever creates ClusterIP Services in a tenant namespace — a defense-in-depth
 // denial of billable cloud LBs against an operator bug or a compromised principal.
+//
+// requests/limits.ephemeral-storage (round-14 #2) bound the aggregate
+// writable-layer + log disk — the axis PVC quotas cannot see. Per-container the
+// tier ladder already bounds it (resourcesForTier, 1→32Gi) and the LimitRange
+// defaults tierless containers to 1Gi/10Gi, so these aggregates are the
+// defense-in-depth ceiling sized to hold a plan's worst case: paid ≈ 50
+// CPU-requested pro-ultra pods × 32 Gi ≈ 1.6 Ti < 2 Ti; free ≈ 50 tierless
+// containers × 1 Gi = 50 Gi < 100 Gi.
 func quotaForPlan(plan string) corev1.ResourceList {
 	// Paid default (mirrors the retired shared tenant-apps-quota, per tenant).
 	cpuReq, memReq, cpuLim, memLim, pods, jobs := "50", "100Gi", "100", "200Gi", "500", "250"
 	storage, pvcs := "5Ti", "200"
+	ephReq, ephLim := "2Ti", "4Ti"
 	switch plan {
 	case PlanHobby, "", "free":
 		cpuReq, memReq, cpuLim, memLim, pods, jobs = "2", "4Gi", "4", "8Gi", "50", "25"
 		storage, pvcs = "20Gi", "4"
+		ephReq, ephLim = "100Gi", "200Gi"
 	}
 	caps := QuotaCapsForPlan(plan)
 	return corev1.ResourceList{
-		corev1.ResourceRequestsCPU:            resource.MustParse(cpuReq),
-		corev1.ResourceRequestsMemory:         resource.MustParse(memReq),
-		corev1.ResourceLimitsCPU:              resource.MustParse(cpuLim),
-		corev1.ResourceLimitsMemory:           resource.MustParse(memLim),
-		corev1.ResourcePods:                   resource.MustParse(pods),
-		corev1.ResourceRequestsStorage:        resource.MustParse(storage),
-		corev1.ResourcePersistentVolumeClaims: resource.MustParse(pvcs),
-		corev1.ResourceServicesLoadBalancers:  resource.MustParse("0"),
-		corev1.ResourceServicesNodePorts:      resource.MustParse("0"),
-		"count/jobs.batch":                    resource.MustParse(jobs),
-		AppsQuotaCountKey:                     *resource.NewQuantity(caps.Services, resource.DecimalSI),
-		DatabasesQuotaCountKey:                *resource.NewQuantity(caps.Postgres, resource.DecimalSI),
-		KeyValuesQuotaCountKey:                *resource.NewQuantity(caps.KeyValues, resource.DecimalSI),
+		corev1.ResourceRequestsCPU:               resource.MustParse(cpuReq),
+		corev1.ResourceRequestsMemory:            resource.MustParse(memReq),
+		corev1.ResourceLimitsCPU:                 resource.MustParse(cpuLim),
+		corev1.ResourceLimitsMemory:              resource.MustParse(memLim),
+		corev1.ResourceRequestsEphemeralStorage:  resource.MustParse(ephReq),
+		corev1.ResourceLimitsEphemeralStorage:    resource.MustParse(ephLim),
+		corev1.ResourcePods:                      resource.MustParse(pods),
+		corev1.ResourceRequestsStorage:           resource.MustParse(storage),
+		corev1.ResourcePersistentVolumeClaims:    resource.MustParse(pvcs),
+		corev1.ResourceServicesLoadBalancers:     resource.MustParse("0"),
+		corev1.ResourceServicesNodePorts:         resource.MustParse("0"),
+		"count/jobs.batch":                       resource.MustParse(jobs),
+		AppsQuotaCountKey:                        *resource.NewQuantity(caps.Services, resource.DecimalSI),
+		DatabasesQuotaCountKey:                   *resource.NewQuantity(caps.Postgres, resource.DecimalSI),
+		KeyValuesQuotaCountKey:                   *resource.NewQuantity(caps.KeyValues, resource.DecimalSI),
 	}
 }
 
@@ -459,14 +471,20 @@ func baseLimitRange(namespace string) *corev1.LimitRange {
 				DefaultRequest: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("100m"),
 					corev1.ResourceMemory: resource.MustParse("128Mi"),
+					// Round-14 #2: even a tierless container gets a writable-layer
+					// disk bound instead of an unbounded one.
+					corev1.ResourceEphemeralStorage: resource.MustParse("1Gi"),
 				},
 				Default: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("2"),
 					corev1.ResourceMemory: resource.MustParse("4Gi"),
+					corev1.ResourceEphemeralStorage: resource.MustParse("10Gi"),
 				},
 				Max: corev1.ResourceList{
 					corev1.ResourceCPU:    resource.MustParse("8"),
 					corev1.ResourceMemory: resource.MustParse("32Gi"),
+					// Matches the compute ladder's largest tier (pro-ultra).
+					corev1.ResourceEphemeralStorage: resource.MustParse("32Gi"),
 				},
 			}},
 		},

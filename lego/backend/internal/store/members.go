@@ -98,6 +98,25 @@ func (s *PGStore) CountTenantAdmins(ctx context.Context, tenantID string) (int, 
 	return n, err
 }
 
+// SubjectIsWorkspaceAdmin reports whether subject currently holds the admin
+// role in tenantID — the webhook failure-notice recipient gate (round-14 #6):
+// a notice discloses (a redacted projection of) a destination that may have
+// been configured by a different admin after this subject was removed or
+// demoted, so CURRENT authorization state, not created_by provenance, decides
+// the recipient. False for a non-member, a non-admin, and a workspace that
+// does not exist — all equally "do not mail".
+func (s *PGStore) SubjectIsWorkspaceAdmin(ctx context.Context, tenantID, subject string) (bool, error) {
+	var exists bool
+	err := s.Pool.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM tenant_members WHERE tenant_id = $1 AND subject = $2 AND role = 'admin')`,
+		tenantID, subject,
+	).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 // UpdateMemberRole changes an existing member's role (ErrNotFound when the
 // subject is not a member of the workspace). The role CHECK is enforced by the
 // API layer's validation, not the column, so an unknown role is a caller error

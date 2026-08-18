@@ -354,7 +354,7 @@ func TestAuthGate(t *testing.T) {
 func TestAuthGateGitHubCallbackExceptionIsExact(t *testing.T) {
 	var hits atomic.Int32
 	hydra := fakeHydra(t, &hits, "")
-	mw := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil).middleware(echoIdentity)
+	mw := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil, "").middleware(echoIdentity)
 
 	for _, tc := range []struct {
 		name, method, path, bearer string
@@ -473,7 +473,7 @@ func TestGitHubBrowserCallbackThroughFullAuthStack(t *testing.T) {
 func TestIntrospectionCache(t *testing.T) {
 	var hits atomic.Int32
 	hydra := fakeHydra(t, &hits, "")
-	mw := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil).middleware(echoIdentity)
+	mw := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil, "").middleware(echoIdentity)
 
 	req := func(token string) int {
 		r := httptest.NewRequest(http.MethodGet, "/probe", nil)
@@ -518,7 +518,7 @@ func TestLogoutCannotBeUndoneByInflightIntrospection(t *testing.T) {
 	}))
 	defer hydra.Close()
 
-	auth := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil)
+	auth := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil, "")
 	introspected := make(chan struct{})
 	go func() {
 		_, _ = auth.introspect(introspectReq(), "old-access")
@@ -586,7 +586,7 @@ func blockingHydra(t *testing.T, sub, clientID string) (srv *httptest.Server, st
 func TestInvalidateDoesNotBlockDuringInFlightUpstreamRTT(t *testing.T) {
 	hydra, started, release, _ := blockingHydra(t, "human-a", "client-a")
 
-	auth := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil)
+	auth := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil, "")
 	introspected := make(chan struct{})
 	go func() {
 		_, _ = auth.introspect(introspectReq(), "in-flight-token")
@@ -623,7 +623,7 @@ func TestInvalidateDoesNotBlockDuringInFlightUpstreamRTT(t *testing.T) {
 func TestEpochBumpDuringRTTDiscardsStalePut(t *testing.T) {
 	hydra, started, release, calls := blockingHydra(t, "human-a", "client-a")
 
-	auth := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil)
+	auth := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil, "")
 	introspected := make(chan struct{})
 	go func() {
 		_, _ = auth.introspect(introspectReq(), "in-flight-token")
@@ -655,7 +655,7 @@ func TestEpochBumpDuringRTTDiscardsStalePut(t *testing.T) {
 }
 
 func TestInvalidateEvictsOnlyTheRevokedOAuthCredential(t *testing.T) {
-	auth := newOryAuth("http://unused", "", "", "", "", false, nil, nil, nil)
+	auth := newOryAuth("http://unused", "", "", "", "", false, nil, nil, nil, "")
 	expires := time.Now().Add(time.Minute)
 	values := map[string]core.Identity{
 		"human-a-1": {Subject: "human-a", Method: "oauth2", ClientID: "shared", Human: true},
@@ -723,7 +723,7 @@ func TestHumanOAuthTokenRunsTenantOnboarding(t *testing.T) {
 			}))
 			defer hydra.Close()
 			onboard := &recordingOnboard{}
-			mw := newOryAuth(hydra.URL, "", "", "", "", false, nil, onboard, nil).middleware(echoIdentity)
+			mw := newOryAuth(hydra.URL, "", "", "", "", false, nil, onboard, nil, "").middleware(echoIdentity)
 			r := httptest.NewRequest(http.MethodGet, "/probe", nil)
 			r.Header.Set("Authorization", "Bearer token")
 			rec := httptest.NewRecorder()
@@ -749,7 +749,7 @@ func TestIntrospectionTouchesKey(t *testing.T) {
 	var hits atomic.Int32
 	hydra := fakeHydra(t, &hits, "")
 	touched := make(chan string, 4)
-	mw := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, func(clientID string) { touched <- clientID }).middleware(echoIdentity)
+	mw := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, func(clientID string) { touched <- clientID }, "").middleware(echoIdentity)
 
 	do := func(token string) {
 		r := httptest.NewRequest(http.MethodGet, "/probe", nil)

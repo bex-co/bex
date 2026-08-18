@@ -70,8 +70,15 @@ const (
 	// account avoids its root entrypoint's CAP_CHOWN requirement on fresh PVCs.
 	valkeyRunAsUser  = int64(999)
 	valkeyRunAsGroup = int64(1000)
-	// kvDefaultImage is the Valkey image used when spec.version is empty.
-	kvDefaultImage = "valkey/valkey:8-alpine"
+	// kvDefaultImage is the Valkey image used when spec.version is empty — the
+	// path almost every KeyValue takes. Digest-pinned (round-14 #5): this image
+	// is both the serving datastore and the backup pipeline's snapshot stage,
+	// where it receives the instance password and mounts the plaintext backup
+	// volume, so a retagged `8-alpine` must not silently become that code. The
+	// tag is retained ahead of the digest for human legibility; the digest is
+	// what resolves. Bumping it is a deliberate code change that rolls the
+	// StatefulSets (see docs/ADR069-security-review-round14.md #5).
+	kvDefaultImage = "valkey/valkey:8-alpine@sha256:a038175878d66b9d274fbf8be73c0305e93798b83917647f167e18cef3c71eec"
 	// kvExporterPort / kvExporterImage back the redis_exporter metrics sidecar
 	// (w5/011): it scrapes Valkey's INFO stats and exposes them as Prometheus
 	// metrics on kvExporterPort, discovered by the valkey-instances scrape job.
@@ -109,7 +116,14 @@ func resolveKVPlan(spec appv1alpha1.KeyValueSpec) (tiers.ValkeyTier, int32) {
 }
 
 // valkeyImage resolves the Valkey image for a major version; empty => the
-// operator default.
+// operator default (digest-pinned, kvDefaultImage).
+//
+// An EXPLICIT spec.version resolves to a mutable tag (round-14 #5's residual):
+// the version is tenant-chosen at request time, so bex cannot carry a
+// pre-resolved digest for every major it has not seen. That is the standing
+// digest-pinning inventory deferral (ADR069 #5, ADR060 D7 lineage) — the fixed
+// references bex itself chooses (this default, busybox, alpine, the AWS CLI
+// uploader) are all pinned, and the guard test enforces it.
 func valkeyImage(version string) string {
 	if version == "" {
 		return kvDefaultImage

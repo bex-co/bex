@@ -40,8 +40,8 @@ var catalogYAML []byte
 
 // ComputeTier is one rung of the App/web-service ladder: a named, fixed pod
 // resource allocation. The operator sets a pod's requests == limits from
-// CPU/Memory (Guaranteed QoS) — same mechanism for every tier, only the
-// numbers differ.
+// CPU/Memory/EphemeralStorage (Guaranteed QoS) — same mechanism for every
+// tier, only the numbers differ.
 type ComputeTier struct {
 	// ID is the App CRD's spec.tier value (and the store's app/tenant "plan"
 	// column) — DNS-label-safe, hyphenated (e.g. "pro-plus").
@@ -53,6 +53,12 @@ type ComputeTier struct {
 	// CPU and Memory are k8s resource.Quantity strings.
 	CPU    string `json:"cpu"`
 	Memory string `json:"memory"`
+	// EphemeralStorage is the container's writable-layer + log disk bound (a
+	// k8s resource.Quantity string) — the third Guaranteed axis (round-14 #2):
+	// tenant code controls what its container writes, so the tier bounds that
+	// disk like it bounds CPU and memory. Applied to every tenant execution
+	// mode that flows through the compute ladder (serving, cron, pre-deploy).
+	EphemeralStorage string `json:"ephemeralStorage"`
 }
 
 // PostgresTier is one rung of the managed-Postgres ladder (the Database
@@ -160,14 +166,15 @@ func (c ComputeCatalog) RenderPlans() []string {
 }
 
 // Resources returns the pod requests/limits (as parseable Quantity strings)
-// for a tier id; ok is false for an empty or unknown id — the caller's
-// existing best-effort (no resource constraints) fallback.
-func (c ComputeCatalog) Resources(id string) (cpu, memory string, ok bool) {
+// for a tier id — cpu, memory, and the ephemeral-storage bound (round-14 #2);
+// ok is false for an empty or unknown id — the caller's existing best-effort
+// (no resource constraints) fallback.
+func (c ComputeCatalog) Resources(id string) (cpu, memory, ephemeralStorage string, ok bool) {
 	t, found := c.byID[id]
 	if !found {
-		return "", "", false
+		return "", "", "", false
 	}
-	return t.CPU, t.Memory, true
+	return t.CPU, t.Memory, t.EphemeralStorage, true
 }
 
 // --- Postgres ---
@@ -276,6 +283,9 @@ func parseCompute(entries []ComputeTier, defaultID string) (ComputeCatalog, erro
 		}
 		if t.RenderPlan == "" {
 			return ComputeCatalog{}, fmt.Errorf("tier %q has an empty renderPlan", t.ID)
+		}
+		if _, err := resource.ParseQuantity(t.EphemeralStorage); err != nil {
+			return ComputeCatalog{}, fmt.Errorf("tier %q: bad ephemeralStorage quantity %q: %w", t.ID, t.EphemeralStorage, err)
 		}
 		if _, dup := byRender[t.RenderPlan]; dup {
 			return ComputeCatalog{}, fmt.Errorf("duplicate renderPlan %q (tier %q)", t.RenderPlan, t.ID)

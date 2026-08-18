@@ -127,6 +127,15 @@ spec:
             # device-flow logins would otherwise be refused).
             - name: BEX_OAUTH_REQUIRE_AUDIENCE
               value: "1"
+            # Round-14 #1 (docs/ADR069-security-review-round14.md): the
+            # control-plane capability scope — an API-audience HUMAN token
+            # must carry it (identity-only scopes never are API authority).
+            # Machine API-key tokens and bex-provisioned platform clients
+            # (the marker the bootstrap script stamps) are exempt. Must equal
+            # the dashboard's OAUTH_API_SCOPE; default "bex.api" on both
+            # sides, spelled out here so the coupling is visible.
+            - name: BEX_OAUTH_API_SCOPE
+              value: bex.api
             - name: BEX_PROM_URL # Prometheus scraping Traefik => request metrics
               value: http://prometheus-server.monitoring.svc.cluster.local
             - name: BEX_LOKI_URL # Loki (log-shipper DaemonSet) => durable log history
