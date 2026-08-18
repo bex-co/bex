@@ -1,20 +1,20 @@
 # w7 · m82 — Build failure classification: retry only what retrying can fix (ADR060 D2 + D4)
 
-**Worker:** worker7 **Goal:** a build fails once when the tenant's input is wrong, retries free when the platform disrupts it, and says which of the two happened. **Status:** todo
+**Worker:** worker7 **Goal:** a build fails once when the tenant's input is wrong, retries free when the platform disrupts it, and says which of the two happened. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                          | est | depends_on   |
 | ---- | ---------------------------------------------------------------------------------------------- | --- | ------------ |
-| t001 | Reserved exit codes across clone / native-prepare / buildkit / push / sign                       | 45m | —            |
-| t002 | `podFailurePolicy`: absorb disruption, fail tenant errors immediately, retry only the unclassified | 45m | w7/m82/t001 |
-| t003 | Classified outcome reaches the App condition, the deploy record, and the metrics                 | 50m | w7/m82/t002 |
-| t004 | D4 registry hardening: push retries, conditional TLS verify, Zot `gcDelay` + `scrub`             | 45m | w7/m82/t003 |
-| t005 | Infra-success SLO + correlated-failure alert                                                     | 40m | w7/m82/t004 |
-| t006 | Render parity sweep: build/deploy failure reason across REST · GraphQL · MCP · dashboard          | 30m | w7/m82/t005 |
-| t007 | Simplify the code this milestone changed                                                         | 30m | w7/m82/t006 |
-| t008 | Test coverage for the shipped behavior                                                           | 40m | w7/m82/t006 |
-| t009 | Closeout                                                                                         | 15m | w7/m82/t007, w7/m82/t008 |
+| t001 | Reserved exit codes across clone / native-prepare / buildkit / push / sign — **DONE** | 45m | —            |
+| t002 | `podFailurePolicy`: absorb disruption, fail tenant errors immediately, retry only the unclassified — **DONE** | 45m | w7/m82/t001 |
+| t003 | Classified outcome reaches the App condition, the deploy record, and the metrics — **DONE** | 50m | w7/m82/t002 |
+| t004 | D4 registry hardening: push retries, conditional TLS verify, Zot `gcDelay` + `scrub` — **DONE** | 45m | w7/m82/t003 |
+| t005 | Infra-success SLO + correlated-failure alert — **DONE** | 40m | w7/m82/t004 |
+| t006 | Render parity sweep: build/deploy failure reason across REST · GraphQL · MCP · dashboard — **DONE** | 30m | w7/m82/t005 |
+| t007 | Simplify the code this milestone changed — **DONE** | 30m | w7/m82/t006 |
+| t008 | Test coverage for the shipped behavior — **DONE** | 40m | w7/m82/t006 |
+| t009 | Closeout — **DONE** | 15m | w7/m82/t007, w7/m82/t008 |
 
 ## Definition of done
 

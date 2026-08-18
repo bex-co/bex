@@ -91,6 +91,33 @@ const ConditionPublicRouting = "PublicRouting"
 // reason vocabulary).
 const ConditionReady = "Ready"
 
+// Build-failure condition reasons. These are part of the CR contract, not an
+// operator-internal detail: the operator writes them onto the Ready condition
+// and bex-api reads them to classify a deploy, so they live here where both
+// modules can share one definition rather than two drifting string literals.
+//
+// The split (w7/m82, docs/ADR060 D2) tells a tenant whether the build failed on
+// their input or on ours. ReasonBuildFailed is retained for builds whose class
+// could not be determined — a kpack build, or any failure the classifier could
+// not attribute — so an unclassifiable failure is never filed under either side.
+const (
+	ReasonPreDeployFailed           = "PreDeployFailed"
+	ReasonBuildFailed               = "BuildFailed"
+	ReasonBuildFailedUserError      = "BuildFailedUserError"
+	ReasonBuildFailedInfrastructure = "BuildFailedInfrastructure"
+)
+
+// IsBuildFailureReason reports whether a Ready-condition reason denotes a build
+// failure of any class. Use this rather than comparing against ReasonBuildFailed
+// alone, which silently misses the classified variants.
+func IsBuildFailureReason(reason string) bool {
+	switch reason {
+	case ReasonBuildFailed, ReasonBuildFailedUserError, ReasonBuildFailedInfrastructure:
+		return true
+	}
+	return false
+}
+
 // DefaultBranch is the git branch a repo-backed App tracks when none is
 // specified. It lives on the CRD contract because both sides default to it
 // independently — the backend when validating a source patch or projecting a

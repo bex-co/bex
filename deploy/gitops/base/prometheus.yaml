@@ -632,6 +632,69 @@ spec:
 
               - name: bex
                 rules:
+                  # Build-plane SLIs (docs/ADR060 D5).
+                  #
+                  # The SLO is on INFRASTRUCTURE success, not on build success. A
+                  # tenant's broken Dockerfile is not a platform failure, so
+                  # user_failed is excluded from the ratio entirely — including it
+                  # would make the error budget a function of how many tenants
+                  # pushed bad code that day, which no operator can act on.
+                  #
+                  # outcome="user_failed" is deterministic tenant input, failed
+                  # once and not retried; outcome="infra_failed" is a transient or
+                  # unclassified failure that exhausted its retry budget.
+                  # `or vector(1)`: with no infra failures yet the numerator
+                  # selects nothing and the whole expression would be absent
+                  # rather than 1, so a healthy fleet would have no SLO series
+                  # at all — indistinguishable on a dashboard from a broken rule.
+                  - record: bex:build_infra_success_ratio:rate1h
+                    expr: |
+                      (
+                      1 - (
+                        sum(rate(bex_build_outcomes_total{outcome="infra_failed"}[1h]))
+                        /
+                        clamp_min(
+                          sum(rate(bex_build_outcomes_total{outcome=~"succeeded|infra_failed|failed|timeout"}[1h])),
+                          0.0000001
+                        )
+                      )
+                      ) or vector(1)
+
+                  - alert: BuildInfraSuccessBelowSLO
+                    expr: bex:build_infra_success_ratio:rate1h < 0.995
+                    for: 30m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Build infrastructure success is {{ $value | humanizePercentage }} (SLO 99.5%)"
+                      description: "Builds are failing for reasons the platform owns, not tenant code (outcome=infra_failed excludes user_failed by construction). Check bex_build_outcomes_total by outcome, the Zot push path, and node capacity on the build pools. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D5."
+
+                  # The flake-vs-user discriminator. Infrastructure causes are
+                  # SYNCHRONIZED across independent tenants (a bad node, a sick
+                  # registry); tenant errors are isolated and deterministic per
+                  # commit. So the signal is not the failure count but its SPREAD:
+                  # three or more distinct workspaces failing infra-side inside 15
+                  # minutes is a platform incident, while thirty failures inside one
+                  # workspace is one tenant having a bad afternoon and must not page.
+                  #
+                  # Threshold rationale: bex runs ~17 workspaces, so 3 distinct is
+                  # ~18% of the estate — well above coincidence, low enough to fire
+                  # before most tenants notice. Revisit the constant if the estate
+                  # grows by an order of magnitude.
+                  - alert: BuildInfraFailuresCorrelatedAcrossWorkspaces
+                    expr: |
+                      count(
+                        sum by (workspace) (
+                          increase(bex_build_infra_failures_total[15m])
+                        ) > 0
+                      ) >= 3
+                    for: 5m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Infra-classified build failures across {{ $value }} distinct workspaces"
+                      description: "Independent workspaces are failing builds infra-side at the same time, which is the signature of a platform fault rather than tenant code. Suspect the shared dependencies first: Zot (push/pull), the build node pools, image pulls. Isolated per-tenant failures deliberately do NOT fire this."
+
                   - alert: EgressMeterTargetMissing
                     expr: |
                       count(up{job="bex-egress-meter"} == 1)

@@ -839,10 +839,10 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 		}
 	case appv1alpha1.PhaseFailed:
 		if conditionCurrent {
-			switch reason {
-			case "BuildFailed":
+			switch {
+			case appv1alpha1.IsBuildFailureReason(reason):
 				return DeployBuildFailed
-			case "PreDeployFailed":
+			case reason == appv1alpha1.ReasonPreDeployFailed:
 				return DeployPreDeployFailed
 			default:
 				return DeployUpdateFailed
@@ -956,8 +956,12 @@ func failureReasonFor(app *appv1alpha1.App) (string, string) {
 		switch c.Reason {
 		case "ImagePullBackOff":
 			return c.Message, EventReasonImagePullBackoff
-		case "CrashLoopBackOff", "CreateContainerConfigError", "BuildFailed", "PreDeployFailed":
+		case "CrashLoopBackOff", "CreateContainerConfigError", appv1alpha1.ReasonPreDeployFailed:
 			return c.Message, ""
+		default:
+			if appv1alpha1.IsBuildFailureReason(c.Reason) {
+				return c.Message, ""
+			}
 		}
 		if app.Status.Phase == appv1alpha1.PhaseFailed && c.Message != "" {
 			return c.Message, ""

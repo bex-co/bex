@@ -569,3 +569,71 @@ tests:
             exp_annotations:
               summary: "OpenBao member openbao-1 is SEALED"
               description: "An OpenBao raft member has been sealed for >5m, which 503s the tenant env-vars API. Unseal: scripts/bao-init.sh (unseal path); runbook docs/ADR013-secrets.md. Debug: kubectl -n secrets get pods; kubectl -n secrets exec openbao-1 -- bao status"
+
+  # w7/m82 t005 — the build-plane SLO and the flake-vs-user discriminator.
+  # Both are exactly the "non-obvious expression" this pack exists for: the SLO
+  # ratio must EXCLUDE tenant errors, and the correlated-failure alert must key
+  # on the SPREAD of failures across workspaces rather than their count.
+  - name: tenant build failures never consume the platform error budget
+    interval: 1m
+    input_series:
+      # A steady stream of tenant-caused failures and nothing else. This is a
+      # bad afternoon for tenants, not an outage: the SLO must stay at 1.
+      - series: 'bex_build_outcomes_total{outcome="user_failed"}'
+        values: "0+1x60"
+      - series: 'bex_build_outcomes_total{outcome="succeeded"}'
+        values: "0+1x60"
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: BuildInfraSuccessBelowSLO
+        exp_alerts: []
+
+  - name: platform-caused build failures breach the SLO
+    interval: 1m
+    input_series:
+      - series: 'bex_build_outcomes_total{outcome="infra_failed"}'
+        values: "0+1x60"
+      - series: 'bex_build_outcomes_total{outcome="succeeded"}'
+        values: "0+1x60"
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: BuildInfraSuccessBelowSLO
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Build infrastructure success is 50% (SLO 99.5%)"
+              description: "Builds are failing for reasons the platform owns, not tenant code (outcome=infra_failed excludes user_failed by construction). Check bex_build_outcomes_total by outcome, the Zot push path, and node capacity on the build pools. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D5."
+
+  - name: many failures in ONE workspace do not page
+    interval: 1m
+    input_series:
+      # 30 infra failures, all in one workspace. Loud, but not correlated —
+      # this is the false page the discriminator exists to suppress.
+      - series: 'bex_build_infra_failures_total{workspace="tea-aaa"}'
+        values: "0+1x60"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: BuildInfraFailuresCorrelatedAcrossWorkspaces
+        exp_alerts: []
+
+  - name: failures spread across workspaces are a platform incident
+    interval: 1m
+    input_series:
+      # One failure each in three independent workspaces: far fewer failures
+      # than the case above, but the shape of a shared-dependency fault.
+      - series: 'bex_build_infra_failures_total{workspace="tea-aaa"}'
+        values: "0+1x60"
+      - series: 'bex_build_infra_failures_total{workspace="tea-bbb"}'
+        values: "0+1x60"
+      - series: 'bex_build_infra_failures_total{workspace="tea-ccc"}'
+        values: "0+1x60"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: BuildInfraFailuresCorrelatedAcrossWorkspaces
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations:
+              summary: "Infra-classified build failures across 3 distinct workspaces"
+              description: "Independent workspaces are failing builds infra-side at the same time, which is the signature of a platform fault rather than tenant code. Suspect the shared dependencies first: Zot (push/pull), the build node pools, image pulls. Isolated per-tenant failures deliberately do NOT fire this."

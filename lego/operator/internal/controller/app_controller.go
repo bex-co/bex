@@ -625,12 +625,12 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		if workspace := app.Labels[labelWorkspace]; workspace != "" {
 			mine, err := build.ActiveAppBuilds(ctx, app.Name, string(app.UID), buildNs, buildClient)
 			if err != nil {
-				return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("counting app builds: %w", err)))
+				return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("counting app builds: %w", err)))
 			}
 			if mine == 0 {
 				active, err := build.ActiveWorkspaceBuilds(ctx, workspace, buildNs, buildClient)
 				if err != nil {
-					return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("counting workspace builds: %w", err)))
+					return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("counting workspace builds: %w", err)))
 				}
 				if active >= r.MaxConcurrentBuilds {
 					r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
@@ -648,17 +648,17 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	// ("secret not found"). Mechanism-only: the operator just copies an opaque
 	// Secret across namespaces; it never mints or inspects the token.
 	if err := r.relocateBuildSecret(ctx, app, buildNs, app.Spec.CloneSecret, "clone secret"); err != nil {
-		return halt(r.fail(ctx, app, "BuildFailed", err))
+		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 	}
 	runtimeSecret := runtimeEnvSecret(app)
 	if builder == build.BuilderNative {
 		if err := r.relocateBuildSecret(ctx, app, buildNs, runtimeSecret, "native build env"); err != nil {
-			return halt(r.fail(ctx, app, "BuildFailed", err))
+			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 		}
 	}
 	buildRegistryPullSecret, err := r.prepareBuildRegistrySecret(ctx, app, buildNs, builder)
 	if err != nil {
-		return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("preparing Docker-build registry credential: %w", err)))
+		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("preparing Docker-build registry credential: %w", err)))
 	}
 	obs, err := build.EnsureBuild(ctx, build.Options{
 		Repo: app.Spec.Repo, Ref: ref, RootDir: app.Spec.RootDir,
@@ -685,22 +685,31 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		Client:           buildClient,
 	})
 	if err != nil {
-		return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("dispatching build: %w", err)))
+		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("dispatching build: %w", err)))
 	}
 	switch obs.Phase {
 	case build.PhaseSucceeded:
-		recordBuildOutcome(buildOutcomeSucceeded)
-		recordBuildRunSeconds(obs.RunSeconds)
+		// Same once-per-build gate as the failure branch below.
+		if app.Status.ObservedGeneration != app.Generation {
+			recordBuildOutcome(buildOutcomeSucceeded)
+			recordBuildRunSeconds(obs.RunSeconds)
+		}
 		return r.pinBuiltImage(ctx, app, obs.Image), ctrl.Result{}, false, nil
 	case build.PhaseFailed:
-		recordBuildRunSeconds(obs.RunSeconds)
-		if obs.Timeout {
-			recordBuildOutcome(buildOutcomeTimeout)
-			return halt(r.fail(ctx, app, "BuildFailed",
-				fmt.Errorf("build exceeded its time limit: %s", obs.Message)))
+		view := viewForBuildFault(obs.Fault)
+		// Meter once per build, not once per reconcile. Reconciliation is
+		// level-triggered and the failed Job lives an hour (TTL), so unrelated
+		// Deployment/pod churn re-enters this branch repeatedly — the same gate
+		// the user-cancel counter uses (settleCanceledRelease). Without it the
+		// SLO ratio and the correlated-failure alert both count reconciles.
+		if app.Status.ObservedGeneration != app.Generation {
+			recordBuildRunSeconds(obs.RunSeconds)
+			recordBuildOutcome(view.outcome)
+			if obs.Fault == build.FaultInfra {
+				recordBuildInfraFailure(app.Labels[labelWorkspace])
+			}
 		}
-		recordBuildOutcome(buildOutcomeFailed)
-		return halt(r.fail(ctx, app, "BuildFailed", fmt.Errorf("build failed: %s", obs.Message)))
+		return halt(r.fail(ctx, app, view.reason, fmt.Errorf("%s: %s", view.message, obs.Message)))
 	case build.PhaseWaiting:
 		// Dispatched, but no pod placed yet — capacity wait. Report BuildQueued so
 		// the control plane's build budget restarts on the queued→building edge

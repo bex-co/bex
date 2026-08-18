@@ -29,18 +29,32 @@ import (
 // outcome="canceled" ever climbs outside the explicit Cancel verb after w2/m72
 // ships, a supersede path was missed — that is the tripwire this exists for.
 const (
-	buildOutcomeSucceeded  = "succeeded"
-	buildOutcomeFailed     = "failed"
-	buildOutcomeTimeout    = "timeout"
-	buildOutcomeSuperseded = "superseded"
-	buildOutcomeCanceled   = "canceled"
+	buildOutcomeSucceeded = "succeeded"
+	// The user/infra split is what makes an infrastructure-success SLO definable:
+	// a tenant's broken Dockerfile must not consume the platform's error budget.
+	// buildOutcomeFailed remains for genuinely unclassifiable failures (kpack).
+	buildOutcomeUserFailed  = "user_failed"
+	buildOutcomeInfraFailed = "infra_failed"
+	buildOutcomeFailed      = "failed"
+	buildOutcomeTimeout     = "timeout"
+	buildOutcomeSuperseded  = "superseded"
+	buildOutcomeCanceled    = "canceled"
 )
 
 var (
 	buildOutcomesTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "bex_build_outcomes_total",
-		Help: "Count of build terminal outcomes by kind (succeeded, failed, timeout, superseded, canceled).",
+		Help: "Count of build terminal outcomes by kind (succeeded, user_failed, infra_failed, failed, timeout, superseded, canceled).",
 	}, []string{"outcome"})
+
+	// A separate workspace-labelled series rather than a workspace label on the
+	// outcome counter: the correlated-failure alert must count DISTINCT
+	// workspaces, and this way cardinality stays proportional to real incidents
+	// rather than to the size of the estate.
+	buildInfraFailuresTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "bex_build_infra_failures_total",
+		Help: "Builds that failed for a platform-owned reason, by workspace. Feeds the correlated-failure detector: infra causes hit many workspaces at once, tenant errors do not.",
+	}, []string{"workspace"})
 
 	buildRunSeconds = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name: "bex_build_run_seconds",
@@ -51,7 +65,7 @@ var (
 )
 
 func init() {
-	ctrlmetrics.Registry.MustRegister(buildOutcomesTotal, buildRunSeconds)
+	ctrlmetrics.Registry.MustRegister(buildOutcomesTotal, buildInfraFailuresTotal, buildRunSeconds)
 }
 
 // recordBuildOutcome increments the outcome counter. Called once per terminal
@@ -69,4 +83,19 @@ func recordBuildRunSeconds(seconds float64) {
 	if seconds > 0 {
 		buildRunSeconds.Observe(seconds)
 	}
+}
+
+// recordBuildInfraFailure counts a platform-owned build failure for one
+// workspace. Called only for FaultInfra: a tenant error must never appear here,
+// or the correlated-failure alert would page on a tenant pushing bad code.
+func recordBuildInfraFailure(workspace string) {
+	// An unlabelled App (the shared bootstrap namespace admits them) is dropped
+	// rather than bucketed into a shared "unknown" series. Bucketing would fold
+	// N distinct tenants into one label value, and the correlated-failure alert
+	// counts DISTINCT workspaces — so it would under-report during exactly the
+	// fleet-wide incident it exists to catch.
+	if workspace == "" {
+		return
+	}
+	buildInfraFailuresTotal.WithLabelValues(workspace).Inc()
 }

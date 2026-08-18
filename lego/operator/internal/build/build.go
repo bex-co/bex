@@ -29,6 +29,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"net"
 	"path"
 	"strings"
 	"time"
@@ -67,10 +68,110 @@ const (
 // image signing is enabled (w6/006). Pinned; bump deliberately.
 const defaultSignImage = "gcr.io/projectsigstore/cosign:v2.4.1@sha256:b03690aa52bfe94054187142fba24dc54137650682810633901767d8a3e15b31"
 
-// buildTimeout bounds a single build Job's wall-clock before Build gives up
+// Reserved build-phase exit codes (docs/ADR060 D2). A failing phase exits with
+// one of these so the Job's podFailurePolicy can act on the failure CLASS, and
+// so the controller can attribute it. WHICH phase failed is already carried by
+// the container name in the pod status, so a class plus that name is a complete
+// classification without a per-phase code space to keep in sync.
+//
+// The band must stay below 126 (the shell's "not executable"/"not found") and
+// below 128, so a classified failure can never be confused with a 128+N signal
+// exit — 137 OOM and 143 SIGTERM in particular.
+const (
+	// ExitTenantError is a deterministic failure in tenant input; retrying
+	// cannot change the outcome, so podFailurePolicy fails the Job at once.
+	ExitTenantError = 90
+	// ExitTransient is a failure a retry might fix (network, registry 5xx, DNS).
+	ExitTransient = 91
+)
+
+// transientLogPattern recognizes failures worth retrying, by matching the
+// error text the phase actually printed. Everything unmatched is treated as a
+// TENANT error, and that default is deliberate: ADR060 D2's rule is "never
+// auto-retry a deterministic user failure; always absorb infrastructure
+// disruption", and the two misclassifications are not symmetric. Calling a
+// transient failure "tenant" costs one free retry; calling a tenant failure
+// "transient" burns two doomed attempts holding a 7 GiB node-exclusive slot.
+//
+// Infrastructure disruption proper (eviction, preemption, drain) never reaches
+// this classifier at all: it surfaces as the DisruptionTarget pod condition,
+// which podFailurePolicy ignores before any exit code is considered.
+//
+// Lines BuildKit prefixes with a step marker ("#12 0.42 …") are excluded before
+// matching, because those carry the tenant's own RUN output. Without that, a
+// Dockerfile containing `RUN echo "connection refused"` would classify its own
+// deterministic failure as transient — earning a free retry, and, once the
+// budget is exhausted, landing in infra_failed where it would move the platform
+// SLO and feed the correlated-failure page.
+const transientLogPattern = `dial tcp|connection refused|connection reset|network is unreachable|` +
+	`no route to host|i/o timeout|TLS handshake timeout|context deadline exceeded|` +
+	`temporary failure in name resolution|could not resolve host|server misbehaving|` +
+	`unexpected status: 5[0-9][0-9]|response status code 5[0-9][0-9]|` +
+	`50[0234] (internal server error|bad gateway|service unavailable|gateway time-?out)|` +
+	`failed to do request|unexpected eof|early eof|rpc failed|the remote end hung up|` +
+	`failed to connect to|operation timed out|unable to access`
+
+// classifyPrelude is prepended to every classifying phase script. It runs the
+// phase, streams its output live (so build logs keep reaching the log shipper
+// unbuffered — w7/m28), captures a copy for classification, and exits with the
+// reserved code for the class.
+//
+// SECURITY: bex_run passes the phase's arguments through "$@" as discrete
+// positional parameters and never interpolates them into the script text, so
+// tenant-controlled values (context dir, Dockerfile path, image ref) cannot
+// become shell syntax.
+//
+// The exit code is written inside the brace group rather than read from the
+// pipeline, because $? after a pipeline is tee's status and `set -o pipefail`
+// is not portable across the busybox shells these images ship. The `set +e`
+// around the pipeline is load-bearing: the phases run under `sh -eu`, and
+// without it the brace group aborts the instant the command fails, so `echo $?`
+// never runs and the exit code is lost.
+var classifyPrelude = fmt.Sprintf(`bex_rc_file=/tmp/bex-rc; bex_log=/tmp/bex-phase.log
+bex_run() {
+  rm -f "$bex_rc_file" "$bex_log"
+  set +e
+  { "$@" 2>&1; echo $? > "$bex_rc_file"; } | tee /dev/stderr | tail -c %d > "$bex_log"
+  bex_rc="$(cat "$bex_rc_file" 2>/dev/null || echo missing)"
+  set -e
+  [ "$bex_rc" = 0 ] && return 0
+  if [ "$bex_rc" = missing ]; then
+    echo "bex: phase exit status unavailable; treating as retryable" >&2
+    exit %d
+  fi
+  if grep -v '^#[0-9][0-9]* ' "$bex_log" 2>/dev/null | grep -qiE %s; then
+    exit %d
+  fi
+  exit %d
+}
+`, classifyBufferBytes, ExitTransient, shellSingleQuote(transientLogPattern), ExitTransient, ExitTenantError)
+
+// classifyBufferBytes bounds the copy of phase output kept for classification.
+// The full stream still reaches the container log; only this tail is retained.
+//
+// Two reasons it must be bounded. The file lives on the container's writable
+// layer, which shares the phase's ephemeral-storage limit — and exceeding that
+// limit gets the pod evicted with DisruptionTarget set, which buildPodFailurePolicy
+// IGNORES, so an unbounded log turns a deterministic disk-filling build into a
+// retry loop that stops only at activeDeadlineSeconds. Second, the classifying
+// grep is proportional to what it scans, and busybox grep on a multi-hundred-MB
+// log would spend minutes of the build's own deadline.
+const classifyBufferBytes = 256 * 1024
+
+// shellSingleQuote renders s as a single-quoted shell word, so the pattern
+// stays correct if it ever grows a quote.
+func shellSingleQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'"'"'`) + "'"
+}
+
+// BuildTimeout bounds a single build Job's wall-clock before Build gives up
 // waiting (the Job's own activeDeadlineSeconds matches, so a stuck build is
 // reaped rather than lingering).
-const buildTimeout = 30 * time.Minute
+//
+// Exported because it is also the floor for the registry's GC delay: a blob
+// from an in-flight push must not be collectable while its build can still be
+// running (docs/ADR060 D4).
+const BuildTimeout = 30 * time.Minute
 
 // Build execution resources match Render's Starter pipeline tier (2 CPU, 8 GB
 // RAM) while remaining schedulable on the baseline 8 GB tenant nodes. The 7 GiB
@@ -242,8 +343,48 @@ type Observation struct {
 	Phase      Phase
 	Image      string  // set when Phase == PhaseSucceeded (<registry>/<name>:<revision>, or kpack's canonical digest)
 	Message    string  // failure detail (PhaseFailed) or capacity reason (PhaseWaiting)
-	Timeout    bool    // PhaseFailed via activeDeadlineSeconds — classify as timeout, not a user/infra fault
 	RunSeconds float64 // terminal build run duration from the Job's own status timestamps (0 = unknown / kpack)
+	// Fault attributes a PhaseFailed build (docs/ADR060 D2). Empty for
+	// non-terminal phases.
+	Fault Fault
+}
+
+// Fault is who a failed build is attributable to. The split is what makes an
+// infrastructure-success SLO definable: a tenant's broken Dockerfile is not a
+// platform failure and must not burn the error budget.
+type Fault string
+
+const (
+	// FaultNone is a build that did not fail, or one whose class is not known.
+	FaultNone Fault = ""
+	// FaultTenant is a deterministic failure in tenant input — a bad git ref, a
+	// Dockerfile that does not build. Not retried, not counted against the SLO.
+	FaultTenant Fault = "tenant"
+	// FaultInfra is a failure the platform owns: a transient that exhausted its
+	// retries, or any unclassified failure that did the same.
+	FaultInfra Fault = "infra"
+	// FaultTimeout is the build exceeding activeDeadlineSeconds. Its own class
+	// rather than a fault of either side: the deadline is a platform policy, but
+	// hitting it is usually the tenant's build being slow.
+	FaultTimeout Fault = "timeout"
+)
+
+// faultFromJob reads the class off the Job's own failure reason, which needs no
+// extra API call and no pod listing: buildPodFailurePolicy's only FailJob rule
+// matches ExitTenantError, so Kubernetes writing "PodFailurePolicy" as the
+// reason IS the statement that a tenant-classified phase failed. Anything that
+// instead exhausted the backoff budget was, by construction, not tenant-classified.
+func faultFromJob(reason string) Fault {
+	switch reason {
+	case batchv1.JobReasonPodFailurePolicy:
+		return FaultTenant
+	case batchv1.JobReasonBackoffLimitExceeded:
+		return FaultInfra
+	case batchv1.JobReasonDeadlineExceeded:
+		return FaultTimeout
+	default:
+		return FaultNone
+	}
 }
 
 // ImageRef is the deterministic image reference a build produces — the operator
@@ -320,8 +461,8 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 		return Observation{
 			Phase:      PhaseFailed,
 			Message:    execution.JobFailureMessage(&cur, "unknown build failure"),
-			Timeout:    execution.JobFailedReason(&cur) == "DeadlineExceeded",
 			RunSeconds: jobRunSeconds(&cur),
+			Fault:      faultFromJob(execution.JobFailedReason(&cur)),
 		}, nil
 	}
 	if queued, reason := buildQueued(ctx, o, key.Name); queued {
@@ -464,9 +605,12 @@ func BuildJob(o Options, image string) *batchv1.Job {
 		env = []corev1.EnvVar{{Name: "BUILDKITD_FLAGS", Value: buildkitdFlags}}
 	}
 
-	deadline := int64(buildTimeout / time.Second)
-	backoff := int32(1) // one build attempt; a failed build is a user error, not a flake to retry
-	ttl := int32(3600)  // reap the finished Job after an hour
+	deadline := int64(BuildTimeout / time.Second)
+	// Two attempts for an UNCLASSIFIED failure only: podFailurePolicy fails a
+	// tenant-classified failure outright, so the extra attempt is spent only
+	// where a retry can change the outcome (docs/ADR060 D2).
+	backoff := int32(2)
+	ttl := int32(3600) // reap the finished Job after an hour
 
 	volumes := []corev1.Volume{emptyDirVolume("source"), emptyDirVolume("output")}
 	if o.PushSecret != "" {
@@ -486,10 +630,11 @@ func BuildJob(o Options, image string) *batchv1.Job {
 
 	// BuildKit receives the checked-out tree and writes an OCI archive. It has no
 	// clone, platform push, or signing credential.
+	// Tenant code, so it classifies. Args stay positional (see classifyPrelude).
 	buildkit := corev1.Container{
 		Name:    "buildkit",
 		Image:   buildkitImage,
-		Command: []string{"buildctl-daemonless.sh"},
+		Command: []string{"sh", "-eu", "-c", classifyPrelude + `bex_run buildctl-daemonless.sh "$@"`, "bex-buildkit"},
 		Args:    args,
 		Env:     env,
 		VolumeMounts: []corev1.VolumeMount{
@@ -532,7 +677,15 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	}
 	mountRegistryCred(&buildkit, "pull-registry-cred", o.PullSecret)
 
-	pushArgs := []string{"copy", "--dest-tls-verify=false"}
+	// Whole-blob retry, deliberately not chunked-upload resume: resume paths are
+	// where registries historically corrupt uploads (docs/ADR060 D4).
+	pushArgs := []string{"copy", "--retry-times", "3"}
+	// Only the cluster-local endpoint may skip verification: the push credential
+	// travels with this request, so an external registry must be authenticated
+	// (.pm/w1/046.md F11).
+	if registryIsClusterLocal(o.Registry) {
+		pushArgs = append(pushArgs, "--dest-tls-verify=false")
+	}
 	if o.PushSecret != "" {
 		pushArgs = append(pushArgs, "--authfile", dockerConfigMount+"/config.json")
 	}
@@ -575,15 +728,10 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	execution.HardenPod(&podSpec)
 	execution.TolerateBuildPool(&podSpec)
 	podSpec.SecurityContext.FSGroup = ptr(int64(0))
+	// No safe-to-evict pin: buildPodFailurePolicy absorbs eviction rather than
+	// preventing it, so pinning would only block node consolidation.
 	annotations := map[string]string{
 		"container.apparmor.security.beta.kubernetes.io/buildkit": "unconfined",
-		// The tenant-burst node pool scales from zero for exactly this Job and its
-		// aggressive scale-down-unneeded-time (5m, infra/clusterapi/autoscaler-values.yaml)
-		// is otherwise free to reclaim the node mid-build: BackoffLimit is 1, so a
-		// killed buildkit container fails the whole build outright rather than
-		// retrying (observed in production — a build pod evicted by cluster-autoscaler
-		// every few minutes until BackoffLimitExceeded, with no application-code fault).
-		"cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
 	}
 	// Tenant-image signing (w6/006): when a signing key Secret is configured, the
 	// build+push moves to an initContainer and a cosign container signs the pushed
@@ -629,6 +777,10 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.SignKeySecret}},
 		})
 	}
+	// Must run AFTER the signing block above, which moves the push phase into
+	// InitContainers and replaces Containers wholesale — applying it any earlier
+	// silently misses both of those phases.
+	captureFailureTail(&podSpec)
 	podSpec.Volumes = volumes
 
 	appNamespace := ""
@@ -647,6 +799,7 @@ func BuildJob(o Options, image string) *batchv1.Job {
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            &backoff,
+			PodFailurePolicy:        buildPodFailurePolicy(),
 			ActiveDeadlineSeconds:   &deadline,
 			TTLSecondsAfterFinished: &ttl,
 			Template: corev1.PodTemplateSpec{
@@ -689,13 +842,18 @@ func buildCloneContainer(o Options, image string) corev1.Container {
 		// verified github.com origin, so this is defense in depth: even if a
 		// crafted REPO caused git to connect elsewhere, the helper returns nothing
 		// and the token never leaves for a non-GitHub host.
-		Args: []string{`cd /source
+		// The fetch is the only step here that can fail on tenant input (a bad
+		// repo URL, a ref that does not exist, or a token that cannot read the
+		// repo), so it is the step that classifies. bex_run leaves $REPO/$REF as
+		// environment lookups exactly as before — they are never spliced into the
+		// script text.
+		Args: []string{classifyPrelude + `cd /source
 git init -q .
 git remote add origin "$REPO"
 if [ -n "${GIT_AUTH_TOKEN:-}" ]; then
-  git -c credential.helper='!f() { [ "$1" = get ] || exit 0; h=; while IFS= read -r l; do [ -z "$l" ] && break; case "$l" in host=*) h=${l#host=};; esac; done; [ "$h" = github.com ] || exit 0; echo "username=x-access-token"; echo "password=$GIT_AUTH_TOKEN"; }; f' fetch -q --depth 1 origin "$REF"
+  bex_run git -c credential.helper='!f() { [ "$1" = get ] || exit 0; h=; while IFS= read -r l; do [ -z "$l" ] && break; case "$l" in host=*) h=${l#host=};; esac; done; [ "$h" = github.com ] || exit 0; echo "username=x-access-token"; echo "password=$GIT_AUTH_TOKEN"; }; f' fetch --depth 1 origin "$REF"
 else
-  git fetch -q --depth 1 origin "$REF"
+  bex_run git fetch --depth 1 origin "$REF"
 fi
 git checkout -q FETCH_HEAD
 rm -rf .git`},
@@ -714,6 +872,83 @@ rm -rf .git`},
 				corev1.ResourceEphemeralStorage: resource.MustParse(buildEphemeralLimit),
 			},
 		},
+	}
+}
+
+// registryIsClusterLocal reports whether a registry host is the in-cluster or
+// local-dev endpoint that legitimately speaks plain HTTP. Everything else is
+// treated as a real registry whose TLS must be verified.
+//
+// The signal is the hostname rather than a scheme because BEX_REGISTRY carries
+// no scheme (it is a host:port such as "zot.bex-registry.svc:5000").
+func registryIsClusterLocal(registry string) bool {
+	host := registry
+	if h, _, err := net.SplitHostPort(registry); err == nil {
+		host = h
+	}
+	host = strings.ToLower(strings.Trim(host, "[]"))
+	switch host {
+	case "", "localhost", "127.0.0.1", "::1":
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	for _, suffix := range []string{".svc", ".svc.cluster.local", ".cluster.local", ".local", ".internal"} {
+		if strings.HasSuffix(host, suffix) {
+			return true
+		}
+	}
+	// A single-label host (no dot) cannot be a public DNS name; it is a
+	// cluster-local Service short name or a dev alias.
+	return !strings.Contains(host, ".")
+}
+
+// buildPodFailurePolicy encodes ADR060 D2: retry only what retrying can fix.
+//
+//   - DisruptionTarget => Ignore. A node drain, preemption or taint eviction is
+//     the platform's doing, so it must not consume the tenant's attempt budget.
+//     Ignore does not merely permit a retry, it refuses to count the attempt --
+//     which is what makes build capacity reclaimable without failing deploys,
+//     and what a future move to interruptible capacity depends on.
+//   - ExitTenantError => FailJob. Deterministic tenant input; a second attempt
+//     cannot succeed and would hold a 7 GiB node-exclusive slot to prove it.
+//   - everything else counts against backoffLimit (2 attempts).
+//
+// OOM (137) is deliberately absent: the kubelet never sets DisruptionTarget for
+// it, so it falls through to the backoff budget rather than being absorbed as a
+// disruption -- capped like any other unclassified failure rather than retried
+// freely.
+func buildPodFailurePolicy() *batchv1.PodFailurePolicy {
+	return &batchv1.PodFailurePolicy{
+		Rules: []batchv1.PodFailurePolicyRule{
+			{
+				Action: batchv1.PodFailurePolicyActionIgnore,
+				OnPodConditions: []batchv1.PodFailurePolicyOnPodConditionsPattern{
+					{Type: corev1.DisruptionTarget, Status: corev1.ConditionTrue},
+				},
+			},
+			{
+				Action: batchv1.PodFailurePolicyActionFailJob,
+				OnExitCodes: &batchv1.PodFailurePolicyOnExitCodesRequirement{
+					Operator: batchv1.PodFailurePolicyOnExitCodesOpIn,
+					Values:   []int32{ExitTenantError},
+				},
+			},
+		},
+	}
+}
+
+// captureFailureTail sets terminationMessagePolicy on every build phase so a
+// failing container's output is retrievable from the pod status. Applied after
+// the containers are assembled so it cannot be forgotten when a phase is added
+// or reordered (signing moves the push container between slices, for example).
+func captureFailureTail(spec *corev1.PodSpec) {
+	for i := range spec.InitContainers {
+		spec.InitContainers[i].TerminationMessagePolicy = corev1.TerminationMessageFallbackToLogsOnError
+	}
+	for i := range spec.Containers {
+		spec.Containers[i].TerminationMessagePolicy = corev1.TerminationMessageFallbackToLogsOnError
 	}
 }
 
