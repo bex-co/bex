@@ -94,3 +94,37 @@ func resolvedWorkspaceFrom(ctx context.Context) (resolvedWorkspace, bool) {
 func withResolvedWorkspace(ctx context.Context, acting string, err error) context.Context {
 	return context.WithValue(ctx, resolvedWorkspaceKey{}, resolvedWorkspace{acting: acting, err: err})
 }
+
+// actingTenantKey carries a PLATFORM-BOUND acting tenant through a background
+// context (w1/m69): a caller that holds no request identity (the git-push
+// webhook's Blueprint auto-sync goroutine) but does hold the durable store row
+// naming the workspace the work belongs to. Unlike workspaceKey — UNVERIFIED
+// caller intent, validated through a membership round-trip — this value is
+// server-derived (a store row's TenantID, re-read at trigger time), so
+// Base.resolveWorkspace honors it without an identity, ahead of the identity
+// check that would otherwise resolve nothing and leave the work running as
+// nobody (unlabeled creates in the shared namespace — the round-15 scan).
+//
+// Discipline: only platform code may set it, and only from a value read out of
+// a durable store row — never from request input. Request-shaped callers carry
+// an Identity and must keep using WithWorkspace; when both are present the
+// identity stays authoritative.
+type actingTenantKey struct{}
+
+// WithActingTenant binds background work's acting tenant — the workspace whose
+// store row triggered it. The value must be a server-derived tenant id
+// ("tea-<xid>"); see actingTenantKey's doc for the trust model. Empty is a
+// no-op, same shape as WithWorkspace.
+func WithActingTenant(ctx context.Context, tenantID string) context.Context {
+	if tenantID == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, actingTenantKey{}, tenantID)
+}
+
+// ActingTenantFrom returns the platform-bound acting tenant, if any. ok=false
+// for every request-shaped caller (those carry an Identity instead).
+func ActingTenantFrom(ctx context.Context) (string, bool) {
+	tenantID, ok := ctx.Value(actingTenantKey{}).(string)
+	return tenantID, ok && tenantID != ""
+}

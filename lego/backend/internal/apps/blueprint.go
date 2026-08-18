@@ -66,6 +66,12 @@ var ErrBlueprintsUnavailable = core.Unavailable("blueprints store not configured
 // ErrBlueprintFetchUnavailable is returned when no GitFetcher is configured.
 var ErrBlueprintFetchUnavailable = core.Unavailable("blueprint file fetch unavailable (GitHub App not configured)")
 
+// ErrBlueprintSyncWorkspaceUnresolved is returned when a sync cannot name the
+// workspace it acts in (w1/m69). Fail closed: an identity-less apply would
+// create unlabeled CRs in the shared namespace, invisible to workspace
+// lists/purge/quota/billing — the round-15 scan's tenant-attribution break.
+var ErrBlueprintSyncWorkspaceUnresolved = core.Unavailable("blueprint sync cannot resolve its acting workspace; refusing to apply")
+
 // ErrBlueprintFilenameAmbiguous is returned only for implicit discovery when a
 // repository contains both the canonical and legacy filename. Requiring a path
 // avoids choosing a manifest based on a filename accident.
@@ -580,6 +586,17 @@ func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, ma
 
 func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confirm string) (SyncBlueprintResult, error) {
 	tenantID := b.TenantID
+	// w1/m69: a sync that cannot name the workspace it acts in must refuse
+	// rather than apply identity-less (ErrBlueprintSyncWorkspaceUnresolved's
+	// doc has the why). Store-off mode is unaffected: there is no tenant to
+	// resolve and one shared namespace by design. The refusal also covers the
+	// acting/named-conflict programming error, which Tenant collapses into
+	// ok=false alongside a plain unresolved workspace.
+	if s.Workspace != nil {
+		if _, ok := s.Tenant(ctx); !ok {
+			return SyncBlueprintResult{}, ErrBlueprintSyncWorkspaceUnresolved
+		}
+	}
 	now := s.Now().UTC()
 	var commitSHA string
 	var prepared *parsedStack
@@ -670,7 +687,12 @@ func (s *Service) triggerBlueprintSync(ctx context.Context, tenantID, repo, bran
 	if err != nil || !b.AutoSync {
 		return
 	}
-	// Preserve tenant context from caller; ctx already carries WithWorkspace(tenantID)
+	// w1/m69: bind the sync to the blueprint row's tenant. ctx arrives carrying
+	// only WithWorkspace(tenantID) — workspace-NAMED but identity-less — which
+	// resolveWorkspace treats as no tenant at all, so the apply pipeline used to
+	// run with Tenant(ctx)=="". The acting tenant is derived from this store
+	// row, never from the push payload.
+	ctx = core.WithActingTenant(ctx, b.TenantID)
 	_, _ = s.runSync(ctx, b, "", "")
 }
 

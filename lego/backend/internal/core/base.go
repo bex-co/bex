@@ -551,23 +551,34 @@ func (b *Base) resolveWorkspaceUncached(ctx context.Context) (string, error) {
 	if b.Workspace == nil {
 		return "", nil // store off: one workspace, nothing to resolve or override
 	}
-	id, ok := IdentityFrom(ctx)
-	if !ok {
-		return "", nil
+	if id, ok := IdentityFrom(ctx); ok {
+		tenantID, _ := b.Workspace.Tenant(ctx, id)
+		named, ok := WorkspaceFrom(ctx)
+		if !ok || named == tenantID {
+			// Named none, or named the one they'd get anyway (the dashboard sends the
+			// switcher's workspace on every create, which for most callers IS their
+			// default). No membership round-trip: the default workspace is DERIVED from
+			// tenant_members, so resolving to it already proves the membership.
+			return tenantID, nil
+		}
+		if err := b.requireMember(ctx, id, named); err != nil {
+			return "", err
+		}
+		return named, nil
 	}
-	tenantID, _ := b.Workspace.Tenant(ctx, id)
-	named, ok := WorkspaceFrom(ctx)
-	if !ok || named == tenantID {
-		// Named none, or named the one they'd get anyway (the dashboard sends the
-		// switcher's workspace on every create, which for most callers IS their
-		// default). No membership round-trip: the default workspace is DERIVED from
-		// tenant_members, so resolving to it already proves the membership.
-		return tenantID, nil
+	// Platform background caller (w1/m69): no request identity, but the work was
+	// triggered by a durable store row naming its workspace. Honor the acting
+	// tenant — the value is server-derived, so it needs no membership round-trip —
+	// but only when it agrees with (or stands in for) the named workspace; a
+	// disagreement is a programming error and fails closed rather than silently
+	// picking one.
+	if acting, ok := ActingTenantFrom(ctx); ok {
+		if named, namedOK := WorkspaceFrom(ctx); namedOK && named != acting {
+			return "", fmt.Errorf("%w: acting tenant %q conflicts with named workspace %q", ErrAuthzUnavailable, acting, named)
+		}
+		return acting, nil
 	}
-	if err := b.requireMember(ctx, id, named); err != nil {
-		return "", err
-	}
-	return named, nil
+	return "", nil
 }
 
 // AuthorizeOn gates a verb on the caller's permission against a specific object

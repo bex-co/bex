@@ -28,6 +28,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -1380,11 +1381,13 @@ func TestGraphQLSyncBlueprint(t *testing.T) {
 	}
 }
 
-// TestBlueprintAutoSyncPreservesTenantContext verifies that the auto-sync
-// path called from webhooks preserves tenant context instead of dropping
-// it with context.Background(). This addresses the security finding where
-// Blueprint auto-sync would create resources in shared namespace without
-// tenant labels, bypassing isolation (w9/001).
+// TestBlueprintAutoSyncPreservesTenantContext verifies that the auto-sync path
+// called from webhooks preserves tenant context instead of dropping it with
+// context.Background() (w9/001, the store-row half) — and, since w1/m69, that
+// the binding reaches the CRs themselves: the apply pipeline runs as the
+// blueprint row's tenant, so creates are tenant-labeled and tenant-namespaced,
+// never unlabeled in the shared namespace (the round-15 scan's tenant-
+// attribution break, which the w9/001 test never asserted).
 func TestBlueprintAutoSyncPreservesTenantContext(t *testing.T) {
 	ws := fakeWorkspace{"user-a": "tea-a", "user-b": "tea-b"}
 	fs := newFakeBlueprintStore(store.Blueprint{
@@ -1397,32 +1400,176 @@ func TestBlueprintAutoSyncPreservesTenantContext(t *testing.T) {
 		Name:     "app",
 		AutoSync: true,
 	})
-	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
+	cl := fakeClient()
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}}
 
-	// Simulate the webhook path: we have tenantID from webhook verification
-	// and need to call triggerBlueprintSync with proper context
 	tenantID := "tea-a"
-	repo := "https://github.com/a/app"
-	branch := "main"
 
-	// This is what the webhook handler does: create context with tenant
+	// Exactly what the webhook handler builds (webhook.go): workspace-NAMED but
+	// identity-less — no core.Identity ever reaches the background sync.
 	bgCtx := core.WithWorkspace(context.Background(), tenantID)
 
-	// Verify that resolveTenantID returns the correct tenant ID from the context
+	// Store-row half (w9/001): the sync's store writes key to the named tenant.
 	resolvedTenant := svc.resolveTenantID(bgCtx)
 	if resolvedTenant != tenantID {
 		t.Errorf("resolveTenantID(context with tenant) = %q, want %q", resolvedTenant, tenantID)
 	}
-
-	// Verify that with context.Background(), we get empty string
-	bgTenant := svc.resolveTenantID(context.Background())
-	if bgTenant != "" {
+	if bgTenant := svc.resolveTenantID(context.Background()); bgTenant != "" {
 		t.Errorf("resolveTenantID(context.Background()) = %q, want empty string", bgTenant)
 	}
 
-	// Call triggerBlueprintSync - it should use the tenant context we passed
-	// (This call itself doesn't fail the test; we're verifying context propagation)
-	svc.triggerBlueprintSync(bgCtx, tenantID, repo, branch)
+	// CR half (w1/m69): the raw webhook ctx still resolves NO tenant — that is
+	// precisely the gap — so triggerBlueprintSync binds the acting tenant from
+	// the blueprint row before the apply runs (core.WithActingTenant; unit-
+	// tested in core's workspace tests). The proof here is the created CRs:
+	// they must be tenant-attributed, not the pre-fix unlabeled shared-ns
+	// workload.
+
+	svc.triggerBlueprintSync(bgCtx, tenantID, "https://github.com/a/app", "main")
+
+	for _, name := range []string{"web", "api", "worker"} {
+		var a appv1alpha1.App
+		key := client.ObjectKey{Namespace: tenantID, Name: core.CRName(tenantID, name)}
+		if err := cl.Get(context.Background(), key, &a); err != nil {
+			t.Fatalf("auto-sync create %v: %v (must land tenant-labeled in the tenant namespace)", key, err)
+		}
+		if got := a.Labels[core.LabelTenant]; got != tenantID {
+			t.Errorf("App %v: LabelTenant = %q, want %q", key, got, tenantID)
+		}
+		if got := a.Labels[core.LabelServiceName]; got != name {
+			t.Errorf("App %v: LabelServiceName = %q, want %q", key, got, name)
+		}
+	}
+	// No bare-named service may be left in the shared namespace — that is the
+	// unattributed, unquota'd, unbilled workload the round-15 scan found.
+	for _, name := range []string{"web", "api", "worker"} {
+		var a appv1alpha1.App
+		if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: name}, &a); err == nil {
+			t.Errorf("shared-namespace CR default/%s exists — auto-sync created an unattributed workload", name)
+		}
+	}
+	// The manifest's database must be tenant-scoped too.
+	var dbs appv1alpha1.DatabaseList
+	if err := cl.List(context.Background(), &dbs, client.MatchingLabels{core.LabelTenant: tenantID}); err != nil {
+		t.Fatalf("list databases: %v", err)
+	}
+	if len(dbs.Items) != 1 {
+		t.Fatalf("tenant-labeled databases = %d, want 1", len(dbs.Items))
+	}
+	if ns := dbs.Items[0].Namespace; ns != tenantID {
+		t.Errorf("database namespace = %q, want %q", ns, tenantID)
+	}
+}
+
+// foreignMatchManifest is the auto-sync manifest for the scoped-matching
+// regression: one service and one database, both named to collide with
+// pre-existing foreign resources in the shared namespace.
+const foreignMatchManifest = `
+services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: synced:latest}
+databases:
+  - name: db
+    plan: basic-256mb
+`
+
+// TestBlueprintAutoSyncScopedMatchingIgnoresForeignResources pins the second
+// half of the round-15 finding: an identity-less sync that resolved NO tenant
+// used to match same-display-name datastores and bare-named Apps regardless of
+// owner, merge-patching another tenant's (or a legacy unlabeled) resource.
+// With the acting-tenant binding the sync resolves tea-a, so existing-resource
+// resolution is tenant-scoped: the foreign CRs stay untouched and the sync
+// creates its own.
+func TestBlueprintAutoSyncScopedMatchingIgnoresForeignResources(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	bp := store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Manifest: foreignMatchManifest, Status: "active", Name: "app", AutoSync: true,
+	}
+	fs := newFakeBlueprintStore(bp)
+	foreignApp := sampleApp("web") // bare-named, unlabeled, shared namespace
+	foreignDB := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "db-legacy", Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{Name: "db", Plan: "basic-256mb", StorageGB: 5},
+	}
+	cl := fakeClient(foreignApp, foreignDB)
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}}
+
+	// The ctx exactly as triggerBlueprintSync builds it (webhook-shaped
+	// workspace-named ctx + the acting-tenant binding from the blueprint row).
+	syncCtx := core.WithActingTenant(core.WithWorkspace(context.Background(), "tea-a"), "tea-a")
+	if _, err := svc.runSync(syncCtx, bp, "", ""); err != nil {
+		t.Fatalf("runSync: %v", err)
+	}
+
+	// The foreign bare-named App is nobody's — the sync must not adopt or patch it.
+	var gotForeign appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, &gotForeign); err != nil {
+		t.Fatalf("get foreign app: %v", err)
+	}
+	if gotForeign.Spec.Image != foreignApp.Spec.Image {
+		t.Errorf("foreign app image = %q, want untouched %q", gotForeign.Spec.Image, foreignApp.Spec.Image)
+	}
+	if _, labeled := gotForeign.Labels[core.LabelTenant]; labeled {
+		t.Errorf("foreign app gained a tenant label — the sync adopted somebody else's resource")
+	}
+
+	// The foreign legacy Database keeps its spec and stays unlabeled.
+	var gotLegacy appv1alpha1.Database
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "db-legacy"}, &gotLegacy); err != nil {
+		t.Fatalf("get legacy database: %v", err)
+	}
+	if !reflect.DeepEqual(gotLegacy.Spec, foreignDB.Spec) {
+		t.Errorf("legacy database spec changed: got %+v, want %+v", gotLegacy.Spec, foreignDB.Spec)
+	}
+	if _, labeled := gotLegacy.Labels[core.LabelTenant]; labeled {
+		t.Errorf("legacy database gained a tenant label — the sync adopted somebody else's resource")
+	}
+
+	// The sync created its OWN tenant-attributed resources instead.
+	var own appv1alpha1.App
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "tea-a", Name: "tea-a-web"}, &own); err != nil {
+		t.Fatalf("tenant's own app: %v", err)
+	}
+	if own.Spec.Image != "synced:latest" {
+		t.Errorf("tenant's own app image = %q, want synced:latest", own.Spec.Image)
+	}
+	var dbs appv1alpha1.DatabaseList
+	if err := cl.List(context.Background(), &dbs, client.MatchingLabels{core.LabelTenant: "tea-a"}); err != nil {
+		t.Fatalf("list databases: %v", err)
+	}
+	if len(dbs.Items) != 1 || dbs.Items[0].Name == "db-legacy" {
+		t.Fatalf("tenant-labeled databases = %+v, want exactly one NEW (not db-legacy)", dbs.Items)
+	}
+}
+
+// TestRunSyncFailsClosedWithoutResolvableTenant pins w1/m69's fail-closed
+// guard: with the store on, a sync that cannot name its acting workspace
+// refuses instead of applying identity-less — that path created unlabeled CRs
+// in the shared namespace (round-15 scan).
+func TestRunSyncFailsClosedWithoutResolvableTenant(t *testing.T) {
+	ws := fakeWorkspace{"user-a": "tea-a"}
+	bp := store.Blueprint{
+		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		Branch: "main", Manifest: stackManifest, Status: "active", Name: "app",
+	}
+	fs := newFakeBlueprintStore(bp)
+	cl := fakeClient()
+	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default", Workspace: ws}, Blueprints: fs, DomainOwnership: allowDomainOwnership{}}
+
+	if _, err := svc.runSync(context.Background(), bp, "", ""); !errors.Is(err, ErrBlueprintSyncWorkspaceUnresolved) {
+		t.Fatalf("runSync(identity-less, workspace-less ctx) err = %v, want ErrBlueprintSyncWorkspaceUnresolved", err)
+	}
+
+	var apps appv1alpha1.AppList
+	if err := cl.List(context.Background(), &apps); err != nil {
+		t.Fatalf("list apps: %v", err)
+	}
+	if len(apps.Items) != 0 {
+		t.Errorf("refused sync still wrote %d App CRs; want 0", len(apps.Items))
+	}
 }
 
 // --- UpdateBlueprint path allowlist (codex-security round-6 #14) ---
