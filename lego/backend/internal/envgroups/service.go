@@ -27,6 +27,8 @@ package envgroups
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -71,6 +73,10 @@ type Service struct {
 	// groups available while honestly refusing an association the process cannot
 	// validate.
 	EnvironmentWorkspace func(ctx context.Context, environmentID string) (string, error)
+	// RebuildService starts one full rebuild for a linked service. The API
+	// composition root wires deploys.Service.Trigger; nil makes only the explicit
+	// rebuild save mode unavailable while save_only/deploy continue to work.
+	RebuildService func(ctx context.Context, serviceID string) error
 
 	// MaxEnvGroups caps how many groups ONE workspace may own (round-11 #3,
 	// BEX_MAX_ENV_GROUPS_PER_WORKSPACE, default 100; 0 disables). Group metadata
@@ -85,16 +91,46 @@ type Service struct {
 	// replica's write converges within the TTL. Secret contents never enter
 	// the cache — metadata only, already names-first.
 	metaCacheTTL time.Duration
-	metaCacheMu sync.Mutex
-	metaCache   []scopedMeta
-	metaCacheAt time.Time
+	metaCacheMu  sync.Mutex
+	metaCache    []scopedMeta
+	metaCacheAt  time.Time
 }
 
 // EnvVarView is a group env var ({key, value}); value is empty in list/get
 // responses (fetched per key), present only on the sensitive single-var read.
 type EnvVarView struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key           string `json:"key"`
+	Value         string `json:"value,omitempty"`
+	ValueSet      bool   `json:"-"`
+	GenerateValue bool   `json:"generateValue,omitempty"`
+}
+
+func (v EnvVarView) MarshalJSON() ([]byte, error) {
+	type wire struct {
+		Key           string  `json:"key"`
+		Value         *string `json:"value,omitempty"`
+		GenerateValue bool    `json:"generateValue,omitempty"`
+	}
+	out := wire{Key: v.Key, GenerateValue: v.GenerateValue}
+	if v.ValueSet {
+		out.Value = &v.Value
+	}
+	return json.Marshal(out)
+}
+
+func (v *EnvVarView) UnmarshalJSON(data []byte) error {
+	type wire EnvVarView
+	var decoded wire
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	*v = EnvVarView(decoded)
+	_, v.ValueSet = fields["value"]
+	return nil
 }
 
 // SecretFileView is a group secret file ({name, content}); content follows the
@@ -110,7 +146,23 @@ type SecretFileView struct {
 type CreateEnvVarInput struct {
 	Key           string `json:"key"`
 	Value         string `json:"value,omitempty"`
+	ValueSet      bool   `json:"-"`
 	GenerateValue bool   `json:"generateValue,omitempty"`
+}
+
+func (v *CreateEnvVarInput) UnmarshalJSON(data []byte) error {
+	type wire CreateEnvVarInput
+	var decoded wire
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return err
+	}
+	*v = CreateEnvVarInput(decoded)
+	_, v.ValueSet = fields["value"]
+	return nil
 }
 
 // CreateEnvGroupRequest is the one neutral create input shared by REST,
@@ -142,6 +194,7 @@ type EnvGroupView struct {
 	SecretFiles   []SecretFileView `json:"secretFiles"`
 	CreatedAt     string           `json:"createdAt,omitempty"`
 	UpdatedAt     string           `json:"updatedAt,omitempty"`
+	Revision      string           `json:"revision,omitempty"`
 }
 
 // --- store paths + materialized Secret names ----------------------------------
@@ -338,6 +391,9 @@ func (s *Service) sweepMeta(ctx context.Context) ([]scopedMeta, error) {
 	out := make([]scopedMeta, 0, len(ids))
 	for _, gid := range ids {
 		m, err := s.readMeta(ctx, gid)
+		if errors.Is(err, core.ErrNotFound) {
+			continue // create publishes metadata last; ignore an in-flight id
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -378,6 +434,14 @@ func (s *Service) CreateEnvGroup(ctx context.Context, req CreateEnvGroupRequest)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvGroupView{}, err
 	}
+	return s.createEnvGroupAuthorized(ctx, req)
+}
+
+// createEnvGroupAuthorized is the target-side half shared with CloneEnvGroup.
+// Its caller has already bound req.OwnerID and authorized create on that exact
+// workspace, so source cloning never needs to reveal values to a client or call
+// a second public mutation.
+func (s *Service) createEnvGroupAuthorized(ctx context.Context, req CreateEnvGroupRequest) (EnvGroupView, error) {
 	if s.Store == nil {
 		return EnvGroupView{}, core.ErrSecretsUnavailable
 	}
@@ -403,25 +467,24 @@ func (s *Service) CreateEnvGroup(ctx context.Context, req CreateEnvGroupRequest)
 	if err != nil {
 		return EnvGroupView{}, err
 	}
-	services, links, err := s.prepareCreateServices(ctx, req.ServiceIDs, workspace)
+	services, links, err := s.prepareCreateServices(ctx, req.ServiceIDs, workspace, req.EnvironmentID)
 	if err != nil {
 		return EnvGroupView{}, err
 	}
 
 	gid := id.New(id.EnvGroup)
+	if err := s.claimGroupName(ctx, workspace, name, gid); err != nil {
+		return EnvGroupView{}, err
+	}
 	now := s.now()
 	m := meta{
 		name: name, links: links, workspace: workspace, environment: req.EnvironmentID,
 		createdAt: now, updatedAt: now,
 	}
 	if err := s.persistCreate(ctx, gid, m, env, files, services); err != nil {
-		return EnvGroupView{}, err
+		return EnvGroupView{}, errors.Join(err, s.releaseGroupName(context.WithoutCancel(ctx), workspace, name, gid))
 	}
-	return EnvGroupView{
-		ID: gid, Name: name, OwnerID: workspace, EnvironmentID: req.EnvironmentID,
-		ServiceLinks: links, EnvVars: envKeyViews(env), SecretFiles: fileNameViews(files),
-		CreatedAt: now, UpdatedAt: now,
-	}, nil
+	return s.viewFromMeta(ctx, gid, m)
 }
 
 // prepareCreateEnv validates and resolves Render's literal-or-generated input
@@ -434,8 +497,9 @@ func prepareCreateEnv(vars []CreateEnvVarInput) (map[string]string, error) {
 		if !core.ValidEnvKey(key) {
 			return nil, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
 		}
-		if input.GenerateValue && input.Value != "" {
-			return nil, fmt.Errorf("%w: env var %q sets both value and generateValue — pick one", core.ErrBadRequest, key)
+		hasValue := input.ValueSet || input.Value != ""
+		if input.GenerateValue == hasValue {
+			return nil, core.InvalidEnvVarValueInput(key)
 		}
 		value := input.Value
 		if input.GenerateValue {
@@ -471,6 +535,7 @@ func (s *Service) prepareCreateServices(
 	ctx context.Context,
 	serviceIDs []string,
 	workspace string,
+	environmentID string,
 ) ([]*appv1alpha1.App, []string, error) {
 	apps := make([]*appv1alpha1.App, 0, len(serviceIDs))
 	links := make([]string, 0, len(serviceIDs))
@@ -486,6 +551,9 @@ func (s *Service) prepareCreateServices(
 		a, err := s.findCreateService(ctx, serviceID, workspace)
 		if err != nil {
 			return nil, nil, fmt.Errorf("serviceId %q: %w", serviceID, err)
+		}
+		if err := validateGroupServiceEnvironment(environmentID, serviceID, a.Labels); err != nil {
+			return nil, nil, err
 		}
 		seen[serviceID] = struct{}{}
 		apps = append(apps, a)
@@ -548,7 +616,7 @@ func (s *Service) persistCreate(
 				cleanup = append(cleanup, fmt.Errorf("delete projection Secret %q: %w", name, err))
 			}
 		}
-		for _, path := range []string{envPath(gid), filesPath(gid), metaPath(gid)} {
+		for _, path := range []string{envPath(gid), filesPath(gid), revisionPath(gid), metaPath(gid)} {
 			if err := s.Store.Delete(cleanupCtx, path); err != nil {
 				cleanup = append(cleanup, fmt.Errorf("delete %q: %w", path, err))
 			}
@@ -564,6 +632,11 @@ func (s *Service) persistCreate(
 	}
 	if err := s.storeMap(ctx, filesPath(gid), files); err != nil {
 		return rollback(err)
+	}
+	if versioned, ok := s.Store.(core.VersionedSecretKV); ok {
+		if _, err := versioned.PutCAS(ctx, revisionPath(gid), map[string]string{"state": "idle", "generation": "1"}, 0); err != nil {
+			return rollback(err)
+		}
 	}
 	if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), env); err != nil {
 		return rollback(err)
@@ -592,19 +665,32 @@ func (s *Service) persistCreate(
 // non-empty Environment must exist in the group's own workspace; moving a group
 // between Environments is a single metadata update. Manage scope.
 func (s *Service) SetEnvironmentID(ctx context.Context, gid, environmentID string) error {
+	_, err := s.MoveEnvGroup(ctx, gid, environmentID)
+	return err
+}
+
+// MoveEnvGroup is SetEnvironmentID's view-returning public contract for the
+// REST/GraphQL/MCP move workflow. The group id stays pinned throughout and the
+// metadata write happens only after every linked service has been validated.
+func (s *Service) MoveEnvGroup(ctx context.Context, gid, environmentID string) (EnvGroupView, error) {
 	m, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
-		return err
+		return EnvGroupView{}, err
 	}
 	if err := s.validateEnvironment(ctx, environmentID, m.workspace); err != nil {
-		return err
+		return EnvGroupView{}, err
 	}
 	if m.environment == environmentID {
-		return nil
+		return s.viewFromMeta(ctx, gid, m)
+	}
+	if err := s.validateLinkedServiceEnvironments(ctx, m.links, environmentID); err != nil {
+		return EnvGroupView{}, err
 	}
 	m.environment = environmentID
-	_, err = s.touch(ctx, gid, m)
-	return err
+	if m, err = s.touch(ctx, gid, m); err != nil {
+		return EnvGroupView{}, err
+	}
+	return s.viewFromMeta(ctx, gid, m)
 }
 
 // SetGroupEnvironment assigns the named env group to an Environment, satisfying
@@ -640,9 +726,24 @@ func (s *Service) RenameEnvGroup(ctx context.Context, gid, name string) (EnvGrou
 	if name == "" {
 		return EnvGroupView{}, fmt.Errorf("%w: env group name is required", core.ErrBadRequest)
 	}
+	if m.name == name {
+		return s.viewFromMeta(ctx, gid, m)
+	}
+	if err := s.claimGroupName(ctx, m.workspace, name, gid); err != nil {
+		return EnvGroupView{}, err
+	}
+	old := m
+	cleanupCtx := context.WithoutCancel(ctx)
+	if err := s.releaseGroupName(cleanupCtx, old.workspace, old.name, gid); err != nil {
+		return EnvGroupView{}, errors.Join(err, s.releaseGroupName(cleanupCtx, old.workspace, name, gid))
+	}
 	m.name = name
 	if m, err = s.touch(ctx, gid, m); err != nil {
-		return EnvGroupView{}, err
+		return EnvGroupView{}, errors.Join(
+			err,
+			s.claimGroupName(cleanupCtx, old.workspace, old.name, gid),
+			s.releaseGroupName(cleanupCtx, old.workspace, name, gid),
+		)
 	}
 	return s.viewFromMeta(ctx, gid, m)
 }
@@ -652,6 +753,12 @@ func (s *Service) RenameEnvGroup(ctx context.Context, gid, name string) (EnvGrou
 func (s *Service) DeleteEnvGroup(ctx context.Context, gid string) error {
 	m, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
+		return err
+	}
+	// Release the claim before deleting metadata. Until metadata is removed, the
+	// fresh legacy sweep still blocks reuse; after it is removed there is no stale
+	// claim. Stopping here on failure keeps a retry possible and fail-closed.
+	if err := s.releaseGroupName(context.WithoutCancel(ctx), m.workspace, m.name, gid); err != nil {
 		return err
 	}
 	// Detach from linked services first (drop the spec refs + roll) so no pod is
@@ -667,7 +774,7 @@ func (s *Service) DeleteEnvGroup(ctx context.Context, gid string) error {
 	if err := s.deleteSecret(ctx, m.workspace, filesSecretName(gid)); err != nil {
 		return err
 	}
-	for _, p := range []string{envPath(gid), filesPath(gid), metaPath(gid)} {
+	for _, p := range []string{envPath(gid), filesPath(gid), revisionPath(gid), metaPath(gid)} {
 		if err := s.Store.Delete(ctx, p); err != nil {
 			return err
 		}
@@ -685,27 +792,34 @@ func (s *Service) SetEnvGroupVars(ctx context.Context, gid string, vars []EnvVar
 	if err != nil {
 		return nil, err
 	}
-	env := make(map[string]string, len(vars))
+	current, err := s.Store.Get(ctx, envPath(gid))
+	if err != nil {
+		return nil, err
+	}
+	desired := make(map[string]EnvVarView, len(vars))
 	for _, v := range vars {
 		key := strings.TrimSpace(v.Key)
 		if !core.ValidEnvKey(key) {
 			return nil, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
 		}
-		env[key] = v.Value
+		v.Key = key
+		desired[key] = v // retain replace-all's historical last-declaration-wins rule
 	}
-	if err := s.storeMap(ctx, envPath(gid), env); err != nil {
+	writes := make([]EnvVarPatch, 0, len(current)+len(desired))
+	for _, key := range slices.Sorted(maps.Keys(current)) {
+		if _, keep := desired[key]; !keep {
+			writes = append(writes, EnvVarPatch{Key: key, Delete: true})
+		}
+	}
+	for _, key := range slices.Sorted(maps.Keys(desired)) {
+		v := desired[key]
+		writes = append(writes, EnvVarPatch{Key: key, Value: v.Value, ValueSet: v.ValueSet, GenerateValue: v.GenerateValue})
+	}
+	result, err := s.patchEnvironmentAuthorized(ctx, gid, m, EnvironmentPatch{EnvVars: writes, SaveMode: SaveModeDeploy})
+	if err != nil {
 		return nil, err
 	}
-	if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), env); err != nil {
-		return nil, err
-	}
-	if m, err = s.touch(ctx, gid, m); err != nil {
-		return nil, err
-	}
-	if err := s.rollLinked(ctx, m.links); err != nil {
-		return nil, err
-	}
-	return envViews(env), nil
+	return envKeyViewsFromKeys(result.EnvVarKeys), nil
 }
 
 // GetEnvGroupVar reveals one variable's value (sensitive read).
@@ -734,7 +848,7 @@ func (s *Service) GetEnvGroupVar(ctx context.Context, gid, key string) (EnvVarVi
 	if !ok {
 		return EnvVarView{}, core.ErrNotFound
 	}
-	return EnvVarView{Key: key, Value: v}, nil
+	return EnvVarView{Key: key, Value: v, ValueSet: true}, nil
 }
 
 // SetEnvGroupVar adds or updates one variable while preserving every other key,
@@ -742,32 +856,29 @@ func (s *Service) GetEnvGroupVar(ctx context.Context, gid, key string) (EnvVarVi
 // scope. This is Render's per-key PUT semantics and means clients never need to
 // reveal and resubmit the group's other values.
 func (s *Service) SetEnvGroupVar(ctx context.Context, gid, key, value string) (EnvVarView, error) {
+	return s.SetEnvGroupVarInput(ctx, gid, EnvVarView{Key: key, Value: value, ValueSet: true})
+}
+
+// SetEnvGroupVarInput is the literal-or-generated form of SetEnvGroupVar used
+// by every public adapter. SetEnvGroupVar remains as the literal compatibility
+// seam for existing internal callers.
+func (s *Service) SetEnvGroupVarInput(ctx context.Context, gid string, input EnvVarView) (EnvVarView, error) {
 	m, err := s.authorizeGroup(ctx, core.RelCanCreate, gid)
 	if err != nil {
 		return EnvVarView{}, err
 	}
-	key = strings.TrimSpace(key)
+	key := strings.TrimSpace(input.Key)
 	if !core.ValidEnvKey(key) {
 		return EnvVarView{}, fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
 	}
-	env, err := s.Store.Get(ctx, envPath(gid))
+	_, err = s.patchEnvironmentAuthorized(ctx, gid, m, EnvironmentPatch{
+		EnvVars:  []EnvVarPatch{{Key: key, Value: input.Value, ValueSet: input.ValueSet, GenerateValue: input.GenerateValue}},
+		SaveMode: SaveModeDeploy,
+	})
 	if err != nil {
 		return EnvVarView{}, err
 	}
-	env[key] = value
-	if err := s.storeMap(ctx, envPath(gid), env); err != nil {
-		return EnvVarView{}, err
-	}
-	if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), env); err != nil {
-		return EnvVarView{}, err
-	}
-	if m, err = s.touch(ctx, gid, m); err != nil {
-		return EnvVarView{}, err
-	}
-	if err := s.rollLinked(ctx, m.links); err != nil {
-		return EnvVarView{}, err
-	}
-	return EnvVarView{Key: key, Value: value}, nil
+	return EnvVarView{Key: key}, nil
 }
 
 // DeleteEnvGroupVar removes one variable and rolls every linked service. Manage
@@ -784,17 +895,10 @@ func (s *Service) DeleteEnvGroupVar(ctx context.Context, gid, key string) error 
 	if _, ok := env[key]; !ok {
 		return core.ErrNotFound
 	}
-	delete(env, key)
-	if err := s.storeMap(ctx, envPath(gid), env); err != nil {
-		return err
-	}
-	if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), env); err != nil {
-		return err
-	}
-	if m, err = s.touch(ctx, gid, m); err != nil {
-		return err
-	}
-	return s.rollLinked(ctx, m.links)
+	_, err = s.patchEnvironmentAuthorized(ctx, gid, m, EnvironmentPatch{
+		EnvVars: []EnvVarPatch{{Key: key, Delete: true}}, SaveMode: SaveModeDeploy,
+	})
+	return err
 }
 
 // --- group contents (secret files) --------------------------------------------
@@ -810,24 +914,13 @@ func (s *Service) SetEnvGroupFile(ctx context.Context, gid, name, content string
 	if !core.ValidSecretFileName(name) {
 		return SecretFileView{}, fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, name)
 	}
-	files, err := s.Store.Get(ctx, filesPath(gid))
+	_, err = s.patchEnvironmentAuthorized(ctx, gid, m, EnvironmentPatch{
+		SecretFiles: []SecretFilePatch{{Name: name, Content: content}}, SaveMode: SaveModeDeploy,
+	})
 	if err != nil {
 		return SecretFileView{}, err
 	}
-	files[name] = content
-	if err := s.storeMap(ctx, filesPath(gid), files); err != nil {
-		return SecretFileView{}, err
-	}
-	if err := s.upsertSecret(ctx, m.workspace, filesSecretName(gid), files); err != nil {
-		return SecretFileView{}, err
-	}
-	if m, err = s.touch(ctx, gid, m); err != nil {
-		return SecretFileView{}, err
-	}
-	if err := s.rollLinked(ctx, m.links); err != nil {
-		return SecretFileView{}, err
-	}
-	return SecretFileView{Name: name, Content: content}, nil
+	return SecretFileView{Name: name}, nil
 }
 
 // DeleteEnvGroupFile removes one group secret file (re-materializing the reduced
@@ -844,17 +937,10 @@ func (s *Service) DeleteEnvGroupFile(ctx context.Context, gid, name string) erro
 	if _, ok := files[name]; !ok {
 		return core.ErrNotFound
 	}
-	delete(files, name)
-	if err := s.storeMap(ctx, filesPath(gid), files); err != nil {
-		return err
-	}
-	if err := s.upsertSecret(ctx, m.workspace, filesSecretName(gid), files); err != nil {
-		return err
-	}
-	if m, err = s.touch(ctx, gid, m); err != nil {
-		return err
-	}
-	return s.rollLinked(ctx, m.links)
+	_, err = s.patchEnvironmentAuthorized(ctx, gid, m, EnvironmentPatch{
+		SecretFiles: []SecretFilePatch{{Name: name, Delete: true}}, SaveMode: SaveModeDeploy,
+	})
+	return err
 }
 
 // GetEnvGroupFile reveals one file's content (sensitive read).
@@ -915,6 +1001,9 @@ func (s *Service) linkFetched(ctx context.Context, gid, service string, a *appv1
 	}
 	if a.Labels[core.LabelTenant] != m.workspace {
 		return core.ErrForbidden
+	}
+	if err := validateGroupServiceEnvironment(m.environment, service, a.Labels); err != nil {
+		return err
 	}
 	base := client.MergeFrom(a.DeepCopy())
 	a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))
@@ -982,20 +1071,63 @@ func (s *Service) detachFetched(ctx context.Context, gid string, a *appv1alpha1.
 func (s *Service) rollLinked(ctx context.Context, links []string) error {
 	stamp := s.now()
 	for _, svc := range links {
-		a, err := s.GetApp(ctx, core.RelCanCreate, svc)
-		if errors.Is(err, core.ErrNotFound) {
-			continue // a since-deleted linked service is skipped
-		}
-		if err != nil {
-			return err
-		}
-		base := client.MergeFrom(a.DeepCopy())
-		a.Spec.RestartedAt = stamp
-		if err := s.Client.Patch(ctx, a, base); err != nil {
+		if err := s.rollOne(ctx, svc, stamp); err != nil {
+			if errors.Is(err, core.ErrNotFound) {
+				continue // a since-deleted linked service is skipped
+			}
 			return err
 		}
 	}
 	return nil
+}
+
+func (s *Service) rollOne(ctx context.Context, service, stamp string) error {
+	a, err := s.GetApp(ctx, core.RelCanCreate, service)
+	if err != nil {
+		return err
+	}
+	base := client.MergeFrom(a.DeepCopy())
+	a.Spec.RestartedAt = stamp
+	return s.Client.Patch(ctx, a, base)
+}
+
+func validateGroupServiceEnvironment(groupEnvironment, serviceID string, labels map[string]string) error {
+	serviceEnvironment := labels[core.LabelEnvironment]
+	if serviceEnvironment == groupEnvironment {
+		return nil
+	}
+	return core.NewConflictError(
+		"ENV_GROUP_SERVICE_ENVIRONMENT_MISMATCH",
+		"linked services must have the same Environment scope as the environment group",
+		map[string]any{
+			"serviceId": serviceID, "serviceEnvironmentId": serviceEnvironment,
+			"targetEnvironmentId": groupEnvironment,
+		},
+	)
+}
+
+func (s *Service) validateLinkedServiceEnvironments(ctx context.Context, links []string, environmentID string) error {
+	var incompatible []string
+	for _, serviceID := range links {
+		a, err := s.GetApp(ctx, core.RelCanCreate, serviceID)
+		if errors.Is(err, core.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if a.Labels[core.LabelEnvironment] != environmentID {
+			incompatible = append(incompatible, serviceID)
+		}
+	}
+	if len(incompatible) == 0 {
+		return nil
+	}
+	return core.NewConflictError(
+		"ENV_GROUP_MOVE_INCOMPATIBLE_SERVICES",
+		"move the linked services to the target Environment or unlink them before moving this group",
+		map[string]any{"serviceIds": incompatible, "targetEnvironmentId": environmentID},
+	)
 }
 
 // --- blueprint apply seam (w1/m35) --------------------------------------------
@@ -1036,11 +1168,17 @@ func (s *Service) GroupIDsByName(ctx context.Context) (map[string]string, error)
 	out := make(map[string]string, len(ids))
 	for _, gid := range ids {
 		m, err := s.readMeta(ctx, gid)
+		if errors.Is(err, core.ErrNotFound) {
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
 		if scoped && m.workspace != scopeTo {
 			continue // another workspace's group — not this deploy's to see
+		}
+		if prior, duplicate := out[m.name]; duplicate {
+			return nil, envGroupNameAmbiguous(m.name, scopeTo, []string{prior, gid})
 		}
 		out[m.name] = gid
 	}
@@ -1075,60 +1213,58 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 	if !found {
 		gid = id.New(id.EnvGroup)
 		workspace, _ := s.Tenant(ctx) // "" with the store off, matching CreateEnvGroup
-		now := s.now()
-		m = meta{name: name, workspace: workspace, createdAt: now, updatedAt: now}
-		if err := s.writeMeta(ctx, gid, m); err != nil {
+		if err := s.envGroupQuota(ctx, workspace); err != nil {
 			return err
 		}
+		if err := s.claimGroupName(ctx, workspace, name, gid); err != nil {
+			return err
+		}
+		now := s.now()
+		m = meta{name: name, workspace: workspace, createdAt: now, updatedAt: now}
+		inputs := make([]CreateEnvVarInput, 0, len(literals)+len(generates))
+		for _, key := range core.SortedKeys(literals) {
+			inputs = append(inputs, CreateEnvVarInput{Key: key, Value: literals[key], ValueSet: true})
+		}
+		for _, key := range generates {
+			inputs = append(inputs, CreateEnvVarInput{Key: key, GenerateValue: true})
+		}
+		env, prepareErr := prepareCreateEnv(inputs)
+		if prepareErr != nil {
+			_ = s.releaseGroupName(context.WithoutCancel(ctx), workspace, name, gid)
+			return prepareErr
+		}
+		if err := s.persistCreate(ctx, gid, m, env, map[string]string{}, nil); err != nil {
+			return errors.Join(err, s.releaseGroupName(context.WithoutCancel(ctx), workspace, name, gid))
+		}
+		return nil
 	}
 	env, err := s.Store.Get(ctx, envPath(gid))
 	if err != nil {
 		return err
 	}
-	next := make(map[string]string, len(env))
-	for k, v := range env {
-		next[k] = v // retain existing keys (preservation rule)
-	}
+	writes := make([]EnvVarPatch, 0, len(literals)+len(generates))
 	for _, key := range core.SortedKeys(literals) {
 		if !core.ValidEnvKey(key) {
 			return fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
 		}
-		next[key] = literals[key] // literals re-sync to the declared value
+		if env[key] != literals[key] {
+			writes = append(writes, EnvVarPatch{Key: key, Value: literals[key], ValueSet: true})
+		}
 	}
 	for _, key := range generates {
 		if !core.ValidEnvKey(key) {
 			return fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
 		}
-		if _, ok := next[key]; ok {
+		if _, ok := env[key]; ok {
 			continue // generate-once: an existing value persists across syncs
 		}
-		v, err := core.GenerateValue()
-		if err != nil {
-			return err
-		}
-		next[key] = v
+		writes = append(writes, EnvVarPatch{Key: key, GenerateValue: true})
 	}
-	// A freshly created group still needs its (possibly empty) projection Secret so
-	// a link can reference it; an existing group with an unchanged set is a no-op.
-	if found && maps.Equal(env, next) {
+	if len(writes) == 0 {
 		return nil
 	}
-	if err := s.storeMap(ctx, envPath(gid), next); err != nil {
-		return err
-	}
-	if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), next); err != nil {
-		return err
-	}
-	if !found {
-		// A brand-new group also needs its files projection Secret to exist (parity
-		// with CreateEnvGroup), so a later files write / delete finds it.
-		if err := s.upsertSecret(ctx, m.workspace, filesSecretName(gid), nil); err != nil {
-			return err
-		}
-	} else if _, err := s.touch(ctx, gid, m); err != nil {
-		return err
-	}
-	return s.rollLinked(ctx, m.links)
+	_, err = s.patchEnvironmentAuthorized(ctx, gid, m, EnvironmentPatch{EnvVars: writes, SaveMode: SaveModeDeploy})
+	return err
 }
 
 // LinkEnvGroup links the named group to a service for the blueprint apply path
@@ -1169,9 +1305,8 @@ func (s *Service) LinkEnvGroup(ctx context.Context, name, service string) error 
 // never reuse or overwrite, another workspace's same-named group; with the
 // control-plane store off there is only one workspace, so the search stays
 // unscoped (byte-identical to before). Returns found=false when no group of that
-// name exists in scope. The first match wins if names ever collide within one
-// workspace (CreateEnvGroup does not enforce uniqueness) — deterministic because
-// the id list is sorted.
+// name exists in scope. Legacy duplicates fail closed: choosing one by sorted id
+// can bind a Blueprint to the wrong secret set.
 func (s *Service) findGroupByName(ctx context.Context, name string) (string, meta, bool, error) {
 	ids, err := s.Store.List(ctx, "env-groups")
 	if err != nil {
@@ -1179,8 +1314,12 @@ func (s *Service) findGroupByName(ctx context.Context, name string) (string, met
 	}
 	sort.Strings(ids)
 	scopeTo, scoped := s.boundWorkspace(ctx)
+	var matches []scopedMeta
 	for _, gid := range ids {
 		m, err := s.readMeta(ctx, gid)
+		if errors.Is(err, core.ErrNotFound) {
+			continue
+		}
 		if err != nil {
 			return "", meta{}, false, err
 		}
@@ -1188,10 +1327,123 @@ func (s *Service) findGroupByName(ctx context.Context, name string) (string, met
 			continue // another workspace's group — never matched by name search
 		}
 		if m.name == name {
-			return gid, m, true, nil
+			matches = append(matches, scopedMeta{id: gid, meta: m})
 		}
 	}
-	return "", meta{}, false, nil
+	if len(matches) == 0 {
+		return "", meta{}, false, nil
+	}
+	if len(matches) > 1 {
+		ids := make([]string, 0, len(matches))
+		for _, match := range matches {
+			ids = append(ids, match.id)
+		}
+		return "", meta{}, false, envGroupNameAmbiguous(name, scopeTo, ids)
+	}
+	return matches[0].id, matches[0].meta, true, nil
+}
+
+const envGroupNameClaimAttempts = 4
+
+func envGroupNameClaimPath(workspace, name string) string {
+	digest := sha256.Sum256([]byte(workspace + "\x00" + name))
+	return fmt.Sprintf("env-group-name-claims/%x", digest[:])
+}
+
+func envGroupNameExists(name, workspace string) error {
+	return core.NewConflictError(
+		"ENV_GROUP_NAME_EXISTS",
+		"Environment group name already exists.",
+		map[string]any{"name": name, "workspaceId": workspace},
+	)
+}
+
+func envGroupNameAmbiguous(name, workspace string, ids []string) error {
+	return core.NewConflictError(
+		"ENV_GROUP_NAME_AMBIGUOUS",
+		"Multiple environment groups use this name; rename the duplicates by id before retrying.",
+		map[string]any{"name": name, "workspaceId": workspace, "ids": ids},
+	)
+}
+
+// claimGroupName combines a fresh legacy-metadata sweep with a CAS-backed name
+// index. The sweep catches pre-index groups; CAS makes concurrent creates and
+// renames across bex-api replicas resolve to exactly one winner.
+func (s *Service) claimGroupName(ctx context.Context, workspace, name, gid string) error {
+	matches, err := s.groupsNamed(ctx, workspace, name, gid)
+	if err != nil {
+		return err
+	}
+	if len(matches) > 0 {
+		return envGroupNameExists(name, workspace)
+	}
+	path := envGroupNameClaimPath(workspace, name)
+	versioned, ok := s.Store.(core.VersionedSecretKV)
+	if !ok {
+		return core.ErrSecretsUnavailable
+	}
+	for range envGroupNameClaimAttempts {
+		snapshot, err := versioned.GetVersioned(ctx, path)
+		if err != nil {
+			return err
+		}
+		if owner := snapshot.Data["id"]; owner != "" && owner != gid {
+			return envGroupNameExists(name, workspace)
+		}
+		if _, err := versioned.PutCAS(ctx, path, map[string]string{
+			"id": gid, "name": name, "workspace": workspace,
+		}, snapshot.Version); err == nil {
+			return nil
+		} else if !errors.Is(err, core.ErrConflict) {
+			return err
+		}
+	}
+	return envGroupNameExists(name, workspace)
+}
+
+func (s *Service) releaseGroupName(ctx context.Context, workspace, name, gid string) error {
+	path := envGroupNameClaimPath(workspace, name)
+	versioned, ok := s.Store.(core.VersionedSecretKV)
+	if !ok {
+		return core.ErrSecretsUnavailable
+	}
+	for range envGroupNameClaimAttempts {
+		snapshot, err := versioned.GetVersioned(ctx, path)
+		if err != nil || snapshot.Data["id"] == "" || snapshot.Data["id"] != gid {
+			return err
+		}
+		if _, err := versioned.PutCAS(ctx, path, map[string]string{}, snapshot.Version); err == nil {
+			return nil
+		} else if !errors.Is(err, core.ErrConflict) {
+			return err
+		}
+	}
+	return core.ErrConflict
+}
+
+func (s *Service) groupsNamed(ctx context.Context, workspace, name, excludeID string) ([]string, error) {
+	ids, err := s.Store.List(ctx, "env-groups")
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(ids)
+	matches := make([]string, 0, 1)
+	for _, gid := range ids {
+		if gid == excludeID {
+			continue
+		}
+		m, err := s.readMeta(ctx, gid)
+		if errors.Is(err, core.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		if m.name == name && (s.Workspace == nil || m.workspace == workspace) {
+			matches = append(matches, gid)
+		}
+	}
+	return matches, nil
 }
 
 // --- authorization helpers -----------------------------------------------------
@@ -1272,6 +1524,20 @@ func (s *Service) viewFromMeta(ctx context.Context, gid string, m meta) (EnvGrou
 	if links == nil {
 		links = []string{}
 	}
+	revision := ""
+	if versioned, ok := s.Store.(core.VersionedSecretKV); ok {
+		snapshot, revisionErr := versioned.GetVersioned(ctx, revisionPath(gid))
+		if revisionErr != nil {
+			return EnvGroupView{}, core.ErrSecretsUnavailable
+		}
+		if snapshot.Data["state"] == "repair_required" {
+			return EnvGroupView{}, envGroupRestorationFailed()
+		}
+		if snapshot.Data["state"] == "busy" {
+			return EnvGroupView{}, envGroupRevisionConflict()
+		}
+		revision = encodeEnvGroupRevision(revisionGeneration(snapshot.Data))
+	}
 	return EnvGroupView{
 		ID:            gid,
 		Name:          m.name,
@@ -1282,6 +1548,7 @@ func (s *Service) viewFromMeta(ctx context.Context, gid string, m meta) (EnvGrou
 		SecretFiles:   fileNameViews(files),
 		CreatedAt:     m.createdAt,
 		UpdatedAt:     m.updatedAt,
+		Revision:      revision,
 	}, nil
 }
 
@@ -1452,9 +1719,13 @@ func envViews(env map[string]string) []EnvVarView {
 }
 
 func envKeyViews(env map[string]string) []EnvVarView {
-	out := envViews(env)
-	for i := range out {
-		out[i].Value = "" // keys only
+	return envKeyViewsFromKeys(slices.Sorted(maps.Keys(env)))
+}
+
+func envKeyViewsFromKeys(keys []string) []EnvVarView {
+	out := make([]EnvVarView, 0, len(keys))
+	for _, key := range keys {
+		out = append(out, EnvVarView{Key: key})
 	}
 	return out
 }

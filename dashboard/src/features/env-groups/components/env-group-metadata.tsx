@@ -5,15 +5,21 @@ import type { EnvGroupView } from "@/features/env-groups/types";
 
 export function EnvGroupMetadata({
   group,
+  environmentLabel,
   className,
 }: {
   group: EnvGroupView;
+  environmentLabel?: string;
   className?: string;
 }) {
   const { t } = useTranslations();
   return (
-    <dl className={cn("grid gap-3 text-sm sm:grid-cols-3", className)}>
+    <dl className={cn("grid gap-3 text-sm sm:grid-cols-4", className)}>
       <MetadataItem label={t("envGroups.ownerLabel")} value={group.ownerId} />
+      <MetadataItem
+        label={t("envGroups.environmentLabel")}
+        value={environmentLabel ?? null}
+      />
       <MetadataItem
         label={t("envGroups.createdAtLabel")}
         value={group.createdAt}

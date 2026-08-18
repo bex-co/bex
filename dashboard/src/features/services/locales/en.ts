@@ -3487,16 +3487,16 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Batch environment save failure",
   },
   "services.environmentSavedDeployFailedTitle": {
-    message: "Configuration saved; deploy didn't start",
+    message: "Configuration saved; rollout incomplete",
     description: "Partial rebuild failure heading",
   },
   "services.environmentSavedDeployFailedBody": {
     message:
-      "Your environment changes are stored. Retry only the deploy when you're ready.",
+      "Your environment changes are stored. Retry only the incomplete rollout when you're ready.",
     description: "Partial rebuild failure recovery explanation",
   },
   "services.environmentRetryDeploy": {
-    message: "Retry deploy",
+    message: "Retry rollout",
     description: "Retry only the failed deploy phase",
   },
   "services.environmentDiscardTitle": {

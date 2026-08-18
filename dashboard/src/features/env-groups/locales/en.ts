@@ -62,6 +62,11 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     message: "Add Environment Variable",
     description: "Add an initial environment variable row",
   },
+  "envGroups.importEnv": {
+    message: "Import from .env",
+    description:
+      "Import initial environment variables from dotenv text or file",
+  },
   "envGroups.createFilesTitle": {
     message: "Secret Files",
     description: "Initial secret files section title",
@@ -164,6 +169,22 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     message: "Owner",
     description: "Env-group owner id label",
   },
+  "envGroups.environmentLabel": {
+    message: "Environment",
+    description: "Environment Group scope label",
+  },
+  "envGroups.workspaceLabel": {
+    message: "Workspace",
+    description: "Destination workspace label",
+  },
+  "envGroups.workspaceScope": {
+    message: "Workspace (no Environment)",
+    description: "Standalone Environment Group scope",
+  },
+  "envGroups.unknownEnvironment": {
+    message: "Unknown Environment ({id})",
+    description: "Deleted or inaccessible Environment fallback",
+  },
   "envGroups.createdAtLabel": {
     message: "Created",
     description: "Env-group created timestamp label",
@@ -211,6 +232,64 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   "envGroups.renameButton": {
     message: "Rename",
     description: "Open rename env-group dialog",
+  },
+  "envGroups.manageButton": {
+    message: "Manage",
+    description: "Open Environment Group management menu",
+  },
+  "envGroups.moveButton": {
+    message: "Move group",
+    description: "Open Environment Group move dialog",
+  },
+  "envGroups.moveTitle": {
+    message: "Move environment group",
+    description: "Environment Group move dialog title",
+  },
+  "envGroups.moveDescription": {
+    message:
+      "Choose a compatible Environment or return this group to workspace scope.",
+    description: "Environment Group move dialog description",
+  },
+  "envGroups.moveSubmit": {
+    message: "Move group",
+    description: "Submit Environment Group move",
+  },
+  "envGroups.moveSuccess": {
+    message: "Environment group moved",
+    description: "Environment Group move success toast",
+  },
+  "envGroups.moveError": {
+    message: "Couldn't move the group",
+    description: "Environment Group move error toast",
+  },
+  "envGroups.cloneButton": {
+    message: "Clone group",
+    description: "Open Environment Group clone dialog",
+  },
+  "envGroups.cloneTitle": {
+    message: "Clone environment group",
+    description: "Environment Group clone dialog title",
+  },
+  "envGroups.cloneDescription": {
+    message:
+      "Copy variables and files to a new group. Service links are not copied.",
+    description: "Environment Group clone dialog description",
+  },
+  "envGroups.cloneSubmit": {
+    message: "Clone group",
+    description: "Submit Environment Group clone",
+  },
+  "envGroups.cloneSuccess": {
+    message: "Cloned {name}",
+    description: "Environment Group clone success toast",
+  },
+  "envGroups.cloneError": {
+    message: "Couldn't clone the group",
+    description: "Environment Group clone error toast",
+  },
+  "envGroups.environmentPlaceholder": {
+    message: "Select an Environment",
+    description: "Environment scope selector placeholder",
   },
   "envGroups.renameTitle": {
     message: "Rename environment group",
@@ -316,6 +395,50 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     message:
       "Couldn't load workspace services. Existing links remain available below.",
     description: "Linked-services inventory error",
+  },
+  "envGroups.incompatibleLink": {
+    message: "Legacy link outside this group's Environment",
+    description: "Warning on an existing incompatible Environment Group link",
+  },
+  "envGroups.searchPlaceholder": {
+    message: "Search environment groups",
+    description: "Environment Group list search placeholder",
+  },
+  "envGroups.searchLabel": {
+    message: "Search environment groups by name",
+    description: "Accessible Environment Group search label",
+  },
+  "envGroups.resetSearch": {
+    message: "Reset search",
+    description: "Clear Environment Group search",
+  },
+  "envGroups.noMatchesTitle": {
+    message: "No matching environment groups",
+    description: "Environment Group search empty-state title",
+  },
+  "envGroups.noMatchesBody": {
+    message: "Try another name or reset the search.",
+    description: "Environment Group search empty-state body",
+  },
+  "envGroups.colName": {
+    message: "Env Group Name",
+    description: "Environment Group table name column",
+  },
+  "envGroups.colEnvironment": {
+    message: "Environment",
+    description: "Environment Group table Environment column",
+  },
+  "envGroups.colEnvVars": {
+    message: "Env Vars",
+    description: "Environment Group table variable-count column",
+  },
+  "envGroups.colSecretFiles": {
+    message: "Secret Files",
+    description: "Environment Group table secret-file-count column",
+  },
+  "envGroups.colUpdated": {
+    message: "Updated",
+    description: "Environment Group table updated-time column",
   },
   "envGroups.rolloutNote": {
     message: "Linked services are redeploying to apply the change.",

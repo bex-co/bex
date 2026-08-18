@@ -97,6 +97,18 @@ func (f *fakeStore) ListEnvironments(_ context.Context, projectID string) ([]sto
 	return out, nil
 }
 
+func (f *fakeStore) ListWorkspaceEnvironments(_ context.Context, tenantID string) ([]store.Environment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []store.Environment
+	for _, e := range f.envs {
+		if e.TenantID == tenantID {
+			out = append(out, e)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeStore) RenameEnvironment(_ context.Context, id, name string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -137,6 +149,22 @@ func (f *fakeStore) ListEnvironmentServices(_ context.Context, environmentID, _ 
 	var out []string
 	for name := range f.assign[environmentID] {
 		out = append(out, name)
+	}
+	return out, nil
+}
+
+func (f *fakeStore) ListWorkspaceEnvironmentServices(_ context.Context, tenantID string) (map[string][]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := map[string][]string{}
+	for environmentID, services := range f.assign {
+		e, ok := f.envs[environmentID]
+		if !ok || e.TenantID != tenantID {
+			continue
+		}
+		for serviceID := range services {
+			out[environmentID] = append(out[environmentID], serviceID)
+		}
 	}
 	return out, nil
 }
@@ -328,6 +356,35 @@ func TestListEnvironments_ScopedToProject(t *testing.T) {
 	list, err := svc.List(ctxAs("user-a"), "prj-1")
 	if err != nil || len(list) != 2 {
 		t.Fatalf("List(prj-1) = %+v (err %v), want 2", list, err)
+	}
+}
+
+func TestListWorkspaceEnvironments_BatchesAcrossProjectsAndScopesOwner(t *testing.T) {
+	st := newFakeStore()
+	st.envs["env-web"] = store.Environment{ID: "env-web", ProjectID: "prj-web", TenantID: "tea-a", Name: "web"}
+	st.envs["env-data"] = store.Environment{ID: "env-data", ProjectID: "prj-data", TenantID: "tea-a", Name: "data"}
+	st.envs["env-foreign"] = store.Environment{ID: "env-foreign", ProjectID: "prj-foreign", TenantID: "tea-b", Name: "foreign"}
+	st.assign["env-web"] = map[string]bool{"srv-web": true}
+	st.assign["env-data"] = map[string]bool{"srv-data": true}
+	st.assign["env-foreign"] = map[string]bool{"srv-foreign": true}
+
+	list, err := newService(st).ListWorkspace(ctxAs("user-a"), "tea-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("ListWorkspace(tea-a) = %+v, want 2", list)
+	}
+	got := map[string][]string{}
+	for _, e := range list {
+		got[e.ID] = e.ServiceIDs
+	}
+	if len(got["env-web"]) != 1 || got["env-web"][0] != "srv-web" ||
+		len(got["env-data"]) != 1 || got["env-data"][0] != "srv-data" {
+		t.Fatalf("workspace service index = %+v", got)
+	}
+	if _, ok := got["env-foreign"]; ok {
+		t.Fatalf("foreign workspace environment leaked: %+v", got)
 	}
 }
 

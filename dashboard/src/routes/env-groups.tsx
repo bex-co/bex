@@ -1,32 +1,31 @@
+import { useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ListPageSkeleton } from "@/common/components/detail-skeletons";
-import {
-  AlertTriangle,
-  FileLock2,
-  KeyRound,
-  Layers3,
-  Server,
-} from "lucide-react";
+import { AlertTriangle, Layers3, Search, X } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Skeleton } from "@/common/components/ui/skeleton";
-import { Badge } from "@/common/components/ui/badge";
+import { Button } from "@/common/components/ui/button";
+import { Input } from "@/common/components/ui/input";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/common/components/ui/card";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/common/components/ui/table";
 import { NewEnvGroupDialog } from "@/features/env-groups/components/new-env-group-dialog";
-import { EnvGroupMetadata } from "@/features/env-groups/components/env-group-metadata";
 import {
   classifyEnvGroupError,
   useEnvGroups,
 } from "@/features/env-groups/hooks/use-env-groups";
 import { useServices } from "@/features/services/hooks/use-services";
+import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
+import { formatDateTime } from "@/common/lib/format";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export const Route = createFileRoute("/env-groups")({
   staticData: { chrome: true },
@@ -38,11 +37,34 @@ export const Route = createFileRoute("/env-groups")({
 
 export function EnvGroupsPage() {
   const { t } = useTranslations();
+  const { currentWorkspaceId } = useWorkspace();
   const navigate = useNavigate();
   const { groups, loading, error, refetch } = useEnvGroups();
   const { services, loading: servicesLoading } = useServices();
+  const scope = useEnvGroupScopeIndex();
+  const [searchState, setSearchState] = useState({
+    workspaceId: currentWorkspaceId,
+    value: "",
+  });
+  const search =
+    searchState.workspaceId === currentWorkspaceId ? searchState.value : "";
+  const setSearch = (value: string) =>
+    setSearchState({ workspaceId: currentWorkspaceId, value });
   const errorKind = classifyEnvGroupError(error);
   const initialLoading = loading && groups.length === 0;
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const visibleGroups = normalizedSearch
+    ? groups.filter((group) =>
+        group.name.toLocaleLowerCase().includes(normalizedSearch),
+      )
+    : groups;
+  const environmentLabel = (environmentId: string | null) => {
+    if (!environmentId) return t("envGroups.workspaceScope");
+    return (
+      scope.byId.get(environmentId)?.name ??
+      t("envGroups.unknownEnvironment", { id: environmentId })
+    );
+  };
 
   return (
     <DashboardLayout>
@@ -89,49 +111,97 @@ export function EnvGroupsPage() {
               </p>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {groups.map((group) => (
-                <Link
-                  key={group.id}
-                  to="/env-groups/$groupId"
-                  params={{ groupId: group.id }}
-                  className="block"
-                >
-                  <Card className="h-full transition-colors hover:border-foreground/30">
-                    <CardHeader>
-                      <CardTitle className="break-all text-base">
-                        {group.name}
-                      </CardTitle>
-                      <CardDescription className="font-mono text-xs">
-                        {group.id}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="secondary">
-                          <KeyRound />
-                          {t("envGroups.varCount", {
-                            count: group.envVarKeys.length,
-                          })}
-                        </Badge>
-                        <Badge variant="secondary">
-                          <FileLock2 />
-                          {t("envGroups.fileCount", {
-                            count: group.secretFileNames.length,
-                          })}
-                        </Badge>
-                        <Badge variant="secondary">
-                          <Server />
-                          {t("envGroups.serviceCount", {
-                            count: group.serviceLinks.length,
-                          })}
-                        </Badge>
-                      </div>
-                      <EnvGroupMetadata group={group} />
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+            <div className="space-y-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="relative max-w-md flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder={t("envGroups.searchPlaceholder")}
+                    aria-label={t("envGroups.searchLabel")}
+                    className="pl-9"
+                  />
+                </div>
+                {search ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearch("")}
+                  >
+                    <X /> {t("envGroups.resetSearch")}
+                  </Button>
+                ) : null}
+              </div>
+              {visibleGroups.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-12 text-center">
+                  <Search className="size-8 text-muted-foreground" />
+                  <p className="font-medium">{t("envGroups.noMatchesTitle")}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("envGroups.noMatchesBody")}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSearch("")}
+                  >
+                    {t("envGroups.resetSearch")}
+                  </Button>
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("envGroups.colName")}</TableHead>
+                        <TableHead>{t("envGroups.colEnvironment")}</TableHead>
+                        <TableHead className="text-right">
+                          {t("envGroups.colEnvVars")}
+                        </TableHead>
+                        <TableHead className="text-right">
+                          {t("envGroups.colSecretFiles")}
+                        </TableHead>
+                        <TableHead className="text-right">
+                          {t("envGroups.colUpdated")}
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {visibleGroups.map((group) => (
+                        <TableRow key={group.id}>
+                          <TableCell className="min-w-48">
+                            <Link
+                              to="/env-groups/$groupId"
+                              params={{ groupId: group.id }}
+                              className="font-medium hover:underline"
+                            >
+                              {group.name}
+                            </Link>
+                            <p className="max-w-64 truncate font-mono text-xs text-muted-foreground">
+                              {group.id} ·{" "}
+                              {t("envGroups.serviceCount", {
+                                count: group.serviceLinks.length,
+                              })}
+                            </p>
+                          </TableCell>
+                          <TableCell className="min-w-40">
+                            {environmentLabel(group.environmentId)}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {group.envVarKeys.length}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {group.secretFileNames.length}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-right text-muted-foreground">
+                            {formatDateTime(group.updatedAt) ?? "—"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -23,6 +23,7 @@ package apps
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,30 +34,57 @@ import (
 
 // memKV is a minimal in-memory core.SecretKV shared by the env-groups + env-vars
 // services in the end-to-end test (the OpenBao seam both features write through).
-type memKV struct{ m map[string]map[string]string }
+type memKV struct {
+	mu       sync.Mutex
+	m        map[string]map[string]string
+	versions map[string]uint64
+}
 
-func newMemKV() *memKV { return &memKV{m: map[string]map[string]string{}} }
+func newMemKV() *memKV {
+	return &memKV{m: map[string]map[string]string{}, versions: map[string]uint64{}}
+}
 
 func (k *memKV) Get(_ context.Context, path string) (map[string]string, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	return k.get(path), nil
+}
+
+func (k *memKV) get(path string) map[string]string {
 	out := map[string]string{}
 	for kk, v := range k.m[path] {
 		out[kk] = v
 	}
-	return out, nil
+	return out
 }
 
 func (k *memKV) Put(_ context.Context, path string, data map[string]string) error {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.put(path, data)
+	return nil
+}
+
+func (k *memKV) put(path string, data map[string]string) {
 	cp := map[string]string{}
 	for kk, v := range data {
 		cp[kk] = v
 	}
 	k.m[path] = cp
+	k.versions[path]++
+}
+
+func (k *memKV) Delete(_ context.Context, path string) error {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	delete(k.m, path)
+	delete(k.versions, path)
 	return nil
 }
 
-func (k *memKV) Delete(_ context.Context, path string) error { delete(k.m, path); return nil }
-
 func (k *memKV) List(_ context.Context, path string) ([]string, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
 	prefix := path + "/"
 	seen := map[string]bool{}
 	var out []string
@@ -77,6 +105,22 @@ func (k *memKV) List(_ context.Context, path string) ([]string, error) {
 		}
 	}
 	return out, nil
+}
+
+func (k *memKV) GetVersioned(_ context.Context, path string) (core.SecretKVSnapshot, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	return core.SecretKVSnapshot{Data: k.get(path), Version: k.versions[path]}, nil
+}
+
+func (k *memKV) PutCAS(_ context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	if k.versions[path] != expectedVersion {
+		return 0, core.ErrConflict
+	}
+	k.put(path, data)
+	return k.versions[path], nil
 }
 
 func TestBlueprintFiveFieldEndToEnd(t *testing.T) {

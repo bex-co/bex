@@ -27,6 +27,8 @@ export function LinkedServicesCard({
   unlinkGroup,
   busy,
   error,
+  serviceEnvironmentById,
+  scopeReady,
 }: {
   group: EnvGroupView;
   services: ServiceView[];
@@ -34,13 +36,22 @@ export function LinkedServicesCard({
   unlinkGroup: (id: string, serviceId: string) => Promise<boolean>;
   busy: boolean;
   error?: Error;
+  serviceEnvironmentById: ReadonlyMap<string, string>;
+  scopeReady: boolean;
 }) {
   const { t } = useTranslations();
   const [selected, setSelected] = useState("");
   const byId = new Map(services.map((service) => [service.id, service]));
-  const available = services.filter(
-    (service) => !group.serviceLinks.includes(service.id),
-  );
+  const isCompatible = (serviceId: string) => {
+    const serviceEnvironmentId = serviceEnvironmentById.get(serviceId) ?? null;
+    return serviceEnvironmentId === group.environmentId;
+  };
+  const available = scopeReady
+    ? services.filter(
+        (service) =>
+          !group.serviceLinks.includes(service.id) && isCompatible(service.id),
+      )
+    : [];
 
   async function handleLink() {
     if (!selected) return;
@@ -116,6 +127,11 @@ export function LinkedServicesCard({
                     {service?.name && service.name !== serviceId ? (
                       <p className="truncate text-xs text-muted-foreground">
                         {serviceId}
+                      </p>
+                    ) : null}
+                    {!isCompatible(serviceId) ? (
+                      <p className="text-destructive text-xs">
+                        {t("envGroups.incompatibleLink")}
                       </p>
                     ) : null}
                   </div>

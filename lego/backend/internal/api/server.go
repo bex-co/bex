@@ -660,6 +660,18 @@ func NewServer(base *core.Base, d Deps) *Server {
 	if sandboxSvc != nil {
 		agentLifecycle = sandbox.NewAgentSessionLifecycle(sandboxSvc)
 	}
+	deploysSvc := &deploys.Service{
+		Base:              base,
+		Store:             d.DeployStore,
+		Commits:           gh.DeployCommitSource(),
+		BuildNamespace:    d.DeployBuildNamespace,
+		DeployHookBaseURL: d.DeployHookBaseURL,
+		DeployHookLimiter: deploys.NewDeployHookRateLimiter(deploys.DefaultDeployHookRPM, deploys.DefaultDeployHookBurst),
+	}
+	envGroupsSvc.RebuildService = func(ctx context.Context, serviceID string) error {
+		_, err := deploysSvc.Trigger(ctx, serviceID, deploys.TriggerParams{})
+		return err
+	}
 	srv := &Server{
 		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: logSvc,
@@ -697,18 +709,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Snapshots:    d.AgentSnapshotStore,
 			RetentionTTL: d.AgentSnapshotRetentionTTL,
 		},
-		Postgres:  pg,
-		KeyValue:  kv,
-		Secrets:   secretsSvc,
-		EnvGroups: envGroupsSvc,
-		Deploys: &deploys.Service{
-			Base:              base,
-			Store:             d.DeployStore,
-			Commits:           gh.DeployCommitSource(),
-			BuildNamespace:    d.DeployBuildNamespace,
-			DeployHookBaseURL: d.DeployHookBaseURL,
-			DeployHookLimiter: deploys.NewDeployHookRateLimiter(deploys.DefaultDeployHookRPM, deploys.DefaultDeployHookBurst),
-		},
+		Postgres:   pg,
+		KeyValue:   kv,
+		Secrets:    secretsSvc,
+		EnvGroups:  envGroupsSvc,
+		Deploys:    deploysSvc,
 		Events:     &events.Service{Base: base, Store: d.EventStore},
 		Workspaces: workspaceSvc,
 		Members: &members.Service{

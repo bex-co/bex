@@ -1,3326 +1,266 @@
-import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
-export type Maybe<T> = T | null;
-export type InputMaybe<T> = Maybe<T>;
-export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
-export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: Maybe<T[SubKey]> };
-export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
-export type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
+/** Internal type. DO NOT USE DIRECTLY. */
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
-/** All built-in and custom scalars, mapped to their actual values */
-export type Scalars = {
-  ID: { input: string; output: string; }
-  String: { input: string; output: string; }
-  Boolean: { input: boolean; output: boolean; }
-  Int: { input: number; output: number; }
-  Float: { input: number; output: number; }
-};
+import type * as Types from './schema-types';
 
-export type AcceptedWorkspaceInvite = {
-  __typename: 'AcceptedWorkspaceInvite';
-  authorizationPending: Maybe<Scalars['Boolean']['output']>;
-  role: Maybe<Scalars['String']['output']>;
-  workspaceId: Maybe<Scalars['String']['output']>;
-  workspaceName: Maybe<Scalars['String']['output']>;
-};
-
-export type AgentSession = {
-  __typename: 'AgentSession';
-  agentConfig: AgentSessionConfig;
-  archivedAt: Maybe<Scalars['String']['output']>;
-  branch: Scalars['String']['output'];
-  canceledAt: Maybe<Scalars['String']['output']>;
-  createdAt: Scalars['String']['output'];
-  deliveryMode: Maybe<Scalars['String']['output']>;
-  evidence: Maybe<AgentSessionEvidence>;
-  expiresAt: Maybe<Scalars['String']['output']>;
-  failureReason: Maybe<Scalars['String']['output']>;
-  headSha: Maybe<Scalars['String']['output']>;
-  hibernatedAt: Maybe<Scalars['String']['output']>;
-  id: Scalars['String']['output'];
-  ownerId: Scalars['String']['output'];
-  phase: Scalars['String']['output'];
-  pinned: Maybe<Scalars['Boolean']['output']>;
-  prNumber: Maybe<Scalars['Int']['output']>;
-  prUrl: Maybe<Scalars['String']['output']>;
-  repo: Scalars['String']['output'];
-  retainUntil: Maybe<Scalars['String']['output']>;
-  sandboxId: Maybe<Scalars['String']['output']>;
-  snapshotBytes: Maybe<Scalars['Float']['output']>;
-  sshAddress: Maybe<Scalars['String']['output']>;
-  status: Scalars['String']['output'];
-  ticket: Maybe<Scalars['String']['output']>;
-  turns: Maybe<Scalars['Int']['output']>;
-  updatedAt: Scalars['String']['output'];
-  url: Maybe<Scalars['String']['output']>;
-};
-
-export type AgentSessionCapabilities = {
-  __typename: 'AgentSessionCapabilities';
-  agents: Array<AgentSessionProfile>;
-  enabled: Scalars['Boolean']['output'];
-  github: AgentSessionGitHubReadiness;
-  modelKeyReady: Scalars['Boolean']['output'];
-  ready: Scalars['Boolean']['output'];
-};
-
-/** w9/m84: the caller's own effective permissions in one workspace. */
-export type ViewerCapabilities = {
-  __typename: 'ViewerCapabilities';
-  canCreate: Scalars['Boolean']['output'];
-  canManage: Scalars['Boolean']['output'];
-  canManageBilling: Scalars['Boolean']['output'];
-  canManageKeys: Scalars['Boolean']['output'];
-  canOperate: Scalars['Boolean']['output'];
-  canView: Scalars['Boolean']['output'];
-  canViewLogs: Scalars['Boolean']['output'];
-  canViewSensitive: Scalars['Boolean']['output'];
-  role: Maybe<Scalars['String']['output']>;
-};
-
-export type AgentSessionConfig = {
-  __typename: 'AgentSessionConfig';
-  agent: Scalars['String']['output'];
-  model: Maybe<Scalars['String']['output']>;
-  modelEndpoint: Maybe<Scalars['String']['output']>;
-  task: Scalars['String']['output'];
-  template: Maybe<Scalars['String']['output']>;
-};
-
-export type AgentSessionConfigInput = {
-  agent: Scalars['String']['input'];
-  model?: InputMaybe<Scalars['String']['input']>;
-  modelEndpoint?: InputMaybe<Scalars['String']['input']>;
-  task: Scalars['String']['input'];
-  template?: InputMaybe<Scalars['String']['input']>;
-};
-
-export type AgentSessionEvidence = {
-  __typename: 'AgentSessionEvidence';
-  changedFiles: Maybe<Array<Scalars['String']['output']>>;
-  commandLog: Maybe<Array<Scalars['String']['output']>>;
-  commits: Maybe<Scalars['Int']['output']>;
-  outputTail: Maybe<Scalars['String']['output']>;
-  testOutput: Maybe<Array<Scalars['String']['output']>>;
-  truncated: Maybe<Scalars['Boolean']['output']>;
-};
-
-export type AgentSessionGitHubReadiness = {
-  __typename: 'AgentSessionGitHubReadiness';
-  accountLogin: Maybe<Scalars['String']['output']>;
-  connected: Scalars['Boolean']['output'];
-  installUrl: Maybe<Scalars['String']['output']>;
-};
-
-export type AgentSessionProfile = {
-  __typename: 'AgentSessionProfile';
-  id: Scalars['String']['output'];
-  label: Scalars['String']['output'];
-};
-
-export type ApiKey = {
-  __typename: 'ApiKey';
-  createdAt: Maybe<Scalars['String']['output']>;
-  createdBy: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  lastUsedAt: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  secret: Maybe<Scalars['String']['output']>;
-};
-
-export type AuditLog = {
-  __typename: 'AuditLog';
-  action: Maybe<Scalars['String']['output']>;
-  actor: Maybe<Scalars['String']['output']>;
-  actorMethod: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  metadata: Maybe<AuditLogMetadata>;
-  resource: Maybe<Scalars['String']['output']>;
-  status: Maybe<Scalars['String']['output']>;
-  targetName: Maybe<Scalars['String']['output']>;
-  timestamp: Maybe<Scalars['String']['output']>;
-};
-
-export type AuditLogMetadata = {
-  __typename: 'AuditLogMetadata';
-  to: Maybe<Scalars['Boolean']['output']>;
-};
-
-export type Autoscaling = {
-  __typename: 'Autoscaling';
-  enabled: Maybe<Scalars['Boolean']['output']>;
-  maxInstances: Maybe<Scalars['Int']['output']>;
-  minInstances: Maybe<Scalars['Int']['output']>;
-  targetCPUPercent: Maybe<Scalars['Int']['output']>;
-  targetMemoryPercent: Maybe<Scalars['Int']['output']>;
-};
-
-export type Billing = {
-  __typename: 'Billing';
-  credits: Maybe<BillingCredits>;
-  currentCost: Maybe<BillingAmount>;
-  invoices: Maybe<Array<Maybe<BillingInvoice>>>;
-};
-
-export type BillingAmount = {
-  __typename: 'BillingAmount';
-  amountUsd: Maybe<Scalars['String']['output']>;
-  currency: Maybe<Scalars['String']['output']>;
-  periodEnd: Maybe<Scalars['String']['output']>;
-  periodStart: Maybe<Scalars['String']['output']>;
-};
-
-export type BillingCreditGrant = {
-  __typename: 'BillingCreditGrant';
-  expiresAt: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  remainingUsd: Maybe<Scalars['String']['output']>;
-};
-
-export type BillingCredits = {
-  __typename: 'BillingCredits';
-  availableUsd: Maybe<Scalars['String']['output']>;
-  currency: Maybe<Scalars['String']['output']>;
-  grants: Maybe<Array<Maybe<BillingCreditGrant>>>;
-};
-
-export type BillingHostedSession = {
-  __typename: 'BillingHostedSession';
-  expiresAt: Maybe<Scalars['String']['output']>;
-  url: Maybe<Scalars['String']['output']>;
-};
-
-export type BillingInvoice = {
-  __typename: 'BillingInvoice';
-  amountUsd: Maybe<Scalars['String']['output']>;
-  currency: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  periodEnd: Maybe<Scalars['String']['output']>;
-  periodStart: Maybe<Scalars['String']['output']>;
-  status: Maybe<Scalars['String']['output']>;
-};
-
-export type BillingLifecycle = {
-  __typename: 'BillingLifecycle';
-  allowedActions: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  enforcementOwned: Maybe<Scalars['Boolean']['output']>;
-  graceDeadline: Maybe<Scalars['String']['output']>;
-  reason: Maybe<Scalars['String']['output']>;
-  recoveryPending: Maybe<Scalars['Boolean']['output']>;
-  status: Maybe<Scalars['String']['output']>;
-  updatedAt: Maybe<Scalars['String']['output']>;
-};
-
-export type BillingTaxReadiness = {
-  __typename: 'BillingTaxReadiness';
-  configured: Maybe<Scalars['Boolean']['output']>;
-  enabled: Maybe<Scalars['Boolean']['output']>;
-  productTaxCode: Maybe<Scalars['String']['output']>;
-  reason: Maybe<Scalars['String']['output']>;
-  registrationCount: Maybe<Scalars['Int']['output']>;
-  taxBehavior: Maybe<Scalars['String']['output']>;
-};
-
-export type Blueprint = {
-  __typename: 'Blueprint';
-  autoSync: Maybe<Scalars['Boolean']['output']>;
-  branch: Maybe<Scalars['String']['output']>;
-  createdAt: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  lastSync: Maybe<Scalars['String']['output']>;
-  manifest: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  path: Maybe<Scalars['String']['output']>;
-  repo: Maybe<Scalars['String']['output']>;
-  resources: Maybe<Array<Maybe<BlueprintResource>>>;
-  status: Maybe<Scalars['String']['output']>;
-  updatedAt: Maybe<Scalars['String']['output']>;
-};
-
-export type BlueprintEnvVarValueInput = {
-  key: Scalars['String']['input'];
-  value: Scalars['String']['input'];
-};
-
-export type BlueprintPlanAction = {
-  __typename: 'BlueprintPlanAction';
-  changedFields: Maybe<Array<Maybe<BlueprintPlanFieldChange>>>;
-  kind: Maybe<Scalars['String']['output']>;
-  message: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  operation: Maybe<Scalars['String']['output']>;
-  resourceId: Maybe<Scalars['String']['output']>;
-  sourcePath: Maybe<Scalars['String']['output']>;
-};
-
-export type BlueprintPlanFieldChange = {
-  __typename: 'BlueprintPlanFieldChange';
-  path: Maybe<Scalars['String']['output']>;
-};
-
-export type BlueprintPreview = {
-  __typename: 'BlueprintPreview';
-  commitId: Maybe<Scalars['String']['output']>;
-  error: Maybe<Scalars['String']['output']>;
-  found: Maybe<Scalars['Boolean']['output']>;
-  manifest: Maybe<Scalars['String']['output']>;
-  validation: Maybe<BlueprintValidation>;
-  warning: Maybe<Scalars['String']['output']>;
-};
-
-export type BlueprintResource = {
-  __typename: 'BlueprintResource';
-  id: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  type: Maybe<Scalars['String']['output']>;
-};
-
-export type BlueprintSync = {
-  __typename: 'BlueprintSync';
-  commitId: Maybe<Scalars['String']['output']>;
-  completedAt: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  startedAt: Maybe<Scalars['String']['output']>;
-  state: Maybe<Scalars['String']['output']>;
-};
-
-export type BlueprintValidation = {
-  __typename: 'BlueprintValidation';
-  errorDetails: Maybe<Array<Maybe<BlueprintValidationError>>>;
-  errors: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  plan: Maybe<BlueprintValidationPlan>;
-  valid: Maybe<Scalars['Boolean']['output']>;
-};
-
-export type BlueprintValidationError = {
-  __typename: 'BlueprintValidationError';
-  code: Maybe<Scalars['String']['output']>;
-  column: Maybe<Scalars['Int']['output']>;
-  error: Scalars['String']['output'];
-  line: Maybe<Scalars['Int']['output']>;
-  path: Maybe<Scalars['String']['output']>;
-};
-
-export type BlueprintValidationPlan = {
-  __typename: 'BlueprintValidationPlan';
-  actions: Maybe<Array<Maybe<BlueprintPlanAction>>>;
-  databases: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  envGroups: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  keyValue: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  mode: Maybe<Scalars['String']['output']>;
-  services: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  totalActions: Maybe<Scalars['Int']['output']>;
-};
-
-export type BuildFilter = {
-  __typename: 'BuildFilter';
-  ignoredPaths: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  paths: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-};
-
-export type BuildFilterInput = {
-  ignoredPaths?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  paths?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-};
-
-export type CronRun = {
-  __typename: 'CronRun';
-  finishedAt: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  startedAt: Maybe<Scalars['String']['output']>;
-  status: Maybe<Scalars['String']['output']>;
-};
-
-export type CustomDomain = {
-  __typename: 'CustomDomain';
-  dnsRecord: Maybe<DnsRecord>;
-  domainType: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  redirectForName: Maybe<Scalars['String']['output']>;
-  serverStatus: Maybe<Scalars['String']['output']>;
-  verificationStatus: Maybe<Scalars['String']['output']>;
-};
-
-export type DnsRecord = {
-  __typename: 'DNSRecord';
-  name: Maybe<Scalars['String']['output']>;
-  type: Maybe<Scalars['String']['output']>;
-  value: Maybe<Scalars['String']['output']>;
-};
-
-export type Database = {
-  __typename: 'Database';
-  backupsEnabled: Maybe<Scalars['Boolean']['output']>;
-  createdAt: Maybe<Scalars['String']['output']>;
-  dashboardUrl: Maybe<Scalars['String']['output']>;
-  databaseName: Maybe<Scalars['String']['output']>;
-  databaseUser: Maybe<Scalars['String']['output']>;
-  diskAutoscalingEnabled: Maybe<Scalars['Boolean']['output']>;
-  diskSizeGB: Maybe<Scalars['Int']['output']>;
-  environmentId: Maybe<Scalars['String']['output']>;
-  externalHost: Maybe<Scalars['String']['output']>;
-  highAvailabilityEnabled: Maybe<Scalars['Boolean']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  ipAllowListEntries: Maybe<Array<Maybe<IpAllowListEntry>>>;
-  name: Maybe<Scalars['String']['output']>;
-  ownerId: Maybe<Scalars['String']['output']>;
-  plan: Maybe<Scalars['String']['output']>;
-  poolerEnabled: Maybe<Scalars['Boolean']['output']>;
-  projectId: Maybe<Scalars['String']['output']>;
-  public: Maybe<Scalars['Boolean']['output']>;
-  readReplicas: Maybe<Array<Maybe<ReadReplicaView>>>;
-  region: Maybe<Scalars['String']['output']>;
-  status: Maybe<Scalars['String']['output']>;
-  suspended: Maybe<Scalars['String']['output']>;
-  updatedAt: Maybe<Scalars['String']['output']>;
-  version: Maybe<Scalars['String']['output']>;
-};
-
-export type DatabaseBackup = {
-  __typename: 'DatabaseBackup';
-  createdAt: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  status: Maybe<Scalars['String']['output']>;
-};
-
-export type DatabaseExport = {
-  __typename: 'DatabaseExport';
-  createdAt: Maybe<Scalars['String']['output']>;
-  expiresAt: Maybe<Scalars['String']['output']>;
-  failureReason: Maybe<Scalars['String']['output']>;
-  filename: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  status: Maybe<Scalars['String']['output']>;
-  url: Maybe<Scalars['String']['output']>;
-  urlExpiresAt: Maybe<Scalars['String']['output']>;
-};
-
-export type DatabaseInstanceType = {
-  __typename: 'DatabaseInstanceType';
-  cpu: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  memory: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  storageGB: Maybe<Scalars['Int']['output']>;
-};
-
-export type DatabaseLogEntry = {
-  __typename: 'DatabaseLogEntry';
-  instance: Maybe<Scalars['String']['output']>;
-  message: Maybe<Scalars['String']['output']>;
-  timestamp: Maybe<Scalars['String']['output']>;
-  type: Maybe<Scalars['String']['output']>;
-};
-
-export type DatabaseParameterOverride = {
-  __typename: 'DatabaseParameterOverride';
-  description: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  setting: Maybe<Scalars['String']['output']>;
-  source: Maybe<Scalars['String']['output']>;
-  unit: Maybe<Scalars['String']['output']>;
-};
-
-export type DatabaseProcess = {
-  __typename: 'DatabaseProcess';
-  applicationName: Maybe<Scalars['String']['output']>;
-  durationSeconds: Maybe<Scalars['Int']['output']>;
-  pid: Maybe<Scalars['Int']['output']>;
-  query: Maybe<Scalars['String']['output']>;
-  state: Maybe<Scalars['String']['output']>;
-  userName: Maybe<Scalars['String']['output']>;
-  waitEvent: Maybe<Scalars['String']['output']>;
-  waitEventType: Maybe<Scalars['String']['output']>;
-};
-
-export type DatabaseQueryResult = {
-  __typename: 'DatabaseQueryResult';
-  columns: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  rowCount: Maybe<Scalars['Int']['output']>;
-  rows: Maybe<Array<Maybe<DatabaseQueryRow>>>;
-  truncated: Maybe<Scalars['Boolean']['output']>;
-};
-
-export type DatabaseQueryRow = {
-  __typename: 'DatabaseQueryRow';
-  values: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-};
-
-export type DatabaseRecoveryInfo = {
-  __typename: 'DatabaseRecoveryInfo';
-  backups: Maybe<Array<Maybe<DatabaseBackup>>>;
-  earliestRecoveryTime: Maybe<Scalars['String']['output']>;
-  enabled: Maybe<Scalars['Boolean']['output']>;
-  latestRecoveryTime: Maybe<Scalars['String']['output']>;
-};
-
-export type DatabaseSizeInfo = {
-  __typename: 'DatabaseSizeInfo';
-  name: Maybe<Scalars['String']['output']>;
-  sizeBytes: Maybe<Scalars['Int']['output']>;
-  sizePretty: Maybe<Scalars['String']['output']>;
-};
-
-export type DatabaseSizes = {
-  __typename: 'DatabaseSizes';
-  database: Maybe<DatabaseSizeInfo>;
-  tables: Maybe<Array<Maybe<TableSizeInfo>>>;
-};
-
-export type DatabaseTableScan = {
-  __typename: 'DatabaseTableScan';
-  deadRows: Maybe<Scalars['Int']['output']>;
-  indexScanRows: Maybe<Scalars['Int']['output']>;
-  indexScans: Maybe<Scalars['Int']['output']>;
-  liveRows: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  schema: Maybe<Scalars['String']['output']>;
-  seqScanRows: Maybe<Scalars['Int']['output']>;
-  seqScans: Maybe<Scalars['Int']['output']>;
-};
-
-export type DatabaseTopQuery = {
-  __typename: 'DatabaseTopQuery';
-  calls: Maybe<Scalars['Int']['output']>;
-  meanTimeMs: Maybe<Scalars['Float']['output']>;
-  query: Maybe<Scalars['String']['output']>;
-  rows: Maybe<Scalars['Int']['output']>;
-  sharedHitBlks: Maybe<Scalars['Int']['output']>;
-  sharedReadBlks: Maybe<Scalars['Int']['output']>;
-  totalTimeMs: Maybe<Scalars['Float']['output']>;
-};
-
-export type DatabaseUser = {
-  __typename: 'DatabaseUser';
-  name: Maybe<Scalars['String']['output']>;
-};
-
-export type DatabaseUserWithPassword = {
-  __typename: 'DatabaseUserWithPassword';
-  name: Maybe<Scalars['String']['output']>;
-  password: Maybe<Scalars['String']['output']>;
-};
-
-export type DatastoreMetricsQueryInput = {
-  end?: InputMaybe<Scalars['String']['input']>;
-  kind?: InputMaybe<Scalars['String']['input']>;
-  name: Scalars['String']['input'];
-  resolution?: InputMaybe<Scalars['Int']['input']>;
-  resource: Scalars['String']['input'];
-  start?: InputMaybe<Scalars['String']['input']>;
-};
-
-export type Deploy = {
-  __typename: 'Deploy';
-  commitCreatedAt: Maybe<Scalars['String']['output']>;
-  commitId: Maybe<Scalars['String']['output']>;
-  commitMessage: Maybe<Scalars['String']['output']>;
-  createdAt: Maybe<Scalars['String']['output']>;
-  failureReason: Maybe<Scalars['String']['output']>;
-  finishedAt: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  image: Maybe<Scalars['String']['output']>;
-  preDeployStatus: Maybe<Scalars['String']['output']>;
-  rollbackOf: Maybe<Scalars['String']['output']>;
-  serviceId: Maybe<Scalars['String']['output']>;
-  startedAt: Maybe<Scalars['String']['output']>;
-  status: Maybe<Scalars['String']['output']>;
-  trigger: Maybe<Scalars['String']['output']>;
-  updatedAt: Maybe<Scalars['String']['output']>;
-};
-
-export type DeployHook = {
-  __typename: 'DeployHook';
-  url: Maybe<Scalars['String']['output']>;
-};
-
-export type DeployTrigger = {
-  __typename: 'DeployTrigger';
-  clearCache: Maybe<Scalars['Boolean']['output']>;
-  deployedByRender: Maybe<Scalars['Boolean']['output']>;
-  envUpdated: Maybe<Scalars['Boolean']['output']>;
-  firstBuild: Maybe<Scalars['Boolean']['output']>;
-  manual: Maybe<Scalars['Boolean']['output']>;
-  rollback: Maybe<Scalars['Boolean']['output']>;
-};
-
-export type EnvGroup = {
-  __typename: 'EnvGroup';
-  createdAt: Maybe<Scalars['String']['output']>;
-  envVars: Maybe<Array<Maybe<EnvGroupVar>>>;
-  environmentId: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  ownerId: Maybe<Scalars['String']['output']>;
-  secretFiles: Maybe<Array<Maybe<EnvGroupSecretFile>>>;
-  serviceLinks: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  updatedAt: Maybe<Scalars['String']['output']>;
-};
-
-export type EnvGroupSecretFile = {
-  __typename: 'EnvGroupSecretFile';
-  content: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-};
-
-export type EnvGroupSecretFileInput = {
-  content: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-export type EnvGroupVar = {
-  __typename: 'EnvGroupVar';
-  key: Maybe<Scalars['String']['output']>;
-  value: Maybe<Scalars['String']['output']>;
-};
-
-export type EnvGroupVarInput = {
-  generateValue?: InputMaybe<Scalars['Boolean']['input']>;
-  key: Scalars['String']['input'];
-  value?: InputMaybe<Scalars['String']['input']>;
-};
-
-export type EnvVar = {
-  __typename: 'EnvVar';
-  id: Maybe<Scalars['String']['output']>;
-  key: Maybe<Scalars['String']['output']>;
-  revision: Maybe<Scalars['String']['output']>;
-  value: Maybe<Scalars['String']['output']>;
-};
-
-export type EnvVarInput = {
-  generateValue?: InputMaybe<Scalars['Boolean']['input']>;
-  key: Scalars['String']['input'];
-  value?: InputMaybe<Scalars['String']['input']>;
-};
-
-export type EnvVarListValue = {
-  __typename: 'EnvVarListValue';
-  id: Maybe<Scalars['String']['output']>;
-  key: Maybe<Scalars['String']['output']>;
-  value: Maybe<Scalars['String']['output']>;
-};
-
-export type EnvVarWithCursor = {
-  __typename: 'EnvVarWithCursor';
-  cursor: Maybe<Scalars['String']['output']>;
-  envVar: Maybe<EnvVarListValue>;
-};
-
-export type Environment = {
-  __typename: 'Environment';
-  createdAt: Maybe<Scalars['String']['output']>;
-  databaseIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  envGroupIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  id: Maybe<Scalars['String']['output']>;
-  ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  ipAllowListEntries: Maybe<Array<Maybe<IpAllowListEntry>>>;
-  keyValueIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  name: Maybe<Scalars['String']['output']>;
-  networkIsolationEnabled: Maybe<Scalars['Boolean']['output']>;
-  ownerId: Maybe<Scalars['String']['output']>;
-  projectId: Maybe<Scalars['String']['output']>;
-  protectedStatus: Maybe<Scalars['String']['output']>;
-  serviceIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-};
-
-export type EnvironmentEnvVarPatchInput = {
-  delete?: InputMaybe<Scalars['Boolean']['input']>;
-  fromKey?: InputMaybe<Scalars['String']['input']>;
-  generateValue?: InputMaybe<Scalars['Boolean']['input']>;
-  key: Scalars['String']['input'];
-  value?: InputMaybe<Scalars['String']['input']>;
-};
-
-export type EnvironmentPatchResult = {
-  __typename: 'EnvironmentPatchResult';
-  envVarKeys: Array<Scalars['String']['output']>;
-  rolledOut: Scalars['Boolean']['output'];
-  secretFileNames: Array<Scalars['String']['output']>;
-};
-
-export type EnvironmentSecretFilePatchInput = {
-  content?: InputMaybe<Scalars['String']['input']>;
-  delete?: InputMaybe<Scalars['Boolean']['input']>;
-  fromName?: InputMaybe<Scalars['String']['input']>;
-  name: Scalars['String']['input'];
-};
-
-export type EstimatedCost = {
-  __typename: 'EstimatedCost';
-  meters: Maybe<Array<Maybe<MeterEstimate>>>;
-  totalUsd: Maybe<Scalars['String']['output']>;
-};
-
-export type GitConnection = {
-  __typename: 'GitConnection';
-  accountLogin: Maybe<Scalars['String']['output']>;
-  connected: Maybe<Scalars['Boolean']['output']>;
-  createdAt: Maybe<Scalars['String']['output']>;
-  installUrl: Maybe<Scalars['String']['output']>;
-  installationId: Maybe<Scalars['Float']['output']>;
-};
-
-export type IpAllowListEntry = {
-  __typename: 'IPAllowListEntry';
-  cidrBlock: Scalars['String']['output'];
-  description: Maybe<Scalars['String']['output']>;
-};
-
-export type IpAllowListEntryInput = {
-  cidrBlock: Scalars['String']['input'];
-  description?: InputMaybe<Scalars['String']['input']>;
-};
-
-export type InstanceType = {
-  __typename: 'InstanceType';
-  cpu: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  memory: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-};
-
-export type Job = {
-  __typename: 'Job';
-  createdAt: Maybe<Scalars['String']['output']>;
-  finishedAt: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  planId: Maybe<Scalars['String']['output']>;
-  serviceId: Maybe<Scalars['String']['output']>;
-  startCommand: Maybe<Scalars['String']['output']>;
-  startedAt: Maybe<Scalars['String']['output']>;
-  status: Maybe<Scalars['String']['output']>;
-};
-
-export type KeyValue = {
-  __typename: 'KeyValue';
-  createdAt: Maybe<Scalars['String']['output']>;
-  dashboardUrl: Maybe<Scalars['String']['output']>;
-  environmentId: Maybe<Scalars['String']['output']>;
-  externalHost: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  ipAllowListEntries: Maybe<Array<Maybe<IpAllowListEntry>>>;
-  maxmemoryPolicy: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  ownerId: Maybe<Scalars['String']['output']>;
-  persistenceMode: Maybe<Scalars['String']['output']>;
-  plan: Maybe<Scalars['String']['output']>;
-  projectId: Maybe<Scalars['String']['output']>;
-  public: Maybe<Scalars['Boolean']['output']>;
-  region: Maybe<Scalars['String']['output']>;
-  status: Maybe<Scalars['String']['output']>;
-  suspended: Maybe<Scalars['String']['output']>;
-  updatedAt: Maybe<Scalars['String']['output']>;
-  version: Maybe<Scalars['String']['output']>;
-};
-
-export type KeyValueConnectionInfo = {
-  __typename: 'KeyValueConnectionInfo';
-  cliCommand: Maybe<Scalars['String']['output']>;
-  externalConnectionString: Maybe<Scalars['String']['output']>;
-  internalConnectionString: Maybe<Scalars['String']['output']>;
-};
-
-export type KeyValueInstanceType = {
-  __typename: 'KeyValueInstanceType';
-  cpu: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  memory: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  storageGB: Maybe<Scalars['Int']['output']>;
-};
-
-export type KeyValueLogEntry = {
-  __typename: 'KeyValueLogEntry';
-  instance: Maybe<Scalars['String']['output']>;
-  message: Maybe<Scalars['String']['output']>;
-  timestamp: Maybe<Scalars['String']['output']>;
-  type: Maybe<Scalars['String']['output']>;
-};
-
-export type LogEntry = {
-  __typename: 'LogEntry';
-  instance: Maybe<Scalars['String']['output']>;
-  level: Maybe<Scalars['String']['output']>;
-  message: Maybe<Scalars['String']['output']>;
-  method: Maybe<Scalars['String']['output']>;
-  statusCode: Maybe<Scalars['String']['output']>;
-  timestamp: Maybe<Scalars['String']['output']>;
-  type: Maybe<Scalars['String']['output']>;
-};
-
-export type MaintenanceMode = {
-  __typename: 'MaintenanceMode';
-  enabled: Scalars['Boolean']['output'];
-  uri: Scalars['String']['output'];
-};
-
-export type MaintenanceModeInput = {
-  enabled: Scalars['Boolean']['input'];
-  uri?: InputMaybe<Scalars['String']['input']>;
-};
-
-export type MeterEstimate = {
-  __typename: 'MeterEstimate';
-  costUsd: Maybe<Scalars['String']['output']>;
-  kind: Maybe<Scalars['String']['output']>;
-  resourceKind: Maybe<Scalars['String']['output']>;
-  tier: Maybe<Scalars['String']['output']>;
-};
-
-export type MetricLabel = {
-  __typename: 'MetricLabel';
-  field: Maybe<Scalars['String']['output']>;
-  value: Maybe<Scalars['String']['output']>;
-};
-
-export type MetricSeries = {
-  __typename: 'MetricSeries';
-  labels: Maybe<Array<Maybe<MetricLabel>>>;
-  parameters: Maybe<Array<Maybe<MetricSeriesParameter>>>;
-  unit: Maybe<Scalars['String']['output']>;
-  values: Maybe<Array<Maybe<MetricValue>>>;
-};
-
-export type MetricSeriesParameter = {
-  __typename: 'MetricSeriesParameter';
-  quantile: Maybe<Scalars['Float']['output']>;
-};
-
-export type MetricValue = {
-  __typename: 'MetricValue';
-  time: Maybe<Scalars['String']['output']>;
-  value: Maybe<Scalars['Float']['output']>;
-};
-
-export type MetricsFilterInput = {
-  field: Scalars['String']['input'];
-  values: Array<Scalars['String']['input']>;
-};
-
-export type MetricsFilterValues = {
-  __typename: 'MetricsFilterValues';
-  field: Maybe<Scalars['String']['output']>;
-  values: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-};
-
-export type MetricsFiltersQueryInput = {
-  end?: InputMaybe<Scalars['String']['input']>;
-  filters: Array<MetricsFilterInput>;
-  outputFilters: Array<Scalars['String']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  start?: InputMaybe<Scalars['String']['input']>;
-  type?: InputMaybe<Scalars['String']['input']>;
-};
-
-export type MetricsFiltersResult = {
-  __typename: 'MetricsFiltersResult';
-  values: Maybe<Array<Maybe<MetricsFilterValues>>>;
-};
-
-export type MetricsParameterInput = {
-  quantile?: InputMaybe<Scalars['Float']['input']>;
-};
-
-export type MetricsPathFilterSuggestions = {
-  __typename: 'MetricsPathFilterSuggestions';
-  paths: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-};
-
-export type MetricsPathFilterSuggestionsInput = {
-  paths?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  serviceIDs: Array<Scalars['String']['input']>;
-};
-
-export type MetricsQueryInput = {
-  aggregateAllMethod?: InputMaybe<Scalars['String']['input']>;
-  aggregateBy?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  aggregationMethod?: InputMaybe<Scalars['String']['input']>;
-  end?: InputMaybe<Scalars['String']['input']>;
-  filters: Array<MetricsFilterInput>;
-  name: Scalars['String']['input'];
-  parameters?: InputMaybe<Array<InputMaybe<MetricsParameterInput>>>;
-  resolution?: InputMaybe<Scalars['Int']['input']>;
-  start?: InputMaybe<Scalars['String']['input']>;
-};
-
-export type MonthToDateBandwidth = {
-  __typename: 'MonthToDateBandwidth';
-  degradedSources: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  egressBandwidthMB: Maybe<Scalars['Float']['output']>;
-  httpEgressBandwidthMB: Maybe<Scalars['Float']['output']>;
-  natEgressBandwidthMB: Maybe<Scalars['Float']['output']>;
-  privateLinkEgressBandwidthMB: Maybe<Scalars['Float']['output']>;
-  websocketEgressBandwidthMB: Maybe<Scalars['Float']['output']>;
-};
-
-export type Mutation = {
-  __typename: 'Mutation';
-  acceptWorkspaceInvite: Maybe<AcceptedWorkspaceInvite>;
-  addCustomDomain: Maybe<CustomDomain>;
-  archiveAgentSession: Maybe<AgentSession>;
-  attachAgentSession: Maybe<AgentSession>;
-  cancelAgentSession: Maybe<AgentSession>;
-  cancelCronJobRun: Maybe<CronRun>;
-  cancelDeploy: Maybe<Deploy>;
-  cancelJob: Maybe<Job>;
-  changeWorkspaceMemberRole: Maybe<WorkspaceMember>;
-  changeWorkspacePlan: Maybe<Workspace>;
-  connectGit: Maybe<GitConnection>;
-  createAgentSession: Maybe<AgentSession>;
-  createApiKey: Maybe<ApiKey>;
-  createBillingCheckoutSession: Maybe<BillingHostedSession>;
-  createBillingPortalSession: Maybe<BillingHostedSession>;
-  createBlueprint: Maybe<Blueprint>;
-  createDatabase: Maybe<Database>;
-  createDatabaseExport: Maybe<DatabaseExport>;
-  createDatabaseUser: Maybe<DatabaseUserWithPassword>;
-  createEnvGroup: Maybe<EnvGroup>;
-  createEnvironment: Maybe<Environment>;
-  createJob: Maybe<Job>;
-  createKeyValue: Maybe<KeyValue>;
-  createProject: Maybe<Project>;
-  createRegistryCredential: Maybe<RegistryCredential>;
-  createSSHKey: Maybe<SshKey>;
-  createService: Maybe<Service>;
-  createShellSession: Maybe<ShellSession>;
-  createWebhookEndpoint: Maybe<WebhookEndpoint>;
-  createWorkspace: Maybe<Workspace>;
-  deleteAgentSession: Maybe<Scalars['Boolean']['output']>;
-  deleteCustomDomain: Maybe<Scalars['Boolean']['output']>;
-  deleteDatabase: Maybe<Scalars['Boolean']['output']>;
-  deleteDatabaseUser: Maybe<Scalars['Boolean']['output']>;
-  deleteEnvGroup: Maybe<Scalars['Boolean']['output']>;
-  deleteEnvGroupSecretFile: Maybe<Scalars['Boolean']['output']>;
-  deleteEnvGroupVar: Maybe<Scalars['Boolean']['output']>;
-  deleteEnvVar: Maybe<Scalars['Boolean']['output']>;
-  deleteEnvironment: Maybe<Scalars['String']['output']>;
-  deleteKeyValue: Maybe<Scalars['Boolean']['output']>;
-  deleteProject: Maybe<Scalars['String']['output']>;
-  deleteRegistryCredential: Maybe<Scalars['Boolean']['output']>;
-  deleteSSHKey: Scalars['Boolean']['output'];
-  deleteSecretFile: Maybe<Scalars['Boolean']['output']>;
-  deleteService: Maybe<Scalars['Boolean']['output']>;
-  deleteWebhookEndpoint: Maybe<Scalars['Boolean']['output']>;
-  deleteWorkspace: Maybe<Scalars['String']['output']>;
-  disableAutoscaling: Maybe<Scalars['Boolean']['output']>;
-  disconnectBlueprint: Maybe<Scalars['Boolean']['output']>;
-  disconnectGit: Maybe<Scalars['Boolean']['output']>;
-  executeDatabaseQuery: Maybe<DatabaseQueryResult>;
-  failoverDatabase: Maybe<Scalars['Boolean']['output']>;
-  inviteWorkspaceMember: Maybe<WorkspaceInvite>;
-  linkEnvGroup: Maybe<Scalars['Boolean']['output']>;
-  markPushNotificationRead: Scalars['Boolean']['output'];
-  patchServiceEnvironment: EnvironmentPatchResult;
-  pinAgentSession: Maybe<AgentSession>;
-  recoverDatabase: Maybe<Database>;
-  regenerateDeployHook: Maybe<DeployHook>;
-  registerNotificationDeviceSubscription: Maybe<NotificationDeviceSubscription>;
-  removeWorkspaceMember: Maybe<Scalars['String']['output']>;
-  renameDatabase: Maybe<Database>;
-  renameEnvGroup: Maybe<EnvGroup>;
-  renameEnvironment: Maybe<Environment>;
-  renameKeyValue: Maybe<KeyValue>;
-  renameProject: Maybe<Project>;
-  renameWorkspace: Maybe<Workspace>;
-  resendWorkspaceInvite: Maybe<WorkspaceInvite>;
-  restartDatabase: Maybe<Database>;
-  restartServer: Maybe<Deploy>;
-  resumeAgentSession: Maybe<AgentSession>;
-  resumeDatabase: Maybe<Database>;
-  resumeKeyValue: Maybe<KeyValue>;
-  resumeService: Maybe<Service>;
-  revokeApiKey: Maybe<Scalars['Boolean']['output']>;
-  revokeNotificationDeviceSubscriptions: Maybe<Scalars['Int']['output']>;
-  revokeWorkspaceInvite: Maybe<Scalars['String']['output']>;
-  rollbackService: Maybe<Deploy>;
-  runCronJob: Maybe<CronRun>;
-  scaleService: Maybe<Service>;
-  setAutoDeploy: Maybe<Service>;
-  setAutoscaling: Maybe<Autoscaling>;
-  setBranch: Maybe<Service>;
-  setBuildCommand: Maybe<Service>;
-  setBuildFilter: Maybe<Service>;
-  setDatabaseIpAllowList: Maybe<Database>;
-  setDatabaseParameterOverrides: Maybe<Database>;
-  setDisplayName: Maybe<Service>;
-  setDockerfilePath: Maybe<Service>;
-  setEnvGroupSecretFile: Maybe<Scalars['Boolean']['output']>;
-  setEnvGroupVar: Maybe<Scalars['Boolean']['output']>;
-  setEnvGroupVars: Maybe<Scalars['Boolean']['output']>;
-  setEnvVar: Maybe<Scalars['Boolean']['output']>;
-  setEnvVars: Maybe<Scalars['Boolean']['output']>;
-  setEnvironmentACL: Maybe<Environment>;
-  setEnvironmentDatabases: Maybe<Environment>;
-  setEnvironmentEnvGroups: Maybe<Environment>;
-  setEnvironmentKeyValues: Maybe<Environment>;
-  setEnvironmentServices: Maybe<Environment>;
-  setHealthCheckPath: Maybe<Service>;
-  setIdleTimeout: Maybe<Service>;
-  setKeyValueIpAllowList: Maybe<KeyValue>;
-  setKeyValueMaxmemoryPolicy: Maybe<KeyValue>;
-  setMaintenanceMode: Maybe<Service>;
-  setMaxShutdownDelay: Maybe<Service>;
-  setNotificationsToSend: Maybe<Service>;
-  setNotifyOnFail: Maybe<Service>;
-  setPreDeployCommand: Maybe<Service>;
-  setProjectDatabases: Maybe<Project>;
-  setProjectKeyValues: Maybe<Project>;
-  setProjectServices: Maybe<Project>;
-  setPublishPath: Maybe<Service>;
-  setRegistryCredential: Maybe<Service>;
-  setRepo: Maybe<Service>;
-  setRootDir: Maybe<Service>;
-  setSecretFile: Maybe<Scalars['Boolean']['output']>;
-  setServiceIpAllowList: Maybe<Service>;
-  setStartCommand: Maybe<Service>;
-  setStaticHeaders: Maybe<Service>;
-  setStaticRoutes: Maybe<Service>;
-  setSubdomainPolicy: Maybe<Service>;
-  setWebhookEndpointEnabled: Maybe<WebhookEndpoint>;
-  steerAgentSession: Maybe<AgentSession>;
-  suspendDatabase: Maybe<Database>;
-  suspendKeyValue: Maybe<KeyValue>;
-  suspendService: Maybe<Service>;
-  syncBlueprint: Maybe<SyncBlueprintResult>;
-  triggerDeploy: Maybe<Deploy>;
-  unarchiveAgentSession: Maybe<AgentSession>;
-  unlinkEnvGroup: Maybe<Scalars['Boolean']['output']>;
-  unpinAgentSession: Maybe<AgentSession>;
-  unregisterNotificationDeviceSubscription: Maybe<Scalars['Boolean']['output']>;
-  updateBlueprint: Maybe<Blueprint>;
-  updateCronJob: Maybe<Service>;
-  updateDatabaseDiskAutoscaling: Maybe<Database>;
-  updateDatabasePlan: Maybe<Database>;
-  updateDatabaseVersion: Maybe<Database>;
-  updateEnvironment: Maybe<Environment>;
-  updateKeyValuePlan: Maybe<KeyValue>;
-  updateNotificationSettings: Maybe<NotificationSettings>;
-  updatePushNotificationSettings: Maybe<PushNotificationSettings>;
-  updateRegistryCredential: Maybe<RegistryCredential>;
-  updateServicePlan: Maybe<Service>;
-  updateWebhookEndpoint: Maybe<WebhookEndpoint>;
-  verifyCustomDomain: Maybe<CustomDomain>;
-};
-
-
-export type MutationAcceptWorkspaceInviteArgs = {
-  token: Scalars['String']['input'];
-};
-
-
-export type MutationAddCustomDomainArgs = {
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type MutationArchiveAgentSessionArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationAttachAgentSessionArgs = {
-  action?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationCancelAgentSessionArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationCancelCronJobRunArgs = {
-  runId: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationCancelDeployArgs = {
-  deployId: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationCancelJobArgs = {
-  jobId: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationChangeWorkspaceMemberRoleArgs = {
-  role: Scalars['String']['input'];
-  subject: Scalars['String']['input'];
-  workspaceId: Scalars['String']['input'];
-};
-
-
-export type MutationChangeWorkspacePlanArgs = {
-  id: Scalars['String']['input'];
-  plan: Scalars['String']['input'];
-};
-
-
-export type MutationConnectGitArgs = {
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationCreateAgentSessionArgs = {
-  agentConfig: AgentSessionConfigInput;
-  branch: Scalars['String']['input'];
-  egressAllowlist?: InputMaybe<Array<Scalars['String']['input']>>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  repo: Scalars['String']['input'];
-};
-
-
-export type MutationCreateApiKeyArgs = {
-  name: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationCreateBillingCheckoutSessionArgs = {
-  cancelUrl: Scalars['String']['input'];
-  successUrl: Scalars['String']['input'];
-  workspaceId: Scalars['String']['input'];
-};
-
-
-export type MutationCreateBillingPortalSessionArgs = {
-  returnUrl: Scalars['String']['input'];
-  workspaceId: Scalars['String']['input'];
-};
-
-
-export type MutationCreateBlueprintArgs = {
-  branch: Scalars['String']['input'];
-  confirm?: InputMaybe<Scalars['String']['input']>;
-  envVarValues?: InputMaybe<Array<InputMaybe<BlueprintEnvVarValueInput>>>;
-  name?: InputMaybe<Scalars['String']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  path?: InputMaybe<Scalars['String']['input']>;
-  repo: Scalars['String']['input'];
-};
-
-
-export type MutationCreateDatabaseArgs = {
-  databaseName?: InputMaybe<Scalars['String']['input']>;
-  databaseUser?: InputMaybe<Scalars['String']['input']>;
-  diskSizeGB?: InputMaybe<Scalars['Int']['input']>;
-  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
-  enableDiskAutoscaling?: InputMaybe<Scalars['Boolean']['input']>;
-  enableHighAvailability?: InputMaybe<Scalars['Boolean']['input']>;
-  environmentId?: InputMaybe<Scalars['String']['input']>;
-  ipAllowList?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  ipAllowListEntries?: InputMaybe<Array<IpAllowListEntryInput>>;
-  name: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  plan?: InputMaybe<Scalars['String']['input']>;
-  public?: InputMaybe<Scalars['Boolean']['input']>;
-  version?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationCreateDatabaseExportArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationCreateDatabaseUserArgs = {
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type MutationCreateEnvGroupArgs = {
-  envVars?: InputMaybe<Array<EnvGroupVarInput>>;
-  environmentId?: InputMaybe<Scalars['String']['input']>;
-  name: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  secretFiles?: InputMaybe<Array<EnvGroupSecretFileInput>>;
-  serviceIds?: InputMaybe<Array<Scalars['String']['input']>>;
-};
-
-
-export type MutationCreateEnvironmentArgs = {
-  ipAllowList?: InputMaybe<Array<IpAllowListEntryInput>>;
-  name: Scalars['String']['input'];
-  networkIsolationEnabled?: InputMaybe<Scalars['Boolean']['input']>;
-  projectId: Scalars['String']['input'];
-  protectedStatus?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationCreateJobArgs = {
-  planId?: InputMaybe<Scalars['String']['input']>;
-  serviceId: Scalars['String']['input'];
-  startCommand: Scalars['String']['input'];
-};
-
-
-export type MutationCreateKeyValueArgs = {
-  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
-  environmentId?: InputMaybe<Scalars['String']['input']>;
-  ipAllowList?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  ipAllowListEntries?: InputMaybe<Array<IpAllowListEntryInput>>;
-  maxmemoryPolicy?: InputMaybe<Scalars['String']['input']>;
-  name: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  persistenceMode?: InputMaybe<Scalars['String']['input']>;
-  plan?: InputMaybe<Scalars['String']['input']>;
-  public?: InputMaybe<Scalars['Boolean']['input']>;
-  storageGB?: InputMaybe<Scalars['Int']['input']>;
-  version?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationCreateProjectArgs = {
-  name: Scalars['String']['input'];
-  ownerId: Scalars['String']['input'];
-};
-
-
-export type MutationCreateRegistryCredentialArgs = {
-  authToken: Scalars['String']['input'];
-  expiresAt?: InputMaybe<Scalars['String']['input']>;
-  host: Scalars['String']['input'];
-  name?: InputMaybe<Scalars['String']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  username: Scalars['String']['input'];
-};
-
-
-export type MutationCreateSshKeyArgs = {
-  name: Scalars['String']['input'];
-  publicKey: Scalars['String']['input'];
-};
-
-
-export type MutationCreateServiceArgs = {
-  autoDeploy?: InputMaybe<Scalars['Boolean']['input']>;
-  branch?: InputMaybe<Scalars['String']['input']>;
-  buildCommand?: InputMaybe<Scalars['String']['input']>;
-  buildFilter?: InputMaybe<BuildFilterInput>;
-  builder?: InputMaybe<Scalars['String']['input']>;
-  command?: InputMaybe<Scalars['String']['input']>;
-  dockerfilePath?: InputMaybe<Scalars['String']['input']>;
-  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
-  envVars?: InputMaybe<Array<InputMaybe<EnvVarInput>>>;
-  environmentId?: InputMaybe<Scalars['String']['input']>;
-  headers?: InputMaybe<Array<InputMaybe<StaticHeaderInput>>>;
-  healthCheckPath?: InputMaybe<Scalars['String']['input']>;
-  image?: InputMaybe<Scalars['String']['input']>;
-  ipAllowList?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  ipAllowListEntries?: InputMaybe<Array<IpAllowListEntryInput>>;
-  maintenanceMode?: InputMaybe<MaintenanceModeInput>;
-  maxShutdownDelaySeconds?: InputMaybe<Scalars['Int']['input']>;
-  name: Scalars['String']['input'];
-  notifyOnFail?: InputMaybe<Scalars['String']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  plan?: InputMaybe<Scalars['String']['input']>;
-  port?: InputMaybe<Scalars['Int']['input']>;
-  preDeployCommand?: InputMaybe<Scalars['String']['input']>;
-  publishPath?: InputMaybe<Scalars['String']['input']>;
-  registryCredentialId?: InputMaybe<Scalars['String']['input']>;
-  replicas?: InputMaybe<Scalars['Int']['input']>;
-  repo?: InputMaybe<Scalars['String']['input']>;
-  rootDir?: InputMaybe<Scalars['String']['input']>;
-  routes?: InputMaybe<Array<InputMaybe<StaticRouteInput>>>;
-  runtime?: InputMaybe<Scalars['String']['input']>;
-  schedule?: InputMaybe<Scalars['String']['input']>;
-  secretFiles?: InputMaybe<Array<InputMaybe<SecretFileInput>>>;
-  startCommand?: InputMaybe<Scalars['String']['input']>;
-  type?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationCreateShellSessionArgs = {
-  id: Scalars['String']['input'];
-  instanceId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationCreateWebhookEndpointArgs = {
-  enabled?: InputMaybe<Scalars['Boolean']['input']>;
-  eventTypes: Array<InputMaybe<Scalars['String']['input']>>;
-  name?: InputMaybe<Scalars['String']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  url: Scalars['String']['input'];
-};
-
-
-export type MutationCreateWorkspaceArgs = {
-  name: Scalars['String']['input'];
-  plan?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationDeleteAgentSessionArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteCustomDomainArgs = {
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteDatabaseArgs = {
-  confirm?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteDatabaseUserArgs = {
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteEnvGroupArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteEnvGroupSecretFileArgs = {
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteEnvGroupVarArgs = {
-  id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteEnvVarArgs = {
-  key: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteEnvironmentArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteKeyValueArgs = {
-  confirm?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteProjectArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteRegistryCredentialArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteSshKeyArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteSecretFileArgs = {
-  name: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteServiceArgs = {
-  confirm?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationDeleteWebhookEndpointArgs = {
-  id: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationDeleteWorkspaceArgs = {
-  confirmation: Scalars['String']['input'];
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationDisableAutoscalingArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationDisconnectBlueprintArgs = {
-  id: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationDisconnectGitArgs = {
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationExecuteDatabaseQueryArgs = {
-  allowWrites?: InputMaybe<Scalars['Boolean']['input']>;
-  id: Scalars['String']['input'];
-  sql: Scalars['String']['input'];
-};
-
-
-export type MutationFailoverDatabaseArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationInviteWorkspaceMemberArgs = {
-  email: Scalars['String']['input'];
-  role: Scalars['String']['input'];
-  workspaceId: Scalars['String']['input'];
-};
-
-
-export type MutationLinkEnvGroupArgs = {
-  id: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationMarkPushNotificationReadArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationPatchServiceEnvironmentArgs = {
-  envVars?: InputMaybe<Array<EnvironmentEnvVarPatchInput>>;
-  expectedEnvRevision?: InputMaybe<Scalars['String']['input']>;
-  saveMode: Scalars['String']['input'];
-  secretFiles?: InputMaybe<Array<EnvironmentSecretFilePatchInput>>;
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationPinAgentSessionArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationRecoverDatabaseArgs = {
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-  plan?: InputMaybe<Scalars['String']['input']>;
-  targetTime?: InputMaybe<Scalars['String']['input']>;
-  version?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationRegenerateDeployHookArgs = {
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationRegisterNotificationDeviceSubscriptionArgs = {
-  deviceId: Scalars['String']['input'];
-  platform: Scalars['String']['input'];
-  provider: Scalars['String']['input'];
-  token: Scalars['String']['input'];
-};
-
-
-export type MutationRemoveWorkspaceMemberArgs = {
-  subject: Scalars['String']['input'];
-  workspaceId: Scalars['String']['input'];
-};
-
-
-export type MutationRenameDatabaseArgs = {
-  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type MutationRenameEnvGroupArgs = {
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type MutationRenameEnvironmentArgs = {
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type MutationRenameKeyValueArgs = {
-  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type MutationRenameProjectArgs = {
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type MutationRenameWorkspaceArgs = {
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type MutationResendWorkspaceInviteArgs = {
-  inviteId: Scalars['String']['input'];
-  workspaceId: Scalars['String']['input'];
-};
-
-
-export type MutationRestartDatabaseArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationRestartServerArgs = {
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationResumeAgentSessionArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationResumeDatabaseArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationResumeKeyValueArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationResumeServiceArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationRevokeApiKeyArgs = {
-  id: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationRevokeWorkspaceInviteArgs = {
-  inviteId: Scalars['String']['input'];
-  workspaceId: Scalars['String']['input'];
-};
-
-
-export type MutationRollbackServiceArgs = {
-  deployId: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationRunCronJobArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationScaleServiceArgs = {
-  id: Scalars['String']['input'];
-  numInstances: Scalars['Int']['input'];
-};
-
-
-export type MutationSetAutoDeployArgs = {
-  enabled: Scalars['Boolean']['input'];
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetAutoscalingArgs = {
-  id: Scalars['String']['input'];
-  maxInstances: Scalars['Int']['input'];
-  minInstances: Scalars['Int']['input'];
-  targetCPUPercent?: InputMaybe<Scalars['Int']['input']>;
-  targetMemoryPercent?: InputMaybe<Scalars['Int']['input']>;
-};
-
-
-export type MutationSetBranchArgs = {
-  branch: Scalars['String']['input'];
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetBuildCommandArgs = {
-  command: Scalars['String']['input'];
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetBuildFilterArgs = {
-  buildFilter: BuildFilterInput;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetDatabaseIpAllowListArgs = {
-  cidrs?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  entries?: InputMaybe<Array<IpAllowListEntryInput>>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetDatabaseParameterOverridesArgs = {
-  id: Scalars['String']['input'];
-  parameters?: InputMaybe<Array<InputMaybe<ParameterInput>>>;
-};
-
-
-export type MutationSetDisplayNameArgs = {
-  displayName: Scalars['String']['input'];
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetDockerfilePathArgs = {
-  dockerfilePath: Scalars['String']['input'];
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetEnvGroupSecretFileArgs = {
-  content?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type MutationSetEnvGroupVarArgs = {
-  id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
-  value?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationSetEnvGroupVarsArgs = {
-  envVars: Array<EnvGroupVarInput>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetEnvVarArgs = {
-  generateValue?: InputMaybe<Scalars['Boolean']['input']>;
-  key: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
-  value?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationSetEnvVarsArgs = {
-  envVars: Array<EnvVarInput>;
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationSetEnvironmentAclArgs = {
-  id: Scalars['String']['input'];
-  ipAllowList?: InputMaybe<Array<Scalars['String']['input']>>;
-  ipAllowListEntries?: InputMaybe<Array<IpAllowListEntryInput>>;
-  networkIsolationEnabled: Scalars['Boolean']['input'];
-  protectedStatus: Scalars['String']['input'];
-};
-
-
-export type MutationSetEnvironmentDatabasesArgs = {
-  databaseIds: Array<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetEnvironmentEnvGroupsArgs = {
-  envGroupIds: Array<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetEnvironmentKeyValuesArgs = {
-  id: Scalars['String']['input'];
-  keyValueIds: Array<Scalars['String']['input']>;
-};
-
-
-export type MutationSetEnvironmentServicesArgs = {
-  id: Scalars['String']['input'];
-  serviceIds: Array<Scalars['String']['input']>;
-};
-
-
-export type MutationSetHealthCheckPathArgs = {
-  id: Scalars['String']['input'];
-  path: Scalars['String']['input'];
-};
-
-
-export type MutationSetIdleTimeoutArgs = {
-  id: Scalars['String']['input'];
-  idleTTLSeconds: Scalars['Int']['input'];
-};
-
-
-export type MutationSetKeyValueIpAllowListArgs = {
-  cidrs?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  entries?: InputMaybe<Array<IpAllowListEntryInput>>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetKeyValueMaxmemoryPolicyArgs = {
-  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
-  id: Scalars['String']['input'];
-  maxmemoryPolicy: Scalars['String']['input'];
-};
-
-
-export type MutationSetMaintenanceModeArgs = {
-  id: Scalars['String']['input'];
-  maintenanceMode: MaintenanceModeInput;
-};
-
-
-export type MutationSetMaxShutdownDelayArgs = {
-  id: Scalars['String']['input'];
-  seconds: Scalars['Int']['input'];
-};
-
-
-export type MutationSetNotificationsToSendArgs = {
-  id: Scalars['String']['input'];
-  value: Scalars['String']['input'];
-};
-
-
-export type MutationSetNotifyOnFailArgs = {
-  id: Scalars['String']['input'];
-  value: Scalars['String']['input'];
-};
-
-
-export type MutationSetPreDeployCommandArgs = {
-  command: Scalars['String']['input'];
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetProjectDatabasesArgs = {
-  databaseIds: Array<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetProjectKeyValuesArgs = {
-  id: Scalars['String']['input'];
-  keyValueIds: Array<Scalars['String']['input']>;
-};
-
-
-export type MutationSetProjectServicesArgs = {
-  id: Scalars['String']['input'];
-  serviceIds: Array<Scalars['String']['input']>;
-};
-
-
-export type MutationSetPublishPathArgs = {
-  id: Scalars['String']['input'];
-  publishPath: Scalars['String']['input'];
-};
-
-
-export type MutationSetRegistryCredentialArgs = {
-  id: Scalars['String']['input'];
-  registryCredentialId: Scalars['String']['input'];
-};
-
-
-export type MutationSetRepoArgs = {
-  id: Scalars['String']['input'];
-  repo: Scalars['String']['input'];
-};
-
-
-export type MutationSetRootDirArgs = {
-  id: Scalars['String']['input'];
-  rootDir: Scalars['String']['input'];
-};
-
-
-export type MutationSetSecretFileArgs = {
-  content?: InputMaybe<Scalars['String']['input']>;
-  name: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationSetServiceIpAllowListArgs = {
-  cidrs?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  entries?: InputMaybe<Array<IpAllowListEntryInput>>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetStartCommandArgs = {
-  command: Scalars['String']['input'];
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetStaticHeadersArgs = {
-  headers?: InputMaybe<Array<InputMaybe<StaticHeaderInput>>>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSetStaticRoutesArgs = {
-  id: Scalars['String']['input'];
-  routes?: InputMaybe<Array<InputMaybe<StaticRouteInput>>>;
-};
-
-
-export type MutationSetSubdomainPolicyArgs = {
-  id: Scalars['String']['input'];
-  policy: Scalars['String']['input'];
-};
-
-
-export type MutationSetWebhookEndpointEnabledArgs = {
-  enabled: Scalars['Boolean']['input'];
-  id: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationSteerAgentSessionArgs = {
-  egressAllowlist?: InputMaybe<Array<Scalars['String']['input']>>;
-  id: Scalars['String']['input'];
-  prompt: Scalars['String']['input'];
-};
-
-
-export type MutationSuspendDatabaseArgs = {
-  confirm?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSuspendKeyValueArgs = {
-  confirm?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSuspendServiceArgs = {
-  confirm?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationSyncBlueprintArgs = {
-  bexYaml?: InputMaybe<Scalars['String']['input']>;
-  confirm?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationTriggerDeployArgs = {
-  commitId?: InputMaybe<Scalars['String']['input']>;
-  deployMode?: InputMaybe<Scalars['String']['input']>;
-  imageUrl?: InputMaybe<Scalars['String']['input']>;
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationUnlinkEnvGroupArgs = {
-  id: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type MutationUnarchiveAgentSessionArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationUnpinAgentSessionArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationUnregisterNotificationDeviceSubscriptionArgs = {
-  deviceId: Scalars['String']['input'];
-};
-
-
-export type MutationUpdateBlueprintArgs = {
-  autoSync?: InputMaybe<Scalars['Boolean']['input']>;
-  id: Scalars['String']['input'];
-  name?: InputMaybe<Scalars['String']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  path?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationUpdateCronJobArgs = {
-  command?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-  schedule: Scalars['String']['input'];
-};
-
-
-export type MutationUpdateDatabaseDiskAutoscalingArgs = {
-  enabled: Scalars['Boolean']['input'];
-  id: Scalars['String']['input'];
-};
-
-
-export type MutationUpdateDatabasePlanArgs = {
-  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
-  id: Scalars['String']['input'];
-  plan: Scalars['String']['input'];
-};
-
-
-export type MutationUpdateDatabaseVersionArgs = {
-  id: Scalars['String']['input'];
-  version: Scalars['String']['input'];
-};
-
-
-export type MutationUpdateEnvironmentArgs = {
-  id: Scalars['String']['input'];
-  ipAllowList?: InputMaybe<Array<Scalars['String']['input']>>;
-  ipAllowListEntries?: InputMaybe<Array<IpAllowListEntryInput>>;
-  name?: InputMaybe<Scalars['String']['input']>;
-  networkIsolationEnabled?: InputMaybe<Scalars['Boolean']['input']>;
-  protectedStatus?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationUpdateKeyValuePlanArgs = {
-  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
-  id: Scalars['String']['input'];
-  plan: Scalars['String']['input'];
-};
-
-
-export type MutationUpdateNotificationSettingsArgs = {
-  deployFailed: Scalars['Boolean']['input'];
-  deployStarted: Scalars['Boolean']['input'];
-  deploySucceeded: Scalars['Boolean']['input'];
-};
-
-
-export type MutationUpdatePushNotificationSettingsArgs = {
-  settings: PushNotificationSettingsInput;
-};
-
-
-export type MutationUpdateRegistryCredentialArgs = {
-  authToken?: InputMaybe<Scalars['String']['input']>;
-  expiresAt?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-  name?: InputMaybe<Scalars['String']['input']>;
-  username?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationUpdateServicePlanArgs = {
-  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
-  id: Scalars['String']['input'];
-  plan: Scalars['String']['input'];
-};
-
-
-export type MutationUpdateWebhookEndpointArgs = {
-  enabled?: InputMaybe<Scalars['Boolean']['input']>;
-  eventTypes?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  id: Scalars['String']['input'];
-  name?: InputMaybe<Scalars['String']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  url?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type MutationVerifyCustomDomainArgs = {
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-export type NameAvailability = {
-  __typename: 'NameAvailability';
-  available: Maybe<Scalars['Boolean']['output']>;
-  suggestion: Maybe<Scalars['String']['output']>;
-};
-
-export type NotificationDeviceSubscription = {
-  __typename: 'NotificationDeviceSubscription';
-  createdAt: Maybe<Scalars['String']['output']>;
-  deviceId: Maybe<Scalars['String']['output']>;
-  lastRegisteredAt: Maybe<Scalars['String']['output']>;
-  platform: Maybe<Scalars['String']['output']>;
-  preferenceRef: Maybe<Scalars['String']['output']>;
-  provider: Maybe<Scalars['String']['output']>;
-  updatedAt: Maybe<Scalars['String']['output']>;
-};
-
-export type NotificationSettings = {
-  __typename: 'NotificationSettings';
-  deployFailed: Maybe<Scalars['Boolean']['output']>;
-  deployStarted: Maybe<Scalars['Boolean']['output']>;
-  deploySucceeded: Maybe<Scalars['Boolean']['output']>;
-};
-
-export type ParameterInput = {
-  name: Scalars['String']['input'];
-  value: Scalars['String']['input'];
-};
-
-export type PostgresConnectionInfo = {
-  __typename: 'PostgresConnectionInfo';
-  externalConnectionPoolString: Maybe<Scalars['String']['output']>;
-  externalConnectionString: Maybe<Scalars['String']['output']>;
-  internalConnectionPoolString: Maybe<Scalars['String']['output']>;
-  internalConnectionString: Maybe<Scalars['String']['output']>;
-  password: Maybe<Scalars['String']['output']>;
-  psqlCommand: Maybe<Scalars['String']['output']>;
-  readReplicaConnectionStrings: Maybe<Array<Maybe<ReplicaConnectionStrings>>>;
-};
-
-export type Project = {
-  __typename: 'Project';
-  createdAt: Maybe<Scalars['String']['output']>;
-  databaseIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  id: Maybe<Scalars['String']['output']>;
-  keyValueIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  name: Maybe<Scalars['String']['output']>;
-  ownerId: Maybe<Scalars['String']['output']>;
-  serviceIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-};
-
-export type PushNotification = {
-  __typename: 'PushNotification';
-  body: Scalars['String']['output'];
-  createdAt: Scalars['String']['output'];
-  deepLink: Scalars['String']['output'];
-  event: PushNotificationEvent;
-  id: Scalars['String']['output'];
-  occurredAt: Scalars['String']['output'];
-  readAt: Maybe<Scalars['String']['output']>;
-  resourceId: Scalars['String']['output'];
-  resourceKind: Scalars['String']['output'];
-  title: Scalars['String']['output'];
-  urgency: PushNotificationUrgency;
-};
-
-export type PushNotificationClockRange = {
-  __typename: 'PushNotificationClockRange';
-  end: Scalars['String']['output'];
-  start: Scalars['String']['output'];
-  weekdays: Array<PushNotificationWeekday>;
-};
-
-export type PushNotificationClockRangeInput = {
-  end: Scalars['String']['input'];
-  start: Scalars['String']['input'];
-  weekdays: Array<PushNotificationWeekday>;
-};
-
-export enum PushNotificationEvent {
-  AgentFailed = 'AGENT_FAILED',
-  AgentNeedsDecision = 'AGENT_NEEDS_DECISION',
-  AgentPrReady = 'AGENT_PR_READY',
-  CronFailed = 'CRON_FAILED',
-  DeployFailed = 'DEPLOY_FAILED',
-  DeployStarted = 'DEPLOY_STARTED',
-  DeploySucceeded = 'DEPLOY_SUCCEEDED',
-  ServerAvailable = 'SERVER_AVAILABLE',
-  ServerFailed = 'SERVER_FAILED',
-  ServiceResumed = 'SERVICE_RESUMED',
-  ServiceSuspended = 'SERVICE_SUSPENDED',
-  UsageThreshold = 'USAGE_THRESHOLD'
-}
-
-export type PushNotificationServiceOverride = {
-  __typename: 'PushNotificationServiceOverride';
-  enabled: Maybe<Scalars['Boolean']['output']>;
-  events: Maybe<Array<PushNotificationEvent>>;
-  minimumUrgency: Maybe<PushNotificationUrgency>;
-  serviceId: Scalars['String']['output'];
-};
-
-export type PushNotificationServiceOverrideInput = {
-  enabled?: InputMaybe<Scalars['Boolean']['input']>;
-  events?: InputMaybe<Array<PushNotificationEvent>>;
-  minimumUrgency?: InputMaybe<PushNotificationUrgency>;
-  serviceId: Scalars['String']['input'];
-};
-
-export type PushNotificationSettings = {
-  __typename: 'PushNotificationSettings';
-  enabled: Scalars['Boolean']['output'];
-  events: Array<PushNotificationEvent>;
-  maxDeferralSeconds: Scalars['Int']['output'];
-  minimumUrgency: PushNotificationUrgency;
-  quietHours: Array<PushNotificationClockRange>;
-  serviceOverrides: Array<PushNotificationServiceOverride>;
-  timeZone: Scalars['String']['output'];
-  workingHours: Array<PushNotificationClockRange>;
-};
-
-export type PushNotificationSettingsInput = {
-  enabled: Scalars['Boolean']['input'];
-  events: Array<PushNotificationEvent>;
-  maxDeferralSeconds: Scalars['Int']['input'];
-  minimumUrgency: PushNotificationUrgency;
-  quietHours: Array<PushNotificationClockRangeInput>;
-  serviceOverrides: Array<PushNotificationServiceOverrideInput>;
-  timeZone: Scalars['String']['input'];
-  workingHours: Array<PushNotificationClockRangeInput>;
-};
-
-export enum PushNotificationUrgency {
-  Critical = 'CRITICAL',
-  Important = 'IMPORTANT',
-  Routine = 'ROUTINE'
-}
-
-export enum PushNotificationWeekday {
-  Friday = 'FRIDAY',
-  Monday = 'MONDAY',
-  Saturday = 'SATURDAY',
-  Sunday = 'SUNDAY',
-  Thursday = 'THURSDAY',
-  Tuesday = 'TUESDAY',
-  Wednesday = 'WEDNESDAY'
-}
-
-export type Query = {
-  __typename: 'Query';
-  agentSession: Maybe<AgentSession>;
-  agentSessionCapabilities: AgentSessionCapabilities;
-  viewerCapabilities: Maybe<ViewerCapabilities>;
-  agentSessions: Array<AgentSession>;
-  apiKeys: Maybe<Array<Maybe<ApiKey>>>;
-  auditLogs: Maybe<Array<Maybe<AuditLog>>>;
-  autoscalingConfig: Maybe<Autoscaling>;
-  blueprint: Maybe<Blueprint>;
-  blueprintPreview: Maybe<BlueprintPreview>;
-  blueprintSyncs: Maybe<Array<Maybe<BlueprintSync>>>;
-  blueprints: Maybe<Array<Maybe<Blueprint>>>;
-  cronJobRun: Maybe<CronRun>;
-  cronJobRuns: Maybe<Array<Maybe<CronRun>>>;
-  customDomain: Maybe<CustomDomain>;
-  customDomains: Maybe<Array<Maybe<CustomDomain>>>;
-  database: Maybe<Database>;
-  databaseConnectionInfo: Maybe<PostgresConnectionInfo>;
-  databaseExports: Maybe<Array<Maybe<DatabaseExport>>>;
-  databaseInstanceTypes: Maybe<Array<Maybe<DatabaseInstanceType>>>;
-  databaseIpAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  databaseLogs: Maybe<Array<Maybe<DatabaseLogEntry>>>;
-  databaseParameterOverrides: Maybe<Array<Maybe<DatabaseParameterOverride>>>;
-  databaseProcesses: Maybe<Array<Maybe<DatabaseProcess>>>;
-  databaseRecoveryInfo: Maybe<DatabaseRecoveryInfo>;
-  databaseSizes: Maybe<DatabaseSizes>;
-  databaseTableScans: Maybe<Array<Maybe<DatabaseTableScan>>>;
-  databaseTopQueries: Maybe<Array<Maybe<DatabaseTopQuery>>>;
-  databaseUsers: Maybe<Array<Maybe<DatabaseUser>>>;
-  databases: Maybe<Array<Maybe<Database>>>;
-  datastoreMetrics: Maybe<Array<Maybe<MetricSeries>>>;
-  deploy: Maybe<Deploy>;
-  deployHook: Maybe<DeployHook>;
-  deploys: Maybe<Array<Maybe<Deploy>>>;
-  envGroup: Maybe<EnvGroup>;
-  envGroupSecretFile: Maybe<EnvGroupSecretFile>;
-  envGroupVar: Maybe<EnvGroupVar>;
-  envGroups: Maybe<Array<Maybe<EnvGroup>>>;
-  envVars: Maybe<Array<Maybe<EnvVarWithCursor>>>;
-  environment: Maybe<Environment>;
-  environments: Maybe<Array<Maybe<Environment>>>;
-  gitConnection: Maybe<GitConnection>;
-  instanceTypes: Maybe<Array<Maybe<InstanceType>>>;
-  job: Maybe<Job>;
-  jobs: Maybe<Array<Maybe<Job>>>;
-  keyValue: Maybe<KeyValue>;
-  keyValueConnectionInfo: Maybe<KeyValueConnectionInfo>;
-  keyValueInstanceTypes: Maybe<Array<Maybe<KeyValueInstanceType>>>;
-  keyValueIpAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  keyValueLogs: Maybe<Array<Maybe<KeyValueLogEntry>>>;
-  keyValues: Maybe<Array<Maybe<KeyValue>>>;
-  logLabelValues: Maybe<Array<Scalars['String']['output']>>;
-  logs: Maybe<Array<Maybe<LogEntry>>>;
-  metrics: Maybe<Array<Maybe<MetricSeries>>>;
-  metricsFilters: Maybe<MetricsFiltersResult>;
-  metricsPathFilterSuggestions: Maybe<MetricsPathFilterSuggestions>;
-  monthToDateBandwidth: Maybe<MonthToDateBandwidth>;
-  notificationDeviceSubscriptions: Maybe<Array<Maybe<NotificationDeviceSubscription>>>;
-  notificationInbox: Array<PushNotification>;
-  notificationSettings: Maybe<NotificationSettings>;
-  project: Maybe<Project>;
-  projects: Maybe<Array<Maybe<Project>>>;
-  pushNotificationSettings: Maybe<PushNotificationSettings>;
-  pushNotificationsAvailable: Scalars['Boolean']['output'];
-  registryCredential: Maybe<RegistryCredential>;
-  registryCredentials: Maybe<Array<Maybe<RegistryCredential>>>;
-  repoBranches: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  repos: Maybe<Array<Maybe<Repo>>>;
-  secretFiles: Maybe<Array<Maybe<SecretFileWithCursor>>>;
-  server: Maybe<Service>;
-  service: Maybe<Service>;
-  serviceEvents: Maybe<Array<Maybe<ServiceEvent>>>;
-  serviceInstances: Maybe<Array<Maybe<ServiceInstance>>>;
-  serviceNameAvailable: Maybe<NameAvailability>;
-  services: Maybe<Array<Maybe<Service>>>;
-  sshKeys: Maybe<Array<Maybe<SshKey>>>;
-  unreadPushNotificationCount: Scalars['Int']['output'];
-  usage: Maybe<UsageSummary>;
-  validateBlueprint: Maybe<BlueprintValidation>;
-  webhookDeliveries: Maybe<Array<Maybe<WebhookDelivery>>>;
-  webhookEndpoint: Maybe<WebhookEndpoint>;
-  webhookEndpoints: Maybe<Array<Maybe<WebhookEndpoint>>>;
-  webhookEventTypes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  workspaceBillingReadiness: Maybe<WorkspaceBillingReadiness>;
-  workspaceInvites: Maybe<Array<Maybe<WorkspaceInvite>>>;
-  workspaceLimits: Maybe<ResourceLimits>;
-  workspaceMembers: Maybe<Array<Maybe<WorkspaceMember>>>;
-  workspaceSeatUsage: Maybe<WorkspaceSeatUsage>;
-  workspaces: Maybe<Array<Maybe<Workspace>>>;
-};
-
-
-export type QueryAgentSessionArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryAgentSessionCapabilitiesArgs = {
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryViewerCapabilitiesArgs = {
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryAgentSessionsArgs = {
-  archived?: InputMaybe<Scalars['String']['input']>;
-  createdAfter?: InputMaybe<Scalars['String']['input']>;
-  createdBefore?: InputMaybe<Scalars['String']['input']>;
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  phases?: InputMaybe<Array<Scalars['String']['input']>>;
-  repo?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryApiKeysArgs = {
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryAuditLogsArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  direction?: InputMaybe<Scalars['String']['input']>;
-  endTime?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  ownerId: Scalars['String']['input'];
-  startTime?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryAutoscalingConfigArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryBlueprintArgs = {
-  id: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryBlueprintPreviewArgs = {
-  branch: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  path?: InputMaybe<Scalars['String']['input']>;
-  repo: Scalars['String']['input'];
-};
-
-
-export type QueryBlueprintSyncsArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryBlueprintsArgs = {
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryCronJobRunArgs = {
-  runId: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type QueryCronJobRunsArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type QueryCustomDomainArgs = {
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type QueryCustomDomainsArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  domainType?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  verificationStatus?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryDatabaseArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryDatabaseConnectionInfoArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryDatabaseExportsArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryDatabaseIpAllowListArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryDatabaseLogsArgs = {
-  direction?: InputMaybe<Scalars['String']['input']>;
-  endTime?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-  instance?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  startTime?: InputMaybe<Scalars['String']['input']>;
-  text?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryDatabaseParameterOverridesArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryDatabaseProcessesArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryDatabaseRecoveryInfoArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryDatabaseSizesArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryDatabaseTableScansArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryDatabaseTopQueriesArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryDatabaseUsersArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryDatabasesArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryDatastoreMetricsArgs = {
-  query: DatastoreMetricsQueryInput;
-};
-
-
-export type QueryDeployArgs = {
-  deployId: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type QueryDeployHookArgs = {
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type QueryDeploysArgs = {
-  createdAfter?: InputMaybe<Scalars['String']['input']>;
-  createdBefore?: InputMaybe<Scalars['String']['input']>;
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  finishedAfter?: InputMaybe<Scalars['String']['input']>;
-  finishedBefore?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  serviceId: Scalars['String']['input'];
-  status?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  updatedAfter?: InputMaybe<Scalars['String']['input']>;
-  updatedBefore?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryEnvGroupArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryEnvGroupSecretFileArgs = {
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-
-export type QueryEnvGroupVarArgs = {
-  id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
-};
-
-
-export type QueryEnvGroupsArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryEnvVarsArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type QueryEnvironmentArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryEnvironmentsArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  projectId: Scalars['String']['input'];
-};
-
-
-export type QueryGitConnectionArgs = {
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryJobArgs = {
-  jobId: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type QueryJobsArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type QueryKeyValueArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryKeyValueConnectionInfoArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryKeyValueIpAllowListArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryKeyValueLogsArgs = {
-  direction?: InputMaybe<Scalars['String']['input']>;
-  endTime?: InputMaybe<Scalars['String']['input']>;
-  id: Scalars['String']['input'];
-  instance?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  startTime?: InputMaybe<Scalars['String']['input']>;
-  text?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryKeyValuesArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryLogLabelValuesArgs = {
-  direction?: InputMaybe<Scalars['String']['input']>;
-  endTime?: InputMaybe<Scalars['String']['input']>;
-  host?: InputMaybe<Array<Scalars['String']['input']>>;
-  instance?: InputMaybe<Array<Scalars['String']['input']>>;
-  label: Scalars['String']['input'];
-  level?: InputMaybe<Array<Scalars['String']['input']>>;
-  method?: InputMaybe<Array<Scalars['String']['input']>>;
-  path?: InputMaybe<Array<Scalars['String']['input']>>;
-  resource: Scalars['String']['input'];
-  startTime?: InputMaybe<Scalars['String']['input']>;
-  statusCode?: InputMaybe<Array<Scalars['String']['input']>>;
-  text?: InputMaybe<Scalars['String']['input']>;
-  type?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryLogsArgs = {
-  direction?: InputMaybe<Scalars['String']['input']>;
-  endTime?: InputMaybe<Scalars['String']['input']>;
-  host?: InputMaybe<Array<Scalars['String']['input']>>;
-  instance?: InputMaybe<Array<Scalars['String']['input']>>;
-  level?: InputMaybe<Array<Scalars['String']['input']>>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  method?: InputMaybe<Array<Scalars['String']['input']>>;
-  path?: InputMaybe<Array<Scalars['String']['input']>>;
-  resource: Scalars['String']['input'];
-  startTime?: InputMaybe<Scalars['String']['input']>;
-  statusCode?: InputMaybe<Array<Scalars['String']['input']>>;
-  text?: InputMaybe<Scalars['String']['input']>;
-  type?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryMetricsArgs = {
-  query: MetricsQueryInput;
-};
-
-
-export type QueryMetricsFiltersArgs = {
-  query: MetricsFiltersQueryInput;
-};
-
-
-export type QueryMetricsPathFilterSuggestionsArgs = {
-  query: MetricsPathFilterSuggestionsInput;
-};
-
-
-export type QueryMonthToDateBandwidthArgs = {
-  resourceId: Scalars['String']['input'];
-};
-
-
-export type QueryNotificationInboxArgs = {
-  limit?: InputMaybe<Scalars['Int']['input']>;
-};
-
-
-export type QueryProjectArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryProjectsArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  ownerId: Scalars['String']['input'];
-};
-
-
-export type QueryRegistryCredentialArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryRegistryCredentialsArgs = {
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryRepoBranchesArgs = {
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  repo: Scalars['String']['input'];
-};
-
-
-export type QueryReposArgs = {
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QuerySecretFilesArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  serviceId: Scalars['String']['input'];
-};
-
-
-export type QueryServerArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryServiceArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryServiceEventsArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  endTime?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  serviceId: Scalars['String']['input'];
-  startTime?: InputMaybe<Scalars['String']['input']>;
-  type?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryServiceInstancesArgs = {
-  id: Scalars['String']['input'];
-};
-
-
-export type QueryServiceNameAvailableArgs = {
-  name: Scalars['String']['input'];
-};
-
-
-export type QueryServicesArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryUsageArgs = {
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  period?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryValidateBlueprintArgs = {
-  bexYaml: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryWebhookDeliveriesArgs = {
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  endpointId: Scalars['String']['input'];
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  sentAfter?: InputMaybe<Scalars['String']['input']>;
-  sentBefore?: InputMaybe<Scalars['String']['input']>;
-  status?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryWebhookEndpointArgs = {
-  id: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryWebhookEndpointsArgs = {
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QueryWorkspaceBillingReadinessArgs = {
-  workspaceId: Scalars['String']['input'];
-};
-
-
-export type QueryWorkspaceInvitesArgs = {
-  workspaceId: Scalars['String']['input'];
-};
-
-
-export type QueryWorkspaceLimitsArgs = {
-  ownerId: Scalars['String']['input'];
-};
-
-
-export type QueryWorkspaceMembersArgs = {
-  workspaceId: Scalars['String']['input'];
-};
-
-
-export type QueryWorkspaceSeatUsageArgs = {
-  workspaceId: Scalars['String']['input'];
-};
-
-export type ReadReplicaConnectionInfo = {
-  __typename: 'ReadReplicaConnectionInfo';
-  externalHost: Maybe<Scalars['String']['output']>;
-  internalHost: Maybe<Scalars['String']['output']>;
-};
-
-export type ReadReplicaView = {
-  __typename: 'ReadReplicaView';
-  connectionInfo: Maybe<ReadReplicaConnectionInfo>;
-  name: Maybe<Scalars['String']['output']>;
-};
-
-export type RegistryCredential = {
-  __typename: 'RegistryCredential';
-  createdAt: Maybe<Scalars['String']['output']>;
-  expiresAt: Maybe<Scalars['String']['output']>;
-  host: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  ownerId: Maybe<Scalars['String']['output']>;
-  status: Maybe<Scalars['String']['output']>;
-  updatedAt: Maybe<Scalars['String']['output']>;
-  username: Maybe<Scalars['String']['output']>;
-};
-
-export type ReplicaConnectionStrings = {
-  __typename: 'ReplicaConnectionStrings';
-  externalConnectionString: Maybe<Scalars['String']['output']>;
-  internalConnectionString: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-};
-
-export type Repo = {
-  __typename: 'Repo';
-  cloneUrl: Maybe<Scalars['String']['output']>;
-  defaultBranch: Maybe<Scalars['String']['output']>;
-  fullName: Maybe<Scalars['String']['output']>;
-  htmlUrl: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['Float']['output']>;
-  private: Maybe<Scalars['Boolean']['output']>;
-};
-
-export type ResourceCap = {
-  __typename: 'ResourceCap';
-  limit: Maybe<Scalars['Int']['output']>;
-  used: Maybe<Scalars['Int']['output']>;
-};
-
-export type ResourceLimits = {
-  __typename: 'ResourceLimits';
-  keyValues: Maybe<ResourceCap>;
-  postgres: Maybe<ResourceCap>;
-  services: Maybe<ResourceCap>;
-};
-
-export type SshKey = {
-  __typename: 'SSHKey';
-  createdAt: Scalars['String']['output'];
-  fingerprint: Scalars['String']['output'];
-  id: Scalars['String']['output'];
-  name: Scalars['String']['output'];
-  publicKey: Scalars['String']['output'];
-};
-
-export type SecretFile = {
-  __typename: 'SecretFile';
-  content: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-};
-
-export type SecretFileInput = {
-  content: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-};
-
-export type SecretFileListValue = {
-  __typename: 'SecretFileListValue';
-  id: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-};
-
-export type SecretFileWithCursor = {
-  __typename: 'SecretFileWithCursor';
-  cursor: Maybe<Scalars['String']['output']>;
-  secretFile: Maybe<SecretFileListValue>;
-};
-
-export type Service = {
-  __typename: 'Service';
-  autoDeploy: Maybe<Scalars['Boolean']['output']>;
-  autoDeployTrigger: Maybe<Scalars['String']['output']>;
-  autoscaling: Maybe<Autoscaling>;
-  branch: Maybe<Scalars['String']['output']>;
-  buildCommand: Maybe<Scalars['String']['output']>;
-  buildFilter: Maybe<BuildFilter>;
-  builder: Maybe<Scalars['String']['output']>;
-  command: Maybe<Scalars['String']['output']>;
-  createdAt: Maybe<Scalars['String']['output']>;
-  dashboardUrl: Maybe<Scalars['String']['output']>;
-  displayName: Maybe<Scalars['String']['output']>;
-  dockerfilePath: Maybe<Scalars['String']['output']>;
-  envVar: Maybe<EnvVar>;
-  envVarKeys: Maybe<Array<Maybe<EnvVar>>>;
-  environmentId: Maybe<Scalars['String']['output']>;
-  headers: Maybe<Array<Maybe<StaticHeader>>>;
-  healthCheckPath: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  idleTTLSeconds: Maybe<Scalars['Int']['output']>;
-  internalAddress: Maybe<Scalars['String']['output']>;
-  ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  ipAllowListEntries: Maybe<Array<Maybe<IpAllowListEntry>>>;
-  lastSuccessfulRunAt: Maybe<Scalars['String']['output']>;
-  latestDeployId: Maybe<Scalars['String']['output']>;
-  maintenanceMode: MaintenanceMode;
-  maxShutdownDelaySeconds: Maybe<Scalars['Int']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  notificationsToSend: Maybe<Scalars['String']['output']>;
-  notifyOnFail: Maybe<Scalars['String']['output']>;
-  ownerId: Maybe<Scalars['String']['output']>;
-  phase: Maybe<Scalars['String']['output']>;
-  plan: Maybe<Scalars['String']['output']>;
-  preDeployCommand: Maybe<Scalars['String']['output']>;
-  projectId: Maybe<Scalars['String']['output']>;
-  publicRoutingNotice: Maybe<Scalars['String']['output']>;
-  publishPath: Maybe<Scalars['String']['output']>;
-  region: Maybe<Scalars['String']['output']>;
-  registryCredentialId: Maybe<Scalars['String']['output']>;
-  renderSubdomainPolicy: Maybe<Scalars['String']['output']>;
-  replicas: Maybe<Scalars['Int']['output']>;
-  repo: Maybe<Scalars['String']['output']>;
-  revision: Maybe<Scalars['String']['output']>;
-  rootDir: Maybe<Scalars['String']['output']>;
-  routes: Maybe<Array<Maybe<StaticRoute>>>;
-  runs: Maybe<Array<Maybe<CronRun>>>;
-  runtime: Maybe<Scalars['String']['output']>;
-  schedule: Maybe<Scalars['String']['output']>;
-  secretFile: Maybe<SecretFile>;
-  secretFileNames: Maybe<Array<Maybe<SecretFile>>>;
-  slug: Maybe<Scalars['String']['output']>;
-  sshAddress: Maybe<Scalars['String']['output']>;
-  startCommand: Maybe<Scalars['String']['output']>;
-  suspended: Maybe<Scalars['String']['output']>;
-  suspenders: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  type: Maybe<Scalars['String']['output']>;
-  updatedAt: Maybe<Scalars['String']['output']>;
-  url: Maybe<Scalars['String']['output']>;
-};
-
-
-export type ServiceEnvVarArgs = {
-  key: Scalars['String']['input'];
-};
-
-
-export type ServiceSecretFileArgs = {
-  name: Scalars['String']['input'];
-};
-
-export type ServiceEvent = {
-  __typename: 'ServiceEvent';
-  cursor: Maybe<Scalars['String']['output']>;
-  details: Maybe<ServiceEventDetails>;
-  id: Maybe<Scalars['String']['output']>;
-  serviceId: Maybe<Scalars['String']['output']>;
-  timestamp: Maybe<Scalars['String']['output']>;
-  type: Maybe<Scalars['String']['output']>;
-};
-
-export type ServiceEventDetails = {
-  __typename: 'ServiceEventDetails';
-  actor: Maybe<Scalars['String']['output']>;
-  autoscalingMaxFrom: Maybe<Scalars['Int']['output']>;
-  autoscalingMaxTo: Maybe<Scalars['Int']['output']>;
-  autoscalingMinFrom: Maybe<Scalars['Int']['output']>;
-  autoscalingMinTo: Maybe<Scalars['Int']['output']>;
-  branchFrom: Maybe<Scalars['String']['output']>;
-  branchTo: Maybe<Scalars['String']['output']>;
-  commitId: Maybe<Scalars['String']['output']>;
-  commitMessage: Maybe<Scalars['String']['output']>;
-  commitUrl: Maybe<Scalars['String']['output']>;
-  deployId: Maybe<Scalars['String']['output']>;
-  deployStatus: Maybe<Scalars['String']['output']>;
-  finishedAt: Maybe<Scalars['String']['output']>;
-  fromCount: Maybe<Scalars['Int']['output']>;
-  image: Maybe<Scalars['String']['output']>;
-  instanceCountFrom: Maybe<Scalars['Int']['output']>;
-  instanceCountTo: Maybe<Scalars['Int']['output']>;
-  instanceId: Maybe<Scalars['String']['output']>;
-  planFrom: Maybe<Scalars['String']['output']>;
-  planTo: Maybe<Scalars['String']['output']>;
-  preDeployStatus: Maybe<Scalars['String']['output']>;
-  reasonCode: Maybe<Scalars['String']['output']>;
-  startedAt: Maybe<Scalars['String']['output']>;
-  status: Maybe<Scalars['String']['output']>;
-  toCount: Maybe<Scalars['Int']['output']>;
-  trigger: Maybe<DeployTrigger>;
-  triggeredByUser: Maybe<Scalars['String']['output']>;
-};
-
-export type ServiceInstance = {
-  __typename: 'ServiceInstance';
-  createdAt: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-};
-
-export type ServiceUsage = {
-  __typename: 'ServiceUsage';
-  resourceKind: Maybe<Scalars['String']['output']>;
-  rows: Maybe<Array<Maybe<UsageRow>>>;
-  serviceId: Maybe<Scalars['String']['output']>;
-  serviceName: Maybe<Scalars['String']['output']>;
-};
-
-export type ShellSession = {
-  __typename: 'ShellSession';
-  expiresAt: Maybe<Scalars['String']['output']>;
-  ticket: Maybe<Scalars['String']['output']>;
-  url: Maybe<Scalars['String']['output']>;
-};
-
-export type StaticHeader = {
-  __typename: 'StaticHeader';
-  name: Maybe<Scalars['String']['output']>;
-  path: Maybe<Scalars['String']['output']>;
-  value: Maybe<Scalars['String']['output']>;
-};
-
-export type StaticHeaderInput = {
-  name: Scalars['String']['input'];
-  path: Scalars['String']['input'];
-  value: Scalars['String']['input'];
-};
-
-export type StaticRoute = {
-  __typename: 'StaticRoute';
-  destination: Maybe<Scalars['String']['output']>;
-  source: Maybe<Scalars['String']['output']>;
-  type: Maybe<Scalars['String']['output']>;
-};
-
-export type StaticRouteInput = {
-  destination: Scalars['String']['input'];
-  source: Scalars['String']['input'];
-  type: Scalars['String']['input'];
-};
-
-export type SyncBlueprintResult = {
-  __typename: 'SyncBlueprintResult';
-  blueprint: Maybe<Blueprint>;
-  databases: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  services: Maybe<Array<Maybe<Service>>>;
-};
-
-export type TableSizeInfo = {
-  __typename: 'TableSizeInfo';
-  name: Maybe<Scalars['String']['output']>;
-  schema: Maybe<Scalars['String']['output']>;
-  sizeBytes: Maybe<Scalars['Int']['output']>;
-  sizePretty: Maybe<Scalars['String']['output']>;
-};
-
-export type UsageCoverage = {
-  __typename: 'UsageCoverage';
-  degradedSources: Array<Scalars['String']['output']>;
-  state: Scalars['String']['output'];
-  through: Maybe<Scalars['String']['output']>;
-};
-
-export type UsageRow = {
-  __typename: 'UsageRow';
-  kind: Maybe<Scalars['String']['output']>;
-  tier: Maybe<Scalars['String']['output']>;
-  total: Maybe<Scalars['Float']['output']>;
-};
-
-export type UsageSummary = {
-  __typename: 'UsageSummary';
-  billing: Maybe<Billing>;
-  coverage: UsageCoverage;
-  estimatedCost: Maybe<EstimatedCost>;
-  period: Maybe<Scalars['String']['output']>;
-  services: Maybe<Array<Maybe<ServiceUsage>>>;
-  workspaceId: Maybe<Scalars['String']['output']>;
-};
-
-export type WebhookDelivery = {
-  __typename: 'WebhookDelivery';
-  attemptCount: Maybe<Scalars['Int']['output']>;
-  createdAt: Maybe<Scalars['String']['output']>;
-  cursor: Maybe<Scalars['String']['output']>;
-  deliveredAt: Maybe<Scalars['String']['output']>;
-  eventId: Maybe<Scalars['String']['output']>;
-  eventType: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  lastAttemptedAt: Maybe<Scalars['String']['output']>;
-  lastError: Maybe<Scalars['String']['output']>;
-  lastStatusCode: Maybe<Scalars['Int']['output']>;
-  nextAttemptAt: Maybe<Scalars['String']['output']>;
-  responseBody: Maybe<Scalars['String']['output']>;
-  sentAt: Maybe<Scalars['String']['output']>;
-  serviceId: Maybe<Scalars['String']['output']>;
-  status: Maybe<Scalars['String']['output']>;
-};
-
-export type WebhookEndpoint = {
-  __typename: 'WebhookEndpoint';
-  createdAt: Maybe<Scalars['String']['output']>;
-  createdBy: Maybe<Scalars['String']['output']>;
-  disabledReason: Maybe<Scalars['String']['output']>;
-  enabled: Maybe<Scalars['Boolean']['output']>;
-  eventTypes: Maybe<Array<Maybe<Scalars['String']['output']>>>;
-  id: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  ownerId: Maybe<Scalars['String']['output']>;
-  secret: Maybe<Scalars['String']['output']>;
-  updatedAt: Maybe<Scalars['String']['output']>;
-  url: Maybe<Scalars['String']['output']>;
-};
-
-export type Workspace = {
-  __typename: 'Workspace';
-  createdAt: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  name: Maybe<Scalars['String']['output']>;
-  plan: Maybe<Scalars['String']['output']>;
-  role: Maybe<Scalars['String']['output']>;
-};
-
-export type WorkspaceBillingReadiness = {
-  __typename: 'WorkspaceBillingReadiness';
-  customerReady: Maybe<Scalars['Boolean']['output']>;
-  lifecycle: Maybe<BillingLifecycle>;
-  mode: Maybe<Scalars['String']['output']>;
-  paymentMethodReady: Maybe<Scalars['Boolean']['output']>;
-  subscriptionReady: Maybe<Scalars['Boolean']['output']>;
-  tax: Maybe<BillingTaxReadiness>;
-  workspaceId: Maybe<Scalars['String']['output']>;
-};
-
-export type WorkspaceInvite = {
-  __typename: 'WorkspaceInvite';
-  createdAt: Maybe<Scalars['String']['output']>;
-  email: Maybe<Scalars['String']['output']>;
-  expiresAt: Maybe<Scalars['String']['output']>;
-  id: Maybe<Scalars['String']['output']>;
-  role: Maybe<Scalars['String']['output']>;
-};
-
-export type WorkspaceMember = {
-  __typename: 'WorkspaceMember';
-  createdAt: Maybe<Scalars['String']['output']>;
-  email: Maybe<Scalars['String']['output']>;
-  mfaEnabled: Maybe<Scalars['Boolean']['output']>;
-  role: Maybe<Scalars['String']['output']>;
-  subject: Maybe<Scalars['String']['output']>;
-  userId: Maybe<Scalars['String']['output']>;
-};
-
-export type WorkspaceSeatUsage = {
-  __typename: 'WorkspaceSeatUsage';
-  limit: Maybe<Scalars['Int']['output']>;
-  used: Maybe<Scalars['Int']['output']>;
-};
-
+import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
+export * from "./schema-types";
 export type AgentSessionFieldsFragment = { __typename: 'AgentSession', id: string, ownerId: string, repo: string, branch: string, sandboxId: string | null, sshAddress: string | null, phase: string, status: string, headSha: string | null, prUrl: string | null, prNumber: number | null, turns: number | null, deliveryMode: string | null, failureReason: string | null, createdAt: string, updatedAt: string, canceledAt: string | null, pinned: boolean | null, snapshotBytes: number | null, hibernatedAt: string | null, retainUntil: string | null, archivedAt: string | null, agentConfig: { __typename: 'AgentSessionConfig', agent: string, model: string | null, modelEndpoint: string | null, task: string, template: string | null } };
 
 export type AgentSessionMintFieldsFragment = { __typename: 'AgentSession', ticket: string | null, url: string | null, expiresAt: string | null };
 
 export type AgentSessionsQueryVariables = Exact<{
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  archived?: InputMaybe<Scalars['String']['input']>;
-  phases?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-  repo?: InputMaybe<Scalars['String']['input']>;
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: string | null | undefined;
+  archived?: string | null | undefined;
+  phases?: Array<string> | string | null | undefined;
+  repo?: string | null | undefined;
+  cursor?: string | null | undefined;
+  limit?: number | null | undefined;
 }>;
 
 
 export type AgentSessionsQuery = { agentSessions: Array<{ __typename: 'AgentSession', id: string, ownerId: string, repo: string, branch: string, sandboxId: string | null, sshAddress: string | null, phase: string, status: string, headSha: string | null, prUrl: string | null, prNumber: number | null, turns: number | null, deliveryMode: string | null, failureReason: string | null, createdAt: string, updatedAt: string, canceledAt: string | null, pinned: boolean | null, snapshotBytes: number | null, hibernatedAt: string | null, retainUntil: string | null, archivedAt: string | null, agentConfig: { __typename: 'AgentSessionConfig', agent: string, model: string | null, modelEndpoint: string | null, task: string, template: string | null } }> };
 
 export type AgentSessionQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type AgentSessionQuery = { agentSession: { __typename: 'AgentSession', id: string, ownerId: string, repo: string, branch: string, sandboxId: string | null, sshAddress: string | null, phase: string, status: string, headSha: string | null, prUrl: string | null, prNumber: number | null, turns: number | null, deliveryMode: string | null, failureReason: string | null, createdAt: string, updatedAt: string, canceledAt: string | null, pinned: boolean | null, snapshotBytes: number | null, hibernatedAt: string | null, retainUntil: string | null, archivedAt: string | null, agentConfig: { __typename: 'AgentSessionConfig', agent: string, model: string | null, modelEndpoint: string | null, task: string, template: string | null } } | null };
 
 export type CreateAgentSessionMutationVariables = Exact<{
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  repo: Scalars['String']['input'];
-  branch: Scalars['String']['input'];
-  agentConfig: AgentSessionConfigInput;
-  egressAllowlist?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
+  ownerId?: string | null | undefined;
+  repo: string;
+  branch: string;
+  agentConfig: Types.AgentSessionConfigInput;
+  egressAllowlist?: Array<string> | string | null | undefined;
 }>;
 
 
 export type CreateAgentSessionMutation = { createAgentSession: { __typename: 'AgentSession', id: string, ownerId: string, repo: string, branch: string, sandboxId: string | null, sshAddress: string | null, phase: string, status: string, headSha: string | null, prUrl: string | null, prNumber: number | null, turns: number | null, deliveryMode: string | null, failureReason: string | null, createdAt: string, updatedAt: string, canceledAt: string | null, pinned: boolean | null, snapshotBytes: number | null, hibernatedAt: string | null, retainUntil: string | null, archivedAt: string | null, ticket: string | null, url: string | null, expiresAt: string | null, agentConfig: { __typename: 'AgentSessionConfig', agent: string, model: string | null, modelEndpoint: string | null, task: string, template: string | null } } | null };
 
 export type SteerAgentSessionMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  prompt: Scalars['String']['input'];
-  egressAllowlist?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
+  id: string;
+  prompt: string;
+  egressAllowlist?: Array<string> | string | null | undefined;
 }>;
 
 
 export type SteerAgentSessionMutation = { steerAgentSession: { __typename: 'AgentSession', id: string, ownerId: string, repo: string, branch: string, sandboxId: string | null, sshAddress: string | null, phase: string, status: string, headSha: string | null, prUrl: string | null, prNumber: number | null, turns: number | null, deliveryMode: string | null, failureReason: string | null, createdAt: string, updatedAt: string, canceledAt: string | null, pinned: boolean | null, snapshotBytes: number | null, hibernatedAt: string | null, retainUntil: string | null, archivedAt: string | null, ticket: string | null, url: string | null, expiresAt: string | null, agentConfig: { __typename: 'AgentSessionConfig', agent: string, model: string | null, modelEndpoint: string | null, task: string, template: string | null } } | null };
 
 export type ResumeAgentSessionMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type ResumeAgentSessionMutation = { resumeAgentSession: { __typename: 'AgentSession', id: string, ownerId: string, repo: string, branch: string, sandboxId: string | null, sshAddress: string | null, phase: string, status: string, headSha: string | null, prUrl: string | null, prNumber: number | null, turns: number | null, deliveryMode: string | null, failureReason: string | null, createdAt: string, updatedAt: string, canceledAt: string | null, pinned: boolean | null, snapshotBytes: number | null, hibernatedAt: string | null, retainUntil: string | null, archivedAt: string | null, ticket: string | null, url: string | null, expiresAt: string | null, agentConfig: { __typename: 'AgentSessionConfig', agent: string, model: string | null, modelEndpoint: string | null, task: string, template: string | null } } | null };
 
 export type AttachAgentSessionMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type AttachAgentSessionMutation = { attachAgentSession: { __typename: 'AgentSession', id: string, ownerId: string, repo: string, branch: string, sandboxId: string | null, sshAddress: string | null, phase: string, status: string, headSha: string | null, prUrl: string | null, prNumber: number | null, turns: number | null, deliveryMode: string | null, failureReason: string | null, createdAt: string, updatedAt: string, canceledAt: string | null, pinned: boolean | null, snapshotBytes: number | null, hibernatedAt: string | null, retainUntil: string | null, archivedAt: string | null, ticket: string | null, url: string | null, expiresAt: string | null, agentConfig: { __typename: 'AgentSessionConfig', agent: string, model: string | null, modelEndpoint: string | null, task: string, template: string | null } } | null };
 
 export type CancelAgentSessionMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type CancelAgentSessionMutation = { cancelAgentSession: { __typename: 'AgentSession', id: string, ownerId: string, repo: string, branch: string, sandboxId: string | null, sshAddress: string | null, phase: string, status: string, headSha: string | null, prUrl: string | null, prNumber: number | null, turns: number | null, deliveryMode: string | null, failureReason: string | null, createdAt: string, updatedAt: string, canceledAt: string | null, pinned: boolean | null, snapshotBytes: number | null, hibernatedAt: string | null, retainUntil: string | null, archivedAt: string | null, agentConfig: { __typename: 'AgentSessionConfig', agent: string, model: string | null, modelEndpoint: string | null, task: string, template: string | null } } | null };
 
 export type PinAgentSessionMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type PinAgentSessionMutation = { pinAgentSession: { __typename: 'AgentSession', id: string, ownerId: string, repo: string, branch: string, sandboxId: string | null, sshAddress: string | null, phase: string, status: string, headSha: string | null, prUrl: string | null, prNumber: number | null, turns: number | null, deliveryMode: string | null, failureReason: string | null, createdAt: string, updatedAt: string, canceledAt: string | null, pinned: boolean | null, snapshotBytes: number | null, hibernatedAt: string | null, retainUntil: string | null, archivedAt: string | null, agentConfig: { __typename: 'AgentSessionConfig', agent: string, model: string | null, modelEndpoint: string | null, task: string, template: string | null } } | null };
 
 export type UnpinAgentSessionMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type UnpinAgentSessionMutation = { unpinAgentSession: { __typename: 'AgentSession', id: string, ownerId: string, repo: string, branch: string, sandboxId: string | null, sshAddress: string | null, phase: string, status: string, headSha: string | null, prUrl: string | null, prNumber: number | null, turns: number | null, deliveryMode: string | null, failureReason: string | null, createdAt: string, updatedAt: string, canceledAt: string | null, pinned: boolean | null, snapshotBytes: number | null, hibernatedAt: string | null, retainUntil: string | null, archivedAt: string | null, agentConfig: { __typename: 'AgentSessionConfig', agent: string, model: string | null, modelEndpoint: string | null, task: string, template: string | null } } | null };
 
 export type ArchiveAgentSessionMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type ArchiveAgentSessionMutation = { archiveAgentSession: { __typename: 'AgentSession', id: string, ownerId: string, repo: string, branch: string, sandboxId: string | null, sshAddress: string | null, phase: string, status: string, headSha: string | null, prUrl: string | null, prNumber: number | null, turns: number | null, deliveryMode: string | null, failureReason: string | null, createdAt: string, updatedAt: string, canceledAt: string | null, pinned: boolean | null, snapshotBytes: number | null, hibernatedAt: string | null, retainUntil: string | null, archivedAt: string | null, agentConfig: { __typename: 'AgentSessionConfig', agent: string, model: string | null, modelEndpoint: string | null, task: string, template: string | null } } | null };
 
 export type UnarchiveAgentSessionMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type UnarchiveAgentSessionMutation = { unarchiveAgentSession: { __typename: 'AgentSession', id: string, ownerId: string, repo: string, branch: string, sandboxId: string | null, sshAddress: string | null, phase: string, status: string, headSha: string | null, prUrl: string | null, prNumber: number | null, turns: number | null, deliveryMode: string | null, failureReason: string | null, createdAt: string, updatedAt: string, canceledAt: string | null, pinned: boolean | null, snapshotBytes: number | null, hibernatedAt: string | null, retainUntil: string | null, archivedAt: string | null, agentConfig: { __typename: 'AgentSessionConfig', agent: string, model: string | null, modelEndpoint: string | null, task: string, template: string | null } } | null };
 
 export type DeleteAgentSessionMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DeleteAgentSessionMutation = { deleteAgentSession: boolean | null };
 
-
 export type ApiKeysQueryVariables = Exact<{
-  ownerId?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: string | null | undefined;
 }>;
 
 
 export type ApiKeysQuery = { apiKeys: Array<{ __typename: 'ApiKey', id: string | null, name: string | null, createdAt: string | null, createdBy: string | null, lastUsedAt: string | null } | null> | null };
 
 export type CreateApiKeyMutationVariables = Exact<{
-  name: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
+  name: string;
+  ownerId?: string | null | undefined;
 }>;
 
 
 export type CreateApiKeyMutation = { createApiKey: { __typename: 'ApiKey', id: string | null, name: string | null, secret: string | null, createdAt: string | null } | null };
 
 export type RevokeApiKeyMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  ownerId?: string | null | undefined;
 }>;
 
 
 export type RevokeApiKeyMutation = { revokeApiKey: boolean | null };
 
 export type AuditLogsQueryVariables = Exact<{
-  ownerId: Scalars['String']['input'];
-  startTime?: InputMaybe<Scalars['String']['input']>;
-  endTime?: InputMaybe<Scalars['String']['input']>;
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  ownerId: string;
+  startTime?: string | null | undefined;
+  endTime?: string | null | undefined;
+  cursor?: string | null | undefined;
+  limit?: number | null | undefined;
 }>;
 
 
 export type AuditLogsQuery = { auditLogs: Array<{ __typename: 'AuditLog', id: string | null, timestamp: string | null, actor: string | null, actorMethod: string | null, action: string | null, status: string | null, resource: string | null, targetName: string | null } | null> | null };
 
+export type ViewerCapabilitiesQueryVariables = Exact<{
+  ownerId?: string | null | undefined;
+}>;
+
+
+export type ViewerCapabilitiesQuery = { viewerCapabilities: { __typename: 'ViewerCapabilities', role: string | null, canView: boolean, canViewLogs: boolean, canOperate: boolean, canCreate: boolean, canViewSensitive: boolean, canManageKeys: boolean, canManage: boolean, canManageBilling: boolean } | null };
+
 export type DatabasesQueryVariables = Exact<{
-  ownerId?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: string | null | undefined;
 }>;
 
 
 export type DatabasesQuery = { databases: Array<{ __typename: 'Database', id: string | null, name: string | null, plan: string | null, version: string | null, status: string | null, diskSizeGB: number | null, diskAutoscalingEnabled: boolean | null, suspended: string | null, createdAt: string | null, updatedAt: string | null, region: string | null, public: boolean | null } | null> | null };
 
 export type DatabaseQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DatabaseQuery = { database: { __typename: 'Database', id: string | null, name: string | null, plan: string | null, version: string | null, status: string | null, databaseName: string | null, databaseUser: string | null, diskSizeGB: number | null, diskAutoscalingEnabled: boolean | null, highAvailabilityEnabled: boolean | null, suspended: string | null, createdAt: string | null, updatedAt: string | null, externalHost: string | null, public: boolean | null, poolerEnabled: boolean | null, backupsEnabled: boolean | null, ipAllowList: Array<string | null> | null, region: string | null, readReplicas: Array<{ __typename: 'ReadReplicaView', name: string | null, connectionInfo: { __typename: 'ReadReplicaConnectionInfo', internalHost: string | null, externalHost: string | null } | null } | null> | null } | null };
 
 export type DatabaseConnectionInfoQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DatabaseConnectionInfoQuery = { databaseConnectionInfo: { __typename: 'PostgresConnectionInfo', password: string | null, internalConnectionString: string | null, externalConnectionString: string | null, internalConnectionPoolString: string | null, externalConnectionPoolString: string | null, psqlCommand: string | null, readReplicaConnectionStrings: Array<{ __typename: 'ReplicaConnectionStrings', name: string | null, internalConnectionString: string | null, externalConnectionString: string | null } | null> | null } | null };
 
 export type DatabaseRecoveryInfoQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DatabaseRecoveryInfoQuery = { databaseRecoveryInfo: { __typename: 'DatabaseRecoveryInfo', enabled: boolean | null, earliestRecoveryTime: string | null, latestRecoveryTime: string | null, backups: Array<{ __typename: 'DatabaseBackup', id: string | null, status: string | null, createdAt: string | null } | null> | null } | null };
 
 export type DatabaseExportsQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DatabaseExportsQuery = { databaseExports: Array<{ __typename: 'DatabaseExport', id: string | null, status: string | null, createdAt: string | null, url: string | null, urlExpiresAt: string | null, expiresAt: string | null, filename: string | null, failureReason: string | null } | null> | null };
 
 export type DatabaseUsersQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DatabaseUsersQuery = { databaseUsers: Array<{ __typename: 'DatabaseUser', name: string | null } | null> | null };
 
 export type DatabaseIpAllowListQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DatabaseIpAllowListQuery = { database: { __typename: 'Database', id: string | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null };
 
 export type FailoverDatabaseMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type FailoverDatabaseMutation = { failoverDatabase: boolean | null };
 
 export type SuspendDatabaseMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  confirm?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  confirm?: string | null | undefined;
 }>;
 
 
 export type SuspendDatabaseMutation = { suspendDatabase: { __typename: 'Database', id: string | null, suspended: string | null, status: string | null } | null };
 
 export type ResumeDatabaseMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type ResumeDatabaseMutation = { resumeDatabase: { __typename: 'Database', id: string | null, suspended: string | null, status: string | null } | null };
 
 export type RestartDatabaseMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type RestartDatabaseMutation = { restartDatabase: { __typename: 'Database', id: string | null, suspended: string | null, status: string | null } | null };
 
 export type RecoverDatabaseMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-  targetTime?: InputMaybe<Scalars['String']['input']>;
-  plan?: InputMaybe<Scalars['String']['input']>;
-  version?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  name: string;
+  targetTime?: string | null | undefined;
+  plan?: string | null | undefined;
+  version?: string | null | undefined;
 }>;
 
 
 export type RecoverDatabaseMutation = { recoverDatabase: { __typename: 'Database', id: string | null, name: string | null, plan: string | null, status: string | null } | null };
 
 export type CreateDatabaseExportMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type CreateDatabaseExportMutation = { createDatabaseExport: { __typename: 'DatabaseExport', id: string | null, status: string | null, createdAt: string | null, url: string | null, urlExpiresAt: string | null, expiresAt: string | null, filename: string | null, failureReason: string | null } | null };
 
 export type SetDatabaseIpAllowListMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  entries?: InputMaybe<Array<IpAllowListEntryInput> | IpAllowListEntryInput>;
+  id: string;
+  entries?: Array<Types.IpAllowListEntryInput> | Types.IpAllowListEntryInput | null | undefined;
 }>;
 
 
 export type SetDatabaseIpAllowListMutation = { setDatabaseIpAllowList: { __typename: 'Database', id: string | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null };
 
 export type CreateDatabaseUserMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
 export type CreateDatabaseUserMutation = { createDatabaseUser: { __typename: 'DatabaseUserWithPassword', name: string | null, password: string | null } | null };
 
 export type DeleteDatabaseUserMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
@@ -3332,255 +272,292 @@ export type DatabaseInstanceTypesQueryVariables = Exact<{ [key: string]: never; 
 export type DatabaseInstanceTypesQuery = { databaseInstanceTypes: Array<{ __typename: 'DatabaseInstanceType', id: string | null, name: string | null, cpu: string | null, memory: string | null, storageGB: number | null } | null> | null };
 
 export type CreateDatabaseMutationVariables = Exact<{
-  name: Scalars['String']['input'];
-  databaseName?: InputMaybe<Scalars['String']['input']>;
-  databaseUser?: InputMaybe<Scalars['String']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  environmentId?: InputMaybe<Scalars['String']['input']>;
-  plan?: InputMaybe<Scalars['String']['input']>;
-  version?: InputMaybe<Scalars['String']['input']>;
-  diskSizeGB?: InputMaybe<Scalars['Int']['input']>;
-  public?: InputMaybe<Scalars['Boolean']['input']>;
+  name: string;
+  databaseName?: string | null | undefined;
+  databaseUser?: string | null | undefined;
+  ownerId?: string | null | undefined;
+  environmentId?: string | null | undefined;
+  plan?: string | null | undefined;
+  version?: string | null | undefined;
+  diskSizeGB?: number | null | undefined;
+  public?: boolean | null | undefined;
 }>;
 
 
 export type CreateDatabaseMutation = { createDatabase: { __typename: 'Database', id: string | null, name: string | null, databaseName: string | null, databaseUser: string | null, plan: string | null, status: string | null, projectId: string | null, environmentId: string | null } | null };
 
 export type UpdateDatabasePlanMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  plan: Scalars['String']['input'];
+  id: string;
+  plan: string;
 }>;
 
 
 export type UpdateDatabasePlanMutation = { updateDatabasePlan: { __typename: 'Database', id: string | null, name: string | null, plan: string | null, status: string | null } | null };
 
 export type UpdateDatabaseVersionMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  version: Scalars['String']['input'];
+  id: string;
+  version: string;
 }>;
 
 
 export type UpdateDatabaseVersionMutation = { updateDatabaseVersion: { __typename: 'Database', id: string | null, version: string | null, status: string | null } | null };
 
 export type UpdateDatabaseDiskAutoscalingMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  enabled: Scalars['Boolean']['input'];
+  id: string;
+  enabled: boolean;
 }>;
 
 
 export type UpdateDatabaseDiskAutoscalingMutation = { updateDatabaseDiskAutoscaling: { __typename: 'Database', id: string | null, diskSizeGB: number | null, diskAutoscalingEnabled: boolean | null } | null };
 
 export type RenameDatabaseMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
 export type RenameDatabaseMutation = { renameDatabase: { __typename: 'Database', id: string | null, name: string | null, databaseName: string | null, databaseUser: string | null, externalHost: string | null } | null };
 
 export type DeleteDatabaseMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  confirm?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  confirm?: string | null | undefined;
 }>;
 
 
 export type DeleteDatabaseMutation = { deleteDatabase: boolean | null };
 
 export type DatabaseProcessesQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DatabaseProcessesQuery = { databaseProcesses: Array<{ __typename: 'DatabaseProcess', pid: number | null, userName: string | null, applicationName: string | null, state: string | null, query: string | null, waitEventType: string | null, waitEvent: string | null, durationSeconds: number | null } | null> | null };
 
 export type DatabaseTopQueriesQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DatabaseTopQueriesQuery = { databaseTopQueries: Array<{ __typename: 'DatabaseTopQuery', query: string | null, calls: number | null, totalTimeMs: number | null, meanTimeMs: number | null, rows: number | null, sharedHitBlks: number | null, sharedReadBlks: number | null } | null> | null };
 
 export type DatabaseSizesQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DatabaseSizesQuery = { databaseSizes: { __typename: 'DatabaseSizes', database: { __typename: 'DatabaseSizeInfo', name: string | null, sizeBytes: number | null, sizePretty: string | null } | null, tables: Array<{ __typename: 'TableSizeInfo', schema: string | null, name: string | null, sizeBytes: number | null, sizePretty: string | null } | null> | null } | null };
 
 export type DatabaseTableScansQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DatabaseTableScansQuery = { databaseTableScans: Array<{ __typename: 'DatabaseTableScan', schema: string | null, name: string | null, seqScans: number | null, seqScanRows: number | null, indexScans: number | null, indexScanRows: number | null, liveRows: number | null, deadRows: number | null } | null> | null };
 
 export type DatabaseParameterOverridesQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DatabaseParameterOverridesQuery = { databaseParameterOverrides: Array<{ __typename: 'DatabaseParameterOverride', name: string | null, setting: string | null, unit: string | null, source: string | null, description: string | null } | null> | null };
 
 export type SetDatabaseParameterOverridesMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  parameters?: InputMaybe<Array<ParameterInput> | ParameterInput>;
+  id: string;
+  parameters?: Array<Types.ParameterInput> | Types.ParameterInput | null | undefined;
 }>;
 
 
 export type SetDatabaseParameterOverridesMutation = { setDatabaseParameterOverrides: { __typename: 'Database', id: string | null, name: string | null } | null };
 
 export type ExecuteDatabaseQueryMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  sql: Scalars['String']['input'];
-  allowWrites?: InputMaybe<Scalars['Boolean']['input']>;
+  id: string;
+  sql: string;
+  allowWrites?: boolean | null | undefined;
 }>;
 
 
 export type ExecuteDatabaseQueryMutation = { executeDatabaseQuery: { __typename: 'DatabaseQueryResult', columns: Array<string | null> | null, rowCount: number | null, truncated: boolean | null, rows: Array<{ __typename: 'DatabaseQueryRow', values: Array<string | null> | null } | null> | null } | null };
 
 export type DeployQueryVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  deployId: Scalars['String']['input'];
+  serviceId: string;
+  deployId: string;
 }>;
 
 
 export type DeployQuery = { deploy: { __typename: 'Deploy', id: string | null, status: string | null, trigger: string | null, image: string | null, rollbackOf: string | null, commitId: string | null, commitMessage: string | null, commitCreatedAt: string | null, createdAt: string | null, updatedAt: string | null, startedAt: string | null, finishedAt: string | null, preDeployStatus: string | null, failureReason: string | null } | null };
 
 export type DeployTimelineEventsQueryVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  startTime?: InputMaybe<Scalars['String']['input']>;
-  endTime?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  serviceId: string;
+  startTime?: string | null | undefined;
+  endTime?: string | null | undefined;
+  limit?: number | null | undefined;
 }>;
 
 
 export type DeployTimelineEventsQuery = { serviceEvents: Array<{ __typename: 'ServiceEvent', id: string | null, type: string | null, timestamp: string | null, details: { __typename: 'ServiceEventDetails', deployId: string | null, deployStatus: string | null } | null } | null> | null };
 
 export type DeploysQueryVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  status?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-  createdBefore?: InputMaybe<Scalars['String']['input']>;
-  createdAfter?: InputMaybe<Scalars['String']['input']>;
-  updatedBefore?: InputMaybe<Scalars['String']['input']>;
-  updatedAfter?: InputMaybe<Scalars['String']['input']>;
-  finishedBefore?: InputMaybe<Scalars['String']['input']>;
-  finishedAfter?: InputMaybe<Scalars['String']['input']>;
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  serviceId: string;
+  status?: Array<string | null | undefined> | string | null | undefined;
+  createdBefore?: string | null | undefined;
+  createdAfter?: string | null | undefined;
+  updatedBefore?: string | null | undefined;
+  updatedAfter?: string | null | undefined;
+  finishedBefore?: string | null | undefined;
+  finishedAfter?: string | null | undefined;
+  cursor?: string | null | undefined;
+  limit?: number | null | undefined;
 }>;
 
 
 export type DeploysQuery = { deploys: Array<{ __typename: 'Deploy', id: string | null, status: string | null, trigger: string | null, image: string | null, rollbackOf: string | null, commitId: string | null, commitMessage: string | null, commitCreatedAt: string | null, createdAt: string | null, updatedAt: string | null, startedAt: string | null, finishedAt: string | null, preDeployStatus: string | null } | null> | null };
 
-export type EnvGroupsQueryVariables = Exact<{
-  ownerId?: InputMaybe<Scalars['String']['input']>;
+export type EnvGroupScopeIndexQueryVariables = Exact<{
+  ownerId: string;
 }>;
 
 
-export type EnvGroupsQuery = { envGroups: Array<{ __typename: 'EnvGroup', id: string | null, name: string | null, ownerId: string | null, createdAt: string | null, updatedAt: string | null, serviceLinks: Array<string | null> | null, envVars: Array<{ __typename: 'EnvGroupVar', key: string | null } | null> | null, secretFiles: Array<{ __typename: 'EnvGroupSecretFile', name: string | null } | null> | null } | null> | null };
+export type EnvGroupScopeIndexQuery = { projects: Array<{ __typename: 'Project', id: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null } | null> | null, workspaceEnvironments: Array<{ __typename: 'Environment', id: string | null, projectId: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null, envGroupIds: Array<string | null> | null, protectedStatus: string | null, networkIsolationEnabled: boolean | null, ipAllowList: Array<string | null> | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null> | null };
+
+export type EnvGroupsQueryVariables = Exact<{
+  ownerId?: string | null | undefined;
+}>;
+
+
+export type EnvGroupsQuery = { envGroups: Array<{ __typename: 'EnvGroup', id: string | null, name: string | null, ownerId: string | null, environmentId: string | null, createdAt: string | null, updatedAt: string | null, revision: string | null, serviceLinks: Array<string | null> | null, envVars: Array<{ __typename: 'EnvGroupVar', key: string | null } | null> | null, secretFiles: Array<{ __typename: 'EnvGroupSecretFile', name: string | null } | null> | null } | null> | null };
 
 export type EnvGroupQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
-export type EnvGroupQuery = { envGroup: { __typename: 'EnvGroup', id: string | null, name: string | null, ownerId: string | null, createdAt: string | null, updatedAt: string | null, serviceLinks: Array<string | null> | null, envVars: Array<{ __typename: 'EnvGroupVar', key: string | null } | null> | null, secretFiles: Array<{ __typename: 'EnvGroupSecretFile', name: string | null } | null> | null } | null };
+export type EnvGroupQuery = { envGroup: { __typename: 'EnvGroup', id: string | null, name: string | null, ownerId: string | null, environmentId: string | null, createdAt: string | null, updatedAt: string | null, revision: string | null, serviceLinks: Array<string | null> | null, envVars: Array<{ __typename: 'EnvGroupVar', key: string | null } | null> | null, secretFiles: Array<{ __typename: 'EnvGroupSecretFile', name: string | null } | null> | null } | null };
 
 export type EnvGroupVarValueQueryVariables = Exact<{
-  id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
+  id: string;
+  key: string;
 }>;
 
 
 export type EnvGroupVarValueQuery = { envGroupVar: { __typename: 'EnvGroupVar', key: string | null, value: string | null } | null };
 
 export type EnvGroupSecretFileContentQueryVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
 export type EnvGroupSecretFileContentQuery = { envGroupSecretFile: { __typename: 'EnvGroupSecretFile', name: string | null, content: string | null } | null };
 
 export type CreateEnvGroupMutationVariables = Exact<{
-  name: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  envVars?: InputMaybe<Array<EnvGroupVarInput> | EnvGroupVarInput>;
-  secretFiles?: InputMaybe<Array<EnvGroupSecretFileInput> | EnvGroupSecretFileInput>;
-  serviceIds?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
+  name: string;
+  ownerId?: string | null | undefined;
+  envVars?: Array<Types.EnvGroupVarInput> | Types.EnvGroupVarInput | null | undefined;
+  secretFiles?: Array<Types.EnvGroupSecretFileInput> | Types.EnvGroupSecretFileInput | null | undefined;
+  serviceIds?: Array<string> | string | null | undefined;
 }>;
 
 
 export type CreateEnvGroupMutation = { createEnvGroup: { __typename: 'EnvGroup', id: string | null, name: string | null } | null };
 
 export type RenameEnvGroupMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
 export type RenameEnvGroupMutation = { renameEnvGroup: { __typename: 'EnvGroup', id: string | null, name: string | null } | null };
 
+export type MoveEnvGroupMutationVariables = Exact<{
+  id: string;
+  environmentId: string;
+}>;
+
+
+export type MoveEnvGroupMutation = { moveEnvGroup: { __typename: 'EnvGroup', id: string | null, environmentId: string | null, updatedAt: string | null } | null };
+
+export type CloneEnvGroupMutationVariables = Exact<{
+  id: string;
+  name: string;
+  ownerId?: string | null | undefined;
+  environmentId?: string | null | undefined;
+}>;
+
+
+export type CloneEnvGroupMutation = { cloneEnvGroup: { __typename: 'EnvGroup', id: string | null, name: string | null, ownerId: string | null, environmentId: string | null } | null };
+
 export type DeleteEnvGroupMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DeleteEnvGroupMutation = { deleteEnvGroup: boolean | null };
 
+export type PatchEnvGroupEnvironmentMutationVariables = Exact<{
+  id: string;
+  envVars?: Array<Types.EnvGroupVarPatchInput> | Types.EnvGroupVarPatchInput | null | undefined;
+  secretFiles?: Array<Types.EnvGroupSecretFilePatchInput> | Types.EnvGroupSecretFilePatchInput | null | undefined;
+  saveMode: string;
+  expectedRevision?: string | null | undefined;
+}>;
+
+
+export type PatchEnvGroupEnvironmentMutation = { patchEnvGroupEnvironment: { __typename: 'EnvGroupEnvironmentPatchResult', envVarKeys: Array<string | null> | null, secretFileNames: Array<string | null> | null, revision: string | null, affectedServiceIds: Array<string | null> | null, failedServiceIds: Array<string | null> | null, rolledOut: boolean | null } | null };
+
 export type SetEnvGroupVarsMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  envVars: Array<EnvGroupVarInput> | EnvGroupVarInput;
+  id: string;
+  envVars: Array<Types.EnvGroupVarInput> | Types.EnvGroupVarInput;
 }>;
 
 
 export type SetEnvGroupVarsMutation = { setEnvGroupVars: boolean | null };
 
 export type SetEnvGroupVarMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
-  value?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  key: string;
+  value?: string | null | undefined;
+  generateValue?: boolean | null | undefined;
 }>;
 
 
 export type SetEnvGroupVarMutation = { setEnvGroupVar: boolean | null };
 
 export type DeleteEnvGroupVarMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
+  id: string;
+  key: string;
 }>;
 
 
 export type DeleteEnvGroupVarMutation = { deleteEnvGroupVar: boolean | null };
 
 export type SetEnvGroupSecretFileMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-  content?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  name: string;
+  content?: string | null | undefined;
 }>;
 
 
 export type SetEnvGroupSecretFileMutation = { setEnvGroupSecretFile: boolean | null };
 
 export type DeleteEnvGroupSecretFileMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
 export type DeleteEnvGroupSecretFileMutation = { deleteEnvGroupSecretFile: boolean | null };
 
 export type LinkEnvGroupMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
+  id: string;
+  serviceId: string;
 }>;
 
 
 export type LinkEnvGroupMutation = { linkEnvGroup: boolean | null };
 
 export type UnlinkEnvGroupMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  serviceId: Scalars['String']['input'];
+  id: string;
+  serviceId: string;
 }>;
 
 
@@ -3589,72 +566,72 @@ export type UnlinkEnvGroupMutation = { unlinkEnvGroup: boolean | null };
 export type EnvironmentFieldsFragment = { __typename: 'Environment', id: string | null, projectId: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null, envGroupIds: Array<string | null> | null, protectedStatus: string | null, networkIsolationEnabled: boolean | null, ipAllowList: Array<string | null> | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null };
 
 export type EnvironmentsQueryVariables = Exact<{
-  projectId: Scalars['String']['input'];
+  projectId: string;
 }>;
 
 
 export type EnvironmentsQuery = { environments: Array<{ __typename: 'Environment', id: string | null, projectId: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null, envGroupIds: Array<string | null> | null, protectedStatus: string | null, networkIsolationEnabled: boolean | null, ipAllowList: Array<string | null> | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null> | null };
 
 export type CreateEnvironmentMutationVariables = Exact<{
-  name: Scalars['String']['input'];
-  projectId: Scalars['String']['input'];
+  name: string;
+  projectId: string;
 }>;
 
 
 export type CreateEnvironmentMutation = { createEnvironment: { __typename: 'Environment', id: string | null, projectId: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null, envGroupIds: Array<string | null> | null, protectedStatus: string | null, networkIsolationEnabled: boolean | null, ipAllowList: Array<string | null> | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null };
 
 export type RenameEnvironmentMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
 export type RenameEnvironmentMutation = { renameEnvironment: { __typename: 'Environment', id: string | null, projectId: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null, envGroupIds: Array<string | null> | null, protectedStatus: string | null, networkIsolationEnabled: boolean | null, ipAllowList: Array<string | null> | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null };
 
 export type DeleteEnvironmentMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DeleteEnvironmentMutation = { deleteEnvironment: string | null };
 
 export type SetEnvironmentServicesMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  serviceIds: Array<Scalars['String']['input']> | Scalars['String']['input'];
+  id: string;
+  serviceIds: Array<string> | string;
 }>;
 
 
 export type SetEnvironmentServicesMutation = { setEnvironmentServices: { __typename: 'Environment', id: string | null, projectId: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null, envGroupIds: Array<string | null> | null, protectedStatus: string | null, networkIsolationEnabled: boolean | null, ipAllowList: Array<string | null> | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null };
 
 export type SetEnvironmentDatabasesMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  databaseIds: Array<Scalars['String']['input']> | Scalars['String']['input'];
+  id: string;
+  databaseIds: Array<string> | string;
 }>;
 
 
 export type SetEnvironmentDatabasesMutation = { setEnvironmentDatabases: { __typename: 'Environment', id: string | null, projectId: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null, envGroupIds: Array<string | null> | null, protectedStatus: string | null, networkIsolationEnabled: boolean | null, ipAllowList: Array<string | null> | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null };
 
 export type SetEnvironmentKeyValuesMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  keyValueIds: Array<Scalars['String']['input']> | Scalars['String']['input'];
+  id: string;
+  keyValueIds: Array<string> | string;
 }>;
 
 
 export type SetEnvironmentKeyValuesMutation = { setEnvironmentKeyValues: { __typename: 'Environment', id: string | null, projectId: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null, envGroupIds: Array<string | null> | null, protectedStatus: string | null, networkIsolationEnabled: boolean | null, ipAllowList: Array<string | null> | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null };
 
 export type SetEnvironmentEnvGroupsMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  envGroupIds: Array<Scalars['String']['input']> | Scalars['String']['input'];
+  id: string;
+  envGroupIds: Array<string> | string;
 }>;
 
 
 export type SetEnvironmentEnvGroupsMutation = { setEnvironmentEnvGroups: { __typename: 'Environment', id: string | null, projectId: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null, envGroupIds: Array<string | null> | null, protectedStatus: string | null, networkIsolationEnabled: boolean | null, ipAllowList: Array<string | null> | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null };
 
 export type SetEnvironmentAclMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  protectedStatus: Scalars['String']['input'];
-  networkIsolationEnabled: Scalars['Boolean']['input'];
-  ipAllowListEntries?: InputMaybe<Array<IpAllowListEntryInput> | IpAllowListEntryInput>;
+  id: string;
+  protectedStatus: string;
+  networkIsolationEnabled: boolean;
+  ipAllowListEntries?: Array<Types.IpAllowListEntryInput> | Types.IpAllowListEntryInput | null | undefined;
 }>;
 
 
@@ -3666,7 +643,7 @@ export type ReposQueryVariables = Exact<{ [key: string]: never; }>;
 export type ReposQuery = { repos: Array<{ __typename: 'Repo', id: number | null, fullName: string | null, private: boolean | null, defaultBranch: string | null, htmlUrl: string | null, cloneUrl: string | null } | null> | null };
 
 export type RepoBranchesQueryVariables = Exact<{
-  repo: Scalars['String']['input'];
+  repo: string;
 }>;
 
 
@@ -3688,21 +665,21 @@ export type DisconnectGitMutationVariables = Exact<{ [key: string]: never; }>;
 export type DisconnectGitMutation = { disconnectGit: boolean | null };
 
 export type KeyValuesQueryVariables = Exact<{
-  ownerId?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: string | null | undefined;
 }>;
 
 
 export type KeyValuesQuery = { keyValues: Array<{ __typename: 'KeyValue', id: string | null, name: string | null, plan: string | null, version: string | null, status: string | null, suspended: string | null, createdAt: string | null, updatedAt: string | null, region: string | null, externalHost: string | null, public: boolean | null } | null> | null };
 
 export type KeyValueQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type KeyValueQuery = { keyValue: { __typename: 'KeyValue', id: string | null, name: string | null, plan: string | null, version: string | null, status: string | null, suspended: string | null, createdAt: string | null, updatedAt: string | null, externalHost: string | null, public: boolean | null, region: string | null } | null };
 
 export type KeyValueConnectionInfoQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
@@ -3714,144 +691,144 @@ export type KeyValueInstanceTypesQueryVariables = Exact<{ [key: string]: never; 
 export type KeyValueInstanceTypesQuery = { keyValueInstanceTypes: Array<{ __typename: 'KeyValueInstanceType', id: string | null, name: string | null, cpu: string | null, memory: string | null, storageGB: number | null } | null> | null };
 
 export type KeyValueIpAllowListQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type KeyValueIpAllowListQuery = { keyValue: { __typename: 'KeyValue', id: string | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null };
 
 export type KeyValueMaxmemoryPolicyQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type KeyValueMaxmemoryPolicyQuery = { keyValue: { __typename: 'KeyValue', id: string | null, maxmemoryPolicy: string | null } | null };
 
 export type CreateKeyValueMutationVariables = Exact<{
-  name: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  environmentId?: InputMaybe<Scalars['String']['input']>;
-  plan?: InputMaybe<Scalars['String']['input']>;
-  version?: InputMaybe<Scalars['String']['input']>;
-  storageGB?: InputMaybe<Scalars['Int']['input']>;
-  public?: InputMaybe<Scalars['Boolean']['input']>;
-  maxmemoryPolicy?: InputMaybe<Scalars['String']['input']>;
-  persistenceMode?: InputMaybe<Scalars['String']['input']>;
+  name: string;
+  ownerId?: string | null | undefined;
+  environmentId?: string | null | undefined;
+  plan?: string | null | undefined;
+  version?: string | null | undefined;
+  storageGB?: number | null | undefined;
+  public?: boolean | null | undefined;
+  maxmemoryPolicy?: string | null | undefined;
+  persistenceMode?: string | null | undefined;
 }>;
 
 
 export type CreateKeyValueMutation = { createKeyValue: { __typename: 'KeyValue', id: string | null, name: string | null, plan: string | null, status: string | null, projectId: string | null, environmentId: string | null } | null };
 
 export type SetKeyValueIpAllowListMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  entries?: InputMaybe<Array<IpAllowListEntryInput> | IpAllowListEntryInput>;
+  id: string;
+  entries?: Array<Types.IpAllowListEntryInput> | Types.IpAllowListEntryInput | null | undefined;
 }>;
 
 
 export type SetKeyValueIpAllowListMutation = { setKeyValueIpAllowList: { __typename: 'KeyValue', id: string | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null };
 
 export type UpdateKeyValuePlanMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  plan: Scalars['String']['input'];
+  id: string;
+  plan: string;
 }>;
 
 
 export type UpdateKeyValuePlanMutation = { updateKeyValuePlan: { __typename: 'KeyValue', id: string | null, name: string | null, plan: string | null, status: string | null } | null };
 
 export type SetKeyValueMaxmemoryPolicyMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  maxmemoryPolicy: Scalars['String']['input'];
+  id: string;
+  maxmemoryPolicy: string;
 }>;
 
 
 export type SetKeyValueMaxmemoryPolicyMutation = { setKeyValueMaxmemoryPolicy: { __typename: 'KeyValue', id: string | null, maxmemoryPolicy: string | null } | null };
 
 export type RenameKeyValueMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
 export type RenameKeyValueMutation = { renameKeyValue: { __typename: 'KeyValue', id: string | null, name: string | null } | null };
 
 export type DeleteKeyValueMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  confirm?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  confirm?: string | null | undefined;
 }>;
 
 
 export type DeleteKeyValueMutation = { deleteKeyValue: boolean | null };
 
 export type SuspendKeyValueMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  confirm?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  confirm?: string | null | undefined;
 }>;
 
 
 export type SuspendKeyValueMutation = { suspendKeyValue: { __typename: 'KeyValue', id: string | null, suspended: string | null } | null };
 
 export type ResumeKeyValueMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type ResumeKeyValueMutation = { resumeKeyValue: { __typename: 'KeyValue', id: string | null, suspended: string | null } | null };
 
 export type LogsQueryVariables = Exact<{
-  resource: Scalars['String']['input'];
-  type?: InputMaybe<Scalars['String']['input']>;
-  text?: InputMaybe<Scalars['String']['input']>;
-  level?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-  instance?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-  statusCode?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-  method?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-  path?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-  startTime?: InputMaybe<Scalars['String']['input']>;
-  endTime?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  resource: string;
+  type?: string | null | undefined;
+  text?: string | null | undefined;
+  level?: Array<string> | string | null | undefined;
+  instance?: Array<string> | string | null | undefined;
+  statusCode?: Array<string> | string | null | undefined;
+  method?: Array<string> | string | null | undefined;
+  path?: Array<string> | string | null | undefined;
+  startTime?: string | null | undefined;
+  endTime?: string | null | undefined;
+  limit?: number | null | undefined;
 }>;
 
 
 export type LogsQuery = { logs: Array<{ __typename: 'LogEntry', timestamp: string | null, message: string | null, type: string | null, instance: string | null, level: string | null, method: string | null, statusCode: string | null } | null> | null };
 
 export type LogLabelValuesQueryVariables = Exact<{
-  label: Scalars['String']['input'];
-  resource: Scalars['String']['input'];
+  label: string;
+  resource: string;
 }>;
 
 
 export type LogLabelValuesQuery = { logLabelValues: Array<string> | null };
 
 export type MetricsQueryVariables = Exact<{
-  query: MetricsQueryInput;
+  query: Types.MetricsQueryInput;
 }>;
 
 
 export type MetricsQuery = { metrics: Array<{ __typename: 'MetricSeries', unit: string | null, labels: Array<{ __typename: 'MetricLabel', field: string | null, value: string | null } | null> | null, values: Array<{ __typename: 'MetricValue', time: string | null, value: number | null } | null> | null, parameters: Array<{ __typename: 'MetricSeriesParameter', quantile: number | null } | null> | null } | null> | null };
 
 export type MonthToDateBandwidthQueryVariables = Exact<{
-  resourceId: Scalars['String']['input'];
+  resourceId: string;
 }>;
 
 
 export type MonthToDateBandwidthQuery = { monthToDateBandwidth: { __typename: 'MonthToDateBandwidth', egressBandwidthMB: number | null, httpEgressBandwidthMB: number | null, natEgressBandwidthMB: number | null, privateLinkEgressBandwidthMB: number | null, websocketEgressBandwidthMB: number | null, degradedSources: Array<string | null> | null } | null };
 
 export type MetricsFiltersQueryVariables = Exact<{
-  query: MetricsFiltersQueryInput;
+  query: Types.MetricsFiltersQueryInput;
 }>;
 
 
 export type MetricsFiltersQuery = { metricsFilters: { __typename: 'MetricsFiltersResult', values: Array<{ __typename: 'MetricsFilterValues', field: string | null, values: Array<string | null> | null } | null> | null } | null };
 
 export type MetricsPathFilterSuggestionsQueryVariables = Exact<{
-  query: MetricsPathFilterSuggestionsInput;
+  query: Types.MetricsPathFilterSuggestionsInput;
 }>;
 
 
 export type MetricsPathFilterSuggestionsQuery = { metricsPathFilterSuggestions: { __typename: 'MetricsPathFilterSuggestions', paths: Array<string | null> | null } | null };
 
 export type DatastoreMetricsQueryVariables = Exact<{
-  query: DatastoreMetricsQueryInput;
+  query: Types.DatastoreMetricsQueryInput;
 }>;
 
 
@@ -3863,9 +840,9 @@ export type NotificationSettingsQueryVariables = Exact<{ [key: string]: never; }
 export type NotificationSettingsQuery = { notificationSettings: { __typename: 'NotificationSettings', deployStarted: boolean | null, deploySucceeded: boolean | null, deployFailed: boolean | null } | null };
 
 export type UpdateNotificationSettingsMutationVariables = Exact<{
-  deployStarted: Scalars['Boolean']['input'];
-  deploySucceeded: Scalars['Boolean']['input'];
-  deployFailed: Scalars['Boolean']['input'];
+  deployStarted: boolean;
+  deploySucceeded: boolean;
+  deployFailed: boolean;
 }>;
 
 
@@ -3874,66 +851,66 @@ export type UpdateNotificationSettingsMutation = { updateNotificationSettings: {
 export type PushNotificationSettingsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type PushNotificationSettingsQuery = { pushNotificationsAvailable: boolean, pushNotificationSettings: { __typename: 'PushNotificationSettings', enabled: boolean, events: Array<PushNotificationEvent>, minimumUrgency: PushNotificationUrgency, timeZone: string, maxDeferralSeconds: number, workingHours: Array<{ __typename: 'PushNotificationClockRange', weekdays: Array<PushNotificationWeekday>, start: string, end: string }>, quietHours: Array<{ __typename: 'PushNotificationClockRange', weekdays: Array<PushNotificationWeekday>, start: string, end: string }>, serviceOverrides: Array<{ __typename: 'PushNotificationServiceOverride', serviceId: string, enabled: boolean | null, events: Array<PushNotificationEvent> | null, minimumUrgency: PushNotificationUrgency | null }> } | null };
+export type PushNotificationSettingsQuery = { pushNotificationsAvailable: boolean, pushNotificationSettings: { __typename: 'PushNotificationSettings', enabled: boolean, events: Array<Types.PushNotificationEvent>, minimumUrgency: Types.PushNotificationUrgency, timeZone: string, maxDeferralSeconds: number, workingHours: Array<{ __typename: 'PushNotificationClockRange', weekdays: Array<Types.PushNotificationWeekday>, start: string, end: string }>, quietHours: Array<{ __typename: 'PushNotificationClockRange', weekdays: Array<Types.PushNotificationWeekday>, start: string, end: string }>, serviceOverrides: Array<{ __typename: 'PushNotificationServiceOverride', serviceId: string, enabled: boolean | null, events: Array<Types.PushNotificationEvent> | null, minimumUrgency: Types.PushNotificationUrgency | null }> } | null };
 
 export type UpdatePushNotificationSettingsMutationVariables = Exact<{
-  settings: PushNotificationSettingsInput;
+  settings: Types.PushNotificationSettingsInput;
 }>;
 
 
-export type UpdatePushNotificationSettingsMutation = { updatePushNotificationSettings: { __typename: 'PushNotificationSettings', enabled: boolean, events: Array<PushNotificationEvent>, minimumUrgency: PushNotificationUrgency, timeZone: string, maxDeferralSeconds: number, workingHours: Array<{ __typename: 'PushNotificationClockRange', weekdays: Array<PushNotificationWeekday>, start: string, end: string }>, quietHours: Array<{ __typename: 'PushNotificationClockRange', weekdays: Array<PushNotificationWeekday>, start: string, end: string }>, serviceOverrides: Array<{ __typename: 'PushNotificationServiceOverride', serviceId: string, enabled: boolean | null, events: Array<PushNotificationEvent> | null, minimumUrgency: PushNotificationUrgency | null }> } | null };
+export type UpdatePushNotificationSettingsMutation = { updatePushNotificationSettings: { __typename: 'PushNotificationSettings', enabled: boolean, events: Array<Types.PushNotificationEvent>, minimumUrgency: Types.PushNotificationUrgency, timeZone: string, maxDeferralSeconds: number, workingHours: Array<{ __typename: 'PushNotificationClockRange', weekdays: Array<Types.PushNotificationWeekday>, start: string, end: string }>, quietHours: Array<{ __typename: 'PushNotificationClockRange', weekdays: Array<Types.PushNotificationWeekday>, start: string, end: string }>, serviceOverrides: Array<{ __typename: 'PushNotificationServiceOverride', serviceId: string, enabled: boolean | null, events: Array<Types.PushNotificationEvent> | null, minimumUrgency: Types.PushNotificationUrgency | null }> } | null };
 
 export type ProjectFieldsFragment = { __typename: 'Project', id: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null };
 
 export type ProjectsQueryVariables = Exact<{
-  ownerId: Scalars['String']['input'];
+  ownerId: string;
 }>;
 
 
 export type ProjectsQuery = { projects: Array<{ __typename: 'Project', id: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null } | null> | null };
 
 export type CreateProjectMutationVariables = Exact<{
-  name: Scalars['String']['input'];
-  ownerId: Scalars['String']['input'];
+  name: string;
+  ownerId: string;
 }>;
 
 
 export type CreateProjectMutation = { createProject: { __typename: 'Project', id: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null } | null };
 
 export type RenameProjectMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
 export type RenameProjectMutation = { renameProject: { __typename: 'Project', id: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null } | null };
 
 export type DeleteProjectMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DeleteProjectMutation = { deleteProject: string | null };
 
 export type SetProjectServicesMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  serviceIds: Array<Scalars['String']['input']> | Scalars['String']['input'];
+  id: string;
+  serviceIds: Array<string> | string;
 }>;
 
 
 export type SetProjectServicesMutation = { setProjectServices: { __typename: 'Project', id: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null } | null };
 
 export type SetProjectDatabasesMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  databaseIds: Array<Scalars['String']['input']> | Scalars['String']['input'];
+  id: string;
+  databaseIds: Array<string> | string;
 }>;
 
 
 export type SetProjectDatabasesMutation = { setProjectDatabases: { __typename: 'Project', id: string | null, name: string | null, ownerId: string | null, createdAt: string | null, serviceIds: Array<string | null> | null, databaseIds: Array<string | null> | null, keyValueIds: Array<string | null> | null } | null };
 
 export type SetProjectKeyValuesMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  keyValueIds: Array<Scalars['String']['input']> | Scalars['String']['input'];
+  id: string;
+  keyValueIds: Array<string> | string;
 }>;
 
 
@@ -3945,307 +922,307 @@ export type RegistryCredentialsQueryVariables = Exact<{ [key: string]: never; }>
 export type RegistryCredentialsQuery = { registryCredentials: Array<{ __typename: 'RegistryCredential', id: string | null, name: string | null, host: string | null, username: string | null, expiresAt: string | null, status: string | null, createdAt: string | null } | null> | null };
 
 export type CreateRegistryCredentialMutationVariables = Exact<{
-  host: Scalars['String']['input'];
-  username: Scalars['String']['input'];
-  authToken: Scalars['String']['input'];
-  name?: InputMaybe<Scalars['String']['input']>;
-  expiresAt?: InputMaybe<Scalars['String']['input']>;
+  host: string;
+  username: string;
+  authToken: string;
+  name?: string | null | undefined;
+  expiresAt?: string | null | undefined;
 }>;
 
 
 export type CreateRegistryCredentialMutation = { createRegistryCredential: { __typename: 'RegistryCredential', id: string | null, name: string | null, host: string | null, username: string | null, expiresAt: string | null, status: string | null, createdAt: string | null } | null };
 
 export type DeleteRegistryCredentialMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DeleteRegistryCredentialMutation = { deleteRegistryCredential: boolean | null };
 
 export type RegistryCredentialQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type RegistryCredentialQuery = { registryCredential: { __typename: 'RegistryCredential', id: string | null, name: string | null, host: string | null, username: string | null, expiresAt: string | null, status: string | null, createdAt: string | null } | null };
 
 export type UpdateRegistryCredentialMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name?: InputMaybe<Scalars['String']['input']>;
-  username?: InputMaybe<Scalars['String']['input']>;
-  authToken?: InputMaybe<Scalars['String']['input']>;
-  expiresAt?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  name?: string | null | undefined;
+  username?: string | null | undefined;
+  authToken?: string | null | undefined;
+  expiresAt?: string | null | undefined;
 }>;
 
 
 export type UpdateRegistryCredentialMutation = { updateRegistryCredential: { __typename: 'RegistryCredential', id: string | null, name: string | null, host: string | null, username: string | null, expiresAt: string | null, status: string | null, createdAt: string | null } | null };
 
 export type SetAutoDeployMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  enabled: Scalars['Boolean']['input'];
+  id: string;
+  enabled: boolean;
 }>;
 
 
 export type SetAutoDeployMutation = { setAutoDeploy: { __typename: 'Service', id: string | null, autoDeploy: boolean | null } | null };
 
 export type AutoscalingConfigQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type AutoscalingConfigQuery = { autoscalingConfig: { __typename: 'Autoscaling', enabled: boolean | null, minInstances: number | null, maxInstances: number | null, targetCPUPercent: number | null, targetMemoryPercent: number | null } | null };
 
 export type SetAutoscalingMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  minInstances: Scalars['Int']['input'];
-  maxInstances: Scalars['Int']['input'];
-  targetCPUPercent?: InputMaybe<Scalars['Int']['input']>;
-  targetMemoryPercent?: InputMaybe<Scalars['Int']['input']>;
+  id: string;
+  minInstances: number;
+  maxInstances: number;
+  targetCPUPercent?: number | null | undefined;
+  targetMemoryPercent?: number | null | undefined;
 }>;
 
 
 export type SetAutoscalingMutation = { setAutoscaling: { __typename: 'Autoscaling', enabled: boolean | null, minInstances: number | null, maxInstances: number | null, targetCPUPercent: number | null, targetMemoryPercent: number | null } | null };
 
 export type DisableAutoscalingMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DisableAutoscalingMutation = { disableAutoscaling: boolean | null };
 
 export type SetBranchMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  branch: Scalars['String']['input'];
+  id: string;
+  branch: string;
 }>;
 
 
 export type SetBranchMutation = { setBranch: { __typename: 'Service', id: string | null, repo: string | null, branch: string | null, phase: string | null } | null };
 
 export type SetRepoMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  repo: Scalars['String']['input'];
+  id: string;
+  repo: string;
 }>;
 
 
 export type SetRepoMutation = { setRepo: { __typename: 'Service', id: string | null, repo: string | null, branch: string | null, phase: string | null } | null };
 
 export type SetBuildFilterMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  buildFilter: BuildFilterInput;
+  id: string;
+  buildFilter: Types.BuildFilterInput;
 }>;
 
 
 export type SetBuildFilterMutation = { setBuildFilter: { __typename: 'Service', id: string | null, phase: string | null, buildFilter: { __typename: 'BuildFilter', paths: Array<string | null> | null, ignoredPaths: Array<string | null> | null } | null } | null };
 
 export type SetBuildCommandMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  command: Scalars['String']['input'];
+  id: string;
+  command: string;
 }>;
 
 
 export type SetBuildCommandMutation = { setBuildCommand: { __typename: 'Service', id: string | null, buildCommand: string | null, phase: string | null } | null };
 
 export type SetStartCommandMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  command: Scalars['String']['input'];
+  id: string;
+  command: string;
 }>;
 
 
 export type SetStartCommandMutation = { setStartCommand: { __typename: 'Service', id: string | null, startCommand: string | null, phase: string | null } | null };
 
 export type SetDockerfilePathMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  dockerfilePath: Scalars['String']['input'];
+  id: string;
+  dockerfilePath: string;
 }>;
 
 
 export type SetDockerfilePathMutation = { setDockerfilePath: { __typename: 'Service', id: string | null, dockerfilePath: string | null, phase: string | null } | null };
 
 export type CronJobRunsQueryVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  serviceId: string;
+  cursor?: string | null | undefined;
+  limit?: number | null | undefined;
 }>;
 
 
 export type CronJobRunsQuery = { cronJobRuns: Array<{ __typename: 'CronRun', id: string | null, status: string | null, startedAt: string | null, finishedAt: string | null } | null> | null };
 
 export type CancelCronJobRunMutationVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  runId: Scalars['String']['input'];
+  serviceId: string;
+  runId: string;
 }>;
 
 
 export type CancelCronJobRunMutation = { cancelCronJobRun: { __typename: 'CronRun', id: string | null, status: string | null, startedAt: string | null, finishedAt: string | null } | null };
 
 export type RunCronJobMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type RunCronJobMutation = { runCronJob: { __typename: 'CronRun', id: string | null, status: string | null, startedAt: string | null, finishedAt: string | null } | null };
 
 export type CronJobRunQueryVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  runId: Scalars['String']['input'];
+  serviceId: string;
+  runId: string;
 }>;
 
 
 export type CronJobRunQuery = { cronJobRun: { __typename: 'CronRun', id: string | null, status: string | null, startedAt: string | null, finishedAt: string | null } | null };
 
 export type CustomDomainsQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type CustomDomainsQuery = { customDomains: Array<{ __typename: 'CustomDomain', id: string | null, name: string | null, domainType: string | null, verificationStatus: string | null, serverStatus: string | null, redirectForName: string | null, dnsRecord: { __typename: 'DNSRecord', type: string | null, name: string | null, value: string | null } | null } | null> | null };
 
 export type AddCustomDomainMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
 export type AddCustomDomainMutation = { addCustomDomain: { __typename: 'CustomDomain', id: string | null, name: string | null, domainType: string | null, verificationStatus: string | null, serverStatus: string | null, redirectForName: string | null, dnsRecord: { __typename: 'DNSRecord', type: string | null, name: string | null, value: string | null } | null } | null };
 
 export type DeleteCustomDomainMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
 export type DeleteCustomDomainMutation = { deleteCustomDomain: boolean | null };
 
 export type VerifyCustomDomainMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
 export type VerifyCustomDomainMutation = { verifyCustomDomain: { __typename: 'CustomDomain', id: string | null, name: string | null, domainType: string | null, verificationStatus: string | null, serverStatus: string | null, redirectForName: string | null, dnsRecord: { __typename: 'DNSRecord', type: string | null, name: string | null, value: string | null } | null } | null };
 
 export type DeployHookQueryVariables = Exact<{
-  serviceId: Scalars['String']['input'];
+  serviceId: string;
 }>;
 
 
 export type DeployHookQuery = { deployHook: { __typename: 'DeployHook', url: string | null } | null };
 
 export type RegenerateDeployHookMutationVariables = Exact<{
-  serviceId: Scalars['String']['input'];
+  serviceId: string;
 }>;
 
 
 export type RegenerateDeployHookMutation = { regenerateDeployHook: { __typename: 'DeployHook', url: string | null } | null };
 
 export type SetDisplayNameMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  displayName: Scalars['String']['input'];
+  id: string;
+  displayName: string;
 }>;
 
 
 export type SetDisplayNameMutation = { setDisplayName: { __typename: 'Service', id: string | null, name: string | null, displayName: string | null } | null };
 
 export type EnvVarKeysQueryVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  serviceId: string;
+  cursor?: string | null | undefined;
+  limit?: number | null | undefined;
 }>;
 
 
 export type EnvVarKeysQuery = { envVars: Array<{ __typename: 'EnvVarWithCursor', cursor: string | null, envVar: { __typename: 'EnvVarListValue', id: string | null, key: string | null } | null } | null> | null };
 
 export type EnvVarValueQueryVariables = Exact<{
-  id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
+  id: string;
+  key: string;
 }>;
 
 
 export type EnvVarValueQuery = { service: { __typename: 'Service', id: string | null, envVar: { __typename: 'EnvVar', id: string | null, key: string | null, value: string | null } | null } | null };
 
 export type SetEnvVarsMutationVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  envVars: Array<EnvVarInput> | EnvVarInput;
+  serviceId: string;
+  envVars: Array<Types.EnvVarInput> | Types.EnvVarInput;
 }>;
 
 
 export type SetEnvVarsMutation = { setEnvVars: boolean | null };
 
 export type SetEnvVarMutationVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  key: Scalars['String']['input'];
-  value?: InputMaybe<Scalars['String']['input']>;
-  generateValue?: InputMaybe<Scalars['Boolean']['input']>;
+  serviceId: string;
+  key: string;
+  value?: string | null | undefined;
+  generateValue?: boolean | null | undefined;
 }>;
 
 
 export type SetEnvVarMutation = { setEnvVar: boolean | null };
 
 export type DeleteEnvVarMutationVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  key: Scalars['String']['input'];
+  serviceId: string;
+  key: string;
 }>;
 
 
 export type DeleteEnvVarMutation = { deleteEnvVar: boolean | null };
 
 export type PatchServiceEnvironmentMutationVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  envVars?: InputMaybe<Array<EnvironmentEnvVarPatchInput> | EnvironmentEnvVarPatchInput>;
-  secretFiles?: InputMaybe<Array<EnvironmentSecretFilePatchInput> | EnvironmentSecretFilePatchInput>;
-  saveMode: Scalars['String']['input'];
+  serviceId: string;
+  envVars?: Array<Types.EnvironmentEnvVarPatchInput> | Types.EnvironmentEnvVarPatchInput | null | undefined;
+  secretFiles?: Array<Types.EnvironmentSecretFilePatchInput> | Types.EnvironmentSecretFilePatchInput | null | undefined;
+  saveMode: string;
 }>;
 
 
 export type PatchServiceEnvironmentMutation = { patchServiceEnvironment: { __typename: 'EnvironmentPatchResult', envVarKeys: Array<string>, secretFileNames: Array<string>, rolledOut: boolean } };
 
 export type ServiceEventsQueryVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  startTime: Scalars['String']['input'];
-  endTime: Scalars['String']['input'];
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  serviceId: string;
+  startTime: string;
+  endTime: string;
+  cursor?: string | null | undefined;
+  limit?: number | null | undefined;
 }>;
 
 
 export type ServiceEventsQuery = { serviceEvents: Array<{ __typename: 'ServiceEvent', id: string | null, type: string | null, timestamp: string | null, cursor: string | null, details: { __typename: 'ServiceEventDetails', deployId: string | null, deployStatus: string | null, preDeployStatus: string | null, status: string | null, actor: string | null, triggeredByUser: string | null, image: string | null, commitId: string | null, commitMessage: string | null, startedAt: string | null, finishedAt: string | null, reasonCode: string | null, instanceId: string | null, fromCount: number | null, toCount: number | null, branchFrom: string | null, branchTo: string | null, commitUrl: string | null, trigger: { __typename: 'DeployTrigger', firstBuild: boolean | null, envUpdated: boolean | null, manual: boolean | null, deployedByRender: boolean | null, clearCache: boolean | null, rollback: boolean | null } | null } | null } | null> | null };
 
 export type TriggerDeployMutationVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  commitId?: InputMaybe<Scalars['String']['input']>;
-  deployMode?: InputMaybe<Scalars['String']['input']>;
+  serviceId: string;
+  commitId?: string | null | undefined;
+  deployMode?: string | null | undefined;
 }>;
 
 
 export type TriggerDeployMutation = { triggerDeploy: { __typename: 'Deploy', id: string | null, status: string | null, createdAt: string | null, trigger: string | null, rollbackOf: string | null, image: string | null } | null };
 
 export type CancelDeployMutationVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  deployId: Scalars['String']['input'];
+  serviceId: string;
+  deployId: string;
 }>;
 
 
 export type CancelDeployMutation = { cancelDeploy: { __typename: 'Deploy', id: string | null, status: string | null } | null };
 
 export type RollbackServiceMutationVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  deployId: Scalars['String']['input'];
+  serviceId: string;
+  deployId: string;
 }>;
 
 
 export type RollbackServiceMutation = { rollbackService: { __typename: 'Deploy', id: string | null, status: string | null, createdAt: string | null, trigger: string | null, rollbackOf: string | null, image: string | null } | null };
 
 export type SetHealthCheckPathMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  path: Scalars['String']['input'];
+  id: string;
+  path: string;
 }>;
 
 
 export type SetHealthCheckPathMutation = { setHealthCheckPath: { __typename: 'Service', id: string | null, healthCheckPath: string | null } | null };
 
 export type SetIdleTimeoutMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  idleTTLSeconds: Scalars['Int']['input'];
+  id: string;
+  idleTTLSeconds: number;
 }>;
 
 
@@ -4257,233 +1234,233 @@ export type InstanceTypesQueryVariables = Exact<{ [key: string]: never; }>;
 export type InstanceTypesQuery = { instanceTypes: Array<{ __typename: 'InstanceType', id: string | null, name: string | null, cpu: string | null, memory: string | null } | null> | null };
 
 export type UpdateServicePlanMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  plan: Scalars['String']['input'];
+  id: string;
+  plan: string;
 }>;
 
 
 export type UpdateServicePlanMutation = { updateServicePlan: { __typename: 'Service', id: string | null, plan: string | null } | null };
 
 export type SetServiceIpAllowListMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  entries?: InputMaybe<Array<IpAllowListEntryInput> | IpAllowListEntryInput>;
+  id: string;
+  entries?: Array<Types.IpAllowListEntryInput> | Types.IpAllowListEntryInput | null | undefined;
 }>;
 
 
 export type SetServiceIpAllowListMutation = { setServiceIpAllowList: { __typename: 'Service', id: string | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null };
 
 export type SetMaintenanceModeMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  maintenanceMode: MaintenanceModeInput;
+  id: string;
+  maintenanceMode: Types.MaintenanceModeInput;
 }>;
 
 
 export type SetMaintenanceModeMutation = { setMaintenanceMode: { __typename: 'Service', id: string | null, maintenanceMode: { __typename: 'MaintenanceMode', enabled: boolean, uri: string } } | null };
 
 export type SetMaxShutdownDelayMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  seconds: Scalars['Int']['input'];
+  id: string;
+  seconds: number;
 }>;
 
 
 export type SetMaxShutdownDelayMutation = { setMaxShutdownDelay: { __typename: 'Service', id: string | null, maxShutdownDelaySeconds: number | null } | null };
 
 export type SetPreDeployCommandMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  command: Scalars['String']['input'];
+  id: string;
+  command: string;
 }>;
 
 
 export type SetPreDeployCommandMutation = { setPreDeployCommand: { __typename: 'Service', id: string | null, preDeployCommand: string | null, phase: string | null } | null };
 
 export type SetRootDirMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  rootDir: Scalars['String']['input'];
+  id: string;
+  rootDir: string;
 }>;
 
 
 export type SetRootDirMutation = { setRootDir: { __typename: 'Service', id: string | null, repo: string | null, branch: string | null, rootDir: string | null, phase: string | null } | null };
 
 export type ScaleServiceMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  numInstances: Scalars['Int']['input'];
+  id: string;
+  numInstances: number;
 }>;
 
 
 export type ScaleServiceMutation = { scaleService: { __typename: 'Service', id: string | null, replicas: number | null } | null };
 
 export type SecretFileNamesQueryVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
+  serviceId: string;
+  cursor?: string | null | undefined;
+  limit?: number | null | undefined;
 }>;
 
 
 export type SecretFileNamesQuery = { secretFiles: Array<{ __typename: 'SecretFileWithCursor', cursor: string | null, secretFile: { __typename: 'SecretFileListValue', id: string | null, name: string | null } | null } | null> | null };
 
 export type SecretFileContentQueryVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
 export type SecretFileContentQuery = { service: { __typename: 'Service', id: string | null, secretFile: { __typename: 'SecretFile', id: string | null, name: string | null, content: string | null } | null } | null };
 
 export type SetSecretFileMutationVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-  content?: InputMaybe<Scalars['String']['input']>;
+  serviceId: string;
+  name: string;
+  content?: string | null | undefined;
 }>;
 
 
 export type SetSecretFileMutation = { setSecretFile: boolean | null };
 
 export type DeleteSecretFileMutationVariables = Exact<{
-  serviceId: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  serviceId: string;
+  name: string;
 }>;
 
 
 export type DeleteSecretFileMutation = { deleteSecretFile: boolean | null };
 
 export type ServerQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type ServerQuery = { server: { __typename: 'Service', id: string | null, name: string | null, slug: string | null, displayName: string | null, type: string | null, suspended: string | null, dashboardUrl: string | null, region: string | null, url: string | null, publicRoutingNotice: string | null, internalAddress: string | null, createdAt: string | null, sshAddress: string | null, phase: string | null, replicas: number | null, revision: string | null, plan: string | null, idleTTLSeconds: number | null, repo: string | null, branch: string | null, rootDir: string | null, runtime: string | null, builder: string | null, buildCommand: string | null, startCommand: string | null, dockerfilePath: string | null, registryCredentialId: string | null, autoDeploy: boolean | null, notifyOnFail: string | null, notificationsToSend: string | null, renderSubdomainPolicy: string | null, healthCheckPath: string | null, maxShutdownDelaySeconds: number | null, preDeployCommand: string | null, schedule: string | null, command: string | null, lastSuccessfulRunAt: string | null, publishPath: string | null, ipAllowList: Array<string | null> | null, maintenanceMode: { __typename: 'MaintenanceMode', enabled: boolean, uri: string }, buildFilter: { __typename: 'BuildFilter', paths: Array<string | null> | null, ignoredPaths: Array<string | null> | null } | null, runs: Array<{ __typename: 'CronRun', id: string | null, name: string | null, startedAt: string | null, finishedAt: string | null, status: string | null } | null> | null, routes: Array<{ __typename: 'StaticRoute', type: string | null, source: string | null, destination: string | null } | null> | null, headers: Array<{ __typename: 'StaticHeader', path: string | null, name: string | null, value: string | null } | null> | null, ipAllowListEntries: Array<{ __typename: 'IPAllowListEntry', cidrBlock: string, description: string | null } | null> | null } | null };
 
 export type ServiceInstancesQueryVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type ServiceInstancesQuery = { serviceInstances: Array<{ __typename: 'ServiceInstance', id: string | null, createdAt: string | null } | null> | null };
 
 export type SetNotificationsToSendMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  value: Scalars['String']['input'];
+  id: string;
+  value: string;
 }>;
 
 
 export type SetNotificationsToSendMutation = { setNotificationsToSend: { __typename: 'Service', id: string | null, notificationsToSend: string | null, notifyOnFail: string | null } | null };
 
 export type ServicesQueryVariables = Exact<{
-  ownerId?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: string | null | undefined;
 }>;
 
 
 export type ServicesQuery = { services: Array<{ __typename: 'Service', id: string | null, name: string | null, displayName: string | null, type: string | null, suspended: string | null, dashboardUrl: string | null, url: string | null, createdAt: string | null, updatedAt: string | null, runtime: string | null, region: string | null, phase: string | null, replicas: number | null, revision: string | null, plan: string | null, idleTTLSeconds: number | null } | null> | null };
 
 export type SuspendServiceMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  confirm?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  confirm?: string | null | undefined;
 }>;
 
 
 export type SuspendServiceMutation = { suspendService: { __typename: 'Service', id: string | null, suspended: string | null, phase: string | null } | null };
 
 export type ResumeServiceMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type ResumeServiceMutation = { resumeService: { __typename: 'Service', id: string | null, suspended: string | null, phase: string | null } | null };
 
 export type DeleteServiceMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  confirm?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  confirm?: string | null | undefined;
 }>;
 
 
 export type DeleteServiceMutation = { deleteService: boolean | null };
 
 export type UpdateCronJobMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  schedule: Scalars['String']['input'];
-  command?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  schedule: string;
+  command?: string | null | undefined;
 }>;
 
 
 export type UpdateCronJobMutation = { updateCronJob: { __typename: 'Service', id: string | null, schedule: string | null, command: string | null } | null };
 
 export type CreateServiceMutationVariables = Exact<{
-  name: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  environmentId?: InputMaybe<Scalars['String']['input']>;
-  type?: InputMaybe<Scalars['String']['input']>;
-  repo?: InputMaybe<Scalars['String']['input']>;
-  image?: InputMaybe<Scalars['String']['input']>;
-  registryCredentialId?: InputMaybe<Scalars['String']['input']>;
-  branch?: InputMaybe<Scalars['String']['input']>;
-  rootDir?: InputMaybe<Scalars['String']['input']>;
-  runtime?: InputMaybe<Scalars['String']['input']>;
-  buildCommand?: InputMaybe<Scalars['String']['input']>;
-  startCommand?: InputMaybe<Scalars['String']['input']>;
-  dockerfilePath?: InputMaybe<Scalars['String']['input']>;
-  buildFilter?: InputMaybe<BuildFilterInput>;
-  plan?: InputMaybe<Scalars['String']['input']>;
-  autoDeploy?: InputMaybe<Scalars['Boolean']['input']>;
-  schedule?: InputMaybe<Scalars['String']['input']>;
-  command?: InputMaybe<Scalars['String']['input']>;
-  publishPath?: InputMaybe<Scalars['String']['input']>;
-  envVars?: InputMaybe<Array<InputMaybe<EnvVarInput>> | InputMaybe<EnvVarInput>>;
-  secretFiles?: InputMaybe<Array<InputMaybe<SecretFileInput>> | InputMaybe<SecretFileInput>>;
+  name: string;
+  ownerId?: string | null | undefined;
+  environmentId?: string | null | undefined;
+  type?: string | null | undefined;
+  repo?: string | null | undefined;
+  image?: string | null | undefined;
+  registryCredentialId?: string | null | undefined;
+  branch?: string | null | undefined;
+  rootDir?: string | null | undefined;
+  runtime?: string | null | undefined;
+  buildCommand?: string | null | undefined;
+  startCommand?: string | null | undefined;
+  dockerfilePath?: string | null | undefined;
+  buildFilter?: Types.BuildFilterInput | null | undefined;
+  plan?: string | null | undefined;
+  autoDeploy?: boolean | null | undefined;
+  schedule?: string | null | undefined;
+  command?: string | null | undefined;
+  publishPath?: string | null | undefined;
+  envVars?: Array<Types.EnvVarInput | null | undefined> | Types.EnvVarInput | null | undefined;
+  secretFiles?: Array<Types.SecretFileInput | null | undefined> | Types.SecretFileInput | null | undefined;
 }>;
 
 
 export type CreateServiceMutation = { createService: { __typename: 'Service', id: string | null, name: string | null, type: string | null, phase: string | null, projectId: string | null, environmentId: string | null, registryCredentialId: string | null, latestDeployId: string | null } | null };
 
 export type SetRegistryCredentialMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  registryCredentialId: Scalars['String']['input'];
+  id: string;
+  registryCredentialId: string;
 }>;
 
 
 export type SetRegistryCredentialMutation = { setRegistryCredential: { __typename: 'Service', id: string | null, registryCredentialId: string | null } | null };
 
 export type ServiceNameAvailableQueryVariables = Exact<{
-  name: Scalars['String']['input'];
+  name: string;
 }>;
 
 
 export type ServiceNameAvailableQuery = { serviceNameAvailable: { __typename: 'NameAvailability', available: boolean | null, suggestion: string | null } | null };
 
 export type CreateShellSessionMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  instanceId?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  instanceId?: string | null | undefined;
 }>;
 
 
 export type CreateShellSessionMutation = { createShellSession: { __typename: 'ShellSession', ticket: string | null, url: string | null, expiresAt: string | null } | null };
 
 export type SetStaticRoutesMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  routes?: InputMaybe<Array<InputMaybe<StaticRouteInput>> | InputMaybe<StaticRouteInput>>;
+  id: string;
+  routes?: Array<Types.StaticRouteInput | null | undefined> | Types.StaticRouteInput | null | undefined;
 }>;
 
 
 export type SetStaticRoutesMutation = { setStaticRoutes: { __typename: 'Service', id: string | null, routes: Array<{ __typename: 'StaticRoute', type: string | null, source: string | null, destination: string | null } | null> | null } | null };
 
 export type SetStaticHeadersMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  headers?: InputMaybe<Array<InputMaybe<StaticHeaderInput>> | InputMaybe<StaticHeaderInput>>;
+  id: string;
+  headers?: Array<Types.StaticHeaderInput | null | undefined> | Types.StaticHeaderInput | null | undefined;
 }>;
 
 
 export type SetStaticHeadersMutation = { setStaticHeaders: { __typename: 'Service', id: string | null, headers: Array<{ __typename: 'StaticHeader', path: string | null, name: string | null, value: string | null } | null> | null } | null };
 
 export type SetPublishPathMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  publishPath: Scalars['String']['input'];
+  id: string;
+  publishPath: string;
 }>;
 
 
 export type SetPublishPathMutation = { setPublishPath: { __typename: 'Service', id: string | null, publishPath: string | null, revision: string | null } | null };
 
 export type SetSubdomainPolicyMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  policy: Scalars['String']['input'];
+  id: string;
+  policy: string;
 }>;
 
 
@@ -4495,139 +1472,132 @@ export type SshKeysQueryVariables = Exact<{ [key: string]: never; }>;
 export type SshKeysQuery = { sshKeys: Array<{ __typename: 'SSHKey', id: string, name: string, publicKey: string, fingerprint: string, createdAt: string } | null> | null };
 
 export type CreateSshKeyMutationVariables = Exact<{
-  name: Scalars['String']['input'];
-  publicKey: Scalars['String']['input'];
+  name: string;
+  publicKey: string;
 }>;
 
 
 export type CreateSshKeyMutation = { createSSHKey: { __typename: 'SSHKey', id: string, name: string, publicKey: string, fingerprint: string, createdAt: string } | null };
 
 export type DeleteSshKeyMutationVariables = Exact<{
-  id: Scalars['String']['input'];
+  id: string;
 }>;
 
 
 export type DeleteSshKeyMutation = { deleteSSHKey: boolean };
 
 export type WorkspaceMembersQueryVariables = Exact<{
-  workspaceId: Scalars['String']['input'];
+  workspaceId: string;
 }>;
 
 
 export type WorkspaceMembersQuery = { workspaceMembers: Array<{ __typename: 'WorkspaceMember', subject: string | null, userId: string | null, email: string | null, role: string | null, createdAt: string | null, mfaEnabled: boolean | null } | null> | null, workspaceSeatUsage: { __typename: 'WorkspaceSeatUsage', used: number | null, limit: number | null } | null };
 
-export type ViewerCapabilitiesQueryVariables = Exact<{
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type ViewerCapabilitiesQuery = { viewerCapabilities: { __typename: 'ViewerCapabilities', role: string | null, canView: boolean, canViewLogs: boolean, canOperate: boolean, canCreate: boolean, canViewSensitive: boolean, canManageKeys: boolean, canManage: boolean, canManageBilling: boolean } | null };
-
 export type WorkspaceInvitesQueryVariables = Exact<{
-  workspaceId: Scalars['String']['input'];
+  workspaceId: string;
 }>;
 
 
 export type WorkspaceInvitesQuery = { workspaceInvites: Array<{ __typename: 'WorkspaceInvite', id: string | null, email: string | null, role: string | null, expiresAt: string | null, createdAt: string | null } | null> | null };
 
 export type InviteWorkspaceMemberMutationVariables = Exact<{
-  workspaceId: Scalars['String']['input'];
-  email: Scalars['String']['input'];
-  role: Scalars['String']['input'];
+  workspaceId: string;
+  email: string;
+  role: string;
 }>;
 
 
 export type InviteWorkspaceMemberMutation = { inviteWorkspaceMember: { __typename: 'WorkspaceInvite', id: string | null, email: string | null, role: string | null, expiresAt: string | null, createdAt: string | null } | null };
 
 export type ChangeWorkspaceMemberRoleMutationVariables = Exact<{
-  workspaceId: Scalars['String']['input'];
-  subject: Scalars['String']['input'];
-  role: Scalars['String']['input'];
+  workspaceId: string;
+  subject: string;
+  role: string;
 }>;
 
 
 export type ChangeWorkspaceMemberRoleMutation = { changeWorkspaceMemberRole: { __typename: 'WorkspaceMember', subject: string | null, role: string | null, createdAt: string | null } | null };
 
 export type RemoveWorkspaceMemberMutationVariables = Exact<{
-  workspaceId: Scalars['String']['input'];
-  subject: Scalars['String']['input'];
+  workspaceId: string;
+  subject: string;
 }>;
 
 
 export type RemoveWorkspaceMemberMutation = { removeWorkspaceMember: string | null };
 
 export type RevokeWorkspaceInviteMutationVariables = Exact<{
-  workspaceId: Scalars['String']['input'];
-  inviteId: Scalars['String']['input'];
+  workspaceId: string;
+  inviteId: string;
 }>;
 
 
 export type RevokeWorkspaceInviteMutation = { revokeWorkspaceInvite: string | null };
 
 export type ResendWorkspaceInviteMutationVariables = Exact<{
-  workspaceId: Scalars['String']['input'];
-  inviteId: Scalars['String']['input'];
+  workspaceId: string;
+  inviteId: string;
 }>;
 
 
 export type ResendWorkspaceInviteMutation = { resendWorkspaceInvite: { __typename: 'WorkspaceInvite', id: string | null, email: string | null, role: string | null, expiresAt: string | null, createdAt: string | null } | null };
 
 export type AcceptWorkspaceInviteMutationVariables = Exact<{
-  token: Scalars['String']['input'];
+  token: string;
 }>;
 
 
 export type AcceptWorkspaceInviteMutation = { acceptWorkspaceInvite: { __typename: 'AcceptedWorkspaceInvite', workspaceId: string | null, workspaceName: string | null, role: string | null } | null };
 
 export type UsageQueryVariables = Exact<{
-  period?: InputMaybe<Scalars['String']['input']>;
-  ownerId?: InputMaybe<Scalars['String']['input']>;
+  period?: string | null | undefined;
+  ownerId?: string | null | undefined;
 }>;
 
 
 export type UsageQuery = { usage: { __typename: 'UsageSummary', workspaceId: string | null, period: string | null, services: Array<{ __typename: 'ServiceUsage', serviceId: string | null, serviceName: string | null, resourceKind: string | null, rows: Array<{ __typename: 'UsageRow', kind: string | null, tier: string | null, total: number | null } | null> | null } | null> | null, estimatedCost: { __typename: 'EstimatedCost', totalUsd: string | null, meters: Array<{ __typename: 'MeterEstimate', kind: string | null, tier: string | null, resourceKind: string | null, costUsd: string | null } | null> | null } | null, billing: { __typename: 'Billing', currentCost: { __typename: 'BillingAmount', amountUsd: string | null, currency: string | null, periodStart: string | null, periodEnd: string | null } | null, invoices: Array<{ __typename: 'BillingInvoice', id: string | null, status: string | null, amountUsd: string | null, currency: string | null, periodStart: string | null, periodEnd: string | null } | null> | null, credits: { __typename: 'BillingCredits', availableUsd: string | null, currency: string | null, grants: Array<{ __typename: 'BillingCreditGrant', name: string | null, remainingUsd: string | null, expiresAt: string | null } | null> | null } | null } | null } | null };
 
 export type WorkspaceLimitsQueryVariables = Exact<{
-  ownerId: Scalars['String']['input'];
+  ownerId: string;
 }>;
 
 
 export type WorkspaceLimitsQuery = { workspaceLimits: { __typename: 'ResourceLimits', services: { __typename: 'ResourceCap', used: number | null, limit: number | null } | null, postgres: { __typename: 'ResourceCap', used: number | null, limit: number | null } | null, keyValues: { __typename: 'ResourceCap', used: number | null, limit: number | null } | null } | null };
 
 export type BillingReadinessQueryVariables = Exact<{
-  workspaceId: Scalars['String']['input'];
+  workspaceId: string;
 }>;
 
 
 export type BillingReadinessQuery = { workspaceBillingReadiness: { __typename: 'WorkspaceBillingReadiness', workspaceId: string | null, mode: string | null, customerReady: boolean | null, subscriptionReady: boolean | null, paymentMethodReady: boolean | null, lifecycle: { __typename: 'BillingLifecycle', status: string | null, reason: string | null, graceDeadline: string | null, enforcementOwned: boolean | null, recoveryPending: boolean | null, allowedActions: Array<string | null> | null, updatedAt: string | null } | null, tax: { __typename: 'BillingTaxReadiness', configured: boolean | null, enabled: boolean | null, reason: string | null, productTaxCode: string | null, taxBehavior: string | null, registrationCount: number | null } | null } | null };
 
 export type CreateBillingCheckoutSessionMutationVariables = Exact<{
-  workspaceId: Scalars['String']['input'];
-  successUrl: Scalars['String']['input'];
-  cancelUrl: Scalars['String']['input'];
+  workspaceId: string;
+  successUrl: string;
+  cancelUrl: string;
 }>;
 
 
 export type CreateBillingCheckoutSessionMutation = { createBillingCheckoutSession: { __typename: 'BillingHostedSession', url: string | null, expiresAt: string | null } | null };
 
 export type CreateBillingPortalSessionMutationVariables = Exact<{
-  workspaceId: Scalars['String']['input'];
-  returnUrl: Scalars['String']['input'];
+  workspaceId: string;
+  returnUrl: string;
 }>;
 
 
 export type CreateBillingPortalSessionMutation = { createBillingPortalSession: { __typename: 'BillingHostedSession', url: string | null, expiresAt: string | null } | null };
 
 export type WebhookEndpointsQueryVariables = Exact<{
-  ownerId?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: string | null | undefined;
 }>;
 
 
 export type WebhookEndpointsQuery = { webhookEndpoints: Array<{ __typename: 'WebhookEndpoint', id: string | null, name: string | null, url: string | null, eventTypes: Array<string | null> | null, enabled: boolean | null, disabledReason: string | null, createdAt: string | null } | null> | null };
 
 export type WebhookEndpointQueryVariables = Exact<{
-  id: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  ownerId?: string | null | undefined;
 }>;
 
 
@@ -4639,53 +1609,53 @@ export type WebhookEventTypesQueryVariables = Exact<{ [key: string]: never; }>;
 export type WebhookEventTypesQuery = { webhookEventTypes: Array<string | null> | null };
 
 export type WebhookDeliveriesQueryVariables = Exact<{
-  endpointId: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  cursor?: InputMaybe<Scalars['String']['input']>;
-  limit?: InputMaybe<Scalars['Int']['input']>;
-  sentAfter?: InputMaybe<Scalars['String']['input']>;
-  sentBefore?: InputMaybe<Scalars['String']['input']>;
-  status?: InputMaybe<Scalars['String']['input']>;
+  endpointId: string;
+  ownerId?: string | null | undefined;
+  cursor?: string | null | undefined;
+  limit?: number | null | undefined;
+  sentAfter?: string | null | undefined;
+  sentBefore?: string | null | undefined;
+  status?: string | null | undefined;
 }>;
 
 
 export type WebhookDeliveriesQuery = { webhookDeliveries: Array<{ __typename: 'WebhookDelivery', id: string | null, eventType: string | null, serviceId: string | null, status: string | null, attemptCount: number | null, lastStatusCode: number | null, lastError: string | null, responseBody: string | null, sentAt: string | null, nextAttemptAt: string | null, deliveredAt: string | null, createdAt: string | null, cursor: string | null } | null> | null };
 
 export type CreateWebhookEndpointMutationVariables = Exact<{
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  name?: InputMaybe<Scalars['String']['input']>;
-  url: Scalars['String']['input'];
-  eventTypes: Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>;
-  enabled?: InputMaybe<Scalars['Boolean']['input']>;
+  ownerId?: string | null | undefined;
+  name?: string | null | undefined;
+  url: string;
+  eventTypes: Array<string | null | undefined> | string;
+  enabled?: boolean | null | undefined;
 }>;
 
 
 export type CreateWebhookEndpointMutation = { createWebhookEndpoint: { __typename: 'WebhookEndpoint', id: string | null, name: string | null, url: string | null, eventTypes: Array<string | null> | null, enabled: boolean | null, secret: string | null, createdAt: string | null } | null };
 
 export type UpdateWebhookEndpointMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  name?: InputMaybe<Scalars['String']['input']>;
-  url?: InputMaybe<Scalars['String']['input']>;
-  eventTypes?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-  enabled?: InputMaybe<Scalars['Boolean']['input']>;
+  id: string;
+  ownerId?: string | null | undefined;
+  name?: string | null | undefined;
+  url?: string | null | undefined;
+  eventTypes?: Array<string | null | undefined> | string | null | undefined;
+  enabled?: boolean | null | undefined;
 }>;
 
 
 export type UpdateWebhookEndpointMutation = { updateWebhookEndpoint: { __typename: 'WebhookEndpoint', id: string | null, name: string | null, url: string | null, eventTypes: Array<string | null> | null, enabled: boolean | null, disabledReason: string | null, createdAt: string | null, createdBy: string | null } | null };
 
 export type SetWebhookEndpointEnabledMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
-  enabled: Scalars['Boolean']['input'];
+  id: string;
+  ownerId?: string | null | undefined;
+  enabled: boolean;
 }>;
 
 
 export type SetWebhookEndpointEnabledMutation = { setWebhookEndpointEnabled: { __typename: 'WebhookEndpoint', id: string | null, enabled: boolean | null, disabledReason: string | null } | null };
 
 export type DeleteWebhookEndpointMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  ownerId?: InputMaybe<Scalars['String']['input']>;
+  id: string;
+  ownerId?: string | null | undefined;
 }>;
 
 
@@ -4697,32 +1667,32 @@ export type WorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 export type WorkspacesQuery = { workspaces: Array<{ __typename: 'Workspace', id: string | null, name: string | null, plan: string | null, role: string | null, createdAt: string | null } | null> | null };
 
 export type CreateWorkspaceMutationVariables = Exact<{
-  name: Scalars['String']['input'];
-  plan?: InputMaybe<Scalars['String']['input']>;
+  name: string;
+  plan?: string | null | undefined;
 }>;
 
 
 export type CreateWorkspaceMutation = { createWorkspace: { __typename: 'Workspace', id: string | null, name: string | null, plan: string | null, role: string | null, createdAt: string | null } | null };
 
 export type RenameWorkspaceMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  name: Scalars['String']['input'];
+  id: string;
+  name: string;
 }>;
 
 
 export type RenameWorkspaceMutation = { renameWorkspace: { __typename: 'Workspace', id: string | null, name: string | null, plan: string | null, role: string | null, createdAt: string | null } | null };
 
 export type ChangeWorkspacePlanMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  plan: Scalars['String']['input'];
+  id: string;
+  plan: string;
 }>;
 
 
 export type ChangeWorkspacePlanMutation = { changeWorkspacePlan: { __typename: 'Workspace', id: string | null, name: string | null, plan: string | null, role: string | null, createdAt: string | null } | null };
 
 export type DeleteWorkspaceMutationVariables = Exact<{
-  id: Scalars['String']['input'];
-  confirmation: Scalars['String']['input'];
+  id: string;
+  confirmation: string;
 }>;
 
 
@@ -4748,6 +1718,7 @@ export const ApiKeysDocument = {"kind":"Document","definitions":[{"kind":"Operat
 export const CreateApiKeyDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateApiKey"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createApiKey"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"secret"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<CreateApiKeyMutation, CreateApiKeyMutationVariables>;
 export const RevokeApiKeyDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RevokeApiKey"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"revokeApiKey"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}]}]}}]} as unknown as DocumentNode<RevokeApiKeyMutation, RevokeApiKeyMutationVariables>;
 export const AuditLogsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AuditLogs"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startTime"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endTime"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"auditLogs"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"startTime"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startTime"}}},{"kind":"Argument","name":{"kind":"Name","value":"endTime"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endTime"}}},{"kind":"Argument","name":{"kind":"Name","value":"cursor"},"value":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"actor"}},{"kind":"Field","name":{"kind":"Name","value":"actorMethod"}},{"kind":"Field","name":{"kind":"Name","value":"action"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"resource"}},{"kind":"Field","name":{"kind":"Name","value":"targetName"}}]}}]}}]} as unknown as DocumentNode<AuditLogsQuery, AuditLogsQueryVariables>;
+export const ViewerCapabilitiesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ViewerCapabilities"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewerCapabilities"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"role"}},{"kind":"Field","name":{"kind":"Name","value":"canView"}},{"kind":"Field","name":{"kind":"Name","value":"canViewLogs"}},{"kind":"Field","name":{"kind":"Name","value":"canOperate"}},{"kind":"Field","name":{"kind":"Name","value":"canCreate"}},{"kind":"Field","name":{"kind":"Name","value":"canViewSensitive"}},{"kind":"Field","name":{"kind":"Name","value":"canManageKeys"}},{"kind":"Field","name":{"kind":"Name","value":"canManage"}},{"kind":"Field","name":{"kind":"Name","value":"canManageBilling"}}]}}]}}]} as unknown as DocumentNode<ViewerCapabilitiesQuery, ViewerCapabilitiesQueryVariables>;
 export const DatabasesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Databases"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"databases"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"plan"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"diskSizeGB"}},{"kind":"Field","name":{"kind":"Name","value":"diskAutoscalingEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"suspended"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"region"}},{"kind":"Field","name":{"kind":"Name","value":"public"}}]}}]}}]} as unknown as DocumentNode<DatabasesQuery, DatabasesQueryVariables>;
 export const DatabaseDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Database"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"database"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"plan"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"databaseName"}},{"kind":"Field","name":{"kind":"Name","value":"databaseUser"}},{"kind":"Field","name":{"kind":"Name","value":"diskSizeGB"}},{"kind":"Field","name":{"kind":"Name","value":"diskAutoscalingEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"highAvailabilityEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"readReplicas"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"connectionInfo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"internalHost"}},{"kind":"Field","name":{"kind":"Name","value":"externalHost"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"suspended"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"externalHost"}},{"kind":"Field","name":{"kind":"Name","value":"public"}},{"kind":"Field","name":{"kind":"Name","value":"poolerEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"backupsEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"ipAllowList"}},{"kind":"Field","name":{"kind":"Name","value":"region"}}]}}]}}]} as unknown as DocumentNode<DatabaseQuery, DatabaseQueryVariables>;
 export const DatabaseConnectionInfoDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"DatabaseConnectionInfo"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"databaseConnectionInfo"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"password"}},{"kind":"Field","name":{"kind":"Name","value":"internalConnectionString"}},{"kind":"Field","name":{"kind":"Name","value":"externalConnectionString"}},{"kind":"Field","name":{"kind":"Name","value":"internalConnectionPoolString"}},{"kind":"Field","name":{"kind":"Name","value":"externalConnectionPoolString"}},{"kind":"Field","name":{"kind":"Name","value":"psqlCommand"}},{"kind":"Field","name":{"kind":"Name","value":"readReplicaConnectionStrings"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"internalConnectionString"}},{"kind":"Field","name":{"kind":"Name","value":"externalConnectionString"}}]}}]}}]}}]} as unknown as DocumentNode<DatabaseConnectionInfoQuery, DatabaseConnectionInfoQueryVariables>;
@@ -4781,15 +1752,19 @@ export const ExecuteDatabaseQueryDocument = {"kind":"Document","definitions":[{"
 export const DeployDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Deploy"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deployId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deploy"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"serviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"deployId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deployId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"trigger"}},{"kind":"Field","name":{"kind":"Name","value":"image"}},{"kind":"Field","name":{"kind":"Name","value":"rollbackOf"}},{"kind":"Field","name":{"kind":"Name","value":"commitId"}},{"kind":"Field","name":{"kind":"Name","value":"commitMessage"}},{"kind":"Field","name":{"kind":"Name","value":"commitCreatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"finishedAt"}},{"kind":"Field","name":{"kind":"Name","value":"preDeployStatus"}},{"kind":"Field","name":{"kind":"Name","value":"failureReason"}}]}}]}}]} as unknown as DocumentNode<DeployQuery, DeployQueryVariables>;
 export const DeployTimelineEventsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"DeployTimelineEvents"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"startTime"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endTime"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"serviceEvents"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"serviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"startTime"},"value":{"kind":"Variable","name":{"kind":"Name","value":"startTime"}}},{"kind":"Argument","name":{"kind":"Name","value":"endTime"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endTime"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"details"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deployId"}},{"kind":"Field","name":{"kind":"Name","value":"deployStatus"}}]}}]}}]}}]} as unknown as DocumentNode<DeployTimelineEventsQuery, DeployTimelineEventsQueryVariables>;
 export const DeploysDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Deploys"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"ListType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"createdBefore"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"createdAfter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"updatedBefore"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"updatedAfter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"finishedBefore"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"finishedAfter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deploys"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"serviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"serviceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}},{"kind":"Argument","name":{"kind":"Name","value":"createdBefore"},"value":{"kind":"Variable","name":{"kind":"Name","value":"createdBefore"}}},{"kind":"Argument","name":{"kind":"Name","value":"createdAfter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"createdAfter"}}},{"kind":"Argument","name":{"kind":"Name","value":"updatedBefore"},"value":{"kind":"Variable","name":{"kind":"Name","value":"updatedBefore"}}},{"kind":"Argument","name":{"kind":"Name","value":"updatedAfter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"updatedAfter"}}},{"kind":"Argument","name":{"kind":"Name","value":"finishedBefore"},"value":{"kind":"Variable","name":{"kind":"Name","value":"finishedBefore"}}},{"kind":"Argument","name":{"kind":"Name","value":"finishedAfter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"finishedAfter"}}},{"kind":"Argument","name":{"kind":"Name","value":"cursor"},"value":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"trigger"}},{"kind":"Field","name":{"kind":"Name","value":"image"}},{"kind":"Field","name":{"kind":"Name","value":"rollbackOf"}},{"kind":"Field","name":{"kind":"Name","value":"commitId"}},{"kind":"Field","name":{"kind":"Name","value":"commitMessage"}},{"kind":"Field","name":{"kind":"Name","value":"commitCreatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"finishedAt"}},{"kind":"Field","name":{"kind":"Name","value":"preDeployStatus"}}]}}]}}]} as unknown as DocumentNode<DeploysQuery, DeploysQueryVariables>;
-export const EnvGroupsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"EnvGroups"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"envGroups"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"ownerId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"serviceLinks"}},{"kind":"Field","name":{"kind":"Name","value":"envVars"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}}]}},{"kind":"Field","name":{"kind":"Name","value":"secretFiles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<EnvGroupsQuery, EnvGroupsQueryVariables>;
-export const EnvGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"EnvGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"envGroup"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"ownerId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"serviceLinks"}},{"kind":"Field","name":{"kind":"Name","value":"envVars"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}}]}},{"kind":"Field","name":{"kind":"Name","value":"secretFiles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<EnvGroupQuery, EnvGroupQueryVariables>;
+export const EnvGroupScopeIndexDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"EnvGroupScopeIndex"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"projects"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"ProjectFields"}}]}},{"kind":"Field","name":{"kind":"Name","value":"workspaceEnvironments"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"EnvironmentFields"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ProjectFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Project"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"ownerId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"serviceIds"}},{"kind":"Field","name":{"kind":"Name","value":"databaseIds"}},{"kind":"Field","name":{"kind":"Name","value":"keyValueIds"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"EnvironmentFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Environment"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"projectId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"ownerId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"serviceIds"}},{"kind":"Field","name":{"kind":"Name","value":"databaseIds"}},{"kind":"Field","name":{"kind":"Name","value":"keyValueIds"}},{"kind":"Field","name":{"kind":"Name","value":"envGroupIds"}},{"kind":"Field","name":{"kind":"Name","value":"protectedStatus"}},{"kind":"Field","name":{"kind":"Name","value":"networkIsolationEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"ipAllowList"}},{"kind":"Field","name":{"kind":"Name","value":"ipAllowListEntries"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cidrBlock"}},{"kind":"Field","name":{"kind":"Name","value":"description"}}]}}]}}]} as unknown as DocumentNode<EnvGroupScopeIndexQuery, EnvGroupScopeIndexQueryVariables>;
+export const EnvGroupsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"EnvGroups"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"envGroups"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"ownerId"}},{"kind":"Field","name":{"kind":"Name","value":"environmentId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"revision"}},{"kind":"Field","name":{"kind":"Name","value":"serviceLinks"}},{"kind":"Field","name":{"kind":"Name","value":"envVars"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}}]}},{"kind":"Field","name":{"kind":"Name","value":"secretFiles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<EnvGroupsQuery, EnvGroupsQueryVariables>;
+export const EnvGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"EnvGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"envGroup"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"ownerId"}},{"kind":"Field","name":{"kind":"Name","value":"environmentId"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"revision"}},{"kind":"Field","name":{"kind":"Name","value":"serviceLinks"}},{"kind":"Field","name":{"kind":"Name","value":"envVars"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}}]}},{"kind":"Field","name":{"kind":"Name","value":"secretFiles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<EnvGroupQuery, EnvGroupQueryVariables>;
 export const EnvGroupVarValueDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"EnvGroupVarValue"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"key"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"envGroupVar"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"key"},"value":{"kind":"Variable","name":{"kind":"Name","value":"key"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}}]}}]} as unknown as DocumentNode<EnvGroupVarValueQuery, EnvGroupVarValueQueryVariables>;
 export const EnvGroupSecretFileContentDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"EnvGroupSecretFileContent"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"envGroupSecretFile"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]}}]} as unknown as DocumentNode<EnvGroupSecretFileContentQuery, EnvGroupSecretFileContentQueryVariables>;
 export const CreateEnvGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateEnvGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"envVars"}},"type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"EnvGroupVarInput"}}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"secretFiles"}},"type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"EnvGroupSecretFileInput"}}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"serviceIds"}},"type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createEnvGroup"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"envVars"},"value":{"kind":"Variable","name":{"kind":"Name","value":"envVars"}}},{"kind":"Argument","name":{"kind":"Name","value":"secretFiles"},"value":{"kind":"Variable","name":{"kind":"Name","value":"secretFiles"}}},{"kind":"Argument","name":{"kind":"Name","value":"serviceIds"},"value":{"kind":"Variable","name":{"kind":"Name","value":"serviceIds"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<CreateEnvGroupMutation, CreateEnvGroupMutationVariables>;
 export const RenameEnvGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RenameEnvGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"renameEnvGroup"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<RenameEnvGroupMutation, RenameEnvGroupMutationVariables>;
+export const MoveEnvGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"MoveEnvGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"environmentId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"moveEnvGroup"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"environmentId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"environmentId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"environmentId"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<MoveEnvGroupMutation, MoveEnvGroupMutationVariables>;
+export const CloneEnvGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CloneEnvGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"environmentId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cloneEnvGroup"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"environmentId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"environmentId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"ownerId"}},{"kind":"Field","name":{"kind":"Name","value":"environmentId"}}]}}]}}]} as unknown as DocumentNode<CloneEnvGroupMutation, CloneEnvGroupMutationVariables>;
 export const DeleteEnvGroupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteEnvGroup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteEnvGroup"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DeleteEnvGroupMutation, DeleteEnvGroupMutationVariables>;
+export const PatchEnvGroupEnvironmentDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"PatchEnvGroupEnvironment"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"envVars"}},"type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"EnvGroupVarPatchInput"}}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"secretFiles"}},"type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"EnvGroupSecretFilePatchInput"}}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"saveMode"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"expectedRevision"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"patchEnvGroupEnvironment"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"envVars"},"value":{"kind":"Variable","name":{"kind":"Name","value":"envVars"}}},{"kind":"Argument","name":{"kind":"Name","value":"secretFiles"},"value":{"kind":"Variable","name":{"kind":"Name","value":"secretFiles"}}},{"kind":"Argument","name":{"kind":"Name","value":"saveMode"},"value":{"kind":"Variable","name":{"kind":"Name","value":"saveMode"}}},{"kind":"Argument","name":{"kind":"Name","value":"expectedRevision"},"value":{"kind":"Variable","name":{"kind":"Name","value":"expectedRevision"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"envVarKeys"}},{"kind":"Field","name":{"kind":"Name","value":"secretFileNames"}},{"kind":"Field","name":{"kind":"Name","value":"revision"}},{"kind":"Field","name":{"kind":"Name","value":"affectedServiceIds"}},{"kind":"Field","name":{"kind":"Name","value":"failedServiceIds"}},{"kind":"Field","name":{"kind":"Name","value":"rolledOut"}}]}}]}}]} as unknown as DocumentNode<PatchEnvGroupEnvironmentMutation, PatchEnvGroupEnvironmentMutationVariables>;
 export const SetEnvGroupVarsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetEnvGroupVars"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"envVars"}},"type":{"kind":"NonNullType","type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"EnvGroupVarInput"}}}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setEnvGroupVars"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"envVars"},"value":{"kind":"Variable","name":{"kind":"Name","value":"envVars"}}}]}]}}]} as unknown as DocumentNode<SetEnvGroupVarsMutation, SetEnvGroupVarsMutationVariables>;
-export const SetEnvGroupVarDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetEnvGroupVar"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"key"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"value"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setEnvGroupVar"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"key"},"value":{"kind":"Variable","name":{"kind":"Name","value":"key"}}},{"kind":"Argument","name":{"kind":"Name","value":"value"},"value":{"kind":"Variable","name":{"kind":"Name","value":"value"}}}]}]}}]} as unknown as DocumentNode<SetEnvGroupVarMutation, SetEnvGroupVarMutationVariables>;
+export const SetEnvGroupVarDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetEnvGroupVar"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"key"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"value"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"generateValue"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setEnvGroupVar"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"key"},"value":{"kind":"Variable","name":{"kind":"Name","value":"key"}}},{"kind":"Argument","name":{"kind":"Name","value":"value"},"value":{"kind":"Variable","name":{"kind":"Name","value":"value"}}},{"kind":"Argument","name":{"kind":"Name","value":"generateValue"},"value":{"kind":"Variable","name":{"kind":"Name","value":"generateValue"}}}]}]}}]} as unknown as DocumentNode<SetEnvGroupVarMutation, SetEnvGroupVarMutationVariables>;
 export const DeleteEnvGroupVarDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteEnvGroupVar"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"key"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteEnvGroupVar"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"key"},"value":{"kind":"Variable","name":{"kind":"Name","value":"key"}}}]}]}}]} as unknown as DocumentNode<DeleteEnvGroupVarMutation, DeleteEnvGroupVarMutationVariables>;
 export const SetEnvGroupSecretFileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetEnvGroupSecretFile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"content"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setEnvGroupSecretFile"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"content"},"value":{"kind":"Variable","name":{"kind":"Name","value":"content"}}}]}]}}]} as unknown as DocumentNode<SetEnvGroupSecretFileMutation, SetEnvGroupSecretFileMutationVariables>;
 export const DeleteEnvGroupSecretFileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteEnvGroupSecretFile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteEnvGroupSecretFile"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}}]}]}}]} as unknown as DocumentNode<DeleteEnvGroupSecretFileMutation, DeleteEnvGroupSecretFileMutationVariables>;
@@ -4911,7 +1886,6 @@ export const SshKeysDocument = {"kind":"Document","definitions":[{"kind":"Operat
 export const CreateSshKeyDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateSSHKey"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"publicKey"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createSSHKey"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"publicKey"},"value":{"kind":"Variable","name":{"kind":"Name","value":"publicKey"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"publicKey"}},{"kind":"Field","name":{"kind":"Name","value":"fingerprint"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<CreateSshKeyMutation, CreateSshKeyMutationVariables>;
 export const DeleteSshKeyDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteSSHKey"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteSSHKey"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DeleteSshKeyMutation, DeleteSshKeyMutationVariables>;
 export const WorkspaceMembersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WorkspaceMembers"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"workspaceMembers"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"workspaceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"userId"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"mfaEnabled"}}]}},{"kind":"Field","name":{"kind":"Name","value":"workspaceSeatUsage"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"workspaceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"used"}},{"kind":"Field","name":{"kind":"Name","value":"limit"}}]}}]}}]} as unknown as DocumentNode<WorkspaceMembersQuery, WorkspaceMembersQueryVariables>;
-export const ViewerCapabilitiesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ViewerCapabilities"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"viewerCapabilities"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"role"}},{"kind":"Field","name":{"kind":"Name","value":"canView"}},{"kind":"Field","name":{"kind":"Name","value":"canViewLogs"}},{"kind":"Field","name":{"kind":"Name","value":"canOperate"}},{"kind":"Field","name":{"kind":"Name","value":"canCreate"}},{"kind":"Field","name":{"kind":"Name","value":"canViewSensitive"}},{"kind":"Field","name":{"kind":"Name","value":"canManageKeys"}},{"kind":"Field","name":{"kind":"Name","value":"canManage"}},{"kind":"Field","name":{"kind":"Name","value":"canManageBilling"}}]}}]}}]} as unknown as DocumentNode<ViewerCapabilitiesQuery, ViewerCapabilitiesQueryVariables>;
 export const WorkspaceInvitesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WorkspaceInvites"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"workspaceInvites"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"workspaceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}},{"kind":"Field","name":{"kind":"Name","value":"expiresAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<WorkspaceInvitesQuery, WorkspaceInvitesQueryVariables>;
 export const InviteWorkspaceMemberDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"InviteWorkspaceMember"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"email"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"role"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"inviteWorkspaceMember"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"workspaceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"email"},"value":{"kind":"Variable","name":{"kind":"Name","value":"email"}}},{"kind":"Argument","name":{"kind":"Name","value":"role"},"value":{"kind":"Variable","name":{"kind":"Name","value":"role"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}},{"kind":"Field","name":{"kind":"Name","value":"expiresAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<InviteWorkspaceMemberMutation, InviteWorkspaceMemberMutationVariables>;
 export const ChangeWorkspaceMemberRoleDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ChangeWorkspaceMemberRole"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"subject"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"role"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"changeWorkspaceMemberRole"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"workspaceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"workspaceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"subject"},"value":{"kind":"Variable","name":{"kind":"Name","value":"subject"}}},{"kind":"Argument","name":{"kind":"Name","value":"role"},"value":{"kind":"Variable","name":{"kind":"Name","value":"role"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"subject"}},{"kind":"Field","name":{"kind":"Name","value":"role"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<ChangeWorkspaceMemberRoleMutation, ChangeWorkspaceMemberRoleMutationVariables>;
@@ -4927,8 +1901,8 @@ export const CreateBillingPortalSessionDocument = {"kind":"Document","definition
 export const WebhookEndpointsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WebhookEndpoints"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"webhookEndpoints"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"eventTypes"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"disabledReason"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<WebhookEndpointsQuery, WebhookEndpointsQueryVariables>;
 export const WebhookEndpointDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WebhookEndpoint"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"webhookEndpoint"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"eventTypes"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"disabledReason"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdBy"}}]}}]}}]} as unknown as DocumentNode<WebhookEndpointQuery, WebhookEndpointQueryVariables>;
 export const WebhookEventTypesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WebhookEventTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"webhookEventTypes"}}]}}]} as unknown as DocumentNode<WebhookEventTypesQuery, WebhookEventTypesQueryVariables>;
-export const WebhookDeliveriesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WebhookDeliveries"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endpointId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"webhookDeliveries"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"endpointId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endpointId"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"cursor"},"value":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"eventType"}},{"kind":"Field","name":{"kind":"Name","value":"serviceId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"attemptCount"}},{"kind":"Field","name":{"kind":"Name","value":"lastStatusCode"}},{"kind":"Field","name":{"kind":"Name","value":"lastError"}},{"kind":"Field","name":{"kind":"Name","value":"nextAttemptAt"}},{"kind":"Field","name":{"kind":"Name","value":"deliveredAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"cursor"}}]}}]}}]} as unknown as DocumentNode<WebhookDeliveriesQuery, WebhookDeliveriesQueryVariables>;
-export const CreateWebhookEndpointDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateWebhookEndpoint"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"url"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"eventTypes"}},"type":{"kind":"NonNullType","type":{"kind":"ListType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createWebhookEndpoint"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"url"},"value":{"kind":"Variable","name":{"kind":"Name","value":"url"}}},{"kind":"Argument","name":{"kind":"Name","value":"eventTypes"},"value":{"kind":"Variable","name":{"kind":"Name","value":"eventTypes"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"eventTypes"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"secret"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<CreateWebhookEndpointMutation, CreateWebhookEndpointMutationVariables>;
+export const WebhookDeliveriesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"WebhookDeliveries"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"endpointId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"sentAfter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"sentBefore"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"status"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"webhookDeliveries"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"endpointId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"endpointId"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"cursor"},"value":{"kind":"Variable","name":{"kind":"Name","value":"cursor"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}},{"kind":"Argument","name":{"kind":"Name","value":"sentAfter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"sentAfter"}}},{"kind":"Argument","name":{"kind":"Name","value":"sentBefore"},"value":{"kind":"Variable","name":{"kind":"Name","value":"sentBefore"}}},{"kind":"Argument","name":{"kind":"Name","value":"status"},"value":{"kind":"Variable","name":{"kind":"Name","value":"status"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"eventType"}},{"kind":"Field","name":{"kind":"Name","value":"serviceId"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"attemptCount"}},{"kind":"Field","name":{"kind":"Name","value":"lastStatusCode"}},{"kind":"Field","name":{"kind":"Name","value":"lastError"}},{"kind":"Field","name":{"kind":"Name","value":"responseBody"}},{"kind":"Field","name":{"kind":"Name","value":"sentAt"}},{"kind":"Field","name":{"kind":"Name","value":"nextAttemptAt"}},{"kind":"Field","name":{"kind":"Name","value":"deliveredAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"cursor"}}]}}]}}]} as unknown as DocumentNode<WebhookDeliveriesQuery, WebhookDeliveriesQueryVariables>;
+export const CreateWebhookEndpointDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateWebhookEndpoint"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"url"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"eventTypes"}},"type":{"kind":"NonNullType","type":{"kind":"ListType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"enabled"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createWebhookEndpoint"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"url"},"value":{"kind":"Variable","name":{"kind":"Name","value":"url"}}},{"kind":"Argument","name":{"kind":"Name","value":"eventTypes"},"value":{"kind":"Variable","name":{"kind":"Name","value":"eventTypes"}}},{"kind":"Argument","name":{"kind":"Name","value":"enabled"},"value":{"kind":"Variable","name":{"kind":"Name","value":"enabled"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"eventTypes"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"secret"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<CreateWebhookEndpointMutation, CreateWebhookEndpointMutationVariables>;
 export const UpdateWebhookEndpointDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateWebhookEndpoint"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"url"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"eventTypes"}},"type":{"kind":"ListType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"enabled"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateWebhookEndpoint"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"url"},"value":{"kind":"Variable","name":{"kind":"Name","value":"url"}}},{"kind":"Argument","name":{"kind":"Name","value":"eventTypes"},"value":{"kind":"Variable","name":{"kind":"Name","value":"eventTypes"}}},{"kind":"Argument","name":{"kind":"Name","value":"enabled"},"value":{"kind":"Variable","name":{"kind":"Name","value":"enabled"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"eventTypes"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"disabledReason"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdBy"}}]}}]}}]} as unknown as DocumentNode<UpdateWebhookEndpointMutation, UpdateWebhookEndpointMutationVariables>;
 export const SetWebhookEndpointEnabledDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetWebhookEndpointEnabled"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"enabled"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setWebhookEndpointEnabled"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}},{"kind":"Argument","name":{"kind":"Name","value":"enabled"},"value":{"kind":"Variable","name":{"kind":"Name","value":"enabled"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}},{"kind":"Field","name":{"kind":"Name","value":"disabledReason"}}]}}]}}]} as unknown as DocumentNode<SetWebhookEndpointEnabledMutation, SetWebhookEndpointEnabledMutationVariables>;
 export const DeleteWebhookEndpointDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteWebhookEndpoint"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteWebhookEndpoint"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"ownerId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ownerId"}}}]}]}}]} as unknown as DocumentNode<DeleteWebhookEndpointMutation, DeleteWebhookEndpointMutationVariables>;

@@ -17,10 +17,9 @@ limitations under the License.
 package secrets
 
 import (
-	"encoding/base64"
-	"encoding/binary"
 	"errors"
-	"strings"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 const envRevisionPrefix = "evr1_"
@@ -32,21 +31,15 @@ var errInvalidEnvRevision = errors.New("invalid environment revision")
 // depending on the backend's integer representation without adding false
 // cryptographic meaning.
 func encodeEnvRevision(version uint64) string {
-	var raw [8]byte
-	binary.BigEndian.PutUint64(raw[:], version)
-	return envRevisionPrefix + base64.RawURLEncoding.EncodeToString(raw[:])
+	return core.EncodeOpaqueRevision(envRevisionPrefix, version)
 }
 
 // decodeEnvRevision accepts only the one canonical fixed-width encoding. Its
 // error is deliberately constant and never echoes the supplied token.
 func decodeEnvRevision(token string) (uint64, error) {
-	encoded, ok := strings.CutPrefix(token, envRevisionPrefix)
+	version, ok := core.DecodeOpaqueRevision(envRevisionPrefix, token)
 	if !ok {
 		return 0, errInvalidEnvRevision
 	}
-	raw, err := base64.RawURLEncoding.DecodeString(encoded)
-	if err != nil || len(raw) != 8 || base64.RawURLEncoding.EncodeToString(raw) != encoded {
-		return 0, errInvalidEnvRevision
-	}
-	return binary.BigEndian.Uint64(raw), nil
+	return version, nil
 }

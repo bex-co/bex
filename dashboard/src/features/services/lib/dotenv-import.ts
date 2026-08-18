@@ -8,6 +8,23 @@ export interface DotenvEntry {
   line: number;
 }
 
+/** Apply parsed assignments in order, updating an existing key or appending it. */
+export function upsertDotenvEntries<Row>(
+  source: readonly Row[],
+  entries: readonly DotenvEntry[],
+  keyOf: (row: Row) => string | null,
+  update: (row: Row, entry: DotenvEntry) => Row,
+  create: (entry: DotenvEntry) => Row,
+): Row[] {
+  const rows = [...source];
+  for (const entry of entries) {
+    const index = rows.findIndex((row) => keyOf(row)?.trim() === entry.key);
+    if (index >= 0) rows[index] = update(rows[index], entry);
+    else rows.push(create(entry));
+  }
+  return rows;
+}
+
 export class DotenvParseError extends Error {
   constructor(
     public readonly line: number,

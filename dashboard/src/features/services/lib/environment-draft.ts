@@ -8,6 +8,8 @@ export interface EnvDraftRow {
   key: string;
   value: string | null;
   valueChanged: boolean;
+  /** Server-side generation intent; the literal value remains absent. */
+  generateValue?: boolean;
   deleted: boolean;
 }
 
@@ -38,6 +40,7 @@ export interface EnvironmentPatchInput {
     key: string;
     fromKey?: string;
     value?: string;
+    generateValue?: boolean;
     delete?: boolean;
   }>;
   secretFiles: Array<{
@@ -64,6 +67,7 @@ export function createEnvironmentDraft(
       key,
       value: null,
       valueChanged: false,
+      generateValue: false,
       deleted: false,
     })),
     secretFiles: fileNames.map((name) => ({
@@ -86,6 +90,7 @@ interface RowLens<R> {
   name: (row: R) => string;
   value: (row: R) => string | null;
   changed: (row: R) => boolean;
+  generated: (row: R) => boolean;
 }
 
 const ENV_LENS: RowLens<EnvDraftRow> = {
@@ -93,6 +98,7 @@ const ENV_LENS: RowLens<EnvDraftRow> = {
   name: (row) => row.key,
   value: (row) => row.value,
   changed: (row) => row.valueChanged,
+  generated: (row) => row.generateValue === true,
 };
 
 const FILE_LENS: RowLens<SecretFileDraftRow> = {
@@ -100,6 +106,7 @@ const FILE_LENS: RowLens<SecretFileDraftRow> = {
   name: (row) => row.name,
   value: (row) => row.content,
   changed: (row) => row.contentChanged,
+  generated: () => false,
 };
 
 function validateRows<
@@ -121,7 +128,11 @@ function validateRows<
       errors[prior] = "duplicate";
       errors[row.id] = "duplicate";
     } else seen.set(name, row.id);
-    if (lens.original(row) == null && lens.value(row) == null) {
+    if (
+      lens.original(row) == null &&
+      lens.value(row) == null &&
+      !lens.generated(row)
+    ) {
       errors[row.id] = missingValue;
     }
   }
@@ -160,6 +171,7 @@ interface RowPatch {
   name: string;
   from?: string;
   value?: string;
+  generateValue?: boolean;
   delete?: boolean;
 }
 
@@ -172,17 +184,33 @@ function patchRows<R extends { deleted: boolean }>(
     const original = lens.original(row);
     const name = lens.name(row).trim();
     const value = lens.value(row) ?? "";
+    const generateValue = lens.generated(row);
     if (row.deleted) {
       if (original) patch.push({ name: original, delete: true });
     } else if (!original) {
-      patch.push({ name, value });
+      patch.push({
+        name,
+        ...(generateValue ? { generateValue: true } : { value }),
+      });
     } else if (name !== original) {
       // A rename with no new value moves the opaque value server-side; a rename
       // that also sets one cannot, so it becomes delete + create.
-      if (!lens.changed(row)) patch.push({ name, from: original });
-      else patch.push({ name: original, delete: true }, { name, value });
-    } else if (lens.changed(row)) {
-      patch.push({ name, value });
+      if (!lens.changed(row) && !generateValue) {
+        patch.push({ name, from: original });
+      } else {
+        patch.push(
+          { name: original, delete: true },
+          {
+            name,
+            ...(generateValue ? { generateValue: true } : { value }),
+          },
+        );
+      }
+    } else if (lens.changed(row) || generateValue) {
+      patch.push({
+        name,
+        ...(generateValue ? { generateValue: true } : { value }),
+      });
     }
   }
   return patch;
@@ -193,10 +221,11 @@ export function environmentDraftPatch(
 ): EnvironmentPatchInput {
   return {
     envVars: patchRows(draft.envVars, ENV_LENS).map(
-      ({ name, from, value, delete: deleted }) => ({
+      ({ name, from, value, generateValue, delete: deleted }) => ({
         key: name,
         ...(from !== undefined && { fromKey: from }),
         ...(value !== undefined && { value }),
+        ...(generateValue !== undefined && { generateValue }),
         ...(deleted !== undefined && { delete: deleted }),
       }),
     ),

@@ -3433,15 +3433,15 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Batch environment save failure",
   },
   "services.environmentSavedDeployFailedTitle": {
-    message: "配置已保存，但部署未启动",
+    message: "配置已保存，但发布未完成",
     description: "Partial rebuild failure heading",
   },
   "services.environmentSavedDeployFailedBody": {
-    message: "环境更改已存储。准备好后只需重试部署。",
+    message: "环境更改已存储。准备好后只需重试未完成的发布。",
     description: "Partial rebuild failure recovery explanation",
   },
   "services.environmentRetryDeploy": {
-    message: "重试部署",
+    message: "重试发布",
     description: "Retry only the failed deploy phase",
   },
   "services.environmentDiscardTitle": {

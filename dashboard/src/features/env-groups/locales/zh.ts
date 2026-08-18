@@ -61,6 +61,11 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     message: "添加环境变量",
     description: "Add an initial environment variable row",
   },
+  "envGroups.importEnv": {
+    message: "从 .env 导入",
+    description:
+      "Import initial environment variables from dotenv text or file",
+  },
   "envGroups.createFilesTitle": {
     message: "密钥文件",
     description: "Initial secret files section title",
@@ -161,6 +166,22 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     message: "所有者",
     description: "Env-group owner id label",
   },
+  "envGroups.environmentLabel": {
+    message: "环境",
+    description: "Environment Group scope label",
+  },
+  "envGroups.workspaceLabel": {
+    message: "工作区",
+    description: "Destination workspace label",
+  },
+  "envGroups.workspaceScope": {
+    message: "工作区（无环境）",
+    description: "Standalone Environment Group scope",
+  },
+  "envGroups.unknownEnvironment": {
+    message: "未知环境（{id}）",
+    description: "Deleted or inaccessible Environment fallback",
+  },
   "envGroups.createdAtLabel": {
     message: "创建时间",
     description: "Env-group created timestamp label",
@@ -208,6 +229,62 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
   "envGroups.renameButton": {
     message: "重命名",
     description: "Open rename env-group dialog",
+  },
+  "envGroups.manageButton": {
+    message: "管理",
+    description: "Open Environment Group management menu",
+  },
+  "envGroups.moveButton": {
+    message: "移动组",
+    description: "Open Environment Group move dialog",
+  },
+  "envGroups.moveTitle": {
+    message: "移动环境变量组",
+    description: "Environment Group move dialog title",
+  },
+  "envGroups.moveDescription": {
+    message: "选择兼容的环境，或将此组移回工作区范围。",
+    description: "Environment Group move dialog description",
+  },
+  "envGroups.moveSubmit": {
+    message: "移动组",
+    description: "Submit Environment Group move",
+  },
+  "envGroups.moveSuccess": {
+    message: "环境变量组已移动",
+    description: "Environment Group move success toast",
+  },
+  "envGroups.moveError": {
+    message: "无法移动该组",
+    description: "Environment Group move error toast",
+  },
+  "envGroups.cloneButton": {
+    message: "克隆组",
+    description: "Open Environment Group clone dialog",
+  },
+  "envGroups.cloneTitle": {
+    message: "克隆环境变量组",
+    description: "Environment Group clone dialog title",
+  },
+  "envGroups.cloneDescription": {
+    message: "将变量和文件复制到新组。服务关联不会被复制。",
+    description: "Environment Group clone dialog description",
+  },
+  "envGroups.cloneSubmit": {
+    message: "克隆组",
+    description: "Submit Environment Group clone",
+  },
+  "envGroups.cloneSuccess": {
+    message: "已克隆 {name}",
+    description: "Environment Group clone success toast",
+  },
+  "envGroups.cloneError": {
+    message: "无法克隆该组",
+    description: "Environment Group clone error toast",
+  },
+  "envGroups.environmentPlaceholder": {
+    message: "选择环境",
+    description: "Environment scope selector placeholder",
   },
   "envGroups.renameTitle": {
     message: "重命名环境变量组",
@@ -310,6 +387,50 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
   "envGroups.servicesLoadError": {
     message: "无法加载工作区服务。现有链接仍显示在下方。",
     description: "Linked-services inventory error",
+  },
+  "envGroups.incompatibleLink": {
+    message: "旧关联不在此组的环境范围内",
+    description: "Warning on an existing incompatible Environment Group link",
+  },
+  "envGroups.searchPlaceholder": {
+    message: "搜索环境变量组",
+    description: "Environment Group list search placeholder",
+  },
+  "envGroups.searchLabel": {
+    message: "按名称搜索环境变量组",
+    description: "Accessible Environment Group search label",
+  },
+  "envGroups.resetSearch": {
+    message: "重置搜索",
+    description: "Clear Environment Group search",
+  },
+  "envGroups.noMatchesTitle": {
+    message: "没有匹配的环境变量组",
+    description: "Environment Group search empty-state title",
+  },
+  "envGroups.noMatchesBody": {
+    message: "请尝试其他名称或重置搜索。",
+    description: "Environment Group search empty-state body",
+  },
+  "envGroups.colName": {
+    message: "环境变量组名称",
+    description: "Environment Group table name column",
+  },
+  "envGroups.colEnvironment": {
+    message: "环境",
+    description: "Environment Group table Environment column",
+  },
+  "envGroups.colEnvVars": {
+    message: "环境变量",
+    description: "Environment Group table variable-count column",
+  },
+  "envGroups.colSecretFiles": {
+    message: "密钥文件",
+    description: "Environment Group table secret-file-count column",
+  },
+  "envGroups.colUpdated": {
+    message: "更新时间",
+    description: "Environment Group table updated-time column",
   },
   "envGroups.rolloutNote": {
     message: "关联服务正在重新部署以应用更改。",

@@ -23,6 +23,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -87,30 +88,57 @@ func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 }
 
 // fakeStore is an in-memory core.SecretKV keyed by logical path.
-type fakeStore struct{ m map[string]map[string]string }
+type fakeStore struct {
+	mu       sync.Mutex
+	m        map[string]map[string]string
+	versions map[string]uint64
+}
 
-func newFakeStore() *fakeStore { return &fakeStore{m: map[string]map[string]string{}} }
+func newFakeStore() *fakeStore {
+	return &fakeStore{m: map[string]map[string]string{}, versions: map[string]uint64{}}
+}
 
 func (f *fakeStore) Get(_ context.Context, path string) (map[string]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.get(path), nil
+}
+
+func (f *fakeStore) get(path string) map[string]string {
 	out := map[string]string{}
 	for k, v := range f.m[path] {
 		out[k] = v
 	}
-	return out, nil
+	return out
 }
 
 func (f *fakeStore) Put(_ context.Context, path string, data map[string]string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.put(path, data)
+	return nil
+}
+
+func (f *fakeStore) put(path string, data map[string]string) {
 	cp := map[string]string{}
 	for k, v := range data {
 		cp[k] = v
 	}
 	f.m[path] = cp
+	f.versions[path]++
+}
+
+func (f *fakeStore) Delete(_ context.Context, path string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.m, path)
+	delete(f.versions, path)
 	return nil
 }
 
-func (f *fakeStore) Delete(_ context.Context, path string) error { delete(f.m, path); return nil }
-
 func (f *fakeStore) List(_ context.Context, path string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	prefix := path + "/"
 	seen := map[string]bool{}
 	var out []string
@@ -128,6 +156,22 @@ func (f *fakeStore) List(_ context.Context, path string) ([]string, error) {
 		}
 	}
 	return out, nil
+}
+
+func (f *fakeStore) GetVersioned(_ context.Context, path string) (core.SecretKVSnapshot, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return core.SecretKVSnapshot{Data: f.get(path), Version: f.versions[path]}, nil
+}
+
+func (f *fakeStore) PutCAS(_ context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.versions[path] != expectedVersion {
+		return 0, core.ErrConflict
+	}
+	f.put(path, data)
+	return f.versions[path], nil
 }
 
 type failMetaStore struct{ *fakeStore }
@@ -375,8 +419,13 @@ func TestCreateEnvGroupWriteFailureCompensatesEverySurface(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "meta write failed") {
 		t.Fatalf("CreateEnvGroup write failure = %v", err)
 	}
-	if ids, _ := store.List(context.Background(), "env-groups"); len(ids) != 0 || len(store.m) != 0 {
-		t.Fatalf("compensation left store state: ids=%v store=%v", ids, store.m)
+	if ids, _ := store.List(context.Background(), "env-groups"); len(ids) != 0 {
+		t.Fatalf("compensation left group state: ids=%v store=%v", ids, store.m)
+	}
+	for path, data := range store.m {
+		if len(data) != 0 {
+			t.Fatalf("compensation left a live store claim at %s: %v", path, data)
+		}
 	}
 	web := getApp(t, svc.Client, "web")
 	if len(web.Spec.EnvFromSecrets) != 0 || len(web.Spec.FilesFromSecrets) != 0 || web.Spec.RestartedAt != "" {
@@ -446,8 +495,139 @@ func TestEnvGroup_SetAndDeleteOneVarPreservesSiblings(t *testing.T) {
 	}
 }
 
+func TestEnvGroup_GeneratedWritesStoreNonEmptyValuesWithoutEchoingThem(t *testing.T) {
+	svc := newService(newFakeStore())
+	ctx := context.Background()
+	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	write, err := svc.SetEnvGroupVarInput(ctx, g.ID, EnvVarView{Key: "TOKEN", GenerateValue: true})
+	if err != nil {
+		t.Fatalf("generated per-key write: %v", err)
+	}
+	if write.Key != "TOKEN" || write.Value != "" {
+		t.Fatalf("generated write leaked or lost metadata: %#v", write)
+	}
+	got, err := svc.GetEnvGroupVar(ctx, g.ID, "TOKEN")
+	if err != nil || len(got.Value) != 44 {
+		t.Fatalf("generated reveal: len=%d err=%v", len(got.Value), err)
+	}
+	vars, err := svc.SetEnvGroupVars(ctx, g.ID, []EnvVarView{{Key: "BULK", GenerateValue: true}})
+	if err != nil || !slices.Equal(vars, []EnvVarView{{Key: "BULK"}}) {
+		t.Fatalf("generated bulk write: vars=%#v err=%v", vars, err)
+	}
+	got, err = svc.GetEnvGroupVar(ctx, g.ID, "BULK")
+	if err != nil || len(got.Value) != 44 {
+		t.Fatalf("generated bulk reveal: len=%d err=%v", len(got.Value), err)
+	}
+	if _, err := svc.SetEnvGroupVarInput(ctx, g.ID, EnvVarView{Key: "BAD", Value: "literal", GenerateValue: true}); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("literal + generateValue: got %v, want ErrBadRequest", err)
+	}
+}
+
+func TestEnvGroup_NameUniqueWithinWorkspaceOnCreateAndRename(t *testing.T) {
+	svc := newService(newFakeStore())
+	ctx := context.Background()
+	first, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: " shared "})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "ENV_GROUP_NAME_EXISTS" || !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("duplicate create = %v, want ENV_GROUP_NAME_EXISTS conflict", err)
+	}
+	second, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "other"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.RenameEnvGroup(ctx, second.ID, "shared"); !errors.As(err, &coded) || coded.Code != "ENV_GROUP_NAME_EXISTS" {
+		t.Fatalf("duplicate rename = %v, want ENV_GROUP_NAME_EXISTS", err)
+	}
+	if got, err := svc.RenameEnvGroup(ctx, first.ID, " shared "); err != nil || got.Name != "shared" {
+		t.Fatalf("rename-to-self = %+v err=%v", got, err)
+	}
+}
+
+func TestEnvGroup_RenameAndDeleteReleaseNameClaimsForReuse(t *testing.T) {
+	svc := newService(newFakeStore())
+	ctx := context.Background()
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.RenameEnvGroup(ctx, group.ID, "renamed"); err != nil {
+		t.Fatal(err)
+	}
+	reusedOld, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"})
+	if err != nil {
+		t.Fatalf("reuse after rename: %v", err)
+	}
+	if err := svc.DeleteEnvGroup(ctx, reusedOld.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared"}); err != nil {
+		t.Fatalf("reuse after delete: %v", err)
+	}
+}
+
+func TestEnvGroup_ConcurrentCreateHasExactlyOneNameWinner(t *testing.T) {
+	store := newFakeStore()
+	services := []*Service{newService(store), newService(store)}
+	start := make(chan struct{})
+	errs := make(chan error, len(services))
+	for _, svc := range services {
+		go func() {
+			<-start
+			_, err := svc.CreateEnvGroup(context.Background(), CreateEnvGroupRequest{Name: "shared"})
+			errs <- err
+		}()
+	}
+	close(start)
+	var successes, conflicts int
+	for range services {
+		err := <-errs
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, core.ErrConflict):
+			conflicts++
+		default:
+			t.Fatalf("concurrent create returned %v", err)
+		}
+	}
+	if successes != 1 || conflicts != 1 {
+		t.Fatalf("successes=%d conflicts=%d, want 1/1", successes, conflicts)
+	}
+	ids, _ := store.List(context.Background(), "env-groups")
+	if len(ids) != 1 {
+		t.Fatalf("stored group ids = %v, want one", ids)
+	}
+}
+
+func TestEnvGroup_LegacyDuplicateNameResolutionFailsClosed(t *testing.T) {
+	store := newFakeStore()
+	svc := newService(store)
+	for _, gid := range []string{"evg-d7a1g900000000000001", "evg-d7a1g900000000000002"} {
+		if err := svc.writeMeta(context.Background(), gid, meta{name: "shared"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, _, found, err := svc.findGroupByName(context.Background(), "shared")
+	var coded *core.CodedError
+	if found || !errors.As(err, &coded) || coded.Code != "ENV_GROUP_NAME_AMBIGUOUS" || !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("legacy duplicate lookup: found=%v err=%v", found, err)
+	}
+	if got, ok := coded.Params["ids"].([]string); !ok || len(got) != 2 {
+		t.Fatalf("ambiguity ids = %#v", coded.Params["ids"])
+	}
+}
+
 func TestMCP_EnvGroupEditingRoundTrip(t *testing.T) {
-	svc := newService(newFakeStore(), sampleApp("web"))
+	web := sampleApp("web")
+	web.Labels = map[string]string{core.LabelEnvironment: "env-alpha"}
+	svc := newService(newFakeStore(), web)
 	svc.EnvironmentWorkspace = func(_ context.Context, environmentID string) (string, error) {
 		if environmentID != "env-alpha" {
 			return "", core.ErrNotFound
@@ -507,6 +687,28 @@ func TestMCP_EnvGroupEditingRoundTrip(t *testing.T) {
 	if variable.Value != "secret" {
 		t.Fatalf("get_env_group_var: %+v", variable)
 	}
+	call("set_env_group_var", map[string]any{"id": group.ID, "key": "GENERATED", "generateValue": true}, nil)
+	call("get_env_group_var", map[string]any{"id": group.ID, "key": "GENERATED"}, &variable)
+	if len(variable.Value) != 44 {
+		t.Fatalf("generated get_env_group_var length = %d, want 44", len(variable.Value))
+	}
+	call("set_env_group_var", map[string]any{"id": group.ID, "key": "GENERATED", "generateValue": true}, nil)
+	call("get_env_group_var", map[string]any{"id": group.ID, "key": "GENERATED"}, &variable)
+	if len(variable.Value) != 44 {
+		t.Fatalf("generated get_env_group_var length = %d, want 44", len(variable.Value))
+	}
+	invalid, err := cs.CallTool(ctx, &mcp.CallToolParams{
+		Name: "set_env_group_var",
+		Arguments: map[string]any{
+			"id": group.ID, "key": "INVALID", "value": "literal", "generateValue": true,
+		},
+	})
+	if err != nil || invalid == nil || !invalid.IsError {
+		t.Fatalf("invalid set_env_group_var: err=%v result=%+v", err, invalid)
+	}
+	if len(invalid.Content) == 0 || !strings.Contains(invalid.Content[0].(*mcp.TextContent).Text, "ENVIRONMENT_VALUE_INPUT_INVALID") {
+		t.Fatalf("invalid set_env_group_var lost stable code: %+v", invalid.Content)
+	}
 	call("set_env_group_secret_file", map[string]any{"id": group.ID, "name": "cert.pem", "content": "pem"}, nil)
 	var file SecretFileView
 	call("get_env_group_secret_file", map[string]any{"id": group.ID, "name": "cert.pem"}, &file)
@@ -563,7 +765,9 @@ func TestGraphQL_EnvGroupsPagination(t *testing.T) {
 }
 
 func TestGraphQL_CreateEnvGroupAcceptsInitialContents(t *testing.T) {
-	svc := newService(newFakeStore(), sampleApp("web"))
+	web := sampleApp("web")
+	web.Labels = map[string]string{core.LabelEnvironment: "env-alpha"}
+	svc := newService(newFakeStore(), web)
 	svc.EnvironmentWorkspace = func(_ context.Context, environmentID string) (string, error) {
 		if environmentID != "env-alpha" {
 			return "", core.ErrNotFound
@@ -1155,8 +1359,8 @@ func countString(list []string, s string) int {
 // metadata reads.
 type countingStore struct {
 	*fakeStore
-	lists     int
-	metaGets  int // sweep fan-out: one metadata read per GLOBAL group
+	lists    int
+	metaGets int // sweep fan-out: one metadata read per GLOBAL group
 }
 
 func (c *countingStore) List(ctx context.Context, path string) ([]string, error) {

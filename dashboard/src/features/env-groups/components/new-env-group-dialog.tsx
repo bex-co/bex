@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Loader2, Plus, Trash2, WandSparkles } from "lucide-react";
+import { FileUp, Loader2, Plus, Trash2, WandSparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,11 @@ import {
   isValidSecretFileName,
 } from "@/features/env-groups/lib/validation";
 import type { ServiceView } from "@/features/services/types";
+import { EnvImportDialog } from "@/features/services/components/env-import-dialog";
+import {
+  upsertDotenvEntries,
+  type DotenvEntry,
+} from "@/features/services/lib/dotenv-import";
 
 interface EnvVarRow {
   id: number;
@@ -67,6 +72,7 @@ export function NewEnvGroupDialog({
   const [secretFiles, setSecretFiles] = useState<SecretFileRow[]>([]);
   const [serviceIds, setServiceIds] = useState<string[]>(initialServiceIds);
   const [invalid, setInvalid] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const open = controlled ? openProp : openState;
   const contentsValid =
     envVars.every((variable) => isValidEnvVarKey(variable.key)) &&
@@ -79,6 +85,7 @@ export function NewEnvGroupDialog({
     setSecretFiles([]);
     setServiceIds(initialServiceIds);
     setInvalid(false);
+    setImportOpen(false);
   }
 
   function handleOpenChange(next: boolean) {
@@ -100,6 +107,27 @@ export function NewEnvGroupDialog({
       ...current,
       { id: nextRowId.current++, name: "", content: "" },
     ]);
+  }
+
+  function importEnvVars(entries: DotenvEntry[]) {
+    setEnvVars((current) =>
+      upsertDotenvEntries(
+        current,
+        entries,
+        (row) => row.key,
+        (row, entry) => ({
+          ...row,
+          value: entry.value,
+          generateValue: false,
+        }),
+        (entry) => ({
+          id: nextRowId.current++,
+          key: entry.key,
+          value: entry.value,
+          generateValue: false,
+        }),
+      ),
+    );
   }
 
   function toggleService(serviceId: string, checked: boolean) {
@@ -259,10 +287,25 @@ export function NewEnvGroupDialog({
               </Button>
             </div>
           ))}
-          <Button type="button" variant="outline" size="sm" onClick={addEnvVar}>
-            <Plus />
-            {t("envGroups.addInitialVar")}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addEnvVar}
+            >
+              <Plus />
+              {t("envGroups.addInitialVar")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+            >
+              <FileUp /> {t("envGroups.importEnv")}
+            </Button>
+          </div>
         </section>
 
         <section className="space-y-3 rounded-md border p-4">
@@ -413,6 +456,11 @@ export function NewEnvGroupDialog({
             {t("envGroups.createSubmit")}
           </Button>
         </DialogFooter>
+        <EnvImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onImport={importEnvVars}
+        />
       </DialogContent>
     </Dialog>
   );

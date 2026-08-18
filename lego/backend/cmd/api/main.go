@@ -409,6 +409,17 @@ func main() {
 	wireSandboxes(ctx, &deps, cl, st, sandboxExecSecret)
 	wireAgentSessions(&deps)
 	srv := api.NewServer(base, deps)
+	if mode := strings.TrimSpace(os.Getenv("BEX_ENV_GROUP_NAME_CLAIM_AUDIT")); mode != "" {
+		if mode != "dry-run" && mode != "apply" {
+			log.Fatalf("bex-api: BEX_ENV_GROUP_NAME_CLAIM_AUDIT must be dry-run or apply")
+		}
+		report, auditErr := envgroups.AuditNameClaims(ctx, deps.Secrets, mode == "dry-run")
+		if auditErr != nil {
+			log.Fatalf("bex-api: environment-group name-claim audit: %v", auditErr)
+		}
+		log.Printf("bex-api: environment-group name-claim audit mode=%s scanned=%d missing=%d created=%d existing=%d conflicts=%d duplicates=%v",
+			mode, report.Scanned, report.Missing, report.Created, report.Existing, report.Conflicts, report.Duplicates)
+	}
 	// codex round-8 #9: the signed git webhook durably claims each processed
 	// delivery body so a captured (body, signature) pair cannot be replayed into
 	// repeated deploys. A configured webhook without this durable store is
