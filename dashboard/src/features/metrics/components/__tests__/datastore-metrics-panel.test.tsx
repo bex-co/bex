@@ -10,15 +10,23 @@ vi.mock("@/features/metrics/hooks/use-datastore-metrics", () => ({
 const mockUseDatastoreMetrics = vi.mocked(useDatastoreMetrics);
 
 function emptyResult() {
-  return { series: [], loading: false, unavailable: false, error: undefined };
+  return {
+    series: [],
+    loading: false,
+    unavailable: false,
+    storeUnavailable: false,
+    error: undefined,
+    degradedSources: [],
+  };
 }
 
 function seriesResult(unit: string, values: number[], instance?: string) {
+  const labels: Record<string, string> = instance ? { instance } : {};
   return {
     series: [
       {
         unit,
-        labels: instance ? { instance } : {},
+        labels,
         points: values.map((value, i) => ({
           timestamp: new Date(1_751_800_000_000 + i * 60_000).toISOString(),
           value,
@@ -27,7 +35,9 @@ function seriesResult(unit: string, values: number[], instance?: string) {
     ],
     loading: false,
     unavailable: false,
+    storeUnavailable: false,
     error: undefined,
+    degradedSources: [],
   };
 }
 
@@ -185,7 +195,9 @@ describe("DatastoreMetricsPanel", () => {
           series: [],
           loading: false,
           unavailable: true,
+          storeUnavailable: false,
           error: undefined,
+          degradedSources: [],
         };
       }
       return emptyResult();

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 
 const mutate = vi.fn();
-const mockUseMutation = vi.fn(() => [mutate]);
+const mockUseMutation = vi.fn((..._args: unknown[]) => [mutate]);
 vi.mock("@apollo/client/react", () => ({
   useMutation: (...args: unknown[]) => mockUseMutation(...args),
 }));

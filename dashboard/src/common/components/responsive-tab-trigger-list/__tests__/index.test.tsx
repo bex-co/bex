@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { ResponsiveTabTriggerList } from "../index";
+import {
+  ResponsiveTabTriggerList,
+  type ResponsiveTabTriggerListProps,
+} from "../index";
 import { Tabs } from "@/common/components/ui/tabs";
 
 describe("ResponsiveTabTriggerList", () => {
@@ -21,7 +24,7 @@ describe("ResponsiveTabTriggerList", () => {
   });
 
   // Helper to render within Tabs context
-  const renderWithTabs = (props = defaultProps) => {
+  const renderWithTabs = (props: ResponsiveTabTriggerListProps = defaultProps) => {
     return render(
       <Tabs value={props.selectedTab}>
         <ResponsiveTabTriggerList {...props} />

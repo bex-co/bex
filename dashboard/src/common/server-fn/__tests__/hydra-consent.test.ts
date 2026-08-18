@@ -87,9 +87,9 @@ function mockUpstreams(opts: {
   return calls;
 }
 
-const accepts = (calls: { url: string }[]) =>
+const accepts = (calls: { url: string; init?: RequestInit }[]) =>
   calls.filter((c) => c.url.includes("/consent/accept"));
-const rejects = (calls: { url: string }[]) =>
+const rejects = (calls: { url: string; init?: RequestInit }[]) =>
   calls.filter((c) => c.url.includes("/consent/reject"));
 
 beforeEach(() => {

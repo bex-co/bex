@@ -40,6 +40,7 @@ describe("PostgresLogViewer", () => {
         time: "12:00:00",
         instance: "dpg-example-1",
         message: "checkpoint complete",
+        spans: null,
         type: "postgres",
         level: "",
         method: "",

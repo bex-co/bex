@@ -18,6 +18,7 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     startedAt: "2026-07-14T00:00:01Z",
     finishedAt: "2026-07-14T00:01:00Z",
     preDeployStatus: "",
+    failureReason: "",
     ...over,
   };
 }

@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EnvironmentCard } from "@/features/environments/components/environment-card";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
+import type { ServiceView } from "@/features/services/types";
 
 const rename = vi.fn();
 
@@ -106,6 +107,51 @@ const env: EnvironmentView = {
   ipAllowListEntries: [],
 };
 
+// A complete ServiceView row for the environment's resource table. The tests
+// only read id/name/phase, but the prop is a full ServiceView.
+const apiService: ServiceView = {
+  id: "srv-api",
+  name: "Public API",
+  slug: null,
+  type: "web_service",
+  suspended: false,
+  phase: "Running",
+  url: "",
+  internalAddress: null,
+  createdAt: null,
+  sshAddress: null,
+  replicas: 1,
+  revision: "r1",
+  plan: null,
+  idleTTLSeconds: null,
+  schedule: null,
+  command: null,
+  runs: [],
+  repo: null,
+  branch: null,
+  rootDir: null,
+  runtime: null,
+  builder: null,
+  buildCommand: null,
+  startCommand: null,
+  dockerfilePath: null,
+  registryCredentialId: null,
+  buildFilter: null,
+  autoDeploy: null,
+  notifyOnFail: null,
+  notificationsToSend: null,
+  healthCheckPath: null,
+  maxShutdownDelaySeconds: null,
+  preDeployCommand: null,
+  renderSubdomainPolicy: null,
+  publishPath: null,
+  routes: [],
+  headers: [],
+  ipAllowList: null,
+  ipAllowListEntries: null,
+  maintenanceMode: null,
+};
+
 function renderCard(
   props: Partial<React.ComponentProps<typeof EnvironmentCard>> = {},
 ) {
@@ -155,18 +201,7 @@ describe("EnvironmentCard", () => {
     const onResourceFilterChange = vi.fn();
     const user = userEvent.setup();
     renderCard({
-      services: [
-        {
-          id: "srv-api",
-          name: "Public API",
-          suspended: false,
-          phase: "Running",
-          url: "",
-          createdAt: null,
-          replicas: 1,
-          revision: "r1",
-        },
-      ],
+      services: [apiService],
       environment: { ...env, serviceIds: ["srv-api"] },
       resourceFilter: {
         environmentId: "env-1",
@@ -196,18 +231,7 @@ describe("EnvironmentCard", () => {
 
   it("renders an accessible no-match state for a selected filter", () => {
     renderCard({
-      services: [
-        {
-          id: "srv-api",
-          name: "Public API",
-          suspended: false,
-          phase: "Running",
-          url: "",
-          createdAt: null,
-          replicas: 1,
-          revision: "r1",
-        },
-      ],
+      services: [apiService],
       environment: { ...env, serviceIds: ["srv-api"] },
       resourceFilter: {
         environmentId: "env-1",
@@ -230,18 +254,7 @@ describe("EnvironmentCard", () => {
       serviceIds: ["srv-existing"],
     };
     renderCard({
-      services: [
-        {
-          id: "srv-api",
-          name: "Public API",
-          suspended: false,
-          phase: "Running",
-          url: "",
-          createdAt: null,
-          replicas: 1,
-          revision: "r1",
-        },
-      ],
+      services: [apiService],
       environment: { ...env, serviceIds: ["srv-api"] },
       allEnvironments: [{ ...env, serviceIds: ["srv-api"] }, production],
     });
@@ -271,18 +284,7 @@ describe("EnvironmentCard", () => {
       name: "production",
     };
     renderCard({
-      services: [
-        {
-          id: "srv-api",
-          name: "Public API",
-          suspended: false,
-          phase: "Running",
-          url: "",
-          createdAt: null,
-          replicas: 1,
-          revision: "r1",
-        },
-      ],
+      services: [apiService],
       databases: [
         {
           id: "dpg-main",

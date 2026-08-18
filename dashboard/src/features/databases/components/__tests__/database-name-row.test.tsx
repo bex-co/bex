@@ -16,6 +16,7 @@ const database: DatabaseDetailView = {
   plan: "free",
   version: "16",
   diskSizeGB: 1,
+  diskAutoscalingEnabled: false,
   createdAt: "2026-07-14T00:00:00Z",
   public: false,
   suspended: "not_suspended",
@@ -24,6 +25,7 @@ const database: DatabaseDetailView = {
   highAvailabilityEnabled: false,
   readReplicas: [],
   externalHost: null,
+  backupsEnabled: false,
   region: null,
 };
 

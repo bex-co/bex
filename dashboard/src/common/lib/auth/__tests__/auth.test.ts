@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import type { Session } from "@ory/client-fetch";
 import { requireAuth, EMPTY_LOGIN_SEARCH } from "../auth";
 
 /**
@@ -7,11 +8,11 @@ import { requireAuth, EMPTY_LOGIN_SEARCH } from "../auth";
  * when it let the navigation through.
  */
 function guard(
-  context: { session: unknown; aal2Required?: boolean },
+  context: { session?: Session | null; aal2Required?: boolean },
   path?: string,
 ) {
   try {
-    requireAuth(path)({ context });
+    requireAuth(path)({ context, location: { href: path ?? "/" } });
     return null; // let through
   } catch (thrown) {
     return (

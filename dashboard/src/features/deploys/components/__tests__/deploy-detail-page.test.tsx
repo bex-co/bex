@@ -9,8 +9,14 @@ import {
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { DeployDetailPage } from "../deploy-detail-page";
+import type { DeployView } from "../../hooks/use-deploy";
 
-const deployState = {
+const deployState: {
+  deploy: DeployView;
+  loading: boolean;
+  error: Error | undefined;
+  notFound: boolean;
+} = {
   deploy: {
     id: "dep-1",
     status: "live",
@@ -25,6 +31,7 @@ const deployState = {
     startedAt: null,
     finishedAt: "2026-07-14T00:01:00Z",
     preDeployStatus: "",
+    failureReason: "",
   },
   loading: false,
   error: undefined as Error | undefined,

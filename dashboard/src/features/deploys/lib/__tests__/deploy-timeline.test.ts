@@ -10,11 +10,15 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     trigger: "api",
     image: "",
     rollbackOf: "",
+    commitId: "",
+    commitMessage: "",
+    commitCreatedAt: null,
     createdAt: "2026-07-14T00:00:00Z",
     updatedAt: "2026-07-14T00:02:00Z",
     startedAt: null,
     finishedAt: "2026-07-14T00:02:00Z",
     preDeployStatus: "",
+    failureReason: "",
     ...over,
   };
 }

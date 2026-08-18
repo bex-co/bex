@@ -20,6 +20,7 @@ describe("toKeyValueViews", () => {
         suspended: "not_suspended",
         createdAt: "2026-07-01T00:00:00Z",
         updatedAt: "2026-07-02T00:00:00Z",
+        region: null,
         externalHost: "sessions-cache.kv.bex.co",
         public: true,
       },
@@ -57,6 +58,7 @@ describe("toKeyValueViews", () => {
       suspended: "suspended",
       createdAt: null,
       updatedAt: null,
+      region: null,
       externalHost: null,
       public: null,
     });

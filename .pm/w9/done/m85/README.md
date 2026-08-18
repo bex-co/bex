@@ -1,16 +1,16 @@
 # w9 · m85 — Dashboard typecheck covers test files: stop silent fixture rot
 
-**Worker:** worker9 **Goal:** a dashboard test fixture that drifts out of sync with the type it claims to build fails `yarn typecheck` (and CI) instead of rotting silently. **Status:** todo
+**Worker:** worker9 **Goal:** a dashboard test fixture that drifts out of sync with the type it claims to build fails `yarn typecheck` (and CI) instead of rotting silently. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                           | est | depends_on |
 | ---- | ------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Add a typecheck pass that includes `**/*.test.{ts,tsx}` + wire into CI          | 40m | —          |
-| t002 | Fix the type drift the new pass surfaces across existing fixtures               | 60m | t001       |
-| t003 | Simplify (closing)                                                              | 20m | t002       |
-| t004 | Test coverage: guard tripwire — a deliberately-wrong fixture fails typecheck    | 20m | t002       |
-| t005 | Closeout (closing)                                                              | 10m | t004       |
+| t001 | Add a typecheck pass that includes `**/*.test.{ts,tsx}` + wire into CI          | 40m | —          — **DONE** |
+| t002 | Fix the type drift the new pass surfaces across existing fixtures               | 60m | t001       — **DONE** |
+| t003 | Simplify (closing)                                                              | 20m | t002       — **DONE** |
+| t004 | Test coverage: guard tripwire — a deliberately-wrong fixture fails typecheck    | 20m | t002       — **DONE** |
+| t005 | Closeout (closing)                                                              | 10m | t004       — **DONE** |
 
 ## Definition of done
 

@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import type { FunctionComponent } from "react";
 import {
   oryConfig,
   oryHideCardLogo,
@@ -13,12 +14,18 @@ describe("oryConfig", () => {
 
 describe("oryHideCardLogo", () => {
   it("suppresses the Ory card's text-logo header", () => {
-    expect(oryHideCardLogo.Card?.Logo?.({})).toBeNull();
+    const Logo = oryHideCardLogo.Card?.Logo as
+      | FunctionComponent<Record<string, never>>
+      | undefined;
+    expect(Logo?.({})).toBeNull();
   });
 });
 
 describe("oryHideSettingsPageHeader", () => {
   it("suppresses the Settings page's own header", () => {
-    expect(oryHideSettingsPageHeader.Page?.Header?.({})).toBeNull();
+    const Header = oryHideSettingsPageHeader.Page?.Header as
+      | FunctionComponent<Record<never, never>>
+      | undefined;
+    expect(Header?.({})).toBeNull();
   });
 });

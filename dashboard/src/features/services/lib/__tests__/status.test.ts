@@ -39,11 +39,14 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {
     id: "app",
     name: "app",
+    slug: null,
     type: "web_service",
     suspended: false,
     phase: "Running",
     url: "https://app.onbex.co",
+    internalAddress: null,
     createdAt: "2026-01-01T00:00:00Z",
+    sshAddress: null,
     replicas: 1,
     revision: "abc123",
     plan: null,
@@ -61,7 +64,70 @@ function svc(overrides: Partial<ServiceView> = {}): ServiceView {
     startCommand: null,
     dockerfilePath: null,
     registryCredentialId: null,
+    buildFilter: null,
+    autoDeploy: null,
+    notifyOnFail: null,
+    notificationsToSend: null,
+    renderSubdomainPolicy: null,
+    healthCheckPath: null,
+    maxShutdownDelaySeconds: null,
+    preDeployCommand: null,
+    publishPath: null,
+    routes: [],
+    headers: [],
     ipAllowList: null,
+    ipAllowListEntries: null,
+    ...overrides,
+  };
+}
+
+function server(overrides: Partial<ServerNode> = {}): ServerNode {
+  return {
+    __typename: "Service",
+    id: "app",
+    name: "app",
+    slug: null,
+    displayName: null,
+    type: "web_service",
+    suspended: "not_suspended",
+    dashboardUrl: null,
+    region: null,
+    url: null,
+    publicRoutingNotice: null,
+    internalAddress: null,
+    createdAt: null,
+    sshAddress: null,
+    phase: "Running",
+    replicas: 1,
+    revision: null,
+    plan: null,
+    idleTTLSeconds: 0,
+    repo: null,
+    branch: null,
+    rootDir: null,
+    runtime: null,
+    builder: null,
+    buildCommand: null,
+    startCommand: null,
+    dockerfilePath: null,
+    registryCredentialId: null,
+    autoDeploy: null,
+    notifyOnFail: null,
+    notificationsToSend: null,
+    renderSubdomainPolicy: null,
+    healthCheckPath: null,
+    maxShutdownDelaySeconds: null,
+    preDeployCommand: null,
+    schedule: null,
+    command: null,
+    lastSuccessfulRunAt: null,
+    publishPath: null,
+    ipAllowList: null,
+    maintenanceMode: { __typename: "MaintenanceMode", enabled: false, uri: "" },
+    buildFilter: null,
+    runs: null,
+    routes: null,
+    headers: null,
     ipAllowListEntries: null,
     ...overrides,
   };
@@ -99,7 +165,6 @@ describe("toServiceView", () => {
       revision: "abc123",
       plan: null,
       idleTTLSeconds: 0,
-      maintenanceMode: null,
       schedule: null,
       command: null,
       runs: [],
@@ -149,7 +214,8 @@ describe("toServiceView", () => {
 
   it("carries a copy-ready SSH address only when the detail query selected it", () => {
     expect(
-      toServiceView(node({ sshAddress: "srv-example@ssh.bex.co" })).sshAddress,
+      toServiceView(server({ sshAddress: "srv-example@ssh.bex.co" }))
+        .sshAddress,
     ).toBe("srv-example@ssh.bex.co");
   });
 
@@ -177,20 +243,9 @@ describe("toServiceView", () => {
   });
 
   it("maps a build-from-git server node's source and build settings", () => {
-    const serverNode: ServerNode = {
-      __typename: "Service",
+    const serverNode: ServerNode = server({
       id: "mono",
       name: "mono",
-      type: "web_service",
-      suspended: "not_suspended",
-      dashboardUrl: null,
-      url: null,
-      createdAt: null,
-      phase: "Running",
-      replicas: 1,
-      revision: null,
-      plan: null,
-      idleTTLSeconds: 0,
       repo: "https://github.com/x/mono",
       branch: "main",
       rootDir: "backend",
@@ -199,10 +254,7 @@ describe("toServiceView", () => {
       startCommand: "bin/server",
       dockerfilePath: "docker/Dockerfile.prod",
       registryCredentialId: "rgc-private",
-      schedule: null,
-      command: null,
-      runs: [],
-    };
+    });
     const v = toServiceView(serverNode);
     expect(v.repo).toBe("https://github.com/x/mono");
     expect(v.branch).toBe("main");
@@ -227,28 +279,11 @@ describe("toServiceView", () => {
   });
 
   it("reads slug from a detail server node, incl. the random-suffix case", () => {
-    const serverNode: ServerNode = {
-      __typename: "Service",
+    const serverNode: ServerNode = server({
       id: "web",
       name: "web",
       slug: "web-a1b2",
-      type: "web_service",
-      suspended: "not_suspended",
-      dashboardUrl: null,
-      url: null,
-      createdAt: null,
-      phase: "Running",
-      replicas: 1,
-      revision: null,
-      plan: null,
-      idleTTLSeconds: 0,
-      repo: null,
-      branch: null,
-      rootDir: null,
-      schedule: null,
-      command: null,
-      runs: [],
-    };
+    });
     expect(toServiceView(serverNode).slug).toBe("web-a1b2");
   });
 
@@ -257,23 +292,11 @@ describe("toServiceView", () => {
   });
 
   it("maps a cron server node's schedule and run history", () => {
-    const serverNode: ServerNode = {
-      __typename: "Service",
+    const serverNode: ServerNode = server({
       id: "nightly",
       name: "nightly",
       type: "cron_job",
-      suspended: "not_suspended",
-      dashboardUrl: null,
-      url: null,
-      createdAt: null,
-      phase: "Running",
       replicas: null,
-      revision: null,
-      plan: null,
-      idleTTLSeconds: 0,
-      repo: null,
-      branch: null,
-      rootDir: null,
       schedule: "*/5 * * * *",
       command: "npm run report",
       runs: [
@@ -286,7 +309,7 @@ describe("toServiceView", () => {
           status: "Succeeded",
         },
       ],
-    };
+    });
     const v = toServiceView(serverNode);
     expect(v.type).toBe("cron_job");
     expect(v.schedule).toBe("*/5 * * * *");

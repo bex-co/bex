@@ -122,7 +122,6 @@ describe("CronRunsSection", () => {
     runs = [
       {
         id: "crr-first",
-        name: "crr-first",
         startedAt: "2026-07-09T10:00:00Z",
         finishedAt: "2026-07-09T10:00:01Z",
         status: "successful",

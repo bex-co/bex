@@ -70,6 +70,7 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
         level: "",
         method: "",
         statusCode: "",
+        spans: null,
       },
     ];
     render(<LogViewer resource="web" />);
@@ -152,6 +153,7 @@ describe("LogViewer URL-backed filter state (w7/m42)", () => {
         level: "",
         method: "",
         statusCode: "",
+        spans: null,
       },
     ];
     const onFiltersChange = vi.fn();
