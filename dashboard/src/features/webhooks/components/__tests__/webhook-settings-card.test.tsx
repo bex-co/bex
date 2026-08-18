@@ -12,8 +12,14 @@ import { WebhookSettingsCard } from "@/features/webhooks/components/webhook-sett
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 
 const update = vi.fn();
+let canManage = true;
 vi.mock("@/features/webhooks/hooks/use-update-webhook", () => ({
-  useUpdateWebhook: () => ({ update, busy: false }),
+  useUpdateWebhook: () => ({
+    update,
+    busy: false,
+    error: null,
+    clearError: vi.fn(),
+  }),
 }));
 
 const setEnabled = vi.fn();
@@ -30,7 +36,17 @@ vi.mock("@/features/webhooks/hooks/use-webhook-event-types", () => ({
   useWebhookEventTypes: () => ({
     eventTypes: ["deploy_started", "deploy_ended", "service_suspended"],
     loading: false,
+    error: undefined,
+    retry: vi.fn(),
   }),
+}));
+
+vi.mock("@/features/webhooks/hooks/use-webhooks", () => ({
+  useWebhooks: () => ({ endpoints: [], loading: false }),
+}));
+
+vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
+  useCapabilities: () => ({ canManage, loaded: true }),
 }));
 
 const ENDPOINT: WebhookEndpointView = {
@@ -65,6 +81,7 @@ function renderCard(endpoint: WebhookEndpointView = ENDPOINT) {
 }
 
 beforeEach(() => {
+  canManage = true;
   update.mockReset();
   update.mockResolvedValue(true);
   setEnabled.mockReset();
@@ -110,21 +127,25 @@ describe("WebhookSettingsCard (w1/m49/t005)", () => {
     expect(update).toHaveBeenCalledWith("whk-1", { name: "slack-bot-two" });
   });
 
-  it("an empty URL or an empty event set blocks Save even when dirty", async () => {
+  it("an empty URL or event set renders an inline error and focuses it", async () => {
     const user = userEvent.setup();
     renderCard();
     const save = await screen.findByRole("button", { name: "Save changes" });
     const url = screen.getByLabelText("Destination URL");
 
     await user.clear(url);
-    expect(save).toBeDisabled();
+    expect(save).toBeEnabled();
+    await user.click(save);
+    expect(screen.getByText("Enter a destination URL.")).toBeInTheDocument();
+    expect(url).toHaveFocus();
 
     await user.type(url, "https://example.com/hook2");
     expect(save).toBeEnabled();
 
     // Unchecking the only subscribed event zeroes the set → blocked.
     await user.click(screen.getByRole("checkbox", { name: "Deploy Started" }));
-    expect(save).toBeDisabled();
+    await user.click(save);
+    expect(screen.getByText("Select at least one event.")).toBeInTheDocument();
     expect(update).not.toHaveBeenCalled();
   });
 
@@ -179,5 +200,22 @@ describe("WebhookSettingsCard (w1/m49/t005)", () => {
       await screen.findByText(/shown once when this webhook was created/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/show secret/i)).not.toBeInTheDocument();
+  });
+
+  it("renders a read-only inspection surface without mutation controls", async () => {
+    canManage = false;
+    renderCard();
+    expect(
+      await screen.findByText(/only workspace managers/i),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toBeDisabled();
+    expect(screen.getByLabelText("Destination URL")).toBeDisabled();
+    expect(screen.getByRole("switch", { name: "Status" })).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Save changes" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete" }),
+    ).not.toBeInTheDocument();
   });
 });

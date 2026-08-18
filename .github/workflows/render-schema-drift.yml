@@ -1,4 +1,4 @@
-name: Render Blueprint schema drift
+name: Render schema drift
 
 on:
   workflow_dispatch:
@@ -9,9 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  render-blueprint-schema:
+  render-schema:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Compare Render's published schema with the reviewed pin
+      - name: Compare Render's published schemas with reviewed pins
         run: scripts/render-schema-drift.sh

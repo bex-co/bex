@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { SetWebhookEndpointEnabledDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { webhookErrorMessageKey } from "@/features/webhooks/lib/errors";
 
 export interface UseSetWebhookEnabledResult {
   /** Flips an endpoint's enabled flag; resolves true on success. */
@@ -36,8 +37,9 @@ export function useSetWebhookEnabled(): UseSetWebhookEnabledResult {
           }),
         );
         return true;
-      } catch {
-        toast.error(t("webhooks.toggleError", { name }));
+      } catch (error) {
+        const key = webhookErrorMessageKey(error);
+        toast.error(key ? t(key) : t("webhooks.toggleError", { name }));
         return false;
       } finally {
         setToggling(null);

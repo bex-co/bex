@@ -22,6 +22,22 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Enabled",
     description: "Webhooks table column header — the enable/disable switch",
   },
+  "webhooks.colLatest": {
+    message: "Latest delivery",
+    description: "Webhooks table column header — newest immutable attempt",
+  },
+  "webhooks.searchEndpoints": {
+    message: "Search webhooks",
+    description: "Endpoint list search label and placeholder",
+  },
+  "webhooks.searchEndpointsHelp": {
+    message: "Search by name, destination, or event",
+    description: "Endpoint list search helper text",
+  },
+  "webhooks.searchEndpointsEmpty": {
+    message: "No webhooks match your search.",
+    description: "Endpoint list empty state after local search",
+  },
   "webhooks.emptyTitle": {
     message: "No webhooks",
     description: "Webhooks empty-state title",
@@ -84,6 +100,89 @@ const enWebhooks: Record<string, TranslationEntry> = {
   "webhooks.eventsLoading": {
     message: "Loading event types…",
     description: "Create dialog while the event-type vocabulary loads",
+  },
+  "webhooks.eventsLoadError": {
+    message: "Event types couldn't be loaded. Retry before saving.",
+    description: "Actionable event-catalog query failure",
+  },
+  "webhooks.eventsRetry": {
+    message: "Retry event types",
+    description: "Retry button for the event-catalog query",
+  },
+  "webhooks.eventsEmpty": {
+    message: "No subscribable event types are available right now.",
+    description: "Event picker state when the served catalog is empty",
+  },
+  "webhooks.formUnavailableEvents": {
+    message: "Create is unavailable until event types are loaded.",
+    description:
+      "Create submit disabled reason while the catalog is unavailable",
+  },
+  "webhooks.formErrorsSummary": {
+    message: "Fix the highlighted fields and try again.",
+    description: "Accessible webhook form validation summary",
+  },
+  "webhooks.validation.nameRequired": {
+    message: "Enter a webhook name.",
+    description: "Field-local required-name validation",
+  },
+  "webhooks.validation.nameDuplicate": {
+    message: "A webhook with this name already exists.",
+    description: "Field-local duplicate-name validation",
+  },
+  "webhooks.validation.urlRequired": {
+    message: "Enter a destination URL.",
+    description: "Field-local required URL validation",
+  },
+  "webhooks.validation.urlHTTPS": {
+    message: "Enter an absolute HTTPS URL without embedded credentials.",
+    description: "Field-local webhook URL validation",
+  },
+  "webhooks.validation.eventsRequired": {
+    message: "Select at least one event.",
+    description: "Field-local event selection validation",
+  },
+  "webhooks.validation.eventsInvalid": {
+    message:
+      "The event selection changed. Reload the catalog and choose again.",
+    description: "Server-coded stale/invalid event filter",
+  },
+  "webhooks.errors.endpointLimit": {
+    message: "This workspace has reached its webhook endpoint limit.",
+    description: "Server-coded endpoint quota refusal",
+  },
+  "webhooks.errors.endpointDisabled": {
+    message: "Enable this endpoint before resending a delivery.",
+    description: "Server-coded resend refusal for a disabled endpoint",
+  },
+  "webhooks.errors.deliveryPending": {
+    message: "A delivery attempt is already queued. Wait for it to finish.",
+    description: "Server-coded duplicate pending resend refusal",
+  },
+  "webhooks.errors.staleState": {
+    message: "This webhook changed or was removed. Refresh and try again.",
+    description: "Safe stale endpoint/attempt refusal",
+  },
+  "webhooks.manageRequired": {
+    message:
+      "You can inspect this webhook, but only workspace managers can change it.",
+    description: "Read-only member notice on webhook management surfaces",
+  },
+  "webhooks.latestNever": {
+    message: "Never sent",
+    description: "Endpoint with no completed delivery attempt",
+  },
+  "webhooks.latestDelivered": {
+    message: "Successful",
+    description: "Latest endpoint attempt succeeded",
+  },
+  "webhooks.latestFailed": {
+    message: "Failed",
+    description: "Latest endpoint attempt failed terminally",
+  },
+  "webhooks.latestRetrying": {
+    message: "Retrying",
+    description: "Latest endpoint attempt failed with a retry pending",
   },
   "webhooks.createCancel": {
     message: "Cancel",

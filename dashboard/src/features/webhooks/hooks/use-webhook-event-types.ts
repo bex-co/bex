@@ -1,10 +1,12 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { WebhookEventTypesDocument } from "@/graphql/definitions";
 
 export interface UseWebhookEventTypesResult {
   eventTypes: string[];
   loading: boolean;
+  error: Error | undefined;
+  retry: () => Promise<unknown>;
 }
 
 /**
@@ -13,12 +15,18 @@ export interface UseWebhookEventTypesResult {
  * can't drift from what bex-api actually emits.
  */
 export function useWebhookEventTypes(): UseWebhookEventTypesResult {
-  const { data, loading } = useQuery(WebhookEventTypesDocument, {
-    fetchPolicy: "cache-first",
-  });
+  const { data, loading, error, refetch } = useQuery(
+    WebhookEventTypesDocument,
+    {
+      fetchPolicy: "cache-first",
+      errorPolicy: "all",
+      notifyOnNetworkStatusChange: true,
+    },
+  );
   const eventTypes = useMemo(
     () => (data?.webhookEventTypes ?? []).filter((t): t is string => !!t),
     [data],
   );
-  return { eventTypes, loading };
+  const retry = useCallback(() => refetch(), [refetch]);
+  return { eventTypes, loading, error, retry };
 }

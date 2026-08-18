@@ -24,6 +24,9 @@ function toView(
     disabledReason: raw.disabledReason ?? "",
     createdAt: raw.createdAt,
     createdBy: raw.createdBy ?? "",
+    latestStatus: "",
+    latestSentAt: null,
+    latestParentStatus: "",
   };
 }
 

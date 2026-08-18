@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ResendWebhookDeliveryDocument } from "@/features/webhooks/api/operations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { webhookErrorMessageKey } from "@/features/webhooks/lib/errors";
 
 function newIdempotencyKey(attemptId: string): string {
   const random = globalThis.crypto?.randomUUID?.();
@@ -56,8 +57,9 @@ export function useResendWebhookDelivery(): UseResendWebhookDeliveryResult {
         idempotencyKeys.current.delete(attemptId);
         toast.success(t("webhooks.resendSuccess"));
         return true;
-      } catch {
-        toast.error(t("webhooks.resendError"));
+      } catch (error) {
+        const key = webhookErrorMessageKey(error);
+        toast.error(key ? t(key) : t("webhooks.resendError"));
         return false;
       } finally {
         inFlight.current.delete(attemptId);

@@ -4,6 +4,10 @@ import { toast } from "sonner";
 import { UpdateWebhookEndpointDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import {
+  WebhookMutationError,
+  toWebhookMutationError,
+} from "@/features/webhooks/lib/errors";
 
 export interface WebhookUpdate {
   name?: string;
@@ -16,6 +20,8 @@ export interface UseUpdateWebhookResult {
   /** Fires updateWebhookEndpoint; resolves true on success (toasted either way). */
   update: (id: string, patch: WebhookUpdate) => Promise<boolean>;
   busy: boolean;
+  error: Error | null;
+  clearError: () => void;
 }
 
 /**
@@ -31,9 +37,11 @@ export function useUpdateWebhook(): UseUpdateWebhookResult {
   const { currentWorkspaceId } = useWorkspace();
   const [mutate] = useMutation(UpdateWebhookEndpointDocument);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
   const update = useCallback(
     async (id: string, patch: WebhookUpdate) => {
+      setError(null);
       setBusy(true);
       try {
         await mutate({
@@ -42,14 +50,15 @@ export function useUpdateWebhook(): UseUpdateWebhookResult {
         toast.success(t("webhooks.updateSuccess"));
         return true;
       } catch (err) {
-        // Surface the backend's named refusal (invalid URL, empty event set)
-        // instead of a generic failure — parity with how Create toasts.
-        const detail = err instanceof Error && err.message ? err.message : "";
-        toast.error(
-          detail
-            ? `${t("webhooks.updateError")}: ${detail}`
-            : t("webhooks.updateError"),
-        );
+        const normalized = toWebhookMutationError(err);
+        const failure =
+          normalized instanceof Error
+            ? normalized
+            : new Error(t("webhooks.updateError"));
+        setError(failure);
+        if (!(failure instanceof WebhookMutationError)) {
+          toast.error(t("webhooks.updateError"));
+        }
         return false;
       } finally {
         setBusy(false);
@@ -58,5 +67,6 @@ export function useUpdateWebhook(): UseUpdateWebhookResult {
     [mutate, t, currentWorkspaceId],
   );
 
-  return { update, busy };
+  const clearError = useCallback(() => setError(null), []);
+  return { update, busy, error, clearError };
 }

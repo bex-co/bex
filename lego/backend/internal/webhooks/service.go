@@ -211,18 +211,21 @@ type Service struct {
 // every other verb's view leaves it empty because the store's read queries
 // never select the column.
 type EndpointView struct {
-	ID             string
-	Name           string
-	URL            string
-	OwnerID        string
-	EventTypes     []string
-	Enabled        bool
-	DisabledReason string
-	Secret         string
-	CreatedBy      string
-	CreatedAt      string
-	UpdatedAt      string
-	Cursor         string
+	ID                 string
+	Name               string
+	URL                string
+	OwnerID            string
+	EventTypes         []string
+	Enabled            bool
+	DisabledReason     string
+	Secret             string
+	CreatedBy          string
+	CreatedAt          string
+	UpdatedAt          string
+	Cursor             string
+	LatestStatus       string
+	LatestSentAt       string
+	LatestParentStatus string
 }
 
 // Delivery statuses a DeliveryView reports. Each value describes one immutable
@@ -266,18 +269,23 @@ type DeliveryView struct {
 // (round-13 #7).
 func toView(e store.WebhookEndpoint, exactURL bool) EndpointView {
 	v := EndpointView{
-		ID:             e.ID,
-		Name:           e.Name,
-		URL:            e.URL,
-		OwnerID:        e.TenantID,
-		EventTypes:     e.EventTypes,
-		Enabled:        e.Enabled,
-		DisabledReason: e.DisabledReason,
-		Secret:         e.Secret,
-		CreatedBy:      e.CreatedBy,
-		CreatedAt:      e.CreatedAt.UTC().Format(time.RFC3339),
-		UpdatedAt:      e.UpdatedAt.UTC().Format(time.RFC3339),
-		Cursor:         core.EncodeKeysetCursor(e.CreatedAt, e.ID),
+		ID:                 e.ID,
+		Name:               e.Name,
+		URL:                e.URL,
+		OwnerID:            e.TenantID,
+		EventTypes:         e.EventTypes,
+		Enabled:            e.Enabled,
+		DisabledReason:     e.DisabledReason,
+		Secret:             e.Secret,
+		CreatedBy:          e.CreatedBy,
+		CreatedAt:          e.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:          e.UpdatedAt.UTC().Format(time.RFC3339),
+		Cursor:             core.EncodeKeysetCursor(e.CreatedAt, e.ID),
+		LatestStatus:       e.LatestAttemptStatus,
+		LatestParentStatus: e.LatestParentStatus,
+	}
+	if e.LatestAttemptAt != nil {
+		v.LatestSentAt = e.LatestAttemptAt.UTC().Format(time.RFC3339)
 	}
 	if !exactURL {
 		v.URL = RedactedURL(e.URL)
@@ -375,9 +383,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, 
 const EndpointLimitCode = "WEBHOOK_ENDPOINT_LIMIT"
 
 const (
-	WebhookNameInvalidCode  = "WEBHOOK_NAME_INVALID"
-	WebhookNameConflictCode = "WEBHOOK_NAME_CONFLICT"
-	WebhookURLInvalidCode   = "WEBHOOK_URL_INVALID"
+	WebhookNameInvalidCode        = "WEBHOOK_NAME_INVALID"
+	WebhookNameConflictCode       = "WEBHOOK_NAME_CONFLICT"
+	WebhookURLInvalidCode         = "WEBHOOK_URL_INVALID"
+	WebhookEventFilterInvalidCode = "WEBHOOK_EVENT_FILTER_INVALID"
 )
 
 // mapCreateErr turns the store's typed quota refusal into a coded API error.
@@ -801,7 +810,8 @@ func normalizeEventTypes(types []string) ([]string, error) {
 	asked := make(map[string]bool, len(types))
 	for _, t := range types {
 		if !slices.Contains(EventTypes, t) {
-			return nil, fmt.Errorf("%w: unknown event type %q (valid: %s)", core.ErrBadRequest, t, strings.Join(EventTypes, ", "))
+			return nil, core.NewBadRequestError(WebhookEventFilterInvalidCode,
+				fmt.Sprintf("unknown event type %q", t), map[string]any{"field": "eventTypes"})
 		}
 		asked[t] = true
 	}

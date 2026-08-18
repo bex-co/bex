@@ -51,6 +51,7 @@ import { useWebhookDeliveries } from "@/features/webhooks/hooks/use-webhook-deli
 import { useResendWebhookDelivery } from "@/features/webhooks/hooks/use-resend-webhook-delivery";
 import { eventLabelKey } from "@/features/webhooks/event-catalog";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import type {
   WebhookDeliveryStatus,
   WebhookDeliveryView,
@@ -72,8 +73,9 @@ export function WebhookDeliveriesCard({
   endpointEnabled: boolean;
 }) {
   const { t } = useTranslations();
-  const { currentWorkspace, currentWorkspaceId } = useWorkspace();
-  const canResend = endpointEnabled && currentWorkspace?.role === "admin";
+  const { currentWorkspaceId } = useWorkspace();
+  const { canManage } = useCapabilities();
+  const canResend = endpointEnabled && canManage;
   const [filter, setFilter] = useState<DeliveryFilter>("all");
   const [sentAfter, setSentAfter] = useState("");
   const [sentBefore, setSentBefore] = useState("");

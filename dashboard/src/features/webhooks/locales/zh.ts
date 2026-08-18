@@ -22,6 +22,22 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "启用",
     description: "Webhooks table column header — the enable/disable switch",
   },
+  "webhooks.colLatest": {
+    message: "最近投递",
+    description: "Webhooks table column header — newest immutable attempt",
+  },
+  "webhooks.searchEndpoints": {
+    message: "搜索 Webhook",
+    description: "Endpoint list search label and placeholder",
+  },
+  "webhooks.searchEndpointsHelp": {
+    message: "按名称、目标地址或事件搜索",
+    description: "Endpoint list search helper text",
+  },
+  "webhooks.searchEndpointsEmpty": {
+    message: "没有匹配搜索的 Webhook。",
+    description: "Endpoint list empty state after local search",
+  },
   "webhooks.emptyTitle": {
     message: "暂无 Webhook",
     description: "Webhooks empty-state title",
@@ -82,6 +98,87 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   "webhooks.eventsLoading": {
     message: "正在加载事件类型…",
     description: "Create dialog while the event-type vocabulary loads",
+  },
+  "webhooks.eventsLoadError": {
+    message: "无法加载事件类型。请重试后再保存。",
+    description: "Actionable event-catalog query failure",
+  },
+  "webhooks.eventsRetry": {
+    message: "重试加载事件类型",
+    description: "Retry button for the event-catalog query",
+  },
+  "webhooks.eventsEmpty": {
+    message: "目前没有可订阅的事件类型。",
+    description: "Event picker state when the served catalog is empty",
+  },
+  "webhooks.formUnavailableEvents": {
+    message: "加载事件类型后才能创建。",
+    description:
+      "Create submit disabled reason while the catalog is unavailable",
+  },
+  "webhooks.formErrorsSummary": {
+    message: "请修正标出的字段后重试。",
+    description: "Accessible webhook form validation summary",
+  },
+  "webhooks.validation.nameRequired": {
+    message: "请输入 Webhook 名称。",
+    description: "Field-local required-name validation",
+  },
+  "webhooks.validation.nameDuplicate": {
+    message: "已存在同名 Webhook。",
+    description: "Field-local duplicate-name validation",
+  },
+  "webhooks.validation.urlRequired": {
+    message: "请输入目标 URL。",
+    description: "Field-local required URL validation",
+  },
+  "webhooks.validation.urlHTTPS": {
+    message: "请输入不含嵌入凭据的绝对 HTTPS URL。",
+    description: "Field-local webhook URL validation",
+  },
+  "webhooks.validation.eventsRequired": {
+    message: "请至少选择一个事件。",
+    description: "Field-local event selection validation",
+  },
+  "webhooks.validation.eventsInvalid": {
+    message: "事件选项已变更。请重新加载并选择。",
+    description: "Server-coded stale/invalid event filter",
+  },
+  "webhooks.errors.endpointLimit": {
+    message: "此工作区已达到 Webhook 端点上限。",
+    description: "Server-coded endpoint quota refusal",
+  },
+  "webhooks.errors.endpointDisabled": {
+    message: "请先启用此端点再重新发送。",
+    description: "Server-coded resend refusal for a disabled endpoint",
+  },
+  "webhooks.errors.deliveryPending": {
+    message: "已有投递尝试排队中，请等待其完成。",
+    description: "Server-coded duplicate pending resend refusal",
+  },
+  "webhooks.errors.staleState": {
+    message: "此 Webhook 已更改或删除。请刷新后重试。",
+    description: "Safe stale endpoint/attempt refusal",
+  },
+  "webhooks.manageRequired": {
+    message: "你可以查看此 Webhook，但只有工作区管理员可以更改它。",
+    description: "Read-only member notice on webhook management surfaces",
+  },
+  "webhooks.latestNever": {
+    message: "从未发送",
+    description: "Endpoint with no completed delivery attempt",
+  },
+  "webhooks.latestDelivered": {
+    message: "成功",
+    description: "Latest endpoint attempt succeeded",
+  },
+  "webhooks.latestFailed": {
+    message: "失败",
+    description: "Latest endpoint attempt failed terminally",
+  },
+  "webhooks.latestRetrying": {
+    message: "正在重试",
+    description: "Latest endpoint attempt failed with a retry pending",
   },
   "webhooks.createCancel": {
     message: "取消",

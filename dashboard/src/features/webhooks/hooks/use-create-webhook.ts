@@ -5,6 +5,10 @@ import { CreateWebhookEndpointDocument } from "@/features/webhooks/api/operation
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { CreatedWebhookEndpoint } from "@/features/webhooks/types";
+import {
+  WebhookMutationError,
+  toWebhookMutationError,
+} from "@/features/webhooks/lib/errors";
 
 export interface UseCreateWebhookResult {
   /** Fires createWebhookEndpoint; resolves the endpoint (secret included) or null. */
@@ -15,6 +19,8 @@ export interface UseCreateWebhookResult {
     enabled: boolean,
   ) => Promise<CreatedWebhookEndpoint | null>;
   busy: boolean;
+  error: Error | null;
+  clearError: () => void;
 }
 
 /**
@@ -34,6 +40,7 @@ export function useCreateWebhook(): UseCreateWebhookResult {
     fetchPolicy: "no-cache",
   });
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
   const create = useCallback(
     async (
@@ -49,6 +56,7 @@ export function useCreateWebhook(): UseCreateWebhookResult {
         toast.error(t("webhooks.createError"));
         return null;
       }
+      setError(null);
       setBusy(true);
       try {
         const res = await mutate({
@@ -71,12 +79,17 @@ export function useCreateWebhook(): UseCreateWebhookResult {
           secret: endpoint.secret,
         };
       } catch (err) {
-        const detail = err instanceof Error && err.message ? err.message : "";
-        toast.error(
-          detail
-            ? `${t("webhooks.createError")}: ${detail}`
-            : t("webhooks.createError"),
-        );
+        const normalized = toWebhookMutationError(err);
+        const failure =
+          normalized instanceof Error
+            ? normalized
+            : new Error(t("webhooks.createError"));
+        setError(failure);
+        // Named refusals render inline beside their actionable field. Unknown
+        // network/transport failures still need a transient global signal.
+        if (!(failure instanceof WebhookMutationError)) {
+          toast.error(t("webhooks.createError"));
+        }
         return null;
       } finally {
         setBusy(false);
@@ -85,5 +98,6 @@ export function useCreateWebhook(): UseCreateWebhookResult {
     [mutate, t, currentWorkspaceId],
   );
 
-  return { create, busy };
+  const clearError = useCallback(() => setError(null), []);
+  return { create, busy, error, clearError };
 }

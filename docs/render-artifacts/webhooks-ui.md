@@ -6,6 +6,8 @@ Captured 2026-07-17 by walking both dashboards end to end (real create → inspe
 
 > **2026-08-17 attempt-history refresh (`w8/m25`):** Render's current official [webhook guide](https://render.com/docs/webhooks) still pins stable event/body identity across automatic retries with fresh send timestamps/signatures. Render's official [Recent deliveries walkthrough](https://render.com/blog/light-up-your-builds-with-render-webhooks) explicitly describes the dashboard table as every attempt, with expandable request JSON and endpoint response plus a Resend action. Together with the 2026-07-17 live walk below, this is the current UI contract used by m25. It is a dated official-source comparison, not a claim that the m25 verifier was run live against Render or bex on this date.
 
+> **2026-08-17 management refresh (`w8/m26`):** A new authenticated walk measured Render's served picker at exactly 64 normalized values, separate from its 67-value OpenAPI enum and 62-value prose catalog. The complete sets are pinned in the [machine-readable fixture](fixtures/render-webhook-vocabulary-2026-08-17.json). OpenAPI-only is exactly artifact fetch/source failures, three edge-cache events, and `plan_changed`; picker-only is `instance_type_changed` plus the two Postgres credential events. The same walk captured inline required/URL/name-conflict feedback, endpoint search, latest-delivery state, visible event-catalog loading, and manager-only mutation controls. These are the m26 acceptance contract; unsupported vocabulary remains dispositioned rather than added for count parity.
+
 ## Render `/webhooks/new` — the create page
 
 A dedicated full page (not a modal), heading **"Create a new Webhook"**, reached from the Webhooks list's New button. Three fields, helper copy under each label:
@@ -99,3 +101,15 @@ The Activity view now treats a delivery row as one immutable network attempt rat
 - Activity polls only the newest page at a bounded cadence while the document is visible. Attempt-ID reconciliation prepends new rows without duplicating them or discarding already loaded keyset pages; changing filters/date bounds resets the relevant page set, and hidden/unmounted views stop polling. Manual Refresh remains available.
 
 Render exposes Resend in its dashboard but does not publish a corresponding public replay route. The Bex REST, GraphQL, and MCP replay operations are therefore labeled extensions. The visual workflow and evidence semantics match; the API availability is intentionally broader for automation and agents.
+
+## m26 management walkthrough result (2026-08-17, dev-8)
+
+The closing authenticated walkthrough used two disposable Kratos identities, an explicit OpenFGA viewer tuple, the real GraphQL/store path, and a headless browser against the CAPD-backed dev-8 stack. It proved the management behaviors introduced after the Render audit:
+
+1. The admin create page reported required name, destination, and event failures beside their fields, summarized them for assistive technology, and focused the first invalid control. The API independently returned `WEBHOOK_EVENT_FILTER_INVALID` for an unknown event and `WEBHOOK_NAME_CONFLICT` for the duplicate-name race; the create response exposed the mint-once secret only at creation.
+2. The list searched endpoint names, destinations, and translated event labels, displayed a named no-match state, bounded five subscriptions to three visible chips plus “Show 2 more,” and projected one failed immutable attempt as **Retrying** with exact/relative timing. That projection came from the endpoint list's single batched store query, not a per-row history request.
+3. The admin detail and Settings surfaces exposed Activity evidence, Resend, toggle/edit/save/delete, and the actionable picker. The read-only member saw the same endpoint with its destination reduced to the origin, could inspect the immutable failed attempt, and saw static/read-only list, create, Activity, and Settings surfaces with no create, toggle, Resend, save, or delete affordance. A direct viewer update still failed authoritatively as forbidden.
+4. The picker has distinct translated loading, failure-with-Retry, empty-catalog, and ready states. Submission stays unavailable with a visible reason until the catalog is usable; successful retry restores the normal searchable/grouped/all-events picker rather than a second local vocabulary.
+5. The probe endpoint was explicitly deleted, its attempt subtree cascaded, both personal workspaces and both identities were removed, and exact post-run checks reported zero probe identities, endpoints, or tenants. No screenshot, cookie jar, destination credential, or signing secret was persisted.
+
+This walkthrough closes the observed management-feedback gap. It does not turn the dated 64-value Render picker into Bex's supported list: Bex still serves the 32 types backed by durable producers, while the fixture and weekly checker keep the 64-picker/67-OpenAPI split visible.
