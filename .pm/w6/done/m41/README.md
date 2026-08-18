@@ -1,18 +1,18 @@
 # w6 · m41 — Causally-ordered availability edges: refuse time-traveled unhealthy conclusions
 
-**Worker:** worker6 **Goal:** a stale operator conclusion can no longer page a tenant — an unhealthy edge is recorded only when it is genuinely newer than the last healthy checkpoint, so phantom Critical `server_failed`/`server_available` pairs stop reaching push, webhooks, and the events feed **Status:** todo
+**Worker:** worker6 **Goal:** a stale operator conclusion can no longer page a tenant — an unhealthy edge is recorded only when it is genuinely newer than the last healthy checkpoint, so phantom Critical `server_failed`/`server_available` pairs stop reaching push, webhooks, and the events feed **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                          | est | depends_on   |
 | ---- | ------------------------------------------------------------------------------ | --- | ------------ |
-| t001 | Reproduce: a time-traveled condition produces a phantom edge through the debounce | 30m | —            |
-| t002 | Refuse an unhealthy edge older than the last recorded healthy checkpoint          | 40m | w6/m41/t001  |
-| t003 | Make rejected time-traveled conclusions observable instead of silent              | 25m | w6/m41/t002  |
-| t004 | Render parity: the availability-edge projections across every surface             | 20m | w6/m41/t003  |
-| t005 | Simplify the code this milestone changed                                          | 20m | w6/m41/t004  |
-| t006 | Test coverage: real outages unchanged, phantoms suppressed                        | 30m | w6/m41/t004  |
-| t007 | Closeout                                                                          | 10m | w6/m41/t006  |
+| t001 | Reproduce: a time-traveled condition produces a phantom edge through the debounce | 30m | —            | — **DONE**
+| t002 | Refuse an unhealthy edge older than the last recorded healthy checkpoint          | 40m | w6/m41/t001  | — **DONE** |
+| t003 | Make rejected time-traveled conclusions observable instead of silent              | 25m | w6/m41/t002  | — **DONE** |
+| t004 | Render parity: the availability-edge projections across every surface             | 20m | w6/m41/t003  | — **DONE** |
+| t005 | Simplify the code this milestone changed                                          | 20m | w6/m41/t004  | — **DONE** |
+| t006 | Test coverage: real outages unchanged, phantoms suppressed                        | 30m | w6/m41/t004  | — **DONE** |
+| t007 | Closeout                                                                          | 10m | w6/m41/t006  | — **DONE** |
 
 ## Definition of done
 

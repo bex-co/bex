@@ -461,6 +461,12 @@ type Store interface {
 	// RecordObservedServiceState persists level-triggered App status edges through
 	// a typed checkpoint; repeated reconciler observations are no-ops.
 	RecordObservedServiceState(ctx context.Context, obs ObservedServiceState) ([]ServiceEventFact, error)
+	// LastHealthyTransitionAt returns the Ready=True transition time recorded
+	// with the service's current healthy checkpoint — the reference the
+	// reconciler's stale-conclusion guard (w6/m41) orders an unhealthy edge
+	// against. Zero when there is no healthy checkpoint or its transition time
+	// is unknown; callers must fail open toward recording, never silence.
+	LastHealthyTransitionAt(ctx context.Context, appID string) (time.Time, error)
 	InsertServiceEventFact(ctx context.Context, fact ServiceEventFact) (bool, error)
 	InsertServiceEventFacts(ctx context.Context, facts []ServiceEventFact) error
 }

@@ -229,6 +229,15 @@ type ObservedServiceState struct {
 	AvailabilityObserved bool
 	ReasonCode           string
 	InstanceID           string
+	// ReadyTransitionAt is the Ready condition's LastTransitionTime backing
+	// this availability conclusion (w6/m41) — the operator-side timestamp the
+	// reconciler's stale-conclusion guard orders an unhealthy edge against the
+	// last recorded healthy checkpoint, and the value recorded as that
+	// checkpoint's healthy_transition_at when the conclusion is healthy. Zero
+	// when availability was not derived from a Ready condition (e.g.
+	// hibernation) or the condition carried no timestamp; the guard treats
+	// zero as "cannot order" and fails open toward recording.
+	ReadyTransitionAt time.Time
 }
 
 // RecordObservedServiceState atomically advances a service checkpoint and
@@ -247,6 +256,16 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 	if obs.At.IsZero() {
 		obs.At = time.Now().UTC()
 	}
+	// healthyTransition is recorded as the checkpoint's healthy_transition_at —
+	// the reference rejectStaleUnhealthy orders future unhealthy edges against.
+	// It is set only by an observed healthy conclusion; nullTime maps a missing
+	// condition timestamp to SQL NULL, and anything else leaves the column
+	// alone (NULL included), so a checkpoint whose transition time is unknown
+	// fails open toward recording.
+	var healthyTransition *time.Time
+	if obs.AvailabilityObserved && obs.Availability == "healthy" {
+		healthyTransition = nullTime(obs.ReadyTransitionAt.UTC())
+	}
 
 	var inserted []ServiceEventFact
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
@@ -256,9 +275,9 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 			obs.AppID).Scan(&previousPhase, &previousAvailability)
 		if errors.Is(err, pgx.ErrNoRows) {
 			tag, insertErr := tx.Exec(ctx,
-				`INSERT INTO service_event_checkpoints (app_id, service_phase, availability, updated_at)
-				 VALUES ($1, $2, $3, $4) ON CONFLICT (app_id) DO NOTHING`,
-				obs.AppID, obs.ServicePhase, obs.Availability, obs.At)
+				`INSERT INTO service_event_checkpoints (app_id, service_phase, availability, updated_at, healthy_transition_at)
+				 VALUES ($1, $2, $3, $4, $5) ON CONFLICT (app_id) DO NOTHING`,
+				obs.AppID, obs.ServicePhase, obs.Availability, obs.At, healthyTransition)
 			if insertErr != nil {
 				return insertErr
 			}
@@ -297,18 +316,49 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 		// app. Nothing reads updated_at — it is write-only bookkeeping — so
 		// letting it stop advancing on a no-change pass loses nothing.
 		// Same shape as SetDeployPreDeployStatus's guard in store.go.
+		//
+		// healthy_transition_at moves only inside this change-guarded write, so
+		// a healthy conclusion re-observed with an older or missing timestamp
+		// never erases a newer recorded one (COALESCE keeps the stored value
+		// when this pass has none to offer).
 		_, err = tx.Exec(ctx,
 			`UPDATE service_event_checkpoints
-			 SET service_phase = $2, availability = $3, updated_at = $4
+			 SET service_phase = $2, availability = $3, updated_at = $4,
+			     healthy_transition_at = COALESCE($5, healthy_transition_at)
 			 WHERE app_id = $1
 			   AND (service_phase, availability) IS DISTINCT FROM ($2, $3)`,
-			obs.AppID, checkpointPhase, availability, obs.At)
+			obs.AppID, checkpointPhase, availability, obs.At, healthyTransition)
 		return err
 	})
 	if err != nil {
 		return nil, fmt.Errorf("record observed service state: %w", err)
 	}
 	return inserted, nil
+}
+
+// LastHealthyTransitionAt returns the Ready=True transition time recorded with
+// the service's CURRENT healthy checkpoint — the reference the reconciler's
+// stale-conclusion guard (w6/m41, rejectStaleUnhealthy) orders an unhealthy
+// edge against. Zero when there is no healthy checkpoint right now or its
+// transition time is unknown (pre-migration row, timestamp-less condition):
+// the guard cannot order and must fail open toward recording real outages,
+// never toward silence.
+func (s *PGStore) LastHealthyTransitionAt(ctx context.Context, appID string) (time.Time, error) {
+	var at *time.Time
+	err := s.Pool.QueryRow(ctx,
+		`SELECT healthy_transition_at FROM service_event_checkpoints
+		 WHERE app_id = $1 AND availability = 'healthy'`,
+		appID).Scan(&at)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, nil
+	}
+	if err != nil {
+		return time.Time{}, fmt.Errorf("last healthy transition: %w", err)
+	}
+	if at == nil {
+		return time.Time{}, nil
+	}
+	return at.UTC(), nil
 }
 
 // checkpointServicePhase keeps a suspended edge pending through the transient

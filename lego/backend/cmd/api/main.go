@@ -349,6 +349,7 @@ func main() {
 
 		st = store.NewPGStore(pool)
 		rec = store.NewReconciler(cl, st)
+		rec.Metrics = store.NewReconcilerMetrics(metricRegistry)
 		if d := os.Getenv("BEX_CP_RESYNC"); d != "" {
 			v, err := time.ParseDuration(d)
 			if err != nil {
