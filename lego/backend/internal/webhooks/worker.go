@@ -85,6 +85,12 @@ const (
 	// dispatchBatch caps one dispatch pass's read; a full batch loops
 	// immediately rather than waiting a tick.
 	dispatchBatch = 200
+	// DefaultMaxDeliveriesPerWorkspace bounds one tenant's open logical
+	// notifications. It is deliberately well above ordinary endpoint/event
+	// volume; the ceiling is an abuse/failure containment boundary, not a
+	// customer-facing product quota. BEX_MAX_WEBHOOK_DELIVERIES_PER_WORKSPACE=0
+	// disables it explicitly.
+	DefaultMaxDeliveriesPerWorkspace = 10000
 	// sendBatch caps one send pass; senderConcurrency bounds parallel POSTs
 	// (the notifications fan-out size).
 	sendBatch         = 50
@@ -125,7 +131,7 @@ type WorkerStore interface {
 	EnsureWebhookWatermark(ctx context.Context, at time.Time) (time.Time, string, error)
 	ListWebhookEvents(ctx context.Context, afterAt time.Time, afterKey string, until time.Time, verbs, tenants []string, limit int) ([]store.WebhookEventRow, error)
 	ListEnabledWebhookEndpoints(ctx context.Context) ([]store.WebhookEndpoint, error)
-	EnqueueWebhookDeliveries(ctx context.Context, deliveries []store.WebhookDelivery, at time.Time, key string) error
+	EnqueueWebhookDeliveries(ctx context.Context, deliveries []store.WebhookDelivery, at time.Time, key string, maxPerWorkspace int) (store.WebhookEnqueueResult, error)
 	ClaimDueWebhookAttempts(ctx context.Context, now, leaseUntil time.Time, limit int) ([]store.DueWebhookAttempt, error)
 	SweepWebhookDeliveries(ctx context.Context, before time.Time, keepPerEndpoint, limit int) (int64, error)
 	CompleteWebhookAttempt(ctx context.Context, completion store.WebhookAttemptCompletion) (bool, error)
@@ -140,6 +146,12 @@ type WorkerStore interface {
 // endpoint, event, workspace, and caller identifiers are intentionally absent.
 type AttemptObserver interface {
 	ObserveWebhookAttempt(origin, result string)
+}
+
+// AdmissionObserver records only aggregate, bounded outcomes from queue
+// admission. It receives no resource identifiers or tenant-controlled values.
+type AdmissionObserver interface {
+	ObserveWebhookAdmission(result store.WebhookEnqueueResult)
 }
 
 // Mailer sends the failure-notice email (text + optional HTML alternative) —
@@ -173,6 +185,11 @@ type Worker struct {
 	// Attempts records one result only after the store wins the terminalization
 	// CAS. nil disables metrics without affecting delivery.
 	Attempts AttemptObserver
+	// Admissions records aggregate admitted/capped/deduplicated counts after the
+	// enqueue transaction commits. nil disables metrics without affecting the
+	// queue. MaxDeliveriesPerWorkspace == 0 disables the ceiling.
+	Admissions                AdmissionObserver
+	MaxDeliveriesPerWorkspace int
 	// RetentionDays is how long a TERMINAL delivery survives before the sweep
 	// purges it (BEX_WEBHOOK_RETENTION_DAYS). <1 => DefaultRetentionDays.
 	RetentionDays int
@@ -357,7 +374,8 @@ func (w *Worker) dispatch(ctx context.Context, endpoints []store.WebhookEndpoint
 			oldest = e.CreatedAt
 		}
 	}
-	return store.TailFeed(ctx, &w.cursor, store.FeedPass[store.WebhookDelivery]{
+	var capped int
+	err := store.TailFeed(ctx, &w.cursor, store.FeedPass[store.WebhookDelivery]{
 		Until: until,
 		// Nothing from before the oldest enabled endpoint existed can be delivered
 		// (the per-endpoint guard in fanOut), so the read may start there when the
@@ -368,11 +386,30 @@ func (w *Worker) dispatch(ctx context.Context, endpoints []store.WebhookEndpoint
 		Limit:   dispatchBatch,
 		Park:    parkInterval,
 		List:    w.Store.ListWebhookEvents,
-		Commit:  w.Store.EnqueueWebhookDeliveries,
+		Commit: func(ctx context.Context, deliveries []store.WebhookDelivery, at time.Time, key string) error {
+			result, err := w.Store.EnqueueWebhookDeliveries(
+				ctx, deliveries, at, key, w.MaxDeliveriesPerWorkspace,
+			)
+			if err != nil {
+				return err
+			}
+			if w.Admissions != nil {
+				w.Admissions.ObserveWebhookAdmission(result)
+			}
+			capped += result.Capped
+			return nil
+		},
 		Project: func(_ context.Context, rows []store.WebhookEventRow) ([]store.WebhookDelivery, error) {
 			return w.fanOutPage(rows, byTenant)
 		},
 	})
+	if capped > 0 {
+		// One aggregate line per dispatch pass, even when TailFeed loops through
+		// several full pages. No workspace/endpoint/event/URL/payload leaves the
+		// store result, so sustained pressure cannot amplify logs or leak tenants.
+		log.Printf("webhooks: capped %d deliveries at the per-workspace open-backlog limit %d; source events were committed and will not replay", capped, w.MaxDeliveriesPerWorkspace)
+	}
+	return err
 }
 
 // fanOutPage turns one page of the feed into deliveries: every subscribed

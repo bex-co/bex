@@ -186,12 +186,32 @@ func (f *fakeWorkerStore) ListEnabledWebhookEndpoints(context.Context) ([]store.
 	return out, nil
 }
 
-func (f *fakeWorkerStore) EnqueueWebhookDeliveries(_ context.Context, deliveries []store.WebhookDelivery, at time.Time, key string) error {
+func (f *fakeWorkerStore) EnqueueWebhookDeliveries(_ context.Context, deliveries []store.WebhookDelivery, at time.Time, key string, maxPerWorkspace int) (store.WebhookEnqueueResult, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	result := store.WebhookEnqueueResult{}
+	openByWorkspace := map[string]int{}
+	for _, d := range f.queue {
+		if d.DeliveredAt != nil || d.FailedAt != nil {
+			continue
+		}
+		if ep, ok := f.endpointByID(d.EndpointID); ok {
+			openByWorkspace[ep.TenantID]++
+		}
+	}
 	for _, d := range deliveries {
 		dedupKey := d.EndpointID + "\x00" + d.EventID
 		if f.seen[dedupKey] { // mirrors the (endpoint_id, event_id) unique index
+			result.Deduplicated++
+			continue
+		}
+		ep, ok := f.endpointByID(d.EndpointID)
+		if !ok {
+			result.Deduplicated++
+			continue
+		}
+		if maxPerWorkspace > 0 && openByWorkspace[ep.TenantID] >= maxPerWorkspace {
+			result.Capped++
 			continue
 		}
 		f.seen[dedupKey] = true
@@ -199,9 +219,11 @@ func (f *fakeWorkerStore) EnqueueWebhookDeliveries(_ context.Context, deliveries
 		f.queue[d.ID] = &cp
 		f.attempts[d.ID] = &fakeAttempt{parentID: d.ID, origin: store.WebhookAttemptAutomatic, available: d.NextAttemptAt}
 		f.queueOrder = append(f.queueOrder, d.ID)
+		openByWorkspace[ep.TenantID]++
+		result.Admitted++
 	}
 	f.wmAt, f.wmKey = at, key
-	return nil
+	return result, nil
 }
 
 func (f *fakeWorkerStore) ClaimDueWebhookAttempts(_ context.Context, now, leaseUntil time.Time, limit int) ([]store.DueWebhookAttempt, error) {
@@ -327,6 +349,11 @@ type fakeAttemptObserver struct {
 	values []string
 }
 
+type fakeAdmissionObserver struct {
+	mu    sync.Mutex
+	value store.WebhookEnqueueResult
+}
+
 func (o *fakeAttemptObserver) ObserveWebhookAttempt(origin, result string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -337,6 +364,20 @@ func (o *fakeAttemptObserver) snapshot() []string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	return slices.Clone(o.values)
+}
+
+func (o *fakeAdmissionObserver) ObserveWebhookAdmission(result store.WebhookEnqueueResult) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.value.Admitted += result.Admitted
+	o.value.Capped += result.Capped
+	o.value.Deduplicated += result.Deduplicated
+}
+
+func (o *fakeAdmissionObserver) snapshot() store.WebhookEnqueueResult {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.value
 }
 
 func (f *fakeMailer) Send(_ context.Context, to, subject, text, html string) error {

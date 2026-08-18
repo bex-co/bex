@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS webhook_delivery_attempts_endpoint_due_idx;
+DROP INDEX IF EXISTS webhook_deliveries_endpoint_open_idx;

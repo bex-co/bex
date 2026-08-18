@@ -237,8 +237,13 @@ Endpoint management is one Core, three adapters: REST `GET/POST /v1/webhooks`, `
 | Bound | Value | Notes |
 | --- | --- | --- |
 | Endpoints per workspace | 25 | Enforced in the same transaction as the insert (`FOR UPDATE` over the workspace's rows), so two concurrent creates cannot both take the last slot. Refused with `WEBHOOK_ENDPOINT_LIMIT` on REST, GraphQL, and MCP alike. |
+| Open logical notifications per workspace | 10,000 (`BEX_MAX_WEBHOOK_DELIVERIES_PER_WORKSPACE`) | Counts pending and retrying parents across all endpoints. Transaction-scoped per-workspace locks serialize concurrent admission at the persistence boundary; `0` explicitly restores unbounded admission. |
 | Terminal notification age | 90 days (`BEX_WEBHOOK_RETENTION_DAYS`) | Deletes the logical notification and its attempts together. |
 | Terminal attempt evidence per endpoint | 1000 (`BEX_WEBHOOK_RETENTION_KEEP`) | Counts immutable attempts; cleanup removes a whole notification subtree once retaining it would cross the bound. |
+
+Crossing the open-notification bound is an internal projection decision, not a failure of the service/deploy/resource mutation that produced the event. The dispatcher commits the aggregate admitted/capped result and the composed-feed watermark in one transaction, then records only closed-label metrics (`admitted`, `capped`, `deduplicated`) and at most one aggregate log per dispatch pass. It does not create a delivery or attempt row for capped work, so history never claims that an HTTP exchange happened when it did not. Logs and metrics contain no workspace, endpoint, hostname, URL, event, or payload label.
+
+The sender ranks each eligible attempt inside its workspace before taking a global batch: every workspace's oldest due row comes before any workspace's second row, and so on. Rejoining the ranked candidates under `FOR UPDATE SKIP LOCKED` keeps replica claim sets disjoint without letting one deep retry queue starve a quiet workspace. Once admitted, notification identity, eight-attempt budget, lease expiry, backoff, failure notice, endpoint disable, manual Resend, and retention behavior are unchanged.
 
 The sweep rides the existing worker tick (at most hourly), deletes whole parent/attempt subtrees in bounded batches with `FOR UPDATE SKIP LOCKED` so two replicas cooperate rather than collide, and **never** touches a notification still pending or retryable. It also runs for workspaces with no enabled endpoints — deleting the last endpoint previously stranded its whole history forever.
 

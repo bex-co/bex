@@ -2003,7 +2003,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 		EventType: "deploy_started", ServiceID: app.Name, Payload: `{"type":"deploy_started"}`,
 		NextAttemptAt: now,
 	}
-	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{d}, now, "advance-key"); err != nil {
+	if _, err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{d}, now, "advance-key", 0); err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
 	wmAt3, wmKey3, err := s.EnsureWebhookWatermark(ctx, time.Now())
@@ -2060,7 +2060,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 		ID: ids.Derive(ids.WebhookDelivery, "store-pg-failed-history"), EndpointID: ep.ID, EventID: "evt-failedhistory0000",
 		EventType: "deploy_ended", ServiceID: app.Name, Payload: `{}`, NextAttemptAt: failedAt,
 	}
-	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{failedDelivery}, failedAt, "failed-key"); err != nil {
+	if _, err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{failedDelivery}, failedAt, "failed-key", 0); err != nil {
 		t.Fatalf("enqueue failed history fixture: %v", err)
 	}
 	if completed, err := s.CompleteWebhookAttempt(ctx, WebhookAttemptCompletion{
@@ -2097,10 +2097,10 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	dupA := WebhookDelivery{ID: ids.New(ids.WebhookDelivery), EndpointID: ep.ID, EventID: "evt-dedup-0000000000", EventType: "deploy_started", ServiceID: app.Name, Payload: `{}`, NextAttemptAt: cnow}
 	dupB := dupA
 	dupB.ID = ids.New(ids.WebhookDelivery) // different delivery id, SAME (endpoint, event)
-	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{dupA}, cnow, "k1"); err != nil {
+	if _, err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{dupA}, cnow, "k1", 0); err != nil {
 		t.Fatalf("enqueue dupA: %v", err)
 	}
-	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{dupB}, cnow, "k2"); err != nil {
+	if _, err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{dupB}, cnow, "k2", 0); err != nil {
 		t.Fatalf("enqueue dupB: %v", err)
 	}
 	var nDup int
@@ -2120,7 +2120,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 			EventType: "deploy_started", ServiceID: app.Name, Payload: `{}`, NextAttemptAt: cnow,
 		})
 	}
-	if err := s.EnqueueWebhookDeliveries(ctx, batch, cnow, "k3"); err != nil {
+	if _, err := s.EnqueueWebhookDeliveries(ctx, batch, cnow, "k3", 0); err != nil {
 		t.Fatalf("enqueue claim batch: %v", err)
 	}
 	var mu sync.Mutex
@@ -2160,7 +2160,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	// while leased and becomes due again after the lease, so it retries at-least-once
 	// rather than being lost.
 	lease := WebhookDelivery{ID: ids.New(ids.WebhookDelivery), EndpointID: ep.ID, EventID: "evt-lease-0000000000", EventType: "deploy_started", ServiceID: app.Name, Payload: `{}`, NextAttemptAt: cnow}
-	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{lease}, cnow, "k4"); err != nil {
+	if _, err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{lease}, cnow, "k4", 0); err != nil {
 		t.Fatalf("enqueue lease: %v", err)
 	}
 	leaseUntil := cnow.Add(30 * time.Second)
@@ -2206,7 +2206,7 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 		ID: ids.New(ids.WebhookDelivery), EndpointID: ep.ID, EventID: "evt-parked-000000000",
 		EventType: "deploy_started", ServiceID: app.Name, Payload: `{}`, NextAttemptAt: cnow,
 	}
-	if err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{parked}, cnow, "k-parked"); err != nil {
+	if _, err := s.EnqueueWebhookDeliveries(ctx, []WebhookDelivery{parked}, cnow, "k-parked", 0); err != nil {
 		t.Fatalf("enqueue parked: %v", err)
 	}
 	if n, err := s.SweepWebhookDeliveries(ctx, cnow.Add(-time.Hour), 1000, 100); err != nil || n != 0 {

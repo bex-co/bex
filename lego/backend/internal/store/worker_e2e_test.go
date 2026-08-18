@@ -117,7 +117,7 @@ func TestTwoWorkersDeliverEachEventExactlyOnce(t *testing.T) {
 			NextAttemptAt: now,
 		})
 	}
-	if err := s.EnqueueWebhookDeliveries(ctx, batch, now, "e2e"); err != nil {
+	if _, err := s.EnqueueWebhookDeliveries(ctx, batch, now, "e2e", 0); err != nil {
 		t.Fatalf("enqueue: %v", err)
 	}
 

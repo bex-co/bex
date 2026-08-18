@@ -274,6 +274,16 @@ type WebhookDelivery struct {
 	CreatedAt       time.Time
 }
 
+// WebhookEnqueueResult is aggregate, bounded evidence from one dispatcher
+// commit. It deliberately carries no workspace, endpoint, event, URL, or
+// payload dimension: callers may log/meter it without turning tenant-controlled
+// values into an observability cardinality or confidentiality problem.
+type WebhookEnqueueResult struct {
+	Admitted     int
+	Capped       int
+	Deduplicated int
+}
+
 const (
 	WebhookAttemptPending   = "pending"
 	WebhookAttemptDelivered = "delivered"
@@ -761,31 +771,175 @@ func (s *PGStore) ListWebhookEvents(ctx context.Context, afterAt time.Time, afte
 // the watermark to (at, key) in one transaction — so a crash between the two
 // can't drop events (re-reading the same rows re-enqueues them) or skip them.
 // Called with an empty batch to advance the watermark past events nobody
-// subscribes to.
-func (s *PGStore) EnqueueWebhookDeliveries(ctx context.Context, deliveries []WebhookDelivery, at time.Time, key string) error {
+// subscribes to. maxPerWorkspace == 0 explicitly disables the ceiling.
+//
+// Every workspace represented in the batch is locked in sorted order with a
+// transaction-scoped advisory lock before its open count is read. Concurrent
+// dispatch replicas therefore cannot both observe the same last slot, while
+// unrelated workspaces remain independent. Rows rejected by the ceiling are
+// intentionally NOT errors: the watermark advances in the same transaction so
+// notification pressure can never roll back or replay the source mutation.
+func (s *PGStore) EnqueueWebhookDeliveries(ctx context.Context, deliveries []WebhookDelivery, at time.Time, key string, maxPerWorkspace int) (WebhookEnqueueResult, error) {
+	if maxPerWorkspace < 0 {
+		maxPerWorkspace = 0
+	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return err
+		return WebhookEnqueueResult{}, err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck // rollback after commit is a no-op
-	// One round trip for the whole batch (a dispatch pass can carry hundreds
-	// of event×endpoint rows), not one per insert while the txn sits open.
-	b := &pgx.Batch{}
-	for _, d := range deliveries {
-		// The 0084 insert trigger reserves the initial immutable attempt only when
-		// this parent insert wins. Losing dispatch replicas do no row update and no
-		// duplicate child work for an already-enqueued endpoint/event.
-		b.Queue(
-			`INSERT INTO webhook_deliveries (id, endpoint_id, event_id, event_type, service_id, payload, next_attempt_at)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7)
-			 ON CONFLICT (endpoint_id, event_id) DO NOTHING`,
-			d.ID, d.EndpointID, d.EventID, d.EventType, d.ServiceID, d.Payload, d.NextAttemptAt)
+	result := WebhookEnqueueResult{}
+	if len(deliveries) > 0 {
+		ids := make([]string, 0, len(deliveries))
+		endpointIDs := make([]string, 0, len(deliveries))
+		eventIDs := make([]string, 0, len(deliveries))
+		eventTypes := make([]string, 0, len(deliveries))
+		serviceIDs := make([]string, 0, len(deliveries))
+		payloads := make([]string, 0, len(deliveries))
+		nextAttemptAts := make([]time.Time, 0, len(deliveries))
+		for _, d := range deliveries {
+			ids = append(ids, d.ID)
+			endpointIDs = append(endpointIDs, d.EndpointID)
+			eventIDs = append(eventIDs, d.EventID)
+			eventTypes = append(eventTypes, d.EventType)
+			serviceIDs = append(serviceIDs, d.ServiceID)
+			payloads = append(payloads, d.Payload)
+			nextAttemptAts = append(nextAttemptAts, d.NextAttemptAt)
+		}
+
+		if maxPerWorkspace == 0 {
+			var inputCount, insertedCount int
+			err = tx.QueryRow(ctx,
+				`WITH input AS (
+				   SELECT *
+				     FROM unnest(
+				       $1::text[], $2::text[], $3::text[], $4::text[],
+				       $5::text[], $6::text[], $7::timestamptz[]
+				     ) WITH ORDINALITY AS item(
+				       id, endpoint_id, event_id, event_type, service_id, payload,
+				       next_attempt_at, ordinal
+				     )
+				 ), inserted AS (
+				   INSERT INTO webhook_deliveries (
+				     id, endpoint_id, event_id, event_type, service_id, payload,
+				     next_attempt_at
+				   )
+				   SELECT id, endpoint_id, event_id, event_type, service_id, payload,
+				          next_attempt_at
+				     FROM input
+				    ORDER BY ordinal
+				   ON CONFLICT DO NOTHING
+				   RETURNING id
+				 )
+				 SELECT (SELECT count(*) FROM input),
+				        (SELECT count(*) FROM inserted)`,
+				ids, endpointIDs, eventIDs, eventTypes, serviceIDs, payloads,
+				nextAttemptAts,
+			).Scan(&inputCount, &insertedCount)
+			if err != nil {
+				return WebhookEnqueueResult{}, classify("webhook delivery", err)
+			}
+			result.Admitted = insertedCount
+			result.Deduplicated = inputCount - insertedCount
+		} else {
+			// The prefix keeps this lock namespace distinct from endpoint-create and
+			// other workspace-keyed advisory locks. MATERIALIZED + ORDER BY gives every
+			// multi-workspace transaction the same acquisition order, avoiding a
+			// cross-tenant batch deadlock.
+			if _, err := tx.Exec(ctx,
+				`WITH tenants AS MATERIALIZED (
+			   SELECT DISTINCT e.tenant_id
+			     FROM unnest($1::text[]) AS input(endpoint_id)
+			     JOIN webhook_endpoints e ON e.id = input.endpoint_id
+			    ORDER BY e.tenant_id
+			 )
+			 SELECT pg_advisory_xact_lock(
+			     hashtextextended('webhook-deliveries:' || tenant_id, 0)
+			 )
+			 FROM tenants
+			 ORDER BY tenant_id`, endpointIDs); err != nil {
+				return WebhookEnqueueResult{}, err
+			}
+
+			var inputCount, candidateCount, admittedCount, insertedCount int
+			err = tx.QueryRow(ctx,
+				`WITH input AS (
+			   SELECT *
+			     FROM unnest(
+			       $1::text[], $2::text[], $3::text[], $4::text[],
+			       $5::text[], $6::text[], $7::timestamptz[]
+			     ) WITH ORDINALITY AS item(
+			       id, endpoint_id, event_id, event_type, service_id, payload,
+			       next_attempt_at, ordinal
+			     )
+			 ), unique_input AS (
+			   SELECT DISTINCT ON (endpoint_id, event_id) *
+			     FROM input
+			    ORDER BY endpoint_id, event_id, ordinal
+			 ), candidates AS (
+			   SELECT input.*, endpoint.tenant_id
+			     FROM unique_input input
+			     JOIN webhook_endpoints endpoint ON endpoint.id = input.endpoint_id
+			    WHERE NOT EXISTS (
+			      SELECT 1 FROM webhook_deliveries existing
+			       WHERE existing.endpoint_id = input.endpoint_id
+			         AND existing.event_id = input.event_id
+			    )
+			 ), open_counts AS (
+			   SELECT endpoint.tenant_id, count(*) AS open_count
+			     FROM webhook_deliveries delivery
+			     JOIN webhook_endpoints endpoint ON endpoint.id = delivery.endpoint_id
+			    WHERE endpoint.tenant_id IN (SELECT DISTINCT tenant_id FROM candidates)
+			      AND delivery.delivered_at IS NULL
+			      AND delivery.failed_at IS NULL
+			    GROUP BY endpoint.tenant_id
+			 ), ranked AS (
+			   SELECT candidates.*,
+			          row_number() OVER (
+			            PARTITION BY candidates.tenant_id ORDER BY candidates.ordinal
+			          ) AS workspace_rank,
+			          coalesce(open_counts.open_count, 0) AS open_count
+			     FROM candidates
+			     LEFT JOIN open_counts USING (tenant_id)
+			 ), admitted AS (
+			   SELECT * FROM ranked
+			    WHERE workspace_rank <= greatest($8 - open_count, 0)
+			 ), inserted AS (
+			   INSERT INTO webhook_deliveries (
+			     id, endpoint_id, event_id, event_type, service_id, payload,
+			     next_attempt_at
+			   )
+			   SELECT id, endpoint_id, event_id, event_type, service_id, payload,
+			          next_attempt_at
+			     FROM admitted
+			    ORDER BY ordinal
+			   ON CONFLICT DO NOTHING
+			   RETURNING id
+			 )
+			 SELECT (SELECT count(*) FROM input),
+			        (SELECT count(*) FROM candidates),
+			        (SELECT count(*) FROM admitted),
+			        (SELECT count(*) FROM inserted)`,
+				ids, endpointIDs, eventIDs, eventTypes, serviceIDs, payloads,
+				nextAttemptAts, maxPerWorkspace,
+			).Scan(&inputCount, &candidateCount, &admittedCount, &insertedCount)
+			if err != nil {
+				return WebhookEnqueueResult{}, classify("webhook delivery", err)
+			}
+			result.Admitted = insertedCount
+			result.Capped = candidateCount - admittedCount
+			result.Deduplicated = inputCount - candidateCount + admittedCount - insertedCount
+		}
 	}
-	b.Queue(`UPDATE webhook_watermark SET at = $1, key = $2 WHERE id AND (at, key) <> ($1, $2)`, at, key)
-	if err := tx.SendBatch(ctx, b).Close(); err != nil {
-		return classify("webhook delivery", err)
+	if _, err := tx.Exec(ctx,
+		`UPDATE webhook_watermark SET at = $1, key = $2 WHERE id AND (at, key) <> ($1, $2)`,
+		at, key); err != nil {
+		return WebhookEnqueueResult{}, classify("webhook delivery", err)
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return WebhookEnqueueResult{}, err
+	}
+	return result, nil
 }
 
 // DueWebhookAttempt is one pending attempt joined with its immutable parent
@@ -808,16 +962,29 @@ type DueWebhookAttempt struct {
 // inventing evidence for a network exchange that might never have happened.
 func (s *PGStore) ClaimDueWebhookAttempts(ctx context.Context, now, leaseUntil time.Time, limit int) ([]DueWebhookAttempt, error) {
 	rows, err := s.Pool.Query(ctx,
-		`WITH due AS (
+		`WITH eligible AS MATERIALIZED (
+		     SELECT a.id, a.available_at, a.created_at, e.tenant_id,
+		            row_number() OVER (
+		              PARTITION BY e.tenant_id
+		              ORDER BY a.available_at, a.created_at, a.id
+		            ) AS workspace_rank
+		       FROM webhook_delivery_attempts a
+		       JOIN webhook_endpoints e ON e.id = a.endpoint_id
+		      WHERE a.status = $3 AND a.available_at <= $1
+		        AND (a.lease_until IS NULL OR a.lease_until <= $1)
+		        AND e.enabled
+		 ), due AS (
 		     SELECT a.id
-		     FROM webhook_delivery_attempts a
-		     JOIN webhook_endpoints e ON e.id = a.endpoint_id
-		     WHERE a.status = $3 AND a.available_at <= $1
-		       AND (a.lease_until IS NULL OR a.lease_until <= $1)
-		       AND e.enabled
-		     ORDER BY a.available_at, a.id
-		     LIMIT $4
-		     FOR UPDATE OF a SKIP LOCKED
+		       FROM webhook_delivery_attempts a
+		       JOIN webhook_endpoints e ON e.id = a.endpoint_id
+		       JOIN eligible fair ON fair.id = a.id
+		      WHERE a.status = $3 AND a.available_at <= $1
+		        AND (a.lease_until IS NULL OR a.lease_until <= $1)
+		        AND e.enabled
+		      ORDER BY fair.workspace_rank, fair.available_at, fair.created_at,
+		               fair.tenant_id, fair.id
+		      LIMIT $4
+		      FOR UPDATE OF a SKIP LOCKED
 		 ), claimed AS (
 		     UPDATE webhook_delivery_attempts a
 		     SET lease_until = $2
