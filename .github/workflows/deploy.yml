@@ -409,7 +409,7 @@ jobs:
               "deploy/opensandbox/kustomization.yaml":
                   r"(?m)(^  - name: opensandbox-server\n    newName: [^\n]+\n    digest: sha256:)[0-9a-f]{64}$",
               "deploy/gitops/base/values/opensandbox-controller.values.yaml":
-                  r"(?m)^(\s+tag: v0\.2\.0-bex-snapjobns@sha256:)[0-9a-f]{64}$",
+                  r"(?m)^(\s+tag: [^@\s]+@sha256:)[0-9a-f]{64}$",
               "lego/operator/config/api/deployment.yaml":
                   r"(?m)^(\s+value: ghcr.io/bex-co/bex-agent-sandbox)(?::[^@\s]+|@sha256:[0-9a-f]{64})$",
           }
