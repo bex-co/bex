@@ -2,6 +2,12 @@
 
 **Worker:** worker7 **Goal:** a service created today can actually reach the managed Postgres/Key Value it declares via `fromDatabase`/`fromService` — the link works on create, with no hand-copied Secrets, hand-written network policy, or hand-patched hostnames. **Status:** in progress — all code tasks done (t001–t006, t008–t010, t012, t013). **t007 (live hetzner-prod cutover) is blocked**, and t011 (closeout) must not run until it lands: the DoD includes the production cutover.
 
+> **Blocker re-check 2026-08-17 (during `/loop-worker w7`).** Two of t007's three original blockers are now **resolved**: the code **is** shipped (`docs/runbooks/datastore-namespace-cutover.md` and the code commits are in `main`), and production cluster credentials **are** available (admin kubeconfig via `scripts/fetch-app-kubeconfig.sh` + `.env`). The remaining blocker is the third and it is unchanged: **explicit authorization to migrate live tenant data**, since the procedure takes a write outage per tenant on forums serving real content.
+>
+> Live state re-confirmed the same day — the datastores are still in `default`: `dpg-d9nqg95cavls73fp8m20`, `dpg-d9rrkoc4h4mc73edurp0`, `dpg-d9rs3ee0ccis738kc7c0`, `red-d9p49kdrtmes73c34ovg`.
+>
+> **Deliberately deferred out of the autonomous drain loop by user decision**, so the loop proceeded to m82. The reasoning: an irreversible production data migration with user-visible downtime wants an attended session, not an unattended one. This is a scheduling decision, not a de-prioritization — m77 remains a live production defect and every affected tenant stays broken until t007 runs (ADR043 D8.5: the code fixes new resources only).
+
 ## Tasks (in order)
 
 | id   | title                                                                        | est | depends_on                     |
