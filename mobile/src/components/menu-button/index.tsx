@@ -1,20 +1,18 @@
 import { useRef, useState, type ReactNode } from "react";
 import {
+  Dimensions,
   Modal,
   Pressable,
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
 import { fontSizes } from "@/common/theme";
 import { useThemeStyle } from "@/common/hooks/use-theme-style";
 import { ColorTheme } from "@/types/theme-props";
 
 export type MenuButtonItem = {
-  id?: string;
   label: string;
-  selected?: boolean;
   /** Trailing glyph, drawn at the row's right edge. */
   icon?: ReactNode;
   onPress: () => void;
@@ -26,7 +24,6 @@ type MenuButtonProps = {
   accessibilityLabel: string;
   items: MenuButtonItem[];
   onOpen?: () => void;
-  placement?: "above" | "below";
   testID?: string;
 };
 
@@ -83,7 +80,7 @@ const getStyles = (theme: ColorTheme) =>
   });
 
 /**
- * An icon button that opens a right-aligned anchored menu.
+ * An icon button that drops a right-aligned menu beneath itself.
  *
  * Built for the header action slot: the popover is measured off the trigger in
  * window coordinates, so it stays pinned to the button on any screen width.
@@ -93,31 +90,18 @@ export const MenuButton = ({
   accessibilityLabel,
   items,
   onOpen,
-  placement = "below",
   testID,
 }: MenuButtonProps): React.ReactElement => {
   const styles = useThemeStyle(getStyles);
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const anchorRef = useRef<View>(null);
   const [visible, setVisible] = useState(false);
-  const [menuPos, setMenuPos] = useState<{
-    top?: number;
-    bottom?: number;
-    right: number;
-  }>({ top: 0, right: 0 });
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
 
   const openMenu = () => {
     onOpen?.();
     anchorRef.current?.measureInWindow((x, y, width, height) => {
-      const right = windowWidth - (x + width);
-      setMenuPos(
-        placement === "above"
-          ? {
-              bottom: windowHeight - y + 4,
-              right,
-            }
-          : { top: y + height + 4, right },
-      );
+      const screenWidth = Dimensions.get("window").width;
+      setMenuPos({ top: y + height + 4, right: screenWidth - (x + width) });
       setVisible(true);
     });
   };
@@ -145,12 +129,13 @@ export const MenuButton = ({
         onRequestClose={() => setVisible(false)}
       >
         <Pressable style={styles.backdrop} onPress={() => setVisible(false)}>
-          <View style={[styles.menu, menuPos]}>
+          <View
+            style={[styles.menu, { top: menuPos.top, right: menuPos.right }]}
+          >
             {items.map((item, i) => (
               <Pressable
-                key={item.id ?? item.label}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: item.selected === true }}
+                key={item.label}
+                accessibilityRole="button"
                 style={({ pressed }) => [
                   styles.item,
                   i > 0 && styles.itemDivider,

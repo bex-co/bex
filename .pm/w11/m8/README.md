@@ -1,6 +1,6 @@
 # w11 · m8 — Tier-2 mobile quick actions
 
-**Worker:** worker11 **Goal:** add ADR048's narrow fast-follow conveniences—single env-var edit, cron controls, datastore companion views, usage glance, and invite acceptance—without importing desktop bulk/admin/configuration surfaces. **Status:** todo (t001–t007 and t009 done; t010 Expo MCP visual verification/polish is actionable; t008 closeout also waits on m5/t007's signed-device gate)
+**Worker:** worker11 **Goal:** add ADR048's narrow fast-follow conveniences—single env-var edit, cron controls, datastore companion views, usage glance, and invite acceptance—without importing desktop bulk/admin/configuration surfaces. **Status:** todo (t001–t007 and t009 done; t008 waits on m5/t007's signed-device gate)
 
 ## Gating
 
@@ -18,12 +18,11 @@ Start after `w11/m3/t009` and `w11/m4/t008`; independent of agent milestones.
 | t005 | Audit Tier-2 scope exclusions and Render parity — **DONE** | 30m | t009 |
 | t006 | Simplify — **DONE** | 20m | t005 |
 | t007 | Test coverage — **DONE** | 60m | t005 |
-| t010 | Verify and polish Tier-2 mobile UI with Expo MCP | 45m | t007 |
-| t008 | Closeout | 10m | t007, t010, w11/m5/t007 |
+| t008 | Closeout | 10m | t007, w11/m5/t007 |
 
 ## Definition of done
 
-One env var can be deliberately viewed/edited with atomic conflict detection, cron history/run-now/cancel works without accepting impossible suspended runs, datastore status/freshness/read-only insights render, usage/month-to-date reports evidence coverage honestly, and OS-verified HTTPS invite links redeem safely with browser fallback. Bulk import, env groups, secret files, parameter/PITR/failover/allowlist/plan controls, billing administration, and destructive actions remain absent. Every reused verb preserves authorization, audit, error, and confirmation behavior across existing surfaces. Expo MCP evidence shows every affected quick-action flow was interactively viewed and polished across representative phone sizes, themes, locales, keyboards, and success/failure/conflict states.
+One env var can be deliberately viewed/edited with atomic conflict detection, cron history/run-now/cancel works without accepting impossible suspended runs, datastore status/freshness/read-only insights render, usage/month-to-date reports evidence coverage honestly, and OS-verified HTTPS invite links redeem safely with browser fallback. Bulk import, env groups, secret files, parameter/PITR/failover/allowlist/plan controls, billing administration, and destructive actions remain absent. Every reused verb preserves authorization, audit, error, and confirmation behavior across existing surfaces.
 
 ## Source + Goal linkage
 
@@ -32,4 +31,3 @@ One env var can be deliberately viewed/edited with atomic conflict detection, cr
 - **Expected outcome:** common narrow follow-ups finish from a phone while consequential setup remains desktop-only.
 - **Why now:** it is sequenced behind evidence and safe-operation patterns, reducing scope and safety risk; it does not wait on agent phase 2.
 - **Render parity:** included for env, cron, datastore, usage, and invite contracts; deliberate mobile omissions are documented rather than treated as API drift.
-- **Mobile UI visual verification:** included retroactively because the Tier-2 env, cron, datastore, usage, and invite UI predates the Expo MCP standing gate; interactive viewing and polish are required before closeout.

@@ -65,8 +65,6 @@ const allowedMutationNames = new Set([
   "MobileAcceptWorkspaceInvite",
   "MobileCreateAgentSession",
   "MobileCancelAgentSession",
-  "MobileAttachAgentSession",
-  "MobileRespondAgentSessionDecision",
 ]);
 const allowedMutationDocuments = new Set(
   [...allowedMutationNames].map((name) => `${name}Document`),
@@ -80,17 +78,11 @@ const allowedGraphqlOperations: Record<string, string> = {
     "mutation|token|acceptWorkspaceInvite,role,workspaceId,workspaceName",
   MobileAgentRepos: "query|ownerId|defaultBranch,fullName,private,repos",
   MobileAgentSession:
-    "query|id|agentSession,branch,canceledAt,createdAt,deliveryMode,failureReason,headSha,id,phase,prNumber,prUrl,repo,sandboxId,status,turns,updatedAt",
-  MobileAgentSessionConversation:
-    "query|id|acceptedAt,agentSessionConversation,assistantEndSeq,assistantParts,assistantStartSeq,canceledAt,completedAt,cursor,deliveryMode,failedAt,failureReason,idempotencyKey,prompt,role,sessionId,status,turn,turns",
-  MobileAgentSessionDecisions:
-    "query|id|actions,agentSessionDecisions,expiresAt,externalUrl,id,kind,label,message,responseSchemaJson,sessionId,status,turn,type,updatedAt,version",
+    "query|id|agentSession,branch,canceledAt,createdAt,deliveryMode,failureReason,headSha,id,phase,prNumber,prUrl,repo,status,turns,updatedAt",
   MobileAgentSessionCapabilities:
     "query|ownerId|accountLogin,agentSessionCapabilities,agents,connected,enabled,github,id,installUrl,label,modelKeyReady,ready",
   MobileAgentSessions:
     "query|ownerId|agentSessions,branch,createdAt,failureReason,id,phase,prNumber,prUrl,repo,status,updatedAt",
-  MobileAttachAgentSession:
-    "mutation|action,id|attachAgentSession,expiresAt,id,ticket,url",
   MobileCancelAgentSession:
     "mutation|id|cancelAgentSession,canceledAt,id,phase,status",
   MobileCreateAgentSession:
@@ -140,8 +132,6 @@ const allowedGraphqlOperations: Record<string, string> = {
   MobileResumePostgres:
     "mutation|id|id,resumeDatabase,status,suspended,updatedAt",
   MobileResumeService: "mutation|id|id,phase,resumeService,suspended,updatedAt",
-  MobileRespondAgentSessionDecision:
-    "mutation|action,decisionId,id,valueJson,version|id,respondAgentSessionDecision,status,updatedAt,version",
   MobileRevealEnvVar:
     "query|key,serviceId|envVar,id,key,revision,service,value",
   MobileRollbackService:

@@ -12,7 +12,6 @@ export {
   fontSizes,
   fontWeights,
   headerActionStyle,
-  maxFontSizeMultipliers,
   monoMinFontSize,
 } from "./typography";
 export { withAlpha } from "./color-utils";

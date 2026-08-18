@@ -3,61 +3,53 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { router } from "expo-router";
 import {
   ActivityIndicator,
-  Keyboard,
-  KeyboardAvoidingView,
   Linking,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  useWindowDimensions,
-  View,
 } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "@/components/button";
 import { DashboardCard } from "@/components/dashboard-card";
-import { MenuButton, type MenuButtonItem } from "@/components/menu-button";
+import { TopBar } from "@/components/top-bar";
 import {
   SafeActionPanel,
   defineSafeAction,
   type MobileActionOption,
 } from "@/components/safe-action";
-import { TopBar } from "@/components/top-bar";
+import { useWorkspace } from "@/features/workspaces/workspace-provider";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   fontSizes,
   fontWeights,
   gutter,
-  maxFontSizeMultipliers,
-  rowMinHeight,
   space,
   useTheme,
 } from "@/common/theme";
-import { useWorkspace } from "@/features/workspaces/workspace-provider";
 import {
   MobileAgentReposDocument,
   MobileAgentSessionCapabilitiesDocument,
   MobileCreateAgentSessionDocument,
 } from "@/generated-graphql";
-import { isGitHubUrl } from "../detail/github-links";
 import {
   buildCreateVariables,
   canSubmit,
-  deriveBranch,
-  repositoryDisplayName,
+  defaultBranchFor,
   type ComposerFields,
 } from "./compose";
-import { RepositoryPicker } from "./repository-picker";
+import { isGitHubUrl } from "../detail/github-links";
 
 const createAgentSession = defineSafeAction(
   "create-agent-session",
   "agent-session",
 );
 
+// Only open an https://github.com/ target, never an arbitrary URL a readiness
+// payload might smuggle in (shared guard with the detail draft-PR link).
 function openGitHub(url: string | null | undefined): void {
   if (isGitHubUrl(url)) void Linking.openURL(url!);
 }
@@ -65,7 +57,6 @@ function openGitHub(url: string | null | undefined): void {
 export function SessionComposer({ onClose }: { onClose: () => void }) {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
-  const { width } = useWindowDimensions();
   const { selected } = useWorkspace();
   const ownerId = selected?.id ?? "";
 
@@ -88,47 +79,23 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
   const ready = caps?.ready ?? false;
   const enabled = caps?.enabled ?? false;
 
-  const [fields, setFields] = useState<Omit<ComposerFields, "agent">>({
+  const [fields, setFields] = useState<ComposerFields>({
     repo: "",
     branch: "",
     prompt: "",
+    agent: "",
   });
-  const [agentSelection, setAgentSelection] = useState<
-    { mode: "auto" } | { mode: "profile"; id: string }
-  >({ mode: "auto" });
-  const [repoPickerVisible, setRepoPickerVisible] = useState(false);
-  const set = (patch: Partial<Omit<ComposerFields, "agent">>) =>
-    setFields((previous) => ({ ...previous, ...patch }));
+  const [createdId, setCreatedId] = useState<string | null>(null);
+  const set = (patch: Partial<ComposerFields>) =>
+    setFields((prev) => ({ ...prev, ...patch }));
 
   const repoList = useMemo(
-    () => (repos.data?.repos ?? []).filter((repo) => repo?.fullName),
+    () => (repos.data?.repos ?? []).filter((r) => r?.fullName),
     [repos.data],
   );
-  const repoItems = useMemo(
-    () =>
-      repoList.map((repo) => ({
-        label: repo!.fullName!,
-        value: repo!.fullName!,
-      })),
-    [repoList],
-  );
-
-  const selectedAgent =
-    agentSelection.mode === "profile"
-      ? agents.find((agent) => agent.id === agentSelection.id)
-      : undefined;
-  const selectedAgentId = selectedAgent?.id || agents[0]?.id || "";
-  const effectiveFields = { ...fields, agent: selectedAgentId };
-  const submitEnabled = canSubmit({
-    fields: effectiveFields,
-    ready,
-    submitting: false,
-  });
-  const selectedAgentLabel =
-    selectedAgent?.label || t("agentSessions.composer.autoAgent");
 
   const options: MobileActionOption[] =
-    enabled && ready && submitEnabled
+    canSubmit({ fields, ready, submitting: false }) && createdId === null
       ? [
           {
             key: "agent:create",
@@ -142,16 +109,13 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
             run: async () => {
               try {
                 const result = await createSession({
-                  variables: buildCreateVariables(ownerId, effectiveFields),
+                  variables: buildCreateVariables(ownerId, fields),
                 });
                 const id = result.data?.createAgentSession?.id ?? null;
                 if (!id) {
                   return { status: "error", error: new Error("no session id") };
                 }
-                // Go straight into the session's chat window — no intermediate
-                // "Session assigned / Open session" confirmation step.
-                onClose();
-                router.push(`/sessions/${id}`);
+                setCreatedId(id);
                 return { status: "accepted_unverified" };
               } catch (error) {
                 return { status: "error", error };
@@ -161,413 +125,202 @@ export function SessionComposer({ onClose }: { onClose: () => void }) {
         ]
       : [];
 
-  const agentItems: MenuButtonItem[] = [
-    {
-      id: "auto",
-      label: t("agentSessions.composer.autoAgent"),
-      selected: agentSelection.mode === "auto",
-      onPress: () => setAgentSelection({ mode: "auto" }),
-      icon:
-        agentSelection.mode === "auto" ? (
-          <Ionicons name="checkmark" size={18} color={theme.primary} />
-        ) : undefined,
-    },
-    ...agents.map((agent) => ({
-      id: agent.id,
-      label: agent.label,
-      selected:
-        agentSelection.mode === "profile" && agentSelection.id === agent.id,
-      onPress: () => setAgentSelection({ mode: "profile", id: agent.id }),
-      icon:
-        agentSelection.mode === "profile" && agentSelection.id === agent.id ? (
-          <Ionicons name="checkmark" size={18} color={theme.primary} />
-        ) : undefined,
-    })),
-  ];
-
   const loadingCaps = capabilities.loading && !capabilities.data;
-  const showEditor = enabled && ready && !loadingCaps;
 
   return (
-    <Modal
-      animationType="slide"
-      presentationStyle="fullScreen"
-      onRequestClose={onClose}
-    >
-      <SafeAreaProvider style={styles.safe}>
-        <SafeAreaView
-          testID="agent-session-composer"
-          style={[styles.safe, { backgroundColor: theme.background }]}
-        >
-          {showEditor ? (
-            <KeyboardAvoidingView
-              behavior={Platform.OS === "ios" ? "padding" : undefined}
-              style={styles.editor}
+    <Modal animationType="slide" onRequestClose={onClose}>
+      <SafeAreaView
+        style={[styles.safe, { backgroundColor: theme.background }]}
+      >
+        <TopBar
+          title={t("agentSessions.composer.title")}
+          right={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("agentSessions.composer.close")}
+              onPress={onClose}
+              hitSlop={8}
             >
-              <View style={styles.editorHeader}>
-                <View style={styles.headerSide}>
-                  <Pressable
-                    testID="agent-session-composer-close"
-                    accessibilityRole="button"
-                    accessibilityLabel={t("agentSessions.composer.close")}
-                    onPress={onClose}
-                    style={({ pressed }) => [
-                      styles.roundAction,
-                      {
-                        backgroundColor: theme.card,
-                        borderColor: theme.border,
-                      },
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <Ionicons name="close" size={24} color={theme.foreground} />
-                  </Pressable>
-                </View>
-                <Text
-                  numberOfLines={1}
-                  maxFontSizeMultiplier={maxFontSizeMultipliers.heading}
-                  style={[styles.editorTitle, { color: theme.foreground }]}
+              <Ionicons name="close" size={22} color={theme.foreground} />
+            </Pressable>
+          }
+        />
+        <ScrollView contentContainerStyle={styles.content}>
+          {loadingCaps ? (
+            <DashboardCard>
+              <ActivityIndicator color={theme.primary} />
+            </DashboardCard>
+          ) : createdId ? (
+            <DashboardCard>
+              <Text style={[styles.title, { color: theme.foreground }]}>
+                {t("agentSessions.composer.submitted")}
+              </Text>
+              <Button
+                onPress={() => {
+                  onClose();
+                  router.push(`/sessions/${createdId}`);
+                }}
+                accessibilityLabel={t("agentSessions.composer.openSession")}
+              >
+                {t("agentSessions.composer.openSession")}
+              </Button>
+            </DashboardCard>
+          ) : !enabled || !ready ? (
+            <DashboardCard>
+              <Text style={[styles.title, { color: theme.foreground }]}>
+                {t("agentSessions.composer.setupTitle")}
+              </Text>
+              <Text style={[styles.body, { color: theme.mutedForeground }]}>
+                {!caps?.github.connected
+                  ? t("agentSessions.composer.needGithub")
+                  : !caps?.modelKeyReady
+                    ? t("agentSessions.composer.needModelKey")
+                    : t("agentSessions.composer.needDesktop")}
+              </Text>
+              {!caps?.github.connected && caps?.github.installUrl ? (
+                <Button
+                  type="outline"
+                  onPress={() => openGitHub(caps?.github.installUrl)}
+                  accessibilityLabel={t("agentSessions.composer.connectGithub")}
                 >
-                  {t("agentSessions.composer.title")}
-                </Text>
-                <View style={[styles.headerSide, styles.headerRight]}>
-                  <SafeActionPanel
-                    options={options}
-                    emptyTriggerLabel={t("agentSessions.composer.submit")}
-                    confirmationMode="server-only"
-                    feedbackMessages={{
-                      failed: t("agentSessions.composer.createFailed"),
-                    }}
-                    feedbackContainerStyle={[
-                      styles.submitFeedback,
-                      { width: Math.min(width - gutter * 2, 360) },
-                    ]}
-                    renderTrigger={({ disabled, label, pending, onPress }) => (
+                  {t("agentSessions.composer.connectGithub")}
+                </Button>
+              ) : null}
+            </DashboardCard>
+          ) : (
+            <>
+              <DashboardCard title={t("agentSessions.composer.repo")}>
+                {repoList.length === 0 ? (
+                  <Text style={[styles.body, { color: theme.mutedForeground }]}>
+                    {t("agentSessions.composer.noRepos")}
+                  </Text>
+                ) : (
+                  repoList.map((repo, index) => {
+                    const name = repo!.fullName!;
+                    const activeRepo = fields.repo === name;
+                    return (
                       <Pressable
-                        testID="agent-session-composer-submit"
+                        key={name}
                         accessibilityRole="button"
-                        accessibilityLabel={label}
-                        accessibilityState={{ disabled, busy: pending }}
-                        disabled={disabled}
-                        onPress={() => {
-                          Keyboard.dismiss();
-                          onPress();
-                        }}
-                        style={({ pressed }) => [
-                          styles.roundAction,
-                          {
-                            backgroundColor: disabled
-                              ? theme.black20
-                              : theme.primary,
-                            borderColor: disabled
-                              ? theme.border
-                              : theme.primary,
+                        onPress={() =>
+                          set({
+                            repo: name,
+                            branch: defaultBranchFor(repo!.defaultBranch),
+                          })
+                        }
+                        style={[
+                          styles.pick,
+                          index > 0 && {
+                            borderTopColor: theme.border,
+                            borderTopWidth: StyleSheet.hairlineWidth,
                           },
-                          pressed && styles.pressed,
                         ]}
                       >
-                        {pending ? (
-                          <ActivityIndicator color={theme.white} />
-                        ) : (
+                        <Text style={{ color: theme.foreground }}>{name}</Text>
+                        {activeRepo ? (
                           <Ionicons
-                            name="arrow-up"
-                            size={23}
-                            color={
-                              disabled ? theme.mutedForeground : theme.white
-                            }
+                            name="checkmark"
+                            size={18}
+                            color={theme.primary}
                           />
-                        )}
+                        ) : null}
                       </Pressable>
-                    )}
-                  />
-                </View>
-              </View>
+                    );
+                  })
+                )}
+              </DashboardCard>
 
-              <TextInput
-                testID="agent-session-prompt"
-                value={fields.prompt}
-                onChangeText={(prompt) => set({ prompt })}
-                placeholder={t("agentSessions.composer.promptPlaceholder")}
-                placeholderTextColor={theme.mutedForeground}
-                multiline
-                autoFocus
-                blurOnSubmit={false}
-                maxFontSizeMultiplier={maxFontSizeMultipliers.content}
-                style={[styles.prompt, { color: theme.foreground }]}
-              />
-
-              <View style={styles.contextBar}>
-                <Pressable
-                  testID="agent-session-repository-select"
-                  accessibilityRole="button"
-                  accessibilityLabel={t("agentSessions.composer.chooseRepo")}
-                  accessibilityState={{ expanded: repoPickerVisible }}
-                  accessibilityValue={{ text: fields.repo || undefined }}
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    setRepoPickerVisible(true);
-                  }}
-                  style={({ pressed }) => [
-                    styles.contextChip,
-                    styles.repoChip,
-                    {
-                      backgroundColor: theme.card,
-                      borderColor: theme.border,
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Ionicons
-                    name="logo-github"
-                    size={18}
-                    color={fields.repo ? theme.primary : theme.mutedForeground}
-                  />
-                  <Text
-                    numberOfLines={1}
-                    ellipsizeMode="middle"
-                    maxFontSizeMultiplier={maxFontSizeMultipliers.control}
-                    style={[
-                      styles.chipLabel,
-                      {
-                        color: fields.repo
-                          ? theme.foreground
-                          : theme.mutedForeground,
-                      },
-                    ]}
-                  >
-                    {fields.repo
-                      ? repositoryDisplayName(fields.repo)
-                      : t("agentSessions.composer.repo")}
-                  </Text>
-                  <Ionicons
-                    name="chevron-down"
-                    size={16}
-                    color={theme.mutedForeground}
-                  />
-                </Pressable>
-
-                <View
+              <DashboardCard title={t("agentSessions.composer.branch")}>
+                <TextInput
+                  value={fields.branch}
+                  onChangeText={(branch) => set({ branch })}
+                  placeholder="main"
+                  placeholderTextColor={theme.mutedForeground}
+                  autoCapitalize="none"
+                  autoCorrect={false}
                   style={[
-                    styles.contextChip,
-                    styles.branchChip,
-                    { backgroundColor: theme.card, borderColor: theme.border },
+                    styles.input,
+                    { color: theme.foreground, borderColor: theme.border },
                   ]}
-                >
-                  <Ionicons
-                    name="git-branch-outline"
-                    size={18}
-                    color={theme.mutedForeground}
-                  />
-                  <TextInput
-                    testID="agent-session-branch"
-                    accessibilityLabel={t("agentSessions.composer.branch")}
-                    value={fields.branch}
-                    onChangeText={(branch) => set({ branch })}
-                    placeholder={deriveBranch(fields.prompt)}
-                    placeholderTextColor={theme.mutedForeground}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    selectTextOnFocus
-                    numberOfLines={1}
-                    maxFontSizeMultiplier={maxFontSizeMultipliers.control}
-                    style={[styles.branchInput, { color: theme.foreground }]}
-                  />
-                </View>
+                />
+              </DashboardCard>
 
-                <MenuButton
-                  testID="agent-session-agent-select"
-                  accessibilityLabel={`${t("agentSessions.composer.agent")}: ${selectedAgentLabel}`}
-                  items={agentItems}
-                  placement="above"
-                  icon={
-                    <View
+              <DashboardCard title={t("agentSessions.composer.agent")}>
+                {agents.map((agent, index) => {
+                  const activeAgent = fields.agent === agent.id;
+                  return (
+                    <Pressable
+                      key={agent.id}
+                      accessibilityRole="button"
+                      onPress={() => set({ agent: agent.id })}
                       style={[
-                        styles.contextChip,
-                        styles.agentChip,
-                        {
-                          backgroundColor: theme.card,
-                          borderColor: theme.border,
+                        styles.pick,
+                        index > 0 && {
+                          borderTopColor: theme.border,
+                          borderTopWidth: StyleSheet.hairlineWidth,
                         },
                       ]}
                     >
-                      <Text
-                        numberOfLines={1}
-                        maxFontSizeMultiplier={maxFontSizeMultipliers.control}
-                        style={[styles.chipLabel, { color: theme.foreground }]}
-                      >
-                        {selectedAgentLabel}
+                      <Text style={{ color: theme.foreground }}>
+                        {agent.label}
                       </Text>
-                      <Ionicons
-                        name="chevron-down"
-                        size={16}
-                        color={theme.mutedForeground}
-                      />
-                    </View>
-                  }
-                />
-              </View>
+                      {activeAgent ? (
+                        <Ionicons
+                          name="checkmark"
+                          size={18}
+                          color={theme.primary}
+                        />
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </DashboardCard>
 
-              <RepositoryPicker
-                visible={repoPickerVisible}
-                items={repoItems}
-                selectedValue={fields.repo}
-                onCancel={() => setRepoPickerVisible(false)}
-                onSelect={(item) => {
-                  set({ repo: item.value });
-                  setRepoPickerVisible(false);
-                }}
-              />
-            </KeyboardAvoidingView>
-          ) : (
-            <>
-              <TopBar
-                title={t("agentSessions.composer.title")}
-                showDrawer={false}
-                showBell={false}
-                right={
-                  <Pressable
-                    testID="agent-session-composer-close"
-                    accessibilityRole="button"
-                    accessibilityLabel={t("agentSessions.composer.close")}
-                    onPress={onClose}
-                    hitSlop={8}
-                  >
-                    <Ionicons name="close" size={22} color={theme.foreground} />
-                  </Pressable>
-                }
-              />
-              <ScrollView contentContainerStyle={styles.fallbackContent}>
-                {loadingCaps ? (
-                  <DashboardCard>
-                    <ActivityIndicator color={theme.primary} />
-                  </DashboardCard>
-                ) : (
-                  <DashboardCard>
-                    <Text
-                      maxFontSizeMultiplier={maxFontSizeMultipliers.content}
-                      style={[
-                        styles.fallbackTitle,
-                        { color: theme.foreground },
-                      ]}
-                    >
-                      {t("agentSessions.composer.setupTitle")}
-                    </Text>
-                    <Text
-                      maxFontSizeMultiplier={maxFontSizeMultipliers.content}
-                      style={[
-                        styles.fallbackBody,
-                        { color: theme.mutedForeground },
-                      ]}
-                    >
-                      {!caps?.github.connected
-                        ? t("agentSessions.composer.needGithub")
-                        : !caps?.modelKeyReady
-                          ? t("agentSessions.composer.needModelKey")
-                          : t("agentSessions.composer.needDesktop")}
-                    </Text>
-                    {!caps?.github.connected && caps?.github.installUrl ? (
-                      <Button
-                        type="outline"
-                        onPress={() => openGitHub(caps?.github.installUrl)}
-                        accessibilityLabel={t(
-                          "agentSessions.composer.connectGithub",
-                        )}
-                      >
-                        {t("agentSessions.composer.connectGithub")}
-                      </Button>
-                    ) : null}
-                  </DashboardCard>
-                )}
-              </ScrollView>
+              <DashboardCard title={t("agentSessions.composer.prompt")}>
+                <TextInput
+                  value={fields.prompt}
+                  onChangeText={(prompt) => set({ prompt })}
+                  placeholder={t("agentSessions.composer.promptPlaceholder")}
+                  placeholderTextColor={theme.mutedForeground}
+                  multiline
+                  style={[
+                    styles.input,
+                    styles.multiline,
+                    { color: theme.foreground, borderColor: theme.border },
+                  ]}
+                />
+              </DashboardCard>
+
+              <SafeActionPanel options={options} />
             </>
           )}
-        </SafeAreaView>
-      </SafeAreaProvider>
+        </ScrollView>
+      </SafeAreaView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  editor: { flex: 1 },
-  editorHeader: {
-    minHeight: rowMinHeight + space.lg,
-    paddingHorizontal: gutter,
-    paddingVertical: space.sm,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  headerSide: { width: rowMinHeight + space.md },
-  headerRight: { alignItems: "flex-end" },
-  submitFeedback: {
-    position: "absolute",
-    top: rowMinHeight + space.md,
-    right: 0,
-    zIndex: 10,
-    elevation: 10,
-  },
-  editorTitle: {
-    flex: 1,
-    paddingHorizontal: space.sm,
-    textAlign: "center",
-    fontSize: fontSizes.lg,
-    fontWeight: fontWeights.medium,
-  },
-  roundAction: {
-    width: rowMinHeight,
-    minHeight: rowMinHeight,
-    borderRadius: rowMinHeight / 2,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  prompt: {
-    flex: 1,
-    paddingHorizontal: gutter,
-    paddingTop: space.xl,
-    paddingBottom: space.md,
-    fontSize: fontSizes.xl,
-    lineHeight: 27,
-    textAlignVertical: "top",
-  },
-  contextBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.sm,
-    paddingHorizontal: gutter,
-    paddingTop: space.sm,
-    paddingBottom: space.sm,
-  },
-  contextChip: {
-    minHeight: rowMinHeight,
-    borderRadius: rowMinHeight / 2,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: space.md,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: space.sm,
-  },
-  repoChip: { flex: 1.4, minWidth: 0 },
-  branchChip: { flex: 0.75, minWidth: 76, maxWidth: 110 },
-  agentChip: { flex: 0.75, minWidth: 80, maxWidth: 110 },
-  chipLabel: {
-    flex: 1,
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.medium,
-  },
-  branchInput: {
-    flex: 1,
-    minWidth: 0,
-    paddingVertical: 0,
-    fontSize: fontSizes.md,
-    fontWeight: fontWeights.medium,
-  },
-  pressed: { opacity: 0.65 },
-  fallbackContent: { padding: gutter, gap: space.md },
-  fallbackTitle: { fontSize: fontSizes.md, fontWeight: fontWeights.medium },
-  fallbackBody: {
+  content: { padding: gutter, gap: space.md },
+  title: { fontSize: fontSizes.md, fontWeight: fontWeights.medium },
+  body: {
     fontSize: fontSizes.sm,
     lineHeight: fontSizes.sm * 1.5,
     marginVertical: space.xs,
   },
+  pick: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: space.md,
+  },
+  input: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 8,
+    paddingHorizontal: space.sm,
+    paddingVertical: space.sm,
+    fontSize: fontSizes.md,
+  },
+  multiline: { minHeight: 96, textAlignVertical: "top" },
 });
