@@ -121,6 +121,10 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 		"ADR018 §Services & lifecycle — Service events / activity feed: deliberate partial event-detail dialect",
 		`event/details: does not match the documented union`,
 	),
+	"retrieve-event": knownConformanceDivergences(
+		"ADR018 §Services & lifecycle — Service events / activity feed: deliberate partial event-detail dialect",
+		`details: does not match the documented union`,
+	),
 
 	// bex's GET /v1/key-value wraps each item as {keyValue:{…}, cursor:"…"},
 	// matching the field name the OFFICIAL render CLI's generated client

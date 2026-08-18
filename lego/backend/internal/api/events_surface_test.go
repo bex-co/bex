@@ -19,16 +19,17 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/events"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -46,10 +47,12 @@ const plantedSecret = "s3cr3t-postgres-password"
 
 // fakeEventStore returns canned composed rows — all three sources' shapes.
 type fakeEventStore struct {
-	rows   []store.ServiceEventRow
-	gotFil store.ServiceEventFilter
-	gotApp string
-	gotTgt string
+	rows              []store.ServiceEventRow
+	lookups           map[string]store.ServiceEventLookup
+	gotFil            store.ServiceEventFilter
+	gotApp            string
+	gotTgt            string
+	gotEventWorkspace string
 }
 
 func (f *fakeEventStore) ListServiceEvents(_ context.Context, appID, target, _ string, fil store.ServiceEventFilter) ([]store.ServiceEventRow, error) {
@@ -59,6 +62,19 @@ func (f *fakeEventStore) ListServiceEvents(_ context.Context, appID, target, _ s
 		out = out[:fil.Limit]
 	}
 	return out, nil
+}
+
+func (f *fakeEventStore) GetServiceEvent(_ context.Context, workspaceID, eventID string) (store.ServiceEventLookup, error) {
+	f.gotEventWorkspace = workspaceID
+	if lookup, ok := f.lookups[workspaceID+"\x00"+eventID]; ok {
+		return lookup, nil
+	}
+	for _, row := range f.rows {
+		if ids.Derive(ids.Event, row.Key) == eventID && workspaceID == core.DefaultTenant {
+			return store.ServiceEventLookup{Event: row, ServiceID: "web"}, nil
+		}
+	}
+	return store.ServiceEventLookup{}, store.ErrNotFound
 }
 
 func eventFixture(at time.Time) *fakeEventStore {
@@ -84,15 +100,17 @@ func eventsApp() *appv1alpha1.App {
 	}
 }
 
+type wireEvent struct {
+	ID        string         `json:"id"`
+	Timestamp string         `json:"timestamp"`
+	ServiceID string         `json:"serviceId"`
+	Type      string         `json:"type"`
+	Details   map[string]any `json:"details"`
+}
+
 type restEvent struct {
-	Event struct {
-		ID        string         `json:"id"`
-		Timestamp string         `json:"timestamp"`
-		ServiceID string         `json:"serviceId"`
-		Type      string         `json:"type"`
-		Details   map[string]any `json:"details"`
-	} `json:"event"`
-	Cursor string `json:"cursor"`
+	Event  wireEvent `json:"event"`
+	Cursor string    `json:"cursor"`
 }
 
 func TestEventSurfaceParity(t *testing.T) {
@@ -195,6 +213,65 @@ func TestEventSurfaceParity(t *testing.T) {
 			r.Event.Timestamp != m.Event.Timestamp || r.Cursor != m.Cursor {
 			t.Errorf("event %d diverges REST vs MCP: %+v vs %+v", i, r.Event, m.Event)
 		}
+	}
+}
+
+func TestGetEventSurfaceParity(t *testing.T) {
+	at := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	fake := eventFixture(at)
+	postgresID := ids.Derive(ids.Event, "aud-postgres-created:")
+	fake.lookups = map[string]store.ServiceEventLookup{
+		core.DefaultTenant + "\x00" + postgresID: {
+			Event:     store.ServiceEventRow{Key: "aud-postgres-created:", At: at.Add(-time.Hour), Source: store.EventSourceAudit, Verb: core.AuditVerbPostgresCreated, Caller: "user-x"},
+			ServiceID: "dpg-1",
+		},
+	}
+	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	h, srv := serverWith(t, base, Deps{EventStore: fake})
+
+	tests := []struct {
+		name          string
+		id            string
+		wantType      string
+		wantServiceID string
+	}{
+		{name: "service deploy", id: ids.Derive(ids.Event, "dep-1:"+store.EventPhaseStarted), wantType: events.TypeDeployStarted, wantServiceID: "web"},
+		{name: "typed lifecycle fact", id: ids.Derive(ids.Event, "fact:autoscaling-1"), wantType: events.TypeAutoscalingStarted, wantServiceID: "web"},
+		{name: "Postgres audit event", id: postgresID, wantType: events.TypePostgresCreated, wantServiceID: "dpg-1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := do(t, h, "GET", "/v1/events/"+tt.id, testToken, "")
+			if res.Code != http.StatusOK {
+				t.Fatalf("REST get event: %d %s", res.Code, res.Body.String())
+			}
+			var rest wireEvent
+			if err := json.Unmarshal(res.Body.Bytes(), &rest); err != nil {
+				t.Fatalf("decode REST event: %v", err)
+			}
+			if rest.ID != tt.id || rest.Type != tt.wantType || rest.ServiceID != tt.wantServiceID || rest.Timestamp == "" || rest.Details == nil {
+				t.Errorf("REST event = %+v, want id=%s type=%s serviceId=%s", rest, tt.id, tt.wantType, tt.wantServiceID)
+			}
+
+			query := fmt.Sprintf(`{ serviceEvent(id: %q) { id type serviceId timestamp details { deployId trigger { manual } } } }`, tt.id)
+			gqlEvent, ok := gql(t, h, query)["serviceEvent"].(map[string]any)
+			if !ok {
+				t.Fatalf("GraphQL serviceEvent did not return an object")
+			}
+			if gqlEvent["id"] != rest.ID || gqlEvent["type"] != rest.Type || gqlEvent["serviceId"] != rest.ServiceID || gqlEvent["timestamp"] != rest.Timestamp {
+				t.Errorf("GraphQL event diverges from REST: %v vs %+v", gqlEvent, rest)
+			}
+
+			mcpEvent := callGetServiceEvent(t, srv, tt.id)
+			if mcpEvent.ID != rest.ID || mcpEvent.Type != rest.Type || mcpEvent.ServiceID != rest.ServiceID || mcpEvent.Timestamp != rest.Timestamp {
+				t.Errorf("MCP event diverges from REST: %+v vs %+v", mcpEvent, rest)
+			}
+		})
+	}
+
+	if fake.gotEventWorkspace != core.DefaultTenant {
+		t.Errorf("single-event store lookup workspace = %q, want %q", fake.gotEventWorkspace, core.DefaultTenant)
 	}
 }
 
@@ -304,6 +381,57 @@ func TestEventsAuthMatrix(t *testing.T) {
 			t.Errorf("malformed cursor => 400, got %d", code)
 		}
 	})
+
+	t.Run("malformed event id => 400", func(t *testing.T) {
+		base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+		h, _ := serverWith(t, base, Deps{EventStore: eventFixture(at)})
+		if code := do(t, h, "GET", "/v1/events/not-an-event", testToken, "").Code; code != http.StatusBadRequest {
+			t.Errorf("malformed event id => 400, got %d", code)
+		}
+	})
+
+	t.Run("missing event => 404", func(t *testing.T) {
+		base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+		h, _ := serverWith(t, base, Deps{EventStore: eventFixture(at)})
+		missingID := ids.Derive(ids.Event, "missing-event:")
+		if code := do(t, h, "GET", "/v1/events/"+missingID, testToken, "").Code; code != http.StatusNotFound {
+			t.Errorf("missing event => 404, got %d", code)
+		}
+	})
+
+	t.Run("foreign event is indistinguishable from missing => 404", func(t *testing.T) {
+		foreignID := ids.Derive(ids.Event, "foreign-event:")
+		fake := eventFixture(at)
+		fake.lookups = map[string]store.ServiceEventLookup{
+			"tea-foreign\x00" + foreignID: {
+				Event:     store.ServiceEventRow{Key: "foreign-event:", At: at, Source: store.EventSourceAudit, Verb: core.AuditVerbPostgresCreated},
+				ServiceID: "dpg-foreign",
+			},
+		}
+		base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+		h, _ := serverWith(t, base, Deps{EventStore: fake})
+		if code := do(t, h, "GET", "/v1/events/"+foreignID, testToken, "").Code; code != http.StatusNotFound {
+			t.Errorf("foreign event => 404, got %d", code)
+		}
+	})
+
+	t.Run("single event non-member => 403", func(t *testing.T) {
+		base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: false}}
+		h, _ := serverWith(t, base, Deps{EventStore: eventFixture(at)})
+		eventID := ids.Derive(ids.Event, "dep-1:"+store.EventPhaseStarted)
+		if code := do(t, h, "GET", "/v1/events/"+eventID, testToken, "").Code; code != http.StatusForbidden {
+			t.Errorf("single event non-member => 403, got %d", code)
+		}
+	})
+
+	t.Run("single event store-less => 503", func(t *testing.T) {
+		base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+		h, _ := serverWith(t, base, Deps{EventStore: nil})
+		eventID := ids.Derive(ids.Event, "dep-1:"+store.EventPhaseStarted)
+		if code := do(t, h, "GET", "/v1/events/"+eventID, testToken, "").Code; code != http.StatusServiceUnavailable {
+			t.Errorf("single event store-less => 503, got %d", code)
+		}
+	})
 }
 
 // TestEventsWindowAndPaging pins the two params a Render client's behavior
@@ -356,35 +484,16 @@ func TestEventsWindowAndPaging(t *testing.T) {
 // third surface, exercised as a client would.
 func callListServiceEvents(t *testing.T, srv *Server, args map[string]any) []restEvent {
 	t.Helper()
-	// The HTTP transports get their caller Identity from the auth middleware; the
-	// in-memory transport has no middleware, so the session context carries it —
-	// the same gated Service.List runs either way.
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user-x", Method: "session"})
-	serverT, clientT := mcp.NewInMemoryTransports()
-	if _, err := srv.MCPServer().Connect(ctx, serverT, nil); err != nil {
-		t.Fatalf("mcp connect: %v", err)
-	}
-	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test-client", Version: "0"}, nil).Connect(ctx, clientT, nil)
-	if err != nil {
-		t.Fatalf("mcp client connect: %v", err)
-	}
-	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "list_service_events", Arguments: args})
-	if err != nil {
-		t.Fatalf("call list_service_events: %v", err)
-	}
-	if res.IsError {
-		b, _ := json.Marshal(res.Content)
-		t.Fatalf("list_service_events errored: %s", b)
-	}
-	raw, err := json.Marshal(res.StructuredContent)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out struct {
+	out := callTool[struct {
 		Events []restEvent `json:"events"`
-	}
-	if err := json.Unmarshal(raw, &out); err != nil {
-		t.Fatalf("mcp decode: %v (%s)", err, raw)
-	}
+	}](t, mcpSessionAs(t, srv, "user-x"), "list_service_events", args)
 	return out.Events
+}
+
+func callGetServiceEvent(t *testing.T, srv *Server, eventID string) wireEvent {
+	t.Helper()
+	out := callTool[struct {
+		Event wireEvent `json:"event"`
+	}](t, mcpSessionAs(t, srv, "user-x"), "get_service_event", map[string]any{"id": eventID})
+	return out.Event
 }

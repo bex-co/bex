@@ -39,6 +39,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -88,6 +89,17 @@ type conformEventStore struct {
 
 func (s *conformEventStore) ListServiceEvents(_ context.Context, _, _, _ string, _ store.ServiceEventFilter) ([]store.ServiceEventRow, error) {
 	return s.rows, nil
+}
+
+func (s *conformEventStore) GetServiceEvent(_ context.Context, workspaceID, eventID string) (store.ServiceEventLookup, error) {
+	if workspaceID == core.DefaultTenant {
+		for _, row := range s.rows {
+			if ids.Derive(ids.Event, row.Key) == eventID {
+				return store.ServiceEventLookup{Event: row, ServiceID: "web"}, nil
+			}
+		}
+	}
+	return store.ServiceEventLookup{}, store.ErrNotFound
 }
 
 // --- fixture helpers ---------------------------------------------------------
@@ -194,6 +206,7 @@ func TestRenderConformance(t *testing.T) {
 			Trigger:  store.TriggerAPI,
 		},
 	}}
+	eventID := ids.Derive(ids.Event, eventStore.rows[0].Key)
 
 	h, _ := serverWith(t,
 		&core.Base{
@@ -288,6 +301,10 @@ func TestRenderConformance(t *testing.T) {
 	t.Run("events/list", func(t *testing.T) {
 		check(t, "/v1/services/"+appName+"/events", "list-events")
 	})
+
+	t.Run("events/get", func(t *testing.T) {
+		check(t, "/v1/events/"+eventID, "retrieve-event")
+	})
 }
 
 // TestConformanceAllowlistEntries verifies that every entry in conformanceAllowlist
@@ -318,6 +335,7 @@ func TestConformanceAllowlistEntries(t *testing.T) {
 	eventStore := &conformEventStore{rows: []store.ServiceEventRow{
 		{Key: "dep-1:" + store.EventPhaseStarted, At: conformEpoch, Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-1", Trigger: store.TriggerAPI},
 	}}
+	eventID := ids.Derive(ids.Event, eventStore.rows[0].Key)
 
 	h, _ := serverWith(t,
 		&core.Base{
@@ -349,6 +367,7 @@ func TestConformanceAllowlistEntries(t *testing.T) {
 		"list-secret-files-for-service": "/v1/services/" + appName + "/secret-files",
 		"list-custom-domains":           "/v1/services/web-cd/custom-domains",
 		"list-events":                   "/v1/services/" + appName + "/events",
+		"retrieve-event":                "/v1/events/" + eventID,
 		"list-redis":                    "/v1/key-value",
 	}
 

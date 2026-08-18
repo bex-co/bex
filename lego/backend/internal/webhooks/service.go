@@ -73,6 +73,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/eventvocab"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -101,12 +102,12 @@ const (
 	TypeCronJobRunEnded            = "cron_job_run_ended"
 	TypeMaintenanceModeEnabled     = "maintenance_mode_enabled"
 	TypeMaintenanceModeURIUpdated  = "maintenance_mode_uri_updated"
-	TypePlanChanged                = "plan_changed"
-	TypePostgresCreated            = "postgres_created"
-	TypePostgresRestarted          = "postgres_restarted"
-	TypePostgresCredentialsCreated = "postgres_credentials_created"
-	TypePostgresCredentialsDeleted = "postgres_credentials_deleted"
-	TypePostgresBackupStarted      = "postgres_backup_started"
+	TypePlanChanged                = eventvocab.TypePlanChanged
+	TypePostgresCreated            = eventvocab.TypePostgresCreated
+	TypePostgresRestarted          = eventvocab.TypePostgresRestarted
+	TypePostgresCredentialsCreated = eventvocab.TypePostgresCredentialsCreated
+	TypePostgresCredentialsDeleted = eventvocab.TypePostgresCredentialsDeleted
+	TypePostgresBackupStarted      = eventvocab.TypePostgresBackupStarted
 	TypeImagePullFailed            = "image_pull_failed"
 	TypeServerFailed               = "server_failed"
 	TypeServerAvailable            = "server_available"
@@ -122,22 +123,17 @@ const (
 // verbs down into the store query, so a verb absent here is not a webhook
 // event. Deploy transitions come from deploys rows, not a verb (see
 // eventTypeOf).
-var verbEvents = map[string]string{
-	"apps.Restart":                           TypeServerRestarted,
-	"apps.Scale":                             TypeInstanceCountChanged,
-	"apps.SetAutoscaling":                    TypeAutoscalingConfigChanged,
-	"apps.DeleteAutoscaling":                 TypeAutoscalingConfigChanged,
-	core.AuditVerbMaintenanceModeEnabled:     TypeMaintenanceModeEnabled,
-	core.AuditVerbMaintenanceModeURIUpdated:  TypeMaintenanceModeURIUpdated,
-	core.AuditVerbSetPlan:                    TypePlanChanged,
-	core.AuditVerbPostgresCreated:            TypePostgresCreated,
-	core.AuditVerbPostgresRestarted:          TypePostgresRestarted,
-	core.AuditVerbPostgresCredentialsCreated: TypePostgresCredentialsCreated,
-	core.AuditVerbPostgresCredentialsDeleted: TypePostgresCredentialsDeleted,
-	core.AuditVerbPostgresBackupStarted:      TypePostgresBackupStarted,
-	core.AuditVerbPostgresPlanChanged:        TypePlanChanged,
-	core.AuditVerbKeyValuePlanChanged:        TypePlanChanged,
-}
+var verbEvents = func() map[string]string {
+	types := eventvocab.DatastoreAuditTypes()
+	types["apps.Restart"] = TypeServerRestarted
+	types["apps.Scale"] = TypeInstanceCountChanged
+	types["apps.SetAutoscaling"] = TypeAutoscalingConfigChanged
+	types["apps.DeleteAutoscaling"] = TypeAutoscalingConfigChanged
+	types[core.AuditVerbMaintenanceModeEnabled] = TypeMaintenanceModeEnabled
+	types[core.AuditVerbMaintenanceModeURIUpdated] = TypeMaintenanceModeURIUpdated
+	types[core.AuditVerbSetPlan] = TypePlanChanged
+	return types
+}()
 
 const autoDeployVerb = core.AuditVerbSetAutoDeploy
 

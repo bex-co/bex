@@ -118,10 +118,19 @@ var eventGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// GraphQLQuery returns the serviceEvents(serviceId, …) field for the composition
-// root to merge into the root Query.
+// GraphQLQuery returns the list and global single-event fields for the
+// composition root to merge into the root Query.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
+		"serviceEvent": &graphql.Field{
+			Type: eventGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id": gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.Get(p.Context, p.Args["id"].(string))
+			},
+		},
 		"serviceEvents": &graphql.Field{
 			Type: graphql.NewList(eventGQLType),
 			Args: graphql.FieldConfigArgument{

@@ -58,8 +58,28 @@ type listServiceEventsResult struct {
 	Events []eventWithCursor `json:"events"`
 }
 
+type getServiceEventArgs struct {
+	ID string `json:"id" jsonschema:"required,the evt-… id from a webhook data.id or a service event list item"`
+}
+
+type getServiceEventResult struct {
+	Event renderEvent `json:"event"`
+}
+
 // RegisterMCP adds the events tool to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
+	mcp.AddTool(srv, &mcp.Tool{
+		Name: "get_service_event",
+		Description: "Retrieve one authorized service, Postgres, or Key Value event by its evt-… id. " +
+			"Use the data.id from a Bex outbound webhook to hydrate its thin payload. This is a Bex extension; " +
+			"Render's official MCP server does not currently expose an event retrieval tool.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getServiceEventArgs) (*mcp.CallToolResult, getServiceEventResult, error) {
+		event, err := s.Get(ctx, in.ID)
+		if err != nil {
+			return nil, getServiceEventResult{}, err
+		}
+		return nil, getServiceEventResult{Event: toRenderEvent(event)}, nil
+	})
 	mcp.AddTool(srv, &mcp.Tool{
 		Name: "list_service_events",
 		Description: "List what has happened to a service, newest first: deploys started/ended, " +
