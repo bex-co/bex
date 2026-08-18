@@ -118,6 +118,9 @@ type Server struct {
 	// constructs internally (which needs the auth gate's invalidate
 	// callback, so it can't itself be built any earlier than Handler()).
 	DeviceRateLimiter *cliauth.DeviceRateLimiter
+	// CLIRefreshes collapses concurrent official-CLI refreshes through the
+	// control-plane Postgres. nil retains the DB-free direct-proxy path.
+	CLIRefreshes cliauth.RefreshIdempotencyStore
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -916,6 +919,7 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 	// authGate.invalidate lets logout evict this pod's introspection cache.
 	cliAuth := cliauth.New(s.OAuthIssuer, s.HydraAdminURL, s.APIKeys, authGate.invalidate)
 	cliAuth.RateLimiter = s.DeviceRateLimiter
+	cliAuth.Refreshes = s.CLIRefreshes
 	cliAuth.RegisterPublic(mux, bodyLimit)
 	// The git push webhook authenticates by HMAC signature, not the OAuth gate,
 	// so it mounts directly (ahead of the /v1/ wildcard — a more specific pattern

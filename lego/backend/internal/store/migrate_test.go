@@ -27,6 +27,78 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// TestCLIRefreshMigrationRoundTrip applies and rolls back 0082 in an isolated
+// schema against real Postgres. It also guards the credential boundary: the
+// request key is fixed-width bytea and no raw inbound refresh-token column
+// exists.
+func TestCLIRefreshMigrationRoundTrip(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	up, err := migrationsFS.ReadFile("migrations/0082_cli_refresh_idempotency.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	down, err := migrationsFS.ReadFile("migrations/0082_cli_refresh_idempotency.down.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		CREATE SCHEMA migration_0082_roundtrip;
+		SET LOCAL search_path TO migration_0082_roundtrip;
+	`); err != nil {
+		t.Fatalf("prepare isolated schema: %v", err)
+	}
+	if _, err := tx.Exec(ctx, string(up)); err != nil {
+		t.Fatalf("apply 0082: %v", err)
+	}
+
+	var hashColumns, rawTokenColumns int
+	if err := tx.QueryRow(ctx, `
+		SELECT
+			count(*) FILTER (WHERE column_name = 'token_hash' AND data_type = 'bytea'),
+			count(*) FILTER (WHERE column_name IN ('refresh_token', 'raw_refresh_token'))
+		FROM information_schema.columns
+		WHERE table_schema = 'migration_0082_roundtrip'
+		  AND table_name = 'cli_refresh_idempotency'
+	`).Scan(&hashColumns, &rawTokenColumns); err != nil {
+		t.Fatal(err)
+	}
+	if hashColumns != 1 || rawTokenColumns != 0 {
+		t.Fatalf("0082 columns: hash(bytea)=%d raw-token=%d, want 1 and 0", hashColumns, rawTokenColumns)
+	}
+
+	if _, err := tx.Exec(ctx, string(down)); err != nil {
+		t.Fatalf("roll back 0082: %v", err)
+	}
+	var remains bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.tables
+			WHERE table_schema = 'migration_0082_roundtrip'
+			  AND table_name = 'cli_refresh_idempotency'
+		)
+	`).Scan(&remains); err != nil {
+		t.Fatal(err)
+	}
+	if remains {
+		t.Fatal("0082 down migration left cli_refresh_idempotency behind")
+	}
+}
+
 // TestOwnershipErrorNoMisowned confirms CheckOwnership returns nil when all
 // tables are owned by the application role (the happy path).
 func TestOwnershipErrorNoMisowned(t *testing.T) {

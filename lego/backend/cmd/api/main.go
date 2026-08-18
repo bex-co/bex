@@ -415,6 +415,7 @@ func main() {
 	// rejected below; store-less deployments must leave webhook secrets unset.
 	if st != nil {
 		srv.WebhookReplays = st
+		srv.CLIRefreshes = st
 	}
 	// Membership rows and exact OpenFGA roles are joined by a transactional
 	// Postgres outbox. Drain it independently of request retries so an invite or
