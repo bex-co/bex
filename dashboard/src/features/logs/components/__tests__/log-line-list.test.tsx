@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { LogLineList } from "../log-line-list";
 import { needsAnsiParse, parseAnsi } from "../../lib/ansi";
 import type { LogLine } from "../../types";
@@ -43,6 +43,17 @@ function viewportOf(container: HTMLElement): HTMLElement {
 
 function renderedRowCount(container: HTMLElement): number {
   return container.querySelectorAll("[data-index]").length;
+}
+
+async function settleVirtualScroll(): Promise<void> {
+  // TanStack Virtual debounces its synthetic scroll-end notification by 150ms.
+  // Let that callback run while jsdom and the mounted component still exist;
+  // otherwise a fast test-file teardown can leave it firing against a deleted
+  // `window`, which Vitest reports as an unhandled error after every assertion
+  // has already passed.
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 175));
+  });
 }
 
 describe("LogLineList request-line rendering (w5/008)", () => {
@@ -176,7 +187,7 @@ describe("LogLineList follow / pin (w9/m83)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("scrolling up releases the pin and surfaces jump-to-latest", () => {
+  it("scrolling up releases the pin and surfaces jump-to-latest", async () => {
     const { container } = render(<LogLineList lines={buffer(1000)} />);
     const viewport = viewportOf(container);
 
@@ -189,9 +200,11 @@ describe("LogLineList follow / pin (w9/m83)", () => {
     expect(
       screen.getByRole("button", { name: /jump to latest/i }),
     ).toBeInTheDocument();
+
+    await settleVirtualScroll();
   });
 
-  it("returning to the bottom re-pins and hides jump-to-latest", () => {
+  it("returning to the bottom re-pins and hides jump-to-latest", async () => {
     const { container } = render(<LogLineList lines={buffer(1000)} />);
     const viewport = viewportOf(container);
 
@@ -213,9 +226,11 @@ describe("LogLineList follow / pin (w9/m83)", () => {
     expect(
       screen.queryByRole("button", { name: /jump to latest/i }),
     ).not.toBeInTheDocument();
+
+    await settleVirtualScroll();
   });
 
-  it("clicking jump-to-latest re-pins", () => {
+  it("clicking jump-to-latest re-pins", async () => {
     const { container } = render(<LogLineList lines={buffer(1000)} />);
     const viewport = viewportOf(container);
 
@@ -230,6 +245,8 @@ describe("LogLineList follow / pin (w9/m83)", () => {
     expect(
       screen.queryByRole("button", { name: /jump to latest/i }),
     ).not.toBeInTheDocument();
+
+    await settleVirtualScroll();
   });
 });
 
