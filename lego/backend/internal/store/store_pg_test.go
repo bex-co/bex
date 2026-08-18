@@ -183,7 +183,7 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 	// w3/m41 delivery surface: a dispatch bumps the turn counter and delivery
 	// mode; ListAgentSessionsByPhases finds the running turn; Finalize records the
 	// completed result + evidence and is queryable back.
-	record, err = s.RecordAgentSessionDispatch(ctx, record.ID, "sandbox-2", "running", "running", "redispatch")
+	record, err = s.RecordAgentSessionDispatch(ctx, record.ID, "retry-"+record.ID, "running", "running", "redispatch")
 	if err != nil || record.SandboxID != "sandbox-2" || record.Turns != 1 || record.DeliveryMode != "redispatch" {
 		t.Fatalf("dispatch agent session = %+v err=%v", record, err)
 	}
