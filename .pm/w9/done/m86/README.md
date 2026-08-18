@@ -1,17 +1,17 @@
 # w9 · m86 — Honest error states for datastore metric charts
 
-**Worker:** worker9 **Goal:** a datastore metrics query that errors renders a distinct error card, not the empty-window "No data in range" state that hid the `w5/m71` wrong-identifier bug for months. **Status:** todo
+**Worker:** worker9 **Goal:** a datastore metrics query that errors renders a distinct error card, not the empty-window "No data in range" state that hid the `w5/m71` wrong-identifier bug for months. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                       | est | depends_on |
 | ---- | --------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Audit the chart/metric panels for the empty-vs-error conflation             | 25m | —          |
-| t002 | Surface `result.error` as a generic error card distinct from the empty state | 40m | t001       |
-| t003 | Render parity (closing)                                                     | 15m | t002       |
-| t004 | Simplify (closing)                                                          | 20m | t003       |
-| t005 | Test coverage (closing)                                                     | 30m | t003       |
-| t006 | Closeout (closing)                                                          | 10m | t005       |
+| t001 | Audit the chart/metric panels for the empty-vs-error conflation             | 25m | —          — **DONE** |
+| t002 | Surface `result.error` as a generic error card distinct from the empty state | 40m | t001       — **DONE** |
+| t003 | Render parity (closing)                                                     | 15m | t002       — **DONE** |
+| t004 | Simplify (closing)                                                          | 20m | t003       — **DONE** |
+| t005 | Test coverage (closing)                                                     | 30m | t003       — **DONE** |
+| t006 | Closeout (closing)                                                          | 10m | t005       — **DONE** |
 
 ## Definition of done
 

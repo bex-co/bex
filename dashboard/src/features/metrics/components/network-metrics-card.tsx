@@ -26,7 +26,6 @@ import {
   type LineSeriesInput,
 } from "@/features/metrics/components/svg-line-chart";
 import { MetricSection } from "@/features/metrics/components/metric-section";
-import { MetricUnavailable } from "@/features/metrics/components/metric-unavailable";
 import { seriesColor } from "@/features/metrics/components/chart-layout";
 import {
   useMetrics,
@@ -352,24 +351,22 @@ export function NetworkMetricsCard({
         <MetricSection
           title={t("metrics.outboundBandwidth")}
           result={bandwidth}
+          // A real query error is not "No data in range" — the w1/m50 masking
+          // fix, now folded into MetricSection's shared error branch (w9/m86)
+          // with bandwidth's own message.
+          errorMessage={t("metrics.bandwidthError")}
           headerExtra={
             bandwidth.degradedSources.length > 0 ? (
               <BandwidthDegradedBadge sources={bandwidth.degradedSources} />
             ) : undefined
           }
         >
-          {bandwidth.error ? (
-            // A real query error is not "No data in range" — the w1/m50
-            // masking fix: the transport/server failure gets its own state.
-            <MetricUnavailable message={t("metrics.bandwidthError")} />
-          ) : (
-            <SvgLineChart
-              unit={bandwidth.series[0]?.unit ?? "bytes"}
-              series={bandwidthSeries}
-              markers={markers}
-              markersServiceId={resource}
-            />
-          )}
+          <SvgLineChart
+            unit={bandwidth.series[0]?.unit ?? "bytes"}
+            series={bandwidthSeries}
+            markers={markers}
+            markersServiceId={resource}
+          />
         </MetricSection>
         {monthToDate.egressBandwidthMB != null && (
           <p
