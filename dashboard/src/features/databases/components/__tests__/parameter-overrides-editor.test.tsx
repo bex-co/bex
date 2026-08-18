@@ -14,10 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ParameterOverridesEditor } from "@/features/databases/components/parameter-overrides-editor";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
+
+// A contributor holds can_operate but not can_create (docs/ADR024) — the exact
+// role the w9/m84 statement-logging gate targets.
+const CONTRIBUTOR = mockCapabilities({ role: "CONTRIBUTOR", canCreate: false });
+const ADMIN = mockCapabilities();
 
 const OVERRIDES = [
   {
@@ -30,6 +37,43 @@ const OVERRIDES = [
 ];
 
 describe("ParameterOverridesEditor", () => {
+  // Default every test to an admin; the gating cases override per test. Keeps the
+  // pre-m84 tests (which assume full permission) green.
+  beforeEach(() => {
+    vi.mocked(useCapabilities).mockReturnValue(ADMIN);
+  });
+
+  it("disables Save with a role reason when a contributor sets a statement-logging parameter", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(CONTRIBUTOR);
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue({ ok: true });
+    render(
+      <ParameterOverridesEditor overrides={[]} saving={false} onSave={onSave} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Add override" }));
+    await user.type(screen.getByLabelText("Parameter 1 name"), "log_statement");
+    await user.type(screen.getByLabelText("Parameter 1 value"), "all");
+
+    expect(screen.getByRole("button", { name: "Save overrides" })).toBeDisabled();
+  });
+
+  it("lets a contributor save a non-logging parameter (can_operate)", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(CONTRIBUTOR);
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue({ ok: true });
+    render(
+      <ParameterOverridesEditor overrides={[]} saving={false} onSave={onSave} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Add override" }));
+    await user.type(screen.getByLabelText("Parameter 1 name"), "work_mem");
+    await user.type(screen.getByLabelText("Parameter 1 value"), "16MB");
+    await user.click(screen.getByRole("button", { name: "Save overrides" }));
+
+    expect(onSave).toHaveBeenCalledWith([{ name: "work_mem", value: "16MB" }]);
+  });
+
   it("adds and edits rows, then sends one replace-style save", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue({ ok: true });

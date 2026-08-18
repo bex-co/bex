@@ -1,0 +1,18 @@
+# The caller's own effective permissions in a workspace (w9/m84). The dashboard
+# reads this to disable controls the server would refuse (a contributor sees a
+# disabled field with a reason, not one that 403s on save). ownerId is the active
+# workspace; absent => the caller's default. The server stays authoritative — this
+# only shapes the UI.
+query ViewerCapabilities($ownerId: String) {
+  viewerCapabilities(ownerId: $ownerId) {
+    role
+    canView
+    canViewLogs
+    canOperate
+    canCreate
+    canViewSensitive
+    canManageKeys
+    canManage
+    canManageBilling
+  }
+}

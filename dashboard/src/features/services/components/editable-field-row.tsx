@@ -58,6 +58,10 @@ export interface EditableFieldRowProps {
   /** When true, the field is not editable: the input stays disabled and the
    *  pencil is hidden (e.g. a paid-plan-only field on the free plan). */
   disabled?: boolean;
+  /** Why the field is disabled — shown as a muted line beneath the row so a
+   *  member whose role can't edit it learns why instead of hitting a 403 on
+   *  save (w9/m84). Only rendered when `disabled` is also true. */
+  disabledReason?: ReactNode;
   type?: "text" | "number";
   min?: number;
   max?: number;
@@ -112,6 +116,7 @@ export function EditableFieldRow({
   mono = false,
   busy = false,
   disabled = false,
+  disabledReason,
   type = "text",
   min,
   max,
@@ -284,6 +289,10 @@ export function EditableFieldRow({
 
       {validationError !== null && (
         <p className="text-destructive text-sm">{validationError}</p>
+      )}
+
+      {disabled && disabledReason != null && (
+        <p className="text-muted-foreground text-sm">{disabledReason}</p>
       )}
 
       {confirm && (

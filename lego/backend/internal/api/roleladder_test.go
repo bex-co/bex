@@ -235,6 +235,19 @@ func TestRoleLadderDenyMatrix(t *testing.T) {
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "client-1", Method: "session"})
 	verbRelations := captureVerbRelations(t, ctx)
 
+	// A capabilities projection (w9/m84) probes every relation to REPORT whether
+	// the caller holds it (core.Base.Can — response shaping), not to gate on it.
+	// Its only gate is can_view (any member); the extra probes are what the
+	// dashboard reads to disable controls. Pin its matrix relation to the true
+	// gate so "allowed iff the role holds every checked relation" reasons about
+	// the gate, not the reported set — otherwise the projection reads as
+	// requiring admin. It is still swept (never excused from the matrix).
+	for verb := range capabilityProjectionVerbs {
+		if _, ok := verbRelations[verb]; ok {
+			verbRelations[verb] = []string{core.RelCanView}
+		}
+	}
+
 	// Every captured relation must be a modelled one — a verb checking a relation
 	// model.fga does not define is a bug the ladder cannot reason about.
 	known := set(modelRelations...)
@@ -287,6 +300,15 @@ func grantsAll(grants map[string]bool, relations []string) bool {
 		}
 	}
 	return true
+}
+
+// capabilityProjectionVerbs report per-relation booleans by probing every
+// relation with core.Base.Can (w9/m84) instead of gating on them; their sole
+// gate is can_view. TestRoleLadderDenyMatrix pins their matrix relation to
+// can_view so the "allowed iff role holds every checked relation" invariant
+// reasons about the gate, not the probed set.
+var capabilityProjectionVerbs = map[string]bool{
+	"*members.Service.Capabilities": true,
 }
 
 // representativeVerbRelations pins the gating relation of one verb per relation

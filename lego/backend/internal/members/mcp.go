@@ -129,6 +129,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "get_viewer_capabilities",
+		Description: "The caller's own effective permissions in the active workspace: role plus canView/canOperate/canCreate/canViewSensitive/canManage/canManageBilling booleans. Answers \"what can I do here\" before attempting a verb. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, Capabilities, error) {
+		caps, err := s.Capabilities(ctx, core.NamedWorkspace(ctx))
+		return nil, caps, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "accept_workspace_invite",
 		Description: "Redeem a workspace invite token for the authenticated caller — joins the inviting workspace at the invited role even when the caller signed up under a different email. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in acceptInviteArgs) (*mcp.CallToolResult, AcceptedInviteView, error) {

@@ -153,6 +153,10 @@ var callerScopedRoutes = map[string]bool{
 	// ownerId like the list route, addresses no session by path; its own
 	// Authorize denies non-member callers (TestCapabilitiesProjection).
 	"GET /v1/agent-sessions/capabilities": true,
+	// The caller's OWN effective permissions (w9/m84): scoped by the ownerId
+	// query param, addresses no resource by path; its own can_view gate denies
+	// an ownerId naming a workspace the caller isn't in.
+	"GET /v1/viewer/capabilities": true,
 	"GET /v1/owners":                                  true,
 	"GET /v1/blueprints":                              true,
 	"GET /v1/usage":                                   true,

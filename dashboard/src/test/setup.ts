@@ -10,6 +10,27 @@ vi.mock("@tanstack/react-start", async (importOriginal) => {
   return { ...actual, createIsomorphicFn: stubs.createIsomorphicFn };
 });
 
+// Role-awareness (w9/m84) is read through useCapabilities, which calls Apollo's
+// useQuery — so any component test that renders a gated control would otherwise
+// need an ApolloProvider. Mock it here with a permissive default (every
+// capability granted = the pre-m84 behavior) so unrelated tests are unaffected;
+// gating tests override per file with vi.mocked(useCapabilities).mockReturnValue.
+vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
+  useCapabilities: vi.fn(() => ({
+    role: "ADMIN",
+    canView: true,
+    canViewLogs: true,
+    canOperate: true,
+    canCreate: true,
+    canViewSensitive: true,
+    canManageKeys: true,
+    canManage: true,
+    canManageBilling: true,
+    loading: false,
+    loaded: true,
+  })),
+}));
+
 import i18n from "@/i18n/init";
 import zhResources from "@/i18n/resources-zh";
 

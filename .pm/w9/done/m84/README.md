@@ -1,19 +1,19 @@
 # w9 · m84 — Role-aware dashboard controls: disable-with-reason instead of always-fail
 
-**Worker:** worker9 **Goal:** a contributor sees role-gated controls disabled with a legible reason instead of an editable field that 403s on save; the dashboard gains viewer-capability plumbing the feature components read. **Status:** todo
+**Worker:** worker9 **Goal:** a contributor sees role-gated controls disabled with a legible reason instead of an editable field that 403s on save; the dashboard gains viewer-capability plumbing the feature components read. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                          | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Backend: `viewer`/`capabilities` GraphQL projection (caller role + effective verbs)            | 45m | —          |
-| t002 | Dashboard: thread a `capabilities` context/hook the feature components read                    | 45m | t001       |
-| t003 | Disable-with-reason on the four m68 contributor-boundary controls                              | 45m | t002       |
-| t004 | Extend to the other standing boundaries the dashboard ignores                                  | 45m | t003       |
-| t005 | Render parity (closing)                                                                         | 20m | t004       |
-| t006 | Simplify (closing)                                                                             | 20m | t005       |
-| t007 | Test coverage (closing)                                                                        | 30m | t005       |
-| t008 | Closeout (closing)                                                                             | 10m | t007       |
+| t001 | Backend: `viewer`/`capabilities` GraphQL projection (caller role + effective verbs)            | 45m | —          — **DONE** |
+| t002 | Dashboard: thread a `capabilities` context/hook the feature components read                    | 45m | t001       — **DONE** |
+| t003 | Disable-with-reason on the four m68 contributor-boundary controls                              | 45m | t002       — **DONE** |
+| t004 | Extend to the other standing boundaries the dashboard ignores                                  | 45m | t003       — **DONE** |
+| t005 | Render parity (closing)                                                                         | 20m | t004       — **DONE** |
+| t006 | Simplify (closing)                                                                             | 20m | t005       — **DONE** |
+| t007 | Test coverage (closing)                                                                        | 30m | t005       — **DONE** |
+| t008 | Closeout (closing)                                                                             | 10m | t007       — **DONE** |
 
 ## Definition of done
 

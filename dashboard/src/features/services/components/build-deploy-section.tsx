@@ -12,6 +12,7 @@ import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { DeployHookRows } from "@/features/services/components/deploy-hook-section";
 import { useBranch } from "@/features/services/hooks/use-branch";
 import { useRootDir } from "@/features/services/hooks/use-root-dir";
@@ -107,6 +108,15 @@ export function BuildDeploySection({
   showDeployCard = true,
 }: BuildDeploySectionProps) {
   const { t } = useTranslations();
+  // Choosing what a service builds and runs (source, branch, root dir, commands,
+  // Dockerfile path, pre-deploy) is can_create — a contributor is refused on save
+  // (docs/ADR024-members.md). Disable those rows with a reason instead (w9/m84);
+  // Auto-Deploy stays editable (it is can_operate, contributor-and-up).
+  const { canCreate } = useCapabilities();
+  const createDisabled = !canCreate;
+  const createReason = createDisabled
+    ? t("capabilities.reasonCanCreate")
+    : undefined;
   const { setRootDir, busy } = useRootDir();
   const { setBranch, busy: branchBusy } = useBranch();
   const { setStartCommand, busy: startCommandBusy } = useStartCommand();
@@ -208,7 +218,9 @@ export function BuildDeploySection({
                 t("services.buildDeploySourceConfirmTitle", { value }),
               body: t("services.buildDeploySourceConfirmBody"),
             }}
-            onSave={(value) => setRepo(serviceId, value)}
+            disabled={createDisabled}
+                disabledReason={createReason}
+                onSave={(value) => setRepo(serviceId, value)}
           />
           {/* Branch is editable (w5/m48/t005, Render parity — Render offers a
               searchable branch picker; bex edits it inline like Root Directory).
@@ -231,7 +243,9 @@ export function BuildDeploySection({
               body: t("services.buildDeployBranchConfirmBody"),
               emptyValue: t("services.buildDeployBranchEmpty"),
             }}
-            onSave={(value) => setBranch(serviceId, value)}
+            disabled={createDisabled}
+                disabledReason={createReason}
+                onSave={(value) => setBranch(serviceId, value)}
           />
           <EditableFieldRow
             label={t("services.buildDeployRootDirLabel")}
@@ -248,7 +262,9 @@ export function BuildDeploySection({
               body: t("services.buildDeployConfirmBody"),
               emptyValue: t("services.buildDeployConfirmRoot"),
             }}
-            onSave={(value) => setRootDir(serviceId, value)}
+            disabled={createDisabled}
+                disabledReason={createReason}
+                onSave={(value) => setRootDir(serviceId, value)}
           />
 
           {showBuildCommand && (
@@ -271,7 +287,9 @@ export function BuildDeploySection({
                 body: t("services.buildCommandConfirmBody"),
                 emptyValue: t("services.buildCommandConfirmEmpty"),
               }}
-              onSave={(value) => setBuildCommand(serviceId, value)}
+              disabled={createDisabled}
+                disabledReason={createReason}
+                onSave={(value) => setBuildCommand(serviceId, value)}
             />
           )}
 
@@ -291,7 +309,9 @@ export function BuildDeploySection({
                 body: t("services.dockerfilePathConfirmBody"),
                 emptyValue: t("services.dockerfilePathConfirmEmpty"),
               }}
-              onSave={(value) => setDockerfilePath(serviceId, value)}
+              disabled={createDisabled}
+                disabledReason={createReason}
+                onSave={(value) => setDockerfilePath(serviceId, value)}
             />
           )}
 
@@ -327,6 +347,8 @@ export function BuildDeploySection({
                 optional
                 mono
                 busy={preDeployBusy}
+                disabled={createDisabled}
+                disabledReason={createReason}
                 onSave={(value) => setPreDeployCommand(serviceId, value)}
               />
             )}
@@ -374,6 +396,8 @@ export function BuildDeploySection({
                   body: t("services.startCommandConfirmBody"),
                   emptyValue: t("services.startCommandConfirmEmpty"),
                 }}
+                disabled={createDisabled}
+                disabledReason={createReason}
                 onSave={(value) => setStartCommand(serviceId, value)}
               />
             )}

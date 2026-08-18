@@ -20,6 +20,9 @@ import { Alert, AlertDescription } from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { setsSensitiveLoggingParameter } from "@/features/databases/lib/sensitive-parameters";
 import type {
   ParameterInput,
   ParameterOverrideView,
@@ -65,6 +68,7 @@ export function ParameterOverridesEditor({
   onSave,
 }: ParameterOverridesEditorProps) {
   const { t } = useTranslations();
+  const { canCreate, canOperate } = useCapabilities();
   const initial = initialDrafts(overrides);
   const [rows, setRows] = useState(initial);
   const [savedRows, setSavedRows] = useState(initial);
@@ -79,6 +83,21 @@ export function ParameterOverridesEditor({
   const hasManagedParameter = names.includes("shared_preload_libraries");
   const currentSignature = signature(rows);
   const dirty = currentSignature !== signature(savedRows);
+
+  // The parameter map is a full replacement, so asserting any statement-logging
+  // setting makes the update can_create; otherwise it is a can_operate settings
+  // change (docs/ADR024, mirrored from the backend). Disable Save with a role
+  // reason for a member who lacks the needed relation instead of a 403 on save
+  // (w9/m84). Add/remove/edit stay enabled so the member can still see the shape.
+  const setsSensitiveLogging = setsSensitiveLoggingParameter(names);
+  const permissionBlocked = setsSensitiveLogging ? !canCreate : !canOperate;
+  const permissionReason = permissionBlocked
+    ? t(
+        setsSensitiveLogging
+          ? "capabilities.reasonCanCreate"
+          : "capabilities.reasonCanOperate",
+      )
+    : undefined;
 
   const validationError = hasBlank
     ? t("databases.insightsParamsBlank")
@@ -221,16 +240,20 @@ export function ParameterOverridesEditor({
           <Plus className="h-3.5 w-3.5" />
           {t("databases.insightsParamsAdd")}
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          disabled={!dirty || Boolean(validationError) || saving}
-          onClick={() => void save()}
-        >
-          {saving
-            ? t("databases.insightsParamsSaving")
-            : t("databases.insightsParamsSave")}
-        </Button>
+        <PermissionTooltip reason={permissionReason}>
+          <Button
+            type="button"
+            size="sm"
+            disabled={
+              !dirty || Boolean(validationError) || saving || permissionBlocked
+            }
+            onClick={() => void save()}
+          >
+            {saving
+              ? t("databases.insightsParamsSaving")
+              : t("databases.insightsParamsSave")}
+          </Button>
+        </PermissionTooltip>
         {dirty && (
           <Button
             type="button"

@@ -25,6 +25,8 @@ import {
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import {
   useBillingOnboarding,
   type BillingReadiness,
@@ -38,6 +40,11 @@ interface BillingOnboardingViewProps {
   portalBusy: boolean;
   onCheckout: () => void;
   onPortal: () => void;
+  /** Whether the caller may manage billing (can_manage_billing); when false the
+   *  payment/portal buttons are disabled with a reason (w9/m84). Defaults true
+   *  so the shared payment-onboarding dialog (paid-intent gate) is unaffected —
+   *  only the billing page's container passes the real capability. */
+  canManageBilling?: boolean;
 }
 
 function StatusRow({
@@ -109,8 +116,12 @@ export function BillingOnboardingView({
   portalBusy,
   onCheckout,
   onPortal,
+  canManageBilling = true,
 }: BillingOnboardingViewProps) {
   const { t } = useTranslations();
+  const billingReason = canManageBilling
+    ? undefined
+    : t("capabilities.reasonCanManageBilling");
   return (
     <Card>
       <CardHeader>
@@ -163,29 +174,39 @@ export function BillingOnboardingView({
             </div>
             <LifecycleAlert readiness={readiness} />
             <div className="flex flex-wrap gap-2">
-              <Button loading={checkoutBusy} onClick={onCheckout}>
-                {readiness.paymentMethodReady
-                  ? t(
-                      readiness.mode === "test"
-                        ? "usage.billingUpdatePaymentTest"
-                        : "usage.billingUpdatePayment",
-                    )
-                  : t(
-                      readiness.mode === "test"
-                        ? "usage.billingAddPaymentTest"
-                        : "usage.billingAddPayment",
-                    )}
-              </Button>
-              <Button
-                variant="outline"
-                loading={portalBusy}
-                disabled={
-                  !readiness.customerReady || !readiness.subscriptionReady
-                }
-                onClick={onPortal}
-              >
-                {t("usage.billingOpenPortal")}
-              </Button>
+              <PermissionTooltip reason={billingReason}>
+                <Button
+                  loading={checkoutBusy}
+                  disabled={!canManageBilling}
+                  onClick={onCheckout}
+                >
+                  {readiness.paymentMethodReady
+                    ? t(
+                        readiness.mode === "test"
+                          ? "usage.billingUpdatePaymentTest"
+                          : "usage.billingUpdatePayment",
+                      )
+                    : t(
+                        readiness.mode === "test"
+                          ? "usage.billingAddPaymentTest"
+                          : "usage.billingAddPayment",
+                      )}
+                </Button>
+              </PermissionTooltip>
+              <PermissionTooltip reason={billingReason}>
+                <Button
+                  variant="outline"
+                  loading={portalBusy}
+                  disabled={
+                    !canManageBilling ||
+                    !readiness.customerReady ||
+                    !readiness.subscriptionReady
+                  }
+                  onClick={onPortal}
+                >
+                  {t("usage.billingOpenPortal")}
+                </Button>
+              </PermissionTooltip>
             </div>
             <p className="text-xs text-muted-foreground">
               {t("usage.billingHostedNote")}
@@ -199,6 +220,7 @@ export function BillingOnboardingView({
 
 export function BillingOnboardingCard() {
   const state = useBillingOnboarding();
+  const { canManageBilling } = useCapabilities();
   return (
     <BillingOnboardingView
       readiness={state.readiness}
@@ -208,6 +230,7 @@ export function BillingOnboardingCard() {
       portalBusy={state.portalBusy}
       onCheckout={() => void state.openCheckout()}
       onPortal={() => void state.openPortal()}
+      canManageBilling={canManageBilling}
     />
   );
 }

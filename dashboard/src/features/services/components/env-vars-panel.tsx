@@ -37,6 +37,7 @@ import {
   classifyEnvVarError,
 } from "@/features/services/hooks/use-env-vars";
 import { EnvVarRow } from "@/features/services/components/env-var-row";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import type { EnvVarKey } from "@/features/services/types";
 import {
   downloadEnvFile,
@@ -131,6 +132,11 @@ export function EnvVarsEditor({
   copy: EnvVarsEditorCopy;
 }) {
   const { t } = useTranslations();
+  // Revealing an env-var value is can_view_sensitive (w9/m84).
+  const { canViewSensitive } = useCapabilities();
+  const revealReason = canViewSensitive
+    ? undefined
+    : t("capabilities.reasonCanViewSensitive");
   const initialLoading = loading && keys.length === 0 && !errorKind;
   const gated = errorKind === "unavailable" || errorKind === "forbidden";
 
@@ -180,6 +186,8 @@ export function EnvVarsEditor({
             <TableBody>
               {keys.map((entry) => (
                 <EnvVarRow
+                  canReveal={canViewSensitive}
+                  revealReason={revealReason}
                   key={entry.id}
                   entry={entry}
                   reveal={reveal}
