@@ -27,14 +27,17 @@ set -euo pipefail
 #                    GitHub App installation; default branch protected so only
 #                    bex-agent/* is writable>
 #
-# Precondition (out of band, ADR047 D7): the workspace's BYO model key must be
-# provisioned in OpenBao before this runs — the driver sources it there, not from
-# the request. Provision with:
+# Preconditions (out of band, ADR047 D7): BEX_VERIFY_AGENT must name the provider
+# whose BYO model key is provisioned for this workspace; a Claude credential
+# cannot authenticate a Codex/OpenAI verification (and vice versa). The driver
+# sources the key from OpenBao, not from the request. Provision with:
 #   bao kv put agent-sessions/<workspaceId>/model-key BEX_AGENT_MODEL_API_KEY=<key>
 # (workspaceId is the tea-… id BEX_VERIFY_OWNER_ID resolves to.)
 #
+# Required:
+#   BEX_VERIFY_AGENT=claude          # ACP adapter matching the provisioned key
+#
 # Optional:
-#   BEX_VERIFY_AGENT=codex           # ACP adapter selector (default codex)
 #   BEX_VERIFY_MODEL=gpt-5           # model passed to the adapter
 #   BEX_VERIFY_MODEL_ENDPOINT=https://api.openai.com/v1
 #   BEX_VERIFY_OWNER_ID=<workspace id to bill/scope to>
@@ -53,13 +56,14 @@ cd "$(dirname "$0")/.."
 : "${BEX_API_URL:?set BEX_API_URL to the bex-api origin}"
 : "${BEX_API_TOKEN:?set BEX_API_TOKEN to a caller bearer token}"
 : "${BEX_VERIFY_REPO:?set BEX_VERIFY_REPO to a disposable owner/name repo}"
+: "${BEX_VERIFY_AGENT:?set BEX_VERIFY_AGENT to the adapter matching the workspace model-key provider}"
 
 for command in curl jq; do
   command -v "$command" >/dev/null || { echo "error: missing required command: $command" >&2; exit 2; }
 done
 
 api_url="${BEX_API_URL%/}"
-agent="${BEX_VERIFY_AGENT:-codex}"
+agent="${BEX_VERIFY_AGENT}"
 model="${BEX_VERIFY_MODEL:-}"
 model_endpoint="${BEX_VERIFY_MODEL_ENDPOINT:-}"
 owner_id="${BEX_VERIFY_OWNER_ID:-}"
@@ -149,7 +153,7 @@ pr_url="$(jq -r '.prUrl // empty' <<<"$final")"
 head_sha="$(jq -r '.headSha // empty' <<<"$final")"
 [ -n "$pr_url" ] || fail "completed session has no prUrl"
 [ -n "$head_sha" ] || fail "completed session has no headSha"
-jq -e '.evidence and ((.evidence.commandLog|length)>0 or (.evidence.changedFiles|length)>0 or (.evidence.outputTail|length)>0)' <<<"$final" >/dev/null \
+jq -e '.evidence and ((.evidence.commandLog|length)>0 or (.evidence.testOutput|length)>0 or (.evidence.changedFiles|length)>0 or (.evidence.outputTail|length)>0 or (.evidence.commits // 0)>0)' <<<"$final" >/dev/null \
   || fail "completed session carries no evidence"
 ok "draft PR ${pr_url} opened with evidence (head ${head_sha})"
 
@@ -196,7 +200,10 @@ crash_branch="bex-agent/verify-crash-${stamp}"
 crash_agent="$agent"; agent="bex-nonexistent-adapter"
 crash_resp="$(create_session "$crash_branch" "this turn cannot start")"
 agent="$crash_agent"
-crash_sid="$(jq -r '.id // empty' <<<"$crash_resp")"
+# Render-compatible error bodies also carry an `id` (for example
+# `id:"bad_request"`). Only the opaque agent-session kind denotes a created
+# session; otherwise this leg is the clean create-time refusal handled below.
+crash_sid="$(jq -r 'if ((.id // "") | startswith("ags-")) then .id else empty end' <<<"$crash_resp")"
 if [ -n "$crash_sid" ]; then
   created_sessions+=("$crash_sid")
   crash_view="$(api GET "/v1/agent-sessions/${crash_sid}")"

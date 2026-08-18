@@ -50,6 +50,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -97,6 +98,12 @@ const replayPageBytes = 4 << 20
 // with it the replay/page buffers and the shared session-limiter slot —
 // indefinitely, so a write that cannot complete in this window fails the stream.
 const defaultSSEWriteTimeout = 30 * time.Second
+
+// defaultSSEHeartbeatInterval keeps an otherwise-idle live attach below the
+// browser-facing edge's idle timeout. Agent turns can spend minutes in a tool or
+// credential scrub without producing a UI part; the comment is transport-only
+// and is never teed into the durable transcript.
+const defaultSSEHeartbeatInterval = 15 * time.Second
 
 // maxSessionTranscriptBytes caps the total transcript bytes stored for one
 // session and materialized on replay (w1/m65 F10), bounding both gateway
@@ -220,6 +227,10 @@ type Server struct {
 	// zero => the platform default. Bounds how long one stalled client write may
 	// block the handler before the stream is abandoned.
 	WriteTimeout time.Duration
+
+	// HeartbeatInterval overrides the live read/turn SSE comment cadence. Zero
+	// uses the platform default; negative disables it for focused tests.
+	HeartbeatInterval time.Duration
 }
 
 func (s *Server) defaults() {
@@ -284,6 +295,16 @@ func (s *Server) writeTimeout() time.Duration {
 		return s.WriteTimeout
 	}
 	return defaultSSEWriteTimeout
+}
+
+func (s *Server) heartbeatInterval() time.Duration {
+	if s.HeartbeatInterval < 0 {
+		return 0
+	}
+	if s.HeartbeatInterval > 0 {
+		return s.HeartbeatInterval
+	}
+	return defaultSSEHeartbeatInterval
 }
 
 func (s *Server) httpClient() *http.Client {
@@ -535,7 +556,10 @@ replay:
 		sse.done()
 		return
 	}
-	if err := s.spliceDriverStream(ctx, sse, podIP, sessionID, turn, replayedBytes, len(turns) > 0); err != nil {
+	stopHeartbeat := sse.startHeartbeat(ctx, s.heartbeatInterval())
+	err = s.spliceDriverStream(ctx, sse, podIP, sessionID, turn, replayedBytes, len(turns) > 0)
+	stopHeartbeat()
+	if err != nil {
 		log.Printf("agent attach: live splice ended (session=%s): %v", sessionID, err)
 	}
 	finishConversation(sse, turns)
@@ -689,6 +713,8 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 		sse.errorAndDone("turn dispatch failed")
 		return
 	}
+	stopHeartbeat := sse.startHeartbeat(ctx, s.heartbeatInterval())
+	defer stopHeartbeat()
 	ordinal := base
 	var partIndex int64 = -1
 	total := storedBytes
@@ -721,6 +747,7 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 			return
 		}
 	}
+	stopHeartbeat()
 	sse.done()
 }
 
@@ -822,6 +849,7 @@ func (s *Server) applyCORS(w http.ResponseWriter, r *http.Request) {
 // frame error so they stop replaying/splicing and release the handler's memory
 // and session-limiter slot.
 type agentSSE struct {
+	mu           sync.Mutex
 	w            http.ResponseWriter
 	flusher      http.Flusher
 	rc           *http.ResponseController
@@ -887,6 +915,12 @@ func (a *agentSSE) flush() {
 // the driver's own framing, so the client stream matches what the driver
 // emitted. It returns the sticky write error so a caller stops on a dead client.
 func (a *agentSSE) frame(payload string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.frameLocked(payload)
+}
+
+func (a *agentSSE) frameLocked(payload string) error {
 	if a.err != nil {
 		return a.err
 	}
@@ -898,6 +932,8 @@ func (a *agentSSE) frame(payload string) error {
 }
 
 func (a *agentSSE) done() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 	if a.err != nil {
 		return
 	}
@@ -907,12 +943,71 @@ func (a *agentSSE) done() {
 	}
 }
 
+func (a *agentSSE) comment(value string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.err != nil {
+		return a.err
+	}
+	a.setDeadline()
+	if a.put(": ") && a.put(value) && a.put("\n\n") {
+		a.flush()
+	}
+	return a.err
+}
+
+// startHeartbeat serializes comment frames with transcript frames until the
+// live driver splice returns. The returned stop waits for the writer goroutine,
+// so `[DONE]` cannot race a late heartbeat onto the wire.
+func (a *agentSSE) startHeartbeat(ctx context.Context, interval time.Duration) func() {
+	if interval <= 0 {
+		return func() {}
+	}
+	stop := make(chan struct{})
+	stopped := make(chan struct{})
+	go func() {
+		defer close(stopped)
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-stop:
+				return
+			case <-ticker.C:
+				if err := a.comment("keep-alive"); err != nil {
+					return
+				}
+			}
+		}
+	}()
+	var stopOnce sync.Once
+	return func() {
+		stopOnce.Do(func() {
+			close(stop)
+			<-stopped
+		})
+	}
+}
+
 // Err reports the first write failure observed on this stream, if any.
-func (a *agentSSE) Err() error { return a.err }
+func (a *agentSSE) Err() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.err
+}
 
 // errorAndDone emits a UI-message `error` part then the terminator, so a Vercel
 // AI SDK client surfaces the failure and settles rather than hanging.
 func (a *agentSSE) errorAndDone(message string) {
-	_ = a.frame(fmt.Sprintf(`{"type":"error","errorText":%q}`, message))
-	a.done()
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	_ = a.frameLocked(fmt.Sprintf(`{"type":"error","errorText":%q}`, message))
+	if a.err == nil {
+		a.setDeadline()
+		if a.put("data: [DONE]\n\n") {
+			a.flush()
+		}
+	}
 }

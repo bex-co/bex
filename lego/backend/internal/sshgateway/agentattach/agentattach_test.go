@@ -321,6 +321,84 @@ func TestAgentAttachReplaysThenSplicesLiveAndTees(t *testing.T) {
 	}
 }
 
+// A healthy agent can be silent for minutes while a tool or the post-turn
+// credential scrub runs. Keep the browser-facing SSE active during that gap so
+// the edge does not close it before the driver's terminal sentinel arrives.
+func TestAgentAttachHeartbeatsAnIdleLiveSpliceThenEndsWithDone(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-00000000000000000000h"
+	st := newFakeAttachStore()
+	release := make(chan struct{})
+	driverMux := http.NewServeMux()
+	driverMux.HandleFunc("/stream", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher := w.(http.Flusher)
+		_, _ = io.WriteString(w, "data: {\"type\":\"start\"}\n\n")
+		flusher.Flush()
+		select {
+		case <-release:
+			_, _ = io.WriteString(w, "data: [DONE]\n\n")
+			flusher.Flush()
+		case <-r.Context().Done():
+		}
+	})
+	driver := httptest.NewServer(driverMux)
+	defer driver.Close()
+	host, portString, _ := net.SplitHostPort(strings.TrimPrefix(driver.URL, "http://"))
+	port, _ := strconv.Atoi(portString)
+
+	gw := newAttachGateway(st, fixedPodIP{ip: host}, secret, port)
+	gw.HeartbeatInterval = 10 * time.Millisecond
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req.Header.Set(TicketHeader, attachTicket(t, secret, session))
+	resp, err := (&http.Client{Timeout: 3 * time.Second}).Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	heartbeat := make(chan struct{}, 1)
+	bodyDone := make(chan string, 1)
+	go func() {
+		reader := bufio.NewReader(resp.Body)
+		var body strings.Builder
+		for {
+			line, readErr := reader.ReadString('\n')
+			body.WriteString(line)
+			if strings.HasPrefix(line, ": keep-alive") {
+				select {
+				case heartbeat <- struct{}{}:
+				default:
+				}
+			}
+			if readErr != nil {
+				bodyDone <- body.String()
+				return
+			}
+		}
+	}()
+
+	select {
+	case <-heartbeat:
+	case <-time.After(time.Second):
+		t.Fatal("live attach emitted no keep-alive comment while the driver was idle")
+	}
+	close(release)
+	select {
+	case body := <-bodyDone:
+		if !strings.Contains(body, ": keep-alive\n\n") {
+			t.Fatalf("response missing heartbeat: %q", body)
+		}
+		if !strings.HasSuffix(strings.TrimSpace(body), "data: [DONE]") {
+			t.Fatalf("heartbeat stream did not terminate with [DONE]:\n%s", body)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("live attach did not finish after the driver sent [DONE]")
+	}
+}
+
 func TestAgentAttachTerminalSessionReplaysThenDone(t *testing.T) {
 	secret := []byte("shell-ticket-secret")
 	session := "ags-000000000000000000002"
@@ -615,6 +693,77 @@ func fakeTurnDriver(parts []string) (*httptest.Server, string, int, *atomic.Valu
 	host, portStr, _ := net.SplitHostPort(strings.TrimPrefix(srv.URL, "http://"))
 	port, _ := strconv.Atoi(portStr)
 	return srv, host, port, grant
+}
+
+func TestAgentTurnHeartbeatsAnIdleProviderThenEndsWithDone(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-00000000000000000000t"
+	st := newFakeAttachStore()
+	release := make(chan struct{})
+	driverMux := http.NewServeMux()
+	driverMux.HandleFunc("/turn", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher := w.(http.Flusher)
+		_, _ = io.WriteString(w, "data: {\"type\":\"start\"}\n\n")
+		flusher.Flush()
+		select {
+		case <-release:
+			_, _ = io.WriteString(w, "data: [DONE]\n\n")
+			flusher.Flush()
+		case <-r.Context().Done():
+		}
+	})
+	driver := httptest.NewServer(driverMux)
+	defer driver.Close()
+	host, portString, _ := net.SplitHostPort(strings.TrimPrefix(driver.URL, "http://"))
+	port, _ := strconv.Atoi(portString)
+
+	gw := newAttachGateway(st, fixedPodIP{ip: host}, secret, port)
+	gw.HeartbeatInterval = 10 * time.Millisecond
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+	req, _ := http.NewRequest(http.MethodPost, srv.URL, strings.NewReader(`{"prompt":"go"}`))
+	req.Header.Set(TicketHeader, turnTicket(t, secret, session))
+	resp, err := (&http.Client{Timeout: 3 * time.Second}).Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	heartbeat := make(chan struct{}, 1)
+	bodyDone := make(chan string, 1)
+	go func() {
+		reader := bufio.NewReader(resp.Body)
+		var body strings.Builder
+		for {
+			line, readErr := reader.ReadString('\n')
+			body.WriteString(line)
+			if strings.HasPrefix(line, ": keep-alive") {
+				select {
+				case heartbeat <- struct{}{}:
+				default:
+				}
+			}
+			if readErr != nil {
+				bodyDone <- body.String()
+				return
+			}
+		}
+	}()
+	select {
+	case <-heartbeat:
+	case <-time.After(time.Second):
+		t.Fatal("live turn emitted no keep-alive comment while the provider was idle")
+	}
+	close(release)
+	select {
+	case body := <-bodyDone:
+		if !strings.HasSuffix(strings.TrimSpace(body), "data: [DONE]") {
+			t.Fatalf("heartbeat turn did not terminate with [DONE]:\n%s", body)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("live turn did not finish after the driver sent [DONE]")
+	}
 }
 
 // TestAgentTurnQuotaIsCumulative pins the F10 fix: the turn path's byte quota
