@@ -180,7 +180,8 @@ func TestGraphQLAndMCPVersionUpgradeParity(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer session.Close()
-		result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "update_postgres_version", Arguments: map[string]any{"postgresId": "mcp-upgrade", "version": "17"}})
+		// w1/m74 folded update_postgres_version into the resource's patch tool.
+		result, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "update_postgres", Arguments: map[string]any{"postgresId": "mcp-upgrade", "version": "17"}})
 		if err != nil || result.IsError {
 			t.Fatalf("tool: err=%v result=%+v", err, result)
 		}

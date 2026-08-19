@@ -154,6 +154,20 @@ func TestUpdateEnvironmentRejectsConflictingAllowListForms(t *testing.T) {
 	}
 }
 
+// TestUpdateEnvironmentRenameReplacesTheRetiredVerb: rename_environment was
+// retired in w1/m74 as a duplicate of this tool's name field.
+func TestUpdateEnvironmentRenameReplacesTheRetiredVerb(t *testing.T) {
+	_, id, call := updateEnvironmentFixture(t)
+
+	got := call(map[string]any{"id": id, "name": "staging"})
+	if got.Name != "staging" {
+		t.Fatalf("name = %q", got.Name)
+	}
+	if !slices.Equal(got.ServiceIDs, []string{"web"}) {
+		t.Fatalf("rename disturbed membership: %v", got.ServiceIDs)
+	}
+}
+
 func TestUpdateEnvironmentWithNoFieldsIsAReadOnlyNoOp(t *testing.T) {
 	_, id, call := updateEnvironmentFixture(t)
 

@@ -23,6 +23,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+
 	"github.com/bex-co/bex/lego/types/tiers"
 )
 
@@ -85,32 +86,6 @@ type queryPostgresArgs struct {
 	SQL        string `json:"sql" jsonschema:"the read-only SQL query to run (SELECT/SHOW/EXPLAIN); writes, DDL and multi-statement input are rejected"`
 }
 
-// updatePlanArgs is update_postgres_plan's input — the postgres id and the
-// desired new plan (e.g. "basic-1gb").
-type updatePlanArgs struct {
-	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
-	Plan       string `json:"plan" jsonschema:"the target instance plan (e.g. free, basic-256mb, basic-1gb)"`
-	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
-}
-
-type updateVersionArgs struct {
-	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
-	Version    string `json:"version" jsonschema:"the target PostgreSQL major version (13 through 18); it must be newer than the running version"`
-}
-
-type updateDiskAutoscalingArgs struct {
-	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
-	Enabled    bool   `json:"enabled" jsonschema:"whether automatic grow-only disk scaling is enabled"`
-}
-
-// renamePostgresArgs is rename_postgres's input. A rename changes only the
-// mutable display name; the id, connection details, and data plane stay put.
-type renamePostgresArgs struct {
-	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id, as returned by list_postgres_instances"`
-	Name       string `json:"name" jsonschema:"the new display name (lowercase letters, digits, and hyphens; at most 30 characters)"`
-	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and preview the rename without any writes"`
-}
-
 // RegisterMCP adds the managed-Postgres tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcp.AddTool(srv, &mcp.Tool{
@@ -169,51 +144,6 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			return nil, QueryResult{}, err
 		}
 		return nil, res, nil
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "update_postgres_plan",
-		Description: "Change a managed Postgres database's instance plan (e.g. free → basic-1gb). The operator reconciles the new resource requests on the next sync; this is a rolling update, not a data-loss operation. Pass dryRun:true to preview the change without any writes. Valid plans: free, basic-256mb, basic-1gb.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePlanArgs) (*mcp.CallToolResult, PostgresView, error) {
-		var (
-			v   PostgresView
-			err error
-		)
-		if in.DryRun {
-			v, err = s.PreviewSetPlan(ctx, in.PostgresID, in.Plan)
-		} else {
-			v, err = s.SetPlan(ctx, in.PostgresID, in.Plan)
-		}
-		return nil, v, err
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "update_postgres_version",
-		Description: "Upgrade a managed Postgres database to a newer supported major version. The database is offline during CNPG's pg_upgrade. Durable plans require a completed physical backup first; downgrades and unknown versions are rejected.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateVersionArgs) (*mcp.CallToolResult, PostgresView, error) {
-		v, err := s.SetVersion(ctx, in.PostgresID, in.Version)
-		return nil, v, err
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "update_postgres_disk_autoscaling",
-		Description: fmt.Sprintf("Enable or disable automatic grow-only storage scaling for a managed Postgres database. At 90%% full, storage grows by 50%% rounded up to 5 GB, capped at %d TB with a 12-hour cooldown.", tiers.Postgres.DiskAutoscalingCapGB()/1024),
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateDiskAutoscalingArgs) (*mcp.CallToolResult, PostgresView, error) {
-		v, err := s.UpdatePostgres(ctx, in.PostgresID, PostgresPatch{EnableDiskAutoscaling: &in.Enabled})
-		return nil, v, err
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "rename_postgres",
-		Description: "Rename a managed Postgres database without changing its immutable id, connection details, project/environment membership, or data-plane objects. Pass dryRun:true to validate and preview without writes.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in renamePostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
-		patch := PostgresPatch{Name: &in.Name}
-		if in.DryRun {
-			v, err := s.PreviewUpdatePostgres(ctx, in.PostgresID, patch)
-			return nil, v, err
-		}
-		v, err := s.UpdatePostgres(ctx, in.PostgresID, patch)
-		return nil, v, err
 	})
 
 	s.registerLifecycleMCP(srv)
@@ -360,14 +290,23 @@ func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 // has, because both go through UpdatePostgres.
 //
 // It carries exactly the two folded settings. Plan, version, disk autoscaling,
-// and name keep their own tools (update_postgres_plan, update_postgres_version,
-// update_postgres_disk_autoscaling, rename_postgres).
+// and name were folded in from their own tools at w1/m74 — see the field
+// comments below.
 type updatePostgresArgs struct {
-	PostgresID         string                   `json:"postgresId" jsonschema:"the immutable postgres id (dpg-...)"`
-	IPAllowList        *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the CIDR allowlist gating the external endpoint with these {cidrBlock, description} entries; pass [] to open the endpoint to all source IPs"`
-	IPAllowListCidrs   *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
-	ParameterOverrides *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"replaces the postgresql.conf parameter overrides (key = parameter name, value = setting string); the operator projects them to the CNPG Cluster and rolls it if needed. Pass {} to clear every override. shared_preload_libraries cannot be overridden"`
-	DryRun             bool                     `json:"dryRun,omitempty" jsonschema:"if true, validate and return the resolved preview without any writes"`
+	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id (dpg-...)"`
+	// Name, Plan, Version and EnableDiskAutoscaling folded in from
+	// rename_postgres / update_postgres_plan / update_postgres_version /
+	// update_postgres_disk_autoscaling (w1/m74): all four are PostgresPatch
+	// fields REST already carries in this same PATCH body, and dryRun (which
+	// three of them had) is already this tool's own preview path.
+	Name                  *string                  `json:"name,omitempty" jsonschema:"the new display name (lowercase letters, digits, and hyphens; at most 30 characters). A rename changes only the label — the id, connection details, and data plane stay put"`
+	Plan                  *string                  `json:"plan,omitempty" jsonschema:"the target instance plan (free, basic-256mb, basic-1gb). A rolling update, not a data-loss operation — and it CHANGES WHAT THE WORKSPACE IS BILLED"`
+	Version               *string                  `json:"version,omitempty" jsonschema:"the target PostgreSQL major version (13 through 18); must be newer than the running version. The database is OFFLINE during CNPG's pg_upgrade, and durable plans require a completed physical backup first"`
+	EnableDiskAutoscaling *bool                    `json:"enableDiskAutoscaling,omitempty" jsonschema:"automatic grow-only storage scaling: at 90% full, storage grows by 50% rounded up to 5 GB, capped, with a 12-hour cooldown"`
+	IPAllowList           *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the CIDR allowlist gating the external endpoint with these {cidrBlock, description} entries; pass [] to open the endpoint to all source IPs"`
+	IPAllowListCidrs      *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
+	ParameterOverrides    *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"replaces the postgresql.conf parameter overrides (key = parameter name, value = setting string); the operator projects them to the CNPG Cluster and rolls it if needed. Pass {} to clear every override. shared_preload_libraries cannot be overridden"`
+	DryRun                bool                     `json:"dryRun,omitempty" jsonschema:"if true, validate and return the resolved preview without any writes"`
 }
 
 type userArgs struct {
@@ -400,14 +339,24 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		return nil, allowListResult{CIDRs: core.AllowListCIDRs(list), Entries: list}, nil
 	})
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "update_postgres",
-		Description: "Update a managed Postgres database's settings in one call: the external-endpoint IP allowlist and/or the postgresql.conf parameter overrides. Pass only what you want to change — an omitted argument is left alone; a present one REPLACES that whole list or map (pass an empty one to clear it). Pass dryRun:true to validate and preview without writes. Plan, major version, disk autoscaling, and name keep their own tools: update_postgres_plan, update_postgres_version, update_postgres_disk_autoscaling, rename_postgres. This tool replaces the retired set_postgres_ip_allow_list and set_postgres_parameter_overrides (w1/m71).",
+		Name: "update_postgres",
+		// The disk-autoscaling cap is interpolated from the shared plan catalog
+		// rather than written out, so the number an agent reads cannot drift from
+		// the number the operator enforces (pinned by the adapter-parity test).
+		Description: fmt.Sprintf("Update a managed Postgres database's settings in one call: the external-endpoint IP allowlist and/or the postgresql.conf parameter overrides. Pass only what you want to change — an omitted argument is left alone; a present one REPLACES that whole list or map (pass an empty one to clear it). Pass dryRun:true to validate and preview without writes. Also carries the name, plan, major version, and disk-autoscaling toggle — a plan change is billable and a version upgrade takes the database offline during pg_upgrade, so dryRun is worth using first. This tool replaces the retired set_postgres_ip_allow_list / set_postgres_parameter_overrides (w1/m71) and rename_postgres / update_postgres_plan / update_postgres_version / update_postgres_disk_autoscaling (w1/m74). With enableDiskAutoscaling on, storage grows by 50%% rounded up to 5 GB at 90%% full, capped at %d TB with a 12-hour cooldown.", tiers.Postgres.DiskAutoscalingCapGB()/1024),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
 		if err != nil {
 			return nil, PostgresView{}, err
 		}
-		patch := PostgresPatch{ParameterOverrides: in.ParameterOverrides, IPAllowList: allowList}
+		patch := PostgresPatch{
+			Name:                  in.Name,
+			Plan:                  in.Plan,
+			Version:               in.Version,
+			EnableDiskAutoscaling: in.EnableDiskAutoscaling,
+			ParameterOverrides:    in.ParameterOverrides,
+			IPAllowList:           allowList,
+		}
 		if in.DryRun {
 			v, err := s.PreviewUpdatePostgres(ctx, in.PostgresID, patch)
 			return nil, v, err

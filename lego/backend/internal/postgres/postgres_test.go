@@ -611,8 +611,8 @@ func TestMCPPostgres(t *testing.T) {
 	if got := call("get_postgres", map[string]any{"postgresId": "mcp-db"}); got["id"] != "mcp-db" {
 		t.Fatalf("get_postgres id = %v", got["id"])
 	}
-	if got := call("rename_postgres", map[string]any{"postgresId": "mcp-db", "name": "mcp-renamed"}); got["id"] != "mcp-db" || got["name"] != "mcp-renamed" || got["databaseName"] != "mcp_db" {
-		t.Fatalf("rename_postgres changed identity/physical name: %+v", got)
+	if got := call("update_postgres", map[string]any{"postgresId": "mcp-db", "name": "mcp-renamed"}); got["id"] != "mcp-db" || got["name"] != "mcp-renamed" || got["databaseName"] != "mcp_db" {
+		t.Fatalf("update_postgres(name) changed identity/physical name: %+v", got)
 	}
 	// create_postgres delegates to CreatePostgres — verify the CR lands.
 	svc.Workspace = fakeWorkspace{"user-a": "tea-a"}
@@ -986,20 +986,20 @@ func TestMCPSetPostgresPlan(t *testing.T) {
 	defer cs.Close()
 
 	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
-		Name:      "update_postgres_plan",
+		Name:      "update_postgres",
 		Arguments: map[string]any{"postgresId": "mcp-plan-db", "plan": "basic-1gb"},
 	})
 	if err != nil || res.IsError {
-		t.Fatalf("update_postgres_plan: err=%v isErr=%v", err, res.IsError)
+		t.Fatalf("update_postgres(plan): err=%v isErr=%v", err, res.IsError)
 	}
 	var got appv1alpha1.Database
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "mcp-plan-db"}, &got); err != nil || got.Spec.Plan != "basic-1gb" {
-		t.Fatalf("update_postgres_plan did not update spec.plan: %v %+v", err, got.Spec)
+		t.Fatalf("update_postgres(plan) did not update spec.plan: %v %+v", err, got.Spec)
 	}
 
 	// invalid plan => tool error.
 	bad, _ := cs.CallTool(ctx, &mcp.CallToolParams{
-		Name:      "update_postgres_plan",
+		Name:      "update_postgres",
 		Arguments: map[string]any{"postgresId": "mcp-plan-db", "plan": "invalid"},
 	})
 	if !bad.IsError {

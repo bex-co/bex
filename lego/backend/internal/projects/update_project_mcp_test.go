@@ -111,6 +111,21 @@ func TestUpdateProjectRenamesAndLeavesMembershipAlone(t *testing.T) {
 	}
 }
 
+// TestUpdateProjectRenameReplacesTheRetiredVerb: w1/m74 retired rename_project
+// because update_project's own name field already did the job — this asserts the
+// capability survived the tool.
+func TestUpdateProjectRenameReplacesTheRetiredVerb(t *testing.T) {
+	_, call := updateProjectFixture(t)
+
+	got := call(map[string]any{"id": "prj-1", "name": "renamed-by-patch", "serviceIds": []string{"web", "worker"}})
+	if got.Name != "renamed-by-patch" {
+		t.Fatalf("name = %q", got.Name)
+	}
+	if !slices.Equal(got.ServiceIDs, []string{"web", "worker"}) {
+		t.Fatalf("a rename in the same call as membership lost the membership: %v", got.ServiceIDs)
+	}
+}
+
 func TestUpdateProjectWithNoFieldsIsAReadOnlyNoOp(t *testing.T) {
 	_, call := updateProjectFixture(t)
 

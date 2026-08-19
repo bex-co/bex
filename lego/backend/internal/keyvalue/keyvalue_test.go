@@ -1159,20 +1159,20 @@ func TestMCPSetKeyValuePlan(t *testing.T) {
 	defer cs.Close()
 
 	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
-		Name:      "update_key_value_plan",
+		Name:      "update_key_value",
 		Arguments: map[string]any{"keyValueId": "mcp-plan-kv", "plan": "standard"},
 	})
 	if err != nil || res.IsError {
-		t.Fatalf("update_key_value_plan: err=%v isErr=%v", err, res.IsError)
+		t.Fatalf("update_key_value(plan): err=%v isErr=%v", err, res.IsError)
 	}
 	var got appv1alpha1.KeyValue
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "mcp-plan-kv"}, &got); err != nil || got.Spec.Plan != "standard" {
-		t.Fatalf("update_key_value_plan did not update spec.plan: %v %+v", err, got.Spec)
+		t.Fatalf("update_key_value(plan) did not update spec.plan: %v %+v", err, got.Spec)
 	}
 
 	// invalid plan => tool error.
 	bad, _ := cs.CallTool(ctx, &mcp.CallToolParams{
-		Name:      "update_key_value_plan",
+		Name:      "update_key_value",
 		Arguments: map[string]any{"keyValueId": "mcp-plan-kv", "plan": "invalid"},
 	})
 	if !bad.IsError {
@@ -1350,7 +1350,8 @@ func TestGraphQLRenameKeyValue(t *testing.T) {
 	}
 }
 
-// TestMCPRenameKeyValue proves MCP's rename_key_value reaches the same core
+// TestMCPRenameKeyValue proves MCP's rename path (update_key_value's name
+// field since w1/m74) reaches the same core
 // UpdateKeyValue verb.
 func TestMCPRenameKeyValue(t *testing.T) {
 	svc, cl := newService()
@@ -1370,21 +1371,21 @@ func TestMCPRenameKeyValue(t *testing.T) {
 	defer cs.Close()
 
 	res, err := cs.CallTool(ctx, &mcp.CallToolParams{
-		Name:      "rename_key_value",
+		Name:      "update_key_value",
 		Arguments: map[string]any{"keyValueId": "mcp-rn", "name": "mcp-renamed"},
 	})
 	if err != nil || res.IsError {
-		t.Fatalf("rename_key_value: err=%v isErr=%v", err, res.IsError)
+		t.Fatalf("update_key_value(name): err=%v isErr=%v", err, res.IsError)
 	}
 	out := map[string]any{}
 	b, _ := json.Marshal(res.StructuredContent)
 	_ = json.Unmarshal(b, &out)
 	if out["id"] != "mcp-rn" || out["name"] != "mcp-renamed" {
-		t.Fatalf("rename_key_value changed identity/missed name: %+v", out)
+		t.Fatalf("update_key_value(name) changed identity/missed name: %+v", out)
 	}
 	var got appv1alpha1.KeyValue
 	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "mcp-rn"}, &got)
 	if got.Name != "mcp-rn" || got.Spec.Name != "mcp-renamed" {
-		t.Fatalf("rename_key_value should patch only spec.name, got metadata.name=%q spec.name=%q", got.Name, got.Spec.Name)
+		t.Fatalf("update_key_value(name) should patch only spec.name, got metadata.name=%q spec.name=%q", got.Name, got.Spec.Name)
 	}
 }

@@ -46,11 +46,6 @@ type createEnvironmentArgs struct {
 	IPAllowList             []core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"optional {cidrBlock,description} entries propagated to member datastores"`
 }
 
-type renameEnvironmentArgs struct {
-	ID   string `json:"id" jsonschema:"the environment id (env-…)"`
-	Name string `json:"name" jsonschema:"the new environment name"`
-}
-
 // updateEnvironmentArgs is update_environment's input: the environment's own
 // fields plus, since w1/m71, the four membership lists and the ACL that used to
 // need one set_* tool each. Every field is a pointer — absent leaves that
@@ -112,16 +107,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "rename_environment",
-		Description: "Rename an environment. bex extension.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in renameEnvironmentArgs) (*mcp.CallToolResult, EnvironmentView, error) {
-		e, err := s.Rename(ctx, in.ID, in.Name)
-		return nil, e, err
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_environment",
-		Description: "Update an environment in one call: its name, the protected-environment ACL (protectedStatus, networkIsolationEnabled, ipAllowList), and/or which services, databases, key-value instances, and env groups belong to it. Only the fields you pass change — an omitted field is left alone, and a present membership list REPLACES that whole membership (pass [] to empty it). Assigning a service, database, or key-value instance also joins it to the environment's project. This tool replaces the retired set_environment_acl / set_environment_services / set_environment_databases / set_environment_keyvalues / set_environment_env_groups (w1/m71). bex extension (Render parity: PATCH /environments/{id}).",
+		Description: "Update an environment in one call: its name, the protected-environment ACL (protectedStatus, networkIsolationEnabled, ipAllowList), and/or which services, databases, key-value instances, and env groups belong to it. Only the fields you pass change — an omitted field is left alone, and a present membership list REPLACES that whole membership (pass [] to empty it). Assigning a service, database, or key-value instance also joins it to the environment's project. This tool replaces the retired set_environment_acl / set_environment_services / set_environment_databases / set_environment_keyvalues / set_environment_env_groups (w1/m71) and rename_environment (w1/m74 — pass name here instead). bex extension (Render parity: PATCH /environments/{id}).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateEnvironmentArgs) (*mcp.CallToolResult, EnvironmentView, error) {
 		e, err := s.applyEnvironmentPatch(ctx, in)
 		return nil, e, err

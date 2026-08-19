@@ -40,18 +40,14 @@ type createProjectArgs struct {
 	Name string `json:"name" jsonschema:"the project name (unique within the workspace)"`
 }
 
-type renameProjectArgs struct {
-	ID   string `json:"id" jsonschema:"the project id (prj-…)"`
-	Name string `json:"name" jsonschema:"the new project name"`
-}
-
 // updateProjectArgs is update_project's input: the patch-shaped fold of
 // set_project_services / set_project_databases / set_project_keyvalues
 // (w1/m71), mirroring update_environment's grammar so the two grouping
 // resources read the same way. Every field is a pointer — absent leaves that
 // setting alone, and a present membership list REPLACES that whole membership
-// (pass [] to empty it). rename_project remains the dedicated rename verb, the
-// same way rename_environment sits beside update_environment.
+// (pass [] to empty it). Name is here too: w1/m74 retired rename_project as a
+// duplicate of this field, the same way rename_environment folded into
+// update_environment.
 type updateProjectArgs struct {
 	ID          string    `json:"id" jsonschema:"the project id (prj-…)"`
 	Name        *string   `json:"name,omitempty" jsonschema:"new project name; omit to leave unchanged"`
@@ -102,16 +98,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "rename_project",
-		Description: "Rename a project. bex extension.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in renameProjectArgs) (*mcp.CallToolResult, ProjectView, error) {
-		p, err := s.Rename(ctx, in.ID, in.Name)
-		return nil, p, err
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_project",
-		Description: "Update a project in one call: its name and/or which services, databases, and key-value instances belong to it. Only the fields you pass change — an omitted field is left alone, and a present membership list REPLACES that whole membership (pass [] to empty it). This tool replaces the retired set_project_services / set_project_databases / set_project_keyvalues (w1/m71). bex extension.",
+		Description: "Update a project in one call: its name and/or which services, databases, and key-value instances belong to it. Only the fields you pass change — an omitted field is left alone, and a present membership list REPLACES that whole membership (pass [] to empty it). This tool replaces the retired set_project_services / set_project_databases / set_project_keyvalues (w1/m71) and rename_project (w1/m74 — pass name here instead). bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateProjectArgs) (*mcp.CallToolResult, ProjectView, error) {
 		p, err := s.applyProjectPatch(ctx, in)
 		return nil, p, err

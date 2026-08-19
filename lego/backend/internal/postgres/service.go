@@ -852,7 +852,8 @@ func normalizeParameterOverrides(params map[string]string) map[string]string {
 // UpdatePostgres applies a partial update (Render's PATCH /postgres/{id}
 // semantics — only fields set in patch change; everything else is left alone).
 // SetPlan/PreviewSetPlan above remain the plan-only entry points GraphQL's
-// updatePostgresPlan mutation and the update_postgres_plan MCP tool use; this
+// updatePostgresPlan mutation uses (the MCP half folded into update_postgres at
+// w1/m74); this
 // is the general handler REST's PATCH route needs (rename, disk, HA,
 // ip-allow-list — not just plan).
 func (s *Service) UpdatePostgres(ctx context.Context, name string, patch PostgresPatch) (PostgresView, error) {
