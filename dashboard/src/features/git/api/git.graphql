@@ -1,13 +1,13 @@
-# bex-api's GitHub-connect surface (backend/internal/github/graphql.go,
-# docs/github-integration.md). A workspace connects one GitHub App installation;
-# connecting redirects the browser to GitHub's install screen (installUrl) and
-# GitHub's callback records it. `connected` is false until then; `installUrl` is
-# always present so the Connect button always has a target. A backend 503
+# bex-api's GitHub-connect surface (backend/internal/github/graphql.go, ADR075).
+# A workspace connects SEVERAL GitHub App installations (org + personal accounts);
+# the connectGit mutation redirects the browser to GitHub's install screen with a
+# stateful, single-use install URL and GitHub's callback records it. A backend 503
 # (BEX_GITHUB_APP_* unset) surfaces as a query error the card treats as
 # "unavailable".
 
-# The connected installation's repositories (private included) — the create
-# wizard's GitHub tab (w5/m15). Empty until a connection exists.
+# The connected installations' repositories (private included), each annotated
+# with the GitHub account it belongs to so the picker can group by account
+# (ADR075). Empty until a connection exists.
 query Repos {
   repos {
     id
@@ -16,6 +16,8 @@ query Repos {
     defaultBranch
     htmlUrl
     cloneUrl
+    accountLogin
+    installationId
   }
 }
 
@@ -26,10 +28,14 @@ query RepoBranches($repo: String!) {
   repoBranches(repo: $repo)
 }
 
-query GitConnection {
-  gitConnection {
+# Every GitHub account/org this workspace has connected (ADR075). Empty list ⇒
+# not connected; each row's installUrl is the bare "configure grants" deep link.
+query GitConnections {
+  gitConnections {
     connected
     accountLogin
+    installationId
+    createdAt
     installUrl
   }
 }
@@ -41,6 +47,8 @@ mutation ConnectGit {
   }
 }
 
-mutation DisconnectGit {
-  disconnectGit
+# installationId names the exact connection to remove; omitted ⇒ the sole
+# connection (an error when the workspace holds several).
+mutation DisconnectGit($installationId: Float) {
+  disconnectGit(installationId: $installationId)
 }

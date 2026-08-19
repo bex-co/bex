@@ -28,6 +28,10 @@ vi.mock("@/features/git/hooks/use-git-connection", () => ({
   useGitConnection: () => connectionState,
 }));
 
+vi.mock("@/features/git/hooks/use-connect-git", () => ({
+  useConnectGit: () => ({ connect: vi.fn(), busy: false }),
+}));
+
 // --- repos mock ---
 const reposState: { repos: RepoView[]; loading: boolean; error: undefined } = {
   repos: [],
@@ -80,6 +84,7 @@ function repo(overrides: Partial<RepoView> = {}): RepoView {
     defaultBranch: "main",
     htmlUrl: "https://github.com/acme/hello-go",
     cloneUrl: "https://github.com/acme/hello-go.git",
+    accountLogin: "acme",
     ...overrides,
   };
 }
@@ -149,15 +154,15 @@ describe("NewBlueprintPage", () => {
     connectionState.connection = {
       connected: false,
       accountLogin: null,
-      installUrl: "https://github.com/apps/bex/installations/new",
+      installUrl: "",
     };
     renderPage();
 
-    const cta = await screen.findByRole("link", { name: /connect github/i });
-    expect(cta).toHaveAttribute(
-      "href",
-      "https://github.com/apps/bex/installations/new",
-    );
+    // ADR075: the connect CTA is now a button that fires the stateful connectGit
+    // mutation (via useConnectGit) rather than an anchor to a bare install URL —
+    // the stateless URL that used to guarantee a missing_state callback failure.
+    const cta = await screen.findByRole("button", { name: /connect github/i });
+    expect(cta).toBeInTheDocument();
   });
 
   it("lists connected repos, filters by search, and auto-fills name + branch on select", async () => {

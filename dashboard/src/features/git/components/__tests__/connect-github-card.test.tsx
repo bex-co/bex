@@ -4,8 +4,9 @@ import { ConnectGithubCard } from "@/features/git/components/connect-github-card
 
 const refetch = vi.fn();
 vi.mock("@/features/git/hooks/use-git-connection", () => ({
-  useGitConnection: () => ({
-    connection: { connected: false, accountLogin: "", installUrl: "" },
+  useGitConnections: () => ({
+    connections: [],
+    connected: false,
     loading: false,
     error: undefined,
     refetch,

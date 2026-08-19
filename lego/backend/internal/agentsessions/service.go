@@ -117,11 +117,13 @@ type PullRequestOpener interface {
 	OpenDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, base, title, body string) (github.PullRequest, error)
 }
 
-// ConnectionStore resolves a workspace's GitHub App installation, so the
-// Completer can open a PR under the same account the session token was minted
-// for (ADR026/ADR047 D2).
+// ConnectionStore resolves a workspace's GitHub App installation for a repo's
+// account, so the Completer can open a PR under the same installation the session
+// token was minted for (ADR026/ADR047 D2). Since ADR075 a workspace may hold
+// several connections, so this resolves by the repo's owner, not the workspace
+// alone.
 type ConnectionStore interface {
-	GetGitConnection(context.Context, string) (store.GitConnection, error)
+	GetGitConnectionByOwner(ctx context.Context, workspaceID, accountLogin string) (store.GitConnection, error)
 }
 
 // modelKeySecretPath delegates to the one shared definition in the agentsession

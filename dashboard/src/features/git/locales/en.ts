@@ -23,6 +23,11 @@ const enGit: Record<string, TranslationEntry> = {
     message: "Connect GitHub",
     description: "Button that starts the GitHub install flow",
   },
+  "git.connectAnotherButton": {
+    message: "Connect another account",
+    description:
+      "Button that connects an additional GitHub account/org to the workspace",
+  },
   "git.connectedAs": {
     message: "Connected as",
     description: "Label preceding the connected GitHub account login",
@@ -81,7 +86,13 @@ const enGit: Record<string, TranslationEntry> = {
   "git.callbackErrorInvalid": {
     message:
       "This connection request couldn't be verified. Select Connect GitHub to try again.",
-    description: "Callback error shown when signed state is missing or invalid",
+    description: "Callback error shown when signed state is invalid",
+  },
+  "git.callbackErrorMissing": {
+    message:
+      "This GitHub installation isn't connected to a workspace yet. If you installed the app directly on GitHub, finish connecting it here with Connect GitHub.",
+    description:
+      "Callback error shown when state is missing (e.g. a direct github.com install) — offers the stateful connect to recover",
   },
   "git.callbackErrorGeneric": {
     message:

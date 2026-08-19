@@ -23,6 +23,11 @@ const zhGit: Record<string, TranslationEntry> = {
     message: "连接 GitHub",
     description: "Button that starts the GitHub install flow",
   },
+  "git.connectAnotherButton": {
+    message: "连接另一个账户",
+    description:
+      "Button that connects an additional GitHub account/org to the workspace",
+  },
   "git.connectedAs": {
     message: "已连接账户",
     description: "Label preceding the connected GitHub account login",
@@ -79,7 +84,13 @@ const zhGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorInvalid": {
     message: "无法验证此连接请求。请选择“连接 GitHub”重试。",
-    description: "Callback error shown when signed state is missing or invalid",
+    description: "Callback error shown when signed state is invalid",
+  },
+  "git.callbackErrorMissing": {
+    message:
+      "此 GitHub 安装尚未连接到任何工作区。如果你直接在 GitHub 上安装了应用，请在此处使用“连接 GitHub”完成连接。",
+    description:
+      "Callback error shown when state is missing (e.g. a direct github.com install) — offers the stateful connect to recover",
   },
   "git.callbackErrorGeneric": {
     message: "GitHub 无法完成连接。请选择“连接 GitHub”重试。",

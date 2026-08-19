@@ -21,9 +21,12 @@ import (
 	"time"
 )
 
-// GitConnection is a row of `git_connections`: the GitHub App installation a
-// workspace has connected (docs/ADR026-github-integration.md). One per workspace — the
-// workspace id is the primary key, so recording again upserts.
+// GitConnection is a row of `git_connections`: a GitHub App installation a
+// workspace has connected (docs/ADR026-github-integration.md, ADR075). Since
+// w5/m74 the installation id is the primary key, so a workspace may hold many
+// connections (one per GitHub account/org it has installed the App on) while an
+// installation still belongs to at most one workspace. A re-connect of the same
+// installation upserts; a different installation adds a row.
 type GitConnection struct {
 	WorkspaceID    string    `json:"workspaceId"`
 	InstallationID int64     `json:"installationId"`
@@ -31,13 +34,17 @@ type GitConnection struct {
 	CreatedAt      time.Time `json:"createdAt"`
 }
 
-// UpsertGitConnection records (or replaces) a workspace's GitHub connection.
+// UpsertGitConnection records a connection, keyed by installation (ADR075). A
+// re-connect of the same installation refreshes its workspace binding and
+// account login; a new installation adds a row to the workspace's set. The
+// caller (internal/github) enforces the one-workspace-per-installation and
+// per-workspace-count invariants before this write.
 func (s *PGStore) UpsertGitConnection(ctx context.Context, c GitConnection) (GitConnection, error) {
 	err := s.Pool.QueryRow(ctx,
 		`INSERT INTO git_connections (workspace_id, installation_id, account_login)
 		 VALUES ($1, $2, $3)
-		 ON CONFLICT (workspace_id) DO UPDATE
-		   SET installation_id = EXCLUDED.installation_id,
+		 ON CONFLICT (installation_id) DO UPDATE
+		   SET workspace_id = EXCLUDED.workspace_id,
 		       account_login = EXCLUDED.account_login,
 		       created_at = now()
 		 RETURNING created_at`,
@@ -67,11 +74,16 @@ func (s *PGStore) GitConnectionByInstallation(ctx context.Context, installationI
 	return c, nil
 }
 
-// GetGitConnection returns a workspace's connection, or ErrNotFound.
+// GetGitConnection returns a workspace's oldest connection, or ErrNotFound. Since
+// ADR075 a workspace may hold several; this backs the singular
+// GET/POST/DELETE /v1/git/connection compatibility aliases, which act on the sole
+// (or, ambiguously, the first) connection. Prefer ListGitConnections /
+// GetGitConnectionByOwner for the multi-connection paths.
 func (s *PGStore) GetGitConnection(ctx context.Context, workspaceID string) (GitConnection, error) {
 	c := GitConnection{WorkspaceID: workspaceID}
 	err := s.Pool.QueryRow(ctx,
-		`SELECT installation_id, account_login, created_at FROM git_connections WHERE workspace_id = $1`,
+		`SELECT installation_id, account_login, created_at FROM git_connections
+		  WHERE workspace_id = $1 ORDER BY created_at, installation_id LIMIT 1`,
 		workspaceID,
 	).Scan(&c.InstallationID, &c.AccountLogin, &c.CreatedAt)
 	if err != nil {
@@ -80,9 +92,59 @@ func (s *PGStore) GetGitConnection(ctx context.Context, workspaceID string) (Git
 	return c, nil
 }
 
-// DeleteGitConnection removes a workspace's connection. Not-found is ErrNotFound.
-func (s *PGStore) DeleteGitConnection(ctx context.Context, workspaceID string) error {
-	tag, err := s.Pool.Exec(ctx, `DELETE FROM git_connections WHERE workspace_id = $1`, workspaceID)
+// ListGitConnections returns all of a workspace's connections, oldest first (an
+// empty slice when it has none — not ErrNotFound). This is the aggregate the
+// multi-account repo picker and the connections surface read (ADR075).
+func (s *PGStore) ListGitConnections(ctx context.Context, workspaceID string) ([]GitConnection, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT installation_id, account_login, created_at FROM git_connections
+		  WHERE workspace_id = $1 ORDER BY created_at, installation_id`,
+		workspaceID)
+	if err != nil {
+		return nil, classify("git connection", err)
+	}
+	defer rows.Close()
+	out := []GitConnection{}
+	for rows.Next() {
+		c := GitConnection{WorkspaceID: workspaceID}
+		if err := rows.Scan(&c.InstallationID, &c.AccountLogin, &c.CreatedAt); err != nil {
+			return nil, classify("git connection", err)
+		}
+		out = append(out, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, classify("git connection", err)
+	}
+	return out, nil
+}
+
+// GetGitConnectionByOwner resolves the workspace connection whose GitHub account
+// login matches accountLogin (case-insensitive), or ErrNotFound. Within a
+// workspace account_login is unique by construction (GitHub allows one
+// installation of a given App per account), so this is the exact connection to
+// mint a token from for a repo owned by that account (ADR075 §4).
+func (s *PGStore) GetGitConnectionByOwner(ctx context.Context, workspaceID, accountLogin string) (GitConnection, error) {
+	c := GitConnection{WorkspaceID: workspaceID, AccountLogin: accountLogin}
+	err := s.Pool.QueryRow(ctx,
+		`SELECT installation_id, account_login, created_at FROM git_connections
+		  WHERE workspace_id = $1 AND lower(account_login) = lower($2)
+		  ORDER BY created_at, installation_id LIMIT 1`,
+		workspaceID, accountLogin,
+	).Scan(&c.InstallationID, &c.AccountLogin, &c.CreatedAt)
+	if err != nil {
+		return GitConnection{}, classify("git connection", err)
+	}
+	return c, nil
+}
+
+// DeleteGitConnection removes one connection of a workspace by installation id.
+// Not-found (wrong workspace or unknown installation) is ErrNotFound. Scoping the
+// delete to workspaceID keeps one workspace from disconnecting another's
+// installation even if it learns the id.
+func (s *PGStore) DeleteGitConnection(ctx context.Context, workspaceID string, installationID int64) error {
+	tag, err := s.Pool.Exec(ctx,
+		`DELETE FROM git_connections WHERE workspace_id = $1 AND installation_id = $2`,
+		workspaceID, installationID)
 	if err != nil {
 		return classify("git connection", err)
 	}
@@ -90,6 +152,18 @@ func (s *PGStore) DeleteGitConnection(ctx context.Context, workspaceID string) e
 		return ErrNotFound
 	}
 	return nil
+}
+
+// CountGitConnections returns how many connections a workspace holds — the
+// per-workspace quota check (BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE, ADR075 §2).
+func (s *PGStore) CountGitConnections(ctx context.Context, workspaceID string) (int, error) {
+	var n int
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT count(*) FROM git_connections WHERE workspace_id = $1`, workspaceID,
+	).Scan(&n); err != nil {
+		return 0, classify("git connection", err)
+	}
+	return n, nil
 }
 
 // GitHubConnectTransaction is one in-flight connect attempt: who started it, for

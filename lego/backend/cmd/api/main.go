@@ -1071,6 +1071,8 @@ func wireAgentSessions(deps *api.Deps) {
 	deps.MaxBlueprintGroupings = zeroableIntEnv("BEX_MAX_BLUEPRINT_GROUPINGS", 1000)
 	// Round-11 #3: per-workspace env-group quota (default 100; 0 disables).
 	deps.MaxEnvGroupsPerWorkspace = zeroableIntEnv("BEX_MAX_ENV_GROUPS_PER_WORKSPACE", 100)
+	// ADR075 §2: per-workspace GitHub-connection quota (default 10; 0 disables).
+	deps.MaxGitConnectionsPerWorkspace = zeroableIntEnv("BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE", 10)
 	// ADR059 D3/D5 hibernation (w2/m68, armed w2/m77): the object store enables
 	// the Hibernated tier (reclaim → snapshot, resume → rehydrate). All four
 	// required coordinates unset ⇒ the whole tier is off and reclaim stays

@@ -142,6 +142,11 @@ type Repo struct {
 	DefaultBranch string `json:"defaultBranch"`
 	HTMLURL       string `json:"htmlUrl"`
 	CloneURL      string `json:"cloneUrl"`
+	// AccountLogin and InstallationID are set by the service when it aggregates
+	// repos across a workspace's several connections (ADR075 §4), so the picker
+	// can group repos by GitHub account. The client itself leaves them zero.
+	AccountLogin   string `json:"accountLogin,omitempty"`
+	InstallationID int64  `json:"installationId,omitempty"`
 }
 
 // APIError is a non-2xx GitHub response. Callers map it to a clean bex error

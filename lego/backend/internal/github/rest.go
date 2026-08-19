@@ -99,6 +99,36 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, map[string]string{"status": "connected"})
 	})
 
+	// GET /v1/git/connections — the workspace's full connection set (ADR075). The
+	// multi-account surface the dashboard reads; the singular alias below stays for
+	// compatibility.
+	mux.HandleFunc("GET /v1/git/connections", func(w http.ResponseWriter, r *http.Request) {
+		conns, err := s.ListConnections(r.Context(), r.URL.Query().Get("ownerId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, conns)
+	})
+
+	// DELETE /v1/git/connections/{installationId} — disconnect one installation
+	// (ADR075). Admin-only, scoped to the caller's workspace.
+	mux.HandleFunc("DELETE /v1/git/connections/{installationId}", func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(r.PathValue("installationId"), 10, 64)
+		if err != nil || id <= 0 {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		if err := s.Disconnect(r.Context(), r.URL.Query().Get("ownerId"), id); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	// GET/DELETE /v1/git/connection (singular) — deprecated compatibility aliases
+	// over the workspace's sole connection (ADR075 §5). DELETE with several
+	// connections is an ambiguous 409; use the per-installation route.
 	mux.HandleFunc("GET /v1/git/connection", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := s.GetConnection(r.Context(), r.URL.Query().Get("ownerId"))
 		if err != nil {
@@ -109,7 +139,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 
 	mux.HandleFunc("DELETE /v1/git/connection", func(w http.ResponseWriter, r *http.Request) {
-		if err := s.Disconnect(r.Context(), r.URL.Query().Get("ownerId")); err != nil {
+		if err := s.Disconnect(r.Context(), r.URL.Query().Get("ownerId"), 0); err != nil {
 			core.WriteErr(w, err)
 			return
 		}

@@ -261,9 +261,9 @@ func TestMCPParityInventory(t *testing.T) {
 		mcpParity1to1:      10,
 		mcpParitySuperset:  1,
 		mcpParityDivergent: 8,
-		mcpParityExtension: 156,
+		mcpParityExtension: 157, // +list_git_connections (ADR075 w5/m74)
 	}
-	const wantTotal = 175
+	const wantTotal = 176
 
 	if len(tools) != wantTotal {
 		t.Errorf("bex registers %d MCP tools, expected %d — update this test AND ADR018's MCP inventory together",

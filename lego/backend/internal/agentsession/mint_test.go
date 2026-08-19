@@ -19,6 +19,7 @@ package agentsession
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,7 +30,13 @@ import (
 
 type fakeConnections struct{ row store.GitConnection }
 
-func (f fakeConnections) GetGitConnection(context.Context, string) (store.GitConnection, error) {
+// GetGitConnectionByOwner returns the seeded row only when the repo's owner
+// matches its account login (ADR075) — a mismatch is ErrNotFound, which Mint maps
+// to ErrForbidden exactly as the old owner-equality check did.
+func (f fakeConnections) GetGitConnectionByOwner(_ context.Context, _ string, accountLogin string) (store.GitConnection, error) {
+	if f.row.AccountLogin == "" || !strings.EqualFold(f.row.AccountLogin, accountLogin) {
+		return store.GitConnection{}, store.ErrNotFound
+	}
 	return f.row, nil
 }
 

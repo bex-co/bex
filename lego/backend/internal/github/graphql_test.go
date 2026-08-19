@@ -64,7 +64,7 @@ func TestGraphQLFieldsMatchRESTShape(t *testing.T) {
 
 func TestGraphQLResolversRoundTrip(t *testing.T) {
 	st := newFakeStore()
-	st.conns["default"] = store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"}
+	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
 	svc := &Service{
 		Base:   &core.Base{Namespace: "default"},
 		GitHub: &fakeClient{login: "octo", repos: []Repo{{ID: 1, FullName: "octo/app", Private: true}}},

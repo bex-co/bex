@@ -136,7 +136,7 @@ func TestStartConnectReturnsStatefulInstallURL(t *testing.T) {
 
 	// An already-connected response must carry the newly minted state too; the
 	// dashboard may use StartConnect to replace or update an installation.
-	st.conns["tea-target"] = store.GitConnection{WorkspaceID: "tea-target", InstallationID: 7, AccountLogin: "octo"}
+	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "tea-target", InstallationID: 7, AccountLogin: "octo"})
 	connected, err := svc.StartConnect(ctx, "tea-target")
 	if err != nil {
 		t.Fatalf("StartConnect existing connection: %v", err)
