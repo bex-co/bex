@@ -1,6 +1,6 @@
 # w5 · m70 — Billing page: rename Usage→Billing + remaining-credit display
 
-**Worker:** worker5 **Goal:** the dashboard's money surface is named what Render users expect (Billing), and a workspace with promotional Stripe credit can see its remaining balance, per-grant expiry, and the credit-adjusted amount due — without any wire-surface rename **Status:** in progress (t001–t007 done; t008 closeout awaits live verification post-ship)
+**Worker:** worker5 **Goal:** the dashboard's money surface is named what Render users expect (Billing), and a workspace with promotional Stripe credit can see its remaining balance, per-grant expiry, and the credit-adjusted amount due — without any wire-surface rename **Status:** done
 
 ## Tasks (in order)
 
@@ -13,7 +13,12 @@
 | t005 | Render parity — **DONE** | 30m | t004       |
 | t006 | Simplify — **DONE** | 30m | t005       |
 | t007 | Test coverage — **DONE** | 45m | t005       |
-| t008 | Closeout                                                                      | 15m | t007       |
+| t008 | Closeout — **DONE**                                                           | 15m | t007       |
+
+## Progress log
+
+- 2026-08-18 — t001–t007 shipped (`3a98d44b`): `/billing` real page, `/usage` query-preserving shim, Billing-above-Usage layout, read-only `credits` block on REST/GraphQL/MCP, degrade-by-omission, ADR046 gate copy unchanged. t008 held for a live Stripe credit grant on a real workspace.
+- 2026-08-19 — closeout. Live grant remaining **$1000 USD** (paid, not voided, no expiry); Stripe `credit_balance_summary` metered applicability_scope matches. Prod `bex-api` `:8091/metrics`: `bex_billing_enabled 1`, `credit_read` success=8, no error series. Prod dashboard `/usage` → 307 `/billing` (query preserved); `/billing/update-plan` still opens change-plan. Backend billing/usage tests + dashboard billing-redirects/credits UI tests green. Authenticated screenshot omitted (login-gated); live `credit_read` + remaining balance is the observable credits-block proof.
 
 ## Definition of done
 
