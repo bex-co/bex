@@ -6,14 +6,9 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "智能体会话",
     description: "Agent sessions list page heading and document title",
   },
-  "agentSessions.pageSubtitle": {
-    message:
-      "将编码任务分配给云端智能体。它会在沙箱内的 bex-agent/* 分支上工作，并提交草稿 PR。",
-    description: "Agent sessions page subtitle explaining the feature",
-  },
   "agentSessions.listTitle": {
-    message: "会话",
-    description: "Agent sessions table card title",
+    message: "最近",
+    description: "Agent sessions recents heading — matches the rail",
   },
   "agentSessions.colTask": {
     message: "任务",
@@ -44,22 +39,17 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description: "Draft PR badge label — the pull-request number",
   },
   "agentSessions.errorTitle": {
-    message: "无法加载智能体会话",
-    description: "Agent sessions list error state heading",
+    message: "无法加载会话。",
+    description: "Agent sessions list error — one sentence, Retry beside it",
   },
   "agentSessions.retry": {
     message: "重试",
     description: "Retries a failed agent-sessions list request",
   },
   // --- Empty state ---
-  "agentSessions.emptyTitle": {
-    message: "还没有智能体会话",
-    description: "Agent sessions list empty-state heading",
-  },
   "agentSessions.emptyBody": {
-    message:
-      "在上方描述任务并用 @ 提及一个仓库。智能体会在云端沙箱中完成任务，并提交草稿 PR。",
-    description: "Agent sessions list empty-state body",
+    message: "你开始的会话会显示在这里。",
+    description: "Default empty — one quiet line under the composer",
   },
   "agentSessions.emptyArchivedTitle": {
     message: "没有已归档的会话",
@@ -148,31 +138,63 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description: "Meta — hibernated state with snapshot storage size",
   },
   // --- Composer (prompt box) ---
-  "agentSessions.promptHeading": {
-    message: "让智能体做点什么？",
-    description: "Centered heading over the /agents prompt-box composer",
-  },
   "agentSessions.taskLabel": {
     message: "任务",
     description: "Composer — the prominent task prompt textarea label",
   },
   "agentSessions.taskPlaceholder": {
-    message:
-      "描述一个任务，并用 @ 提及一个仓库来限定范围。请具体说明——智能体会自主工作并提交草稿 PR。",
-    description: "Composer — task textarea placeholder",
+    message: "描述一个编码任务…",
+    description: "Composer — task editor placeholder",
   },
   "agentSessions.mentionButton": {
     message: "提及仓库或会话",
     description: "Composer toolbar — accessible label of the @ mention button",
   },
   "agentSessions.configButton": {
-    message: "配置",
-    description: "Composer toolbar — the Configuration popover trigger",
+    message: "高级",
+    description: "Composer toolbar — the Advanced popover trigger",
+  },
+  "agentSessions.addRepository": {
+    message: "添加仓库",
+    description: "Composer toolbar — repo chip when none is selected",
+  },
+  "agentSessions.repoChip": {
+    message: "仓库 {repo}",
+    description: "Composer toolbar — accessible name of the selected-repo chip",
+  },
+  "agentSessions.keyboardHint": {
+    message: "Enter 开始 · Shift+Enter 换行 · @ 选择仓库",
+    description: "Muted hint under the composer",
+  },
+  "agentSessions.connectGitHubTitle": {
+    message: "连接 GitHub 后即可开始",
+    description: "Composer callout when the workspace has no App repos",
+  },
+  "agentSessions.connectGitHubBody": {
+    message:
+      "云端智能体需要已连接的 GitHub 仓库。先为本工作区连接 GitHub App，再回来开始会话。",
+    description: "Composer callout body when there are no installation repos",
+  },
+  "agentSessions.connectGitHub": {
+    message: "连接 GitHub",
+    description: "Composer CTA that starts the GitHub App install",
+  },
+  "agentSessions.connectGitHubSettings": {
+    message: "工作区设置",
+    description: "Secondary link to /workspace/settings from the GitHub CTA",
+  },
+  "agentSessions.exampleFixTests": {
+    message: "修复失败的测试并提交草稿 PR",
+    description: "First-run example prompt chip",
+  },
+  "agentSessions.exampleAddReadme": {
+    message: "添加一份说明如何运行项目的 README",
+    description: "First-run example prompt chip",
   },
   "agentSessions.repoNudge": {
-    message: "请先用 @ 选择一个仓库。",
+    message: "请先选择一个仓库。",
     description:
-      "Inline nudge anchored at the @ button when submitting without a repo chip",
+      "Inline nudge when submitting without a repo while repos exist",
   },
   "agentSessions.chipRemove": {
     message: "移除 {name}",
@@ -772,7 +794,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description: "Screen-reader label of the list's trailing actions column",
   },
   "agentSessions.filterActive": {
-    message: "当前",
+    message: "最近",
     description: "List membership tab — the unarchived working set",
   },
   "agentSessions.filterArchived": {
@@ -782,14 +804,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.filterAll": {
     message: "全部",
     description: "List membership tab — archived and unarchived together",
-  },
-  "agentSessions.filterPhase": {
-    message: "按阶段筛选",
-    description: "Accessible label of the phase filter select",
-  },
-  "agentSessions.filterPhaseAll": {
-    message: "全部阶段",
-    description: "Phase filter option matching every phase",
   },
   "agentSessions.loadMore": {
     message: "加载更多",

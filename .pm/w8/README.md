@@ -43,6 +43,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w8/dev-8/` keeps onl
 - [x] **m25** — Webhook immutable attempt history + manual Resend (13 tasks) ← from authenticated Bex↔Render webhook parity audit 2026-08-17, needs m24
 - [x] **m26** — Webhook management UX + drift-proof dashboard parity (10 tasks) ← from authenticated Bex↔Render webhook parity audit 2026-08-17, needs m25
 - [x] **m27** — Granular OAuth capability scopes and authorization-decision audit (9 tasks) ← proposal 1 from `/pm-brainstorm for w8`, selected by user 2026-08-18
+- [x] **m28** — Polish `/agents` as a prompt-first workspace (8 tasks) ← designer review of `dashboard.bex.co/agents` 2026-08-18, user handoff to w8
 
 ## Inbox
 

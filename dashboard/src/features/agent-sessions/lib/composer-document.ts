@@ -59,3 +59,7 @@ export function sessionMentionId(sessionId: string): string {
 export function isRepoMentionId(id: unknown): id is string {
   return typeof id === "string" && id.startsWith(REPO_PREFIX);
 }
+
+export function isSessionMentionId(id: unknown): id is string {
+  return typeof id === "string" && id.startsWith(SESSION_PREFIX);
+}

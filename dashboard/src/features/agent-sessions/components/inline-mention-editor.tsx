@@ -5,7 +5,7 @@ import {
   useImperativeHandle,
   useState,
 } from "react";
-import type { Range } from "@tiptap/core";
+import { mergeAttributes, type Range } from "@tiptap/core";
 import Mention from "@tiptap/extension-mention";
 import type { MentionOptions } from "@tiptap/extension-mention";
 import Document from "@tiptap/extension-document";
@@ -24,6 +24,7 @@ import { MentionPicker } from "@/features/agent-sessions/components/mention-pick
 import { AGENT_COMPOSER_FOCUS_EVENT } from "@/features/agent-sessions/lib/composer-focus";
 import {
   isRepoMentionId,
+  isSessionMentionId,
   readComposerDocument,
   repoMentionId,
   sessionMentionId,
@@ -53,6 +54,8 @@ export interface InlineMentionEditorProps {
 
 export interface InlineMentionEditorHandle {
   openMention: () => void;
+  /** Insert example-prompt text at the caret, then the caller opens `@`. */
+  insertPrompt: (text: string) => void;
 }
 
 interface MentionMenuHandle {
@@ -202,10 +205,36 @@ export const InlineMentionEditor = forwardRef<
         Placeholder.configure({
           placeholder: () => runtime.placeholder,
         }),
-        Mention.configure({
+        Mention.extend({
+          renderHTML({ node, HTMLAttributes }) {
+            const kind = isRepoMentionId(node.attrs.id)
+              ? "repo"
+              : isSessionMentionId(node.attrs.id)
+                ? "session"
+                : "mention";
+            return [
+              "span",
+              mergeAttributes(
+                {
+                  "data-type": "mention",
+                  "data-id": node.attrs.id,
+                  "data-label": node.attrs.label,
+                  "data-kind": kind,
+                },
+                HTMLAttributes,
+                {
+                  class:
+                    kind === "repo"
+                      ? "bg-secondary text-secondary-foreground mx-0.5 inline rounded-md px-1.5 py-0.5 font-medium"
+                      : "bg-muted text-muted-foreground mx-0.5 inline rounded-md px-1.5 py-0.5 font-medium",
+                },
+              ),
+              `${node.attrs.mentionSuggestionChar ?? "@"}${node.attrs.label ?? node.attrs.id}`,
+            ];
+          },
+        }).configure({
           HTMLAttributes: {
-            class:
-              "bg-muted text-foreground mx-0.5 inline rounded-md px-1.5 py-0.5 font-medium",
+            "data-type": "mention",
           },
           deleteTriggerWithBackspace: true,
           // Mention's exported singleton fixes selected props to node attrs,
@@ -223,7 +252,7 @@ export const InlineMentionEditor = forwardRef<
           "aria-expanded": "false",
           role: "combobox",
           class:
-            "min-h-16 px-3 py-2 text-sm outline-none [&_p]:min-h-6 [&_p.is-editor-empty:first-child]:before:pointer-events-none [&_p.is-editor-empty:first-child]:before:float-left [&_p.is-editor-empty:first-child]:before:h-0 [&_p.is-editor-empty:first-child]:before:text-muted-foreground [&_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]",
+            "min-h-28 px-3 py-3 text-sm outline-none [&_p]:min-h-6 [&_p.is-editor-empty:first-child]:before:pointer-events-none [&_p.is-editor-empty:first-child]:before:float-left [&_p.is-editor-empty:first-child]:before:h-0 [&_p.is-editor-empty:first-child]:before:text-muted-foreground [&_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]",
         },
         // Enter submits; Shift+Enter inserts a newline (chat-composer style).
         // When the @-mention picker is open, defer to its own Enter handling.
@@ -264,6 +293,10 @@ export const InlineMentionEditor = forwardRef<
         .insertContent(previous && !/\s/.test(previous) ? " @" : "@")
         .run();
     },
+    insertPrompt: (text: string) => {
+      if (!editor) return;
+      editor.chain().focus("end").insertContent(text).run();
+    },
   }));
 
   useEffect(() => {
@@ -281,7 +314,7 @@ export const InlineMentionEditor = forwardRef<
   }, [ariaLabel, editor]);
 
   return (
-    <div className="min-h-16" data-testid="agent-composer-editor">
+    <div className="min-h-28" data-testid="agent-composer-editor">
       <EditorContent editor={editor} />
     </div>
   );

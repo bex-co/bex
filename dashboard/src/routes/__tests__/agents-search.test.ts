@@ -25,6 +25,14 @@ describe("agent-session filter search contracts", () => {
     expect(validateList({ archived: "no", phase: "unknown" })).toEqual({});
   });
 
+  it("does not wire a phase-filter dropdown on /agents", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const src = readFileSync(join(import.meta.dirname, "../agents.tsx"), "utf8");
+    expect(src).not.toMatch(/agentSessions\.filterPhase/);
+    expect(src).not.toMatch(/<Select[\s\S]*AGENT_SESSION_PHASES/);
+  });
+
   it("keeps only valid list context on a detail URL", () => {
     expect(
       validateDetail({ fromArchived: "all", fromPhase: "completed" }),
