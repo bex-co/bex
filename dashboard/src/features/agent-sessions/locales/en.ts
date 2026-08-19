@@ -47,6 +47,10 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Couldn't load agent sessions",
     description: "Agent sessions list error state heading",
   },
+  "agentSessions.retry": {
+    message: "Retry",
+    description: "Retries a failed agent-sessions list request",
+  },
   // --- Empty state ---
   "agentSessions.emptyTitle": {
     message: "No agent sessions yet",
@@ -56,6 +60,26 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message:
       "Describe a task above and @-mention a repository. The agent will work in a cloud sandbox and open a draft PR.",
     description: "Agent sessions list empty-state body",
+  },
+  "agentSessions.emptyArchivedTitle": {
+    message: "No archived sessions",
+    description: "Archived-only list empty-state heading",
+  },
+  "agentSessions.emptyArchivedBody": {
+    message: "Sessions you archive will appear here.",
+    description: "Archived-only list empty-state body",
+  },
+  "agentSessions.emptyFilteredTitle": {
+    message: "No matching sessions",
+    description: "Phase-filtered list empty-state heading",
+  },
+  "agentSessions.emptyFilteredBody": {
+    message: "Try another phase or clear the filters.",
+    description: "Phase-filtered list empty-state body",
+  },
+  "agentSessions.clearFilters": {
+    message: "Clear filters",
+    description: "Clears agent-session membership and phase filters",
   },
   // --- Phase chips ---
   "agentSessions.phase.creating": {
@@ -710,6 +734,10 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Session archived",
     description: "Toast after archiving a session",
   },
+  "agentSessions.undoArchive": {
+    message: "Undo",
+    description: "Toast action that immediately unarchives a session",
+  },
   "agentSessions.unarchiveSuccess": {
     message: "Session unarchived",
     description: "Toast after unarchiving a session",
@@ -756,7 +784,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description: "Screen-reader label of the list's trailing actions column",
   },
   "agentSessions.filterActive": {
-    message: "Active",
+    message: "Current",
     description: "List membership tab — the unarchived working set",
   },
   "agentSessions.filterArchived": {

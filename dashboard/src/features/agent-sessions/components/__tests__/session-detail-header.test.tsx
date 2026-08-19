@@ -1,17 +1,25 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, it, expect, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import { agentSessionView } from "@/test/mocks/agent-session";
 
-// The header links out to /agents and drives cancel through the mutations hook;
-// neither is under test here, so both are inert.
+const navigateMock = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, ...rest }: { children: React.ReactNode }) => (
-    <a {...rest}>{children}</a>
+  Link: ({
+    children,
+    search,
+    ...rest
+  }: {
+    children: React.ReactNode;
+    search?: unknown;
+  }) => (
+    <a {...rest} data-search={JSON.stringify(search)}>
+      {children}
+    </a>
   ),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => navigateMock,
 }));
 const pinMock = vi.fn().mockResolvedValue(undefined);
 const unpinMock = vi.fn().mockResolvedValue(undefined);
@@ -34,11 +42,33 @@ function view(over: Partial<AgentSessionView> = {}): AgentSessionView {
 }
 
 describe("SessionDetailHeader", () => {
+  beforeEach(() => {
+    navigateMock.mockClear();
+    pinMock.mockClear();
+    unpinMock.mockClear();
+    archiveMock.mockClear();
+    unarchiveMock.mockClear();
+    deleteMock.mockClear();
+  });
+
   // w5/m65 removed the evidence side panel; the header must not offer a way back
   // to a surface that no longer exists.
   it("offers no evidence toggle", () => {
     render(<SessionDetailHeader session={view()} />);
     expect(screen.queryByText("Evidence")).not.toBeInTheDocument();
+  });
+
+  it("preserves the originating list filters in the Back link", () => {
+    render(
+      <SessionDetailHeader
+        session={view()}
+        backSearch={{ archived: "true", phase: "failed" }}
+      />,
+    );
+    expect(screen.getByLabelText("All sessions")).toHaveAttribute(
+      "data-search",
+      JSON.stringify({ archived: "true", phase: "failed" }),
+    );
   });
 
   // With the inline PR card gone, this badge is the session's only PR
@@ -97,12 +127,19 @@ describe("SessionDetailHeader", () => {
 
   // ADR065 D1/D6: the overflow menu carries Archive (any phase) and, on a
   // finished session, the destructive Delete behind a confirmation dialog.
-  it("archives through the overflow menu and badges an archived session", async () => {
+  it("returns to the sessions list after archive and refreshes an unarchive in place", async () => {
     const user = userEvent.setup();
-    const { rerender } = render(<SessionDetailHeader session={view()} />);
+    const onChanged = vi.fn();
+    const { rerender } = render(
+      <SessionDetailHeader session={view()} onChanged={onChanged} />,
+    );
     await user.click(screen.getByRole("button", { name: "More actions" }));
     await user.click(screen.getByRole("menuitem", { name: /^archive$/i }));
     expect(archiveMock).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith({ to: "/agents" }),
+    );
+    expect(onChanged).not.toHaveBeenCalled();
 
     rerender(
       <SessionDetailHeader
@@ -110,12 +147,15 @@ describe("SessionDetailHeader", () => {
           archivedAt: new Date().toISOString(),
           isArchived: true,
         })}
+        onChanged={onChanged}
       />,
     );
     expect(screen.getByText("Archived")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "More actions" }));
     await user.click(screen.getByRole("menuitem", { name: /unarchive/i }));
     expect(unarchiveMock).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(navigateMock).toHaveBeenCalledTimes(1);
   });
 
   it("offers Delete only on a finished session, behind a confirmation", async () => {
@@ -138,5 +178,11 @@ describe("SessionDetailHeader", () => {
     expect(screen.getByText("Delete this session?")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Delete session" }));
     expect(deleteMock).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: "/agents",
+        replace: true,
+      }),
+    );
   });
 });

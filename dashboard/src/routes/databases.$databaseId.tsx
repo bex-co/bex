@@ -110,7 +110,7 @@ function DatabaseDetailPage() {
         {database ? (
           <DatabaseRowActions
             database={database}
-            onDeleted={() => void navigate({ to: "/" })}
+            onDeleted={() => void navigate({ to: "/", replace: true })}
             lifecycle={lifecycle}
           />
         ) : null}
@@ -208,7 +208,7 @@ function DatabaseDetailPage() {
               <section id="danger-zone" className="scroll-mt-6">
                 <DatabaseDangerActions
                   database={database}
-                  onDeleted={() => void navigate({ to: "/" })}
+                  onDeleted={() => void navigate({ to: "/", replace: true })}
                   lifecycle={lifecycle}
                 />
               </section>

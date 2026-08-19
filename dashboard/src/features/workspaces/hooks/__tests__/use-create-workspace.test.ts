@@ -54,9 +54,58 @@ describe("useCreateWorkspace", () => {
     });
     expect(mutate).toHaveBeenCalledWith({
       variables: { name: "acme-staging", plan: "hobby" },
+      update: expect.any(Function),
     });
     expect(toastSuccess).toHaveBeenCalledWith("Created acme-staging");
     expect(result.current.error).toBeNull();
+  });
+
+  it("adds the created workspace to the shared list cache before returning", async () => {
+    const created = {
+      __typename: "Workspace",
+      id: "tea-2",
+      name: "acme-staging",
+      plan: "hobby",
+      role: "admin",
+      createdAt: null,
+    };
+    const mutate = vi.fn().mockResolvedValue({
+      data: { createWorkspace: created },
+    });
+    mockUseMutation.mockReturnValue([mutate]);
+    const { result } = renderHook(() => useCreateWorkspace());
+
+    await act(() => result.current.create("acme-staging", "hobby"));
+
+    const update = mutate.mock.calls[0][0].update;
+    let updated: unknown;
+    const updateQuery = vi.fn(
+      (_options: unknown, updater: (existing: unknown) => unknown) => {
+        updated = updater({
+          workspaces: [
+            {
+              __typename: "Workspace",
+              id: "tea-1",
+              name: "acme",
+              plan: "hobby",
+              role: "admin",
+              createdAt: null,
+            },
+          ],
+        });
+      },
+    );
+    update(
+      { updateQuery } as never,
+      { data: { createWorkspace: created } } as never,
+    );
+
+    expect(updated).toEqual({
+      workspaces: [
+        expect.objectContaining({ id: "tea-1" }),
+        expect.objectContaining({ id: "tea-2" }),
+      ],
+    });
   });
 
   it("surfaces the backend's plan-limit refusal inline (not just a toast) — the 6th Hobby workspace", async () => {

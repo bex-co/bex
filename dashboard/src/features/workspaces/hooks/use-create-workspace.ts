@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { CreateWorkspaceDocument } from "@/graphql/definitions";
+import {
+  CreateWorkspaceDocument,
+  WorkspacesDocument,
+} from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { graphQLErrorMessage } from "@/common/lib/graphql-error";
 import type { WorkspaceView } from "@/features/workspaces/types";
@@ -35,7 +38,22 @@ export function useCreateWorkspace(): UseCreateWorkspaceResult {
       setBusy(true);
       setError(null);
       try {
-        const res = await mutate({ variables: { name, plan } });
+        const res = await mutate({
+          variables: { name, plan },
+          update(cache, { data }) {
+            const created = data?.createWorkspace;
+            if (!created?.id) return;
+            cache.updateQuery({ query: WorkspacesDocument }, (existing) => {
+              const workspaces = existing?.workspaces ?? [];
+              if (
+                workspaces.some((workspace) => workspace?.id === created.id)
+              ) {
+                return existing;
+              }
+              return { workspaces: [...workspaces, created] };
+            });
+          },
+        });
         const w = res.data?.createWorkspace;
         if (!w?.id) throw new Error("createWorkspace returned no workspace");
         toast.success(t("workspaces.createSuccess", { name }));

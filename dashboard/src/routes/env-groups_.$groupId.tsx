@@ -150,7 +150,9 @@ export function EnvGroupDetailPage() {
             cloneGroup={mutations.cloneGroup}
             deleteGroup={deleteGroup}
             busy={mutations.busy}
-            onDeleted={() => void navigate({ to: "/env-groups" })}
+            onDeleted={() =>
+              void navigate({ to: "/env-groups", replace: true })
+            }
             onCloned={(cloneId) =>
               void navigate({
                 to: "/env-groups/$groupId",

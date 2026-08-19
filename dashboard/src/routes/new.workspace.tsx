@@ -46,7 +46,7 @@ export function NewWorkspacePage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { create, busy, error } = useCreateWorkspace();
-  const { setCurrentWorkspaceId, refetch } = useWorkspace();
+  const { setCurrentWorkspaceId } = useWorkspace();
 
   const [name, setName] = useState("");
   const [plan, setPlan] = useState<WorkspacePlanId>("hobby");
@@ -59,12 +59,11 @@ export function NewWorkspacePage() {
     if (!canSubmit) return;
     const workspace = await create(name, plan);
     if (!workspace) return;
-    // create()'s response already carries the new workspace — switch and
-    // navigate from it immediately rather than waiting on a refetch of the
-    // whole list first (the switcher's list catches up on its own next read).
+    // create() adds the returned workspace to the shared list cache before it
+    // resolves, so WorkspaceProvider recognizes this id and cannot fall back
+    // to the first old workspace while navigation is in flight.
     setCurrentWorkspaceId(workspace.id);
-    void navigate({ to: "/" });
-    void refetch();
+    await navigate({ to: "/", replace: true });
   }
 
   return (

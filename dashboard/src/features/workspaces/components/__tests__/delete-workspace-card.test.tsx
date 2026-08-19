@@ -91,7 +91,7 @@ describe("DeleteWorkspaceCard — sudo-phrase confirm guard (w6/m3/t004, w6/m5/t
 
     expect(remove).toHaveBeenCalledWith("tea-1", "acme-hq", PHRASE);
     expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-2");
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/", replace: true });
   });
 
   it("routes to /new/workspace when no workspace remains", async () => {
@@ -103,6 +103,9 @@ describe("DeleteWorkspaceCard — sudo-phrase confirm guard (w6/m3/t004, w6/m5/t
     await user.click(screen.getByRole("button", { name: "Delete Workspace" }));
 
     expect(setCurrentWorkspaceId).not.toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/new/workspace" });
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/new/workspace",
+      replace: true,
+    });
   });
 });

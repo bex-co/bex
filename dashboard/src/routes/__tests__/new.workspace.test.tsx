@@ -17,9 +17,8 @@ vi.mock("@/features/workspaces/hooks/use-create-workspace", () => ({
 }));
 
 const setCurrentWorkspaceId = vi.fn();
-const refetch = vi.fn();
 vi.mock("@/features/workspaces/context/hooks", () => ({
-  useWorkspace: () => ({ setCurrentWorkspaceId, refetch }),
+  useWorkspace: () => ({ setCurrentWorkspaceId }),
 }));
 
 vi.mock("@/common/components/dashboard-layout", () => ({
@@ -57,7 +56,6 @@ beforeEach(() => {
     role: "admin",
     createdAt: null,
   });
-  refetch.mockResolvedValue(undefined);
 });
 
 describe("NewWorkspacePage post-create landing", () => {
@@ -70,10 +68,7 @@ describe("NewWorkspacePage post-create landing", () => {
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/"));
     expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-returned-id");
-    expect(setCurrentWorkspaceId.mock.invocationCallOrder[0]).toBeLessThan(
-      refetch.mock.invocationCallOrder[0],
-    );
-    expect(refetch).toHaveBeenCalled();
+    expect(router.history.location.pathname).toBe("/");
   });
 
   it("does not switch or navigate when create fails", async () => {
@@ -87,7 +82,6 @@ describe("NewWorkspacePage post-create landing", () => {
     await waitFor(() => expect(create).toHaveBeenCalled());
     expect(router.state.location.pathname).toBe("/new/workspace");
     expect(setCurrentWorkspaceId).not.toHaveBeenCalled();
-    expect(refetch).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Name")).toHaveValue("acme");
   });
 });

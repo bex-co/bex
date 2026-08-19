@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useParams, useRouterState } from "@tanstack/react-router";
 import { Archive, GitPullRequest, Search } from "lucide-react";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
@@ -20,6 +20,7 @@ import {
 } from "@/features/agent-sessions/lib/mapper";
 import { fuzzyMatch } from "@/features/agent-sessions/lib/mention";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
+import { cn } from "@/common/lib/utils/utils";
 
 /**
  * The agent-sessions section of the one dashboard rail (w5/m64) — Devin's
@@ -47,6 +48,11 @@ import type { AgentSessionView } from "@/features/agent-sessions/types";
 export function AgentSessionsNavSection() {
   const { t } = useTranslations();
   const { agentSessionId } = useParams({ strict: false });
+  const archivedActive = useRouterState({
+    select: (state) =>
+      state.location.pathname === "/agents" &&
+      state.location.search.archived === "true",
+  });
   const { sessions, loading } = useAgentSessions();
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -131,7 +137,11 @@ export function AgentSessionsNavSection() {
       <Link
         to="/agents"
         search={{ archived: "true" }}
-        className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs"
+        className={cn(
+          "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs",
+          archivedActive &&
+            "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+        )}
       >
         <Archive className="size-3.5" />
         {t("agentSessions.sidebarArchived")}

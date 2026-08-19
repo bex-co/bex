@@ -12,10 +12,22 @@ import type { AgentSessionView } from "@/features/agent-sessions/types";
  * refresh through `onChanged`. `busyId` is the session currently in flight, so
  * a list renders one hook instance and passes plain props to its rows.
  */
-export function useArchiveToggle(onChanged?: () => void) {
+export function useArchiveToggle(onChanged?: () => void | Promise<unknown>) {
   const { t } = useTranslations();
   const { archive, unarchive } = useAgentSessionMutations();
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const undoArchive = useCallback(
+    async (id: string) => {
+      try {
+        await unarchive(id);
+        toast.success(t("agentSessions.unarchiveSuccess"));
+      } catch (err) {
+        toast.error(agentSessionErrorMessage(err, t));
+      }
+    },
+    [t, unarchive],
+  );
 
   const toggle = useCallback(
     async (session: Pick<AgentSessionView, "id" | "isArchived">) => {
@@ -26,16 +38,21 @@ export function useArchiveToggle(onChanged?: () => void) {
           toast.success(t("agentSessions.unarchiveSuccess"));
         } else {
           await archive(session.id);
-          toast.success(t("agentSessions.archiveSuccess"));
+          toast.success(t("agentSessions.archiveSuccess"), {
+            action: {
+              label: t("agentSessions.undoArchive"),
+              onClick: () => void undoArchive(session.id),
+            },
+          });
         }
-        onChanged?.();
+        await onChanged?.();
       } catch (err) {
         toast.error(agentSessionErrorMessage(err, t));
       } finally {
         setBusyId(null);
       }
     },
-    [archive, unarchive, onChanged, t],
+    [archive, unarchive, onChanged, t, undoArchive],
   );
 
   return { toggle, busyId };

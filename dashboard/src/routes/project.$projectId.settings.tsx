@@ -96,7 +96,7 @@ export function ProjectSettingsPage() {
     const ok = await remove(projectId, project.name);
     if (ok) {
       setDeleteOpen(false);
-      void navigate({ to: "/" });
+      void navigate({ to: "/", replace: true });
     }
   }
 

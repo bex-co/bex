@@ -114,7 +114,7 @@ export function WebhookSettingsCard({
 
   async function handleDelete() {
     const ok = await remove(endpoint.id, endpoint.name);
-    if (ok) await navigate({ to: "/webhooks" });
+    if (ok) await navigate({ to: "/webhooks", replace: true });
   }
 
   return (

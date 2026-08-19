@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Archive,
@@ -51,7 +51,10 @@ import {
   agentSessionDurationMs,
   formatSnapshotBytes,
 } from "@/features/agent-sessions/lib/mapper";
-import type { AgentSessionView } from "@/features/agent-sessions/types";
+import type {
+  AgentSessionListSearch,
+  AgentSessionView,
+} from "@/features/agent-sessions/types";
 import { AgentSessionPhaseChip } from "@/features/agent-sessions/components/session-list";
 
 /** Compact `h/m/s` elapsed label ("1h 4m", "12m 8s", "3s"). */
@@ -68,7 +71,9 @@ function formatDurationShort(ms: number): string {
 export interface SessionDetailHeaderProps {
   session: AgentSessionView;
   /** Re-read the session after a lifecycle action (the header owns no cache). */
-  onChanged?: () => void;
+  onChanged?: () => void | Promise<unknown>;
+  /** List filters to restore when the mobile Back affordance is used. */
+  backSearch?: AgentSessionListSearch;
 }
 
 /**
@@ -85,12 +90,20 @@ export interface SessionDetailHeaderProps {
 export function SessionDetailHeader({
   session,
   onChanged,
+  backSearch,
 }: SessionDetailHeaderProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { cancel, pin, unpin, deleteSession } = useAgentSessionMutations();
+  const handleArchiveChanged = useCallback(async () => {
+    if (session.isArchived) {
+      await onChanged?.();
+      return;
+    }
+    await navigate({ to: "/agents" });
+  }, [navigate, onChanged, session.isArchived]);
   const { toggle: toggleArchive, busyId: archiveBusyId } =
-    useArchiveToggle(onChanged);
+    useArchiveToggle(handleArchiveChanged);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [canceling, setCanceling] = useState(false);
   const [pinning, setPinning] = useState(false);
@@ -107,7 +120,7 @@ export function SessionDetailHeader({
     try {
       await deleteSession(session.id);
       toast.success(t("agentSessions.deleteSuccess"));
-      void navigate({ to: "/agents" });
+      await navigate({ to: "/agents", replace: true });
     } catch (err) {
       toast.error(agentSessionErrorMessage(err, t));
       setDeleting(false);
@@ -125,7 +138,7 @@ export function SessionDetailHeader({
         await pin(session.id);
         toast.success(t("agentSessions.pinSuccess"));
       }
-      onChanged?.(); // re-read the session (the header owns no cache)
+      await onChanged?.(); // re-read before re-enabling the lifecycle control
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     } finally {
@@ -156,7 +169,7 @@ export function SessionDetailHeader({
     try {
       await cancel(session.id);
       toast.success(t("agentSessions.cancelSuccess"));
-      onChanged?.();
+      await onChanged?.();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     } finally {
@@ -175,7 +188,11 @@ export function SessionDetailHeader({
         variant="ghost"
         className="shrink-0 lg:hidden"
       >
-        <Link to="/agents" aria-label={t("agentSessions.backToList")}>
+        <Link
+          to="/agents"
+          search={backSearch}
+          aria-label={t("agentSessions.backToList")}
+        >
           <ArrowLeft className="size-4" />
         </Link>
       </Button>

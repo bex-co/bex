@@ -239,7 +239,7 @@ export function BlueprintDetailPage() {
     setDisconnecting(false);
     const ok = await disconnect(blueprintId);
     if (ok) {
-      void router.navigate({ to: "/blueprints" });
+      void router.navigate({ to: "/blueprints", replace: true });
     }
   }
 

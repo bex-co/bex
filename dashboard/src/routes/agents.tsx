@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ListPageSkeleton } from "@/common/components/detail-skeletons";
 import { Loader2 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -17,16 +16,16 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessions } from "@/features/agent-sessions/hooks/use-agent-sessions";
 import { NewSessionComposer } from "@/features/agent-sessions/components/new-session-composer";
 import { SessionList } from "@/features/agent-sessions/components/session-list";
-import { AGENT_SESSION_PHASES } from "@/features/agent-sessions/types";
-import type { AgentSessionPhase } from "@/features/agent-sessions/types";
+import {
+  AGENT_SESSION_PHASES,
+  type AgentSessionArchivedFilter,
+  type AgentSessionListSearch,
+  type AgentSessionPhase,
+} from "@/features/agent-sessions/types";
 
-/** Archive-membership values the `?archived=` search param accepts (ADR065). */
-type ArchivedParam = "true" | "all";
-
-export interface AgentsSearch {
+export interface AgentsSearch extends AgentSessionListSearch {
   /** Legacy pane selector; accepted so saved `?view=list` URLs keep working. */
   view?: "list";
-  archived?: ArchivedParam;
 }
 
 export const Route = createFileRoute("/agents")({
@@ -43,6 +42,12 @@ export const Route = createFileRoute("/agents")({
     if (search.archived === "true" || search.archived === "all") {
       out.archived = search.archived;
     }
+    if (
+      typeof search.phase === "string" &&
+      AGENT_SESSION_PHASES.includes(search.phase as AgentSessionPhase)
+    ) {
+      out.phase = search.phase as AgentSessionPhase;
+    }
     return out;
   },
   head: ({ match }) => translatedTitleHead("agentSessions.pageTitle", match),
@@ -58,7 +63,7 @@ export const Route = createFileRoute("/agents")({
  * its own.
  */
 function AgentSessionsPage() {
-  const { archived } = Route.useSearch();
+  const { archived, phase } = Route.useSearch();
 
   return (
     <DashboardLayout>
@@ -66,7 +71,7 @@ function AgentSessionsPage() {
         <div className="mx-auto w-full max-w-5xl space-y-8 p-4 sm:p-6">
           <PageHeader />
           <ComposerSection />
-          <SessionListSection archived={archived} />
+          <SessionListSection archived={archived} phase={phase} />
         </div>
       </div>
     </DashboardLayout>
@@ -100,9 +105,15 @@ function ComposerSection() {
   );
 }
 
-function SessionListSection({ archived }: { archived?: ArchivedParam }) {
+function SessionListSection({
+  archived,
+  phase,
+}: {
+  archived?: AgentSessionArchivedFilter;
+  phase?: AgentSessionPhase;
+}) {
   const { t } = useTranslations();
-  const [phase, setPhase] = useState<AgentSessionPhase | "all">("all");
+  const navigate = useNavigate();
   // The rail's AgentSessionsNavSection renders alongside and owns the poll for
   // the default working-set variables; every widened/filtered read here is its
   // own cache entry, refreshed by `refetch` after row mutations — never polled.
@@ -110,13 +121,13 @@ function SessionListSection({ archived }: { archived?: ArchivedParam }) {
     useAgentSessions({
       poll: false,
       archived,
-      phases: phase === "all" ? undefined : [phase],
+      phases: phase ? [phase] : undefined,
     });
 
   const membershipTabs: Array<{
     key: string;
     label: string;
-    archived?: ArchivedParam;
+    archived?: AgentSessionArchivedFilter;
   }> = [
     { key: "active", label: t("agentSessions.filterActive") },
     {
@@ -148,15 +159,24 @@ function SessionListSection({ archived }: { archived?: ArchivedParam }) {
                 variant={activeKey === tab.key ? "secondary" : "ghost"}
                 className="h-7 px-2.5 shadow-none"
               >
-                <Link to="/agents" search={{ archived: tab.archived }}>
+                <Link to="/agents" search={{ archived: tab.archived, phase }}>
                   {tab.label}
                 </Link>
               </Button>
             ))}
           </div>
           <Select
-            value={phase}
-            onValueChange={(v) => setPhase(v as AgentSessionPhase | "all")}
+            value={phase ?? "all"}
+            onValueChange={(value) =>
+              void navigate({
+                to: "/agents",
+                search: {
+                  archived,
+                  phase:
+                    value === "all" ? undefined : (value as AgentSessionPhase),
+                },
+              })
+            }
           >
             <SelectTrigger
               size="sm"
@@ -182,7 +202,11 @@ function SessionListSection({ archived }: { archived?: ArchivedParam }) {
         sessions={sessions}
         loading={loading}
         error={error}
-        onChanged={() => void refetch()}
+        archiveFilter={archived}
+        phase={phase}
+        onChanged={() => refetch()}
+        onRetry={() => void refetch()}
+        onClearFilters={() => void navigate({ to: "/agents", search: {} })}
       />
       {hasMore ? (
         <div className="flex justify-center pt-1">
