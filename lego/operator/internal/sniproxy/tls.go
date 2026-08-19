@@ -19,17 +19,7 @@ package sniproxy
 import (
 	"fmt"
 	"io"
-	"net"
-	"net/netip"
 )
-
-func RemoteIP(addr net.Addr) (netip.Addr, error) {
-	host, _, err := net.SplitHostPort(addr.String())
-	if err != nil {
-		return netip.Addr{}, err
-	}
-	return netip.ParseAddr(host)
-}
 
 const (
 	TLSHandshakeType = byte(0x16)
