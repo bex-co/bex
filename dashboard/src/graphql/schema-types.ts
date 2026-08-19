@@ -995,6 +995,7 @@ export type Mutation = {
   recoverDatabase: Maybe<Database>;
   regenerateDeployHook: Maybe<DeployHook>;
   registerNotificationDeviceSubscription: Maybe<NotificationDeviceSubscription>;
+  registerNotificationWebPushSubscription: Maybe<NotificationWebPushSubscription>;
   removeWorkspaceMember: Maybe<Scalars["String"]["output"]>;
   renameDatabase: Maybe<Database>;
   renameEnvGroup: Maybe<EnvGroup>;
@@ -1068,6 +1069,9 @@ export type Mutation = {
   unlinkEnvGroup: Maybe<Scalars["Boolean"]["output"]>;
   unpinAgentSession: Maybe<AgentSession>;
   unregisterNotificationDeviceSubscription: Maybe<Scalars["Boolean"]["output"]>;
+  unregisterNotificationWebPushSubscription: Maybe<
+    Scalars["Boolean"]["output"]
+  >;
   updateBlueprint: Maybe<Blueprint>;
   updateCronJob: Maybe<Service>;
   updateDatabaseDiskAutoscaling: Maybe<Database>;
@@ -1476,6 +1480,13 @@ export type MutationRegisterNotificationDeviceSubscriptionArgs = {
   token: Scalars["String"]["input"];
 };
 
+export type MutationRegisterNotificationWebPushSubscriptionArgs = {
+  auth: Scalars["String"]["input"];
+  browserId: Scalars["String"]["input"];
+  endpoint: Scalars["String"]["input"];
+  p256dh: Scalars["String"]["input"];
+};
+
 export type MutationRemoveWorkspaceMemberArgs = {
   subject: Scalars["String"]["input"];
   workspaceId: Scalars["String"]["input"];
@@ -1852,6 +1863,10 @@ export type MutationUnregisterNotificationDeviceSubscriptionArgs = {
   deviceId: Scalars["String"]["input"];
 };
 
+export type MutationUnregisterNotificationWebPushSubscriptionArgs = {
+  browserId: Scalars["String"]["input"];
+};
+
 export type MutationUpdateBlueprintArgs = {
   autoSync?: InputMaybe<Scalars["Boolean"]["input"]>;
   id: Scalars["String"]["input"];
@@ -1949,6 +1964,14 @@ export type NotificationDeviceSubscription = {
   platform: Maybe<Scalars["String"]["output"]>;
   preferenceRef: Maybe<Scalars["String"]["output"]>;
   provider: Maybe<Scalars["String"]["output"]>;
+  updatedAt: Maybe<Scalars["String"]["output"]>;
+};
+
+export type NotificationWebPushSubscription = {
+  __typename: "NotificationWebPushSubscription";
+  browserId: Maybe<Scalars["String"]["output"]>;
+  createdAt: Maybe<Scalars["String"]["output"]>;
+  lastRegisteredAt: Maybe<Scalars["String"]["output"]>;
   updatedAt: Maybe<Scalars["String"]["output"]>;
 };
 
@@ -2146,10 +2169,15 @@ export type Query = {
   >;
   notificationInbox: Array<PushNotification>;
   notificationSettings: Maybe<NotificationSettings>;
+  notificationWebPushSubscriptions: Maybe<
+    Array<Maybe<NotificationWebPushSubscription>>
+  >;
   project: Maybe<Project>;
   projects: Maybe<Array<Maybe<Project>>>;
   pushNotificationSettings: Maybe<PushNotificationSettings>;
   pushNotificationsAvailable: Scalars["Boolean"]["output"];
+  webPushAvailable: Scalars["Boolean"]["output"];
+  webPushVapidPublicKey: Maybe<Scalars["String"]["output"]>;
   registryCredential: Maybe<RegistryCredential>;
   registryCredentials: Maybe<Array<Maybe<RegistryCredential>>>;
   repoBranches: Maybe<Array<Maybe<Scalars["String"]["output"]>>>;

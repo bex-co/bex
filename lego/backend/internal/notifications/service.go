@@ -59,6 +59,10 @@ type NotificationsStore interface {
 	ListOwnDevicePushSubscriptions(ctx context.Context, tenantID, subject string) ([]store.DevicePushSubscription, error)
 	RevokeDevicePushSubscription(ctx context.Context, tenantID, subject, deviceID string) (bool, error)
 	RevokeAllDevicePushSubscriptions(ctx context.Context, tenantID, subject string) (int64, error)
+	UpsertWebPushSubscription(ctx context.Context, sub store.WebPushSubscription) (store.WebPushSubscription, error)
+	ListOwnWebPushSubscriptions(ctx context.Context, tenantID, subject string) ([]store.WebPushSubscription, error)
+	RevokeWebPushSubscription(ctx context.Context, tenantID, subject, browserID string) (bool, error)
+	RevokeAllWebPushSubscriptions(ctx context.Context, tenantID, subject string) (int64, error)
 	ListOwnPushNotifications(ctx context.Context, tenantID, subject string, limit int) ([]store.PushNotification, error)
 	MarkOwnPushNotificationRead(ctx context.Context, tenantID, subject, eventID string, at time.Time) (bool, error)
 	CountUnreadPushNotifications(ctx context.Context, tenantID, subject string) (int64, error)
@@ -98,9 +102,14 @@ type Service struct {
 	// the deploy email (w7/m44); empty ⇒ the link is omitted, honest-omit like
 	// the invite email's link.
 	DashboardBaseURL string
-	// PushAvailable reflects validated server transport composition; it carries
+	// PushAvailable reflects validated Expo transport composition; it carries
 	// no provider or credential detail.
 	PushAvailable *bool
+	// WebPushAvailable reflects validated VAPID composition. Independent of Expo.
+	WebPushAvailable *bool
+	// VAPIDPublicKey is the uncompressed P-256 point browsers use as
+	// applicationServerKey. Empty when the channel is unset.
+	VAPIDPublicKey string
 }
 
 // IsPushAvailable reports validated server composition without provider or
@@ -115,6 +124,27 @@ func (s *Service) IsPushAvailable(ctx context.Context) (bool, error) {
 
 func (s *Service) pushTransportAvailable() bool {
 	return s.PushAvailable == nil || *s.PushAvailable
+}
+
+func (s *Service) IsWebPushAvailable(ctx context.Context) (bool, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return false, err
+	}
+	return s.Store != nil && s.webPushTransportAvailable(), nil
+}
+
+func (s *Service) WebPushVAPIDPublicKey(ctx context.Context) (string, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return "", err
+	}
+	if !s.webPushTransportAvailable() {
+		return "", nil
+	}
+	return s.VAPIDPublicKey, nil
+}
+
+func (s *Service) webPushTransportAvailable() bool {
+	return s.WebPushAvailable == nil || *s.WebPushAvailable
 }
 
 // BillingNotifier is the asynchronous m52 lifecycle sink. It is deliberately

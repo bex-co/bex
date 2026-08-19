@@ -26,7 +26,8 @@ import (
 )
 
 const (
-	ProviderExpo = "expo"
+	ProviderExpo    = "expo"
+	ProviderWebPush = "webpush"
 
 	// MaxPayloadBytes is Expo's maximum encoded notification size.
 	MaxPayloadBytes        = 4096

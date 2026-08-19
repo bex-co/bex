@@ -137,7 +137,9 @@ var callerScopedVerbs = map[string]bool{
 	"apps.Service.NameAvailable": true,
 	// Capability probe — returns only whether the caller's server has a push
 	// transport; it accepts no resource/workspace argument.
-	"notifications.Service.IsPushAvailable": true,
+	"notifications.Service.IsPushAvailable":     true,
+	"notifications.Service.IsWebPushAvailable":  true,
+	"notifications.Service.WebPushVAPIDPublicKey": true,
 	// Durable push inbox verbs derive tenant + subject from the authenticated
 	// caller; an exact event id is constrained inside that same scope.
 	"notifications.Service.ListNotificationInbox":       true,

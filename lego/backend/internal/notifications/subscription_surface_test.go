@@ -17,7 +17,11 @@ limitations under the License.
 package notifications
 
 import (
+	"bytes"
 	"context"
+	"crypto/ecdh"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -83,5 +87,64 @@ func TestDeviceSubscriptionRESTAndGraphQLStaySecretFree(t *testing.T) {
 	})
 	if len(probe.Errors) == 0 {
 		t.Fatal("GraphQL unexpectedly exposed a token field")
+	}
+}
+
+func TestWebPushSubscriptionRESTAndGraphQLStaySecretFree(t *testing.T) {
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice", Method: "oauth2"})
+	ua, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p256dh := base64.RawURLEncoding.EncodeToString(ua.PublicKey().Bytes())
+	auth := base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{5}, 16))
+	endpoint := "https://fcm.googleapis.com/fcm/send/webpush-secret"
+
+	newService := func() *Service {
+		return newTestService(newFakeStore(), fakeWorkspace{"alice": "tea-a"}, nil, nil)
+	}
+	restSvc := newService()
+	mux := http.NewServeMux()
+	restSvc.RegisterREST(mux)
+	body := `{"browserId":"wp-one","endpoint":"` + endpoint + `","p256dh":"` + p256dh + `","auth":"` + auth + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/notification-webpush-subscriptions", strings.NewReader(body)).WithContext(ctx)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("REST register = %d: %s", rec.Code, rec.Body)
+	}
+	if strings.Contains(rec.Body.String(), "webpush-secret") || strings.Contains(rec.Body.String(), `"endpoint"`) || strings.Contains(rec.Body.String(), `"p256dh"`) {
+		t.Fatalf("REST response leaked capability: %s", rec.Body)
+	}
+
+	gqlSvc := newService()
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: gqlSvc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: gqlSvc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := graphql.Do(graphql.Params{
+		Schema: schema, Context: ctx,
+		RequestString: `mutation {
+			registerNotificationWebPushSubscription(
+				browserId:"wp-one", endpoint:"` + endpoint + `", p256dh:"` + p256dh + `", auth:"` + auth + `"
+			) { browserId createdAt updatedAt lastRegisteredAt }
+		}`,
+	})
+	if len(result.Errors) > 0 {
+		t.Fatalf("GraphQL register errors: %v", result.Errors)
+	}
+	raw, _ := json.Marshal(result.Data)
+	if strings.Contains(string(raw), "webpush-secret") || strings.Contains(string(raw), `"endpoint"`) {
+		t.Fatalf("GraphQL response leaked capability: %s", raw)
+	}
+	probe := graphql.Do(graphql.Params{
+		Schema: schema, Context: ctx,
+		RequestString: `{ notificationWebPushSubscriptions { browserId endpoint p256dh auth } }`,
+	})
+	if len(probe.Errors) == 0 {
+		t.Fatal("GraphQL unexpectedly exposed webpush secrets")
 	}
 }

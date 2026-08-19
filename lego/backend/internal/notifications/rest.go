@@ -56,7 +56,22 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("GET /v1/notification-settings/push/availability", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		available, err := s.IsPushAvailable(r.Context())
-		return map[string]bool{"available": available}, err
+		if err != nil {
+			return nil, err
+		}
+		webPush, err := s.IsWebPushAvailable(r.Context())
+		if err != nil {
+			return nil, err
+		}
+		key, err := s.WebPushVAPIDPublicKey(r.Context())
+		if err != nil {
+			return nil, err
+		}
+		out := map[string]any{"available": available, "webPushAvailable": webPush}
+		if key != "" {
+			out["vapidPublicKey"] = key
+		}
+		return out, nil
 	}))
 	mux.HandleFunc("PATCH /v1/notification-settings/push", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[PushSettingsView](r)
@@ -81,6 +96,20 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("DELETE /v1/notification-device-subscriptions/{deviceId}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		changed, err := s.UnregisterDeviceSubscription(r.Context(), r.PathValue("deviceId"))
+		return map[string]bool{"revoked": changed}, err
+	}))
+	mux.HandleFunc("GET /v1/notification-webpush-subscriptions", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.ListWebPushSubscriptions(r.Context())
+	}))
+	mux.HandleFunc("POST /v1/notification-webpush-subscriptions", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+		req, err := core.DecodeBody[RegisterWebPushInput](r)
+		if err != nil {
+			return nil, err
+		}
+		return s.RegisterWebPushSubscription(r.Context(), req)
+	}))
+	mux.HandleFunc("DELETE /v1/notification-webpush-subscriptions/{browserId}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		changed, err := s.UnregisterWebPushSubscription(r.Context(), r.PathValue("browserId"))
 		return map[string]bool{"revoked": changed}, err
 	}))
 }

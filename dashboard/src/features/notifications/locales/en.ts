@@ -76,6 +76,48 @@ const enNotifications: Record<string, TranslationEntry> = {
       "You can prepare and save policy now, but registered devices cannot receive notifications until an operator configures the push provider.",
     description: "Disabled server status hint",
   },
+  "notifications.webPushTitle": {
+    message: "Browser notifications",
+    description: "Web push settings card title",
+  },
+  "notifications.webPushDescription": {
+    message:
+      "Get the same alerts in this browser. Event filters and quiet hours are the ones you set under Mobile push — there is no second policy.",
+    description: "Web push settings description",
+  },
+  "notifications.webPushUnsupported": {
+    message: "This browser does not support web push.",
+    description: "Unsupported browser",
+  },
+  "notifications.webPushUnconfigured": {
+    message: "This bex server has not enabled browser push.",
+    description: "Server VAPID unset",
+  },
+  "notifications.webPushDenied": {
+    message:
+      "Notifications are blocked for this site. Allow them in the browser settings, then try again.",
+    description: "Permission denied",
+  },
+  "notifications.webPushError": {
+    message: "Couldn't update browser notifications. Try again.",
+    description: "Subscribe error",
+  },
+  "notifications.webPushOn": {
+    message: "This browser will receive bex alerts.",
+    description: "Subscribed state",
+  },
+  "notifications.webPushOff": {
+    message: "This browser is not subscribed.",
+    description: "Unsubscribed state",
+  },
+  "notifications.webPushEnable": {
+    message: "Enable in this browser",
+    description: "Subscribe button",
+  },
+  "notifications.webPushDisable": {
+    message: "Disable in this browser",
+    description: "Unsubscribe button",
+  },
   "notifications.pushEvents": {
     message: "Event filters",
     description: "Push event section",

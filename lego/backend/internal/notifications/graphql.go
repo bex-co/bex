@@ -168,6 +168,16 @@ var deviceSubscriptionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var webPushSubscriptionGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "NotificationWebPushSubscription",
+	Fields: graphql.Fields{
+		"browserId":        gqlutil.StrField(func(v WebPushSubscriptionView) any { return v.BrowserID }),
+		"createdAt":        gqlutil.StrField(func(v WebPushSubscriptionView) any { return v.CreatedAt.Format(time.RFC3339Nano) }),
+		"updatedAt":        gqlutil.StrField(func(v WebPushSubscriptionView) any { return v.UpdatedAt.Format(time.RFC3339Nano) }),
+		"lastRegisteredAt": gqlutil.StrField(func(v WebPushSubscriptionView) any { return v.LastRegisteredAt.Format(time.RFC3339Nano) }),
+	},
+})
+
 var pushNotificationGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "PushNotification",
 	Fields: graphql.Fields{
@@ -207,10 +217,30 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type:    graphql.NewNonNull(graphql.Boolean),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.IsPushAvailable(p.Context) },
 		},
+		"webPushAvailable": &graphql.Field{
+			Type:    graphql.NewNonNull(graphql.Boolean),
+			Resolve: func(p graphql.ResolveParams) (any, error) { return s.IsWebPushAvailable(p.Context) },
+		},
+		"webPushVapidPublicKey": &graphql.Field{
+			Type: graphql.String,
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				key, err := s.WebPushVAPIDPublicKey(p.Context)
+				if err != nil || key == "" {
+					return nil, err
+				}
+				return key, nil
+			},
+		},
 		"notificationDeviceSubscriptions": &graphql.Field{
 			Type: graphql.NewList(deviceSubscriptionGQLType),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.ListDeviceSubscriptions(p.Context)
+			},
+		},
+		"notificationWebPushSubscriptions": &graphql.Field{
+			Type: graphql.NewList(webPushSubscriptionGQLType),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ListWebPushSubscriptions(p.Context)
 			},
 		},
 		"notificationInbox": &graphql.Field{
@@ -282,6 +312,30 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				count, err := s.RevokeDeviceSubscriptions(p.Context)
 				return int(count), err
+			},
+		},
+		"registerNotificationWebPushSubscription": &graphql.Field{
+			Type: webPushSubscriptionGQLType,
+			Args: graphql.FieldConfigArgument{
+				"browserId": gqlutil.ReqArg(graphql.String),
+				"endpoint":  gqlutil.ReqArg(graphql.String),
+				"p256dh":    gqlutil.ReqArg(graphql.String),
+				"auth":      gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.RegisterWebPushSubscription(p.Context, RegisterWebPushInput{
+					BrowserID: p.Args["browserId"].(string), Endpoint: p.Args["endpoint"].(string),
+					P256dh: p.Args["p256dh"].(string), Auth: p.Args["auth"].(string),
+				})
+			},
+		},
+		"unregisterNotificationWebPushSubscription": &graphql.Field{
+			Type: graphql.Boolean,
+			Args: graphql.FieldConfigArgument{
+				"browserId": gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.UnregisterWebPushSubscription(p.Context, p.Args["browserId"].(string))
 			},
 		},
 		"markPushNotificationRead": &graphql.Field{

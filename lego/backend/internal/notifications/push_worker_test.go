@@ -202,8 +202,9 @@ func (f *fakePushWorkerStore) ClaimDuePushDeliveries(
 		out = append(out, store.DuePushDelivery{
 			PushNotification: delivery.notification,
 			DeviceID:         delivery.deviceID, Provider: destination.Provider,
-			Platform: destination.Platform, Token: destination.Token, ClaimedUntil: leaseUntil,
-			AttemptCount: delivery.attemptCount,
+			Platform: destination.Platform, Token: destination.Token,
+			P256dh: destination.P256dh, Auth: destination.Auth,
+			ClaimedUntil: leaseUntil, AttemptCount: delivery.attemptCount,
 		})
 		if len(out) == limit {
 			break
@@ -227,6 +228,20 @@ func (f *fakePushWorkerStore) AcceptPushDelivery(
 	delivery.receiptDueAt = &receiptDue
 	delivery.ticketID = ticketID
 	delivery.claimedUntil = time.Time{}
+	return true, nil
+}
+
+func (f *fakePushWorkerStore) CompletePushDelivery(_ context.Context, due store.DuePushDelivery, at time.Time) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delivery := f.deliveries[pushDeliveryKey(due.TenantID, due.Subject, due.DeviceID, due.SourceEventKey)]
+	if delivery == nil || delivery.accepted || delivery.failed || delivery.delivered || !delivery.claimedUntil.Equal(due.ClaimedUntil) {
+		return false, nil
+	}
+	delivery.delivered = true
+	delivery.attemptCount++
+	delivery.claimedUntil = time.Time{}
+	_ = at
 	return true, nil
 }
 
@@ -330,6 +345,14 @@ type fakePushSender struct {
 	messages []PushSendRequest
 	fail     bool
 	err      error
+	support  map[string]bool
+}
+
+func (f *fakePushSender) Supports(provider string) bool {
+	if f.support == nil {
+		return true
+	}
+	return f.support[provider]
 }
 
 func (f *fakePushSender) Send(_ context.Context, request PushSendRequest) (string, error) {
@@ -1018,4 +1041,201 @@ func TestPushWorkerDoesNotReprojectSettledAgentSessions(t *testing.T) {
 	if !found {
 		t.Error("a session settling at the cursor instant was skipped — the cursor must not lose it")
 	}
+}
+
+func TestPushWorkerWebPushCompletesWithoutReceipt(t *testing.T) {
+	now := time.Date(2026, time.August, 18, 12, 0, 0, 0, time.UTC)
+	n := validWorkerNotification(now.Add(-time.Minute))
+	queue := newFakePushWorkerStore()
+	queue.destinations = []store.ActivePushSubscription{{
+		TenantID: n.TenantID, Subject: n.Subject, DeviceID: "wp-browser",
+		Provider: "webpush", Platform: "web", Token: "https://push.example/endpoint",
+		P256dh: "p256", Auth: "auth",
+	}}
+	queue.notifications[pushNotificationKey(n)] = n
+	queue.deliveries[pushDeliveryKey(n.TenantID, n.Subject, "wp-browser", n.SourceEventKey)] =
+		&fakePushQueueDelivery{notification: n, deviceID: "wp-browser"}
+	sender := &fakePushSender{}
+	worker := &PushWorker{Store: queue, Sender: sender, Clock: func() time.Time { return now }}
+	if err := worker.RunOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	d := queue.deliveries[pushDeliveryKey(n.TenantID, n.Subject, "wp-browser", n.SourceEventKey)]
+	if d == nil || !d.delivered || d.accepted {
+		t.Fatalf("webpush delivery = %+v, want delivered without receipt acceptance", d)
+	}
+	if len(sender.snapshot()) != 1 {
+		t.Fatalf("sends = %d, want 1", len(sender.snapshot()))
+	}
+}
+
+func TestPushWorkerSharesPolicyAcrossExpoAndWebPush(t *testing.T) {
+	now := time.Date(2026, time.August, 3, 23, 0, 0, 0, time.UTC)
+	deployFailure := store.WebhookEventRow{
+		Key: "dep-policy:ended", Source: store.EventSourceDeploy,
+		Phase: store.EventPhaseEnded, Status: store.DeployUpdateFailed,
+	}
+	queue := policyProjectionQueue(now, encodedPushPolicy(t, func(settings *PushSettingsView) {
+		settings.Enabled = false
+	}), deployFailure)
+	queue.destinations = append(queue.destinations, store.ActivePushSubscription{
+		TenantID: "tea-one", Subject: "alice", Role: "viewer", DeviceID: "wp-browser",
+		Provider: "webpush", Platform: "web", Token: "https://push.example/endpoint",
+		CreatedAt: now.Add(-time.Hour),
+	})
+	if err := (&PushWorker{Store: queue, Clock: func() time.Time { return now }}).RunOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	if len(queue.notifications) != 0 || len(queue.deliveries) != 0 {
+		t.Fatalf("disabled policy still enqueued logical=%d deliveries=%d", len(queue.notifications), len(queue.deliveries))
+	}
+}
+
+func TestPushWorkerPrunesGoneWebPushDestination(t *testing.T) {
+	now := time.Date(2026, time.August, 18, 12, 0, 0, 0, time.UTC)
+	n := validWorkerNotification(now.Add(-time.Minute))
+	queue := newFakePushWorkerStore()
+	queue.destinations = []store.ActivePushSubscription{{
+		TenantID: n.TenantID, Subject: n.Subject, DeviceID: "wp-browser",
+		Provider: "webpush", Platform: "web", Token: "https://push.example/gone",
+	}}
+	queue.notifications[pushNotificationKey(n)] = n
+	queue.deliveries[pushDeliveryKey(n.TenantID, n.Subject, "wp-browser", n.SourceEventKey)] =
+		&fakePushQueueDelivery{notification: n, deviceID: "wp-browser"}
+	worker := &PushWorker{
+		Store: queue, Clock: func() time.Time { return now },
+		Sender: &fakePushSender{err: &pushtransport.InvalidTokenError{Code: "410"}},
+	}
+	_ = worker.RunOnce(context.Background())
+	if len(queue.destinations) != 0 {
+		t.Fatalf("gone webpush destination still active: %+v", queue.destinations)
+	}
+}
+
+func TestPushWorkerQuietHoursAndOverrideApplyToWebPush(t *testing.T) {
+	now := time.Date(2026, time.August, 3, 23, 0, 0, 0, time.UTC)
+	deployFailure := store.WebhookEventRow{
+		Key: "dep-policy-web:ended", Source: store.EventSourceDeploy,
+		Phase: store.EventPhaseEnded, Status: store.DeployUpdateFailed,
+	}
+	quiet := encodedPushPolicy(t, func(settings *PushSettingsView) {
+		settings.QuietHours = []PushClockRangeView{{
+			Weekdays: []string{"monday"}, Start: "22:00", End: "08:00",
+		}}
+		settings.MaxDeferralSeconds = 12 * 60 * 60
+	})
+	queue := policyProjectionQueue(now, quiet, deployFailure)
+	queue.destinations = append(queue.destinations, store.ActivePushSubscription{
+		TenantID: "tea-one", Subject: "alice", Role: "viewer", DeviceID: "wp-browser",
+		Provider: "webpush", Platform: "web", Token: "https://push.example/endpoint",
+		PushPolicy: quiet, CreatedAt: now.Add(-time.Hour),
+	})
+	if err := (&PushWorker{Store: queue, Clock: func() time.Time { return now }}).RunOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	if len(queue.notifications) != 1 || len(queue.deliveries) != 2 {
+		t.Fatalf("quiet-hours fan-out logical=%d deliveries=%d", len(queue.notifications), len(queue.deliveries))
+	}
+	want := time.Date(2026, time.August, 4, 8, 0, 0, 0, time.UTC)
+	for _, n := range queue.notifications {
+		if !n.DeliverAt.Equal(want) {
+			t.Fatalf("shared deferral = %s, want %s", n.DeliverAt, want)
+		}
+	}
+
+	empty := []DeliveryEvent{}
+	blocked := encodedPushPolicy(t, func(settings *PushSettingsView) {
+		settings.ServiceOverrides = []PushServiceOverrideView{{
+			ServiceID: "srv-c185th5c2rvvnhbfiltg", Events: &empty,
+		}}
+	})
+	blockedQueue := policyProjectionQueue(now, blocked, deployFailure)
+	blockedQueue.destinations = append(blockedQueue.destinations, store.ActivePushSubscription{
+		TenantID: "tea-one", Subject: "alice", Role: "viewer", DeviceID: "wp-browser",
+		Provider: "webpush", Platform: "web", Token: "https://push.example/endpoint",
+		PushPolicy: blocked, CreatedAt: now.Add(-time.Hour),
+	})
+	if err := (&PushWorker{Store: blockedQueue, Clock: func() time.Time { return now }}).RunOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	blockedQueue.mu.Lock()
+	defer blockedQueue.mu.Unlock()
+	if len(blockedQueue.notifications) != 0 || len(blockedQueue.deliveries) != 0 {
+		t.Fatalf("override still enqueued logical=%d deliveries=%d", len(blockedQueue.notifications), len(blockedQueue.deliveries))
+	}
+}
+
+func TestPushWorkerTransportSelectionMatrix(t *testing.T) {
+	now := time.Date(2026, time.August, 18, 12, 0, 0, 0, time.UTC)
+	n := validWorkerNotification(now.Add(-time.Minute))
+	seed := func() *fakePushWorkerStore {
+		queue := newFakePushWorkerStore()
+		queue.destinations = []store.ActivePushSubscription{
+			{TenantID: n.TenantID, Subject: n.Subject, DeviceID: "ios", Provider: "expo", Platform: "ios", Token: "expo-token"},
+			{TenantID: n.TenantID, Subject: n.Subject, DeviceID: "wp-browser", Provider: "webpush", Platform: "web", Token: "https://push.example/endpoint", P256dh: "p256", Auth: "auth"},
+		}
+		queue.notifications[pushNotificationKey(n)] = n
+		queue.deliveries[pushDeliveryKey(n.TenantID, n.Subject, "ios", n.SourceEventKey)] =
+			&fakePushQueueDelivery{notification: n, deviceID: "ios"}
+		queue.deliveries[pushDeliveryKey(n.TenantID, n.Subject, "wp-browser", n.SourceEventKey)] =
+			&fakePushQueueDelivery{notification: n, deviceID: "wp-browser"}
+		return queue
+	}
+	providers := func(messages []PushSendRequest) []string {
+		out := make([]string, 0, len(messages))
+		for _, m := range messages {
+			out = append(out, m.Provider)
+		}
+		return out
+	}
+
+	t.Run("expo only", func(t *testing.T) {
+		queue, sender := seed(), &fakePushSender{support: map[string]bool{"expo": true}}
+		if err := (&PushWorker{Store: queue, Sender: sender, Clock: func() time.Time { return now }}).RunOnce(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if got := providers(sender.snapshot()); len(got) != 1 || got[0] != "expo" {
+			t.Fatalf("sends = %v, want [expo]", got)
+		}
+	})
+	t.Run("webpush only", func(t *testing.T) {
+		queue, sender := seed(), &fakePushSender{support: map[string]bool{"webpush": true}}
+		if err := (&PushWorker{Store: queue, Sender: sender, Clock: func() time.Time { return now }}).RunOnce(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if got := providers(sender.snapshot()); len(got) != 1 || got[0] != "webpush" {
+			t.Fatalf("sends = %v, want [webpush]", got)
+		}
+		d := queue.deliveries[pushDeliveryKey(n.TenantID, n.Subject, "wp-browser", n.SourceEventKey)]
+		if d == nil || !d.delivered {
+			t.Fatalf("webpush delivery = %+v, want delivered", d)
+		}
+	})
+	t.Run("both", func(t *testing.T) {
+		queue, sender := seed(), &fakePushSender{}
+		if err := (&PushWorker{Store: queue, Sender: sender, Clock: func() time.Time { return now }}).RunOnce(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if got := providers(sender.snapshot()); len(got) != 2 {
+			t.Fatalf("sends = %v, want expo and webpush", got)
+		}
+	})
+	t.Run("neither", func(t *testing.T) {
+		queue, sender := seed(), &fakePushSender{support: map[string]bool{}}
+		if err := (&PushWorker{Store: queue, Sender: sender, Clock: func() time.Time { return now }}).RunOnce(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if len(sender.snapshot()) != 0 {
+			t.Fatalf("neither-configured still sent %v", providers(sender.snapshot()))
+		}
+		for _, d := range queue.deliveries {
+			if d.accepted || d.delivered || !d.claimedUntil.IsZero() {
+				t.Fatalf("unsupported provider mutated delivery: %+v", d)
+			}
+		}
+	})
 }

@@ -143,12 +143,17 @@ var callerScopedGQLFields = map[string]bool{
 	// Name-availability probe — checks the CALLER's own workspace (apps.NameAvailable).
 	"Query.serviceNameAvailable": true,
 	// Static vocabularies / stubs — return a fixed list, read no resource.
-	"Query.webhookEventTypes":            true, // the webhook event-type vocabulary
-	"Query.metricsPathFilterSuggestions": true, // bex stub: always an empty path list
-	"Query.pushNotificationsAvailable":   true, // caller-scoped transport capability, no resource argument
-	"Query.notificationInbox":            true, // caller's own tenant + subject are derived from auth context
-	"Query.unreadPushNotificationCount":  true, // caller's own tenant + subject are derived from auth context
-	"Mutation.markPushNotificationRead":  true, // exact id is constrained inside the caller-derived tenant + subject scope
+	"Query.webhookEventTypes":                            true, // the webhook event-type vocabulary
+	"Query.metricsPathFilterSuggestions":                 true, // bex stub: always an empty path list
+	"Query.pushNotificationsAvailable":                   true, // caller-scoped transport capability, no resource argument
+	"Query.webPushAvailable":                             true, // caller-scoped VAPID capability, no resource argument
+	"Query.webPushVapidPublicKey":                        true, // public applicationServerKey; still membership-gated, no resource argument
+	"Query.notificationInbox":                            true, // caller's own tenant + subject are derived from auth context
+	"Query.notificationWebPushSubscriptions":             true, // caller's own browser subscriptions; no resource argument
+	"Query.unreadPushNotificationCount":                  true, // caller's own tenant + subject are derived from auth context
+	"Mutation.markPushNotificationRead":                  true, // exact id is constrained inside the caller-derived tenant + subject scope
+	"Mutation.registerNotificationWebPushSubscription":   true, // registers only the caller's own browser
+	"Mutation.unregisterNotificationWebPushSubscription": true, // revokes only the caller's own browser
 }
 
 func TestCrossWorkspaceGraphQLMatrix(t *testing.T) {

@@ -26,6 +26,7 @@ import (
 type PushMetrics struct {
 	enabled     prometheus.Gauge
 	operations  *prometheus.CounterVec
+	transport   *prometheus.CounterVec
 	queue       *prometheus.GaugeVec
 	lastSuccess prometheus.Gauge
 }
@@ -34,10 +35,11 @@ func NewPushMetrics(r prometheus.Registerer) *PushMetrics {
 	m := &PushMetrics{
 		enabled:     prometheus.NewGauge(prometheus.GaugeOpts{Namespace: "bex", Subsystem: "push", Name: "enabled", Help: "Whether push transport is configured."}),
 		operations:  prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: "bex", Subsystem: "push", Name: "operations_total", Help: "Push operations by bounded operation and result."}, []string{"operation", "result"}),
+		transport:   prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: "bex", Subsystem: "push", Name: "transport_total", Help: "Push sends by bounded transport and result."}, []string{"transport", "result"}),
 		queue:       prometheus.NewGaugeVec(prometheus.GaugeOpts{Namespace: "bex", Subsystem: "push", Name: "queue_rows", Help: "Push queue rows by bounded state."}, []string{"state"}),
 		lastSuccess: prometheus.NewGauge(prometheus.GaugeOpts{Namespace: "bex", Subsystem: "push", Name: "last_success_timestamp_seconds", Help: "Last successful provider operation."}),
 	}
-	r.MustRegister(m.enabled, m.operations, m.queue, m.lastSuccess)
+	r.MustRegister(m.enabled, m.operations, m.transport, m.queue, m.lastSuccess)
 	return m
 }
 func (m *PushMetrics) SetEnabled(v bool) {
@@ -53,6 +55,11 @@ func (m *PushMetrics) SetEnabled(v bool) {
 func (m *PushMetrics) Operation(op, result string) {
 	if m != nil {
 		m.operations.WithLabelValues(op, result).Inc()
+	}
+}
+func (m *PushMetrics) Transport(transport, result string) {
+	if m != nil {
+		m.transport.WithLabelValues(transport, result).Inc()
 	}
 }
 func (m *PushMetrics) SetQueue(v store.PushQueueStats) {

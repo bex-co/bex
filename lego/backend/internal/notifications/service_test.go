@@ -51,6 +51,7 @@ type fakeStore struct {
 	rows       map[[2]string]store.NotificationSettings // (tenant, subject) -> row
 	recipients map[string][]store.NotifyRecipient       // tenant -> recipients
 	devices    map[[3]string]store.DevicePushSubscription
+	browsers   map[[3]string]store.WebPushSubscription
 	push       map[[2]string][]store.PushNotification
 }
 
@@ -58,6 +59,7 @@ func newFakeStore() *fakeStore {
 	return &fakeStore{
 		rows: map[[2]string]store.NotificationSettings{}, recipients: map[string][]store.NotifyRecipient{},
 		devices: map[[3]string]store.DevicePushSubscription{},
+		browsers: map[[3]string]store.WebPushSubscription{},
 		push:    map[[2]string][]store.PushNotification{},
 	}
 }
@@ -144,6 +146,66 @@ func (f *fakeStore) RevokeAllDevicePushSubscriptions(_ context.Context, tenantID
 	for key := range f.devices {
 		if key[0] == tenantID && key[1] == subject {
 			delete(f.devices, key)
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (f *fakeStore) UpsertWebPushSubscription(_ context.Context, sub store.WebPushSubscription) (store.WebPushSubscription, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.browsers == nil {
+		f.browsers = map[[3]string]store.WebPushSubscription{}
+	}
+	now := time.Now().UTC()
+	for key, other := range f.browsers {
+		if other.Endpoint == sub.Endpoint && key != [3]string{sub.TenantID, sub.Subject, sub.BrowserID} {
+			delete(f.browsers, key)
+		}
+	}
+	key := [3]string{sub.TenantID, sub.Subject, sub.BrowserID}
+	if old, ok := f.browsers[key]; ok {
+		sub.CreatedAt = old.CreatedAt
+	} else {
+		sub.CreatedAt = now
+	}
+	sub.UpdatedAt, sub.LastRegisteredAt = now, now
+	f.browsers[key] = sub
+	return sub, nil
+}
+
+func (f *fakeStore) ListOwnWebPushSubscriptions(_ context.Context, tenantID, subject string) ([]store.WebPushSubscription, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []store.WebPushSubscription
+	for key, sub := range f.browsers {
+		if key[0] == tenantID && key[1] == subject {
+			sub.Endpoint, sub.P256dh, sub.Auth, sub.EndpointDigest = "", "", "", ""
+			out = append(out, sub)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeStore) RevokeWebPushSubscription(_ context.Context, tenantID, subject, browserID string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	key := [3]string{tenantID, subject, browserID}
+	if _, ok := f.browsers[key]; !ok {
+		return false, nil
+	}
+	delete(f.browsers, key)
+	return true, nil
+}
+
+func (f *fakeStore) RevokeAllWebPushSubscriptions(_ context.Context, tenantID, subject string) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var count int64
+	for key := range f.browsers {
+		if key[0] == tenantID && key[1] == subject {
+			delete(f.browsers, key)
 			count++
 		}
 	}

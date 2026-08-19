@@ -18,8 +18,10 @@ package notifications
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -32,9 +34,11 @@ const (
 	maxDeviceIDBytes  = 200
 	maxPushTokenBytes = 4096
 
-	auditRegisterDevice   = "notifications.RegisterDeviceSubscription"
-	auditUnregisterDevice = "notifications.UnregisterDeviceSubscription"
-	auditRevokeDevices    = "notifications.RevokeDeviceSubscriptions"
+	auditRegisterDevice    = "notifications.RegisterDeviceSubscription"
+	auditUnregisterDevice  = "notifications.UnregisterDeviceSubscription"
+	auditRevokeDevices     = "notifications.RevokeDeviceSubscriptions"
+	auditRegisterWebPush   = "notifications.RegisterWebPushSubscription"
+	auditUnregisterWebPush = "notifications.UnregisterWebPushSubscription"
 )
 
 var deviceIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$`)
@@ -210,6 +214,155 @@ func normalizeDeviceInput(in RegisterDeviceInput) (RegisterDeviceInput, error) {
 		return RegisterDeviceInput{}, fmt.Errorf("%w: token must be between 1 and %d bytes", core.ErrBadRequest, maxPushTokenBytes)
 	}
 	return in, nil
+}
+
+type RegisterWebPushInput struct {
+	BrowserID string `json:"browserId"`
+	Endpoint  string `json:"endpoint"`
+	P256dh    string `json:"p256dh"`
+	Auth      string `json:"auth"`
+}
+
+type WebPushSubscriptionView struct {
+	BrowserID        string    `json:"browserId"`
+	CreatedAt        time.Time `json:"createdAt"`
+	UpdatedAt        time.Time `json:"updatedAt"`
+	LastRegisteredAt time.Time `json:"lastRegisteredAt"`
+}
+
+func (s *Service) RegisterWebPushSubscription(ctx context.Context, in RegisterWebPushInput) (WebPushSubscriptionView, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return WebPushSubscriptionView{}, err
+	}
+	if s.Store == nil {
+		return WebPushSubscriptionView{}, core.ErrNotificationsUnavailable
+	}
+	if !s.webPushTransportAvailable() {
+		return WebPushSubscriptionView{}, core.ErrWebPushUnavailable
+	}
+	tenantID, subject, err := s.deviceOwner(ctx)
+	if err != nil {
+		return WebPushSubscriptionView{}, err
+	}
+	in, err = normalizeWebPushInput(in)
+	if err != nil {
+		return WebPushSubscriptionView{}, err
+	}
+	row, err := s.Store.UpsertWebPushSubscription(ctx, store.WebPushSubscription{
+		TenantID: tenantID, Subject: subject, BrowserID: in.BrowserID,
+		Endpoint: in.Endpoint, P256dh: in.P256dh, Auth: in.Auth,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, store.ErrWebPushSubjectLimit):
+			return WebPushSubscriptionView{}, core.NewConflictError(
+				"PUSH_WEBPUSH_SUBJECT_LIMIT",
+				fmt.Sprintf("a member may register at most %d active web-push browsers", store.MaxActiveWebPushBrowsersPerSubject), nil)
+		case errors.Is(err, store.ErrWebPushWorkspaceLimit):
+			return WebPushSubscriptionView{}, core.NewConflictError(
+				"PUSH_WEBPUSH_WORKSPACE_LIMIT",
+				fmt.Sprintf("a workspace may register at most %d active web-push browsers", store.MaxActiveWebPushBrowsersPerWorkspace), nil)
+		default:
+			return WebPushSubscriptionView{}, store.MapError(err)
+		}
+	}
+	s.recordDeviceAudit(ctx, tenantID, auditRegisterWebPush, in.BrowserID)
+	return webPushSubscriptionView(row), nil
+}
+
+func (s *Service) ListWebPushSubscriptions(ctx context.Context) ([]WebPushSubscriptionView, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return nil, err
+	}
+	if s.Store == nil {
+		return nil, core.ErrNotificationsUnavailable
+	}
+	tenantID, subject, err := s.deviceOwner(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.Store.ListOwnWebPushSubscriptions(ctx, tenantID, subject)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]WebPushSubscriptionView, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, webPushSubscriptionView(row))
+	}
+	return out, nil
+}
+
+func (s *Service) UnregisterWebPushSubscription(ctx context.Context, browserID string) (bool, error) {
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return false, err
+	}
+	if s.Store == nil {
+		return false, core.ErrNotificationsUnavailable
+	}
+	tenantID, subject, err := s.deviceOwner(ctx)
+	if err != nil {
+		return false, err
+	}
+	browserID = strings.TrimSpace(browserID)
+	if !deviceIDPattern.MatchString(browserID) {
+		return false, fmt.Errorf("%w: browserId must be a safe opaque identifier", core.ErrBadRequest)
+	}
+	changed, err := s.Store.RevokeWebPushSubscription(ctx, tenantID, subject, browserID)
+	if err != nil {
+		return false, err
+	}
+	s.recordDeviceAudit(ctx, tenantID, auditUnregisterWebPush, browserID)
+	return changed, nil
+}
+
+func normalizeWebPushInput(in RegisterWebPushInput) (RegisterWebPushInput, error) {
+	in.BrowserID = strings.TrimSpace(in.BrowserID)
+	in.Endpoint = strings.TrimSpace(in.Endpoint)
+	in.P256dh = strings.TrimSpace(in.P256dh)
+	in.Auth = strings.TrimSpace(in.Auth)
+	if !deviceIDPattern.MatchString(in.BrowserID) {
+		return RegisterWebPushInput{}, fmt.Errorf("%w: browserId must be a safe opaque identifier", core.ErrBadRequest)
+	}
+	if err := validatePublicPushEndpoint(in.Endpoint); err != nil {
+		return RegisterWebPushInput{}, fmt.Errorf("%w: endpoint must be an HTTPS push URL", core.ErrBadRequest)
+	}
+	p256dh, err := decodeWebPushKey(in.P256dh)
+	if err != nil || len(p256dh) != 65 || p256dh[0] != 0x04 {
+		return RegisterWebPushInput{}, fmt.Errorf("%w: p256dh must be an uncompressed P-256 key", core.ErrBadRequest)
+	}
+	auth, err := decodeWebPushKey(in.Auth)
+	if err != nil || len(auth) < 16 || len(auth) > 32 {
+		return RegisterWebPushInput{}, fmt.Errorf("%w: auth must be a base64url secret", core.ErrBadRequest)
+	}
+	return in, nil
+}
+
+func validatePublicPushEndpoint(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil || u.User != nil || u.Host == "" || len(raw) < 8 || len(raw) > 2048 {
+		return errors.New("invalid")
+	}
+	if u.Scheme == "https" {
+		return nil
+	}
+	if u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1" || u.Hostname() == "::1") {
+		return nil
+	}
+	return errors.New("invalid")
+}
+
+func decodeWebPushKey(s string) ([]byte, error) {
+	if b, err := base64.RawURLEncoding.DecodeString(s); err == nil && len(b) > 0 {
+		return b, nil
+	}
+	return base64.URLEncoding.DecodeString(s)
+}
+
+func webPushSubscriptionView(row store.WebPushSubscription) WebPushSubscriptionView {
+	return WebPushSubscriptionView{
+		BrowserID: row.BrowserID, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		LastRegisteredAt: row.LastRegisteredAt,
+	}
 }
 
 func validBounded(value string, max int) bool {

@@ -66,3 +66,30 @@ func TestPushTransportSenderRejectsUnknownProviderBeforeTransport(t *testing.T) 
 		t.Fatalf("unknown provider error/message = (%v, %+v)", err, transport.message)
 	}
 }
+
+func TestPushTransportSenderSupportsExactlyConfiguredProviders(t *testing.T) {
+	cases := []struct {
+		name    string
+		sender  PushTransportSender
+		expo    bool
+		webpush bool
+	}{
+		{name: "neither", sender: PushTransportSender{}},
+		{name: "expo only", sender: PushTransportSender{Transport: &capturePushTransport{}}, expo: true},
+		{name: "webpush only", sender: PushTransportSender{WebPush: &push.WebPush{}}, webpush: true},
+		{name: "both", sender: PushTransportSender{Transport: &capturePushTransport{}, WebPush: &push.WebPush{}}, expo: true, webpush: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.sender.Supports(push.ProviderExpo); got != tc.expo {
+				t.Fatalf("Supports(expo) = %v, want %v", got, tc.expo)
+			}
+			if got := tc.sender.Supports(push.ProviderWebPush); got != tc.webpush {
+				t.Fatalf("Supports(webpush) = %v, want %v", got, tc.webpush)
+			}
+			if tc.sender.Supports("apns") {
+				t.Fatal("unknown provider must be unsupported")
+			}
+		})
+	}
+}
