@@ -68,8 +68,13 @@ func TestValkeyImage(t *testing.T) {
 	if got := valkeyImage(""); got != kvDefaultImage {
 		t.Errorf("empty version => %q, want default %q", got, kvDefaultImage)
 	}
-	if got := valkeyImage("7"); got != "valkey/valkey:7-alpine" {
-		t.Errorf("version 7 => %q, want valkey/valkey:7-alpine", got)
+	// w1/m73: an explicit version resolves to its own PINNED image, not to the
+	// composed `valkey/valkey:7-alpine` tag this used to assert.
+	if got := valkeyImage("7"); got != kvVersionImages["7"] {
+		t.Errorf("version 7 => %q, want the pinned %q", got, kvVersionImages["7"])
+	}
+	if got := valkeyImage("8"); got != kvDefaultImage {
+		t.Errorf("version 8 => %q, want the pinned default %q", got, kvDefaultImage)
 	}
 }
 

@@ -129,12 +129,12 @@ func assertKeyValueUpload(t *testing.T, upload corev1.Container) {
 // S3 credentials, so a retagged mutable tag must not be able to become their
 // code.
 //
-// The one exemption is a snapshot stage whose image came from an EXPLICIT
-// tenant-chosen spec.version: bex cannot pre-resolve a digest for a major it
-// has not seen, so that stays the standing digest-inventory deferral (ADR069
-// #5, continuing the ADR060-D7 lineage). The empty-version case — what almost
-// every instance runs — is asserted pinned, so the exemption cannot quietly
-// widen back to the default path.
+// w1/m73 removed the one exemption this test used to carry. A snapshot stage
+// whose image came from an EXPLICIT tenant-chosen spec.version was allowed to
+// be unpinned, on the reasoning that bex "cannot pre-resolve a digest for a
+// major it has not seen" — but KeyValueSpec.Version is a closed CRD enum, so it
+// never sees one. Every version now resolves to a pinned image
+// (kvVersionImages), and every stage below is asserted pinned.
 func TestKeyValueBackupFixedImagesAreDigestPinned(t *testing.T) {
 	withAge := BackupStore{DestinationPath: "s3://b", EndpointURL: "https://s3.example.test", S3Secret: "s", AgePublicKey: "age1sentinel"}
 	for _, tc := range []struct {
@@ -149,10 +149,11 @@ func TestKeyValueBackupFixedImagesAreDigestPinned(t *testing.T) {
 			version        string
 			snapshotPinned bool
 		}{
-			// The default path bex owns end to end: everything pinned.
+			// Both paths are pinned since w1/m73 — the default bex owns end to
+			// end, and each major the CRD enum permits.
 			{"default-version", "", true},
-			// Tenant asked for a specific major: snapshot is the deferral.
-			{"explicit-version", "8", false},
+			{"explicit-version-8", "8", true},
+			{"explicit-version-7", "7", true},
 		} {
 			t.Run(tc.name+"/"+vc.name, func(t *testing.T) {
 				kv := &appv1alpha1.KeyValue{
