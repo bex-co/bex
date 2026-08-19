@@ -10,7 +10,7 @@
 | ---- | -------------------------------------------------------------------------------------------- | --- | ---------- |
 | t001 | Decision spike: reject Vercel harness layer, choose direct `@agentclientprotocol/sdk` — **DONE** | 45m | —          |
 | t002 | Driver: replace provider + `streamText` with `ClientSideConnection` + a typed `session/update` mapper — **DONE** | 90m | t001       |
-| t003 | Client: render typed parts directly; delete `unwrapAcpTool` + collapse `classifyAcpData`     | 60m | t002       |
+| t003 | Client: render typed parts directly; delete `unwrapAcpTool` + collapse `classifyAcpData` — **DONE** | 60m | t002       |
 | t004 | Consumer consistency: dashboard + mobile + gateway/transcript byte-transparency + REST/GraphQL/MCP unchanged — **DONE** | 30m | t003       |
 | t005 | Simplify — `/simplify` over the driver + client changes                                      | 30m | t004       |
 | t006 | Test coverage — offline mapping tests vs `fixtures/acp-agent.mjs` (extended); no live cluster — **DONE** | 50m | t004       |

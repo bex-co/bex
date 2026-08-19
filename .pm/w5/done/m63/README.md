@@ -8,7 +8,7 @@ Shipped (deploy (bex via Argo) green) and enabled Tier A **encryption** in prod 
 
 - **Tier B SSE:** live on all three ObjectStores (`encryption: AES256`), backups still `completed`.
 - **Tier A etcd + OpenBao:** enabled via the out-of-band `bex-backup-age` ConfigMap + `AGE_BACKUP_PRIVATE_KEY` in `.env`/CI; manual runs produced `*.gz.age`, and a live prod `restore-etcd.sh` drill decrypted a fresh `.age` snapshot and recovered 9 CRs. Verified end-to-end.
-- **Tier A KeyValue:** operator env `BEX_BACKUP_AGE_PUBLIC_KEY` set via gitops; the live `kvbak` CronJob reconciled to `[snapshot compress encrypt]`. A green KV backup is blocked by a **pre-existing** Valkey snapshot-connectivity failure unrelated to ADR050 — see `.pm/w5/039.md`.
+- **Tier A KeyValue:** operator env `BEX_BACKUP_AGE_PUBLIC_KEY` set via gitops; the live `kvbak` CronJob reconciled to `[snapshot compress encrypt]`. The pre-existing Valkey snapshot-connectivity failure is **closed** (2026-08-18, `.pm/w5/done/039.md`): backup-egress NetworkPolicy live since 2026-08-08; nightly Jobs succeeding since 2026-08-17.
 - **Deferred (operator decision):** the write-only per-store credential rotation (§3) is built but not enabled; `t006`/`t007` remain the runbook. Follow-ups `036`/`037`/`038`; new `039` for the KV snapshot issue.
 
 ## Implementation status (2026-08-04)
