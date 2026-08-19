@@ -117,17 +117,17 @@ rules:
 - apiGroups:
   - kpack.io
   resources:
-  - clusterbuilders
+  - builds
   verbs:
+  - delete
   - get
   - list
   - watch
 - apiGroups:
   - kpack.io
   resources:
-  - builds
+  - clusterbuilders
   verbs:
-  - delete
   - get
   - list
   - watch
