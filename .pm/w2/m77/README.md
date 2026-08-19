@@ -1,6 +1,6 @@
 # w2 · m77 — ADR059 hibernation: production enablement + resume-SLO evidence
 
-**Worker:** worker2 **Goal:** turn on the hibernation tier w2/m68 shipped env-gated OFF: provision the SSE-enabled snapshot bucket + scoped credential, arm `BEX_AGENT_SNAPSHOT_S3_*` in prod, and prove a real session hibernates on idle and rehydrates on resume with recorded latency against the ADR059 SLOs. **Status:** todo (t001 done; t002 waiting on deploy that consumes the Secret)
+**Worker:** worker2 **Goal:** turn on the hibernation tier w2/m68 shipped env-gated OFF: provision the SSE-enabled snapshot bucket + scoped credential, arm `BEX_AGENT_SNAPSHOT_S3_*` in prod, and prove a real session hibernates on idle and rehydrates on resume with recorded latency against the ADR059 SLOs. **Status:** todo (t001–t002 done; t003 live walk in progress)
 
 ## Definition of done
 
@@ -19,7 +19,7 @@ A real prod agent session hibernates when its idle grace elapses (phase `hiberna
 | id   | title                                                                                                                                                | est | depends_on  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ----------- |
 | t001 | Provision the snapshot object store: SSE-enabled bucket (NEVER bex-tfstate), scoped durable credential, `.env`/`.env.example` names + gh-secrets flow | 45m | —          | — **DONE** |
-| t002 | Arm prod: set the `BEX_AGENT_SNAPSHOT_S3_*` contract in the prod deploy secrets/manifests, deploy, confirm armed; review retention + pin-quota knobs  | 30m | t001        |
+| t002 | Arm prod: set the `BEX_AGENT_SNAPSHOT_S3_*` contract in the prod deploy secrets/manifests, deploy, confirm armed; review retention + pin-quota knobs  | 30m | t001        | — **DONE** |
 | t003 | Live hibernate walk: run a session to completion, let idle grace elapse (or lower `BEX_AGENT_SANDBOX_IDLE_TTL` on a canary), verify phase/snapshot/pod-gone | 30m | t002 |
 | t004 | Live rehydrate walk: Steer/Resume, verify restored workspace state, capture resume latency vs the ADR059 SLOs                                         | 30m | t003        |
 | t005 | Evidence + docs: file the walk under `.pm/w2/m77/evidence/`, update ADR059's enablement trail and the m68 note                                         | 30m | t004        |

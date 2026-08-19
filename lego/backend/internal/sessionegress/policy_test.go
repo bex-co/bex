@@ -346,6 +346,56 @@ func TestModelProxyNarrowingDropsVendorHostAndAddsGatewayPort(t *testing.T) {
 	}
 }
 
+func TestSnapshotEndpointHostParsesPublicOrigin(t *testing.T) {
+	host, err := SnapshotEndpointHost("https://s3.eu-central-2.wasabisys.com")
+	if err != nil || host != "s3.eu-central-2.wasabisys.com" {
+		t.Fatalf("SnapshotEndpointHost = %q %v, want the Wasabi regional host", host, err)
+	}
+	empty, err := SnapshotEndpointHost("")
+	if err != nil || empty != "" {
+		t.Fatalf("empty SnapshotEndpointHost = %q %v", empty, err)
+	}
+	for _, raw := range []string{
+		"https://s3.eu-central-2.wasabisys.com/bucket",
+		"https://127.0.0.1",
+		"https://s3.svc.cluster.local",
+		"not-a-url",
+	} {
+		if _, err := SnapshotEndpointHost(raw); err == nil {
+			t.Errorf("SnapshotEndpointHost(%q) succeeded, want error", raw)
+		}
+	}
+}
+
+// w2/m77 live walk: hibernate curl exit 6 was Cilium NXDOMAIN of the presigned
+// PUT host. The snapshot store FQDN must be agent-phase baseline (not setup-only)
+// and must not change the tenant-allowlist identity hash.
+func TestSnapshotStoreHostIsAgentPhaseBaselineAndOmittedFromAllowlistHash(t *testing.T) {
+	const snap = "s3.eu-central-2.wasabisys.com"
+	with := &Manager{Config: Config{SnapshotStoreDomains: []string{snap}}}
+	without := &Manager{}
+	agentWith, err := with.policy("tea-test-sandbox", "ags-test", PhaseAgent, "https://models.example.com/v1", nil)
+	if err != nil {
+		t.Fatalf("with-store agent policy: %v", err)
+	}
+	agentWithout, err := without.policy("tea-test-sandbox", "ags-test", PhaseAgent, "https://models.example.com/v1", nil)
+	if err != nil {
+		t.Fatalf("without-store agent policy: %v", err)
+	}
+	if !slices.Contains(fqdnNames(t, agentWith), snap) || !slices.Contains(dnsNames(t, agentWith), snap) {
+		t.Fatalf("snapshot host missing from agent policy: fqdn=%v dns=%v", fqdnNames(t, agentWith), dnsNames(t, agentWith))
+	}
+	if slices.Contains(fqdnNames(t, agentWithout), snap) {
+		t.Fatal("snapshot host leaked into a store-off policy")
+	}
+	if agentWith.GetAnnotations()[hashAnnotation] != agentWithout.GetAnnotations()[hashAnnotation] {
+		t.Fatal("snapshot store host must not change the tenant allowlist identity hash")
+	}
+	if _, err := with.policy("tea-test-sandbox", "ags-test", PhaseAgent, "https://models.example.com/v1", []string{snap}); err == nil {
+		t.Fatal("tenant extra destination duplicated the snapshot host")
+	}
+}
+
 func fqdnNames(t *testing.T, obj *unstructured.Unstructured) []string {
 	t.Helper()
 	rules, found, err := unstructured.NestedSlice(obj.Object, "spec", "egress")

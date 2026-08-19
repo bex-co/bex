@@ -82,6 +82,15 @@ type Config struct {
 	// renderer for tests/migrations, but the agent-session service refuses new
 	// mutation/rehydration work when the proxy is absent (ADR064).
 	ModelProxyPort uint16
+	// SnapshotStoreDomains are the exact public DNS hosts of the ADR059
+	// hibernation object store (BEX_AGENT_SNAPSHOT_S3_ENDPOINT). The Completer's
+	// snapshot/rehydrate scripts curl a time-boxed presigned URL from inside the
+	// sandbox; without these names Cilium NXDOMAIN/timeouts the PUT (curl exit 6)
+	// and reclaim falls back to Terminate. Empty when the Hibernated tier is off.
+	// They are platform baseline (both phases), never tenant widening, and are
+	// omitted from the allowlist identity hash so enabling the store does not
+	// look like an extra-destination mutation.
+	SnapshotStoreDomains []string
 }
 
 // Manager converges namespaced, per-session Cilium policies. A nil Client is
@@ -169,6 +178,13 @@ func (c Config) normalized() (Config, error) {
 		return Config{}, fmt.Errorf("session egress: BEX_AGENT_SETUP_REGISTRIES: %w", err)
 	}
 	c.SetupRegistryDomains = validated
+	if len(c.SnapshotStoreDomains) > 0 {
+		hosts, err := ExtraDestinations(c.SnapshotStoreDomains)
+		if err != nil {
+			return Config{}, fmt.Errorf("session egress: BEX_AGENT_SNAPSHOT_S3_ENDPOINT: %w", err)
+		}
+		c.SnapshotStoreDomains = hosts
+	}
 	return c, nil
 }
 
@@ -182,6 +198,13 @@ func (m *Manager) setupRegistryDomains() []string {
 		return registryDomains
 	}
 	return m.Config.SetupRegistryDomains
+}
+
+func (m *Manager) snapshotStoreDomains() []string {
+	if m == nil {
+		return nil
+	}
+	return m.Config.SnapshotStoreDomains
 }
 
 // ModelEndpointHost validates one per-session provider endpoint and returns the
@@ -208,6 +231,30 @@ func ModelEndpointHost(raw string) (string, error) {
 		return "", core.NewBadRequestError("AGENT_SESSION_MODEL_ENDPOINT_INVALID", "modelEndpoint must use a DNS hostname", nil)
 	}
 	return modelHost, nil
+}
+
+// SnapshotEndpointHost returns the exact public DNS host a path-style
+// presigned S3 URL will use. Empty input is the Hibernated-tier-off case.
+// HTTPS (or HTTP with an empty/443 port) only: the Cilium FQDN rule admits
+// TCP/443, matching the sandbox curl PUT/GET.
+func SnapshotEndpointHost(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Path != "" && u.Path != "/" {
+		return "", fmt.Errorf("BEX_AGENT_SNAPSHOT_S3_ENDPOINT must be an absolute http(s) origin (host only)")
+	}
+	if u.Port() != "" && u.Port() != "443" {
+		return "", fmt.Errorf("BEX_AGENT_SNAPSHOT_S3_ENDPOINT must use port 443")
+	}
+	host := strings.ToLower(u.Hostname())
+	if net.ParseIP(host) != nil || len(validation.IsDNS1123Subdomain(host)) != 0 ||
+		!strings.Contains(host, ".") || privateOrClusterHost(host) {
+		return "", fmt.Errorf("BEX_AGENT_SNAPSHOT_S3_ENDPOINT must use a public DNS hostname")
+	}
+	return host, nil
 }
 
 // privateOrClusterHost reports whether host is a loopback or cluster-local name
@@ -306,7 +353,7 @@ func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint
 		return nil, err
 	}
 	for _, domain := range extra {
-		if domain == modelHost || slices.Contains(modelProviderDomains, domain) || slices.Contains(githubDomains, domain) {
+		if domain == modelHost || slices.Contains(modelProviderDomains, domain) || slices.Contains(githubDomains, domain) || slices.Contains(m.snapshotStoreDomains(), domain) {
 			return nil, invalidAllowlist("already_baseline", domain, "destination is already part of the agent baseline")
 		}
 	}
@@ -330,6 +377,7 @@ func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint
 	if phase == PhaseSetup {
 		domains = append(domains, m.setupRegistryDomains()...)
 	}
+	domains = append(domains, m.snapshotStoreDomains()...)
 	domains = append(domains, extra...)
 	domains = uniqueSorted(domains)
 	dnsNames := append(slices.Clone(domains), credentialGatewayHost)

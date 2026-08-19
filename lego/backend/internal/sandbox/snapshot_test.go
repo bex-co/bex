@@ -120,3 +120,16 @@ func TestParseHibernateOutput(t *testing.T) {
 		})
 	}
 }
+
+func TestHibernateScriptShowsCurlErrorsAndSnapshotDetailStripsQueries(t *testing.T) {
+	if !strings.Contains(hibernateScript, "curl -sSf") {
+		t.Fatal("hibernate script must use curl -sSf so DNS/TLS failures reach stderr")
+	}
+	got := snapshotExecDetail(ExecResult{Stderr: "curl: (6) Could not resolve host: s3.example.com?X-Amz-Signature=secret"})
+	if got != ": curl: (6) Could not resolve host: s3.example.com" {
+		t.Fatalf("snapshotExecDetail = %q", got)
+	}
+	if snapshotExecDetail(ExecResult{}) != "" {
+		t.Fatal("empty exec result should add no detail")
+	}
+}

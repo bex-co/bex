@@ -694,7 +694,7 @@ tar czf "$SNAP" --numeric-owner $MEMBERS 2>/dev/null
 sha256sum "$SNAP" | cut -d' ' -f1
 wc -c < "$SNAP"
 if [ -n "$(git -C /workspace status --porcelain 2>/dev/null)" ]; then echo dirty; else echo clean; fi
-curl -sf -X PUT --upload-file "$SNAP" %s
+curl -sSf -X PUT --upload-file "$SNAP" %s
 rm -f "$SNAP"`
 
 // HibernateAgentSessionSandbox snapshots the session's mutable state to the
@@ -741,9 +741,31 @@ func (l *AgentSessionLifecycle) HibernateAgentSessionSandbox(ctx context.Context
 		return SnapshotResult{}, err
 	}
 	if result.ExitCode != 0 {
-		return SnapshotResult{}, fmt.Errorf("hibernation snapshot failed with exit code %d", result.ExitCode)
+		return SnapshotResult{}, fmt.Errorf("hibernation snapshot failed with exit code %d%s", result.ExitCode, snapshotExecDetail(result))
 	}
 	return parseHibernateOutput(result.Stdout)
+}
+
+// snapshotExecDetail appends a short, query-stripped stderr (or stdout) fragment
+// so a Cilium-denied PUT (curl exit 6) is diagnosable without logging the
+// presigned URL the script was given.
+func snapshotExecDetail(result ExecResult) string {
+	detail := strings.TrimSpace(result.Stderr)
+	if detail == "" {
+		detail = strings.TrimSpace(result.Stdout)
+	}
+	if detail == "" {
+		return ""
+	}
+	if i := strings.Index(detail, "?"); i >= 0 {
+		detail = detail[:i]
+	}
+	detail = strings.Join(strings.Fields(detail), " ")
+	const max = 200
+	if len(detail) > max {
+		detail = detail[:max]
+	}
+	return ": " + detail
 }
 
 // parseHibernateOutput reads the digest, byte-count, and clean/dirty lines the
