@@ -1,6 +1,6 @@
 # w1 · m72 — Converge the ten `dev-N` harnesses onto one parameterized script
 
-**Worker:** worker1 **Goal:** one dev-environment implementation instead of ten diverging copies, so a milestone verified on one worker's stack is verified on the same stack every other worker has. **Status:** t001–t006 **DONE** (2026-08-18); **t007 (closeout) BLOCKED** on the DoD's live two-workstream walk — the shared CAPD cluster needs a destructive rebuild the operator has to authorize (its control-plane node lost `/etc/kubernetes/pki`, so the apiserver crashloops; restarting the stopped containers revived etcd/scheduler/controller-manager but not the apiserver).
+**Worker:** worker1 **Goal:** one dev-environment implementation instead of ten diverging copies, so a milestone verified on one worker's stack is verified on the same stack every other worker has. **Status:** done (2026-08-18) — t001–t008 **DONE**. The DoD's live two-workstream walk was **waived by the user** rather than rebuilding the shared CAPD cluster (its control-plane node lost `/etc/kubernetes/pki`, so the apiserver crashloops; restarting the stopped containers revived etcd/scheduler/controller-manager but not it). The milestone closes on the CI-green unit tests + shellcheck + the traceable union in the evidence; no live `up`/`status`/`down` walk is claimed — see `done/t007.md`.
 
 **Measured:** tracked `dev-N` files **133 → 31**, tracked `dev-N` LOC **7,129 → 1,658**, and the shared implementation (script + tests + templates) is 1,204 LOC — a **net −4,267 tracked LOC**. `up.sh` variants **8 → 1**, `status.sh` **4 → 1**. `du -sh .pm` **4.7 GB → 21 MB**.
 
@@ -14,7 +14,7 @@
 | t004 | Bound the log growth                                          | 30m | t002 — **DONE** |
 | t005 | Simplify                                                      | 30m | t003, t004 — **DONE** |
 | t006 | Test coverage                                                 | 45m | t003, t004 — **DONE** |
-| t007 | Closeout                                                      | 15m | t005, t006 — **BLOCKED**: needs the live two-workstream walk; the local CAPD cluster requires a destructive rebuild |
+| t007 | Closeout                                                      | 15m | t005, t006 — **DONE** (2026-08-18): live walk **waived by the user**; closed on the CI-green derivation/isolation tests + shellcheck |
 
 ## Definition of done
 
