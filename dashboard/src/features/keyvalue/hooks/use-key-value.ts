@@ -1,7 +1,11 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { KeyValueDocument } from "@/graphql/definitions";
-import { RESOURCE_POLL_INTERVAL_MS } from "@/common/lib/polling";
+import {
+  CONVERGING_POLL_INTERVAL_MS,
+  RESOURCE_POLL_INTERVAL_MS,
+  eagerRefetch,
+} from "@/common/lib/polling";
 import { toKeyValueView, isConverging } from "@/features/keyvalue/lib/status";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
@@ -9,8 +13,8 @@ export interface UseKeyValueResult {
   keyValue: KeyValueView | null;
   loading: boolean;
   error: Error | undefined;
-  /** Re-run the query (used after suspend/resume to pick up the fresh state). */
-  refetch: () => Promise<unknown>;
+  /** Re-read the store now (used after a lifecycle verb converges the state). */
+  refetch: () => void;
 }
 
 /**
@@ -36,9 +40,16 @@ export function useKeyValue(id: string): UseKeyValueResult {
   // baseline cadence so out-of-band changes still show up.
   const converging = keyValue ? isConverging(keyValue) : true;
   useEffect(() => {
-    startPolling(converging ? 3000 : RESOURCE_POLL_INTERVAL_MS);
+    startPolling(
+      converging ? CONVERGING_POLL_INTERVAL_MS : RESOURCE_POLL_INTERVAL_MS,
+    );
     return () => stopPolling();
   }, [converging, startPolling, stopPolling]);
 
-  return { keyValue, loading, error, refetch };
+  return {
+    keyValue,
+    loading,
+    error,
+    refetch: () => eagerRefetch(startPolling, refetch),
+  };
 }

@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConnectionInfoPanel } from "@/features/keyvalue/components/connection-info-panel";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 import type { KeyValueConnectionInfoView } from "@/features/keyvalue/types";
+
+const PERMISSIVE = mockCapabilities();
 
 const reveal = vi.fn();
 const hide = vi.fn();
@@ -22,6 +26,7 @@ beforeEach(() => {
   state.error = undefined;
   reveal.mockReset();
   hide.mockReset();
+  vi.mocked(useCapabilities).mockReturnValue(PERMISSIVE);
 });
 
 describe("ConnectionInfoPanel", () => {
@@ -41,6 +46,33 @@ describe("ConnectionInfoPanel", () => {
       screen.getByRole("button", { name: /reveal connection info/i }),
     );
     expect(reveal).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables Reveal for a member without can_view_sensitive — the URI is never fetched or rendered (w1/m76)", async () => {
+    vi.mocked(useCapabilities).mockReturnValue({
+      ...PERMISSIVE,
+      role: "CONTRIBUTOR",
+      canViewSensitive: false,
+    });
+    const user = userEvent.setup();
+    render(<ConnectionInfoPanel id="kv" />);
+
+    const revealButton = screen.getByRole("button", {
+      name: /reveal connection info/i,
+    });
+    expect(revealButton).toBeDisabled();
+    // A click on the disabled control never fires the fetch, and no
+    // password-bearing redis:// URI ever reaches the screen.
+    await user.click(revealButton);
+    expect(reveal).not.toHaveBeenCalled();
+    expect(screen.queryByText(/redis:\/\//)).not.toBeInTheDocument();
+  });
+
+  it("keeps Reveal enabled with can_view_sensitive, matching the databases panel", () => {
+    render(<ConnectionInfoPanel id="kv" />);
+    expect(
+      screen.getByRole("button", { name: /reveal connection info/i }),
+    ).toBeEnabled();
   });
 
   it("shows the internal and CLI fields but omits the external field when not public", () => {

@@ -9,6 +9,28 @@
 export const RESOURCE_POLL_INTERVAL_MS = 30_000;
 
 /**
+ * Fast cadence for a resource that is still converging (a provisioning
+ * database, an upgrading key-value store): poll at this interval until the
+ * status settles, then fall back to `RESOURCE_POLL_INTERVAL_MS`.
+ */
+export const CONVERGING_POLL_INTERVAL_MS = 3_000;
+
+/**
+ * Refetch a resource after a lifecycle verb, entering the fast converging
+ * cadence first. A successful lifecycle mutation updates desired state before
+ * the operator necessarily exposes its first converging status, so polling
+ * begins immediately — an eager refetch that still says "available" cannot
+ * hide the subsequent Upgrading/Provisioning transition.
+ */
+export function eagerRefetch(
+  startPolling: (intervalMs: number) => void,
+  refetch: () => Promise<unknown>,
+): void {
+  startPolling(CONVERGING_POLL_INTERVAL_MS);
+  void refetch();
+}
+
+/**
  * Skip a poll tick while the tab is hidden — a backgrounded dashboard
  * shouldn't keep hitting bex-api every interval. Polling resumes on the next
  * tick after the tab becomes visible again.

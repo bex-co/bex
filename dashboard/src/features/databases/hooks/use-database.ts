@@ -1,7 +1,11 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { DatabaseDocument } from "@/graphql/definitions";
-import { RESOURCE_POLL_INTERVAL_MS } from "@/common/lib/polling";
+import {
+  CONVERGING_POLL_INTERVAL_MS,
+  RESOURCE_POLL_INTERVAL_MS,
+  eagerRefetch,
+} from "@/common/lib/polling";
 import {
   toDatabaseDetailView,
   isConverging,
@@ -40,7 +44,9 @@ export function useDatabase(id: string): UseDatabaseResult {
   // baseline cadence so out-of-band changes still show up.
   const converging = database ? isConverging(database) : true;
   useEffect(() => {
-    startPolling(converging ? 3000 : RESOURCE_POLL_INTERVAL_MS);
+    startPolling(
+      converging ? CONVERGING_POLL_INTERVAL_MS : RESOURCE_POLL_INTERVAL_MS,
+    );
     return () => stopPolling();
   }, [converging, startPolling, stopPolling]);
 
@@ -48,13 +54,6 @@ export function useDatabase(id: string): UseDatabaseResult {
     database,
     loading,
     error,
-    refetch: () => {
-      // A successful lifecycle mutation updates desired state before the
-      // operator necessarily exposes its first converging status. Begin polling
-      // immediately so an eager refetch that still says "available" cannot hide
-      // the subsequent Upgrading/Provisioning transition.
-      startPolling(3000);
-      void refetch();
-    },
+    refetch: () => eagerRefetch(startPolling, refetch),
   };
 }
