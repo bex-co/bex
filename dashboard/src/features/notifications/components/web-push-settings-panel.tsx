@@ -62,7 +62,6 @@ export function WebPushSettingsPanel() {
               <Button
                 type="button"
                 variant="outline"
-                disabled={status === "busy"}
                 onClick={() => void unsubscribe()}
               >
                 <BellOff className="size-4" />
