@@ -264,7 +264,7 @@ func TestMCPSetHealthCheckPathUpdatesSpec(t *testing.T) {
 	}
 	out := toRenderService(v)
 	if out.HealthCheckPath != "/ready" {
-		t.Errorf("set_health_check_path healthCheckPath = %q, want /ready", out.HealthCheckPath)
+		t.Errorf("update_service healthCheckPath = %q, want /ready", out.HealthCheckPath)
 	}
 	if got := getApp(t, cl, "web").Spec.HealthCheckPath; got != "/ready" {
 		t.Errorf("spec.healthCheckPath = %q, want /ready", got)

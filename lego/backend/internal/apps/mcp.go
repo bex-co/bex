@@ -71,48 +71,59 @@ type idleTimeoutArgs struct {
 	IdleTTLSeconds int32  `json:"idleTTLSeconds" jsonschema:"seconds a free-tier service may idle before it auto-sleeps; 0 restores the controller default"`
 }
 
-// rootDirArgs is set_root_directory's input — Render's Root Directory setting:
-// the subdirectory of a build-from-git service's repo to build from.
-type rootDirArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	RootDir   string `json:"rootDir" jsonschema:"subdirectory of the repo to build from; empty builds from the repo root"`
-}
-
-type branchArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	Branch    string `json:"branch" jsonschema:"the Git branch to build and deploy; empty restores the default main"`
-}
-
-// buildCommandArgs, startCommandArgs and dockerfilePathArgs expose Build &
-// Deploy command/path settings through the same scalar-setter grammar as
-// set_root_directory.
+// updateServiceArgs is update_service's input: the patch-shaped fold of the
+// eighteen per-field service setters w1/m71 retired (set_root_directory,
+// set_branch, set_build_command, …). Every settable field is a POINTER, and the
+// pointer is the whole contract:
 //
-// This whole setter family is a bex invention: upstream ships no update tools
-// for any of these fields, and in fact REMOVED its placeholder update_web_service
-// /update_static_site/update_cron_job in #89 (2026-07-23) rather than making them
-// work. The parity pin classifies every setter here as Extension, so w1/m71 may
-// reshape them freely — see internal/api/mcp_parity.go.
-type buildCommandArgs struct {
-	ServiceID    string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	BuildCommand string `json:"buildCommand" jsonschema:"the build command (e.g. npm run build); empty clears it"`
+//   - absent  => that setting is not touched at all (no write, no build, no roll)
+//   - present => that setting is written to exactly this value, INCLUDING the
+//     empty value, which is how each old setter cleared a field
+//
+// Argument names and apply order mirror PATCH /v1/services/{id}
+// (rest.go patchService), so the same combination behaves identically on both
+// surfaces — that is what keeps the three adapters from drifting now that MCP
+// no longer has one tool per field.
+//
+// This family is a bex invention throughout: upstream ships no update tools for
+// any of these fields, and REMOVED its placeholder update_web_service /
+// update_static_site / update_cron_job in #89 (2026-07-23) rather than making
+// them work. The parity pin classifies update_service as Extension — see
+// internal/api/mcp_parity.go.
+type updateServiceArgs struct {
+	ServiceID               string                   `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
+	DisplayName             *string                  `json:"displayName,omitempty" jsonschema:"the human-facing service label; empty clears it and falls back to the immutable service name"`
+	Branch                  *string                  `json:"branch,omitempty" jsonschema:"the Git branch to build and deploy; empty restores the default main"`
+	RegistryCredentialID    *string                  `json:"registryCredentialId,omitempty" jsonschema:"stored private-registry credential id to bind to an image-backed service or Dockerfile build; empty clears the binding"`
+	RootDir                 *string                  `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from (monorepo support); empty builds from the repo root. Triggers a fresh build scoped to that subdirectory"`
+	BuildCommand            *string                  `json:"buildCommand,omitempty" jsonschema:"the build command (e.g. npm run build) for static sites and native-runtime services; empty clears it (builder default)"`
+	StartCommand            *string                  `json:"startCommand,omitempty" jsonschema:"the command used to start the service — Render's Docker Command for a Docker service, Start Command for a native runtime; empty restores the image default where supported"`
+	DockerfilePath          *string                  `json:"dockerfilePath,omitempty" jsonschema:"path to the Dockerfile relative to rootDir; empty restores Dockerfile. Triggers a fresh build"`
+	HealthCheckPath         *string                  `json:"healthCheckPath,omitempty" jsonschema:"HTTP path the platform GETs to gate pod readiness and liveness; must start with /. Empty CLEARS the path, switching the service to a TCP check that only verifies the process is listening — the right choice for a service with no cheap 2xx route. Probed every 10s, so point it at a cheap endpoint. No effect on cron_job or background_worker"`
+	PreDeployCommand        *string                  `json:"preDeployCommand,omitempty" jsonschema:"a command run to completion against the new revision's image before it serves traffic (typically a database migration); a non-zero exit fails the deploy and leaves the previous revision serving. Empty clears the step. No effect on cron_job or static_site"`
+	MaxShutdownDelaySeconds *int32                   `json:"maxShutdownDelaySeconds,omitempty" jsonschema:"seconds after SIGTERM before Kubernetes sends SIGKILL (1-300; default 30); web, private, and background-worker services"`
+	AutoDeploy              *bool                    `json:"autoDeploy,omitempty" jsonschema:"true = a signed git push to the tracked branch redeploys (Render's Auto-Deploy); false = only explicit deploys. Setting it does not itself redeploy"`
+	BuildFilter             *buildFilterArg          `json:"buildFilter,omitempty" jsonschema:"Render's Build Filters: repository-root-relative globs (paths/ignoredPaths) deciding whether a git push triggers an auto-deploy; ignored wins over included. Pass empty paths and ignoredPaths to clear the filter"`
+	NotifyOnFail            *string                  `json:"notifyOnFail,omitempty" jsonschema:"deploy-failure notification override: default (defer to each member's own preference), notify (always email every member on a failed deploy), or ignore (never email anyone for this service). Governs failure mail only"`
+	NotificationsToSend     *string                  `json:"notificationsToSend,omitempty" jsonschema:"service notification policy: default (inherit workspace/member preferences, failure-only), failure, all, or none"`
+	MaintenanceMode         *maintenanceModeArg      `json:"maintenanceMode,omitempty" jsonschema:"take a web service offline behind an interstitial page without suspending it — pods keep running, every host answers 503. web_service only"`
+	RenderSubdomainPolicy   *string                  `json:"renderSubdomainPolicy,omitempty" jsonschema:"enabled (the platform subdomain <slug>.<BEX_BASE_DOMAIN> serves this service) or disabled (platform host dropped; only custom domains serve it — requires at least one custom domain first)"`
+	IPAllowList             *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the inbound allowlist for a web service or static site with these {cidrBlock, description} entries; pass [] to clear it"`
+	IPAllowListCidrs        *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
+	Autoscaling             *autoscalingArg          `json:"autoscaling,omitempty" jsonschema:"enable or update autoscaling: the operator holds the target utilization by moving replicas within [minInstances, maxInstances]. Use disable_autoscaling to turn it off"`
 }
 
-type startCommandArgs struct {
-	ServiceID    string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	StartCommand string `json:"startCommand" jsonschema:"the command used to start the service; empty restores the image default where supported"`
+// autoscalingArg is the autoscaling object update_service accepts. It is the
+// same shape set_autoscaling took as flat arguments; nesting it keeps the
+// enable/update verb distinguishable from a field write in one patch call.
+type autoscalingArg struct {
+	MinInstances        int32  `json:"minInstances" jsonschema:"minimum running instances (≥ 0; default 1)"`
+	MaxInstances        int32  `json:"maxInstances" jsonschema:"maximum running instances (≥ 1; must be ≥ minInstances)"`
+	TargetCPUPercent    *int32 `json:"targetCPUPercent,omitempty" jsonschema:"target average CPU utilization % of tier limit (1-100); required if targetMemoryPercent is absent"`
+	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty" jsonschema:"target average memory utilization % of tier limit (1-100); required if targetCPUPercent is absent"`
 }
 
-type dockerfilePathArgs struct {
-	ServiceID      string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	DockerfilePath string `json:"dockerfilePath" jsonschema:"path to the Dockerfile relative to rootDir; empty restores Dockerfile"`
-}
-
-type registryCredentialArgs struct {
-	ServiceID            string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	RegistryCredentialID string `json:"registryCredentialId" jsonschema:"the registry credential id to bind; empty clears the binding"`
-}
-
-// buildFilterArg is Render's Build Filters object, shared by set_build_filter and
+// buildFilterArg is Render's Build Filters object, shared by update_service and
 // create_web_service: repository-root-relative globs deciding whether a git push
 // triggers an auto-deploy. Patterns support *, **, ?, and [class] wildcards.
 type buildFilterArg struct {
@@ -129,14 +140,8 @@ func (a *buildFilterArg) toView() *BuildFilterView {
 	return &BuildFilterView{Paths: a.Paths, IgnoredPaths: a.IgnoredPaths}
 }
 
-// buildFilterArgs is set_build_filter's input — Render's Build Filters setting.
-type buildFilterArgs struct {
-	ServiceID   string         `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	BuildFilter buildFilterArg `json:"buildFilter" jsonschema:"the glob patterns gating git-push auto-deploys; pass empty paths and ignoredPaths to clear the filter"`
-}
-
 // maintenanceModeArg is Render's maintenanceMode object, shared by
-// set_maintenance_mode and create_web_service (docs/render-artifacts/
+// update_service and create_web_service (docs/render-artifacts/
 // maintenance-mode.md): web_service only.
 type maintenanceModeArg struct {
 	Enabled bool   `json:"enabled" jsonschema:"true takes every host this service serves offline behind an interstitial page (pods keep running); false restores normal serving"`
@@ -152,12 +157,6 @@ func (a *maintenanceModeArg) toView() *MaintenanceModeView {
 	return &MaintenanceModeView{Enabled: a.Enabled, URI: a.URI}
 }
 
-// maintenanceModeArgs is set_maintenance_mode's input.
-type maintenanceModeArgs struct {
-	ServiceID       string             `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	MaintenanceMode maintenanceModeArg `json:"maintenanceMode" jsonschema:"the maintenanceMode object to set"`
-}
-
 // updateCronJobArgs is update_cron_job's input — bex's functional implementation
 // of the verb Render ships as a non-functional stub. schedule is the 5-field
 // crontab expression (required); command is a pointer so nil means "keep the
@@ -166,65 +165,6 @@ type updateCronJobArgs struct {
 	ServiceID string  `json:"serviceId" jsonschema:"the cron job id, as returned by list_services"`
 	Schedule  string  `json:"schedule" jsonschema:"the new cron schedule (5-field crontab, e.g. '0 0 * * *'); required"`
 	Command   *string `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to keep the existing override, empty string to clear it"`
-}
-
-// autoDeployArgs is set_auto_deploy's input — Render's Auto-Deploy toggle.
-type autoDeployArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	Enabled   bool   `json:"enabled" jsonschema:"true = a git push to the tracked branch redeploys; false = only explicit deploys"`
-}
-
-// notifyOnFailArgs is set_notify_on_fail's input — Render's per-service
-// deploy-failure notification override (docs/render-artifacts/notify-on-fail.md).
-type notifyOnFailArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	Value     string `json:"value" jsonschema:"default (defer to each member's own preference), notify (always email every member on a failed deploy), or ignore (never email anyone for this service)"`
-}
-
-type notificationsToSendArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	Value     string `json:"value" jsonschema:"default (inherit failure-only workspace/member settings), failure, all, or none"`
-}
-
-// displayNameArgs is set_display_name's input. The service id remains the
-// immutable App name; displayName is only the mutable human-facing label.
-type displayNameArgs struct {
-	ServiceID   string `json:"serviceId" jsonschema:"the immutable service id, as returned by list_services"`
-	DisplayName string `json:"displayName" jsonschema:"the human-facing service label; empty clears it and falls back to the immutable service name"`
-}
-
-// healthCheckPathArgs is set_health_check_path's input.
-type healthCheckPathArgs struct {
-	ServiceID       string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	HealthCheckPath string `json:"healthCheckPath" jsonschema:"HTTP path the platform GETs to gate pod readiness and liveness; must start with /. Empty clears it, which switches the service to a TCP check that only verifies the process is listening"`
-}
-
-// maxShutdownDelayArgs is set_max_shutdown_delay's input. Render's official
-// MCP currently has no setter for this REST/Blueprint field, so the tool is a
-// bex extension following the existing scalar setter grammar.
-type maxShutdownDelayArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	Seconds   int32  `json:"seconds" jsonschema:"maximum seconds to wait after SIGTERM before SIGKILL; must be 1-300"`
-}
-
-// preDeployCommandArgs is set_pre_deploy_command's input.
-type preDeployCommandArgs struct {
-	ServiceID        string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	PreDeployCommand string `json:"preDeployCommand" jsonschema:"a command run to completion against the new image before it serves traffic (Render's Pre-Deploy Command, e.g. a DB migration); empty clears the step"`
-}
-
-// subdomainPolicyArgs is set_subdomain_policy's input — Render's
-// renderSubdomainPolicy field (enabled|disabled).
-type subdomainPolicyArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	Policy    string `json:"policy" jsonschema:"enabled (platform subdomain <slug>.<BEX_BASE_DOMAIN> is active) or disabled (platform host dropped; only custom domains serve the App)"`
-}
-
-// serviceIPAllowListArgs is set_service_ip_allow_list's input.
-type serviceIPAllowListArgs struct {
-	ServiceID string                  `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	CIDRs     []string                `json:"cidrs,omitempty" jsonschema:"legacy CIDR blocks to allow; use entries to preserve descriptions"`
-	Entries   []core.IPAllowListEntry `json:"entries,omitempty" jsonschema:"description-preserving allowlist entries as {cidrBlock, description}; empty clears the allowlist"`
 }
 
 // createWebServiceArgs is create_web_service's input — Render's MCP tool name.
@@ -471,17 +411,6 @@ type disconnectedBlueprintResult struct {
 // disconnectBlueprintArgs is disconnect_blueprint's input (w2/m62).
 type disconnectBlueprintArgs struct {
 	ID string `json:"id" jsonschema:"blueprint id (blp-…) to disconnect"`
-}
-
-// autoscalingArgs is set_autoscaling's input — mirrors Render's PUT
-// /v1/services/{id}/autoscaling request body (minInstances / maxInstances /
-// targetCPUPercent / targetMemoryPercent).
-type autoscalingArgs struct {
-	ServiceID           string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	MinInstances        int32  `json:"minInstances" jsonschema:"minimum running instances (≥ 0; default 1)"`
-	MaxInstances        int32  `json:"maxInstances" jsonschema:"maximum running instances (≥ 1; must be ≥ minInstances)"`
-	TargetCPUPercent    *int32 `json:"targetCPUPercent,omitempty" jsonschema:"target average CPU utilization % of tier limit (1-100); required if targetMemoryPercent is absent"`
-	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty" jsonschema:"target average memory utilization % of tier limit (1-100); required if targetCPUPercent is absent"`
 }
 
 // domainArgs is the shared custom-domain argument (serviceId + domain name).
@@ -794,61 +723,90 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_root_directory",
-		Description: "Set a build-from-git service's Root Directory: the subdirectory of its repo to build from (monorepo support). Triggers a fresh build scoped to that subdirectory. Tracks Render's Root Directory setting.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in rootDirArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetRootDir(ctx, in.ServiceID, in.RootDir))
+		Name:        "update_service",
+		Description: "Update a service's settings in one call. Pass only the settings you want to change: an omitted argument is left exactly as it is, and a present argument is written to exactly the value given — including the empty value, which is how you clear a command, a path, or a list. Covers source (branch, registryCredentialId), build (rootDir, buildCommand, startCommand, dockerfilePath, buildFilter), runtime (startCommand, healthCheckPath, preDeployCommand, maxShutdownDelaySeconds, maintenanceMode, autoscaling), delivery (autoDeploy), naming (displayName), networking (renderSubdomainPolicy, ipAllowList), and notifications (notifyOnFail, notificationsToSend). rootDir and dockerfilePath trigger a fresh build. Other verbs keep their own tools: update_service_plan (instance plan, supports dryRun), scale_service (instance count), update_idle_timeout, update_publish_path / update_static_routes / update_static_headers (static sites), update_cron_job (schedule), disable_autoscaling. This tool replaces the retired set_* setters (w1/m71). bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateServiceArgs) (*mcp.CallToolResult, renderService, error) {
+		return renderServiceResult(s.applyServicePatch(ctx, in))
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_branch",
-		Description: "Change the Git branch a repo-backed service builds and deploys from (Render's editable Branch field). The next deploy builds the new branch and push-to-deploy matches pushes against it. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in branchArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetSourceAndRegistryCredential(ctx, in.ServiceID, sourcePatch{Branch: &in.Branch}))
+}
+
+// applyServicePatch runs update_service's present arguments as an ordered list
+// of the same Service verbs the retired setters called, in the order
+// PATCH /v1/services/{id} applies them (rest.go patchService) so a multi-field
+// call behaves identically on both surfaces. A call with no settable field is a
+// read-only no-op that reflects current state, exactly as the REST handler does.
+func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (AppView, error) {
+	allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
+	if err != nil {
+		return AppView{}, err
+	}
+
+	var ops core.PatchOps[AppView]
+	ops.Add(in.DisplayName != nil, func() (AppView, error) {
+		return s.SetDisplayName(ctx, in.ServiceID, *in.DisplayName)
+	})
+	ops.Add(in.Branch != nil || in.RegistryCredentialID != nil, func() (AppView, error) {
+		return s.SetSourceAndRegistryCredential(ctx, in.ServiceID, sourcePatch{Branch: in.Branch, RegistryCredentialID: in.RegistryCredentialID})
+	})
+	ops.Add(in.MaxShutdownDelaySeconds != nil, func() (AppView, error) {
+		return s.SetMaxShutdownDelay(ctx, in.ServiceID, *in.MaxShutdownDelaySeconds)
+	})
+	ops.Add(in.RootDir != nil, func() (AppView, error) {
+		return s.SetRootDir(ctx, in.ServiceID, *in.RootDir)
+	})
+	ops.Add(in.BuildFilter != nil, func() (AppView, error) {
+		return s.SetBuildFilter(ctx, in.ServiceID, in.BuildFilter.toView())
+	})
+	ops.Add(in.AutoDeploy != nil, func() (AppView, error) {
+		return s.SetAutoDeploy(ctx, in.ServiceID, *in.AutoDeploy)
+	})
+	ops.Add(in.HealthCheckPath != nil, func() (AppView, error) {
+		return s.SetHealthCheckPath(ctx, in.ServiceID, *in.HealthCheckPath)
+	})
+	ops.Add(in.PreDeployCommand != nil, func() (AppView, error) {
+		return s.SetPreDeployCommand(ctx, in.ServiceID, *in.PreDeployCommand)
+	})
+	// One SetCommands call for both, like the REST op table: setting only one
+	// leaves the other unchanged (nil), which is why the setter pair could fold
+	// without either clearing the other.
+	ops.Add(in.BuildCommand != nil || in.StartCommand != nil, func() (AppView, error) {
+		return s.SetCommands(ctx, in.ServiceID, in.BuildCommand, in.StartCommand)
+	})
+	ops.Add(in.DockerfilePath != nil, func() (AppView, error) {
+		return s.SetDockerfilePath(ctx, in.ServiceID, *in.DockerfilePath)
+	})
+	ops.Add(in.NotifyOnFail != nil, func() (AppView, error) {
+		return s.SetNotifyOnFail(ctx, in.ServiceID, *in.NotifyOnFail)
+	})
+	ops.Add(in.NotificationsToSend != nil, func() (AppView, error) {
+		return s.SetNotificationsToSend(ctx, in.ServiceID, *in.NotificationsToSend)
+	})
+	ops.Add(in.RenderSubdomainPolicy != nil, func() (AppView, error) {
+		return s.SetSubdomainPolicy(ctx, in.ServiceID, *in.RenderSubdomainPolicy)
+	})
+	ops.Add(allowList != nil, func() (AppView, error) {
+		return s.SetIPAllowList(ctx, in.ServiceID, *allowList)
+	})
+	ops.Add(in.MaintenanceMode != nil, func() (AppView, error) {
+		return s.SetMaintenanceMode(ctx, in.ServiceID, *in.MaintenanceMode.toView())
+	})
+	// Autoscaling is a subresource with its own view; the patch tool answers
+	// with the service, so re-read it after the write (get_autoscaling still
+	// serves the autoscaling view, and disable_autoscaling still turns it off).
+	ops.Add(in.Autoscaling != nil, func() (AppView, error) {
+		if _, err := s.SetAutoscaling(ctx, in.ServiceID, SetAutoscalingRequest{
+			MinInstances:        in.Autoscaling.MinInstances,
+			MaxInstances:        in.Autoscaling.MaxInstances,
+			TargetCPUPercent:    in.Autoscaling.TargetCPUPercent,
+			TargetMemoryPercent: in.Autoscaling.TargetMemoryPercent,
+		}); err != nil {
+			return AppView{}, err
+		}
+		return s.Get(ctx, in.ServiceID)
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_build_command",
-		Description: "Change the build command for a repo-backed service (e.g. npm run build). Applies to static sites and native-runtime services. Empty clears the command (builder default). bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in buildCommandArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetCommands(ctx, in.ServiceID, &in.BuildCommand, nil))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_start_command",
-		Description: "Change the command used to start an existing service. For a Docker service this overrides the image CMD (Render's Docker Command); for a native runtime it is Render's Start Command. Empty restores the image default where supported. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in startCommandArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetCommands(ctx, in.ServiceID, nil, &in.StartCommand))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_dockerfile_path",
-		Description: "Change a repo-backed Docker service's Dockerfile Path, relative to its Root Directory. Empty restores the default Dockerfile. Triggers a fresh build. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in dockerfilePathArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetDockerfilePath(ctx, in.ServiceID, in.DockerfilePath))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_registry_credential",
-		Description: "Bind an image-backed service or Dockerfile build to a stored private-registry credential. The credential must belong to the service workspace; image-backed bindings must also match the image registry host. Pass an empty registryCredentialId to clear the binding.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in registryCredentialArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetRegistryCredential(ctx, in.ServiceID, in.RegistryCredentialID))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_build_filter",
-		Description: "Set a build-from-git service's Build Filters: repository-root-relative glob patterns (paths/ignoredPaths) deciding whether a git push triggers an auto-deploy. A push deploys only when a changed file matches an include path (or paths is empty) and is not ignored; ignored wins over included. Pass empty paths and ignoredPaths to clear the filter. Tracks Render's Build Filters setting. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in buildFilterArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetBuildFilter(ctx, in.ServiceID, in.BuildFilter.toView()))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_maintenance_mode",
-		Description: "Take a web service offline behind an interstitial page without suspending it — pods keep running, only public traffic is redirected to the maintenance page. Every host the service serves answers 503. An empty uri serves bex's default page; a non-empty uri must be an absolute http(s) URL to a custom page, fetched and served in place of the default. web_service only. Tracks Render's maintenanceMode setting.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in maintenanceModeArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetMaintenanceMode(ctx, in.ServiceID, MaintenanceModeView{Enabled: in.MaintenanceMode.Enabled, URI: in.MaintenanceMode.URI}))
-	})
-
+	return ops.Run(func() (AppView, error) { return s.Get(ctx, in.ServiceID) })
 }
 
 // registerAutoscalingTools tracks Render's PUT/DELETE .../autoscaling contract.
@@ -865,94 +823,11 @@ func (s *Service) registerAutoscalingTools(srv *mcp.Server) {
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_autoscaling",
-		Description: "Enable or update autoscaling for a service. The operator adjusts replicas within [minInstances, maxInstances] to hold the target CPU and/or memory utilization. Tracks Render's PUT /v1/services/{id}/autoscaling.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in autoscalingArgs) (*mcp.CallToolResult, AutoscalingView, error) {
-		av, err := s.SetAutoscaling(ctx, in.ServiceID, SetAutoscalingRequest{
-			MinInstances:        in.MinInstances,
-			MaxInstances:        in.MaxInstances,
-			TargetCPUPercent:    in.TargetCPUPercent,
-			TargetMemoryPercent: in.TargetMemoryPercent,
-		})
-		if err != nil {
-			return nil, AutoscalingView{}, err
-		}
-		return nil, av, nil
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "disable_autoscaling",
 		Description: "Disable autoscaling for a service, reverting it to its fixed spec.replicas count. Tracks Render's DELETE /v1/services/{id}/autoscaling.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, deletedResult, error) {
 		err := s.DeleteAutoscaling(ctx, in.ServiceID)
 		return nil, deletedResult{Deleted: err == nil}, err
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_auto_deploy",
-		Description: "Turn a service's Auto-Deploy on or off: whether a signed git push to its tracked branch redeploys it (Render's Auto-Deploy toggle). Off leaves only explicit deploys. Does not itself redeploy.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in autoDeployArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetAutoDeploy(ctx, in.ServiceID, in.Enabled))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_notify_on_fail",
-		Description: "Change a service's deploy-failure notification override (Render's exact notifyOnFail field/enum): default defers to each workspace member's own notification preference, notify always emails every member on a failed deploy, ignore never emails anyone for this service. Governs failure notifications only — success emails always follow each member's own preference.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in notifyOnFailArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetNotifyOnFail(ctx, in.ServiceID, in.Value))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_notifications_to_send",
-		Description: "Set a service notification policy: default inherits workspace/member preferences (failure-only by default), failure sends only failed-deploy mail, all sends every deploy lifecycle mail, and none suppresses deploy mail.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in notificationsToSendArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetNotificationsToSend(ctx, in.ServiceID, in.Value))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_display_name",
-		Description: "Change the human-facing label for a service without changing its immutable service id, platform hostname, or derived Kubernetes resources. Pass an empty displayName to restore the immutable-name fallback. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in displayNameArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetDisplayName(ctx, in.ServiceID, in.DisplayName))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_health_check_path",
-		Description: "Change the HTTP path the platform GETs to decide whether a web or private service is healthy (spec.healthCheckPath). A 2xx/3xx response within 5 seconds is healthy; sustained failures remove the pod from rotation, and 60 seconds of consecutive failures restarts the instance. Point it at a cheap endpoint (e.g. /healthz), not an expensive route — the path is probed every 10 seconds for the life of the service. Pass an empty string to CLEAR the path, which switches the service to a TCP check that only verifies the process is listening — the platform default, and the right choice for a service with no cheap 2xx route (an API whose / is a 404 can never pass an HTTP check). Has no effect on cron_job or background_worker services.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in healthCheckPathArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetHealthCheckPath(ctx, in.ServiceID, in.HealthCheckPath))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_max_shutdown_delay",
-		Description: "Set the graceful-shutdown window for a web, private, or background-worker service: seconds after SIGTERM before Kubernetes sends SIGKILL (1-300; default 30). bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in maxShutdownDelayArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetMaxShutdownDelay(ctx, in.ServiceID, in.Seconds))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_pre_deploy_command",
-		Description: "Change the pre-deploy command (spec.preDeployCommand → Render's Pre-Deploy Command): a command run to completion against the new revision's image before it serves traffic (typically a database migration). A non-zero exit fails the deploy and leaves the previous revision serving. Pass an empty string to clear the step. Has no effect on cron_job or static_site services.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in preDeployCommandArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetPreDeployCommand(ctx, in.ServiceID, in.PreDeployCommand))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_subdomain_policy",
-		Description: "Control whether the platform subdomain (<slug>.<BEX_BASE_DOMAIN>) is active for a web or static-site service (Render's renderSubdomainPolicy field). Shared platform hosting is available only when the operator has configured a safe Public Suffix. 'enabled' keeps that host in the Ingress and status URL; 'disabled' drops it so only custom domains configured on the service receive traffic. Requires at least one custom domain before disabling.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in subdomainPolicyArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetSubdomainPolicy(ctx, in.ServiceID, in.Policy))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_service_ip_allow_list",
-		Description: "Set the inbound IP allowlist for a web service or static site. Use entries to preserve each CIDR's optional description; cidrs is the legacy flat form. Empty entries clears the allowlist. Conflicting simultaneous forms are rejected.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceIPAllowListArgs) (*mcp.CallToolResult, renderService, error) {
-		entries, err := core.ResolveAllowListInputs(in.Entries, in.Entries != nil, in.CIDRs, in.CIDRs != nil)
-		if err != nil {
-			return nil, renderService{}, err
-		}
-		return renderServiceResult(s.SetIPAllowList(ctx, in.ServiceID, entries))
 	})
 
 }

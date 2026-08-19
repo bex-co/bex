@@ -305,7 +305,7 @@ func TestMCPSetNotifyOnFailUpdatesSpec(t *testing.T) {
 	}
 	out := toRenderService(v)
 	if out.NotifyOnFail != "ignore" {
-		t.Errorf("set_notify_on_fail notifyOnFail = %q, want ignore", out.NotifyOnFail)
+		t.Errorf("update_service notifyOnFail = %q, want ignore", out.NotifyOnFail)
 	}
 	if got := getApp(t, cl, "web").Spec.NotifyOnFail; got != "ignore" {
 		t.Errorf("spec.notifyOnFail = %q, want ignore", got)

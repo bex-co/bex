@@ -81,16 +81,19 @@ type renameKeyValueArgs struct {
 	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and preview the rename without any writes"`
 }
 
-type setKeyValueMaxmemoryPolicyArgs struct {
-	KeyValueID      string `json:"keyValueId" jsonschema:"the key-value id, as returned by list_key_value"`
-	MaxmemoryPolicy string `json:"maxmemoryPolicy" jsonschema:"the eviction policy at the memory budget, e.g. noeviction, allkeys-lru, volatile-ttl"`
-	DryRun          bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and preview without any writes"`
-}
-
-type setKeyValueIPAllowListArgs struct {
-	KeyValueID string                  `json:"keyValueId" jsonschema:"the key-value id, as returned by list_key_value"`
-	CIDRs      []string                `json:"cidrs,omitempty" jsonschema:"CIDR allowlist for the external endpoint; empty list clears it (open to all source IPs)"`
-	Entries    []core.IPAllowListEntry `json:"entries,omitempty" jsonschema:"allowlist entries as {cidrBlock, description} objects; use instead of cidrs to keep per-entry descriptions"`
+// updateKeyValueArgs is update_key_value's input: the patch-shaped fold of
+// set_key_value_maxmemory_policy and set_key_value_ip_allow_list (w1/m71).
+// Each field is a pointer to the value KeyValuePatch already documents as
+// "nil = unchanged", and the tool mirrors update_postgres field for field so the
+// two managed-datastore grammars stay symmetric.
+//
+// Plan and name keep their own tools (update_key_value_plan, rename_key_value).
+type updateKeyValueArgs struct {
+	KeyValueID       string                   `json:"keyValueId" jsonschema:"the key-value id, as returned by list_key_value"`
+	MaxmemoryPolicy  *string                  `json:"maxmemoryPolicy,omitempty" jsonschema:"the eviction policy at the memory budget, e.g. noeviction (job queue) or allkeys-lru (cache); underscore or hyphen forms both accepted"`
+	IPAllowList      *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the CIDR allowlist gating the external endpoint with these {cidrBlock, description} entries; pass [] to clear it (open to all source IPs)"`
+	IPAllowListCidrs *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
+	DryRun           bool                     `json:"dryRun,omitempty" jsonschema:"if true, validate and preview without any writes"`
 }
 
 // listKeyValueResult wraps the array — MCP tool outputs must be JSON objects.
@@ -188,24 +191,19 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_key_value_maxmemory_policy",
-		Description: "Change a managed key-value store's eviction policy (maxmemoryPolicy) after creation, e.g. noeviction (job queue) or allkeys-lru (cache). Underscore or hyphen forms both accepted. Pass dryRun:true to preview without writes.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setKeyValueMaxmemoryPolicyArgs) (*mcp.CallToolResult, KeyValueView, error) {
-		patch := KeyValuePatch{MaxmemoryPolicy: &in.MaxmemoryPolicy}
+		Name:        "update_key_value",
+		Description: "Update a managed key-value store's settings in one call: the eviction policy (maxmemoryPolicy) and/or the external-endpoint IP allowlist (Render's Networking control). Pass only what you want to change — an omitted argument is left alone; a present ipAllowList REPLACES the whole list (pass [] to clear it, opening the endpoint to all source IPs). Pass dryRun:true to validate and preview without writes. Plan and name keep their own tools: update_key_value_plan, rename_key_value. This tool replaces the retired set_key_value_maxmemory_policy and set_key_value_ip_allow_list (w1/m71); the REST mirror is PATCH /v1/key-value/{id} plus PUT .../ip-allow-list.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
+		allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
+		if err != nil {
+			return nil, KeyValueView{}, err
+		}
+		patch := KeyValuePatch{MaxmemoryPolicy: in.MaxmemoryPolicy, IPAllowList: allowList}
 		if in.DryRun {
 			v, err := s.PreviewUpdateKeyValue(ctx, in.KeyValueID, patch)
 			return nil, v, err
 		}
 		v, err := s.UpdateKeyValue(ctx, in.KeyValueID, patch)
-		return nil, v, err
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_key_value_ip_allow_list",
-		Description: "Replace the external-endpoint IP allowlist for a managed key-value store (Render's Networking control). Pass entries as {cidrBlock, description} objects to keep per-entry descriptions, or bare CIDR strings. An empty list clears the allowlist (opens the endpoint to all source IPs). The MCP mirror of the REST PUT .../ip-allow-list and GraphQL setKeyValueIpAllowList.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setKeyValueIPAllowListArgs) (*mcp.CallToolResult, KeyValueView, error) {
-		entries := core.AllowListOrCIDRs(in.Entries, in.CIDRs)
-		v, err := s.SetIPAllowList(ctx, in.KeyValueID, entries)
 		return nil, v, err
 	})
 

@@ -175,11 +175,11 @@ func TestEnvGroupMembershipSurfaces(t *testing.T) {
 		}
 		t.Cleanup(func() { _ = cs.Close() })
 		res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{
-			Name:      "set_environment_env_groups",
+			Name:      "update_environment",
 			Arguments: map[string]any{"id": e.ID, "envGroupIds": []string{"evg-alpha"}},
 		})
 		if err != nil || res.IsError {
-			t.Fatalf("set_environment_env_groups: err=%v result=%+v", err, res)
+			t.Fatalf("update_environment envGroupIds: err=%v result=%+v", err, res)
 		}
 		var got EnvironmentView
 		b, _ := json.Marshal(res.StructuredContent)

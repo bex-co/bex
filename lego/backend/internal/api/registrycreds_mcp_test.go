@@ -219,11 +219,11 @@ func TestMCP_ServiceRegistryCredentialCreateAndClear(t *testing.T) {
 
 	cleared := callTool[struct {
 		RegistryCredentialID string `json:"registryCredentialId"`
-	}](t, cs, "set_registry_credential", map[string]any{
+	}](t, cs, "update_service", map[string]any{
 		"serviceId": created.ID, "registryCredentialId": "",
 	})
 	if cleared.RegistryCredentialID != "" {
-		t.Fatalf("set_registry_credential clear = %+v", cleared)
+		t.Fatalf("update_service registryCredentialId=\"\" = %+v", cleared)
 	}
 }
 

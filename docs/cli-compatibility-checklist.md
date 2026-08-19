@@ -30,7 +30,7 @@ This launcher record does not replace the unmodified-v2.21.0 server oracle below
 
 ### Real gaps found this pass (bex-side, worth filing)
 
-- ~~**`keyvalues update --memory-policy` / `--ip-allow-list` / `--clear-ip-allow-list` are silent no-ops**~~ — **fixed (w7/m45)**: `KeyValuePatch` now carries `MaxmemoryPolicy` + `IPAllowList` and `handleUpdateKeyValue` decodes them, so the CLI's update flags mutate the store; GraphQL `setKeyValueMaxmemoryPolicy` + MCP `set_key_value_maxmemory_policy`/`set_key_value_ip_allow_list` bring the programmatic surfaces to parity. (Dashboard memory-policy editing after create is a tracked follow-up.)
+- ~~**`keyvalues update --memory-policy` / `--ip-allow-list` / `--clear-ip-allow-list` are silent no-ops**~~ — **fixed (w7/m45)**: `KeyValuePatch` now carries `MaxmemoryPolicy` + `IPAllowList` and `handleUpdateKeyValue` decodes them, so the CLI's update flags mutate the store; GraphQL `setKeyValueMaxmemoryPolicy` + MCP `update_key_value` (w1/m71's fold of `set_key_value_maxmemory_policy`/`set_key_value_ip_allow_list`) bring the programmatic surfaces to parity. (Dashboard memory-policy editing after create is a tracked follow-up.)
 - _(upstream CLI, not bex)_ **The v2.21.0 SSH instance picker discards an exact-instance selection**: both callbacks pass the service id instead of their `instanceID` argument. **Any instance** therefore works through the picker, and the supported complete-instance-id command argument works for exact targeting; the verifier does not patch the CLI or falsely credit the broken menu path.
 - _(upstream CLI, not bex)_ **`skills list` / `skills update` panic** (nil-pointer) in every non-TTY output mode.
 

@@ -35,7 +35,7 @@ bex now implements Render's service-level `notificationsToSend` policy and exact
 | --- | --- |
 | Authoritative field | `App.spec.notificationsToSend`, values `default` \| `none` \| `failure` \| `all` |
 | Render REST | `GET`/`PATCH /v1/notification-settings/overrides/services/{serviceId}`; PATCH accepts `notificationsToSend`. `previewNotificationsEnabled` is returned as `default`; non-default writes are rejected rather than ignored. |
-| Other surfaces | GraphQL `setNotificationsToSend`, MCP `set_notifications_to_send`, and the Service Settings selector all use the same four-state policy. |
+| Other surfaces | GraphQL `setNotificationsToSend`, MCP `update_service(notificationsToSend:)` (w1/m71 folded `set_notifications_to_send` into it), and the Service Settings selector all use the same four-state policy. |
 | `default` | Defers to each member's deploy-started/succeeded/failed preferences. A missing member-settings row defaults to failure-only. |
 | `none` | Suppresses every deploy lifecycle email for the service. |
 | `failure` | Sends only failed-deploy email to every resolvable workspace member. |

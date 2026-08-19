@@ -192,7 +192,7 @@ func TestMCPSetBuildFilter(t *testing.T) {
 	// MCP projects through the same renderService as REST — parity by construction.
 	out := toRenderService(v)
 	if out.BuildFilter == nil || len(out.BuildFilter.Paths) != 1 || out.BuildFilter.Paths[0] != "api/**" {
-		t.Errorf("set_build_filter (via renderService) = %+v, want paths=[api/**]", out.BuildFilter)
+		t.Errorf("update_service buildFilter (via renderService) = %+v, want paths=[api/**]", out.BuildFilter)
 	}
 	if paths, _ := getBuildFilter(t, cl, "web"); len(paths) != 1 || paths[0] != "api/**" {
 		t.Errorf("spec.buildFilter = %v, want [api/**]", paths)

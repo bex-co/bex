@@ -2,7 +2,7 @@
 # from (Render's editable Branch field, w5/m48/t005). The backend's shared
 # source verb persists it (spec.branch), so the next deploy builds the new
 # branch and push-to-deploy matches it; the REST PATCH `branch` field and MCP
-# set_branch are the sibling surfaces (backend/internal/apps/graphql.go).
+# update_service(branch) are the sibling surfaces (backend/internal/apps/graphql.go).
 mutation SetBranch($id: String!, $branch: String!) {
   setBranch(id: $id, branch: $branch) {
     id

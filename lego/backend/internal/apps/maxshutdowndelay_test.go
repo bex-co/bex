@@ -241,7 +241,7 @@ func TestMCPMaxShutdownDelayMirrorsSharedCreateSetAndRead(t *testing.T) {
 	}
 	view, err := svc.SetMaxShutdownDelay(context.Background(), "worker", 95)
 	if err != nil {
-		t.Fatalf("set_max_shutdown_delay: %v", err)
+		t.Fatalf("SetMaxShutdownDelay (update_service maxShutdownDelaySeconds): %v", err)
 	}
 	rendered := toRenderService(view)
 	if rendered.ServiceDetails["maxShutdownDelaySeconds"] != int32(95) {

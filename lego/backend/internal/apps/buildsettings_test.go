@@ -212,17 +212,25 @@ func TestMCPBuildSettingsRoundTrip(t *testing.T) {
 		return out
 	}
 
-	start := call("set_start_command", map[string]any{"serviceId": "web", "startCommand": "bin/server"})
+	// One field at a time, as the retired set_start_command/set_dockerfile_path
+	// tools did: each present argument must reach the same verb it used to.
+	start := call("update_service", map[string]any{"serviceId": "web", "startCommand": "bin/server"})
 	startDetails, _ := start["serviceDetails"].(map[string]any)
 	startEnvSpecific, _ := startDetails["envSpecificDetails"].(map[string]any)
 	if startEnvSpecific["dockerCommand"] != "bin/server" {
-		t.Fatalf("set_start_command = %#v", start)
+		t.Fatalf("update_service startCommand = %#v", start)
 	}
-	path := call("set_dockerfile_path", map[string]any{"serviceId": "web", "dockerfilePath": "docker/Dockerfile.prod"})
+	path := call("update_service", map[string]any{"serviceId": "web", "dockerfilePath": "docker/Dockerfile.prod"})
 	details, _ := path["serviceDetails"].(map[string]any)
 	envSpecific, _ := details["envSpecificDetails"].(map[string]any)
 	if envSpecific["dockerfilePath"] != "docker/Dockerfile.prod" {
-		t.Fatalf("set_dockerfile_path = %#v", path)
+		t.Fatalf("update_service dockerfilePath = %#v", path)
+	}
+	// …and the fold's own property: the second call left startCommand alone,
+	// because an omitted argument is not a write. Before w1/m71 this could not
+	// regress, since each field had its own tool.
+	if envSpecific["dockerCommand"] != "bin/server" {
+		t.Fatalf("update_service dockerfilePath cleared the untouched startCommand: %#v", envSpecific)
 	}
 }
 
