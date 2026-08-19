@@ -14,6 +14,8 @@ import {
 } from "@/common/components/ui/alert";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useConnectionInfo } from "@/features/keyvalue/hooks/use-connection-info";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { ConnectionField } from "@/common/components/connection-field";
 import type { KeyValueConnectionInfoView } from "@/features/keyvalue/types";
 
@@ -30,6 +32,13 @@ import type { KeyValueConnectionInfoView } from "@/features/keyvalue/types";
 export function ConnectionInfoPanel({ id }: { id: string }) {
   const { t } = useTranslations();
   const { info, loading, error, reveal, hide } = useConnectionInfo(id);
+  // Revealing the URIs is can_view_sensitive — the password lives inside the
+  // `redis://` string, so the whole reveal is gated exactly like the databases
+  // twin's connection strings + password (w9/m84).
+  const { canViewSensitive } = useCapabilities();
+  const revealReason = canViewSensitive
+    ? undefined
+    : t("capabilities.reasonCanViewSensitive");
 
   return (
     <Card>
@@ -53,10 +62,15 @@ export function ConnectionInfoPanel({ id }: { id: string }) {
             </Button>
           </>
         ) : (
-          <Button onClick={() => void reveal()} disabled={loading}>
-            {loading ? <Loader2 className="animate-spin" /> : <Eye />}
-            {t("keyvalue.connReveal")}
-          </Button>
+          <PermissionTooltip reason={revealReason}>
+            <Button
+              onClick={() => void reveal()}
+              disabled={loading || !canViewSensitive}
+            >
+              {loading ? <Loader2 className="animate-spin" /> : <Eye />}
+              {t("keyvalue.connReveal")}
+            </Button>
+          </PermissionTooltip>
         )}
       </CardContent>
     </Card>
