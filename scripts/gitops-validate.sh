@@ -2124,4 +2124,45 @@ for required_live_scope_guard in \
   }
 done
 
+echo "==> agent-session snapshot S3 contract (ADR059 / w2/m77)"
+snapshot_env="$(yq -N '
+  select(.kind == "Deployment" and .metadata.name == "bex-api") |
+  .spec.template.spec.containers[] | select(.name == "api") |
+  .env[] | select(.name | test("^BEX_AGENT_SNAPSHOT_S3_")) |
+  .name + "=" + .valueFrom.secretKeyRef.name + ":" + .valueFrom.secretKeyRef.key + ":" + ((.valueFrom.secretKeyRef.optional // false) | tostring)
+' "$tmp/bex-operator-prod.yaml" | sort | paste -sd, -)"
+expected_snapshot_env='BEX_AGENT_SNAPSHOT_S3_ACCESS_KEY=bex-agent-snapshot:BEX_AGENT_SNAPSHOT_S3_ACCESS_KEY:true,BEX_AGENT_SNAPSHOT_S3_BUCKET=bex-agent-snapshot:BEX_AGENT_SNAPSHOT_S3_BUCKET:true,BEX_AGENT_SNAPSHOT_S3_ENDPOINT=bex-agent-snapshot:BEX_AGENT_SNAPSHOT_S3_ENDPOINT:true,BEX_AGENT_SNAPSHOT_S3_PREFIX=bex-agent-snapshot:BEX_AGENT_SNAPSHOT_S3_PREFIX:true,BEX_AGENT_SNAPSHOT_S3_REGION=bex-agent-snapshot:BEX_AGENT_SNAPSHOT_S3_REGION:true,BEX_AGENT_SNAPSHOT_S3_SECRET_KEY=bex-agent-snapshot:BEX_AGENT_SNAPSHOT_S3_SECRET_KEY:true'
+if [ "$snapshot_env" != "$expected_snapshot_env" ]; then
+  echo "FAIL: bex-api snapshot S3 env is '$snapshot_env', want all six optional secretKeyRefs on bex-agent-snapshot" >&2
+  fail=1
+fi
+snapshot_policy_shape="$(jq -r '[.Statement[] | .Action[]? // .Action] | flatten | sort | join(",")' \
+  infra/wasabi/agent-snapshot-s3-policy.json)"
+expected_snapshot_actions='s3:AbortMultipartUpload,s3:DeleteObject,s3:GetBucketLocation,s3:GetObject,s3:ListBucket,s3:ListMultipartUploadParts,s3:PutObject'
+[ "$snapshot_policy_shape" = "$expected_snapshot_actions" ] || {
+  echo "FAIL: agent snapshot IAM actions drifted: $snapshot_policy_shape" >&2
+  fail=1
+}
+snapshot_resources="$(jq -r '[.Statement[].Resource] | flatten | sort | join(",")' \
+  infra/wasabi/agent-snapshot-s3-policy.json)"
+[ "$snapshot_resources" = "arn:aws:s3:::bex-agent-snapshots,arn:aws:s3:::bex-agent-snapshots/*" ] || {
+  echo "FAIL: agent-snapshot-s3-policy.json is not confined to bex-agent-snapshots: $snapshot_resources" >&2
+  fail=1
+}
+if grep -q 'bex-tfstate' infra/wasabi/agent-snapshot-s3-policy.json; then
+  echo "FAIL: agent snapshot IAM policy must never name bex-tfstate" >&2
+  fail=1
+fi
+for required_snapshot_probe in \
+  'snapshot put object' \
+  'snapshot list tfstate bucket' \
+  'snapshot list account buckets' \
+  'snapshot list unrelated bucket' \
+  'probe object AES256'; do
+  grep -qF "$required_snapshot_probe" scripts/agent-snapshot-secret.sh || {
+    echo "FAIL: agent snapshot verifier lost '$required_snapshot_probe'" >&2
+    fail=1
+  }
+done
+
 [ "$fail" -eq 0 ] && echo "PASS: gitops tree renders" || { echo "FAIL: see errors above" >&2; exit 1; }

@@ -433,6 +433,54 @@ spec:
                   optional: true
             - name: BEX_SANDBOX_EXEC_URL
               value: http://bex-ssh-gateway.bex-system.svc:8081/sandbox-exec
+            # ADR059 D3 hibernation (w2/m77): all six coordinates arrive together
+            # in the out-of-band bex-agent-snapshot Secret installed by
+            # scripts/agent-snapshot-secret.sh. Every reference is optional so a
+            # cluster with no Secret stays Terminate-only (byte-identical to
+            # w2/m67). Partial keys fail bex-api startup rather than silently
+            # disabling the tier. Rollback: delete the Secret (or leave it
+            # absent) ⇒ reclaim reverts to Terminate. The bucket MUST be
+            # dedicated and SSE-enabled — never bex-tfstate.
+            # Retention (default 168h, dirty-git doubling) and pin quota
+            # (default 10) stay the m68 defaults on purpose. The Secret can
+            # land before this env is live; Argo applying this block is what
+            # arms the process.
+            - name: BEX_AGENT_SNAPSHOT_S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-snapshot
+                  key: BEX_AGENT_SNAPSHOT_S3_ENDPOINT
+                  optional: true
+            - name: BEX_AGENT_SNAPSHOT_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-snapshot
+                  key: BEX_AGENT_SNAPSHOT_S3_BUCKET
+                  optional: true
+            - name: BEX_AGENT_SNAPSHOT_S3_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-snapshot
+                  key: BEX_AGENT_SNAPSHOT_S3_REGION
+                  optional: true
+            - name: BEX_AGENT_SNAPSHOT_S3_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-snapshot
+                  key: BEX_AGENT_SNAPSHOT_S3_PREFIX
+                  optional: true
+            - name: BEX_AGENT_SNAPSHOT_S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-snapshot
+                  key: BEX_AGENT_SNAPSHOT_S3_ACCESS_KEY
+                  optional: true
+            - name: BEX_AGENT_SNAPSHOT_S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-snapshot
+                  key: BEX_AGENT_SNAPSHOT_S3_SECRET_KEY
+                  optional: true
             # Login-time invite redemption requires a Kratos-VERIFIED email
             # (w1/040, closing w1/m53's V1 window: an attacker who registered
             # with a victim's not-yet-signed-up invited address could otherwise

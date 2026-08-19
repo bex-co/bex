@@ -1070,17 +1070,24 @@ func wireAgentSessions(deps *api.Deps) {
 	deps.MaxBlueprintGroupings = zeroableIntEnv("BEX_MAX_BLUEPRINT_GROUPINGS", 1000)
 	// Round-11 #3: per-workspace env-group quota (default 100; 0 disables).
 	deps.MaxEnvGroupsPerWorkspace = zeroableIntEnv("BEX_MAX_ENV_GROUPS_PER_WORKSPACE", 100)
-	// ADR059 D3/D5 hibernation (w2/m68): the object store enables the Hibernated
-	// tier (reclaim → snapshot, resume → rehydrate). Unset ⇒ the whole tier is off
-	// and reclaim stays Terminate (byte-identical to w2/m67).
-	if store := agentsessions.NewS3SnapshotStore(agentsessions.S3SnapshotConfig{
+	// ADR059 D3/D5 hibernation (w2/m68, armed w2/m77): the object store enables
+	// the Hibernated tier (reclaim → snapshot, resume → rehydrate). All four
+	// required coordinates unset ⇒ the whole tier is off and reclaim stays
+	// Terminate (byte-identical to w2/m67). A partial set is fatal — a typo'd
+	// Secret key must not silently disable hibernation. Unset/delete the
+	// bex-agent-snapshot Secret to roll back.
+	store, err := agentsessions.NewS3SnapshotStore(agentsessions.S3SnapshotConfig{
 		Endpoint:  os.Getenv("BEX_AGENT_SNAPSHOT_S3_ENDPOINT"),
 		Bucket:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_BUCKET"),
 		Region:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_REGION"),
 		Prefix:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_PREFIX"),
 		AccessKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_ACCESS_KEY"),
 		SecretKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_SECRET_KEY"),
-	}); store != nil {
+	})
+	if err != nil {
+		log.Fatalf("bex-api: agent-session hibernation config: %v", err)
+	}
+	if store != nil {
 		deps.AgentSnapshotStore = store
 		log.Printf("bex-api: agent-session hibernation enabled (object store %s)", os.Getenv("BEX_AGENT_SNAPSHOT_S3_BUCKET"))
 	}
