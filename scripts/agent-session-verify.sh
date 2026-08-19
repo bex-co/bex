@@ -300,6 +300,14 @@ ticket="$(jq -r '.ticket // empty' <<<"$mint")"
 jq -e '.url and .expiresAt' <<<"$mint" >/dev/null \
   || fail "attach-ticket missing url/expiresAt (BEX_AGENT_SESSION_GATEWAY_URL unset?): $mint"
 stream_url="$(stream_url_for "$sid")"
+# w10/m9 t003 (w3/013): the mint now also returns streamUrl — the same address
+# this script derives independently. Present ⇒ it must agree (catches drift
+# between BEX_API_PUBLIC_URL and this API origin); absent is fine (the backend
+# has no BEX_API_PUBLIC_URL configured, same as before this field existed).
+minted_stream_url="$(jq -r '.streamUrl // empty' <<<"$mint")"
+if [ -n "$minted_stream_url" ] && [ "$minted_stream_url" != "$stream_url" ]; then
+  fail "mint streamUrl (${minted_stream_url}) disagrees with the derived stream endpoint (${stream_url})"
+fi
 ok "attach-ticket minted for ${sid} (stream ${stream_url})"
 
 # 5a. Ticketless attach is rejected (the ticket is the sole credential).

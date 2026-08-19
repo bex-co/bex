@@ -709,7 +709,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 		AgentSessions: &agentsessions.Service{
 			Base: base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
 			Sandbox: agentLifecycle, TicketSecret: d.AgentSessionTicketSecret,
-			GatewayURL: d.AgentSessionGatewayURL, GitProxyURL: d.AgentGitProxyURL,
+			GatewayURL: d.AgentSessionGatewayURL, APIPublicURL: d.DeployHookBaseURL,
+			GitProxyURL: d.AgentGitProxyURL,
 			ModelProxyURL: d.AgentModelProxyURL,
 			SSHHost:       sshHost, ModelKeys: d.Secrets, GitHub: gh,
 			MaxLiveSandboxes:   d.AgentMaxLiveSandboxesPerWorkspace,

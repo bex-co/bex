@@ -45,10 +45,15 @@ fragment AgentSessionFields on AgentSession {
 }
 
 # The short-lived attach ticket (+ gateway origin + expiry) the browser presents
-# to the m43 stream endpoint. Selected ONLY on the mint ops.
+# to the m43 stream endpoint. Selected ONLY on the mint ops. `url` is the
+# phase-2 raw-ACP WebSocket gateway origin — not the phase-1 stream endpoint.
+# `streamUrl` is that (w10/m9 t003, w3/013): the server-authoritative
+# `<id>/stream` URL, empty when the backend has no BEX_API_PUBLIC_URL
+# configured (transport.ts falls back to deriving it locally in that case).
 fragment AgentSessionMintFields on AgentSession {
   ticket
   url
+  streamUrl
   expiresAt
 }
 

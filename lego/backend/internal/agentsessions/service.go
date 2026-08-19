@@ -142,6 +142,11 @@ type Service struct {
 	Sandbox      SandboxLifecycle
 	TicketSecret []byte
 	GatewayURL   string
+	// APIPublicURL (BEX_API_PUBLIC_URL) is the externally reachable API origin
+	// (e.g. https://api.bex.co) this Service builds View.StreamURL from — the
+	// same coordinate Completer.APIPublicURL uses for copy-ready PR body links.
+	// Empty => View.StreamURL is omitted (w3/013).
+	APIPublicURL string
 	// SSHHost, when set (BEX_SSH_HOST, same activation gates as ADR035), is the
 	// public SSH gateway hostname projected onto View.SSHAddress as
 	// `ags-<xid>@<host>` for the "Open in Zed" affordance (ADR054 D5). Empty =>
@@ -1484,6 +1489,10 @@ func (s *Service) withTicket(ctx context.Context, record store.AgentSession, act
 		return View{}, err
 	}
 	view.Ticket, view.URL, view.ExpiresAt = ticket, s.GatewayURL, &expires
+	if s.APIPublicURL != "" {
+		view.StreamURL = fmt.Sprintf("%s/v1/agent-sessions/%s/stream",
+			strings.TrimRight(s.APIPublicURL, "/"), record.ID)
+	}
 	return view, nil
 }
 

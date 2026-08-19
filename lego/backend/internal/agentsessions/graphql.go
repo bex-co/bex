@@ -106,8 +106,9 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return gqlTime(*v.CanceledAt)
 		})},
-		"ticket": gqlutil.StrField(func(v View) any { return v.Ticket }),
-		"url":    gqlutil.StrField(func(v View) any { return v.URL }),
+		"ticket":    gqlutil.StrField(func(v View) any { return v.Ticket }),
+		"url":       gqlutil.StrField(func(v View) any { return v.URL }),
+		"streamUrl": gqlutil.StrField(func(v View) any { return v.StreamURL }),
 		"expiresAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any {
 			if v.ExpiresAt == nil {
 				return nil

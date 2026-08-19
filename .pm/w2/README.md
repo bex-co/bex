@@ -92,7 +92,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w2/dev-2/` keeps onl
 ## Inbox
 
 - `020.md` — Live-verification sweep: execute ~8 existing code-complete-but-blocked closeout tasks in place across w1/w3/w5 (each credits its own milestone; report back anything needing user-held credentials) ← `/pm-brainstorm for w2` 2026-08-18 round 2
-- `021.md` — Design note: round-6 #4 admission grammar for operator-authored workloads — scope the residual against ADR063 #13 / ADR064 before proposing any implementation ← `/pm-brainstorm for w2` 2026-08-18 round 1
+- `022.md` — Two narrow ADR057 #4 residuals: day-to-day identity VAP `matchConditions` coverage + exact BuildKit-shape modeling in `bex-build` (both sub-hour) ← w10/m9 t004 design note, 2026-08-19
 
 _(previous state: none open — 2026-08-15 board cleanup: `017.md` resolved and moved to `done/` — the w3/m44 `session-sidebar.tsx` no longer exists after the agents-page restructure, nothing left to unify; `018.md` (bound the background-dispatch fan-out) deleted — mitigated by m67's `BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE` dispatch-time cap, remaining global-semaphore hardening judged not worth carrying; `019.md` (deploy idempotently applies ssh-gateway `dbrole.sql` grants) deleted per cleanup — the grant surface still applies only via `scripts/ssh-gateway-db-role.sh`, so re-run it whenever `dbrole.sql` gains a grant)_
 

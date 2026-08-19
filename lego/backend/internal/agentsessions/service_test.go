@@ -1269,6 +1269,45 @@ func TestAttachTicketMintsWithoutChangingLifecycle(t *testing.T) {
 	}
 }
 
+// w3/013: url is the phase-2 raw-ACP WebSocket gateway origin — not where a
+// client GETs the phase-1 SSE conversation stream. StreamURL is that exact
+// address, built from APIPublicURL; unset ⇒ omitted (graceful degradation,
+// the same shape as the deploy-hook URLs APIPublicURL already drives).
+func TestAttachTicketBuildsStreamURLFromAPIPublicURL(t *testing.T) {
+	svc, _, _, _ := fixture()
+	created, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Unset by default in the fixture: no StreamURL, url still populated.
+	unconfigured, err := svc.AttachTicket(caller("alice"), created.ID, agentsessionticket.ActionRead)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unconfigured.StreamURL != "" {
+		t.Fatalf("StreamURL = %q, want empty with APIPublicURL unset", unconfigured.StreamURL)
+	}
+	if unconfigured.URL != svc.GatewayURL {
+		t.Fatalf("URL = %q, want the phase-2 gateway origin %q", unconfigured.URL, svc.GatewayURL)
+	}
+
+	svc.APIPublicURL = "https://api.bex.co/"
+	configured, err := svc.AttachTicket(caller("alice"), created.ID, agentsessionticket.ActionRead)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "https://api.bex.co/v1/agent-sessions/" + created.ID + "/stream"
+	if configured.StreamURL != want {
+		t.Fatalf("StreamURL = %q, want %q", configured.StreamURL, want)
+	}
+	// url is unaffected — still the phase-2 gateway origin, the two fields are
+	// never conflated.
+	if configured.URL != svc.GatewayURL {
+		t.Fatalf("URL = %q, want the phase-2 gateway origin %q", configured.URL, svc.GatewayURL)
+	}
+}
+
 func TestCreateKeepsWorkspaceModelKeyBehindProxy(t *testing.T) {
 	svc, _, _, lifecycle := fixture()
 	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{

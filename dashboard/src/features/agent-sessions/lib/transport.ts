@@ -25,8 +25,14 @@ export const AGENT_TICKET_HEADER = "X-Bex-Agent-Ticket";
 /** A freshly minted attach ticket (t001's attach/resume/steer mint verbs). */
 export interface MintedTicket {
   ticket: string;
-  /** The mint's advertised stream URL, if any (else the config-derived one). */
-  url?: string | null;
+  /**
+   * The mint's server-authoritative phase-1 SSE stream URL, if the backend has
+   * BEX_API_PUBLIC_URL configured (w10/m9 t003, w3/013) — else the
+   * config-derived one below. NOT the same as the mint's `url` field, which is
+   * the phase-2 raw-ACP WebSocket gateway origin and is never a stream
+   * endpoint; do not read `url` for this purpose.
+   */
+  streamUrl?: string | null;
 }
 
 export interface AgentSessionTransportOptions {

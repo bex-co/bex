@@ -121,14 +121,22 @@ export interface AgentSessionView {
 
 /**
  * The short-lived attach ticket a mint op (create/steer/resume/attach) returns:
- * the browser presents `ticket` to the m43 stream endpoint at `url` until
- * `expiresAt`. Distinct from the polled view so ambient attach authority never
- * leaks onto list/detail reads.
+ * the browser presents `ticket` to the m43 stream endpoint until `expiresAt`.
+ * Distinct from the polled view so ambient attach authority never leaks onto
+ * list/detail reads.
+ *
+ * `url` is the phase-2 raw-ACP WebSocket gateway origin — NOT the phase-1 SSE
+ * stream endpoint. `streamUrl` is that (w10/m9 t003, w3/013): the
+ * server-authoritative `<id>/stream` URL, null when the backend has no
+ * BEX_API_PUBLIC_URL configured (the transport falls back to deriving it
+ * locally from `config.apiBaseUrl` in that case — see
+ * `lib/transport.ts#agentSessionStreamUrl`).
  */
 export interface AgentSessionTicket {
   /** The session (post-mint), so callers can route to it and re-read metadata. */
   session: AgentSessionView;
   ticket: string | null;
   url: string | null;
+  streamUrl: string | null;
   expiresAt: string | null;
 }
