@@ -113,6 +113,9 @@ Carried forward from this round, unchanged in substance:
 
 - **Operation-level OAuth scope matrix** (finding 1's remediation beyond what shipped): per-capability scopes across REST/GraphQL/MCP, plus authorization-decision audit carrying client id, subject, audience, and normalized scopes. Board item, not a remediation-round change.
 - **Digest-pinning inventory** (finding 5's residual, seventh report): tenant-version Valkey, `apk add age`, and the wider Dockerfile/kpack/barman/CNPG inventory from ADR061 #1. The answer is ADR060 §D7's internally-built signed toolchain images, not more one-off pins.
+
+  **Update — `w1/m73` (2026-08-18) closed the runtime-image half.** The tenant-version Valkey deferral rested on a claim that does not hold: `KeyValueSpec.Version` is a closed CRD enum (`"7"`/`"8"`), so bex never faces "a major it has not seen" and both are now pinned (`kvVersionImages`), as is the `oliver006/redis_exporter` sidecar that shares the tenant pod and its password. The guard derives its expectation from the enum itself, so adding a major without its digest fails CI rather than waiting for an eighth scan. What remains is genuinely not a pinning change: `apk add age` resolves code from a mutable package index at container start (three sites), which needs a published image carrying `age` — the ADR060 §D7 answer — and the CI/provisioning **download** class (clusterctl, remote Helm charts, the Argo install manifest, `get.k3s.io`, runc/containerd/runsc verified against same-origin checksums) is a different mechanism from an image reference.
+
 - **onbex.co PSL submission** (finding 3, ninth report): operator action, `.pm/w1/050.md`.
 
 The scan's open questions (legacy bare-named App CR inventory, kpack-generated pod shape) are unchanged repeats of ADR055 F2/F3 and ADR061 #2/#6 — both need a live cluster the offline scan and this remediation pass do not have.

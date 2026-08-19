@@ -82,8 +82,13 @@ const (
 	// kvExporterPort / kvExporterImage back the redis_exporter metrics sidecar
 	// (w5/011): it scrapes Valkey's INFO stats and exposes them as Prometheus
 	// metrics on kvExporterPort, discovered by the valkey-instances scrape job.
-	kvExporterPort  = 9121
-	kvExporterImage = "oliver006/redis_exporter:alpine"
+	kvExporterPort = 9121
+	// Digest-pinned like every other image bex chooses (w1/m73): the exporter is
+	// a sidecar in the tenant's own pod and receives the instance password to
+	// poll INFO, so a retagged `alpine` would become code running beside the
+	// datastore with its credential. Bumping it is a deliberate change that
+	// rolls the StatefulSets.
+	kvExporterImage = "oliver006/redis_exporter:alpine@sha256:d4e0a0ad55fa4f968eea4519b518b16dac887debd06c790a6be2f60940538d82"
 	// labelKeyValue marks the workload/Service a KeyValue creates, and is the
 	// StatefulSet selector + Service selector so the two stay coupled.
 	labelKeyValue    = "app.bex.co/keyvalue"
@@ -115,20 +120,31 @@ func resolveKVPlan(spec appv1alpha1.KeyValueSpec) (tiers.ValkeyTier, int32) {
 	return plan, growOnlyStorage(spec.StorageGB, plan.StorageGB)
 }
 
+// kvVersionImages pins every Valkey major a tenant may request. The set is
+// closed and known at compile time — KeyValueSpec.Version carries
+// +kubebuilder:validation:Enum="7";"8" — which is what retires round-14 #5's
+// residual: the deferral rested on "bex cannot pre-resolve a digest for a major
+// it has not seen", but the CRD guarantees it never sees one. Adding a major to
+// that enum without adding its digest here fails
+// TestValkeyImagesArePinnedForEveryPermittedVersion.
+var kvVersionImages = map[string]string{
+	"7": "valkey/valkey:7-alpine@sha256:211d9cb02395987d3740b11fdbb7be0cb66c5f36a065640ce5753c933700d6cc",
+	"8": kvDefaultImage,
+}
+
 // valkeyImage resolves the Valkey image for a major version; empty => the
-// operator default (digest-pinned, kvDefaultImage).
+// operator default (kvDefaultImage). Every result is digest-pinned.
 //
-// An EXPLICIT spec.version resolves to a mutable tag (round-14 #5's residual):
-// the version is tenant-chosen at request time, so bex cannot carry a
-// pre-resolved digest for every major it has not seen. That is the standing
-// digest-pinning inventory deferral (ADR069 #5, ADR060 D7 lineage) — the fixed
-// references bex itself chooses (this default, busybox, alpine, the AWS CLI
-// uploader) are all pinned, and the guard test enforces it.
+// An unrecognized version falls back to the pinned default rather than
+// composing a mutable tag: the CRD enum should make that unreachable, and if it
+// ever is reached, running a known image is safer than running whatever
+// `valkey:<something>-alpine` resolves to today. The guard test is what keeps
+// the fallback from becoming the quiet normal path.
 func valkeyImage(version string) string {
-	if version == "" {
-		return kvDefaultImage
+	if image, ok := kvVersionImages[version]; ok {
+		return image
 	}
-	return "valkey/valkey:" + version + "-alpine"
+	return kvDefaultImage
 }
 
 // kvResources maps a Valkey tier to a Guaranteed-QoS allocation via the shared
