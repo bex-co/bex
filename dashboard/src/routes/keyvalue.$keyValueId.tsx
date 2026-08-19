@@ -47,8 +47,12 @@ export const Route = createFileRoute("/keyvalue/$keyValueId")({
   pendingComponent: KeyValueDetailPage,
   pendingMs: 0,
   beforeLoad: requireAuth(),
-  validateSearch: (search: Record<string, unknown>): { tab?: "logs" } =>
-    search.tab === "logs" ? { tab: "logs" } : {},
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: "logs" | "metrics" } =>
+    search.tab === "logs" || search.tab === "metrics"
+      ? { tab: search.tab }
+      : {},
   loader: ({ context, params, cause }) =>
     loadRouteResource(
       () =>
@@ -109,13 +113,27 @@ export function KeyValueDetailPage() {
           type="button"
           className={cn(
             "border-b-2 px-3 py-2 text-sm",
-            tab !== "logs"
+            !tab
               ? "border-foreground text-foreground"
               : "border-transparent text-muted-foreground",
           )}
           onClick={() => void navigate({ to: ".", search: {} })}
         >
           {t("keyvalue.overviewTab")}
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "border-b-2 px-3 py-2 text-sm",
+            tab === "metrics"
+              ? "border-foreground text-foreground"
+              : "border-transparent text-muted-foreground",
+          )}
+          onClick={() =>
+            void navigate({ to: ".", search: { tab: "metrics" } })
+          }
+        >
+          {t("keyvalue.metricsTab")}
         </button>
         <button
           type="button"
@@ -139,6 +157,10 @@ export function KeyValueDetailPage() {
         ) : keyValue && tab === "logs" ? (
           <div className="mx-auto w-full max-w-4xl space-y-6">
             <KeyValueLogViewer resource={keyValue.id} />
+          </div>
+        ) : keyValue && tab === "metrics" ? (
+          <div className="mx-auto w-full max-w-4xl space-y-6">
+            <DatastoreMetricsPanel kind="keyvalue" resource={keyValue.id} />
           </div>
         ) : keyValue ? (
           <div className="mx-auto grid w-full max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
@@ -169,9 +191,6 @@ export function KeyValueDetailPage() {
               </section>
               <section id="maxmemory-policy" className="scroll-mt-6">
                 <KeyValueMaxmemoryPolicySection id={keyValue.id} />
-              </section>
-              <section id="metrics" className="scroll-mt-6">
-                <DatastoreMetricsPanel kind="keyvalue" resource={keyValue.id} />
               </section>
               <section id="danger-zone" className="scroll-mt-6">
                 <KeyValueDangerActions

@@ -551,6 +551,10 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "日志",
     description: "Detail-page Logs tab label",
   },
+  "keyvalue.metricsTab": {
+    message: "指标",
+    description: "Detail-page Metrics tab label",
+  },
   // --- Logs viewer ---
   "keyvalue.logsRangeLabel": {
     message: "时间范围",

@@ -558,6 +558,10 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Logs",
     description: "Detail-page Logs tab label",
   },
+  "keyvalue.metricsTab": {
+    message: "Metrics",
+    description: "Detail-page Metrics tab label",
+  },
   // --- Logs viewer ---
   "keyvalue.logsRangeLabel": {
     message: "Time range",

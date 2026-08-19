@@ -115,7 +115,7 @@ function kv(overrides: Partial<KeyValueView> = {}): KeyValueView {
   };
 }
 
-function renderPage() {
+function renderPage(initialPath = "/keyvalue/sessions-cache") {
   const rootRoute = createRootRoute();
   const homeRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -130,7 +130,7 @@ function renderPage() {
   const router = createRouter({
     routeTree: rootRoute.addChildren([homeRoute, detailRoute]),
     history: createMemoryHistory({
-      initialEntries: ["/keyvalue/sessions-cache"],
+      initialEntries: [initialPath],
     }),
     context: { client: {} as never, session: null },
   });
@@ -229,17 +229,25 @@ describe("KeyValueDetailPage", () => {
     expect(screen.queryByText("Region")).not.toBeInTheDocument();
   });
 
-  it("feeds the metrics panel the typed id, not the display name (w5/m71)", async () => {
+  it("renders the metrics panel on its own tab, feeding it the typed id (w5/m71)", async () => {
     // bex-api resolves datastoreMetrics.query.resource as the KeyValue CR
     // name, and CR names are the typed ids — a display name 404s into charts
     // that silently render "No data in range".
     keyValueState.keyValue = kv({ id: "red-sessions", name: "sessions-cache" });
-    renderPage();
+    renderPage("/keyvalue/sessions-cache?tab=metrics");
 
     await screen.findByRole("heading", { name: "sessions-cache" });
     expect(datastoreMetricsCalls.length).toBeGreaterThan(0);
     for (const call of datastoreMetricsCalls) {
       expect(call).toEqual({ kind: "keyvalue", resource: "red-sessions" });
     }
+  });
+
+  it("does not render the metrics panel on the Overview tab", async () => {
+    keyValueState.keyValue = kv({ id: "red-sessions", name: "sessions-cache" });
+    renderPage();
+
+    await screen.findByRole("heading", { name: "sessions-cache" });
+    expect(datastoreMetricsCalls).toHaveLength(0);
   });
 });
