@@ -20,6 +20,7 @@ package execution
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -91,8 +92,8 @@ func PodLabels(app, appUID, component, workspace, appNamespace string, verifyIma
 // mechanism may add a narrower container security context, but it must not
 // restore the ambient Kubernetes API token or broaden node placement.
 func HardenPod(spec *corev1.PodSpec) {
-	spec.AutomountServiceAccountToken = ptr(false)
-	spec.HostUsers = ptr(false) // pod user namespace; requires containerd 2.x + UserNamespacesSupport
+	spec.AutomountServiceAccountToken = ptr.To(false)
+	spec.HostUsers = ptr.To(false) // pod user namespace; requires containerd 2.x + UserNamespacesSupport
 	spec.NodeSelector = map[string]string{NodePoolLabel: UntrustedNodePool}
 	if spec.SecurityContext == nil {
 		spec.SecurityContext = &corev1.PodSecurityContext{}
@@ -114,5 +115,3 @@ func TolerateBuildPool(spec *corev1.PodSpec) {
 		Effect:   corev1.TaintEffectNoSchedule,
 	})
 }
-
-func ptr[T any](v T) *T { return &v }

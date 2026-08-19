@@ -17,8 +17,13 @@ limitations under the License.
 package execution
 
 import (
+	"context"
+	"fmt"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // The operator dispatches four kinds of Kubernetes Job — build, pre-deploy,
@@ -28,6 +33,49 @@ import (
 // both answers; these are the shared ones. The Job *specs* deliberately stay
 // per-package (their names, labels, annotations, and pod shapes genuinely
 // differ) — it is only the reading of status that is common.
+
+// EnsureOwnedJob dispatches job if it does not already exist and returns the
+// Job's CURRENT server-side state either way — never a wait (the non-blocking
+// observe shape all three Job planes share, ADR060 §D1). It reads before it
+// writes: the steady-state reconcile of an App whose Job already exists is one
+// cached Get, not a live API-server Create rejected with 409 (the same idiom
+// as the controller's deleteStaleChildren — a blind write is a live API round
+// trip). Only a NotFound dispatches a Create, which still tolerates
+// AlreadyExists so the create/create race a concurrent reconcile wins adopts
+// the winner. A name hit is adopted only after owned.CheckOwner proves the
+// existing Job belongs to this exact parent lifetime, so deterministic-name
+// reuse across recreations can never resurrect another lifetime's artifact.
+// created reports whether THIS call dispatched the Job (false when it adopted
+// an existing one, including the create/create race a concurrent reconcile
+// wins). pkg prefixes the returned errors ("build", "publish", "predeploy") so
+// each plane's error strings stay byte-identical to its pre-consolidation
+// wording.
+func EnsureOwnedJob(ctx context.Context, cl client.Client, job *batchv1.Job, owned ArtifactIdentity, pkg string) (*batchv1.Job, bool, error) {
+	key := client.ObjectKeyFromObject(job)
+	cur := &batchv1.Job{}
+	created := false
+	if err := cl.Get(ctx, key, cur); apierrors.IsNotFound(err) {
+		switch createErr := cl.Create(ctx, job); {
+		case createErr == nil:
+			cur, created = job, true
+		case apierrors.IsAlreadyExists(createErr):
+			// A concurrent reconcile won the create/create race between the
+			// Get and the Create (or the cache lags a prior dispatch): fetch
+			// the winner and adopt it below.
+			if err := cl.Get(ctx, key, cur); err != nil {
+				return nil, false, fmt.Errorf("%s: get job %s: %w", pkg, key.Name, err)
+			}
+		default:
+			return nil, false, fmt.Errorf("%s: create job %s: %w", pkg, key.Name, createErr)
+		}
+	} else if err != nil {
+		return nil, false, fmt.Errorf("%s: get job %s: %w", pkg, key.Name, err)
+	}
+	if err := owned.CheckOwner(cur); err != nil {
+		return nil, false, fmt.Errorf("%s: check job owner %s: %w", pkg, key.Name, err)
+	}
+	return cur, created, nil
+}
 
 // JobHasCondition reports whether j carries condition type t with status True.
 //

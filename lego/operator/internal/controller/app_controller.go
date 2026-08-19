@@ -45,6 +45,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	crbuilder "sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -2019,32 +2020,15 @@ func deploymentRolloutReady(dep *appsv1.Deployment, replicas int32) bool {
 		dep.Status.AvailableReplicas >= replicas
 }
 
-// deploymentPodsReady closes the window where a Pod has already crashed but
-// the Deployment controller has not yet lowered availableReplicas. A missing
-// pod list is treated as inconclusive so startup/fake clients still rely on the
-// authoritative Deployment status; once current-revision pods are visible,
-// every desired replica must have PodReady=true.
+// deploymentPodsReady is currentRevisionPodsReady over the Deployment's own
+// selector and revision label (see that helper for the inconclusive-true
+// semantics it shares with keyValuePodsReady).
 func (r *AppReconciler) deploymentPodsReady(ctx context.Context, dep *appsv1.Deployment, replicas int32) bool {
 	if replicas == 0 || dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
 		return true
 	}
-	var pods corev1.PodList
-	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
-		return true
-	}
-	revision := dep.Spec.Template.Labels[labelRevision]
-	var current, ready int32
-	for i := range pods.Items {
-		pod := &pods.Items[i]
-		if !pod.DeletionTimestamp.IsZero() || (revision != "" && pod.Labels[labelRevision] != revision) {
-			continue
-		}
-		current++
-		if podReady(pod) {
-			ready++
-		}
-	}
-	return current == 0 || ready >= replicas
+	return currentRevisionPodsReady(ctx, r.Client, dep.Namespace, dep.Spec.Selector.MatchLabels,
+		labelRevision, dep.Spec.Template.Labels[labelRevision], replicas)
 }
 
 // currentRevisionFullyReady reports that a LIVE pod listing shows the full
@@ -2153,14 +2137,7 @@ func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.A
 		return err
 	}
 	if len(hosts) == 0 {
-		stale := &networkingv1.Ingress{}
-		if err := r.Get(ctx, client.ObjectKey{Name: app.Name, Namespace: app.Namespace}, stale); err != nil {
-			return client.IgnoreNotFound(err) // cached read: absent on every steady-state pass
-		}
-		if err := r.Delete(ctx, stale); err != nil && !apierrors.IsNotFound(err) {
-			return err
-		}
-		return nil
+		return r.deleteStaleChildren(ctx, &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}})
 	}
 	refs := make([]string, len(middlewareNames))
 	for i, name := range middlewareNames {
@@ -2281,15 +2258,8 @@ func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1al
 
 	ingressName := hostRedirectIngressName(app.Name)
 	if len(redirects) == 0 {
-		stale := &networkingv1.Ingress{}
-		err := r.Get(ctx, client.ObjectKey{Name: ingressName, Namespace: app.Namespace}, stale)
-		if err != nil && !apierrors.IsNotFound(err) {
+		if err := r.deleteStaleChildren(ctx, &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: ingressName, Namespace: app.Namespace}}); err != nil {
 			return nil, err
-		}
-		if err == nil { // cached read: absent on every steady-state pass
-			if err := r.Delete(ctx, stale); err != nil && !apierrors.IsNotFound(err) {
-				return nil, err
-			}
 		}
 		return map[string]bool{}, nil
 	}
@@ -2313,12 +2283,6 @@ func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1al
 	return redirectSources, nil
 }
 
-// reconcileStaticSite materializes a static_site: build → object store (the
-// publish plane), then serve the published revision from the shared
-// static-server (no Deployment/Service for the served content). Routes/headers
-// live on the CR and the static-server reads them live, so an edge-rule edit
-// takes effect on the next resolver refresh without a republish. The image is
-// already resolved (built from git or prebuilt) by Reconcile.
 // publishStaticRevision uploads one revision's output to the object store —
 // either extracted from the built image, or (direct publish, w9/010) cloned from
 // the repo when no build ran. It reports its own failure through r.fail, so a
@@ -2384,6 +2348,12 @@ func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alp
 	return ctrl.Result{}, nil
 }
 
+// reconcileStaticSite materializes a static_site: build → object store (the
+// publish plane), then serve the published revision from the shared
+// static-server (no Deployment/Service for the served content). Routes/headers
+// live on the CR and the static-server reads them live, so an edge-rule edit
+// takes effect on the next resolver refresh without a republish. The image is
+// already resolved (built from git or prebuilt) by Reconcile.
 func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha1.App, image string) (ctrl.Result, error) {
 	if app.Spec.PublishPath == "" {
 		return r.fail(ctx, app, "BadSpec", fmt.Errorf("static_site requires spec.publishPath"))
@@ -2868,7 +2838,7 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 	}
 	spec := corev1.PodSpec{
 		RestartPolicy:                corev1.RestartPolicyNever,
-		AutomountServiceAccountToken: ptr(false),
+		AutomountServiceAccountToken: ptr.To(false),
 	}
 	// Secret files reach the cron run's container the same way as a Deployment's.
 	if vol, mount := secretFileMounts(app); vol != nil {
@@ -3175,15 +3145,11 @@ func tlsSecretName(appName string, i int, host string) string {
 // (PSS baseline only, not restricted; see docs/ADR022-tenant-isolation.md).
 func tenantSecCtx() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: ptr(false),
+		AllowPrivilegeEscalation: ptr.To(false),
 		Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
 		SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 	}
 }
-
-// ptr returns a pointer to v. Needed because Go cannot take the address of a
-// composite literal or constant — e.g. &false is a compile error.
-func ptr[T any](v T) *T { return &v }
 
 // stuckPodMessage inspects the pods behind a not-yet-ready tenant Deployment
 // for a terminal-looking container state and returns an actionable Ready
@@ -3341,13 +3307,22 @@ func (r *AppReconciler) setPhase(ctx context.Context, app *appv1alpha1.App, p ap
 	_ = r.Status().Update(ctx, app)
 }
 
+// setNotReadyCondition stamps Ready=False(reason, err) on a resource's
+// conditions and best-effort persists its status — the shared body behind the
+// three per-resource failure helpers (fail, dbFail, kvFail). The FAILED phase
+// deliberately stays per-reconciler: each caller assigns its own typed phase
+// before calling.
+func setNotReadyCondition(ctx context.Context, sw client.SubResourceWriter, obj client.Object, conditions *[]metav1.Condition, reason string, err error) {
+	meta.SetStatusCondition(conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: err.Error(),
+		ObservedGeneration: obj.GetGeneration(),
+	})
+	_ = sw.Update(ctx, obj)
+}
+
 func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason string, err error) (ctrl.Result, error) {
 	app.Status.Phase = appv1alpha1.PhaseFailed
-	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: err.Error(),
-		ObservedGeneration: app.Generation,
-	})
-	_ = r.Status().Update(ctx, app)
+	setNotReadyCondition(ctx, r.Status(), app, &app.Status.Conditions, reason, err)
 	return ctrl.Result{}, err
 }
 

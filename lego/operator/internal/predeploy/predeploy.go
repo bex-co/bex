@@ -193,20 +193,9 @@ func Ensure(ctx context.Context, o Options) (*batchv1.Job, error) {
 	if o.AppUID == "" {
 		return nil, fmt.Errorf("predeploy: empty App UID")
 	}
-	job := Job(o)
-	if err := o.Client.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
-		return nil, fmt.Errorf("predeploy: create job %s: %w", job.Name, err)
-	}
-	var cur batchv1.Job
-	key := client.ObjectKey{Namespace: o.Namespace, Name: JobName(o.Name, o.Revision)}
-	if err := o.Client.Get(ctx, key, &cur); err != nil {
-		return nil, fmt.Errorf("predeploy: get job %s: %w", key.Name, err)
-	}
 	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
-	if err := identity.CheckOwner(&cur); err != nil {
-		return nil, fmt.Errorf("predeploy: check job owner %s: %w", key.Name, err)
-	}
-	return &cur, nil
+	cur, _, err := execution.EnsureOwnedJob(ctx, o.Client, Job(o), identity, "predeploy")
+	return cur, err
 }
 
 // Observe reports a Job's pre-deploy state and, on failure, a short human
@@ -256,10 +245,3 @@ func CancelSuperseded(ctx context.Context, name, appUID, namespace, keep string,
 	}
 	return nil
 }
-
-// jobCondition reports whether the Job carries condition t with status True.
-
-// jobFailureMessage extracts the JobFailed condition's reason/message for the
-// detail surfaced on the App status / deploy record.
-
-func ptr[T any](v T) *T { return &v }

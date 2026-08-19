@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"strings"
@@ -31,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -161,12 +163,13 @@ func (r *DatabaseReconciler) databaseStorageIntent(
 		result, failErr := r.dbFail(ctx, db, "ClusterReadFailed", err)
 		return 0, result, true, failErr
 	}
-	currentGB := max(db.Status.AllocatedStorageGB, cnpgStorageGB(cluster))
-	intentChanged := db.Status.AllocatedStorageGB > 0 && db.Status.ObservedStorageGB != db.Spec.StorageGB
-	if intentChanged && db.Spec.StorageGB > 0 && currentGB > db.Spec.StorageGB {
+	currentGB, effectiveGB, shrink := growOnlyIntent(
+		db.Status.AllocatedStorageGB, db.Status.ObservedStorageGB, db.Spec.StorageGB, desiredGB,
+		cnpgStorageGB(cluster))
+	if shrink {
 		return 0, ctrl.Result{}, true, r.rejectDatabaseStorageShrink(ctx, db, currentGB, db.Spec.StorageGB)
 	}
-	return max(desiredGB, currentGB), ctrl.Result{}, false, nil
+	return effectiveGB, ctrl.Result{}, false, nil
 }
 
 // clusterParams bundles the inputs the CNPG Cluster projection needs beyond the
@@ -458,13 +461,11 @@ type DatabaseReconciler struct {
 	SecretClient client.Client
 }
 
-// secretClient returns the uncached client for tenant-namespace Secret access —
-// the same escape hatch the App path uses (AppReconciler.buildPlaneClient).
+// secretClient prefers the uncached reader for tenant-namespace Secret access
+// — the same escape hatch the App path uses (AppReconciler.buildPlaneClient) —
+// falling back to the cached client when no uncached one is wired.
 func (r *DatabaseReconciler) secretClient() client.Client {
-	if r.SecretClient != nil {
-		return r.SecretClient
-	}
-	return r.Client
+	return cmp.Or(r.SecretClient, r.Client)
 }
 
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases,verbs=get;list;watch;create;update;patch;delete
@@ -1136,11 +1137,7 @@ func (r *DatabaseReconciler) updateExternalAddressStatus(db *appv1alpha1.Databas
 
 func (r *DatabaseReconciler) dbFail(ctx context.Context, db *appv1alpha1.Database, reason string, err error) (ctrl.Result, error) {
 	db.Status.Phase = appv1alpha1.DBPhaseFailed
-	meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
-		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: err.Error(),
-		ObservedGeneration: db.Generation,
-	})
-	_ = r.Status().Update(ctx, db)
+	setNotReadyCondition(ctx, r.Status(), db, &db.Status.Conditions, reason, err)
 	return ctrl.Result{}, err
 }
 
@@ -1246,7 +1243,7 @@ func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1
 				},
 				Spec: corev1.PodSpec{
 					RestartPolicy:                corev1.RestartPolicyNever,
-					AutomountServiceAccountToken: ptr(false),
+					AutomountServiceAccountToken: ptr.To(false),
 					Containers: []corev1.Container{{
 						Name:  "purge",
 						Image: publish.DefaultAWSCLIImage,
