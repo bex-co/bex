@@ -1,6 +1,6 @@
 # w2 · m77 — ADR059 hibernation: production enablement + resume-SLO evidence
 
-**Worker:** worker2 **Goal:** turn on the hibernation tier w2/m68 shipped env-gated OFF: provision the SSE-enabled snapshot bucket + scoped credential, arm `BEX_AGENT_SNAPSHOT_S3_*` in prod, and prove a real session hibernates on idle and rehydrates on resume with recorded latency against the ADR059 SLOs. **Status:** todo (t001–t002 done; t003 live walk in progress)
+**Worker:** worker2 **Goal:** turn on the hibernation tier w2/m68 shipped env-gated OFF: provision the SSE-enabled snapshot bucket + scoped credential, arm `BEX_AGENT_SNAPSHOT_S3_*` in prod, and prove a real session hibernates on idle and rehydrates on resume with recorded latency against the ADR059 SLOs. **Status:** DONE (2026-08-19)
 
 ## Definition of done
 
@@ -20,12 +20,12 @@ A real prod agent session hibernates when its idle grace elapses (phase `hiberna
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ----------- |
 | t001 | Provision the snapshot object store: SSE-enabled bucket (NEVER bex-tfstate), scoped durable credential, `.env`/`.env.example` names + gh-secrets flow | 45m | —          | — **DONE** |
 | t002 | Arm prod: set the `BEX_AGENT_SNAPSHOT_S3_*` contract in the prod deploy secrets/manifests, deploy, confirm armed; review retention + pin-quota knobs  | 30m | t001        | — **DONE** |
-| t003 | Live hibernate walk: run a session to completion, let idle grace elapse (or lower `BEX_AGENT_SANDBOX_IDLE_TTL` on a canary), verify phase/snapshot/pod-gone | 30m | t002 |
-| t004 | Live rehydrate walk: Steer/Resume, verify restored workspace state, capture resume latency vs the ADR059 SLOs                                         | 30m | t003        |
-| t005 | Evidence + docs: file the walk under `.pm/w2/m77/evidence/`, update ADR059's enablement trail and the m68 note                                         | 30m | t004        |
-| t006 | Simplify: run /simplify over whatever code/scripts this milestone touched (standing closing task)                                                     | 20m | t005        |
-| t007 | Test coverage: guard the env contract (all-or-nothing S3 settings validation) + regression-test any gap the live walks surface (standing closing task) | 30m | t005        |
-| t008 | Closeout: verify DoD, mark done, move milestone to done/ (standing closing task)                                                                      | 15m | t007        |
+| t003 | Live hibernate walk: run a session to completion, let idle grace elapse (or lower `BEX_AGENT_SANDBOX_IDLE_TTL` on a canary), verify phase/snapshot/pod-gone | 30m | t002        | — **DONE** |
+| t004 | Live rehydrate walk: Steer/Resume, verify restored workspace state, capture resume latency vs the ADR059 SLOs                                         | 30m | t003        | — **DONE** |
+| t005 | Evidence + docs: file the walk under `.pm/w2/m77/evidence/`, update ADR059's enablement trail and the m68 note                                         | 30m | t004        | — **DONE** |
+| t006 | Simplify: run /simplify over whatever code/scripts this milestone touched (standing closing task)                                                     | 20m | t005        | — **DONE** |
+| t007 | Test coverage: guard the env contract (all-or-nothing S3 settings validation) + regression-test any gap the live walks surface (standing closing task) | 30m | t005        | — **DONE** |
+| t008 | Closeout: verify DoD, mark done, move milestone to done/ (standing closing task)                                                                      | 15m | t007        | — **DONE** |
 
 ## Notes
 
@@ -33,3 +33,4 @@ A real prod agent session hibernates when its idle grace elapses (phase `hiberna
 - Repo fact: `BEX_AGENT_SNAPSHOT_S3_*` is wired on the api Deployment as six optional `secretKeyRef`s to `bex-agent-snapshot`. Partial config fails startup (`ErrPartialS3SnapshotConfig`); all-unset stays Terminate-only.
 - `.env.example` carries all eight variable names; t001 filled `.env` values. Dedicated bucket is `bex-agent-snapshots`.
 - Out of scope: pinning UX and retention tuning shipped in m68; ADR050 per-store credential rotation stays its own deferral; no changes to the Completer semantics.
+- DoD (2026-08-19): session `ags-da33092c0fus738gr25g` hibernated (object under `agent-snapshots/<ws>/`, pod gone) and Steer-rehydrated with `/workspace/m77-hibernate-walk.txt` intact; warm-node resume 3.12–3.25s; evidence `evidence/2026-08-19-hibernate-rehydrate-walk.md`; rollback remains delete Secret `bex-agent-snapshot`.

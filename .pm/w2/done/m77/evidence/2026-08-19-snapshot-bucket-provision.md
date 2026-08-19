@@ -37,7 +37,7 @@ PASS  allow  snapshot delete object
 
 ## t003 / t004 — live walks
 
-Not run. Require the armed bex-api (t002 arm log) so the Completer uses the snapshot store instead of Terminate. Do not lower `BEX_AGENT_SANDBOX_IDLE_TTL` cluster-wide (it would reclaim every workspace). After the deploy lands: complete a session with a distinctive uncommitted `/workspace` edit, wait the 30m grace with no editor SSH, confirm phase `hibernated` + object under `agent-snapshots/<ws>/` + pod gone, then Resume/Steer ≥3 times and capture `agent-session rehydrate: session=… resumed in …` against p50<~5s / p95<~15s.
+Executed 2026-08-19 after the armed bex-api: see [2026-08-19-hibernate-rehydrate-walk.md](2026-08-19-hibernate-rehydrate-walk.md).
 
 ## Rollback
 
