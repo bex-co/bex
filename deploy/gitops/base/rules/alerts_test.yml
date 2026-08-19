@@ -657,3 +657,96 @@ tests:
             exp_annotations:
               summary: "Infra-classified build failures across 3 distinct workspaces"
               description: "Independent workspaces are failing builds infra-side at the same time, which is the signature of a platform fault rather than tenant code. Suspect the shared dependencies first: Zot (push/pull), the build node pools, image pulls. Isolated per-tenant failures deliberately do NOT fire this."
+
+  # ── Build queue time (w7/m83) ──────────────────────────────────────────────
+  # The threshold's whole justification is its relationship to bex-api's 18m
+  # DeployGateTimeout, so the tests assert both edges of that head room: silent
+  # while the deploy is comfortably safe, firing with minutes still to spare.
+  - name: a queued build stays silent while the deploy is still comfortably safe
+    interval: 1m
+    input_series:
+      # One build queues at t=0 and its age grows a minute per minute.
+      - series: "bex_build_queue_oldest_seconds"
+        values: "0+60x20"
+    alert_rule_test:
+      - eval_time: 7m # 420s queued — under the 480s threshold
+        alertname: BuildQueuedTooLong
+        exp_alerts: []
+
+  - name: a queued build pages with head room before the 18m deploy gate
+    interval: 1m
+    input_series:
+      - series: "bex_build_queue_oldest_seconds"
+        values: "0+60x20"
+    alert_rule_test:
+      # Crosses 480s at 9m, fires at 11m after for:2m — six minutes before the
+      # deploy gate would fail the deploy for a build that is perfectly healthy.
+      - eval_time: 12m
+        alertname: BuildQueuedTooLong
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "A build has been queued 12m 0s waiting for capacity"
+              description: "A build Job's pod has not been placed on a node. It will be failed by bex-api's 18m deploy gate if this continues, so act now: check the build pools (bex-tenant-lg warm, bex-tenant-burst elastic) for scale-from-zero failures, cluster-autoscaler events, and whether a taint/toleration or capacity-hint change made the 7Gi build request unschedulable. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D5/D8."
+
+  - name: warm-node queue times never trip the chronic-queueing alert
+    interval: 1m
+    input_series:
+      # Every observation lands in the (5,15] bucket: the warm-node regime the
+      # histogram's low buckets exist to resolve.
+      - series: 'bex_build_queue_seconds_bucket{le="5"}'
+        values: "0x60"
+      - series: 'bex_build_queue_seconds_bucket{le="15"}'
+        values: "0+1x60"
+      - series: 'bex_build_queue_seconds_bucket{le="30"}'
+        values: "0+1x60"
+      - series: 'bex_build_queue_seconds_bucket{le="60"}'
+        values: "0+1x60"
+      - series: 'bex_build_queue_seconds_bucket{le="120"}'
+        values: "0+1x60"
+      - series: 'bex_build_queue_seconds_bucket{le="300"}'
+        values: "0+1x60"
+      - series: 'bex_build_queue_seconds_bucket{le="600"}'
+        values: "0+1x60"
+      - series: 'bex_build_queue_seconds_bucket{le="1200"}'
+        values: "0+1x60"
+      - series: 'bex_build_queue_seconds_bucket{le="+Inf"}'
+        values: "0+1x60"
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: BuildQueueTimeHigh
+        exp_alerts: []
+
+  - name: chronic queueing above five minutes is a capacity decision
+    interval: 1m
+    input_series:
+      # Every observation lands in the (300,600] bucket — the cold
+      # scale-from-zero regime become the norm rather than the exception.
+      - series: 'bex_build_queue_seconds_bucket{le="5"}'
+        values: "0x60"
+      - series: 'bex_build_queue_seconds_bucket{le="15"}'
+        values: "0x60"
+      - series: 'bex_build_queue_seconds_bucket{le="30"}'
+        values: "0x60"
+      - series: 'bex_build_queue_seconds_bucket{le="60"}'
+        values: "0x60"
+      - series: 'bex_build_queue_seconds_bucket{le="120"}'
+        values: "0x60"
+      - series: 'bex_build_queue_seconds_bucket{le="300"}'
+        values: "0x60"
+      - series: 'bex_build_queue_seconds_bucket{le="600"}'
+        values: "0+1x60"
+      - series: 'bex_build_queue_seconds_bucket{le="1200"}'
+        values: "0+1x60"
+      - series: 'bex_build_queue_seconds_bucket{le="+Inf"}'
+        values: "0+1x60"
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: BuildQueueTimeHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Build queue p95 is 9m 45s (capacity, not tenant code)"
+              description: "Builds are chronically waiting for a node before they start. This is the platform's SLI, not the tenant's: compare bex_build_run_seconds, which should be unaffected. Consider the build pools' max-size, BEX_MAX_ACTIVE_BUILDS, and whether cold scale-from-zero (bex_builds_queued > 0 with bex-tenant-burst at 0 replicas) dominates. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D5."

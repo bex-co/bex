@@ -1825,9 +1825,13 @@ if [ "$manager_rollout" != "RollingUpdate:0:1" ]; then
 fi
 
 echo "==> m59 execution placement and production user namespaces"
-prewarm_shape="$(yq -N '[.spec.template.spec.nodeSelector."bex.co/pool", .spec.template.spec.containers[0].image] | join(":")' deploy/gitops/base/build-image-prewarm.yaml)"
-if [ "$prewarm_shape" != "tenant:moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f" ]; then
-  echo "FAIL: BuildKit prewarm must target tenant nodes with the supported rootful image; got '$prewarm_shape'" >&2
+# Placement only. The prewarm image is checked by scripts/clusterapi-validate.sh
+# against build.go's defaultBuildkitImage, which is a stronger check than the
+# literal that used to sit here — that literal was a third copy of the digest and
+# had to be bumped by hand on every BuildKit upgrade.
+prewarm_pool="$(yq -N '.spec.template.spec.nodeSelector."bex.co/pool"' deploy/gitops/base/build-image-prewarm.yaml)"
+if [ "$prewarm_pool" != "tenant" ]; then
+  echo "FAIL: BuildKit prewarm must target tenant nodes; got pool '$prewarm_pool'" >&2
   fail=1
 fi
 userns_gates="$(grep -c 'UserNamespacesSupport=true' infra/clusterapi/overlays/hetzner-caph/cluster.yaml || true)"

@@ -269,6 +269,15 @@ type AppReconciler struct {
 	// starting another build. 0 = unlimited (the default; byte-identical to before).
 	// Has no effect for Apps without the workspace label (legacy/hand-applied).
 	MaxConcurrentBuilds int
+	// MaxActiveBuilds, when positive, caps active builds CLUSTER-WIDE, across
+	// every workspace (docs/ADR060 D6). The per-workspace cap above bounds one
+	// tenant's fan-out but not the estate's: N workspaces each at their limit
+	// still saturate shared build capacity, which is the recurring shape of
+	// dispatch-storm outages. Before D1 (w2/m72) the reconcile-worker count
+	// happened to bound total fan-out; observation is non-blocking now, so
+	// admission is the only concurrency control left and has to be honest.
+	// 0 = unlimited (the default; byte-identical to before).
+	MaxActiveBuilds int
 	// MaxConcurrentReconciles controls how many App reconcile loops may run at
 	// once. Source builds wait synchronously for their Build Jobs, so the
 	// controller-runtime default of one serializes otherwise independent Apps.
@@ -614,27 +623,27 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 
 	buildClient := r.buildPlaneClient()
 
-	// Per-workspace concurrent-build cap (w7/m9): hold off when the workspace is
-	// at its limit — requeue until a slot opens rather than starting another.
-	// The cap gates only a NEW dispatch: once builds are observed across many
-	// reconciles (§D1), an App already building must never be stalled by the cap
-	// (it would deadlock on its own build), so skip the gate when this App already
-	// has an active build. Byte-identical when MaxConcurrentBuilds == 0 (unset) or
-	// workspace absent.
-	if r.MaxConcurrentBuilds > 0 {
-		if workspace := app.Labels[labelWorkspace]; workspace != "" {
-			mine, err := build.ActiveAppBuilds(ctx, app.Name, string(app.UID), buildNs, buildClient)
-			if err != nil {
-				return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("counting app builds: %w", err)))
-			}
-			if mine == 0 {
-				active, err := build.ActiveWorkspaceBuilds(ctx, workspace, buildNs, buildClient)
+	// Build admission (w7/m9 per-workspace cap; docs/ADR060 D6 cluster-wide
+	// ceiling): hold off when a cap is reached — requeue until a slot opens rather
+	// than starting another build. The caps gate only a NEW dispatch: once builds
+	// are observed across many reconciles (§D1), an App already building must
+	// never be stalled by a cap (it would deadlock on its own build), so the whole
+	// gate is skipped when this App already has an active build.
+	caps := r.buildCaps(app)
+	if len(caps) > 0 {
+		mine, err := build.ActiveAppBuilds(ctx, buildClient, buildNs, app.Name, string(app.UID))
+		if err != nil {
+			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("counting app builds: %w", err)))
+		}
+		if mine == 0 {
+			for _, cap := range caps {
+				active, err := cap.count(ctx, buildClient, buildNs)
 				if err != nil {
-					return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("counting workspace builds: %w", err)))
+					return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 				}
-				if active >= r.MaxConcurrentBuilds {
+				if active >= cap.limit {
 					r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
-						fmt.Sprintf("workspace has %d/%d concurrent builds active; waiting for a slot", active, r.MaxConcurrentBuilds))
+						fmt.Sprintf("%s has %d/%d concurrent builds active; waiting for a slot", cap.noun, active, cap.limit))
 					return halt(ctrl.Result{RequeueAfter: 30 * time.Second}, nil)
 				}
 			}
@@ -687,27 +696,55 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	if err != nil {
 		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("dispatching build: %w", err)))
 	}
+	// The caps above are list-then-create, so two concurrent reconciles can each
+	// see the same free slot. Re-count on the one pass that actually created a
+	// build and shed the excess (docs/ADR060 D6) — self-correcting, and still not
+	// a distributed lock.
+	if obs.Created {
+		shed, err := r.shedBuildOvershoot(ctx, app, buildNs, buildClient)
+		if err != nil {
+			// The build itself is healthy; an overshoot that outlives one reconcile
+			// is a capacity nuisance, not a reason to fail the tenant's deploy.
+			logf.FromContext(ctx).Error(err, "re-count after build create failed; leaving the overshoot in place", "app", app.Name)
+		} else if shed {
+			r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
+				"a concurrent dispatch took the last build slot; waiting for a slot")
+			return halt(ctrl.Result{RequeueAfter: 30 * time.Second}, nil)
+		}
+	}
 	switch obs.Phase {
 	case build.PhaseSucceeded:
-		// Same once-per-build gate as the failure branch below.
+		// Meter once per build, not once per reconcile: reconciliation is
+		// level-triggered, so this branch is re-entered until the release advances.
+		// Here ObservedGeneration is the marker (the rollout stamps it), the same
+		// gate the user-cancel counter uses (settleCanceledRelease).
 		if app.Status.ObservedGeneration != app.Generation {
 			recordBuildOutcome(buildOutcomeSucceeded)
 			recordBuildRunSeconds(obs.RunSeconds)
+			r.meterBuildSignals(ctx, app, buildNs)
 		}
 		return r.pinBuiltImage(ctx, app, obs.Image), ctrl.Result{}, false, nil
 	case build.PhaseFailed:
 		view := viewForBuildFault(obs.Fault)
-		// Meter once per build, not once per reconcile. Reconciliation is
-		// level-triggered and the failed Job lives an hour (TTL), so unrelated
-		// Deployment/pod churn re-enters this branch repeatedly — the same gate
-		// the user-cancel counter uses (settleCanceledRelease). Without it the
-		// SLO ratio and the correlated-failure alert both count reconciles.
-		if app.Status.ObservedGeneration != app.Generation {
+		// The failure branch needs a DIFFERENT marker: r.fail deliberately never
+		// stamps Status.ObservedGeneration (successfulReleaseGeneration derives the
+		// last good release from it, so a failed build must not advance it), and it
+		// returns an error — so controller-runtime requeues, the artifact is still
+		// unusable, and this branch re-enters roughly twenty times an hour until
+		// the Job's TTL reaps it. Metering on the generation gate there counted one
+		// failure ~20 times, and — since w7/m83 — re-observed the same queue wait
+		// into the histogram the p95 capacity alert pages on.
+		//
+		// The Ready condition r.fail itself writes is the durable marker: reason
+		// plus the generation it was observed at, already persisted in status, so
+		// it survives a manager restart without a new field or an extra write.
+		if !buildOutcomeAlreadyRecorded(app, view.reason) {
 			recordBuildRunSeconds(obs.RunSeconds)
 			recordBuildOutcome(view.outcome)
 			if obs.Fault == build.FaultInfra {
 				recordBuildInfraFailure(app.Labels[labelWorkspace])
 			}
+			r.meterBuildSignals(ctx, app, buildNs)
 		}
 		return halt(r.fail(ctx, app, view.reason, fmt.Errorf("%s: %s", view.message, obs.Message)))
 	case build.PhaseWaiting:
@@ -722,6 +759,98 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuilding, "Building image from "+app.Spec.Repo)
 		return halt(ctrl.Result{RequeueAfter: buildObserveRequeue}, nil)
 	}
+}
+
+// buildOutcomeAlreadyRecorded reports whether this generation's build has
+// already been metered with this terminal reason, read off the Ready condition
+// r.fail persists.
+func buildOutcomeAlreadyRecorded(app *appv1alpha1.App, reason string) bool {
+	cond := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+	return cond != nil && cond.Reason == reason && cond.ObservedGeneration == app.Generation
+}
+
+// meterBuildSignals records the pod-derived build series (queue wait, push
+// duration/errors, classified retries) for one finished build.
+//
+// Failure to read is logged, never fatal: these are observability series, and
+// the kpack path legitimately has no build Job at all (the Get 404s), so a
+// missing signal is an expected outcome rather than an error worth surfacing.
+func (r *AppReconciler) meterBuildSignals(ctx context.Context, app *appv1alpha1.App, buildNs string) {
+	jobName := build.JobName(app.Name, releaseBuildRevision(app))
+	sig, err := build.ReadSignals(ctx, r.buildPlaneClient(), buildNs, jobName)
+	if err != nil {
+		logf.FromContext(ctx).V(1).Info("build signals unavailable; queue/push/retry series not metered",
+			"app", app.Name, "job", jobName, "error", err.Error())
+		return
+	}
+	recordBuildSignals(sig)
+}
+
+// buildCap is one admission scope: how many concurrent builds it allows, how to
+// count what it covers, and how to name it to the tenant. Returning the two caps
+// as a list rather than open-coding each is what keeps the gate below and
+// shedBuildOvershoot from ever disagreeing about which caps are in force — a
+// disagreement between them would be a correction that sheds a build the gate
+// had legitimately admitted.
+type buildCap struct {
+	// workspace scopes the count; empty means cluster-wide.
+	workspace string
+	limit     int
+	noun      string
+}
+
+func (c buildCap) count(ctx context.Context, cl client.Client, buildNs string) (int, error) {
+	if c.workspace == "" {
+		active, err := build.ActiveBuilds(ctx, cl, buildNs)
+		if err != nil {
+			return 0, fmt.Errorf("counting active builds: %w", err)
+		}
+		return active, nil
+	}
+	active, err := build.ActiveWorkspaceBuilds(ctx, cl, buildNs, c.workspace)
+	if err != nil {
+		return 0, fmt.Errorf("counting workspace builds: %w", err)
+	}
+	return active, nil
+}
+
+// buildCaps lists the admission caps in force for this App, narrowest first. The
+// per-workspace cap cannot bite for an App without the workspace label
+// (legacy/hand-applied) and so is absent then; both are absent at their `0`
+// default, and the caller does no counting at all — so every configuration a cap
+// does not affect issues exactly the API calls it did before.
+func (r *AppReconciler) buildCaps(app *appv1alpha1.App) []buildCap {
+	var caps []buildCap
+	if workspace := app.Labels[labelWorkspace]; workspace != "" && r.MaxConcurrentBuilds > 0 {
+		caps = append(caps, buildCap{workspace: workspace, limit: r.MaxConcurrentBuilds, noun: "workspace"})
+	}
+	if r.MaxActiveBuilds > 0 {
+		caps = append(caps, buildCap{limit: r.MaxActiveBuilds, noun: "cluster"})
+	}
+	return caps
+}
+
+// shedBuildOvershoot re-counts the same caps the gate used after this reconcile
+// created a build, and deletes the newest builds over each limit — reporting
+// whether THIS App's build was one of them, so the caller re-queues instead of
+// observing a Job it just deleted. Deleting the newest means the racer that did
+// the least work backs off, and the ordering is total, so two racers converge on
+// the same survivor.
+func (r *AppReconciler) shedBuildOvershoot(ctx context.Context, app *appv1alpha1.App, buildNs string, cl client.Client) (bool, error) {
+	mine := build.JobName(app.Name, releaseBuildRevision(app))
+	shed := false
+	for _, cap := range r.buildCaps(app) {
+		deleted, err := build.TrimOvershoot(ctx, cl, buildNs, cap.workspace, cap.limit)
+		for _, name := range deleted {
+			if name == mine {
+				shed = true
+			}
+		}
+		if err != nil {
+			return shed, err
+		}
+	}
+	return shed, nil
 }
 
 // pinBuiltImage rewrites a freshly built mutable-tag reference to its immutable
@@ -3422,6 +3551,19 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		mgr.GetLogger().Info("operator start: all Apps re-reconcile via informer replay", "count", len(apps.Items))
 		return nil
 	})); err != nil {
+		return err
+	}
+	// The build plane's live admission gauges (docs/ADR060 D5). Cluster-wide, so
+	// no single App's reconcile can compute them; registered here so they follow
+	// the reconciler's own build-plane wiring rather than being a second place
+	// cmd/manager has to remember to configure.
+	// r.BuildClient explicitly, never buildPlaneClient()'s cached fallback: the
+	// manager's cache narrows only Secrets, so listing build Pods through it would
+	// start a cluster-wide Pod informer for a gauge.
+	if err := mgr.Add(&BuildCensusCollector{
+		Client:    r.BuildClient,
+		Namespace: r.BuildNamespace,
+	}); err != nil {
 		return err
 	}
 	workers := max(r.MaxConcurrentReconciles, 1)

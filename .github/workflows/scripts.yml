@@ -59,6 +59,12 @@ jobs:
         run: bash scripts/adr-registry-validate.sh
       - name: ADR registry guard self-test
         run: bash scripts/adr-registry-validate.test.sh
+      # The build-pool guards read across three trees (the CAPI overlay, the
+      # gitops DaemonSets, and build.go's request constant), so they run here
+      # where the triggers already cover all three — clusterapi-validate.yml's
+      # own paths are overlay/packer-scoped.
+      - name: Build-pool scheduling guard self-test
+        run: bash scripts/clusterapi-validate.test.sh
       - name: bao-init unit tests
         run: bash scripts/bao-init.test.sh
       - name: bex CLI installer + formula renderer offline tests

@@ -1,4 +1,11 @@
 # Prometheus Monitor Service (Metrics)
+#
+# UNUSED SCAFFOLDING, kept for portability: it is commented out of
+# config/default/kustomization.yaml, and the platform's Prometheus is the
+# community chart (no Prometheus Operator, so no ServiceMonitor CRD). The
+# manager's build-plane SLIs are scraped by the static `bex-operator` job in
+# deploy/gitops/base/prometheus.yaml. Kept in sync with the metrics Service so
+# enabling this never lands on a port that does not exist.
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -11,16 +18,11 @@ metadata:
 spec:
   endpoints:
     - path: /metrics
-      port: https # Ensure this is the name of the port that exposes HTTPS metrics
-      scheme: https
-      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
-      tlsConfig:
-        # TODO(user): The option insecureSkipVerify: true is not recommended for production since it disables
-        # certificate verification, exposing the system to potential man-in-the-middle attacks.
-        # For production environments, it is recommended to use cert-manager for automatic TLS certificate management.
-        # To apply this configuration, enable cert-manager and use the patch located at config/prometheus/servicemonitor_tls_patch.yaml,
-        # which securely references the certificate from the 'metrics-server-cert' secret.
-        insecureSkipVerify: true
+      # = the metrics Service's port name (config/default/metrics_service.yaml),
+      # which the manager serves as plain HTTP on the pod network — the same
+      # trust model as every other bex component's metrics endpoint.
+      port: metrics
+      scheme: http
   selector:
     matchLabels:
       control-plane: controller-manager

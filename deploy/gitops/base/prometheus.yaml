@@ -235,6 +235,26 @@ spec:
                   - source_labels: [__name__]
                     regex: bex_billing_.*
                     action: keep
+              # Build-plane SLIs from the operator's own registry (docs/ADR060
+              # D5). This job is why the series are readable at all: the manager
+              # binds its metrics endpoint only because config/manager sets
+              # --metrics-bind-address, and nothing scraped it before w7/m83 —
+              # so the w2/m72 build-outcome alerts were evaluating series that
+              # never arrived. Labels are bounded by construction: an outcome
+              # class, a retry reason from a closed set, and a workspace id on
+              # the correlated-failure counter alone.
+              #
+              # The keep-list drops controller-runtime's and Go's default
+              # families rather than storing them for nothing; add a family here
+              # when something actually consumes it.
+              - job_name: bex-operator
+                scrape_interval: 15s
+                static_configs:
+                  - targets: [bex-controller-manager-metrics-service.bex-system.svc:8080]
+                metric_relabel_configs:
+                  - source_labels: [__name__]
+                    regex: bex_build.*
+                    action: keep
               # One post-policy netfilter meter per untainted tenant node. Pod discovery
               # (rather than the round-robin Service) preserves the node and
               # source_instance labels needed to detect a missing/reset source.
@@ -694,6 +714,54 @@ spec:
                     annotations:
                       summary: "Infra-classified build failures across {{ $value }} distinct workspaces"
                       description: "Independent workspaces are failing builds infra-side at the same time, which is the signature of a platform fault rather than tenant code. Suspect the shared dependencies first: Zot (push/pull), the build node pools, image pulls. Isolated per-tenant failures deliberately do NOT fire this."
+
+                  # ── Build QUEUE time: the platform's own capacity SLI ──────
+                  # Every incident in this class has presented as SILENCE and was
+                  # diagnosed by hand-descending through Traefik -> bex-api ->
+                  # controller logs (2026-08-08 a build wedged in Building with
+                  # zero output; 2026-08-11 a build sat Pending 22 minutes and the
+                  # deploy was failed by the control-plane gate while the build
+                  # itself was perfectly healthy). Queue time is OURS; run time is
+                  # mostly the tenant's, so only the former is alertable.
+                  #
+                  # THRESHOLD ARITHMETIC (the reason for 8m, not a round number):
+                  # bex-api's DeployGateTimeout is 18m (internal/store/reconciler.go
+                  # defaultDeployGateTimeout; m80 settled the three-timer
+                  # relationship). An alert must fire while the deploy can still be
+                  # saved, not report history. bex_build_queue_oldest_seconds is
+                  # the age of the longest-CURRENTLY-queued build, so 480s + for:2m
+                  # fires at ~10 minutes of queueing — 8 minutes of head room before
+                  # the gate closes the deploy. Raising DeployGateTimeout without
+                  # revisiting this number silently spends that head room.
+                  - alert: BuildQueuedTooLong
+                    expr: bex_build_queue_oldest_seconds > 480
+                    for: 2m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "A build has been queued {{ $value | humanizeDuration }} waiting for capacity"
+                      description: "A build Job's pod has not been placed on a node. It will be failed by bex-api's 18m deploy gate if this continues, so act now: check the build pools (bex-tenant-lg warm, bex-tenant-burst elastic) for scale-from-zero failures, cluster-autoscaler events, and whether a taint/toleration or capacity-hint change made the 7Gi build request unschedulable. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D5/D8."
+
+                  # The distribution alert. Individually-tolerable waits that have
+                  # become the NORM are a capacity decision the fleet should make
+                  # deliberately, not a page — hence warning, a long window, and a
+                  # threshold (5m p95) well under the per-build one above: this
+                  # fires when queueing is chronic, that one when it is acute.
+                  # `or vector(0)` keeps the series present on an idle fleet, so a
+                  # missing rule is distinguishable from a healthy one.
+                  - alert: BuildQueueTimeHigh
+                    expr: |
+                      (
+                        histogram_quantile(0.95,
+                          sum by (le) (rate(bex_build_queue_seconds_bucket[30m]))
+                        ) or vector(0)
+                      ) > 300
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Build queue p95 is {{ $value | humanizeDuration }} (capacity, not tenant code)"
+                      description: "Builds are chronically waiting for a node before they start. This is the platform's SLI, not the tenant's: compare bex_build_run_seconds, which should be unaffected. Consider the build pools' max-size, BEX_MAX_ACTIVE_BUILDS, and whether cold scale-from-zero (bex_builds_queued > 0 with bex-tenant-burst at 0 replicas) dominates. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D5."
 
                   - alert: EgressMeterTargetMissing
                     expr: |
