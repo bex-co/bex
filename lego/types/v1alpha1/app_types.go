@@ -1057,6 +1057,14 @@ type AppStatus struct {
 	// +optional
 	ArtifactImage string `json:"artifactImage,omitempty"`
 
+	// StaticPrefix is the object-store key prefix the currently published static
+	// revision lives under, including the trailing slash (e.g. "web/rev-7/" or
+	// "tea-<xid>/web/rev-7/"). Empty means the legacy "<app.Name>/<revision>/"
+	// scheme so already-published sites keep serving without a republish
+	// (docs/ADR074). The static-server serves from this prefix when set.
+	// +optional
+	StaticPrefix string `json:"staticPrefix,omitempty"`
+
 	// ReleaseFingerprint is the operator-computed, versioned identity of the
 	// artifact plus rollout inputs for the current release attempt. Operational
 	// fields such as replicas, suspension, autoscaling, and routing are excluded.

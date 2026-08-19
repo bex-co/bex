@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
+	"github.com/bex-co/bex/lego/operator/internal/identity"
 )
 
 // Tag→digest resolution (w9/013). The build plane tags tenant images with the
@@ -91,15 +92,60 @@ func ResolveDigest(ctx context.Context, httpClient *http.Client, registryHost, r
 	return digest, nil
 }
 
+// ListTags returns the tags currently published on repo. A missing repository
+// (404) is an empty list so a dry-run of an App with no legacy images still
+// prints a plan.
+func ListTags(ctx context.Context, httpClient *http.Client, registryHost, repo, username, password string) ([]string, error) {
+	requestCtx, cancel := boundedhttp.WithTimeout(ctx)
+	defer cancel()
+	ctx = requestCtx
+	if httpClient == nil {
+		httpClient = defaultHTTPClient
+	}
+	base := NormalizeBase(registryHost)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		fmt.Sprintf("%s/v2/%s/tags/list", base, repo), nil)
+	if err != nil {
+		return nil, err
+	}
+	if username != "" {
+		req.SetBasicAuth(username, password)
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("tags list %s/%s: status %d", registryHost, repo, resp.StatusCode)
+	}
+	var body struct {
+		Tags []string `json:"tags"`
+	}
+	if err := boundedhttp.DecodeJSON(resp.Body, &body); err != nil {
+		return nil, fmt.Errorf("tags list %s/%s: %w", registryHost, repo, err)
+	}
+	return body.Tags, nil
+}
+
 // ResolveBuiltDigest resolves appName's freshly pushed tag with the App's own
 // per-App credential — the same identity EnsureActive just proved the registry
 // accepts, so a resolution cannot fail on auth that pulls would pass.
 func (c *Creds) ResolveBuiltDigest(ctx context.Context, appName, appNS, tag string) (string, error) {
-	password, err := c.readPassword(ctx, appName, appNS)
+	return c.ResolveBuiltDigestFor(ctx, identity.ForApp(appName, ""), appNS, tag)
+}
+
+// ResolveBuiltDigestFor resolves id's freshly pushed tag with the App's own
+// per-App credential.
+func (c *Creds) ResolveBuiltDigestFor(ctx context.Context, id identity.Identity, appNS, tag string) (string, error) {
+	password, err := c.readPasswordFor(ctx, id, appNS)
 	if err != nil {
 		return "", fmt.Errorf("read credential for digest resolution: %w", err)
 	}
-	return ResolveDigest(ctx, c.HTTPClient, c.Registry, appName, tag, ZotUsername(appName), password)
+	return ResolveDigest(ctx, c.HTTPClient, c.Registry, id.Repo(), tag, id.ZotUsername(), password)
 }
 
 // BasicAuthFromDockerConfig extracts the basic-auth pair a dockerconfigjson

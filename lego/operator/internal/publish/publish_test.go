@@ -81,6 +81,40 @@ func TestPrefixAndDest(t *testing.T) {
 	}
 }
 
+func TestPrefixWorkspaceScoped(t *testing.T) {
+	o := testOptions()
+	o.Workspace = "tea-aaaaaaaaaaaaaaaaaaaa"
+	if got, want := o.Prefix(), "tea-aaaaaaaaaaaaaaaaaaaa/mysite/rev-3/"; got != want {
+		t.Errorf("Prefix() = %q, want %q", got, want)
+	}
+	o.Workspace = ""
+	if got, want := o.Prefix(), "mysite/rev-3/"; got != want {
+		t.Errorf("unlabeled Prefix() = %q, want %q", got, want)
+	}
+}
+
+func TestPurgeJobHitsOnlyOwningPrefixes(t *testing.T) {
+	o := testOptions()
+	job := PurgeJob("web", "uid-a", "tea-aaaaaaaaaaaaaaaaaaaa", "tea-aaaaaaaaaaaaaaaaaaaa",
+		o.Store, "bex-system", "", "", "tea-aaaaaaaaaaaaaaaaaaaa/web/")
+	script := job.Spec.Template.Spec.Containers[0].Command[2]
+	if !strings.Contains(script, "s3://bex-static/tea-aaaaaaaaaaaaaaaaaaaa/web/") {
+		t.Errorf("purge missed scoped prefix: %s", script)
+	}
+	if strings.Contains(script, "s3://bex-static/web/") {
+		t.Errorf("purge must not touch a legacy same-named sibling: %s", script)
+	}
+
+	legacy := PurgeJob("web", "uid-legacy", "", "default", o.Store, "bex-system", "", "")
+	legacyScript := legacy.Spec.Template.Spec.Containers[0].Command[2]
+	if !strings.Contains(legacyScript, "s3://bex-static/web/") {
+		t.Errorf("unlabeled purge missed legacy prefix: %s", legacyScript)
+	}
+	if strings.Contains(legacyScript, "tea-aaaaaaaaaaaaaaaaaaaa") {
+		t.Errorf("unlabeled purge touched a scoped sibling: %s", legacyScript)
+	}
+}
+
 func TestPublishJobShape(t *testing.T) {
 	job := PublishJob(testOptions())
 

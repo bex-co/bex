@@ -119,3 +119,5 @@ Carried forward from this round, unchanged in substance:
 - **onbex.co PSL submission** (finding 3, ninth report): operator action, `.pm/w1/050.md`.
 
 The scan's open questions (legacy bare-named App CR inventory, kpack-generated pod shape) are unchanged repeats of ADR055 F2/F3 and ADR061 #2/#6 — both need a live cluster the offline scan and this remediation pass do not have.
+
+**Update (w2/m75):** F2/F3's code path landed ([ADR074](ADR074-workspace-scoped-artifact-identity.md)); the live-cluster inventory is Phase 1 of [registry-static-identity-migration](runbooks/registry-static-identity-migration.md). Kpack-generated pod shape is unchanged (ADR061).

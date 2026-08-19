@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	"github.com/bex-co/bex/lego/operator/internal/identity"
 )
 
 // buildComponent is the app.bex.co/component value every build artifact the
@@ -400,16 +401,21 @@ func faultFromJob(reason string) Fault {
 	}
 }
 
+// RepoPath is the OCI repository (no host, no tag) this build pushes to.
+func (o Options) RepoPath() string {
+	return identity.ForApp(o.Name, o.Workspace).Repo()
+}
+
 // ImageRef is the deterministic image reference a build produces — the operator
 // knows it before the build runs (registry + name + revision), so it can gate
 // rebuilds on the revision changing and set status.image without parsing Job
-// output.
+// output. Labeled Apps use the workspace-scoped repository (docs/ADR074).
 func (o Options) ImageRef() string {
 	rev := o.Revision
 	if rev == "" {
 		rev = defaultRevision
 	}
-	return fmt.Sprintf("%s/%s:%s", o.Registry, o.Name, rev)
+	return fmt.Sprintf("%s/%s:%s", o.Registry, o.RepoPath(), rev)
 }
 
 // KpackImageRef is the deterministic tag a buildpack build pushes. It normally
@@ -424,7 +430,7 @@ func (o Options) KpackImageRef() string {
 	if rev == "" {
 		rev = defaultRevision
 	}
-	return fmt.Sprintf("%s/%s:%s", registry, o.Name, rev)
+	return fmt.Sprintf("%s/%s:%s", registry, o.RepoPath(), rev)
 }
 
 // EnsureBuild dispatches the selected in-cluster builder if it is not already
@@ -454,7 +460,7 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 	image := o.ImageRef()
 	job := BuildJob(o, image)
 	key := client.ObjectKeyFromObject(job)
-	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
+	owned := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
 
 	// Create the Job if it doesn't already exist (idempotent per revision).
 	created := true
@@ -468,7 +474,7 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 	if err := o.Client.Get(ctx, key, &cur); err != nil {
 		return Observation{}, fmt.Errorf("build: get job %s: %w", key.Name, err)
 	}
-	if err := identity.CheckOwner(&cur); err != nil {
+	if err := owned.CheckOwner(&cur); err != nil {
 		return Observation{}, fmt.Errorf("build: check job owner %s: %w", key.Name, err)
 	}
 	switch {
@@ -1038,10 +1044,10 @@ func JobName(name, revision string) string {
 // truncated name to the complete identity tuple. Kubernetes' 63-character
 // DNS-label limit must never discard the revision/purpose that distinguishes
 // two security-sensitive resources.
-func stableKubernetesName(raw string, identity ...string) string {
+func stableKubernetesName(raw string, parts ...string) string {
 	const hashLength = 12
 	raw = strings.ToLower(raw)
-	sum := sha256.Sum256([]byte(strings.Join(identity, "\x00")))
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	suffix := fmt.Sprintf("%x", sum[:hashLength/2])
 	maxBase := 63 - 1 - len(suffix)
 	if len(raw) > maxBase {

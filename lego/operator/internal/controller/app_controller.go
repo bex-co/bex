@@ -60,6 +60,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
+	"github.com/bex-co/bex/lego/operator/internal/identity"
 	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
@@ -135,6 +136,15 @@ const labelHostRedirectOwner = "app.bex.co/host-redirect-owner"
 // sync by hand with core.LabelWorkspace in the backend — the operator never
 // imports the backend (same pattern as labelApp / core.PodLabelApp).
 const labelWorkspace = "app.bex.co/workspace"
+
+// appIdentity is the shared-sink identity for app (w2/m75, docs/ADR074).
+func appIdentity(app *appv1alpha1.App) identity.Identity {
+	id := identity.ForApp(app.Name, app.Labels[labelWorkspace])
+	if app.Annotations[identity.AnnotTombstone] == identity.TombstoneValue {
+		id.Tombstoned = true
+	}
+	return id
+}
 
 // labelNetworkIsolation carries an App's environment id (w6/m19 protected-
 // environment ACLs), present on the App CR ONLY when that environment has
@@ -890,7 +900,7 @@ func (r *AppReconciler) pinBuiltImage(ctx context.Context, app *appv1alpha1.App,
 // secret's basic-auth pair, else anonymous (the dev default).
 func (r *AppReconciler) resolveBuiltDigest(ctx context.Context, app *appv1alpha1.App, repo, tag string) (string, error) {
 	if r.PerAppRegistry != nil {
-		return r.PerAppRegistry.ResolveBuiltDigest(ctx, app.Name, app.Namespace, tag)
+		return r.PerAppRegistry.ResolveBuiltDigestFor(ctx, appIdentity(app), app.Namespace, tag)
 	}
 	username, password := "", ""
 	if r.RegistryPullSecret != "" {
@@ -1075,7 +1085,7 @@ func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []c
 	if r.registryHosted(image) {
 		if r.PerAppRegistry != nil {
 			// Per-App pull secret (w7/m36): "reg-pull-<name>" in the app namespace.
-			out = append(out, corev1.LocalObjectReference{Name: registry.PullSecretName(app.Name)})
+			out = append(out, corev1.LocalObjectReference{Name: appIdentity(app).PullSecretName()})
 		} else if r.RegistryPullSecret != "" {
 			// Shared pull secret (w7/m8, byte-identical when PerAppRegistry is nil).
 			out = append(out, corev1.LocalObjectReference{Name: r.RegistryPullSecret})
@@ -1240,9 +1250,9 @@ func (r *AppReconciler) mirrorPreDeploySecrets(ctx context.Context, app *appv1al
 		var existing corev1.Secret
 		getErr := r.buildPlaneClient().Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &existing)
 		if getErr == nil {
-			identity := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+			owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
 				Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
-			if ownErr := identity.CheckOwner(&existing); ownErr != nil {
+			if ownErr := owned.CheckOwner(&existing); ownErr != nil {
 				return fmt.Errorf("pre-deploy secret %q is absent in App namespace %s but a foreign Secret of that name occupies the shared build namespace %s; refusing to run the pre-deploy Job against a non-tenant Secret (codex F4): %w",
 					name, app.Namespace, ns, ownErr)
 			}
@@ -1265,21 +1275,18 @@ func (r *AppReconciler) mirrorPreDeploySecrets(ctx context.Context, app *appv1al
 // here. Empty => anonymous pull (dev's unauthenticated Zot). This is the pull
 // counterpart to the build Job's own build-namespace RegistryPushSecret.
 func (r *AppReconciler) buildJobPullSecret(app *appv1alpha1.App) string {
-	if r.buildNamespace(app.Namespace) != app.Namespace {
-		if r.PerAppRegistry != nil {
-			return registry.PullSecretName(app.Name)
-		}
-		return r.RegistryBuildPullSecret
-	}
 	if r.PerAppRegistry != nil {
-		return registry.PullSecretName(app.Name)
+		return appIdentity(app).PullSecretName()
+	}
+	if r.buildNamespace(app.Namespace) != app.Namespace {
+		return r.RegistryBuildPullSecret
 	}
 	return r.RegistryPullSecret
 }
 
 func (r *AppReconciler) buildJobPushSecret(app *appv1alpha1.App) string {
 	if r.PerAppRegistry != nil {
-		return registry.PullSecretName(app.Name)
+		return appIdentity(app).PullSecretName()
 	}
 	return r.RegistryPushSecret
 }
@@ -1359,7 +1366,7 @@ func (r *AppReconciler) ensurePerAppRegistryCreds(ctx context.Context, app *appv
 
 	// Rotation: if the annotation is set, re-issue credentials first, then clear it.
 	if app.Annotations[annotRotateRegistryCreds] == registryCredentialRotateTrue {
-		if err := r.PerAppRegistry.RotateCreds(ctx, app.Name, app.Namespace); err != nil {
+		if err := r.PerAppRegistry.RotateCredsFor(ctx, appIdentity(app), app.Namespace); err != nil {
 			return fmt.Errorf("rotate registry creds: %w", err)
 		}
 		patch := app.DeepCopy()
@@ -1372,7 +1379,7 @@ func (r *AppReconciler) ensurePerAppRegistryCreds(ctx context.Context, app *appv
 		logf.FromContext(ctx).Info("rotated per-app registry credentials", "app", app.Name)
 	}
 
-	return r.PerAppRegistry.EnsureCreds(ctx, app.Name, app.Namespace)
+	return r.PerAppRegistry.EnsureCredsFor(ctx, appIdentity(app), app.Namespace)
 }
 
 // mirrorPerAppRegistryCredential copies the per-App, repository-scoped Zot
@@ -1386,7 +1393,7 @@ func (r *AppReconciler) mirrorPerAppRegistryCredential(ctx context.Context, app 
 	if !r.appNeedsRegistryCred(app) {
 		return nil
 	}
-	name := registry.PullSecretName(app.Name)
+	name := appIdentity(app).PullSecretName()
 	if err := r.copyBuildRegistryCredential(ctx, app, app.Namespace, r.buildNamespace(app.Namespace), name); err != nil {
 		return fmt.Errorf("relocating per-App registry credential to %s: %w", r.buildNamespace(app.Namespace), err)
 	}
@@ -1416,7 +1423,7 @@ func (r *AppReconciler) copyCloneSecret(ctx context.Context, app *appv1alpha1.Ap
 	if err := buildClient.Get(ctx, client.ObjectKey{Namespace: srcNS, Name: name}, &src); err != nil {
 		return err
 	}
-	identity := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+	owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
 		Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
 	dst := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: dstNS}}
 	_, err := controllerutil.CreateOrUpdate(ctx, buildClient, dst, func() error {
@@ -1425,7 +1432,7 @@ func (r *AppReconciler) copyCloneSecret(ctx context.Context, app *appv1alpha1.Ap
 		// Refuse to overwrite a foreign owner rather than clobbering its bytes under
 		// the operator's build-namespace Secret CRUD (codex-security #14).
 		if dst.UID != "" {
-			if err := identity.CheckOwner(dst); err != nil {
+			if err := owned.CheckOwner(dst); err != nil {
 				return err
 			}
 		}
@@ -2401,11 +2408,18 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	// Job is named per revision, so a retry reuses the exact-lifetime Job rather
 	// than re-uploading). An in-flight publish halts the reconcile with its
 	// RequeueAfter result (round-13 #6).
+	//
+	// published is the only moment we may write status.staticPrefix. An already-
+	// active labeled App whose prefix is empty still serves from the legacy
+	// A/<rev>/ (ADR074 dual-read). Stamping W/A/<rev>/ here without a publish
+	// or migration would point the static-server at an empty prefix.
+	published := false
 	if app.Status.ActiveRevision != rev {
 		res, err := r.publishStaticRevision(ctx, app, image, rev)
 		if err != nil || res.RequeueAfter > 0 {
 			return res, err
 		}
+		published = true
 	}
 
 	// A static_site must be reachable at a host (there is no in-cluster-only mode
@@ -2430,6 +2444,9 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 			return r.fail(ctx, app, "IngressCleanupFailed", err)
 		}
 		app.Status.ActiveRevision = rev
+		if published {
+			app.Status.StaticPrefix = appIdentity(app).StaticPrefix(rev)
+		}
 		return r.hibernated(ctx, app, image, nil, "Suspended",
 			"static site suspended (not served; published content kept)")
 	}
@@ -2452,6 +2469,9 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	app.Status.Phase = appv1alpha1.PhaseRunning
 	app.Status.Image = image
 	app.Status.ActiveRevision = rev
+	if published {
+		app.Status.StaticPrefix = appIdentity(app).StaticPrefix(rev)
+	}
 	app.Status.ObservedGeneration = app.Generation
 	setStatusURLs(app, hosts)
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
@@ -3279,7 +3299,7 @@ func (r *AppReconciler) setPublicRoutingCondition(app *appv1alpha1.App, hosts []
 // platform hiccup (requeue, keep the previous state serving), a not-yet-active
 // credential parks the App at the caller's phase.
 func (r *AppReconciler) awaitRegistryCredActive(ctx context.Context, app *appv1alpha1.App, phase appv1alpha1.AppPhase, logMsg, waitMsg string) (ctrl.Result, bool) {
-	active, err := r.PerAppRegistry.EnsureActive(ctx, app.Name, app.Namespace)
+	active, err := r.PerAppRegistry.EnsureActiveFor(ctx, appIdentity(app), app.Namespace)
 	if err != nil {
 		logf.FromContext(ctx).Error(err, logMsg, "app", app.Name)
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, true
@@ -3508,9 +3528,9 @@ func (r *AppReconciler) reconcileExecutionNetworkPolicy(ctx context.Context, app
 		// Owner-gated like the finalizer's delete (round 12, finding 1): the
 		// shared build namespace can hold a same-named App's policy, which a
 		// bare Delete would tear down cross-workspace.
-		identity := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+		owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
 			Workspace: ws, Namespace: app.Namespace}
-		_, err := deleteOwnedObject(ctx, r.buildPlaneClient(), buildNS, name, &networkingv1.NetworkPolicy{}, identity)
+		_, err := deleteOwnedObject(ctx, r.buildPlaneClient(), buildNS, name, &networkingv1.NetworkPolicy{}, owned)
 		return client.IgnoreNotFound(err)
 	}
 	scopeSelector := map[string]string{labelWorkspace: ws}
@@ -3664,9 +3684,9 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 func (r *AppReconciler) reclaimAppExecution(ctx context.Context, app *appv1alpha1.App, namespace string, cl client.Client) (bool, error) {
 	var errs []error
 	pending := false
-	identity := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+	owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
 		Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
-	done, _, err := build.ReclaimAppArtifacts(ctx, identity, namespace, cl)
+	done, _, err := build.ReclaimAppArtifacts(ctx, owned, namespace, cl)
 	pending = pending || !done
 	if err != nil {
 		errs = append(errs, fmt.Errorf("reclaim build artifacts: %w", err))
@@ -3676,7 +3696,7 @@ func (r *AppReconciler) reclaimAppExecution(ctx context.Context, app *appv1alpha
 			// Delete only a Secret this App owns; a same-named foreign/platform
 			// Secret in the shared build namespace must survive the finalizer
 			// (codex-security #5 — the loop used to delete by name, no owner check).
-			done, deleteErr := deleteOwnedObject(ctx, cl, namespace, name, &corev1.Secret{}, identity)
+			done, deleteErr := deleteOwnedObject(ctx, cl, namespace, name, &corev1.Secret{}, owned)
 			pending = pending || !done
 			if deleteErr != nil {
 				errs = append(errs, fmt.Errorf("delete copied build Secret %s: %w", name, deleteErr))
@@ -3688,7 +3708,7 @@ func (r *AppReconciler) reclaimAppExecution(ctx context.Context, app *appv1alpha
 	// bare deleteAndWait below would also remove a SAME-NAMED App's policy in
 	// another workspace. Gate on the artifact ownership labels like the Secrets.
 	execPolicyName := build.JobName(app.Name, "execution-egress")
-	if done, deleteErr := deleteOwnedObject(ctx, cl, namespace, execPolicyName, &networkingv1.NetworkPolicy{}, identity); deleteErr != nil {
+	if done, deleteErr := deleteOwnedObject(ctx, cl, namespace, execPolicyName, &networkingv1.NetworkPolicy{}, owned); deleteErr != nil {
 		errs = append(errs, fmt.Errorf("delete execution NetworkPolicy: %w", deleteErr))
 	} else {
 		pending = pending || !done
@@ -3705,14 +3725,14 @@ func (r *AppReconciler) reclaimAppExecution(ctx context.Context, app *appv1alpha
 // it settle — the same semantics as deleteAndWait, plus the ownership gate
 // (codex-security #5; extended to the execution NetworkPolicy and the
 // build-namespace reg-pull mirror in codex-security round 12, finding 1).
-func deleteOwnedObject(ctx context.Context, cl client.Client, namespace, name string, obj client.Object, identity execution.ArtifactIdentity) (bool, error) {
+func deleteOwnedObject(ctx context.Context, cl client.Client, namespace, name string, obj client.Object, owned execution.ArtifactIdentity) (bool, error) {
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, obj); err != nil {
 		if apierrors.IsNotFound(err) {
 			return true, nil
 		}
 		return false, err
 	}
-	if !identity.Owns(obj) {
+	if !owned.Owns(obj) {
 		return true, nil // not ours — leave a foreign/platform object intact
 	}
 	if !obj.GetDeletionTimestamp().IsZero() {
@@ -3745,7 +3765,8 @@ func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *ap
 			errs = append(errs, credentialErr)
 		} else {
 			purgeJob := publish.PurgeJob(app.Name, string(app.UID), app.Labels[labelWorkspace],
-				app.Namespace, r.StaticStore, namespace, r.RegistryBuildPullSecret, "")
+				app.Namespace, r.StaticStore, namespace, r.RegistryBuildPullSecret, "",
+				appIdentity(app).PurgePrefixes(app.Status.StaticPrefix)...)
 			done, purgeErr := reconcileCleanupJob(ctx, cl, app, purgeJob, annotStaticPurgeComplete)
 			pending = pending || !done
 			if purgeErr != nil {
@@ -3795,10 +3816,13 @@ func (r *AppReconciler) revokeAppRegistryCredentials(ctx context.Context, app *a
 	}
 	var errs []error
 	pending := false
-	if err := r.PerAppRegistry.RevokeCreds(ctx, app.Name); err != nil {
+	if err := r.PerAppRegistry.RevokeCredsFor(ctx, appIdentity(app)); err != nil {
 		errs = append(errs, fmt.Errorf("revoke per-app registry credentials: %w", err))
 	}
-	pullSec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: registry.PullSecretName(app.Name), Namespace: app.Namespace}}
+	id := appIdentity(app)
+	owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+		Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
+	pullSec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: id.PullSecretName(), Namespace: app.Namespace}}
 	if done, deleteErr := deleteAndWait(ctx, cl, pullSec); deleteErr != nil {
 		errs = append(errs, fmt.Errorf("delete per-app pull Secret: %w", deleteErr))
 	} else {
@@ -3809,25 +3833,44 @@ func (r *AppReconciler) revokeAppRegistryCredentials(ctx context.Context, app *a
 		// same workspace-local App name and a same-named App in another
 		// workspace builds and pulls with the object mirrored here — the bare
 		// deleteAndWait would revoke ITS credential too. Gate on ownership.
-		identity := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
-			Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
-		done, deleteErr := deleteOwnedObject(ctx, cl, namespace, pullSec.Name, &corev1.Secret{}, identity)
+		done, deleteErr := deleteOwnedObject(ctx, cl, namespace, pullSec.Name, &corev1.Secret{}, owned)
 		if deleteErr != nil {
 			errs = append(errs, fmt.Errorf("delete build-namespace registry Secret: %w", deleteErr))
 		} else {
 			pending = pending || !done
 		}
 	}
+	// A pre-m75 labeled App left reg-pull-<name> (app-ns + build-ns mirror)
+	// behind when minting moved to reg-pull-<ws>-<name>. Delete only objects
+	// this App lifetime owns so a same-named unlabeled sibling keeps its Secret.
+	if legacy := id.LegacyPullSecretName(); legacy != id.PullSecretName() {
+		done, deleteErr := deleteOwnedObject(ctx, cl, app.Namespace, legacy, &corev1.Secret{}, owned)
+		if deleteErr != nil {
+			errs = append(errs, fmt.Errorf("delete legacy pull Secret: %w", deleteErr))
+		} else {
+			pending = pending || !done
+		}
+		if namespace != app.Namespace {
+			done, deleteErr := deleteOwnedObject(ctx, cl, namespace, legacy, &corev1.Secret{}, owned)
+			if deleteErr != nil {
+				errs = append(errs, fmt.Errorf("delete legacy build-namespace registry Secret: %w", deleteErr))
+			} else {
+				pending = pending || !done
+			}
+		}
+	}
 	return pending, errors.Join(errs...)
 }
 
 func (r *AppReconciler) knownBuildSecretNames(app *appv1alpha1.App) []string {
+	id := appIdentity(app)
 	names := []string{build.JobName(app.Name, "registry-auth")}
 	for _, name := range []string{
 		app.Spec.CloneSecret,
 		runtimeEnvSecret(app),
 		app.Spec.ExternalRegistryPullSecret,
-		registry.PullSecretName(app.Name),
+		id.PullSecretName(),
+		id.LegacyPullSecretName(),
 	} {
 		if name != "" {
 			names = append(names, name)
@@ -3963,11 +4006,25 @@ func (r *AppReconciler) deleteTLSSecrets(ctx context.Context, app *appv1alpha1.A
 // error retains the finalizer; after manifest deletion a later list must prove
 // the repository empty. Zot's periodic GC reclaims the unreferenced blobs.
 func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	id := appIdentity(app)
+	done, err := r.deleteRegistryRepoNamed(ctx, app, id.Repo())
+	if err != nil || !done {
+		return done, err
+	}
+	if id.Tombstoned && id.LegacyRepo() != id.Repo() {
+		return r.deleteRegistryRepoNamed(ctx, app, id.LegacyRepo())
+	}
+	return true, nil
+}
+
+func (r *AppReconciler) deleteRegistryRepoNamed(ctx context.Context, app *appv1alpha1.App, repo string) (bool, error) {
 	requestCtx, cancel := boundedhttp.WithTimeout(ctx)
 	defer cancel()
 	ctx = requestCtx
 	base := registry.NormalizeBase(r.Registry)
-	repo := app.Name
+	if repo == "" {
+		repo = app.Name
+	}
 
 	authHdr, ready, err := r.registryAuthHeader(ctx, app)
 	if err != nil {
@@ -4058,10 +4115,10 @@ func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1
 // anonymous request that degrades into an opaque 401.
 func (r *AppReconciler) registryAuthHeader(ctx context.Context, app *appv1alpha1.App) (string, bool, error) {
 	if r.PerAppRegistry != nil {
-		if err := r.PerAppRegistry.EnsureCreds(ctx, app.Name, app.Namespace); err != nil {
+		if err := r.PerAppRegistry.EnsureCredsFor(ctx, appIdentity(app), app.Namespace); err != nil {
 			return "", false, fmt.Errorf("restore per-app credential: %w", err)
 		}
-		active, err := r.PerAppRegistry.EnsureActive(ctx, app.Name, app.Namespace)
+		active, err := r.PerAppRegistry.EnsureActiveFor(ctx, appIdentity(app), app.Namespace)
 		if err != nil {
 			return "", false, fmt.Errorf("activate per-app credential: %w", err)
 		}
@@ -4070,7 +4127,7 @@ func (r *AppReconciler) registryAuthHeader(ctx context.Context, app *appv1alpha1
 		}
 		var sec corev1.Secret
 		if err := r.PerAppRegistry.Client.Get(ctx, client.ObjectKey{
-			Namespace: app.Namespace, Name: registry.PullSecretName(app.Name),
+			Namespace: app.Namespace, Name: appIdentity(app).PullSecretName(),
 		}, &sec); err != nil {
 			return "", false, fmt.Errorf("read per-app pull Secret: %w", err)
 		}

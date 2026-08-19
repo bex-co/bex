@@ -174,6 +174,77 @@ func zotHasRepo(data map[string]any, repo string) bool {
 	return ok
 }
 
+// zotRepoUserGrants reports whether repo already has a policy granting user
+// exactly actions. Other policies on the same repo are ignored.
+func zotRepoUserGrants(data map[string]any, repo, user string, actions []string) bool {
+	entry, _ := zotRepos(data)[repo].(map[string]any)
+	policies, _ := entry["policies"].([]any)
+	for _, p := range policies {
+		policy, _ := p.(map[string]any)
+		users, _ := policy["users"].([]any)
+		granted, _ := policy["actions"].([]any)
+		if sameStrings(users, []string{user}) && sameStrings(granted, actions) {
+			return true
+		}
+	}
+	return false
+}
+
+// zotRepoHasUser reports whether any policy on repo names user.
+func zotRepoHasUser(data map[string]any, repo, user string) bool {
+	entry, _ := zotRepos(data)[repo].(map[string]any)
+	policies, _ := entry["policies"].([]any)
+	for _, p := range policies {
+		policy, _ := p.(map[string]any)
+		users, _ := policy["users"].([]any)
+		if slices.Contains(users, any(user)) {
+			return true
+		}
+	}
+	return false
+}
+
+// addZotRepoUser appends a policy granting user actions on repo. Existing
+// policies (a sibling's exclusive RW, the dual-read counterpart) stay.
+func addZotRepoUser(data map[string]any, repo, user string, actions []string) {
+	entry, _ := zotReposFor(data)[repo].(map[string]any)
+	if entry == nil {
+		setZotRepoPolicy(data, repo, user, actions)
+		return
+	}
+	policies, _ := entry["policies"].([]any)
+	entry["policies"] = append(policies, map[string]any{
+		"users":   []any{user},
+		"actions": anySlice(actions),
+	})
+	zotReposFor(data)[repo] = entry
+}
+
+// removeZotRepoUser drops every policy that names user from repo. The
+// repository entry is deleted when no policies remain.
+func removeZotRepoUser(data map[string]any, repo, user string) {
+	entry, _ := zotRepos(data)[repo].(map[string]any)
+	if entry == nil {
+		return
+	}
+	policies, _ := entry["policies"].([]any)
+	kept := make([]any, 0, len(policies))
+	for _, p := range policies {
+		policy, _ := p.(map[string]any)
+		users, _ := policy["users"].([]any)
+		if slices.Contains(users, any(user)) {
+			continue
+		}
+		kept = append(kept, p)
+	}
+	if len(kept) == 0 {
+		delete(zotRepos(data), repo)
+		return
+	}
+	entry["policies"] = kept
+	zotRepos(data)[repo] = entry
+}
+
 // -- platform grants ----------------------------------------------------------
 
 // zotHasBuilderAdminPolicy reports whether zotBuilderUser holds the global

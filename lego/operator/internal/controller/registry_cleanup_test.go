@@ -72,6 +72,34 @@ func TestRegistryCleanupDeletesThenProvesRepositoryEmpty(t *testing.T) {
 	}
 }
 
+func TestRegistryCleanupLabeledAppDoesNotDeleteLegacyRepo(t *testing.T) {
+	var hits []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits = append(hits, r.Method+" "+r.URL.Path)
+		if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/tags/list") {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"tags":[]}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+	r := &AppReconciler{Registry: server.URL, HTTPClient: server.Client()}
+	app := &appv1alpha1.App{}
+	app.Name = "web"
+	app.Labels = map[string]string{labelWorkspace: "tea-aaaaaaaaaaaaaaaaaaaa"}
+	if done, err := r.deleteRegistryRepo(context.Background(), app); err != nil || !done {
+		t.Fatalf("scoped empty-repo pass = done %v err %v", done, err)
+	}
+	joined := strings.Join(hits, "\n")
+	if !strings.Contains(joined, "/v2/tea-aaaaaaaaaaaaaaaaaaaa/web/tags/list") {
+		t.Fatalf("labeled App missed scoped repo: %s", joined)
+	}
+	if strings.Contains(joined, "/v2/web/tags/list") {
+		t.Fatalf("labeled non-tombstoned App hit a legacy same-named sibling repo: %s", joined)
+	}
+}
+
 func TestRegistryCleanupHonorsCallerCancellationDuringBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

@@ -4,12 +4,14 @@
 # in git or Argo-managed manifests (repo rule; same posture as auth-secrets.sh).
 #
 # Per-App pull credentials (w7/m36): the bex-puller shared credential is no longer
-# used. Each App gets its own "app-<name>" htpasswd user and a per-repo Zot ACL
-# entry, managed dynamically by the operator. This script:
-#   - refreshes bex-builder while preserving operator-managed app-<name> users
+# used. Each App gets its own htpasswd user and a per-repo Zot ACL
+# entry, managed dynamically by the operator (legacy "app-<name>"; labeled
+# Apps "app-<tea-id>-<name>" per docs/ADR073). This script:
+#   - refreshes bex-builder while preserving operator-managed app-* users
 #     already present in zot-htpasswd (bex-puller remains removed);
 #   - does NOT create bex-registry-pull (deprecated; superseded by per-App
-#     "reg-pull-<name>" Secrets in the apps namespace created by the operator).
+#     "reg-pull-<name>" / "reg-pull-<tea-id>-<name>" Secrets in the apps
+#     namespace created by the operator).
 #   - creates bex-registry-pull in the BUILD namespace only (for the static-site
 #     publish Job's extract initContainer which uses the push credential path).
 #
@@ -17,7 +19,8 @@
 # htpasswd holds only bcrypt HASHES (safe); the matching plaintext rides:
 #   bex-builder  bootstrap Secret — registry seeding, webhook reads, and the
 #                                   legacy shared-auth fallback only
-#   app-<name>   per-App Secret   — post-build push/sign plus kubelet pulls,
+#   app-<name> / app-<tea-id>-<name>
+#                per-App Secret   — post-build push/sign plus kubelet pulls,
 #                                   scoped by Zot to that App's repository
 #
 # Reads the repo-local .env (gitignored — never commit or print it). Required keys
@@ -178,5 +181,5 @@ kubectl create secret generic bex-registry-pull -n "$BUILD_NS" \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 
 echo "applied: $REGISTRY_NS/zot-htpasswd (bex-builder + preserved app-* users), $BUILD_NS/bex-registry-push{,-kpack,-pull}, $KPACK_NS/bex-registry-push-kpack"
-echo "operator will mint per-App reg-pull-<name> Secrets and add app-<name> htpasswd entries as Apps are reconciled"
+echo "operator will mint per-App reg-pull-<name> / reg-pull-<tea-id>-<name> Secrets and add app-* htpasswd entries as Apps are reconciled"
 echo "after first reconcile, restart Zot to load initial zot-config:  kubectl rollout restart statefulset zot -n $REGISTRY_NS"

@@ -84,16 +84,23 @@ type Origin interface {
 
 // Site is the serving config for one static_site App, keyed by request host.
 type Site struct {
-	AppID    string                     // first object-key segment
-	Revision string                     // second key segment (e.g. "rev-7"); immutable per revision
+	AppID    string                     // first object-key segment (legacy sites)
+	Revision string                     // last key segment (e.g. "rev-7"); immutable per revision
+	Prefix   string                     // full object-key prefix including trailing slash when known
 	Routes   []appv1alpha1.StaticRoute  // ordered redirect/rewrite rules
 	Headers  []appv1alpha1.StaticHeader // custom response headers by path
 }
 
-// keyFor is the object-store key for a site-relative request path
-// ("<appID>/<revision>/<path-without-leading-slash>").
+// keyFor is the object-store key for a site-relative request path.
 func (s Site) keyFor(reqPath string) string {
-	return s.AppID + "/" + s.Revision + "/" + strings.TrimPrefix(reqPath, "/")
+	prefix := s.Prefix
+	if prefix == "" {
+		prefix = s.AppID + "/" + s.Revision + "/"
+	}
+	if !strings.HasSuffix(prefix, "/") {
+		prefix += "/"
+	}
+	return prefix + strings.TrimPrefix(reqPath, "/")
 }
 
 // Resolver maps a request host to its Site config.

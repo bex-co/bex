@@ -299,3 +299,17 @@ func TestHeadRequestNoBody(t *testing.T) {
 		t.Errorf("HEAD body = %q, want empty", rec.Body)
 	}
 }
+
+func TestKeyForPrefersRecordedPrefix(t *testing.T) {
+	s := Site{AppID: "web", Revision: "rev-1", Prefix: "tea-aaaaaaaaaaaaaaaaaaaa/web/rev-1/"}
+	if got, want := s.keyFor("/index.html"), "tea-aaaaaaaaaaaaaaaaaaaa/web/rev-1/index.html"; got != want {
+		t.Errorf("keyFor = %q, want %q", got, want)
+	}
+}
+
+func TestKeyForLegacyFallback(t *testing.T) {
+	s := Site{AppID: "web", Revision: "rev-1"}
+	if got, want := s.keyFor("/index.html"), "web/rev-1/index.html"; got != want {
+		t.Errorf("keyFor = %q, want %q", got, want)
+	}
+}

@@ -23,8 +23,8 @@ Four of the eight high findings (1, 3, 5, 8) are the ADR055 root cause recurring
 | 15 | Unbounded Postgres allowlists impose tenant-controlled work on shared ingress | Medium | **Fixed in place** — allowlist cardinality cap (1,000) + pg-sni-proxy match-then-scan |
 | 16 | Invite role reconciliation treats authz-check failures as absent roles | Low | **Fixed in place** — a Check error attempts the idempotent revoke, never treated as absence |
 | 17 | Dashboard/mobile live-log clients lack retained-byte budgets | Low | **Fixed in place (source side)** — backend per-record log truncation (64 KiB); client-side budgets are a follow-up |
-| 1 | Registry repo/user/ACL/digest/finalizer keyed only by App name | High | **Deferred — migration-gated** (= ADR055 F3, re-confirmed unchanged) |
-| 3 | Static-site object prefixes / purge targets omit tenant identity | High | **Deferred — migration-gated** (= ADR055 F2, re-confirmed unchanged) |
+| 1 | Registry repo/user/ACL/digest/finalizer keyed only by App name | High | **Deferred — migration-gated** (= ADR055 F3, re-confirmed unchanged). **Update (w2/m75):** code landed; prod cutover [runbook-gated](runbooks/registry-static-identity-migration.md) until phase 4. |
+| 3 | Static-site object prefixes / purge targets omit tenant identity | High | **Deferred — migration-gated** (= ADR055 F2, re-confirmed unchanged). **Update (w2/m75):** code landed; prod cutover [runbook-gated](runbooks/registry-static-identity-migration.md) until phase 4. |
 | 9 | Tenant sites share `onbex.co` without browser-enforced cookie isolation | Medium | **Accepted risk — external (PSL)** (= ADR055 F9) |
 | 14 | Branch-confined agent credential can push to arbitrary repository refs | Medium | **Accepted/deferred — GitHub token-scope limitation** (documented; tenant branch rulesets are the enforcement point per ADR047) |
 
@@ -47,6 +47,9 @@ Four of the eight high findings (1, 3, 5, 8) are the ADR055 root cause recurring
 ## Deferred / accepted, with rationale
 
 - **1 (registry keys) and 3 (static object keys) — migration-gated, unchanged from ADR055 F3/F2.** Confirmed current code still keys every Zot artifact and every S3 prefix on bare `app.Name`. Re-keying is destructive to change blindly: re-pathing the registry repo invalidates the image ref baked into every running Deployment (ImagePullBackOff until rebuild+re-push), and re-keying the S3 prefix orphans every already-published static site until it redeploys; the Zot htpasswd/ACL entries carry no owner record for a migration-free guard. These need a coordinated dual-read → migrate → redeploy → drop-fallback rollout, tracked for a dedicated milestone. The name-collision-defense hardening for the shared platform-builder repo (ADR055) remains the only in-place mitigation.
+
+  **Update (w2/m75):** that coordinated rollout's code path is [ADR074](ADR074-workspace-scoped-artifact-identity.md); live tenant cutover remains [runbook-gated](runbooks/registry-static-identity-migration.md).
+
 - **9 (`onbex.co` cookie isolation) — accepted risk (external), unchanged from ADR055 F9.** `onbex.co` is not on the browser Public Suffix List, so sibling tenant sites can set `Domain=onbex.co` cookies at each other. `hostingdomain.ValidateSharedSuffix` already logs this and continues by design; fail-closing it in production would take down all tenant hosting under the base domain. Real fixes are a PSL submission (external, multi-week) or per-tenant registrable domains (major architecture change).
 - **14 (branch-confined agent credential) — GitHub token-scope limitation.** GitHub App installation tokens have no ref/branch scoping, so the in-sandbox agent can `git push origin HEAD:main` with a repository-scoped `contents:write` token even though the credential broker only ever presents the declared `bex-agent/*` branch. This is already acknowledged in `agentsession/contract.go` and ADR047, which delegate default/release-branch protection to tenant GitHub rulesets. A preventive fix requires a bex-operated `git-receive-pack` proxy that validates the destination ref server-side — a new component, tracked as a milestone, not a patch.
 

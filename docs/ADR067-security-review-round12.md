@@ -43,6 +43,8 @@ Both require the coordinated dual-read → migrate → redeploy rollout ADR055 a
 
 Residual within the residual: build/pre-deploy/publish Job names remain name-derived, but their `identity.CheckOwner` fail-closed behavior makes collisions a mutual DoS, not a cross-tenant effect (ADR055's accepted posture); `RevokeCreds(app.Name)` and the Zot repo purge stay name-keyed inside the F3 deferral.
 
+**Update (w2/m75):** `RevokeCredsFor` + the finalizer purge now consume `lego/operator/internal/identity` ([ADR074](ADR074-workspace-scoped-artifact-identity.md)) — a labeled App purges `W/A` (and the legacy location only when tombstoned). The Job-name residual is unchanged.
+
 ## Fixed findings
 
 ### 2 — static cache metadata accounting
@@ -82,7 +84,7 @@ The HMAC authenticates the body, but event-type selection read the unsigned `X-G
 
 | Item | First report | This round |
 | --- | --- | --- |
-| OCI/Zot + static-prefix tenant identity migration | ADR055 F2/F3 | re-confirmed (finding 1) |
+| OCI/Zot + static-prefix tenant identity migration | ADR055 F2/F3 | re-confirmed (finding 1). **Update (w2/m75):** code landed ([ADR074](ADR074-workspace-scoped-artifact-identity.md)); prod cutover [runbook-gated](runbooks/registry-static-identity-migration.md) until phase 4. |
 | onbex.co PSL submission | ADR055 F9 | re-confirmed (finding 6, 7th) |
 | metrics-server kubelet TLS | ADR072 5 | not re-reported |
 | digest-pinning inventory (incl. `apk add age`) | ADR055 F7 | re-confirmed (finding 8, 5th) |

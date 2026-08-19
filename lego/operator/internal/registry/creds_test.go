@@ -35,6 +35,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/bex-co/bex/lego/operator/internal/identity"
 )
 
 // -- fixtures -----------------------------------------------------------------
@@ -976,5 +978,109 @@ func TestEnsureCredsMemoDoesNotMaskTamperedHash(t *testing.T) {
 	}
 	if err := bcrypt.CompareHashAndPassword(hash, []byte(password)); err != nil {
 		t.Errorf("tampered hash survived the memo — it must be re-synced to the pull Secret's password: %v", err)
+	}
+}
+
+func TestEnsureCredsForDisjointWorkspaces(t *testing.T) {
+	ctx := context.Background()
+	c := newTestCreds(t, htpasswdSecret())
+	a := identity.ForApp("web", "tea-aaaaaaaaaaaaaaaaaaaa")
+	b := identity.ForApp("web", "tea-bbbbbbbbbbbbbbbbbbbb")
+	if err := c.EnsureCredsFor(ctx, a, "ns-a"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.EnsureCredsFor(ctx, b, "ns-b"); err != nil {
+		t.Fatal(err)
+	}
+	if a.PullSecretName() == b.PullSecretName() || a.ZotUsername() == b.ZotUsername() || a.Repo() == b.Repo() {
+		t.Fatal("same App name in two workspaces collided")
+	}
+	_ = readSecret(t, c, "ns-a", a.PullSecretName())
+	_ = readSecret(t, c, "ns-b", b.PullSecretName())
+	ht := readSecret(t, c, testZotNS, "zot-htpasswd")
+	if _, ok := htpasswdUserHash(ht.Data[htpasswdKey], a.ZotUsername()); !ok {
+		t.Fatal("workspace A user missing")
+	}
+	if _, ok := htpasswdUserHash(ht.Data[htpasswdKey], b.ZotUsername()); !ok {
+		t.Fatal("workspace B user missing")
+	}
+	data := storedConfig(t, c)
+	if !zotRepoGrants(data, a.Repo(), a.ZotUsername(), zotReadWriteActions) {
+		t.Fatal("workspace A repo ACL missing")
+	}
+	if !zotRepoGrants(data, b.Repo(), b.ZotUsername(), zotReadWriteActions) {
+		t.Fatal("workspace B repo ACL missing")
+	}
+	if !zotRepoUserGrants(data, a.LegacyRepo(), a.ZotUsername(), zotReadOnlyActions) {
+		t.Fatal("dual-read grant for A missing on legacy repo")
+	}
+	if !zotRepoUserGrants(data, b.LegacyRepo(), b.ZotUsername(), zotReadOnlyActions) {
+		t.Fatal("dual-read grant for B missing on legacy repo")
+	}
+}
+
+func TestEnsureCredsForPreservesUnlabeledSiblingACL(t *testing.T) {
+	ctx := context.Background()
+	c := newTestCreds(t, htpasswdSecret())
+	if err := c.EnsureCreds(ctx, "web", "legacy-ns"); err != nil {
+		t.Fatal(err)
+	}
+	scoped := identity.ForApp("web", "tea-aaaaaaaaaaaaaaaaaaaa")
+	if err := c.EnsureCredsFor(ctx, scoped, "ns-a"); err != nil {
+		t.Fatal(err)
+	}
+	data := storedConfig(t, c)
+	if !zotRepoUserGrants(data, "web", ZotUsername("web"), zotReadWriteActions) {
+		t.Fatal("unlabeled sibling exclusive RW was replaced")
+	}
+	if !zotRepoUserGrants(data, "web", scoped.ZotUsername(), zotReadOnlyActions) {
+		t.Fatal("dual-read READ grant missing")
+	}
+	if !zotRepoGrants(data, scoped.Repo(), scoped.ZotUsername(), zotReadWriteActions) {
+		t.Fatal("scoped exclusive RW missing")
+	}
+}
+
+func TestRevokeCredsForScopedLeavesLegacySibling(t *testing.T) {
+	ctx := context.Background()
+	c := newTestCreds(t, htpasswdSecret())
+	if err := c.EnsureCreds(ctx, "web", "legacy-ns"); err != nil {
+		t.Fatal(err)
+	}
+	scoped := identity.ForApp("web", "tea-aaaaaaaaaaaaaaaaaaaa")
+	if err := c.EnsureCredsFor(ctx, scoped, "ns-a"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.RevokeCredsFor(ctx, scoped); err != nil {
+		t.Fatal(err)
+	}
+	ht := readSecret(t, c, testZotNS, "zot-htpasswd")
+	if _, ok := htpasswdUserHash(ht.Data[htpasswdKey], scoped.ZotUsername()); ok {
+		t.Fatal("scoped user should be revoked")
+	}
+	if _, ok := htpasswdUserHash(ht.Data[htpasswdKey], ZotUsername("web")); !ok {
+		t.Fatal("unlabeled sibling user was revoked")
+	}
+	data := storedConfig(t, c)
+	if zotHasRepo(data, scoped.Repo()) {
+		t.Fatal("scoped repo ACL should be gone")
+	}
+	if !zotRepoGrants(data, "web", ZotUsername("web"), zotReadWriteActions) {
+		t.Fatal("unlabeled sibling ACL was removed")
+	}
+	if zotRepoHasUser(data, "web", scoped.ZotUsername()) {
+		t.Fatal("dual-read grant should be dropped on scoped revoke")
+	}
+}
+
+func TestRetentionPolicyGlobsNestedRepos(t *testing.T) {
+	data := mustDecode(t, (&Creds{}).baseZotConfig())
+	storage, _ := data["storage"].(map[string]any)
+	retention, _ := storage["retention"].(map[string]any)
+	policies, _ := retention["policies"].([]any)
+	policy, _ := policies[0].(map[string]any)
+	repos, _ := policy["repositories"].([]any)
+	if len(repos) != 1 || repos[0] != "**" {
+		t.Fatalf("retention repositories = %v; want [**] (Zot doublestar matches nested tea-x/hello)", repos)
 	}
 }
