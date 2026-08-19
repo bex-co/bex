@@ -80,9 +80,12 @@ export function useWebPushSubscription(vapidPublicKey: string, serverAvailable: 
         return false;
       }
       const registration = await navigator.serviceWorker.register("/push-sw.js");
+      const key = urlBase64ToUint8Array(vapidPublicKey);
+      const applicationServerKey = new ArrayBuffer(key.byteLength);
+      new Uint8Array(applicationServerKey).set(key);
       const sub = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        applicationServerKey,
       });
       const json = sub.toJSON();
       if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) {
