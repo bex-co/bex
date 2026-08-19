@@ -31,7 +31,7 @@ import (
 // the Go vocabularies. recordAudit swallows sink errors, so a CHECK miss
 // would silently drop authorization (including denial) rows. A follow-on
 // migration that replaces either constraint is picked up automatically as
-// long as it keeps the 0088 constraint names.
+// long as it keeps those constraint names.
 func TestAuditRelationCheckMatchesRelCan(t *testing.T) {
 	body := latestMatchingSQL(t, `audit_events_relation_check`)
 	got := quotedList(t, body, regexp.MustCompile(`relation IN \(([\s\S]*?)\)`))
