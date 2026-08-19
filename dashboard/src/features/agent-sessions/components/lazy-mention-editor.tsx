@@ -46,6 +46,7 @@ export const InlineMentionEditor = forwardRef<
   // bridge the handle so the call lands on the real editor once it has.
   useImperativeHandle(ref, () => ({
     openMention: () => innerRef.current?.openMention(),
+    insertPrompt: (text: string) => innerRef.current?.insertPrompt(text),
   }));
 
   if (!Impl) {
@@ -53,7 +54,7 @@ export const InlineMentionEditor = forwardRef<
     // the impl's editorProps, so the SSR/first-render swap is layout-stable.
     return (
       <div
-        className="text-muted-foreground min-h-16 px-3 py-2 text-sm"
+        className="text-muted-foreground min-h-28 px-3 py-3 text-sm"
         data-testid="agent-composer-editor"
       >
         {props.placeholder}

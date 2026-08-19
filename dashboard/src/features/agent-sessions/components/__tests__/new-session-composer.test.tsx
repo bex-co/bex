@@ -12,6 +12,14 @@ import { agentSessionView } from "@/test/mocks/agent-session";
 const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
+  Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
+    <a href={to}>{children}</a>
+  ),
+}));
+
+const connectGit = vi.fn();
+vi.mock("@/features/git/hooks/use-connect-git", () => ({
+  useConnectGit: () => ({ connect: connectGit, busy: false }),
 }));
 
 vi.mock("@/features/workspaces/context/hooks", () => ({
@@ -23,30 +31,35 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
   useAgentSessionMutations: () => ({ create }),
 }));
 
-// The @ picker's repo source — the git feature's installation repo list.
+const defaultRepos = [
+  {
+    id: 1,
+    fullName: "acme/widgets",
+    private: false,
+    defaultBranch: "main",
+    htmlUrl: "https://github.com/acme/widgets",
+    cloneUrl: "",
+  },
+  {
+    id: 2,
+    fullName: "acme/anvils",
+    private: true,
+    defaultBranch: "develop",
+    htmlUrl: "https://github.com/acme/anvils",
+    cloneUrl: "",
+  },
+];
+const reposState: {
+  repos: typeof defaultRepos;
+  loading: boolean;
+  error: undefined;
+} = {
+  repos: defaultRepos,
+  loading: false,
+  error: undefined,
+};
 vi.mock("@/features/services/hooks/use-repos", () => ({
-  useRepos: () => ({
-    repos: [
-      {
-        id: 1,
-        fullName: "acme/widgets",
-        private: false,
-        defaultBranch: "main",
-        htmlUrl: "https://github.com/acme/widgets",
-        cloneUrl: "",
-      },
-      {
-        id: 2,
-        fullName: "acme/anvils",
-        private: true,
-        defaultBranch: "develop",
-        htmlUrl: "https://github.com/acme/anvils",
-        cloneUrl: "",
-      },
-    ],
-    loading: false,
-    error: undefined,
-  }),
+  useRepos: () => reposState,
 }));
 
 let priorSessions: AgentSessionView[] = [];
@@ -61,7 +74,10 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-sessions", () => ({
 
 beforeEach(() => {
   priorSessions = [];
+  reposState.repos = defaultRepos;
+  reposState.loading = false;
   mockNavigate.mockReset();
+  connectGit.mockReset();
   create.mockReset();
   create.mockResolvedValue({
     session: { id: "as-new" },
@@ -161,7 +177,7 @@ describe("NewSessionComposer", () => {
     await user.click(screen.getByRole("button", { name: "Start session" }));
 
     expect(
-      await screen.findByText("Pick a repository with @ first."),
+      await screen.findByText("Pick a repository first."),
     ).toBeInTheDocument();
     expect(create).not.toHaveBeenCalled();
   });
@@ -382,7 +398,7 @@ describe("NewSessionComposer", () => {
     await pickRepo(user);
 
     // Open the Configuration popover, then paste 33 comma-separated hostnames.
-    await user.click(screen.getByRole("button", { name: "Configuration" }));
+    await user.click(screen.getByRole("button", { name: "Advanced" }));
     const egress = await screen.findByLabelText("Egress allowlist");
     const many = Array.from({ length: 33 }, (_, i) => `h${i}.example.com`).join(
       ",",
@@ -405,7 +421,7 @@ describe("NewSessionComposer", () => {
     await typeTask(user);
     await pickRepo(user);
 
-    await user.click(screen.getByRole("button", { name: "Configuration" }));
+    await user.click(screen.getByRole("button", { name: "Advanced" }));
     const hostnames = Array.from({ length: 32 }, (_, i) => `h${i}.example.com`);
     fireEvent.change(await screen.findByLabelText("Egress allowlist"), {
       target: { value: hostnames.join("\n") },
@@ -423,7 +439,7 @@ describe("NewSessionComposer", () => {
     await typeTask(user);
     await pickRepo(user);
 
-    await user.click(screen.getByRole("button", { name: "Configuration" }));
+    await user.click(screen.getByRole("button", { name: "Advanced" }));
     const branch = await screen.findByLabelText("Branch");
     await user.clear(branch);
     await user.type(branch, "main");
@@ -513,6 +529,91 @@ describe("NewSessionComposer", () => {
       await screen.findByText("Couldn't start the session"),
     ).toBeInTheDocument();
     expect(screen.getByText(/That input isn't valid/)).toBeInTheDocument();
+  });
+
+  it("lets the toolbar agent select change the create payload without Advanced", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await pickRepo(user);
+
+    await user.click(screen.getByLabelText("Agent"));
+    await user.click(await screen.findByRole("option", { name: "Gemini" }));
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0].agent).toBe("gemini");
+  });
+
+  it("shows the selected repo on the toolbar chip", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await screen.findByLabelText("Task");
+    expect(
+      screen.getByRole("button", { name: "Add repository" }),
+    ).toBeInTheDocument();
+    await pickRepo(user);
+    expect(
+      screen.getByRole("button", { name: "Repository acme/widgets" }),
+    ).toBeInTheDocument();
+  });
+
+  it("highlights the repo chip when submitting without a repo", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    const chip = screen.getByTestId("agent-composer-repo-chip");
+    expect(chip.className).toMatch(/ring-destructive/);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("blocks the composer behind a Connect GitHub CTA when there are no repos", async () => {
+    reposState.repos = [];
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+
+    expect(
+      await screen.findByTestId("agent-composer-github-empty"),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Task")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Start session" }),
+    ).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Connect GitHub" }));
+    expect(connectGit).toHaveBeenCalledTimes(1);
+    expect(create).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("link", { name: "Workspace settings" }),
+    ).toHaveAttribute("href", "/workspace/settings");
+  });
+
+  it("inserts a first-run example and opens the mention picker", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await screen.findByLabelText("Task");
+    await user.click(
+      screen.getByRole("button", {
+        name: "Fix the failing tests and open a draft PR",
+      }),
+    );
+    expect(await screen.findByLabelText("Task")).toHaveTextContent(
+      "Fix the failing tests and open a draft PR",
+    );
+    expect(
+      await screen.findByRole("option", { name: /Repositories/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides first-run examples once a session exists", () => {
+    priorSessions = [agentSession("as-prior", "Investigate flaky tests")];
+    render(<NewSessionComposer />);
+    expect(
+      screen.queryByRole("button", {
+        name: "Fix the failing tests and open a draft PR",
+      }),
+    ).not.toBeInTheDocument();
   });
 });
 

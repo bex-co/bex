@@ -27,19 +27,16 @@ import type {
   AgentSessionView,
 } from "@/features/agent-sessions/types";
 import { AgentSessionsEmptyState } from "@/features/agent-sessions/components/empty-state";
+import {
+  agentSessionStatusPhraseKey,
+  sessionTitle,
+} from "@/features/agent-sessions/lib/mapper";
 
 type ChipVariant = "success" | "destructive" | "secondary" | "outline";
 
-// The blue/active treatment for the still-converging phases — mirrors the
-// `badge.tsx` `success` variant's shape (soft tinted background + accessible
-// foreground in both themes) since there is no built-in "info" variant.
 const ACTIVE_CHIP_CLASS =
   "border-transparent bg-blue-600/15 text-blue-700 dark:text-blue-400";
 
-// Phase → chip style. Terminal phases carry their own semantic color
-// (completed=green, failed=red, canceled=muted); every still-converging phase
-// shares the active/blue treatment (ADR047 D9). Keyed on the stable `phase`
-// enum, never the free-text status.
 const PHASE_CHIP: Record<
   AgentSessionPhase,
   { variant: ChipVariant; className?: string }
@@ -48,8 +45,6 @@ const PHASE_CHIP: Record<
   failed: { variant: "destructive" },
   canceled: { variant: "secondary" },
   canceling: { variant: "secondary" },
-  // Hibernated is idle-but-resumable (ADR059 D2) — a distinct muted treatment,
-  // not the active/blue of a converging phase; hibernating shares active.
   hibernated: { variant: "secondary" },
   hibernating: { variant: "outline", className: ACTIVE_CHIP_CLASS },
   creating: { variant: "outline", className: ACTIVE_CHIP_CLASS },
@@ -59,9 +54,8 @@ const PHASE_CHIP: Record<
 };
 
 /**
- * The lifecycle chip: color-keyed on `phase` (completed=green, failed=red,
- * canceled/canceling=muted, everything still converging=blue/active). Shared by
- * the list rows and (later) the detail header so the color mapping can't drift.
+ * The lifecycle chip: color-keyed on `phase`. Shared by denser list rows and
+ * the detail header so the color mapping can't drift.
  */
 export function AgentSessionPhaseChip({ phase }: { phase: AgentSessionPhase }) {
   const { t } = useTranslations();
@@ -73,10 +67,16 @@ export function AgentSessionPhaseChip({ phase }: { phase: AgentSessionPhase }) {
   );
 }
 
-/** The draft-PR badge — `#{number}` linking `prUrl` in a new tab when present. */
-function PrBadge({ session }: { session: AgentSessionView }) {
+function PrBadge({
+  session,
+  hideEmpty,
+}: {
+  session: AgentSessionView;
+  hideEmpty?: boolean;
+}) {
   const { t } = useTranslations();
   if (session.prNumber == null) {
+    if (hideEmpty) return null;
     return <span className="text-muted-foreground">—</span>;
   }
   const label = t("agentSessions.prBadge", { number: session.prNumber });
@@ -108,7 +108,6 @@ export interface SessionListProps {
   sessions: AgentSessionView[];
   loading: boolean;
   error?: Error;
-  /** Re-run the backing list after a row archive/unarchive (ADR065). */
   onChanged?: () => void | Promise<unknown>;
   onRetry?: () => void;
   onClearFilters?: () => void;
@@ -116,13 +115,6 @@ export interface SessionListProps {
   phase?: AgentSessionPhase;
 }
 
-/**
- * The per-row archive/unarchive toggle (ADR065 D1): one icon button that flips
- * the session's working-set membership. Presentational — the list holds the
- * single `useArchiveToggle` instance and passes it down, so 50+ rows don't
- * each instantiate the mutations hook. Its own trailing cell keeps the row's
- * navigation link untouched.
- */
 function ArchiveRowAction({
   session,
   busy,
@@ -163,11 +155,22 @@ function ArchiveRowAction({
   );
 }
 
+export function RecentsRowsSkeleton({ rows = 5 }: { rows?: number }) {
+  return (
+    <div
+      className="space-y-2"
+      data-testid="agent-sessions-recents-skeleton"
+    >
+      {Array.from({ length: rows }).map((_, i) => (
+        <Skeleton key={i} className="h-14 w-full rounded-lg" />
+      ))}
+    </div>
+  );
+}
+
 /**
- * The workspace's agent sessions as a compact table. Repository, branch, and
- * driver sit under the task instead of occupying three competing columns;
- * lifecycle, pull request, and age stay scannable at the right. Clicking a
- * task opens its detail page (`/agents/{id}`).
+ * Default `/agents` history: full-row recents. Archived / All keep the denser
+ * table. Phase chips stay on the table and on detail, not on recents.
  */
 export function SessionList({
   sessions,
@@ -181,21 +184,21 @@ export function SessionList({
 }: SessionListProps) {
   const { t } = useTranslations();
   const { toggle, busyId } = useArchiveToggle(onChanged);
+  const dense = archiveFilter === "true" || archiveFilter === "all";
 
   if (loading && sessions.length === 0) {
-    return <Skeleton className="h-40 w-full" />;
+    return dense ? (
+      <Skeleton className="h-40 w-full" />
+    ) : (
+      <RecentsRowsSkeleton />
+    );
   }
   if (error && sessions.length === 0) {
     return (
-      <div className="py-8 text-center">
-        <p className="font-medium">{t("agentSessions.errorTitle")}</p>
+      <div className="flex flex-wrap items-center gap-3 py-2">
+        <p className="text-sm">{t("agentSessions.errorTitle")}</p>
         {onRetry ? (
-          <Button
-            className="mt-3"
-            size="sm"
-            variant="outline"
-            onClick={onRetry}
-          >
+          <Button size="sm" variant="outline" onClick={onRetry}>
             {t("agentSessions.retry")}
           </Button>
         ) : null}
@@ -210,6 +213,46 @@ export function SessionList({
         }
         onClearFilters={onClearFilters}
       />
+    );
+  }
+
+  if (!dense) {
+    return (
+      <ul className="divide-y" data-testid="agent-sessions-recents">
+        {sessions.map((s) => (
+          <li key={s.id} className="group flex items-start gap-1">
+            <Link
+              to="/agents/$agentSessionId"
+              params={{ agentSessionId: s.id }}
+              search={{
+                fromArchived: archiveFilter,
+                fromPhase: phase,
+              }}
+              className="hover:bg-muted/40 min-w-0 flex-1 rounded-md px-2 py-3"
+              title={s.agentConfig.task}
+            >
+              <span className="block truncate font-medium">
+                {sessionTitle(s)}
+              </span>
+              <span className="text-muted-foreground mt-1 block truncate text-xs">
+                {t(agentSessionStatusPhraseKey(s))}
+                {" · "}
+                {s.repo}
+                {" · "}
+                {formatRelativeAge(s.createdAt)}
+              </span>
+            </Link>
+            <div className="flex shrink-0 items-center gap-1 py-3 pr-1">
+              <PrBadge session={s} hideEmpty />
+              <ArchiveRowAction
+                session={s}
+                busy={busyId === s.id}
+                onToggle={(session) => void toggle(session)}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
     );
   }
 
@@ -249,7 +292,7 @@ export function SessionList({
                     )}
                     title={s.agentConfig.task}
                   >
-                    {s.agentConfig.task || s.id}
+                    {sessionTitle(s)}
                   </Link>
                   <span className="text-muted-foreground mt-1 block truncate text-xs font-normal">
                     {s.repo} · <span className="font-mono">{s.branch}</span> ·{" "}

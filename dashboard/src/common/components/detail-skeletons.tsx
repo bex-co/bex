@@ -35,6 +35,28 @@ export function ListPageSkeleton() {
 }
 
 /**
+ * `/agents` pending state: a centered composer box over recents rows, not the
+ * 3-column service card grid. Other list routes keep `ListPageSkeleton`.
+ */
+export function AgentsPageSkeleton() {
+  return (
+    <div
+      className="flex-1 overflow-auto p-4 sm:p-6"
+      data-testid="agents-page-skeleton"
+    >
+      <div className="mx-auto w-full max-w-[40rem] space-y-8">
+        <Skeleton className="h-40 w-full rounded-xl" />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-lg" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
  * A top-level CREATE (`*.new`) route's pending state (w9/m69): a title + a
  * form-shaped card, so the create wizards don't fall back to the bare spinner
  * either. Same content-region wrapper as `ListPageSkeleton`.

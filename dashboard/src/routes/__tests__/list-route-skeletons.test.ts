@@ -11,7 +11,6 @@ import { join } from "node:path";
 const ROUTES_DIR = join(import.meta.dirname, "..");
 
 const LIST_ROUTES = [
-  "agents.tsx",
   "blueprints.tsx",
   "env-groups.tsx",
   "webhooks.tsx",
@@ -30,6 +29,12 @@ describe("list/create route pending skeletons (w9/m69)", () => {
       (f) => !/pendingComponent:\s*ListPageSkeleton\b/.test(src(f)),
     );
     expect(offenders).toEqual([]);
+  });
+
+  it("agents uses a composer+recents pending skeleton, not the card grid", () => {
+    const agents = src("agents.tsx");
+    expect(agents).toMatch(/pendingComponent:\s*AgentsPageSkeleton\b/);
+    expect(agents).not.toMatch(/pendingComponent:\s*ListPageSkeleton\b/);
   });
 
   it("every target create route uses FormPageSkeleton as its pendingComponent", () => {

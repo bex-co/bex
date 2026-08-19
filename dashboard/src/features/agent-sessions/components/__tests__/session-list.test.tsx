@@ -13,12 +13,19 @@ vi.mock("@tanstack/react-router", () => ({
     children,
     title,
     search,
+    className,
   }: {
     children: React.ReactNode;
     title?: string;
     search?: unknown;
+    className?: string;
   }) => (
-    <a href="#session" title={title} data-search={JSON.stringify(search)}>
+    <a
+      href="#session"
+      title={title}
+      className={className}
+      data-search={JSON.stringify(search)}
+    >
       {children}
     </a>
   ),
@@ -54,16 +61,23 @@ describe("SessionList", () => {
     toastSuccess.mockClear();
   });
 
-  it("renders the empty state (not the table) when there are no sessions", () => {
+  it("renders a quiet empty line (not the dashed Bot card or table)", () => {
     render(<SessionList sessions={[]} loading={false} />);
-    expect(screen.getByText("No agent sessions yet")).toBeInTheDocument();
+    expect(
+      screen.getByText("Sessions you start will show up here."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("No agent sessions yet")).not.toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
-  it("shows a loading skeleton before the first sessions arrive", () => {
-    const { container } = render(<SessionList sessions={[]} loading />);
-    expect(container.querySelector('[data-slot="skeleton"]')).toBeTruthy();
-    expect(screen.queryByText("No agent sessions yet")).not.toBeInTheDocument();
+  it("shows recents-shaped skeletons before the first sessions arrive", () => {
+    render(<SessionList sessions={[]} loading />);
+    expect(
+      screen.getByTestId("agent-sessions-recents-skeleton"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Sessions you start will show up here."),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the error state when the load fails with no rows", () => {
@@ -76,9 +90,7 @@ describe("SessionList", () => {
         onRetry={onRetry}
       />,
     );
-    expect(
-      screen.getByText("Couldn't load agent sessions"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Couldn't load sessions.")).toBeInTheDocument();
     screen.getByRole("button", { name: "Retry" }).click();
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
@@ -109,7 +121,32 @@ describe("SessionList", () => {
     expect(screen.getByText("No matching sessions")).toBeInTheDocument();
   });
 
-  it("renders a per-phase chip with the localized phase label", () => {
+  it("uses human status phrases on recents, not the ten-phase chip set", () => {
+    render(
+      <SessionList
+        loading={false}
+        sessions={[
+          view({ id: "as-redisp", phase: "redispatching", task: "keep going" }),
+          view({
+            id: "as-pr",
+            phase: "completed",
+            prNumber: 3,
+            task: "ship it",
+          }),
+        ]}
+      />,
+    );
+    expect(screen.getByText(/Working…/)).toBeInTheDocument();
+    expect(screen.getByText(/PR is ready/)).toBeInTheDocument();
+    expect(screen.queryByText("Redispatching")).not.toBeInTheDocument();
+    expect(screen.queryByText("Phase")).not.toBeInTheDocument();
+    expect(screen.getByText("keep going").closest("a")).toHaveAttribute(
+      "href",
+      "#session",
+    );
+  });
+
+  it("keeps phase chips on the denser Archived/All table", () => {
     const cases: Array<[AgentSessionPhase, string]> = [
       ["creating", "Creating"],
       ["running", "Running"],
@@ -120,7 +157,14 @@ describe("SessionList", () => {
     const sessions = cases.map(([phase], i) =>
       view({ id: `as-${i}`, phase, task: `task ${i}` }),
     );
-    render(<SessionList sessions={sessions} loading={false} />);
+    render(
+      <SessionList
+        sessions={sessions}
+        loading={false}
+        archiveFilter="all"
+      />,
+    );
+    expect(screen.getByText("Phase")).toBeInTheDocument();
     for (const [, label] of cases) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
@@ -130,6 +174,7 @@ describe("SessionList", () => {
     render(
       <SessionList
         loading={false}
+        archiveFilter="all"
         sessions={[
           view({
             id: "as-pr",
@@ -158,6 +203,7 @@ describe("SessionList", () => {
     render(
       <SessionList
         loading={false}
+        archiveFilter="all"
         sessions={[view({ prNumber: 7, prUrl: null })]}
       />,
     );
@@ -199,6 +245,7 @@ describe("SessionList", () => {
       <SessionList
         loading={false}
         onChanged={onChanged}
+        archiveFilter="all"
         sessions={[
           view({ id: "as-live", task: "still working" }),
           view({
@@ -212,7 +259,6 @@ describe("SessionList", () => {
       />,
     );
 
-    // The archived row is badged; the working-set row is not.
     const archivedRow = screen.getByText("put away").closest("tr")!;
     expect(within(archivedRow).getByText("Archived")).toBeInTheDocument();
     const liveRow = screen.getByText("still working").closest("tr")!;
@@ -247,6 +293,7 @@ describe("SessionList", () => {
       <SessionList
         loading={false}
         onChanged={onChanged}
+        archiveFilter="all"
         sessions={[view({ id: "as-live", task: "wait for refresh" })]}
       />,
     );

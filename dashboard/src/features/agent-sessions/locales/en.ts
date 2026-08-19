@@ -6,14 +6,9 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Agent sessions",
     description: "Agent sessions list page heading and document title",
   },
-  "agentSessions.pageSubtitle": {
-    message:
-      "Assign a coding task to a cloud agent. It works in a sandbox on a bex-agent/* branch and opens a draft PR.",
-    description: "Agent sessions page subtitle explaining the feature",
-  },
   "agentSessions.listTitle": {
-    message: "Sessions",
-    description: "Agent sessions table card title",
+    message: "Recent",
+    description: "Agent sessions recents heading — matches the rail",
   },
   "agentSessions.colTask": {
     message: "Task",
@@ -44,22 +39,17 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description: "Draft PR badge label — the pull-request number",
   },
   "agentSessions.errorTitle": {
-    message: "Couldn't load agent sessions",
-    description: "Agent sessions list error state heading",
+    message: "Couldn't load sessions.",
+    description: "Agent sessions list error — one sentence, Retry beside it",
   },
   "agentSessions.retry": {
     message: "Retry",
     description: "Retries a failed agent-sessions list request",
   },
   // --- Empty state ---
-  "agentSessions.emptyTitle": {
-    message: "No agent sessions yet",
-    description: "Agent sessions list empty-state heading",
-  },
   "agentSessions.emptyBody": {
-    message:
-      "Describe a task above and @-mention a repository. The agent will work in a cloud sandbox and open a draft PR.",
-    description: "Agent sessions list empty-state body",
+    message: "Sessions you start will show up here.",
+    description: "Default empty — one quiet line under the composer",
   },
   "agentSessions.emptyArchivedTitle": {
     message: "No archived sessions",
@@ -148,31 +138,63 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description: "Meta — hibernated state with snapshot storage size",
   },
   // --- Composer (prompt box) ---
-  "agentSessions.promptHeading": {
-    message: "What should the agent work on?",
-    description: "Centered heading over the /agents prompt-box composer",
-  },
   "agentSessions.taskLabel": {
     message: "Task",
     description: "Composer — the prominent task prompt textarea label",
   },
   "agentSessions.taskPlaceholder": {
-    message:
-      "Describe a task, and @-mention a repository to scope it. Be specific — the agent works autonomously and opens a draft PR.",
-    description: "Composer — task textarea placeholder",
+    message: "Describe a coding task…",
+    description: "Composer — task editor placeholder",
   },
   "agentSessions.mentionButton": {
     message: "Mention a repository or session",
     description: "Composer toolbar — accessible label of the @ mention button",
   },
   "agentSessions.configButton": {
-    message: "Configuration",
-    description: "Composer toolbar — the Configuration popover trigger",
+    message: "Advanced",
+    description: "Composer toolbar — the Advanced popover trigger",
+  },
+  "agentSessions.addRepository": {
+    message: "Add repository",
+    description: "Composer toolbar — repo chip when none is selected",
+  },
+  "agentSessions.repoChip": {
+    message: "Repository {repo}",
+    description: "Composer toolbar — accessible name of the selected-repo chip",
+  },
+  "agentSessions.keyboardHint": {
+    message: "Enter to start · Shift+Enter for a new line · @ for a repo",
+    description: "Muted hint under the composer",
+  },
+  "agentSessions.connectGitHubTitle": {
+    message: "Connect GitHub to start",
+    description: "Composer callout when the workspace has no App repos",
+  },
+  "agentSessions.connectGitHubBody": {
+    message:
+      "Cloud agents need a connected GitHub repository. Connect the GitHub App for this workspace, then come back to start a session.",
+    description: "Composer callout body when there are no installation repos",
+  },
+  "agentSessions.connectGitHub": {
+    message: "Connect GitHub",
+    description: "Composer CTA that starts the GitHub App install",
+  },
+  "agentSessions.connectGitHubSettings": {
+    message: "Workspace settings",
+    description: "Secondary link to /workspace/settings from the GitHub CTA",
+  },
+  "agentSessions.exampleFixTests": {
+    message: "Fix the failing tests and open a draft PR",
+    description: "First-run example prompt chip",
+  },
+  "agentSessions.exampleAddReadme": {
+    message: "Add a README that explains how to run the project",
+    description: "First-run example prompt chip",
   },
   "agentSessions.repoNudge": {
-    message: "Pick a repository with @ first.",
+    message: "Pick a repository first.",
     description:
-      "Inline nudge anchored at the @ button when submitting without a repo chip",
+      "Inline nudge when submitting without a repo while repos exist",
   },
   "agentSessions.chipRemove": {
     message: "Remove {name}",
@@ -784,7 +806,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description: "Screen-reader label of the list's trailing actions column",
   },
   "agentSessions.filterActive": {
-    message: "Current",
+    message: "Recent",
     description: "List membership tab — the unarchived working set",
   },
   "agentSessions.filterArchived": {
@@ -794,14 +816,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.filterAll": {
     message: "All",
     description: "List membership tab — archived and unarchived together",
-  },
-  "agentSessions.filterPhase": {
-    message: "Filter by phase",
-    description: "Accessible label of the phase filter select",
-  },
-  "agentSessions.filterPhaseAll": {
-    message: "All phases",
-    description: "Phase filter option matching every phase",
   },
   "agentSessions.loadMore": {
     message: "Load more",

@@ -1,13 +1,6 @@
 import { Input } from "@/common/components/ui/input";
 import { Textarea } from "@/common/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/common/components/ui/select";
-import {
   FormControl,
   FormDescription,
   FormField,
@@ -16,8 +9,6 @@ import {
   FormMessage,
 } from "@/common/components/ui/form";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { AGENT_OPTIONS } from "@/features/agent-sessions/lib/composer";
-import type { AgentOption } from "@/features/agent-sessions/lib/composer";
 
 export interface ConfigurationFieldsProps {
   /** The branch the composer would derive from the current task, shown while
@@ -26,10 +17,10 @@ export interface ConfigurationFieldsProps {
 }
 
 /**
- * The Configuration popover body: agent/model/model endpoint/egress allowlist
- * plus the branch override. Reads the composer's form off `FormProvider`
- * context, so values and server-anchored errors round-trip without threading
- * the form instance down.
+ * The Advanced popover body: branch override, model, model endpoint, and
+ * egress allowlist. The agent select lives on the composer toolbar. Reads the
+ * composer's form off `FormProvider` context so values and server-anchored
+ * errors round-trip without threading the form instance down.
  */
 export function ConfigurationFields({
   branchPlaceholder,
@@ -50,33 +41,6 @@ export function ConfigurationFields({
               />
             </FormControl>
             <FormDescription>{t("agentSessions.branchHint")}</FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        name="agent"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>{t("agentSessions.agentLabel")}</FormLabel>
-            <Select
-              value={field.value}
-              onValueChange={(v) => field.onChange(v as AgentOption)}
-            >
-              <FormControl>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {AGENT_OPTIONS.map((agent) => (
-                  <SelectItem key={agent} value={agent}>
-                    {t(`agentSessions.agent.${agent}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <FormMessage />
           </FormItem>
         )}

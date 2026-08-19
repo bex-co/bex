@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "@tanstack/react-router";
-import { ArrowUp, AtSign, Loader2, Settings2 } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { AtSign, Github, Loader2, Settings2 } from "lucide-react";
 import {
   Alert,
   AlertDescription,
@@ -13,10 +13,24 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/common/components/ui/popover";
-import { Form } from "@/common/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/common/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+} from "@/common/components/ui/form";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { cn } from "@/common/lib/utils/utils";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useRepos } from "@/features/services/hooks/use-repos";
+import { useConnectGit } from "@/features/git/hooks/use-connect-git";
 import { useAgentSessions } from "@/features/agent-sessions/hooks/use-agent-sessions";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
 import {
@@ -29,12 +43,14 @@ import {
   type InlineMentionEditorHandle,
 } from "@/features/agent-sessions/components/lazy-mention-editor";
 import {
+  AGENT_OPTIONS,
   MAX_EGRESS,
   deriveBranch,
   isBranchInNamespace,
   parseEgress,
+  type AgentOption,
+  type ComposerValues,
 } from "@/features/agent-sessions/lib/composer";
-import type { ComposerValues } from "@/features/agent-sessions/lib/composer";
 import type { ComposerDocument } from "@/features/agent-sessions/lib/composer-document";
 
 /** Configuration fields a coded create failure anchors its message to. */
@@ -43,13 +59,16 @@ const ERROR_FIELDS: Record<string, "egress" | "modelEndpoint" | undefined> = {
   AGENT_SESSION_MODEL_ENDPOINT_INVALID: "modelEndpoint",
 };
 
+const EXAMPLE_KEYS = [
+  "agentSessions.exampleFixTests",
+  "agentSessions.exampleAddReadme",
+] as const;
+
 /**
- * The Devin-style prompt-box composer: one rich prompt editor with a slim
- * toolbar. Repositories and sessions stay where they were mentioned inline;
- * submitting without one nudges inline at the `@` button instead of
- * submitting. Every typed `AGENT_SESSION_*` code is surfaced inline — the
- * codes naming a Configuration field anchor there and auto-open the popover,
- * and the 503/unconfigured state renders a house callout above the box.
+ * The prompt-box composer: the visual center of `/agents`. Agent and repo live
+ * on the toolbar; Advanced keeps branch / model / endpoint / egress. Submitting
+ * without a repo highlights the chip rather than firing create. A workspace
+ * with zero GitHub App repos is a Connect GitHub wall, not a writable prompt.
  */
 export function NewSessionComposer() {
   const { t } = useTranslations();
@@ -57,7 +76,6 @@ export function NewSessionComposer() {
   const { currentWorkspaceId } = useWorkspace();
   const { create } = useAgentSessionMutations();
   const { repos, loading: reposLoading } = useRepos();
-  // The sidebar renders alongside and owns the poll; this is a cache read.
   const { sessions } = useAgentSessions({ poll: false });
 
   const [composerDocument, setComposerDocument] = useState<ComposerDocument>({
@@ -71,6 +89,8 @@ export function NewSessionComposer() {
   const [repoNudge, setRepoNudge] = useState(false);
   const editorRef = useRef<InlineMentionEditorHandle | null>(null);
   const { task, repo, sessionIds } = composerDocument;
+  const noRepos = !reposLoading && repos.length === 0;
+  const showExamples = !noRepos && sessions.length === 0;
 
   const form = useForm<ComposerValues>({
     defaultValues: {
@@ -87,9 +107,6 @@ export function NewSessionComposer() {
 
   const source = useMemo(() => ({ repos, sessions }), [repos, sessions]);
 
-  // ---- Submit --------------------------------------------------------------
-
-  /** Anchor a message to a Configuration field and reveal it. */
   function failInConfig(
     field: "branch" | "egress" | "modelEndpoint",
     message: string,
@@ -102,14 +119,12 @@ export function NewSessionComposer() {
     setUnavailable(false);
     setSubmitError(null);
 
-    // Never silently submit without a repo — nudge at the `@` button.
+    if (noRepos) return;
     if (!repo) {
       setRepoNudge(true);
       return;
     }
 
-    // Checked here rather than as a field rule because react-hook-form skips
-    // unmounted fields and the Configuration popover is usually closed.
     const branch = values.branch.trim() || deriveBranch(task);
     if (!isBranchInNamespace(branch)) {
       failInConfig("branch", t("agentSessions.branchInvalid"));
@@ -122,7 +137,6 @@ export function NewSessionComposer() {
       return;
     }
 
-    // Session mentions ride along as context lines in the task prompt.
     const prompt = [
       task.trim(),
       ...sessionIds.map((id) => `Context: agent session ${id}`),
@@ -157,8 +171,6 @@ export function NewSessionComposer() {
       setSubmitError(err instanceof Error ? err.message : String(err));
       return;
     }
-    // Resolve the coded message through i18n, falling back to the server's own
-    // message for any code we don't have a locale key for yet.
     const message = t(err.messageKey, {
       ...err.params,
       defaultValue: err.message,
@@ -166,6 +178,16 @@ export function NewSessionComposer() {
     const field = ERROR_FIELDS[err.code];
     if (field) failInConfig(field, message);
     else setSubmitError(message);
+  }
+
+  function openMention() {
+    setRepoNudge(false);
+    editorRef.current?.openMention();
+  }
+
+  function insertExample(text: string) {
+    editorRef.current?.insertPrompt(text);
+    openMention();
   }
 
   return (
@@ -188,36 +210,82 @@ export function NewSessionComposer() {
       <Form {...form}>
         <form onSubmit={onSubmit}>
           <div className="bg-background focus-within:border-ring relative rounded-xl border shadow-sm">
-            <InlineMentionEditor
-              ref={editorRef}
-              source={source}
-              reposLoading={reposLoading}
-              ariaLabel={t("agentSessions.taskLabel")}
-              placeholder={t("agentSessions.taskPlaceholder")}
-              onChange={(nextDocument) => {
-                setComposerDocument(nextDocument);
-                if (nextDocument.repo) setRepoNudge(false);
-              }}
-              onSubmit={() => {
-                if (isSubmitting || task.trim().length === 0) return;
-                void onSubmit();
-              }}
-            />
+            {noRepos ? (
+              <GitHubEmptyCallout />
+            ) : (
+              <InlineMentionEditor
+                ref={editorRef}
+                source={source}
+                reposLoading={reposLoading}
+                ariaLabel={t("agentSessions.taskLabel")}
+                placeholder={t("agentSessions.taskPlaceholder")}
+                onChange={(nextDocument) => {
+                  setComposerDocument(nextDocument);
+                  if (nextDocument.repo) setRepoNudge(false);
+                }}
+                onSubmit={() => {
+                  if (isSubmitting || task.trim().length === 0) return;
+                  void onSubmit();
+                }}
+              />
+            )}
 
-            <div className="flex items-center gap-1 px-1.5 pb-1.5">
+            <div className="flex flex-wrap items-center gap-1 px-1.5 pb-1.5">
+              <FormField
+                name="agent"
+                render={({ field }) => (
+                  <FormItem className="space-y-0">
+                    <FormControl>
+                      <Select
+                        value={field.value}
+                        onValueChange={(v) =>
+                          field.onChange(v as AgentOption)
+                        }
+                        disabled={noRepos}
+                      >
+                        <SelectTrigger
+                          size="sm"
+                          className="h-8 w-[7.5rem] border-0 bg-transparent shadow-none"
+                          aria-label={t("agentSessions.agentLabel")}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AGENT_OPTIONS.map((agent) => (
+                            <SelectItem key={agent} value={agent}>
+                              {t(`agentSessions.agent.${agent}`)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
               <div className="relative">
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-8"
-                  aria-label={t("agentSessions.mentionButton")}
-                  onClick={() => {
-                    setRepoNudge(false);
-                    editorRef.current?.openMention();
-                  }}
+                  variant={repo ? "secondary" : "ghost"}
+                  size="sm"
+                  disabled={noRepos}
+                  data-testid="agent-composer-repo-chip"
+                  className={cn(
+                    "h-8 max-w-48 gap-1.5 px-2 text-xs font-normal",
+                    repoNudge &&
+                      "ring-destructive text-destructive ring-2 ring-offset-1",
+                  )}
+                  aria-label={
+                    repo
+                      ? t("agentSessions.repoChip", { repo })
+                      : t("agentSessions.addRepository")
+                  }
+                  onClick={openMention}
                 >
-                  <AtSign className="size-4" />
+                  <AtSign className="size-3.5" />
+                  <span className="truncate">
+                    {repo ?? t("agentSessions.addRepository")}
+                  </span>
                 </Button>
                 {repoNudge ? (
                   <p
@@ -228,6 +296,18 @@ export function NewSessionComposer() {
                   </p>
                 ) : null}
               </div>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8"
+                disabled={noRepos}
+                aria-label={t("agentSessions.mentionButton")}
+                onClick={openMention}
+              >
+                <AtSign className="size-4" />
+              </Button>
 
               <Popover open={configOpen} onOpenChange={setConfigOpen}>
                 <PopoverTrigger asChild>
@@ -251,21 +331,76 @@ export function NewSessionComposer() {
 
               <Button
                 type="submit"
-                size="icon"
-                className="ml-auto size-8 rounded-full"
-                disabled={isSubmitting || task.trim().length === 0}
-                aria-label={t("agentSessions.submit")}
+                size="sm"
+                className="ml-auto h-8"
+                disabled={noRepos || isSubmitting || task.trim().length === 0}
               >
                 {isSubmitting ? (
                   <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <ArrowUp className="size-4" />
-                )}
+                ) : null}
+                {isSubmitting
+                  ? t("agentSessions.submitting")
+                  : t("agentSessions.submit")}
               </Button>
             </div>
           </div>
         </form>
       </Form>
+
+      {noRepos ? null : (
+        <p className="text-muted-foreground px-1 text-xs">
+          {t("agentSessions.keyboardHint")}
+        </p>
+      )}
+
+      {showExamples ? (
+        <div className="flex flex-wrap gap-2 px-1">
+          {EXAMPLE_KEYS.map((key) => (
+            <Button
+              key={key}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-auto max-w-full text-left text-xs font-normal whitespace-normal"
+              onClick={() => insertExample(t(key))}
+            >
+              {t(key)}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function GitHubEmptyCallout() {
+  const { t } = useTranslations();
+  const { connect, busy } = useConnectGit();
+  return (
+    <div
+      className="flex flex-col items-center gap-3 px-6 py-8 text-center"
+      data-testid="agent-composer-github-empty"
+    >
+      <Github className="text-muted-foreground size-8" />
+      <div className="space-y-1">
+        <p className="text-sm font-medium">
+          {t("agentSessions.connectGitHubTitle")}
+        </p>
+        <p className="text-muted-foreground text-sm">
+          {t("agentSessions.connectGitHubBody")}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <Button type="button" disabled={busy} onClick={() => void connect()}>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+          {t("agentSessions.connectGitHub")}
+        </Button>
+        <Button type="button" variant="ghost" asChild>
+          <Link to="/workspace/settings">
+            {t("agentSessions.connectGitHubSettings")}
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }
