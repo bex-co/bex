@@ -231,7 +231,7 @@ func TestMCPSetRootDirectory(t *testing.T) {
 	}
 	out := toRenderService(v)
 	if out.RootDir != "api" {
-		t.Errorf("set_root_directory (via renderService projection) rootDir = %q, want api", out.RootDir)
+		t.Errorf("update_service rootDir (via renderService projection) rootDir = %q, want api", out.RootDir)
 	}
 	if got := getApp(t, cl, "web").Spec.RootDir; got != "api" {
 		t.Errorf("spec.rootDir = %q, want api", got)

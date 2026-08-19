@@ -638,7 +638,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	}
 	// Environment membership is stored with the env group, while validation
 	// belongs to environments.Service. Wire the two narrow seams once here so
-	// create_env_group(environmentId) and set_environment_env_groups share the
+	// create_env_group(environmentId) and update_environment(envGroupIds) share the
 	// same workspace authorization and lookup behavior without a package cycle.
 	envGroupsSvc.EnvironmentWorkspace = func(ctx context.Context, environmentID string) (string, error) {
 		e, err := environmentsSvc.Get(ctx, environmentID)

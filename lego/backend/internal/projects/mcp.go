@@ -45,19 +45,19 @@ type renameProjectArgs struct {
 	Name string `json:"name" jsonschema:"the new project name"`
 }
 
-type setProjectServicesArgs struct {
-	ID         string   `json:"id" jsonschema:"the project id (prj-…)"`
-	ServiceIDs []string `json:"serviceIds" jsonschema:"public service ids (normally srv-...; the id field returned by list_services) to assign to the project — replaces the full list"`
-}
-
-type setProjectDatabasesArgs struct {
-	ID          string   `json:"id" jsonschema:"the project id (prj-…)"`
-	DatabaseIDs []string `json:"databaseIds" jsonschema:"immutable Postgres ids (normally dpg-...; the id field returned by list_postgres_instances) to assign to the project — replaces the full list"`
-}
-
-type setProjectKeyValuesArgs struct {
-	ID          string   `json:"id" jsonschema:"the project id (prj-…)"`
-	KeyValueIDs []string `json:"keyValueIds" jsonschema:"KeyValue CR names (same as the id field on a key-value instance) to assign to the project — replaces the full list"`
+// updateProjectArgs is update_project's input: the patch-shaped fold of
+// set_project_services / set_project_databases / set_project_keyvalues
+// (w1/m71), mirroring update_environment's grammar so the two grouping
+// resources read the same way. Every field is a pointer — absent leaves that
+// setting alone, and a present membership list REPLACES that whole membership
+// (pass [] to empty it). rename_project remains the dedicated rename verb, the
+// same way rename_environment sits beside update_environment.
+type updateProjectArgs struct {
+	ID          string    `json:"id" jsonschema:"the project id (prj-…)"`
+	Name        *string   `json:"name,omitempty" jsonschema:"new project name; omit to leave unchanged"`
+	ServiceIDs  *[]string `json:"serviceIds,omitempty" jsonschema:"public service ids (normally srv-...; the id field returned by list_services) assigned to the project — REPLACES the full list; omit to leave membership unchanged, pass [] to clear it"`
+	DatabaseIDs *[]string `json:"databaseIds,omitempty" jsonschema:"immutable Postgres ids (normally dpg-...; the id field returned by list_postgres_instances) assigned to the project — REPLACES the full list; omit to leave unchanged"`
+	KeyValueIDs *[]string `json:"keyValueIds,omitempty" jsonschema:"KeyValue CR names (same as the id field on a key-value instance) assigned to the project — REPLACES the full list; omit to leave unchanged"`
 }
 
 type projectsResult struct {
@@ -110,6 +110,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
+		Name:        "update_project",
+		Description: "Update a project in one call: its name and/or which services, databases, and key-value instances belong to it. Only the fields you pass change — an omitted field is left alone, and a present membership list REPLACES that whole membership (pass [] to empty it). This tool replaces the retired set_project_services / set_project_databases / set_project_keyvalues (w1/m71). bex extension.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateProjectArgs) (*mcp.CallToolResult, ProjectView, error) {
+		p, err := s.applyProjectPatch(ctx, in)
+		return nil, p, err
+	})
+
+	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "delete_project",
 		Description: "Delete a project; its services become unassigned. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in projectIDArgs) (*mcp.CallToolResult, struct {
@@ -121,36 +129,23 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}{ID: in.ID}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_project_services",
-		Description: "Assign services to a project (replaces the full list). Pass the public serviceIds shown by list_services. bex extension.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setProjectServicesArgs) (*mcp.CallToolResult, ProjectView, error) {
-		if in.ServiceIDs == nil {
-			in.ServiceIDs = []string{}
-		}
-		p, err := s.SetServices(ctx, in.ID, in.ServiceIDs)
-		return nil, p, err
+}
+
+// applyProjectPatch runs update_project's present arguments as the same Service
+// verbs the retired setters called, in argument order. Absent arguments produce
+// no call at all, so a rename never rewrites membership and vice versa.
+func (s *Service) applyProjectPatch(ctx context.Context, in updateProjectArgs) (ProjectView, error) {
+	var ops core.PatchOps[ProjectView]
+	ops.Add(in.Name != nil, func() (ProjectView, error) { return s.Rename(ctx, in.ID, *in.Name) })
+	ops.Add(in.ServiceIDs != nil, func() (ProjectView, error) {
+		return s.SetServices(ctx, in.ID, core.IDList(in.ServiceIDs))
+	})
+	ops.Add(in.DatabaseIDs != nil, func() (ProjectView, error) {
+		return s.SetDatabases(ctx, in.ID, core.IDList(in.DatabaseIDs))
+	})
+	ops.Add(in.KeyValueIDs != nil, func() (ProjectView, error) {
+		return s.SetKeyValues(ctx, in.ID, core.IDList(in.KeyValueIDs))
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_project_databases",
-		Description: "Assign managed Postgres databases to a project (replaces the full list). Pass immutable databaseIds — the id shown by list_postgres_instances. bex extension.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setProjectDatabasesArgs) (*mcp.CallToolResult, ProjectView, error) {
-		if in.DatabaseIDs == nil {
-			in.DatabaseIDs = []string{}
-		}
-		p, err := s.SetDatabases(ctx, in.ID, in.DatabaseIDs)
-		return nil, p, err
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_project_keyvalues",
-		Description: "Assign managed key-value instances to a project (replaces the full list). Pass keyValueIds as KeyValue CR names — the same id shown by list_key_value. bex extension.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setProjectKeyValuesArgs) (*mcp.CallToolResult, ProjectView, error) {
-		if in.KeyValueIDs == nil {
-			in.KeyValueIDs = []string{}
-		}
-		p, err := s.SetKeyValues(ctx, in.ID, in.KeyValueIDs)
-		return nil, p, err
-	})
+	return ops.Run(func() (ProjectView, error) { return s.Get(ctx, in.ID) })
 }

@@ -221,7 +221,9 @@ func TestMCPInsightTools(t *testing.T) {
 		"get_postgres_sizes",
 		"list_postgres_table_scans",
 		"list_postgres_parameter_overrides",
-		"set_postgres_parameter_overrides",
+		// The parameter-override WRITE folded into update_postgres in w1/m71;
+		// the read tool above kept its own name.
+		"update_postgres",
 	} {
 		if !byName[want] {
 			t.Errorf("MCP tool %q not registered", want)

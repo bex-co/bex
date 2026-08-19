@@ -332,9 +332,9 @@ func TestMCPSetIPAllowListUpdatesSpec(t *testing.T) {
 	call, cleanup := appsMCPClient(t, svc)
 	defer cleanup()
 
-	got := call("set_service_ip_allow_list", map[string]any{
+	got := call("update_service", map[string]any{
 		"serviceId": "web",
-		"entries": []map[string]any{{
+		"ipAllowList": []map[string]any{{
 			"cidrBlock":   "203.0.113.0/24",
 			"description": "office",
 		}},
@@ -342,10 +342,29 @@ func TestMCPSetIPAllowListUpdatesSpec(t *testing.T) {
 	entries := got["ipAllowList"].([]any)
 	entry := entries[0].(map[string]any)
 	if entry["cidrBlock"] != "203.0.113.0/24" || entry["description"] != "office" {
-		t.Errorf("set_service_ip_allow_list ipAllowList = %#v", entries)
+		t.Errorf("update_service ipAllowList = %#v", entries)
 	}
 	if spec := getApp(t, cl, "web").Spec.IPAllowListEntries; len(spec) != 1 || spec[0].CIDR != "203.0.113.0/24" || spec[0].Description != "office" {
 		t.Errorf("spec.ipAllowListEntries = %v", spec)
+	}
+
+	// A present list REPLACES; an empty one clears. Both were the retired
+	// setter's contract and both must survive the fold.
+	cleared := call("update_service", map[string]any{"serviceId": "web", "ipAllowList": []map[string]any{}})
+	if list, ok := cleared["ipAllowList"].([]any); ok && len(list) != 0 {
+		t.Errorf("update_service ipAllowList=[] = %#v", list)
+	}
+	if spec := getApp(t, cl, "web").Spec.IPAllowListEntries; len(spec) != 0 {
+		t.Errorf("spec.ipAllowListEntries after clear = %v", spec)
+	}
+
+	// The plain-string form reaches the same field.
+	viaCIDRs := call("update_service", map[string]any{"serviceId": "web", "ipAllowListCidrs": []string{"198.51.100.0/24"}})
+	if list, _ := viaCIDRs["ipAllowList"].([]any); len(list) != 1 {
+		t.Errorf("update_service ipAllowListCidrs = %#v", viaCIDRs["ipAllowList"])
+	}
+	if spec := getApp(t, cl, "web").Spec.IPAllowListEntries; len(spec) != 1 || spec[0].CIDR != "198.51.100.0/24" {
+		t.Errorf("spec.ipAllowListEntries via cidrs = %v", spec)
 	}
 }
 
@@ -365,15 +384,15 @@ func TestMCPSetIPAllowListRejectsConflictingForms(t *testing.T) {
 	t.Cleanup(func() { _ = client.Close() })
 
 	result, err := client.CallTool(ctx, &mcp.CallToolParams{
-		Name: "set_service_ip_allow_list",
+		Name: "update_service",
 		Arguments: map[string]any{
-			"serviceId": "web",
-			"cidrs":     []string{"203.0.113.0/24"},
-			"entries":   []map[string]any{{"cidrBlock": "10.0.0.0/8"}},
+			"serviceId":        "web",
+			"ipAllowListCidrs": []string{"203.0.113.0/24"},
+			"ipAllowList":      []map[string]any{{"cidrBlock": "10.0.0.0/8"}},
 		},
 	})
 	if err != nil {
-		t.Fatalf("set_service_ip_allow_list transport error: %v", err)
+		t.Fatalf("update_service transport error: %v", err)
 	}
 	if !result.IsError {
 		t.Fatalf("conflicting MCP forms should return a tool error: %#v", result)

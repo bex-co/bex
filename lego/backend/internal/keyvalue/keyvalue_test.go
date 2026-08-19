@@ -485,9 +485,12 @@ func TestGraphQLSetKeyValueMaxmemoryPolicy(t *testing.T) {
 	}
 }
 
-// TestMCPKeyValueUpdateVerbs pins the two MCP tools w7/m45 adds so the MCP
-// surface reaches parity with REST/GraphQL: set_key_value_maxmemory_policy and
-// set_key_value_ip_allow_list both mutate the CR spec through the shared verbs.
+// TestMCPKeyValueUpdateVerbs pins the MCP write surface w7/m45 added so it
+// reaches parity with REST/GraphQL: the eviction policy and the external-endpoint
+// allowlist both mutate the CR spec through the shared verbs. w1/m71 folded the
+// two set_* tools into update_key_value, so the same reach is asserted through
+// the patch tool — including the fold's own property, that an omitted argument
+// leaves its field alone.
 func TestMCPKeyValueUpdateVerbs(t *testing.T) {
 	svc, cl := newService()
 	seedKeyValue(t, cl, "mcp-upd")
@@ -517,21 +520,40 @@ func TestMCPKeyValueUpdateVerbs(t *testing.T) {
 		return kv.Spec
 	}
 
-	call("set_key_value_maxmemory_policy", map[string]any{"keyValueId": "mcp-upd", "maxmemoryPolicy": "noeviction"})
+	call("update_key_value", map[string]any{"keyValueId": "mcp-upd", "maxmemoryPolicy": "noeviction"})
 	if got := spec().MaxmemoryPolicy; got != "noeviction" {
 		t.Fatalf("MCP maxmemory spec = %q, want noeviction", got)
 	}
-	call("set_key_value_ip_allow_list", map[string]any{
-		"keyValueId": "mcp-upd",
-		"entries":    []map[string]any{{"cidrBlock": "10.0.0.0/8", "description": "net"}},
+	call("update_key_value", map[string]any{
+		"keyValueId":  "mcp-upd",
+		"ipAllowList": []map[string]any{{"cidrBlock": "10.0.0.0/8", "description": "net"}},
 	})
 	if got := core.AllowListFromSpec(spec().IPAllowList); len(got) != 1 || got[0].CIDRBlock != "10.0.0.0/8" || got[0].Description != "net" {
 		t.Fatalf("MCP ip-allow-list spec = %v", got)
 	}
-	// empty entries clears it.
-	call("set_key_value_ip_allow_list", map[string]any{"keyValueId": "mcp-upd", "cidrs": []string{}})
+	// The allowlist call carried no maxmemoryPolicy, so the policy set above
+	// must still stand — an omitted argument is not a write.
+	if got := spec().MaxmemoryPolicy; got != "noeviction" {
+		t.Fatalf("omitted maxmemoryPolicy was overwritten: %q", got)
+	}
+	// An empty list clears it.
+	call("update_key_value", map[string]any{"keyValueId": "mcp-upd", "ipAllowListCidrs": []string{}})
 	if got := spec().IPAllowList; len(got) != 0 {
 		t.Fatalf("MCP clear ip-allow-list spec = %v, want empty", got)
+	}
+	// Both fields in one call apply both.
+	call("update_key_value", map[string]any{
+		"keyValueId":       "mcp-upd",
+		"maxmemoryPolicy":  "allkeys-lru",
+		"ipAllowListCidrs": []string{"203.0.113.0/24"},
+	})
+	if got := spec(); got.MaxmemoryPolicy != "allkeys-lru" || len(got.IPAllowList) != 1 {
+		t.Fatalf("combined update_key_value spec = %+v", got)
+	}
+	// dryRun validates without writing.
+	call("update_key_value", map[string]any{"keyValueId": "mcp-upd", "maxmemoryPolicy": "noeviction", "dryRun": true})
+	if got := spec().MaxmemoryPolicy; got != "allkeys-lru" {
+		t.Fatalf("dryRun update_key_value wrote maxmemoryPolicy = %q", got)
 	}
 }
 

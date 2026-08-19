@@ -136,6 +136,35 @@ func ResolveAllowListInputs(entries []IPAllowListEntry, entriesSet bool, cidrs [
 	return entries, nil
 }
 
+// ResolveAllowListPatch is ResolveAllowListInputs in the shape a patch-shaped
+// MCP tool needs (w1/m71): both spellings arrive as pointers, where nil means
+// "the caller did not mention the allowlist" and a non-nil pointer means
+// "replace it with exactly this, empty included". It returns nil when neither
+// was given, so the caller can feed it straight into a *[]IPAllowListEntry
+// patch field whose nil already means unchanged.
+//
+// Every folded update_* tool resolves the pair through here rather than
+// repeating the unwrap, so the three surfaces cannot drift on what "both forms
+// present" means: equivalent is accepted, conflicting is a bad request.
+func ResolveAllowListPatch(entries *[]IPAllowListEntry, cidrs *[]string) (*[]IPAllowListEntry, error) {
+	if entries == nil && cidrs == nil {
+		return nil, nil
+	}
+	var entryList []IPAllowListEntry
+	if entries != nil {
+		entryList = *entries
+	}
+	var cidrList []string
+	if cidrs != nil {
+		cidrList = *cidrs
+	}
+	resolved, err := ResolveAllowListInputs(entryList, entries != nil, cidrList, cidrs != nil)
+	if err != nil {
+		return nil, err
+	}
+	return &resolved, nil
+}
+
 // DenyAllCIDR is the unmatchable placeholder the environment fan-out projects
 // for an explicitly empty environment rule list (w4/m28, Render's
 // empty-means-deny-all): Traefik rejects an ipAllowList middleware with an

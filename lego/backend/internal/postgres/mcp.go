@@ -352,12 +352,22 @@ func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 }
 
 // ipAllowListArgs / userArgs are the access-tool inputs.
-type ipAllowListArgs struct {
-	PostgresID string   `json:"postgresId" jsonschema:"the immutable postgres id (dpg-...)"`
-	CIDRs      []string `json:"cidrs,omitempty" jsonschema:"the CIDR allowlist for the external endpoint; an empty list opens it to all source IPs"`
-	// Entries is the description-carrying form (w4/m24); when present it wins
-	// over cidrs. Both are a full replace.
-	Entries []core.IPAllowListEntry `json:"entries,omitempty" jsonschema:"allowlist entries as {cidrBlock, description} objects; use instead of cidrs to keep per-entry descriptions"`
+// updatePostgresArgs is update_postgres's input: the patch-shaped fold of
+// set_postgres_ip_allow_list and set_postgres_parameter_overrides (w1/m71).
+// Each field is a pointer to the value the underlying PostgresPatch already
+// documents as "nil = unchanged", so an omitted argument writes nothing while a
+// present one replaces that whole list or map — the same semantics REST PATCH
+// has, because both go through UpdatePostgres.
+//
+// It carries exactly the two folded settings. Plan, version, disk autoscaling,
+// and name keep their own tools (update_postgres_plan, update_postgres_version,
+// update_postgres_disk_autoscaling, rename_postgres).
+type updatePostgresArgs struct {
+	PostgresID         string                   `json:"postgresId" jsonschema:"the immutable postgres id (dpg-...)"`
+	IPAllowList        *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the CIDR allowlist gating the external endpoint with these {cidrBlock, description} entries; pass [] to open the endpoint to all source IPs"`
+	IPAllowListCidrs   *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
+	ParameterOverrides *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"replaces the postgresql.conf parameter overrides (key = parameter name, value = setting string); the operator projects them to the CNPG Cluster and rolls it if needed. Pass {} to clear every override. shared_preload_libraries cannot be overridden"`
+	DryRun             bool                     `json:"dryRun,omitempty" jsonschema:"if true, validate and return the resolved preview without any writes"`
 }
 
 type userArgs struct {
@@ -390,10 +400,19 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		return nil, allowListResult{CIDRs: core.AllowListCIDRs(list), Entries: list}, nil
 	})
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_postgres_ip_allow_list",
-		Description: "Replace the CIDR allowlist gating a managed Postgres database's external endpoint. Each entry must be a valid CIDR; an empty list opens the endpoint to all source IPs. Pass entries ({cidrBlock, description} objects) to keep per-entry descriptions; cidrs is the plain-string alternative.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in ipAllowListArgs) (*mcp.CallToolResult, PostgresView, error) {
-		v, err := s.SetIPAllowList(ctx, in.PostgresID, core.AllowListOrCIDRs(in.Entries, in.CIDRs))
+		Name:        "update_postgres",
+		Description: "Update a managed Postgres database's settings in one call: the external-endpoint IP allowlist and/or the postgresql.conf parameter overrides. Pass only what you want to change — an omitted argument is left alone; a present one REPLACES that whole list or map (pass an empty one to clear it). Pass dryRun:true to validate and preview without writes. Plan, major version, disk autoscaling, and name keep their own tools: update_postgres_plan, update_postgres_version, update_postgres_disk_autoscaling, rename_postgres. This tool replaces the retired set_postgres_ip_allow_list and set_postgres_parameter_overrides (w1/m71).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
+		allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
+		if err != nil {
+			return nil, PostgresView{}, err
+		}
+		patch := PostgresPatch{ParameterOverrides: in.ParameterOverrides, IPAllowList: allowList}
+		if in.DryRun {
+			v, err := s.PreviewUpdatePostgres(ctx, in.PostgresID, patch)
+			return nil, v, err
+		}
+		v, err := s.UpdatePostgres(ctx, in.PostgresID, patch)
 		return nil, v, err
 	})
 	mcp.AddTool(srv, &mcp.Tool{
@@ -443,12 +462,6 @@ type tableScansResult struct {
 
 type parameterOverridesResult struct {
 	Overrides []ParameterOverrideView `json:"overrides"`
-}
-
-// setParameterOverridesArgs is the input for set_postgres_parameter_overrides.
-type setParameterOverridesArgs struct {
-	PostgresID string            `json:"postgresId" jsonschema:"the immutable postgres id (dpg-...)"`
-	Parameters map[string]string `json:"parameters" jsonschema:"key-value pairs of postgresql.conf parameter names and their desired settings"`
 }
 
 // registerInsightsMCP adds the five observability tools (processes, top-queries,
@@ -506,11 +519,4 @@ func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 		return nil, parameterOverridesResult{Overrides: out}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_postgres_parameter_overrides",
-		Description: "Replace the postgresql.conf parameter overrides for a managed Postgres database. The parameters map (key=parameter name, value=setting string) is written to the Database CR; the operator projects it to the CNPG Cluster and performs a rolling restart if needed. shared_preload_libraries cannot be overridden.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setParameterOverridesArgs) (*mcp.CallToolResult, PostgresView, error) {
-		v, err := s.SetParameterOverrides(ctx, in.PostgresID, in.Parameters)
-		return nil, v, err
-	})
 }

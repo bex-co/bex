@@ -51,42 +51,26 @@ type renameEnvironmentArgs struct {
 	Name string `json:"name" jsonschema:"the new environment name"`
 }
 
-type setEnvironmentServicesArgs struct {
-	ID         string   `json:"id" jsonschema:"the environment id (env-…)"`
-	ServiceIDs []string `json:"serviceIds" jsonschema:"public service ids (normally srv-...; the id field returned by list_services) to assign to the environment — replaces the full list; also joins these services to the environment's project"`
-}
-
-type setEnvironmentDatabasesArgs struct {
-	ID          string   `json:"id" jsonschema:"the environment id (env-…)"`
-	DatabaseIDs []string `json:"databaseIds" jsonschema:"immutable Postgres ids (normally dpg-...; the id field returned by list_postgres_instances) to assign to the environment — replaces the full list; also joins these databases to the environment's project"`
-}
-
-type setEnvironmentKeyValuesArgs struct {
-	ID          string   `json:"id" jsonschema:"the environment id (env-…)"`
-	KeyValueIDs []string `json:"keyValueIds" jsonschema:"KeyValue CR names (same as the id field on a key-value instance) to assign to the environment — replaces the full list; also joins these key-value instances to the environment's project"`
-}
-
-type setEnvironmentEnvGroupsArgs struct {
-	ID          string   `json:"id" jsonschema:"the environment id (env-…)"`
-	EnvGroupIDs []string `json:"envGroupIds" jsonschema:"environment group ids (evg-...) to assign to the environment — replaces the full list"`
-}
-
+// updateEnvironmentArgs is update_environment's input: the environment's own
+// fields plus, since w1/m71, the four membership lists and the ACL that used to
+// need one set_* tool each. Every field is a pointer — absent leaves that
+// setting alone, present writes exactly what is given, and a present list
+// REPLACES the whole membership (pass [] to empty it).
+//
+// It subsumes set_environment_acl outright: the ACL triple was already here,
+// and the setter's full-replace contract ("pass the current value of any field
+// you don't mean to change") was the trap a patch tool removes.
 type updateEnvironmentArgs struct {
 	ID                      string                   `json:"id" jsonschema:"the environment id (env-…)"`
 	Name                    *string                  `json:"name,omitempty" jsonschema:"new environment name; omit to leave unchanged"`
-	ProtectedStatus         *string                  `json:"protectedStatus,omitempty" jsonschema:"'protected' or 'unprotected'; omit to leave unchanged"`
+	ProtectedStatus         *string                  `json:"protectedStatus,omitempty" jsonschema:"'protected' or 'unprotected' — protected blocks unguarded delete/suspend/direct-deploy-override on member services; omit to leave unchanged"`
 	NetworkIsolationEnabled *bool                    `json:"networkIsolationEnabled,omitempty" jsonschema:"when true, member services' NetworkPolicy is scoped to only other services in this environment; omit to leave unchanged"`
-	IPAllowList             *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the full CIDR allowlist propagated to member Postgres/KeyValue resources; omit to leave unchanged, pass [] to deny all"`
-}
-
-type setEnvironmentACLArgs struct {
-	ID                      string   `json:"id" jsonschema:"the environment id (env-…)"`
-	ProtectedStatus         string   `json:"protectedStatus" jsonschema:"'protected' or 'unprotected' — protected blocks unguarded delete/suspend/direct-deploy-override on member services"`
-	NetworkIsolationEnabled bool     `json:"networkIsolationEnabled" jsonschema:"when true, member services' NetworkPolicy is scoped to only other services in this environment, denying traffic to/from the rest of the workspace"`
-	IPAllowList             []string `json:"ipAllowList,omitempty" jsonschema:"CIDR blocks allowed to reach member Postgres/KeyValue resources externally — propagated onto every Database/KeyValue in this environment; empty/omitted means open"`
-	// IPAllowListEntries is the description-carrying form (w4/m24); when
-	// present it wins over ipAllowList.
-	IPAllowListEntries []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"allowlist entries as {cidrBlock, description} objects; use instead of ipAllowList to keep per-entry descriptions"`
+	IPAllowList             *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the full CIDR allowlist propagated to member Postgres/KeyValue resources with these {cidrBlock, description} entries; omit to leave unchanged, pass [] to deny all"`
+	IPAllowListCidrs        *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
+	ServiceIDs              *[]string                `json:"serviceIds,omitempty" jsonschema:"public service ids (normally srv-...; the id field returned by list_services) assigned to the environment — REPLACES the full list and also joins them to the environment's project; omit to leave membership unchanged, pass [] to clear it"`
+	DatabaseIDs             *[]string                `json:"databaseIds,omitempty" jsonschema:"immutable Postgres ids (normally dpg-...; the id field returned by list_postgres_instances) assigned to the environment — REPLACES the full list and also joins them to the environment's project; omit to leave unchanged"`
+	KeyValueIDs             *[]string                `json:"keyValueIds,omitempty" jsonschema:"KeyValue CR names (same as the id field on a key-value instance) assigned to the environment — REPLACES the full list and also joins them to the environment's project; omit to leave unchanged"`
+	EnvGroupIDs             *[]string                `json:"envGroupIds,omitempty" jsonschema:"environment group ids (evg-...) assigned to the environment — REPLACES the full list; every group must belong to the environment's workspace; omit to leave unchanged"`
 }
 
 type environmentsResult struct {
@@ -137,14 +121,9 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_environment",
-		Description: "Partially update an environment: name and/or the protected-environment ACL triple (protectedStatus, networkIsolationEnabled, ipAllowList). Only the fields you pass change — the ACL fields merge into the current triple, unlike set_environment_acl's full-replace. bex extension (Render parity: PATCH /environments/{id}).",
+		Description: "Update an environment in one call: its name, the protected-environment ACL (protectedStatus, networkIsolationEnabled, ipAllowList), and/or which services, databases, key-value instances, and env groups belong to it. Only the fields you pass change — an omitted field is left alone, and a present membership list REPLACES that whole membership (pass [] to empty it). Assigning a service, database, or key-value instance also joins it to the environment's project. This tool replaces the retired set_environment_acl / set_environment_services / set_environment_databases / set_environment_keyvalues / set_environment_env_groups (w1/m71). bex extension (Render parity: PATCH /environments/{id}).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateEnvironmentArgs) (*mcp.CallToolResult, EnvironmentView, error) {
-		e, err := s.Update(ctx, in.ID, EnvironmentPatch{
-			Name:                    in.Name,
-			ProtectedStatus:         in.ProtectedStatus,
-			NetworkIsolationEnabled: in.NetworkIsolationEnabled,
-			IPAllowList:             in.IPAllowList,
-		})
+		e, err := s.applyEnvironmentPatch(ctx, in)
 		return nil, e, err
 	})
 
@@ -160,56 +139,40 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}{ID: in.ID}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_environment_services",
-		Description: "Assign services to an environment (replaces the full list); also joins them to the environment's project. Pass the public serviceIds shown by list_services. bex extension.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvironmentServicesArgs) (*mcp.CallToolResult, EnvironmentView, error) {
-		if in.ServiceIDs == nil {
-			in.ServiceIDs = []string{}
-		}
-		e, err := s.SetServices(ctx, in.ID, in.ServiceIDs)
-		return nil, e, err
+}
+
+// applyEnvironmentPatch runs update_environment's present arguments as the same
+// Service verbs the retired setters called: one Update for the environment's own
+// fields, then each membership list that was actually passed. Absent arguments
+// produce no call at all, so a name change never touches membership and a
+// membership change never rewrites the ACL.
+func (s *Service) applyEnvironmentPatch(ctx context.Context, in updateEnvironmentArgs) (EnvironmentView, error) {
+	allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
+	if err != nil {
+		return EnvironmentView{}, err
+	}
+	patch := EnvironmentPatch{
+		Name:                    in.Name,
+		ProtectedStatus:         in.ProtectedStatus,
+		NetworkIsolationEnabled: in.NetworkIsolationEnabled,
+		IPAllowList:             allowList,
+	}
+
+	var ops core.PatchOps[EnvironmentView]
+	ops.Add(patch.Name != nil || patch.ProtectedStatus != nil || patch.NetworkIsolationEnabled != nil || patch.IPAllowList != nil,
+		func() (EnvironmentView, error) { return s.Update(ctx, in.ID, patch) })
+	ops.Add(in.ServiceIDs != nil, func() (EnvironmentView, error) {
+		return s.SetServices(ctx, in.ID, core.IDList(in.ServiceIDs))
+	})
+	ops.Add(in.DatabaseIDs != nil, func() (EnvironmentView, error) {
+		return s.SetDatabases(ctx, in.ID, core.IDList(in.DatabaseIDs))
+	})
+	ops.Add(in.KeyValueIDs != nil, func() (EnvironmentView, error) {
+		return s.SetKeyValues(ctx, in.ID, core.IDList(in.KeyValueIDs))
+	})
+	ops.Add(in.EnvGroupIDs != nil, func() (EnvironmentView, error) {
+		return s.SetEnvGroups(ctx, in.ID, core.IDList(in.EnvGroupIDs))
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_environment_databases",
-		Description: "Assign managed Postgres databases to an environment (replaces the full list); also joins them to the environment's project. Pass immutable databaseIds — the id shown by list_postgres_instances. bex extension.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvironmentDatabasesArgs) (*mcp.CallToolResult, EnvironmentView, error) {
-		if in.DatabaseIDs == nil {
-			in.DatabaseIDs = []string{}
-		}
-		e, err := s.SetDatabases(ctx, in.ID, in.DatabaseIDs)
-		return nil, e, err
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_environment_keyvalues",
-		Description: "Assign managed key-value instances to an environment (replaces the full list); also joins them to the environment's project. Pass keyValueIds as KeyValue CR names — the same id shown by list_key_value. bex extension.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvironmentKeyValuesArgs) (*mcp.CallToolResult, EnvironmentView, error) {
-		if in.KeyValueIDs == nil {
-			in.KeyValueIDs = []string{}
-		}
-		e, err := s.SetKeyValues(ctx, in.ID, in.KeyValueIDs)
-		return nil, e, err
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_environment_env_groups",
-		Description: "Assign environment groups to an environment (replaces the full list). Every group must belong to the environment's workspace.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvironmentEnvGroupsArgs) (*mcp.CallToolResult, EnvironmentView, error) {
-		if in.EnvGroupIDs == nil {
-			in.EnvGroupIDs = []string{}
-		}
-		e, err := s.SetEnvGroups(ctx, in.ID, in.EnvGroupIDs)
-		return nil, e, err
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "set_environment_acl",
-		Description: "Set an environment's protected-environment ACL: protectedStatus, networkIsolationEnabled, and ipAllowList. Full-replace — pass the current value of any field you don't mean to change. bex extension (Render parity: w6/m19).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvironmentACLArgs) (*mcp.CallToolResult, EnvironmentView, error) {
-		entries := core.AllowListOrCIDRs(in.IPAllowListEntries, in.IPAllowList)
-		e, err := s.SetACL(ctx, in.ID, in.ProtectedStatus, in.NetworkIsolationEnabled, entries)
-		return nil, e, err
-	})
+	return ops.Run(func() (EnvironmentView, error) { return s.Get(ctx, in.ID) })
 }

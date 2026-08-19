@@ -235,7 +235,7 @@ func TestMCPSetMaintenanceMode(t *testing.T) {
 	out := toRenderService(v)
 	mm, _ := out.ServiceDetails["maintenanceMode"].(map[string]any)
 	if mm["enabled"] != true || mm["uri"] != "https://status.example.com/m" {
-		t.Errorf("set_maintenance_mode (via renderService) = %+v, want enabled=true uri=https://status.example.com/m", mm)
+		t.Errorf("update_service maintenanceMode (via renderService) = %+v, want enabled=true uri=https://status.example.com/m", mm)
 	}
 	if a := getApp(t, cl, "web"); a.Spec.MaintenanceMode == nil || !a.Spec.MaintenanceMode.Enabled || a.Spec.MaintenanceMode.URI != "https://status.example.com/m" {
 		t.Errorf("spec.maintenanceMode = %+v, want enabled with the custom uri", a.Spec.MaintenanceMode)

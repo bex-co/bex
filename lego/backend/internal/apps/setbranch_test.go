@@ -79,21 +79,21 @@ func TestGraphQLSetBranchRejectsInvalidRef(t *testing.T) {
 func TestMCPSetBranch(t *testing.T) {
 	svc, cl := newService(nil, repoApp("web", "https://github.com/x/mono", "main"))
 
-	// The set_branch tool delegates to the shared source verb.
+	// update_service(branch) delegates to the shared source verb.
 	branch := "release"
 	v, err := svc.SetSourceAndRegistryCredential(context.Background(), "web", sourcePatch{Branch: &branch})
 	if err != nil {
 		t.Fatalf("SetSourceAndRegistryCredential: %v", err)
 	}
 	if out := toRenderService(v); out.Branch != "release" {
-		t.Errorf("set_branch (via renderService projection) branch = %q, want release", out.Branch)
+		t.Errorf("update_service branch (via renderService projection) branch = %q, want release", out.Branch)
 	}
 	if got := getApp(t, cl, "web").Spec.Branch; got != "release" {
 		t.Errorf("spec.branch = %q, want release", got)
 	}
 
 	// An explicit empty branch restores the default — the setter family's
-	// "empty clears to the default" convention (cf. set_build_command).
+	// "empty clears to the default" convention (cf. update_service buildCommand).
 	empty := ""
 	if _, err := svc.SetSourceAndRegistryCredential(context.Background(), "web", sourcePatch{Branch: &empty}); err != nil {
 		t.Fatalf("clear branch: %v", err)

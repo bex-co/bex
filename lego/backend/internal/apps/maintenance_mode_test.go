@@ -563,11 +563,11 @@ func TestMaintenanceModeGraphQLAndMCPRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = client.Close() })
-	tool, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "set_maintenance_mode", Arguments: map[string]any{
+	tool, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "update_service", Arguments: map[string]any{
 		"serviceId": "web", "maintenanceMode": map[string]any{"enabled": false, "uri": "https://status.example.com/mcp"},
 	}})
 	if err != nil || tool.IsError {
-		t.Fatalf("MCP set_maintenance_mode: result=%+v err=%v", tool, err)
+		t.Fatalf("MCP update_service maintenanceMode: result=%+v err=%v", tool, err)
 	}
 	data, err := json.Marshal(tool.StructuredContent)
 	if err != nil {
@@ -582,11 +582,11 @@ func TestMaintenanceModeGraphQLAndMCPRoundTrip(t *testing.T) {
 	if mcpMode["enabled"] != false || mcpMode["uri"] != "https://status.example.com/mcp" {
 		t.Fatalf("MCP maintenanceMode = %#v", mcpMode)
 	}
-	badTool, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "set_maintenance_mode", Arguments: map[string]any{
+	badTool, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "update_service", Arguments: map[string]any{
 		"serviceId": "web", "maintenanceMode": map[string]any{"enabled": true, "uri": "https://web.onbex.co/self"},
 	}})
 	if err != nil || !badTool.IsError {
-		t.Fatalf("invalid MCP set_maintenance_mode: result=%+v err=%v", badTool, err)
+		t.Fatalf("invalid MCP update_service maintenanceMode: result=%+v err=%v", badTool, err)
 	}
 	if got := getApp(t, backing, "web").Spec.MaintenanceMode; got == nil || got.Enabled || got.URI != "https://status.example.com/mcp" {
 		t.Fatalf("failed MCP mutation changed state: %+v", got)

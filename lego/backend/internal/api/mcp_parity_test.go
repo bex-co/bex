@@ -251,15 +251,17 @@ func TestMCPParityInventory(t *testing.T) {
 		counts[class]++
 	}
 
-	// Measured at w1/m70 against the pinned upstream commit. Update this table
-	// and ADR018's MCP inventory together — that pairing is the point.
+	// Measured at w1/m70 against the pinned upstream commit, then re-measured at
+	// w1/m71, which folded 30 of the Extension `set_*` tools into five
+	// patch-shaped update_* tools (four of them new): 213 → 187. Update this
+	// table and ADR018's MCP inventory together — that pairing is the point.
 	want := map[mcpParityClass]int{
 		mcpParity1to1:      10,
 		mcpParitySuperset:  1,
 		mcpParityDivergent: 8,
-		mcpParityExtension: 194,
+		mcpParityExtension: 168,
 	}
-	const wantTotal = 213
+	const wantTotal = 187
 
 	if len(tools) != wantTotal {
 		t.Errorf("bex registers %d MCP tools, expected %d — update this test AND ADR018's MCP inventory together",

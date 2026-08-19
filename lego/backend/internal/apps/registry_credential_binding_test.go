@@ -402,7 +402,7 @@ func TestMCPDockerBuildRegistryCredentialCreateUpdateAndEcho(t *testing.T) {
 	if created.RegistryCredentialID != "rgc-one" {
 		t.Fatalf("MCP create echo = %+v", created)
 	}
-	updated := call("set_registry_credential", map[string]any{"serviceId": "web", "registryCredentialId": "rgc-two"})
+	updated := call("update_service", map[string]any{"serviceId": "web", "registryCredentialId": "rgc-two"})
 	if updated.RegistryCredentialID != "rgc-two" {
 		t.Fatalf("MCP update echo = %+v", updated)
 	}

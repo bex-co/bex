@@ -190,16 +190,28 @@ func TestMCPDisplayNameRoundTrip(t *testing.T) {
 		return out
 	}
 
-	set := call("set_display_name", map[string]any{"serviceId": "web", "displayName": "Customer API"})
+	set := call("update_service", map[string]any{"serviceId": "web", "displayName": "Customer API"})
 	if set["name"] != "Customer API" || set["displayName"] != "Customer API" {
-		t.Fatalf("set_display_name = %#v", set)
+		t.Fatalf("update_service displayName = %#v", set)
 	}
 	read := call("get_service", map[string]any{"serviceId": "web"})
 	if read["id"] != "web" || read["displayName"] != "Customer API" {
 		t.Fatalf("get_service after rename = %#v", read)
 	}
-	clear := call("set_display_name", map[string]any{"serviceId": "web", "displayName": ""})
+	// The empty string still CLEARS, which is the whole reason the folded
+	// arguments are pointers: absent and empty must not mean the same thing.
+	clear := call("update_service", map[string]any{"serviceId": "web", "displayName": ""})
 	if clear["name"] != "web" || clear["displayName"] != "" {
-		t.Fatalf("clear set_display_name = %#v", clear)
+		t.Fatalf("update_service displayName=\"\" = %#v", clear)
+	}
+	// An update_service call carrying no settable field is a read-only no-op,
+	// not a clear-everything: the label survives.
+	relabeled := call("update_service", map[string]any{"serviceId": "web", "displayName": "Customer API"})
+	if relabeled["displayName"] != "Customer API" {
+		t.Fatalf("re-set displayName = %#v", relabeled)
+	}
+	noop := call("update_service", map[string]any{"serviceId": "web"})
+	if noop["id"] != "web" || noop["displayName"] != "Customer API" {
+		t.Fatalf("no-op update_service = %#v", noop)
 	}
 }
