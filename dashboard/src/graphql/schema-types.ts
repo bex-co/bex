@@ -42,6 +42,7 @@ export type AgentSession = {
   snapshotBytes: Maybe<Scalars["Float"]["output"]>;
   sshAddress: Maybe<Scalars["String"]["output"]>;
   status: Scalars["String"]["output"];
+  streamUrl: Maybe<Scalars["String"]["output"]>;
   ticket: Maybe<Scalars["String"]["output"]>;
   turns: Maybe<Scalars["Int"]["output"]>;
   updatedAt: Scalars["String"]["output"];

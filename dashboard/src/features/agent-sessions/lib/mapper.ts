@@ -96,6 +96,7 @@ export function toAgentSessionTicket(
     session: toAgentSessionView(wire),
     ticket: wire.ticket ?? null,
     url: wire.url ?? null,
+    streamUrl: wire.streamUrl ?? null,
     expiresAt: wire.expiresAt ?? null,
   };
 }

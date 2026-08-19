@@ -4,9 +4,13 @@ import {
   agentSessionStatusPhraseKey,
   isSteerablePhase,
   isTerminalPhase,
+  toAgentSessionTicket,
   toAgentSessionView,
 } from "@/features/agent-sessions/lib/mapper";
-import type { AgentSessionFieldsFragment } from "@/graphql/definitions";
+import type {
+  AgentSessionFieldsFragment,
+  AgentSessionMintFieldsFragment,
+} from "@/graphql/definitions";
 import type { AgentSessionPhase } from "@/features/agent-sessions/types";
 
 const ALL_PHASES: AgentSessionPhase[] = [
@@ -129,6 +133,41 @@ describe("toAgentSessionView", () => {
     expect(view.deliveryMode).toBeNull();
     expect(view.isTerminal).toBe(false); // phase "running"
     expect(view.isSteerable).toBe(false);
+  });
+});
+
+// w10/m9 t003 (w3/013): `url` is the phase-2 raw-ACP WebSocket gateway
+// origin — never the phase-1 SSE stream endpoint a naive caller might build
+// from it. `streamUrl` is the server-authoritative stream address; this pins
+// the wire→domain mapping keeps the two distinct rather than conflating them.
+describe("toAgentSessionTicket", () => {
+  const mint = (
+    over: Partial<AgentSessionMintFieldsFragment> = {},
+  ): AgentSessionFieldsFragment & AgentSessionMintFieldsFragment => ({
+    ...wire(),
+    ticket: "ticket-1",
+    url: "wss://ssh.bex.co/agent-sessions",
+    streamUrl: "https://api.bex.co/v1/agent-sessions/as-1/stream",
+    expiresAt: "2026-08-02T00:01:30.000Z",
+    ...over,
+  });
+
+  it("carries ticket, url, streamUrl, and expiresAt through as distinct fields", () => {
+    const result = toAgentSessionTicket(mint());
+    expect(result.ticket).toBe("ticket-1");
+    expect(result.url).toBe("wss://ssh.bex.co/agent-sessions");
+    expect(result.streamUrl).toBe(
+      "https://api.bex.co/v1/agent-sessions/as-1/stream",
+    );
+    expect(result.expiresAt).toBe("2026-08-02T00:01:30.000Z");
+    expect(result.session.id).toBe("as-1");
+  });
+
+  it("normalizes an absent streamUrl to null (BEX_API_PUBLIC_URL unconfigured)", () => {
+    const result = toAgentSessionTicket(mint({ streamUrl: null }));
+    expect(result.streamUrl).toBeNull();
+    // url is unaffected — the two fields degrade independently.
+    expect(result.url).toBe("wss://ssh.bex.co/agent-sessions");
   });
 });
 

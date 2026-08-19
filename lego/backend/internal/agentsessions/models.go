@@ -177,10 +177,17 @@ type View struct {
 	// when BEX_SSH_HOST is configured AND the sandbox is live (the exact condition
 	// the gateway resolver enforces), so a surfaced address always connects; empty
 	// otherwise. It carries no credential — auth is the caller's own SSH key.
-	SSHAddress string     `json:"sshAddress,omitempty"`
-	Ticket     string     `json:"ticket,omitempty"`
-	URL        string     `json:"url,omitempty"`
-	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`
+	SSHAddress string `json:"sshAddress,omitempty"`
+	Ticket     string `json:"ticket,omitempty"`
+	// URL is the phase-2 raw-ACP WebSocket gateway origin (BEX_AGENT_SESSION_GATEWAY_URL)
+	// — not where a client GETs the phase-1 SSE conversation stream. StreamURL is
+	// that: the exact `<APIPublicURL>/v1/agent-sessions/<id>/stream` a caller
+	// connects to for phase 1 (ADR047 D9), so clients stop deriving it themselves
+	// (w3/013). Empty when BEX_API_PUBLIC_URL is unset — same graceful-degradation
+	// shape as the deploy-hook URLs that field already drives.
+	URL       string     `json:"url,omitempty"`
+	StreamURL string     `json:"streamUrl,omitempty"`
+	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
 	// Hibernation (ADR059 D5/D6, w2/m68). Pinned marks the never-expire tier;
 	// SnapshotBytes is the durable storage cost the tenant sees (0 while live);
 	// HibernatedAt/RetainUntil expose when it hibernated and when an unpinned

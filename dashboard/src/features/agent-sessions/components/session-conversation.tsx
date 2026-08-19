@@ -70,7 +70,7 @@ export function SessionConversation({
     if (!minted.ticket) {
       throw new Error("attachAgentSession returned no ticket");
     }
-    return { ticket: minted.ticket, url: minted.url };
+    return { ticket: minted.ticket, streamUrl: minted.streamUrl };
   }, [attach, sessionId]);
 
   if (!Impl) {
