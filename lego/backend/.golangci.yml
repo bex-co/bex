@@ -7,6 +7,7 @@ linters:
   default: none
   enable:
     - depguard
+    - forbidigo
   settings:
     depguard:
       rules:
@@ -22,3 +23,15 @@ linters:
           deny:
             - pkg: github.com/rs/xid
               desc: mint ids via internal/id (id.New); only internal/id may import xid — see docs/ADR020-identifiers.md
+    forbidigo:
+      # Resolve through the type checker so an aliased import or an explicit
+      # generic instantiation is caught too, not just the literal text.
+      analyze-types: true
+      forbid:
+        # Registering a tool with the SDK directly drops a *core.CodedError's
+        # code: the SDK converts a handler error into a text-only result before
+        # anything else can read it, so the wrap has to happen at registration.
+        # internal/mcputil.AddTool does it for every tool; it is the one
+        # legitimate caller of the SDK function (nolint'd there).
+        - pattern: ^mcp\.AddTool$
+          msg: register MCP tools via internal/mcputil.AddTool so coded errors keep their code

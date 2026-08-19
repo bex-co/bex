@@ -20,6 +20,8 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the events MCP fragment — a deliberate bex EXTENSION, not a mirror.
@@ -68,7 +70,7 @@ type getServiceEventResult struct {
 
 // RegisterMCP adds the events tool to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "get_service_event",
 		Description: "Retrieve one authorized service, Postgres, or Key Value event by its evt-… id. " +
 			"Use the data.id from a Bex outbound webhook to hydrate its thin payload. This is a Bex extension; " +
@@ -80,7 +82,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		return nil, getServiceEventResult{Event: toRenderEvent(event)}, nil
 	})
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "list_service_events",
 		Description: "List what has happened to a service, newest first: deploys started/ended, " +
 			"suspends and resumes, restarts, plan and instance-count changes, env-var and config " +

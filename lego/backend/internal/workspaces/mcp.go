@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go exposes workspace discovery plus bex's resource-limit extension.
@@ -46,7 +47,7 @@ type listWorkspacesResult struct {
 
 // RegisterMCP adds workspace discovery and limits to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_workspaces",
 		Description: "List the workspaces the caller has access to. Pass a returned id as workspaceId on each resource-tool call.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listWorkspacesResult, error) {
@@ -64,7 +65,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	// get_workspace_limits — bex extension (w7/m9): surfaces per-workspace
 	// resource usage vs. cap for agents that want to check headroom before
 	// attempting a create. Authorizes can_view on the workspace.
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_workspace_limits",
 		Description: "Get the resource usage and limits for a workspace (services, Postgres, key-value). Used is the current count; limit 0 means unlimited.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, ResourceLimitsView, error) {

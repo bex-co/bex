@@ -23,6 +23,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 
 	"github.com/bex-co/bex/lego/types/tiers"
 )
@@ -88,7 +89,7 @@ type queryPostgresArgs struct {
 
 // RegisterMCP adds the managed-Postgres tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_instances",
 		Description: "List all managed Postgres databases in a workspace with their status.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listPostgresArgs) (*mcp.CallToolResult, listPostgresResult, error) {
@@ -99,7 +100,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, listPostgresResult{Postgres: list}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_postgres",
 		Description: "Get details about a specific managed Postgres database by id.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, PostgresView, error) {
@@ -110,7 +111,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, v, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres",
 		Description: "Create a managed Postgres database. name is required; databaseName, databaseUser, plan, version, diskSizeGB, public, ipAllowList/ipAllowListEntries and enableHighAvailability are optional. Pass dryRun:true to preview the resolved spec without any writes.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
@@ -135,7 +136,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, v, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "query_render_postgres",
 		Description: "Run a read-only SQL query against a managed Postgres database and return the resulting columns and rows. The statement runs inside a read-only transaction with a server-side timeout; writes, DDL and long-running queries are rejected, and large result sets are truncated.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in queryPostgresArgs) (*mcp.CallToolResult, QueryResult, error) {
@@ -170,7 +171,7 @@ type postgresLogsResult struct {
 }
 
 func (s *Service) registerLogsMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_postgres_logs",
 		Description: "Return recent log lines from a managed Postgres database, oldest-first and capped at limit (default 20, max 100). With BEX_LOKI_URL configured, lines survive pod restarts (standard Loki history). Without Loki, falls back to a live CNPG pod-log read: only currently running pods contribute and restarted-pod history is gone. bex extension — Render has no equivalent REST endpoint.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresLogsArgs) (*mcp.CallToolResult, postgresLogsResult, error) {
@@ -197,7 +198,7 @@ func (s *Service) registerLogsMCP(srv *mcp.Server) {
 // over Render's MCP (which has no Postgres lifecycle tools), named like the
 // service lifecycle tools. failover_postgres mirrors Render's REST failover.
 func (s *Service) registerLifecycleMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "failover_postgres",
 		Description: "Trigger a planned failover (CNPG switchover) on an HA-enabled managed Postgres database. Promotes a standby to primary. Mirrors Render's POST /postgres/{id}/failover.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, struct {
@@ -208,21 +209,21 @@ func (s *Service) registerLifecycleMCP(srv *mcp.Server) {
 			Accepted bool `json:"accepted"`
 		}{Accepted: err == nil}, err
 	})
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "suspend_postgres",
 		Description: "Suspend a managed Postgres database (hibernate: stop compute, keep the data volume). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in suspendPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.Suspend(core.WithConfirm(ctx, in.Confirm), in.PostgresID)
 		return nil, v, err
 	})
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "resume_postgres",
 		Description: "Resume a suspended managed Postgres database (un-hibernate). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.Resume(ctx, in.PostgresID)
 		return nil, v, err
 	})
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "restart_postgres",
 		Description: "Restart a managed Postgres database (rolling restart of the primary). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, PostgresView, error) {
@@ -248,21 +249,21 @@ type exportsResult struct {
 
 // registerRecoveryMCP adds recovery info, recover-to-new, and exports.
 func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_postgres_recovery_info",
 		Description: "Get the point-in-time recovery window (earliest/latest restorable time) and backup list for a managed Postgres database. Returns enabled=false for plans without backups.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, RecoveryInfoView, error) {
 		v, err := s.RecoveryInfo(ctx, in.PostgresID)
 		return nil, v, err
 	})
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "recover_postgres",
 		Description: "Recover a managed Postgres database to a NEW instance restored to a point in time (the source is never modified).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in recoverPostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		v, err := s.Recover(ctx, in.PostgresID, RecoverRequest{Name: in.Name, TargetTime: in.TargetTime, Plan: in.Plan, Version: in.Version})
 		return nil, v, err
 	})
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_exports",
 		Description: "List logical pg_dump exports for a managed Postgres database. Available exports include a short-lived authenticated download URL.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, exportsResult, error) {
@@ -272,7 +273,7 @@ func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 		}
 		return nil, exportsResult{Exports: list}, nil
 	})
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres_export",
 		Description: "Trigger a logical pg_dump directory-format export of a managed Postgres database. The artifact is retained for seven days; only one export may run at once.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, ExportView, error) {
@@ -328,7 +329,7 @@ type usersResult struct {
 
 // registerAccessMCP adds the IP-allowlist and Postgres-users tools.
 func (s *Service) registerAccessMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_postgres_ip_allow_list",
 		Description: "Get the CIDR allowlist gating a managed Postgres database's external endpoint (empty => open to all source IPs).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, allowListResult, error) {
@@ -338,7 +339,7 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		}
 		return nil, allowListResult{CIDRs: core.AllowListCIDRs(list), Entries: list}, nil
 	})
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "update_postgres",
 		// The disk-autoscaling cap is interpolated from the shared plan catalog
 		// rather than written out, so the number an agent reads cannot drift from
@@ -364,7 +365,7 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		v, err := s.UpdatePostgres(ctx, in.PostgresID, patch)
 		return nil, v, err
 	})
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_users",
 		Description: "List the additional managed login roles on a managed Postgres database (not the owner role).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, usersResult, error) {
@@ -374,14 +375,14 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		}
 		return nil, usersResult{Users: users}, nil
 	})
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres_user",
 		Description: "Create an additional managed login role on a managed Postgres database. Returns the generated password once.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in userArgs) (*mcp.CallToolResult, CreateUserResult, error) {
 		v, err := s.CreateUser(ctx, in.PostgresID, in.Name)
 		return nil, v, err
 	})
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_postgres_user",
 		Description: "Delete an additional managed login role from a managed Postgres database.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in userArgs) (*mcp.CallToolResult, deleteResult, error) {
@@ -416,7 +417,7 @@ type parameterOverridesResult struct {
 // registerInsightsMCP adds the five observability tools (processes, top-queries,
 // sizes, table-scans, parameter-overrides) to the shared MCP server.
 func (s *Service) registerInsightsMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_processes",
 		Description: "List active backend processes for a managed Postgres database (pg_stat_activity snapshot). Includes each process's pid, user, application name, state, current query, wait event, and how long it has been running.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, processesResult, error) {
@@ -427,7 +428,7 @@ func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 		return nil, processesResult{Processes: out}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_top_queries",
 		Description: "List the top 25 queries by total execution time for a managed Postgres database (pg_stat_statements). Returns query text, call count, total/mean time in milliseconds, row count, and block hit/read stats. Returns an empty list when pg_stat_statements is not yet available.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, topQueriesResult, error) {
@@ -438,7 +439,7 @@ func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 		return nil, topQueriesResult{Queries: out}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_postgres_sizes",
 		Description: "Get the total database size and per-table sizes for a managed Postgres database. Returns the overall database size (bytes + human-readable) and up to 50 tables ordered by size descending.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, SizesView, error) {
@@ -446,7 +447,7 @@ func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 		return nil, v, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_table_scans",
 		Description: "List sequential vs index scan stats per table for a managed Postgres database (pg_stat_user_tables). High sequential scan counts on large tables indicate missing indexes.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, tableScansResult, error) {
@@ -457,7 +458,7 @@ func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 		return nil, tableScansResult{TableScans: out}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_parameter_overrides",
 		Description: "List non-default postgresql.conf parameters for a managed Postgres database (pg_settings where source is not 'default'). Shows name, current setting, unit, and source of each override.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, parameterOverridesResult, error) {

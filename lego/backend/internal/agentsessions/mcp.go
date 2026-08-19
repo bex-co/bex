@@ -7,6 +7,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 type listArgs struct {
@@ -59,96 +60,96 @@ type listResult struct {
 // spawn/list/get/cancel/resume, with agent_session making the bex-native
 // resource explicit rather than pretending Render has a corresponding API.
 func (s *Service) RegisterMCP(server *mcp.Server) {
-	mcp.AddTool(server, &mcp.Tool{Name: "spawn_agent_session", Description: "Start a cloud coding-agent session on a repository and return its sandbox attach ticket."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_agent_session", Description: "Start a cloud coding-agent session on a repository and return its sandbox attach ticket."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in CreateRequest) (*mcp.CallToolResult, View, error) {
 			out, err := s.Create(ctx, in)
-			return nil, out, core.MCPError(err)
+			return nil, out, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "list_agent_sessions", Description: "List cloud coding-agent sessions in a workspace: one filtered page, newest first. Defaults to the unarchived working set; archived selects false|true|all; cursor is the prior page's last session id (a shorter/empty page is the end)."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_sessions", Description: "List cloud coding-agent sessions in a workspace: one filtered page, newest first. Defaults to the unarchived working set; archived selects false|true|all; cursor is the prior page's last session id (a shorter/empty page is the end)."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in listArgs) (*mcp.CallToolResult, listResult, error) {
 			before, err := core.ParseTime("createdBefore", in.CreatedBefore)
 			if err != nil {
-				return nil, listResult{}, core.MCPError(err)
+				return nil, listResult{}, err
 			}
 			after, err := core.ParseTime("createdAfter", in.CreatedAfter)
 			if err != nil {
-				return nil, listResult{}, core.MCPError(err)
+				return nil, listResult{}, err
 			}
 			out, err := s.List(ctx, ListRequest{
 				OwnerID: in.OwnerID, Archived: in.Archived, Phases: in.Phases,
 				Repo: in.Repo, CreatedBefore: before, CreatedAfter: after,
 				Cursor: in.Cursor, Limit: in.Limit,
 			})
-			return nil, listResult{AgentSessions: out}, core.MCPError(err)
+			return nil, listResult{AgentSessions: out}, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "get_agent_session", Description: "Inspect one cloud coding-agent session."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session", Description: "Inspect one cloud coding-agent session."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Get(ctx, in.ID)
-			return nil, out, core.MCPError(err)
+			return nil, out, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "get_agent_session_capabilities", Description: "Report a workspace's selectable agent profiles and GitHub/model-key readiness for composing a cloud coding-agent session; never returns model endpoints, templates, egress, or credentials."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session_capabilities", Description: "Report a workspace's selectable agent profiles and GitHub/model-key readiness for composing a cloud coding-agent session; never returns model endpoints, templates, egress, or credentials."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in capabilitiesArgs) (*mcp.CallToolResult, Capabilities, error) {
 			out, err := s.Capabilities(ctx, in.OwnerID)
-			return nil, out, core.MCPError(err)
+			return nil, out, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "get_agent_session_transcript", Description: "Read one page of a cloud coding-agent session's durable conversation transcript (verbatim stream parts, seq-ordered). Works for live, completed, and archived sessions; page by echoing nextAfterSeq as afterSeq until parts is empty."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session_transcript", Description: "Read one page of a cloud coding-agent session's durable conversation transcript (verbatim stream parts, seq-ordered). Works for live, completed, and archived sessions; page by echoing nextAfterSeq as afterSeq until parts is empty."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in transcriptArgs) (*mcp.CallToolResult, TranscriptPage, error) {
 			afterSeq := int64(-1)
 			if in.AfterSeq != nil {
 				afterSeq = *in.AfterSeq
 			}
 			out, err := s.Transcript(ctx, in.ID, afterSeq, in.Limit)
-			return nil, out, core.MCPError(err)
+			return nil, out, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "archive_agent_session", Description: "Archive a cloud coding-agent session: it leaves the working-set list (still viewable; resume/steer/pin refused until unarchived) and any still-live sandbox is reclaimed at the next reaper tick without canceling an in-flight turn."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "archive_agent_session", Description: "Archive a cloud coding-agent session: it leaves the working-set list (still viewable; resume/steer/pin refused until unarchived) and any still-live sandbox is reclaimed at the next reaper tick without canceling an in-flight turn."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Archive(ctx, in.ID)
-			return nil, out, core.MCPError(err)
+			return nil, out, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "unarchive_agent_session", Description: "Return an archived cloud coding-agent session to the working set, re-enabling resume/steer/pin."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "unarchive_agent_session", Description: "Return an archived cloud coding-agent session to the working set, re-enabling resume/steer/pin."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Unarchive(ctx, in.ID)
-			return nil, out, core.MCPError(err)
+			return nil, out, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "delete_agent_session", Description: "Permanently delete a finished (terminal or hibernated) cloud coding-agent session: its record, transcript, and hibernation snapshot are destroyed. Live sessions must be canceled first. Irreversible."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "delete_agent_session", Description: "Permanently delete a finished (terminal or hibernated) cloud coding-agent session: its record, transcript, and hibernation snapshot are destroyed. Live sessions must be canceled first. Irreversible."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, deleteResult, error) {
 			if err := s.Delete(ctx, in.ID); err != nil {
-				return nil, deleteResult{}, core.MCPError(err)
+				return nil, deleteResult{}, err
 			}
 			return nil, deleteResult{Deleted: true}, nil
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "resume_agent_session", Description: "Resume a suspended cloud coding-agent session and mint a fresh attach ticket."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "resume_agent_session", Description: "Resume a suspended cloud coding-agent session and mint a fresh attach ticket."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Resume(ctx, in.ID)
-			return nil, out, core.MCPError(err)
+			return nil, out, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "attach_agent_session", Description: "Mint a fresh attach ticket for a started cloud coding-agent session to (re)connect to its live or replayed conversation stream, without changing its lifecycle. Action 'read' for transcript replay (GET), 'turn' for live prompt execution (POST). Requires can_create for 'turn'."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "attach_agent_session", Description: "Mint a fresh attach ticket for a started cloud coding-agent session to (re)connect to its live or replayed conversation stream, without changing its lifecycle. Action 'read' for transcript replay (GET), 'turn' for live prompt execution (POST). Requires can_create for 'turn'."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in attachTicketArgs) (*mcp.CallToolResult, View, error) {
 			action := in.Action
 			if action == "" {
 				action = agentsessionticket.ActionRead // Default to read for safety
 			}
 			out, err := s.AttachTicket(ctx, in.ID, action)
-			return nil, out, core.MCPError(err)
+			return nil, out, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "cancel_agent_session", Description: "Cancel a cloud coding-agent session and terminate its sandbox."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "cancel_agent_session", Description: "Cancel a cloud coding-agent session and terminate its sandbox."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Cancel(ctx, in.ID)
-			return nil, out, core.MCPError(err)
+			return nil, out, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "pin_agent_session", Description: "Pin a cloud coding-agent session so its hibernated workspace never expires (still billed for snapshot storage and counted against the workspace pin quota)."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "pin_agent_session", Description: "Pin a cloud coding-agent session so its hibernated workspace never expires (still billed for snapshot storage and counted against the workspace pin quota)."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Pin(ctx, in.ID)
-			return nil, out, core.MCPError(err)
+			return nil, out, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "unpin_agent_session", Description: "Remove a cloud coding-agent session's never-expire pin, putting its hibernated workspace back on the retention clock."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "unpin_agent_session", Description: "Remove a cloud coding-agent session's never-expire pin, putting its hibernated workspace back on the retention clock."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Unpin(ctx, in.ID)
-			return nil, out, core.MCPError(err)
+			return nil, out, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in steerArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, EgressAllowlist: in.EgressAllowlist})
-			return nil, out, core.MCPError(err)
+			return nil, out, err
 		})
 }

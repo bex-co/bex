@@ -25,6 +25,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // The domain error sentinels every feature returns and the REST adapter maps to
@@ -230,9 +231,16 @@ var _ interface {
 // GraphQL's extensions, so the code has to travel in the text or an agent
 // cannot tell a plan limit from a validation failure. A plain error passes
 // through untouched.
+//
+// Applied once, by the shared tool seam (internal/mcputil.AddTool). It is
+// idempotent so a handler that also wraps its own error cannot produce
+// "CODE: CODE: msg".
 func MCPError(err error) error {
 	var coded *CodedError
 	if errors.As(err, &coded) {
+		if strings.HasPrefix(err.Error(), coded.Code+": ") {
+			return err
+		}
 		return fmt.Errorf("%s: %w", coded.Code, err)
 	}
 	return err
@@ -276,6 +284,10 @@ func NewConflictError(code, msg string, params map[string]any) *CodedError {
 
 const PaymentRequiredMessage = "Payment information is required for paid plans. Call create_billing_checkout_session to add a payment method, then retry."
 
+// PaymentRequiredCode is the machine-readable code the paid-intent gate returns
+// on every surface.
+const PaymentRequiredCode = "PAYMENT_REQUIRED"
+
 const (
 	BillingErrorEnforced   = "BILLING_ENFORCED"
 	BillingEnforcedMessage = "workspace billing enforcement is active"
@@ -298,7 +310,7 @@ func NewBillingEnforcedError() *CodedError {
 // sentinel to 402, and MCP reports the actionable message unchanged.
 func NewPaymentRequiredError() *CodedError {
 	return &CodedError{
-		Code:     "PAYMENT_REQUIRED",
+		Code:     PaymentRequiredCode,
 		Params:   map[string]any{"checkoutTool": "create_billing_checkout_session"},
 		sentinel: ErrPaymentRequired,
 		msg:      PaymentRequiredMessage,

@@ -20,6 +20,8 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the notifications MCP fragment (bex extension — an agent can read
@@ -34,7 +36,7 @@ type updateSettingsArgs struct {
 
 // RegisterMCP adds the notification-settings tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_notification_settings",
 		Description: "Get the caller's own deploy-notification email preferences for their workspace. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, SettingsView, error) {
@@ -42,7 +44,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, v, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_notification_settings",
 		Description: "Update the caller's own deploy-notification email preferences for their workspace. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateSettingsArgs) (*mcp.CallToolResult, SettingsView, error) {

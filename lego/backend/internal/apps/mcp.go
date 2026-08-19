@@ -25,6 +25,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -559,7 +560,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 }
 
 func (s *Service) registerServiceTools(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_services",
 		Description: "List all services (bex Apps) in a workspace with their status.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listServicesArgs) (*mcp.CallToolResult, listServicesResult, error) {
@@ -570,12 +571,12 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		return nil, listServicesResult{Services: toRenderServices(apps)}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_service",
 		Description: "Get details about a specific service by id.",
 	}, s.serviceTool(s.Get))
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_web_service",
 		Description: "Create a web service from a repo or a prebuilt image and get back the service to poll until its url is live. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createWebServiceArgs) (*mcp.CallToolResult, renderService, error) {
@@ -583,7 +584,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		return s.createWithAllowList(ctx, in.toCreateRequest(), in.IPAllowListEntries, in.IPAllowList)
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_cron_job",
 		Description: "Create a cron job that runs a repo/image's command on a schedule, and get back the service. A name already used in the target workspace is rejected (name already in use) rather than redeployed — use restart_service to redeploy an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createCronJobArgs) (*mcp.CallToolResult, renderService, error) {
@@ -591,7 +592,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		return renderServiceResult(s.Create(ctx, in.toCreateRequest()))
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_static_site",
 		Description: "Create a static site: build a repo and serve its publishPath output from the object-store origin (no running container). Redirects/rewrites (routes) and custom response headers apply at the edge. A name already used in the target workspace is rejected (name already in use) rather than republished — use restart_service to republish an existing one. Tracks Render's MCP tool.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createStaticSiteArgs) (*mcp.CallToolResult, renderService, error) {
@@ -599,15 +600,15 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		return s.createWithAllowList(ctx, in.toCreateRequest(), in.IPAllowListEntries, in.IPAllowList)
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "run_cron_job",
 		Description: "Trigger a one-off run of a cron job now, canceling an active run first like Render. Returns the deterministic pending run. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, renderCronJobRun, error) {
 		run, err := s.TriggerCronRun(ctx, in.ServiceID)
-		return nil, toRenderCronJobRun(run), core.MCPError(err)
+		return nil, toRenderCronJobRun(run), err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_cron_job_runs",
 		Description: "bex extension: list a cron job's runs newest first. Returns up to limit runs (default 10) plus a cursor to pass to the next call.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listCronJobRunsArgs) (*mcp.CallToolResult, listCronJobRunsResult, error) {
@@ -629,23 +630,23 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		return nil, out, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_cron_job_run",
 		Description: "bex extension: get one cron job run by its crr- id.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in cronJobRunArgs) (*mcp.CallToolResult, renderCronJobRun, error) {
 		run, err := s.GetCronRun(ctx, in.ServiceID, in.RunID)
-		return nil, toRenderCronJobRun(run), core.MCPError(err)
+		return nil, toRenderCronJobRun(run), err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "cancel_cron_job_run",
 		Description: "bex extension: cancel one pending cron job run by crr- id. The operator terminates its Kubernetes Job; a terminal run returns a conflict instead of silently succeeding.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in cronJobRunArgs) (*mcp.CallToolResult, renderCronJobRun, error) {
 		run, err := s.CancelCronRun(ctx, in.ServiceID, in.RunID)
-		return nil, toRenderCronJobRun(run), core.MCPError(err)
+		return nil, toRenderCronJobRun(run), err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "deploy",
 		Description: "Deploy a project from a git repo and render.yaml content in one call. A Blueprint may declare a whole stack — several services (web/worker/cron) plus managed databases, wired by fromDatabase env references — and one call converges all of it, databases first. Validation is all-or-nothing: one invalid entry rejects the whole deploy. Re-applying unchanged content is an idempotent no-op (changed services redeploy, unchanged ones don't). Returns the services (poll each to a live url via get_service) and databases (poll via get_postgres). A change to an EXISTING service that belongs to a protectedStatus=protected Environment (w6/m19) requires confirm — retry with the phrase from the error message. bex extension (pillar 4, deploy-from-chat at stack scale).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in deployArgs) (*mcp.CallToolResult, renderStack, error) {
@@ -656,7 +657,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		return nil, toRenderStack(res), nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_service",
 		Description: "Delete a service permanently, cascading everything the operator derived from it (Deployment, Service, Ingress). This is irreversible. A member of a protectedStatus=protected Environment (w6/m19) refuses without confirm — retry with the phrase from the error message. bex extension over Render's MCP (Render's official server ships no delete tool), named after the REST delete verb.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceConfirmArgs) (*mcp.CallToolResult, deletedResult, error) {
@@ -664,31 +665,31 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 		return nil, deletedResult{Deleted: err == nil}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "restart_service",
 		Description: "Restart a service (rolling restart, no downtime). bex extension over Render's MCP.",
 	}, s.serviceTool(s.Restart))
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "suspend_service",
 		Description: "Suspend a service: scale to zero, keeping host and certificates. A member of a protectedStatus=protected Environment (w6/m19) refuses without confirm — retry with the phrase from the error message. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceConfirmArgs) (*mcp.CallToolResult, renderService, error) {
 		return renderServiceResult(s.Suspend(core.WithConfirm(ctx, in.Confirm), in.ServiceID))
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "resume_service",
 		Description: "Resume a suspended service, restoring its replicas. bex extension over Render's MCP.",
 	}, s.serviceTool(s.Resume))
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "scale_service",
 		Description: "Scale a service to a specific number of running instances (numInstances, 1-100). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in scaleArgs) (*mcp.CallToolResult, renderService, error) {
 		return renderServiceResult(s.Scale(ctx, in.ServiceID, in.NumInstances))
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_service",
 		Description: "Update a service's settings in one call. Pass only the settings you want to change: an omitted argument is left exactly as it is, and a present argument is written to exactly the value given — including the empty value, which is how you clear a command, a path, or a list. Covers source (branch, registryCredentialId), build (rootDir, buildCommand, startCommand, dockerfilePath, buildFilter), runtime (startCommand, healthCheckPath, preDeployCommand, maxShutdownDelaySeconds, maintenanceMode, autoscaling), delivery (autoDeploy), naming (displayName), networking (renderSubdomainPolicy, ipAllowList), and notifications (notifyOnFail, notificationsToSend). rootDir and dockerfilePath trigger a fresh build. Static sites also take publishPath here; cron jobs take schedule and command. A plan change is billable — pass dryRun:true to preview it (valid alone or with plan only). Verbs REST keeps behind their own routes keep their own tools: scale_service (instance count), update_static_routes / update_static_headers (edge rules), disable_autoscaling. This tool replaces the retired set_* setters (w1/m71) plus update_service_plan / update_idle_timeout / update_publish_path / update_cron_job (w1/m74). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateServiceArgs) (*mcp.CallToolResult, renderService, error) {
@@ -842,7 +843,7 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 
 // registerAutoscalingTools tracks Render's PUT/DELETE .../autoscaling contract.
 func (s *Service) registerAutoscalingTools(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_autoscaling",
 		Description: "Get the autoscaling configuration for a service (minInstances, maxInstances, targetCPUPercent, targetMemoryPercent). Returns enabled:false when autoscaling is not configured. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, AutoscalingView, error) {
@@ -853,7 +854,7 @@ func (s *Service) registerAutoscalingTools(srv *mcp.Server) {
 		return nil, av, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "disable_autoscaling",
 		Description: "Disable autoscaling for a service, reverting it to its fixed spec.replicas count. Tracks Render's DELETE /v1/services/{id}/autoscaling.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, deletedResult, error) {
@@ -865,7 +866,7 @@ func (s *Service) registerAutoscalingTools(srv *mcp.Server) {
 
 // registerCustomDomainTools tracks render-oss/render-mcp-server tool names.
 func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_custom_domains",
 		Description: "List custom domains configured for a service. Optional verificationStatus (unverified|pending|verified; pending is the bex alias) and domainType (apex|subdomain) filters narrow the result; cursor/limit page it (default 20 per page).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listCustomDomainsArgs) (*mcp.CallToolResult, domainListResult, error) {
@@ -891,21 +892,21 @@ func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 		return nil, result, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_custom_domain",
 		Description: "Get details about a specific custom domain on a service.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
 		return customDomainResult(s.GetDomain(ctx, in.ServiceID, in.Name))
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "add_custom_domain",
 		Description: "Create a pending custom-domain claim. The result includes the exact ownership TXT record; the domain is not routed until verify_custom_domain promotes it.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
 		return customDomainResult(s.AddDomain(ctx, in.ServiceID, in.Name))
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_custom_domain",
 		Description: "Remove a custom domain from a service. The operator will remove the Ingress rule and let the TLS certificate expire.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, deletedResult, error) {
@@ -913,7 +914,7 @@ func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 		return nil, deletedResult{Deleted: err == nil}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "verify_custom_domain",
 		Description: "Check a pending custom domain's exact ownership TXT record and atomically promote it into serving intent. Already-verified claims are idempotent.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
@@ -927,7 +928,7 @@ func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 // routes/headers/publishPath real, delegating to the same Service verbs
 // REST/GraphQL use.
 func (s *Service) registerStaticSiteTools(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_static_routes",
 		Description: "List a static site's redirect/rewrite rules (in order, first match wins).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, routesResult, error) {
@@ -938,7 +939,7 @@ func (s *Service) registerStaticSiteTools(srv *mcp.Server) {
 		return nil, routesResult{Routes: toRenderRoutes(routes)}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_static_routes",
 		Description: "Replace a static site's redirect/rewrite rules with the given ordered list (Render's routes). The change takes effect without a rebuild. Rejected for a non-static-site service.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in routesArgs) (*mcp.CallToolResult, routesResult, error) {
@@ -949,7 +950,7 @@ func (s *Service) registerStaticSiteTools(srv *mcp.Server) {
 		return nil, routesResult{Routes: toRenderRoutes(app.Routes)}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_static_headers",
 		Description: "List a static site's custom response-header rules.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, headersResult, error) {
@@ -960,7 +961,7 @@ func (s *Service) registerStaticSiteTools(srv *mcp.Server) {
 		return nil, headersResult{Headers: toRenderHeaders(headers)}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_static_headers",
 		Description: "Replace a static site's custom response-header rules with the given list (Render's headers). The change takes effect without a rebuild. Rejected for a non-static-site service.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in headersArgs) (*mcp.CallToolResult, headersResult, error) {
@@ -975,7 +976,7 @@ func (s *Service) registerStaticSiteTools(srv *mcp.Server) {
 
 // registerBlueprintTools adds the Blueprint verbs (w2/m15 + w2/m41 + w2/m62).
 func (s *Service) registerBlueprintTools(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "validate_bex_yml",
 		Description: "Dry-run parse a render.yaml Blueprint and return structured per-entry errors plus a resource plan without applying anything — the safe pre-flight check before a deploy call. bex.yml remains a filename-only alias. Returns {valid, errors: [{code?, error, line?, column?, path?}], plan?, estimatedPricing?: {totalUsd, lines, variable}} — the pricing object is the always-on monthly cost projection on bex's price sheet (free tiers filtered; cron/autoscaling/multi-instance listed as variable, excluded from the total). Requires no store; always available. bex extension (pillar 4 agent safety).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in validateBlueprintArgs) (*mcp.CallToolResult, BlueprintValidation, error) {
@@ -983,7 +984,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 		return nil, v, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "preview_blueprint",
 		Description: "Fetch a repo's render.yaml and dry-run validate it WITHOUT creating anything — the pre-flight for create_blueprint. Empty path discovers render.yaml first, then the legacy bex.yml alias (with a warning); both files require an explicit path. Returns {found, manifest?, commitId?, warning?, error?, validation?: {valid, errors, plan, estimatedPricing?}}; estimatedPricing is the always-on monthly cost projection on bex's price sheet. A missing file reports found=false with the fetch error instead of failing. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in previewBlueprintArgs) (*mcp.CallToolResult, BlueprintPreview, error) {
@@ -991,7 +992,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 		return nil, p, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "generate_blueprint",
 		Description: "Export selected existing resources (services, Postgres, Key Value) as a render.yaml Blueprint manifest — Render's dashboard-only Generate Blueprint as an API. Env vars keep literal values; secret-backed ones emit sync:false name-only (no secret value is ever included); datastore wiring emits fromDatabase/fromService references when the target is in the same selection. The manifest is self-validated against bex's own Blueprint contract before it is returned, and creating it as a blueprint against a repo adopts the same resources by name. bex extension (Render has no generate API).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in generateBlueprintArgs) (*mcp.CallToolResult, GenerateBlueprintResult, error) {
@@ -1004,7 +1005,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 		return nil, out, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_blueprint",
 		Description: "Create a Git-connected Blueprint by fetching render.yaml from a repo, validating, and applying the full stack. bex.yml is a filename-only alias; if both files exist, specify path explicitly. Returns the new blueprint and deployed resources. The repo must be accessible via the workspace's GitHub connection or be public. bex extension (w2/m62).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
@@ -1019,7 +1020,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 		return nil, view, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_blueprints",
 		Description: "List Git-connected Blueprint instances for a workspace. Returns {blueprints: [{id, name, repo, branch, path, autoSync, status, lastSync, createdAt, updatedAt}]}. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listBlueprintsArgs) (*mcp.CallToolResult, listBlueprintsResult, error) {
@@ -1027,7 +1028,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 		return nil, listBlueprintsResult{Blueprints: views}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_blueprint",
 		Description: "Get a single blueprint by its id, including managed resources (id/name/type). bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
@@ -1035,7 +1036,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 		return nil, view, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_blueprint_syncs",
 		Description: "List sync run history for a blueprint, newest first. Each run records state (running/success/error), commitId, startedAt, and completedAt. bex extension (w2/m62).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listBlueprintSyncsArgs) (*mcp.CallToolResult, listBlueprintSyncsResult, error) {
@@ -1043,7 +1044,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 		return nil, listBlueprintSyncsResult{Syncs: syncs}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "sync_blueprint",
 		Description: "Re-apply a Blueprint by pulling the latest render.yaml from its Git repo (or from the stored manifest if no fetcher is configured). Records a sync run. Returns {blueprint, stack: {services, databases}}. bex extension (pillar 4, validate-then-deploy flow).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in syncBlueprintArgs) (*mcp.CallToolResult, SyncBlueprintResult, error) {
@@ -1051,7 +1052,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 		return nil, res, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_blueprint",
 		Description: "Update a Blueprint's name, autoSync flag, or render.yaml path. Setting autoSync=false pauses auto-sync on push; true re-enables it. bex extension (w2/m62).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
@@ -1063,7 +1064,7 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 		return nil, view, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "disconnect_blueprint",
 		Description: "Disconnect a Blueprint from its Git repo: stops auto-sync on push and hides it from list_blueprints. Resources created by the blueprint remain untouched; empty project/environment groupings the blueprint minted (no member services or datastores) are reclaimed (w8/m20). bex extension (w2/m62).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in disconnectBlueprintArgs) (*mcp.CallToolResult, disconnectedBlueprintResult, error) {

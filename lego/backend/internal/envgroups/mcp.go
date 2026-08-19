@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the env-groups MCP fragment: bex extensions named after Render's
@@ -118,7 +119,7 @@ type okResult struct {
 
 // RegisterMCP adds the env-group tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_env_groups",
 		Description: "List one workspace's environment groups with cursor paging (names, linked services, and env-var keys / secret-file names — no values); Render's name, environment, and timestamp filters are REST-only.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listEnvGroupsArgs) (*mcp.CallToolResult, listEnvGroupsResult, error) {
@@ -126,18 +127,18 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err == nil {
 			groups = pageEnvGroups(groups, in.Cursor, in.Limit, in.Cursor != "" || in.Limit != 0)
 		}
-		return nil, listEnvGroupsResult{EnvGroups: groups}, core.MCPError(err)
+		return nil, listEnvGroupsResult{EnvGroups: groups}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_env_group",
 		Description: "Get one environment group by id (keys/names + linked services, no values).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
 		g, err := s.GetEnvGroup(ctx, in.ID)
-		return nil, g, core.MCPError(err)
+		return nil, g, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_env_group",
 		Description: "Create an environment group, optionally with initial variables, secret files, and service links in one atomic operation.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
@@ -146,34 +147,34 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			EnvironmentID: in.EnvironmentID, EnvVars: in.EnvVars,
 			SecretFiles: in.SecretFiles, ServiceIDs: in.ServiceIDs,
 		})
-		return nil, g, core.MCPError(err)
+		return nil, g, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_env_group",
 		Description: "Delete an environment group; it is unlinked from every service first, and linked services roll.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.DeleteEnvGroup(ctx, in.ID)
-		return nil, okResult{OK: err == nil}, core.MCPError(err)
+		return nil, okResult{OK: err == nil}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "rename_env_group",
 		Description: "Rename an environment group without changing its id, contents, or service links.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in renameEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
 		g, err := s.RenameEnvGroup(ctx, in.ID, in.Name)
-		return nil, g, core.MCPError(err)
+		return nil, g, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "move_env_group",
 		Description: "Move an environment group to a compatible Environment or back to workspace scope without changing sibling memberships.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in moveEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
 		group, err := s.MoveEnvGroup(ctx, in.ID, in.EnvironmentID)
-		return nil, group, core.MCPError(err)
+		return nil, group, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "clone_env_group",
 		Description: "Clone variables and secret files server-side into a new group in the selected workspace without copying service links or returning values.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in cloneEnvGroupArgs) (*mcp.CallToolResult, EnvGroupView, error) {
@@ -184,36 +185,36 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		group, err := s.CloneEnvGroup(ctx, in.ID, CloneEnvGroupRequest{
 			Name: in.Name, OwnerID: ownerID, EnvironmentID: in.EnvironmentID,
 		})
-		return nil, group, core.MCPError(err)
+		return nil, group, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_env_group_vars",
 		Description: "Replace an environment group's whole env-var set (replace semantics); every linked service rolls.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvGroupVarsArgs) (*mcp.CallToolResult, okResult, error) {
 		_, err := s.SetEnvGroupVars(ctx, in.ID, in.EnvVars)
-		return nil, okResult{OK: err == nil}, core.MCPError(err)
+		return nil, okResult{OK: err == nil}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "patch_env_group_environment",
 		Description: "Apply one revision-aware sparse patch to an environment group's variables and files, then optionally deploy or rebuild each linked service once.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in patchEnvGroupEnvironmentArgs) (*mcp.CallToolResult, EnvironmentPatchResult, error) {
 		result, err := s.PatchEnvironment(ctx, in.ID, EnvironmentPatch{
 			EnvVars: in.EnvVars, SecretFiles: in.SecretFiles, SaveMode: in.SaveMode, ExpectedRevision: in.ExpectedRevision,
 		})
-		return nil, result, core.MCPError(err)
+		return nil, result, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_env_group_var",
 		Description: "Reveal one environment variable value in an environment group.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupVarArgs) (*mcp.CallToolResult, EnvVarView, error) {
 		v, err := s.GetEnvGroupVar(ctx, in.ID, in.Key)
-		return nil, v, core.MCPError(err)
+		return nil, v, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "set_env_group_var",
 		Description: "Add, update, or generate one environment variable without replacing the group's other variables; linked services roll.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvGroupVarArgs) (*mcp.CallToolResult, EnvVarView, error) {
@@ -222,54 +223,54 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			value = *in.Value
 		}
 		v, err := s.SetEnvGroupVarInput(ctx, in.ID, EnvVarView{Key: in.Key, Value: value, ValueSet: in.Value != nil, GenerateValue: in.GenerateValue})
-		return nil, v, core.MCPError(err)
+		return nil, v, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_env_group_var",
 		Description: "Remove one environment variable from an environment group; linked services roll.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupVarArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.DeleteEnvGroupVar(ctx, in.ID, in.Key)
-		return nil, okResult{OK: err == nil}, core.MCPError(err)
+		return nil, okResult{OK: err == nil}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "set_env_group_secret_file",
 		Description: "Add or update one secret file in an environment group (mounted at /etc/secrets/<name> on linked services); linked services roll.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvGroupFileArgs) (*mcp.CallToolResult, SecretFileView, error) {
 		f, err := s.SetEnvGroupFile(ctx, in.ID, in.Name, in.Content)
-		return nil, f, core.MCPError(err)
+		return nil, f, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_env_group_secret_file",
 		Description: "Remove one secret file from an environment group; linked services roll.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupFileArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.DeleteEnvGroupFile(ctx, in.ID, in.Name)
-		return nil, okResult{OK: err == nil}, core.MCPError(err)
+		return nil, okResult{OK: err == nil}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_env_group_secret_file",
 		Description: "Reveal one secret file's contents in an environment group.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envGroupFileArgs) (*mcp.CallToolResult, SecretFileView, error) {
 		f, err := s.GetEnvGroupFile(ctx, in.ID, in.Name)
-		return nil, f, core.MCPError(err)
+		return nil, f, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "link_env_group",
 		Description: "Link an environment group to a service: the service gains the group's env vars + secret files and rolls.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in linkEnvGroupArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.LinkService(ctx, in.ID, in.ServiceID)
-		return nil, okResult{OK: err == nil}, core.MCPError(err)
+		return nil, okResult{OK: err == nil}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "unlink_env_group",
 		Description: "Unlink an environment group from a service: the group's vars + files are removed from the service and it rolls.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in linkEnvGroupArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.UnlinkService(ctx, in.ID, in.ServiceID)
-		return nil, okResult{OK: err == nil}, core.MCPError(err)
+		return nil, okResult{OK: err == nil}, err
 	})
 }

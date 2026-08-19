@@ -40,7 +40,6 @@ package predeploy
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -50,6 +49,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Pod/Job labels. The predeploy label carries the service name (like build's
@@ -117,20 +117,12 @@ type Options struct {
 	Client client.Client
 }
 
-// JobName is the deterministic per-revision pre-deploy Job name (DNS-1123,
-// ≤63 chars): "predeploy-<name>-<revision>", so re-reconciling the same
-// revision reuses the exact-lifetime Job (idempotent — never re-runs a
-// completed migration) and a new revision gets a fresh run.
+// JobName is the deterministic per-revision pre-deploy Job name: re-reconciling
+// the same revision reuses that revision's Job, so a completed migration is
+// never re-run. Two revisions must therefore never share a name — reuse would
+// skip the second one's migration entirely.
 func JobName(name, revision string) string {
-	rev := revision
-	if rev == "" {
-		rev = "latest"
-	}
-	n := "predeploy-" + name + "-" + rev
-	if len(n) > 63 {
-		n = n[:63]
-	}
-	return strings.ToLower(n)
+	return appv1alpha1.RevisionJobName("predeploy-", name, revision)
 }
 
 // Job constructs the pre-deploy Job for o (a pure function — no cluster access —

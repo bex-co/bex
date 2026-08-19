@@ -20,6 +20,8 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the MCP fragment: list_deploys/get_deploy, under Render's
@@ -81,7 +83,7 @@ type listDeploysResult struct {
 
 // RegisterMCP adds the deploy-history tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_deploy_hook",
 		Description: "Get (or lazily create) a service's secret deploy-hook URL. Anyone holding the URL can trigger a deploy without an API key; treat it as a credential and do not log it. bex extension: Render exposes this only in its dashboard.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, DeployHookView, error) {
@@ -89,7 +91,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, hook, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "regenerate_deploy_hook",
 		Description: "Rotate a service's secret deploy-hook URL. The old URL stops working immediately, so update every CI system that used it. bex extension: Render exposes this only in its dashboard.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, DeployHookView, error) {
@@ -97,7 +99,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, hook, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_deploys",
 		Description: "List a service's deploy history, newest first, with Render lifecycle status and created/updated/finished timestamp filters. Returns up to `limit` deploys (default 10) plus a `cursor`: pass it back to fetch the next page; an empty page means the end.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listDeploysArgs) (*mcp.CallToolResult, listDeploysResult, error) {
@@ -140,7 +142,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, res, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_deploy",
 		Description: "Get one deploy by id — poll this after triggering a deploy until status is live (or a *_failed/canceled status).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
@@ -151,7 +153,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, toRenderDeploy(d), nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "cancel_deploy",
 		Description: "bex extension: cancel a still-in-progress deploy — kills its in-flight build (if any) and marks it canceled. 409s once the deploy has already reached a final status (live/*_failed/canceled).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
@@ -162,7 +164,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, toRenderDeploy(d), nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "rollback_deploy",
 		Description: "bex extension: roll a service back to a previously-live deploy's exact image — creates a fresh deploy restoring it, never rewrites history. Only a deploy that itself reached live is a valid target.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
@@ -177,7 +179,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	// tool (w2/m44). imageUrl allows image-backed services to deploy a specific
 	// tag without re-applying the whole service spec. commitId/deployMode carry
 	// the same semantics as the REST body.
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "trigger_deploy",
 		Description: "Trigger a new deploy for a service. For image-backed services, imageUrl deploys a specific image tag. For repo-backed services, commitId pins the build to a specific git ref (default: Branch HEAD). Returns the new deploy; poll with get_deploy until status is live.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in triggerDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {

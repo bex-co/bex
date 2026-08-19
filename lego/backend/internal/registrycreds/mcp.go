@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the registry-credentials MCP fragment. A bex superset — Render's
@@ -71,7 +72,7 @@ type deletedResult struct {
 
 // RegisterMCP adds the registry-credentials tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_registry_credentials",
 		Description: "List the workspace's stored external image-registry credentials (host, username, expiry status — never the secret). Use this before create_registry_credential to check whether a host is already configured.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listCredentialsResult, error) {
@@ -82,7 +83,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, listCredentialsResult{Credentials: toWireList(views)}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_registry_credential",
 		Description: "Get one stored registry credential by id (host, username, expiry status — never the secret).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getCredentialArgs) (*mcp.CallToolResult, credentialWire, error) {
@@ -93,7 +94,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, toWire(v), nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_registry_credential",
 		Description: "Store a credential for a private external image registry (Docker Hub, GHCR, GitLab Container Registry, ECR, etc.), so a create_web_service call whose image references that host can pull successfully. bex extension — Render's own MCP server has no registry-credential tools.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createCredentialArgs) (*mcp.CallToolResult, credentialWire, error) {
@@ -111,7 +112,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, toWire(v), nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_registry_credential",
 		Description: "Change a stored registry credential's name/username/expiry, and/or rotate its secret. Omitted fields are left unchanged; pass expiresAt as an empty string to clear an expiry.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateCredentialArgs) (*mcp.CallToolResult, credentialWire, error) {
@@ -131,7 +132,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, toWire(v), nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_registry_credential",
 		Description: "Delete a stored registry credential. Services already using the credential's materialized pull secret are unaffected until their next deploy re-resolves it.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in deleteCredentialArgs) (*mcp.CallToolResult, deletedResult, error) {

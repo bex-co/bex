@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the environments MCP fragment, mirroring internal/projects/
@@ -74,7 +75,7 @@ type environmentsResult struct {
 
 // RegisterMCP adds the environment management tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_environments",
 		Description: "List all environments under a project. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listEnvironmentsArgs) (*mcp.CallToolResult, environmentsResult, error) {
@@ -87,7 +88,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, environmentsResult{Environments: paged}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_environment",
 		Description: "Get a single environment by id. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in environmentIDArgs) (*mcp.CallToolResult, EnvironmentView, error) {
@@ -95,7 +96,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, e, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_environment",
 		Description: "Create a named environment under a project (e.g. staging/production) to group a subset of its services. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createEnvironmentArgs) (*mcp.CallToolResult, EnvironmentView, error) {
@@ -106,7 +107,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, e, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_environment",
 		Description: "Update an environment in one call: its name, the protected-environment ACL (protectedStatus, networkIsolationEnabled, ipAllowList), and/or which services, databases, key-value instances, and env groups belong to it. Only the fields you pass change — an omitted field is left alone, and a present membership list REPLACES that whole membership (pass [] to empty it). Assigning a service, database, or key-value instance also joins it to the environment's project. This tool replaces the retired set_environment_acl / set_environment_services / set_environment_databases / set_environment_keyvalues / set_environment_env_groups (w1/m71) and rename_environment (w1/m74 — pass name here instead). bex extension (Render parity: PATCH /environments/{id}).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateEnvironmentArgs) (*mcp.CallToolResult, EnvironmentView, error) {
@@ -114,7 +115,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, e, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_environment",
 		Description: "Delete an environment; its services stay in the project but become unassigned from the environment. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in environmentIDArgs) (*mcp.CallToolResult, struct {

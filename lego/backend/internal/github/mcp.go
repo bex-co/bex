@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the GitHub-connect MCP fragment: list_repos ("which repos can I
@@ -35,7 +36,7 @@ type listReposResult struct {
 
 // RegisterMCP adds the git-connect tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "list_repos",
 		Description: "List the GitHub repositories the connected GitHub App installation can deploy (private repos included). " +
 			"Use this to answer \"which of my repos can you deploy?\" before creating a service from a repo. " +
@@ -45,7 +46,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, listReposResult{Repos: repos}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "get_git_connection",
 		Description: "Report whether this workspace has connected GitHub (account login + install URL). " +
 			"When connected is false, give the human the returned installUrl to install the bex GitHub App and grant repos; " +

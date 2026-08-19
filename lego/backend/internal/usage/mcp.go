@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the usage MCP fragment. get_usage gives an MCP agent direct
@@ -35,7 +36,7 @@ type getUsageArgs struct {
 
 // RegisterMCP adds the get_usage tool to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_usage",
 		Description: "Get month-to-date usage (instance-seconds by tier, egress bytes, build seconds, managed-datastore storage GB-seconds, and weighted sandbox compute seconds) for the caller's workspace, plus an estimated cost in USD (estimate only — not an invoice). When the workspace has a bex Stripe subscription, the response also carries a `billing` object with the real current-period invoice preview and finalized invoices (absent for estimate-only workspaces). Returns the same quantities, cost estimate, and billing as GET /v1/usage.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getUsageArgs) (*mcp.CallToolResult, usageResponse, error) {

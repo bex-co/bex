@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 type billingCheckoutArgs struct {
@@ -34,7 +35,7 @@ type billingPortalArgs struct {
 }
 
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_billing_readiness",
 		Description: "Get Stripe Billing onboarding readiness, including test/live mode, Customer/Subscription/payment-method state, and fail-closed tax configuration. Requires the billing role or workspace admin. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, Readiness, error) {
@@ -42,7 +43,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, out, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_billing_checkout_session",
 		Description: "Create a short-lived Stripe-hosted setup-mode Checkout URL for the workspace's existing metered Subscription. Requires the billing role or workspace admin and never returns a Stripe server credential.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in billingCheckoutArgs) (*mcp.CallToolResult, HostedSession, error) {
@@ -50,7 +51,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, out, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_billing_portal_session",
 		Description: "Create a short-lived Stripe Customer Portal URL scoped to the workspace's Customer. Requires the billing role or workspace admin and a trusted dashboard return URL.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in billingPortalArgs) (*mcp.CallToolResult, HostedSession, error) {

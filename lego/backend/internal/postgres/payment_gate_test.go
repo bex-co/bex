@@ -122,9 +122,12 @@ func TestPaidCreateRefusalHasOneRESTGraphQLMCPDialect(t *testing.T) {
 		if err != nil || result == nil || !result.IsError || len(result.Content) != 1 {
 			t.Fatalf("result=%#v err=%v", result, err)
 		}
+		// MCP has no structured error envelope, so the shared registration seam
+		// carries the code in the text; the actionable message survives intact.
 		text, ok := result.Content[0].(*mcp.TextContent)
-		if !ok || text.Text != core.PaymentRequiredMessage {
-			t.Fatalf("MCP content=%#v, want actionable payment message", result.Content)
+		want := core.PaymentRequiredCode + ": " + core.PaymentRequiredMessage
+		if !ok || text.Text != want {
+			t.Fatalf("MCP content=%#v, want %q (code + actionable payment message)", result.Content, want)
 		}
 	})
 }

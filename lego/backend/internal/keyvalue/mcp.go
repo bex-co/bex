@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the MCP fragment for managed key-value. Tool names track Render's
@@ -97,7 +98,7 @@ type listKeyValueArgs struct{}
 
 // RegisterMCP adds the managed key-value tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_key_value",
 		Description: "List all managed key-value (Valkey/Redis) stores in a workspace with their status.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listKeyValueArgs) (*mcp.CallToolResult, listKeyValueResult, error) {
@@ -108,7 +109,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, listKeyValueResult{KeyValues: list}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_key_value",
 		Description: "Get details about a specific managed key-value store by id.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in keyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
@@ -119,7 +120,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, v, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_key_value",
 		Description: "Create a managed key-value (Valkey/Redis) store. name is required; plan, version, storageGB, public, ipAllowList, maxmemoryPolicy and persistenceMode are optional. Pass dryRun:true to preview the resolved spec without any writes.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
@@ -143,7 +144,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, v, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "suspend_keyvalue",
 		Description: "Suspend a managed key-value store (stop compute while preserving its data volume). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in suspendKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
@@ -151,7 +152,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, v, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_key_value",
 		Description: "Update a managed key-value store's settings in one call: the eviction policy (maxmemoryPolicy) and/or the external-endpoint IP allowlist (Render's Networking control). Pass only what you want to change — an omitted argument is left alone; a present ipAllowList REPLACES the whole list (pass [] to clear it, opening the endpoint to all source IPs). Pass dryRun:true to validate and preview without writes. Also carries the name and the plan — a plan change is billable. This tool replaces the retired set_key_value_maxmemory_policy / set_key_value_ip_allow_list (w1/m71) and rename_key_value / update_key_value_plan (w1/m74); the REST mirror is PATCH /v1/key-value/{id} plus PUT .../ip-allow-list.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
@@ -168,7 +169,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, v, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_key_value_logs",
 		Description: "Return recent log lines from a managed Valkey/Redis key-value store, oldest-first and capped at limit (default 20, max 100). With BEX_LOKI_URL configured, lines survive pod restarts (standard Loki history). Without Loki, falls back to a live Valkey pod-log read: only currently running pods contribute and restarted-pod history is gone. bex extension — Render has no equivalent endpoint.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in kvLogsArgs) (*mcp.CallToolResult, kvLogsResult, error) {

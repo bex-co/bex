@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the outbound-webhooks MCP fragment — a bex superset: Render's
@@ -82,18 +83,18 @@ type deletedResult struct {
 
 // RegisterMCP adds the outbound-webhook tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_webhook_endpoints",
 		Description: "List the workspace's outbound webhook endpoints (URL, subscribed event types, enabled state — never the signing secret) plus the subscribable event-type vocabulary. bex extension — Render's own MCP server has no webhook tools.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listEndpointsResult, error) {
 		views, err := s.List(ctx, core.NamedWorkspace(ctx))
 		if err != nil {
-			return nil, listEndpointsResult{}, core.MCPError(err)
+			return nil, listEndpointsResult{}, err
 		}
 		return nil, listEndpointsResult{Endpoints: toWireList(views), EventTypes: EventTypes}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_webhook_endpoint",
 		Description: "Register an outbound webhook: bex will POST a signed, thin JSON payload ({type, timestamp, data}) to the URL whenever a subscribed event happens (deploys, service lifecycle, scaling, cron runs, and sourceable Postgres/Key Value changes). The response includes the Standard-Webhooks signing secret exactly once — store it; it is not retrievable afterwards.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createEndpointArgs) (*mcp.CallToolResult, endpointWire, error) {
@@ -102,41 +103,41 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			Name:    in.Name, URL: in.URL, EventTypes: in.EventTypes, Enabled: in.Enabled,
 		})
 		if err != nil {
-			return nil, endpointWire{}, core.MCPError(err)
+			return nil, endpointWire{}, err
 		}
 		return nil, toWire(v), nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_webhook_deliveries",
 		Description: "List every immutable send attempt for an endpoint with its request body, bounded response/transport evidence, exact send time, parent retry state, and opaque cursor. bex extension — Render's own MCP server has no webhook tools.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listDeliveriesArgs) (*mcp.CallToolResult, listDeliveriesResult, error) {
 		sentAfter, err := core.ParseTime("sentAfter", in.SentAfter)
 		if err != nil {
-			return nil, listDeliveriesResult{}, core.MCPError(err)
+			return nil, listDeliveriesResult{}, err
 		}
 		sentBefore, err := core.ParseTime("sentBefore", in.SentBefore)
 		if err != nil {
-			return nil, listDeliveriesResult{}, core.MCPError(err)
+			return nil, listDeliveriesResult{}, err
 		}
 		views, err := s.ListDeliveriesFiltered(ctx, core.NamedWorkspace(ctx), in.ID, DeliveryFilter{
 			Cursor: in.Cursor, Limit: in.Limit, SentAfter: sentAfter, SentBefore: sentBefore, Status: in.Status,
 		})
 		if err != nil {
-			return nil, listDeliveriesResult{}, core.MCPError(err)
+			return nil, listDeliveriesResult{}, err
 		}
 		return nil, listDeliveriesResult{Deliveries: views}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "resend_webhook_delivery",
 		Description: "Queue one immediate manual attempt using the source event's byte-identical request body. The endpoint must be enabled. Reusing the idempotency key returns the same reservation and never fans out another send. bex extension — Render exposes Resend only in its dashboard.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in resendDeliveryArgs) (*mcp.CallToolResult, DeliveryView, error) {
 		view, err := s.Resend(ctx, core.NamedWorkspace(ctx), in.EndpointID, in.AttemptID, in.IdempotencyKey)
-		return nil, view, core.MCPError(err)
+		return nil, view, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_webhook_endpoint",
 		Description: "Update an outbound webhook endpoint's name, destination URL, event subscription, or enabled state. Supply only the fields to change; omitted fields keep their current values.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateEndpointArgs) (*mcp.CallToolResult, endpointWire, error) {
@@ -151,16 +152,16 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			Enabled:    in.Enabled,
 		})
 		if err != nil {
-			return nil, endpointWire{}, core.MCPError(err)
+			return nil, endpointWire{}, err
 		}
 		return nil, toWire(v), nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_webhook_endpoint",
 		Description: "Delete an outbound webhook endpoint and its delivery history. No further events are sent to it.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in deleteEndpointArgs) (*mcp.CallToolResult, deletedResult, error) {
 		err := s.Delete(ctx, core.NamedWorkspace(ctx), in.ID)
-		return nil, deletedResult{Deleted: err == nil}, core.MCPError(err)
+		return nil, deletedResult{Deleted: err == nil}, err
 	})
 }

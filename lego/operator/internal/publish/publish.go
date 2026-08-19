@@ -42,6 +42,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/identity"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // DefaultAWSCLIImage is the S3 uploader image. Pinned < 2.23 because newer AWS
@@ -461,19 +462,12 @@ func modestResources() corev1.ResourceRequirements {
 	}
 }
 
-// JobName is the deterministic per-revision publish Job name (DNS-1123, ≤63):
-// re-reconciling the same revision reuses the exact-lifetime Job; a new revision
-// gets a fresh publish. Distinct "pub-" prefix avoids build-Job collisions.
+// JobName is the deterministic per-revision publish Job name; the distinct
+// "pub-" prefix avoids build-Job collisions. A name hit is read as "this
+// revision is already published", so two revisions sharing a name would serve
+// stale content — which is why truncation hashes rather than slices.
 func JobName(appID, revision string) string {
-	rev := revision
-	if rev == "" {
-		rev = "latest"
-	}
-	n := "pub-" + appID + "-" + rev
-	if len(n) > 63 {
-		n = n[:63]
-	}
-	return strings.ToLower(n)
+	return appv1alpha1.RevisionJobName("pub-", appID, revision)
 }
 
 // jobCondition reports whether the Job carries condition t with status True.

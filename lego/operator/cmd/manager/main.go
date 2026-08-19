@@ -65,6 +65,15 @@ func envOr(k, def string) string {
 	return def
 }
 
+// runtimeMode resolves the workload runtime. Kubernetes is the default because
+// it is the only runtime production deploys and the only one under test: an
+// unset BEX_RUNTIME used to select the opensandbox host path, which also
+// early-returns out of registry-credential convergence, so a forgotten variable
+// degraded the operator silently rather than loudly.
+func runtimeMode() string {
+	return envOr("BEX_RUNTIME", controller.ModeKubernetes)
+}
+
 // positiveEnvInt returns a strictly positive integer from k, or def when k is
 // unset, malformed, zero, or negative. Controller worker counts must never be
 // zero: controller-runtime interprets an unset value as its default of one.
@@ -325,7 +334,7 @@ func setupAppReconciler(
 		BuildClient:             uncachedClient,
 		Scheme:                  mgr.GetScheme(),
 		AppsNamespace:           appsNamespace,
-		Mode:                    envOr("BEX_RUNTIME", controller.ModeOpenSandbox),
+		Mode:                    runtimeMode(),
 		Registry:                envOr("BEX_REGISTRY", "127.0.0.1:5050"),
 		KpackRegistry:           os.Getenv("BEX_KPACK_REGISTRY"),
 		CNBBuilder:              envOr("BEX_CNB_BUILDER", defaultCNBBuilder),
