@@ -21,6 +21,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -42,17 +43,17 @@ type deleteSSHKeyResult struct {
 }
 
 func (s *Service) RegisterMCP(server *mcp.Server) {
-	mcp.AddTool(server, &mcp.Tool{Name: "list_ssh_keys", Description: "List the caller's registered SSH public keys. bex extension over Render's MCP."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "list_ssh_keys", Description: "List the caller's registered SSH public keys. bex extension over Render's MCP."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listSSHKeysResult, error) {
 			keys, err := s.List(ctx)
 			return nil, listSSHKeysResult{SSHKeys: keys}, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "add_ssh_key", Description: "Register one SSH public key for the caller. Private keys are never accepted. bex extension over Render's MCP."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "add_ssh_key", Description: "Register one SSH public key for the caller. Private keys are never accepted. bex extension over Render's MCP."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in createSSHKeyArgs) (*mcp.CallToolResult, store.SSHKey, error) {
 			key, err := s.Create(ctx, in.Name, in.PublicKey)
 			return nil, key, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "delete_ssh_key", Description: "Delete one of the caller's SSH public keys. bex extension over Render's MCP."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "delete_ssh_key", Description: "Delete one of the caller's SSH public keys. bex extension over Render's MCP."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in deleteSSHKeyArgs) (*mcp.CallToolResult, deleteSSHKeyResult, error) {
 			err := s.Delete(ctx, in.ID)
 			return nil, deleteSSHKeyResult{Deleted: err == nil}, err

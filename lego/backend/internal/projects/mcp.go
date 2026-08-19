@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the projects MCP fragment (bex extension). Agents can group
@@ -63,7 +64,7 @@ type projectsResult struct {
 
 // RegisterMCP adds the project management tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_projects",
 		Description: "List projects in a workspace. Optional cursor/limit select stable id-ordered pages; omitting both returns the complete list for compatibility. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listProjectsArgs) (*mcp.CallToolResult, projectsResult, error) {
@@ -81,7 +82,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, result, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_project",
 		Description: "Get a single project by id. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in projectIDArgs) (*mcp.CallToolResult, ProjectView, error) {
@@ -89,7 +90,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, p, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_project",
 		Description: "Create a named project in a workspace to group services. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createProjectArgs) (*mcp.CallToolResult, ProjectView, error) {
@@ -97,7 +98,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, p, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_project",
 		Description: "Update a project in one call: its name and/or which services, databases, and key-value instances belong to it. Only the fields you pass change — an omitted field is left alone, and a present membership list REPLACES that whole membership (pass [] to empty it). This tool replaces the retired set_project_services / set_project_databases / set_project_keyvalues (w1/m71) and rename_project (w1/m74 — pass name here instead). bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateProjectArgs) (*mcp.CallToolResult, ProjectView, error) {
@@ -105,7 +106,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, p, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_project",
 		Description: "Delete a project; its services become unassigned. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in projectIDArgs) (*mcp.CallToolResult, struct {

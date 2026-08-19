@@ -108,12 +108,13 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
 	}
-	if ok, scope := b.limiter().Acquire(sourceIP); !ok {
+	limiter := b.limiter()
+	if ok, scope := limiter.Acquire(sourceIP); !ok {
 		b.Metrics.LimitRejected(scope)
 		http.Error(w, "too many concurrent model requests from this sandbox", http.StatusTooManyRequests)
 		return
 	}
-	defer b.limiter().Release(sourceIP)
+	defer limiter.Release(sourceIP)
 	ctx, cancel := context.WithTimeout(r.Context(), b.maxDuration())
 	defer cancel()
 	r = r.WithContext(ctx)

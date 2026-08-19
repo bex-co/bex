@@ -503,16 +503,17 @@ func (s *Service) SetProjectID(ctx context.Context, name, projectID string) erro
 	if err != nil {
 		return err
 	}
-	if projectID == "" {
-		delete(kv.Labels, core.LabelProject)
-	} else {
+	_, err = s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
+		if projectID == "" {
+			delete(kv.Labels, core.LabelProject)
+			return
+		}
 		if kv.Labels == nil {
 			kv.Labels = map[string]string{}
 		}
 		kv.Labels[core.LabelProject] = projectID
-	}
-	resourcemeta.Touch(kv, s.Now())
-	return s.Client.Update(ctx, kv)
+	})
+	return err
 }
 
 // SetEnvironmentIPAllowList projects (or, with nil, clears) the environment
@@ -525,11 +526,12 @@ func (s *Service) SetEnvironmentIPAllowList(ctx context.Context, name string, ci
 		return err
 	}
 	if slices.Equal(kv.Spec.EnvironmentIPAllowList, cidrs) {
-		return nil // unchanged layer: no Update, no resourceVersion churn
+		return nil // unchanged layer: no write, no resourceVersion churn
 	}
-	kv.Spec.EnvironmentIPAllowList = cidrs
-	resourcemeta.Touch(kv, s.Now())
-	return s.Client.Update(ctx, kv)
+	_, err = s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
+		kv.Spec.EnvironmentIPAllowList = cidrs
+	})
+	return err
 }
 
 // SetEnvironmentID assigns (or, with an empty environmentID, clears) this
@@ -542,16 +544,17 @@ func (s *Service) SetEnvironmentID(ctx context.Context, name, environmentID stri
 	if err != nil {
 		return err
 	}
-	if environmentID == "" {
-		delete(kv.Labels, core.LabelEnvironment)
-	} else {
+	_, err = s.patchKeyValueObj(ctx, kv, func(kv *appv1alpha1.KeyValue) {
+		if environmentID == "" {
+			delete(kv.Labels, core.LabelEnvironment)
+			return
+		}
 		if kv.Labels == nil {
 			kv.Labels = map[string]string{}
 		}
 		kv.Labels[core.LabelEnvironment] = environmentID
-	}
-	resourcemeta.Touch(kv, s.Now())
-	return s.Client.Update(ctx, kv)
+	})
+	return err
 }
 
 // GetIPAllowList returns the allowlist gating the external endpoint (empty

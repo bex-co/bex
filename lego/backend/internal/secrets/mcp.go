@@ -21,7 +21,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the env-vars MCP fragment. These are bex extensions named after
@@ -106,15 +106,15 @@ type patchEnvironmentArgs struct {
 // extensions.code; without this wrapper MCP would retain only Error().
 // RegisterMCP adds the env-var tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "patch_service_environment",
 		Description: "Apply one sparse env-var and secret-file patch without returning secret material; save_only causes no rollout and deploy rolls the service once.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in patchEnvironmentArgs) (*mcp.CallToolResult, EnvironmentPatchResult, error) {
 		result, err := s.PatchEnvironment(ctx, in.ServiceID, EnvironmentPatch{EnvVars: in.EnvVars, SecretFiles: in.SecretFiles, SaveMode: in.SaveMode, ExpectedEnvRevision: in.ExpectedEnvRevision})
-		return nil, result, core.MCPError(err)
+		return nil, result, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_env_vars",
 		Description: "List a service's environment variables (key/value), sorted by key.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceEnvArgs) (*mcp.CallToolResult, envVarsResult, error) {
@@ -126,7 +126,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, result, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_env_var",
 		Description: "Get one environment variable of a service by key (the bare key/value).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envVarKeyArgs) (*mcp.CallToolResult, EnvVarView, error) {
@@ -134,7 +134,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, v, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_env_vars",
 		Description: "Replace a service's whole environment-variable set (Render's replace semantics) and return the new set; the service's pods roll to pick up the change.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvVarsArgs) (*mcp.CallToolResult, envVarsResult, error) {
@@ -146,7 +146,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, envVarsResult{EnvVars: vars}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "set_env_var",
 		Description: "Add or update one environment variable of a service (merged into the existing set, not a replace); the service's pods roll to pick up the change.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvVarArgs) (*mcp.CallToolResult, EnvVarView, error) {
@@ -154,7 +154,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, v, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_env_var",
 		Description: "Remove one environment variable from a service by key; the service's pods roll to pick up the change.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envVarKeyArgs) (*mcp.CallToolResult, deleteEnvVarResult, error) {
@@ -162,7 +162,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, deleteEnvVarResult{Deleted: err == nil}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_secret_files",
 		Description: "List a service's secret files (names only), sorted by name. Files are mounted read-only at /etc/secrets/<name>.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceEnvArgs) (*mcp.CallToolResult, secretFilesResult, error) {
@@ -174,7 +174,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, result, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_secret_file",
 		Description: "Get one secret file of a service by name, including its contents.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in secretFileNameArgs) (*mcp.CallToolResult, SecretFileView, error) {
@@ -182,7 +182,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, f, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "set_secret_file",
 		Description: "Add or update one secret file of a service (mounted at /etc/secrets/<name>); the service's pods roll to pick up the change.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setSecretFileArgs) (*mcp.CallToolResult, SecretFileView, error) {
@@ -190,7 +190,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, f, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_secret_file",
 		Description: "Remove one secret file from a service by name; the service's pods roll to pick up the change.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in secretFileNameArgs) (*mcp.CallToolResult, deleteSecretFileResult, error) {

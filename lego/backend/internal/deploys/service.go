@@ -29,7 +29,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -188,17 +187,13 @@ type Service struct {
 // single-workspace default; the same precedence as apps.Service's
 // deployWorkspace, duplicated because deploys must not import apps.
 
-// buildJobName mirrors lego/operator/internal/build.JobName's naming
-// convention (bld-<name>-gen-<generation>, lowercased, 63-char k8s name cap)
-// exactly — bex-api must never import the operator (operator/backend
-// layering, CLAUDE.md), so the convention is duplicated here; keep the two in
-// sync by hand (same precedent as core.PodLabelApp/AppContainer).
+// buildJobName is the build Job identity the operator creates for this App's
+// generation. Both halves — the revision spelling and the name derivation —
+// live in the contract module because bex-api must never import the operator
+// (operator/backend layering, CLAUDE.md) yet must address the exact Job the
+// operator created.
 func buildJobName(name string, generation int64) string {
-	n := "bld-" + name + "-gen-" + strconv.FormatInt(generation, 10)
-	if len(n) > 63 {
-		n = n[:63]
-	}
-	return strings.ToLower(n)
+	return appv1alpha1.BuildJobName(name, appv1alpha1.BuildRevision(generation))
 }
 
 // patchApp merge-patches a's spec via mutate — the small CR-write dance

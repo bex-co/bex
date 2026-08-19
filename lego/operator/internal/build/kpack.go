@@ -33,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	"github.com/bex-co/bex/lego/types/k8sname"
 )
 
 const (
@@ -293,7 +294,7 @@ func kpackRevision(o Options) string {
 }
 
 func kpackArtifactName(o Options, readable, purpose string) string {
-	return stableKubernetesName(readable,
+	return k8sname.Stable(readable,
 		"kpack", strings.ToLower(o.Name), o.AppUID, kpackRevision(o), purpose)
 }
 

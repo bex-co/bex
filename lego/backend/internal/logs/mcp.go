@@ -25,6 +25,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the MCP fragment for logs. Both tools mirror Render's official MCP
@@ -128,7 +129,7 @@ func (f logFilters) query() (LogQuery, error) {
 
 // RegisterMCP adds the list_logs + list_log_label_values tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "list_logs",
 		Description: "List log lines for one or more services or managed Postgres databases (Render's `resource` array), filtered by text, time range, and instance; service logs also support type, level, host, statusCode, method, and path. " +
 			"Timestamp-sorted and aggregated across instances. Use list_log_label_values to discover which filter values exist for a resource.",
@@ -165,7 +166,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, listLogsResult{Logs: q.normalized().capToLimit(all)}, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "list_log_label_values",
 		Description: "List all values a given log label (host | instance | level | method | statusCode | type) takes in the logs matching the provided filters. " +
 			"Use it to discover what values are available for filtering with list_logs, instead of guessing. " +

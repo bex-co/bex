@@ -27,7 +27,6 @@ package build
 import (
 	"cmp"
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"net"
 	"path"
@@ -43,6 +42,7 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/identity"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // buildComponent is the app.bex.co/component value every build artifact the
@@ -57,7 +57,7 @@ const (
 	BuilderDockerfile = "dockerfile"
 	BuilderBuildpack  = "buildpack"
 	BuilderNative     = "native"
-	defaultRevision   = "latest"
+	defaultRevision   = appv1alpha1.DefaultRevision
 )
 
 // Platform-plane images are pinned and bumped deliberately. BuildKit runs as
@@ -1025,36 +1025,11 @@ func restrictedContainerSecurityContext() *corev1.SecurityContext {
 	}
 }
 
-// JobName is the deterministic per-revision Job name (DNS-1123, ≤63 chars):
-// service name (≤30) + revision, so re-reconciling the same revision reuses the
-// exact-lifetime Job and a new revision gets a fresh build.
+// JobName is the deterministic per-revision build Job name. bex-api addresses
+// this exact Job (cancel, built-image lookup), so the derivation lives in the
+// contract module both sides import.
 func JobName(name, revision string) string {
-	rev := revision
-	if rev == "" {
-		rev = defaultRevision
-	}
-	n := strings.ToLower("bld-" + name + "-" + rev)
-	if len(n) <= 63 {
-		return n
-	}
-	return stableKubernetesName(n, n)
-}
-
-// stableKubernetesName preserves a readable prefix while binding every
-// truncated name to the complete identity tuple. Kubernetes' 63-character
-// DNS-label limit must never discard the revision/purpose that distinguishes
-// two security-sensitive resources.
-func stableKubernetesName(raw string, parts ...string) string {
-	const hashLength = 12
-	raw = strings.ToLower(raw)
-	sum := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
-	suffix := fmt.Sprintf("%x", sum[:hashLength/2])
-	maxBase := 63 - 1 - len(suffix)
-	if len(raw) > maxBase {
-		raw = raw[:maxBase]
-	}
-	raw = strings.TrimRight(raw, "-.")
-	return raw + "-" + suffix
+	return appv1alpha1.BuildJobName(name, revision)
 }
 
 // ActiveWorkspaceBuilds counts active (not Complete, not Failed) build Jobs in

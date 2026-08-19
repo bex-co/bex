@@ -381,5 +381,5 @@ func releaseRevision(app *appv1alpha1.App) string {
 }
 
 func releaseBuildRevision(app *appv1alpha1.App) string {
-	return fmt.Sprintf("gen-%d", releaseGeneration(app))
+	return appv1alpha1.BuildRevision(releaseGeneration(app))
 }

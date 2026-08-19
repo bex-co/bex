@@ -22,6 +22,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the members MCP fragment (bex extension over Render's MCP, which
@@ -64,7 +65,7 @@ type okResult struct {
 
 // RegisterMCP adds the membership tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_workspace_members",
 		Description: "List a workspace's members, their roles, opaque userId (own-…), and email (when the identity provider is configured). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listMembersResult, error) {
@@ -72,7 +73,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, listMembersResult{Members: ms}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "invite_workspace_member",
 		Description: "Invite a teammate to a workspace by email at a role; they join on first login. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in inviteMemberArgs) (*mcp.CallToolResult, InviteView, error) {
@@ -80,7 +81,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, inv, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "change_workspace_member_role",
 		Description: "Change a member's role in a workspace. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in changeRoleArgs) (*mcp.CallToolResult, MemberView, error) {
@@ -88,7 +89,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, m, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "remove_workspace_member",
 		Description: "Remove a member from a workspace; their access is revoked. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in removeMemberArgs) (*mcp.CallToolResult, okResult, error) {
@@ -96,7 +97,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, okResult{OK: err == nil}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_workspace_invites",
 		Description: "List a workspace's outstanding (pending) member invites. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listInvitesResult, error) {
@@ -104,7 +105,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, listInvitesResult{Invites: invs}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "revoke_workspace_invite",
 		Description: "Revoke a pending workspace invite before it's accepted. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in revokeInviteArgs) (*mcp.CallToolResult, okResult, error) {
@@ -112,7 +113,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, okResult{OK: err == nil}, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_workspace_seat_usage",
 		Description: "A workspace's member-seat usage: used counts accepted members plus outstanding invites; limit 0 means unlimited (paid plans). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, SeatUsageView, error) {
@@ -120,7 +121,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, u, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "resend_workspace_invite",
 		Description: "Re-send a pending workspace invite's email and refresh its expiry; the invite id is unchanged but the emailed link is freshly minted and supersedes the original. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in revokeInviteArgs) (*mcp.CallToolResult, InviteView, error) {
@@ -128,7 +129,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, inv, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_viewer_capabilities",
 		Description: "The caller's own effective permissions in the active workspace: role plus canView/canOperate/canCreate/canViewSensitive/canManage/canManageBilling booleans. Answers \"what can I do here\" before attempting a verb. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, Capabilities, error) {
@@ -136,7 +137,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, caps, err
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "accept_workspace_invite",
 		Description: "Redeem a workspace invite token for the authenticated caller — joins the inviting workspace at the invited role even when the caller signed up under a different email. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in acceptInviteArgs) (*mcp.CallToolResult, AcceptedInviteView, error) {

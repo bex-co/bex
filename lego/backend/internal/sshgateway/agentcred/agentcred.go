@@ -49,6 +49,13 @@ const (
 	maxShallowBoundaries = 1024
 )
 
+// Admission bounds used when no limiter is injected; cmd/ssh-gateway supplies
+// the configured ones.
+const (
+	defaultMaxConns       = 64
+	defaultMaxConnsPerPod = 4
+)
+
 // maxRequestBodyBytes caps one git smart-HTTP request body (a pack upload). A
 // legitimate session exchange is source-code sized; the cap exists so a
 // hostile Pod cannot drip an unbounded body at the shared gateway (codex
@@ -108,13 +115,24 @@ type Broker struct {
 	// pool is reused across requests (see httpClient).
 	clientOnce sync.Once
 	client     *http.Client
+
+	// limitsOnce/limits memoize the default limiter (see limiter).
+	limitsOnce sync.Once
+	limits     *sshgateway.SessionLimiter
 }
 
+// limiter returns the admission limiter, memoizing the default so acquire and
+// release always land on the SAME instance — a per-call instance makes the cap
+// count nothing.
 func (b *Broker) limiter() *sshgateway.SessionLimiter {
 	if b.Limits != nil {
 		return b.Limits
 	}
-	return sshgateway.NewSessionLimiter(0, 0)
+	// Explicit rather than NewSessionLimiter's zero-value defaults, which are
+	// tuned for SSH sessions (100/5) and would silently redefine this proxy's
+	// documented bound.
+	b.limitsOnce.Do(func() { b.limits = sshgateway.NewSessionLimiter(defaultMaxConns, defaultMaxConnsPerPod) })
+	return b.limits
 }
 
 func (b *Broker) Enabled() bool         { return b != nil && b.Pods != nil && b.API != nil }
@@ -139,12 +157,13 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 	// slot is held across the Pod lookup, credential mint, pkt-line
 	// validation, and the upstream exchange, and the body is byte-capped, so
 	// slow or stacked requests cost at most one bounded slot each.
-	if ok, scope := b.limiter().Acquire(sourceIP); !ok {
+	limiter := b.limiter()
+	if ok, scope := limiter.Acquire(sourceIP); !ok {
 		b.Metrics.LimitRejected(scope)
 		http.Error(w, "too many concurrent git requests from this sandbox", http.StatusTooManyRequests)
 		return
 	}
-	defer b.limiter().Release(sourceIP)
+	defer limiter.Release(sourceIP)
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
 	pod, err := b.Pods.ResolveSessionPod(r.Context(), namespace, sourceIP)
 	if err != nil {

@@ -20,6 +20,8 @@ import (
 	"context"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // mcp.go is the MCP fragment: list_jobs, create_job, get_job, cancel_job.
@@ -62,7 +64,7 @@ type jobIDArgs struct {
 
 // RegisterMCP adds the one-off job tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_jobs",
 		Description: "bex extension: list one-off jobs for a service, newest first. Returns the full history unless `limit` is set; pass the returned `cursor` back to page.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listJobsArgs) (*mcp.CallToolResult, listJobsResult, error) {
@@ -85,7 +87,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, res, nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_job",
 		Description: "bex extension: run a one-off command in the service's current container image (like `render jobs create`). The job is pending until the cluster schedules the pod; poll get_job until status is succeeded, failed, or canceled.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createJobArgs) (*mcp.CallToolResult, renderJob, error) {
@@ -96,7 +98,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, toRenderJob(v), nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_job",
 		Description: "bex extension: get a one-off job's current status — poll this after create_job until status is succeeded, failed, or canceled.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in jobIDArgs) (*mcp.CallToolResult, renderJob, error) {
@@ -107,7 +109,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		return nil, toRenderJob(v), nil
 	})
 
-	mcp.AddTool(srv, &mcp.Tool{
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "cancel_job",
 		Description: "bex extension: cancel a pending or running one-off job. Returns 409 if the job is already in a terminal state (succeeded/failed/canceled).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in jobIDArgs) (*mcp.CallToolResult, renderJob, error) {

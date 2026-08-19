@@ -21,7 +21,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
 // spawnSandboxArgs is the MCP input for spawn_sandbox. Template selects a
@@ -64,7 +64,7 @@ type execSandboxArgs struct {
 // Render `ea sandbox create` intent; sandbox_exec runs a command via the same
 // authorized gateway path the CLI uses, returning buffered output (no SSE dance).
 func (s *Service) RegisterMCP(server *mcp.Server) {
-	mcp.AddTool(server, &mcp.Tool{Name: "spawn_sandbox", Description: "Create a hosted agent sandbox from a registered template and return its id and status."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_sandbox", Description: "Create a hosted agent sandbox from a registered template and return its id and status."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in spawnSandboxArgs) (*mcp.CallToolResult, Sandbox, error) {
 			sb, err := s.Create(ctx, CreateRequest{
 				OwnerID:        in.OwnerID,
@@ -74,21 +74,21 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 				TimeoutSeconds: in.TimeoutSeconds,
 				NetworkPolicy:  in.NetworkPolicy,
 			})
-			return nil, sb, core.MCPError(err)
+			return nil, sb, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "list_sandboxes", Description: "List the caller's workspace's sandboxes with their statuses."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "list_sandboxes", Description: "List the caller's workspace's sandboxes with their statuses."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listSandboxesResult, error) {
 			out, err := s.List(ctx)
-			return nil, listSandboxesResult{Sandboxes: out}, core.MCPError(err)
+			return nil, listSandboxesResult{Sandboxes: out}, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "stop_sandbox", Description: "Terminate a sandbox by id."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "stop_sandbox", Description: "Terminate a sandbox by id."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, stopSandboxResult, error) {
 			err := s.Terminate(ctx, in.ID)
-			return nil, stopSandboxResult{Stopped: err == nil}, core.MCPError(err)
+			return nil, stopSandboxResult{Stopped: err == nil}, err
 		})
-	mcp.AddTool(server, &mcp.Tool{Name: "sandbox_exec", Description: "Run a shell command in a sandbox and return its stdout, stderr, and exit code."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "sandbox_exec", Description: "Run a shell command in a sandbox and return its stdout, stderr, and exit code."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in execSandboxArgs) (*mcp.CallToolResult, ExecResult, error) {
 			res, err := s.ExecBuffered(ctx, ExecRequest{OwnerID: in.OwnerID, SandboxID: in.ID, Command: in.Command})
-			return nil, res, core.MCPError(err)
+			return nil, res, err
 		})
 }

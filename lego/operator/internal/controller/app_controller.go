@@ -3376,8 +3376,10 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	// again (no re-run, no re-create after TTL reap).
 	firstForGen := true
 	started := time.Now().UTC().Format(time.RFC3339)
+	recordedJob := ""
 	if pd := app.Status.PreDeploy; pd != nil && pd.Generation == gen {
 		firstForGen = false
+		recordedJob = pd.Job
 		if pd.StartedAt != "" {
 			started = pd.StartedAt
 		}
@@ -3391,7 +3393,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	}
 
 	ns := r.buildNamespace(app.Namespace)
-	rev := fmt.Sprintf("gen-%d", gen)
+	rev := appv1alpha1.BuildRevision(gen)
 	jobName := predeploy.JobName(app.Name, rev)
 	failedPD := func(job, msg string) *appv1alpha1.PreDeployStatus {
 		return &appv1alpha1.PreDeployStatus{
@@ -3404,7 +3406,13 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	// on the FIRST pass for this revision. Re-checking a running migration has
 	// nothing newer to supersede (a newer generation would have reset firstForGen),
 	// so this avoids a wasted List on every requeue.
-	if firstForGen {
+	//
+	// The recordedJob mismatch is the exception: this revision already started a
+	// Job under a DIFFERENT name, which means the name derivation changed under a
+	// running step. Without sweeping here, Ensure would create a second Job and
+	// run the migration concurrently with the first — the one thing BackoffLimit
+	// 0 exists to prevent.
+	if firstForGen || (recordedJob != "" && recordedJob != jobName) {
 		if err := predeploy.CancelSuperseded(ctx, app.Name, string(app.UID), ns, jobName, r.Client); err != nil {
 			return r.failPreDeploy(ctx, app, failedPD(jobName, err.Error()), fmt.Errorf("pre-deploy: %w", err))
 		}
