@@ -1677,7 +1677,7 @@ func (r *AppReconciler) desiredReplicas(ctx context.Context, app *appv1alpha1.Ap
 	if autoHibernating {
 		replicas = 0
 	}
-	return replicas, autoscaleRequeue, autoHibernating
+	return clampReplicas(replicas), autoscaleRequeue, autoHibernating
 }
 
 // ingressBackend picks the Service/port the public Ingress routes to.
@@ -3116,6 +3116,20 @@ func effectiveReplicas(app *appv1alpha1.App) int32 {
 		return 1
 	}
 	return app.Spec.Replicas
+}
+
+// clampReplicas is the operator's last bound on a Deployment replica target:
+// never negative, never above the CRD/API ceiling. Autoscaling min/max on a
+// hand-applied App CR are attacker-controlled integers; without this clamp
+// they become spec.replicas on a shared cluster (codex round-15 #1).
+func clampReplicas(n int32) int32 {
+	if n <= 0 {
+		return 0
+	}
+	if n > appv1alpha1.MaxReplicas {
+		return appv1alpha1.MaxReplicas
+	}
+	return n
 }
 
 // tlsSecretName gives each host its own certificate secret so one domain's

@@ -345,6 +345,12 @@ func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, f
 	if err := s.Authorize(ctx, core.RelCanViewSensitive); err != nil {
 		return BlueprintPreview{}, err
 	}
+	// RelCanViewSensitive is a read relation, so Authorize uses the decision
+	// cache. Private repo contents are a sensitive sink: re-check uncached
+	// before any Git fetch (codex round-15 #4).
+	if err := s.AuthorizeFresh(ctx, core.RelCanViewSensitive); err != nil {
+		return BlueprintPreview{}, err
+	}
 	if repo == "" || branch == "" {
 		return BlueprintPreview{}, fmt.Errorf("%w: repo and branch are required", core.ErrBadRequest)
 	}
@@ -527,7 +533,10 @@ func (s *Service) ListBlueprints(ctx context.Context, ownerID string) ([]Bluepri
 // would be a read-around of both (codex r7 #11). Get/list blank Manifest for
 // callers below that role; blueprint metadata stays viewer-readable.
 func (s *Service) canReadManifest(ctx context.Context) bool {
-	return s.Can(ctx, core.RelCanViewSensitive)
+	// RelCanViewSensitive is a read relation, so Can/Authorize would ride a
+	// stale positive. Get/list blank Manifest rather than failing the whole
+	// read: metadata stays viewer-readable (codex round-15 #4).
+	return s.AuthorizeFresh(ctx, core.RelCanViewSensitive) == nil
 }
 
 // SyncBlueprint re-applies the blueprint by id.

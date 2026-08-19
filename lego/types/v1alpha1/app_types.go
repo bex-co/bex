@@ -370,6 +370,8 @@ type AppSpec struct {
 	// Replicas for the kubernetes runtime (pods bin-packed across machines/nodes).
 	// +optional
 	// +kubebuilder:default=1
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
 	Replicas int32 `json:"replicas,omitempty"`
 
 	// Port the application listens on (PORT is injected).
@@ -622,6 +624,12 @@ type AppSpec struct {
 // spec readers use EffectivePort.
 const DefaultPort = 3000
 
+// MaxReplicas is the platform-wide ceiling on spec.replicas and on autoscaling
+// min/max. Shared by the API validators, the CRD schema, and the operator's
+// replica projection so a hand-applied App CR cannot drive a Deployment past
+// the bound the API enforces (codex round-15 #1).
+const MaxReplicas int32 = 100
+
 // EffectivePort returns the port the App's container listens on: spec.port,
 // or DefaultPort when unset. The single defaulting rule the operator's
 // Deployment/Service derivation and bex-api's address/blueprint projections
@@ -712,12 +720,14 @@ type AutoscalingSpec struct {
 	// below this. Must be ≥ 0. Defaults to 1 when omitted and autoscaling is enabled.
 	// +optional
 	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
 	MinReplicas int32 `json:"minReplicas,omitempty"`
 
 	// MaxReplicas is the upper replica bound; the autoscaler never drives replicas
 	// above this. Must be ≥ MinReplicas. Required when Enabled.
 	// +optional
 	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
 	MaxReplicas int32 `json:"maxReplicas,omitempty"`
 
 	// TargetCPUPercent is the desired average CPU utilization as a percentage of

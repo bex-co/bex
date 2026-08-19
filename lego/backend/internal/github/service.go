@@ -208,13 +208,22 @@ func (s *Service) connectFromCallback(ctx context.Context, nonce, caller string,
 	if !ok {
 		return Connection{}, fmt.Errorf("%w: could not verify you administer this GitHub installation", core.ErrForbidden)
 	}
+	// The nonce was minted after can_manage at StartConnect, but the callback
+	// can arrive minutes later (GitHub's install UI). Re-check the initiator's
+	// current administration of THAT workspace so a demotion or membership
+	// revocation inside the connect window cannot still bind the installation
+	// (codex round-15 #3). Authz nil still allows (local/dev).
+	freshCtx := core.WithIdentity(ctx, core.Identity{Subject: txn.Subject, Method: "session"})
+	if err := s.AuthorizeFreshOn(freshCtx, core.RelCanManage, core.WorkspaceObject(txn.TenantID)); err != nil {
+		return Connection{}, err
+	}
 	return s.connectWithWorkspace(ctx, txn.TenantID, installationID)
 }
 
 // connectWithWorkspace records a connection for the workspace authenticated by
 // a verified state credential. It deliberately is not an exported service verb:
 // it has no caller Identity to authorize, and must only be called by the callback
-// after both verifyConnectState and the installation-admin proof succeed.
+// after the initiator, installation-admin, and current can_manage proofs succeed.
 func (s *Service) connectWithWorkspace(ctx context.Context, workspaceID string, installationID int64) (Connection, error) {
 	if !s.configured() {
 		return Connection{}, core.ErrGitHubUnavailable

@@ -50,6 +50,15 @@ func webParams() deploymentParams {
 	return deploymentParams{image: "zot.local:5000/hello:rev-1", port: 8080, replicas: 2}
 }
 
+func TestApplyDeploymentSpecCapsOversizedReplicas(t *testing.T) {
+	dep := project(projectionApp(), deploymentParams{
+		image: "img", port: 8080, replicas: 2_000_000_000,
+	})
+	if dep.Spec.Replicas == nil || *dep.Spec.Replicas != appv1alpha1.MaxReplicas {
+		t.Fatalf("replicas = %v, want platform ceiling %d", dep.Spec.Replicas, appv1alpha1.MaxReplicas)
+	}
+}
+
 func appContainerOf(t *testing.T, dep *appsv1.Deployment) corev1.Container {
 	t.Helper()
 	if n := len(dep.Spec.Template.Spec.Containers); n != 1 {

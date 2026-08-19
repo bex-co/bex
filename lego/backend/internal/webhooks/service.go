@@ -716,6 +716,11 @@ func parseDestination(raw string) (string, error) {
 			"url must not embed credentials in userinfo; provider tokens belong in the destination's own auth layer",
 			map[string]any{"field": "url"})
 	}
+	if len(dest) > store.MaxWebhookURLBytes {
+		return "", core.NewBadRequestError(WebhookURLInvalidCode,
+			fmt.Sprintf("url must be at most %d bytes", store.MaxWebhookURLBytes),
+			map[string]any{"field": "url", "limit": store.MaxWebhookURLBytes})
+	}
 	return dest, nil
 }
 

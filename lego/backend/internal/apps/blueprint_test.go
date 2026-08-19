@@ -629,8 +629,8 @@ func TestPreviewBlueprintRequiresSensitiveRead(t *testing.T) {
 	if _, err := svc.PreviewBlueprint(ctx, "", "https://github.com/a/app", "main", ""); err != nil {
 		t.Fatalf("sensitive preview: %v", err)
 	}
-	if len(checker.asked) != 1 || checker.asked[0] != core.RelCanViewSensitive {
-		t.Fatalf("preview relations = %v, want only can_view_sensitive", checker.asked)
+	if len(checker.asked) != 2 || checker.asked[0] != core.RelCanViewSensitive || checker.asked[1] != core.RelCanViewSensitive {
+		t.Fatalf("preview relations = %v, want Authorize + AuthorizeFresh on can_view_sensitive", checker.asked)
 	}
 }
 

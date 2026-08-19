@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -903,6 +904,15 @@ func (s *Service) runResume(ctx context.Context, record store.AgentSession) {
 // credential. The agent image's entrypoint untars it before the driver starts.
 const restoreEnvVar = "BEX_AGENT_RESTORE_URL"
 
+// restoreEnvSHA / restoreEnvBytes are the recorded snapshot digest and size
+// the driver verifies after download, before tar extract (codex round-15 #7).
+// Empty SHA / zero bytes leave verification optional so a row that predates
+// digest recording still restores.
+const (
+	restoreEnvSHA   = "BEX_AGENT_RESTORE_SHA"
+	restoreEnvBytes = "BEX_AGENT_RESTORE_BYTES"
+)
+
 // rehydrate is the shared ADR059 D4 restore path used by Resume and by Steer of
 // a hibernated session: it mints a presigned snapshot download URL, claims the
 // row (hibernated → resuming, keeping the snapshot for retry), and dispatches a
@@ -948,6 +958,12 @@ func (s *Service) rehydrate(ctx context.Context, record store.AgentSession, stee
 	}
 	env := s.driverEnv(config, record)
 	env[restoreEnvVar] = restoreURL
+	if record.SnapshotSHA != "" {
+		env[restoreEnvSHA] = record.SnapshotSHA
+	}
+	if record.SnapshotBytes > 0 {
+		env[restoreEnvBytes] = strconv.FormatInt(record.SnapshotBytes, 10)
+	}
 	// Resume is restore-only: never rerun config.Task. A hibernated Steer carries
 	// exactly the durable prompt inserted by BeginRehydrate above.
 	env["BEX_AGENT_PROMPT"] = steerPrompt

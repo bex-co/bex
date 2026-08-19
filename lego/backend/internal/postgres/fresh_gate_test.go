@@ -141,3 +141,27 @@ func TestListExportsFailsClosedOnFreshRevocation(t *testing.T) {
 		t.Fatalf("ListExports on a stale positive: %v, want ErrForbidden", err)
 	}
 }
+
+// codex round-15 #4: live process/query-text insights dial the tenant database
+// after a cached Authorize. A stale positive must not surface query text.
+func TestProcessesFailsClosedOnFreshRevocation(t *testing.T) {
+	svc, cl := newService()
+	seedDatabase(t, cl, "fresh-proc")
+	svc.Authz = staleAllowChecker{}
+	ctx := ctxAs("user-a")
+
+	if _, err := svc.Processes(ctx, "fresh-proc"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("Processes on a stale positive: %v, want ErrForbidden", err)
+	}
+}
+
+func TestTopQueriesFailsClosedOnFreshRevocation(t *testing.T) {
+	svc, cl := newService()
+	seedDatabase(t, cl, "fresh-tq")
+	svc.Authz = staleAllowChecker{}
+	ctx := ctxAs("user-a")
+
+	if _, err := svc.TopQueries(ctx, "fresh-tq"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("TopQueries on a stale positive: %v, want ErrForbidden", err)
+	}
+}
