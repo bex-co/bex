@@ -1,28 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { translatedTitleHead } from "@/common/lib/document-head";
 
-// Hydra's urls.device.verification points here. All work is server-side: the
-// route bridges the user_code/device_challenge into Hydra, whose returned
-// redirect continues through the existing Kratos login and consent routes.
-// The grant never pairs on a GET: a signed-out visitor is bounced through
-// login first (code + challenge preserved in `next`), and every caller —
-// signed in or fresh from that bounce — must confirm via the same-origin,
-// session-bound POST before pairing (handleDeviceConfirm, codex-security #9).
+// Pure layout for the `/auth/device/*` subtree. Hydra's registered
+// `redirect_uri` for the success landing page is the sibling literal path
+// `/auth/device/success` (deploy/gitops/*/values/hydra.values.yaml, not
+// renameable) — a genuine child route of this one in TanStack Router's tree,
+// so this file must render `<Outlet/>` for it to appear at all. Carrying no
+// `component` is what does that (TanStack Router's default for an unset
+// component). The GET/POST bridge to Hydra, and the confirm page itself,
+// live on the sibling index route (auth.device.index.tsx) — the route tree's
+// index-route processing claims the exact `/auth/device` path for whichever
+// route's `fullPath` ends in `/`, so `server.handlers` has to live there, not
+// here, or the platform's SSR document handler intercepts the request first
+// (found the hard way: a first attempt with handlers here silently served a
+// blank 200 instead of the GET handler's 302/503/confirm-view responses).
+//
+// `head` stays here rather than on the index route: it's the one title for
+// this whole subtree's entry page, and route-heads.test.ts asserts it against
+// this route module.
 export const Route = createFileRoute("/auth/device")({
-  server: {
-    handlers: ({ createHandlers }) =>
-      createHandlers({
-        GET: async ({ request }) => {
-          const { handleDeviceVerification } =
-            await import("@/common/server-fn/hydra-device");
-          return handleDeviceVerification(request);
-        },
-        POST: async ({ request }) => {
-          const { handleDeviceConfirm } =
-            await import("@/common/server-fn/hydra-device");
-          return handleDeviceConfirm(request);
-        },
-      }),
-  },
   head: ({ match }) => translatedTitleHead("auth.deviceTitle", match),
 });
