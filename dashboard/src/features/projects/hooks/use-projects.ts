@@ -1,12 +1,17 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
-import { ProjectsDocument, type ProjectsQuery } from "@/graphql/definitions";
+import {
+  ProjectsDocument,
+  type ProjectQuery,
+  type ProjectsQuery,
+} from "@/graphql/definitions";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { nonNull } from "@/common/lib/non-null";
 
 export interface ProjectView {
   id: string;
@@ -35,28 +40,30 @@ export interface UseProjectsResult {
   refetch: () => Promise<unknown>;
 }
 
+/** Normalize one project row (list item or single-project read) onto the
+ * non-null ProjectView. The list rows structurally satisfy the single-read
+ * shape (they select a superset of its fields). */
+export function mapProject(
+  project: NonNullable<ProjectQuery["project"]>,
+  ownerFallback = "",
+): ProjectView {
+  return {
+    id: project.id ?? "",
+    name: project.name ?? "",
+    ownerId: project.ownerId ?? ownerFallback,
+    serviceIds: (project.serviceIds ?? []).filter(nonNull),
+    databaseIds: (project.databaseIds ?? []).filter(nonNull),
+    keyValueIds: (project.keyValueIds ?? []).filter(nonNull),
+  };
+}
+
 export function mapProjects(
   raw: ProjectsQuery["projects"] | undefined,
   ownerFallback = "",
 ): ProjectView[] {
   return (raw ?? [])
-    .filter(
-      (project): project is NonNullable<typeof project> => project != null,
-    )
-    .map((project) => ({
-      id: project.id ?? "",
-      name: project.name ?? "",
-      ownerId: project.ownerId ?? ownerFallback,
-      serviceIds: (project.serviceIds ?? []).filter(
-        (id): id is string => id != null,
-      ),
-      databaseIds: (project.databaseIds ?? []).filter(
-        (id): id is string => id != null,
-      ),
-      keyValueIds: (project.keyValueIds ?? []).filter(
-        (id): id is string => id != null,
-      ),
-    }));
+    .filter(nonNull)
+    .map((project) => mapProject(project, ownerFallback));
 }
 
 /**

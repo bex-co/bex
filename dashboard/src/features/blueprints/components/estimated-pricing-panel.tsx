@@ -1,15 +1,11 @@
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Badge } from "@/common/components/ui/badge";
-import type {
-  BlueprintEstimatedPricing,
-  BlueprintVariableReason,
-} from "../types";
+import type { BlueprintEstimatedPricing } from "../types";
 
-/** Reason enum → row badge + footnote phrase translation keys. */
-const REASONS: Record<
-  BlueprintVariableReason,
-  { labelKey: string; excludeKey: string }
-> = {
+/** Reason string → row badge + footnote phrase translation keys. Keyed openly
+ * (see BlueprintVariableCost.reason): an unknown reason falls back to the
+ * generic "Variable" badge below. */
+const REASONS: Record<string, { labelKey: string; excludeKey: string }> = {
   autoscaling: {
     labelKey: "blueprints.pricingReasonAutoscaling",
     excludeKey: "blueprints.pricingExcludeAutoscaling",

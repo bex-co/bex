@@ -6326,6 +6326,7 @@ __metadata:
     "@graphql-codegen/typed-document-node": "npm:^7.0.0"
     "@graphql-codegen/typescript": "npm:^6.1.0"
     "@graphql-codegen/typescript-operations": "npm:^6.1.5"
+    "@graphql-typed-document-node/core": "npm:^3.2.0"
     "@ory/client-fetch": "npm:1.22.22"
     "@ory/elements-react": "npm:^1.2.0"
     "@radix-ui/react-alert-dialog": "npm:^1.1.15"

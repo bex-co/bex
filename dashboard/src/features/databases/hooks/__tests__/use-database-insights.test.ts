@@ -19,7 +19,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DatabaseParameterOverridesDocument,
   SetDatabaseParameterOverridesDocument,
-} from "@/features/databases/api/operations";
+} from "@/graphql/definitions";
 import { useDatabaseInsights } from "@/features/databases/hooks/use-database-insights";
 
 const mockUseQuery = vi.fn();

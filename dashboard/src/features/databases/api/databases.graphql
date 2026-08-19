@@ -77,6 +77,15 @@ query DatabaseConnectionInfo($id: String!) {
   }
 }
 
+# The pooled-connection subset of connection info (PgBouncer surface): read on
+# its own so the pooler panel never fetches the password-bearing fields above.
+query DatabasePooledConnection($id: String!) {
+  databaseConnectionInfo(id: $id) {
+    internalConnectionPoolString
+    externalConnectionPoolString
+  }
+}
+
 # --- advanced managed-Postgres surface (w1/m17) ---
 
 query DatabaseRecoveryInfo($id: String!) {

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@apollo/client/react";
-import { BlueprintPreviewDocument } from "@/features/blueprints/api/operations";
+import { BlueprintPreviewDocument } from "@/graphql/definitions";
 import type { BlueprintPreviewResult } from "@/features/blueprints/types";
+import { toBlueprintPreviewResult } from "@/features/blueprints/lib/views";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface UseBlueprintPreviewResult {
@@ -55,8 +56,16 @@ export function useBlueprintPreview(
     debounced.branch === branch &&
     debounced.path === path;
 
+  const preview = useMemo(
+    () =>
+      data?.blueprintPreview
+        ? toBlueprintPreviewResult(data.blueprintPreview)
+        : null,
+    [data],
+  );
+
   return {
-    preview: skip ? null : (data?.blueprintPreview ?? null),
+    preview: skip ? null : preview,
     loading: !skip && (loading || !settled),
     error,
     refetch,

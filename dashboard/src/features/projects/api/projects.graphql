@@ -14,6 +14,21 @@ query Projects($ownerId: String!) {
   }
 }
 
+# Single-project read used by the route loader and its two child pages.
+# Deliberately NOT ...ProjectFields: this byte-matches the selection the
+# hand-written document shipped (no createdAt) so migrating provenance does
+# not change the wire query. Fragment hygiene is tracked in w1/067.
+query Project($id: String!) {
+  project(id: $id) {
+    id
+    name
+    ownerId
+    serviceIds
+    databaseIds
+    keyValueIds
+  }
+}
+
 mutation CreateProject($name: String!, $ownerId: String!) {
   createProject(name: $name, ownerId: $ownerId) {
     ...ProjectFields

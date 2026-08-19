@@ -4,10 +4,11 @@ import { toast } from "sonner";
 import {
   CreateBlueprintDocument,
   type BlueprintEnvVarValueInput,
-} from "@/features/blueprints/api/operations";
+} from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { BlueprintView } from "@/features/blueprints/types";
+import { toBlueprintView } from "@/features/blueprints/lib/views";
 import {
   protectedConfirmationFromError,
   type ProtectedActionResult,
@@ -68,7 +69,7 @@ export function useCreateBlueprint(): UseCreateBlueprintResult {
           return { status: "error" };
         }
         toast.success(t("blueprints.createSuccess"));
-        return { status: "success", blueprint };
+        return { status: "success", blueprint: toBlueprintView(blueprint) };
       } catch (err) {
         if (isPaymentOnboardingCancelled(err)) return { status: "error" };
         const requiredConfirmation = protectedConfirmationFromError(err);

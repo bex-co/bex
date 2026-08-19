@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
 import { useLazyQuery } from "@apollo/client/react";
-import { ValidateBlueprintDocument } from "@/features/blueprints/api/operations";
+import { ValidateBlueprintDocument } from "@/graphql/definitions";
 import type { BlueprintValidationResult } from "@/features/blueprints/types";
+import { toBlueprintValidationResult } from "@/features/blueprints/lib/views";
 
 export interface UseValidateBlueprintResult {
   validate: (bexYaml: string) => Promise<BlueprintValidationResult | null>;
@@ -19,7 +20,9 @@ export function useValidateBlueprint(): UseValidateBlueprintResult {
     async (bexYaml: string): Promise<BlueprintValidationResult | null> => {
       setResult(null);
       const res = await run({ variables: { bexYaml } });
-      const validation = res.data?.validateBlueprint ?? null;
+      const validation = res.data?.validateBlueprint
+        ? toBlueprintValidationResult(res.data.validateBlueprint)
+        : null;
       setResult(validation);
       return validation;
     },

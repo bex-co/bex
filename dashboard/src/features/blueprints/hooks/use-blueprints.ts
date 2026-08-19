@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
-import { BlueprintsDocument } from "@/features/blueprints/api/operations";
+import { BlueprintsDocument } from "@/graphql/definitions";
 import type { BlueprintView } from "@/features/blueprints/types";
+import { toBlueprintView } from "@/features/blueprints/lib/views";
+import { nonNull } from "@/common/lib/non-null";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
@@ -31,7 +33,7 @@ export function useBlueprints(): UseBlueprintsResult {
   });
 
   const blueprints = useMemo(
-    () => (data?.blueprints ?? []).filter((b): b is BlueprintView => b != null),
+    () => (data?.blueprints ?? []).filter(nonNull).map(toBlueprintView),
     [data],
   );
 

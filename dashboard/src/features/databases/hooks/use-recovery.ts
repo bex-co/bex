@@ -6,14 +6,15 @@ import {
   DatabaseExportsDocument,
   CreateDatabaseExportDocument,
   RecoverDatabaseDocument,
-  type DatabaseBackup,
-  type DatabaseExport,
-} from "@/features/databases/api/operations";
+  type DatabaseExportsQuery,
+  type DatabaseRecoveryInfoQuery,
+} from "@/graphql/definitions";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { nonNull } from "@/common/lib/non-null";
 
 export interface BackupItem {
   id: string;
@@ -29,35 +30,33 @@ export interface ExportItem extends BackupItem {
   failureReason: string | null;
 }
 
+type BackupNodes = NonNullable<
+  DatabaseRecoveryInfoQuery["databaseRecoveryInfo"]
+>["backups"];
+
+type ExportNodes = DatabaseExportsQuery["databaseExports"];
+
 /** Normalize a nullable list of backup nodes (base backups or exports) onto
  * the non-null BackupItem view — shared by the recovery-info and exports reads. */
-function mapBackups(
-  nodes: Array<DatabaseBackup | null> | null | undefined,
-): BackupItem[] {
-  return (nodes ?? [])
-    .filter((b): b is DatabaseBackup => b != null)
-    .map((b) => ({
-      id: b.id ?? "",
-      status: b.status ?? "",
-      createdAt: b.createdAt ?? null,
-    }));
+function mapBackups(nodes: BackupNodes | undefined): BackupItem[] {
+  return (nodes ?? []).filter(nonNull).map((b) => ({
+    id: b.id ?? "",
+    status: b.status ?? "",
+    createdAt: b.createdAt ?? null,
+  }));
 }
 
-function mapExports(
-  nodes: Array<DatabaseExport | null> | null | undefined,
-): ExportItem[] {
-  return (nodes ?? [])
-    .filter((item): item is DatabaseExport => item != null)
-    .map((item) => ({
-      id: item.id ?? "",
-      status: item.status ?? "",
-      createdAt: item.createdAt ?? null,
-      url: item.url ?? null,
-      urlExpiresAt: item.urlExpiresAt ?? null,
-      expiresAt: item.expiresAt ?? null,
-      filename: item.filename ?? null,
-      failureReason: item.failureReason ?? null,
-    }));
+function mapExports(nodes: ExportNodes | undefined): ExportItem[] {
+  return (nodes ?? []).filter(nonNull).map((item) => ({
+    id: item.id ?? "",
+    status: item.status ?? "",
+    createdAt: item.createdAt ?? null,
+    url: item.url ?? null,
+    urlExpiresAt: item.urlExpiresAt ?? null,
+    expiresAt: item.expiresAt ?? null,
+    filename: item.filename ?? null,
+    failureReason: item.failureReason ?? null,
+  }));
 }
 
 export interface RecoveryInfo {

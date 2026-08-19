@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { DisconnectBlueprintDocument } from "@/features/blueprints/api/operations";
+import { DisconnectBlueprintDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 

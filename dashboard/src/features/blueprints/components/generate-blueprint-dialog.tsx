@@ -17,7 +17,7 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
 import { useKeyValues } from "@/features/keyvalue/hooks/use-key-values";
-import { GenerateBlueprintDocument } from "@/features/blueprints/api/operations";
+import { GenerateBlueprintDocument } from "@/graphql/definitions";
 
 function SelectableList({
   label,

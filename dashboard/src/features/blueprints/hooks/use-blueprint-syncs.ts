@@ -1,7 +1,9 @@
 import { useQuery } from "@apollo/client/react";
-import { BlueprintSyncsDocument } from "@/features/blueprints/api/operations";
+import { BlueprintSyncsDocument } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { BlueprintSyncView } from "@/features/blueprints/types";
+import { toBlueprintSyncView } from "@/features/blueprints/lib/views";
+import { nonNull } from "@/common/lib/non-null";
 
 export interface UseBlueprintSyncsResult {
   syncs: BlueprintSyncView[];
@@ -21,9 +23,9 @@ export function useBlueprintSyncs(
     errorPolicy: "all",
   });
 
-  const syncs: BlueprintSyncView[] = (data?.blueprintSyncs ?? []).filter(
-    (s): s is BlueprintSyncView => s != null,
-  );
+  const syncs: BlueprintSyncView[] = (data?.blueprintSyncs ?? [])
+    .filter(nonNull)
+    .map(toBlueprintSyncView);
 
   return {
     syncs,

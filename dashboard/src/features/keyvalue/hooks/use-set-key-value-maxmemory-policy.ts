@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   KeyValueMaxmemoryPolicyDocument,
   SetKeyValueMaxmemoryPolicyDocument,
-} from "@/features/keyvalue/api/operations";
+} from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 export interface UseSetKeyValueMaxmemoryPolicyResult {

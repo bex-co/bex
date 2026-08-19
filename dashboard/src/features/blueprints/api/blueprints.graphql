@@ -1,0 +1,213 @@
+# The Blueprints dashboard surface (w7/m27) — mirrors the GraphQL operations
+# bex-api registers in apps/graphql.go (w2/m15 + w7/m27 + w2/m62). Selections
+# byte-match the previously hand-written TypedDocumentNodes (w1/m79/t001) so
+# the provenance change is not a wire change.
+
+# --- queries ---
+
+query Blueprints($ownerId: String) {
+  blueprints(ownerId: $ownerId) {
+    id
+    name
+    repo
+    branch
+    path
+    autoSync
+    status
+    lastSync
+    createdAt
+    updatedAt
+  }
+}
+
+query Blueprint($id: String!, $ownerId: String) {
+  blueprint(id: $id, ownerId: $ownerId) {
+    id
+    name
+    repo
+    branch
+    path
+    autoSync
+    manifest
+    status
+    lastSync
+    resources {
+      id
+      name
+      type
+    }
+    createdAt
+    updatedAt
+  }
+}
+
+query BlueprintSyncs($id: String!, $ownerId: String, $cursor: String, $limit: Int) {
+  blueprintSyncs(id: $id, ownerId: $ownerId, cursor: $cursor, limit: $limit) {
+    id
+    commitId
+    state
+    startedAt
+    completedAt
+  }
+}
+
+query ValidateBlueprint($bexYaml: String!) {
+  validateBlueprint(bexYaml: $bexYaml) {
+    valid
+    errors
+  }
+}
+
+query BlueprintPreview(
+  $repo: String!
+  $branch: String!
+  $path: String
+  $ownerId: String
+) {
+  blueprintPreview(repo: $repo, branch: $branch, path: $path, ownerId: $ownerId) {
+    found
+    commitId
+    error
+    validation {
+      valid
+      errors
+      plan {
+        mode
+        services
+        databases
+        keyValue
+        envGroups
+        syncFalseVars
+        totalActions
+        actions {
+          operation
+          kind
+          name
+          sourcePath
+          resourceId
+          changedFields {
+            path
+          }
+          message
+        }
+      }
+      estimatedPricing {
+        totalUsd
+        lines {
+          name
+          tierLabel
+          monthlyUsd
+          instanceUsd
+          storageUsd
+          storageGb
+        }
+        variable {
+          name
+          reason
+        }
+      }
+    }
+  }
+}
+
+query GenerateBlueprint(
+  $ownerId: String
+  $serviceIds: [String]
+  $postgresIds: [String]
+  $keyValueIds: [String]
+) {
+  generateBlueprint(
+    ownerId: $ownerId
+    serviceIds: $serviceIds
+    postgresIds: $postgresIds
+    keyValueIds: $keyValueIds
+  ) {
+    manifest
+    filename
+  }
+}
+
+# --- mutations ---
+
+mutation CreateBlueprint(
+  $repo: String!
+  $branch: String!
+  $path: String
+  $name: String
+  $confirm: String
+  $ownerId: String
+  $envVarValues: [BlueprintEnvVarValueInput]
+) {
+  createBlueprint(
+    repo: $repo
+    branch: $branch
+    path: $path
+    name: $name
+    confirm: $confirm
+    ownerId: $ownerId
+    envVarValues: $envVarValues
+  ) {
+    id
+    name
+    repo
+    branch
+    path
+    autoSync
+    status
+    lastSync
+    createdAt
+    updatedAt
+  }
+}
+
+mutation UpdateBlueprint(
+  $id: String!
+  $name: String
+  $autoSync: Boolean
+  $path: String
+  $ownerId: String
+) {
+  updateBlueprint(
+    id: $id
+    name: $name
+    autoSync: $autoSync
+    path: $path
+    ownerId: $ownerId
+  ) {
+    id
+    name
+    repo
+    branch
+    path
+    autoSync
+    status
+    lastSync
+    updatedAt
+  }
+}
+
+mutation DisconnectBlueprint($id: String!, $ownerId: String) {
+  disconnectBlueprint(id: $id, ownerId: $ownerId)
+}
+
+mutation SyncBlueprint(
+  $id: String!
+  $ownerId: String
+  $bexYaml: String
+  $confirm: String
+) {
+  syncBlueprint(id: $id, ownerId: $ownerId, bexYaml: $bexYaml, confirm: $confirm) {
+    blueprint {
+      id
+      name
+      status
+      lastSync
+      updatedAt
+    }
+    services {
+      id
+      name
+    }
+    databases
+  }
+}

@@ -1,10 +1,11 @@
 import { useState, useCallback } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { UpdateBlueprintDocument } from "@/features/blueprints/api/operations";
+import { UpdateBlueprintDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { BlueprintView } from "@/features/blueprints/types";
+import { toBlueprintView } from "@/features/blueprints/lib/views";
 
 export interface UseUpdateBlueprintResult {
   update: (
@@ -31,7 +32,9 @@ export function useUpdateBlueprint(): UseUpdateBlueprintResult {
           variables: { id, ownerId: currentWorkspaceId, ...fields },
         });
         toast.success(t("blueprints.updateSuccess"));
-        return res.data?.updateBlueprint ?? null;
+        return res.data?.updateBlueprint
+          ? toBlueprintView(res.data.updateBlueprint)
+          : null;
       } catch {
         toast.error(t("blueprints.updateError"));
         return null;

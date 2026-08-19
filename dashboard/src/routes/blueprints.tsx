@@ -13,7 +13,7 @@ import {
   titleLoaderFetchPolicy,
 } from "@/common/lib/document-head";
 import { prefetchInParallel } from "@/common/lib/prefetch";
-import { BlueprintsDocument } from "@/features/blueprints/api/operations";
+import { BlueprintsDocument } from "@/graphql/definitions";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {

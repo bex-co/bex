@@ -1,8 +1,12 @@
 import { useMutation } from "@apollo/client/react";
 import {
   ExecuteDatabaseQueryDocument,
-  type DatabaseQueryResult,
-} from "@/features/databases/api/operations";
+  type ExecuteDatabaseQueryMutation,
+} from "@/graphql/definitions";
+
+type DatabaseQueryResult = NonNullable<
+  ExecuteDatabaseQueryMutation["executeDatabaseQuery"]
+>;
 
 export interface QueryResult {
   columns: string[];
