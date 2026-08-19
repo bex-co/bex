@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { DeviceView } from "@/common/server-fn/hydra-device";
+import type {
+  DeviceErrorCode,
+  DeviceView,
+} from "@/common/server-fn/hydra-device";
 import DeviceConfirmPage from "@/features/auth/pages/device-confirm-page";
 
 // The index route for the /auth/device layout (auth.device.tsx) — matches
@@ -19,9 +22,18 @@ export const Route = createFileRoute("/auth/device/")({
           const { handleDeviceVerification } =
             await import("@/common/server-fn/hydra-device");
           const result = await handleDeviceVerification(request);
-          return result instanceof Response
-            ? result
-            : next({ context: { device: result } });
+          if (result instanceof Response) return result;
+          // One `next()` call with a uniformly-typed context object — a
+          // per-branch `next()` call forces TanStack's context inference to
+          // the first branch's literal shape and rejects the second.
+          const context: {
+            device: DeviceView | null;
+            deviceErrorCode: DeviceErrorCode | null;
+          } =
+            "errorCode" in result
+              ? { device: null, deviceErrorCode: result.errorCode }
+              : { device: result, deviceErrorCode: null };
+          return next({ context });
         },
         POST: async ({ request }) => {
           const { handleDeviceConfirm } =
@@ -43,9 +55,19 @@ export const Route = createFileRoute("/auth/device/")({
   // login-first bounce lands here that way, same as the consent route) yields
   // none, which the page turns back into a document load so the handler
   // actually runs.
-  loader: ({ serverContext }): { device: DeviceView | null } => ({
-    device:
-      (serverContext as { device?: DeviceView } | undefined)?.device ?? null,
-  }),
+  loader: ({
+    serverContext,
+  }): {
+    device: DeviceView | null;
+    deviceErrorCode: DeviceErrorCode | null;
+  } => {
+    const ctx = serverContext as
+      | { device?: DeviceView; deviceErrorCode?: DeviceErrorCode }
+      | undefined;
+    return {
+      device: ctx?.device ?? null,
+      deviceErrorCode: ctx?.deviceErrorCode ?? null,
+    };
+  },
   component: DeviceConfirmPage,
 });

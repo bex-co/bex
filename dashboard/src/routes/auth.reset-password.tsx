@@ -14,7 +14,7 @@ export const Route = createFileRoute("/auth/reset-password")({
   component: SettingsPage,
   beforeLoad: requireAuth(),
   head: ({ match }) => ({
-    ...translatedTitleHead("auth.forgotPasswordTitle", match),
+    ...translatedTitleHead("auth.resetPasswordTitle", match),
     styles: [oryThemeStyle],
   }),
 });

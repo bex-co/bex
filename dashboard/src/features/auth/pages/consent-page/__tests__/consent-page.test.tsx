@@ -1,18 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import type { ConsentView } from "@/common/server-fn/hydra-consent";
+import type {
+  ConsentErrorCode,
+  ConsentView,
+} from "@/common/server-fn/hydra-consent";
 
 // The page is a pure render of the loader data the route's GET handler produced
 // (docs/ADR012-auth.md §7, w4/m16) — mock the route accessor so the test drives
 // that data directly, with no router mount and no Hydra.
 const routeData = vi.hoisted(() => ({
   consent: null as ConsentView | null,
+  consentErrorCode: null as ConsentErrorCode | null,
+  consentRequiredScopes: null as string[] | null,
   challenge: undefined as string | undefined,
 }));
 vi.mock("@tanstack/react-router", async (orig) => ({
   ...(await orig<typeof import("@tanstack/react-router")>()),
   getRouteApi: () => ({
-    useLoaderData: () => ({ consent: routeData.consent }),
+    useLoaderData: () => ({
+      consent: routeData.consent,
+      consentErrorCode: routeData.consentErrorCode,
+      consentRequiredScopes: routeData.consentRequiredScopes,
+    }),
     useSearch: () => ({ consent_challenge: routeData.challenge }),
   }),
 }));
@@ -35,6 +44,8 @@ const replace = vi.fn();
 
 beforeEach(() => {
   routeData.consent = null;
+  routeData.consentErrorCode = null;
+  routeData.consentRequiredScopes = null;
   routeData.challenge = undefined;
   replace.mockClear();
   vi.stubGlobal("location", {
@@ -156,6 +167,50 @@ describe("ConsentPage", () => {
   it("shows the expired state — not a reload loop — when there is no challenge at all", () => {
     routeData.consent = null;
     routeData.challenge = undefined;
+
+    render(<ConsentPage />);
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByRole("link")).toHaveAttribute("href", "/");
+  });
+
+  // w10/m8 t002: a recoverable GET/POST failure renders inside AuthPageShell
+  // with error-specific copy instead of the bare text body the checks used to
+  // return directly.
+  it.each([
+    ["pkce_required", "Invalid authorization request"],
+    ["not_configured", "Authorization unavailable"],
+    ["headless_accept_failed", "Authorization unavailable"],
+    ["wrong_user", "Signed in as the wrong account"],
+  ] satisfies [ConsentErrorCode, string][])(
+    "renders the %s error state with its own copy",
+    (code, expectedTitle) => {
+      routeData.consent = null;
+      routeData.consentErrorCode = code;
+      routeData.challenge = "challenge-1";
+
+      render(<ConsentPage />);
+
+      expect(screen.getByText(expectedTitle)).toBeInTheDocument();
+    },
+  );
+
+  it("names the missing capability scopes on a scope_required refusal (round-14 #1)", () => {
+    routeData.consent = null;
+    routeData.consentErrorCode = "scope_required";
+    routeData.consentRequiredScopes = ["bex.read", "bex.write", "bex.sensitive"];
+    routeData.challenge = "challenge-1";
+
+    render(<ConsentPage />);
+
+    expect(screen.getByText("Invalid authorization request")).toBeInTheDocument();
+    expect(screen.getByText(/bex\.read, bex\.write, bex\.sensitive/)).toBeInTheDocument();
+  });
+
+  it("never reloads a recovered error code — the handler already answered", () => {
+    routeData.consent = null;
+    routeData.consentErrorCode = "wrong_user";
+    routeData.challenge = "challenge-1";
 
     render(<ConsentPage />);
 

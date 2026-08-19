@@ -1,10 +1,60 @@
 import { useCallback, useState } from "react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
-import { LogOut, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import {
+  LogOut,
+  Loader2,
+  CheckCircle,
+  AlertTriangle,
+  type LucideIcon,
+} from "lucide-react";
 import { endBrowserSession } from "@/common/lib/ory/logout";
 import { EMPTY_LOGIN_SEARCH } from "@/common/lib/auth/auth";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
+import { Card, CardContent } from "@/common/components/ui/card";
+import { cn } from "@/common/lib/utils/utils.ts";
+import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
+
+type LogoutStatus = "confirm" | "logging-out" | "success" | "error";
+
+/** Title/subtitle/icon for each logout state, so the page reads the same
+ * shell chrome (theme, language switcher, typography) as every other auth
+ * page (w10/m8 t003) instead of its own hand-rolled full-screen layout. */
+function logoutStatusCopy(
+  status: LogoutStatus,
+  t: ReturnType<typeof useTranslations>["t"],
+): { title: string; subtitle: string; icon: LucideIcon; tone: "default" | "error" } {
+  switch (status) {
+    case "logging-out":
+      return {
+        title: t("auth.loggingOutTitle"),
+        subtitle: t("auth.loggingOutSubtitle"),
+        icon: Loader2,
+        tone: "default",
+      };
+    case "success":
+      return {
+        title: t("auth.loggedOutTitle"),
+        subtitle: t("auth.loggedOutSubtitle"),
+        icon: CheckCircle,
+        tone: "default",
+      };
+    case "error":
+      return {
+        title: t("auth.logoutFailedTitle"),
+        subtitle: t("auth.logoutFailedSubtitle"),
+        icon: AlertTriangle,
+        tone: "error",
+      };
+    default:
+      return {
+        title: t("auth.logoutConfirmTitle"),
+        subtitle: t("auth.logoutConfirmSubtitle"),
+        icon: LogOut,
+        tone: "default",
+      };
+  }
+}
 
 /**
  * Logout page — calls Kratos's browser logout flow (which clears the
@@ -21,15 +71,14 @@ import { Button } from "@/common/components/ui/button";
  * or errored logout keeps a blocking error with a retry — never a "signed out"
  * screen or a redirect to login — because presenting success while the HttpOnly
  * Kratos cookie is still valid would let the next user of this browser inherit
- * the session. Local cache clearing and navigation happen only on real success.
+ * the session. Local cache clearing and navigation happen only on real success
+ * (endBrowserSession, @/common/lib/ory/logout, handles the cache clear).
  */
 export default function LogoutPage() {
   const navigate = useNavigate();
   const router = useRouter();
   const { t } = useTranslations();
-  const [status, setStatus] = useState<
-    "confirm" | "logging-out" | "success" | "error"
-  >("confirm");
+  const [status, setStatus] = useState<LogoutStatus>("confirm");
 
   const performLogout = useCallback(async () => {
     try {
@@ -45,90 +94,54 @@ export default function LogoutPage() {
     }
   }, [navigate, router]);
 
+  const { title, subtitle, icon: Icon, tone } = logoutStatusCopy(status, t);
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background to-muted/20">
-      <div className="space-y-8">
-        <div className="flex justify-center">
+    <AuthPageShell title={title} subtitle={subtitle}>
+      <Card>
+        <CardContent className="flex flex-col items-center gap-6 py-8">
           <div className="relative">
             <div
-              className={`absolute inset-0 rounded-full ${status === "error" ? "bg-destructive/20" : "bg-primary/20"}`}
+              className={cn(
+                "absolute inset-0 rounded-full",
+                tone === "error" ? "bg-destructive/20" : "bg-primary/20",
+              )}
             />
             <div
-              className={`relative rounded-full p-6 ${status === "error" ? "bg-destructive" : "bg-primary"}`}
-            >
-              {status === "error" ? (
-                <AlertTriangle className="h-12 w-12 text-primary-foreground" />
-              ) : (
-                <LogOut className="h-12 w-12 text-primary-foreground" />
+              className={cn(
+                "relative rounded-full p-6",
+                tone === "error" ? "bg-destructive" : "bg-primary",
               )}
+            >
+              <Icon
+                className={cn(
+                  "h-10 w-10 text-primary-foreground",
+                  status === "logging-out" && "animate-spin",
+                )}
+              />
             </div>
           </div>
-        </div>
-
-        <div className="text-center space-y-3">
           {status === "confirm" && (
-            <>
-              <h1 className="text-2xl font-semibold">
-                {t("auth.logoutConfirmTitle")}
-              </h1>
-              <p className="text-muted-foreground">
-                {t("auth.logoutConfirmSubtitle")}
-              </p>
-              <div className="flex items-center justify-center gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => void navigate({ to: "/" })}
-                >
-                  {t("auth.logoutCancel")}
-                </Button>
-                <Button onClick={() => void performLogout()}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  {t("auth.logoutConfirm")}
-                </Button>
-              </div>
-            </>
-          )}
-          {status === "logging-out" && (
-            <>
-              <div className="flex items-center justify-center gap-3">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                <h1 className="text-2xl font-semibold">
-                  {t("auth.loggingOutTitle")}
-                </h1>
-              </div>
-              <p className="text-muted-foreground">
-                {t("auth.loggingOutSubtitle")}
-              </p>
-            </>
-          )}
-          {status === "success" && (
-            <>
-              <div className="flex items-center justify-center gap-3">
-                <CheckCircle className="h-6 w-6 text-green-500 animate-in zoom-in duration-200" />
-                <h1 className="text-2xl font-semibold text-green-500">
-                  {t("auth.loggedOutTitle")}
-                </h1>
-              </div>
-              <p className="text-muted-foreground">
-                {t("auth.loggedOutSubtitle")}
-              </p>
-            </>
+            <div className="flex items-center justify-center gap-3">
+              <Button
+                variant="outline"
+                onClick={() => void navigate({ to: "/" })}
+              >
+                {t("auth.logoutCancel")}
+              </Button>
+              <Button onClick={() => void performLogout()}>
+                <LogOut className="mr-2 h-4 w-4" />
+                {t("auth.logoutConfirm")}
+              </Button>
+            </div>
           )}
           {status === "error" && (
-            <>
-              <h1 className="text-2xl font-semibold text-destructive">
-                {t("auth.logoutFailedTitle")}
-              </h1>
-              <p className="text-muted-foreground">
-                {t("auth.logoutFailedSubtitle")}
-              </p>
-              <Button onClick={() => void performLogout()} className="mt-2">
-                {t("auth.logoutRetry")}
-              </Button>
-            </>
+            <Button onClick={() => void performLogout()}>
+              {t("auth.logoutRetry")}
+            </Button>
           )}
-        </div>
-      </div>
-    </div>
+        </CardContent>
+      </Card>
+    </AuthPageShell>
   );
 }

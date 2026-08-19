@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { translatedTitleHead } from "@/common/lib/document-head";
-import type { ConsentView } from "@/common/server-fn/hydra-consent";
+import type {
+  ConsentErrorCode,
+  ConsentView,
+} from "@/common/server-fn/hydra-consent";
 import ConsentPage from "@/features/auth/pages/consent-page";
 
 // OAuth2 consent endpoint (docs/ADR012-auth.md §7, w4/m9 + w4/m16): Hydra's
@@ -19,9 +22,27 @@ export const Route = createFileRoute("/auth/consent")({
           const { handleConsent } =
             await import("@/common/server-fn/hydra-consent");
           const result = await handleConsent(request);
-          return result instanceof Response
-            ? result
-            : next({ context: { consent: result } });
+          if (result instanceof Response) return result;
+          // One `next()` call with a uniformly-typed context object — a
+          // per-branch `next()` call forces TanStack's context inference to
+          // the first branch's literal shape and rejects the second.
+          const context: {
+            consent: ConsentView | null;
+            consentErrorCode: ConsentErrorCode | null;
+            consentRequiredScopes: string[] | null;
+          } =
+            "errorCode" in result
+              ? {
+                  consent: null,
+                  consentErrorCode: result.errorCode,
+                  consentRequiredScopes: result.requiredScopes ?? null,
+                }
+              : {
+                  consent: result,
+                  consentErrorCode: null,
+                  consentRequiredScopes: null,
+                };
+          return next({ context });
         },
         POST: async ({ request }) => {
           const { handleConsentDecision } =
@@ -40,10 +61,26 @@ export const Route = createFileRoute("/auth/consent")({
   // deferred context. Arriving by client-side navigation (the login-first bounce
   // lands here that way) yields none, which the page turns back into a document
   // load so the handler actually runs.
-  loader: ({ serverContext }): { consent: ConsentView | null } => ({
-    consent:
-      (serverContext as { consent?: ConsentView } | undefined)?.consent ?? null,
-  }),
+  loader: ({
+    serverContext,
+  }): {
+    consent: ConsentView | null;
+    consentErrorCode: ConsentErrorCode | null;
+    consentRequiredScopes: string[] | null;
+  } => {
+    const ctx = serverContext as
+      | {
+          consent?: ConsentView;
+          consentErrorCode?: ConsentErrorCode;
+          consentRequiredScopes?: string[];
+        }
+      | undefined;
+    return {
+      consent: ctx?.consent ?? null,
+      consentErrorCode: ctx?.consentErrorCode ?? null,
+      consentRequiredScopes: ctx?.consentRequiredScopes ?? null,
+    };
+  },
   component: ConsentPage,
   head: ({ match }) => translatedTitleHead("auth.consentTitle", match),
 });

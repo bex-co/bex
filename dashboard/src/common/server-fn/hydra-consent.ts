@@ -73,6 +73,54 @@ export type ConsentView = {
   retryAfterFailure: boolean;
 };
 
+/** Recoverable consent failures (w10/m8 t002): each renders inside
+ * AuthPageShell instead of the bare text body the checks used to return
+ * directly. `headless_accept_failed` is the GET path's own auto-accept
+ * failure (a trusted/skip client) — distinct from the POST decision's
+ * existing `retryAfterFailure` banner, which still renders the full consent
+ * card so the human can retry their own decision. Adversarial/technical
+ * refusals (cross-site, bad CSRF, malformed body, a stale challenge) stay as
+ * plain-text responses — not a state a legitimate user recovers from. */
+export type ConsentErrorCode =
+  | "pkce_required"
+  | "scope_required"
+  | "not_configured"
+  | "headless_accept_failed"
+  | "wrong_user";
+
+export type ConsentErrorResult = {
+  errorCode: ConsentErrorCode;
+  /** Only set for `scope_required` — the exact capability scopes the client
+   * must additionally request (round-14 #1's developer-facing detail). */
+  requiredScopes?: string[];
+};
+
+const CONSENT_ERROR_CODES = new Set<ConsentErrorCode>([
+  "pkce_required",
+  "scope_required",
+  "not_configured",
+  "headless_accept_failed",
+  "wrong_user",
+]);
+
+function isConsentErrorCode(value: string): value is ConsentErrorCode {
+  return CONSENT_ERROR_CODES.has(value as ConsentErrorCode);
+}
+
+/** Redirects a POST failure back to the GET endpoint so it renders inside
+ * AuthPageShell — the same shape the existing accept/reject retry redirect
+ * below already uses. */
+function redirectToConsentError(
+  origin: string,
+  challenge: string,
+  code: ConsentErrorCode,
+): Response {
+  const target = new URL("/auth/consent", origin);
+  target.searchParams.set("consent_challenge", challenge);
+  target.searchParams.set("consent_error", code);
+  return Response.redirect(target.toString(), 303);
+}
+
 function trustedClients(): Set<string> {
   return new Set(
     (process.env.OAUTH_TRUSTED_CLIENTS ?? "")
@@ -185,14 +233,6 @@ function pkceSatisfied(consent: OAuth2ConsentRequest): boolean {
   return methods[0] === REQUIRED_PKCE_METHOD;
 }
 
-/** One refusal for both consent paths. */
-function pkceRefusal(): Response {
-  return new Response(
-    "PKCE required: the authorization request must include a code_challenge with code_challenge_method=S256",
-    { status: 400 },
-  );
-}
-
 /**
  * Closed capability vocabulary (w8/m27): a third-party client that requests
  * an access-token audience must request at least one of bex.read / bex.write /
@@ -212,14 +252,6 @@ function audienceScopeSatisfied(consent: OAuth2ConsentRequest): boolean {
   if (audiences.length === 0) return true; // identity-only flow: no API authority
   if (platformClient(consent)) return true;
   return hasGranularCapability(consent.requested_scope ?? []);
-}
-
-/** One refusal for both consent paths (w8/m27). */
-function scopeRefusal(): Response {
-  return new Response(
-    `invalid_scope: a client that requests an access-token audience (the bex API resource) must also request at least one of ${GRANULAR_SCOPES.join(", ")} — they are advertised in the protected-resource metadata's scopes_supported`,
-    { status: 400 },
-  );
 }
 
 function isTrusted(consent: OAuth2ConsentRequest): boolean {
@@ -298,7 +330,7 @@ function loginFirst(
  */
 export async function handleConsent(
   request: Request,
-): Promise<Response | ConsentView> {
+): Promise<Response | ConsentView | ConsentErrorResult> {
   const url = new URL(request.url);
   const home = () =>
     Response.redirect(new URL("/", url.origin).toString(), 302);
@@ -306,9 +338,21 @@ export async function handleConsent(
   const consentChallenge = url.searchParams.get("consent_challenge");
   if (!consentChallenge) return home();
 
+  // A POST-decision failure (handleConsentDecision) redirects here with this
+  // param so the failure renders inside AuthPageShell instead of a bare
+  // POST-response body (w10/m8 t002). Takes priority over re-running the
+  // checks below — a `scope_required` reprocessing needs no live lookup since
+  // GRANULAR_SCOPES is a static, non-attacker-suggestible constant.
+  const errorParam = url.searchParams.get("consent_error");
+  if (errorParam && isConsentErrorCode(errorParam)) {
+    return errorParam === "scope_required"
+      ? { errorCode: errorParam, requiredScopes: [...GRANULAR_SCOPES] }
+      : { errorCode: errorParam };
+  }
+
   const hydra = hydraAdmin();
   if (!hydra) {
-    return new Response("consent provider not configured", { status: 503 });
+    return { errorCode: "not_configured" };
   }
 
   let consent: OAuth2ConsentRequest;
@@ -320,7 +364,7 @@ export async function handleConsent(
   }
 
   if (!pkceSatisfied(consent)) {
-    return pkceRefusal();
+    return { errorCode: "pkce_required" };
   }
 
   // w8/m27: an audience request without a granular capability is the
@@ -328,7 +372,7 @@ export async function handleConsent(
   // trusted/skip so a skip_consent third-party cannot mint an umbrella token;
   // platform-marked clients remain exempt (bex-api is the backstop).
   if (!audienceScopeSatisfied(consent)) {
-    return scopeRefusal();
+    return { errorCode: "scope_required", requiredScopes: [...GRANULAR_SCOPES] };
   }
 
   if (isTrusted(consent)) {
@@ -338,7 +382,7 @@ export async function handleConsent(
         302,
       );
     } catch {
-      return new Response("consent accept failed", { status: 502 });
+      return { errorCode: "headless_accept_failed" };
     }
   }
 
@@ -347,10 +391,7 @@ export async function handleConsent(
   const { session, aal2Required } = await sessionFor(request);
   if (!session) return loginFirst(url, consentChallenge, aal2Required);
   if (consent.subject && consent.subject !== session.identity?.id) {
-    return new Response(
-      "consent refused: this browser's session belongs to a different user than the one that signed in for this authorization — sign out and start over",
-      { status: 403 },
-    );
+    return { errorCode: "wrong_user" };
   }
 
   const clientID = consent.client?.client_id ?? "";
@@ -424,7 +465,7 @@ export async function handleConsentDecision(
 
   const hydra = hydraAdmin();
   if (!hydra) {
-    return new Response("consent provider not configured", { status: 503 });
+    return redirectToConsentError(url.origin, consentChallenge, "not_configured");
   }
 
   if (!csrfTokenMatches(csrfToken, consentChallenge, session.id)) {
@@ -438,13 +479,13 @@ export async function handleConsentDecision(
     return refuse("consent refused: stale or unknown challenge");
   }
   if (!pkceSatisfied(consent)) {
-    return pkceRefusal();
+    return redirectToConsentError(url.origin, consentChallenge, "pkce_required");
   }
   if (!audienceScopeSatisfied(consent)) {
-    return scopeRefusal();
+    return redirectToConsentError(url.origin, consentChallenge, "scope_required");
   }
   if (consent.subject && consent.subject !== session.identity?.id) {
-    return refuse("consent refused: session does not own this authorization");
+    return redirectToConsentError(url.origin, consentChallenge, "wrong_user");
   }
 
   // A failed accept/reject bounces back to the consent page with an error the

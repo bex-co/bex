@@ -33,6 +33,40 @@ export type DeviceView = {
   challenge: string;
 };
 
+/** Recoverable device-verification failures (w10/m8 t001): each renders inside
+ * AuthPageShell — like the confirm page itself — instead of the bare text
+ * body `error()` used to return on a document GET/POST navigation. Adversarial
+ * or purely operational failures (cross-site, no session, malformed body, a
+ * down Hydra) stay as plain-text `error()` responses; they are not a state a
+ * legitimate user recovers from by reading a nicer page. */
+export type DeviceErrorCode =
+  | "missing_code"
+  | "invalid_code"
+  | "unconfigured"
+  | "unexpected_client";
+
+export type DeviceErrorResult = { errorCode: DeviceErrorCode };
+
+const DEVICE_ERROR_CODES = new Set<DeviceErrorCode>([
+  "missing_code",
+  "invalid_code",
+  "unconfigured",
+  "unexpected_client",
+]);
+
+function isDeviceErrorCode(value: string): value is DeviceErrorCode {
+  return DEVICE_ERROR_CODES.has(value as DeviceErrorCode);
+}
+
+/** Redirects a POST failure back to the GET endpoint so it renders inside
+ * AuthPageShell — the same self-redirect shape hydra-consent.ts's retry
+ * mechanism already uses for its own failure path. */
+function redirectToDeviceError(origin: string, code: DeviceErrorCode): Response {
+  const target = new URL("/auth/device", origin);
+  target.searchParams.set("device_error", code);
+  return Response.redirect(target.toString(), 303);
+}
+
 /**
  * Bridge Hydra's RFC 8628 browser verification sequence. The first visit (the
  * verification_uri_complete opened by the CLI) sends the user_code to Hydra's
@@ -57,15 +91,24 @@ export type DeviceView = {
  */
 export async function handleDeviceVerification(
   request: Request,
-): Promise<Response | DeviceView> {
+): Promise<Response | DeviceView | DeviceErrorResult> {
   const requestURL = new URL(request.url);
+
+  // A POST failure (acceptDevicePairing, handleDeviceConfirm) redirects here
+  // with this param so the failure renders inside AuthPageShell instead of a
+  // bare POST-response body. Takes priority over every other check below.
+  const errorParam = requestURL.searchParams.get("device_error");
+  if (errorParam && isDeviceErrorCode(errorParam)) {
+    return { errorCode: errorParam };
+  }
+
   const userCode = requestURL.searchParams.get("user_code")?.trim() ?? "";
   const challenge =
     requestURL.searchParams.get("device_challenge")?.trim() ?? "";
   const hydra = hydraURLs();
 
-  if (!hydra) return error("device authorization not configured", 503);
-  if (!userCode) return error("missing or expired device code", 400);
+  if (!hydra) return { errorCode: "unconfigured" };
+  if (!userCode) return { errorCode: "missing_code" };
 
   if (!challenge) {
     const verify = new URL("/oauth2/device/verify", hydra.public);
@@ -136,8 +179,8 @@ export async function handleDeviceConfirm(request: Request): Promise<Response> {
   if (!userCode || !challenge) return error("missing device code", 400);
 
   const hydra = hydraURLs();
-  if (!hydra) return error("device authorization not configured", 503);
-  return acceptDevicePairing(hydra, userCode, challenge);
+  if (!hydra) return redirectToDeviceError(url.origin, "unconfigured");
+  return acceptDevicePairing(hydra, url.origin, userCode, challenge);
 }
 
 /** acceptDevicePairing PUTs the user_code/challenge to Hydra's admin API and
@@ -146,6 +189,7 @@ export async function handleDeviceConfirm(request: Request): Promise<Response> {
  * (handleDeviceConfirm) — never from a GET. */
 async function acceptDevicePairing(
   hydra: { admin: string; public: string },
+  origin: string,
   userCode: string,
   challenge: string,
 ): Promise<Response> {
@@ -166,7 +210,7 @@ async function acceptDevicePairing(
   }
 
   if (!response.ok) {
-    return error("device code is invalid, expired, or already used", 400);
+    return redirectToDeviceError(origin, "invalid_code");
   }
 
   let redirectTo: string;
@@ -189,7 +233,7 @@ async function acceptDevicePairing(
     redirect.origin !== publicOrigin ||
     redirect.searchParams.get("client_id") !== RENDER_CLI_CLIENT_ID
   ) {
-    return error("device authorization refused an unexpected client", 403);
+    return redirectToDeviceError(origin, "unexpected_client");
   }
 
   return Response.redirect(redirect.toString(), 302);

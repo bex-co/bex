@@ -1,19 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import type { DeviceView } from "@/common/server-fn/hydra-device";
+import type {
+  DeviceErrorCode,
+  DeviceView,
+} from "@/common/server-fn/hydra-device";
 
 // The page is a pure render of the loader data the route's GET handler
 // produced (mirrors consent-page.test.tsx) — mock the route accessor so the
 // test drives that data directly, with no router mount and no Hydra.
 const routeData = vi.hoisted(() => ({
   device: null as DeviceView | null,
+  deviceErrorCode: null as DeviceErrorCode | null,
   userCode: undefined as string | undefined,
   challenge: undefined as string | undefined,
 }));
 vi.mock("@tanstack/react-router", async (orig) => ({
   ...(await orig<typeof import("@tanstack/react-router")>()),
   getRouteApi: () => ({
-    useLoaderData: () => ({ device: routeData.device }),
+    useLoaderData: () => ({
+      device: routeData.device,
+      deviceErrorCode: routeData.deviceErrorCode,
+    }),
     useSearch: () => ({
       user_code: routeData.userCode,
       device_challenge: routeData.challenge,
@@ -33,6 +40,7 @@ const replace = vi.fn();
 
 beforeEach(() => {
   routeData.device = null;
+  routeData.deviceErrorCode = null;
   routeData.userCode = undefined;
   routeData.challenge = undefined;
   replace.mockClear();
@@ -86,6 +94,40 @@ describe("DeviceConfirmPage", () => {
     routeData.device = null;
     routeData.userCode = undefined;
     routeData.challenge = undefined;
+
+    render(<DeviceConfirmPage />);
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByRole("link")).toHaveAttribute("href", "/");
+  });
+
+  // w10/m8 t001: a recoverable GET/POST failure renders inside AuthPageShell
+  // with error-specific copy instead of the bare text body handleDeviceVerification
+  // used to return directly.
+  it.each([
+    ["missing_code", "Device code expired"],
+    ["invalid_code", "Device code expired"],
+    ["unconfigured", "Device authorization unavailable"],
+    ["unexpected_client", "Authorization refused"],
+  ] satisfies [DeviceErrorCode, string][])(
+    "renders the %s error state with its own copy",
+    (code, expectedTitle) => {
+      routeData.device = null;
+      routeData.deviceErrorCode = code;
+      routeData.userCode = "ABCD-EFGH";
+      routeData.challenge = "challenge-1";
+
+      render(<DeviceConfirmPage />);
+
+      expect(screen.getByText(expectedTitle)).toBeInTheDocument();
+    },
+  );
+
+  it("never reloads a recovered error code — the handler already answered", () => {
+    routeData.device = null;
+    routeData.deviceErrorCode = "invalid_code";
+    routeData.userCode = "ABCD-EFGH";
+    routeData.challenge = "challenge-1";
 
     render(<DeviceConfirmPage />);
 
