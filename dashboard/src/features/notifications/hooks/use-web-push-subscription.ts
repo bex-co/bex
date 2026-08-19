@@ -43,32 +43,32 @@ function urlBase64ToUint8Array(value: string): Uint8Array {
   return out;
 }
 
+async function probeWebPushStatus(
+  vapidPublicKey: string,
+  serverAvailable: boolean,
+): Promise<WebPushStatus> {
+  if (!browserSupportsPush()) return "unsupported";
+  if (!serverAvailable || !vapidPublicKey) return "unconfigured";
+  if (Notification.permission === "denied") return "denied";
+  const registration = await navigator.serviceWorker.getRegistration("/push-sw.js");
+  const sub = await registration?.pushManager.getSubscription();
+  return sub ? "subscribed" : "prompt";
+}
+
 export function useWebPushSubscription(vapidPublicKey: string, serverAvailable: boolean) {
   const [status, setStatus] = useState<WebPushStatus>("busy");
   const [register] = useMutation(RegisterNotificationWebPushSubscriptionDocument);
   const [unregister] = useMutation(UnregisterNotificationWebPushSubscriptionDocument);
 
-  const refresh = useCallback(async () => {
-    if (!browserSupportsPush()) {
-      setStatus("unsupported");
-      return;
-    }
-    if (!serverAvailable || !vapidPublicKey) {
-      setStatus("unconfigured");
-      return;
-    }
-    if (Notification.permission === "denied") {
-      setStatus("denied");
-      return;
-    }
-    const registration = await navigator.serviceWorker.getRegistration("/push-sw.js");
-    const sub = await registration?.pushManager.getSubscription();
-    setStatus(sub ? "subscribed" : "prompt");
-  }, [serverAvailable, vapidPublicKey]);
-
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let cancelled = false;
+    void probeWebPushStatus(vapidPublicKey, serverAvailable).then((next) => {
+      if (!cancelled) setStatus(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [serverAvailable, vapidPublicKey]);
 
   const subscribe = useCallback(async () => {
     if (!browserSupportsPush() || !vapidPublicKey) return false;
