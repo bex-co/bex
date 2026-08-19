@@ -38,6 +38,7 @@ import {
 } from "@/features/services/hooks/use-env-vars";
 import { EnvVarRow } from "@/features/services/components/env-var-row";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import type { EnvVarKey } from "@/features/services/types";
 import {
   downloadEnvFile,
@@ -132,11 +133,14 @@ export function EnvVarsEditor({
   copy: EnvVarsEditorCopy;
 }) {
   const { t } = useTranslations();
-  // Revealing an env-var value is can_view_sensitive (w9/m84).
-  const { canViewSensitive } = useCapabilities();
+  // Reveal is can_view_sensitive; add/edit/delete are can_create.
+  const { canCreate, canViewSensitive } = useCapabilities();
   const revealReason = canViewSensitive
     ? undefined
     : t("capabilities.reasonCanViewSensitive");
+  const createReason = !canCreate
+    ? t("capabilities.reasonCanCreate")
+    : undefined;
   const initialLoading = loading && keys.length === 0 && !errorKind;
   const gated = errorKind === "unavailable" || errorKind === "forbidden";
 
@@ -155,7 +159,11 @@ export function EnvVarsEditor({
                 disabled={loading || errorKind != null}
               />
             ) : null}
-            <AddVarButton setVar={setVar} disabled={gated || busy} />
+            <AddVarButton
+              setVar={setVar}
+              disabled={gated || busy || !canCreate}
+              disabledReason={createReason}
+            />
           </div>
         </CardAction>
       </CardHeader>
@@ -188,6 +196,8 @@ export function EnvVarsEditor({
                 <EnvVarRow
                   canReveal={canViewSensitive}
                   revealReason={revealReason}
+                  canCreate={canCreate}
+                  createReason={createReason}
                   key={entry.id}
                   entry={entry}
                   reveal={reveal}
@@ -256,6 +266,7 @@ export function ExportEnvButton({
 function AddVarButton({
   setVar,
   disabled,
+  disabledReason,
 }: {
   setVar: (
     key: string,
@@ -263,6 +274,7 @@ function AddVarButton({
     generateValue?: boolean,
   ) => Promise<boolean>;
   disabled: boolean;
+  disabledReason?: string;
 }) {
   const { t } = useTranslations();
   const [open, setOpen] = useState(false);
@@ -295,14 +307,16 @@ function AddVarButton({
 
   if (!open) {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={disabled}
-        onClick={() => setOpen(true)}
-      >
-        <Plus /> {t("services.envAdd")}
-      </Button>
+      <PermissionTooltip reason={disabled ? disabledReason : undefined}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          onClick={() => setOpen(true)}
+        >
+          <Plus /> {t("services.envAdd")}
+        </Button>
+      </PermissionTooltip>
     );
   }
 

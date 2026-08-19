@@ -765,6 +765,64 @@ describe("BuildDeploySection", () => {
     expect(setBuildFilter).toHaveBeenCalledWith("app", ["src/**"], []);
   });
 
+  it("disables Build Filters for a viewer without can_operate", () => {
+    // SetBuildFilter is RelCanOperate, not can_create — a contributor still edits.
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({
+        role: "VIEWER",
+        canCreate: false,
+        canOperate: false,
+      }),
+    );
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Add included path" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Add ignored path" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Save Build Filters" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(/Your role can only view this service/i),
+    ).toBeInTheDocument();
+  });
+
+  it("lets a contributor save Build Filters (can_operate)", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    const user = userEvent.setup();
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/x/mono"
+        branch="main"
+        rootDir={null}
+        autoDeploy={false}
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Add included path" }));
+    await user.type(screen.getByPlaceholderText("e.g. src/**"), "src/**");
+    await user.click(
+      screen.getByRole("button", { name: "Save Build Filters" }),
+    );
+    expect(setBuildFilter).toHaveBeenCalledWith("app", ["src/**"], []);
+  });
+
   it("shows the Build Command editor only when showBuildCommand is true (w7/m41)", async () => {
     const user = userEvent.setup();
     const { rerender } = render(

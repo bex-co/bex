@@ -33,11 +33,17 @@ interface EnvVarRowProps {
   /** Context-specific consequence shown in the delete confirmation. */
   deleteConfirmBody?: string;
   /** Whether the caller may reveal secret values (can_view_sensitive); when
-   *  false the reveal button is disabled with a reason (w9/m84). Defaults true
-   *  so a caller that doesn't thread capabilities keeps prior behavior. */
+   *  false the reveal button is disabled with a reason. Defaults true so a
+   *  caller that doesn't thread capabilities keeps prior behavior. */
   canReveal?: boolean;
   /** Reason shown on the disabled reveal button when `canReveal` is false. */
   revealReason?: string;
+  /** Whether the caller may add/edit/delete (can_create); when false the
+   *  Edit pencil and Delete are disabled with a reason. Defaults true so a
+   *  caller that doesn't thread capabilities keeps prior behavior. */
+  canCreate?: boolean;
+  /** Reason shown on the disabled write controls when `canCreate` is false. */
+  createReason?: string;
 }
 
 /**
@@ -54,6 +60,8 @@ export function EnvVarRow({
   deleteConfirmBody,
   canReveal = true,
   revealReason,
+  canCreate = true,
+  createReason,
 }: EnvVarRowProps) {
   const { t } = useTranslations();
   const [value, setValue] = useState<string | null>(null); // null = not revealed
@@ -188,26 +196,30 @@ export function EnvVarRow({
       <TableCell className="text-right whitespace-nowrap">
         {!editing && (
           <>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label={t("services.envEdit")}
-              disabled={busy}
-              onClick={() => void startEdit()}
-            >
-              <Pencil />
-            </Button>
+            <PermissionTooltip reason={createReason}>
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label={t("services.envEdit")}
+                disabled={busy || !canCreate}
+                onClick={() => void startEdit()}
+              >
+                <Pencil />
+              </Button>
+            </PermissionTooltip>
             <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t("services.envDelete")}
-                  disabled={busy}
-                >
-                  <Trash2 className="text-destructive" />
-                </Button>
-              </AlertDialogTrigger>
+              <PermissionTooltip reason={createReason}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={t("services.envDelete")}
+                    disabled={busy || !canCreate}
+                  >
+                    <Trash2 className="text-destructive" />
+                  </Button>
+                </AlertDialogTrigger>
+              </PermissionTooltip>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>

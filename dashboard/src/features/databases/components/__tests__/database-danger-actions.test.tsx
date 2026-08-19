@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DatabaseDangerActions } from "@/features/databases/components/database-danger-actions";
-import type { UseDatabaseLifecycleResult } from "@/features/databases/hooks/use-database-lifecycle";
-import type { DatabaseView } from "@/features/databases/types";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import type { UseDatabaseLifecycleResult } from "@/features/databases/hooks/use-database-lifecycle";
+import type { DatabaseView } from "@/features/databases/types";
 
 const remove = vi.fn();
 vi.mock("@/features/databases/hooks/use-delete-database", () => ({
@@ -238,5 +238,41 @@ describe("DatabaseDangerActions — detail-page bottom action row", () => {
       DB,
       "sudo suspend database shop-db",
     );
+  });
+
+  it("disables Delete for a contributor without can_create", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    render(
+      <DatabaseDangerActions
+        database={DB}
+        onDeleted={vi.fn()}
+        lifecycle={lifecycleStub()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Delete Database" }),
+    ).toBeDisabled();
+    // Restart/suspend are can_operate — a contributor keeps them.
+    expect(
+      screen.getByRole("button", { name: "Restart Database" }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Suspend Database" }),
+    ).toBeEnabled();
+  });
+
+  it("keeps Delete enabled for an admin", () => {
+    render(
+      <DatabaseDangerActions
+        database={DB}
+        onDeleted={vi.fn()}
+        lifecycle={lifecycleStub()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Delete Database" }),
+    ).toBeEnabled();
   });
 });
