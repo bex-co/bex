@@ -606,6 +606,15 @@ func (c *Completer) unclaimHibernation(ctx context.Context, claimed store.AgentS
 	}
 }
 
+// Transcript truncation reasons (shared with markTurnTranscript).
+const (
+	reasonTranscriptReadFailed  = "transcript read failed"
+	reasonParseTruncated        = "driver log parse/part limit reached"
+	reasonQuotaExceeded         = "session transcript byte quota reached"
+	reasonTranscriptStoreFailed = "transcript store failed"
+	reasonDriverTruncated       = "driver session log truncated"
+)
+
 // captureTranscript harvests the driver's per-part session log over the SAME
 // pods/exec boundary the Completer already uses for the status read (ADR051), and
 // appends it to the durable transcript before teardown. Riding the proven
@@ -619,12 +628,16 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 		if !errors.Is(err, core.ErrNotFound) {
 			log.Printf("agent-session completer: transcript read failed (session=%s): %v", record.ID, err)
 		}
-		c.markTurnTranscript(ctx, record, false, true, "transcript read failed")
+		c.markTurnTranscript(ctx, record, false, true, reasonTranscriptReadFailed)
 		return
 	}
 	parts, parseTruncated := parseTranscriptLog(raw, record.Turns)
 	if len(parts) == 0 {
-		c.markTurnTranscript(ctx, record, !parseTruncated, parseTruncated, truncationReason(parseTruncated, "transcript parse/part limit reached"))
+		reason := ""
+		if parseTruncated {
+			reason = reasonParseTruncated
+		}
+		c.markTurnTranscript(ctx, record, !parseTruncated, parseTruncated, reason)
 		return
 	}
 	// Cumulative quota (w1/m65 F10): the harvest shares the session transcript
@@ -636,51 +649,59 @@ func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSes
 		log.Printf("agent-session completer: transcript bytes failed (session=%s): %v", record.ID, err)
 		return
 	}
-	total := storedBytes
-	kept := parts[:0]
-	quotaTruncated := false
-	for _, p := range parts {
-		if total+int64(len(p.Part)) > c.transcriptQuota() {
-			log.Printf("agent-session completer: transcript quota reached, truncating harvest (session=%s)", record.ID)
-			quotaTruncated = true
-			break
-		}
-		total += int64(len(p.Part))
-		kept = append(kept, p)
+	// Early exit: if already at or over quota, skip the filtering loop entirely.
+	quota := c.transcriptQuota()
+	if storedBytes >= quota {
+		c.markTurnTranscript(ctx, record, false, true, reasonQuotaExceeded)
+		return
+	}
+	kept, quotaTruncated := filterPartsByQuota(parts, storedBytes, quota)
+	if quotaTruncated {
+		log.Printf("agent-session completer: transcript quota reached, truncating harvest (session=%s)", record.ID)
 	}
 	if len(kept) == 0 {
-		c.markTurnTranscript(ctx, record, false, true, "session transcript byte quota reached")
+		c.markTurnTranscript(ctx, record, false, true, reasonQuotaExceeded)
 		return
 	}
 	if err := c.Store.AppendAgentSessionTranscript(ctx, record.ID, kept); err != nil {
 		log.Printf("agent-session completer: transcript append failed (session=%s parts=%d): %v", record.ID, len(kept), err)
-		c.markTurnTranscript(ctx, record, false, true, "transcript store failed")
+		c.markTurnTranscript(ctx, record, false, true, reasonTranscriptStoreFailed)
 		return
 	}
-	truncated := parseTruncated || quotaTruncated || transcriptEvidenceTruncated(record.Evidence)
+	// Compute final truncation state. Cache the evidence check to avoid redundant JSON unmarshal.
+	evidenceTruncated := transcriptEvidenceTruncated(record.Evidence)
+	truncated := parseTruncated || quotaTruncated || evidenceTruncated
 	reason := ""
 	if parseTruncated {
-		reason = "driver log parse/part limit reached"
+		reason = reasonParseTruncated
 	} else if quotaTruncated {
-		reason = "session transcript byte quota reached"
-	} else if transcriptEvidenceTruncated(record.Evidence) {
-		reason = "driver session log truncated"
+		reason = reasonQuotaExceeded
+	} else if evidenceTruncated {
+		reason = reasonDriverTruncated
 	}
 	c.markTurnTranscript(ctx, record, !truncated, truncated, reason)
 	log.Printf("agent-session completer: captured transcript (session=%s turn=%d parts=%d)", record.ID, record.Turns, len(kept))
+}
+
+// filterPartsByQuota returns the prefix of parts that fits within the remaining
+// quota (quota - alreadyStored), plus a flag indicating whether truncation occurred.
+func filterPartsByQuota(parts []store.AgentSessionTranscriptPart, alreadyStored, quota int64) ([]store.AgentSessionTranscriptPart, bool) {
+	kept := make([]store.AgentSessionTranscriptPart, 0, len(parts))
+	total := alreadyStored
+	for _, p := range parts {
+		if total+int64(len(p.Part)) > quota {
+			return kept, true
+		}
+		total += int64(len(p.Part))
+		kept = append(kept, p)
+	}
+	return kept, false
 }
 
 func (c *Completer) markTurnTranscript(ctx context.Context, record store.AgentSession, complete, truncated bool, reason string) {
 	if err := c.Store.CompleteAgentSessionTurn(ctx, record.ID, record.Turns, complete, truncated, reason); err != nil {
 		log.Printf("agent-session completer: transcript completeness write failed (session=%s turn=%d): %v", record.ID, record.Turns, err)
 	}
-}
-
-func truncationReason(truncated bool, reason string) string {
-	if truncated {
-		return reason
-	}
-	return ""
 }
 
 func transcriptEvidenceTruncated(raw json.RawMessage) bool {
