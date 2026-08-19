@@ -62,7 +62,7 @@ Develop against `.pm/w3/dev-3/`, this worker's own isolated stack on the shared 
 
 > `018.md` — **promoted 2026-08-14 → [`w5/m66`](../w5/m66/README.md)** (note kept at `done/018.md`; milestone scheduled under w5 per user direction): driver-only simplification of the ai-sdk↔acp chain via Vercel's AI SDK harness layer (`HarnessAgent` + `@ai-sdk/harness-acp`); spike-gated (t001), gateway/bex-api/transcript untouched.
 
-> `011.md` — quota-denied sandbox creation surfaces as an opaque 502 (bex-api 30s client under the server 60s pod-ready wait; controller-only quota evidence) — found live in the m40 t004 run; promotable as the error-shape half of the w3/m34 cap retirement.
+> `011.md` — **done 2026-08-18, moved to `done/011.md`**: quota-denied sandbox creation now surfaces as a coded 409 `SANDBOX_CAPACITY_LIMIT` across REST/GraphQL/MCP (the timeout-inversion half had already landed as `a64b703a`). Found live in the m40 t004 run; was the error-shape half of the w3/m34 cap retirement.
 
 > `010.md` records that Postgres/Key Value creation is currently uncapped: w3/m34 deleted the app-code `BEX_MAX_POSTGRES`/`BEX_MAX_KEYVALUES` checks on the premise the per-namespace `ResourceQuota` replaces them, but those CRs aren't namespaced under ADR043 so the quota is never charged. User-approved known gap. Promote when there's real usage/cost pressure or other work already touches Postgres/KeyValue namespace placement.
 
