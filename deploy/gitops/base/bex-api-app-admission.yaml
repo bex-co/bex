@@ -30,13 +30,18 @@ spec:
     - name: bex-api-service-account
       expression: request.userInfo.username == 'system:serviceaccount:bex-system:bex-api'
   variables:
+    # DELETE admission requests carry no object — only oldObject — so evaluate
+    # against whichever is present (same pattern as bex-api-namespace-admission.yaml).
+    - name: target
+      expression: >-
+        object != null ? object : oldObject
     - name: workspace
-      expression: object.metadata.?labels['app.bex.co/workspace'].orValue('')
+      expression: variables.target.metadata.?labels['app.bex.co/workspace'].orValue('')
     - name: canonical
       expression: >-
-        object.metadata.namespace == 'default' ||
+        variables.target.metadata.namespace == 'default' ||
         (variables.workspace.matches('^tea-[0-9a-v]{20}$') &&
-         object.metadata.namespace == variables.workspace)
+         variables.target.metadata.namespace == variables.workspace)
   validations:
     - expression: variables.canonical
       reason: Forbidden
