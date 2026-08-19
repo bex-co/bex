@@ -163,11 +163,13 @@ func (w *kvWatcher) Reconcile(ctx context.Context, req reconcile.Request) (recon
 		}
 		return reconcile.Result{}, client.IgnoreNotFound(err)
 	}
+	// Deletion clears the invalid mark too, so health must be re-published on
+	// this path as well (w1/m76 t006 — the pg twin's ordering): an early return
+	// here left bex_kv_proxy_healthy stuck at 0 after the last malformed
+	// KeyValue was deleted, until an unrelated reconcile happened to fire.
 	if !kv.DeletionTimestamp.IsZero() {
 		w.router.delete(kv.Name)
-		return reconcile.Result{}, nil
-	}
-	if err := w.router.set(&kv); err != nil {
+	} else if err := w.router.set(&kv); err != nil {
 		w.meter.SetHealthy(w.router.healthy())
 		return reconcile.Result{}, err
 	}
