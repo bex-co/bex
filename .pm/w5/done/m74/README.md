@@ -16,7 +16,7 @@
 | t008 | Test coverage — migration, quota, owner resolution, entry points, compatibility            | 45m | t006 — **DONE**       |
 | t009 | Closeout — verify DoD, sync status, move to done/                                          | 15m | t008 — **DONE**       |
 
-**Done 2026-08-19.** All code, tests, and docs landed and verified: full migration chain (0001→0090) up/down + down-guard against real Postgres, multi-connection store + service + surface tests green, dashboard typecheck/lint/tests green, `make lint-backend` clean, `/simplify` applied (errgroup→WaitGroup, deduped dashboard query hook). The one deferred DoD element — a live browser + GitHub App install of a second account onto one workspace — is recorded as open note `w5/046` (needs a real environment with `BEX_GITHUB_APP_*`).
+**Done 2026-08-19.** All code, tests, and docs landed and verified: full migration chain (0001→0091) up/down + down-guard against real Postgres, multi-connection store + service + surface tests green, dashboard typecheck/lint/tests green, `make lint-backend` clean, `/simplify` applied (errgroup→WaitGroup, deduped dashboard query hook). The one deferred DoD element — a live browser + GitHub App install of a second account onto one workspace — is recorded as open note `w5/046` (needs a real environment with `BEX_GITHUB_APP_*`).
 
 ## Definition of done
 
