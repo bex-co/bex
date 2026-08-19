@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { UpdateDatabasePlanDocument } from "@/features/databases/api/operations";
+import { UpdateDatabasePlanDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";

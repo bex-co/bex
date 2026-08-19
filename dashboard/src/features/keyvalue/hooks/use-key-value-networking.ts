@@ -4,8 +4,8 @@ import { toast } from "sonner";
 import {
   KeyValueIpAllowListDocument,
   SetKeyValueIpAllowListDocument,
-  type IpAllowListEntry,
-} from "@/features/keyvalue/api/operations";
+} from "@/graphql/definitions";
+import type { IPAllowListEntryDraft } from "@/common/lib/ip-allow-list";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
@@ -34,14 +34,14 @@ export function useKeyValueNetworking(id: string) {
 
   // Entries, not bare CIDRs: each carries the operator-facing description a
   // human gave it, which persists end to end (w4/m24).
-  const allowList: IpAllowListEntry[] = (
+  const allowList: IPAllowListEntryDraft[] = (
     allowListQuery.data?.keyValue?.ipAllowListEntries ?? []
   )
     .filter((e): e is NonNullable<typeof e> => e != null)
     .map((e) => ({ cidrBlock: e.cidrBlock, description: e.description ?? "" }));
 
   const saveAllowList = useCallback(
-    async (entries: IpAllowListEntry[]): Promise<boolean> => {
+    async (entries: IPAllowListEntryDraft[]): Promise<boolean> => {
       try {
         await setAllowListMut({ variables: { id, entries } });
         toast.success(t("keyvalue.networkingSaved"));

@@ -47,7 +47,7 @@ import { useBlueprintSyncs } from "@/features/blueprints/hooks/use-blueprint-syn
 import { formatRelativeAge } from "@/features/services/lib/format";
 import { ProtectedConfirmationDialog } from "@/common/components/protected-confirmation-dialog";
 import { protectedServiceName } from "@/features/services/lib/protected-confirmation";
-import { BlueprintDocument } from "@/features/blueprints/api/operations";
+import { BlueprintDocument } from "@/graphql/definitions";
 import {
   loadRouteResource,
   routeResourceTitle,

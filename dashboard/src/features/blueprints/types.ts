@@ -64,13 +64,18 @@ export interface BlueprintPricingLine {
   storageGb: number | null;
 }
 
-/** Why a resource's cost is runtime-dependent — mirrors the backend's VariableCost reasons. */
+/** The known reasons a resource's cost is runtime-dependent — mirrors the backend's VariableCost reasons. */
 export type BlueprintVariableReason = "autoscaling" | "multi_instance" | "cron";
 
-/** A resource listed but excluded from the estimated total (runtime-dependent cost). */
+/**
+ * A resource listed but excluded from the estimated total (runtime-dependent
+ * cost). `reason` is the backend's reason string — normally one of
+ * BlueprintVariableReason, but kept open (the wire type is a plain string) so
+ * an unrecognized reason still renders with the generic "Variable" badge.
+ */
 export interface BlueprintVariableCost {
   name: string;
-  reason: BlueprintVariableReason;
+  reason: string;
 }
 
 /** Always-on monthly cost projection attached to a valid dry-run. */

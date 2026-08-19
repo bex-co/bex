@@ -23,10 +23,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { setsSensitiveLoggingParameter } from "@/features/databases/lib/sensitive-parameters";
-import type {
-  ParameterInput,
-  ParameterOverrideView,
-} from "@/features/databases/api/operations";
+import type { ParameterInput } from "@/graphql/definitions";
 import type { SaveParametersResult } from "@/features/databases/hooks/use-database-insights";
 
 interface DraftParameter {
@@ -34,6 +31,14 @@ interface DraftParameter {
   name: string;
   value: string;
   source: string;
+}
+
+/** The subset of the generated `DatabaseParameterOverridesQuery` row this
+ * editor reads — structural, so the query result flows in unchanged. */
+export interface ParameterOverrideView {
+  name: string | null;
+  setting: string | null;
+  source: string | null;
 }
 
 interface ParameterOverridesEditorProps {

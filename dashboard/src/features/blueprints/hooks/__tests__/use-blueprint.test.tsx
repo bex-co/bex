@@ -32,7 +32,7 @@ describe("useBlueprint", () => {
     expect(result.current.blueprint).toBeNull();
   });
 
-  it("keeps a blueprint that has an id", () => {
+  it("keeps a blueprint that has an id, normalized onto the view", () => {
     const blueprint = {
       id: "blp-test",
       name: "Example",
@@ -52,6 +52,13 @@ describe("useBlueprint", () => {
 
     const { result } = renderHook(() => useBlueprint("blp-test"));
 
-    expect(result.current.blueprint).toBe(blueprint);
+    expect(result.current.blueprint).toEqual({
+      ...blueprint,
+      // Fields the row left null/absent are normalized to view defaults.
+      path: "",
+      autoSync: false,
+      lastSync: null,
+      resources: null,
+    });
   });
 });

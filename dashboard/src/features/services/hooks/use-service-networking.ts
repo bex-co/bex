@@ -1,10 +1,8 @@
 import { useCallback } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import {
-  SetServiceIpAllowListDocument,
-  type IpAllowListEntry,
-} from "@/features/services/api/operations";
+import { SetServiceIpAllowListDocument } from "@/graphql/definitions";
+import type { IPAllowListEntryDraft } from "@/common/lib/ip-allow-list";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 /**
@@ -20,7 +18,7 @@ export function useServiceNetworking() {
   );
 
   const saveAllowList = useCallback(
-    async (id: string, entries: IpAllowListEntry[]): Promise<boolean> => {
+    async (id: string, entries: IPAllowListEntryDraft[]): Promise<boolean> => {
       try {
         await mutate({ variables: { id, entries } });
         toast.success(t("services.networkingSaved"));

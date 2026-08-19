@@ -5,7 +5,7 @@ import {
   SuspendDatabaseDocument,
   ResumeDatabaseDocument,
   RestartDatabaseDocument,
-} from "@/features/databases/api/operations";
+} from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { DatabaseView } from "@/features/databases/types";
 import {

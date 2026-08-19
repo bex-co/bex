@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { useMemo } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import {
   DatabaseProcessesDocument,
@@ -23,8 +24,9 @@ import {
   DatabaseParameterOverridesDocument,
   SetDatabaseParameterOverridesDocument,
   type ParameterInput,
-} from "@/features/databases/api/operations";
+} from "@/graphql/definitions";
 import { graphQLErrorMessage } from "@/common/lib/graphql-error";
+import { nonNull } from "@/common/lib/non-null";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
@@ -95,25 +97,60 @@ export function useDatabaseInsights(id: string) {
     }
   }
 
+  // The generated result types carry nullable list items; the panel renders
+  // concrete rows, so drop the nulls here once. Memoized per query so a poll
+  // tick that returns identical data keeps identical references (Apollo hands
+  // back the same cache objects; a bare `.filter` would re-allocate every
+  // render on this polling page).
+  const processesData = processes.data;
+  const processRows = useMemo(
+    () => (processesData?.databaseProcesses ?? []).filter(nonNull),
+    [processesData],
+  );
+  const topQueriesData = topQueries.data;
+  const topQueryRows = useMemo(
+    () => (topQueriesData?.databaseTopQueries ?? []).filter(nonNull),
+    [topQueriesData],
+  );
+  const sizesData = sizes.data;
+  const sizesView = useMemo(() => {
+    const raw = sizesData?.databaseSizes;
+    return raw
+      ? { database: raw.database, tables: (raw.tables ?? []).filter(nonNull) }
+      : null;
+  }, [sizesData]);
+  const tableScansData = tableScans.data;
+  const tableScanRows = useMemo(
+    () => (tableScansData?.databaseTableScans ?? []).filter(nonNull),
+    [tableScansData],
+  );
+  const parameterOverridesData = parameterOverrides.data;
+  const parameterOverrideRows = useMemo(
+    () =>
+      (parameterOverridesData?.databaseParameterOverrides ?? []).filter(
+        nonNull,
+      ),
+    [parameterOverridesData],
+  );
+
   return {
-    processes: processes.data?.databaseProcesses ?? [],
+    processes: processRows,
     processesLoading: processes.loading,
     processesError: processes.error,
 
-    topQueries: topQueries.data?.databaseTopQueries ?? [],
+    topQueries: topQueryRows,
     topQueriesLoading: topQueries.loading,
     topQueriesError: topQueries.error,
 
-    sizes: sizes.data?.databaseSizes ?? null,
+    sizes: sizesView,
     sizesLoading: sizes.loading,
     sizesError: sizes.error,
 
-    tableScans: tableScans.data?.databaseTableScans ?? [],
+    tableScans: tableScanRows,
     tableScansLoading: tableScans.loading,
     tableScansError: tableScans.error,
 
-    parameterOverrides:
-      parameterOverrides.data?.databaseParameterOverrides ?? [],
+    parameterOverrides: parameterOverrideRows,
     parameterOverridesLoading: parameterOverrides.loading,
     parameterOverridesError: parameterOverrides.error,
 

@@ -10,7 +10,8 @@ import {
   titleHead,
   titleLoaderFetchPolicy,
 } from "@/common/lib/document-head";
-import { ProjectDocument } from "@/features/projects/api/operations";
+import { ProjectDocument } from "@/graphql/definitions";
+import { mapProject } from "@/features/projects/hooks/use-projects";
 
 /**
  * Chrome-preserving pending state at 0ms (the sidebar-navigation white-flash
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/project/$projectId")({
           fetchPolicy: titleLoaderFetchPolicy(cause),
           errorPolicy: "all",
         }),
-      (data) => (data?.project?.name?.trim() ? data.project : null),
+      (data) => (data?.project?.name?.trim() ? mapProject(data.project) : null),
     ),
   head: ({ loaderData, match }) =>
     titleHead(

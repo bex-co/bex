@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
-import { BlueprintDocument } from "@/features/blueprints/api/operations";
+import { BlueprintDocument } from "@/graphql/definitions";
+import { toBlueprintView } from "@/features/blueprints/lib/views";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
@@ -29,7 +30,7 @@ export function useBlueprint(id: string): UseBlueprintResult {
   // instead of GraphQL null. Treat an absent id as not-found so the detail page
   // never renders blank headings, epoch dates, and an actionable Sync button.
   const blueprint = useMemo(
-    () => (data?.blueprint?.id ? data.blueprint : null),
+    () => (data?.blueprint?.id ? toBlueprintView(data.blueprint) : null),
     [data],
   );
 

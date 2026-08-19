@@ -1,10 +1,11 @@
 import { useState, useCallback } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { SyncBlueprintDocument } from "@/features/blueprints/api/operations";
+import { SyncBlueprintDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { SyncBlueprintResult } from "@/features/blueprints/types";
+import { toSyncBlueprintResult } from "@/features/blueprints/lib/views";
 import {
   protectedConfirmationFromError,
   type ProtectedActionResult,
@@ -47,7 +48,9 @@ export function useSyncBlueprint(): UseSyncBlueprintResult {
             },
           }),
         );
-        const result = res.data?.syncBlueprint ?? null;
+        const result = res.data?.syncBlueprint
+          ? toSyncBlueprintResult(res.data.syncBlueprint)
+          : null;
         toast.success(t("blueprints.syncSuccess"));
         return { status: "success", result };
       } catch (err) {

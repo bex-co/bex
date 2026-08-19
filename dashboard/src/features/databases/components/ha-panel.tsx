@@ -36,7 +36,7 @@ import {
   DialogTitle,
 } from "@/common/components/ui/dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { FailoverDatabaseDocument } from "@/features/databases/api/operations";
+import { FailoverDatabaseDocument } from "@/graphql/definitions";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 interface HAPanelProps {

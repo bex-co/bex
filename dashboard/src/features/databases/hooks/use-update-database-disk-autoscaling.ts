@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
-import { UpdateDatabaseDiskAutoscalingDocument } from "@/features/databases/api/operations";
+import { UpdateDatabaseDiskAutoscalingDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 export interface UseUpdateDatabaseDiskAutoscalingResult {
