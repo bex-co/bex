@@ -127,7 +127,7 @@ describe("DeleteServiceCard — sudo type-to-confirm danger zone (w5/m14)", () =
     );
 
     expect(remove).toHaveBeenCalledWith("web", "web", undefined);
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/", replace: true });
   });
 
   it("builds the phrase from Render's type words and the service name (bare name is not enough)", async () => {
@@ -224,6 +224,6 @@ describe("DeleteServiceCard — sudo type-to-confirm danger zone (w5/m14)", () =
       "web",
       "sudo delete service web",
     );
-    expect(mockNavigate).toHaveBeenCalledWith({ to: "/" });
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/", replace: true });
   });
 });

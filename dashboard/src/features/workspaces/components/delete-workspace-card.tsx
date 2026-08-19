@@ -54,9 +54,9 @@ export function DeleteWorkspaceCard({ workspace }: DeleteWorkspaceCardProps) {
     void refetch();
     if (fallback) {
       setCurrentWorkspaceId(fallback.id);
-      void navigate({ to: "/" });
+      void navigate({ to: "/", replace: true });
     } else {
-      void navigate({ to: "/new/workspace" });
+      void navigate({ to: "/new/workspace", replace: true });
     }
   }
 

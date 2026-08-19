@@ -22,6 +22,7 @@ import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatRelativeAge } from "@/features/services/lib/format";
 import type {
+  AgentSessionArchivedFilter,
   AgentSessionPhase,
   AgentSessionView,
 } from "@/features/agent-sessions/types";
@@ -108,7 +109,11 @@ export interface SessionListProps {
   loading: boolean;
   error?: Error;
   /** Re-run the backing list after a row archive/unarchive (ADR065). */
-  onChanged?: () => void;
+  onChanged?: () => void | Promise<unknown>;
+  onRetry?: () => void;
+  onClearFilters?: () => void;
+  archiveFilter?: AgentSessionArchivedFilter;
+  phase?: AgentSessionPhase;
 }
 
 /**
@@ -169,6 +174,10 @@ export function SessionList({
   loading,
   error,
   onChanged,
+  onRetry,
+  onClearFilters,
+  archiveFilter,
+  phase,
 }: SessionListProps) {
   const { t } = useTranslations();
   const { toggle, busyId } = useArchiveToggle(onChanged);
@@ -180,11 +189,28 @@ export function SessionList({
     return (
       <div className="py-8 text-center">
         <p className="font-medium">{t("agentSessions.errorTitle")}</p>
+        {onRetry ? (
+          <Button
+            className="mt-3"
+            size="sm"
+            variant="outline"
+            onClick={onRetry}
+          >
+            {t("agentSessions.retry")}
+          </Button>
+        ) : null}
       </div>
     );
   }
   if (sessions.length === 0) {
-    return <AgentSessionsEmptyState />;
+    return (
+      <AgentSessionsEmptyState
+        mode={
+          phase ? "filtered" : archiveFilter === "true" ? "archived" : "default"
+        }
+        onClearFilters={onClearFilters}
+      />
+    );
   }
 
   return (
@@ -213,6 +239,10 @@ export function SessionList({
                   <Link
                     to="/agents/$agentSessionId"
                     params={{ agentSessionId: s.id }}
+                    search={{
+                      fromArchived: archiveFilter,
+                      fromPhase: phase,
+                    }}
                     className={cn(
                       "block truncate hover:underline",
                       "group-hover:text-foreground",

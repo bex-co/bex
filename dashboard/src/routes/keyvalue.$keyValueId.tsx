@@ -171,15 +171,12 @@ export function KeyValueDetailPage() {
                 <KeyValueMaxmemoryPolicySection id={keyValue.id} />
               </section>
               <section id="metrics" className="scroll-mt-6">
-                <DatastoreMetricsPanel
-                  kind="keyvalue"
-                  resource={keyValue.id}
-                />
+                <DatastoreMetricsPanel kind="keyvalue" resource={keyValue.id} />
               </section>
               <section id="danger-zone" className="scroll-mt-6">
                 <KeyValueDangerActions
                   keyValue={keyValue}
-                  onDeleted={() => void navigate({ to: "/" })}
+                  onDeleted={() => void navigate({ to: "/", replace: true })}
                   onChanged={() => void refetch()}
                 />
               </section>

@@ -66,7 +66,7 @@ export function DeleteServiceCard({ service }: DeleteServiceCardProps) {
     }
     if (result.status !== "success") return;
     setOpen(false);
-    void navigate({ to: "/" });
+    void navigate({ to: "/", replace: true });
   }
 
   function handleOpenChange(next: boolean) {

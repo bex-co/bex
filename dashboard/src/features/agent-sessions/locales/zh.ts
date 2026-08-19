@@ -47,6 +47,10 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "无法加载智能体会话",
     description: "Agent sessions list error state heading",
   },
+  "agentSessions.retry": {
+    message: "重试",
+    description: "Retries a failed agent-sessions list request",
+  },
   // --- Empty state ---
   "agentSessions.emptyTitle": {
     message: "还没有智能体会话",
@@ -56,6 +60,26 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message:
       "在上方描述任务并用 @ 提及一个仓库。智能体会在云端沙箱中完成任务，并提交草稿 PR。",
     description: "Agent sessions list empty-state body",
+  },
+  "agentSessions.emptyArchivedTitle": {
+    message: "没有已归档的会话",
+    description: "Archived-only list empty-state heading",
+  },
+  "agentSessions.emptyArchivedBody": {
+    message: "归档后的会话会显示在这里。",
+    description: "Archived-only list empty-state body",
+  },
+  "agentSessions.emptyFilteredTitle": {
+    message: "没有匹配的会话",
+    description: "Phase-filtered list empty-state heading",
+  },
+  "agentSessions.emptyFilteredBody": {
+    message: "请选择其他阶段或清除筛选条件。",
+    description: "Phase-filtered list empty-state body",
+  },
+  "agentSessions.clearFilters": {
+    message: "清除筛选",
+    description: "Clears agent-session membership and phase filters",
   },
   // --- Phase chips ---
   "agentSessions.phase.creating": {
@@ -698,6 +722,10 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "会话已归档",
     description: "Toast after archiving a session",
   },
+  "agentSessions.undoArchive": {
+    message: "撤销",
+    description: "Toast action that immediately unarchives a session",
+  },
   "agentSessions.unarchiveSuccess": {
     message: "会话已取消归档",
     description: "Toast after unarchiving a session",
@@ -744,7 +772,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description: "Screen-reader label of the list's trailing actions column",
   },
   "agentSessions.filterActive": {
-    message: "进行中",
+    message: "当前",
     description: "List membership tab — the unarchived working set",
   },
   "agentSessions.filterArchived": {

@@ -25,6 +25,15 @@ export const AGENT_SESSION_PHASES = [
 
 export type AgentSessionPhase = (typeof AGENT_SESSION_PHASES)[number];
 
+/** Archive-membership values accepted by the sessions list URL. */
+export type AgentSessionArchivedFilter = "true" | "all";
+
+/** Shareable list context carried into a detail page's Back affordance. */
+export interface AgentSessionListSearch {
+  archived?: AgentSessionArchivedFilter;
+  phase?: AgentSessionPhase;
+}
+
 /** How a turn's sandbox was obtained (backend Delivery* constants). */
 export type AgentSessionDeliveryMode = "resume" | "redispatch";
 

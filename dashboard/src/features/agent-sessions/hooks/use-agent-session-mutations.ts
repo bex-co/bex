@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useMutation } from "@apollo/client/react";
+import { useApolloClient, useMutation } from "@apollo/client/react";
 import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import type { AgentSessionFieldsFragment } from "@/graphql/definitions";
 import {
@@ -13,6 +13,7 @@ import {
   ArchiveAgentSessionDocument,
   UnarchiveAgentSessionDocument,
   DeleteAgentSessionDocument,
+  AgentSessionDocument,
 } from "@/graphql/definitions";
 import {
   toAgentSessionTicket,
@@ -92,36 +93,97 @@ function useByIdViewMutation<TData>(
   document: TypedDocumentNode<TData, { id: string }>,
   pick: (data: TData) => AgentSessionFieldsFragment | null | undefined,
   name: string,
+  onSuccess: (session: AgentSessionFieldsFragment) => void,
 ): (id: string) => Promise<AgentSessionView> {
   const [mutate] = useMutation(document);
   return useCallback(
     async (id: string) => {
       try {
-        const res = await mutate({ variables: { id }, fetchPolicy: "no-cache" });
+        const res = await mutate({
+          variables: { id },
+          fetchPolicy: "no-cache",
+        });
         const session = res.data == null ? null : pick(res.data);
         if (!session) throw new Error(`${name} returned no session`);
-        return toAgentSessionView(session);
+        const view = toAgentSessionView(session);
+        onSuccess(session);
+        return view;
       } catch (err) {
         throw toAgentSessionError(err);
       }
     },
     // pick and name are call-site literals, stable per hook instance.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mutate],
+    [mutate, onSuccess],
   );
 }
 
 export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
+  const client = useApolloClient();
+  // Lifecycle mutations deliberately use `no-cache`. Prime the detail query
+  // with the returned server view, then evict every list variant (working set,
+  // archived/all, phase/repo filters and pagination): the current detail never
+  // flashes blank, mounted lists refetch immediately, and dormant variants
+  // cannot resurrect stale membership later.
+  const reconcileSession = useCallback(
+    (session: AgentSessionFieldsFragment) => {
+      client.writeQuery({
+        query: AgentSessionDocument,
+        variables: { id: session.id },
+        data: { agentSession: session },
+      });
+      client.cache.evict({ id: "ROOT_QUERY", fieldName: "agentSessions" });
+      client.cache.gc();
+    },
+    [client],
+  );
+  const invalidateDeletedSession = useCallback(
+    (id: string) => {
+      client.cache.evict({
+        id: "ROOT_QUERY",
+        fieldName: "agentSession",
+        args: { id },
+      });
+      client.cache.evict({ id: "ROOT_QUERY", fieldName: "agentSessions" });
+      client.cache.gc();
+    },
+    [client],
+  );
   const [createMutation] = useMutation(CreateAgentSessionDocument);
   const [steerMutation] = useMutation(SteerAgentSessionDocument);
   const [resumeMutation] = useMutation(ResumeAgentSessionDocument);
   const [attachMutation] = useMutation(AttachAgentSessionDocument);
   const [deleteMutation] = useMutation(DeleteAgentSessionDocument);
-  const cancel = useByIdViewMutation(CancelAgentSessionDocument, (d) => d.cancelAgentSession, "cancelAgentSession");
-  const pin = useByIdViewMutation(PinAgentSessionDocument, (d) => d.pinAgentSession, "pinAgentSession");
-  const unpin = useByIdViewMutation(UnpinAgentSessionDocument, (d) => d.unpinAgentSession, "unpinAgentSession");
-  const archive = useByIdViewMutation(ArchiveAgentSessionDocument, (d) => d.archiveAgentSession, "archiveAgentSession");
-  const unarchive = useByIdViewMutation(UnarchiveAgentSessionDocument, (d) => d.unarchiveAgentSession, "unarchiveAgentSession");
+  const cancel = useByIdViewMutation(
+    CancelAgentSessionDocument,
+    (d) => d.cancelAgentSession,
+    "cancelAgentSession",
+    reconcileSession,
+  );
+  const pin = useByIdViewMutation(
+    PinAgentSessionDocument,
+    (d) => d.pinAgentSession,
+    "pinAgentSession",
+    reconcileSession,
+  );
+  const unpin = useByIdViewMutation(
+    UnpinAgentSessionDocument,
+    (d) => d.unpinAgentSession,
+    "unpinAgentSession",
+    reconcileSession,
+  );
+  const archive = useByIdViewMutation(
+    ArchiveAgentSessionDocument,
+    (d) => d.archiveAgentSession,
+    "archiveAgentSession",
+    reconcileSession,
+  );
+  const unarchive = useByIdViewMutation(
+    UnarchiveAgentSessionDocument,
+    (d) => d.unarchiveAgentSession,
+    "unarchiveAgentSession",
+    reconcileSession,
+  );
 
   const create = useCallback(
     async (input: CreateAgentSessionInput): Promise<AgentSessionTicket> => {
@@ -146,12 +208,14 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
         });
         const session = res.data?.createAgentSession;
         if (!session) throw new Error("createAgentSession returned no session");
-        return toAgentSessionTicket(session);
+        const ticket = toAgentSessionTicket(session);
+        reconcileSession(session);
+        return ticket;
       } catch (err) {
         throw toAgentSessionError(err);
       }
     },
-    [createMutation],
+    [createMutation, reconcileSession],
   );
 
   const steer = useCallback(
@@ -173,12 +237,14 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
         });
         const session = res.data?.steerAgentSession;
         if (!session) throw new Error("steerAgentSession returned no session");
-        return toAgentSessionTicket(session);
+        const ticket = toAgentSessionTicket(session);
+        reconcileSession(session);
+        return ticket;
       } catch (err) {
         throw toAgentSessionError(err);
       }
     },
-    [steerMutation],
+    [steerMutation, reconcileSession],
   );
 
   const resume = useCallback(
@@ -190,12 +256,14 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
         });
         const session = res.data?.resumeAgentSession;
         if (!session) throw new Error("resumeAgentSession returned no session");
-        return toAgentSessionTicket(session);
+        const ticket = toAgentSessionTicket(session);
+        reconcileSession(session);
+        return ticket;
       } catch (err) {
         throw toAgentSessionError(err);
       }
     },
-    [resumeMutation],
+    [resumeMutation, reconcileSession],
   );
 
   const attach = useCallback(
@@ -214,12 +282,6 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     },
     [attachMutation],
   );
-
-
-
-
-
-
   const deleteSession = useCallback(
     async (id: string): Promise<void> => {
       try {
@@ -230,11 +292,12 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
         if (res.data?.deleteAgentSession !== true) {
           throw new Error("deleteAgentSession did not confirm");
         }
+        invalidateDeletedSession(id);
       } catch (err) {
         throw toAgentSessionError(err);
       }
     },
-    [deleteMutation],
+    [deleteMutation, invalidateDeletedSession],
   );
 
   return {

@@ -6,13 +6,17 @@ import { FailureCallout } from "@/features/agent-sessions/components/failure-cal
 import { SteeringComposer } from "@/features/agent-sessions/components/steering-composer";
 import { SessionConversation } from "@/features/agent-sessions/components/session-conversation";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
-import type { AgentSessionView } from "@/features/agent-sessions/types";
+import type {
+  AgentSessionListSearch,
+  AgentSessionView,
+} from "@/features/agent-sessions/types";
 
 export interface SessionChatColumnProps {
   session: AgentSessionView;
   chat: ConversationChatHandle | null;
   onChatStateChange: (handle: ConversationChatHandle | null) => void;
-  onChanged: () => void;
+  onChanged: () => void | Promise<unknown>;
+  backSearch?: AgentSessionListSearch;
 }
 
 /**
@@ -34,6 +38,7 @@ export function SessionChatColumn({
   chat,
   onChatStateChange,
   onChanged,
+  backSearch,
 }: SessionChatColumnProps) {
   const { t } = useTranslations();
 
@@ -107,7 +112,11 @@ export function SessionChatColumn({
 
   return (
     <>
-      <SessionDetailHeader session={session} onChanged={onChanged} />
+      <SessionDetailHeader
+        session={session}
+        onChanged={onChanged}
+        backSearch={backSearch}
+      />
 
       <div className="min-h-0 flex-1">{conversation}</div>
 

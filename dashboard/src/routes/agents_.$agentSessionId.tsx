@@ -15,6 +15,16 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSession } from "@/features/agent-sessions/hooks/use-agent-session";
 import { SessionChatColumn } from "@/features/agent-sessions/components/session-chat-column";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
+import {
+  AGENT_SESSION_PHASES,
+  type AgentSessionArchivedFilter,
+  type AgentSessionPhase,
+} from "@/features/agent-sessions/types";
+
+interface AgentSessionDetailSearch {
+  fromArchived?: AgentSessionArchivedFilter;
+  fromPhase?: AgentSessionPhase;
+}
 
 // The agent-session detail page (ADR047 § D9), restructured into ONE full-page
 // Devin-style chat (w3/m44): a left sessions sidebar + a chat column whose whole
@@ -35,11 +45,27 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
   pendingComponent: AgentSessionDetailPending,
   pendingMs: 0,
   beforeLoad: requireAuth(),
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): AgentSessionDetailSearch => {
+    const out: AgentSessionDetailSearch = {};
+    if (search.fromArchived === "true" || search.fromArchived === "all") {
+      out.fromArchived = search.fromArchived;
+    }
+    if (
+      typeof search.fromPhase === "string" &&
+      AGENT_SESSION_PHASES.includes(search.fromPhase as AgentSessionPhase)
+    ) {
+      out.fromPhase = search.fromPhase as AgentSessionPhase;
+    }
+    return out;
+  },
   head: ({ match }) => translatedTitleHead("agentSessions.detailTitle", match),
 });
 
 function AgentSessionDetailPage() {
   const { agentSessionId } = Route.useParams();
+  const { fromArchived, fromPhase } = Route.useSearch();
   const { session, loading, error, refetch } = useAgentSession(agentSessionId);
   // Lifted from the conversation column so the steering composer can send a live
   // turn through the column's own useChat instance (null ⇒ live path disabled).
@@ -58,7 +84,8 @@ function AgentSessionDetailPage() {
               session={session}
               chat={chat}
               onChatStateChange={setChat}
-              onChanged={() => void refetch()}
+              onChanged={() => refetch()}
+              backSearch={{ archived: fromArchived, phase: fromPhase }}
             />
           ) : null}
         </div>

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, it, expect, vi } from "vitest";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SessionList } from "@/features/agent-sessions/components/session-list";
 import type {
@@ -12,14 +12,21 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({
     children,
     title,
+    search,
   }: {
     children: React.ReactNode;
     title?: string;
+    search?: unknown;
   }) => (
-    <a href="#session" title={title}>
+    <a href="#session" title={title} data-search={JSON.stringify(search)}>
       {children}
     </a>
   ),
+}));
+
+const { toastSuccess } = vi.hoisted(() => ({ toastSuccess: vi.fn() }));
+vi.mock("sonner", () => ({
+  toast: { success: toastSuccess, error: vi.fn() },
 }));
 
 // The per-row archive toggle drives Apollo mutations; the list's own rendering
@@ -41,6 +48,12 @@ function view(
 }
 
 describe("SessionList", () => {
+  beforeEach(() => {
+    archiveMock.mockClear();
+    unarchiveMock.mockClear();
+    toastSuccess.mockClear();
+  });
+
   it("renders the empty state (not the table) when there are no sessions", () => {
     render(<SessionList sessions={[]} loading={false} />);
     expect(screen.getByText("No agent sessions yet")).toBeInTheDocument();
@@ -54,12 +67,46 @@ describe("SessionList", () => {
   });
 
   it("shows the error state when the load fails with no rows", () => {
+    const onRetry = vi.fn();
     render(
-      <SessionList sessions={[]} loading={false} error={new Error("boom")} />,
+      <SessionList
+        sessions={[]}
+        loading={false}
+        error={new Error("boom")}
+        onRetry={onRetry}
+      />,
     );
     expect(
       screen.getByText("Couldn't load agent sessions"),
     ).toBeInTheDocument();
+    screen.getByRole("button", { name: "Retry" }).click();
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("explains filtered empty states and offers to clear the filters", async () => {
+    const user = userEvent.setup();
+    const onClearFilters = vi.fn();
+    const { rerender } = render(
+      <SessionList
+        sessions={[]}
+        loading={false}
+        archiveFilter="true"
+        onClearFilters={onClearFilters}
+      />,
+    );
+    expect(screen.getByText("No archived sessions")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(onClearFilters).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <SessionList
+        sessions={[]}
+        loading={false}
+        phase="failed"
+        onClearFilters={onClearFilters}
+      />,
+    );
+    expect(screen.getByText("No matching sessions")).toBeInTheDocument();
   });
 
   it("renders a per-phase chip with the localized phase label", () => {
@@ -128,6 +175,21 @@ describe("SessionList", () => {
     expect(screen.getByText("as-empty")).toBeInTheDocument();
   });
 
+  it("carries membership and phase filters into a session detail link", () => {
+    render(
+      <SessionList
+        loading={false}
+        archiveFilter="true"
+        phase="failed"
+        sessions={[view({ id: "as-filtered", task: "inspect failure" })]}
+      />,
+    );
+    expect(screen.getByText("inspect failure").closest("a")).toHaveAttribute(
+      "data-search",
+      JSON.stringify({ fromArchived: "true", fromPhase: "failed" }),
+    );
+  });
+
   // ADR065 D1/D6: an archived row is marked, and each row carries the
   // archive/unarchive toggle that drives the mutation + a list refresh.
   it("marks archived rows and offers per-row archive/unarchive", async () => {
@@ -157,14 +219,42 @@ describe("SessionList", () => {
     expect(within(liveRow).queryByText("Archived")).not.toBeInTheDocument();
 
     // Row actions: archive on the live row, unarchive on the archived one.
-    await user.click(
-      within(liveRow).getByRole("button", { name: "Archive" }),
-    );
+    await user.click(within(liveRow).getByRole("button", { name: "Archive" }));
     expect(archiveMock).toHaveBeenCalledWith("as-live");
+    const archiveToast = toastSuccess.mock.calls.find(
+      ([message]) => message === "Session archived",
+    );
+    expect(archiveToast?.[1]?.action.label).toBe("Undo");
+    archiveToast?.[1]?.action.onClick();
+    await waitFor(() => expect(unarchiveMock).toHaveBeenCalledWith("as-live"));
     await user.click(
       within(archivedRow).getByRole("button", { name: "Unarchive" }),
     );
     expect(unarchiveMock).toHaveBeenCalledWith("as-arch");
     expect(onChanged).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the row action busy until its refresh completes", async () => {
+    const user = userEvent.setup();
+    let finishRefresh: (() => void) | undefined;
+    const onChanged = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishRefresh = resolve;
+        }),
+    );
+    render(
+      <SessionList
+        loading={false}
+        onChanged={onChanged}
+        sessions={[view({ id: "as-live", task: "wait for refresh" })]}
+      />,
+    );
+    const action = screen.getByRole("button", { name: "Archive" });
+    await user.click(action);
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(action).toBeDisabled();
+    finishRefresh?.();
+    await waitFor(() => expect(action).toBeEnabled());
   });
 });
