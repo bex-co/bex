@@ -246,6 +246,8 @@ func autoscaleDesired(as *appv1alpha1.AutoscalingSpec, usage []PodUsage, tier st
 
 	minR := max(as.MinReplicas, 1)
 	maxR := max(as.MaxReplicas, minR)
+	minR = min(minR, appv1alpha1.MaxReplicas)
+	maxR = min(maxR, appv1alpha1.MaxReplicas)
 
 	current := int32(len(usage))
 

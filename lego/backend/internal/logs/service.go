@@ -76,7 +76,7 @@ var ErrBuildNotRunning = errors.New("no running build is available to follow")
 // hides the revocation for its TTL, and nothing re-checks after that. The
 // watchdog closes the window to one interval. The same cadence the SSH
 // gateway's stream watchdog uses (sshgateway.DefaultRevalidateInterval).
-const DefaultRevalidateInterval = time.Minute
+const DefaultRevalidateInterval = core.DefaultStreamRevalidateInterval
 
 // The log labels Render's clients filter and discover by (`list_log_label_values`'s
 // enum). Each maps onto a stream label the shipper attaches — except LabelHost,
@@ -853,37 +853,11 @@ func (s *Service) revalidateTailTarget(ctx context.Context, namespace, name stri
 	return s.AuthorizeAppFresh(ctx, core.RelCanViewLogs, &fresh)
 }
 
-// withRevalidation derives a cancellable child of parent whose watchdog re-runs
-// check every interval until the child is canceled; the first failed check
-// (revocation, target gone, or the checker failing closed on an unreachable
-// store) cancels the child, which is what ends the tail — every pod-stream
-// goroutine and the emit loop pump on this context. interval <= 0 disables the
-// watchdog and the result degrades to a plain context.WithCancel.
-//
-// This is the logs-local twin of sshgateway.WithRevalidation (round-9 #6): the
-// two packages share the pattern, not the helper — logs must not import the
-// gateway package just for it.
+// withRevalidation is the logs-facing name of core.WithRevalidation, shared
+// with the SSH/agent transports (round-9 #6 / round 15). logs must not import
+// the gateway package just for it.
 func withRevalidation(parent context.Context, interval time.Duration, check func(context.Context) error) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(parent)
-	if interval <= 0 || check == nil {
-		return ctx, cancel
-	}
-	go func() {
-		ticker := time.NewTicker(interval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				if err := check(ctx); err != nil {
-					cancel()
-					return
-				}
-			}
-		}
-	}()
-	return ctx, cancel
+	return core.WithRevalidation(parent, interval, check)
 }
 
 // followBuildLogs streams every currently-running container from the newest

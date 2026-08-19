@@ -40,6 +40,11 @@ export interface AgentDriverConfig {
   // BEFORE the setup clone. Empty ⇒ a normal clone (byte-identical). The URL is
   // single-object + time-boxed; no durable credential enters the sandbox.
   restoreUrl: string;
+  // restoreSha / restoreBytes (codex round-15 #7): recorded digest and size of
+  // the snapshot object. When set, restore verifies them after download and
+  // refuses to extract a mismatched or truncated archive.
+  restoreSha: string;
+  restoreBytes: number;
   deliver: boolean;
   gitName: string;
   gitEmail: string;
@@ -122,6 +127,18 @@ function positiveMilliseconds(value: string | undefined): number {
     throw new Error("BEX_AGENT_TURN_TIMEOUT_MS must be a positive integer");
   }
   return milliseconds;
+}
+
+function optionalNonNegativeInt(
+  value: string | undefined,
+  name: string,
+): number {
+  if (!value) return 0;
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) {
+    throw new Error(`${name} must be a non-negative integer`);
+  }
+  return n;
 }
 
 // Anthropic OAuth tokens (minted by `claude setup-token`, prefix `sk-ant-oat`)
@@ -238,6 +255,11 @@ export function loadConfig(
     repoUrl: env.BEX_AGENT_REPO_URL || "",
     baseBranch: env.BEX_AGENT_BASE_BRANCH || "",
     restoreUrl: env.BEX_AGENT_RESTORE_URL || "",
+    restoreSha: env.BEX_AGENT_RESTORE_SHA || "",
+    restoreBytes: optionalNonNegativeInt(
+      env.BEX_AGENT_RESTORE_BYTES,
+      "BEX_AGENT_RESTORE_BYTES",
+    ),
     deliver: env.BEX_AGENT_DELIVER === "1",
     gitName: env.BEX_AGENT_GIT_NAME || "bex agent",
     gitEmail: env.BEX_AGENT_GIT_EMAIL || "agent@bex.co",

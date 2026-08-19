@@ -28,6 +28,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -135,6 +136,30 @@ func TestSetAutoscalingValidatesPercentRange(t *testing.T) {
 	_, err := svc.SetAutoscaling(context.Background(), "web", req)
 	if !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("expected bad-request (percent=0), got %v", err)
+	}
+}
+
+func TestSetAutoscalingRejectsAbovePlatformCeiling(t *testing.T) {
+	// codex round-15 #1: autoscaling min/max must share the explicit-scale
+	// ceiling; without it a can_operate caller could persist int32-max bounds
+	// the operator would then project into Deployment.spec.replicas.
+	svc, _ := newService(nil, sampleApp("web"))
+	over := store.MaxReplicas + 1
+	cpu := int32p(80)
+	for _, req := range []SetAutoscalingRequest{
+		{MinInstances: over, MaxInstances: over, TargetCPUPercent: cpu},
+		{MinInstances: 1, MaxInstances: over, TargetCPUPercent: cpu},
+	} {
+		_, err := svc.SetAutoscaling(context.Background(), "web", req)
+		if !errors.Is(err, core.ErrBadRequest) {
+			t.Fatalf("SetAutoscaling(%+v) = %v, want bad-request at ceiling %d", req, err, store.MaxReplicas)
+		}
+	}
+	// The ceiling itself is still accepted — the bound is inclusive.
+	if _, err := svc.SetAutoscaling(context.Background(), "web", SetAutoscalingRequest{
+		MinInstances: store.MaxReplicas, MaxInstances: store.MaxReplicas, TargetCPUPercent: cpu,
+	}); err != nil {
+		t.Fatalf("ceiling %d must be accepted: %v", store.MaxReplicas, err)
 	}
 }
 

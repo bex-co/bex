@@ -209,6 +209,26 @@ func TestAutoscaleDesiredClampToMax(t *testing.T) {
 	}
 }
 
+func TestAutoscaleDesiredCapsOversizedBounds(t *testing.T) {
+	// A hand-applied App CR can carry min/max far above the CRD/API ceiling
+	// when the apiserver is bypassed (fake client, pre-schema objects). The
+	// operator must still refuse to compute a Deployment target past MaxReplicas.
+	as := &appv1alpha1.AutoscalingSpec{
+		Enabled:          true,
+		MinReplicas:      1,
+		MaxReplicas:      1_000_000_000,
+		TargetCPUPercent: ptr32(1),
+	}
+	usage := []PodUsage{{Pod: "p", CPUCores: 0.5}}
+	got, skip := autoscaleDesired(as, usage, "starter")
+	if skip {
+		t.Fatal("should not skip")
+	}
+	if got != appv1alpha1.MaxReplicas {
+		t.Errorf("desired = %d, want platform ceiling %d", got, appv1alpha1.MaxReplicas)
+	}
+}
+
 func TestAutoscaleDesiredClampToMin(t *testing.T) {
 	// Min replicas = 2; computed would be 1
 	as := &appv1alpha1.AutoscalingSpec{

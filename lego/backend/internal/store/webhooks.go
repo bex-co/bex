@@ -102,6 +102,14 @@ func scanWebhookEndpointWithLatest(row pgx.Row) (WebhookEndpoint, error) {
 // pathological case, not to shape normal use.
 const MaxWebhookEndpointsPerWorkspace = 25
 
+// MaxWebhookURLBytes is the destination length cap (codex round-15 #2). The
+// shared worker reloads every enabled endpoint every two seconds, so an
+// unbounded HTTPS URL (the global 2 MiB body cap) is a persistent memory and
+// query-byte multiplier across tenants. 2048 is far above any real webhook
+// destination (Slack/PagerDuty/GitHub are hundreds of bytes) and matches the
+// practical URL length most intermediaries accept.
+const MaxWebhookURLBytes = 2048
+
 // ErrWebhookEndpointLimit is the typed refusal when a workspace is already at
 // MaxWebhookEndpointsPerWorkspace. Wraps ErrConflict so existing REST/GraphQL/MCP
 // error mapping treats it like the other quota refusals (cf. ErrInvitePlanLimit).
@@ -153,6 +161,9 @@ func (s *PGStore) CreateWebhookEndpoint(ctx context.Context, tenantID, name, url
 		}
 		if n >= MaxWebhookEndpointsPerWorkspace {
 			return ErrWebhookEndpointLimit
+		}
+		if len(url) > MaxWebhookURLBytes {
+			return fmt.Errorf("%w: webhook url exceeds %d bytes", ErrInvalid, MaxWebhookURLBytes)
 		}
 		return tx.QueryRow(ctx,
 			`INSERT INTO webhook_endpoints (id, tenant_id, name, url, secret, event_types, enabled, created_by)
@@ -262,6 +273,9 @@ func (s *PGStore) DeleteWebhookEndpoint(ctx context.Context, tenantID, id string
 // any disabled_reason; disabling leaves it unchanged (use SetWebhookEndpointEnabled
 // for an explicit reason). Secret is immutable after creation.
 func (s *PGStore) UpdateWebhookEndpoint(ctx context.Context, tenantID, id, name, url string, eventTypes []string, enabled bool) (WebhookEndpoint, error) {
+	if len(url) > MaxWebhookURLBytes {
+		return WebhookEndpoint{}, fmt.Errorf("%w: webhook url exceeds %d bytes", ErrInvalid, MaxWebhookURLBytes)
+	}
 	e, err := scanWebhookEndpoint(s.Pool.QueryRow(ctx,
 		`UPDATE webhook_endpoints
 		 SET name = $3, url = $4, event_types = $5, enabled = $6,
@@ -277,19 +291,23 @@ func (s *PGStore) UpdateWebhookEndpoint(ctx context.Context, tenantID, id, name,
 }
 
 // ListEnabledWebhookEndpoints returns every enabled endpoint platform-wide
-// (secrets omitted) — the dispatcher's subscription table, refreshed each
-// poll pass.
+// for the dispatcher's subscription table, refreshed each poll pass.
+//
+// Only the columns dispatch needs are selected (id, tenant, event types,
+// created_at). The destination URL is loaded later, per due delivery, so a
+// large catalog cannot pin unbounded URL text in the shared API process
+// (codex round-15 #2).
 func (s *PGStore) ListEnabledWebhookEndpoints(ctx context.Context) ([]WebhookEndpoint, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT `+webhookEndpointColumns+` FROM webhook_endpoints WHERE enabled`)
+		`SELECT id, tenant_id, event_types, created_at FROM webhook_endpoints WHERE enabled`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var out []WebhookEndpoint
 	for rows.Next() {
-		e, err := scanWebhookEndpoint(rows)
-		if err != nil {
+		var e WebhookEndpoint
+		if err := rows.Scan(&e.ID, &e.TenantID, &e.EventTypes, &e.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, e)

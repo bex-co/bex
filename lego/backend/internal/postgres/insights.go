@@ -163,7 +163,18 @@ ORDER BY name`
 // runInsight dials the database and executes sql inside the standard read-only
 // envelope (same safety rails as Query). The caller maps rows to its typed view.
 func (s *Service) runInsight(ctx context.Context, relation, dbID, sql string) (QueryResult, error) {
-	_, sec, err := s.loadAppSecret(ctx, relation, dbID)
+	db, err := s.AuthorizeDatabase(ctx, relation, dbID)
+	if err != nil {
+		return QueryResult{}, err
+	}
+	// Processes/TopQueries (and every other insight that dials the tenant
+	// database) surface live query text. RelCanViewSensitive and RelCanView
+	// are both read relations, so Authorize uses the decision cache; re-check
+	// uncached before loading the connection Secret (codex round-15 #4).
+	if err := s.AuthorizeDatabaseFresh(ctx, relation, db); err != nil {
+		return QueryResult{}, err
+	}
+	sec, err := s.databaseSecret(ctx, db)
 	if err != nil {
 		return QueryResult{}, err
 	}

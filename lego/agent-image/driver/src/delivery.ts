@@ -23,7 +23,10 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { open, readdir, rm } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdtemp, open, readdir, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 const run = promisify(execFile);
 
@@ -185,21 +188,50 @@ async function captureDeliveryBaseline(
 // failure is fatal to setup on purpose: silently falling back to a clean clone
 // would lose the user's uncommitted work without a signal.
 export async function restoreWorkspace(
-  config: { restoreUrl: string },
+  config: { restoreUrl: string; restoreSha?: string; restoreBytes?: number },
   destRoot = "/",
 ): Promise<void> {
   if (!config.restoreUrl) return;
-  await run(
-    "/bin/sh",
-    ["-c", 'curl -sf "$BEX_RESTORE_URL" | tar xzf - -C "$BEX_RESTORE_DEST"'],
-    {
+  const dir = await mkdtemp(path.join(tmpdir(), "bex-restore-"));
+  const archive = path.join(dir, "snap.tgz");
+  try {
+    await run("/bin/sh", ["-c", 'curl -sf "$BEX_RESTORE_URL" -o "$BEX_RESTORE_FILE"'], {
       env: {
         ...process.env,
         BEX_RESTORE_URL: config.restoreUrl,
-        BEX_RESTORE_DEST: destRoot,
+        BEX_RESTORE_FILE: archive,
       },
-    },
-  );
+    });
+    const body = await readFile(archive);
+    if (
+      config.restoreBytes != null &&
+      config.restoreBytes > 0 &&
+      body.length !== config.restoreBytes
+    ) {
+      throw new Error(
+        `snapshot size mismatch: got ${body.length}, want ${config.restoreBytes}`,
+      );
+    }
+    if (config.restoreSha) {
+      const sha = createHash("sha256").update(body).digest("hex");
+      if (sha !== config.restoreSha) {
+        throw new Error("snapshot digest mismatch");
+      }
+    }
+    await run(
+      "/bin/sh",
+      ["-c", 'tar xzf "$BEX_RESTORE_FILE" -C "$BEX_RESTORE_DEST"'],
+      {
+        env: {
+          ...process.env,
+          BEX_RESTORE_FILE: archive,
+          BEX_RESTORE_DEST: destRoot,
+        },
+      },
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 }
 
 // cloneWithRetry clones the session repo, retrying a transient authorization

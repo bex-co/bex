@@ -287,6 +287,8 @@ func TestCreateValidatesURLAndEventTypes(t *testing.T) {
 		// Round-13 #7: embedded userinfo is refused outright — the repo-URL
 		// invariant; a credential in the URL would be echoed to every viewer.
 		{Name: "x", URL: "https://key:secret@hooks.slack.com/services/T000/B000/x", EventTypes: []string{TypeDeployStarted}},
+		// Round-15 #2: an HTTPS URL still has to fit the destination length cap.
+		{Name: "x", URL: "https://example.com/" + strings.Repeat("a", store.MaxWebhookURLBytes), EventTypes: []string{TypeDeployStarted}},
 	} {
 		if _, err := s.Create(ctx, tc); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("Create(%+v) = %v, want ErrBadRequest", tc, err)

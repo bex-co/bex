@@ -32,6 +32,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Typed resource ids ("tea-…"/"srv-…"/"cdm-…") are minted through the one id
@@ -43,7 +44,9 @@ import (
 // both the create path (store/api.go) and the apps scale verb so the two can't
 // disagree about what a valid App is. The lower bounds legitimately differ
 // (create treats 0 as "default 1"; scale rejects 0 — see apps.Service.Scale).
-const MaxReplicas = 100
+// The value is the CRD/operator ceiling (types.MaxReplicas) so autoscaling,
+// explicit scale, and create cannot drift from what Kubernetes will admit.
+const MaxReplicas = appv1alpha1.MaxReplicas
 
 // Error taxonomy shared by the store and the API: the store classifies
 // Postgres failures into these, the API maps them to status codes

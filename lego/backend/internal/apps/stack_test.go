@@ -204,6 +204,27 @@ services:
 	}
 }
 
+func TestParseStackScalingBlockRejectsAbovePlatformCeiling(t *testing.T) {
+	const manifest = `
+services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+    scaling:
+      minInstances: 1
+      maxInstances: 101
+      targetCPUPercent: 70
+`
+	st, err := parseStack(DeployRequest{Manifest: manifest})
+	if err != nil {
+		t.Fatalf("parseStack: %v", err)
+	}
+	if _, err := specFromCreate(findSvc(t, st, "web").req); err == nil {
+		t.Fatal("specFromCreate must refuse maxInstances above the platform ceiling")
+	}
+}
+
 func TestParseStackCanonicalServices(t *testing.T) {
 	st, err := parseStack(DeployRequest{Manifest: sampleManifest})
 	if err != nil {

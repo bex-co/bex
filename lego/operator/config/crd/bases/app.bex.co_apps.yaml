@@ -73,6 +73,7 @@ spec:
                       MaxReplicas is the upper replica bound; the autoscaler never drives replicas
                       above this. Must be ≥ MinReplicas. Required when Enabled.
                     format: int32
+                    maximum: 100
                     minimum: 1
                     type: integer
                   minReplicas:
@@ -80,6 +81,7 @@ spec:
                       MinReplicas is the lower replica bound; the autoscaler never drives replicas
                       below this. Must be ≥ 0. Defaults to 1 when omitted and autoscaling is enabled.
                     format: int32
+                    maximum: 100
                     minimum: 0
                     type: integer
                   targetCPUPercent:
@@ -597,6 +599,8 @@ spec:
                 description: Replicas for the kubernetes runtime (pods bin-packed
                   across machines/nodes).
                 format: int32
+                maximum: 100
+                minimum: 0
                 type: integer
               repo:
                 description: |-

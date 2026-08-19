@@ -3761,6 +3761,12 @@ func autoscalingSpec(req SetAutoscalingRequest) (appv1alpha1.AutoscalingSpec, er
 	if req.MinInstances > req.MaxInstances {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: minInstances must be ≤ maxInstances", core.ErrBadRequest)
 	}
+	if req.MinInstances > store.MaxReplicas {
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: minInstances must be 0-%d", core.ErrBadRequest, store.MaxReplicas)
+	}
+	if req.MaxInstances > store.MaxReplicas {
+		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: maxInstances must be 1-%d", core.ErrBadRequest, store.MaxReplicas)
+	}
 	if req.TargetCPUPercent != nil && (*req.TargetCPUPercent < 1 || *req.TargetCPUPercent > 100) {
 		return appv1alpha1.AutoscalingSpec{}, fmt.Errorf("%w: targetCPUPercent must be 1–100", core.ErrBadRequest)
 	}

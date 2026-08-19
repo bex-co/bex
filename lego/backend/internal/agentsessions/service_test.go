@@ -819,7 +819,7 @@ func seedHibernated(st *fakeStore, id string) {
 	row := st.rows[id]
 	row.Phase, row.Status = PhaseHibernated, "hibernated"
 	row.SandboxID = ""
-	row.SnapshotRef, row.SnapshotBytes = "agent-snapshots/tea-a/"+id+".tgz", 4096
+	row.SnapshotRef, row.SnapshotBytes, row.SnapshotSHA = "agent-snapshots/tea-a/"+id+".tgz", 4096, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	st.rows[id] = row
 }
 
@@ -856,6 +856,15 @@ func TestResumeRehydratesHibernatedSession(t *testing.T) {
 	}
 	if got := lc.driverEnv["BEX_AGENT_PROMPT"]; got != "" {
 		t.Fatalf("resume-without-prompt reruns task %q", got)
+	}
+	if lc.driverEnv["BEX_AGENT_RESTORE_URL"] == "" {
+		t.Fatal("rehydrate must stamp the presigned restore URL")
+	}
+	if lc.driverEnv["BEX_AGENT_RESTORE_SHA"] != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" {
+		t.Fatalf("restore sha = %q", lc.driverEnv["BEX_AGENT_RESTORE_SHA"])
+	}
+	if lc.driverEnv["BEX_AGENT_RESTORE_BYTES"] != "4096" {
+		t.Fatalf("restore bytes = %q", lc.driverEnv["BEX_AGENT_RESTORE_BYTES"])
 	}
 }
 

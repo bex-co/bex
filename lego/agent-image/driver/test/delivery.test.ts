@@ -15,6 +15,7 @@
  */
 
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
 import { createServer } from "node:http";
@@ -115,6 +116,54 @@ test("restoreWorkspace fetches + untars a snapshot, leaving ensureRepo a no-op",
       (await readFile(path.join(cwd, "uncommitted.txt")))
         .toString()
         .includes("unpushed"),
+    );
+  } finally {
+    server.close();
+  }
+});
+
+test("restoreWorkspace refuses a mismatched snapshot digest before extract", async () => {
+  const { root, remote } = await bareRemote();
+  const src = path.join(root, "src-workspace");
+  await mkdir(src);
+  git(src, ["clone", remote, "."]);
+  const archive = path.join(root, "snap.tgz");
+  execFileSync("tar", ["czf", archive, "-C", src, "."]);
+  const body = await readFile(archive);
+  const realSha = createHash("sha256").update(body).digest("hex");
+
+  const server = createServer((_req, res) => {
+    res.writeHead(200);
+    res.end(body);
+  });
+  await new Promise<void>((r) => server.listen(0, r));
+  const port = (server.address() as AddressInfo).port;
+  const cwd = path.join(root, "restored");
+  await mkdir(cwd);
+  try {
+    await assert.rejects(
+      () =>
+        restoreWorkspace(
+          {
+            restoreUrl: `http://127.0.0.1:${port}/snap.tgz`,
+            restoreSha: "0".repeat(64),
+            restoreBytes: body.length,
+          },
+          cwd,
+        ),
+      /snapshot digest mismatch/,
+    );
+    await assert.rejects(
+      () =>
+        restoreWorkspace(
+          {
+            restoreUrl: `http://127.0.0.1:${port}/snap.tgz`,
+            restoreSha: realSha,
+            restoreBytes: body.length + 1,
+          },
+          cwd,
+        ),
+      /snapshot size mismatch/,
     );
   } finally {
     server.close();
