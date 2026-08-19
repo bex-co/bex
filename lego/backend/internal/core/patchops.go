@@ -25,9 +25,10 @@ package core
 //   - a call carrying no settable argument runs no ops at all and reflects
 //     current state instead of writing defaults over the resource.
 //
-// The mirror on the REST side is patchService's ops table (apps/rest.go), whose
-// order these tools follow so a multi-field call behaves the same on both
-// surfaces.
+// The flagship user is the service-patch pipeline: apps.ApplyServicePatch
+// (apps/settings.go, w1/m78) holds the one ordered op table both
+// PATCH /v1/services/{id} and update_service reduce to, so a multi-field call
+// behaves the same on both surfaces.
 type PatchOps[T any] struct {
 	ops []func() (T, error)
 }
