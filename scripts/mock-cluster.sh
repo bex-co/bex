@@ -74,7 +74,7 @@ KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system patch deploy calico-kube-cont
 
 # Storage: CAPD nodes ship no CSI, so PVCs (dev-N CNPG databases + Loki) can
 # never bind on a fresh cluster — install local-path-provisioner and mark it the
-# default StorageClass (.pm/w5/dev-5/up.sh fail-fasts on exactly this; w1/043).
+# default StorageClass (scripts/dev-env.sh fail-fasts on exactly this; w1/043).
 # Same OrbStack+Calico caveat as coredns above: the provisioner watches the
 # apiserver, so keep it on the control-plane node.
 KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f \

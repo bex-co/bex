@@ -52,7 +52,7 @@ The family verdicts and dispositions are in:
 
 ## Reproduce the walk
 
-1. Start the isolated mock-cluster stack with `bash .pm/w5/dev-5/up.sh`, then start the dashboard with the command printed by that script. Do not use another worker's namespace or ports.
+1. Start the isolated mock-cluster stack with `bash scripts/dev-env.sh 5 up`, then start the dashboard with the command printed by that script. Do not use another worker's namespace or ports.
 2. Register a test identity and seed the fixture types listed above. Accept a second identity's workspace invitation so Team has a real second member.
 3. In an authenticated live Render account, choose representative Git web, static-site, cron, and Postgres resources. It is acceptable to record a page as unreachable when the account has no safe fixture; do not create billable resources merely for the audit.
 4. Walk the route inventory above in order. At each route, record semantic page structure and take a desktop screenshot using a **bare filename** so it lands in `.playwright-mcp/`.

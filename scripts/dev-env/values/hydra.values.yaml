@@ -1,0 +1,22 @@
+# dev-__N__ overlay for Ory Hydra (workstream w__N__) — sibling of
+# kratos.values.yaml in this directory; see its header for why each
+# workstream needs its own Ory stack instead of reusing the shared cluster's
+# "auth" namespace.
+#
+# Ports here MUST match scripts/dev-env.sh (derived from N):
+#   dashboard        -> http://localhost:__DASHBOARD_PORT__
+#   hydra-admin port-forward  -> http://localhost:__HYDRA_ADMIN_PORT__
+#   hydra-public port-forward -> http://localhost:__HYDRA_PUBLIC_PORT__ (the issuer)
+#
+# The issuer is the hydra-PUBLIC port. Eight of the ten retired copies pointed it
+# at 57000+N*10 — the Kratos-admin slot, where nothing Hydra-shaped listens — and
+# only w3/w9, the two that actually forwarded hydra-public, had it right. The
+# fold takes the working spelling (w1/m72).
+hydra:
+  dev: true # plain-HTTP issuer, dev-only
+  config:
+    urls:
+      self:
+        issuer: http://localhost:__HYDRA_PUBLIC_PORT__
+      login: http://localhost:__DASHBOARD_PORT__/auth/login
+      consent: http://localhost:__DASHBOARD_PORT__/auth/consent

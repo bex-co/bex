@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run the official Render CLI rename smoke against one isolated dev-N stack.
-# The stack must already be healthy via .pm/wN/dev-N/up.sh. Authentication is
+# The stack must already be healthy via `bash scripts/dev-env.sh <N> up`. Authentication is
 # throwaway and kept in memory; no API key, session, password, or kubeconfig is
 # printed or persisted.
 set -euo pipefail

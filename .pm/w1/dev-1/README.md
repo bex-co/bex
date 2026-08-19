@@ -44,15 +44,15 @@ concurrently.
 ## Start / status / stop
 
 ```sh
-bash .pm/w1/dev-1/up.sh      # idempotent: creates namespaces, CNPG Clusters,
+bash scripts/dev-env.sh 1 up      # idempotent: creates namespaces, CNPG Clusters,
                                # mailpit, kratos+hydra (helm), port-forwards,
                                # and a local bex-api
-bash .pm/w1/dev-1/status.sh  # pod status + http health checks
-bash .pm/w1/dev-1/down.sh    # kills local processes, deletes both namespaces
+bash scripts/dev-env.sh 1 status  # pod status + http health checks
+bash scripts/dev-env.sh 1 down    # kills local processes, deletes both namespaces
 ```
 
-Then start the dashboard separately (kept out of `up.sh` so it stays in the
-foreground / under your own process control — `up.sh` prints the exact
+Then start the dashboard separately (kept out of `dev-env.sh 1 up` so it stays in the
+foreground / under your own process control — `dev-env.sh 1 up` prints the exact
 command):
 
 ```sh
@@ -62,7 +62,7 @@ cd dashboard && VITE_API_URL=http://localhost:54010/graphql \
 
 ## Recovering after a restart
 
-`up.sh` is idempotent — re-running it after a reboot (or after the shared
+`dev-env.sh 1 up` is idempotent — re-running it after a reboot (or after the shared
 `bex` kind cluster was recreated) regenerates the kubeconfig from `kind`,
 re-applies the CNPG Clusters / mailpit / Kratos / Hydra (helm
 `upgrade --install`), and re-forks the port-forwards + bex-api. Existing
@@ -71,7 +71,7 @@ underlying `bex` cluster (and its PVs) survive.
 
 ## Tenant-namespace isolation between concurrent dev-N stacks
 
-`up.sh` sets **`BEX_CP_IDENTITY=dev-1`**, so every tenant namespace this
+`dev-env.sh 1 up` sets **`BEX_CP_IDENTITY=dev-1`**, so every tenant namespace this
 control plane provisions is stamped `app.bex.co/control-plane: dev-1` and its
 orphan prune deletes only namespaces carrying that value (w6/m39, ADR043 D9).
 
@@ -83,7 +83,7 @@ tenants within one 60-second resync (observed live in both directions,
 `.pm/w3/017.md`). **Running several `dev-N` control planes against the shared
 cluster at once is now safe.**
 
-`status.sh` prints every managed tenant namespace with its owner — if a row
+`dev-env.sh 1 status` prints every managed tenant namespace with its owner — if a row
 shows an owner other than `dev-1` it belongs to another harness and this one
 will leave it alone; if *this* harness's rows show anything but `dev-1`, its
 `BEX_CP_IDENTITY` is mis-set and it is pruning outside its lane.
@@ -98,3 +98,22 @@ will leave it alone; if *this* harness's rows show anything but `dev-1`, its
   the datastore CRUD flows this environment is for.
 - **cert-manager / zot / kpack** — not needed for the KeyValue/Postgres CRUD
   flows this environment targets; only relevant to App builds/custom domains.
+
+## Where the scripts went (w1/m72)
+
+`up.sh` / `down.sh` / `status.sh` and the templated manifests (`db/`, `mailpit/`,
+`values/`, `rbac-dev-1.yaml`) used to live in this directory, copied ten times.
+They are now one implementation — **`scripts/dev-env.sh 1 {up|down|status|clean|env}`**
+— with the manifests templated under `scripts/dev-env/`. What stays here is only
+what is genuinely per-workstream: `ports.env` (a generated record of the
+derivation, checked by `scripts/dev-env.test.sh`), this README, and `.gitignore`.
+
+Local runtime state (`bin/`, `logs/`, `.pids/`, `.kubeconfig`) is untouched by
+that move and still lives here. **`logs/` is truncated on every `up`** so a
+long-lived environment cannot accumulate without bound — copy anything you need
+to keep before re-running. `scripts/dev-env.sh 1 clean` reclaims `logs/` and
+`bin/`, and refuses while the environment is up.
+
+Something genuinely per-workstream can go in an optional `override.env` here; it
+is sourced after the derivation. It may not change `DEV_NS`/`DEV_AUTH_NS` — the
+script refuses, because cross-N isolation depends on them.
