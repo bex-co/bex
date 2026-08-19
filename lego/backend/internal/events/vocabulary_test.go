@@ -166,6 +166,9 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	syntheticVerbs := map[string]bool{
 		core.AuditVerbMaintenanceModeEnabled:    true,
 		core.AuditVerbMaintenanceModeURIUpdated: true,
+		// Historical rows may still name the deleted SetSource alias
+		// (w1/063); the live verb is SetSourceAndRegistryCredential.
+		"apps.SetSource": true,
 	}
 	for verb := range eventTypes {
 		if !found[verb] && !syntheticVerbs[verb] {

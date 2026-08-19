@@ -117,9 +117,9 @@ implementation serves every workstream since `w1/m72`; `.pm/w1/dev-1/` keeps onl
 
 ## Inbox
 
-- `044` — one-off: cancel Stripe subscriptions orphaned by pre-m61 workspace deletes (conditional, operator-run; blocked until m61 ships to prod)
-- `046` — residual Tier-3 findings from the 2026-08-10 scan (supply-chain pass F11/F13/F14/F15 + small residual F17 + scan coverage caveat). F18 re-owned by `w4/034`; the per-subject/per-workspace cap half has already shipped.
-- `048` — security-scan round 6 (`codex-security-bex-rYWVXe`, revision `bfe1376c`): 6 new findings **fixed in place** with tests (#11 md links, #5 SSH pre-auth cap, #7 transcript replay memory, #3 webhook no-op/lease/age-out slices, #2 CI ref-guard, #9 client render budget) + pointers to the 5 already-tracked (#1→`w4/m84`, #4/#6→m68, #8/#10→046). Finding #3's deferred per-workspace delivery quota + fair scheduling is now `w4/m83`. Uncommitted pending `/ship`
+- `070` — `cmd/api` env validation before irreversible startup (`store.Migrate` + loops currently start before later parses can fatal). The 2026-08-19 review's only live operational hazard; >1h, promote when scheduled.
+
+> **Triage 2026-08-19:** drained the rest of the inbox. Implemented `063` (dead `SetSource`/`GetBlueprint` alias), `068` (unused dashboard kit/hooks/deps), `073` (MCP maintenance-before-plan + ADR018 routing). Closed `044` (Stripe orphan-sub runbook; operator-only), `046` (residuals owned by `w7/m85` / FUTURE-MAYBE / #PSL), `050` (duplicate of #PSL). Deferred architecture-review leftovers `057`–`067`, `069`, `071`–`072` (and `063`'s remaining extracts) to `.pm/FUTURE-MAYBE.md`. Notes moved to `done/`. `048` had already been in `done/`.
 
 > **Promoted 2026-08-17:** `045` → `w4/m84`; source note moved to `done/045.md`. Current main already has deterministic app-bound TXT pre-proof, and m84 completes it into a durable non-serving pending lifecycle.
 

@@ -410,6 +410,52 @@ func TestMaintenanceModeRESTPlanTransitions(t *testing.T) {
 	}
 }
 
+// TestMaintenanceModeMCPPlanTransitions is the MCP twin of
+// TestMaintenanceModeRESTPlanTransitions (w1/073): update_service must apply
+// disable-maintenance BEFORE the free downgrade, or SetPlan refuses. Before
+// the fill armed MaintenanceBeforeFreeDowngrade, a combined call hit the
+// late table row and 400'd.
+func TestMaintenanceModeMCPPlanTransitions(t *testing.T) {
+	enabled := paidWebApp("web")
+	enabled.Spec.MaintenanceMode = &appv1alpha1.MaintenanceModeSpec{Enabled: true}
+	svc, cl := newService(nil, enabled)
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	ctx := context.Background()
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatal(err)
+	}
+	client, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+
+	rejected, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "update_service", Arguments: map[string]any{
+		"serviceId": "web", "plan": "free",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !rejected.IsError || getApp(t, cl, "web").Spec.Tier != "starter" {
+		t.Fatalf("enabled MCP downgrade isError=%v spec=%+v", rejected.IsError, getApp(t, cl, "web").Spec)
+	}
+
+	ok, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "update_service", Arguments: map[string]any{
+		"serviceId":       "web",
+		"plan":            "free",
+		"maintenanceMode": map[string]any{"enabled": false, "uri": ""},
+	}})
+	if err != nil || ok.IsError {
+		t.Fatalf("MCP disable+downgrade: result=%+v err=%v", ok, err)
+	}
+	got := getApp(t, cl, "web")
+	if got.Spec.Tier != "free" || got.Spec.MaintenanceMode == nil || got.Spec.MaintenanceMode.Enabled {
+		t.Fatalf("MCP disable+downgrade spec=%+v", got.Spec)
+	}
+}
+
 type maintenanceAuditSink struct{ events []core.AuditEvent }
 
 func (s *maintenanceAuditSink) Record(_ context.Context, event core.AuditEvent) error {

@@ -2979,14 +2979,6 @@ type sourcePatch struct {
 	ImageOwnerID         *string
 }
 
-// SetSource applies the official CLI's repo/image/branch PATCH. Repo and image
-// remain mutually exclusive; specifying either source kind switches away from
-// the other. Store-managed Apps write the row first because the projector owns
-// these fields.
-func (s *Service) SetSource(ctx context.Context, name string, repo, image, branch *string) (AppView, error) {
-	return s.SetSourceAndRegistryCredential(ctx, name, sourcePatch{Repo: repo, Image: image, Branch: branch})
-}
-
 // SetRegistryCredential sets, changes, or clears an image-backed service's or
 // Dockerfile build's explicit registry credential. An empty id is the
 // explicit-clear operation.

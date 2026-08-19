@@ -360,7 +360,6 @@ var representativeVerbRelations = map[string]string{
 	// lifecycle (codex #1). Rotation uses can_create (a write) rather than
 	// can_view_sensitive so it stays in the service events feed.
 	"*apps.Service.SetCommands":                    core.RelCanCreate,
-	"*apps.Service.SetSource":                      core.RelCanCreate,
 	"*apps.Service.SetSourceAndRegistryCredential": core.RelCanCreate,
 	"*agentsessions.Service.Create":                core.RelCanCreate,
 	"*deploys.Service.RegenerateDeployHook":        core.RelCanCreate,

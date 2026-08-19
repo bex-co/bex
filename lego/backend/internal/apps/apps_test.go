@@ -875,8 +875,8 @@ func TestSetSourceUnmanagedAppWithPublicIDSkipsStore(t *testing.T) {
 	svc, cl := newService(rec, a)
 
 	image := "new:1"
-	if _, err := svc.SetSource(context.Background(), "hand", nil, &image, nil); err != nil {
-		t.Fatalf("SetSource: %v", err)
+	if _, err := svc.SetSourceAndRegistryCredential(context.Background(), "hand", sourcePatch{Image: &image}); err != nil {
+		t.Fatalf("SetSourceAndRegistryCredential: %v", err)
 	}
 	if got := getApp(t, cl, "hand").Spec.Image; got != image {
 		t.Fatalf("CR spec.image = %q, want %q", got, image)

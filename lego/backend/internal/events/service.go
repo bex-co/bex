@@ -59,7 +59,7 @@ limitations under the License.
 //	dockerfile_path_changed     apps.SetDockerfilePath
 //	build_filter_changed        apps.SetBuildFilter
 //	commands_changed            apps.SetCommands
-//	source_changed              apps.SetSource / apps.SetRegistryCredential / apps.SetSourceAndRegistryCredential
+//	source_changed              apps.SetSourceAndRegistryCredential / apps.SetRegistryCredential (legacy rows may still name apps.SetSource)
 //	display_name_changed        apps.SetDisplayName
 //	pre_deploy_command_changed  apps.SetPreDeployCommand
 //	max_shutdown_delay_changed  apps.SetMaxShutdownDelay
