@@ -1,6 +1,6 @@
 # w2 · m77 — ADR059 hibernation: production enablement + resume-SLO evidence
 
-**Worker:** worker2 **Goal:** turn on the hibernation tier w2/m68 shipped env-gated OFF: provision the SSE-enabled snapshot bucket + scoped credential, arm `BEX_AGENT_SNAPSHOT_S3_*` in prod, and prove a real session hibernates on idle and rehydrates on resume with recorded latency against the ADR059 SLOs. **Status:** todo
+**Worker:** worker2 **Goal:** turn on the hibernation tier w2/m68 shipped env-gated OFF: provision the SSE-enabled snapshot bucket + scoped credential, arm `BEX_AGENT_SNAPSHOT_S3_*` in prod, and prove a real session hibernates on idle and rehydrates on resume with recorded latency against the ADR059 SLOs. **Status:** todo (t001 done; t002 waiting on deploy that consumes the Secret)
 
 ## Definition of done
 
@@ -18,7 +18,7 @@ A real prod agent session hibernates when its idle grace elapses (phase `hiberna
 
 | id   | title                                                                                                                                                | est | depends_on  |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ----------- |
-| t001 | Provision the snapshot object store: SSE-enabled bucket (NEVER bex-tfstate), scoped durable credential, `.env`/`.env.example` names + gh-secrets flow | 45m | —           |
+| t001 | Provision the snapshot object store: SSE-enabled bucket (NEVER bex-tfstate), scoped durable credential, `.env`/`.env.example` names + gh-secrets flow | 45m | —          | — **DONE** |
 | t002 | Arm prod: set the `BEX_AGENT_SNAPSHOT_S3_*` contract in the prod deploy secrets/manifests, deploy, confirm armed; review retention + pin-quota knobs  | 30m | t001        |
 | t003 | Live hibernate walk: run a session to completion, let idle grace elapse (or lower `BEX_AGENT_SANDBOX_IDLE_TTL` on a canary), verify phase/snapshot/pod-gone | 30m | t002 |
 | t004 | Live rehydrate walk: Steer/Resume, verify restored workspace state, capture resume latency vs the ADR059 SLOs                                         | 30m | t003        |
@@ -30,6 +30,6 @@ A real prod agent session hibernates when its idle grace elapses (phase `hiberna
 ## Notes
 
 - Repo fact: bex-api's prod env/secrets are wired in `lego/operator/config/api/deployment.yaml` (secretKeyRef pattern, e.g. `bex-stripe` with `optional: true`), **not** in `deploy/gitops/` — that tree carries only bex-api RBAC/admission manifests. Secret material stays out of git (the `scripts/*-secret.sh` posture).
-- Repo fact: `BEX_AGENT_SNAPSHOT_S3_*` is not yet present in the api deployment manifest; the composition root (`lego/backend/cmd/api/main.go` ~1047–1060) silently disables the tier when any of endpoint/bucket/access/secret is unset — no partial-config warning today (t007's target).
-- `.env.example` already carries all eight variable names (lines 141–152); t001 fills `.env` values, no new names needed unless the credential custody splits.
+- Repo fact: `BEX_AGENT_SNAPSHOT_S3_*` is wired on the api Deployment as six optional `secretKeyRef`s to `bex-agent-snapshot`. Partial config fails startup (`ErrPartialS3SnapshotConfig`); all-unset stays Terminate-only.
+- `.env.example` carries all eight variable names; t001 filled `.env` values. Dedicated bucket is `bex-agent-snapshots`.
 - Out of scope: pinning UX and retention tuning shipped in m68; ADR050 per-store credential rotation stays its own deferral; no changes to the Completer semantics.

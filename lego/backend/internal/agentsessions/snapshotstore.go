@@ -18,7 +18,9 @@ package agentsessions
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -27,6 +29,15 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
+
+// ErrPartialS3SnapshotConfig is returned when some but not all of the required
+// BEX_AGENT_SNAPSHOT_S3_* coordinates are set. A typo'd Secret key must fail
+// startup rather than silently disable the Hibernated tier (w2/m77).
+var ErrPartialS3SnapshotConfig = errors.New("BEX_AGENT_SNAPSHOT_S3_* is partially set: endpoint, bucket, access key, and secret key must all be set to enable hibernation, or all unset to keep it off")
+
+// ErrForbiddenSnapshotBucket refuses the platform backup/state bucket. Agent
+// snapshots need a dedicated SSE-enabled bucket (ADR059 D3 / ADR029).
+var ErrForbiddenSnapshotBucket = errors.New("BEX_AGENT_SNAPSHOT_S3_BUCKET must not be bex-tfstate; use a dedicated snapshot bucket")
 
 // SnapshotStore is the ADR059 D3 hibernation object store: it hands out
 // short-lived presigned URLs so the sandbox streams its own encrypted snapshot
@@ -67,8 +78,9 @@ type S3SnapshotStore struct {
 
 // S3SnapshotConfig is the resolved, non-secret-plus-secret coordinate set the
 // composition root builds from BEX_AGENT_SNAPSHOT_S3_* before constructing the
-// store. Empty Bucket/Endpoint/credentials ⇒ NewS3SnapshotStore returns nil and
-// hibernation stays off.
+// store. All-empty Bucket/Endpoint/credentials ⇒ NewS3SnapshotStore returns
+// (nil, nil) and hibernation stays off. A partial set returns
+// ErrPartialS3SnapshotConfig so startup fails closed.
 type S3SnapshotConfig struct {
 	Endpoint  string
 	Bucket    string
@@ -79,13 +91,56 @@ type S3SnapshotConfig struct {
 	TTL       time.Duration
 }
 
-// NewS3SnapshotStore builds the store, or returns nil when any required
-// coordinate is missing (hibernation disabled — the safe default). TTL defaults
-// to 15m (generous for a workspace tar up/down) and the prefix to
-// "agent-snapshots".
-func NewS3SnapshotStore(cfg S3SnapshotConfig) *S3SnapshotStore {
-	if cfg.Bucket == "" || cfg.Endpoint == "" || cfg.AccessKey == "" || cfg.SecretKey == "" {
+// Validate reports whether the Hibernated tier should arm. All-empty is a
+// deliberate off; all four required coordinates set is on; anything in
+// between is a configuration error. Region and prefix are optional (defaults
+// apply at construct time). The platform state bucket is never a legal target.
+func (c S3SnapshotConfig) Validate() error {
+	type field struct {
+		name, value string
+	}
+	required := []field{
+		{"BEX_AGENT_SNAPSHOT_S3_ENDPOINT", c.Endpoint},
+		{"BEX_AGENT_SNAPSHOT_S3_BUCKET", c.Bucket},
+		{"BEX_AGENT_SNAPSHOT_S3_ACCESS_KEY", c.AccessKey},
+		{"BEX_AGENT_SNAPSHOT_S3_SECRET_KEY", c.SecretKey},
+	}
+	var set, missing []string
+	for _, f := range required {
+		if strings.TrimSpace(f.value) == "" {
+			missing = append(missing, f.name)
+		} else {
+			set = append(set, f.name)
+		}
+	}
+	switch {
+	case len(set) == 0:
 		return nil
+	case len(missing) > 0:
+		return fmt.Errorf("%w (set: %s; missing: %s)", ErrPartialS3SnapshotConfig, strings.Join(set, ", "), strings.Join(missing, ", "))
+	}
+	if strings.EqualFold(strings.TrimSpace(c.Bucket), "bex-tfstate") {
+		return ErrForbiddenSnapshotBucket
+	}
+	return nil
+}
+
+// NewS3SnapshotStore builds the store. A fully empty config returns (nil, nil)
+// (hibernation disabled — the safe default). A partial config or the platform
+// state bucket returns an error the composition root treats as fatal. TTL
+// defaults to 15m and the prefix to "agent-snapshots".
+func NewS3SnapshotStore(cfg S3SnapshotConfig) (*S3SnapshotStore, error) {
+	cfg.Endpoint = strings.TrimSpace(cfg.Endpoint)
+	cfg.Bucket = strings.TrimSpace(cfg.Bucket)
+	cfg.AccessKey = strings.TrimSpace(cfg.AccessKey)
+	cfg.SecretKey = strings.TrimSpace(cfg.SecretKey)
+	cfg.Region = strings.TrimSpace(cfg.Region)
+	cfg.Prefix = strings.TrimSpace(cfg.Prefix)
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+	if cfg.Bucket == "" {
+		return nil, nil
 	}
 	ttl := cfg.TTL
 	if ttl <= 0 {
@@ -111,7 +166,7 @@ func NewS3SnapshotStore(cfg S3SnapshotConfig) *S3SnapshotStore {
 		prefix:  prefix,
 		ttl:     ttl,
 		nowFn:   time.Now,
-	}
+	}, nil
 }
 
 func (s *S3SnapshotStore) now() time.Time {

@@ -136,6 +136,8 @@ The user-visible latency is **Hibernated → Active** — opening Zed or startin
 
 **Targets (SLO), warm node + modest working tree: p50 resume < ~5s, p95 < ~15s.** Cold-node resume is bounded by pre-warming the base image, not by the snapshot.
 
+**Production object store (w2/m77, 2026-08-19):** the Hibernated tier's S3 contract is provisioned — dedicated Wasabi bucket `bex-agent-snapshots` (never `bex-tfstate`), automatic AES-256 at rest, bucket-scoped IAM user, out-of-band Secret `bex-system/bex-agent-snapshot`. bex-api consumes the six `BEX_AGENT_SNAPSHOT_S3_*` keys via optional `secretKeyRef`s; delete the Secret to roll back to Terminate-only reclaim. Retention stays 168h (dirty-git doubling) and the pin quota stays 10. The live hibernate→rehydrate latency sample against the SLOs above is the remaining enablement walk once that Deployment env is on the cluster (see `.pm/w2/m77/evidence/2026-08-19-snapshot-bucket-provision.md`).
+
 **Why this beats the status quo:** a fresh sandbox with **no** snapshot pays re-clone + reinstall ≈ **30–60s** (Cloudflare measured ~30s). Snapshotting **installed dependencies** (not just source) is what buys the win — the trade is a bigger blob (phases 2–3, a few seconds) for skipping the ~30s install. Cloudflare and Vercel both snapshot "installed packages" for exactly this reason.
 
 **Honest positioning vs peers:**

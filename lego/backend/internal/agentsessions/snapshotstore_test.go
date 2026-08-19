@@ -17,35 +17,51 @@ limitations under the License.
 package agentsessions
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
 )
 
-// Missing any required coordinate ⇒ nil store ⇒ hibernation stays off (the safe
-// default). Only a fully configured set constructs a store.
+// All-empty ⇒ (nil, nil) (tier off). Full set ⇒ store. Partial set or the
+// platform state bucket ⇒ error so startup cannot silently disable hibernation.
 func TestNewS3SnapshotStoreGatesOnConfig(t *testing.T) {
 	full := S3SnapshotConfig{Endpoint: "https://s3.example", Bucket: "snaps", AccessKey: "ak", SecretKey: "sk"}
-	if NewS3SnapshotStore(full) == nil {
-		t.Fatal("fully configured store should not be nil")
+	store, err := NewS3SnapshotStore(full)
+	if err != nil || store == nil {
+		t.Fatalf("fully configured store = (%v, %v), want store", store, err)
 	}
+
+	empty, err := NewS3SnapshotStore(S3SnapshotConfig{})
+	if err != nil || empty != nil {
+		t.Fatalf("empty config = (%v, %v), want (nil, nil)", empty, err)
+	}
+
 	for name, cfg := range map[string]S3SnapshotConfig{
 		"no bucket":   {Endpoint: "https://s3.example", AccessKey: "ak", SecretKey: "sk"},
 		"no endpoint": {Bucket: "snaps", AccessKey: "ak", SecretKey: "sk"},
 		"no access":   {Endpoint: "https://s3.example", Bucket: "snaps", SecretKey: "sk"},
 		"no secret":   {Endpoint: "https://s3.example", Bucket: "snaps", AccessKey: "ak"},
-		"empty":       {},
+		"whitespace":  {Endpoint: " ", Bucket: "snaps", AccessKey: "ak", SecretKey: "sk"},
 	} {
-		if NewS3SnapshotStore(cfg) != nil {
-			t.Errorf("%s: store should be nil (hibernation disabled)", name)
+		got, err := NewS3SnapshotStore(cfg)
+		if got != nil || err == nil || !errors.Is(err, ErrPartialS3SnapshotConfig) {
+			t.Errorf("%s: got (%v, %v), want (nil, ErrPartialS3SnapshotConfig)", name, got, err)
 		}
+	}
+
+	got, err := NewS3SnapshotStore(S3SnapshotConfig{
+		Endpoint: "https://s3.example", Bucket: "bex-tfstate", AccessKey: "ak", SecretKey: "sk",
+	})
+	if got != nil || !errors.Is(err, ErrForbiddenSnapshotBucket) {
+		t.Fatalf("tfstate bucket = (%v, %v), want ErrForbiddenSnapshotBucket", got, err)
 	}
 }
 
 // The object key is per-workspace-prefixed (never a flat/registry namespace) and
 // unique per mint, so a re-hibernation never overwrites a still-referenced blob.
 func TestS3SnapshotKeyIsPerWorkspacePrefixedAndUnique(t *testing.T) {
-	s := NewS3SnapshotStore(S3SnapshotConfig{Endpoint: "https://s3.example", Bucket: "snaps", AccessKey: "ak", SecretKey: "sk", Prefix: "agent-snapshots"})
+	s := mustSnapshotStore(t, S3SnapshotConfig{Endpoint: "https://s3.example", Bucket: "snaps", AccessKey: "ak", SecretKey: "sk", Prefix: "agent-snapshots"})
 	n := int64(0)
 	s.nowFn = func() time.Time { n++; return time.Unix(1_800_000_000+n, 0) }
 
@@ -66,8 +82,17 @@ func TestS3SnapshotDeleteNilSafe(t *testing.T) {
 	if err := s.Delete(nil, "x"); err != nil {
 		t.Fatalf("nil-store delete = %v, want nil", err)
 	}
-	store := NewS3SnapshotStore(S3SnapshotConfig{Endpoint: "https://s3.example", Bucket: "snaps", AccessKey: "ak", SecretKey: "sk"})
+	store := mustSnapshotStore(t, S3SnapshotConfig{Endpoint: "https://s3.example", Bucket: "snaps", AccessKey: "ak", SecretKey: "sk"})
 	if err := store.Delete(nil, ""); err != nil {
 		t.Fatalf("empty-ref delete = %v, want nil", err)
 	}
+}
+
+func mustSnapshotStore(t *testing.T, cfg S3SnapshotConfig) *S3SnapshotStore {
+	t.Helper()
+	s, err := NewS3SnapshotStore(cfg)
+	if err != nil || s == nil {
+		t.Fatalf("NewS3SnapshotStore = (%v, %v)", s, err)
+	}
+	return s
 }
