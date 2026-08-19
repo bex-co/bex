@@ -59,3 +59,13 @@ func NewUpstreamClient(responseHeaderTimeout time.Duration) *http.Client {
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
 }
+
+// NoFollow returns a copy of c with the no-follow redirect policy forced, so a
+// credential-injecting proxy's caller-supplied (injected) client carries the
+// same guarantee NewUpstreamClient builds in: a redirect would replay the
+// injected credential to whatever host the upstream names.
+func NoFollow(c *http.Client) *http.Client {
+	clone := *c
+	clone.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return &clone
+}

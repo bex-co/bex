@@ -213,8 +213,8 @@ func main() {
 		// exec tickets (round-13 #3): fresh can_operate on the ticket's workspace
 		// and, for agent-session sandboxes, can_view_sensitive on the session
 		// object (round-13 #1, defense in depth behind bex-api's mint gate).
-		Revalidator:       &sandboxsse.ExecRevalidator{Base: base},
-		SessionTimeout:    sessionTimeout,
+		Revalidator:        &sandboxsse.ExecRevalidator{Base: base},
+		SessionTimeout:     sessionTimeout,
 		RevalidateInterval: revalidateInterval,
 	}
 	credentials := &agentcred.Broker{Metrics: metrics}
@@ -304,7 +304,7 @@ func main() {
 	if shell.Enabled() {
 		shellMux := http.NewServeMux()
 		shellMux.Handle("GET /shell", shell.Handler())
-		defer startAuxListener("web shell", "web shell", envOr("BEX_SHELL_WS_ADDR", ":8080"), shellMux, stop)()
+		defer startAuxListener("web shell", "web shell", envOr("BEX_SHELL_WS_ADDR", ":8080"), shellMux, stop, metrics)()
 	}
 
 	// Sandbox-exec SSE listener (w3/m33, `render ea sandbox exec`). Internal-only
@@ -314,7 +314,7 @@ func main() {
 	if sandbox.Enabled() {
 		execMux := http.NewServeMux()
 		execMux.Handle("POST /sandbox-exec", sandbox.Handler())
-		defer startAuxListener("sandbox-exec", "sandbox exec", envOr("BEX_SANDBOX_EXEC_ADDR", ":8081"), execMux, stop)()
+		defer startAuxListener("sandbox-exec", "sandbox exec", envOr("BEX_SANDBOX_EXEC_ADDR", ":8081"), execMux, stop, metrics)()
 	}
 
 	// Agent-session Git smart-HTTP proxy (ADR047 D2). Sandboxes can clone/push
@@ -331,7 +331,7 @@ func main() {
 		credentialMux := http.NewServeMux()
 		credentialMux.Handle("GET "+agentsession.GitProxyPath, credentials.Handler())
 		credentialMux.Handle("POST "+agentsession.GitProxyPath, credentials.Handler())
-		defer startAuxListener("agent git proxy", "agent git proxy", envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop,
+		defer startAuxListener("agent git proxy", "agent git proxy", envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop, metrics,
 			func(server *http.Server) {
 				server.ReadTimeout = durationEnv("BEX_AGENT_GIT_READ_TIMEOUT", 10*time.Minute)
 				server.IdleTimeout = 2 * time.Minute
@@ -344,7 +344,7 @@ func main() {
 	if model.Enabled() {
 		modelMux := http.NewServeMux()
 		modelMux.Handle("POST "+agentsession.ModelProxyPath, model.Handler())
-		defer startAuxListener("agent model proxy", "agent model proxy", envOr("BEX_AGENT_MODEL_PROXY_ADDR", ":8084"), modelMux, stop,
+		defer startAuxListener("agent model proxy", "agent model proxy", envOr("BEX_AGENT_MODEL_PROXY_ADDR", ":8084"), modelMux, stop, metrics,
 			func(server *http.Server) {
 				server.ReadTimeout = durationEnv("BEX_AGENT_MODEL_READ_TIMEOUT", 2*time.Minute)
 				server.IdleTimeout = 2 * time.Minute
@@ -361,7 +361,7 @@ func main() {
 		// OPTIONS reaches the same handler so the CORS preflight is answered (the
 		// cross-origin dashboard sends one before the ticketed GET/POST).
 		attachMux.Handle("OPTIONS /v1/agent-sessions/{id}/stream", attach.Handler())
-		defer startAuxListener("agent attach", "agent session attach", envOr("BEX_AGENT_ATTACH_ADDR", ":8083"), attachMux, stop)()
+		defer startAuxListener("agent attach", "agent session attach", envOr("BEX_AGENT_ATTACH_ADDR", ":8083"), attachMux, stop, metrics)()
 	}
 	log.Printf("ssh gateway listening on %s", addr)
 	if err := gateway.Serve(ctx, listener); err != nil && !errors.Is(err, context.Canceled) {
@@ -381,7 +381,7 @@ func main() {
 // the caller defers, keeping the process-exit LIFO order at the call sites.
 // Each opt may still shape the server (e.g. a request-read deadline for a
 // body-carrying proxy listener); the defaults suit streaming listeners.
-func startAuxListener(name, logName, addr string, mux *http.ServeMux, stop context.CancelFunc, opts ...func(*http.Server)) func() {
+func startAuxListener(name, logName, addr string, mux *http.ServeMux, stop context.CancelFunc, metrics *sshgateway.Metrics, opts ...func(*http.Server)) func() {
 	mux.HandleFunc("GET /healthz", healthzOK)
 	server := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 	for _, opt := range opts {
@@ -403,7 +403,7 @@ func startAuxListener(name, logName, addr string, mux *http.ServeMux, stop conte
 		global = intEnv("BEX_AGENT_MODEL_MAX_PREAUTH_CONNS", global)
 		perSource = intEnv("BEX_AGENT_MODEL_MAX_PREAUTH_CONNS_PER_SOURCE", perSource)
 	}
-	listener = newAdmissionListener(listener, global, perSource)
+	listener = newAdmissionListener(listener, global, perSource, metrics)
 	go func() {
 		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			stop()
@@ -424,11 +424,13 @@ type admissionListener struct {
 	bySource  map[string]int
 	max       int
 	perSource int
+	metrics   *sshgateway.Metrics
 }
 
-func newAdmissionListener(inner net.Listener, max, perSource int) net.Listener {
+func newAdmissionListener(inner net.Listener, max, perSource int, metrics *sshgateway.Metrics) net.Listener {
 	return &admissionListener{
 		Listener: inner, bySource: make(map[string]int), max: max, perSource: perSource,
+		metrics: metrics,
 	}
 }
 
@@ -440,15 +442,24 @@ func (l *admissionListener) Accept() (net.Conn, error) {
 		}
 		source := connectionSource(conn.RemoteAddr())
 		l.mu.Lock()
-		admitted := l.active < l.max && l.bySource[source] < l.perSource
-		if admitted {
+		shedScope := ""
+		switch {
+		case l.active >= l.max:
+			shedScope = "listener_global"
+		case l.bySource[source] >= l.perSource:
+			shedScope = "listener_source"
+		default:
 			l.active++
 			l.bySource[source]++
 		}
 		l.mu.Unlock()
-		if admitted {
+		if shedScope == "" {
 			return &admittedConn{Conn: conn, release: func() { l.release(source) }}, nil
 		}
+		// A shed on an aux listener is observable like every other shed path in
+		// the fleet (w1/m76/t004): the metric is recorded before the close so a
+		// client observing EOF can never race ahead of the counter.
+		l.metrics.LimitRejected(shedScope)
 		_ = conn.Close()
 	}
 }

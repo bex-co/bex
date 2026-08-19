@@ -40,6 +40,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -1039,7 +1040,9 @@ func TestAgentAttachMidStreamRevocationAbortsLiveStream(t *testing.T) {
 	host, portStr, _ := net.SplitHostPort(strings.TrimPrefix(driver.URL, "http://"))
 	port, _ := strconv.Atoi(portStr)
 
+	registry := prometheus.NewRegistry()
 	gw := newAttachGateway(newFakeAttachStore(), fixedPodIP{ip: host}, secret, port)
+	gw.Metrics = sshgateway.NewMetrics(registry)
 	gw.RevalidateInterval = 10 * time.Millisecond
 	gw.Revalidator = revalidator
 	srv := httptest.NewServer(gw.Handler())
@@ -1070,6 +1073,14 @@ func TestAgentAttachMidStreamRevocationAbortsLiveStream(t *testing.T) {
 	case <-unblocked:
 	case <-time.After(2 * time.Second):
 		t.Fatal("the driver's request context was not canceled by the revocation")
+	}
+	// w1/m76/t005: the watchdog-ended attach is reported through the shared
+	// session vocabulary, and the shared-limiter slot is symmetric on the gauge.
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_sessions_total", map[string]string{"result": "revoked"}); got != 1 {
+		t.Fatalf("sessions_total{revoked} = %v, want 1", got)
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_active_sessions", nil); got != 0 {
+		t.Fatalf("active_sessions after revocation = %v, want 0", got)
 	}
 }
 
@@ -1138,5 +1149,106 @@ func TestAgentAttachReplayOnlyTicketNeverDials(t *testing.T) {
 	defer postResp.Body.Close()
 	if postResp.StatusCode != http.StatusForbidden {
 		t.Fatalf("POST with replay-only ticket = %d, want 403", postResp.StatusCode)
+	}
+}
+
+// w1/m76/t005: agentattach holds a shared-limiter slot, so it must report the
+// slot to bex_ssh_gateway_active_sessions exactly as nativessh/webshell do —
+// incremented while the attach holds the slot, decremented on release.
+func TestAgentAttachSessionGaugeBracketsSharedLimiterSlot(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-00000000000000000000g"
+	release := make(chan struct{})
+	driverMux := http.NewServeMux()
+	driverMux.HandleFunc("/stream", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		flusher := w.(http.Flusher)
+		_, _ = io.WriteString(w, "data: {\"type\":\"start\"}\n\n")
+		flusher.Flush()
+		select {
+		case <-release:
+			_, _ = io.WriteString(w, "data: [DONE]\n\n")
+			flusher.Flush()
+		case <-r.Context().Done():
+		}
+	})
+	driver := httptest.NewServer(driverMux)
+	defer driver.Close()
+	host, portString, _ := net.SplitHostPort(strings.TrimPrefix(driver.URL, "http://"))
+	port, _ := strconv.Atoi(portString)
+
+	registry := prometheus.NewRegistry()
+	gw := newAttachGateway(newFakeAttachStore(), fixedPodIP{ip: host}, secret, port)
+	gw.Metrics = sshgateway.NewMetrics(registry)
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req.Header.Set(TicketHeader, attachTicket(t, secret, session))
+	resp, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	// The first part arrived, so the handler is live and holds its slot.
+	buf := make([]byte, 64)
+	if _, err := io.ReadAtLeast(resp.Body, buf, 1); err != nil {
+		t.Fatalf("stream never delivered its first part: %v", err)
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_active_sessions", nil); got != 1 {
+		t.Fatalf("active_sessions while slot held = %v, want 1", got)
+	}
+	close(release)
+	if _, err := io.ReadAll(resp.Body); err != nil {
+		t.Fatalf("stream did not end cleanly: %v", err)
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_active_sessions", nil); got != 0 {
+		t.Fatalf("active_sessions after release = %v, want 0", got)
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_sessions_total", map[string]string{"result": "closed"}); got != 1 {
+		t.Fatalf("sessions_total{closed} = %v, want 1", got)
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_authentications_total", map[string]string{"result": "accepted"}); got != 1 {
+		t.Fatalf("authentications_total{accepted} = %v, want exactly 1", got)
+	}
+}
+
+// A refused acquire never touched the gauge or the sessions counter: the gauge
+// mirrors the limiter's occupancy, and a shed attach holds no slot.
+func TestAgentAttachLimitRejectionLeavesGaugeUntouched(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-00000000000000000000j"
+	registry := prometheus.NewRegistry()
+	limits := sshgateway.NewSessionLimiter(100, 1)
+	if ok, _ := limits.Acquire("alice"); !ok {
+		t.Fatal("failed to seed limiter")
+	}
+	defer limits.Release("alice")
+	gw := newAttachGateway(newFakeAttachStore(), fixedPodIP{ip: "127.0.0.1"}, secret, 8787)
+	gw.Metrics = sshgateway.NewMetrics(registry)
+	gw.Limits = limits
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req.Header.Set(TicketHeader, attachTicket(t, secret, session))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, want 429", resp.StatusCode)
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_active_sessions", nil); got != 0 {
+		t.Fatalf("active_sessions after shed = %v, want 0", got)
+	}
+	for _, result := range []string{"closed", "completed", "failed", "revoked"} {
+		if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_sessions_total", map[string]string{"result": result}); got != 0 {
+			t.Fatalf("sessions_total{%s} = %v, want 0 (no slot was held)", result, got)
+		}
+	}
+	if got := gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_limit_rejections_total", map[string]string{"scope": "identity"}); got != 1 {
+		t.Fatalf("limit_rejections_total{identity} = %v, want 1", got)
 	}
 }

@@ -32,6 +32,9 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
 )
 
 func TestAdmissionListenerRejectsSlowHeadersBeforeHandler(t *testing.T) {
@@ -39,7 +42,7 @@ func TestAdmissionListenerRejectsSlowHeadersBeforeHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	listener := newAdmissionListener(inner, 1, 1)
+	listener := newAdmissionListener(inner, 1, 1, sshgateway.NewMetrics(prometheus.NewRegistry()))
 	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}), ReadHeaderTimeout: 5 * time.Second}
@@ -78,6 +81,115 @@ func TestAdmissionListenerRejectsSlowHeadersBeforeHandler(t *testing.T) {
 	if response == nil || response.StatusCode != http.StatusOK {
 		t.Fatalf("admission did not recover after release: response=%v err=%v", response, err)
 	}
+}
+
+// shedCounter reads bex_ssh_gateway_limit_rejections_total{scope=<scope>} from
+// the registry; a family or scope never incremented reads as 0.
+func shedCounter(t *testing.T, registry *prometheus.Registry, scope string) float64 {
+	t.Helper()
+	return gatewaytest.MetricValue(t, registry, "bex_ssh_gateway_limit_rejections_total", map[string]string{"scope": scope})
+}
+
+// admissionHarness drives one admissionListener directly: an Accept loop feeds
+// admitted connections to the channel, and shed connections surface to their
+// dialers as an immediate close (EOF on read).
+func admissionHarness(t *testing.T, global, perSource int, metrics *sshgateway.Metrics) (string, chan net.Conn) {
+	t.Helper()
+	inner, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	listener := newAdmissionListener(inner, global, perSource, metrics)
+	t.Cleanup(func() { _ = listener.Close() })
+	admitted := make(chan net.Conn, 8)
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			admitted <- conn
+		}
+	}()
+	return inner.Addr().String(), admitted
+}
+
+// dialAdmitted opens a connection the harness admits (visible on the channel).
+func dialAdmitted(t *testing.T, addr string, admitted chan net.Conn) net.Conn {
+	t.Helper()
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	select {
+	case server := <-admitted:
+		t.Cleanup(func() { _ = server.Close() })
+	case <-time.After(2 * time.Second):
+		t.Fatal("connection under the cap was not admitted")
+	}
+	return conn
+}
+
+// dialShed opens a connection the listener must shed and waits for the close.
+func dialShed(t *testing.T, addr string) {
+	t.Helper()
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = conn.Close() }()
+	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	if _, err := conn.Read(make([]byte, 1)); err == nil {
+		t.Fatal("connection above the cap remained open")
+	}
+}
+
+// w1/m76/t004: a shed on an aux gateway listener must increment
+// bex_ssh_gateway_limit_rejections_total with a listener scope — floods against
+// the web-shell/sandbox-exec/attach/git/model listeners were the fleet's only
+// invisible shed path.
+func TestAdmissionListenerEmitsShedMetricPerScope(t *testing.T) {
+	t.Run("listener_global", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		metrics := sshgateway.NewMetrics(registry)
+		addr, admitted := admissionHarness(t, 1, 1, metrics)
+		dialAdmitted(t, addr, admitted)
+		dialShed(t, addr)
+		if got := shedCounter(t, registry, "listener_global"); got != 1 {
+			t.Fatalf("limit_rejections_total{scope=listener_global} = %v, want 1", got)
+		}
+		if got := shedCounter(t, registry, "listener_source"); got != 0 {
+			t.Fatalf("limit_rejections_total{scope=listener_source} = %v, want 0", got)
+		}
+	})
+	t.Run("listener_source", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		metrics := sshgateway.NewMetrics(registry)
+		// Global headroom remains (2), so the second same-source connection is
+		// shed by the per-source share, not the global cap.
+		addr, admitted := admissionHarness(t, 2, 1, metrics)
+		dialAdmitted(t, addr, admitted)
+		dialShed(t, addr)
+		if got := shedCounter(t, registry, "listener_source"); got != 1 {
+			t.Fatalf("limit_rejections_total{scope=listener_source} = %v, want 1", got)
+		}
+		if got := shedCounter(t, registry, "listener_global"); got != 0 {
+			t.Fatalf("limit_rejections_total{scope=listener_global} = %v, want 0", got)
+		}
+	})
+	t.Run("admitted connections emit nothing", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		metrics := sshgateway.NewMetrics(registry)
+		addr, admitted := admissionHarness(t, 2, 2, metrics)
+		dialAdmitted(t, addr, admitted)
+		dialAdmitted(t, addr, admitted)
+		for _, scope := range []string{"listener_global", "listener_source"} {
+			if got := shedCounter(t, registry, scope); got != 0 {
+				t.Fatalf("limit_rejections_total{scope=%s} = %v, want 0", scope, got)
+			}
+		}
+	})
 }
 
 func TestMetricsHandlerServesHealthAndPrometheus(t *testing.T) {

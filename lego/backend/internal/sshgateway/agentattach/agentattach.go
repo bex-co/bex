@@ -396,6 +396,15 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 	}
 	defer s.Limits.Release(claims.Subject)
 	s.Metrics.Authentication("accepted")
+	// The active-sessions gauge brackets the shared limiter slot exactly — the
+	// gauge answers "how close is the process to BEX_SSH_MAX_SESSIONS?", so every
+	// holder of the shared limiter reports, like nativessh/webshell (w1/m76/t005).
+	// Wall clock deliberately, not s.now() (the injected ticket clock): the
+	// duration is an operational observation, like setDeadline's.
+	started := time.Now()
+	s.Metrics.SessionStarted()
+	result := "closed"
+	defer func() { s.Metrics.SessionEnded(result, time.Since(started)) }()
 
 	// codex round-9 #6: keep re-running the redemption-time revalidation while
 	// the stream is LIVE — a membership revocation or session cancellation
@@ -411,6 +420,14 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 		return revalidator.RevalidateAttach(c, claims.Subject, claims.SessionID, claims.Action)
 	})
 	defer cancelExec()
+	// Report a watchdog-ended stream through the shared session vocabulary
+	// (result="revoked"), like the other transports (w1/m76/t005). Registered
+	// after the cancels so it runs before them and observes the live contexts.
+	defer func() {
+		if ctx.Err() != nil && timedCtx.Err() == nil {
+			result = "revoked" // the watchdog, not the client, ended the stream
+		}
+	}()
 
 	// A replay-only ticket (empty pod claim, ADR065 D2 — minted for a reaped
 	// terminal/hibernated session) never dials: the durable-transcript replay +
