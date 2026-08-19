@@ -170,6 +170,13 @@ else
   echo "ok: freshness workflow permissions are least privilege"
 fi
 
+if ! grep -q '!operator/internal/build/toolchain-freshness.json' "$root/lego/.dockerignore"; then
+  echo "FAIL: image build context must re-include the embedded freshness inventory" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: dockerignore admits the embedded freshness inventory"
+fi
+
 if [ "$fails" -ne 0 ]; then
   echo "FAIL: $fails build-toolchain freshness checks" >&2
   exit 1
