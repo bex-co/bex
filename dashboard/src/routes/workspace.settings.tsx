@@ -59,6 +59,14 @@ function WorkspaceSettingsPage() {
           <WorkspaceSettingsNavigation className="sticky top-0 z-20 -mx-4 border-y bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6 lg:top-6 lg:col-start-2 lg:row-start-1 lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:backdrop-blur-none" />
 
           <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
+            <div>
+              <h1 className="text-xl font-semibold">
+                {t("workspaces.settingsTitle")}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {t("workspaces.settingsDescription")}
+              </p>
+            </div>
             {!currentWorkspace && loading ? (
               <>
                 <CardSkeleton rows={5} />

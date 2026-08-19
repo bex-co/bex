@@ -380,3 +380,150 @@ func TestFormatUSD(t *testing.T) {
 		}
 	}
 }
+
+// --- per-resource breakdown (Resources) ---
+
+// findResource returns the estimate for one service id, failing the test when
+// the breakdown does not carry it.
+func findResource(t *testing.T, est EstimatedCost, serviceID string) ResourceEstimate {
+	t.Helper()
+	for _, r := range est.Resources {
+		if r.ServiceID == serviceID {
+			return r
+		}
+	}
+	t.Fatalf("no resource estimate for %q in %+v", serviceID, est.Resources)
+	return ResourceEstimate{}
+}
+
+func TestEstimateResourcesSplitCostPerService(t *testing.T) {
+	// Two services on the same tier: Meters aggregates them into one entry,
+	// Resources must keep them apart — that separation is the whole point.
+	rows := []store.UsageSummaryRow{
+		{ServiceID: "srv-a", Kind: store.UsageKindInstanceSeconds, Tier: "starter", ResourceKind: store.ResourceKindService, Total: 2628000},
+		{ServiceID: "srv-b", Kind: store.UsageKindInstanceSeconds, Tier: "starter", ResourceKind: store.ResourceKindService, Total: 1314000},
+	}
+	est := Default.Estimate(rows)
+	if len(est.Meters) != 1 {
+		t.Fatalf("want 1 aggregated meter, got %d", len(est.Meters))
+	}
+	if len(est.Resources) != 2 {
+		t.Fatalf("want 2 resources, got %d: %+v", len(est.Resources), est.Resources)
+	}
+	if got := parseUSD(t, findResource(t, est, "srv-a").CostUSD); math.Abs(got-4.90) > 0.02 {
+		t.Errorf("srv-a: want ~$4.90, got %s", findResource(t, est, "srv-a").CostUSD)
+	}
+	if got := parseUSD(t, findResource(t, est, "srv-b").CostUSD); math.Abs(got-2.45) > 0.02 {
+		t.Errorf("srv-b: want ~$2.45, got %s", findResource(t, est, "srv-b").CostUSD)
+	}
+}
+
+func TestEstimateResourceChargeArithmeticIsCheckable(t *testing.T) {
+	// The page shows "rate/unit × quantity = cost"; the three must agree, or
+	// the bill invites a support ticket.
+	rows := []store.UsageSummaryRow{
+		{ServiceID: "srv-a", Kind: store.UsageKindInstanceSeconds, Tier: "starter", ResourceKind: store.ResourceKindService, Total: 2628000},
+	}
+	est := Default.Estimate(rows)
+	r := findResource(t, est, "srv-a")
+	if len(r.Charges) != 1 {
+		t.Fatalf("want 1 charge line, got %d", len(r.Charges))
+	}
+	c := r.Charges[0]
+	if c.Unit != "hr" {
+		t.Errorf("unit = %q, want hr", c.Unit)
+	}
+	if got := parseUSD(t, c.Quantity); math.Abs(got-730) > 0.01 {
+		t.Errorf("quantity = %s, want 730 hr", c.Quantity)
+	}
+	product := parseUSD(t, c.RateUSD) * parseUSD(t, c.Quantity)
+	if math.Abs(product-parseUSD(t, c.CostUSD)) > 0.01 {
+		t.Errorf("rate %s × qty %s = %.4f, but cost = %s", c.RateUSD, c.Quantity, product, c.CostUSD)
+	}
+}
+
+func TestEstimateResourcesKeepFreeAndSubCentLines(t *testing.T) {
+	// Resources doubles as the only per-service *usage* view, so unlike
+	// Meters it must not drop a line just because it rounds to zero dollars.
+	rows := []store.UsageSummaryRow{
+		{ServiceID: "srv-free", Kind: store.UsageKindInstanceSeconds, Tier: "free", ResourceKind: store.ResourceKindService, Total: 2628000},
+		{ServiceID: "srv-free", Kind: store.UsageKindEgressBytes, ResourceKind: store.ResourceKindService, Total: 1048576},
+	}
+	est := Default.Estimate(rows)
+	if len(est.Meters) != 0 {
+		t.Errorf("want no meters (all sub-cent/free), got %+v", est.Meters)
+	}
+	r := findResource(t, est, "srv-free")
+	if len(r.Charges) != 2 {
+		t.Fatalf("want both charge lines retained, got %+v", r.Charges)
+	}
+	if r.CostUSD != "0.00" {
+		t.Errorf("cost = %s, want 0.00", r.CostUSD)
+	}
+	// The rate must still be legible even where the cost rounds away.
+	for _, c := range r.Charges {
+		if c.Kind == store.UsageKindEgressBytes && c.RateUSD == "0.00" {
+			t.Errorf("bandwidth rate collapsed to 0.00; want a visible rate")
+		}
+	}
+}
+
+func TestEstimateResourcesSeparateKindsSharingAnID(t *testing.T) {
+	// A Database and an App may legally share a service_id; they are
+	// different resources and must not merge.
+	rows := []store.UsageSummaryRow{
+		{ServiceID: "dup", Kind: store.UsageKindInstanceSeconds, Tier: "starter", ResourceKind: store.ResourceKindService, Total: 2628000},
+		{ServiceID: "dup", Kind: store.UsageKindInstanceSeconds, Tier: "basic-256mb", ResourceKind: store.ResourceKindPostgres, Total: 2628000},
+	}
+	est := Default.Estimate(rows)
+	if len(est.Resources) != 2 {
+		t.Fatalf("want 2 resources for one shared id, got %+v", est.Resources)
+	}
+}
+
+func TestEstimateResourcesIsNonNilAndSkipsZeroRows(t *testing.T) {
+	if est := Default.Estimate(nil); est.Resources == nil {
+		t.Error("Resources must be non-nil for nil rows")
+	}
+	rows := []store.UsageSummaryRow{
+		{ServiceID: "srv-a", Kind: store.UsageKindInstanceSeconds, Tier: "starter", ResourceKind: store.ResourceKindService, Total: 0},
+	}
+	if est := Default.Estimate(rows); len(est.Resources) != 0 {
+		t.Errorf("zero-quantity row produced a resource: %+v", est.Resources)
+	}
+}
+
+func TestUnitLabelsCoverEveryMeterKind(t *testing.T) {
+	// A kind with no unit would render "436.26 " with a bare rate — the guard
+	// is here so a new meter kind cannot ship without a display unit.
+	for _, kind := range []string{
+		store.UsageKindInstanceSeconds,
+		store.UsageKindEgressBytes,
+		store.UsageKindBuildSeconds,
+		store.UsageKindStorageGBSeconds,
+		store.UsageKindSandboxComputeSeconds,
+	} {
+		if u := unitFor(kind); u.label == "" || u.per <= 0 {
+			t.Errorf("unitFor(%q) = %+v, want a label and positive divisor", kind, u)
+		}
+	}
+}
+
+func TestFormatRateWidensUntilVisible(t *testing.T) {
+	tests := []struct {
+		in   float64
+		want string
+	}{
+		{0, "0"},
+		{0.21, "0.21"},
+		{0.015, "0.015"},
+		{0.0035, "0.0035"},
+		{0.0067126, "0.006713"}, // starter compute, per hour
+		{0.000000123, "0.000000123"},
+	}
+	for _, tc := range tests {
+		if got := formatRate(tc.in); got != tc.want {
+			t.Errorf("formatRate(%v) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}

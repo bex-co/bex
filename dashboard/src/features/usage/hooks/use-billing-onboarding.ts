@@ -39,6 +39,10 @@ export interface BillingReadiness {
   customerReady: boolean;
   subscriptionReady: boolean;
   paymentMethodReady: boolean;
+  /** Card brand + last four of the method Stripe will charge; both empty for a
+   *  non-card method or a degraded read, in which case only the flag is known. */
+  paymentMethodBrand: string;
+  paymentMethodLast4: string;
   lifecycle: BillingLifecycle;
   tax: BillingTaxReadiness;
 }
@@ -110,6 +114,8 @@ export function useBillingOnboarding({
       customerReady: raw.customerReady ?? false,
       subscriptionReady: raw.subscriptionReady ?? false,
       paymentMethodReady: raw.paymentMethodReady ?? false,
+      paymentMethodBrand: raw.paymentMethodBrand ?? "",
+      paymentMethodLast4: raw.paymentMethodLast4 ?? "",
       lifecycle: {
         status: raw.lifecycle?.status ?? "healthy",
         reason: raw.lifecycle?.reason ?? "",

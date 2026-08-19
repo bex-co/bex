@@ -67,6 +67,9 @@ func (c *StripeClient) Readiness(ctx context.Context, workspaceID string) (Readi
 
 	customerParams := &stripe.CustomerParams{}
 	customerParams.Context = ctx
+	// Expanded so Readiness can name the card ("visa ···4242") instead of only
+	// reporting that one exists; unexpanded, Stripe returns the id alone.
+	customerParams.AddExpand("invoice_settings.default_payment_method")
 	customer, err := c.sc.Customers.Get(customerID, customerParams)
 	if err != nil {
 		return out, fmt.Errorf("stripe: retrieve customer for %s: %w", workspaceID, err)
@@ -77,10 +80,18 @@ func (c *StripeClient) Readiness(ctx context.Context, workspaceID string) (Readi
 	}
 	if subscription == nil {
 		out.PaymentMethodReady = customerDefaultPaymentMethod(customer) != ""
+		describeCard(&out, customerCard(customer))
 		return out, nil
 	}
 	out.SubscriptionReady = true
 	out.PaymentMethodReady = subscriptionDefaultPaymentMethod(subscription) != "" || customerDefaultPaymentMethod(customer) != ""
+	// The subscription's own default wins where it has one — that is the card
+	// Stripe will actually charge for this workspace.
+	if card := subscriptionCard(subscription); card != nil {
+		describeCard(&out, card)
+	} else {
+		describeCard(&out, customerCard(customer))
+	}
 	out.Tax = c.taxReadiness(ctx, subscription)
 	return out, nil
 }
@@ -329,6 +340,8 @@ func (c *StripeClient) findSubscriptionObject(ctx context.Context, workspaceID, 
 		Status:     stripe.String("all"),
 	}
 	params.Context = ctx
+	// See Readiness: expanded so the card can be named, not just counted.
+	params.AddExpand("data.default_payment_method")
 	iter := c.sc.Subscriptions.List(params)
 	var found []*stripe.Subscription
 	for iter.Next() {
@@ -433,6 +446,38 @@ func customerDefaultPaymentMethod(customer *stripe.Customer) string {
 		return customer.InvoiceSettings.DefaultPaymentMethod.ID
 	}
 	return ""
+}
+
+// customerCard returns the customer's expanded default card, or nil when there
+// is none, it is not a card, or the field was not expanded.
+func customerCard(customer *stripe.Customer) *stripe.PaymentMethodCard {
+	if customer == nil || customer.InvoiceSettings == nil {
+		return nil
+	}
+	return paymentMethodCard(customer.InvoiceSettings.DefaultPaymentMethod)
+}
+
+// subscriptionCard returns the subscription's expanded default card, or nil.
+func subscriptionCard(subscription *stripe.Subscription) *stripe.PaymentMethodCard {
+	if subscription == nil {
+		return nil
+	}
+	return paymentMethodCard(subscription.DefaultPaymentMethod)
+}
+
+func paymentMethodCard(pm *stripe.PaymentMethod) *stripe.PaymentMethodCard {
+	if pm == nil || pm.Card == nil || pm.Card.Last4 == "" {
+		return nil
+	}
+	return pm.Card
+}
+
+func describeCard(out *Readiness, card *stripe.PaymentMethodCard) {
+	if card == nil {
+		return
+	}
+	out.PaymentMethodBrand = string(card.Brand)
+	out.PaymentMethodLast4 = card.Last4
 }
 
 func subscriptionDefaultPaymentMethod(subscription *stripe.Subscription) string {

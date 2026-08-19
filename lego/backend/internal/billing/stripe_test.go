@@ -883,3 +883,59 @@ func stripePriceCatalogJSON(t *testing.T, names []string) string {
 	}
 	return string(b)
 }
+
+// --- payment-method description (billing page names the card on file) ---
+
+func TestDescribeCardPrefersSubscriptionDefault(t *testing.T) {
+	customer := &stripe.Customer{InvoiceSettings: &stripe.CustomerInvoiceSettings{
+		DefaultPaymentMethod: &stripe.PaymentMethod{Card: &stripe.PaymentMethodCard{Brand: "visa", Last4: "4242"}},
+	}}
+	subscription := &stripe.Subscription{
+		DefaultPaymentMethod: &stripe.PaymentMethod{Card: &stripe.PaymentMethodCard{Brand: "amex", Last4: "2005"}},
+	}
+	var out Readiness
+	// Mirrors Readiness: the subscription's own default is the card Stripe
+	// actually charges, so it wins over the customer-level fallback.
+	if card := subscriptionCard(subscription); card != nil {
+		describeCard(&out, card)
+	} else {
+		describeCard(&out, customerCard(customer))
+	}
+	if out.PaymentMethodBrand != "amex" || out.PaymentMethodLast4 != "2005" {
+		t.Fatalf("got %q ···%q, want amex ···2005", out.PaymentMethodBrand, out.PaymentMethodLast4)
+	}
+}
+
+func TestCardHelpersTolerateUnexpandedAndNonCard(t *testing.T) {
+	tests := []struct {
+		name     string
+		customer *stripe.Customer
+	}{
+		{"nil customer", nil},
+		{"no invoice settings", &stripe.Customer{}},
+		{"no default method", &stripe.Customer{InvoiceSettings: &stripe.CustomerInvoiceSettings{}}},
+		{
+			// Unexpanded: Stripe returns the id alone, with no Card block.
+			"unexpanded method",
+			&stripe.Customer{InvoiceSettings: &stripe.CustomerInvoiceSettings{
+				DefaultPaymentMethod: &stripe.PaymentMethod{ID: "pm_123"},
+			}},
+		},
+		{
+			// A non-card method (SEPA, etc.) has no last4 to show.
+			"non-card method",
+			&stripe.Customer{InvoiceSettings: &stripe.CustomerInvoiceSettings{
+				DefaultPaymentMethod: &stripe.PaymentMethod{ID: "pm_123", Card: &stripe.PaymentMethodCard{}},
+			}},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var out Readiness
+			describeCard(&out, customerCard(tc.customer))
+			if out.PaymentMethodBrand != "" || out.PaymentMethodLast4 != "" {
+				t.Fatalf("want no card description, got %q ···%q", out.PaymentMethodBrand, out.PaymentMethodLast4)
+			}
+		})
+	}
+}

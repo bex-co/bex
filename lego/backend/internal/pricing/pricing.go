@@ -31,6 +31,8 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/util/yaml"
 
@@ -99,6 +101,52 @@ type EstimatedCost struct {
 	// whose rounded cost is less than $0.01 are omitted. Always a non-nil
 	// slice (empty when there is no billable usage).
 	Meters []MeterEstimate `json:"meters"`
+	// Resources breaks the same total down by the resource that incurred it,
+	// so a bill can answer "which service costs me money" — Meters aggregates
+	// every service together and structurally cannot. Unlike Meters this keeps
+	// every metered line, including free tiers and sub-cent costs, because it
+	// is also the only place a reader sees *how much* was consumed. Always a
+	// non-nil slice.
+	Resources []ResourceEstimate `json:"resources"`
+}
+
+// ResourceEstimate is one resource's estimated cost for the period, with the
+// per-meter charge lines behind it.
+type ResourceEstimate struct {
+	// ServiceID is the metered resource's id (App, Database, KeyValue, sandbox).
+	ServiceID string `json:"serviceId"`
+	// ServiceName is the user-facing display name. The price sheet cannot
+	// resolve names — callers that have them (usage.Service) stamp it in;
+	// otherwise it is empty and presenters fall back to ServiceID.
+	ServiceName string `json:"serviceName,omitempty"`
+	// ResourceKind is "service", "postgres", "key_value", or "sandbox".
+	ResourceKind string `json:"resourceKind,omitempty"`
+	// CostUSD is this resource's estimated dollars, formatted to cents.
+	CostUSD string `json:"costUsd"`
+	// Charges are the meter lines behind CostUSD, in first-seen order.
+	Charges []ChargeLine `json:"charges"`
+}
+
+// ChargeLine is one (kind × tier) meter's contribution to a resource's cost.
+// Rate and Quantity are both expressed in Unit so that the arithmetic on the
+// page is checkable by eye ("$0.0067/hr × 436.26 hr = $2.93"); the raw meter
+// units (seconds, bytes, GB-seconds) are unreadable at human scale.
+type ChargeLine struct {
+	// Kind is the meter kind — "instance_seconds", "egress_bytes", etc.
+	Kind string `json:"kind"`
+	// Tier is the plan/tier id for instance_seconds meters; empty otherwise.
+	Tier string `json:"tier,omitempty"`
+	// Unit is the display unit both RateUSD and Quantity are quoted in —
+	// "hr", "GB", "min", "GB-mo", or "vCPU-hr".
+	Unit string `json:"unit"`
+	// RateUSD is the per-Unit price, carrying enough decimals to be non-zero
+	// for any priced meter ("0.0067"). "0" for a genuinely free tier.
+	RateUSD string `json:"rateUsd"`
+	// Quantity is the metered amount expressed in Unit ("436.26").
+	Quantity string `json:"quantity"`
+	// CostUSD is RateUSD × Quantity, formatted to cents. "0.00" is a real and
+	// common value (free tiers, sub-cent usage) and is never omitted.
+	CostUSD string `json:"costUsd"`
 }
 
 // MeterEstimate is one meter dimension's contribution to the estimated total.
@@ -153,9 +201,133 @@ func (s *Sheet) Estimate(rows []store.UsageSummaryRow) EstimatedCost {
 		})
 	}
 	return EstimatedCost{
-		TotalUSD: formatUSD(totalRaw),
-		Meters:   meters,
+		TotalUSD:  formatUSD(totalRaw),
+		Meters:    meters,
+		Resources: s.resourceEstimates(rows),
 	}
+}
+
+// resourceEstimates breaks the same rows down by resource instead of by meter
+// dimension. Rows are grouped by (serviceID × resourceKind) and, within a
+// resource, by (kind × tier) — both in first-seen order, so the result is
+// deterministic for a deterministic query.
+func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow) []ResourceEstimate {
+	type resKey struct{ serviceID, resourceKind string }
+	type lineKey struct{ kind, tier string }
+
+	lines := map[resKey]map[lineKey]int64{}
+	var resOrder []resKey
+	lineOrder := map[resKey][]lineKey{}
+	for _, r := range rows {
+		if r.Total == 0 {
+			continue
+		}
+		rk := resKey{r.ServiceID, r.ResourceKind}
+		if _, seen := lines[rk]; !seen {
+			lines[rk] = map[lineKey]int64{}
+			resOrder = append(resOrder, rk)
+		}
+		lk := lineKey{r.Kind, r.Tier}
+		if _, seen := lines[rk][lk]; !seen {
+			lineOrder[rk] = append(lineOrder[rk], lk)
+		}
+		lines[rk][lk] += r.Total
+	}
+
+	out := make([]ResourceEstimate, 0, len(resOrder))
+	for _, rk := range resOrder {
+		var resRaw float64
+		charges := make([]ChargeLine, 0, len(lineOrder[rk]))
+		for _, lk := range lineOrder[rk] {
+			qty := lines[rk][lk]
+			rate := s.rateFor(lk.kind, lk.tier, rk.resourceKind)
+			cost := rate * float64(qty)
+			resRaw += cost
+			unit := unitFor(lk.kind)
+			charges = append(charges, ChargeLine{
+				Kind:     lk.kind,
+				Tier:     lk.tier,
+				Unit:     unit.label,
+				RateUSD:  formatRate(rate * unit.per),
+				Quantity: formatQuantity(float64(qty) / unit.per),
+				CostUSD:  formatUSD(cost),
+			})
+		}
+		out = append(out, ResourceEstimate{
+			ServiceID:    rk.serviceID,
+			ResourceKind: rk.resourceKind,
+			CostUSD:      formatUSD(resRaw),
+			Charges:      charges,
+		})
+	}
+	return out
+}
+
+// meterUnit is the human-scale unit one meter kind is billed in, and how many
+// raw meter units make one of them.
+type meterUnit struct {
+	label string
+	per   float64
+}
+
+// unitFor maps a meter kind to its display unit. The divisors mirror the
+// derivations documented in pricing.yaml: 3600 s/h, 1 GiB = 2^30 bytes, 60
+// s/min, one pricing month = 730 h = 2,628,000 s, and 3,600,000
+// milli-vCPU-seconds per vCPU-hour.
+func unitFor(kind string) meterUnit {
+	switch kind {
+	case store.UsageKindInstanceSeconds:
+		return meterUnit{"hr", 3600}
+	case store.UsageKindEgressBytes:
+		return meterUnit{"GB", 1073741824}
+	case store.UsageKindBuildSeconds:
+		return meterUnit{"min", 60}
+	case store.UsageKindStorageGBSeconds:
+		return meterUnit{"GB-mo", 2628000}
+	case store.UsageKindSandboxComputeSeconds:
+		return meterUnit{"vCPU-hr", 3600000}
+	}
+	return meterUnit{"", 1}
+}
+
+// formatRate renders a per-unit price. Rates on this sheet span four orders of
+// magnitude ($0.21/GB-mo down to $0.0067/hr), so a fixed width would either
+// bury the large ones in zeros or round the small ones to "0.00" — and a rate
+// rounded that hard stops multiplying out to the cost beside it, which is
+// exactly the arithmetic a reader checks on a bill.
+func formatRate(v float64) string {
+	if v == 0 {
+		return "0"
+	}
+	return formatDecimal(v, 4, 2)
+}
+
+// formatQuantity renders a metered amount in its display unit, at two decimals
+// for everyday values and widening for fractional ones (a few MB of egress is
+// real usage and must not read as zero).
+func formatQuantity(v float64) string {
+	if v == 0 {
+		return "0"
+	}
+	return formatDecimal(v, 3, 2)
+}
+
+// formatDecimal renders v in fixed notation with at least minDecimals places,
+// widened as far as it takes to show sig significant digits, then trimmed back
+// of any zeros that merely pad them.
+func formatDecimal(v float64, sig, minDecimals int) string {
+	decimals := minDecimals
+	if exp := int(math.Floor(math.Log10(math.Abs(v)))); exp < 0 {
+		if d := sig - 1 - exp; d > decimals {
+			decimals = d
+		}
+	}
+	s := strconv.FormatFloat(v, 'f', decimals, 64)
+	for decimals > minDecimals && strings.HasSuffix(s, "0") {
+		decimals--
+		s = strconv.FormatFloat(v, 'f', decimals, 64)
+	}
+	return s
 }
 
 func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {

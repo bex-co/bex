@@ -41,26 +41,26 @@ function CapTile({ label, cap }: { label: string; cap: ResourceCap }) {
   const nearLimit = ratio >= NEAR_LIMIT_RATIO;
 
   return (
-    <div
-      className={cn(
-        "space-y-2 rounded-lg border p-3",
-        nearLimit && "border-amber-500/60 bg-amber-500/5",
-      )}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium">{label}</span>
-        {nearLimit && (
-          <span className="flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-            <AlertTriangle className="h-3.5 w-3.5" />
-            {t("usage.resourceCapsNearLimit")}
+    <div className="overflow-hidden rounded-lg border">
+      <div className="space-y-1 p-3">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="flex items-baseline gap-1.5">
+          <span className="text-xl font-semibold tabular-nums">{cap.used}</span>
+          <span className="text-sm text-muted-foreground tabular-nums">
+            / {cap.limit}
           </span>
-        )}
+          {nearLimit && (
+            <span className="ml-auto flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+              <AlertTriangle aria-hidden="true" className="size-3.5" />
+              {t("usage.resourceCapsNearLimit")}
+            </span>
+          )}
+        </p>
       </div>
-      <p className="text-sm tabular-nums text-muted-foreground">
-        {t("usage.resourceCapsValue", { used: cap.used, limit: cap.limit })}
-      </p>
+      {/* A hairline along the card's bottom edge rather than a bar competing
+          with the number — the count is the fact, the fill is the context. */}
       <div
-        className="h-1.5 overflow-hidden rounded-full bg-muted"
+        className="h-0.5 bg-muted"
         role="progressbar"
         aria-label={label}
         aria-valuemin={0}
@@ -69,8 +69,8 @@ function CapTile({ label, cap }: { label: string; cap: ResourceCap }) {
       >
         <div
           className={cn(
-            "h-full rounded-full bg-primary transition-[width]",
-            nearLimit && "bg-amber-500",
+            "h-full transition-[width]",
+            nearLimit ? "bg-amber-500" : "bg-primary",
           )}
           style={{ width: `${percent}%` }}
         />
@@ -108,8 +108,8 @@ export function ResourceCaps({ limits }: ResourceCapsProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("usage.resourceCapsTitle")}</CardTitle>
-        <CardDescription>{t("usage.resourceCapsDescription")}</CardDescription>
+        <CardTitle>{t("usage.includedUsageTitle")}</CardTitle>
+        <CardDescription>{t("usage.includedUsageDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-3">
         {capped.map(({ key, label, cap }) => (

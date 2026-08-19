@@ -35,6 +35,14 @@ type Readiness struct {
 	CustomerReady      bool          `json:"customerReady"`
 	SubscriptionReady  bool          `json:"subscriptionReady"`
 	PaymentMethodReady bool          `json:"paymentMethodReady"`
+	// PaymentMethodBrand and PaymentMethodLast4 describe the card on file
+	// ("visa", "4242") so a billing page can name it rather than say only that
+	// one exists. Both empty when there is no method, when it is not a card, or
+	// when the provider did not expand it — presenters fall back to the boolean.
+	// Neither is a credential: the provider's payment-method id stays
+	// server-side, as does every other Stripe object id.
+	PaymentMethodBrand string        `json:"paymentMethodBrand,omitempty"`
+	PaymentMethodLast4 string        `json:"paymentMethodLast4,omitempty"`
 	Tax                TaxReadiness  `json:"tax"`
 	Lifecycle          LifecycleView `json:"lifecycle"`
 }

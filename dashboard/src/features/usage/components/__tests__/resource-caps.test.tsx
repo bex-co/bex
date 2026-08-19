@@ -28,10 +28,11 @@ describe("ResourceCaps", () => {
       />,
     );
 
-    expect(screen.getByText("Resource limits")).toBeInTheDocument();
-    expect(screen.getByText("20 of 25 used")).toBeInTheDocument();
-    expect(screen.getByText("1 of 2 used")).toBeInTheDocument();
-    expect(screen.getByText("0 of 1 used")).toBeInTheDocument();
+    expect(screen.getByText("Included usage")).toBeInTheDocument();
+    expect(screen.getByText("20")).toBeInTheDocument();
+    expect(screen.getByText("/ 25")).toBeInTheDocument();
+    expect(screen.getByText("/ 2")).toBeInTheDocument();
+    expect(screen.getByText("/ 1")).toBeInTheDocument();
     expect(screen.getByText("Near limit")).toBeInTheDocument();
     expect(screen.getAllByRole("progressbar")).toHaveLength(3);
   });
@@ -64,6 +65,6 @@ describe("ResourceCaps", () => {
     expect(screen.queryByText("Services")).not.toBeInTheDocument();
     expect(screen.getByText("Postgres")).toBeInTheDocument();
     expect(screen.queryByText("Key Value")).not.toBeInTheDocument();
-    expect(screen.getByText("1 of 1 used")).toBeInTheDocument();
+    expect(screen.getByText("/ 1")).toBeInTheDocument();
   });
 });

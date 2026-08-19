@@ -187,6 +187,7 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 	s.resolveServiceNames(ctx, sum.Services)
 	sum.Period = now.Format(periodLayout)
 	sum.EstimatedCost = pricing.Default.Estimate(rows)
+	nameResourceEstimates(&sum.EstimatedCost, sum.Services)
 	// The Stripe projection (real cost, invoices, credit grants) is a billing
 	// capability, not part of the general usage read: model.fga reserves
 	// can_manage_billing for billing/admin, while can_view extends to viewers
@@ -292,6 +293,25 @@ func (s *Service) resolveServiceNames(ctx context.Context, svcs []ServiceUsage) 
 	}
 	for i := range svcs {
 		svcs[i].ServiceName = names[svcs[i].ResourceKind+"/"+svcs[i].ServiceID]
+	}
+}
+
+// nameResourceEstimates copies the display names already resolved onto
+// Services across to the per-resource estimates. The price sheet is a pure
+// rate table with no way to look a name up, and the two views describe the
+// same resources, so the join happens once here rather than in each of the
+// three adapters (or each client).
+func nameResourceEstimates(est *pricing.EstimatedCost, svcs []ServiceUsage) {
+	if len(est.Resources) == 0 || len(svcs) == 0 {
+		return
+	}
+	names := make(map[string]string, len(svcs))
+	for _, svc := range svcs {
+		names[svc.ResourceKind+"/"+svc.ServiceID] = svc.ServiceName
+	}
+	for i := range est.Resources {
+		r := &est.Resources[i]
+		r.ServiceName = names[r.ResourceKind+"/"+r.ServiceID]
 	}
 }
 

@@ -15,7 +15,7 @@ export function WorkspaceSettingsNavigation({
   const items = [
     {
       href: "#general",
-      label: t("workspaces.settingsTitle"),
+      label: t("workspaces.generalTitle"),
       icon: Settings2,
     },
     { href: "#team", label: t("team.title"), icon: Users },

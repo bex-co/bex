@@ -14,23 +14,26 @@ query Usage($period: String, $ownerId: String) {
   usage(period: $period, ownerId: $ownerId) {
     workspaceId
     period
-    services {
-      serviceId
-      serviceName
-      resourceKind
-      rows {
-        kind
-        tier
-        total
-      }
-    }
     estimatedCost {
       totalUsd
-      meters {
-        kind
-        tier
+      # resources is the same total grouped by the resource that incurred it,
+      # each with the charge lines behind it (rate x quantity = cost, all in
+      # one display unit). This is what the billing page's charge tree renders;
+      # `meters` aggregates every resource together and cannot answer "which
+      # service costs me money".
+      resources {
+        serviceId
+        serviceName
         resourceKind
         costUsd
+        charges {
+          kind
+          tier
+          unit
+          rateUsd
+          quantity
+          costUsd
+        }
       }
     }
     # billing: real Stripe invoice preview + finalized invoices (m48/m50). null
@@ -94,6 +97,11 @@ query BillingReadiness($workspaceId: String!) {
     customerReady
     subscriptionReady
     paymentMethodReady
+    # brand/last4 of the card Stripe will charge, so the billing page can name
+    # it ("Visa ending in 4242") instead of only reporting that one exists.
+    # Empty for a non-card method or an unexpanded read — fall back to the flag.
+    paymentMethodBrand
+    paymentMethodLast4
     lifecycle {
       status
       reason

@@ -361,6 +361,16 @@ export type BuildFilterInput = {
   paths?: InputMaybe<Array<InputMaybe<Scalars["String"]["input"]>>>;
 };
 
+export type ChargeLine = {
+  __typename: "ChargeLine";
+  costUsd: Maybe<Scalars["String"]["output"]>;
+  kind: Maybe<Scalars["String"]["output"]>;
+  quantity: Maybe<Scalars["String"]["output"]>;
+  rateUsd: Maybe<Scalars["String"]["output"]>;
+  tier: Maybe<Scalars["String"]["output"]>;
+  unit: Maybe<Scalars["String"]["output"]>;
+};
+
 export type CronRun = {
   __typename: "CronRun";
   finishedAt: Maybe<Scalars["String"]["output"]>;
@@ -718,6 +728,7 @@ export type EnvironmentSecretFilePatchInput = {
 export type EstimatedCost = {
   __typename: "EstimatedCost";
   meters: Maybe<Array<Maybe<MeterEstimate>>>;
+  resources: Maybe<Array<Maybe<ResourceEstimate>>>;
   totalUsd: Maybe<Scalars["String"]["output"]>;
 };
 
@@ -2698,6 +2709,15 @@ export type ResourceCap = {
   used: Maybe<Scalars["Int"]["output"]>;
 };
 
+export type ResourceEstimate = {
+  __typename: "ResourceEstimate";
+  charges: Maybe<Array<Maybe<ChargeLine>>>;
+  costUsd: Maybe<Scalars["String"]["output"]>;
+  resourceKind: Maybe<Scalars["String"]["output"]>;
+  serviceId: Maybe<Scalars["String"]["output"]>;
+  serviceName: Maybe<Scalars["String"]["output"]>;
+};
+
 export type ResourceLimits = {
   __typename: "ResourceLimits";
   keyValues: Maybe<ResourceCap>;
@@ -2997,6 +3017,8 @@ export type WorkspaceBillingReadiness = {
   customerReady: Maybe<Scalars["Boolean"]["output"]>;
   lifecycle: Maybe<BillingLifecycle>;
   mode: Maybe<Scalars["String"]["output"]>;
+  paymentMethodBrand: Maybe<Scalars["String"]["output"]>;
+  paymentMethodLast4: Maybe<Scalars["String"]["output"]>;
   paymentMethodReady: Maybe<Scalars["Boolean"]["output"]>;
   subscriptionReady: Maybe<Scalars["Boolean"]["output"]>;
   tax: Maybe<BillingTaxReadiness>;
