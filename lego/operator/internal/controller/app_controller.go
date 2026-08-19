@@ -301,6 +301,7 @@ type AppReconciler struct {
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kpack.io,resources=images,verbs=get;list;watch;create;delete
 // +kubebuilder:rbac:groups=kpack.io,resources=builds,verbs=get;list;watch;delete
+// +kubebuilder:rbac:groups=kpack.io,resources=clusterbuilders,verbs=get;list;watch
 // +kubebuilder:rbac:groups=traefik.io,resources=middlewares,verbs=get;list;watch;create;update;patch;delete
 
 // traefikHTTPMiddlewareGVK is Traefik's HTTP middleware CRD (v3). Used to

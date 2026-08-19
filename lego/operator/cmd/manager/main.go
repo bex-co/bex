@@ -278,6 +278,7 @@ func main() {
 	}
 
 	setupAppReconciler(mgr, uncachedClient, cs, appsNamespace, cfg.baseDomain)
+	controller.RegisterClusterBuilderMetrics(uncachedClient)
 
 	setupDatastoreReconcilers(mgr, uncachedClient, appsNamespace)
 	// +kubebuilder:scaffold:builder

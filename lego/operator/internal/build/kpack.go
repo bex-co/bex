@@ -36,8 +36,10 @@ import (
 )
 
 const (
-	kpackAPIVersion           = "kpack.io/v1alpha2"
-	kpackClusterBuilder       = "bex"
+	kpackAPIVersion = "kpack.io/v1alpha2"
+	// ClusterBuilderName is the GitOps-managed Paketo ClusterBuilder the
+	// buildpack path uses and freshness metrics observe.
+	ClusterBuilderName        = "bex"
 	kpackReadyCondition       = "Ready"
 	kpackSucceededCondition   = "Succeeded"
 	kpackServiceAccountPrefix = "bex-kpack-"
@@ -48,6 +50,9 @@ const (
 var (
 	kpackImageGVK = schema.GroupVersionKind{Group: "kpack.io", Version: "v1alpha2", Kind: "Image"}
 	kpackBuildGVK = schema.GroupVersionKind{Group: "kpack.io", Version: "v1alpha2", Kind: "Build"}
+	// ClusterBuilderGVK is the cluster-scoped kpack builder the metrics
+	// collector reads without importing kpack's Go types.
+	ClusterBuilderGVK = schema.GroupVersionKind{Group: "kpack.io", Version: "v1alpha2", Kind: "ClusterBuilder"}
 )
 
 // KpackImage constructs the kpack Image resource for one App generation. It is
@@ -91,7 +96,7 @@ func KpackImage(o Options) *unstructured.Unstructured {
 		"tag":                o.KpackImageRef(),
 		"serviceAccountName": kpackServiceAccountName(o),
 		"builder": map[string]any{
-			"name": kpackClusterBuilder,
+			"name": ClusterBuilderName,
 			"kind": "ClusterBuilder",
 		},
 		"source": map[string]any{

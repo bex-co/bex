@@ -189,8 +189,14 @@ After D1, admission — not reconcile threads — is the only logical concurrenc
 ### D7 — The baseline is checked in, not ambient
 
 - `BEX_APP_RECONCILE_WORKERS` and `BEX_MAX_CONCURRENT_BUILDS` (and the new `BEX_MAX_ACTIVE_BUILDS`) are set explicitly in the deploy manifests/gitops path rather than relying on out-of-band env, so the ADR034 baseline is auditable in git. Until D1 lands, the safe production shape remains `2 / 2`; after D1, workers can drop back to a pure responsiveness setting while the caps carry the policy.
-- The native runtime's floating base tags (`node:24-bookworm`, `python:3.13-bookworm`, …) join the digest-pinning inventory (ADR058-security-review round-7 deferred item): a floating base means two builds of the same commit can differ, which is both a reproducibility and a reliability defect. Pinning cadence (periodic re-resolve + commit) comes with the milestone.
-- The kpack `ClusterBuilder` gets staleness monitoring (Ready condition + builder image age) folded into D5's alerting; a stale builder silently ships old toolchains and CVEs to every buildpack tenant.
+- The native runtime's floating base tags (`node:24-bookworm`, `python:3.13-bookworm`, …) join the digest-pinning inventory (ADR058-security-review round-7 deferred item): a floating base means two builds of the same commit can differ, which is both a reproducibility and a reliability defect.
+- Pinning cadence is a **reviewed** re-resolve, not an automatic upgrade. `lego/operator/internal/build/toolchain-freshness.json` records each builder, native-base, and helper pin with its upstream tag, committed digest, affected files, and last-reviewed `resolved_at`. `python3 scripts/lib/toolchain-freshness.py resolve` (and the weekly `.github/workflows/build-toolchain-freshness.yml`) detect digest movement and open one tracking issue carrying exact old→new replacements. The workflow has no production-cluster credential and never edits the tree. Accepting a digest is an explicit commit:
+  1. Review the observed digest (provenance, CVE notes, architecture list).
+  2. Replace the committed digest in every file listed for that inventory id.
+  3. Set that entry's `resolved_at` to the review time (UTC RFC3339 `YYYY-MM-DDTHH:MM:SSZ`) in the same commit.
+  4. Run `bash scripts/build-toolchain-freshness.sh validate` before merge.
+- Freshness SLO: a ClusterBuilder pin older than **30 days**, or missing/malformed resolution metadata, fires the warning `ClusterBuilderImageStale`. The 30-day window is the review cadence grounded in toolchain-CVE risk — long enough not to churn on every Paketo rebuild, short enough that a silently rotting builder cannot freeze old CVEs into every buildpack tenant indefinitely.
+- The kpack `ClusterBuilder` is also observed live: the operator exports `bex_build_clusterbuilder_present` / `bex_build_clusterbuilder_ready` / `bex_build_clusterbuilder_image_resolved_timestamp_seconds` (no labels). `ClusterBuilderNotReady` fires when the builder is missing, unknown, or not Ready for 15m — independent of pin age. A Ready builder can still be stale; a recently reviewed pin can still be unready.
 
 ### D8 — Dedicated build pool: tainted lg/burst, serving overflow grows the stable pool
 
