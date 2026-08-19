@@ -60,6 +60,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "workspace.settings.tsx",
   ],
   "inherited-layout": [
+    "auth.device.index.tsx",
     "project.$projectId.index.tsx",
     "services.$serviceId.deploys.$deployId.tsx",
     "services.$serviceId.deploys.index.tsx",

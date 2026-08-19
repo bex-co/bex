@@ -36,9 +36,11 @@ describe("handleDeviceVerification", () => {
   it("starts at Hydra's public verifier with the CLI user code", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    const response = await handleDeviceVerification(
+    const result = await handleDeviceVerification(
       new Request(`${DASHBOARD}/auth/device?user_code=ABCDEF`),
     );
+    expect(result).toBeInstanceOf(Response);
+    const response = result as Response;
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe(
       `${PUBLIC}/oauth2/device/verify?user_code=ABCDEF`,
@@ -51,17 +53,20 @@ describe("handleDeviceVerification", () => {
     const unconfigured = await handleDeviceVerification(
       new Request(`${DASHBOARD}/auth/device?user_code=ABCDEF`),
     );
-    expect(unconfigured.status).toBe(503);
+    expect(unconfigured).toBeInstanceOf(Response);
+    expect((unconfigured as Response).status).toBe(503);
   });
 
   it("bounces a signed-out visitor through login, preserving the code + challenge in `next`, without pairing (device-code phish)", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    const response = await handleDeviceVerification(
+    const result = await handleDeviceVerification(
       new Request(
         `${DASHBOARD}/auth/device?user_code=ABCDEF&device_challenge=challenge-1`,
       ),
     );
+    expect(result).toBeInstanceOf(Response);
+    const response = result as Response;
     expect(response.status).toBe(302);
     const location = new URL(
       String(response.headers.get("location")),
@@ -85,11 +90,13 @@ describe("handleDeviceVerification", () => {
       session: null,
       aal2Required: true,
     });
-    const response = await handleDeviceVerification(
+    const result = await handleDeviceVerification(
       new Request(
         `${DASHBOARD}/auth/device?user_code=ABCDEF&device_challenge=challenge-1`,
       ),
     );
+    expect(result).toBeInstanceOf(Response);
+    const response = result as Response;
     expect(response.status).toBe(302);
     const location = new URL(
       String(response.headers.get("location")),
@@ -102,22 +109,21 @@ describe("handleDeviceVerification", () => {
     );
   });
 
-  it("renders a confirmation page for a signed-in caller instead of pairing silently (codex-security #9)", async () => {
+  it("returns a DeviceView for a signed-in caller instead of pairing silently (codex-security #9)", async () => {
     fetchSessionMock.mockResolvedValue({
       session: { id: "session-abc", active: true, identity: { id: "id-1" } },
     });
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    const response = await handleDeviceVerification(
+    const result = await handleDeviceVerification(
       new Request(
         `${DASHBOARD}/auth/device?user_code=ABCDEF&device_challenge=challenge-1`,
       ),
     );
-    expect(response.status).toBe(200);
-    expect(response.headers.get("content-type")).toContain("text/html");
-    const body = await response.text();
-    expect(body).toContain("Authorize the bex CLI");
-    expect(body).toContain("ABCDEF");
+    // A DeviceView, not a Response: the route hands this to the confirm page
+    // (AuthPageShell chrome) as deferred loader context — see auth.device.tsx.
+    expect(result).not.toBeInstanceOf(Response);
+    expect(result).toEqual({ userCode: "ABCDEF", challenge: "challenge-1" });
     // The grant is NOT paired on the silent GET — no admin accept call.
     expect(fetchMock).not.toHaveBeenCalled();
   });

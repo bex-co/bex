@@ -228,12 +228,47 @@ const zhAuth: Record<string, TranslationEntry> = {
       "Consent page subtext when there is no live consent request to decide",
   },
   "auth.deviceSuccessTitle": {
-    message: "Render CLI 已连接",
+    message: "bex CLI 已连接",
     description: "Device authorization success page title",
   },
   "auth.deviceTitle": {
-    message: "连接 Render CLI",
-    description: "Render CLI device verification route document title",
+    message: "连接 bex CLI",
+    description: "bex CLI device verification route document title",
+  },
+  "auth.deviceConfirmSubtitle": {
+    message: "一台通过 bex CLI 登录的设备正在请求访问你的账户。",
+    description: "Device confirm page hero subtitle",
+  },
+  "auth.deviceConfirmHeading": {
+    message: "授权此设备",
+    description: "Device confirm page card heading",
+  },
+  "auth.deviceConfirmDescription": {
+    message: "请确认下方代码与你的 CLI 显示的一致：",
+    description: "Device confirm page card description above the code",
+  },
+  "auth.deviceConfirmHint": {
+    message: "仅当你本人在终端发起此请求时才应授权。",
+    description:
+      "Device confirm page footnote warning against unsolicited requests",
+  },
+  "auth.deviceConfirmCancel": {
+    message: "取消",
+    description: "Device confirm page cancel button",
+  },
+  "auth.deviceConfirmAuthorize": {
+    message: "授权设备",
+    description: "Device confirm page authorize/submit button",
+  },
+  "auth.deviceExpiredTitle": {
+    message: "设备代码已过期",
+    description:
+      "Device confirm page heading when there is no live device request",
+  },
+  "auth.deviceExpiredSubtitle": {
+    message: "请在终端中重新运行 `bex login`。",
+    description:
+      "Device confirm page subtext when there is no live device request to confirm",
   },
   "auth.deviceSuccessSubtitle": {
     message: "浏览器授权已完成。",

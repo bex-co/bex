@@ -231,12 +231,49 @@ const enAuth: Record<string, TranslationEntry> = {
       "Consent page subtext when there is no live consent request to decide",
   },
   "auth.deviceSuccessTitle": {
-    message: "Render CLI connected",
+    message: "bex CLI connected",
     description: "Device authorization success page title",
   },
   "auth.deviceTitle": {
-    message: "Connect Render CLI",
-    description: "Render CLI device verification route document title",
+    message: "Connect bex CLI",
+    description: "bex CLI device verification route document title",
+  },
+  "auth.deviceConfirmSubtitle": {
+    message:
+      "A device signed in with the bex CLI wants access to your account.",
+    description: "Device confirm page hero subtitle",
+  },
+  "auth.deviceConfirmHeading": {
+    message: "Authorize this device",
+    description: "Device confirm page card heading",
+  },
+  "auth.deviceConfirmDescription": {
+    message: "Confirm the code below matches what your CLI displayed:",
+    description: "Device confirm page card description above the code",
+  },
+  "auth.deviceConfirmHint": {
+    message:
+      "Only authorize this if you started the request from your terminal.",
+    description:
+      "Device confirm page footnote warning against unsolicited requests",
+  },
+  "auth.deviceConfirmCancel": {
+    message: "Cancel",
+    description: "Device confirm page cancel button",
+  },
+  "auth.deviceConfirmAuthorize": {
+    message: "Authorize device",
+    description: "Device confirm page authorize/submit button",
+  },
+  "auth.deviceExpiredTitle": {
+    message: "Device code expired",
+    description:
+      "Device confirm page heading when there is no live device request",
+  },
+  "auth.deviceExpiredSubtitle": {
+    message: "Start `bex login` again from your terminal.",
+    description:
+      "Device confirm page subtext when there is no live device request to confirm",
   },
   "auth.deviceSuccessSubtitle": {
     message: "Your browser authorization is complete.",

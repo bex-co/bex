@@ -25,22 +25,13 @@ function error(message: string, status: number): Response {
   });
 }
 
-function htmlEscape(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => {
-    switch (c) {
-      case "&":
-        return "&amp;";
-      case "<":
-        return "&lt;";
-      case ">":
-        return "&gt;";
-      case '"':
-        return "&quot;";
-      default:
-        return "&#39;";
-    }
-  });
-}
+/** The only device-confirm state that reaches the browser: what a signed-in
+ * human needs to see to confirm the code matches their CLI (mirrors
+ * ConsentView in hydra-consent.ts). */
+export type DeviceView = {
+  userCode: string;
+  challenge: string;
+};
 
 /**
  * Bridge Hydra's RFC 8628 browser verification sequence. The first visit (the
@@ -58,10 +49,15 @@ function htmlEscape(s: string): string {
  * client's skip_consent consent auto-accept is unreachable until a human has
  * explicitly confirmed, and an attacker who tricks a signed-out victim into
  * opening the verification link and logging in still polls nothing.
+ *
+ * A signed-in caller's confirmation state is returned as a `DeviceView`
+ * rather than rendered here — the `/auth/device` route hands it to the React
+ * component (AuthPageShell chrome, same as every other auth page) as deferred
+ * loader context, mirroring the consent route's `ConsentView` handoff.
  */
 export async function handleDeviceVerification(
   request: Request,
-): Promise<Response> {
+): Promise<Response | DeviceView> {
   const requestURL = new URL(request.url);
   const userCode = requestURL.searchParams.get("user_code")?.trim() ?? "";
   const challenge =
@@ -81,7 +77,7 @@ export async function handleDeviceVerification(
     request.headers.get("cookie") ?? "",
   );
   if (session) {
-    return deviceConfirmationPage(requestURL.origin, userCode, challenge);
+    return { userCode, challenge };
   }
   return loginFirst(requestURL, userCode, challenge, aal2Required);
 }
@@ -197,53 +193,6 @@ async function acceptDevicePairing(
   }
 
   return Response.redirect(redirect.toString(), 302);
-}
-
-/** deviceConfirmationPage renders a same-origin confirmation interstitial. The
- * hidden form POSTs the user_code + device_challenge back to /auth/device; the
- * POST handler verifies same-origin + an authenticated session before pairing
- * (codex-security #9). */
-function deviceConfirmationPage(
-  origin: string,
-  userCode: string,
-  challenge: string,
-): Response {
-  const safeCode = htmlEscape(userCode);
-  const safeChallenge = htmlEscape(challenge);
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Authorize device — bex</title>
-  <style>
-    body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;
-      background:#111827;color:#f9fafb}
-    main{max-width:28rem;padding:2rem;text-align:center}
-    h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#d1d5db;line-height:1.6}
-    .code{font-family:ui-monospace,monospace;background:#1f2937;padding:.25rem .5rem;border-radius:.375rem;
-      letter-spacing:.1em;margin:.25rem 0}
-    form{margin-top:1.5rem;display:flex;gap:.75rem;justify-content:center}
-    button{background:#6366f1;color:#fff;border:0;border-radius:.5rem;padding:.6rem 1.25rem;font-weight:600;cursor:pointer}
-    a{color:#9ca3af;text-decoration:underline}
-  </style>
-</head>
-<body><main>
-  <h1>Authorize the bex CLI?</h1>
-  <p>A device is requesting access to your bex account. Confirm the code matches what your CLI displayed:</p>
-  <p class="code">${safeCode}</p>
-  <p><small>Only authorize this if you started the request.</small></p>
-  <form method="POST" action="${htmlEscape(origin)}/auth/device">
-    <input type="hidden" name="user_code" value="${safeCode}">
-    <input type="hidden" name="device_challenge" value="${safeChallenge}">
-    <button type="submit">Authorize device</button>
-    <a href="/">Cancel</a>
-  </form>
-</main></body>
-</html>`;
-  return new Response(html, {
-    headers: { "content-type": "text/html; charset=utf-8" },
-  });
 }
 
 export { RENDER_CLI_CLIENT_ID };

@@ -4,7 +4,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 
 /**
- * Device-flow landing page: the user just approved `render login` in this
+ * Device-flow landing page: the user just approved `bex login` in this
  * browser tab and the CLI's poll loop is picking up tokens on its own. The
  * page replays the CLI's transcript in a terminal replica to point the user
  * back where the session actually continues — their terminal.
@@ -30,13 +30,13 @@ export default function DeviceSuccessPage() {
             <span className="size-2.5 rounded-full bg-zinc-700" />
             <span className="size-2.5 rounded-full bg-zinc-700" />
             <span className="ml-2 font-mono text-xs text-zinc-500">
-              render login
+              bex login
             </span>
           </div>
           <div className="space-y-1.5 px-4 py-4 font-mono text-[13px] leading-relaxed">
             <p>
               <span className="text-zinc-500">$ </span>
-              <span className="text-zinc-100">render login</span>
+              <span className="text-zinc-100">bex login</span>
             </p>
             <p className="text-zinc-500 animate-in fade-in fill-mode-backwards delay-300 duration-500 motion-reduce:animate-none">
               {t("auth.deviceSuccessWaiting")}
