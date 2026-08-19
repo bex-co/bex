@@ -36,7 +36,9 @@ const nativePreparerImage = "busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb
 
 // nativeRuntimeImages retain readable tags but pin their multi-arch manifest
 // identities. Patch upgrades are deliberate reviewed changes; a registry retag
-// cannot silently alter a privileged tenant build environment.
+// cannot silently alter a privileged tenant build environment. Last-reviewed
+// resolution time lives in toolchain-freshness.json and must move with the
+// digest (docs/ADR060 D7).
 var nativeRuntimeImages = map[string]string{
 	"elixir": "elixir:1.18@sha256:52e8ea10d10e95d74dde312606637e12bc1b1fdf9cfa37d864eacd85fcc16b3c",
 	"go":     "golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac",

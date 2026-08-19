@@ -763,6 +763,34 @@ spec:
                       summary: "Build queue p95 is {{ $value | humanizeDuration }} (capacity, not tenant code)"
                       description: "Builds are chronically waiting for a node before they start. This is the platform's SLI, not the tenant's: compare bex_build_run_seconds, which should be unaffected. Consider the build pools' max-size, BEX_MAX_ACTIVE_BUILDS, and whether cold scale-from-zero (bex_builds_queued > 0 with bex-tenant-burst at 0 replicas) dominates. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D5."
 
+                  # Build-toolchain freshness (docs/ADR060 D7, w4/m86). Readiness
+                  # and age are distinct: a Ready builder can still be a stale
+                  # pin, and a recently reviewed pin can still be unready.
+                  # The 30-day SLO is a review cadence, not an automatic upgrade.
+                  - alert: ClusterBuilderNotReady
+                    expr: |
+                      bex_build_clusterbuilder_present != 1
+                      or
+                      bex_build_clusterbuilder_ready != 1
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "kpack ClusterBuilder bex is not Ready"
+                      description: "The platform ClusterBuilder has been missing, unknown, or not Ready for >15m, so buildpack deploys may stall or ship an incomplete builder. Inspect: kubectl get clusterbuilder bex -o yaml. Refresh is a reviewed digest update via python3 scripts/lib/toolchain-freshness.py resolve and .github/workflows/build-toolchain-freshness.yml — never an automatic rollout. Runbook: docs/ADR060-build-worker-reliability-and-performance.md D7."
+
+                  - alert: ClusterBuilderImageStale
+                    expr: |
+                      bex_build_clusterbuilder_image_resolved_timestamp_seconds <= 0
+                      or
+                      (time() - bex_build_clusterbuilder_image_resolved_timestamp_seconds) > (30 * 24 * 3600)
+                    for: 1h
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "ClusterBuilder image pin is older than the 30-day freshness SLO"
+                      description: "Committed builder resolution metadata is missing, malformed, or older than 30 days. Resolve with python3 scripts/lib/toolchain-freshness.py resolve, review the observed digest, update the listed files and resolved_at together. The workflow never applies a pin. Runbook: docs/ADR060-build-worker-reliability-and-performance.md D7."
+
                   - alert: EgressMeterTargetMissing
                     expr: |
                       count(up{job="bex-egress-meter"} == 1)

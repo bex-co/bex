@@ -1,0 +1,150 @@
+{
+  "schema": "bex.build-toolchain-freshness/v1",
+  "images": [
+    {
+      "id": "cnb-builder",
+      "kind": "builder",
+      "upstream": "docker.io/paketobuildpacks/builder-jammy-base:latest",
+      "committed": "paketobuildpacks/builder-jammy-base@sha256:5799343cd316c1a03fa3ff7ab0915d9e6d134e95df4583016d70c6f5330d3898",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub paketobuildpacks/builder-jammy-base:latest multi-arch index",
+      "files": [
+        "lego/operator/cmd/manager/main.go",
+        "lego/operator/config/manager/manager.yaml",
+        "deploy/gitops/charts/kpack/platform.yaml"
+      ]
+    },
+    {
+      "id": "cnb-stack-build",
+      "kind": "stack",
+      "upstream": "docker.io/paketobuildpacks/build-jammy-base:latest",
+      "committed": "paketobuildpacks/build-jammy-base@sha256:28074573683875fcb332cd22c406afd16974f298aafb155d6cb9887642c4abd3",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub paketobuildpacks/build-jammy-base:latest multi-arch index",
+      "files": ["deploy/gitops/charts/kpack/platform.yaml"]
+    },
+    {
+      "id": "cnb-stack-run",
+      "kind": "stack",
+      "upstream": "docker.io/paketobuildpacks/run-jammy-base:latest",
+      "committed": "paketobuildpacks/run-jammy-base@sha256:20cc50011753022514c54388ad9bd5790766d738fc711a6d6a49104a33d45cc3",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub paketobuildpacks/run-jammy-base:latest multi-arch index",
+      "files": ["deploy/gitops/charts/kpack/platform.yaml"]
+    },
+    {
+      "id": "helper-aws-cli",
+      "kind": "helper",
+      "upstream": "docker.io/amazon/aws-cli:2.22.35",
+      "committed": "amazon/aws-cli:2.22.35@sha256:6977c83ae3dc99f28fcf8276b9ea5eec33833cd5be40574b34112e98113ec7a2",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub amazon/aws-cli:2.22.35 multi-arch index",
+      "files": ["lego/operator/internal/publish/publish.go"]
+    },
+    {
+      "id": "helper-buildkit",
+      "kind": "helper",
+      "upstream": "docker.io/moby/buildkit:v0.30.0",
+      "committed": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub moby/buildkit:v0.30.0 multi-arch index",
+      "files": [
+        "lego/operator/internal/build/build.go",
+        "deploy/gitops/base/build-image-prewarm.yaml"
+      ]
+    },
+    {
+      "id": "helper-cosign",
+      "kind": "helper",
+      "upstream": "gcr.io/projectsigstore/cosign:v2.4.1",
+      "committed": "gcr.io/projectsigstore/cosign:v2.4.1@sha256:b03690aa52bfe94054187142fba24dc54137650682810633901767d8a3e15b31",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "gcr.io projectsigstore/cosign:v2.4.1 multi-arch index",
+      "files": ["lego/operator/internal/build/build.go"]
+    },
+    {
+      "id": "helper-git",
+      "kind": "helper",
+      "upstream": "docker.io/alpine/git:v2.43.0",
+      "committed": "alpine/git:v2.43.0@sha256:76fdb7210689fc26c6ff101c4adacf9d12d3d25a919a7d8ff42ebaef5bedba65",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub alpine/git:v2.43.0 multi-arch index",
+      "files": [
+        "lego/operator/internal/build/build.go",
+        "lego/operator/internal/publish/publish.go"
+      ]
+    },
+    {
+      "id": "helper-skopeo",
+      "kind": "helper",
+      "upstream": "quay.io/skopeo/stable:v1.22.2",
+      "committed": "quay.io/skopeo/stable@sha256:c7d3c512612f52805023cd38351081dad7e2729fc13d14b701e47c7c8bdd6615",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Quay skopeo/stable:v1.22.2 multi-arch manifest",
+      "files": ["lego/operator/internal/build/build.go"]
+    },
+    {
+      "id": "native-busybox",
+      "kind": "helper",
+      "upstream": "docker.io/library/busybox:1.37.0",
+      "committed": "busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub library/busybox:1.37.0 multi-arch index",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-elixir",
+      "kind": "native-base",
+      "upstream": "docker.io/library/elixir:1.18",
+      "committed": "elixir:1.18@sha256:52e8ea10d10e95d74dde312606637e12bc1b1fdf9cfa37d864eacd85fcc16b3c",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub library/elixir:1.18 multi-arch index",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-go",
+      "kind": "native-base",
+      "upstream": "docker.io/library/golang:1.24-bookworm",
+      "committed": "golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub library/golang:1.24-bookworm multi-arch index",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-node",
+      "kind": "native-base",
+      "upstream": "docker.io/library/node:24-bookworm",
+      "committed": "node:24-bookworm@sha256:934240a162082fd8b8a2f90cd5114446443f1eba1c5378f6687167ca405e6584",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub library/node:24-bookworm multi-arch index",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-python",
+      "kind": "native-base",
+      "upstream": "docker.io/library/python:3.13-bookworm",
+      "committed": "python:3.13-bookworm@sha256:62eafe52c91cad83c2c74e630bfde917da8c253673e695665d454def84fc9a13",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub library/python:3.13-bookworm multi-arch index",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-ruby",
+      "kind": "native-base",
+      "upstream": "docker.io/library/ruby:3.4-bookworm",
+      "committed": "ruby:3.4-bookworm@sha256:56e0c9fdbf64d090e45072d32f0d3be7f2e392e733444f7d176a50881e6c325a",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub library/ruby:3.4-bookworm multi-arch index",
+      "files": ["lego/operator/internal/build/native.go"]
+    },
+    {
+      "id": "native-rust",
+      "kind": "native-base",
+      "upstream": "docker.io/library/rust:1-bookworm",
+      "committed": "rust:1-bookworm@sha256:0e2bcaef56d041a486784e54104a81aebe0da44bd03019bd70bc0401e42e4a97",
+      "resolved_at": "2026-08-18T00:00:00Z",
+      "source": "Docker Hub library/rust:1-bookworm multi-arch index",
+      "files": ["lego/operator/internal/build/native.go"]
+    }
+  ]
+}

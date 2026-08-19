@@ -1,0 +1,55 @@
+name: Build toolchain freshness
+
+# Weekly re-resolve of digest-pinned builder, native-base, and helper images.
+# Opens/updates one tracking issue when an upstream digest moves; closes it
+# when drift clears. Never edits, commits, or merges a pin. Public registry
+# metadata and github.token only — no cluster, registry-push, or tenant credentials.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 4"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate and resolve
+        id: check
+        run: |
+          python3 scripts/lib/toolchain-freshness.py validate
+          python3 scripts/lib/toolchain-freshness.py resolve > "$RUNNER_TEMP/resolve.json"
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label build-toolchain-stale --state open --json number --jq '.[0].number // empty')"
+          action="$(EXISTING_ISSUE="$existing" python3 scripts/lib/toolchain-freshness.py issue-action "$RUNNER_TEMP/resolve.json")"
+          echo "action=$action" >> "$GITHUB_OUTPUT"
+          echo "existing=$existing" >> "$GITHUB_OUTPUT"
+      - name: Open or update the tracking issue
+        if: steps.check.outputs.action == 'open' || steps.check.outputs.action == 'update'
+        run: |
+          gh label create build-toolchain-stale --repo "$GITHUB_REPOSITORY" \
+            --color FBCA04 --description "Pinned build-toolchain digest drift" --force
+          body="$(python3 scripts/lib/toolchain-freshness.py issue-body "$RUNNER_TEMP/resolve.json")"
+          existing="${{ steps.check.outputs.existing }}"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "Build toolchain digest drift" \
+              --label build-toolchain-stale \
+              --body "$body"
+          fi
+      - name: Close the tracking issue once drift clears
+        if: steps.check.outputs.action == 'close'
+        run: |
+          existing="${{ steps.check.outputs.existing }}"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "Upstream digests match the committed pins again."
+          fi
