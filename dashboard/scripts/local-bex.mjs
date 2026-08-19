@@ -1595,129 +1595,168 @@ function resolveGraphQL({ operationName, variables = {} }) {
       const currentMm = new Date().getMonth() + 1;
       const monthsBack = (currentMm - mm + 12) % 12;
       const scale = Math.max(0.3, 1 - monthsBack * 0.25);
-      // Compute a synthetic estimatedCost matching the price sheet (pricing.yaml):
-      // starter compute: $4.90/mo per 2,628,000 s; egress: $0.01/GB; build: $0.0035/min
-      const starterSecs = Math.round((432000 + 216000) * scale); // eden-cms + email-worker
-      const egressBytes = Math.round(524288000 * scale);
-      const buildSecs = Math.round((1800 + 900 + 300) * scale);
-      const computeCost = (starterSecs * 0.000001864554).toFixed(2);
-      const bandwidthCost = (egressBytes * 0.000000000009313226).toFixed(2);
-      const buildCost = (buildSecs * 0.000058333333).toFixed(2);
-      const totalCost = (
-        starterSecs * 0.000001864554 +
-        egressBytes * 0.000000000009313226 +
-        buildSecs * 0.000058333333
-      ).toFixed(2);
-      const meters = [
-        parseFloat(computeCost) >= 0.005
-          ? {
-              __typename: "MeterEstimate",
-              kind: "instance_seconds",
-              tier: "starter",
-              resourceKind: "service",
-              costUsd: computeCost,
-            }
-          : null,
-        parseFloat(bandwidthCost) >= 0.005
-          ? {
-              __typename: "MeterEstimate",
-              kind: "egress_bytes",
-              tier: "",
-              resourceKind: "service",
-              costUsd: bandwidthCost,
-            }
-          : null,
-        parseFloat(buildCost) >= 0.005
-          ? {
-              __typename: "MeterEstimate",
-              kind: "build_seconds",
-              tier: "",
-              resourceKind: "service",
-              costUsd: buildCost,
-            }
-          : null,
-      ].filter(Boolean);
+      // Synthetic charge tree matching the price sheet (pricing.yaml): starter
+      // compute $4.90/mo per 2,628,000 s; egress $0.015/GiB; build $0.0035/min.
+      // The dashboard reads `estimatedCost.resources` — per-resource cost plus
+      // the charge lines behind it — so the stub builds the same shape the
+      // backend's pricing.Estimate does, rather than a flat meter list.
+      const RATES = {
+        instance_seconds: { starter: 0.000001864535768645, free: 0 },
+        egress_bytes: 0.000000000013969838619232,
+        build_seconds: 0.000058333333333333,
+      };
+      const UNITS = {
+        instance_seconds: { unit: "hr", per: 3600 },
+        egress_bytes: { unit: "GB", per: 1073741824 },
+        build_seconds: { unit: "min", per: 60 },
+      };
+      // Match the backend's formatters: rates carry enough significant digits
+      // that rate x quantity still equals the cost printed beside them.
+      const fmt = (v, sig, min) => {
+        if (v === 0) return "0";
+        let decimals = min;
+        const exp = Math.floor(Math.log10(Math.abs(v)));
+        if (exp < 0) decimals = Math.max(decimals, sig - 1 - exp);
+        let out = v.toFixed(decimals);
+        while (decimals > min && out.endsWith("0")) out = v.toFixed(--decimals);
+        return out;
+      };
+      const SHAPE = [
+        {
+          serviceId: "srv-edencms0001",
+          serviceName: "eden-cms-v2",
+          resourceKind: "service",
+          rows: [
+            ["instance_seconds", "starter", 432000],
+            ["egress_bytes", "", 524288000],
+            ["build_seconds", "", 1800],
+          ],
+        },
+        {
+          serviceId: "srv-emailwrk0001",
+          serviceName: "email-worker",
+          resourceKind: "service",
+          rows: [
+            ["instance_seconds", "starter", 216000],
+            ["build_seconds", "", 900],
+          ],
+        },
+        {
+          serviceId: "srv-nightly0001",
+          serviceName: "nightly-report",
+          resourceKind: "service",
+          rows: [
+            ["instance_seconds", "free", 3600],
+            ["build_seconds", "", 300],
+          ],
+        },
+        {
+          serviceId: "dpg-primarydb01",
+          serviceName: "primary-db",
+          resourceKind: "postgres",
+          rows: [
+            ["instance_seconds", "basic-256mb", 432000],
+            ["storage_gb_seconds", "", 4320000],
+          ],
+        },
+      ];
+      let totalRaw = 0;
+      const resources = SHAPE.map((res) => {
+        let resRaw = 0;
+        const charges = res.rows.map(([kind, tier, base]) => {
+          const qty = Math.round(base * scale);
+          const rate =
+            kind === "instance_seconds"
+              ? res.resourceKind === "postgres"
+                ? 0.000005327245053272
+                : (RATES.instance_seconds[tier] ?? 0)
+              : kind === "storage_gb_seconds"
+                ? 0.000000079908675799
+                : RATES[kind];
+          const cost = rate * qty;
+          resRaw += cost;
+          const u = UNITS[kind] ?? { unit: "GB-mo", per: 2628000 };
+          return {
+            __typename: "ChargeLine",
+            kind,
+            tier,
+            unit: u.unit,
+            rateUsd: fmt(rate * u.per, 4, 2),
+            quantity: fmt(qty / u.per, 3, 2),
+            costUsd: cost.toFixed(2),
+          };
+        });
+        totalRaw += resRaw;
+        return {
+          __typename: "ResourceEstimate",
+          serviceId: res.serviceId,
+          serviceName: res.serviceName,
+          resourceKind: res.resourceKind,
+          costUsd: resRaw.toFixed(2),
+          charges,
+        };
+      });
       return {
         usage: {
           __typename: "UsageSummary",
           workspaceId: "local-workspace",
           period,
-          services: [
-            {
-              __typename: "ServiceUsage",
-              serviceId: "srv-edencms0001",
-              serviceName: "eden-cms-v2",
-              resourceKind: "service",
-              rows: [
-                {
-                  __typename: "UsageRow",
-                  kind: "instance_seconds",
-                  tier: "starter",
-                  total: Math.round(432000 * scale),
-                },
-                {
-                  __typename: "UsageRow",
-                  kind: "egress_bytes",
-                  tier: "",
-                  total: Math.round(524288000 * scale),
-                },
-                {
-                  __typename: "UsageRow",
-                  kind: "build_seconds",
-                  tier: "",
-                  total: Math.round(1800 * scale),
-                },
-              ],
-            },
-            {
-              __typename: "ServiceUsage",
-              serviceId: "srv-emailwrk0001",
-              serviceName: "email-worker",
-              resourceKind: "service",
-              rows: [
-                {
-                  __typename: "UsageRow",
-                  kind: "instance_seconds",
-                  tier: "starter",
-                  total: Math.round(216000 * scale),
-                },
-                {
-                  __typename: "UsageRow",
-                  kind: "build_seconds",
-                  tier: "",
-                  total: Math.round(900 * scale),
-                },
-              ],
-            },
-            {
-              __typename: "ServiceUsage",
-              serviceId: "srv-nightly0001",
-              serviceName: "nightly-report",
-              resourceKind: "service",
-              rows: [
-                {
-                  __typename: "UsageRow",
-                  kind: "instance_seconds",
-                  tier: "free",
-                  total: Math.round(3600 * scale),
-                },
-                {
-                  __typename: "UsageRow",
-                  kind: "build_seconds",
-                  tier: "",
-                  total: Math.round(300 * scale),
-                },
-              ],
-            },
-          ],
           estimatedCost: {
             __typename: "EstimatedCost",
-            totalUsd: totalCost,
-            meters,
+            totalUsd: totalRaw.toFixed(2),
+            resources,
           },
+          // No Stripe contract in the dev stub: estimate-only, like a
+          // workspace that has never onboarded a payment method.
+          billing: null,
         },
       };
     }
+    // Billing onboarding state. The stub has no Stripe, but returning a safe
+    // empty here renders the billing page's payment card as a hard error, so
+    // give it a coherent "customer exists, card on file, nothing to fix"
+    // shape — enough to review the page locally.
+    case "BillingReadiness":
+      return {
+        workspaceBillingReadiness: {
+          __typename: "WorkspaceBillingReadiness",
+          workspaceId: "local-workspace",
+          mode: "test",
+          customerReady: true,
+          subscriptionReady: true,
+          paymentMethodReady: true,
+          paymentMethodBrand: "visa",
+          paymentMethodLast4: "4242",
+          lifecycle: {
+            __typename: "BillingLifecycle",
+            status: "healthy",
+            reason: "",
+            graceDeadline: "",
+            enforcementOwned: false,
+            recoveryPending: false,
+            allowedActions: ["update_payment_method", "open_portal"],
+            updatedAt: "",
+          },
+          tax: {
+            __typename: "BillingTaxReadiness",
+            configured: false,
+            enabled: false,
+            reason: "product_tax_not_configured",
+            productTaxCode: "",
+            taxBehavior: "",
+            registrationCount: 0,
+          },
+        },
+      };
+    case "WorkspaceLimits":
+      return {
+        workspaceLimits: {
+          __typename: "WorkspaceLimits",
+          services: { __typename: "ResourceCap", used: 3, limit: 25 },
+          postgres: { __typename: "ResourceCap", used: 1, limit: 2 },
+          keyValues: { __typename: "ResourceCap", used: 2, limit: 2 },
+        },
+      };
     case "InstanceTypes":
       return {
         instanceTypes: [

@@ -44,6 +44,16 @@ const typeConfig = {
 
 const config: CodegenConfig = {
   overwrite: true,
+  // The `typescript` (full-schema) plugin currently throws inside the
+  // generator — "Cannot read properties of undefined (reading 'find')" — for
+  // *any* schema, including `type Query { hello: String }`, so it is a broken
+  // plugin install rather than anything about bex's schema. Codegen aborts all
+  // outputs on any error, which made even the healthy `typescript-operations`
+  // target unregenerable. Allowing partial output keeps definitions.ts (what
+  // every operation imports) refreshable; schema-types.ts simply retains its
+  // previous contents and needs a hand-edit for new types until the plugin is
+  // repaired. Re-check on the next @graphql-codegen bump and drop this.
+  allowPartialOutputs: true,
   schema: schemaJSON
     ? schemaJSON
     : sessionToken

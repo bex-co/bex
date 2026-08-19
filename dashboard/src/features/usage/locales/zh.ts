@@ -10,26 +10,9 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "付款、发票与工作区本月累计消耗",
     description: "Billing page subtitle beneath the heading",
   },
-  "usage.sectionBilling": {
-    message: "账单",
-    description: "Heading for the payment/invoice section of the billing page",
-  },
-  "usage.sectionUsage": {
-    message: "用量",
-    description:
-      "Heading for the metered-consumption section of the billing page",
-  },
   "usage.sectionNavigation": {
     message: "账单区块",
     description: "Accessible label for the billing page section navigation",
-  },
-  "usage.resourceCapsTitle": {
-    message: "资源限制",
-    description: "Workspace creation-cap card title on the Usage page",
-  },
-  "usage.resourceCapsDescription": {
-    message: "当前工作区的资源数量",
-    description: "Workspace creation-cap card description",
   },
   "usage.resourceCapsServices": {
     message: "服务",
@@ -43,82 +26,9 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Key Value count label in the resource-cap card",
   },
-  "usage.resourceCapsValue": {
-    message: "已使用 {used}/{limit}",
-    description: "Used-versus-limit resource count",
-  },
   "usage.resourceCapsNearLimit": {
     message: "接近上限",
     description: "Warning shown once a resource count reaches 80 percent",
-  },
-  "usage.computeTitle": {
-    message: "计算",
-    description: "Compute section heading on the Usage page",
-  },
-  "usage.computeDescription": {
-    message: "按服务和套餐统计的实例小时数",
-    description: "Compute section description",
-  },
-  "usage.bandwidthTitle": {
-    message: "带宽",
-    description: "Bandwidth section heading on the Usage page",
-  },
-  "usage.bandwidthDescription": {
-    message: "HTTP、WebSocket、直连公网及公共数据存储响应的出站流量",
-    description: "Bandwidth section description",
-  },
-  "usage.buildTitle": {
-    message: "构建分钟数",
-    description: "Build minutes section heading on the Usage page",
-  },
-  "usage.buildDescription": {
-    message: "构建消耗的流水线分钟数",
-    description: "Build section description",
-  },
-  "usage.storageTitle": {
-    message: "存储",
-    description: "Managed datastore storage section heading on the Usage page",
-  },
-  "usage.storageDescription": {
-    message: "Postgres 与 Key Value 卷的实际用量",
-    description: "Storage section description",
-  },
-  "usage.colService": {
-    message: "服务",
-    description: "Table column header: service name",
-  },
-  "usage.colKind": {
-    message: "类型",
-    description:
-      "Table column header: resource kind (service/postgres/key_value)",
-  },
-  "usage.colPlan": {
-    message: "套餐",
-    description: "Table column header: service plan/tier",
-  },
-  "usage.colHours": {
-    message: "小时数",
-    description: "Table column header: compute hours",
-  },
-  "usage.colBandwidth": {
-    message: "带宽",
-    description: "Table column header: egress bandwidth",
-  },
-  "usage.colMinutes": {
-    message: "分钟数",
-    description: "Table column header: build minutes",
-  },
-  "usage.colGBHours": {
-    message: "GB 小时",
-    description: "Table column header: storage gigabyte-hours",
-  },
-  "usage.totalRow": {
-    message: "合计",
-    description: "Summary row label in usage tables",
-  },
-  "usage.empty": {
-    message: "本月暂无用量记录。",
-    description: "Empty-state message when a section has no data",
   },
   "usage.errorTitle": {
     message: "无法加载用量数据",
@@ -132,41 +42,6 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "当月",
     description:
       "Default option in the month picker meaning the current calendar month",
-  },
-  "usage.trendTitle": {
-    message: "近三月趋势",
-    description: "Heading for the trend view showing last 3 months of usage",
-  },
-  "usage.trendDescription": {
-    message: "近三个自然月的各计量指标合计",
-    description: "Subtitle for the trend charts on the Usage page",
-  },
-  "usage.estimatedCostTitle": {
-    message: "预估费用",
-    description: "Estimated cost section heading on the Usage page",
-  },
-  "usage.estimatedCostDescription": {
-    message:
-      "计算、Postgres、Key Value 及 Postgres 存储比 Render 低 30%；带宽低 90%。仅供参考，非正式账单。",
-    description:
-      "Estimated cost section description explaining the pricing policy",
-  },
-  "usage.estimatedCostNote": {
-    message: "仅供参考，非正式账单",
-    description: "Short disclaimer shown next to the estimated cost total",
-  },
-  "usage.colMeter": {
-    message: "计量项",
-    description: "Table column header for the usage meter kind",
-  },
-  "usage.colEstimate": {
-    message: "预估",
-    description: "Table column header for the estimated USD cost per meter",
-  },
-  "usage.estimatedCostUnavailable": {
-    message: "本期无计费用量。",
-    description:
-      "Empty-state message when there is no billable usage to estimate",
   },
   "usage.creditsTitle": {
     message: "剩余额度",
@@ -186,29 +61,6 @@ const zhUsage: Record<string, TranslationEntry> = {
       "即使持有额度也仍需绑定付款方式：额度优先抵扣发票，剩余部分由银行卡支付。",
     description:
       "ADR046 clarification on the credit card — credit does not replace payment onboarding",
-  },
-  "usage.creditsAppliedLine": {
-    message: "额度抵扣 \u2212${applied} \u2192 应付 ${due}",
-    description:
-      "Credit-adjusted line under the current invoice preview total; applied/due are numeric USD strings",
-  },
-  "usage.currentSpendTitle": {
-    message: "当前消费",
-    description:
-      "Heading for the real billing section (actual Stripe cost + invoices)",
-  },
-  "usage.currentSpendBadge": {
-    message: "账单",
-    description:
-      "Badge distinguishing the real billing card from the estimate-only card",
-  },
-  "usage.currentSpendDescription": {
-    message: "您的实际计费金额与已出具的账单——并非估算。",
-    description: "Description clarifying this card shows real charges",
-  },
-  "usage.currentSpendNote": {
-    message: "当前计费周期，截至目前",
-    description: "Short note beside the current-period real cost total",
   },
   "usage.colInvoicePeriod": {
     message: "周期",
@@ -356,6 +208,136 @@ const zhUsage: Record<string, TranslationEntry> = {
   "usage.paymentRequiredCancel": {
     message: "取消",
     description: "Cancel just-in-time payment onboarding",
+  },
+  "usage.planTitle": {
+    message: "计划",
+    description: "Plan card title on the billing page",
+  },
+  "usage.planChange": {
+    message: "更改计划",
+    description:
+      "Link from the billing page's plan card to the workspace-settings plan dialog",
+  },
+  "usage.paymentMethodTitle": {
+    message: "付款方式",
+    description: "Payment-method card title on the billing page",
+  },
+  "usage.paymentMethodCard": {
+    message: "{brand} 尾号 {last4}",
+    description: "Names the card on file, e.g. 'Visa ending in 4242'",
+  },
+  "usage.paymentMethodOnFile": {
+    message: "已保存付款方式",
+    description:
+      "Shown when a payment method exists but is not a card the provider could name",
+  },
+  "usage.paymentMethodNone": {
+    message: "未添加付款方式",
+    description: "Shown when the workspace has no payment method",
+  },
+  "usage.includedUsageTitle": {
+    message: "包含用量",
+    description:
+      "Plan-allowance card title on the billing page (was 'Resource limits')",
+  },
+  "usage.includedUsageDescription": {
+    message: "该工作区计划包含的额度，以及已使用的部分。",
+    description: "Included-usage card description",
+  },
+  "usage.chargesTitle": {
+    message: "费用",
+    description: "Charge-tree card title on the billing page",
+  },
+  "usage.chargesDescriptionEstimate": {
+    message: "本周期至今的累计费用，按 bex 价目表计算。仅为估算，非发票。",
+    description:
+      "Charge-tree description when no Stripe subscription prices the period",
+  },
+  "usage.chargesDescriptionInvoiced": {
+    message: "本周期至今的累计费用。总额即 Stripe 将开具的金额。",
+    description:
+      "Charge-tree description when a real Stripe amount is available",
+  },
+  "usage.chargesEmpty": {
+    message: "本周期没有用量。",
+    description: "Charge-tree empty state",
+  },
+  "usage.expandAll": {
+    message: "全部展开",
+    description: "Charge-tree button that opens every category",
+  },
+  "usage.collapseAll": {
+    message: "全部收起",
+    description: "Charge-tree button that closes every category",
+  },
+  "usage.totalToDate": {
+    message: "本月至今合计",
+    description: "Charge-tree total row for the month in progress",
+  },
+  "usage.totalForPeriod": {
+    message: "本周期合计",
+    description: "Charge-tree total row for a completed past month",
+  },
+  "usage.projectedTotal": {
+    message: "{month} 预计合计",
+    description: "Charge-tree straight-line projection of month-end spend",
+  },
+  "usage.chargeFree": {
+    message: "已包含",
+    description: "Rate column value for a charge line that is priced at zero",
+  },
+  "usage.categoryServices": {
+    message: "服务",
+    description: "Charge-tree category for App services",
+  },
+  "usage.categoryPostgres": {
+    message: "Postgres",
+    description: "Charge-tree category for managed Postgres instances",
+  },
+  "usage.categoryKeyValue": {
+    message: "键值存储",
+    description: "Charge-tree category for managed Key Value instances",
+  },
+  "usage.categorySandboxes": {
+    message: "沙箱",
+    description: "Charge-tree category for hosted agent sandboxes",
+  },
+  "usage.chargeCompute": {
+    message: "计算",
+    description: "Charge line for metered instance time",
+  },
+  "usage.chargeBandwidth": {
+    message: "带宽",
+    description: "Charge line for metered outbound bandwidth",
+  },
+  "usage.chargeBuild": {
+    message: "构建时长",
+    description: "Charge line for metered build time",
+  },
+  "usage.chargeStorage": {
+    message: "存储",
+    description: "Charge line for metered datastore storage",
+  },
+  "usage.chargeSandboxCompute": {
+    message: "沙箱计算",
+    description: "Charge line for metered sandbox compute",
+  },
+  "usage.creditsTotalLabel": {
+    message: "余额合计",
+    description: "Label above the credit balance amount",
+  },
+  "usage.invoiceHistoryTitle": {
+    message: "发票记录",
+    description: "Invoice-history card title on the billing page",
+  },
+  "usage.invoiceHistoryDescription": {
+    message: "已开具的发票。",
+    description: "Invoice-history card description",
+  },
+  "usage.creditsAppliedLine": {
+    message: "已抵扣 \u2212${applied} \u2192 应付 ${due}",
+    description:
+      "Credit applied to the current period and the remaining amount due",
   },
 };
 

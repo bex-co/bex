@@ -25,15 +25,14 @@ describe("UsageNavigation", () => {
     });
     expect(navigation).toHaveClass("sticky");
 
+    // One entry per card, in page order — the nav is a map of the page.
     const expected: [string, string][] = [
-      ["Billing", "#billing"],
-      ["Estimated Cost", "#estimated-cost"],
-      ["Usage", "#usage"],
-      ["Compute", "#compute"],
-      ["Bandwidth", "#bandwidth"],
-      ["Build Minutes", "#build"],
-      ["Storage", "#storage"],
-      ["3-Month Trend", "#trend"],
+      ["Plan", "#plan"],
+      ["Payment method", "#payment-method"],
+      ["Included usage", "#included-usage"],
+      ["Charges", "#charges"],
+      ["Credits remaining", "#credit-balance"],
+      ["Invoice history", "#invoice-history"],
     ];
     for (const [name, href] of expected) {
       expect(within(navigation).getByRole("link", { name })).toHaveAttribute(

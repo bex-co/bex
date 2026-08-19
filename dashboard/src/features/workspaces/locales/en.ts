@@ -228,6 +228,10 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     message: "Couldn't change the workspace plan",
     description: "Fallback toast/inline message on a failed plan change",
   },
+  "workspaces.generalTitle": {
+    message: "General",
+    description: "Title of the general card on the workspace settings page",
+  },
 };
 
 export default enWorkspaces;

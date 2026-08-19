@@ -10,26 +10,9 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Payment, invoices, and month-to-date workspace consumption",
     description: "Billing page subtitle beneath the heading",
   },
-  "usage.sectionBilling": {
-    message: "Billing",
-    description: "Heading for the payment/invoice section of the billing page",
-  },
-  "usage.sectionUsage": {
-    message: "Usage",
-    description:
-      "Heading for the metered-consumption section of the billing page",
-  },
   "usage.sectionNavigation": {
     message: "Billing sections",
     description: "Accessible label for the billing page section navigation",
-  },
-  "usage.resourceCapsTitle": {
-    message: "Resource limits",
-    description: "Workspace creation-cap card title on the Usage page",
-  },
-  "usage.resourceCapsDescription": {
-    message: "Current resource counts for this workspace",
-    description: "Workspace creation-cap card description",
   },
   "usage.resourceCapsServices": {
     message: "Services",
@@ -43,83 +26,9 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Key Value count label in the resource-cap card",
   },
-  "usage.resourceCapsValue": {
-    message: "{used} of {limit} used",
-    description: "Used-versus-limit resource count",
-  },
   "usage.resourceCapsNearLimit": {
     message: "Near limit",
     description: "Warning shown once a resource count reaches 80 percent",
-  },
-  "usage.computeTitle": {
-    message: "Compute",
-    description: "Compute section heading on the Usage page",
-  },
-  "usage.computeDescription": {
-    message: "Instance-hours by service and plan",
-    description: "Compute section description",
-  },
-  "usage.bandwidthTitle": {
-    message: "Bandwidth",
-    description: "Bandwidth section heading on the Usage page",
-  },
-  "usage.bandwidthDescription": {
-    message:
-      "HTTP, WebSocket, direct public, and public datastore response egress",
-    description: "Bandwidth section description",
-  },
-  "usage.buildTitle": {
-    message: "Build Minutes",
-    description: "Build minutes section heading on the Usage page",
-  },
-  "usage.buildDescription": {
-    message: "Pipeline minutes consumed by builds",
-    description: "Build section description",
-  },
-  "usage.storageTitle": {
-    message: "Storage",
-    description: "Managed datastore storage section heading on the Usage page",
-  },
-  "usage.storageDescription": {
-    message: "Actual Postgres and Key Value volume usage",
-    description: "Storage section description",
-  },
-  "usage.colService": {
-    message: "Service",
-    description: "Table column header: service name",
-  },
-  "usage.colKind": {
-    message: "Kind",
-    description:
-      "Table column header: resource kind (service/postgres/key_value)",
-  },
-  "usage.colPlan": {
-    message: "Plan",
-    description: "Table column header: service plan/tier",
-  },
-  "usage.colHours": {
-    message: "Hours",
-    description: "Table column header: compute hours",
-  },
-  "usage.colBandwidth": {
-    message: "Bandwidth",
-    description: "Table column header: egress bandwidth",
-  },
-  "usage.colMinutes": {
-    message: "Minutes",
-    description: "Table column header: build minutes",
-  },
-  "usage.colGBHours": {
-    message: "GB-hours",
-    description: "Table column header: storage gigabyte-hours",
-  },
-  "usage.totalRow": {
-    message: "Total",
-    description: "Summary row label in usage tables",
-  },
-  "usage.empty": {
-    message: "No usage recorded this month.",
-    description: "Empty-state message when a section has no data",
   },
   "usage.errorTitle": {
     message: "Could not load usage",
@@ -133,41 +42,6 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Current month",
     description:
       "Default option in the month picker meaning the current calendar month",
-  },
-  "usage.trendTitle": {
-    message: "3-Month Trend",
-    description: "Heading for the trend view showing last 3 months of usage",
-  },
-  "usage.trendDescription": {
-    message: "Total per meter over the last three calendar months",
-    description: "Subtitle for the trend charts on the Usage page",
-  },
-  "usage.estimatedCostTitle": {
-    message: "Estimated Cost",
-    description: "Estimated cost section heading on the Usage page",
-  },
-  "usage.estimatedCostDescription": {
-    message:
-      "30% below Render on compute, Postgres, key-value, and Postgres storage; 90% below on bandwidth. Estimate only — not an invoice.",
-    description:
-      "Estimated cost section description explaining the pricing policy",
-  },
-  "usage.estimatedCostNote": {
-    message: "Estimate only — not an invoice",
-    description: "Short disclaimer shown next to the estimated cost total",
-  },
-  "usage.colMeter": {
-    message: "Meter",
-    description: "Table column header for the usage meter kind",
-  },
-  "usage.colEstimate": {
-    message: "Estimate",
-    description: "Table column header for the estimated USD cost per meter",
-  },
-  "usage.estimatedCostUnavailable": {
-    message: "No billable usage this period.",
-    description:
-      "Empty-state message when there is no billable usage to estimate",
   },
   "usage.creditsTitle": {
     message: "Credits remaining",
@@ -188,30 +62,6 @@ const enUsage: Record<string, TranslationEntry> = {
       "A payment method is still required even with credit: credit covers invoices first, and your card pays any remainder.",
     description:
       "ADR046 clarification on the credit card — credit does not replace payment onboarding",
-  },
-  "usage.creditsAppliedLine": {
-    message: "Credits applied \u2212${applied} \u2192 amount due ${due}",
-    description:
-      "Credit-adjusted line under the current invoice preview total; applied/due are numeric USD strings",
-  },
-  "usage.currentSpendTitle": {
-    message: "Current Spend",
-    description:
-      "Heading for the real billing section (actual Stripe cost + invoices)",
-  },
-  "usage.currentSpendBadge": {
-    message: "Invoice",
-    description:
-      "Badge distinguishing the real billing card from the estimate-only card",
-  },
-  "usage.currentSpendDescription": {
-    message:
-      "Your actual billed cost and finalized invoices — not an estimate.",
-    description: "Description clarifying this card shows real charges",
-  },
-  "usage.currentSpendNote": {
-    message: "Current billing period, so far",
-    description: "Short note beside the current-period real cost total",
   },
   "usage.colInvoicePeriod": {
     message: "Period",
@@ -363,6 +213,139 @@ const enUsage: Record<string, TranslationEntry> = {
   "usage.paymentRequiredCancel": {
     message: "Cancel",
     description: "Cancel just-in-time payment onboarding",
+  },
+  "usage.planTitle": {
+    message: "Plan",
+    description: "Plan card title on the billing page",
+  },
+  "usage.planChange": {
+    message: "Change plan",
+    description:
+      "Link from the billing page's plan card to the workspace-settings plan dialog",
+  },
+  "usage.paymentMethodTitle": {
+    message: "Payment method",
+    description: "Payment-method card title on the billing page",
+  },
+  "usage.paymentMethodCard": {
+    message: "{brand} ending in {last4}",
+    description: "Names the card on file, e.g. 'Visa ending in 4242'",
+  },
+  "usage.paymentMethodOnFile": {
+    message: "Payment method on file",
+    description:
+      "Shown when a payment method exists but is not a card the provider could name",
+  },
+  "usage.paymentMethodNone": {
+    message: "No payment method",
+    description: "Shown when the workspace has no payment method",
+  },
+  "usage.includedUsageTitle": {
+    message: "Included usage",
+    description:
+      "Plan-allowance card title on the billing page (was 'Resource limits')",
+  },
+  "usage.includedUsageDescription": {
+    message:
+      "What this workspace's plan includes, and how much of it is in use.",
+    description: "Included-usage card description",
+  },
+  "usage.chargesTitle": {
+    message: "Charges",
+    description: "Charge-tree card title on the billing page",
+  },
+  "usage.chargesDescriptionEstimate": {
+    message:
+      "Accrued so far this period, priced from the bex rate sheet. An estimate, not an invoice.",
+    description:
+      "Charge-tree description when no Stripe subscription prices the period",
+  },
+  "usage.chargesDescriptionInvoiced": {
+    message:
+      "Accrued so far this period. The total is the amount Stripe will invoice.",
+    description:
+      "Charge-tree description when a real Stripe amount is available",
+  },
+  "usage.chargesEmpty": {
+    message: "No usage in this period.",
+    description: "Charge-tree empty state",
+  },
+  "usage.expandAll": {
+    message: "Expand all",
+    description: "Charge-tree button that opens every category",
+  },
+  "usage.collapseAll": {
+    message: "Collapse all",
+    description: "Charge-tree button that closes every category",
+  },
+  "usage.totalToDate": {
+    message: "Total month to date",
+    description: "Charge-tree total row for the month in progress",
+  },
+  "usage.totalForPeriod": {
+    message: "Total for the period",
+    description: "Charge-tree total row for a completed past month",
+  },
+  "usage.projectedTotal": {
+    message: "Projected total for {month}",
+    description: "Charge-tree straight-line projection of month-end spend",
+  },
+  "usage.chargeFree": {
+    message: "Included",
+    description: "Rate column value for a charge line that is priced at zero",
+  },
+  "usage.categoryServices": {
+    message: "Services",
+    description: "Charge-tree category for App services",
+  },
+  "usage.categoryPostgres": {
+    message: "Postgres",
+    description: "Charge-tree category for managed Postgres instances",
+  },
+  "usage.categoryKeyValue": {
+    message: "Key Value",
+    description: "Charge-tree category for managed Key Value instances",
+  },
+  "usage.categorySandboxes": {
+    message: "Sandboxes",
+    description: "Charge-tree category for hosted agent sandboxes",
+  },
+  "usage.chargeCompute": {
+    message: "Compute",
+    description: "Charge line for metered instance time",
+  },
+  "usage.chargeBandwidth": {
+    message: "Bandwidth",
+    description: "Charge line for metered outbound bandwidth",
+  },
+  "usage.chargeBuild": {
+    message: "Build minutes",
+    description: "Charge line for metered build time",
+  },
+  "usage.chargeStorage": {
+    message: "Storage",
+    description: "Charge line for metered datastore storage",
+  },
+  "usage.chargeSandboxCompute": {
+    message: "Sandbox compute",
+    description: "Charge line for metered sandbox compute",
+  },
+  "usage.creditsTotalLabel": {
+    message: "Total balance",
+    description: "Label above the credit balance amount",
+  },
+  "usage.invoiceHistoryTitle": {
+    message: "Invoice history",
+    description: "Invoice-history card title on the billing page",
+  },
+  "usage.invoiceHistoryDescription": {
+    message: "Your finalized invoices.",
+    description: "Invoice-history card description",
+  },
+  "usage.creditsAppliedLine": {
+    message: "Credits applied \u2212${applied} \u2192 amount due ${due}",
+    description:
+      "Credit applied to the current period and the remaining amount due",
   },
 };
 

@@ -64,11 +64,37 @@ var meterEstimateGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var chargeLineGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ChargeLine",
+	Fields: graphql.Fields{
+		"kind":     gqlutil.StrField(func(c pricing.ChargeLine) any { return c.Kind }),
+		"tier":     gqlutil.StrField(func(c pricing.ChargeLine) any { return c.Tier }),
+		"unit":     gqlutil.StrField(func(c pricing.ChargeLine) any { return c.Unit }),
+		"rateUsd":  gqlutil.StrField(func(c pricing.ChargeLine) any { return c.RateUSD }),
+		"quantity": gqlutil.StrField(func(c pricing.ChargeLine) any { return c.Quantity }),
+		"costUsd":  gqlutil.StrField(func(c pricing.ChargeLine) any { return c.CostUSD }),
+	},
+})
+
+var resourceEstimateGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ResourceEstimate",
+	Fields: graphql.Fields{
+		"serviceId":    gqlutil.StrField(func(r pricing.ResourceEstimate) any { return r.ServiceID }),
+		"serviceName":  gqlutil.StrField(func(r pricing.ResourceEstimate) any { return r.ServiceName }),
+		"resourceKind": gqlutil.StrField(func(r pricing.ResourceEstimate) any { return r.ResourceKind }),
+		"costUsd":      gqlutil.StrField(func(r pricing.ResourceEstimate) any { return r.CostUSD }),
+		"charges":      gqlutil.Typed(graphql.NewList(chargeLineGQLType), func(r pricing.ResourceEstimate) any { return r.Charges }),
+	},
+})
+
 var estimatedCostGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "EstimatedCost",
 	Fields: graphql.Fields{
 		"totalUsd": gqlutil.StrField(func(e pricing.EstimatedCost) any { return e.TotalUSD }),
 		"meters":   gqlutil.Typed(graphql.NewList(meterEstimateGQLType), func(e pricing.EstimatedCost) any { return e.Meters }),
+		// resources is the same total grouped by the resource that incurred it
+		// — what a bill needs to answer "which service costs me money".
+		"resources": gqlutil.Typed(graphql.NewList(resourceEstimateGQLType), func(e pricing.EstimatedCost) any { return e.Resources }),
 	},
 })
 

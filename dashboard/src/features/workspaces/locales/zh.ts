@@ -225,6 +225,10 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "无法更改工作区套餐",
     description: "Fallback toast/inline message on a failed plan change",
   },
+  "workspaces.generalTitle": {
+    message: "常规",
+    description: "Title of the general card on the workspace settings page",
+  },
 };
 
 export default zhWorkspaces;

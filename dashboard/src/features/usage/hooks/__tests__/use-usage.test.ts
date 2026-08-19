@@ -41,23 +41,41 @@ describe("useUsage", () => {
       createSuccessQueryResult({
         usage: {
           workspaceId: "ws-abc123",
-          services: [
-            {
-              serviceId: "srv-cms",
-              serviceName: "eden-cms-v2",
-              resourceKind: "service",
-              rows: [
-                { kind: "instance_seconds", tier: "starter", total: 7200 },
-                { kind: "egress_bytes", tier: "", total: 1048576 },
-                { kind: "storage_gb_seconds", tier: "", total: 3600 },
-              ],
-            },
-            {
-              serviceId: "nightly-report",
-              resourceKind: "service",
-              rows: [{ kind: "build_seconds", tier: "", total: 600 }],
-            },
-          ],
+          estimatedCost: {
+            totalUsd: "4.92",
+            resources: [
+              {
+                serviceId: "srv-cms",
+                serviceName: "eden-cms-v2",
+                resourceKind: "service",
+                costUsd: "4.90",
+                charges: [
+                  {
+                    kind: "instance_seconds",
+                    tier: "starter",
+                    unit: "hr",
+                    rateUsd: "0.006713",
+                    quantity: "730.00",
+                    costUsd: "4.90",
+                  },
+                  {
+                    kind: "egress_bytes",
+                    tier: "",
+                    unit: "GB",
+                    rateUsd: "0.015",
+                    quantity: "1.00",
+                    costUsd: "0.02",
+                  },
+                ],
+              },
+              {
+                serviceId: "nightly-report",
+                resourceKind: "service",
+                costUsd: "0.00",
+                charges: [],
+              },
+            ],
+          },
         },
       }),
     );
@@ -69,26 +87,43 @@ describe("useUsage", () => {
     expect(result.current.summary).toEqual({
       workspaceId: "ws-abc123",
       period: "",
-      services: [
-        {
-          serviceId: "srv-cms",
-          serviceName: "eden-cms-v2",
-          resourceKind: "service",
-          rows: [
-            { kind: "instance_seconds", tier: "starter", total: 7200 },
-            { kind: "egress_bytes", tier: "", total: 1048576 },
-            { kind: "storage_gb_seconds", tier: "", total: 3600 },
-          ],
-        },
-        {
-          // serviceName absent from the response maps to "" (id fallback).
-          serviceId: "nightly-report",
-          serviceName: "",
-          resourceKind: "service",
-          rows: [{ kind: "build_seconds", tier: "", total: 600 }],
-        },
-      ],
-      estimatedCost: null,
+      estimatedCost: {
+        totalUsd: "4.92",
+        resources: [
+          {
+            serviceId: "srv-cms",
+            serviceName: "eden-cms-v2",
+            resourceKind: "service",
+            costUsd: "4.90",
+            charges: [
+              {
+                kind: "instance_seconds",
+                tier: "starter",
+                unit: "hr",
+                rateUsd: "0.006713",
+                quantity: "730.00",
+                costUsd: "4.90",
+              },
+              {
+                kind: "egress_bytes",
+                tier: "",
+                unit: "GB",
+                rateUsd: "0.015",
+                quantity: "1.00",
+                costUsd: "0.02",
+              },
+            ],
+          },
+          {
+            // serviceName absent from the response maps to "" (id fallback).
+            serviceId: "nightly-report",
+            serviceName: "",
+            resourceKind: "service",
+            costUsd: "0.00",
+            charges: [],
+          },
+        ],
+      },
       // billing absent from the response ⇒ null (estimate-only, m48).
       billing: null,
     });
@@ -99,7 +134,6 @@ describe("useUsage", () => {
       createSuccessQueryResult({
         usage: {
           workspaceId: "ws-abc123",
-          services: [],
           billing: {
             currentCost: {
               amountUsd: "12.34",
@@ -177,30 +211,43 @@ describe("useUsage", () => {
     expect(result.current.error).toBeUndefined();
   });
 
-  it("filters out null rows and null services from a partially-null response", () => {
+  it("filters out null charges and null resources from a partially-null response", () => {
     mockUseQuery.mockReturnValue(
       createSuccessQueryResult({
         usage: {
-          workspaceId: "ws-xyz",
-          services: [
-            null,
-            {
-              serviceId: "api",
-              rows: [
-                null,
-                { kind: "instance_seconds", tier: "hobby", total: 3600 },
-              ],
-            },
-          ],
+          workspaceId: "ws-abc123",
+          estimatedCost: {
+            totalUsd: "1.00",
+            resources: [
+              null,
+              {
+                serviceId: "srv-a",
+                resourceKind: "service",
+                costUsd: "1.00",
+                charges: [
+                  null,
+                  {
+                    kind: "instance_seconds",
+                    tier: "hobby",
+                    unit: "hr",
+                    rateUsd: "1.00",
+                    quantity: "1.00",
+                    costUsd: "1.00",
+                  },
+                ],
+              },
+            ],
+          },
         },
       }),
     );
 
     const { result } = renderHook(() => useUsage());
 
-    expect(result.current.summary?.services).toHaveLength(1);
-    expect(result.current.summary?.services[0].rows).toHaveLength(1);
-    expect(result.current.summary?.services[0].rows[0].tier).toBe("hobby");
+    const resources = result.current.summary?.estimatedCost?.resources;
+    expect(resources).toHaveLength(1);
+    expect(resources![0]!.charges).toHaveLength(1);
+    expect(resources![0]!.charges[0]!.tier).toBe("hobby");
   });
 
   it("surfaces a query error as error, leaving summary null", () => {
@@ -257,7 +304,6 @@ describe("useUsage", () => {
         usage: {
           workspaceId: "ws-abc",
           period: "2026-06",
-          services: [],
         },
       }),
     );
@@ -272,7 +318,6 @@ describe("useUsage", () => {
       createSuccessQueryResult({
         usage: {
           workspaceId: "ws-abc",
-          services: [],
         },
       }),
     );

@@ -13,39 +13,44 @@
 // limitations under the License.
 
 import {
-  ArrowDownUp,
-  Cpu,
   CreditCard,
+  FileText,
   Gauge,
-  Hammer,
-  HardDrive,
-  CircleDollarSign,
-  TrendingUp,
+  Receipt,
+  Sparkles,
+  Wallet,
 } from "lucide-react";
 import { SectionNavigation } from "@/common/components/section-navigation";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 /**
- * In-page section navigation for the billing page (`/billing`, formerly
- * `/usage`) — same right-rail quick nav as the service settings page. Anchors
- * point only at always-rendered elements (the two section headings and the
- * unconditional cards), never at the conditional credits/spend/caps cards.
+ * In-page section navigation for the billing page — same right-rail quick nav
+ * as the service settings page. One entry per card, in page order: the nav is
+ * a map of the page, so an entry that points at something conditional (credit
+ * balance, invoice history) is still correct — those sections keep their
+ * anchors and simply render nothing when they do not apply.
  */
 export function UsageNavigation({ className }: { className?: string }) {
   const { t } = useTranslations();
   const items = [
-    { href: "#billing", label: t("usage.sectionBilling"), icon: CreditCard },
+    { href: "#plan", label: t("usage.planTitle"), icon: Sparkles },
     {
-      href: "#estimated-cost",
-      label: t("usage.estimatedCostTitle"),
-      icon: CircleDollarSign,
+      href: "#payment-method",
+      label: t("usage.paymentMethodTitle"),
+      icon: CreditCard,
     },
-    { href: "#usage", label: t("usage.sectionUsage"), icon: Gauge },
-    { href: "#compute", label: t("usage.computeTitle"), icon: Cpu },
-    { href: "#bandwidth", label: t("usage.bandwidthTitle"), icon: ArrowDownUp },
-    { href: "#build", label: t("usage.buildTitle"), icon: Hammer },
-    { href: "#storage", label: t("usage.storageTitle"), icon: HardDrive },
-    { href: "#trend", label: t("usage.trendTitle"), icon: TrendingUp },
+    {
+      href: "#included-usage",
+      label: t("usage.includedUsageTitle"),
+      icon: Gauge,
+    },
+    { href: "#charges", label: t("usage.chargesTitle"), icon: Receipt },
+    { href: "#credit-balance", label: t("usage.creditsTitle"), icon: Wallet },
+    {
+      href: "#invoice-history",
+      label: t("usage.invoiceHistoryTitle"),
+      icon: FileText,
+    },
   ];
 
   return (

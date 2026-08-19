@@ -12,7 +12,7 @@ describe("WorkspaceSettingsNavigation", () => {
     expect(navigation).toHaveClass("sticky");
 
     const expected: [string, string][] = [
-      ["Workspace settings", "#general"],
+      ["General", "#general"],
       ["Team", "#team"],
       ["Danger Zone", "#danger-zone"],
     ];

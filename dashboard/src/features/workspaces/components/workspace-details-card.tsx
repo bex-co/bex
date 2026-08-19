@@ -4,13 +4,11 @@ import {
   Card,
   CardHeader,
   CardTitle,
-  CardDescription,
   CardContent,
 } from "@/common/components/ui/card";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Button } from "@/common/components/ui/button";
-import { Badge } from "@/common/components/ui/badge";
 import {
   Alert,
   AlertTitle,
@@ -79,12 +77,7 @@ export function WorkspaceDetailsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          <h1 className="text-xl font-semibold">
-            {t("workspaces.settingsTitle")}
-          </h1>
-        </CardTitle>
-        <CardDescription>{t("workspaces.settingsDescription")}</CardDescription>
+        <CardTitle>{t("workspaces.generalTitle")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
@@ -125,9 +118,9 @@ export function WorkspaceDetailsCard({
               {t("workspaces.fieldPlan")}
             </dt>
             <dd className="flex items-center gap-2">
-              <Badge variant="secondary">
+              <span className="font-medium">
                 {planNameKey ? t(planNameKey) : workspace.plan}
-              </Badge>
+              </span>
               <Button
                 variant="link"
                 className="h-auto p-0"

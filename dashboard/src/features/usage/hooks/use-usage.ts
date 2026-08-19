@@ -18,30 +18,34 @@ import { useMemo } from "react";
 import { UsageDocument } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
-export interface UsageRow {
+/**
+ * One meter's contribution to a resource's cost. Rate and quantity are both
+ * quoted in `unit`, so `rateUsd × quantity = costUsd` reads correctly on the
+ * page — the backend owns that conversion because it owns the price sheet.
+ */
+export interface ChargeLine {
   kind: string;
   tier: string;
-  total: number;
+  /** Display unit for both rate and quantity: "hr", "GB", "min", "GB-mo", "vCPU-hr". */
+  unit: string;
+  rateUsd: string;
+  quantity: string;
+  costUsd: string;
 }
 
-export interface ServiceUsage {
+/** One resource's estimated cost for the period, with its charge lines. */
+export interface ResourceEstimate {
   serviceId: string;
   /** User-facing display name; empty when the resource no longer exists — fall back to serviceId. */
   serviceName: string;
   resourceKind: string;
-  rows: UsageRow[];
-}
-
-export interface MeterEstimate {
-  kind: string;
-  tier: string;
-  resourceKind: string;
   costUsd: string;
+  charges: ChargeLine[];
 }
 
 export interface EstimatedCost {
   totalUsd: string;
-  meters: MeterEstimate[];
+  resources: ResourceEstimate[];
 }
 
 /** A normalized Stripe invoice amount over a period (m48/m50). */
@@ -94,7 +98,6 @@ export interface Billing {
 export interface UsageSummary {
   workspaceId: string;
   period: string; // "YYYY-MM"
-  services: ServiceUsage[];
   estimatedCost: EstimatedCost | null;
   billing: Billing | null;
 }
@@ -131,26 +134,24 @@ export function useUsage(period?: string): UseUsageResult {
         ? {
             workspaceId: raw.workspaceId ?? "",
             period: raw.period ?? "",
-            services: (raw.services ?? []).filter(Boolean).map((s) => ({
-              serviceId: s!.serviceId ?? "",
-              serviceName: s!.serviceName ?? "",
-              resourceKind: s!.resourceKind ?? "service",
-              rows: (s!.rows ?? []).filter(Boolean).map((r) => ({
-                kind: r!.kind ?? "",
-                tier: r!.tier ?? "",
-                total: r!.total ?? 0,
-              })),
-            })),
             estimatedCost: raw.estimatedCost
               ? {
                   totalUsd: raw.estimatedCost.totalUsd ?? "0.00",
-                  meters: (raw.estimatedCost.meters ?? [])
+                  resources: (raw.estimatedCost.resources ?? [])
                     .filter(Boolean)
-                    .map((m) => ({
-                      kind: m!.kind ?? "",
-                      tier: m!.tier ?? "",
-                      resourceKind: m!.resourceKind ?? "",
-                      costUsd: m!.costUsd ?? "0.00",
+                    .map((r) => ({
+                      serviceId: r!.serviceId ?? "",
+                      serviceName: r!.serviceName ?? "",
+                      resourceKind: r!.resourceKind ?? "service",
+                      costUsd: r!.costUsd ?? "0.00",
+                      charges: (r!.charges ?? []).filter(Boolean).map((c) => ({
+                        kind: c!.kind ?? "",
+                        tier: c!.tier ?? "",
+                        unit: c!.unit ?? "",
+                        rateUsd: c!.rateUsd ?? "0",
+                        quantity: c!.quantity ?? "0",
+                        costUsd: c!.costUsd ?? "0.00",
+                      })),
                     })),
                 }
               : null,
