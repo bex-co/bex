@@ -85,7 +85,13 @@ type branchArgs struct {
 
 // buildCommandArgs, startCommandArgs and dockerfilePathArgs expose Build &
 // Deploy command/path settings through the same scalar-setter grammar as
-// set_root_directory. Render's official MCP has no update tools for any of them.
+// set_root_directory.
+//
+// This whole setter family is a bex invention: upstream ships no update tools
+// for any of these fields, and in fact REMOVED its placeholder update_web_service
+// /update_static_site/update_cron_job in #89 (2026-07-23) rather than making them
+// work. The parity pin classifies every setter here as Extension, so w1/m71 may
+// reshape them freely — see internal/api/mcp_parity.go.
 type buildCommandArgs struct {
 	ServiceID    string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	BuildCommand string `json:"buildCommand" jsonschema:"the build command (e.g. npm run build); empty clears it"`

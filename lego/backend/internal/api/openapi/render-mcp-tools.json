@@ -1,0 +1,326 @@
+{
+  "pin": {
+    "capturedAt": "2026-08-18",
+    "capturedBy": "scripts/render-mcp-capture.py --ref main (MCP stdio tools/list)",
+    "latestRelease": {
+      "tag": "v0.3.0",
+      "commit": "bd04eab4bb02da71040f21fc7ae95da86c9e6eec",
+      "publishedAt": "2026-01-14T18:04:53Z",
+      "toolCount": 24
+    },
+    "note": [
+      "This pin records what render-oss/render-mcp-server ACTUALLY registers, captured by",
+      "driving the built server through the MCP stdio handshake and reading its own",
+      "tools/list -- not by regex over its source. Descriptions and annotations are",
+      "deliberately excluded: they drift editorially and would fire the drift check on",
+      "non-contractual churn. Only tool names and argument names are contractual here.",
+      "",
+      "Pinned to main, not to the latest release, deliberately. v0.3.0 (2026-01-14) is 83",
+      "commits behind and still exposes update_cron_job, update_static_site and",
+      "update_web_service -- placeholder tools that returned a dashboard link instead of",
+      "updating anything. Upstream removed all three in b5f93eb (#89, 2026-07-23,",
+      "'stop exposing placeholder update tools that only return dashboard links'), so",
+      "pinning the release would enshrine a contract Render has explicitly repudiated.",
+      "main additionally added trigger_deploy since v0.3.0.",
+      "",
+      "The drift check compares the 'tools' array only, so refreshing this file's 'pin'",
+      "or 'source' metadata never registers as surface drift. Regenerate the comparable",
+      "half with: scripts/render-mcp-capture.py --ref <commit> --tools-only"
+    ]
+  },
+  "source": {
+    "repo": "github.com/render-oss/render-mcp-server",
+    "ref": "main",
+    "commit": "89c1f01b45270303d3b596b275ba0aaca39c2972",
+    "commitDate": "2026-08-17T09:15:09Z"
+  },
+  "tools": [
+    {
+      "name": "create_cron_job",
+      "args": [
+        "autoDeploy",
+        "branch",
+        "buildCommand",
+        "envVars",
+        "name",
+        "plan",
+        "region",
+        "repo",
+        "runtime",
+        "schedule",
+        "startCommand",
+        "workspaceId"
+      ],
+      "required": [
+        "buildCommand",
+        "name",
+        "runtime",
+        "schedule",
+        "startCommand"
+      ]
+    },
+    {
+      "name": "create_key_value",
+      "args": [
+        "maxmemoryPolicy",
+        "name",
+        "persistenceMode",
+        "plan",
+        "region",
+        "workspaceId"
+      ],
+      "required": [
+        "name"
+      ]
+    },
+    {
+      "name": "create_postgres",
+      "args": [
+        "diskSizeGb",
+        "name",
+        "plan",
+        "region",
+        "version",
+        "workspaceId"
+      ],
+      "required": [
+        "name"
+      ]
+    },
+    {
+      "name": "create_static_site",
+      "args": [
+        "autoDeploy",
+        "branch",
+        "buildCommand",
+        "envVars",
+        "name",
+        "publishPath",
+        "repo",
+        "workspaceId"
+      ],
+      "required": [
+        "buildCommand",
+        "name"
+      ]
+    },
+    {
+      "name": "create_web_service",
+      "args": [
+        "autoDeploy",
+        "branch",
+        "buildCommand",
+        "envVars",
+        "name",
+        "plan",
+        "region",
+        "repo",
+        "runtime",
+        "startCommand",
+        "workspaceId"
+      ],
+      "required": [
+        "buildCommand",
+        "name",
+        "runtime",
+        "startCommand"
+      ]
+    },
+    {
+      "name": "get_deploy",
+      "args": [
+        "deployId",
+        "serviceId",
+        "workspaceId"
+      ],
+      "required": [
+        "deployId",
+        "serviceId"
+      ]
+    },
+    {
+      "name": "get_key_value",
+      "args": [
+        "keyValueId",
+        "workspaceId"
+      ],
+      "required": [
+        "keyValueId"
+      ]
+    },
+    {
+      "name": "get_metrics",
+      "args": [
+        "aggregateHttpRequestCountsBy",
+        "cpuUsageAggregationMethod",
+        "endTime",
+        "httpHost",
+        "httpLatencyQuantile",
+        "httpPath",
+        "metricTypes",
+        "resolution",
+        "resourceId",
+        "startTime",
+        "workspaceId"
+      ],
+      "required": [
+        "metricTypes",
+        "resourceId"
+      ]
+    },
+    {
+      "name": "get_postgres",
+      "args": [
+        "postgresId",
+        "workspaceId"
+      ],
+      "required": [
+        "postgresId"
+      ]
+    },
+    {
+      "name": "get_selected_workspace",
+      "args": [],
+      "required": []
+    },
+    {
+      "name": "get_service",
+      "args": [
+        "serviceId",
+        "workspaceId"
+      ],
+      "required": [
+        "serviceId"
+      ]
+    },
+    {
+      "name": "list_deploys",
+      "args": [
+        "cursor",
+        "limit",
+        "serviceId",
+        "workspaceId"
+      ],
+      "required": [
+        "serviceId"
+      ]
+    },
+    {
+      "name": "list_key_value",
+      "args": [
+        "workspaceId"
+      ],
+      "required": []
+    },
+    {
+      "name": "list_log_label_values",
+      "args": [
+        "direction",
+        "endTime",
+        "host",
+        "instance",
+        "label",
+        "level",
+        "method",
+        "path",
+        "resource",
+        "startTime",
+        "statusCode",
+        "text",
+        "type",
+        "workspaceId"
+      ],
+      "required": [
+        "label",
+        "resource"
+      ]
+    },
+    {
+      "name": "list_logs",
+      "args": [
+        "direction",
+        "endTime",
+        "host",
+        "instance",
+        "level",
+        "limit",
+        "method",
+        "path",
+        "resource",
+        "startTime",
+        "statusCode",
+        "text",
+        "type",
+        "workspaceId"
+      ],
+      "required": [
+        "resource"
+      ]
+    },
+    {
+      "name": "list_postgres_instances",
+      "args": [
+        "workspaceId"
+      ],
+      "required": []
+    },
+    {
+      "name": "list_services",
+      "args": [
+        "includePreviews",
+        "workspaceId"
+      ],
+      "required": []
+    },
+    {
+      "name": "list_workspaces",
+      "args": [],
+      "required": []
+    },
+    {
+      "name": "query_render_postgres",
+      "args": [
+        "postgresId",
+        "sql",
+        "workspaceId"
+      ],
+      "required": [
+        "postgresId",
+        "sql"
+      ]
+    },
+    {
+      "name": "select_workspace",
+      "args": [
+        "ownerID"
+      ],
+      "required": [
+        "ownerID"
+      ]
+    },
+    {
+      "name": "trigger_deploy",
+      "args": [
+        "clearCache",
+        "serviceId",
+        "workspaceId"
+      ],
+      "required": [
+        "serviceId"
+      ]
+    },
+    {
+      "name": "update_environment_variables",
+      "args": [
+        "envVars",
+        "replace",
+        "serviceId",
+        "workspaceId"
+      ],
+      "required": [
+        "envVars",
+        "serviceId"
+      ]
+    }
+  ]
+}

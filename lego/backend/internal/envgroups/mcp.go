@@ -24,9 +24,14 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// mcp.go is the env-groups MCP fragment (Render's official MCP has no env-group
-// tools, so these are bex extensions named after Render's env-groups REST noun).
-// Every tool delegates to the same Service method the REST/GraphQL surfaces call.
+// mcp.go is the env-groups MCP fragment: bex extensions named after Render's
+// env-groups REST noun. Every tool delegates to the same Service method the
+// REST/GraphQL surfaces call.
+//
+// Upstream registers no env-group tools, so every tool here classifies as
+// Extension. That is asserted by the parity pin (internal/api/render_mcp.go),
+// not by this comment — w1/m70 replaced hand-written parity claims with a
+// checked artifact after several went stale.
 
 type envGroupArgs struct {
 	ID string `json:"id" jsonschema:"the env group id (evg-...)"`

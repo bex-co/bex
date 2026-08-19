@@ -24,9 +24,16 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// mcp.go is the env-vars MCP fragment (Render's official MCP has no env-var
-// tools, so these are bex extensions named after Render's env-vars REST noun).
-// Every tool delegates to the same Service method REST/GraphQL call.
+// mcp.go is the env-vars MCP fragment. These are bex extensions named after
+// Render's env-vars REST noun, and every tool delegates to the same Service
+// method REST/GraphQL call.
+//
+// Corrected in w1/m70: this comment used to claim "Render's official MCP has no
+// env-var tools". That was true when written and is not now — upstream added
+// `update_environment_variables`, which bex covers under the different name
+// `update_env_vars`. The parity pin (internal/api/render_mcp.go) records the
+// name divergence in mcpKnownUpstreamOnly; it is what caught this comment, and
+// it is why parity claims no longer live in comments like this one.
 
 type serviceEnvArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name)"`
