@@ -25,6 +25,11 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "输入您的邮箱以接收恢复代码",
     description: "Forgot-password page hero subtitle",
   },
+  "auth.resetPasswordTitle": {
+    message: "设置新密码",
+    description:
+      "Document title for the post-recovery reset-password landing page (renders the settings flow's password field)",
+  },
   "auth.verificationTitle": {
     message: "验证您的邮箱",
     description: "Verification page hero title",
@@ -243,6 +248,42 @@ const zhAuth: Record<string, TranslationEntry> = {
     description:
       "Consent page subtext when there is no live consent request to decide",
   },
+  "auth.consentInvalidRequestTitle": {
+    message: "授权请求无效",
+    description:
+      "Consent page heading when the requesting client's authorization request fails a protocol check (PKCE or scope)",
+  },
+  "auth.consentPkceRequiredSubtitle": {
+    message: "此应用的请求缺少必要的安全参数。请联系该应用的开发者。",
+    description:
+      "Consent page subtext when the authorization request lacks PKCE with S256",
+  },
+  "auth.consentScopeRequiredSubtitle": {
+    message:
+      "此应用请求了 API 访问权限，但未指定所需的具体权限。它必须请求以下至少一项：{scopes}。",
+    description:
+      "Consent page subtext when an audience request lacks a granular capability scope (round-14 #1); {scopes} is the comma-separated list of accepted capability scopes",
+  },
+  "auth.consentUnavailableTitle": {
+    message: "授权暂不可用",
+    description:
+      "Consent page heading when the authorization provider is unreachable, misconfigured, or a headless accept failed",
+  },
+  "auth.consentUnavailableSubtitle": {
+    message: "这通常很快就能恢复——请稍后重试。",
+    description:
+      "Consent page subtext when the authorization provider is unreachable, misconfigured, or a headless accept failed",
+  },
+  "auth.consentWrongUserTitle": {
+    message: "登录账户不匹配",
+    description:
+      "Consent page heading when the browser's session belongs to a different account than the one that started this authorization",
+  },
+  "auth.consentWrongUserSubtitle": {
+    message: "此浏览器的会话所属账户与发起此授权的账户不同。请退出登录后重试。",
+    description:
+      "Consent page subtext when the browser's session belongs to a different account than the one that started this authorization",
+  },
   "auth.deviceSuccessTitle": {
     message: "bex CLI 已连接",
     description: "Device authorization success page title",
@@ -285,6 +326,26 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "请在终端中重新运行 `bex login`。",
     description:
       "Device confirm page subtext when there is no live device request to confirm",
+  },
+  "auth.deviceUnavailableTitle": {
+    message: "设备授权暂不可用",
+    description:
+      "Device confirm page heading when the authorization provider is unreachable or misconfigured",
+  },
+  "auth.deviceUnavailableSubtitle": {
+    message: "这通常很快就能恢复——请稍后重试。",
+    description:
+      "Device confirm page subtext when the authorization provider is unreachable or misconfigured",
+  },
+  "auth.deviceRefusedTitle": {
+    message: "授权被拒绝",
+    description:
+      "Device confirm page heading when the device request names a client bex did not expect",
+  },
+  "auth.deviceRefusedSubtitle": {
+    message: "此设备请求无法验证。请在终端中重新运行 `bex login`。",
+    description:
+      "Device confirm page subtext when the device request names a client bex did not expect",
   },
   "auth.deviceSuccessSubtitle": {
     message: "浏览器授权已完成。",

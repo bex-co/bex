@@ -53,8 +53,28 @@ describe("handleDeviceVerification", () => {
     const unconfigured = await handleDeviceVerification(
       new Request(`${DASHBOARD}/auth/device?user_code=ABCDEF`),
     );
-    expect(unconfigured).toBeInstanceOf(Response);
-    expect((unconfigured as Response).status).toBe(503);
+    // Renders inside AuthPageShell (w10/m8 t001) rather than a bare Response —
+    // the route's GET handler turns this into loader context for the confirm
+    // page's error branch.
+    expect(unconfigured).not.toBeInstanceOf(Response);
+    expect(unconfigured).toEqual({ errorCode: "unconfigured" });
+  });
+
+  it("answers honestly when the device code is missing", async () => {
+    const missing = await handleDeviceVerification(
+      new Request(`${DASHBOARD}/auth/device`),
+    );
+    expect(missing).not.toBeInstanceOf(Response);
+    expect(missing).toEqual({ errorCode: "missing_code" });
+  });
+
+  it("renders a recovered error code from a POST-failure redirect, ignoring other params", async () => {
+    const result = await handleDeviceVerification(
+      new Request(
+        `${DASHBOARD}/auth/device?device_error=invalid_code&user_code=STALE`,
+      ),
+    );
+    expect(result).toEqual({ errorCode: "invalid_code" });
   });
 
   it("bounces a signed-out visitor through login, preserving the code + challenge in `next`, without pairing (device-code phish)", async () => {
@@ -169,7 +189,7 @@ describe("handleDeviceConfirm", () => {
     });
   });
 
-  it("fails closed for expired/replayed codes, foreign clients, and a down Hydra", async () => {
+  it("fails closed for expired/replayed codes and foreign clients by redirecting into the shell error page (w10/m8 t001)", async () => {
     fetchSessionMock.mockResolvedValue({
       session: { id: "session-abc", active: true, identity: { id: "id-1" } },
     });
@@ -190,7 +210,11 @@ describe("handleDeviceConfirm", () => {
       "fetch",
       vi.fn(async () => new Response("expired", { status: 404 })),
     );
-    expect((await confirm()).status).toBe(400);
+    const expired = await confirm();
+    expect(expired.status).toBe(303);
+    expect(new URL(expired.headers.get("location")!).searchParams.get(
+      "device_error",
+    )).toBe("invalid_code");
 
     vi.stubGlobal(
       "fetch",
@@ -200,13 +224,32 @@ describe("handleDeviceConfirm", () => {
         }),
       ),
     );
-    expect((await confirm()).status).toBe(403);
+    const foreign = await confirm();
+    expect(foreign.status).toBe(303);
+    expect(new URL(foreign.headers.get("location")!).searchParams.get(
+      "device_error",
+    )).toBe("unexpected_client");
+  });
 
+  it("still answers 502 for a genuinely down Hydra (not a recoverable/user-facing state)", async () => {
+    fetchSessionMock.mockResolvedValue({
+      session: { id: "session-abc", active: true, identity: { id: "id-1" } },
+    });
+    const form = new FormData();
+    form.set("user_code", "ABCDEF");
+    form.set("device_challenge", "challenge-1");
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => Promise.reject(new Error("down"))),
     );
-    expect((await confirm()).status).toBe(502);
+    const response = await handleDeviceConfirm(
+      new Request(`${DASHBOARD}/auth/device`, {
+        method: "POST",
+        body: form,
+        headers: { origin: DASHBOARD },
+      }),
+    );
+    expect(response.status).toBe(502);
   });
 
   it("refuses a cross-site or session-less confirmation", async () => {

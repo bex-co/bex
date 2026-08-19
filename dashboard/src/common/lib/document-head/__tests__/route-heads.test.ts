@@ -113,8 +113,8 @@ const staticRouteCases: Array<
     "reset password",
     ResetPasswordRoute,
     { search: {} },
-    "Reset your password",
-    "重置您的密码",
+    "Set a new password",
+    "设置新密码",
   ],
   [
     "sign up",

@@ -13,8 +13,35 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
+import type { DeviceErrorCode } from "@/common/server-fn/hydra-device";
 
 const route = getRouteApi("/auth/device/");
+
+/** Title/subtitle for a recoverable device-verification failure (w10/m8
+ * t001). `missing_code`/`invalid_code` share the existing "expired" copy —
+ * both remedy the same way: run `bex login` again. */
+function deviceErrorCopy(
+  code: DeviceErrorCode | null,
+  t: ReturnType<typeof useTranslations>["t"],
+): { title: string; subtitle: string } {
+  switch (code) {
+    case "unconfigured":
+      return {
+        title: t("auth.deviceUnavailableTitle"),
+        subtitle: t("auth.deviceUnavailableSubtitle"),
+      };
+    case "unexpected_client":
+      return {
+        title: t("auth.deviceRefusedTitle"),
+        subtitle: t("auth.deviceRefusedSubtitle"),
+      };
+    default:
+      return {
+        title: t("auth.deviceExpiredTitle"),
+        subtitle: t("auth.deviceExpiredSubtitle"),
+      };
+  }
+}
 
 /**
  * CLI device-authorize confirmation (docs/ADR035-ssh.md's RFC 8628 bridge,
@@ -26,7 +53,7 @@ const route = getRouteApi("/auth/device/");
  * user-initiated submission (codex-security #9).
  */
 export default function DeviceConfirmPage() {
-  const { device } = route.useLoaderData();
+  const { device, deviceErrorCode } = route.useLoaderData();
   const { user_code: userCode, device_challenge: challenge } =
     route.useSearch();
   const { t } = useTranslations();
@@ -37,18 +64,18 @@ export default function DeviceConfirmPage() {
   // bounce returns (login-page navigates to `next`) — leaves the page with a
   // code/challenge and no view: reload it as a document so the handler can
   // answer. Terminates after one hop: the document response either renders
-  // the view or redirects.
-  const needsDocumentLoad = !device && !!userCode && !!challenge;
+  // the view or redirects. A recovered error code means the handler already
+  // answered — never re-trigger the reload loop for it.
+  const needsDocumentLoad =
+    !device && !deviceErrorCode && !!userCode && !!challenge;
   useEffect(() => {
     if (needsDocumentLoad) window.location.replace(window.location.href);
   }, [needsDocumentLoad]);
 
   if (!device) {
+    const { title, subtitle } = deviceErrorCopy(deviceErrorCode, t);
     return (
-      <AuthPageShell
-        title={t("auth.deviceExpiredTitle")}
-        subtitle={t("auth.deviceExpiredSubtitle")}
-      >
+      <AuthPageShell title={title} subtitle={subtitle}>
         {!needsDocumentLoad && (
           <Button asChild variant="outline">
             <a href="/">{t("common.goHome")}</a>

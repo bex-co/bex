@@ -15,8 +15,52 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 import { SCOPE_DESCRIPTION_KEYS, SCOPE_SENSITIVE, SCOPE_WRITE } from "@/common/lib/oauth-scopes";
+import type { ConsentErrorCode } from "@/common/server-fn/hydra-consent";
 
 const route = getRouteApi("/auth/consent");
+
+/** Title/subtitle for a recoverable consent failure (w10/m8 t002).
+ * `not_configured` and `headless_accept_failed` share the same "try again
+ * shortly" copy — both are ops-flavored failures with identical actionable
+ * advice, distinct from the POST decision's own `retryAfterFailure` banner
+ * (which still renders the full consent card so a human can retry their own
+ * approve/deny). */
+function consentErrorCopy(
+  code: ConsentErrorCode | null,
+  requiredScopes: string[] | null,
+  t: ReturnType<typeof useTranslations>["t"],
+): { title: string; subtitle: string } {
+  switch (code) {
+    case "pkce_required":
+      return {
+        title: t("auth.consentInvalidRequestTitle"),
+        subtitle: t("auth.consentPkceRequiredSubtitle"),
+      };
+    case "scope_required":
+      return {
+        title: t("auth.consentInvalidRequestTitle"),
+        subtitle: t("auth.consentScopeRequiredSubtitle", {
+          scopes: (requiredScopes ?? []).join(", "),
+        }),
+      };
+    case "not_configured":
+    case "headless_accept_failed":
+      return {
+        title: t("auth.consentUnavailableTitle"),
+        subtitle: t("auth.consentUnavailableSubtitle"),
+      };
+    case "wrong_user":
+      return {
+        title: t("auth.consentWrongUserTitle"),
+        subtitle: t("auth.consentWrongUserSubtitle"),
+      };
+    default:
+      return {
+        title: t("auth.consentExpiredTitle"),
+        subtitle: t("auth.consentExpiredSubtitle"),
+      };
+  }
+}
 
 /**
  * OAuth2 consent screen (docs/ADR012-auth.md §7, w4/m16). Reached only when the
@@ -27,7 +71,8 @@ const route = getRouteApi("/auth/consent");
  * submission carrying the challenge-bound CSRF token.
  */
 export default function ConsentPage() {
-  const { consent } = route.useLoaderData();
+  const { consent, consentErrorCode, consentRequiredScopes } =
+    route.useLoaderData();
   const { consent_challenge: challenge } = route.useSearch();
   const { t } = useTranslations();
   const [submitting, setSubmitting] = useState(false);
@@ -37,17 +82,21 @@ export default function ConsentPage() {
   // returns (login-page navigates to `next`) — leaves the page with a challenge
   // and no view: reload it as a document so the handler can answer. Terminates
   // after one hop: the document response either renders the view or redirects.
-  const needsDocumentLoad = !consent && !!challenge;
+  // A recovered error code means the handler already answered — never
+  // re-trigger the reload loop for it.
+  const needsDocumentLoad = !consent && !consentErrorCode && !!challenge;
   useEffect(() => {
     if (needsDocumentLoad) window.location.replace(window.location.href);
   }, [needsDocumentLoad]);
 
   if (!consent) {
+    const { title, subtitle } = consentErrorCopy(
+      consentErrorCode,
+      consentRequiredScopes,
+      t,
+    );
     return (
-      <AuthPageShell
-        title={t("auth.consentExpiredTitle")}
-        subtitle={t("auth.consentExpiredSubtitle")}
-      >
+      <AuthPageShell title={title} subtitle={subtitle}>
         {!needsDocumentLoad && (
           <Button asChild variant="outline">
             <a href="/">{t("common.goHome")}</a>

@@ -25,6 +25,11 @@ const enAuth: Record<string, TranslationEntry> = {
     message: "Enter your email to receive a recovery code",
     description: "Forgot-password page hero subtitle",
   },
+  "auth.resetPasswordTitle": {
+    message: "Set a new password",
+    description:
+      "Document title for the post-recovery reset-password landing page (renders the settings flow's password field)",
+  },
   "auth.verificationTitle": {
     message: "Verify your email",
     description: "Verification page hero title",
@@ -248,6 +253,44 @@ const enAuth: Record<string, TranslationEntry> = {
     description:
       "Consent page subtext when there is no live consent request to decide",
   },
+  "auth.consentInvalidRequestTitle": {
+    message: "Invalid authorization request",
+    description:
+      "Consent page heading when the requesting client's authorization request fails a protocol check (PKCE or scope)",
+  },
+  "auth.consentPkceRequiredSubtitle": {
+    message:
+      "This app's request is missing required security parameters. Contact the app's developer.",
+    description:
+      "Consent page subtext when the authorization request lacks PKCE with S256",
+  },
+  "auth.consentScopeRequiredSubtitle": {
+    message:
+      "This app requested API access without specifying what it needs. It must request at least one of: {scopes}.",
+    description:
+      "Consent page subtext when an audience request lacks a granular capability scope (round-14 #1); {scopes} is the comma-separated list of accepted capability scopes",
+  },
+  "auth.consentUnavailableTitle": {
+    message: "Authorization unavailable",
+    description:
+      "Consent page heading when the authorization provider is unreachable, misconfigured, or a headless accept failed",
+  },
+  "auth.consentUnavailableSubtitle": {
+    message: "This should resolve shortly — try again in a moment.",
+    description:
+      "Consent page subtext when the authorization provider is unreachable, misconfigured, or a headless accept failed",
+  },
+  "auth.consentWrongUserTitle": {
+    message: "Signed in as the wrong account",
+    description:
+      "Consent page heading when the browser's session belongs to a different account than the one that started this authorization",
+  },
+  "auth.consentWrongUserSubtitle": {
+    message:
+      "This browser's session belongs to a different account than the one that started this authorization. Sign out and try again.",
+    description:
+      "Consent page subtext when the browser's session belongs to a different account than the one that started this authorization",
+  },
   "auth.deviceSuccessTitle": {
     message: "bex CLI connected",
     description: "Device authorization success page title",
@@ -292,6 +335,27 @@ const enAuth: Record<string, TranslationEntry> = {
     message: "Start `bex login` again from your terminal.",
     description:
       "Device confirm page subtext when there is no live device request to confirm",
+  },
+  "auth.deviceUnavailableTitle": {
+    message: "Device authorization unavailable",
+    description:
+      "Device confirm page heading when the authorization provider is unreachable or misconfigured",
+  },
+  "auth.deviceUnavailableSubtitle": {
+    message: "This should resolve shortly — try again in a moment.",
+    description:
+      "Device confirm page subtext when the authorization provider is unreachable or misconfigured",
+  },
+  "auth.deviceRefusedTitle": {
+    message: "Authorization refused",
+    description:
+      "Device confirm page heading when the device request names a client bex did not expect",
+  },
+  "auth.deviceRefusedSubtitle": {
+    message:
+      "This device request could not be verified. Start `bex login` again from your terminal.",
+    description:
+      "Device confirm page subtext when the device request names a client bex did not expect",
   },
   "auth.deviceSuccessSubtitle": {
     message: "Your browser authorization is complete.",

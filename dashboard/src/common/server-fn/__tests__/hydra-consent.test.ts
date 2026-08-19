@@ -240,7 +240,7 @@ describe("handleConsent (GET)", () => {
       sessionBody: session("someone-else"),
     });
     const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
-    expect((res as Response).status).toBe(403);
+    expect(res).toEqual({ errorCode: "wrong_user" });
     expect(accepts(calls)).toHaveLength(0);
   });
 
@@ -251,7 +251,8 @@ describe("handleConsent (GET)", () => {
       }),
     });
     const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
-    expect((res as Response).status).toBe(400);
+    // Renders inside AuthPageShell (w10/m8 t002) rather than a bare Response.
+    expect(res).toEqual({ errorCode: "pkce_required" });
     expect(accepts(calls)).toHaveLength(0);
   });
 
@@ -278,8 +279,12 @@ describe("handleConsent (GET)", () => {
       }),
     });
     const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
-    expect((res as Response).status).toBe(400);
-    expect(await (res as Response).text()).toContain("bex.read");
+    // Renders inside AuthPageShell (w10/m8 t002); the developer-facing detail
+    // survives as the required-scopes list instead of response body text.
+    expect(res).toMatchObject({ errorCode: "scope_required" });
+    expect((res as { requiredScopes?: string[] }).requiredScopes).toContain(
+      "bex.read",
+    );
     expect(accepts(calls)).toHaveLength(0);
   });
 
@@ -316,8 +321,7 @@ describe("handleConsent (GET)", () => {
       const refused = await handleConsent(
         req(`?consent_challenge=${CHALLENGE}`),
       );
-      expect(refused).toBeInstanceOf(Response);
-      expect((refused as Response).status).toBe(400);
+      expect(refused).toMatchObject({ errorCode: "scope_required" });
 
       mockUpstreams({ lookupBody: consentRequest() });
       const allowed = await handleConsent(
@@ -337,7 +341,7 @@ describe("handleConsent (GET)", () => {
       }),
     });
     const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
-    expect((res as Response).status).toBe(400);
+    expect(res).toMatchObject({ errorCode: "scope_required" });
     expect(accepts(calls)).toHaveLength(0);
   });
 
@@ -400,20 +404,31 @@ describe("handleConsent (GET)", () => {
     expect((res as Response).headers.get("Location")).toBe(`${DASHBOARD}/`);
   });
 
-  it("answers 503 when the admin URL is not configured", async () => {
+  it("answers honestly when the admin URL is not configured", async () => {
     delete process.env.HYDRA_ADMIN_URL;
     mockUpstreams({});
     const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
-    expect((res as Response).status).toBe(503);
+    expect(res).toEqual({ errorCode: "not_configured" });
   });
 
-  it("answers 502 when the headless accept fails upstream", async () => {
+  it("answers honestly when the headless accept fails upstream", async () => {
     mockUpstreams({
       lookupBody: consentRequest({ skip: true }),
       acceptOk: false,
     });
     const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
-    expect((res as Response).status).toBe(502);
+    expect(res).toEqual({ errorCode: "headless_accept_failed" });
+  });
+
+  it("renders a recovered error code from a POST-decision redirect, without re-checking scope (round-14 #1)", async () => {
+    mockUpstreams({});
+    const res = await handleConsent(
+      req(`?consent_challenge=${CHALLENGE}&consent_error=scope_required`),
+    );
+    expect(res).toMatchObject({ errorCode: "scope_required" });
+    expect((res as { requiredScopes?: string[] }).requiredScopes).toContain(
+      "bex.read",
+    );
   });
 });
 
@@ -456,7 +471,11 @@ describe("handleConsentDecision (POST)", () => {
 
     const res = await handleConsentDecision(decisionReq(approve));
 
-    expect(res.status).toBe(400);
+    // Redirects back to GET with the error code (w10/m8 t002) instead of a
+    // bare 400 body.
+    expect(res.status).toBe(303);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.searchParams.get("consent_error")).toBe("scope_required");
     expect(accepts(calls)).toHaveLength(0);
   });
 
@@ -560,7 +579,11 @@ describe("handleConsentDecision (POST)", () => {
       sessionBody: session("someone-else"),
     });
     const res = await handleConsentDecision(decisionReq(approve));
-    expect(res.status).toBe(403);
+    // Redirects back to GET with the error code (w10/m8 t002) instead of a
+    // bare 403 body.
+    expect(res.status).toBe(303);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.searchParams.get("consent_error")).toBe("wrong_user");
     expect(accepts(calls)).toHaveLength(0);
   });
 
@@ -587,7 +610,11 @@ describe("handleConsentDecision (POST)", () => {
       }),
     });
     const res = await handleConsentDecision(decisionReq(approve));
-    expect(res.status).toBe(400);
+    // Redirects back to GET with the error code (w10/m8 t002) instead of a
+    // bare 400 body.
+    expect(res.status).toBe(303);
+    const location = new URL(res.headers.get("location")!);
+    expect(location.searchParams.get("consent_error")).toBe("pkce_required");
     expect(accepts(calls)).toHaveLength(0);
   });
 
@@ -665,7 +692,8 @@ describe("PKCE S256 enforcement (w1/m66 F8)", () => {
         lookupBody: consentRequest({ request_url, skip: true }),
       });
       const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
-      expect((res as Response).status).toBe(400);
+      // Renders inside AuthPageShell (w10/m8 t002) rather than a bare Response.
+      expect(res).toEqual({ errorCode: "pkce_required" });
       expect(accepts(calls)).toHaveLength(0);
     });
 
@@ -674,7 +702,15 @@ describe("PKCE S256 enforcement (w1/m66 F8)", () => {
         lookupBody: consentRequest({ request_url }),
       });
       const res = await handleConsentDecision(decisionReq(approve));
-      expect(res.status).toBe(400);
+      // A POST failure redirects back to the GET endpoint with the error code
+      // (w10/m8 t002) so it renders inside AuthPageShell there.
+      expect(res.status).toBe(303);
+      const location = new URL(res.headers.get("location")!);
+      expect(location.pathname).toBe("/auth/consent");
+      expect(location.searchParams.get("consent_error")).toBe(
+        "pkce_required",
+      );
+      expect(location.searchParams.get("consent_challenge")).toBe(CHALLENGE);
       expect(accepts(calls)).toHaveLength(0);
     });
   }
