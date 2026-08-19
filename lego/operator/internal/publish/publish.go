@@ -41,6 +41,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	"github.com/bex-co/bex/lego/operator/internal/identity"
 )
 
 // DefaultAWSCLIImage is the S3 uploader image. Pinned < 2.23 because newer AWS
@@ -115,9 +116,9 @@ type Options struct {
 	CloneSecret string
 	// GitImage overrides the clone image (tests / air-gapped).
 	GitImage  string
-	AppID     string        // the service name — the first object-key segment
+	AppID     string        // the service name — used with Workspace for the object-key prefix (docs/ADR074)
 	AppUID    string        // immutable App UID; prevents same-name recreation from reusing stale artifacts
-	Revision  string        // e.g. "rev-7" — the second key segment (immutable per revision)
+	Revision  string        // e.g. "rev-7" — the last key segment (immutable per revision)
 	Store     Store         // object-store target (bucket/endpoint/secret)
 	Namespace string        // namespace the publish Job runs in
 	Client    client.Client // cluster client used to create + watch the Job
@@ -139,10 +140,11 @@ type Options struct {
 	PullSecret string
 }
 
-// Prefix is the object-key prefix a publish writes under: "<appID>/<revision>/".
-// The static-server reads the same prefix, so the prefix root is the site root.
+// Prefix is the object-key prefix a publish writes under. Unlabeled Apps keep
+// "<appID>/<revision>/"; labeled Apps use "<workspace>/<appID>/<revision>/"
+// (docs/ADR074). The static-server reads the same prefix from App status.
 func (o Options) Prefix() string {
-	return o.AppID + "/" + o.Revision + "/"
+	return identity.ForApp(o.AppID, o.Workspace).StaticPrefix(o.Revision)
 }
 
 // destURI is the s3:// sync target for this publish.
@@ -204,7 +206,7 @@ func Ensure(ctx context.Context, o Options) (Observation, error) {
 
 	job := PublishJob(o)
 	key := client.ObjectKeyFromObject(job)
-	identity := execution.ArtifactIdentity{Name: o.AppID, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
+	owned := execution.ArtifactIdentity{Name: o.AppID, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
 
 	if err := o.Client.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
 		return Observation{}, fmt.Errorf("publish: create job %s: %w", key.Name, err)
@@ -214,7 +216,7 @@ func Ensure(ctx context.Context, o Options) (Observation, error) {
 	if err := o.Client.Get(ctx, key, &cur); err != nil {
 		return Observation{}, fmt.Errorf("publish: get job %s: %w", key.Name, err)
 	}
-	if err := identity.CheckOwner(&cur); err != nil {
+	if err := owned.CheckOwner(&cur); err != nil {
 		return Observation{}, fmt.Errorf("publish: check job owner %s: %w", key.Name, err)
 	}
 	switch {
@@ -480,11 +482,24 @@ func JobName(appID, revision string) string {
 // lifetime. The App finalizer creates, observes, and deletes this Job; success
 // is persisted on the App before the Job is removed, so a manager restart can
 // never acknowledge cleanup that has not completed.
-func PurgeJob(appName, appUID, workspace, appNamespace string, store Store, namespace, pullSecret, awsCLIImage string) *batchv1.Job {
+func PurgeJob(appName, appUID, workspace, appNamespace string, store Store, namespace, pullSecret, awsCLIImage string, prefixes ...string) *batchv1.Job {
 	if awsCLIImage == "" {
 		awsCLIImage = DefaultAWSCLIImage
 	}
-	prefix := "s3://" + store.Bucket + "/" + appName + "/"
+	if len(prefixes) == 0 {
+		prefixes = identity.ForApp(appName, workspace).PurgePrefixes("")
+	}
+	var b strings.Builder
+	for i, p := range prefixes {
+		if i > 0 {
+			b.WriteString(" && ")
+		}
+		b.WriteString("aws s3 rm ")
+		b.WriteString("s3://" + store.Bucket + "/" + strings.TrimPrefix(p, "/"))
+		b.WriteString(" --recursive --endpoint-url ")
+		b.WriteString(store.Endpoint)
+	}
+	script := b.String()
 	deadline := int64((15 * time.Minute) / time.Second)
 	backoff := int32(3)
 	var env []corev1.EnvVar
@@ -515,14 +530,10 @@ func PurgeJob(appName, appUID, workspace, appNamespace string, store Store, name
 					RestartPolicy:    corev1.RestartPolicyNever,
 					ImagePullSecrets: imagePullSecrets(pullSecret),
 					Containers: []corev1.Container{{
-						Name:  "purge",
-						Image: awsCLIImage,
-						Command: []string{
-							"aws", "s3", "rm", prefix,
-							"--recursive",
-							"--endpoint-url", store.Endpoint,
-						},
-						Env: env,
+						Name:    "purge",
+						Image:   awsCLIImage,
+						Command: []string{"sh", "-c", script},
+						Env:     env,
 						EnvFrom: []corev1.EnvFromSource{{
 							SecretRef: &corev1.SecretEnvSource{
 								LocalObjectReference: corev1.LocalObjectReference{Name: store.Secret},

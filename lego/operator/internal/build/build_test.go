@@ -64,6 +64,18 @@ func TestImageRefAndJobName(t *testing.T) {
 	}
 }
 
+func TestImageRefWorkspaceScoped(t *testing.T) {
+	o := opts()
+	o.Workspace = "tea-aaaaaaaaaaaaaaaaaaaa"
+	if got, want := o.ImageRef(), "zot.bex-registry.svc:5000/tea-aaaaaaaaaaaaaaaaaaaa/hello:gen-7"; got != want {
+		t.Errorf("ImageRef = %q, want %q", got, want)
+	}
+	o.Workspace = ""
+	if got, want := o.ImageRef(), "zot.bex-registry.svc:5000/hello:gen-7"; got != want {
+		t.Errorf("unlabeled ImageRef = %q, want %q", got, want)
+	}
+}
+
 func TestKpackNamesBindUIDRevisionAndPurpose(t *testing.T) {
 	o := opts()
 	o.Name = strings.Repeat("x", 55)

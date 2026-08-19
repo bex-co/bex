@@ -33,6 +33,8 @@ import (
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	"github.com/bex-co/bex/lego/operator/internal/identity"
+	"github.com/bex-co/bex/lego/operator/internal/registry"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -331,6 +333,38 @@ func TestBuildNamespaceSecretsRefuseForeignOwner(t *testing.T) {
 			t.Fatalf("foreign mirror data was modified: %s", got.Data[corev1.DockerConfigJsonKey])
 		}
 	})
+	t.Run("mirror refuses a foreign new-scheme reg-pull Secret", func(t *testing.T) {
+		secretName := identity.ForApp("web", "tea-aaaaaaaaaaaaaaaaaaaa").PullSecretName()
+		foreign := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: secretName, Namespace: buildNS,
+				Labels: map[string]string{labelApp: "web", "app.bex.co/app-uid": "uid-victim"},
+			},
+			Type: corev1.SecretTypeDockerConfigJson,
+			Data: map[string][]byte{corev1.DockerConfigJsonKey: []byte(`{"auths":{"victim.example":{"auth":"kept"}}}`)},
+		}
+		src := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: appNS},
+			Type:       corev1.SecretTypeDockerConfigJson,
+			Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte(`{"auths":{"attacker.example":{"auth":"swap"}}}`)},
+		}
+		cl := fake.NewClientBuilder().WithScheme(newScheme()).WithObjects(foreign, src).Build()
+		r := &AppReconciler{Client: cl, BuildClient: cl}
+		app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+			Name: "web", Namespace: appNS, UID: "uid-attacker",
+			Labels: map[string]string{labelWorkspace: "tea-aaaaaaaaaaaaaaaaaaaa"},
+		}}
+		if err := r.copyBuildRegistryCredential(context.Background(), app, appNS, buildNS, src.Name); err == nil {
+			t.Fatal("copyBuildRegistryCredential overwrote a foreign-owned new-scheme reg-pull mirror")
+		}
+		var got corev1.Secret
+		if err := cl.Get(context.Background(), client.ObjectKey{Namespace: buildNS, Name: src.Name}, &got); err != nil {
+			t.Fatal(err)
+		}
+		if string(got.Data[corev1.DockerConfigJsonKey]) != `{"auths":{"victim.example":{"auth":"kept"}}}` {
+			t.Fatalf("foreign new-scheme mirror data was modified: %s", got.Data[corev1.DockerConfigJsonKey])
+		}
+	})
 }
 
 // TestDeleteOwnedObjectLeavesForeignArtifacts pins the finalizer half of round
@@ -348,9 +382,9 @@ func TestDeleteOwnedObjectLeavesForeignArtifacts(t *testing.T) {
 		},
 	}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(foreign).Build()
-	identity := execution.ArtifactIdentity{Name: "web", UID: "uid-attacker"}
+	owned := execution.ArtifactIdentity{Name: "web", UID: "uid-attacker"}
 
-	done, err := deleteOwnedObject(context.Background(), cl, "bex-build", foreign.Name, &networkingv1.NetworkPolicy{}, identity)
+	done, err := deleteOwnedObject(context.Background(), cl, "bex-build", foreign.Name, &networkingv1.NetworkPolicy{}, owned)
 	if err != nil || !done {
 		t.Fatalf("foreign delete = done %v err %v; want done, nil", done, err)
 	}
@@ -368,12 +402,105 @@ func TestDeleteOwnedObjectLeavesForeignArtifacts(t *testing.T) {
 	if err := cl.Create(context.Background(), own); err != nil {
 		t.Fatal(err)
 	}
-	if done, err := deleteOwnedObject(context.Background(), cl, "bex-build", own.Name, &corev1.Secret{}, identity); err != nil || done {
+	if done, err := deleteOwnedObject(context.Background(), cl, "bex-build", own.Name, &corev1.Secret{}, owned); err != nil || done {
 		t.Fatalf("own delete = done %v err %v; want pending, nil", done, err)
 	}
 	var gone corev1.Secret
 	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(own), &gone); !apierrors.IsNotFound(err) {
 		t.Fatalf("own-owned Secret survived the owned delete: %v", err)
+	}
+}
+
+func TestRevokeCleansLegacyPullSecretForLabeledApp(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	const ws = "tea-aaaaaaaaaaaaaaaaaaaa"
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+		Name: "web", Namespace: "tea-ns", UID: "uid-web",
+		Labels: map[string]string{labelWorkspace: ws},
+	}}
+	id := identity.ForApp("web", ws)
+	ownedLabels := map[string]string{labelApp: "web", "app.bex.co/app-uid": "uid-web"}
+	objects := []client.Object{
+		app,
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name: id.PullSecretName(), Namespace: "tea-ns", Labels: ownedLabels,
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name: id.LegacyPullSecretName(), Namespace: "tea-ns", Labels: ownedLabels,
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name: id.PullSecretName(), Namespace: "bex-build", Labels: ownedLabels,
+		}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name: id.LegacyPullSecretName(), Namespace: "bex-build",
+			Labels: map[string]string{labelApp: "web", "app.bex.co/app-uid": "uid-sibling"},
+		}},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objects...).Build()
+	creds := &registry.Creds{
+		Client: cl, ZotNamespace: "zot", HTPasswdName: "zot-htpasswd", ConfigName: "zot-config",
+	}
+	r := &AppReconciler{Client: cl, PerAppRegistry: creds}
+	for range 4 {
+		pending, err := r.revokeAppRegistryCredentials(context.Background(), app, "bex-build", cl)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !pending {
+			break
+		}
+	}
+	for _, key := range []client.ObjectKey{
+		{Name: id.PullSecretName(), Namespace: "tea-ns"},
+		{Name: id.LegacyPullSecretName(), Namespace: "tea-ns"},
+		{Name: id.PullSecretName(), Namespace: "bex-build"},
+	} {
+		if err := cl.Get(context.Background(), key, &corev1.Secret{}); !apierrors.IsNotFound(err) {
+			t.Fatalf("%s/%s survived revoke: %v", key.Namespace, key.Name, err)
+		}
+	}
+	var sibling corev1.Secret
+	if err := cl.Get(context.Background(), client.ObjectKey{
+		Name: id.LegacyPullSecretName(), Namespace: "bex-build",
+	}, &sibling); err != nil {
+		t.Fatalf("unlabeled sibling's build-ns leftover was deleted: %v", err)
+	}
+}
+
+func TestRevokeDeletesOwnedLegacyBuildMirror(t *testing.T) {
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
+	const ws = "tea-aaaaaaaaaaaaaaaaaaaa"
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+		Name: "web", Namespace: "tea-ns", UID: "uid-web",
+		Labels: map[string]string{labelWorkspace: ws},
+	}}
+	id := identity.ForApp("web", ws)
+	ownedLabels := map[string]string{labelApp: "web", "app.bex.co/app-uid": "uid-web"}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app,
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+			Name: id.LegacyPullSecretName(), Namespace: "bex-build", Labels: ownedLabels,
+		}},
+	).Build()
+	r := &AppReconciler{Client: cl, PerAppRegistry: &registry.Creds{
+		Client: cl, ZotNamespace: "zot", HTPasswdName: "zot-htpasswd", ConfigName: "zot-config",
+	}}
+	for range 4 {
+		pending, err := r.revokeAppRegistryCredentials(context.Background(), app, "bex-build", cl)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !pending {
+			break
+		}
+	}
+	if err := cl.Get(context.Background(), client.ObjectKey{
+		Name: id.LegacyPullSecretName(), Namespace: "bex-build",
+	}, &corev1.Secret{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("owned legacy build-ns mirror survived: %v", err)
 	}
 }
 

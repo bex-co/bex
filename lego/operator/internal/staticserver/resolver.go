@@ -24,6 +24,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/operator/internal/identity"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -83,6 +84,7 @@ func (c *CachedResolver) Refresh(ctx context.Context) error {
 		site := Site{
 			AppID:    app.Name,
 			Revision: app.Status.ActiveRevision,
+			Prefix:   staticServePrefix(app),
 			Routes:   app.Spec.Routes,
 			Headers:  app.Spec.Headers,
 		}
@@ -128,4 +130,15 @@ func effectiveHosts(app *appv1alpha1.App, baseDomain string) []string {
 	// Delegates to the CRD contract (types.AppSpec.EffectiveHosts, w5/m48) —
 	// the one precedence rule this comment used to promise by hand.
 	return app.Spec.EffectiveHosts(app.Name, baseDomain)
+}
+
+// staticServePrefix is the object-key prefix the current published revision
+// lives under. Status.StaticPrefix is authoritative after a post-m75 publish;
+// empty falls back to the legacy "<name>/<revision>/" so already-published
+// sites keep serving without a republish (docs/ADR074 dual-read).
+func staticServePrefix(app *appv1alpha1.App) string {
+	if app.Status.StaticPrefix != "" {
+		return app.Status.StaticPrefix
+	}
+	return identity.ForApp(app.Name, "").LegacyStaticPrefix(app.Status.ActiveRevision)
 }

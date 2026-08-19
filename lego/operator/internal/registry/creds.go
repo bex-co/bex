@@ -16,11 +16,15 @@ limitations under the License.
 
 // Package registry manages per-App Zot repository credentials (w7/m36,
 // docs/ADR022-tenant-isolation.md). Each App that builds and pushes an image
-// to the in-cluster Zot registry receives its own htpasswd user ("app-<name>")
-// and a per-repo Zot ACL entry that restricts that user to its own image
-// repository. A kubernetes.io/dockerconfigjson Secret
-// ("reg-pull-<name>") is created in the App namespace and referenced as an
-// imagePullSecret on all tenant workloads.
+// to the in-cluster Zot registry receives its own htpasswd user and a per-repo
+// Zot ACL entry that restricts that user to its own image repository. A
+// kubernetes.io/dockerconfigjson Secret is created in the App namespace and
+// referenced as an imagePullSecret on all tenant workloads.
+//
+// Names are derived by lego/operator/internal/identity (w2/m75, docs/ADR074):
+// unlabeled Apps keep "app-<name>" / "reg-pull-<name>" / repo "<name>";
+// Apps carrying app.bex.co/workspace use "app-<tea-id>-<name>" /
+// "reg-pull-<tea-id>-<name>" / repo "<tea-id>/<name>".
 //
 // The operator manages two Secrets in the Zot namespace:
 //   - zot-htpasswd: htpasswd file (bcrypt) with bex-builder + per-App entries.
@@ -54,6 +58,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/bex-co/bex/lego/operator/internal/identity"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -96,32 +101,41 @@ const (
 	platformBuilderRepository = "bex-cnb-builder"
 )
 
-// PullSecretName returns the deterministic name of the per-App pull-credential
-// Secret in the App namespace.
-func PullSecretName(appName string) string { return "reg-pull-" + appName }
+// PullSecretName returns the unlabeled/legacy pull-credential Secret name
+// ("reg-pull-<appName>"). Prefer identity.ForApp(name, workspace).PullSecretName
+// when the App may carry a workspace label (docs/ADR074).
+func PullSecretName(appName string) string {
+	return identity.ForApp(appName, "").PullSecretName()
+}
 
-// ZotUsername returns the Zot htpasswd username for an App.
-func ZotUsername(appName string) string { return "app-" + appName }
+// ZotUsername returns the unlabeled/legacy Zot htpasswd username ("app-<appName>").
+func ZotUsername(appName string) string {
+	return identity.ForApp(appName, "").ZotUsername()
+}
 
-// EnsureCreds idempotently creates the per-App repository credential:
-//  1. Creates (or reads) a kubernetes.io/dockerconfigjson Secret "reg-pull-<appName>"
-//     in appNS with credentials for the per-App Zot user "app-<appName>".
-//  2. Adds "app-<appName>:bcrypt(password)" to the zot-htpasswd Secret.
-//  3. Adds a per-repo ACL entry for "<appName>" in the zot-config Secret so
-//     that "app-<appName>" can read/write only the "<appName>" repository.
+// EnsureCreds idempotently creates the unlabeled/legacy per-App repository
+// credential. Prefer EnsureCredsFor when the App may carry a workspace label.
 func (c *Creds) EnsureCreds(ctx context.Context, appName, appNS string) error {
-	zotUser := ZotUsername(appName)
-	password, err := c.ensurePullSecret(ctx, appNS, PullSecretName(appName), zotUser, map[string]string{
-		"app.bex.co/component": "registry-pull",
-		"app.bex.co/app":       appName,
-		// Round-11 #1: the per-App registry credential is operational — a
-		// tenant App naming it in envFrom/secretKeyRef would dump the
-		// dockerconfig credentials into its own environment. The App
-		// reconcile refuses any reference to a Secret carrying this label;
-		// imagePullSecret resolution ignores labels, so kubelet pulls are
-		// unaffected.
+	return c.EnsureCredsFor(ctx, identity.ForApp(appName, ""), appNS)
+}
+
+// EnsureCredsFor mints the per-App repository credential for id:
+//  1. dockerconfigjson Secret id.PullSecretName() in appNS for id.ZotUsername().
+//  2. htpasswd entry for that user.
+//  3. exclusive RW ACL on id.Repo().
+//  4. when id.DualRead(), a READ grant for the new user on the legacy repo
+//     (existing policies on that repo are preserved so a sibling is not stomped).
+func (c *Creds) EnsureCredsFor(ctx context.Context, id identity.Identity, appNS string) error {
+	zotUser := id.ZotUsername()
+	labels := map[string]string{
+		"app.bex.co/component":                    "registry-pull",
+		"app.bex.co/app":                          id.Name,
 		appv1alpha1.LabelProtectedFromTenantMount: appv1alpha1.ProtectedFromTenantMount,
-	})
+	}
+	if id.Workspace != "" {
+		labels["app.bex.co/workspace"] = id.Workspace
+	}
+	password, err := c.ensurePullSecret(ctx, appNS, id.PullSecretName(), zotUser, labels)
 	if err != nil {
 		return err
 	}
@@ -130,14 +144,21 @@ func (c *Creds) EnsureCreds(ctx context.Context, appName, appNS string) error {
 	if err != nil {
 		return fmt.Errorf("htpasswd: %w", err)
 	}
-	wroteACL, err := c.ensureZotConfigEntry(ctx, appName, zotUser, zotReadWriteActions)
+	wroteACL, err := c.ensureZotConfigEntry(ctx, id.Repo(), zotUser, zotReadWriteActions)
 	if err != nil {
 		return fmt.Errorf("zot config: %w", err)
 	}
-	if wroteUser || wroteACL {
+	wroteDual := false
+	if id.DualRead() {
+		wroteDual, err = c.grantZotRepoUser(ctx, id.LegacyRepo(), zotUser, zotReadOnlyActions)
+		if err != nil {
+			return fmt.Errorf("zot dual-read grant: %w", err)
+		}
+	}
+	if wroteUser || wroteACL || wroteDual {
 		// The running zot cannot honor either write until it restarts, so the
 		// activation clock starts here (verify.go).
-		c.recordWrite(appName)
+		c.recordWrite(id.Key())
 	}
 	return nil
 }
@@ -152,16 +173,44 @@ func (c *Creds) EnsureCreds(ctx context.Context, appName, appNS string) error {
 // with a best-effort rate-limited bounce; if the cooldown skips it, the
 // credential stays live until the next bounce or zot restart.
 func (c *Creds) RevokeCreds(ctx context.Context, appName string) error {
-	c.clearActivation(appName)
-	removedUser, err := c.removeHTPasswdEntry(ctx, ZotUsername(appName))
+	return c.RevokeCredsFor(ctx, identity.ForApp(appName, ""))
+}
+
+// RevokeCredsFor removes the credentials id actually used. A scoped App drops
+// its workspace-scoped user/repo and its dual-read grant on the legacy repo;
+// the legacy user/repo themselves are only removed when the App is tombstoned
+// (this App owned them). An unlabeled sibling's exclusive ACL is never deleted.
+func (c *Creds) RevokeCredsFor(ctx context.Context, id identity.Identity) error {
+	c.clearActivation(id.Key())
+	removedUser, err := c.removeHTPasswdEntry(ctx, id.ZotUsername())
 	if err != nil {
 		return fmt.Errorf("htpasswd revoke: %w", err)
 	}
-	removedACL, err := c.removeZotConfigEntry(ctx, appName)
+	removedACL, err := c.removeZotConfigEntry(ctx, id.Repo())
 	if err != nil {
 		return fmt.Errorf("zot config revoke: %w", err)
 	}
-	if removedUser || removedACL {
+	removedDual := false
+	if id.Scoped() && id.Repo() != id.LegacyRepo() {
+		removedDual, err = c.revokeZotRepoUser(ctx, id.LegacyRepo(), id.ZotUsername())
+		if err != nil {
+			return fmt.Errorf("zot dual-read revoke: %w", err)
+		}
+	}
+	removedLegacy := false
+	if id.Tombstoned && id.Scoped() {
+		var lu, la bool
+		lu, err = c.removeHTPasswdEntry(ctx, id.LegacyZotUsername())
+		if err != nil {
+			return fmt.Errorf("legacy htpasswd revoke: %w", err)
+		}
+		la, err = c.removeZotConfigEntry(ctx, id.LegacyRepo())
+		if err != nil {
+			return fmt.Errorf("legacy zot config revoke: %w", err)
+		}
+		removedLegacy = lu || la
+	}
+	if removedUser || removedACL || removedDual || removedLegacy {
 		c.tryBounce(ctx)
 	}
 	return nil
@@ -183,9 +232,14 @@ func (c *Creds) RevokeCreds(ctx context.Context, appName string) error {
 // RegistryCredsPending window (bounded by the activation grace + a bounce)
 // after every rotation.
 func (c *Creds) RotateCreds(ctx context.Context, appName, appNS string) error {
+	return c.RotateCredsFor(ctx, identity.ForApp(appName, ""), appNS)
+}
+
+// RotateCredsFor re-issues id's pull credential. See RotateCreds.
+func (c *Creds) RotateCredsFor(ctx context.Context, id identity.Identity, appNS string) error {
 	log := logf.FromContext(ctx)
-	zotUser := ZotUsername(appName)
-	pullSecName := PullSecretName(appName)
+	zotUser := id.ZotUsername()
+	pullSecName := id.PullSecretName()
 
 	newPassword, err := generatePassword()
 	if err != nil {
@@ -201,14 +255,14 @@ func (c *Creds) RotateCreds(ctx context.Context, appName, appNS string) error {
 	if err := c.Client.Patch(ctx, patch, client.MergeFrom(&pullSec)); err != nil {
 		return fmt.Errorf("patch pull secret: %w", err)
 	}
-	log.Info("rotated per-app pull secret", "app", appName, "secret", pullSecName)
+	log.Info("rotated per-app pull secret", "app", id.Name, "secret", pullSecName)
 
 	if err := c.replaceHTPasswdEntry(ctx, zotUser, newPassword); err != nil {
 		return fmt.Errorf("htpasswd rotation: %w", err)
 	}
 	// The running zot deterministically rejects the new password until it
 	// restarts: restart the activation clock and drop the stale acceptance.
-	c.recordWrite(appName)
+	c.recordWrite(id.Key())
 	return nil
 }
 
@@ -419,6 +473,46 @@ func (c *Creds) removeZotConfigEntry(ctx context.Context, repo string) (bool, er
 				return nil, false, nil
 			}
 			delete(zotRepos(data), repo)
+			next, err := json.Marshal(data)
+			return next, err == nil, err
+		})
+	return removed, client.IgnoreNotFound(err)
+}
+
+// grantZotRepoUser adds user with actions on repo without replacing other
+// policies on that repository (the dual-read grant: a sibling's exclusive
+// RW must survive). The platform-builder repo is never granted to a tenant.
+func (c *Creds) grantZotRepoUser(ctx context.Context, repo, zotUser string, actions []string) (bool, error) {
+	if repo == platformBuilderRepository {
+		return false, nil
+	}
+	return c.mutateSecretKey(ctx, c.ConfigName, zotConfigKey, c.baseZotConfig,
+		func(current []byte) ([]byte, bool, error) {
+			data, err := decodeZotConfig(current)
+			if err != nil {
+				return nil, false, err
+			}
+			if zotRepoUserGrants(data, repo, zotUser, actions) {
+				return nil, false, nil
+			}
+			addZotRepoUser(data, repo, zotUser, actions)
+			next, err := json.Marshal(data)
+			return next, err == nil, err
+		})
+}
+
+// revokeZotRepoUser drops user from repo's policies, leaving other users.
+func (c *Creds) revokeZotRepoUser(ctx context.Context, repo, zotUser string) (bool, error) {
+	removed, err := c.mutateSecretKey(ctx, c.ConfigName, zotConfigKey, nil,
+		func(current []byte) ([]byte, bool, error) {
+			data, err := decodeZotConfig(current)
+			if err != nil {
+				return nil, false, err
+			}
+			if repo == platformBuilderRepository || !zotRepoHasUser(data, repo, zotUser) {
+				return nil, false, nil
+			}
+			removeZotRepoUser(data, repo, zotUser)
 			next, err := json.Marshal(data)
 			return next, err == nil, err
 		})

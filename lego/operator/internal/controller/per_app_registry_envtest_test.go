@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/bex-co/bex/lego/operator/internal/identity"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -401,6 +402,63 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 		}, &corev1.Secret{})).NotTo(Succeed())
 
 		cleanupApp(r, name)
+	})
+
+	It("mints disjoint workspace-scoped credentials for same-named Apps", func() {
+		const name = "collide"
+		wsA := "tea-aaaaaaaaaaaaaaaaaaaa"
+		wsB := "tea-bbbbbbbbbbbbbbbbbbbb"
+		for _, ns := range []string{wsA, wsB} {
+			_ = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}})
+		}
+		r := newReconciler()
+		idA := identity.ForApp(name, wsA)
+		idB := identity.ForApp(name, wsB)
+		for _, id := range []identity.Identity{idA, idB} {
+			Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: id.Workspace,
+					Labels:    map[string]string{"app.bex.co/workspace": id.Workspace},
+				},
+				Spec: appv1alpha1.AppSpec{Image: registry_ + "/" + id.Repo() + ":gen-1", Port: 3000},
+			})).To(Succeed())
+			reconcileN(r, types.NamespacedName{Name: name, Namespace: id.Workspace}, 2)
+		}
+		Expect(idA.PullSecretName()).NotTo(Equal(idB.PullSecretName()))
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name: idA.PullSecretName(), Namespace: wsA,
+		}, &corev1.Secret{})).To(Succeed())
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name: idB.PullSecretName(), Namespace: wsB,
+		}, &corev1.Secret{})).To(Succeed())
+
+		htSec := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: "zot-htpasswd", Namespace: zotNamespace}, htSec)).To(Succeed())
+		htpasswd := string(htSec.Data["htpasswd"])
+		Expect(htpasswd).To(ContainSubstring(idA.ZotUsername() + ":"))
+		Expect(htpasswd).To(ContainSubstring(idB.ZotUsername() + ":"))
+
+		cfgSec := &corev1.Secret{}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{Name: "zot-config", Namespace: zotNamespace}, cfgSec)).To(Succeed())
+		var zotCfg map[string]any
+		Expect(json.Unmarshal(cfgSec.Data["config.json"], &zotCfg)).To(Succeed())
+		http, _ := zotCfg["http"].(map[string]any)
+		ac, _ := http["accessControl"].(map[string]any)
+		repos, _ := ac["repositories"].(map[string]any)
+		Expect(repos).To(HaveKey(idA.Repo()))
+		Expect(repos).To(HaveKey(idB.Repo()))
+
+		for _, id := range []identity.Identity{idA, idB} {
+			nn := types.NamespacedName{Name: name, Namespace: id.Workspace}
+			app := &appv1alpha1.App{}
+			Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, app)).To(Succeed())
+			saved := r.Registry
+			r.Registry = ""
+			reconcileN(r, nn, 3)
+			r.Registry = saved
+		}
 	})
 })
 

@@ -28,6 +28,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
+	"github.com/bex-co/bex/lego/operator/internal/identity"
 )
 
 // Credential activation (w9/m43). Zot loads /secret/htpasswd and the
@@ -94,51 +95,52 @@ func (c *Creds) track(appName string, mutate func(*activation)) {
 // re-reads htpasswd + config. Bounces are rate-limited by BounceCooldown
 // across all Apps.
 func (c *Creds) EnsureActive(ctx context.Context, appName, appNS string) (bool, error) {
+	return c.EnsureActiveFor(ctx, identity.ForApp(appName, ""), appNS)
+}
+
+// EnsureActiveFor is EnsureActive for a (possibly workspace-scoped) identity.
+func (c *Creds) EnsureActiveFor(ctx context.Context, id identity.Identity, appNS string) (bool, error) {
 	log := logf.FromContext(ctx)
+	key := id.Key()
 
 	c.mu.Lock()
-	accepted := c.apps[appName].accepted
+	accepted := c.apps[key].accepted
 	c.mu.Unlock()
 	if accepted {
 		return true, nil
 	}
 
-	password, err := c.readPassword(ctx, appName, appNS)
+	password, err := c.readPasswordFor(ctx, id, appNS)
 	if err != nil {
 		return false, fmt.Errorf("read credential for probe: %w", err)
 	}
 
-	ok, err := c.probe(ctx, appName, password)
+	ok, err := c.probeFor(ctx, id, password)
 	if err != nil {
 		return false, fmt.Errorf("probe registry: %w", err)
 	}
 	if ok {
-		c.track(appName, func(a *activation) { *a = activation{accepted: true} })
+		c.track(key, func(a *activation) { *a = activation{accepted: true} })
 		return true, nil
 	}
 
-	rejectedFor, bounce := c.recordRejection(appName, time.Now())
+	rejectedFor, bounce := c.recordRejection(key, time.Now())
 	if bounce {
 		if err := c.bounceZot(ctx); err != nil {
-			// Surface the failure: without a working bounce the App would sit
-			// at RegistryCredsPending forever with a message blaming the
-			// credential rather than the broken bounce.
 			return false, fmt.Errorf("bounce zot for credential activation: %w", err)
 		}
 		log.Info("bounced zot to activate stale per-app registry credential",
-			"app", appName, "user", ZotUsername(appName), "rejectedFor", rejectedFor.String())
+			"app", id.Name, "user", id.ZotUsername(), "rejectedFor", rejectedFor.String())
 	}
 	return false, nil
 }
 
-// readPassword extracts the App's plaintext registry password from its pull
-// Secret (shared by EnsureCreds and the activation probe).
-func (c *Creds) readPassword(ctx context.Context, appName, appNS string) (string, error) {
+func (c *Creds) readPasswordFor(ctx context.Context, id identity.Identity, appNS string) (string, error) {
 	var pullSec corev1.Secret
-	if err := c.Client.Get(ctx, client.ObjectKey{Namespace: appNS, Name: PullSecretName(appName)}, &pullSec); err != nil {
+	if err := c.Client.Get(ctx, client.ObjectKey{Namespace: appNS, Name: id.PullSecretName()}, &pullSec); err != nil {
 		return "", fmt.Errorf("get pull secret: %w", err)
 	}
-	return c.passwordFrom(pullSec.Data[corev1.DockerConfigJsonKey], ZotUsername(appName))
+	return c.passwordFrom(pullSec.Data[corev1.DockerConfigJsonKey], id.ZotUsername())
 }
 
 // recordRejection tracks a rejected probe and decides whether this caller
@@ -184,14 +186,14 @@ func (c *Creds) clearActivation(appName string) {
 	delete(c.apps, appName)
 }
 
-// probe asks the running zot whether it accepts the App's credential for the
-// App's own repository: GET /v2/<repo>/tags/list exercises both the htpasswd
-// user and (unlike a bare /v2/ ping) the per-repo ACL entry, which live in two
-// independently propagated Secrets. 2xx and 404 (authenticated + authorized,
-// repo just not pushed yet — zot may also answer 404 for a denied repo to
-// avoid existence leaks, so 404 is not a perfect ACL proof but 401/403 are
-// definitive rejections) count as accepted.
-func (c *Creds) probe(ctx context.Context, appName, password string) (bool, error) {
+// probeFor asks the running zot whether it accepts the App's credential for
+// the App's own repository: GET /v2/<repo>/tags/list exercises both the
+// htpasswd user and (unlike a bare /v2/ ping) the per-repo ACL entry, which
+// live in two independently propagated Secrets. 2xx and 404 (authenticated +
+// authorized, repo just not pushed yet — zot may also answer 404 for a denied
+// repo to avoid existence leaks, so 404 is not a perfect ACL proof but 401/403
+// are definitive rejections) count as accepted.
+func (c *Creds) probeFor(ctx context.Context, id identity.Identity, password string) (bool, error) {
 	requestCtx, cancel := boundedhttp.WithTimeout(ctx)
 	defer cancel()
 	ctx = requestCtx
@@ -203,11 +205,11 @@ func (c *Creds) probe(ctx context.Context, appName, password string) (bool, erro
 	if !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
 		base = "http://" + base
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/v2/"+appName+"/tags/list", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/v2/"+id.Repo()+"/tags/list", nil)
 	if err != nil {
 		return false, err
 	}
-	req.SetBasicAuth(ZotUsername(appName), password)
+	req.SetBasicAuth(id.ZotUsername(), password)
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		return false, err

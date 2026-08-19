@@ -120,6 +120,36 @@ var _ = Describe("reconciling a static_site App", func() {
 		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
 		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
 		Expect(app.Status.URL).To(Equal("https://" + name + ".onbex.co"))
+		Expect(app.Status.StaticPrefix).To(BeEmpty())
+	})
+
+	It("keeps an already-published labeled site on the empty/legacy prefix across reconcile", func() {
+		const name = "site-upgrade-prefix"
+		const ws = "tea-aaaaaaaaaaaaaaaaaaaa"
+		nn := types.NamespacedName{Name: name, Namespace: ns}
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name, Namespace: ns,
+				Labels: map[string]string{labelWorkspace: ws},
+			},
+			Spec: appv1alpha1.AppSpec{
+				Type:        appv1alpha1.TypeStaticSite,
+				Image:       "site:v1",
+				PublishPath: "dist",
+				Expose:      true,
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		app.Status.ActiveRevision = revFor(app)
+		Expect(k8sClient.Status().Update(ctx, app)).To(Succeed())
+
+		reconcileN(staticReconciler(), nn)
+
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+		Expect(app.Status.StaticPrefix).To(BeEmpty(),
+			"inventing W/A/<rev>/ without a publish would serve an empty prefix")
 	})
 
 	It("direct-publishes a no-build static_site by cloning the repo (w9/010)", func() {
@@ -196,9 +226,67 @@ var _ = Describe("reconciling a static_site App", func() {
 		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
 		Expect(app.Status.ActiveRevision).To(Equal("rev-1"))
 		Expect(app.Status.Image).To(BeEmpty())
+		Expect(app.Status.StaticPrefix).To(Equal("site-direct/rev-1/"))
 		var ing networkingv1.Ingress
 		Expect(k8sClient.Get(ctx, nn, &ing)).To(Succeed())
 		Expect(ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name).To(Equal(staticServerAliasName(name)))
+	})
+
+	It("records a workspace-scoped staticPrefix after a completed labeled publish", func() {
+		const name = "site-labeled-publish"
+		const ws = "tea-aaaaaaaaaaaaaaaaaaaa"
+		nn := types.NamespacedName{Name: name, Namespace: ns}
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name, Namespace: ns,
+				Labels: map[string]string{labelWorkspace: ws},
+			},
+			Spec: appv1alpha1.AppSpec{
+				Type:        appv1alpha1.TypeStaticSite,
+				Repo:        "https://github.com/bex-co/bex",
+				RootDir:     "examples/static-site",
+				PublishPath: ".",
+				Expose:      true,
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		credential := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "static-s3-labeled", Namespace: ns},
+			Data: map[string][]byte{
+				"AWS_ACCESS_KEY_ID":     []byte("test-access"),
+				"AWS_SECRET_ACCESS_KEY": []byte("test-secret"),
+			},
+		}
+		Expect(k8sClient.Create(ctx, credential)).To(Succeed())
+		DeferCleanup(func() { _ = k8sClient.Delete(ctx, credential) })
+		r := staticReconciler()
+		r.StaticStore.Secret = "static-s3-labeled"
+
+		done := make(chan struct{})
+		go func() {
+			defer GinkgoRecover()
+			defer close(done)
+			for range 3 {
+				_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+			}
+		}()
+		var job batchv1.Job
+		jobNN := types.NamespacedName{Name: "pub-" + name + "-rev-1", Namespace: ns}
+		Eventually(func() error { return k8sClient.Get(ctx, jobNN, &job) }, "30s", "250ms").Should(Succeed())
+		Eventually(done, "30s").Should(BeClosed())
+		now := metav1.Now()
+		job.Status.StartTime = &now
+		job.Status.CompletionTime = &now
+		job.Status.Conditions = append(job.Status.Conditions,
+			batchv1.JobCondition{Type: batchv1.JobSuccessCriteriaMet, Status: corev1.ConditionTrue},
+			batchv1.JobCondition{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+		)
+		Expect(k8sClient.Status().Update(ctx, &job)).To(Succeed())
+		_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
+		Expect(app.Status.StaticPrefix).To(Equal(ws + "/" + name + "/rev-1/"))
 	})
 
 	It("fails before dispatch when the publish credential Secret is missing", func() {

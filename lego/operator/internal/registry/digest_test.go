@@ -101,3 +101,36 @@ func TestBasicAuthFromDockerConfig(t *testing.T) {
 		t.Errorf("field-form auth = (%q, %q, %v), want (u, p, true)", u, p, ok)
 	}
 }
+
+func TestListTagsEmptyOnMissingRepo(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v2/web/tags/list" {
+			t.Errorf("path = %s", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(srv.Close)
+	host := strings.TrimPrefix(srv.URL, "http://")
+	tags, err := ListTags(context.Background(), srv.Client(), host, "web", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tags) != 0 {
+		t.Fatalf("missing repo tags = %v, want empty", tags)
+	}
+}
+
+func TestListTagsDecodesBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"name":"web","tags":["gen-1","gen-2"]}`))
+	}))
+	t.Cleanup(srv.Close)
+	host := strings.TrimPrefix(srv.URL, "http://")
+	tags, err := ListTags(context.Background(), srv.Client(), host, "web", "bex-builder", "pw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(tags, ",") != "gen-1,gen-2" {
+		t.Fatalf("tags = %v", tags)
+	}
+}
