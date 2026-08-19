@@ -61,7 +61,6 @@ implementation serves every workstream since `w1/m72`; `.pm/w4/dev-4/` keeps onl
 - [x] **m83** — Webhook delivery fairness and bounded per-workspace backlog (7 tasks) ← from `/pm-brainstorm for w4` 2026-08-17 + `w1/048` finding #3 — done 2026-08-17 (transactional 10,000-open-notification workspace bound with `0` disable; fair workspace-ranked `SKIP LOCKED` claims; low-cardinality overflow metrics + sustained-pressure alert; real-Postgres concurrency/race coverage), moved to `done/m83/`
 - [x] **m84** — Durable pending custom-domain claims and DNS-TXT ownership (8 tasks) ← from `/pm-brainstorm for w4` 2026-08-17, promotes `w1/045` — done, moved to `done/m84/`
 - [x] **m86** — Build-toolchain freshness monitoring and digest refresh cadence (7 tasks) ← from `/pm-brainstorm for w4` 2026-08-18 + `w7/030`, after `w7/m85`
-
 ## Suggested execution order (2026-07-09 brainstorm)
 
 **m7 → (m10 ∥ m11) → m13 (small, anytime) → m12.** m7 gates m12 (invites need the courier) and closes a live lockout risk; m10's one-interception-point argument strengthens as w2/m4–m5 add write verbs; m11 before real tenants means no forced-enrollment migration; m12 stays gated on w1/m9 + m7.
