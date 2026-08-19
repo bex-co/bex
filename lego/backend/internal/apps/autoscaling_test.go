@@ -246,7 +246,8 @@ func TestGraphQLAutoscalingConfigQuery(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 	res := graphql.Do(graphql.Params{
-		Schema: schema,
+		Schema:  schema,
+		Context: context.Background(), // graphql-go v0.8.1 Do does not default a nil Context; the resolver dereferences it
 		RequestString: `{ autoscalingConfig(id:"web") {
 			enabled minInstances maxInstances targetCPUPercent
 		}}`,

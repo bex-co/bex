@@ -108,7 +108,7 @@ type PaymentGate interface {
 // and the legacy single-tenant mode when the store is off).
 //
 // Adding a RelCan… constant also requires a follow-on audit_events CHECK
-// migration (0088's relation list; do not rewrite 0088 after it has shipped).
+// migration (0089's relation list; do not rewrite 0089 after it has shipped).
 // recordAudit swallows sink errors, so a CHECK miss silently drops the row —
 // TestAuditRelationCheckMatchesRelCan pins the latest CHECK to RelCanRelations.
 const (

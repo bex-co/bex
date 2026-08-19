@@ -77,6 +77,9 @@ type identityCtxKey struct{}
 // IdentityFrom returns the Identity the auth middleware attached to the request
 // context (in the composition root), read here by Base.Authorize.
 func IdentityFrom(ctx context.Context) (Identity, bool) {
+	if ctx == nil {
+		return Identity{}, false
+	}
 	id, ok := ctx.Value(identityCtxKey{}).(Identity)
 	return id, ok
 }

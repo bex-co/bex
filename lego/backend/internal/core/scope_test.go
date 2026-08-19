@@ -24,6 +24,15 @@ import (
 	"testing"
 )
 
+func TestIdentityFromNilContext(t *testing.T) {
+	if _, ok := IdentityFrom(nil); ok {
+		t.Fatal("nil context must report no identity")
+	}
+	if err := checkCapability(nil, RelCanView); err != nil {
+		t.Fatalf("no identity is scope-exempt, got %v", err)
+	}
+}
+
 func TestRelCanRelationsAreFullyMapped(t *testing.T) {
 	mapped := map[string]string{}
 	for _, rel := range RelCanRelations() {

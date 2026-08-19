@@ -46,8 +46,8 @@ const (
 
 // ClosedOAuthScopes is every scope the audit_events CHECK admits: the three
 // granular capabilities plus the platform-client compatibility alias. Adding
-// a scope requires a follow-on CHECK migration (0088's ARRAY; do not rewrite
-// 0088 after it has shipped). TestAuditRelationCheckMatchesRelCan pins this.
+// a scope requires a follow-on CHECK migration (0089's ARRAY; do not rewrite
+// 0089 after it has shipped). TestAuditRelationCheckMatchesRelCan pins this.
 func ClosedOAuthScopes() []string {
 	return []string{ScopeRead, ScopeWrite, ScopeSensitive, ScopeAPICompatibility}
 }
