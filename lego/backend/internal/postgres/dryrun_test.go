@@ -263,7 +263,7 @@ func TestMCPDryRunUpdatePostgresPlan(t *testing.T) {
 	call, cleanup := pgMCPClient(t, svc)
 	defer cleanup()
 
-	got := call("update_postgres_plan", map[string]any{
+	got := call("update_postgres", map[string]any{
 		"postgresId": "mcp-update",
 		"plan":       "basic-1gb",
 		"dryRun":     true,

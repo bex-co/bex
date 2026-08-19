@@ -251,17 +251,19 @@ func TestMCPParityInventory(t *testing.T) {
 		counts[class]++
 	}
 
-	// Measured at w1/m70 against the pinned upstream commit, then re-measured at
-	// w1/m71, which folded 30 of the Extension `set_*` tools into five
-	// patch-shaped update_* tools (four of them new): 213 → 187. Update this
+	// Measured at w1/m70 against the pinned upstream commit, then re-measured
+	// twice as the per-field grammar folded away: w1/m71 took 30 Extension
+	// `set_*` tools into five patch tools (213 → 187), and w1/m74 took the 12
+	// remaining per-field `update_*`/`rename_*` tools into those same tools
+	// (187 → 175), keeping only what REST puts behind its own route. Update this
 	// table and ADR018's MCP inventory together — that pairing is the point.
 	want := map[mcpParityClass]int{
 		mcpParity1to1:      10,
 		mcpParitySuperset:  1,
 		mcpParityDivergent: 8,
-		mcpParityExtension: 168,
+		mcpParityExtension: 156,
 	}
-	const wantTotal = 187
+	const wantTotal = 175
 
 	if len(tools) != wantTotal {
 		t.Errorf("bex registers %d MCP tools, expected %d — update this test AND ADR018's MCP inventory together",

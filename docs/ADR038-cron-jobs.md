@@ -65,7 +65,7 @@ Run-now is one atomic backend intent, not a client-composed cancel followed by t
 
 **GraphQL**: `updateCronJob`, `runCronJob`, `cancelCronJobRun`, and queries `cronJobRuns(serviceId,cursor,limit)` / `cronJobRun(serviceId,runId)`, all returning `CronRun { id status startedAt finishedAt }`; `Service.lastSuccessfulRunAt` mirrors the REST cron detail.
 
-**MCP**: `create_cron_job` (tracks Render's official create tool), plus the bex extensions `run_cron_job`, `list_cron_job_runs`, `get_cron_job_run`, `cancel_cron_job_run`, and `update_cron_job` (Render's official MCP ships only a non-functional `update_cron_job` stub that says "use the dashboard/API").
+**MCP**: `create_cron_job` (tracks Render's official create tool), plus the bex extensions `run_cron_job`, `list_cron_job_runs`, `get_cron_job_run`, `cancel_cron_job_run`, and `update_service(schedule:, command:)` for the schedule itself — bex's is functional where Render's official MCP shipped only a non-functional `update_cron_job` stub saying "use the dashboard/API" (and has since removed it); w1/m74 folded bex's into the service patch tool.
 
 **Dashboard**: the cron Settings tab edits Schedule + Command; the Events page reads the cursor-paged run API and can cancel a pending row.
 

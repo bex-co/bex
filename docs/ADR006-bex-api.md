@@ -351,18 +351,18 @@ w1/m70 closes the asymmetry with the same three pieces REST has:
 - **Derived classification** — `internal/api/mcp_parity.go`. A tool's parity class is computed from the pin, never hand-declared, because a 213-row hand-maintained table would rot exactly the way the comments did. What _is_ hand-maintained is the small set of human decisions: which divergences bex accepts and why, and which upstream tools bex deliberately declines.
 - **Guards + drift** — `TestMCPParity*` enumerates the live server via the in-process MCP transport (the same method used upstream, so both sides are measured rather than one being assumed) and fails on an unaccepted divergence, a stale acceptance, or an unacknowledged upstream tool. `scripts/render-mcp-drift.sh` runs weekly beside the REST drift job.
 
-**Measured inventory** at the pinned upstream commit (`main@89c1f01b`, captured 2026-08-18; upstream registers 22 tools). The counts are as of **w1/m71**, which folded 30 `Extension` setters into five patch-shaped `update_*` tools and took the surface from **213 to 187** (see § The `set_*` fold below):
+**Measured inventory** at the pinned upstream commit (`main@89c1f01b`, captured 2026-08-18; upstream registers 22 tools). The counts are as of **w1/m74**: `w1/m71` folded 30 `Extension` setters into five patch-shaped `update_*` tools (**213 → 187**) and `w1/m74` folded the 12 remaining per-field `update_*`/`rename_*` tools into those same tools (**187 → 175**) — see § The per-field fold below:
 
 | class | count | meaning |
 | --- | --- | --- |
 | `Parity1to1` | 10 | same name, same argument names — an agent written against Render calls these unchanged |
 | `Superset` | 1 | upstream's full argument set plus optional bex additions; still call-compatible |
 | `Divergent` | 8 | shares an upstream name but **breaks its contract** — drops an argument upstream accepts, or requires one upstream leaves optional |
-| `Extension` | 168 | no upstream counterpart; bex owns the name and shape outright |
+| `Extension` | 156 | no upstream counterpart; bex owns the name and shape outright |
 
 `Divergent` is a fourth class beyond the three originally scoped, added because the pin found eight on its first run and neither of the others can describe them honestly: `Superset` would claim a call-compatibility bex does not have, and `Extension` would claim bex owns a name it shares. Each is recorded with a reason in `mcpAcceptedDivergences`. Four are unintended and filed for repair — `create_postgres`'s `diskSizeGb`/`diskSizeGB` casing, `create_static_site`'s missing `autoDeploy`/`buildCommand`, `get_metrics`'s renamed arguments, and `trigger_deploy`'s missing `clearCache` (which reaches REST and GraphQL but was never wired into MCP). The rest reflect real bex/Render differences: no caller-chosen `region`, and no PR preview environments for `list_services`' `includePreviews`.
 
-### The `set_*` fold (w1/m71)
+### The per-field fold (w1/m71, then w1/m74)
 
 The pin's first use was to make a reduction safe. 34 tools were per-field setters (`set_root_directory`, `set_branch`, `set_display_name`, …), every one classified `Extension` — bex invented the whole grammar, so no parity attached to any of the names. Most MCP clients degrade somewhere between 40 and 60 tools, so a surface where eighteen tools each write one field of one resource costs an agent context before it does anything.
 
@@ -373,6 +373,10 @@ The grammar is REST's, not a new one. Each folded argument is optional; **absent
 **Four setters deliberately did not fold**: `set_env_var`, `set_secret_file`, `set_env_group_var`, `set_env_group_secret_file`. Each is a merge-one-key upsert paired with a `delete_*` verb, while its resource-level partner (`update_env_vars` / `update_env_group_vars`) replaces the whole set. Folding them would make one tool mean both "replace everything" and "merge one key".
 
 Retired names are recorded in [docs/render-artifacts/mcp-setter-fold-2026-08-18.md](render-artifacts/mcp-setter-fold-2026-08-18.md) with the exact replacement call for each. Upstream removing its own three placeholder `update_*` tools (#89) is not an argument against this fold: those returned a dashboard link, while bex's `update_*` tools do the work.
+
+**The second pass (`w1/m74`) finished the job.** Twelve tools were still the same per-field grammar wearing an `update_*`/`rename_*` prefix, and the rule that decided them is one anyone can re-check: **a tool folds if REST carries its field in the resource's `PATCH` body; it keeps its own name if REST puts it behind its own route.** So `update_service_plan`, `update_idle_timeout`, `update_publish_path` and `update_cron_job` became `update_service` arguments; `rename_postgres`, `update_postgres_plan`, `update_postgres_version` and `update_postgres_disk_autoscaling` became `update_postgres` arguments; `update_key_value_plan` and `rename_key_value` became `update_key_value` arguments; and `rename_project`/`rename_environment` were retired outright, since both patch tools have taken `name` since m71. `scale_service`, `update_static_routes`, `update_static_headers`, and the autoscaling verbs stayed, because REST gives each its own route. **187 → 175.**
+
+`update_service` gained `dryRun` on the same terms REST has it — previews a `plan` change, writes nothing, and a bare dry run reflects current state — with one deliberate divergence: where REST silently drops the other fields of a dry-run body, MCP refuses the call and names them, because an agent that asked to preview a command change should be told the tool cannot rather than handed an unchanged object. Plan changes remain billing events; the fold removed a tool name, not a guard.
 
 Three upstream tools are deliberately not implemented, recorded in `mcpKnownUpstreamOnly`: `select_workspace` and `get_selected_workspace` (w1/m55 adopted the request-scoped `workspaceId` contract), and `update_environment_variables`, whose capability bex covers as `update_env_vars` — a **name** divergence, and the reason `internal/secrets/mcp.go`'s "Render's official MCP has no env-var tools" header comment was stale.
 
@@ -391,14 +395,11 @@ Every workspace-scoped row below also accepts optional `workspaceId`; it is omit
 | `list_cron_job_runs` | `{serviceId, cursor?, limit?}` | `ListCronRuns` | `{cronJobRuns, cursor}` |
 | `get_cron_job_run` | `{serviceId, runId}` | `GetCronRun` | `cronJobRun` |
 | `cancel_cron_job_run` | `{serviceId, runId}` | `CancelCronRun` | canceled `cronJobRun` |
-| `update_cron_job` (bex extension — Render ships a non-functional stub) | `{serviceId, schedule, command?}` | `SetCronJob` | updated `service` |
 | `deploy` | `{repo?, branch?, bexYaml}` | `Deploy` | created/updated `service` |
 | `restart_service` / `suspend_service` / `resume_service` | `{serviceId}` | `Restart`/`Suspend`/`Resume` | updated `service` |
 | `delete_service` | `{serviceId}` | `Delete` | `{deleted: true}` |
-| `update_service_plan` | `{serviceId, plan}` | `SetPlan` | updated `service` |
-| `update_service` (bex extension, w1/m71 — the fold of eighteen retired `set_*` setters) | `{serviceId, displayName?, branch?, registryCredentialId?, rootDir?, buildCommand?, startCommand?, dockerfilePath?, healthCheckPath?, preDeployCommand?, maxShutdownDelaySeconds?, autoDeploy?, buildFilter?, notifyOnFail?, notificationsToSend?, maintenanceMode?, renderSubdomainPolicy?, ipAllowList?, ipAllowListCidrs?, autoscaling?}` | the same per-field verbs the setters called (`SetDisplayName`, `SetSourceAndRegistryCredential`, `SetRootDir`, `SetCommands`, `SetDockerfilePath`, `SetHealthCheckPath`, `SetPreDeployCommand`, `SetMaxShutdownDelay`, `SetAutoDeploy`, `SetBuildFilter`, `SetNotifyOnFail`, `SetNotificationsToSend`, `SetMaintenanceMode`, `SetSubdomainPolicy`, `SetIPAllowList`, `SetAutoscaling`), applied in `PATCH /v1/services/{id}` order | updated `service` |
+| `update_service` (bex extension, w1/m71 + w1/m74 — the fold of eighteen `set_*` setters plus `update_service_plan`, `update_idle_timeout`, `update_publish_path`, `update_cron_job`) | `{serviceId, displayName?, branch?, registryCredentialId?, rootDir?, buildCommand?, startCommand?, dockerfilePath?, healthCheckPath?, preDeployCommand?, maxShutdownDelaySeconds?, autoDeploy?, buildFilter?, notifyOnFail?, notificationsToSend?, maintenanceMode?, renderSubdomainPolicy?, ipAllowList?, ipAllowListCidrs?, autoscaling?, plan?, dryRun?, idleTTLSeconds?, publishPath?, schedule?, command?}` | the same per-field verbs the setters called (`SetDisplayName`, `SetSourceAndRegistryCredential`, `SetRootDir`, `SetCommands`, `SetDockerfilePath`, `SetHealthCheckPath`, `SetPreDeployCommand`, `SetMaxShutdownDelay`, `SetAutoDeploy`, `SetBuildFilter`, `SetNotifyOnFail`, `SetNotificationsToSend`, `SetMaintenanceMode`, `SetSubdomainPolicy`, `SetIPAllowList`, `SetAutoscaling`), applied in `PATCH /v1/services/{id}` order | updated `service` |
 | `scale_service` | `{serviceId, numInstances}` | `Scale` | updated `service` |
-| `update_idle_timeout` | `{serviceId, idleTTLSeconds}` | `SetIdleTTL` | updated `service` |
 | `get_autoscaling` (bex extension) | `{serviceId}` | `GetAutoscaling` | `autoscaling` |
 | `disable_autoscaling` | `{serviceId}` | `DeleteAutoscaling` | `{deleted: true}` |
 | `list_custom_domains` | `{serviceId}` | `ListDomains` | `{customDomains: [customDomain, ...]}` |
@@ -410,7 +411,6 @@ Every workspace-scoped row below also accepts optional `workspaceId`; it is omit
 | `update_static_routes` (bex extension) | `{serviceId, routes}` | `SetRoutes` | `{routes: [route, ...]}` |
 | `list_static_headers` (bex extension) | `{serviceId}` | `ListHeaders` | `{headers: [header, ...]}` |
 | `update_static_headers` (bex extension) | `{serviceId, headers}` | `SetHeaders` | `{headers: [header, ...]}` |
-| `update_publish_path` (bex extension) | `{serviceId, publishPath}` | `SetPublishPath` | updated `service` |
 | `validate_bex_yml` (w2/m15, bex extension) | `{bexYaml, workspaceId?}` | `ValidateBlueprint` | `{valid, errors: [...], plan?}`; the wire arg is retained for compatibility while the filename contract is `render.yaml` |
 | `list_blueprints` (w2/m15, bex extension) | `{workspaceId?}` | `ListBlueprints` | `{blueprints: [blueprint, ...]}` |
 | `sync_blueprint` (w2/m15, bex extension) | `{id, bexYaml?, workspaceId?}` | `SyncBlueprint` | `{blueprint, stack: {services, databases}}` |
@@ -424,16 +424,13 @@ Every workspace-scoped row below also accepts optional `workspaceId`; it is omit
 | `get_postgres` | `{postgresId}` | `GetPostgres` | `postgres` |
 | `create_postgres` | `{name, plan?, version?, diskSizeGB?, databaseName?, databaseUser?, public?, enableHighAvailability?}` | `CreatePostgres` | created `postgres` |
 | `query_render_postgres` | `{postgresId, sql}` | `Query` | `{columns, rows}` |
-| `update_postgres_plan` | `{postgresId, plan}` | `SetPlan` | updated `postgres` |
-| `update_postgres_version` | `{postgresId, version}` | `SetVersion` | updated `postgres` |
-| `rename_postgres` (bex extension) | `{postgresId, name}` | `UpdatePostgres` | updated `postgres` |
 | `failover_postgres` (w1/m22, mirrors Render's `POST /postgres/{id}/failover`) | `{postgresId}` | `Failover` | `{accepted: true}` |
 | `suspend_postgres` / `resume_postgres` / `restart_postgres` | `{postgresId}` | `Suspend`/`Resume`/`Restart` | updated `postgres` |
 | `get_postgres_recovery_info` | `{postgresId}` | `RecoveryInfo` | `{enabled, earliestRecoveryTime, latestRecoveryTime, backups}` |
 | `recover_postgres` | `{postgresId, name, targetTime?, plan?, version?}` | `Recover` | new `postgres` |
 | `list_postgres_exports` / `create_postgres_export` | `{postgresId}` | `ListExports`/`CreateExport` | `{exports}` / export |
 | `get_postgres_ip_allow_list` | `{postgresId}` | `GetIPAllowList` | `{cidrs}` |
-| `update_postgres` (w1/m71 — the fold of `set_postgres_ip_allow_list` + `set_postgres_parameter_overrides`) | `{postgresId, ipAllowList?, ipAllowListCidrs?, parameterOverrides?, dryRun?}` | `UpdatePostgres`/`PreviewUpdatePostgres` | updated `postgres` |
+| `update_postgres` (w1/m71 + w1/m74 — the fold of the two `set_postgres_*` setters plus `rename_postgres`, `update_postgres_plan`, `update_postgres_version`, `update_postgres_disk_autoscaling`) | `{postgresId, name?, plan?, version?, enableDiskAutoscaling?, ipAllowList?, ipAllowListCidrs?, parameterOverrides?, dryRun?}` | `UpdatePostgres`/`PreviewUpdatePostgres` | updated `postgres` |
 | `list_postgres_users` / `create_postgres_user` / `delete_postgres_user` | `{postgresId, name?}` | `ListUsers`/`CreateUser`/`DeleteUser` | `{users}` / `{name, password}` / `{deleted}` |
 | `list_postgres_processes` (w2/m25) | `{postgresId}` | `Processes` | `{processes: [process, ...]}` |
 | `list_postgres_top_queries` (w2/m25) | `{postgresId}` | `TopQueries` | `{queries: [topQuery, ...]}` |
@@ -443,7 +440,6 @@ Every workspace-scoped row below also accepts optional `workspaceId`; it is omit
 | `list_key_value` | `{workspaceId?}` | `ListKeyValues` | `{keyValues: [keyValue, ...]}` |
 | `get_key_value` | `{keyValueId}` | `GetKeyValue` | `keyValue` |
 | `create_key_value` | `{name, plan?, version?, storageGB?, public?}` | `CreateKeyValue` | created `keyValue` |
-| `update_key_value_plan` (w2/m16) | `{keyValueId, plan}` | `SetPlan` | updated `keyValue` |
 
 `list_logs` takes Render's required `resource` array of service ids and reads each App's logs — application (`type=app`) and request (`type=request`, Traefik's access log) — aggregated across resources and instances, timestamp-sorted, capped to `limit`, and tagged with Render-shaped labels (`type`/`resource`/`instance`/`container`/`level`/`method`/`statusCode`, each present only where the line really has it). It honors **Render's full filter set** — `type`, `level`, `instance`, `host`, `statusCode`, `method`, `path`, `text`, `startTime`/`endTime`, `direction` — routed through the same `QueryLogs` the REST adapter uses (w3/m8; mapping and cardinality budget in [ADR010-observability.md](ADR010-observability.md#log-filters)). Its companion `list_log_label_values` mirrors Render's discovery tool exactly (same name, same `label` enum — `host`|`instance`|`level`|`method`|`statusCode`|`type` — same filter args), so an agent asks "which statuses does this service return?" instead of guessing; values are always scoped to the requested service's streams, never the whole store. Without the durable store (`BEX_LOKI_URL` unset) the store-only filters and `type=request` return 503 rather than being ignored — an agent is told, not misled. `list_services` likewise omits Render's optional `includePreviews` (bex has no preview services). Store-managed service ids are typed `srv-…` values in the Render-shaped REST/MCP projections; hand-applied Apps fall back to metadata names. The bex-native GraphQL `Service.id` remains the public App name for dashboard compatibility.
 

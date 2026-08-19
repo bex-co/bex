@@ -237,7 +237,7 @@ func TestMCPDryRunUpdateServicePlan(t *testing.T) {
 	call, cleanup := appsMCPClient(t, svc)
 	defer cleanup()
 
-	got := call("update_service_plan", map[string]any{
+	got := call("update_service", map[string]any{
 		"serviceId": "mcp-update",
 		"plan":      "starter",
 		"dryRun":    true,

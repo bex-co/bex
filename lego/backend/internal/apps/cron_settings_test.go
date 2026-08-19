@@ -210,12 +210,18 @@ func TestGraphQLUpdateCronJobRejectsNonCron(t *testing.T) {
 	}
 }
 
-// --- MCP update_cron_job ---
+// --- MCP update_service (cron fields; update_cron_job folded in at w1/m74) ---
 
+// w1/m74 folded update_cron_job into update_service, so the cron fields are
+// arguments on the patch tool now — and, like every other folded field, an
+// omitted one is not a write.
 func TestMCPUpdateCronJobArgs(t *testing.T) {
-	a := updateCronJobArgs{ServiceID: "nightly", Schedule: "0 6 * * *", Command: sp("node daily.js")}
-	if a.ServiceID != "nightly" || a.Schedule != "0 6 * * *" || a.Command == nil || *a.Command != "node daily.js" {
-		t.Errorf("updateCronJobArgs fields not set: %+v", a)
+	a := updateServiceArgs{ServiceID: "nightly", Schedule: sp("0 6 * * *"), Command: sp("node daily.js")}
+	if a.ServiceID != "nightly" || a.Schedule == nil || *a.Schedule != "0 6 * * *" || a.Command == nil || *a.Command != "node daily.js" {
+		t.Errorf("updateServiceArgs cron fields not set: %+v", a)
+	}
+	if a.Plan != nil || a.PublishPath != nil {
+		t.Errorf("unrelated folded fields must default to absent: %+v", a)
 	}
 }
 

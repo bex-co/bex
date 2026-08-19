@@ -288,7 +288,7 @@ func TestMCPDryRunUpdateKeyValuePlan(t *testing.T) {
 	call, cleanup := kvMCPClient(t, svc)
 	defer cleanup()
 
-	got := call("update_key_value_plan", map[string]any{
+	got := call("update_key_value", map[string]any{
 		"keyValueId": "mcp-update",
 		"plan":       "starter",
 		"dryRun":     true,

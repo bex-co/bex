@@ -1,5 +1,7 @@
 # MCP setter fold — 2026-08-18
 
+> **Second pass, same day (`w1/m74`).** After the `set_*` fold below, twelve tools were still the same per-field grammar wearing an `update_*` / `rename_*` prefix. They folded into the same patch tools on a rule anyone can check — **a tool folds if REST carries its field in the resource's `PATCH` body; it keeps its own name if REST puts it behind its own route** — taking the surface **187 → 175**. That pass's migration table is at the end of this document.
+
 This record is the breaking-change boundary for **w1/m71**. Thirty per-field MCP `set_*` tools were removed and their capability moved onto five patch-shaped `update_*` tools. It follows [`deprecated-surface-removal-2026-07-27.md`](deprecated-surface-removal-2026-07-27.md) in shape: what was removed, what to call instead, and what was deliberately kept.
 
 Every removed tool was classified `Extension` by the [w1/m70 parity pin](../ADR006-bex-api.md#mcp-parity-is-pinned-w1m70) — no upstream counterpart, so no Render contract is broken by the rename. No `Parity1to1`, `Superset`, or `Divergent` tool was touched. Measured surface: **213 → 187 tools**.
@@ -73,3 +75,55 @@ Every row is a pure rename of reach: the same Service verb, the same authorizati
 - `internal/apps`' `TestUpdateServiceReachesEveryFoldedField` covers every folded service field through the new tool; `TestUpdateServiceLeavesOmittedFieldsAlone` asserts the omitted-argument rule against a service where all eighteen settings are populated; `TestUpdateServiceBuildTriggeringFieldsStillTriggerABuild` pins which fields rebuild; `TestUpdateServiceMatchesRESTPatchFieldForField` asserts MCP and REST produce identical CR specs field by field.
 - `internal/postgres`, `internal/keyvalue`, `internal/environments`, and `internal/projects` each cover their fold's replace semantics and the "one field mentioned, the others untouched" property.
 - `scripts/platform-deprecations-validate.sh` fails closed if any retired setter name returns to an MCP registration.
+
+---
+
+# MCP per-field `update_*` / `rename_*` fold — 2026-08-18 (`w1/m74`)
+
+Twelve more tools retired, none created: **187 → 175**. Every one was `Extension` under the [w1/m70 pin](../ADR006-bex-api.md#mcp-parity-is-pinned-w1m70); no `Parity1to1`, `Superset`, or `Divergent` tool was touched.
+
+## The rule
+
+**A tool folds if REST carries its field in the resource's `PATCH` body. A tool keeps its own name if REST puts it behind its own route.** That is the same property the first fold used, and it is what keeps the three adapters from drifting.
+
+## Caller migration
+
+| Removed MCP tool | Canonical replacement call |
+| --- | --- |
+| `update_service_plan` | `update_service {serviceId, plan, dryRun?}` |
+| `update_idle_timeout` | `update_service {serviceId, idleTTLSeconds}` |
+| `update_publish_path` | `update_service {serviceId, publishPath}` |
+| `update_cron_job` | `update_service {serviceId, schedule, command?}` |
+| `update_postgres_plan` | `update_postgres {postgresId, plan, dryRun?}` |
+| `update_postgres_version` | `update_postgres {postgresId, version}` |
+| `update_postgres_disk_autoscaling` | `update_postgres {postgresId, enableDiskAutoscaling}` (the argument was `enabled`) |
+| `rename_postgres` | `update_postgres {postgresId, name, dryRun?}` |
+| `update_key_value_plan` | `update_key_value {keyValueId, plan, dryRun?}` |
+| `rename_key_value` | `update_key_value {keyValueId, name, dryRun?}` |
+| `rename_project` | `update_project {id, name}` |
+| `rename_environment` | `update_environment {id, name}` |
+
+`rename_project` and `rename_environment` were **already duplicates**: both patch tools have taken `name` since w1/m71.
+
+## Kept, because REST keeps them
+
+`scale_service` (`POST .../scale`), `update_static_routes` / `update_static_headers` (`PUT .../routes`, `PUT .../headers`), `get_autoscaling` / `disable_autoscaling` (`GET`/`DELETE .../autoscaling`), and every cron-run verb (`.../runs`). Reads are untouched throughout.
+
+## `dryRun`, and one deliberate divergence from REST
+
+`update_postgres` and `update_key_value` already had `dryRun` and already validated the whole patch through their `Preview*` twins, so the plan/version/name folds inherit it unchanged.
+
+`update_service` gains `dryRun` with `PATCH /v1/services/{id}`'s exact rule: **with `plan`, it previews the plan change and writes nothing; with no plan, it is a read-only reflect.** Where REST silently drops the _other_ fields of a dry-run body, MCP **refuses the call and names them**. An agent that asked to preview a command change should be told the tool cannot, rather than handed back an unchanged object that implies it did. (Worth fixing on the REST side too; filed rather than changed here, because REST's shape is Render-compatible.)
+
+## Two things a caller should know
+
+- **A plan change is billable.** Folding it into a patch tool removes a tool name, not a guard: the payment-method and plan-billing gates live in the Service layer and are unchanged. Both tools' descriptions say so in the argument itself.
+- **`update_cron_job` was once an upstream name.** Upstream shipped it as a placeholder returning a dashboard link and **removed it** in [#89](https://github.com/render-oss/render-mcp-server/pull/89), so no agent written against current Render calls it — but agents trained on `v0.3.0` documentation may. The capability is `update_service`'s `schedule`/`command`; what is lost is the "bex makes Render's stub real" positioning, which ADR018 still records in prose while its ✅ stays (that column scores reachability).
+
+## Verification anchors
+
+- `TestMCPParityInventory` pins the measured surface at **175** tools (10 / 1 / 8 / 156).
+- `internal/apps`: `TestUpdateServiceCarriesTheSecondFoldsFields` (each folded field alone, including schedule-without-command leaving the command alone) and `TestUpdateServiceDryRunPreviewsThePlanOnly` (preview writes nothing; a dry run carrying another field is refused and the field is not written; a bare dry run reflects).
+- `internal/postgres`: `TestUpdatePostgresCarriesTheFoldedFields` (name/plan/disk each alone, a rename leaving allowlist and parameters intact, dryRun still previewing).
+- `internal/keyvalue`, `internal/projects`, `internal/environments`: the pre-existing plan/rename tests were repointed at the patch tools rather than deleted, plus new rename-in-the-same-call-as-membership coverage.
+- `TestDiskAutoscalingCapDescriptionMatchesCatalog` still holds: the cap figure in `update_postgres`'s description is interpolated from the shared plan catalog, so it cannot drift from what the operator enforces.

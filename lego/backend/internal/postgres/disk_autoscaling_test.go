@@ -110,9 +110,11 @@ func TestDiskAutoscalingGraphQLAndMCPAdapterParity(t *testing.T) {
 
 	call, cleanup := pgMCPClient(t, svc)
 	defer cleanup()
-	mcpView := call("update_postgres_disk_autoscaling", map[string]any{
-		"postgresId": "mcp-autoscale",
-		"enabled":    true,
+	// w1/m74 folded the dedicated tool into update_postgres, where the toggle is
+	// one optional field of the resource's patch.
+	mcpView := call("update_postgres", map[string]any{
+		"postgresId":            "mcp-autoscale",
+		"enableDiskAutoscaling": true,
 	})
 	if mcpView["diskAutoscalingEnabled"] != true {
 		t.Fatalf("MCP read field = %+v", mcpView)
@@ -182,12 +184,12 @@ func TestDiskAutoscalingMCPDescriptionUsesSharedCatalogCap(t *testing.T) {
 	}
 	want := fmt.Sprintf("capped at %d TB", tiers.Postgres.DiskAutoscalingCapGB()/1024)
 	for _, tool := range tools.Tools {
-		if tool.Name == "update_postgres_disk_autoscaling" {
+		if tool.Name == "update_postgres" {
 			if !strings.Contains(tool.Description, want) {
 				t.Fatalf("MCP cap description = %q, want shared catalog phrase %q", tool.Description, want)
 			}
 			return
 		}
 	}
-	t.Fatal("update_postgres_disk_autoscaling tool not registered")
+	t.Fatal("update_postgres tool not registered")
 }

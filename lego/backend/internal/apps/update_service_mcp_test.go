@@ -391,3 +391,114 @@ func TestUpdateServiceMatchesRESTPatchFieldForField(t *testing.T) {
 		})
 	}
 }
+
+// --- w1/m74: the second fold (per-field update_* tools) ---
+
+// TestUpdateServiceCarriesTheSecondFoldsFields covers what update_service_plan,
+// update_idle_timeout, update_publish_path and update_cron_job used to own. Each
+// is asserted alone, because the risk the fold adds is a field being written
+// when the caller did not ask for it.
+func TestUpdateServiceCarriesTheSecondFoldsFields(t *testing.T) {
+	t.Run("idleTTLSeconds", func(t *testing.T) {
+		svc, _ := populatedService(t)
+		call, cleanup := appsMCPClient(t, svc)
+		defer cleanup()
+		call("update_service", map[string]any{"serviceId": "web", "idleTTLSeconds": 900})
+		if got := getApp(t, svc.Client, "web").Spec.IdleTTLSeconds; got != 900 {
+			t.Fatalf("idleTTLSeconds = %d, want 900", got)
+		}
+	})
+
+	t.Run("plan", func(t *testing.T) {
+		svc, _ := populatedService(t)
+		call, cleanup := appsMCPClient(t, svc)
+		defer cleanup()
+		call("update_service", map[string]any{"serviceId": "web", "plan": "standard"})
+		if got := getApp(t, svc.Client, "web").Spec.Tier; got != "standard" {
+			t.Fatalf("plan = %q, want standard", got)
+		}
+	})
+
+	t.Run("publishPath", func(t *testing.T) {
+		a := repoApp("site", "https://github.com/x/site", "main")
+		a.Spec.Type = "static_site"
+		a.Spec.PublishPath = "dist"
+		svc, _ := newService(nil, a)
+		call, cleanup := appsMCPClient(t, svc)
+		defer cleanup()
+		call("update_service", map[string]any{"serviceId": "site", "publishPath": "build"})
+		if got := getApp(t, svc.Client, "site").Spec.PublishPath; got != "build" {
+			t.Fatalf("publishPath = %q, want build", got)
+		}
+	})
+
+	t.Run("cron schedule and command", func(t *testing.T) {
+		svc, _ := newService(nil, cronApp("nightly"))
+		call, cleanup := appsMCPClient(t, svc)
+		defer cleanup()
+		call("update_service", map[string]any{"serviceId": "nightly", "schedule": "0 6 * * *", "command": "node daily.js"})
+		spec := getApp(t, svc.Client, "nightly").Spec
+		if spec.Schedule != "0 6 * * *" || spec.Command != "node daily.js" {
+			t.Fatalf("cron fields = %q / %q", spec.Schedule, spec.Command)
+		}
+		// Changing only the schedule leaves the command alone — the pair shares
+		// one verb, which is exactly where a fold can lose a field.
+		call("update_service", map[string]any{"serviceId": "nightly", "schedule": "30 7 * * *"})
+		spec = getApp(t, svc.Client, "nightly").Spec
+		if spec.Schedule != "30 7 * * *" || spec.Command != "node daily.js" {
+			t.Fatalf("schedule-only update disturbed the command: %q / %q", spec.Schedule, spec.Command)
+		}
+	})
+}
+
+// TestUpdateServiceDryRunPreviewsThePlanOnly pins the rule w1/m74 took from
+// PATCH /v1/services/{id}, including the one place MCP deliberately diverges:
+// REST silently drops the other fields of a dry-run body, this refuses.
+func TestUpdateServiceDryRunPreviewsThePlanOnly(t *testing.T) {
+	svc, _ := populatedService(t)
+	ctx := context.Background()
+	srv := mcp.NewServer(&mcp.Implementation{Name: "test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatalf("server connect: %v", err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatalf("client connect: %v", err)
+	}
+	t.Cleanup(func() { _ = cs.Close() })
+
+	// A dry-run plan change previews and writes nothing.
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "update_service", Arguments: map[string]any{
+		"serviceId": "web", "plan": "standard", "dryRun": true,
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("dry-run plan preview: err=%v isError=%v", err, res != nil && res.IsError)
+	}
+	if got := getApp(t, svc.Client, "web").Spec.Tier; got == "standard" {
+		t.Fatalf("dry run wrote the plan: %q", got)
+	}
+
+	// A dry run carrying another field is refused, and names it.
+	res, err = cs.CallTool(ctx, &mcp.CallToolParams{Name: "update_service", Arguments: map[string]any{
+		"serviceId": "web", "plan": "standard", "dryRun": true, "startCommand": "bin/other",
+	}})
+	if err != nil {
+		t.Fatalf("transport error: %v", err)
+	}
+	if !res.IsError {
+		t.Fatal("dryRun with a non-plan field should be refused, not silently dropped")
+	}
+	if got := getApp(t, svc.Client, "web").Spec.StartCommand; got != "bin/original" {
+		t.Fatalf("refused dry run still wrote startCommand: %q", got)
+	}
+
+	// A dry run with no plan at all is a read-only reflect, as REST does.
+	res, err = cs.CallTool(ctx, &mcp.CallToolParams{Name: "update_service", Arguments: map[string]any{
+		"serviceId": "web", "dryRun": true,
+	}})
+	if err != nil || res.IsError {
+		t.Fatalf("bare dry run should reflect current state: err=%v isError=%v", err, res != nil && res.IsError)
+	}
+}

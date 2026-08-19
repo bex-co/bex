@@ -25,7 +25,7 @@ Sources: [public Update Postgres reference](https://api-docs.render.com/referenc
 
 - The dashboard mirrors Render's version row, explicit confirmation, downtime warning, and `upgrading` status.
 - bex allows any **newer** supported target from its 13–18 catalog instead of forcing the latest. This is a deliberate CNPG-backed convenience; unknown, equal, and lower versions return named 400 errors.
-- bex exposes the same core verb on REST (`PATCH /v1/postgres/{id}` `version`), GraphQL (`updateDatabaseVersion`), and MCP (`update_postgres_version`). These are deliberate public extensions because Render's public REST/MCP omit the dashboard-only operation.
+- bex exposes the same core verb on REST (`PATCH /v1/postgres/{id}` `version`), GraphQL (`updateDatabaseVersion`), and MCP (`update_postgres` with `version`; the dedicated tool folded in at `w1/m74`). These are deliberate public extensions because Render's public REST/MCP omit the dashboard-only operation.
 - A durable (`basic-*`) bex instance must have a completed physical backup in its **current archive generation** before the upgrade is accepted. This is stricter than Render's stated recommendation and ensures there is a known recovery point before downtime. The ephemeral Free plan has no backup promise and is not blocked by this durability guard.
 
 ## CloudNativePG mechanism proof
@@ -49,7 +49,7 @@ CNPG's `pg_upgrade` creates a new PostgreSQL system ID/timeline, so pre-upgrade 
 The completed implementation was exercised on the same CAPD mock cluster on 2026-07-15:
 
 1. REST rejected target `19` with HTTP 400 / `POSTGRES_VERSION_UNKNOWN`, rejected an equal `16` target with HTTP 400 / `POSTGRES_VERSION_NOT_NEWER`, and rejected a simultaneous durable-plan + `17` update without a backup with HTTP 409 / `POSTGRES_UPGRADE_BACKUP_REQUIRED`.
-2. REST upgraded a seeded Free database from 16 to 17. GraphQL `updateDatabaseVersion` independently upgraded another seeded database from 16 to 17, and MCP `update_postgres_version` then upgraded that database from 17 to 18.
+2. REST upgraded a seeded Free database from 16 to 17. GraphQL `updateDatabaseVersion` independently upgraded another seeded database from 16 to 17, and MCP's version verb (then `update_postgres_version`, now `update_postgres`'s `version` field) then upgraded that database from 17 to 18.
 3. Each public-verb run exposed `Database.status.phase = Upgrading`, returned to `Ready` with the new `currentVersion`, and retained the `survives-major-upgrade` row. PostgreSQL reported 17.10 and 18.4 after the respective runs.
 4. A headless Chrome session registered through the mock cluster's real Kratos service, opened `/databases/m12-browser-proof-2`, read the offline-upgrade downtime warning, and clicked **Upgrade to PostgreSQL 18**. The page visibly transitioned from Available to Upgrading and back to Available at PostgreSQL 18. The seeded `survives-dashboard-upgrade` row remained intact afterward.
 

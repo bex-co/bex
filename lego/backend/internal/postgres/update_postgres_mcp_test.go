@@ -151,3 +151,56 @@ func TestUpdatePostgresRejectsConflictingAllowListForms(t *testing.T) {
 		t.Fatalf("rejected call still wrote: %#v", got)
 	}
 }
+
+// --- w1/m74: the four per-field tools this one absorbed ---
+
+// TestUpdatePostgresCarriesTheFoldedFields covers what rename_postgres,
+// update_postgres_plan, update_postgres_version and
+// update_postgres_disk_autoscaling used to own. Each field is sent alone: the
+// property at risk in a fold is a neighbour being written unasked.
+func TestUpdatePostgresCarriesTheFoldedFields(t *testing.T) {
+	t.Run("name", func(t *testing.T) {
+		_, cl, call := updatePostgresFixture(t)
+		if res := call("update_postgres", map[string]any{"postgresId": "dpg-upd", "name": "renamed"}); res.IsError {
+			t.Fatalf("rename: %+v", res.Content)
+		}
+		spec := postgresSpec(t, cl)
+		if spec.Name != "renamed" {
+			t.Fatalf("spec.name = %q", spec.Name)
+		}
+		// A rename must not disturb the settings that were already there.
+		if len(spec.IPAllowList) != 1 || spec.Parameters["work_mem"] != "16MB" {
+			t.Fatalf("rename disturbed neighbouring fields: %#v / %#v", spec.IPAllowList, spec.Parameters)
+		}
+	})
+
+	t.Run("disk autoscaling", func(t *testing.T) {
+		_, cl, call := updatePostgresFixture(t)
+		if res := call("update_postgres", map[string]any{"postgresId": "dpg-upd", "enableDiskAutoscaling": true}); res.IsError {
+			t.Fatalf("disk autoscaling: %+v", res.Content)
+		}
+		if !postgresSpec(t, cl).DiskAutoscaling {
+			t.Fatal("spec.diskAutoscaling not set")
+		}
+	})
+
+	t.Run("plan", func(t *testing.T) {
+		_, cl, call := updatePostgresFixture(t)
+		if res := call("update_postgres", map[string]any{"postgresId": "dpg-upd", "plan": "basic-1gb"}); res.IsError {
+			t.Fatalf("plan: %+v", res.Content)
+		}
+		if got := postgresSpec(t, cl).Plan; got != "basic-1gb" {
+			t.Fatalf("spec.plan = %q", got)
+		}
+	})
+
+	t.Run("dryRun still previews the folded fields", func(t *testing.T) {
+		_, cl, call := updatePostgresFixture(t)
+		if res := call("update_postgres", map[string]any{"postgresId": "dpg-upd", "plan": "basic-1gb", "dryRun": true}); res.IsError {
+			t.Fatalf("dry run: %+v", res.Content)
+		}
+		if got := postgresSpec(t, cl).Plan; got != "free" {
+			t.Fatalf("dry run wrote the plan: %q", got)
+		}
+	})
+}

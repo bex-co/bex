@@ -650,7 +650,8 @@ func (s *Service) patchKeyValueObj(ctx context.Context, kv *appv1alpha1.KeyValue
 // "only the fields you pass are changed" semantics (nil = leave unchanged,
 // mirroring the pointer fields on the CLI's generated KeyValuePATCHInput). name
 // is the rename field this milestone (w9/m6) adds; plan keeps the pre-existing
-// plan-change path (the GraphQL updateKeyValuePlan / MCP update_key_value_plan
+// plan-change path (the GraphQL updateKeyValuePlan mutation; the MCP half
+// folded into update_key_value at w1/m74
 // verbs still call SetPlan directly). Extend this set as more KeyValue fields
 // become updatable, exactly as PostgresPatch grew.
 type KeyValuePatch struct {

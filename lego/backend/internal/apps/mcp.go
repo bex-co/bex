@@ -18,6 +18,9 @@ package apps
 
 import (
 	"context"
+	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -49,26 +52,11 @@ type listServicesResult struct {
 
 type listServicesArgs struct{}
 
-// updatePlanArgs is update_service_plan's input — Render's plan spelling
-// (e.g. "pro_plus"), same as the REST/GraphQL surfaces.
-type updatePlanArgs struct {
-	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	Plan      string `json:"plan" jsonschema:"the new instance plan, e.g. starter, standard, pro, pro_plus, pro_max, pro_ultra"`
-	DryRun    bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
-}
-
 // scaleArgs is scale_service's input — the desired running instance count,
 // keyed on numInstances like Render's REST/GraphQL surfaces.
 type scaleArgs struct {
 	ServiceID    string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	NumInstances int32  `json:"numInstances" jsonschema:"the desired number of running instances (1-100)"`
-}
-
-// idleTimeoutArgs is update_idle_timeout's input — the free-tier auto-sleep
-// window in seconds (0 = controller default). A bex extension, no Render tool.
-type idleTimeoutArgs struct {
-	ServiceID      string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	IdleTTLSeconds int32  `json:"idleTTLSeconds" jsonschema:"seconds a free-tier service may idle before it auto-sleeps; 0 restores the controller default"`
 }
 
 // updateServiceArgs is update_service's input: the patch-shaped fold of the
@@ -91,8 +79,23 @@ type idleTimeoutArgs struct {
 // them work. The parity pin classifies update_service as Extension — see
 // internal/api/mcp_parity.go.
 type updateServiceArgs struct {
-	ServiceID               string                   `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
-	DisplayName             *string                  `json:"displayName,omitempty" jsonschema:"the human-facing service label; empty clears it and falls back to the immutable service name"`
+	ServiceID   string  `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
+	DisplayName *string `json:"displayName,omitempty" jsonschema:"the human-facing service label; empty clears it and falls back to the immutable service name"`
+	// Plan is a BILLING change: it resizes the pod and rolls it, and the
+	// workspace is charged at the new rate. Folded from update_service_plan
+	// (w1/m74) because REST carries it in the same PATCH body; the payment and
+	// plan-billing gates in the Service layer are unchanged by the fold.
+	Plan *string `json:"plan,omitempty" jsonschema:"the instance plan/size, e.g. starter, standard, pro, pro_plus, pro_max, pro_ultra. Changing it resizes the pod, rolls the service, and CHANGES WHAT THE WORKSPACE IS BILLED. Pass dryRun:true to preview it without any writes"`
+	// DryRun mirrors PATCH /v1/services/{id}: it previews a PLAN change with
+	// zero writes. Unlike REST, which silently drops the rest of a dry-run body,
+	// this refuses a dryRun call carrying any other settable field — an agent
+	// that asked to preview a command change should be told the tool cannot,
+	// not handed back an unchanged object that implies it did.
+	DryRun                  bool                     `json:"dryRun,omitempty" jsonschema:"if true, preview the plan change without any writes (zero side effects). Valid alone or with plan only"`
+	IdleTTLSeconds          *int32                   `json:"idleTTLSeconds,omitempty" jsonschema:"seconds a free-tier service may idle before it auto-sleeps; 0 restores the controller default"`
+	PublishPath             *string                  `json:"publishPath,omitempty" jsonschema:"static sites only: the built output directory served as the site root, e.g. dist, build, or public"`
+	Schedule                *string                  `json:"schedule,omitempty" jsonschema:"cron jobs only: the 5-field crontab expression, e.g. '0 0 * * *'"`
+	Command                 *string                  `json:"command,omitempty" jsonschema:"cron jobs only: the command each run executes, overriding the image entrypoint; empty clears the override"`
 	Branch                  *string                  `json:"branch,omitempty" jsonschema:"the Git branch to build and deploy; empty restores the default main"`
 	RegistryCredentialID    *string                  `json:"registryCredentialId,omitempty" jsonschema:"stored private-registry credential id to bind to an image-backed service or Dockerfile build; empty clears the binding"`
 	RootDir                 *string                  `json:"rootDir,omitempty" jsonschema:"subdirectory of the repo to build from (monorepo support); empty builds from the repo root. Triggers a fresh build scoped to that subdirectory"`
@@ -155,16 +158,6 @@ func (a *maintenanceModeArg) toView() *MaintenanceModeView {
 		return nil
 	}
 	return &MaintenanceModeView{Enabled: a.Enabled, URI: a.URI}
-}
-
-// updateCronJobArgs is update_cron_job's input — bex's functional implementation
-// of the verb Render ships as a non-functional stub. schedule is the 5-field
-// crontab expression (required); command is a pointer so nil means "keep the
-// existing override" and an empty string means "clear it."
-type updateCronJobArgs struct {
-	ServiceID string  `json:"serviceId" jsonschema:"the cron job id, as returned by list_services"`
-	Schedule  string  `json:"schedule" jsonschema:"the new cron schedule (5-field crontab, e.g. '0 0 * * *'); required"`
-	Command   *string `json:"command,omitempty" jsonschema:"overrides the image's default entrypoint for each run, e.g. 'npm run report'; omit to keep the existing override, empty string to clear it"`
 }
 
 // createWebServiceArgs is create_web_service's input — Render's MCP tool name.
@@ -487,8 +480,10 @@ func (a createStaticSiteArgs) toCreateRequest() CreateRequest {
 	}
 }
 
-// routesArgs / headersArgs / publishPathArgs are the static-site edge-rule tool
-// inputs; the set tools replace the whole list (Render's bulk update).
+// routesArgs / headersArgs are the static-site edge-rule tool inputs; each tool
+// replaces the whole list (Render's bulk update, and REST's own PUT routes —
+// which is why w1/m74 left them standalone while folding publishPath, a plain
+// PATCH field, into update_service).
 type routesArgs struct {
 	ServiceID string           `json:"serviceId" jsonschema:"the static site id, as returned by list_services"`
 	Routes    []staticRouteArg `json:"routes" jsonschema:"the full ordered list of redirect/rewrite rules to set (replaces the existing routes)"`
@@ -497,11 +492,6 @@ type routesArgs struct {
 type headersArgs struct {
 	ServiceID string            `json:"serviceId" jsonschema:"the static site id, as returned by list_services"`
 	Headers   []staticHeaderArg `json:"headers" jsonschema:"the full list of custom response-header rules to set (replaces the existing headers)"`
-}
-
-type publishPathArgs struct {
-	ServiceID   string `json:"serviceId" jsonschema:"the static site id, as returned by list_services"`
-	PublishPath string `json:"publishPath" jsonschema:"the built output directory to serve as the site root, e.g. dist"`
 }
 
 // routesResult / headersResult wrap the arrays — MCP tool outputs must be objects.
@@ -656,13 +646,6 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "update_cron_job",
-		Description: "Change a cron job's schedule and/or command. Render ships a non-functional stub for this tool; bex makes it real. schedule is the 5-field crontab expression (required); command overrides the image's entrypoint (optional — omit to keep the existing override, empty to clear it).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateCronJobArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetCronJob(ctx, in.ServiceID, &in.Schedule, in.Command))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "deploy",
 		Description: "Deploy a project from a git repo and render.yaml content in one call. A Blueprint may declare a whole stack — several services (web/worker/cron) plus managed databases, wired by fromDatabase env references — and one call converges all of it, databases first. Validation is all-or-nothing: one invalid entry rejects the whole deploy. Re-applying unchanged content is an idempotent no-op (changed services redeploy, unchanged ones don't). Returns the services (poll each to a live url via get_service) and databases (poll via get_postgres). A change to an EXISTING service that belongs to a protectedStatus=protected Environment (w6/m19) requires confirm — retry with the phrase from the error message. bex extension (pillar 4, deploy-from-chat at stack scale).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in deployArgs) (*mcp.CallToolResult, renderStack, error) {
@@ -699,16 +682,6 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 	}, s.serviceTool(s.Resume))
 
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "update_service_plan",
-		Description: "Change a service's instance plan/size (e.g. to starter, standard, pro, pro_plus, pro_max, pro_ultra). Resizes the pod's resources and rolls it. Pass dryRun:true to preview the change without any writes. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePlanArgs) (*mcp.CallToolResult, renderService, error) {
-		if in.DryRun {
-			return renderServiceResult(s.PreviewSetPlan(ctx, in.ServiceID, in.Plan))
-		}
-		return renderServiceResult(s.SetPlan(ctx, in.ServiceID, in.Plan))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "scale_service",
 		Description: "Scale a service to a specific number of running instances (numInstances, 1-100). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in scaleArgs) (*mcp.CallToolResult, renderService, error) {
@@ -716,19 +689,50 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "update_idle_timeout",
-		Description: "Set a service's idle timeout: seconds a free-tier service may idle before it auto-sleeps (0 = controller default). bex extension over Render's MCP (Render's spin-down window is fixed).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in idleTimeoutArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetIdleTTL(ctx, in.ServiceID, in.IdleTTLSeconds))
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_service",
-		Description: "Update a service's settings in one call. Pass only the settings you want to change: an omitted argument is left exactly as it is, and a present argument is written to exactly the value given — including the empty value, which is how you clear a command, a path, or a list. Covers source (branch, registryCredentialId), build (rootDir, buildCommand, startCommand, dockerfilePath, buildFilter), runtime (startCommand, healthCheckPath, preDeployCommand, maxShutdownDelaySeconds, maintenanceMode, autoscaling), delivery (autoDeploy), naming (displayName), networking (renderSubdomainPolicy, ipAllowList), and notifications (notifyOnFail, notificationsToSend). rootDir and dockerfilePath trigger a fresh build. Other verbs keep their own tools: update_service_plan (instance plan, supports dryRun), scale_service (instance count), update_idle_timeout, update_publish_path / update_static_routes / update_static_headers (static sites), update_cron_job (schedule), disable_autoscaling. This tool replaces the retired set_* setters (w1/m71). bex extension over Render's MCP.",
+		Description: "Update a service's settings in one call. Pass only the settings you want to change: an omitted argument is left exactly as it is, and a present argument is written to exactly the value given — including the empty value, which is how you clear a command, a path, or a list. Covers source (branch, registryCredentialId), build (rootDir, buildCommand, startCommand, dockerfilePath, buildFilter), runtime (startCommand, healthCheckPath, preDeployCommand, maxShutdownDelaySeconds, maintenanceMode, autoscaling), delivery (autoDeploy), naming (displayName), networking (renderSubdomainPolicy, ipAllowList), and notifications (notifyOnFail, notificationsToSend). rootDir and dockerfilePath trigger a fresh build. Static sites also take publishPath here; cron jobs take schedule and command. A plan change is billable — pass dryRun:true to preview it (valid alone or with plan only). Verbs REST keeps behind their own routes keep their own tools: scale_service (instance count), update_static_routes / update_static_headers (edge rules), disable_autoscaling. This tool replaces the retired set_* setters (w1/m71) plus update_service_plan / update_idle_timeout / update_publish_path / update_cron_job (w1/m74). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateServiceArgs) (*mcp.CallToolResult, renderService, error) {
 		return renderServiceResult(s.applyServicePatch(ctx, in))
 	})
 
+}
+
+// nonPlanFields names the settable arguments present besides plan, so a dryRun
+// call that cannot honour them fails with a message that says which ones.
+func (in updateServiceArgs) nonPlanFields() string {
+	present := map[string]bool{
+		"displayName":             in.DisplayName != nil,
+		"branch":                  in.Branch != nil,
+		"registryCredentialId":    in.RegistryCredentialID != nil,
+		"rootDir":                 in.RootDir != nil,
+		"buildCommand":            in.BuildCommand != nil,
+		"startCommand":            in.StartCommand != nil,
+		"dockerfilePath":          in.DockerfilePath != nil,
+		"healthCheckPath":         in.HealthCheckPath != nil,
+		"preDeployCommand":        in.PreDeployCommand != nil,
+		"maxShutdownDelaySeconds": in.MaxShutdownDelaySeconds != nil,
+		"autoDeploy":              in.AutoDeploy != nil,
+		"buildFilter":             in.BuildFilter != nil,
+		"notifyOnFail":            in.NotifyOnFail != nil,
+		"notificationsToSend":     in.NotificationsToSend != nil,
+		"maintenanceMode":         in.MaintenanceMode != nil,
+		"renderSubdomainPolicy":   in.RenderSubdomainPolicy != nil,
+		"ipAllowList":             in.IPAllowList != nil,
+		"ipAllowListCidrs":        in.IPAllowListCidrs != nil,
+		"autoscaling":             in.Autoscaling != nil,
+		"idleTTLSeconds":          in.IdleTTLSeconds != nil,
+		"publishPath":             in.PublishPath != nil,
+		"schedule":                in.Schedule != nil,
+		"command":                 in.Command != nil,
+	}
+	names := make([]string, 0, len(present))
+	for name, ok := range present {
+		if ok {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	return strings.Join(names, ", ")
 }
 
 // applyServicePatch runs update_service's present arguments as an ordered list
@@ -742,12 +746,31 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 		return AppView{}, err
 	}
 
+	// Dry run previews the PLAN change and writes nothing — PATCH
+	// /v1/services/{id}'s rule. Anything else in the same call is refused rather
+	// than silently dropped (the one deliberate divergence from REST here).
+	if in.DryRun {
+		if other := in.nonPlanFields(); other != "" {
+			return AppView{}, fmt.Errorf("%w: dryRun previews a plan change only; remove %s or drop dryRun", core.ErrBadRequest, other)
+		}
+		if in.Plan == nil {
+			return s.Get(ctx, in.ServiceID) // no plan to preview => reflect current state
+		}
+		return s.PreviewSetPlan(ctx, in.ServiceID, *in.Plan)
+	}
+
 	var ops core.PatchOps[AppView]
 	ops.Add(in.DisplayName != nil, func() (AppView, error) {
 		return s.SetDisplayName(ctx, in.ServiceID, *in.DisplayName)
 	})
 	ops.Add(in.Branch != nil || in.RegistryCredentialID != nil, func() (AppView, error) {
 		return s.SetSourceAndRegistryCredential(ctx, in.ServiceID, sourcePatch{Branch: in.Branch, RegistryCredentialID: in.RegistryCredentialID})
+	})
+	ops.Add(in.Plan != nil, func() (AppView, error) {
+		return s.SetPlan(ctx, in.ServiceID, *in.Plan)
+	})
+	ops.Add(in.IdleTTLSeconds != nil, func() (AppView, error) {
+		return s.SetIdleTTL(ctx, in.ServiceID, *in.IdleTTLSeconds)
 	})
 	ops.Add(in.MaxShutdownDelaySeconds != nil, func() (AppView, error) {
 		return s.SetMaxShutdownDelay(ctx, in.ServiceID, *in.MaxShutdownDelaySeconds)
@@ -761,6 +784,11 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 	ops.Add(in.AutoDeploy != nil, func() (AppView, error) {
 		return s.SetAutoDeploy(ctx, in.ServiceID, *in.AutoDeploy)
 	})
+	// Cron schedule/command share one verb, like the REST op table: sending only
+	// one leaves the other unchanged.
+	ops.Add(in.Schedule != nil || in.Command != nil, func() (AppView, error) {
+		return s.SetCronJob(ctx, in.ServiceID, in.Schedule, in.Command)
+	})
 	ops.Add(in.HealthCheckPath != nil, func() (AppView, error) {
 		return s.SetHealthCheckPath(ctx, in.ServiceID, *in.HealthCheckPath)
 	})
@@ -770,6 +798,9 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 	// One SetCommands call for both, like the REST op table: setting only one
 	// leaves the other unchanged (nil), which is why the setter pair could fold
 	// without either clearing the other.
+	ops.Add(in.PublishPath != nil, func() (AppView, error) {
+		return s.SetPublishPath(ctx, in.ServiceID, *in.PublishPath)
+	})
 	ops.Add(in.BuildCommand != nil || in.StartCommand != nil, func() (AppView, error) {
 		return s.SetCommands(ctx, in.ServiceID, in.BuildCommand, in.StartCommand)
 	})
@@ -938,13 +969,6 @@ func (s *Service) registerStaticSiteTools(srv *mcp.Server) {
 			return nil, headersResult{}, err
 		}
 		return nil, headersResult{Headers: toRenderHeaders(app.Headers)}, nil
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "update_publish_path",
-		Description: "Change the built output directory a static site serves (its publishPath) and republish. Rejected for a non-static-site service.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in publishPathArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.SetPublishPath(ctx, in.ServiceID, in.PublishPath))
 	})
 
 }

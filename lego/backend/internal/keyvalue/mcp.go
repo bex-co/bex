@@ -48,13 +48,6 @@ type suspendKeyValueArgs struct {
 	Confirm    string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned when a protected environment blocks suspend"`
 }
 
-// updateKeyValuePlanArgs is update_key_value_plan's input.
-type updateKeyValuePlanArgs struct {
-	KeyValueID string `json:"keyValueId" jsonschema:"the immutable key-value id (red-...), as returned by list_key_value"`
-	Plan       string `json:"plan" jsonschema:"the target instance plan (e.g. free, starter, standard)"`
-	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
-}
-
 // createKeyValueArgs mirrors the create body the REST/GraphQL surfaces accept
 // (bex's Render subset). name is required; the rest default.
 type createKeyValueArgs struct {
@@ -73,14 +66,6 @@ type createKeyValueArgs struct {
 	DryRun             bool                    `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
 }
 
-// renameKeyValueArgs is rename_key_value's input. A rename changes only the
-// mutable display name; the id, connection details, and data plane stay put.
-type renameKeyValueArgs struct {
-	KeyValueID string `json:"keyValueId" jsonschema:"the immutable key-value id (red-...), as returned by list_key_value"`
-	Name       string `json:"name" jsonschema:"the new display name (lowercase letters, digits, and hyphens; at most 30 characters)"`
-	DryRun     bool   `json:"dryRun,omitempty" jsonschema:"if true, validate and preview the rename without any writes"`
-}
-
 // updateKeyValueArgs is update_key_value's input: the patch-shaped fold of
 // set_key_value_maxmemory_policy and set_key_value_ip_allow_list (w1/m71).
 // Each field is a pointer to the value KeyValuePatch already documents as
@@ -89,7 +74,12 @@ type renameKeyValueArgs struct {
 //
 // Plan and name keep their own tools (update_key_value_plan, rename_key_value).
 type updateKeyValueArgs struct {
-	KeyValueID       string                   `json:"keyValueId" jsonschema:"the key-value id, as returned by list_key_value"`
+	KeyValueID string `json:"keyValueId" jsonschema:"the key-value id, as returned by list_key_value"`
+	// Name and Plan folded in from rename_key_value / update_key_value_plan
+	// (w1/m74): both are KeyValuePatch fields REST carries in this same PATCH
+	// body, and dryRun — which both had — is already this tool's preview path.
+	Name             *string                  `json:"name,omitempty" jsonschema:"the new display name (lowercase letters, digits, and hyphens; at most 30 characters). A rename changes only the label — the id, connection details, and data plane stay put"`
+	Plan             *string                  `json:"plan,omitempty" jsonschema:"the target instance plan (free, starter, standard). The operator reconciles the new resource requests on the next sync, and it CHANGES WHAT THE WORKSPACE IS BILLED"`
 	MaxmemoryPolicy  *string                  `json:"maxmemoryPolicy,omitempty" jsonschema:"the eviction policy at the memory budget, e.g. noeviction (job queue) or allkeys-lru (cache); underscore or hyphen forms both accepted"`
 	IPAllowList      *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the CIDR allowlist gating the external endpoint with these {cidrBlock, description} entries; pass [] to clear it (open to all source IPs)"`
 	IPAllowListCidrs *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
@@ -162,43 +152,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	})
 
 	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "update_key_value_plan",
-		Description: "Change a managed key-value store's instance plan (e.g. free → standard). The operator reconciles the new resource requests on the next sync. Pass dryRun:true to preview the change without any writes. Valid plans: free, starter, standard.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateKeyValuePlanArgs) (*mcp.CallToolResult, KeyValueView, error) {
-		var (
-			v   KeyValueView
-			err error
-		)
-		if in.DryRun {
-			v, err = s.PreviewSetPlan(ctx, in.KeyValueID, in.Plan)
-		} else {
-			v, err = s.SetPlan(ctx, in.KeyValueID, in.Plan)
-		}
-		return nil, v, err
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
-		Name:        "rename_key_value",
-		Description: "Rename a managed key-value store without changing its immutable id, connection details, project/environment membership, or data-plane objects. Pass dryRun:true to validate and preview without writes.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in renameKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
-		patch := KeyValuePatch{Name: &in.Name}
-		if in.DryRun {
-			v, err := s.PreviewUpdateKeyValue(ctx, in.KeyValueID, patch)
-			return nil, v, err
-		}
-		v, err := s.UpdateKeyValue(ctx, in.KeyValueID, patch)
-		return nil, v, err
-	})
-
-	mcp.AddTool(srv, &mcp.Tool{
 		Name:        "update_key_value",
-		Description: "Update a managed key-value store's settings in one call: the eviction policy (maxmemoryPolicy) and/or the external-endpoint IP allowlist (Render's Networking control). Pass only what you want to change — an omitted argument is left alone; a present ipAllowList REPLACES the whole list (pass [] to clear it, opening the endpoint to all source IPs). Pass dryRun:true to validate and preview without writes. Plan and name keep their own tools: update_key_value_plan, rename_key_value. This tool replaces the retired set_key_value_maxmemory_policy and set_key_value_ip_allow_list (w1/m71); the REST mirror is PATCH /v1/key-value/{id} plus PUT .../ip-allow-list.",
+		Description: "Update a managed key-value store's settings in one call: the eviction policy (maxmemoryPolicy) and/or the external-endpoint IP allowlist (Render's Networking control). Pass only what you want to change — an omitted argument is left alone; a present ipAllowList REPLACES the whole list (pass [] to clear it, opening the endpoint to all source IPs). Pass dryRun:true to validate and preview without writes. Also carries the name and the plan — a plan change is billable. This tool replaces the retired set_key_value_maxmemory_policy / set_key_value_ip_allow_list (w1/m71) and rename_key_value / update_key_value_plan (w1/m74); the REST mirror is PATCH /v1/key-value/{id} plus PUT .../ip-allow-list.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateKeyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
 		allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
 		if err != nil {
 			return nil, KeyValueView{}, err
 		}
-		patch := KeyValuePatch{MaxmemoryPolicy: in.MaxmemoryPolicy, IPAllowList: allowList}
+		patch := KeyValuePatch{Name: in.Name, Plan: in.Plan, MaxmemoryPolicy: in.MaxmemoryPolicy, IPAllowList: allowList}
 		if in.DryRun {
 			v, err := s.PreviewUpdateKeyValue(ctx, in.KeyValueID, patch)
 			return nil, v, err
