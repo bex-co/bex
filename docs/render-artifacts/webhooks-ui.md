@@ -80,7 +80,7 @@ Focused component/hook coverage contains 30 interaction assertions across the pi
 
 ## w1/m49 verification (2026-07-17, dev-1)
 
-Walked live against dev-1 (`bash .pm/w1/dev-1/up.sh`, dashboard on :50010 → bex-api :54010) as a freshly registered user, at a 1280×800 viewport — the height at which the old modal's Create button was unclickable:
+Walked live against dev-1 (`bash .pm/w1/dev-1/up.sh` — now `bash scripts/dev-env.sh 1 up`, w1/m72; dashboard on :50010 → bex-api :54010) as a freshly registered user, at a 1280×800 viewport — the height at which the old modal's Create button was unclickable:
 
 1. `/webhooks` → **Add webhook** navigates to `/webhooks/new` (no dialog). The page shows the served 17-key vocabulary as human-labeled groups (Cron Job Run, Deploy, Maintenance Mode, Postgres, Suspension + four singles), search, tri-state All events, live counter. Checking the **Deploy** group cascaded to both children ("3 events selected" with Server Restarted).
 2. **Create webhook** submitted on a real click — the old hit-test interception is gone (the modal it lived in is deleted). The mint-once secret step rendered (`whsec_…` + Copy), and **View webhook** landed on `/webhook/whk-d9dg18i9086n6btmq8ug`.

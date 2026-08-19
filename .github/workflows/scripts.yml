@@ -83,6 +83,8 @@ jobs:
         run: bash scripts/ssh-gateway-db-role.test.sh
       - name: Render MCP tool-pin drift detection unit tests
         run: bash scripts/render-mcp-drift.test.sh
+      - name: dev-N harness derivation + isolation unit tests
+        run: bash scripts/dev-env.test.sh
       - name: Install shellcheck
         run: sudo apt-get update && sudo apt-get install -y shellcheck
       - name: Production script shellcheck
@@ -94,5 +96,6 @@ jobs:
           scripts/agent-session-verify.sh
           scripts/adr-registry-validate.sh scripts/adr-registry-validate.test.sh
           scripts/render-mcp-drift.sh scripts/render-mcp-drift.test.sh
+          scripts/dev-env.sh scripts/dev-env.test.sh
       - name: Restore script hermetic safety tests
         run: bash scripts/restore.test.sh

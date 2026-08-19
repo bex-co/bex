@@ -6,11 +6,14 @@
 
 Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared local kind/CAPD cluster — never the shared cluster's default `auth`/`bex-system` namespaces or standard ports (5173/4433/4445/8090/8091/5432), which any other worker's session may also be using. `dev-1` gets its own Kratos + Hydra + Mailpit (namespace `dev-1-auth`) and app namespace (`dev-1`), reusing the shared cluster's CNPG operator and bex operator, plus a locally-built `bex-api` on dedicated ports derived from N=1 (`dev-1/ports.env`) so it never collides with any other workstream's `dev-N`.
 
-- `bash .pm/w1/dev-1/up.sh` — bring it up (idempotent — safe to re-run)
-- `bash .pm/w1/dev-1/status.sh` — health check (processes, pods, HTTP)
-- `bash .pm/w1/dev-1/down.sh` — tear it down (leaves the shared cluster and every other workstream's `dev-N` untouched)
+- `bash scripts/dev-env.sh 1 up` — bring it up (idempotent — safe to re-run)
+- `bash scripts/dev-env.sh 1 status` — health check (processes, pods, HTTP) + a pass/fail verification inventory
+- `bash scripts/dev-env.sh 1 down` — tear it down (leaves the shared cluster and every other workstream's `dev-N` untouched)
+- `bash scripts/dev-env.sh 1 clean` — reclaim `logs/` and `bin/` (refuses while the environment is up)
 
-`up.sh` prints the dashboard command to point at it once bex-api is running.
+`up` prints the dashboard command to point at it once bex-api is running. One shared
+implementation serves every workstream since `w1/m72`; `.pm/w1/dev-1/` keeps only
+`ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
 ## Milestones
 

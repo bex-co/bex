@@ -1,0 +1,29 @@
+# Kratos DB for a dev-__N__ isolated environment (workstream w__N__) — sized down
+# for local (1Gi, local-path). A distinct namespace (__DEV_AUTH_NS__) means this
+# never collides with the shared cluster's or another workstream's kratos-db.
+#
+# Rendered from this template by scripts/dev-env.sh; do not copy it per
+# workstream (w1/m72 retired the ten copies).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: kratos-db
+  namespace: __DEV_AUTH_NS__
+spec:
+  instances: 1
+  affinity:
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
+  storage:
+    size: 1Gi
+    storageClass: local-path
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 1Gi }
+  bootstrap:
+    initdb:
+      database: kratos
+      owner: kratos
