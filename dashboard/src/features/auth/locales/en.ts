@@ -200,6 +200,24 @@ const enAuth: Record<string, TranslationEntry> = {
     message: "Read your email address",
     description: "Human description of the email scope",
   },
+  "auth.consentScopeRead": {
+    message: "Read ordinary workspace resources (services, logs, metrics)",
+    description: "Human description of the bex.read OAuth capability",
+  },
+  "auth.consentScopeWrite": {
+    message:
+      "Change workspace resources (deploy, restart, create, delete, billing)",
+    description: "Human description of the bex.write OAuth capability",
+  },
+  "auth.consentScopeSensitive": {
+    message:
+      "Read secrets and connection strings (env vars, database URLs, files)",
+    description: "Human description of the bex.sensitive OAuth capability",
+  },
+  "auth.consentScopeApiCompat": {
+    message: "Full control-plane access (legacy platform-client compatibility)",
+    description: "Human description of the bex.api compatibility scope",
+  },
   "auth.consentAudienceTitle": {
     message: "Where the token works",
     description: "Heading above the requested access-token audience",

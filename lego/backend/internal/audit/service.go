@@ -74,6 +74,14 @@ type Event struct {
 	// (w1/m33, migration 0040) — nil for every other verb.
 	RoleFrom *string
 	RoleTo   *string
+	// Relation is the RelCan… the decision was made against. Empty on typed
+	// system events and pre-0088 rows.
+	Relation string
+	// OAuthClientID / OAuthAudience / OAuthScopes are verified human-OAuth
+	// grant facts. Empty on session, machine, system, and pre-0088 rows.
+	OAuthClientID string
+	OAuthAudience string
+	OAuthScopes   []string
 }
 
 func view(r store.AuditRow) Event {
@@ -90,6 +98,10 @@ func view(r store.AuditRow) Event {
 		MaintenanceModeTo: r.MaintenanceModeTo,
 		RoleFrom:          r.RoleFrom,
 		RoleTo:            r.RoleTo,
+		Relation:          r.Relation,
+		OAuthClientID:     r.OAuthClientID,
+		OAuthAudience:     r.OAuthAudience,
+		OAuthScopes:       r.OAuthScopes,
 	}
 }
 

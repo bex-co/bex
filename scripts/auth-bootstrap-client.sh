@@ -164,6 +164,13 @@ CLI_TOKEN_LIFESPAN=168h
 # this flag, and the CLI device flow hard-depends on it. PUT is a full replace,
 # so omitting it here silently un-blesses the client and strands every
 # subsequent `render login` at a consent step that never completes.
+#
+# scope keeps bex.api as a platform-client compatibility alias (w8/m27). The
+# unmodified official Render CLI and current mobile client do not request the
+# granular bex.read/bex.write/bex.sensitive vocabulary; the bex.co/platform-client
+# marker plus this legacy scope preserve their existing authority until those
+# clients migrate. Do not replace bex.api with granular scopes here — that
+# would be a silent CLI/mobile break.
 render_body="$(printf '{"client_id":"%s","client_name":"Render CLI (bex platform)","grant_types":["%s","refresh_token"],"scope":"openid offline_access bex.api","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"metadata":{"bex.co/platform-client":true},"device_authorization_grant_access_token_lifespan":"%s","refresh_token_grant_access_token_lifespan":"%s"}' \
   "$RENDER_CLI_CLIENT_ID" "$DEVICE_GRANT" "$CLI_TOKEN_LIFESPAN" "$CLI_TOKEN_LIFESPAN")"
 render_code="$(printf '%s' "$render_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \

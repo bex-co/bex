@@ -1096,6 +1096,9 @@ func assertAuditEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tenant
 		all[0].MaintenanceModeTo == nil || *all[0].MaintenanceModeTo {
 		t.Errorf("newest row = %+v", all[0])
 	}
+	if all[0].Relation != "" || all[0].OAuthClientID != "" || all[0].OAuthAudience != "" || len(all[0].OAuthScopes) != 0 {
+		t.Errorf("session row leaked oauth provenance: %+v", all[0])
+	}
 	recorded = all
 
 	// Cursor resumes strictly after the given row — page size 1 from the
@@ -1150,6 +1153,31 @@ func assertAuditEvents(ctx context.Context, t *testing.T, s *PGStore, ten Tenant
 	remaining, err := s.ListAuditEvents(ctx, ten.ID, AuditFilter{})
 	if err != nil || len(remaining) != 1 || remaining[0].ID != recorded[0].ID {
 		t.Fatalf("remaining after purge = %+v (err %v), want [%s] (the newest event, at+2m, not < the purge boundary)", remaining, err, recorded[0].ID)
+	}
+
+	oauthEv := core.AuditEvent{
+		Caller: "user-x", CallerMethod: "oauth2",
+		Verb: "apps.Suspend", Resource: "workspace:" + ten.ID,
+		Outcome: core.AuditDenied, At: base.Add(4 * time.Minute),
+		Relation: core.RelCanOperate, OAuthClientID: "dcr-client",
+		OAuthAudience: "https://api.bex.co/mcp", OAuthScopes: []string{core.ScopeRead},
+	}
+	if err := s.Record(ctx, oauthEv); err != nil {
+		t.Fatalf("record oauth audit event: %v", err)
+	}
+	oauthRows, err := s.ListAuditEvents(ctx, ten.ID, AuditFilter{Limit: 1})
+	if err != nil || len(oauthRows) != 1 {
+		t.Fatalf("list oauth audit: %+v err=%v", oauthRows, err)
+	}
+	got := oauthRows[0]
+	if got.Relation != core.RelCanOperate || got.OAuthClientID != "dcr-client" || got.OAuthAudience != "https://api.bex.co/mcp" ||
+		len(got.OAuthScopes) != 1 || got.OAuthScopes[0] != core.ScopeRead {
+		t.Errorf("oauth provenance = %+v", got)
+	}
+	bad := oauthEv
+	bad.OAuthScopes = []string{"not-a-scope"}
+	if err := s.Record(ctx, bad); err == nil {
+		t.Error("non-canonical oauth scope must fail the CHECK")
 	}
 }
 

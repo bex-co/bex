@@ -106,6 +106,11 @@ type PaymentGate interface {
 // workspace:tea-<id> when the control-plane store resolves the caller to a
 // tenant (w1/m9), workspace:default otherwise (the platform bootstrap tenant,
 // and the legacy single-tenant mode when the store is off).
+//
+// Adding a RelCan… constant also requires a follow-on audit_events CHECK
+// migration (0088's relation list; do not rewrite 0088 after it has shipped).
+// recordAudit swallows sink errors, so a CHECK miss silently drops the row —
+// TestAuditRelationCheckMatchesRelCan pins the latest CHECK to RelCanRelations.
 const (
 	RelCanView          = "can_view"            // viewer and up: lists, details, metrics
 	RelCanViewLogs      = "can_view_logs"       // contributor and up (Render: viewers can't see logs)
@@ -630,6 +635,15 @@ func (b *Base) authorizeAndAudit(ctx context.Context, relation, object, target, 
 // WithDeferredAllowedWriteAudit (a composite atomic verb deferring its
 // success events until the mutation lands — denials stay visible either way).
 func (b *Base) authorizeAndRecord(ctx context.Context, relation, object, target, verb string, resolveErr error, recordDenial bool) error {
+	// OAuth capability first, even when membership already refused: a narrowed
+	// token must not reach OpenFGA, and the insufficient-scope code must not
+	// depend on whether the named workspace exists.
+	if err := checkCapability(ctx, relation); err != nil {
+		if recordDenial && auditsDenial(relation) {
+			b.emit(ctx, verb, relation, object, target, err)
+		}
+		return err
+	}
 	err := resolveErr
 	if err == nil {
 		// Mutations never consume a positive cache entry. Centralizing this at the
@@ -646,12 +660,22 @@ func (b *Base) authorizeAndRecord(ctx context.Context, relation, object, target,
 	switch {
 	case err == nil:
 		if writeRelations[relation] && !defersAllowedWriteAudit(ctx) {
-			b.emit(ctx, verb, object, target, nil)
+			b.emit(ctx, verb, relation, object, target, nil)
 		}
 	case recordDenial && auditsDenial(relation):
-		b.emit(ctx, verb, object, target, err)
+		b.emit(ctx, verb, relation, object, target, err)
 	}
 	return err
+}
+
+// checkCapability is the OAuth half of every authorization path. A denial is
+// the shared insufficient-scope error; OpenFGA is not consulted.
+func checkCapability(ctx context.Context, relation string) error {
+	id, ok := IdentityFrom(ctx)
+	if !ok {
+		return nil
+	}
+	return id.RequireCapability(relation)
 }
 
 // checkAuthz is the raw OpenFGA decision, no audit side effect: nil checker
@@ -660,6 +684,9 @@ func (b *Base) authorizeAndRecord(ctx context.Context, relation, object, target,
 // fails closed with ErrAuthzUnavailable — never a pass-through, so the three
 // surfaces stay authorization-identical.
 func (b *Base) checkAuthz(ctx context.Context, relation, object string) error {
+	if err := checkCapability(ctx, relation); err != nil {
+		return err
+	}
 	if b.Authz == nil {
 		return nil
 	}
@@ -683,6 +710,9 @@ func (b *Base) checkAuthz(ctx context.Context, relation, object string) error {
 // contract: nil checker allows, no identity or a negative check is ErrForbidden,
 // an unreachable checker is ErrAuthzUnavailable.
 func (b *Base) checkAuthzFresh(ctx context.Context, relation, object string) error {
+	if err := checkCapability(ctx, relation); err != nil {
+		return err
+	}
 	fresh, ok := b.Authz.(FreshChecker)
 	if !ok {
 		return b.checkAuthz(ctx, relation, object)
@@ -977,7 +1007,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 				// acting was already resolved above (and is non-empty in this
 				// branch) — no need for callerWorkspace's second store round-trip
 				// on what is already the worst-case-latency path.
-				b.emit(ctx, verb, WorkspaceObject(acting), ServiceTarget(name), lastErr)
+				b.emit(ctx, verb, relation, WorkspaceObject(acting), ServiceTarget(name), lastErr)
 			}
 			if !errors.Is(lastErr, ErrForbidden) {
 				return nil, lastErr // an authz outage is not absence — fail closed

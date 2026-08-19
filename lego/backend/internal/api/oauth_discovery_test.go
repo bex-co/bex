@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"sync/atomic"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 func TestAudienceValidation(t *testing.T) {
@@ -135,12 +137,11 @@ func TestProtectedResourceMetadataEndpoint(t *testing.T) {
 		if len(body.AuthorizationServers) != 1 || body.AuthorizationServers[0] != "https://oauth.bex.co" {
 			t.Fatalf("authorization_servers = %v", body.AuthorizationServers)
 		}
-		// Round-14 #1: the metadata must advertise the control-plane
-		// capability scope — the MCP authorization spec tells discovery-driven
-		// clients to request a resource's advertised scopes, and the API
-		// refuses an API-audience human token without it.
-		if len(body.ScopesSupported) != 1 || body.ScopesSupported[0] != DefaultAPIScope {
-			t.Fatalf("scopes_supported = %v, want [%s]", body.ScopesSupported, DefaultAPIScope)
+		// Round-14 #1 / w8/m27: discovery advertises the closed least-privilege
+		// vocabulary so MCP clients request exactly those scopes. bex.api is
+		// a platform-client compatibility alias and is not advertised.
+		if got := body.ScopesSupported; len(got) != 3 || got[0] != core.ScopeRead || got[1] != core.ScopeWrite || got[2] != core.ScopeSensitive {
+			t.Fatalf("scopes_supported = %v, want %v", body.ScopesSupported, core.AdvertisedScopes())
 		}
 	})
 

@@ -29,6 +29,14 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
             {event.actorMethod}
           </span>
         ) : null}
+        {event.oauthClientId ? (
+          <span className="text-muted-foreground block truncate text-xs">
+            {t("audit.oauthDelegation", {
+              client: event.oauthClientId,
+              scopes: event.oauthScopes.join(" ") || "—",
+            })}
+          </span>
+        ) : null}
       </TableCell>
       {/* nowrap so a dotted action id (e.g. `apikeys.ListAPIKeys`) never gets
           letter-wrapped when the auto-layout table is squeezed on a narrow

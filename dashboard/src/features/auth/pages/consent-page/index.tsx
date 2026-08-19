@@ -14,21 +14,9 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
+import { SCOPE_DESCRIPTION_KEYS, SCOPE_SENSITIVE, SCOPE_WRITE } from "@/common/lib/oauth-scopes";
 
 const route = getRouteApi("/auth/consent");
-
-/**
- * Scopes bex's own OAuth clients actually ask for get a sentence a human can
- * act on; anything else (an agent asking for something we've never seen) is
- * shown verbatim rather than dressed up — an unexplained scope should look
- * unexplained.
- */
-const SCOPE_DESCRIPTIONS: Record<string, string> = {
-  openid: "auth.consentScopeOpenid",
-  offline_access: "auth.consentScopeOfflineAccess",
-  profile: "auth.consentScopeProfile",
-  email: "auth.consentScopeEmail",
-};
 
 /**
  * OAuth2 consent screen (docs/ADR012-auth.md §7, w4/m16). Reached only when the
@@ -125,9 +113,15 @@ export default function ConsentPage() {
                   <KeyRound className="size-4 mt-0.5 text-muted-foreground shrink-0" />
                   <span>
                     <span className="font-mono text-xs">{scope}</span>
-                    {SCOPE_DESCRIPTIONS[scope] && (
-                      <span className="block text-muted-foreground">
-                        {t(SCOPE_DESCRIPTIONS[scope])}
+                    {SCOPE_DESCRIPTION_KEYS[scope] && (
+                      <span
+                        className={
+                          scope === SCOPE_WRITE || scope === SCOPE_SENSITIVE
+                            ? "block text-amber-700 dark:text-amber-400"
+                            : "block text-muted-foreground"
+                        }
+                      >
+                        {t(SCOPE_DESCRIPTION_KEYS[scope])}
                       </span>
                     )}
                   </span>

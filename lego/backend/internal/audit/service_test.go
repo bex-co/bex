@@ -222,6 +222,37 @@ func TestRenderAuditLogShape(t *testing.T) {
 	}
 }
 
+func TestRenderOAuthAuditProvenanceIsAdditive(t *testing.T) {
+	oauth := toRenderAuditLog(Event{
+		ID: "aud-oauth", Caller: "user-1", CallerMethod: "oauth2",
+		Verb: "apps.Suspend", Target: "service:my-api", Outcome: string(core.AuditDenied),
+		Relation: core.RelCanOperate, OAuthClientID: "dcr-agent",
+		OAuthAudience: "https://api.bex.co/mcp", OAuthScopes: []string{core.ScopeRead},
+	})
+	if oauth.Metadata["relation"] != core.RelCanOperate {
+		t.Errorf("relation = %q, want %s", oauth.Metadata["relation"], core.RelCanOperate)
+	}
+	if oauth.Metadata["oauthClientId"] != "dcr-agent" {
+		t.Errorf("oauthClientId = %q", oauth.Metadata["oauthClientId"])
+	}
+	if oauth.Metadata["oauthAudience"] != "https://api.bex.co/mcp" {
+		t.Errorf("oauthAudience = %q", oauth.Metadata["oauthAudience"])
+	}
+	if oauth.Metadata["oauthScopes"] != core.ScopeRead {
+		t.Errorf("oauthScopes = %q, want %s", oauth.Metadata["oauthScopes"], core.ScopeRead)
+	}
+	if oauth.Metadata["service"] != "my-api" || oauth.Metadata["outcome"] != "denied" {
+		t.Errorf("additive oauth fields must not drop existing metadata: %v", oauth.Metadata)
+	}
+
+	session := toRenderAuditLog(Event{
+		Verb: "apps.Suspend", Caller: "usr-1", CallerMethod: "session", Outcome: "allowed",
+	})
+	if _, ok := session.Metadata["oauthClientId"]; ok {
+		t.Errorf("session row leaked oauth metadata: %v", session.Metadata)
+	}
+}
+
 // TestGraphQLTargetNameFallsBackToNull is w10/m5: the AuditLog type returns
 // the stored display name (migration 0038) and resolves a pre-0038 row's
 // stored "" to null, so the dashboard can fall back to the raw id instead of
@@ -258,6 +289,53 @@ func TestGraphQLTargetNameFallsBackToNull(t *testing.T) {
 	pre := rows[1].(map[string]any)
 	if pre["targetName"] != nil {
 		t.Errorf("pre-0038 row targetName = %v, want null", pre["targetName"])
+	}
+}
+
+func TestGraphQLExposesOAuthAuditProvenance(t *testing.T) {
+	fs := &fakeStore{listRows: []store.AuditRow{
+		{
+			ID: "aud-oauth", WorkspaceID: "tea-owner", Caller: "user-1",
+			Verb: "apps.Suspend", Relation: core.RelCanOperate,
+			OAuthClientID: "dcr-agent", OAuthAudience: "https://api.bex.co/mcp",
+			OAuthScopes: []string{core.ScopeRead, core.ScopeWrite},
+		},
+		{ID: "aud-session", WorkspaceID: "tea-owner", Caller: "user-1"},
+	}}
+	svc := &Service{Base: &core.Base{Authz: fakeAllowChecker{}}, Store: fs}
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+	})
+	if err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "admin-1", Method: "session"})
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `{ auditLogs(ownerId:"tea-owner") { id relation oauthClientId oauthAudience oauthScopes } }`,
+		Context:       ctx,
+	})
+	if len(res.Errors) > 0 {
+		t.Fatalf("gql: %v", res.Errors)
+	}
+	rows := res.Data.(map[string]any)["auditLogs"].([]any)
+	if len(rows) != 2 {
+		t.Fatalf("rows = %d, want 2", len(rows))
+	}
+	oauth := rows[0].(map[string]any)
+	if oauth["relation"] != core.RelCanOperate || oauth["oauthClientId"] != "dcr-agent" {
+		t.Errorf("oauth row = %v", oauth)
+	}
+	if oauth["oauthAudience"] != "https://api.bex.co/mcp" {
+		t.Errorf("oauthAudience = %v", oauth["oauthAudience"])
+	}
+	scopes, _ := oauth["oauthScopes"].([]any)
+	if len(scopes) != 2 || scopes[0] != core.ScopeRead || scopes[1] != core.ScopeWrite {
+		t.Errorf("oauthScopes = %v", oauth["oauthScopes"])
+	}
+	session := rows[1].(map[string]any)
+	if session["relation"] != nil || session["oauthClientId"] != nil || session["oauthAudience"] != nil || session["oauthScopes"] != nil {
+		t.Errorf("session row leaked oauth fields: %v", session)
 	}
 }
 

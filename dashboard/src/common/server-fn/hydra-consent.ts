@@ -8,6 +8,12 @@ import {
   BodyTooLargeError,
   readBoundedFormData,
 } from "@/common/server-fn/bounded-body";
+import {
+  GRANULAR_SCOPES,
+  grantableScopes,
+  hasGranularCapability,
+  isPlatformMarked,
+} from "@/common/lib/oauth-scopes";
 
 // OAuth2 consent (docs/ADR012-auth.md §7, w4/m9 + w4/m16). Hydra redirects the
 // browser here with a consent_challenge after login (which Kratos's native
@@ -188,67 +194,30 @@ function pkceRefusal(): Response {
 }
 
 /**
- * The control-plane capability scope (round-14 #1): the one OAuth scope whose
- * presence says "this client asked for API access" — so the consent screen
- * shows it, and bex-api's introspection gate requires it on an API-audience
- * human token. Defaults to bex-api's `DefaultAPIScope` ("bex.api"); override
- * with `OAUTH_API_SCOPE`, which MUST carry the same value bex-api's
- * `BEX_OAUTH_API_SCOPE` resolves to.
+ * Closed capability vocabulary (w8/m27): a third-party client that requests
+ * an access-token audience must request at least one of bex.read / bex.write /
+ * bex.sensitive. bex.api is a platform-client compatibility alias and is
+ * never an umbrella grant for anyone else. Identity-only scopes never confer
+ * API authority. The custom OAUTH_API_SCOPE override is ignored so a
+ * deployment cannot invent a second semantic matrix.
  */
-function apiScope(): string {
-  return process.env.OAUTH_API_SCOPE?.trim() || "bex.api";
+function platformClient(consent: OAuth2ConsentRequest): boolean {
+  return isPlatformMarked(
+    consent.client?.metadata as Record<string, unknown> | undefined,
+  );
 }
 
-/**
- * Scopes this consent provider will ever grant (round-14 #1): the OIDC
- * identity vocabulary plus the control-plane capability scope. Anything else
- * a client requests is dropped from the grant rather than rubber-stamped, so
- * a dynamic client cannot smuggle arbitrary scope strings through a user's
- * approval into a token.
- */
-function recognizedScopes(): Set<string> {
-  return new Set([
-    "openid",
-    "offline_access",
-    "profile",
-    "email",
-    apiScope(),
-  ]);
-}
-
-/**
- * Round-14 #1: a client that requests an access-token AUDIENCE is asking for
- * control-plane delegation, so it must also request the API capability SCOPE
- * — otherwise a dynamically registered client can walk the ordinary consent
- * flow showing only "openid offline_access" (identity-looking, harmless) and
- * receive a token that carries the victim's full workspace authority at the
- * API. bex-api enforces the same rule at introspection (fail-closed backstop,
- * with the platform-client exemption); consent enforces it here so the flow
- * refuses up front with a message the client's developer can act on.
- *
- * Clients bex provisioned itself (the Hydra metadata marker stamped by
- * scripts/auth-bootstrap-client.sh — bex-mobile, which today requests the
- * audience with identity-only scopes) are exempt here exactly as they are at
- * introspection. Trusted/skip clients never reach this check (the caller only
- * applies it on the human-decision path).
- */
 function audienceScopeSatisfied(consent: OAuth2ConsentRequest): boolean {
   const audiences = consent.requested_access_token_audience ?? [];
   if (audiences.length === 0) return true; // identity-only flow: no API authority
-  if (
-    (consent.client?.metadata as Record<string, unknown> | undefined)?.[
-      "bex.co/platform-client"
-    ] === true
-  ) {
-    return true; // bex-provisioned client: the introspection-side exemption applies
-  }
-  return (consent.requested_scope ?? []).includes(apiScope());
+  if (platformClient(consent)) return true;
+  return hasGranularCapability(consent.requested_scope ?? []);
 }
 
-/** One refusal for both consent paths (round-14 #1). */
+/** One refusal for both consent paths (w8/m27). */
 function scopeRefusal(): Response {
   return new Response(
-    `invalid_scope: a client that requests an access-token audience (the bex API resource) must also request the "${apiScope()}" scope — it is advertised in the protected-resource metadata's scopes_supported`,
+    `invalid_scope: a client that requests an access-token audience (the bex API resource) must also request at least one of ${GRANULAR_SCOPES.join(", ")} — they are advertised in the protected-resource metadata's scopes_supported`,
     { status: 400 },
   );
 }
@@ -261,22 +230,22 @@ function isTrusted(consent: OAuth2ConsentRequest): boolean {
   );
 }
 
-/** Grant exactly what was requested (intersected with the recognized scope
- * vocabulary, round-14 #1), remembered for the window. The one accept call in
- * the codebase — the headless (trusted) and human-approved paths grant
- * identically, so a consented client's token is indistinguishable from a
- * blessed one's downstream (docs/ADR018-render-parity.md). */
+/** Grant the recognized vocabulary (dropping unknown strings and, for a
+ *  third-party client, the bex.api umbrella alias), remembered for the window.
+ *  The one accept call in the codebase — the headless (trusted) and
+ *  human-approved paths grant identically, so a consented client's token is
+ *  indistinguishable from a blessed one's downstream. */
 async function acceptConsent(
   hydra: OAuth2Api,
   consentChallenge: string,
   consent: OAuth2ConsentRequest,
 ): Promise<string> {
-  const recognized = recognizedScopes();
   const { redirect_to } = await hydra.acceptOAuth2ConsentRequest({
     consentChallenge,
     acceptOAuth2ConsentRequest: {
-      grant_scope: (consent.requested_scope ?? []).filter((s) =>
-        recognized.has(s),
+      grant_scope: grantableScopes(
+        consent.requested_scope ?? [],
+        platformClient(consent),
       ),
       grant_access_token_audience:
         consent.requested_access_token_audience ?? [],
@@ -354,6 +323,14 @@ export async function handleConsent(
     return pkceRefusal();
   }
 
+  // w8/m27: an audience request without a granular capability is the
+  // look-harmless consent this provider must never grant. Applied even on
+  // trusted/skip so a skip_consent third-party cannot mint an umbrella token;
+  // platform-marked clients remain exempt (bex-api is the backstop).
+  if (!audienceScopeSatisfied(consent)) {
+    return scopeRefusal();
+  }
+
   if (isTrusted(consent)) {
     try {
       return Response.redirect(
@@ -363,13 +340,6 @@ export async function handleConsent(
     } catch {
       return new Response("consent accept failed", { status: 502 });
     }
-  }
-
-  // Round-14 #1: an audience request without the API capability scope is the
-  // look-harmless consent this provider must never grant (trusted/skip and
-  // platform-provisioned clients are exempt above and at the marker check).
-  if (!audienceScopeSatisfied(consent)) {
-    return scopeRefusal();
   }
 
   // A third party is asking — only the human whose login minted this challenge

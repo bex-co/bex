@@ -300,3 +300,30 @@ func NewPaymentRequiredError() *CodedError {
 		msg:      PaymentRequiredMessage,
 	}
 }
+
+// InsufficientScopeCode is the one machine-readable refusal when a third-party
+// human OAuth token lacks the capability a relation requires. REST, GraphQL,
+// and MCP all project it; the required capability is the only parameter so the
+// response cannot reveal whether an inaccessible target exists.
+const (
+	InsufficientScopeCode    = "INSUFFICIENT_SCOPE"
+	InsufficientScopeMessage = "insufficient OAuth scope"
+)
+
+// NewInsufficientScopeError is the shared insufficient-scope refusal. It wraps
+// ErrForbidden so transports stay on 403 (RFC 6750's insufficient_scope
+// status) rather than inventing a 401 that would look like an expired token.
+// required is one of the closed capabilities, or empty when the relation
+// itself is unknown (still fail closed, still the same code).
+func NewInsufficientScopeError(required string) *CodedError {
+	params := map[string]any{}
+	if required != "" {
+		params["required"] = required
+	}
+	return &CodedError{
+		Code:     InsufficientScopeCode,
+		Params:   params,
+		sentinel: ErrForbidden,
+		msg:      InsufficientScopeMessage,
+	}
+}

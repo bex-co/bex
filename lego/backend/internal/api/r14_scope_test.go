@@ -16,28 +16,22 @@ limitations under the License.
 
 package api
 
-// r14_scope_test.go guards codex-security round 14 finding #1
-// (docs/ADR069-security-review-round14.md): a dynamically registered client
-// could request the API resource AUDIENCE with identity-only SCOPES, walk the
-// ordinary consent flow, and exercise every action the victim's OpenFGA
-// subject may perform — because introspection discarded scope and
-// authorization checked only the subject. The gate now requires the
-// control-plane capability scope (DefaultAPIScope "bex.api") on an
-// API-audience HUMAN token, exempting the machine (API-key) class and
-// bex-provisioned platform clients exactly as the narrowed empty-audience
-// exception (w1/m67 F1) does.
+// r14_scope_test.go guards the round-14 #1 hole as tightened by w8/m27:
+// a dynamically registered client that requests the API audience without a
+// granular capability (bex.read / bex.write / bex.sensitive) introspects
+// inactive. Legacy bex.api is not an umbrella grant for a third-party client.
 
 import (
+	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 const identityScopes = "openid offline_access"
 
-// TestIdentityScopedAudienceTokenFromThirdPartyClientIsRefused is the round-14
-// #1 regression: the token passes the audience check (it asked for this
-// resource) but its granted scopes are identity-only — the consent screen a
-// dynamic client shows while obtaining the victim's full authority.
 func TestIdentityScopedAudienceTokenFromThirdPartyClientIsRefused(t *testing.T) {
 	h := newClassHydraScoped(t, "identity-1", "dcr-client", identityScopes,
 		[]string{bexResource}, map[string]bool{"dcr-client": false})
@@ -50,7 +44,14 @@ func TestIdentityScopedAudienceTokenFromThirdPartyClientIsRefused(t *testing.T) 
 	}
 }
 
-// The caller shapes that must keep working with the scope rule armed.
+func TestLegacyAPIScopeDoesNotAdmitThirdPartyHuman(t *testing.T) {
+	h := newClassHydraScoped(t, "identity-1", "dcr-client", "openid offline_access "+core.ScopeAPICompatibility,
+		[]string{bexResource}, map[string]bool{"dcr-client": false})
+	if got := authStatusScoped(t, h, bexResource, true, DefaultAPIScope); got != http.StatusUnauthorized {
+		t.Errorf("third-party bex.api token = %d, want 401", got)
+	}
+}
+
 func TestScopeRuleKeepsLegitimateCallers(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
@@ -61,39 +62,29 @@ func TestScopeRuleKeepsLegitimateCallers(t *testing.T) {
 		wantClientLookup bool
 	}{
 		{
-			// An MCP/agent client that requested the resource AND the advertised
-			// capability scope — the ordinary compliant connect.
-			name:     "third-party client with the API scope",
-			sub:      "identity-1", clientID: "dcr-client",
-			scope:    "openid offline_access " + DefaultAPIScope,
+			name: "third-party client with a granular capability",
+			sub:  "identity-1", clientID: "dcr-client",
+			scope:    "openid offline_access " + core.ScopeRead,
 			aud:      []string{bexResource},
 			platform: map[string]bool{"dcr-client": false},
 		},
 		{
-			// bex-mobile: requests the API audience with identity-only scopes
-			// today; admitted because bex provisioned it (the marker), exactly
-			// like the audience-less device-flow client.
-			name:             "bex-provisioned client without the scope yet",
-			sub:              "identity-1", clientID: "bex-mobile",
+			name: "bex-provisioned client without a granular scope yet",
+			sub:  "identity-1", clientID: "bex-mobile",
 			scope:            identityScopes,
 			aud:              []string{bexResource},
 			platform:         map[string]bool{"bex-mobile": true},
 			wantClientLookup: true,
 		},
 		{
-			// API keys are client_credentials: their authority comes from the
-			// workspace binding, not an OAuth consent, so an audience-bearing
-			// machine token needs no scope.
-			name:     "api key (client_credentials) with an audience",
-			sub:      "key-1", clientID: "key-1",
+			name: "api key (client_credentials) with an audience",
+			sub:  "key-1", clientID: "key-1",
 			aud:      []string{bexResource},
 			platform: map[string]bool{},
 		},
 		{
-			// The official Render CLI's device flow carries no audience at all,
-			// so the scope rule never arms for it.
-			name:             "audience-less device-flow token",
-			sub:              "identity-1", clientID: "render-cli",
+			name: "audience-less device-flow token",
+			sub:  "identity-1", clientID: "render-cli",
 			scope:            identityScopes,
 			platform:         map[string]bool{"render-cli": true},
 			wantClientLookup: true,
@@ -112,24 +103,43 @@ func TestScopeRuleKeepsLegitimateCallers(t *testing.T) {
 	}
 }
 
-// The rule is inert without a configured resource or scope, so a deployment
-// with discovery off keeps byte-identical behavior.
-func TestScopeRuleIsInertUnarmed(t *testing.T) {
-	h := newClassHydraScoped(t, "identity-1", "dcr-client", identityScopes,
-		[]string{bexResource}, map[string]bool{"dcr-client": false})
-	if got := authStatusScoped(t, h, "", true, DefaultAPIScope); got != http.StatusOK {
-		t.Errorf("no configured resource: status = %d, want 200", got)
+func TestCachedIdentityCarriesNormalizedGrant(t *testing.T) {
+	h := newClassHydraScoped(t, "identity-1", "dcr-client", "openid bex.write bex.read bex.write",
+		[]string{bexResource, "https://other.example"}, map[string]bool{"dcr-client": false})
+	probe := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, _ := core.IdentityFrom(r.Context())
+		fmt.Fprintf(w, "%s|%s|%t", id.CanonicalScopes, id.AcceptedAudience, id.PlatformClient)
+	})
+	mw := newOryAuth(h.url, "", bexResource, "", "", true, nil, nil, nil, DefaultAPIScope).middleware(probe)
+	var bodies [2]string
+	for i := range bodies {
+		r := httptest.NewRequest(http.MethodGet, "/v1/services", nil)
+		r.Header.Set("Authorization", "Bearer "+testToken)
+		w := httptest.NewRecorder()
+		mw.ServeHTTP(w, r)
+		if w.Code != http.StatusOK {
+			t.Fatalf("pass %d status = %d", i, w.Code)
+		}
+		bodies[i] = w.Body.String()
 	}
-	if got := authStatusScoped(t, h, bexResource, true, ""); got != http.StatusOK {
-		t.Errorf("no configured scope: status = %d, want 200", got)
-	}
-	if h.clientLookups.Load() != 0 {
-		t.Error("no client lookup may happen while the rule is inert")
+	want := "bex.read bex.write|" + bexResource + "|false"
+	if bodies[0] != want || bodies[1] != want {
+		t.Errorf("cache miss/hit = %q / %q, want %q", bodies[0], bodies[1], want)
 	}
 }
 
-// TestScopeGrantedParsesHydrasSpaceSeparatedScope pins the tiny parser:
-// substring matches and empty strings must not read as granted.
+func TestMalformedGrantIntrospectsInactive(t *testing.T) {
+	oversize := make([]byte, core.MaxOAuthScopeLen+1)
+	for i := range oversize {
+		oversize[i] = 'a'
+	}
+	h := newClassHydraScoped(t, "identity-1", "dcr-client", string(oversize),
+		[]string{bexResource}, map[string]bool{"dcr-client": false})
+	if got := authStatusScoped(t, h, bexResource, true, DefaultAPIScope); got != http.StatusUnauthorized {
+		t.Errorf("oversized grant = %d, want 401", got)
+	}
+}
+
 func TestScopeGrantedParsesHydrasSpaceSeparatedScope(t *testing.T) {
 	if scopeGranted("openid "+DefaultAPIScope, DefaultAPIScope) != true {
 		t.Error("scope present in the granted set must read granted")
