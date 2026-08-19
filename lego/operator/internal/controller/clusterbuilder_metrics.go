@@ -40,6 +40,7 @@ const (
 	clusterBuilderPresentNo    = 0
 	clusterBuilderPresentErr   = -1
 	clusterBuilderObserveFor   = 2 * time.Second
+	kpackReadyType             = "Ready"
 )
 
 var (
@@ -133,7 +134,7 @@ func kpackReady(obj *unstructured.Unstructured) (corev1.ConditionStatus, bool) {
 		if !ok {
 			continue
 		}
-		if str(m["type"]) != "Ready" {
+		if str(m["type"]) != kpackReadyType {
 			continue
 		}
 		return corev1.ConditionStatus(str(m["status"])), true

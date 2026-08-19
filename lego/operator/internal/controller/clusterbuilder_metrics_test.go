@@ -59,7 +59,7 @@ func clusterBuilderWithReady(status corev1.ConditionStatus) *unstructured.Unstru
 	if status != "" {
 		obj.Object["status"] = map[string]any{
 			"conditions": []any{map[string]any{
-				"type": "Ready", "status": string(status),
+				"type": kpackReadyType, "status": string(status),
 			}},
 		}
 	}
