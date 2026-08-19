@@ -434,6 +434,11 @@ type Deps struct {
 	// startup validation. It lets clients distinguish permission denial from a
 	// server-disabled channel without exposing provider configuration.
 	PushAvailable bool
+	// WebPushAvailable is true only when VAPID composition passed startup
+	// validation. Independent of Expo so native availability stays byte-identical.
+	WebPushAvailable bool
+	// WebPushVAPIDPublicKey is the browser applicationServerKey. Empty when unset.
+	WebPushVAPIDPublicKey string
 	// ProjectsStore, when set (the control-plane store is wired), backs the
 	// project grouping verbs (w1/m31). nil => those verbs report
 	// projects.ErrProjectsUnavailable (503).
@@ -653,6 +658,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Identities:       identityEmailLookup{d.Identities},
 		DashboardBaseURL: d.DashboardURL,
 		PushAvailable:    &d.PushAvailable,
+		WebPushAvailable: &d.WebPushAvailable,
+		VAPIDPublicKey:   d.WebPushVAPIDPublicKey,
 	}
 	sshHost := ""
 	if d.SSHKeysStore != nil {

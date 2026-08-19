@@ -28,9 +28,12 @@ mutation UpdateNotificationSettings(
 
 # bex-native mobile push extension. It remains caller-scoped like the email
 # settings above, but uses a separate typed projection so Render-compatible
-# email fields remain byte-compatible.
+# email fields remain byte-compatible. Browser web push reuses the same policy
+# picker; availability is a distinct field so native Expo stays byte-identical.
 query PushNotificationSettings {
   pushNotificationsAvailable
+  webPushAvailable
+  webPushVapidPublicKey
   pushNotificationSettings {
     enabled
     events
@@ -82,4 +85,27 @@ mutation UpdatePushNotificationSettings(
       minimumUrgency
     }
   }
+}
+
+mutation RegisterNotificationWebPushSubscription(
+  $browserId: String!
+  $endpoint: String!
+  $p256dh: String!
+  $auth: String!
+) {
+  registerNotificationWebPushSubscription(
+    browserId: $browserId
+    endpoint: $endpoint
+    p256dh: $p256dh
+    auth: $auth
+  ) {
+    browserId
+    createdAt
+    updatedAt
+    lastRegisteredAt
+  }
+}
+
+mutation UnregisterNotificationWebPushSubscription($browserId: String!) {
+  unregisterNotificationWebPushSubscription(browserId: $browserId)
 }

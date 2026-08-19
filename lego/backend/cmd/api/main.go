@@ -267,12 +267,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("bex-api: push config: %v", err)
 	}
+	webPush, err := pushtransport.NewWebPush(pushtransport.WebPushConfig{
+		PublicKey: os.Getenv("BEX_WEBPUSH_VAPID_PUBLIC_KEY"), PrivateKey: os.Getenv("BEX_WEBPUSH_VAPID_PRIVATE_KEY"),
+		Subscriber: os.Getenv("BEX_WEBPUSH_SUBSCRIBER"),
+	})
+	if err != nil {
+		log.Fatalf("bex-api: web push config: %v", err)
+	}
 	metricRegistry := prometheus.NewRegistry()
 	metricRegistry.MustRegister(prometheus.NewGoCollector(), prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	billingMetrics := billing.NewMetrics(metricRegistry)
 	pushMetrics := notifications.NewPushMetrics(metricRegistry)
 	webhookMetrics := webhooks.NewMetrics(metricRegistry)
-	pushMetrics.SetEnabled(mobilePush != nil)
+	pushMetrics.SetEnabled(mobilePush != nil || webPush != nil)
 
 	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -299,7 +306,8 @@ func main() {
 	ready := &serve.Readiness{}
 
 	deps := api.Deps{
-		PushAvailable:  mobilePush != nil,
+		PushAvailable:        mobilePush != nil,
+		WebPushAvailable:     webPush != nil,
 		WebhookMetrics: webhookMetrics,
 		// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>` (docs/ADR005-custom-domain.md);
 		// unset falls back to deriving the platform host from an App's status URLs.
@@ -313,6 +321,9 @@ func main() {
 		// when Prometheus isn't wired below; instance count then needs no source.
 		// Left nil if metrics-server is absent => those metrics report 503.
 		ResourceMetrics: metrics.NewResourceMetricsSource(cs),
+	}
+	if webPush != nil {
+		deps.WebPushVAPIDPublicKey = webPush.PublicKey()
 	}
 	promURL := wireObservability(&deps)
 	// Auth (docs/ADR012-auth.md): OAuth2 API keys introspected at Hydra's admin API,
@@ -463,7 +474,7 @@ func main() {
 	}
 
 	wireReconcilers(ctx, srv, rec, st, cl)
-	startDeliveryWorkers(ctx, srv, st, deps.Mailer, mobilePush, pushMetrics, webhookMetrics)
+	startDeliveryWorkers(ctx, srv, st, deps.Mailer, mobilePush, webPush, pushMetrics, webhookMetrics)
 	srv.CORSOrigin = os.Getenv("BEX_API_CORS_ORIGIN")
 	srv.HydraAdminURL = hydraAdminURL
 	srv.KratosURL = os.Getenv("BEX_KRATOS_URL")
@@ -1132,7 +1143,7 @@ func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler
 
 // startDeliveryWorkers starts the outbound-webhook delivery worker and the
 // native-push consumer; each runs only when its wiring is present.
-func startDeliveryWorkers(ctx context.Context, srv *api.Server, st *store.PGStore, m members.Mailer, mobilePush pushtransport.Transport, pushMetrics *notifications.PushMetrics, webhookMetrics *webhooks.Metrics) {
+func startDeliveryWorkers(ctx context.Context, srv *api.Server, st *store.PGStore, m members.Mailer, mobilePush pushtransport.Transport, webPush *pushtransport.WebPush, pushMetrics *notifications.PushMetrics, webhookMetrics *webhooks.Metrics) {
 	// Outbound event webhooks (w3/m11): the delivery worker tails the composed
 	// event feed (deploys + audit_events + service_event_facts — the same rows the events feed reads)
 	// through a durable watermark and POSTs signed notifications to subscribed
@@ -1167,9 +1178,9 @@ func startDeliveryWorkers(ctx context.Context, srv *api.Server, st *store.PGStor
 	// Native push (ADR048 D2): only an explicitly configured, startup-validated
 	// transport starts the event consumer. With config absent there is no client,
 	// no worker, no feed advancement, and no provider network traffic.
-	if st != nil && mobilePush != nil {
+	if st != nil && (mobilePush != nil || webPush != nil) {
 		pushWorker := &notifications.PushWorker{
-			Store: st, Sender: notifications.PushTransportSender{Transport: mobilePush},
+			Store: st, Sender: notifications.PushTransportSender{Transport: mobilePush, WebPush: webPush},
 			Receipts: mobilePush, Metrics: pushMetrics, Evidence: notifications.PushEvidenceLogger{},
 		}
 		go pushWorker.Run(ctx)

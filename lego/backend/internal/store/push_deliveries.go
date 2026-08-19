@@ -40,6 +40,8 @@ type ActivePushSubscription struct {
 	Provider   string
 	Platform   string
 	Token      string          `json:"-"`
+	P256dh     string          `json:"-"`
+	Auth       string          `json:"-"`
 	PushPolicy json.RawMessage `json:"-"`
 	CreatedAt  time.Time
 }
@@ -133,6 +135,8 @@ type DuePushDelivery struct {
 	Provider         string
 	Platform         string
 	Token            string `json:"-"`
+	P256dh           string `json:"-"`
+	Auth             string `json:"-"`
 	TokenDigest      string `json:"-"`
 	ClaimedUntil     time.Time
 	AttemptCount     int
@@ -157,13 +161,24 @@ type PushSweepResult struct {
 // caller-supplied authorization input.
 func (s *PGStore) ListActivePushSubscriptions(ctx context.Context) ([]ActivePushSubscription, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT d.tenant_id, d.subject, m.role, d.device_id, d.provider,
-		       d.platform, d.token, n.push_policy, d.created_at
-		FROM device_push_subscriptions d
-		JOIN tenant_members m ON m.tenant_id = d.tenant_id AND m.subject = d.subject
-		LEFT JOIN notification_settings n ON n.tenant_id = d.tenant_id AND n.subject = d.subject
-		WHERE d.revoked_at IS NULL
-		ORDER BY d.tenant_id, d.subject, d.device_id`)
+		SELECT tenant_id, subject, role, device_id, provider, platform, token,
+		       push_policy, created_at, p256dh, auth
+		FROM (
+			SELECT d.tenant_id, d.subject, m.role, d.device_id, d.provider,
+			       d.platform, d.token, n.push_policy, d.created_at, '' AS p256dh, '' AS auth
+			FROM device_push_subscriptions d
+			JOIN tenant_members m ON m.tenant_id = d.tenant_id AND m.subject = d.subject
+			LEFT JOIN notification_settings n ON n.tenant_id = d.tenant_id AND n.subject = d.subject
+			WHERE d.revoked_at IS NULL
+			UNION ALL
+			SELECT w.tenant_id, w.subject, m.role, w.browser_id, 'webpush',
+			       'web', w.endpoint, n.push_policy, w.created_at, w.p256dh, w.auth
+			FROM webpush_subscriptions w
+			JOIN tenant_members m ON m.tenant_id = w.tenant_id AND m.subject = w.subject
+			LEFT JOIN notification_settings n ON n.tenant_id = w.tenant_id AND n.subject = w.subject
+			WHERE w.revoked_at IS NULL
+		) destinations
+		ORDER BY tenant_id, subject, device_id`)
 	if err != nil {
 		return nil, safePushStoreError(ctx, err)
 	}
@@ -175,6 +190,7 @@ func (s *PGStore) ListActivePushSubscriptions(ctx context.Context) ([]ActivePush
 			&destination.TenantID, &destination.Subject, &destination.Role,
 			&destination.DeviceID, &destination.Provider, &destination.Platform,
 			&destination.Token, &destination.PushPolicy, &destination.CreatedAt,
+			&destination.P256dh, &destination.Auth,
 		); err != nil {
 			return nil, safePushStoreError(ctx, err)
 		}
@@ -268,13 +284,18 @@ func (s *PGStore) ClaimDuePushDeliveries(ctx context.Context, now, leaseUntil ti
 			SELECT d.tenant_id, d.subject, d.device_id, d.source_event_key
 			FROM push_deliveries d
 			JOIN push_notifications n USING (tenant_id, subject, source_event_key)
-			JOIN device_push_subscriptions s USING (tenant_id, subject, device_id)
+			LEFT JOIN device_push_subscriptions expo
+			  ON expo.tenant_id = d.tenant_id AND expo.subject = d.subject
+			 AND expo.device_id = d.device_id AND expo.revoked_at IS NULL
+			LEFT JOIN webpush_subscriptions web
+			  ON web.tenant_id = d.tenant_id AND web.subject = d.subject
+			 AND web.browser_id = d.device_id AND web.revoked_at IS NULL
 			WHERE d.accepted_at IS NULL
 			  AND d.failed_at IS NULL
 			  AND (d.claimed_until IS NULL OR d.claimed_until <= $1)
 			  AND d.next_attempt_at <= $1
 			  AND n.deliver_at <= $1
-			  AND s.revoked_at IS NULL
+			  AND (expo.device_id IS NOT NULL OR web.browser_id IS NOT NULL)
 			ORDER BY n.deliver_at, n.occurred_at, n.event_id, d.device_id
 			LIMIT $3
 			FOR UPDATE OF d SKIP LOCKED
@@ -289,12 +310,19 @@ func (s *PGStore) ClaimDuePushDeliveries(ctx context.Context, now, leaseUntil ti
 		SELECT n.tenant_id, n.subject, n.source_event_key, n.event_id,
 		       n.event_type, n.title, n.body, n.urgency, n.resource_kind,
 		       n.resource_id, n.deep_link, n.occurred_at, n.deliver_at, n.created_at,
-		       c.device_id, s.session_id, s.provider, s.platform, s.token, $2, d.attempt_count,
-		       d.accepted_at, d.receipt_due_at, d.provider_ticket_id
+		       c.device_id, COALESCE(expo.session_id, ''),
+		       COALESCE(expo.provider, 'webpush'), COALESCE(expo.platform, 'web'),
+		       COALESCE(expo.token, web.endpoint), COALESCE(web.p256dh, ''), COALESCE(web.auth, ''),
+		       $2, d.attempt_count, d.accepted_at, d.receipt_due_at, d.provider_ticket_id
 		FROM claimed c
 		JOIN push_notifications n USING (tenant_id, subject, source_event_key)
 		JOIN push_deliveries d USING (tenant_id, subject, device_id, source_event_key)
-		JOIN device_push_subscriptions s USING (tenant_id, subject, device_id)
+		LEFT JOIN device_push_subscriptions expo
+		  ON expo.tenant_id = c.tenant_id AND expo.subject = c.subject
+		 AND expo.device_id = c.device_id AND expo.revoked_at IS NULL
+		LEFT JOIN webpush_subscriptions web
+		  ON web.tenant_id = c.tenant_id AND web.subject = c.subject
+		 AND web.browser_id = c.device_id AND web.revoked_at IS NULL
 		ORDER BY n.occurred_at, n.event_id, c.device_id`, now, leaseUntil, limit)
 	if err != nil {
 		return nil, safePushStoreError(ctx, err)
@@ -309,7 +337,7 @@ func (s *PGStore) ClaimDuePushDeliveries(ctx context.Context, now, leaseUntil ti
 			&delivery.Urgency, &delivery.ResourceKind, &delivery.ResourceID,
 			&delivery.DeepLink, &delivery.OccurredAt, &delivery.DeliverAt,
 			&delivery.CreatedAt, &delivery.DeviceID, &delivery.SessionID, &delivery.Provider,
-			&delivery.Platform, &delivery.Token, &delivery.ClaimedUntil,
+			&delivery.Platform, &delivery.Token, &delivery.P256dh, &delivery.Auth, &delivery.ClaimedUntil,
 			&delivery.AttemptCount, &delivery.AcceptedAt, &delivery.ReceiptDueAt,
 			&delivery.ProviderTicketID,
 		); err != nil {
@@ -338,6 +366,26 @@ func (s *PGStore) AcceptPushDelivery(ctx context.Context, delivery DuePushDelive
 		delivery.TenantID, delivery.Subject, delivery.DeviceID,
 		delivery.SourceEventKey, delivery.ClaimedUntil, ticketID, at, receiptDue,
 		pushTokenDigest(delivery.Provider, delivery.Token))
+	if err != nil {
+		return false, safePushStoreError(ctx, err)
+	}
+	return result.RowsAffected() == 1, nil
+}
+
+// CompletePushDelivery marks a Web Push send delivered without a receipt poll.
+func (s *PGStore) CompletePushDelivery(ctx context.Context, delivery DuePushDelivery, at time.Time) (bool, error) {
+	if at.IsZero() {
+		return false, fmt.Errorf("complete push delivery: %w", ErrInvalid)
+	}
+	result, err := s.Pool.Exec(ctx, `
+		UPDATE push_deliveries
+		SET delivered_at = $6, last_attempted_at = $6, attempt_count = attempt_count + 1,
+		    claimed_until = NULL
+		WHERE tenant_id = $1 AND subject = $2 AND device_id = $3
+		  AND source_event_key = $4 AND claimed_until = $5
+		  AND accepted_at IS NULL AND failed_at IS NULL AND delivered_at IS NULL`,
+		delivery.TenantID, delivery.Subject, delivery.DeviceID,
+		delivery.SourceEventKey, delivery.ClaimedUntil, at)
 	if err != nil {
 		return false, safePushStoreError(ctx, err)
 	}
@@ -417,6 +465,14 @@ func (s *PGStore) RevokeExactPushSubscription(ctx context.Context, d DuePushDeli
 	if err != nil {
 		return false, safePushStoreError(ctx, err)
 	}
+	if result.RowsAffected() == 1 {
+		return true, nil
+	}
+	result, err = s.Pool.Exec(ctx, `UPDATE webpush_subscriptions SET revoked_at=now(),updated_at=now()
+	 WHERE tenant_id=$1 AND subject=$2 AND browser_id=$3 AND endpoint_digest=$4 AND revoked_at IS NULL`, d.TenantID, d.Subject, d.DeviceID, digest)
+	if err != nil {
+		return false, safePushStoreError(ctx, err)
+	}
 	return result.RowsAffected() == 1, nil
 }
 
@@ -441,6 +497,18 @@ func (s *PGStore) SweepPushRetention(ctx context.Context, revokedBefore, termina
 		return out, safePushStoreError(ctx, err)
 	}
 	out.RevokedDeliveries = r.RowsAffected()
+	r, err = tx.Exec(ctx, `DELETE FROM push_deliveries d USING webpush_subscriptions w WHERE d.tenant_id=w.tenant_id AND d.subject=w.subject AND d.device_id=w.browser_id AND w.revoked_at IS NOT NULL AND w.revoked_at < $1 AND (d.accepted_at IS NULL OR d.delivered_at IS NOT NULL OR d.failed_at IS NOT NULL OR d.ambiguous_at IS NOT NULL)`, revokedBefore)
+	if err != nil {
+		return out, safePushStoreError(ctx, err)
+	}
+	out.RevokedDeliveries += r.RowsAffected()
+	r, err = tx.Exec(ctx, `DELETE FROM push_deliveries d WHERE (d.accepted_at IS NULL OR d.delivered_at IS NOT NULL OR d.failed_at IS NOT NULL OR d.ambiguous_at IS NOT NULL)
+	  AND NOT EXISTS (SELECT 1 FROM device_push_subscriptions s WHERE s.tenant_id=d.tenant_id AND s.subject=d.subject AND s.device_id=d.device_id)
+	  AND NOT EXISTS (SELECT 1 FROM webpush_subscriptions w WHERE w.tenant_id=d.tenant_id AND w.subject=d.subject AND w.browser_id=d.device_id)`)
+	if err != nil {
+		return out, safePushStoreError(ctx, err)
+	}
+	out.RevokedDeliveries += r.RowsAffected()
 	r, err = tx.Exec(ctx, `DELETE FROM push_notifications n WHERE n.created_at < $1 AND NOT EXISTS (SELECT 1 FROM push_deliveries d WHERE d.tenant_id=n.tenant_id AND d.subject=n.subject AND d.source_event_key=n.source_event_key AND d.delivered_at IS NULL AND d.failed_at IS NULL AND d.ambiguous_at IS NULL)`, terminalBefore)
 	if err != nil {
 		return out, safePushStoreError(ctx, err)

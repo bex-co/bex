@@ -5,6 +5,7 @@ import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { NotificationSettingsPanel } from "@/features/notifications/components/notification-settings-panel";
 import { PushNotificationSettingsPanel } from "@/features/notifications/components/push-notification-settings-panel";
+import { WebPushSettingsPanel } from "@/features/notifications/components/web-push-settings-panel";
 
 /**
  * Notification settings as a first-class page (w1/m45) — Render's sidebar
@@ -26,6 +27,7 @@ function NotificationsPage() {
         <div className="mx-auto w-full max-w-2xl space-y-6">
           <NotificationSettingsPanel />
           <PushNotificationSettingsPanel />
+          <WebPushSettingsPanel />
         </div>
       </div>
     </DashboardLayout>

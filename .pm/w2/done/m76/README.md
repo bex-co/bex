@@ -1,21 +1,21 @@
 # w2 · m76 — Web push (VAPID): browser push channel for dashboard and self-hosters
 
-**Worker:** worker2 **Goal:** add browser web push (VAPID) as a third push transport beside native Expo push, riding the existing ADR052 durable inbox + per-member/per-event policy — so notifications actually reach users today (native push is release-gated indefinitely on Apple/Google credentials + physical devices) and self-hosters get push without distributing a binary. **Status:** todo
+**Worker:** worker2 **Goal:** add browser web push (VAPID) as a third push transport beside native Expo push, riding the existing ADR052 durable inbox + per-member/per-event policy — so notifications actually reach users today (native push is release-gated indefinitely on Apple/Google credentials + physical devices) and self-hosters get push without distributing a binary. **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                                                                                        | est | depends_on |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --- | ---------- |
-| t001 | VAPID contract: keypair generation script, `BEX_WEBPUSH_*` env vars, `.env.example` sync, fail-closed gate (unset ⇒ channel absent, byte-identical)           | 30m | —          |
-| t002 | Subscription store + migration: per-member browser subscriptions (endpoint, p256dh/auth keys), register/unregister API                                         | 45m | t001       |
-| t003 | Delivery transport: webpush encryption beside the Expo transport in the push worker — same durable inbox, at-least-once, TTL, prune on 404/410                 | 60m | t002       |
-| t004 | Policy reuse: web push honors the same per-member/per-event policy rows as native — no second policy model                                                     | 30m | t003       |
-| t005 | Dashboard: service worker, permission flow, settings toggle (same-origin, Kratos cookie auth untouched — the DO_NOT_DO no-OAuth2-dashboard rule stands)        | 60m | t002       |
-| t006 | Self-hoster docs: enabling web push without Apple/Google dependencies; iOS-Safari/PWA caveats verified and recorded                                            | 30m | t005       |
-| t007 | Render parity (standing): subscription/settings surface consistent across exposed surfaces; no-push-at-Render divergence recorded                              | 30m | t004, t006 |
-| t008 | Simplify (standing): run /simplify over the changed code                                                                                                       | 30m | t007       |
-| t009 | Test coverage (standing): transport selection, policy enforcement, 404/410 pruning, env-unset byte-identical                                                   | 45m | t007       |
-| t010 | Closeout (standing): verify DoD, mark done, move milestone to done/                                                                                            | 15m | t009       |
+| t001 | VAPID contract: keypair generation script, `BEX_WEBPUSH_*` env vars, `.env.example` sync, fail-closed gate (unset ⇒ channel absent, byte-identical) — **DONE** | 30m | —          |
+| t002 | Subscription store + migration: per-member browser subscriptions (endpoint, p256dh/auth keys), register/unregister API — **DONE**                                         | 45m | t001       |
+| t003 | Delivery transport: webpush encryption beside the Expo transport in the push worker — same durable inbox, at-least-once, TTL, prune on 404/410 — **DONE**                 | 60m | t002       |
+| t004 | Policy reuse: web push honors the same per-member/per-event policy rows as native — no second policy model — **DONE**                                                     | 30m | t003       |
+| t005 | Dashboard: service worker, permission flow, settings toggle (same-origin, Kratos cookie auth untouched — the DO_NOT_DO no-OAuth2-dashboard rule stands) — **DONE**        | 60m | t002       |
+| t006 | Self-hoster docs: enabling web push without Apple/Google dependencies; iOS-Safari/PWA caveats verified and recorded — **DONE**                                            | 30m | t005       |
+| t007 | Render parity (standing): subscription/settings surface consistent across exposed surfaces; no-push-at-Render divergence recorded — **DONE**                              | 30m | t004, t006 |
+| t008 | Simplify (standing): run /simplify over the changed code — **DONE**                                                                                                       | 30m | t007       |
+| t009 | Test coverage (standing): transport selection, policy enforcement, 404/410 pruning, env-unset byte-identical — **DONE**                                                   | 45m | t007       |
+| t010 | Closeout (standing): verify DoD, mark done, move milestone to done/ — **DONE**                                                                                            | 15m | t009       |
 
 ## Definition of done
 

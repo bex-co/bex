@@ -134,6 +134,10 @@ var (
 	// destination while the server transport is deliberately disabled. Reading
 	// notification preferences and supervision remains available.
 	ErrPushUnavailable = Unavailable("mobile push transport not configured")
+	// ErrWebPushUnavailable is returned when a caller attempts to register a
+	// browser push subscription while VAPID is unset. Native push and email
+	// remain independently available.
+	ErrWebPushUnavailable = Unavailable("browser web push transport not configured")
 	// ErrRegistryCredentialsUnavailable is returned by the registry-credentials
 	// verbs when the control-plane store (BEX_CP_DB_URI) or the secret store
 	// (BEX_OPENBAO_URL) isn't wired — either is required, since a credential's

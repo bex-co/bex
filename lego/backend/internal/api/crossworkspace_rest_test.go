@@ -167,6 +167,7 @@ var callerScopedRoutes = map[string]bool{
 	"GET /v1/notification-settings/push/availability": true, // caller-scoped feature capability; no resource id
 	"GET /v1/notifications":                           true, // caller's own tenant + subject are derived from auth context
 	"GET /v1/notification-device-subscriptions":       true, // caller's own workspace + subject; no owner path arg
+	"GET /v1/notification-webpush-subscriptions":      true, // caller's own browser subscriptions; no owner path arg
 	"GET /v1/git/connection":                          true,
 	// The caller's own workspace git connection — no resource in the path.
 	"DELETE /v1/git/connection": true,
@@ -188,6 +189,7 @@ var callerScopedRoutes = map[string]bool{
 	"POST /v1/git/connect":                         true,
 	"POST /v1/invites/accept":                      true, // redeems by the CALLER's own identity
 	"POST /v1/notification-device-subscriptions":   true, // registers only the caller's own device capability
+	"POST /v1/notification-webpush-subscriptions":  true, // registers only the caller's own browser subscription
 	"POST /v1/blueprints":                          true, // creates a new git-connected blueprint; workspace from request context (w2/m62)
 	"POST /v1/blueprints/validate":                 true, // validates a posted manifest, no resource
 	"POST /v1/blueprints/preview":                  true, // dry-run fetch+validate; workspace from request context, no resource

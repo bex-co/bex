@@ -33,6 +33,8 @@ func TestPushMetricsExposeOnlyBoundedLabels(t *testing.T) {
 	metrics.Operation("send", "retry")
 	metrics.Operation("receipt", "delivered")
 	metrics.Operation("prune", "invalid_token")
+	metrics.Transport("expo", "accepted")
+	metrics.Transport("webpush", "delivered")
 	metrics.SetQueue(store.PushQueueStats{Pending: 2, ReceiptPending: 3, Terminal: 5})
 	metrics.Succeeded(time.Unix(123, 0))
 
@@ -48,7 +50,7 @@ func TestPushMetricsExposeOnlyBoundedLabels(t *testing.T) {
 		for _, metric := range family.Metric {
 			for _, label := range metric.Label {
 				switch label.GetName() {
-				case "operation", "result", "state":
+				case "operation", "result", "state", "transport":
 				default:
 					t.Fatalf("unbounded push metric label %q", label.GetName())
 				}
@@ -64,6 +66,7 @@ func TestPushMetricsExposeOnlyBoundedLabels(t *testing.T) {
 	for _, want := range []string{
 		`bex_push_enabled 1`,
 		`bex_push_operations_total{operation="receipt",result="delivered"} 1`,
+		`bex_push_transport_total{result="delivered",transport="webpush"} 1`,
 		`bex_push_queue_rows{state="receipt_pending"} 3`,
 	} {
 		if !strings.Contains(text, want) {

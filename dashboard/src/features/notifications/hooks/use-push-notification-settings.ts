@@ -80,6 +80,8 @@ export function usePushNotificationSettings() {
   return {
     settings,
     available: data?.pushNotificationsAvailable ?? false,
+    webPushAvailable: data?.webPushAvailable ?? false,
+    vapidPublicKey: data?.webPushVapidPublicKey ?? "",
     loading: loading && !data?.pushNotificationSettings,
     error,
     refetch,

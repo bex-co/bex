@@ -17,7 +17,11 @@ limitations under the License.
 package notifications
 
 import (
+	"bytes"
 	"context"
+	"crypto/ecdh"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -253,5 +257,62 @@ func TestPushAvailabilityDisablesRegistrationButNotCleanup(t *testing.T) {
 	}
 	if count, cleanupErr := svc.RevokeDeviceSubscriptions(ctx); cleanupErr != nil || count != 0 {
 		t.Fatalf("cleanup while disabled = (%d, %v)", count, cleanupErr)
+	}
+}
+
+func TestWebPushRegistrationIsSecretFreeAndIndependentOfExpo(t *testing.T) {
+	st := newFakeStore()
+	audit := &auditRecorder{}
+	svc := subscriptionService(st, fakeWorkspace{"alice": "tea-a"}, audit)
+	ctx := identity("alice")
+	webOn := true
+	expoOff := false
+	svc.WebPushAvailable = &webOn
+	svc.PushAvailable = &expoOff
+
+	ua, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p256dh := base64.RawURLEncoding.EncodeToString(ua.PublicKey().Bytes())
+	auth := base64.RawURLEncoding.EncodeToString(bytes.Repeat([]byte{3}, 16))
+	endpoint := "https://fcm.googleapis.com/fcm/send/secret-endpoint"
+
+	created, err := svc.RegisterWebPushSubscription(ctx, RegisterWebPushInput{
+		BrowserID: "wp-browser", Endpoint: endpoint, P256dh: p256dh, Auth: auth,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(created)
+	if strings.Contains(string(raw), "secret-endpoint") || strings.Contains(string(raw), p256dh) || strings.Contains(string(raw), `"auth"`) {
+		t.Fatalf("webpush view leaked capability: %s", raw)
+	}
+	listed, err := svc.ListWebPushSubscriptions(ctx)
+	if err != nil || len(listed) != 1 || listed[0].BrowserID != "wp-browser" {
+		t.Fatalf("list = %+v err=%v", listed, err)
+	}
+	changed, err := svc.UnregisterWebPushSubscription(ctx, "wp-browser")
+	if err != nil || !changed {
+		t.Fatalf("unregister = (%v, %v)", changed, err)
+	}
+}
+
+func TestWebPushAvailabilityDisablesRegistrationIndependently(t *testing.T) {
+	off := false
+	svc := subscriptionService(newFakeStore(), fakeWorkspace{"alice": "tea-a"}, nil)
+	svc.WebPushAvailable = &off
+	ctx := identity("alice")
+	got, err := svc.IsWebPushAvailable(ctx)
+	if err != nil || got {
+		t.Fatalf("IsWebPushAvailable = (%v, %v)", got, err)
+	}
+	_, err = svc.RegisterWebPushSubscription(ctx, RegisterWebPushInput{
+		BrowserID: "wp-browser", Endpoint: "https://fcm.googleapis.com/fcm/send/x",
+		P256dh: "BNxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+		Auth:   "dGVzdGF1dGhzZWNyZXQxNg",
+	})
+	if !errors.Is(err, core.ErrWebPushUnavailable) {
+		t.Fatalf("register error = %v, want webpush unavailable", err)
 	}
 }

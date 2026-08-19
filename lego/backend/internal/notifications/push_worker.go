@@ -61,6 +61,7 @@ type PushWorkerStore interface {
 	EnqueuePushNotifications(context.Context, []store.PushNotificationBatchItem, time.Time, string) error
 	ClaimDuePushDeliveries(context.Context, time.Time, time.Time, int) ([]store.DuePushDelivery, error)
 	AcceptPushDelivery(context.Context, store.DuePushDelivery, string, time.Time, time.Time) (bool, error)
+	CompletePushDelivery(context.Context, store.DuePushDelivery, time.Time) (bool, error)
 	ReleasePushDelivery(context.Context, store.DuePushDelivery) (bool, error)
 	RecordPushSendFailure(context.Context, store.DuePushDelivery, string, time.Time, time.Time, bool) (bool, error)
 	ClaimDuePushReceipts(context.Context, time.Time, time.Time, int) ([]store.DuePushDelivery, error)
@@ -90,6 +91,8 @@ type PushSendRequest struct {
 	Provider string
 	Platform string
 	Token    string `json:"-"`
+	P256dh   string `json:"-"`
+	Auth     string `json:"-"`
 	Title    string
 	Body     string
 	Urgency  string
@@ -236,8 +239,10 @@ const agentPushWindow = 6 * time.Hour
 
 // buildPushRecipients groups active subscriptions into per-tenant, per-subject
 // recipients with a validated role + policy — the shared input both the feed
-// dispatch and the agent-session dispatch evaluate against. Invalid role/policy
-// rows are dropped (and evidenced) and never delivered.
+// dispatch and the agent-session dispatch evaluate against. Expo devices and
+// web-push browsers are the same recipient after Evaluate; there is no second
+// policy model. Invalid role/policy rows are dropped (and evidenced) and never
+// delivered.
 func (w *PushWorker) buildPushRecipients(ctx context.Context, destinations []store.ActivePushSubscription) (map[string]map[string]*pushRecipient, []string) {
 	byTenant := make(map[string]map[string]*pushRecipient)
 	invalidRecipients := make(map[string]bool)
@@ -648,8 +653,13 @@ func (w *PushWorker) send(ctx context.Context) error {
 	}
 	var failures []error
 	for _, delivery := range deliveries {
+		if !pushSenderSupports(w.Sender, delivery.Provider) {
+			_, _ = w.Store.ReleasePushDelivery(ctx, delivery)
+			continue
+		}
 		ticketID, sendErr := w.Sender.Send(ctx, PushSendRequest{
 			Provider: delivery.Provider, Platform: delivery.Platform, Token: delivery.Token,
+			P256dh: delivery.P256dh, Auth: delivery.Auth,
 			Title: delivery.Title, Body: delivery.Body, Urgency: delivery.Urgency,
 			Data: PushEnvelopeData{
 				Schema: pushSchema, NotificationID: delivery.EventID,
@@ -663,6 +673,20 @@ func (w *PushWorker) send(ctx context.Context) error {
 			continue
 		}
 		acceptedAt := w.now()
+		if delivery.Provider == pushtransport.ProviderWebPush {
+			completed, completeErr := w.Store.CompletePushDelivery(ctx, delivery, acceptedAt)
+			if completeErr != nil {
+				failures = append(failures, completeErr)
+				continue
+			}
+			if !completed {
+				failures = append(failures, errors.New("push delivery lease changed before completion"))
+			}
+			w.Metrics.Operation("send", "accepted")
+			w.Metrics.Transport("webpush", "delivered")
+			w.Metrics.Succeeded(acceptedAt)
+			continue
+		}
 		accepted, acceptErr := w.Store.AcceptPushDelivery(ctx, delivery, ticketID, acceptedAt, acceptedAt.Add(pushReceiptDelay))
 		if acceptErr != nil {
 			failures = append(failures, acceptErr)
@@ -672,6 +696,7 @@ func (w *PushWorker) send(ctx context.Context) error {
 			failures = append(failures, errors.New("push delivery lease changed before acceptance"))
 		}
 		w.Metrics.Operation("send", "accepted")
+		w.Metrics.Transport("expo", "accepted")
 		w.Metrics.Succeeded(acceptedAt)
 	}
 	return errors.Join(failures...)
@@ -849,4 +874,12 @@ func (w *PushWorker) evidence(ctx context.Context, op, result, code string) {
 	if w.Evidence != nil {
 		w.Evidence.RecordPushEvidence(ctx, PushEvidence{Operation: op, Result: result, ErrorCode: code})
 	}
+}
+
+func pushSenderSupports(sender PushSender, provider string) bool {
+	type supporter interface{ Supports(string) bool }
+	if s, ok := sender.(supporter); ok {
+		return s.Supports(provider)
+	}
+	return provider == pushtransport.ProviderExpo
 }

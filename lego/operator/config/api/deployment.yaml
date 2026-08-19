@@ -282,6 +282,29 @@ spec:
                   name: bex-push
                   key: BEX_EXPO_PUSH_ACCESS_TOKEN
                   optional: true
+            # Browser web push (VAPID): all three values arrive atomically in
+            # the out-of-band bex-webpush Secret. Every reference is optional,
+            # so a cluster with no Secret constructs no transport. A partial
+            # Secret fails bex-api startup rather than delivering unsigned
+            # pushes. scripts/webpush-secret.sh owns mint/rotation.
+            - name: BEX_WEBPUSH_VAPID_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-webpush
+                  key: BEX_WEBPUSH_VAPID_PUBLIC_KEY
+                  optional: true
+            - name: BEX_WEBPUSH_VAPID_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-webpush
+                  key: BEX_WEBPUSH_VAPID_PRIVATE_KEY
+                  optional: true
+            - name: BEX_WEBPUSH_SUBSCRIBER
+              valueFrom:
+                secretKeyRef:
+                  name: bex-webpush
+                  key: BEX_WEBPUSH_SUBSCRIBER
+                  optional: true
             # REQUIRED once BEX_CP_DB_URI is set: the internal tenant API (:8091)
             # grants workspace-admin and cross-tenant writes, so bex-api refuses
             # to start with an empty BEX_CP_TOKEN (w1/m53 requireCPAuth — the token

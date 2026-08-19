@@ -39,13 +39,45 @@ func (PushEvidenceLogger) RecordPushEvidence(_ context.Context, evidence PushEvi
 // sees both types; neither policy/store code nor the public service can send.
 type PushTransportSender struct {
 	Transport push.Transport
+	WebPush   *push.WebPush
+}
+
+func (s PushTransportSender) Supports(provider string) bool {
+	switch provider {
+	case push.ProviderExpo:
+		return s.Transport != nil
+	case push.ProviderWebPush:
+		return s.WebPush != nil
+	default:
+		return false
+	}
 }
 
 func (s PushTransportSender) Send(ctx context.Context, request PushSendRequest) (string, error) {
-	if s.Transport == nil {
-		return "", errors.New("push transport unavailable")
-	}
-	if request.Provider != push.ProviderExpo {
+	switch request.Provider {
+	case push.ProviderWebPush:
+		if s.WebPush == nil {
+			return "", errors.New("push transport unavailable")
+		}
+		err := s.WebPush.Send(ctx, push.WebPushMessage{
+			Endpoint: request.Token, P256dh: request.P256dh, Auth: request.Auth,
+			Title: request.Title, Body: request.Body, Urgency: request.Urgency,
+			Data: push.EnvelopeData{
+				Schema: request.Data.Schema, NotificationID: request.Data.NotificationID,
+				Event: request.Data.Event, Route: request.Data.Route,
+				Subject: request.Data.Subject, WorkspaceID: request.Data.WorkspaceID,
+				SessionID: request.Data.SessionID,
+			},
+		})
+		if err != nil {
+			return "", err
+		}
+		return "webpush", nil
+	case push.ProviderExpo:
+		if s.Transport == nil {
+			return "", errors.New("push transport unavailable")
+		}
+	default:
 		return "", &push.PermanentError{Operation: "send", Code: "unsupported_provider"}
 	}
 	priority := push.PriorityNormal

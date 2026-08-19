@@ -76,6 +76,47 @@ const zhNotifications: Record<string, TranslationEntry> = {
       "你仍可预先保存策略，但在运维人员配置推送服务之前，已注册设备不会收到通知。",
     description: "Disabled server status hint",
   },
+  "notifications.webPushTitle": {
+    message: "浏览器通知",
+    description: "Web push settings card title",
+  },
+  "notifications.webPushDescription": {
+    message:
+      "在此浏览器接收相同提醒。事件筛选与免打扰时段沿用「移动推送」中的策略，没有第二套策略。",
+    description: "Web push settings description",
+  },
+  "notifications.webPushUnsupported": {
+    message: "此浏览器不支持网页推送。",
+    description: "Unsupported browser",
+  },
+  "notifications.webPushUnconfigured": {
+    message: "此 bex 服务器尚未启用浏览器推送。",
+    description: "Server VAPID unset",
+  },
+  "notifications.webPushDenied": {
+    message: "此站点的通知已被阻止。请在浏览器设置中允许后重试。",
+    description: "Permission denied",
+  },
+  "notifications.webPushError": {
+    message: "无法更新浏览器通知，请重试。",
+    description: "Subscribe error",
+  },
+  "notifications.webPushOn": {
+    message: "此浏览器将收到 bex 提醒。",
+    description: "Subscribed state",
+  },
+  "notifications.webPushOff": {
+    message: "此浏览器尚未订阅。",
+    description: "Unsubscribed state",
+  },
+  "notifications.webPushEnable": {
+    message: "在此浏览器启用",
+    description: "Subscribe button",
+  },
+  "notifications.webPushDisable": {
+    message: "在此浏览器停用",
+    description: "Unsubscribe button",
+  },
   "notifications.pushEvents": {
     message: "事件筛选",
     description: "Push event section",
