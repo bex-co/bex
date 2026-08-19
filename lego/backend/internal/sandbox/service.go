@@ -206,6 +206,19 @@ func sandboxNotFound(id string) error {
 	return core.NewNotFoundError("SANDBOX_NOT_FOUND", "sandbox not found", map[string]any{"id": id})
 }
 
+// sandboxCapacityError is the typed refusal for the server's pod-ready-timeout
+// create failure (.pm/w3/011.md fix #1). bex-api cannot see the BatchSandbox
+// controller's quota condition (server + controller are external), so it names
+// only what it knows — the pod did not become ready within the platform's wait —
+// with workspace sandbox capacity as the likely cause and the actionable remedy,
+// instead of the opaque 500 the plain upstream error mapped to. 409 matches the
+// codebase's capacity-limit precedent (AGENT_SESSION_LIVE_LIMIT, ENV_GROUP_LIMIT).
+func sandboxCapacityError() error {
+	return core.NewConflictError("SANDBOX_CAPACITY_LIMIT",
+		"the sandbox did not become ready within the platform's wait; the likely cause is this workspace's sandbox capacity (plan limit) — stop an existing sandbox or upgrade the plan, then retry",
+		nil)
+}
+
 // isWorkspaceAdmin answers the cross-owner admin override with an authoritative
 // (uncached) decision whenever the wired checker supports core.FreshChecker
 // (round-11 #5): the override gates exec-ticket minting and lifecycle mutation
@@ -365,6 +378,9 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 	}
 	raw, err := s.Client.Create(ctx, key, tmpl.Image, entry, cpu, mem, timeout, env, metadata)
 	if err != nil {
+		if errors.Is(err, errPodReadyTimeout) {
+			return Sandbox{}, sandboxCapacityError()
+		}
 		return Sandbox{}, err
 	}
 	if raw.Metadata == nil {

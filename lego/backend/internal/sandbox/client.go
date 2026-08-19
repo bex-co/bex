@@ -35,6 +35,20 @@ const tenantKeyHeader = "OPEN-SANDBOX-API-KEY"
 
 var errOpenSandboxNotFound = errors.New("opensandbox sandbox not found")
 
+// errPodReadyTimeout marks the one create failure whose cause bex can honestly
+// name: the OpenSandbox server answered with its pod-ready-timeout error code,
+// meaning the sandbox pod never became Running within the server's synchronous
+// create wait (sandbox_create_timeout_seconds, deploy/opensandbox/
+// sandbox-cluster.toml). The dominant live cause is the workspace's
+// `<ws>-sandbox` ResourceQuota refusing another pod (.pm/w3/011.md); the
+// service maps it to a typed capacity refusal instead of a generic 500.
+var errPodReadyTimeout = errors.New("opensandbox pod-ready timeout")
+
+// podReadyTimeoutCode is the OpenSandbox server's own error code for an
+// elapsed pod-ready wait, matched as a body substring. The server is an
+// external component, so this signature is the only signal bex-api gets.
+const podReadyTimeoutCode = "KUBERNETES::POD_READY_TIMEOUT"
+
 // Client is bex-api's in-package OpenSandbox lifecycle client. It is separate
 // from the operator's runtime/opensandbox client (unimportable across the
 // operator→types←backend boundary) and adds per-workspace tenant-key scoping.
@@ -152,6 +166,9 @@ func (c *Client) Create(ctx context.Context, tenantKey, image string, entrypoint
 		return osSandbox{}, err
 	}
 	if code != http.StatusOK && code != http.StatusCreated && code != http.StatusAccepted {
+		if bytes.Contains(data, []byte(podReadyTimeoutCode)) {
+			return osSandbox{}, fmt.Errorf("opensandbox create: status %d: %w", code, errPodReadyTimeout)
+		}
 		return osSandbox{}, fmt.Errorf("opensandbox create: status %d: %s", code, truncate(data))
 	}
 	var s osSandbox

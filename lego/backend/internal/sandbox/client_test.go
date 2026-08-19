@@ -176,3 +176,26 @@ func TestClientCreateErrorsOnBadStatus(t *testing.T) {
 		t.Fatal("expected error on 500")
 	}
 }
+
+func TestClientCreateMapsPodReadyTimeoutSignature(t *testing.T) {
+	var body string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusGatewayTimeout)
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	c := NewClient(srv.URL)
+
+	// The server's own error code for an elapsed synchronous pod-ready wait.
+	body = `{"code":"KUBERNETES::POD_READY_TIMEOUT","message":"sandbox pod not ready within 300s"}`
+	if _, err := c.Create(context.Background(), "k", "img", []string{"sh"}, "500m", "512Mi", 0, nil, nil); !errors.Is(err, errPodReadyTimeout) {
+		t.Fatalf("timeout-signature create error = %v, want errPodReadyTimeout", err)
+	}
+
+	// Narrow mapping: any other failure — even the same status — keeps the
+	// generic mapping and is never reported as a capacity refusal.
+	body = `{"code":"KUBERNETES::INTERNAL","message":"boom"}`
+	if _, err := c.Create(context.Background(), "k", "img", []string{"sh"}, "500m", "512Mi", 0, nil, nil); err == nil || errors.Is(err, errPodReadyTimeout) {
+		t.Fatalf("non-timeout create error = %v, want a generic error without errPodReadyTimeout", err)
+	}
+}

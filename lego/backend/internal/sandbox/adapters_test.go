@@ -125,6 +125,80 @@ func TestGraphQLNetworkPolicyNamedRefusal(t *testing.T) {
 	}
 }
 
+// capacityAdapterService builds a Service whose upstream answers every create
+// with the OpenSandbox pod-ready-timeout signature — the live quota-denied
+// shape from .pm/w3/011.md.
+func capacityAdapterService(t *testing.T) *Service {
+	t.Helper()
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusGatewayTimeout)
+		_, _ = io.WriteString(w, `{"code":"KUBERNETES::POD_READY_TIMEOUT","message":"sandbox pod not ready within 300s"}`)
+	}))
+	t.Cleanup(upstream.Close)
+	return &Service{
+		Base:            &core.Base{Namespace: "default"},
+		Client:          NewClient(upstream.URL),
+		Templates:       map[string]Template{"node": {Image: "node:20"}},
+		DefaultTemplate: "node",
+	}
+}
+
+func TestRESTPodReadyTimeoutIsTypedCapacityRefusal(t *testing.T) {
+	svc := capacityAdapterService(t)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/sandboxes", strings.NewReader(`{}`)).WithContext(callerCtx())
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "SANDBOX_CAPACITY_LIMIT") {
+		t.Fatalf("REST capacity refusal = %d %s, want 409 + SANDBOX_CAPACITY_LIMIT", rec.Code, rec.Body.String())
+	}
+}
+
+func TestGraphQLPodReadyTimeoutIsTypedCapacityRefusal(t *testing.T) {
+	svc := capacityAdapterService(t)
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := graphql.Do(graphql.Params{
+		Schema:        schema,
+		RequestString: `mutation { createSandbox { id } }`,
+		Context:       callerCtx(),
+	})
+	if len(res.Errors) != 1 || res.Errors[0].Extensions["code"] != "SANDBOX_CAPACITY_LIMIT" {
+		t.Fatalf("GraphQL capacity refusal = %#v, want extensions.code SANDBOX_CAPACITY_LIMIT", res.Errors)
+	}
+}
+
+func TestMCPPodReadyTimeoutIsTypedCapacityRefusal(t *testing.T) {
+	svc := capacityAdapterService(t)
+	server := mcp.NewServer(&mcp.Implementation{Name: "sandbox-test", Version: "0"}, nil)
+	svc.RegisterMCP(server)
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	if _, err := server.Connect(ctx, serverTransport, nil); err != nil {
+		t.Fatal(err)
+	}
+	client, err := mcp.NewClient(&mcp.Implementation{Name: "sandbox-test", Version: "0"}, nil).Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Close() })
+
+	res, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "spawn_sandbox", Arguments: map[string]any{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "SANDBOX_CAPACITY_LIMIT") {
+		t.Fatalf("MCP capacity refusal = %#v, want the code in the text error", res)
+	}
+}
+
 func TestMCPNetworkPolicyNamedRefusal(t *testing.T) {
 	svc := policyAdapterService(t)
 	server := mcp.NewServer(&mcp.Implementation{Name: "sandbox-test", Version: "0"}, nil)

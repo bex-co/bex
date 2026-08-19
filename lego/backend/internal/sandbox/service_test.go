@@ -485,6 +485,43 @@ func TestCreateUsesDefaultTemplateWhenEmpty(t *testing.T) {
 	}
 }
 
+// TestCreateMapsPodReadyTimeoutToCapacityRefusal pins .pm/w3/011.md fix #1: the
+// server's pod-ready-timeout create failure surfaces as a typed capacity refusal
+// (409-class SANDBOX_CAPACITY_LIMIT), not the opaque 500 of the generic upstream
+// error; any other server failure keeps the plain passthrough.
+func TestCreateMapsPodReadyTimeoutToCapacityRefusal(t *testing.T) {
+	svc := stubServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusGatewayTimeout)
+		_, _ = w.Write([]byte(`{"code":"KUBERNETES::POD_READY_TIMEOUT","message":"sandbox pod not ready within 300s"}`))
+	})
+	_, err := svc.Create(callerCtx(), CreateRequest{Template: "node"})
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "SANDBOX_CAPACITY_LIMIT" {
+		t.Fatalf("pod-ready-timeout create error = %#v, want SANDBOX_CAPACITY_LIMIT", err)
+	}
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("pod-ready-timeout create error = %v, want the 409 conflict class", err)
+	}
+	if !contains(coded.Error(), "did not become ready") || !contains(coded.Error(), "capacity") {
+		t.Fatalf("capacity message = %q, want the honest wait/cause wording", coded.Error())
+	}
+}
+
+func TestCreateKeepsOtherServerErrorsUnmapped(t *testing.T) {
+	svc := stubServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusGatewayTimeout)
+		_, _ = w.Write([]byte(`{"code":"KUBERNETES::INTERNAL","message":"boom"}`))
+	})
+	_, err := svc.Create(callerCtx(), CreateRequest{Template: "node"})
+	if err == nil || errors.Is(err, core.ErrConflict) {
+		t.Fatalf("non-timeout server error = %v, want the unchanged generic passthrough", err)
+	}
+	var coded *core.CodedError
+	if errors.As(err, &coded) {
+		t.Fatalf("non-timeout server error = %#v, want no CodedError", err)
+	}
+}
+
 func TestCreateStillRejectsWhenNoDefaultAndNoTemplate(t *testing.T) {
 	svc := &Service{
 		Base:      &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
