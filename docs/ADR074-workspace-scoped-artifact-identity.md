@@ -67,7 +67,7 @@ Idempotence: a destination tag/object whose digest/ETag already matches is skipp
 
 ## Why workspace id, not App UID
 
-ADR055's sketch mentioned UID-scoped repos. The workspace id is the tenant boundary ([ADR043](ADR043-tenant-isolation.md), [ADR020](ADR020-identifiers.md)), already on every store-projected App, DNS-safe, and stable across an App's lifetime. UID in the path would churn the repo on every recreate and is already the **ownership** key (`app.bex.co/app-uid`) on build-namespace objects. The collision class is two tenants with the same `metadata.name`; scoping by workspace is necessary and sufficient. Store-managed CR names are already `<ws>-<name>` ([ADR067](ADR067-security-review-round12.md) finding 1) — the scheme still applies so hand-applied / never-renamed CRs cannot collide at the sink.
+ADR055's sketch mentioned UID-scoped repos. The workspace id is the tenant boundary ([ADR043](ADR043-tenant-namespace-isolation.md), [ADR020](ADR020-identifiers.md)), already on every store-projected App, DNS-safe, and stable across an App's lifetime. UID in the path would churn the repo on every recreate and is already the **ownership** key (`app.bex.co/app-uid`) on build-namespace objects. The collision class is two tenants with the same `metadata.name`; scoping by workspace is necessary and sufficient. Store-managed CR names are already `<ws>-<name>` ([ADR067](ADR067-security-review-round12.md) finding 1) — the scheme still applies so hand-applied / never-renamed CRs cannot collide at the sink.
 
 ## Consequences
 
