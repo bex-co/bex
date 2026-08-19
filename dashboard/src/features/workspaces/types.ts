@@ -35,10 +35,12 @@ export function workspaceDeleteConfirmation(name: string): string {
  * The bex workspace capability lineup mirrors Render's plan ids (verified
  * 2026-07-08, .pm/w6/RESEARCH-workspaces.md finding 1 + 4): Hobby is capped
  * (1 member, 25 services, 5 workspaces/user); Pro/Scale/Enterprise lift caps
- * and add roles. Unlike Render, bex bills resource-tier usage rather than flat
- * workspace subscriptions (ADR040, ADR046). Kept in sync by hand with the
- * backend catalog (store.WorkspacePlans) — this module has no schema-
- * introspection path to the Go constants.
+ * and add roles. Monthly fees are Render × 0.70 (Hobby $0, Pro $17.50, Scale
+ * $349.30; Enterprise custom) — keep the locale billing strings in lockstep
+ * with lego/backend/internal/pricing/pricing.yaml. Resource-tier usage is
+ * billed separately (ADR040, ADR046). Kept in sync by hand with the backend
+ * catalog (store.WorkspacePlans) — this module has no schema-introspection
+ * path to the Go constants.
  */
 export const WORKSPACE_PLAN_IDS = [
   "hobby",
@@ -53,6 +55,7 @@ export interface WorkspacePlanCatalogEntry {
   nameKey: string;
   billingKey: string;
   descriptionKey: string;
+  bulletKeys: readonly string[];
 }
 
 export const WORKSPACE_PLAN_CATALOG: WorkspacePlanCatalogEntry[] = [
@@ -61,23 +64,45 @@ export const WORKSPACE_PLAN_CATALOG: WorkspacePlanCatalogEntry[] = [
     nameKey: "workspaces.planHobbyName",
     billingKey: "workspaces.planHobbyBilling",
     descriptionKey: "workspaces.planHobbyDescription",
+    bulletKeys: [
+      "workspaces.planHobbyBulletMembers",
+      "workspaces.planHobbyBulletServices",
+      "workspaces.planHobbyBulletWorkspaces",
+    ],
   },
   {
     id: "pro",
     nameKey: "workspaces.planProName",
     billingKey: "workspaces.planProBilling",
     descriptionKey: "workspaces.planProDescription",
+    bulletKeys: [
+      "workspaces.planProBulletMembers",
+      "workspaces.planProBulletServices",
+    ],
   },
   {
     id: "scale",
     nameKey: "workspaces.planScaleName",
     billingKey: "workspaces.planScaleBilling",
     descriptionKey: "workspaces.planScaleDescription",
+    bulletKeys: [
+      "workspaces.planScaleBulletMembers",
+      "workspaces.planScaleBulletServices",
+      "workspaces.planScaleBulletRoles",
+    ],
   },
   {
     id: "enterprise",
     nameKey: "workspaces.planEnterpriseName",
     billingKey: "workspaces.planEnterpriseBilling",
     descriptionKey: "workspaces.planEnterpriseDescription",
+    bulletKeys: [
+      "workspaces.planEnterpriseBulletLimits",
+      "workspaces.planEnterpriseBulletSupport",
+    ],
   },
 ];
+
+export function workspacePlanNameKey(plan: string): string {
+  return WORKSPACE_PLAN_CATALOG.find((p) => p.id === plan)?.nameKey ?? "";
+}

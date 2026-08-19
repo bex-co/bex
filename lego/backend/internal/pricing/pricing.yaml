@@ -1,6 +1,7 @@
-# bex price sheet — 30% off Render on compute/Postgres/KeyValue/build-minute
-# and Postgres storage, 90% off on bandwidth.
-# Source: docs/render-artifacts/pricing.md (captured 2026-07-13)
+# bex price sheet — 30% off Render on workspace-plan fees, compute/Postgres/
+# KeyValue/build-minute and Postgres storage, 90% off on bandwidth.
+# Source: docs/render-artifacts/pricing.md (captured 2026-07-13; workspace
+# plans from Render's April 2026 lineup, render.com/pricing).
 # Policy: docs/ADR030-pricing.md
 #
 # All rates are in USD per unit of the matching meter kind:
@@ -18,7 +19,21 @@
 # provisioned by scripts/stripe-billing-setup.py. Stripe's invoice remains the
 # authoritative charge; the estimate is informational (ADR030, ADR040).
 
-version: "3"
+version: "4"
+
+# Workspace plan fees (licensed monthly SKU, not a usage meter). Render's
+# post-2026-04-23 flat workspace subscriptions × 0.70. Hobby stays free.
+# Enterprise is custom and has no catalog rate. These amounts are the
+# display/catalog source of truth (dashboard PlanPicker, ADR030). They are
+# not Stripe usage meters; attaching them as licensed subscription items
+# is a billing follow-up, not part of BillableMeterNames.
+workspace:
+  - plan: hobby
+    usdPerMonth: 0.0 # Render $0 × 0.70
+  - plan: pro
+    usdPerMonth: 17.50 # Render $25 × 0.70
+  - plan: scale
+    usdPerMonth: 349.30 # Render $499 × 0.70
 
 # instance_seconds rates for App (web-service / worker / cron) services
 compute:

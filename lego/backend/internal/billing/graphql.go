@@ -37,15 +37,16 @@ var taxReadinessGQLType = graphql.NewObject(graphql.ObjectConfig{
 var billingReadinessGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WorkspaceBillingReadiness",
 	Fields: graphql.Fields{
-		"workspaceId":        gqlutil.StrField(func(r Readiness) any { return r.WorkspaceID }),
-		"mode":               gqlutil.StrField(func(r Readiness) any { return r.Mode }),
-		"customerReady":      gqlutil.BoolField(func(r Readiness) any { return r.CustomerReady }),
-		"subscriptionReady":  gqlutil.BoolField(func(r Readiness) any { return r.SubscriptionReady }),
-		"paymentMethodReady": gqlutil.BoolField(func(r Readiness) any { return r.PaymentMethodReady }),
-		"paymentMethodBrand": gqlutil.StrField(func(r Readiness) any { return r.PaymentMethodBrand }),
-		"paymentMethodLast4": gqlutil.StrField(func(r Readiness) any { return r.PaymentMethodLast4 }),
-		"tax":                gqlutil.Typed(taxReadinessGQLType, func(r Readiness) any { return r.Tax }),
-		"lifecycle":          gqlutil.Typed(billingLifecycleGQLType, func(r Readiness) any { return r.Lifecycle }),
+		"workspaceId":           gqlutil.StrField(func(r Readiness) any { return r.WorkspaceID }),
+		"mode":                  gqlutil.StrField(func(r Readiness) any { return r.Mode }),
+		"customerReady":         gqlutil.BoolField(func(r Readiness) any { return r.CustomerReady }),
+		"subscriptionReady":     gqlutil.BoolField(func(r Readiness) any { return r.SubscriptionReady }),
+		"paymentMethodReady":    gqlutil.BoolField(func(r Readiness) any { return r.PaymentMethodReady }),
+		"paymentMethodBrand":    gqlutil.StrField(func(r Readiness) any { return r.PaymentMethodBrand }),
+		"paymentMethodLast4":    gqlutil.StrField(func(r Readiness) any { return r.PaymentMethodLast4 }),
+		"paymentMethodRequired": gqlutil.BoolField(func(r Readiness) any { return r.PaymentMethodRequired }),
+		"tax":                   gqlutil.Typed(taxReadinessGQLType, func(r Readiness) any { return r.Tax }),
+		"lifecycle":             gqlutil.Typed(billingLifecycleGQLType, func(r Readiness) any { return r.Lifecycle }),
 	},
 })
 

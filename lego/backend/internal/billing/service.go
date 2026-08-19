@@ -30,21 +30,26 @@ import (
 // by REST, GraphQL, MCP, and the dashboard. Stripe object ids stay server-side:
 // callers need state and hosted URLs, never provider credentials or topology.
 type Readiness struct {
-	WorkspaceID        string        `json:"workspaceId"`
-	Mode               string        `json:"mode"`
-	CustomerReady      bool          `json:"customerReady"`
-	SubscriptionReady  bool          `json:"subscriptionReady"`
-	PaymentMethodReady bool          `json:"paymentMethodReady"`
+	WorkspaceID        string `json:"workspaceId"`
+	Mode               string `json:"mode"`
+	CustomerReady      bool   `json:"customerReady"`
+	SubscriptionReady  bool   `json:"subscriptionReady"`
+	PaymentMethodReady bool   `json:"paymentMethodReady"`
 	// PaymentMethodBrand and PaymentMethodLast4 describe the card on file
 	// ("visa", "4242") so a billing page can name it rather than say only that
 	// one exists. Both empty when there is no method, when it is not a card, or
 	// when the provider did not expand it — presenters fall back to the boolean.
 	// Neither is a credential: the provider's payment-method id stays
 	// server-side, as does every other Stripe object id.
-	PaymentMethodBrand string        `json:"paymentMethodBrand,omitempty"`
-	PaymentMethodLast4 string        `json:"paymentMethodLast4,omitempty"`
-	Tax                TaxReadiness  `json:"tax"`
-	Lifecycle          LifecycleView `json:"lifecycle"`
+	PaymentMethodBrand string `json:"paymentMethodBrand,omitempty"`
+	PaymentMethodLast4 string `json:"paymentMethodLast4,omitempty"`
+	// PaymentMethodRequired is the platform's BEX_REQUIRE_PAYMENT_METHOD gate
+	// (ADR046), not whether this workspace already has a card. The dashboard
+	// create-workspace flow uses it to disable Create on Pro/Scale until the
+	// current workspace can bind a method; false ⇒ prior ungated behavior.
+	PaymentMethodRequired bool          `json:"paymentMethodRequired"`
+	Tax                   TaxReadiness  `json:"tax"`
+	Lifecycle             LifecycleView `json:"lifecycle"`
 }
 
 type LifecycleView struct {
@@ -119,6 +124,7 @@ func (s *Service) Status(ctx context.Context, workspaceID string) (Readiness, er
 		return Readiness{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)
 	}
 	status.WorkspaceID = tenantID
+	status.PaymentMethodRequired = s.Payment != nil
 	status.Lifecycle, err = s.lifecycle(ctx, tenantID)
 	if err != nil {
 		return Readiness{}, fmt.Errorf("%w: %v", core.ErrBillingUnavailable, err)

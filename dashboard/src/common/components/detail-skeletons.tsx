@@ -64,7 +64,7 @@ export function AgentsPageSkeleton() {
 export function FormPageSkeleton() {
   return (
     <div className="flex-1 overflow-auto p-4 sm:p-6">
-      <div className="mx-auto w-full max-w-2xl space-y-6">
+      <div className="mx-auto w-full max-w-4xl space-y-6">
         <Skeleton className="h-7 w-52" />
         <CardSkeleton rows={5} />
       </div>

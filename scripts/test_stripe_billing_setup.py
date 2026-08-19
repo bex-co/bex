@@ -48,6 +48,14 @@ class StripeBillingSetupTest(unittest.TestCase):
         self.assertIn("sandbox_compute_seconds", names)
         self.assertFalse(any(name.endswith(".free") for name in names))
 
+    def test_workspace_plan_fees_are_not_usage_meters(self):
+        names = {name for name, _, _ in SETUP.parse_pricing()}
+        self.assertEqual(14, len(names))
+        self.assertTrue(all("workspace" not in name for name in names))
+        sheet = SETUP.PRICING.read_text()
+        self.assertIn("usdPerMonth: 17.50", sheet)
+        self.assertIn("usdPerMonth: 349.30", sheet)
+
     def test_pricing_catalog_rates_match_published_units(self):
         dimensions = {name: cents for name, _, cents in SETUP.parse_pricing()}
         month_seconds = Decimal(730 * 60 * 60)

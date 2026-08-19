@@ -42,6 +42,46 @@ func TestDefaultSheetLoadsWithoutPanic(t *testing.T) {
 	}
 }
 
+func TestWorkspacePlanFeesAreThirtyPercentOffRender(t *testing.T) {
+	hobby, hobbyOK := Default.WorkspaceUSDPerMonth(store.PlanHobby)
+	pro, proOK := Default.WorkspaceUSDPerMonth(store.PlanPro)
+	scale, scaleOK := Default.WorkspaceUSDPerMonth(store.PlanScale)
+	_, enterpriseOK := Default.WorkspaceUSDPerMonth(store.PlanEnterprise)
+	if !hobbyOK || !proOK || !scaleOK {
+		t.Fatalf("listed = hobby %v pro %v scale %v, want all true", hobbyOK, proOK, scaleOK)
+	}
+	if enterpriseOK {
+		t.Fatal("enterprise must not have a catalog monthly SKU")
+	}
+	if hobby != 0 {
+		t.Errorf("hobby = %v, want 0", hobby)
+	}
+	if formatUSD(pro) != "17.50" { // Render $25 × 0.70
+		t.Errorf("pro = %v, want 17.50", pro)
+	}
+	if formatUSD(scale) != "349.30" { // Render $499 × 0.70
+		t.Errorf("scale = %v, want 349.30", scale)
+	}
+}
+
+func TestParseSheetRejectsEnterpriseWorkspaceFee(t *testing.T) {
+	yml := []byte(`
+version: "4"
+workspace:
+  - plan: hobby
+    usdPerMonth: 0
+  - plan: pro
+    usdPerMonth: 17.50
+  - plan: scale
+    usdPerMonth: 349.30
+  - plan: enterprise
+    usdPerMonth: 1
+`)
+	if _, err := parseSheet(yml); err == nil {
+		t.Fatal("expected error for enterprise workspace SKU")
+	}
+}
+
 func TestBillableMeterNamesMatchesStripeCatalog(t *testing.T) {
 	want := []string{
 		"build_seconds",

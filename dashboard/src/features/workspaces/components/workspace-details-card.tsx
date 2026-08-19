@@ -21,15 +21,9 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { ChangePlanDialog } from "@/features/workspaces/components/change-plan-dialog";
 import {
   WORKSPACE_NAME_RE,
-  WORKSPACE_PLAN_CATALOG,
+  workspacePlanNameKey,
   type WorkspaceView,
 } from "@/features/workspaces/types";
-
-function planLabelKey(plan: string): string {
-  return (
-    WORKSPACE_PLAN_CATALOG.find((p) => p.id === plan)?.nameKey ?? "" // unknown plan: fall through to the raw id below
-  );
-}
 
 export interface WorkspaceDetailsCardProps {
   workspace: WorkspaceView;
@@ -72,7 +66,7 @@ export function WorkspaceDetailsCard({
     if (ok) await refetch();
   }
 
-  const planNameKey = planLabelKey(workspace.plan);
+  const planNameKey = workspacePlanNameKey(workspace.plan);
 
   return (
     <Card>

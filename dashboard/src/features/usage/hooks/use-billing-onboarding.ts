@@ -43,6 +43,7 @@ export interface BillingReadiness {
    *  non-card method or a degraded read, in which case only the flag is known. */
   paymentMethodBrand: string;
   paymentMethodLast4: string;
+  paymentMethodRequired: boolean;
   lifecycle: BillingLifecycle;
   tax: BillingTaxReadiness;
 }
@@ -116,6 +117,7 @@ export function useBillingOnboarding({
       paymentMethodReady: raw.paymentMethodReady ?? false,
       paymentMethodBrand: raw.paymentMethodBrand ?? "",
       paymentMethodLast4: raw.paymentMethodLast4 ?? "",
+      paymentMethodRequired: raw.paymentMethodRequired ?? false,
       lifecycle: {
         status: raw.lifecycle?.status ?? "healthy",
         reason: raw.lifecycle?.reason ?? "",

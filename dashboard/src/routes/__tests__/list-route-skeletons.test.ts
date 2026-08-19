@@ -17,7 +17,11 @@ const LIST_ROUTES = [
   "notifications.tsx",
   "billing.tsx",
 ];
-const CREATE_ROUTES = ["blueprints.new.tsx", "webhooks_.new.tsx"];
+const CREATE_ROUTES = [
+  "blueprints.new.tsx",
+  "webhooks_.new.tsx",
+  "new.workspace.tsx",
+];
 
 function src(file: string): string {
   return readFileSync(join(ROUTES_DIR, file), "utf8");

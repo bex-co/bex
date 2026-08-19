@@ -1,6 +1,21 @@
 # Render Pricing Snapshot — 2026-07-13
 
-Captured from render.com public pricing pages and docs. Used as the baseline for bex's price sheet (docs/ADR030-pricing.md): 30% off every compute / Postgres / KeyValue / build-minute / Postgres-storage line, 90% off bandwidth.
+Captured from render.com public pricing pages and docs. Used as the baseline for bex's price sheet (docs/ADR030-pricing.md): 30% off workspace-plan fees, compute / Postgres / KeyValue / build-minute / Postgres-storage lines, 90% off bandwidth.
+
+---
+
+## Workspace plans
+
+Source: render.com/pricing and render.com/docs/new-workspace-plans (April 23, 2026 lineup).
+
+| Plan       | Render USD/month | bex USD/month (× 0.70)  |
+| ---------- | ---------------- | ----------------------- |
+| Hobby      | $0               | $0                      |
+| Pro        | $25              | $17.50                  |
+| Scale      | $499             | $349.30                 |
+| Enterprise | Custom           | Custom (no catalog SKU) |
+
+These are flat workspace subscriptions, billed in addition to compute/usage. bex keeps the same capability ladder and applies the 30% compute-family discount to the listed fees.
 
 ---
 

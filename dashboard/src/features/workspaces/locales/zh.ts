@@ -9,12 +9,16 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     message: "工作区",
     description: "Switcher dropdown label above the workspace list",
   },
+  "workspaces.switcherBilling": {
+    message: "账单",
+    description: "Switcher menu item linking to /billing",
+  },
   "workspaces.switcherSettings": {
     message: "工作区设置",
     description: "Switcher menu item linking to /workspace/settings",
   },
   "workspaces.switcherNew": {
-    message: "新建工作区",
+    message: "+ 新建工作区",
     description: "Switcher menu item linking to /new/workspace",
   },
   "workspaces.newTitle": {
@@ -30,36 +34,68 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace plan card name",
   },
   "workspaces.planHobbyBilling": {
-    message: "无工作区费用",
-    description: "Workspace plan card billing label",
+    message: "$0/月",
+    description: "Workspace plan card billing label (pricing.yaml hobby usdPerMonth)",
   },
   "workspaces.planHobbyDescription": {
-    message: "1 名成员，最多 25 个服务，每位用户最多 5 个 Hobby 工作区。",
-    description: "Workspace plan card description",
+    message: "适合刚起步的个人。",
+    description: "Workspace plan card one-line pitch",
+  },
+  "workspaces.planHobbyBulletMembers": {
+    message: "1 名成员",
+    description: "Hobby plan LimitsFor.MaxMembers bullet",
+  },
+  "workspaces.planHobbyBulletServices": {
+    message: "最多 25 个服务",
+    description: "Hobby plan LimitsFor.MaxServices bullet",
+  },
+  "workspaces.planHobbyBulletWorkspaces": {
+    message: "每位用户最多 5 个 Hobby 工作区",
+    description: "Hobby plan LimitsFor.MaxWorkspacesPerUser bullet",
   },
   "workspaces.planProName": {
     message: "Pro",
     description: "Workspace plan card name",
   },
   "workspaces.planProBilling": {
-    message: "无工作区费用",
-    description: "Workspace plan card billing label",
+    message: "$17.50/月",
+    description: "Workspace plan card billing label (pricing.yaml pro usdPerMonth)",
   },
   "workspaces.planProDescription": {
-    message: "成员和服务数量不限。",
-    description: "Workspace plan card description",
+    message: "适合一起交付的小团队。",
+    description: "Workspace plan card one-line pitch",
+  },
+  "workspaces.planProBulletMembers": {
+    message: "成员数量不限",
+    description: "Pro plan unlimited MaxMembers bullet",
+  },
+  "workspaces.planProBulletServices": {
+    message: "服务数量不限",
+    description: "Pro plan unlimited MaxServices bullet",
   },
   "workspaces.planScaleName": {
     message: "Scale",
     description: "Workspace plan card name",
   },
   "workspaces.planScaleBilling": {
-    message: "无工作区费用",
-    description: "Workspace plan card billing label",
+    message: "$349.30/月",
+    description: "Workspace plan card billing label (pricing.yaml scale usdPerMonth)",
   },
   "workspaces.planScaleDescription": {
-    message: "成员和服务数量不限，支持更多角色。",
-    description: "Workspace plan card description",
+    message: "适合需要更多角色的成长团队。",
+    description: "Workspace plan card one-line pitch",
+  },
+  "workspaces.planScaleBulletMembers": {
+    message: "成员数量不限",
+    description: "Scale plan unlimited MaxMembers bullet",
+  },
+  "workspaces.planScaleBulletServices": {
+    message: "服务数量不限",
+    description: "Scale plan unlimited MaxServices bullet",
+  },
+  "workspaces.planScaleBulletRoles": {
+    message: "额外角色（Contributor、Viewer、Billing）",
+    description: "Scale plan AllowedRoles beyond Pro bullet",
   },
   "workspaces.planEnterpriseName": {
     message: "Enterprise",
@@ -71,7 +107,23 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.planEnterpriseDescription": {
     message: "定制额度与支持。",
-    description: "Workspace plan card description",
+    description: "Workspace plan card one-line pitch",
+  },
+  "workspaces.planEnterpriseBulletLimits": {
+    message: "定制额度",
+    description: "Enterprise plan custom-limits bullet",
+  },
+  "workspaces.planEnterpriseBulletSupport": {
+    message: "定制支持",
+    description: "Enterprise plan custom-support bullet",
+  },
+  "workspaces.planSelect": {
+    message: "选择套餐",
+    description: "Unselected plan card action label",
+  },
+  "workspaces.planSelected": {
+    message: "已选择此套餐",
+    description: "Selected plan card action label",
   },
   "workspaces.planUsageBillingNote": {
     message: "服务和数据存储用量按资源层级另行计费。",
@@ -79,11 +131,29 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.createTitle": {
     message: "创建工作区",
-    description: "/new/workspace card title",
+    description: "/new/workspace page heading",
   },
   "workspaces.createDescription": {
-    message: "为它取个名字并选择一个套餐。",
-    description: "/new/workspace card description",
+    message: "填写 slug 并选择套餐。",
+    description: "/new/workspace page subtitle",
+  },
+  "workspaces.fieldSlug": {
+    message: "工作区 slug",
+    description: "/new/workspace slug field label",
+  },
+  "workspaces.fieldSlugHelp": {
+    message:
+      "用于 URL 和资源名称。仅限小写字母、数字和连字符，1–30 个字符。",
+    description: "/new/workspace slug helper text",
+  },
+  "workspaces.paymentTitle": {
+    message: "付款方式",
+    description: "/new/workspace payment panel heading",
+  },
+  "workspaces.paymentDescription": {
+    message:
+      "此套餐上的付费计算与用量需要绑定当前工作区的银行卡。卡片上的 $17.50 / $349.30 是目录中的工作区月费（相对 Render 七折），创建时不会作为 Stripe 订单行收取。",
+    description: "/new/workspace payment panel copy (current-workspace chicken-egg)",
   },
   "workspaces.fieldName": {
     message: "名称",

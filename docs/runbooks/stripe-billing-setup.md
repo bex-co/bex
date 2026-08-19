@@ -43,6 +43,8 @@ The lookup/event names are:
 
 Free tiers have no paid meter. Bytes are rebased to GiB and storage GB-seconds to GB-hours so the decimal Price fits Stripe's supported precision.
 
+Workspace plan fees (`pricing.yaml` `workspace.usdPerMonth`: Hobby $0, Pro $17.50, Scale $349.30) are licensed monthly SKUs, not usage meters. This script does not create Stripe Prices for them; the dashboard reads the same YAML via the Go sheet / locale lockstep. Attaching those SKUs to a Customer Subscription is a billing follow-up.
+
 ### Optional Stripe Tax gate
 
 Do not guess a Product tax code or create a registration as a software-deployment step. An accountable operator must first choose the canonical `txcd_*` classification, inclusive/exclusive behavior, and jurisdictions with tax counsel as needed, then create the collecting **test-mode** registration in Stripe. Only after those decisions run:

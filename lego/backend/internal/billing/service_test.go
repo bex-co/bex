@@ -113,7 +113,7 @@ func TestBillingStatusRESTGraphQLMCPParity(t *testing.T) {
 	gql := graphql.Do(graphql.Params{
 		Schema: schema,
 		RequestString: `{ workspaceBillingReadiness(workspaceId:"tea-a") {
-			workspaceId mode customerReady subscriptionReady paymentMethodReady
+			workspaceId mode customerReady subscriptionReady paymentMethodReady paymentMethodBrand paymentMethodLast4 paymentMethodRequired
 			tax { configured enabled reason productTaxCode taxBehavior registrationCount }
 			lifecycle { status reason graceDeadline enforcementOwned recoveryPending allowedActions updatedAt }
 		} }`,
@@ -156,6 +156,25 @@ func TestBillingStatusRESTGraphQLMCPParity(t *testing.T) {
 	}
 	if rest.WorkspaceID != "tea-a" || provider.workspace != "tea-a" {
 		t.Fatalf("workspace scoping rest=%q provider=%q", rest.WorkspaceID, provider.workspace)
+	}
+	if rest.PaymentMethodRequired {
+		t.Fatal("paymentMethodRequired must be false when the paid-intent gate is unwired")
+	}
+}
+
+type readyPaymentGate struct{}
+
+func (readyPaymentGate) RequirePaymentMethod(context.Context, string) error { return nil }
+
+func TestBillingStatusReportsPaymentMethodRequiredWhenGateWired(t *testing.T) {
+	svc := billingTestService(&billingProviderFake{status: Readiness{Mode: "test"}})
+	svc.Payment = readyPaymentGate{}
+	got, err := svc.Status(billingIdentity(context.Background()), "tea-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.PaymentMethodRequired {
+		t.Fatal("expected paymentMethodRequired when core.Payment is set")
 	}
 }
 

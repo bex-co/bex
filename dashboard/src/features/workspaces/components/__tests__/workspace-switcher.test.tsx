@@ -74,15 +74,19 @@ describe("WorkspaceSwitcher", () => {
 
     await user.click(screen.getByRole("button", { name: /acme-hq/ }));
     await user.click(
-      await screen.findByRole("menuitem", { name: "acme-staging" }),
+      await screen.findByRole("menuitem", { name: /acme-staging/ }),
     );
 
     expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-2");
   });
 
-  it("navigates to /workspace/settings and /new/workspace", async () => {
+  it("navigates to billing, settings, and + New Workspace", async () => {
     const user = userEvent.setup();
     renderSwitcher();
+
+    await user.click(screen.getByRole("button", { name: /acme-hq/ }));
+    await user.click(await screen.findByRole("menuitem", { name: "Billing" }));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/billing" });
 
     await user.click(screen.getByRole("button", { name: /acme-hq/ }));
     await user.click(
@@ -92,8 +96,17 @@ describe("WorkspaceSwitcher", () => {
 
     await user.click(screen.getByRole("button", { name: /acme-hq/ }));
     await user.click(
-      await screen.findByRole("menuitem", { name: "New Workspace" }),
+      await screen.findByRole("menuitem", { name: "+ New Workspace" }),
     );
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/new/workspace" });
+  });
+
+  it("shows each workspace's plan as a sublabel", async () => {
+    const user = userEvent.setup();
+    renderSwitcher();
+
+    await user.click(screen.getByRole("button", { name: /acme-hq/ }));
+    expect(await screen.findByText("Hobby")).toBeInTheDocument();
+    expect(screen.getByText("Pro")).toBeInTheDocument();
   });
 });
