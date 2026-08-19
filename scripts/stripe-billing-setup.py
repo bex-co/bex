@@ -4,6 +4,9 @@
 # lego/backend/internal/pricing/pricing.yaml, so pricing.yaml stays the single
 # source of truth (m50, docs/ADR040-billing-metronome.md).
 #
+# Workspace plan usdPerMonth entries in that YAML are licensed SKUs, not
+# usage meters; this script skips them.
+#
 # Idempotent: skips a meter whose event_name already exists (reactivates a
 # deactivated one), validates and skips a price whose lookup_key already
 # exists, validates/creates the stable comp coupon, and deactivates the
@@ -100,7 +103,7 @@ def parse_pricing():
                 tier = val
                 continue
             if key not in ("usdPerSecond", "usdPerByte", "usdPerGBSecond", "usdPerWeightedSecond"):
-                continue  # skip version:, etc.
+                continue  # skip version:, workspace usdPerMonth (licensed SKU, not a meter), etc.
             rate = dec(val)
             rk = {"compute": "service", "postgres": "postgres", "keyvalue": "key_value"}.get(section)
             if rk is not None:  # instance_seconds, per tier

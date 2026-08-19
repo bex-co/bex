@@ -14,18 +14,26 @@ describe("PlanPicker", () => {
     ).toBeInTheDocument();
   });
 
-  it("states the actual resource-based billing model without Render's workspace fees", () => {
+  it("shows workspace fees at 30% off Render plus separate usage billing", () => {
     render(<PlanPicker selected="hobby" onSelect={vi.fn()} />);
 
-    expect(screen.getAllByText("No workspace fee")).toHaveLength(3);
+    expect(screen.getByText("$0/mo")).toBeInTheDocument();
+    expect(screen.getByText("$17.50/mo")).toBeInTheDocument();
+    expect(screen.getByText("$349.30/mo")).toBeInTheDocument();
     expect(screen.getByText("Custom terms")).toBeInTheDocument();
     expect(
       screen.getByText(
         "Service and datastore usage is billed separately by resource tier.",
       ),
     ).toBeInTheDocument();
-    expect(screen.queryByText("$25/mo")).not.toBeInTheDocument();
-    expect(screen.queryByText("$499/mo")).not.toBeInTheDocument();
+    expect(screen.getByText("1 member")).toBeInTheDocument();
+    expect(screen.getByText("Up to 25 services")).toBeInTheDocument();
+    expect(screen.getByText("5 Hobby workspaces per user")).toBeInTheDocument();
+    expect(screen.getAllByText("Unlimited members").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Unlimited services").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText("Extra roles (Contributor, Viewer, Billing)"),
+    ).toBeInTheDocument();
   });
 
   it("calls onSelect with the clicked plan's id", async () => {

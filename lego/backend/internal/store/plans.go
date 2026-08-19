@@ -24,11 +24,11 @@ import (
 
 // Workspace plans mirror Render's post-2026-04-23 capability lineup (verified
 // in .pm/w6/RESEARCH-workspaces.md): Hobby is capped, while higher plans lift
-// member/service caps and add roles. bex does not charge Render's flat workspace
-// subscription fees: tenants.plan is a capability vehicle, deliberately
-// separate from the billable per-resource ladder in lego/types/tiers (apps.tier).
-// A workspace on any plan runs services of any instance size and resource-tier
-// usage is billed separately (ADR040, ADR046).
+// member/service caps and add roles. Monthly workspace fees live in
+// lego/backend/internal/pricing (ADR030): Render's flat subscriptions × 0.70
+// (Hobby $0, Pro $17.50, Scale $349.30; Enterprise custom). tenants.plan is
+// still the capability vehicle; resource-tier usage is billed separately
+// (ADR040, ADR046).
 const (
 	PlanHobby      = "hobby"
 	PlanPro        = "pro"

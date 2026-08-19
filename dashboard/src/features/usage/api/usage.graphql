@@ -102,6 +102,7 @@ query BillingReadiness($workspaceId: String!) {
     # Empty for a non-card method or an unexpanded read — fall back to the flag.
     paymentMethodBrand
     paymentMethodLast4
+    paymentMethodRequired
     lifecycle {
       status
       reason

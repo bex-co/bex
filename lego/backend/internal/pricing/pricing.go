@@ -16,11 +16,13 @@ limitations under the License.
 
 // Package pricing is bex's price sheet: per-unit USD rates derived from
 // Render's captured public pricing (docs/render-artifacts/pricing.md) at a
-// fixed discount — 30% off compute/Postgres/KeyValue/build-minute/Postgres
-// storage lines, 90% off bandwidth. It is backend-only (the operator never
-// imports it) and produces the advisory estimate shown beside Stripe's real
-// invoice data. The same sheet also names the Stripe catalog dimensions; Stripe
-// owns authoritative rating, invoicing, and collection (ADR040).
+// fixed discount — 30% off workspace-plan fees, compute/Postgres/KeyValue/
+// build-minute/Postgres storage lines, 90% off bandwidth. It is backend-only
+// (the operator never imports it) and produces the advisory estimate shown
+// beside Stripe's real invoice data. The same sheet also names the Stripe
+// catalog dimensions; Stripe owns authoritative rating, invoicing, and
+// collection (ADR040). Workspace plan fees are licensed monthly SKUs (not
+// usage meters) and are therefore not in BillableMeterNames.
 //
 // Usage: call Default.Estimate(rows) with the UsageSummaryRows from the store
 // to get an EstimatedCost. An unknown tier contributes $0 (not an error).
@@ -58,6 +60,7 @@ type Sheet struct {
 	build     float64            // $/second for build_seconds
 	storage   float64            // $/GB-second for storage_gb_seconds
 	sandbox   float64            // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
+	workspace map[string]float64 // plan ID → $/month licensed fee (hobby/pro/scale)
 }
 
 // BillableMeterNames returns the Stripe lookup/event names represented by this
@@ -90,6 +93,17 @@ func (s *Sheet) BillableMeterNames() []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// WorkspaceUSDPerMonth returns the catalog monthly fee for a workspace plan.
+// listed is false for Enterprise and unknown plans (custom / no SKU). Hobby
+// is listed at $0.
+func (s *Sheet) WorkspaceUSDPerMonth(plan string) (usd float64, listed bool) {
+	if s == nil {
+		return 0, false
+	}
+	v, ok := s.workspace[plan]
+	return v, ok
 }
 
 // EstimatedCost is the workspace-level cost estimate for a period.
@@ -390,6 +404,10 @@ type sheetFile struct {
 	Sandbox struct {
 		USDPerWeightedSecond float64 `json:"usdPerWeightedSecond"`
 	} `json:"sandbox"`
+	Workspace []struct {
+		Plan        string  `json:"plan"`
+		USDPerMonth float64 `json:"usdPerMonth"`
+	} `json:"workspace"`
 }
 
 func mustLoad(raw []byte) *Sheet {
@@ -416,6 +434,7 @@ func parseSheet(raw []byte) (*Sheet, error) {
 		build:     f.Build.USDPerSecond,
 		storage:   f.Storage.USDPerGBSecond,
 		sandbox:   f.Sandbox.USDPerWeightedSecond,
+		workspace: make(map[string]float64, len(f.Workspace)),
 	}
 	for _, e := range f.Compute {
 		if e.Tier == "" {
@@ -434,6 +453,31 @@ func parseSheet(raw []byte) (*Sheet, error) {
 			return nil, fmt.Errorf("keyvalue entry has empty tier")
 		}
 		s.keyvalue[e.Tier] = e.USDPerSecond
+	}
+	for _, e := range f.Workspace {
+		if e.Plan == "" {
+			return nil, fmt.Errorf("workspace entry has empty plan")
+		}
+		switch e.Plan {
+		case store.PlanHobby, store.PlanPro, store.PlanScale:
+		default:
+			return nil, fmt.Errorf("workspace plan %q is not a cataloged monthly SKU", e.Plan)
+		}
+		if e.USDPerMonth < 0 {
+			return nil, fmt.Errorf("workspace plan %s has negative usdPerMonth", e.Plan)
+		}
+		s.workspace[e.Plan] = e.USDPerMonth
+	}
+	for _, plan := range []string{store.PlanHobby, store.PlanPro, store.PlanScale} {
+		if _, ok := s.workspace[plan]; !ok {
+			return nil, fmt.Errorf("workspace is missing plan %s", plan)
+		}
+	}
+	if s.workspace[store.PlanHobby] != 0 {
+		return nil, fmt.Errorf("workspace hobby usdPerMonth must be 0")
+	}
+	if s.workspace[store.PlanPro] <= 0 || s.workspace[store.PlanScale] <= 0 {
+		return nil, fmt.Errorf("workspace pro and scale usdPerMonth must be positive")
 	}
 	return s, nil
 }

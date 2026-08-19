@@ -3020,6 +3020,7 @@ export type WorkspaceBillingReadiness = {
   paymentMethodBrand: Maybe<Scalars["String"]["output"]>;
   paymentMethodLast4: Maybe<Scalars["String"]["output"]>;
   paymentMethodReady: Maybe<Scalars["Boolean"]["output"]>;
+  paymentMethodRequired: Maybe<Scalars["Boolean"]["output"]>;
   subscriptionReady: Maybe<Scalars["Boolean"]["output"]>;
   tax: Maybe<BillingTaxReadiness>;
   workspaceId: Maybe<Scalars["String"]["output"]>;

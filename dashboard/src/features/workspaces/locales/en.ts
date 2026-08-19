@@ -9,12 +9,16 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     message: "Workspaces",
     description: "Switcher dropdown label above the workspace list",
   },
+  "workspaces.switcherBilling": {
+    message: "Billing",
+    description: "Switcher menu item linking to /billing",
+  },
   "workspaces.switcherSettings": {
     message: "Workspace Settings",
     description: "Switcher menu item linking to /workspace/settings",
   },
   "workspaces.switcherNew": {
-    message: "New Workspace",
+    message: "+ New Workspace",
     description: "Switcher menu item linking to /new/workspace",
   },
   "workspaces.newTitle": {
@@ -30,36 +34,68 @@ const enWorkspaces: Record<string, TranslationEntry> = {
     description: "Workspace plan card name",
   },
   "workspaces.planHobbyBilling": {
-    message: "No workspace fee",
-    description: "Workspace plan card billing label",
+    message: "$0/mo",
+    description: "Workspace plan card billing label (pricing.yaml hobby usdPerMonth)",
   },
   "workspaces.planHobbyDescription": {
-    message: "1 member, up to 25 services, 5 Hobby workspaces per user.",
-    description: "Workspace plan card description",
+    message: "For individuals getting started.",
+    description: "Workspace plan card one-line pitch",
+  },
+  "workspaces.planHobbyBulletMembers": {
+    message: "1 member",
+    description: "Hobby plan LimitsFor.MaxMembers bullet",
+  },
+  "workspaces.planHobbyBulletServices": {
+    message: "Up to 25 services",
+    description: "Hobby plan LimitsFor.MaxServices bullet",
+  },
+  "workspaces.planHobbyBulletWorkspaces": {
+    message: "5 Hobby workspaces per user",
+    description: "Hobby plan LimitsFor.MaxWorkspacesPerUser bullet",
   },
   "workspaces.planProName": {
     message: "Pro",
     description: "Workspace plan card name",
   },
   "workspaces.planProBilling": {
-    message: "No workspace fee",
-    description: "Workspace plan card billing label",
+    message: "$17.50/mo",
+    description: "Workspace plan card billing label (pricing.yaml pro usdPerMonth)",
   },
   "workspaces.planProDescription": {
-    message: "Unlimited members and services.",
-    description: "Workspace plan card description",
+    message: "For small teams shipping together.",
+    description: "Workspace plan card one-line pitch",
+  },
+  "workspaces.planProBulletMembers": {
+    message: "Unlimited members",
+    description: "Pro plan unlimited MaxMembers bullet",
+  },
+  "workspaces.planProBulletServices": {
+    message: "Unlimited services",
+    description: "Pro plan unlimited MaxServices bullet",
   },
   "workspaces.planScaleName": {
     message: "Scale",
     description: "Workspace plan card name",
   },
   "workspaces.planScaleBilling": {
-    message: "No workspace fee",
-    description: "Workspace plan card billing label",
+    message: "$349.30/mo",
+    description: "Workspace plan card billing label (pricing.yaml scale usdPerMonth)",
   },
   "workspaces.planScaleDescription": {
-    message: "Unlimited members and services, extra roles.",
-    description: "Workspace plan card description",
+    message: "For growing teams that need extra roles.",
+    description: "Workspace plan card one-line pitch",
+  },
+  "workspaces.planScaleBulletMembers": {
+    message: "Unlimited members",
+    description: "Scale plan unlimited MaxMembers bullet",
+  },
+  "workspaces.planScaleBulletServices": {
+    message: "Unlimited services",
+    description: "Scale plan unlimited MaxServices bullet",
+  },
+  "workspaces.planScaleBulletRoles": {
+    message: "Extra roles (Contributor, Viewer, Billing)",
+    description: "Scale plan AllowedRoles beyond Pro bullet",
   },
   "workspaces.planEnterpriseName": {
     message: "Enterprise",
@@ -71,7 +107,23 @@ const enWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.planEnterpriseDescription": {
     message: "Custom limits and support.",
-    description: "Workspace plan card description",
+    description: "Workspace plan card one-line pitch",
+  },
+  "workspaces.planEnterpriseBulletLimits": {
+    message: "Custom limits",
+    description: "Enterprise plan custom-limits bullet",
+  },
+  "workspaces.planEnterpriseBulletSupport": {
+    message: "Custom support",
+    description: "Enterprise plan custom-support bullet",
+  },
+  "workspaces.planSelect": {
+    message: "Select plan",
+    description: "Unselected plan card action label",
+  },
+  "workspaces.planSelected": {
+    message: "Plan selected",
+    description: "Selected plan card action label",
   },
   "workspaces.planUsageBillingNote": {
     message:
@@ -80,11 +132,29 @@ const enWorkspaces: Record<string, TranslationEntry> = {
   },
   "workspaces.createTitle": {
     message: "Create a workspace",
-    description: "/new/workspace card title",
+    description: "/new/workspace page heading",
   },
   "workspaces.createDescription": {
-    message: "Give it a name and pick a plan.",
-    description: "/new/workspace card description",
+    message: "Give it a slug and pick a plan.",
+    description: "/new/workspace page subtitle",
+  },
+  "workspaces.fieldSlug": {
+    message: "Workspace slug",
+    description: "/new/workspace slug field label",
+  },
+  "workspaces.fieldSlugHelp": {
+    message:
+      "Used in URLs and resource names. Lowercase letters, numbers, and hyphens, 1–30 characters.",
+    description: "/new/workspace slug helper text",
+  },
+  "workspaces.paymentTitle": {
+    message: "Payment Method",
+    description: "/new/workspace payment panel heading",
+  },
+  "workspaces.paymentDescription": {
+    message:
+      "A card on your current workspace is required for paid compute and usage on this plan. The $17.50 / $349.30 lines on the cards are catalog workspace fees (30% off Render) and are not charged as a Stripe line item when you create.",
+    description: "/new/workspace payment panel copy (current-workspace chicken-egg)",
   },
   "workspaces.fieldName": {
     message: "Name",

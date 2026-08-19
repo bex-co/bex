@@ -1,6 +1,6 @@
 # ADR030 — Price sheet + estimated spend
 
-**Status:** Accepted · 2026-07-13 · revised 2026-07-26 by w7/m50 **Author:** w8/m7
+**Status:** Accepted · 2026-07-13 · revised 2026-08-19 (workspace plan fees at 30% off Render) · revised 2026-07-26 by w7/m50 **Author:** w8/m7
 
 ---
 
@@ -24,14 +24,17 @@ The price sheet therefore lives in the backend module only: `lego/backend/intern
 
 ### 2. Discount policy
 
-| Meter            | Render rate        | bex rate       | Discount |
-| ---------------- | ------------------ | -------------- | -------- |
-| Compute          | per instance-month | Render × 0.70  | 30% off  |
-| Postgres         | per instance-month | Render × 0.70  | 30% off  |
-| Key Value        | per instance-month | Render × 0.70  | 30% off  |
-| Build minutes    | $0.005/min         | $0.0035/min    | 30% off  |
-| Postgres storage | $0.30/GB-month     | $0.21/GB-month | 30% off  |
-| Bandwidth        | $0.15/GB           | $0.015/GiB     | 90% off  |
+| Meter / SKU | Render rate | bex rate | Discount |
+| --- | --- | --- | --- |
+| Workspace plan (Hobby / Pro / Scale) | $0 / $25 / $499 per month | $0 / $17.50 / $349.30 per month | 30% off |
+| Compute | per instance-month | Render × 0.70 | 30% off |
+| Postgres | per instance-month | Render × 0.70 | 30% off |
+| Key Value | per instance-month | Render × 0.70 | 30% off |
+| Build minutes | $0.005/min | $0.0035/min | 30% off |
+| Postgres storage | $0.30/GB-month | $0.21/GB-month | 30% off |
+| Bandwidth | $0.15/GB | $0.015/GiB | 90% off |
+
+Workspace plan fees are **licensed monthly SKUs**, not usage meters. They appear on the dashboard plan picker and in `pricing.yaml`; they are **not** in `BillableMeterNames` and the Stripe setup script does not provision them as metered Prices. Enterprise remains custom (no catalog rate). Resource-tier usage is billed on top of the workspace fee.
 
 Source: `docs/render-artifacts/pricing.md` (captured 2026-07-13; bandwidth re-verified 2026-07-15 after Render's new workspace-plan rollout).
 
@@ -77,7 +80,7 @@ A tier ID not in `pricing.yaml` is priced at $0 (not an error). This means:
 - **GraphQL:** `usage.estimatedCost { totalUsd meters { ... } }` is a new selection on `UsageSummary`.
 - **MCP:** `get_usage` returns the same `estimatedCost` field; its description is updated to mention the estimate.
 - **Dashboard:** an "Estimated Cost" card is added to the Usage page with a "(estimate only — not an invoice)" label.
-- **Price updates:** edit `pricing.yaml`, rerun the Stripe catalog setup when billing is enabled, and redeploy. No schema migration is needed.
+- **Price updates:** edit `pricing.yaml`, rerun the Stripe catalog setup when billing is enabled (usage meters only), and redeploy. No schema migration is needed. Changing a workspace plan `usdPerMonth` updates the catalog/display immediately; collecting that licensed fee on a Stripe Subscription is a separate billing follow-up.
 - **No Render parity conflict:** Render has no usage/billing API. The `estimatedCost` extension is bex-only; `docs/ADR018-render-parity.md` already marks the usage surface as "bex ahead of Render."
 
 ---

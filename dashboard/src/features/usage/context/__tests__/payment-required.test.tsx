@@ -41,6 +41,9 @@ vi.mock("@/features/usage/hooks/use-billing-onboarding", async () => {
           customerReady: true,
           subscriptionReady: true,
           paymentMethodReady,
+          paymentMethodBrand: "",
+          paymentMethodLast4: "",
+          paymentMethodRequired: false,
           lifecycle: {
             status: "healthy",
             reason: "",
