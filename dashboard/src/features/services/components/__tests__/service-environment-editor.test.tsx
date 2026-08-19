@@ -314,4 +314,26 @@ describe("ServiceEnvironmentEditor", () => {
     await waitFor(() => expect(trigger).toHaveBeenCalledTimes(2));
     expect(save).toHaveBeenCalledTimes(1);
   });
+
+  it("disables Edit with a role reason for a contributor without can_create", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    renderEditor();
+    expect(await screen.findByRole("button", { name: "Edit" })).toBeDisabled();
+    // Reveal stays can_view_sensitive — a contributor who can view still reveals.
+    expect(screen.getAllByRole("button", { name: "Reveal" })[0]).toBeEnabled();
+  });
+
+  it("lets an admin enter the write draft", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    const edit = await screen.findByRole("button", { name: "Edit" });
+    expect(edit).toBeEnabled();
+    await user.click(edit);
+    expect(screen.getByRole("button", { name: "Add variable" })).toBeEnabled();
+    expect(screen.getAllByRole("button", { name: "Delete" }).length).toBeGreaterThan(
+      0,
+    );
+  });
 });

@@ -38,6 +38,8 @@ vi.mock("@/features/services/hooks/use-env-vars", async (importOriginal) => {
 });
 
 import { EnvVarsPanel } from "@/features/services/components/env-vars-panel";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { mockCapabilities } from "@/test/mocks/capabilities";
 
 function keysResult(
   keys: EnvVarKey[],
@@ -53,6 +55,7 @@ function keysResult(
 }
 
 beforeEach(() => {
+  vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   mockUseEnvVarKeys.mockReset();
   mockReveal.mockReset();
   mockSetVar.mockReset().mockResolvedValue(true);
@@ -211,5 +214,28 @@ describe("EnvVarsPanel", () => {
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
 
     await waitFor(() => expect(mockDeleteVar).toHaveBeenCalledWith("FOO"));
+  });
+
+  it("disables Add / Edit / Delete for a contributor without can_create", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    mockUseEnvVarKeys.mockReturnValue(keysResult([{ id: "FOO", key: "FOO" }]));
+    render(<EnvVarsPanel serviceId="web" />);
+
+    expect(screen.getByRole("button", { name: /Add variable/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+    // Reveal is can_view_sensitive — untouched.
+    expect(screen.getByRole("button", { name: "Show value" })).toBeEnabled();
+  });
+
+  it("keeps Add / Edit / Delete enabled for an admin", () => {
+    mockUseEnvVarKeys.mockReturnValue(keysResult([{ id: "FOO", key: "FOO" }]));
+    render(<EnvVarsPanel serviceId="web" />);
+
+    expect(screen.getByRole("button", { name: /Add variable/ })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeEnabled();
   });
 });

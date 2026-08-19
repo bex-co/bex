@@ -112,7 +112,7 @@ export function BuildDeploySection({
   // Dockerfile path, pre-deploy) is can_create — a contributor is refused on save
   // (docs/ADR024-members.md). Disable those rows with a reason instead (w9/m84);
   // Auto-Deploy stays editable (it is can_operate, contributor-and-up).
-  const { canCreate } = useCapabilities();
+  const { canCreate, canOperate } = useCapabilities();
   const createDisabled = !canCreate;
   const createReason = createDisabled
     ? t("capabilities.reasonCanCreate")
@@ -318,6 +318,7 @@ export function BuildDeploySection({
           <BuildFilterEditor
             serviceId={serviceId}
             buildFilter={buildFilter ?? null}
+            canOperate={canOperate}
           />
 
           {/* A cron_job has no Deploy card (its Deploy section holds the
@@ -433,12 +434,18 @@ export function BuildDeploySection({
 function BuildFilterEditor({
   serviceId,
   buildFilter,
+  canOperate,
 }: {
   serviceId: string;
   buildFilter: BuildFilterView | null;
+  canOperate: boolean;
 }) {
   const { t } = useTranslations();
   const { setBuildFilter, busy } = useBuildFilter();
+  // SetBuildFilter is RelCanOperate, same class as Auto-Deploy.
+  const operateReason = canOperate
+    ? undefined
+    : t("capabilities.reasonCanOperate");
   const current = {
     paths: buildFilter?.paths ?? [],
     ignoredPaths: buildFilter?.ignoredPaths ?? [],
@@ -466,6 +473,9 @@ function BuildFilterEditor({
         <div className="mt-1 text-sm text-muted-foreground">
           {t("services.buildFilterHint")}
         </div>
+        {operateReason && (
+          <p className="text-muted-foreground mt-1 text-sm">{operateReason}</p>
+        )}
       </div>
       <PathList
         title={t("services.buildFilterIncludedTitle")}
@@ -475,6 +485,7 @@ function BuildFilterEditor({
         removeLabel={t("services.buildFilterRemoveIncluded")}
         values={draft.paths}
         onChange={(paths) => setDraft((d) => ({ ...d, paths }))}
+        disabled={!canOperate}
       />
       <PathList
         title={t("services.buildFilterIgnoredTitle")}
@@ -484,18 +495,22 @@ function BuildFilterEditor({
         removeLabel={t("services.buildFilterRemoveIgnored")}
         values={draft.ignoredPaths}
         onChange={(ignoredPaths) => setDraft((d) => ({ ...d, ignoredPaths }))}
+        disabled={!canOperate}
       />
       <div className="flex justify-end gap-2">
         {dirty && (
           <Button
             variant="ghost"
-            disabled={busy}
+            disabled={busy || !canOperate}
             onClick={() => setDraft(current)}
           >
             {t("services.buildDeployCancel")}
           </Button>
         )}
-        <Button disabled={busy || !dirty} onClick={() => void handleSave()}>
+        <Button
+          disabled={busy || !dirty || !canOperate}
+          onClick={() => void handleSave()}
+        >
           {busy && <Loader2 className="animate-spin" />}
           {t("services.buildFilterSave")}
         </Button>
@@ -518,6 +533,7 @@ export function PathList({
   removeLabel,
   values,
   onChange,
+  disabled = false,
 }: {
   title: string;
   hint: string;
@@ -526,6 +542,7 @@ export function PathList({
   removeLabel: string;
   values: string[];
   onChange: (values: string[]) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="space-y-2">
@@ -540,11 +557,13 @@ export function PathList({
             }
             placeholder={placeholder}
             className="font-mono text-sm"
+            disabled={disabled}
           />
           <Button
             size="icon"
             variant="ghost"
             aria-label={removeLabel}
+            disabled={disabled}
             onClick={() => onChange(values.filter((_, j) => j !== i))}
           >
             <Trash2 />
@@ -554,6 +573,7 @@ export function PathList({
       <Button
         variant="outline"
         size="sm"
+        disabled={disabled}
         onClick={() => onChange([...values, ""])}
       >
         <Plus /> {addLabel}

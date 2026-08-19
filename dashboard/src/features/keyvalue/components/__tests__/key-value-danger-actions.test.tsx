@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KeyValueDangerActions } from "@/features/keyvalue/components/key-value-danger-actions";
-import type { KeyValueView } from "@/features/keyvalue/types";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import type { KeyValueView } from "@/features/keyvalue/types";
 
 const remove = vi.fn();
 vi.mock("@/features/keyvalue/hooks/use-delete-key-value", () => ({
@@ -275,5 +275,37 @@ describe("KeyValueDangerActions — Render-parity bottom action row", () => {
       "sudo suspend key value sessions-cache",
     );
     expect(onChanged).toHaveBeenCalledOnce();
+  });
+
+  it("disables Delete for a contributor without can_create", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),
+    );
+    render(
+      <KeyValueDangerActions
+        keyValue={KEY_VALUE}
+        onDeleted={vi.fn()}
+        onChanged={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Delete Key Value Instance" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Suspend Key Value Instance" }),
+    ).toBeEnabled();
+  });
+
+  it("keeps Delete enabled for an admin", () => {
+    render(
+      <KeyValueDangerActions
+        keyValue={KEY_VALUE}
+        onDeleted={vi.fn()}
+        onChanged={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Delete Key Value Instance" }),
+    ).toBeEnabled();
   });
 });
