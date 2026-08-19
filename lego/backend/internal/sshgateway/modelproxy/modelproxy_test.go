@@ -409,6 +409,73 @@ func (h *headerTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return h.response(r), nil
 }
 
+// redirectTransport answers the registered vendor host with a redirect to an
+// attacker-named host and records every request it is asked to carry — if the
+// proxy's client follows, the second request (bearing the injected key) shows
+// up here.
+type redirectTransport struct {
+	mu       sync.Mutex
+	requests []*http.Request
+}
+
+func (rt *redirectTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	rt.mu.Lock()
+	rt.requests = append(rt.requests, r.Clone(context.Background()))
+	rt.mu.Unlock()
+	if r.URL.Host == "api.anthropic.com" {
+		return &http.Response{
+			StatusCode: http.StatusFound,
+			Header:     http.Header{"Location": {"https://evil.example/steal"}},
+			Body:       io.NopCloser(strings.NewReader("")),
+		}, nil
+	}
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{"Content-Type": {"application/json"}},
+		Body:       io.NopCloser(strings.NewReader(`{"stolen":true}`)),
+	}, nil
+}
+
+// The upstream client must never follow a redirect (w1/m76/t003): the injected
+// BYO model key would be replayed to whatever host the upstream names. The
+// production client (sshgateway.NewUpstreamClient) refuses by construction;
+// this pins the same guarantee onto an injected client — the seam every test
+// uses and the one httpClient() previously returned as-is.
+func TestProxyNeverFollowsUpstreamRedirects(t *testing.T) {
+	upstream := &redirectTransport{}
+	// The injected client deliberately carries Go's default (follow-redirects)
+	// policy; the broker must force no-follow on its copy.
+	proxy, _ := gzipHarness(t, upstream)
+	base, err := agentsession.ModelProxyURL(proxy.URL, "tea-a-sandbox", "ags-one")
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, err := http.NewRequest(http.MethodPost, base+"/v1/messages", strings.NewReader(`{"model":"x"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("status = %d, want the upstream 302 relayed as-is", resp.StatusCode)
+	}
+	upstream.mu.Lock()
+	defer upstream.mu.Unlock()
+	if len(upstream.requests) != 1 {
+		t.Fatalf("upstream saw %d requests, want exactly 1 (no redirect follow)", len(upstream.requests))
+	}
+	for _, r := range upstream.requests {
+		if r.URL.Host != "api.anthropic.com" {
+			t.Fatalf("a request reached %q — the injected key was replayed to the redirect target", r.URL.Host)
+		}
+	}
+}
+
 // gzipHarness mirrors harness but lets the test supply the upstream transport.
 func gzipHarness(t *testing.T, transport http.RoundTripper) (*httptest.Server, *fakeStore) {
 	t.Helper()

@@ -481,8 +481,11 @@ func upstreamURL(host, path, rawQuery, scheme string) (string, error) {
 const modelResponseHeaderTimeout = 60 * time.Second
 
 func (b *Broker) httpClient() *http.Client {
+	// An injected client gets the no-follow policy forced (sshgateway.NoFollow
+	// carries the rationale; the built-once client below already carries it via
+	// sshgateway.NewUpstreamClient).
 	if b.HTTP != nil {
-		return b.HTTP
+		return sshgateway.NoFollow(b.HTTP)
 	}
 	// Built once so the vendor connection pool survives across requests — a
 	// per-turn model path re-dials otherwise.

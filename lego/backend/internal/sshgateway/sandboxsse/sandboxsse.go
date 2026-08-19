@@ -161,6 +161,13 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer s.Limits.Release(claims.Subject)
+	// The active-sessions gauge brackets the shared limiter slot exactly — the
+	// gauge answers "how close is the process to BEX_SSH_MAX_SESSIONS?", so every
+	// holder of the shared limiter reports, like nativessh/webshell (w1/m76/t005).
+	started := time.Now()
+	s.Metrics.SessionStarted()
+	result := "closed"
+	defer func() { s.Metrics.SessionEnded(result, time.Since(started)) }()
 
 	// Redemption-time reauthorization (round-13 #3): the ticket froze bex-api's
 	// mint-time decision; re-run it here as the ticket's subject so a revocation
@@ -170,6 +177,7 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 	if s.Revalidator != nil {
 		if err := s.Revalidator.RevalidateExec(r.Context(), claims); err != nil {
 			s.Metrics.Authentication("rejected_target")
+			result = "failed"
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
@@ -213,16 +221,22 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err != nil && errors.Is(err, sshgateway.ErrTargetTerminated):
 		log.Printf("sandbox exec target terminal (sandbox=%s)", claims.SandboxID)
+		result = "failed"
 		sse.emit("error", errorEvent{Error: "sandbox is no longer running", Code: sandboxexec.ErrorCodeTargetTerminated})
 	case err != nil && execCtx.Err() != nil && timedCtx.Err() == nil:
 		// The watchdog ended the stream (revocation), not the client or the cap.
+		// Reported through the session vocabulary (result="revoked"), like the
+		// other transports — this exchange's authentications_total increment was
+		// already spent on "accepted" at admission (w1/m76/t005).
 		log.Printf("sandbox exec revoked mid-stream (sandbox=%s subject=%s): %v", claims.SandboxID, claims.Subject, err)
-		s.Metrics.Authentication("revoked")
+		result = "revoked"
 		sse.emit("error", errorEvent{Error: "access was revoked during this exec"})
 	case err != nil:
 		log.Printf("sandbox exec stream failed (sandbox=%s): %v", claims.SandboxID, err)
+		result = "failed"
 		sse.emit("error", errorEvent{Error: "exec failed to start in this sandbox"})
 	default:
+		result = "completed"
 		sse.emit("exit", exitEvent{ExitCode: sshgateway.ClampExit(code)})
 	}
 }

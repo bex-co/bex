@@ -381,13 +381,10 @@ func (b *Broker) upstreamURL(repository, service, query string) (string, error) 
 const gitResponseHeaderTimeout = 30 * time.Second
 
 func (b *Broker) httpClient() *http.Client {
-	// An injected client is copied so the no-follow policy is forced even on a
-	// caller-supplied transport — a redirect would replay the injected GitHub
-	// token to whatever host the upstream names.
+	// An injected client gets the no-follow policy forced (sshgateway.NoFollow
+	// carries the rationale).
 	if b.HTTP != nil {
-		client := *b.HTTP
-		client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-		return &client
+		return sshgateway.NoFollow(b.HTTP)
 	}
 	// Built once so the connection pool survives across requests: a per-request
 	// client re-dials and re-handshakes TLS to the forge on every clone/push.
