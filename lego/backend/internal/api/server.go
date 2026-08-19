@@ -415,6 +415,10 @@ type Deps struct {
 	// every new installation binding fail closed.
 	GitHubInstallVerifier github.InstallationVerifier
 	DashboardURL          string
+	// MaxGitConnectionsPerWorkspace caps how many GitHub installations one
+	// workspace may connect (BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE, ADR075 §2;
+	// default 10, 0 disables).
+	MaxGitConnectionsPerWorkspace int
 
 	// RegistryCredsStore, when set (the control-plane store is wired), backs
 	// the registry-credentials feature (w2/m14) — CRUD for a workspace's
@@ -529,12 +533,13 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// (docs/ADR026-github-integration.md), so build it once and share it. Always
 	// non-nil; its verbs 503 until BEX_GITHUB_APP_* + the store are wired.
 	gh := &github.Service{
-		Base:         base,
-		GitHub:       d.GitHubClient,
-		Store:        d.GitHubStore,
-		Verifier:     d.GitHubInstallVerifier,
-		StateSecret:  d.GitHubStateSecret,
-		DashboardURL: d.DashboardURL,
+		Base:           base,
+		GitHub:         d.GitHubClient,
+		Store:          d.GitHubStore,
+		Verifier:       d.GitHubInstallVerifier,
+		StateSecret:    d.GitHubStateSecret,
+		DashboardURL:   d.DashboardURL,
+		MaxConnections: d.MaxGitConnectionsPerWorkspace,
 	}
 	// The registry-credentials service is also the apps deploy path's
 	// pull-secret seam (w2/m14), so build it once and share it, same as gh

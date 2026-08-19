@@ -291,10 +291,10 @@ func TestRESTCallbackRecordsStateWorkspace(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("callback status = %d, want 200; body=%s", rec.Code, rec.Body.String())
 	}
-	if got := st.conns["tea-target"]; got.InstallationID != 42 || got.AccountLogin != "octo" {
-		t.Fatalf("target workspace connection = %+v", got)
+	if got, ok := st.firstFor("tea-target"); !ok || got.InstallationID != 42 || got.AccountLogin != "octo" {
+		t.Fatalf("target workspace connection = %+v (ok=%v)", got, ok)
 	}
-	if _, ok := st.conns[core.DefaultTenant]; ok {
+	if _, ok := st.firstFor(core.DefaultTenant); ok {
 		t.Fatal("state callback recorded against the default workspace")
 	}
 }

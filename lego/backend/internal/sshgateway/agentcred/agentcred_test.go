@@ -28,8 +28,8 @@ func (r credentialPodResolver) ResolveSessionPod(_ context.Context, _, sourceIP 
 
 type credentialConnections struct{}
 
-func (credentialConnections) GetGitConnection(_ context.Context, workspace string) (store.GitConnection, error) {
-	return store.GitConnection{WorkspaceID: workspace, InstallationID: 42, AccountLogin: "octo"}, nil
+func (credentialConnections) GetGitConnectionByOwner(_ context.Context, workspace, accountLogin string) (store.GitConnection, error) {
+	return store.GitConnection{WorkspaceID: workspace, InstallationID: 42, AccountLogin: accountLogin}, nil
 }
 
 type credentialSessions struct{}

@@ -27,6 +27,7 @@ function repo(fullName: string): RepoView {
     defaultBranch: "main",
     htmlUrl: "",
     cloneUrl: "",
+    accountLogin: fullName.split("/")[0] ?? "",
   };
 }
 

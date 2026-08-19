@@ -44,9 +44,11 @@ var repoGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"id":            gqlutil.FloatField(func(r Repo) any { return r.ID }),
 		"fullName":      gqlutil.StrField(func(r Repo) any { return r.FullName }),
 		"private":       gqlutil.BoolField(func(r Repo) any { return r.Private }),
-		"defaultBranch": gqlutil.StrField(func(r Repo) any { return r.DefaultBranch }),
-		"htmlUrl":       gqlutil.StrField(func(r Repo) any { return r.HTMLURL }),
-		"cloneUrl":      gqlutil.StrField(func(r Repo) any { return r.CloneURL }),
+		"defaultBranch":  gqlutil.StrField(func(r Repo) any { return r.DefaultBranch }),
+		"htmlUrl":        gqlutil.StrField(func(r Repo) any { return r.HTMLURL }),
+		"cloneUrl":       gqlutil.StrField(func(r Repo) any { return r.CloneURL }),
+		"accountLogin":   gqlutil.StrField(func(r Repo) any { return r.AccountLogin }),
+		"installationId": gqlutil.FloatField(func(r Repo) any { return r.InstallationID }),
 	},
 })
 
@@ -55,12 +57,26 @@ var repoGQLType = graphql.NewObject(graphql.ObjectConfig{
 // default workspace.
 var ownerIDArg = graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)}
 
-// GraphQLQuery returns the gitConnection + repos queries.
+// GraphQLQuery returns the gitConnections + gitConnection + repos queries.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
-		"gitConnection": &graphql.Field{
-			Type: gitConnectionGQLType,
+		// gitConnections is the multi-account surface (ADR075): every GitHub
+		// installation this workspace has connected. Empty list => none.
+		"gitConnections": &graphql.Field{
+			Type: graphql.NewList(gitConnectionGQLType),
 			Args: ownerIDArg,
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				conns, err := s.ListConnections(p.Context, gqlutil.Str(p.Args, "ownerId"))
+				if err != nil {
+					return nil, err
+				}
+				return conns, nil
+			},
+		},
+		"gitConnection": &graphql.Field{
+			Type:              gitConnectionGQLType,
+			Args:              ownerIDArg,
+			DeprecationReason: "A workspace can hold several GitHub connections (ADR075); use gitConnections. This returns the oldest connection only.",
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				connection, err := s.GetConnection(p.Context, gqlutil.Str(p.Args, "ownerId"))
 				if err != nil {
@@ -117,9 +133,18 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		"disconnectGit": &graphql.Field{
 			Type: graphql.Boolean,
-			Args: ownerIDArg,
+			Args: graphql.FieldConfigArgument{
+				"ownerId": gqlutil.Arg(graphql.String),
+				// installationId names the exact connection to remove (ADR075).
+				// Omitted => the workspace's sole connection (409 when ambiguous).
+				"installationId": gqlutil.Arg(graphql.Float),
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				err := s.Disconnect(p.Context, gqlutil.Str(p.Args, "ownerId"))
+				var installationID int64
+				if v, ok := p.Args["installationId"].(float64); ok {
+					installationID = int64(v)
+				}
+				err := s.Disconnect(p.Context, gqlutil.Str(p.Args, "ownerId"), installationID)
 				return err == nil, err
 			},
 		},

@@ -9,6 +9,8 @@ export interface RepoView {
   defaultBranch: string;
   htmlUrl: string;
   cloneUrl: string;
+  /** The GitHub account/org this repo belongs to — the picker groups by it (ADR075). */
+  accountLogin: string;
 }
 
 export interface UseReposResult {
@@ -31,6 +33,7 @@ export function useRepos(): UseReposResult {
           defaultBranch: r.defaultBranch ?? "main",
           htmlUrl: r.htmlUrl ?? "",
           cloneUrl: r.cloneUrl ?? "",
+          accountLogin: r.accountLogin ?? "",
         })),
     [data],
   );

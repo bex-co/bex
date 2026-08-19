@@ -256,6 +256,27 @@ func (s *callbackGitHubStore) GetGitConnection(_ context.Context, workspaceID st
 	return conn, nil
 }
 
+func (s *callbackGitHubStore) ListGitConnections(_ context.Context, workspaceID string) ([]store.GitConnection, error) {
+	if conn, ok := s.connections[workspaceID]; ok {
+		return []store.GitConnection{conn}, nil
+	}
+	return []store.GitConnection{}, nil
+}
+
+func (s *callbackGitHubStore) GetGitConnectionByOwner(_ context.Context, workspaceID, accountLogin string) (store.GitConnection, error) {
+	if conn, ok := s.connections[workspaceID]; ok && strings.EqualFold(conn.AccountLogin, accountLogin) {
+		return conn, nil
+	}
+	return store.GitConnection{}, store.ErrNotFound
+}
+
+func (s *callbackGitHubStore) CountGitConnections(_ context.Context, workspaceID string) (int, error) {
+	if _, ok := s.connections[workspaceID]; ok {
+		return 1, nil
+	}
+	return 0, nil
+}
+
 func (s *callbackGitHubStore) GitConnectionByInstallation(_ context.Context, installationID int64) (store.GitConnection, error) {
 	for _, c := range s.connections {
 		if c.InstallationID == installationID {
@@ -265,7 +286,7 @@ func (s *callbackGitHubStore) GitConnectionByInstallation(_ context.Context, ins
 	return store.GitConnection{}, store.ErrNotFound
 }
 
-func (s *callbackGitHubStore) DeleteGitConnection(_ context.Context, workspaceID string) error {
+func (s *callbackGitHubStore) DeleteGitConnection(_ context.Context, workspaceID string, _ int64) error {
 	delete(s.connections, workspaceID)
 	return nil
 }

@@ -404,10 +404,10 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 		c.fail(ctx, record, "session repository is not owner/name")
 		return
 	}
-	conn, err := c.Connections.GetGitConnection(ctx, record.WorkspaceID)
+	conn, err := c.Connections.GetGitConnectionByOwner(ctx, record.WorkspaceID, owner)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			c.fail(ctx, record, "workspace has no GitHub App installation to open a pull request")
+			c.fail(ctx, record, "workspace has no GitHub App installation for this repository's account to open a pull request")
 		} else {
 			log.Printf("agent-session completer: git connection lookup failed (session=%s ws=%s): %v", record.ID, record.WorkspaceID, err)
 		}

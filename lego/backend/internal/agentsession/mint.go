@@ -39,7 +39,10 @@ type GitHubClient interface {
 }
 
 type ConnectionStore interface {
-	GetGitConnection(context.Context, string) (store.GitConnection, error)
+	// GetGitConnectionByOwner resolves the workspace's connection for a repo's
+	// GitHub account (ADR075 §4). A workspace may hold several installations, so
+	// the session token must be minted from the one that owns the target repo.
+	GetGitConnectionByOwner(ctx context.Context, workspaceID, accountLogin string) (store.GitConnection, error)
 }
 
 // SessionStore reads the durable agent-session lifecycle record. Mint consults
@@ -136,16 +139,16 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintRespon
 	if err := ValidateBranch(req.Branch); err != nil {
 		return MintResponse{}, err
 	}
-	connection, err := m.Connections.GetGitConnection(ctx, req.Workspace)
+	owner, name, _ := strings.Cut(repository, "/")
+	// Resolve the connection that owns THIS repo's account (ADR075 §4). A
+	// no-match — the repo's owner is not one of the workspace's connected
+	// accounts — is a forbidden mint, exactly as the old owner-equality check was.
+	connection, err := m.Connections.GetGitConnectionByOwner(ctx, req.Workspace, owner)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			return MintResponse{}, fmt.Errorf("agent credentials unavailable")
+			return MintResponse{}, ErrForbidden
 		}
 		return MintResponse{}, err
-	}
-	owner, name, _ := strings.Cut(repository, "/")
-	if !strings.EqualFold(owner, connection.AccountLogin) {
-		return MintResponse{}, ErrForbidden
 	}
 	token, err := m.GitHub.MintSessionInstallationToken(ctx, connection.InstallationID, name)
 	if err != nil {

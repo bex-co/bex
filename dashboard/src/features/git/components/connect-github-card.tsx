@@ -29,7 +29,10 @@ import {
   AlertTitle,
 } from "@/common/components/ui/alert";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { useGitConnection } from "@/features/git/hooks/use-git-connection";
+import {
+  useGitConnections,
+  type GitConnectionRow,
+} from "@/features/git/hooks/use-git-connection";
 import { useConnectGit } from "@/features/git/hooks/use-connect-git";
 import { useDisconnectGit } from "@/features/git/hooks/use-disconnect-git";
 
@@ -41,13 +44,29 @@ function isUnavailable(error: Error | undefined): boolean {
   return m.includes("not configured") || m.includes("unavailable");
 }
 
+// The bounded git_error codes the callback redirects with (backend
+// internal/github/rest.go). missing_state is the direct-github.com-install case,
+// which the recovery message + always-present Connect button resolves (ADR075).
+function callbackErrorMessage(t: (k: string) => string, code: string): string {
+  switch (code) {
+    case "expired_state":
+      return t("git.callbackErrorExpired");
+    case "missing_state":
+      return t("git.callbackErrorMissing");
+    case "invalid_state":
+      return t("git.callbackErrorInvalid");
+    default:
+      return t("git.callbackErrorGeneric");
+  }
+}
+
 /**
- * Settings → Connect GitHub (w2/m8): shows the workspace's GitHub App connection
- * — disconnected (Connect → GitHub install screen), connected (account login +
- * Disconnect + a link to manage repo grants on GitHub), or unavailable (backend
- * has no GitHub App configured). Returning from GitHub's install callback lands
- * on /settings, so the card refetches on mount and on window focus to show the
- * fresh connection without a manual reload.
+ * Settings → Connect GitHub (w2/m8, multi-account ADR075): lists every GitHub
+ * account/org the workspace has connected — each with a Manage-access link and a
+ * per-account Disconnect — plus a Connect (another) action that starts the
+ * stateful install flow. Also renders the unavailable (no GitHub App) and error
+ * states, and a callback-failure alert. Returning from GitHub's install callback
+ * lands on /settings, so the card refetches on mount and on window focus.
  */
 export function ConnectGithubCard({
   callbackError,
@@ -55,7 +74,8 @@ export function ConnectGithubCard({
   callbackError?: string;
 }) {
   const { t } = useTranslations();
-  const { connection, loading, error, refetch } = useGitConnection();
+  const { connections, connected, loading, error, refetch } =
+    useGitConnections();
   const { connect, busy: connecting } = useConnectGit();
   const { disconnect, busy: disconnecting } = useDisconnectGit();
 
@@ -67,10 +87,10 @@ export function ConnectGithubCard({
   }, [refetch]);
 
   const unavailable = isUnavailable(error);
-  const initialLoading = loading && !connection && !error;
+  const initialLoading = loading && connections.length === 0 && !error;
 
-  async function handleDisconnect() {
-    const ok = await disconnect();
+  async function handleDisconnect(installationId: number) {
+    const ok = await disconnect(installationId);
     if (ok) await refetch();
   }
 
@@ -82,24 +102,19 @@ export function ConnectGithubCard({
           {t("git.title")}
         </CardTitle>
         <CardDescription>{t("git.description")}</CardDescription>
-        {connection?.connected && (
+        {connected && (
           <CardAction>
             <Badge variant="secondary">{t("git.connectedBadge")}</Badge>
           </CardAction>
         )}
       </CardHeader>
       <CardContent className="space-y-4">
-        {callbackError && (
+        {callbackError && !unavailable && (
           <Alert variant="destructive">
             <AlertTriangle />
             <AlertTitle>{t("git.callbackErrorTitle")}</AlertTitle>
             <AlertDescription>
-              {callbackError === "expired_state"
-                ? t("git.callbackErrorExpired")
-                : callbackError === "missing_state" ||
-                    callbackError === "invalid_state"
-                  ? t("git.callbackErrorInvalid")
-                  : t("git.callbackErrorGeneric")}
+              {callbackErrorMessage(t, callbackError)}
             </AlertDescription>
           </Alert>
         )}
@@ -109,7 +124,7 @@ export function ConnectGithubCard({
             title={t("git.unavailableTitle")}
             body={t("git.unavailableBody")}
           />
-        ) : error && !connection ? (
+        ) : error && connections.length === 0 ? (
           <PanelCenteredState
             icon={<AlertTriangle />}
             title={t("git.errorTitle")}
@@ -117,12 +132,13 @@ export function ConnectGithubCard({
           />
         ) : initialLoading ? (
           <Skeleton className="h-10 w-full" />
-        ) : connection?.connected ? (
-          <ConnectedState
-            accountLogin={connection.accountLogin}
-            installUrl={connection.installUrl}
+        ) : connected ? (
+          <ConnectedList
+            connections={connections}
             onDisconnect={handleDisconnect}
             disconnecting={disconnecting}
+            onConnectAnother={connect}
+            connecting={connecting}
           />
         ) : (
           <DisconnectedState onConnect={connect} connecting={connecting} />
@@ -153,32 +169,72 @@ function DisconnectedState({
   );
 }
 
-function ConnectedState({
-  accountLogin,
-  installUrl,
+function ConnectedList({
+  connections,
+  onDisconnect,
+  disconnecting,
+  onConnectAnother,
+  connecting,
+}: {
+  connections: GitConnectionRow[];
+  onDisconnect: (installationId: number) => void;
+  disconnecting: boolean;
+  onConnectAnother: () => void;
+  connecting: boolean;
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="space-y-4">
+      <ul className="divide-y rounded-md border">
+        {connections.map((c) => (
+          <li key={c.installationId}>
+            <ConnectionRow
+              connection={c}
+              onDisconnect={() => onDisconnect(c.installationId)}
+              disconnecting={disconnecting}
+            />
+          </li>
+        ))}
+      </ul>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onConnectAnother}
+        disabled={connecting}
+      >
+        <Github className="size-4" />
+        {t("git.connectAnotherButton")}
+      </Button>
+    </div>
+  );
+}
+
+function ConnectionRow({
+  connection,
   onDisconnect,
   disconnecting,
 }: {
-  accountLogin: string;
-  installUrl: string;
+  connection: GitConnectionRow;
   onDisconnect: () => void;
   disconnecting: boolean;
 }) {
   const { t } = useTranslations();
   const [open, setOpen] = useState(false);
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 p-3">
       <div className="flex items-center gap-2 text-sm">
         <PlugZap className="size-4 text-muted-foreground" />
         <span>
           {t("git.connectedAs")}{" "}
-          <span className="font-medium text-foreground">{accountLogin}</span>
+          <span className="font-medium text-foreground">
+            {connection.accountLogin}
+          </span>
         </span>
       </div>
       <div className="flex items-center gap-2">
-        {installUrl && (
+        {connection.installUrl && (
           <Button variant="outline" size="sm" asChild>
-            <a href={installUrl} target="_blank" rel="noreferrer">
+            <a href={connection.installUrl} target="_blank" rel="noreferrer">
               {t("git.manageAccess")}
             </a>
           </Button>

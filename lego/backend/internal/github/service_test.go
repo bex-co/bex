@@ -19,6 +19,7 @@ package github
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,11 +29,25 @@ import (
 
 // --- fakes ---
 
+// fakeStore models git_connections keyed by installation id (ADR075): a
+// workspace may hold several connections, one per GitHub account. conns is a flat
+// slice so len(conns) still reads as "how many connections exist in total".
 type fakeStore struct {
-	conns map[string]store.GitConnection
+	conns []store.GitConnection
 	// txns is the subject-bound connect-transaction table (w1/m67 F3), keyed by
 	// nonce. Consumption deletes, mirroring the store's single-statement claim.
 	txns map[string]store.GitHubConnectTransaction
+}
+
+// firstFor returns a workspace's oldest connection (insertion order), the
+// singular-alias semantics; ok=false when it holds none.
+func (f *fakeStore) firstFor(workspaceID string) (store.GitConnection, bool) {
+	for _, c := range f.conns {
+		if c.WorkspaceID == workspaceID {
+			return c, true
+		}
+	}
+	return store.GitConnection{}, false
 }
 
 // testCallerSubject is the bex identity every test flow starts from; the
@@ -62,8 +77,7 @@ func seedConnectTxn(t *testing.T, svc *Service, workspaceID, subject string) str
 
 func newFakeStore() *fakeStore {
 	return &fakeStore{
-		conns: map[string]store.GitConnection{},
-		txns:  map[string]store.GitHubConnectTransaction{},
+		txns: map[string]store.GitHubConnectTransaction{},
 	}
 }
 
@@ -82,16 +96,50 @@ func (f *fakeStore) ConsumeGitHubConnectTransaction(_ context.Context, nonce str
 }
 
 func (f *fakeStore) UpsertGitConnection(_ context.Context, c store.GitConnection) (store.GitConnection, error) {
-	f.conns[c.WorkspaceID] = c
+	for i := range f.conns { // keyed by installation id
+		if f.conns[i].InstallationID == c.InstallationID {
+			f.conns[i] = c
+			return c, nil
+		}
+	}
+	f.conns = append(f.conns, c)
 	return c, nil
 }
 
 func (f *fakeStore) GetGitConnection(_ context.Context, workspaceID string) (store.GitConnection, error) {
-	c, ok := f.conns[workspaceID]
-	if !ok {
-		return store.GitConnection{}, store.ErrNotFound
+	if c, ok := f.firstFor(workspaceID); ok {
+		return c, nil
 	}
-	return c, nil
+	return store.GitConnection{}, store.ErrNotFound
+}
+
+func (f *fakeStore) ListGitConnections(_ context.Context, workspaceID string) ([]store.GitConnection, error) {
+	out := []store.GitConnection{}
+	for _, c := range f.conns {
+		if c.WorkspaceID == workspaceID {
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeStore) GetGitConnectionByOwner(_ context.Context, workspaceID, accountLogin string) (store.GitConnection, error) {
+	for _, c := range f.conns {
+		if c.WorkspaceID == workspaceID && strings.EqualFold(c.AccountLogin, accountLogin) {
+			return c, nil
+		}
+	}
+	return store.GitConnection{}, store.ErrNotFound
+}
+
+func (f *fakeStore) CountGitConnections(_ context.Context, workspaceID string) (int, error) {
+	n := 0
+	for _, c := range f.conns {
+		if c.WorkspaceID == workspaceID {
+			n++
+		}
+	}
+	return n, nil
 }
 
 func (f *fakeStore) GitConnectionByInstallation(_ context.Context, installationID int64) (store.GitConnection, error) {
@@ -103,12 +151,14 @@ func (f *fakeStore) GitConnectionByInstallation(_ context.Context, installationI
 	return store.GitConnection{}, store.ErrNotFound
 }
 
-func (f *fakeStore) DeleteGitConnection(_ context.Context, workspaceID string) error {
-	if _, ok := f.conns[workspaceID]; !ok {
-		return store.ErrNotFound
+func (f *fakeStore) DeleteGitConnection(_ context.Context, workspaceID string, installationID int64) error {
+	for i, c := range f.conns {
+		if c.WorkspaceID == workspaceID && c.InstallationID == installationID {
+			f.conns = append(f.conns[:i], f.conns[i+1:]...)
+			return nil
+		}
 	}
-	delete(f.conns, workspaceID)
-	return nil
+	return store.ErrNotFound
 }
 
 type fakeClient struct {
@@ -128,6 +178,14 @@ type fakeClient struct {
 	// gotCommitRef records the (token, owner, repo, ref) GetCommit was called
 	// with, for assertions.
 	gotCommitRef []string
+	// Multi-connection (ADR075) test seams: reposByInst returns per-installation
+	// repos (falls back to repos when nil); tokenByInst maps an installation to
+	// the token it mints; gotMintInst records the installation MintInstallationToken
+	// was last called with.
+	reposByInst  map[int64][]Repo
+	tokenByInst  map[int64]string
+	gotMintInst  int64
+	listReposErr map[int64]error // per-installation ListRepos error (ADR075 degrade test)
 }
 
 func (c *fakeClient) InstallURL() string { return "https://github.com/apps/bex/installations/new" }
@@ -139,7 +197,15 @@ func (c *fakeClient) GetInstallation(_ context.Context, id int64) (Installation,
 	return Installation{ID: id, AccountLogin: c.login}, nil
 }
 
-func (c *fakeClient) ListRepos(_ context.Context, _ int64) ([]Repo, error) {
+func (c *fakeClient) ListRepos(_ context.Context, installationID int64) ([]Repo, error) {
+	if c.listReposErr != nil {
+		if err := c.listReposErr[installationID]; err != nil {
+			return nil, err
+		}
+	}
+	if c.reposByInst != nil {
+		return c.reposByInst[installationID], c.reposErr
+	}
 	return c.repos, c.reposErr
 }
 
@@ -148,9 +214,13 @@ func (c *fakeClient) ListBranches(_ context.Context, _ int64, owner, repo string
 	return c.branches, c.branchesErr
 }
 
-func (c *fakeClient) MintInstallationToken(_ context.Context, _ int64) (InstallationToken, error) {
+func (c *fakeClient) MintInstallationToken(_ context.Context, installationID int64) (InstallationToken, error) {
+	c.gotMintInst = installationID
 	if c.tokenErr != nil {
 		return InstallationToken{}, c.tokenErr
+	}
+	if c.tokenByInst != nil {
+		return InstallationToken{Token: c.tokenByInst[installationID]}, nil
 	}
 	return InstallationToken{Token: c.token}, nil
 }
@@ -221,7 +291,7 @@ func TestConnectRoundTrip(t *testing.T) {
 		t.Fatalf("list repos = %+v err=%v", repos, err)
 	}
 
-	if err := svc.Disconnect(ctx, ""); err != nil {
+	if err := svc.Disconnect(ctx, "", 0); err != nil {
 		t.Fatalf("disconnect: %v", err)
 	}
 
@@ -236,7 +306,7 @@ func TestConnectRoundTrip(t *testing.T) {
 	}
 
 	// Disconnect is idempotent.
-	if err := svc.Disconnect(ctx, ""); err != nil {
+	if err := svc.Disconnect(ctx, "", 0); err != nil {
 		t.Fatalf("second disconnect not idempotent: %v", err)
 	}
 }
@@ -261,7 +331,7 @@ func TestVerbs503WhenUnconfigured(t *testing.T) {
 			if _, err := svc.ListRepos(ctx, ""); !errors.Is(err, core.ErrGitHubUnavailable) {
 				t.Errorf("list err = %v", err)
 			}
-			if err := svc.Disconnect(ctx, ""); !errors.Is(err, core.ErrGitHubUnavailable) {
+			if err := svc.Disconnect(ctx, "", 0); !errors.Is(err, core.ErrGitHubUnavailable) {
 				t.Errorf("disconnect err = %v", err)
 			}
 		})
@@ -293,7 +363,7 @@ func TestConnectRejectsNonPositiveID(t *testing.T) {
 
 func TestListReposGitHubErrorSurfacesClean(t *testing.T) {
 	st := newFakeStore()
-	st.conns["default"] = store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"}
+	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
 
 	// A 5xx from GitHub surfaces as an error (never a silent empty list).
 	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{reposErr: &APIError{Status: 503, Body: "down"}}, Store: st}
@@ -342,7 +412,7 @@ func TestGithubOwnerRepo(t *testing.T) {
 // list without touching the client — the dashboard then uses free-text (w5/m54).
 func TestListBranches(t *testing.T) {
 	st := newFakeStore()
-	st.conns["default"] = store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"}
+	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
 	fc := &fakeClient{branches: []string{"main", "dev", "release/1.0"}}
 	svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: fc, Store: st}
 	ctx := context.Background()
@@ -378,7 +448,7 @@ func TestAuthzGatesWritesButAllowsMemberReads(t *testing.T) {
 	// A viewer may read the connection/repos but not connect/disconnect.
 	viewer := allowChecker{core.RelCanView: true, core.RelCanManage: false}
 	st := newFakeStore()
-	st.conns["default"] = store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"}
+	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
 	svc := &Service{
 		Base:   &core.Base{Namespace: "default", Authz: viewer},
 		GitHub: &fakeClient{login: "octo", repos: []Repo{{ID: 1, FullName: "octo/app"}}},
@@ -395,7 +465,7 @@ func TestAuthzGatesWritesButAllowsMemberReads(t *testing.T) {
 	if _, err := svc.StartConnect(ctx, ""); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("viewer StartConnect = %v, want Forbidden", err)
 	}
-	if err := svc.Disconnect(ctx, ""); !errors.Is(err, core.ErrForbidden) {
+	if err := svc.Disconnect(ctx, "", 0); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("viewer Disconnect = %v, want Forbidden", err)
 	}
 }
@@ -421,7 +491,7 @@ func TestOwnerRepo(t *testing.T) {
 
 func TestCloneToken(t *testing.T) {
 	st := newFakeStore()
-	st.conns["default"] = store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"}
+	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
 	ctx := context.Background()
 
 	// Repo in the grant (RepoAccessible ok) => a fresh token, across URL forms.
@@ -475,7 +545,7 @@ func TestCloneToken(t *testing.T) {
 // attacker host). The token is bound to a verified github.com origin.
 func TestCloneTokenRequiresGitHubOrigin(t *testing.T) {
 	st := newFakeStore()
-	st.conns["default"] = store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"}
+	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
 	// repoOK:true => if the host were honored as github.com, octo/app IS in the
 	// grant, so a token WOULD be minted. The host binding is the only thing
 	// stopping it.
@@ -526,12 +596,12 @@ func TestConnectRejectsForeignInstallation(t *testing.T) {
 	if _, err := svc.connectWithWorkspace(ctx, "tea-b", 42); !errors.Is(err, core.ErrConflict) {
 		t.Fatalf("foreign claim err = %v, want ErrConflict", err)
 	}
-	conns := svc.Store.(*fakeStore).conns
-	if _, ok := conns["tea-b"]; ok {
+	fs := svc.Store.(*fakeStore)
+	if _, ok := fs.firstFor("tea-b"); ok {
 		t.Error("foreign installation claim must not persist a connection for workspace B")
 	}
-	if conns["tea-a"].InstallationID != 42 {
-		t.Errorf("workspace A connection disturbed: %+v", conns["tea-a"])
+	if a, _ := fs.firstFor("tea-a"); a.InstallationID != 42 {
+		t.Errorf("workspace A connection disturbed: %+v", a)
 	}
 	// Re-connecting the SAME workspace to the SAME installation stays idempotent.
 	if _, err := svc.connectWithWorkspace(ctx, "tea-a", 42); err != nil {
@@ -585,7 +655,7 @@ func TestConnectFromCallbackEnforcesInstallationAdmin(t *testing.T) {
 	if _, err := accept.connectFromCallback(ctx, seedConnectTxn(t, accept, "tea-a", testCallerSubject), testCallerSubject, 42, "usercode"); err != nil {
 		t.Fatalf("proven installation connect: %v", err)
 	}
-	if accept.Store.(*fakeStore).conns["tea-a"].InstallationID != 42 {
+	if a, _ := accept.Store.(*fakeStore).firstFor("tea-a"); a.InstallationID != 42 {
 		t.Error("proven installation must persist the connection")
 	}
 	if fv.gotCode != "usercode" || fv.gotID != 42 {
@@ -613,7 +683,7 @@ func TestConnectFromCallbackEnforcesInstallationAdmin(t *testing.T) {
 // caller might mistake for a deploy-blocking failure.
 func TestResolveCommit(t *testing.T) {
 	st := newFakeStore()
-	st.conns["default"] = store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"}
+	st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
 	ctx := context.Background()
 
 	cl := &fakeClient{token: "ghs_fresh", commit: Commit{SHA: "abc1234def", Message: "fix: header"}}
@@ -672,7 +742,7 @@ func TestAuthzDenyAllForbidsEveryVerb(t *testing.T) {
 	if _, err := svc.ListRepos(ctx, ""); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("list = %v", err)
 	}
-	if err := svc.Disconnect(ctx, ""); !errors.Is(err, core.ErrForbidden) {
+	if err := svc.Disconnect(ctx, "", 0); !errors.Is(err, core.ErrForbidden) {
 		t.Errorf("disconnect = %v", err)
 	}
 }

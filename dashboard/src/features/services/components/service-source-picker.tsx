@@ -16,6 +16,7 @@ import { isValidGitUrl } from "@/common/lib/utils/git-url";
 import { cn } from "@/common/lib/utils/utils";
 import { useRepos, type RepoView } from "@/features/services/hooks/use-repos";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
+import { useConnectGit } from "@/features/git/hooks/use-connect-git";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
 
 /** Where a new service's code comes from. */
@@ -69,6 +70,7 @@ export function ServiceSourcePicker({
   const { t } = useTranslations();
   const { repos, loading: reposLoading } = useRepos();
   const { connection, loading: connectionLoading } = useGitConnection();
+  const { connect, busy: connecting } = useConnectGit();
   const [repoSearch, setRepoSearch] = useState("");
 
   const gitHubDisconnected =
@@ -83,6 +85,28 @@ export function ServiceSourcePicker({
       ),
     [repos, repoSearch],
   );
+
+  // Group the filtered repos by GitHub account so a workspace connected to
+  // several accounts (org + personal, ADR075) reads as sections rather than one
+  // undifferentiated list. Insertion order (repos already arrive account-ordered
+  // from the backend aggregate) is preserved.
+  const repoGroups = useMemo(() => {
+    const groups: { account: string; repos: RepoView[] }[] = [];
+    const byAccount = new Map<string, RepoView[]>();
+    for (const r of filteredRepos) {
+      const key = r.accountLogin || "";
+      let bucket = byAccount.get(key);
+      if (!bucket) {
+        bucket = [];
+        byAccount.set(key, bucket);
+        groups.push({ account: key, repos: bucket });
+      }
+      bucket.push(r);
+    }
+    return groups;
+  }, [filteredRepos]);
+  // Only label groups when there is more than one account to distinguish.
+  const showAccountHeadings = repoGroups.length > 1;
 
   return (
     <div className="space-y-3">
@@ -124,14 +148,9 @@ export function ServiceSourcePicker({
                   {t("services.createGitConnectPromptBody")}
                 </p>
               </div>
-              <Button asChild>
-                <a
-                  href={connection?.installUrl ?? ""}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {t("services.createGitConnectButton")}
-                </a>
+              <Button onClick={connect} disabled={connecting}>
+                <Github className="size-4" />
+                {t("services.createGitConnectButton")}
               </Button>
             </div>
           ) : (
@@ -156,35 +175,44 @@ export function ServiceSourcePicker({
                       : t("services.createRepoEmpty")}
                   </div>
                 ) : (
-                  filteredRepos.map((r) => (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => onSelectRepo(r)}
-                      className={cn(
-                        "flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted",
-                        selectedRepo?.id === r.id &&
-                          "bg-primary/5 hover:bg-primary/10",
+                  repoGroups.map((group) => (
+                    <div key={group.account || "_"}>
+                      {showAccountHeadings && group.account && (
+                        <div className="bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+                          {group.account}
+                        </div>
                       )}
-                    >
-                      <div className="flex min-w-0 items-center gap-2">
-                        <Github className="size-4 shrink-0 text-muted-foreground" />
-                        <span className="truncate text-sm font-medium">
-                          {r.fullName}
-                        </span>
-                        {r.private && (
-                          <Badge
-                            variant="secondary"
-                            className="shrink-0 text-xs"
-                          >
-                            {t("services.createRepoPrivateBadge")}
-                          </Badge>
-                        )}
-                      </div>
-                      <span className="ml-3 shrink-0 text-xs text-muted-foreground">
-                        {r.defaultBranch}
-                      </span>
-                    </button>
+                      {group.repos.map((r) => (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => onSelectRepo(r)}
+                          className={cn(
+                            "flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-muted",
+                            selectedRepo?.id === r.id &&
+                              "bg-primary/5 hover:bg-primary/10",
+                          )}
+                        >
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Github className="size-4 shrink-0 text-muted-foreground" />
+                            <span className="truncate text-sm font-medium">
+                              {r.fullName}
+                            </span>
+                            {r.private && (
+                              <Badge
+                                variant="secondary"
+                                className="shrink-0 text-xs"
+                              >
+                                {t("services.createRepoPrivateBadge")}
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="ml-3 shrink-0 text-xs text-muted-foreground">
+                            {r.defaultBranch}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   ))
                 )}
               </div>

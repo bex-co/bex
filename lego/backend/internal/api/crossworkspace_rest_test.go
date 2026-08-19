@@ -169,8 +169,11 @@ var callerScopedRoutes = map[string]bool{
 	"GET /v1/notification-device-subscriptions":       true, // caller's own workspace + subject; no owner path arg
 	"GET /v1/notification-webpush-subscriptions":      true, // caller's own browser subscriptions; no owner path arg
 	"GET /v1/git/connection":                          true,
-	// The caller's own workspace git connection — no resource in the path.
+	// The caller's own workspace git connection(s) — no resource in the path
+	// (ADR075). DELETE /v1/git/connections/{installationId} carries a GitHub
+	// installation id (not a bex resource id) so it rides the wildcard deny matrix.
 	"DELETE /v1/git/connection": true,
+	"GET /v1/git/connections":   true,
 	// Creates — the new resource's workspace comes from the request context
 	// (ownerId / caller default), not a path; a create naming a non-member
 	// workspace is refused in the t004 E2E.

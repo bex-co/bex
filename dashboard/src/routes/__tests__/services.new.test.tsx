@@ -89,6 +89,10 @@ vi.mock("@/features/git/hooks/use-git-connection", () => ({
   useGitConnection: () => connectionState,
 }));
 
+vi.mock("@/features/git/hooks/use-connect-git", () => ({
+  useConnectGit: () => ({ connect: vi.fn(), busy: false }),
+}));
+
 const PRIVATE_REGISTRY_CREDENTIAL: RegistryCredentialView = {
   id: "rgc-private",
   name: "Private GHCR",
@@ -176,6 +180,7 @@ const REPO: RepoView = {
   defaultBranch: "main",
   htmlUrl: "https://github.com/acme-corp/web-frontend",
   cloneUrl: "https://github.com/acme-corp/web-frontend.git",
+  accountLogin: "acme-corp",
 };
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -368,6 +373,7 @@ describe("NewServicePage", () => {
         defaultBranch: "main",
         htmlUrl: "https://github.com/acme-corp/api-service",
         cloneUrl: "https://github.com/acme-corp/api-service.git",
+        accountLogin: "acme-corp",
       };
       reposState.repos = [REPO, REPO2];
       const user = userEvent.setup();

@@ -52,7 +52,7 @@ type fakeConn struct {
 	err  error
 }
 
-func (f fakeConn) GetGitConnection(context.Context, string) (store.GitConnection, error) {
+func (f fakeConn) GetGitConnectionByOwner(_ context.Context, _ string, _ string) (store.GitConnection, error) {
 	return f.conn, f.err
 }
 

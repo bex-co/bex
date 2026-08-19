@@ -20,8 +20,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -35,10 +37,18 @@ import (
 type ConnectionStore interface {
 	UpsertGitConnection(ctx context.Context, c store.GitConnection) (store.GitConnection, error)
 	GetGitConnection(ctx context.Context, workspaceID string) (store.GitConnection, error)
+	// ListGitConnections returns a workspace's full connection set, oldest first
+	// (ADR075) — the multi-account aggregate the repo picker and list surface read.
+	ListGitConnections(ctx context.Context, workspaceID string) ([]store.GitConnection, error)
+	// GetGitConnectionByOwner resolves the connection whose account login matches a
+	// repo's owner — the exact installation to mint that repo's token from (ADR075 §4).
+	GetGitConnectionByOwner(ctx context.Context, workspaceID, accountLogin string) (store.GitConnection, error)
 	// GitConnectionByInstallation resolves which workspace (if any) already owns
 	// an installation — the unique-binding gate (w1/m65 F2).
 	GitConnectionByInstallation(ctx context.Context, installationID int64) (store.GitConnection, error)
-	DeleteGitConnection(ctx context.Context, workspaceID string) error
+	// CountGitConnections backs the per-workspace connection quota (ADR075 §2).
+	CountGitConnections(ctx context.Context, workspaceID string) (int, error)
+	DeleteGitConnection(ctx context.Context, workspaceID string, installationID int64) error
 	// The subject-bound, single-use connect transaction (w1/m67 F3): the record
 	// that ties "who started this flow" to "who came back from GitHub".
 	CreateGitHubConnectTransaction(ctx context.Context, t store.GitHubConnectTransaction) error
@@ -87,6 +97,11 @@ type Service struct {
 	// the browser after success or with a bounded failure code. Empty => the
 	// callback returns JSON instead of redirecting.
 	DashboardURL string
+	// MaxConnections caps how many GitHub installations ONE workspace may connect
+	// (BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE, ADR075 §2; default 10, 0 disables).
+	// Bounds one tenant's connection fan-out — and therefore the per-connection
+	// GitHub round trips ListRepos makes.
+	MaxConnections int
 }
 
 // Connection is the neutral connection view every adapter renders. InstallURL is
@@ -145,14 +160,18 @@ func (s *Service) StartConnect(ctx context.Context, ownerID string) (Connection,
 	if err != nil {
 		return Connection{}, err
 	}
-	row, err := s.Store.GetGitConnection(ctx, workspaceID)
-	if errors.Is(err, store.ErrNotFound) {
-		return Connection{Connected: false, InstallURL: installURL}, nil
-	}
+	// The install URL is the only bindable (stateful) URL bex produces — it starts
+	// a NEW connect, so it is what "Connect another account" uses too (ADR075 §3).
+	// The returned Connected flag reflects whether the workspace already holds any
+	// connection, but the URL always adds one.
+	rows, err := s.Store.ListGitConnections(ctx, workspaceID)
 	if err != nil {
 		return Connection{}, err
 	}
-	conn := s.connectedView(row)
+	if len(rows) == 0 {
+		return Connection{Connected: false, InstallURL: installURL}, nil
+	}
+	conn := s.connectedView(rows[0])
 	conn.InstallURL = installURL
 	return conn, nil
 }
@@ -245,12 +264,22 @@ func (s *Service) connectWithWorkspace(ctx context.Context, workspaceID string, 
 	// The mandatory user-OAuth proof has already established that the initiating
 	// user administers this installation; this uniqueness check independently
 	// prevents the same installation from being attached to two workspaces.)
+	reconnect := false
 	if existing, lookupErr := s.Store.GitConnectionByInstallation(ctx, installationID); lookupErr == nil {
 		if existing.WorkspaceID != workspaceID {
 			return Connection{}, fmt.Errorf("%w: this GitHub installation is already connected to another workspace", core.ErrConflict)
 		}
+		reconnect = true // same workspace re-binding: idempotent, quota-exempt
 	} else if !errors.Is(lookupErr, store.ErrNotFound) {
 		return Connection{}, lookupErr
+	}
+	// ADR075 §2: a NEW binding (not an idempotent re-connect) is subject to the
+	// per-workspace connection cap, so one tenant cannot fan out unbounded
+	// installations — each of which ListRepos then fans a GitHub round trip over.
+	if !reconnect {
+		if err := s.connectionQuota(ctx, workspaceID); err != nil {
+			return Connection{}, err
+		}
 	}
 	row, err := s.Store.UpsertGitConnection(ctx, store.GitConnection{
 		WorkspaceID:    workspaceID,
@@ -263,9 +292,13 @@ func (s *Service) connectWithWorkspace(ctx context.Context, workspaceID string, 
 	return s.connectedView(row), nil
 }
 
-// GetConnection returns ownerID's connection status ("" => the caller's
-// default workspace, w6/m18). "Not connected" is a valid state (Connected:false
-// + the install URL), not an error. Member read.
+// GetConnection returns ownerID's connection status ("" => the caller's default
+// workspace, w6/m18) — the singular compatibility alias over the workspace's
+// oldest connection (ADR075). "Not connected" is a valid state, not an error, and
+// (ADR075 §3) carries NO install URL: the bare, stateless URL is no longer
+// advertised as a connect CTA — only the connectGit mutation mints a bindable
+// (stateful) one. A connected row keeps its install URL as a "configure grants on
+// GitHub" deep link. Member read.
 func (s *Service) GetConnection(ctx context.Context, ownerID string) (Connection, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
@@ -276,7 +309,7 @@ func (s *Service) GetConnection(ctx context.Context, ownerID string) (Connection
 	}
 	row, err := s.Store.GetGitConnection(ctx, s.WorkspaceOrDefault(ctx))
 	if errors.Is(err, store.ErrNotFound) {
-		return Connection{Connected: false, InstallURL: s.installURL()}, nil
+		return Connection{Connected: false}, nil
 	}
 	if err != nil {
 		return Connection{}, err
@@ -284,10 +317,37 @@ func (s *Service) GetConnection(ctx context.Context, ownerID string) (Connection
 	return s.connectedView(row), nil
 }
 
-// Disconnect removes ownerID's connection ("" => the caller's default
-// workspace, w6/m18). Idempotent: disconnecting when not connected is a no-op
+// ListConnections returns every GitHub installation ownerID's workspace has
+// connected ("" => the caller's default workspace), oldest first — the
+// multi-account surface (ADR075 §5). An empty slice (never an error) means no
+// connection; the caller starts one through the connectGit mutation. Each row's
+// InstallURL is the bare "configure grants on GitHub" deep link. Member read.
+func (s *Service) ListConnections(ctx context.Context, ownerID string) ([]Connection, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
+	if err := s.Authorize(ctx, core.RelCanView); err != nil {
+		return nil, err
+	}
+	if !s.configured() {
+		return nil, core.ErrGitHubUnavailable
+	}
+	rows, err := s.Store.ListGitConnections(ctx, s.WorkspaceOrDefault(ctx))
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Connection, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, s.connectedView(row))
+	}
+	return out, nil
+}
+
+// Disconnect removes one of ownerID's connections ("" => the caller's default
+// workspace, w6/m18). installationID names the exact connection to remove; 0
+// targets the sole connection (the singular-alias behavior) and is refused with
+// ErrConflict when the workspace holds several — an ambiguous "disconnect" must
+// not silently pick one. Idempotent: disconnecting when not connected is a no-op
 // success. Admin-only.
-func (s *Service) Disconnect(ctx context.Context, ownerID string) error {
+func (s *Service) Disconnect(ctx context.Context, ownerID string, installationID int64) error {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return err
@@ -295,16 +355,54 @@ func (s *Service) Disconnect(ctx context.Context, ownerID string) error {
 	if !s.configured() {
 		return core.ErrGitHubUnavailable
 	}
-	err := s.Store.DeleteGitConnection(ctx, s.WorkspaceOrDefault(ctx))
+	workspace := s.WorkspaceOrDefault(ctx)
+	if installationID <= 0 {
+		rows, err := s.Store.ListGitConnections(ctx, workspace)
+		if err != nil {
+			return err
+		}
+		switch len(rows) {
+		case 0:
+			return nil // idempotent no-op
+		case 1:
+			installationID = rows[0].InstallationID
+		default:
+			return fmt.Errorf("%w: this workspace has multiple GitHub connections; specify which installation to disconnect", core.ErrConflict)
+		}
+	}
+	err := s.Store.DeleteGitConnection(ctx, workspace, installationID)
 	if errors.Is(err, store.ErrNotFound) {
 		return nil
 	}
 	return err
 }
 
-// ListRepos returns ownerID's connected installation's repositories ("" => the
-// caller's default workspace, w6/m18; private included). With no connection the
-// list is empty (disconnect "empties" the repos), not an error. Member read.
+// connectionQuota refuses a NEW connection that would push a workspace past its
+// per-workspace cap (BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE, ADR075 §2).
+// MaxConnections <= 0 disables the cap (tests, store-off, self-host opt-out).
+func (s *Service) connectionQuota(ctx context.Context, workspace string) error {
+	if s.MaxConnections <= 0 {
+		return nil
+	}
+	count, err := s.Store.CountGitConnections(ctx, workspace)
+	if err != nil {
+		return err
+	}
+	if count >= s.MaxConnections {
+		return core.NewConflictError("GIT_CONNECTION_LIMIT",
+			fmt.Sprintf("workspace already has %d connected GitHub installations (limit %d); disconnect one or raise the limit", count, s.MaxConnections),
+			map[string]any{"count": count, "limit": s.MaxConnections})
+	}
+	return nil
+}
+
+// ListRepos returns the repositories across ALL of ownerID's connected
+// installations ("" => the caller's default workspace, w6/m18; private included),
+// each annotated with the GitHub account it came from so the picker can group by
+// account (ADR075 §4). With no connection the list is empty (not an error). One
+// GitHub round trip per connection, run concurrently and bounded by the
+// per-workspace connection cap; a single connection's failure degrades that
+// account's slice (logged) rather than failing the whole list. Member read.
 func (s *Service) ListRepos(ctx context.Context, ownerID string) ([]Repo, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
@@ -313,21 +411,59 @@ func (s *Service) ListRepos(ctx context.Context, ownerID string) ([]Repo, error)
 	if !s.configured() {
 		return nil, core.ErrGitHubUnavailable
 	}
-	row, err := s.Store.GetGitConnection(ctx, s.WorkspaceOrDefault(ctx))
-	if errors.Is(err, store.ErrNotFound) {
-		return []Repo{}, nil
-	}
+	rows, err := s.Store.ListGitConnections(ctx, s.WorkspaceOrDefault(ctx))
 	if err != nil {
 		return nil, err
 	}
-	repos, err := s.GitHub.ListRepos(ctx, row.InstallationID)
-	if err != nil {
-		return nil, mapGitHubErr(err)
+	perConn := make([][]Repo, len(rows))
+	errs := make([]error, len(rows))
+	var wg sync.WaitGroup
+	for i, row := range rows {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			repos, err := s.GitHub.ListRepos(ctx, row.InstallationID)
+			if err != nil {
+				errs[i] = mapGitHubErr(err)
+				return
+			}
+			for j := range repos {
+				repos[j].AccountLogin = row.AccountLogin
+				repos[j].InstallationID = row.InstallationID
+			}
+			perConn[i] = repos
+		}()
 	}
-	if repos == nil {
-		repos = []Repo{}
+	wg.Wait()
+	// A dead/permission-changed installation must not blank out the OTHER
+	// accounts' repos: when at least one connection returned repos, degrade the
+	// failed ones (logged) and serve what we have. But if EVERY connection failed
+	// (the single-connection GitHub-outage case included), surface the error
+	// rather than a misleading empty list — this keeps a one-connection workspace
+	// byte-identical to the pre-ADR075 behavior.
+	failed, total := 0, 0
+	var firstErr error
+	for i, e := range errs {
+		if e != nil {
+			failed++
+			if firstErr == nil {
+				firstErr = e
+			}
+			log.Printf("github ListRepos: connection account=%s failed: %v", rows[i].AccountLogin, e)
+			continue
+		}
+		total += len(perConn[i])
 	}
-	return repos, nil
+	// len(rows) > 0 guards the zero-connection case: with no rows, failed == 0 ==
+	// len(rows) would otherwise read as "all failed" and return a nil error+slice.
+	if len(rows) > 0 && failed == len(rows) {
+		return nil, firstErr
+	}
+	out := make([]Repo, 0, total)
+	for _, repos := range perConn {
+		out = append(out, repos...)
+	}
+	return out, nil
 }
 
 // ListBranches returns the branch names of repoURL for ownerID's connected
@@ -347,9 +483,9 @@ func (s *Service) ListBranches(ctx context.Context, ownerID, repoURL string) ([]
 	if !ok {
 		return []string{}, nil // non-GitHub repo => free-text fallback
 	}
-	row, err := s.Store.GetGitConnection(ctx, s.WorkspaceOrDefault(ctx))
+	row, err := s.Store.GetGitConnectionByOwner(ctx, s.WorkspaceOrDefault(ctx), owner)
 	if errors.Is(err, store.ErrNotFound) {
-		return []string{}, nil
+		return []string{}, nil // no connection for this repo's account => free-text fallback
 	}
 	if err != nil {
 		return nil, err
@@ -494,7 +630,10 @@ func (s *Service) cloneToken(ctx context.Context, workspaceID, repoURL string) (
 	if !ok {
 		return "", false, nil // not a github.com owner/repo URL — nothing to match against
 	}
-	row, err := s.Store.GetGitConnection(ctx, workspaceID)
+	// Resolve the workspace's connection for THIS repo's account (ADR075 §4): a
+	// workspace may hold several installations, and the token must come from the
+	// one that owns the repo — never account A's token for account B's repo.
+	row, err := s.Store.GetGitConnectionByOwner(ctx, workspaceID, owner)
 	if errors.Is(err, store.ErrNotFound) {
 		return "", false, nil
 	}
@@ -553,7 +692,7 @@ func (s *Service) resolveCommit(ctx context.Context, workspaceID, repoURL, ref s
 	if !ok {
 		return store.CommitInfo{}, false, nil
 	}
-	row, err := s.Store.GetGitConnection(ctx, workspaceID)
+	row, err := s.Store.GetGitConnectionByOwner(ctx, workspaceID, owner)
 	if errors.Is(err, store.ErrNotFound) {
 		return store.CommitInfo{}, false, nil
 	}
@@ -620,7 +759,7 @@ func (s *Service) fetchBlueprintFile(ctx context.Context, workspaceID, repoURL, 
 	}
 	var token string
 	if s.configured() {
-		row, err := s.Store.GetGitConnection(ctx, workspaceID)
+		row, err := s.Store.GetGitConnectionByOwner(ctx, workspaceID, owner)
 		if err != nil && !errors.Is(err, store.ErrNotFound) {
 			return "", "", err
 		}

@@ -34,23 +34,37 @@ type listReposResult struct {
 	Repos []Repo `json:"repos"`
 }
 
+type listConnectionsResult struct {
+	Connections []Connection `json:"connections"`
+}
+
 // RegisterMCP adds the git-connect tools to the shared MCP server.
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "list_repos",
-		Description: "List the GitHub repositories the connected GitHub App installation can deploy (private repos included). " +
+		Description: "List the GitHub repositories the workspace's connected GitHub App installations can deploy (private repos included; " +
+			"each repo carries the accountLogin of the GitHub account it belongs to). " +
 			"Use this to answer \"which of my repos can you deploy?\" before creating a service from a repo. " +
-			"If it returns an empty list or a 503, GitHub is not connected — call get_git_connection for the install URL to give the human.",
+			"If it returns an empty list or a 503, GitHub is not connected — call list_git_connections for the install URL to give the human.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listReposResult, error) {
 		repos, err := s.ListRepos(ctx, core.NamedWorkspace(ctx))
 		return nil, listReposResult{Repos: repos}, err
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
-		Name: "get_git_connection",
-		Description: "Report whether this workspace has connected GitHub (account login + install URL). " +
-			"When connected is false, give the human the returned installUrl to install the bex GitHub App and grant repos; " +
+		Name: "list_git_connections",
+		Description: "List the GitHub accounts/organizations this workspace has connected (account login + installation id per connection). " +
+			"An empty list means GitHub is not connected — the human connects a new account from the bex dashboard Settings page; " +
 			"a 503 means the GitHub App is not configured on this bex deployment.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listConnectionsResult, error) {
+		conns, err := s.ListConnections(ctx, core.NamedWorkspace(ctx))
+		return nil, listConnectionsResult{Connections: conns}, err
+	})
+
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name: "get_git_connection",
+		Description: "DEPRECATED (use list_git_connections): report whether this workspace has connected GitHub, returning its oldest " +
+			"connection only. A 503 means the GitHub App is not configured on this bex deployment.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, Connection, error) {
 		conn, err := s.GetConnection(ctx, core.NamedWorkspace(ctx))
 		return nil, conn, err
