@@ -1,6 +1,9 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { useNavigate, useRouter } from "@tanstack/react-router";
+import { toast } from "sonner";
 import {
   LogOut,
+  Loader2,
   Settings,
   Palette,
   Sun,
@@ -9,6 +12,8 @@ import {
   Globe,
   Check,
 } from "lucide-react";
+import { endBrowserSession } from "@/common/lib/ory/logout";
+import { EMPTY_LOGIN_SEARCH } from "@/common/lib/auth/auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,10 +85,12 @@ type IdentityTraits = { email?: string; name?: string };
  */
 export function UserNav() {
   const navigate = useNavigate();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
   const { session } = useRootContext();
   const { t, i18n } = useTranslations();
+  const [signingOut, setSigningOut] = useState(false);
 
   const currentLanguage = i18n.language as SupportedLanguage;
   const handleLanguage = (lang: SupportedLanguage) => {
@@ -95,7 +102,22 @@ export function UserNav() {
   const traits = identity?.traits as IdentityTraits | undefined;
 
   const handleLogout = () => {
-    void navigate({ to: "/auth/logout" });
+    if (signingOut) return;
+    setSigningOut(true);
+    void (async () => {
+      try {
+        // The dropdown click is the explicit user action (codex #12). Auto-
+        // logout on GET /auth/logout would still be CSRF, so that page keeps
+        // its confirmation; this menu item does not need a second one.
+        await endBrowserSession();
+        await router.invalidate();
+        void navigate({ to: "/auth/login", search: EMPTY_LOGIN_SEARCH });
+      } catch (error) {
+        console.error("Logout failed:", error);
+        setSigningOut(false);
+        toast.error(t("auth.logoutFailedSubtitle"));
+      }
+    })();
   };
 
   const handleSettings = () => {
@@ -193,9 +215,21 @@ export function UserNav() {
           </DropdownMenuSubContent>
         </DropdownMenuSub>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout} variant="destructive">
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>{t("common.userMenuLogOut")}</span>
+        <DropdownMenuItem
+          onClick={handleLogout}
+          variant="destructive"
+          disabled={signingOut}
+        >
+          {signingOut ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <LogOut className="mr-2 h-4 w-4" />
+          )}
+          <span>
+            {signingOut
+              ? t("auth.loggingOutTitle")
+              : t("common.userMenuLogOut")}
+          </span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
