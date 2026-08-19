@@ -1,5 +1,4 @@
 import {
-  Activity,
   Info,
   MemoryStick,
   Network,
@@ -13,8 +12,8 @@ import { useTranslations } from "@/common/hooks/use-translations";
 /**
  * In-page section navigation for the key-value detail page's Overview tab —
  * same right-rail quick nav as the service settings page. Labels reuse the
- * cards' own title keys. Rendered only on the Overview tab; the Logs tab is a
- * single viewer and gets no nav.
+ * cards' own title keys. Rendered only on the Overview tab; the Logs and
+ * Metrics tabs are each a single panel and get no nav.
  */
 export function KeyValueDetailNavigation({
   className,
@@ -35,11 +34,6 @@ export function KeyValueDetailNavigation({
       href: "#maxmemory-policy",
       label: t("keyvalue.maxmemoryTitle"),
       icon: MemoryStick,
-    },
-    {
-      href: "#metrics",
-      label: t("metrics.datastoreMetricsTitle"),
-      icon: Activity,
     },
     {
       href: "#danger-zone",
