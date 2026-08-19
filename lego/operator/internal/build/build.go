@@ -35,9 +35,9 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
@@ -458,38 +458,24 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 	}
 
 	image := o.ImageRef()
-	job := BuildJob(o, image)
-	key := client.ObjectKeyFromObject(job)
 	owned := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
-
-	// Create the Job if it doesn't already exist (idempotent per revision).
-	created := true
-	if err := o.Client.Create(ctx, job); err != nil {
-		if !apierrors.IsAlreadyExists(err) {
-			return Observation{}, fmt.Errorf("build: create job %s: %w", key.Name, err)
-		}
-		created = false
-	}
-	var cur batchv1.Job
-	if err := o.Client.Get(ctx, key, &cur); err != nil {
-		return Observation{}, fmt.Errorf("build: get job %s: %w", key.Name, err)
-	}
-	if err := owned.CheckOwner(&cur); err != nil {
-		return Observation{}, fmt.Errorf("build: check job owner %s: %w", key.Name, err)
+	cur, created, err := execution.EnsureOwnedJob(ctx, o.Client, BuildJob(o, image), owned, "build")
+	if err != nil {
+		return Observation{}, err
 	}
 	switch {
-	case execution.JobHasCondition(&cur, batchv1.JobComplete):
-		return Observation{Phase: PhaseSucceeded, Image: image, RunSeconds: jobRunSeconds(&cur), Created: created}, nil
-	case execution.JobHasCondition(&cur, batchv1.JobFailed):
+	case execution.JobHasCondition(cur, batchv1.JobComplete):
+		return Observation{Phase: PhaseSucceeded, Image: image, RunSeconds: jobRunSeconds(cur), Created: created}, nil
+	case execution.JobHasCondition(cur, batchv1.JobFailed):
 		return Observation{
 			Phase:      PhaseFailed,
-			Message:    execution.JobFailureMessage(&cur, "unknown build failure"),
-			RunSeconds: jobRunSeconds(&cur),
-			Fault:      faultFromJob(execution.JobFailedReason(&cur)),
+			Message:    execution.JobFailureMessage(cur, "unknown build failure"),
+			RunSeconds: jobRunSeconds(cur),
+			Fault:      faultFromJob(execution.JobFailedReason(cur)),
 			Created:    created,
 		}, nil
 	}
-	if queued, reason := buildQueued(ctx, o, key.Name); queued {
+	if queued, reason := buildQueued(ctx, o, cur.Name); queued {
 		return Observation{Phase: PhaseWaiting, Message: reason, Created: created}, nil
 	}
 	return Observation{Phase: PhaseBuilding, Created: created}, nil
@@ -712,9 +698,9 @@ func BuildJob(o Options, image string) *batchv1.Job {
 		// Unconfined seccomp/AppArmor remains scoped to this one container; the
 		// default OCI worker process sandbox still isolates Dockerfile RUN PIDs.
 		SecurityContext: &corev1.SecurityContext{
-			RunAsUser:                ptr(int64(0)),
-			RunAsGroup:               ptr(int64(0)),
-			AllowPrivilegeEscalation: ptr(true),
+			RunAsUser:                ptr.To(int64(0)),
+			RunAsGroup:               ptr.To(int64(0)),
+			AllowPrivilegeEscalation: ptr.To(true),
 			Capabilities: &corev1.Capabilities{Add: []corev1.Capability{
 				"AUDIT_WRITE", "CHOWN", "DAC_OVERRIDE", "FOWNER", "FSETID",
 				"KILL", "MKNOD", "NET_ADMIN", "NET_BIND_SERVICE", "NET_RAW",
@@ -792,7 +778,7 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	podSpec.InitContainers = append(podSpec.InitContainers, buildkit)
 	execution.HardenPod(&podSpec)
 	execution.TolerateBuildPool(&podSpec)
-	podSpec.SecurityContext.FSGroup = ptr(int64(0))
+	podSpec.SecurityContext.FSGroup = ptr.To(int64(0))
 	// No safe-to-evict pin: buildPodFailurePolicy absorbs eviction rather than
 	// preventing it, so pinning would only block node consolidation.
 	annotations := map[string]string{
@@ -901,12 +887,8 @@ func buildCloneContainer(o Options, image string) corev1.Container {
 		Name:    "clone",
 		Image:   image,
 		Command: []string{"sh", "-eu", "-c"},
-		// SECURITY: the credential helper is host-bound — it answers only when git
-		// asks for github.com credentials (the "host=" line of git's credential
-		// protocol). bex-api only mints a GIT_AUTH_TOKEN for a structurally
-		// verified github.com origin, so this is defense in depth: even if a
-		// crafted REPO caused git to connect elsewhere, the helper returns nothing
-		// and the token never leaves for a non-GitHub host.
+		// The credential helper is execution.GitHubCredentialHelper — host-bound
+		// to github.com; its SECURITY comment lives on the shared constant.
 		// The fetch is the only step here that can fail on tenant input (a bad
 		// repo URL, a ref that does not exist, or a token that cannot read the
 		// repo), so it is the step that classifies. bex_run leaves $REPO/$REF as
@@ -916,7 +898,7 @@ func buildCloneContainer(o Options, image string) corev1.Container {
 git init -q .
 git remote add origin "$REPO"
 if [ -n "${GIT_AUTH_TOKEN:-}" ]; then
-  bex_run git -c credential.helper='!f() { [ "$1" = get ] || exit 0; h=; while IFS= read -r l; do [ -z "$l" ] && break; case "$l" in host=*) h=${l#host=};; esac; done; [ "$h" = github.com ] || exit 0; echo "username=x-access-token"; echo "password=$GIT_AUTH_TOKEN"; }; f' fetch --depth 1 origin "$REF"
+  bex_run git -c ` + execution.GitHubCredentialHelper + ` fetch --depth 1 origin "$REF"
 else
   bex_run git fetch --depth 1 origin "$REF"
 fi
@@ -1019,7 +1001,7 @@ func captureFailureTail(spec *corev1.PodSpec) {
 
 func restrictedContainerSecurityContext() *corev1.SecurityContext {
 	return &corev1.SecurityContext{
-		AllowPrivilegeEscalation: ptr(false),
+		AllowPrivilegeEscalation: ptr.To(false),
 		Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
 		SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 	}
@@ -1108,5 +1090,3 @@ func listBuildJobs(ctx context.Context, cl client.Client, namespace string, sel 
 	}
 	return jobs.Items, nil
 }
-
-func ptr[T any](v T) *T { return &v }

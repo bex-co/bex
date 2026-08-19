@@ -25,6 +25,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/utils/ptr"
 )
 
 // nativePreparerImage is digest-pinned (codex round-7 F10 / the ADR055 F7
@@ -157,10 +158,10 @@ done`},
 		Env:          env,
 		VolumeMounts: mounts,
 		SecurityContext: &corev1.SecurityContext{
-			RunAsUser:                ptr(int64(65532)),
-			RunAsGroup:               ptr(int64(65532)),
-			RunAsNonRoot:             ptr(true),
-			AllowPrivilegeEscalation: ptr(false),
+			RunAsUser:                ptr.To(int64(65532)),
+			RunAsGroup:               ptr.To(int64(65532)),
+			RunAsNonRoot:             ptr.To(true),
+			AllowPrivilegeEscalation: ptr.To(false),
 			Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
 		},
 		Resources: corev1.ResourceRequirements{

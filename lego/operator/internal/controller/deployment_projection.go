@@ -17,10 +17,14 @@ limitations under the License.
 package controller
 
 import (
+	"context"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 
@@ -38,6 +42,41 @@ func podReady(pod *corev1.Pod) bool {
 		}
 	}
 	return false
+}
+
+// currentRevisionPodsReady closes the window where a Pod has already crashed
+// but the workload controller has not yet lowered its availability counters. A
+// missing pod list is treated as inconclusive so startup/fake clients still
+// rely on the authoritative Deployment/StatefulSet status; once
+// current-revision pods are visible, every desired replica must have
+// PodReady=true. Pods carrying no matching revision label are skipped when
+// revision is set; an empty revision counts every selected pod. Shared by
+// deploymentPodsReady and keyValuePodsReady, which differ only in selector and
+// revision-label key.
+func currentRevisionPodsReady(
+	ctx context.Context,
+	reader client.Reader,
+	namespace string,
+	selector map[string]string,
+	revisionKey, revision string,
+	replicas int32,
+) bool {
+	var pods corev1.PodList
+	if err := reader.List(ctx, &pods, client.InNamespace(namespace), client.MatchingLabels(selector)); err != nil {
+		return true
+	}
+	var current, ready int32
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		if !pod.DeletionTimestamp.IsZero() || (revision != "" && pod.Labels[revisionKey] != revision) {
+			continue
+		}
+		current++
+		if podReady(pod) {
+			ready++
+		}
+	}
+	return current == 0 || ready >= replicas
 }
 
 // Health-check timing. Every value here mirrors a number Render documents, so
@@ -274,7 +313,7 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 	// Timer (2) of the three named on rolloutBudgetSeconds. Unset, Kubernetes
 	// defaults this to 600s, which would cut Render's 15-minute window to 10
 	// for reasons nobody chose.
-	dep.Spec.ProgressDeadlineSeconds = ptr(rolloutBudgetSeconds)
+	dep.Spec.ProgressDeadlineSeconds = ptr.To(rolloutBudgetSeconds)
 
 	// restart = roll the template (same mechanism as kubectl rollout restart,
 	// recorded in the contract). Never removed once set — removal would itself
@@ -300,5 +339,5 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 	// identical 30-second default without adding a field to their pod template.
 	dep.Spec.Template.Spec.TerminationGracePeriodSeconds = terminationGracePeriodSeconds(app.Spec.MaxShutdownDelaySeconds)
 	dep.Spec.Template.Spec.ImagePullSecrets = p.pullSecrets
-	dep.Spec.Template.Spec.AutomountServiceAccountToken = ptr(false)
+	dep.Spec.Template.Spec.AutomountServiceAccountToken = ptr.To(false)
 }

@@ -35,7 +35,6 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -205,26 +204,16 @@ func Ensure(ctx context.Context, o Options) (Observation, error) {
 		return Observation{}, err
 	}
 
-	job := PublishJob(o)
-	key := client.ObjectKeyFromObject(job)
 	owned := execution.ArtifactIdentity{Name: o.AppID, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
-
-	if err := o.Client.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
-		return Observation{}, fmt.Errorf("publish: create job %s: %w", key.Name, err)
-	}
-
-	var cur batchv1.Job
-	if err := o.Client.Get(ctx, key, &cur); err != nil {
-		return Observation{}, fmt.Errorf("publish: get job %s: %w", key.Name, err)
-	}
-	if err := owned.CheckOwner(&cur); err != nil {
-		return Observation{}, fmt.Errorf("publish: check job owner %s: %w", key.Name, err)
+	cur, _, err := execution.EnsureOwnedJob(ctx, o.Client, PublishJob(o), owned, "publish")
+	if err != nil {
+		return Observation{}, err
 	}
 	switch {
-	case execution.JobHasCondition(&cur, batchv1.JobComplete):
+	case execution.JobHasCondition(cur, batchv1.JobComplete):
 		return Observation{Phase: PhaseSucceeded}, nil
-	case execution.JobHasCondition(&cur, batchv1.JobFailed):
-		return Observation{Phase: PhaseFailed, Message: execution.JobFailureMessage(&cur, "unknown publish failure")}, nil
+	case execution.JobHasCondition(cur, batchv1.JobFailed):
+		return Observation{Phase: PhaseFailed, Message: execution.JobFailureMessage(cur, "unknown publish failure")}, nil
 	}
 	return Observation{Phase: PhasePublishing}, nil
 }
@@ -393,11 +382,13 @@ func cloneContainer(o Options) corev1.Container {
 	if ref == "" {
 		ref = "HEAD"
 	}
+	// The credential helper is execution.GitHubCredentialHelper — host-bound
+	// to github.com; its SECURITY comment lives on the shared constant.
 	script := `set -e
 mkdir -p /work && cd /work
 git init -q .
 git remote add origin "$REPO"
-git -c credential.helper='!f() { [ "$1" = get ] || exit 0; h=; while IFS= read -r l; do [ -z "$l" ] && break; case "$l" in host=*) h=${l#host=};; esac; done; [ "$h" = github.com ] || exit 0; echo "username=x-access-token"; echo "password=$GIT_AUTH_TOKEN"; }; f' fetch -q --depth 1 origin "$REF"
+git -c ` + execution.GitHubCredentialHelper + ` fetch -q --depth 1 origin "$REF"
 git checkout -q FETCH_HEAD
 cd "/work/$SRC_DIR"
 cp -a . ` + outMount + `/`
@@ -469,8 +460,6 @@ func modestResources() corev1.ResourceRequirements {
 func JobName(appID, revision string) string {
 	return appv1alpha1.RevisionJobName("pub-", appID, revision)
 }
-
-// jobCondition reports whether the Job carries condition t with status True.
 
 // PurgeJob constructs the durable terminal cleanup Job for one exact App
 // lifetime. The App finalizer creates, observes, and deletes this Job; success
@@ -547,6 +536,3 @@ func PurgeJob(appName, appUID, workspace, appNamespace string, store Store, name
 	execution.HardenPod(&job.Spec.Template.Spec)
 	return job
 }
-
-// jobFailureMessage extracts the JobFailed condition's reason/message for the
-// error surfaced to the App's status.

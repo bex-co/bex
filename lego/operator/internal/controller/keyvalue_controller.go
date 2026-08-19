@@ -18,6 +18,7 @@ package controller
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
@@ -38,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -101,13 +103,6 @@ const (
 
 var certManagerCertificateGVK = schema.GroupVersionKind{Group: "cert-manager.io", Version: "v1", Kind: "Certificate"}
 
-// growOnlyStorage raises a requested volume size to a plan's floor — storage
-// can grow past the plan, never shrink below it. Shared by the Database
-// (resolvePlan) and KeyValue (resolveKVPlan) plan resolvers.
-func growOnlyStorage(requested, floor int32) int32 {
-	return max(requested, floor)
-}
-
 // resolveKVPlan returns the Valkey plan (defaulting to free) and the effective
 // storage size in GB (never below the plan floor — storage only grows). The
 // ladder is lego/types/tiers' valkey family, the KeyValue sibling of
@@ -155,9 +150,9 @@ func kvResources(plan tiers.ValkeyTier) corev1.ResourceRequirements {
 
 func valkeySecCtx() *corev1.SecurityContext {
 	security := tenantSecCtx()
-	security.RunAsNonRoot = ptr(true)
-	security.RunAsUser = ptr(valkeyRunAsUser)
-	security.RunAsGroup = ptr(valkeyRunAsGroup)
+	security.RunAsNonRoot = ptr.To(true)
+	security.RunAsUser = ptr.To(valkeyRunAsUser)
+	security.RunAsGroup = ptr.To(valkeyRunAsGroup)
 	return security
 }
 
@@ -274,13 +269,10 @@ type KeyValueReconciler struct {
 	BackupSourceNamespace string
 }
 
-// secretClient returns the uncached client for tenant-namespace Secret access —
-// the same escape hatch the App path uses (AppReconciler.buildPlaneClient).
+// secretClient prefers the uncached reader for tenant-namespace Secret access,
+// falling back to the cached client (see DatabaseReconciler.secretClient).
 func (r *KeyValueReconciler) secretClient() client.Client {
-	if r.SecretClient != nil {
-		return r.SecretClient
-	}
-	return r.Client
+	return cmp.Or(r.SecretClient, r.Client)
 }
 
 // +kubebuilder:rbac:groups=app.bex.co,resources=keyvalues,verbs=get;list;watch;create;update;patch;delete
@@ -311,12 +303,13 @@ func (r *KeyValueReconciler) keyValueStorageIntent(
 		result, failErr := r.kvFail(ctx, kv, "PVCReadFailed", err)
 		return nil, 0, result, true, failErr
 	}
-	currentGB := max(kv.Status.AllocatedStorageGB, statefulSetStorageGB(sts), pvcRequestedStorageGB(pvc), pvcCapacityStorageGB(pvc))
-	intentChanged := kv.Status.AllocatedStorageGB > 0 && kv.Status.ObservedStorageGB != kv.Spec.StorageGB
-	if intentChanged && kv.Spec.StorageGB > 0 && currentGB > kv.Spec.StorageGB {
+	currentGB, effectiveGB, shrink := growOnlyIntent(
+		kv.Status.AllocatedStorageGB, kv.Status.ObservedStorageGB, kv.Spec.StorageGB, desiredGB,
+		statefulSetStorageGB(sts), pvcRequestedStorageGB(pvc), pvcCapacityStorageGB(pvc))
+	if shrink {
 		return nil, 0, ctrl.Result{}, true, r.rejectKeyValueStorageShrink(ctx, kv, currentGB, kv.Spec.StorageGB)
 	}
-	return sts, max(desiredGB, currentGB), ctrl.Result{}, false, nil
+	return sts, effectiveGB, ctrl.Result{}, false, nil
 }
 
 // reconcileKeyValueTLS manages the public front door's Certificate. The
@@ -376,7 +369,7 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 			}
 		}
 		auth.Data["username"] = []byte(kvDefaultUser)
-		auth.Immutable = ptr(true)
+		auth.Immutable = ptr.To(true)
 		return controllerutil.SetControllerReference(kv, auth, r.Scheme)
 	}); err != nil {
 		result, failErr := r.kvFail(ctx, kv, "CredentialSecretFailed", err)
@@ -399,7 +392,7 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 	}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.secretClient(), connection, func() error {
 		connection.Data = desiredData
-		connection.Immutable = ptr(true)
+		connection.Immutable = ptr.To(true)
 		return controllerutil.SetControllerReference(kv, connection, r.Scheme)
 	}); err != nil {
 		result, failErr := r.kvFail(ctx, kv, "SecretFailed", err)
@@ -576,7 +569,7 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 						corev1.ResourceStorage: resource.MustParse(fmt.Sprintf("%dGi", intent.storageGB)),
 					},
 				},
-				StorageClassName: ptr(kvStorageClass),
+				StorageClassName: ptr.To(kvStorageClass),
 			},
 		}}
 	}
@@ -638,10 +631,10 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 	// Harden the managed Valkey pod the same way tenant Deployments are (w1/m53):
 	// drop ALL caps, no privilege escalation, RuntimeDefault seccomp, and no
 	// ServiceAccount token mounted (Valkey never talks to the apiserver).
-	spec.AutomountServiceAccountToken = ptr(false)
+	spec.AutomountServiceAccountToken = ptr.To(false)
 	spec.SecurityContext = &corev1.PodSecurityContext{
-		FSGroup:             ptr(valkeyRunAsGroup),
-		FSGroupChangePolicy: ptr(corev1.FSGroupChangeOnRootMismatch),
+		FSGroup:             ptr.To(valkeyRunAsGroup),
+		FSGroupChangePolicy: ptr.To(corev1.FSGroupChangeOnRootMismatch),
 	}
 	spec.Containers = []corev1.Container{{
 		Name:  "valkey",
@@ -879,27 +872,15 @@ func statefulSetRolloutReady(sts *appsv1.StatefulSet, replicas int32) bool {
 		sts.Status.AvailableReplicas >= replicas
 }
 
+// keyValuePodsReady is currentRevisionPodsReady over the KeyValue label and
+// the StatefulSet controller's own revision label (see that helper for the
+// inconclusive-true semantics it shares with deploymentPodsReady).
 func (r *KeyValueReconciler) keyValuePodsReady(ctx context.Context, kv *appv1alpha1.KeyValue, sts *appsv1.StatefulSet, replicas int32) bool {
 	if replicas == 0 {
 		return true
 	}
-	var pods corev1.PodList
-	if err := r.List(ctx, &pods, client.InNamespace(kv.Namespace), client.MatchingLabels{labelKeyValue: kv.Name}); err != nil {
-		return true
-	}
-	var current, ready int32
-	for i := range pods.Items {
-		pod := &pods.Items[i]
-		if !pod.DeletionTimestamp.IsZero() ||
-			(sts.Status.UpdateRevision != "" && pod.Labels[appsv1.StatefulSetRevisionLabel] != sts.Status.UpdateRevision) {
-			continue
-		}
-		current++
-		if podReady(pod) {
-			ready++
-		}
-	}
-	return current == 0 || ready >= replicas
+	return currentRevisionPodsReady(ctx, r.Client, kv.Namespace, map[string]string{labelKeyValue: kv.Name},
+		appsv1.StatefulSetRevisionLabel, sts.Status.UpdateRevision, replicas)
 }
 
 func (r *KeyValueReconciler) rejectKeyValueStorageShrink(ctx context.Context, kv *appv1alpha1.KeyValue, current, requested int32) error {
@@ -1061,11 +1042,7 @@ func setKeyValueStorageCondition(kv *appv1alpha1.KeyValue, state keyValueStorage
 
 func (r *KeyValueReconciler) kvFail(ctx context.Context, kv *appv1alpha1.KeyValue, reason string, err error) (ctrl.Result, error) {
 	kv.Status.Phase = appv1alpha1.KVPhaseFailed
-	meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
-		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: err.Error(),
-		ObservedGeneration: kv.Generation,
-	})
-	_ = r.Status().Update(ctx, kv)
+	setNotReadyCondition(ctx, r.Status(), kv, &kv.Status.Conditions, reason, err)
 	return ctrl.Result{}, err
 }
 

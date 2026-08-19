@@ -27,6 +27,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -279,7 +280,7 @@ func exportJob(db *appv1alpha1.Database, request appv1alpha1.DatabaseExportReque
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec: corev1.PodSpec{
 					RestartPolicy:                corev1.RestartPolicyNever,
-					AutomountServiceAccountToken: ptr(false),
+					AutomountServiceAccountToken: ptr.To(false),
 					Volumes: []corev1.Volume{{Name: exportWorkVolume, VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{
 						SizeLimit: resource.NewQuantity(exportWorkVolumeSize, resource.BinarySI),
 					}}}},
@@ -353,7 +354,7 @@ func exportCleanupJob(db *appv1alpha1.Database, status appv1alpha1.DatabaseExpor
 				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec: corev1.PodSpec{
 					RestartPolicy:                corev1.RestartPolicyNever,
-					AutomountServiceAccountToken: ptr(false),
+					AutomountServiceAccountToken: ptr.To(false),
 					Containers: []corev1.Container{{
 						Name:            "expire",
 						Image:           publish.DefaultAWSCLIImage,

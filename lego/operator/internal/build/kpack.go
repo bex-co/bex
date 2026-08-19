@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -367,7 +368,7 @@ func ensureKpackCredentials(ctx context.Context, o Options) error {
 		}
 		sa.Secrets = secretRefs
 		sa.ImagePullSecrets = imagePullSecrets
-		sa.AutomountServiceAccountToken = ptr(false)
+		sa.AutomountServiceAccountToken = ptr.To(false)
 		return nil
 	})
 	return err

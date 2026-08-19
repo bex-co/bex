@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -49,7 +50,7 @@ func TestJobShape(t *testing.T) {
 		Env:              []corev1.EnvVar{{Name: "FOO", Value: "bar"}},
 		EnvFrom:          []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "api-env"}}}},
 		ImagePullSecrets: []corev1.LocalObjectReference{{Name: "pull"}},
-		SecurityContext:  &corev1.SecurityContext{RunAsNonRoot: ptr(true)},
+		SecurityContext:  &corev1.SecurityContext{RunAsNonRoot: ptr.To(true)},
 		Volumes:          []corev1.Volume{{Name: "secrets"}},
 		VolumeMounts:     []corev1.VolumeMount{{Name: "secrets", MountPath: "/etc/secrets"}},
 	})
