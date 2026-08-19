@@ -82,6 +82,18 @@ spec:
         args:
           - --leader-elect
           - --health-probe-bind-address=:8081
+          # The build-plane SLIs (docs/ADR060 D5) are emitted on the manager's
+          # controller-runtime registry, and controller-runtime disables that
+          # endpoint by default ("0") — so until w7/m83 every bex_build_* series
+          # existed only inside the process, and the alerts built on them could
+          # never fire. Plain HTTP on the pod network, matching every sibling
+          # component here (bex-api :8091, ssh-gateway :9090, egress-meter :9091):
+          # bex-system's deny-tenant-ingress admits only bex-system, traefik and
+          # monitoring, and no tenant pod can reach it. :8080 is kubebuilder's own
+          # documented HTTP metrics port and is free in this pod (:8081 health,
+          # :9443 webhook).
+          - --metrics-bind-address=:8080
+          - --metrics-secure=false
         image: controller:latest
         # The Argo override pins the mutable :latest tag, so a running pod must
         # re-pull to pick up a new push; the deploy workflow rollout-restarts this
@@ -136,13 +148,33 @@ spec:
           # pre-deploy execution workload.
           - name: BEX_BUILD_NAMESPACE
             value: bex-build
-          # Source builds block their App reconcile until the Build Job exits.
-          # Two controller workers let two independent Apps build concurrently;
-          # the workspace cap prevents either tenant from exceeding that budget.
+          # Build-plane concurrency baseline, checked in rather than ambient
+          # (docs/ADR060 D7). All three are set explicitly here so the ADR034
+          # baseline is auditable in git instead of living in whoever last set
+          # the deployment's env.
+          #
+          # POST-D1 (shipped as w2/m72, 2026-08-16) this is a pure RESPONSIVENESS
+          # knob: builds are observed non-blocking, one create + one read per
+          # reconcile, so a worker is no longer parked for the minutes a build
+          # takes. The old "workers == concurrent builds" equation is retired —
+          # the two caps below carry the concurrency policy now. Do not restore
+          # the coupling by raising this to track build capacity.
           - name: BEX_APP_RECONCILE_WORKERS
             value: "2"
+          # Per-workspace concurrent-build cap: one tenant may hold at most half
+          # the cluster's build slots, so a single busy workspace cannot starve
+          # every other one. 0 = unlimited.
           - name: BEX_MAX_CONCURRENT_BUILDS
             value: "2"
+          # Cluster-wide active-build ceiling (docs/ADR060 D6). Set to the build
+          # pools' PHYSICAL concurrency target from D8 — 2 warm slots on
+          # bex-tenant-lg (cx43) + 2 elastic slots on bex-tenant-burst (cx33) — so
+          # it can never throttle below what the pools can actually run; what it
+          # bounds is a dispatch storm queueing unbounded Jobs against shared
+          # capacity. Raise it only together with the pools' max-size. 0 =
+          # unlimited (the pre-w7/m83 behavior).
+          - name: BEX_MAX_ACTIVE_BUILDS
+            value: "4"
           # cert-manager ClusterIssuer for App Ingresses. Start on staging; flip to
           # letsencrypt-prod once the chain verifies (changing this re-rolls the pod
           # -> re-pulls :latest -> re-reconciles Apps with the new issuer).
@@ -209,6 +241,9 @@ spec:
         ports:
         - containerPort: 8081
           name: health
+          protocol: TCP
+        - containerPort: 8080
+          name: metrics
           protocol: TCP
         securityContext:
           readOnlyRootFilesystem: true

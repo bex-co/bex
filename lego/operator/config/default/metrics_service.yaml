@@ -9,10 +9,14 @@ metadata:
   namespace: system
 spec:
   ports:
-  - name: https
-    port: 8443
+  # Must equal the manager's --metrics-bind-address (config/manager/manager.yaml).
+  # This Service shipped pointing at 8443 while the manager bound nothing at all,
+  # so it had no endpoints and the build-plane series were unreachable —
+  # scripts/gitops-validate.sh now fails closed if the two drift apart again.
+  - name: metrics
+    port: 8080
     protocol: TCP
-    targetPort: 8443
+    targetPort: metrics
   selector:
     control-plane: controller-manager
     app.kubernetes.io/name: control-plane

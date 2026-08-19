@@ -14,6 +14,12 @@ on:
       - ".github/workflows/snapshot.yml"
       - "scripts/clusterapi-validate.sh"
       - ".github/workflows/clusterapi-validate.yml"
+      # w7/m83: the build-pool scheduling floor is computed from the gitops
+      # DaemonSets and build.go's memory request, so a change to either can
+      # break the overlay's arithmetic without touching infra/.
+      - "deploy/gitops/base/**"
+      - "lego/operator/config/**"
+      - "lego/operator/internal/build/build.go"
   push:
     branches: [main]
     paths:
@@ -22,6 +28,12 @@ on:
       - ".github/workflows/snapshot.yml"
       - "scripts/clusterapi-validate.sh"
       - ".github/workflows/clusterapi-validate.yml"
+      # w7/m83: the build-pool scheduling floor is computed from the gitops
+      # DaemonSets and build.go's memory request, so a change to either can
+      # break the overlay's arithmetic without touching infra/.
+      - "deploy/gitops/base/**"
+      - "lego/operator/config/**"
+      - "lego/operator/internal/build/build.go"
 
 permissions:
   contents: read

@@ -35,6 +35,25 @@ spec:
     spec:
       nodeSelector:
         bex.co/pool: tenant
+      # ADR060 D8 (2026-08-15) tainted bex-tenant-lg / bex-tenant-burst with
+      # bex.co/build-only so serving pods stop pinning the build pools. Both
+      # still carry bex.co/pool=tenant, so the selector above kept matching while
+      # the taint silently excluded this DaemonSet from the only nodes that run
+      # builds: measured on hetzner-prod 2026-08-17 as DESIRED 2 / READY 2 with
+      # both pods on the SERVING nodes and none on bex-tenant-lg. Warm nodes hid
+      # it (kubelet's own image cache covers a node that has already built), so
+      # what was actually lost is the cold case — a burst scale-from-zero, or lg
+      # being replaced — which is exactly when a build is most latency-sensitive
+      # and the ~2-minute silent ContainerCreating window this DaemonSet exists
+      # to remove (w1/030) reappears.
+      #
+      # scripts/clusterapi-validate.sh fails closed if a build-tainted
+      # MachineDeployment ever exists without a matching toleration here.
+      tolerations:
+        - key: bex.co/build-only
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
       containers:
         - name: buildkit
           # = lego/operator/internal/build/build.go defaultBuildkitImage

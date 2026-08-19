@@ -23,7 +23,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-OVERLAY="infra/clusterapi/overlays/hetzner-caph/cluster.yaml"
+# Overridable so scripts/clusterapi-validate.test.sh can drive the build-pool
+# guards below against mutated fixture copies and prove they turn red.
+OVERLAY="${OVERLAY_FILE:-infra/clusterapi/overlays/hetzner-caph/cluster.yaml}"
+GITOPS_BASE="${GITOPS_BASE_DIR:-deploy/gitops/base}"
+OPERATOR_CONFIG="${OPERATOR_CONFIG_DIR:-lego/operator/config}"
+BUILD_SOURCE="${BUILD_SOURCE_FILE:-lego/operator/internal/build/build.go}"
 SANDBOX_OVERLAY="infra/clusterapi/overlays/hetzner-caph/sandbox-pool.yaml"
 PACKER="infra/packer/bex-worker.pkr.hcl"
 SNAPSHOT_WORKFLOW=".github/workflows/snapshot.yml"
@@ -236,6 +241,224 @@ if [ "$burst_labels" != "bex.co/pool=tenant" ]; then
   echo "FAIL: bex-tenant-burst scale-from-zero labels are '$burst_labels' (want bex.co/pool=tenant)" >&2
   fail=1
 fi
+
+# ── Build-pool scheduling floor (w7/m83, docs/ADR060 D5/D8) ──────────────────
+# Two invariants that both fail SILENTLY in production, which is why they are
+# guarded here rather than trusted:
+#
+#   1. COMPLETENESS. D8 tainted the build pools on 2026-08-15; the BuildKit
+#      prewarm DaemonSet selects bex.co/pool=tenant, which the build nodes still
+#      carry, so it kept matching while the taint excluded it. Measured on
+#      hetzner-prod 2026-08-17: both prewarm pods on the SERVING nodes, none on
+#      the only node running builds. Nothing reported anything.
+#
+#   2. ARITHMETIC. A cx33 build slot works with ~300 MiB to spare (§4 of
+#      .pm/w7/builder-issues.md). If a DaemonSet request grows, another
+#      DaemonSet gains the build toleration, or the build request rises, the
+#      build pod stops fitting the pool's cluster-autoscaler capacity hint — and
+#      CA then declines to scale up WITHOUT emitting an error. Invisible by
+#      construction, so the margin gets an explicit floor.
+# go_const reads a Go string constant so the guard can never assert a value that
+# has drifted from the code it is guarding. The taint, the prewarm image and the
+# build memory request are all single-sourced this way.
+go_const() { sed -n "s/.*$1 *= *\"\([^\"]*\)\".*/\1/p" "$2" | head -1; }
+
+EXECUTION_SOURCE="${EXECUTION_SOURCE_FILE:-lego/operator/internal/execution/security.go}"
+BUILD_TAINT_KEY="$(go_const BuildPoolTaintKey "$EXECUTION_SOURCE")"
+BUILD_TAINT_VALUE="$(go_const BuildPoolTaintValue "$EXECUTION_SOURCE")"
+# The effect is not a Go constant — execution.TolerateBuildPool spells it with
+# the typed corev1.TaintEffectNoSchedule, and the pools' CA hint (checked above)
+# already pins the same string.
+BUILD_TAINT_EFFECT="NoSchedule"
+if [ -z "$BUILD_TAINT_KEY" ] || [ -z "$BUILD_TAINT_VALUE" ]; then
+  echo "FAIL: could not read BuildPoolTaintKey/Value from $EXECUTION_SOURCE" >&2
+  fail=1
+fi
+
+# Measured node allocatable memory (hetzner-prod, 2026-08-17; recorded in
+# docs/ADR060 § Measured node arithmetic). Allocatable, not capacity: the
+# kubelet's own reservations are already subtracted, and that is the number the
+# scheduler actually compares a pod's requests against.
+alloc_ki() {
+  case "$1" in
+    cx33) echo 7834836 ;;
+    cx43) echo 15886160 ;;
+    *) return 1 ;;
+  esac
+}
+
+# mem_bytes converts a Kubernetes memory quantity to bytes. Binary and decimal
+# suffixes are both in play on purpose — the build request is 7Gi while the CA
+# hint is 8G — and conflating them is a 7% error in exactly the direction that
+# would hide a shortfall.
+mem_bytes() {
+  local q="$1" n unit
+  n="${q%%[A-Za-z]*}"
+  unit="${q#"$n"}"
+  case "$unit" in
+    "") echo "$n" ;;
+    Ki) echo $((n * 1024)) ;;
+    Mi) echo $((n * 1024 * 1024)) ;;
+    Gi) echo $((n * 1024 * 1024 * 1024)) ;;
+    k | K) echo $((n * 1000)) ;;
+    M) echo $((n * 1000000)) ;;
+    G) echo $((n * 1000000000)) ;;
+    *) return 1 ;;
+  esac
+}
+
+mib() { echo $(($1 / 1024 / 1024)); }
+
+# tolerates_build_taint <file> <yq expression yielding the tolerations array>
+# Implements the Kubernetes toleration match: a keyless Exists toleration
+# matches every taint, an Exists toleration on the key ignores the value, and an
+# empty effect matches every effect.
+tolerates_build_taint() {
+  local file="$1" expr="$2" n
+  n="$(yq -N "[${expr} // [] | .[] | select(
+        (((.key // \"\") == \"\" and (.operator // \"Equal\") == \"Exists\") or .key == \"$BUILD_TAINT_KEY\")
+        and ((.operator // \"Equal\") == \"Exists\" or (.value // \"\") == \"$BUILD_TAINT_VALUE\")
+        and ((.effect // \"\") == \"\" or .effect == \"$BUILD_TAINT_EFFECT\")
+      )] | length" "$file" 2>/dev/null)"
+  [ "${n:-0}" -gt 0 ]
+}
+
+# Every DaemonSet the repository declares, as "<label>|<file>|<tolerations expr>|
+# <container requests expr>". Plain manifests are discovered rather than listed
+# so a NEW DaemonSet that tolerates the build taint raises the floor by itself —
+# that silent-growth path is the whole failure mode being guarded.
+# Parallel arrays rather than packed records: every field here is a yq
+# expression, and yq expressions are made of pipes.
+ds_files=()
+ds_tol_exprs=()
+ds_req_exprs=()
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  ds_files+=("$f")
+  ds_tol_exprs+=("select(.kind == \"DaemonSet\") | .spec.template.spec.tolerations")
+  ds_req_exprs+=("[select(.kind == \"DaemonSet\") | .spec.template.spec.containers[].resources.requests.memory // \"0\"]")
+done < <(grep -rl "^kind: DaemonSet" "$GITOPS_BASE" "$OPERATOR_CONFIG" 2>/dev/null | sort)
+# Chart-backed DaemonSets carry the same weight but express it in an Argo
+# Application's Helm values, so they are discovered by controller.type instead.
+while IFS= read -r f; do
+  [ -n "$f" ] || continue
+  ds_files+=("$f")
+  ds_tol_exprs+=(".spec.source.helm.values | from_yaml | .controller.tolerations")
+  # The chart's own main-container request PLUS the requests it adds that this
+  # repository cannot express: the Alloy chart runs a config-reloader sidecar,
+  # measured at 50Mi on hetzner-prod 2026-08-17 (log-shipper's node total was
+  # 128Mi + 50Mi = 178Mi). Carried with the chart rather than added globally, so
+  # it disappears together with the chart if the DaemonSet ever stops tolerating
+  # the build taint.
+  ds_req_exprs+=("[.spec.source.helm.values | from_yaml | .alloy.resources.requests.memory // \"0\", \"50Mi\"]")
+done < <(yq -N 'select((.spec.source.helm.values // "x") | from_yaml | (.controller.type // "") == "daemonset") | filename' "$GITOPS_BASE"/*.yaml 2>/dev/null | sort -u)
+
+echo "==> build pools: prewarm reaches them and the CA hint clears the scheduling floor"
+ds_floor=0
+tolerating=()
+for i in "${!ds_files[@]}"; do
+  file="${ds_files[$i]}"
+  tolerates_build_taint "$file" "${ds_tol_exprs[$i]}" || continue
+  tolerating+=("$(basename "$file" .yaml)")
+  while read -r q; do
+    [ -n "$q" ] || continue
+    if ! bytes="$(mem_bytes "$q")"; then
+      echo "FAIL: $file declares an unparseable memory request '$q'" >&2
+      fail=1
+      continue
+    fi
+    ds_floor=$((ds_floor + bytes))
+  done < <(yq -N "${ds_req_exprs[$i]} | .[]" "$file" 2>/dev/null)
+done
+
+# The prewarm DaemonSet is not merely allowed on build nodes — it is REQUIRED
+# there, because a cold build node is the only case it exists for.
+prewarm="$GITOPS_BASE/build-image-prewarm.yaml"
+if [ ! -f "$prewarm" ]; then
+  echo "FAIL: $prewarm missing — the BuildKit prewarm DaemonSet must stay in the repo (w1/030)" >&2
+  fail=1
+elif ! tolerates_build_taint "$prewarm" ".spec.template.spec.tolerations"; then
+  echo "FAIL: build-image-prewarm does not tolerate $BUILD_TAINT_KEY=$BUILD_TAINT_VALUE:$BUILD_TAINT_EFFECT," >&2
+  echo "      so it is scheduled on the SERVING pool and never on the nodes that run builds" >&2
+  echo "      (measured on hetzner-prod 2026-08-17; docs/ADR060 D8)" >&2
+  fail=1
+fi
+# A drifted ref warms the wrong image, which looks identical to warming nothing.
+if [ -f "$prewarm" ] && [ -f "$BUILD_SOURCE" ]; then
+  prewarm_image="$(yq -N '.spec.template.spec.containers[] | select(.name == "buildkit") | .image' "$prewarm")"
+  builder_image="$(go_const defaultBuildkitImage "$BUILD_SOURCE")"
+  if [ -z "$builder_image" ]; then
+    echo "FAIL: could not read defaultBuildkitImage from $BUILD_SOURCE" >&2
+    fail=1
+  elif [ "$prewarm_image" != "$builder_image" ]; then
+    echo "FAIL: build-image-prewarm warms '$prewarm_image' but builds run '$builder_image'" >&2
+    fail=1
+  fi
+fi
+
+build_request="$(go_const buildMemoryRequest "$BUILD_SOURCE")"
+if [ -z "$build_request" ] || ! build_req_bytes="$(mem_bytes "$build_request")"; then
+  echo "FAIL: could not read buildMemoryRequest from $BUILD_SOURCE — the floor must be computed from the real request, never a copied literal" >&2
+  fail=1
+  build_req_bytes=0
+fi
+floor=$((build_req_bytes + ds_floor))
+echo "    build request $build_request = $(mib "$build_req_bytes")Mi + DaemonSet floor $(mib "$ds_floor")Mi [${tolerating[*]:-none}] = $(mib "$floor")Mi"
+
+build_pool_count=0
+while read -r md; do
+  [ -n "$md" ] || continue
+  build_pool_count=$((build_pool_count + 1))
+  hint="$(yq -N "select(.kind==\"MachineDeployment\" and .metadata.name==\"$md\") | .metadata.annotations.\"capacity.cluster-autoscaler.kubernetes.io/memory\"" "$OVERLAY")"
+  infra="$(yq -N "select(.kind==\"MachineDeployment\" and .metadata.name==\"$md\") | .spec.template.spec.infrastructureRef.name" "$OVERLAY")"
+  server_type="$(yq -N "select(.kind==\"HCloudMachineTemplate\" and .metadata.name==\"$infra\") | .spec.template.spec.type" "$OVERLAY")"
+  if [ -z "$hint" ] || ! hint_bytes="$(mem_bytes "$hint")"; then
+    echo "FAIL: $md has no readable capacity.cluster-autoscaler.kubernetes.io/memory hint (got '$hint')" >&2
+    fail=1
+    continue
+  fi
+  if ! alloc="$(alloc_ki "$server_type")"; then
+    echo "FAIL: $md runs unmeasured server type '$server_type' — add its measured allocatable to alloc_ki() and docs/ADR060 before shipping it as a build pool" >&2
+    fail=1
+    continue
+  fi
+  alloc_bytes=$((alloc * 1024))
+  if ((hint_bytes < floor)); then
+    echo "FAIL: $md ($server_type) CA memory hint $hint = $(mib "$hint_bytes")Mi is BELOW the $(mib "$floor")Mi scheduling floor" >&2
+    echo "      (build request $(mib "$build_req_bytes")Mi + DaemonSet floor $(mib "$ds_floor")Mi); short by $(mib $((floor - hint_bytes)))Mi." >&2
+    echo "      cluster-autoscaler would silently decline to scale this pool up — no error, no event (docs/ADR060 D8)" >&2
+    fail=1
+  fi
+  if ((alloc_bytes < floor)); then
+    echo "FAIL: $md ($server_type) real allocatable $(mib "$alloc_bytes")Mi is BELOW the $(mib "$floor")Mi floor; a build cannot be placed on this pool at all" >&2
+    fail=1
+  fi
+  # Simulation must stay CONSERVATIVE: the hint is what CA believes a not-yet-
+  # existing node offers, so a hint above real allocatable makes it scale up for
+  # pods that will then sit Pending on the node it just created.
+  if ((hint_bytes > alloc_bytes)); then
+    echo "FAIL: $md ($server_type) CA hint $(mib "$hint_bytes")Mi EXCEEDS measured allocatable $(mib "$alloc_bytes")Mi — scale-from-zero simulation must stay conservative" >&2
+    fail=1
+  fi
+done < <(yq -N "select(.kind==\"MachineDeployment\") | select((.metadata.annotations.\"capacity.cluster-autoscaler.kubernetes.io/taints\" // \"\") | test(\"$BUILD_TAINT_KEY\")) | .metadata.name" "$OVERLAY")
+
+if [ "$build_pool_count" -eq 0 ]; then
+  echo "FAIL: no MachineDeployment registers the $BUILD_TAINT_KEY taint — the dedicated build pool (docs/ADR060 D8) is gone" >&2
+  fail=1
+fi
+
+# D8's headline claim: bex-tenant-lg is the always-warm tier with TWO 7Gi slots.
+# It is arithmetic, so it is guarded rather than asserted in prose.
+lg_infra="$(yq -N 'select(.kind=="MachineDeployment" and .metadata.name=="bex-tenant-lg") | .spec.template.spec.infrastructureRef.name' "$OVERLAY")"
+lg_type="$(yq -N "select(.kind==\"HCloudMachineTemplate\" and .metadata.name==\"$lg_infra\") | .spec.template.spec.type" "$OVERLAY")"
+if lg_alloc="$(alloc_ki "$lg_type")"; then
+  lg_two=$((2 * build_req_bytes + ds_floor))
+  if ((lg_alloc * 1024 < lg_two)); then
+    echo "FAIL: bex-tenant-lg ($lg_type) allocatable $(mib $((lg_alloc * 1024)))Mi no longer fits TWO builds + the $(mib "$ds_floor")Mi DaemonSet floor ($(mib "$lg_two")Mi) — D8's two warm slots are gone" >&2
+    fail=1
+  fi
+fi
+
 
 # A Cilium node starts with agent-not-ready:NoSchedule and loses it only after
 # the agent converges. Without this startup-taint declaration, CA copies the

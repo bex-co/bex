@@ -177,6 +177,7 @@ Rules that follow from them:
 - **Queue time and run time are separate SLIs with separate owners.** Queue time is the platform's; run time is mostly the tenant's. Conflating them was exactly the 2026-08-11 incident, fixed then in status attribution and fixed here in measurement.
 - **The build SLO is on infrastructure success rate**: fraction of terminal builds not `infra_failed` (initial target 99.5%). `user_failed` builds are excluded — a tenant's broken Dockerfile is not a platform failure. Track p50/p95 durations, never averages, and exclude failures from duration series.
 - **Correlated failures are a platform incident.** Infra causes manifest as synchronized failures across independent Apps/workspaces (clustered by node or registry); user errors are isolated and deterministic per commit. An alert on the `infra_failed` rate across ≥ N distinct workspaces in a short window is the flake-vs-user discriminator.
+- **Queue time gets two alerts, split by urgency** (shipped w7/m83, `deploy/gitops/base/prometheus.yaml`): `BuildQueuedTooLong` on `bex_build_queue_oldest_seconds > 480` for 2m — the acute case, deliberately timed to fire at ~10 minutes of queueing so there is still head room before bex-api's 18-minute `DeployGateTimeout` fails a build that is perfectly healthy — and `BuildQueueTimeHigh` on the p95 of `bex_build_queue_seconds` over 30m, the chronic case, which is a capacity decision rather than a page. A histogram of finished builds cannot answer "is a build stuck right now?", which is why the gauge (age of the longest-currently-queued build) exists alongside it.
 
 ### D6 — Admission stays the concurrency authority; Kueue is the designated escalation
 
@@ -204,6 +205,23 @@ Build capacity is physically reserved, not shared with serving (2026-08-15, foll
 Why this is a reliability decision, not just capacity hygiene — the incident that forced it: after the 2026-08-09 node rotation, three **single-instance tenant Postgres pods** (CNPG) landed on the burst node. CNPG's per-primary PodDisruptionBudget allows zero disruptions, so the cluster-autoscaler could never drain the node: a min0 "elastic" pool sat pinned at one node for six days, and every rollout risked re-pinning it. The taint makes the class of failure impossible (nothing undrainable can land on a build node); the companion fix — the operator setting CNPG `enablePDB: false` for single-instance clusters, whose PDB blocks drains while protecting nothing (one instance moves with the same brief downtime either way) — is a follow-up item so datastore pods stop pinning **any** autoscaled node.
 
 The one-time rebalance was executed live on 2026-08-15: the three CNPG pods and three serving pods moved off the burst node (per-database interruption 1–3 minutes), tenant-0's max was raised to 2, and the burst pool scaled back toward zero. A 2.5 GB tenant image observed pulling from Zot in 3m39s during the move is a data point for D5's push/pull-latency series.
+
+#### Measured node arithmetic (hetzner-prod, 2026-08-17) — and its guard
+
+The claim that a 7 Gi build fits a cx33 was, until this measurement, an assumption. An earlier revision of `.pm/w7/builder-issues.md` argued the opposite and recommended deleting the burst pool and rotating lg — reasoning that assumed cilium and the other node DaemonSets carried meaningful memory requests. Measured, they request **0**. The recommendation was withdrawn; these are the numbers it was wrong about, recorded so the next reader does not have to re-measure a live cluster to check an arithmetic question.
+
+| quantity | measured |
+| --- | --- |
+| cx33 capacity / **allocatable** memory | 7,937,236Ki / **7,834,836Ki (7.47 GiB)** |
+| cx43 capacity / **allocatable** memory | 15,988,560Ki / **15,886,160Ki (15.15 GiB)** |
+| build pod **effective** memory request | `max(initContainers)` = **7Gi** (the `buildkit` initContainer; `push`'s 128Mi never dominates) |
+| DaemonSet memory requests on a tainted build node | log-shipper **128Mi + 50Mi** (the chart's config-reloader sidecar) |
+| cilium · cilium-envoy · hcloud-csi-node · kube-proxy | **0Mi requested each** |
+| build-image-prewarm (added by w7/m83) | 8Mi |
+
+So a cx33 fits one build with **~297 MiB** spare, a cx43 fits two with **~1.0 GiB** spare, and the CA hint (`8G` = 7,812,500Ki) sits slightly _below_ real allocatable — scale-from-zero simulation is conservative, which is the correct direction.
+
+That margin is thin enough to erode silently: if a DaemonSet request grows, another DaemonSet gains the build toleration, or the build request rises, a cx33 stops fitting and **cluster-autoscaler declines to scale up without emitting an error**. `scripts/clusterapi-validate.sh` therefore computes the floor — build request (read from `build.go`, never a copied literal) + the summed requests of every repository-declared DaemonSet that tolerates the build taint + the off-repo sidecar — and fails closed if any build pool's hint drops below it, if the hint ever exceeds measured allocatable, or if a build pool appears on a server type whose allocatable is not recorded here. `scripts/clusterapi-validate.test.sh` proves it red in each of those directions.
 
 ## Alternatives rejected
 

@@ -338,6 +338,7 @@ func setupAppReconciler(
 		MaintenanceNamespace:    envOr("POD_NAMESPACE", "bex-system"),
 		MaintenancePort:         activatorPort,
 		MaxConcurrentBuilds:     envInt("BEX_MAX_CONCURRENT_BUILDS", 0),
+		MaxActiveBuilds:         envInt("BEX_MAX_ACTIVE_BUILDS", 0),
 		MaxConcurrentReconciles: positiveEnvInt("BEX_APP_RECONCILE_WORKERS", 1),
 		StaticStore: publish.Store{
 			Bucket:   envOr("BEX_STATIC_S3_BUCKET", ""),

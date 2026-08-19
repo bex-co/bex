@@ -44,6 +44,12 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 )
 
+// buildComponent is the app.bex.co/component value every build artifact the
+// platform creates carries — the selector every build counter, gauge and trim
+// matches on. A literal here and a literal in the selector would be two facts
+// that must agree; this is one.
+const buildComponent = "build"
+
 // Builder strategies (mirror App.spec.builder).
 const (
 	BuilderAuto       = "auto"
@@ -347,6 +353,13 @@ type Observation struct {
 	// Fault attributes a PhaseFailed build (docs/ADR060 D2). Empty for
 	// non-terminal phases.
 	Fault Fault
+	// Created reports that THIS call created the build Job, as opposed to
+	// adopting one an earlier reconcile already dispatched. It is what makes the
+	// admission gate's re-count-after-create honest (docs/ADR060 D6): the caller
+	// re-counts only on the pass that actually added a build, so the correction
+	// costs nothing on the many observation passes that follow. False on the
+	// kpack path, which dispatches an Image rather than a Job.
+	Created bool
 }
 
 // Fault is who a failed build is attributable to. The split is what makes an
@@ -444,8 +457,12 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 	identity := execution.ArtifactIdentity{Name: o.Name, UID: o.AppUID, Workspace: o.Workspace, Namespace: o.AppNamespace}
 
 	// Create the Job if it doesn't already exist (idempotent per revision).
-	if err := o.Client.Create(ctx, job); err != nil && !apierrors.IsAlreadyExists(err) {
-		return Observation{}, fmt.Errorf("build: create job %s: %w", key.Name, err)
+	created := true
+	if err := o.Client.Create(ctx, job); err != nil {
+		if !apierrors.IsAlreadyExists(err) {
+			return Observation{}, fmt.Errorf("build: create job %s: %w", key.Name, err)
+		}
+		created = false
 	}
 	var cur batchv1.Job
 	if err := o.Client.Get(ctx, key, &cur); err != nil {
@@ -456,19 +473,20 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 	}
 	switch {
 	case execution.JobHasCondition(&cur, batchv1.JobComplete):
-		return Observation{Phase: PhaseSucceeded, Image: image, RunSeconds: jobRunSeconds(&cur)}, nil
+		return Observation{Phase: PhaseSucceeded, Image: image, RunSeconds: jobRunSeconds(&cur), Created: created}, nil
 	case execution.JobHasCondition(&cur, batchv1.JobFailed):
 		return Observation{
 			Phase:      PhaseFailed,
 			Message:    execution.JobFailureMessage(&cur, "unknown build failure"),
 			RunSeconds: jobRunSeconds(&cur),
 			Fault:      faultFromJob(execution.JobFailedReason(&cur)),
+			Created:    created,
 		}, nil
 	}
 	if queued, reason := buildQueued(ctx, o, key.Name); queued {
-		return Observation{Phase: PhaseWaiting, Message: reason}, nil
+		return Observation{Phase: PhaseWaiting, Message: reason, Created: created}, nil
 	}
-	return Observation{Phase: PhaseBuilding}, nil
+	return Observation{Phase: PhaseBuilding, Created: created}, nil
 }
 
 // jobRunSeconds is a finished build Job's run duration from its own status
@@ -485,45 +503,86 @@ func jobRunSeconds(j *batchv1.Job) float64 {
 	return s
 }
 
+// jobNameLabel is the label the Job controller stamps on every pod it creates.
+const jobNameLabel = "job-name"
+
+// pushContainer names the phase that pushes the built archive to the registry.
+// It is the container BuildJob creates AND the one the push SLIs are read off
+// (internal/build/signals.go), so the two must be the same string by
+// construction rather than by coincidence.
+const pushContainer = "push"
+
 // buildQueued reports whether the Job's build is still waiting for capacity
 // rather than doing work, and the scheduler's reason when it is.
 //
-// "Placed on a node" is the dividing line, NOT pod phase: the build runs in
-// initContainers (clone, then BuildKit), so a pod actively compiling reports
-// phase Pending for most of its life. Reading phase would classify a healthy
-// mid-build pod as queued. A pod with spec.nodeName set is consuming capacity
-// and making progress; one the scheduler could not place is not.
-//
-// Errors and the no-pods-yet window are reported as NOT queued: this only
-// gates a status nicety, and guessing "queued" on a failed List would stall the
-// caller's clock on evidence it does not have.
+// Errors and the no-pods-yet window are reported as NOT queued: this only gates
+// a status nicety, and guessing "queued" on a failed List would stall the
+// caller's clock on evidence it does not have. (The census gauges make the
+// opposite choice for the no-pods window — see CountBuilds — because there the
+// gap between a Job's creation and its first pod is exactly the cold
+// scale-from-zero wait the gauge exists to show.)
 func buildQueued(ctx context.Context, o Options, jobName string) (bool, string) {
-	var pods corev1.PodList
-	if err := o.Client.List(ctx, &pods,
-		client.InNamespace(o.Namespace),
-		client.MatchingLabels{"job-name": jobName},
-	); err != nil || len(pods.Items) == 0 {
+	pods, err := listJobPods(ctx, o.Client, o.Namespace, jobName)
+	if err != nil || len(pods) == 0 {
 		return false, ""
 	}
-	reason := ""
-	for idx := range pods.Items {
-		pod := &pods.Items[idx]
+	if podsPlaced(pods) {
+		return false, ""
+	}
+	return true, unschedulableReason(pods)
+}
+
+// listJobPods returns the pods one Job has created, across all of its attempts.
+func listJobPods(ctx context.Context, cl client.Client, namespace, jobName string) ([]corev1.Pod, error) {
+	var pods corev1.PodList
+	if err := cl.List(ctx, &pods,
+		client.InNamespace(namespace),
+		client.MatchingLabels{jobNameLabel: jobName},
+	); err != nil {
+		return nil, fmt.Errorf("list pods for job %s: %w", jobName, err)
+	}
+	return pods.Items, nil
+}
+
+// podsPlaced reports whether any live attempt of a build has been bound to a
+// node — the ONE definition of the queued/running boundary, shared by the App's
+// Waiting phase and the census gauges so they can never disagree.
+//
+// "Placed on a node" is that boundary, NOT pod phase: the build runs in
+// initContainers (clone, then BuildKit), so a pod actively compiling reports
+// phase Pending for most of its life, and reading phase would classify a healthy
+// mid-build pod as queued. A pod with spec.nodeName set is consuming capacity
+// and making progress; one the scheduler could not place is not. A spent attempt
+// (Succeeded/Failed) says nothing about the current one.
+func podsPlaced(pods []corev1.Pod) bool {
+	for i := range pods {
+		pod := &pods[i]
 		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
-			continue // a spent attempt says nothing about the current one
+			continue
 		}
 		if pod.Spec.NodeName != "" {
-			return false, "" // scheduled ⇒ really building
+			return true
+		}
+	}
+	return false
+}
+
+// unschedulableReason is the scheduler's own explanation for why a build could
+// not be placed, so the tenant sees "0/3 nodes are available: insufficient
+// memory" rather than a generic wait.
+func unschedulableReason(pods []corev1.Pod) string {
+	for i := range pods {
+		pod := &pods[i]
+		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+			continue
 		}
 		for _, cond := range pod.Status.Conditions {
 			if cond.Type == corev1.PodScheduled && cond.Status == corev1.ConditionFalse && cond.Message != "" {
-				reason = cond.Message
+				return cond.Message
 			}
 		}
 	}
-	if reason == "" {
-		reason = "waiting for a node with capacity for the build"
-	}
-	return true, reason
+	return "waiting for a node with capacity for the build"
 }
 
 // BuildJob constructs the credential-separated source build Job for o. Its
@@ -691,7 +750,7 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	}
 	pushArgs = append(pushArgs, "oci-archive:"+outputMount+"/image.tar", "docker://"+image)
 	pusher := corev1.Container{
-		Name:    "push",
+		Name:    pushContainer,
 		Image:   pushImage,
 		Command: []string{"skopeo"},
 		Args:    pushArgs,
@@ -787,9 +846,9 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
 		appNamespace = o.AppNamespace
 	}
-	labels := execution.PodLabels(o.Name, o.AppUID, "build", o.Workspace, appNamespace, false)
+	labels := execution.PodLabels(o.Name, o.AppUID, buildComponent, o.Workspace, appNamespace, false)
 	labels["app.bex.co/build"] = o.Name
-	podLabels := execution.PodLabels(o.Name, o.AppUID, "build", o.Workspace, appNamespace, false)
+	podLabels := execution.PodLabels(o.Name, o.AppUID, buildComponent, o.Workspace, appNamespace, false)
 	podLabels["app.bex.co/build"] = o.Name
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -996,30 +1055,20 @@ func stableKubernetesName(raw string, identity ...string) string {
 // namespace that carry the given workspace label — used by the operator to
 // enforce the per-workspace concurrent-build cap (w7/m9). Returns 0 for an
 // empty workspace string (caller should skip the cap check in that case).
-func ActiveWorkspaceBuilds(ctx context.Context, workspace, namespace string, cl client.Client) (int, error) {
+func ActiveWorkspaceBuilds(ctx context.Context, cl client.Client, namespace, workspace string) (int, error) {
 	if workspace == "" {
 		return 0, nil
 	}
-	var jobs batchv1.JobList
-	if err := cl.List(ctx, &jobs,
-		client.InNamespace(namespace),
-		client.MatchingLabels{
-			"app.bex.co/component": "build",
-			"app.bex.co/workspace": workspace,
-		}); err != nil {
-		return 0, fmt.Errorf("list workspace builds: %w", err)
-	}
-	active := 0
-	for i := range jobs.Items {
-		if !execution.JobFinished(&jobs.Items[i]) {
-			active++
-		}
-	}
-	kpackActive, err := activeWorkspaceKpackImages(ctx, workspace, namespace, cl)
-	if err != nil {
-		return 0, err
-	}
-	return active + kpackActive, nil
+	return countActiveBuilds(ctx, cl, namespace, workspaceSelector(workspace))
+}
+
+// ActiveBuilds counts every active build in namespace regardless of workspace —
+// the cluster-wide ceiling BEX_MAX_ACTIVE_BUILDS enforces (docs/ADR060 D6).
+// After D1 made observation non-blocking, admission is the build plane's only
+// concurrency control, so a per-workspace cap alone bounds each tenant's fan-out
+// but not the estate's: N workspaces at their cap still saturate shared capacity.
+func ActiveBuilds(ctx context.Context, cl client.Client, namespace string) (int, error) {
+	return countActiveBuilds(ctx, cl, namespace, workspaceSelector(""))
 }
 
 // ActiveAppBuilds counts active (not Complete, not Failed) build Jobs + kpack
@@ -1030,26 +1079,53 @@ func ActiveWorkspaceBuilds(ctx context.Context, workspace, namespace string, cl 
 // appUID scopes to the App's globally-unique UID (round-5 finding 5): the build
 // namespace is shared, so a name-only selector would also count a same-named
 // App's builds in ANOTHER workspace.
-func ActiveAppBuilds(ctx context.Context, name, appUID, namespace string, cl client.Client) (int, error) {
+func ActiveAppBuilds(ctx context.Context, cl client.Client, namespace, name, appUID string) (int, error) {
 	sel := client.MatchingLabels{"app.bex.co/build": name}
 	if appUID != "" {
 		sel[execution.LabelAppUID] = appUID
 	}
-	var jobs batchv1.JobList
-	if err := cl.List(ctx, &jobs, client.InNamespace(namespace), sel); err != nil {
-		return 0, fmt.Errorf("list app builds for %s: %w", name, err)
+	return countActiveBuilds(ctx, cl, namespace, sel)
+}
+
+// workspaceSelector selects the platform's build artifacts, narrowed to one
+// workspace when workspace is non-empty and to the whole namespace when it is.
+func workspaceSelector(workspace string) client.MatchingLabels {
+	sel := client.MatchingLabels{execution.LabelComponent: buildComponent}
+	if workspace != "" {
+		sel[execution.LabelWorkspace] = workspace
+	}
+	return sel
+}
+
+// countActiveBuilds is the one definition of "how many builds are in flight":
+// unfinished Jobs plus non-terminal kpack Images matching sel. Every cap, gauge
+// and trim counts through it, so a scope can never mean two different things to
+// the gate that admits a build and the correction that sheds it.
+func countActiveBuilds(ctx context.Context, cl client.Client, namespace string, sel client.MatchingLabels) (int, error) {
+	jobs, err := listBuildJobs(ctx, cl, namespace, sel)
+	if err != nil {
+		return 0, err
 	}
 	active := 0
-	for i := range jobs.Items {
-		if !execution.JobFinished(&jobs.Items[i]) {
+	for i := range jobs {
+		if !execution.JobFinished(&jobs[i]) {
 			active++
 		}
 	}
-	kpackActive, err := activeAppKpackImages(ctx, name, appUID, namespace, cl)
+	kpackActive, err := activeKpackImages(ctx, cl, namespace, sel)
 	if err != nil {
 		return 0, err
 	}
 	return active + kpackActive, nil
+}
+
+// listBuildJobs returns the build Jobs in namespace matching sel.
+func listBuildJobs(ctx context.Context, cl client.Client, namespace string, sel client.MatchingLabels) ([]batchv1.Job, error) {
+	var jobs batchv1.JobList
+	if err := cl.List(ctx, &jobs, client.InNamespace(namespace), sel); err != nil {
+		return nil, fmt.Errorf("list build jobs in %s: %w", namespace, err)
+	}
+	return jobs.Items, nil
 }
 
 func ptr[T any](v T) *T { return &v }

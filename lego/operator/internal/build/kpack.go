@@ -118,7 +118,7 @@ func KpackImage(o Options) *unstructured.Unstructured {
 	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
 		appNamespace = o.AppNamespace
 	}
-	commonLabels := execution.PodLabels(o.Name, o.AppUID, "build", o.Workspace, appNamespace, false)
+	commonLabels := execution.PodLabels(o.Name, o.AppUID, buildComponent, o.Workspace, appNamespace, false)
 	labels := make(map[string]any, len(commonLabels)+1)
 	for key, value := range commonLabels {
 		labels[key] = value
@@ -466,48 +466,25 @@ func buildLabels(o Options) map[string]string {
 	if o.AppNamespace != "" && o.AppNamespace != o.Namespace {
 		appNamespace = o.AppNamespace
 	}
-	labels := execution.PodLabels(o.Name, o.AppUID, "build", o.Workspace, appNamespace, false)
+	labels := execution.PodLabels(o.Name, o.AppUID, buildComponent, o.Workspace, appNamespace, false)
 	labels["app.bex.co/build"] = o.Name
 	return labels
 }
 
-// activeAppKpackImages counts this App's non-terminal kpack Images (the kpack
-// half of ActiveAppBuilds), selected by the app-build + UID labels. UID-scoping
-// (round-5 finding 5) keeps a same-named App in another workspace from being
-// counted, since the build namespace is shared.
-func activeAppKpackImages(ctx context.Context, name, appUID, namespace string, cl client.Client) (int, error) {
-	sel := client.MatchingLabels{"app.bex.co/build": name}
-	if appUID != "" {
-		sel[execution.LabelAppUID] = appUID
-	}
+// activeKpackImages counts the non-terminal kpack Images matching sel — the
+// kpack half of every build counter (this App's, one workspace's, or the whole
+// build namespace's; the caller supplies the selector).
+//
+// A cluster with no kpack CRDs installed is not an error: kpack is one of two
+// builders, and an operator that only ever runs Dockerfile builds must not have
+// its admission gate fail closed on a missing API group.
+func activeKpackImages(ctx context.Context, cl client.Client, namespace string, sel client.MatchingLabels) (int, error) {
 	images := newKpackImageList()
 	if err := cl.List(ctx, images, client.InNamespace(namespace), sel); err != nil {
 		if apierrors.IsNotFound(err) || strings.Contains(err.Error(), "no matches for kind") {
 			return 0, nil
 		}
-		return 0, fmt.Errorf("list app kpack builds for %s: %w", name, err)
-	}
-	active := 0
-	for i := range images.Items {
-		if !kpackImageTerminal(&images.Items[i]) {
-			active++
-		}
-	}
-	return active, nil
-}
-
-func activeWorkspaceKpackImages(ctx context.Context, workspace, namespace string, cl client.Client) (int, error) {
-	images := newKpackImageList()
-	if err := cl.List(ctx, images,
-		client.InNamespace(namespace),
-		client.MatchingLabels{
-			"app.bex.co/component": "build",
-			"app.bex.co/workspace": workspace,
-		}); err != nil {
-		if apierrors.IsNotFound(err) || strings.Contains(err.Error(), "no matches for kind") {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("list workspace kpack builds: %w", err)
+		return 0, fmt.Errorf("list kpack builds in %s: %w", namespace, err)
 	}
 	active := 0
 	for i := range images.Items {

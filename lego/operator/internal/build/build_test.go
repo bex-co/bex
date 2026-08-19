@@ -883,7 +883,7 @@ func TestActiveAppBuilds(t *testing.T) {
 	cl := fakeClient(active, done, foreign)
 	ctx := context.Background()
 
-	n, err := ActiveAppBuilds(ctx, o.Name, o.AppUID, o.Namespace, cl)
+	n, err := ActiveAppBuilds(ctx, cl, o.Namespace, o.Name, o.AppUID)
 	if err != nil {
 		t.Fatalf("ActiveAppBuilds: %v", err)
 	}
@@ -914,7 +914,7 @@ func TestActiveWorkspaceBuilds(t *testing.T) {
 	cl := fakeClient(activeA, activeB, doneC, otherWS)
 	ctx := context.Background()
 
-	n, err := ActiveWorkspaceBuilds(ctx, "tea-x", "default", cl)
+	n, err := ActiveWorkspaceBuilds(ctx, cl, "default", "tea-x")
 	if err != nil {
 		t.Fatalf("ActiveWorkspaceBuilds: %v", err)
 	}
@@ -924,7 +924,7 @@ func TestActiveWorkspaceBuilds(t *testing.T) {
 	}
 
 	// Empty workspace string is a no-op (returns 0, not an error).
-	n, err = ActiveWorkspaceBuilds(ctx, "", "default", cl)
+	n, err = ActiveWorkspaceBuilds(ctx, cl, "default", "")
 	if err != nil || n != 0 {
 		t.Errorf("empty workspace: got (%d, %v), want (0, nil)", n, err)
 	}
