@@ -164,6 +164,21 @@ func zeroableDurationEnv(name string, def time.Duration) time.Duration {
 	return d
 }
 
+// signedDurationEnv parses a duration knob whose NEGATIVE value disables the
+// feature rather than being invalid (the revalidation watchdogs): unset ⇒ def;
+// a valid duration ⇒ that value, sign included; malformed ⇒ startup-fatal.
+func signedDurationEnv(name string, def time.Duration) time.Duration {
+	v := os.Getenv(name)
+	if v == "" {
+		return def
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil {
+		log.Fatalf("bex-api: bad %s %q: %v", name, v, err)
+	}
+	return d
+}
+
 // zeroableIntEnv parses an integer tuning knob that accepts an explicit
 // disabling zero: unset ⇒ def; a valid n ≥ 0 ⇒ n (0 disables); invalid ⇒ def.
 func zeroableIntEnv(name string, def int) int {
@@ -480,6 +495,11 @@ func main() {
 	srv.Logs.MaxSSEConns = int64(intEnv("BEX_MAX_SSE_CONNS", "100"))
 	srv.Logs.MaxSSEConnsPerSubject = intEnv("BEX_MAX_SSE_CONNS_PER_SUBJECT", "5")
 	srv.Logs.MaxSSEConnsPerWorkspace = intEnv("BEX_MAX_SSE_CONNS_PER_WORKSPACE", "20")
+	// w4/034: the live log tail's authorization watchdog cadence — every
+	// established SSE/WebSocket/NDJSON subscription re-runs a FRESH
+	// can_view_logs check on this interval so a revocation ends the stream
+	// within one interval, not at the next admission. Negative disables.
+	srv.Logs.RevalidateInterval = signedDurationEnv("BEX_LOG_STREAM_REVALIDATE_INTERVAL", logs.DefaultRevalidateInterval)
 	srv.Metrics.MaxQueryHours = maxQueryHours
 	srv.Events.MaxQueryHours = maxQueryHours
 

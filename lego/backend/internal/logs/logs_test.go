@@ -17,6 +17,7 @@ limitations under the License.
 package logs
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -25,9 +26,11 @@ import (
 	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
@@ -1127,5 +1130,342 @@ func TestParseContainerLogLineTruncatesHugeMessage(t *testing.T) {
 	short := parseContainerLogLine("web", "web-1", core.AppContainer, LogTypeApp, "2026-08-14T00:00:00Z hello")
 	if short.Message != "hello" {
 		t.Errorf("short message = %q, want hello", short.Message)
+	}
+}
+
+// --- Live-tail authorization revalidation (w4/034) ---
+
+// freshGateChecker answers the cached admission Check from one flag and the
+// authoritative CheckFresh from another — the stale-positive / fresh-deny shape
+// the log-tail watchdog exists to close (an OpenFGA positive cache letting a
+// revoked caller's established tail run on).
+type freshGateChecker struct {
+	mu         sync.Mutex
+	cached     bool
+	fresh      bool
+	freshErr   error
+	freshCalls int
+}
+
+func (c *freshGateChecker) Check(context.Context, string, string, string) (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.cached, nil
+}
+
+func (c *freshGateChecker) CheckFresh(context.Context, string, string, string) (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.freshCalls++
+	return c.fresh, c.freshErr
+}
+
+func (c *freshGateChecker) setFresh(allow bool, err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.fresh, c.freshErr = allow, err
+}
+
+func (c *freshGateChecker) freshCallCount() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.freshCalls
+}
+
+// blockingStream is an io.ReadCloser whose Read blocks until ctx ends, so a
+// tail stays established long enough for the revalidation watchdog to tick.
+type blockingStream struct{ ctx context.Context }
+
+func (s blockingStream) Read([]byte) (int, error) {
+	<-s.ctx.Done()
+	return 0, s.ctx.Err()
+}
+
+func (s blockingStream) Close() error { return nil }
+
+func blockingLogStream() PodLogStream {
+	return func(ctx context.Context, _, _, _ string) (io.ReadCloser, error) {
+		return blockingStream{ctx: ctx}, nil
+	}
+}
+
+// revalidationService builds a tail-capable Service with the watchdog on a
+// test-fast cadence and a small global SSE cap so tests can observe slot
+// release.
+func revalidationService(checker *freshGateChecker, stream PodLogStream, objs ...client.Object) *Service {
+	return &Service{
+		Base:               &core.Base{Client: fakeClientWith(objs...), Namespace: "default", Authz: checker},
+		PodLogsFollow:      stream,
+		MaxSSEConns:        5,
+		RevalidateInterval: 10 * time.Millisecond,
+	}
+}
+
+// revalidationTestServer serves svc's REST routes behind the identity an
+// auth-gate would have resolved — the Authz checker requires one in ctx.
+func revalidationTestServer(svc *Service) *httptest.Server {
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mux.ServeHTTP(w, r.WithContext(core.WithIdentity(r.Context(), core.Identity{Subject: "alice", Method: "session"})))
+	}))
+}
+
+func subscribeSSE(t *testing.T, srv *httptest.Server, resource string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, srv.URL+"/v1/logs/subscribe?resource="+resource, nil)
+	if err != nil {
+		t.Fatalf("build subscribe request: %v", err)
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("subscribe: %v", err)
+	}
+	return resp
+}
+
+// streamDone closes when the response body ends (the server-side stream closed)
+// or errors.
+func streamDone(body io.ReadCloser) <-chan struct{} {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = io.Copy(io.Discard, body)
+	}()
+	return done
+}
+
+// streamLines delivers the stream's lines as they arrive and closes at EOF.
+func streamLines(body io.ReadCloser) <-chan string {
+	lines := make(chan string, 16)
+	go func() {
+		defer close(lines)
+		sc := bufio.NewScanner(body)
+		for sc.Scan() {
+			lines <- sc.Text()
+		}
+	}()
+	return lines
+}
+
+func waitForFreshCalls(t *testing.T, c *freshGateChecker, n int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if c.freshCallCount() >= n {
+			return
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	t.Fatalf("fresh re-checks = %d, want >= %d", c.freshCallCount(), n)
+}
+
+// waitForStreamEnd fails unless the stream ends within one generous bound of
+// the watchdog interval (10ms cadence here; 5s absorbs slow CI).
+func waitForStreamEnd(t *testing.T, done <-chan struct{}) {
+	t.Helper()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("established tail outlived its failed re-check")
+	}
+}
+
+func waitForSlotRelease(t *testing.T, svc *Service) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if svc.sseConns.Load() == 0 {
+			return
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	t.Fatalf("SSE slot not released: %d", svc.sseConns.Load())
+}
+
+func TestLogStreamRevalidationEndsStaleAuthorizedTail(t *testing.T) {
+	checker := &freshGateChecker{cached: true, fresh: true}
+	svc := revalidationService(checker, blockingLogStream(), sampleApp("web"), podFor("web", "web-1"))
+	srv := revalidationTestServer(svc)
+	defer srv.Close()
+
+	resp := subscribeSSE(t, srv, "web")
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("subscribe status = %d, want 200 (cached admission allow)", resp.StatusCode)
+	}
+	done := streamDone(resp.Body)
+
+	// The tail is established on the CACHED allow; once the watchdog's first
+	// healthy re-check has ticked, revoke: the next FRESH check (uncached, so
+	// the positive cache cannot mask it) must end the stream within one
+	// interval and release the subscription's cap slot.
+	waitForFreshCalls(t, checker, 1)
+	checker.setFresh(false, nil)
+
+	waitForStreamEnd(t, done)
+	waitForSlotRelease(t, svc)
+}
+
+func TestLogStreamRevalidationFailsClosedOnCheckerError(t *testing.T) {
+	checker := &freshGateChecker{cached: true, fresh: true}
+	svc := revalidationService(checker, blockingLogStream(), sampleApp("web"), podFor("web", "web-1"))
+	srv := revalidationTestServer(svc)
+	defer srv.Close()
+
+	resp := subscribeSSE(t, srv, "web")
+	defer resp.Body.Close()
+	done := streamDone(resp.Body)
+
+	// A checker that cannot be reached is a failed check, not an allow: the
+	// watchdog fails closed and ends the tail.
+	waitForFreshCalls(t, checker, 1)
+	checker.setFresh(false, errors.New("openfga unreachable"))
+
+	waitForStreamEnd(t, done)
+	waitForSlotRelease(t, svc)
+}
+
+func TestLogStreamRevalidationEndsTailWhenAppDeleted(t *testing.T) {
+	checker := &freshGateChecker{cached: true, fresh: true}
+	app := sampleApp("web")
+	svc := revalidationService(checker, blockingLogStream(), app, podFor("web", "web-1"))
+	srv := revalidationTestServer(svc)
+	defer srv.Close()
+
+	resp := subscribeSSE(t, srv, "web")
+	defer resp.Body.Close()
+	done := streamDone(resp.Body)
+
+	// The resource disappearing ends the tail too: a stream of a gone App has
+	// nothing left to be authorized for.
+	waitForFreshCalls(t, checker, 1)
+	if err := svc.Client.Delete(context.Background(), app); err != nil {
+		t.Fatalf("delete App: %v", err)
+	}
+
+	waitForStreamEnd(t, done)
+	waitForSlotRelease(t, svc)
+}
+
+func TestLogStreamRevalidationPreservesHealthyTail(t *testing.T) {
+	checker := &freshGateChecker{cached: true, fresh: true}
+	pr, pw := io.Pipe()
+	stream := func(ctx context.Context, _, _, _ string) (io.ReadCloser, error) {
+		go func() { <-ctx.Done(); _ = pr.CloseWithError(ctx.Err()) }()
+		return pr, nil
+	}
+	svc := revalidationService(checker, stream, sampleApp("web"), podFor("web", "web-1"))
+	srv := revalidationTestServer(svc)
+	defer srv.Close()
+
+	resp := subscribeSSE(t, srv, "web")
+	defer resp.Body.Close()
+	lines := streamLines(resp.Body)
+
+	assertLine := func(want string) {
+		t.Helper()
+		deadline := time.After(5 * time.Second)
+		for {
+			select {
+			case line, ok := <-lines:
+				if !ok {
+					t.Fatalf("healthy tail ended while waiting for %q", want)
+				}
+				if strings.Contains(line, want) {
+					return
+				}
+			case <-deadline:
+				t.Fatalf("timed out waiting for %q on a healthy tail", want)
+			}
+		}
+	}
+
+	if _, err := pw.Write([]byte("2026-08-19T00:00:01Z one\n")); err != nil {
+		t.Fatalf("write line one: %v", err)
+	}
+	assertLine("one")
+
+	// Several healthy re-checks tick by; an allowed re-check must not interrupt
+	// delivery.
+	waitForFreshCalls(t, checker, 3)
+	if _, err := pw.Write([]byte("2026-08-19T00:00:02Z two\n")); err != nil {
+		t.Fatalf("write line two: %v", err)
+	}
+	assertLine("two")
+}
+
+func TestLogStreamRevalidationEndsStaleAuthorizedWebSocketTail(t *testing.T) {
+	checker := &freshGateChecker{cached: true, fresh: true}
+	svc := revalidationService(checker, blockingLogStream(), sampleApp("web"), podFor("web", "web-1"))
+	srv := revalidationTestServer(svc)
+	defer srv.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/v1/logs/subscribe?resource=web"
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("WS dial: %v", err)
+	}
+	defer conn.Close()
+
+	// Same contract as the SSE path: a fresh deny ends the established tail —
+	// the server closes the connection, so the client's next read fails.
+	waitForFreshCalls(t, checker, 1)
+	checker.setFresh(false, nil)
+
+	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	if _, _, err := conn.ReadMessage(); err == nil {
+		t.Fatal("stale-authorized WebSocket tail outlived its revocation")
+	}
+	waitForSlotRelease(t, svc)
+}
+
+func TestLogStreamReconnectStillAuthorizesAtAdmission(t *testing.T) {
+	// Revoked everywhere: a NEW subscription is refused at admission (the
+	// watchdog only governs established tails; it is not a loophole around the
+	// admission gate).
+	checker := &freshGateChecker{cached: false, fresh: false}
+	opened := make(chan struct{}, 1)
+	stream := func(ctx context.Context, _, _, _ string) (io.ReadCloser, error) {
+		opened <- struct{}{}
+		return blockingStream{ctx: ctx}, nil
+	}
+	svc := revalidationService(checker, stream, sampleApp("web"), podFor("web", "web-1"))
+	srv := revalidationTestServer(svc)
+	defer srv.Close()
+
+	resp := subscribeSSE(t, srv, "web")
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("reconnect after revocation = %d, want 403 at admission", resp.StatusCode)
+	}
+	select {
+	case <-opened:
+		t.Fatal("pod log stream opened despite the admission denial")
+	default:
+	}
+}
+
+func TestLogStreamRevalidationNegativeIntervalDisables(t *testing.T) {
+	// A fresh check WOULD deny, but a negative interval restores the
+	// admission-only behavior: the watchdog never ticks and the tail lives on.
+	checker := &freshGateChecker{cached: true, fresh: false}
+	svc := revalidationService(checker, blockingLogStream(), sampleApp("web"), podFor("web", "web-1"))
+	svc.RevalidateInterval = -1
+	srv := revalidationTestServer(svc)
+	defer srv.Close()
+
+	resp := subscribeSSE(t, srv, "web")
+	defer resp.Body.Close()
+	done := streamDone(resp.Body)
+
+	select {
+	case <-done:
+		t.Fatal("tail ended with the watchdog disabled")
+	case <-time.After(100 * time.Millisecond):
+	}
+	if got := checker.freshCallCount(); got != 0 {
+		t.Errorf("fresh re-checks with the watchdog disabled = %d, want 0", got)
 	}
 }

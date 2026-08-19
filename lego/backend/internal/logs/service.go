@@ -36,7 +36,9 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/datastorelogs"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Log types — Render's `type` vocabulary. `app` is the App container's own
@@ -66,6 +68,15 @@ const (
 // A named terminal event is honest and lets clients fall back
 // to history instead of holding an empty stream forever.
 var ErrBuildNotRunning = errors.New("no running build is available to follow")
+
+// DefaultRevalidateInterval is how often an established live log tail re-runs
+// its FRESH authorization check (w4/034): admission authorized once, but
+// without the watchdog a successful SSE/WebSocket/NDJSON tail would outlive a
+// membership or key revocation indefinitely — the checker's positive cache
+// hides the revocation for its TTL, and nothing re-checks after that. The
+// watchdog closes the window to one interval. The same cadence the SSH
+// gateway's stream watchdog uses (sshgateway.DefaultRevalidateInterval).
+const DefaultRevalidateInterval = time.Minute
 
 // The log labels Render's clients filter and discover by (`list_log_label_values`'s
 // enum). Each maps onto a stream label the shipper attaches — except LabelHost,
@@ -165,6 +176,14 @@ type Service struct {
 	// the corresponding dimension.
 	MaxSSEConnsPerSubject   int
 	MaxSSEConnsPerWorkspace int
+	// RevalidateInterval is the live tail's authorization watchdog cadence
+	// (w4/034): an established FollowLogs stream re-runs a FRESH
+	// AuthorizeApp(can_view_logs) — bypassing the checker's positive cache — on
+	// this interval, so a membership/key revocation or the App's deletion ends
+	// the stream within one interval instead of at the next admission. 0 = the
+	// DefaultRevalidateInterval default; negative disables the watchdog
+	// (admission-only, the pre-watchdog behavior).
+	RevalidateInterval time.Duration
 	// BuildNamespace is BEX_BUILD_NAMESPACE — where the operator runs pre-deploy
 	// (and build) Job pods, so `type=predeploy` reads a migration's logs from the
 	// right namespace (w1/m33). Empty falls back to the API's own namespace, the
@@ -749,6 +768,16 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if err := q.tailSupports(); err != nil {
 		return err
 	}
+	// Authorization lifetime (w4/034): admission authorized once above, but an
+	// established tail must not outlive the grant. The watchdog re-checks FRESH
+	// (uncached) on the interval; a deny, a checker failure, or the App's
+	// deletion cancels the stream ctx, which ends every producer goroutine and
+	// the emit loops below — and with them the caller's subscription cap slots.
+	// An allowed re-check touches nothing: the tail is not interrupted.
+	ctx, stopWatchdog := withRevalidation(ctx, s.revalidateInterval(), func(checkCtx context.Context) error {
+		return s.revalidateTailTarget(checkCtx, app.Namespace, app.Name)
+	})
+	defer stopWatchdog()
 	if len(q.Types) == 1 && q.Types[0] == LogTypeBuild {
 		return s.followBuildLogs(ctx, q, resource, app.Spec.Repo, app.Spec.Branch, emit)
 	}
@@ -799,6 +828,62 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 			}
 		}
 	}
+}
+
+// revalidateInterval resolves the watchdog cadence: 0 means "not configured"
+// and falls back to DefaultRevalidateInterval; a negative value disables the
+// watchdog outright (admission-only, the pre-w4/034 behavior).
+func (s *Service) revalidateInterval() time.Duration {
+	if s.RevalidateInterval == 0 {
+		return DefaultRevalidateInterval
+	}
+	return s.RevalidateInterval
+}
+
+// revalidateTailTarget is the watchdog check for an established tail: re-fetch
+// the App (its deletion ends the stream too — a tail of a gone resource has
+// nothing left to be authorized FOR) and reassert can_view_logs against its
+// OWN workspace through the Fresh seam, bypassing the checker's positive cache
+// so a revocation takes effect within one interval, not at the next admission.
+func (s *Service) revalidateTailTarget(ctx context.Context, namespace, name string) error {
+	var fresh appv1alpha1.App
+	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, &fresh); err != nil {
+		return err
+	}
+	return s.AuthorizeAppFresh(ctx, core.RelCanViewLogs, &fresh)
+}
+
+// withRevalidation derives a cancellable child of parent whose watchdog re-runs
+// check every interval until the child is canceled; the first failed check
+// (revocation, target gone, or the checker failing closed on an unreachable
+// store) cancels the child, which is what ends the tail — every pod-stream
+// goroutine and the emit loop pump on this context. interval <= 0 disables the
+// watchdog and the result degrades to a plain context.WithCancel.
+//
+// This is the logs-local twin of sshgateway.WithRevalidation (round-9 #6): the
+// two packages share the pattern, not the helper — logs must not import the
+// gateway package just for it.
+func withRevalidation(parent context.Context, interval time.Duration, check func(context.Context) error) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(parent)
+	if interval <= 0 || check == nil {
+		return ctx, cancel
+	}
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := check(ctx); err != nil {
+					cancel()
+					return
+				}
+			}
+		}
+	}()
+	return ctx, cancel
 }
 
 // followBuildLogs streams every currently-running container from the newest
