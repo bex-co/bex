@@ -306,9 +306,9 @@ func main() {
 	ready := &serve.Readiness{}
 
 	deps := api.Deps{
-		PushAvailable:        mobilePush != nil,
-		WebPushAvailable:     webPush != nil,
-		WebhookMetrics: webhookMetrics,
+		PushAvailable:    mobilePush != nil,
+		WebPushAvailable: webPush != nil,
+		WebhookMetrics:   webhookMetrics,
 		// BEX_BASE_DOMAIN names custom-domain DNS targets `<app>.<base>` (docs/ADR005-custom-domain.md);
 		// unset falls back to deriving the platform host from an App's status URLs.
 		BaseDomain: os.Getenv("BEX_BASE_DOMAIN"),
@@ -994,7 +994,8 @@ func wireSandboxes(ctx context.Context, deps *api.Deps, cl client.Client, st *st
 			// the gateway proxy port instead of the vendor host. The port is derived
 			// from the same deps.AgentModelProxyURL the agentsessions Service uses, so
 			// the two can never disagree on which port to open.
-			ModelProxyPort: modelProxyPort(deps.AgentModelProxyURL),
+			ModelProxyPort:       modelProxyPort(deps.AgentModelProxyURL),
+			SnapshotStoreDomains: snapshotStoreEgressDomains(),
 		})
 		if err != nil {
 			log.Fatalf("bex-api: %v", err)
@@ -1076,14 +1077,7 @@ func wireAgentSessions(deps *api.Deps) {
 	// Terminate (byte-identical to w2/m67). A partial set is fatal — a typo'd
 	// Secret key must not silently disable hibernation. Unset/delete the
 	// bex-agent-snapshot Secret to roll back.
-	store, err := agentsessions.NewS3SnapshotStore(agentsessions.S3SnapshotConfig{
-		Endpoint:  os.Getenv("BEX_AGENT_SNAPSHOT_S3_ENDPOINT"),
-		Bucket:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_BUCKET"),
-		Region:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_REGION"),
-		Prefix:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_PREFIX"),
-		AccessKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_ACCESS_KEY"),
-		SecretKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_SECRET_KEY"),
-	})
+	store, err := agentsessions.NewS3SnapshotStore(agentSnapshotConfigFromEnv())
 	if err != nil {
 		log.Fatalf("bex-api: agent-session hibernation config: %v", err)
 	}
@@ -1093,6 +1087,39 @@ func wireAgentSessions(deps *api.Deps) {
 	}
 	deps.AgentSnapshotRetentionTTL = zeroableDurationEnv("BEX_AGENT_SNAPSHOT_RETENTION", 7*24*time.Hour)
 	deps.AgentMaxPinnedSandboxesPerWorkspace = zeroableIntEnv("BEX_AGENT_MAX_PINNED_SANDBOXES_PER_WORKSPACE", 10)
+}
+
+func agentSnapshotConfigFromEnv() agentsessions.S3SnapshotConfig {
+	return agentsessions.S3SnapshotConfig{
+		Endpoint:  os.Getenv("BEX_AGENT_SNAPSHOT_S3_ENDPOINT"),
+		Bucket:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_BUCKET"),
+		Region:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_REGION"),
+		Prefix:    os.Getenv("BEX_AGENT_SNAPSHOT_S3_PREFIX"),
+		AccessKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_ACCESS_KEY"),
+		SecretKey: os.Getenv("BEX_AGENT_SNAPSHOT_S3_SECRET_KEY"),
+	}
+}
+
+// snapshotStoreEgressDomains is the Hibernated-tier object-store host the
+// sandbox curl PUT/GET must reach. Empty when the tier is off. A set-but
+// unparseable endpoint is fatal so a typo cannot arm hibernation with a
+// policy that still NXDOMAINs the presigned URL (w2/m77 live walk, curl 6).
+func snapshotStoreEgressDomains() []string {
+	cfg := agentSnapshotConfigFromEnv()
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("bex-api: agent-session hibernation config: %v", err)
+	}
+	if strings.TrimSpace(cfg.Bucket) == "" {
+		return nil
+	}
+	host, err := sessionegress.SnapshotEndpointHost(cfg.Endpoint)
+	if err != nil {
+		log.Fatalf("bex-api: agent-session snapshot egress: %v", err)
+	}
+	if host == "" {
+		log.Fatal("bex-api: agent-session snapshot egress: snapshot endpoint host is empty")
+	}
+	return []string{host}
 }
 
 func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler, st *store.PGStore, cl client.Client) {
