@@ -23,9 +23,16 @@ import (
 )
 
 // mcp.go is the MCP fragment: list_jobs, create_job, get_job, cancel_job.
-// Render's official MCP server ships no job tools; these are bex extensions
-// that mirror Render's REST shape so agents can trigger one-off commands in a
-// service's container without dropping to the REST API.
+// Upstream ships no job tools, so the parity pin classifies all four as
+// Extension (internal/api/mcp_parity.go asserts this rather than this comment
+// claiming it). They mirror Render's REST shape so agents can trigger one-off
+// commands in a service's container without dropping to the REST API.
+//
+// NOTE (w1/m70): one-off jobs are listed as a deliberate non-goal in
+// .pm/DO_NOT_DO.md and marked `—` on all four surfaces in ADR018, yet this
+// package ships a full Service plus REST, GraphQL, and these four MCP tools.
+// Either the ledger row is stale or this surface should not be here; flagged
+// for a decision rather than silently resolved in a parity-pin milestone.
 
 type jobServiceIDArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id (bex App name), as returned by list_services"`

@@ -124,10 +124,23 @@ func loadRenderOpenAPIContract() (*renderOpenAPIContract, error) {
 	return loadRenderOpenAPIContractData(renderOpenAPISource, renderOpenAPISHA256)
 }
 
-func loadRenderOpenAPIContractData(data []byte, expectedSHA256 string) (*renderOpenAPIContract, error) {
+// verifyPinnedArtifact checks an embedded upstream pin against its recorded
+// digest. Shared by the REST spec and the MCP tool surface so both fail the same
+// way on a hand-edit; `fix` names the refresh path for whoever tripped it.
+func verifyPinnedArtifact(what string, data []byte, expectedSHA256, fix string) error {
 	digest := fmt.Sprintf("%x", sha256.Sum256(data))
-	if digest != expectedSHA256 {
-		return nil, fmt.Errorf("Render OpenAPI integrity mismatch: got %s, want %s", digest, expectedSHA256)
+	if digest == expectedSHA256 {
+		return nil
+	}
+	if fix != "" {
+		return fmt.Errorf("%s integrity mismatch: got %s, want %s (%s)", what, digest, expectedSHA256, fix)
+	}
+	return fmt.Errorf("%s integrity mismatch: got %s, want %s", what, digest, expectedSHA256)
+}
+
+func loadRenderOpenAPIContractData(data []byte, expectedSHA256 string) (*renderOpenAPIContract, error) {
+	if err := verifyPinnedArtifact("Render OpenAPI", data, expectedSHA256, ""); err != nil {
+		return nil, err
 	}
 
 	loader := openapi3.NewLoader()

@@ -25,9 +25,11 @@ import (
 )
 
 // mcp.go is the registry-credentials MCP fragment. A bex superset — Render's
-// official MCP server (render-oss/render-mcp-server, checked live 2026-07-13)
-// ships no registry-credential tools at all, so this is new surface, not a
-// tracked Render tool name. list_/create_/update_/delete_ follows the
+// official MCP server (render-oss/render-mcp-server) ships no registry-credential
+// tools at all, so this is new surface, not a tracked Render tool name. The
+// parity pin asserts that (internal/api/mcp_parity.go); the manual "checked live"
+// date this comment used to carry was replaced in w1/m70, since a date is not a
+// check. list_/create_/update_/delete_ follows the
 // existing list_services/create_web_service naming convention. The secret
 // (authToken) is accepted on create/update but never returned by any tool —
 // the same "write-only past creation" rule REST/GraphQL hold.
