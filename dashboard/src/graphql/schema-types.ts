@@ -142,6 +142,10 @@ export type AuditLog = {
   actorMethod: Maybe<Scalars["String"]["output"]>;
   id: Maybe<Scalars["String"]["output"]>;
   metadata: Maybe<AuditLogMetadata>;
+  oauthAudience: Maybe<Scalars["String"]["output"]>;
+  oauthClientId: Maybe<Scalars["String"]["output"]>;
+  oauthScopes: Maybe<Array<Maybe<Scalars["String"]["output"]>>>;
+  relation: Maybe<Scalars["String"]["output"]>;
   resource: Maybe<Scalars["String"]["output"]>;
   status: Maybe<Scalars["String"]["output"]>;
   targetName: Maybe<Scalars["String"]["output"]>;

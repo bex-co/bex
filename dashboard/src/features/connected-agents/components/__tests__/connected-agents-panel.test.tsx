@@ -43,6 +43,27 @@ describe("ConnectedAgentsPanel", () => {
     expect(screen.getByText("offline_access")).toBeInTheDocument();
   });
 
+  it("marks write and sensitive scopes as destructive badges", () => {
+    agentsState.agents = [
+      {
+        clientId: "agent-2",
+        clientName: "Write Agent",
+        scopes: ["bex.read", "bex.write", "bex.sensitive"],
+        grantedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ];
+    render(<ConnectedAgentsPanel />);
+
+    expect(screen.getByText("bex.read")).toHaveAttribute(
+      "data-slot",
+      "badge",
+    );
+    expect(screen.getByText("bex.write").className).toMatch(/destructive/);
+    expect(screen.getByText("bex.sensitive").className).toMatch(
+      /destructive/,
+    );
+  });
+
   it("shows an empty state with no connected agents", () => {
     render(<ConnectedAgentsPanel />);
     expect(screen.getByText("No connected agents")).toBeInTheDocument();

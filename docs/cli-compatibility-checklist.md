@@ -211,7 +211,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
 
 ## Auth
 
-- [x] **`login`** — recognizes `RENDER_API_KEY` (already-authenticated short-circuit); full browser/device flow verified separately in production
+- [x] **`login`** — recognizes `RENDER_API_KEY` (already-authenticated short-circuit); full browser/device flow verified separately in production. **w8/m27 compatibility:** the official launcher stays unmodified and platform-marked (`bex.co/platform-client`); it continues to request the legacy `bex.api` compatibility alias (or identity-only device-flow tokens with no API audience). Granular `bex.read`/`bex.write`/`bex.sensitive` apply to third-party human OAuth clients, not this CLI. Do not fork the CLI to request the new vocabulary.
 - [x] **`logout`** — drives the OAuth revoke path; the credential's `client_credentials` grant fails afterward
 - [x] **`whoami`** — reports the key-minting user's email (Kratos-admin lookup)
 - [x] **`workspace`** — manage the CLI's active workspace

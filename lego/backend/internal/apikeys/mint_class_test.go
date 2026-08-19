@@ -67,8 +67,11 @@ func TestCreateAPIKeyRequiresMintCredentialClass(t *testing.T) {
 			want:     core.ErrForbidden,
 		},
 		{
-			name:     "platform OAuth human token (official CLI) may mint",
-			id:       core.Identity{Subject: "user-a", Method: "oauth2", ClientID: "platform-cli", Human: true},
+			name: "platform OAuth human token (official CLI) may mint",
+			id: core.Identity{
+				Subject: "user-a", Method: "oauth2", ClientID: "platform-cli",
+				Human: true, PlatformClient: true,
+			},
 			platform: fakePlatformResolver{"platform-cli": true},
 			want:     nil,
 		},

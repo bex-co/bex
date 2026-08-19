@@ -54,6 +54,22 @@ type Identity struct {
 	// callers and for identities that never set the trait. Presentation only —
 	// never an authorization or invite-redemption input.
 	Name string
+	// CanonicalScopes is the sorted, space-separated closed OAuth capability
+	// set Hydra granted this human token (bex.read / bex.write / bex.sensitive,
+	// plus bex.api when retained for a platform-marked client). Empty for
+	// Kratos sessions and machine API keys, which are not human-delegation
+	// grants and must not acquire one from a default. Never a bearer token.
+	CanonicalScopes string
+	// AcceptedAudience is the API resource this process actually accepted from
+	// the token's aud list (BEX_OAUTH_RESOURCE). Empty when the token carried
+	// no matching audience (audience-less platform device-flow) or the caller
+	// is not an OAuth human. Arbitrary extra audiences are discarded.
+	AcceptedAudience string
+	// PlatformClient is true only after a successful Hydra-admin lookup of the
+	// bex.co/platform-client marker on the cache-miss path. False for sessions,
+	// machine keys, third-party human tokens, and lookup-not-needed grants.
+	// A lookup error never records false — introspection fails closed instead.
+	PlatformClient bool
 }
 
 type identityCtxKey struct{}

@@ -198,6 +198,22 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "读取你的邮箱地址",
     description: "Human description of the email scope",
   },
+  "auth.consentScopeRead": {
+    message: "读取普通工作区资源（服务、日志、指标）",
+    description: "Human description of the bex.read OAuth capability",
+  },
+  "auth.consentScopeWrite": {
+    message: "更改工作区资源（部署、重启、创建、删除、账单）",
+    description: "Human description of the bex.write OAuth capability",
+  },
+  "auth.consentScopeSensitive": {
+    message: "读取密钥与连接字符串（环境变量、数据库 URL、文件）",
+    description: "Human description of the bex.sensitive OAuth capability",
+  },
+  "auth.consentScopeApiCompat": {
+    message: "完整控制面访问（平台客户端兼容别名）",
+    description: "Human description of the bex.api compatibility scope",
+  },
   "auth.consentAudienceTitle": {
     message: "令牌的适用范围",
     description: "Heading above the requested access-token audience",

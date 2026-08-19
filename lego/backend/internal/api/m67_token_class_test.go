@@ -24,6 +24,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // classHydra serves both endpoints the narrowed audience rule needs: token
@@ -125,6 +127,7 @@ func TestNarrowedAudienceRuleKeepsLegitimateCallers(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
 		sub, clientID    string
+		scope            string
 		aud              []string
 		platform         map[string]bool
 		wantClientLookup bool
@@ -144,15 +147,17 @@ func TestNarrowedAudienceRuleKeepsLegitimateCallers(t *testing.T) {
 			wantClientLookup: true,
 		},
 		{
-			// An MCP/agent client that did request the resource, per the spec.
+			// An MCP/agent client that requested the resource AND a granular
+			// capability — the ordinary compliant connect (w8/m27).
 			name: "human token that carries the resource audience",
 			sub:  "identity-1", clientID: "dcr-client",
+			scope:    core.ScopeRead,
 			aud:      []string{bexResource},
 			platform: map[string]bool{"dcr-client": false},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			h := newClassHydra(t, tc.sub, tc.clientID, tc.aud, tc.platform)
+			h := newClassHydraScoped(t, tc.sub, tc.clientID, tc.scope, tc.aud, tc.platform)
 			if got := authStatus(t, h, bexResource, true); got != http.StatusOK {
 				t.Errorf("status = %d, want 200", got)
 			}
@@ -170,14 +175,11 @@ func TestNarrowedAudienceRuleKeepsLegitimateCallers(t *testing.T) {
 func TestNarrowedAudienceRuleIsOffByDefault(t *testing.T) {
 	h := newClassHydra(t, "identity-1", "dcr-client", nil, map[string]bool{"dcr-client": false})
 
-	if got := authStatus(t, h, bexResource, false); got != http.StatusOK {
-		t.Errorf("with BEX_OAUTH_REQUIRE_AUDIENCE unset, status = %d, want 200 (byte-identical to pre-m67)", got)
-	}
-	if got := authStatus(t, h, "", true); got != http.StatusOK {
-		t.Errorf("with no configured resource, status = %d, want 200", got)
-	}
-	if h.clientLookups.Load() != 0 {
-		t.Error("no client lookup may happen while the rule is inert")
+	// w8/m27: a non-platform human token without a granular capability is
+	// inactive even when the empty-audience flag is off. The audience rule
+	// staying inert is not an exemption from the capability vocabulary.
+	if got := authStatus(t, h, bexResource, false); got != http.StatusUnauthorized {
+		t.Errorf("identity-only third-party token = %d, want 401", got)
 	}
 }
 

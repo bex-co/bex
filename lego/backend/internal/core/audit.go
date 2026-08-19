@@ -80,6 +80,15 @@ type AuditEvent struct {
 	// Stripe, false = billable again. Nil for every other verb. Admin-only,
 	// set through the control-plane internal API.
 	BillingExcludedTo *bool
+	// Relation is the RelCan… the decision was made against. Empty on typed
+	// system events that are not an authorization check (billing lifecycle).
+	Relation string
+	// OAuthClientID / OAuthAudience / OAuthScopes are the verified grant facts
+	// for a human OAuth caller. Empty on session, machine, system, and
+	// pre-migration rows. Never a bearer token or free-form metadata.
+	OAuthClientID string
+	OAuthAudience string
+	OAuthScopes   []string
 }
 
 type auditMaintenanceModeToKey struct{}
@@ -214,11 +223,11 @@ func (b *Base) RecordMaintenanceModeEffects(
 	}
 	target := canonicalAppTarget(app)
 	if uriChanged {
-		b.emit(ctx, AuditVerbMaintenanceModeURIUpdated, resource, target, nil)
+		b.emit(ctx, AuditVerbMaintenanceModeURIUpdated, RelCanOperate, resource, target, nil)
 	}
 	if enabledChanged != nil {
 		toggleCtx := WithAuditMaintenanceModeTo(ctx, *enabledChanged)
-		b.emit(toggleCtx, AuditVerbMaintenanceModeEnabled, resource, target, nil)
+		b.emit(toggleCtx, AuditVerbMaintenanceModeEnabled, RelCanOperate, resource, target, nil)
 	}
 }
 
@@ -495,6 +504,7 @@ func (b *Base) verbAuditEvent(ctx context.Context, verb, resource, target string
 	ev := AuditEvent{Verb: verb, Resource: resource, Target: target, Outcome: AuditAllowed, At: b.Now()}
 	if id, ok := IdentityFrom(ctx); ok {
 		ev.Caller, ev.CallerMethod = id.Subject, id.Method
+		id.AttachOAuthProvenance(&ev)
 	}
 	return ev
 }
@@ -673,12 +683,12 @@ func unexportedHelperMethod(name, short string) bool {
 // authorizeAndAudit filters before calling. A sink error is logged and
 // swallowed, never returned: audit recording must never fail the verb it's
 // recording.
-func (b *Base) emit(ctx context.Context, verb, resource, target string, authzErr error) {
+func (b *Base) emit(ctx context.Context, verb, relation, resource, target string, authzErr error) {
 	outcome := AuditAllowed
 	if authzErr != nil {
 		outcome = AuditDenied
 	}
-	ev := AuditEvent{Verb: verb, Resource: resource, Target: target, Outcome: outcome, At: b.Now()}
+	ev := AuditEvent{Verb: verb, Resource: resource, Target: target, Outcome: outcome, At: b.Now(), Relation: relation}
 	if verb == AuditVerbMaintenanceModeEnabled {
 		if enabled, ok := ctx.Value(auditMaintenanceModeToKey{}).(bool); ok {
 			ev.MaintenanceModeTo = &enabled
@@ -686,6 +696,7 @@ func (b *Base) emit(ctx context.Context, verb, resource, target string, authzErr
 	}
 	if id, ok := IdentityFrom(ctx); ok {
 		ev.Caller, ev.CallerMethod = id.Subject, id.Method
+		id.AttachOAuthProvenance(&ev)
 	}
 	b.recordAudit(ctx, ev)
 }

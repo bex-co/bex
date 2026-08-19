@@ -79,16 +79,24 @@ describe("AuditLogPanel", () => {
         status: "success",
         resource: "workspace:tea-1",
         targetName: "my-api",
+        relation: "",
+        oauthClientId: "",
+        oauthAudience: "",
+        oauthScopes: [],
       },
       {
         id: "ev-2",
         timestamp: "2026-07-10T00:00:00Z",
-        actor: "",
-        actorMethod: "",
+        actor: "user:alice",
+        actorMethod: "oauth2",
         action: "delete",
         status: "denied",
         resource: "service:srv-1",
         targetName: "",
+        relation: "can_operate",
+        oauthClientId: "dcr-agent",
+        oauthAudience: "https://api.bex.co/mcp",
+        oauthScopes: ["bex.read"],
       },
     ];
     auditState.hasMore = true;
@@ -98,13 +106,14 @@ describe("AuditLogPanel", () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("Allowed");
     expect(rows[1]).toHaveTextContent("Denied");
-    expect(rows[1]).toHaveTextContent("Unknown"); // empty actor placeholder
     // Friendly target name (w10/m5): shown alongside the raw id when the row
     // carries one; a pre-0038 row (empty targetName) keeps the id-only cell.
     expect(rows[0]).toHaveTextContent("my-api");
     expect(rows[0]).toHaveTextContent("workspace:tea-1");
     expect(rows[1]).not.toHaveTextContent("my-api");
     expect(rows[1]).toHaveTextContent("service:srv-1");
+    expect(rows[1]).toHaveTextContent("dcr-agent");
+    expect(rows[1]).toHaveTextContent("bex.read");
     // Timestamps render via the shared formatter ("July 11, 2026 at …") —
     // computed through the helper so this holds in any runner timezone.
     expect(rows[0]).toHaveTextContent(formatDateTime("2026-07-11T00:00:00Z")!);
@@ -126,6 +135,10 @@ describe("AuditLogPanel", () => {
         status: "success",
         resource: "workspace:tea-1",
         targetName: "",
+        relation: "",
+        oauthClientId: "",
+        oauthAudience: "",
+        oauthScopes: [],
       },
     ];
     auditState.hasMore = false;

@@ -511,6 +511,7 @@ func TestLogoutCannotBeUndoneByInflightIntrospection(t *testing.T) {
 			<-release
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"active": true, "sub": "human-a", "client_id": "shared-client",
+				"scope": core.ScopeRead,
 			})
 			return
 		}
@@ -569,6 +570,7 @@ func blockingHydra(t *testing.T, sub, clientID string) (srv *httptest.Server, st
 		})
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"active": true, "sub": sub, "client_id": clientID,
+			"scope": core.ScopeRead,
 		})
 	}))
 	t.Cleanup(srv.Close)
@@ -717,9 +719,13 @@ func TestHumanOAuthTokenRunsTenantOnboarding(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			hydra := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				_ = json.NewEncoder(w).Encode(map[string]any{
+				body := map[string]any{
 					"active": true, "sub": tc.sub, "client_id": tc.clientID,
-				})
+				}
+				if tc.sub != "" && tc.sub != tc.clientID {
+					body["scope"] = core.ScopeRead
+				}
+				_ = json.NewEncoder(w).Encode(body)
 			}))
 			defer hydra.Close()
 			onboard := &recordingOnboard{}

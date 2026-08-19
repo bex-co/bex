@@ -184,7 +184,8 @@ import sys, json
 m = json.load(sys.stdin)
 assert m['resource'] == '$RESOURCE', m
 assert '$ISSUER' in m['authorization_servers'], m
-print('  ✓ metadata advertises the issuer')
+assert m.get('scopes_supported') == ['bex.read', 'bex.write', 'bex.sensitive'], m
+print('  ✓ metadata advertises the issuer and granular scopes')
 "
 www="$(curl -s -o /dev/null -D - "http://localhost:$API_PORT/mcp" | grep -i '^www-authenticate' | tr -d '\r')"
 echo "$www" | grep -q 'resource_metadata=' || { echo "error: 401 lacks resource_metadata: $www" >&2; exit 1; }
@@ -196,15 +197,15 @@ REG_EP="$ISSUER/oauth2/register"
 VERIFIER="dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 CHALLENGE="E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
 
-dcr() { # client_name -> client_id on stdout
-  local name="$1" code
+dcr() { # client_name [scope] -> client_id on stdout
+  local name="$1" scope="${2:-openid offline_access bex.read}" code
   code="$(curl -s -o "$TMP/reg.json" -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{
     "client_name": "'"$name"'",
     "redirect_uris": ["'"$CALLBACK"'"],
     "grant_types": ["authorization_code", "refresh_token"],
     "response_types": ["code"],
     "token_endpoint_auth_method": "none",
-    "scope": "openid offline_access bex.api",
+    "scope": "'"$scope"'",
     "audience": ["'"$RESOURCE"'"]
   }' "$REG_EP")"
   [ "$code" = "201" ] || { echo "error: DCR returned $code: $(cat "$TMP/reg.json")" >&2; return 1; }
@@ -287,9 +288,9 @@ print(next(n['attributes']['value'] for n in f['ui']['nodes'] if n['attributes']
 # One authorization, driven as a browser: authorize -> (login if Hydra asks) ->
 # wherever the consent route sends us. Final URL on stdout: either the agent's
 # callback (consent was headless) or the consent page (a human must decide).
-authorize() { # client_id state jar -> final url on stdout
-  local client="$1" state="$2" jar="$3" final challenge cont
-  final="$(follow "$ISSUER/oauth2/auth?client_id=$client&response_type=code&scope=openid+offline_access+bex.api&redirect_uri=$CALLBACK&state=$state&code_challenge=$CHALLENGE&code_challenge_method=S256&audience=$RESOURCE" "$jar")"
+authorize() { # client_id state jar [scope] -> final url on stdout
+  local client="$1" state="$2" jar="$3" scope="${4:-openid+offline_access+bex.read}" final challenge cont
+  final="$(follow "$ISSUER/oauth2/auth?client_id=$client&response_type=code&scope=$scope&redirect_uri=$CALLBACK&state=$state&code_challenge=$CHALLENGE&code_challenge_method=S256&audience=$RESOURCE" "$jar")"
   case "$final" in
     "$DASH/auth/login"*)
       challenge="$(qparam "$final" login_challenge)"
@@ -389,6 +390,7 @@ final="$(authorize "$CONSENT_CLIENT" "state-consent" "$JAR_USER")"
 expect_at "$DASH/auth/consent" "$final" "unblessed client did not reach the consent page"
 grep -q 'unblessed agent (e2e)' "$TMP/page.html" || { echo "error: consent page does not name the client" >&2; exit 1; }
 grep -q 'offline_access' "$TMP/page.html" || { echo "error: consent page does not list the requested scopes" >&2; exit 1; }
+grep -q 'bex.read' "$TMP/page.html" || { echo "error: consent page does not list bex.read" >&2; exit 1; }
 echo "  ✓ the human sees a consent page naming the client and its scopes (no 403, no operator action)"
 
 echo "-> 10/14 the human approves -> code -> token -> bex-api..."
@@ -444,6 +446,21 @@ ACCESS="$(exchange "$(qparam "$final" code)" "$CONSENT_CLIENT")"
 assert_bearer_works "$ACCESS"
 echo "  ✓ already signed in -> no login form, no consent page -> token (this used to dead-end)"
 
+echo "-> extra/w8-m27 read-only token cannot mutate..."
+# ACCESS is the consented bex.read token from leg 13. A write verb must fail
+# closed with INSUFFICIENT_SCOPE before OpenFGA or resource lookup.
+status="$(curl -s -o "$TMP/write.out" -w '%{http_code}' -X POST \
+  -H "Authorization: Bearer $ACCESS" \
+  "http://localhost:$API_PORT/v1/services/does-not-exist/suspend")"
+[ "$status" = "403" ] || { echo "error: read-only suspend returned $status: $(cat "$TMP/write.out")" >&2; exit 1; }
+python3 -c "
+import json
+body = json.load(open('$TMP/write.out'))
+assert body.get('code') == 'INSUFFICIENT_SCOPE', body
+assert body.get('params', {}).get('required') == 'bex.write', body
+print('  ✓ bex.read token refused RelCanOperate with INSUFFICIENT_SCOPE')
+"
+
 echo "-> 14/14 Settings -> Security & Compliance 'Connected agents': list -> revoke -> token dead..."
 # w4/m18: the revocation surface m16's remembered consent shipped without.
 # JAR_USER already carries a live Kratos session (since leg 9) — exactly the
@@ -476,6 +493,16 @@ agents = json.load(sys.stdin)
 assert not any(a['clientId'] == '$CONSENT_CLIENT' for a in agents), agents
 print('  ✓ the revoked client no longer appears in the list')
 "
+
+echo "-> extra/w8-m27 third-party bex.api umbrella is refused at consent..."
+LEGACY_CLIENT="$(dcr 'legacy umbrella (e2e)' 'openid offline_access bex.api')"
+JAR_LEGACY="$TMP/legacy.jar"
+final="$(authorize "$LEGACY_CLIENT" "state-legacy" "$JAR_LEGACY" "openid+offline_access+bex.api")"
+expect_at "$DASH/auth/consent" "$final" "legacy bex.api client did not stop at consent"
+grep -q 'invalid_scope' "$TMP/page.html" || { echo "error: bex.api umbrella was not refused: $(head -c 400 "$TMP/page.html")" >&2; exit 1; }
+grep -q 'bex.read' "$TMP/page.html" || { echo "error: refusal did not name bex.read: $(head -c 400 "$TMP/page.html")" >&2; exit 1; }
+[ -z "$(qparam "$final" code)" ] || { echo "error: refused bex.api flow still delivered a code: $final" >&2; exit 1; }
+echo "  ✓ third-party bex.api is invalid_scope at consent (no code)"
 
 if [ -n "${HOLD:-}" ]; then
   echo

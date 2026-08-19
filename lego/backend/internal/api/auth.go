@@ -72,20 +72,10 @@ type oryAuth struct {
 	// (DCR) third-party client that never requested this resource — authorize a
 	// human's full workspace rights here.
 	resource string
-	// apiScope is the control-plane capability scope (round-14 #1, default
-	// "bex.api", BEX_OAUTH_API_SCOPE): a HUMAN token minted for this API's
-	// audience must have been granted it — identity-only scopes (openid,
-	// offline_access) are consent display and refresh metadata, never API
-	// authority. Before this check a dynamically registered client could ask
-	// for the resource AUDIENCE with identity-only SCOPES, walk the ordinary
-	// consent flow (the screen honestly said "openid"), and exercise every
-	// action the victim's OpenFGA subject may perform. Clients bex itself
-	// provisioned (platformClient marker — the CLI's device flow, bex-mobile)
-	// are exempt exactly as the narrowed empty-aud exception exempts them:
-	// they are platform binaries whose scope lists bex controls. The
-	// per-operation least-privilege scope matrix remains a documented
-	// deferral (ADR069 #1); this check makes "asked for identity" ≠ "may use
-	// the API".
+	// apiScope is retained for constructor compatibility with round-14 tests.
+	// The closed vocabulary (bex.read / bex.write / bex.sensitive, plus bex.api
+	// as a platform-only compatibility alias) is not overridable: a deployment
+	// cannot invent a second semantic matrix via BEX_OAUTH_API_SCOPE.
 	apiScope string
 	// platformClients caches, per client_id, whether Hydra's client record carries
 	// the `bex.co/platform-client` marker that scripts/auth-bootstrap-client.sh
@@ -225,23 +215,17 @@ func (a *oryAuth) platformClient(ctx context.Context, clientID string) (bool, er
 // stamps on bex-provisioned OAuth clients.
 const platformClientMarker = "bex.co/platform-client"
 
-// DefaultAPIScope is the control-plane capability OAuth scope (round-14 #1):
-// the one scope whose presence on an API-audience human token says "this
-// client asked for API access, and the user saw it on the consent screen".
-// Overridable per deployment (BEX_OAUTH_API_SCOPE) — the dashboard's consent
-// gate (OAUTH_API_SCOPE) must be set to the SAME value, and the RFC 9728
-// metadata advertises it so discovery-driven MCP clients request it.
-const DefaultAPIScope = "bex.api"
+// DefaultAPIScope is the platform-client compatibility alias for the closed
+// capability vocabulary (w8/m27). Third-party human tokens cannot use it as
+// an umbrella grant; they must carry bex.read / bex.write / bex.sensitive.
+// The name is kept so existing tests and the BEX_OAUTH_API_SCOPE default stay
+// byte-stable. It is not overridable into a second semantic matrix.
+const DefaultAPIScope = core.ScopeAPICompatibility
 
-// scopeGranted parses Hydra's space-separated introspection scope string and
-// reports whether want was granted.
+// scopeGranted reports an exact member of Hydra's space-separated scope
+// string. Near-matches (prefix, substring) do not count.
 func scopeGranted(granted, want string) bool {
-	for _, s := range strings.Fields(granted) {
-		if s == want {
-			return true
-		}
-	}
-	return false
+	return core.ContainsScope(granted, want)
 }
 
 // IsPlatformClient exposes the platform-client lookup as a
@@ -439,48 +423,38 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 	if a.resource != "" && len(out.Aud) > 0 && !slices.Contains(out.Aud, a.resource) {
 		return nil
 	}
-	// Scope discipline (round-14 #1, see the apiScope field): a HUMAN token
-	// minted FOR THIS API must carry the control-plane capability scope.
-	// Identity-only scopes on an API-audience token are exactly the
-	// look-harmless consent a dynamic client used to obtain a victim's full
-	// subject authority. Machine (client_credentials) tokens are exempt — they
-	// are API keys whose authority comes from their workspace binding, not an
-	// OAuth consent — and platform-provisioned human clients are exempt via
-	// their marker, mirroring the empty-aud exception. Everything else that
-	// asked for this audience without asking for this scope is refused; the
-	// token simply introspects inactive (401), the same shape as any other
-	// unacceptable credential.
-	if a.resource != "" && a.apiScope != "" && human && slices.Contains(out.Aud, a.resource) &&
-		!scopeGranted(out.Scope, a.apiScope) {
-		platform, err := a.platformClient(ctx, out.ClientID)
+
+	grant, err := core.NormalizeOAuthGrant(out.Scope, out.Aud, out.ClientID, a.resource)
+	if err != nil {
+		log.Printf("auth: rejecting malformed OAuth grant from client %q: %v", out.ClientID, err)
+		return nil
+	}
+
+	// Granular capabilities are mandatory for non-platform human OAuth clients
+	// (w8/m27), independent of BEX_OAUTH_RESOURCE and of whether aud contains
+	// the resource. An audience-less or identity-only third-party human token
+	// must not hold full authority. Legacy bex.api (and identity-only grants)
+	// remain compatibility-only for Hydra clients carrying bex.co/platform-client.
+	// Machine tokens never enter this branch. The platform lookup is paid only
+	// when the exemption is actually needed — a third-party token that already
+	// carries a granular capability costs no extra Hydra call.
+	platform := false
+	needPlatform := human && !grant.HasGranular()
+	emptyAudHuman := a.requireAudience && a.resource != "" && len(out.Aud) == 0 && human
+	if needPlatform || emptyAudHuman {
+		var err error
+		platform, err = a.platformClient(ctx, out.ClientID)
 		if err != nil {
 			return err // Hydra unreachable => 503, never a silent downgrade
-		}
-		if !platform {
-			log.Printf("auth: rejecting %q-scoped token for API audience from non-platform client %q (round-14 #1)", out.Scope, out.ClientID)
-			return nil
 		}
 	}
-	// The empty-aud exception, narrowed (w1/m67 F1). It exists for
-	// client_credentials API keys, which carry no audience at all — but written as
-	// "any active token with an empty aud", it also admitted a HUMAN token minted
-	// for a self-registered third-party client that never asked for this resource.
-	// Such a token carries the user's full workspace rights here.
-	//
-	// So: machine tokens keep the exception unconditionally; a human token with no
-	// audience is admitted only when Hydra's own client record says bex provisioned
-	// that client (the official Render CLI's device flow, bex-mobile) — those
-	// legitimately request no audience. Everyone else must request the resource,
-	// which the MCP authorization spec already tells clients to do.
-	if a.requireAudience && a.resource != "" && len(out.Aud) == 0 && human {
-		platform, err := a.platformClient(ctx, out.ClientID)
-		if err != nil {
-			return err // Hydra unreachable => 503, never a silent downgrade
-		}
-		if !platform {
-			log.Printf("auth: rejecting audience-less token for human subject from non-platform client %q (w1/m67 F1)", out.ClientID)
-			return nil
-		}
+	if needPlatform && !platform {
+		log.Printf("auth: rejecting non-granular token for human subject from non-platform client %q (w8/m27)", out.ClientID)
+		return nil
+	}
+	if emptyAudHuman && !platform {
+		log.Printf("auth: rejecting audience-less token for human subject from non-platform client %q (w1/m67 F1)", out.ClientID)
+		return nil
 	}
 	// Issuer discipline (see the issuer field): a token from a different issuer
 	// must not authorize this resource. Empty iss stays accepted.
@@ -496,6 +470,11 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 		Method:   "oauth2",
 		ClientID: out.ClientID,
 		Human:    human,
+	}
+	if human {
+		id.CanonicalScopes = grant.Scopes
+		id.AcceptedAudience = grant.AcceptedAudience
+		id.PlatformClient = platform
 	}
 
 	// Record last-used on the key this token was minted for (w4/m13). Keyed on
@@ -608,6 +587,8 @@ func (a *oryAuth) whoami(r *http.Request) (core.Identity, error) {
 		Email:         email,
 		EmailVerified: emailVerified,
 		Name:          out.Identity.Traits.Name,
+		// CanonicalScopes / AcceptedAudience / PlatformClient stay zero: a
+		// Kratos session is not a human-delegation OAuth grant.
 	}, nil
 }
 

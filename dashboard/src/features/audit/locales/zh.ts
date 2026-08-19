@@ -43,6 +43,11 @@ const zhAudit: Record<string, TranslationEntry> = {
     description:
       "Audit Log actor cell placeholder for an unauthenticated caller",
   },
+  "audit.oauthDelegation": {
+    message: "{client} · {scopes}",
+    description:
+      "Audit Log actor subtitle for a third-party OAuth grant (client id and canonical scopes)",
+  },
   "audit.loadMore": {
     message: "加载更多",
     description: "Button that fetches the next page of audit events",

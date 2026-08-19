@@ -42,6 +42,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w8/dev-8/` keeps onl
 - [x] **m24** — Webhook event hydration: retrieve a payload's `data.id` (9 tasks) ← from authenticated Bex↔Render webhook parity audit 2026-08-17; closes the event-detail residual after w2/m70
 - [x] **m25** — Webhook immutable attempt history + manual Resend (13 tasks) ← from authenticated Bex↔Render webhook parity audit 2026-08-17, needs m24
 - [x] **m26** — Webhook management UX + drift-proof dashboard parity (10 tasks) ← from authenticated Bex↔Render webhook parity audit 2026-08-17, needs m25
+- [x] **m27** — Granular OAuth capability scopes and authorization-decision audit (9 tasks) ← proposal 1 from `/pm-brainstorm for w8`, selected by user 2026-08-18
 
 ## Inbox
 

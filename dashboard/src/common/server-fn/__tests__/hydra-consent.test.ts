@@ -24,7 +24,7 @@ function consentRequest(overrides: Record<string, unknown> = {}) {
       client_name: "Some Agent",
       skip_consent: false,
     },
-    requested_scope: ["openid", "offline_access", "bex.api"],
+    requested_scope: ["openid", "offline_access", "bex.read"],
     requested_access_token_audience: ["https://api.bex.co/mcp"],
     // request_url carries the original authorize URL incl. a PKCE code_challenge
     // (w6/003) — present by default so the existing happy-path tests pass.
@@ -140,7 +140,7 @@ describe("handleConsent (GET)", () => {
       "https://oauth.bex.co/continue",
     );
     const body = JSON.parse(accepts(calls)[0].init?.body as string);
-    expect(body.grant_scope).toEqual(["openid", "offline_access", "bex.api"]);
+    expect(body.grant_scope).toEqual(["openid", "offline_access", "bex.read"]);
     expect(body.grant_access_token_audience).toEqual([
       "https://api.bex.co/mcp",
     ]);
@@ -178,7 +178,7 @@ describe("handleConsent (GET)", () => {
       clientId: "some-client",
       clientName: "Some Agent",
       redirectOrigin: "https://evil.example",
-      scopes: ["openid", "offline_access", "bex.api"],
+      scopes: ["openid", "offline_access", "bex.read"],
       audiences: ["https://api.bex.co/mcp"],
       csrfToken: csrf(),
       retryAfterFailure: false,
@@ -279,7 +279,7 @@ describe("handleConsent (GET)", () => {
     });
     const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
     expect((res as Response).status).toBe(400);
-    expect(await (res as Response).text()).toContain("bex.api");
+    expect(await (res as Response).text()).toContain("bex.read");
     expect(accepts(calls)).toHaveLength(0);
   });
 
@@ -305,22 +305,21 @@ describe("handleConsent (GET)", () => {
     expect(view).not.toBeInstanceOf(Response);
   });
 
-  it("honors an OAUTH_API_SCOPE override on both sides of the rule", async () => {
+  it("ignores an OAUTH_API_SCOPE override (closed vocabulary)", async () => {
     process.env.OAUTH_API_SCOPE = "custom.api.scope";
     try {
-      // The default fixture carries only "bex.api", not the override.
-      mockUpstreams({ lookupBody: consentRequest() });
+      mockUpstreams({
+        lookupBody: consentRequest({
+          requested_scope: ["openid", "offline_access", "custom.api.scope"],
+        }),
+      });
       const refused = await handleConsent(
         req(`?consent_challenge=${CHALLENGE}`),
       );
       expect(refused).toBeInstanceOf(Response);
       expect((refused as Response).status).toBe(400);
 
-      mockUpstreams({
-        lookupBody: consentRequest({
-          requested_scope: ["openid", "offline_access", "custom.api.scope"],
-        }),
-      });
+      mockUpstreams({ lookupBody: consentRequest() });
       const allowed = await handleConsent(
         req(`?consent_challenge=${CHALLENGE}`),
       );
@@ -328,6 +327,63 @@ describe("handleConsent (GET)", () => {
     } finally {
       delete process.env.OAUTH_API_SCOPE;
     }
+  });
+
+  it("refuses a skip_consent third-party bex.api umbrella grant", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({
+        skip: true,
+        requested_scope: ["openid", "offline_access", "bex.api"],
+      }),
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).status).toBe(400);
+    expect(accepts(calls)).toHaveLength(0);
+  });
+
+  it("strips bex.api from a third-party grant that also requested a granular scope", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({
+        skip: true,
+        requested_scope: [
+          "openid",
+          "offline_access",
+          "bex.read",
+          "bex.api",
+        ],
+      }),
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).status).toBe(302);
+    const body = JSON.parse(accepts(calls)[0].init?.body as string);
+    expect(body.grant_scope).toEqual([
+      "openid",
+      "offline_access",
+      "bex.read",
+    ]);
+  });
+
+  it("keeps bex.api on a platform-marked skip_consent grant", async () => {
+    const calls = mockUpstreams({
+      lookupBody: consentRequest({
+        skip: true,
+        requested_scope: ["openid", "offline_access", "bex.api"],
+        client: {
+          client_id: "bex-mobile",
+          client_name: "bex mobile",
+          skip_consent: true,
+          metadata: { "bex.co/platform-client": true },
+        },
+      }),
+    });
+    const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+    expect((res as Response).status).toBe(302);
+    const body = JSON.parse(accepts(calls)[0].init?.body as string);
+    expect(body.grant_scope).toEqual([
+      "openid",
+      "offline_access",
+      "bex.api",
+    ]);
   });
 
   it("degrades to home on a missing challenge", async () => {
@@ -379,7 +435,7 @@ describe("handleConsentDecision (POST)", () => {
     expect(body.grant_scope).toEqual([
       "openid",
       "offline_access",
-      "bex.api",
+      "bex.read",
     ]);
     expect(body.grant_access_token_audience).toEqual([
       "https://api.bex.co/mcp",
@@ -412,7 +468,7 @@ describe("handleConsentDecision (POST)", () => {
         requested_scope: [
           "openid",
           "offline_access",
-          "bex.api",
+          "bex.read",
           "trojan-scope",
         ],
       }),
@@ -425,7 +481,7 @@ describe("handleConsentDecision (POST)", () => {
     expect(body.grant_scope).toEqual([
       "openid",
       "offline_access",
-      "bex.api",
+      "bex.read",
     ]);
   });
 

@@ -14,4 +14,12 @@ export interface AuditEvent {
   /** Target display name (backend migration 0038); "" on pre-0038 rows — the
    *  row falls back to the raw resource id. */
   targetName: string;
+  /** RelCan… the decision was made against; "" on pre-0088 and system rows. */
+  relation: string;
+  /** Verified OAuth client id; "" on session/machine/pre-0088 rows. */
+  oauthClientId: string;
+  /** Accepted API audience; "" when absent. */
+  oauthAudience: string;
+  /** Canonical capability scopes; empty when absent. */
+  oauthScopes: string[];
 }

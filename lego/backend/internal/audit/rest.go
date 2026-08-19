@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -108,6 +109,18 @@ func renderMetadata(e Event) map[string]string {
 	}
 	if e.RoleTo != nil {
 		md["roleTo"] = *e.RoleTo
+	}
+	if e.Relation != "" {
+		md["relation"] = e.Relation
+	}
+	if e.OAuthClientID != "" {
+		md["oauthClientId"] = e.OAuthClientID
+	}
+	if e.OAuthAudience != "" {
+		md["oauthAudience"] = e.OAuthAudience
+	}
+	if len(e.OAuthScopes) > 0 {
+		md["oauthScopes"] = strings.Join(e.OAuthScopes, " ")
 	}
 	if denied(e) {
 		md["outcome"] = "denied"

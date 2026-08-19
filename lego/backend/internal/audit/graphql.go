@@ -75,6 +75,15 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return e.TargetName
 		})},
+		"relation":      gqlutil.StrField(func(e Event) any { return emptyAsNil(e.Relation) }),
+		"oauthClientId": gqlutil.StrField(func(e Event) any { return emptyAsNil(e.OAuthClientID) }),
+		"oauthAudience": gqlutil.StrField(func(e Event) any { return emptyAsNil(e.OAuthAudience) }),
+		"oauthScopes": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e Event) any {
+			if len(e.OAuthScopes) == 0 {
+				return nil
+			}
+			return e.OAuthScopes
+		})},
 		"metadata": &graphql.Field{Type: auditMetadataGQLType, Resolve: gqlutil.Field(func(e Event) any {
 			if e.MaintenanceModeTo == nil && e.Verb != core.AuditVerbMaintenanceModeURIUpdated {
 				return nil
@@ -111,4 +120,11 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 	}
+}
+
+func emptyAsNil(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
 }

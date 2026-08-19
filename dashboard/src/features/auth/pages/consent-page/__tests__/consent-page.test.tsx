@@ -58,6 +58,32 @@ describe("ConsentPage", () => {
     expect(screen.getByText("https://api.bex.co/mcp")).toBeInTheDocument();
   });
 
+  it("describes granular capabilities and highlights write/sensitive risk", () => {
+    routeData.consent = view({
+      scopes: ["openid", "bex.read", "bex.write", "bex.sensitive"],
+    });
+
+    render(<ConsentPage />);
+
+    expect(
+      screen.getByText(
+        "Read ordinary workspace resources (services, logs, metrics)",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Change workspace resources (deploy, restart, create, delete, billing)",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Read secrets and connection strings (env vars, database URLs, files)",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("bex.write")).toBeInTheDocument();
+    expect(screen.getByText("bex.sensitive")).toBeInTheDocument();
+  });
+
   it("posts the decision back with the challenge and its CSRF token", () => {
     routeData.consent = view();
 

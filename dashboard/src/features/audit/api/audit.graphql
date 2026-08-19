@@ -26,5 +26,9 @@ query AuditLogs(
     status
     resource
     targetName
+    relation
+    oauthClientId
+    oauthAudience
+    oauthScopes
   }
 }

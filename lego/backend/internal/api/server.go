@@ -145,12 +145,11 @@ type Server struct {
 	// legitimately audience-less logins would be refused. See auth.go's
 	// requireAudience field and docs/ADR012-auth.md §7.
 	OAuthRequireAudience bool
-	// OAuthAPIScope (BEX_OAUTH_API_SCOPE) is the control-plane capability
-	// scope an API-audience human token must carry (round-14 #1). Empty falls
-	// back to DefaultAPIScope ("bex.api"); the check only arms when
-	// OAuthResource is set (no resource ⇒ no API-audience enforcement, prior
-	// behavior). If overridden, the dashboard's consent gate
-	// (OAUTH_API_SCOPE) must carry the same value.
+	// OAuthAPIScope is retained for constructor/env compatibility
+	// (BEX_OAUTH_API_SCOPE). The closed vocabulary is not overridable: a
+	// deployment cannot invent a second semantic matrix. Discovery advertises
+	// bex.read / bex.write / bex.sensitive; bex.api is a platform-client
+	// compatibility alias only (w8/m27).
 	OAuthAPIScope string
 	// AuthAdmission, when set, bounds the upstream identity-provider work an
 	// unauthenticated caller can impose (w1/m67 F1, authadmission.go): a
@@ -990,17 +989,17 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 	// unauthenticated MCP client discovers the authorization server (the MCP
 	// authorization spec requires it). One predicate decides both this mount and
 	// the 401 WWW-Authenticate enrichment (resourceMetadataURL), so the hint and
-	// the endpoint can't drift. scopes_supported advertises the control-plane
-	// capability scope (round-14 #1): the MCP authorization spec tells
-	// discovery-driven clients to request the resource's advertised scopes, and
-	// this API refuses an API-audience human token that lacks it.
+	// the endpoint can't drift. scopes_supported advertises the closed
+	// least-privilege vocabulary (w8/m27): discovery-driven clients request
+	// exactly these; bex.api is a platform-client compatibility alias and is
+	// not advertised.
 	if s.resourceMetadataURL() != "" {
 		mux.HandleFunc("GET /.well-known/oauth-protected-resource", func(w http.ResponseWriter, _ *http.Request) {
 			core.WriteJSON(w, http.StatusOK, map[string]any{
 				"resource":                 s.OAuthResource,
 				"authorization_servers":    []string{s.OAuthIssuer},
 				"bearer_methods_supported": []string{"header"},
-				"scopes_supported":         []string{s.apiScope()},
+				"scopes_supported":         core.AdvertisedScopes(),
 			})
 		})
 	}
@@ -1059,8 +1058,9 @@ func (s *Server) newAuthGate() (*oryAuth, error) {
 	return gate, nil
 }
 
-// apiScope resolves the control-plane capability scope (round-14 #1): the
-// explicit OAuthAPIScope when set, DefaultAPIScope otherwise.
+// apiScope is retained so existing constructors and round-14 tests keep
+// compiling. Discovery no longer advertises it; the closed vocabulary is
+// core.AdvertisedScopes.
 func (s *Server) apiScope() string {
 	return cmp.Or(s.OAuthAPIScope, DefaultAPIScope)
 }

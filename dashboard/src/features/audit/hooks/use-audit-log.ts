@@ -20,6 +20,12 @@ function toEvents(raw: AuditLogsQuery["auditLogs"] | undefined): AuditEvent[] {
       status: e.status === "denied" ? "denied" : "success",
       resource: e.resource ?? "",
       targetName: e.targetName ?? "",
+      relation: e.relation ?? "",
+      oauthClientId: e.oauthClientId ?? "",
+      oauthAudience: e.oauthAudience ?? "",
+      oauthScopes: (e.oauthScopes ?? []).filter(
+        (scope): scope is string => typeof scope === "string" && scope !== "",
+      ),
     }));
 }
 
