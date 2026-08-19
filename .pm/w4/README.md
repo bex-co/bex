@@ -56,7 +56,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 - [x] **m37** — `bex upgrade` self-update command (update-channel phase 2) (7 tasks) ← promotes `030` 2026-08-16 (user decision); phase-2 follow-on to m34 (passive notice) + m35 (signed release assets + tap) — done 2026-08-16 (`cli/internal/upgrade/`: resolves newest `bex-cli/v*`, in-process cosign/sigstore signature verification over `checksums.txt` pinned to the release-workflow Fulcio identity + SHA-256 match, atomic self-replace with implicit rollback, Homebrew-path deflection to `brew upgrade`; `update` package extended with asset-bearing `LatestRelease`; 18 tests, live `bex upgrade -n` proven against real GitHub; full live download→replace deferred until a release newer than v0.1.0 exists), moved to `done/m37/`
 - [x] **m82** — Codex round-4 P2/P3 remediation + CLI release-staleness guardrails (10 tasks) ← promotes `029` (codex-security round-4 P2/P3 register) + `032` (release-engineering guardrails) via a full-board `/goal` triage session, 2026-08-16 — done 2026-08-16 (static-server `ReadTimeout` added; mobile push unregister now confirms the remote call before flipping local state; registry-credential `Delete` refuses with 409 while an App still resolves the id, explicitly or via host match; SSH gateway gained PROXY protocol support — a new `internal/proxyproto` leaf package (backend can't import operator's `sniproxy`) + `BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS` + the IngressRouteTCP's `proxyProtocol.version: 2` — so `ssh_sessions.remote_address` records the real client instead of Traefik's pod IP; `029`'s #10 HTTP half/#13/#6 confirmed already fixed by earlier rounds, #11 confirmed accepted risk (ADR072); a weekly CLI release-staleness cron (`scripts/cli-release-staleness.sh` + its workflow) now opens/closes a tracking issue instead of relying on memory; a live GitHub ruleset restricts `bex-cli/v*` tag creation/update/deletion to Admin/Maintain roles), moved to `done/m82/`
 - [x] **m83** — Webhook delivery fairness and bounded per-workspace backlog (7 tasks) ← from `/pm-brainstorm for w4` 2026-08-17 + `w1/048` finding #3 — done 2026-08-17 (transactional 10,000-open-notification workspace bound with `0` disable; fair workspace-ranked `SKIP LOCKED` claims; low-cardinality overflow metrics + sustained-pressure alert; real-Postgres concurrency/race coverage), moved to `done/m83/`
-- [x] **m84** — Durable pending custom-domain claims and DNS-TXT ownership (8 tasks) ← from `/pm-brainstorm for w4` 2026-08-17, promotes `w1/045`
+- [x] **m84** — Durable pending custom-domain claims and DNS-TXT ownership (8 tasks) ← from `/pm-brainstorm for w4` 2026-08-17, promotes `w1/045` — done, moved to `done/m84/`
 
 ## Suggested execution order (2026-07-09 brainstorm)
 
@@ -64,7 +64,9 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- `034` — fresh authorization watchdog for established live-log SSE/WebSocket/NDJSON tails (sub-hour; re-run `can_view_logs` after revocation)
+No open inbox notes.
+
+_(`034` done 2026-08-18 — the live-log tail revalidation watchdog shipped (`BEX_LOG_STREAM_REVALIDATE_INTERVAL`, default 1m, `AuthorizeAppFresh(can_view_logs)`); note moved to `done/`.)_
 
 _(`030` promoted to **m37** 2026-08-16; `031` and `033` deleted in the same triage, see the note below.)_
 

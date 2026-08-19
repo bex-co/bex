@@ -1,4 +1,4 @@
-# w5 · m71 — Key Value metrics: dashboard sends typed id + bex-api matches on the resolved CR name
+# w5 · m73 — Key Value metrics: dashboard sends typed id + bex-api matches on the resolved CR name
 
 **Worker:** worker5 **Goal:** the dashboard Key Value metrics page (`/keyvalue/red-…` — disk, memory, connections) shows real series instead of silently-empty charts **Status:** todo (t001–t005 done; t006 gates on post-deploy live verification)
 
