@@ -874,13 +874,14 @@ func (s *Service) patchService(w http.ResponseWriter, r *http.Request) {
 // consumed by ApplyServicePatch — the REST-specific half of PATCH
 // /v1/services/{id} after decoding: which wire spelling feeds which field.
 //
-// The four documented divergences are expressed here rather than resolved
-// (w1/m78):
-//   - Repo/Image/ImageOwnerID and MaintenanceBeforeFreeDowngrade are
-//     REST-only — filled here, never by update_service's fill (mcp.go
-//     applyServicePatch).
+// The three documented routing divergences (w1/073) are expressed here
+// rather than resolved:
+//   - Repo/Image/ImageOwnerID are REST-only — filled here, never by
+//     update_service's fill (mcp.go applyServicePatch).
 //   - NotificationsToSend and Autoscaling are MCP-only — Render's PATCH body
 //     has no spelling for them, so they stay nil here.
+//
+// MaintenanceBeforeFreeDowngrade is armed here AND in applyServicePatch.
 func (req patchServiceRequest) toServicePatch(f patchFields, maintenanceMode *MaintenanceModeView) ServicePatch {
 	p := ServicePatch{
 		DisplayName: f.displayName,
@@ -893,10 +894,9 @@ func (req patchServiceRequest) toServicePatch(f patchFields, maintenanceMode *Ma
 		Branch:               req.Branch,
 		RegistryCredentialID: f.registryCredentialID,
 		MaintenanceMode:      maintenanceMode,
-		// REST-only (divergence): arm the maintenance-before-plan-on-free-
-		// downgrade reorder. The condition itself lives in the core table;
-		// MCP never sets the flag, so its maintenanceMode always applies at
-		// the late table position.
+		// Arm the maintenance-before-plan-on-free-downgrade reorder. The
+		// condition itself lives in the core table; MCP's fill sets the
+		// same flag (w1/073) so both surfaces apply maintenance first.
 		MaintenanceBeforeFreeDowngrade: true,
 		IdleTTLSeconds:                 f.idleTTL,
 		RootDir:                        req.RootDir,

@@ -30,7 +30,7 @@ import (
 // w1/m68 F2 — the executable-selection class, enumerated.
 //
 // This exists because the class was fixed HALF-WAY once. The codex #1 pass
-// upgraded SetCommands/SetSource/SetSourceAndRegistryCredential (and the agent
+// upgraded SetCommands/SetSourceAndRegistryCredential (and the agent
 // session verbs) from can_operate to can_create on the reasoning that choosing
 // the code a workload runs is create-like, not lifecycle — and left four
 // siblings reaching the identical sink on can_operate. Nothing failed, because

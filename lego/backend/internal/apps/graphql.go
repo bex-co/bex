@@ -990,7 +990,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetBlueprint(p.Context, p.Args["id"].(string), gqlutil.Str(p.Args, "ownerId"))
+				return s.GetBlueprintByID(p.Context, p.Args["id"].(string), gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
 		// validateBlueprint: dry-run parse render.yaml content — per-entry errors, no apply (w2/m15).

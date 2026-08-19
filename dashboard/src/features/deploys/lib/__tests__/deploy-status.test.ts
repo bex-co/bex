@@ -6,7 +6,7 @@ import {
   isCancelableDeployStatus,
   isRollbackableDeployStatus,
   isTerminalDeployStatus,
-} from "./deploy-status";
+} from "../deploy-status";
 
 describe("deployStatusKey", () => {
   it.each([

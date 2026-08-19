@@ -490,11 +490,6 @@ func (s *Service) GetBlueprintByID(ctx context.Context, bpID, ownerID string) (B
 	return v, nil
 }
 
-// GetBlueprint is an alias for GetBlueprintByID.
-func (s *Service) GetBlueprint(ctx context.Context, bpID, ownerID string) (BlueprintView, error) {
-	return s.GetBlueprintByID(ctx, bpID, ownerID)
-}
-
 // ListBlueprints returns all non-disconnected blueprints for a workspace.
 func (s *Service) ListBlueprints(ctx context.Context, ownerID string) ([]BlueprintView, error) {
 	if ownerID != "" {

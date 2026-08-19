@@ -43,7 +43,7 @@ func TestServicePatchTableOrderIsRESTApplicationOrder(t *testing.T) {
 	want := [][]string{
 		{"DisplayName"},
 		{"Repo", "Image", "ImageOwnerID", "Branch", "RegistryCredentialID"},
-		{"MaintenanceBeforeFreeDowngrade"}, // the REST-only reorder row (early maintenance)
+		{"MaintenanceBeforeFreeDowngrade"}, // early maintenance on a free-downgrade (both surfaces)
 		{"Plan"},
 		{"IdleTTLSeconds"},
 		{"MaxShutdownDelaySeconds"},
@@ -116,10 +116,11 @@ func TestServicePatchTableCoversEveryFieldExactlyOnce(t *testing.T) {
 // The old twin-table structure could only compare specs field by field; the
 // order comparison is what w1/m78's single table makes assertable (t006).
 func TestServicePatchCrossSurfaceEquivalence(t *testing.T) {
-	// Every field both surfaces can spell (the four documented divergences are
-	// single-surface by design and therefore excluded): identity, source,
-	// billing plan, runtime, build, delivery, networking, notifications, and
-	// maintenance in one call.
+	// Every field both surfaces can spell (the three documented routing
+	// divergences are single-surface by design and therefore excluded —
+	// repo/image REST-only, notificationsToSend/autoscaling MCP-only):
+	// identity, source, billing plan, runtime, build, delivery, networking,
+	// notifications, and maintenance in one call.
 	mcpArgs := map[string]any{
 		"serviceId":               "web",
 		"displayName":             "Combined",

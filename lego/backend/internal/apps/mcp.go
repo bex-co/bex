@@ -763,29 +763,32 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 
 	p := ServicePatch{
 		DisplayName: in.DisplayName,
-		// REST-only (divergence): Repo/Image/ImageOwnerID (Render's PATCH
-		// source object) and the MaintenanceBeforeFreeDowngrade reorder flag
-		// stay unset — update_service has no repo/image argument and applies
-		// maintenanceMode at its late table position even alongside a free
-		// downgrade. rest.go's toServicePatch fills all four.
-		Branch:                  in.Branch,
-		RegistryCredentialID:    in.RegistryCredentialID,
-		MaintenanceMode:         in.MaintenanceMode.toView(),
-		Plan:                    in.Plan,
-		IdleTTLSeconds:          in.IdleTTLSeconds,
-		MaxShutdownDelaySeconds: in.MaxShutdownDelaySeconds,
-		RootDir:                 in.RootDir,
-		BuildFilter:             in.BuildFilter.toView(),
-		AutoDeploy:              in.AutoDeploy,
-		Schedule:                in.Schedule,
-		Command:                 in.Command,
-		HealthCheckPath:         in.HealthCheckPath,
-		PreDeployCommand:        in.PreDeployCommand,
-		PublishPath:             in.PublishPath,
-		BuildCommand:            in.BuildCommand,
-		StartCommand:            in.StartCommand,
-		DockerfilePath:          in.DockerfilePath,
-		NotifyOnFail:            in.NotifyOnFail,
+		// REST-only (w1/073 routing): Repo/Image/ImageOwnerID — Render's
+		// PATCH source object. update_service has no repo/image argument;
+		// rest.go's toServicePatch fills them. Branch + registryCredentialId
+		// still apply here.
+		Branch:               in.Branch,
+		RegistryCredentialID: in.RegistryCredentialID,
+		// Same reorder REST arms: disable-maintenance + free downgrade must
+		// apply maintenance first (SetPlan refuses a free plan while
+		// maintenance is still on). The condition lives in the core table.
+		MaintenanceBeforeFreeDowngrade: true,
+		MaintenanceMode:                in.MaintenanceMode.toView(),
+		Plan:                           in.Plan,
+		IdleTTLSeconds:                 in.IdleTTLSeconds,
+		MaxShutdownDelaySeconds:        in.MaxShutdownDelaySeconds,
+		RootDir:                        in.RootDir,
+		BuildFilter:                    in.BuildFilter.toView(),
+		AutoDeploy:                     in.AutoDeploy,
+		Schedule:                       in.Schedule,
+		Command:                        in.Command,
+		HealthCheckPath:                in.HealthCheckPath,
+		PreDeployCommand:               in.PreDeployCommand,
+		PublishPath:                    in.PublishPath,
+		BuildCommand:                   in.BuildCommand,
+		StartCommand:                   in.StartCommand,
+		DockerfilePath:                 in.DockerfilePath,
+		NotifyOnFail:                   in.NotifyOnFail,
 		// MCP-only (divergence): notificationsToSend is an update_service
 		// argument Render's PATCH body has no spelling for; REST's
 		// toServicePatch leaves it nil.

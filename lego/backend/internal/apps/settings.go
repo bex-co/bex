@@ -36,17 +36,20 @@ import (
 // exactly its value, including the empty value, which is how a caller clears
 // a field.
 //
-// Four fields are deliberately single-surface — documented divergences the
-// w1/m78 collapse preserves rather than resolves (each is a follow-up product
-// decision, not a refactor side effect); the two fill sites carry matching
-// comments:
+// Three fields are deliberately single-surface — routing that matches Render,
+// not accidental drift (w1/073):
 //
-//   - Repo, Image, ImageOwnerID — REST-only today (Render's PATCH source
-//     object); update_service has no repo/image argument.
-//   - MaintenanceBeforeFreeDowngrade — REST-only today: arms the
-//     maintenance-before-plan reorder on a simultaneous free downgrade.
-//   - NotificationsToSend, Autoscaling — MCP-only today; REST's PATCH body
-//     has no spelling for either.
+//   - Repo, Image, ImageOwnerID — REST-only (Render's PATCH source object);
+//     update_service has no repo/image argument (source-kind switches stay
+//     on REST; MCP still carries branch + registryCredentialId).
+//   - NotificationsToSend, Autoscaling — MCP-only convenience folds; REST
+//     keeps Render's dedicated routes (PATCH …/notification-settings/
+//     overrides/services/{id} and PUT …/autoscaling).
+//
+// MaintenanceBeforeFreeDowngrade is armed on BOTH fills: a simultaneous
+// disable-maintenance + free downgrade must apply maintenance first, or
+// SetPlan refuses the paid-feature validation. The flag is not a surface
+// difference; it only exists so the table row has a field to own.
 type ServicePatch struct {
 	DisplayName *string
 	// Repo/Image/ImageOwnerID: REST-only today (divergence — see type comment).
@@ -55,11 +58,12 @@ type ServicePatch struct {
 	ImageOwnerID         *string
 	Branch               *string
 	RegistryCredentialID *string
-	// MaintenanceBeforeFreeDowngrade arms the REST-only reorder rule: a
-	// simultaneous "disable maintenance + downgrade to free" applies the
-	// maintenance write BEFORE the plan write. The rule's CONDITION lives in
-	// the op table (maintenanceBeforePlan); this flag only enables it —
-	// REST-only today (divergence — see type comment).
+	// MaintenanceBeforeFreeDowngrade arms the reorder rule: a simultaneous
+	// "disable maintenance + downgrade to free" applies the maintenance
+	// write BEFORE the plan write. The rule's CONDITION lives in the op
+	// table (maintenanceBeforePlan); both REST and MCP fills set this true
+	// (w1/073) so a multi-field update_service cannot hit SetPlan's
+	// paid-feature refusal.
 	MaintenanceBeforeFreeDowngrade bool
 	MaintenanceMode                *MaintenanceModeView
 	Plan                           *string
@@ -90,8 +94,8 @@ type ServicePatch struct {
 // maintenanceBeforePlan reports whether the maintenance write must run BEFORE
 // the plan write: a simultaneous downgrade to free must disable maintenance
 // first; every other combination applies the plan first so validation sees
-// the final plan. The REST adapter arms the rule
-// (MaintenanceBeforeFreeDowngrade); MCP does not — the documented divergence.
+// the final plan. Both REST and MCP fills arm MaintenanceBeforeFreeDowngrade
+// (w1/073); the flag is how the table row is owned, not a per-surface switch.
 func (p ServicePatch) maintenanceBeforePlan() bool {
 	return p.MaintenanceBeforeFreeDowngrade &&
 		p.MaintenanceMode != nil && !p.MaintenanceMode.Enabled &&
@@ -142,9 +146,9 @@ var servicePatchTable = []servicePatchOp{
 		},
 	},
 	{
-		// The REST-only maintenance-before-plan reorder as DATA: when armed
-		// and the patch is a simultaneous free downgrade, the maintenance
-		// write runs here, before the plan write, instead of at its late row
+		// The maintenance-before-plan reorder as DATA: when armed and the
+		// patch is a simultaneous free downgrade, the maintenance write
+		// runs here, before the plan write, instead of at its late row
 		// below. Exactly one of the two maintenance rows ever queues.
 		fields:  []string{"MaintenanceBeforeFreeDowngrade"},
 		present: ServicePatch.maintenanceBeforePlan,
