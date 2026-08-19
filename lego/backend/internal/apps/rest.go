@@ -715,8 +715,8 @@ func (s *Service) getService(w http.ResponseWriter, r *http.Request) {
 }
 
 // patchFields is the PATCH /v1/services/{id} body coalesced to one value per
-// setting by resolveFields, so patchService's ops table reads a single source
-// of truth per field.
+// setting by resolveFields, so the ServicePatch fill (toServicePatch) reads a
+// single source of truth per field.
 type patchFields struct {
 	dryRun                                                  bool
 	plan                                                    string
@@ -858,88 +858,72 @@ func (s *Service) patchService(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	// Collect the supported fields as an ordered list of verb calls; an empty
-	// list is the read-only no-op (the guard is derived from the same list, so
-	// a new field can't fall out of sync with it).
-	var ops []func() (AppView, error)
-	addOp := func(present bool, op func() (AppView, error)) {
-		if present {
-			ops = append(ops, op)
-		}
-	}
-	addOp(f.displayName != nil, func() (AppView, error) {
-		return s.SetDisplayName(r.Context(), id, *f.displayName)
-	})
-	addOp(req.Repo != nil || f.image != nil || req.Branch != nil || f.registryCredentialID != nil, func() (AppView, error) {
-		return s.SetSourceAndRegistryCredential(r.Context(), id, sourcePatch{Repo: req.Repo, Image: f.image, Branch: req.Branch, RegistryCredentialID: f.registryCredentialID, ImageOwnerID: f.imageOwnerID})
-	})
-	// A simultaneous downgrade must disable maintenance first; every other
-	// combination applies the plan first so validation sees the final plan.
-	maintenanceBeforePlan := maintenanceMode != nil && !maintenanceMode.Enabled && f.plan == "free"
-	addOp(maintenanceBeforePlan, func() (AppView, error) {
-		return s.ConfigureMaintenanceMode(r.Context(), id, *maintenanceMode)
-	})
-	addOp(f.plan != "", func() (AppView, error) {
-		return s.SetPlan(r.Context(), id, f.plan)
-	})
-	addOp(f.idleTTL != nil, func() (AppView, error) {
-		return s.SetIdleTTL(r.Context(), id, *f.idleTTL)
-	})
-	addOp(f.maxShutdownDelay.Set, func() (AppView, error) {
-		return s.SetMaxShutdownDelay(r.Context(), id, f.maxShutdownDelay.Value)
-	})
-	addOp(req.RootDir != nil, func() (AppView, error) {
-		return s.SetRootDir(r.Context(), id, *req.RootDir)
-	})
-	addOp(req.BuildFilter != nil, func() (AppView, error) {
-		return s.SetBuildFilter(r.Context(), id, req.BuildFilter)
-	})
-	addOp(f.autoDeploy != nil, func() (AppView, error) {
-		return s.SetAutoDeploy(r.Context(), id, *f.autoDeploy)
-	})
-	addOp(f.schedule != nil || req.Command != nil, func() (AppView, error) {
-		return s.SetCronJob(r.Context(), id, f.schedule, req.Command)
-	})
-	addOp(f.healthCheckPath != nil, func() (AppView, error) {
-		return s.SetHealthCheckPath(r.Context(), id, *f.healthCheckPath)
-	})
-	addOp(f.preDeployCommand != nil, func() (AppView, error) {
-		return s.SetPreDeployCommand(r.Context(), id, *f.preDeployCommand)
-	})
-	addOp(f.publishPath != nil, func() (AppView, error) {
-		return s.SetPublishPath(r.Context(), id, *f.publishPath)
-	})
-	addOp(f.buildCommand != nil || f.startCommand != nil, func() (AppView, error) {
-		return s.SetCommands(r.Context(), id, f.buildCommand, f.startCommand)
-	})
-	addOp(f.dockerfilePath != nil, func() (AppView, error) {
-		return s.SetDockerfilePath(r.Context(), id, *f.dockerfilePath)
-	})
-	addOp(req.NotifyOnFail != nil, func() (AppView, error) {
-		return s.SetNotifyOnFail(r.Context(), id, *req.NotifyOnFail)
-	})
-	addOp(req.RenderSubdomainPolicy != nil, func() (AppView, error) {
-		return s.SetSubdomainPolicy(r.Context(), id, *req.RenderSubdomainPolicy)
-	})
-	addOp(f.ipAllowList != nil, func() (AppView, error) {
-		return s.SetIPAllowList(r.Context(), id, *f.ipAllowList)
-	})
-	addOp(maintenanceMode != nil && !maintenanceBeforePlan, func() (AppView, error) {
-		return s.ConfigureMaintenanceMode(r.Context(), id, *maintenanceMode)
-	})
-	if len(ops) == 0 {
-		s.getService(w, r) // no supported field present => read-only no-op
+	// One ordered op table for both patch surfaces (ApplyServicePatch,
+	// settings.go, w1/m78); this handler only maps the wire body onto the
+	// neutral ServicePatch. A body with no supported field runs no ops and
+	// reflects current state — the read-only no-op, as before.
+	app, err := s.ApplyServicePatch(r.Context(), id, req.toServicePatch(f, maintenanceMode))
+	if err != nil {
+		core.WriteErr(w, err)
 		return
 	}
-	var app AppView
-	for _, op := range ops {
-		var err error
-		if app, err = op(); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-	}
 	core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app))
+}
+
+// toServicePatch maps the coalesced REST fields onto the neutral ServicePatch
+// consumed by ApplyServicePatch — the REST-specific half of PATCH
+// /v1/services/{id} after decoding: which wire spelling feeds which field.
+//
+// The four documented divergences are expressed here rather than resolved
+// (w1/m78):
+//   - Repo/Image/ImageOwnerID and MaintenanceBeforeFreeDowngrade are
+//     REST-only — filled here, never by update_service's fill (mcp.go
+//     applyServicePatch).
+//   - NotificationsToSend and Autoscaling are MCP-only — Render's PATCH body
+//     has no spelling for them, so they stay nil here.
+func (req patchServiceRequest) toServicePatch(f patchFields, maintenanceMode *MaintenanceModeView) ServicePatch {
+	p := ServicePatch{
+		DisplayName: f.displayName,
+		// REST-only (divergence): Render's PATCH source object. MCP's
+		// update_service carries branch/registryCredentialId but has no
+		// repo/image/imageOwnerId argument.
+		Repo:                 req.Repo,
+		Image:                f.image,
+		ImageOwnerID:         f.imageOwnerID,
+		Branch:               req.Branch,
+		RegistryCredentialID: f.registryCredentialID,
+		MaintenanceMode:      maintenanceMode,
+		// REST-only (divergence): arm the maintenance-before-plan-on-free-
+		// downgrade reorder. The condition itself lives in the core table;
+		// MCP never sets the flag, so its maintenanceMode always applies at
+		// the late table position.
+		MaintenanceBeforeFreeDowngrade: true,
+		IdleTTLSeconds:                 f.idleTTL,
+		RootDir:                        req.RootDir,
+		BuildFilter:                    req.BuildFilter,
+		AutoDeploy:                     f.autoDeploy,
+		Schedule:                       f.schedule,
+		Command:                        req.Command,
+		HealthCheckPath:                f.healthCheckPath,
+		PreDeployCommand:               f.preDeployCommand,
+		PublishPath:                    f.publishPath,
+		BuildCommand:                   f.buildCommand,
+		StartCommand:                   f.startCommand,
+		DockerfilePath:                 f.dockerfilePath,
+		NotifyOnFail:                   req.NotifyOnFail,
+		RenderSubdomainPolicy:          req.RenderSubdomainPolicy,
+		IPAllowList:                    f.ipAllowList,
+		// MCP-only (divergence): NotificationsToSend and Autoscaling stay
+		// nil — Render's PATCH body has no spelling for either; only
+		// update_service fills them (mcp.go applyServicePatch).
+	}
+	if f.plan != "" {
+		p.Plan = &f.plan
+	}
+	if f.maxShutdownDelay.Set {
+		p.MaxShutdownDelaySeconds = &f.maxShutdownDelay.Value
+	}
+	return p
 }
 
 // createService handles POST /v1/services — create-or-update a service from a

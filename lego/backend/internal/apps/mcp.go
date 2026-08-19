@@ -69,9 +69,9 @@ type scaleArgs struct {
 //   - present => that setting is written to exactly this value, INCLUDING the
 //     empty value, which is how each old setter cleared a field
 //
-// Argument names and apply order mirror PATCH /v1/services/{id}
-// (rest.go patchService), so the same combination behaves identically on both
-// surfaces — that is what keeps the three adapters from drifting now that MCP
+// Argument names mirror PATCH /v1/services/{id}, and both surfaces reduce to
+// the one ordered op table (ApplyServicePatch, settings.go, w1/m78), so the
+// same combination behaves identically on both — structurally, now that MCP
 // no longer has one tool per field.
 //
 // This family is a bex invention throughout: upstream ships no update tools for
@@ -736,11 +736,12 @@ func (in updateServiceArgs) nonPlanFields() string {
 	return strings.Join(names, ", ")
 }
 
-// applyServicePatch runs update_service's present arguments as an ordered list
-// of the same Service verbs the retired setters called, in the order
-// PATCH /v1/services/{id} applies them (rest.go patchService) so a multi-field
-// call behaves identically on both surfaces. A call with no settable field is a
-// read-only no-op that reflects current state, exactly as the REST handler does.
+// applyServicePatch maps update_service's tool arguments onto the neutral
+// ServicePatch and delegates to ApplyServicePatch — the single ordered op
+// table PATCH /v1/services/{id} shares (settings.go, w1/m78) — so a
+// multi-field call behaves identically on both surfaces by construction, not
+// by parallel maintenance. A call with no settable field is a read-only no-op
+// that reflects current state, exactly as the REST handler does.
 func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (AppView, error) {
 	allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
 	if err != nil {
@@ -760,85 +761,50 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 		return s.PreviewSetPlan(ctx, in.ServiceID, *in.Plan)
 	}
 
-	var ops core.PatchOps[AppView]
-	ops.Add(in.DisplayName != nil, func() (AppView, error) {
-		return s.SetDisplayName(ctx, in.ServiceID, *in.DisplayName)
-	})
-	ops.Add(in.Branch != nil || in.RegistryCredentialID != nil, func() (AppView, error) {
-		return s.SetSourceAndRegistryCredential(ctx, in.ServiceID, sourcePatch{Branch: in.Branch, RegistryCredentialID: in.RegistryCredentialID})
-	})
-	ops.Add(in.Plan != nil, func() (AppView, error) {
-		return s.SetPlan(ctx, in.ServiceID, *in.Plan)
-	})
-	ops.Add(in.IdleTTLSeconds != nil, func() (AppView, error) {
-		return s.SetIdleTTL(ctx, in.ServiceID, *in.IdleTTLSeconds)
-	})
-	ops.Add(in.MaxShutdownDelaySeconds != nil, func() (AppView, error) {
-		return s.SetMaxShutdownDelay(ctx, in.ServiceID, *in.MaxShutdownDelaySeconds)
-	})
-	ops.Add(in.RootDir != nil, func() (AppView, error) {
-		return s.SetRootDir(ctx, in.ServiceID, *in.RootDir)
-	})
-	ops.Add(in.BuildFilter != nil, func() (AppView, error) {
-		return s.SetBuildFilter(ctx, in.ServiceID, in.BuildFilter.toView())
-	})
-	ops.Add(in.AutoDeploy != nil, func() (AppView, error) {
-		return s.SetAutoDeploy(ctx, in.ServiceID, *in.AutoDeploy)
-	})
-	// Cron schedule/command share one verb, like the REST op table: sending only
-	// one leaves the other unchanged.
-	ops.Add(in.Schedule != nil || in.Command != nil, func() (AppView, error) {
-		return s.SetCronJob(ctx, in.ServiceID, in.Schedule, in.Command)
-	})
-	ops.Add(in.HealthCheckPath != nil, func() (AppView, error) {
-		return s.SetHealthCheckPath(ctx, in.ServiceID, *in.HealthCheckPath)
-	})
-	ops.Add(in.PreDeployCommand != nil, func() (AppView, error) {
-		return s.SetPreDeployCommand(ctx, in.ServiceID, *in.PreDeployCommand)
-	})
-	// One SetCommands call for both, like the REST op table: setting only one
-	// leaves the other unchanged (nil), which is why the setter pair could fold
-	// without either clearing the other.
-	ops.Add(in.PublishPath != nil, func() (AppView, error) {
-		return s.SetPublishPath(ctx, in.ServiceID, *in.PublishPath)
-	})
-	ops.Add(in.BuildCommand != nil || in.StartCommand != nil, func() (AppView, error) {
-		return s.SetCommands(ctx, in.ServiceID, in.BuildCommand, in.StartCommand)
-	})
-	ops.Add(in.DockerfilePath != nil, func() (AppView, error) {
-		return s.SetDockerfilePath(ctx, in.ServiceID, *in.DockerfilePath)
-	})
-	ops.Add(in.NotifyOnFail != nil, func() (AppView, error) {
-		return s.SetNotifyOnFail(ctx, in.ServiceID, *in.NotifyOnFail)
-	})
-	ops.Add(in.NotificationsToSend != nil, func() (AppView, error) {
-		return s.SetNotificationsToSend(ctx, in.ServiceID, *in.NotificationsToSend)
-	})
-	ops.Add(in.RenderSubdomainPolicy != nil, func() (AppView, error) {
-		return s.SetSubdomainPolicy(ctx, in.ServiceID, *in.RenderSubdomainPolicy)
-	})
-	ops.Add(allowList != nil, func() (AppView, error) {
-		return s.SetIPAllowList(ctx, in.ServiceID, *allowList)
-	})
-	ops.Add(in.MaintenanceMode != nil, func() (AppView, error) {
-		return s.SetMaintenanceMode(ctx, in.ServiceID, *in.MaintenanceMode.toView())
-	})
-	// Autoscaling is a subresource with its own view; the patch tool answers
-	// with the service, so re-read it after the write (get_autoscaling still
-	// serves the autoscaling view, and disable_autoscaling still turns it off).
-	ops.Add(in.Autoscaling != nil, func() (AppView, error) {
-		if _, err := s.SetAutoscaling(ctx, in.ServiceID, SetAutoscalingRequest{
+	p := ServicePatch{
+		DisplayName: in.DisplayName,
+		// REST-only (divergence): Repo/Image/ImageOwnerID (Render's PATCH
+		// source object) and the MaintenanceBeforeFreeDowngrade reorder flag
+		// stay unset — update_service has no repo/image argument and applies
+		// maintenanceMode at its late table position even alongside a free
+		// downgrade. rest.go's toServicePatch fills all four.
+		Branch:                  in.Branch,
+		RegistryCredentialID:    in.RegistryCredentialID,
+		MaintenanceMode:         in.MaintenanceMode.toView(),
+		Plan:                    in.Plan,
+		IdleTTLSeconds:          in.IdleTTLSeconds,
+		MaxShutdownDelaySeconds: in.MaxShutdownDelaySeconds,
+		RootDir:                 in.RootDir,
+		BuildFilter:             in.BuildFilter.toView(),
+		AutoDeploy:              in.AutoDeploy,
+		Schedule:                in.Schedule,
+		Command:                 in.Command,
+		HealthCheckPath:         in.HealthCheckPath,
+		PreDeployCommand:        in.PreDeployCommand,
+		PublishPath:             in.PublishPath,
+		BuildCommand:            in.BuildCommand,
+		StartCommand:            in.StartCommand,
+		DockerfilePath:          in.DockerfilePath,
+		NotifyOnFail:            in.NotifyOnFail,
+		// MCP-only (divergence): notificationsToSend is an update_service
+		// argument Render's PATCH body has no spelling for; REST's
+		// toServicePatch leaves it nil.
+		NotificationsToSend:   in.NotificationsToSend,
+		RenderSubdomainPolicy: in.RenderSubdomainPolicy,
+		IPAllowList:           allowList,
+	}
+	// MCP-only (divergence): autoscaling is an update_service argument REST
+	// keeps behind its own PUT /v1/services/{id}/autoscaling route, so REST's
+	// toServicePatch leaves it nil.
+	if in.Autoscaling != nil {
+		p.Autoscaling = &SetAutoscalingRequest{
 			MinInstances:        in.Autoscaling.MinInstances,
 			MaxInstances:        in.Autoscaling.MaxInstances,
 			TargetCPUPercent:    in.Autoscaling.TargetCPUPercent,
 			TargetMemoryPercent: in.Autoscaling.TargetMemoryPercent,
-		}); err != nil {
-			return AppView{}, err
 		}
-		return s.Get(ctx, in.ServiceID)
-	})
-
-	return ops.Run(func() (AppView, error) { return s.Get(ctx, in.ServiceID) })
+	}
+	return s.ApplyServicePatch(ctx, in.ServiceID, p)
 }
 
 // registerAutoscalingTools tracks Render's PUT/DELETE .../autoscaling contract.
