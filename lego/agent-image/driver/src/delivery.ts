@@ -27,6 +27,7 @@ import { createHash } from "node:crypto";
 import { mkdtemp, open, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { withGitAuthRetry } from "./git-auth-retry.js";
 
 const run = promisify(execFile);
 
@@ -118,7 +119,12 @@ async function remoteBaseBranch(
     await validBranch(cwd, fallback);
     return fallback;
   }
-  const advertised = await git(cwd, ["ls-remote", "--symref", repoUrl, "HEAD"]);
+  const advertised = await gitRemote(cwd, [
+    "ls-remote",
+    "--symref",
+    repoUrl,
+    "HEAD",
+  ]);
   const match = advertised.match(/^ref: refs\/heads\/(.+)\tHEAD$/m);
   const branch = match?.[1] || "main";
   await validBranch(cwd, branch);
@@ -130,7 +136,7 @@ async function remoteOid(
   repoUrl: string,
   branch: string,
 ): Promise<string> {
-  const output = await git(cwd, [
+  const output = await gitRemote(cwd, [
     "ls-remote",
     "--refs",
     repoUrl,
@@ -151,9 +157,16 @@ async function fetchOid(
   try {
     await git(cwd, ["cat-file", "-e", `${oid}^{commit}`]);
   } catch {
-    await git(cwd, ["fetch", "--no-tags", repoUrl, oid]);
+    await gitRemote(cwd, ["fetch", "--no-tags", repoUrl, oid]);
   }
   await git(cwd, ["cat-file", "-e", `${oid}^{commit}`]);
+}
+
+// gitRemote retries ls-remote/fetch against the session git proxy. A restored
+// workspace skips cloneWithRetry (the tree is already a repo) and would otherwise
+// fail closed on the first 403, which is what aborted the w2/m77 rehydrate walk.
+async function gitRemote(cwd: string, args: string[]): Promise<string> {
+  return withGitAuthRetry(() => git(cwd, args));
 }
 
 async function captureDeliveryBaseline(
@@ -244,20 +257,9 @@ export async function restoreWorkspace(
 // startup race into a brief delay instead of a failed session; each retry cleans
 // any partial clone so `git clone .` sees an empty directory.
 async function cloneWithRetry(cwd: string, repoUrl: string): Promise<void> {
-  const attempts = 10;
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    try {
-      await git(cwd, ["clone", repoUrl, "."]);
-      return;
-    } catch (error) {
-      lastError = error;
-      if (attempt === attempts) break;
-      await cleanDirectory(cwd);
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-    }
-  }
-  throw lastError;
+  await withGitAuthRetry(() => git(cwd, ["clone", repoUrl, "."]), {
+    onRetry: () => cleanDirectory(cwd),
+  });
 }
 
 // cleanDirectory empties a directory (removing a failed clone's partial state)
