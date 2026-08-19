@@ -1,9 +1,7 @@
 import { useCallback, useState } from "react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { LogOut, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
-import { createFrontendApi } from "@/common/lib/ory/frontend";
-import { invalidateSessionCache } from "@/common/server-fn/session";
-import { getClient } from "@/common/apollo/client";
+import { endBrowserSession } from "@/common/lib/ory/logout";
 import { EMPTY_LOGIN_SEARCH } from "@/common/lib/auth/auth";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
@@ -36,24 +34,7 @@ export default function LogoutPage() {
   const performLogout = useCallback(async () => {
     try {
       setStatus("logging-out");
-
-      const api = createFrontendApi();
-      const { logout_url } = await api.createBrowserLogoutFlow();
-      const response = await fetch(logout_url, { credentials: "include" });
-      // fetch resolves on 4xx/5xx, so an unchecked response would hide a failed
-      // logout. Require a successful provider response before treating the
-      // session as ended.
-      if (!response.ok) {
-        throw new Error(`logout request failed: ${response.status}`);
-      }
-
-      // Provider session is cleared — now it is safe to drop cached
-      // account-scoped data (the CSR Apollo client is a module singleton that
-      // survives logout, so without this the next account could read the
-      // previous one's cached workspaces/resources, codex-security #24) and
-      // leave the page.
-      invalidateSessionCache();
-      void getClient().clearStore();
+      await endBrowserSession();
       await router.invalidate();
 
       setStatus("success");
