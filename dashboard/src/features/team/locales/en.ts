@@ -71,6 +71,10 @@ const enTeam: Record<string, TranslationEntry> = {
     message: "teammate@example.com",
     description: "Invite dialog email field placeholder",
   },
+  "team.fieldEmailInvalid": {
+    message: "Enter a valid email address, e.g. teammate@example.com.",
+    description: "Invite dialog validation message for a malformed email",
+  },
   "team.fieldRole": {
     message: "Role",
     description: "Invite dialog role field label",

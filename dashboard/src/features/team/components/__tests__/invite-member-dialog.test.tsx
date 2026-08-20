@@ -9,12 +9,18 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 const invite = vi.fn();
-const inviteState: { busy: boolean; planLimit: string | null } = {
+const clearRefusal = vi.fn();
+const inviteState: {
+  busy: boolean;
+  planLimit: string | null;
+  refusal: string | null;
+} = {
   busy: false,
   planLimit: null,
+  refusal: null,
 };
 vi.mock("@/features/team/hooks/use-invite-member", () => ({
-  useInviteMember: () => ({ invite, ...inviteState }),
+  useInviteMember: () => ({ invite, clearRefusal, ...inviteState }),
 }));
 
 const onInvited = vi.fn();
@@ -23,8 +29,10 @@ beforeEach(() => {
   mockNavigate.mockReset();
   invite.mockReset();
   onInvited.mockReset();
+  clearRefusal.mockReset();
   inviteState.busy = false;
   inviteState.planLimit = null;
+  inviteState.refusal = null;
 });
 
 /** Opens the dialog (its trigger button lives in the team panel's header). */
@@ -90,5 +98,51 @@ describe("InviteMemberDialog", () => {
         screen.queryByRole("button", { name: /Change plan/ }),
       ).not.toBeInTheDocument();
     });
+  });
+});
+
+// w1/m82 — the dialog used to enable Send for any non-empty string, so an
+// obviously-malformed address only failed after a round trip, and the refusal
+// came back as a generic "Couldn't invite {email}" toast that never said why.
+describe("InviteMemberDialog validation and refusals", () => {
+  it("keeps Send disabled and explains a malformed email without calling the mutation", async () => {
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    await user.type(screen.getByLabelText("Email address"), "not-an-email");
+    expect(screen.getByText(/Enter a valid email address/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send invite" })).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Send invite" }));
+    expect(invite).not.toHaveBeenCalled();
+
+    // Completing the address clears the hint and arms Send.
+    await user.clear(screen.getByLabelText("Email address"));
+    await user.type(screen.getByLabelText("Email address"), "ok@example.com");
+    expect(
+      screen.queryByText(/Enter a valid email address/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send invite" })).toBeEnabled();
+  });
+
+  it("shows the server's own refusal inline instead of a generic message", async () => {
+    // e.g. inviting someone who already belongs to the workspace (w1/m82).
+    inviteState.refusal =
+      "Teammate@example.com is already a member of this workspace; change their role instead of inviting them again";
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /already a member of this workspace/,
+    );
+  });
+
+  it("clears a standing refusal when the address is edited", async () => {
+    inviteState.refusal = "Already a member";
+    const user = userEvent.setup();
+    await openDialog(user);
+
+    await user.type(screen.getByLabelText("Email address"), "a");
+    expect(clearRefusal).toHaveBeenCalled();
   });
 });

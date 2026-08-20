@@ -3452,3 +3452,102 @@ func TestPGReclaimEmptyBlueprintGroupings(t *testing.T) {
 		t.Fatalf("populated project must survive: %v", err)
 	}
 }
+
+// TestRedeemingAnInviteNeverRerolesAnExistingMember is w1/m82's regression
+// against a real database. Redemption used to upsert
+// `ON CONFLICT ... DO UPDATE SET role = EXCLUDED.role`, so a pending invite for
+// someone who already belonged to the workspace rewrote their role the next
+// time the auth gate ran — inviting an established ADMIN at the default role
+// silently demoted them, with the UI reporting only "Invitation sent".
+// Redemption now creates memberships and never re-roles one; the invite is
+// still marked accepted (so it stops lingering) and the returned invite carries
+// the EFFECTIVE role, which is what the caller writes into OpenFGA — so the row
+// and the tuple cannot disagree.
+func TestRedeemingAnInviteNeverRerolesAnExistingMember(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		t.Skip("BEX_TEST_DB_URI not set")
+	}
+	ctx := context.Background()
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	if _, err := pool.Exec(ctx, `TRUNCATE tenants CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	s := NewPGStore(pool)
+	exp := time.Now().Add(24 * time.Hour)
+
+	// Scale offers the full role ladder, so nothing here is refused by the plan.
+	ten, err := s.CreateWorkspace(ctx, "acme", PlanScale, "identity-admin")
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	// The workspace creator is an admin; confirm the starting point.
+	if m, err := s.GetTenantMember(ctx, ten.ID, "identity-admin"); err != nil || m.Role != "admin" {
+		t.Fatalf("creator role = %q (%v), want admin", m.Role, err)
+	}
+
+	// An admin "invites" that established member again at a LOWER role — the
+	// exact sequence that demoted a live admin.
+	if _, err := s.CreateInvite(ctx, ten.ID, "boss@example.com", "developer", "tok-demote", "identity-admin", exp); err != nil {
+		t.Fatalf("invite existing member: %v", err)
+	}
+	accepted, err := s.AcceptInvitesForEmail(ctx, "boss@example.com", "identity-admin")
+	if err != nil {
+		t.Fatalf("redeem: %v", err)
+	}
+	// The invite is consumed (no dangling pending row) ...
+	if len(accepted) != 1 {
+		t.Fatalf("accepted = %d, want 1 (the invite is still redeemed)", len(accepted))
+	}
+	// ... but the membership keeps its role.
+	m, err := s.GetTenantMember(ctx, ten.ID, "identity-admin")
+	if err != nil {
+		t.Fatalf("get member: %v", err)
+	}
+	if m.Role != "admin" {
+		t.Errorf("role after redeeming a lower-role invite = %q, want admin (redemption must never re-role a member)", m.Role)
+	}
+	// The reported role is the EFFECTIVE one, so the OpenFGA tuple the caller
+	// writes from it matches the row rather than granting the invited role.
+	if accepted[0].Role != "admin" {
+		t.Errorf("accepted invite role = %q, want the effective admin (row/tuple must agree)", accepted[0].Role)
+	}
+
+	// A genuinely new invitee still joins with exactly the invited role.
+	if _, err := s.CreateInvite(ctx, ten.ID, "newcomer@example.com", "developer", "tok-new", "identity-admin", exp); err != nil {
+		t.Fatalf("invite newcomer: %v", err)
+	}
+	newAccepted, err := s.AcceptInvitesForEmail(ctx, "newcomer@example.com", "identity-newcomer")
+	if err != nil || len(newAccepted) != 1 {
+		t.Fatalf("redeem newcomer = %d (%v), want 1", len(newAccepted), err)
+	}
+	if m, err := s.GetTenantMember(ctx, ten.ID, "identity-newcomer"); err != nil || m.Role != "developer" {
+		t.Errorf("newcomer role = %q (%v), want developer", m.Role, err)
+	}
+	if newAccepted[0].Role != "developer" {
+		t.Errorf("accepted newcomer role = %q, want developer", newAccepted[0].Role)
+	}
+
+	// The direct-accept (token) path shares redeemInvite, so it must hold the
+	// same line: an emailed link cannot re-role an established member either.
+	if _, err := s.CreateInvite(ctx, ten.ID, "link@example.com", "viewer", "tok-link", "identity-admin", exp); err != nil {
+		t.Fatalf("invite for token path: %v", err)
+	}
+	tokAccepted, err := s.AcceptInviteByToken(ctx, "tok-link", "identity-admin")
+	if err != nil {
+		t.Fatalf("accept by token: %v", err)
+	}
+	if tokAccepted.Role != "admin" {
+		t.Errorf("token-accepted role = %q, want the effective admin", tokAccepted.Role)
+	}
+	if m, err := s.GetTenantMember(ctx, ten.ID, "identity-admin"); err != nil || m.Role != "admin" {
+		t.Errorf("role after token accept = %q (%v), want admin", m.Role, err)
+	}
+}
