@@ -44,7 +44,7 @@ describe("endBrowserSession", () => {
     expect(clearStore).toHaveBeenCalledOnce();
   });
 
-  it("does not clear caches when the provider logout request fails", async () => {
+  it("does not clear caches when the provider logout request fails with 5xx", async () => {
     createBrowserLogoutFlow.mockResolvedValue({
       logout_url: "https://auth.example/logout?token=abc",
     });
@@ -56,5 +56,31 @@ describe("endBrowserSession", () => {
 
     expect(invalidateSessionCache).not.toHaveBeenCalled();
     expect(clearStore).not.toHaveBeenCalled();
+  });
+
+  it("treats a 401 from createBrowserLogoutFlow as already signed out", async () => {
+    createBrowserLogoutFlow.mockRejectedValue({
+      response: new Response(null, { status: 401 }),
+    });
+    clearStore.mockResolvedValue(undefined);
+
+    await endBrowserSession();
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(invalidateSessionCache).toHaveBeenCalledOnce();
+    expect(clearStore).toHaveBeenCalledOnce();
+  });
+
+  it("treats a 401 from the logout URL fetch as already signed out", async () => {
+    createBrowserLogoutFlow.mockResolvedValue({
+      logout_url: "https://auth.example/logout?token=abc",
+    });
+    vi.mocked(fetch).mockResolvedValue(new Response(null, { status: 401 }));
+    clearStore.mockResolvedValue(undefined);
+
+    await endBrowserSession();
+
+    expect(invalidateSessionCache).toHaveBeenCalledOnce();
+    expect(clearStore).toHaveBeenCalledOnce();
   });
 });

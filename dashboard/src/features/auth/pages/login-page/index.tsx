@@ -1,7 +1,8 @@
 import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { Login } from "@ory/elements-react/theme";
 import { useOryFlow, clearStoredOryFlow } from "@/common/hooks/use-ory-flow";
-import { useOryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
+import { useOryConfig } from "@/common/lib/ory/config";
+import { oryAuthFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { safeNext } from "@/common/lib/safe-next";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -37,7 +38,7 @@ export default function LoginPage() {
         <Login
           flow={flow}
           config={oryConfig}
-          components={oryHideCardLogo}
+          components={oryAuthFormOverrides}
           onSuccess={async () => {
             clearStoredOryFlow("login");
             // Drop any data cached for a prior account before the new session

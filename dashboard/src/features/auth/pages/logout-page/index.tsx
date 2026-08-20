@@ -67,12 +67,12 @@ function logoutStatusCopy(
  * malicious site link to /auth/logout and log the user out.
  *
  * SECURITY (codex #6): the provider-side session is the real boundary, so we
- * treat the flow as done ONLY when Kratos returns a successful response. A failed
- * or errored logout keeps a blocking error with a retry — never a "signed out"
- * screen or a redirect to login — because presenting success while the HttpOnly
- * Kratos cookie is still valid would let the next user of this browser inherit
- * the session. Local cache clearing and navigation happen only on real success
- * (endBrowserSession, @/common/lib/ory/logout, handles the cache clear).
+ * treat the flow as done when Kratos returns success OR reports there is
+ * already no session (401/403 — unsigned visitor). A true provider failure
+ * (5xx/network) keeps a blocking error with a retry — never a "signed out"
+ * screen while the HttpOnly cookie might still be valid. Local cache clearing
+ * and navigation happen only on real success / already-signed-out
+ * (`endBrowserSession` in `@/common/lib/ory/logout`).
  */
 export default function LogoutPage() {
   const navigate = useNavigate();

@@ -22,7 +22,7 @@ const enAuth: Record<string, TranslationEntry> = {
     description: "Forgot-password page hero title",
   },
   "auth.forgotPasswordSubtitle": {
-    message: "Enter your email to receive a recovery code",
+    message: "Enter the email for your account to get a one-time access code",
     description: "Forgot-password page hero subtitle",
   },
   "auth.resetPasswordTitle": {
@@ -35,8 +35,10 @@ const enAuth: Record<string, TranslationEntry> = {
     description: "Verification page hero title",
   },
   "auth.verificationSubtitle": {
-    message: "Enter the code we sent to confirm your address",
-    description: "Verification page hero subtitle",
+    message:
+      "Enter the email address associated with your account to continue",
+    description:
+      "Verification page hero subtitle (email-first Ory step; code arrives after)",
   },
   "auth.settingsTitle": {
     message: "Settings",
@@ -332,7 +334,8 @@ const enAuth: Record<string, TranslationEntry> = {
       "Device confirm page heading when there is no live device request",
   },
   "auth.deviceExpiredSubtitle": {
-    message: "Start `bex login` again from your terminal.",
+    message:
+      "This page needs a device code from `bex login`, or the code has expired. Start the command again from your terminal.",
     description:
       "Device confirm page subtext when there is no live device request to confirm",
   },
