@@ -6,9 +6,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 readonly UPSTREAM_MODULE=github.com/render-oss/cli
-readonly EXPECTED_RELEASE=v2.22.0
-readonly EXPECTED_COMMIT=d8fd7c2bb09d56beaca5df15ac2aefcb5ae5f427
-readonly EXPECTED_VERSION=v1.1.3-0.20260721145337-d8fd7c2bb09d
+readonly EXPECTED_RELEASE=v2.24.0
+readonly EXPECTED_COMMIT=fe8a6188119ee1a53dcf3e5c19f6a5302e840c3f
+readonly EXPECTED_VERSION=v1.1.3-0.20260819172634-fe8a6188119e
 readonly PIN_RECORD=lego/cli/UPSTREAM_RENDER_CLI.md
 
 fail() {
