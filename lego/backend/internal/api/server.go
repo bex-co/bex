@@ -358,7 +358,10 @@ type Deps struct {
 	WorkspaceStore   workspaces.WorkspaceStore
 	WorkspaceGranter workspaces.WorkspaceGranter
 	WorkspaceRevoker workspaces.WorkspaceRevoker
-	WorkspaceKick    func()
+	// EnterpriseEntitlement is the operator-approved allow-list for the custom
+	// Enterprise workspace tier. Nil keeps that tier unavailable by default.
+	EnterpriseEntitlement workspaces.EnterpriseEntitlement
+	WorkspaceKick         func()
 	// WorkspacePreCascadePurgers run in workspaces.Service.Delete BEFORE the
 	// tenant row is dropped (retry-safe teardown of secrets, env groups,
 	// Databases/KeyValues, sandboxes, Stripe); WorkspacePostCascadePurgers run
@@ -521,14 +524,15 @@ func datastoreLogsAdapter(logSvc *logs.Service) func(context.Context, string, da
 // set the HTTP config fields (CORSOrigin/HydraAdminURL/KratosURL) on the result.
 func NewServer(base *core.Base, d Deps) *Server {
 	workspaceSvc := &workspaces.Service{
-		Base:               base,
-		Store:              d.WorkspaceStore,
-		Granter:            d.WorkspaceGranter,
-		Revoker:            d.WorkspaceRevoker,
-		Kick:               d.WorkspaceKick,
-		PreCascadePurgers:  d.WorkspacePreCascadePurgers,
-		PostCascadePurgers: d.WorkspacePostCascadePurgers,
-		Identities:         d.Identities,
+		Base:                  base,
+		Store:                 d.WorkspaceStore,
+		Granter:               d.WorkspaceGranter,
+		Revoker:               d.WorkspaceRevoker,
+		EnterpriseEntitlement: d.EnterpriseEntitlement,
+		Kick:                  d.WorkspaceKick,
+		PreCascadePurgers:     d.WorkspacePreCascadePurgers,
+		PostCascadePurgers:    d.WorkspacePostCascadePurgers,
+		Identities:            d.Identities,
 		// APIKeys satisfies workspaces.KeyOwnerReader structurally (KeyOwner has
 		// the identical signature) — no adapter, and no cache: the lookup runs at
 		// most once per GET /v1/users (cold path), only for API-key callers.

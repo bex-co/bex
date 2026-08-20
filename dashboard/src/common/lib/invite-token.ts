@@ -23,11 +23,33 @@ function scrubInviteFromURL(url: URL, scrubAll = false) {
   }
 
   url.searchParams.delete("invite");
+  const fragment = url.hash.startsWith("#") ? url.hash.slice(1) : url.hash;
+  if (fragment) {
+    const fragmentParams = new URLSearchParams(fragment);
+    if (fragmentParams.has("invite")) {
+      fragmentParams.delete("invite");
+      const nextFragment = fragmentParams.toString();
+      url.hash = nextFragment ? `#${nextFragment}` : "";
+    }
+  }
   window.history.replaceState(
     window.history.state,
     "",
     `${url.pathname}${url.search}${url.hash}`,
   );
+}
+
+function inviteValuesFromURL(url: URL): string[] {
+  const queryValues = url.searchParams.getAll("invite");
+  // The dedicated email handoff uses a fragment so the bearer is absent from
+  // the initial HTTP request. Keep accepting the historical query shape for
+  // already-issued links and auth-flow compatibility, but never write it back
+  // into a URL.
+  const fragment = url.hash.startsWith("#") ? url.hash.slice(1) : url.hash;
+  const fragmentValues = fragment
+    ? new URLSearchParams(fragment).getAll("invite")
+    : [];
+  return [...queryValues, ...fragmentValues];
 }
 
 function clearPendingInviteToken(): boolean {
@@ -72,7 +94,7 @@ export function stashInviteTokenFromURL(options?: {
   if (typeof window === "undefined") return "none";
 
   const url = new URL(window.location.href);
-  const values = url.searchParams.getAll("invite");
+  const values = inviteValuesFromURL(url);
   if (values.length === 0) return "none";
 
   const token = parseInviteToken(values.length === 1 ? values[0] : null);
@@ -92,7 +114,7 @@ export function peekPendingInviteToken(): string | null {
   if (typeof window === "undefined") return null;
 
   const url = new URL(window.location.href);
-  const values = url.searchParams.getAll("invite");
+  const values = inviteValuesFromURL(url);
   if (values.length > 0) {
     return parseInviteToken(values.length === 1 ? values[0] : null);
   }
@@ -114,7 +136,7 @@ export function takePendingInviteToken(): string | null {
   if (typeof window === "undefined") return null;
 
   const url = new URL(window.location.href);
-  const values = url.searchParams.getAll("invite");
+  const values = inviteValuesFromURL(url);
   if (values.length > 0) {
     scrubInviteFromURL(url);
     if (!clearPendingInviteToken()) return null;

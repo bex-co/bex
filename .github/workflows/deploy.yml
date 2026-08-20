@@ -31,9 +31,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write # GitOps write-back: pin the pushed image digests into git (w1/m7 t002)
-  packages: write
-  id-token: write # w6/m6 t002: keyless cosign signing (GitHub Actions OIDC identity)
+  contents: read
 
 # Digest write-back and the subsequent Argo rollout are one production
 # transaction. Queue main pushes so two runs cannot race their four image
@@ -53,15 +51,19 @@ env:
 jobs:
   # --- gates: all product + carried-controller tests pass before any image build ---
   test-backend:
+    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/backend-test.yml
 
   test-operator:
+    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/operator-test.yml
 
   test-dashboard:
+    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/dashboard-test.yml
 
   test-opensandbox-controller:
+    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/opensandbox-controller-test.yml
 
   # --- secret scanning: gitleaks over the pushed commits (w7/002) ---
@@ -70,6 +72,7 @@ jobs:
   # Distinct from trivy CVE scanning (w7/m10 — image vulnerabilities) and
   # Dependabot (w1/006 — dependency CVEs): this catches secrets in the repo itself.
   secret-scan:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -117,6 +120,7 @@ jobs:
   # re-checked there. cancel-in-progress:false is untouched — a running build is
   # never cancelled; only a not-yet-started one is skipped. ---
   check-supersession:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       superseded: ${{ steps.check.outputs.superseded }}
@@ -131,6 +135,10 @@ jobs:
           fi
 
   build-and-deploy:
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
     needs: [test-backend, test-operator, test-dashboard, test-opensandbox-controller, secret-scan, check-supersession]
     # A run superseded before its build starts is skipped here (neutral, no
     # build). A run superseded DURING its build is caught by the write-back guard

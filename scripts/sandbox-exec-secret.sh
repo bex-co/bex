@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/secret-install.sh
+. "$script_dir/lib/secret-install.sh"
 
 # Install the shared `render ea sandbox exec` HMAC secret (w3/m33,
 # docs/render-artifacts/ea-sandbox.md §exec) without ever rendering its bytes to
@@ -40,9 +43,7 @@ if [[ -z "$secret_value" ]]; then
   echo "generated a new 256-bit sandbox exec key"
 fi
 
-kubectl -n "$namespace" create secret generic "$secret_name" \
-  --from-literal=secret="$secret_value" \
-  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+apply_secret "$namespace" "$secret_name" Opaque secret "$secret_value"
 unset secret_value
 
 # Both processes read BEX_SANDBOX_EXEC_SECRET once at startup, so roll them after

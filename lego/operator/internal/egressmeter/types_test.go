@@ -17,6 +17,7 @@ limitations under the License.
 package egressmeter
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,7 +27,29 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/fake"
+	ktesting "k8s.io/client-go/testing"
 )
+
+func TestReconcilePodsListsAllNamespacesOnNode(t *testing.T) {
+	client := fake.NewSimpleClientset()
+	meter := &Meter{config: Config{NodeName: "node-a"}, client: client}
+	meter.config.defaults()
+
+	// The fake client records the list action before reconcile reaches the
+	// deliberately unavailable BPF maps in this unit test.
+	_ = meter.reconcilePods(context.Background())
+	actions := client.Actions()
+	if len(actions) == 0 {
+		t.Fatal("reconcile did not list Pods")
+	}
+	list, ok := actions[0].(ktesting.ListAction)
+	if !ok {
+		t.Fatalf("first action = %T, want ListAction", actions[0])
+	}
+	if list.GetNamespace() != "" {
+		t.Fatalf("Pod list namespace = %q, want cluster-wide", list.GetNamespace())
+	}
+}
 
 func TestProgramUsesPostPolicyNetfilterAndPodIPMaps(t *testing.T) {
 	spec, err := loadBpf()

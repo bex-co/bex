@@ -49,6 +49,16 @@ const defaultOAuthBaseURL = "https://github.com"
 // acceptHeader is GitHub's recommended REST media type.
 const acceptHeader = "application/vnd.github+json"
 
+const (
+	maxInventoryPages       = 100
+	maxInventoryItems       = 10_000
+	maxInventoryPageBytes   = 8 << 20
+	maxInventoryTotalBytes  = 64 << 20
+	inventoryRequestTimeout = 30 * time.Second
+)
+
+var errInventoryBound = errors.New("github: inventory request exceeded safety bound")
+
 // Config is the GitHub App configuration read once at startup from
 // BEX_GITHUB_APP_ID / BEX_GITHUB_APP_PRIVATE_KEY / BEX_GITHUB_APP_SLUG. Any
 // field empty (or an unparseable id/key) => NewClient errors and the caller
@@ -413,6 +423,9 @@ func (c *Client) listUserInstallations(ctx context.Context, userToken string) ([
 		if err := json.Unmarshal(body, &page); err != nil {
 			return fmt.Errorf("github: decode user installations: %w", err)
 		}
+		if len(out)+len(page.Installations) > maxInventoryItems {
+			return errInventoryBound
+		}
 		for _, i := range page.Installations {
 			out = append(out, Installation{ID: i.ID, AccountLogin: i.Account.Login, AccountType: i.Account.Type})
 		}
@@ -589,21 +602,27 @@ type ghRepo struct {
 	CloneURL      string `json:"clone_url"`
 }
 
-// ListRepos returns every repository the installation can access, following
-// pagination (per_page=100, GitHub `Link` header rel="next"). It mints a fresh
-// installation token first.
+// ListRepos returns the bounded repository inventory the installation can
+// access, following pagination (per_page=100, GitHub `Link` header rel="next").
+// Page, item, byte, origin, cycle, and wall-clock limits prevent a connected
+// installation from consuming an API worker or GitHub quota indefinitely.
 func (c *Client) ListRepos(ctx context.Context, installationID int64) ([]Repo, error) {
-	tok, err := c.MintInstallationToken(ctx, installationID)
+	inventoryCtx, cancel := context.WithTimeout(ctx, inventoryRequestTimeout)
+	defer cancel()
+	tok, err := c.MintInstallationToken(inventoryCtx, installationID)
 	if err != nil {
 		return nil, err
 	}
 	var repos []Repo
-	err = c.pagedGet(ctx, c.baseURL+"/installation/repositories?per_page=100", "token "+tok.Token, "list repos", func(body []byte) error {
+	err = c.pagedGet(inventoryCtx, c.baseURL+"/installation/repositories?per_page=100", "token "+tok.Token, "list repos", func(body []byte) error {
 		var page struct {
 			Repositories []ghRepo `json:"repositories"`
 		}
 		if err := json.Unmarshal(body, &page); err != nil {
 			return fmt.Errorf("github: decode repos response: %w", err)
+		}
+		if len(repos)+len(page.Repositories) > maxInventoryItems {
+			return errInventoryBound
 		}
 		for _, r := range page.Repositories {
 			repos = append(repos, Repo{
@@ -623,14 +642,21 @@ func (c *Client) ListRepos(ctx context.Context, installationID int64) ([]Repo, e
 	return repos, nil
 }
 
-// pagedGet walks a Link-paginated GitHub collection (per_page=100, rel="next"),
-// invoking onPage with each raw response body. authorization is the full header
-// value (scheme included) — installation tokens use "token …", user tokens
-// "Bearer …". One copy of the loop for the three paginated readers (repos,
-// branches, user installations).
+// pagedGet walks a bounded Link-paginated GitHub collection (per_page=100,
+// rel="next"), invoking onPage with each raw response body. authorization is
+// the full header value (scheme included) — installation tokens use "token …",
+// user tokens "Bearer …". One copy of the loop for the three paginated readers
+// (repos, branches, user installations).
 func (c *Client) pagedGet(ctx context.Context, url, authorization, opDesc string, onPage func(body []byte) error) error {
-	for url != "" {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	inventoryCtx, cancel := context.WithTimeout(ctx, inventoryRequestTimeout)
+	defer cancel()
+	seen := map[string]struct{}{url: {}}
+	totalBytes := 0
+	for page := 0; url != ""; page++ {
+		if page >= maxInventoryPages {
+			return errInventoryBound
+		}
+		req, err := http.NewRequestWithContext(inventoryCtx, http.MethodGet, url, nil)
 		if err != nil {
 			return err
 		}
@@ -640,14 +666,30 @@ func (c *Client) pagedGet(ctx context.Context, url, authorization, opDesc string
 		if err != nil {
 			return fmt.Errorf("github: %s: %w", opDesc, err)
 		}
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxInventoryPageBytes+1))
 		nextURL := nextLink(resp.Header.Get("Link"))
 		resp.Body.Close()
+		if readErr != nil {
+			return fmt.Errorf("github: read %s response: %w", opDesc, readErr)
+		}
+		if len(body) > maxInventoryPageBytes || totalBytes+len(body) > maxInventoryTotalBytes {
+			return errInventoryBound
+		}
+		totalBytes += len(body)
 		if resp.StatusCode != http.StatusOK {
 			return &APIError{Status: resp.StatusCode, Body: string(body)}
 		}
 		if err := onPage(body); err != nil {
 			return err
+		}
+		if nextURL != "" {
+			if !sameOrigin(c.baseURL, nextURL) {
+				return errInventoryBound
+			}
+			if _, ok := seen[nextURL]; ok {
+				return errInventoryBound
+			}
+			seen[nextURL] = struct{}{}
 		}
 		url = nextURL
 	}
@@ -659,20 +701,24 @@ type ghBranch struct {
 	Name string `json:"name"`
 }
 
-// ListBranches returns every branch name of owner/repo the installation can
-// access, following pagination (per_page=100, `Link` rel="next"). It mints a
-// fresh installation token first. (w5/m54 — feeds the dashboard's searchable
-// Branch combobox.)
+// ListBranches returns a bounded branch inventory of owner/repo, following
+// pagination (per_page=100, `Link` rel="next"). It mints a fresh installation
+// token first. (w5/m54 — feeds the dashboard's searchable Branch combobox.)
 func (c *Client) ListBranches(ctx context.Context, installationID int64, owner, repo string) ([]string, error) {
-	tok, err := c.MintInstallationToken(ctx, installationID)
+	inventoryCtx, cancel := context.WithTimeout(ctx, inventoryRequestTimeout)
+	defer cancel()
+	tok, err := c.MintInstallationToken(inventoryCtx, installationID)
 	if err != nil {
 		return nil, err
 	}
 	var branches []string
-	err = c.pagedGet(ctx, c.baseURL+"/repos/"+owner+"/"+repo+"/branches?per_page=100", "token "+tok.Token, "list branches", func(body []byte) error {
+	err = c.pagedGet(inventoryCtx, c.baseURL+"/repos/"+owner+"/"+repo+"/branches?per_page=100", "token "+tok.Token, "list branches", func(body []byte) error {
 		var page []ghBranch
 		if err := json.Unmarshal(body, &page); err != nil {
 			return fmt.Errorf("github: decode branches response: %w", err)
+		}
+		if len(branches)+len(page) > maxInventoryItems {
+			return errInventoryBound
 		}
 		for _, b := range page {
 			branches = append(branches, b.Name)
@@ -683,6 +729,18 @@ func (c *Client) ListBranches(ctx context.Context, installationID int64, owner, 
 		return nil, err
 	}
 	return branches, nil
+}
+
+func sameOrigin(base, candidate string) bool {
+	baseURL, err := neturl.Parse(base)
+	if err != nil {
+		return false
+	}
+	candidateURL, err := neturl.Parse(candidate)
+	if err != nil {
+		return false
+	}
+	return baseURL.Scheme == candidateURL.Scheme && baseURL.Host == candidateURL.Host
 }
 
 // FileContents is the decoded content of a repository file (w2/m62 — blueprint

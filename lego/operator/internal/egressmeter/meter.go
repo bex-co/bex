@@ -53,7 +53,6 @@ const (
 
 type Config struct {
 	NodeName        string
-	Namespace       string
 	PinPath         string
 	CheckpointPath  string
 	SourceIDPath    string
@@ -64,9 +63,6 @@ type Config struct {
 }
 
 func (c *Config) defaults() {
-	if c.Namespace == "" {
-		c.Namespace = "default"
-	}
 	if c.PinPath == "" {
 		c.PinPath = "/sys/fs/bpf/bex-egress-meter"
 	}
@@ -362,7 +358,10 @@ func (m *Meter) reconcile(ctx context.Context) {
 }
 
 func (m *Meter) reconcilePods(ctx context.Context) error {
-	pods, err := m.client.CoreV1().Pods(m.config.Namespace).List(ctx, metav1.ListOptions{
+	// App Pods live in canonical per-workspace namespaces. Keep this list
+	// cluster-wide and constrain it by node plus the App label; a namespaced list
+	// would silently omit every post-migration workspace.
+	pods, err := m.client.CoreV1().Pods("").List(ctx, metav1.ListOptions{
 		FieldSelector: fields.OneTermEqualSelector("spec.nodeName", m.config.NodeName).String(),
 		LabelSelector: PodLabelApp,
 	})

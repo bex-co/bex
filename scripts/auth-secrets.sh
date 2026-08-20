@@ -36,7 +36,10 @@
 #        DRY_RUN=1 scripts/auth-secrets.sh   # print what would be applied (names only)
 # Requires: kubectl (respects $KUBECONFIG).
 set -euo pipefail
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$(dirname "$0")/.."
+# shellcheck source=lib/secret-install.sh
+. "$script_dir/lib/secret-install.sh"
 
 NS=auth
 
@@ -155,42 +158,35 @@ dsn() {
 
 kubectl get namespace "$NS" >/dev/null 2>&1 || kubectl create namespace "$NS" >/dev/null
 
-kubectl create secret generic kratos -n "$NS" \
-  --from-literal=dsn="$(dsn kratos-db kratos)" \
-  --from-literal=secretsDefault="$KRATOS_SECRETS_DEFAULT" \
-  --from-literal=secretsCookie="$KRATOS_SECRETS_COOKIE" \
-  --from-literal=secretsCipher="$KRATOS_SECRETS_CIPHER" \
-  --from-literal=smtpConnectionURI="$KRATOS_COURIER_SMTP_URI" \
-  --from-literal=oidc.yaml="$(oidc_fragment)" \
-  --dry-run=client -o yaml | kubectl apply -f -
+apply_secret "$NS" kratos Opaque \
+  dsn "$(dsn kratos-db kratos)" \
+  secretsDefault "$KRATOS_SECRETS_DEFAULT" \
+  secretsCookie "$KRATOS_SECRETS_COOKIE" \
+  secretsCipher "$KRATOS_SECRETS_CIPHER" \
+  smtpConnectionURI "$KRATOS_COURIER_SMTP_URI" \
+  oidc.yaml "$(oidc_fragment)"
 
-kubectl create secret generic hydra -n "$NS" \
-  --from-literal=dsn="$(dsn hydra-db hydra)" \
-  --from-literal=secretsSystem="$HYDRA_SECRETS_SYSTEM" \
-  --from-literal=secretsCookie="$HYDRA_SECRETS_COOKIE" \
-  --from-literal=oidcPairwiseSalt="$HYDRA_OIDC_PAIRWISE_SALT" \
-  --dry-run=client -o yaml | kubectl apply -f -
+apply_secret "$NS" hydra Opaque \
+  dsn "$(dsn hydra-db hydra)" \
+  secretsSystem "$HYDRA_SECRETS_SYSTEM" \
+  secretsCookie "$HYDRA_SECRETS_COOKIE" \
+  oidcPairwiseSalt "$HYDRA_OIDC_PAIRWISE_SALT"
 
 # Key names `uri`/`keys` are what the openfga chart's templates hardcode
 # (datastore.uriSecret / authn.preshared.keysSecret).
-kubectl create secret generic openfga -n "$NS" \
-  --from-literal=uri="$(dsn openfga-db openfga)" \
-  --from-literal=keys="$OPENFGA_PRESHARED_KEY" \
-  --dry-run=client -o yaml | kubectl apply -f -
+apply_secret "$NS" openfga Opaque \
+  uri "$(dsn openfga-db openfga)" \
+  keys "$OPENFGA_PRESHARED_KEY"
 
 # bex-api (ns bex-system) presents the same preshared key to OpenFGA — it can't
 # mount the auth-namespace Secret, so it gets its own copy.
-kubectl create secret generic bex-openfga -n bex-system \
-  --from-literal=token="$OPENFGA_PRESHARED_KEY" \
-  --dry-run=client -o yaml | kubectl apply -f -
+apply_secret bex-system bex-openfga Opaque token "$OPENFGA_PRESHARED_KEY"
 
 # bex-api's invite mailer (docs/ADR012-auth.md §11, w4/m12) shares the courier's relay.
 # ADDR/FROM are non-secret and baked into the bex-api Deployment; only the
 # credentials ride a Secret (referenced optional:true, so absent ⇒ mailer nil ⇒
 # invites recorded but not emailed). Create bex-smtp only when a credential is set.
 if [ -n "${BEX_SMTP_USERNAME:-}" ] || [ -n "${BEX_SMTP_PASSWORD:-}" ]; then
-  kubectl create secret generic bex-smtp -n bex-system \
-    --from-literal=username="${BEX_SMTP_USERNAME:-}" \
-    --from-literal=password="${BEX_SMTP_PASSWORD:-}" \
-    --dry-run=client -o yaml | kubectl apply -f -
+  apply_secret bex-system bex-smtp Opaque \
+    username "${BEX_SMTP_USERNAME:-}" password "${BEX_SMTP_PASSWORD:-}"
 fi

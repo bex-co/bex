@@ -13,6 +13,10 @@ _bex_setup_fail() {
   return 1
 }
 
+_bex_setup_urlencode() {
+  printf '%s' "$1" | jq --slurp --raw-input --raw-output '@uri'
+}
+
 for _bex_setup_command in curl jq render; do
   command -v "$_bex_setup_command" >/dev/null 2>&1 ||
     _bex_setup_fail "missing required command: $_bex_setup_command" || return 1
@@ -43,11 +47,14 @@ fi
 export BEX_API_KEY_ID
 export RENDER_HOST="${RENDER_HOST:-https://api.bex.co/v1/}"
 _bex_setup_token="$(
-  curl --fail --silent --show-error \
+  {
+    printf 'grant_type=client_credentials&client_id='
+    _bex_setup_urlencode "$BEX_API_KEY_ID"
+    printf '&client_secret='
+    _bex_setup_urlencode "$BEX_API_KEY_SECRET"
+  } | curl --fail --silent --show-error \
     --request POST 'https://oauth.bex.co/oauth2/token' \
-    --data-urlencode 'grant_type=client_credentials' \
-    --data-urlencode "client_id=$BEX_API_KEY_ID" \
-    --data-urlencode "client_secret=$BEX_API_KEY_SECRET" |
+    --data-binary @- |
     jq --exit-status --raw-output '.access_token'
 )" || return 1
 export RENDER_API_KEY="$_bex_setup_token"

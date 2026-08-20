@@ -1,5 +1,6 @@
 import {
   bootstrapInviteLink,
+  hasInviteLinkingParameter,
   verifiedInviteToken,
 } from "../invite-link-bootstrap";
 import { parseInviteToken } from "../invite-token";
@@ -12,6 +13,13 @@ describe("invite link bootstrap", () => {
       verifiedInviteToken(
         `https://dashboard.bex.co/invite?invite=${token}`,
         token,
+      ),
+    ).toBe(token);
+
+    expect(
+      verifiedInviteToken(
+        `https://dashboard.bex.co/invite#invite=${token}`,
+        undefined,
       ),
     ).toBe(token);
 
@@ -32,6 +40,7 @@ describe("invite link bootstrap", () => {
       ],
       [`https://dashboard.bex.co/invite?invite=${token}#fragment`, token],
       [`https://dashboard.bex.co/invite?invite=${token}#`, token],
+      [`https://dashboard.bex.co/invite#invite=${token}&utm=x`, undefined],
       [
         `https://dashboard.bex.co/invite?invite=${token}`,
         "abcdef0123456789abcdef0123456789",
@@ -41,6 +50,23 @@ describe("invite link bootstrap", () => {
     ] as const) {
       expect(verifiedInviteToken(url, parameter)).toBe(null);
     }
+  });
+
+  it("detects query and fragment candidates before route parsing", () => {
+    expect(
+      hasInviteLinkingParameter(
+        `https://dashboard.bex.co/invite?invite=${token}`,
+      ),
+    ).toBe(true);
+    expect(
+      hasInviteLinkingParameter(
+        `https://dashboard.bex.co/invite#invite=${token}`,
+      ),
+    ).toBe(true);
+    expect(
+      hasInviteLinkingParameter("https://dashboard.bex.co/invite#safe"),
+    ).toBe(false);
+    expect(hasInviteLinkingParameter(null)).toBe(false);
   });
 
   it("scrubs the visible route before unresolved secure storage", async () => {

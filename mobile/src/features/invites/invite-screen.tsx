@@ -23,6 +23,7 @@ import { useInvite } from "./invite-provider";
 import type { InviteFlowState } from "./invite-controller";
 import {
   bootstrapInviteLink,
+  hasInviteLinkingParameter,
   verifiedInviteToken,
 } from "./invite-link-bootstrap";
 
@@ -35,20 +36,22 @@ export function InviteScreen() {
   const linkingURL = useLinkingURL();
   const { state: auth, signIn } = useAuth();
   const invite = useInvite();
-  const captured = useRef<string | string[] | undefined>(undefined);
+  const captured = useRef<string | undefined>(undefined);
   const [signingIn, setSigningIn] = useState(false);
   const [signInFailed, setSignInFailed] = useState(false);
 
   useEffect(() => {
-    if (params.invite === undefined) {
+    if (params.invite === undefined && !hasInviteLinkingParameter(linkingURL)) {
       captured.current = undefined;
       return;
     }
-    if (captured.current === params.invite) return;
-    captured.current = params.invite;
+    const captureKey = `${JSON.stringify(params.invite)}|${linkingURL ?? ""}`;
+    if (captured.current === captureKey) return;
+    captured.current = captureKey;
     const value = params.invite;
+    const verified = verifiedInviteToken(linkingURL, value);
     void bootstrapInviteLink(
-      verifiedInviteToken(linkingURL, value),
+      verified,
       () => router.replace("/invite"),
       invite.capture,
     ).catch(() => undefined);

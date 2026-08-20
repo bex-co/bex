@@ -111,6 +111,8 @@ type Service struct {
 	MaxConnections int
 }
 
+const maxGitHubInventoryFanout = 4
+
 // Connection is the neutral connection view every adapter renders. InstallURL is
 // always populated (the connect CTA the human clicks); the rest are set only
 // when Connected.
@@ -523,9 +525,9 @@ func (s *Service) connectionQuota(ctx context.Context, workspace string) error {
 // installations ("" => the caller's default workspace, w6/m18; private included),
 // each annotated with the GitHub account it came from so the picker can group by
 // account (ADR075 §4). With no connection the list is empty (not an error). One
-// GitHub round trip per connection, run concurrently and bounded by the
-// per-workspace connection cap; a single connection's failure degrades that
-// account's slice (logged) rather than failing the whole list. Member read.
+// GitHub round trip per connection, run through a fixed worker pool; a single
+// connection's failure degrades that account's slice (logged) rather than
+// failing the whole list. Member read.
 func (s *Service) ListRepos(ctx context.Context, ownerID string) ([]Repo, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
@@ -540,23 +542,36 @@ func (s *Service) ListRepos(ctx context.Context, ownerID string) ([]Repo, error)
 	}
 	perConn := make([][]Repo, len(rows))
 	errs := make([]error, len(rows))
+	jobs := make(chan int)
 	var wg sync.WaitGroup
-	for i, row := range rows {
+	workers := min(maxGitHubInventoryFanout, len(rows))
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			repos, err := s.GitHub.ListRepos(ctx, row.InstallationID)
-			if err != nil {
-				errs[i] = mapGitHubErr(err)
-				return
+			for i := range jobs {
+				if err := ctx.Err(); err != nil {
+					errs[i] = err
+					continue
+				}
+				row := rows[i]
+				repos, err := s.GitHub.ListRepos(ctx, row.InstallationID)
+				if err != nil {
+					errs[i] = mapGitHubErr(err)
+					continue
+				}
+				for j := range repos {
+					repos[j].AccountLogin = row.AccountLogin
+					repos[j].InstallationID = row.InstallationID
+				}
+				perConn[i] = repos
 			}
-			for j := range repos {
-				repos[j].AccountLogin = row.AccountLogin
-				repos[j].InstallationID = row.InstallationID
-			}
-			perConn[i] = repos
 		}()
 	}
+	for i := range rows {
+		jobs <- i
+	}
+	close(jobs)
 	wg.Wait()
 	// A dead/permission-changed installation must not blank out the OTHER
 	// accounts' repos: when at least one connection returned repos, degrade the
@@ -921,6 +936,13 @@ func (s *Service) fetchBlueprintFile(ctx context.Context, workspaceID, repoURL, 
 // forged/unknown installation) is caller error → ErrBadRequest; anything else
 // (5xx, network) is surfaced as-is so it never masquerades as success.
 func mapGitHubErr(err error) error {
+	if errors.Is(err, errInventoryBound) {
+		return core.NewBadRequestError(
+			"GITHUB_INVENTORY_LIMIT",
+			"GitHub repository or branch inventory exceeds the per-request safety limit; narrow the connected installation or repository and retry",
+			nil,
+		)
+	}
 	var apiErr *APIError
 	if errors.As(err, &apiErr) && apiErr.Status >= 400 && apiErr.Status < 500 {
 		return core.ErrBadRequest

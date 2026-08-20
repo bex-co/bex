@@ -250,6 +250,31 @@ type fakeGranter struct {
 	failErr error
 }
 
+type rejectingPaymentGate struct{}
+
+func (rejectingPaymentGate) RequirePaymentMethod(context.Context, string) error {
+	return core.NewPaymentRequiredError()
+}
+
+type rejectingBillingGate struct{}
+
+func (rejectingBillingGate) CheckBillingMutationAllowed(context.Context, string) error {
+	return core.ErrBillingEnforced
+}
+
+type enterpriseEntitlement struct {
+	allow  bool
+	called bool
+}
+
+func (e *enterpriseEntitlement) CheckEnterpriseEntitlement(context.Context, string, string) error {
+	e.called = true
+	if !e.allow {
+		return core.NewBadRequestError("ENTERPRISE_ENTITLEMENT_REQUIRED", "operator approval required", nil)
+	}
+	return nil
+}
+
 func (g *fakeGranter) GrantWorkspaceAdmin(_ context.Context, tenantID, subject string) error {
 	if g.failErr != nil {
 		return g.failErr
@@ -317,6 +342,12 @@ func ctxAs(subject string) context.Context {
 	return core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
 }
 
+func ctxAsMachine(subject string) context.Context {
+	return core.WithIdentity(context.Background(), core.Identity{
+		Subject: subject, Method: "oauth2", ClientID: subject, Human: false,
+	})
+}
+
 // allowSvc builds a Service with an allow-all checker and the given collaborators.
 // The variadic purgers are wired as PRE-cascade purgers — the retry-safe phase
 // the general Delete tests exercise; post-cascade purgers are set explicitly by
@@ -339,11 +370,11 @@ func TestCreate_WritesRowMembershipAndGrant(t *testing.T) {
 	g := &fakeGranter{}
 	svc := allowSvc(st, g, nil, nil)
 
-	w, err := svc.Create(ctxAs("user-a"), "acme", "pro")
+	w, err := svc.Create(ctxAs("user-a"), "acme", "hobby")
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if w.Plan != "pro" || w.Role != "admin" || !strings.HasPrefix(w.ID, "tea-") {
+	if w.Plan != "hobby" || w.Role != "admin" || !strings.HasPrefix(w.ID, "tea-") {
 		t.Fatalf("view = %+v", w)
 	}
 	if got, err := st.GetTenant(context.Background(), w.ID); err != nil || got.Name != "acme" {
@@ -355,6 +386,64 @@ func TestCreate_WritesRowMembershipAndGrant(t *testing.T) {
 	members, _ := st.ListTenantMembers(context.Background(), w.ID)
 	if len(members) != 1 || members[0].Subject != "user-a" || members[0].Role != "admin" {
 		t.Fatalf("members = %+v", members)
+	}
+}
+
+func TestCreate_RejectsMachineCredentialBeforeDurableAdminWrite(t *testing.T) {
+	st := newFakeStore()
+	g := &fakeGranter{}
+	svc := allowSvc(st, g, nil, nil)
+
+	if _, err := svc.Create(ctxAsMachine("client-1"), "machine-owned", "hobby"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("machine create: want forbidden, got %v", err)
+	}
+	if len(st.tenants) != 0 || len(g.granted) != 0 {
+		t.Fatalf("machine create left durable state: tenants=%v grants=%v", st.tenants, g.granted)
+	}
+}
+
+func TestCreate_PaidPlanRequiresBillingBeforeWrite(t *testing.T) {
+	st := newFakeStore()
+	g := &fakeGranter{}
+	svc := allowSvc(st, g, nil, nil)
+	svc.Payment = rejectingPaymentGate{}
+
+	if _, err := svc.Create(ctxAs("user-a"), "free-first", "hobby"); err != nil {
+		t.Fatalf("hobby create: %v", err)
+	}
+	if _, err := svc.Create(ctxAs("user-a"), "paid", "pro"); !errors.Is(err, core.ErrPaymentRequired) {
+		t.Fatalf("paid create: want payment required, got %v", err)
+	}
+	if len(st.tenants) != 1 {
+		t.Fatalf("paid create wrote a tenant: %v", st.tenants)
+	}
+}
+
+func TestCreate_EnterpriseRequiresOperatorEntitlementBeforeWrite(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+
+	_, err := svc.Create(ctxAs("user-a"), "enterprise", store.PlanEnterprise)
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "ENTERPRISE_ENTITLEMENT_REQUIRED" {
+		t.Fatalf("enterprise create error = %v, want explicit entitlement refusal", err)
+	}
+	if len(st.tenants) != 0 {
+		t.Fatalf("enterprise create wrote a tenant: %v", st.tenants)
+	}
+}
+
+func TestCreate_EnterpriseUsesOperatorEntitlement(t *testing.T) {
+	st := newFakeStore()
+	approval := &enterpriseEntitlement{allow: true}
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	svc.EnterpriseEntitlement = approval
+
+	if _, err := svc.Create(ctxAs("user-a"), "enterprise", store.PlanEnterprise); err != nil {
+		t.Fatalf("approved enterprise create: %v", err)
+	}
+	if !approval.called {
+		t.Fatal("enterprise entitlement was not checked")
 	}
 }
 
@@ -690,6 +779,63 @@ func TestChangePlan_UpgradeSucceeds(t *testing.T) {
 	}
 	if row, _ := st.GetTenant(context.Background(), w.ID); row.Plan != "pro" {
 		t.Fatalf("row not persisted: %+v", row)
+	}
+}
+
+func TestChangePlan_PaidUpgradeRequiresBillingBeforeWrite(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "hobby")
+	svc.Payment = rejectingPaymentGate{}
+
+	if _, err := svc.ChangePlan(ctxAs("user-a"), w.ID, "pro"); !errors.Is(err, core.ErrPaymentRequired) {
+		t.Fatalf("upgrade: want payment required, got %v", err)
+	}
+	if row, _ := st.GetTenant(context.Background(), w.ID); row.Plan != "hobby" {
+		t.Fatalf("rejected upgrade changed plan to %q", row.Plan)
+	}
+}
+
+func TestChangePlan_PaidUpgradeRefusesDunningBeforeWrite(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", store.PlanHobby)
+	svc.Billing = rejectingBillingGate{}
+
+	if _, err := svc.ChangePlan(ctxAs("user-a"), w.ID, store.PlanPro); !errors.Is(err, core.ErrBillingEnforced) {
+		t.Fatalf("dunning upgrade: want billing enforcement, got %v", err)
+	}
+	if row, _ := st.GetTenant(context.Background(), w.ID); row.Plan != store.PlanHobby {
+		t.Fatalf("dunning upgrade changed plan to %q", row.Plan)
+	}
+}
+
+func TestChangePlan_EnterpriseRequiresOperatorEntitlementBeforeWrite(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", store.PlanHobby)
+
+	_, err := svc.ChangePlan(ctxAs("user-a"), w.ID, store.PlanEnterprise)
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "ENTERPRISE_ENTITLEMENT_REQUIRED" {
+		t.Fatalf("enterprise upgrade error = %v, want explicit entitlement refusal", err)
+	}
+	if row, _ := st.GetTenant(context.Background(), w.ID); row.Plan != store.PlanHobby {
+		t.Fatalf("rejected enterprise upgrade changed plan to %q", row.Plan)
+	}
+}
+
+func TestChangePlan_DowngradeRemainsAvailableDuringDunning(t *testing.T) {
+	st := newFakeStore()
+	svc := allowSvc(st, &fakeGranter{}, nil, nil)
+	w, _ := svc.Create(ctxAs("user-a"), "acme", "pro")
+	svc.Billing = rejectingBillingGate{}
+
+	if _, err := svc.ChangePlan(ctxAs("user-a"), w.ID, "hobby"); err != nil {
+		t.Fatalf("dunning downgrade: %v", err)
+	}
+	if row, _ := st.GetTenant(context.Background(), w.ID); row.Plan != "hobby" {
+		t.Fatalf("downgrade plan = %q, want hobby", row.Plan)
 	}
 }
 
