@@ -3,6 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DisconnectGitDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface UseDisconnectGitResult {
   /**
@@ -20,15 +21,24 @@ export interface UseDisconnectGitResult {
  */
 export function useDisconnectGit(): UseDisconnectGitResult {
   const { t } = useTranslations();
+  const { currentWorkspaceId } = useWorkspace();
   const [mutate] = useMutation(DisconnectGitDocument);
   const [busy, setBusy] = useState(false);
 
   const disconnect = useCallback(
     async (installationId?: number) => {
+      // ADR075 §6: never disconnect against the default workspace by accident.
+      if (currentWorkspaceId == null) {
+        toast.error(t("git.disconnectError"));
+        return false;
+      }
       setBusy(true);
       try {
         await mutate({
-          variables: { installationId: installationId ?? null },
+          variables: {
+            installationId: installationId ?? null,
+            ownerId: currentWorkspaceId,
+          },
         });
         toast.success(t("git.disconnectSuccess"));
         return true;
@@ -39,7 +49,7 @@ export function useDisconnectGit(): UseDisconnectGitResult {
         setBusy(false);
       }
     },
-    [mutate, t],
+    [mutate, t, currentWorkspaceId],
   );
 
   return { disconnect, busy };

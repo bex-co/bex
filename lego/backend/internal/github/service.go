@@ -71,13 +71,20 @@ type APIClient interface {
 	OpenDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, base, title, body string) (PullRequest, error)
 }
 
-// InstallationVerifier proves the user completing a browser install actually
-// administers the installation (F2). Implemented by *Client when the App's OAuth
-// credentials are configured; nil => the connect callback relies on the unique
-// installation->workspace binding alone. Kept a narrow interface so the fake in
-// tests can drive accept/reject.
+// InstallationVerifier proves the user completing a browser flow actually
+// administers the installation being bound (F2), and powers the ADR075 §3a claim
+// flow for already-installed accounts. Implemented by *Client when the App's
+// OAuth credentials are configured; nil => connect/claim starts refuse up front
+// (§7) and the callback fails closed. Kept an interface so the fake in tests can
+// drive accept/reject.
 type InstallationVerifier interface {
 	VerifyInstallationAdmin(ctx context.Context, code string, installationID int64) (bool, error)
+	// AuthorizeURL is the app's OAuth user-authorization endpoint — the claim
+	// flow's start, the one GitHub flow that always preserves `state` (§3a).
+	AuthorizeURL() string
+	// ClaimableInstallations resolves the claim callback's missing installation
+	// id: this app's installations the code's user ADMINISTERS.
+	ClaimableInstallations(ctx context.Context, code string) ([]Installation, error)
 }
 
 // Service manages a workspace's GitHub App connection and lists its repos over
@@ -144,6 +151,12 @@ func (s *Service) StartConnect(ctx context.Context, ownerID string) (Connection,
 	if !s.configured() {
 		return Connection{}, core.ErrGitHubUnavailable
 	}
+	// ADR075 §7: fail at start, not at the callback. With no verifier every
+	// binding is guaranteed to 503 AFTER the user walks the whole GitHub flow —
+	// refuse before minting a transaction for an unfinishable attempt.
+	if err := s.verifierPreflight(); err != nil {
+		return Connection{}, err
+	}
 	workspaceID := s.WorkspaceOrDefault(ctx)
 	// Record WHO is starting this flow (w1/m67 F3). Without it the install URL is
 	// a portable bearer credential for "bind an installation to this workspace":
@@ -192,33 +205,9 @@ func (s *Service) StartConnect(ctx context.Context, ownerID string) (Connection,
 // identity presenting the callback; it must equal the transaction's initiator.
 // GitHub authorization codes are single-use, and the nonce now is too.
 func (s *Service) connectFromCallback(ctx context.Context, nonce, caller string, installationID int64, code string) (Connection, error) {
-	if !s.configured() {
-		return Connection{}, core.ErrGitHubUnavailable
-	}
-	if s.Verifier == nil {
-		return Connection{}, core.ErrGitHubUnavailable
-	}
-	if strings.TrimSpace(code) == "" {
-		return Connection{}, fmt.Errorf("%w: GitHub user authorization code is required", core.ErrBadRequest)
-	}
-	if caller == "" {
-		// The callback is a top-level GET navigation, so the Lax-scoped bex session
-		// cookie does travel with it (deploy/gitops kratos values: same_site: Lax).
-		// No session means we cannot know who is completing the flow — refuse
-		// rather than bind on the attacker-chosen workspace alone.
-		return Connection{}, fmt.Errorf("%w: sign in to bex before completing the GitHub installation", core.ErrForbidden)
-	}
-	// Consume first: the nonce is single-use whatever happens next, so a failed or
-	// probed callback cannot be retried against a different installation.
-	txn, err := s.Store.ConsumeGitHubConnectTransaction(ctx, nonce)
+	txn, err := s.consumeCallbackProofs(ctx, nonce, caller, code)
 	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return Connection{}, fmt.Errorf("%w: this GitHub connect link has expired or was already used; start again from bex", core.ErrForbidden)
-		}
 		return Connection{}, err
-	}
-	if txn.Subject != caller {
-		return Connection{}, fmt.Errorf("%w: this GitHub connect link was started by a different bex user", core.ErrForbidden)
 	}
 	ok, err := s.Verifier.VerifyInstallationAdmin(ctx, code, installationID)
 	if err != nil {
@@ -227,16 +216,150 @@ func (s *Service) connectFromCallback(ctx context.Context, nonce, caller string,
 	if !ok {
 		return Connection{}, fmt.Errorf("%w: could not verify you administer this GitHub installation", core.ErrForbidden)
 	}
-	// The nonce was minted after can_manage at StartConnect, but the callback
-	// can arrive minutes later (GitHub's install UI). Re-check the initiator's
-	// current administration of THAT workspace so a demotion or membership
-	// revocation inside the connect window cannot still bind the installation
-	// (codex round-15 #3). Authz nil still allows (local/dev).
+	return s.connectWithWorkspace(ctx, txn.TenantID, installationID)
+}
+
+// consumeCallbackProofs is the shared, order-sensitive proof prologue of BOTH
+// callback branches (install and claim) — one copy so a future fix to any proof
+// cannot silently miss the other path:
+//
+//  1. configured + verifier guards (fail closed);
+//  2. code and caller presence — the callback is a top-level GET navigation, so
+//     the Lax-scoped bex session cookie does travel with it; no session means we
+//     cannot know who is completing the flow and must refuse;
+//  3. atomic nonce consumption FIRST — single-use whatever happens next, so a
+//     failed or probed callback cannot be retried against a different target;
+//  4. initiator == caller (w1/m67 F3);
+//  5. fresh can_manage on the transaction's workspace — the callback can arrive
+//     minutes after StartConnect/StartClaim, and a demotion inside that window
+//     must not still bind (codex round-15 #3). Authz nil still allows (local/dev).
+//
+// The caller keeps only its installation-resolution tail (verify the browser-
+// supplied id for install; resolve server-side for claim).
+func (s *Service) consumeCallbackProofs(ctx context.Context, nonce, caller, code string) (store.GitHubConnectTransaction, error) {
+	if !s.configured() || s.Verifier == nil {
+		return store.GitHubConnectTransaction{}, core.ErrGitHubUnavailable
+	}
+	if strings.TrimSpace(code) == "" {
+		return store.GitHubConnectTransaction{}, fmt.Errorf("%w: GitHub user authorization code is required", core.ErrBadRequest)
+	}
+	if caller == "" {
+		return store.GitHubConnectTransaction{}, fmt.Errorf("%w: sign in to bex before completing the GitHub connection", core.ErrForbidden)
+	}
+	txn, err := s.Store.ConsumeGitHubConnectTransaction(ctx, nonce)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return store.GitHubConnectTransaction{}, fmt.Errorf("%w: this GitHub connect link has expired or was already used; start again from bex", core.ErrForbidden)
+		}
+		return store.GitHubConnectTransaction{}, err
+	}
+	if txn.Subject != caller {
+		return store.GitHubConnectTransaction{}, fmt.Errorf("%w: this GitHub connect link was started by a different bex user", core.ErrForbidden)
+	}
 	freshCtx := core.WithIdentity(ctx, core.Identity{Subject: txn.Subject, Method: "session"})
 	if err := s.AuthorizeFreshOn(freshCtx, core.RelCanManage, core.WorkspaceObject(txn.TenantID)); err != nil {
+		return store.GitHubConnectTransaction{}, err
+	}
+	return txn, nil
+}
+
+// Claim is StartClaim's result: the GitHub OAuth authorize URL that starts the
+// ADR075 §3a claim flow for an already-installed account.
+type Claim struct {
+	ClaimURL string `json:"claimUrl"`
+}
+
+// Bounded claim-callback failures (ADR075 §3a) — mapped to fixed git_error codes
+// in rest.go; the messages are safe for the JSON (no-dashboard) mode.
+var (
+	errNoClaimableInstallation = fmt.Errorf("%w: no unconnected GitHub installation you administer was found; install the bex GitHub App on the account first", core.ErrBadRequest)
+	errAmbiguousClaim          = fmt.Errorf("%w: several unconnected GitHub installations you administer were found; claiming requires exactly one", core.ErrBadRequest)
+)
+
+// verifierPreflight is ADR075 §7: connect/claim starts refuse immediately when
+// the installation-admin verifier is unconfigured, because the callback would
+// fail closed anyway — after the user completed the whole GitHub round trip.
+func (s *Service) verifierPreflight() error {
+	if s.Verifier == nil {
+		return fmt.Errorf("%w: GitHub App OAuth verification is not configured (BEX_GITHUB_APP_CLIENT_ID/BEX_GITHUB_APP_CLIENT_SECRET); ask your platform operator", core.ErrGitHubUnavailable)
+	}
+	return nil
+}
+
+// StartClaim begins the ADR075 §3a claim flow: bind an installation that ALREADY
+// exists on GitHub (the direct-install case) to ownerID's workspace ("" => the
+// caller's default). GitHub strips the signed state from the install URL for
+// already-installed accounts, so the claim rides the OAuth user-authorization
+// flow instead — the one flow that always preserves state — and the callback
+// resolves the installation server-side from the authorizing user's admin set.
+// Admin-only, same transaction record as StartConnect (w1/m67 F3).
+func (s *Service) StartClaim(ctx context.Context, ownerID string) (Claim, error) {
+	ctx = core.WithWorkspace(ctx, ownerID)
+	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
+		return Claim{}, err
+	}
+	if !s.configured() {
+		return Claim{}, core.ErrGitHubUnavailable
+	}
+	if err := s.verifierPreflight(); err != nil {
+		return Claim{}, err
+	}
+	workspaceID := s.WorkspaceOrDefault(ctx)
+	subject := ""
+	if id, ok := core.IdentityFrom(ctx); ok {
+		subject = id.Subject
+	}
+	if subject == "" {
+		return Claim{}, core.ErrForbidden
+	}
+	token, err := s.mintConnectState(ctx, workspaceID, subject)
+	if err != nil {
+		return Claim{}, err
+	}
+	return Claim{ClaimURL: s.Verifier.AuthorizeURL() + "&state=" + url.QueryEscape(token)}, nil
+}
+
+// claimFromCallback is the claim flow's callback half: it arrives with code +
+// state and NO installation_id (that absence is what selects this branch), runs
+// the identical proof sequence as connectFromCallback — consume the single-use
+// nonce, match the initiator, fresh can_manage — and then resolves the
+// installation server-side: of this app's installations the code's user
+// ADMINISTERS, exactly one must be unbound (or already bound to this same
+// workspace — idempotent). Zero or several are bounded failures, never a guess;
+// an installation bound to a DIFFERENT workspace is never a candidate. No
+// client-supplied installation id exists on this path at all.
+func (s *Service) claimFromCallback(ctx context.Context, nonce, caller, code string) (Connection, error) {
+	txn, err := s.consumeCallbackProofs(ctx, nonce, caller, code)
+	if err != nil {
 		return Connection{}, err
 	}
-	return s.connectWithWorkspace(ctx, txn.TenantID, installationID)
+	admined, err := s.Verifier.ClaimableInstallations(ctx, code)
+	if err != nil {
+		return Connection{}, mapGitHubErr(err)
+	}
+	// Keep only installations not bound to a DIFFERENT workspace: unbound ones
+	// are claimable, and one already bound to THIS workspace stays a candidate so
+	// a repeated claim is idempotent rather than a confusing "nothing to claim".
+	candidates := make([]Installation, 0, len(admined))
+	for _, inst := range admined {
+		existing, lookupErr := s.Store.GitConnectionByInstallation(ctx, inst.ID)
+		switch {
+		case errors.Is(lookupErr, store.ErrNotFound):
+			candidates = append(candidates, inst)
+		case lookupErr != nil:
+			return Connection{}, lookupErr
+		case existing.WorkspaceID == txn.TenantID:
+			candidates = append(candidates, inst)
+		}
+	}
+	switch len(candidates) {
+	case 0:
+		return Connection{}, errNoClaimableInstallation
+	case 1:
+		return s.connectWithWorkspace(ctx, txn.TenantID, candidates[0].ID)
+	default:
+		return Connection{}, errAmbiguousClaim
+	}
 }
 
 // connectWithWorkspace records a connection for the workspace authenticated by

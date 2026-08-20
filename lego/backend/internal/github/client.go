@@ -118,6 +118,14 @@ func (c *Client) InstallVerificationConfigured() bool {
 	return c.clientID != "" && c.clientSecret != ""
 }
 
+// AuthorizeURL is the GitHub OAuth user-authorization endpoint for this app —
+// the one GitHub flow that always carries `state` through, which is what makes
+// the ADR075 §3a claim flow possible for already-installed accounts (the install
+// URL's Configure path strips state). The caller appends &state=<signed token>.
+func (c *Client) AuthorizeURL() string {
+	return c.oauthBaseURL + "/login/oauth/authorize?client_id=" + neturl.QueryEscape(c.clientID)
+}
+
 // Slug is the configured app slug (used to build install URLs).
 func (c *Client) Slug() string { return c.slug }
 
@@ -337,6 +345,85 @@ func (c *Client) VerifyInstallationAdmin(ctx context.Context, code string, insta
 	}
 }
 
+// ClaimableInstallations resolves the ADR075 §3a claim callback's missing
+// installation id server-side: it exchanges the OAuth `code` for a user token,
+// lists THIS app's installations the authorizing user can reach
+// (GET /user/installations — the endpoint is app-scoped by the user-to-server
+// token), and keeps only those the user ADMINISTERS — the same proof
+// VerifyInstallationAdmin applies (exact personal-account owner, or active org
+// membership with role admin). Reachability alone (an org member who can see the
+// installation) is never an administration proof. A declined code exchange
+// yields zero candidates (the flow must be restarted), not an error.
+func (c *Client) ClaimableInstallations(ctx context.Context, code string) ([]Installation, error) {
+	if c.clientID == "" || c.clientSecret == "" {
+		return nil, fmt.Errorf("github: installation-admin verification not configured")
+	}
+	if strings.TrimSpace(code) == "" {
+		return nil, nil
+	}
+	token, err := c.exchangeUserCode(ctx, code)
+	if err != nil {
+		return nil, err
+	}
+	if token == "" {
+		return nil, nil
+	}
+	login, err := c.authenticatedUser(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	installations, err := c.listUserInstallations(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	admined := make([]Installation, 0, len(installations))
+	for _, inst := range installations {
+		switch inst.AccountType {
+		case "User":
+			if strings.EqualFold(login, inst.AccountLogin) {
+				admined = append(admined, inst)
+			}
+		case "Organization":
+			ok, err := c.userIsOrganizationAdmin(ctx, token, inst.AccountLogin)
+			if err != nil {
+				return nil, err
+			}
+			if ok {
+				admined = append(admined, inst)
+			}
+		}
+	}
+	return admined, nil
+}
+
+// listUserInstallations pages GET /user/installations — the installations of
+// THIS app that the user token can reach.
+func (c *Client) listUserInstallations(ctx context.Context, userToken string) ([]Installation, error) {
+	var out []Installation
+	err := c.pagedGet(ctx, c.baseURL+"/user/installations?per_page=100", "Bearer "+userToken, "list user installations", func(body []byte) error {
+		var page struct {
+			Installations []struct {
+				ID      int64 `json:"id"`
+				Account struct {
+					Login string `json:"login"`
+					Type  string `json:"type"`
+				} `json:"account"`
+			} `json:"installations"`
+		}
+		if err := json.Unmarshal(body, &page); err != nil {
+			return fmt.Errorf("github: decode user installations: %w", err)
+		}
+		for _, i := range page.Installations {
+			out = append(out, Installation{ID: i.ID, AccountLogin: i.Account.Login, AccountType: i.Account.Type})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // exchangeUserCode swaps an install-callback OAuth code for a user access token
 // (POST https://github.com/login/oauth/access_token). Returns "" (no error) when
 // GitHub declines the exchange with an error payload rather than a token.
@@ -510,30 +597,13 @@ func (c *Client) ListRepos(ctx context.Context, installationID int64) ([]Repo, e
 	if err != nil {
 		return nil, err
 	}
-	url := c.baseURL + "/installation/repositories?per_page=100"
 	var repos []Repo
-	for url != "" {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("Authorization", "token "+tok.Token)
-		req.Header.Set("Accept", acceptHeader)
-		resp, err := c.httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("github: list repos: %w", err)
-		}
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
-		nextURL := nextLink(resp.Header.Get("Link"))
-		resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			return nil, &APIError{Status: resp.StatusCode, Body: string(body)}
-		}
+	err = c.pagedGet(ctx, c.baseURL+"/installation/repositories?per_page=100", "token "+tok.Token, "list repos", func(body []byte) error {
 		var page struct {
 			Repositories []ghRepo `json:"repositories"`
 		}
 		if err := json.Unmarshal(body, &page); err != nil {
-			return nil, fmt.Errorf("github: decode repos response: %w", err)
+			return fmt.Errorf("github: decode repos response: %w", err)
 		}
 		for _, r := range page.Repositories {
 			repos = append(repos, Repo{
@@ -545,9 +615,43 @@ func (c *Client) ListRepos(ctx context.Context, installationID int64) ([]Repo, e
 				CloneURL:      r.CloneURL,
 			})
 		}
-		url = nextURL
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return repos, nil
+}
+
+// pagedGet walks a Link-paginated GitHub collection (per_page=100, rel="next"),
+// invoking onPage with each raw response body. authorization is the full header
+// value (scheme included) — installation tokens use "token …", user tokens
+// "Bearer …". One copy of the loop for the three paginated readers (repos,
+// branches, user installations).
+func (c *Client) pagedGet(ctx context.Context, url, authorization, opDesc string, onPage func(body []byte) error) error {
+	for url != "" {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Authorization", authorization)
+		req.Header.Set("Accept", acceptHeader)
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return fmt.Errorf("github: %s: %w", opDesc, err)
+		}
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+		nextURL := nextLink(resp.Header.Get("Link"))
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return &APIError{Status: resp.StatusCode, Body: string(body)}
+		}
+		if err := onPage(body); err != nil {
+			return err
+		}
+		url = nextURL
+	}
+	return nil
 }
 
 // ghBranch is one entry of GitHub's list-branches response.
@@ -564,33 +668,19 @@ func (c *Client) ListBranches(ctx context.Context, installationID int64, owner, 
 	if err != nil {
 		return nil, err
 	}
-	url := c.baseURL + "/repos/" + owner + "/" + repo + "/branches?per_page=100"
 	var branches []string
-	for url != "" {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("Authorization", "token "+tok.Token)
-		req.Header.Set("Accept", acceptHeader)
-		resp, err := c.httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("github: list branches: %w", err)
-		}
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
-		nextURL := nextLink(resp.Header.Get("Link"))
-		resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			return nil, &APIError{Status: resp.StatusCode, Body: string(body)}
-		}
+	err = c.pagedGet(ctx, c.baseURL+"/repos/"+owner+"/"+repo+"/branches?per_page=100", "token "+tok.Token, "list branches", func(body []byte) error {
 		var page []ghBranch
 		if err := json.Unmarshal(body, &page); err != nil {
-			return nil, fmt.Errorf("github: decode branches response: %w", err)
+			return fmt.Errorf("github: decode branches response: %w", err)
 		}
 		for _, b := range page {
 			branches = append(branches, b.Name)
 		}
-		url = nextURL
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return branches, nil
 }

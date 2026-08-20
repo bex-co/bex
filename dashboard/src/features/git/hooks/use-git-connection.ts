@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { GitConnectionsDocument } from "@/graphql/definitions";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
@@ -41,9 +42,17 @@ export interface UseGitConnectionResult {
  * unconfigured) arrives as `error`. Apollo normalizes on the document, so mounting
  * both hooks reads one cache entry — but the config lives here once so the two
  * cannot drift.
+ *
+ * ADR075 §6: scoped to the SELECTED workspace, deferring while it resolves —
+ * an unscoped query would read the caller's default workspace, which is the
+ * live-verified wrong-tenant hazard. Variable changes on a workspace switch
+ * refetch automatically.
  */
 function useGitConnectionsQuery() {
+  const { currentWorkspaceId } = useWorkspace();
   return useQuery(GitConnectionsDocument, {
+    variables: { ownerId: currentWorkspaceId },
+    skip: currentWorkspaceId == null,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
     pollInterval: RESOURCE_POLL_INTERVAL_MS,

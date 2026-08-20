@@ -116,7 +116,16 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	}
 }
 
-// GraphQLMutation returns connectGit (returns the connection + install URL) and
+// gitClaimGQLType mirrors the REST Claim object (ADR075 §3a).
+var gitClaimGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "GitClaim",
+	Fields: graphql.Fields{
+		"claimUrl": gqlutil.StrField(func(c Claim) any { return c.ClaimURL }),
+	},
+})
+
+// GraphQLMutation returns connectGit (returns the connection + install URL),
+// claimGit (the ADR075 §3a claim flow for already-installed accounts), and
 // disconnectGit.
 func (s *Service) GraphQLMutation() graphql.Fields {
 	return graphql.Fields{
@@ -129,6 +138,20 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					return nil, err
 				}
 				return connection, nil
+			},
+		},
+		// claimGit binds an installation that ALREADY exists on GitHub (where the
+		// install URL strips the signed state) through the OAuth user-authorization
+		// flow — see ADR075 §3a. Browser-only ceremony; deliberately not on MCP.
+		"claimGit": &graphql.Field{
+			Type: gitClaimGQLType,
+			Args: ownerIDArg,
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				claim, err := s.StartClaim(p.Context, gqlutil.Str(p.Args, "ownerId"))
+				if err != nil {
+					return nil, err
+				}
+				return claim, nil
 			},
 		},
 		"disconnectGit": &graphql.Field{

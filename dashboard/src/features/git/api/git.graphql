@@ -5,11 +5,15 @@
 # (BEX_GITHUB_APP_* unset) surfaces as a query error the card treats as
 # "unavailable".
 
+# Every operation carries $ownerId — the SELECTED workspace (ADR075 §6). Omitted
+# would resolve the caller's default workspace, which is exactly the live-verified
+# wrong-tenant hazard the threading closes; hooks defer while the id is null.
+
 # The connected installations' repositories (private included), each annotated
 # with the GitHub account it belongs to so the picker can group by account
 # (ADR075). Empty until a connection exists.
-query Repos {
-  repos {
+query Repos($ownerId: String) {
+  repos(ownerId: $ownerId) {
     id
     fullName
     private
@@ -24,14 +28,14 @@ query Repos {
 # The actual branches of a connected GitHub repo — feeds the Settings Branch
 # combobox (w5/m54). Empty for a non-GitHub repo or no connection, so the UI
 # degrades to free-text branch entry.
-query RepoBranches($repo: String!) {
-  repoBranches(repo: $repo)
+query RepoBranches($repo: String!, $ownerId: String) {
+  repoBranches(repo: $repo, ownerId: $ownerId)
 }
 
 # Every GitHub account/org this workspace has connected (ADR075). Empty list ⇒
 # not connected; each row's installUrl is the bare "configure grants" deep link.
-query GitConnections {
-  gitConnections {
+query GitConnections($ownerId: String) {
+  gitConnections(ownerId: $ownerId) {
     connected
     accountLogin
     installationId
@@ -40,15 +44,24 @@ query GitConnections {
   }
 }
 
-mutation ConnectGit {
-  connectGit {
+mutation ConnectGit($ownerId: String) {
+  connectGit(ownerId: $ownerId) {
     connected
     installUrl
   }
 }
 
+# The ADR075 §3a claim flow: bind an installation that ALREADY exists on GitHub
+# (where the install URL strips the signed state) via the OAuth authorize round
+# trip that always preserves it.
+mutation ClaimGit($ownerId: String) {
+  claimGit(ownerId: $ownerId) {
+    claimUrl
+  }
+}
+
 # installationId names the exact connection to remove; omitted ⇒ the sole
 # connection (an error when the workspace holds several).
-mutation DisconnectGit($installationId: Float) {
-  disconnectGit(installationId: $installationId)
+mutation DisconnectGit($installationId: Float, $ownerId: String) {
+  disconnectGit(installationId: $installationId, ownerId: $ownerId)
 }
