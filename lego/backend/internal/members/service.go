@@ -65,6 +65,12 @@ const (
 	InviteErrorExpired         = "INVITE_EXPIRED"
 	InviteErrorAlreadyAccepted = "INVITE_ALREADY_ACCEPTED"
 	InviteErrorPlanLimit       = "INVITE_PLAN_LIMIT"
+	// InviteErrorAlreadyMember refuses inviting someone who already belongs to
+	// the workspace (Render answers the same way). Their role is changed with
+	// ChangeRole — an invite must never be a second, unaudited way to re-role a
+	// member, which is how inviting an existing admin at the default role used to
+	// demote them (w1/m82).
+	InviteErrorAlreadyMember = "MEMBER_ALREADY_EXISTS"
 )
 
 // Service holds the membership logic once. It embeds *core.Base for the
@@ -396,6 +402,36 @@ func (s *Service) seatsUsed(ctx context.Context, workspaceID string) (int, error
 	return members + pending, nil
 }
 
+// memberWithEmail reports whether email already belongs to an accepted member of
+// the workspace — the invite verb's "already a member" guard (w1/m82).
+//
+// Membership is keyed by subject; the address lives in the identity provider, so
+// this resolves the workspace's members through the same Identities seam List
+// uses. Member counts are small and inviting is a rare admin action, so the
+// per-member lookup is affordable here.
+//
+// Without an identity reader (BEX_KRATOS_ADMIN_URL unset) no address can be
+// resolved, so the answer is an honest "not known to be a member" and the invite
+// proceeds — redemption is the backstop that keeps an established member's role
+// unchanged either way (store.redeemInvite), so the failure mode is a redundant
+// invite, never a silent re-role.
+func (s *Service) memberWithEmail(ctx context.Context, workspaceID, email string) (bool, error) {
+	if s.Identities == nil {
+		return false, nil
+	}
+	ms, err := s.Store.ListTenantMembers(ctx, workspaceID)
+	if err != nil {
+		return false, mapStoreErr(err)
+	}
+	for _, m := range ms {
+		attrs, ok := s.Identities.LookupIdentity(ctx, m.Subject)
+		if ok && strings.EqualFold(strings.TrimSpace(attrs.Email), email) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // ListInvites returns a workspace's outstanding invites. Admin-only (managing
 // members) — the pending list can reveal who was invited, an org-settings view.
 func (s *Service) ListInvites(ctx context.Context, workspaceID string) ([]InviteView, error) {
@@ -448,6 +484,19 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 		return InviteView{}, fmt.Errorf("%w: invalid email address", core.ErrBadRequest)
 	}
 	email = strings.ToLower(addr.Address)
+
+	// Someone who already belongs here cannot be "invited" again: their role is
+	// ChangeRole's business. Checked BEFORE the plan/seat guards so the caller is
+	// told the real reason rather than a cap error. (w1/m82)
+	member, err := s.memberWithEmail(ctx, workspaceID, email)
+	if err != nil {
+		return InviteView{}, err
+	}
+	if member {
+		return InviteView{}, core.NewConflictError(InviteErrorAlreadyMember,
+			fmt.Sprintf("%s is already a member of this workspace; change their role instead of inviting them again", email),
+			map[string]any{"email": email})
+	}
 
 	tenant, err := s.Store.GetTenant(ctx, workspaceID)
 	if err != nil {

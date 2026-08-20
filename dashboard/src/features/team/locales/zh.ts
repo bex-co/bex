@@ -70,6 +70,10 @@ const zhTeam: Record<string, TranslationEntry> = {
     message: "teammate@example.com",
     description: "Invite dialog email field placeholder",
   },
+  "team.fieldEmailInvalid": {
+    message: "请输入有效的邮箱地址，例如 teammate@example.com。",
+    description: "Invite dialog validation message for a malformed email",
+  },
   "team.fieldRole": {
     message: "角色",
     description: "Invite dialog role field label",

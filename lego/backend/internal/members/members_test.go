@@ -911,3 +911,87 @@ func TestVerbsUnavailableWithoutStore(t *testing.T) {
 		t.Errorf("Invite: want ErrMembersUnavailable, got %v", err)
 	}
 }
+
+// TestInviteRefusesAnExistingMember is w1/m82's regression: "inviting" someone
+// who is already in the workspace used to mint a pending invite that the auth
+// gate silently redeemed on their next request, overwriting their role — an
+// admin invited at the dialog's default role was demoted, reported to the
+// inviter as "Invitation sent". The invite is now refused outright (Render's
+// answer) so re-roling keeps exactly one audited verb, ChangeRole.
+func TestInviteRefusesAnExistingMember(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("member-2", "admin")
+	s := svc(st, newFakeGranter(), nil, nil)
+	s.Identities = fakeIdentities{
+		"admin-1":  {Email: "boss@example.com"},
+		"member-2": {Email: "Teammate@Example.com"},
+	}
+
+	// Case-insensitively the same address as member-2 — refused, with the code
+	// the surfaces render, and no invite row minted.
+	_, err := s.Invite(ctxWith("admin-1"), "tea-1", "teammate@example.com", "developer")
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("invite of an existing member: want ErrConflict, got %v", err)
+	}
+	var ce *core.CodedError
+	if !errors.As(err, &ce) || ce.Code != InviteErrorAlreadyMember {
+		t.Errorf("want code %s, got %#v", InviteErrorAlreadyMember, err)
+	}
+	if len(st.invites) != 0 {
+		t.Errorf("a refused invite minted %d row(s), want 0", len(st.invites))
+	}
+	// The member's role is untouched — the whole point of the refusal.
+	if got := st.members["member-2"].Role; got != "admin" {
+		t.Errorf("existing member role = %q, want admin (unchanged)", got)
+	}
+
+	// Someone who is NOT a member still gets invited normally.
+	if _, err := s.Invite(ctxWith("admin-1"), "tea-1", "newcomer@example.com", "developer"); err != nil {
+		t.Fatalf("invite of a non-member: %v", err)
+	}
+	if len(st.invites) != 1 {
+		t.Errorf("invites = %d, want 1", len(st.invites))
+	}
+}
+
+// Without an identity reader no address can be resolved to a member, so the
+// guard cannot fire; the invite proceeds rather than failing closed on a
+// lookup bex simply cannot perform (redemption is the backstop that keeps the
+// role unchanged either way).
+func TestInviteWithoutIdentityReaderStillInvites(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	s := svc(st, newFakeGranter(), nil, nil) // Identities nil
+	if _, err := s.Invite(ctxWith("admin-1"), "tea-1", "someone@example.com", "developer"); err != nil {
+		t.Fatalf("invite without identity reader: %v", err)
+	}
+}
+
+// TestAlreadyMemberRefusalIsOneConflictAcrossSurfaces pins the shape the three
+// adapters render: REST/GraphQL/MCP all call this one verb, so the refusal must
+// be a conflict (HTTP 409) carrying the stable code clients key on — never a
+// bare 500 or a message-only error that each surface spells differently.
+func TestAlreadyMemberRefusalIsOneConflictAcrossSurfaces(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	s := svc(st, newFakeGranter(), nil, nil)
+	s.Identities = fakeIdentities{"admin-1": {Email: "boss@example.com"}}
+
+	_, err := s.Invite(ctxWith("admin-1"), "tea-1", "boss@example.com", "developer")
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("want ErrConflict (→ 409 on REST, conflict on GraphQL/MCP), got %v", err)
+	}
+	var ce *core.CodedError
+	if !errors.As(err, &ce) {
+		t.Fatalf("want a CodedError so every surface exposes the same code, got %T", err)
+	}
+	if ce.Code != InviteErrorAlreadyMember {
+		t.Errorf("code = %q, want %q", ce.Code, InviteErrorAlreadyMember)
+	}
+	// The address is echoed as a param so a client can render its own copy
+	// without parsing English prose.
+	if ce.Params["email"] != "boss@example.com" {
+		t.Errorf("params[email] = %v, want boss@example.com", ce.Params["email"])
+	}
+}

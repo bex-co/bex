@@ -3,6 +3,7 @@ import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import {
   hasGraphQLErrorCode,
   planLimitExtensions,
+  refusalReason,
 } from "@/common/lib/graphql-error";
 
 /**
@@ -67,5 +68,37 @@ describe("hasGraphQLErrorCode", () => {
     expect(
       hasGraphQLErrorCode(gqlError({ code: "FORBIDDEN" }), "PAYMENT_REQUIRED"),
     ).toBe(false);
+  });
+});
+
+// w1/m81 + w1/m82 — both the custom-domain and member-invite dialogs show the
+// server's own reason instead of generic copy, so the prefix-stripping lives
+// here once rather than being re-derived (and re-drifted) per feature.
+describe("refusalReason", () => {
+  it("strips the transport prefix and capitalizes the server's reason", () => {
+    expect(
+      refusalReason(
+        new Error('bad request: wildcard hostnames are not allowed: "*.x.com"'),
+      ),
+    ).toBe('Wildcard hostnames are not allowed: "*.x.com"');
+    expect(
+      refusalReason(
+        new Error("GraphQL error: bad request: invalid email address"),
+      ),
+    ).toBe("Invalid email address");
+  });
+
+  it("reads the first error of a combined GraphQL response", () => {
+    const err = new CombinedGraphQLErrors(
+      { data: null, errors: [{ message: "boss@x.com is already a member" }] },
+      [{ message: "boss@x.com is already a member" }],
+    );
+    expect(refusalReason(err)).toBe("Boss@x.com is already a member");
+  });
+
+  it("returns empty when there is no usable message, so callers keep their generic copy", () => {
+    expect(refusalReason(new Error(""))).toBe("");
+    expect(refusalReason("not an error")).toBe("");
+    expect(refusalReason(undefined)).toBe("");
   });
 });

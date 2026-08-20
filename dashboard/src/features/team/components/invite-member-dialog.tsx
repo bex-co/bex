@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { isValidEmail } from "@/common/lib/utils/email";
 import { useInviteMember } from "@/features/team/hooks/use-invite-member";
 import { ROLES, type Role } from "@/features/team/types";
 
@@ -56,15 +57,21 @@ export function InviteMemberDialog({
 }: InviteMemberDialogProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { invite, busy, planLimit } = useInviteMember(workspaceId);
+  const { invite, busy, refusal, clearRefusal, planLimit } =
+    useInviteMember(workspaceId);
   const planWall = planLimit ?? (seatsFull ? t("team.seatsFullBody") : null);
 
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("DEVELOPER");
 
+  // Gate submit on a plausible address so an obviously-malformed one is caught
+  // here rather than after a round trip (the server stays authoritative).
+  const emailValid = isValidEmail(email);
+  const showEmailError = email.trim() !== "" && !emailValid;
+
   async function handleSubmit() {
-    if (!email.trim() || busy) return;
+    if (!emailValid || busy) return;
     const ok = await invite(email.trim(), role);
     if (ok) {
       onInvited();
@@ -100,14 +107,38 @@ export function InviteMemberDialog({
             id="invite-email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              clearRefusal();
+            }}
             placeholder={t("team.fieldEmailPlaceholder")}
             autoComplete="off"
             autoFocus
+            aria-invalid={showEmailError || !!refusal}
+            aria-describedby={
+              showEmailError
+                ? "invite-email-invalid"
+                : refusal
+                  ? "invite-email-refusal"
+                  : undefined
+            }
             onKeyDown={(e) => {
               if (e.key === "Enter") void handleSubmit();
             }}
           />
+          {showEmailError ? (
+            <p id="invite-email-invalid" className="text-destructive text-sm">
+              {t("team.fieldEmailInvalid")}
+            </p>
+          ) : refusal ? (
+            <p
+              id="invite-email-refusal"
+              role="alert"
+              className="text-destructive text-sm"
+            >
+              {refusal}
+            </p>
+          ) : null}
         </div>
         <div className="space-y-2">
           <Label htmlFor="invite-role">{t("team.fieldRole")}</Label>
@@ -152,7 +183,7 @@ export function InviteMemberDialog({
           </DialogClose>
           <Button
             onClick={() => void handleSubmit()}
-            disabled={!email.trim() || busy || seatsFull}
+            disabled={!emailValid || busy || seatsFull}
           >
             {busy ? <Loader2 className="animate-spin" /> : null}
             {t("team.inviteSubmit")}

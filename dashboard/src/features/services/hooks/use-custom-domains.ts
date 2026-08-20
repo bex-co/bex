@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
-import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { toast } from "sonner";
 import {
   CustomDomainsDocument,
@@ -9,7 +8,11 @@ import {
   VerifyCustomDomainDocument,
   type CustomDomainFieldsFragment,
 } from "@/graphql/definitions";
-import { hasGraphQLErrorCode } from "@/common/lib/graphql-error";
+import {
+  graphQLErrorMessage,
+  hasGraphQLErrorCode,
+  refusalReason,
+} from "@/common/lib/graphql-error";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
@@ -76,33 +79,24 @@ function mapRaw(raw: RawDomain): CustomDomainView | null {
 // tells them *why* the add was refused rather than a generic failure. The two
 // stable bex-api sentinels get a friendly localized line (host taken by another
 // service — 409, Render's "already exists on another site" — or a reserved
-// platform host — 400); any other refusal carries the server's own reason
-// (minus the generic "bad request:" prefix), e.g. "wildcard hostnames are not
-// allowed", so a rejection the UI doesn't special-case is still explained
-// instead of collapsing to "Couldn't add {name}". Same message-substring
-// convention the env-vars/secret-files hooks use (bex-api sentinels are stable
-// wire text); `key` resolves through t(), `detail` is the server's own text.
+// platform host — 400); every other refusal falls through to the server's own
+// reason (shared `refusalReason`), e.g. "wildcard hostnames are not allowed", so
+// a rejection the UI doesn't special-case is still explained instead of
+// collapsing to "Couldn't add {name}". Same message-substring convention the
+// env-vars/secret-files hooks use (bex-api sentinels are stable wire text);
+// `key` resolves through t(), `detail` is the server's own text.
 // Exported for unit testing the classification in isolation.
 export function classifyAddError(error: unknown): {
   key?: string;
   detail?: string;
 } {
-  const raw = CombinedGraphQLErrors.is(error)
-    ? (error.errors[0]?.message ?? "")
-    : error instanceof Error
-      ? error.message
-      : "";
-  const lower = raw.toLowerCase();
+  const lower = (graphQLErrorMessage(error) ?? "").toLowerCase();
   if (lower.includes("another site"))
     return { key: "services.domainAddConflict" };
   if (lower.includes("reserved platform"))
     return { key: "services.domainAddReserved" };
-  const detail = raw
-    .replace(/^(graphql error:\s*)?bad request:\s*/i, "")
-    .trim();
-  return detail
-    ? { detail: detail.charAt(0).toUpperCase() + detail.slice(1) }
-    : {};
+  const detail = refusalReason(error);
+  return detail ? { detail } : {};
 }
 
 export interface UseCustomDomainsResult {

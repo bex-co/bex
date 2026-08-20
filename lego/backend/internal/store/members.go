@@ -354,9 +354,10 @@ func (s *PGStore) DeleteInvite(ctx context.Context, tenantID, id string) error {
 // returns the accepted invites so the caller can write the matching OpenFGA
 // tuples (Postgres and OpenFGA aren't one transaction; the row is the source of
 // truth, the tuple a best-effort follow-up the resolver re-drives). Idempotent:
-// a second login finds no outstanding invites and returns an empty slice. The
-// membership upsert is ON CONFLICT DO UPDATE so an invite can also UPGRADE an
-// existing membership's role (invited again at a higher role after joining).
+// a second login finds no outstanding invites and returns an empty slice. An
+// invite for someone who already belongs to the workspace is still marked
+// accepted (so it stops lingering) but leaves their role untouched — see
+// redeemInvite; each returned invite carries the EFFECTIVE membership role.
 func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject string) ([]Invite, error) {
 	// Read the pending set outside any transaction — the overwhelmingly common
 	// case (a login with no pending invite) then costs one SELECT, not a
@@ -404,9 +405,14 @@ func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject stri
 			if !ok {
 				continue
 			}
-			if err := redeemInvite(ctx, tx, inv, subject); err != nil {
+			effective, err := redeemInvite(ctx, tx, inv, subject)
+			if err != nil {
 				return err
 			}
+			// Report the role the membership actually holds: redemption never
+			// re-roles an established member, so the caller's OpenFGA tuple and
+			// audit row describe the real membership, not the invite's wish.
+			inv.Role = effective
 			accepted = append(accepted, inv)
 		}
 		return nil
@@ -418,21 +424,39 @@ func (s *PGStore) AcceptInvitesForEmail(ctx context.Context, email, subject stri
 }
 
 // redeemInvite is the one redemption write both acceptance paths share: the
-// membership upsert (ON CONFLICT DO UPDATE so an invite can UPGRADE an
-// existing membership's role) plus marking the invite accepted, inside the
-// caller's transaction.
-func redeemInvite(ctx context.Context, tx pgx.Tx, inv Invite, subject string) error {
-	if _, err := tx.Exec(ctx,
+// membership upsert plus marking the invite accepted, inside the caller's
+// transaction. It returns the role the membership actually holds afterwards.
+//
+// An invite NEVER changes an established member's role (w1/m82). It used to
+// upsert `DO UPDATE SET role = EXCLUDED.role` so a re-invite could upgrade a
+// member, but that same write silently DOWNGRADED one: inviting an existing
+// admin at the default role demoted them on their next request, reported to the
+// admin as "Invitation sent" and applied nowhere the UI showed. Changing a
+// member's role has exactly one verb (ChangeRole), which is audited and refuses
+// to strip the last admin; redemption only ever CREATES a membership.
+//
+// `DO UPDATE SET role = tenant_members.role` is a deliberate no-op update rather
+// than DO NOTHING: it keeps the existing role while still firing RETURNING, so
+// one statement yields the effective role on both the insert and the conflict
+// path. The effective role — not the invited one — is what the reconciliation
+// outbox and the caller's OpenFGA tuple are written from, so the row and the
+// tuple can never disagree about what the member may do.
+func redeemInvite(ctx context.Context, tx pgx.Tx, inv Invite, subject string) (string, error) {
+	var effective string
+	if err := tx.QueryRow(ctx,
 		`INSERT INTO tenant_members (tenant_id, subject, role) VALUES ($1, $2, $3)
-		 ON CONFLICT (tenant_id, subject) DO UPDATE SET role = EXCLUDED.role`,
-		inv.TenantID, subject, inv.Role); err != nil {
-		return err
+		 ON CONFLICT (tenant_id, subject) DO UPDATE SET role = tenant_members.role
+		 RETURNING role`,
+		inv.TenantID, subject, inv.Role).Scan(&effective); err != nil {
+		return "", err
 	}
-	if err := enqueueRoleReconciliation(ctx, tx, inv.TenantID, subject, inv.Role); err != nil {
-		return err
+	if err := enqueueRoleReconciliation(ctx, tx, inv.TenantID, subject, effective); err != nil {
+		return "", err
 	}
-	_, err := tx.Exec(ctx, `UPDATE tenant_invites SET accepted_at = now() WHERE id = $1`, inv.ID)
-	return err
+	if _, err := tx.Exec(ctx, `UPDATE tenant_invites SET accepted_at = now() WHERE id = $1`, inv.ID); err != nil {
+		return "", err
+	}
+	return effective, nil
 }
 
 func enqueueRoleReconciliation(ctx context.Context, tx pgx.Tx, tenantID, subject, role string) error {
@@ -478,9 +502,13 @@ func (s *PGStore) AcceptInviteByToken(ctx context.Context, token, subject string
 		if !ok {
 			return ErrInvitePlanLimit
 		}
-		if err := redeemInvite(ctx, tx, inv, subject); err != nil {
+		effective, err := redeemInvite(ctx, tx, inv, subject)
+		if err != nil {
 			return err
 		}
+		// See AcceptInvitesForEmail: the accepted invite reports the effective
+		// membership role, which is what the caller reconciles into OpenFGA.
+		inv.Role = effective
 		accepted = inv
 		return nil
 	})
@@ -493,8 +521,8 @@ func (s *PGStore) AcceptInviteByToken(ctx context.Context, token, subject string
 // planAllowsJoin reports whether redeeming inv for subject keeps the workspace
 // within its current plan — the accept-time half of the plan-limit enforcement
 // (LimitsFor/RoleAllowedOnPlan are the same predicates invite and ChangePlan
-// use). A subject who is ALREADY a member takes no new seat, so only the role is
-// checked for them (an invite can upgrade an existing membership's role).
+// use). A subject who is ALREADY a member takes no new seat, so the cap does not
+// apply to them (their role is left as-is by redemption, w1/m82).
 func planAllowsJoin(ctx context.Context, tx pgx.Tx, inv Invite, subject string) (bool, error) {
 	var plan string
 	if err := tx.QueryRow(ctx, `SELECT plan FROM tenants WHERE id = $1`, inv.TenantID).Scan(&plan); err != nil {
