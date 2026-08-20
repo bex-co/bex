@@ -535,6 +535,7 @@ func (r *KeyValueReconciler) reconcileKeyValueService(ctx context.Context, kv *a
 		if intent.public {
 			svc.Spec.Ports = append(svc.Spec.Ports, corev1.ServicePort{Port: kvTLSPort, TargetPort: intstr.FromInt(kvTLSPort), Name: "valkey-tls"})
 		}
+		applyServicePortServerDefaults(svc.Spec.Ports)
 		return controllerutil.SetControllerReference(kv, svc, r.Scheme)
 	})
 	return err
@@ -596,9 +597,9 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 
 // applyValkeyPodSpec writes the Valkey server + metrics-exporter template onto
 // spec. It assigns only the fields this controller owns — never the whole
-// PodSpec — so apiserver-defaulted fields (restartPolicy, dnsPolicy,
-// terminationGracePeriodSeconds, …) survive an update instead of being blanked
-// and re-defaulted into a spurious rollout every reconcile.
+// PodSpec — so anything it does not own (nodeSelector, tolerations,
+// serviceAccountName, …) survives an update instead of being blanked and
+// re-defaulted into a spurious rollout every reconcile.
 func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent keyValueIntent) {
 	// The Valkey password, shared by the server (arg expansion) and the metrics
 	// exporter (authenticated INFO scrape).
@@ -666,6 +667,10 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 		Resources:       kvExporterResources(),
 		SecurityContext: tenantSecCtx(),
 	}}
+	// Last, always — both containers are rebuilt whole above. Fill-if-empty, so
+	// the pod-level fields this function leaves to the fetched object stay put.
+	// See server_defaults.go.
+	applyPodSpecServerDefaults(spec)
 }
 
 func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

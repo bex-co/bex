@@ -169,7 +169,10 @@ func (r *KeyValueReconciler) reconcileKeyValueBackup(
 	name := keyValueBackupName(kv.Name)
 	if !keyValueBackupsEnabled(plan, r.Backup) {
 		cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: kv.Namespace}}
-		if err := r.Delete(ctx, cron); err != nil && !apierrors.IsNotFound(err) {
+		// Existence check first, via the same primitive the deletion path uses:
+		// with backups off this CronJob is absent on every pass, and a blind
+		// Delete is a live API round trip that deletes nothing (w7/m84).
+		if _, err := deleteAndWait(ctx, r.Client, cron); err != nil {
 			return fmt.Errorf("delete disabled KeyValue backup CronJob: %w", err)
 		}
 		return nil
@@ -255,7 +258,7 @@ rm -f /backup/dump.rdb.gz`},
 		})
 	}
 
-	return batchv1.CronJobSpec{
+	spec := batchv1.CronJobSpec{
 		Schedule:                   keyValueBackupSchedule(kv.Name),
 		TimeZone:                   &timeZone,
 		ConcurrencyPolicy:          batchv1.ForbidConcurrent,
@@ -313,6 +316,10 @@ aws --endpoint-url "${ENDPOINT}" s3 ls "${prefix}" \
 			},
 		},
 	}
+	// Last, always — this pod template is built from nothing every pass. See
+	// server_defaults.go.
+	applyPodSpecServerDefaults(&spec.JobTemplate.Spec.Template.Spec)
+	return spec
 }
 
 func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *appv1alpha1.KeyValue) (result ctrl.Result, err error) {

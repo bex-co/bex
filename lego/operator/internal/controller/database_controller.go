@@ -417,6 +417,37 @@ func cidrMiddlewareSpec(cidrs []string) map[string]any {
 // NoMatch (the CRD not installed — e.g. envtest or a cluster without that
 // operator) as "nothing to delete". Shared by the Database and KeyValue cleanup.
 func deleteOptionalObject(ctx context.Context, c client.Client, o *unstructured.Unstructured) error {
+	// Existence check first (w7/m84). An optional object is absent on every
+	// steady-state pass of the owner that might have had one, so a blind Delete
+	// is a per-reconcile, per-owner API round trip that deletes nothing — three
+	// of them per App, for the Traefik middlewares alone.
+	//
+	// Be precise about what this buys HERE: the signature is unstructured, and
+	// controller-runtime does not serve unstructured reads from the cache
+	// (cluster.go hardcodes CacheOptions{Unstructured: false} unless the manager
+	// overrides it, and cmd/manager does not). So the request count is unchanged
+	// — a 404 GET replaces a 404 DELETE. What changes is which path it takes:
+	// off the API server's mutating flow and out of the write audit stream. The
+	// round trip only truly disappears where the kind IS cached, which is the
+	// typed callers' case (deleteStaleChildren, the KeyValue backup CronJob),
+	// not this one.
+	//
+	// Spelled out rather than delegated to deleteAndWait because only this path
+	// must also treat NoMatch (the CRD absent) as "nothing to delete". Callers
+	// holding an object they just LISTED know it exists and must call
+	// deleteTolerantly directly instead, or the check is pure waste.
+	if err := c.Get(ctx, client.ObjectKeyFromObject(o), o); err != nil {
+		if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
+			return nil
+		}
+		return err
+	}
+	return deleteTolerantly(ctx, c, o)
+}
+
+// deleteTolerantly deletes o, treating "already gone" and "CRD not installed" as
+// success.
+func deleteTolerantly(ctx context.Context, c client.Client, o client.Object) error {
 	if err := c.Delete(ctx, o); err != nil && !apierrors.IsNotFound(err) && !meta.IsNoMatchError(err) {
 		return err
 	}
@@ -876,10 +907,13 @@ func projectBackupCredential(ctx context.Context, cl client.Client, srcNS, dstNS
 
 func (r *DatabaseReconciler) deletePoolerConnectionSecret(ctx context.Context, db *appv1alpha1.Database) error {
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: db.Name + "-pooler-app", Namespace: db.Namespace}}
-	if err := r.secretClient().Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
-		return err
-	}
-	return nil
+	// Existence check first: a Database without a pooler has no such Secret on
+	// any pass, and a blind Delete is a per-reconcile round trip that deletes
+	// nothing (w7/m84). secretClient() is the deliberately uncached client, so
+	// this is a read replacing a write rather than a round trip saved — see
+	// deleteOptionalObject for the full accounting.
+	_, err := deleteAndWait(ctx, r.secretClient(), secret)
+	return err
 }
 
 // reconcileDatabaseReadiness maps CNPG's status-only lifecycle onto the public
@@ -997,6 +1031,13 @@ func setLifecycleAnnotations(cluster *unstructured.Unstructured, suspended bool,
 	}
 	if restartedAt != "" {
 		anns[restartAnnotation] = restartedAt
+	}
+	// An empty annotations map is dropped on serialization, so the stored object
+	// carries no annotations key at all. Setting one anyway makes the projection
+	// differ from what was fetched, and CreateOrUpdate PUTs on every pass for a
+	// map with nothing in it (w7/m84).
+	if len(anns) == 0 {
+		anns = nil
 	}
 	cluster.SetAnnotations(anns)
 }
