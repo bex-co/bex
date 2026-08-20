@@ -5,18 +5,40 @@ resources:
   - upstream/manifest-0.13.0.yaml
 patches:
   # Upstream v0.13.0 grants the controller create/delete/get/list/watch on every
-  # Secret cluster-wide, but its ObjectStore reconciler never reads or mutates a
-  # Secret. It creates per-cluster Roles whose resourceNames contain only each
-  # ObjectStore's referenced credential; the CNPG instance sidecar uses those
-  # namespaced Roles. Drop the unused controller-wide rule entirely.
+  # Secret cluster-wide. Its ObjectStore reconciler never reads or mutates one,
+  # so most of that is unused — but it cannot be dropped ENTIRELY, and an earlier
+  # revision of this patch that did so broke every new managed Postgres on the
+  # platform (w7/m77, 2026-08-19).
+  #
+  # The controller creates a per-cluster Role granting get/watch/list on that
+  # cluster's backup credential, which the CNPG instance sidecar then uses.
+  # Kubernetes privilege-escalation prevention requires that whoever CREATES a
+  # Role granting X must themselves hold X (or hold `escalate`). Removing the
+  # controller's own Secret access therefore removed its ability to create the
+  # very Roles this comment cites as the reason it is safe to remove — every
+  # Cluster then wedges before provisioning a pod:
+  #
+  #   roles.rbac.authorization.k8s.io "<cluster>-barman-cloud" is forbidden:
+  #   user "system:serviceaccount:cnpg-system:plugin-barman-cloud" is attempting
+  #   to grant RBAC permissions not currently held
+  #
+  # It is silent: Roles created before the change keep working, so existing
+  # databases are unaffected and only NEW ones hang in Provisioning.
+  #
+  # Narrow the rule to exactly what escalation prevention needs — the read verbs
+  # the delegated Roles grant — and keep create/delete dropped.
   - target:
       group: rbac.authorization.k8s.io
       version: v1
       kind: ClusterRole
       name: plugin-barman-cloud
     patch: |-
-      - op: remove
+      - op: replace
         path: /rules/0
+        value:
+          apiGroups: [""]
+          resources: ["secrets"]
+          verbs: ["get", "list", "watch"]
   # Keep upstream source byte-for-byte reproducible while pinning both executed
   # images in the rendered deployment contract.
   - target:
