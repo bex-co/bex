@@ -89,8 +89,8 @@ func currentRevisionPodsReady(
 // server-side render, so halving the interval doubles that cost for every
 // service on the platform; and the thing a faster removal buys — shifting
 // traffic to a healthy peer — does not exist at replicas: 1, which is the
-// common shape. Leave periodSeconds/failureThreshold unset unless that
-// trade-off changes.
+// common shape. Leave periodSeconds/failureThreshold at Kubernetes' defaults
+// unless that trade-off changes.
 const (
 	// healthCheckTimeoutSeconds is Render's budget: "Render considers a check
 	// successful if the instance responds with a 2xx or 3xx status code within
@@ -100,8 +100,8 @@ const (
 	healthCheckTimeoutSeconds int32 = 5
 
 	// healthCheckPeriodSeconds is how often a probe runs. It is set on the
-	// startup and liveness probes; the readiness probe leaves it unset and
-	// inherits Kubernetes' identical 10s default.
+	// startup and liveness probes; the readiness probe takes the identical
+	// Kubernetes default from applyPodSpecServerDefaults.
 	healthCheckPeriodSeconds int32 = 10
 
 	// rolloutBudgetSeconds is how long a new pod may take to first report
@@ -335,9 +335,13 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 	}
 	dep.Spec.Template.Spec.Containers = []corev1.Container{container}
 	// Render's maxShutdownDelaySeconds is Kubernetes' native pod termination
-	// grace period. Keep nil when unset so existing Apps retain Kubernetes'
-	// identical 30-second default without adding a field to their pod template.
+	// grace period. Left nil when unset, so applyPodSpecServerDefaults below
+	// writes Kubernetes' own 30-second default — which is the value every
+	// existing pod template already carries, so writing it rolls nothing.
 	dep.Spec.Template.Spec.TerminationGracePeriodSeconds = terminationGracePeriodSeconds(app.Spec.MaxShutdownDelaySeconds)
 	dep.Spec.Template.Spec.ImagePullSecrets = p.pullSecrets
 	dep.Spec.Template.Spec.AutomountServiceAccountToken = ptr.To(false)
+	// Last, always: above is what bex chooses, this is what Kubernetes would have
+	// chosen for the rest. See server_defaults.go.
+	applyPodSpecServerDefaults(&dep.Spec.Template.Spec)
 }

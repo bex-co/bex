@@ -410,10 +410,15 @@ func TestPodHardeningDefaults(t *testing.T) {
 }
 
 func TestTerminationGracePeriod(t *testing.T) {
-	t.Run("nil when unset keeps the kubernetes default", func(t *testing.T) {
+	t.Run("unset writes the kubernetes default explicitly", func(t *testing.T) {
+		// 30 is what the API server already stored for every App that never set
+		// maxShutdownDelaySeconds, so writing it changes no pod template and
+		// rolls nothing — it only lets the projection equal the stored object,
+		// which is what keeps a converged reconcile from PUTting (w7/m84).
 		dep := project(projectionApp(), webParams())
-		if got := dep.Spec.Template.Spec.TerminationGracePeriodSeconds; got != nil {
-			t.Errorf("grace = %v; want nil so the pod template stays untouched", *got)
+		got := dep.Spec.Template.Spec.TerminationGracePeriodSeconds
+		if got == nil || *got != defaultTerminationGracePeriodSeconds {
+			t.Errorf("grace = %v; want the Kubernetes default %d", got, defaultTerminationGracePeriodSeconds)
 		}
 	})
 

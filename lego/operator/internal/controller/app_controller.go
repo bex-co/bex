@@ -1855,15 +1855,14 @@ func terminationGracePeriodSeconds(seconds *int32) *int64 {
 // applyClusterIPService creates/updates one ClusterIP Service named name over
 // the App's pods (the stable labelApp selector) on the App's port. Shared by
 // the primary CR-named Service and the slug alias so the two cannot drift.
-// Protocol is set explicitly so the mutate matches the server-defaulted object
-// and steady-state reconciles stay read-only (no perpetual no-op PUT).
+// The port carries the server's own defaults so the mutate matches the stored
+// object and steady-state reconciles stay read-only (no perpetual no-op PUT).
 func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alpha1.App, name string, port int) error {
 	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, svc, func() error {
 		svc.Spec.Selector = map[string]string{labelApp: app.Name}
-		svc.Spec.Ports = []corev1.ServicePort{{
-			Port: int32(port), TargetPort: intstr.FromInt(port), Protocol: corev1.ProtocolTCP,
-		}}
+		svc.Spec.Ports = []corev1.ServicePort{{Port: int32(port), TargetPort: intstr.FromInt(port)}}
+		applyServicePortServerDefaults(svc.Spec.Ports)
 		return controllerutil.SetControllerReference(app, svc, r.Scheme)
 	})
 	return err
@@ -2251,7 +2250,9 @@ func (r *AppReconciler) reconcileHostRedirects(ctx context.Context, app *appv1al
 		if desiredMiddleware[list.Items[i].GetName()] {
 			continue
 		}
-		if err := deleteOptionalObject(ctx, r.Client, &list.Items[i]); err != nil {
+		// The item came back from the List above, so it exists: delete it
+		// directly rather than paying deleteOptionalObject's existence check.
+		if err := deleteTolerantly(ctx, r.Client, &list.Items[i]); err != nil {
 			return nil, err
 		}
 	}
@@ -2555,13 +2556,12 @@ func (r *AppReconciler) reconcilePlatformAlias(ctx context.Context, app *appv1al
 		alias.Spec.Type = corev1.ServiceTypeExternalName
 		alias.Spec.ExternalName = fmt.Sprintf("%s.%s.svc.cluster.local", service, namespace)
 		alias.Spec.Selector = nil
-		// Protocol/TargetPort are set explicitly so the mutate matches the
-		// server-defaulted object and steady-state reconciles stay read-only,
-		// exactly as applyClusterIPService documents — otherwise CreateOrUpdate
-		// diffs against the defaults and PUTs on every pass forever.
-		alias.Spec.Ports = []corev1.ServicePort{{
-			Name: "http", Port: port, TargetPort: intstr.FromInt32(port), Protocol: corev1.ProtocolTCP,
-		}}
+		// TargetPort is set explicitly (and Protocol defaulted below) so the
+		// mutate matches the server-defaulted object and steady-state reconciles
+		// stay read-only — otherwise CreateOrUpdate diffs against the defaults
+		// and PUTs on every pass forever.
+		alias.Spec.Ports = []corev1.ServicePort{{Name: "http", Port: port, TargetPort: intstr.FromInt32(port)}}
+		applyServicePortServerDefaults(alias.Spec.Ports)
 		return controllerutil.SetControllerReference(app, alias, r.Scheme)
 	}); err != nil {
 		return err
@@ -2849,6 +2849,9 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 	// Authenticate the pull under an auth-enabled registry (w7/m8) — owned here so
 	// every caller of cronPodSpec gets it without a post-hoc patch at each site.
 	spec.ImagePullSecrets = r.imagePullSecrets(app, image)
+	// Last, always — this PodSpec is built from nothing every pass. See
+	// server_defaults.go.
+	applyPodSpecServerDefaults(&spec)
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{Labels: labels},
 		Spec:       spec,
