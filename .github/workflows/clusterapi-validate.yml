@@ -10,6 +10,9 @@ on:
   pull_request:
     paths:
       - "infra/clusterapi/overlays/hetzner-caph/**"
+      # w2/m81: the kubelet serving-cert rotation guard also asserts against
+      # the CAPD mock overlay (kubeletExtraArgs list form vs CAPH's map form).
+      - "infra/clusterapi/overlays/local-capd/**"
       - "infra/packer/**"
       - ".github/workflows/snapshot.yml"
       - "scripts/clusterapi-validate.sh"
@@ -24,6 +27,7 @@ on:
     branches: [main]
     paths:
       - "infra/clusterapi/overlays/hetzner-caph/**"
+      - "infra/clusterapi/overlays/local-capd/**"
       - "infra/packer/**"
       - ".github/workflows/snapshot.yml"
       - "scripts/clusterapi-validate.sh"

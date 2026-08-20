@@ -17,7 +17,7 @@
 | 6 | Revocation does not terminate established gateway streams | medium | **Fixed in place** — live-stream revalidation watchdogs on all three transports |
 | 7 | Sensitive/destructive data operations accept stale authorization after revocation | medium | **Fixed in place** — fresh checks at the five remaining sinks |
 | 8 | Contributors can change executable build inputs reserved for developers | medium | **Fixed in place** — `SetRootDir`/`SetDockerfilePath` reclassified to `can_create` |
-| 9 | Production metrics-server disables kubelet certificate verification | low | Deferred (3rd report — needs a kubelet-serving CSR approver, round-7 #5) |
+| 9 | Production metrics-server disables kubelet certificate verification | low | **Closed by w2/m81** (3rd report — round-7 #5 → ADR061 #11 → this) |
 | 10 | DNS registry names permit blind node-origin SSRF during image pulls | low | Accepted residual (repeat — round-7 #6 / ADR061 #12) |
 | 11 | Mobile live-log stream retains the entire unbounded SSE response | low | **Fixed in place** — byte budget recycles the stream; parser caps pending frames |
 | 12 | Privileged deployment and runtime inputs lack independent integrity verification | low | Deferred (3rd report — digest-pinning inventory, ADR055 F7 lineage) |
@@ -86,9 +86,9 @@ The 30s positive cache was still the final gate at five sinks round-8's `Authori
 
 `SetRootDir`/`SetDockerfilePath` gated on `can_operate` (contributor) although both select which repository bytes BuildKit executes. The m68 executable-selection audit had deliberately classified them as "build configuration" — round-9 reverses that carve-out: an API role and git access are independent axes (a workspace contributor may hold no write access to the bound repository at all), and every pre-existing subtree or Dockerfile in the repo is selectable, so repointing the build context/Dockerfile IS choosing what executes. Both verbs now require `can_create`; the m68 class table and `representativeVerbRelations` pins were updated with the reversal rationale so the boundary is re-documented, and the class tests now enforce contributor-refused/developer-allowed for both.
 
-## 9 — metrics-server kubelet TLS (low): deferred, unchanged
+## 9 — metrics-server kubelet TLS (low): closed by `w2/m81` (2026-08-19)
 
-Third report (round-7 #5 → ADR061 #11 → this). Removing `--kubelet-insecure-tls` requires kubelet serving certificates with valid node SANs and a CSR approver; Cilium WireGuard node encryption remains the compensating control. Tracked on the round-7 follow-up register.
+Third report (round-7 #5 → ADR061 #11 → this), now closed: a digest-pinned kubelet-serving CSR approver (`deploy/gitops/base/kubelet-csr-approver.yaml`) plus `--kubelet-certificate-authority` on the base metrics-server Application replaced `--kubelet-insecure-tls`, which was dropped from the CAPD-local overlay once local kubelets (`rotate-server-certificates: "true"`, `infra/clusterapi/overlays/local-capd/cluster.yaml`) also presented approver-signed certs. Full disposition in `docs/ADR072-security-review-round7.md` #5; the one documented residual is already-running prod nodes, which keep self-signed certs until a kubelet restart or the next ADR053 template rotation (not forced by this milestone). Cilium WireGuard node encryption remains a compensating control for that residual window.
 
 ## 10 — DNS-name registry SSRF (low): accepted, unchanged
 

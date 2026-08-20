@@ -1,0 +1,53 @@
+# kubelet-serving CSR approver (w2/m81 t001, docs/ADR072-security-review-round7.md
+# finding 5). kube-controller-manager never auto-approves `kubernetes.io/
+# kubelet-serving` CSRs, so a kubeadm-provisioned kubelet falls back to a
+# self-signed serving cert unless something approves them. This watches CSRs
+# cluster-wide and approves ONLY ones that pass every check below — no bypass
+# mode, matching the milestone's "tight matching rules" requirement:
+#   - providerRegex:      the CSR requestor's node name must match bex's own
+#                          naming convention (every CAPD/CAPH machine name is
+#                          "bex-<segment>(-<segment>)*", e.g. bex-tenant-0-fhk8x
+#                          or bex-control-plane-abcde).
+#   - allowedDnsNames: 1   exactly one DNS SAN — the node's own hostname.
+#   - the built-in IP-address check (always on) requires every SAN IP to be one
+#     of the Node object's own addresses; the prod overlay narrows this further
+#     to the Hetzner private network (overlays/prod/values/kubelet-csr-approver
+#     .values.yaml).
+#   - ignoreNonSystemNode/skipDenyStep/bypassDnsResolution/bypassHostnameCheck
+#     all stay false (chart defaults) — every non-conforming CSR is actively
+#     Denied, never silently left Pending or waved through.
+# Verified (2026-08-19, isolated kind cluster): a CSR for a matching node name
+# is Approved,Issued; an impersonated `system:node:evilname` kubelet-serving
+# CSR is Denied with "SAN DNS name ... not allowed by the Cloud provider regex".
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubelet-csr-approver
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: bex-platform
+  source:
+    repoURL: oci://ghcr.io/bex-co/bex-charts/kubelet-csr-approver
+    path: .
+    targetRevision: "sha256:d0ea7b27130119945df86d834c0074147d17055549699cef9be92f02de71187e"
+    helm:
+      values: |
+        providerRegex: '^bex(-[a-z0-9]+)+$'
+        allowedDnsNames: 1
+        ignoreNonSystemNode: false
+        skipDenyStep: false
+        bypassDnsResolution: false
+        bypassHostnameCheck: false
+        # w1/m19 t003: platform pool, same as metrics-server.
+        nodeSelector:
+          bex.co/pool: platform
+        tolerations:
+          - { key: bex.co/platform, operator: Equal, value: "true", effect: NoSchedule }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

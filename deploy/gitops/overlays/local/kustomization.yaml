@@ -9,19 +9,13 @@ resources:
   # renders in this overlay only and never in prod.
   - mailpit.yaml
 patches:
-  # CAPD's disposable kubelets use self-signed serving certificates. Keep the
-  # compatibility bypass explicitly local; the shared/prod Application verifies.
-  - target:
-      group: argoproj.io
-      version: v1alpha1
-      kind: Application
-      name: metrics-server
-    patch: |-
-      - op: add
-        path: /spec/source/helm/parameters
-        value:
-          - { name: "args[0]", value: --kubelet-insecure-tls }
-          - { name: "args[1]", value: "--kubelet-preferred-address-types=InternalIP,Hostname,ExternalIP" }
+  # w2/m81 t003 (2026-08-19): CAPD's kubelets used to present self-signed
+  # serving certificates, so this overlay carried an --kubelet-insecure-tls
+  # compatibility bypass. Once kubelet-csr-approver (base, w2/m81 t001) and
+  # CAPD's rotate-server-certificates: "true" (infra/clusterapi/overlays/
+  # local-capd, t002) landed, local kubelets present real approved serving
+  # certs too, so the base Application's --kubelet-certificate-authority now
+  # verifies locally exactly as it does in prod — no local-only patch needed.
   # The local CAPD mock cluster runs Calico, not Cilium (scripts/mock-cluster.sh),
   # so the Cilium-native node/metadata egressDeny CRD doesn't exist here. Drop it;
   # the portable per-App k8s NetworkPolicy (which excepts 169.254.0.0/16) still
