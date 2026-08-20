@@ -195,12 +195,23 @@ func TestTraefikRouterNamesDistinguishPrivateZeroFromMissingPublicIngress(t *tes
 		t.Fatalf("private App: got names=%v err=%v, want successful empty", names, err)
 	}
 
-	public := &appv1alpha1.App{
+	runningPublic := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"},
 		Spec:       appv1alpha1.AppSpec{Host: "web.example.com"},
+		Status:     appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning},
 	}
-	if _, err := base.TraefikRouterNames(context.Background(), public); err == nil || !strings.Contains(err.Error(), "expected Ingress") {
-		t.Fatalf("public App missing Ingress: got %v, want unresolved error", err)
+	if _, err := base.TraefikRouterNames(context.Background(), runningPublic); err == nil || !strings.Contains(err.Error(), "expected Ingress") {
+		t.Fatalf("Running public App missing Ingress: got %v, want unresolved error", err)
+	}
+
+	failedPublic := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "web-failed", Namespace: "default"},
+		Spec:       appv1alpha1.AppSpec{Expose: true},
+		Status:     appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseFailed},
+	}
+	names, err = base.TraefikRouterNames(context.Background(), failedPublic)
+	if err != nil || len(names) != 0 {
+		t.Fatalf("Failed public App missing Ingress: got names=%v err=%v, want successful empty", names, err)
 	}
 }
 
