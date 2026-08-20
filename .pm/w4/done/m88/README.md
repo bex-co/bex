@@ -1,6 +1,6 @@
 # w4 · m88 — Platform dashboard observability: error logs + Loki ship
 
-**Worker:** worker4 **Goal:** make `dashboard.bex.co` debuggable from k9s/`kubectl logs` and durable in Loki when SSR or edge requests fail — today the pod prints only a listen line and platform traffic is deliberately dropped from the shipper. **Status:** todo (t001–t005 done; t006 awaits deploy+Loki verify)
+**Worker:** worker4 **Goal:** make `dashboard.bex.co` debuggable from k9s/`kubectl logs` and durable in Loki when SSR or edge requests fail — today the pod prints only a listen line and platform traffic is deliberately dropped from the shipper. **Status:** done
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Retain Traefik access lines for `dashboard.bex.co` (host-labeled) — **DONE**        | 40m | t002       |
 | t004 | Simplify — **DONE**                                                                 | 20m | t003       |
 | t005 | Test coverage — **DONE**                                                            | 40m | t003       |
-| t006 | Closeout                                                                            | 10m | t004, t005 |
+| t006 | Closeout — **DONE**                                                                 | 10m | t004, t005 |
 
 ## Definition of done
 
