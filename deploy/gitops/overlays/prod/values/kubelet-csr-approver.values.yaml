@@ -1,0 +1,8 @@
+# Hetzner private network CIDR (infra/terraform/variables.tf network_cidr
+# default 10.0.0.0/16) every real node's InternalIP lives in. Narrows the
+# approver's built-in Node-address IP check further than the base values.
+# Not layered onto the local overlay: the CAPD mock's docker/OrbStack network
+# CIDR is host-dependent, so a fixed prefix here would make every local
+# kubelet-serving CSR fail closed (Denied) instead of just staying unmirrored.
+providerIpPrefixes:
+  - 10.0.0.0/16

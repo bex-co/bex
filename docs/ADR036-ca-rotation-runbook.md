@@ -89,7 +89,7 @@ Rotate the cluster CA when the `bex-ca` private key is suspected to be compromis
 ### What changes
 
 - `bex-ca` key + cert → CAPI Secret `bex-capi/bex-ca`
-- All certs signed by `bex-ca`: `kubernetes-admin`, `kube-apiserver`, `kube-apiserver-kubelet-client`, `kube-controller-manager`, `kube-scheduler`, and all kubelet client/server certs
+- All certs signed by `bex-ca`: `kubernetes-admin`, `kube-apiserver`, `kube-apiserver-kubelet-client`, `kube-controller-manager`, `kube-scheduler`, and all kubelet client/server certs (kubelet _serving_ certs only for nodes whose `kubernetes.io/kubelet-serving` CSR the `w2/m81` approver — `deploy/gitops/base/kubelet-csr-approver.yaml` — has approved; a node still on a pre-`w2/m81` self-signed serving cert picks up a `bex-ca`-signed one at its next kubelet restart or ADR053 template rotation, not automatically from this CA rotation alone)
 - All clients that trust the old CA: kubectl, kube-proxy on worker nodes, Argo CD's in-cluster SA tokens (trust the apiserver via the service-account CA, not the cluster CA directly — unaffected), and any external systems pinning the CA cert
 
 A separate `bex-etcd` CA covers etcd peer/client auth and is rotated independently using the same procedure with the etcd-specific cert names.

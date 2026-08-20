@@ -218,6 +218,41 @@ for dir in deploy/opensandbox deploy/gitops/base deploy/gitops/overlays/*/ deplo
   kubectl kustomize "$dir" >/dev/null || { echo "FAIL: $dir does not render" >&2; fail=1; }
 done
 
+# w2/m81 (docs/ADR072-security-review-round7.md #5 / ADR061 #11 / ADR063 #9):
+# the insecure kubelet-TLS bypass must never reach a production-reachable
+# render again, the CA-verification flag must stay present, and the approving
+# CSR watcher must stay deployed. Assert against the rendered prod overlay
+# (kustomize preserves the Helm `values:` block as literal text in the
+# Application CR), not just the base file, so a future overlay patch that
+# reintroduces the bypass also fails this check. Local is exempt by design —
+# it is the CAPD-only environment the milestone's plan allows to differ.
+echo "==> metrics-server verifies kubelet TLS in every production-reachable render"
+for prod_render_dir in deploy/gitops/base deploy/gitops/overlays/prod; do
+  prod_render="$(kubectl kustomize "$prod_render_dir")"
+  if grep -q -- '--kubelet-insecure-tls' <<<"$prod_render"; then
+    echo "FAIL: $prod_render_dir renders --kubelet-insecure-tls — kubelet TLS verification must not be bypassed outside the local overlay (w2/m81)" >&2
+    fail=1
+  fi
+  if ! grep -q -- '--kubelet-certificate-authority=' <<<"$prod_render"; then
+    echo "FAIL: $prod_render_dir metrics-server is missing --kubelet-certificate-authority (w2/m81)" >&2
+    fail=1
+  fi
+done
+if ! yq -e 'select(.kind == "Application" and .metadata.name == "kubelet-csr-approver")' \
+  deploy/gitops/base/kubelet-csr-approver.yaml >/dev/null 2>&1; then
+  echo "FAIL: deploy/gitops/base/kubelet-csr-approver.yaml no longer defines the kubelet-csr-approver Application" >&2
+  fail=1
+fi
+if ! grep -qF 'kubelet-csr-approver.yaml' deploy/gitops/base/kustomization.yaml; then
+  echo "FAIL: kubelet-csr-approver.yaml is no longer registered in deploy/gitops/base/kustomization.yaml" >&2
+  fail=1
+fi
+if ! grep -q 'kind: Application' <(kubectl kustomize deploy/gitops/base) \
+  || [ "$(kubectl kustomize deploy/gitops/base | yq -N 'select(.kind == "Application" and .metadata.name == "kubelet-csr-approver") | .metadata.name')" != kubelet-csr-approver ]; then
+  echo "FAIL: the rendered base no longer includes the kubelet-csr-approver Application" >&2
+  fail=1
+fi
+
 # kpack is vendored rather than fetched during reconciliation. Pin both the
 # official asset bytes and the rendered compatibility contract: the v1.34 fleet
 # must never regain the old KUBERNETES_MIN_VERSION=1.31 workaround, while the

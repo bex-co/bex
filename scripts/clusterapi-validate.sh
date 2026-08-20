@@ -551,4 +551,30 @@ if [ -f "$PACKER" ]; then
   done
 fi
 
+
+# w2/m81 (docs/ADR072-security-review-round7.md #5 / ADR061 #11 / ADR063 #9):
+# every kubelet must request a CA-signed serving certificate — the
+# kubelet-csr-approver Argo Application (deploy/gitops/base/
+# kubelet-csr-approver.yaml) approves the resulting CSR, and metrics-server's
+# --kubelet-certificate-authority (guarded in scripts/gitops-validate.sh)
+# only stays safe to keep on if every node actually requests one. CAPH writes
+# kubeletExtraArgs as a map (key: value); CAPD writes it as a list
+# (- name/value); check both shapes rather than assume one.
+echo "==> every kubeletExtraArgs block requests kubelet serving-cert rotation"
+CAPD_OVERLAY="${CAPD_OVERLAY_FILE:-infra/clusterapi/overlays/local-capd/cluster.yaml}"
+for kubelet_args_file in "$OVERLAY" "$SANDBOX_OVERLAY" "$CAPD_OVERLAY"; do
+  [ -f "$kubelet_args_file" ] || continue
+  missing="$(yq -o=json -N '[.. | select(has("kubeletExtraArgs"))] | .[].kubeletExtraArgs' "$kubelet_args_file" 2>/dev/null | jq -s '
+    [.[] | if (type == "object")
+      then (has("rotate-server-certificates") and .["rotate-server-certificates"] == "true")
+      else (any(.[]; .name == "rotate-server-certificates" and .value == "true"))
+      end] |
+    length - (map(select(. == true)) | length)
+  ')"
+  if [ -z "$missing" ] || [ "$missing" != 0 ]; then
+    echo "FAIL: $kubelet_args_file has a kubeletExtraArgs block without rotate-server-certificates: \"true\" (w2/m81) — kubelets there fall back to self-signed serving certs" >&2
+    fail=1
+  fi
+done
+
 [ "$fail" -eq 0 ] && echo "PASS: CAPH overlay is internally consistent (reviewed snapshot ⟺ no privileged bootstrap downloads)" || { echo "FAIL: see errors above" >&2; exit 1; }

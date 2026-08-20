@@ -4,9 +4,14 @@
 # NewResourceMetricsSource) read. Without it those endpoints return 503
 # (ErrMetricsUnavailable); instance-count still works (it counts pods directly).
 #
-# Production kubelets rotate serving certificates and Metrics Server verifies
-# them. The disposable CAPD environment adds its insecure compatibility flag in
-# the local overlay only; it can never flow through the production render.
+# Production kubelets rotate serving certificates (w2/m81, docs/ADR072-security-review-round7.md
+# finding 5 / ADR061 #11 / ADR063 #9) and Metrics Server verifies them against
+# the cluster CA below, mounted from the `kube-root-ca.crt` ConfigMap every
+# namespace already carries — no hostPath onto node PKI required. The
+# disposable CAPD environment used to add an insecure compatibility flag in
+# the local overlay only (never the production render); w2/m81 t003 retired
+# that patch once the kubelet-csr-approver (kubelet-csr-approver.yaml) made
+# local kubelets present real, verifiable serving certs too.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -24,6 +29,15 @@ spec:
       values: |
         args:
           - --kubelet-preferred-address-types=InternalIP,Hostname,ExternalIP
+          - --kubelet-certificate-authority=/etc/kubernetes/pki/kubelet-ca/ca.crt
+        extraVolumes:
+          - name: kubelet-ca
+            configMap:
+              name: kube-root-ca.crt
+        extraVolumeMounts:
+          - name: kubelet-ca
+            mountPath: /etc/kubernetes/pki/kubelet-ca
+            readOnly: true
         # Fast enough resolution for a metrics page without hammering kubelets.
         metrics:
           enabled: false                    # metrics-server's own /metrics, not needed here

@@ -386,11 +386,20 @@ spec:
             kubeletExtraArgs:
             - name: eviction-hard
               value: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+            # w2/m81 t002: request a CA-signed kubelet-serving cert (approved by
+            # kubelet-csr-approver, deploy/gitops/base/kubelet-csr-approver.yaml)
+            # instead of falling back to a self-signed one. Parity with
+            # hetzner-caph/cluster.yaml, which has carried this since before
+            # w2/m81.
+            - name: rotate-server-certificates
+              value: "true"
         joinConfiguration:
           nodeRegistration:
             kubeletExtraArgs:
             - name: eviction-hard
               value: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+            - name: rotate-server-certificates
+              value: "true"
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
 kind: DockerMachineTemplate
@@ -445,6 +454,9 @@ spec:
           kubeletExtraArgs:
           - name: eviction-hard
             value: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+          # w2/m81 t002: see the control-plane block above.
+          - name: rotate-server-certificates
+            value: "true"
           # Tag every worker bex.co/pool=platform so the platform GitOps stack
           # (kratos/hydra/openfga/openbao, CNPG, prometheus/loki, operator/api/
           # dashboard — all nodeSelector-pinned to this label) schedules on the
@@ -476,6 +488,9 @@ spec:
           kubeletExtraArgs:
           - name: eviction-hard
             value: nodefs.available<0%,nodefs.inodesFree<0%,imagefs.available<0%
+          # w2/m81 t002: see the control-plane block above.
+          - name: rotate-server-certificates
+            value: "true"
           - name: node-labels
             value: bex.co/pool=tenant
 ---
