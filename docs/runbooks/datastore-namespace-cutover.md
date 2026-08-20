@@ -11,7 +11,35 @@ A datastore CR cannot be moved in place: its PVC is namespace-bound. The cutover
 ## Before you start
 
 - [ ] ADR043 D8's code changes are deployed (`w7/m77` t003–t006) — otherwise the recreated CR lands back in the shared namespace.
+- [ ] **Provisioning in a tenant namespace actually works.** Two RBAC defects blocked it until 2026-08-19, both invisible to every test because RBAC is only exercised on a live cluster, and both found by this runbook's own rehearsal step. Do not take them on faith — prove it, which is one command:
+
+      ```
+      kubectl auth can-i get objectstores.barmancloud.cnpg.io \
+        --as=system:serviceaccount:bex-system:bex-controller-manager -n <ws>   # operator reads the source ObjectStore
+      kubectl auth can-i get secrets \
+        --as=system:serviceaccount:cnpg-system:plugin-barman-cloud -n <ws>     # plugin can DELEGATE to its per-cluster Role
+      ```
+
+      Both must answer `yes`. The second is the non-obvious one: the plugin never reads a
+      Secret itself, but Kubernetes requires it to HOLD that permission to create the
+      per-cluster Role that grants it (`.pm/w7/036.md`).
+
 - [ ] You have a **rehearsal** result: this procedure has been run end to end on a scratch workspace, not just read. Do not rehearse on a tenant.
+
+      A scratch **Database in the target tenant namespace** is a better rehearsal than a
+      scratch workspace: same blast radius (one throwaway CR), higher fidelity (the exact
+      namespace, quota, and network policy the real move lands in). Assert it reaches `Ready`
+      **and** that all five of these appear, because a Cluster can look healthy while its
+      backup wiring silently did not land:
+
+      | check | in `<ws>` |
+      | --- | --- |
+      | connection Secret | `<id>-app` |
+      | per-cluster barman Role | `<id>-barman-cloud` |
+      | projected ObjectStore | `bex-tenant-postgres` |
+      | projected backup credential | the `BEX_DB_BACKUP_S3_SECRET` name |
+      | quota charged | `count/databases.app.bex.co` incremented |
+
 - [ ] You know each affected tenant's maintenance tolerance. This procedure takes a **write outage** for the duration of the final dump + restore. For a tenant that cannot take one, see [Zero-downtime variant](#zero-downtime-variant).
 - [ ] Never print or commit `.env` or `*.kubeconfig` contents.
 
@@ -84,6 +112,10 @@ Load Step 4's dump. Then verify against the source, not against expectations: co
 ### Step 7 — Cut the service over
 
 Trigger a redeploy of `<svc>` so its pods pick up the `<ws>` connection Secret. Because the CR name is unchanged, the App's env references need no edit.
+
+> **Only true for datastores the platform wired.** An App reaches a platform-injected datastore through `secretKeyRef` env, which is name-based and survives the move. Any datastore the tenant wired **itself** — a connection string baked into an image, a config file, a hand-written env value — carries the namespace in its FQDN (`<id>-rw.<old-ns>.svc.cluster.local`) and breaks the moment the move lands. Find those before Step 3, not after Step 7.
+>
+> Real example (`w7/m77`): a Discourse multisite App reached its primary database through platform env, and two further databases through a `config/multisite.yml` **inside its own image**. Nothing in the App CR referenced them; only a hand-written CiliumNetworkPolicy hinted they existed. Grep the tenant's image and config for `.svc.cluster.local` and for each datastore id, and fold the required edit into the same window.
 
 Verify from inside the pod, in this order — each check is the one that was invisible in the incident:
 
