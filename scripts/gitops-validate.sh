@@ -338,11 +338,30 @@ if [ "$barman_sidecar_image" != "ghcr.io/cloudnative-pg/plugin-barman-cloud-side
   echo "FAIL: Barman sidecar image is not digest-pinned: '$barman_sidecar_image'" >&2
   fail=1
 fi
-if yq -e '
-  select(.kind == "ClusterRole" and .metadata.name == "plugin-barman-cloud") |
-  .rules[] | select(.apiGroups == [""] and (.resources | index("secrets")))' \
-  - <<<"$barman_render" >/dev/null 2>&1; then
-  echo "FAIL: Barman controller regained cluster-wide Secret access" >&2
+# The Barman controller's Secret grant is load-bearing in a non-obvious way, and
+# both directions are wrong (w7/m77, .pm/w7/036.md):
+#
+#   too much - upstream also grants create/delete on every Secret cluster-wide,
+#              which the ObjectStore reconciler never uses.
+#   too little - removing the rule outright broke EVERY new managed Postgres on
+#              the platform. The controller creates a per-cluster Role granting
+#              get/watch/list on that cluster's backup credential, and Kubernetes
+#              privilege-escalation prevention requires it to HOLD those verbs to
+#              delegate them. It fails silently: Roles created earlier keep
+#              working, so only new databases hang in Provisioning.
+#
+# Pin the exact verb set. NOTE the previous version of this check used jq's
+# `index(...)`, which this yq does not implement; the error was swallowed by
+# `2>&1` and the non-zero exit read as "no match", so the guard silently passed
+# for its whole life. Keep stderr visible and compare a rendered string.
+barman_secret_verbs="$(yq ea -N '
+  [.. | select(has("kind")) |
+   select(.kind == "ClusterRole" and .metadata.name == "plugin-barman-cloud") |
+   .rules[] | select(.apiGroups[0] == "" and .resources[0] == "secrets") |
+   .verbs | join(",")] | join(";")' - <<<"$barman_render")"
+if [ "$barman_secret_verbs" != "get,list,watch" ]; then
+  echo "FAIL: Barman controller Secret verbs are '$barman_secret_verbs', want exactly 'get,list,watch'" >&2
+  echo "      (empty => new managed Postgres cannot provision anywhere; adding create/delete => over-granted)" >&2
   fail=1
 fi
 for resource in \
