@@ -2,9 +2,9 @@
 
 `bex` deliberately imports the upstream command package rather than copying or forking it.
 
-- **Render release:** `v2.22.0`
-- **Upstream commit:** `d8fd7c2bb09d56beaca5df15ac2aefcb5ae5f427`
-- **Go module version:** `v1.1.3-0.20260721145337-d8fd7c2bb09d`
+- **Render release:** `v2.24.0`
+- **Upstream commit:** `fe8a6188119ee1a53dcf3e5c19f6a5302e840c3f`
+- **Go module version:** `v1.1.3-0.20260819172634-fe8a6188119e`
 
 The upstream repository's v2 tags are not valid Go-module major-version tags because its module path has no `/v2` suffix. Go therefore records the exact release commit as a pseudo-version in `go.mod`.
 

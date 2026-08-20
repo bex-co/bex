@@ -58,7 +58,7 @@ These are Bex-owned inputs. An explicitly set corresponding `RENDER_*` variable 
 | `BEX_WORKSPACE` | Active workspace id or name. |
 | `BEX_OUTPUT` | Default output mode accepted by the upstream CLI. |
 | `BEX_ACCESS_TOKEN` | Already-issued, short-lived OAuth bearer token for an unattended invocation. It is not persisted by the bridge. `bex logout` neither revokes nor unsets this environment credential. |
-| `BEX_NO_UPDATE_NOTIFIER` | Any non-empty value disables the update check entirely. By default `bex -v` reports bex's own release identity (`bex vX.Y.Z (Render CLI v2.22.0 compatible)`) and checks this repo's `bex-cli/v*` releases for something newer; after normal commands a gh-style passive notice appears at most once per 24h (cached under `~/.bex/cache/`), only on a TTY, and never when `CI` is set. Check failures are always silent. |
+| `BEX_NO_UPDATE_NOTIFIER` | Any non-empty value disables the update check entirely. By default `bex -v` reports bex's own release identity (`bex vX.Y.Z (Render CLI v2.24.0 compatible)`) and checks this repo's `bex-cli/v*` releases for something newer; after normal commands a gh-style passive notice appears at most once per 24h (cached under `~/.bex/cache/`), only on a TTY, and never when `CI` is set. Check failures are always silent. |
 
 For example, a local run never needs a `RENDER_*` setting:
 
