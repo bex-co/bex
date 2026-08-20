@@ -43,7 +43,9 @@ const traefikTLSEntrypoint = "websecure"
 // TraefikRouterNames resolves the exact metric-label identities Traefik 3.7.5
 // emits for an App's operator-owned Ingress. A private App with no Ingress has
 // no public HTTP egress and returns an empty slice. An App that declares public
-// exposure but whose Ingress is missing is unresolved, not a successful zero.
+// exposure but whose Ingress is missing is unresolved only while Running —
+// Failed/Building/etc. have no live public surface to meter (prod: Failed
+// build-never-Ingress Apps were flooding usage catch-up logs as unavailable).
 func (b *Base) TraefikRouterNames(ctx context.Context, app *appv1alpha1.App) ([]string, error) {
 	if b.Client == nil {
 		return nil, fmt.Errorf("resolve Traefik routers: Kubernetes client is unavailable")
@@ -56,7 +58,10 @@ func (b *Base) TraefikRouterNames(ctx context.Context, app *appv1alpha1.App) ([]
 	err := b.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: app.Name}, &ingress)
 	if apierrors.IsNotFound(err) {
 		if app.Spec.Host != "" || app.Spec.Expose || len(app.Spec.Hosts) > 0 {
-			return nil, fmt.Errorf("resolve Traefik routers: expected Ingress %s/%s is missing", namespace, app.Name)
+			if app.Status.Phase == appv1alpha1.PhaseRunning {
+				return nil, fmt.Errorf("resolve Traefik routers: expected Ingress %s/%s is missing", namespace, app.Name)
+			}
+			return []string{}, nil
 		}
 		return []string{}, nil
 	}

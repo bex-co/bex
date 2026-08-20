@@ -371,8 +371,8 @@ func TestTenantRoleBindingsStampedPerNamespace(t *testing.T) {
 		gwRB.Subjects[0].Name != "bex-ssh-gateway" || gwRB.Subjects[0].Namespace != "bex-system" {
 		t.Errorf("sandbox ssh-gateway binding missing/wrong: ok=%v ref=%+v subjects=%+v", ok, gwRB.RoleRef, gwRB.Subjects)
 	}
-	// Snapshot resume-pull minting (w3/m42): the operator gets get+create on
-	// Secrets ONLY through this per-sandbox-namespace binding.
+	// Snapshot resume-pull minting (w3/m42): the operator gets
+	// get/create/update/patch on Secrets ONLY through this per-sandbox-namespace binding.
 	snapRB, ok := binding(sandbox, "bex-operator-snapshot-pull")
 	if !ok || snapRB.RoleRef.Name != "bex-operator-snapshot-pull" || len(snapRB.Subjects) != 1 ||
 		snapRB.Subjects[0].Name != "bex-controller-manager" || snapRB.Subjects[0].Namespace != "bex-system" {
