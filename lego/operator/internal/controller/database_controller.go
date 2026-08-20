@@ -504,6 +504,15 @@ func (r *DatabaseReconciler) secretClient() client.Client {
 // +kubebuilder:rbac:groups=app.bex.co,resources=databases/finalizers,verbs=update
 // +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters;backups;scheduledbackups;poolers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=postgresql.cnpg.io,resources=clusters/status,verbs=patch
+// reconcileTenantBackupStore reads the GitOps-installed ObjectStore in the apps
+// namespace and projects it into each tenant namespace (ADR043 D8.4). Without
+// this grant the read fails closed and EVERY backup-enabled Database created in
+// a tenant namespace lands in phase Failed with BackupStoreUnavailable — which
+// is what production did until w7/m77/t007's rehearsal reproduced it.
+// Least privilege (w7/m7): no list/watch, because unstructured reads bypass the
+// informer cache and go direct; no delete, because the projected store is
+// deliberately unowned and shared by every Database in the namespace.
+// +kubebuilder:rbac:groups=barmancloud.cnpg.io,resources=objectstores,verbs=get;create;update;patch
 // +kubebuilder:rbac:groups=traefik.io,resources=ingressroutetcps;middlewaretcps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;delete
 // +kubebuilder:rbac:groups="",resources=events,verbs=create;patch;update

@@ -90,6 +90,15 @@ rules:
   - update
   - watch
 - apiGroups:
+  - barmancloud.cnpg.io
+  resources:
+  - objectstores
+  verbs:
+  - create
+  - get
+  - patch
+  - update
+- apiGroups:
   - batch
   resources:
   - cronjobs
