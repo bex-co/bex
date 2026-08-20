@@ -7,6 +7,7 @@ import {
   DashboardDocumentTitle,
   translatedTitle,
 } from "@/common/lib/document-head";
+import { reportRouteError } from "@/common/lib/report-route-error";
 
 /**
  * Global error page component
@@ -14,6 +15,10 @@ import {
  */
 export default function ErrorPage({ error, reset }: ErrorComponentProps) {
   const { t } = useTranslations();
+
+  // w4/m88: SSR document failures must reach the pod stream (k9s/Loki). The
+  // isomorphic helper no-ops in the browser so client navigations stay quiet.
+  void reportRouteError(error, 500);
 
   const handleGoBack = () => {
     window.history.back();

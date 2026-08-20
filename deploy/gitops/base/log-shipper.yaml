@@ -2,23 +2,28 @@
 # (loki.yaml). One replica per node discovers pods via the Kubernetes API and
 # ships:
 #
-#   type=app     — tenant App pod logs (label app.bex.co/app), labelled
-#                  namespace/app/pod/container + `level` (parsed from JSON lines).
+#   type=app      — tenant App pod logs (label app.bex.co/app), labelled
+#                   namespace/app/pod/container + `level` (parsed from JSON lines).
+#   type=platform — platform UI pods in namespace `dashboard` (no fake App label),
+#                   labelled namespace/service/pod/container + `level` (w4/m88).
 #   type=postgres — managed tenant CNPG logs, labelled by the immutable Database
 #                   CR id as namespace/database/pod/container.
-#   type=request — Traefik's access log (traefik.values.yaml `logs.access`),
-#                  attributed back to the App via the access line's ServiceName
-#                  and labelled method/status.
+#   type=request  — Traefik's access log (traefik.values.yaml `logs.access`),
+#                   attributed back to the App via the access line's ServiceName
+#                   and labelled method/status; plus an explicit host allowlist
+#                   for `dashboard.bex.co` kept as service=dashboard (w4/m88).
 #
 # These are exactly the labels bex-api's LogQL selects on (see lokiSelectorFor /
 # docs/ADR010-observability.md § Log labels), and both push to /loki/api/v1/push.
 #
 # CARDINALITY BUDGET (docs/ADR010-observability.md § Log labels) — a label is a
 # Loki stream, so only BOUNDED fields become labels:
-#   labels:    namespace, app or database, type, pod, container, level (≤5),
-#              method (≤8), status (≤~15)
+#   labels:    namespace, app or database or service (platform), type, pod,
+#              container, level (≤5), method (≤8), status (≤~15)
 #   line-only: path, host  — unbounded per request; filtered at query time with
 #              LogQL's `| json` over the access line, never promoted to a label.
+#              Platform request retention keys off RequestHost in a stage, then
+#              stamps the BOUNDED `service=dashboard` label — never `host=…`.
 # Worst case ≈ replicas×levels + methods×statuses streams per App (low hundreds);
 # typically under 20. Raising `path` to a label would be a cardinality incident.
 #
@@ -54,8 +59,8 @@
 # scheduled on its own node — filtered server-side at the apiserver, not by a
 # client-side relabel `keep` (cheaper: no wasted List/Watch bandwidth on other
 # nodes' pods). This is the ONLY discovery.kubernetes block in this config —
-# app_pods/database_pods/build_pods/traefik discovery.relabel all read discovery.kubernetes.pods.targets,
-# so scoping it once scopes every pipeline.
+# app_pods/platform_pods/database_pods/build_pods/traefik discovery.relabel all
+# read discovery.kubernetes.pods.targets, so scoping it once scopes every pipeline.
 #
 # HELM TPL ESCAPING (w3/m13, pre-existing since w3/m8): the whole
 # alloy.configMap.content string below is run through Helm's `tpl` function at
@@ -204,6 +209,71 @@ spec:
                 stage.static_labels {
                   values = {
                     type  = "app",
+                    level = "unknown",
+                  }
+                }
+
+                stage.labels {
+                  values = { level = "level" }
+                }
+
+                forward_to = [loki.write.default.receiver]
+              }
+
+              // --- type=platform: dashboard UI pod logs (w4/m88) ---
+              //
+              // The app_pods pipeline drops every pod lacking app.bex.co/app, so
+              // the GitOps-deployed dashboard never reached Loki. Ship namespace
+              // `dashboard` under a non-tenant label set (service=dashboard) —
+              // never invent a fake App name for bex-api's tenant log selectors.
+
+              discovery.relabel "platform_pods" {
+                targets = discovery.kubernetes.pods.targets
+
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  regex         = "dashboard"
+                  action        = "keep"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  target_label  = "namespace"
+                }
+                rule {
+                  target_label = "service"
+                  replacement = "dashboard"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_name"]
+                  target_label  = "pod"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_container_name"]
+                  target_label  = "container"
+                }
+              }
+
+              loki.source.kubernetes "platform_pods" {
+                targets    = discovery.relabel.platform_pods.output
+                forward_to = [loki.process.platform_logs.receiver]
+              }
+
+              loki.process "platform_logs" {
+                stage.json {
+                  expressions = {
+                    level    = "level",
+                    severity = "severity",
+                  }
+                }
+
+                stage.template {
+                  source   = "level"
+                  template = "{{ "{{" }} $l := ToLower (or .Value .severity) {{ "}}" }}{{ "{{" }} if or (eq $l \"error\") (eq $l \"err\") (eq $l \"fatal\") (eq $l \"panic\") (eq $l \"critical\") (eq $l \"crit\") {{ "}}" }}error{{ "{{" }} else if or (eq $l \"warn\") (eq $l \"warning\") {{ "}}" }}warn{{ "{{" }} else if or (eq $l \"info\") (eq $l \"notice\") {{ "}}" }}info{{ "{{" }} else if or (eq $l \"debug\") (eq $l \"trace\") {{ "}}" }}debug{{ "{{" }} else {{ "}}" }}unknown{{ "{{" }} end {{ "}}" }}"
+                }
+
+                stage.static_labels {
+                  values = {
+                    type  = "platform",
                     level = "unknown",
                   }
                 }
@@ -439,6 +509,7 @@ spec:
                     service = "ServiceName",
                     method  = "RequestMethod",
                     status  = "DownstreamStatus",
+                    host    = "RequestHost",
                   }
                 }
 
@@ -453,28 +524,45 @@ spec:
                   source     = "service"
                   expression = "^(?P<namespace>default)-(?P<app>.+)-\\d+@kubernetes$"
                 }
-                // A service that doesn't match (a non-App Ingress at the edge — the
-                // dashboard, bex-api itself) has no App to attribute to: drop it
-                // rather than invent one. The regex leaves `app` NIL on a miss, and
-                // a nil renders as the literal "<no value>" — so normalize to the
-                // empty string first, then drop on it. (`{{ .Value }}` alone would
-                // emit "<no value>" and sail straight past the drop below.)
+                // A service that doesn't match (a non-App Ingress at the edge —
+                // bex-api itself, etc.) has no App to attribute to. The regex
+                // leaves `app` NIL on a miss, and a nil renders as the literal
+                // "<no value>" — so normalize to the empty string first.
+                // w4/m88: keep RequestHost=dashboard.bex.co under a BOUNDED
+                // `service=dashboard` label (host stays line-only per the
+                // cardinality budget above); other non-App hosts still drop.
                 stage.template {
                   source   = "app"
                   // Escaped for Helm's tpl pass — see the HELM TPL ESCAPING
                   // note at the top of this file for why.
                   template = "{{ "{{" }} if .Value {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
                 }
+                stage.template {
+                  source   = "should_drop"
+                  template = "{{ "{{" }} if .app {{ "}}" }}no{{ "{{" }} else if eq .host \"dashboard.bex.co\" {{ "}}" }}no{{ "{{" }} else {{ "}}" }}yes{{ "{{" }} end {{ "}}" }}"
+                }
                 stage.drop {
-                  source              = "app"
-                  expression          = "^$"
+                  source              = "should_drop"
+                  expression          = "^yes$"
                   drop_counter_reason = "not_a_tenant_app"
+                }
+                // Platform host allowlist → bounded service label + dashboard ns.
+                // Tenant lines keep regex namespace/app; empty label values are
+                // omitted by Alloy's stage.labels.
+                stage.template {
+                  source   = "namespace"
+                  template = "{{ "{{" }} if .app {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} else {{ "}}" }}dashboard{{ "{{" }} end {{ "}}" }}"
+                }
+                stage.template {
+                  source   = "platform_service"
+                  template = "{{ "{{" }} if .app {{ "}}" }}{{ "{{" }} else {{ "}}" }}dashboard{{ "{{" }} end {{ "}}" }}"
                 }
 
                 stage.labels {
                   values = {
                     namespace = "namespace",
                     app       = "app",
+                    service   = "platform_service",
                     method    = "method",
                     status    = "status",
                   }
@@ -483,7 +571,8 @@ spec:
                   values = { type = "request" }
                 }
                 // `job` was scaffolding for the match stage above — it is not part
-                // of the label taxonomy and must not become a stream.
+                // of the label taxonomy and must not become a stream. `host` was
+                // extracted for the allowlist decision only — never a label.
                 stage.label_drop {
                   values = ["job"]
                 }

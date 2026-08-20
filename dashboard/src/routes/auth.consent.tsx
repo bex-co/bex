@@ -19,35 +19,43 @@ export const Route = createFileRoute("/auth/consent")({
     handlers: ({ createHandlers }) =>
       createHandlers({
         GET: async ({ request, next }) => {
-          const { handleConsent } =
-            await import("@/common/server-fn/hydra-consent");
-          const result = await handleConsent(request);
-          if (result instanceof Response) return result;
-          // One `next()` call with a uniformly-typed context object — a
-          // per-branch `next()` call forces TanStack's context inference to
-          // the first branch's literal shape and rejects the second.
-          const context: {
-            consent: ConsentView | null;
-            consentErrorCode: ConsentErrorCode | null;
-            consentRequiredScopes: string[] | null;
-          } =
-            "errorCode" in result
-              ? {
-                  consent: null,
-                  consentErrorCode: result.errorCode,
-                  consentRequiredScopes: result.requiredScopes ?? null,
-                }
-              : {
-                  consent: result,
-                  consentErrorCode: null,
-                  consentRequiredScopes: null,
-                };
-          return next({ context });
+          const { withReportedRouteError } =
+            await import("@/common/lib/report-route-error");
+          return withReportedRouteError(async () => {
+            const { handleConsent } =
+              await import("@/common/server-fn/hydra-consent");
+            const result = await handleConsent(request);
+            if (result instanceof Response) return result;
+            // One `next()` call with a uniformly-typed context object — a
+            // per-branch `next()` call forces TanStack's context inference to
+            // the first branch's literal shape and rejects the second.
+            const context: {
+              consent: ConsentView | null;
+              consentErrorCode: ConsentErrorCode | null;
+              consentRequiredScopes: string[] | null;
+            } =
+              "errorCode" in result
+                ? {
+                    consent: null,
+                    consentErrorCode: result.errorCode,
+                    consentRequiredScopes: result.requiredScopes ?? null,
+                  }
+                : {
+                    consent: result,
+                    consentErrorCode: null,
+                    consentRequiredScopes: null,
+                  };
+            return next({ context });
+          });
         },
         POST: async ({ request }) => {
-          const { handleConsentDecision } =
-            await import("@/common/server-fn/hydra-consent");
-          return handleConsentDecision(request);
+          const { withReportedRouteError } =
+            await import("@/common/lib/report-route-error");
+          return withReportedRouteError(async () => {
+            const { handleConsentDecision } =
+              await import("@/common/server-fn/hydra-consent");
+            return handleConsentDecision(request);
+          });
         },
       }),
   },
