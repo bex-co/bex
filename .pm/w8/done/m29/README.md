@@ -1,18 +1,18 @@
 # w8 · m29 — bex CLI help chrome: strip Render branding without forking
 
-**Worker:** worker8 **Goal:** Make `bex --help` and related cobra chrome read as Bex while still importing the pinned `render-oss/cli` command tree — no fork, no vendoring, no OAuth/client-id change. **Status:** todo
+**Worker:** worker8 **Goal:** Make `bex --help` and related cobra chrome read as Bex while still importing the pinned `render-oss/cli` command tree — no fork, no vendoring, no OAuth/client-id change. **Status:** done
 
 ## Tasks (in order)
 
-| id   | title                                                                                         | est | depends_on  |
-| ---- | --------------------------------------------------------------------------------------------- | --- | ----------- |
-| t001 | Overlay `RootCmd` Use/examples + help template + `cliVersion` so usage says `bex`             | 45m | —           |
-| t002 | Targeted Short/Long branding pass (safe replacements; preserve `render.yaml`)                 | 45m | t001        |
-| t003 | Retarget `docs` + soften `bex -v` product line                                                | 30m | t001        |
-| t004 | Document branding overlay + pin-bump re-diff checklist; name residual runtime Render copy     | 30m | t002, t003  |
-| t005 | Simplify                                                                                      | 30m | t004        |
-| t006 | Test coverage                                                                                 | 45m | t005        |
-| t007 | Closeout                                                                                      | 15m | t006        |
+| id   | title                                                                                                     | est | depends_on |
+| ---- | --------------------------------------------------------------------------------------------------------- | --- | ---------- |
+| t001 | Overlay `RootCmd` Use/examples + help template + `cliVersion` so usage says `bex` — **DONE**              | 45m | —          |
+| t002 | Targeted Short/Long branding pass (safe replacements; preserve `render.yaml`) — **DONE**                  | 45m | t001       |
+| t003 | Retarget `docs` + soften `bex -v` product line — **DONE**                                                 | 30m | t001       |
+| t004 | Document branding overlay + pin-bump re-diff checklist; name residual runtime Render copy — **DONE**      | 30m | t002, t003 |
+| t005 | Simplify — **DONE**                                                                                       | 30m | t004       |
+| t006 | Test coverage — **DONE**                                                                                  | 45m | t005       |
+| t007 | Closeout — **DONE**                                                                                       | 15m | t006       |
 
 ## Definition of done
 
