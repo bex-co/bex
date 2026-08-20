@@ -37,6 +37,7 @@ grants_only="${GRANTS_ONLY:-0}"
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/secret-install.sh
+# shellcheck disable=SC1091
 . "$script_dir/lib/secret-install.sh"
 grants_sql="$script_dir/../lego/backend/internal/sshgateway/dbrole/dbrole.sql"
 [[ -f "$grants_sql" ]] || { echo "missing grants DDL: $grants_sql" >&2; exit 1; }
