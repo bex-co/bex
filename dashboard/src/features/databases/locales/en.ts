@@ -209,6 +209,11 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Disk size (GB)",
     description: "Create-database form field label (storage size)",
   },
+  "databases.fieldDiskError": {
+    message: "Enter a whole number between {min} and {max} GB.",
+    description:
+      "Create-database validation message when the disk size is below the plan floor or above the volume cap",
+  },
   "databases.fieldPublic": {
     message: "Public access",
     description: "Create-database form field label (external endpoint toggle)",

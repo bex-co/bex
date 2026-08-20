@@ -3,10 +3,8 @@ import { resolve } from "node:path";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  DatabaseDiskAutoscalingControl,
-  DISK_AUTOSCALING_CAP_GB,
-} from "@/features/databases/components/database-disk-autoscaling-control";
+import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
+import { DISK_AUTOSCALING_CAP_GB } from "@/features/databases/lib/disk";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 const updateDiskAutoscaling = vi.fn();

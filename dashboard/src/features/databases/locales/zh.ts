@@ -206,6 +206,11 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "磁盘大小（GB）",
     description: "Create-database form field label (storage size)",
   },
+  "databases.fieldDiskError": {
+    message: "请输入 {min} 到 {max} GB 之间的整数。",
+    description:
+      "Create-database validation message when the disk size is below the plan floor or above the volume cap",
+  },
   "databases.fieldPublic": {
     message: "公网访问",
     description: "Create-database form field label (external endpoint toggle)",

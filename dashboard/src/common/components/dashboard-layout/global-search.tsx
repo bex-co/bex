@@ -41,6 +41,17 @@ import { serviceBaseForType } from "@/features/services/lib/service-base";
 export function GlobalSearch() {
   const { t } = useTranslations();
   const [open, setOpen] = useState(false);
+  // Reading navigator.platform during render makes the first client render
+  // disagree with the server ("⌘ K" vs "Ctrl K"), a hydration text mismatch
+  // (React #418) on every page since this lives in the persistent header. Start
+  // false so the server and the first client render agree on "Ctrl K", then
+  // switch to the Mac glyph after mount.
+  const [isMac, setIsMac] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- post-hydration platform detection, intentionally after first paint
+    setIsMac(/Mac|iPhone|iPad/.test(navigator.platform));
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -65,10 +76,7 @@ export function GlobalSearch() {
         <Search />
         <span className="hidden md:inline">{t("common.topbarSearch")}</span>
         <kbd className="hidden rounded border bg-muted px-1.5 py-0.5 font-sans text-[10px] font-medium lg:inline">
-          {typeof navigator !== "undefined" &&
-          /Mac|iPhone|iPad/.test(navigator.platform)
-            ? "⌘ K"
-            : "Ctrl K"}
+          {isMac ? "⌘ K" : "Ctrl K"}
         </kbd>
       </Button>
       <CommandDialog open={open} onOpenChange={setOpen}>

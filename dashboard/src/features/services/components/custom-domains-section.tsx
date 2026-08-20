@@ -103,8 +103,14 @@ export function CustomDomainsSection({
 }) {
   const { t } = useTranslations();
   const { domains, loading, error, refetch } = useCustomDomains(serviceId);
-  const { addDomain, deleteDomain, verifyDomain, busy } =
-    useCustomDomainMutations(serviceId, refetch);
+  const {
+    addDomain,
+    addError,
+    clearAddError,
+    deleteDomain,
+    verifyDomain,
+    busy,
+  } = useCustomDomainMutations(serviceId, refetch);
 
   const initialLoading = loading && domains.length === 0 && !error;
 
@@ -114,7 +120,12 @@ export function CustomDomainsSection({
         <CardTitle>{t("services.domainsTitle")}</CardTitle>
         <CardDescription>{t("services.domainsDescription")}</CardDescription>
         <CardAction>
-          <AddDomainButton addDomain={addDomain} disabled={busy} />
+          <AddDomainButton
+            addDomain={addDomain}
+            addError={addError}
+            clearAddError={clearAddError}
+            disabled={busy}
+          />
         </CardAction>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -498,9 +509,15 @@ function CertificateStatusBadge({
  *  bex auto-added alongside it (w6/m23). */
 function AddDomainButton({
   addDomain,
+  addError,
+  clearAddError,
   disabled,
 }: {
   addDomain: (name: string) => Promise<AddedDomain | null>;
+  /** The server's reason the last add failed, shown inline (persistent) so the
+   *  user learns *why* while the dialog stays open — null when none. */
+  addError: string | null;
+  clearAddError: () => void;
   disabled: boolean;
 }) {
   const { t } = useTranslations();
@@ -516,6 +533,7 @@ function AddDomainButton({
     setName("");
     setInvalid(false);
     setAdded(null);
+    clearAddError();
     setOpen(false);
   }
 
@@ -590,19 +608,38 @@ function AddDomainButton({
                 onChange={(e) => {
                   setName(e.target.value);
                   setInvalid(false);
+                  clearAddError();
                 }}
                 placeholder={t("services.domainPlaceholder")}
-                aria-invalid={invalid}
+                aria-invalid={invalid || !!addError}
+                aria-describedby={
+                  invalid
+                    ? "custom-domain-invalid"
+                    : addError
+                      ? "custom-domain-error"
+                      : undefined
+                }
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter") void submit();
                 }}
               />
-              {invalid && (
-                <p className="text-destructive text-xs">
+              {invalid ? (
+                <p
+                  id="custom-domain-invalid"
+                  className="text-destructive text-xs"
+                >
                   {t("services.domainInvalid")}
                 </p>
-              )}
+              ) : addError ? (
+                <p
+                  id="custom-domain-error"
+                  role="alert"
+                  className="text-destructive text-xs"
+                >
+                  {addError}
+                </p>
+              ) : null}
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={reset}>
