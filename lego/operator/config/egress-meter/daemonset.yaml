@@ -46,8 +46,9 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-            - name: BEX_APPS_NAMESPACE
-              value: default
+            # Empty means cluster-wide Pod discovery. The meter applies the
+            # node selector itself and retains each Pod's namespace in its
+            # resource key; setting this to default drops per-workspace Apps.
             - name: BEX_EGRESS_EXCLUDED_CIDRS
               # Production pod + Service ranges. Built-in exclusions also cover
               # RFC1918/ULA, link-local, loopback, multicast, and node IPs.

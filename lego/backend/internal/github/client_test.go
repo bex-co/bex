@@ -23,9 +23,11 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -293,6 +295,83 @@ func TestListReposPagination(t *testing.T) {
 	}
 	if repos[1].FullName != "o/two" || !repos[1].Private || repos[1].DefaultBranch != "dev" {
 		t.Errorf("repo1 = %+v", repos[1])
+	}
+}
+
+func TestListReposRejectsCyclicPagination(t *testing.T) {
+	keyPEM, _ := testKeyPEM(t)
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/app/installations/7/access_tokens":
+			w.WriteHeader(http.StatusCreated)
+			fmt.Fprint(w, `{"token":"ghs_x","expires_at":"2026-07-11T13:00:00Z"}`)
+		case "/installation/repositories":
+			w.Header().Set("Link", fmt.Sprintf(`<%s/installation/repositories?page=1>; rel="next"`, srv.URL))
+			fmt.Fprint(w, `{"repositories":[]}`)
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	c, _ := NewClient(Config{AppID: "1", PrivateKey: keyPEM, Slug: "bex"})
+	c.baseURL = srv.URL
+	if _, err := c.ListRepos(context.Background(), 7); !errors.Is(err, errInventoryBound) {
+		t.Fatalf("cyclic pagination error = %v, want inventory bound", err)
+	}
+}
+
+func TestListReposEnforcesInventoryBounds(t *testing.T) {
+	cases := []struct {
+		name string
+		mode string
+	}{
+		{name: "page", mode: "page"},
+		{name: "items", mode: "items"},
+		{name: "bytes", mode: "bytes"},
+		{name: "origin", mode: "origin"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			keyPEM, _ := testKeyPEM(t)
+			calls := 0
+			var srv *httptest.Server
+			srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/app/installations/7/access_tokens":
+					w.WriteHeader(http.StatusCreated)
+					fmt.Fprint(w, `{"token":"ghs_x","expires_at":"2026-07-11T13:00:00Z"}`)
+				case "/installation/repositories":
+					calls++
+					switch tc.mode {
+					case "page":
+						w.Header().Set("Link", fmt.Sprintf(`<%s/installation/repositories?page=%d>; rel="next"`, srv.URL, calls))
+						fmt.Fprint(w, `{"repositories":[]}`)
+					case "items":
+						items := strings.TrimSuffix(strings.Repeat(`{"id":1},`, maxInventoryItems+1), ",")
+						fmt.Fprintf(w, `{"repositories":[%s]}`, items)
+					case "bytes":
+						_, _ = w.Write(make([]byte, maxInventoryPageBytes+1))
+					case "origin":
+						w.Header().Set("Link", `<https://evil.example/installation/repositories?page=2>; rel="next"`)
+						fmt.Fprint(w, `{"repositories":[]}`)
+					}
+				default:
+					t.Errorf("unexpected path %s", r.URL.Path)
+				}
+			}))
+			defer srv.Close()
+
+			c, _ := NewClient(Config{AppID: "1", PrivateKey: keyPEM, Slug: "bex"})
+			c.baseURL = srv.URL
+			if _, err := c.ListRepos(context.Background(), 7); !errors.Is(err, errInventoryBound) {
+				t.Fatalf("%s bound error = %v, want inventory bound", tc.mode, err)
+			}
+			if tc.mode == "page" && calls != maxInventoryPages {
+				t.Fatalf("page calls = %d, want exactly %d", calls, maxInventoryPages)
+			}
+		})
 	}
 }
 

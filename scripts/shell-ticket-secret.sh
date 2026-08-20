@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/secret-install.sh
+. "$script_dir/lib/secret-install.sh"
 
 # Install the shared Browser Web Shell ticket secret (docs/ADR035-ssh.md § Browser
 # Web Shell) without ever rendering its bytes to stdout or checking them into Git.
@@ -45,9 +48,7 @@ if [[ -z "$secret_value" ]]; then
   echo "generated a new 256-bit web shell ticket key"
 fi
 
-kubectl -n "$namespace" create secret generic "$secret_name" \
-  --from-literal=secret="$secret_value" \
-  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+apply_secret "$namespace" "$secret_name" Opaque secret "$secret_value"
 unset secret_value
 
 # Both processes read BEX_SHELL_TICKET_SECRET once at startup, so roll them after

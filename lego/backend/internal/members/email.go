@@ -66,7 +66,10 @@ func (s *Service) inviteMessage(inv store.Invite, tenant store.Tenant) email.Mes
 		m.CTA = &email.CTA{
 			Lead:  fmt.Sprintf("Sign up or log in with %s to accept", inv.Email),
 			Label: "Accept invitation",
-			URL:   fmt.Sprintf("%s/invite?invite=%s", base, inv.Token),
+			// Keep the bearer in the fragment: browsers do not send URL fragments
+			// in the initial HTTP request, so the edge/origin never receives the
+			// independently redeemable capability in its request target.
+			URL: fmt.Sprintf("%s/invite#invite=%s", base, inv.Token),
 		}
 	} else {
 		m.Paragraphs = append(m.Paragraphs,

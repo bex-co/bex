@@ -50,7 +50,6 @@ func main() {
 	}
 	meter := egressmeter.New(egressmeter.Config{
 		NodeName:      os.Getenv("BEX_EGRESS_NODE_NAME"),
-		Namespace:     os.Getenv("BEX_APPS_NAMESPACE"),
 		ExcludedCIDRs: csv(os.Getenv("BEX_EGRESS_EXCLUDED_CIDRS")),
 	}, client)
 

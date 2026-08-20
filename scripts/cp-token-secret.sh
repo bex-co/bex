@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/secret-install.sh
+. "$script_dir/lib/secret-install.sh"
 
 # Install the internal control-plane API bearer token (w1/m53) without ever
 # rendering its bytes to stdout or checking them into Git.
@@ -40,9 +43,7 @@ if [[ -z "$secret_value" ]]; then
   echo "generated a new 256-bit control-plane token"
 fi
 
-kubectl -n "$namespace" create secret generic "$secret_name" \
-  --from-literal=token="$secret_value" \
-  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+apply_secret "$namespace" "$secret_name" Opaque token "$secret_value"
 unset secret_value
 
 # bex-api reads BEX_CP_TOKEN once at startup, so roll it after install/rotation.

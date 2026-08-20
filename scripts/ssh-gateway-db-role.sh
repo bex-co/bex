@@ -35,7 +35,9 @@ grants_only="${GRANTS_ONLY:-0}"
 [[ "$role" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] \
   || { echo "invalid PostgreSQL role name: $role" >&2; exit 1; }
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/secret-install.sh
+. "$script_dir/lib/secret-install.sh"
 grants_sql="$script_dir/../lego/backend/internal/sshgateway/dbrole/dbrole.sql"
 [[ -f "$grants_sql" ]] || { echo "missing grants DDL: $grants_sql" >&2; exit 1; }
 
@@ -123,9 +125,7 @@ print(urllib.parse.urlunsplit((u.scheme, netloc, u.path, u.query, u.fragment)))
 PY
 )"
 
-kubectl -n "$namespace" create secret generic "$gateway_secret" \
-  --from-literal=uri="$scoped_uri" \
-  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+apply_secret "$namespace" "$gateway_secret" Opaque uri "$scoped_uri"
 echo "wrote gateway credential to Secret ${namespace}/${gateway_secret}"
 
 # Roll the gateway so it reconnects under the scoped role (if it is deployed).

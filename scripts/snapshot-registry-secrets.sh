@@ -39,7 +39,10 @@
 #        DRY_RUN=1 scripts/snapshot-registry-secrets.sh   # print names only
 # Requires: kubectl (respects $KUBECONFIG), jq.
 set -euo pipefail
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$(dirname "$0")/.."
+# shellcheck source=lib/secret-install.sh
+. "$script_dir/lib/secret-install.sh"
 
 # Load .env when present (local use); in CI the keys arrive as environment vars.
 if [ -f .env ]; then
@@ -65,11 +68,10 @@ command -v jq >/dev/null || { echo "error: jq not found" >&2; exit 1; }
 
 # jq handles arbitrary password characters safely; never echo the value.
 registry_config() {
-  jq -cn \
+  printf '%s' "$BEX_REGISTRY_BUILDER_PASSWORD" | jq -Rsn \
     --arg registry "$REGISTRY" \
     --arg username bex-builder \
-    --arg password "$BEX_REGISTRY_BUILDER_PASSWORD" \
-    '{auths: {($registry): {username: $username, password: $password,
+    'input as $password | {auths: {($registry): {username: $username, password: $password,
                             auth: (($username + ":" + $password) | @base64)}}}'
 }
 
@@ -86,10 +88,8 @@ kubectl get namespace "$SNAPSHOT_NS" >/dev/null 2>&1 || kubectl create namespace
 # The commit Job mounts key .dockerconfigjson at /var/run/opensandbox/registry/
 # config.json (buildCommitJob's KeyToPath), so the standard dockerconfigjson
 # Secret type is required.
-kubectl create secret generic bex-snapshot-push -n "$SNAPSHOT_NS" \
-  --type=kubernetes.io/dockerconfigjson \
-  --from-literal=.dockerconfigjson="$(registry_config)" \
-  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+apply_secret "$SNAPSHOT_NS" bex-snapshot-push kubernetes.io/dockerconfigjson \
+  .dockerconfigjson "$(registry_config)"
 
 echo "applied: $SNAPSHOT_NS/bex-snapshot-push (bex-builder → $REGISTRY)"
 echo "enable transport via controller.snapshot values (registry + snapshotPushSecret=bex-snapshot-push + containerdSocketPath); resume-pull scoping is designed in w3/m42 t002 before prod enablement"

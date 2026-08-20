@@ -43,6 +43,14 @@ describe("invite token capture", () => {
     expect(window.sessionStorage.length).toBe(1);
   });
 
+  it("captures a fragment token without sending it in the handoff URL", () => {
+    window.history.replaceState(null, "", `/invite#invite=${TOKEN}`);
+
+    expect(stashInviteTokenFromURL({ scrubAll: true })).toBe("stored");
+    expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBe(TOKEN);
+    expect(window.location.href).not.toContain("invite=");
+  });
+
   it.each([
     `invite=${TOKEN}&invite=${TOKEN}`,
     `invite=${TOKEN.toUpperCase()}`,

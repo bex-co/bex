@@ -21,7 +21,10 @@
 #        DRY_RUN=1 scripts/github-app-secret.sh   # print what would be applied (names only)
 # Requires: kubectl (respects $KUBECONFIG).
 set -euo pipefail
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$(dirname "$0")/.."
+# shellcheck source=lib/secret-install.sh
+. "$script_dir/lib/secret-install.sh"
 
 NS=bex-system
 
@@ -60,13 +63,12 @@ fi
 
 kubectl get namespace "$NS" >/dev/null 2>&1 || kubectl create namespace "$NS" >/dev/null
 
-kubectl create secret generic bex-github-app -n "$NS" \
-  --from-literal=app-id="$BEX_GITHUB_APP_ID" \
-  --from-literal=private-key="$BEX_GITHUB_APP_PRIVATE_KEY" \
-  --from-literal=slug="$BEX_GITHUB_APP_SLUG" \
-  --from-literal=client-id="$BEX_GITHUB_APP_CLIENT_ID" \
-  --from-literal=client-secret="$BEX_GITHUB_APP_CLIENT_SECRET" \
-  --from-literal=webhook-secret="$WEBHOOK_SECRET" \
-  --dry-run=client -o yaml | kubectl apply -f -
+apply_secret "$NS" bex-github-app Opaque \
+  app-id "$BEX_GITHUB_APP_ID" \
+  private-key "$BEX_GITHUB_APP_PRIVATE_KEY" \
+  slug "$BEX_GITHUB_APP_SLUG" \
+  client-id "$BEX_GITHUB_APP_CLIENT_ID" \
+  client-secret "$BEX_GITHUB_APP_CLIENT_SECRET" \
+  webhook-secret "$WEBHOOK_SECRET"
 
 echo "applied secret $NS/bex-github-app"

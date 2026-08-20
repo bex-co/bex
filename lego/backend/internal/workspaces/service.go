@@ -59,6 +59,10 @@ type Service struct {
 	// source of truth, so lifecycle still works.
 	Granter WorkspaceGranter
 	Revoker WorkspaceRevoker
+	// EnterpriseEntitlement is required for Enterprise selection. Nil means the
+	// custom tier is unavailable; Pro and Scale remain self-service subject to
+	// the normal billing gate.
+	EnterpriseEntitlement EnterpriseEntitlement
 	// Kick nudges the apps projector after a delete so the deleted workspace's
 	// orphaned App CRs are pruned immediately instead of on the next resync. Nil
 	// => pruning waits for the resync.
@@ -131,6 +135,14 @@ type WorkspaceGranter interface {
 // the other, and so tests can assert revokes independently.
 type WorkspaceRevoker interface {
 	RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error
+}
+
+// EnterpriseEntitlement is the operator-controlled allow-list for the custom
+// Enterprise workspace tier. Enterprise has no public catalog SKU or self-
+// service checkout, so a missing provider must fail closed rather than turning
+// a syntactically valid plan name into paid capability.
+type EnterpriseEntitlement interface {
+	CheckEnterpriseEntitlement(ctx context.Context, subject, workspaceID string) error
 }
 
 // TenantResolutionInvalidator evicts a subject's cached "current workspace"
@@ -496,6 +508,14 @@ func (s *Service) ListMembers(ctx context.Context, ownerID string) ([]MemberView
 // user). Authorization mirrors every other create verb — can_create on the
 // default workspace — until w1/m9 grows real per-caller workspace scoping.
 func (s *Service) Create(ctx context.Context, name, plan string) (WorkspaceView, error) {
+	// Creating a workspace creates a durable administrator authority. A
+	// client_credentials API key may be a developer in its existing workspace,
+	// but it must not promote itself to the administrator of a new authority
+	// domain. Keep this class check ahead of every write, just like API-key and
+	// SSH-key minting.
+	if err := s.AuthorizeMintClass(ctx); err != nil {
+		return WorkspaceView{}, err
+	}
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return WorkspaceView{}, err
 	}
@@ -512,6 +532,23 @@ func (s *Service) Create(ctx context.Context, name, plan string) (WorkspaceView,
 	plan, err := normalizePlan(plan)
 	if err != nil {
 		return WorkspaceView{}, err
+	}
+	if err := s.requirePlanEntitlement(ctx, id.Subject, "", plan); err != nil {
+		return WorkspaceView{}, err
+	}
+	if workspacePaidPlan(plan) && (s.Payment != nil || s.Billing != nil) {
+		// The new tenant has no billing marker yet. Use the caller's existing
+		// workspace as the account-level payment/dunning checkpoint; onboarding
+		// creates that Hobby workspace before this mutation is reachable in the
+		// production API. If no checkpoint exists, fail closed rather than
+		// persisting an authoritative paid plan without proof of eligibility.
+		billingWorkspace, ok := s.Tenant(ctx)
+		if !ok || billingWorkspace == "" {
+			return WorkspaceView{}, core.NewPaymentRequiredError()
+		}
+		if err := s.RequirePlanBilling(ctx, billingWorkspace, plan); err != nil {
+			return WorkspaceView{}, err
+		}
 	}
 	// Per-user plan cap (Render allows five free Hobby workspaces, unlimited
 	// paid). Checked before the write; a race past it is bounded and benign
@@ -592,6 +629,19 @@ func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceVie
 	if t.Plan == plan {
 		return view(t, "admin"), nil // already there — nothing to write
 	}
+	identity, _ := core.IdentityFrom(ctx)
+	if err := s.requirePlanEntitlement(ctx, identity.Subject, id, plan); err != nil {
+		return WorkspaceView{}, err
+	}
+	// A paid upward transition is a billable intent and must be checked before
+	// any authoritative plan write. Downgrades remain available during dunning
+	// so an administrator can recover the workspace; the normal resource and
+	// role-capacity checks below still protect the target plan.
+	if workspacePaidPlan(plan) {
+		if err := s.RequirePlanBilling(ctx, id, plan); err != nil {
+			return WorkspaceView{}, err
+		}
+	}
 	members, err := s.Store.ListTenantMembers(ctx, id)
 	if err != nil {
 		return WorkspaceView{}, err
@@ -641,6 +691,27 @@ func (s *Service) ChangePlan(ctx context.Context, id, plan string) (WorkspaceVie
 		return WorkspaceView{}, mapStoreErr(err)
 	}
 	return view(nt, "admin"), nil
+}
+
+// workspacePaidPlan uses the workspace catalog's free tier. Other resource
+// families use "free" or their own tier ids, so core.PaidPlan deliberately
+// remains neutral to those catalogs.
+func workspacePaidPlan(plan string) bool {
+	return plan != "" && plan != store.PlanHobby
+}
+
+func (s *Service) requirePlanEntitlement(ctx context.Context, subject, workspaceID, plan string) error {
+	if plan != store.PlanEnterprise {
+		return nil
+	}
+	if s.EnterpriseEntitlement == nil {
+		return core.NewBadRequestError(
+			"ENTERPRISE_ENTITLEMENT_REQUIRED",
+			"Enterprise workspace plans require explicit operator approval",
+			nil,
+		)
+	}
+	return s.EnterpriseEntitlement.CheckEnterpriseEntitlement(ctx, subject, workspaceID)
 }
 
 // rolesOutsidePlan returns the "subject:role" pairs that wouldn't be

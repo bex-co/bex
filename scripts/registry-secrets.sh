@@ -48,7 +48,10 @@
 # Requires: kubectl (respects $KUBECONFIG), htpasswd (apache2-utils; /usr/sbin/htpasswd on macOS).
 # Generate passwords: openssl rand -hex 16
 set -euo pipefail
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 cd "$(dirname "$0")/.."
+# shellcheck source=lib/secret-install.sh
+. "$script_dir/lib/secret-install.sh"
 
 REGISTRY_NS="${REGISTRY_NS:-bex-registry}"
 
@@ -84,24 +87,24 @@ command -v "$HTPASSWD_BIN" >/dev/null || {
   exit 1
 }
 
-# bcrypt is the only hash algorithm Zot's htpasswd accepts (-B). -b reads the
-# password from argv, -n prints `user:$2y$…` to stdout (no file written).
+# bcrypt is the only hash algorithm Zot's htpasswd accepts (-B). Read the
+# password from stdin so it never appears in htpasswd's argv; -n prints the
+# `user:$2y$…` record to stdout (no file written).
 htpasswd_line() {
-  local user="$1" pass="$2"
-  "$HTPASSWD_BIN" -bBn "$user" "$pass" 2>/dev/null
+	local user="$1" pass="$2"
+	printf '%s\n' "$pass" | "$HTPASSWD_BIN" -nB -i "$user" 2>/dev/null
 }
 
 # Docker config with both names of the same Zot endpoint. BuildKit uses the
 # canonical Service name; kpack uses the *.local alias so its upstream registry
 # client selects HTTP. jq handles arbitrary password characters safely.
 registry_config() {
-  local username="$1" password="$2"
-  jq -cn \
-    --arg registry "$REGISTRY" \
-    --arg kpackRegistry "$KPACK_REGISTRY" \
-    --arg username "$username" \
-    --arg password "$password" \
-    '{auths: {($registry): {username: $username, password: $password,
+	local username="$1" password="$2"
+	printf '%s' "$password" | jq -Rsn \
+	  --arg registry "$REGISTRY" \
+	  --arg kpackRegistry "$KPACK_REGISTRY" \
+	  --arg username "$username" \
+	  'input as $password | {auths: {($registry): {username: $username, password: $password,
                             auth: (($username + ":" + $password) | @base64)}}}
      | if $kpackRegistry == $registry then .
        else .auths[$kpackRegistry] = {username: $username, password: $password,
@@ -140,22 +143,16 @@ HTPASSWD="$({
   printf '%s\n' "$(htpasswd_line bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")"
   printf '%s\n' "$EXISTING_HTPASSWD" | awk -F: '$1 ~ /^app-/ && NF == 2 { print }'
 } | awk -F: 'NF == 2 && !seen[$1]++ { print }')"
-kubectl create secret generic zot-htpasswd -n "$REGISTRY_NS" \
-  --from-literal=htpasswd="$HTPASSWD" \
-  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+apply_secret "$REGISTRY_NS" zot-htpasswd Opaque htpasswd "$HTPASSWD"
 
 # 2. Push credential (build namespace) — docker-config at key config.json.
-kubectl create secret generic bex-registry-push -n "$BUILD_NS" \
-  --from-literal=config.json="$(registry_config bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")" \
-  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+apply_secret "$BUILD_NS" bex-registry-push Opaque config.json "$(registry_config bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")"
 
 # kpack reads only the standard dockerconfigjson Secret type/key. The operator
 # also refreshes this derived copy at dispatch time; creating it here unblocks
 # the cluster-scoped builder before any App exists.
-kubectl create secret generic bex-registry-push-kpack -n "$BUILD_NS" \
-  --type=kubernetes.io/dockerconfigjson \
-  --from-literal=.dockerconfigjson="$(registry_config bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")" \
-  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+apply_secret "$BUILD_NS" bex-registry-push-kpack kubernetes.io/dockerconfigjson \
+  .dockerconfigjson "$(registry_config bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")"
 
 # The cluster-scoped `bex` ClusterBuilder uses a ServiceAccount in bex-system,
 # independently of tenant Image/Build objects in the build namespace. Kubernetes
@@ -163,10 +160,8 @@ kubectl create secret generic bex-registry-push-kpack -n "$BUILD_NS" \
 # credential in its own namespace. Without this copy the controller reaches Zot
 # anonymously and the builder remains NoLatestImage with a 401.
 if [ "$KPACK_NS" != "$BUILD_NS" ]; then
-  kubectl create secret generic bex-registry-push-kpack -n "$KPACK_NS" \
-    --type=kubernetes.io/dockerconfigjson \
-    --from-literal=.dockerconfigjson="$(registry_config bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")" \
-    --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+  apply_secret "$KPACK_NS" bex-registry-push-kpack kubernetes.io/dockerconfigjson \
+    .dockerconfigjson "$(registry_config bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")"
 fi
 
 # 3. Pull credential for the build namespace only — used by the static-site publish
@@ -175,10 +170,8 @@ fi
 # NOTE: the apps-namespace bex-registry-pull is no longer created; the operator
 # mints per-App "reg-pull-<name>" Secrets (w7/m36, docs/ADR022-tenant-isolation.md).
 kubectl get namespace "$BUILD_NS" >/dev/null 2>&1 || kubectl create namespace "$BUILD_NS" >/dev/null
-kubectl create secret generic bex-registry-pull -n "$BUILD_NS" \
-  --type=kubernetes.io/dockerconfigjson \
-  --from-literal=.dockerconfigjson="$(registry_config bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")" \
-  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+apply_secret "$BUILD_NS" bex-registry-pull kubernetes.io/dockerconfigjson \
+  .dockerconfigjson "$(registry_config bex-builder "$BEX_REGISTRY_BUILDER_PASSWORD")"
 
 echo "applied: $REGISTRY_NS/zot-htpasswd (bex-builder + preserved app-* users), $BUILD_NS/bex-registry-push{,-kpack,-pull}, $KPACK_NS/bex-registry-push-kpack"
 echo "operator will mint per-App reg-pull-<name> / reg-pull-<tea-id>-<name> Secrets and add app-* htpasswd entries as Apps are reconciled"
