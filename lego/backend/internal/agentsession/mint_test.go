@@ -31,7 +31,7 @@ import (
 type fakeConnections struct{ row store.GitConnection }
 
 // GetGitConnectionByOwner returns the seeded row only when the repo's owner
-// matches its account login (ADR075) — a mismatch is ErrNotFound, which Mint maps
+// matches its account login (ADR078) — a mismatch is ErrNotFound, which Mint maps
 // to ErrForbidden exactly as the old owner-equality check did.
 func (f fakeConnections) GetGitConnectionByOwner(_ context.Context, _ string, accountLogin string) (store.GitConnection, error) {
 	if f.row.AccountLogin == "" || !strings.EqualFold(f.row.AccountLogin, accountLogin) {

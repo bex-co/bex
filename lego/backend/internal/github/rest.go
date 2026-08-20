@@ -43,7 +43,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, conn)
 	})
 
-	// POST /v1/git/claim — start the ADR075 §3a claim flow: bind an installation
+	// POST /v1/git/claim — start the ADR078 §3a claim flow: bind an installation
 	// that already exists on GitHub (where the install URL strips the state) via
 	// the OAuth user-authorization round trip. Returns {claimUrl}.
 	mux.HandleFunc("POST /v1/git/claim", func(w http.ResponseWriter, r *http.Request) {
@@ -95,7 +95,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		raw := r.URL.Query().Get("installation_id")
 		if raw == "" {
-			// No installation id at all ⇒ the ADR075 §3a claim flow: GitHub's OAuth
+			// No installation id at all ⇒ the ADR078 §3a claim flow: GitHub's OAuth
 			// authorize redirect carries only code + state, and the installation is
 			// resolved server-side from the authorizing user's admin set. A PRESENT
 			// but malformed id stays invalid_installation below — only true absence
@@ -122,7 +122,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, map[string]string{"status": "connected"})
 	})
 
-	// GET /v1/git/connections — the workspace's full connection set (ADR075). The
+	// GET /v1/git/connections — the workspace's full connection set (ADR078). The
 	// multi-account surface the dashboard reads; the singular alias below stays for
 	// compatibility.
 	mux.HandleFunc("GET /v1/git/connections", func(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +135,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 
 	// DELETE /v1/git/connections/{installationId} — disconnect one installation
-	// (ADR075). Admin-only, scoped to the caller's workspace.
+	// (ADR078). Admin-only, scoped to the caller's workspace.
 	mux.HandleFunc("DELETE /v1/git/connections/{installationId}", func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.ParseInt(r.PathValue("installationId"), 10, 64)
 		if err != nil || id <= 0 {
@@ -150,7 +150,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 
 	// GET/DELETE /v1/git/connection (singular) — deprecated compatibility aliases
-	// over the workspace's sole connection (ADR075 §5). DELETE with several
+	// over the workspace's sole connection (ADR078 §5). DELETE with several
 	// connections is an ambiguous 409; use the per-installation route.
 	mux.HandleFunc("GET /v1/git/connection", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := s.GetConnection(r.Context(), r.URL.Query().Get("ownerId"))

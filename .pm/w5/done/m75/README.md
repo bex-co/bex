@@ -1,4 +1,4 @@
-# w5 · m75 — ADR075 revision: claim flow, dashboard workspace scoping, verifier fail-at-start
+# w5 · m75 — ADR078 revision: claim flow, dashboard workspace scoping, verifier fail-at-start
 
 **Worker:** worker5 **Goal:** an already-installed GitHub installation can be bound to a workspace through the OAuth claim flow (§3a), every dashboard GitHub surface acts on the selected workspace (§6), and a missing OAuth verifier fails at connect-start with an actionable error instead of a post-GitHub-round-trip 503 (§7) **Status:** done
 
@@ -17,7 +17,7 @@
 
 ## Definition of done
 
-The three 2026-08-20 revision sections of [docs/ADR075-github-workspace-connections.md](../../../docs/ADR075-github-workspace-connections.md) hold, verified live where marked:
+The three 2026-08-20 revision sections of [docs/ADR078-github-workspace-connections.md](../../../docs/ADR078-github-workspace-connections.md) hold, verified live where marked:
 
 1. **§3a claim flow (live):** with the `puncsky` installation already present on GitHub and unbound, `claimGit(ownerId: tian-personal)` returns a GitHub OAuth authorize URL; completing it binds installation 154851602 to `tea-da2isimlm39c739m4ofg` (DB row confirms), with no reinstall and no `missing_state`. Zero claimable ⇒ bounded `no_claimable_installation`; several ⇒ bounded `ambiguous_installation`; an installation bound elsewhere is never claimable.
 2. **§6 workspace scoping (live):** with `tian-personal` selected, the Settings GitHub card shows *its* connection set (not `bex`'s); the repo picker, connect, claim, and disconnect all carry `ownerId` = the selected workspace; switching workspaces refetches.
@@ -26,7 +26,7 @@ The three 2026-08-20 revision sections of [docs/ADR075-github-workspace-connecti
 
 ## Source + Goal linkage
 
-- **Source:** the 2026-08-20 revision of [docs/ADR075-github-workspace-connections.md](../../../docs/ADR075-github-workspace-connections.md), produced by the failed live verification walk of w5/m74 (open note `w5/046`): GitHub strips `state` for already-installed accounts (Configure → `github.com/settings/installations/<id>`), the dashboard git hooks pass no `ownerId` (verified live: tian-personal selected, bex's connection shown; an explicit-`ownerId` API probe returned the correct empty set), and production's missing `client-id`/`client-secret` Secret keys made every binding 503 only at the callback.
+- **Source:** the 2026-08-20 revision of [docs/ADR078-github-workspace-connections.md](../../../docs/ADR078-github-workspace-connections.md), produced by the failed live verification walk of w5/m74 (open note `w5/046`): GitHub strips `state` for already-installed accounts (Configure → `github.com/settings/installations/<id>`), the dashboard git hooks pass no `ownerId` (verified live: tian-personal selected, bex's connection shown; an explicit-`ownerId` API probe returned the correct empty set), and production's missing `client-id`/`client-secret` Secret keys made every binding 503 only at the callback.
 - **Goal linkage:** pillars 3–4 (repo connect + push-to-deploy) and the ADR018 Render-parity divergence: the claim flow is the workspace-bound model's answer to Render's "direct github.com install just works".
 - **Expected outcome:** the original incident's user story finally completes — puncsky (already installed) binds to tian-personal from the dashboard with no uninstall; no GitHub surface can act on the wrong workspace; a misconfigured deployment says so at connect-start.
 - **Why now:** m74 shipped the multi-connection model but its live verification is **blocked** on exactly these three defects; the wrong-workspace bind (§6) is an active correctness hazard on production today.

@@ -1,5 +1,7 @@
 # ADR: GitHub↔workspace connection model — workspace-owned, multi-installation
 
+_Renumbered from ADR075 to ADR078 (2026-08-20): ADR075 was concurrently claimed by [ADR075-user-onboarding.md](ADR075-user-onboarding.md); per the w6/m40 convention the number stays with the more-cited document (29 vs 11 citing files). Bare “ADR075” references to THIS document across `lego/backend/internal/github/`, `internal/agentsession/`, and `.pm/w5/` were rewritten to ADR078 in the same change._
+
 **Status:** accepted — 2026-08-19, implemented by [w5/m74](../.pm/w5/done/m74/README.md); **revised 2026-08-20** after the live production walk (w5/046) failed and exposed three defects §3 had missed — the wrong assumption that GitHub preserves `state` for already-installed accounts (it does not; §3a's claim flow is the correction), the dashboard's GitHub surfaces ignoring the workspace switcher (§6), and the connect flow failing only at the callback when the OAuth verifier is unconfigured (§7). The revision is implemented by [w5/m75](../.pm/w5/done/m75/README.md) and **verified live on production 2026-08-20**: the claim flow bound the already-installed `puncsky` installation to a second workspace through GitHub OAuth with no reinstall. Amends [ADR026-github-integration.md](ADR026-github-integration.md) §4 (the one-connection-per-workspace data model) and closes its "multi-workspace connection routing is w6" deferral with an explicit decision. Records a deliberate Render-parity divergence for [ADR018-render-parity.md](ADR018-render-parity.md).
 
 ## Context

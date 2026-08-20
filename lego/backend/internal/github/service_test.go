@@ -29,7 +29,7 @@ import (
 
 // --- fakes ---
 
-// fakeStore models git_connections keyed by installation id (ADR075): a
+// fakeStore models git_connections keyed by installation id (ADR078): a
 // workspace may hold several connections, one per GitHub account. conns is a flat
 // slice so len(conns) still reads as "how many connections exist in total".
 type fakeStore struct {
@@ -178,14 +178,14 @@ type fakeClient struct {
 	// gotCommitRef records the (token, owner, repo, ref) GetCommit was called
 	// with, for assertions.
 	gotCommitRef []string
-	// Multi-connection (ADR075) test seams: reposByInst returns per-installation
+	// Multi-connection (ADR078) test seams: reposByInst returns per-installation
 	// repos (falls back to repos when nil); tokenByInst maps an installation to
 	// the token it mints; gotMintInst records the installation MintInstallationToken
 	// was last called with.
 	reposByInst  map[int64][]Repo
 	tokenByInst  map[int64]string
 	gotMintInst  int64
-	listReposErr map[int64]error // per-installation ListRepos error (ADR075 degrade test)
+	listReposErr map[int64]error // per-installation ListRepos error (ADR078 degrade test)
 }
 
 func (c *fakeClient) InstallURL() string { return "https://github.com/apps/bex/installations/new" }
@@ -615,7 +615,7 @@ type fakeVerifier struct {
 	err     error
 	gotCode string
 	gotID   int64
-	// Claim seams (ADR075 §3a): the admin-filtered installations the fake
+	// Claim seams (ADR078 §3a): the admin-filtered installations the fake
 	// resolves from a code, and the code ClaimableInstallations saw.
 	claimable    []Installation
 	claimErr     error

@@ -31,7 +31,7 @@ import (
 )
 
 func TestReconcilePodsListsAllNamespacesOnNode(t *testing.T) {
-	client := fake.NewSimpleClientset()
+	client := fake.NewClientset()
 	meter := &Meter{config: Config{NodeName: "node-a"}, client: client}
 	meter.config.defaults()
 

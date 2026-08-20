@@ -40,7 +40,7 @@ type GitHubClient interface {
 
 type ConnectionStore interface {
 	// GetGitConnectionByOwner resolves the workspace's connection for a repo's
-	// GitHub account (ADR075 §4). A workspace may hold several installations, so
+	// GitHub account (ADR078 §4). A workspace may hold several installations, so
 	// the session token must be minted from the one that owns the target repo.
 	GetGitConnectionByOwner(ctx context.Context, workspaceID, accountLogin string) (store.GitConnection, error)
 }
@@ -140,7 +140,7 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintRespon
 		return MintResponse{}, err
 	}
 	owner, name, _ := strings.Cut(repository, "/")
-	// Resolve the connection that owns THIS repo's account (ADR075 §4). A
+	// Resolve the connection that owns THIS repo's account (ADR078 §4). A
 	// no-match — the repo's owner is not one of the workspace's connected
 	// accounts — is a forbidden mint, exactly as the old owner-equality check was.
 	connection, err := m.Connections.GetGitConnectionByOwner(ctx, req.Workspace, owner)

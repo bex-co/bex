@@ -41,7 +41,7 @@ func claimSvc(claimable []Installation) (*Service, *fakeVerifier) {
 }
 
 // TestStartClaimMintsTransactionAndAuthorizeURL: the claim URL is the OAuth
-// authorize endpoint (the state-preserving flow, ADR075 §3a) carrying a signed
+// authorize endpoint (the state-preserving flow, ADR078 §3a) carrying a signed
 // state whose nonce names a server-side transaction for the target workspace.
 func TestStartClaimMintsTransactionAndAuthorizeURL(t *testing.T) {
 	svc, _ := claimSvc(nil)
@@ -57,7 +57,7 @@ func TestStartClaimMintsTransactionAndAuthorizeURL(t *testing.T) {
 	}
 }
 
-// TestStartVerbsRefuseWithoutVerifier is ADR075 §7: with no verifier, connect
+// TestStartVerbsRefuseWithoutVerifier is ADR078 §7: with no verifier, connect
 // and claim starts refuse immediately and mint NO transaction — never an
 // install/claim URL whose callback is doomed to 503.
 func TestStartVerbsRefuseWithoutVerifier(t *testing.T) {

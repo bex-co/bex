@@ -27,7 +27,7 @@ import (
 
 // multiConnSvc builds a service whose default workspace already holds two
 // connections — an org (octo, installation 7) and a personal account (personal,
-// installation 9) — the ADR075 N-per-workspace shape.
+// installation 9) — the ADR078 N-per-workspace shape.
 func multiConnSvc(t *testing.T, fc *fakeClient) *Service {
 	t.Helper()
 	st := newFakeStore()
@@ -39,7 +39,7 @@ func multiConnSvc(t *testing.T, fc *fakeClient) *Service {
 }
 
 // TestListReposAggregatesAcrossConnections: ListRepos unions every connection's
-// repos and stamps each with the account + installation it came from (ADR075 §4).
+// repos and stamps each with the account + installation it came from (ADR078 §4).
 func TestListReposAggregatesAcrossConnections(t *testing.T) {
 	fc := &fakeClient{reposByInst: map[int64][]Repo{
 		7: {{ID: 1, FullName: "octo/app"}},
@@ -67,7 +67,7 @@ func TestListReposAggregatesAcrossConnections(t *testing.T) {
 }
 
 // TestListReposDegradesOneFailedConnection: a dead installation must not blank
-// out the other account's repos — ListRepos logs it and serves the rest (ADR075).
+// out the other account's repos — ListRepos logs it and serves the rest (ADR078).
 func TestListReposDegradesOneFailedConnection(t *testing.T) {
 	fc := &fakeClient{
 		reposByInst:  map[int64][]Repo{9: {{ID: 2, FullName: "personal/site"}}},
@@ -85,7 +85,7 @@ func TestListReposDegradesOneFailedConnection(t *testing.T) {
 }
 
 // TestListReposSurfacesWhenEveryConnectionFails keeps a workspace whose ONLY
-// connection errors byte-identical to the pre-ADR075 surface (an error, not a
+// connection errors byte-identical to the pre-ADR078 surface (an error, not a
 // misleading empty list).
 func TestListReposSurfacesWhenEveryConnectionFails(t *testing.T) {
 	fc := &fakeClient{listReposErr: map[int64]error{
@@ -98,7 +98,7 @@ func TestListReposSurfacesWhenEveryConnectionFails(t *testing.T) {
 }
 
 // TestCloneTokenPicksOwnersConnection: a repo owned by account B mints from B's
-// installation, never A's (ADR075 §4) — the account-A-token-for-account-B-repo leak.
+// installation, never A's (ADR078 §4) — the account-A-token-for-account-B-repo leak.
 func TestCloneTokenPicksOwnersConnection(t *testing.T) {
 	fc := &fakeClient{
 		repoOK:      true,
@@ -124,7 +124,7 @@ func TestCloneTokenPicksOwnersConnection(t *testing.T) {
 }
 
 // TestCloneTokenNoConnectionForOwner: a repo whose owner is not one of the
-// workspace's connected accounts mints nothing (public-clone fallback, ADR075 §4).
+// workspace's connected accounts mints nothing (public-clone fallback, ADR078 §4).
 func TestCloneTokenNoConnectionForOwner(t *testing.T) {
 	svc := multiConnSvc(t, &fakeClient{repoOK: true, token: "tok"})
 	_, ok, err := svc.cloneToken(context.Background(), core.DefaultTenant, "https://github.com/stranger/repo")
@@ -154,7 +154,7 @@ func TestConnectionQuotaRefusesBeyondCap(t *testing.T) {
 }
 
 // TestConnectAddsSecondInstallation: a second, different installation is ADDED to
-// the workspace's set rather than replacing the first (the core ADR075 change).
+// the workspace's set rather than replacing the first (the core ADR078 change).
 func TestConnectAddsSecondInstallation(t *testing.T) {
 	st := newFakeStore()
 	st.conns = append(st.conns, store.GitConnection{WorkspaceID: core.DefaultTenant, InstallationID: 7, AccountLogin: "octo"})
@@ -221,7 +221,7 @@ func TestListConnectionsReturnsAll(t *testing.T) {
 }
 
 // TestGetConnectionNotConnectedHasNoInstallURL: the singular not-connected view
-// no longer advertises the bare (stateless) install URL (ADR075 §3).
+// no longer advertises the bare (stateless) install URL (ADR078 §3).
 func TestGetConnectionNotConnectedHasNoInstallURL(t *testing.T) {
 	svc := &Service{
 		Base:   &core.Base{Namespace: "default", Authz: allowChecker{core.RelCanView: true}},

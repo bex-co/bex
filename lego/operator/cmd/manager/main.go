@@ -166,7 +166,9 @@ func parseManagerConfig() managerConfig {
 		// formed suffix WARNS LOUDLY AND KEEPS SERVING. Only a malformed domain
 		// refuses startup.
 		if errors.Is(err, hostingdomain.ErrUnlistedSharedSuffix) {
-			setupLog.Error(err, "shared tenant hosting suffix is not a private Public Suffix; continuing per the accepted #PSL risk (.pm/DO_NOT_DO.md) — cross-tenant cookie isolation is NOT browser-enforced")
+			setupLog.Error(err,
+				"shared tenant hosting suffix is not a private Public Suffix; continuing per the accepted #PSL risk "+
+					"(.pm/DO_NOT_DO.md) — cross-tenant cookie isolation is NOT browser-enforced")
 		} else {
 			setupLog.Error(err, "unsafe shared tenant hosting suffix; refusing startup")
 			os.Exit(1)
