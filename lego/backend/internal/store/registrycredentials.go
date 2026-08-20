@@ -91,6 +91,18 @@ func (s *PGStore) ListRegistryCredentials(ctx context.Context, workspaceID strin
 	return out, rows.Err()
 }
 
+// CountRegistryCredentials returns how many stored registry credentials the
+// workspace owns. It backs the feature's per-workspace admission quota.
+func (s *PGStore) CountRegistryCredentials(ctx context.Context, workspaceID string) (int, error) {
+	var count int
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT count(*) FROM registry_credentials WHERE workspace_id = $1`, workspaceID,
+	).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 // GetRegistryCredential returns one credential, scoped to workspaceID so a
 // caller can never fetch another workspace's row by guessing its id.
 func (s *PGStore) GetRegistryCredential(ctx context.Context, workspaceID, id string) (RegistryCredential, error) {

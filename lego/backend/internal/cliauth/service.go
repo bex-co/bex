@@ -68,6 +68,10 @@ type RefreshIdempotencyStore interface {
 	) ([]byte, int, error)
 }
 
+type OAuthRevocationStore interface {
+	BumpOAuthRevocation(context.Context, string, string) error
+}
+
 // Service owns the three public Render compatibility endpoints and the
 // authenticated logout endpoint.
 type Service struct {
@@ -82,6 +86,9 @@ type Service struct {
 	// Refreshes is the control-plane Postgres idempotency boundary for rotating
 	// CLI refresh tokens. nil retains direct proxying for DB-free local mode.
 	Refreshes RefreshIdempotencyStore
+	// Revocations receives the dashboard's post-Hydra consent-revoke marker so
+	// every bex-api replica invalidates its warm positive token cache.
+	Revocations OAuthRevocationStore
 	// RateLimiter guards the three public device-flow routes (w4/m31/t002).
 	// nil (the New default) disables limiting — set post-construction from
 	// the composition root once BEX_DEVICE_RATE_LIMIT is known, the same
@@ -139,6 +146,35 @@ func (s *Service) rateLimited(handler http.Handler) http.Handler {
 // wrapping site.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/oauth/revoke", s.revoke)
+	mux.HandleFunc("POST /v1/oauth/revocations", s.recordRevocation)
+}
+
+func (s *Service) recordRevocation(w http.ResponseWriter, r *http.Request) {
+	id, ok := core.IdentityFrom(r.Context())
+	if !ok || !id.Human || id.Method != "session" {
+		core.WriteErr(w, fmt.Errorf("%w: session authentication required", core.ErrForbidden))
+		return
+	}
+	if s.Revocations == nil {
+		core.WriteErr(w, core.ErrLogoutUnavailable)
+		return
+	}
+	var in struct {
+		ClientID string `json:"clientId"`
+	}
+	if !decodeRenderJSON(w, r, &in) {
+		return
+	}
+	in.ClientID = strings.TrimSpace(in.ClientID)
+	if in.ClientID == "" || len(in.ClientID) > 255 {
+		core.WriteErr(w, fmt.Errorf("%w: invalid clientId", core.ErrBadRequest))
+		return
+	}
+	if err := s.Revocations.BumpOAuthRevocation(r.Context(), id.Subject, in.ClientID); err != nil {
+		core.WriteErr(w, core.ErrLogoutUnavailable)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Service) revoke(w http.ResponseWriter, r *http.Request) {

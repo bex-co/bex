@@ -34,7 +34,7 @@ func TestValidRepo(t *testing.T) {
 		want bool
 	}{
 		{"https", "https://github.com/bex-co/bex.git", true},
-		{"http", "http://gitea.internal:3000/x/y", true},
+		{"http-rejected", "http://gitea.internal:3000/x/y", false},
 		{"ssh", "ssh://git@github.com/bex-co/bex.git", true},
 		{"scp-form", "git@github.com:bex-co/bex.git", true},
 		{"empty-rejected", "", false},

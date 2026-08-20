@@ -77,6 +77,14 @@ type KeyBinder interface {
 	TenantForKey(ctx context.Context, clientID string) (tenantID string, ok bool)
 }
 
+// KeyQuotaLocker serializes one workspace's count→Hydra-create→bind sequence
+// across bex-api replicas. The Postgres-backed tenant service implements it
+// with a transaction-scoped advisory lock; non-Postgres test/legacy binders may
+// omit it and retain the process-local lock.
+type KeyQuotaLocker interface {
+	WithTenantAdvisoryLock(ctx context.Context, tenantID string, fn func() error) error
+}
+
 // Service manages machine credentials over the injected APIKeyStore.
 type Service struct {
 	*core.Base
@@ -156,9 +164,9 @@ func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKe
 	if !ok {
 		return APIKey{}, fmt.Errorf("%w: caller has no tenant to bind the key to", core.ErrBadRequest)
 	}
-	// Serialize count→create→bind in this API replica. bex-api currently runs one
-	// replica (the shared request limiter has the same documented boundary), so
-	// concurrent key requests cannot race past the quota.
+	// The mutex is a local fast path. Production's Postgres-backed Binding also
+	// takes a workspace advisory lock below, closing the count→create→bind race
+	// across bex-api replicas.
 	s.createMu.Lock()
 	defer s.createMu.Unlock()
 	if s.CreationLimiter != nil && !s.CreationLimiter.Bucket(tenantID).Allow() {
@@ -168,6 +176,23 @@ func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKe
 			map[string]any{"ownerId": tenantID},
 		)
 	}
+	var key APIKey
+	create := func() error {
+		var err error
+		key, err = s.createBoundAPIKey(ctx, tenantID, name, createdBy)
+		return err
+	}
+	if locker, ok := s.Binding.(KeyQuotaLocker); ok {
+		if err := locker.WithTenantAdvisoryLock(ctx, tenantID, create); err != nil {
+			return APIKey{}, err
+		}
+	} else if err := create(); err != nil {
+		return APIKey{}, err
+	}
+	return key, nil
+}
+
+func (s *Service) createBoundAPIKey(ctx context.Context, tenantID, name, createdBy string) (APIKey, error) {
 	keys, err := s.APIKeys.List(ctx)
 	if err != nil {
 		return APIKey{}, err

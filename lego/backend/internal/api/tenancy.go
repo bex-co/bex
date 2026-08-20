@@ -392,6 +392,18 @@ func (t *tenantService) BindKey(ctx context.Context, clientID, tenantID string) 
 	return nil
 }
 
+// WithTenantAdvisoryLock implements apikeys.KeyQuotaLocker. Production's
+// *store.PGStore holds the lock across the API-key count→Hydra-create→bind
+// sequence; non-Postgres stores preserve the legacy in-process behavior.
+func (t *tenantService) WithTenantAdvisoryLock(ctx context.Context, tenantID string, fn func() error) error {
+	if locker, ok := t.store.(interface {
+		WithTenantAdvisoryLock(context.Context, string, func() error) error
+	}); ok {
+		return locker.WithTenantAdvisoryLock(ctx, tenantID, fn)
+	}
+	return fn()
+}
+
 // TenantForKey implements apikeys.KeyBinder: resolves the workspace a bound
 // key belongs to, via the same cache-backed lookup Tenant uses (a bound key's
 // tenant is as stable as any caller's, w6/m18) — keyed under methodOAuth2 so

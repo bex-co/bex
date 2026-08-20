@@ -121,7 +121,8 @@ type Server struct {
 	DeviceRateLimiter *cliauth.DeviceRateLimiter
 	// CLIRefreshes collapses concurrent official-CLI refreshes through the
 	// control-plane Postgres. nil retains the DB-free direct-proxy path.
-	CLIRefreshes cliauth.RefreshIdempotencyStore
+	CLIRefreshes     cliauth.RefreshIdempotencyStore
+	OAuthRevocations RevocationStore
 
 	CORSOrigin string // comma-separated allowed origins; empty => no CORS
 
@@ -380,7 +381,8 @@ type Deps struct {
 	KeyBinder apikeys.KeyBinder
 	// Onboard, when set (the control-plane store is wired), mints a personal
 	// tenant for a human identity on first login (w1/m9). nil => store off: no mint.
-	Onboard Onboarding
+	Onboard          Onboarding
+	OAuthRevocations RevocationStore
 	// Usage, when set (store + Prom wired), provides the month-to-date usage
 	// verb (w8/m2). nil => the verb reports ErrUsageUnavailable (503).
 	Usage *usage.Service
@@ -426,6 +428,10 @@ type Deps struct {
 	// core.ErrRegistryCredentialsUnavailable. The secret store is the shared
 	// `Secrets` field above (same OpenBao instance the env-vars feature uses).
 	RegistryCredsStore registrycreds.CredentialStore
+	// MaxRegistryCredentialsPerWorkspace caps stored external-registry
+	// credentials per workspace (default 50, 0 disables). Over-cap creates are
+	// refused with REGISTRY_CREDENTIAL_LIMIT across all surfaces.
+	MaxRegistryCredentialsPerWorkspace int
 
 	// NotificationsStore, when set (the control-plane store is wired), backs
 	// the deploy-notification settings verbs (w3/m9). nil => those verbs
@@ -545,7 +551,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// pull-secret seam (w2/m14), so build it once and share it, same as gh
 	// above. Always non-nil; its verbs 503 until the control-plane store +
 	// OpenBao are both wired.
-	rc := &registrycreds.Service{Base: base, Store: d.RegistryCredsStore, Secret: d.Secrets}
+	rc := &registrycreds.Service{
+		Base: base, Store: d.RegistryCredsStore, Secret: d.Secrets,
+		MaxCredentials: d.MaxRegistryCredentialsPerWorkspace,
+	}
 	// pg and kv are also the projects and environments features' Database/
 	// KeyValue grouping seam (w1/m31 extension, internal/projects.DatabaseIndex/
 	// KeyValueIndex; w6/m20 extension, internal/environments' counterparts) —
@@ -715,7 +724,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Base: base, Store: d.AgentSessionStore, Tuples: d.AgentSessionTuples,
 			Sandbox: agentLifecycle, TicketSecret: d.AgentSessionTicketSecret,
 			GatewayURL: d.AgentSessionGatewayURL, APIPublicURL: d.DeployHookBaseURL,
-			GitProxyURL: d.AgentGitProxyURL,
+			GitProxyURL:   d.AgentGitProxyURL,
 			ModelProxyURL: d.AgentModelProxyURL,
 			SSHHost:       sshHost, ModelKeys: d.Secrets, GitHub: gh,
 			MaxLiveSandboxes:   d.AgentMaxLiveSandboxesPerWorkspace,
@@ -758,15 +767,16 @@ func NewServer(base *core.Base, d Deps) *Server {
 			// (codex-security round 12, finding 5).
 			MaxGroupings: d.MaxBlueprintGroupings,
 		},
-		Environments:  environmentsSvc,
-		GitHub:        gh,
-		RegistryCreds: rc,
-		Webhooks:      &webhooks.Service{Base: base, Store: d.WebhookStore, Metrics: d.WebhookMetrics},
-		Jobs:          &jobs.Service{Base: base, Store: d.JobStore, EventFacts: d.EventFacts},
-		Onboard:       d.Onboard,
-		Usage:         d.Usage,
-		Audit:         d.Audit,
-		StripeWebhook: d.StripeWebhook,
+		Environments:     environmentsSvc,
+		GitHub:           gh,
+		RegistryCreds:    rc,
+		Webhooks:         &webhooks.Service{Base: base, Store: d.WebhookStore, Metrics: d.WebhookMetrics},
+		Jobs:             &jobs.Service{Base: base, Store: d.JobStore, EventFacts: d.EventFacts},
+		Onboard:          d.Onboard,
+		OAuthRevocations: d.OAuthRevocations,
+		Usage:            d.Usage,
+		Audit:            d.Audit,
+		StripeWebhook:    d.StripeWebhook,
 	}
 	// Request-time deploy-start notifications use the same feature service as
 	// the reconciler's close-time success/failure fan-out, but are wired at the
@@ -946,6 +956,7 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 	cliAuth := cliauth.New(s.OAuthIssuer, s.HydraAdminURL, s.APIKeys, authGate.invalidate)
 	cliAuth.RateLimiter = s.DeviceRateLimiter
 	cliAuth.Refreshes = s.CLIRefreshes
+	cliAuth.Revocations = s.OAuthRevocations
 	cliAuth.RegisterPublic(mux, bodyLimit)
 	// The git push webhook authenticates by HMAC signature, not the OAuth gate,
 	// so it mounts directly (ahead of the /v1/ wildcard — a more specific pattern
@@ -1065,6 +1076,7 @@ func (s *Server) newAuthGate() (*oryAuth, error) {
 		touch = s.APIKeys.TouchAPIKey
 	}
 	gate := newOryAuth(s.HydraAdminURL, s.KratosURL, s.OAuthResource, s.OAuthIssuer, s.resourceMetadataURL(), s.OAuthRequireAudience, s.AuthAdmission, s.Onboard, touch, s.apiScope())
+	gate.revocations = s.OAuthRevocations
 	// The durable-credential mint verbs' class gate (round-7 F3) resolves
 	// platform clients through the same Hydra admin API + TTL cache the audience
 	// rule uses. Every feature service shares this one Base.

@@ -58,6 +58,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessionticket"
 	"github.com/bex-co/bex/lego/backend/internal/drivergrant"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -124,13 +125,9 @@ var errPartTooLarge = errors.New("agent attach: transcript part exceeds size lim
 // sandbox is gone, so the attach serves the durable replay and never dials.
 var errReplayOnly = errors.New("agent attach: replay-only ticket, no pod to dial")
 
-// Store is the transport's narrow transcript authority: read the durable
-// transcript for replay and append teed parts idempotently. It reads/writes
-// only agent_session_transcripts — no session-row access is needed (a
-// terminal session is detected by the driver being unreachable), so the
-// least-privilege bex_ssh_gateway role gains only that grant. (The ticket
-// nonce claim reaches shell_ticket_nonces through the injected
-// sshgateway.NonceGuard.)
+// Store is the transport's narrow transcript and content-free session-audit
+// authority. The ticket nonce claim reaches shell_ticket_nonces through the
+// injected sshgateway.NonceGuard.
 type Store interface {
 	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
 	AgentSessionTranscriptMaxSeq(ctx context.Context, sessionID string) (int64, bool, error)
@@ -138,6 +135,8 @@ type Store interface {
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
 	AgentSessionTurns(ctx context.Context, sessionID string) ([]store.AgentSessionTurn, error)
 	AppendAgentSessionTranscript(ctx context.Context, sessionID string, parts []store.AgentSessionTranscriptPart) error
+	StartSSHSession(context.Context, store.SSHSessionAudit) error
+	EndSSHSession(context.Context, string, string, time.Time) error
 }
 
 // SessionRevalidator re-checks, at redemption time, that the ticket's subject
@@ -405,6 +404,30 @@ func (s *Server) serveAgentAttach(w http.ResponseWriter, r *http.Request) {
 	s.Metrics.SessionStarted()
 	result := "closed"
 	defer func() { s.Metrics.SessionEnded(result, time.Since(started)) }()
+	sessionID := ids.New(ids.SSHSession)
+	auditCtx, cancelAudit := context.WithTimeout(context.Background(), 2*time.Second)
+	err = s.Store.StartSSHSession(auditCtx, store.SSHSessionAudit{
+		ID:            sessionID,
+		Subject:       claims.Subject,
+		WorkspaceID:   claims.Workspace,
+		ServiceID:     claims.SessionID,
+		InstanceID:    claims.Pod,
+		RemoteAddress: r.RemoteAddr,
+		StartedAt:     started.UTC(),
+	})
+	cancelAudit()
+	if err != nil {
+		result = "failed"
+		http.Error(w, "unable to start session", http.StatusInternalServerError)
+		return
+	}
+	defer func() {
+		endCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := s.Store.EndSSHSession(endCtx, sessionID, result, time.Now().UTC()); err != nil {
+			log.Printf("agent attach session audit end failed: %v", err)
+		}
+	}()
 
 	// codex round-9 #6: keep re-running the redemption-time revalidation while
 	// the stream is LIVE — a membership revocation or session cancellation

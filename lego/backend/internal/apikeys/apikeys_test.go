@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -134,6 +135,17 @@ func (b *fakeBinder) TenantForKey(_ context.Context, clientID string) (string, b
 	return tid, ok
 }
 
+type lockingBinder struct {
+	*fakeBinder
+	mu sync.Mutex
+}
+
+func (b *lockingBinder) WithTenantAdvisoryLock(_ context.Context, _ string, fn func() error) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return fn()
+}
+
 // multiWorkspace is a core.WorkspaceResolver for a caller who belongs to
 // MULTIPLE workspaces (w6/m18's List/Revoke scoping tests need this — plain
 // fakeWorkspace only ever resolves one tenant per identity). memberships[0] is
@@ -194,6 +206,39 @@ func TestCreateAPIKeyEnforcesWorkspaceActiveQuota(t *testing.T) {
 	}
 	if len(store.keys) != 1 {
 		t.Fatalf("Hydra keys = %d, want 1", len(store.keys))
+	}
+}
+
+func TestCreateAPIKeyQuotaLockerSerializesAcrossServiceInstances(t *testing.T) {
+	keyStore := newFakeKeyStore()
+	binder := &lockingBinder{fakeBinder: newFakeBinder()}
+	base := &core.Base{Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}}
+	services := []*Service{
+		{Base: base, APIKeys: keyStore, Binding: binder, MaxActiveKeys: 1},
+		{Base: base, APIKeys: keyStore, Binding: binder, MaxActiveKeys: 1},
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+	errs := make(chan error, len(services))
+	for i, svc := range services {
+		go func() {
+			_, err := svc.CreateAPIKey(ctx, "", fmt.Sprintf("key-%d", i))
+			errs <- err
+		}()
+	}
+	var successes, conflicts int
+	for range services {
+		err := <-errs
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, core.ErrConflict):
+			conflicts++
+		default:
+			t.Fatalf("concurrent CreateAPIKey: %v", err)
+		}
+	}
+	if successes != 1 || conflicts != 1 || len(keyStore.keys) != 1 {
+		t.Fatalf("successes=%d conflicts=%d keys=%d, want 1/1/1", successes, conflicts, len(keyStore.keys))
 	}
 }
 

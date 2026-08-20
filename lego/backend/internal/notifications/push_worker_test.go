@@ -375,6 +375,22 @@ type fakePushReceiptChecker struct {
 	calls    [][]string
 }
 
+type overlappingPushSender struct {
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (s *overlappingPushSender) Supports(string) bool { return true }
+func (s *overlappingPushSender) Send(ctx context.Context, _ PushSendRequest) (string, error) {
+	s.entered <- struct{}{}
+	select {
+	case <-s.release:
+		return "ticket", nil
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+}
+
 func (f *fakePushReceiptChecker) CheckReceipts(_ context.Context, ticketIDs []string) (map[string]pushtransport.Receipt, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -562,6 +578,37 @@ func TestPushWorkerReplayRestartAndConcurrentWorkersAreIdempotent(t *testing.T) 
 	}
 	if got := len(sender.snapshot()); got != 3 {
 		t.Fatalf("restart sent %d messages, want still 3", got)
+	}
+}
+
+func TestPushWorkerSendsDeliveriesConcurrently(t *testing.T) {
+	now := time.Date(2026, time.August, 3, 12, 0, 10, 0, time.UTC)
+	queue := newFakePushWorkerStore()
+	for i := 0; i < 2; i++ {
+		n := validWorkerNotification(now.Add(-time.Second))
+		n.SourceEventKey = fmt.Sprintf("parallel-%d", i)
+		deviceID := fmt.Sprintf("device-%d", i)
+		queue.destinations = append(queue.destinations, store.ActivePushSubscription{
+			TenantID: n.TenantID, Subject: n.Subject, DeviceID: deviceID,
+			Provider: "expo", Platform: "ios", Token: "token",
+		})
+		queue.deliveries[pushDeliveryKey(n.TenantID, n.Subject, deviceID, n.SourceEventKey)] =
+			&fakePushQueueDelivery{notification: n, deviceID: deviceID}
+	}
+	sender := &overlappingPushSender{entered: make(chan struct{}, 2), release: make(chan struct{})}
+	worker := &PushWorker{Store: queue, Sender: sender, Clock: func() time.Time { return now }}
+	done := make(chan error, 1)
+	go func() { done <- worker.send(context.Background()) }()
+	for i := 0; i < 2; i++ {
+		select {
+		case <-sender.entered:
+		case <-time.After(time.Second):
+			t.Fatal("second push did not overlap the first")
+		}
+	}
+	close(sender.release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
 	}
 }
 

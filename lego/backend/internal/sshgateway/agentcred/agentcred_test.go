@@ -120,6 +120,83 @@ func TestGitProxyKeepsTokenOutOfSandboxAndBindsSourcePod(t *testing.T) {
 	}
 }
 
+func gitBudgetHarness(t *testing.T, perSession, perWorkspace int) (*Broker, string, *credentialGitHub) {
+	t.Helper()
+	secret := []byte("budget-secret")
+	gh := &credentialGitHub{}
+	apiServer := httptest.NewServer(&agentsession.Handler{Secret: secret, Minter: &agentsession.Minter{
+		GitHub: gh, Connections: credentialConnections{}, Sessions: credentialSessions{},
+	}})
+	t.Cleanup(apiServer.Close)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "0000")
+	}))
+	t.Cleanup(upstream.Close)
+	broker := &Broker{
+		Metrics: sshgateway.NewMetrics(prometheus.NewRegistry()),
+		Pods: credentialPodResolver{pods: map[string]SessionPod{
+			"10.0.0.1": {Name: "sbx-a-0", UID: "uid-a", Labels: credentialLabels(t, "tea-a")},
+		}},
+		API:            &agentsession.Client{URL: apiServer.URL, Secret: secret, HTTP: apiServer.Client()},
+		UpstreamOrigin: upstream.URL, HTTP: upstream.Client(),
+		MaxRequestsPerSession: perSession, MaxRequestsPerWorkspace: perWorkspace,
+	}
+	repoURL, err := agentsession.ProxyRepositoryURL("http://gateway", "tea-a-sandbox", "ags-one", "octo/repo", "bex-agent/task-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return broker, repoURL, gh
+}
+
+func gitBudgetRequest(broker *Broker, repoURL string) int {
+	req := httptest.NewRequest(http.MethodGet, repoURL+"/info/refs?service=git-upload-pack", nil)
+	req.RemoteAddr = "10.0.0.1:43210"
+	rec := httptest.NewRecorder()
+	broker.Handler().ServeHTTP(rec, req)
+	return rec.Code
+}
+
+func TestGitProxySessionRequestBudget(t *testing.T) {
+	broker, repoURL, gh := gitBudgetHarness(t, 2, 0)
+	if got := gitBudgetRequest(broker, repoURL); got != http.StatusOK {
+		t.Fatalf("request 1 = %d", got)
+	}
+	if got := gitBudgetRequest(broker, repoURL); got != http.StatusOK {
+		t.Fatalf("request 2 = %d", got)
+	}
+	if got := gitBudgetRequest(broker, repoURL); got != http.StatusTooManyRequests {
+		t.Fatalf("request 3 = %d, want 429", got)
+	}
+	if gh.calls != 2 {
+		t.Fatalf("credential mints = %d, want 2", gh.calls)
+	}
+}
+
+func TestGitProxyWorkspaceRequestBudgetAndDisabled(t *testing.T) {
+	broker, repoURL, gh := gitBudgetHarness(t, 0, 2)
+	for i := 0; i < 2; i++ {
+		if got := gitBudgetRequest(broker, repoURL); got != http.StatusOK {
+			t.Fatalf("workspace request %d = %d", i+1, got)
+		}
+	}
+	if got := gitBudgetRequest(broker, repoURL); got != http.StatusTooManyRequests {
+		t.Fatalf("workspace request 3 = %d, want 429", got)
+	}
+	if gh.calls != 2 {
+		t.Fatalf("workspace credential mints = %d, want 2", gh.calls)
+	}
+
+	disabled, disabledURL, disabledGH := gitBudgetHarness(t, 0, 0)
+	for i := 0; i < 5; i++ {
+		if got := gitBudgetRequest(disabled, disabledURL); got != http.StatusOK {
+			t.Fatalf("disabled request %d = %d", i+1, got)
+		}
+	}
+	if disabledGH.calls != 5 {
+		t.Fatalf("disabled credential mints = %d, want 5", disabledGH.calls)
+	}
+}
+
 func TestGitProxyReceivePackAllowsOnlyBoundBranch(t *testing.T) {
 	secret := []byte("secret")
 	gh := &credentialGitHub{}

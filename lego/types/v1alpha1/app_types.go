@@ -234,10 +234,11 @@ type AppSpec struct {
 
 	// Repo is the git repository URL to deploy from (https://, ssh://, or git@
 	// SCP form). Either Repo (build-from-git) or Image (prebuilt) must be set.
-	// file:// and bare local paths are rejected at the CRD schema so a request
-	// can never point a build at the build pod's own filesystem (w6/m6 t003).
+	// file://, bare local paths, and cleartext http:// are rejected at the CRD
+	// schema so a request can never point a build at the build pod's own
+	// filesystem or an on-path-substitutable origin (w6/m6 t003; codex geyRc8 #6).
 	// +optional
-	// +kubebuilder:validation:Pattern=`^(https?://|ssh://|git@)`
+	// +kubebuilder:validation:Pattern=`^(https://|ssh://|git@)`
 	// +kubebuilder:validation:MaxLength=2048
 	Repo string `json:"repo,omitempty"`
 

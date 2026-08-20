@@ -48,6 +48,7 @@ import (
 // the control-plane store is off (BEX_CP_DB_URI unset).
 type CredentialStore interface {
 	CreateRegistryCredential(ctx context.Context, workspaceID, name, host, username, createdBy string, expiresAt *time.Time) (store.RegistryCredential, error)
+	CountRegistryCredentials(ctx context.Context, workspaceID string) (int, error)
 	ListRegistryCredentials(ctx context.Context, workspaceID string) ([]store.RegistryCredential, error)
 	GetRegistryCredential(ctx context.Context, workspaceID, id string) (store.RegistryCredential, error)
 	GetRegistryCredentialByID(ctx context.Context, id string) (store.RegistryCredential, error)
@@ -63,9 +64,15 @@ type CredentialStore interface {
 // password/token). Both seams must be present; either nil => 503.
 type Service struct {
 	*core.Base
-	Store  CredentialStore
-	Secret core.SecretKV
+	Store          CredentialStore
+	Secret         core.SecretKV
+	MaxCredentials int
 }
+
+const (
+	maxCredentialFieldBytes  = 253
+	maxCredentialSecretBytes = 64 * 1024
+)
 
 // CredentialView is the neutral shape every adapter renders. Secret is never
 // populated by List/Get — a credential's secret value is write-only from the
@@ -201,15 +208,35 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (CredentialView
 	}
 	host := strings.TrimSpace(req.Host)
 	username := strings.TrimSpace(req.Username)
+	name := strings.TrimSpace(req.Name)
 	if host == "" || username == "" || req.Secret == "" {
 		return CredentialView{}, fmt.Errorf("%w: host, username, and secret are required", core.ErrBadRequest)
+	}
+	if name == "" {
+		name = host
+	}
+	if err := validateCredentialFields(name, host, username, req.Secret); err != nil {
+		return CredentialView{}, err
 	}
 	createdBy := ""
 	if id, ok := core.IdentityFrom(ctx); ok {
 		createdBy = id.Subject
 	}
 	workspaceID := s.WorkspaceOrDefault(ctx)
-	c, err := s.Store.CreateRegistryCredential(ctx, workspaceID, strings.TrimSpace(req.Name), host, username, createdBy, req.ExpiresAt)
+	if s.MaxCredentials > 0 {
+		count, err := s.Store.CountRegistryCredentials(ctx, workspaceID)
+		if err != nil {
+			return CredentialView{}, err
+		}
+		if count >= s.MaxCredentials {
+			return CredentialView{}, core.NewConflictError(
+				"REGISTRY_CREDENTIAL_LIMIT",
+				fmt.Sprintf("workspace already owns %d registry credentials (limit %d); delete unused credentials or raise the limit", count, s.MaxCredentials),
+				map[string]any{"count": count, "limit": s.MaxCredentials},
+			)
+		}
+	}
+	c, err := s.Store.CreateRegistryCredential(ctx, workspaceID, name, host, username, createdBy, req.ExpiresAt)
 	if err != nil {
 		return CredentialView{}, err
 	}
@@ -258,6 +285,9 @@ func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (Cre
 		if name == "" {
 			return CredentialView{}, fmt.Errorf("%w: name cannot be empty", core.ErrBadRequest)
 		}
+		if len(name) > maxCredentialFieldBytes {
+			return CredentialView{}, fmt.Errorf("%w: name must be at most %d bytes", core.ErrBadRequest, maxCredentialFieldBytes)
+		}
 	}
 	username := existing.Username
 	if req.Username != nil {
@@ -265,6 +295,12 @@ func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (Cre
 		if username == "" {
 			return CredentialView{}, fmt.Errorf("%w: username cannot be empty", core.ErrBadRequest)
 		}
+		if len(username) > maxCredentialFieldBytes {
+			return CredentialView{}, fmt.Errorf("%w: username must be at most %d bytes", core.ErrBadRequest, maxCredentialFieldBytes)
+		}
+	}
+	if req.Secret != nil && len(*req.Secret) > maxCredentialSecretBytes {
+		return CredentialView{}, fmt.Errorf("%w: secret must be at most %d bytes", core.ErrBadRequest, maxCredentialSecretBytes)
 	}
 	expiresAt := existing.ExpiresAt
 	if req.ExpiresAtSet {
@@ -285,11 +321,10 @@ func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (Cre
 	return toView(updated, s.Now()), nil
 }
 
-// Delete removes a credential: the Postgres row and its OpenBao secret.
-// Best-effort on the secret (mirrors RevokeAPIKey/Disconnect) — a Postgres row
-// is the source of truth for "does this credential exist"; a leftover OpenBao
-// value under a dead id is harmless (unreachable, since nothing can look it up
-// by id without the deleted row). Admin-only, matching Create/Update.
+// Delete removes a credential's OpenBao secret before its Postgres row. Secret
+// deletion is fail-closed: retaining the row makes an OpenBao outage retryable
+// and prevents a supposedly deleted credential from leaving secret material
+// behind. Admin-only, matching Create/Update.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return err
@@ -309,11 +344,25 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 			fmt.Sprintf("registry credential %q is still used by service %q; remove it from the service first", id, app),
 			map[string]any{"appName": app})
 	}
-	if err := s.Store.DeleteRegistryCredential(ctx, workspaceID, id); err != nil {
-		return mapStoreErr(err)
+	if err := s.Secret.Delete(ctx, secretPath(workspaceID, id)); err != nil {
+		return fmt.Errorf("delete registry credential secret: %w", err)
 	}
-	_ = s.Secret.Delete(ctx, secretPath(workspaceID, id))
-	return nil
+	return mapStoreErr(s.Store.DeleteRegistryCredential(ctx, workspaceID, id))
+}
+
+func validateCredentialFields(name, host, username, secret string) error {
+	switch {
+	case len(name) > maxCredentialFieldBytes:
+		return fmt.Errorf("%w: name must be at most %d bytes", core.ErrBadRequest, maxCredentialFieldBytes)
+	case len(host) > maxCredentialFieldBytes:
+		return fmt.Errorf("%w: host must be at most %d bytes", core.ErrBadRequest, maxCredentialFieldBytes)
+	case len(username) > maxCredentialFieldBytes:
+		return fmt.Errorf("%w: username must be at most %d bytes", core.ErrBadRequest, maxCredentialFieldBytes)
+	case len(secret) > maxCredentialSecretBytes:
+		return fmt.Errorf("%w: secret must be at most %d bytes", core.ErrBadRequest, maxCredentialSecretBytes)
+	default:
+		return nil
+	}
 }
 
 // mapStoreErr maps the store's ErrNotFound (a bare sentinel, wrapped with a
