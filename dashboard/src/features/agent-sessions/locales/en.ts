@@ -721,7 +721,8 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.groupWorkedFor": {
     message: "Worked for {duration}",
-    description: "Activity-group summary with a derived elapsed duration",
+    description:
+      "Activity-group summary with elapsed duration from persisted part timestamps (or ~arrival timing)",
   },
   "agentSessions.groupWorked": {
     message: "Worked",
@@ -730,7 +731,8 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.groupThoughtFor": {
     message: "Thought for {duration}",
-    description: "Reasoning-group summary with a derived elapsed duration",
+    description:
+      "Reasoning-group summary with elapsed duration from persisted part timestamps (or ~arrival timing)",
   },
   "agentSessions.terminalStatus.completed": {
     message: "Session went to sleep",

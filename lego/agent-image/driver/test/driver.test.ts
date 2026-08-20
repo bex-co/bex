@@ -37,6 +37,7 @@ import {
 import { runHeadlessTurn } from "../src/session.js";
 import { startDriverServer } from "../src/server.js";
 import { UIMessageStreamHub } from "../src/stream-hub.js";
+import { isUtcTimestamp } from "../src/timestamp.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fixture = path.join(here, "..", "fixtures", "acp-agent.mjs");
@@ -286,11 +287,39 @@ test("one headless turn streams raw ACP data and commits in the worktree", async
     (part) => part.type === "tool-input-start",
   );
   assert.equal(toolStart?.toolName, "Edit fixture");
+  assert.ok(
+    types.includes("reasoning-start"),
+    "thought maps to a reasoning part",
+  );
+  // Every published part carries one ISO-8601 UTC `at`, identical on the hub
+  // history and the persisted session log (the publication boundary).
+  for (const part of hub.history) {
+    assert.ok(
+      isUtcTimestamp(part.at),
+      `${String(part.type)} missing source timestamp`,
+    );
+  }
   const serialized = JSON.stringify(hub.history);
   assert.doesNotMatch(serialized, /acp_provider_agent_dynamic_tool/);
   const log = await readFile(config.sessionLogPath, "utf8");
   assert.match(log, /ui-message/);
   assert.doesNotMatch(log, /test-model-key-never-log/);
+  const logRecords = log
+    .trim()
+    .split("\n")
+    .map(
+      (line) =>
+        JSON.parse(line) as {
+          type?: string;
+          partIndex?: number;
+          part?: { at?: string };
+        },
+    );
+  const logged = logRecords.filter((row) => row.type === "ui-message");
+  assert.equal(logged.length, hub.history.length);
+  for (const row of logged) {
+    assert.equal(row.part?.at, hub.history[row.partIndex ?? -1]?.at);
+  }
 });
 
 test("Codex binds its provider to the session proxy and fails on typed transport errors", async () => {

@@ -21,7 +21,7 @@ import {
   type ActivityStep,
 } from "@/features/agent-sessions/components/activity-group";
 import {
-  formatApproxDuration,
+  formatStreamDuration,
   useStreamDuration,
 } from "@/features/agent-sessions/lib/stream-duration";
 import { TypingIndicator } from "@/features/agent-sessions/components/typing-indicator";
@@ -29,6 +29,7 @@ import {
   acpDataSchema,
   classifyAcpPart,
   isToolPart,
+  sourceTimestampsMs,
   toolPartInfo,
   type AcpPlanEntry,
   type AgentUIMessage,
@@ -387,7 +388,7 @@ function capText(text: string): string {
 
 type DisplayBlock =
   | { type: "text"; key: string; text: string }
-  | { type: "reasoning"; key: string; text: string }
+  | { type: "reasoning"; key: string; text: string; sourceTimesMs: number[] }
   | { type: "plan"; key: string; entries: AcpPlanEntry[] }
   | {
       type: "user";
@@ -396,7 +397,12 @@ type DisplayBlock =
       incomplete: boolean;
       reason: string;
     }
-  | { type: "activity"; key: string; steps: ActivityStep[] };
+  | {
+      type: "activity";
+      key: string;
+      steps: ActivityStep[];
+      sourceTimesMs: number[];
+    };
 
 function buildBlocks(parts: PartLike[]): DisplayBlock[] {
   const blocks: DisplayBlock[] = [];
@@ -406,15 +412,18 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
   // own (often in_progress) state (ADR051 glue #1).
   let planBlock: Extract<DisplayBlock, { type: "plan" }> | null = null;
 
-  const pushStep = (step: ActivityStep, index: number) => {
+  const pushStep = (step: ActivityStep, index: number, part: PartLike) => {
+    const times = sourceTimestampsMs(part);
     const prev = blocks[blocks.length - 1];
     if (prev?.type === "activity") {
       prev.steps.push(step);
+      prev.sourceTimesMs.push(...times);
     } else {
       blocks.push({
         type: "activity",
         key: `activity-${index}`,
         steps: [step],
+        sourceTimesMs: [...times],
       });
     }
   };
@@ -456,6 +465,7 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
         type: "reasoning",
         key: `reasoning-${index}`,
         text: capText(str(part.text)),
+        sourceTimesMs: sourceTimestampsMs(part),
       });
       return;
     }
@@ -484,10 +494,15 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
             newText: group.newText,
           },
           index,
+          part,
         );
         return;
       }
-      pushStep({ kind: "terminal", output: group.output }, index);
+      pushStep(
+        { kind: "terminal", output: group.output },
+        index,
+        part,
+      );
       return;
     }
 
@@ -503,6 +518,7 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
           errorText: info.errorText,
         },
         index,
+        part,
       );
       return;
     }
@@ -588,6 +604,7 @@ const MessageRow = memo(function MessageRow({
                 key={block.key}
                 text={block.text}
                 streaming={showCursor}
+                sourceTimesMs={block.sourceTimesMs}
               />
             );
           }
@@ -600,7 +617,13 @@ const MessageRow = memo(function MessageRow({
               />
             );
           }
-          return <ActivityGroup key={block.key} steps={block.steps} />;
+          return (
+            <ActivityGroup
+              key={block.key}
+              steps={block.steps}
+              sourceTimesMs={block.sourceTimesMs}
+            />
+          );
         })}
       </div>
       {isUser && <UserAvatar />}
@@ -638,20 +661,22 @@ function DurableUserTurn({
 
 // The agent's chain-of-thought, rendered with the vendored AI Elements
 // `Reasoning` disclosure. Collapsed by default so a long transcript stays
-// scannable; the "Thought for <Ns>" label derives from stream-arrival timing.
+// scannable; the "Thought for <Ns>" label prefers persisted source timestamps.
 function ReasoningBlock({
   text,
   streaming,
+  sourceTimesMs,
 }: {
   text: string;
   streaming: boolean;
+  sourceTimesMs: number[];
 }) {
   const { t } = useTranslations();
-  const durationMs = useStreamDuration(text.length, !streaming);
+  const duration = useStreamDuration(text.length, !streaming, sourceTimesMs);
   const summary =
-    durationMs >= 1000
+    duration.ms >= 1000
       ? t("agentSessions.groupThoughtFor", {
-          duration: formatApproxDuration(durationMs),
+          duration: formatStreamDuration(duration),
         })
       : t("agentSessions.groupThought");
   return (

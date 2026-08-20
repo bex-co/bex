@@ -26,6 +26,7 @@ import path from "node:path";
 import { createUIMessageStream } from "ai";
 import { createSessionProvider, type SessionProvider } from "./acp.js";
 import { createUpdateMapper } from "./acp-map.js";
+import { stampSourceTimestamp } from "./timestamp.js";
 import {
   deliverBranch,
   extractEvidence,
@@ -207,7 +208,9 @@ export async function runHeadlessTurn(
   // value) the session log all carry the same sanitized part. logPart's own
   // string-level redaction stays as a second pass.
   const publish = (part: UIMessagePart): UIMessagePart => {
-    const sanitized = credentialManager.redactPart(part);
+    const sanitized = stampSourceTimestamp(
+      credentialManager.redactPart(part) as Record<string, unknown>,
+    ) as UIMessagePart;
     hub.publish(sanitized);
     if (onPart) onPart(sanitized);
     return sanitized;

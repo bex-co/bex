@@ -10,6 +10,8 @@ import {
   makeManualStream,
   RUNNING_TRANSCRIPT_HEAD,
   TERMINAL_TRANSCRIPT,
+  TIMESTAMPED_ACTIVITY,
+  TIMESTAMPED_REASONING,
 } from "@/features/agent-sessions/lib/mock-stream";
 import type { UIMessageChunk } from "ai";
 
@@ -460,5 +462,102 @@ describe("collapseDoubledParts", () => {
   it("leaves an odd-length or short parts list untouched", () => {
     expect(collapseDoubledParts(transcript().slice(0, 3))).toHaveLength(3);
     expect(collapseDoubledParts([P("text", { text: "hi" })])).toHaveLength(1);
+  });
+});
+
+describe("durable source timestamps", () => {
+  it("renders the same Worked-for duration on one-frame replay and live tail", async () => {
+    const replay = createAgentSessionTransport({
+      sessionId: "as-timed-replay",
+      mintTicket,
+      fetch: makeFixtureFetch(TIMESTAMPED_ACTIVITY, { terminal: true }),
+    });
+    const { unmount } = render(
+      <SessionConversationImpl
+        sessionId="as-timed-replay"
+        isTerminal
+        transport={replay}
+      />,
+    );
+    expect(await screen.findByText("Worked for 40s")).toBeInTheDocument();
+    unmount();
+
+    const manual = makeManualStream();
+    const live = createAgentSessionTransport({
+      sessionId: "as-timed-live",
+      mintTicket,
+      fetch: manual.fetch,
+    });
+    render(
+      <SessionConversationImpl
+        sessionId="as-timed-live"
+        isTerminal={false}
+        transport={live}
+      />,
+    );
+    await act(async () => {
+      for (const chunk of TIMESTAMPED_ACTIVITY) {
+        manual.push(chunk);
+      }
+      manual.done();
+    });
+    expect(await screen.findByText("Worked for 40s")).toBeInTheDocument();
+  });
+
+  it("renders Thought for Ns from persisted reasoning timestamps on replay", async () => {
+    const transport = createAgentSessionTransport({
+      sessionId: "as-timed-rsn",
+      mintTicket,
+      fetch: makeFixtureFetch(TIMESTAMPED_REASONING, { terminal: true }),
+    });
+    render(
+      <SessionConversationImpl
+        sessionId="as-timed-rsn"
+        isTerminal
+        transport={transport}
+      />,
+    );
+    expect(await screen.findByText("Thought for 12s")).toBeInTheDocument();
+  });
+
+  it("keeps a bare Worked label for mixed and invalid optional timing", async () => {
+    const mixed: UIMessageChunk[] = [
+      { type: "start", messageId: "asm-mixed" },
+      {
+        type: "tool-input-start",
+        toolCallId: "m1",
+        toolName: "search",
+        dynamic: true,
+      },
+      {
+        type: "tool-input-available",
+        toolCallId: "m1",
+        toolName: "search",
+        input: { q: "x" },
+        dynamic: true,
+        at: "not-a-clock",
+      } as UIMessageChunk,
+      {
+        type: "tool-output-available",
+        toolCallId: "m1",
+        output: { hits: 1 },
+        dynamic: true,
+      },
+      { type: "finish" },
+    ];
+    const transport = createAgentSessionTransport({
+      sessionId: "as-mixed",
+      mintTicket,
+      fetch: makeFixtureFetch(mixed, { terminal: true }),
+    });
+    render(
+      <SessionConversationImpl
+        sessionId="as-mixed"
+        isTerminal
+        transport={transport}
+      />,
+    );
+    expect(await screen.findByText("Worked")).toBeInTheDocument();
+    expect(screen.queryByText(/Worked for/)).not.toBeInTheDocument();
   });
 });

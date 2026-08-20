@@ -16,6 +16,7 @@
 
 import type { UIMessageChunk } from "ai";
 import type { SessionUpdate } from "@agentclientprotocol/sdk";
+import { stampSourceTimestamp, utcNow } from "./timestamp.js";
 
 // The single ACP → UI-message-stream translation. Every `session/update` the
 // agent emits is mapped here into typed AI-SDK UI-message-stream chunks — text,
@@ -37,6 +38,12 @@ const PLAN_PART_ID = "acp-plan";
 interface TextBlock {
   kind: "text" | "reasoning";
   id: string;
+  startedAt: string;
+}
+
+export interface UpdateMapperOptions {
+  /** Clock for source timestamps; defaults to `Date.toISOString()`. */
+  now?: () => string;
 }
 
 function kebab(value: string): string {
@@ -49,17 +56,38 @@ export interface UpdateMapper {
   flush(): UIMessageChunk[];
 }
 
-export function createUpdateMapper(): UpdateMapper {
+export function createUpdateMapper(
+  options: UpdateMapperOptions = {},
+): UpdateMapper {
+  const now = options.now ?? utcNow;
   let open: TextBlock | null = null;
   let sequence = 0;
   const startedTools = new Set<string>();
   const toolNames = new Map<string, string>();
+  // One publication instant per map()/flush() so start/delta/end in the same
+  // ACP update share a clock reading; the fake test clock then advances per update.
+  let publishedAt = "";
 
   const nextId = (prefix: string): string => `${prefix}-${(sequence += 1)}`;
 
+  const stampAll = (chunks: UIMessageChunk[]): UIMessageChunk[] =>
+    chunks.map(
+      (chunk) =>
+        stampSourceTimestamp(
+          chunk as Record<string, unknown>,
+          publishedAt,
+        ) as UIMessageChunk,
+    );
+
   const closeOpen = (out: UIMessageChunk[]): void => {
     if (!open) return;
-    out.push({ type: open.kind === "text" ? "text-end" : "reasoning-end", id: open.id });
+    out.push({
+      type: open.kind === "text" ? "text-end" : "reasoning-end",
+      id: open.id,
+      providerMetadata: {
+        bex: { at: open.startedAt, endAt: publishedAt },
+      },
+    });
     open = null;
   };
 
@@ -69,8 +97,11 @@ export function createUpdateMapper(): UpdateMapper {
     if (open && open.kind !== kind) closeOpen(out);
     if (!open) {
       const id = nextId(kind === "text" ? "txt" : "rsn");
-      out.push({ type: kind === "text" ? "text-start" : "reasoning-start", id });
-      open = { kind, id };
+      out.push({
+        type: kind === "text" ? "text-start" : "reasoning-start",
+        id,
+      });
+      open = { kind, id, startedAt: publishedAt };
     }
     out.push({
       type: kind === "text" ? "text-delta" : "reasoning-delta",
@@ -98,6 +129,7 @@ export function createUpdateMapper(): UpdateMapper {
     title || toolNames.get(toolCallId) || kind || toolCallId;
 
   const map = (update: SessionUpdate): UIMessageChunk[] => {
+    publishedAt = now();
     const out: UIMessageChunk[] = [];
     switch (update.sessionUpdate) {
       case "agent_message_chunk": {
@@ -144,7 +176,7 @@ export function createUpdateMapper(): UpdateMapper {
         break;
       }
     }
-    return out;
+    return stampAll(out);
   };
 
   // emitToolOutcome maps a tool call/update's content + status into the typed
@@ -185,9 +217,10 @@ export function createUpdateMapper(): UpdateMapper {
   return {
     map,
     flush() {
+      publishedAt = now();
       const out: UIMessageChunk[] = [];
       closeOpen(out);
-      return out;
+      return stampAll(out);
     },
   };
 }

@@ -96,7 +96,9 @@ export interface AgentSessionView {
   /**
    * Archive (ADR065 D1): set ⇒ out of the working set, mutation verbs refused
    * (`AGENT_SESSION_ARCHIVED`) until unarchived; reads (transcript included)
-   * always work. Orthogonal to phase.
+   * always work. Orthogonal to phase. Transcript part timing (`at` on UI-message
+   * stream chunks) is not a field on this view — see
+   * `lib/acp-parts.ts` `sourceTimestampsMs`.
    */
   archivedAt: string | null;
   /** hibernated — pod-less but resumable from a durable snapshot (ADR059 D2). */

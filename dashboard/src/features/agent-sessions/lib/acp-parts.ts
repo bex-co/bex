@@ -21,6 +21,59 @@ import type { UIMessage } from "ai";
  */
 export const acpDataSchema = z.unknown();
 
+/** ISO-8601 UTC (`YYYY-MM-DDTHH:mm:ss.sssZ`) on a driver-emitted part. */
+const ISO_UTC = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(\.\d{1,9})?Z$/;
+const SOURCE_TIME_FIELD = "at";
+const SOURCE_TIME_PROVIDER = "bex";
+
+function utcMs(value: unknown): number | undefined {
+  if (typeof value !== "string" || !ISO_UTC.test(value)) return undefined;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? ms : undefined;
+}
+
+export function isUtcTimestamp(value: unknown): value is string {
+  return utcMs(value) !== undefined;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function bexAt(meta: unknown, field: "at" | "endAt"): unknown {
+  return asRecord(asRecord(meta)?.[SOURCE_TIME_PROVIDER])?.[field];
+}
+
+/**
+ * Distinct parsed source instants from a typed UI-message part. Looks at the
+ * canonical top-level `at`, then `providerMetadata.bex.{at,endAt}` (text/
+ * reasoning after useChat assembly) and the tool call/result metadata twins.
+ * Duplicate echoes of the same instant collapse; invalid or missing optional
+ * timing is skipped — never treated as transcript corruption.
+ */
+export function sourceTimestampsMs(
+  part: Record<string, unknown>,
+): number[] {
+  const raw = [
+    part[SOURCE_TIME_FIELD],
+    bexAt(part.providerMetadata, "at"),
+    bexAt(part.providerMetadata, "endAt"),
+    bexAt(part.callProviderMetadata, "at"),
+    bexAt(part.resultProviderMetadata, "at"),
+  ];
+  const out: number[] = [];
+  const seen = new Set<number>();
+  for (const value of raw) {
+    const ms = utcMs(value);
+    if (ms === undefined || seen.has(ms)) continue;
+    seen.add(ms);
+    out.push(ms);
+  }
+  return out;
+}
+
 export interface AcpPlanEntry {
   content: string;
   status?: string;
@@ -31,12 +84,6 @@ export type AcpGroup =
   | { kind: "plan"; entries: AcpPlanEntry[] }
   | { kind: "diff"; path?: string; oldText?: string; newText?: string }
   | { kind: "terminal"; terminalId?: string; output?: string };
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
 
 function str(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;

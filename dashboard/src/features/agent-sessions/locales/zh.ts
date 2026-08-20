@@ -709,7 +709,8 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.groupWorkedFor": {
     message: "工作了 {duration}",
-    description: "Activity-group summary with a derived elapsed duration",
+    description:
+      "Activity-group summary with elapsed duration from persisted part timestamps (or ~arrival timing)",
   },
   "agentSessions.groupWorked": {
     message: "已工作",
@@ -718,7 +719,8 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.groupThoughtFor": {
     message: "思考了 {duration}",
-    description: "Reasoning-group summary with a derived elapsed duration",
+    description:
+      "Reasoning-group summary with elapsed duration from persisted part timestamps (or ~arrival timing)",
   },
   "agentSessions.terminalStatus.completed": {
     message: "会话已休眠",

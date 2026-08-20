@@ -167,6 +167,10 @@ lines.on("line", async (line) => {
         ],
       });
       update(sessionId, {
+        sessionUpdate: "agent_thought_chunk",
+        content: { type: "text", text: "I'll edit the file and commit." },
+      });
+      update(sessionId, {
         sessionUpdate: "tool_call",
         toolCallId: "tool-1",
         title: "Edit fixture",

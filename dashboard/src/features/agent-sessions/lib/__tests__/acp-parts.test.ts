@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   classifyAcpPart,
   isTrivialAck,
+  isUtcTimestamp,
+  sourceTimestampsMs,
   unwrapAcpTool,
   type ToolPartInfo,
 } from "@/features/agent-sessions/lib/acp-parts";
@@ -60,6 +62,64 @@ describe("classifyAcpPart", () => {
     expect(
       classifyAcpPart({ type: "data-acp-available-commands", data: {} }),
     ).toBeUndefined();
+  });
+
+  it("classifies timestamped parts without dropping payload", () => {
+    const plan = classifyAcpPart({
+      type: "data-acp-plan",
+      at: "2026-08-19T00:00:00.000Z",
+      data: { entries: [{ content: "step" }] },
+    });
+    expect(plan).toEqual({
+      kind: "plan",
+      entries: [{ content: "step", status: undefined, priority: undefined }],
+    });
+  });
+});
+
+describe("sourceTimestampsMs", () => {
+  it("exposes a valid top-level at", () => {
+    expect(
+      sourceTimestampsMs({ type: "data-acp-diff", at: "2026-08-19T00:00:40.000Z" }),
+    ).toEqual([Date.parse("2026-08-19T00:00:40.000Z")]);
+  });
+
+  it("treats missing and invalid optional timing as unavailable", () => {
+    expect(sourceTimestampsMs({ type: "text", text: "hi" })).toEqual([]);
+    expect(
+      sourceTimestampsMs({ type: "text", at: "not-a-time", text: "hi" }),
+    ).toEqual([]);
+    expect(sourceTimestampsMs({ type: "text", at: 12, text: "hi" })).toEqual([]);
+    expect(isUtcTimestamp("2026-08-19T00:00:00.000Z")).toBe(true);
+    expect(isUtcTimestamp("2026-08-19 00:00:00")).toBe(false);
+  });
+
+  it("reads assembled providerMetadata and tool metadata twins", () => {
+    expect(
+      sourceTimestampsMs({
+        type: "reasoning",
+        at: "2026-08-19T00:00:00.000Z",
+        providerMetadata: {
+          bex: {
+            at: "2026-08-19T00:00:00.000Z",
+            endAt: "2026-08-19T00:00:12.000Z",
+          },
+        },
+      }),
+    ).toEqual([
+      Date.parse("2026-08-19T00:00:00.000Z"),
+      Date.parse("2026-08-19T00:00:12.000Z"),
+    ]);
+    expect(
+      sourceTimestampsMs({
+        type: "dynamic-tool",
+        callProviderMetadata: { bex: { at: "2026-08-19T00:00:00.000Z" } },
+        resultProviderMetadata: { bex: { at: "2026-08-19T00:00:40.000Z" } },
+      }),
+    ).toEqual([
+      Date.parse("2026-08-19T00:00:00.000Z"),
+      Date.parse("2026-08-19T00:00:40.000Z"),
+    ]);
   });
 });
 
