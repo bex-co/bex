@@ -22,15 +22,28 @@ Attempting verification point 3 against production — connecting the already-in
 2. **The dashboard's GitHub surfaces ignore the workspace switcher.** Every git hook (`useGitConnection(s)`, `useRepos`, `useConnectGit`, `useDisconnectGit`, `RepoBranches`) omits `ownerId`, so the backend resolves the caller's **default** (oldest) workspace regardless of the selected one — verified live: with `tian-personal` selected and the page fully reloaded, the Settings card still showed the `bex` workspace's connection, and the same probe against the API with an explicit `ownerId` returned the correct (empty) set. Consequence: "Connect (another) account" while a non-default workspace is selected would silently bind the installation to the **wrong tenant**. The services/databases hooks already pass `ownerId: currentWorkspaceId`; the git feature simply never did.
 3. **A missing OAuth verifier fails at the worst possible moment.** Production's `bex-github-app` Secret lacked the `client-id`/`client-secret` keys (the env refs are `optional: true`), so the installation-admin `Verifier` was nil — and per the fail-closed design every binding 503s **at the callback**, after the user has walked the entire GitHub flow. `StartConnect` happily minted install URLs it knew could never complete, and nothing at startup or connect time surfaced the misconfiguration.
 
-### What Render actually does
+### What Render actually does — the full granularity model (deep-researched 2026-08-21)
 
-Researched from [render.com/docs/github](https://render.com/docs/github), [login-settings](https://render.com/docs/login-settings), [team-members](https://render.com/docs/team-members), and the Dec-2024 [multi-account changelog](https://render.com/changelog/add-your-git-deployment-credentials-to-multiple-render-accounts):
+Researched from [render.com/docs/github](https://render.com/docs/github), [login-settings](https://render.com/docs/login-settings), [your-first-deploy](https://render.com/docs/your-first-deploy), [team-members](https://render.com/docs/team-members), [deploys](https://render.com/docs/deploys), [monorepo-support](https://render.com/docs/monorepo-support), the [Dec-2024 multi-account changelog](https://render.com/changelog/add-your-git-deployment-credentials-to-multiple-render-accounts), the [May-2026 Update-Source changelog](https://render.com/changelog/change-your-services-backing-repo-or-image-in-the-render-dashboard), and archived staff answers from the (since-sunset) community forum.
 
-- **The connection is bound to the Render user, not the workspace.** Git deployment credentials live under the individual user's Account Settings. There is no workspace-level git credential object anywhere in Render's model.
-- **Installations are never bound to workspaces at all.** They live on the GitHub side (personal account or orgs); Render consumes them through whichever member's connected GitHub identity can see them. One connected GitHub identity can span many installations, so the service-create repo picker enumerates everything the **creating user's** GitHub account reaches — personal + all orgs at once.
-- **Per-service credential pointer.** Each service records _which member's_ credential deploys it, swappable in service Settings. Documented failure mode: "if the creator of a Render service loses access to that service's connected GitHub repository, it can disrupt deploys" — remediated by manually re-pointing the service at another member's credential.
-- **Direct GitHub-side install is blessed.** Render's docs explicitly send users to `github.com/apps/render/installations/new` to install on a new org or edit repo grants; Render picks the change up through the user's connection.
-- Cardinality rules are user-side only: one connected account per provider per Render user; since Dec 2024 one GitHub account may serve **multiple** Render accounts (deploy-only).
+Render has **exactly three durable objects and no workspace-level git object at all**. Repo access at deploy time is a chain: **service → (points at) a member's user credential → (authorized as) that member's GitHub account → (which can see) a GitHub App installation → (whose grant includes) the repo.** Break any link and deploys stop; running instances keep serving.
+
+| Layer | Object | Managed where | Who can change it | Disconnect ⇒ what breaks |
+| --- | --- | --- | --- | --- |
+| **User** | "Git deployment credential" — the OAuth link between one Render user and one GitHub account | Render → Account Settings → Account Security | only that user | every service _pointing at_ this credential stops deploying |
+| **Installation** | The Render GitHub App on a personal account or org, "All repositories" vs "Only select repositories" grant | **github.com only** — Render hosts no grant-editing UI, just the deep link `github.com/apps/render/installations/new` | whoever holds GitHub-side power (org owners can restrict installs to owners-only, with member-initiated installs becoming approval requests) | uninstalling removes repo access for **everyone** deploying through that installation |
+| **Service** | Two pointers: which member's _credential_ deploys it, and which _repo+branch_ backs it | Service → Settings | any member whose role can edit services | credential swappable to another member (the documented creator-left fix); since May 2026 the backing **repo is swappable too**, incl. repo→Docker-image (fully detaching the service from git) |
+| **Repo** | _(nothing)_ — no repo-scoped Render object beyond installation-grant membership; monorepo root-dir/build filters scope **triggers**, not access | — | — | — |
+
+Layer-level rules and edges the docs + staff answers pin down:
+
+- **User cardinality:** one GitHub account per Render user, ever ("A given Render account can have up to one connected account from each Git provider"). Since Dec 2024 the _same_ GitHub account may be a **deploy** credential on multiple Render accounts (the agency case), but may **log in** to only one. Login+deploy on one Render account must be the same GitHub account.
+- **Repo picker in a team workspace:** resolves through the **creating user's** GitHub identity — what you see is (your connected account's reachable repos) ∩ (repos granted to installations of the app). A teammate's grants never appear; a collaborator needs both halves to hold for _themselves_.
+- **Two different GitHub-side revokes** (a recurring confusion Render staff had to spell out): revoking under _Authorized GitHub Apps_ kills one **user's** OAuth link (their credential + login); uninstalling under _Installed GitHub Apps_ kills the **installation** for everyone. Render's own cleanup recipe enumerates three surfaces: `github.com/settings/installations`, `…/apps/authorizations`, `…/applications`.
+- **Grant staleness:** grant edits happen after the fact on github.com and Render promises no event-driven picker refresh — the documented remedies for a stale repo list are reconfigure-the-grant or disconnect-and-reconnect the user credential.
+- **Documented failure mode:** "if the creator of a Render service loses access to that service's connected GitHub repository, it can disrupt deploys" — remediated by manually re-pointing the service at another member's credential.
+
+In one sentence: **on Render, people connect and workspaces borrow; on bex, workspaces connect and people prove.** Render's "direct github.com install just works" is a corollary of never _binding_ installations — it _reads_ them through whoever is looking, and pays for that with the per-person coupling above.
 
 ### The inconsistency, named
 
@@ -45,6 +58,20 @@ Researched from [render.com/docs/github](https://render.com/docs/github), [login
 | Deploy credential | the pointing member's user token | fresh installation token per deploy trigger |
 
 Two of these divergences are bex **strengths** (rows 6–7): workspace ownership means no member-departure breakage and no per-service credential pointer to babysit, and it is what lets the identity-less push webhook, agent-session token mint, and blueprint sync resolve a workspace without any user in the loop. Three are real **gaps** (rows 2, 4, 5): a workspace is capped at one GitHub account, the picker can never show a second account's repos, and the GitHub-side install path every GitHub user already knows is a dead end.
+
+### Granularity mapping after this ADR (m74 + m75 shipped)
+
+Where each of Render's control surfaces lands in bex's model — the connect/disconnect answer at every level:
+
+| Render control surface | bex equivalent |
+| --- | --- |
+| User credential (per member, Account Security) | **absent by design** (§1) — no per-member layer exists to connect, revoke, or leak; members prove installation admin at bind time instead of holding standing credentials |
+| Installation, workspace-agnostic, read through user OAuth at query time | installation **bound to exactly one workspace** (§2); bound via the three-proof install flow (first install) or the **claim flow** (§3a, already installed) — the claim flow is the workspace-bound model's replacement for Render's read-through-whoever-is-looking trick |
+| Per-service credential pointer (swap when the creator leaves) | not needed — every deploy mints a fresh installation token from the connection whose `account_login` owns the repo (§4) |
+| Disconnects: user-level OAuth revoke / GitHub uninstall / service repoint | workspace-level per-installation disconnect (`DELETE /v1/git/connections/{installationId}`, §5) + the same GitHub-side uninstall; nothing per-member to revoke |
+| Repo grants: edited on github.com, deep-linked from the product | identical — bex's "Manage repo access on GitHub" is the same deep link; grants live in the installation on both platforms, and **neither platform has a product-side per-repo allow/deny** |
+| Grant-staleness handling (no promised auto-refresh) | same class — bex fetches repo lists on demand per connection |
+| Per-service **source swap** (change backing repo, or repo→image, Settings → Update Source) | **not shipped** — the one Render granularity bex lacks; it is service-config granularity, not access granularity (tracked as a gap in Consequences) |
 
 ## Decision
 
@@ -131,6 +158,7 @@ The git feature's hooks pass `ownerId: currentWorkspaceId` — the same pattern 
 - `ListRepos` latency grows with connection count (one GitHub round trip per connection, concurrent); acceptable under the default cap of 10 and pageable per account if it ever isn't.
 - The bare install URL disappearing from the disconnected view is a small API-shape change to a bex-extension surface; the dashboard is its only known consumer.
 - Render-parity ledger and [docs/ADR018](ADR018-render-parity.md) gain the recorded divergence: bex is **workspace-bound by design** (superset UX: multi-account picker; subset: no per-member credentials).
+- **Remaining Render granularity bex lacks — per-service source swap.** Render (May 2026) lets a service's backing repo be changed, or the service switched from repo-backed to Docker-image-backed, from Settings → Update Source. That is service-configuration granularity, not access granularity — nothing in this ADR's connection model blocks it — and it is deliberately out of scope here; file it as its own milestone if wanted. Every _access_ granularity Render exposes (user, installation, service-credential, repo-grant) now has a bex answer per the mapping table above.
 
 ## Verification
 
