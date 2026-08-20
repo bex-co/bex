@@ -102,6 +102,7 @@ Open after 2026-08-18 triage (done / delete / keep / promote). No new milestone 
 - **`037.md`** (keep) — ADR050 follow-up: Object Lock / WORM on `bex-tfstate` backup prefixes. Premature until write-only per-store credentials are enabled in prod (built, operator-deferred).
 - **`038.md`** (keep) — ADR050 follow-up: `age` backup-key rotation runbook + restore `_PREVIOUS` key. Procedure is already specified in ADR050 §1; no rotation is scheduled. Inbox-sized until someone actually rotates.
 - **`042.md`** (keep — decision record) — mobile composer has no draft-PR opt-in after m65. Deliberate per ADR048 (configuration stays desktop). Re-open only if mobile session-create becomes common or `openPr` stops being configuration.
+- **`046.md`** (keep — operator live-verification) — deferred from `w5/m74` closeout: a real browser + GitHub App install of a second account onto one workspace, confirming the grouped repo picker and per-installation token minting on production. Needs `BEX_GITHUB_APP_*` on a real Hetzner/dev environment.
 
 - _(`039.md` **DONE 2026-08-18**, moved to `done/`) — KeyValue backup NetworkPolicy live-green on prod: `red-d9p49kdrtmes73c34ovg-backup-egress` since 2026-08-08; `kvbak-red-…` CronJob `lastSuccessfulTime=2026-08-19T03:36:15Z`; Jobs succeeded 2026-08-17/18/19 after failing through 2026-08-08._
 - _(`040.md` **DONE 2026-08-18**, moved to `done/`) — m64 one-rail `/agents` local walk + deployed digest accepted; no remaining code gap._
