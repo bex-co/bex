@@ -24,6 +24,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"strconv"
@@ -84,8 +85,16 @@ func main() {
 	namespace := os.Getenv("BEX_STATIC_NAMESPACE") // empty => all namespaces
 	baseDomain := os.Getenv("BEX_BASE_DOMAIN")
 	if err := hostingdomain.ValidateSharedSuffix(baseDomain); err != nil {
-		setupLog.Error(err, "unsafe shared tenant hosting suffix; refusing startup")
-		os.Exit(1)
+		// Per the standing #PSL decision (.pm/DO_NOT_DO.md): the unlisted-suffix
+		// finding is ACCEPTED until open signup, and disabling serving over it has
+		// caused two production outages — warn loudly, keep serving. Only a
+		// malformed domain refuses startup.
+		if errors.Is(err, hostingdomain.ErrUnlistedSharedSuffix) {
+			setupLog.Error(err, "shared tenant hosting suffix is not a private Public Suffix; continuing per the accepted #PSL risk (.pm/DO_NOT_DO.md) — cross-tenant cookie isolation is NOT browser-enforced")
+		} else {
+			setupLog.Error(err, "unsafe shared tenant hosting suffix; refusing startup")
+			os.Exit(1)
+		}
 	}
 	endpoint := os.Getenv("BEX_STATIC_S3_ENDPOINT")
 	bucket := os.Getenv("BEX_STATIC_S3_BUCKET")
