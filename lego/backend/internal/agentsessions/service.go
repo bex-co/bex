@@ -390,6 +390,13 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if !ok {
 		return View{}, core.ErrForbidden
 	}
+	// ADR075 D7 (w6/m42): every agent-session dispatch provisions metered
+	// sandbox compute, so admission requires the bound-payment-method marker
+	// synchronously — the dispatch-time check inside the sandbox lifecycle
+	// fires in a background goroutine where no 402 can reach the caller.
+	if err := s.RequirePaymentMethod(ctx, workspaceID); err != nil {
+		return View{}, err
+	}
 	// codex #6: enforce the billing lifecycle gate — a delinquent/enforced
 	// workspace must not provision new agent-session sandbox compute.
 	if err := s.RequireBillingMutation(ctx, workspaceID); err != nil {
@@ -946,6 +953,11 @@ func (s *Service) rehydrate(ctx context.Context, record store.AgentSession, stee
 	if err := s.enforceLiveSandboxCap(ctx, record.WorkspaceID); err != nil {
 		return View{}, err
 	}
+	// ADR075 D7 (w6/m42): rehydration dispatches fresh sandbox compute — the
+	// card check runs at admission so the refusal is a synchronous 402.
+	if err := s.RequirePaymentMethod(ctx, record.WorkspaceID); err != nil {
+		return View{}, err
+	}
 	if err := s.RequireBillingMutation(ctx, record.WorkspaceID); err != nil {
 		return View{}, err
 	}
@@ -1327,6 +1339,11 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		// and runs the steer prompt on the restored workspace (uncommitted edits +
 		// installed deps intact), instead of re-cloning over lost state.
 		return s.rehydrate(ctx, record, prompt, DeliveryRehydrate)
+	}
+	// ADR075 D7 (w6/m42): steering dispatches fresh sandbox compute — the card
+	// check runs at admission so the refusal is a synchronous 402.
+	if err := s.RequirePaymentMethod(ctx, record.WorkspaceID); err != nil {
+		return View{}, err
 	}
 	// codex #6: enforce the billing lifecycle gate — steering dispatches a fresh
 	// sandbox with a caller-supplied prompt, so a delinquent workspace is blocked.

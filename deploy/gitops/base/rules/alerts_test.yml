@@ -848,3 +848,29 @@ tests:
             exp_annotations:
               summary: "ClusterBuilder image pin is older than the 30-day freshness SLO"
               description: "Committed builder resolution metadata is missing, malformed, or older than 30 days. Resolve with python3 scripts/lib/toolchain-freshness.py resolve, review the observed digest, update the listed files and resolved_at together. The workflow never applies a pin. Runbook: docs/ADR060-build-worker-reliability-and-performance.md D7."
+
+  - name: courier replica shortfall fires only while ready lags desired (w6/m42)
+    interval: 1m
+    input_series:
+      - series: 'kube_statefulset_replicas{namespace="auth", statefulset="kratos-courier"}'
+        values: "1x40"
+      # ready for 10m, then a 15m outage, then recovered
+      - series: 'kube_statefulset_status_replicas_ready{namespace="auth", statefulset="kratos-courier"}'
+        values: "1x10 0x15 1x15"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: KratosCourierNotReady
+        exp_alerts: [] # only 5m into the outage — inside the for: window
+      - eval_time: 21m
+        alertname: KratosCourierNotReady
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              namespace: auth
+              statefulset: kratos-courier
+            exp_annotations:
+              summary: "Kratos courier is not ready — verification email delivery is stalled"
+              description: "kratos-courier has had fewer ready than desired replicas for >10m. Under the ADR075 D8 verification gate NO new user can complete sign-up until it recovers. Debug: kubectl -n auth get sts kratos-courier; kubectl -n auth logs sts/kratos-courier --tail=100; then check the SMTP relay (SendGrid prod / Mailpit local)."
+      - eval_time: 38m
+        alertname: KratosCourierNotReady
+        exp_alerts: []

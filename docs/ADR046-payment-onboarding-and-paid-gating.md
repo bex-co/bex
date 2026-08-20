@@ -1,6 +1,6 @@
 # ADR046 — Payment-method onboarding + paid-tier gating
 
-**Status:** Accepted · implemented 2026-07-31 (w1/m62)
+**Status:** Accepted · implemented 2026-07-31 (w1/m62) · **§1 (card-free signup) revised by [ADR075](ADR075-user-onboarding.md) (2026-08-19):** a bound payment method is now required for all usage (free tier included) via the `BEX_REQUIRE_PAYMENT_METHOD=all` gate mode; the mechanism here (§2–§7 — setup-mode Checkout, `payment_method_bound_at` marker, `PaymentGate`, emitter withholding) is unchanged and reused.
 
 ---
 

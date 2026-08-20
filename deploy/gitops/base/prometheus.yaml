@@ -534,6 +534,27 @@ spec:
                       summary: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has unavailable replicas"
                       description: "A platform Deployment has had fewer available than desired replicas for >10m (bad image / crash / unschedulable). Debug: kubectl -n {{ $labels.namespace }} rollout status deploy/{{ $labels.deployment }}; kubectl -n {{ $labels.namespace }} get pods"
 
+                  # ADR075 D8 (w6/m42): email verification is a hard gate at the
+                  # door, so the Kratos courier — the StatefulSet that delivers
+                  # the verification codes — is a hard availability dependency
+                  # for every new signup. A stalled courier blocks 100% of
+                  # sign-ups silently (users stuck at a code prompt with nothing
+                  # crashing), which is why it gets a dedicated alert instead of
+                  # riding the Deployment rule above (it is a StatefulSet).
+                  - alert: KratosCourierNotReady
+                    expr: |
+                      (
+                        kube_statefulset_replicas{namespace="auth", statefulset="kratos-courier"}
+                        - on (namespace, statefulset)
+                        kube_statefulset_status_replicas_ready{namespace="auth", statefulset="kratos-courier"}
+                      ) > 0
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Kratos courier is not ready — verification email delivery is stalled"
+                      description: "kratos-courier has had fewer ready than desired replicas for >10m. Under the ADR075 D8 verification gate NO new user can complete sign-up until it recovers. Debug: kubectl -n auth get sts kratos-courier; kubectl -n auth logs sts/kratos-courier --tail=100; then check the SMTP relay (SendGrid prod / Mailpit local)."
+
                   # Control-plane node NotReady is a PAGE: the CP pool is a single
                   # node until the quota lift reverts the m19.1 TEMP knobs to 3 CP
                   # nodes, so it's the highest blast radius on the cluster. Worker

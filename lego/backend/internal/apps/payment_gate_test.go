@@ -35,6 +35,13 @@ func (g *rejectingPaymentGate) RequirePaymentMethod(_ context.Context, workspace
 	return core.NewPaymentRequiredError()
 }
 
+type acceptingPaymentGate struct{ calls int }
+
+func (g *acceptingPaymentGate) RequirePaymentMethod(context.Context, string) error {
+	g.calls++
+	return nil
+}
+
 func paidGateContext() context.Context {
 	return core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
 }
@@ -59,6 +66,36 @@ func TestPaidIntentGuardCoversServiceCreatePlanAndBlueprintBeforeWrites(t *testi
 		}
 		if len(gate.calls) != 0 {
 			t.Fatalf("free create consulted paid gate: %v", gate.calls)
+		}
+	})
+
+	// ADR075 D7: BEX_REQUIRE_PAYMENT_METHOD=all widens the gate to the free
+	// tier — the same seam, consulted regardless of PaidPlan.
+	t.Run("all mode gates free create", func(t *testing.T) {
+		svc, cl := newTenantService(fakeWorkspace{"identity-a": "tea-a"})
+		gate := &rejectingPaymentGate{}
+		svc.Payment = gate
+		svc.PaymentAllPlans = true
+		_, err := svc.Create(paidGateContext(), CreateRequest{Name: "free", Image: "nginx:alpine", Plan: "free"})
+		if !errors.Is(err, core.ErrPaymentRequired) || len(gate.calls) != 1 || gate.calls[0] != "tea-a" {
+			t.Fatalf("all-mode free create err=%v calls=%v", err, gate.calls)
+		}
+		var apps appv1alpha1.AppList
+		if err := cl.List(context.Background(), &apps); err != nil || len(apps.Items) != 0 {
+			t.Fatalf("all-mode refusal wrote Apps: %+v err=%v", apps.Items, err)
+		}
+	})
+
+	t.Run("all mode passes a bound workspace", func(t *testing.T) {
+		svc, _ := newTenantService(fakeWorkspace{"identity-a": "tea-a"})
+		gate := &acceptingPaymentGate{}
+		svc.Payment = gate
+		svc.PaymentAllPlans = true
+		if _, err := svc.Create(paidGateContext(), CreateRequest{Name: "free", Image: "nginx:alpine", Plan: "free"}); err != nil {
+			t.Fatalf("all-mode bound free create: %v", err)
+		}
+		if gate.calls != 1 {
+			t.Fatalf("all-mode bound free create consulted gate %d times, want 1", gate.calls)
 		}
 	})
 

@@ -113,13 +113,29 @@ selfservice:
             scope:
               - user:email
   flows:
-    registration:
-      # Kratos doesn't issue a session after OIDC registration unless told to —
-      # mirror the password flow's session hook (base kratos.values.yaml) so a
-      # first-time GitHub sign-in lands authenticated, not back on the login page.
+    login:
+      # ADR075 D8 (w6/m42, revised 2026-08-20): mirror the base password flow's
+      # BACKSTOP — a returning unverified OIDC identity gets no session at
+      # login. The Jsonnet mapper above maps only traits and marks nothing
+      # verified; whether a GitHub address arrives verified is Kratos's provider
+      # claims handling (email_verified). A provider-verified address passes
+      # this hook untouched; an unverified one completes the same emailed-code
+      # verification flow.
       after:
         oidc:
           hooks:
+            - hook: require_verified_address
+    registration:
+      # Mirror the base password flow (keep in lockstep): show_verification_ui
+      # routes a fresh signup with an UNVERIFIED address into the verification
+      # flow (it emits nothing when the provider-verified address created no
+      # verification flow — the common GitHub case), and session signs the new
+      # identity in so verification is a seamless in-product step, not a
+      # re-login.
+      after:
+        oidc:
+          hooks:
+            - hook: show_verification_ui
             - hook: session
 YAML
   else

@@ -1,9 +1,11 @@
+import { useEffect } from "react";
 import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { Login } from "@ory/elements-react/theme";
 import { useOryFlow, clearStoredOryFlow } from "@/common/hooks/use-ory-flow";
 import { useOryConfig } from "@/common/lib/ory/config";
 import { oryAuthFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { safeNext } from "@/common/lib/safe-next";
+import { stashAuthNext, clearAuthNext } from "@/features/auth/lib/auth-next";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { invalidateSessionCache } from "@/common/server-fn/session";
@@ -28,6 +30,15 @@ export default function LoginPage() {
   const authFeatures = useAuthFeatures();
   const oryConfig = useOryConfig();
 
+  // ADR075 D8 (w6/m42): an unverified identity's login attempt is refused by
+  // Kratos's require_verified_address hook, and Ory Elements full-page-redirects
+  // to /auth/verification?flow=… — a URL Kratos builds, which drops `?next=`.
+  // Stash the guarded target so the verification page can carry it back to
+  // login; a successful login clears the relay below (any stash is stale then).
+  useEffect(() => {
+    stashAuthNext(search.next);
+  }, [search.next]);
+
   return (
     <AuthPageShell
       title={t("auth.loginTitle")}
@@ -41,6 +52,7 @@ export default function LoginPage() {
           components={oryAuthFormOverrides}
           onSuccess={async () => {
             clearStoredOryFlow("login");
+            clearAuthNext();
             // Drop any data cached for a prior account before the new session
             // begins — the CSR Apollo client is a module singleton that survives
             // logout/login, so without this the next account could read the

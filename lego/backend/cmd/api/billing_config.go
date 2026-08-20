@@ -53,23 +53,43 @@ func dunningGate(getenv func(string) string, expectedLivemode bool) bool {
 	return getenv("BEX_STRIPE_DUNNING_ENABLED") == "1"
 }
 
+// paymentMethodMode is the parsed BEX_REQUIRE_PAYMENT_METHOD policy.
+type paymentMethodMode int
+
+const (
+	// paymentMethodOff — no gate wired; cardless workspaces create freely.
+	paymentMethodOff paymentMethodMode = iota
+	// paymentMethodPaidIntent — ADR046: only a non-free plan requires the
+	// bound-payment-method marker ("1", the pre-ADR075 behavior).
+	paymentMethodPaidIntent
+	// paymentMethodAllPlans — ADR075 D7 ("all"): every billable create/plan
+	// change requires the marker, free tier included.
+	paymentMethodAllPlans
+)
+
 // paymentMethodGate validates the fail-closed configuration before any server
 // wiring. Enforcement needs both hosted Checkout (Stripe key) and the local
 // marker store (control-plane DB); enabling only one side would brick every
-// paid create with no possible recovery path.
-func paymentMethodGate(getenv func(string) string) (bool, error) {
+// paid create with no possible recovery path. An unknown value fails startup
+// rather than silently running a weaker policy than the operator asked for.
+func paymentMethodGate(getenv func(string) string) (paymentMethodMode, error) {
 	value := strings.TrimSpace(getenv("BEX_REQUIRE_PAYMENT_METHOD"))
-	if value == "" || value == "0" {
-		return false, nil
-	}
-	if value != "1" {
-		return false, fmt.Errorf("BEX_REQUIRE_PAYMENT_METHOD must be 1 when enabled (got %q)", value)
+	var mode paymentMethodMode
+	switch value {
+	case "", "0":
+		return paymentMethodOff, nil
+	case "1":
+		mode = paymentMethodPaidIntent
+	case "all":
+		mode = paymentMethodAllPlans
+	default:
+		return paymentMethodOff, fmt.Errorf("BEX_REQUIRE_PAYMENT_METHOD must be 1 (paid-intent-only) or all (every plan, ADR075 D7) when enabled (got %q)", value)
 	}
 	if getenv("BEX_STRIPE_SECRET_KEY") == "" {
-		return false, fmt.Errorf("BEX_REQUIRE_PAYMENT_METHOD=1 requires BEX_STRIPE_SECRET_KEY so a refused workspace can add a payment method")
+		return paymentMethodOff, fmt.Errorf("BEX_REQUIRE_PAYMENT_METHOD=%s requires BEX_STRIPE_SECRET_KEY so a refused workspace can add a payment method", value)
 	}
 	if getenv("BEX_CP_DB_URI") == "" {
-		return false, fmt.Errorf("BEX_REQUIRE_PAYMENT_METHOD=1 requires BEX_CP_DB_URI for the webhook-stamped payment marker")
+		return paymentMethodOff, fmt.Errorf("BEX_REQUIRE_PAYMENT_METHOD=%s requires BEX_CP_DB_URI for the webhook-stamped payment marker", value)
 	}
-	return true, nil
+	return mode, nil
 }

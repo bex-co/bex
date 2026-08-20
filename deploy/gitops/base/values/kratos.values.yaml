@@ -138,15 +138,41 @@ kratos:
       flows:
         login:
           ui_url: https://dashboard.bex.co/auth/login
-        registration:
-          enabled: true
-          ui_url: https://dashboard.bex.co/auth/sign-up
-          # Kratos doesn't auto-issue a session after registration unless told
-          # to — without this hook the user registers successfully but lands
-          # back at the login screen with no session.
+          # ADR075 D8 (w6/m42, revised 2026-08-20): the BACKSTOP half of the
+          # verification story — a returning unverified identity gets NO session
+          # at login and is routed into the verification flow. The signup moment
+          # itself stays seamless (registration mints a session below), so a
+          # normal user never hits this; it only bites accounts that signed up
+          # and never verified once their registration session ends. The OIDC
+          # mirror of this hook lives in the out-of-band oidc.yaml fragment
+          # (scripts/auth-secrets.sh oidc_fragment); keep the two in lockstep.
+          # Recovery is the one session mint outside these hooks; verified on
+          # Kratos v26.2.0 (chart 0.62.1, dev-6 2026-08-20): completing recovery
+          # marks the recovering address verified, so no unverified session can
+          # exist through it — RE-PROBE that on every Kratos version bump
+          # (w6/m42/t006 records the probe commands).
           after:
             password:
               hooks:
+                - hook: require_verified_address
+        registration:
+          enabled: true
+          ui_url: https://dashboard.bex.co/auth/sign-up
+          # ADR075 D8 as revised 2026-08-20 (w6/m42, user decision — reversing
+          # the same-day "no session at the door" draft after the first-run
+          # walkthrough): sign-up mints a session (`session` — the password the
+          # user typed seconds ago IS the authentication) AND routes into the
+          # verification flow (`show_verification_ui` emits the continue_with;
+          # without it Kratos falls back to a bare redirect_browser_to,
+          # verified on dev-6). The user verifies IN the product and continues
+          # seamlessly — no re-login. The login hook below still refuses stale
+          # unverified accounts at their next login, so an unverified identity
+          # cannot persist across sessions. Keep the OIDC mirror in
+          # scripts/auth-secrets.sh's oidc_fragment in lockstep.
+          after:
+            password:
+              hooks:
+                - hook: show_verification_ui
                 - hook: session
         recovery:
           # Live end-to-end (w4/m7): the courier below delivers the one-time code,

@@ -1,7 +1,9 @@
-import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { useRouter, useSearch } from "@tanstack/react-router";
+import { FlowType } from "@ory/client-fetch";
 import { Registration } from "@ory/elements-react/theme";
 import { useOryFlow, clearStoredOryFlow } from "@/common/hooks/use-ory-flow";
 import { useOryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
+import { stashAuthNext } from "@/features/auth/lib/auth-next";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { invalidateSessionCache } from "@/common/server-fn/session";
@@ -10,7 +12,6 @@ import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 import { useAuthFeatures } from "@/features/auth/components/auth-page-shell/auth-features";
 
 export default function RegisterPage() {
-  const navigate = useNavigate();
   const router = useRouter();
   const search = useSearch({ from: "/auth/sign-up" });
   const flow = useOryFlow("registration", search.flow, {
@@ -31,20 +32,26 @@ export default function RegisterPage() {
           flow={flow}
           config={oryConfig}
           components={oryHideCardLogo}
-          onSuccess={async () => {
+          onSuccess={async (event) => {
             clearStoredOryFlow("registration");
-            // Registration is an authenticated-subject transition just like
-            // login. The CSR Apollo client is a tab-lifetime singleton, so clear
-            // any prior account's normalized data before the new session can
-            // render authenticated routes.
-            await getClient().clearStore();
-            // The root route's beforeLoad cached the (unauthenticated)
-            // session on first load — force it to refetch before navigating
-            // to an authenticated route, or requireAuth bounces us right
-            // back to /auth/login on stale context.
-            invalidateSessionCache();
-            await router.invalidate();
-            void navigate({ to: "/" });
+            // ADR075 D3/D8 (w6/m42, revised 2026-08-20): registration mints a
+            // session AND Kratos's continue_with routes to /auth/verification
+            // (Ory Elements full-page-redirects there — show_verification_ui
+            // outranks the plain redirect). NEVER navigate here: racing that
+            // redirect would skip the verification step. The guarded `next`
+            // rides the same-tab relay instead of the query string, because
+            // the redirect URL is built by Kratos.
+            stashAuthNext(search.next);
+            if (event.flowType === FlowType.Registration && event.session) {
+              // A session now exists. Reset what this pre-session page load
+              // cached, in case the post-signup transition ever becomes an
+              // SPA navigation: the CSR Apollo client is a tab-lifetime
+              // singleton, and the root's beforeLoad stamped an
+              // unauthenticated session on first load.
+              await getClient().clearStore();
+              invalidateSessionCache();
+              await router.invalidate();
+            }
           }}
         />
       ) : (
