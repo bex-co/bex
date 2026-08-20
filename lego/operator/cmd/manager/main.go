@@ -18,6 +18,7 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"flag"
 	"os"
 	"strconv"
@@ -157,11 +158,19 @@ func parseManagerConfig() managerConfig {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	cfg.baseDomain = os.Getenv("BEX_BASE_DOMAIN")
 	if err := hostingdomain.ValidateSharedSuffix(cfg.baseDomain); err != nil {
-		// A shared host suffix is a browser security boundary. If the suffix is
-		// not in the embedded Public Suffix List, cookies can cross tenants; do
-		// not start a manager that would publish those hosts.
-		setupLog.Error(err, "unsafe shared tenant hosting suffix; refusing startup")
-		os.Exit(1)
+		// A shared host suffix is a browser security boundary; an unlisted suffix
+		// lets one tenant set cookies its siblings receive. But per the standing
+		// #PSL decision (.pm/DO_NOT_DO.md — the finding is ACCEPTED until open
+		// signup; onbex.co cannot be listed yet, and two production outages came
+		// from "remediating" this by disabling the domain), an unlisted-but-well-
+		// formed suffix WARNS LOUDLY AND KEEPS SERVING. Only a malformed domain
+		// refuses startup.
+		if errors.Is(err, hostingdomain.ErrUnlistedSharedSuffix) {
+			setupLog.Error(err, "shared tenant hosting suffix is not a private Public Suffix; continuing per the accepted #PSL risk (.pm/DO_NOT_DO.md) — cross-tenant cookie isolation is NOT browser-enforced")
+		} else {
+			setupLog.Error(err, "unsafe shared tenant hosting suffix; refusing startup")
+			os.Exit(1)
+		}
 	}
 	return cfg
 }
