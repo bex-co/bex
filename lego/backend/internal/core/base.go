@@ -305,6 +305,11 @@ type Base struct {
 	// Payment gates only mutations whose target tier is non-free. nil preserves
 	// the pre-ADR046 behavior exactly (BEX_REQUIRE_PAYMENT_METHOD unset).
 	Payment PaymentGate
+	// PaymentAllPlans widens the Payment gate to every billable create/plan
+	// change, free tier included (ADR075 D7, BEX_REQUIRE_PAYMENT_METHOD=all):
+	// RequirePlanBilling then consults the marker regardless of PaidPlan.
+	// Meaningless while Payment is nil.
+	PaymentAllPlans bool
 	// PlatformClients proves an OAuth client id is one bex provisioned itself;
 	// the composition root wires it from Hydra's admin API. Consumed by
 	// AuthorizeMintClass; nil => a delegated (OAuth) caller can never pass that
@@ -408,11 +413,12 @@ func (b *Base) RequirePaymentMethod(ctx context.Context, workspaceID string) err
 
 // RequirePlanBilling is the paid-intent gate every billable create and plan
 // change runs: a non-free plan additionally requires a bound payment method
-// (ADR046), and every mutation is refused while dunning enforcement is active.
-// Both checks in one seam so a new billable resource kind cannot wire only one
-// of them — the drift class this exists to close.
+// (ADR046) — or ANY plan when PaymentAllPlans widens the gate (ADR075 D7) —
+// and every mutation is refused while dunning enforcement is active. Both
+// checks in one seam so a new billable resource kind cannot wire only one of
+// them — the drift class this exists to close.
 func (b *Base) RequirePlanBilling(ctx context.Context, workspaceID, plan string) error {
-	if PaidPlan(plan) {
+	if PaidPlan(plan) || (b != nil && b.PaymentAllPlans) {
 		if err := b.RequirePaymentMethod(ctx, workspaceID); err != nil {
 			return err
 		}

@@ -870,7 +870,7 @@ func wireControlPlaneFeatures(deps *api.Deps, base *core.Base, st *store.PGStore
 // surface's invoice read-back. BEX_STRIPE_SECRET_KEY unset means no client,
 // emitter, reader, or public Stripe webhook: estimate-only behavior stays
 // unchanged.
-func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl client.Client, st *store.PGStore, appsNS string, usageSvc *usage.Service, billingMetrics *billing.Metrics, requirePaymentMethod bool, dashboardURL string) (*billing.Worker, *billing.Reconciler, store.BillingAdmin) {
+func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl client.Client, st *store.PGStore, appsNS string, usageSvc *usage.Service, billingMetrics *billing.Metrics, requirePaymentMethod paymentMethodMode, dashboardURL string) (*billing.Worker, *billing.Reconciler, store.BillingAdmin) {
 	var stripeLifecycleWorker *billing.Worker
 	var stripeLifecycleReconciler *billing.Reconciler
 	var stripeBillingAdmin store.BillingAdmin
@@ -895,8 +895,10 @@ func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl 
 		usageSvc.Billing = stripeClient
 		deps.Billing = stripeClient
 		deps.BillingState = st
-		if requirePaymentMethod {
+		if requirePaymentMethod != paymentMethodOff {
 			base.Payment = &billing.PaymentGate{Store: st}
+			// ADR075 D7: "all" widens RequirePlanBilling to the free tier too.
+			base.PaymentAllPlans = requirePaymentMethod == paymentMethodAllPlans
 		}
 		stripeBillingAdmin = &billing.Admin{Store: st, Provider: stripeClient}
 		// Workspace-delete Stripe teardown (w1/m61): cancel the workspace's
@@ -910,7 +912,7 @@ func wireStripeBilling(ctx context.Context, deps *api.Deps, base *core.Base, cl 
 		emitter := billing.NewEmitter(st, stripeClient)
 		emitter.Metrics = billingMetrics
 		emitter.Epoch = billingEpoch
-		emitter.RequirePaymentMethod = requirePaymentMethod
+		emitter.RequirePaymentMethod = requirePaymentMethod != paymentMethodOff
 		if n, ok := positiveIntEnv("BEX_STRIPE_SEAL_HOURS", billing.DefaultSealHours); ok {
 			emitter.SealHours = time.Duration(n) * time.Hour
 		}
