@@ -1,4 +1,4 @@
-# w5 · m74 — GitHub↔workspace connections: multi-installation model (ADR075)
+# w5 · m74 — GitHub↔workspace connections: multi-installation model (ADR078)
 
 **Worker:** worker5 **Goal:** a workspace can hold N GitHub App installations (org + personal in one repo picker), every Connect CTA goes through the stateful three-proof flow, and a direct github.com install gets a recovery path instead of a silent dead end **Status:** done
 
@@ -20,7 +20,7 @@
 
 ## Definition of done
 
-[docs/ADR075-github-workspace-connections.md](../../../docs/ADR075-github-workspace-connections.md) is implemented and its five verification points hold:
+[docs/ADR078-github-workspace-connections.md](../../../docs/ADR078-github-workspace-connections.md) is implemented and its five verification points hold:
 
 1. A workspace already bound to an org installation can connect a second (personal) installation from Settings; `GET /v1/git/connections` lists both; `services/new` shows both accounts' repos grouped by account; a deploy from each account clones with that account's own installation token.
 2. Connecting an installation bound to another workspace still 409s (`ErrConflict`); exceeding `BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE` refuses with coded `GIT_CONNECTION_LIMIT` identically on REST, GraphQL, and MCP.
@@ -30,12 +30,12 @@
 
 ## Source + Goal linkage
 
-- **Source:** [docs/ADR075-github-workspace-connections.md](../../../docs/ADR075-github-workspace-connections.md) (proposed 2026-08-19), handed off via `/pm` the same day. Root incident: a workspace admin installed the App on their personal account directly from github.com (installation 154851602) and `services/new` showed no repos — direct install is a designed no-op, the `services/new` CTA links the stateless bare install URL (guaranteed `missing_state`), and the `PRIMARY KEY (workspace_id)` schema caps a workspace at one installation so org + personal repos can never coexist.
+- **Source:** [docs/ADR078-github-workspace-connections.md](../../../docs/ADR078-github-workspace-connections.md) (proposed 2026-08-19), handed off via `/pm` the same day. Root incident: a workspace admin installed the App on their personal account directly from github.com (installation 154851602) and `services/new` showed no repos — direct install is a designed no-op, the `services/new` CTA links the stateless bare install URL (guaranteed `missing_state`), and the `PRIMARY KEY (workspace_id)` schema caps a workspace at one installation so org + personal repos can never coexist.
 - **Goal linkage:** Render parity (pillar: the open-source Render alternative, [docs/ADR018-render-parity.md](../../../docs/ADR018-render-parity.md)) on the one git-integration dimension where Render's UX is strictly better (multi-account repo picker), while keeping bex's deliberate workspace-owned divergence (no member-departure deploy breakage; headless webhook/agent/blueprint consumers keep workspace resolution). Directly serves pillars 3–4 ("which of my repos can you deploy?" / push-to-deploy).
 - **Expected outcome:** one workspace connected to both the `bex-co` org and a personal installation, both accounts' repos in one picker, correct per-installation token minting — and no user can ever again follow a product CTA into the `missing_state` dead end.
 - **Why now:** a real user hit all three gaps in production on 2026-08-19; the two dashboard traps actively mislead anyone connecting GitHub today, and the schema relax is a metadata-only migration while production `git_connections` still holds exactly one row (no dual-read window needed — deliberately unlike ADR074's identity migration).
 - **Render parity task included:** yes — the milestone changes REST/GraphQL/MCP surfaces and the dashboard; ADR018's git rows must record the divergence + superset.
 
-## Security invariants (must hold throughout — from ADR075/ADR026)
+## Security invariants (must hold throughout — from ADR078/ADR026)
 
 Three-proof one-principal connect (w1/m67 F3) untouched; fresh `can_manage` at callback (ADR073 #3); one-workspace-per-installation kept (w1/m65 F2); fail-closed multitenant webhook scoping (ADR057 round-6 #9); structural `githubOwnerRepo` origin gate before any mint (w1/m65 F1); token least-privilege/narrowing (ADR047, ADR056 F14). No auto-bind from the `installation` webhook.

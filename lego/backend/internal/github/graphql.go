@@ -60,7 +60,7 @@ var ownerIDArg = graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.Stri
 // GraphQLQuery returns the gitConnections + gitConnection + repos queries.
 func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
-		// gitConnections is the multi-account surface (ADR075): every GitHub
+		// gitConnections is the multi-account surface (ADR078): every GitHub
 		// installation this workspace has connected. Empty list => none.
 		"gitConnections": &graphql.Field{
 			Type: graphql.NewList(gitConnectionGQLType),
@@ -76,7 +76,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"gitConnection": &graphql.Field{
 			Type:              gitConnectionGQLType,
 			Args:              ownerIDArg,
-			DeprecationReason: "A workspace can hold several GitHub connections (ADR075); use gitConnections. This returns the oldest connection only.",
+			DeprecationReason: "A workspace can hold several GitHub connections (ADR078); use gitConnections. This returns the oldest connection only.",
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				connection, err := s.GetConnection(p.Context, gqlutil.Str(p.Args, "ownerId"))
 				if err != nil {
@@ -116,7 +116,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	}
 }
 
-// gitClaimGQLType mirrors the REST Claim object (ADR075 §3a).
+// gitClaimGQLType mirrors the REST Claim object (ADR078 §3a).
 var gitClaimGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "GitClaim",
 	Fields: graphql.Fields{
@@ -125,7 +125,7 @@ var gitClaimGQLType = graphql.NewObject(graphql.ObjectConfig{
 })
 
 // GraphQLMutation returns connectGit (returns the connection + install URL),
-// claimGit (the ADR075 §3a claim flow for already-installed accounts), and
+// claimGit (the ADR078 §3a claim flow for already-installed accounts), and
 // disconnectGit.
 func (s *Service) GraphQLMutation() graphql.Fields {
 	return graphql.Fields{
@@ -142,7 +142,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		// claimGit binds an installation that ALREADY exists on GitHub (where the
 		// install URL strips the signed state) through the OAuth user-authorization
-		// flow — see ADR075 §3a. Browser-only ceremony; deliberately not on MCP.
+		// flow — see ADR078 §3a. Browser-only ceremony; deliberately not on MCP.
 		"claimGit": &graphql.Field{
 			Type: gitClaimGQLType,
 			Args: ownerIDArg,
@@ -158,7 +158,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{
 				"ownerId": gqlutil.Arg(graphql.String),
-				// installationId names the exact connection to remove (ADR075).
+				// installationId names the exact connection to remove (ADR078).
 				// Omitted => the workspace's sole connection (409 when ambiguous).
 				"installationId": gqlutil.Arg(graphql.Float),
 			},

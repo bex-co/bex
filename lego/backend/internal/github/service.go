@@ -38,15 +38,15 @@ type ConnectionStore interface {
 	UpsertGitConnection(ctx context.Context, c store.GitConnection) (store.GitConnection, error)
 	GetGitConnection(ctx context.Context, workspaceID string) (store.GitConnection, error)
 	// ListGitConnections returns a workspace's full connection set, oldest first
-	// (ADR075) — the multi-account aggregate the repo picker and list surface read.
+	// (ADR078) — the multi-account aggregate the repo picker and list surface read.
 	ListGitConnections(ctx context.Context, workspaceID string) ([]store.GitConnection, error)
 	// GetGitConnectionByOwner resolves the connection whose account login matches a
-	// repo's owner — the exact installation to mint that repo's token from (ADR075 §4).
+	// repo's owner — the exact installation to mint that repo's token from (ADR078 §4).
 	GetGitConnectionByOwner(ctx context.Context, workspaceID, accountLogin string) (store.GitConnection, error)
 	// GitConnectionByInstallation resolves which workspace (if any) already owns
 	// an installation — the unique-binding gate (w1/m65 F2).
 	GitConnectionByInstallation(ctx context.Context, installationID int64) (store.GitConnection, error)
-	// CountGitConnections backs the per-workspace connection quota (ADR075 §2).
+	// CountGitConnections backs the per-workspace connection quota (ADR078 §2).
 	CountGitConnections(ctx context.Context, workspaceID string) (int, error)
 	DeleteGitConnection(ctx context.Context, workspaceID string, installationID int64) error
 	// The subject-bound, single-use connect transaction (w1/m67 F3): the record
@@ -72,7 +72,7 @@ type APIClient interface {
 }
 
 // InstallationVerifier proves the user completing a browser flow actually
-// administers the installation being bound (F2), and powers the ADR075 §3a claim
+// administers the installation being bound (F2), and powers the ADR078 §3a claim
 // flow for already-installed accounts. Implemented by *Client when the App's
 // OAuth credentials are configured; nil => connect/claim starts refuse up front
 // (§7) and the callback fails closed. Kept an interface so the fake in tests can
@@ -105,7 +105,7 @@ type Service struct {
 	// callback returns JSON instead of redirecting.
 	DashboardURL string
 	// MaxConnections caps how many GitHub installations ONE workspace may connect
-	// (BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE, ADR075 §2; default 10, 0 disables).
+	// (BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE, ADR078 §2; default 10, 0 disables).
 	// Bounds one tenant's connection fan-out — and therefore the per-connection
 	// GitHub round trips ListRepos makes.
 	MaxConnections int
@@ -153,7 +153,7 @@ func (s *Service) StartConnect(ctx context.Context, ownerID string) (Connection,
 	if !s.configured() {
 		return Connection{}, core.ErrGitHubUnavailable
 	}
-	// ADR075 §7: fail at start, not at the callback. With no verifier every
+	// ADR078 §7: fail at start, not at the callback. With no verifier every
 	// binding is guaranteed to 503 AFTER the user walks the whole GitHub flow —
 	// refuse before minting a transaction for an unfinishable attempt.
 	if err := s.verifierPreflight(); err != nil {
@@ -176,7 +176,7 @@ func (s *Service) StartConnect(ctx context.Context, ownerID string) (Connection,
 		return Connection{}, err
 	}
 	// The install URL is the only bindable (stateful) URL bex produces — it starts
-	// a NEW connect, so it is what "Connect another account" uses too (ADR075 §3).
+	// a NEW connect, so it is what "Connect another account" uses too (ADR078 §3).
 	// The returned Connected flag reflects whether the workspace already holds any
 	// connection, but the URL always adds one.
 	rows, err := s.Store.ListGitConnections(ctx, workspaceID)
@@ -266,19 +266,19 @@ func (s *Service) consumeCallbackProofs(ctx context.Context, nonce, caller, code
 }
 
 // Claim is StartClaim's result: the GitHub OAuth authorize URL that starts the
-// ADR075 §3a claim flow for an already-installed account.
+// ADR078 §3a claim flow for an already-installed account.
 type Claim struct {
 	ClaimURL string `json:"claimUrl"`
 }
 
-// Bounded claim-callback failures (ADR075 §3a) — mapped to fixed git_error codes
+// Bounded claim-callback failures (ADR078 §3a) — mapped to fixed git_error codes
 // in rest.go; the messages are safe for the JSON (no-dashboard) mode.
 var (
 	errNoClaimableInstallation = fmt.Errorf("%w: no unconnected GitHub installation you administer was found; install the bex GitHub App on the account first", core.ErrBadRequest)
 	errAmbiguousClaim          = fmt.Errorf("%w: several unconnected GitHub installations you administer were found; claiming requires exactly one", core.ErrBadRequest)
 )
 
-// verifierPreflight is ADR075 §7: connect/claim starts refuse immediately when
+// verifierPreflight is ADR078 §7: connect/claim starts refuse immediately when
 // the installation-admin verifier is unconfigured, because the callback would
 // fail closed anyway — after the user completed the whole GitHub round trip.
 func (s *Service) verifierPreflight() error {
@@ -288,7 +288,7 @@ func (s *Service) verifierPreflight() error {
 	return nil
 }
 
-// StartClaim begins the ADR075 §3a claim flow: bind an installation that ALREADY
+// StartClaim begins the ADR078 §3a claim flow: bind an installation that ALREADY
 // exists on GitHub (the direct-install case) to ownerID's workspace ("" => the
 // caller's default). GitHub strips the signed state from the install URL for
 // already-installed accounts, so the claim rides the OAuth user-authorization
@@ -398,7 +398,7 @@ func (s *Service) connectWithWorkspace(ctx context.Context, workspaceID string, 
 	} else if !errors.Is(lookupErr, store.ErrNotFound) {
 		return Connection{}, lookupErr
 	}
-	// ADR075 §2: a NEW binding (not an idempotent re-connect) is subject to the
+	// ADR078 §2: a NEW binding (not an idempotent re-connect) is subject to the
 	// per-workspace connection cap, so one tenant cannot fan out unbounded
 	// installations — each of which ListRepos then fans a GitHub round trip over.
 	if !reconnect {
@@ -419,8 +419,8 @@ func (s *Service) connectWithWorkspace(ctx context.Context, workspaceID string, 
 
 // GetConnection returns ownerID's connection status ("" => the caller's default
 // workspace, w6/m18) — the singular compatibility alias over the workspace's
-// oldest connection (ADR075). "Not connected" is a valid state, not an error, and
-// (ADR075 §3) carries NO install URL: the bare, stateless URL is no longer
+// oldest connection (ADR078). "Not connected" is a valid state, not an error, and
+// (ADR078 §3) carries NO install URL: the bare, stateless URL is no longer
 // advertised as a connect CTA — only the connectGit mutation mints a bindable
 // (stateful) one. A connected row keeps its install URL as a "configure grants on
 // GitHub" deep link. Member read.
@@ -444,7 +444,7 @@ func (s *Service) GetConnection(ctx context.Context, ownerID string) (Connection
 
 // ListConnections returns every GitHub installation ownerID's workspace has
 // connected ("" => the caller's default workspace), oldest first — the
-// multi-account surface (ADR075 §5). An empty slice (never an error) means no
+// multi-account surface (ADR078 §5). An empty slice (never an error) means no
 // connection; the caller starts one through the connectGit mutation. Each row's
 // InstallURL is the bare "configure grants on GitHub" deep link. Member read.
 func (s *Service) ListConnections(ctx context.Context, ownerID string) ([]Connection, error) {
@@ -503,7 +503,7 @@ func (s *Service) Disconnect(ctx context.Context, ownerID string, installationID
 }
 
 // connectionQuota refuses a NEW connection that would push a workspace past its
-// per-workspace cap (BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE, ADR075 §2).
+// per-workspace cap (BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE, ADR078 §2).
 // MaxConnections <= 0 disables the cap (tests, store-off, self-host opt-out).
 func (s *Service) connectionQuota(ctx context.Context, workspace string) error {
 	if s.MaxConnections <= 0 {
@@ -524,7 +524,7 @@ func (s *Service) connectionQuota(ctx context.Context, workspace string) error {
 // ListRepos returns the repositories across ALL of ownerID's connected
 // installations ("" => the caller's default workspace, w6/m18; private included),
 // each annotated with the GitHub account it came from so the picker can group by
-// account (ADR075 §4). With no connection the list is empty (not an error). One
+// account (ADR078 §4). With no connection the list is empty (not an error). One
 // GitHub round trip per connection, run through a fixed worker pool; a single
 // connection's failure degrades that account's slice (logged) rather than
 // failing the whole list. Member read.
@@ -578,7 +578,7 @@ func (s *Service) ListRepos(ctx context.Context, ownerID string) ([]Repo, error)
 	// failed ones (logged) and serve what we have. But if EVERY connection failed
 	// (the single-connection GitHub-outage case included), surface the error
 	// rather than a misleading empty list — this keeps a one-connection workspace
-	// byte-identical to the pre-ADR075 behavior.
+	// byte-identical to the pre-ADR078 behavior.
 	failed, total := 0, 0
 	var firstErr error
 	for i, e := range errs {
@@ -768,7 +768,7 @@ func (s *Service) cloneToken(ctx context.Context, workspaceID, repoURL string) (
 	if !ok {
 		return "", false, nil // not a github.com owner/repo URL — nothing to match against
 	}
-	// Resolve the workspace's connection for THIS repo's account (ADR075 §4): a
+	// Resolve the workspace's connection for THIS repo's account (ADR078 §4): a
 	// workspace may hold several installations, and the token must come from the
 	// one that owns the repo — never account A's token for account B's repo.
 	row, err := s.Store.GetGitConnectionByOwner(ctx, workspaceID, owner)

@@ -160,7 +160,7 @@ func TestRESTCallbackBadInstallationID(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A PRESENT but malformed installation_id is invalid_installation (400) —
-	// only true absence selects the ADR075 §3a claim branch (covered separately).
+	// only true absence selects the ADR078 §3a claim branch (covered separately).
 	for _, path := range []string{
 		"/v1/git/callback?installation_id=abc&state=" + url.QueryEscape(state),
 		"/v1/git/callback?installation_id=0&state=" + url.QueryEscape(state),

@@ -130,7 +130,7 @@ func (c *Client) InstallVerificationConfigured() bool {
 
 // AuthorizeURL is the GitHub OAuth user-authorization endpoint for this app —
 // the one GitHub flow that always carries `state` through, which is what makes
-// the ADR075 §3a claim flow possible for already-installed accounts (the install
+// the ADR078 §3a claim flow possible for already-installed accounts (the install
 // URL's Configure path strips state). The caller appends &state=<signed token>.
 func (c *Client) AuthorizeURL() string {
 	return c.oauthBaseURL + "/login/oauth/authorize?client_id=" + neturl.QueryEscape(c.clientID)
@@ -161,7 +161,7 @@ type Repo struct {
 	HTMLURL       string `json:"htmlUrl"`
 	CloneURL      string `json:"cloneUrl"`
 	// AccountLogin and InstallationID are set by the service when it aggregates
-	// repos across a workspace's several connections (ADR075 §4), so the picker
+	// repos across a workspace's several connections (ADR078 §4), so the picker
 	// can group repos by GitHub account. The client itself leaves them zero.
 	AccountLogin   string `json:"accountLogin,omitempty"`
 	InstallationID int64  `json:"installationId,omitempty"`
@@ -355,7 +355,7 @@ func (c *Client) VerifyInstallationAdmin(ctx context.Context, code string, insta
 	}
 }
 
-// ClaimableInstallations resolves the ADR075 §3a claim callback's missing
+// ClaimableInstallations resolves the ADR078 §3a claim callback's missing
 // installation id server-side: it exchanges the OAuth `code` for a user token,
 // lists THIS app's installations the authorizing user can reach
 // (GET /user/installations — the endpoint is app-scoped by the user-to-server
