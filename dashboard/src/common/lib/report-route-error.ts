@@ -27,7 +27,7 @@ export const reportRouteError = createIsomorphicFn()
       status,
     });
   })
-  .client((_error: unknown, _status?: number) => {
+  .client(() => {
     // Client-side error UI stays silent on the pod stream.
   });
 
