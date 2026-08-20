@@ -28,7 +28,7 @@ const textInputClassName = cn(
  */
 export function UniqueIdPasswordInput({ inputProps }: OryNodeInputProps) {
   const [visible, setVisible] = useState(false);
-  const { id, type: _type, ...rest } = inputProps;
+  const { id, ...rest } = inputProps;
   const toggleId = id ? `${id}-visibility` : undefined;
 
   return (
@@ -127,6 +127,7 @@ function AuthFormRoot({
  * Intentionally avoids importing `@ory/elements-react/theme` (Vitest cannot
  * resolve its extensionless session-provider import; the app Vite config can).
  */
+// eslint-disable-next-line react-refresh/only-export-components -- Ory override map, not a component
 export const oryAuthFormOverrides: OryFlowComponentOverrides = {
   ...oryHideCardLogo,
   Form: {
