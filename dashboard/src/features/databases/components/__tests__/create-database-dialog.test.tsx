@@ -152,6 +152,40 @@ describe("CreateDatabaseDialog", () => {
     );
   });
 
+  it("blocks a disk size outside [plan floor, volume cap] but allows a large in-range one", async () => {
+    const user = userEvent.setup();
+    render(<CreateDatabaseDialog onCreated={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "New Database" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "shop-db");
+    const submit = within(dialog).getByRole("button", {
+      name: "Create database",
+    });
+    const disk = within(dialog).getByLabelText("Disk size (GB)");
+
+    // Above the 16384 GB volume cap → refused inline, submit disabled.
+    await user.type(disk, "99999");
+    expect(
+      within(dialog).getByText(/between 1 and 16384 GB/i),
+    ).toBeInTheDocument();
+    expect(submit).toBeDisabled();
+
+    // A large but in-range size (below the cap) is valid — the plan's advertised
+    // storage is a floor, not a ceiling, so this must NOT be blocked.
+    await user.clear(disk);
+    await user.type(disk, "9999");
+    expect(
+      within(dialog).queryByText(/between 1 and 16384 GB/i),
+    ).not.toBeInTheDocument();
+    expect(submit).toBeEnabled();
+
+    // Below the plan floor (1 GB) → refused.
+    await user.clear(disk);
+    await user.type(disk, "0");
+    expect(submit).toBeDisabled();
+  });
+
   it("submits the selected environment so the backend auto-joins its project", async () => {
     const user = userEvent.setup();
     render(<CreateDatabaseDialog onCreated={vi.fn()} />);

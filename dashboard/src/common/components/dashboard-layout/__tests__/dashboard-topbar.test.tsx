@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { renderToString } from "react-dom/server";
 import {
   Outlet,
   RouterProvider,
@@ -218,6 +219,37 @@ describe("dashboard topbar navigation", () => {
     expect(
       screen.getByRole("menuitem", { name: "All resources" }),
     ).toHaveAttribute("href", "/");
+  });
+
+  it("renders the platform-neutral shortcut on the server, then the Mac glyph after mount", async () => {
+    // Regression for the every-page React #418: on a non-Mac SSR host
+    // navigator.platform is not "MacIntel", so reading it during render made
+    // the Mac client's first paint ("⌘ K") disagree with the server ("Ctrl K")
+    // — a hydration text mismatch on every page (this lives in the header).
+    // Force a Mac platform and assert the SERVER render is still "Ctrl K" (so
+    // the client's first render can match it), then that the client swaps to
+    // "⌘ K" only after mount.
+    const original = Object.getOwnPropertyDescriptor(navigator, "platform");
+    Object.defineProperty(navigator, "platform", {
+      value: "MacIntel",
+      configurable: true,
+    });
+    try {
+      const ssrRouter = buildRouter("/", GlobalSearch);
+      await ssrRouter.load();
+      const html = renderToString(<RouterProvider router={ssrRouter} />);
+      expect(html).toContain("Ctrl K");
+      expect(html).not.toContain("⌘");
+
+      const router = buildRouter("/", GlobalSearch);
+      render(<RouterProvider router={router} />);
+      // After mount, platform detection upgrades the hint to the Mac glyph.
+      await waitFor(() => expect(screen.getByText("⌘ K")).toBeInTheDocument());
+    } finally {
+      if (original) {
+        Object.defineProperty(navigator, "platform", original);
+      }
+    }
   });
 
   it("opens workspace-wide search with the keyboard and navigates to a resource", async () => {

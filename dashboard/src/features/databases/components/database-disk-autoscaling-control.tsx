@@ -2,10 +2,7 @@ import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useUpdateDatabaseDiskAutoscaling } from "@/features/databases/hooks/use-update-database-disk-autoscaling";
 import type { DatabaseDetailView } from "@/features/databases/types";
-
-// Build-tested against lego/types/tiers/tiers.yaml, the Go runtime source used
-// by both the operator and backend MCP description.
-export const DISK_AUTOSCALING_CAP_GB = 16 * 1024;
+import { DISK_AUTOSCALING_CAP_GB } from "@/features/databases/lib/disk";
 
 export interface DatabaseDiskAutoscalingControlProps {
   database: DatabaseDetailView;

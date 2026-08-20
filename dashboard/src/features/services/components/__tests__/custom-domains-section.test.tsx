@@ -10,6 +10,8 @@ const mockUseCustomDomains = vi.fn();
 const mockAddDomain = vi.fn();
 const mockDeleteDomain = vi.fn();
 const mockVerifyDomain = vi.fn();
+const mockClearAddError = vi.fn();
+let mockAddError: string | null = null;
 
 vi.mock(
   "@/features/services/hooks/use-custom-domains",
@@ -23,6 +25,8 @@ vi.mock(
       useCustomDomains: (...a: unknown[]) => mockUseCustomDomains(...a),
       useCustomDomainMutations: () => ({
         addDomain: mockAddDomain,
+        addError: mockAddError,
+        clearAddError: mockClearAddError,
         deleteDomain: mockDeleteDomain,
         verifyDomain: mockVerifyDomain,
         busy: false,
@@ -121,6 +125,8 @@ beforeEach(() => {
     .mockResolvedValue({ primary: pendingDomain, sibling: null });
   mockDeleteDomain.mockReset().mockResolvedValue(true);
   mockVerifyDomain.mockReset().mockResolvedValue(pendingDomain);
+  mockClearAddError.mockReset();
+  mockAddError = null;
 });
 
 describe("CustomDomainsSection", () => {
@@ -207,6 +213,34 @@ describe("CustomDomainsSection", () => {
     await waitFor(() =>
       expect(mockAddDomain).toHaveBeenCalledWith("shop.example.com"),
     );
+  });
+
+  it("shows the server's rejection reason inline in the add dialog", async () => {
+    // The server refused the add (e.g. a wildcard). The dialog stays open and
+    // shows *why* persistently — not just a transient toast that vanishes.
+    mockAddError = "Wildcard hostnames are not allowed";
+    mockUseCustomDomains.mockReturnValue(domainsResult([]));
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    await user.click(screen.getByRole("button", { name: "Add Custom Domain" }));
+    const dialog = await screen.findByRole("dialog");
+    const alert = within(dialog).getByRole("alert");
+    expect(alert).toHaveTextContent("Wildcard hostnames are not allowed");
+    // The dialog stays on the input step (not swapped to the DNS-record step).
+    expect(within(dialog).getByLabelText("Name")).toBeInTheDocument();
+  });
+
+  it("clears the server error when the domain input changes", async () => {
+    mockAddError = "Wildcard hostnames are not allowed";
+    mockUseCustomDomains.mockReturnValue(domainsResult([]));
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    await user.click(screen.getByRole("button", { name: "Add Custom Domain" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "a");
+    expect(mockClearAddError).toHaveBeenCalled();
   });
 
   it("rejects a malformed hostname without calling the mutation", async () => {
