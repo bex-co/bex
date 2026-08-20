@@ -44,6 +44,8 @@ implementation serves every workstream since `w1/m72`; `.pm/w8/dev-8/` keeps onl
 - [x] **m26** — Webhook management UX + drift-proof dashboard parity (10 tasks) ← from authenticated Bex↔Render webhook parity audit 2026-08-17, needs m25
 - [x] **m27** — Granular OAuth capability scopes and authorization-decision audit (9 tasks) ← proposal 1 from `/pm-brainstorm for w8`, selected by user 2026-08-18
 - [x] **m28** — Polish `/agents` as a prompt-first workspace (8 tasks) ← designer review of `dashboard.bex.co/agents` 2026-08-18, user handoff to w8
+- [ ] **m29** — bex CLI help chrome: strip Render branding without forking (7 tasks) ← from CLI branding research handoff 2026-08-19; Layer-1 `RootCmd` overlay only — DO_NOT_DO no-fork honored
+
 ## Inbox
 
 No open inbox notes.

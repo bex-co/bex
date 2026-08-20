@@ -330,14 +330,20 @@ func TestBexVersionOwnsTheVersionPath(t *testing.T) {
 	}
 
 	output := run()
-	if !strings.Contains(output, "bex v"+testBexVersion+" (Render CLI v"+testUpstreamVersion+" compatible)") {
+	if !strings.Contains(output, "bex v"+testBexVersion+"\n") {
 		t.Errorf("missing bex identity line:\n%s", output)
+	}
+	if !strings.Contains(output, "compatible with Render CLI v"+testUpstreamVersion) {
+		t.Errorf("missing compatibility line:\n%s", output)
 	}
 	if !strings.Contains(output, "v"+testBexVersion+" → v9.9.9") || !strings.Contains(output, "https://example.test/releases/bex-cli-v9.9.9") {
 		t.Errorf("missing bex upgrade hint:\n%s", output)
 	}
 	if strings.Contains(output, "render v") {
 		t.Errorf("upstream version handler ran:\n%s", output)
+	}
+	if strings.Contains(output, "bex v"+testBexVersion+" (Render CLI") {
+		t.Errorf("old single-line version format still present:\n%s", output)
 	}
 	if got := requests.Load(); got != 1 {
 		t.Fatalf("requests = %d, want 1", got)
@@ -397,6 +403,53 @@ func TestNormalCommandsMakeNoUpdateCheckOffTTY(t *testing.T) {
 	}
 	if got := requests.Load(); got != 0 {
 		t.Errorf("non-TTY command run made %d update request(s)", got)
+	}
+}
+
+func TestBexHelpChromeIsBranded(t *testing.T) {
+	command := exec.Command(buildBex(), "--help")
+	command.Env = updateTestEnv(t.TempDir())
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bex --help: %v\n%s", err, output)
+	}
+	text := string(output)
+	if !strings.Contains(text, "bex CLI v"+testBexVersion) {
+		t.Errorf("help missing bex CLI chrome:\n%s", text)
+	}
+	if strings.Contains(text, "Render CLI v") {
+		t.Errorf("help still shows Render CLI chrome:\n%s", text)
+	}
+	if !strings.Contains(text, "Usage:\n  bex") && !strings.Contains(text, "USAGE\n  bex") {
+		// Upstream template uses styled "USAGE" then "  bex".
+		if !strings.Contains(text, "bex") || strings.Contains(text, "  render ") {
+			t.Errorf("help usage path not bex:\n%s", text)
+		}
+	}
+	if strings.Contains(text, "  render services") {
+		t.Errorf("help examples still use render:\n%s", text)
+	}
+	if !strings.Contains(text, "upgrade") || !strings.Contains(text, "code") {
+		t.Errorf("ungrouped Bex commands missing from help:\n%s", text)
+	}
+}
+
+func TestBexDocsCommandPointsAtBex(t *testing.T) {
+	command := exec.Command(buildBex(), "docs", "--help")
+	command.Env = updateTestEnv(t.TempDir())
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bex docs --help: %v\n%s", err, output)
+	}
+	text := string(output)
+	if !strings.Contains(text, "Bex docs") && !strings.Contains(text, "Bex CLI guide") {
+		t.Errorf("docs help not Bex-branded:\n%s", text)
+	}
+	if strings.Contains(text, "render.com/docs") {
+		t.Errorf("docs help still mentions render.com/docs:\n%s", text)
+	}
+	if strings.Contains(text, "render docs") {
+		t.Errorf("docs examples still use render:\n%s", text)
 	}
 }
 

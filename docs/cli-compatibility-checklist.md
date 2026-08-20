@@ -6,7 +6,7 @@ Legend: `[x]` verified working · `[~]` works with a documented limitation · `[
 
 ## Native `bex` launcher (w9/m59)
 
-`lego/cli/` imports (rather than forks) Render CLI **v2.24.0**, pinned to `fe8a6188119ee1a53dcf3e5c19f6a5302e840c3f`, and starts its exported command runner after mapping Bex defaults. With no `RENDER_*` input, it targets `https://api.bex.co/v1/` and lets the upstream config library persist its normal YAML schema as `~/.bex/cli.yaml`; `BEX_HOST`, `BEX_CLI_CONFIG_{DIR,PATH}`, `BEX_WORKSPACE`, `BEX_OUTPUT`, and a temporary `BEX_ACCESS_TOKEN` are supported Bex inputs. Hermetic launcher tests cover that mapping, process-level authenticated REST behavior, and Render-config isolation. `scripts/bex-cli-auth-e2e.sh` is the live device-login/refresh/ logout evidence runner; it must be run against a Bex auth environment before a release tag. The importer intentionally retains upstream Render branding in help, TUI, User-Agent, and update text.
+`lego/cli/` imports (rather than forks) Render CLI **v2.24.0**, pinned to `fe8a6188119ee1a53dcf3e5c19f6a5302e840c3f`, and starts its exported command runner after mapping Bex defaults. With no `RENDER_*` input, it targets `https://api.bex.co/v1/` and lets the upstream config library persist its normal YAML schema as `~/.bex/cli.yaml`; `BEX_HOST`, `BEX_CLI_CONFIG_{DIR,PATH}`, `BEX_WORKSPACE`, `BEX_OUTPUT`, and a temporary `BEX_ACCESS_TOKEN` are supported Bex inputs. Hermetic launcher tests cover that mapping, process-level authenticated REST behavior, and Render-config isolation. `scripts/bex-cli-auth-e2e.sh` is the live device-login/refresh/ logout evidence runner; it must be run against a Bex auth environment before a release tag. The launcher overlays Bex help chrome (`Use`, Short/Long/examples, `bex docs`, version line) via `lego/cli/internal/branding` without forking; residual runtime strings (login TUI, `ErrLogin`, User-Agent prefix, skills state path) remain upstream.
 
 This launcher record does not replace the unmodified-v2.24.0 server oracle below: that client is the broad command/API compatibility baseline after the w2/m79 re-baseline (prior baselines used v2.21.0 / launcher v2.22.0). Known server-side non-goals are still recorded as `[-]` in this checklist, including workflows, ephemeral SSH, and `ea` objects; importing a newer client does not claim those operations as implemented.
 
@@ -240,7 +240,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
 
 ## Additional commands
 
-- [x] **`docs`** — opens `render.com/docs` client-side (no bex call)
+- [x] **`docs`** — unmodified `render docs` opens `render.com/docs` (client-side; no bex call). The `bex` launcher overrides this command to open the Bex CLI guide on GitHub (`lego/cli/internal/branding.DocsURL`); that is a launcher branding overlay, not a change to the unmodified-CLI grade above.
 - [x] **`completion [bash|zsh|fish|powershell]`** — **w2/m79 / v2.24.0:** generates shell autocompletion scripts client-side (no bex call); help + local smoke on the unmodified pin
 - [~] **`ea`** — early-access surfaces; `ea sandbox` create/list/stop (w3/m32) **and exec** (w3/m33) all ship on the gVisor substrate, `ea objects` still out of the compatibility target
   - [-] `ea objects list` — bex `/v1/objects` → `404` (`--local` works client-side)
