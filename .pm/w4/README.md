@@ -63,7 +63,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w4/dev-4/` keeps onl
 - [x] **m85** — Role-aware write controls across remaining dashboard editors (7 tasks) ← from `/pm-brainstorm for w4` 2026-08-18, promoting the remainder in `w9/048`; the dashboard work shipped as **w9/m87**, this folder is board closeout only — done, moved to `done/m85/`
 - [x] **m86** — Build-toolchain freshness monitoring and digest refresh cadence (7 tasks) ← from `/pm-brainstorm for w4` 2026-08-18 + `w7/030`, after `w7/m85`
 - [x] **m87** — Durable timing for replayed agent transcripts (7 tasks) ← from `/pm-brainstorm for w4` 2026-08-18, materializing `w3/015`; sequenced after `w5/m66`
-- [ ] **m88** — Platform dashboard observability: error logs + Loki ship (6 tasks) ← from live prod k9s/log investigation 2026-08-19 (silent `dashboard.bex.co` pod + shipper drops)
+- [x] **m88** — Platform dashboard observability: error logs + Loki ship (6 tasks) ← from live prod k9s/log investigation 2026-08-19 (silent `dashboard.bex.co` pod + shipper drops)
 
 ## Suggested execution order (2026-07-09 brainstorm)
 
