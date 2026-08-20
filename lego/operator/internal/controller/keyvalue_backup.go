@@ -46,15 +46,19 @@ const (
 	keyValueBackupPurgeComponent  = "keyvalue-backup-purge"
 	keyValueBackupRetention       = 7
 	keyValueBackupDeadlineSeconds = int64(15 * time.Minute / time.Second)
-	// keyValueBackupAgeImage installs the age binary at runtime for the ADR050
-	// Tier A encrypt step. Alpine (already trusted as alpine/git elsewhere) keeps
-	// the trust surface off a third-party age image; swap for a pinned age image
-	// if runtime apk egress is undesirable. Only pulled/used when encryption is
-	// enabled (BackupStore.AgePublicKey set). Digest-pinned (round-14 #5): this
-	// container reads the plaintext backup volume, so a retagged upstream tag
-	// must not become its code. The runtime `apk add age` (the standing ADR060
-	// D7 internally-built-toolchain deferral) is the remaining unpinned surface.
+	// keyValueBackupAgeImage is the Alpine base for the ADR050 Tier A encrypt
+	// step. Digest-pinned (round-14 #5): this container reads the plaintext
+	// backup volume, so a retagged upstream tag must not become its code. Only
+	// pulled/used when encryption is enabled (BackupStore.AgePublicKey set).
+	// The age binary itself is NOT installed via apk — see ageReleaseVersion /
+	// ageReleaseSHA256 below (round-16 #11, mirrors etcd/OpenBao backup charts).
 	keyValueBackupAgeImage = "alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d"
+	// ageReleaseVersion + ageReleaseSHA256 pin FiloSottile/age v1.3.1
+	// (age-v1.3.1-linux-amd64.tar.gz), same reviewed artifact as the etcd and
+	// OpenBao backup CronJobs. A mismatch fails the Job before encrypt, so a
+	// tampered download never becomes an unencrypted upload.
+	ageReleaseVersion = "1.3.1"
+	ageReleaseSHA256  = "bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377"
 	// keyValueBackupBusyboxImage compresses the plaintext RDB (round-14 #5):
 	// digest-pinned like the build preparer's busybox so the mutable tag cannot
 	// resolve to different bytes.
@@ -248,10 +252,20 @@ test -s /backup/dump.rdb`},
 			Name:    "encrypt",
 			Image:   keyValueBackupAgeImage,
 			Command: []string{"/bin/sh", "-ceu"},
-			Args: []string{`apk add --no-cache age >/dev/null
-age -r "${AGE_PUBLIC_KEY}" -o /backup/dump.rdb.gz.age /backup/dump.rdb.gz
+			// NO RUNTIME PACKAGE INSTALL (round-16 #11 / ADR050 etcd pattern):
+			// fetch one pinned release artifact, verify SHA-256, then encrypt.
+			Args: []string{`cd /tmp
+wget -q -O age.tgz \
+  "https://github.com/FiloSottile/age/releases/download/v${AGE_VERSION}/age-v${AGE_VERSION}-linux-amd64.tar.gz"
+echo "${AGE_SHA256}  age.tgz" | sha256sum -c -
+tar xzf age.tgz age/age
+./age/age -r "${AGE_PUBLIC_KEY}" -o /backup/dump.rdb.gz.age /backup/dump.rdb.gz
 rm -f /backup/dump.rdb.gz`},
-			Env:             []corev1.EnvVar{{Name: "AGE_PUBLIC_KEY", Value: r.Backup.AgePublicKey}},
+			Env: []corev1.EnvVar{
+				{Name: "AGE_PUBLIC_KEY", Value: r.Backup.AgePublicKey},
+				{Name: "AGE_VERSION", Value: ageReleaseVersion},
+				{Name: "AGE_SHA256", Value: ageReleaseSHA256},
+			},
 			Resources:       backupResources("50m", "64Mi", workBudget),
 			SecurityContext: tenantSecCtx(),
 			VolumeMounts:    []corev1.VolumeMount{volumeMount},

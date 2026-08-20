@@ -387,15 +387,19 @@ func TestReadSessionTranscriptHarvestsLogOverExecBoundary(t *testing.T) {
 	}
 }
 
-// contributorChecker models a workspace contributor: they hold can_operate (so
-// the generic exec verb's primary gate passes) but NOT the session object's
-// can_view_sensitive — the exact role gap round-13 #1 closes (model.fga gates a
-// real shell into an agent-session sandbox on the stronger relation because the
-// sandbox reaches the Git-write and model proxies).
+// contributorChecker models a workspace contributor: they hold can_operate /
+// can_view_logs but NOT can_create or can_view_sensitive — the exact role gap
+// round-13 #1 and round-16 #7 close (caller-selected sandbox commands are
+// create-like; agent-session sandboxes additionally require can_view_sensitive).
 type contributorChecker struct{}
 
 func (contributorChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
-	return relation != core.RelCanViewSensitive && relation != core.RelCanManage, nil
+	switch relation {
+	case core.RelCanCreate, core.RelCanViewSensitive, core.RelCanManage:
+		return false, nil
+	default:
+		return true, nil
+	}
 }
 
 func agentSessionSandboxClient(t *testing.T, owner string) *Client {
@@ -420,15 +424,13 @@ func agentSessionSandboxClient(t *testing.T, owner string) *Client {
 	return NewClient(upstream.URL)
 }
 
-// TestExecAgentSessionSandboxRequiresViewSensitive (round-13 #1): a session
-// OWNER who holds only can_operate (a contributor — e.g. demoted after creating
-// the session) must not exec arbitrary commands into their agent-session
-// sandbox through the generic verb, while the same caller keeps exec on an
-// ordinary owned sandbox. The dedicated surfaces already enforce the session
-// object's can_view_sensitive for the same pod class.
+// TestExecAgentSessionSandboxRequiresViewSensitive (round-13 #1 + round-16 #7):
+// a contributor (can_operate only) must not exec arbitrary commands into any
+// sandbox — create-like command selection requires can_create, and a
+// session-bound sandbox additionally requires can_view_sensitive.
 func TestExecAgentSessionSandboxRequiresViewSensitive(t *testing.T) {
 	gw := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
-		t.Fatal("agent-session exec under can_operate must never reach the gateway")
+		t.Fatal("contributor exec must never reach the gateway")
 	}))
 	t.Cleanup(gw.Close)
 
@@ -447,8 +449,8 @@ func TestExecAgentSessionSandboxRequiresViewSensitive(t *testing.T) {
 		t.Fatalf("contributor exec into agent sandbox = %v, want ErrForbidden", err)
 	}
 
-	// The same caller on an ordinary sandbox stays allowed: the gate targets the
-	// session-bound pod class, not the role.
+	// The same caller on an ordinary owned sandbox is also refused: Command is
+	// executable selection (round-16 #7), not a lifecycle verb.
 	ordinary := &Service{
 		Base: &core.Base{
 			Namespace: "default",
@@ -456,10 +458,10 @@ func TestExecAgentSessionSandboxRequiresViewSensitive(t *testing.T) {
 			Authz:     contributorChecker{},
 		},
 		Client: execSandboxClient(t, "id-a"),
-		Exec:   &ExecConfig{Secret: []byte("s"), GatewayURL: gwEchoServer(t, "s").URL, Client: nil},
+		Exec:   &ExecConfig{Secret: []byte("s"), GatewayURL: gw.URL, Client: gw.Client()},
 	}
-	if _, err := ordinary.ExecBuffered(callerCtx(), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "id"}); err != nil {
-		t.Fatalf("contributor exec on ordinary sandbox = %v, want allowed", err)
+	if _, err := ordinary.ExecBuffered(callerCtx(), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "id"}); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("contributor exec on ordinary sandbox = %v, want ErrForbidden", err)
 	}
 }
 

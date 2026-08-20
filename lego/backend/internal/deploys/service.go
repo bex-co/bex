@@ -665,9 +665,17 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 // only field trustworthy enough to restore blind (an in-progress, failed, or
 // canceled deploy never has one). Restores what ran (the image), not
 // workspace config — replicas/tier/idleTTL stay put, keeping this minimal.
+//
+// SECURITY (codex round-16 #2/#5): deployID SELECTs the executable image that
+// becomes App.spec.image, so this is create-like (can_create), not lifecycle —
+// the same executable-selection class as Trigger(imageUrl). It also produces a
+// deploy write, so it shares Trigger's RequireBillingMutation gate.
 func (s *Service) Rollback(ctx context.Context, service, deployID string) (DeployView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
+	a, err := s.AuthorizeApp(ctx, core.RelCanCreate, service)
 	if err != nil {
+		return DeployView{}, err
+	}
+	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return DeployView{}, err
 	}
 	if s.Store == nil {

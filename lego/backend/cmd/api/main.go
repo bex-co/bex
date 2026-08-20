@@ -458,6 +458,18 @@ func main() {
 	if st != nil {
 		srv.WebhookReplays = st
 		srv.CLIRefreshes = st
+		// codex round-16 #12: bound the replay ledger so sustained unique
+		// signed deliveries cannot grow shared storage without limit.
+		go core.Poll(ctx, "git-webhook-replays", 24*time.Hour, func(ctx context.Context) error {
+			n, err := st.PurgeGitWebhookReplays(ctx, time.Now().UTC().Add(-store.DefaultGitWebhookReplayRetention))
+			if err != nil {
+				return err
+			}
+			if n > 0 {
+				log.Printf("git-webhook-replays: purged %d claims older than retention", n)
+			}
+			return nil
+		})
 	}
 	// Membership rows and exact OpenFGA roles are joined by a transactional
 	// Postgres outbox. Drain it independently of request retries so an invite or

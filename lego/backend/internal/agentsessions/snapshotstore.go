@@ -188,9 +188,15 @@ func (s *S3SnapshotStore) PrepareUpload(ctx context.Context, workspaceID, sessio
 		return "", "", core.ErrAgentSessionsUnavailable
 	}
 	key := s.snapshotKey(workspaceID, sessionID)
+	// Create-once (round-16 #9 / ADR073 #7 residual impact): sign If-None-Match:*
+	// into the PUT so a same-UID process that retains the argv URL cannot
+	// overwrite a completed snapshot. Keys are unique per mint, so the first
+	// write always creates; a second PUT against the same key fails closed.
+	// The hibernate script must send the matching header (see sandbox.hibernateScript).
 	req, err := s.presign.PresignPutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(s.bucket),
-		Key:    aws.String(key),
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(key),
+		IfNoneMatch: aws.String("*"),
 	}, func(o *s3.PresignOptions) { o.Expires = s.ttl })
 	if err != nil {
 		return "", "", fmt.Errorf("presign snapshot upload: %w", err)

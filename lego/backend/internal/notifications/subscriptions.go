@@ -342,13 +342,14 @@ func validatePublicPushEndpoint(raw string) error {
 	if err != nil || u.User != nil || u.Host == "" || len(raw) < 8 || len(raw) > 2048 {
 		return errors.New("invalid")
 	}
-	if u.Scheme == "https" {
-		return nil
+	// HTTPS only at registration (codex round-16 #6). Loopback HTTP was an
+	// explicit local-dev carve-out that also admitted control-plane SSRF once
+	// delivery used the default client; send-time SafeDialContext is the
+	// dial guard, and registration no longer persists loopback endpoints.
+	if u.Scheme != "https" {
+		return errors.New("invalid")
 	}
-	if u.Scheme == "http" && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1" || u.Hostname() == "::1") {
-		return nil
-	}
-	return errors.New("invalid")
+	return nil
 }
 
 func decodeWebPushKey(s string) ([]byte, error) {

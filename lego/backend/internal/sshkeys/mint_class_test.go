@@ -32,6 +32,10 @@ func (f fakePlatformResolver) IsPlatformClient(_ context.Context, clientID strin
 	return f[clientID], nil
 }
 
+func (f fakePlatformResolver) IsPlatformClientFresh(ctx context.Context, clientID string) (bool, error) {
+	return f.IsPlatformClient(ctx, clientID)
+}
+
 // codex round-7 F3 — SSH-key enrollment is durable-credential minting.
 //
 // The enrolled key binds to the caller's subject with no provenance, and the

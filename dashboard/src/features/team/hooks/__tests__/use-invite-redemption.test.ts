@@ -1,5 +1,5 @@
 import { CombinedGraphQLErrors, ServerError } from "@apollo/client/errors";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { INVITE_TOKEN_STORAGE_KEY } from "@/common/lib/invite-token";
 
@@ -56,6 +56,33 @@ describe("useInviteRedemption", () => {
     window.sessionStorage.setItem(INVITE_TOKEN_STORAGE_KEY, TOKEN);
   });
 
+  it("does not redeem on mount — navigation alone creates no membership", async () => {
+    const mutate = vi.fn();
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useInviteRedemption());
+
+    await waitFor(() => expect(result.current.pendingToken).toBe(TOKEN));
+    expect(mutate).not.toHaveBeenCalled();
+    expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBe(TOKEN);
+  });
+
+  it("decline clears the pending capability without calling accept", async () => {
+    const mutate = vi.fn();
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useInviteRedemption());
+    await waitFor(() => expect(result.current.pendingToken).toBe(TOKEN));
+
+    act(() => {
+      result.current.decline();
+    });
+
+    expect(result.current.pendingToken).toBeNull();
+    expect(mutate).not.toHaveBeenCalled();
+    expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBeNull();
+  });
+
   it.each([
     ["network failure", new TypeError("network failed")],
     ["raw HTTP 404", serverError(404)],
@@ -64,7 +91,12 @@ describe("useInviteRedemption", () => {
     const mutate = vi.fn().mockRejectedValue(error);
     mockUseMutation.mockReturnValue([mutate]);
 
-    renderHook(() => useInviteRedemption());
+    const { result } = renderHook(() => useInviteRedemption());
+    await waitFor(() => expect(result.current.pendingToken).toBe(TOKEN));
+
+    await act(async () => {
+      await result.current.accept();
+    });
 
     await waitFor(() => expect(toastError).toHaveBeenCalled());
     expect(mutate).toHaveBeenCalledWith({ variables: { token: TOKEN } });
@@ -76,7 +108,12 @@ describe("useInviteRedemption", () => {
     const mutate = vi.fn().mockRejectedValue(gqlError("INVITE_EXPIRED"));
     mockUseMutation.mockReturnValue([mutate]);
 
-    renderHook(() => useInviteRedemption());
+    const { result } = renderHook(() => useInviteRedemption());
+    await waitFor(() => expect(result.current.pendingToken).toBe(TOKEN));
+
+    await act(async () => {
+      await result.current.accept();
+    });
 
     await waitFor(() => expect(toastError).toHaveBeenCalled());
     expect(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY)).toBeNull();
@@ -95,7 +132,12 @@ describe("useInviteRedemption", () => {
     mockUseMutation.mockReturnValue([mutate]);
     mockRefetch.mockRejectedValue(new Error("refresh failed"));
 
-    renderHook(() => useInviteRedemption());
+    const { result } = renderHook(() => useInviteRedemption());
+    await waitFor(() => expect(result.current.pendingToken).toBe(TOKEN));
+
+    await act(async () => {
+      await result.current.accept();
+    });
 
     await waitFor(() => expect(toastSuccess).toHaveBeenCalled());
     await waitFor(() => expect(mockRefetch).toHaveBeenCalled());

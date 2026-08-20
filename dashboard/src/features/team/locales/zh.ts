@@ -202,6 +202,22 @@ const zhTeam: Record<string, TranslationEntry> = {
     message: "无法接受该邀请",
     description: "Toast when redeeming an invite token fails",
   },
+  "team.inviteConfirmTitle": {
+    message: "加入此工作区？",
+    description: "Title for the explicit invite-acceptance banner",
+  },
+  "team.inviteConfirmDescription": {
+    message: "有人邀请你加入一个工作区。仅在你确认该邀请时再接受。",
+    description: "Body for the explicit invite-acceptance banner",
+  },
+  "team.inviteConfirmAccept": {
+    message: "接受邀请",
+    description: "Primary button on the invite-acceptance banner",
+  },
+  "team.inviteConfirmDecline": {
+    message: "拒绝",
+    description: "Secondary button that clears a pending invite",
+  },
   "team.revokeInviteSuccess": {
     message: "已撤销邀请",
     description: "Toast after a successful invite revoke",

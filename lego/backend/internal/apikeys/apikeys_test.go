@@ -103,9 +103,10 @@ func (f fakeWorkspace) IsMember(_ context.Context, id core.Identity, tenantID st
 // tests simulate an OpenFGA write failure during key mint (t002/t006: no
 // orphaned Hydra client survives a failed bind).
 type fakeBinder struct {
-	failNext int
-	bound    map[string]string // clientID -> tenantID
-	unbound  []string
+	failNext   int
+	failUnbind bool
+	bound      map[string]string // clientID -> tenantID
+	unbound    []string
 }
 
 func newFakeBinder() *fakeBinder { return &fakeBinder{bound: map[string]string{}} }
@@ -120,6 +121,9 @@ func (b *fakeBinder) BindKey(_ context.Context, clientID, tenantID string) error
 }
 
 func (b *fakeBinder) UnbindKey(_ context.Context, clientID string) error {
+	if b.failUnbind {
+		return errors.New("unbind failed")
+	}
 	delete(b.bound, clientID)
 	b.unbound = append(b.unbound, clientID)
 	return nil
@@ -272,6 +276,35 @@ func TestRevokeAPIKeyUnbindsFromTenant(t *testing.T) {
 	}
 	if len(binder.unbound) != 1 || binder.unbound[0] != created.ID {
 		t.Errorf("unbound = %v, want [%s]", binder.unbound, created.ID)
+	}
+}
+
+// TestRevokeAPIKeyFailsClosedWhenUnbindFails (codex round-16 #13): a failed
+// tenant unbind must surface as an error and leave the Hydra client in place
+// so the caller can retry — never report success with residual FGA authority.
+func TestRevokeAPIKeyFailsClosedWhenUnbindFails(t *testing.T) {
+	store := newFakeKeyStore()
+	binder := newFakeBinder()
+	binder.failUnbind = true
+	svc := &Service{
+		Base:    &core.Base{Namespace: "default", Workspace: fakeWorkspace{"identity-a": "tea-a"}},
+		APIKeys: store,
+		Binding: binder,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	created, err := svc.CreateAPIKey(ctx, "", "agent")
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if err := svc.RevokeAPIKey(ctx, "", created.ID); err == nil {
+		t.Fatal("revoke must fail when UnbindKey fails")
+	}
+	if len(store.keys) != 1 {
+		t.Errorf("Hydra client deleted despite unbind failure: %d keys remain", len(store.keys))
+	}
+	if len(binder.unbound) != 0 {
+		t.Errorf("unbind recorded success despite failure: %v", binder.unbound)
 	}
 }
 

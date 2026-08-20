@@ -34,6 +34,10 @@ func (f fakePlatformResolver) IsPlatformClient(_ context.Context, clientID strin
 	return f[clientID], nil
 }
 
+func (f fakePlatformResolver) IsPlatformClientFresh(ctx context.Context, clientID string) (bool, error) {
+	return f.IsPlatformClient(ctx, clientID)
+}
+
 // codex round-7 F3, completing the fix — a deploy-hook URL is a durable bearer
 // credential, so handing one out is a mint verb and is reserved for direct
 // human callers.

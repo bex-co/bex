@@ -125,6 +125,9 @@ func TestHibernateScriptShowsCurlErrorsAndSnapshotDetailStripsQueries(t *testing
 	if !strings.Contains(hibernateScript, "curl -sSf") {
 		t.Fatal("hibernate script must use curl -sSf so DNS/TLS failures reach stderr")
 	}
+	if !strings.Contains(hibernateScript, "-H 'If-None-Match: *'") {
+		t.Fatal("hibernate script must send If-None-Match:* matching the create-once presign")
+	}
 	got := snapshotExecDetail(ExecResult{Stderr: "curl: (6) Could not resolve host: s3.example.com?X-Amz-Signature=secret"})
 	if got != ": curl: (6) Could not resolve host: s3.example.com" {
 		t.Fatalf("snapshotExecDetail = %q", got)

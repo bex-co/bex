@@ -192,6 +192,16 @@ func (a *oryAuth) platformClient(ctx context.Context, clientID string) (bool, er
 	if ok, cached := a.platformClients.Get(clientID); cached {
 		return ok, nil
 	}
+	return a.platformClientFresh(ctx, clientID)
+}
+
+// platformClientFresh always re-reads Hydra and refreshes the cache. Used by
+// durable-credential mint (AuthorizeMintClass) so a revoked platform marker
+// cannot authorize minting for PositiveTTL (codex round-16 #4).
+func (a *oryAuth) platformClientFresh(ctx context.Context, clientID string) (bool, error) {
+	if clientID == "" {
+		return false, nil
+	}
 	var out struct {
 		Metadata map[string]any `json:"metadata"`
 	}
@@ -228,12 +238,16 @@ func scopeGranted(granted, want string) bool {
 	return core.ContainsScope(granted, want)
 }
 
-// IsPlatformClient exposes the platform-client lookup as a
-// core.PlatformClientResolver so the durable-credential mint verbs
-// (AuthorizeMintClass, codex round-7 F3) can prove a human OAuth token comes
-// from a bex-issued client — sharing this cache and its fail-closed errors.
+// IsPlatformClient exposes the cached platform-client lookup as a
+// core.PlatformClientResolver for non-mint audience/scope classification.
 func (a *oryAuth) IsPlatformClient(ctx context.Context, clientID string) (bool, error) {
 	return a.platformClient(ctx, clientID)
+}
+
+// IsPlatformClientFresh always re-reads Hydra (codex round-16 #4) so
+// AuthorizeMintClass cannot mint on a stale positive cache entry.
+func (a *oryAuth) IsPlatformClientFresh(ctx context.Context, clientID string) (bool, error) {
+	return a.platformClientFresh(ctx, clientID)
 }
 
 // invalidate evicts a token whose upstream state changed. A human CLI logout

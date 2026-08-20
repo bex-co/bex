@@ -17,7 +17,9 @@ limitations under the License.
 package agentsessions
 
 import (
+	"context"
 	"errors"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -72,6 +74,25 @@ func TestS3SnapshotKeyIsPerWorkspacePrefixedAndUnique(t *testing.T) {
 	}
 	if k1 == k2 {
 		t.Fatalf("keys must be unique per mint, got %q twice", k1)
+	}
+}
+
+// PrepareUpload signs If-None-Match:* so a retained argv URL cannot overwrite
+// a completed snapshot (round-16 #9). Signing is local — no network required.
+func TestPrepareUploadIsCreateOnce(t *testing.T) {
+	s := mustSnapshotStore(t, S3SnapshotConfig{Endpoint: "https://s3.example.test", Bucket: "snaps", AccessKey: "ak", SecretKey: "sk"})
+	s.nowFn = func() time.Time { return time.Unix(1_800_000_000, 0) }
+	_, putURL, err := s.PrepareUpload(context.Background(), "tea-abc", "ags-1")
+	if err != nil {
+		t.Fatalf("PrepareUpload: %v", err)
+	}
+	u, err := url.Parse(putURL)
+	if err != nil {
+		t.Fatalf("parse put URL: %v", err)
+	}
+	signed := strings.ToLower(u.Query().Get("X-Amz-SignedHeaders"))
+	if !strings.Contains(signed, "if-none-match") {
+		t.Fatalf("presigned PUT SignedHeaders = %q, want if-none-match (create-once)", signed)
 	}
 }
 

@@ -70,13 +70,20 @@ func (s *Service) execEnabled() bool {
 	return s.Exec != nil && len(s.Exec.Secret) > 0 && s.Exec.GatewayURL != ""
 }
 
-// dialGateway authorizes the caller (can_operate on the sandbox's workspace),
+// dialGateway authorizes the caller (can_create on the sandbox's workspace),
 // mints a signed exec ticket, and opens the gateway's SSE stream. It returns the
 // live response (the caller drains + closes Body) or a pre-stream error, so a
 // failure (authz, ticket, gateway down) surfaces before any bytes are written.
+//
+// SECURITY (codex round-16 #7): the Command field is caller-selected executable
+// content that reaches pods/exec, so this is create-like — matching Create and
+// the m68 executable-selection class — not lifecycle. A demoted contributor
+// who still owns a pre-existing sandbox must not keep choosing arbitrary shell
+// after losing can_create. Agent-session sandboxes keep the stronger
+// can_view_sensitive gate below.
 func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Response, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
-	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return nil, err
 	}
 	if !s.execEnabled() || !s.enabled() {

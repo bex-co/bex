@@ -294,8 +294,14 @@ func (s *Service) boundTenant(ctx context.Context) (tenantID string, scoped bool
 // revoke another workspace's (the same cross-workspace gate w6/m14 gave
 // Apps/Databases/KeyValues, applied here since a key has no AuthorizeApp-style
 // CRD to fetch through). With the store on it also drops the tenant binding +
-// FGA tuple (best-effort: the Hydra client is already gone, so a leftover
-// mapping is harmless, just cleaned up).
+// FGA tuple.
+//
+// SECURITY (codex round-16 #13): unbind BEFORE Hydra delete, and never discard
+// UnbindKey errors. Binding + FGA are what still authorize an already-minted
+// token; reporting success after a failed unbind leaves residual tenant
+// authority while the caller believes revocation completed. Order is
+// fail-closed: a Hydra delete failure after a successful unbind is retryable
+// (idempotent Delete), while the reverse stranded authority.
 func (s *Service) RevokeAPIKey(ctx context.Context, ownerID, id string) error {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanManageKeys); err != nil {
@@ -319,11 +325,13 @@ func (s *Service) RevokeAPIKey(ctx context.Context, ownerID, id string) error {
 			return core.ErrForbidden
 		}
 	}
+	if s.Binding != nil {
+		if err := s.Binding.UnbindKey(ctx, id); err != nil {
+			return fmt.Errorf("unbind API key from workspace: %w", err)
+		}
+	}
 	if err := s.APIKeys.Delete(ctx, id); err != nil {
 		return err
-	}
-	if s.Binding != nil {
-		_ = s.Binding.UnbindKey(ctx, id)
 	}
 	return nil
 }
