@@ -1,19 +1,19 @@
 # w5 · m75 — ADR075 revision: claim flow, dashboard workspace scoping, verifier fail-at-start
 
-**Worker:** worker5 **Goal:** an already-installed GitHub installation can be bound to a workspace through the OAuth claim flow (§3a), every dashboard GitHub surface acts on the selected workspace (§6), and a missing OAuth verifier fails at connect-start with an actionable error instead of a post-GitHub-round-trip 503 (§7) **Status:** todo
+**Worker:** worker5 **Goal:** an already-installed GitHub installation can be bound to a workspace through the OAuth claim flow (§3a), every dashboard GitHub surface acts on the selected workspace (§6), and a missing OAuth verifier fails at connect-start with an actionable error instead of a post-GitHub-round-trip 503 (§7) **Status:** done
 
 ## Tasks (in order)
 
 | id   | title                                                                                    | est | depends_on |
 | ---- | ---------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Backend claim flow: StartClaim verb + claim branch in the callback                        | 90m | —          |
-| t002 | Verifier fail-at-start: StartConnect/StartClaim preflight + startup warning               | 20m | t001       |
-| t003 | Surfaces: claimGit GraphQL mutation + POST /v1/git/claim REST                             | 30m | t002       |
-| t004 | Dashboard: ownerId threading on every git surface + claim CTA on the recovery affordance  | 60m | t003       |
-| t005 | Render parity — cross-surface consistency; record why claim is REST/GraphQL-only          | 20m | t004       |
-| t006 | Simplify — `/simplify` over the milestone's changed code                                  | 30m | t005       |
-| t007 | Test coverage — claim resolution matrix, preflight, ownerId threading                     | 45m | t005       |
-| t008 | Closeout — live claim-flow walk on production, sync status, move to done/                 | 30m | t007       |
+| t001 | Backend claim flow: StartClaim verb + claim branch in the callback                        | 90m | — — **DONE**          |
+| t002 | Verifier fail-at-start: StartConnect/StartClaim preflight + startup warning               | 20m | t001 — **DONE**       |
+| t003 | Surfaces: claimGit GraphQL mutation + POST /v1/git/claim REST                             | 30m | t002 — **DONE**       |
+| t004 | Dashboard: ownerId threading on every git surface + claim CTA on the recovery affordance  | 60m | t003 — **DONE**       |
+| t005 | Render parity — cross-surface consistency; record why claim is REST/GraphQL-only          | 20m | t004 — **DONE**       |
+| t006 | Simplify — `/simplify` over the milestone's changed code                                  | 30m | t005 — **DONE**       |
+| t007 | Test coverage — claim resolution matrix, preflight, ownerId threading                     | 45m | t005 — **DONE**       |
+| t008 | Closeout — live claim-flow walk on production, sync status, move to done/                 | 30m | t007 — **DONE**       |
 
 ## Definition of done
 
@@ -39,3 +39,5 @@ The three 2026-08-20 revision sections of [docs/ADR075-github-workspace-connecti
 ## Security invariants (must hold throughout)
 
 Three-proof one-principal connect (w1/m67 F3) extended, never bypassed: the claim path consumes the same single-use `github_connect_transactions` nonce, requires initiator == caller and fresh `can_manage`, and proves per-installation admin from the code-exchanged user token (`GET /user/installations` + the existing admin check) — the callback accepts **no client-supplied installation id** on the claim branch. One-workspace-per-installation (w1/m65 F2), the connection quota, and `account_login` refresh apply identically to claimed bindings. No new callback auth exemptions.
+
+**Done 2026-08-20, verified live on production.** The full walk: with `tian-personal` selected, the Settings card showed its own (empty) connection set — not `bex`'s (§6 fixed; before the fix it showed "Connected as bex-co"); the new **Claim installed account** button fired `claimGit`, GitHub's OAuth authorize carried the state, and the callback resolved the sole claimable installation and bound **puncsky (154851602) → tea-da2isimlm39c739m4ofg** (DB row confirmed) with no reinstall and no `missing_state`; `services/new` then listed puncsky's repos (private included). Ops prerequisite executed: `client-id`/`client-secret` provisioned into `bex-system/bex-github-app` from the App settings (plus the App's missing Redirect URI + request-OAuth-during-install — the config gap that explains why install callbacks never fired historically). Mid-ship, the parallel `9081fbdb` security commit's fatal PSL check CrashLooped the operator/static-server on prod; fixed to warn-and-serve per the standing `#PSL` decision (`28a1780f`). Deploy run 32417419937's first attempt timed out waiting on the old broken pin; cluster converged onto `28a1780f`'s pin (all pods healthy, operator logs the loud #PSL warning and starts).
