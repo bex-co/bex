@@ -1,6 +1,6 @@
 # `bex` CLI
 
-`bex` is a Bex-configured executable of the upstream [Render CLI](https://github.com/render-oss/cli). It imports the pinned upstream command package: commands, flags, parsing, request construction, and most help text are upstream behavior. The small Bex bridge changes only the default API origin and local configuration location, and registers Bex-native commands (`bex code`, `bex upgrade`) alongside the imported command tree without modifying it.
+`bex` is a Bex-configured executable of the upstream [Render CLI](https://github.com/render-oss/cli). It imports the pinned upstream command package: commands, flags, parsing, request construction, and most runtime behavior are upstream. The Bex bridge changes the default API origin and local configuration location, registers Bex-native commands (`bex code`, `bex upgrade`) alongside the imported command tree, and applies a Layer-1 help-chrome branding overlay (`internal/branding`) without modifying upstream implementations.
 
 The current pin and its update procedure are recorded in [`lego/cli/UPSTREAM_RENDER_CLI.md`](../lego/cli/UPSTREAM_RENDER_CLI.md).
 
@@ -58,7 +58,7 @@ These are Bex-owned inputs. An explicitly set corresponding `RENDER_*` variable 
 | `BEX_WORKSPACE` | Active workspace id or name. |
 | `BEX_OUTPUT` | Default output mode accepted by the upstream CLI. |
 | `BEX_ACCESS_TOKEN` | Already-issued, short-lived OAuth bearer token for an unattended invocation. It is not persisted by the bridge. `bex logout` neither revokes nor unsets this environment credential. |
-| `BEX_NO_UPDATE_NOTIFIER` | Any non-empty value disables the update check entirely. By default `bex -v` reports bex's own release identity (`bex vX.Y.Z (Render CLI v2.24.0 compatible)`) and checks this repo's `bex-cli/v*` releases for something newer; after normal commands a gh-style passive notice appears at most once per 24h (cached under `~/.bex/cache/`), only on a TTY, and never when `CI` is set. Check failures are always silent. |
+| `BEX_NO_UPDATE_NOTIFIER` | Any non-empty value disables the update check entirely. By default `bex -v` reports bex's own release identity (`bex vX.Y.Z` plus a `compatible with Render CLI v2.24.0` line) and checks this repo's `bex-cli/v*` releases for something newer; after normal commands a gh-style passive notice appears at most once per 24h (cached under `~/.bex/cache/`), only on a TTY, and never when `CI` is set. Check failures are always silent. |
 
 For example, a local run never needs a `RENDER_*` setting:
 
@@ -116,6 +116,21 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 
 ## Compatibility and branding limits
 
-This is intentionally not a fork. Until Bex maintains a separate command implementation, upstream help text, interactive labels, and User-Agent behavior can say “Render.” Version and update messaging are the exception: `bex -v` is handled by the launcher itself and checks Bex's own release channel, never Render's. One remnant remains — the `bex login` TUI contains an upstream update banner comparing against render-oss/cli releases that the launcher cannot intercept; it stays dormant while the pin tracks upstream's latest release (see `lego/cli/UPSTREAM_RENDER_CLI.md`). The server-side compatibility ledger, including known Bex non-goals such as workflows, ephemeral SSH, and `ea` objects, is [`docs/cli-compatibility-checklist.md`](cli-compatibility-checklist.md). The imported command can only work where Bex implements the corresponding API operation; it does not turn an unimplemented Bex feature into a supported one.
+`bex` imports the pinned upstream command package; it does not fork or vendor it. A Layer-1 overlay in `lego/cli/internal/branding` mutates the exported `cmd.RootCmd` after Bex-native commands attach:
 
-If complete Bex branding or a dedicated OAuth public-client identity becomes a product requirement, make that explicit as a future fork/extension decision rather than silently changing the imported command surface.
+- **Help chrome:** `Use` is `bex`, examples/Short/Long get safe string rewrites, help prints `bex CLI v…`, and the ungrouped-commands header matches `CommandPath == "bex"`.
+- **`bex docs`:** opens the Bex CLI guide on GitHub (`branding.DocsURL`), not `render.com/docs`.
+- **`bex -v`:** leads with `bex vX.Y.Z`, then a separate `compatible with Render CLI v…` line; update checks still hit this repo's `bex-cli/v*` releases.
+
+Safe rewrites preserve **`render.yaml`** (and the `bex.yml` filename alias). They do not rewrite upstream `RunE` bodies, so these residuals remain until an explicit upstream-hook or fork decision:
+
+- login TUI / non-interactive copy saying “Render Dashboard”
+- `run \`render login\` to authenticate` (`config.ErrLogin`) and logout success strings
+- User-Agent `render-cli/<upstream version>` (`cfg.Version` stays the pinned upstream release for the compatibility ledger)
+- hard-coded OAuth public client id (Hydra bootstrap contract)
+- `~/.render/skills.yaml` + `render-oss/skills` for `bex skills`
+- login-view update banner via const `cfg.RepoURL` (mitigation: bump the pin; do not reopen the withdrawn upstream PR without an explicit decision)
+
+The server-side compatibility ledger, including known Bex non-goals such as workflows, ephemeral SSH, and `ea` objects, is [`docs/cli-compatibility-checklist.md`](cli-compatibility-checklist.md). The imported command can only work where Bex implements the corresponding API operation; it does not turn an unimplemented Bex feature into a supported one.
+
+If deeper runtime branding or a dedicated OAuth public-client identity becomes a product requirement, make that an explicit fork/extension decision rather than silently changing the imported command surface.

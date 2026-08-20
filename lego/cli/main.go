@@ -11,6 +11,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/bex-co/bex/lego/cli/internal/branding"
 	"github.com/bex-co/bex/lego/cli/internal/bridge"
 	"github.com/bex-co/bex/lego/cli/internal/code"
 	"github.com/bex-co/bex/lego/cli/internal/update"
@@ -37,6 +38,9 @@ func main() {
 	// upstream commands remain untouched.
 	cmd.RootCmd.AddCommand(code.Commands()...)
 	cmd.RootCmd.AddCommand(upgrade.Command(bexVersion))
+	// Branding mutates exported cobra metadata (Use/help/docs) after native
+	// commands attach so ungrouped Bex commands keep their help section.
+	branding.Apply(cmd.RootCmd, bexVersion)
 
 	// Own the version path: upstream's handler compares against
 	// render-oss/cli releases (const cfg.RepoURL) and would direct bex users
@@ -55,7 +59,8 @@ func main() {
 // printVersion prints bex's identity and, when permitted, the result of an
 // explicit (synchronous) update check against bex's own release channel.
 func printVersion(w io.Writer) {
-	_, _ = fmt.Fprintf(w, "bex v%s (Render CLI v%s compatible)\n", bexVersion, cfg.Version)
+	_, _ = fmt.Fprintf(w, "bex v%s\n", bexVersion)
+	_, _ = fmt.Fprintf(w, "compatible with Render CLI v%s\n", cfg.Version)
 	// The user asked, so no TTY gate — but CI stays silent and a dev build
 	// has nothing to compare.
 	if !update.Allowed(bexVersion, os.LookupEnv, nil) {
