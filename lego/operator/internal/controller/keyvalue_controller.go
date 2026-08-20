@@ -511,6 +511,9 @@ func keyValueIntentFor(kv *appv1alpha1.KeyValue, plan tiers.ValkeyTier, storageG
 	if ws := kv.Labels[labelWorkspace]; ws != "" {
 		podLabels[labelWorkspace] = ws
 	}
+	if env := kv.Labels[labelEnvironment]; env != "" {
+		podLabels[labelEnvironment] = env
+	}
 	return keyValueIntent{
 		plan:          plan,
 		storageGB:     storageGB,
@@ -725,6 +728,9 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	if err := r.reconcileKeyValueWorkload(ctx, &kv, sts, intent); err != nil {
 		return r.kvFail(ctx, &kv, "StatefulSetFailed", err)
+	}
+	if err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &kv, kv.Labels[labelEnvironment], "-environment-ingress", map[string]string{labelKeyValue: kv.Name}); err != nil {
+		return r.kvFail(ctx, &kv, "NetworkPolicyFailed", err)
 	}
 
 	// The backup/purge Jobs need egress the platform-wide Cilium node/metadata

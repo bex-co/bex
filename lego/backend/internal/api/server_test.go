@@ -312,6 +312,7 @@ func TestRenderCLILogoutImmediatelyInvalidatesCachedAccessToken(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"active": !revoked,
 				"sub":    "human-a", "client_id": cliauth.RenderCLIClientID,
+				"scope": "openid offline_access bex.read bex.write bex.sensitive",
 			})
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/admin/clients/"):
 			_ = json.NewEncoder(w).Encode(map[string]any{

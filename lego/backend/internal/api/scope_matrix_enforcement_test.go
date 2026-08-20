@@ -213,15 +213,15 @@ func TestScopeClassExemptions(t *testing.T) {
 	t.Run("platform client without granular grant", func(t *testing.T) {
 		h, _, _ := scopedAPI(t, "identity-1", "bex-mobile", identityScopes,
 			[]string{bexResource}, map[string]bool{"bex-mobile": true})
-		if got := do(t, h, http.MethodPost, "/v1/services/web/suspend", testToken, "").Code; got != http.StatusAccepted {
-			t.Fatalf("platform suspend = %d, want 202", got)
+		if got := do(t, h, http.MethodPost, "/v1/services/web/suspend", testToken, "").Code; got != http.StatusForbidden {
+			t.Fatalf("platform suspend = %d, want 403", got)
 		}
 	})
 	t.Run("audience-less device flow", func(t *testing.T) {
 		h, _, _ := scopedAPI(t, "identity-1", "render-cli", identityScopes,
 			nil, map[string]bool{"render-cli": true})
-		if got := do(t, h, http.MethodPost, "/v1/services/web/suspend", testToken, "").Code; got != http.StatusAccepted {
-			t.Fatalf("device-flow suspend = %d, want 202", got)
+		if got := do(t, h, http.MethodPost, "/v1/services/web/suspend", testToken, "").Code; got != http.StatusForbidden {
+			t.Fatalf("device-flow suspend = %d, want 403", got)
 		}
 	})
 }

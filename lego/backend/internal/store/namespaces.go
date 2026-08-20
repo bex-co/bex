@@ -531,14 +531,19 @@ func npMeta(namespace, name string) metav1.ObjectMeta {
 	}
 }
 
-// sameNamespaceNetworkPolicy allows all traffic between pods in the namespace
-// (private services between a workspace's own apps).
+// sameNamespaceNetworkPolicy allows ordinary same-namespace traffic only for
+// pods that are not members of a protected environment. Protected Apps and
+// datastores get explicit same-environment policies from the operator; leaving
+// them in this blanket selector would turn an environment label into a no-op.
 func sameNamespaceNetworkPolicy(namespace string) *networkingv1.NetworkPolicy {
-	inNamespace := []networkingv1.NetworkPolicyPeer{{PodSelector: &metav1.LabelSelector{}}}
+	ordinary := &metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{
+		Key: "app.bex.co/network-isolation", Operator: metav1.LabelSelectorOpDoesNotExist,
+	}}}
+	inNamespace := []networkingv1.NetworkPolicyPeer{{PodSelector: ordinary}}
 	return &networkingv1.NetworkPolicy{
 		ObjectMeta: npMeta(namespace, "allow-same-namespace"),
 		Spec: networkingv1.NetworkPolicySpec{
-			PodSelector: metav1.LabelSelector{},
+			PodSelector: *ordinary,
 			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
 			Ingress:     []networkingv1.NetworkPolicyIngressRule{{From: inNamespace}},
 			Egress:      []networkingv1.NetworkPolicyEgressRule{{To: inNamespace}},

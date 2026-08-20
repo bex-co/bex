@@ -76,6 +76,7 @@ func subscriptionService(st NotificationsStore, ws core.WorkspaceResolver, audit
 func identity(subject string) context.Context {
 	return core.WithIdentity(context.Background(), core.Identity{
 		Subject: subject, Method: "oauth2", Human: true, PlatformClient: true,
+		CanonicalScopes: core.ScopeRead + " " + core.ScopeWrite + " " + core.ScopeSensitive,
 	})
 }
 

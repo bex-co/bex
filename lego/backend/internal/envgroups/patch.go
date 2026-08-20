@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/secrets"
 )
 
 type SaveMode string
@@ -159,6 +160,29 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 		if expected != generation {
 			return EnvironmentPatchResult{}, envGroupRevisionConflict()
 		}
+	}
+	// Preflight the complete merged maps before claiming the revision. The
+	// claim itself is an OpenBao mutation, so quota failures must not leave a
+	// busy group behind and must be independent of which patch form was used.
+	preflightEnv, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
+	if err != nil {
+		return EnvironmentPatchResult{}, err
+	}
+	preflightFiles, err := s.getGroupMap(ctx, m.workspace, filesPath(gid))
+	if err != nil {
+		return EnvironmentPatchResult{}, err
+	}
+	if err := core.ApplyEnvVarPatch(preflightEnv, patch.EnvVars); err != nil {
+		return EnvironmentPatchResult{}, err
+	}
+	if err := core.ApplySecretFilePatch(preflightFiles, patch.SecretFiles); err != nil {
+		return EnvironmentPatchResult{}, err
+	}
+	if err := secrets.ValidateEnvMapQuota(preflightEnv); err != nil {
+		return EnvironmentPatchResult{}, err
+	}
+	if err := secrets.ValidateFilesMapQuota(preflightFiles); err != nil {
+		return EnvironmentPatchResult{}, err
 	}
 	claimVersion, err := versioned.PutCAS(groupCtx(ctx, m.workspace), revisionPath(gid), map[string]string{
 		"state": "busy", "generation": strconv.FormatUint(generation, 10),

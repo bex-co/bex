@@ -867,6 +867,12 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 	if err != nil {
 		return View{}, mapStoreError(sessionID, err)
 	}
+	// Resume can reactivate or provision broker-eligible compute. A contributor
+	// may operate a live session, but cannot use that lifecycle permission to
+	// revive it after losing the workspace's create authority.
+	if err := s.AuthorizeFreshOn(ctx, core.RelCanCreate, sessionObject(sessionID)); err != nil {
+		return View{}, err
+	}
 	if record.ArchivedAt != nil {
 		return View{}, errArchived(record.Phase) // ADR065 D1: unarchive first
 	}
@@ -881,6 +887,9 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 	// ADR059 D6: a terminal session resuming re-enters a live phase, so it counts
 	// toward the workspace's live-sandbox cap; refuse rather than exceed it.
 	if err := s.enforceLiveSandboxCap(ctx, record.WorkspaceID); err != nil {
+		return View{}, err
+	}
+	if err := s.RequireBillingMutation(ctx, record.WorkspaceID); err != nil {
 		return View{}, err
 	}
 	record, err = s.Store.SetAgentSessionLifecycle(ctx, sessionID, "", PhaseResuming, "resuming", false)

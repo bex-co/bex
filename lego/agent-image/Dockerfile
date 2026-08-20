@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1.7
 
-FROM golang:1.25.7-bookworm AS go-toolchain
+FROM golang:1.25.7-bookworm@sha256:564e366a28ad1d70f460a2b97d1d299a562f08707eb0ecb24b659e5bd6c108e1 AS go-toolchain
 
 # The driver is TypeScript; this stage compiles it to plain JS so devDependencies
 # (typescript) never reach the runtime image below.
-FROM node:22-bookworm-slim AS driver-build
+FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436 AS driver-build
 
 WORKDIR /opt/bex-agent-driver
 COPY agent-image/driver/package.json agent-image/driver/package-lock.json ./
@@ -13,7 +13,7 @@ COPY agent-image/driver/tsconfig.json ./
 COPY agent-image/driver/src ./src
 RUN npm run build
 
-FROM node:22-bookworm-slim
+FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0c23dfb172dc3cc6436
 
 ARG CLAUDE_CODE_ACP_VERSION=0.16.2
 ARG CODEX_ACP_VERSION=1.4.0

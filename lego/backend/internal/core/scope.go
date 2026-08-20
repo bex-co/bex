@@ -229,11 +229,10 @@ func (id Identity) RequireOpClass(class string) error {
 	}
 }
 
-// RequireCapability is the OAuth half of the shared authorization seam: a
-// third-party human token must hold the capability mapped to relation, in
-// addition to OpenFGA. Sessions, machine keys, and platform-marked clients
-// that have not requested a granular capability are exempt — they keep their
-// existing OpenFGA authority. An unknown relation fails closed.
+// RequireCapability is the OAuth half of the shared authorization seam: every
+// human OAuth delegation must hold the capability mapped to the relation, in
+// addition to OpenFGA. Sessions and machine keys are authenticated by their
+// own non-OAuth mechanisms. A public client id never substitutes for a scope.
 func (id Identity) RequireCapability(relation string) error {
 	if id.CapabilityExempt() {
 		return nil
@@ -248,15 +247,11 @@ func (id Identity) RequireCapability(relation string) error {
 	return NewInsufficientScopeError(want)
 }
 
-// CapabilityExempt reports whether this identity is outside the granular
-// OAuth matrix: not a human OAuth delegation, or a platform-marked client
-// that has not requested a granular capability (the documented rollout path
-// for the official Render CLI and current mobile release).
+// CapabilityExempt reports whether this identity is outside the granular OAuth
+// matrix. Human OAuth delegations are never exempt, including first-party
+// public clients.
 func (id Identity) CapabilityExempt() bool {
 	if id.Method != "oauth2" || !id.Human {
-		return true
-	}
-	if id.PlatformClient && !HasGranularCapability(id.CanonicalScopes) {
 		return true
 	}
 	return false

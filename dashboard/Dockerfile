@@ -1,5 +1,5 @@
 # Build stage
-FROM node:22-alpine AS builder
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 AS builder
 
 WORKDIR /app
 
@@ -42,7 +42,7 @@ ENV BEX_MOBILE_ANDROID_SHA256_CERT_FINGERPRINTS=$BEX_MOBILE_ANDROID_SHA256_CERT_
 RUN yarn build
 
 # Runtime stage
-FROM node:22-alpine
+FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32
 
 WORKDIR /app
 

@@ -328,6 +328,7 @@ func pushBody(t *testing.T, repo, ref string) []byte {
 	t.Helper()
 	b, err := json.Marshal(map[string]any{
 		"ref":        ref,
+		"after":      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"repository": map[string]string{"clone_url": repo},
 	})
 	if err != nil {

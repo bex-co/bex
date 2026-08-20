@@ -12,6 +12,7 @@ export const ANDROID_FINGERPRINTS_ENV =
 export const IOS_BUNDLE_ID = "co.bex.mobile";
 export const ANDROID_PACKAGE = "co.bex.mobile";
 export const INVITE_PATH = "/invite";
+export const OAUTH_REDIRECT_PATH = "/oauth2redirect";
 export const WELL_KNOWN_DIR = new URL(
   "../public/.well-known/",
   import.meta.url,
@@ -66,6 +67,10 @@ export function buildAssociations({
                 {
                   "/": INVITE_PATH,
                   comment: "Open only bex workspace invitation links.",
+                },
+                {
+                  "/": OAUTH_REDIRECT_PATH,
+                  comment: "Open only the OAuth authorization callback.",
                 },
               ],
             },

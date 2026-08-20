@@ -18,7 +18,6 @@ package main
 
 import (
 	"crypto/tls"
-	"errors"
 	"flag"
 	"os"
 	"strconv"
@@ -158,24 +157,11 @@ func parseManagerConfig() managerConfig {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	cfg.baseDomain = os.Getenv("BEX_BASE_DOMAIN")
 	if err := hostingdomain.ValidateSharedSuffix(cfg.baseDomain); err != nil {
-		// A well-formed-but-not-yet-PSL-listed suffix (onbex.co) runs with a loud
-		// warning instead of taking the operator down: cross-tenant cookie
-		// isolation firms up once onbex.co is submitted to publicsuffix/list and a
-		// newer golang.org/x/net embeds it. A malformed suffix stays fatal.
-		//
-		// Do not "harden" this back into an unconditional exit. Doing so makes the
-		// accepted PSL risk (.pm/DO_NOT_DO.md #PSL) unrepresentable: the only way
-		// to boot becomes an empty suffix, which silently deletes platform hosting
-		// for every App. That is what happened on 2026-08-16 (815e003b).
-		if errors.Is(err, hostingdomain.ErrUnlistedSharedSuffix) {
-			setupLog.Info("WARNING: BEX_BASE_DOMAIN is not a private Public Suffix in this build; "+
-				"enabling shared platform hosts anyway. Cross-tenant cookie isolation is not browser-enforced "+
-				"until this suffix is in the PSL — submit onbex.co to publicsuffix/list",
-				"baseDomain", cfg.baseDomain, "reason", err.Error())
-		} else {
-			setupLog.Error(err, "unsafe shared tenant hosting suffix")
-			os.Exit(1)
-		}
+		// A shared host suffix is a browser security boundary. If the suffix is
+		// not in the embedded Public Suffix List, cookies can cross tenants; do
+		// not start a manager that would publish those hosts.
+		setupLog.Error(err, "unsafe shared tenant hosting suffix; refusing startup")
+		os.Exit(1)
 	}
 	return cfg
 }

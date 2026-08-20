@@ -336,7 +336,7 @@ func TestCommitSkipPhrases(t *testing.T) {
 // --- redeployMatching end-to-end: in-root vs out-of-root push ---
 
 func newPush(cloneURL string, changed []string) pushEvent {
-	ev := pushEvent{Ref: "refs/heads/main"}
+	ev := pushEvent{Ref: "refs/heads/main", After: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
 	ev.Repository.CloneURL = cloneURL
 	ev.Commits = []struct {
 		Added    []string `json:"added"`
@@ -398,6 +398,7 @@ func TestWebhookHTTPParsesCommitPaths(t *testing.T) {
 
 	body, err := json.Marshal(map[string]any{
 		"ref":        "refs/heads/main",
+		"after":      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"repository": map[string]string{"clone_url": repo},
 		"commits":    []map[string]any{{"modified": []string{"services/web/index.js"}}},
 	})
@@ -688,6 +689,7 @@ func TestWebhookPushOpensDeployRow(t *testing.T) {
 
 	body, err := json.Marshal(map[string]any{
 		"ref":        "refs/heads/main",
+		"after":      "3597548b2424b9dee1ce4b07820b0f8cb007f747",
 		"repository": map[string]string{"clone_url": repo},
 		"commits":    []map[string]any{{"modified": []string{"main.go"}}},
 		"head_commit": map[string]string{
@@ -782,11 +784,12 @@ func TestWebhookPushCROnlyAppSkipsDeployRow(t *testing.T) {
 func TestPushEventCommitInfo(t *testing.T) {
 	var ev pushEvent
 	payload := `{"ref":"refs/heads/main","head_commit":{"id":"abc123","message":"automated blog post","timestamp":"2026-07-19T08:58:44+02:00"}}`
+	payload = `{"ref":"refs/heads/main","after":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","head_commit":{"id":"abc123","message":"automated blog post","timestamp":"2026-07-19T08:58:44+02:00"}}`
 	if err := json.Unmarshal([]byte(payload), &ev); err != nil {
 		t.Fatal(err)
 	}
 	info := ev.commitInfo()
-	if info.Hash != "abc123" || info.Message != "automated blog post" {
+	if info.Hash != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" || info.Message != "automated blog post" {
 		t.Errorf("commitInfo = {%s %q}, want the head commit", info.Hash, info.Message)
 	}
 	want := time.Date(2026, 7, 19, 6, 58, 44, 0, time.UTC)
@@ -800,7 +803,7 @@ func TestPushEventCommitInfo(t *testing.T) {
 
 	ev.HeadCommit.Timestamp = "not-a-time"
 	info = ev.commitInfo()
-	if info.Hash != "abc123" || info.AuthorAt != nil {
+	if info.Hash != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" || info.AuthorAt != nil {
 		t.Errorf("bad timestamp must keep hash and drop authorAt, got %+v", info)
 	}
 }

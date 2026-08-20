@@ -46,9 +46,31 @@ import (
 
 // bearerToken extracts the RFC 6750 credential from the Authorization header; ok
 // is false when the header is absent or not "Bearer "-prefixed.
+type requestCredential struct {
+	kind  string
+	value string
+}
+
+// presentedCredential selects exactly one credential. A bearer header is
+// authoritative even when its value is empty or invalid; a valid session must
+// never rescue a request carrying a bad bearer (and admission/auth must hash
+// the same credential).
+func presentedCredential(r *http.Request) requestCredential {
+	if tok, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer "); ok {
+		return requestCredential{kind: "bearer", value: tok}
+	}
+	if token := r.Header.Get("X-Session-Token"); token != "" {
+		return requestCredential{kind: "session", value: token}
+	}
+	if cookie, err := r.Cookie("ory_kratos_session"); err == nil {
+		return requestCredential{kind: "session", value: cookie.Value}
+	}
+	return requestCredential{}
+}
+
 func bearerToken(r *http.Request) (string, bool) {
-	tok, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-	return tok, ok && tok != ""
+	credential := presentedCredential(r)
+	return credential.value, credential.kind == "bearer" && credential.value != ""
 }
 
 // oryAuth validates real credentials against the Ory substrate. A bearer, when
@@ -310,9 +332,12 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var id core.Identity
 		var err error
-		bearer, hasBearer := bearerToken(r)
-		hasSession := a.kratosURL != "" && hasSessionCredential(r)
-		if r.Method == http.MethodGet && r.URL.Path == "/v1/git/callback" && !hasBearer && !hasSession {
+		credential := presentedCredential(r)
+		bearer := credential.value
+		hasBearer := credential.kind == "bearer" && bearer != ""
+		hasBearerHeader := credential.kind == "bearer"
+		hasSession := a.kratosURL != "" && credential.kind == "session"
+		if r.Method == http.MethodGet && r.URL.Path == "/v1/git/callback" && !hasBearerHeader && !hasSession {
 			// The github handler must verify its state credential before acting.
 			// A supplied OAuth/session credential still takes the ordinary path so
 			// existing API/agent callback calls retain their Identity and authz.
@@ -322,17 +347,17 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 		// Refuse an absurd credential before it is allocated into an upstream
 		// request or forwarded as a header (w1/m67 F1). No real Hydra token or
 		// Kratos session token comes close to this bound.
-		if oversizedCredential(bearer) || oversizedCredential(r.Header.Get("X-Session-Token")) {
+		if oversizedCredential(credential.value) {
 			a.unauthorized(w)
 			return
 		}
 		switch {
-		case hasBearer:
-			if r.Method == http.MethodPost && r.URL.Path == "/v1/api-keys" {
-				id, err = a.introspectFresh(r, bearer)
-			} else {
-				id, err = a.introspect(r, bearer)
+		case hasBearerHeader:
+			if !hasBearer {
+				a.unauthorized(w)
+				return
 			}
+			id, err = a.introspect(r, bearer)
 		case hasSession:
 			id, err = a.whoami(r)
 		default:
@@ -361,7 +386,25 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 					return
 				}
 			}
-			next.ServeHTTP(w, r.WithContext(core.WithIdentity(r.Context(), id)))
+			ctx := core.WithIdentity(r.Context(), id)
+			if hasBearer {
+				validatedID := id
+				validatedToken := bearer
+				ctx = core.WithFreshBearerValidator(ctx, func(validateCtx context.Context) error {
+					fresh, freshErr := a.introspectFresh(r.WithContext(validateCtx), validatedToken)
+					if freshErr != nil {
+						return freshErr
+					}
+					if fresh == (core.Identity{}) || fresh.Method != validatedID.Method || fresh.Subject != validatedID.Subject ||
+						fresh.ClientID != validatedID.ClientID || fresh.Human != validatedID.Human ||
+						fresh.CanonicalScopes != validatedID.CanonicalScopes || fresh.AcceptedAudience != validatedID.AcceptedAudience ||
+						fresh.PlatformClient != validatedID.PlatformClient {
+						return core.ErrForbidden
+					}
+					return nil
+				})
+			}
+			next.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
 }
@@ -379,11 +422,7 @@ func (a *oryAuth) introspectFresh(r *http.Request, token string) (core.Identity,
 // Kratos round trip: the session header, or Kratos' session cookie. An unrelated
 // cookie (analytics, LB affinity) must not cost an upstream call.
 func hasSessionCredential(r *http.Request) bool {
-	if r.Header.Get("X-Session-Token") != "" {
-		return true
-	}
-	_, err := r.Cookie("ory_kratos_session")
-	return err == nil
+	return presentedCredential(r).kind == "session"
 }
 
 // introspect validates an OAuth2 token at Hydra's admin API. Returns the zero

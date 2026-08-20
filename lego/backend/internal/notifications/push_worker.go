@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"sort"
 	"sync"
 	"time"
@@ -356,16 +357,24 @@ func fanOutPush(
 		if len(deviceIDs) == 0 {
 			continue
 		}
+		notification := store.PushNotification{
+			TenantID: target.workspaceID, Subject: recipient.subject,
+			SourceEventKey: target.sourceKey,
+			EventID:        ids.Derive(ids.Event, target.workspaceID, recipient.subject, target.sourceKey),
+			EventType:      target.projected.event, Title: target.projected.title, Body: target.projected.body,
+			Urgency: target.projected.urgency, ResourceKind: target.resourceKind, ResourceID: target.resourceID,
+			DeepLink: target.deepLink, OccurredAt: target.occurredAt, DeliverAt: decision.DeliverAt,
+		}
+		if err := store.ValidatePushNotification(notification); err != nil {
+			// A single bad projection is quarantined by omission. The caller still
+			// commits the feed watermark, so it cannot poison every tenant's push
+			// worker; the source event remains available in its authoritative store.
+			log.Printf("push: dropping invalid projected notification source=%q subject=%q: %v", target.sourceKey, recipient.subject, err)
+			continue
+		}
 		batch = append(batch, store.PushNotificationBatchItem{
-			Notification: store.PushNotification{
-				TenantID: target.workspaceID, Subject: recipient.subject,
-				SourceEventKey: target.sourceKey,
-				EventID:        ids.Derive(ids.Event, target.workspaceID, recipient.subject, target.sourceKey),
-				EventType:      target.projected.event, Title: target.projected.title, Body: target.projected.body,
-				Urgency: target.projected.urgency, ResourceKind: target.resourceKind, ResourceID: target.resourceID,
-				DeepLink: target.deepLink, OccurredAt: target.occurredAt, DeliverAt: decision.DeliverAt,
-			},
-			DeviceIDs: deviceIDs,
+			Notification: notification,
+			DeviceIDs:    deviceIDs,
 		})
 	}
 	return batch, nil
@@ -376,12 +385,13 @@ func fanOutPush(
 // a failed one surface as a failure needing attention. Bodies carry no secret —
 // the repo name and (for PR-ready) the PR number only.
 func projectAgentSessionPush(s store.AgentSession) (projectedPush, bool) {
+	repo := boundedPushDisplay(s.Repo)
 	switch s.Phase {
 	case "completed":
 		if s.PRURL != "" {
-			body := "Agent opened a draft PR on " + s.Repo + "."
+			body := "Agent opened a draft PR on " + repo + "."
 			if s.PRNumber > 0 {
-				body = fmt.Sprintf("Agent opened draft PR #%d on %s.", s.PRNumber, s.Repo)
+				body = fmt.Sprintf("Agent opened draft PR #%d on %s.", s.PRNumber, repo)
 			}
 			return projectedPush{
 				event: string(DeliveryEventAgentPRReady), title: "Draft PR ready",
@@ -390,17 +400,31 @@ func projectAgentSessionPush(s store.AgentSession) (projectedPush, bool) {
 		}
 		return projectedPush{
 			event: string(DeliveryEventAgentFailed), title: "Agent session ended",
-			body:    "Agent session on " + s.Repo + " ended without a pull request.",
+			body:    "Agent session on " + repo + " ended without a pull request.",
 			urgency: string(DeliveryUrgencyImportant),
 		}, true
 	case "failed":
 		return projectedPush{
 			event: string(DeliveryEventAgentFailed), title: "Agent session failed",
-			body: "Agent session on " + s.Repo + " failed.", urgency: string(DeliveryUrgencyImportant),
+			body: "Agent session on " + repo + " failed.", urgency: string(DeliveryUrgencyImportant),
 		}, true
 	default:
 		return projectedPush{}, false
 	}
+}
+
+const maxPushRepoDisplayBytes = 256
+
+func boundedPushDisplay(value string) string {
+	if len(value) <= maxPushRepoDisplayBytes {
+		return value
+	}
+	const suffix = "..."
+	limit := maxPushRepoDisplayBytes - len(suffix)
+	for limit > 0 && (value[limit]&0xc0) == 0x80 {
+		limit--
+	}
+	return value[:limit] + suffix
 }
 
 // dispatchAgentSessions is the agent-terminal projection (w11/m6 t005) alongside

@@ -155,16 +155,9 @@ func (a *AuthAdmission) admit(r *http.Request) (release func(), err error) {
 }
 
 func (a *AuthAdmission) credentialFingerprint(r *http.Request) string {
-	value := r.Header.Get("Authorization")
-	if token := r.Header.Get("X-Session-Token"); token != "" {
-		value = "session:" + token
-	} else if cookie, err := r.Cookie("ory_kratos_session"); err == nil {
-		// Fingerprint only the authentication credential. Hashing the whole Cookie
-		// header would let one valid session bypass its budget by appending a fresh
-		// irrelevant cookie to every request.
-		value = "cookie:" + cookie.Value
-	}
-	if value == "" {
+	credential := presentedCredential(r)
+	value := credential.kind + ":" + credential.value
+	if credential.kind == "" {
 		value = "source:" + a.TrustedProxies.ClientIP(r)
 	}
 	mac := hmac.New(sha256.New, a.fingerprintKey[:])

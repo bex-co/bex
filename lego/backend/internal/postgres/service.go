@@ -583,13 +583,13 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 			pass, d.Name, d.Namespace, user, dbn),
 	}
 	if d.Status.ExternalHost != "" {
-		// Standard sslmode=require works for all clients: the pg-sni-proxy
-		// (w1/m29) handles the SSLRequest preamble before TLS, so
-		// sslnegotiation=direct is no longer needed.
+		// Public clients must authenticate the proxy's certificate and hostname;
+		// encryption alone leaves a DNS/SNI interception able to harvest the
+		// password. The deployment's trusted CA must issue the configured host.
 		info.ExternalConnectionString = fmt.Sprintf(
-			"postgresql://%s:%s@%s:5432/%s?sslmode=require",
+			"postgresql://%s:%s@%s:5432/%s?sslmode=verify-full",
 			user, pass, d.Status.ExternalHost, dbn)
-		info.PSQLCommand = fmt.Sprintf("PGPASSWORD=%s psql 'host=%s port=5432 dbname=%s user=%s sslmode=require'",
+		info.PSQLCommand = fmt.Sprintf("PGPASSWORD=%s psql 'host=%s port=5432 dbname=%s user=%s sslmode=verify-full'",
 			pass, d.Status.ExternalHost, dbn, user)
 	}
 	// Pooled strings: same credentials, routed through the PgBouncer pooler.
@@ -602,7 +602,7 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 	}
 	if d.Status.PoolerExternalHost != "" {
 		info.ExternalConnectionPoolString = fmt.Sprintf(
-			"postgresql://%s:%s@%s:5432/%s?sslmode=require",
+			"postgresql://%s:%s@%s:5432/%s?sslmode=verify-full",
 			user, pass, d.Status.PoolerExternalHost, dbn)
 	}
 	// Per-replica read-only connection strings (CNPG -ro service or external SNI).
@@ -616,7 +616,7 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 			}
 			if rs.ExternalHost != "" {
 				rc.ExternalConnectionString = fmt.Sprintf(
-					"postgresql://%s:%s@%s:5432/%s?sslmode=require",
+					"postgresql://%s:%s@%s:5432/%s?sslmode=verify-full",
 					user, pass, rs.ExternalHost, dbn)
 			}
 			rcs = append(rcs, rc)

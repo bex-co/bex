@@ -29,14 +29,17 @@ var scopeClassOverrides = map[string]string{
 	// Durable-credential mint. AuthorizeMintClass still runs at the verb.
 	"REST POST /v1/api-keys":                             core.OpClassMint,
 	"REST POST /v1/ssh-keys":                             core.OpClassMint,
+	"REST POST /v1/postgres/{id}/users":                  core.OpClassMint,
 	"REST GET /v1/services/{id}/deploy-hook":             core.OpClassMint,
 	"REST POST /v1/services/{id}/deploy-hook/regenerate": core.OpClassMint,
 	"GQL Mutation.createApiKey":                          core.OpClassMint,
 	"GQL Mutation.createSSHKey":                          core.OpClassMint,
+	"GQL Mutation.createDatabaseUser":                    core.OpClassMint,
 	"GQL Query.deployHook":                               core.OpClassMint,
 	"GQL Mutation.regenerateDeployHook":                  core.OpClassMint,
 	"MCP create_api_key":                                 core.OpClassMint,
 	"MCP add_ssh_key":                                    core.OpClassMint,
+	"MCP create_postgres_user":                           core.OpClassMint,
 	"MCP get_deploy_hook":                                core.OpClassMint,
 	"MCP regenerate_deploy_hook":                         core.OpClassMint,
 

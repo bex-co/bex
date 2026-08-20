@@ -812,6 +812,11 @@ func (b *Base) AuthorizeKeyValueFresh(ctx context.Context, relation string, kv *
 // verb's auditing Authorize: a class refusal is not a workspace decision and
 // deliberately leaves no event, the same way an unauthenticated request does.
 func (b *Base) AuthorizeMintClass(ctx context.Context) error {
+	if validate, ok := FreshBearerValidatorFrom(ctx); ok {
+		if err := validate(ctx); err != nil {
+			return err
+		}
+	}
 	id, ok := IdentityFrom(ctx)
 	if !ok {
 		return nil // no identity to classify; the verb's Authorize denies anyway
@@ -823,6 +828,9 @@ func (b *Base) AuthorizeMintClass(ctx context.Context) error {
 	case "oauth2":
 		if !id.Human {
 			return ErrForbidden
+		}
+		if !HasGranularCapability(id.CanonicalScopes) {
+			return NewInsufficientScopeError("")
 		}
 		if b.PlatformClients == nil {
 			return ErrForbidden // trust cannot be established — fail closed

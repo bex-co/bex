@@ -294,7 +294,7 @@ describe("handleConsent (GET)", () => {
     expect(view).not.toBeInstanceOf(Response);
   });
 
-  it("exempts a platform-marked client requesting the audience without the scope", async () => {
+  it("requires a granular capability even for a platform-marked public client", async () => {
     mockUpstreams({
       lookupBody: consentRequest({
         requested_scope: ["openid", "offline_access"],
@@ -307,7 +307,7 @@ describe("handleConsent (GET)", () => {
       }),
     });
     const view = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
-    expect(view).not.toBeInstanceOf(Response);
+    expect(view).toMatchObject({ errorCode: "scope_required" });
   });
 
   it("ignores an OAUTH_API_SCOPE override (closed vocabulary)", async () => {
@@ -367,7 +367,7 @@ describe("handleConsent (GET)", () => {
     ]);
   });
 
-  it("keeps bex.api on a platform-marked skip_consent grant", async () => {
+  it("refuses a platform-marked skip_consent bex.api-only grant", async () => {
     const calls = mockUpstreams({
       lookupBody: consentRequest({
         skip: true,
@@ -381,13 +381,8 @@ describe("handleConsent (GET)", () => {
       }),
     });
     const res = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
-    expect((res as Response).status).toBe(302);
-    const body = JSON.parse(accepts(calls)[0].init?.body as string);
-    expect(body.grant_scope).toEqual([
-      "openid",
-      "offline_access",
-      "bex.api",
-    ]);
+    expect(res).toMatchObject({ errorCode: "scope_required" });
+    expect(accepts(calls)).toHaveLength(0);
   });
 
   it("degrades to home on a missing challenge", async () => {

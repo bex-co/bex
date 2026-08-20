@@ -3,7 +3,6 @@ import appConfig from "../../app.json";
 describe("mobile configuration", () => {
   it("uses only bex-owned identifiers and no dangerous permissions", () => {
     expect(appConfig.expo.name).toBe("bex");
-    expect(appConfig.expo.scheme).toEqual(["bex", "co.bex.mobile"]);
     expect(appConfig.expo.ios.bundleIdentifier).toBe("co.bex.mobile");
     expect(appConfig.expo.android.package).toBe("co.bex.mobile");
     expect(appConfig.expo.android.permissions).toEqual([]);
@@ -24,6 +23,18 @@ describe("mobile configuration", () => {
             scheme: "https",
             host: "dashboard.bex.co",
             path: "/invite",
+          },
+        ],
+        category: ["BROWSABLE", "DEFAULT"],
+      },
+      {
+        action: "VIEW",
+        autoVerify: true,
+        data: [
+          {
+            scheme: "https",
+            host: "dashboard.bex.co",
+            path: "/oauth2redirect",
           },
         ],
         category: ["BROWSABLE", "DEFAULT"],

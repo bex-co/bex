@@ -22,7 +22,7 @@ cd "$(dirname "$0")/.."
 CLIENT_ID=bex-bootstrap
 RENDER_CLI_CLIENT_ID=429024F5E608930E2A65EF92591A25CC
 MOBILE_CLIENT_ID=bex-mobile
-MOBILE_REDIRECT_URI=co.bex.mobile:/oauth2redirect
+MOBILE_REDIRECT_URI=https://dashboard.bex.co/oauth2redirect
 MOBILE_AUDIENCE="${BEX_OAUTH_RESOURCE:-https://api.bex.co/mcp}"
 DEVICE_GRANT=urn:ietf:params:oauth:grant-type:device_code
 NS="${BEX_AUTH_NAMESPACE:-auth}"
@@ -165,13 +165,10 @@ CLI_TOKEN_LIFESPAN=168h
 # so omitting it here silently un-blesses the client and strands every
 # subsequent `render login` at a consent step that never completes.
 #
-# scope keeps bex.api as a platform-client compatibility alias (w8/m27). The
-# unmodified official Render CLI and current mobile client do not request the
-# granular bex.read/bex.write/bex.sensitive vocabulary; the bex.co/platform-client
-# marker plus this legacy scope preserve their existing authority until those
-# clients migrate. Do not replace bex.api with granular scopes here — that
-# would be a silent CLI/mobile break.
-render_body="$(printf '{"client_id":"%s","client_name":"bex CLI","grant_types":["%s","refresh_token"],"scope":"openid offline_access bex.api","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"metadata":{"bex.co/platform-client":true},"device_authorization_grant_access_token_lifespan":"%s","refresh_token_grant_access_token_lifespan":"%s"}' \
+# The public client id is not an authority boundary; bex-api still requires
+# granular capabilities for every human OAuth token. The mobile client below
+# deliberately keeps explicit consent because its HTTPS callback is public.
+render_body="$(printf '{"client_id":"%s","client_name":"bex CLI","grant_types":["%s","refresh_token"],"scope":"openid offline_access bex.read bex.write bex.sensitive","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"metadata":{"bex.co/platform-client":true},"device_authorization_grant_access_token_lifespan":"%s","refresh_token_grant_access_token_lifespan":"%s"}' \
   "$RENDER_CLI_CLIENT_ID" "$DEVICE_GRANT" "$CLI_TOKEN_LIFESPAN" "$CLI_TOKEN_LIFESPAN")"
 render_code="$(printf '%s' "$render_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
   -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$RENDER_CLI_CLIENT_ID")"
@@ -205,10 +202,11 @@ for lifespan_field in \
 done
 
 # ---- First-party native mobile client (ADR012 §8b) -------------------------
-# A store-distributed app cannot keep a client secret. The reverse-domain
-# private-use redirect is exact and single-slash per RFC 8252; PKCE S256 is
-# required on every authorization by the dashboard consent gate.
-mobile_body="$(printf '{"client_id":"%s","client_name":"bex mobile (first-party native)","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["%s"],"audience":["%s"],"scope":"openid offline_access bex.api","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"metadata":{"bex.co/platform-client":true}}' \
+# A store-distributed app cannot keep a client secret. The claimed HTTPS
+# universal/app link is exact and protected by the dashboard's generated
+# AASA/Asset Links documents; PKCE S256 is required on every authorization
+# by the dashboard consent gate.
+mobile_body="$(printf '{"client_id":"%s","client_name":"bex mobile (first-party native)","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["%s"],"audience":["%s"],"scope":"openid offline_access bex.read bex.write","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":false,"metadata":{"bex.co/platform-client":true}}' \
   "$MOBILE_CLIENT_ID" "$MOBILE_REDIRECT_URI" "$MOBILE_AUDIENCE")"
 mobile_code="$(printf '%s' "$mobile_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
   -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$MOBILE_CLIENT_ID")"

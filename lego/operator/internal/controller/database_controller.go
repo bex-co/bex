@@ -205,6 +205,10 @@ type clusterParams struct {
 	// Database.spec.parameters. Merged on top of the built-in defaults;
 	// shared_preload_libraries is always forced to include pg_stat_statements.
 	parameters map[string]string
+	// serverAltDNSNames are public SNI names that CNPG must include in its
+	// generated server certificate. Without these SANs, verify-full clients
+	// would fail closed even when they trust the cluster's server CA.
+	serverAltDNSNames []string
 }
 
 func versionedBackupServerName(name, version string) string {
@@ -312,7 +316,12 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 		}
 	}
 	if p.version != "" {
-		spec["imageName"] = "ghcr.io/cloudnative-pg/postgresql:" + p.version
+		// The CRD enum is closed and database_exports.go carries the reviewed
+		// multi-arch digest for every permitted major. A mutable major tag would
+		// let a registry retag silently replace the tenant's database runtime.
+		if image, ok := cnpgExportImages[p.version]; ok {
+			spec["imageName"] = image
+		}
 	}
 	// Bootstrap: restore-to-new (PITR) when recovery is requested and a store is
 	// available; otherwise a fresh, empty database.
@@ -354,6 +363,13 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	spec["postgresql"] = map[string]any{
 		"parameters":               pgParams,
 		"shared_preload_libraries": []any{"pg_stat_statements"},
+	}
+	if len(p.serverAltDNSNames) > 0 {
+		names := make([]any, len(p.serverAltDNSNames))
+		for i, name := range p.serverAltDNSNames {
+			names[i] = name
+		}
+		spec["certificates"] = map[string]any{"serverAltDNSNames": names}
 	}
 	// Durability: load the Barman Cloud plugin as the sole WAL archiver when the
 	// plan opts in and the object-store contract is configured. Retention and S3
@@ -613,11 +629,15 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		dbname: dbname, owner: owner, store: backups.store,
 		backupServerName: backups.targetServerName,
 		recovery:         db.Spec.Recovery, users: db.Spec.Users,
-		deletedUsers:     db.Spec.DeletedUsers,
-		highAvailability: db.Spec.HighAvailability,
-		parameters:       db.Spec.Parameters,
+		deletedUsers:      db.Spec.DeletedUsers,
+		highAvailability:  db.Spec.HighAvailability,
+		parameters:        db.Spec.Parameters,
+		serverAltDNSNames: databaseServerAltDNSNames(&db, r.DBDomain),
 	}); err != nil {
 		return r.dbFail(ctx, &db, "ClusterFailed", err)
+	}
+	if err := reconcileEnvironmentPeerPolicy(ctx, r.Client, r.Scheme, &db, db.Labels[labelEnvironment], "-environment-ingress", map[string]string{"app.bex.co/component": "database"}); err != nil {
+		return r.dbFail(ctx, &db, "NetworkPolicyFailed", err)
 	}
 
 	r.stampConnectionStatus(&db, storageGB, backups)
@@ -657,6 +677,24 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backups.enabled, backups.targetServerName, soonerRequeue(exportRequeue, diskRequeue))
+}
+
+// databaseServerAltDNSNames returns every public SNI name that can terminate
+// on this CNPG cluster. CNPG's generated server CA remains the trust root; the
+// names here make hostname verification match the external SNI contract for
+// the primary, pooler, and read-replica aliases.
+func databaseServerAltDNSNames(db *appv1alpha1.Database, domain string) []string {
+	if db == nil || !db.Spec.Public || domain == "" {
+		return nil
+	}
+	names := []string{fmt.Sprintf("%s.%s", db.Name, domain)}
+	if db.Spec.Pooler {
+		names = append(names, fmt.Sprintf("%s-pool.%s", db.Name, domain))
+	}
+	for _, replica := range db.Spec.ReadReplicas {
+		names = append(names, fmt.Sprintf("%s-ro-%s.%s", db.Name, replica.Name, domain))
+	}
+	return names
 }
 
 // databaseBackupIntent is what one reconcile resolved about this Database's
@@ -713,6 +751,9 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 		inheritedLabels := map[string]any{"app.bex.co/component": "database"}
 		if ws := db.Labels[labelWorkspace]; ws != "" {
 			inheritedLabels[labelWorkspace] = ws
+		}
+		if env := db.Labels[labelEnvironment]; env != "" {
+			inheritedLabels[labelEnvironment] = env
 		}
 		spec["inheritedMetadata"] = map[string]any{"labels": inheritedLabels}
 		cluster.Object["spec"] = spec

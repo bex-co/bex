@@ -165,7 +165,7 @@ func (h *GitWebhook) scopeFor(ctx context.Context, key verifiedKey, installation
 type pushEvent struct {
 	Ref         string `json:"ref"` // e.g. refs/heads/main
 	After       string `json:"after"`
-	Deleted     bool   `json:"deleted"` // true when this push deleted the branch (git push --delete)
+	Deleted     bool   `json:"deleted"`  // true when this push deleted the branch (git push --delete)
 	RefType     string `json:"ref_type"` // push payloads never carry one; its presence marks a delete/create-shaped body
 	DeliveryKey string `json:"-"`
 	// Installation.ID is the GitHub App installation that delivered this event —
@@ -220,10 +220,10 @@ type deleteEvent struct {
 // shape. Best-effort like every CommitInfo source: an absent head_commit (or an
 // unparseable timestamp) degrades field-by-field, never fails the redeploy.
 func (ev pushEvent) commitInfo() store.CommitInfo {
-	if ev.HeadCommit.ID == "" {
+	if !validGitObjectID(ev.After) || isZeroSHA(ev.After) {
 		return store.CommitInfo{}
 	}
-	info := store.CommitInfo{Hash: ev.HeadCommit.ID, Message: ev.HeadCommit.Message}
+	info := store.CommitInfo{Hash: ev.After, Message: ev.HeadCommit.Message}
 	if at, err := time.Parse(time.RFC3339, ev.HeadCommit.Timestamp); err == nil {
 		utc := at.UTC()
 		info.AuthorAt = &utc
@@ -299,6 +299,10 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// resolution or claim.
 	if !isPushShapedBody(&ev) {
 		core.WriteErrStatus(w, http.StatusBadRequest, "payload shape does not match a push event")
+		return
+	}
+	if !validGitObjectID(ev.After) {
+		core.WriteErrStatus(w, http.StatusBadRequest, "push payload has an invalid after object id")
 		return
 	}
 	ev.DeliveryKey = deliveryKey(r, body)
@@ -468,10 +472,19 @@ func (r *statusRecorder) WriteHeader(code int) {
 // isZeroSHA reports whether sha is git's all-zero object id, which a push
 // carries in `after` when it deletes the branch. Empty is not a delete.
 func isZeroSHA(sha string) bool {
-	if sha == "" {
+	return validGitObjectID(sha) && strings.Trim(sha, "0") == ""
+}
+
+func validGitObjectID(value string) bool {
+	if len(value) != 40 && len(value) != 64 {
 		return false
 	}
-	return strings.Trim(sha, "0") == ""
+	for _, c := range value {
+		if !strings.ContainsRune("0123456789abcdefABCDEF", c) {
+			return false
+		}
+	}
+	return true
 }
 
 // isPushShapedBody reports whether the decoded body carries the mutually

@@ -251,7 +251,6 @@ function platformClient(consent: OAuth2ConsentRequest): boolean {
 function audienceScopeSatisfied(consent: OAuth2ConsentRequest): boolean {
   const audiences = consent.requested_access_token_audience ?? [];
   if (audiences.length === 0) return true; // identity-only flow: no API authority
-  if (platformClient(consent)) return true;
   return hasGranularCapability(consent.requested_scope ?? []);
 }
 
@@ -371,7 +370,8 @@ export async function handleConsent(
   // w8/m27: an audience request without a granular capability is the
   // look-harmless consent this provider must never grant. Applied even on
   // trusted/skip so a skip_consent third-party cannot mint an umbrella token;
-  // platform-marked clients remain exempt (bex-api is the backstop).
+  // First-party/public clients are not exempt: an API audience always needs a
+  // granular capability, and the native client must reach this explicit gate.
   if (!audienceScopeSatisfied(consent)) {
     return { errorCode: "scope_required", requiredScopes: [...GRANULAR_SCOPES] };
   }
