@@ -156,6 +156,23 @@ The dashboard itself never uses OAuth — it authenticates with its Kratos sessi
 
   Recorded authorization events identify subject, OAuth client, accepted audience, canonical scopes, required relation, and outcome. Bearer tokens and attacker-controlled free-form metadata are never stored.
 
+  **Operation-level matrix (w2/m78), on top of the relation mapping.** w8/m27 gates every `RelCan…` check. w2/m78 adds a checked-in classification of every registered REST route, GraphQL top-level field, and MCP tool into one of four **operation classes**, enforced at each surface's dispatch seam before the handler runs (defense in depth — a new adapter cannot skip `Authorize` and inherit a read-only token's full surface). The vocabulary stays the three advertised capabilities plus the platform-only `bex.api` alias; there is no `bex.api.read` / `bex.mint` rename, and `BEX_OAUTH_API_SCOPE` / `OAUTH_API_SCOPE` remain ignored as a second matrix.
+
+  | Operation class | OAuth capability | Notes |
+  | --- | --- | --- |
+  | `read` | `bex.read` | GET routes, GraphQL queries, list/get MCP tools, log SSE |
+  | `write` | `bex.write` | Mutating verbs. Sandbox exec tickets stay write (`can_operate`); they are short-lived and not a durable credential |
+  | `sensitive` | `bex.sensitive` | Reveals of env-var/secret-file values, datastore connection info, SQL text, and Browser Web Shell tickets (`can_view_sensitive` — a shell is `printenv`) |
+  | `mint` | `bex.write` **and** `AuthorizeMintClass` | Durable-credential verbs only: API-key create, SSH-key enroll, deploy-hook reveal/rotate. The mint class is **not** a requestable scope — it rides the existing credential-class gate so a third-party `bex.write` token still cannot persist past consent |
+
+  **Implies-all.** `bex.api` grants every operation class **only** for `bex.co/platform-client`-marked clients that have not requested a granular capability (the official Render CLI and current mobile release). A third-party token cannot use it as an umbrella; a platform client that requested `bex.read` is narrowed like everyone else.
+
+  **Exemptions (byte-identical to w8/m27 / ADR069).** Kratos sessions, `client_credentials` API keys, platform-marked clients without a granular grant, and audience-less device-flow tokens (the w1/m67 F1 rule) skip the class check. A capability-scope-less API-audience human token still introspects inactive (401) before any class logic.
+
+  **Refusal.** One coded `INSUFFICIENT_SCOPE` (403 wrapping `ErrForbidden`, `params.required` = the missing capability) on REST, GraphQL, and MCP — the same shape as the relation-level gate. Unclassified operations fail closed as `write`.
+
+  **Scope-decision audit.** Every class **refusal** is recorded (`api.ScopeClass`) with subject, OAuth client id, accepted audience, normalized scopes, operation (surface + name), and outcome. Allows are not recorded (volume: the relation-level write/deny path already covers successful authorization). Fields are length-bounded at the write seam; bearer tokens, tickets, and introspection bodies are never stored. Rows ride `BEX_AUDIT_RETENTION_DAYS`.
+
 **Verified end-to-end** by [scripts/auth-oauth21-e2e.sh](../scripts/auth-oauth21-e2e.sh) — throwaway dockerized Hydra + Kratos (in-memory), the real dashboard consent route, the real bex-api: RFC 9728 discovery → DCR → authorize (PKCE S256) → Kratos-native login-challenge accept → consent → code → token (access + refresh) → `Authorization: Bearer` passing bex-api introspection + audience check. It drives **both** consent paths: a blessed client (`skip_consent` PATCH — how a real trusted agent is onboarded) straight through headlessly, and three unblessed DCR clients through the consent page itself — approve (→ working `/mcp` token), deny (→ `error=access_denied`, no code), and a repeat authorization inside the remember window (→ no consent page). The page is a server-rendered form, so curl drives it exactly as a browser does. Run it locally with Docker; on the mock cluster the same config ships via the kratos/hydra value overlays.
 
 ### 8. API-key hygiene: access-token TTL + key metadata (w4/m13)

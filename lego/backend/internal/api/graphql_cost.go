@@ -54,18 +54,15 @@ const (
 	gqlMaxAliasesPerField = 10
 )
 
-// validateGraphQLComplexity parses query and rejects it when it exceeds any
-// cost budget. A parse failure is NOT rejected here — it returns nil so
-// graphql.Do produces the canonical parse error the client expects. Fragment
-// spreads are resolved (with cycle detection) so cost can't be hidden behind
-// fragments; the total-field cap also bounds the validator's own work.
-func validateGraphQLComplexity(query string) error {
+// parseGraphQLDocument splits a query into operations and named fragments.
+// Parse failures return ok=false so callers can defer to graphql.Do's
+// canonical parse error.
+func parseGraphQLDocument(query string) (fragments map[string]*ast.FragmentDefinition, ops []*ast.OperationDefinition, ok bool) {
 	doc, err := parser.Parse(parser.ParseParams{Source: source.NewSource(&source.Source{Body: []byte(query)})})
 	if err != nil {
-		return nil // let graphql.Do report the parse error
+		return nil, nil, false
 	}
-	fragments := map[string]*ast.FragmentDefinition{}
-	var ops []*ast.OperationDefinition
+	fragments = map[string]*ast.FragmentDefinition{}
 	for _, def := range doc.Definitions {
 		switch d := def.(type) {
 		case *ast.OperationDefinition:
@@ -75,6 +72,19 @@ func validateGraphQLComplexity(query string) error {
 				fragments[d.Name.Value] = d
 			}
 		}
+	}
+	return fragments, ops, true
+}
+
+// validateGraphQLComplexity parses query and rejects it when it exceeds any
+// cost budget. A parse failure is NOT rejected here — it returns nil so
+// graphql.Do produces the canonical parse error the client expects. Fragment
+// spreads are resolved (with cycle detection) so cost can't be hidden behind
+// fragments; the total-field cap also bounds the validator's own work.
+func validateGraphQLComplexity(query string) error {
+	fragments, ops, ok := parseGraphQLDocument(query)
+	if !ok {
+		return nil // let graphql.Do report the parse error
 	}
 	if len(ops) > gqlMaxOperations {
 		return fmt.Errorf("query rejected: too many operations (%d > %d)", len(ops), gqlMaxOperations)

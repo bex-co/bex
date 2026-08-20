@@ -983,15 +983,18 @@ func (s *Server) rootMux() (*http.ServeMux, error) {
 	// gate itself recognizes github's one exact signed-state callback exception;
 	// keeping the mount here ensures every other /v1 route stays covered.
 	rl := s.rateLimitMiddleware()
-	rest, err := newRenderRequestValidator(s.restHandler(cliAuth))
+	restMux := s.restHandler(cliAuth)
+	rest, err := newRenderRequestValidator(restMux)
 	if err != nil {
 		return nil, err
 	}
 	// bodyLimit is innermost: auth (bearer/cookie — never the body) and the
 	// identity-keyed rate limiter both admit the request before its body is
 	// buffered, so an unauthenticated or throttled caller is rejected without the
-	// server reading up to MaxBodyBytes (codex F11).
-	mux.Handle("/v1/", auth(rl(bodyLimit(rest))))
+	// server reading up to MaxBodyBytes (codex F11). The operation-class gate
+	// sits outside the OpenAPI validator so a read-only token is refused
+	// before schema work runs.
+	mux.Handle("/v1/", auth(rl(bodyLimit(s.withScopeClassREST(restMux, rest)))))
 	// GraphQL is body-bearing JSON and supports POST only. A method-qualified
 	// pattern makes ServeMux return 405 before auth/body decoding for GET (whose
 	// generic body limiter intentionally skips bodies).
@@ -1160,8 +1163,11 @@ func (s *Server) graphqlHandler() http.Handler {
 		// Returned as a GraphQL-shaped errors response (HTTP 200), the dialect
 		// clients already handle.
 		if err := validateGraphQLComplexity(body.Query); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]any{"errors": []map[string]any{{"message": err.Error()}}})
+			writeGraphQLErrors(w, err)
+			return
+		}
+		if err := s.requireGraphQLScope(r.Context(), body.Query, body.OperationName); err != nil {
+			writeGraphQLErrors(w, err)
 			return
 		}
 		// Env-var reads nest under the apps Service type but live in the secrets
@@ -1202,7 +1208,7 @@ func (s *Server) MCPServer() *mcp.Server {
 	if s.Apps != nil {
 		base = s.Apps.Base
 	}
-	srv.AddReceivingMiddleware(mcpWorkspaceMiddleware(base))
+	srv.AddReceivingMiddleware(mcpWorkspaceMiddleware(base, s.requireMCPScope))
 	return srv
 }
 

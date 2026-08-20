@@ -59,6 +59,20 @@ func TestErrorDialectIsRenderShaped(t *testing.T) {
 		}
 	})
 
+	t.Run("insufficient scope 403", func(t *testing.T) {
+		h, _, _ := scopedAPI(t, "identity-1", "dcr-client", "openid "+core.ScopeRead,
+			[]string{bexResource}, map[string]bool{"dcr-client": false})
+		w := do(t, h, http.MethodPost, "/v1/services/web/suspend", testToken, "")
+		assertRenderError(t, w, http.StatusForbidden)
+		var body map[string]any
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		if body["code"] != core.InsufficientScopeCode {
+			t.Errorf("code = %v, want %s", body["code"], core.InsufficientScopeCode)
+		}
+	})
+
 	t.Run("graphql decode 400", func(t *testing.T) {
 		srv := NewServer(&core.Base{Namespace: "default"}, Deps{})
 		srv.HydraAdminURL = fakeHydraURL(t)
