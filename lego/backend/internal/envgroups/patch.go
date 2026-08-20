@@ -143,7 +143,7 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	if !ok {
 		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
 	}
-	revision, err := versioned.GetVersioned(ctx, revisionPath(gid))
+	revision, err := s.getRevisionSnapshot(ctx, versioned, m.workspace, gid)
 	if err != nil || revision.Data["state"] == "repair_required" {
 		return EnvironmentPatchResult{}, envGroupRestorationFailed()
 	}
@@ -160,7 +160,7 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 			return EnvironmentPatchResult{}, envGroupRevisionConflict()
 		}
 	}
-	claimVersion, err := versioned.PutCAS(ctx, revisionPath(gid), map[string]string{
+	claimVersion, err := versioned.PutCAS(groupCtx(ctx, m.workspace), revisionPath(gid), map[string]string{
 		"state": "busy", "generation": strconv.FormatUint(generation, 10),
 	}, revision.Version)
 	if err != nil {
@@ -170,23 +170,23 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 		return EnvironmentPatchResult{}, core.ErrSecretsUnavailable
 	}
 
-	oldEnv, err := s.Store.Get(ctx, envPath(gid))
+	oldEnv, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
 	if err != nil {
-		return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, groupPatchTxn{gid: gid, versioned: versioned, claimVersion: claimVersion, generation: generation}, false)
+		return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, groupPatchTxn{gid: gid, versioned: versioned, claimVersion: claimVersion, generation: generation, oldMeta: m}, false)
 	}
-	oldFiles, err := s.Store.Get(ctx, filesPath(gid))
+	oldFiles, err := s.getGroupMap(ctx, m.workspace, filesPath(gid))
 	if err != nil {
-		return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, groupPatchTxn{gid: gid, versioned: versioned, claimVersion: claimVersion, generation: generation}, false)
+		return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, groupPatchTxn{gid: gid, versioned: versioned, claimVersion: claimVersion, generation: generation, oldMeta: m}, false)
 	}
 	env, files := core.CloneStringMap(oldEnv), core.CloneStringMap(oldFiles)
 	if err := core.ApplyEnvVarPatch(env, patch.EnvVars); err != nil {
-		if _, releaseErr := s.releaseGroupPatch(ctx, gid, versioned, claimVersion, generation, "idle"); releaseErr != nil {
+		if _, releaseErr := s.releaseGroupPatch(ctx, m.workspace, gid, versioned, claimVersion, generation, "idle"); releaseErr != nil {
 			return EnvironmentPatchResult{}, envGroupRestorationFailed()
 		}
 		return EnvironmentPatchResult{}, err
 	}
 	if err := core.ApplySecretFilePatch(files, patch.SecretFiles); err != nil {
-		if _, releaseErr := s.releaseGroupPatch(ctx, gid, versioned, claimVersion, generation, "idle"); releaseErr != nil {
+		if _, releaseErr := s.releaseGroupPatch(ctx, m.workspace, gid, versioned, claimVersion, generation, "idle"); releaseErr != nil {
 			return EnvironmentPatchResult{}, envGroupRestorationFailed()
 		}
 		return EnvironmentPatchResult{}, err
@@ -213,7 +213,7 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	}
 
 	if changedEnv {
-		if err := s.storeMap(ctx, envPath(gid), env); err != nil {
+		if err := s.storeMap(ctx, m.workspace, envPath(gid), env); err != nil {
 			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
 		}
 		if err := s.upsertSecret(ctx, m.workspace, envSecretName(gid), env); err != nil {
@@ -221,7 +221,7 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 		}
 	}
 	if changedFiles {
-		if err := s.storeMap(ctx, filesPath(gid), files); err != nil {
+		if err := s.storeMap(ctx, m.workspace, filesPath(gid), files); err != nil {
 			return EnvironmentPatchResult{}, s.abortGroupPatch(ctx, txn, true)
 		}
 		if err := s.upsertSecret(ctx, m.workspace, filesSecretName(gid), files); err != nil {
@@ -237,7 +237,7 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	if changedEnv || changedFiles {
 		newGeneration++
 	}
-	_, err = s.releaseGroupPatch(ctx, gid, versioned, claimVersion, newGeneration, "idle")
+	_, err = s.releaseGroupPatch(ctx, m.workspace, gid, versioned, claimVersion, newGeneration, "idle")
 	if err != nil {
 		return EnvironmentPatchResult{}, envGroupRestorationFailed()
 	}
@@ -270,8 +270,8 @@ func (s *Service) patchEnvironmentAuthorized(ctx context.Context, gid string, m 
 	return result, nil
 }
 
-func (s *Service) releaseGroupPatch(ctx context.Context, gid string, versioned core.VersionedSecretKV, claimVersion, generation uint64, state string) (uint64, error) {
-	version, err := versioned.PutCAS(context.WithoutCancel(ctx), revisionPath(gid), map[string]string{
+func (s *Service) releaseGroupPatch(ctx context.Context, workspace, gid string, versioned core.VersionedSecretKV, claimVersion, generation uint64, state string) (uint64, error) {
+	version, err := versioned.PutCAS(groupCtx(context.WithoutCancel(ctx), workspace), revisionPath(gid), map[string]string{
 		"state": state, "generation": strconv.FormatUint(generation, 10),
 	}, claimVersion)
 	return version, err
@@ -313,13 +313,13 @@ func (s *Service) abortGroupPatch(ctx context.Context, txn groupPatchTxn, restor
 		var restoreErrors []error
 		if txn.envChanged {
 			restoreErrors = append(restoreErrors,
-				s.storeMap(ctx, envPath(txn.gid), txn.oldEnv),
+				s.storeMap(ctx, txn.oldMeta.workspace, envPath(txn.gid), txn.oldEnv),
 				s.restoreGroupSecret(ctx, txn.oldMeta.workspace, envSecretName(txn.gid), txn.oldEnvProjection),
 			)
 		}
 		if txn.filesChanged {
 			restoreErrors = append(restoreErrors,
-				s.storeMap(ctx, filesPath(txn.gid), txn.oldFiles),
+				s.storeMap(ctx, txn.oldMeta.workspace, filesPath(txn.gid), txn.oldFiles),
 				s.restoreGroupSecret(ctx, txn.oldMeta.workspace, filesSecretName(txn.gid), txn.oldFilesProjection),
 			)
 		}
@@ -330,7 +330,7 @@ func (s *Service) abortGroupPatch(ctx context.Context, txn groupPatchTxn, restor
 	if restoreErr != nil {
 		state = "repair_required"
 	}
-	_, releaseErr := s.releaseGroupPatch(ctx, txn.gid, txn.versioned, txn.claimVersion, txn.generation, state)
+	_, releaseErr := s.releaseGroupPatch(ctx, txn.oldMeta.workspace, txn.gid, txn.versioned, txn.claimVersion, txn.generation, state)
 	if restoreErr != nil || releaseErr != nil {
 		return envGroupRestorationFailed()
 	}

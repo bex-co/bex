@@ -53,7 +53,7 @@ func (s *Service) CloneEnvGroup(ctx context.Context, sourceID string, req CloneE
 	if !ok {
 		return EnvGroupView{}, core.ErrSecretsUnavailable
 	}
-	revision, err := versioned.GetVersioned(ctx, revisionPath(sourceID))
+	revision, err := s.getRevisionSnapshot(ctx, versioned, source.workspace, sourceID)
 	if err != nil || revision.Data["state"] == "repair_required" {
 		return EnvGroupView{}, envGroupRestorationFailed()
 	}
@@ -61,7 +61,7 @@ func (s *Service) CloneEnvGroup(ctx context.Context, sourceID string, req CloneE
 		return EnvGroupView{}, envGroupRevisionConflict()
 	}
 	generation := revisionGeneration(revision.Data)
-	claimVersion, err := versioned.PutCAS(ctx, revisionPath(sourceID), map[string]string{
+	claimVersion, err := versioned.PutCAS(groupCtx(ctx, source.workspace), revisionPath(sourceID), map[string]string{
 		"state": "busy", "generation": revision.Data["generation"],
 	}, revision.Version)
 	if err != nil {
@@ -71,15 +71,15 @@ func (s *Service) CloneEnvGroup(ctx context.Context, sourceID string, req CloneE
 		return EnvGroupView{}, core.ErrSecretsUnavailable
 	}
 	release := func() error {
-		_, releaseErr := s.releaseGroupPatch(ctx, sourceID, versioned, claimVersion, generation, "idle")
+		_, releaseErr := s.releaseGroupPatch(ctx, source.workspace, sourceID, versioned, claimVersion, generation, "idle")
 		return releaseErr
 	}
-	env, err := s.Store.Get(ctx, envPath(sourceID))
+	env, err := s.getGroupMap(ctx, source.workspace, envPath(sourceID))
 	if err != nil {
 		_ = release()
 		return EnvGroupView{}, core.ErrSecretsUnavailable
 	}
-	files, err := s.Store.Get(ctx, filesPath(sourceID))
+	files, err := s.getGroupMap(ctx, source.workspace, filesPath(sourceID))
 	if err != nil {
 		_ = release()
 		return EnvGroupView{}, core.ErrSecretsUnavailable

@@ -97,8 +97,13 @@ func AuditNameClaims(ctx context.Context, store core.SecretKV, dryRun bool) (Nam
 		}
 		candidate := candidates[0]
 		path := envGroupNameClaimPath(candidate.workspace, candidate.name)
+		// w2/m80: a candidate's own name-claim entry lives under ITS workspace
+		// tenant (claimGroupName's addressing), not the ctx this audit reads
+		// groups from — mirror that here so a backfilled claim lands where
+		// claimGroupName/releaseGroupName will look for it.
+		claimCtx := groupCtx(ctx, candidate.workspace)
 		if dryRun {
-			claim, readErr := store.Get(ctx, path)
+			claim, readErr := store.Get(claimCtx, path)
 			if readErr != nil {
 				return report, readErr
 			}
@@ -112,7 +117,7 @@ func AuditNameClaims(ctx context.Context, store core.SecretKV, dryRun bool) (Nam
 			}
 			continue
 		}
-		snapshot, readErr := versioned.GetVersioned(ctx, path)
+		snapshot, readErr := versioned.GetVersioned(claimCtx, path)
 		if readErr != nil {
 			return report, readErr
 		}
@@ -126,7 +131,7 @@ func AuditNameClaims(ctx context.Context, store core.SecretKV, dryRun bool) (Nam
 			report.Conflicts++
 			continue
 		}
-		_, putErr := versioned.PutCAS(ctx, path, map[string]string{
+		_, putErr := versioned.PutCAS(claimCtx, path, map[string]string{
 			"id": candidate.id, "name": candidate.name, "workspace": candidate.workspace,
 		}, snapshot.Version)
 		if putErr != nil {

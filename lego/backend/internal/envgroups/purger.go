@@ -18,6 +18,7 @@ package envgroups
 
 import (
 	"context"
+	"errors"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -36,20 +37,31 @@ type WorkspacePurger struct {
 // and deleting any other workspace leaves it alone. Group links are constrained
 // to same-workspace Apps; the Apps purger runs in the same delete sweep, so the
 // group purger removes the projection Secrets and source paths directly.
+//
+// w2/m80: the candidate id set is prefix-scoped (listGroupIDs) — tenantID's own
+// workspace tenant (every migrated group it owns) unioned with the shared
+// legacy tenant for the dual-read window (which may hold other workspaces'
+// unmigrated groups too, so ownership is still confirmed via readMeta's own
+// dual-read before anything is deleted). deleteGroupArtifacts removes both a
+// migrated group's workspace-tenant copy and any legacy-tenant leftover
+// (locator or still-unmigrated content) in one call.
 func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) error {
 	if p.Store == nil {
 		return nil
 	}
-	ids, err := p.Store.List(ctx, "env-groups")
+	ids, err := p.listGroupIDs(ctx, tenantID, true)
 	if err != nil {
 		return err
 	}
 	for _, gid := range ids {
-		raw, err := p.Store.Get(ctx, metaPath(gid))
+		m, err := p.readMeta(ctx, gid)
+		if errors.Is(err, core.ErrNotFound) {
+			continue // create publishes metadata last; ignore an in-flight id
+		}
 		if err != nil {
 			return err
 		}
-		owner := raw["workspace"]
+		owner := m.workspace
 		if owner == "" {
 			owner = core.DefaultTenant
 		}
@@ -62,10 +74,8 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 		if err := p.deleteSecret(ctx, tenantID, filesSecretName(gid)); err != nil {
 			return err
 		}
-		for _, path := range []string{envPath(gid), filesPath(gid), metaPath(gid)} {
-			if err := p.Store.Delete(ctx, path); err != nil {
-				return err
-			}
+		if err := p.deleteGroupArtifacts(ctx, tenantID, gid); err != nil {
+			return err
 		}
 	}
 	return nil

@@ -450,6 +450,21 @@ func main() {
 		log.Printf("bex-api: environment-group name-claim audit mode=%s scanned=%d missing=%d created=%d existing=%d conflicts=%d duplicates=%v",
 			mode, report.Scanned, report.Missing, report.Created, report.Existing, report.Conflicts, report.Duplicates)
 	}
+	// w2/m80: the explicit, opt-in move of env-groups off the shared legacy
+	// OpenBao tenant onto their own workspace-prefixed tenants. See
+	// docs/runbooks/env-group-path-migration.md before ever running apply
+	// mode against a production store.
+	if mode := strings.TrimSpace(os.Getenv("BEX_ENV_GROUP_PATH_MIGRATION")); mode != "" {
+		if mode != "dry-run" && mode != "apply" {
+			log.Fatalf("bex-api: BEX_ENV_GROUP_PATH_MIGRATION must be dry-run or apply")
+		}
+		report, migrateErr := envgroups.MigratePaths(ctx, deps.Secrets, mode == "dry-run")
+		if migrateErr != nil {
+			log.Fatalf("bex-api: environment-group path migration: %v", migrateErr)
+		}
+		log.Printf("bex-api: environment-group path migration mode=%s scanned=%d migrated=%d alreadyMigrated=%d skippedNoWorkspace=%d failed=%v",
+			mode, report.Scanned, report.Migrated, report.AlreadyMigrated, report.SkippedNoWorkspace, report.Failed)
+	}
 	srv.AgentSessionCompleter.Metrics = agentsessions.NewCompletionMetrics(metricRegistry)
 	// codex round-8 #9: the signed git webhook durably claims each processed
 	// delivery body so a captured (body, signature) pair cannot be replayed into

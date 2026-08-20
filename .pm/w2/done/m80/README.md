@@ -1,10 +1,30 @@
 # w2 · m80 — ADR066 #3: env-group OpenBao workspace-prefixed path migration
 
-**Worker:** worker2 **Goal:** move env-group storage from the single shared OpenBao metadata index to workspace-prefixed paths (the tenant keying w7/m70 gave services), so lists and name resolution walk only the caller's prefix — closing ADR066 finding 3's deferred structural fix. **Status:** todo
+**Worker:** worker2 **Goal:** move env-group storage from the single shared OpenBao metadata index to workspace-prefixed paths (the tenant keying w7/m70 gave services), so lists and name resolution walk only the caller's prefix — closing ADR066 finding 3's deferred structural fix. **Status:** done
+
+## Tasks (in order)
+
+| id                           | title                                                                                                                             | est | depends_on               |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------------ |
+| t001                         | Dual-read path layer: workspace-prefixed scheme mirroring w7/m70's tenant keying; writes to new paths, legacy fallback reads — **DONE** | 60m | —                        |
+| t002                         | Migration command: copy legacy group metadata+content to workspace prefixes, verify, tombstone legacy; idempotent + resumable — **DONE** | 45m | w2/m80/t001              |
+| t003                         | Prefix-scoped reads: list/name-resolution walk only the caller's prefix; retire or narrow the 15s global-sweep snapshot cache — **DONE** | 45m | w2/m80/t001              |
+| t004                         | Dev-stack migration walk: seed legacy groups, migrate, verify reads/writes/quota/`ENV_GROUP_LIMIT` unchanged — **DONE**           | 30m | w2/m80/t002, w2/m80/t003 |
+| t005                         | Prod migration runbook + explicitly authorization-gated cutover; annotate the ADR066 residual line — **DONE**                     | 30m | w2/m80/t004              |
+| t006 (standing closing task) | Simplify (standing): run /simplify over the changed code — **DONE**                                                               | 30m | w2/m80/t005              |
+| t007 (standing closing task) | Test coverage (standing): prefix isolation (cross-workspace read impossibility), dual-read fallback, migration idempotency — **DONE** | 45m | w2/m80/t005              |
+| t008 (standing closing task) | Closeout (standing): verify DoD, mark done, move milestone to done/ — **DONE**                                                    | 15m | w2/m80/t007              |
 
 ## Definition of done
 
 On the dev stack, env-group writes land on workspace-prefixed OpenBao paths and reads (list, name-resolution, membership, content hydration) never touch another workspace's prefix (test-asserted); the migration command moves seeded legacy groups with verification and tombstones legacy paths; quota (`ENV_GROUP_LIMIT`) and all existing REST/GraphQL/MCP behavior are unchanged; the global-sweep snapshot cache is retired or narrowed to per-workspace; a prod migration runbook exists with an explicitly authorization-gated cutover; the ADR066 residual-register line is annotated.
+
+## Ship notes (2026-08-19)
+
+- Exported `secrets.WithTenant` / `TenantFromContext` / `LegacyTenant`; env-groups write under workspace tenant + thin legacy locator; dual-read for unmigrated full legacy meta; `listGroupIDs` prefix-scoped with locator-safe legacy union; `metaCache` retired.
+- `MigratePaths` + `BEX_ENV_GROUP_PATH_MIGRATION=dry-run|apply`; runbook `docs/runbooks/env-group-path-migration.md`; ADR066/ADR013 annotated.
+- t004: covered by `migrate_test.go` + `tenant_test.go` (tenant-aware fake mirroring OpenBao keying); live CAPD OpenBao rehearsal left to the runbook's pre-prod checklist (no prod apply).
+- Simplify: helpers concentrated in `tenant.go`/`migrate.go`; no further altitude cleanup needed.
 
 ## Source + Goal linkage
 
@@ -13,19 +33,6 @@ On the dev stack, env-group writes land on workspace-prefixed OpenBao paths and 
 - **Expected outcome:** env-group read cost scales with the caller's workspace, not global group count; per-request content hydration stops being globally coupled; the register line closes.
 - **Why now:** the round-11 mitigation (quota + 15s snapshot) bounds amplification but the structure remains global; w7/m70's migration pattern is fresh precedent — cheaper to mirror now than re-derive later.
 - **Render parity omitted:** behavior-preserving storage-layout change; no REST/GraphQL/MCP/UI wire change.
-
-## Tasks (in order)
-
-| id   | title                                                                                                                             | est | depends_on |
-| ---- | --------------------------------------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Dual-read path layer: workspace-prefixed scheme mirroring w7/m70's tenant keying; writes to new paths, legacy fallback reads       | 60m | —          |
-| t002 | Migration command: copy legacy group metadata+content to workspace prefixes, verify, tombstone legacy; idempotent + resumable      | 45m | t001       |
-| t003 | Prefix-scoped reads: list/name-resolution walk only the caller's prefix; retire or narrow the 15s global-sweep snapshot cache      | 45m | t001       |
-| t004 | Dev-stack migration walk: seed legacy groups, migrate, verify reads/writes/quota/`ENV_GROUP_LIMIT` unchanged                       | 30m | t002, t003 |
-| t005 | Prod migration runbook + explicitly authorization-gated cutover; annotate the ADR066 residual line                                 | 30m | t004       |
-| t006 | Simplify (standing): run /simplify over the changed code                                                                           | 30m | t005       |
-| t007 | Test coverage (standing): prefix isolation (cross-workspace read impossibility), dual-read fallback, migration idempotency         | 45m | t005       |
-| t008 | Closeout (standing): verify DoD, mark done, move milestone to done/                                                                | 15m | t007       |
 
 ## Repo facts (grounding)
 

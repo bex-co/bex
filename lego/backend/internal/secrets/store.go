@@ -52,12 +52,14 @@ const (
 )
 
 // tenantCtxKey carries the workspace (tenant) id that scopes an OpenBao path. The
-// secrets feature sets it per-request from the App's core.LabelTenant (w7/m70),
-// so two same-named services in different workspaces resolve to disjoint KV paths
-// (tenants/data/<tenant>/services/<name>/…). A request that does not set it — the
-// env-groups feature, the legacy read path — falls back to baoTenant, preserving
-// the pre-w7/m70 single-tenant layout (byte-identical for env-groups, which never
-// sets the key).
+// secrets feature sets it per-request from the App's core.LabelTenant (w7/m70), so
+// two same-named services in different workspaces resolve to disjoint KV paths
+// (tenants/data/<tenant>/services/<name>/…). w2/m80 reuses the same seam (exported
+// as WithTenant/TenantFromContext below) to move env-groups off the shared
+// LegacyTenant root onto their own workspace-prefixed paths. A request that does
+// not set it falls back to baoTenant, preserving the pre-w7/m70 single-tenant
+// layout (byte-identical for env-groups' still-unmigrated legacy paths and for any
+// caller that never sets the key).
 type tenantCtxKey struct{}
 
 // withTenant returns ctx annotated with the owning workspace so the store prefixes
@@ -70,12 +72,33 @@ func withTenant(ctx context.Context, tenant string) context.Context {
 }
 
 // tenantFromCtx returns the request's workspace id, defaulting to baoTenant when
-// unset (env-groups, the lazy-migrator's legacy read, store-level tests).
+// unset (env-groups' legacy paths, the lazy-migrator's legacy read, store-level
+// tests).
 func tenantFromCtx(ctx context.Context) string {
 	if v, ok := ctx.Value(tenantCtxKey{}).(string); v != "" && ok {
 		return v
 	}
 	return baoTenant
+}
+
+// LegacyTenant is the pre-w7/m70 shared single-tenant OpenBao root ("default").
+// w2/m80 exports it so envgroups can address the same legacy root explicitly —
+// the dual-read fallback and the one-time path migration's source — without
+// duplicating the constant.
+const LegacyTenant = baoTenant
+
+// WithTenant is the exported form of withTenant: it scopes ctx to tenant's own
+// OpenBao path prefix ("" normalizes to LegacyTenant). Exported for envgroups'
+// w2/m80 workspace-prefixed env-group layout, which reuses this store's tenant
+// seam exactly as the per-service secrets feature (w7/m70) does.
+func WithTenant(ctx context.Context, tenant string) context.Context {
+	return withTenant(ctx, tenant)
+}
+
+// TenantFromContext is the exported form of tenantFromCtx, letting envgroups
+// (w2/m80) inspect which OpenBao tenant a context currently addresses.
+func TenantFromContext(ctx context.Context) string {
+	return tenantFromCtx(ctx)
 }
 
 // openBaoStore implements core.SecretKV over OpenBao's KV v2 engine,
