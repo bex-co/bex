@@ -163,6 +163,15 @@ func execSelectionCases() []execSelectionCase {
 			_, err := (&apps.Service{Base: base}).SetDockerfilePath(ctx, "web", "vendor/example/Dockerfile.pwn")
 			return err
 		},
+	}, {
+		// codex round-16 #5: deployID selects a prior ResolvedImage that becomes
+		// App.spec.image — executable selection, not lifecycle.
+		name:              "deploy rollback",
+		selectsExecutable: true,
+		invoke: func(ctx context.Context, base *core.Base) error {
+			_, err := (&deploys.Service{Base: base}).Rollback(ctx, "web", "dep-prior")
+			return err
+		},
 	}}
 }
 
@@ -244,6 +253,7 @@ func TestExecutableSelectionClassIsComplete(t *testing.T) {
 		"*apps.Service.SetCronJob":          "cron command",
 		"*jobs.Service.Create":              "one-off job command",
 		"*deploys.Service.Trigger":          "deploy trigger with imageUrl",
+		"*deploys.Service.Rollback":         "deploy rollback",
 		"*apps.Service.SetRootDir":          "build root directory",
 		"*apps.Service.SetDockerfilePath":   "dockerfile path",
 	}

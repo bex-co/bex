@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -27,6 +28,10 @@ import (
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
+
+// ErrLastAdmin is the typed refusal when a demotion or removal would leave a
+// workspace with zero administrators (codex round-16 #3).
+var ErrLastAdmin = fmt.Errorf("%w: cannot remove or demote the last admin of a workspace", ErrInvalid)
 
 // Stable direct-invite redemption causes. Each wraps ErrConflict so existing
 // REST/MCP status semantics remain unchanged while callers can classify the
@@ -121,9 +126,37 @@ func (s *PGStore) SubjectIsWorkspaceAdmin(ctx context.Context, tenantID, subject
 // subject is not a member of the workspace). The role CHECK is enforced by the
 // API layer's validation, not the column, so an unknown role is a caller error
 // mapped upstream, not a constraint violation here.
+//
+// SECURITY (codex round-16 #3): demoting an admin re-counts admins inside the
+// same transaction under a tenant advisory lock so two concurrent demotions
+// cannot both pass a standalone count and leave zero admins.
 func (s *PGStore) UpdateMemberRole(ctx context.Context, tenantID, subject, role string) error {
 	var affected int64
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, tenantID); err != nil {
+			return err
+		}
+		var currentRole string
+		err := tx.QueryRow(ctx,
+			`SELECT role FROM tenant_members WHERE tenant_id = $1 AND subject = $2 FOR UPDATE`,
+			tenantID, subject).Scan(&currentRole)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil
+			}
+			return err
+		}
+		if currentRole == "admin" && role != "admin" {
+			var admins int
+			if err := tx.QueryRow(ctx,
+				`SELECT count(*) FROM tenant_members WHERE tenant_id = $1 AND role = 'admin'`,
+				tenantID).Scan(&admins); err != nil {
+				return err
+			}
+			if admins <= 1 {
+				return ErrLastAdmin
+			}
+		}
 		tag, err := tx.Exec(ctx,
 			`UPDATE tenant_members SET role = $3 WHERE tenant_id = $1 AND subject = $2`,
 			tenantID, subject, role)
@@ -137,6 +170,9 @@ func (s *PGStore) UpdateMemberRole(ctx context.Context, tenantID, subject, role 
 		return enqueueRoleReconciliation(ctx, tx, tenantID, subject, role)
 	})
 	if err != nil {
+		if errors.Is(err, ErrLastAdmin) {
+			return err
+		}
 		return classify("tenant_member", err)
 	}
 	if affected == 0 {
@@ -147,14 +183,53 @@ func (s *PGStore) UpdateMemberRole(ctx context.Context, tenantID, subject, role 
 
 // RemoveMember deletes a membership row (ErrNotFound when absent). The FGA tuple
 // removal is the caller's separate, best-effort step (members.Service.Remove).
+//
+// SECURITY (codex round-16 #3): removing an admin re-counts under the same
+// tenant advisory lock as UpdateMemberRole so concurrent remove/demote cannot
+// erase the last administrator.
 func (s *PGStore) RemoveMember(ctx context.Context, tenantID, subject string) error {
-	tag, err := s.Pool.Exec(ctx,
-		`DELETE FROM tenant_members WHERE tenant_id = $1 AND subject = $2`,
-		tenantID, subject)
+	var affected int64
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, tenantID); err != nil {
+			return err
+		}
+		var currentRole string
+		err := tx.QueryRow(ctx,
+			`SELECT role FROM tenant_members WHERE tenant_id = $1 AND subject = $2 FOR UPDATE`,
+			tenantID, subject).Scan(&currentRole)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil
+			}
+			return err
+		}
+		if currentRole == "admin" {
+			var admins int
+			if err := tx.QueryRow(ctx,
+				`SELECT count(*) FROM tenant_members WHERE tenant_id = $1 AND role = 'admin'`,
+				tenantID).Scan(&admins); err != nil {
+				return err
+			}
+			if admins <= 1 {
+				return ErrLastAdmin
+			}
+		}
+		tag, err := tx.Exec(ctx,
+			`DELETE FROM tenant_members WHERE tenant_id = $1 AND subject = $2`,
+			tenantID, subject)
+		if err != nil {
+			return err
+		}
+		affected = tag.RowsAffected()
+		return nil
+	})
 	if err != nil {
+		if errors.Is(err, ErrLastAdmin) {
+			return err
+		}
 		return classify("tenant_member", err)
 	}
-	if tag.RowsAffected() == 0 {
+	if affected == 0 {
 		return fmt.Errorf("tenant_member %s: %w", subject, ErrNotFound)
 	}
 	return nil

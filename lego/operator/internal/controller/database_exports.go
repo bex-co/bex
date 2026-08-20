@@ -44,6 +44,36 @@ const (
 	exportWorkVolumeSize = 20 * (1 << 30) // 20 GiB
 )
 
+// cnpgExportImages pins every Postgres major a tenant may request for the
+// logical-export pg_dump Job (round-16 #11). The set is closed by
+// DatabaseSpec.Version's kubebuilder enum — adding a major without a digest
+// here fails TestCNPGExportImagesArePinnedForEveryPermittedVersion. Digests
+// are the multi-arch index digests from
+// `docker buildx imagetools inspect ghcr.io/cloudnative-pg/postgresql:<v>`.
+var cnpgExportImages = map[string]string{
+	"13": "ghcr.io/cloudnative-pg/postgresql:13@sha256:bd12cfd185d2a5cb09ac51dd7c61cb7801da6250e8d9bd72d2891fcdedace32b",
+	"14": "ghcr.io/cloudnative-pg/postgresql:14@sha256:d9bbdd7ab2bcb4c2b89bc6c9e7285060c674581c81c883c706488a66a5e0c0d9",
+	"15": "ghcr.io/cloudnative-pg/postgresql:15@sha256:cbab476b80bb605e9563a6ae9b0fa7fedc0e6fa923986a99c332fd740ec80611",
+	"16": "ghcr.io/cloudnative-pg/postgresql:16@sha256:e38d10bb2c7420e62efe9afabf207c005d93cdcf30f19f692d047f7dc660271e",
+	"17": "ghcr.io/cloudnative-pg/postgresql:17@sha256:03cacc5491ebdabf58eeecec2ae401076f1062f14f84af9956fd6ec235082188",
+	"18": "ghcr.io/cloudnative-pg/postgresql:18@sha256:d7a81cb5da3182d95d0da5fabfb9e484e375db899dcd54b684105f1e8966e9ca",
+}
+
+// cnpgExportImage resolves the digest-pinned CNPG client image for a major.
+// Empty/unknown falls back to the pinned logicalExportClientVersion image —
+// never a mutable tag composed from the version string.
+func cnpgExportImage(version string) string {
+	if image, ok := cnpgExportImages[version]; ok {
+		return image
+	}
+	if image, ok := cnpgExportImages[logicalExportClientVersion]; ok {
+		return image
+	}
+	// Unreachable while logicalExportClientVersion stays in the map; kept so a
+	// mis-edit fails closed rather than composing a tag.
+	return cnpgExportImages["18"]
+}
+
 // reconcileExports projects append-only Database.spec.exports requests into
 // Jobs and reports an honest lifecycle in Database.status.exports. It returns
 // the next required poll: short while Jobs run, or the exact next retention
@@ -286,7 +316,7 @@ func exportJob(db *appv1alpha1.Database, request appv1alpha1.DatabaseExportReque
 					}}}},
 					InitContainers: []corev1.Container{{
 						Name:            "pg-dump",
-						Image:           "ghcr.io/cloudnative-pg/postgresql:" + version,
+						Image:           cnpgExportImage(version),
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Command:         []string{"/bin/sh", "-ec"},
 						Args: []string{`mkdir -p "/work/${EXPORT_DIRECTORY}/${PGDATABASE}"

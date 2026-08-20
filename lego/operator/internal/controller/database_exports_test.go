@@ -85,8 +85,10 @@ func TestLogicalExportJobShape(t *testing.T) {
 		t.Fatalf("want sequential pg_dump init + upload main containers: %+v", job.Spec.Template.Spec)
 	}
 	dump := job.Spec.Template.Spec.InitContainers[0]
-	if dump.Image != "ghcr.io/cloudnative-pg/postgresql:16" || !strings.Contains(dump.Args[0], "pg_dump --format=directory") || !strings.Contains(dump.Args[0], "tar -C /work -czf") {
-		t.Fatalf("dump container does not produce a directory-format tarball: %+v", dump)
+	wantImage := cnpgExportImage("16")
+	if dump.Image != wantImage || !strings.Contains(dump.Image, "@sha256:") ||
+		!strings.Contains(dump.Args[0], "pg_dump --format=directory") || !strings.Contains(dump.Args[0], "tar -C /work -czf") {
+		t.Fatalf("dump container does not produce a directory-format tarball from a pinned image: %+v", dump)
 	}
 	for _, env := range dump.Env {
 		if env.Name == "PGPASSWORD" && env.Value != "" {

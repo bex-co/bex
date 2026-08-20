@@ -376,6 +376,9 @@ var representativeVerbRelations = map[string]string{
 	// BuildKit executes.
 	"*apps.Service.SetRootDir":        core.RelCanCreate,
 	"*apps.Service.SetDockerfilePath": core.RelCanCreate,
+	// Rollback selects a prior deploy's image (codex round-16 #5) — create-like,
+	// same class as Trigger(imageUrl).
+	"*deploys.Service.Rollback": core.RelCanCreate,
 	// Steering re-dispatches a FRESH sandbox with the same reusable model key and
 	// a caller-supplied prompt + egress allowlist, so it is as create-like as
 	// Create itself — not a lifecycle verb (codex round-4 #3).

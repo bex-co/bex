@@ -96,6 +96,11 @@ func WithIdentity(ctx context.Context, id Identity) context.Context {
 // Implemented by the composition root against Hydra's admin API; consumed by
 // Base.AuthorizeMintClass so a delegated human token can prove it comes from
 // a bex-issued client. Errors mean "cannot establish trust", never "false".
+//
+// IsPlatformClient may serve a short positive TTL cache (audience / scope
+// classification). IsPlatformClientFresh always re-reads Hydra and is required
+// at durable-credential mint boundaries (codex round-16 #4).
 type PlatformClientResolver interface {
 	IsPlatformClient(ctx context.Context, clientID string) (bool, error)
+	IsPlatformClientFresh(ctx context.Context, clientID string) (bool, error)
 }

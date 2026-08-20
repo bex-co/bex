@@ -827,7 +827,10 @@ func (b *Base) AuthorizeMintClass(ctx context.Context) error {
 		if b.PlatformClients == nil {
 			return ErrForbidden // trust cannot be established — fail closed
 		}
-		platform, err := b.PlatformClients.IsPlatformClient(ctx, id.ClientID)
+		// Fresh Hydra read (codex round-16 #4): a positive platformClients cache
+		// entry must not authorize minting an API key / SSH key / deploy-hook
+		// credential after the OAuth client loses its platform marker.
+		platform, err := b.PlatformClients.IsPlatformClientFresh(ctx, id.ClientID)
 		if err != nil {
 			return fmt.Errorf("%w: %v", ErrAuthzUnavailable, err)
 		}

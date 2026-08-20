@@ -44,6 +44,23 @@ if command -v sha256sum >/dev/null; then
 else
   (cd "$release_dir" && shasum -a 256 "$artifact.tar.gz" > checksums.txt)
 fi
+# Offline fixture: a placeholder bundle plus a PATH stub for cosign so the
+# installer exercises the verify-blob gate without network TUF (codex round-16 #1).
+printf '{}\n' > "$release_dir/checksums.txt.sigstore.json"
+mkdir -p "$tmp/bin"
+cat > "$tmp/bin/cosign" <<'EOF'
+#!/bin/sh
+# Fixture stub: accept verify-blob when a bundle path was supplied.
+for a in "$@"; do
+  case "$a" in
+    --bundle) exit 0 ;;
+  esac
+done
+echo "cosign stub: unexpected argv: $*" >&2
+exit 1
+EOF
+chmod +x "$tmp/bin/cosign"
+export PATH="$tmp/bin:$PATH"
 # The API fixture lists a non-CLI release first to prove tag-prefix filtering.
 cat > "$srv/repos/bex-co/bex/releases" <<EOF
 [
@@ -110,6 +127,15 @@ if out="$(BEX_VERSION="$version" BEX_API_URL="$base" BEX_DOWNLOAD_URL="$base/dl"
 fi
 echo "$out" | grep -q "no entry for" || fail "missing-entry error not reported:\n$out"
 cp "$tmp/checksums.orig" "$release_dir/checksums.txt"
+
+# ── installer: missing Sigstore bundle must abort before install ────────────
+rm -f "$release_dir/checksums.txt.sigstore.json"
+if out="$(BEX_VERSION="$version" BEX_API_URL="$base" BEX_DOWNLOAD_URL="$base/dl" BEX_INSTALL_DIR="$tmp/bin-nosig" sh "$INSTALL" 2>&1)"; then
+  fail "installer accepted a release without checksums.txt.sigstore.json:\n$out"
+fi
+echo "$out" | grep -q "sigstore.json" || fail "missing-signature error not reported:\n$out"
+[ ! -e "$tmp/bin-nosig/bex" ] || fail "binary installed despite missing signature"
+printf '{}\n' > "$release_dir/checksums.txt.sigstore.json"
 
 # ── installer: checksum mismatch must abort before installing ───────────────
 awk '{ replacement = substr($1, 1, 1) == "0" ? "1" : "0"; print replacement substr($1, 2) "  " $2 }' \

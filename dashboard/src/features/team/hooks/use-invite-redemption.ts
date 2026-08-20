@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { AcceptWorkspaceInviteDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
+  peekPendingInviteToken,
   retainPendingInviteToken,
   takePendingInviteToken,
 } from "@/common/lib/invite-token";
@@ -11,32 +12,45 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { classifyInviteRedemptionError } from "./invite-redemption-error";
 
 /**
- * Redeems a pending invite token once the caller is authenticated (w1/m33):
- * the token comes from the emailed link (`?invite=` on the current URL, or the
- * sessionStorage stash the auth pages wrote before the Kratos round-trip).
- * Success joins the workspace — even when the caller signed up under a
- * different email than the one invited — toasts the workspace joined, and
- * refreshes the switcher. A used/expired token gets a named failure toast,
- * never a silent no-op. Mounted once in the authenticated layout.
+ * Offers workspace-invite acceptance after the caller is authenticated
+ * (w1/m33 + codex round-16 #8). The token comes from the emailed link
+ * (`?invite=` or the sessionStorage stash written before the Kratos
+ * round-trip). Navigation alone never mutates membership — the user must
+ * click Accept. Decline clears the pending capability.
  */
 export function useInviteRedemption() {
   const { t } = useTranslations();
   const { refetch } = useWorkspace();
   const [acceptMut] = useMutation(AcceptWorkspaceInviteDocument);
-  const attempted = useRef(false);
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (attempted.current || typeof window === "undefined") return;
+    if (typeof window === "undefined") return;
+    setPendingToken(peekPendingInviteToken());
+  }, []);
+
+  const decline = useCallback(() => {
+    takePendingInviteToken();
+    setPendingToken(null);
+  }, []);
+
+  const accept = useCallback(async () => {
+    if (busy) return;
     const token = takePendingInviteToken();
+    setPendingToken(null);
     if (!token) return;
-    attempted.current = true;
-    void (async () => {
+    setBusy(true);
+    try {
       let data;
       try {
         ({ data } = await acceptMut({ variables: { token } }));
       } catch (e) {
         const failure = classifyInviteRedemptionError(e);
-        if (failure === "ambiguous") retainPendingInviteToken(token);
+        if (failure === "ambiguous") {
+          retainPendingInviteToken(token);
+          setPendingToken(token);
+        }
         toast.error(
           failure === "already-accepted"
             ? t("team.inviteAcceptedAlready")
@@ -58,6 +72,10 @@ export function useInviteRedemption() {
         // The mutation committed. A failed switcher refresh must not restore a
         // now-spent capability and accidentally submit it a second time.
       }
-    })();
-  }, [acceptMut, refetch, t]);
+    } finally {
+      setBusy(false);
+    }
+  }, [acceptMut, busy, refetch, t]);
+
+  return { pendingToken, busy, accept, decline };
 }

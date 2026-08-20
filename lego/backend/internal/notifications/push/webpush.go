@@ -41,6 +41,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/hkdf"
+
+	"github.com/bex-co/bex/lego/types/netutil"
 )
 
 // Web Push is implemented in-tree (RFC 8291 aes128gcm + RFC 8292 VAPID) with
@@ -123,7 +125,20 @@ func NewWebPush(config WebPushConfig, options ...Option) (*WebPush, error) {
 	}
 	doer := opts.doer
 	if doer == nil {
-		doer = &http.Client{Timeout: timeout}
+		// SECURITY (codex round-16 #6): tenant-controlled push endpoints must
+		// not reach loopback/private/link-local/metadata via the control-plane
+		// pod. Match outbound webhooks: SafeDialContext, no ambient proxy, no
+		// redirects.
+		tr := http.DefaultTransport.(*http.Transport).Clone()
+		tr.DialContext = netutil.SafeDialContext(timeout)
+		tr.Proxy = nil
+		doer = &http.Client{
+			Timeout: timeout,
+			Transport: tr,
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
 	}
 	return &WebPush{
 		publicB64:  base64.RawURLEncoding.EncodeToString(wantPub),
@@ -166,6 +181,10 @@ func (w *WebPush) Send(ctx context.Context, msg WebPushMessage) error {
 	if w == nil {
 		return errors.New("push webpush transport unavailable")
 	}
+	// allowLoopbackHTTP remains true for Send: unit tests inject an http.Client
+	// against httptest (HTTP loopback), and the production default client still
+	// refuses those dials via SafeDialContext (codex round-16 #6). Registration
+	// is HTTPS-only and never persists a loopback endpoint.
 	endpoint, err := validatePushEndpoint(msg.Endpoint, true)
 	if err != nil {
 		return &PayloadError{Field: "endpoint", Reason: "invalid"}
@@ -335,7 +354,7 @@ func decodeKeyMaterial(s string) ([]byte, error) {
 }
 
 func ValidatePublicPushEndpoint(raw string) (string, error) {
-	return validatePushEndpoint(raw, true)
+	return validatePushEndpoint(raw, false)
 }
 
 func DecodeSubscriptionKey(s string) ([]byte, error) {

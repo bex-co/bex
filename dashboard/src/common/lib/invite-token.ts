@@ -86,6 +86,24 @@ export function stashInviteTokenFromURL(options?: {
   return replacePendingInviteToken(token) ? "stored" : "unavailable";
 }
 
+/** Peek at a pending capability without consuming it — used to offer explicit
+ * acceptance after authenticated navigation (codex round-16 #8). */
+export function peekPendingInviteToken(): string | null {
+  if (typeof window === "undefined") return null;
+
+  const url = new URL(window.location.href);
+  const values = url.searchParams.getAll("invite");
+  if (values.length > 0) {
+    return parseInviteToken(values.length === 1 ? values[0] : null);
+  }
+
+  try {
+    return parseInviteToken(window.sessionStorage.getItem(INVITE_TOKEN_STORAGE_KEY));
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Consume one pending capability for authenticated redemption. A present URL
  * parameter always wins: malformed or duplicate parameters are rejected and

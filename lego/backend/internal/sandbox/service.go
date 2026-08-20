@@ -679,10 +679,12 @@ func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, works
 // same bex-pre-snapshot hook Suspend uses), tars the mutable workspace state
 // (`/workspace` + `~/.zed_server` when present) preserving ownership, prints the
 // digest + byte count on stdout (the only channel back), then streams the
-// archive straight to the presigned PUT URL — so **no durable credential ever
-// enters the sandbox**, only a single-object time-boxed URL. `set -e` +
-// `pipefail`-free curl `-f` make any failure a non-zero exit the caller treats
-// as "hibernation failed, fall back to Terminate". The URL is single-quoted; a
+// archive straight to the create-once presigned PUT URL — so **no durable
+// credential ever enters the sandbox**, only a single-object time-boxed URL.
+// `If-None-Match: *` must match PrepareUpload's signed precondition so a
+// retained argv URL cannot overwrite an already-written snapshot (round-16 #9).
+// `set -e` + curl `-f` make any failure a non-zero exit the caller treats as
+// "hibernation failed, fall back to Terminate". The URL is single-quoted; a
 // presigned URL is percent-encoded and never contains a single quote.
 const hibernateScript = `set -e
 %s
@@ -694,7 +696,7 @@ tar czf "$SNAP" --numeric-owner $MEMBERS 2>/dev/null
 sha256sum "$SNAP" | cut -d' ' -f1
 wc -c < "$SNAP"
 if [ -n "$(git -C /workspace status --porcelain 2>/dev/null)" ]; then echo dirty; else echo clean; fi
-curl -sSf -X PUT --upload-file "$SNAP" %s
+curl -sSf -X PUT -H 'If-None-Match: *' --upload-file "$SNAP" %s
 rm -f "$SNAP"`
 
 // HibernateAgentSessionSandbox snapshots the session's mutable state to the

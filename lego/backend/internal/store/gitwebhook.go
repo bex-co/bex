@@ -16,14 +16,23 @@ limitations under the License.
 
 package store
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // gitwebhook.go is the durable replay ledger for the signed Git push webhook
 // (codex round-8 #9). The webhook's HMAC verifies the body's bytes; nothing
 // about that proves the delivery is FRESH. These claims close the replay path:
 // the exact signed bytes are claimed once before any mutation, so a captured
 // (body, signature) pair — however it is resent — can never re-enter
-// redeploy/sync. See migrations/0074 for the table contract.
+// redeploy/sync. See migrations/0074 for the table contract and 0092 for the
+// retention index (codex round-16 #12).
+
+// DefaultGitWebhookReplayRetention is how long a successful replay claim is
+// kept. Git hosts retry for hours, not weeks; 90d matches audit/webhook
+// delivery retention and bounds shared-table growth.
+const DefaultGitWebhookReplayRetention = 90 * 24 * time.Hour
 
 // ClaimGitWebhookDelivery atomically claims a delivery-body digest. It returns
 // true when this caller is the first to claim (the delivery should proceed) and
@@ -48,4 +57,15 @@ func (s *PGStore) ReleaseGitWebhookDelivery(ctx context.Context, digest string) 
 	const q = `DELETE FROM git_webhook_replays WHERE digest = $1`
 	_, err := s.Pool.Exec(ctx, q, digest)
 	return err
+}
+
+// PurgeGitWebhookReplays deletes claims older than before (codex round-16 #12).
+// Duplicate suppression remains atomic inside the retention window.
+func (s *PGStore) PurgeGitWebhookReplays(ctx context.Context, before time.Time) (int64, error) {
+	const q = `DELETE FROM git_webhook_replays WHERE created_at < $1`
+	tag, err := s.Pool.Exec(ctx, q, before.UTC())
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
 }

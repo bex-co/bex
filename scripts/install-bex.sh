@@ -74,9 +74,24 @@ asset_base="${download_url}/bex-cli%2Fv${version}"
 
 echo "Downloading bex v${version} (${os}/${arch})…"
 # checksums.txt first: fail before the larger download when the release is
-# malformed or has no entry for this platform.
+# malformed or has no entry for this platform. Authenticity requires the
+# Sigstore bundle (same policy as `bex upgrade`); a matching unsigned
+# checksum alone is not enough (codex round-16 #1).
 curl -fsSL -o "${workdir}/checksums.txt" "${asset_base}/checksums.txt" ||
   fail "download failed: ${asset_base}/checksums.txt"
+curl -fsSL -o "${workdir}/checksums.txt.sigstore.json" "${asset_base}/checksums.txt.sigstore.json" ||
+  fail "download failed: ${asset_base}/checksums.txt.sigstore.json (unsigned releases are refused)"
+
+if ! command -v cosign >/dev/null; then
+  fail "cosign is required to verify the release signature (install from https://docs.sigstore.dev/cosign/system_config/installation/)"
+fi
+cosign verify-blob \
+  --bundle "${workdir}/checksums.txt.sigstore.json" \
+  --certificate-identity-regexp '^https://github\.com/bex-co/bex/\.github/workflows/cli-release\.yml@refs/tags/bex-cli/v' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  "${workdir}/checksums.txt" >/dev/null ||
+  fail "checksums.txt signature verification failed — refusing to install"
+
 expected="$(awk -v f="${artifact}.tar.gz" '$2 == f { print $1; exit }' "${workdir}/checksums.txt")"
 [ -n "$expected" ] || fail "checksums.txt has no entry for ${artifact}.tar.gz"
 

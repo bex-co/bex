@@ -260,13 +260,25 @@ func TestKeyValueBackupEncryptStepWhenKeyConfigured(t *testing.T) {
 			pod.InitContainers[0].Name, pod.InitContainers[1].Name, pod.InitContainers[2].Name)
 	}
 	encrypt := pod.InitContainers[2]
-	if !strings.Contains(encrypt.Args[0], `age -r "${AGE_PUBLIC_KEY}"`) ||
+	if strings.Contains(encrypt.Args[0], "apk add") {
+		t.Fatal("encrypt must not install age from a mutable package index")
+	}
+	if !strings.Contains(encrypt.Args[0], "FiloSottile/age/releases") ||
+		!strings.Contains(encrypt.Args[0], "sha256sum -c") ||
+		!strings.Contains(encrypt.Args[0], `./age/age -r "${AGE_PUBLIC_KEY}"`) ||
 		!strings.Contains(encrypt.Args[0], "/backup/dump.rdb.gz.age /backup/dump.rdb.gz") ||
 		!strings.Contains(encrypt.Args[0], "rm -f /backup/dump.rdb.gz") {
-		t.Fatalf("encrypt command is not a public-key age encrypt+cleanup: %q", encrypt.Args[0])
+		t.Fatalf("encrypt command is not a pinned-release age encrypt+cleanup: %q", encrypt.Args[0])
 	}
-	if len(encrypt.Env) != 1 || encrypt.Env[0].Name != "AGE_PUBLIC_KEY" || encrypt.Env[0].Value != pubKey {
-		t.Fatalf("encrypt must receive the recipient public key by value: %#v", encrypt.Env)
+	env := map[string]string{}
+	for _, e := range encrypt.Env {
+		env[e.Name] = e.Value
+	}
+	if env["AGE_PUBLIC_KEY"] != pubKey || env["AGE_VERSION"] != ageReleaseVersion || env["AGE_SHA256"] != ageReleaseSHA256 {
+		t.Fatalf("encrypt env = %#v, want recipient + pinned release coordinates", encrypt.Env)
+	}
+	if !strings.Contains(encrypt.Image, "@sha256:") {
+		t.Fatalf("encrypt image %q is not digest-pinned", encrypt.Image)
 	}
 	// The encrypt step keeps the platform hardening baseline.
 	sec := encrypt.SecurityContext

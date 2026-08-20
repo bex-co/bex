@@ -31,6 +31,10 @@ func (f fakePlatformResolver) IsPlatformClient(_ context.Context, clientID strin
 	return f[clientID], nil
 }
 
+func (f fakePlatformResolver) IsPlatformClientFresh(ctx context.Context, clientID string) (bool, error) {
+	return f.IsPlatformClient(ctx, clientID)
+}
+
 // codex round-7 F3 — minting an API key is reserved for direct human callers.
 //
 // The relation gates (can_manage_keys, checked fresh) say WHO may manage keys
@@ -98,5 +102,35 @@ func TestCreateAPIKeyRequiresMintCredentialClass(t *testing.T) {
 				t.Fatalf("denied credential class minted a Hydra client anyway: %d keys", len(store.keys))
 			}
 		})
+	}
+}
+
+// staleThenFreshPlatformResolver answers true from the cached path and false
+// from the fresh path — the post-revocation window AuthorizeMintClass must
+// close (codex round-16 #4).
+type staleThenFreshPlatformResolver struct{}
+
+func (staleThenFreshPlatformResolver) IsPlatformClient(context.Context, string) (bool, error) {
+	return true, nil
+}
+func (staleThenFreshPlatformResolver) IsPlatformClientFresh(context.Context, string) (bool, error) {
+	return false, nil
+}
+
+func TestCreateAPIKeyUsesFreshPlatformClientClassification(t *testing.T) {
+	store := newFakeKeyStore()
+	svc := &Service{
+		Base:    &core.Base{Namespace: "default", PlatformClients: staleThenFreshPlatformResolver{}},
+		APIKeys: store,
+	}
+	ctx := core.WithIdentity(context.Background(), core.Identity{
+		Subject: "user-a", Method: "oauth2", ClientID: "was-platform", Human: true,
+	})
+	_, err := svc.CreateAPIKey(ctx, "", "agent")
+	if !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("stale-positive mint => %v, want ErrForbidden", err)
+	}
+	if len(store.keys) != 0 {
+		t.Fatalf("stale platform classification minted a key: %d", len(store.keys))
 	}
 }
