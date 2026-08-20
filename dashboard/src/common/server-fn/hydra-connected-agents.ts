@@ -2,6 +2,7 @@ import { Configuration, OAuth2Api } from "@ory/client-fetch";
 import type { OAuth2ConsentSession } from "@ory/client-fetch";
 import { fetchSession } from "@/common/server-fn/session";
 import { isSameOrigin } from "@/common/server-fn/same-origin";
+import { config } from "@/config/config";
 import {
   BodyTooLargeError,
   readBoundedJson,
@@ -148,6 +149,19 @@ export async function revokeConnectedAgent(
 
   try {
     await hydra.revokeOAuth2ConsentSessions({ subject, client: clientId });
+    const apiBase = (config.ssrApiUrl ?? "").replace(/\/graphql\/?$/, "");
+    const cookie = request.headers.get("cookie");
+    const marker = await fetch(`${apiBase}/v1/oauth/revocations`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(cookie ? { cookie } : {}),
+      },
+      body: JSON.stringify({ clientId }),
+    });
+    if (!marker.ok) {
+      return new Response("revoke propagation failed", { status: 502 });
+    }
     return new Response(null, { status: 204 });
   } catch {
     return new Response("revoke failed", { status: 502 });

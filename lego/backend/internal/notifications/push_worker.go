@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -33,10 +34,11 @@ import (
 const (
 	// A property of the feed, not of this worker: store.FeedCommitLag explains
 	// why a tailer must read behind now, and every tailer shares it.
-	pushDispatchLag   = store.FeedCommitLag
-	pushDispatchBatch = 200
-	pushSendBatch     = 50
-	pushClaimLease    = time.Minute
+	pushDispatchLag     = store.FeedCommitLag
+	pushDispatchBatch   = 200
+	pushSendBatch       = 50
+	pushSendConcurrency = 8
+	pushClaimLease      = time.Minute
 	// Also a property of the feed, shared with every other tailer of it:
 	// store.DefaultFeedPark explains the write-amplification trade.
 	pushParkInterval        = store.DefaultFeedPark
@@ -651,55 +653,77 @@ func (w *PushWorker) send(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	var failures []error
+	failures := make(chan error, len(deliveries)*2)
+	sem := make(chan struct{}, pushSendConcurrency)
+	var wg sync.WaitGroup
 	for _, delivery := range deliveries {
-		if !pushSenderSupports(w.Sender, delivery.Provider) {
-			_, _ = w.Store.ReleasePushDelivery(ctx, delivery)
-			continue
-		}
-		ticketID, sendErr := w.Sender.Send(ctx, PushSendRequest{
-			Provider: delivery.Provider, Platform: delivery.Platform, Token: delivery.Token,
-			P256dh: delivery.P256dh, Auth: delivery.Auth,
-			Title: delivery.Title, Body: delivery.Body, Urgency: delivery.Urgency,
-			Data: PushEnvelopeData{
-				Schema: pushSchema, NotificationID: delivery.EventID,
-				Event: delivery.EventType, Route: delivery.DeepLink,
-				Subject: delivery.Subject, WorkspaceID: delivery.TenantID, SessionID: delivery.SessionID,
-			},
-		})
-		if sendErr != nil {
-			failures = append(failures, w.recordSendFailure(ctx, delivery, sendErr))
-			failures = append(failures, ErrPushSenderFailed)
-			continue
-		}
-		acceptedAt := w.now()
-		if delivery.Provider == pushtransport.ProviderWebPush {
-			completed, completeErr := w.Store.CompletePushDelivery(ctx, delivery, acceptedAt)
-			if completeErr != nil {
-				failures = append(failures, completeErr)
-				continue
+		delivery := delivery
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			for _, err := range w.sendDelivery(ctx, delivery) {
+				if err != nil {
+					failures <- err
+				}
 			}
-			if !completed {
-				failures = append(failures, errors.New("push delivery lease changed before completion"))
-			}
-			w.Metrics.Operation("send", "accepted")
-			w.Metrics.Transport("webpush", "delivered")
-			w.Metrics.Succeeded(acceptedAt)
-			continue
+		}()
+	}
+	wg.Wait()
+	close(failures)
+	var joined []error
+	for err := range failures {
+		joined = append(joined, err)
+	}
+	return errors.Join(joined...)
+}
+
+func (w *PushWorker) sendDelivery(ctx context.Context, delivery store.DuePushDelivery) []error {
+	if !pushSenderSupports(w.Sender, delivery.Provider) {
+		_, _ = w.Store.ReleasePushDelivery(ctx, delivery)
+		return nil
+	}
+	ticketID, sendErr := w.Sender.Send(ctx, PushSendRequest{
+		Provider: delivery.Provider, Platform: delivery.Platform, Token: delivery.Token,
+		P256dh: delivery.P256dh, Auth: delivery.Auth,
+		Title: delivery.Title, Body: delivery.Body, Urgency: delivery.Urgency,
+		Data: PushEnvelopeData{
+			Schema: pushSchema, NotificationID: delivery.EventID,
+			Event: delivery.EventType, Route: delivery.DeepLink,
+			Subject: delivery.Subject, WorkspaceID: delivery.TenantID, SessionID: delivery.SessionID,
+		},
+	})
+	if sendErr != nil {
+		return []error{w.recordSendFailure(ctx, delivery, sendErr), ErrPushSenderFailed}
+	}
+	acceptedAt := w.now()
+	if delivery.Provider == pushtransport.ProviderWebPush {
+		completed, completeErr := w.Store.CompletePushDelivery(ctx, delivery, acceptedAt)
+		if completeErr != nil {
+			return []error{completeErr}
 		}
-		accepted, acceptErr := w.Store.AcceptPushDelivery(ctx, delivery, ticketID, acceptedAt, acceptedAt.Add(pushReceiptDelay))
-		if acceptErr != nil {
-			failures = append(failures, acceptErr)
-			continue
-		}
-		if !accepted {
-			failures = append(failures, errors.New("push delivery lease changed before acceptance"))
+		var failures []error
+		if !completed {
+			failures = append(failures, errors.New("push delivery lease changed before completion"))
 		}
 		w.Metrics.Operation("send", "accepted")
-		w.Metrics.Transport("expo", "accepted")
+		w.Metrics.Transport("webpush", "delivered")
 		w.Metrics.Succeeded(acceptedAt)
+		return failures
 	}
-	return errors.Join(failures...)
+	accepted, acceptErr := w.Store.AcceptPushDelivery(ctx, delivery, ticketID, acceptedAt, acceptedAt.Add(pushReceiptDelay))
+	if acceptErr != nil {
+		return []error{acceptErr}
+	}
+	var failures []error
+	if !accepted {
+		failures = append(failures, errors.New("push delivery lease changed before acceptance"))
+	}
+	w.Metrics.Operation("send", "accepted")
+	w.Metrics.Transport("expo", "accepted")
+	w.Metrics.Succeeded(acceptedAt)
+	return failures
 }
 
 func pushRetryDelay(attempt int) time.Duration {

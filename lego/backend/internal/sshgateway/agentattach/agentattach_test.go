@@ -84,10 +84,12 @@ func TestReadSSEDataBounded(t *testing.T) {
 // (session, seq) with idempotent append) plus a single-use nonce claim, so it
 // also backs the test's NonceGuard.
 type fakeAttachStore struct {
-	mu     sync.Mutex
-	parts  map[string]map[int64]store.AgentSessionTranscriptPart
-	claims map[string]bool
-	turns  map[string][]store.AgentSessionTurn
+	mu      sync.Mutex
+	parts   map[string]map[int64]store.AgentSessionTranscriptPart
+	claims  map[string]bool
+	turns   map[string][]store.AgentSessionTurn
+	started []store.SSHSessionAudit
+	ended   []string
 }
 
 func newFakeAttachStore() *fakeAttachStore {
@@ -190,6 +192,26 @@ func (f *fakeAttachStore) ClaimShellNonce(_ context.Context, nonce string, _ tim
 	}
 	f.claims[nonce] = true
 	return true, nil
+}
+
+func (f *fakeAttachStore) StartSSHSession(_ context.Context, audit store.SSHSessionAudit) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.started = append(f.started, audit)
+	return nil
+}
+
+func (f *fakeAttachStore) EndSSHSession(_ context.Context, id, result string, _ time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ended = append(f.ended, id+":"+result)
+	return nil
+}
+
+func (f *fakeAttachStore) StartedSessions() []store.SSHSessionAudit {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]store.SSHSessionAudit(nil), f.started...)
 }
 
 type fixedPodIP struct {
@@ -319,6 +341,40 @@ func TestAgentAttachReplaysThenSplicesLiveAndTees(t *testing.T) {
 	stored, _ := st.AgentSessionTranscript(context.Background(), session, -1, 1<<30, 0)
 	if len(stored) != 2 || stored[1].Seq != 1 || string(stored[1].Part) != `{"type":"text-delta","delta":"hi"}` {
 		t.Fatalf("tee = %+v, want seed + live seq 1", stored)
+	}
+}
+
+func TestAgentAttachRedeemRecordsContentFreeSessionAudit(t *testing.T) {
+	secret := []byte("shell-ticket-secret")
+	session := "ags-0000000000000000000a9"
+	st := newFakeAttachStore()
+	gw := newAttachGateway(st, fixedPodIP{err: fmt.Errorf("terminal")}, secret, 8787)
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL, nil)
+	req.Header.Set(TicketHeader, attachTicket(t, secret, session))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+
+	started := st.StartedSessions()
+	if len(started) != 1 {
+		t.Fatalf("started sessions = %+v, want one", started)
+	}
+	audit := started[0]
+	if audit.Subject != "alice" || audit.WorkspaceID != "tea-a" || audit.ServiceID != session ||
+		audit.InstanceID != "sandbox-1-0" || audit.RemoteAddress == "" {
+		t.Fatalf("audit = %+v, want subject/workspace/session/pod/remote metadata only", audit)
+	}
+	st.mu.Lock()
+	ended := append([]string(nil), st.ended...)
+	st.mu.Unlock()
+	if len(ended) != 1 || !strings.HasSuffix(ended[0], ":closed") {
+		t.Fatalf("ended sessions = %v, want one closed outcome", ended)
 	}
 }
 

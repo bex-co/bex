@@ -97,6 +97,11 @@ type Server struct {
 	// context instead of waiting for the browser to disconnect or the 4h cap.
 	// 0 => the platform default; negative disables (pre-round-9 behavior).
 	RevalidateInterval time.Duration
+
+	// TrustedProxies contains the immediate HTTP peers allowed to assert the
+	// original browser address through X-Forwarded-For/X-Real-IP. Empty trusts
+	// nobody and preserves the direct WebSocket peer address.
+	TrustedProxies core.TrustedProxies
 }
 
 func (s *Server) defaults() {
@@ -200,13 +205,17 @@ func (s *Server) serveWebSocket(w http.ResponseWriter, r *http.Request) {
 		return // Upgrade already wrote the error response.
 	}
 	defer conn.Close()
-	s.runWebSocketSession(r.Context(), &wsConn{conn: conn}, claims)
+	remoteAddress := r.RemoteAddr
+	if clientIP := s.TrustedProxies.ClientIP(r); clientIP != core.PeerIP(r.RemoteAddr) {
+		remoteAddress = clientIP
+	}
+	s.runWebSocketSession(r.Context(), &wsConn{conn: conn}, claims, remoteAddress)
 }
 
 // runWebSocketSession resolves the target, enforces caps, and bridges the
 // browser to one pods/exec stream. Post-upgrade failures are delivered as an
 // {type:"error"} control frame so the terminal can display them.
-func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims shellticket.Claims) {
+func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims shellticket.Claims, remoteAddress string) {
 	resolveCtx := core.WithIdentity(ctx, core.Identity{Subject: claims.Subject, Method: "shell"})
 	resolveCtx, cancelResolve := context.WithTimeout(resolveCtx, s.HandshakeTimeout)
 	target, err := s.Apps.ResolveSSHSession(resolveCtx, claims.Username())
@@ -240,7 +249,7 @@ func (s *Server) runWebSocketSession(ctx context.Context, ws *wsConn, claims she
 	err = s.Store.StartSSHSession(auditCtx, store.SSHSessionAudit{
 		ID: sessionID, Subject: claims.Subject, WorkspaceID: workspaceID,
 		ServiceID: target.ServiceID, InstanceID: target.ID,
-		RemoteAddress: ws.conn.RemoteAddr().String(), StartedAt: started,
+		RemoteAddress: remoteAddress, StartedAt: started,
 	})
 	cancelAudit()
 	if err != nil {

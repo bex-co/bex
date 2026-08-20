@@ -63,6 +63,11 @@ func (f *fakeStore) ListRegistryCredentials(_ context.Context, workspaceID strin
 	return out, nil
 }
 
+func (f *fakeStore) CountRegistryCredentials(ctx context.Context, workspaceID string) (int, error) {
+	rows, err := f.ListRegistryCredentials(ctx, workspaceID)
+	return len(rows), err
+}
+
 func (f *fakeStore) GetRegistryCredential(_ context.Context, workspaceID, id string) (store.RegistryCredential, error) {
 	c, ok := f.rows[id]
 	if !ok || c.WorkspaceID != workspaceID {
@@ -132,9 +137,10 @@ func (f *fakeStore) DeleteRegistryCredential(_ context.Context, workspaceID, id 
 
 // fakeSecretKV is a minimal in-memory core.SecretKV.
 type fakeSecretKV struct {
-	m       map[string]map[string]string
-	failGet error
-	failPut error
+	m          map[string]map[string]string
+	failGet    error
+	failPut    error
+	failDelete error
 }
 
 func newFakeSecretKV() *fakeSecretKV { return &fakeSecretKV{m: map[string]map[string]string{}} }
@@ -163,6 +169,9 @@ func (f *fakeSecretKV) Put(_ context.Context, path string, data map[string]strin
 }
 
 func (f *fakeSecretKV) Delete(_ context.Context, path string) error {
+	if f.failDelete != nil {
+		return f.failDelete
+	}
 	delete(f.m, path)
 	return nil
 }
@@ -215,6 +224,36 @@ func TestCreateRejectsMissingFields(t *testing.T) {
 		if _, err := s.Create(ctx, CreateRequest{Host: tc.host, Username: tc.user, Secret: tc.secret}); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("Create(%q,%q,%q) = %v, want ErrBadRequest", tc.host, tc.user, tc.secret, err)
 		}
+	}
+}
+
+func TestCreateEnforcesWorkspaceCredentialQuota(t *testing.T) {
+	s, st, _ := newTestService()
+	s.MaxCredentials = 1
+	ctx := context.Background()
+	if _, err := s.Create(ctx, CreateRequest{Host: "ghcr.io", Username: "alice", Secret: "one"}); err != nil {
+		t.Fatalf("first Create: %v", err)
+	}
+	_, err := s.Create(ctx, CreateRequest{Host: "docker.io", Username: "alice", Secret: "two"})
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "REGISTRY_CREDENTIAL_LIMIT" {
+		t.Fatalf("over-quota Create = %v, want REGISTRY_CREDENTIAL_LIMIT", err)
+	}
+	if len(st.rows) != 1 {
+		t.Fatalf("rows after refused create = %d, want 1", len(st.rows))
+	}
+}
+
+func TestCreateRejectsOversizedSecretBeforeWrite(t *testing.T) {
+	s, st, kv := newTestService()
+	_, err := s.Create(context.Background(), CreateRequest{
+		Host: "ghcr.io", Username: "alice", Secret: string(make([]byte, maxCredentialSecretBytes+1)),
+	})
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("oversized secret Create = %v, want ErrBadRequest", err)
+	}
+	if len(st.rows) != 0 || len(kv.m) != 0 {
+		t.Fatalf("oversized secret wrote state: rows=%d secrets=%d", len(st.rows), len(kv.m))
 	}
 }
 
@@ -337,6 +376,22 @@ func TestDeleteRemovesRowAndSecret(t *testing.T) {
 	}
 	if secret, _ := kv.Get(ctx, secretPath(core.DefaultTenant, created.ID)); len(secret) != 0 {
 		t.Errorf("secret survives delete: %+v", secret)
+	}
+}
+
+func TestDeleteSurfacesOpenBaoFailureAndRetainsRow(t *testing.T) {
+	s, st, kv := newTestService()
+	ctx := context.Background()
+	created, err := s.Create(ctx, CreateRequest{Host: "ghcr.io", Username: "alice", Secret: "hunter2"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	kv.failDelete = errors.New("openbao down")
+	if err := s.Delete(ctx, created.ID); err == nil {
+		t.Fatal("Delete should surface OpenBao failure")
+	}
+	if _, err := st.GetRegistryCredential(ctx, core.DefaultTenant, created.ID); err != nil {
+		t.Fatalf("row must survive failed OpenBao delete: %v", err)
 	}
 }
 

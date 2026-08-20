@@ -47,6 +47,10 @@ import (
 const (
 	maxPacketBytes       = 65520
 	maxShallowBoundaries = 1024
+	maxResponseBodyBytes = 512 << 20
+	defaultMaxDuration   = 10 * time.Minute
+	budgetSweepInterval  = 30 * time.Minute
+	budgetIdleTTL        = 24 * time.Hour
 )
 
 // Admission bounds used when no limiter is injected; cmd/ssh-gateway supplies
@@ -108,8 +112,11 @@ type Broker struct {
 	Limits *sshgateway.SessionLimiter
 	// UpstreamOrigin and HTTP are test seams. Production leaves the origin empty,
 	// which fixes every credential-bearing request to HTTPS github.com.
-	UpstreamOrigin string
-	HTTP           *http.Client
+	UpstreamOrigin          string
+	HTTP                    *http.Client
+	MaxDuration             time.Duration
+	MaxRequestsPerSession   int
+	MaxRequestsPerWorkspace int
 
 	// clientOnce/client memoize the default upstream client so its connection
 	// pool is reused across requests (see httpClient).
@@ -119,6 +126,8 @@ type Broker struct {
 	// limitsOnce/limits memoize the default limiter (see limiter).
 	limitsOnce sync.Once
 	limits     *sshgateway.SessionLimiter
+	budgetOnce sync.Once
+	budget     *requestBudget
 }
 
 // limiter returns the admission limiter, memoizing the default so acquire and
@@ -164,6 +173,9 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer limiter.Release(sourceIP)
+	ctx, cancel := context.WithTimeout(r.Context(), b.maxDuration())
+	defer cancel()
+	r = r.WithContext(ctx)
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
 	pod, err := b.Pods.ResolveSessionPod(r.Context(), namespace, sourceIP)
 	if err != nil {
@@ -175,6 +187,16 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		b.Metrics.Authentication("rejected_target")
 		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	if !b.budgets().chargeSession(namespace, verified.SessionID) {
+		b.Metrics.LimitRejected("git_session_budget")
+		http.Error(w, "git request budget exhausted for this session", http.StatusTooManyRequests)
+		return
+	}
+	if !b.budgets().chargeWorkspace(namespace) {
+		b.Metrics.LimitRejected("git_workspace_budget")
+		http.Error(w, "git request budget exhausted for this workspace", http.StatusTooManyRequests)
 		return
 	}
 	body := io.Reader(r.Body)
@@ -232,13 +254,84 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.WriteHeader(http.StatusOK)
-	_, _ = io.Copy(w, response.Body)
+	if deadline, ok := r.Context().Deadline(); ok {
+		_ = http.NewResponseController(w).SetWriteDeadline(deadline)
+	}
+	_, _ = io.Copy(w, io.LimitReader(response.Body, maxResponseBodyBytes))
 	b.Metrics.Authentication("accepted")
 	core.RecordAuditEvent(r.Context(), b.Audit, core.AuditEvent{
 		Caller: pod.Name, CallerMethod: "sandbox", Verb: agentsession.AuditVerbProxyCredential,
 		Resource: core.WorkspaceObject(verified.Workspace), Target: "agent-session:" + verified.SessionID,
 		TargetName: verified.Repository, Outcome: core.AuditAllowed, At: b.now(),
 	})
+}
+
+type requestBudget struct {
+	perSession, perWorkspace int
+	mu                       sync.Mutex
+	charged                  map[string]int
+	lastUsed                 map[string]time.Time
+	janitorOnce              sync.Once
+}
+
+func (b *requestBudget) charge(key string, max int) bool {
+	if max <= 0 {
+		return true
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.charged == nil {
+		b.charged = make(map[string]int)
+		b.lastUsed = make(map[string]time.Time)
+		b.janitorOnce.Do(func() {
+			go func() {
+				ticker := time.NewTicker(budgetSweepInterval)
+				defer ticker.Stop()
+				for range ticker.C {
+					b.sweep(time.Now().Add(-budgetIdleTTL))
+				}
+			}()
+		})
+	}
+	if b.charged[key] >= max {
+		return false
+	}
+	b.charged[key]++
+	b.lastUsed[key] = time.Now()
+	return true
+}
+
+func (b *requestBudget) sweep(horizon time.Time) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for key, at := range b.lastUsed {
+		if at.Before(horizon) {
+			delete(b.charged, key)
+			delete(b.lastUsed, key)
+		}
+	}
+}
+
+func (b *requestBudget) chargeSession(namespace, sessionID string) bool {
+	return b.charge("session|"+namespace+"|"+sessionID, b.perSession)
+}
+
+func (b *requestBudget) chargeWorkspace(namespace string) bool {
+	return b.charge("workspace|"+strings.TrimSuffix(namespace, "-sandbox"), b.perWorkspace)
+}
+
+func (b *Broker) budgets() *requestBudget {
+	b.budgetOnce.Do(func() {
+		b.budget = &requestBudget{perSession: b.MaxRequestsPerSession, perWorkspace: b.MaxRequestsPerWorkspace}
+	})
+	return b.budget
+}
+
+func (b *Broker) maxDuration() time.Duration {
+	if b.MaxDuration > 0 {
+		return b.MaxDuration
+	}
+	return defaultMaxDuration
 }
 
 func parseProxyPath(path string) (string, agentsession.MintRequest, string, error) {

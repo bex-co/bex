@@ -114,8 +114,11 @@ type oryAuth struct {
 	// one Hydra round trip per request. Negatives are never cached. Concurrent
 	// misses for one token coalesce into a single Hydra call (group), which also
 	// writes the cache exactly once per upstream call.
-	cache *core.TTLCache[core.Identity]
+	cache *core.TTLCache[cachedIdentity]
 	group singleflight.Group
+	// revocations is the cross-replica positive-cache invalidation boundary.
+	// nil preserves DB-free operation; production wires the control-plane store.
+	revocations RevocationStore
 	// revocationEpoch + epochMu make an upstream introspection's cache write
 	// coherent with a concurrent local invalidation WITHOUT holding any lock
 	// across the Hydra round trip (w4/m31 — the RWMutex this replaced blocked
@@ -152,6 +155,18 @@ type oryAuth struct {
 	admission *AuthAdmission
 }
 
+type cachedIdentity struct {
+	Identity core.Identity
+	CachedAt time.Time
+}
+
+// RevocationStore is the durable subject+client invalidation marker shared by
+// every bex-api replica.
+type RevocationStore interface {
+	BumpOAuthRevocation(context.Context, string, string) error
+	OAuthRevokedAt(context.Context, string, string) (time.Time, bool, error)
+}
+
 func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL string, requireAudience bool, admission *AuthAdmission, onboard Onboarding, touch func(string), apiScope string) *oryAuth {
 	challenge := "Bearer"
 	if resourceMetadataURL != "" {
@@ -165,7 +180,7 @@ func newOryAuth(hydraAdminURL, kratosURL, resource, issuer, resourceMetadataURL 
 		challenge:       challenge,
 		onboard:         onboard,
 		client:          &http.Client{Timeout: 5 * time.Second, Transport: core.OryTransport},
-		cache:           core.NewTTLCache[core.Identity](),
+		cache:           core.NewTTLCache[cachedIdentity](),
 		platformClients: core.NewTTLCache[bool](),
 		requireAudience: requireAudience,
 		admission:       admission,
@@ -257,6 +272,13 @@ func (a *oryAuth) IsPlatformClientFresh(ctx context.Context, clientID string) (b
 // the revoke request would leave the immediately previous token usable until
 // PositiveTTL.
 func (a *oryAuth) invalidate(token string, identity core.Identity) {
+	if identity.Method == "oauth2" && a.revocations != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if err := a.revocations.BumpOAuthRevocation(ctx, identity.Subject, identity.ClientID); err != nil {
+			log.Printf("auth: persist OAuth revocation for subject/client failed: %v", err)
+		}
+		cancel()
+	}
 	// The bump must be serialized against introspectUpstream's epoch-check+Put
 	// (epochMu — see its doc comment): a bare atomic Add here, with no lock,
 	// would leave a window where introspectUpstream's Load()-then-Put() could
@@ -272,7 +294,8 @@ func (a *oryAuth) invalidate(token string, identity core.Identity) {
 	a.epochMu.Unlock()
 	a.cache.Delete(token)
 	if identity.Method == "oauth2" {
-		a.cache.DeleteIf(func(cached core.Identity) bool {
+		a.cache.DeleteIf(func(entry cachedIdentity) bool {
+			cached := entry.Identity
 			if cached.Method != "oauth2" || cached.ClientID != identity.ClientID {
 				return false
 			}
@@ -305,7 +328,11 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 		}
 		switch {
 		case hasBearer:
-			id, err = a.introspect(r, bearer)
+			if r.Method == http.MethodPost && r.URL.Path == "/v1/api-keys" {
+				id, err = a.introspectFresh(r, bearer)
+			} else {
+				id, err = a.introspect(r, bearer)
+			}
 		case hasSession:
 			id, err = a.whoami(r)
 		default:
@@ -339,6 +366,15 @@ func (a *oryAuth) middleware(next http.Handler) http.Handler {
 	})
 }
 
+// introspectFresh bypasses the positive token cache for durable credential
+// minting. AuthorizeMintClass already refreshes the platform-client marker; this
+// companion check refreshes the bearer itself so a revoked token cannot mint an
+// API key during PositiveTTL.
+func (a *oryAuth) introspectFresh(r *http.Request, token string) (core.Identity, error) {
+	a.cache.Delete(token)
+	return a.introspect(r, token)
+}
+
 // hasSessionCredential reports whether the request carries something worth a
 // Kratos round trip: the session header, or Kratos' session cookie. An unrelated
 // cookie (analytics, LB affinity) must not cost an upstream call.
@@ -354,8 +390,20 @@ func hasSessionCredential(r *http.Request) bool {
 // Identity for an inactive/unknown token, an error when Hydra is unreachable.
 func (a *oryAuth) introspect(r *http.Request, token string) (core.Identity, error) {
 	ctx := r.Context()
-	if id, ok := a.cache.Get(token); ok {
-		return id, nil
+	if entry, ok := a.cache.Get(token); ok {
+		if a.revocations != nil && entry.Identity.Method == "oauth2" {
+			revokedAt, revoked, err := a.revocations.OAuthRevokedAt(ctx, entry.Identity.Subject, entry.Identity.ClientID)
+			if err != nil {
+				return core.Identity{}, err
+			}
+			if revoked && revokedAt.After(entry.CachedAt) {
+				a.cache.Delete(token)
+			} else {
+				return entry.Identity, nil
+			}
+		} else {
+			return entry.Identity, nil
+		}
 	}
 	// A cache miss is the expensive event: it costs one Hydra round trip. Meter
 	// it (w1/m67 F1) so a flood of DISTINCT invalid tokens — which defeats both
@@ -378,8 +426,8 @@ func (a *oryAuth) introspect(r *http.Request, token string) (core.Identity, erro
 	// A revocation may have completed between the upstream call and this waiter
 	// resuming; in that case invalidate deleted the entry and this request must
 	// observe the token as inactive.
-	if id, ok := a.cache.Get(token); ok {
-		return id, nil
+	if entry, ok := a.cache.Get(token); ok {
+		return entry.Identity, nil
 	}
 	// The token was rejected upstream: charge this source (w1/m67 F1). Only
 	// failures are metered, so a busy legitimate caller is never throttled while
@@ -521,7 +569,7 @@ func (a *oryAuth) introspectUpstream(ctx context.Context, token string) error {
 	if a.revocationEpoch.Load() != epoch {
 		return nil
 	}
-	a.cache.Put(token, id, expires)
+	a.cache.Put(token, cachedIdentity{Identity: id, CachedAt: time.Now()}, expires)
 	return nil
 }
 

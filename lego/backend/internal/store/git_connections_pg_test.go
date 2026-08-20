@@ -22,8 +22,8 @@ import (
 	"testing"
 )
 
-// seedTenant inserts the workspace row git_connections has no FK to but the
-// broader schema expects present; a bare insert keeps the test self-contained.
+// seedGitTenant inserts the workspace row required by git_connections' tenant
+// FK; a bare insert keeps the test self-contained.
 func seedGitTenant(t *testing.T, st *PGStore, id string) {
 	t.Helper()
 	_, err := st.Pool.Exec(context.Background(),
@@ -95,4 +95,23 @@ func TestPGGitConnectionsMultiPerWorkspace(t *testing.T) {
 	// Cleanup so a rerun on the same DB starts clean.
 	_, _ = st.Pool.Exec(ctx, `DELETE FROM git_connections WHERE workspace_id IN ('tea-ws1','tea-ws2')`)
 	_, _ = st.Pool.Exec(ctx, `DELETE FROM tenants WHERE id IN ('tea-ws1','tea-ws2')`)
+}
+
+func TestDeleteTenantCascadesGitConnections(t *testing.T) {
+	st := newReplayTestStore(t)
+	ctx := context.Background()
+	const workspaceID = "tea-git-cascade"
+	seedGitTenant(t, st, workspaceID)
+	if _, err := st.UpsertGitConnection(ctx, GitConnection{
+		WorkspaceID: workspaceID, InstallationID: 909301, AccountLogin: "cascade-test",
+	}); err != nil {
+		t.Fatalf("UpsertGitConnection: %v", err)
+	}
+
+	if err := st.DeleteTenant(ctx, workspaceID); err != nil {
+		t.Fatalf("DeleteTenant: %v", err)
+	}
+	if n, err := st.CountGitConnections(ctx, workspaceID); err != nil || n != 0 {
+		t.Fatalf("CountGitConnections after tenant delete = %d, %v; want 0, nil", n, err)
+	}
 }

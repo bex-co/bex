@@ -60,6 +60,9 @@ function mockUpstreams(opts: {
           { status: opts.listOk === false ? 500 : 200 },
         );
       }
+      if (url.includes("/v1/oauth/revocations")) {
+        return new Response(null, { status: 204 });
+      }
       return new Response("{}", { status: 404 });
     }),
   );
@@ -177,6 +180,15 @@ describe("revokeConnectedAgent", () => {
     );
     expect(revoke?.url).toContain(`subject=${SUBJECT}`);
     expect(revoke?.url).toContain("client=some-client");
+    const marker = calls.find((c) => c.url.includes("/v1/oauth/revocations"));
+    expect(marker?.init?.method).toBe("POST");
+    expect(marker?.init?.headers).toMatchObject({
+      "content-type": "application/json",
+      cookie: "ory_session=live",
+    });
+    expect(marker?.init?.body).toBe(
+      JSON.stringify({ clientId: "some-client" }),
+    );
   });
 
   it("502s when the revoke call fails upstream", async () => {

@@ -21,6 +21,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"strings"
 	"testing"
@@ -52,13 +53,17 @@ func wsURL(t *testing.T, srv *httptest.Server) string {
 }
 
 func dialWS(t *testing.T, srv *httptest.Server, token string) (*websocket.Conn, *http.Response, error) {
+	return dialWSHeaders(t, srv, token, nil)
+}
+
+func dialWSHeaders(t *testing.T, srv *httptest.Server, token string, headers http.Header) (*websocket.Conn, *http.Response, error) {
 	t.Helper()
 	protocols := []string{wsShellSubprotocol}
 	if token != "" {
 		protocols = append(protocols, wsTicketPrefix+token)
 	}
 	dialer := websocket.Dialer{Subprotocols: protocols}
-	return dialer.Dial(wsURL(t, srv), nil)
+	return dialer.Dial(wsURL(t, srv), headers)
 }
 
 func mintWS(t *testing.T, claims shellticket.Claims) string {
@@ -129,6 +134,46 @@ func TestWebSocketShellHappyPath(t *testing.T) {
 	started, ended := st.StartedSessions(), waitEndedSessions(t, st, 1)
 	if len(started) != 1 || len(ended) != 1 || !strings.HasSuffix(ended[0], ":completed") {
 		t.Errorf("audit rows: started=%v ended=%v", started, ended)
+	}
+}
+
+func TestWebSocketAuditUsesForwardedClientOnlyFromTrustedPeer(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		trusted bool
+		want    string
+	}{
+		{name: "trusted peer", trusted: true, want: "203.0.113.9"},
+		{name: "untrusted peer", trusted: false, want: "127.0.0.1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := &gatewaytest.FakeStore{}
+			gw := newWSGateway(t, st, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{})
+			if tc.trusted {
+				gw.TrustedProxies = []netip.Prefix{netip.MustParsePrefix("127.0.0.1/32")}
+			}
+			srv := httptest.NewServer(gw.Handler())
+			defer srv.Close()
+
+			headers := http.Header{"X-Forwarded-For": []string{"198.51.100.7, 203.0.113.9"}}
+			token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
+			conn, _, err := dialWSHeaders(t, srv, token, headers)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"resize","cols":80,"rows":24}`))
+			for {
+				if _, _, err := conn.ReadMessage(); err != nil {
+					break
+				}
+			}
+			conn.Close()
+
+			started := st.StartedSessions()
+			if len(started) != 1 || !strings.HasPrefix(started[0].RemoteAddress, tc.want) {
+				t.Fatalf("started sessions = %+v, want remote address %q", started, tc.want)
+			}
+		})
 	}
 }
 

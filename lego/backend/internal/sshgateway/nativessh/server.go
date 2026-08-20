@@ -313,6 +313,7 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 	if err != nil {
 		return err
 	}
+	sticky := &connectionTarget{target: target}
 	acquired, limitScope := s.Limits.Acquire(subject)
 	if !acquired {
 		s.Metrics.LimitRejected(limitScope)
@@ -325,14 +326,15 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 	s.Metrics.SessionStarted()
 	result := "closed"
 	defer func() { s.Metrics.SessionEnded(result, time.Since(started)) }()
-	workspaceID := target.OwnerID
+	auditTarget := sticky.Get()
+	workspaceID := auditTarget.OwnerID
 	if workspaceID == "" {
 		workspaceID = core.DefaultTenant
 	}
 	auditCtx, cancelAudit := context.WithTimeout(context.Background(), 2*time.Second)
 	err = s.Store.StartSSHSession(auditCtx, store.SSHSessionAudit{
 		ID: sessionID, Subject: subject, WorkspaceID: workspaceID,
-		ServiceID: target.ServiceID, InstanceID: target.ID,
+		ServiceID: auditTarget.ServiceID, InstanceID: auditTarget.ID,
 		RemoteAddress: conn.RemoteAddr().String(), StartedAt: started,
 	})
 	cancelAudit()
@@ -357,7 +359,7 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 	// pods/exec stream, bounded per connection. Every other target — and a sandbox
 	// target when the cap is disabled (0) — keeps the single-channel contract.
 	if target.Sandbox && s.MaxChannelsPerConn > 0 {
-		result = s.serveMultiChannel(sessionCtx, channels, subject, fingerprint, connUser)
+		result = s.serveMultiChannel(sessionCtx, channels, subject, fingerprint, connUser, sticky)
 		return nil
 	}
 
@@ -383,7 +385,7 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		// channel. A revocation after transport auth ends the transport, not just
 		// this channel — an already-open channel is a stream in flight, but no
 		// NEW exec may start against a decision that is hours stale.
-		resolved, err := s.reauthorize(ctx, subject, fingerprint, connUser)
+		resolved, err := s.reauthorize(ctx, subject, fingerprint, connUser, sticky)
 		if err != nil {
 			_ = newChannel.Reject(ssh.Prohibited, "authorization no longer valid")
 			result = "revoked"
@@ -410,7 +412,7 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 		// while the exec is LIVE, not only at admission — a revocation cancels
 		// the stream's context from below. sessionCtx still bounds the lifetime.
 		streamCtx, cancelStream := sshgateway.WithRevalidation(sessionCtx, s.RevalidateInterval, func(c context.Context) error {
-			_, err := s.reauthorize(c, subject, fingerprint, connUser)
+			_, err := s.reauthorize(c, subject, fingerprint, connUser, sticky)
 			return err
 		})
 		err = serveSession(streamCtx, channel, channelRequests, s.Executor, resolved)
@@ -443,7 +445,7 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 // no new exec starts on a decision that may be hours stale. A connection that
 // opens no channels (Zed's `-N` master) is valid and simply idles until the
 // client closes it or the session times out.
-func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewChannel, subject, fingerprint, connUser string) string {
+func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewChannel, subject, fingerprint, connUser string, sticky *connectionTarget) string {
 	// Cancellable view of the session ctx for the channel goroutines: a
 	// revocation must end ACTIVE channels too, not just stop new ones. Defer
 	// order is load-bearing (LIFO): mcancel fires BEFORE wg.Wait, so the wait
@@ -455,7 +457,7 @@ func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewC
 	// at once (each new channel still rechecks on open, round-8 #5). One
 	// watchdog per connection, not per channel.
 	mctx, mcancel := sshgateway.WithRevalidation(ctx, s.RevalidateInterval, func(c context.Context) error {
-		_, err := s.reauthorize(c, subject, fingerprint, connUser)
+		_, err := s.reauthorize(c, subject, fingerprint, connUser, sticky)
 		return err
 	})
 	defer mcancel()
@@ -486,7 +488,7 @@ func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewC
 			_ = newChannel.Reject(ssh.ResourceShortage, "channel limit reached")
 			continue
 		}
-		resolved, err := s.reauthorize(mctx, subject, fingerprint, connUser)
+		resolved, err := s.reauthorize(mctx, subject, fingerprint, connUser, sticky)
 		if err != nil {
 			<-sem
 			_ = newChannel.Reject(ssh.Prohibited, "authorization no longer valid")
@@ -520,12 +522,12 @@ func (s *Server) serveMultiChannel(ctx context.Context, channels <-chan ssh.NewC
 // transport authentication made: the fingerprint's key still exists and still
 // belongs to the subject, and the subject is still authorized for the requested
 // target — the resolvers assert their relation UNCACHED (round-7 #7), so this
-// is an authoritative decision, not a cached one (codex round-8 #5). It returns
-// the CURRENT target so each channel execs against the live pod, never the
-// transport-auth-time snapshot. Any failure — key gone, membership revoked,
-// target gone, or the store unreachable (fail closed, like every fresh check) —
-// ends the transport.
-func (s *Server) reauthorize(ctx context.Context, subject, fingerprint, connUser string) (apps.SSHInstanceTarget, error) {
+// is an authoritative decision, not a cached one (codex round-8 #5). It first
+// resolves the connection's sticky instance ID, so a bare service username
+// cannot randomly select a different Ready replica between the audit row and
+// pods/exec. Only an exact-instance not-found result permits selecting a new
+// Ready target; authorization and store failures remain fail closed.
+func (s *Server) reauthorize(ctx context.Context, subject, fingerprint, connUser string, sticky *connectionTarget) (apps.SSHInstanceTarget, error) {
 	lookupCtx, cancel := context.WithTimeout(ctx, s.HandshakeTimeout)
 	defer cancel()
 	registered, err := s.Store.SSHKeyByFingerprint(lookupCtx, fingerprint)
@@ -534,13 +536,37 @@ func (s *Server) reauthorize(ctx context.Context, subject, fingerprint, connUser
 		return apps.SSHInstanceTarget{}, errors.New("public key rejected")
 	}
 	authCtx := core.WithIdentity(lookupCtx, core.Identity{Subject: subject, Method: "ssh"})
-	target, err := s.Apps.ResolveSSHSession(authCtx, connUser)
+	target, err := s.Apps.ResolveSSHSession(authCtx, sticky.Get().ID)
+	if errors.Is(err, core.ErrNotFound) {
+		target, err = s.Apps.ResolveSSHSession(authCtx, connUser)
+	}
 	if err != nil {
 		s.Metrics.Reauthorization("rejected")
 		return apps.SSHInstanceTarget{}, err
 	}
+	sticky.Set(target)
 	s.Metrics.Reauthorization("accepted")
 	return target, nil
+}
+
+// connectionTarget is the instance selected at transport authentication. It is
+// shared by all channels on a multiplexed connection and changes only when the
+// exact sticky instance is no longer Ready and the resolver selects a fallback.
+type connectionTarget struct {
+	mu     sync.RWMutex
+	target apps.SSHInstanceTarget
+}
+
+func (t *connectionTarget) Get() apps.SSHInstanceTarget {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	return t.target
+}
+
+func (t *connectionTarget) Set(target apps.SSHInstanceTarget) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.target = target
 }
 
 func rejectAdditionalChannels(channels <-chan ssh.NewChannel) {

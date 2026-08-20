@@ -202,6 +202,9 @@ func main() {
 		SessionTimeout:   sessionTimeout,
 		// Live-shell revalidation cadence for the browser bridge (round-9 #6).
 		RevalidateInterval: revalidateInterval,
+		// The WebSocket listener is HTTP behind the same Traefik pod network as
+		// native SSH. Trust forwarding headers only from those configured peers.
+		TrustedProxies: core.TrustedProxies(trustedProxies),
 	}
 	sandbox := &sandboxsse.Server{
 		Secret:   []byte(os.Getenv("BEX_SANDBOX_EXEC_SECRET")),
@@ -233,6 +236,9 @@ func main() {
 			intEnv("BEX_AGENT_GIT_MAX_CONNS", 64),
 			intEnv("BEX_AGENT_GIT_MAX_CONNS_PER_POD", 4),
 		)
+		credentials.MaxDuration = durationEnv("BEX_AGENT_GIT_MAX_DURATION", 10*time.Minute)
+		credentials.MaxRequestsPerSession = intEnv("BEX_AGENT_GIT_MAX_REQUESTS_PER_SESSION", 1000)
+		credentials.MaxRequestsPerWorkspace = intEnv("BEX_AGENT_GIT_MAX_REQUESTS_PER_WORKSPACE", 5000)
 
 		modelAPIURL := envOr("BEX_AGENT_MODEL_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalModelMintPath)
 		model.Pods = agentcred.KubeSessionPodResolver{Client: clientset}

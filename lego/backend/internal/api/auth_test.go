@@ -522,6 +522,60 @@ func TestIntrospectionCache(t *testing.T) {
 	}
 }
 
+type memoryRevocations struct {
+	mu sync.Mutex
+	at map[string]time.Time
+}
+
+func (m *memoryRevocations) BumpOAuthRevocation(_ context.Context, subject, clientID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.at == nil {
+		m.at = map[string]time.Time{}
+	}
+	m.at[subject+"\x00"+clientID] = time.Now().Add(time.Millisecond)
+	return nil
+}
+
+func (m *memoryRevocations) OAuthRevokedAt(_ context.Context, subject, clientID string) (time.Time, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	at, ok := m.at[subject+"\x00"+clientID]
+	return at, ok, nil
+}
+
+func TestSharedOAuthRevocationInvalidatesAnotherReplicaWarmCache(t *testing.T) {
+	var hits atomic.Int32
+	var active atomic.Bool
+	active.Store(true)
+	hydra := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"active": active.Load(), "sub": "human-a", "client_id": "shared-client",
+			"scope": core.ScopeRead,
+		})
+	}))
+	defer hydra.Close()
+	shared := &memoryRevocations{}
+	replicaA := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil, "")
+	replicaB := newOryAuth(hydra.URL, "", "", "", "", false, nil, nil, nil, "")
+	replicaA.revocations, replicaB.revocations = shared, shared
+
+	if id, err := replicaA.introspect(introspectReq(), "access"); err != nil || id.Subject != "human-a" {
+		t.Fatalf("warm replica A = %+v, %v", id, err)
+	}
+	active.Store(false)
+	replicaB.invalidate("different-access", core.Identity{
+		Subject: "human-a", Method: "oauth2", ClientID: "shared-client", Human: true,
+	})
+	if id, err := replicaA.introspect(introspectReq(), "access"); err != nil || id != (core.Identity{}) {
+		t.Fatalf("replica A after shared revoke = %+v, %v", id, err)
+	}
+	if hits.Load() != 2 {
+		t.Fatalf("Hydra introspections = %d, want 2 after cross-replica cache miss", hits.Load())
+	}
+}
+
 func TestLogoutCannotBeUndoneByInflightIntrospection(t *testing.T) {
 	started := make(chan struct{})
 	release := make(chan struct{})
@@ -688,7 +742,7 @@ func TestInvalidateEvictsOnlyTheRevokedOAuthCredential(t *testing.T) {
 		"machine-2": {Subject: "key-1", Method: "oauth2", ClientID: "key-1"},
 	}
 	for token, id := range values {
-		auth.cache.Put(token, id, expires)
+		auth.cache.Put(token, cachedIdentity{Identity: id, CachedAt: time.Now()}, expires)
 	}
 
 	auth.invalidate("human-a-1", values["human-a-1"])

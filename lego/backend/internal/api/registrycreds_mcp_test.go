@@ -65,6 +65,11 @@ func (f *fakeRCStore) ListRegistryCredentials(_ context.Context, workspaceID str
 	return out, nil
 }
 
+func (f *fakeRCStore) CountRegistryCredentials(ctx context.Context, workspaceID string) (int, error) {
+	rows, err := f.ListRegistryCredentials(ctx, workspaceID)
+	return len(rows), err
+}
+
 func (f *fakeRCStore) GetRegistryCredential(_ context.Context, workspaceID, id string) (store.RegistryCredential, error) {
 	c, ok := f.rows[id]
 	if !ok || c.WorkspaceID != workspaceID {

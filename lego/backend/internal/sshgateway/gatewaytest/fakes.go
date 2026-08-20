@@ -158,6 +158,7 @@ func (f *FakeResolver) ResolveSSHSession(ctx context.Context, username string) (
 // that contract to observe resize propagation.
 type FakeExecutor struct {
 	Command []string
+	Target  apps.SSHInstanceTarget
 	TTY     bool
 	Sizes   []remotecommand.TerminalSize
 	Code    int
@@ -167,8 +168,9 @@ type FakeExecutor struct {
 	Stopped chan error
 }
 
-func (f *FakeExecutor) Execute(ctx context.Context, _ apps.SSHInstanceTarget, command []string, tty bool, queue remotecommand.TerminalSizeQueue, _ io.Reader, stdout, _ io.Writer) (int, error) {
+func (f *FakeExecutor) Execute(ctx context.Context, target apps.SSHInstanceTarget, command []string, tty bool, queue remotecommand.TerminalSizeQueue, _ io.Reader, stdout, _ io.Writer) (int, error) {
 	f.Command = append([]string(nil), command...)
+	f.Target = target
 	f.TTY = tty
 	if f.Started != nil {
 		select {

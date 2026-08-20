@@ -31,6 +31,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
+	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
@@ -87,11 +88,11 @@ func rsaSigner(t *testing.T, algorithms ...string) ssh.Signer {
 	return signer
 }
 
-func startGateway(t *testing.T, st *gatewaytest.FakeStore, resolver *gatewaytest.FakeResolver, executor sshgateway.Executor, clientSigner ssh.Signer) (string, context.CancelFunc) {
+func startGateway(t *testing.T, st *gatewaytest.FakeStore, resolver sshgateway.TargetResolver, executor sshgateway.Executor, clientSigner ssh.Signer) (string, context.CancelFunc) {
 	return startGatewayConfigured(t, st, resolver, executor, clientSigner, nil)
 }
 
-func startGatewayConfigured(t *testing.T, st *gatewaytest.FakeStore, resolver *gatewaytest.FakeResolver, executor sshgateway.Executor, clientSigner ssh.Signer, configure func(*Server)) (string, context.CancelFunc) {
+func startGatewayConfigured(t *testing.T, st *gatewaytest.FakeStore, resolver sshgateway.TargetResolver, executor sshgateway.Executor, clientSigner ssh.Signer, configure func(*Server)) (string, context.CancelFunc) {
 	t.Helper()
 	st.Key = store.SSHKey{Subject: "user-1", Fingerprint: ssh.FingerprintSHA256(clientSigner.PublicKey())}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -292,7 +293,7 @@ func TestGatewayExecPropagatesIdentityOutputExitAndAudit(t *testing.T) {
 	if !errors.As(err, &exitErr) || exitErr.ExitStatus() != 7 {
 		t.Fatalf("exec error = %v, want SSH exit 7", err)
 	}
-	if string(output) != "inside-app\n" || resolver.Subject != "user-1" || resolver.Username != "srv-abcdeabcdeabcdeabcde" {
+	if string(output) != "inside-app\n" || resolver.Subject != "user-1" || resolver.Username != "srv-abcdeabcdeabcdeabcde-pod01" {
 		t.Fatalf("output/identity/target = %q %q %q", output, resolver.Subject, resolver.Username)
 	}
 	if len(executor.Command) != 3 || executor.Command[0] != "/bin/sh" || executor.Command[2] != "printf private-command" {
@@ -302,6 +303,64 @@ func TestGatewayExecPropagatesIdentityOutputExitAndAudit(t *testing.T) {
 	started, ended := st.StartedSessions(), st.EndedSessions()
 	if len(started) != 1 || started[0].Subject != "user-1" || started[0].ServiceID == "" || len(ended) != 1 {
 		t.Fatalf("audit start/end = %+v / %+v", started, ended)
+	}
+}
+
+type alternatingResolver struct {
+	bareCalls int
+	targets   [2]apps.SSHInstanceTarget
+}
+
+func (r *alternatingResolver) ResolveSSHSession(_ context.Context, username string) (apps.SSHInstanceTarget, error) {
+	for _, target := range r.targets {
+		if username == target.ID {
+			return target, nil
+		}
+	}
+	target := r.targets[r.bareCalls%len(r.targets)]
+	r.bareCalls++
+	return target, nil
+}
+
+func TestGatewayAuditInstanceMatchesExecWithAlternatingResolver(t *testing.T) {
+	clientSigner := signer(t)
+	resolver := &alternatingResolver{targets: [2]apps.SSHInstanceTarget{
+		{
+			ID: "srv-abcdeabcdeabcdeabcde-pod01", ServiceID: "srv-abcdeabcdeabcdeabcde",
+			OwnerID: "tea-workspace", Namespace: "default", PodName: "web-rs-pod01", Container: core.AppContainer,
+		},
+		{
+			ID: "srv-abcdeabcdeabcdeabcde-pod02", ServiceID: "srv-abcdeabcdeabcdeabcde",
+			OwnerID: "tea-workspace", Namespace: "default", PodName: "web-rs-pod02", Container: core.AppContainer,
+		},
+	}}
+	st := &gatewaytest.FakeStore{}
+	executor := &gatewaytest.FakeExecutor{}
+	addr, stop := startGateway(t, st, resolver, executor, clientSigner)
+	defer stop()
+
+	client, err := dialGateway(addr, "srv-abcdeabcdeabcdeabcde", clientSigner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := client.NewSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := session.CombinedOutput("true"); err != nil {
+		t.Fatal(err)
+	}
+	_ = client.Close()
+
+	started := st.StartedSessions()
+	if len(started) != 1 {
+		t.Fatalf("started sessions = %+v, want one", started)
+	}
+	if started[0].InstanceID != executor.Target.ID || started[0].InstanceID != resolver.targets[0].ID {
+		t.Fatalf("audit instance %q != exec instance %q (initial %q)", started[0].InstanceID, executor.Target.ID, resolver.targets[0].ID)
+	}
+	if resolver.bareCalls != 1 {
+		t.Fatalf("bare service resolved %d times, want only auth-time selection", resolver.bareCalls)
 	}
 }
 

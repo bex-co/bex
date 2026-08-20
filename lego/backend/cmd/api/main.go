@@ -72,6 +72,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	pushtransport "github.com/bex-co/bex/lego/backend/internal/notifications/push"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	"github.com/bex-co/bex/lego/backend/internal/serve"
@@ -750,7 +751,8 @@ func wireGitHubApp(deps *api.Deps) *github.Client {
 // and adapts the authz checker's role grant/revoke sides, returning the
 // membership granter shared by the tenant service and the internal CP API.
 func wireControlPlaneFeatures(deps *api.Deps, base *core.Base, st *store.PGStore, rec *store.Reconciler, authzChecker core.Checker) store.MembershipGranter {
-	deps.Store = st        // single writer of intent: suspend/resume write the row first
+	deps.Store = st // single writer of intent: suspend/resume write the row first
+	deps.OAuthRevocations = st
 	deps.SSHKeysStore = st // identity-scoped SSH public-key registry
 	deps.DeployStore = st  // deploy history (w2/m5): list/get/trigger read+write the same rows
 	// Cancel (w2/m10) needs to compute a repo-backed App's in-flight build
@@ -801,6 +803,7 @@ func wireControlPlaneFeatures(deps *api.Deps, base *core.Base, st *store.PGStore
 	deps.WorkspacePreCascadePurgers = []workspaces.WorkspacePurger{
 		&secrets.WorkspacePurger{Service: &secrets.Service{Base: base, Store: deps.Secrets}},
 		&envgroups.WorkspacePurger{Service: &envgroups.Service{Base: base, Store: deps.Secrets}},
+		&registrycreds.WorkspacePurger{Service: &registrycreds.Service{Base: base, Store: st, Secret: deps.Secrets}},
 		&postgres.WorkspacePurger{Service: &postgres.Service{Base: base}},
 		&keyvalue.WorkspacePurger{Service: &keyvalue.Service{Base: base}},
 	}
@@ -1100,6 +1103,8 @@ func wireAgentSessions(deps *api.Deps) {
 	deps.MaxEnvGroupsPerWorkspace = zeroableIntEnv("BEX_MAX_ENV_GROUPS_PER_WORKSPACE", 100)
 	// ADR075 §2: per-workspace GitHub-connection quota (default 10; 0 disables).
 	deps.MaxGitConnectionsPerWorkspace = zeroableIntEnv("BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE", 10)
+	// codex-security geyRc8 F1: per-workspace registry-credential quota.
+	deps.MaxRegistryCredentialsPerWorkspace = zeroableIntEnv("BEX_MAX_REGISTRY_CREDS_PER_WORKSPACE", 50)
 	// ADR059 D3/D5 hibernation (w2/m68, armed w2/m77): the object store enables
 	// the Hibernated tier (reclaim → snapshot, resume → rehydrate). All four
 	// required coordinates unset ⇒ the whole tier is off and reclaim stays

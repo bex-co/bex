@@ -589,7 +589,7 @@ var (
 	// hostRE: lowercase FQDN with at least two labels (custom domains are
 	// full hostnames, never bare labels).
 	hostRE = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$`)
-	// repoRE: an https://, http://, ssh://, or git@ SCP-form git URL with no
+	// repoRE: an https://, ssh://, or git@ SCP-form git URL with no
 	// whitespace or control characters—the only shapes the source-clone phase
 	// should ever receive. file:// and bare local paths are refused (w6/m6 t003)
 	// so a request can never point a build at the build pod's own filesystem.
@@ -597,7 +597,7 @@ var (
 	// intent fields, so accepting URL-fragment ref/subdir syntax would make their
 	// precedence ambiguous and could bypass the validated ref/rootDir values.
 	// Length is bounded separately in ValidRepo (RE2 caps repetition at 1000).
-	repoRE = regexp.MustCompile(`^(https?://|ssh://|git@)[^\x00-\x20\x7f#]+$`)
+	repoRE = regexp.MustCompile(`^(https://|ssh://|git@)[^\x00-\x20\x7f#]+$`)
 	// refRE: a git branch/tag/ref/SHA — alphanumerics and . _ / @ + -, starting
 	// with an alphanumeric (no leading "-" so a ref can never be read as a git
 	// flag, no leading "." or "/"). Rejects all control/whitespace/shell-meta
