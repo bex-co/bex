@@ -105,6 +105,7 @@ func TestStartConnectReturnsStatefulInstallURL(t *testing.T) {
 		Base:        &core.Base{Namespace: "default", Workspace: connectStateWorkspaceResolver{}},
 		GitHub:      &fakeClient{},
 		Store:       st,
+		Verifier:    &fakeVerifier{}, // §7: StartConnect preflights the verifier
 		StateSecret: []byte("test-only-high-entropy-state-secret"),
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "admin", Method: "session"})

@@ -1,5 +1,6 @@
 import { useQuery } from "@apollo/client/react";
 import { RepoBranchesDocument } from "@/graphql/definitions";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface UseRepoBranchesResult {
   branches: string[];
@@ -10,14 +11,16 @@ export interface UseRepoBranchesResult {
  * Fetches the actual branches of a connected GitHub repo (w5/m54), feeding the
  * Settings Branch combobox. Returns an empty list — never throws — for a
  * non-GitHub repo, no GitHub App connection, or a backend error, so the Branch
- * row degrades to free-text entry. Skips the query entirely when repo is empty.
+ * row degrades to free-text entry. Skips the query entirely when repo is empty
+ * or the selected workspace is unresolved (ADR075 §6 scoping).
  */
 export function useRepoBranches(
   repo: string | null | undefined,
 ): UseRepoBranchesResult {
+  const { currentWorkspaceId } = useWorkspace();
   const { data, loading } = useQuery(RepoBranchesDocument, {
-    variables: { repo: repo ?? "" },
-    skip: !repo,
+    variables: { repo: repo ?? "", ownerId: currentWorkspaceId },
+    skip: !repo || currentWorkspaceId == null,
     // A branch list is best-effort; an error must never block editing the field.
     errorPolicy: "all",
   });

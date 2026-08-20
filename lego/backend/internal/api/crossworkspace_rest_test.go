@@ -190,6 +190,9 @@ var callerScopedRoutes = map[string]bool{
 	"POST /v1/sandboxes":                           true,
 	"POST /v1/agent-sessions":                      true,
 	"POST /v1/git/connect":                         true,
+	// The ADR075 §3a claim start — same ownerId/body scoping as connect; its
+	// cross-workspace path is the verb's own can_manage gate.
+	"POST /v1/git/claim": true,
 	"POST /v1/invites/accept":                      true, // redeems by the CALLER's own identity
 	"POST /v1/notification-device-subscriptions":   true, // registers only the caller's own device capability
 	"POST /v1/notification-webpush-subscriptions":  true, // registers only the caller's own browser subscription

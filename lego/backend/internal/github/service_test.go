@@ -615,11 +615,25 @@ type fakeVerifier struct {
 	err     error
 	gotCode string
 	gotID   int64
+	// Claim seams (ADR075 §3a): the admin-filtered installations the fake
+	// resolves from a code, and the code ClaimableInstallations saw.
+	claimable    []Installation
+	claimErr     error
+	gotClaimCode string
 }
 
 func (f *fakeVerifier) VerifyInstallationAdmin(_ context.Context, code string, id int64) (bool, error) {
 	f.gotCode, f.gotID = code, id
 	return f.ok, f.err
+}
+
+func (f *fakeVerifier) AuthorizeURL() string {
+	return "https://github.example/login/oauth/authorize?client_id=test-client"
+}
+
+func (f *fakeVerifier) ClaimableInstallations(_ context.Context, code string) ([]Installation, error) {
+	f.gotClaimCode = code
+	return f.claimable, f.claimErr
 }
 
 // TestConnectFromCallbackEnforcesInstallationAdmin pins w1/m65 F2's principal

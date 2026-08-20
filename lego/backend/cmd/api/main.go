@@ -739,6 +739,14 @@ func wireGitHubApp(deps *api.Deps) *github.Client {
 		deps.GitHubClient = ghClient
 		if ghClient.InstallVerificationConfigured() {
 			deps.GitHubInstallVerifier = ghClient
+		} else {
+			// ADR075 §7: the half-configured state (app keys present, OAuth pair
+			// absent) is a deployment mistake, never meaningful — every new
+			// binding would fail closed at the callback. Production ran this way
+			// undetected because the Secret simply lacked the two keys and the
+			// manifest's optional env refs made it silent. Say so loudly; the
+			// connect/claim start verbs also refuse up front.
+			log.Printf("bex-api: WARNING: GitHub App is configured but BEX_GITHUB_APP_CLIENT_ID/BEX_GITHUB_APP_CLIENT_SECRET are not — every new GitHub connection will be refused until they are set")
 		}
 		// The same out-of-band private key also HMAC-signs the short-lived
 		// workspace state carried through GitHub's browser install redirect.

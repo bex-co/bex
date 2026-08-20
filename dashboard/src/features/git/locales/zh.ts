@@ -28,6 +28,21 @@ const zhGit: Record<string, TranslationEntry> = {
     description:
       "Button that connects an additional GitHub account/org to the workspace",
   },
+  "git.claimButton": {
+    message: "认领已安装账户",
+    description:
+      "Button starting the ADR075 §3a claim flow: bind a GitHub account where the app is ALREADY installed (GitHub strips the install URL's state for those)",
+  },
+  "git.claimHint": {
+    message:
+      "已经直接在 GitHub 上安装了 bex GitHub App？请使用认领——安装流程只适用于尚未安装该应用的账户。",
+    description:
+      "Hint under the connect/claim buttons explaining when to use claim",
+  },
+  "git.claimError": {
+    message: "无法开始 GitHub 认领流程。",
+    description: "Toast when starting the claim flow fails",
+  },
   "git.connectedAs": {
     message: "已连接账户",
     description: "Label preceding the connected GitHub account login",
@@ -88,9 +103,19 @@ const zhGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorMissing": {
     message:
-      "此 GitHub 安装尚未连接到任何工作区。如果你直接在 GitHub 上安装了应用，请在此处使用“连接 GitHub”完成连接。",
+      "此 GitHub 安装尚未连接到任何工作区。对已安装应用的账户，GitHub 无法完成安装流程——请使用下方的“认领已安装账户”。",
     description:
-      "Callback error shown when state is missing (e.g. a direct github.com install) — offers the stateful connect to recover",
+      "Callback error shown when state is missing (e.g. a direct github.com install) — points at the claim flow, which is the path that works for already-installed accounts (ADR075 §3a)",
+  },
+  "git.callbackErrorNoClaimable": {
+    message:
+      "未找到你管理的、尚未连接的 GitHub 账户。请先在该账户上安装 bex GitHub App，或确认授权了正确的 GitHub 用户。",
+    description: "Claim-callback failure: zero claimable installations",
+  },
+  "git.callbackErrorAmbiguous": {
+    message:
+      "找到了多个你管理的、尚未连接的 GitHub 账户。认领一次只绑定一个——请先在各自的工作区连接其他账户，然后再认领。",
+    description: "Claim-callback failure: more than one claimable installation",
   },
   "git.callbackErrorGeneric": {
     message: "GitHub 无法完成连接。请选择“连接 GitHub”重试。",

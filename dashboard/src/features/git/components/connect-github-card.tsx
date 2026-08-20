@@ -34,6 +34,7 @@ import {
   type GitConnectionRow,
 } from "@/features/git/hooks/use-git-connection";
 import { useConnectGit } from "@/features/git/hooks/use-connect-git";
+import { useClaimGit } from "@/features/git/hooks/use-claim-git";
 import { useDisconnectGit } from "@/features/git/hooks/use-disconnect-git";
 
 // The backend answers ErrGitHubUnavailable (503) when BEX_GITHUB_APP_* is unset;
@@ -45,8 +46,10 @@ function isUnavailable(error: Error | undefined): boolean {
 }
 
 // The bounded git_error codes the callback redirects with (backend
-// internal/github/rest.go). missing_state is the direct-github.com-install case,
-// which the recovery message + always-present Connect button resolves (ADR075).
+// internal/github/rest.go). missing_state is the direct-github.com-install case;
+// GitHub strips the state for already-installed accounts (ADR075 §3a), so its
+// recovery — and the claim flow's own bounded failures — point at the CLAIM
+// action, never at retrying the install URL.
 function callbackErrorMessage(t: (k: string) => string, code: string): string {
   switch (code) {
     case "expired_state":
@@ -55,9 +58,19 @@ function callbackErrorMessage(t: (k: string) => string, code: string): string {
       return t("git.callbackErrorMissing");
     case "invalid_state":
       return t("git.callbackErrorInvalid");
+    case "no_claimable_installation":
+      return t("git.callbackErrorNoClaimable");
+    case "ambiguous_installation":
+      return t("git.callbackErrorAmbiguous");
     default:
       return t("git.callbackErrorGeneric");
   }
+}
+
+// The codes whose recovery is the claim flow (an installation already exists on
+// GitHub; the install URL cannot bind it).
+function claimRecovers(code: string | undefined): boolean {
+  return code === "missing_state" || code === "ambiguous_installation";
 }
 
 /**
@@ -77,6 +90,7 @@ export function ConnectGithubCard({
   const { connections, connected, loading, error, refetch } =
     useGitConnections();
   const { connect, busy: connecting } = useConnectGit();
+  const { claim, busy: claiming } = useClaimGit();
   const { disconnect, busy: disconnecting } = useDisconnectGit();
 
   // Refetch when the tab regains focus — the GitHub callback redirects here.
@@ -115,6 +129,18 @@ export function ConnectGithubCard({
             <AlertTitle>{t("git.callbackErrorTitle")}</AlertTitle>
             <AlertDescription>
               {callbackErrorMessage(t, callbackError)}
+              {claimRecovers(callbackError) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={claim}
+                  disabled={claiming}
+                >
+                  <Github className="size-4" />
+                  {t("git.claimButton")}
+                </Button>
+              )}
             </AlertDescription>
           </Alert>
         )}
@@ -139,9 +165,16 @@ export function ConnectGithubCard({
             disconnecting={disconnecting}
             onConnectAnother={connect}
             connecting={connecting}
+            onClaim={claim}
+            claiming={claiming}
           />
         ) : (
-          <DisconnectedState onConnect={connect} connecting={connecting} />
+          <DisconnectedState
+            onConnect={connect}
+            connecting={connecting}
+            onClaim={claim}
+            claiming={claiming}
+          />
         )}
       </CardContent>
     </Card>
@@ -151,9 +184,13 @@ export function ConnectGithubCard({
 function DisconnectedState({
   onConnect,
   connecting,
+  onClaim,
+  claiming,
 }: {
   onConnect: () => void;
   connecting: boolean;
+  onClaim: () => void;
+  claiming: boolean;
 }) {
   const { t } = useTranslations();
   return (
@@ -161,10 +198,16 @@ function DisconnectedState({
       <p className="text-sm text-muted-foreground">
         {t("git.disconnectedBody")}
       </p>
-      <Button onClick={onConnect} disabled={connecting}>
-        <Github className="size-4" />
-        {t("git.connectButton")}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={onConnect} disabled={connecting}>
+          <Github className="size-4" />
+          {t("git.connectButton")}
+        </Button>
+        <Button variant="outline" onClick={onClaim} disabled={claiming}>
+          {t("git.claimButton")}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">{t("git.claimHint")}</p>
     </div>
   );
 }
@@ -175,12 +218,16 @@ function ConnectedList({
   disconnecting,
   onConnectAnother,
   connecting,
+  onClaim,
+  claiming,
 }: {
   connections: GitConnectionRow[];
   onDisconnect: (installationId: number) => void;
   disconnecting: boolean;
   onConnectAnother: () => void;
   connecting: boolean;
+  onClaim: () => void;
+  claiming: boolean;
 }) {
   const { t } = useTranslations();
   return (
@@ -196,15 +243,25 @@ function ConnectedList({
           </li>
         ))}
       </ul>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onConnectAnother}
-        disabled={connecting}
-      >
-        <Github className="size-4" />
-        {t("git.connectAnotherButton")}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onConnectAnother}
+          disabled={connecting}
+        >
+          <Github className="size-4" />
+          {t("git.connectAnotherButton")}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onClaim}
+          disabled={claiming}
+        >
+          {t("git.claimButton")}
+        </Button>
+      </div>
     </div>
   );
 }

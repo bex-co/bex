@@ -43,6 +43,18 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, conn)
 	})
 
+	// POST /v1/git/claim — start the ADR075 §3a claim flow: bind an installation
+	// that already exists on GitHub (where the install URL strips the state) via
+	// the OAuth user-authorization round trip. Returns {claimUrl}.
+	mux.HandleFunc("POST /v1/git/claim", func(w http.ResponseWriter, r *http.Request) {
+		claim, err := s.StartClaim(r.Context(), r.URL.Query().Get("ownerId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, claim)
+	})
+
 	mux.HandleFunc("GET /v1/git/callback", func(w http.ResponseWriter, r *http.Request) {
 		stateToken := r.URL.Query().Get("state")
 		if !s.configured() {
@@ -72,12 +84,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 
-		raw := r.URL.Query().Get("installation_id")
-		id, err := strconv.ParseInt(raw, 10, 64)
-		if err != nil || id <= 0 {
-			s.writeCallbackFailure(w, r, "invalid_installation", core.ErrBadRequest)
-			return
-		}
 		// The authenticated bex subject, when the browser presented one. The gate
 		// lets this exact route through anonymously (GitHub has no bex credential
 		// to offer), but the session cookie IS Lax-scoped, so a signed-in user's
@@ -87,10 +93,27 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if identity, ok := core.IdentityFrom(r.Context()); ok {
 			caller = identity.Subject
 		}
-		_, err = s.connectFromCallback(r.Context(), nonce, caller, id, r.URL.Query().Get("code"))
-		if err != nil {
-			s.writeCallbackFailure(w, r, callbackConnectErrorCode(err), err)
-			return
+		raw := r.URL.Query().Get("installation_id")
+		if raw == "" {
+			// No installation id at all ⇒ the ADR075 §3a claim flow: GitHub's OAuth
+			// authorize redirect carries only code + state, and the installation is
+			// resolved server-side from the authorizing user's admin set. A PRESENT
+			// but malformed id stays invalid_installation below — only true absence
+			// selects the claim branch.
+			if _, err := s.claimFromCallback(r.Context(), nonce, caller, r.URL.Query().Get("code")); err != nil {
+				s.writeCallbackFailure(w, r, callbackConnectErrorCode(err), err)
+				return
+			}
+		} else {
+			id, err := strconv.ParseInt(raw, 10, 64)
+			if err != nil || id <= 0 {
+				s.writeCallbackFailure(w, r, "invalid_installation", core.ErrBadRequest)
+				return
+			}
+			if _, err := s.connectFromCallback(r.Context(), nonce, caller, id, r.URL.Query().Get("code")); err != nil {
+				s.writeCallbackFailure(w, r, callbackConnectErrorCode(err), err)
+				return
+			}
 		}
 		if location := s.callbackRedirect(""); location != "" {
 			redirectCallback(w, r, location)
@@ -169,6 +192,12 @@ func callbackStateErrorCode(err error) string {
 
 func callbackConnectErrorCode(err error) string {
 	switch {
+	// The claim sentinels wrap ErrBadRequest for their HTTP class, so they must
+	// be matched before the generic case.
+	case errors.Is(err, errNoClaimableInstallation):
+		return "no_claimable_installation"
+	case errors.Is(err, errAmbiguousClaim):
+		return "ambiguous_installation"
 	case errors.Is(err, core.ErrBadRequest):
 		return "invalid_installation"
 	default:

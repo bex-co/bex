@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { ReposDocument } from "@/graphql/definitions";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export interface RepoView {
   id: number;
@@ -20,7 +21,13 @@ export interface UseReposResult {
 }
 
 export function useRepos(): UseReposResult {
-  const { data, loading, error } = useQuery(ReposDocument);
+  // ADR075 §6: the repo list is the SELECTED workspace's connection set, never
+  // the caller's default one; defer while the workspace id resolves.
+  const { currentWorkspaceId } = useWorkspace();
+  const { data, loading, error } = useQuery(ReposDocument, {
+    variables: { ownerId: currentWorkspaceId },
+    skip: currentWorkspaceId == null,
+  });
 
   const repos = useMemo<RepoView[]>(
     () =>

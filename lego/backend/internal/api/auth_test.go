@@ -219,6 +219,14 @@ func (callbackGitHubClient) VerifyInstallationAdmin(context.Context, string, int
 	return true, nil
 }
 
+func (callbackGitHubClient) AuthorizeURL() string {
+	return "https://github.example/login/oauth/authorize?client_id=test"
+}
+
+func (callbackGitHubClient) ClaimableInstallations(context.Context, string) ([]github.Installation, error) {
+	return nil, nil
+}
+
 type callbackGitHubStore struct {
 	connections map[string]store.GitConnection
 	// The subject-bound connect transactions w1/m67 F3 added; this fake only has

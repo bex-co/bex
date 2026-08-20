@@ -28,6 +28,21 @@ const enGit: Record<string, TranslationEntry> = {
     description:
       "Button that connects an additional GitHub account/org to the workspace",
   },
+  "git.claimButton": {
+    message: "Claim installed account",
+    description:
+      "Button starting the ADR075 §3a claim flow: bind a GitHub account where the app is ALREADY installed (GitHub strips the install URL's state for those)",
+  },
+  "git.claimHint": {
+    message:
+      "Already installed the bex GitHub App directly on GitHub? Claim it instead — the install flow only works for accounts without the app.",
+    description:
+      "Hint under the connect/claim buttons explaining when to use claim",
+  },
+  "git.claimError": {
+    message: "Couldn't start the GitHub claim.",
+    description: "Toast when starting the claim flow fails",
+  },
   "git.connectedAs": {
     message: "Connected as",
     description: "Label preceding the connected GitHub account login",
@@ -90,9 +105,19 @@ const enGit: Record<string, TranslationEntry> = {
   },
   "git.callbackErrorMissing": {
     message:
-      "This GitHub installation isn't connected to a workspace yet. If you installed the app directly on GitHub, finish connecting it here with Connect GitHub.",
+      "This GitHub installation isn't connected to a workspace yet. GitHub can't complete the install flow for an account that already has the app — use Claim installed account below.",
     description:
-      "Callback error shown when state is missing (e.g. a direct github.com install) — offers the stateful connect to recover",
+      "Callback error shown when state is missing (e.g. a direct github.com install) — points at the claim flow, which is the path that works for already-installed accounts (ADR075 §3a)",
+  },
+  "git.callbackErrorNoClaimable": {
+    message:
+      "No unconnected GitHub account you administer was found. Install the bex GitHub App on the account first, or check that you authorized the right GitHub user.",
+    description: "Claim-callback failure: zero claimable installations",
+  },
+  "git.callbackErrorAmbiguous": {
+    message:
+      "Several unconnected GitHub accounts you administer were found. Claiming binds exactly one — connect the others from their own workspaces first, then claim again.",
+    description: "Claim-callback failure: more than one claimable installation",
   },
   "git.callbackErrorGeneric": {
     message:

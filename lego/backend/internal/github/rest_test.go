@@ -159,8 +159,9 @@ func TestRESTCallbackBadInstallationID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// A PRESENT but malformed installation_id is invalid_installation (400) —
+	// only true absence selects the ADR075 §3a claim branch (covered separately).
 	for _, path := range []string{
-		"/v1/git/callback?state=" + url.QueryEscape(state),
 		"/v1/git/callback?installation_id=abc&state=" + url.QueryEscape(state),
 		"/v1/git/callback?installation_id=0&state=" + url.QueryEscape(state),
 		"/v1/git/callback?installation_id=-5&state=" + url.QueryEscape(state),
@@ -168,6 +169,14 @@ func TestRESTCallbackBadInstallationID(t *testing.T) {
 		if rec := do(t, m, "GET", path); rec.Code != http.StatusBadRequest {
 			t.Errorf("callback %s => %d, want 400", path, rec.Code)
 		}
+	}
+	// The claim branch (no installation_id) with NO verifier configured fails
+	// closed as unavailable, never as a bind.
+	if rec := do(t, m, "GET", "/v1/git/callback?state="+url.QueryEscape(state)); rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("claim callback without verifier => %d, want 503", rec.Code)
+	}
+	if len(svc.Store.(*fakeStore).conns) != 0 {
+		t.Error("no callback variant may persist a connection")
 	}
 }
 
