@@ -1087,6 +1087,27 @@ if [ -f "$LOGSHIP" ]; then
     echo "$vals" | grep -qF "$required" \
       || { echo "FAIL: log-shipper.yaml managed-Postgres pipeline lost required attribution rule: $required" >&2; fail=1; }
   done
+
+  # Platform dashboard observability (w4/m88): namespace `dashboard` must ship
+  # as type=platform (not a fake App), and Traefik must retain dashboard.bex.co
+  # under bounded service=dashboard — never promoting RequestHost to a label.
+  echo "==> $LOGSHIP platform dashboard retention (w4/m88)"
+  for required in \
+    'discovery.relabel "platform_pods"' \
+    'regex         = "dashboard"' \
+    'type  = "platform"' \
+    'eq .host \"dashboard.bex.co\"' \
+    'platform_service' \
+    'drop_counter_reason = "not_a_tenant_app"'; do
+    echo "$vals" | grep -qF "$required" \
+      || { echo "FAIL: log-shipper.yaml platform dashboard retention lost required rule: $required" >&2; fail=1; }
+  done
+  # Cardinality tripwire: RequestHost may be extracted for the allowlist
+  # decision, but must never appear as a stage.labels value (Loki stream key).
+  if echo "$vals" | grep -A30 'stage.labels {' | grep -qE '^\s*host\s*='; then
+    echo "FAIL: log-shipper.yaml must not promote request host to a Loki label (cardinality budget, docs/ADR010)" >&2
+    fail=1
+  fi
 fi
 
 # Operator day-to-day RBAC guard (w7/m37, docs/ADR019-infra-credentials.md): the
