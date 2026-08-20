@@ -114,11 +114,113 @@ export const TERMINAL_TRANSCRIPT: UIMessageChunk[] = [
 export const RUNNING_TRANSCRIPT_HEAD: UIMessageChunk[] =
   TERMINAL_TRANSCRIPT.slice(0, 4);
 
+/** Stamp a fixture chunk with the driver source-timestamp fields. */
+export function withSourceTime(
+  chunk: UIMessageChunk,
+  at: string,
+  extra?: { endAt?: string },
+): UIMessageChunk {
+  const current = chunk as UIMessageChunk & {
+    providerMetadata?: { bex?: { at?: string; endAt?: string } };
+  };
+  const skipMeta =
+    chunk.type === "text-delta" || chunk.type === "reasoning-delta";
+  if (skipMeta) {
+    return { ...current, at } as unknown as UIMessageChunk;
+  }
+  return {
+    ...current,
+    at,
+    providerMetadata: {
+      ...current.providerMetadata,
+      bex: {
+        ...current.providerMetadata?.bex,
+        at: current.providerMetadata?.bex?.at ?? at,
+        ...(extra?.endAt ? { endAt: extra.endAt } : {}),
+      },
+    },
+  } as unknown as UIMessageChunk;
+}
+
+const T0 = "2026-08-19T00:00:00.000Z";
+const T40 = "2026-08-19T00:00:40.000Z";
+
 /**
- * A fixture `fetch` that streams a fixed chunk list, then (for a terminal
- * session) the `[DONE]` sentinel and close. Injected into the transport in
- * place of `globalThis.fetch`.
+ * A 40-second activity group: tool + diff with persisted source timestamps so
+ * live and one-frame replay both render "Worked for 40s".
  */
+export const TIMESTAMPED_ACTIVITY: UIMessageChunk[] = [
+  { type: "start", messageId: "asm-timed" },
+  withSourceTime(
+    {
+      type: "tool-input-start",
+      toolCallId: "tt1",
+      toolName: "search",
+      dynamic: true,
+    },
+    T0,
+  ),
+  withSourceTime(
+    {
+      type: "tool-input-available",
+      toolCallId: "tt1",
+      toolName: "search",
+      input: { q: "x" },
+      dynamic: true,
+    },
+    T0,
+  ),
+  withSourceTime(
+    {
+      type: "tool-output-available",
+      toolCallId: "tt1",
+      output: { hits: 2 },
+      dynamic: true,
+    },
+    T40,
+  ),
+  withSourceTime(
+    {
+      type: "data-acp-diff",
+      data: {
+        path: "main.go",
+        oldText: "",
+        newText: "package main\n",
+        toolCallId: "tt1",
+      },
+    } as UIMessageChunk,
+    T40,
+  ),
+  { type: "finish" },
+];
+
+/**
+ * Reasoning that started at T0 and ended 12s later, via `endAt` on the end chunk
+ * so a one-frame replay still shows "Thought for 12s".
+ */
+export const TIMESTAMPED_REASONING: UIMessageChunk[] = [
+  { type: "start", messageId: "asm-rsn" },
+  withSourceTime({ type: "reasoning-start", id: "r-timed" }, T0),
+  withSourceTime(
+    {
+      type: "reasoning-delta",
+      id: "r-timed",
+      delta: "Considering the edit.",
+    },
+    T0,
+  ),
+  withSourceTime(
+    {
+      type: "reasoning-end",
+      id: "r-timed",
+      providerMetadata: { bex: { at: T0 } },
+    } as UIMessageChunk,
+    "2026-08-19T00:00:12.000Z",
+    { endAt: "2026-08-19T00:00:12.000Z" },
+  ),
+  { type: "finish" },
+];
+
 export function makeFixtureFetch(
   chunks: UIMessageChunk[],
   { terminal = true }: { terminal?: boolean } = {},

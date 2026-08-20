@@ -10,7 +10,7 @@ import {
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
-  formatApproxDuration,
+  formatStreamDuration,
   useStreamDuration,
 } from "@/features/agent-sessions/lib/stream-duration";
 import { unwrapAcpTool } from "@/features/agent-sessions/lib/acp-parts";
@@ -18,11 +18,10 @@ import { unwrapAcpTool } from "@/features/agent-sessions/lib/acp-parts";
 // One folded activity block: the consecutive tool parts and ACP
 // command/terminal/diff parts of a single assistant turn, merged into a single
 // collapsible group (Devin's "Worked for <Ns>" shape). The collapsed summary
-// states "Working…" while any tool step is pending, else "Worked for ~Ns" with a
-// derived duration (or a bare "Worked" when no duration could be derived, see
-// `useStreamDuration`). Expanding reveals the steps as a VERTICAL TIMELINE — a
-// connector line with a node per step. The derived-duration mechanism lives in
-// `lib/stream-duration.ts` (t004 — no per-part timestamps in the m43 transcript).
+// states "Working…" while any tool step is pending, else "Worked for 12s" when
+// persisted source timestamps are present (or "Worked for ~Ns" from arrival
+// timing). A one-frame replay of an untimestamped history still falls back to
+// a bare "Worked". Expanding reveals the steps as a VERTICAL TIMELINE.
 
 /** One renderable step inside an activity group. */
 export type ActivityStep =
@@ -48,20 +47,24 @@ function isToolStepPending(step: ActivityStep): boolean {
   );
 }
 
-export function ActivityGroup({ steps }: { steps: ActivityStep[] }) {
+export function ActivityGroup({
+  steps,
+  sourceTimesMs = [],
+}: {
+  steps: ActivityStep[];
+  sourceTimesMs?: readonly number[];
+}) {
   const { t } = useTranslations();
   const [isOpen, setIsOpen] = useState(false);
 
   const hasPending = steps.some(isToolStepPending);
-  // Derive the "Worked for <Ns>" duration from stream-arrival timing; freeze it
-  // once every step has settled (no tool call still pending).
-  const durationMs = useStreamDuration(steps.length, !hasPending);
+  const duration = useStreamDuration(steps.length, !hasPending, sourceTimesMs);
 
   const summaryLabel = hasPending
     ? t("agentSessions.activityWorking")
-    : durationMs >= 1000
+    : duration.ms >= 1000
       ? t("agentSessions.groupWorkedFor", {
-          duration: formatApproxDuration(durationMs),
+          duration: formatStreamDuration(duration),
         })
       : t("agentSessions.groupWorked");
 

@@ -1,43 +1,115 @@
 import { useEffect, useRef, useState } from "react";
 
-// DURATIONS (w3/m44 t004 decision). The m43 v1 transcript / `UIMessageChunk`
-// parts carry NO per-part timestamps — verified against the driver
-// (`lego/agent-image/driver/src/{session,stream-hub}.ts`), which forwards ACP
-// parts verbatim with no timing field. So we derive elapsed on the CLIENT from
-// stream-arrival timing: record `Date.now()` when a group first mounts vs. when
-// its last part arrives, then freeze once the group settles. This is approximate
-// by design and only meaningful for a LIVE session — a replayed historical
-// transcript paints all its parts in one frame, so the derived elapsed is ~0 and
-// the caller falls back to a duration-less label ("Worked" / "Thought"). No
-// backend change this pass; emitting real per-part timestamps from the driver is
-// filed as a follow-up if the derived timing proves too coarse.
+// Activity/reasoning labels prefer persisted ISO-8601 UTC `at` values so live
+// delivery, terminal replay, and reconnect of the same transcript render the
+// same elapsed value. Parts without a valid `at` (legacy and mixed histories)
+// keep the pre-m87 client arrival fallback: `Date.now()` on first mount vs last
+// growth, which collapses to ~0 on a one-frame replay and shows the
+// duration-less "Worked" / "Thought" label.
 
-/**
- * Elapsed milliseconds a streamed group has been growing, derived from arrival
- * timing. `itemCount` is the group's current content size (steps, or reasoning
- * text length) — a change re-samples the clock; `settled` freezes the value once
- * the group is done. `Date.now()` is read only inside the effect (never during
- * render) so the hook stays render-pure.
- */
-export function useStreamDuration(itemCount: number, settled: boolean): number {
-  const startRef = useRef<number | null>(null);
-  const frozenRef = useRef(false);
-  const [elapsed, setElapsed] = useState(0);
-  useEffect(() => {
-    const now = Date.now();
-    if (startRef.current === null) startRef.current = now;
-    if (frozenRef.current) return;
-    setElapsed(now - startRef.current);
-    if (settled) frozenRef.current = true;
-  }, [itemCount, settled]);
-  return elapsed;
+/** Display cap so a pathological timestamp cannot produce an unbounded label. */
+export const MAX_ELAPSED_MS = 24 * 60 * 60 * 1000;
+
+export interface StreamDuration {
+  ms: number;
+  /** True when elapsed came from client arrival rather than persisted `at`. */
+  approximate: boolean;
 }
 
-/** Approximate elapsed label ("~12s", "~3m 4s") — always prefixed "~" (derived). */
-export function formatApproxDuration(ms: number): string {
-  const total = Math.round(ms / 1000);
-  if (total < 60) return `~${total}s`;
+/**
+ * Elapsed milliseconds a streamed group has been growing. `sourceTimesMs` are
+ * parsed source timestamps from the group's parts; `itemCount` / `settled`
+ * drive the live-clock and legacy arrival-time paths when a closed source
+ * interval is not yet available. Closed source intervals are render-pure.
+ */
+export function useStreamDuration(
+  itemCount: number,
+  settled: boolean,
+  sourceTimesMs: readonly number[] = [],
+): StreamDuration {
+  const startRef = useRef<number | null>(null);
+  const frozenRef = useRef(false);
+  // Closed source interval needs no clock. A single distinct start while still
+  // growing samples Date.now() in an effect (cannot be render-pure).
+  const sourcedClosed = elapsedMsFromSource(sourceTimesMs, true, 0);
+  const needsLiveClock =
+    !settled && sourcedClosed !== undefined && sourcedClosed === 0;
+  const [duration, setDuration] = useState<StreamDuration>({
+    ms: 0,
+    approximate: true,
+  });
+
+  useEffect(() => {
+    if (sourcedClosed !== undefined && !needsLiveClock) return;
+    const now = Date.now();
+    if (sourcedClosed !== undefined) {
+      const sourced = elapsedMsFromSource(sourceTimesMs, false, now) ?? 0;
+      // Clock sample on growth — not an external store.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- live elapsed
+      setDuration((prev) =>
+        prev.ms === sourced && !prev.approximate
+          ? prev
+          : { ms: sourced, approximate: false },
+      );
+      if (settled) frozenRef.current = true;
+      return;
+    }
+    if (startRef.current === null) startRef.current = now;
+    if (frozenRef.current) return;
+    const next = now - startRef.current;
+    setDuration((prev) =>
+      prev.ms === next && prev.approximate
+        ? prev
+        : { ms: next, approximate: true },
+    );
+    if (settled) frozenRef.current = true;
+  }, [itemCount, settled, sourcedClosed, needsLiveClock, sourceTimesMs]);
+
+  if (sourcedClosed !== undefined && !needsLiveClock) {
+    return { ms: sourcedClosed, approximate: false };
+  }
+  return duration;
+}
+
+/**
+ * Closed interval over valid source times. Missing timing returns `undefined`
+ * (caller falls back). Out-of-order values use min/max so elapsed is never
+ * negative; invalid/non-finite values are ignored; the result is clamped.
+ */
+export function elapsedMsFromSource(
+  timestamps: readonly number[],
+  settled: boolean,
+  nowMs: number,
+): number | undefined {
+  const valid = timestamps.filter((n) => Number.isFinite(n));
+  if (valid.length === 0) return undefined;
+  const start = Math.min(...valid);
+  const end = Math.max(...valid);
+  const span = !settled && start === end ? nowMs - start : end - start;
+  if (!Number.isFinite(span) || span < 0) return 0;
+  return Math.min(span, MAX_ELAPSED_MS);
+}
+
+function formatBody(ms: number): string {
+  const total = Math.round(Math.max(0, ms) / 1000);
+  if (total < 60) return `${total}s`;
   const mins = Math.floor(total / 60);
   const secs = total % 60;
-  return secs > 0 ? `~${mins}m ${secs}s` : `~${mins}m`;
+  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+}
+
+/** Exact elapsed label from persisted source timestamps ("12s", "3m 4s"). */
+export function formatElapsedDuration(ms: number): string {
+  return formatBody(ms);
+}
+
+/** Approximate elapsed label ("~12s", "~3m 4s") — arrival-time fallback. */
+export function formatApproxDuration(ms: number): string {
+  return `~${formatBody(ms)}`;
+}
+
+export function formatStreamDuration(duration: StreamDuration): string {
+  return duration.approximate
+    ? formatApproxDuration(duration.ms)
+    : formatElapsedDuration(duration.ms);
 }
