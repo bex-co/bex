@@ -37,6 +37,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -87,7 +88,14 @@ func getApp(t *testing.T, cl client.Client, name string) *appv1alpha1.App {
 	return &a
 }
 
-// fakeStore is an in-memory core.SecretKV keyed by logical path.
+// fakeStore is an in-memory core.SecretKV keyed by tenant-prefixed logical
+// path — "<tenant>/<path>", mirroring the real OpenBao store's own tenant
+// prefix (secrets.TenantFromContext) so w2/m80's isolation guarantees (a
+// workspace tenant's List/Get never sees another tenant's — or the legacy
+// tenant's — entries) are actually exercised by tests, not just assumed. A
+// ctx with no tenant set (every store-off / unscoped test in this package)
+// resolves to secrets.LegacyTenant, so those tests' keys are unchanged in
+// shape modulo the added "default/" prefix.
 type fakeStore struct {
 	mu       sync.Mutex
 	m        map[string]map[string]string
@@ -98,48 +106,56 @@ func newFakeStore() *fakeStore {
 	return &fakeStore{m: map[string]map[string]string{}, versions: map[string]uint64{}}
 }
 
-func (f *fakeStore) Get(_ context.Context, path string) (map[string]string, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.get(path), nil
+// key returns the tenant-prefixed map key for a logical path — the same
+// prefixing scheme a test needs to reproduce for any assertion that indexes
+// f.m directly rather than going through Get/Put/List.
+func (f *fakeStore) key(ctx context.Context, path string) string {
+	return secrets.TenantFromContext(ctx) + "/" + path
 }
 
-func (f *fakeStore) get(path string) map[string]string {
+func (f *fakeStore) Get(ctx context.Context, path string) (map[string]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.get(f.key(ctx, path)), nil
+}
+
+func (f *fakeStore) get(key string) map[string]string {
 	out := map[string]string{}
-	for k, v := range f.m[path] {
+	for k, v := range f.m[key] {
 		out[k] = v
 	}
 	return out
 }
 
-func (f *fakeStore) Put(_ context.Context, path string, data map[string]string) error {
+func (f *fakeStore) Put(ctx context.Context, path string, data map[string]string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.put(path, data)
+	f.put(f.key(ctx, path), data)
 	return nil
 }
 
-func (f *fakeStore) put(path string, data map[string]string) {
+func (f *fakeStore) put(key string, data map[string]string) {
 	cp := map[string]string{}
 	for k, v := range data {
 		cp[k] = v
 	}
-	f.m[path] = cp
-	f.versions[path]++
+	f.m[key] = cp
+	f.versions[key]++
 }
 
-func (f *fakeStore) Delete(_ context.Context, path string) error {
+func (f *fakeStore) Delete(ctx context.Context, path string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	delete(f.m, path)
-	delete(f.versions, path)
+	key := f.key(ctx, path)
+	delete(f.m, key)
+	delete(f.versions, key)
 	return nil
 }
 
-func (f *fakeStore) List(_ context.Context, path string) ([]string, error) {
+func (f *fakeStore) List(ctx context.Context, path string) ([]string, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	prefix := path + "/"
+	prefix := f.key(ctx, path) + "/"
 	seen := map[string]bool{}
 	var out []string
 	for k := range f.m {
@@ -158,20 +174,22 @@ func (f *fakeStore) List(_ context.Context, path string) ([]string, error) {
 	return out, nil
 }
 
-func (f *fakeStore) GetVersioned(_ context.Context, path string) (core.SecretKVSnapshot, error) {
+func (f *fakeStore) GetVersioned(ctx context.Context, path string) (core.SecretKVSnapshot, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return core.SecretKVSnapshot{Data: f.get(path), Version: f.versions[path]}, nil
+	key := f.key(ctx, path)
+	return core.SecretKVSnapshot{Data: f.get(key), Version: f.versions[key]}, nil
 }
 
-func (f *fakeStore) PutCAS(_ context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error) {
+func (f *fakeStore) PutCAS(ctx context.Context, path string, data map[string]string, expectedVersion uint64) (uint64, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.versions[path] != expectedVersion {
+	key := f.key(ctx, path)
+	if f.versions[key] != expectedVersion {
 		return 0, core.ErrConflict
 	}
-	f.put(path, data)
-	return f.versions[path], nil
+	f.put(key, data)
+	return f.versions[key], nil
 }
 
 type failMetaStore struct{ *fakeStore }
@@ -888,7 +906,7 @@ func TestEnvGroup_DeleteUnlinksAndCleansUp(t *testing.T) {
 		t.Errorf("group env Secret should be deleted, got %v", err)
 	}
 	// Store paths gone.
-	if _, ok := store.m[metaPath(g.ID)]; ok {
+	if _, ok := store.m[store.key(ctx, metaPath(g.ID))]; ok {
 		t.Error("group meta should be deleted from the store")
 	}
 	// Group no longer listed / gettable.
@@ -1354,17 +1372,28 @@ func countString(list []string, s string) int {
 	return n
 }
 
-// countingStore counts List/Get fan-out so the round-11 #3 snapshot cache is
-// observable: request volume must stop translating into per-group OpenBao
-// metadata reads.
+// storeCall records one List/Get invocation's tenant + logical path, letting
+// a test assert isolation directly (a scoped call for workspace A performed
+// literally zero operations against workspace B's or the legacy tenant).
+type storeCall struct {
+	tenant string
+	path   string
+}
+
+// countingStore counts List/Get fan-out AND (w2/m80) records each call's
+// tenant, so a test can assert the walk stayed inside one workspace's own
+// OpenBao tenant rather than only counting totals.
 type countingStore struct {
 	*fakeStore
-	lists    int
-	metaGets int // sweep fan-out: one metadata read per GLOBAL group
+	lists     int
+	metaGets  int // fan-out: one metadata read per group the walk visits
+	listCalls []storeCall
+	getCalls  []storeCall
 }
 
 func (c *countingStore) List(ctx context.Context, path string) ([]string, error) {
 	c.lists++
+	c.listCalls = append(c.listCalls, storeCall{tenant: secrets.TenantFromContext(ctx), path: path})
 	return c.fakeStore.List(ctx, path)
 }
 
@@ -1372,13 +1401,28 @@ func (c *countingStore) Get(ctx context.Context, path string) (map[string]string
 	if strings.HasSuffix(path, "/meta") {
 		c.metaGets++
 	}
+	c.getCalls = append(c.getCalls, storeCall{tenant: secrets.TenantFromContext(ctx), path: path})
 	return c.fakeStore.Get(ctx, path)
 }
 
-// TestListEnvGroupsSweepIsSnapshotCached (round-11 #3): repeated list calls
-// within the TTL are served from one metadata sweep, and this replica's own
-// writes leave the snapshot immediately.
-func TestListEnvGroupsSweepIsSnapshotCached(t *testing.T) {
+// callsUnderTenant counts how many recorded calls addressed tenant.
+func callsUnderTenant(calls []storeCall, tenant string) int {
+	n := 0
+	for _, c := range calls {
+		if c.tenant == tenant {
+			n++
+		}
+	}
+	return n
+}
+
+// TestListEnvGroupsWalkIsPerCallNotCached documents the round-11 #3 cache's
+// retirement (w2/m80): now that a scoped list is itself a prefix-scoped
+// OpenBao List bounded to one workspace's own groups (listGroupIDs), the
+// extra snapshot-cache layer no longer earns its correctness cost against
+// the new dual-read/locator semantics, so every call freshly walks the
+// tenant — proportionally to that tenant's own group count, never more.
+func TestListEnvGroupsWalkIsPerCallNotCached(t *testing.T) {
 	inner := newFakeStore()
 	store := &countingStore{fakeStore: inner}
 	svc := newService(store, sampleApp("web"))
@@ -1400,17 +1444,54 @@ func TestListEnvGroupsSweepIsSnapshotCached(t *testing.T) {
 			t.Fatalf("list %d saw %d groups, want 3", i, len(groups))
 		}
 	}
-	if store.lists != 1 || store.metaGets != 3 {
-		t.Fatalf("5 lists caused %d sweeps / %d metadata reads, want 1 sweep / 3 reads (snapshot cache)", store.lists, store.metaGets)
+	// No cache: each of the 5 calls performs its own List + one Get per group
+	// (3), so totals scale linearly with call count, never staying flat.
+	if store.lists != 5 || store.metaGets != 15 {
+		t.Fatalf("5 uncached lists caused %d List / %d Get calls, want 5/15 (no cache, bounded per call)", store.lists, store.metaGets)
 	}
 
-	// A create on THIS replica invalidates: the next list re-sweeps and sees it.
 	if _, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "g-new"}); err != nil {
 		t.Fatalf("create g-new: %v", err)
 	}
 	groups, err := svc.ListEnvGroups(ctx, "")
 	if err != nil || len(groups) != 4 {
 		t.Fatalf("post-create list = %d groups err=%v, want 4 (local write visible at once)", len(groups), err)
+	}
+}
+
+// TestListEnvGroupsScopedListNeverTouchesAnotherWorkspaceTenant (w2/m80):
+// dana's tea-a-scoped list must perform zero List/Get calls against tea-b's
+// OpenBao tenant, and vice versa — the prefix-scoped store seam is the actual
+// isolation boundary, not merely an authorization-layer filter applied after
+// a global read.
+func TestListEnvGroupsScopedListNeverTouchesAnotherWorkspaceTenant(t *testing.T) {
+	inner := newFakeStore()
+	store := &countingStore{fakeStore: inner}
+	resolver := multiWorkspace{"dana": {"tea-a"}, "erin": {"tea-b"}}
+	svc := &Service{
+		Base:  &core.Base{Client: fakeClient(), Namespace: "default", Workspace: resolver},
+		Store: store,
+	}
+	danaCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "dana", Method: "session"})
+	erinCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "erin", Method: "session"})
+
+	if _, err := svc.CreateEnvGroup(danaCtx, CreateEnvGroupRequest{Name: "alpha-shared"}); err != nil {
+		t.Fatalf("create tea-a group: %v", err)
+	}
+	if _, err := svc.CreateEnvGroup(erinCtx, CreateEnvGroupRequest{Name: "bravo-shared"}); err != nil {
+		t.Fatalf("create tea-b group: %v", err)
+	}
+	store.listCalls, store.getCalls = nil, nil
+
+	list, err := svc.ListEnvGroups(danaCtx, "")
+	if err != nil || len(list) != 1 || list[0].Name != "alpha-shared" {
+		t.Fatalf("dana's list = %+v err=%v, want exactly [alpha-shared]", list, err)
+	}
+	if n := callsUnderTenant(store.listCalls, "tea-b"); n != 0 {
+		t.Errorf("dana's list performed %d List calls under tea-b's tenant, want 0", n)
+	}
+	if n := callsUnderTenant(store.getCalls, "tea-b"); n != 0 {
+		t.Errorf("dana's list performed %d Get calls under tea-b's tenant, want 0", n)
 	}
 }
 

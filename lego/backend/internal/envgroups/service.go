@@ -35,7 +35,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -45,6 +44,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/secrets"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -54,12 +54,9 @@ import (
 // (codex #10). 200 is well above any reasonable page limit.
 const maxHydratedEnvGroups = 200
 
-// Round-11 #3 knobs: the per-workspace create quota (default; 0 disables via
-// the env wiring) and the metadata-sweep snapshot TTL.
-const (
-	defaultMaxEnvGroups  = 100
-	envGroupMetaCacheTTL = 15 * time.Second
-)
+// Round-11 #3 knob: the per-workspace create quota (default; 0 disables via
+// the env wiring).
+const defaultMaxEnvGroups = 100
 
 // Service manages environment groups over the shared core.SecretKV store and
 // projects them into linked services. Embeds *core.Base for the client, clock, and
@@ -79,21 +76,10 @@ type Service struct {
 	RebuildService func(ctx context.Context, serviceID string) error
 
 	// MaxEnvGroups caps how many groups ONE workspace may own (round-11 #3,
-	// BEX_MAX_ENV_GROUPS_PER_WORKSPACE, default 100; 0 disables). Group metadata
-	// lives in one shared index, so an unbounded create loop would make every
-	// other tenant's list/name-resolution sweep pay for it.
+	// BEX_MAX_ENV_GROUPS_PER_WORKSPACE, default 100; 0 disables). w2/m80: the
+	// count is now a prefix-scoped list (listGroupIDs) rather than a global
+	// metadata sweep, so this quota is what bounds the walk — no cache needed.
 	MaxEnvGroups int
-
-	// metaCache bounds the metadata sweep that backs list/name-resolution
-	// (round-11 #3): the global id+meta sweep is served from a short-TTL
-	// snapshot instead of re-fanning out one OpenBao metadata read per global
-	// group per request. Writes on THIS replica invalidate immediately; another
-	// replica's write converges within the TTL. Secret contents never enter
-	// the cache — metadata only, already names-first.
-	metaCacheTTL time.Duration
-	metaCacheMu  sync.Mutex
-	metaCache    []scopedMeta
-	metaCacheAt  time.Time
 }
 
 // EnvVarView is a group env var ({key, value}); value is empty in list/get
@@ -334,10 +320,11 @@ type scopedMeta struct {
 
 // listScopedMeta is the shared metadata-only list core. Keeping it below both
 // public reads prevents Environment membership lookups from fetching secret
-// maps while preserving one scoping implementation. Round-11 #3: the global
-// sweep backing it is served from a short-TTL snapshot (see Service.metaCache)
-// so request volume no longer translates into one OpenBao metadata read per
-// global group per request; the workspace filter still runs per call.
+// maps while preserving one scoping implementation. w2/m80: the sweep behind
+// it is prefix-scoped (listGroupIDs) to the bound workspace's own OpenBao
+// tenant, unioned with the shared legacy tenant only for the dual-read
+// migration window — replacing the pre-m80 unscoped global-index sweep (which
+// a short-TTL cache, since retired, bounded instead).
 func (s *Service) listScopedMeta(ctx context.Context, ownerID string) ([]scopedMeta, error) {
 	ctx = core.WithWorkspace(ctx, ownerID)
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
@@ -350,40 +337,7 @@ func (s *Service) listScopedMeta(ctx context.Context, ownerID string) ([]scopedM
 	if scoped && scopeTo == "" {
 		return []scopedMeta{}, nil
 	}
-	all, err := s.sweepMeta(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if !scoped {
-		return all, nil
-	}
-	out := make([]scopedMeta, 0, len(all))
-	for _, g := range all {
-		if g.workspace != scopeTo {
-			continue
-		}
-		out = append(out, g)
-	}
-	return out, nil
-}
-
-// sweepMeta returns every group's id+metadata, from the TTL snapshot when one
-// is live and from a fresh OpenBao sweep otherwise. The snapshot is metadata
-// only (no env/file contents).
-func (s *Service) sweepMeta(ctx context.Context) ([]scopedMeta, error) {
-	ttl := s.metaCacheTTL
-	if ttl <= 0 {
-		ttl = envGroupMetaCacheTTL
-	}
-	s.metaCacheMu.Lock()
-	if s.metaCache != nil && s.Now().Sub(s.metaCacheAt) <= ttl {
-		cached := s.metaCache
-		s.metaCacheMu.Unlock()
-		return cached, nil
-	}
-	s.metaCacheMu.Unlock()
-
-	ids, err := s.Store.List(ctx, "env-groups")
+	ids, err := s.listGroupIDs(ctx, scopeTo, true)
 	if err != nil {
 		return nil, err
 	}
@@ -397,20 +351,12 @@ func (s *Service) sweepMeta(ctx context.Context) ([]scopedMeta, error) {
 		if err != nil {
 			return nil, err
 		}
+		if scoped && m.workspace != scopeTo {
+			continue // a legacy-union entry that turned out to belong elsewhere
+		}
 		out = append(out, scopedMeta{id: gid, meta: m})
 	}
-	s.metaCacheMu.Lock()
-	s.metaCache, s.metaCacheAt = out, s.Now()
-	s.metaCacheMu.Unlock()
 	return out, nil
-}
-
-// invalidateMetaCache drops the snapshot so the next list sees this replica's
-// own writes immediately.
-func (s *Service) invalidateMetaCache() {
-	s.metaCacheMu.Lock()
-	s.metaCache = nil
-	s.metaCacheMu.Unlock()
 }
 
 // GetEnvGroup returns one group (keys/names + links, no values); ErrForbidden
@@ -616,10 +562,8 @@ func (s *Service) persistCreate(
 				cleanup = append(cleanup, fmt.Errorf("delete projection Secret %q: %w", name, err))
 			}
 		}
-		for _, path := range []string{envPath(gid), filesPath(gid), revisionPath(gid), metaPath(gid)} {
-			if err := s.Store.Delete(cleanupCtx, path); err != nil {
-				cleanup = append(cleanup, fmt.Errorf("delete %q: %w", path, err))
-			}
+		if err := s.deleteGroupArtifacts(cleanupCtx, m.workspace, gid); err != nil {
+			cleanup = append(cleanup, fmt.Errorf("delete group %q artifacts: %w", gid, err))
 		}
 		if len(cleanup) == 0 {
 			return cause
@@ -627,14 +571,14 @@ func (s *Service) persistCreate(
 		return errors.Join(append([]error{cause}, cleanup...)...)
 	}
 
-	if err := s.storeMap(ctx, envPath(gid), env); err != nil {
+	if err := s.storeMap(ctx, m.workspace, envPath(gid), env); err != nil {
 		return rollback(err)
 	}
-	if err := s.storeMap(ctx, filesPath(gid), files); err != nil {
+	if err := s.storeMap(ctx, m.workspace, filesPath(gid), files); err != nil {
 		return rollback(err)
 	}
 	if versioned, ok := s.Store.(core.VersionedSecretKV); ok {
-		if _, err := versioned.PutCAS(ctx, revisionPath(gid), map[string]string{"state": "idle", "generation": "1"}, 0); err != nil {
+		if _, err := versioned.PutCAS(groupCtx(ctx, m.workspace), revisionPath(gid), map[string]string{"state": "idle", "generation": "1"}, 0); err != nil {
 			return rollback(err)
 		}
 	}
@@ -774,13 +718,7 @@ func (s *Service) DeleteEnvGroup(ctx context.Context, gid string) error {
 	if err := s.deleteSecret(ctx, m.workspace, filesSecretName(gid)); err != nil {
 		return err
 	}
-	for _, p := range []string{envPath(gid), filesPath(gid), revisionPath(gid), metaPath(gid)} {
-		if err := s.Store.Delete(ctx, p); err != nil {
-			return err
-		}
-	}
-	s.invalidateMetaCache() // round-11 #3: the deleted group leaves the snapshot now
-	return nil
+	return s.deleteGroupArtifacts(ctx, m.workspace, gid)
 }
 
 // --- group contents (env vars) ------------------------------------------------
@@ -792,7 +730,7 @@ func (s *Service) SetEnvGroupVars(ctx context.Context, gid string, vars []EnvVar
 	if err != nil {
 		return nil, err
 	}
-	current, err := s.Store.Get(ctx, envPath(gid))
+	current, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
 	if err != nil {
 		return nil, err
 	}
@@ -840,7 +778,7 @@ func (s *Service) GetEnvGroupVar(ctx context.Context, gid, key string) (EnvVarVi
 	} else if err := s.AuthorizeFresh(ctx, core.RelCanViewSensitive); err != nil {
 		return EnvVarView{}, err
 	}
-	env, err := s.Store.Get(ctx, envPath(gid))
+	env, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
 	if err != nil {
 		return EnvVarView{}, err
 	}
@@ -888,7 +826,7 @@ func (s *Service) DeleteEnvGroupVar(ctx context.Context, gid, key string) error 
 	if err != nil {
 		return err
 	}
-	env, err := s.Store.Get(ctx, envPath(gid))
+	env, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
 	if err != nil {
 		return err
 	}
@@ -930,7 +868,7 @@ func (s *Service) DeleteEnvGroupFile(ctx context.Context, gid, name string) erro
 	if err != nil {
 		return err
 	}
-	files, err := s.Store.Get(ctx, filesPath(gid))
+	files, err := s.getGroupMap(ctx, m.workspace, filesPath(gid))
 	if err != nil {
 		return err
 	}
@@ -961,7 +899,7 @@ func (s *Service) GetEnvGroupFile(ctx context.Context, gid, name string) (Secret
 	} else if err := s.AuthorizeFresh(ctx, core.RelCanViewSensitive); err != nil {
 		return SecretFileView{}, err
 	}
-	files, err := s.Store.Get(ctx, filesPath(gid))
+	files, err := s.getGroupMap(ctx, m.workspace, filesPath(gid))
 	if err != nil {
 		return SecretFileView{}, err
 	}
@@ -1160,11 +1098,14 @@ func (s *Service) GroupIDsByName(ctx context.Context) (map[string]string, error)
 	if s.Store == nil {
 		return nil, core.ErrSecretsUnavailable
 	}
-	ids, err := s.Store.List(ctx, "env-groups")
+	scopeTo, scoped := s.boundWorkspace(ctx)
+	if scoped && scopeTo == "" {
+		return map[string]string{}, nil
+	}
+	ids, err := s.listGroupIDs(ctx, scopeTo, true)
 	if err != nil {
 		return nil, err
 	}
-	scopeTo, scoped := s.boundWorkspace(ctx)
 	out := make(map[string]string, len(ids))
 	for _, gid := range ids {
 		m, err := s.readMeta(ctx, gid)
@@ -1238,7 +1179,7 @@ func (s *Service) ApplyEnvGroup(ctx context.Context, name string, literals map[s
 		}
 		return nil
 	}
-	env, err := s.Store.Get(ctx, envPath(gid))
+	env, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
 	if err != nil {
 		return err
 	}
@@ -1308,12 +1249,15 @@ func (s *Service) LinkEnvGroup(ctx context.Context, name, service string) error 
 // name exists in scope. Legacy duplicates fail closed: choosing one by sorted id
 // can bind a Blueprint to the wrong secret set.
 func (s *Service) findGroupByName(ctx context.Context, name string) (string, meta, bool, error) {
-	ids, err := s.Store.List(ctx, "env-groups")
+	scopeTo, scoped := s.boundWorkspace(ctx)
+	if scoped && scopeTo == "" {
+		return "", meta{}, false, nil
+	}
+	ids, err := s.listGroupIDs(ctx, scopeTo, true)
 	if err != nil {
 		return "", meta{}, false, err
 	}
 	sort.Strings(ids)
-	scopeTo, scoped := s.boundWorkspace(ctx)
 	var matches []scopedMeta
 	for _, gid := range ids {
 		m, err := s.readMeta(ctx, gid)
@@ -1383,14 +1327,14 @@ func (s *Service) claimGroupName(ctx context.Context, workspace, name, gid strin
 		return core.ErrSecretsUnavailable
 	}
 	for range envGroupNameClaimAttempts {
-		snapshot, err := versioned.GetVersioned(ctx, path)
+		snapshot, err := versioned.GetVersioned(groupCtx(ctx, workspace), path)
 		if err != nil {
 			return err
 		}
 		if owner := snapshot.Data["id"]; owner != "" && owner != gid {
 			return envGroupNameExists(name, workspace)
 		}
-		if _, err := versioned.PutCAS(ctx, path, map[string]string{
+		if _, err := versioned.PutCAS(groupCtx(ctx, workspace), path, map[string]string{
 			"id": gid, "name": name, "workspace": workspace,
 		}, snapshot.Version); err == nil {
 			return nil
@@ -1408,11 +1352,11 @@ func (s *Service) releaseGroupName(ctx context.Context, workspace, name, gid str
 		return core.ErrSecretsUnavailable
 	}
 	for range envGroupNameClaimAttempts {
-		snapshot, err := versioned.GetVersioned(ctx, path)
+		snapshot, err := versioned.GetVersioned(groupCtx(ctx, workspace), path)
 		if err != nil || snapshot.Data["id"] == "" || snapshot.Data["id"] != gid {
 			return err
 		}
-		if _, err := versioned.PutCAS(ctx, path, map[string]string{}, snapshot.Version); err == nil {
+		if _, err := versioned.PutCAS(groupCtx(ctx, workspace), path, map[string]string{}, snapshot.Version); err == nil {
 			return nil
 		} else if !errors.Is(err, core.ErrConflict) {
 			return err
@@ -1421,8 +1365,12 @@ func (s *Service) releaseGroupName(ctx context.Context, workspace, name, gid str
 	return core.ErrConflict
 }
 
+// groupsNamed combines a fresh workspace-prefix-scoped sweep (unioned with the
+// legacy tenant for the dual-read migration window) with the CAS-backed name
+// index above: the sweep catches pre-index groups; CAS makes concurrent
+// creates and renames across bex-api replicas resolve to exactly one winner.
 func (s *Service) groupsNamed(ctx context.Context, workspace, name, excludeID string) ([]string, error) {
-	ids, err := s.Store.List(ctx, "env-groups")
+	ids, err := s.listGroupIDs(ctx, workspace, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1512,11 +1460,11 @@ func (s *Service) touch(ctx context.Context, gid string, m meta) (meta, error) {
 // meta plus contents — the second half of view lookups that already hold meta
 // (authorizeGroup/ListEnvGroups), so it's never re-read.
 func (s *Service) viewFromMeta(ctx context.Context, gid string, m meta) (EnvGroupView, error) {
-	env, err := s.Store.Get(ctx, envPath(gid))
+	env, err := s.getGroupMap(ctx, m.workspace, envPath(gid))
 	if err != nil {
 		return EnvGroupView{}, err
 	}
-	files, err := s.Store.Get(ctx, filesPath(gid))
+	files, err := s.getGroupMap(ctx, m.workspace, filesPath(gid))
 	if err != nil {
 		return EnvGroupView{}, err
 	}
@@ -1526,7 +1474,7 @@ func (s *Service) viewFromMeta(ctx context.Context, gid string, m meta) (EnvGrou
 	}
 	revision := ""
 	if versioned, ok := s.Store.(core.VersionedSecretKV); ok {
-		snapshot, revisionErr := versioned.GetVersioned(ctx, revisionPath(gid))
+		snapshot, revisionErr := s.getRevisionSnapshot(ctx, versioned, m.workspace, gid)
 		if revisionErr != nil {
 			return EnvGroupView{}, core.ErrSecretsUnavailable
 		}
@@ -1571,24 +1519,50 @@ func (s *Service) requireGroup(ctx context.Context, gid string) (meta, error) {
 // store-off single-tenant mode (Workspace == nil) there is only one workspace
 // regardless, so this is left alone — matching AppView.OwnerID's own "never
 // fake it" convention.
+//
+// w2/m80: a group's meta lives at the legacy tenant only until it is either
+// created directly under a workspace tenant or explicitly moved there
+// (MigratePaths); a bare-gid lookup has no workspace to scope by, so it always
+// starts at the legacy tenant. What it finds there is one of three shapes:
+// the group's still-full legacy meta (unmigrated — used directly, the
+// dual-read case), a thin locator (writeMetaLocator/MigratePaths — the real
+// meta is fetched from its workspace tenant), or nothing (never existed, or a
+// create's meta write is still in flight — core.ErrNotFound either way).
 func (s *Service) readMeta(ctx context.Context, gid string) (meta, error) {
-	raw, err := s.Store.Get(ctx, metaPath(gid))
+	raw, err := s.Store.Get(legacyCtx(ctx), metaPath(gid))
 	if err != nil {
 		return meta{}, err
 	}
 	if len(raw) == 0 {
-		return meta{}, core.ErrNotFound
+		// Rare: a group's full meta lives ONLY at its workspace tenant with no
+		// legacy locator (a locator write that never landed). The caller's own
+		// bound workspace is the one hint available for a direct retry.
+		if hint, scoped := s.boundWorkspace(ctx); scoped && hint != "" {
+			raw, err = s.Store.Get(groupCtx(ctx, hint), metaPath(gid))
+			if err != nil {
+				return meta{}, err
+			}
+		}
+		if len(raw) == 0 {
+			return meta{}, core.ErrNotFound
+		}
+		return decodeMeta(raw), nil
 	}
-	m := meta{
-		name:        raw["name"],
-		workspace:   raw["workspace"],
-		environment: raw["environment"],
-		createdAt:   raw["createdAt"],
-		updatedAt:   raw["updatedAt"],
+	if isLocator(raw) {
+		workspace := raw["workspace"]
+		if workspace == "" {
+			return meta{}, core.ErrNotFound
+		}
+		full, err := s.Store.Get(groupCtx(ctx, workspace), metaPath(gid))
+		if err != nil {
+			return meta{}, err
+		}
+		if len(full) == 0 {
+			return meta{}, core.ErrNotFound
+		}
+		return decodeMeta(full), nil
 	}
-	if l := strings.TrimSpace(raw["links"]); l != "" {
-		m.links = strings.Split(l, ",")
-	}
+	m := decodeMeta(raw)
 	if m.workspace == "" && s.Workspace != nil {
 		m.workspace = core.DefaultTenant
 		if err := s.writeMeta(ctx, gid, m); err != nil {
@@ -1599,18 +1573,44 @@ func (s *Service) readMeta(ctx context.Context, gid string) (meta, error) {
 	return m, nil
 }
 
+func decodeMeta(raw map[string]string) meta {
+	m := meta{
+		name:        raw["name"],
+		workspace:   raw["workspace"],
+		environment: raw["environment"],
+		createdAt:   raw["createdAt"],
+		updatedAt:   raw["updatedAt"],
+	}
+	if l := strings.TrimSpace(raw["links"]); l != "" {
+		m.links = strings.Split(l, ",")
+	}
+	return m
+}
+
+// writeMeta persists a group's full metadata under its OWN workspace tenant
+// (w2/m80) — never the shared legacy tenant, once that workspace is a real,
+// non-legacy one — and, for that case, republishes the thin legacy-tenant
+// locator so a bare-gid lookup (readMeta, GetEnvGroup, the SSH/Blueprint
+// seams) keeps finding it. A store-off/unattributed group (m.workspace == "")
+// and the lazily-attributed core.DefaultTenant both already ARE the legacy
+// tenant (groupCtx(ctx, "") == legacyCtx(ctx)); writing a locator on top of
+// that single copy would clobber the meta it names, so the locator write is
+// skipped precisely in that case.
 func (s *Service) writeMeta(ctx context.Context, gid string, m meta) error {
-	if err := s.Store.Put(ctx, metaPath(gid), map[string]string{
+	data := map[string]string{
 		"name":        m.name,
 		"links":       strings.Join(m.links, ","),
 		"workspace":   m.workspace,
 		"environment": m.environment,
 		"createdAt":   m.createdAt,
 		"updatedAt":   m.updatedAt,
-	}); err != nil {
+	}
+	if err := s.Store.Put(groupCtx(ctx, m.workspace), metaPath(gid), data); err != nil {
 		return err
 	}
-	s.invalidateMetaCache() // round-11 #3: this replica's writes are list-visible at once
+	if m.workspace != "" && m.workspace != secrets.LegacyTenant {
+		return s.writeMetaLocator(ctx, gid, m.workspace)
+	}
 	return nil
 }
 
@@ -1621,13 +1621,20 @@ func (s *Service) envGroupQuota(ctx context.Context, workspace string) error {
 	if s.MaxEnvGroups <= 0 {
 		return nil
 	}
-	all, err := s.sweepMeta(ctx)
+	ids, err := s.listGroupIDs(ctx, workspace, true)
 	if err != nil {
 		return err
 	}
 	count := 0
-	for _, g := range all {
-		if g.workspace == workspace {
+	for _, gid := range ids {
+		m, err := s.readMeta(ctx, gid)
+		if errors.Is(err, core.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if m.workspace == workspace {
 			count++
 		}
 	}
@@ -1657,14 +1664,6 @@ func (s *Service) validateEnvironment(ctx context.Context, environmentID, worksp
 		return core.ErrForbidden
 	}
 	return nil
-}
-
-// storeMap writes a map to the source of truth, deleting the path when empty.
-func (s *Service) storeMap(ctx context.Context, path string, data map[string]string) error {
-	if len(data) == 0 {
-		return s.Store.Delete(ctx, path)
-	}
-	return s.Store.Put(ctx, path, data)
 }
 
 // upsertSecret creates or replaces a group projection Secret with exactly the

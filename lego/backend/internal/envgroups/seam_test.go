@@ -41,7 +41,7 @@ func TestApplyEnvGroupCreatesAndIsIdempotent(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("group not created: found=%v err=%v", found, err)
 	}
-	env := st.m[envPath(gid)]
+	env := st.m[st.key(ctx, envPath(gid))]
 	if env["LOG_LEVEL"] != "info" {
 		t.Errorf("literal not set: %q", env["LOG_LEVEL"])
 	}
@@ -59,7 +59,7 @@ func TestApplyEnvGroupCreatesAndIsIdempotent(t *testing.T) {
 	if gid2 != gid {
 		t.Errorf("re-apply created a second group %q != %q", gid2, gid)
 	}
-	if got := st.m[envPath(gid)]["SESSION_SECRET"]; got != minted {
+	if got := st.m[st.key(ctx, envPath(gid))]["SESSION_SECRET"]; got != minted {
 		t.Errorf("generated value re-minted on re-apply: %q -> %q", minted, got)
 	}
 
@@ -67,7 +67,7 @@ func TestApplyEnvGroupCreatesAndIsIdempotent(t *testing.T) {
 	if err := svc.ApplyEnvGroup(ctx, "shared", map[string]string{"LOG_LEVEL": "debug"}, []string{"SESSION_SECRET"}); err != nil {
 		t.Fatalf("ApplyEnvGroup change: %v", err)
 	}
-	env = st.m[envPath(gid)]
+	env = st.m[st.key(ctx, envPath(gid))]
 	if env["LOG_LEVEL"] != "debug" {
 		t.Errorf("literal not re-synced: %q", env["LOG_LEVEL"])
 	}
