@@ -22,7 +22,7 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Forgot-password page hero title",
   },
   "auth.forgotPasswordSubtitle": {
-    message: "输入您的邮箱以接收恢复代码",
+    message: "输入账户邮箱以获取一次性访问代码",
     description: "Forgot-password page hero subtitle",
   },
   "auth.resetPasswordTitle": {
@@ -35,8 +35,9 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Verification page hero title",
   },
   "auth.verificationSubtitle": {
-    message: "输入我们发送的验证码以确认您的地址",
-    description: "Verification page hero subtitle",
+    message: "输入与您账户关联的邮箱地址以继续",
+    description:
+      "Verification page hero subtitle (email-first Ory step; code arrives after)",
   },
   "auth.settingsTitle": {
     message: "设置",
@@ -323,7 +324,8 @@ const zhAuth: Record<string, TranslationEntry> = {
       "Device confirm page heading when there is no live device request",
   },
   "auth.deviceExpiredSubtitle": {
-    message: "请在终端中重新运行 `bex login`。",
+    message:
+      "此页面需要来自 `bex login` 的设备代码，或该代码已过期。请在终端中重新运行该命令。",
     description:
       "Device confirm page subtext when there is no live device request to confirm",
   },
