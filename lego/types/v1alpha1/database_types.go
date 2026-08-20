@@ -136,7 +136,7 @@ type DatabaseSpec struct {
 	// Public, when true and the controller's BEX_DB_DOMAIN is set, exposes the
 	// database at "<name>.<BEX_DB_DOMAIN>" through the shared Postgres-aware SNI
 	// proxy (TLS passthrough — Postgres terminates its own TLS). Default: in-cluster only.
-	// External connections use sslmode=require. See docs/ADR009-postgresql-management.md.
+	// External connections use sslmode=verify-full. See docs/ADR009-postgresql-management.md.
 	// +optional
 	Public bool `json:"public,omitempty"`
 
@@ -420,7 +420,7 @@ type DatabaseStatus struct {
 	SecretName string `json:"secretName,omitempty"`
 
 	// ExternalHost is the public SNI hostname when Public is set (empty otherwise).
-	// The external URL is postgresql://<user>:<pass>@<ExternalHost>:5432/<db>?sslmode=require
+	// The external URL is postgresql://<user>:<pass>@<ExternalHost>:5432/<db>?sslmode=verify-full
 	// (credentials from SecretName). DNS for the host must point at the edge.
 	// +optional
 	ExternalHost string `json:"externalHost,omitempty"`

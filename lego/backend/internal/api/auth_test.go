@@ -88,7 +88,7 @@ func fakeHumanHydra(t *testing.T) *httptest.Server {
 			_ = r.ParseForm()
 			w.Header().Set("Content-Type", "application/json")
 			if r.PostFormValue("token") == testToken {
-				_, _ = fmt.Fprint(w, `{"active":true,"sub":"identity-1","client_id":"platform-cli"}`)
+				_, _ = fmt.Fprint(w, `{"active":true,"sub":"identity-1","client_id":"platform-cli","scope":"openid offline_access bex.read bex.write bex.sensitive"}`)
 				return
 			}
 			_, _ = fmt.Fprint(w, `{"active":false}`)

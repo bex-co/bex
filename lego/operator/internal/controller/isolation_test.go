@@ -217,5 +217,40 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, dep)).To(Succeed())
 			Expect(dep.Spec.Template.Labels).NotTo(HaveKey(labelNetworkIsolation))
 		})
+
+		It("allows only same-environment peers for a protected App", func() {
+			reconcileApp(r, name)
+
+			np := &networkingv1.NetworkPolicy{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, np)).To(Succeed())
+			Expect(np.Spec.PodSelector.MatchLabels).To(HaveKeyWithValue(labelApp, name))
+			Expect(np.Spec.PolicyTypes).To(ConsistOf(networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress))
+			Expect(np.Spec.Ingress).To(HaveLen(1))
+			Expect(np.Spec.Egress).To(HaveLen(1))
+			for _, rule := range np.Spec.Ingress {
+				Expect(rule.From).To(HaveLen(2))
+				Expect(rule.From[0].PodSelector.MatchLabels).To(HaveKeyWithValue(labelNetworkIsolation, environment))
+				Expect(rule.From[1].PodSelector.MatchLabels).To(HaveKeyWithValue(labelEnvironment, environment))
+			}
+			for _, rule := range np.Spec.Egress {
+				Expect(rule.To).To(HaveLen(2))
+				Expect(rule.To[0].PodSelector.MatchLabels).To(HaveKeyWithValue(labelNetworkIsolation, environment))
+				Expect(rule.To[1].PodSelector.MatchLabels).To(HaveKeyWithValue(labelEnvironment, environment))
+			}
+		})
+
+		It("removes the protected policy when isolation is disabled", func() {
+			reconcileApp(r, name)
+
+			app := &appv1alpha1.App{}
+			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, app)).To(Succeed())
+			delete(app.Labels, labelNetworkIsolation)
+			Expect(k8sClient.Update(ctx, app)).To(Succeed())
+			reconcileApp(r, name)
+
+			np := &networkingv1.NetworkPolicy{}
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, np)
+			Expect(errors.IsNotFound(err)).To(BeTrue())
+		})
 	})
 })

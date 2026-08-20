@@ -141,7 +141,7 @@ func TestCapabilityMatrixAtSharedSeam(t *testing.T) {
 		{name: "legacy third-party bex.api cannot read", id: scopedHuman(ScopeAPICompatibility, false), relation: RelCanView, wantCap: ScopeRead},
 		{name: "near-match cannot read", id: scopedHuman("bex.read-only", false), relation: RelCanView, wantCap: ScopeRead},
 		{name: "unknown relation fails closed", id: scopedHuman(ScopeRead+" "+ScopeWrite+" "+ScopeSensitive, false), relation: "can_invented", wantCap: ""},
-		{name: "platform legacy exempt", id: scopedHuman(ScopeAPICompatibility, true), relation: RelCanManage, wantAllow: true},
+		{name: "platform legacy requires granular scope", id: scopedHuman(ScopeAPICompatibility, true), relation: RelCanManage, wantCap: ScopeWrite},
 		{name: "platform granular is narrowed", id: scopedHuman(ScopeRead, true), relation: RelCanOperate, wantCap: ScopeWrite},
 		{name: "session exempt", id: session, relation: RelCanManage, wantAllow: true},
 		{name: "machine exempt", id: Identity{Subject: "user-a", Method: "oauth2", ClientID: "key-1"}, relation: RelCanManage, wantAllow: true},
@@ -222,7 +222,7 @@ func TestRequireOpClass(t *testing.T) {
 	key := Identity{Subject: "key-1", Method: "oauth2", ClientID: "key-1", Human: false}
 	platform := Identity{
 		Subject: "u", Method: "oauth2", ClientID: "bex-mobile", Human: true,
-		PlatformClient: true, CanonicalScopes: ScopeAPICompatibility,
+		PlatformClient: true, CanonicalScopes: ScopeSensitive,
 	}
 
 	if err := read.RequireOpClass(OpClassRead); err != nil {

@@ -535,6 +535,13 @@ func filesMapWithinQuota(files map[string]string) error {
 	return nil
 }
 
+// ValidateEnvMapQuota and ValidateFilesMapQuota are shared by env-group and
+// service creation paths. Keeping the limit in this package prevents a
+// blueprint/clone path from silently bypassing the per-service mutation gates.
+func ValidateEnvMapQuota(env map[string]string) error { return envMapWithinQuota(env) }
+
+func ValidateFilesMapQuota(files map[string]string) error { return filesMapWithinQuota(files) }
+
 // mapBytes measures a map's aggregate stored size: every key and value length
 // summed, the shape the KV engine and the Kubernetes projection both carry.
 func mapBytes(m map[string]string) int {

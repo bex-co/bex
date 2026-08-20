@@ -682,7 +682,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("preparing Docker-build registry credential: %w", err)))
 	}
 	obs, err := build.EnsureBuild(ctx, build.Options{
-		Repo: app.Spec.Repo, Ref: ref, RootDir: app.Spec.RootDir,
+		Repo: app.Spec.Repo, Ref: ref, ExpectedCommit: expectedGitObjectID(app.Spec.BuildCommit), RootDir: app.Spec.RootDir,
 		DockerfilePath: app.Spec.DockerfilePath, DockerContext: app.Spec.DockerContext,
 		Name: app.Name, AppUID: string(app.UID),
 		Registry: r.Registry, KpackRegistry: r.KpackRegistry,
@@ -771,6 +771,18 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuilding, "Building image from "+app.Spec.Repo)
 		return halt(ctrl.Result{RequeueAfter: buildObserveRequeue}, nil)
 	}
+}
+
+func expectedGitObjectID(value string) string {
+	if len(value) != 40 && len(value) != 64 {
+		return ""
+	}
+	for _, c := range value {
+		if !strings.ContainsRune("0123456789abcdefABCDEF", c) {
+			return ""
+		}
+	}
+	return value
 }
 
 // buildOutcomeAlreadyRecorded reports whether this generation's build has
@@ -1521,6 +1533,17 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// path can forget the delete (docs/ADR041-service-addresses.md D2).
 	if err := r.reconcileSlugService(ctx, app, port); err != nil {
 		return r.fail(ctx, app, "ServiceFailed", err)
+	}
+	// A command can be removed while the App is suspended or while its type is
+	// changing, both of which bypass reconcilePreDeploy below. Converge the
+	// cross-namespace execution policy here as well so the old grant is removed
+	// on that first ordinary reconcile.
+	preDeployRequired := strings.TrimSpace(app.Spec.PreDeployCommand) != "" &&
+		app.Spec.Type != appv1alpha1.TypeCronJob && app.Spec.Type != appv1alpha1.TypeStaticSite
+	if !preDeployRequired {
+		if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
+			return r.fail(ctx, app, "NetworkPolicyFailed", err)
+		}
 	}
 
 	// A cron_job diverges entirely: a batch/v1 CronJob, no Deployment/Service/Ingress.
@@ -3344,6 +3367,9 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 // guards against re-creating the Job after its TTL reap.
 func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1.App, image string, port int) (ctrl.Result, bool, error) {
 	if app.Spec.PreDeployCommand == "" {
+		if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
+			return ctrl.Result{}, true, err
+		}
 		return ctrl.Result{}, false, nil
 	}
 	gen := releaseGeneration(app)
@@ -3478,23 +3504,11 @@ func (r *AppReconciler) failPreDeploy(ctx context.Context, app *appv1alpha1.App,
 	return res, true, ferr
 }
 
-// reconcileNetworkPolicy deletes any per-App NetworkPolicy a pre-ADR043
-// reconcile may have left behind (docs/ADR022-tenant-isolation.md's Option B,
-// superseded by ADR043). Per-tenant namespace isolation is unconditional
-// (ADR043): the workspace's `<ws>` namespace default-deny + allow policies
-// (control-plane NamespaceReconciler) are the tenant boundary, so a per-App
-// label-scoped policy is redundant — the namespace, not a label, is the
-// boundary now. The transitional TenantNamespaces gate that made this
-// conditional was retired in w3/m34 once every cluster had migrated.
+// reconcileNetworkPolicy converges the protected-environment exception. The
+// namespace-wide same-namespace policy deliberately excludes protected pods;
+// this per-App policy is therefore the only private path for an isolated App.
 func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1alpha1.App) error {
-	np := &networkingv1.NetworkPolicy{}
-	if err := r.Get(ctx, client.ObjectKey{Name: app.Name, Namespace: app.Namespace}, np); err != nil {
-		return client.IgnoreNotFound(err) // cached read: absent on every steady-state pass
-	}
-	if err := r.Delete(ctx, np); err != nil && !apierrors.IsNotFound(err) {
-		return err
-	}
-	return nil
+	return reconcileProtectedAppNetworkPolicy(ctx, r.Client, r.Scheme, app)
 }
 
 // reconcileExecutionNetworkPolicy adds the one dynamic egress edge a static
@@ -3508,6 +3522,13 @@ func (r *AppReconciler) reconcileExecutionNetworkPolicy(ctx context.Context, app
 		return nil
 	}
 	name := build.JobName(app.Name, "execution-egress")
+	if strings.TrimSpace(app.Spec.PreDeployCommand) == "" ||
+		app.Spec.Type == appv1alpha1.TypeCronJob || app.Spec.Type == appv1alpha1.TypeStaticSite {
+		owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+			Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
+		_, err := deleteOwnedObject(ctx, r.buildPlaneClient(), buildNS, name, &networkingv1.NetworkPolicy{}, owned)
+		return client.IgnoreNotFound(err)
+	}
 	np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: buildNS}}
 	ws := app.Labels[labelWorkspace]
 	if ws == "" {
@@ -3536,7 +3557,9 @@ func (r *AppReconciler) reconcileExecutionNetworkPolicy(ctx context.Context, app
 			// selector to this App's workspace too — the same tenant discriminator
 			// the destination scopeSelector uses (ws is non-empty here). App name +
 			// workspace uniquely identifies the App (a name is unique per workspace).
-			PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{labelApp: app.Name, labelWorkspace: ws}},
+			PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{
+				labelApp: app.Name, labelWorkspace: ws, execution.LabelComponent: predeploy.ComponentValue,
+			}},
 			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
 			Egress: []networkingv1.NetworkPolicyEgressRule{{
 				To: []networkingv1.NetworkPolicyPeer{{

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { config } from "@/config/config";
 import { formatDateTime } from "@/common/lib/format";
 import { WebhookDeliveriesCard } from "@/features/webhooks/components/webhook-deliveries-card";
 import type { WebhookDeliveryView } from "@/features/webhooks/types";
@@ -102,7 +103,10 @@ describe("WebhookDeliveriesCard", () => {
     expect(screen.getByText("Build Ended")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Open source event evt-failed" }),
-    ).toHaveAttribute("href", "/v1/events/evt-failed?ownerId=tea-1");
+    ).toHaveAttribute(
+      "href",
+      `${config.apiBaseUrl}/v1/events/evt-failed?ownerId=tea-1`,
+    );
     expect(
       screen.getByText(formatDateTime("2026-08-15T12:00:00Z")!),
     ).toBeInTheDocument();
@@ -122,7 +126,7 @@ describe("WebhookDeliveriesCard", () => {
       screen.getByRole("link", { name: "Open source event evt-failed" }),
     ).toHaveAttribute(
       "href",
-      "/v1/events/evt-failed?ownerId=tea-workspace%2Bone",
+      `${config.apiBaseUrl}/v1/events/evt-failed?ownerId=tea-workspace%2Bone`,
     );
   });
 

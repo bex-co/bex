@@ -150,7 +150,7 @@ func TestServeHTTPConfinesGitHubAppPush(t *testing.T) {
 	h := &GitWebhook{Svc: svc, GitHubSecret: secret, Installations: fakeInstallations{7: "tea-a"}}
 
 	ev := newPush(repo, []string{"main.go"})
-	ev.After = "abc123"
+	ev.After = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	ev.Installation.ID = 7
 	body, err := json.Marshal(ev)
 	if err != nil {

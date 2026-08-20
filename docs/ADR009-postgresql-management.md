@@ -37,7 +37,7 @@ flowchart LR
   cnpg --> sec["Secret<br/>(user + password)"]
   svc --> appx["tenant App<br/>uses INTERNAL url"]
   svc --> tcp["Postgres-aware SNI proxy<br/>TLS passthrough + response meter · :5432"]
-  tcp --> ext["external client<br/>uses EXTERNAL url · sslmode=require"]
+  tcp --> ext["external client<br/>uses EXTERNAL url · sslmode=verify-full"]
 ```
 
 ### 3. Two URLs = two network paths (the core of the product)
@@ -45,7 +45,7 @@ flowchart LR
 |  | Render | bex (CNPG) |
 | --- | --- | --- |
 | **Internal URL** | `dpg-<id>-a` private host | the CNPG **`<cluster>-rw` ClusterIP Service**: `postgresql://user:pass@<cluster>-rw.<tenant-ns>.svc:5432/db` — in-cluster only, for the tenant's Apps. Free; CNPG creates the Service. |
-| **External URL** | `<id>.<region>-postgres.render.com` + SSL | the **`bex-pg-sni-proxy` DaemonSet** on `:5432`, routing by SNI to the right CNPG `<id>-rw` ClusterIP Service after handling the PostgreSQL SSLRequest preamble. `sslmode=require` works for all standard clients (PG 13–18). One wildcard `*.db.bex.co` fans out to every DB — no per-DB LoadBalancer. Opt-in per DB via `spec.public`. |
+| **External URL** | `<id>.<region>-postgres.render.com` + SSL | the **`bex-pg-sni-proxy` DaemonSet** on `:5432`, routing by SNI to the right CNPG `<id>-rw` ClusterIP Service after handling the PostgreSQL SSLRequest preamble. `sslmode=verify-full` authenticates the configured public hostname; CNPG's generated server certificate includes every public SNI alias. Clients must install the deployment's server CA before using a public URL. One wildcard `*.db.bex.co` fans out to every DB — no per-DB LoadBalancer. Opt-in per DB via `spec.public`. |
 
 The external route is created by the operator only when `spec.public: true` and `BEX_DB_DOMAIN` is set (private by default). Key constraints:
 
@@ -243,5 +243,5 @@ Shipped 2026-07-12. All three Render fields verified against the live API ([rend
 ## Verification
 
 - **Target UX proven** (this ADR's research): created a real Render Free DB, connected to its **external URL** over TLS (PostgreSQL 18.4, ran `create table`/`insert`/`select`), then deleted it and confirmed the connection died.
-- **bex MVP verification (when built):** apply a `Database` CR → CNPG `Cluster` reaches healthy → connect via the **internal** URL from an in-cluster pod and via the **external** URL (`<id>.db.bex.co`, `sslmode=require`) with `psql` → delete the `Database` → Cluster/Service/Secret/PVC gone and the external route removed.
+- **bex MVP verification (when built):** apply a `Database` CR → CNPG `Cluster` reaches healthy → install the deployment's server CA and connect via the **internal** URL from an in-cluster pod and via the **external** URL (`<id>.db.bex.co`, `sslmode=verify-full`) with `psql` → delete the `Database` → Cluster/Service/Secret/PVC gone and the external route removed.
 - **Major upgrade (2026-07-15):** on the CAPD mock cluster, a throwaway CNPG PostgreSQL 16.14 instance was seeded, declaratively upgraded to 17.10, observed in CNPG's major-upgrade phase/job, and queried afterward with the row intact. See the command/result record in [render-artifacts/postgres-version-upgrade.md](render-artifacts/postgres-version-upgrade.md#cloudnativepg-mechanism-proof).

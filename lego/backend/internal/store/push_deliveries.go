@@ -593,6 +593,13 @@ func validatePushNotification(notification PushNotification) error {
 	return nil
 }
 
+// ValidatePushNotification is the producer-side admission seam. Feed
+// projections must be able to drop one malformed logical item without making
+// the shared watermark retry that poison event forever.
+func ValidatePushNotification(notification PushNotification) error {
+	return validatePushNotification(notification)
+}
+
 // safePushStoreError never returns driver detail because due-delivery reads
 // contain the provider token capability.
 func safePushStoreError(ctx context.Context, err error) error {

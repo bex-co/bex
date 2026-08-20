@@ -81,6 +81,27 @@ func TestDatabaseDisplayNameDoesNotAffectDataPlaneIdentity(t *testing.T) {
 	}
 }
 
+func TestDatabaseServerAltDNSNames(t *testing.T) {
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "dpg-orders"},
+		Spec: appv1alpha1.DatabaseSpec{
+			Public:       true,
+			Pooler:       true,
+			ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "analytics"}},
+		},
+	}
+	want := []string{"dpg-orders.db.example", "dpg-orders-pool.db.example", "dpg-orders-ro-analytics.db.example"}
+	if got := databaseServerAltDNSNames(db, "db.example"); !reflect.DeepEqual(got, want) {
+		t.Fatalf("server alt DNS names = %v, want %v", got, want)
+	}
+	if got := cnpgClusterSpec(clusterParams{serverAltDNSNames: want})["certificates"]; got == nil {
+		t.Fatal("public CNPG cluster omitted serverAltDNSNames")
+	}
+	if got := databaseServerAltDNSNames(db, ""); got != nil {
+		t.Fatalf("empty domain produced public names %v", got)
+	}
+}
+
 var testStore = BackupStore{
 	DestinationPath: "s3://bex-tfstate/postgres",
 	EndpointURL:     "https://s3.eu-central-2.wasabisys.com",
@@ -192,7 +213,7 @@ func TestCnpgClusterSpec(t *testing.T) {
 
 	// version pins the image
 	withVer := cnpgClusterSpec(clusterParams{plan: plan, storageGB: gb, version: "16", dbname: "d", owner: "d_user"})
-	if withVer["imageName"] != "ghcr.io/cloudnative-pg/postgresql:16" {
+	if withVer["imageName"] != cnpgExportImages["16"] {
 		t.Errorf("version image = %v", withVer["imageName"])
 	}
 }
@@ -456,10 +477,11 @@ func TestCNPGWorkspaceLabelPropagated(t *testing.T) {
 	}
 
 	const ws = "tea-testworkspace0001"
+	const env = "env-testenvironment0001"
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "dpg-wstest", Namespace: "default",
-			Labels: map[string]string{labelWorkspace: ws},
+			Labels: map[string]string{labelWorkspace: ws, labelEnvironment: env},
 		},
 		Spec: appv1alpha1.DatabaseSpec{Plan: "basic-1gb"},
 	}
@@ -486,6 +508,9 @@ func TestCNPGWorkspaceLabelPropagated(t *testing.T) {
 	meta, _, _ := unstructured.NestedMap(cluster.Object, "spec", "inheritedMetadata", "labels")
 	if got := meta[labelWorkspace]; got != ws {
 		t.Errorf("inheritedMetadata.labels[%q] = %q, want %q — workspace label must be propagated to CNPG pods so same-workspace NetworkPolicy selectors work", labelWorkspace, got, ws)
+	}
+	if got := meta[labelEnvironment]; got != env {
+		t.Errorf("inheritedMetadata.labels[%q] = %q, want %q — environment identity must reach CNPG pods for protected-environment NetworkPolicy selectors", labelEnvironment, got, env)
 	}
 	if got := meta["app.bex.co/component"]; got != "database" {
 		t.Errorf("inheritedMetadata.labels[app.bex.co/component] = %q, want database — the log shipper must distinguish tenant databases from platform CNPG clusters", got)

@@ -242,6 +242,7 @@ func mountRegistryCred(c *corev1.Container, volumeName, secret string) {
 type Options struct {
 	Repo           string // git URL fetched by the credential-isolated clone phase
 	Ref            string // branch or commit; defaults to the repo's default branch
+	ExpectedCommit string // optional full object id that the fetched checkout must match
 	RootDir        string // subdirectory of Repo to build from (App.spec.rootDir); empty = repo root
 	DockerfilePath string // Dockerfile path relative to RootDir; empty = Dockerfile
 	Name           string // image repo name (the service name)
@@ -874,6 +875,9 @@ func buildCloneContainer(o Options, image string) corev1.Container {
 		{Name: "REF", Value: ref},
 		{Name: "GIT_TERMINAL_PROMPT", Value: "0"},
 	}
+	if o.ExpectedCommit != "" {
+		env = append(env, corev1.EnvVar{Name: "EXPECTED_COMMIT", Value: o.ExpectedCommit})
+	}
 	if o.CloneSecret != "" {
 		env = append(env, corev1.EnvVar{
 			Name: "GIT_AUTH_TOKEN",
@@ -903,6 +907,10 @@ else
   bex_run git fetch --depth 1 origin "$REF"
 fi
 git checkout -q FETCH_HEAD
+if [ -n "${EXPECTED_COMMIT:-}" ]; then
+  actual_commit="$(git rev-parse HEAD)"
+  [ "$actual_commit" = "$EXPECTED_COMMIT" ] || { echo "fetched commit does not match EXPECTED_COMMIT" >&2; exit 1; }
+fi
 rm -rf .git`},
 		Env:             env,
 		VolumeMounts:    []corev1.VolumeMount{{Name: "source", MountPath: sourceMount}},

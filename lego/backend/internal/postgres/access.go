@@ -109,6 +109,9 @@ func (s *Service) ListUsers(ctx context.Context, name string) ([]PostgresUserVie
 // Database (spec.users), which the operator projects to CNPG's managed roles.
 // The password is returned once and never logged.
 func (s *Service) CreateUser(ctx context.Context, name, role string) (CreateUserResult, error) {
+	if err := s.AuthorizeMintClass(ctx); err != nil {
+		return CreateUserResult{}, err
+	}
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	d, err := s.fetchDatabase(ctx, core.RelCanCreate, name)
 	if err != nil {

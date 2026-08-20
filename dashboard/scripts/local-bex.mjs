@@ -2072,7 +2072,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
           password: pw,
           internalConnectionString: internal,
           externalConnectionString: d.public
-            ? `postgresql://${d.databaseUser}:${pw}@${d.externalHost}:5432/${d.databaseName}?sslmode=require&sslnegotiation=direct`
+            ? `postgresql://${d.databaseUser}:${pw}@${d.externalHost}:5432/${d.databaseName}?sslmode=verify-full`
             : "",
           psqlCommand: `PGPASSWORD=${pw} psql -h ${d.id}-rw.default.svc -U ${d.databaseUser} ${d.databaseName}`,
         },

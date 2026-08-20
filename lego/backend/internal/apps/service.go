@@ -2485,6 +2485,10 @@ func (s *Service) redeployFetched(ctx context.Context, a *appv1alpha1.App, commi
 		a.Spec.ExternalRegistryPullSecret = pullSecretName
 		if a.Spec.Repo != "" {
 			a.Spec.Image = ""
+			// A webhook's authenticated `after` is the immutable source of
+			// provenance. Replace the previous one-shot pin on every source
+			// deploy; never let the operator silently follow a moving branch.
+			a.Spec.BuildCommit = commit.Hash
 		}
 		a.Spec.RestartedAt = s.Now().UTC().Format(time.RFC3339)
 	})

@@ -535,6 +535,9 @@ func (l *AgentSessionLifecycle) ResumeAgentSessionSandbox(ctx context.Context, w
 		return err
 	}
 	s.Meter.Observe(ctx, raw)
+	if err := s.RequireBillingMutation(ctx, workspaceID); err != nil {
+		return err
+	}
 	if err := s.Client.Resume(ctx, key, sandboxID); err != nil {
 		return err
 	}
@@ -956,6 +959,14 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 	raw, err := s.ownedSandbox(ctx, key, ws, id)
 	if err != nil {
 		return err
+	}
+	if phase == StatusResuming {
+		// Generic retained sandboxes and agent-session sandboxes share this
+		// trusted seam; the billing decision must be made immediately before the
+		// provider resume, not only in an outer REST/GraphQL adapter.
+		if err := s.RequireBillingMutation(ctx, ws); err != nil {
+			return err
+		}
 	}
 	if err := op(ctx, key, raw); err != nil {
 		return err

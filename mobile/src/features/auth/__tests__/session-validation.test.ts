@@ -73,7 +73,7 @@ describe("native auth response validation", () => {
   });
 
   it("accepts only the byte-exact registered callback base", () => {
-    const redirect = "co.bex.mobile:/oauth2redirect";
+    const redirect = "https://dashboard.bex.co/oauth2redirect";
     expect(
       isExactAuthRedirect(`${redirect}?code=abc&state=state`, redirect),
     ).toBe(true);
@@ -114,7 +114,7 @@ describe("native auth response validation", () => {
       version: 1 as const,
       issuer: expected.issuer,
       clientId: expected.clientId,
-      redirectUri: "co.bex.mobile:/oauth2redirect",
+      redirectUri: "https://dashboard.bex.co/oauth2redirect",
       state: "state-1234567890",
       codeVerifier: "v".repeat(43),
       nonce: "nonce-1234567890",
@@ -145,7 +145,7 @@ describe("native auth response validation", () => {
       version: 1 as const,
       issuer: expected.issuer,
       clientId: expected.clientId,
-      redirectUri: "co.bex.mobile:/oauth2redirect",
+      redirectUri: "https://dashboard.bex.co/oauth2redirect",
       state: "state-1234567890",
       codeVerifier: "v".repeat(43),
       nonce: "nonce-1234567890",

@@ -169,6 +169,9 @@ func (s *Service) SeedSecretFiles(ctx context.Context, service string, initial [
 	for _, f := range initial {
 		files[f.Name] = f.Content
 	}
+	if err := filesMapWithinQuota(files); err != nil {
+		return err
+	}
 	if err := s.storeMap(ctx, filesPath(service), files); err != nil {
 		return err
 	}
@@ -199,6 +202,9 @@ func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *app
 	}
 	if len(files) == 0 {
 		return nil
+	}
+	if err := filesMapWithinQuota(files); err != nil {
+		return err
 	}
 	if err := s.storeMap(ctx, filesPath(service), files); err != nil {
 		return err

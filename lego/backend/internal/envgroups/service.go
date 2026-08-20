@@ -539,6 +539,12 @@ func (s *Service) persistCreate(
 	env, files map[string]string,
 	services []*appv1alpha1.App,
 ) error {
+	if err := secrets.ValidateEnvMapQuota(env); err != nil {
+		return err
+	}
+	if err := secrets.ValidateFilesMapQuota(files); err != nil {
+		return err
+	}
 	patched := make([]*appv1alpha1.App, 0, len(services))
 	rollback := func(cause error) error {
 		cleanupCtx := context.WithoutCancel(ctx)

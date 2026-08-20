@@ -1,5 +1,5 @@
 export const MOBILE_CLIENT_ID = "bex-mobile";
-export const MOBILE_REDIRECT_URI = "co.bex.mobile:/oauth2redirect";
+export const MOBILE_REDIRECT_URI = "https://dashboard.bex.co/oauth2redirect";
 export const DEFAULT_OAUTH_AUDIENCE = "https://api.bex.co/mcp";
 
 export type MobileConfig = {

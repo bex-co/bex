@@ -12,6 +12,7 @@ import {
   APPLE_TEAM_ID_ENV,
   INVITE_PATH,
   IOS_BUNDLE_ID,
+  OAUTH_REDIRECT_PATH,
   OUTPUT_DIR_ENV,
   buildAssociations,
 } from "../generate-mobile-associations.mjs";
@@ -60,6 +61,10 @@ describe("generate-mobile-associations", () => {
           {
             "/": INVITE_PATH,
             comment: "Open only bex workspace invitation links.",
+          },
+          {
+            "/": OAUTH_REDIRECT_PATH,
+            comment: "Open only the OAuth authorization callback.",
           },
         ],
       },
@@ -122,6 +127,7 @@ describe("generate-mobile-associations", () => {
     expect(apple.applinks.details[0].appID).toBe(`A1B2C3D4E5.${IOS_BUNDLE_ID}`);
     expect(apple.applinks.details[0].components).toEqual([
       { "/": INVITE_PATH, comment: expect.any(String) },
+      { "/": OAUTH_REDIRECT_PATH, comment: expect.any(String) },
     ]);
     expect(android[0].target).toEqual({
       namespace: "android_app",

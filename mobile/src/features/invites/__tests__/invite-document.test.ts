@@ -74,7 +74,11 @@ describe("mobile invite operation", () => {
     expect(config.expo.ios.associatedDomains).toEqual([
       `applinks:${origin.host}`,
     ]);
-    expect(config.expo.android.intentFilters).toEqual([
+    expect(
+      config.expo.android.intentFilters.filter((filter) =>
+        JSON.stringify(filter).includes(`"path":"${VERIFIED_INVITE_PATH}"`),
+      ),
+    ).toEqual([
       {
         action: "VIEW",
         autoVerify: true,
