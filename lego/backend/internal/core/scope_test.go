@@ -214,6 +214,49 @@ func TestCapabilityDenialIsSingleAuditAndCanOmitsSensitive(t *testing.T) {
 	}
 }
 
+func TestRequireOpClass(t *testing.T) {
+	read := scopedHuman(ScopeRead, false)
+	write := scopedHuman(ScopeWrite, false)
+	sensitive := scopedHuman(ScopeSensitive, false)
+	session := Identity{Subject: "u", Method: "session", Human: true}
+	key := Identity{Subject: "key-1", Method: "oauth2", ClientID: "key-1", Human: false}
+	platform := Identity{
+		Subject: "u", Method: "oauth2", ClientID: "bex-mobile", Human: true,
+		PlatformClient: true, CanonicalScopes: ScopeAPICompatibility,
+	}
+
+	if err := read.RequireOpClass(OpClassRead); err != nil {
+		t.Fatalf("read class with bex.read: %v", err)
+	}
+	if err := read.RequireOpClass(OpClassWrite); err == nil {
+		t.Fatal("read token must not satisfy write class")
+	}
+	if err := read.RequireOpClass(OpClassMint); err == nil {
+		t.Fatal("read token must not satisfy mint class")
+	}
+	if err := write.RequireOpClass(OpClassMint); err != nil {
+		t.Fatalf("mint class is write at dispatch: %v", err)
+	}
+	if err := write.RequireOpClass(OpClassSensitive); err == nil {
+		t.Fatal("write token must not satisfy sensitive class")
+	}
+	if err := sensitive.RequireOpClass(OpClassSensitive); err != nil {
+		t.Fatalf("sensitive class: %v", err)
+	}
+	if err := session.RequireOpClass(OpClassMint); err != nil {
+		t.Fatalf("session is exempt: %v", err)
+	}
+	if err := key.RequireOpClass(OpClassWrite); err != nil {
+		t.Fatalf("api key is exempt: %v", err)
+	}
+	if err := platform.RequireOpClass(OpClassSensitive); err != nil {
+		t.Fatalf("platform client without granular grant is exempt: %v", err)
+	}
+	if err := read.RequireOpClass("invented"); err == nil {
+		t.Fatal("unknown class must fail closed")
+	}
+}
+
 func TestInsufficientScopeCrossSurfaceProjection(t *testing.T) {
 	err := NewInsufficientScopeError(ScopeWrite)
 	if !errors.Is(err, ErrForbidden) {
@@ -238,7 +281,7 @@ func TestIdentityZeroComparabilityAndEmptyOAuthFields(t *testing.T) {
 		t.Errorf("session acquired oauth fields: %+v", session)
 	}
 	machine := Identity{Subject: "k", Method: "oauth2", ClientID: "k"}
-	if !machine.capabilityExempt() {
+	if !machine.CapabilityExempt() {
 		t.Error("machine token must be scope-exempt")
 	}
 	ev := AuditEvent{}

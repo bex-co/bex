@@ -40,8 +40,12 @@ import (
 // connection's context into each request's derived context, so this is
 // visible to every tool call on the returned session.
 func mcpSessionAs(t *testing.T, srv *Server, subject string) *mcp.ClientSession {
+	return mcpSessionIdentity(t, srv, core.Identity{Subject: subject, Method: "session"})
+}
+
+func mcpSessionIdentity(t *testing.T, srv *Server, id core.Identity) *mcp.ClientSession {
 	t.Helper()
-	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
+	ctx := core.WithIdentity(context.Background(), id)
 	serverT, clientT := mcp.NewInMemoryTransports()
 	if _, err := srv.MCPServer().Connect(ctx, serverT, nil); err != nil {
 		t.Fatalf("server connect: %v", err)

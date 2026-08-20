@@ -234,12 +234,13 @@ function pkceSatisfied(consent: OAuth2ConsentRequest): boolean {
 }
 
 /**
- * Closed capability vocabulary (w8/m27): a third-party client that requests
- * an access-token audience must request at least one of bex.read / bex.write /
- * bex.sensitive. bex.api is a platform-client compatibility alias and is
- * never an umbrella grant for anyone else. Identity-only scopes never confer
- * API authority. The custom OAUTH_API_SCOPE override is ignored so a
- * deployment cannot invent a second semantic matrix.
+ * Closed capability vocabulary (w8/m27, unchanged by w2/m78): a third-party
+ * client that requests an access-token audience must request at least one of
+ * bex.read / bex.write / bex.sensitive. bex.api is a platform-client
+ * compatibility alias and is never an umbrella grant for anyone else.
+ * Identity-only scopes never confer API authority. The custom OAUTH_API_SCOPE
+ * override is ignored so a deployment cannot invent a second semantic matrix
+ * (no bex.api.read derivation).
  */
 function platformClient(consent: OAuth2ConsentRequest): boolean {
   return isPlatformMarked(

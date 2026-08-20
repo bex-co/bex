@@ -201,13 +201,41 @@ func NormalizeOAuthGrant(scope string, audiences []string, clientID, resource st
 	}, nil
 }
 
+// Operation classes for the dispatch-time matrix. Each class maps onto
+// exactly one closed capability; mint rides bex.write here and
+// AuthorizeMintClass at the verb (no fourth advertised OAuth scope).
+const (
+	OpClassRead      = "read"
+	OpClassWrite     = "write"
+	OpClassSensitive = "sensitive"
+	OpClassMint      = "mint"
+)
+
+// RequireOpClass is the dispatch-time half of least-privilege: a classified
+// REST/GraphQL/MCP operation requires the matching capability before the
+// handler runs. Mint is write at this seam — durable-credential mint still
+// goes through AuthorizeMintClass, which is the credential-class gate and
+// not a requestable scope. Unknown classes fail closed.
+func (id Identity) RequireOpClass(class string) error {
+	switch class {
+	case OpClassRead:
+		return id.RequireCapability(RelCanView)
+	case OpClassWrite, OpClassMint:
+		return id.RequireCapability(RelCanOperate)
+	case OpClassSensitive:
+		return id.RequireCapability(RelCanViewSensitive)
+	default:
+		return NewInsufficientScopeError("")
+	}
+}
+
 // RequireCapability is the OAuth half of the shared authorization seam: a
 // third-party human token must hold the capability mapped to relation, in
 // addition to OpenFGA. Sessions, machine keys, and platform-marked clients
 // that have not requested a granular capability are exempt — they keep their
 // existing OpenFGA authority. An unknown relation fails closed.
 func (id Identity) RequireCapability(relation string) error {
-	if id.capabilityExempt() {
+	if id.CapabilityExempt() {
 		return nil
 	}
 	want, ok := RequiredCapability(relation)
@@ -220,11 +248,11 @@ func (id Identity) RequireCapability(relation string) error {
 	return NewInsufficientScopeError(want)
 }
 
-// capabilityExempt reports whether this identity is outside the granular
+// CapabilityExempt reports whether this identity is outside the granular
 // OAuth matrix: not a human OAuth delegation, or a platform-marked client
 // that has not requested a granular capability (the documented rollout path
 // for the official Render CLI and current mobile release).
-func (id Identity) capabilityExempt() bool {
+func (id Identity) CapabilityExempt() bool {
 	if id.Method != "oauth2" || !id.Human {
 		return true
 	}

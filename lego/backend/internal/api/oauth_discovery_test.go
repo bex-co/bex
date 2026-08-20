@@ -137,9 +137,11 @@ func TestProtectedResourceMetadataEndpoint(t *testing.T) {
 		if len(body.AuthorizationServers) != 1 || body.AuthorizationServers[0] != "https://oauth.bex.co" {
 			t.Fatalf("authorization_servers = %v", body.AuthorizationServers)
 		}
-		// Round-14 #1 / w8/m27: discovery advertises the closed least-privilege
-		// vocabulary so MCP clients request exactly those scopes. bex.api is
-		// a platform-client compatibility alias and is not advertised.
+		// Round-14 #1 / w8/m27 / w2/m78: discovery advertises the closed
+		// least-privilege vocabulary so MCP clients request exactly those
+		// scopes. bex.api is a platform-client compatibility alias and is
+		// not advertised; there is no bex.api.read rename. OAUTH_API_SCOPE
+		// is not a derivation base for this list.
 		if got := body.ScopesSupported; len(got) != 3 || got[0] != core.ScopeRead || got[1] != core.ScopeWrite || got[2] != core.ScopeSensitive {
 			t.Fatalf("scopes_supported = %v, want %v", body.ScopesSupported, core.AdvertisedScopes())
 		}

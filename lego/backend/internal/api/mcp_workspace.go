@@ -45,7 +45,7 @@ var mcpCallerScopedTools = map[string]struct{}{
 	"update_notification_settings": {},
 }
 
-func mcpWorkspaceMiddleware(base *core.Base) mcp.Middleware {
+func mcpWorkspaceMiddleware(base *core.Base, checkScope func(context.Context, string) error) mcp.Middleware {
 	return func(next mcp.MethodHandler) mcp.MethodHandler {
 		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
 			switch method {
@@ -60,7 +60,7 @@ func mcpWorkspaceMiddleware(base *core.Base) mcp.Middleware {
 				}
 				return toolsWithWorkspaceID(listed), nil
 			case "tools/call":
-				return mcpBindCallWorkspace(ctx, base, method, req, next)
+				return mcpBindCallWorkspace(ctx, base, method, req, next, checkScope)
 			default:
 				return next(ctx, method, req)
 			}
@@ -73,12 +73,15 @@ func mcpWorkspaceMiddleware(base *core.Base) mcp.Middleware {
 // tool sees it. A caller-scoped tool (one that answers about the caller rather
 // than a workspace) passes straight through, as does any request shape that
 // isn't a tool call.
-func mcpBindCallWorkspace(ctx context.Context, base *core.Base, method string, req mcp.Request, next mcp.MethodHandler) (mcp.Result, error) {
+func mcpBindCallWorkspace(ctx context.Context, base *core.Base, method string, req mcp.Request, next mcp.MethodHandler, checkScope func(context.Context, string) error) (mcp.Result, error) {
 	call, ok := req.(*mcp.CallToolRequest)
 	if !ok || call.Params == nil {
 		return next(ctx, method, req)
 	}
 	if _, callerScoped := mcpCallerScopedTools[call.Params.Name]; callerScoped {
+		if err := mcpRequireScope(ctx, checkScope, call.Params.Name); err != nil {
+			return mcpCallError(err), nil
+		}
 		return next(ctx, method, req)
 	}
 	resolved, workspaceID, err := takeMCPWorkspaceID(call)
@@ -91,7 +94,20 @@ func mcpBindCallWorkspace(ctx context.Context, base *core.Base, method string, r
 			return mcpCallError(fmt.Errorf("cannot access workspace %s: %w", workspaceID, err)), nil
 		}
 	}
+	if err := mcpRequireScope(ctx, checkScope, call.Params.Name); err != nil {
+		return mcpCallError(err), nil
+	}
 	return next(ctx, method, resolved)
+}
+
+func mcpRequireScope(ctx context.Context, checkScope func(context.Context, string) error, tool string) error {
+	if checkScope == nil {
+		return nil
+	}
+	if err := checkScope(ctx, tool); err != nil {
+		return core.MCPError(err)
+	}
+	return nil
 }
 
 func toolsWithWorkspaceID(in *mcp.ListToolsResult) *mcp.ListToolsResult {

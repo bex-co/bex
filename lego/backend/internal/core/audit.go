@@ -146,6 +146,10 @@ const (
 	AuditVerbBillingRecoveryForced   = "billing.ForceRecovery"
 	AuditVerbBillingEnforced         = "billing.EnforceWorkspace"
 	AuditVerbBillingRecovered        = "billing.RecoverWorkspace"
+	// AuditVerbScopeClass records a dispatch-time operation-class refusal.
+	// Allows are not written (volume). Target is the classified operation
+	// name, never a bearer or request body.
+	AuditVerbScopeClass = "api.ScopeClass"
 )
 
 // DatabaseAuditEffect is the closed set of successful Database mutations that
