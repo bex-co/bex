@@ -123,7 +123,7 @@ func resolveKVPlan(spec appv1alpha1.KeyValueSpec) (tiers.ValkeyTier, int32) {
 // that enum without adding its digest here fails
 // TestValkeyImagesArePinnedForEveryPermittedVersion.
 var kvVersionImages = map[string]string{
-	"7": "valkey/valkey:7-alpine@sha256:211d9cb02395987d3740b11fdbb7be0cb66c5f36a065640ce5753c933700d6cc",
+	"7":                                "valkey/valkey:7-alpine@sha256:211d9cb02395987d3740b11fdbb7be0cb66c5f36a065640ce5753c933700d6cc",
 	appv1alpha1.DefaultKeyValueVersion: kvDefaultImage,
 }
 
