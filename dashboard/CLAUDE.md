@@ -157,3 +157,12 @@ bex-api's wire protocol to run the app offline: the GraphQL reads (`services`,
 (`GET /v1/logs/subscribe`), and Kratos `GET /sessions/whoami` (so the auth guard
 passes). It streams synthetic app logs so the Logs viewer's history + live tail are
 exercised end-to-end. It is a DEV TOOL only — never a real backend.
+
+## SSR environment variables
+
+Server-only (not `VITE_`) variables read by the dashboard's SSR runtime, verbatim from the platform env-var inventory (the Go components' tables live in `lego/operator/CLAUDE.md` and `lego/backend/CLAUDE.md`):
+
+| Component       | Variable                                                       | Meaning                                                                                                                                                                                                                                                                                                                             |
+| --------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| dashboard (SSR) | `HYDRA_ADMIN_URL`, `HYDRA_PUBLIC_URL`, `OAUTH_TRUSTED_CLIENTS` | OAuth2 consent + official Render CLI device verification at `/auth/consent` and `/auth/device` (docs/ADR012-auth.md §7/§8a): Hydra's admin API, its browser-reachable public issuer, and the allowlist of clients that skip the consent screen. Server-only (not `VITE_`); missing URLs make their corresponding routes answer 503. |
+| dashboard (SSR) | `OAUTH_API_SCOPE`                                              | **ignored as a second matrix** (w8/m27). Consent uses the closed vocabulary `bex.read` / `bex.write` / `bex.sensitive` (plus identity scopes; `bex.api` is stripped from third-party grants). The env name is retained for compatibility. Server-only (not `VITE_`).                                                                |
