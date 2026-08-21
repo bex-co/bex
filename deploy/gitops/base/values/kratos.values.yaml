@@ -82,7 +82,7 @@ kratos:
         from_address: no-reply@bex.co
         from_name: bex
     selfservice:
-      default_browser_return_url: https://auth.bex.co/
+      default_browser_return_url: https://dashboard.bex.co/
       # dashboard.bex.co is the "custom UI" for every self-service flow (docs/ADR012-auth.md);
       # without these, Kratos redirects flows back to its own domain instead.
       allowed_return_urls:

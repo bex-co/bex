@@ -38,7 +38,9 @@ export async function endBrowserSession(): Promise<void> {
   const api = createFrontendApi();
   let logoutUrl: string;
   try {
-    const flow = await api.createBrowserLogoutFlow();
+    const flow = await api.createBrowserLogoutFlow({
+      returnTo: `${window.location.origin}/`,
+    });
     logoutUrl = flow.logout_url;
   } catch (err) {
     if (isAlreadySignedOut(err)) {
