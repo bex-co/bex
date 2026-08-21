@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { ConversationSkeleton } from "@/features/agent-sessions/components/conversation-skeleton";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
 import type { MintedTicket } from "@/features/agent-sessions/lib/transport";
 import type {
@@ -75,8 +76,14 @@ export function SessionConversation({
 
   if (!Impl) {
     return (
-      <div className="text-muted-foreground p-4 text-sm">
-        {t("agentSessions.conversationLoading")}
+      <div
+        role="status"
+        aria-label={t("agentSessions.conversationLoading")}
+        className="min-h-0 flex-1 overflow-y-auto"
+      >
+        <div className="mx-auto w-full max-w-3xl px-4 py-3">
+          <ConversationSkeleton />
+        </div>
       </div>
     );
   }

@@ -14,6 +14,7 @@ import {
   type MintedTicket,
 } from "@/features/agent-sessions/lib/transport";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { ConversationSkeleton } from "@/features/agent-sessions/components/conversation-skeleton";
 import { MarkdownRenderer } from "@/common/components/markdown-renderer";
 import { cn } from "@/common/lib/utils/utils";
 import {
@@ -148,19 +149,48 @@ export function SessionConversationImpl({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [injectedTransport, sessionId]);
 
-  const { messages, status, error, sendMessage } = useChat<AgentUIMessage>({
-    id: sessionId,
-    transport,
-    // Replay the transcript on mount (GET) for both states; a running session's
-    // stream then continues live, a terminal session's ends on `[DONE]`.
-    resume: true,
-    dataPartSchemas: {
-      "acp-plan": acpDataSchema,
-      "acp-diff": acpDataSchema,
-      "acp-terminal": acpDataSchema,
-      "user-prompt": acpDataSchema,
-    },
-  });
+  const { messages, status, error, sendMessage, resumeStream } =
+    useChat<AgentUIMessage>({
+      id: sessionId,
+      transport,
+      // Replay is triggered explicitly below (not via `resume: true`'s own
+      // mount effect) so this component can track when that attempt settles.
+      dataPartSchemas: {
+        "acp-plan": acpDataSchema,
+        "acp-diff": acpDataSchema,
+        "acp-terminal": acpDataSchema,
+        "user-prompt": acpDataSchema,
+      },
+    });
+
+  // Replay the transcript on mount (GET) for both states; a running session's
+  // stream then continues live, a terminal session's ends on `[DONE]`.
+  //
+  // `useChat`'s own `resume: true` fires this same call from an internal
+  // effect, but its `status` stays `"ready"` for the whole ticket-mint + GET
+  // round trip — and stays `"ready"` forever when the GET finds nothing to
+  // resume (a genuinely empty session gets a 204). That makes `status` alone
+  // unable to distinguish "resume hasn't started yet" from "resume settled on
+  // nothing", so calling it ourselves and tracking the promise gives an
+  // unambiguous signal instead. `resumeStream` is a stable method bound once
+  // per `useChat` instance (recreated only if `id` changes), so this doesn't
+  // re-fire on every render.
+  const [resuming, setResuming] = useState(true);
+  useEffect(() => {
+    let live = true;
+    setResuming(true);
+    resumeStream()
+      // `makeRequest` already routes every failure into `error`/`status`
+      // (read below) rather than rejecting; this trace is a backstop in case
+      // that internal contract ever changes.
+      .catch((err) => console.error(err))
+      .finally(() => {
+        if (live) setResuming(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [resumeStream]);
 
   // Publish the live-steering handle to the detail page. Withheld (null) while
   // the stream is errored so the composer disables its live POST path instead of
@@ -250,7 +280,12 @@ export function SessionConversationImpl({
 
   const empty = messages.length === 0;
   const isLoading = status === "submitted" || status === "streaming";
-  const connecting = empty && isLoading;
+  // `resumeStream()`'s promise doesn't settle until the whole resumed stream
+  // does — for a live session that can span the entire tail, not just the
+  // initial "is there anything to resume" check. That's fine only because
+  // `empty` already flips false the moment a real message arrives, so
+  // `resuming` staying true past that point never masks real content.
+  const connecting = empty && (isLoading || resuming);
 
   const last = rendered[rendered.length - 1];
   const showTyping =
@@ -272,9 +307,15 @@ export function SessionConversationImpl({
       >
         <div className="mx-auto w-full max-w-3xl space-y-2.5 px-4 py-3">
           {connecting && (
-            <div className="text-muted-foreground flex items-center gap-2 text-sm">
-              <Loader2 aria-hidden className="size-4 shrink-0 animate-spin" />
-              {t("agentSessions.conversationConnecting")}
+            <div
+              role="status"
+              aria-label={t("agentSessions.conversationConnecting")}
+            >
+              <Loader2
+                aria-hidden
+                className="text-muted-foreground mb-1 size-4 shrink-0 animate-spin"
+              />
+              <ConversationSkeleton />
             </div>
           )}
           {empty && !connecting && (
