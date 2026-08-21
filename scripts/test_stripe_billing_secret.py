@@ -58,10 +58,15 @@ class StripeBillingSecretTest(unittest.TestCase):
         self.assertEqual(0, enabled.returncode, enabled.stderr)
         self.assertIn("payment_gate=1", enabled.stdout)
 
+        # ADR075 D7 (w6/m42): the widened gate covering the free tier too.
+        all_mode = self.run_secret("1m", "all")
+        self.assertEqual(0, all_mode.returncode, all_mode.stderr)
+        self.assertIn("payment_gate=all", all_mode.stdout)
+
     def test_payment_gate_rejects_unknown_value(self):
         result = self.run_secret("1m", "true")
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("BEX_REQUIRE_PAYMENT_METHOD must be 0 or 1", result.stderr)
+        self.assertIn("BEX_REQUIRE_PAYMENT_METHOD must be 0, 1, or all", result.stderr)
 
     def test_live_key_is_refused_without_separate_opt_in(self):
         env = os.environ.copy()
