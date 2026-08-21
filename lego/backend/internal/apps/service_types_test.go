@@ -27,6 +27,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
@@ -83,6 +84,40 @@ func TestCreateCronJobRequiresSchedule(t *testing.T) {
 	})
 	if !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("cron without schedule => ErrBadRequest, got %v", err)
+	}
+}
+
+// TestCreateCronJobRejectsInvalidSchedule guards the create path: a malformed
+// schedule (wrong field count, or 5 fields with an out-of-range value like
+// "99 99 * * *" the k8s CronJob controller would reject) must be refused up
+// front, never written to spec.schedule where it would flip the App to Failed.
+func TestCreateCronJobRejectsInvalidSchedule(t *testing.T) {
+	for _, bad := range []string{"garbage", "a b c", "99 99 * * *", "* * * * * *", "0 24 * * *", "60 * * * *"} {
+		svc, cl := newService(nil)
+		_, err := svc.Create(context.Background(), CreateRequest{
+			Name: "nightly", Type: appv1alpha1.TypeCronJob, Image: "job:v1", Schedule: bad,
+		})
+		if !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("cron schedule %q => ErrBadRequest, got %v", bad, err)
+		}
+		// A rejected create must not have written the App.
+		var got appv1alpha1.App
+		if lookupErr := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "nightly"}, &got); lookupErr == nil {
+			t.Errorf("schedule %q was rejected but the App was still created", bad)
+		}
+	}
+}
+
+// TestCreateCronJobAcceptsValidSchedule confirms the strengthened validator
+// still admits ordinary valid crontabs (steps, ranges, named weekdays).
+func TestCreateCronJobAcceptsValidSchedule(t *testing.T) {
+	for _, ok := range []string{"*/5 * * * *", "0 0 * * *", "0 8 * * 1", "15 3 1-5 * *", "0 0 * * MON"} {
+		svc, _ := newService(nil)
+		if _, err := svc.Create(context.Background(), CreateRequest{
+			Name: "nightly", Type: appv1alpha1.TypeCronJob, Image: "job:v1", Schedule: ok,
+		}); err != nil {
+			t.Errorf("valid cron schedule %q rejected: %v", ok, err)
+		}
 	}
 }
 

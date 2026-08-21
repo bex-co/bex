@@ -1599,8 +1599,13 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Cron job Settings tab: Deploy section schedule field label",
   },
   "services.deployScheduleHint": {
-    message: "Runs this command on this schedule (5-field crontab).",
+    message: "Runs this command on this schedule (5-field crontab, in UTC).",
     description: "Cron job Settings tab: Deploy section schedule help text",
+  },
+  "services.deploySchedulePreview": {
+    message: "{description} · runs in UTC",
+    description:
+      "Cron job Settings tab: live human-readable description of the schedule",
   },
   "services.deploySchedulePlaceholder": {
     message: "0 * * * *",
@@ -2507,6 +2512,15 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Deploy a web service from a Git repo or Docker image.",
     description: "Create-wizard page subtitle",
   },
+  "services.createCronTitle": {
+    message: "New Cron Job",
+    description: "Create-wizard page title when the cron_job type is selected",
+  },
+  "services.createCronDescription": {
+    message: "Run a command on a recurring schedule.",
+    description:
+      "Create-wizard page subtitle when the cron_job type is selected",
+  },
   "services.createSourceTitle": {
     message: "Source",
     description: "Create-wizard source-picker section label",
@@ -2824,8 +2838,14 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Placeholder for the cron schedule field",
   },
   "services.createFieldScheduleHint": {
-    message: "A 5-field crontab expression (minute hour day month weekday).",
+    message:
+      "A 5-field crontab expression (minute hour day month weekday). Runs in UTC.",
     description: "Hint text under the schedule field",
+  },
+  "services.createFieldSchedulePreview": {
+    message: "{description} · runs in UTC",
+    description:
+      "Live human-readable description of a valid schedule, shown under the field",
   },
   "services.createFieldScheduleError": {
     message: "Enter a valid 5-field cron expression, e.g. 0 0 * * *.",

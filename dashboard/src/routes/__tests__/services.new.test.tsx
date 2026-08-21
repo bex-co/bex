@@ -757,6 +757,20 @@ describe("NewServicePage", () => {
       expect(screen.getByLabelText("Schedule")).toBeInTheDocument();
     });
 
+    it("shows cron-specific chrome and a pre-filled schedule on the cron deep link", async () => {
+      renderPage("/?type=cron_job");
+      await screen.findAllByRole("radiogroup");
+      // Heading + subtitle read as a cron form, not the generic New Service.
+      expect(
+        screen.getByRole("heading", { level: 1, name: "New Cron Job" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Run a command on a recurring schedule."),
+      ).toBeInTheDocument();
+      // Schedule is pre-filled with a valid default (Render parity).
+      expect(screen.getByLabelText("Schedule")).toHaveValue("*/5 * * * *");
+    });
+
     it("preselects static site from ?type=static_site", async () => {
       renderPage("/?type=static_site");
       await screen.findAllByRole("radiogroup");
@@ -846,6 +860,35 @@ describe("NewServicePage", () => {
       ).toBeDisabled();
       expect(
         screen.getByText(/valid 5-field cron expression/i),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps Deploy disabled and shows error for a 5-field schedule with out-of-range values", async () => {
+      // The 99 99 * * * bug: 5 fields but minute/hour out of range. A
+      // field-count-only check let this through to the operator, which flipped
+      // the service to Failed. The form must refuse it up front.
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      await user.type(screen.getByLabelText("Schedule"), "99 99 * * *");
+      expect(
+        screen.getByRole("button", { name: /Deploy Service/i }),
+      ).toBeDisabled();
+      expect(
+        screen.getByText(/valid 5-field cron expression/i),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a human-readable preview for a valid schedule", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole("radio", { name: /Cron Job/i }));
+      await user.type(screen.getByLabelText("Schedule"), "0 0 * * *");
+      expect(
+        screen.getByText(/Every day at 00:00 · runs in UTC/i),
       ).toBeInTheDocument();
     });
 

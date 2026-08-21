@@ -107,6 +107,39 @@ describe("CronDeploySection", () => {
     expect(updateCronJob).not.toHaveBeenCalled();
   });
 
+  it("blocks save for a 5-field schedule with out-of-range values (99 99 * * *)", async () => {
+    const user = userEvent.setup();
+    render(
+      <CronDeploySection
+        serviceId="nightly"
+        schedule="0 6 * * *"
+        command={null}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit schedule" }));
+    const schedInput = screen.getByRole("textbox", { name: "Schedule" });
+    await user.clear(schedInput);
+    await user.type(schedInput, "99 99 * * *");
+
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(screen.getByText(/valid.*5-field/i)).toBeInTheDocument();
+    expect(updateCronJob).not.toHaveBeenCalled();
+  });
+
+  it("shows a human-readable preview of the current schedule", () => {
+    render(
+      <CronDeploySection
+        serviceId="nightly"
+        schedule="0 6 * * *"
+        command={null}
+      />,
+    );
+    expect(
+      screen.getByText(/Every day at 06:00 · runs in UTC/i),
+    ).toBeInTheDocument();
+  });
+
   it("blocks save and shows a required error for an empty schedule", async () => {
     const user = userEvent.setup();
     render(

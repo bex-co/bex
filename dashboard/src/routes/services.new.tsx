@@ -31,7 +31,7 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { TextField } from "@/common/components/text-field";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import { useCreateService } from "@/features/services/hooks/use-create-service";
-import { isValidCron } from "@/features/services/lib/cron";
+import { describeCron, isValidCron } from "@/features/services/lib/cron";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
 import { PathList } from "@/features/services/components/build-deploy-section";
@@ -53,7 +53,13 @@ export const Route = createFileRoute("/services/new")({
   component: NewServicePage,
   beforeLoad: requireAuth(),
   validateSearch: parseNewServiceSearch,
-  head: ({ match }) => translatedTitleHead("services.createTitle", match),
+  head: ({ match }) =>
+    translatedTitleHead(
+      match.search?.type === "cron_job"
+        ? "services.createCronTitle"
+        : "services.createTitle",
+      match,
+    ),
 });
 
 export function NewServicePage() {
@@ -70,6 +76,9 @@ export function NewServicePage() {
     shape.isCronType &&
     form.schedule.trim() !== "" &&
     !isValidCron(form.schedule);
+  const scheduleDescription = shape.isCronType
+    ? describeCron(form.schedule)
+    : null;
   const showNameError = name.name.length > 0 && !name.nameValid;
   const showNameTaken = name.nameValid && (name.nameTaken || nameConflict);
   const canSubmit =
@@ -97,10 +106,20 @@ export function NewServicePage() {
           <Card>
             <CardHeader>
               <CardTitle>
-                <h1 className="text-xl">{t("services.createTitle")}</h1>
+                <h1 className="text-xl">
+                  {t(
+                    shape.isCronType
+                      ? "services.createCronTitle"
+                      : "services.createTitle",
+                  )}
+                </h1>
               </CardTitle>
               <CardDescription>
-                {t("services.createDescription")}
+                {t(
+                  shape.isCronType
+                    ? "services.createCronDescription"
+                    : "services.createDescription",
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -282,7 +301,13 @@ export function NewServicePage() {
                       value={form.schedule}
                       onChange={(schedule) => set({ schedule })}
                       placeholder={t("services.createFieldSchedulePlaceholder")}
-                      hint={t("services.createFieldScheduleHint")}
+                      hint={
+                        scheduleDescription
+                          ? t("services.createFieldSchedulePreview", {
+                              description: scheduleDescription,
+                            })
+                          : t("services.createFieldScheduleHint")
+                      }
                       error={
                         scheduleError
                           ? t("services.createFieldScheduleError")
