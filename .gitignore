@@ -23,6 +23,8 @@ projects-to-deploy
 # up.sh/down.sh/status.sh source (see .pm/wN/dev-N/ports.env headers).
 !ports.env
 .playwright-mcp
+# stray screenshots dropped at repo root (should live under .playwright-mcp/)
+/*.png
 
 # `lego/cli/` is the checked-in import-based bex launcher. Do not use that
 # path for an untracked Render CLI checkout; use a temporary directory or
