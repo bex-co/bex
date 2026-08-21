@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "security-audit": {
+      "source": "cloudflare/security-audit-skill",
+      "sourceType": "github",
+      "skillPath": "skills/security-audit/SKILL.md",
+      "computedHash": "02a15f2226610f8c9d23732b9f11fe64865f35b1c26cd0560db370f441e9a199"
+    },
     "stripe-best-practices": {
       "source": "docs.stripe.com",
       "sourceType": "well-known",
