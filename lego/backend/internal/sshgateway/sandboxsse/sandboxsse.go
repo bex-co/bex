@@ -87,6 +87,11 @@ type ExecRevalidator struct {
 // RevalidateExec re-authorizes a verified exec ticket as its signed subject,
 // uncached (a positive decision cached on another replica must not outlive a
 // revocation — the round-5 finding-4 class this transport joins late).
+// SECURITY (codex round-16 #7 / finding-2): command selection is create-like
+// (caller-selected argv reaches pods/exec) so both redemption and live-stream
+// revalidation require can_create — not can_operate — matching the mint-time
+// gate in sandbox.Service.dialGateway. A demoted contributor who retains
+// can_operate must not keep arbitrary exec alive.
 func (r *ExecRevalidator) RevalidateExec(ctx context.Context, claims sandboxexec.Claims) error {
 	if r == nil || r.Base == nil {
 		return nil // authorization kernel not wired: admission-only (pre-round-13)
@@ -98,7 +103,7 @@ func (r *ExecRevalidator) RevalidateExec(ctx context.Context, claims sandboxexec
 		return core.ErrForbidden // a caller ticket always carries its workspace
 	}
 	ctx = core.WithIdentity(ctx, core.Identity{Subject: claims.Subject, Method: "sandbox-exec"})
-	if err := r.AuthorizeFreshOn(ctx, core.RelCanOperate, core.WorkspaceObject(claims.Workspace)); err != nil {
+	if err := r.AuthorizeFreshOn(ctx, core.RelCanCreate, core.WorkspaceObject(claims.Workspace)); err != nil {
 		return err
 	}
 	if claims.AgentSessionID != "" {

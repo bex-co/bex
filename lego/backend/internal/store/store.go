@@ -883,6 +883,15 @@ func (s *PGStore) AddDomainClaim(ctx context.Context, appID, host, redirectForNa
 	var d Domain
 	created := false
 	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		// SECURITY (finding-6): expired pending claims are reclaimed atomically
+		// before evaluating the global uniqueness conflict. Without expiry a
+		// tenant can squat any hostname indefinitely without proving DNS
+		// ownership. 48h matches the typical DNS challenge window and prevents
+		// indefinite reservation while keeping a fresh pending claim conflicting
+		// during its proof window. Verified rows are never reclaimed.
+		if _, err := tx.Exec(ctx, `DELETE FROM domains WHERE host = $1 AND claim_state = 'pending' AND created_at < now() - interval '48 hours'`, host); err != nil {
+			return err
+		}
 		var insertErr error
 		d, insertErr = scanDomainClaim(tx.QueryRow(ctx,
 			`INSERT INTO domains (id, app_id, host, is_primary, redirect_for_name, claim_state, challenge)
@@ -898,10 +907,15 @@ func (s *PGStore) AddDomainClaim(ctx context.Context, appID, host, redirectForNa
 			return insertErr
 		}
 		var owner string
-		if err := tx.QueryRow(ctx, `SELECT app_id FROM domains WHERE host = $1 FOR UPDATE`, host).Scan(&owner); err != nil {
+		var claimState string
+		var createdAt time.Time
+		if err := tx.QueryRow(ctx, `SELECT app_id, claim_state, created_at FROM domains WHERE host = $1 FOR UPDATE`, host).Scan(&owner, &claimState, &createdAt); err != nil {
 			return err
 		}
 		if owner != appID {
+			// Expired pending owned by another app was already deleted above;
+			// a remaining row here is either verified (never reclaim) or fresh
+			// pending within the proof window — both remain conflicts.
 			return ErrConflict
 		}
 		d, insertErr = scanDomainClaim(tx.QueryRow(ctx,

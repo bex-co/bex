@@ -74,25 +74,30 @@ func TestExecRevalidatorRelations(t *testing.T) {
 		}
 	})
 
-	t.Run("caller ticket needs workspace can_operate", func(t *testing.T) {
-		allow := relChecker{allow: map[string]bool{"user:id-a|" + core.RelCanOperate: true}}
+	t.Run("caller ticket needs workspace can_create", func(t *testing.T) {
+		allow := relChecker{allow: map[string]bool{"user:id-a|" + core.RelCanCreate: true}}
 		if err := base(allow).RevalidateExec(context.Background(), caller); err != nil {
 			t.Fatalf("authorized caller: %v", err)
 		}
 		if err := base(relChecker{}).RevalidateExec(context.Background(), caller); !errors.Is(err, core.ErrForbidden) {
 			t.Fatalf("no-relation caller = %v, want ErrForbidden", err)
 		}
+		// can_operate alone must not suffice (finding-2): command selection is create-like.
+		operateOnly := relChecker{allow: map[string]bool{"user:id-a|" + core.RelCanOperate: true}}
+		if err := base(operateOnly).RevalidateExec(context.Background(), caller); !errors.Is(err, core.ErrForbidden) {
+			t.Fatalf("operate-only caller = %v, want ErrForbidden (needs can_create)", err)
+		}
 	})
 
 	t.Run("agent session needs can_view_sensitive", func(t *testing.T) {
 		claims := caller
 		claims.AgentSessionID = "ags-one"
-		contributor := relChecker{allow: map[string]bool{"user:id-a|" + core.RelCanOperate: true}}
+		contributor := relChecker{allow: map[string]bool{"user:id-a|" + core.RelCanCreate: true}}
 		if err := base(contributor).RevalidateExec(context.Background(), claims); !errors.Is(err, core.ErrForbidden) {
 			t.Fatalf("contributor on agent sandbox = %v, want ErrForbidden", err)
 		}
 		developer := relChecker{allow: map[string]bool{
-			"user:id-a|" + core.RelCanOperate:        true,
+			"user:id-a|" + core.RelCanCreate:        true,
 			"user:id-a|" + core.RelCanViewSensitive: true,
 		}}
 		if err := base(developer).RevalidateExec(context.Background(), claims); err != nil {
@@ -102,7 +107,7 @@ func TestExecRevalidatorRelations(t *testing.T) {
 
 	t.Run("fresh decision required", func(t *testing.T) {
 		stale := freshRevokedChecker{relChecker: relChecker{allow: map[string]bool{
-			"user:id-a|" + core.RelCanOperate: true,
+			"user:id-a|" + core.RelCanCreate: true,
 		}}}
 		if err := base(stale).RevalidateExec(context.Background(), caller); !errors.Is(err, core.ErrForbidden) {
 			t.Fatalf("stale-positive caller = %v, want ErrForbidden", err)

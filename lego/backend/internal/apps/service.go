@@ -3578,6 +3578,10 @@ func isNetworkPathReference(p string) bool {
 // token/CRLF-validated so a rule cannot inject a second header or split the
 // response once the static server emits it via h.Set (round-5 finding 11), and
 // the whole list stays inside the edge-rule budgets above.
+// SECURITY (finding-5): on a shared registrable suffix (e.g. onbex.co, which
+// is not a private PSL suffix) a tenant Set-Cookie with Domain=onbex.co is
+// sent to every sibling tenant. Reject such cross-tenant cookie injection
+// while the hosting suffix remains unlisted; host-only cookies remain allowed.
 func validateHeaders(headers []StaticHeaderView) error {
 	if len(headers) > maxStaticHeaders {
 		return fmt.Errorf("%w: headers must not exceed %d items", core.ErrBadRequest, maxStaticHeaders)
@@ -3603,8 +3607,27 @@ func validateHeaders(headers []StaticHeaderView) error {
 		if !httpguts.ValidHeaderFieldValue(h.Value) {
 			return fmt.Errorf("%w: headers[%d].value contains an invalid character", core.ErrBadRequest, i)
 		}
+		if strings.EqualFold(h.Name, "Set-Cookie") && isCrossTenantCookieValue(h.Value) {
+			return fmt.Errorf("%w: headers[%d].value Set-Cookie with Domain attribute is not allowed on shared hosting (cross-tenant cookie injection)", core.ErrBadRequest, i)
+		}
 	}
 	return nil
+}
+
+// isCrossTenantCookieValue reports whether a Set-Cookie value carries a Domain
+// attribute (any value). On shared hosting without PSL private-suffix
+// isolation, any Domain attribute lets the cookie scope to the parent domain
+// and sibling tenants; host-only cookies (no Domain) remain correctly isolated
+// by Same-Origin + host-only semantics.
+func isCrossTenantCookieValue(value string) bool {
+	parts := strings.Split(value, ";")
+	for _, p := range parts[1:] {
+		attr := strings.TrimSpace(p)
+		if strings.HasPrefix(strings.ToLower(attr), "domain=") {
+			return true
+		}
+	}
+	return false
 }
 
 // validatePublishPath rejects an empty or control-character publishPath. The
