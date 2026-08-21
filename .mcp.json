@@ -9,6 +9,10 @@
         ".playwright-mcp"
       ],
       "env": {}
+    },
+    "expo": {
+      "type": "http",
+      "url": "https://mcp.expo.dev/mcp"
     }
   }
 }
