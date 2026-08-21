@@ -13,6 +13,13 @@ export interface TriggerOptions {
    * Omit or pass "build_and_deploy" for the normal full-rebuild path.
    */
   deployMode?: string;
+  /**
+   * Render's "clear" | "do_not_clear" enum ("Clear build cache and deploy").
+   * bex builds are always cache-free (ephemeral BuildKit Jobs), so "clear" is a
+   * no-op — every trigger already rebuilds from a clean slate. Sent for
+   * REST/GraphQL/MCP parity; the backend enum-validates but does not branch on it.
+   */
+  clearCache?: string;
 }
 
 export interface UseTriggerDeployResult {
@@ -57,6 +64,7 @@ export function useTriggerDeploy(): UseTriggerDeployResult {
           serviceId,
           commitId: opts?.commitId,
           deployMode: opts?.deployMode,
+          clearCache: opts?.clearCache,
         },
       });
       toast.success(t("services.triggerDeploySuccess"));

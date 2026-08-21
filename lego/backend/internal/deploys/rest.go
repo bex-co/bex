@@ -227,8 +227,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// so a bool-typed field here 400s every deploys-create call the CLI
 	// makes. bex builds are always cache-free (ephemeral BuildKit Jobs, no
 	// --cache-to/--cache-from) — "clear" and "do_not_clear" are both
-	// already-true no-ops, so any recognized value (or an omitted one) is
-	// accepted rather than rejected; only a value outside the enum 400s.
+	// already-true no-ops. The enum is validated in the shared validateTrigger
+	// (so REST/GraphQL/MCP reject a typo identically); only a value outside the
+	// enum 400s, an omitted or recognized one is accepted.
 	mux.HandleFunc("POST "+base+"/{id}/deploys", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			CommitID   string `json:"commitId"`
@@ -240,15 +241,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
 			return
 		}
-		if body.ClearCache != "" && body.ClearCache != "clear" && body.ClearCache != "do_not_clear" {
-			core.WriteErr(w, fmt.Errorf("%w: unknown clearCache %q (valid: clear, do_not_clear)",
-				core.ErrBadRequest, body.ClearCache))
-			return
-		}
 		d, err := s.Trigger(r.Context(), r.PathValue("id"), TriggerParams{
 			CommitID:   body.CommitID,
 			DeployMode: body.DeployMode,
 			ImageURL:   body.ImageURL,
+			ClearCache: body.ClearCache,
 		})
 		if err != nil {
 			core.WriteErr(w, err)

@@ -435,6 +435,32 @@ func TestListUnresolvedCallerSeesNothing(t *testing.T) {
 	}
 }
 
+func TestListOmitsDeletingApp(t *testing.T) {
+	// w3/m46: a resource whose deletion is in flight (a finalizer holds the CR
+	// through teardown — a static site's S3-prefix cleanup Job can run for tens
+	// of seconds) must leave the list at once, matching Render and the by-id Get
+	// (which 404s once the store row is gone). Before this it lingered rendered
+	// as "Deleting", which the dashboard shows as the meaningless "Unknown".
+	deleting := tenantApp("gone", "tea-a")
+	now := metav1.Now()
+	deleting.DeletionTimestamp = &now
+	// The fake client only retains an object marked for deletion while a
+	// finalizer holds it — which is exactly the real teardown state.
+	deleting.Finalizers = []string{"app.bex.co/finalizer"}
+
+	svc, _ := newTenantService(fakeWorkspace{"identity-a": "tea-a"},
+		tenantApp("web", "tea-a"), deleting)
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "identity-a", Method: "session"})
+
+	list, err := svc.List(ctx, "")
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(list) != 1 || list[0].Name != "web" {
+		t.Fatalf("List returned %d apps, want just [web] (the deleting App must be hidden)", len(list))
+	}
+}
+
 func TestGetCrossTenantByNameIsNotFound(t *testing.T) {
 	// Round-7 F8: a by-NAME lookup whose every candidate denied reports absence
 	// — the closed oracle is the point (a name probe must not distinguish a

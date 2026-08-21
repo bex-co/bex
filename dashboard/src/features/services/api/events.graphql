@@ -60,11 +60,13 @@ mutation TriggerDeploy(
   $serviceId: String!
   $commitId: String
   $deployMode: String
+  $clearCache: String
 ) {
   triggerDeploy(
     serviceId: $serviceId
     commitId: $commitId
     deployMode: $deployMode
+    clearCache: $clearCache
   ) {
     id
     status

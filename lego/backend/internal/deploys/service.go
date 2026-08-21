@@ -354,6 +354,14 @@ type TriggerParams struct {
 	// mistake, not an oversight). Any valid image reference is accepted for an
 	// image-backed service (the authenticated caller chooses the image).
 	ImageURL string
+	// ClearCache is Render's "clear" | "do_not_clear" string enum (its
+	// dashboard's "Clear build cache and deploy"). bex builds are always
+	// cache-free (ephemeral BuildKit Jobs, no --cache-to/--cache-from), so both
+	// values are already-true no-ops: a trigger always rebuilds from a clean
+	// slate. The field is accepted (and enum-validated) for Render/CLI
+	// compatibility across all three surfaces, not because it changes behavior;
+	// only a value outside the enum is rejected. Empty = omitted = the default.
+	ClearCache string
 }
 
 // Trigger starts a fresh deploy (Render's POST .../deploys): bumps
@@ -430,6 +438,11 @@ func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerP
 	// per-commit. Reject early rather than silently ignoring the field.
 	if p.CommitID != "" && a.Spec.Type == appv1alpha1.TypeCronJob {
 		return fmt.Errorf("%w: commitId is not supported for cron_job services", core.ErrBadRequest)
+	}
+	// clearCache is a validated no-op (see TriggerParams); rejecting a typo here —
+	// shared by REST/GraphQL/MCP — keeps the three surfaces byte-identical.
+	if p.ClearCache != "" && p.ClearCache != "clear" && p.ClearCache != "do_not_clear" {
+		return fmt.Errorf("%w: unknown clearCache %q (valid: clear, do_not_clear)", core.ErrBadRequest, p.ClearCache)
 	}
 	return nil
 }

@@ -2475,21 +2475,30 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	}
 	r.setPublicRoutingCondition(app, hosts)
 
-	// Suspended: stop serving by removing the Ingress; the published content stays
-	// in the object store, so resume just recreates the Ingress.
+	// Suspended: keep the host Ingress + its TLS certificate pointed at the shared
+	// static-server, exactly as when running. The static-server resolver already
+	// drops a suspended App from its host→site map (staticserver/resolver.go), so
+	// it answers its ordinary "no static site for host" 404 — but now that 404 is
+	// served over the App's own managed certificate instead of Traefik's default
+	// self-signed cert. Removing the Ingress (the pre-w3/m46 behavior) left Traefik
+	// with no route or cert for the host, so visitors hit a TLS error and the
+	// dashboard's "URL and certificates are kept" promise was false. This mirrors a
+	// suspended compute service, whose Ingress + cert are likewise retained
+	// (parkKubernetes). The published content stays in the object store; resume just
+	// re-adds the App to the resolver.
 	if app.Spec.Suspended {
 		if _, err := r.reconcileWebsocketMeterMiddleware(ctx, app, false); err != nil {
 			return r.fail(ctx, app, "MiddlewareCleanupFailed", err)
 		}
-		if err := r.reconcileIngress(ctx, app, nil, "", 0, nil); err != nil {
-			return r.fail(ctx, app, "IngressCleanupFailed", err)
+		if reason, err := r.reconcileStaticIngress(ctx, app, hosts, nil); err != nil {
+			return r.fail(ctx, app, reason, err)
 		}
 		app.Status.ActiveRevision = rev
 		if published {
 			app.Status.StaticPrefix = appIdentity(app).StaticPrefix(rev)
 		}
-		return r.hibernated(ctx, app, image, nil, "Suspended",
-			"static site suspended (not served; published content kept)")
+		return r.hibernated(ctx, app, image, hosts, "Suspended",
+			"static site suspended (published content kept; host and certificate retained, serving 404)")
 	}
 
 	staticMWNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
@@ -2499,12 +2508,8 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	if _, err := r.reconcileWebsocketMeterMiddleware(ctx, app, false); err != nil {
 		return r.fail(ctx, app, "MiddlewareFailed", err)
 	}
-	staticService, err := r.reconcileStaticServerAlias(ctx, app)
-	if err != nil {
-		return r.fail(ctx, app, "StaticAliasFailed", err)
-	}
-	if err := r.reconcileIngress(ctx, app, hosts, staticService, int32(r.staticServerPort()), staticMWNames); err != nil {
-		return r.fail(ctx, app, "IngressFailed", err)
+	if reason, err := r.reconcileStaticIngress(ctx, app, hosts, staticMWNames); err != nil {
+		return r.fail(ctx, app, reason, err)
 	}
 
 	app.Status.Phase = appv1alpha1.PhaseRunning
@@ -2544,6 +2549,23 @@ func (r *AppReconciler) staticServerNamespace() string {
 // Ingress backends must live in the Ingress namespace. Static sites normally
 // live in tenant namespaces while the shared origin runs in bex-system, so
 // route through an App-owned ExternalName alias there.
+// reconcileStaticIngress points the App's host Ingress at the shared static-
+// server (through an App-owned ExternalName alias in the Ingress namespace).
+// Shared by the running serve path and the suspended path: a suspended site keeps
+// the identical Ingress + TLS cert, and the resolver drops it from serving so the
+// static-server answers its ordinary 404 over the managed cert. On error it
+// returns the r.fail reason for the caller.
+func (r *AppReconciler) reconcileStaticIngress(ctx context.Context, app *appv1alpha1.App, hosts, mwNames []string) (string, error) {
+	staticService, err := r.reconcileStaticServerAlias(ctx, app)
+	if err != nil {
+		return "StaticAliasFailed", err
+	}
+	if err := r.reconcileIngress(ctx, app, hosts, staticService, int32(r.staticServerPort()), mwNames); err != nil {
+		return "IngressFailed", err
+	}
+	return "", nil
+}
+
 func (r *AppReconciler) reconcileStaticServerAlias(ctx context.Context, app *appv1alpha1.App) (string, error) {
 	if app.Namespace == r.staticServerNamespace() {
 		return r.StaticServerService, nil

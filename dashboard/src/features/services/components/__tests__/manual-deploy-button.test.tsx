@@ -96,6 +96,24 @@ describe("ManualDeployButton — navigate to the new deploy's page (w9/m1/t004)"
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
+  it("Clear build cache & deploy triggers with clearCache=clear (w3/m46 Render parity)", async () => {
+    trigger.mockResolvedValue("dep-clear-1");
+    const user = userEvent.setup();
+    render(<ManualDeployButton service={svc()} pending={false} />);
+
+    await user.click(screen.getByRole("button", { name: /Manual Deploy/i }));
+    await user.click(screen.getByText("Clear build cache & deploy"));
+
+    // The plain deploy sends no options; only clear-cache passes clearCache.
+    expect(trigger).toHaveBeenCalledWith("web", { clearCache: "clear" });
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith({
+        to: "/services/$serviceId/deploys/$deployId",
+        params: { serviceId: "web", deployId: "dep-clear-1" },
+      }),
+    );
+  });
+
   it("navigates to the restart-triggered deploy's page too (w2/m30: restart opens a deploy row)", async () => {
     trigger.mockResolvedValue("dep-restart-1");
     const user = userEvent.setup();

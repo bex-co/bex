@@ -123,6 +123,52 @@ var _ = Describe("reconciling a static_site App", func() {
 		Expect(app.Status.StaticPrefix).To(BeEmpty())
 	})
 
+	It("keeps the host Ingress + certificate on the static-server when suspended (w3/m46)", func() {
+		const name = "site-suspend"
+		nn := types.NamespacedName{Name: name, Namespace: ns}
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			Spec: appv1alpha1.AppSpec{
+				Type:        appv1alpha1.TypeStaticSite,
+				Image:       "site:v1",
+				PublishPath: "dist",
+				Expose:      true,
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		app.Status.ActiveRevision = revFor(app)
+		Expect(k8sClient.Status().Update(ctx, app)).To(Succeed())
+
+		By("serving while running")
+		reconcileN(staticReconciler(), nn)
+		var ing networkingv1.Ingress
+		Expect(k8sClient.Get(ctx, nn, &ing)).To(Succeed())
+		Expect(ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name).To(Equal(staticServerAliasName(name)))
+		Expect(ing.Spec.TLS).NotTo(BeEmpty())
+
+		By("suspending the site")
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		app.Spec.Suspended = true
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+		reconcileN(staticReconciler(), nn)
+
+		By("keeping the Ingress + TLS pointed at the static-server (not deleting it) so the managed cert survives")
+		Expect(k8sClient.Get(ctx, nn, &ing)).To(Succeed())
+		Expect(ing.Spec.Rules).To(HaveLen(1))
+		Expect(ing.Spec.Rules[0].Host).To(Equal(name + ".onbex.co"))
+		Expect(ing.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name).To(Equal(staticServerAliasName(name)))
+		// The per-host TLS entry (cert-manager Certificate + Traefik-served cert)
+		// is retained — the crux of the fix: a suspended site keeps its managed
+		// cert instead of falling back to Traefik's default self-signed cert.
+		Expect(ing.Spec.TLS).NotTo(BeEmpty())
+
+		By("reporting Hibernated with the URL kept")
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.Status.Phase).To(Equal(appv1alpha1.PhaseHibernated))
+		Expect(app.Status.URL).To(Equal("https://" + name + ".onbex.co"))
+	})
+
 	It("keeps an already-published labeled site on the empty/legacy prefix across reconcile", func() {
 		const name = "site-upgrade-prefix"
 		const ws = "tea-aaaaaaaaaaaaaaaaaaaa"
