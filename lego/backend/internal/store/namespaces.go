@@ -728,7 +728,8 @@ func tenantRoleBindings(namespace, regime string) []*rbacv1.RoleBinding {
 			// Sandbox hibernation resume-pull (w3/m42 t002, ADR042 D5): the
 			// operator's SandboxNamespaceRegistryReconciler mints the per-workspace
 			// `bex-snapshot-pull` Secret here — get/create/update/patch (label
-			// backfill), namespace-scoped through this binding, never cluster-wide.
+			// backfill, w2/m82), namespace-scoped through this binding, never
+			// cluster-wide.
 			tenantRoleBinding(namespace, "bex-operator-snapshot-pull", operatorSA),
 		}
 	default:

@@ -60,8 +60,10 @@ rules:
       - bex-tenant-sandbox-server
       - bex-tenant-sandbox-controller
       # w3/m42: the operator's per-sandbox-namespace snapshot resume-pull
-      # Secret grant (get/create/update/patch) — bound by the NamespaceReconciler,
-      # admitted by the exactRoleBinding allowlist in bex-api-namespace-admission.yaml.
+      # Secret grant (get/create/update/patch; update/patch backfill the
+      # protected-from-tenant-mount label, w2/m82) — bound by the
+      # NamespaceReconciler, admitted by the exactRoleBinding allowlist in
+      # bex-api-namespace-admission.yaml.
       - bex-operator-snapshot-pull
     verbs: ["bind"]
 ---

@@ -35,6 +35,8 @@ package registry
 import (
 	"context"
 	"fmt"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // SnapshotPullSecretName is the fixed Secret name the OpenSandbox controller's
@@ -64,8 +66,12 @@ func SnapshotRepoGlob(namespace string) string { return "snapshots/" + namespace
 // the shared rate-limited bounce instead of its own probe loop.
 func (c *Creds) EnsureSnapshotCreds(ctx context.Context, namespace string) error {
 	zotUser := SnapshotZotUsername(namespace)
+	// Stamp the protected-from-tenant-mount label at create time (same contract
+	// as per-App reg-pull Secrets). Secrets minted before round-11 #1 lack it;
+	// ensurePullSecret best-effort backfills when the RoleBinding grants patch.
 	password, err := c.ensurePullSecret(ctx, namespace, SnapshotPullSecretName, zotUser, map[string]string{
-		"app.bex.co/component": "snapshot-pull",
+		"app.bex.co/component":                    "snapshot-pull",
+		appv1alpha1.LabelProtectedFromTenantMount: appv1alpha1.ProtectedFromTenantMount,
 	})
 	if err != nil {
 		return err

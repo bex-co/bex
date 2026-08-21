@@ -18,11 +18,18 @@ package registry
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // TestSnapshotNamingConventions pins the per-namespace naming scheme.
@@ -103,6 +110,9 @@ func TestEnsureSnapshotCredsEndToEnd(t *testing.T) {
 	if pullSec.Type != corev1.SecretTypeDockerConfigJson {
 		t.Fatalf("pull secret type = %v; want dockerconfigjson", pullSec.Type)
 	}
+	if got := pullSec.Labels[appv1alpha1.LabelProtectedFromTenantMount]; got != appv1alpha1.ProtectedFromTenantMount {
+		t.Fatalf("protected label = %q; want %q (tenant workloads must not mount resume-pull creds)", got, appv1alpha1.ProtectedFromTenantMount)
+	}
 	password, err := c.passwordFrom(pullSec.Data[corev1.DockerConfigJsonKey], SnapshotZotUsername(ns))
 	if err != nil || password == "" {
 		t.Fatalf("passwordFrom: %v (password empty=%v)", err, password == "")
@@ -162,6 +172,60 @@ func TestEnsureSnapshotCredsEndToEnd(t *testing.T) {
 	}
 	if err := c.RevokeSnapshotCreds(ctx, "never-existed-sandbox"); err != nil {
 		t.Fatalf("revoke of unknown namespace must be a no-op: %v", err)
+	}
+}
+
+// TestSnapshotBackfillPatchDeniedIsNonFatal pins the w2/m82 t001 contract: a
+// legacy snapshot Secret (minted before the protected label shipped) whose
+// backfill patch is DENIED — the pre-patch RoleBinding state prod ran with —
+// must not fail EnsureSnapshotCreds. The credential itself is already usable;
+// failing the whole path here is what ERROR-spammed sandboxnamespaceregistry.
+func TestSnapshotBackfillPatchDeniedIsNonFatal(t *testing.T) {
+	ctx := context.Background()
+	const ns = "tea-legacy-sandbox"
+	zotUser := SnapshotZotUsername(ns)
+	// A pre-round-11 Secret: valid credential, no protected label.
+	c := newTestCreds(t, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "zot-htpasswd", Namespace: "bex-registry"},
+		Data:       map[string][]byte{htpasswdKey: []byte("bex-builder:$2a$10$somehash\n")},
+	})
+	legacy := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: ns, Name: SnapshotPullSecretName,
+			Labels: map[string]string{"app.bex.co/component": "snapshot-pull"},
+		},
+		Type: corev1.SecretTypeDockerConfigJson,
+		Data: map[string][]byte{corev1.DockerConfigJsonKey: c.dockerConfig(zotUser, "legacy-password")},
+	}
+	patched := false
+	c.Client = fake.NewClientBuilder().WithScheme(testScheme(t)).
+		WithObjects(legacy, &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "zot-htpasswd", Namespace: "bex-registry"},
+			Data:       map[string][]byte{htpasswdKey: []byte("bex-builder:$2a$10$somehash\n")},
+		}).
+		WithInterceptorFuncs(interceptor.Funcs{
+			Patch: func(ctx context.Context, cl client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+				if obj.GetName() != SnapshotPullSecretName {
+					return cl.Patch(ctx, obj, patch, opts...)
+				}
+				patched = true
+				return apierrors.NewForbidden(schema.GroupResource{Group: "", Resource: "secrets"}, obj.GetName(), errors.New("cannot patch"))
+			},
+		}).Build()
+
+	if err := c.EnsureSnapshotCreds(ctx, ns); err != nil {
+		t.Fatalf("EnsureSnapshotCreds must survive a denied backfill patch: %v", err)
+	}
+	if !patched {
+		t.Fatal("the backfill patch was never attempted; this test no longer exercises the backfill path")
+	}
+	// The Mint still completes its Zot-side halves with the EXISTING password.
+	var ht corev1.Secret
+	if err := c.Client.Get(ctx, client.ObjectKey{Namespace: "bex-registry", Name: "zot-htpasswd"}, &ht); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := htpasswdUserHash(ht.Data[htpasswdKey], zotUser); !ok {
+		t.Fatal("htpasswd entry missing: the denied label backfill must not stop the credential mint")
 	}
 }
 

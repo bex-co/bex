@@ -617,6 +617,21 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	if app.Spec.Repo == "" {
 		return halt(r.fail(ctx, app, "BadSpec", fmt.Errorf("one of spec.image or spec.repo is required")))
 	}
+	// A terminally failed build for THIS generation is settled (w2/m82 t006): the
+	// Ready condition r.fail wrote is the durable marker. Everything below this
+	// gate dispatches or observes a build Job — and EnsureBuild is
+	// create-if-absent, so once the failed Job is TTL-reaped (or an operator
+	// restart resyncs the App), re-entering would re-create the Job and re-run
+	// the whole doomed build (2026-08-20 evidence: market-size re-ran npm
+	// install 3 days after its failure; beancount-forum re-ran a failing clone
+	// for 18 days). Halting here also keeps setPhase(PhaseBuilding) from
+	// overwriting the Failed marker, which is what double-metered the outcome
+	// through the recorded-gate below. A tenant deploy bumps the generation and
+	// the condition's ObservedGeneration no longer matches, so this gate opens
+	// again — the predeploy analogue's terminal bookkeeping is the same pattern.
+	if terminalBuildFailureRecorded(app) {
+		return halt(ctrl.Result{}, nil)
+	}
 	ref := effectiveDeployRef(app.Spec)
 	// Tag by release generation: a deploy trigger (including a webhook redeploy
 	// that stamps spec.restartedAt) yields a new tag, while an operational spec
@@ -750,24 +765,28 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		view := viewForBuildFault(obs.Fault)
 		// The failure branch needs a DIFFERENT marker: r.fail deliberately never
 		// stamps Status.ObservedGeneration (successfulReleaseGeneration derives the
-		// last good release from it, so a failed build must not advance it), and it
-		// returns an error — so controller-runtime requeues, the artifact is still
-		// unusable, and this branch re-enters roughly twenty times an hour until
-		// the Job's TTL reaps it. Metering on the generation gate there counted one
-		// failure ~20 times, and — since w7/m83 — re-observed the same queue wait
-		// into the histogram the p95 capacity alert pages on.
+		// last good release from it, so a failed build must not advance it). The
+		// Ready condition r.fail itself writes is the durable marker: reason plus
+		// the generation it was observed at, already persisted in status, so it
+		// survives a manager restart without a new field or an extra write.
 		//
-		// The Ready condition r.fail itself writes is the durable marker: reason
-		// plus the generation it was observed at, already persisted in status, so
-		// it survives a manager restart without a new field or an extra write.
-		if !buildOutcomeAlreadyRecorded(app, view.reason) {
-			recordBuildRunSeconds(obs.RunSeconds)
-			recordBuildOutcome(view.outcome)
-			if obs.Fault == build.FaultInfra {
-				recordBuildInfraFailure(app.Labels[labelWorkspace])
-			}
-			r.meterBuildSignals(ctx, app, buildNs)
+		// Once that condition is recorded, do NOT call r.fail again: it returns an
+		// error, so controller-runtime logs Reconciler ERROR and requeues ~20×/h
+		// until the Job's TTL reaps it. Metering on that gate counted one failure
+		// ~20 times and — since w7/m83 — re-observed the same queue wait into the
+		// histogram the p95 capacity alert pages on. Returning nil with no
+		// requeue quiesces the App: it stays Failed until a watch event (the
+		// tenant bumping generation) re-enters here, and the gate holds that pass
+		// terminal without re-failing or re-metering.
+		if buildOutcomeAlreadyRecorded(app, view.reason) {
+			return halt(ctrl.Result{}, nil)
 		}
+		recordBuildRunSeconds(obs.RunSeconds)
+		recordBuildOutcome(view.outcome)
+		if obs.Fault == build.FaultInfra {
+			recordBuildInfraFailure(app.Labels[labelWorkspace])
+		}
+		r.meterBuildSignals(ctx, app, buildNs)
 		return halt(r.fail(ctx, app, view.reason, fmt.Errorf("%s: %s", view.message, obs.Message)))
 	case build.PhaseWaiting:
 		// Dispatched, but no pod placed yet — capacity wait. Report BuildQueued so
@@ -801,6 +820,19 @@ func expectedGitObjectID(value string) string {
 func buildOutcomeAlreadyRecorded(app *appv1alpha1.App, reason string) bool {
 	cond := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
 	return cond != nil && cond.Reason == reason && cond.ObservedGeneration == app.Generation
+}
+
+// terminalBuildFailureRecorded reports whether this generation's build already
+// failed terminally (any build-failure class), read off the same Ready
+// condition. It gates re-DISPATCH (buildFromSource's entry), where the exact
+// reason doesn't matter — only that this generation's verdict is in — while
+// buildOutcomeAlreadyRecorded gates METERING, where the reason must match so a
+// reclassified fault (infra → tenant) still meters its own outcome once.
+func terminalBuildFailureRecorded(app *appv1alpha1.App) bool {
+	cond := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+	return cond != nil &&
+		appv1alpha1.IsBuildFailureReason(cond.Reason) &&
+		cond.ObservedGeneration == app.Generation
 }
 
 // meterBuildSignals records the pod-derived build series (queue wait, push
@@ -2038,7 +2070,11 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 			Message: msg, ObservedGeneration: app.Generation,
 		})
 	}
-	_ = r.Status().Update(ctx, app)
+	// Best-effort progress stamp: the 5s requeue below re-writes it if lost.
+	if err := r.Status().Update(ctx, app); err != nil {
+		logf.FromContext(ctx).V(1).Info("rollout progress status write failed; requeue re-stamps",
+			"app", app.Name, "error", err.Error())
+	}
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
 }
 
@@ -3341,25 +3377,102 @@ func (r *AppReconciler) setPhase(ctx context.Context, app *appv1alpha1.App, p ap
 	if samePhase && !changed {
 		return
 	}
-	_ = r.Status().Update(ctx, app)
+	r.updateStatusRetrying(ctx, app, "setPhase")
 }
 
+// updateStatusRetrying persists app.Status with conflict retries (w2/m82 t007).
+// The bex-api control-plane projector rewrites App CRs on resync, racing the
+// operator's cache read; a plain status Update loses the write to a 409 that
+// used to be `_ =`-swallowed — silently dropping the durable Failed marker every
+// gate in buildFromSource keys on (2026-08-20: 8 consecutive lost retries after
+// market-size's first r.fail). On conflict, re-read the live object, re-apply
+// the local status, and update again; other errors are logged at ERROR so a
+// lost marker is at least visible. Status here is operator-owned: the
+// projector never writes status, so re-applying the local copy over the fresh
+// resourceVersion cannot clobber a concurrent projector spec change.
+func (r *AppReconciler) updateStatusRetrying(ctx context.Context, app *appv1alpha1.App, site string) {
+	for range statusWriteAttempts {
+		if err := r.Status().Update(ctx, app); err == nil {
+			return
+		} else if !apierrors.IsConflict(err) {
+			logf.FromContext(ctx).Error(err, "app status write failed; durable markers may be stale",
+				"app", app.Name, "site", site)
+			return
+		}
+		// Lost the race: re-read the live object (fresh resourceVersion) and
+		// re-apply this pass's status on top of it.
+		fresh := &appv1alpha1.App{}
+		if err := r.Get(ctx, client.ObjectKeyFromObject(app), fresh); err != nil {
+			logf.FromContext(ctx).Error(err, "re-read for status retry failed",
+				"app", app.Name, "site", site)
+			return
+		}
+		fresh.Status = app.Status
+		*app = *fresh
+	}
+	logf.FromContext(ctx).Error(nil, "app status write still conflicting after retries; durable markers may be stale",
+		"app", app.Name, "site", site)
+}
+
+// statusWriteAttempts bounds updateStatusRetrying's conflict loop — enough to
+// absorb a burst of projector rewrites, few enough to keep a hot loop from
+// parking a reconcile worker (the caller requeues regardless).
+const statusWriteAttempts = 5
+
 // setNotReadyCondition stamps Ready=False(reason, err) on a resource's
-// conditions and best-effort persists its status — the shared body behind the
-// three per-resource failure helpers (fail, dbFail, kvFail). The FAILED phase
-// deliberately stays per-reconciler: each caller assigns its own typed phase
-// before calling.
-func setNotReadyCondition(ctx context.Context, sw client.SubResourceWriter, obj client.Object, conditions *[]metav1.Condition, reason string, err error) {
+// conditions and persists its status with conflict retries — the shared body
+// behind the three per-resource failure helpers (fail, dbFail, kvFail). The
+// FAILED phase deliberately stays per-reconciler: each caller assigns its own
+// typed phase before calling. A conflict here would silently drop the durable
+// failure marker every terminal-outcome gate keys on (w2/m82 t007), so it
+// re-reads and re-applies rather than swallowing.
+func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Object, conditions *[]metav1.Condition, reason string, err error) {
 	meta.SetStatusCondition(conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason, Message: err.Error(),
 		ObservedGeneration: obj.GetGeneration(),
 	})
-	_ = sw.Update(ctx, obj)
+	for range statusWriteAttempts {
+		if err := r.Status().Update(ctx, obj); err == nil {
+			return
+		} else if !apierrors.IsConflict(err) {
+			logf.FromContext(ctx).Error(err, "status write failed; durable failure marker may be lost",
+				"kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName(), "reason", reason)
+			return
+		}
+		// Lost the race: re-read for a fresh resourceVersion, re-apply this
+		// pass's status, and retry. All three callers own status exclusively.
+		fresh := obj.DeepCopyObject().(client.Object)
+		if err := r.Get(ctx, client.ObjectKeyFromObject(obj), fresh); err != nil {
+			logf.FromContext(ctx).Error(err, "re-read for status retry failed",
+				"kind", obj.GetObjectKind().GroupVersionKind().Kind, "name", obj.GetName())
+			return
+		}
+		switch typed := obj.(type) {
+		case *appv1alpha1.App:
+			local := *typed // keep the local status…
+			*typed = *fresh.(*appv1alpha1.App)
+			typed.Status = local.Status // …over the fresh resourceVersion
+		case *appv1alpha1.Database:
+			local := *typed
+			*typed = *fresh.(*appv1alpha1.Database)
+			typed.Status = local.Status
+		case *appv1alpha1.KeyValue:
+			local := *typed
+			*typed = *fresh.(*appv1alpha1.KeyValue)
+			typed.Status = local.Status
+		default:
+			logf.FromContext(ctx).Error(nil, "status retry: unhandled type; marker lost on conflict",
+				"name", obj.GetName(), "reason", reason)
+			return
+		}
+	}
+	logf.FromContext(ctx).Error(nil, "status write still conflicting after retries; durable failure marker may be lost",
+		"name", obj.GetName(), "reason", reason)
 }
 
 func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason string, err error) (ctrl.Result, error) {
 	app.Status.Phase = appv1alpha1.PhaseFailed
-	setNotReadyCondition(ctx, r.Status(), app, &app.Status.Conditions, reason, err)
+	setNotReadyCondition(ctx, r.Client, app, &app.Status.Conditions, reason, err)
 	return ctrl.Result{}, err
 }
 
@@ -3485,7 +3598,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 			Job: job.Name, Generation: gen, Status: appv1alpha1.PreDeploySucceeded,
 			StartedAt: started, FinishedAt: now,
 		}
-		_ = r.Status().Update(ctx, app)
+		r.updateStatusRetrying(ctx, app, "predeploy-succeeded")
 		logf.FromContext(ctx).Info("pre-deploy succeeded", "name", app.Name, "job", job.Name)
 		return ctrl.Result{}, false, nil // proceed to the rollout
 	case predeploy.StateFailed:
@@ -3500,7 +3613,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: "PreDeploy",
 			Message: "running pre-deploy command", ObservedGeneration: app.Generation,
 		})
-		_ = r.Status().Update(ctx, app)
+		r.updateStatusRetrying(ctx, app, "predeploy-running")
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, true, nil
 	}
 }

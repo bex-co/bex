@@ -303,7 +303,10 @@ func (c *Creds) ensurePullSecret(ctx context.Context, ns, name, zotUser string, 
 
 	// Backfill the protected label on Secrets minted before round-11 #1 so the
 	// App-side validator covers them too. Failure is not fatal — the label only
-	// hardens the mount refusal — but it is loud.
+	// hardens the mount refusal — but it is loud. Returning an error here used
+	// to fail the whole EnsureSnapshotCreds path when the sandbox RoleBinding
+	// only granted get+create (pre-patch), flooding Reconciler ERROR logs while
+	// the credential itself was already usable.
 	if sec.Labels[appv1alpha1.LabelProtectedFromTenantMount] != appv1alpha1.ProtectedFromTenantMount {
 		patch := client.MergeFrom(sec.DeepCopy())
 		if sec.Labels == nil {
@@ -311,7 +314,8 @@ func (c *Creds) ensurePullSecret(ctx context.Context, ns, name, zotUser string, 
 		}
 		sec.Labels[appv1alpha1.LabelProtectedFromTenantMount] = appv1alpha1.ProtectedFromTenantMount
 		if err := c.Client.Patch(ctx, &sec, patch); err != nil {
-			return "", fmt.Errorf("backfill protected label on pull secret: %w", err)
+			logf.FromContext(ctx).Error(err, "backfill protected label on pull secret failed; continuing",
+				"namespace", ns, "secret", name)
 		}
 	}
 
