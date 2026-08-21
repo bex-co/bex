@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { useApolloClient, useMutation } from "@apollo/client/react";
 import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import type { AgentSessionFieldsFragment } from "@/graphql/definitions";
@@ -149,6 +150,11 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     },
     [client],
   );
+  // ADR075 D7 (w6/m42 t008): create/steer/resume dispatch metered sandbox
+  // compute, so under BEX_REQUIRE_PAYMENT_METHOD=all they can 402 — route them
+  // through the same interception dialog as every other billable create
+  // ("interception, not a dead end"); the other verbs never provision compute.
+  const paymentGate = usePaymentRequiredGate();
   const [createMutation] = useMutation(CreateAgentSessionDocument);
   const [steerMutation] = useMutation(SteerAgentSessionDocument);
   const [resumeMutation] = useMutation(ResumeAgentSessionDocument);
@@ -188,24 +194,26 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
   const create = useCallback(
     async (input: CreateAgentSessionInput): Promise<AgentSessionTicket> => {
       try {
-        const res = await createMutation({
-          variables: {
-            ownerId: input.ownerId ?? null,
-            repo: input.repo,
-            branch: input.branch,
-            agentConfig: {
-              agent: input.agent,
-              model: input.model || undefined,
-              modelEndpoint: input.modelEndpoint || undefined,
-              task: input.task,
-              template: input.template || undefined,
+        const res = await paymentGate.run(() =>
+          createMutation({
+            variables: {
+              ownerId: input.ownerId ?? null,
+              repo: input.repo,
+              branch: input.branch,
+              agentConfig: {
+                agent: input.agent,
+                model: input.model || undefined,
+                modelEndpoint: input.modelEndpoint || undefined,
+                task: input.task,
+                template: input.template || undefined,
+              },
+              egressAllowlist: input.egressAllowlist?.length
+                ? input.egressAllowlist
+                : undefined,
             },
-            egressAllowlist: input.egressAllowlist?.length
-              ? input.egressAllowlist
-              : undefined,
-          },
-          fetchPolicy: "no-cache",
-        });
+            fetchPolicy: "no-cache",
+          }),
+        );
         const session = res.data?.createAgentSession;
         if (!session) throw new Error("createAgentSession returned no session");
         const ticket = toAgentSessionTicket(session);
@@ -215,7 +223,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
         throw toAgentSessionError(err);
       }
     },
-    [createMutation, reconcileSession],
+    [createMutation, paymentGate, reconcileSession],
   );
 
   const steer = useCallback(
@@ -225,16 +233,18 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
       egressAllowlist?: string[],
     ): Promise<AgentSessionTicket> => {
       try {
-        const res = await steerMutation({
-          variables: {
-            id,
-            prompt,
-            egressAllowlist: egressAllowlist?.length
-              ? egressAllowlist
-              : undefined,
-          },
-          fetchPolicy: "no-cache",
-        });
+        const res = await paymentGate.run(() =>
+          steerMutation({
+            variables: {
+              id,
+              prompt,
+              egressAllowlist: egressAllowlist?.length
+                ? egressAllowlist
+                : undefined,
+            },
+            fetchPolicy: "no-cache",
+          }),
+        );
         const session = res.data?.steerAgentSession;
         if (!session) throw new Error("steerAgentSession returned no session");
         const ticket = toAgentSessionTicket(session);
@@ -244,16 +254,18 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
         throw toAgentSessionError(err);
       }
     },
-    [steerMutation, reconcileSession],
+    [paymentGate, steerMutation, reconcileSession],
   );
 
   const resume = useCallback(
     async (id: string): Promise<AgentSessionTicket> => {
       try {
-        const res = await resumeMutation({
-          variables: { id },
-          fetchPolicy: "no-cache",
-        });
+        const res = await paymentGate.run(() =>
+          resumeMutation({
+            variables: { id },
+            fetchPolicy: "no-cache",
+          }),
+        );
         const session = res.data?.resumeAgentSession;
         if (!session) throw new Error("resumeAgentSession returned no session");
         const ticket = toAgentSessionTicket(session);
@@ -263,7 +275,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
         throw toAgentSessionError(err);
       }
     },
-    [resumeMutation, reconcileSession],
+    [paymentGate, resumeMutation, reconcileSession],
   );
 
   const attach = useCallback(

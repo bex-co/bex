@@ -204,6 +204,26 @@ type Service struct {
 // Completer treats as active. A terminal session in its idle grace is excluded.
 var liveSandboxPhases = activePhases
 
+// admitDispatch is the ONE admission gate every verb that provisions fresh
+// sandbox compute (Create, Steer, rehydrate) runs, in a fixed order: the
+// ADR075 D7 (w6/m42) bound-payment-method marker — checked synchronously at
+// admission because the dispatch-time check inside the sandbox lifecycle fires
+// in a background goroutine where no 402 can reach the caller — then the
+// codex #6 billing lifecycle gate (a delinquent/enforced workspace must not
+// provision new compute), then the ADR059 D6 live-sandbox cap so a longer
+// idle grace can't let one workspace exhaust the pool. One helper so a new
+// dispatch path cannot wire only part of the trio — the same drift class
+// core.Base.RequirePlanBilling exists to close for the resource creates.
+func (s *Service) admitDispatch(ctx context.Context, workspaceID string) error {
+	if err := s.RequirePaymentMethod(ctx, workspaceID); err != nil {
+		return err
+	}
+	if err := s.RequireBillingMutation(ctx, workspaceID); err != nil {
+		return err
+	}
+	return s.enforceLiveSandboxCap(ctx, workspaceID)
+}
+
 // enforceLiveSandboxCap refuses a create/steer/resume that would push the
 // workspace past MaxLiveSandboxes concurrent live sandboxes (ADR059 D6). It is a
 // best-effort pre-check (no lock): the dispatch CAS and the reconcile loop bound
@@ -390,21 +410,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if !ok {
 		return View{}, core.ErrForbidden
 	}
-	// ADR075 D7 (w6/m42): every agent-session dispatch provisions metered
-	// sandbox compute, so admission requires the bound-payment-method marker
-	// synchronously — the dispatch-time check inside the sandbox lifecycle
-	// fires in a background goroutine where no 402 can reach the caller.
-	if err := s.RequirePaymentMethod(ctx, workspaceID); err != nil {
-		return View{}, err
-	}
-	// codex #6: enforce the billing lifecycle gate — a delinquent/enforced
-	// workspace must not provision new agent-session sandbox compute.
-	if err := s.RequireBillingMutation(ctx, workspaceID); err != nil {
-		return View{}, err
-	}
-	// ADR059 D6: bound the workspace's concurrent live sandboxes before minting a
-	// row + sandbox, so a longer idle grace can't let one workspace exhaust the pool.
-	if err := s.enforceLiveSandboxCap(ctx, workspaceID); err != nil {
+	if err := s.admitDispatch(ctx, workspaceID); err != nil {
 		return View{}, err
 	}
 	config, err := json.Marshal(req.AgentConfig)
@@ -950,15 +956,7 @@ func (s *Service) rehydrate(ctx context.Context, record store.AgentSession, stee
 		return View{}, core.NewConflictError("AGENT_SESSION_NOT_RESUMABLE",
 			"hibernated session has no restorable snapshot", map[string]any{"phase": record.Phase})
 	}
-	if err := s.enforceLiveSandboxCap(ctx, record.WorkspaceID); err != nil {
-		return View{}, err
-	}
-	// ADR075 D7 (w6/m42): rehydration dispatches fresh sandbox compute — the
-	// card check runs at admission so the refusal is a synchronous 402.
-	if err := s.RequirePaymentMethod(ctx, record.WorkspaceID); err != nil {
-		return View{}, err
-	}
-	if err := s.RequireBillingMutation(ctx, record.WorkspaceID); err != nil {
+	if err := s.admitDispatch(ctx, record.WorkspaceID); err != nil {
 		return View{}, err
 	}
 	restoreURL, err := s.Snapshots.PrepareDownload(ctx, record.SnapshotRef)
@@ -1340,19 +1338,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		// installed deps intact), instead of re-cloning over lost state.
 		return s.rehydrate(ctx, record, prompt, DeliveryRehydrate)
 	}
-	// ADR075 D7 (w6/m42): steering dispatches fresh sandbox compute — the card
-	// check runs at admission so the refusal is a synchronous 402.
-	if err := s.RequirePaymentMethod(ctx, record.WorkspaceID); err != nil {
-		return View{}, err
-	}
-	// codex #6: enforce the billing lifecycle gate — steering dispatches a fresh
-	// sandbox with a caller-supplied prompt, so a delinquent workspace is blocked.
-	if err := s.RequireBillingMutation(ctx, record.WorkspaceID); err != nil {
-		return View{}, err
-	}
-	// ADR059 D6: steering a terminal session re-enters a live phase and dispatches
-	// a fresh sandbox, so it counts toward the workspace's live-sandbox cap.
-	if err := s.enforceLiveSandboxCap(ctx, record.WorkspaceID); err != nil {
+	if err := s.admitDispatch(ctx, record.WorkspaceID); err != nil {
 		return View{}, err
 	}
 	config, err := decodeAgentConfig(record)

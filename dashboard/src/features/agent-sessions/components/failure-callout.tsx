@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 import { AlertCircle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -48,7 +49,10 @@ export function FailureCallout({ session, onRetried }: FailureCalloutProps) {
       toast.success(t("agentSessions.steerSuccess"));
       onRetried?.();
     } catch (err) {
-      toast.error(agentSessionErrorMessage(err, t));
+      // Closing the ADR075 D7 payment dialog is a user choice, not a failure.
+      if (!isPaymentOnboardingCancelled(err)) {
+        toast.error(agentSessionErrorMessage(err, t));
+      }
     } finally {
       setRetrying(false);
     }

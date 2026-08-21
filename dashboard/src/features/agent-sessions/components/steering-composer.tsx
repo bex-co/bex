@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 import { Loader2, SendHorizonal } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -128,7 +129,8 @@ export function SteeringComposer({
       // A synchronous rejection (conflict/unavailable) rolls the optimistic
       // echo back so a rejected message never lingers in the transcript.
       if (route === "redispatch") onOptimisticSteer?.(null);
-      handleError(err);
+      // Closing the ADR075 D7 payment dialog is a user choice, not a failure.
+      if (!isPaymentOnboardingCancelled(err)) handleError(err);
     } finally {
       setPending(false);
     }

@@ -1,18 +1,14 @@
-import { useRouter, useSearch } from "@tanstack/react-router";
-import { FlowType } from "@ory/client-fetch";
+import { useSearch } from "@tanstack/react-router";
 import { Registration } from "@ory/elements-react/theme";
 import { useOryFlow, clearStoredOryFlow } from "@/common/hooks/use-ory-flow";
 import { useOryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
 import { stashAuthNext } from "@/features/auth/lib/auth-next";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { invalidateSessionCache } from "@/common/server-fn/session";
-import { getClient } from "@/common/apollo/client";
 import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 import { useAuthFeatures } from "@/features/auth/components/auth-page-shell/auth-features";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const search = useSearch({ from: "/auth/sign-up" });
   const flow = useOryFlow("registration", search.flow, {
     loginChallenge: search.login_challenge,
@@ -32,7 +28,7 @@ export default function RegisterPage() {
           flow={flow}
           config={oryConfig}
           components={oryHideCardLogo}
-          onSuccess={async (event) => {
+          onSuccess={() => {
             clearStoredOryFlow("registration");
             // ADR075 D3/D8 (w6/m42, revised 2026-08-20): registration mints a
             // session AND Kratos's continue_with routes to /auth/verification
@@ -42,16 +38,10 @@ export default function RegisterPage() {
             // rides the same-tab relay instead of the query string, because
             // the redirect URL is built by Kratos.
             stashAuthNext(search.next);
-            if (event.flowType === FlowType.Registration && event.session) {
-              // A session now exists. Reset what this pre-session page load
-              // cached, in case the post-signup transition ever becomes an
-              // SPA navigation: the CSR Apollo client is a tab-lifetime
-              // singleton, and the root's beforeLoad stamped an
-              // unauthenticated session on first load.
-              await getClient().clearStore();
-              invalidateSessionCache();
-              await router.invalidate();
-            }
+            // No cache invalidation here: Elements awaits onSuccess BEFORE its
+            // continue_with redirect, and that redirect is a full page load
+            // that rebuilds the Apollo/session state from scratch — awaited
+            // cache work would only delay the signup hot path.
           }}
         />
       ) : (
