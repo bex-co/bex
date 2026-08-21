@@ -38,17 +38,24 @@ const (
 	// secretless platform client, never a tenant-created bex API key.
 	RenderCLIClientID = "429024F5E608930E2A65EF92591A25CC"
 
-	// cliRequestedScope is what the device flow asks Hydra for: identity plus the
-	// three granular capabilities the CLI's registration carries. Kept as one
-	// constant so the device-auth request and its test cannot drift apart.
-	cliRequestedScope = "openid offline_access " +
-		core.ScopeRead + " " + core.ScopeWrite + " " + core.ScopeSensitive
 	// MobileClientID is the permanent, secretless first-party native client
 	// provisioned by scripts/auth-bootstrap-client.sh (ADR012 §8b).
 	MobileClientID   = "bex-mobile"
 	deviceGrantType  = "urn:ietf:params:oauth:grant-type:device_code"
 	refreshGrantType = "refresh_token"
 	maxUpstreamBody  = 1 << 20
+	// DeviceGrantScope is what the CLI's device-authorization request asks Hydra
+	// to bind onto the minted token. The two identity scopes alone (what the
+	// official CLI would request for Render) leave the token with no granular
+	// capability, so the dispatch-time scope matrix (RequireOpClass) refuses
+	// every real API call with 403 → the CLI's "you are not allowed to take
+	// this action". The three granular capabilities are what the Render-CLI
+	// platform client is provisioned to allow (scripts/auth-bootstrap-client.sh)
+	// with skip_consent, so requesting them here is what makes an ordinary
+	// `bex login` able to list services (w8/m27, docs/ADR069-security-review-round14.md).
+	// Exported so the composition root's end-to-end scope-matrix test drives the
+	// exact scope the CLI receives, not a hand-copied duplicate.
+	DeviceGrantScope = "openid offline_access " + core.ScopeRead + " " + core.ScopeWrite + " " + core.ScopeSensitive
 	// One minute spans the official CLI TUI's concurrent refresh burst while
 	// keeping a replay window no wider than Hydra's configured rotation grace.
 	refreshIdempotencyTTL = time.Minute
@@ -261,7 +268,7 @@ func (s *Service) deviceGrant(w http.ResponseWriter, r *http.Request) {
 	// than the CLI is entitled to.
 	s.proxyForm(w, r, "/oauth2/device/auth", url.Values{
 		"client_id": {RenderCLIClientID},
-		"scope":     {cliRequestedScope},
+		"scope":     {DeviceGrantScope},
 	})
 }
 
