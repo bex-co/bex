@@ -33,6 +33,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/robfig/cron/v3"
 	"golang.org/x/net/http/httpguts"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -2112,8 +2113,14 @@ func validateTypeSpecificCreate(svcType string, req CreateRequest) error {
 	if err := validateMaxShutdownDelaySeconds(svcType, req.MaxShutdownDelaySeconds); err != nil {
 		return err
 	}
-	if svcType == appv1alpha1.TypeCronJob && strings.TrimSpace(req.Schedule) == "" {
-		return fmt.Errorf("%w: schedule is required for a cron_job", core.ErrBadRequest)
+	if svcType == appv1alpha1.TypeCronJob {
+		sched := strings.TrimSpace(req.Schedule)
+		if sched == "" {
+			return fmt.Errorf("%w: schedule is required for a cron_job", core.ErrBadRequest)
+		}
+		if !validCronSchedule(sched) {
+			return fmt.Errorf("%w: schedule must be a valid 5-field cron expression (e.g. '0 * * * *')", core.ErrBadRequest)
+		}
 	}
 	if (svcType == appv1alpha1.TypeBackgroundWorker || svcType == appv1alpha1.TypeCronJob) && len(req.Hosts) > 0 {
 		return fmt.Errorf("%w: a %s has no ingress and cannot list domains", core.ErrBadRequest, svcType)
@@ -3209,11 +3216,22 @@ func (s *Service) SetCronJob(ctx context.Context, name string, schedule, command
 	})
 }
 
-// validCronSchedule reports whether s is a 5-field cron expression. Field
-// syntax is intentionally permissive — the k8s CronJob controller validates the
-// individual fields at convergence; bex only checks the field count here.
+// validCronSchedule reports whether s is a valid standard 5-field cron
+// expression. It first requires exactly 5 whitespace-separated fields (bex's
+// contract, matching Render — descriptors like @daily are not accepted), then
+// parses the fields with the SAME parser the Kubernetes CronJob controller uses
+// (github.com/robfig/cron/v3, cron.ParseStandard). Parsing here is the whole
+// point: a field-count-only check let malformed-but-5-field schedules like
+// "99 99 * * *" through to convergence, where the apiserver rejected the
+// CronJob (minute/hour out of range) and flipped the App to Failed with no
+// caller feedback. Validating with the operator's own parser guarantees "if
+// bex accepts it, the CronJob accepts it."
 func validCronSchedule(s string) bool {
-	return len(strings.Fields(s)) == 5
+	if len(strings.Fields(s)) != 5 {
+		return false
+	}
+	_, err := cron.ParseStandard(s)
+	return err == nil
 }
 
 // SetHealthCheckPath changes spec.healthCheckPath — what the operator wires

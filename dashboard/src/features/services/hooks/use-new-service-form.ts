@@ -61,7 +61,10 @@ export function useNewServiceForm(search: {
     rootDir: "",
     planOverride: null,
     autoDeploy: true,
-    schedule: "",
+    // Pre-fill a valid default when the wizard opens on a cron job (New → Cron
+    // Job deep-links ?type=cron_job), matching Render's cron form. Harmless for
+    // other types, which never read schedule.
+    schedule: search.type === "cron_job" ? "*/5 * * * *" : "",
     command: "",
     publishPath: "",
     staticBuildCommand: "",

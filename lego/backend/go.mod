@@ -14,6 +14,7 @@ require (
 	github.com/graphql-go/graphql v0.8.1
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa
 	github.com/modelcontextprotocol/go-sdk v1.6.1
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2
 	github.com/stripe/stripe-go/v86 v86.1.1
 	golang.org/x/crypto v0.53.0

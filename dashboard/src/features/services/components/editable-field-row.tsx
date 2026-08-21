@@ -88,6 +88,10 @@ export interface EditableFieldRowProps {
   /** Return an error to block save and show it inline; null ⇒ valid. Receives
    *  the raw draft (before normalization). */
   validate?: (draft: string) => string | null;
+  /** Optional human-readable description of the shown value (the draft while
+   *  editing, else the persisted value), rendered as a muted line beneath the
+   *  row — e.g. a cron schedule's "Every 5 minutes". Return null for no line. */
+  describe?: (value: string) => ReactNode | null;
   /** Confirm dialog shown before onSave for rebuild-affecting fields. */
   confirm?: EditableFieldConfirm;
   /** Persist the (normalized) draft; return true on success to leave edit mode. */
@@ -127,6 +131,7 @@ export function EditableFieldRow({
   trim = true,
   dirty,
   validate,
+  describe,
   confirm,
   onSave,
 }: EditableFieldRowProps) {
@@ -154,6 +159,7 @@ export function EditableFieldRow({
 
   const normalized = trim ? draft.trim() : draft;
   const validationError = editing ? (validate?.(draft) ?? null) : null;
+  const description = validationError === null ? (describe?.(shown) ?? null) : null;
   const isDirty = dirty ? dirty(normalized) : normalized !== value;
   const canSave = isDirty && validationError === null;
 
@@ -286,6 +292,10 @@ export function EditableFieldRow({
           )
         )}
       </div>
+
+      {description != null && (
+        <p className="text-muted-foreground text-sm">{description}</p>
+      )}
 
       {validationError !== null && (
         <p className="text-destructive text-sm">{validationError}</p>

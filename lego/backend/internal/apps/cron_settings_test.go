@@ -77,7 +77,7 @@ func TestSetCronJobRejectsEmptySchedule(t *testing.T) {
 func TestSetCronJobRejectsInvalidSchedule(t *testing.T) {
 	svc, _ := newService(nil, cronApp("nightly"))
 
-	for _, bad := range []string{"* * *", "not a cron", "* * * * * *"} {
+	for _, bad := range []string{"* * *", "not a cron", "* * * * * *", "99 99 * * *", "0 24 * * *", "60 * * * *"} {
 		if _, err := svc.SetCronJob(context.Background(), "nightly", sp(bad), sp("")); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("schedule %q => ErrBadRequest, got %v", bad, err)
 		}

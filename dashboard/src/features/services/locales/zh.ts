@@ -1568,8 +1568,13 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Cron job Settings tab: Deploy section schedule field label",
   },
   "services.deployScheduleHint": {
-    message: "按此计划（5 段 crontab 表达式）运行该命令。",
+    message: "按此计划（5 段 crontab 表达式，使用 UTC）运行该命令。",
     description: "Cron job Settings tab: Deploy section schedule help text",
+  },
+  "services.deploySchedulePreview": {
+    message: "{description} · 使用 UTC",
+    description:
+      "Cron job Settings tab: live human-readable description of the schedule",
   },
   "services.deploySchedulePlaceholder": {
     message: "0 * * * *",
@@ -2459,6 +2464,15 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "从 Git 仓库或 Docker 镜像部署 Web 服务。",
     description: "Create-wizard page subtitle",
   },
+  "services.createCronTitle": {
+    message: "新建定时任务",
+    description: "Create-wizard page title when the cron_job type is selected",
+  },
+  "services.createCronDescription": {
+    message: "按重复计划运行一条命令。",
+    description:
+      "Create-wizard page subtitle when the cron_job type is selected",
+  },
   "services.createSourceTitle": {
     message: "来源",
     description: "Create-wizard source-picker section label",
@@ -2773,8 +2787,13 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Placeholder for the cron schedule field",
   },
   "services.createFieldScheduleHint": {
-    message: "5 字段 crontab 表达式（分 时 日 月 周）。",
+    message: "5 字段 crontab 表达式（分 时 日 月 周），使用 UTC。",
     description: "Hint text under the schedule field",
+  },
+  "services.createFieldSchedulePreview": {
+    message: "{description} · 使用 UTC",
+    description:
+      "Live human-readable description of a valid schedule, shown under the field",
   },
   "services.createFieldScheduleError": {
     message: "请输入有效的 5 字段 cron 表达式，例如 0 0 * * *。",

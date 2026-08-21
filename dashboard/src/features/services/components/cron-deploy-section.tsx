@@ -9,7 +9,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useCronJob } from "@/features/services/hooks/use-cron-job";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
-import { isValidCron } from "@/features/services/lib/cron";
+import { describeCron, isValidCron } from "@/features/services/lib/cron";
 
 export interface CronDeploySectionProps {
   serviceId: string;
@@ -77,6 +77,12 @@ export function CronDeploySection({
             if (!sched) return t("services.deployScheduleRequired");
             if (!isValidCron(sched)) return t("services.deployScheduleError");
             return null;
+          }}
+          describe={(value) => {
+            const description = describeCron(value);
+            return description
+              ? t("services.deploySchedulePreview", { description })
+              : null;
           }}
           onSave={(value) =>
             updateCronJob(serviceId, value, (command ?? "").trim())
