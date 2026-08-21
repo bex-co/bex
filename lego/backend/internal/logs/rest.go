@@ -33,11 +33,12 @@ import (
 )
 
 // wsUpgrader upgrades the subscribe connection to WebSocket when the Render
-// CLI (v2+) requests it. Origin checking is skipped — auth is already enforced
-// at the HTTP auth-gate that wraps this handler.
-var wsUpgrader = websocket.Upgrader{
-	CheckOrigin: func(*http.Request) bool { return true },
-}
+// CLI (v2+) requests it. Leaving CheckOrigin nil uses Gorilla's safe default:
+// requests without an Origin (the official CLI) are accepted, while browser
+// handshakes must have an Origin whose host matches the API host. The HTTP auth
+// gate remains the authorization boundary; Origin is an independent browser
+// request-integrity check.
+var wsUpgrader = websocket.Upgrader{}
 
 // rest.go is the REST logs adapter — Render logs-API compatible. It maps the
 // query string (resource/type/text/startTime/endTime/limit) and the {hasMore,
