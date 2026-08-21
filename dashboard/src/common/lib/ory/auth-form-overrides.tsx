@@ -82,6 +82,7 @@ const OTP_LENGTH = 6;
  * exact-run matching keeps UUID fragments ("47545") and durations ("60")
  * from ever qualifying.
  */
+// eslint-disable-next-line react-refresh/only-export-components -- pure helper shared with tests, not a component
 export function extractOtp(text: string): string | null {
   const runs = text.match(/\d+/g) ?? [];
   return runs.find((run) => run.length === OTP_LENGTH) ?? null;
