@@ -21,6 +21,7 @@ export type ServiceSettingsSection =
   | "general"
   | "deploy"
   | "build"
+  | "source"
   | "static-site"
   | "domains"
   | "networking"
@@ -47,6 +48,11 @@ const SECTION_ITEMS = {
   build: {
     href: "#build",
     labelKey: "services.buildTitle",
+    icon: Hammer,
+  },
+  source: {
+    href: "#source",
+    labelKey: "services.sourceTitle",
     icon: Hammer,
   },
   "static-site": {

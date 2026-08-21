@@ -68,6 +68,9 @@ const setRepo = vi.fn(async () => true);
 vi.mock("@/features/services/hooks/use-set-repo", () => ({
   useSetRepo: () => ({ setRepo, busy: false }),
 }));
+vi.mock("@/features/services/hooks/use-set-image", () => ({
+  useSetImage: () => ({ setImage: vi.fn(), busy: false }),
+}));
 vi.mock("@/features/services/hooks/use-repos", () => ({
   useRepos: () => ({ repos: [], loading: false, error: undefined }),
 }));

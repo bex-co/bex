@@ -90,6 +90,12 @@ export interface ServiceView {
   repo: string | null;
   branch: string | null;
   /**
+   * Configured prebuilt image (`spec.image`), empty/null for a repo-backed App.
+   * Optional so fixtures that predate the Source card (w5/m76) still satisfy the
+   * type; the `server` detail query and `status.ts` always populate it.
+   */
+  imagePath?: string | null;
+  /**
    * Subdirectory of `repo` this App builds from (`spec.rootDir`, Render's Root
    * Directory setting, w1/m18); null when unset (builds from the repo root).
    * Only the detail `server` query selects it.

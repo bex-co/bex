@@ -268,6 +268,9 @@ vi.mock("@/features/services/hooks/use-build-filter", () => ({
 vi.mock("@/features/git/hooks/use-git-connection", () => ({
   useGitConnection: () => ({ connection: undefined }),
 }));
+vi.mock("@/features/services/hooks/use-set-image", () => ({
+  useSetImage: () => ({ setImage: vi.fn(async () => true), busy: false }),
+}));
 
 function svc(overrides: Partial<ServiceView> = {}): ServiceView {
   return {

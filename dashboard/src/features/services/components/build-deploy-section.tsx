@@ -25,6 +25,7 @@ import { useBuildFilter } from "@/features/services/hooks/use-build-filter";
 import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
 import { useSetRepo } from "@/features/services/hooks/use-set-repo";
 import { useRepos } from "@/features/services/hooks/use-repos";
+import { SwitchToImageRow } from "@/features/services/components/service-source-card";
 import { useGitConnection } from "@/features/git/hooks/use-git-connection";
 import { commandPromptPrefix } from "@/features/services/lib/format";
 import type { BuildFilterView } from "@/features/services/types";
@@ -81,12 +82,12 @@ export interface BuildDeploySectionProps {
 
 /**
  * The Settings tab's "Build & Deploy" section (w5/m13, Render parity — layout
- * captured live from Render's own Settings → Build panel,
- * `.playwright-mcp/render-build-deploy-settings.png`): Source + Branch
- * read-only (bex has no write path for them yet), Root Directory editable
- * inline (pencil → input → confirm, following `w5/m7`'s plan-picker confirm
- * pattern since a change triggers a rebuild). Only rendered for a
- * build-from-git App — an image-backed App has nothing to build.
+ * captured live from Render's own Settings → Build panel): Source (repo) and
+ * Branch editable inline (combobox from the connected account's repos/branches,
+ * free-text fallback; confirm-on-change since a switch rebuilds), Root Directory
+ * editable, and — w5/m76 — a "switch to a container image" affordance for the
+ * repo→image half of Render's Update Source. Only rendered for a build-from-git
+ * App; an image-backed App's source lives in ImageSourceCard instead.
  */
 export function BuildDeploySection({
   serviceId,
@@ -319,6 +320,14 @@ export function BuildDeploySection({
             serviceId={serviceId}
             buildFilter={buildFilter ?? null}
             canOperate={canOperate}
+          />
+
+          {/* repo→image half of Render's Update Source (w5/m76): switch this
+              build-from-git service to a prebuilt container image. */}
+          <SwitchToImageRow
+            serviceId={serviceId}
+            disabled={createDisabled}
+            disabledReason={createReason}
           />
 
           {/* A cron_job has no Deploy card (its Deploy section holds the

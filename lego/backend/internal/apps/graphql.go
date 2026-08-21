@@ -389,6 +389,11 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// repo/branch are the build-from-git source, empty for an image-backed App.
 		"repo":   gqlutil.StrField(func(a AppView) any { return a.Repo }),
 		"branch": gqlutil.StrField(func(a AppView) any { return a.Branch }),
+		// imagePath is the CONFIGURED prebuilt image (REST's imagePath, from
+		// SourceImage), empty for a repo-backed App — the dashboard Source card
+		// reads it to show/edit an image-backed service's source (w5/m76). Distinct
+		// from the observed running image digest.
+		"imagePath": gqlutil.StrField(func(a AppView) any { return a.SourceImage }),
 		"registryCredentialId": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(a AppView) any {
 			if a.RegistryCredentialID == nil {
 				return nil
@@ -1328,6 +1333,29 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				repo := p.Args["repo"].(string)
 				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), sourcePatch{Repo: &repo})
+			},
+		},
+		// setImage switches a service to a prebuilt container image (Render's
+		// Update-Source repo→image half, w5/m76). The same shared source verb as
+		// setRepo/setBranch and REST PATCH `image`, so mutual exclusion (setting
+		// the image clears repo/branch source) and validation (ValidImage) cannot
+		// drift; optional registryCredentialId is validated against the image host
+		// before either reaches the App. Neither this nor setRepo triggers a
+		// deploy — the next deploy uses the new source (Render's semantics).
+		"setImage": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":                   gqlutil.ReqArg(graphql.String),
+				"image":                gqlutil.ReqArg(graphql.String),
+				"registryCredentialId": gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				image := p.Args["image"].(string)
+				patch := sourcePatch{Image: &image}
+				if cred, ok := p.Args["registryCredentialId"].(string); ok {
+					patch.RegistryCredentialID = &cred
+				}
+				return s.SetSourceAndRegistryCredential(p.Context, p.Args["id"].(string), patch)
 			},
 		},
 		// setBuildCommand changes the build command for a repo-backed service.

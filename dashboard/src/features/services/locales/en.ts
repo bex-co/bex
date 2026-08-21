@@ -1757,6 +1757,64 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Couldn't update the Root Directory. Please try again.",
     description: "Toast after setRootDir fails",
   },
+  "services.sourceTitle": {
+    message: "Source",
+    description: "Source card title (image-backed service, w5/m76)",
+  },
+  "services.sourceImageDescription": {
+    message: "The prebuilt container image this service deploys.",
+    description: "Source card description for an image-backed service",
+  },
+  "services.sourceImageLabel": {
+    message: "Image",
+    description: "Source card: container image path field label",
+  },
+  "services.sourceImageHint": {
+    message: "The registry path and tag of the image to deploy.",
+    description: "Source card: image field hint",
+  },
+  "services.sourceImagePlaceholder": {
+    message: "docker.io/library/nginx:stable",
+    description: "Source card: image field placeholder",
+  },
+  "services.sourceImageEdit": {
+    message: "Edit image",
+    description: "Source card: image field edit-button label",
+  },
+  "services.sourceImageConfirmTitle": {
+    message: "Deploy from {value}?",
+    description: "Source card: confirm switching the image",
+  },
+  "services.sourceNoAutoDeploy": {
+    message:
+      "Changes aren't deployed automatically — your next deploy will use the new source.",
+    description:
+      "Shared note (Render parity): a source change doesn't trigger a deploy",
+  },
+  "services.sourceSwitchLabel": {
+    message: "Change source type",
+    description: "Source switch section label (repo↔image)",
+  },
+  "services.sourceSwitchToImageHint": {
+    message: "Deploy a prebuilt container image instead of building from Git.",
+    description: "Hint for the switch-to-image action",
+  },
+  "services.sourceSwitchToImageButton": {
+    message: "Switch to a container image",
+    description: "Button that opens the repo→image switch dialog",
+  },
+  "services.sourceSwitchToRepoHint": {
+    message: "Build and deploy from a Git repository instead of an image.",
+    description: "Hint for the switch-to-repo action",
+  },
+  "services.sourceSwitchToRepoButton": {
+    message: "Switch to a Git repository",
+    description: "Button that opens the image→repo switch dialog",
+  },
+  "services.sourceSwitchSave": {
+    message: "Update source",
+    description: "Save button in the source-switch dialogs",
+  },
   "services.startCommandLabel": {
     message: "Start Command",
     description: "Build & Deploy: native-runtime start-command label",
