@@ -12,7 +12,7 @@
 #
 # Checks (all fail closed):
 #   1. no two docs/ADR*.md files claim the same number
-#   2. every docs/ADR*.md appears in CLAUDE.md's docs index
+#   2. every docs/ADR*.md appears in the docs catalog (docs/CLAUDE.md)
 #   3. no ADRnnn-<slug>.md reference anywhere resolves to a missing file
 #
 # ADR_DIR, ADR_INDEX, and SCAN_ROOT are overridable so the self-test
@@ -22,7 +22,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 ADR_DIR="${ADR_DIR:-docs}"
-ADR_INDEX="${ADR_INDEX:-CLAUDE.md}"
+# The catalog moved out of the root CLAUDE.md into the cascading docs/CLAUDE.md
+# when the agent docs were compacted; the root file now carries only key entry
+# points, so checking it would fail for every ADR outside that short list.
+ADR_INDEX="${ADR_INDEX:-docs/CLAUDE.md}"
 SCAN_ROOT="${SCAN_ROOT:-.}"
 fail=0
 
@@ -60,8 +63,8 @@ for path in "${adrs[@]}"; do
 done
 
 # --- 2. every ADR is indexed ---------------------------------------------
-# An unindexed ADR is invisible: CLAUDE.md's index is what is loaded into
-# context each session, so a decision absent from it effectively does not exist.
+# An unindexed ADR is invisible: the docs catalog is what an agent reads to
+# discover decisions, so one absent from it effectively does not exist.
 if [ ! -f "$ADR_INDEX" ]; then
   echo "FAIL: index file not found: $ADR_INDEX" >&2
   exit 1
