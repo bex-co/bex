@@ -37,6 +37,12 @@ const (
 	// RenderCLIClientID is hard-coded by render-oss/cli. It is one permanent,
 	// secretless platform client, never a tenant-created bex API key.
 	RenderCLIClientID = "429024F5E608930E2A65EF92591A25CC"
+
+	// cliRequestedScope is what the device flow asks Hydra for: identity plus the
+	// three granular capabilities the CLI's registration carries. Kept as one
+	// constant so the device-auth request and its test cannot drift apart.
+	cliRequestedScope = "openid offline_access " +
+		core.ScopeRead + " " + core.ScopeWrite + " " + core.ScopeSensitive
 	// MobileClientID is the permanent, secretless first-party native client
 	// provisioned by scripts/auth-bootstrap-client.sh (ADR012 §8b).
 	MobileClientID   = "bex-mobile"
@@ -239,9 +245,23 @@ func (s *Service) deviceGrant(w http.ResponseWriter, r *http.Request) {
 		writeOAuthError(w, http.StatusBadRequest, "invalid_client")
 		return
 	}
+	// Request the granular capabilities, not just identity (w7/037).
+	//
+	// This used to ask for "openid offline_access" alone and rely on the
+	// platform-client exemption in core.CapabilityExempt to carry the CLI's
+	// authority. 9081fbdb deliberately removed that exemption -- "Human OAuth
+	// delegations are never exempt, including first-party public clients" -- but
+	// nothing updated this request, so every CLI login received an identity-only
+	// grant and then 403'd on every operation with INSUFFICIENT_SCOPE.
+	//
+	// Ask for what the Hydra client registration already advertises. That keeps
+	// the hardening intact (no blanket exemption; the grant is explicit and shows
+	// up in audit provenance) while making the token usable. Hydra narrows the
+	// grant to the client's registered scope set, so this cannot request more
+	// than the CLI is entitled to.
 	s.proxyForm(w, r, "/oauth2/device/auth", url.Values{
 		"client_id": {RenderCLIClientID},
-		"scope":     {"openid offline_access"},
+		"scope":     {cliRequestedScope},
 	})
 }
 
