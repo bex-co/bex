@@ -95,12 +95,14 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 		`/connectionPool: property "connectionPool" is missing`,
 	),
 	"retrieve-redis": knownConformanceDivergences(
-		"ADR018 §Managed Key Value / §Resource metadata contract: omitted unknown metadata and unsupported provider version",
+		// `version` was dropped from this list once the Key Value read began
+		// reporting the effective provider version; the guard test fails an
+		// allowlist entry that no longer matches a real divergence.
+		"ADR018 §Managed Key Value / §Resource metadata contract: omitted unknown metadata",
 		`/updatedAt: property "updatedAt" is missing`,
 		`/region: property "region" is missing`,
 		`/owner: property "owner" is missing`,
 		`/ipAllowList: property "ipAllowList" is missing`,
-		`/version: property "version" is missing`,
 	),
 
 	// Secret-file list values are intentionally redacted; custom-domain status
