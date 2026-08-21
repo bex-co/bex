@@ -18,7 +18,11 @@ package store
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 // GitConnection is a row of `git_connections`: a GitHub App installation a
@@ -55,6 +59,12 @@ func (s *PGStore) UpsertGitConnection(ctx context.Context, c GitConnection) (Git
 		c.WorkspaceID, c.InstallationID, c.AccountLogin,
 	).Scan(&c.CreatedAt)
 	if err != nil {
+		// Conditional UPDATE returning 0 rows means a cross-workspace conflict,
+		// not a missing row. classify would map pgx.ErrNoRows to ErrNotFound;
+		// this path must be ErrConflict to preserve the invariant.
+		if errors.Is(err, pgx.ErrNoRows) {
+			return GitConnection{}, fmt.Errorf("git connection: %w", ErrConflict)
+		}
 		return GitConnection{}, classify("git connection", err)
 	}
 	return c, nil

@@ -68,17 +68,25 @@ func TestPGGitConnectionsMultiPerWorkspace(t *testing.T) {
 		t.Fatalf("unknown owner err = %v, want ErrNotFound", err)
 	}
 
-	// One-workspace-per-installation: re-binding 101 to another workspace moves it
-	// (PK on installation_id), it never duplicates.
-	if _, err := st.UpsertGitConnection(ctx, GitConnection{WorkspaceID: "tea-ws2", InstallationID: 101, AccountLogin: "octo"}); err != nil {
-		t.Fatalf("rebind 101: %v", err)
+	// One-workspace-per-installation: re-binding 101 to another workspace is a
+	// conflict (finding-4); the store must not silently transfer the installation.
+	if _, err := st.UpsertGitConnection(ctx, GitConnection{WorkspaceID: "tea-ws2", InstallationID: 101, AccountLogin: "octo"}); !errors.Is(err, ErrConflict) {
+		t.Fatalf("cross-workspace rebind 101 err = %v, want ErrConflict", err)
 	}
-	if n, _ := st.CountGitConnections(ctx, "tea-ws1"); n != 1 {
-		t.Fatalf("after rebind, ws1 count = %d, want 1", n)
+	if n, _ := st.CountGitConnections(ctx, "tea-ws1"); n != 2 {
+		t.Fatalf("after rejected rebind, ws1 count = %d, want 2", n)
 	}
 	owner, err := st.GitConnectionByInstallation(ctx, 101)
-	if err != nil || owner.WorkspaceID != "tea-ws2" {
-		t.Fatalf("GitConnectionByInstallation(101) = %+v (err %v), want ws2", owner, err)
+	if err != nil || owner.WorkspaceID != "tea-ws1" {
+		t.Fatalf("GitConnectionByInstallation(101) = %+v (err %v), want ws1", owner, err)
+	}
+	// Same-workspace reconnect remains idempotent and updates the login.
+	if _, err := st.UpsertGitConnection(ctx, GitConnection{WorkspaceID: "tea-ws1", InstallationID: 101, AccountLogin: "octo-updated"}); err != nil {
+		t.Fatalf("same-workspace re-upsert 101: %v", err)
+	}
+	owner, err = st.GitConnectionByInstallation(ctx, 101)
+	if err != nil || owner.AccountLogin != "octo-updated" {
+		t.Fatalf("after same-workspace update, account = %q (err %v), want octo-updated", owner.AccountLogin, err)
 	}
 
 	// Per-installation delete is workspace-scoped: ws1 cannot delete ws2's 101.
