@@ -104,7 +104,7 @@ func TestRenderProtocolAdapters(t *testing.T) {
 	if len(calls) != 3 {
 		t.Fatalf("upstream calls = %d, want 3", len(calls))
 	}
-	if calls[0].Get("client_id") != RenderCLIClientID || calls[0].Get("scope") != "openid offline_access" {
+	if calls[0].Get("client_id") != RenderCLIClientID || calls[0].Get("scope") != cliRequestedScope {
 		t.Errorf("device grant form = %v", calls[0])
 	}
 	if calls[1].Get("device_code") != "device-1" || calls[2].Get("client_id") != RenderCLIClientID {
