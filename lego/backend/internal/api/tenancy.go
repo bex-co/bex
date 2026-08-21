@@ -415,17 +415,20 @@ func (t *tenantService) TenantForKey(ctx context.Context, clientID string) (stri
 
 // UnbindKey implements apikeys.KeyBinder: removes the client's tenant_members
 // row + its FGA developer membership.
+// SECURITY (finding-3): RevokeWorkspaceMember failures are not discarded.
+// Reporting success while a developer tuple survives leaves a cached bearer
+// valid for PositiveTTL (30s). The caller (RevokeAPIKey) treats this error as
+// fail-closed and does not proceed to Hydra deletion.
 func (t *tenantService) UnbindKey(ctx context.Context, clientID string) error {
 	// Remember the tenant before unbinding so the FGA tuple can be removed.
 	tenant, foundErr := t.store.TenantForIdentity(ctx, clientID)
 	if err := t.store.UnbindClient(ctx, clientID); err != nil {
 		return err
 	}
-	// Best-effort tuple removal: a never-bound key has no tuple (foundErr != nil,
-	// nothing to revoke), and deleting an absent tuple is a no-op — don't let a
-	// stale tuple block revoking a key the Hydra side has already killed.
 	if t.granter != nil && foundErr == nil {
-		_ = t.granter.RevokeWorkspaceMember(ctx, tenant.ID, "user:"+clientID, "developer")
+		if err := t.granter.RevokeWorkspaceMember(ctx, tenant.ID, "user:"+clientID, "developer"); err != nil {
+			return fmt.Errorf("revoke key membership: %w", err)
+		}
 	}
 	return nil
 }

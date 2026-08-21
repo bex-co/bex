@@ -484,10 +484,17 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		if cloneSecret != "" {
 			a.Spec.CloneSecret = cloneSecret
 		}
-		// Always write BuildCommit — set to the requested ref, or "" to reset to
-		// Branch HEAD. This ensures a trigger without commitId never inherits the
-		// commit a previous trigger pinned.
-		a.Spec.BuildCommit = p.CommitID
+		// Always write BuildCommit — when the commit resolver succeeds the
+		// immutable SHA becomes the build input so the clone job can verify it
+		// via EXPECTED_COMMIT (finding-1 TOCTOU). Otherwise the original ref
+		// is preserved for best-effort provenance (w9/001) and the operator
+		// fetches HEAD without verification. A trigger without commitId resets
+		// to "" so Branch HEAD is always the default.
+		if commit.Hash != "" {
+			a.Spec.BuildCommit = commit.Hash
+		} else {
+			a.Spec.BuildCommit = p.CommitID
+		}
 		// imageUrl overrides the running image for this deploy; the operator
 		// picks up the new spec.image on its next reconcile.
 		if p.ImageURL != "" {

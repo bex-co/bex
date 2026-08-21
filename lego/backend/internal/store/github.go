@@ -39,14 +39,18 @@ type GitConnection struct {
 // account login; a new installation adds a row to the workspace's set. The
 // caller (internal/github) enforces the one-workspace-per-installation and
 // per-workspace-count invariants before this write.
+// SECURITY (finding-4): the ON CONFLICT update is conditional on workspace_id
+// matching so concurrent claims by two workspaces cannot silently transfer the
+// installation. A cross-workspace conflict returns ErrConflict instead of
+// overwriting the row.
 func (s *PGStore) UpsertGitConnection(ctx context.Context, c GitConnection) (GitConnection, error) {
 	err := s.Pool.QueryRow(ctx,
 		`INSERT INTO git_connections (workspace_id, installation_id, account_login)
 		 VALUES ($1, $2, $3)
 		 ON CONFLICT (installation_id) DO UPDATE
-		   SET workspace_id = EXCLUDED.workspace_id,
-		       account_login = EXCLUDED.account_login,
+		   SET account_login = EXCLUDED.account_login,
 		       created_at = now()
+		   WHERE git_connections.workspace_id = EXCLUDED.workspace_id
 		 RETURNING created_at`,
 		c.WorkspaceID, c.InstallationID, c.AccountLogin,
 	).Scan(&c.CreatedAt)
