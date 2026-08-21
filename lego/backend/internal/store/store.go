@@ -945,6 +945,20 @@ func (s *PGStore) ListDomainClaims(ctx context.Context, appID string) ([]Domain,
 	return out, rows.Err()
 }
 
+// CountWorkspaceDomainClaims returns how many claims (pending and verified) one
+// workspace holds across all its apps — the per-workspace custom-domain quota
+// check (BEX_MAX_CUSTOM_DOMAINS_PER_WORKSPACE, codex-security round 18),
+// mirroring CountGitConnections.
+func (s *PGStore) CountWorkspaceDomainClaims(ctx context.Context, workspaceID string) (int, error) {
+	var n int
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT count(*) FROM domains d JOIN apps a ON a.id = d.app_id WHERE a.tenant_id = $1`, workspaceID,
+	).Scan(&n); err != nil {
+		return 0, classify("domain", err)
+	}
+	return n, nil
+}
+
 // RecordDomainVerificationAttempt records a conservative failed-or-successful
 // resolver attempt without changing ownership state.
 func (s *PGStore) RecordDomainVerificationAttempt(ctx context.Context, appID, id string, at time.Time) error {

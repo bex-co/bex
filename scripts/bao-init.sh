@@ -29,6 +29,10 @@ NS=secrets
 # set_env_var NAME VALUE — set/replace a key in .env without ever printing VALUE.
 # Pure function (no cd, no .env read at define-time) so it is unit-testable via
 # `source scripts/bao-init.sh` (the main guard below keeps sourcing side-effect-free).
+# .env aggregates the platform's most privileged material (cloud, registry,
+# OpenBao root + unseal quorum — codex-security round-18 #1), so every write
+# also pins the file to owner-only 0600: the awk/mv replace path would
+# otherwise recreate it with the umask default (typically 0644).
 set_env_var() {
   local name="$1" val="$2"
   if [ -f .env ] && grep -q "^${name}=" .env; then
@@ -37,6 +41,7 @@ set_env_var() {
   else
     printf '%s=%s\n' "$name" "$val" >>.env
   fi
+  chmod 600 .env
 }
 
 main() {

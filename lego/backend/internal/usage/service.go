@@ -219,7 +219,10 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 // relation (billing or admin), with an authoritative (uncached) decision when
 // the wired checker supports core.FreshChecker — this gates the reveal of real
 // invoices and credit grants, so a just-revoked billing member must not ride a
-// positive cached on another replica. It deliberately uses the raw checker,
+// positive cached on another replica. It also composes the relation's mapped
+// OAuth capability (Identity.RequireCapability): a third-party human token
+// carrying only bex.read is treated as NOT privileged even when OpenFGA grants
+// the delegated billing/admin relation. It deliberately uses the raw checker,
 // not Authorize: the verb's gate stays can_view (audited there), and this is a
 // field-level projection decision — a denial must not emit a denial audit row
 // for every ordinary viewer usage read (the isWorkspaceAdmin precedent).
@@ -230,6 +233,9 @@ func (s *Service) mayManageBilling(ctx context.Context, tenantID string) bool {
 	}
 	id, ok := core.IdentityFrom(ctx)
 	if !ok {
+		return false
+	}
+	if err := id.RequireCapability(core.RelCanManageBilling); err != nil {
 		return false
 	}
 	check := s.Authz.Check

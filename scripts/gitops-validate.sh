@@ -2187,6 +2187,13 @@ for required_probe in \
     fail=1
   }
 done
+# Round-18: the static credential Secrets must carry the operator's
+# protected-from-tenant-mount label so a tenant App naming one in a mount
+# field is refused even in a co-located (BEX_BUILD_NAMESPACE unset) install.
+grep -qF '"app.bex.co/protected-from-tenant-mount":"true"' scripts/static-s3-credentials.sh || {
+  echo "FAIL: static-s3-credentials.sh no longer stamps the protected-from-tenant-mount label" >&2
+  fail=1
+}
 for required_live_scope_guard in \
   'expected default plus at least one tenant hosting namespace' \
   'App namespaces outside the admission-protected hosting set' \

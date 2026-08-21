@@ -142,10 +142,25 @@ type memoryDomainClaimStore struct {
 	recordingStore
 	claims map[string]store.Domain
 	next   int
+	// workspaces maps appID -> owning workspace id for the per-workspace quota
+	// counter (round 18); tests populate it alongside the App's tenant label.
+	workspaces map[string]string
 }
 
 func newMemoryDomainClaimStore() *memoryDomainClaimStore {
-	return &memoryDomainClaimStore{claims: map[string]store.Domain{}}
+	return &memoryDomainClaimStore{claims: map[string]store.Domain{}, workspaces: map[string]string{}}
+}
+
+// CountWorkspaceDomainClaims mirrors PGStore's workspace-wide claim count over
+// the fake's recorded app->workspace bindings.
+func (m *memoryDomainClaimStore) CountWorkspaceDomainClaims(_ context.Context, workspaceID string) (int, error) {
+	n := 0
+	for _, claim := range m.claims {
+		if m.workspaces[claim.AppID] == workspaceID {
+			n++
+		}
+	}
+	return n, nil
 }
 
 func (m *memoryDomainClaimStore) AddDomainClaim(_ context.Context, appID, host, redirect string) (store.Domain, bool, error) {
@@ -1823,4 +1838,140 @@ func managedAppWithHosts(name, appID string, hosts ...string) *appv1alpha1.App {
 	a := managedApp(name, appID)
 	a.Spec.Hosts = hosts
 	return a
+}
+
+// --- custom-domain cardinality quotas (codex-security round 18) ---
+
+// TestAddDomainPerServiceQuota pins round 18 on the managed (store-backed)
+// claim path: claims up to the per-service cap succeed, the next is refused
+// with the coded CUSTOM_DOMAIN_LIMIT (a 409 conflict), and an idempotent re-add
+// is quota-exempt — the GIT_CONNECTION_LIMIT test's shape.
+func TestAddDomainPerServiceQuota(t *testing.T) {
+	claims := newMemoryDomainClaimStore()
+	svc, _ := newService(claims, managedApp("web", "srv-1"))
+	svc.MaxCustomDomainsPerService = 2
+
+	// a.example.com / b.example.com are deep subdomains — no www<->apex sibling
+	// pairing (t002) — so each AddDomain is exactly one claim.
+	for _, host := range []string{"a.example.com", "b.example.com"} {
+		if _, err := svc.AddDomain(context.Background(), "web", host); err != nil {
+			t.Fatalf("add %s under the cap: %v", host, err)
+		}
+	}
+	_, err := svc.AddDomain(context.Background(), "web", "c.example.com")
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "CUSTOM_DOMAIN_LIMIT" {
+		t.Fatalf("over-cap add err = %v, want CUSTOM_DOMAIN_LIMIT", err)
+	}
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("quota refusal must stay a 409 conflict, got %v", err)
+	}
+	// Re-adding an already-claimed host is idempotent, not a new claim.
+	if _, err := svc.AddDomain(context.Background(), "web", "a.example.com"); err != nil {
+		t.Fatalf("idempotent re-add must be quota-exempt: %v", err)
+	}
+}
+
+// TestAddDomainPerWorkspaceQuota pins the workspace-wide half of round 18: the
+// cap counts claims across every service the workspace owns, and one
+// workspace's exhaustion never spills into another's.
+func TestAddDomainPerWorkspaceQuota(t *testing.T) {
+	claims := newMemoryDomainClaimStore()
+	claims.workspaces["srv-1"] = "tea-a"
+	claims.workspaces["srv-2"] = "tea-a"
+	app1 := managedApp("web", "srv-1")
+	app1.Labels[core.LabelTenant] = "tea-a"
+	app2 := managedApp("api", "srv-2")
+	app2.Labels[core.LabelTenant] = "tea-a"
+	svc, _ := newService(claims, app1, app2)
+	svc.MaxCustomDomainsPerWorkspace = 3 // per-service cap left at 0 (disabled)
+
+	for _, tc := range []struct{ app, host string }{
+		{"web", "a.example.com"}, {"web", "b.example.com"}, {"api", "c.example.com"},
+	} {
+		if _, err := svc.AddDomain(context.Background(), tc.app, tc.host); err != nil {
+			t.Fatalf("add %s on %s under the workspace cap: %v", tc.host, tc.app, err)
+		}
+	}
+	_, err := svc.AddDomain(context.Background(), "api", "d.example.com")
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "CUSTOM_DOMAIN_LIMIT" {
+		t.Fatalf("over-cap add err = %v, want CUSTOM_DOMAIN_LIMIT", err)
+	}
+
+	// A different workspace's count is unaffected.
+	claims.workspaces["srv-9"] = "tea-b"
+	app3 := managedApp("other", "srv-9")
+	app3.Labels[core.LabelTenant] = "tea-b"
+	svc2, _ := newService(claims, app3)
+	svc2.MaxCustomDomainsPerWorkspace = 3
+	if _, err := svc2.AddDomain(context.Background(), "other", "e.example.com"); err != nil {
+		t.Fatalf("another workspace is unaffected by tea-a's exhaustion: %v", err)
+	}
+}
+
+// TestAddDomainPerServiceQuotaStoreless pins the CR-only path: the cap counts
+// spec.hosts and refuses BEFORE any DNS verification fan-out — the failing
+// resolver proves the ownership check was never consulted.
+func TestAddDomainPerServiceQuotaStoreless(t *testing.T) {
+	svc, _ := newService(nil, appWithHosts("web", "a.example.com", "b.example.com"))
+	svc.MaxCustomDomainsPerService = 2
+	svc.DomainOwnership = &recordingDomainOwnership{err: errors.New("must not be consulted")}
+
+	_, err := svc.AddDomain(context.Background(), "web", "c.example.com")
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "CUSTOM_DOMAIN_LIMIT" {
+		t.Fatalf("over-cap add err = %v, want CUSTOM_DOMAIN_LIMIT", err)
+	}
+}
+
+// TestRESTCustomDomainQuota pins the REST mapping of round 18: the first add is
+// 201, the over-cap add is a 409 whose body carries the CUSTOM_DOMAIN_LIMIT
+// code. GraphQL/MCP share the same core.CodedError plumbing (extensions /
+// prefixed tool error), so the code cannot drift between surfaces.
+func TestRESTCustomDomainQuota(t *testing.T) {
+	svc, _ := newService(nil, sampleApp("web"))
+	svc.MaxCustomDomainsPerService = 1
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
+		strings.NewReader(`{"name":"a.example.com"}`)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("first POST => 201, got %d: %s", rec.Code, rec.Body)
+	}
+
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
+		strings.NewReader(`{"name":"b.example.com"}`)))
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("over-cap POST => 409, got %d: %s", rec.Code, rec.Body)
+	}
+	if !strings.Contains(rec.Body.String(), "CUSTOM_DOMAIN_LIMIT") {
+		t.Errorf("body must carry CUSTOM_DOMAIN_LIMIT, got %s", rec.Body)
+	}
+}
+
+// TestCreateHostSetPerServiceCap pins the create/blueprint half of round 18: a
+// declared host set over the per-service cap is a 400 before any claim or CR
+// write (the round-12 #3 routes/headers surface-validator stance); the CRD
+// schema's MaxItems is the admission backstop. 0 disables the cap.
+func TestCreateHostSetPerServiceCap(t *testing.T) {
+	svc, _ := newService(nil)
+	svc.MaxCustomDomainsPerService = 2
+
+	over := appWithHosts("web", "a.example.com", "b.example.com", "c.example.com")
+	if err := svc.ensureHostsClaimable(context.Background(), over); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("declared host set over the cap => ErrBadRequest, got %v", err)
+	}
+	atCap := appWithHosts("web", "a.example.com", "b.example.com")
+	if err := svc.ensureHostsClaimable(context.Background(), atCap); err != nil {
+		t.Fatalf("at-cap host set must pass the cardinality gate: %v", err)
+	}
+
+	svc.MaxCustomDomainsPerService = 0 // disabled
+	if err := svc.ensureHostsClaimable(context.Background(), over); err != nil {
+		t.Fatalf("cap 0 disables the cardinality gate: %v", err)
+	}
 }

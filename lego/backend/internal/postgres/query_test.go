@@ -206,12 +206,84 @@ func TestExecuteQueryAuthorization(t *testing.T) {
 		t.Fatalf("allowed write: %v", err)
 	}
 	// round-9 #7: each mode re-asserts its relation uncached at the sink, so a
-	// plain Checker (no FreshChecker — already authoritative) records it twice:
-	// the admission gate plus the reassertion, the same relation both times.
+	// plain Checker (no FreshChecker — already authoritative) records the read
+	// mode twice (admission + reassertion). Round 18: the write mode checks BOTH
+	// relations at both seams — can_create (admission, audited) + can_view_sensitive
+	// (admission, audit-silent Fresh seam), then can_create + can_view_sensitive
+	// again uncached at the sink.
 	want := core.RelCanViewSensitive + "," + core.RelCanViewSensitive + "," +
-		core.RelCanCreate + "," + core.RelCanCreate
+		core.RelCanCreate + "," + core.RelCanViewSensitive + "," +
+		core.RelCanCreate + "," + core.RelCanViewSensitive
 	if got := strings.Join(allow.relations, ","); got != want {
 		t.Fatalf("relations = %q, want %q", got, want)
+	}
+}
+
+// codex round 18: a writable query can still return rows (SELECT in a
+// read-write transaction, DML ... RETURNING), so allowWrites=true must require
+// BOTH capabilities the two relations map to — bex.write (can_create) AND
+// bex.sensitive (can_view_sensitive). The service-layer union composes because
+// checkCapability runs per relation inside the Authorize seams, so a scoped
+// third-party OAuth token holding only one half is refused even when OpenFGA
+// allows the membership. Read-only mode must stay can_view_sensitive-only.
+func TestExecuteQueryWriteRequiresBothCapabilities(t *testing.T) {
+	svc, _ := newService()
+	seedDatabaseAt(t, svc, "union-db", "postgres://resolved/uri")
+	svc.Authz = &queryAuthzChecker{allow: true}
+	executed := false
+	svc.queryExecutor = func(context.Context, string, string, queryLimits, bool) (QueryResult, error) {
+		executed = true
+		return QueryResult{Columns: []string{"one"}, Rows: [][]any{{1}}, RowCount: 1}, nil
+	}
+	oauth := func(scopes string) context.Context {
+		return core.WithIdentity(context.Background(), core.Identity{
+			Subject: "user-1", Method: "oauth2", Human: true, CanonicalScopes: scopes,
+		})
+	}
+	assertInsufficientScope := func(t *testing.T, err error) {
+		t.Helper()
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != core.InsufficientScopeCode {
+			t.Fatalf("err = %v, want INSUFFICIENT_SCOPE", err)
+		}
+	}
+
+	// A bex.write-only token passes can_create but is refused at the added
+	// can_view_sensitive half; a bex.sensitive-only token is refused at the
+	// can_create admission. Neither may reach the executor.
+	for name, scopes := range map[string]string{
+		"write-only":     core.ScopeWrite,
+		"sensitive-only": core.ScopeSensitive,
+	} {
+		t.Run(name, func(t *testing.T) {
+			executed = false
+			_, err := svc.ExecuteQuery(oauth(scopes), "union-db", "SELECT 1", true)
+			assertInsufficientScope(t, err)
+			if executed {
+				t.Fatal("executor ran under a single-capability token")
+			}
+		})
+	}
+
+	// A token carrying both capabilities — and a scope-exempt session identity —
+	// pass the union and reach the executor.
+	if _, err := svc.ExecuteQuery(oauth(core.ScopeSensitive+" "+core.ScopeWrite), "union-db", "SELECT 1", true); err != nil {
+		t.Fatalf("write with both capabilities: %v", err)
+	}
+	if _, err := svc.ExecuteQuery(ctxAs("user-1"), "union-db", "SELECT 1", true); err != nil {
+		t.Fatalf("write with scope-exempt session: %v", err)
+	}
+
+	// Read-only mode is unchanged: can_view_sensitive-only, so a bex.sensitive
+	// token reads fine while a bex.write-only token is refused exactly as before.
+	if _, err := svc.ExecuteQuery(oauth(core.ScopeSensitive), "union-db", "SELECT 1", false); err != nil {
+		t.Fatalf("read with bex.sensitive: %v", err)
+	}
+	executed = false
+	_, err := svc.ExecuteQuery(oauth(core.ScopeWrite), "union-db", "SELECT 1", false)
+	assertInsufficientScope(t, err)
+	if executed {
+		t.Fatal("read-only executor ran under a bex.write-only token")
 	}
 }
 

@@ -27,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	"github.com/bex-co/bex/lego/operator/internal/publish"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -107,10 +108,10 @@ func TestRejectProtectedSecretRefs(t *testing.T) {
 
 // TestRejectConfiguredOperationalSecretNames is the round-11 #1 guard for the
 // out-of-band operational Secrets: the shared registry pull/push credentials,
-// build-namespace pull credential, and tenant signing key are created by
-// scripts, so nothing stamps the protected label on them. The operator knows
-// their configured names and refuses them by name — no Secret lookup needed,
-// so the denial holds even before the Secret exists.
+// build-namespace pull credential, tenant signing key, and static-site publish
+// credential are created by scripts, so nothing stamps the protected label on
+// them. The operator knows their configured names and refuses them by name —
+// no Secret lookup needed, so the denial holds even before the Secret exists.
 func TestRejectConfiguredOperationalSecretNames(t *testing.T) {
 	scheme := protectedSecretScheme(t)
 	buildClient := fake.NewClientBuilder().WithScheme(scheme).Build()
@@ -120,6 +121,7 @@ func TestRejectConfiguredOperationalSecretNames(t *testing.T) {
 		RegistryPullSecret:  "zot-shared-pull",
 		RegistryPushSecret:  "bex-registry-push",
 		TenantSignKeySecret: "bex-tenant-sign",
+		StaticStore:         publish.Store{Secret: "bex-static-publish-s3"},
 	}
 	app := func(field func(*appv1alpha1.App)) *appv1alpha1.App {
 		a := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-web"}}
@@ -132,10 +134,44 @@ func TestRejectConfiguredOperationalSecretNames(t *testing.T) {
 		"tenant signing key": func(a *appv1alpha1.App) {
 			a.Spec.FilesFromSecrets = []string{"bex-tenant-sign"}
 		},
+		// Round-18: in a co-located install (BEX_BUILD_NAMESPACE unset) the
+		// static publisher credential sits in the App's own namespace, so a
+		// tenant App could mount it for bucket-wide read/write/delete across
+		// every tenant's static content.
+		"static publish credential": func(a *appv1alpha1.App) {
+			a.Spec.Env = []appv1alpha1.EnvVar{{Name: "AWS_SECRET_ACCESS_KEY", ValueFrom: &appv1alpha1.EnvVarSource{
+				SecretKeyRef: &appv1alpha1.SecretKeySelector{Name: "bex-static-publish-s3", Key: "AWS_SECRET_ACCESS_KEY"}}}}
+		},
 	} {
 		t.Run("rejects "+name, func(t *testing.T) {
 			if err := r.rejectProtectedSecretRefs(context.Background(), app(mutate)); err == nil {
 				t.Fatalf("%s reference was ACCEPTED — operational credential exfil", name)
+			}
+		})
+	}
+
+	// Round-18 sweep: the static publish credential must be refused through
+	// EVERY projection field the validator covers, not just one.
+	for name, mutate := range map[string]func(*appv1alpha1.App){
+		"envFromSecret":  func(a *appv1alpha1.App) { a.Spec.EnvFromSecret = "bex-static-publish-s3" },
+		"envFromSecrets": func(a *appv1alpha1.App) { a.Spec.EnvFromSecrets = []string{"bex-static-publish-s3"} },
+		"filesFromSecrets": func(a *appv1alpha1.App) {
+			a.Spec.FilesFromSecrets = []string{"bex-static-publish-s3"}
+		},
+		"env secretKeyRef": func(a *appv1alpha1.App) {
+			a.Spec.Env = []appv1alpha1.EnvVar{{Name: "X", ValueFrom: &appv1alpha1.EnvVarSource{
+				SecretKeyRef: &appv1alpha1.SecretKeySelector{Name: "bex-static-publish-s3", Key: "AWS_SECRET_ACCESS_KEY"}}}}
+		},
+		"pending-env annotation": func(a *appv1alpha1.App) {
+			a.Annotations = map[string]string{appv1alpha1.PendingEnvSecretAnnotation: "bex-static-publish-s3"}
+		},
+		"pending-files annotation": func(a *appv1alpha1.App) {
+			a.Annotations = map[string]string{appv1alpha1.PendingFilesSecretAnnotation: "bex-static-publish-s3"}
+		},
+	} {
+		t.Run("rejects static publish credential via "+name, func(t *testing.T) {
+			if err := r.rejectProtectedSecretRefs(context.Background(), app(mutate)); err == nil {
+				t.Fatalf("static publish credential via %s was ACCEPTED — cross-tenant static-content exfil", name)
 			}
 		})
 	}

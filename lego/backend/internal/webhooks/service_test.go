@@ -352,6 +352,55 @@ func TestDestinationURLRedactedForNonAdminReaders(t *testing.T) {
 	}
 }
 
+// TestDestinationURLRedactedForReadOnlyOAuthAdmin (capability composition on
+// the audit-silent reveal): mayManageWorkspace composes can_manage's mapped
+// OAuth capability, so a third-party human token delegated only bex.read by an
+// admin gets the REDACTED origin-only URL on list/get even though OpenFGA still
+// grants the admin's can_manage. bex.write — or a capability-exempt session /
+// machine identity (covered by the admin leg of the test above) — reveals the
+// exact destination.
+func TestDestinationURLRedactedForReadOnlyOAuthAdmin(t *testing.T) {
+	const exact = "https://hooks.slack.com/services/T000/B000/0123456789abcdef"
+	const redacted = "https://hooks.slack.com/…"
+	st := newFakeEndpointStore()
+	s := &Service{Base: &core.Base{
+		Namespace: "default", Workspace: fakeWorkspaceResolver{"tea-a"}, Authz: manageChecker{admin: "id-admin"},
+	}, Store: st}
+	oauthAdmin := func(scopes string) context.Context {
+		return core.WithIdentity(context.Background(), core.Identity{
+			Subject: "id-admin", Method: "oauth2", Human: true, CanonicalScopes: scopes,
+		})
+	}
+
+	created, err := s.Create(oauthAdmin(core.ScopeWrite), CreateRequest{
+		Name: "slack", URL: exact, EventTypes: []string{TypeDeployEnded}, Enabled: true,
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	readOnly := oauthAdmin(core.ScopeRead)
+	if got, err := s.Get(readOnly, "", created.ID); err != nil {
+		t.Fatalf("read-only admin Get: %v", err)
+	} else if got.URL != redacted {
+		t.Fatalf("read-only admin Get URL = %q, want the redacted origin %q", got.URL, redacted)
+	}
+	list, err := s.List(readOnly, "")
+	if err != nil || len(list) != 1 {
+		t.Fatalf("read-only admin List = %+v (err %v)", list, err)
+	}
+	if list[0].URL != redacted {
+		t.Fatalf("read-only admin List URL = %q, want the redacted origin %q", list[0].URL, redacted)
+	}
+
+	withWrite := oauthAdmin(core.ScopeRead + " " + core.ScopeWrite)
+	if got, err := s.Get(withWrite, "", created.ID); err != nil {
+		t.Fatalf("write-scoped admin Get: %v", err)
+	} else if got.URL != exact {
+		t.Fatalf("write-scoped admin Get URL = %q, want the exact destination", got.URL)
+	}
+}
+
 func TestCreateSupportsDisabledAllEventsAndRequiresUniqueName(t *testing.T) {
 	s, _ := newTestService()
 	ctx := context.Background()

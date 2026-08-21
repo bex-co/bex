@@ -61,6 +61,10 @@ var ErrOverloaded = errors.New("staticserver: origin fetch capacity reached")
 // for real static assets, far below the pod memory budget.
 const maxOriginObjectBytes = 32 << 20 // 32 MiB
 
+// DefaultCacheBytes is the default in-memory object cache budget (main.go may
+// override it via BEX_STATIC_CACHE_BYTES).
+const DefaultCacheBytes = 256 << 20 // 256 MiB
+
 // defaultMaxLiveBodyBytes bounds the summed size of response bodies held live
 // while being written to clients. The fetch gate releases its reservation when
 // the origin read completes, but the fetched body stays allocated until the
@@ -68,7 +72,21 @@ const maxOriginObjectBytes = 32 << 20 // 32 MiB
 // the body out of cache accounting — so distinct large objects served to slow
 // clients need their own budget. Weighted by actual body size; on exhaustion
 // the handler sheds with 503 rather than writing past the budget.
-const defaultMaxLiveBodyBytes = 512 << 20 // 512 MiB
+//
+// Aggregate memory budget (codex-security round 18): the three independent
+// ceilings must sum well below the 2 GiB pod limit in
+// config/staticserver/deployment.yaml:
+//
+//	cache            256 MiB  (DefaultCacheBytes)
+//	live bodies      256 MiB  (defaultMaxLiveBodyBytes)
+//	fetch gate       512 MiB  (16 fetches x 32 MiB, fetchgate.go)
+//	─────────────────────────
+//	worst case     1024 MiB = 50% of the 2 GiB cgroup limit
+//
+// leaving ~1 GiB for slice-capacity growth, io.ReadAll transients, the Go
+// runtime/GC (further softened by GOMEMLIMIT=1500MiB), the S3 SDK, and the
+// resolver. budget_test.go asserts this invariant so a knob bump trips CI.
+const defaultMaxLiveBodyBytes = 256 << 20 // 256 MiB
 
 // Object is a fetched origin object.
 type Object struct {

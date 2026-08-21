@@ -27,11 +27,14 @@ import (
 // misses can buffer an unbounded amount at once and OOM the shared single-replica
 // server. defaultMaxInflightBytes is the concurrency ceiling × the worst-case
 // per-object size, so the two bounds agree in the common case while the byte
-// budget stays an independent hard ceiling.
+// budget stays an independent hard ceiling. The concurrency is sized so the
+// aggregate of cache + live-body + fetch budgets stays at 50% of the pod's
+// 2 GiB limit — see the budget arithmetic on defaultMaxLiveBodyBytes in
+// staticserver.go (codex-security round 18).
 const (
-	defaultMaxConcurrentFetches = 32
+	defaultMaxConcurrentFetches = 16
 	defaultMaxSiteFetches       = 4
-	defaultMaxInflightBytes     = int64(defaultMaxConcurrentFetches) * maxOriginObjectBytes // 1 GiB
+	defaultMaxInflightBytes     = int64(defaultMaxConcurrentFetches) * maxOriginObjectBytes // 512 MiB
 )
 
 // fetchGate bounds concurrent origin fetches two ways: a slot count caps how many

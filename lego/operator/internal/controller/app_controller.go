@@ -183,6 +183,16 @@ const annotLastActive = "app.bex.co/last-active"
 // custom-domain names from the final spec alone.
 const annotTLSSecretHistory = "app.bex.co/tls-secret-history"
 
+// maxTLSSecretHistoryEntries bounds the retained history (codex-security round
+// 18): delete/churn cycles on spec.hosts otherwise grow the annotation without
+// bound. 500 covers five full churn cycles at the 100-per-service host cap.
+// Which names survive a trim does not affect cleanup: App deletion does not
+// depend on the annotation alone — deleteTLSSecrets also lists every
+// "<app>-tls*" Secret by name prefix, and live hosts' names are always
+// re-derived from the current spec, so a trimmed name's Secret is still
+// reclaimed and its ingress-shim Certificate cascades with the Ingress.
+const maxTLSSecretHistoryEntries = 500
+
 const annotStaticPurgeComplete = "app.bex.co/static-purge-complete"
 const annotRegistryPurgeComplete = "app.bex.co/registry-purge-complete"
 
@@ -1188,13 +1198,14 @@ func (r *AppReconciler) rejectProtectedSecretRefs(ctx context.Context, app *appv
 		return nil
 	}
 	// Operator-configured operational Secrets (shared pull/push credentials,
-	// build-ns pull credential, tenant signing key) are created out of band by
-	// scripts, so no code path stamps the protected label on them — deny them
-	// by NAME, without a lookup, whether or not the Secret exists yet. They
-	// normally live in the build namespace, but with BEX_BUILD_NAMESPACE unset
-	// that IS the App namespace. Only an actual App-side reference is denied;
-	// configuring the name alone changes nothing.
-	for _, n := range []string{r.RegistryPullSecret, r.RegistryPushSecret, r.RegistryBuildPullSecret, r.TenantSignKeySecret} {
+	// build-ns pull credential, tenant signing key, static-site publish
+	// credential) are created out of band by scripts, so no code path stamps
+	// the protected label on them — deny them by NAME, without a lookup,
+	// whether or not the Secret exists yet. They normally live in the build
+	// namespace, but with BEX_BUILD_NAMESPACE unset that IS the App namespace.
+	// Only an actual App-side reference is denied; configuring the name alone
+	// changes nothing.
+	for _, n := range []string{r.RegistryPullSecret, r.RegistryPushSecret, r.RegistryBuildPullSecret, r.TenantSignKeySecret, r.StaticStore.Secret} {
 		if n != "" && names[n] {
 			return fmt.Errorf("app references operational Secret %q which tenant workloads may not mount (round-11 #1)", n)
 		}
@@ -3898,20 +3909,46 @@ func (r *AppReconciler) knownBuildSecretNames(app *appv1alpha1.App) []string {
 // for this App. cert-manager does not garbage-collect the Secret when the Certificate
 // or Ingress is removed, so they would otherwise persist indefinitely. The
 // Ingress is already cascaded via ownerRef; this cleans up the Secret it left.
+// The retained set is capped at maxTLSSecretHistoryEntries (round 18): only
+// historical (no longer in the spec) names are ever trimmed, smallest first —
+// a live host's name is never dropped, so a capped App does not flap a
+// re-record patch every reconcile. The prior annotation is stored sorted and
+// every fresh append is live by construction, so the historical remainder stays
+// sorted. Which historical names survive does not affect cleanup
+// (deleteTLSSecrets prefix-sweeps "<app>-tls*" Secrets at App deletion).
 func (r *AppReconciler) recordTLSSecretHistory(ctx context.Context, app *appv1alpha1.App) error {
 	names := tlsSecretHistory(app)
 	seen := make(map[string]struct{}, len(names))
 	for _, name := range names {
 		seen[name] = struct{}{}
 	}
+	live := make(map[string]struct{})
 	changed := false
 	for idx, host := range effectiveHosts(app, r.BaseDomain) {
 		name := tlsSecretName(app.Name, idx, host)
+		live[name] = struct{}{}
 		if _, ok := seen[name]; !ok {
 			names = append(names, name)
 			seen[name] = struct{}{}
 			changed = true
 		}
+	}
+	if len(names) > maxTLSSecretHistoryEntries {
+		kept := make([]string, 0, maxTLSSecretHistoryEntries)
+		var historical []string
+		for _, name := range names {
+			if _, ok := live[name]; ok {
+				kept = append(kept, name)
+			} else {
+				historical = append(historical, name)
+			}
+		}
+		room := max(maxTLSSecretHistoryEntries-len(kept), 0)
+		if room < len(historical) {
+			historical = historical[len(historical)-room:]
+		}
+		names = append(kept, historical...)
+		changed = true
 	}
 	if !changed {
 		return nil

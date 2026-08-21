@@ -57,6 +57,13 @@ set_env_var BAO_UNSEAL_KEY_1 updated-v1 >/dev/null
 assert "updating the short key leaves the longer one alone" "grep -q '^BAO_UNSEAL_KEY_10=v10$' .env"
 assert "updating the short key changed only it" "grep -q '^BAO_UNSEAL_KEY_1=updated-v1$' .env"
 
+# 1f. every write pins .env to owner-only 0600 (codex round-18 #1), including
+# the awk/mv replace path that would otherwise recreate it at the umask default
+assert ".env is mode 600 after writes" "[ \"\$(stat -c '%a' .env 2>/dev/null || stat -f '%Lp' .env)\" = 600 ]"
+chmod 644 .env
+set_env_var BAO_ROOT_TOKEN perms-check >/dev/null
+assert "replace path re-pins 644 back to 600" "[ \"\$(stat -c '%a' .env 2>/dev/null || stat -f '%Lp' .env)\" = 600 ]"
+
 cd - >/dev/null
 
 echo "==> BAO keys declared in .env.example + pushed by gh-secrets.sh"

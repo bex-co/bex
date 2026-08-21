@@ -19,6 +19,8 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 	"testing"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -164,6 +166,47 @@ func TestAppDeletionRemovesHistoricalTLSSecretBeforeFinalizer(t *testing.T) {
 	}
 	if err := cl.Get(context.Background(), nn, &appv1alpha1.App{}); !apierrors.IsNotFound(err) {
 		t.Fatalf("App remained after TLS absence was proven: %v", err)
+	}
+}
+
+func TestTLSSecretHistoryStaysBoundedUnderChurn(t *testing.T) {
+	ctx := context.Background()
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "tls-churn", Namespace: "default"}}
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
+	nn := types.NamespacedName{Name: app.Name, Namespace: app.Namespace}
+
+	// Each pass swaps in a fresh second host: index 0's "<app>-tls" name is
+	// host-independent, so exactly one NEW Secret name enters the history per
+	// pass — the delete/re-add cycle round 18 bounds.
+	for i := range maxTLSSecretHistoryEntries + 50 {
+		var current appv1alpha1.App
+		if err := cl.Get(ctx, nn, &current); err != nil {
+			t.Fatal(err)
+		}
+		current.Spec.Hosts = []string{"stable.example.com", fmt.Sprintf("h%d.example.com", i)}
+		if err := r.recordTLSSecretHistory(ctx, &current); err != nil {
+			t.Fatalf("record pass %d: %v", i, err)
+		}
+	}
+
+	var final appv1alpha1.App
+	if err := cl.Get(ctx, nn, &final); err != nil {
+		t.Fatal(err)
+	}
+	names := tlsSecretHistory(&final)
+	if len(names) != maxTLSSecretHistoryEntries {
+		t.Fatalf("history len = %d, want the %d-entry cap", len(names), maxTLSSecretHistoryEntries)
+	}
+	newest := tlsSecretName(final.Name, 1, fmt.Sprintf("h%d.example.com", maxTLSSecretHistoryEntries+49))
+	if !slices.Contains(names, newest) {
+		t.Errorf("newest name %q trimmed; the cap must keep the most recent entries", newest)
+	}
+	if oldest := tlsSecretName(final.Name, 1, "h0.example.com"); slices.Contains(names, oldest) {
+		t.Errorf("oldest churned name %q retained past the cap", oldest)
+	}
+	if !slices.Contains(names, final.Name+"-tls") {
+		t.Errorf("the stable first-host name %q must survive", final.Name+"-tls")
 	}
 }
 

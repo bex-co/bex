@@ -436,6 +436,13 @@ type Deps struct {
 	// refused with REGISTRY_CREDENTIAL_LIMIT across all surfaces.
 	MaxRegistryCredentialsPerWorkspace int
 
+	// MaxCustomDomainsPerService and MaxCustomDomainsPerWorkspace cap
+	// custom-domain cardinality (codex-security round 18; defaults 100/500, 0
+	// disables). Over-cap claims are refused with CUSTOM_DOMAIN_LIMIT across
+	// all surfaces.
+	MaxCustomDomainsPerService   int
+	MaxCustomDomainsPerWorkspace int
+
 	// NotificationsStore, when set (the control-plane store is wired), backs
 	// the deploy-notification settings verbs (w3/m9). nil => those verbs
 	// report core.ErrNotificationsUnavailable (503). Delivery reuses Mailer
@@ -706,7 +713,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		return err
 	}
 	srv := &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
+		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: logSvc,
 		Metrics: &metrics.Service{
 			Base:                       base,
