@@ -558,6 +558,14 @@ func mapBytes(m map[string]string) int {
 // times. Stores that do not implement VersionedSecretKV (test doubles) fall back
 // to the unconditional storeMap path. Returns the final map and whether it
 // changed (false + nil delete means the path was already empty/no-op).
+//
+// codex-security round-19 #5: an empty result is written back through the same
+// PutCAS as every other mutation rather than an unconditional metadata Delete.
+// The old unconditional Delete ignored snapshot.Version entirely, so a
+// concurrent writer that committed a newer version after this read still lost
+// its write — the stale delete removed the path (and every retained version)
+// out from under it. PutCAS with an empty map conflicts exactly like any other
+// racing write and retries instead of destroying data.
 func (s *Service) updateMapCAS(ctx context.Context, path string, mutate func(current map[string]string) (changed bool)) (map[string]string, error) {
 	versioned, ok := s.Store.(core.VersionedSecretKV)
 	if !ok {
@@ -584,12 +592,6 @@ func (s *Service) updateMapCAS(ctx context.Context, path string, mutate func(cur
 			current = map[string]string{}
 		}
 		if !mutate(current) {
-			return current, nil
-		}
-		if len(current) == 0 {
-			if err := s.Store.Delete(ctx, path); err != nil {
-				return nil, err
-			}
 			return current, nil
 		}
 		if _, err := versioned.PutCAS(ctx, path, current, snapshot.Version); err != nil {

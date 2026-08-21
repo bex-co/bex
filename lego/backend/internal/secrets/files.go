@@ -124,19 +124,31 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 		// Name only in the error — never the content.
 		return SecretFileView{}, fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, name)
 	}
-	files, err := s.readMap(ctx, filesPath(service))
+	// codex-security round-19 #7: CAS through updateMapCAS (like SetEnvVar)
+	// instead of a bare readMap+storeMap — a concurrent writer's whole-map
+	// replacement between the read and this write could otherwise be silently
+	// discarded (lost update).
+	var quota error
+	files, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
+		if v, ok := current[name]; ok && v == content {
+			return false // no change
+		}
+		current[name] = content
+		// Round-11 #6: bound the aggregate map before the source-of-truth write so
+		// a tenant cannot grow it without limit (and so a passing map can always
+		// materialize under Kubernetes' 1 MiB Secret ceiling). Re-checked against
+		// the fresh map on every CAS retry, matching SetEnvVar.
+		if err := filesMapWithinQuota(current); err != nil {
+			quota = err
+			return false
+		}
+		return true
+	})
 	if err != nil {
 		return SecretFileView{}, err
 	}
-	files[name] = content
-	// Round-11 #6: bound the aggregate map before the source-of-truth write so
-	// a tenant cannot grow it without limit (and so a passing map can always
-	// materialize under Kubernetes' 1 MiB Secret ceiling).
-	if err := filesMapWithinQuota(files); err != nil {
-		return SecretFileView{}, err
-	}
-	if err := s.storeMap(ctx, filesPath(service), files); err != nil {
-		return SecretFileView{}, err
+	if quota != nil {
+		return SecretFileView{}, quota
 	}
 	if err := s.materializeFiles(ctx, a, files); err != nil {
 		return SecretFileView{}, err
@@ -162,18 +174,25 @@ func (s *Service) SeedSecretFiles(ctx context.Context, service string, initial [
 			return fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, initial[i].Name)
 		}
 	}
-	files, err := s.readMap(ctx, filesPath(service))
+	// codex-security round-19 #7: CAS through updateMapCAS instead of a bare
+	// readMap+storeMap, so a concurrent Set/DeleteSecretFile between the read
+	// and this write can't be clobbered.
+	var quota error
+	files, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
+		for _, f := range initial {
+			current[f.Name] = f.Content
+		}
+		if err := filesMapWithinQuota(current); err != nil {
+			quota = err
+			return false
+		}
+		return true
+	})
 	if err != nil {
 		return err
 	}
-	for _, f := range initial {
-		files[f.Name] = f.Content
-	}
-	if err := filesMapWithinQuota(files); err != nil {
-		return err
-	}
-	if err := s.storeMap(ctx, filesPath(service), files); err != nil {
-		return err
+	if quota != nil {
+		return quota
 	}
 	return s.materializeFiles(ctx, a, files)
 }
@@ -299,16 +318,23 @@ func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) er
 	if err != nil {
 		return err
 	}
-	files, err := s.readMap(ctx, filesPath(service))
+	// codex-security round-19 #7: CAS through updateMapCAS (like DeleteEnvVar)
+	// instead of a bare readMap+storeMap, so a concurrent SetSecretFile/
+	// DeleteSecretFile between the read and this write can't be clobbered.
+	var nameFound bool
+	files, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
+		if _, ok := current[name]; !ok {
+			return false
+		}
+		nameFound = true
+		delete(current, name)
+		return true
+	})
 	if err != nil {
 		return err
 	}
-	if _, ok := files[name]; !ok {
+	if !nameFound {
 		return core.ErrNotFound
-	}
-	delete(files, name)
-	if err := s.storeMap(ctx, filesPath(service), files); err != nil {
-		return err
 	}
 	return s.materializeFiles(ctx, a, files)
 }

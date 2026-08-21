@@ -57,7 +57,7 @@ Key entry points:
 - Billing/pricing: [ADR040](docs/ADR040-billing-metronome.md) · [ADR030](docs/ADR030-pricing.md)
 - GitHub/members/infra-creds: [ADR026](docs/ADR026-github-integration.md) · [ADR019](docs/ADR019-infra-credentials.md)
 - Tenant isolation/networking: [ADR043](docs/ADR043-tenant-namespace-isolation.md) (replaces ADR022 option B)
-- Security review lineage: [ADR028](docs/ADR028-security-review.md) → [ADR072](docs/ADR072-security-review-round7.md) … [ADR079](docs/ADR079-security-review-round18.md) (see docs/CLAUDE.md for full chain)
+- Security review lineage: [ADR028](docs/ADR028-security-review.md) → [ADR072](docs/ADR072-security-review-round7.md) … [ADR080](docs/ADR080-security-review-round19.md) (see docs/CLAUDE.md for full chain)
 
 ## Rules
 

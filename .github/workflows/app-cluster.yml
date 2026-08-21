@@ -48,6 +48,14 @@ jobs:
     # protected environments (see infra.yml).
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # codex-security round-19 #1: this job's own comments named "GitHub-side
+    # protected environments (see infra.yml)" as the authoritative control, but
+    # unlike infra.yml's `terraform` job it carried no `environment:` — so the
+    # ref guard above was the ONLY gate, and a malicious change merged to main
+    # reached HCLOUD_TOKEN + admin.conf automatically with no independent
+    # approval. Matches the infra.yml/snapshot.yml/cli-release.yml pattern:
+    # configure required reviewers on this environment in repo settings.
+    environment: production-cluster
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

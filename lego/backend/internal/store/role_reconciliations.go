@@ -68,6 +68,21 @@ func (s *PGStore) ClaimRoleReconciliations(ctx context.Context, limit int) ([]Ro
 	return out, rows.Err()
 }
 
+// HasPendingRoleReconciliation reports whether subject still has an
+// unconverged role intent for tenantID (round-19 #3). Not filtered on
+// next_attempt_at: a row backed off after failures is still pending
+// convergence, and that is exactly the window the caller needs to know about.
+func (s *PGStore) HasPendingRoleReconciliation(ctx context.Context, tenantID, subject string) (bool, error) {
+	var exists bool
+	err := s.Pool.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM membership_role_reconciliations WHERE tenant_id = $1 AND subject = $2)`,
+		tenantID, subject).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 // CompleteRoleReconciliation acknowledges only the role that was applied. A
 // concurrent newer role upsert remains queued instead of being deleted by a
 // stale worker.
