@@ -89,12 +89,16 @@ func TestPGGitConnectionsMultiPerWorkspace(t *testing.T) {
 		t.Fatalf("after same-workspace update, account = %q (err %v), want octo-updated", owner.AccountLogin, err)
 	}
 
-	// Per-installation delete is workspace-scoped: ws1 cannot delete ws2's 101.
-	if err := st.DeleteGitConnection(ctx, "tea-ws1", 101); !errors.Is(err, ErrNotFound) {
+	// Per-installation delete is workspace-scoped: ws2 cannot delete ws1's 101
+	// (101 remained in ws1 after the rejected cross-workspace rebind).
+	if err := st.DeleteGitConnection(ctx, "tea-ws2", 101); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("cross-workspace delete err = %v, want ErrNotFound", err)
 	}
 	if err := st.DeleteGitConnection(ctx, "tea-ws1", 102); err != nil {
-		t.Fatalf("delete own connection: %v", err)
+		t.Fatalf("delete own connection 102: %v", err)
+	}
+	if err := st.DeleteGitConnection(ctx, "tea-ws1", 101); err != nil {
+		t.Fatalf("delete own connection 101: %v", err)
 	}
 	if n, _ := st.CountGitConnections(ctx, "tea-ws1"); n != 0 {
 		t.Fatalf("after delete, ws1 count = %d, want 0", n)
