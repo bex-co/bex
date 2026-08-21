@@ -14,6 +14,9 @@ describe("mobile configuration", () => {
     expect(appConfig.expo.ios.associatedDomains).toEqual([
       "applinks:dashboard.bex.co",
     ]);
+    // Only the invite deep link is a claimed HTTPS app link. The OAuth callback
+    // deliberately uses the private-use custom scheme (see config.ts / ADR012),
+    // so it is NOT an https intent filter here.
     expect(appConfig.expo.android.intentFilters).toEqual([
       {
         action: "VIEW",
@@ -23,18 +26,6 @@ describe("mobile configuration", () => {
             scheme: "https",
             host: "dashboard.bex.co",
             path: "/invite",
-          },
-        ],
-        category: ["BROWSABLE", "DEFAULT"],
-      },
-      {
-        action: "VIEW",
-        autoVerify: true,
-        data: [
-          {
-            scheme: "https",
-            host: "dashboard.bex.co",
-            path: "/oauth2redirect",
           },
         ],
         category: ["BROWSABLE", "DEFAULT"],
