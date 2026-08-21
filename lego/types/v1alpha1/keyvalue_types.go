@@ -120,6 +120,20 @@ type KeyValueSpec struct {
 	EnvironmentIPAllowList []string `json:"environmentIPAllowList,omitempty"`
 }
 
+// DefaultKeyValueVersion is the major Valkey version used when a KeyValue does
+// not pin a version. Keep this alongside the CRD contract so API projections
+// and the operator agree on what the running default represents.
+const DefaultKeyValueVersion = "8"
+
+// EffectiveVersion returns the requested Valkey major version, or the
+// operator's default when the request left it unspecified.
+func (s KeyValueSpec) EffectiveVersion() string {
+	if s.Version != "" {
+		return s.Version
+	}
+	return DefaultKeyValueVersion
+}
+
 // KeyValuePhase mirrors the provisioning lifecycle.
 // +kubebuilder:validation:Enum=Pending;Provisioning;Ready;Failed
 type KeyValuePhase string

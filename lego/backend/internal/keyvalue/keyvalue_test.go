@@ -67,6 +67,22 @@ func TestKeyValueViewReportsDeletingWhileFinalizerHoldsResource(t *testing.T) {
 	}
 }
 
+func TestKeyValueViewReportsEffectiveDefaultVersion(t *testing.T) {
+	defaultVersion := kvView(&appv1alpha1.KeyValue{
+		Spec: appv1alpha1.KeyValueSpec{Version: ""},
+	}).Version
+	if defaultVersion != appv1alpha1.DefaultKeyValueVersion {
+		t.Fatalf("empty KeyValue version = %q, want %q", defaultVersion, appv1alpha1.DefaultKeyValueVersion)
+	}
+
+	explicitVersion := kvView(&appv1alpha1.KeyValue{
+		Spec: appv1alpha1.KeyValueSpec{Version: "7"},
+	}).Version
+	if explicitVersion != "7" {
+		t.Fatalf("explicit KeyValue version = %q, want 7", explicitVersion)
+	}
+}
+
 func serveREST(svc *Service, method, path, body string) *httptest.ResponseRecorder {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)

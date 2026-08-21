@@ -124,7 +124,7 @@ func resolveKVPlan(spec appv1alpha1.KeyValueSpec) (tiers.ValkeyTier, int32) {
 // TestValkeyImagesArePinnedForEveryPermittedVersion.
 var kvVersionImages = map[string]string{
 	"7": "valkey/valkey:7-alpine@sha256:211d9cb02395987d3740b11fdbb7be0cb66c5f36a065640ce5753c933700d6cc",
-	"8": kvDefaultImage,
+	appv1alpha1.DefaultKeyValueVersion: kvDefaultImage,
 }
 
 // valkeyImage resolves the Valkey image for a major version; empty => the

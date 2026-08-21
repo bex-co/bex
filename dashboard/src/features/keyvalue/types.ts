@@ -15,7 +15,7 @@ export interface KeyValueView {
   status: string;
   /** Plan spelling from the tiers catalog (e.g. "free"), or null. */
   plan: string | null;
-  /** Valkey version, or null when the operator default was used. */
+  /** Effective Valkey major version, including the operator default. */
   version: string | null;
   createdAt: string | null;
   /** Authoritative last resource mutation time; absent on legacy fixtures. */
