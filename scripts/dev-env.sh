@@ -369,7 +369,9 @@ cmd_up() {
   render "$TEMPLATES/values/kratos.values.yaml" >"$ENVDIR/.rendered-kratos.values.yaml"
   render "$TEMPLATES/values/hydra.values.yaml" >"$ENVDIR/.rendered-hydra.values.yaml"
   helm upgrade --install kratos ory/kratos --version 0.62.1 -n "$DEV_AUTH_NS" \
-    -f deploy/gitops/base/values/kratos.values.yaml -f "$ENVDIR/.rendered-kratos.values.yaml" --wait --timeout 5m
+    -f deploy/gitops/base/values/kratos.values.yaml \
+    -f deploy/gitops/base/values/kratos-email-templates.values.yaml \
+    -f "$ENVDIR/.rendered-kratos.values.yaml" --wait --timeout 5m
   helm upgrade --install hydra ory/hydra --version 0.62.1 -n "$DEV_AUTH_NS" \
     -f deploy/gitops/base/values/hydra.values.yaml -f "$ENVDIR/.rendered-hydra.values.yaml" --wait --timeout 5m
 

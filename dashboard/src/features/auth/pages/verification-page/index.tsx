@@ -2,7 +2,8 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { FlowType } from "@ory/client-fetch";
 import { Verification } from "@ory/elements-react/theme";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
-import { useOryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
+import { useOryConfig } from "@/common/lib/ory/config";
+import { oryAuthFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { safeNext } from "@/common/lib/safe-next";
 import { takeAuthNext } from "@/features/auth/lib/auth-next";
 import { Skeleton } from "@/common/components/ui/skeleton";
@@ -39,7 +40,10 @@ export default function VerificationPage() {
         <Verification
           flow={flow}
           config={oryConfig}
-          components={oryHideCardLogo}
+          // oryAuthFormOverrides (not just the logo hide): brings the shared
+          // input chrome AND the OTP code input that auto-submits on the
+          // 6th digit (auth-form-overrides.tsx OtpCodeInput).
+          components={oryAuthFormOverrides}
           onSuccess={(event) => {
             // onSuccess fires on every accepted submit — sending the address
             // (state "sent_email") as well as the final code. Only the code
