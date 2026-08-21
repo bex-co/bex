@@ -1,7 +1,8 @@
 import { useSearch } from "@tanstack/react-router";
 import { Registration } from "@ory/elements-react/theme";
 import { useOryFlow, clearStoredOryFlow } from "@/common/hooks/use-ory-flow";
-import { useOryConfig, oryHideCardLogo } from "@/common/lib/ory/config";
+import { useOryConfig } from "@/common/lib/ory/config";
+import { oryAuthFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { stashAuthNext } from "@/features/auth/lib/auth-next";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -27,7 +28,7 @@ export default function RegisterPage() {
         <Registration
           flow={flow}
           config={oryConfig}
-          components={oryHideCardLogo}
+          components={oryAuthFormOverrides}
           onSuccess={() => {
             clearStoredOryFlow("registration");
             // ADR075 D3/D8 (w6/m42, revised 2026-08-20): registration mints a
