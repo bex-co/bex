@@ -2460,9 +2460,45 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "新建服务",
     description: "Create-wizard page title",
   },
-  "services.createDescription": {
+  "services.createWebTitle": {
+    message: "新建 Web 服务",
+    description:
+      "Create-wizard page title when the web_service type is selected",
+  },
+  "services.createWebDescription": {
     message: "从 Git 仓库或 Docker 镜像部署 Web 服务。",
-    description: "Create-wizard page subtitle",
+    description:
+      "Create-wizard page subtitle when the web_service type is selected",
+  },
+  "services.createPrivateTitle": {
+    message: "新建私有服务",
+    description:
+      "Create-wizard page title when the private_service type is selected",
+  },
+  "services.createPrivateDescription": {
+    message: "从 Git 仓库或 Docker 镜像部署私有服务。",
+    description:
+      "Create-wizard page subtitle when the private_service type is selected",
+  },
+  "services.createWorkerTitle": {
+    message: "新建后台工作进程",
+    description:
+      "Create-wizard page title when the background_worker type is selected",
+  },
+  "services.createWorkerDescription": {
+    message: "从 Git 仓库或 Docker 镜像部署后台工作进程。",
+    description:
+      "Create-wizard page subtitle when the background_worker type is selected",
+  },
+  "services.createStaticTitle": {
+    message: "新建静态站点",
+    description:
+      "Create-wizard page title when the static_site type is selected",
+  },
+  "services.createStaticDescription": {
+    message: "从 Git 仓库构建并部署静态站点。",
+    description:
+      "Create-wizard page subtitle when the static_site type is selected",
   },
   "services.createCronTitle": {
     message: "新建定时任务",

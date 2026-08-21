@@ -1,3 +1,4 @@
+import { servesHttp } from "@/features/services/lib/service-type";
 import type { ServicesQuery, ServerQuery } from "@/graphql/definitions";
 import type {
   ServiceView,
@@ -167,6 +168,8 @@ export function toServiceViews(
     .map(toServiceView);
 }
 
+const PENDING: ServiceStatus = { key: "pending", variant: "outline" };
+
 // Each operator phase maps to a status key + badge variant. Keyed on the
 // lower-cased phase so a change in the operator's casing can't silently fall
 // through to "unknown".
@@ -174,7 +177,7 @@ const PHASE_STATUS: Record<string, ServiceStatus> = {
   running: { key: "running", variant: "default" },
   deploying: { key: "deploying", variant: "outline" },
   building: { key: "building", variant: "outline" },
-  pending: { key: "pending", variant: "outline" },
+  pending: PENDING,
   // Phase Hibernated reached here means the App auto-slept (idle past its TTL):
   // manual suspend is caught earlier by deriveStatus (suspension wins), so a
   // Hibernated App that is NOT suspended is a free-tier sleeper — shown as
@@ -190,7 +193,13 @@ const PHASE_STATUS: Record<string, ServiceStatus> = {
  */
 export function deriveStatus(s: ServiceView): ServiceStatus {
   if (s.suspended) return { key: "suspended", variant: "secondary" };
-  const status = PHASE_STATUS[s.phase.toLowerCase()];
+  const phase = s.phase.toLowerCase();
+  // A type with no HTTP port never auto-sleeps — no request could reach it to
+  // wake it — so Hibernated there is the transient window of a resume, not a
+  // sleeper. Reporting "wakes on the next request" would be a promise nothing
+  // can keep.
+  if (phase === "hibernated" && !servesHttp(s.type)) return PENDING;
+  const status = PHASE_STATUS[phase];
   if (status) return status;
   return { key: "unknown", variant: "outline" };
 }
@@ -198,6 +207,7 @@ export function deriveStatus(s: ServiceView): ServiceStatus {
 /**
  * True when the App is auto-sleeping (free-tier, idle past its TTL) rather than
  * manually suspended — the state that gets the "wakes on the next request" hint.
+ * Never true for a type that serves no HTTP, which cannot be woken by a request.
  */
 export function isSleeping(s: ServiceView): boolean {
   return deriveStatus(s).key === "sleeping";

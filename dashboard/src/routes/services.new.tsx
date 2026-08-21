@@ -46,18 +46,21 @@ import {
   buildShape,
   isSubmittable,
 } from "@/features/services/lib/create-service-input";
-import { parseNewServiceSearch } from "@/features/services/lib/create-context";
+import {
+  parseNewServiceSearch,
+  serviceTypeCreateCopy,
+} from "@/features/services/lib/create-context";
 
 export const Route = createFileRoute("/services/new")({
   staticData: { chrome: true },
   component: NewServicePage,
   beforeLoad: requireAuth(),
   validateSearch: parseNewServiceSearch,
+  // Same resolver as the on-page heading, so tab title and <h1> always agree —
+  // including on a bare /services/new, where both fall to DEFAULT_SERVICE_TYPE.
   head: ({ match }) =>
     translatedTitleHead(
-      match.search?.type === "cron_job"
-        ? "services.createCronTitle"
-        : "services.createTitle",
+      serviceTypeCreateCopy(match.search?.type).titleKey,
       match,
     ),
 });
@@ -71,6 +74,7 @@ export function NewServicePage() {
   const { form, set, setTab, build, name, instanceTypes } =
     useNewServiceForm(search);
   const shape = buildShape(form);
+  const createCopy = serviceTypeCreateCopy(form.serviceType);
 
   const scheduleError =
     shape.isCronType &&
@@ -106,21 +110,9 @@ export function NewServicePage() {
           <Card>
             <CardHeader>
               <CardTitle>
-                <h1 className="text-xl">
-                  {t(
-                    shape.isCronType
-                      ? "services.createCronTitle"
-                      : "services.createTitle",
-                  )}
-                </h1>
+                <h1 className="text-xl">{t(createCopy.titleKey)}</h1>
               </CardTitle>
-              <CardDescription>
-                {t(
-                  shape.isCronType
-                    ? "services.createCronDescription"
-                    : "services.createDescription",
-                )}
-              </CardDescription>
+              <CardDescription>{t(createCopy.descriptionKey)}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-3">
@@ -144,6 +136,7 @@ export function NewServicePage() {
                   registryCredentialId: form.registryCredentialId,
                   onRegistryCredentialChange: (registryCredentialId) =>
                     set({ registryCredentialId }),
+                  showPortHint: shape.showPortHint,
                 }}
               />
 
