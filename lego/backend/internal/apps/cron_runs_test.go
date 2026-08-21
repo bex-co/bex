@@ -126,6 +126,58 @@ func TestCronRunReadFailuresAndLastSuccessfulRun(t *testing.T) {
 	}
 }
 
+// TestCronNextRunAt covers w9/056: the computed next scheduled fire time (a bex
+// extension), consistent across the view, REST cronJobDetails, and GraphQL, and
+// omitted for a suspended cron, a non-cron service, and an invalid schedule.
+func TestCronNextRunAt(t *testing.T) {
+	// A cron on */5 * * * * at 12:02:10 next fires at 12:05:00 (UTC).
+	svc, _ := newService(nil, cronWithRuns("nightly"), sampleApp("web"))
+	svc.Clock = func() time.Time { return time.Date(2026, 7, 14, 12, 2, 10, 0, time.UTC) }
+
+	view, err := svc.Get(context.Background(), "nightly")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	const wantNext = "2026-07-14T12:05:00Z"
+	if view.NextRunAt != wantNext {
+		t.Fatalf("view.NextRunAt = %q, want %q", view.NextRunAt, wantNext)
+	}
+	if got := toRenderService(view).ServiceDetails["nextRunAt"]; got != wantNext {
+		t.Errorf("cronJobDetails.nextRunAt = %v, want %q", got, wantNext)
+	}
+
+	// A non-cron service carries no next-run.
+	web, err := svc.Get(context.Background(), "web")
+	if err != nil {
+		t.Fatalf("Get web: %v", err)
+	}
+	if web.NextRunAt != "" {
+		t.Errorf("non-cron NextRunAt = %q, want empty", web.NextRunAt)
+	}
+}
+
+// TestCronNextRunAtSuspendedAndInvalid confirms the two omission paths: a
+// suspended cron (its CronJob is paused, so there is no next run) and a cron
+// whose stored schedule does not parse.
+func TestCronNextRunAtSuspendedAndInvalid(t *testing.T) {
+	suspended := cronApp("paused")
+	suspended.Spec.Suspended = true
+	invalid := cronApp("broken")
+	invalid.Spec.Schedule = "99 99 * * *" // a legacy/hand-edited unparseable schedule
+	svc, _ := newService(nil, suspended, invalid)
+	svc.Clock = func() time.Time { return time.Date(2026, 7, 14, 12, 2, 10, 0, time.UTC) }
+
+	for _, name := range []string{"paused", "broken"} {
+		view, err := svc.Get(context.Background(), name)
+		if err != nil {
+			t.Fatalf("Get %s: %v", name, err)
+		}
+		if view.NextRunAt != "" {
+			t.Errorf("%s NextRunAt = %q, want empty", name, view.NextRunAt)
+		}
+	}
+}
+
 func TestCancelCronRunRecordsIntentAndRejectsTerminal(t *testing.T) {
 	fixed := time.Date(2026, 7, 14, 12, 4, 5, 123, time.UTC)
 	svc, cl := newService(nil, cronWithRuns("nightly"))

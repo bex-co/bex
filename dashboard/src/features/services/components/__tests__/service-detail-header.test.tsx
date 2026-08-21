@@ -306,6 +306,40 @@ describe("ServiceDetailHeader", () => {
     expect(screen.queryByText("https://app.onbex.co")).not.toBeInTheDocument();
   });
 
+  it("shows a cron job's last and next run when present", async () => {
+    renderHeader(
+      svc({
+        type: "cron_job",
+        url: null,
+        schedule: "*/5 * * * *",
+        plan: null,
+        lastSuccessfulRunAt: "2020-01-01T00:00:00Z", // long past → some age
+        nextRunAt: new Date(Date.now() + 5 * 60_000).toISOString(), // ~in 5m
+      }),
+    );
+
+    expect(await screen.findByText("Last run:")).toBeInTheDocument();
+    expect(screen.getByText("Next run:")).toBeInTheDocument();
+    expect(screen.getByText(/^in \d+m$/)).toBeInTheDocument();
+  });
+
+  it("omits last/next run rows when the cron has never run and has no next time", async () => {
+    renderHeader(
+      svc({
+        type: "cron_job",
+        url: null,
+        schedule: "*/5 * * * *",
+        plan: null,
+        lastSuccessfulRunAt: null,
+        nextRunAt: null,
+      }),
+    );
+
+    expect(await screen.findByText("Cron Job")).toBeInTheDocument();
+    expect(screen.queryByText("Last run:")).not.toBeInTheDocument();
+    expect(screen.queryByText("Next run:")).not.toBeInTheDocument();
+  });
+
   it("deploys the latest commit directly from the Manual Deploy dropdown", async () => {
     const user = userEvent.setup();
     renderHeader(svc());

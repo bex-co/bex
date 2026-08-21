@@ -2788,6 +2788,7 @@ export type Service = {
   maintenanceMode: MaintenanceMode;
   maxShutdownDelaySeconds: Maybe<Scalars["Int"]["output"]>;
   name: Maybe<Scalars["String"]["output"]>;
+  nextRunAt: Maybe<Scalars["String"]["output"]>;
   notificationsToSend: Maybe<Scalars["String"]["output"]>;
   notifyOnFail: Maybe<Scalars["String"]["output"]>;
   ownerId: Maybe<Scalars["String"]["output"]>;

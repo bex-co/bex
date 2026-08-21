@@ -367,6 +367,11 @@ type AppView struct {
 	// LastSuccessfulRunAt is Render's cronJobDetails.lastSuccessfulRunAt,
 	// derived from the newest successful status.runs entry.
 	LastSuccessfulRunAt string `json:"lastSuccessfulRunAt,omitempty"`
+	// NextRunAt is the next scheduled fire time of a cron_job (RFC3339 UTC),
+	// computed from spec.schedule with the same parser the Kubernetes CronJob
+	// controller uses. A bex extension (Render has no next-run field); omitted
+	// for a suspended cron, a non-cron service, or an unparseable schedule.
+	NextRunAt string `json:"nextRunAt,omitempty"`
 	// Plan is Render's public spelling of the App's tier (e.g. "pro_plus" for
 	// spec.tier "pro-plus"), sourced from lego/types/tiers. Omitted — not
 	// faked as "" — when spec.tier is empty or not a recognized tier, so a
@@ -860,6 +865,7 @@ func suspenders(suspended bool) []string {
 
 func (s *Service) view(a *appv1alpha1.App) AppView {
 	v := view(a)
+	v.NextRunAt = s.nextCronRunAt(a)
 	if v.URL == "" {
 		v.URL = s.pendingPublicURL(a)
 	}
@@ -995,6 +1001,25 @@ func lastSuccessfulCronRunAt(runs []appv1alpha1.CronRun) string {
 		}
 	}
 	return ""
+}
+
+// nextCronRunAt computes a cron_job's next scheduled fire time (RFC3339 UTC)
+// from spec.schedule, using the same parser the Kubernetes CronJob controller
+// evaluates the schedule with (cron.ParseStandard) so the projection matches
+// what the cluster will actually do. A bex extension — Render exposes no
+// next-run field. Empty for a non-cron service, a suspended cron (the CronJob
+// is paused, so there is no next run), an empty schedule, or one that does not
+// parse (which the create/update validation already refuses, but a legacy or
+// hand-edited App could still carry).
+func (s *Service) nextCronRunAt(a *appv1alpha1.App) string {
+	if effectiveType(a.Spec.Type) != appv1alpha1.TypeCronJob || a.Spec.Suspended {
+		return ""
+	}
+	sched, err := cron.ParseStandard(strings.TrimSpace(a.Spec.Schedule))
+	if err != nil {
+		return ""
+	}
+	return sched.Next(s.Now().UTC()).UTC().Format(time.RFC3339)
 }
 
 // List returns the caller's Apps, optionally narrowed to a single owning

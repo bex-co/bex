@@ -67,7 +67,7 @@ type DeployProgressSource func(ctx context.Context, resource string, end time.Ti
 // (those arrive as real BuildKit stdout once the pod runs). `deactivated`
 // keeps its live line: finished_at records when this deploy went live; its
 // later replacement is outside this deploy's own story.
-func progressLines(d DeployProgress, repo, branch string) []LogEntry {
+func progressLines(d DeployProgress, repo, branch, serviceType string) []LogEntry {
 	repoBacked := repo != ""
 	var out []LogEntry
 	add := func(t time.Time, msg string) {
@@ -107,7 +107,7 @@ func progressLines(d DeployProgress, repo, branch string) []LogEntry {
 		}
 	}
 	if !d.FinishedAt.IsZero() {
-		if msg := terminalLine(d.Status); msg != "" {
+		if msg := terminalLine(d.Status, serviceType); msg != "" {
 			add(d.FinishedAt, msg)
 		}
 	}
@@ -115,10 +115,16 @@ func progressLines(d DeployProgress, repo, branch string) []LogEntry {
 }
 
 // terminalLine maps a terminal deploy status to its closing line; "" for the
-// open states (no line yet) and unknown values (never invent an outcome).
-func terminalLine(status string) string {
+// open states (no line yet) and unknown values (never invent an outcome). A
+// cron_job runs its command to completion on a schedule — it is never a served
+// "live" service — so a successful deploy narrates that it is scheduled, not
+// live (background workers keep the "live" line: they run continuously).
+func terminalLine(status, serviceType string) string {
 	switch status {
 	case "live", "deactivated":
+		if serviceType == "cron_job" {
+			return "==> Cron job deployed — runs on schedule 🎉"
+		}
 		return "==> Your service is live 🎉"
 	case "build_failed":
 		return "==> Build failed"
@@ -139,7 +145,7 @@ func terminalLine(status string) string {
 // read (narration must never break a log query), and it runs only on the
 // store-backed path — a missing Loki still reports buildStoreUnavailable, so
 // platform lines never masquerade as a successful empty build history.
-func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource, repo, branch string, entries []LogEntry) []LogEntry {
+func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource, repo, branch, serviceType string, entries []LogEntry) []LogEntry {
 	if s.DeployProgress == nil || !slices.Contains(q.Types, LogTypeBuild) {
 		return entries
 	}
@@ -157,7 +163,7 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource, 
 		if !q.keepPod(d.ID) {
 			continue
 		}
-		for _, e := range progressLines(d, repo, branch) {
+		for _, e := range progressLines(d, repo, branch, serviceType) {
 			if q.keep(e) {
 				merged = append(merged, e)
 			}
@@ -174,21 +180,22 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource, 
 // emitted, so subscribe-time catch-up, wait-loop transitions, and the
 // post-stream terminal check each emit a line exactly once.
 type progressFollower struct {
-	s        *Service
-	q        LogQuery
-	resource string
-	repo     string
-	branch   string
-	emitted  map[string]bool
+	s           *Service
+	q           LogQuery
+	resource    string
+	repo        string
+	branch      string
+	serviceType string
+	emitted     map[string]bool
 }
 
 // newProgressFollower returns nil when no source is wired — every method is
 // nil-safe, so the tail path stays a straight line.
-func (s *Service) newProgressFollower(q LogQuery, resource, repo, branch string) *progressFollower {
+func (s *Service) newProgressFollower(q LogQuery, resource, repo, branch, serviceType string) *progressFollower {
 	if s.DeployProgress == nil {
 		return nil
 	}
-	return &progressFollower{s: s, q: q, resource: resource, repo: repo, branch: branch, emitted: map[string]bool{}}
+	return &progressFollower{s: s, q: q, resource: resource, repo: repo, branch: branch, serviceType: serviceType, emitted: map[string]bool{}}
 }
 
 // emitReached sends every not-yet-emitted line the newest deploy row has
@@ -206,7 +213,7 @@ func (f *progressFollower) emitReached(ctx context.Context, emit func(LogEntry) 
 	if !f.q.keepPod(d.ID) {
 		return nil
 	}
-	for _, e := range progressLines(d, f.repo, f.branch) {
+	for _, e := range progressLines(d, f.repo, f.branch, f.serviceType) {
 		// logID is the adapters' stable line identity — reusing it here keeps
 		// the follower's dedupe in lockstep with what clients see.
 		key := logID(e)

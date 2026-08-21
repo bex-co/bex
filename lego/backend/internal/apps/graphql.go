@@ -372,6 +372,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			Resolve: gqlutil.Field(func(a AppView) any { return a.Runs }),
 		},
 		"lastSuccessfulRunAt": gqlutil.StrField(func(a AppView) any { return a.LastSuccessfulRunAt }),
+		// nextRunAt is a bex extension (Render has no next-run field): the cron's
+		// next scheduled fire time (computed), empty for a suspended/non-cron.
+		"nextRunAt": gqlutil.StrField(func(a AppView) any { return a.NextRunAt }),
 		// ownerId mirrors Render's REST/MCP workspace-scoping field (w6/m2/t004).
 		"ownerId":       gqlutil.StrField(func(a AppView) any { return a.OwnerID }),
 		"projectId":     gqlutil.StrField(func(a AppView) any { return a.ProjectID }),

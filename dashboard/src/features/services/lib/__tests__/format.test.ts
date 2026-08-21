@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   formatRelativeAge,
+  formatRelativeUntil,
   commandPromptPrefix,
 } from "@/features/services/lib/format";
 
@@ -45,5 +46,33 @@ describe("formatRelativeAge", () => {
   it("never returns a negative age for a future timestamp", () => {
     const future = new Date(now + 60_000).toISOString();
     expect(formatRelativeAge(future, now)).toBe("now");
+  });
+});
+
+describe("formatRelativeUntil", () => {
+  const now = Date.parse("2026-07-06T00:00:00Z");
+  const until = (ms: number) => new Date(now + ms).toISOString();
+  const SEC = 1000,
+    MIN = 60 * SEC,
+    HOUR = 60 * MIN,
+    DAY = 24 * HOUR;
+
+  it("renders compact 'in N' units for a future cron run", () => {
+    expect(formatRelativeUntil(until(5 * MIN), now)).toBe("in 5m");
+    expect(formatRelativeUntil(until(3 * HOUR), now)).toBe("in 3h");
+    expect(formatRelativeUntil(until(2 * DAY), now)).toBe("in 2d");
+  });
+
+  it("collapses an imminent or past run to 'now'", () => {
+    expect(formatRelativeUntil(until(30 * SEC), now)).toBe("now");
+    expect(formatRelativeUntil(new Date(now - 60_000).toISOString(), now)).toBe(
+      "now",
+    );
+  });
+
+  it("returns an em dash for missing or unparseable input", () => {
+    expect(formatRelativeUntil(null, now)).toBe("—");
+    expect(formatRelativeUntil(undefined, now)).toBe("—");
+    expect(formatRelativeUntil("not-a-date", now)).toBe("—");
   });
 });

@@ -79,6 +79,18 @@ export interface ServiceView {
    */
   command: string | null;
   /**
+   * When a `cron_job` last completed successfully (RFC3339, Render's
+   * `cronJobDetails.lastSuccessfulRunAt`); null when it has never succeeded or
+   * for other types. Only the detail `server` query selects it.
+   */
+  lastSuccessfulRunAt?: string | null;
+  /**
+   * A `cron_job`'s next scheduled fire time (RFC3339 UTC, a bex extension
+   * computed from the schedule); null for a suspended/non-cron service or an
+   * unparseable schedule. Only the detail `server` query selects it.
+   */
+  nextRunAt?: string | null;
+  /**
    * A `cron_job`'s recent run history (newest first), only selected by the detail
    * `server` query. Empty for other types / when not selected.
    */

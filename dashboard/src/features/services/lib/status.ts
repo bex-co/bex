@@ -54,6 +54,9 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     idleTTLSeconds: s.idleTTLSeconds ?? null,
     schedule: "schedule" in s ? (s.schedule ?? null) : null,
     command: "command" in s ? (s.command ?? null) : null,
+    lastSuccessfulRunAt:
+      "lastSuccessfulRunAt" in s ? (s.lastSuccessfulRunAt ?? null) : null,
+    nextRunAt: "nextRunAt" in s ? (s.nextRunAt ?? null) : null,
     runs: "runs" in s ? toCronRuns(s.runs) : [],
     repo: "repo" in s ? (s.repo ?? null) : null,
     branch: "branch" in s ? (s.branch ?? null) : null,

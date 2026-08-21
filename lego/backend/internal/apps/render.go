@@ -112,7 +112,8 @@ type renderService struct {
 	Command             string        `json:"command,omitempty"`
 	Runs                []CronRunView `json:"runs,omitempty"`
 	LastSuccessfulRunAt string        `json:"lastSuccessfulRunAt,omitempty"`
-	IdleTTLSeconds      int32         `json:"idleTTLSeconds"` // free-tier auto-sleep window (bex extension; 0 = default)
+	NextRunAt           string        `json:"nextRunAt,omitempty"` // bex extension: next scheduled cron run (computed)
+	IdleTTLSeconds      int32         `json:"idleTTLSeconds"`      // free-tier auto-sleep window (bex extension; 0 = default)
 	// RootDir is the subdirectory of the repo this service builds from (Render's
 	// Root Directory setting, monorepo support). Empty is the repo root.
 	RootDir string `json:"rootDir,omitempty"`
@@ -269,6 +270,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		Command:               a.Command,
 		Runs:                  a.Runs,
 		LastSuccessfulRunAt:   a.LastSuccessfulRunAt,
+		NextRunAt:             a.NextRunAt,
 		IdleTTLSeconds:        a.IdleTTLSeconds,
 		RootDir:               a.RootDir,
 		BuildFilter:           a.BuildFilter,
@@ -303,6 +305,7 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 		{"schedule", a.Schedule},                       // cronJobDetails.schedule (render-public-api-1.json)
 		{"command", a.Command},                         // cronJobDetails.command (render-public-api-1.json)
 		{"lastSuccessfulRunAt", a.LastSuccessfulRunAt}, // cronJobDetails.lastSuccessfulRunAt
+		{"nextRunAt", a.NextRunAt},                     // bex extension: next scheduled cron run (computed)
 		{"publishPath", a.PublishPath},                 // staticSiteDetails.publishPath (render-public-api-1.json)
 		{"preDeployCommand", a.PreDeployCommand},       // webServiceDetails.preDeployCommand (w1/m33)
 		{"initialDeployHook", a.InitialDeployHook},     // w2/m45: blueprint-only one-time first-deploy command

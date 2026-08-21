@@ -29,7 +29,10 @@ import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key"
 import { ManualDeployButton } from "@/features/services/components/manual-deploy-button";
 import { ServiceStatusBadge } from "@/features/services/components/service-status-badge";
 import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
-import { formatRelativeAge } from "@/features/services/lib/format";
+import {
+  formatRelativeAge,
+  formatRelativeUntil,
+} from "@/features/services/lib/format";
 import { formatRepoLabel, repoBrowseUrl } from "@/features/services/lib/repo";
 import {
   deriveServiceType,
@@ -196,12 +199,30 @@ export function ServiceDetailHeader({
         ) : null}
 
         {isCron(service) ? (
-          <div className="text-muted-foreground flex items-center gap-1.5">
-            <span>{t("services.headerSchedule")}</span>
-            <span className="text-foreground font-mono text-xs">
-              {service.schedule || "—"}
-            </span>
-          </div>
+          <>
+            <div className="text-muted-foreground flex items-center gap-1.5">
+              <span>{t("services.headerSchedule")}</span>
+              <span className="text-foreground font-mono text-xs">
+                {service.schedule || "—"}
+              </span>
+            </div>
+            {service.lastSuccessfulRunAt ? (
+              <div className="text-muted-foreground flex items-center gap-1.5">
+                <span>{t("services.headerLastRun")}</span>
+                <span className="text-foreground text-xs">
+                  {formatRelativeAge(service.lastSuccessfulRunAt)}
+                </span>
+              </div>
+            ) : null}
+            {service.nextRunAt ? (
+              <div className="text-muted-foreground flex items-center gap-1.5">
+                <span>{t("services.headerNextRun")}</span>
+                <span className="text-foreground text-xs">
+                  {formatRelativeUntil(service.nextRunAt)}
+                </span>
+              </div>
+            ) : null}
+          </>
         ) : isPrivateService(service) && service.internalAddress ? (
           // A private service has no public URL — Render's header shows its
           // Service Address (the private-network `<slug>:<port>`) as copyable
