@@ -1,5 +1,19 @@
 export const MOBILE_CLIENT_ID = "bex-mobile";
-export const MOBILE_REDIRECT_URI = "https://dashboard.bex.co/oauth2redirect";
+// ACCEPTED-RISK / DO NOT "HARDEN" BACK TO AN HTTPS UNIVERSAL LINK.
+// The OAuth callback is a private-use custom scheme (RFC 8252, single slash),
+// not `https://dashboard.bex.co/oauth2redirect`. This is a deliberate, reviewed
+// choice — see docs/ADR012-auth.md § "Mobile OAuth redirect (accepted risk)".
+// Why: an https universal link does NOT return to the app from inside
+// ASWebAuthenticationSession / Custom Tabs, and never fires in Expo Go or the
+// iOS Simulator; commit 9081fbdb switched to https to satisfy an audit but left
+// the AASA/assetlinks empty and added no dashboard /oauth2redirect route, which
+// dead-ended every fresh login at a 404. A custom scheme can in theory be
+// claimed by another app; we accept that residual risk (PKCE S256 + state +
+// nonce + exact-URI checks in session-validation.ts bound the exposure) in
+// exchange for a callback that actually works. If you must move to https, you
+// MUST first: populate the AASA/assetlinks, add a dashboard /oauth2redirect
+// route that bridges to a custom scheme, and re-test in a real signed build.
+export const MOBILE_REDIRECT_URI = "co.bex.mobile:/oauth2redirect";
 export const DEFAULT_OAUTH_AUDIENCE = "https://api.bex.co/mcp";
 
 export type MobileConfig = {

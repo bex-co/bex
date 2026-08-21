@@ -14,7 +14,7 @@ const config: MobileConfig = {
   oauthIssuer: "https://oauth.bex.co",
   oauthClientId: "bex-mobile",
   oauthAudience: "https://api.bex.co/mcp",
-  oauthRedirectUri: "https://dashboard.bex.co/oauth2redirect",
+  oauthRedirectUri: "co.bex.mobile:/oauth2redirect",
 };
 
 function tokens(accessToken: string, expiresAt: number): OAuthTokenSet {
@@ -121,7 +121,7 @@ describe("SessionManager", () => {
     await subject.restore();
 
     await subject.completeSignIn(
-      "https://dashboard.bex.co/oauth2redirect?code=one-time&state=bound",
+      "co.bex.mobile:/oauth2redirect?code=one-time&state=bound",
     );
 
     expect(subject.getState().status).toBe("signedIn");

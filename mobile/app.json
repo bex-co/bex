@@ -2,6 +2,7 @@
   "expo": {
     "name": "bex",
     "slug": "bex-mobile",
+    "scheme": ["bex", "co.bex.mobile"],
     "version": "0.1.0",
     "platforms": ["ios", "android"],
     "orientation": "default",
@@ -28,18 +29,6 @@
               "scheme": "https",
               "host": "dashboard.bex.co",
               "path": "/invite"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        },
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "dashboard.bex.co",
-              "path": "/oauth2redirect"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]

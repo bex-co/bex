@@ -27,6 +27,16 @@ import type {
 
 const AUTHORIZATION_MAX_AGE_MS = 10 * 60 * 1000;
 
+// OAuth scopes requested at authorize + refresh. `openid`/`offline_access` cover
+// identity and refresh; `bex.read`/`bex.write` are the granular API capabilities
+// bex-api mandates for every human OAuth token (docs/ADR012 §7, closed vocab
+// bex.read/write/sensitive). Without them the bex-mobile token authenticates but
+// every read (e.g. workspaces) fails the capability gate with insufficient_scope,
+// which surfaces as the "Workspace unavailable" screen. The bex-mobile Hydra
+// client is provisioned to grant exactly these (scripts/auth-bootstrap-client.sh).
+// Supervision is read + operate only; bex.sensitive is intentionally not requested.
+const OAUTH_SCOPES = ["openid", "offline_access", "bex.read", "bex.write"];
+
 function randomHex(bytes = 24): string {
   return Array.from(getRandomBytes(bytes), (value) =>
     value.toString(16).padStart(2, "0"),
@@ -149,7 +159,7 @@ export class ExpoOAuthTransport implements OAuthTransport {
       clientId: this.config.oauthClientId,
       redirectUri: this.config.oauthRedirectUri,
       responseType: ResponseType.Code,
-      scopes: ["openid", "offline_access"],
+      scopes: OAUTH_SCOPES,
       usePKCE: true,
       codeChallengeMethod: CodeChallengeMethod.S256,
       state,
@@ -286,7 +296,7 @@ export class ExpoOAuthTransport implements OAuthTransport {
         {
           clientId: this.config.oauthClientId,
           refreshToken,
-          scopes: ["openid", "offline_access"],
+          scopes: OAUTH_SCOPES,
         },
         discovery,
       );

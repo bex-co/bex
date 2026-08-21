@@ -22,7 +22,12 @@ cd "$(dirname "$0")/.."
 CLIENT_ID=bex-bootstrap
 RENDER_CLI_CLIENT_ID=429024F5E608930E2A65EF92591A25CC
 MOBILE_CLIENT_ID=bex-mobile
-MOBILE_REDIRECT_URI=https://dashboard.bex.co/oauth2redirect
+# ACCEPTED-RISK: private-use custom-scheme callback (RFC 8252, single slash), not
+# an https universal link. See mobile/src/features/auth/config.ts and ADR012 §
+# "Mobile OAuth redirect (accepted risk)". Do not switch back to https without
+# completing AASA/assetlinks + a dashboard /oauth2redirect bridge, or fresh
+# logins 404 (regression from commit 9081fbdb).
+MOBILE_REDIRECT_URI=co.bex.mobile:/oauth2redirect
 MOBILE_AUDIENCE="${BEX_OAUTH_RESOURCE:-https://api.bex.co/mcp}"
 DEVICE_GRANT=urn:ietf:params:oauth:grant-type:device_code
 NS="${BEX_AUTH_NAMESPACE:-auth}"
@@ -202,11 +207,12 @@ for lifespan_field in \
 done
 
 # ---- First-party native mobile client (ADR012 §8b) -------------------------
-# A store-distributed app cannot keep a client secret. The claimed HTTPS
-# universal/app link is exact and protected by the dashboard's generated
-# AASA/Asset Links documents; PKCE S256 is required on every authorization
-# by the dashboard consent gate.
-mobile_body="$(printf '{"client_id":"%s","client_name":"bex mobile (first-party native)","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["%s"],"audience":["%s"],"scope":"openid offline_access bex.read bex.write","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":false,"metadata":{"bex.co/platform-client":true}}' \
+# A store-distributed app cannot keep a client secret. The reverse-domain
+# private-use redirect is exact and single-slash per RFC 8252 (ACCEPTED-RISK:
+# not an https universal link — see MOBILE_REDIRECT_URI note above); PKCE S256
+# is required on every authorization. skip_consent=true: it is a first-party
+# app and the token still requires granular capabilities at bex-api.
+mobile_body="$(printf '{"client_id":"%s","client_name":"bex mobile (first-party native)","grant_types":["authorization_code","refresh_token"],"response_types":["code"],"redirect_uris":["%s"],"audience":["%s"],"scope":"openid offline_access bex.read bex.write","token_endpoint_auth_method":"none","subject_type":"public","skip_consent":true,"metadata":{"bex.co/platform-client":true}}' \
   "$MOBILE_CLIENT_ID" "$MOBILE_REDIRECT_URI" "$MOBILE_AUDIENCE")"
 mobile_code="$(printf '%s' "$mobile_body" | curl -s -o /dev/null -w '%{http_code}' -X PUT \
   -H 'Content-Type: application/json' -d @- "$REST_ADMIN/admin/clients/$MOBILE_CLIENT_ID")"
