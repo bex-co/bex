@@ -285,6 +285,12 @@ func main() {
 
 	setupAppReconciler(mgr, uncachedClient, cs, appsNamespace, cfg.baseDomain)
 	controller.RegisterClusterBuilderMetrics(uncachedClient)
+	// Datastore readiness (w7/036). A Database that never provisions is otherwise
+	// invisible: CNPG's metrics come from instance pods, so a Cluster that never
+	// got one exports nothing, and "nothing" is precisely the state worth paging
+	// on. Uncached, like the ClusterBuilder collector, so a scrape never depends
+	// on informer state.
+	controller.RegisterDatastoreMetrics(uncachedClient)
 
 	setupDatastoreReconcilers(mgr, uncachedClient, appsNamespace)
 	// +kubebuilder:scaffold:builder

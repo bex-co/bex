@@ -633,6 +633,31 @@ spec:
                       summary: "Zot registry PVC {{ $labels.persistentvolumeclaim }} is almost full"
                       description: "The Zot OCI registry PVC is >85% full or has <10 GiB available; new image pushes can fail with HTTP 500. Grow the PVC immediately and verify retention/GC is reclaiming old layers."
 
+                  # w7/036: a managed datastore that never provisions is the
+                  # platform's quietest failure. CNPG's metrics come from instance
+                  # pods, so a Cluster that never got one exports NOTHING — the
+                  # absence is the symptom. Two production RBAC defects hid in
+                  # exactly this gap and were found only by hand.
+                  - alert: DatastoreStuckProvisioning
+                    expr: bex_datastore_ready == 0 and on(kind, namespace, name) bex_datastore_age_seconds > 900
+                    for: 5m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "{{ $labels.kind }} {{ $labels.namespace }}/{{ $labels.name }} has not become ready (phase {{ $labels.phase }})"
+                      description: "A managed datastore has been in phase {{ $labels.phase }} for over 15 minutes. The tenant sees a resource that never arrives and nothing else reports it. Check the CR's status conditions first; if it names an RBAC forbidden error, compare the operator and barman-plugin grants against .pm/w7/036.md."
+                  # Observation must not fail silently: if the listing breaks, the
+                  # readiness series simply vanish, and an alert on == 0 would go
+                  # quiet exactly when it is blind.
+                  - alert: DatastoreObservationFailing
+                    expr: increase(bex_datastore_observe_errors_total[15m]) > 0
+                    for: 15m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Datastore readiness observation is failing"
+                      description: "bex_datastore_ready is incomplete, so DatastoreStuckProvisioning cannot be trusted. Check the operator's RBAC for databases/keyvalues and its API connectivity."
+
                   - alert: CertificateNotReady
                     expr: certmanager_certificate_ready_status{condition="True"} == 0
                     for: 15m

@@ -96,6 +96,8 @@ implementation serves every workstream since `w1/m72`; `.pm/w7/dev-7/` keeps onl
 
 > `027.md` promoted to **m81** 2026-08-17; `028.md` retired by **m84** 2026-08-19; both moved to `done/`.
 
+- `037.md` — **the official Render CLI is 403 on every operation in production** (`INSUFFICIENT_SCOPE: bex.read`). Credential is valid and the client carries the platform-client marker, so the capability exemption should fire and does not; the device flow also still requests only `openid offline_access`, so re-login likely does not fix it. Evidence + narrowing in the note.
+- `036.md` — no new managed Postgres could provision anywhere (RBAC delegation). **Fixed + shipped**; guard and alerts added.
 - `032.md` — the CNPG `Cluster` projection may still PUT every reconcile against a live CNPG mutating webhook; envtest uses a stub CRD and cannot see it. Measure with one `kubectl get cluster -o yaml` before scoping (w7/m84/t003 residual).
 - `033.md` — status-subresource convergence: the other half of m84, on the CR itself. Several terminals write status unconditionally (a settled cron App PUTs once a minute). ~30 sites, and envtest cannot judge it — milestone-shaped.
 - `034.md` — cron and manual-run containers pull `IfNotPresent` where the Deployment path deliberately pulls `Always` against mutable `gen-N` tags (codex-security #29). Pre-existing; the fix changes a stored template, so it is a decision.
