@@ -272,6 +272,38 @@ func TestRestServicesBatchesCredentialLookups(t *testing.T) {
 	}
 }
 
+// TestRestServicesScopesCredentialLookupByWorkspace proves the security-audit
+// run-1 hardening: registry-credential display-name enrichment is resolved
+// against each App's OWN workspace (OwnerID), never a shared unscoped lookup, so
+// a credential id can only ever resolve within its owning tenant.
+func TestRestServicesScopesCredentialLookupByWorkspace(t *testing.T) {
+	idA := "rgc-alpha"
+	idB := "rgc-beta"
+	rc := &fakePullSecrets{credNames: map[string]string{idA: "Alpha", idB: "Beta"}}
+	svc, _ := rcService(rc)
+	ctx := context.Background()
+
+	// Same workspace: one batch call, scoped to that workspace.
+	svc.restServices(ctx, []AppView{
+		{Name: "web-1", OwnerID: "tea-a", RegistryCredentialID: &idA},
+		{Name: "web-2", OwnerID: "tea-a", RegistryCredentialID: &idB},
+	})
+	if rc.resolveCalls != 1 || rc.lastResolveWorkspace != "tea-a" {
+		t.Fatalf("same-workspace: calls=%d lastWorkspace=%q, want 1 / tea-a", rc.resolveCalls, rc.lastResolveWorkspace)
+	}
+
+	// Different workspaces: one scoped call per workspace — a credential id is
+	// never resolved against a foreign tenant's set.
+	rc.resolveCalls = 0
+	svc.restServices(ctx, []AppView{
+		{Name: "web-1", OwnerID: "tea-a", RegistryCredentialID: &idA},
+		{Name: "web-2", OwnerID: "tea-b", RegistryCredentialID: &idB},
+	})
+	if rc.resolveCalls != 2 {
+		t.Fatalf("cross-workspace: calls=%d, want 2 (per-workspace scoping)", rc.resolveCalls)
+	}
+}
+
 func assertDockerBuildCredentialEcho(t *testing.T, raw []byte, want string) {
 	t.Helper()
 	var response serviceAndDeploy

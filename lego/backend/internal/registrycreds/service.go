@@ -52,7 +52,7 @@ type CredentialStore interface {
 	ListRegistryCredentials(ctx context.Context, workspaceID string) ([]store.RegistryCredential, error)
 	GetRegistryCredential(ctx context.Context, workspaceID, id string) (store.RegistryCredential, error)
 	GetRegistryCredentialByID(ctx context.Context, id string) (store.RegistryCredential, error)
-	GetRegistryCredentialsByIDs(ctx context.Context, ids []string) ([]store.RegistryCredential, error)
+	GetRegistryCredentialsByIDs(ctx context.Context, workspaceID string, ids []string) ([]store.RegistryCredential, error)
 	GetRegistryCredentialByHost(ctx context.Context, workspaceID, host string) (store.RegistryCredential, error)
 	UpdateRegistryCredential(ctx context.Context, workspaceID, id, name, username string, expiresAt *time.Time) (store.RegistryCredential, error)
 	TouchRegistryCredential(ctx context.Context, workspaceID, id string) error

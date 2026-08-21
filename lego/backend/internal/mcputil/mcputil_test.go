@@ -90,12 +90,14 @@ func TestAddToolCarriesTheCodeAgentsParse(t *testing.T) {
 	}
 }
 
-// TestAddToolLeavesPlainErrorsAlone keeps the wrap from decorating errors that
-// carry no code.
-func TestAddToolLeavesPlainErrorsAlone(t *testing.T) {
-	got := callTool(t, mcputil.AddTool[args, any], errors.New("plain failure"))
-	if got != "plain failure" {
-		t.Fatalf("plain error surfaced as %q, want %q", got, "plain failure")
+// TestAddToolRedactsUnclassifiedErrors verifies the wrap does not decorate an
+// unclassified error with a bogus code AND, per the security-audit run-1 parity
+// fix, redacts its raw text (which could carry pgx/Kubernetes internals) to a
+// generic message — matching WriteErr (REST) and the GraphQL sanitizer.
+func TestAddToolRedactsUnclassifiedErrors(t *testing.T) {
+	got := callTool(t, mcputil.AddTool[args, any], errors.New(`pq: constraint "x" host=10.0.0.5`))
+	if got != "internal error" {
+		t.Fatalf("unclassified error surfaced as %q, want %q", got, "internal error")
 	}
 }
 

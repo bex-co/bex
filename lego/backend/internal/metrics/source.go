@@ -252,8 +252,8 @@ func NewPrometheusResourceSource(base string, hc *http.Client) ResourceMetricsRa
 // "web" never matches a "web-api-…-…" pod. container!="" drops any
 // pod-sandbox/aggregate rows that survive the scrape-side relabeling.
 func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
-	matchers := fmt.Sprintf(`namespace=%q,pod=~"%s-[a-z0-9]+-[a-z0-9]{5}",container!=""`,
-		req.Namespace, egressquery.RegexEscape(req.App))
+	matchers := fmt.Sprintf(`namespace=%q,pod=~%q,container!=""`,
+		req.Namespace, fmt.Sprintf(`%s-[a-z0-9]+-[a-z0-9]{5}`, egressquery.RegexEscape(req.App)))
 	switch req.Metric {
 	case MetricMemory:
 		return fmt.Sprintf(`sum by (pod) (container_memory_working_set_bytes{%s})`, matchers)
@@ -273,13 +273,13 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 // routed here — it goes to the Loki request-metrics source instead (w5/m58); this
 // builder ignores RequestMetricsRequest.Host/Path.
 func promQueryFor(req RequestMetricsRequest) string {
-	selector := fmt.Sprintf(`service=~".*%s.*"`, egressquery.RegexEscape(req.App))
+	selector := fmt.Sprintf(`service=~%q`, ".*"+egressquery.RegexEscape(req.App)+".*")
 	if req.Metric == MetricBandwidth {
 		return egressquery.SumRates(egressquery.App(req.AppID, req.Routers, req.Direct), stepSeconds(req.Resolution))
 	}
 	sel := []string{selector}
 	if c := codeMatcher(req.StatusCode); c != "" {
-		sel = append(sel, fmt.Sprintf(`code=~"%s"`, c))
+		sel = append(sel, fmt.Sprintf(`code=~%q`, c))
 	}
 	matchers := strings.Join(sel, ",")
 	window := fmt.Sprintf("%ds", stepSeconds(req.Resolution))
@@ -545,7 +545,7 @@ func NewPrometheusFilterValuesSource(base string, hc *http.Client) MetricsFilter
 	}
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, _, app, label string) ([]string, error) {
-		match := fmt.Sprintf(`traefik_service_requests_total{service=~".*%s.*"}`, egressquery.RegexEscape(app))
+		match := fmt.Sprintf(`traefik_service_requests_total{service=~%q}`, ".*"+egressquery.RegexEscape(app)+".*")
 		u := fmt.Sprintf("%s/api/v1/label/%s/values?%s", base, url.PathEscape(label), url.Values{"match[]": {match}}.Encode())
 
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)

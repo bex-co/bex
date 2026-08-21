@@ -433,13 +433,17 @@ func (s *Service) restServices(ctx context.Context, apps []AppView) []renderServ
 }
 
 // resolveCredentialNames collects the unique credential ids from apps and
-// resolves them in a single batch query (one IN(…) per page, not per app).
+// resolves them per owning workspace (one IN(…) batch per workspace, not per
+// app). Grouping by each App's OwnerID keeps the lookup workspace-scoped — a
+// credential id is only ever resolved against the workspace of the App that
+// references it, so display enrichment can never reach across tenants. In
+// practice a render is single-workspace, so this is one query.
 func (s *Service) resolveCredentialNames(ctx context.Context, apps []AppView) map[string]string {
 	if s.RegistryCreds == nil {
 		return nil
 	}
 	seen := make(map[string]struct{})
-	ids := make([]string, 0)
+	byWorkspace := make(map[string][]string)
 	for _, app := range apps {
 		if app.RegistryCredentialID == nil || *app.RegistryCredentialID == "" {
 			continue
@@ -449,9 +453,18 @@ func (s *Service) resolveCredentialNames(ctx context.Context, apps []AppView) ma
 			continue
 		}
 		seen[id] = struct{}{}
-		ids = append(ids, id)
+		byWorkspace[app.OwnerID] = append(byWorkspace[app.OwnerID], id)
 	}
-	return s.RegistryCreds.ResolveCredentialNames(ctx, ids)
+	if len(byWorkspace) == 0 {
+		return nil
+	}
+	out := make(map[string]string)
+	for workspaceID, ids := range byWorkspace {
+		for id, name := range s.RegistryCreds.ResolveCredentialNames(ctx, workspaceID, ids) {
+			out[id] = name
+		}
+	}
+	return out
 }
 
 func (s *Service) restService(ctx context.Context, app AppView) renderService {

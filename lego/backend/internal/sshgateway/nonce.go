@@ -79,6 +79,15 @@ func (g *NonceGuard) Consume(ctx context.Context, nonce string, exp, now time.Ti
 	defer cancel()
 	claimed, err := g.Store.ClaimShellNonce(claimCtx, nonce, exp)
 	if err != nil {
+		// The durable claim never resolved (a transient store error), so this
+		// nonce was NOT actually consumed. Roll back the in-memory mark, or a
+		// legitimate retry of the same ticket would be wedged on this replica for
+		// the ticket's whole TTL by the cheap first-line map. This attempt still
+		// fails closed; only the in-memory bookkeeping is undone. A genuine
+		// conflict (claimed=false, err=nil) keeps the mark — the nonce is spent.
+		g.mu.Lock()
+		delete(g.used, nonce)
+		g.mu.Unlock()
 		log.Printf("exec ticket nonce claim failed: %v", err)
 		return false
 	}

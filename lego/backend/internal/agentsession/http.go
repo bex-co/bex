@@ -19,6 +19,8 @@ package agentsession
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,13 +31,38 @@ import (
 
 const maxCredentialBody = 16 << 10
 
+// mintClockSkew bounds how far a signed mint request's timestamp may be from the
+// server clock. The nonce's durable claim is retained for twice this (the full
+// accept-then-replay window around issuance) so the single-use record always
+// outlives any request the signature would still accept.
+const mintClockSkew = 30 * time.Second
+
+// NonceClaimer is the durable single-use guard for internal mint requests. Its
+// production wiring is *store.PGStore.ClaimShellNonce — the same authoritative
+// INSERT…ON CONFLICT single-use table the gateway's ticket NonceGuard uses, so a
+// replayed mint request (identical timestamp+signature+body captured on the
+// internal hop) is rejected exactly once across every bex-api replica. A nil
+// claimer disables the check (store-off/dev; byte-identical to before the nonce
+// existed). The claim is domain-prefixed ("agent-mint:") so a mint nonce and a
+// gateway ticket nonce never collide in the shared table.
+type NonceClaimer interface {
+	ClaimShellNonce(ctx context.Context, nonce string, expiresAt time.Time) (bool, error)
+}
+
+// newNonce mints a 256-bit random single-use token for one mint request.
+func newNonce() string {
+	var b [32]byte
+	_, _ = rand.Read(b[:])
+	return hex.EncodeToString(b[:])
+}
+
 // serveSignedMint is the shared HMAC-authenticated mint HTTP envelope for every
 // gateway→bex-api credential verb (the Git and model flavors). It verifies the
 // signed request, unmarshals Req, runs the flavor's mint, and maps the domain
 // error to a status — so the skew window, body cap, and status mapping live in
 // exactly one place (backend/CLAUDE.md's anti-drift rule). A nil mint (an unwired
 // Minter) reports the feature unavailable.
-func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secret []byte, now time.Time, mint func(context.Context, Req) (Resp, error)) {
+func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secret []byte, now time.Time, claimer NonceClaimer, nonceOf func(Req) string, mint func(context.Context, Req) (Resp, error)) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -49,7 +76,7 @@ func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secr
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	if err := Verify(secret, body, r.Header.Get(TimestampHeader), r.Header.Get(SignatureHeader), now, 30*time.Second); err != nil {
+	if err := Verify(secret, body, r.Header.Get(TimestampHeader), r.Header.Get(SignatureHeader), now, mintClockSkew); err != nil {
 		http.Error(w, "invalid signature", http.StatusUnauthorized)
 		return
 	}
@@ -57,6 +84,26 @@ func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secr
 	if err := json.Unmarshal(body, &req); err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
+	}
+	// Single-use claim closes the replay window: a captured (timestamp,
+	// signature, body) presented again within ±skew carries the same body-bound
+	// nonce, so the second claim loses. Fail closed — an absent nonce (a
+	// pre-nonce caller) or a store error is rejected, never let through, so an
+	// on-path attacker cannot bypass by stripping the nonce. Only enforced when a
+	// claimer is wired (store present); nil is byte-identical to before.
+	if claimer != nil {
+		nonce := nonceOf(req)
+		if nonce == "" {
+			http.Error(w, "invalid signature", http.StatusUnauthorized)
+			return
+		}
+		claimCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		claimed, claimErr := claimer.ClaimShellNonce(claimCtx, "agent-mint:"+nonce, now.Add(2*mintClockSkew))
+		cancel()
+		if claimErr != nil || !claimed {
+			http.Error(w, "invalid signature", http.StatusUnauthorized)
+			return
+		}
 	}
 	response, err := mint(r.Context(), req)
 	if err != nil {
@@ -119,7 +166,10 @@ func postSignedMint[Req, Resp any](ctx context.Context, url string, secret []byt
 type Handler struct {
 	Secret []byte
 	Minter *Minter
-	Now    func() time.Time
+	// Nonce is the single-use replay guard (durable, cross-replica). Wired to the
+	// control-plane store in production; nil disables the check (dev/store-off).
+	Nonce NonceClaimer
+	Now   func() time.Time
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -127,7 +177,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.Minter != nil {
 		mint = h.Minter.Mint
 	}
-	serveSignedMint(w, r, h.Secret, h.now(), mint)
+	serveSignedMint(w, r, h.Secret, h.now(), h.Nonce, func(req MintRequest) string { return req.Nonce }, mint)
 }
 
 func (h *Handler) now() time.Time {
@@ -147,6 +197,7 @@ type Client struct {
 }
 
 func (c *Client) Mint(ctx context.Context, req MintRequest) (MintResponse, error) {
+	req.Nonce = newNonce()
 	return postSignedMint(ctx, c.URL, c.Secret, c.now(), c.HTTP, req, func(out MintResponse) bool { return out.Token != "" })
 }
 

@@ -181,12 +181,14 @@ func ParseModelProxyPath(path string) (namespace, sessionID, upstreamPath string
 
 // ModelMintRequest carries only the verified session identity — no repository or
 // branch (unlike the Git MintRequest); the model key is not repo-scoped. It
-// contains no credential.
+// contains no credential. Nonce is the per-request single-use replay guard (see
+// MintRequest.Nonce), bound by the HMAC because it rides inside the signed body.
 type ModelMintRequest struct {
 	SessionID string `json:"sessionId"`
 	Workspace string `json:"workspace"`
 	PodName   string `json:"podName"`
 	PodUID    string `json:"podUid"`
+	Nonce     string `json:"nonce,omitempty"`
 }
 
 // ModelMintResponse is the minimal model-credential response. It is always
@@ -337,7 +339,10 @@ func ResolveAuthScheme(host, credential string) string {
 type ModelHandler struct {
 	Secret []byte
 	Minter *ModelMinter
-	Now    func() time.Time
+	// Nonce is the single-use replay guard (durable, cross-replica). Wired to the
+	// control-plane store in production; nil disables the check (dev/store-off).
+	Nonce NonceClaimer
+	Now   func() time.Time
 }
 
 func (h *ModelHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -345,7 +350,7 @@ func (h *ModelHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.Minter != nil {
 		mint = h.Minter.Mint
 	}
-	serveSignedMint(w, r, h.Secret, h.now(), mint)
+	serveSignedMint(w, r, h.Secret, h.now(), h.Nonce, func(req ModelMintRequest) string { return req.Nonce }, mint)
 }
 
 func (h *ModelHandler) now() time.Time {
@@ -365,6 +370,7 @@ type ModelClient struct {
 }
 
 func (c *ModelClient) Mint(ctx context.Context, req ModelMintRequest) (ModelMintResponse, error) {
+	req.Nonce = newNonce()
 	return postSignedMint(ctx, c.URL, c.Secret, c.now(), c.HTTP, req,
 		func(out ModelMintResponse) bool { return out.Credential != "" && out.EndpointHost != "" })
 }

@@ -88,6 +88,9 @@ var (
 // MintRequest contains no credential. The gateway derives Workspace, PodName,
 // and PodUID from Kubernetes after matching the TCP source IP; the helper only
 // supplies the non-secret session/repository/branch values bound by pod labels.
+// Nonce is a per-request single-use token the client mints (Client.Mint) and the
+// server claims once, riding inside the signed body so it is bound by the HMAC —
+// it closes the ±skew replay window on this hop (security-audit run-1).
 type MintRequest struct {
 	SessionID  string `json:"sessionId"`
 	Workspace  string `json:"workspace"`
@@ -95,6 +98,7 @@ type MintRequest struct {
 	Branch     string `json:"branch"`
 	PodName    string `json:"podName"`
 	PodUID     string `json:"podUid"`
+	Nonce      string `json:"nonce,omitempty"`
 }
 
 // MintResponse is intentionally the minimal git credential response. It is
