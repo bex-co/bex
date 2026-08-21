@@ -43,8 +43,11 @@ type fakePullSecrets struct {
 	// credNames, when non-nil, backs ResolveCredentialNames batch lookups.
 	credNames map[string]string
 	// resolveCalls counts ResolveCredentialNames invocations.
-	resolveCalls        int
-	credentialIDsByName map[string]string
+	resolveCalls int
+	// lastResolveWorkspace records the workspace ResolveCredentialNames was
+	// scoped to (proves render enrichment stays within the App's own tenant).
+	lastResolveWorkspace string
+	credentialIDsByName  map[string]string
 }
 
 func (f *fakePullSecrets) FindCredentialIDByName(_ context.Context, _, name string) (string, bool, error) {
@@ -55,8 +58,9 @@ func (f *fakePullSecrets) FindCredentialIDByName(_ context.Context, _, name stri
 	return id, ok, nil
 }
 
-func (f *fakePullSecrets) ResolveCredentialNames(_ context.Context, ids []string) map[string]string {
+func (f *fakePullSecrets) ResolveCredentialNames(_ context.Context, workspaceID string, ids []string) map[string]string {
 	f.resolveCalls++
+	f.lastResolveWorkspace = workspaceID
 	out := make(map[string]string)
 	for _, id := range ids {
 		if f.credNames != nil {

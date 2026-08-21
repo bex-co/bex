@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"reflect"
 	"regexp"
@@ -267,9 +268,45 @@ func WriteErr(w http.ResponseWriter, err error) {
 		WriteJSON(w, code, map[string]any{"error": msg, "message": msg, "id": statusErrID(code), "code": ce.Code, "params": ce.Params})
 		return
 	}
+	// An unclassified failure — no domain-error sentinel matched, so code is
+	// still 500 — must not spill the raw error text: pgx and Kubernetes errors
+	// carry constraint names, connection strings, and internal paths. Log the
+	// real cause server-side (observability unchanged) and return a generic body.
+	// Every classified (public) error keeps its intended, safe message. The
+	// GraphQL surface shares IsPublicError so the two answer identically.
+	if !IsPublicError(err) {
+		log.Printf("bex-api: internal error: %v", err)
+		WriteErrStatus(w, http.StatusInternalServerError, "internal error")
+		return
+	}
 	// The plain path is exactly WriteErrStatus's envelope — delegate so the
 	// {"error","message","id"} literal lives in one place and can't drift.
 	WriteErrStatus(w, code, msg)
+}
+
+// IsPublicError reports whether err's message is safe to return to a client:
+// it carries a domain-error sentinel (the cases WriteErr maps to a 4xx/503) or
+// is a developer-authored CodedError. An error that is neither is an
+// unclassified internal failure (a raw pgx/Kubernetes error) whose text must be
+// replaced with a generic message. WriteErr (REST) and the GraphQL error
+// sanitizer share this so both surfaces redact the same set — one source of
+// truth for the redaction boundary.
+func IsPublicError(err error) bool {
+	var ce *CodedError
+	if errors.As(err, &ce) {
+		return true
+	}
+	switch {
+	case errors.Is(err, ErrNotFound),
+		errors.Is(err, ErrUnavailable),
+		errors.Is(err, ErrBadRequest),
+		errors.Is(err, ErrForbidden),
+		errors.Is(err, ErrConflict),
+		errors.Is(err, ErrBillingEnforced),
+		errors.Is(err, ErrPaymentRequired):
+		return true
+	}
+	return false
 }
 
 // WriteErrStatus writes an error response with an explicit status and message

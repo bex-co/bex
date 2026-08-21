@@ -25,6 +25,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 )
 
@@ -236,12 +237,24 @@ var _ interface {
 // idempotent so a handler that also wraps its own error cannot produce
 // "CODE: CODE: msg".
 func MCPError(err error) error {
+	if err == nil {
+		return nil
+	}
 	var coded *CodedError
 	if errors.As(err, &coded) {
 		if strings.HasPrefix(err.Error(), coded.Code+": ") {
 			return err
 		}
 		return fmt.Errorf("%s: %w", coded.Code, err)
+	}
+	// Parity with WriteErr (REST) and the GraphQL sanitizer: an unclassified
+	// internal failure must not spill its raw text (pgx/Kubernetes internals)
+	// into the tool result. Log the real cause and return a generic error; every
+	// sentinel-classified error keeps its message so the client still sees
+	// "not found"/"forbidden"/etc.
+	if !IsPublicError(err) {
+		log.Printf("bex-api mcp: internal error: %v", err)
+		return errors.New("internal error")
 	}
 	return err
 }

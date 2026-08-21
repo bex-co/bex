@@ -84,10 +84,10 @@ func (f *fakeStore) GetRegistryCredentialByID(_ context.Context, id string) (sto
 	return c, nil
 }
 
-func (f *fakeStore) GetRegistryCredentialsByIDs(_ context.Context, ids []string) ([]store.RegistryCredential, error) {
+func (f *fakeStore) GetRegistryCredentialsByIDs(_ context.Context, workspaceID string, ids []string) ([]store.RegistryCredential, error) {
 	var out []store.RegistryCredential
 	for _, id := range ids {
-		if c, ok := f.rows[id]; ok {
+		if c, ok := f.rows[id]; ok && (workspaceID == "" || c.WorkspaceID == workspaceID) {
 			out = append(out, c)
 		}
 	}

@@ -1057,12 +1057,24 @@ func uniqueMatching[T any](items []T, match func(*T) bool) (*T, bool) {
 	return found, false
 }
 
+// requireStackPaymentMethod runs the same paid-intent gate the interactive
+// create paths run through core.Base.RequirePlanBilling: a paid plan needs a
+// bound payment method (ADR046), and — for ANY plan — a workspace under dunning
+// enforcement is refused (RequireBillingMutation). Blueprint apply once wired
+// only the payment-method half, which let an enforced (delinquent) workspace
+// provision unlimited new paid Services/Databases/KeyValues past the very
+// control dunning enforcement exists to impose. Both halves live here now, in
+// the one helper every stack apply (deployParsedStack) and preflight (Blueprint
+// prepare/deploy) shares, so the interactive and Blueprint paths cannot drift
+// apart again.
 func (s *Service) requireStackPaymentMethod(ctx context.Context, st parsedStack) error {
-	if !stackHasPaidPlan(st) {
-		return nil
-	}
 	tenantID, _ := s.Tenant(ctx)
-	return s.RequirePaymentMethod(ctx, tenantID)
+	if stackHasPaidPlan(st) {
+		if err := s.RequirePaymentMethod(ctx, tenantID); err != nil {
+			return err
+		}
+	}
+	return s.RequireBillingMutation(ctx, tenantID)
 }
 
 func stackHasPaidPlan(st parsedStack) bool {

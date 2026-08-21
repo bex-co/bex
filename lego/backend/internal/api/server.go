@@ -28,12 +28,15 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
+	"log"
 	"maps"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/graphql/gqlerrors"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
@@ -1212,9 +1215,43 @@ func (s *Server) graphqlHandler() http.Handler {
 			VariableValues: body.Variables,
 			Context:        ctx,
 		})
+		result.Errors = sanitizeGraphQLErrors(result.Errors)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(result)
 	})
+}
+
+// sanitizeGraphQLErrors applies core.WriteErr's redaction policy on the GraphQL
+// surface: a resolver error that is not a public/classified error (a raw
+// pgx/Kubernetes failure) has its message replaced with a generic string and the
+// real cause logged, so internal detail — constraint names, connection strings,
+// paths — never reaches the client. Pure parse/validation errors (which wrap no
+// resolver error) keep their client-needed message, as do coded and sentinel
+// errors. Shares core.IsPublicError with WriteErr so REST and GraphQL redact the
+// exact same set.
+func sanitizeGraphQLErrors(errs []gqlerrors.FormattedError) []gqlerrors.FormattedError {
+	for i := range errs {
+		resolverErr := resolverError(errs[i].OriginalError())
+		// nil → a parse/validation error that wraps no resolver error: keep it.
+		if resolverErr == nil || core.IsPublicError(resolverErr) {
+			continue
+		}
+		log.Printf("bex-api graphql: internal error: %v", resolverErr)
+		errs[i].Message = "internal error"
+	}
+	return errs
+}
+
+// resolverError peels graphql-go's *gqlerrors.Error wrapper to recover the error
+// a resolver actually returned. That wrapper does not implement Unwrap, so
+// errors.Is/As cannot see the underlying core sentinel/CodedError through it.
+// Returns nil for a pure parse/validation error (its OriginalError field is nil).
+func resolverError(orig error) error {
+	var ge *gqlerrors.Error
+	if errors.As(orig, &ge) {
+		return ge.OriginalError
+	}
+	return orig
 }
 
 // MCPServer builds the MCP server with every feature's tools registered. The

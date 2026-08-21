@@ -46,8 +46,9 @@ type PullSecretSource interface {
 	// host-match behavior; pointer-to-empty explicitly disables credentials.
 	MaterializePullSecret(ctx context.Context, workspaceID string, a *appv1alpha1.App, image string, credentialID *string) (secretName string, ok bool, err error)
 	// ResolveCredentialNames batch-resolves names for a slice of credential ids
-	// (one query for the page). Unknown ids are silently omitted.
-	ResolveCredentialNames(ctx context.Context, ids []string) map[string]string
+	// owned by workspaceID (one query for the page). Foreign/unknown ids are
+	// silently omitted — the workspace filter keeps enrichment within the tenant.
+	ResolveCredentialNames(ctx context.Context, workspaceID string, ids []string) map[string]string
 	// FindCredentialIDByName resolves a workspace credential by its display
 	// name — the reference form render.yaml's registryCredential/image.creds
 	// use (fromRegistryCreds: {name}). found=false (nil err) means no such

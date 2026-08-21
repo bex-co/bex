@@ -968,6 +968,7 @@ func startControlPlaneServer(ctx context.Context, st *store.PGStore, rec *store.
 		internalRoot.Handle(agentsession.InternalMintPath, &agentsession.Handler{
 			Secret: []byte(sandboxExecSecret),
 			Minter: &agentsession.Minter{GitHub: ghClient, Connections: st, Sessions: st, Audit: st},
+			Nonce:  st,
 		})
 		// ADR062: the model-credential mint. Same gateway-only HMAC + internal-only
 		// listener as the Git mint, path-domain-separated. Wired only when OpenBao is
@@ -977,6 +978,7 @@ func startControlPlaneServer(ctx context.Context, st *store.PGStore, rec *store.
 			internalRoot.Handle(agentsession.InternalModelMintPath, &agentsession.ModelHandler{
 				Secret: []byte(sandboxExecSecret),
 				Minter: &agentsession.ModelMinter{Keys: modelKeys, Sessions: st, Audit: st},
+				Nonce:  st,
 			})
 		}
 	}

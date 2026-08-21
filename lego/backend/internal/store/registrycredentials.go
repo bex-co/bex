@@ -128,16 +128,17 @@ func (s *PGStore) GetRegistryCredentialByID(ctx context.Context, id string) (Reg
 	return c, nil
 }
 
-// GetRegistryCredentialsByIDs returns the credentials matching any id in ids.
-// It is unscoped to a workspace, so callers must only use this for batch
-// display enrichment (name resolution) where per-resource authorization has
-// already been satisfied. Unknown ids are silently omitted.
-func (s *PGStore) GetRegistryCredentialsByIDs(ctx context.Context, ids []string) ([]RegistryCredential, error) {
-	if len(ids) == 0 {
+// GetRegistryCredentialsByIDs returns the credentials matching any id in ids
+// that belong to workspaceID. Batch display enrichment (name resolution) only:
+// the workspace filter keeps the lookup within the caller's tenant so a foreign
+// id can never resolve even to its non-secret name. Unknown or foreign ids are
+// silently omitted.
+func (s *PGStore) GetRegistryCredentialsByIDs(ctx context.Context, workspaceID string, ids []string) ([]RegistryCredential, error) {
+	if workspaceID == "" || len(ids) == 0 {
 		return nil, nil
 	}
 	rows, err := s.Pool.Query(ctx,
-		`SELECT `+registryCredentialColumns+` FROM registry_credentials WHERE id = ANY($1)`, ids)
+		`SELECT `+registryCredentialColumns+` FROM registry_credentials WHERE id = ANY($1) AND workspace_id = $2`, ids, workspaceID)
 	if err != nil {
 		return nil, err
 	}

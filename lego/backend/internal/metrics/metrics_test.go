@@ -945,6 +945,30 @@ func TestPromQueryFor(t *testing.T) {
 	}
 }
 
+// TestPromQueryBuildersEscapeQuoteInValue guards the PromQL string-literal
+// terminator: a value carrying a double-quote must be emitted escaped (%q) so it
+// cannot close the matcher's quoted literal and inject a new expression. The
+// App/Resource/Cluster values are DNS-constrained server-side today, so this is
+// defense-in-depth — but the builders must not rely on that. The invariant is
+// robust to QuoteMeta's regex escaping: whatever else happens, the payload's
+// `"` must appear escaped as `\"` and never raw (`web"`), which is exactly what
+// distinguishes the %q builder from the old hand-quoted `".*%s.*"`.
+func TestPromQueryBuildersEscapeQuoteInValue(t *testing.T) {
+	const payload = `web"} or vector(1) #`
+
+	// Request-metrics service selector: .*<app>.* inside service=~"...".
+	q := promQueryFor(RequestMetricsRequest{App: payload, Metric: MetricHTTPRequests, Resolution: time.Minute})
+	if !strings.Contains(q, `web\"`) || strings.Contains(q, `web"`) {
+		t.Fatalf("service selector did not escape the quote in App (breakout risk): %q", q)
+	}
+
+	// Resource-metrics kubelet pod selector: <app>-... inside pod=~"...".
+	r := promResourceQueryFor(ResourceMetricsRangeRequest{Namespace: "default", App: payload, Metric: MetricMemory, Resolution: time.Minute})
+	if !strings.Contains(r, `web\"`) || strings.Contains(r, `web"`) {
+		t.Fatalf("pod selector did not escape the quote in App (breakout risk): %q", r)
+	}
+}
+
 func TestParsePromMatrixDropsNaN(t *testing.T) {
 	pr := promRangeResponse{Status: "success"}
 	pr.Data.Result = []struct {

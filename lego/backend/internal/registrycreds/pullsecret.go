@@ -205,13 +205,15 @@ func (p pullSecretSource) RegistryCredentialName(ctx context.Context, workspaceI
 }
 
 // ResolveCredentialNames batch-resolves display names for a slice of credential
-// ids (one query for the whole page). Unknown ids are silently omitted. Callers
+// ids owned by workspaceID (one query for the whole page). The workspace filter
+// keeps enrichment within the caller's tenant — a foreign id resolves to
+// nothing, not even its name. Unknown/foreign ids are silently omitted. Callers
 // have already authorized each App that owns these ids.
-func (p pullSecretSource) ResolveCredentialNames(ctx context.Context, ids []string) map[string]string {
-	if p.s.Store == nil || len(ids) == 0 {
+func (p pullSecretSource) ResolveCredentialNames(ctx context.Context, workspaceID string, ids []string) map[string]string {
+	if p.s.Store == nil || workspaceID == "" || len(ids) == 0 {
 		return nil
 	}
-	creds, err := p.s.Store.GetRegistryCredentialsByIDs(ctx, ids)
+	creds, err := p.s.Store.GetRegistryCredentialsByIDs(ctx, workspaceID, ids)
 	if err != nil {
 		return nil
 	}
