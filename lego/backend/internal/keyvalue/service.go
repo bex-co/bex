@@ -230,7 +230,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		ID:              kv.Name,
 		Name:            kv.Spec.Name,
 		Plan:            kv.Spec.Plan,
-		Version:         kv.Spec.Version,
+		Version:         kv.Spec.EffectiveVersion(),
 		Status:          status,
 		Suspended:       core.SuspendedEnum(kv.Spec.Suspended),
 		CreatedAt:       created,
