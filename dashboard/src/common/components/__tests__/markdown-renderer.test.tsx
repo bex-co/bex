@@ -106,6 +106,19 @@ describe("MarkdownRenderer", () => {
     expect(screen.getByText("Safe content")).toBeInTheDocument();
   });
 
+  it("strips event handlers and SVG from raw HTML", () => {
+    const markdown =
+      '<img src="https://example.com/image.png" onerror="alert(1)">' +
+      '<svg onload="alert(2)"><circle /></svg>';
+    const { container } = render(<MarkdownRenderer content={markdown} />);
+
+    const image = container.querySelector("img");
+    expect(image).not.toBeNull();
+    expect(image).toHaveAttribute("src", "https://example.com/image.png");
+    expect(image).not.toHaveAttribute("onerror");
+    expect(container.querySelector("svg")).toBeNull();
+  });
+
   it("treats a protocol-relative link as external, not internal", () => {
     render(<MarkdownRenderer content="[Login](//attacker.example/login)" />);
     const anchor = screen.getByText("Login").closest("a");

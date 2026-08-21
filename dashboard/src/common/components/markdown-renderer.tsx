@@ -3,7 +3,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import rehypeRaw from "rehype-raw";
-import rehypeSanitize from "rehype-sanitize";
+import rehypeSanitize, {
+  type Options as SanitizeOptions,
+} from "rehype-sanitize";
 import { CodeBlock } from "@/common/components/code-block";
 import { classifyHref } from "@/common/lib/external-url";
 import { ExternalLink } from "lucide-react";
@@ -13,6 +15,113 @@ interface MarkdownRendererProps {
   content: string;
   className?: string;
 }
+
+// Raw HTML is retained for Markdown compatibility, but it must pass through a
+// schema owned by this component. Do not rely on rehype-sanitize's package
+// default: a dependency upgrade should not silently expand the transcript's
+// HTML vocabulary. This is intentionally a small, presentation-only subset;
+// scripting, embedding, forms, SVG, and event/style attributes are excluded.
+const markdownSanitizeSchema: SanitizeOptions = {
+  tagNames: [
+    "a",
+    "b",
+    "blockquote",
+    "br",
+    "code",
+    "dd",
+    "del",
+    "details",
+    "div",
+    "dl",
+    "dt",
+    "em",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "hr",
+    "i",
+    "img",
+    "input",
+    "ins",
+    "kbd",
+    "li",
+    "ol",
+    "p",
+    "picture",
+    "pre",
+    "q",
+    "rp",
+    "rt",
+    "ruby",
+    "s",
+    "samp",
+    "section",
+    "source",
+    "span",
+    "strike",
+    "strong",
+    "sub",
+    "summary",
+    "sup",
+    "table",
+    "tbody",
+    "td",
+    "tfoot",
+    "th",
+    "thead",
+    "tr",
+    "tt",
+    "ul",
+    "var",
+  ],
+  attributes: {
+    "*": ["dir", "id", "lang", "tabIndex", "title"],
+    a: [
+      "href",
+      "title",
+      "dataFootnoteBackref",
+      "dataFootnoteRef",
+      ["className", "data-footnote-backref"],
+    ],
+    blockquote: ["cite"],
+    code: [["className", /^language-[A-Za-z0-9_-]+$/]],
+    h2: [["className", "sr-only"]],
+    img: ["alt", "height", "longDesc", "src", "title", "width"],
+    input: [
+      ["disabled", true],
+      ["type", "checkbox"],
+    ],
+    li: [["className", "task-list-item"]],
+    ol: ["start", ["className", "contains-task-list"]],
+    section: ["dataFootnotes", ["className", "footnotes"]],
+    source: ["srcSet"],
+    td: ["colSpan", "rowSpan"],
+    th: ["colSpan", "rowSpan"],
+    ul: [["className", "contains-task-list"]],
+  },
+  clobber: ["id", "name"],
+  clobberPrefix: "user-content-",
+  protocols: {
+    cite: ["http", "https"],
+    href: ["http", "https", "mailto", "tel"],
+    longDesc: ["http", "https"],
+    src: ["http", "https"],
+  },
+  strip: [
+    "base",
+    "embed",
+    "form",
+    "iframe",
+    "link",
+    "meta",
+    "object",
+    "script",
+    "style",
+  ],
+};
 
 const components: Components = {
   code({ className, children }) {
@@ -146,7 +255,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks]}
-        rehypePlugins={[rehypeRaw, rehypeSanitize]}
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSanitizeSchema]]}
         components={components}
       >
         {content}

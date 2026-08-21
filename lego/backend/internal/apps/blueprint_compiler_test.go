@@ -582,3 +582,20 @@ func TestBlueprintCompilerAcceptsDocumentNearStructuralBudgets(t *testing.T) {
 		t.Fatalf("500-service Blueprint problems = %+v", problems)
 	}
 }
+
+func TestBlueprintCompilerCapsAggregateResourceDeclarations(t *testing.T) {
+	var blueprint strings.Builder
+	blueprint.WriteString("services:\n")
+	for i := 0; i < blueprintMaxResources+1; i++ {
+		fmt.Fprintf(&blueprint, "  - type: web\n    name: api-%d\n    runtime: image\n    image: {url: nginx:1.27}\n", i)
+	}
+
+	_, problems := CompileBlueprintSource(blueprint.String())
+	problem := findBlueprintProblem(problems, "BLUEPRINT_RESOURCE_COUNT")
+	if problem == nil {
+		t.Fatalf("over-cap Blueprint problems = %+v, want BLUEPRINT_RESOURCE_COUNT", problems)
+	}
+	if problem.Path != "#/services" || problem.Line == 0 {
+		t.Fatalf("resource-count problem = %+v, want source collection path and location", problem)
+	}
+}

@@ -660,6 +660,11 @@ const (
 	blueprintMaxDepth             = 100
 	blueprintMaxNodes             = 100_000
 	blueprintMaxCollectionEntries = 10_000
+	// blueprintMaxResources bounds the aggregate declarations that the
+	// Blueprint compiler can normalize and plan. It is deliberately above the
+	// paid plan's normal resource quotas, but prevents a byte-small manifest
+	// from fanning out thousands of downstream actions.
+	blueprintMaxResources = 500
 	// Kept below the manifest byte cap so a single oversized scalar is
 	// still reported as a scalar breach, not a document-size one.
 	blueprintMaxScalarBytes = 256 << 10 // 256 KiB
@@ -675,8 +680,9 @@ const (
 // on the first breach, bails the whole walk out fail-fast so an over-budget
 // document stops allocating immediately instead of after full amplification.
 type blueprintWalkBudget struct {
-	nodes  int
-	bailed bool
+	nodes     int
+	resources int
+	bailed    bool
 }
 
 // fail marks the walk bailed — every later yamlNodeToBlueprintValue call
@@ -705,6 +711,24 @@ func (b *blueprintWalkBudget) countCollection(pointer string, node *yaml.Node, e
 		return nil
 	}
 	return b.fail("BLUEPRINT_YAML_COLLECTION", pointer, fmt.Sprintf("Blueprint collections are limited to %d entries", blueprintMaxCollectionEntries), node)
+}
+
+// countResources checks the aggregate declaration count before the sequence is
+// materialized into []any. Resource collections are identified by their schema
+// field name; all valid root, ungrouped, and project-environment placements use
+// one of these three names.
+func (b *blueprintWalkBudget) countResources(path []string, pointer string, node *yaml.Node, entries int) []BlueprintSourceProblem {
+	if len(path) == 0 {
+		return nil
+	}
+	switch path[len(path)-1] {
+	case "services", "databases", "envVarGroups":
+		b.resources += entries
+		if b.resources > blueprintMaxResources {
+			return b.fail("BLUEPRINT_RESOURCE_COUNT", pointer, fmt.Sprintf("Blueprints are limited to %d resource declarations", blueprintMaxResources), node)
+		}
+	}
+	return nil
 }
 
 var yamlSyntaxLine = regexp.MustCompile(`(?i)line\s+(\d+)`)
@@ -743,6 +767,9 @@ func yamlNodeToBlueprintValue(node *yaml.Node, path []string, locations map[stri
 		return nil, []BlueprintSourceProblem{{Code: "BLUEPRINT_YAML_ALIAS", Path: pointer, Message: "YAML aliases are not supported in Blueprints", Line: node.Line, Column: node.Column}}
 	case yaml.SequenceNode:
 		if breach := budget.countCollection(pointer, node, len(node.Content)); breach != nil {
+			return nil, breach
+		}
+		if breach := budget.countResources(path, pointer, node, len(node.Content)); breach != nil {
 			return nil, breach
 		}
 		values := make([]any, len(node.Content))

@@ -1421,6 +1421,31 @@ func TestLogStreamRevalidationEndsStaleAuthorizedWebSocketTail(t *testing.T) {
 	waitForSlotRelease(t, svc)
 }
 
+func TestLogStreamRejectsCrossOriginWebSocketHandshake(t *testing.T) {
+	checker := &freshGateChecker{cached: true, fresh: true}
+	svc := revalidationService(checker, blockingLogStream(), sampleApp("web"), podFor("web", "web-1"))
+	srv := revalidationTestServer(svc)
+	defer srv.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/v1/logs/subscribe?resource=web"
+	headers := http.Header{"Origin": []string{"https://attacker.example"}}
+	conn, resp, err := websocket.DefaultDialer.Dial(wsURL, headers)
+	if conn != nil {
+		conn.Close()
+	}
+	if err == nil {
+		t.Fatal("cross-origin WebSocket handshake unexpectedly succeeded")
+	}
+	if resp == nil || resp.StatusCode != http.StatusForbidden {
+		status := "<nil>"
+		if resp != nil {
+			status = resp.Status
+		}
+		t.Fatalf("cross-origin WebSocket response = %s, want 403", status)
+	}
+	waitForSlotRelease(t, svc)
+}
+
 func TestLogStreamReconnectStillAuthorizesAtAdmission(t *testing.T) {
 	// Revoked everywhere: a NEW subscription is refused at admission (the
 	// watchdog only governs established tails; it is not a loophole around the
