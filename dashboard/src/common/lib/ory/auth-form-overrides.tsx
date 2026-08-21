@@ -146,9 +146,9 @@ export function OtpCodeInput({ inputProps }: OryNodeInputProps) {
     const onPaste = (event: ClipboardEvent) => {
       const input = inputRef.current;
       if (!input || input.disabled) return;
+      if (isOtherEditable(event.target, input)) return;
       const code = extractOtp(event.clipboardData?.getData("text") ?? "");
       if (!code) return;
-      if (isOtherEditable(event.target, input)) return;
       event.preventDefault();
       setNativeInputValue(input, code);
       input.focus();
@@ -209,7 +209,6 @@ function AuthNodeInput(props: OryNodeInputProps) {
   if (inputProps.type === "password") {
     return <UniqueIdPasswordInput {...props} />;
   }
-
 
   if (inputProps.type === "hidden") {
     return (

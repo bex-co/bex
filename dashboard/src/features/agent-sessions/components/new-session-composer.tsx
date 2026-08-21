@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { AtSign, Github, Loader2, Settings2 } from "lucide-react";
@@ -163,6 +164,9 @@ export function NewSessionComposer() {
   });
 
   function handleCreateError(err: unknown) {
+    // The user closed the ADR075 D7 payment dialog — their own choice, not an
+    // error to report.
+    if (isPaymentOnboardingCancelled(err)) return;
     if (err instanceof AgentSessionsUnavailableError) {
       setUnavailable(true);
       return;
@@ -238,9 +242,7 @@ export function NewSessionComposer() {
                     <FormControl>
                       <Select
                         value={field.value}
-                        onValueChange={(v) =>
-                          field.onChange(v as AgentOption)
-                        }
+                        onValueChange={(v) => field.onChange(v as AgentOption)}
                         disabled={noRepos}
                       >
                         <SelectTrigger

@@ -5,7 +5,8 @@
 #
 # Values come from the environment or the repo-local, gitignored .env:
 #   BEX_STRIPE_SECRET_KEY       dedicated rk_test_*/rk_live_* runtime key
-#   BEX_REQUIRE_PAYMENT_METHOD  1 enables ADR046 paid-intent gating (default 0)
+#   BEX_REQUIRE_PAYMENT_METHOD  1 = ADR046 paid-intent gating; all = every plan
+#                               incl. free tier (ADR075 D7); default 0
 #   BEX_STRIPE_WEBHOOK_SECRET  whsec_* for /v1/webhooks/stripe
 #   BEX_STRIPE_EPOCH           explicit RFC3339 billing-start floor (required)
 #   BEX_STRIPE_SEAL_HOURS      rewrite horizon (default 48)
@@ -87,8 +88,8 @@ case "$BEX_STRIPE_DUNNING_ENABLED" in
   *) echo "error: BEX_STRIPE_DUNNING_ENABLED must be 0 or 1" >&2; exit 1 ;;
 esac
 case "$BEX_REQUIRE_PAYMENT_METHOD" in
-  0|1) ;;
-  *) echo "error: BEX_REQUIRE_PAYMENT_METHOD must be 0 or 1" >&2; exit 1 ;;
+  0|1|all) ;;
+  *) echo "error: BEX_REQUIRE_PAYMENT_METHOD must be 0, 1, or all" >&2; exit 1 ;;
 esac
 # Live dunning is an operator choice since w4/m81 t002 (the w7/m52 test-only
 # fence is lifted): BEX_STRIPE_ALLOW_LIVE=1 remains the single deliberate live

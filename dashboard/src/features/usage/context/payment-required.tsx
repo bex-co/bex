@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { Button } from "@/common/components/ui/button";
 import {
   Dialog,
@@ -181,8 +181,13 @@ export function PaymentRequiredProvider({
     [clearRetryTimer],
   );
 
+  // A fresh object every render would re-render every consumer (and, since
+  // w6/m42, invalidate the agent-session mutation identities) on each 2s
+  // readiness poll while the dialog is open — memoize on the stable run.
+  const gate = useMemo(() => ({ run }), [run]);
+
   return (
-    <PaymentRequiredContext.Provider value={{ run }}>
+    <PaymentRequiredContext.Provider value={gate}>
       {children}
       <Dialog open={open} onOpenChange={(next) => !next && cancelPending()}>
         <DialogContent showCloseButton={false} className="sm:max-w-2xl">

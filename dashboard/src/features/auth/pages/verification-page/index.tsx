@@ -1,5 +1,5 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { FlowType } from "@ory/client-fetch";
+import { FlowType, VerificationFlowState } from "@ory/client-fetch";
 import { Verification } from "@ory/elements-react/theme";
 import { useOryFlow } from "@/common/hooks/use-ory-flow";
 import { useOryConfig } from "@/common/lib/ory/config";
@@ -49,14 +49,18 @@ export default function VerificationPage() {
             // (state "sent_email") as well as the final code. Only the code
             // acceptance completes verification.
             if (event.flowType !== FlowType.Verification) return;
-            if (event.flow.state !== "passed_challenge") return;
+            if (event.flow.state !== VerificationFlowState.PassedChallenge)
+              return;
             // Continue INTO the product (the registration session is already
             // held); `next` goes in `href`, not `to` (see login-page): it may
             // carry a query string, and `href` wins over `to` when set. Both
             // sources are safeNext-normalized. A session-less visitor is
             // bounced by requireAuth to /auth/login with `next` preserved.
             const fromQuery = safeNext(search.next);
-            const next = fromQuery !== "/" ? fromQuery : takeAuthNext();
+            // Consume the relay unconditionally so no stale stash outlives
+            // this hop even when the query param wins.
+            const stashed = takeAuthNext();
+            const next = fromQuery !== "/" ? fromQuery : stashed;
             void navigate({ to: "/", href: next });
           }}
         />
