@@ -174,7 +174,16 @@ const staticRouteCases: Array<
     "Notifications",
     "通知",
   ],
-  ["new service", NewServiceRoute, { search: {} }, "New Service", "新建服务"],
+  // A bare /services/new starts the form on DEFAULT_SERVICE_TYPE, so the tab
+  // title names that type too. It used to read the generic "New Service" while
+  // the <h1> already said "New Web Service" (w6/m43).
+  [
+    "new service",
+    NewServiceRoute,
+    { search: {} },
+    "New Web Service",
+    "新建 Web 服务",
+  ],
   ["account settings", SettingsRoute, { search: {} }, "Settings", "设置"],
   ["billing", BillingRoute, { search: {} }, "Billing", "账单"],
   ["webhooks", WebhooksRoute, { search: {} }, "Webhooks", "Webhooks"],

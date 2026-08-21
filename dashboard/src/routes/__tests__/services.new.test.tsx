@@ -786,6 +786,112 @@ describe("NewServicePage", () => {
     // reads raw (unvalidated) search and can't faithfully model the drop here.
   });
 
+  // w6/m43 t003: the heading/subtitle used to branch only on cron, so the
+  // other four types all read "New Service / Deploy a web service …" — the
+  // page contradicting the type its own picker showed as selected.
+  describe("per-type page heading and subtitle", () => {
+    const CASES: {
+      label: RegExp;
+      heading: string;
+      subtitle: string;
+    }[] = [
+      {
+        label: /Web Service/i,
+        heading: "New Web Service",
+        subtitle: "Deploy a web service from a Git repo or Docker image.",
+      },
+      {
+        label: /Private Service/i,
+        heading: "New Private Service",
+        subtitle: "Deploy a private service from a Git repo or Docker image.",
+      },
+      {
+        label: /Background Worker/i,
+        heading: "New Background Worker",
+        subtitle:
+          "Deploy a background worker from a Git repo or Docker image.",
+      },
+      {
+        label: /Cron Job/i,
+        heading: "New Cron Job",
+        subtitle: "Run a command on a recurring schedule.",
+      },
+      {
+        label: /Static Site/i,
+        heading: "New Static Site",
+        subtitle: "Build and deploy a static site from a Git repo.",
+      },
+    ];
+
+    for (const { label, heading, subtitle } of CASES) {
+      it(`names the type in the heading and subtitle: ${heading}`, async () => {
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findAllByRole("radiogroup");
+        await user.click(screen.getByRole("radio", { name: label }));
+        expect(
+          screen.getByRole("heading", { level: 1, name: heading }),
+        ).toBeInTheDocument();
+        expect(screen.getByText(subtitle)).toBeInTheDocument();
+      });
+    }
+
+    it("never describes a non-web type as a web service", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findAllByRole("radiogroup");
+      await user.click(
+        screen.getByRole("radio", { name: /Background Worker/i }),
+      );
+      expect(
+        screen.queryByText(
+          "Deploy a web service from a Git repo or Docker image.",
+        ),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { level: 1, name: "New Service" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  // w6/m43 t001: the Existing Image tab's "$PORT" hint rendered for every
+  // service type, directly contradicting the "no public URL" note shown a few
+  // fields below it on the same form for a worker/cron.
+  describe("Existing Image port hint", () => {
+    const PORT_HINT = /must listen on \$PORT/i;
+
+    async function selectTypeThenImageTab(label: RegExp) {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findAllByRole("radiogroup");
+      await user.click(screen.getByRole("radio", { name: label }));
+      await user.click(screen.getByRole("tab", { name: /Existing Image/i }));
+    }
+
+    it("shows the hint for a web service, which does bind a port", async () => {
+      await selectTypeThenImageTab(/Web Service/i);
+      expect(screen.getByText(PORT_HINT)).toBeInTheDocument();
+    });
+
+    it("shows the hint for a private service, which also binds a port", async () => {
+      await selectTypeThenImageTab(/Private Service/i);
+      expect(screen.getByText(PORT_HINT)).toBeInTheDocument();
+    });
+
+    it("hides the hint for a background worker, which never gets a port", async () => {
+      await selectTypeThenImageTab(/Background Worker/i);
+      expect(
+        screen.getByPlaceholderText("docker.io/library/nginx:latest"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(PORT_HINT)).not.toBeInTheDocument();
+    });
+
+    it("hides the hint for a cron job, which never gets a port either", async () => {
+      await selectTypeThenImageTab(/Cron Job/i);
+      expect(screen.queryByText(PORT_HINT)).not.toBeInTheDocument();
+    });
+  });
+
   describe("per-type conditional fields", () => {
     it("shows schedule and command fields for cron job", async () => {
       const user = userEvent.setup();

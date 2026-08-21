@@ -97,11 +97,21 @@ export function isPrivateService(s: ServiceView): boolean {
   return s.type === "private_service";
 }
 
+/**
+ * True when this type binds an HTTP port of its own, so port/URL vocabulary
+ * applies to it. Free-tier auto-sleep rides on the same fact rather than being
+ * a second rule: the operator only hibernates behind an Ingress, because a
+ * sleeping service is woken by an inbound request (`app_controller.go` returns
+ * early for cron/static and gates hibernation on `!worker`).
+ *
+ * Takes the raw wire value, like `deriveServiceType`, so callers holding an
+ * untyped `ServiceView.type` need no cast.
+ */
+export function servesHttp(type: string): boolean {
+  return type === "web_service" || type === "private_service";
+}
+
 /** True when the service owns a long-running pod with a SIGTERM grace window. */
 export function supportsMaxShutdownDelay(s: ServiceView): boolean {
-  return (
-    s.type === "web_service" ||
-    s.type === "private_service" ||
-    s.type === "background_worker"
-  );
+  return servesHttp(s.type) || isWorker(s);
 }

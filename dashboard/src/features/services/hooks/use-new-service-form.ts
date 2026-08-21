@@ -4,7 +4,10 @@ import { useBuildRuntimeFields } from "@/features/services/hooks/use-build-runti
 import { useServiceNameDraft } from "@/features/services/hooks/use-service-name-draft";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { SourceTab } from "@/features/services/components/service-source-picker";
-import type { ServiceType } from "@/features/services/lib/create-context";
+import {
+  DEFAULT_SERVICE_TYPE,
+  type ServiceType,
+} from "@/features/services/lib/create-context";
 import type { NewServiceForm } from "@/features/services/lib/create-service-input";
 import type {
   EnvVarEntry,
@@ -51,7 +54,7 @@ export function useNewServiceForm(search: {
   const { instanceTypes } = useInstanceTypes();
   const build = useBuildRuntimeFields();
   const [fields, setFields] = useState<PlainFields>(() => ({
-    serviceType: search.type ?? "web_service",
+    serviceType: search.type ?? DEFAULT_SERVICE_TYPE,
     tab: "github",
     selectedRepo: null,
     gitUrl: "",

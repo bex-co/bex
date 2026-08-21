@@ -31,6 +31,8 @@ export type ImageSourceOption = {
   onChange: (image: string) => void;
   registryCredentialId: string;
   onRegistryCredentialChange: (id: string) => void;
+  /** Show the `$PORT` hint — only the port-binding types ever get one. */
+  showPortHint: boolean;
 };
 
 /**
@@ -254,9 +256,11 @@ export function ServiceSourcePicker({
                   placeholder={t("services.createImagePlaceholder")}
                   autoComplete="off"
                 />
-                <p className="text-xs text-muted-foreground">
-                  {t("services.createImagePortHint")}
-                </p>
+                {image.showPortHint ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("services.createImagePortHint")}
+                  </p>
+                ) : null}
               </div>
               <RegistryCredentialSelect
                 id={`${idPrefix}-registry-credential-image`}

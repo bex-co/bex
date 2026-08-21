@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   parseNewServiceSearch,
+  serviceTypeCreateCopy,
+  DEFAULT_SERVICE_TYPE,
   SERVICE_TYPES,
   SERVICE_TYPE_CREATE_ITEMS,
+  SERVICE_TYPE_CREATE_COPY,
 } from "../create-context";
 
 describe("parseNewServiceSearch", () => {
@@ -51,5 +54,33 @@ describe("SERVICE_TYPE_CREATE_ITEMS", () => {
     for (const item of SERVICE_TYPE_CREATE_ITEMS) {
       expect(item.labelKey).toMatch(/^services\.type/);
     }
+  });
+});
+
+describe("serviceTypeCreateCopy", () => {
+  it("covers every service type with a distinct title", () => {
+    const titles = SERVICE_TYPES.map(
+      (t) => SERVICE_TYPE_CREATE_COPY[t].titleKey,
+    );
+    expect(titles).toHaveLength(SERVICE_TYPES.length);
+    expect(new Set(titles).size).toBe(SERVICE_TYPES.length);
+  });
+
+  it("never labels a non-web type with the web copy", () => {
+    const web = SERVICE_TYPE_CREATE_COPY.web_service;
+    for (const type of SERVICE_TYPES) {
+      if (type === "web_service") continue;
+      expect(SERVICE_TYPE_CREATE_COPY[type]).not.toEqual(web);
+    }
+  });
+
+  // The route's document title reads `?type=` while the form falls back to its
+  // own default, so an absent type has to resolve the same way on both paths —
+  // otherwise a bare /services/new shows one name in the tab and another in the
+  // heading, which is what it did before w6/m43.
+  it("resolves an absent type to the form's own default", () => {
+    expect(serviceTypeCreateCopy(undefined)).toEqual(
+      serviceTypeCreateCopy(DEFAULT_SERVICE_TYPE),
+    );
   });
 });

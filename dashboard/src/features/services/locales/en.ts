@@ -2508,9 +2508,45 @@ const enServices: Record<string, TranslationEntry> = {
     message: "New Service",
     description: "Create-wizard page title",
   },
-  "services.createDescription": {
+  "services.createWebTitle": {
+    message: "New Web Service",
+    description:
+      "Create-wizard page title when the web_service type is selected",
+  },
+  "services.createWebDescription": {
     message: "Deploy a web service from a Git repo or Docker image.",
-    description: "Create-wizard page subtitle",
+    description:
+      "Create-wizard page subtitle when the web_service type is selected",
+  },
+  "services.createPrivateTitle": {
+    message: "New Private Service",
+    description:
+      "Create-wizard page title when the private_service type is selected",
+  },
+  "services.createPrivateDescription": {
+    message: "Deploy a private service from a Git repo or Docker image.",
+    description:
+      "Create-wizard page subtitle when the private_service type is selected",
+  },
+  "services.createWorkerTitle": {
+    message: "New Background Worker",
+    description:
+      "Create-wizard page title when the background_worker type is selected",
+  },
+  "services.createWorkerDescription": {
+    message: "Deploy a background worker from a Git repo or Docker image.",
+    description:
+      "Create-wizard page subtitle when the background_worker type is selected",
+  },
+  "services.createStaticTitle": {
+    message: "New Static Site",
+    description:
+      "Create-wizard page title when the static_site type is selected",
+  },
+  "services.createStaticDescription": {
+    message: "Build and deploy a static site from a Git repo.",
+    description:
+      "Create-wizard page subtitle when the static_site type is selected",
   },
   "services.createCronTitle": {
     message: "New Cron Job",

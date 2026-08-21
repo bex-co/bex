@@ -5,6 +5,7 @@ import {
   isValidSecretFileName,
 } from "@/features/services/lib/environment-draft";
 import type { ServiceType } from "@/features/services/lib/create-context";
+import { servesHttp } from "@/features/services/lib/service-type";
 import type { GitRuntime } from "@/features/services/lib/runtime";
 import type { SourceTab } from "@/features/services/components/service-source-picker";
 import type { RepoView } from "@/features/services/hooks/use-repos";
@@ -60,6 +61,7 @@ export interface BuildShape {
   usesRegistryCredential: boolean;
   showPlan: boolean;
   showNoUrlNote: boolean;
+  showPortHint: boolean;
 }
 
 export function buildShape(form: NewServiceForm): BuildShape {
@@ -83,6 +85,7 @@ export function buildShape(form: NewServiceForm): BuildShape {
     showNoUrlNote:
       form.serviceType === "private_service" ||
       form.serviceType === "background_worker",
+    showPortHint: servesHttp(form.serviceType),
   };
 }
 
