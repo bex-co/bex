@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import type { LucideIcon } from "lucide-react";
 import { LanguageSwitcher } from "@/features/i18n/language-switcher";
 import { stashInviteTokenFromURL } from "@/common/lib/invite-token";
+import { useKratosLinkNavigation } from "@/features/auth/components/auth-page-shell/use-kratos-link-navigation";
 
 export type AuthFeature = {
   icon: LucideIcon;
@@ -37,6 +38,11 @@ export function AuthPageShell({
   useEffect(() => {
     stashInviteTokenFromURL();
   }, []);
+  // Ory Elements renders its own cross-links ("Sign up", "Forgot Password?") as
+  // absolute Kratos URLs, which leave the app. Delegated here — on the column
+  // that wraps every flow card — so each auth page gets the client-side hop
+  // without knowing about it.
+  const onAuthLinkClick = useKratosLinkNavigation();
   return (
     <div className="min-h-screen flex bg-background relative">
       <div className="absolute top-4 right-4 z-10">
@@ -48,7 +54,10 @@ export function AuthPageShell({
             of overflowing a narrower max-w-md — and the loading skeleton, which
             is w-full of this column, is the same width as the card it stands in
             for (no width jump when the flow swaps in). */}
-        <div className="w-full max-w-[30rem] space-y-8">
+        <div
+          className="w-full max-w-[30rem] space-y-8"
+          onClick={onAuthLinkClick}
+        >
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-foreground">{title}</h1>
             <p className="text-muted-foreground">{subtitle}</p>

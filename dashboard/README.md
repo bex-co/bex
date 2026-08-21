@@ -38,7 +38,7 @@ VITE_API_URL=http://localhost:5173/graphql \
   yarn dev
 ```
 
-You're then registering/logging in against **real prod identities** and seeing your **real Apps** on `/`. Two caveats: prod Kratos's `allowed_return_urls` must include `http://localhost:5173` (`deploy/gitops/base/values/kratos.values.yaml` — already in git; needs Argo to have synced it), and the Ory card's cross-links ("Sign up", "Recover Account") do full-page browser flows whose `ui_url` points at `dashboard.bex.co`, so they'll bounce you to the prod dashboard — use the app's own routes (`/auth/sign-up`, `/auth/forgot-password`) instead.
+You're then registering/logging in against **real prod identities** and seeing your **real Apps** on `/`. Two caveats: prod Kratos's `allowed_return_urls` must include `http://localhost:5173` (`deploy/gitops/base/values/kratos.values.yaml` — already in git; needs Argo to have synced it), and the Ory card's cross-links ("Sign up", "Recover Account") are absolute Kratos URLs, so they used to bounce you to the prod dashboard — `features/auth/lib/kratos-link-target.ts` now resolves them to the in-app route and the click stays on your dev origin.
 
 ## Deployment
 
