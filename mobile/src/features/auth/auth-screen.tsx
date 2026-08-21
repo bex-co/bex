@@ -10,12 +10,16 @@ export function AuthStateScreen({
   actionKey,
   busy = false,
   onAction,
+  secondaryActionKey,
+  onSecondaryAction,
 }: {
   titleKey: string;
   bodyKey: string;
   actionKey?: string;
   busy?: boolean;
   onAction?: () => void;
+  secondaryActionKey?: string;
+  onSecondaryAction?: () => void;
 }) {
   const theme = useTheme().colorTheme;
   const { t } = useTranslations();
@@ -38,6 +42,17 @@ export function AuthStateScreen({
             accessibilityLabel={t(actionKey)}
           >
             {t(actionKey)}
+          </Button>
+        ) : null}
+        {secondaryActionKey && onSecondaryAction ? (
+          <Button
+            type="outline"
+            style={styles.action}
+            onPress={onSecondaryAction}
+            disabled={busy}
+            accessibilityLabel={t(secondaryActionKey)}
+          >
+            {t(secondaryActionKey)}
           </Button>
         ) : null}
       </View>

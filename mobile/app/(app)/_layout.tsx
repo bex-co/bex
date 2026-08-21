@@ -17,7 +17,12 @@ function WorkspaceTabs() {
   const { t } = useTranslations();
   const theme = useTheme().colorTheme;
   const { status, offline, switching, retry } = useWorkspace();
+  const { signOut } = useAuth();
   const { unread } = useNotifications();
+  // A failed or empty workspace load is otherwise a dead end (no drawer behind
+  // the gate), so both offer sign-out — the only way to mint a fresh token when
+  // the current session lacks capability scope (w11 auth contract).
+  const signOutAction = () => void signOut().catch(() => undefined);
   if (status === "loading" || switching) {
     return (
       <AuthStateScreen
@@ -38,6 +43,8 @@ function WorkspaceTabs() {
         bodyKey={offline ? "workspace.offlineBody" : "workspace.errorBody"}
         actionKey="auth.retry"
         onAction={() => void retry().catch(() => undefined)}
+        secondaryActionKey="auth.signOut"
+        onSecondaryAction={signOutAction}
       />
     );
   }
@@ -46,6 +53,8 @@ function WorkspaceTabs() {
       <AuthStateScreen
         titleKey="workspace.emptyTitle"
         bodyKey="workspace.emptyBody"
+        secondaryActionKey="auth.signOut"
+        onSecondaryAction={signOutAction}
       />
     );
   }
