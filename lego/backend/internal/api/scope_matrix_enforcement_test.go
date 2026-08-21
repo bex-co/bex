@@ -27,6 +27,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/cliauth"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
@@ -193,6 +194,58 @@ func TestScopeClassEnforcementWriteToken(t *testing.T) {
 	_ = json.Unmarshal(w.Body.Bytes(), &body)
 	if body["code"] == core.InsufficientScopeCode {
 		t.Errorf("AuthorizeMintClass must stay a plain forbidden, got INSUFFICIENT_SCOPE: %v", body)
+	}
+}
+
+// bodyCode extracts the Render-dialect error code (empty for a success body).
+func bodyCode(w *httptest.ResponseRecorder) string {
+	var body map[string]any
+	_ = json.Unmarshal(w.Body.Bytes(), &body)
+	code, _ := body["code"].(string)
+	return code
+}
+
+// TestRenderCLITokenClearsEveryOpClassEndToEnd drives the real composed bex-api
+// handler (auth gate → scope-matrix middleware → feature handler) with the
+// exact token bex's device-flow adapter now mints for the unmodified Render CLI:
+// a platform-marked, audience-less human OAuth delegation carrying
+// cliauth.DeviceGrantScope. It is the end-to-end counterpart to
+// TestScopeClassExemptions' "audience-less device flow" case, which proves the
+// SAME client with identity-only scopes is refused 403 on every write — i.e.
+// the "you are not allowed to take this action" the user reported. Here the
+// fixed token must clear read, write, sensitive, and mint op classes at the
+// dispatch matrix (the class gate never answers INSUFFICIENT_SCOPE, and mint
+// clears AuthorizeMintClass rather than the plain mint 403).
+func TestRenderCLITokenClearsEveryOpClassEndToEnd(t *testing.T) {
+	// Audience-less (device flow requests no resource) + platform-marked, exactly
+	// as introspection classifies the CLI's token after the fix.
+	h, _, sink := scopedAPI(t, "cli-user", "render-cli", cliauth.DeviceGrantScope,
+		nil, map[string]bool{"render-cli": true})
+
+	// read — services list, the command in the bug report.
+	if got := do(t, h, http.MethodGet, "/v1/services", testToken, "").Code; got != http.StatusOK {
+		t.Fatalf("read: GET /v1/services = %d, want 200", got)
+	}
+	// write — a lifecycle verb (restart/suspend/deploy share this class).
+	if got := do(t, h, http.MethodPost, "/v1/services/web/suspend", testToken, "").Code; got != http.StatusAccepted {
+		t.Fatalf("write: POST suspend = %d, want 202", got)
+	}
+	// sensitive — env-var reveal (also powers psql/kv connection-info). The store
+	// is unconfigured in this harness, so we assert only that the class gate was
+	// cleared: the response is never the sensitive-scope refusal.
+	if w := do(t, h, http.MethodGet, "/v1/services/web/env-vars", testToken, ""); bodyCode(w) == core.InsufficientScopeCode {
+		t.Fatalf("sensitive: env-vars refused for INSUFFICIENT_SCOPE (%s), fix did not clear the sensitive class", w.Body.String())
+	}
+	// mint — API-key creation. Platform + granular clears both the dispatch
+	// matrix (write) AND AuthorizeMintClass; the third-party token in
+	// TestScopeClassEnforcementWriteToken gets the plain mint 403 here instead.
+	if w := do(t, h, http.MethodPost, "/v1/api-keys", testToken, `{"name":"cli"}`); w.Code == http.StatusForbidden {
+		t.Fatalf("mint: POST /v1/api-keys = 403 (%s), fix did not clear AuthorizeMintClass for the platform CLI token", w.Body.String())
+	}
+
+	// The whole point: not a single scope-class denial was recorded for the CLI.
+	if n := len(auditOfVerb(sink.events, core.AuditVerbScopeClass)); n != 0 {
+		t.Fatalf("CLI token incurred %d scope-class denials, want 0", n)
 	}
 }
 

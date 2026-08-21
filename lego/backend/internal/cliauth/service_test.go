@@ -104,11 +104,40 @@ func TestRenderProtocolAdapters(t *testing.T) {
 	if len(calls) != 3 {
 		t.Fatalf("upstream calls = %d, want 3", len(calls))
 	}
-	if calls[0].Get("client_id") != RenderCLIClientID || calls[0].Get("scope") != cliRequestedScope {
+	if calls[0].Get("client_id") != RenderCLIClientID || calls[0].Get("scope") != DeviceGrantScope {
 		t.Errorf("device grant form = %v", calls[0])
 	}
 	if calls[1].Get("device_code") != "device-1" || calls[2].Get("client_id") != RenderCLIClientID {
 		t.Errorf("token forms = %v / %v", calls[1], calls[2])
+	}
+}
+
+// TestDeviceGrantScopeCoversEveryOpClass pins the fix for the login →
+// "you are not allowed to take this action" regression: the device-grant must
+// request enough granular capability that a minted platform-client token, once
+// normalized by introspection, satisfies the dispatch-time scope matrix for
+// EVERY op class the CLI exercises (read for list/get, write for create/update/
+// restart/delete/deploys/jobs, sensitive for env-var/connection-info reveals,
+// mint for ssh-key/deploy-hook credential issuance). Trimming DeviceGrantScope
+// back to identity-only (openid offline_access) — which NormalizeOAuthGrant
+// drops entirely — reintroduces the blanket 403 and fails this test.
+func TestDeviceGrantScopeCoversEveryOpClass(t *testing.T) {
+	grant, err := core.NormalizeOAuthGrant(DeviceGrantScope, nil, RenderCLIClientID, "")
+	if err != nil {
+		t.Fatalf("NormalizeOAuthGrant(%q): %v", DeviceGrantScope, err)
+	}
+	// The token bex mints for the CLI: a human, platform-marked OAuth delegation
+	// carrying exactly the scopes introspection retained from the device grant.
+	id := core.Identity{
+		Subject: "kratos-user", Method: "oauth2", ClientID: RenderCLIClientID,
+		Human: true, PlatformClient: true, CanonicalScopes: grant.Scopes,
+	}
+	for _, class := range []string{
+		core.OpClassRead, core.OpClassWrite, core.OpClassSensitive, core.OpClassMint,
+	} {
+		if err := id.RequireOpClass(class); err != nil {
+			t.Errorf("CLI token cannot satisfy %q op class: %v (scopes=%q)", class, err, grant.Scopes)
+		}
 	}
 }
 
