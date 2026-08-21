@@ -96,6 +96,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w7/dev-7/` keeps onl
 
 > `027.md` promoted to **m81** 2026-08-17; `028.md` retired by **m84** 2026-08-19; both moved to `done/`.
 
+- `038.md` — forum service: **tenant DB passwords baked into its registry image** (verified from a clean container; the repo template says not to), and `autoDeploy: true` on an App whose CR has **no `repo`**, so push-to-deploy silently never fires (a signed push webhook returns `{"redeployed":[]}`). Looks like an ADR043 projection gap.
 - `037.md` — **the official Render CLI is 403 on every operation in production** (`INSUFFICIENT_SCOPE: bex.read`). Credential is valid and the client carries the platform-client marker, so the capability exemption should fire and does not; the device flow also still requests only `openid offline_access`, so re-login likely does not fix it. Evidence + narrowing in the note.
 - `036.md` — no new managed Postgres could provision anywhere (RBAC delegation). **Fixed + shipped**; guard and alerts added.
 - `032.md` — the CNPG `Cluster` projection may still PUT every reconcile against a live CNPG mutating webhook; envtest uses a stub CRD and cannot see it. Measure with one `kubectl get cluster -o yaml` before scoping (w7/m84/t003 residual).
