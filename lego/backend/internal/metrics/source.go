@@ -265,15 +265,30 @@ func promResourceQueryFor(req ResourceMetricsRangeRequest) string {
 	}
 }
 
+// traefikServiceLabel returns the exact Prometheus `service` label Traefik's
+// Kubernetes Ingress provider assigns to an App's backend:
+// "<namespace>-<app>-<port>@kubernetes" (docs/ADR010-observability.md,
+// ground-truthed 2026-07 against production; the identical regex is load-bearing
+// in the request-log pipeline, deploy/gitops/base/log-shipper.yaml's
+// `stage.regex` over the access log's ServiceName field). The operator names the
+// App's k8s Service after the App and gives it exactly app.Spec.EffectivePort()
+// (app_controller.go), so this is a reconstruction of a known identity, not a
+// heuristic — codex-security round-19 #6: the prior unanchored `.*<app>.*`
+// substring selector dropped namespace entirely and could match another
+// tenant's Traefik service whose name happened to contain this App's name.
+func traefikServiceLabel(namespace, app string, port int32) string {
+	return fmt.Sprintf("%s-%s-%d@kubernetes", namespace, app, port)
+}
+
 // promQueryFor builds the PromQL range query for a request metric over Traefik's
-// counters. HTTP count/latency retain their service selector; bandwidth uses
+// counters. HTTP count/latency retain their exact service selector; bandwidth uses
 // exact router identities so shared backends remain attributable. Traefik's
 // Prometheus counters carry no host or path labels (the router label is a name,
 // not a matched Host()/PathPrefix() value), so a host/path-filtered read is never
 // routed here — it goes to the Loki request-metrics source instead (w5/m58); this
 // builder ignores RequestMetricsRequest.Host/Path.
 func promQueryFor(req RequestMetricsRequest) string {
-	selector := fmt.Sprintf(`service=~%q`, ".*"+egressquery.RegexEscape(req.App)+".*")
+	selector := fmt.Sprintf(`service=%q`, traefikServiceLabel(req.Namespace, req.App, req.Port))
 	if req.Metric == MetricBandwidth {
 		return egressquery.SumRates(egressquery.App(req.AppID, req.Routers, req.Direct), stepSeconds(req.Resolution))
 	}
@@ -544,8 +559,8 @@ func NewPrometheusFilterValuesSource(base string, hc *http.Client) MetricsFilter
 		hc = core.UpstreamClient
 	}
 	base = strings.TrimRight(base, "/")
-	return func(ctx context.Context, _, app, label string) ([]string, error) {
-		match := fmt.Sprintf(`traefik_service_requests_total{service=~%q}`, ".*"+egressquery.RegexEscape(app)+".*")
+	return func(ctx context.Context, namespace, app string, port int32, label string) ([]string, error) {
+		match := fmt.Sprintf(`traefik_service_requests_total{service=%q}`, traefikServiceLabel(namespace, app, port))
 		u := fmt.Sprintf("%s/api/v1/label/%s/values?%s", base, url.PathEscape(label), url.Values{"match[]": {match}}.Encode())
 
 		httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)

@@ -6,7 +6,7 @@ Docs live here — one file per topic. Root [CLAUDE.md](../CLAUDE.md) points her
 
 - Each `ADR*.md` is self-contained; read the ADR directly for design + status.
 - Render-parity ledgers ([ADR018](ADR018-render-parity.md), [cli-compatibility-checklist.md](cli-compatibility-checklist.md)) are evidence-backed.
-- Security reviews form a chain ADR028 → ADR079 (see § Security lineage); read the latest for current residual.
+- Security reviews form a chain ADR028 → ADR080 (see § Security lineage); read the latest for current residual.
 
 ## Catalog — by topic
 
@@ -98,9 +98,9 @@ Docs live here — one file per topic. Root [CLAUDE.md](../CLAUDE.md) points her
 - [ADR039-operator-audit-and-platform-reuse.md](ADR039-operator-audit-and-platform-reuse.md) — operator audit + reuse candidates
 - [ADR058-release-engineering.md](ADR058-release-engineering.md) — `bex/vX.Y.Z` lockstep, CLI `bex-cli/v0.x` until 1.0
 
-### Security review lineage (ADR028 → round 18)
+### Security review lineage (ADR028 → round 19)
 
-Each entry is a codex-security triage; earlier rounds' residuals are re-confirmed in later ones. Read the latest ([ADR079](ADR079-security-review-round18.md)) for current posture.
+Each entry is a codex-security triage; earlier rounds' residuals are re-confirmed in later ones. Read the latest ([ADR080](ADR080-security-review-round19.md)) for current posture.
 
 - [ADR028-security-review.md](ADR028-security-review.md) — round 0 audit (evidence-backed)
 - [ADR045-security-review-round3.md](ADR045-security-review-round3.md) — round 3: host-hijack fix
@@ -120,5 +120,6 @@ Each entry is a codex-security triage; earlier rounds' residuals are re-confirme
 - [ADR076-security-review-round16.md](ADR076-security-review-round16.md) — round 16: 13 findings, 12 fixed
 - [ADR077-security-review-round17.md](ADR077-security-review-round17.md) — round 17: 15 findings, 11 fixed
 - [ADR079-security-review-round18.md](ADR079-security-review-round18.md) — round 18: 10 findings (1 crit), 8 fixed
+- [ADR080-security-review-round19.md](ADR080-security-review-round19.md) — round 19: 8 findings, 7 fixed (CI env gates, secrets CAS, metrics scoping)
 
 Other docs: [PRFAQ001-bex-v1-hosting.md](PRFAQ001-bex-v1-hosting.md), [assets/](assets/) media.

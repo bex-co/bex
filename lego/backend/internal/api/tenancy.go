@@ -239,23 +239,30 @@ func (t *tenantService) failInviteRoleReconciliation(ctx context.Context, inv st
 	}
 }
 
-// reconcileInviteRole grants the invited role and revokes any OTHER role tuple
-// the subject already holds on the workspace, so redeeming an invite for someone
-// who is already a member at a different role leaves EXACTLY the invited role
-// (w1/m65 F7) — the OR-based model would otherwise keep the higher of the two
-// effective. Best-effort like the grant it replaces; check-before-revoke skips
-// absent tuples, and with no checker it degrades to grant-only (prior behavior).
+// reconcileInviteRole revokes every OTHER role tuple the subject already holds
+// on the workspace and grants the invited role, so redeeming an invite for
+// someone who is already a member at a different role leaves EXACTLY the invited
+// role (w1/m65 F7) — the OR-based model would otherwise keep the higher of the
+// two effective. round-19 #3: the revokes run BEFORE the grant so a partial
+// failure strands the subject under-privileged (fail-closed, repaired by the
+// role-reconciliation outbox) instead of riding a union of old+new. Best-effort
+// like the grant it replaces; check-before-revoke skips absent tuples, and with
+// no checker it degrades to grant-only (prior behavior).
 func (t *tenantService) reconcileInviteRole(ctx context.Context, tenantID, subject, role string) error {
 	if t.granter == nil {
 		return nil
 	}
-	if err := t.granter.GrantWorkspaceRole(ctx, tenantID, subject, role); err != nil {
-		return err
-	}
 	checker, ok := t.granter.(core.Checker)
-	if !ok {
-		return nil
+	if ok {
+		if err := t.revokeOtherRoles(ctx, checker, tenantID, subject, role); err != nil {
+			return err
+		}
 	}
+	return t.granter.GrantWorkspaceRole(ctx, tenantID, subject, role)
+}
+
+// revokeOtherRoles removes every role tuple except `role`, check-before-revoke.
+func (t *tenantService) revokeOtherRoles(ctx context.Context, checker core.Checker, tenantID, subject, role string) error {
 	for _, other := range members.Roles {
 		if other == role {
 			continue

@@ -99,6 +99,11 @@ func (f *queuedFakeStore) FailRoleReconciliation(_ context.Context, tenantID, su
 	return nil
 }
 
+func (f *queuedFakeStore) HasPendingRoleReconciliation(_ context.Context, tenantID, subject string) (bool, error) {
+	_, ok := f.queued[roleQueueKey(tenantID, subject)]
+	return ok, nil
+}
+
 func newFakeStore(plan string) *fakeStore {
 	return &fakeStore{
 		tenant:  store.Tenant{ID: "tea-1", Name: "acme", Plan: plan},
@@ -280,6 +285,7 @@ type fakeGranter struct {
 	revoked   []string
 	tuples    map[string]bool
 	revokeErr error // when set, RevokeWorkspaceMember fails (still records the attempt)
+	grantErr  error // when set, GrantWorkspaceRole fails (still records the attempt)
 }
 
 func newFakeGranter() *fakeGranter { return &fakeGranter{tuples: map[string]bool{}} }
@@ -288,6 +294,9 @@ func key(relation, tenantID, subject string) string { return relation + ":" + te
 
 func (g *fakeGranter) GrantWorkspaceRole(_ context.Context, tenantID, subject, relation string) error {
 	g.granted = append(g.granted, key(relation, tenantID, subject))
+	if g.grantErr != nil {
+		return g.grantErr
+	}
 	g.tuples[key(relation, tenantID, subject)] = true
 	return nil
 }
@@ -757,6 +766,100 @@ func TestChangeRoleSurfacesRevokeError(t *testing.T) {
 	s := svc(st, g, nil, nil)
 	if _, err := s.ChangeRole(ctxWith("admin-1"), "tea-1", "bob", "viewer"); err == nil {
 		t.Fatal("a failed revoke of the prior role must surface an error (F7), got nil")
+	}
+}
+
+// TestChangeRoleRevokesBeforeGrant pins round-19 #3: a demotion must revoke the
+// old tuple BEFORE granting the new one, so a failed revoke never leaves the
+// subject holding the union of old+new (which the OR-based model resolves to
+// the HIGHER authority). With the revoke failing, the new role must not be
+// granted at all — the subject keeps exactly the pre-request state.
+func TestChangeRoleRevokesBeforeGrant(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("bob", "admin")
+	g := newFakeGranter()
+	g.tuples[key(core.RelCanManage, "tea-1", "user:admin-1")] = true // caller authorization
+	g.tuples[key("admin", "tea-1", "user:bob")] = true
+	g.revokeErr = errors.New("openfga unreachable")
+	s := svc(st, g, nil, g)
+	// "developer", not "viewer": the pro plan (this test's fixture) only allows
+	// admin|developer, so a plan-gate rejection can't short-circuit the call
+	// before it reaches the revoke this test is pinning.
+	if _, err := s.ChangeRole(ctxWith("admin-1"), "tea-1", "bob", "developer"); err == nil {
+		t.Fatal("a failed revoke of the prior role must surface an error, got nil")
+	}
+	if len(g.granted) != 0 {
+		t.Errorf("grant happened despite a failed revoke (grant-before-revoke order restored?): granted = %v", g.granted)
+	}
+	if !g.tuples[key("admin", "tea-1", "user:bob")] {
+		t.Error("the failed revoke must leave the pre-request tuple untouched")
+	}
+	if g.tuples[key("developer", "tea-1", "user:bob")] {
+		t.Error("the new lower tuple must not be granted while the higher one lingers")
+	}
+}
+
+// TestChangeRoleDemotionGrantFailureFailsClosed pins round-19 #3's other half:
+// when the revoke SUCCEEDS but the grant fails, the subject must end with NO
+// tuple (under-privileged, repaired by the outbox) — never the old higher one.
+func TestChangeRoleDemotionGrantFailureFailsClosed(t *testing.T) {
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("bob", "admin")
+	g := newFakeGranter()
+	g.tuples[key(core.RelCanManage, "tea-1", "user:admin-1")] = true // caller authorization
+	g.tuples[key("admin", "tea-1", "user:bob")] = true
+	g.grantErr = errors.New("openfga unreachable")
+	s := svc(st, g, nil, g)
+	// "developer", not "viewer": the pro plan (this test's fixture) only allows
+	// admin|developer, so a plan-gate rejection can't short-circuit the call
+	// before it reaches the grant this test is pinning.
+	if _, err := s.ChangeRole(ctxWith("admin-1"), "tea-1", "bob", "developer"); err == nil {
+		t.Fatal("a failed grant must surface an error, got nil")
+	}
+	for _, role := range Roles {
+		if g.tuples[key(role, "tea-1", "user:bob")] {
+			t.Errorf("subject still holds the %q tuple after a revoke-then-grant failure; want fail-closed (no tuple)", role)
+		}
+	}
+}
+
+// TestPendingRoleReconciliationRefusesCallerCanManage pins round-19 #3's veto:
+// while the CALLER's own role intent has not converged into OpenFGA (the row is
+// committed, the stale higher tuple still answers fresh checks), the members
+// can_manage verbs must refuse — that window is the demoted-admin
+// re-promotion / colluding-invite path. Clearing the outbox row restores the
+// verbs, proving the refusal tracks convergence rather than the row's role.
+func TestPendingRoleReconciliationRefusesCallerCanManage(t *testing.T) {
+	st := newQueuedFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("bob", "developer")
+	g := newFakeGranter()
+	g.tuples[key(core.RelCanManage, "tea-1", "user:admin-1")] = true // caller authorization
+	g.tuples[key("admin", "tea-1", "user:admin-1")] = true
+	s := svc(st, g, nil, g)
+	// The caller's demotion committed but has not converged (the outbox row is
+	// the round-19 #3 partial-failure state; OpenFGA still answers admin).
+	st.queued[roleQueueKey("tea-1", "admin-1")] = store.RoleReconciliation{TenantID: "tea-1", Subject: "admin-1", Role: "developer"}
+
+	if _, err := s.ChangeRole(ctxWith("admin-1"), "tea-1", "bob", "viewer"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("ChangeRole during caller's pending demotion: want ErrForbidden, got %v", err)
+	}
+	if _, err := s.Invite(ctxWith("admin-1"), "tea-1", "new@example.com", "DEVELOPER"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("Invite during caller's pending demotion: want ErrForbidden, got %v", err)
+	}
+	if err := s.Remove(ctxWith("admin-1"), "tea-1", "bob"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("Remove during caller's pending demotion: want ErrForbidden, got %v", err)
+	}
+	// A settled caller is unaffected (their own row is absent even though bob
+	// has one — the veto is per-caller, not per-workspace).
+	delete(st.queued, roleQueueKey("tea-1", "admin-1"))
+	// "developer", not "viewer": the pro plan (this test's fixture) only allows
+	// admin|developer, and this assertion is only about the veto clearing, not
+	// plan gating.
+	if _, err := s.ChangeRole(ctxWith("admin-1"), "tea-1", "bob", "developer"); err != nil {
+		t.Fatalf("ChangeRole after caller's reconciliation settled: %v", err)
 	}
 }
 

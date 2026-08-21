@@ -176,39 +176,56 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 }
 
 // patchEnvironmentSparse is the batch protocol: any mix of env-var and
-// secret-file operations applied to the current maps with no revision check.
+// secret-file operations applied to the current maps with no caller-supplied
+// revision check.
+//
+// codex-security round-19 #7: each map is written through updateMapCAS's
+// GetVersioned/PutCAS retry loop instead of a bare readMap+storeMap, so a
+// concurrent single-field writer (SetEnvVar, SetSecretFile, ...) between the
+// read and this write is never silently discarded — the patch re-applies
+// against the latest committed map on every CAS retry. This keeps the sparse
+// contract (no ExpectedEnvRevision, no conflict surfaced to the caller) while
+// closing the lost-update race; only patchEnvironmentCAS exposes revisions.
 func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a *appv1alpha1.App, patch EnvironmentPatch) (EnvironmentPatchResult, error) {
-	oldEnv, err := s.readMap(ctx, envPath(service))
+	var oldEnv, oldFiles map[string]string
+	var envChanged, filesChanged bool
+	var applyErr error
+
+	env, err := s.updateMapCAS(ctx, envPath(service), func(current map[string]string) bool {
+		oldEnv = core.CloneStringMap(current)
+		if err := applyEnvPatch(current, patch.EnvVars); err != nil {
+			applyErr = err
+			return false
+		}
+		envChanged = !maps.Equal(oldEnv, current)
+		return envChanged
+	})
 	if err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	oldFiles, err := s.readMap(ctx, filesPath(service))
+	if applyErr != nil {
+		return EnvironmentPatchResult{}, applyErr
+	}
+
+	files, err := s.updateMapCAS(ctx, filesPath(service), func(current map[string]string) bool {
+		oldFiles = core.CloneStringMap(current)
+		if err := applyFilePatch(current, patch.SecretFiles); err != nil {
+			applyErr = err
+			return false
+		}
+		filesChanged = !maps.Equal(oldFiles, current)
+		return filesChanged
+	})
 	if err != nil {
-		return EnvironmentPatchResult{}, err
+		return EnvironmentPatchResult{}, errors.Join(err, s.restoreSourceMaps(ctx, service, oldEnv, nil, envChanged, false))
 	}
-	env := core.CloneStringMap(oldEnv)
-	files := core.CloneStringMap(oldFiles)
-	if err := applyEnvPatch(env, patch.EnvVars); err != nil {
-		return EnvironmentPatchResult{}, err
+	if applyErr != nil {
+		return EnvironmentPatchResult{}, errors.Join(applyErr, s.restoreSourceMaps(ctx, service, oldEnv, nil, envChanged, false))
 	}
-	if err := applyFilePatch(files, patch.SecretFiles); err != nil {
-		return EnvironmentPatchResult{}, err
-	}
-	envChanged := !maps.Equal(oldEnv, env)
-	filesChanged := !maps.Equal(oldFiles, files)
+
 	result := environmentPatchResult(env, files, false)
 	if !envChanged && !filesChanged {
 		return result, nil
-	}
-	if envChanged {
-		if err := s.storeMap(ctx, envPath(service), env); err != nil {
-			return EnvironmentPatchResult{}, err
-		}
-	}
-	if filesChanged {
-		if err := s.storeMap(ctx, filesPath(service), files); err != nil {
-			return EnvironmentPatchResult{}, errors.Join(err, s.restoreSourceMaps(ctx, service, oldEnv, oldFiles, envChanged, false))
-		}
 	}
 	txn := envPatchTxn{
 		service:      service,

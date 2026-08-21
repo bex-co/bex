@@ -204,7 +204,11 @@ type RequestMetricsRequest struct {
 	Namespace string
 	App       string
 	AppID     string
-	Direct    bool
+	// Port is the App's effective backend port (app.Spec.EffectivePort()) — with
+	// Namespace and App it reconstructs the exact Traefik `service` metric label
+	// (codex-security round-19 #6; see traefikServiceLabel in source.go).
+	Port   int32
+	Direct bool
 	// Routers are the exact Traefik router metric labels for bandwidth. The
 	// service resolves them from the authorized App's actual Ingress; request
 	// count and latency retain their existing service-level selector.
@@ -242,7 +246,7 @@ type MonthToDateBandwidthSource func(ctx context.Context, appID string, routers 
 // MetricsFilterValuesSource discovers a Prometheus label's observed values (e.g.
 // the `code` label backing STATUS_CODE) for an App's request metrics. nil =>
 // that field's values come back empty rather than erroring.
-type MetricsFilterValuesSource func(ctx context.Context, namespace, app, label string) ([]string, error)
+type MetricsFilterValuesSource func(ctx context.Context, namespace, app string, port int32, label string) ([]string, error)
 
 // Service is the single metrics read every adapter calls, plus the dashboard's
 // month-to-date bandwidth and filter-population helpers.
@@ -779,6 +783,7 @@ func (s *Service) readRequestSeries(ctx context.Context, source RequestMetricsSo
 		Namespace:  app.Namespace,
 		App:        app.Name,
 		AppID:      appResourceID(app, q.App),
+		Port:       app.Spec.EffectivePort(),
 		Direct:     app.Spec.Type != appv1alpha1.TypeStaticSite,
 		Routers:    routers,
 		Metric:     q.Metric,
@@ -994,5 +999,5 @@ func (s *Service) filterValuesOrEmpty(ctx context.Context, app *appv1alpha1.App,
 	}
 	// app.Namespace is the App's per-tenant `<ws>` namespace (ADR043), where
 	// its series live — never the shared s.Namespace.
-	return s.MetricsFilterValuesSource(ctx, app.Namespace, app.Name, label)
+	return s.MetricsFilterValuesSource(ctx, app.Namespace, app.Name, app.Spec.EffectivePort(), label)
 }

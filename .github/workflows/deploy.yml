@@ -153,6 +153,18 @@ jobs:
     # which are the authoritative control but live in repo settings, not YAML.
     if: needs.check-supersession.outputs.superseded != 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # codex-security round-19 #2: the comment above named the infra.yml
+    # `production-infra` pattern as authoritative but this job never actually
+    # carried an `environment:` — unlike infra.yml/snapshot.yml/cli-release.yml,
+    # which all do — so the ref guard was the ONLY gate before this job's build,
+    # release, and admin.conf/OpenBao-root/unseal steps ran. Attach it here so a
+    # protected `production-deploy` environment with required reviewers can gate
+    # the credentialed steps exactly like the sibling workflows.
+    #
+    # This does not yet split secretless build from credentialed deploy (the
+    # finding's fuller remediation) — that stays a follow-up; every step in this
+    # job still shares the same environment-scoped secrets.
+    environment: production-deploy
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

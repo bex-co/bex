@@ -147,6 +147,10 @@ type RoleReconciliationStore interface {
 	ClaimRoleReconciliations(ctx context.Context, limit int) ([]store.RoleReconciliation, error)
 	CompleteRoleReconciliation(ctx context.Context, tenantID, subject, role string) error
 	FailRoleReconciliation(ctx context.Context, tenantID, subject, role, message string) error
+	// HasPendingRoleReconciliation backs the can_manage fail-closed veto
+	// (round-19 #3): true while the caller's own role intent in this workspace
+	// has not converged into OpenFGA yet.
+	HasPendingRoleReconciliation(ctx context.Context, tenantID, subject string) (bool, error)
 }
 
 // IdentityAttrs is the slice of identity-provider state a member row is
@@ -472,6 +476,12 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 	if err := s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
 		return InviteView{}, err
 	}
+	// round-19 #3: an invite is durable-capability issuance — refuse it while
+	// the caller's own role reconciliation is pending (a stale higher tuple is
+	// exactly what a demoted admin would invite through).
+	if err := s.guardCallerRoleSettled(ctx, workspaceID); err != nil {
+		return InviteView{}, err
+	}
 	if s.Store == nil {
 		return InviteView{}, ErrMembersUnavailable
 	}
@@ -546,6 +556,11 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 // invite is a 404 on every surface.
 func (s *Service) ResendInvite(ctx context.Context, workspaceID, inviteID string) (InviteView, error) {
 	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.InviteTarget(inviteID)); err != nil {
+		return InviteView{}, err
+	}
+	// round-19 #3: resending re-issues a redeemable capability — the members
+	// can_manage verbs fail closed while the caller's reconciliation pends.
+	if err := s.guardCallerRoleSettled(ctx, workspaceID); err != nil {
 		return InviteView{}, err
 	}
 	if s.Store == nil {
@@ -638,8 +653,9 @@ func (s *Service) recordAccepted(ctx context.Context, inv store.Invite, id core.
 
 // ChangeRole changes an existing member's role. Admin-only. Refuses demoting the
 // last admin (a workspace nobody can administer). No-op when the role is
-// unchanged. Writes the row (source of truth) then reconciles OpenFGA: grants the
-// new relation, revokes the old — so the auth gate follows the row.
+// unchanged. Writes the row (source of truth) then reconciles OpenFGA: revokes
+// the old relation, grants the new — so the auth gate follows the row, failing
+// CLOSED on a partial demotion (round-19 #3).
 func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role string) (MemberView, error) {
 	// Deferred allowed-write recording: the success row carries the typed
 	// old→new role pair (RecordMemberRoleChanged), which isn't known until the
@@ -654,6 +670,13 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	// writes a durable membership tuple, so re-assert can_manage uncached — a
 	// caller demoted within the last PositiveTTL must not ride a stale positive.
 	if err := s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
+		return MemberView{}, err
+	}
+	// round-19 #3: a fresh check still reads OpenFGA's UNION of role tuples, so
+	// a caller whose own demotion has not converged yet answers can_manage from
+	// the stale higher tuple. Refuse while the caller's reconciliation is
+	// pending — this is the re-promotion path that ordering alone cannot close.
+	if err := s.guardCallerRoleSettled(ctx, workspaceID); err != nil {
 		return MemberView{}, err
 	}
 	if s.Store == nil {
@@ -703,13 +726,21 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	// The row update and durable reconciliation intent committed together. Apply
 	// the known old->new transition synchronously (this also works in the legacy
 	// granter-without-checker mode), but retain the outbox row on either failure.
-	if err := s.grantRole(ctx, workspaceID, "user:"+subject, role); err != nil {
-		s.failQueuedRole(ctx, workspaceID, subject, role, err)
-		return MemberView{}, fmt.Errorf("workspace %s: granting role %q: %w", workspaceID, role, err)
-	}
+	//
+	// round-19 #3: REVOKE the prior tuple before granting the new one. The model
+	// ORs role relations, so the old grant-then-revoke order could leave a
+	// demoted member holding BOTH tuples on a revoke failure — the union keeps
+	// the higher authority effective until the reconciler converges. Revoke-first
+	// fails closed instead: a grant failure strands the member with NO tuple
+	// (under-privileged, repaired by the outbox), and a revoke failure leaves
+	// exactly the pre-request state (never a new union of old+new).
 	if err := s.revokeRoleErr(ctx, workspaceID, "user:"+subject, m.Role); err != nil {
 		s.failQueuedRole(ctx, workspaceID, subject, role, err)
 		return MemberView{}, fmt.Errorf("workspace %s: revoking prior role %q: %w", workspaceID, m.Role, err)
+	}
+	if err := s.grantRole(ctx, workspaceID, "user:"+subject, role); err != nil {
+		s.failQueuedRole(ctx, workspaceID, subject, role, err)
+		return MemberView{}, fmt.Errorf("workspace %s: granting role %q: %w", workspaceID, role, err)
 	}
 	if err := s.completeQueuedRole(ctx, workspaceID, subject, role); err != nil {
 		return MemberView{}, err
@@ -798,6 +829,11 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 	if err := s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
 		return err
 	}
+	// round-19 #3: the members can_manage verbs fail closed while the caller's
+	// own role reconciliation is pending (see ChangeRole).
+	if err := s.guardCallerRoleSettled(ctx, workspaceID); err != nil {
+		return err
+	}
 	if s.Store == nil {
 		return ErrMembersUnavailable
 	}
@@ -827,6 +863,11 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 // RevokeInvite deletes a pending invite before it's redeemed. Admin-only.
 func (s *Service) RevokeInvite(ctx context.Context, workspaceID, inviteID string) error {
 	if err := s.AuthorizeOnTarget(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID), core.InviteTarget(inviteID)); err != nil {
+		return err
+	}
+	// round-19 #3: the members can_manage verbs fail closed while the caller's
+	// own role reconciliation is pending (see ChangeRole).
+	if err := s.guardCallerRoleSettled(ctx, workspaceID); err != nil {
 		return err
 	}
 	if s.Store == nil {
@@ -885,43 +926,81 @@ func (s *Service) grantRole(ctx context.Context, tenantID, subject, relation str
 	return s.Granter.GrantWorkspaceRole(ctx, tenantID, subject, relation)
 }
 
-// reconcileExactRole grants `role` and — when a checker is available — revokes
-// every OTHER role tuple the subject currently holds, converging OpenFGA to a
-// single role (subject is already FGA-prefixed, "user:<id>"). It backs the
-// invite-redemption paths, where the caller does NOT know the member's prior
-// role: the model ORs the five role relations, so redeeming an invite for an
-// existing member must drop the old tuple or both stay effective (w1/m65 F7).
-// Grant + revoke errors are surfaced. Without a checker (OpenFGA off) it
-// degrades to a bare grant — byte-identical to the pre-fix behavior — because
-// role existence can't be probed to revoke precisely.
+// reconcileExactRole revokes every OTHER role tuple the subject currently holds
+// and grants `role`, converging OpenFGA to a single role (subject is already
+// FGA-prefixed, "user:<id>"). It backs the invite-redemption paths, where the
+// caller does NOT know the member's prior role: the model ORs the five role
+// relations, so redeeming an invite for an existing member must drop the old
+// tuple or both stay effective (w1/m65 F7).
+//
+// round-19 #3: the revokes run BEFORE the grant, so a grant failure strands the
+// subject with NO tuple (fail-closed, repaired by the outbox) rather than a
+// union of old+new. A failed revoke does not skip the grant: granting the
+// desired role never raises the union above what the un-revoked tuple already
+// grants, and it keeps convergence moving — the surfaced error keeps the outbox
+// row pending so the retry (plus the callers' pending-role veto) closes the
+// window. Without a checker (OpenFGA off) it degrades to a bare grant —
+// byte-identical to the pre-fix behavior — because role existence can't be
+// probed to revoke precisely.
 func (s *Service) reconcileExactRole(ctx context.Context, tenantID, subject, role string) error {
-	if err := s.grantRole(ctx, tenantID, subject, role); err != nil {
-		return err
-	}
-	if s.Base == nil || s.Base.Authz == nil {
-		return nil
-	}
 	var errs []error
-	for _, other := range Roles {
-		if other == role {
-			continue
+	if s.Base != nil && s.Base.Authz != nil {
+		for _, other := range Roles {
+			if other == role {
+				continue
+			}
+			// Only skip a role tuple that is DEFINITIVELY absent (check-before-revoke):
+			// keeps a no-op from masquerading as a failure and avoids asking OpenFGA to
+			// delete a missing tuple. round-5 finding 16: a Check ERROR is NOT absence —
+			// the old `err != nil || !ok` swallowed a transient failure and left a stale
+			// higher-role tuple the OR-based model keeps effective. On an indeterminate
+			// check, attempt the revoke (deleting an absent tuple is idempotent) and
+			// surface any real error via errs so it isn't lost.
+			ok, err := s.checkRoleFresh(ctx, subject, other, tenantID)
+			if err == nil && !ok {
+				continue
+			}
+			if err := s.revokeRoleErr(ctx, tenantID, subject, other); err != nil {
+				errs = append(errs, fmt.Errorf("revoke %q: %w", other, err))
+			}
 		}
-		// Only skip a role tuple that is DEFINITIVELY absent (check-before-revoke):
-		// keeps a no-op from masquerading as a failure and avoids asking OpenFGA to
-		// delete a missing tuple. round-5 finding 16: a Check ERROR is NOT absence —
-		// the old `err != nil || !ok` swallowed a transient failure and left a stale
-		// higher-role tuple the OR-based model keeps effective. On an indeterminate
-		// check, attempt the revoke (deleting an absent tuple is idempotent) and
-		// surface any real error via errs so it isn't lost.
-		ok, err := s.checkRoleFresh(ctx, subject, other, tenantID)
-		if err == nil && !ok {
-			continue
-		}
-		if err := s.revokeRoleErr(ctx, tenantID, subject, other); err != nil {
-			errs = append(errs, fmt.Errorf("revoke %q: %w", other, err))
-		}
+	}
+	if err := s.grantRole(ctx, tenantID, subject, role); err != nil {
+		errs = append(errs, fmt.Errorf("grant %q: %w", role, err))
 	}
 	return errors.Join(errs...)
+}
+
+// guardCallerRoleSettled refuses a can_manage verb while the CALLER's own role
+// reconciliation for this workspace is still pending (round-19 #3). The
+// tenant_members row commits before the OpenFGA tuples converge, and the model
+// ORs role relations, so a fresh check during that window can answer from the
+// caller's OLD, possibly higher tuple — the exact path a demoted administrator
+// would use to re-promote themselves (or invite a colluding admin) before the
+// 15s reconciler catches up. Failing closed here is bounded: the synchronous
+// path deletes the outbox row before returning, so this only fires while
+// convergence genuinely has not finished. A store without the outbox (DB-less
+// mode, narrow fakes) keeps its historical behavior; a caller with no identity
+// (background sweeps) was already decided by the Authorize gate above.
+func (s *Service) guardCallerRoleSettled(ctx context.Context, workspaceID string) error {
+	queue, ok := s.Store.(RoleReconciliationStore)
+	if !ok {
+		return nil
+	}
+	id, ok := core.IdentityFrom(ctx)
+	if !ok || id.Subject == "" {
+		return nil
+	}
+	pending, err := queue.HasPendingRoleReconciliation(ctx, workspaceID, id.Subject)
+	if err != nil {
+		// Fail closed on the check itself: an unreadable outbox cannot vouch
+		// that the caller's authorization has converged.
+		return fmt.Errorf("workspace %s: check pending role reconciliation: %w", workspaceID, err)
+	}
+	if pending {
+		return fmt.Errorf("%w: your workspace role change is still being applied; retry shortly", core.ErrForbidden)
+	}
+	return nil
 }
 
 func (s *Service) checkRoleFresh(ctx context.Context, subject, relation, tenantID string) (bool, error) {

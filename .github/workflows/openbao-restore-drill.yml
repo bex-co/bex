@@ -34,6 +34,15 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # codex-security round-19 #4: this job's own comments named "GitHub-side
+    # protected environments (see infra.yml)" as the authoritative control, but
+    # unlike infra.yml's `terraform` job it carried no `environment:` — so the
+    # ref guard + manual-dispatch above were the ONLY gates before OpenBao's
+    # root token, every Shamir unseal key, and admin.conf were released to
+    # repository-controlled restore-openbao.sh. Matches the infra.yml/
+    # snapshot.yml/cli-release.yml pattern: configure required reviewers on
+    # this environment in repo settings.
+    environment: production-restore
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0

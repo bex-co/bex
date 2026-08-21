@@ -194,7 +194,7 @@ func newManagedMetricsService(t *testing.T) (*Service, *managedMetricsCalls) {
 			Points: []MetricPoint{{Timestamp: fixedClock().Format(time.RFC3339), Value: 7}},
 		}}, nil
 	}
-	svc.MetricsFilterValuesSource = func(_ context.Context, _, app, label string) ([]string, error) {
+	svc.MetricsFilterValuesSource = func(_ context.Context, _, app string, _ int32, label string) ([]string, error) {
 		calls.filters = append(calls.filters, app)
 		if app != managedAppName {
 			return nil, fmt.Errorf("filter selector app = %q, want %q", app, managedAppName)
@@ -635,7 +635,7 @@ func TestMetricsSnapshotAndFilterDiscoveryUseAppNamespace(t *testing.T) {
 	svc := newService(rm, nil, app)
 
 	var filterNS string
-	svc.MetricsFilterValuesSource = func(_ context.Context, namespace, _, _ string) ([]string, error) {
+	svc.MetricsFilterValuesSource = func(_ context.Context, namespace, _ string, _ int32, _ string) ([]string, error) {
 		filterNS = namespace
 		return []string{"200"}, nil
 	}
@@ -920,12 +920,12 @@ func TestParsePodMetrics(t *testing.T) {
 }
 
 func TestPromQueryFor(t *testing.T) {
-	q := promQueryFor(RequestMetricsRequest{App: "web", Metric: MetricHTTPRequests, Resolution: 60 * time.Second, StatusCode: "5xx", GroupBy: "status"})
-	if want := `sum(rate(traefik_service_requests_total{service=~".*web.*",code=~"5.."}[60s])) by (code)`; q != want {
+	q := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Port: 80, Metric: MetricHTTPRequests, Resolution: 60 * time.Second, StatusCode: "5xx", GroupBy: "status"})
+	if want := `sum(rate(traefik_service_requests_total{service="default-web-80@kubernetes",code=~"5.."}[60s])) by (code)`; q != want {
 		t.Errorf("http_requests:\n got %q\nwant %q", q, want)
 	}
-	lat := promQueryFor(RequestMetricsRequest{App: "web", Metric: MetricHTTPLatency, Resolution: 60 * time.Second, Quantile: 0.9})
-	if want := `histogram_quantile(0.9, sum(rate(traefik_service_request_duration_seconds_bucket{service=~".*web.*"}[60s])) by (le))`; lat != want {
+	lat := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Port: 80, Metric: MetricHTTPLatency, Resolution: 60 * time.Second, Quantile: 0.9})
+	if want := `histogram_quantile(0.9, sum(rate(traefik_service_request_duration_seconds_bucket{service="default-web-80@kubernetes"}[60s])) by (le))`; lat != want {
 		t.Errorf("latency:\n got %q\nwant %q", lat, want)
 	}
 	injected := promQueryFor(RequestMetricsRequest{
@@ -956,8 +956,8 @@ func TestPromQueryFor(t *testing.T) {
 func TestPromQueryBuildersEscapeQuoteInValue(t *testing.T) {
 	const payload = `web"} or vector(1) #`
 
-	// Request-metrics service selector: .*<app>.* inside service=~"...".
-	q := promQueryFor(RequestMetricsRequest{App: payload, Metric: MetricHTTPRequests, Resolution: time.Minute})
+	// Request-metrics service selector: the exact composed identity inside service="...".
+	q := promQueryFor(RequestMetricsRequest{Namespace: "default", App: payload, Port: 80, Metric: MetricHTTPRequests, Resolution: time.Minute})
 	if !strings.Contains(q, `web\"`) || strings.Contains(q, `web"`) {
 		t.Fatalf("service selector did not escape the quote in App (breakout risk): %q", q)
 	}
@@ -1060,12 +1060,47 @@ func TestPrometheusFilterValuesRoundTrip(t *testing.T) {
 		_, _ = w.Write([]byte(`{"status":"success","data":["200","404","500"]}`))
 	}))
 	defer ts.Close()
-	values, err := NewPrometheusFilterValuesSource(ts.URL, ts.Client())(context.Background(), "default", "web", "code")
+	values, err := NewPrometheusFilterValuesSource(ts.URL, ts.Client())(context.Background(), "default", "web", 80, "code")
 	if err != nil || len(values) != 3 || values[0] != "200" {
 		t.Fatalf("filter values: %v %+v", err, values)
 	}
-	if !strings.Contains(gotMatch, `traefik_service_requests_total{service=~".*web.*"}`) {
+	if !strings.Contains(gotMatch, `traefik_service_requests_total{service="default-web-80@kubernetes"}`) {
 		t.Errorf("unexpected match[]: %q", gotMatch)
+	}
+}
+
+// TestPromQueryForAndFilterValuesAreNamespaceScoped pins codex-security round-19
+// #6: the prior selectors were an unanchored `.*<app>.*` substring match with no
+// namespace, so an authorized tenant's request for its own legacy bare-name App
+// could aggregate or enumerate another tenant's Traefik service whose label
+// merely contained the same text (e.g. app "web" matching another tenant's
+// "web-api" service, or the same app name in a different namespace). The fixed
+// selector is the exact composed "<namespace>-<app>-<port>@kubernetes" identity,
+// so same-named Apps in different namespaces — or an app name that is a
+// substring of another service's name — never collide.
+func TestPromQueryForAndFilterValuesAreNamespaceScoped(t *testing.T) {
+	q := promQueryFor(RequestMetricsRequest{Namespace: "tenant-a", App: "web", Port: 80, Metric: MetricHTTPRequests, Resolution: time.Minute})
+	if strings.Contains(q, `service=~`) {
+		t.Errorf("service selector must be an exact match, not a substring regex: %q", q)
+	}
+	if !strings.Contains(q, `service="tenant-a-web-80@kubernetes"`) {
+		t.Errorf("service selector missing exact namespace-qualified identity: %q", q)
+	}
+	if strings.Contains(q, `"tenant-a-web-api`) || strings.Contains(q, `tenant-b-web`) {
+		t.Errorf("service selector must not be able to match a sibling service: %q", q)
+	}
+
+	var gotMatch string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMatch = r.URL.Query().Get("match[]")
+		_, _ = w.Write([]byte(`{"status":"success","data":[]}`))
+	}))
+	defer ts.Close()
+	if _, err := NewPrometheusFilterValuesSource(ts.URL, ts.Client())(context.Background(), "tenant-a", "web", 80, "code"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(gotMatch, "service=~") || !strings.Contains(gotMatch, `service="tenant-a-web-80@kubernetes"`) {
+		t.Errorf("filter-values match[] is not the exact namespace-qualified identity: %q", gotMatch)
 	}
 }
 

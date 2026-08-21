@@ -50,6 +50,7 @@ type versionedFakeSecretStore struct {
 	*fakeSecretStore
 	versions    map[string]uint64
 	afterCAS    func(path string, version uint64)
+	afterGet    func() // fires once, after the NEXT GetVersioned captures its snapshot but before returning — simulates a concurrent writer landing in the read/write gap a CAS retry loop must survive
 	reads       []string
 	casCalls    int
 	failCASCall int
@@ -90,7 +91,12 @@ func newVersionedFakeSecretStore() *versionedFakeSecretStore {
 
 func (f *versionedFakeSecretStore) GetVersioned(ctx context.Context, path string) (core.SecretKVSnapshot, error) {
 	data, err := f.Get(ctx, path)
-	return core.SecretKVSnapshot{Data: data, Version: f.versions[path]}, err
+	version := f.versions[path]
+	if hook := f.afterGet; hook != nil {
+		f.afterGet = nil
+		hook()
+	}
+	return core.SecretKVSnapshot{Data: data, Version: version}, err
 }
 
 func (f *versionedFakeSecretStore) Get(ctx context.Context, path string) (map[string]string, error) {
@@ -841,4 +847,70 @@ func TestPatchEnvironmentCompensationCodesAreVisibleAndRedactedAcrossAdapters(t 
 			}
 		}
 	})
+}
+
+// TestDeleteEnvVarFinalKeyRaceSurvivesConcurrentSet pins codex-security round-19
+// #5: deleting a service's LAST env var must not fall back to an unconditional
+// OpenBao metadata Delete once the CAS retry loop's in-memory map goes empty —
+// that ignored the read's observed version entirely, so a SetEnvVar that
+// committed a newer revision in the read/write gap was wiped out along with
+// every retained version. The delete must instead retry, exactly like any
+// other CAS write, and pick up the concurrent writer's key.
+func TestDeleteEnvVarFinalKeyRaceSurvivesConcurrentSet(t *testing.T) {
+	store := newVersionedFakeSecretStore()
+	store.m[envPath("web")] = map[string]string{"OLD": "v"}
+	svc := newService(store, sampleApp("web"))
+
+	store.afterGet = func() {
+		// A concurrent SetEnvVar lands after this delete's read but before its
+		// write — committed directly (bypassing the deleter) with its own
+		// version bump, exactly like a winning racing CAS write would.
+		if err := store.Put(context.Background(), envPath("web"), map[string]string{"OLD": "v", "NEW": "concurrent"}); err != nil {
+			t.Fatal(err)
+		}
+		store.versions[envPath("web")]++
+	}
+
+	if err := svc.DeleteEnvVar(context.Background(), "web", "OLD"); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	final := store.m[envPath("web")]
+	if _, ok := final["NEW"]; !ok {
+		t.Fatalf("concurrent SetEnvVar was lost to the stale final-key delete: %#v", final)
+	}
+	if _, ok := final["OLD"]; ok {
+		t.Fatalf("OLD should be gone once the delete retried against the fresh map: %#v", final)
+	}
+}
+
+// TestPatchEnvironmentSparseSurvivesConcurrentSingleFieldWrite pins codex-security
+// round-19 #7: a sparse (no ExpectedEnvRevision) PatchEnvironment must not read
+// the whole env map once and unconditionally Put it back — a concurrent
+// SetEnvVar landing in that gap was silently discarded. The sparse write now
+// goes through the same GetVersioned/PutCAS retry loop as every single-field
+// mutation, so it must retry and preserve the concurrent key instead of
+// clobbering it.
+func TestPatchEnvironmentSparseSurvivesConcurrentSingleFieldWrite(t *testing.T) {
+	store := newVersionedFakeSecretStore()
+	store.m[envPath("web")] = map[string]string{"A": "1"}
+	svc := newService(store, sampleApp("web"))
+
+	store.afterGet = func() {
+		if err := store.Put(context.Background(), envPath("web"), map[string]string{"A": "1", "B": "concurrent"}); err != nil {
+			t.Fatal(err)
+		}
+		store.versions[envPath("web")]++
+	}
+
+	patch := EnvironmentPatch{SaveMode: SaveModeOnly, EnvVars: []EnvVarPatch{{Key: "C", Value: "3"}}}
+	if _, err := svc.PatchEnvironment(context.Background(), "web", patch); err != nil {
+		t.Fatalf("patch: %v", err)
+	}
+	final := store.m[envPath("web")]
+	if final["B"] != "concurrent" {
+		t.Fatalf("concurrent SetEnvVar was lost to the sparse patch's unconditional write: %#v", final)
+	}
+	if final["A"] != "1" || final["C"] != "3" {
+		t.Fatalf("sparse patch did not apply cleanly alongside the concurrent write: %#v", final)
+	}
 }
