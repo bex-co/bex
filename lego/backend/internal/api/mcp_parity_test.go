@@ -255,12 +255,14 @@ func TestMCPParityInventory(t *testing.T) {
 	// twice as the per-field grammar folded away: w1/m71 took 30 Extension
 	// `set_*` tools into five patch tools (213 → 187), and w1/m74 took the 12
 	// remaining per-field `update_*`/`rename_*` tools into those same tools
-	// (187 → 175), keeping only what REST puts behind its own route. Update this
-	// table and ADR018's MCP inventory together — that pairing is the point.
+	// (187 → 175), keeping only what REST puts behind its own route. w3/m46
+	// wired `clearCache` into trigger_deploy, moving it from Divergent (8 → 7)
+	// to Superset (1 → 2). Update this table and ADR018's MCP inventory together
+	// — that pairing is the point.
 	want := map[mcpParityClass]int{
 		mcpParity1to1:      10,
-		mcpParitySuperset:  1,
-		mcpParityDivergent: 8,
+		mcpParitySuperset:  2, // +trigger_deploy (clearCache wired, w3/m46)
+		mcpParityDivergent: 7, // -trigger_deploy (clearCache wired, w3/m46)
 		mcpParityExtension: 157, // +list_git_connections (ADR075 w5/m74)
 	}
 	const wantTotal = 176

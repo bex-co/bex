@@ -3349,6 +3349,11 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Manual Deploy dropdown item, image-backed service (no repo to rebuild from)",
   },
+  "services.deployMenuClearCache": {
+    message: "Clear build cache & deploy",
+    description:
+      "Manual Deploy dropdown item (Render parity): rebuild with a cleared build cache. bex builds are always cache-free, so this rebuilds from a clean slate like a normal deploy",
+  },
   "services.deployMenuRestart": {
     message: "Restart service",
     description:

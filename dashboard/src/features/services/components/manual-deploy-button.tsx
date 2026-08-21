@@ -32,9 +32,13 @@ export interface ManualDeployButtonProps {
  * increments the generation and unconditionally re-enters the build path).
  * For image-backed services it re-pulls and restarts the containers in place.
  *
- * "Deploy a specific commit" and "Clear build cache & deploy" from Render's
- * dropdown are omitted: bex's builds are always cache-free (ephemeral BuildKit
- * Jobs), and per-commit targeting via commitId is an API-only feature for now.
+ * "Clear build cache & deploy" mirrors Render's dropdown item (w3/m46). bex's
+ * builds are always cache-free (ephemeral BuildKit Jobs, no --cache-from/-to),
+ * so it sends Render's clearCache="clear" — an enum-validated no-op the backend
+ * accepts across REST/GraphQL/MCP — and rebuilds from a clean slate exactly like
+ * "Deploy latest commit". It is kept for surface parity with Render (and the CLI,
+ * which always sends the flag). "Deploy a specific commit" (per-commit targeting
+ * via commitId) stays an API-only feature for now.
  */
 export function ManualDeployButton({
   service,
@@ -52,12 +56,15 @@ export function ManualDeployButton({
     ? t("services.deployMenuLatestCommit")
     : t("services.deployMenuLatestImage");
 
-  async function handleDeploy() {
-    // Both "Deploy" and "Restart" go through triggerDeploy — the same mutation
-    // — so both open a deploy-history row (w2/m30). Restart passes no extra
-    // options: for image-backed services this re-pulls and restarts; for
-    // repo-backed services this rebuilds from Branch HEAD.
-    const deployId = await trigger(service.id);
+  async function handleDeploy(opts?: { clearCache?: boolean }) {
+    // "Deploy", "Clear build cache & deploy", and "Restart" all go through
+    // triggerDeploy — the same mutation — so each opens a deploy-history row
+    // (w2/m30). clearCache is a no-op on bex (cache-free builds) but is sent for
+    // Render/CLI parity. Restart passes no extra options: for image-backed
+    // services this re-pulls and restarts; for repo-backed it rebuilds from HEAD.
+    const deployId = opts?.clearCache
+      ? await trigger(service.id, { clearCache: "clear" })
+      : await trigger(service.id);
     // Render lands the user straight on the new deploy's page (w9/m1/t004); a
     // failed trigger already toasted and has no deploy id to navigate to.
     if (deployId) {
@@ -79,6 +86,12 @@ export function ManualDeployButton({
       <DropdownMenuContent align="end">
         <DropdownMenuItem disabled={busy} onSelect={() => void handleDeploy()}>
           {deployLabel}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={busy}
+          onSelect={() => void handleDeploy({ clearCache: true })}
+        >
+          {t("services.deployMenuClearCache")}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={busy} onSelect={() => void handleDeploy()}>

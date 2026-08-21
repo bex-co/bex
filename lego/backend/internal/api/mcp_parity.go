@@ -113,11 +113,6 @@ var mcpAcceptedDivergences = map[string]string{
 	// bex has no preview environments at all (PR previews are a recorded
 	// non-goal in .pm/DO_NOT_DO.md), so there is no set to include or exclude.
 	"list_services": "`includePreviews` has no meaning in bex — PR preview environments are a recorded non-goal",
-
-	// ADR018's deploys row claims deploy-body params including clearCache
-	// shipped in w2/m30; the pin shows the MCP adapter never exposed it, only
-	// REST and GraphQL did. A genuine adapter gap.
-	"trigger_deploy": "`clearCache` reaches REST and GraphQL but was never wired into the MCP adapter despite ADR018's w2/m30 row — an adapter gap, filed for repair",
 }
 
 // mcpKnownUpstreamOnly records upstream tools bex deliberately does not ship.

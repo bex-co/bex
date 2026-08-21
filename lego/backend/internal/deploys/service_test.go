@@ -517,6 +517,31 @@ func TestTriggerRejectsCommitIDForCronJob(t *testing.T) {
 	}
 }
 
+// --- clearCache enum validation (w3/m46) --------------------------------------
+
+func TestTriggerRejectsUnknownClearCache(t *testing.T) {
+	ds := newFakeStore()
+	svc, _ := newService(ds, sampleApp("svc", "srv-cc"))
+
+	_, err := svc.Trigger(context.Background(), "svc", TriggerParams{ClearCache: "purge"})
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("unknown clearCache: want core.ErrBadRequest, got %v", err)
+	}
+}
+
+func TestTriggerAcceptsClearCacheEnum(t *testing.T) {
+	// bex builds are cache-free, so "clear" and "do_not_clear" are both
+	// honored-identically no-ops — accepted (never rejected) for Render/CLI
+	// parity; an omitted value is fine too.
+	for _, v := range []string{"clear", "do_not_clear", ""} {
+		ds := newFakeStore()
+		svc, _ := newService(ds, sampleApp("svc", "srv-cc"))
+		if _, err := svc.Trigger(context.Background(), "svc", TriggerParams{ClearCache: v}); err != nil {
+			t.Errorf("clearCache=%q: want nil, got %v", v, err)
+		}
+	}
+}
+
 // --- deployMode reject/accept paths (t009) ------------------------------------
 
 func TestTriggerDeployOnlyRejectsRepoBacked(t *testing.T) {

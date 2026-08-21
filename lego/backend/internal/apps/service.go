@@ -1037,6 +1037,19 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]AppView, error) {
 	}
 	out := make([]AppView, 0, len(list.Items))
 	for i := range list.Items {
+		// A deleting App is dropped from the list the moment its deletion is
+		// requested (w3/m46), matching Render (a deleted service leaves the list
+		// at once) and the by-id Get, which already 404s once the store row is
+		// gone. Without this, an App lingers in the list through its finalizer
+		// teardown (a static site's S3-prefix cleanup Job can run for tens of
+		// seconds) rendered as "Deleting" — which the dashboard shows as the
+		// meaningless "Unknown" status. Trade-off: a delete stuck on a failing
+		// finalizer becomes invisible here (the operator's own alerts/audit
+		// surface it, not the tenant list); the detail view is already 404 in
+		// that state, so hiding the list row keeps the two consistent.
+		if !list.Items[i].DeletionTimestamp.IsZero() {
+			continue
+		}
 		out = append(out, s.view(&list.Items[i]))
 	}
 	return out, nil

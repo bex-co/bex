@@ -185,15 +185,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"commitId":   gqlutil.Arg(graphql.String),
 				"deployMode": gqlutil.Arg(graphql.String),
 				"imageUrl":   gqlutil.Arg(graphql.String),
+				// Render's "clear" | "do_not_clear" enum. bex builds are always
+				// cache-free, so this is a validated no-op (see TriggerParams) —
+				// exposed for parity with the dashboard's Manual Deploy menu.
+				"clearCache": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				commitID := gqlutil.Str(p.Args, "commitId")
 				deployMode := gqlutil.Str(p.Args, "deployMode")
 				imageURL := gqlutil.Str(p.Args, "imageUrl")
+				clearCache := gqlutil.Str(p.Args, "clearCache")
 				return s.Trigger(p.Context, p.Args["serviceId"].(string), TriggerParams{
 					CommitID:   commitID,
 					DeployMode: deployMode,
 					ImageURL:   imageURL,
+					ClearCache: clearCache,
 				})
 			},
 		},

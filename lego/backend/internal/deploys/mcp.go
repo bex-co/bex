@@ -64,6 +64,7 @@ type triggerDeployArgs struct {
 	ImageURL   string `json:"imageUrl,omitempty" jsonschema:"image-backed services only: deploy this specific image tag instead of the current spec; rejected for repo-backed services"`
 	CommitID   string `json:"commitId,omitempty" jsonschema:"repo-backed services only: build from this git ref instead of Branch HEAD; rejected for cron_job services"`
 	DeployMode string `json:"deployMode,omitempty" jsonschema:"build_and_deploy (default) or deploy_only (image-backed only — skips rebuild, re-pulls current image)"`
+	ClearCache string `json:"clearCache,omitempty" jsonschema:"Render's clear|do_not_clear enum; accepted for compatibility but a no-op — bex builds are always cache-free"`
 }
 
 type serviceArgs struct {
@@ -181,12 +182,13 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	// the same semantics as the REST body.
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "trigger_deploy",
-		Description: "Trigger a new deploy for a service. For image-backed services, imageUrl deploys a specific image tag. For repo-backed services, commitId pins the build to a specific git ref (default: Branch HEAD). Returns the new deploy; poll with get_deploy until status is live.",
+		Description: "Trigger a new deploy for a service. For image-backed services, imageUrl deploys a specific image tag. For repo-backed services, commitId pins the build to a specific git ref (default: Branch HEAD). clearCache (Render's clear|do_not_clear) is accepted for compatibility but is a no-op — bex builds are always cache-free. Returns the new deploy; poll with get_deploy until status is live.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in triggerDeployArgs) (*mcp.CallToolResult, renderDeploy, error) {
 		d, err := s.Trigger(ctx, in.ServiceID, TriggerParams{
 			ImageURL:   in.ImageURL,
 			CommitID:   in.CommitID,
 			DeployMode: in.DeployMode,
+			ClearCache: in.ClearCache,
 		})
 		if err != nil {
 			return nil, renderDeploy{}, err
