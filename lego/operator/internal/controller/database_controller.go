@@ -331,9 +331,22 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 			rec["recoveryTarget"] = map[string]any{"targetTime": p.recovery.TargetTime}
 		}
 		spec["bootstrap"] = map[string]any{"recovery": rec}
+		// serverName is what selects the source's archive prefix in the shared
+		// destination. SourceBackupServerName is OPTIONAL — it exists only to pin
+		// a specific PostgreSQL-major generation — so defaulting to it alone left
+		// the parameter unset on every ordinary restore, and the barman plugin
+		// then looks under the NEW cluster's own name, where nothing has ever been
+		// written. Recovery failed with "no target backup found" for every managed
+		// Postgres (w7/039). SourceDatabase is the source Database's CR name, which
+		// IS its serverName (Database.status.backupServerName), so it is the
+		// correct default.
+		sourceServerName := p.recovery.SourceBackupServerName
+		if sourceServerName == "" {
+			sourceServerName = p.recovery.SourceDatabase
+		}
 		spec["externalClusters"] = []any{map[string]any{
 			"name":   recoverySource,
-			"plugin": barmanCloudPlugin(p.recovery.SourceBackupServerName, false),
+			"plugin": barmanCloudPlugin(sourceServerName, false),
 		}}
 	} else {
 		spec["bootstrap"] = map[string]any{
