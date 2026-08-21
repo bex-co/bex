@@ -101,16 +101,16 @@ Measured against the deep-researched Render control-surface model and the live w
 - **Already-installed accounts bind without reinstalling** — the w5/m75 claim flow; Render never needs this only because its user-bound model reads installations instead of binding them.
 - Per-connection disconnect, "manage grants on GitHub" deep link, repo-list-on-demand freshness — equivalent on both platforms.
 - **Build filters + root directory** (auto-deploy trigger scoping) — already shipped (`SetBuildFilter`, `rootDir`); trigger-scoping parity holds.
-- API-level **source swap**: `PATCH /v1/services/{id}` already accepts `repo`/`branch`/`image` (w1/073 matched Render's PATCH field set), which is the API half of Render's May-2026 "Update Source".
+- API-level **source swap**: `PATCH /v1/services/{id}` accepts `repo`/`branch`/`image` (w1/073), and — **w5/m76** — the dashboard now exposes it: a repo-backed service's Build section has a "Switch to a container image" affordance, and an image-backed service gets a **Source card** showing/editing its image with a "Switch to a Git repository" picker. GraphQL gained `setImage` + `imagePath` to complete the surface; the transition clears the other source kind and **does not auto-deploy** (the next deploy uses the new source), matching Render. This closes the last remaining item of this plan.
 
 **Deliberate divergences** (recorded, not gaps — ADR078 §1): no per-member Git credentials, no per-service credential pointer ("Use My Credentials" has no bex equivalent because deploy tokens come from the workspace's owner-matched installation), no direct-github.com auto-bind (the claim flow is the sanctioned recovery). Recorded non-goals: GitLab/Bitbucket providers and PR previews (`.pm/DO_NOT_DO.md`).
 
-**Remaining plan** (the only open parity items):
+**Remaining plan:**
 
-1. **Dashboard "Update Source"** — Render exposes the repo/branch/image swap as a Settings → Source **Edit** dialog; bex has the API but no dashboard affordance. Small UI milestone: a Source card on the service Settings page driving the existing PATCH fields, with the same "no automatic deploy on change" semantics as Render. File on the `.pm` board when scheduled.
+1. ~~**Dashboard "Update Source"**~~ — **shipped w5/m76** (see "Achieved" above): repo↔image switch + image-backed Source card, `setImage`/`imagePath` GraphQL, Render's no-auto-deploy semantics.
 2. **Grant-staleness UX** — neither platform auto-refreshes the repo picker after a GitHub-side grant edit; Render's remedy is its deep link, which bex mirrors. Optional polish only (an explicit "refresh" affordance); not scheduled.
 
-Nothing else remains: every Render **access** granularity has a bex answer, per the mapping table in ADR078.
+Nothing functional remains: every Render **access** granularity has a bex answer (mapping table in ADR078), and the one service-configuration item Render had that bex lacked (source swap in the UI) is now shipped.
 
 ## Alternatives considered
 

@@ -1724,6 +1724,63 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "无法更新根目录，请重试。",
     description: "Toast after setRootDir fails",
   },
+  "services.sourceTitle": {
+    message: "源",
+    description: "Source card title (image-backed service, w5/m76)",
+  },
+  "services.sourceImageDescription": {
+    message: "此服务部署的预构建容器镜像。",
+    description: "Source card description for an image-backed service",
+  },
+  "services.sourceImageLabel": {
+    message: "镜像",
+    description: "Source card: container image path field label",
+  },
+  "services.sourceImageHint": {
+    message: "要部署的镜像的仓库路径和标签。",
+    description: "Source card: image field hint",
+  },
+  "services.sourceImagePlaceholder": {
+    message: "docker.io/library/nginx:stable",
+    description: "Source card: image field placeholder",
+  },
+  "services.sourceImageEdit": {
+    message: "编辑镜像",
+    description: "Source card: image field edit-button label",
+  },
+  "services.sourceImageConfirmTitle": {
+    message: "从 {value} 部署？",
+    description: "Source card: confirm switching the image",
+  },
+  "services.sourceNoAutoDeploy": {
+    message: "更改不会自动部署——下次部署时将使用新的源。",
+    description:
+      "Shared note (Render parity): a source change doesn't trigger a deploy",
+  },
+  "services.sourceSwitchLabel": {
+    message: "更改源类型",
+    description: "Source switch section label (repo↔image)",
+  },
+  "services.sourceSwitchToImageHint": {
+    message: "部署预构建的容器镜像，而不是从 Git 构建。",
+    description: "Hint for the switch-to-image action",
+  },
+  "services.sourceSwitchToImageButton": {
+    message: "切换到容器镜像",
+    description: "Button that opens the repo→image switch dialog",
+  },
+  "services.sourceSwitchToRepoHint": {
+    message: "从 Git 仓库构建和部署，而不是使用镜像。",
+    description: "Hint for the switch-to-repo action",
+  },
+  "services.sourceSwitchToRepoButton": {
+    message: "切换到 Git 仓库",
+    description: "Button that opens the image→repo switch dialog",
+  },
+  "services.sourceSwitchSave": {
+    message: "更新源",
+    description: "Save button in the source-switch dialogs",
+  },
   "services.startCommandLabel": {
     message: "启动命令",
     description: "Build & Deploy: native-runtime start-command label",

@@ -141,6 +141,7 @@ var classifiedOps = map[string]string{
 	"GQL Mutation.setProjectServices":                                  core.OpClassWrite,
 	"GQL Mutation.setPublishPath":                                      core.OpClassWrite,
 	"GQL Mutation.setRegistryCredential":                               core.OpClassWrite,
+	"GQL Mutation.setImage":                                            core.OpClassWrite,
 	"GQL Mutation.setRepo":                                             core.OpClassWrite,
 	"GQL Mutation.setRootDir":                                          core.OpClassWrite,
 	"GQL Mutation.setSecretFile":                                       core.OpClassWrite,

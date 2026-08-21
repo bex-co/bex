@@ -49,6 +49,9 @@ query Server($id: String!) {
     # Build & Deploy section (w5/m13).
     repo
     branch
+    # imagePath is the CONFIGURED prebuilt image (empty for a repo-backed App) —
+    # the Source card shows/edits it and enables the repo↔image switch (w5/m76).
+    imagePath
     rootDir
     runtime
     builder

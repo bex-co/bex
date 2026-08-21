@@ -56,6 +56,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     runs: "runs" in s ? toCronRuns(s.runs) : [],
     repo: "repo" in s ? (s.repo ?? null) : null,
     branch: "branch" in s ? (s.branch ?? null) : null,
+    imagePath: "imagePath" in s ? (s.imagePath ?? null) : null,
     rootDir: "rootDir" in s ? (s.rootDir ?? null) : null,
     runtime: "runtime" in s ? (s.runtime ?? null) : null,
     builder: "builder" in s ? (s.builder ?? null) : null,
