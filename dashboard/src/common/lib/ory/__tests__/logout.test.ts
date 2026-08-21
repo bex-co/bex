@@ -37,6 +37,9 @@ describe("endBrowserSession", () => {
 
     await endBrowserSession();
 
+    expect(createBrowserLogoutFlow).toHaveBeenCalledWith({
+      returnTo: `${window.location.origin}/`,
+    });
     expect(fetch).toHaveBeenCalledWith("https://auth.example/logout?token=abc", {
       credentials: "include",
     });
