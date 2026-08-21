@@ -1053,7 +1053,7 @@ func setKeyValueStorageCondition(kv *appv1alpha1.KeyValue, state keyValueStorage
 
 func (r *KeyValueReconciler) kvFail(ctx context.Context, kv *appv1alpha1.KeyValue, reason string, err error) (ctrl.Result, error) {
 	kv.Status.Phase = appv1alpha1.KVPhaseFailed
-	setNotReadyCondition(ctx, r.Status(), kv, &kv.Status.Conditions, reason, err)
+	setNotReadyCondition(ctx, r.Client, kv, &kv.Status.Conditions, reason, err)
 	return ctrl.Result{}, err
 }
 

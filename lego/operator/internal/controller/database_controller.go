@@ -1228,7 +1228,7 @@ func (r *DatabaseReconciler) updateExternalAddressStatus(db *appv1alpha1.Databas
 
 func (r *DatabaseReconciler) dbFail(ctx context.Context, db *appv1alpha1.Database, reason string, err error) (ctrl.Result, error) {
 	db.Status.Phase = appv1alpha1.DBPhaseFailed
-	setNotReadyCondition(ctx, r.Status(), db, &db.Status.Conditions, reason, err)
+	setNotReadyCondition(ctx, r.Client, db, &db.Status.Conditions, reason, err)
 	return ctrl.Result{}, err
 }
 

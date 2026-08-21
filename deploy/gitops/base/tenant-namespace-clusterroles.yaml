@@ -90,8 +90,9 @@ rules:
 # `bex-snapshot-pull` dockerconfigjson Secret in each sandbox namespace (the
 # OpenSandbox controller's --resume-pull-secret reference). get/create plus
 # update/patch so EnsureSnapshotCreds can backfill the protected-from-tenant-
-# mount label on Secrets minted before round-11 #1. The grant exists solely
-# through per-sandbox-namespace RoleBindings (never cluster-wide).
+# mount label on Secrets minted before round-11 #1 (w2/m82). Rotation
+# (credential rewrite) remains a deliberate future extension. The grant
+# exists solely through per-sandbox-namespace RoleBindings (never cluster-wide).
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
