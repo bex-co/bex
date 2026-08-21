@@ -6,6 +6,7 @@ import { FailureCallout } from "@/features/agent-sessions/components/failure-cal
 import { SteeringComposer } from "@/features/agent-sessions/components/steering-composer";
 import { SessionConversation } from "@/features/agent-sessions/components/session-conversation";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
+import { ConversationSkeleton } from "@/features/agent-sessions/components/conversation-skeleton";
 import type {
   AgentSessionListSearch,
   AgentSessionView,
@@ -100,7 +101,10 @@ export function SessionChatColumn({
     <ConversationFallback
       status={
         session.isTerminal ? null : (
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+          <div
+            role="status"
+            className="text-muted-foreground flex items-center gap-2 text-sm"
+          >
             <Loader2 aria-hidden className="size-4 shrink-0 animate-spin" />
             {t("agentSessions.provisioning")}
           </div>
@@ -168,7 +172,12 @@ function ConversationFallback({
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-3xl space-y-2.5 px-4 py-3">
-        {status}
+        {status && (
+          <>
+            {status}
+            <ConversationSkeleton />
+          </>
+        )}
         {footer}
       </div>
     </div>

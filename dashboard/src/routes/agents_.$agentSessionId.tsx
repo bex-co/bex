@@ -14,6 +14,7 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSession } from "@/features/agent-sessions/hooks/use-agent-session";
 import { SessionChatColumn } from "@/features/agent-sessions/components/session-chat-column";
+import { ConversationSkeleton } from "@/features/agent-sessions/components/conversation-skeleton";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
 import {
   AGENT_SESSION_PHASES,
@@ -134,25 +135,12 @@ function DetailSkeleton() {
         <Skeleton className="h-8 w-20 shrink-0 rounded-md" />
       </div>
 
-      {/* Mirror SessionConversationImpl's centered transcript gutter and its
-          actual row shapes: assistant prose is unboxed; user turns are a
-          right-aligned bubble followed by a circular avatar. */}
+      {/* The same ConversationSkeleton every transient state between here and
+          the real transcript reuses (session-conversation.tsx,
+          session-chat-column.tsx, session-conversation-impl.tsx). */}
       <div className="min-h-0 flex-1 overflow-hidden">
-        <div className="mx-auto w-full max-w-3xl space-y-2.5 px-4 py-3">
-          <div className="space-y-2 py-1">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-[88%]" />
-            <Skeleton className="h-4 w-[68%]" />
-          </div>
-          <div className="flex w-full justify-end gap-2 pl-8">
-            <Skeleton className="h-10 w-64 max-w-[92%] rounded-xl rounded-br-md sm:max-w-md" />
-            <Skeleton className="size-8 shrink-0 rounded-full" />
-          </div>
-          <div className="space-y-2 py-1">
-            <Skeleton className="h-4 w-[94%]" />
-            <Skeleton className="h-4 w-[76%]" />
-            <Skeleton className="h-4 w-[52%]" />
-          </div>
+        <div className="mx-auto w-full max-w-3xl px-4 py-3">
+          <ConversationSkeleton />
         </div>
       </div>
 

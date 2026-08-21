@@ -388,6 +388,46 @@ describe("SessionConversationImpl", () => {
     expect(typeof handle?.status).toBe("string");
   });
 
+  it("shows the skeleton, not the empty-conversation copy, while the resume request is in flight", async () => {
+    // The resume GET (ticket mint + fetch) is a real async round trip; `status`
+    // stays "ready" for its whole duration and — on a 204 (nothing to resume) —
+    // forever after. Before the fix, that "ready" + empty window rendered "No
+    // conversation yet." immediately on mount, ahead of the real answer.
+    let resolveFetch!: (response: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+    const transport = createAgentSessionTransport({
+      sessionId: "as-slow-resume",
+      mintTicket,
+      fetch: (() => pending) as typeof globalThis.fetch,
+    });
+
+    render(
+      <SessionConversationImpl
+        sessionId="as-slow-resume"
+        isTerminal={false}
+        transport={transport}
+      />,
+    );
+
+    // While the resume request is still unresolved: no premature empty state.
+    expect(
+      screen.queryByText("No conversation yet."),
+    ).not.toBeInTheDocument();
+
+    // Resolve as a 204 — a genuinely empty session with nothing to resume.
+    await act(async () => {
+      resolveFetch(new Response(null, { status: 204 }));
+    });
+
+    // Only now, once the resume attempt has actually settled, is "No
+    // conversation yet." the correct (and shown) state.
+    await waitFor(() =>
+      expect(screen.getByText("No conversation yet.")).toBeInTheDocument(),
+    );
+  });
+
   it("shows the degraded state when the stream errors", async () => {
     const failingFetch = (async () =>
       new Response("nope", { status: 503 })) as typeof globalThis.fetch;
