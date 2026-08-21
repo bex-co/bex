@@ -21,6 +21,9 @@ spec:
       helm:
         valueFiles:
           - $values/deploy/gitops/base/values/kratos.values.yaml
+          # GENERATED branded courier email templates (w6/m42 t013) — see the
+          # header of the file itself; regenerated from lego/backend/internal/email.
+          - $values/deploy/gitops/base/values/kratos-email-templates.values.yaml
     - repoURL: git@github.com:bex-co/bex.git
       targetRevision: main
       ref: values

@@ -1,6 +1,6 @@
 # w6 · m42 — Open-signup launch gates: email verification at the door + payment `all` mode (ADR075 D7+D8)
 
-**Worker:** worker6 **Goal:** both ADR075 launch gates enforced end to end — sign-up requires email verification before any session exists (D8), and every resource use (free tier included) requires a bound payment method (D7 `all` mode) — so open signup can launch without a mid-flight policy change. **Status:** in progress (t001–t006 done 2026-08-20, verified end to end on dev-6; t007 production enablement + closing tasks open)
+**Worker:** worker6 **Goal:** both ADR075 launch gates enforced end to end — sign-up requires email verification before any session exists (D8), and every resource use (free tier included) requires a bound payment method (D7 `all` mode) — so open signup can launch without a mid-flight policy change. **Status:** in progress (t001–t006 done 2026-08-20; t012 OTP auto-submit + paste and t013 branded Kratos emails done 2026-08-21, all verified end to end on dev-6; t007 production enablement + closing tasks open)
 
 ## Implementation notes (2026-08-20)
 
@@ -21,7 +21,9 @@
 | t005 | D8: verification resend affordance + courier-health alert — **DONE**                     | 30m | t004                               |
 | t006 | D8: recovery-flow invariant check (recovery marks the address verified) — **DONE**       | 30m | t003                               |
 | t007 | Enablement rollout: comp first-party workspaces, flip `all`, apply the D8 hybrid config  | 45m | t001, t002, t003, t004, t005, t006 |
-| t008 | Render parity: widened 402 + auth flows consistent across REST/GraphQL/MCP/dashboard     | 30m | t007                               |
+| t012 | Verification OTP input: auto-submit on last digit + page-wide paste capture — **DONE**   | 45m | t004                               |
+| t013 | Brand the Kratos courier emails with the bex email layout — **DONE**                     | 90m | t003                               |
+| t008 | Render parity: widened 402 + auth flows consistent across REST/GraphQL/MCP/dashboard     | 30m | t007, t012, t013                   |
 | t009 | Simplify: `/simplify` over the changed code                                              | 30m | t008                               |
 | t010 | Test coverage: gate-mode, admission, and auth-flow regressions                           | 45m | t008                               |
 | t011 | Closeout                                                                                 | 15m | t010                               |
