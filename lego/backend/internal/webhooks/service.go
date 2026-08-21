@@ -776,16 +776,22 @@ func scrubDeliveryEvidence(text, destURL string) string {
 // mayManageWorkspace reports whether the caller holds can_manage on the named
 // tenant, with an authoritative (uncached) decision when the checker supports
 // it — this decides whether the EXACT credential-bearing destination URL is
-// revealed, so a just-demoted admin must not ride a cached positive. Raw
-// checker, not Authorize: the read verbs' gate stays can_view (audited there),
-// and a per-viewer denial audit row on every list would be noise, not signal
-// (the sandbox isWorkspaceAdmin precedent).
+// revealed, so a just-demoted admin must not ride a cached positive. It also
+// composes the relation's mapped OAuth capability (Identity.RequireCapability):
+// a third-party human token carrying only bex.read is treated as NOT privileged
+// even when OpenFGA grants the delegated admin's can_manage. Raw checker, not
+// Authorize: the read verbs' gate stays can_view (audited there), and a
+// per-viewer denial audit row on every list would be noise, not signal (the
+// sandbox isWorkspaceAdmin precedent).
 func (s *Service) mayManageWorkspace(ctx context.Context, tenantID string) bool {
 	if s.Authz == nil {
 		return false // authz off: nobody is distinguished — redact for everyone
 	}
 	id, ok := core.IdentityFrom(ctx)
 	if !ok {
+		return false
+	}
+	if err := id.RequireCapability(core.RelCanManage); err != nil {
 		return false
 	}
 	check := s.Authz.Check

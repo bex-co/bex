@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Self-test for the build-pool guards in scripts/clusterapi-validate.sh
-# (w7/m83 t003 + t004). The anti-tautology rule: a guard with no proven red case
-# is decoration. Both guards exist BECAUSE their failure modes are silent —
+# (w7/m83 t003 + t004) and the gVisor bootstrap trust-anchor guard
+# (codex-security round 18, CWE-494). The anti-tautology rule: a guard with no
+# proven red case is decoration. Both guards exist BECAUSE their failure modes
+# are silent —
 # a stranded DaemonSet that still reports READY, and a cluster-autoscaler that
 # declines to scale up without emitting an error — so "it turns red" is the only
 # evidence that they work at all.
@@ -16,17 +18,19 @@ root="$(cd "$here/.." && pwd)"
 SCRIPT="$here/clusterapi-validate.sh"
 
 OVERLAY_SRC="$root/infra/clusterapi/overlays/hetzner-caph/cluster.yaml"
+SANDBOX_SRC="$root/infra/clusterapi/overlays/hetzner-caph/sandbox-pool.yaml"
 GITOPS_SRC="$root/deploy/gitops/base"
 
 fails=0
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-# fixture <name> — a fresh overlay + gitops copy; echoes the fixture dir.
+# fixture <name> — a fresh overlay + sandbox overlay + gitops copy; echoes the fixture dir.
 fixture() {
   local dir="$tmp/$1"
   mkdir -p "$dir/gitops"
   cp "$OVERLAY_SRC" "$dir/cluster.yaml"
+  cp "$SANDBOX_SRC" "$dir/sandbox-pool.yaml"
   cp "$GITOPS_SRC/build-image-prewarm.yaml" "$GITOPS_SRC/log-shipper.yaml" "$dir/gitops/"
   echo "$dir"
 }
@@ -35,7 +39,7 @@ fixture() {
 assert() {
   local label="$1" want="$2" dir="$3" needle="${4:-}" err got
   set +e
-  err="$(OVERLAY_FILE="$dir/cluster.yaml" GITOPS_BASE_DIR="$dir/gitops" "$SCRIPT" 2>&1 >/dev/null)"
+  err="$(OVERLAY_FILE="$dir/cluster.yaml" SANDBOX_OVERLAY_FILE="$dir/sandbox-pool.yaml" GITOPS_BASE_DIR="$dir/gitops" "$SCRIPT" 2>&1 >/dev/null)"
   got=$?
   set -e
   if [ "$got" -ne "$want" ]; then
@@ -83,7 +87,7 @@ assert "prewarm image drifted from defaultBuildkitImage" 1 "$d" "but builds run"
 # ── The floor is composed, not a constant ───────────────────────────────────
 # floor_line echoes the guard's own arithmetic line for a fixture.
 floor_line() {
-  OVERLAY_FILE="$1/cluster.yaml" GITOPS_BASE_DIR="$1/gitops" "$SCRIPT" 2>/dev/null | grep 'DaemonSet floor'
+  OVERLAY_FILE="$1/cluster.yaml" SANDBOX_OVERLAY_FILE="$1/sandbox-pool.yaml" GITOPS_BASE_DIR="$1/gitops" "$SCRIPT" 2>/dev/null | grep 'DaemonSet floor'
 }
 d="$(fixture floor-composition)"
 canonical="$(floor_line "$d")"
@@ -133,6 +137,68 @@ yq -i '(select(.kind == "MachineDeployment")
         | .metadata.annotations) |= with_entries(select(.key != "capacity.cluster-autoscaler.kubernetes.io/taints"))' \
   "$d/cluster.yaml"
 assert "no MachineDeployment registers the build taint" 1 "$d" "the dedicated build pool"
+
+# ── RED (codex-security round 18, CWE-494): the gVisor trust anchor ──────────
+# runsc is the kernel boundary for hostile tenant sandboxes. These cases prove
+# the guard turns red on every path back to trusting the release origin.
+d="$(fixture gvisor-cofetch)"
+sed -i.bak 's|wget -q ${GVURL}/runsc ${GVURL}/containerd-shim-runsc-v1|wget -q ${GVURL}/runsc ${GVURL}/runsc.sha512 ${GVURL}/containerd-shim-runsc-v1|' "$d/sandbox-pool.yaml" && rm "$d/sandbox-pool.yaml.bak"
+assert "gVisor checksum co-fetched from the release origin" 1 "$d" "must not co-fetch gVisor checksum"
+
+d="$(fixture gvisor-unpinned)"
+sed -i.bak 's|RUNSC_SHA512=[0-9a-f]\{128\};|RUNSC_SHA512=;|' "$d/sandbox-pool.yaml" && rm "$d/sandbox-pool.yaml.bak"
+assert "gVisor pinned digest removed" 1 "$d" "must pin exactly two gVisor SHA-512 digests"
+
+d="$(fixture gvisor-arch-fail-open)"
+sed -i.bak 's|test "$ARCH" = x86_64; ||' "$d/sandbox-pool.yaml" && rm "$d/sandbox-pool.yaml.bak"
+assert "gVisor non-x86_64 bootstrap no longer fails closed" 1 "$d" "fail closed on a non-x86_64 architecture"
+
+d="$(fixture gvisor-latest)"
+sed -i.bak 's|releases/release/20260622.0|releases/release/latest|' "$d/sandbox-pool.yaml" && rm "$d/sandbox-pool.yaml.bak"
+assert "gVisor downloaded from the mutable latest channel" 1 "$d" "exactly one versioned"
+
+# ── RED (round 18, runtime proof): tampered binary + matching tampered
+# same-origin checksum must STILL fail against the repository-pinned digest ──
+# The extracted production command is run with a stub wget serving tampered
+# bytes from a fake origin; a stub uname makes the x86_64 gate portable.
+d="$tmp/bootstrap-tamper"
+mkdir -p "$d/bin" "$d/www" "$d/work"
+printf 'tampered-by-compromised-origin' > "$d/www/runsc"
+printf 'tampered-shim' > "$d/www/containerd-shim-runsc-v1"
+# The compromised origin serves checksums matching its own tampered bytes —
+# this pair is exactly what the retired same-origin verification accepted.
+( cd "$d/www" && sha256sum runsc | awk '{print $1"  runsc"}' > runsc.sha256 )
+cat > "$d/bin/wget" <<'EOF'
+#!/usr/bin/env bash
+[ "$1" = "-q" ] && shift
+for u in "$@"; do cp "$BEX_FAKE_ORIGIN/${u##*/}" . || exit 1; done
+EOF
+cat > "$d/bin/uname" <<'EOF'
+#!/usr/bin/env bash
+[ "$1" = "-m" ] && echo x86_64 || echo fixture
+EOF
+chmod +x "$d/bin/wget" "$d/bin/uname"
+gvisor_cmd="$(yq -N 'select(.kind=="KubeadmConfigTemplate" and .metadata.name=="bex-sandbox") | .spec.template.spec.preKubeadmCommands[]' "$SANDBOX_SRC" | grep '^ARCH=')"
+gvisor_cmd="$(printf '%s' "$gvisor_cmd" | sed "s|cd /tmp|cd '$d/work'|")"
+set +e
+( PATH="$d/bin:$PATH" BEX_FAKE_ORIGIN="$d/www" bash -c "$gvisor_cmd" ) >/dev/null 2>&1
+tamper_rc=$?
+set -e
+if [ "$tamper_rc" -eq 0 ]; then
+  echo "FAIL: tampered gVisor binaries passed the repository-pinned digest check" >&2
+  fails=$((fails + 1))
+else
+  echo "ok: tampered gVisor binaries + tampered same-origin checksum fail against the pinned digests (exit $tamper_rc)"
+fi
+# Control: the tampered pair MUST satisfy the retired same-origin comparison —
+# otherwise this case proves nothing about the hole being closed. (Runs in the
+# fake origin itself, which is what a compromised bucket would serve.)
+if ( cd "$d/www" && test "$(sha256sum runsc | awk '{print $1}')" = "$(awk '{print $1}' runsc.sha256)" ); then
+  echo "ok: control — the same-origin checksum comparison accepts the tampered pair (the hole being closed)"
+else
+  echo "FAIL: control — tampered bytes must match their own tampered checksum" >&2
+  fails=$((fails + 1))
+fi
 
 # ── GREEN: the real tree, with no overrides at all ───────────────────────────
 if "$SCRIPT" >/dev/null 2>&1; then

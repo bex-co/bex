@@ -1105,6 +1105,12 @@ func wireAgentSessions(deps *api.Deps) {
 	deps.MaxGitConnectionsPerWorkspace = zeroableIntEnv("BEX_MAX_GIT_CONNECTIONS_PER_WORKSPACE", 10)
 	// codex-security geyRc8 F1: per-workspace registry-credential quota.
 	deps.MaxRegistryCredentialsPerWorkspace = zeroableIntEnv("BEX_MAX_REGISTRY_CREDS_PER_WORKSPACE", 50)
+	// codex-security round 18: custom-domain cardinality quotas (default 100
+	// per service — the round-12 #3 routes/headers scale — and 500 per
+	// workspace; 0 disables). Beyond either, claims are refused with
+	// CUSTOM_DOMAIN_LIMIT.
+	deps.MaxCustomDomainsPerService = zeroableIntEnv("BEX_MAX_CUSTOM_DOMAINS_PER_SERVICE", 100)
+	deps.MaxCustomDomainsPerWorkspace = zeroableIntEnv("BEX_MAX_CUSTOM_DOMAINS_PER_WORKSPACE", 500)
 	// ADR059 D3/D5 hibernation (w2/m68, armed w2/m77): the object store enables
 	// the Hibernated tier (reclaim → snapshot, resume → rehydrate). All four
 	// required coordinates unset ⇒ the whole tier is off and reclaim stays

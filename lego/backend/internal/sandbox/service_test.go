@@ -444,6 +444,65 @@ func TestStaleAdminOverrideUsesFreshDecision(t *testing.T) {
 	}
 }
 
+// TestReadOnlyOAuthAdminFallsBackToOwnerOnly (capability composition on the
+// audit-silent override): isWorkspaceAdmin composes can_manage's mapped OAuth
+// capability, so a third-party human token delegated only bex.read by an admin
+// must NOT get the cross-owner override even though OpenFGA still grants the
+// admin's can_manage — reads fail closed to owner-only. With bex.write (or a
+// capability-exempt session/machine identity) the same admin keeps it.
+func TestReadOnlyOAuthAdminFallsBackToOwnerOnly(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/sandboxes":
+			_, _ = w.Write([]byte(`[
+				{"id":"os-admin","metadata":{"bex.co/owner":"id-admin","bex.co/workspace":"tea-a","bex.co/network-policy":"deny-all","app.bex.co/regime":"sandbox"},"status":{"state":"Running"}},
+				{"id":"os-b","metadata":{"bex.co/owner":"id-b","bex.co/workspace":"tea-a","bex.co/network-policy":"deny-all","app.bex.co/regime":"sandbox"},"status":{"state":"Running"}}
+			]`))
+		case r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-b":
+			_, _ = w.Write([]byte(`{"id":"os-b","metadata":{"bex.co/owner":"id-b","bex.co/workspace":"tea-a","bex.co/network-policy":"deny-all","app.bex.co/regime":"sandbox"},"status":{"state":"Running"}}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	svc := &Service{
+		Base: &core.Base{
+			Namespace: "default",
+			Workspace: fakeWorkspace{"id-b": "tea-a", "id-admin": "tea-a"},
+			Authz:     adminChecker{},
+		},
+		Client: NewClient(srv.URL),
+	}
+	oauthAdmin := func(scopes string) context.Context {
+		return core.WithIdentity(context.Background(), core.Identity{
+			Subject: "id-admin", Method: "oauth2", Human: true, CanonicalScopes: scopes,
+		})
+	}
+
+	// bex.read only: list shows only the admin's own sandbox; a cross-owner get
+	// fails closed as the non-enumerating not-found. (Exec/lifecycle verbs need
+	// no assertion here — their verb gate already requires bex.write.)
+	readOnly := oauthAdmin(core.ScopeRead)
+	got, err := svc.List(readOnly)
+	if err != nil || len(got) != 1 || got[0].ID != "os-admin" {
+		t.Fatalf("read-only admin list = %+v, %v; want only os-admin", got, err)
+	}
+	if _, err := svc.Get(readOnly, "os-b"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("read-only admin cross-owner get = %v, want non-enumerating not found", err)
+	}
+
+	// bex.write — can_manage's mapped capability — restores the override.
+	withWrite := oauthAdmin(core.ScopeRead + " " + core.ScopeWrite)
+	got, err = svc.List(withWrite)
+	if err != nil || len(got) != 2 {
+		t.Fatalf("write-scoped admin list = %+v, %v; want both sandboxes", got, err)
+	}
+	if _, err := svc.Get(withWrite, "os-b"); err != nil {
+		t.Fatalf("write-scoped admin cross-owner get: %v", err)
+	}
+}
+
 func contains(s, sub string) bool {
 	for i := 0; i+len(sub) <= len(s); i++ {
 		if s[i:i+len(sub)] == sub {

@@ -17,6 +17,10 @@
 #      and the download-at-boot pools must stay in lockstep.
 #   5. every CAPI workload and snapshot default matches that pin, and the retired
 #      Kubernetes 1.31-or-older line cannot return.
+#   6. the sandbox pool's gVisor runtime (codex-security round 18, CWE-494) is
+#      verified against SHA-512 digests pinned in this repository — never a
+#      checksum co-fetched from the release origin — and fails closed on any
+#      non-x86_64 architecture.
 # Run locally before pushing overlay/packer changes; CI runs it via
 # .github/workflows/clusterapi-validate.yml.
 # Requires: yq v4.
@@ -29,7 +33,7 @@ OVERLAY="${OVERLAY_FILE:-infra/clusterapi/overlays/hetzner-caph/cluster.yaml}"
 GITOPS_BASE="${GITOPS_BASE_DIR:-deploy/gitops/base}"
 OPERATOR_CONFIG="${OPERATOR_CONFIG_DIR:-lego/operator/config}"
 BUILD_SOURCE="${BUILD_SOURCE_FILE:-lego/operator/internal/build/build.go}"
-SANDBOX_OVERLAY="infra/clusterapi/overlays/hetzner-caph/sandbox-pool.yaml"
+SANDBOX_OVERLAY="${SANDBOX_OVERLAY_FILE:-infra/clusterapi/overlays/hetzner-caph/sandbox-pool.yaml}"
 PACKER="infra/packer/bex-worker.pkr.hcl"
 SNAPSHOT_WORKFLOW=".github/workflows/snapshot.yml"
 SNAPSHOT_RELEASE="infra/packer/release.conf"
@@ -549,6 +553,39 @@ if [ -f "$PACKER" ]; then
       fail=1
     fi
   done
+fi
+
+# codex-security round 18 (CWE-494): the sandbox pool's gVisor runtime is the
+# kernel boundary for hostile tenant sandboxes, and it installs at BOOTSTRAP.
+# The binaries must be verified against SHA-512 digests pinned in this
+# repository — a checksum file co-fetched from the same release origin is not a
+# trust anchor (a compromised bucket or publisher replaces binary + checksum
+# together), so the same-origin .sha256/.sha512 download must never return.
+echo "==> $SANDBOX_OVERLAY verifies gVisor against repository-pinned digests"
+sandbox_prek="$(yq -N 'select(.kind=="KubeadmConfigTemplate" and .metadata.name=="bex-sandbox") | .spec.template.spec.preKubeadmCommands[]' "$SANDBOX_OVERLAY")"
+if echo "$sandbox_prek" | grep -Eq 'wget.*\.sha(256|512)'; then
+  echo "FAIL: sandbox bootstrap must not co-fetch gVisor checksum files — the repository-pinned digest is the trust anchor" >&2
+  fail=1
+fi
+if ! echo "$sandbox_prek" | grep -Fq 'test "$ARCH" = x86_64'; then
+  echo "FAIL: sandbox bootstrap must fail closed on a non-x86_64 architecture (the pin only covers the pool's cpx32/cx33 shape)" >&2
+  fail=1
+fi
+if [ "$(echo "$sandbox_prek" | grep -c 'sha512sum -c')" -lt 1 ]; then
+  echo "FAIL: sandbox bootstrap must verify runsc + containerd-shim-runsc-v1 with sha512sum -c against the pinned digests" >&2
+  fail=1
+fi
+gvisor_pins="$(echo "$sandbox_prek" | grep -oE '\b[0-9a-f]{128}\b' | sort -u || true)"
+if [ "$(printf '%s\n' "$gvisor_pins" | grep -c .)" -ne 2 ]; then
+  echo "FAIL: sandbox bootstrap must pin exactly two gVisor SHA-512 digests (runsc + containerd-shim-runsc-v1), got:" >&2
+  printf '%s\n' "$gvisor_pins" | sed 's/^/    /' >&2
+  fail=1
+fi
+gvisor_release="$(echo "$sandbox_prek" | grep -oE 'gvisor/releases/release/[0-9]+\.[0-9]+' | sort -u || true)"
+if [ "$(printf '%s\n' "$gvisor_release" | grep -c .)" -ne 1 ]; then
+  echo "FAIL: sandbox bootstrap must download gVisor from exactly one versioned releases/release/<version> URL (never latest), got:" >&2
+  printf '%s\n' "$gvisor_release" | sed 's/^/    /' >&2
+  fail=1
 fi
 
 

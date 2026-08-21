@@ -109,7 +109,7 @@ func main() {
 			resync = d
 		}
 	}
-	var cacheBytes int64 = 256 << 20 // 256 MiB default
+	var cacheBytes int64 = staticserver.DefaultCacheBytes
 	if v := os.Getenv("BEX_STATIC_CACHE_BYTES"); v != "" {
 		if n, err := strconv.ParseInt(v, 10, 64); err == nil {
 			cacheBytes = n

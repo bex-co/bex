@@ -631,6 +631,61 @@ func errDomainInUse() error {
 	return fmt.Errorf("%w: this domain already exists on another site", core.ErrConflict)
 }
 
+// workspaceDomainCounter is the store seam behind the per-workspace
+// custom-domain quota: PGStore counts one workspace's claims across all its
+// apps. Storeless mode has no workspace aggregate, so the per-workspace cap is
+// skipped there (the per-service cap still applies).
+type workspaceDomainCounter interface {
+	CountWorkspaceDomainClaims(ctx context.Context, workspaceID string) (int, error)
+}
+
+// errCustomDomainLimit is the cardinality-quota refusal — a coded 409
+// (CUSTOM_DOMAIN_LIMIT) so REST, GraphQL, and MCP surface it identically,
+// mirroring GIT_CONNECTION_LIMIT/ENV_GROUP_LIMIT.
+func errCustomDomainLimit(scope string, count, limit int) error {
+	return core.NewConflictError("CUSTOM_DOMAIN_LIMIT",
+		fmt.Sprintf("%s already has %d custom domains (limit %d); remove one or raise the limit", scope, count, limit),
+		map[string]any{"count": count, "limit": limit})
+}
+
+// checkCustomDomainQuota enforces the per-service and per-workspace
+// custom-domain caps before a NEW host is claimed (codex-security round 18).
+// existing is the App's current claim count, already known to the caller. The
+// workspace count is a read-then-write check — an abuse bound, not a
+// transaction, the documented env-group quota stance (round-11 #3). It runs
+// before any DNS verification so an over-cap tenant pays no resolver fan-out.
+func (s *Service) checkCustomDomainQuota(ctx context.Context, app *appv1alpha1.App, existing int) error {
+	if s.MaxCustomDomainsPerService > 0 && existing >= s.MaxCustomDomainsPerService {
+		return errCustomDomainLimit("this service", existing, s.MaxCustomDomainsPerService)
+	}
+	if s.MaxCustomDomainsPerWorkspace <= 0 {
+		return nil
+	}
+	workspace := app.Labels[core.LabelTenant]
+	counter, ok := s.Store.(workspaceDomainCounter)
+	if !ok || workspace == "" {
+		return nil // storeless or unlabeled: no workspace aggregate to count
+	}
+	count, err := counter.CountWorkspaceDomainClaims(ctx, workspace)
+	if err != nil {
+		return fmt.Errorf("count workspace domain claims: %w", err)
+	}
+	if count >= s.MaxCustomDomainsPerWorkspace {
+		return errCustomDomainLimit("this workspace", count, s.MaxCustomDomainsPerWorkspace)
+	}
+	return nil
+}
+
+// claimedHostCount counts the App's declared custom hosts — spec.host plus the
+// non-empty spec.hosts entries — for the per-service cardinality cap.
+func claimedHostCount(app *appv1alpha1.App) int {
+	n := len(app.Spec.Hosts)
+	if app.Spec.Host != "" {
+		n++
+	}
+	return n
+}
+
 // hostClaimedElsewhere reports whether host is already registered (as spec.host
 // or in spec.hosts[]) — or is the www<->apex sibling (wwwSibling, t002) of a host
 // already registered — on a *different* App in the namespace. The sibling check
@@ -709,6 +764,13 @@ func appClaimIdentity(app *appv1alpha1.App) string {
 // host (via s.ownPlatformHost) — not `<app.Name>.<base>`, which a tenant could
 // otherwise set to a victim's slug and hijack at create time too (codex F5).
 func (s *Service) ensureHostsClaimable(ctx context.Context, app *appv1alpha1.App) error {
+	// Round-18: the per-service cardinality cap AddDomain enforces, applied to a
+	// create/blueprint-declared host set BEFORE any claim or CR write (a 400 like
+	// the round-12 #3 routes/headers surface validators; the CRD schema's
+	// MaxItems on spec.hosts/spec.hostRedirects is the admission backstop).
+	if s.MaxCustomDomainsPerService > 0 && claimedHostCount(app) > s.MaxCustomDomainsPerService {
+		return fmt.Errorf("%w: a service may declare at most %d custom domains", core.ErrBadRequest, s.MaxCustomDomainsPerService)
+	}
 	ownHost := s.ownPlatformHost(app)
 	_, _, managedClaims := s.managedDomainClaims(app)
 	// One cluster-wide sweep serves every host in the set, fetched on first
@@ -802,6 +864,13 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 			return s.domainClaimView(ctx, app, existing, s.platformHost(app)), false, nil
 		}
 		if newClaim {
+			rows, err := claims.ListDomainClaims(ctx, appID)
+			if err != nil {
+				return DomainView{}, false, err
+			}
+			if err := s.checkCustomDomainQuota(ctx, app, len(rows)); err != nil {
+				return DomainView{}, false, err
+			}
 			if s.reservedHost(s.ownPlatformHost(app), hostname) {
 				return DomainView{}, false, fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, hostname)
 			}
@@ -837,6 +906,9 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 	// Claim checks apply only to a host this App doesn't already serve; a host
 	// it does serve is only having its redirect rewritten.
 	if !present {
+		if err := s.checkCustomDomainQuota(ctx, app, claimedHostCount(app)); err != nil {
+			return DomainView{}, false, err
+		}
 		if s.reservedHost(s.ownPlatformHost(app), hostname) {
 			return DomainView{}, false, fmt.Errorf("%w: %q is a reserved platform hostname", core.ErrBadRequest, hostname)
 		}

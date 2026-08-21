@@ -100,6 +100,7 @@ func TestPGStore(t *testing.T) {
 	assertConcurrentDeployTriggers(ctx, t, s, ten.ID)
 	assertDomainUniqueness(ctx, t, s, ten.ID)
 	assertDomainClaimLifecycle(ctx, t, s, ten.ID)
+	assertWorkspaceDomainClaimCount(ctx, t, s, ten.ID)
 	assertMembershipRoleOutbox(ctx, t, s, ten.ID)
 	assertAuditEvents(ctx, t, s, ten)
 	assertServiceEvents(ctx, t, s, ten, app)
@@ -1950,6 +1951,68 @@ func assertDomainClaimLifecycle(ctx context.Context, t *testing.T, s *PGStore, t
 	}
 	if _, err := s.PromoteDomainClaim(ctx, claim.AppID, claim.ID, claim.Challenge, time.Now()); !errors.Is(err, ErrConflict) {
 		t.Fatalf("stale promotion = %v", err)
+	}
+}
+
+// assertWorkspaceDomainClaimCount pins CountWorkspaceDomainClaims (round 18,
+// the per-workspace custom-domain quota): claims are counted across every app
+// of one workspace — pending and verified alike — and never across workspaces.
+func assertWorkspaceDomainClaimCount(ctx context.Context, t *testing.T, s *PGStore, tenantID string) {
+	t.Helper()
+	other, err := s.CreateTenant(ctx, "domain-count-other", PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a1, err := s.CreateApp(ctx, App{TenantID: tenantID, Name: "count-a", Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a2, err := s.CreateApp(ctx, App{TenantID: tenantID, Name: "count-b", Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a3, err := s.CreateApp(ctx, App{TenantID: other.ID, Name: "count-c", Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = s.DeleteApp(ctx, a1.ID)
+		_ = s.DeleteApp(ctx, a2.ID)
+		_ = s.DeleteApp(ctx, a3.ID)
+	}()
+
+	base, err := s.CountWorkspaceDomainClaims(ctx, tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.AddDomainClaim(ctx, a1.ID, "count-a1.example.com", ""); err != nil {
+		t.Fatal(err)
+	}
+	pending, _, err := s.AddDomainClaim(ctx, a2.ID, "count-a2.example.com", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.PromoteDomainClaim(ctx, a2.ID, pending.ID, pending.Challenge, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	// The other workspace's claim must not leak into the count.
+	if _, _, err := s.AddDomainClaim(ctx, a3.ID, "count-a3.example.com", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.CountWorkspaceDomainClaims(ctx, tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != base+2 {
+		t.Fatalf("workspace claim count = %d, want %d (one pending + one verified, other workspace excluded)", got, base+2)
+	}
+	otherGot, err := s.CountWorkspaceDomainClaims(ctx, other.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if otherGot != 1 {
+		t.Fatalf("other workspace claim count = %d, want 1", otherGot)
 	}
 }
 

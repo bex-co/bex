@@ -140,12 +140,17 @@ cleanup_probe() {
 
 apply_secret() {
   local namespace="$1" name="$2" access="$3" secret="$4"
+  # app.bex.co/protected-from-tenant-mount matches the operator's label-based
+  # rejection (LabelProtectedFromTenantMount in lego/types) byte-for-byte, so a
+  # tenant App that names this Secret in a mount field is refused even where
+  # the operator's name denylist cannot see it.
   jq -cn \
     --arg namespace "$namespace" --arg name "$name" \
     --arg access "$access" --arg secret "$secret" --arg region "$S3_REGION" \
     '{apiVersion:"v1", kind:"Secret", type:"Opaque",
       metadata:{namespace:$namespace,name:$name,
-        labels:{"app.kubernetes.io/managed-by":"static-s3-credentials"}},
+        labels:{"app.kubernetes.io/managed-by":"static-s3-credentials",
+          "app.bex.co/protected-from-tenant-mount":"true"}},
       stringData:{AWS_ACCESS_KEY_ID:$access,AWS_SECRET_ACCESS_KEY:$secret,AWS_DEFAULT_REGION:$region}}' \
     | kubectl apply -f - >/dev/null
 }

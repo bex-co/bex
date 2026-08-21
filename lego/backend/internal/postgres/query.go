@@ -113,8 +113,13 @@ func (s *Service) Query(ctx context.Context, dbID, sql string) (QueryResult, err
 // ExecuteQuery powers the dashboard/REST SQL console. Reads use the exact
 // can_view_sensitive + read-only contract as Query (and therefore the MCP tool).
 // allowWrites is an explicit opt-in used only after the dashboard confirmation;
-// it requires developer-level can_create and runs one read-write transaction.
-// Both modes share the same timeout, row cap, secret resolution, and error map.
+// it runs one read-write transaction and requires BOTH developer-level
+// can_create AND can_view_sensitive: a writable statement can still return
+// rows (SELECT in a read-write transaction, DML ... RETURNING), so the write
+// capability alone must never unlock the sensitive-read half (codex round 18).
+// On a scoped third-party OAuth token this composes to bex.write AND
+// bex.sensitive; a token holding only one is refused. Both modes share the
+// same timeout, row cap, secret resolution, and error map.
 func (s *Service) ExecuteQuery(ctx context.Context, dbID, sql string, allowWrites bool) (QueryResult, error) {
 	relation := core.RelCanViewSensitive
 	if allowWrites {
@@ -124,6 +129,13 @@ func (s *Service) ExecuteQuery(ctx context.Context, dbID, sql string, allowWrite
 	if err != nil {
 		return QueryResult{}, err
 	}
+	if allowWrites {
+		// The sensitive half rides the Fresh seam: it must not emit an ALLOWED
+		// read-relation audit row for what is, to the caller, a write verb.
+		if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanViewSensitive, db); err != nil {
+			return QueryResult{}, err
+		}
+	}
 	return s.executeAuthorizedQuery(ctx, db, sql, !allowWrites)
 }
 
@@ -131,7 +143,10 @@ func (s *Service) ExecuteQuery(ctx context.Context, dbID, sql string, allowWrite
 // statement. The caller's AuthorizeDatabase already ran (and audited); codex
 // round-9 #7 adds an uncached reassertion here — arbitrary SQL is a
 // sensitive/destructive sink, so a membership revoked inside PositiveTTL must
-// not ride a cached positive to one last query against the Database.
+// not ride a cached positive to one last query against the Database. The
+// writable mode re-asserts BOTH can_create and can_view_sensitive uncached
+// (codex round 18): a read-write transaction can return rows, so both halves
+// of the capability union are re-checked at the sink.
 func (s *Service) executeAuthorizedQuery(ctx context.Context, db *appv1alpha1.Database, sql string, readOnly bool) (QueryResult, error) {
 	relation := core.RelCanViewSensitive
 	if !readOnly {
@@ -139,6 +154,11 @@ func (s *Service) executeAuthorizedQuery(ctx context.Context, db *appv1alpha1.Da
 	}
 	if err := s.AuthorizeDatabaseFresh(ctx, relation, db); err != nil {
 		return QueryResult{}, err
+	}
+	if !readOnly {
+		if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanViewSensitive, db); err != nil {
+			return QueryResult{}, err
+		}
 	}
 	if strings.TrimSpace(sql) == "" {
 		return QueryResult{}, fmt.Errorf("%w: sql is required", core.ErrBadRequest)

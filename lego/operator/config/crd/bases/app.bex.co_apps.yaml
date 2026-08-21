@@ -428,6 +428,9 @@ spec:
                   the target remains reachable. The operator renders each entry as its own
                   Traefik redirect router; hosts absent from this map serve the App directly.
                   Used for Render-compatible auto-paired www<->apex custom domains.
+                  Count-capped like Hosts (codex-security round 18) — each entry is its own
+                  redirect router.
+                maxProperties: 100
                 type: object
               hosts:
                 description: |-
@@ -435,8 +438,13 @@ spec:
                   custom domains, CNAME'd to the platform hostname. Every effective host gets its
                   own Ingress rule and its own cert-manager certificate/secret, so one domain's
                   broken DNS can never block another's issuance or renewal.
+                  Count-capped (codex-security round 18): every host fans out into routing,
+                  certificate, and host-cache state, so the durable per-App host set must
+                  stay bounded; bex-api enforces the same per-service cap (and a
+                  per-workspace one) with CUSTOM_DOMAIN_LIMIT before any host reaches here.
                 items:
                   type: string
+                maxItems: 100
                 type: array
               idleTTLSeconds:
                 description: IdleTTLSeconds before the service hibernates ("sleep

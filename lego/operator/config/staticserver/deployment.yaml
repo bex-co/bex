@@ -37,9 +37,11 @@ spec:
           image: controller:latest # overridden by kustomize; same image as the manager, different entrypoint
           command: ["/staticserver"]
           # Memory budgets the server self-enforces (staticserver.go): 256 MiB
-          # default object cache + 512 MiB live-body lease budget + 1 GiB
-          # worst-case fetch-gate in-flight reservation (32 fetches x 32 MiB)
-          # ~= 1.75 GiB; the limit leaves headroom for the process itself.
+          # default object cache + 256 MiB live-body lease budget + 512 MiB
+          # worst-case fetch-gate in-flight reservation (16 fetches x 32 MiB)
+          # ~= 1 GiB = 50% of the limit, leaving ~1 GiB for the Go runtime,
+          # allocator transients, and the S3 SDK (codex-security round 18).
+          # GOMEMLIMIT below ramps the GC before the cgroup OOM killer fires.
           resources:
             requests:
               cpu: 10m
@@ -57,6 +59,11 @@ spec:
           env:
             - name: BEX_STATIC_ADDR
               value: ":8080"
+            # Soft memory cap below the 2 GiB cgroup limit: the Go GC ramps up
+            # as heap approaches 1500 MiB instead of the kernel OOM-killing the
+            # single replica at the hard limit (codex-security round 18).
+            - name: GOMEMLIMIT
+              value: 1500MiB
             # Shared platform hosting suffix — must match the operator/bex-api so
             # a static_site's platform host "<slug>.onbex.co" resolves.
             # Do not unset: the PSL gap is an accepted risk (`.pm/DO_NOT_DO.md`

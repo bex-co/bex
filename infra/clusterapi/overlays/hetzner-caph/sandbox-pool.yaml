@@ -217,12 +217,26 @@ spec:
       - mkdir -p /etc/containerd
       - containerd config default > /etc/containerd/config.toml
       - sed -i  "s/SystemdCgroup = false/SystemdCgroup = true/" /etc/containerd/config.toml
-      - ARCH=$(uname -m); GVURL="https://storage.googleapis.com/gvisor/releases/release-20260622.0/${ARCH}";
-        cd /tmp && wget -q ${GVURL}/runsc ${GVURL}/runsc.sha256 ${GVURL}/containerd-shim-runsc-v1
-        ${GVURL}/containerd-shim-runsc-v1.sha256 && test "$(sha256sum runsc | awk '{print $1}')"
-        = "$(awk '{print $1}' runsc.sha256)" && test "$(sha256sum containerd-shim-runsc-v1 |
-        awk '{print $1}')" = "$(awk '{print $1}' containerd-shim-runsc-v1.sha256)" && chmod a+rx runsc
-        containerd-shim-runsc-v1 && cp runsc containerd-shim-runsc-v1 /usr/local/bin/
+      # codex-security round 18 (CWE-494): runsc is the kernel boundary for
+      # hostile tenant sandboxes, so the binaries are verified against SHA-512
+      # digests pinned in THIS repository — never against checksum files
+      # co-fetched from the same origin (a compromised release bucket/publisher
+      # would replace binary + checksum together). Pins reviewed 2026-08-20
+      # against upstream's published digests:
+      #   https://storage.googleapis.com/gvisor/releases/release/20260622.0/x86_64/runsc.sha512
+      #   https://storage.googleapis.com/gvisor/releases/release/20260622.0/x86_64/containerd-shim-runsc-v1.sha512
+      # x86_64 is the only architecture this pool runs (cpx32/cx33); any other
+      # arch, a download failure, or a digest mismatch fails the bootstrap.
+      # When bumping the gVisor release, fetch the new .sha512 files from the
+      # versioned URL above, verify the binaries against them, and update the
+      # two pinned digests in the same commit.
+      - ARCH=$(uname -m); test "$ARCH" = x86_64; GVURL="https://storage.googleapis.com/gvisor/releases/release/20260622.0/${ARCH}";
+        RUNSC_SHA512=6df95d09363dbd9ee5d5c889c1549b457e1783b039ff60a8f9f16f8c94c774a2ca2eef5b1c370e36b863f6b0407b53ba3c69051c6ef051253843dabf89a6de4e;
+        SHIM_SHA512=87c63197836574b7a2c057d2c0647d2badb679187f0b9175ecf78ac52207cdaa3f101629d3e5d165c95930ca35fe81bc26bb90fcf08e09b99c2ee047b6235ce2;
+        cd /tmp && wget -q ${GVURL}/runsc ${GVURL}/containerd-shim-runsc-v1 &&
+        echo "$RUNSC_SHA512  runsc" | sha512sum -c - && echo "$SHIM_SHA512  containerd-shim-runsc-v1"
+        | sha512sum -c - && chmod a+rx runsc containerd-shim-runsc-v1 && cp runsc
+        containerd-shim-runsc-v1 /usr/local/bin/
       # w3/m42 (ADR042 D5): disable runsc's default memory-backed rootfs
       # overlay. With the overlay on, tenant filesystem writes live only inside
       # the gVisor sandbox and never reach the host containerd rw layer, so the

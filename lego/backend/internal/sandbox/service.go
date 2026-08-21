@@ -224,7 +224,12 @@ func sandboxCapacityError() error {
 // (round-11 #5): the override gates exec-ticket minting and lifecycle mutation
 // in another member's sandbox, so a just-demoted admin must not ride a positive
 // cached on a different API replica for up to core.PositiveTTL. An uncached
-// checker is already authoritative and degrades to plain Check.
+// checker is already authoritative and degrades to plain Check. It also
+// composes the relation's mapped OAuth capability (Identity.RequireCapability):
+// a third-party human token carrying only bex.read fails closed to non-admin
+// even when OpenFGA grants the delegated admin's can_manage. A capability
+// refusal is NOT an error — callers fall back to owner-only behavior, and the
+// helper stays audit-silent (no denial audit row per viewer).
 func (s *Service) isWorkspaceAdmin(ctx context.Context, workspace string) (bool, error) {
 	if s.Authz == nil {
 		return false, nil
@@ -232,6 +237,9 @@ func (s *Service) isWorkspaceAdmin(ctx context.Context, workspace string) (bool,
 	id, ok := core.IdentityFrom(ctx)
 	if !ok {
 		return false, core.ErrForbidden
+	}
+	if err := id.RequireCapability(core.RelCanManage); err != nil {
+		return false, nil
 	}
 	check := s.Authz.Check
 	if fresh, ok := s.Authz.(core.FreshChecker); ok {

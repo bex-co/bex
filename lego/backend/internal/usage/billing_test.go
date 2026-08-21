@@ -217,6 +217,51 @@ func TestBillingRevokedMidCacheWindow(t *testing.T) {
 	}
 }
 
+// TestBillingHiddenFromReadOnlyOAuthBillingToken (capability composition on the
+// audit-silent projection): mayManageBilling composes can_manage_billing's
+// mapped OAuth capability, so a third-party human token delegated only
+// bex.read by a billing-role member must NOT receive the real Stripe
+// projection (cost, invoices, credit grants) even though OpenFGA still grants
+// the billing relation. bex.write restores it.
+func TestBillingHiddenFromReadOnlyOAuthBillingToken(t *testing.T) {
+	oauthBilling := func(scopes string) context.Context {
+		return core.WithIdentity(context.Background(), core.Identity{
+			Subject: "user:alice", Method: "oauth2", Human: true, CanonicalScopes: scopes,
+		})
+	}
+	for _, tc := range []struct {
+		name   string
+		scopes string
+		want   bool
+	}{
+		{"bex.read only", core.ScopeRead, false},
+		{"bex.read + bex.write", core.ScopeRead + " " + core.ScopeWrite, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := svcWithTenant(seedStore(), "tea-001")
+			svc.Base.Authz = billingRoleChecker{billing: true}
+			reader := &fakeBillingReader{result: sampleBilling()}
+			svc.Billing = reader
+
+			sum, err := svc.MonthToDate(oauthBilling(tc.scopes), "")
+			if err != nil {
+				t.Fatalf("MonthToDate: %v", err)
+			}
+			if !tc.want {
+				if sum.Billing != nil {
+					t.Fatalf("summary.Billing = %+v, want nil for a read-only OAuth billing token", sum.Billing)
+				}
+				if len(reader.calls) != 0 {
+					t.Fatalf("BillingFor called %d time(s), want 0 for a read-only OAuth billing token", len(reader.calls))
+				}
+			}
+			if tc.want && (sum.Billing == nil || sum.Billing.CurrentCost == nil) {
+				t.Fatalf("summary.Billing = %+v, want the sample for a write-scoped billing token", sum.Billing)
+			}
+		})
+	}
+}
+
 // TestBillingCrossSurfaceParity asserts REST, GraphQL, and MCP present the same
 // billing fields with the same values — the ADR006 one-core/thin-adapters
 // invariant for the m48 surface.

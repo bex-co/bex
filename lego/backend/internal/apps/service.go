@@ -74,6 +74,20 @@ type Service struct {
 	// dashboard host as a custom domain (w7/m6). Empty => not reserved (the
 	// base-domain guard still covers the `*.<BaseDomain>` platform namespace).
 	DashboardHost string
+	// MaxCustomDomainsPerService and MaxCustomDomainsPerWorkspace cap
+	// custom-domain cardinality (codex-security round 18;
+	// BEX_MAX_CUSTOM_DOMAINS_PER_SERVICE / BEX_MAX_CUSTOM_DOMAINS_PER_WORKSPACE,
+	// defaults 100/500; 0 disables). Every verified host fans out into an
+	// Ingress rule, a cert-manager TLS entry, and activator/static-server
+	// host-cache entries, so unbounded churn would exhaust shared
+	// certificate/routing/control-plane resources. A claim beyond either cap is
+	// refused with the coded CUSTOM_DOMAIN_LIMIT (409), identical across
+	// REST/GraphQL/MCP; a create/blueprint host set over the per-service cap is
+	// a 400 (the CRD schema's MaxItems is the admission backstop). The
+	// per-workspace count needs the control-plane store; storeless mode keeps
+	// only the per-service cap.
+	MaxCustomDomainsPerService   int
+	MaxCustomDomainsPerWorkspace int
 	// SSHHost is the public SSH gateway hostname (BEX_SSH_HOST). When set,
 	// eligible paid, long-running services advertise Render-compatible
 	// serviceDetails.sshAddress values. Authorization and runtime readiness are

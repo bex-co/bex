@@ -43,11 +43,14 @@ type cache struct {
 // (codex-security round 12, finding 2).
 const entryOverhead = 256
 
-// entryCharge is the budget cost of caching obj under key: body bytes plus the
-// entry's own metadata. It is the ONE cost model — put and evictOne share it —
-// so an entry is always released for exactly what it was charged.
+// entryCharge is the budget cost of caching obj under key: retained body
+// capacity plus the entry's own metadata. It is the ONE cost model — put and
+// evictOne share it — so an entry is always released for exactly what it was
+// charged. Capacity (not length) is charged because the body comes from
+// io.ReadAll, whose final slice can carry up to ~2x its length in spare
+// capacity that stays allocated while the entry lives.
 func entryCharge(key string, obj Object) int64 {
-	return int64(len(obj.Body)) + int64(len(key)) + int64(len(obj.ContentType)) + entryOverhead
+	return int64(cap(obj.Body)) + int64(len(key)) + int64(len(obj.ContentType)) + entryOverhead
 }
 
 func newCache(budget int64) *cache {
