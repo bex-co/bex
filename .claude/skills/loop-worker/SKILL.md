@@ -42,9 +42,9 @@ Do the actual engineering, task by task, in the order the milestone implies:
 
 ### 4. Ship it
 
-Invoke **`/ship`** (the `ship` skill) for this milestone's changes. Because you made the changes this session, `/ship` runs session-aware: it stages exactly what you touched and writes the commit message from your knowledge. For substantial code changes it stays on duty until CI and the prod deploy are green. **Do not proceed to the next milestone until `/ship` reports the shipped HEAD is landed** (green CI / deploy for code changes; a quick CI snapshot for docs/`.pm`-only pushes).
+Invoke **`/ship`** (the `ship` skill) for this milestone's changes. Because you made the changes this session, `/ship` runs session-aware: it stages exactly what you touched and writes the commit message from your knowledge. `/ship` ends at a successful push — it does not watch CI or the deploy. **Do not proceed to the next milestone until `/ship` reports the shipped HEAD.**
 
-If `/ship` surfaces a failure it cannot fix, treat it as a **block** (see below).
+If `/ship` surfaces a failure it cannot fix (rebase conflict it can't resolve, rejected push), treat it as a **block** (see below).
 
 ### 5. Continue
 
@@ -55,7 +55,7 @@ Loop back to step 1 to pick the next pending milestone.
 Stop the loop and give a final summary when any of these holds:
 
 - **Done:** no pending milestones remain in `<wN>`. Report which milestones you shipped this run.
-- **Blocked:** a milestone needs a decision only the user can make (ambiguous scope, a `DO_NOT_DO` conflict, an external credential/access you lack, or repeated CI failure you can't resolve). Stop **before** shipping half-work — report the exact blocker and what you'd need to proceed. Do not skip a blocked milestone to grab a later one unless the user says so.
+- **Blocked:** a milestone needs a decision only the user can make (ambiguous scope, a `DO_NOT_DO` conflict, an external credential/access you lack, or a ship failure you can't resolve). Stop **before** shipping half-work — report the exact blocker and what you'd need to proceed. Do not skip a blocked milestone to grab a later one unless the user says so.
 - **Budget/interrupt:** the user interrupts, or you've been running long enough that a checkpoint is warranted — report progress (shipped, in-flight, remaining) so the run can be resumed cleanly.
 
 ## Guardrails
