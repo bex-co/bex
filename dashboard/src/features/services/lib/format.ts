@@ -44,3 +44,25 @@ export function formatRelativeAge(
   if (months < 12) return `${months}mo`;
   return `${years}y`;
 }
+
+// Compact relative time until a FUTURE instant ("in 5m", "in 3h", "in 2d"), the
+// mirror of formatRelativeAge — used for a cron_job's computed next run. A time
+// already in the past collapses to "now" (the scheduler is about to fire).
+export function formatRelativeUntil(
+  iso: string | null | undefined,
+  now: number = Date.now(),
+): string {
+  if (!iso) return "—";
+  const then = Date.parse(iso);
+  if (Number.isNaN(then)) return "—";
+
+  const secs = Math.max(0, Math.floor((then - now) / 1000));
+  const mins = Math.floor(secs / 60);
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+
+  if (secs < 60) return "now";
+  if (mins < 60) return `in ${mins}m`;
+  if (hours < 24) return `in ${hours}h`;
+  return `in ${days}d`;
+}

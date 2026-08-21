@@ -758,6 +758,48 @@ func TestQueryLogsSynthesizesProgressLinesForExplicitBuildType(t *testing.T) {
 	}
 }
 
+// TestQueryLogsProgressTerminalLineIsTypeAware guards w9/057: a successful
+// cron_job deploy narrates that it is scheduled, not "live" (a cron runs its
+// command to completion, it is never a served live service), while every other
+// type keeps Render's "Your service is live 🎉" line.
+func TestQueryLogsProgressTerminalLineIsTypeAware(t *testing.T) {
+	liveTerminalLine := func(t *testing.T, svcType string) string {
+		t.Helper()
+		app := sampleApp("svc")
+		app.Spec.Type = svcType // image-backed (no Repo): Deploy queued / Deploying image
+		svc := newService(nil, app)
+		svc.History = func(_ context.Context, _ string, _ LogQuery) ([]LogEntry, error) {
+			return nil, nil
+		}
+		deploy := DeployProgress{
+			ID:         "dep-1",
+			Status:     "live",
+			Image:      "busybox:latest",
+			CreatedAt:  time.Date(2026, 8, 20, 1, 0, 0, 0, time.UTC),
+			StartedAt:  time.Date(2026, 8, 20, 1, 0, 2, 0, time.UTC),
+			FinishedAt: time.Date(2026, 8, 20, 1, 0, 5, 0, time.UTC),
+		}
+		svc.DeployProgress = func(_ context.Context, _ string, _ time.Time) ([]DeployProgress, error) {
+			return []DeployProgress{deploy}, nil
+		}
+		entries, err := svc.QueryLogs(context.Background(), LogQuery{App: "svc", Types: []string{LogTypeBuild}})
+		if err != nil {
+			t.Fatalf("QueryLogs: %v", err)
+		}
+		if len(entries) == 0 {
+			t.Fatalf("no progress lines synthesized")
+		}
+		return entries[len(entries)-1].Message // the terminal line is last chronologically
+	}
+
+	if got := liveTerminalLine(t, appv1alpha1.TypeCronJob); got != "==> Cron job deployed — runs on schedule 🎉" {
+		t.Errorf("cron_job terminal line = %q, want the scheduled (not live) line", got)
+	}
+	if got := liveTerminalLine(t, appv1alpha1.TypeWebService); got != "==> Your service is live 🎉" {
+		t.Errorf("web_service terminal line = %q, want the live line", got)
+	}
+}
+
 // A query that does not explicitly ask for build logs gets no narration — the
 // same condition under which the store selector excludes build streams.
 func TestQueryLogsNoProgressLinesWithoutExplicitBuildType(t *testing.T) {

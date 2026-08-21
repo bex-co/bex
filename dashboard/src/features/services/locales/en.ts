@@ -366,6 +366,16 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail header metadata label for a cron job's schedule",
   },
+  "services.headerLastRun": {
+    message: "Last run:",
+    description:
+      "Service-detail header metadata label for a cron job's last successful run",
+  },
+  "services.headerNextRun": {
+    message: "Next run:",
+    description:
+      "Service-detail header metadata label for a cron job's next scheduled run",
+  },
   "services.headerCopyServiceId": {
     message: "Copy service ID",
     description: "Accessible label for the header's service-id copy button",

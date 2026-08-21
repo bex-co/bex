@@ -92,6 +92,7 @@ query Server($id: String!) {
     schedule
     command
     lastSuccessfulRunAt
+    nextRunAt
     runs {
       id
       name

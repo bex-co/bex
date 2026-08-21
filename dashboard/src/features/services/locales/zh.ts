@@ -361,6 +361,16 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Service-detail header metadata label for a cron job's schedule",
   },
+  "services.headerLastRun": {
+    message: "上次运行：",
+    description:
+      "Service-detail header metadata label for a cron job's last successful run",
+  },
+  "services.headerNextRun": {
+    message: "下次运行：",
+    description:
+      "Service-detail header metadata label for a cron job's next scheduled run",
+  },
   "services.headerCopyServiceId": {
     message: "复制服务 ID",
     description: "Accessible label for the header's service-id copy button",
