@@ -12,5 +12,9 @@ node_modules/
 # vendored third-party chart (don't reformat upstream)
 deploy/gitops/charts/opensandbox-controller/
 
+# vendored third-party skill (don't reformat upstream — tracked by skills-lock.json)
+.claude/skills/security-audit/
+.agents/skills/security-audit/
+
 # generated kustomize/CRD/RBAC output (not prose)
 operator/dist/
