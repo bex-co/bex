@@ -26,6 +26,7 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
+import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type {
@@ -87,7 +88,7 @@ export function useEnvGroups(): UseEnvGroupsResult {
   const { data, loading, error, refetch } = useQuery(EnvGroupsDocument, {
     variables: { ownerId: currentWorkspaceId },
     skip: !resolved,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: PRIMED_FETCH_POLICY,
     errorPolicy: "all",
     pollInterval: RESOURCE_POLL_INTERVAL_MS,
     skipPollAttempt: skipPollWhenHidden,

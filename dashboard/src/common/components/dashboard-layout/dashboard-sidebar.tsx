@@ -1,3 +1,4 @@
+import { lazy, Suspense, useCallback } from "react";
 import { useParams, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
@@ -14,12 +15,24 @@ import {
   SidebarContent,
   SidebarHeader,
 } from "@/common/components/ui/sidebar.tsx";
-import { AgentSessionsNavSection } from "./agent-sessions-nav-section";
 import { isNavItemActive } from "./nav-active";
-import { ProjectSidebar } from "./project-sidebar";
-import { ServiceSidebar } from "./service-sidebar";
 import { SidebarBrand } from "./sidebar-brand";
 import { SidebarNavGroups, type SidebarNavGroup } from "./sidebar-nav-groups";
+
+// Contextual rails are route-scoped; keep them out of the always-mounted chrome
+// chunk until the matching pathname/param is active (vercel bundle-dynamic /
+// bundle-conditional).
+const AgentSessionsNavSection = lazy(() =>
+  import("./agent-sessions-nav-section").then((m) => ({
+    default: m.AgentSessionsNavSection,
+  })),
+);
+const ProjectSidebar = lazy(() =>
+  import("./project-sidebar").then((m) => ({ default: m.ProjectSidebar })),
+);
+const ServiceSidebar = lazy(() =>
+  import("./service-sidebar").then((m) => ({ default: m.ServiceSidebar })),
+);
 
 // Render parity: one "Projects" entry groups every resource type (services,
 // databases, key value) on a single page (`routes/index.tsx`), rather than a
@@ -71,12 +84,24 @@ const NAV_GROUPS: SidebarNavGroup[] = [
 export function DashboardSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { projectId, serviceId } = useParams({ strict: false });
+  const isItemActive = useCallback(
+    (to: string) => isNavItemActive(pathname, to),
+    [pathname],
+  );
 
   if (projectId) {
-    return <ProjectSidebar projectId={projectId} />;
+    return (
+      <Suspense fallback={<SidebarShell />}>
+        <ProjectSidebar projectId={projectId} />
+      </Suspense>
+    );
   }
   if (serviceId) {
-    return <ServiceSidebar serviceId={serviceId} />;
+    return (
+      <Suspense fallback={<SidebarShell />}>
+        <ServiceSidebar serviceId={serviceId} />
+      </Suspense>
+    );
   }
 
   return (
@@ -85,10 +110,7 @@ export function DashboardSidebar() {
         <SidebarBrand />
       </SidebarHeader>
       <SidebarContent className="gap-0">
-        <SidebarNavGroups
-          groups={NAV_GROUPS}
-          isItemActive={(to) => isNavItemActive(pathname, to)}
-        />
+        <SidebarNavGroups groups={NAV_GROUPS} isItemActive={isItemActive} />
         {/* The contextual list slot (w5/m64). Unlike ProjectSidebar and
             ServiceSidebar above — which REPLACE the rail for a deep hierarchy
             and offer a back link — an agents-context section AUGMENTS the nav,
@@ -96,9 +118,23 @@ export function DashboardSidebar() {
             beneath. Section-scoped on purpose: sessions never follow you onto
             Projects/Services/Settings. See ADR047 D9. */}
         {isNavItemActive(pathname, "/agents") ? (
-          <AgentSessionsNavSection />
+          <Suspense fallback={null}>
+            <AgentSessionsNavSection />
+          </Suspense>
         ) : null}
       </SidebarContent>
+    </Sidebar>
+  );
+}
+
+/** Minimal chrome while a contextual rail chunk loads. */
+function SidebarShell() {
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <SidebarBrand />
+      </SidebarHeader>
+      <SidebarContent className="gap-0" />
     </Sidebar>
   );
 }

@@ -8,6 +8,7 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
+import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 import type {
   WebhookDeliveryStatus,
   WebhookEndpointView,
@@ -74,7 +75,7 @@ export function useWebhooks({
   const { data, loading, error, refetch } = useQuery(WebhookEndpointsDocument, {
     variables: { ownerId: currentWorkspaceId },
     skip: !resolved,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: PRIMED_FETCH_POLICY,
     errorPolicy: "all",
     pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,
     skipPollAttempt: skipPollWhenHidden,

@@ -2,7 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AgentsPageSkeleton } from "@/common/components/detail-skeletons";
 import { Loader2 } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
-import { translatedTitleHead } from "@/common/lib/document-head";
+import {
+  translatedTitleHead,
+  titleLoaderFetchPolicy,
+} from "@/common/lib/document-head";
+import { prefetchInParallel } from "@/common/lib/prefetch";
+import { AgentSessionsDocument } from "@/graphql/definitions";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Button } from "@/common/components/ui/button";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -26,6 +31,28 @@ export const Route = createFileRoute("/agents")({
   component: AgentSessionsPage,
   pendingComponent: AgentsPageSkeleton,
   beforeLoad: requireAuth(),
+  // Prefetch the working-set list on hover-intent so `/agents` mounts warm
+  // (same pattern as `/` and `/blueprints`). Variables match `useAgentSessions`
+  // defaults (unarchived, no phase/repo/limit filters).
+  loader: ({ context, cause }) => {
+    const ownerId = context.workspaceId;
+    if (ownerId == null) return;
+    return prefetchInParallel([
+      () =>
+        context.client.query({
+          query: AgentSessionsDocument,
+          variables: {
+            ownerId,
+            archived: null,
+            phases: null,
+            repo: null,
+            limit: null,
+          },
+          fetchPolicy: titleLoaderFetchPolicy(cause),
+          errorPolicy: "all",
+        }),
+    ]);
+  },
   // `?view=list` is a compatibility no-op now that creation and history share
   // one page. `?archived=true|all` widens the default unarchived working set
   // (ADR065 D3 — the sidebar's Archived entry targets `?archived=true`).

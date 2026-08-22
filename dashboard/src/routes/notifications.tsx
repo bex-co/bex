@@ -1,7 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ListPageSkeleton } from "@/common/components/detail-skeletons";
 import { requireAuth } from "@/common/lib/auth/auth";
-import { translatedTitleHead } from "@/common/lib/document-head";
+import {
+  translatedTitleHead,
+  titleLoaderFetchPolicy,
+} from "@/common/lib/document-head";
+import { prefetchInParallel } from "@/common/lib/prefetch";
+import {
+  NotificationSettingsDocument,
+  PushNotificationSettingsDocument,
+} from "@/graphql/definitions";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { NotificationSettingsPanel } from "@/features/notifications/components/notification-settings-panel";
 import { PushNotificationSettingsPanel } from "@/features/notifications/components/push-notification-settings-panel";
@@ -17,6 +25,23 @@ export const Route = createFileRoute("/notifications")({
   component: NotificationsPage,
   pendingComponent: ListPageSkeleton,
   beforeLoad: requireAuth(),
+  loader: ({ context, cause }) => {
+    const fetchPolicy = titleLoaderFetchPolicy(cause);
+    return prefetchInParallel([
+      () =>
+        context.client.query({
+          query: NotificationSettingsDocument,
+          fetchPolicy,
+          errorPolicy: "all",
+        }),
+      () =>
+        context.client.query({
+          query: PushNotificationSettingsDocument,
+          fetchPolicy,
+          errorPolicy: "all",
+        }),
+    ]);
+  },
   head: ({ match }) => translatedTitleHead("notifications.title", match),
 });
 
