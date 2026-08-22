@@ -378,7 +378,7 @@ func TestZotConfigPreservesUnmodeledFields(t *testing.T) {
 	}
 
 	c := newTestCreds(t, htpasswdSecret(), zotConfigSecret(seeded))
-	if _, err := c.ensureZotConfigEntry(ctx, "myapp", "app-myapp", zotReadWriteActions); err != nil {
+	if _, err := c.ensureZotConfigEntry(ctx, "app-myapp", zotReadWriteActions, "myapp"); err != nil {
 		t.Fatalf("ensureZotConfigEntry: %v", err)
 	}
 	if _, err := c.removeZotConfigEntry(ctx, "myapp"); err != nil {
@@ -516,7 +516,7 @@ func TestPlatformBuilderRepositoryIsReadOnlyForAuthenticatedApps(t *testing.T) {
 
 	// A tenant service whose public name collides with the platform repository
 	// must gain neither write permission nor the power to strip the shared rule.
-	if _, err := c.ensureZotConfigEntry(ctx, platformBuilderRepository, ZotUsername(platformBuilderRepository), zotReadWriteActions); err != nil {
+	if _, err := c.ensureZotConfigEntry(ctx, ZotUsername(platformBuilderRepository), zotReadWriteActions, platformBuilderRepository); err != nil {
 		t.Fatal(err)
 	}
 	data := storedConfig(t, c)

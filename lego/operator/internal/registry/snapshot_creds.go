@@ -81,7 +81,7 @@ func (c *Creds) EnsureSnapshotCreds(ctx context.Context, namespace string) error
 	if err != nil {
 		return fmt.Errorf("htpasswd: %w", err)
 	}
-	wroteACL, err := c.ensureZotConfigEntry(ctx, SnapshotRepoGlob(namespace), zotUser, zotReadOnlyActions)
+	wroteACL, err := c.ensureZotConfigEntry(ctx, zotUser, zotReadOnlyActions, SnapshotRepoGlob(namespace))
 	if err != nil {
 		return fmt.Errorf("zot config: %w", err)
 	}

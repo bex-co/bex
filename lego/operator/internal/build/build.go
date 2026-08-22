@@ -216,8 +216,23 @@ const (
 	lightEphemeralRequest = "1Gi"
 	lightEphemeralLimit   = "2Gi"
 
+	// The cache phases get their OWN, smaller bound rather than the push
+	// phase's. A pod's ephemeral-storage limit is the SUM of its regular
+	// containers' limits, so giving cache-save the push phase's 16G would have
+	// silently doubled the disk a tenant build can consume before eviction —
+	// quietly undoing the 16G ceiling the block above was written to enforce.
+	// 8G keeps the pod ceiling at 24G, and a layer cache that cannot fit in 8G
+	// is one whose export is not paying for itself anyway.
+	cacheEphemeralRequest = "1Gi"
+	cacheEphemeralLimit   = "8G"
+
 	// emptyDirSizeLimit bounds each tenant-controlled disk-backed volume.
 	emptyDirSizeLimit = "16G"
+	// cacheEmptyDirSizeLimit bounds the two cache layouts, matching the phase
+	// limit above so a runaway export is stopped by the volume rather than by a
+	// node-level eviction (which podFailurePolicy IGNORES, turning a disk-filling
+	// build into a retry loop — see classifyBufferBytes for the same hazard).
+	cacheEmptyDirSizeLimit = "8G"
 )
 
 // mustSizeLimit parses s into a *resource.Quantity for an emptyDir SizeLimit
@@ -231,6 +246,49 @@ const (
 	dockerConfigMount = "/docker-config"
 	sourceMount       = "/source"
 	outputMount       = "/output"
+	// cacheInMount holds the layer cache skopeo restored from the registry, and
+	// cacheOutMount the one BuildKit exports for skopeo to store (docs/ADR060 D3).
+	// They are separate volumes on purpose: a half-written export must never be
+	// mistaken for a restored cache, and BuildKit needs no write access to the
+	// restored copy.
+	cacheInMount  = "/cache-in"
+	cacheOutMount = "/cache-out"
+
+	// Phase and volume names. Constants for the same reason pushContainer is
+	// one: signals.go matches phases by name, so a literal here and a literal
+	// there would be two facts that must agree.
+	cacheRestorePhase = "cache-restore"
+	cacheSavePhase    = "cache-save"
+	cacheInVolume     = "cache-in"
+	cacheOutVolume    = "cache-out"
+
+	// dockerAuthFile is where every credentialed phase reads its registry auth.
+	dockerAuthFile = dockerConfigMount + "/config.json"
+
+	// cacheCommandTimeout bounds each cache transfer. Without it a hung registry
+	// connection cannot be distinguished from a slow one, and the phase would
+	// consume the Job's whole 30-minute deadline and then fail a build whose
+	// image had already been pushed — the exact outcome "the cache affects speed,
+	// never results" forbids. Generous for an in-cluster transfer, far below the
+	// deadline, so the worst case costs minutes rather than the build.
+	cacheCommandTimeout = "5m"
+
+	// cacheTag is the single tag the layer cache occupies in <repo>-cache. One
+	// tag, rewritten every build: a cache is a rolling artifact, not a history,
+	// so nothing is gained by keeping older ones and Zot's retention has less to
+	// reason about.
+	cacheTag = "cache"
+
+	// cacheLayoutTag is the OCI-layout reference name BuildKit's local cache
+	// importer selects on, and it is the one non-obvious part of this path.
+	// BuildKit's local cache EXPORTER writes index.json with
+	// org.opencontainers.image.ref.name=latest on its manifest descriptor; a
+	// registry round-trip drops that annotation, and an untagged layout is one
+	// the importer silently reads no cache from — the build then succeeds with
+	// zero hits and looks exactly like a working cache. Re-tagging the restored
+	// layout is what makes the import land (measured: without it, four of four
+	// steps rebuilt; with it, four of four were CACHED).
+	cacheLayoutTag = "latest"
 )
 
 // mountRegistryCred attaches the docker-config volume (read-only) + DOCKER_CONFIG
@@ -327,6 +385,16 @@ type Options struct {
 	PullSecret string
 	// RegistryConfig makes buildkitd consume buildkitd.toml from PullSecret.
 	RegistryConfig bool
+	// BuildCache turns on the per-App registry layer cache (docs/ADR060 D3,
+	// BEX_BUILD_CACHE=registry). False produces a byte-identical Job spec to
+	// before the feature existed — no volumes, no phases, no extra buildctl args.
+	//
+	// It does NOT put a registry credential in BuildKit. BuildKit exports its
+	// cache to a local OCI layout exactly as it already exports the image to a
+	// local archive, and the same credentialed skopeo phases that push the image
+	// carry the cache in and out. The container that runs tenant-authored
+	// Dockerfile RUN steps still holds nothing that can write to the registry.
+	BuildCache bool
 }
 
 // Phase is the observed lifecycle of a dispatched build (ADR060 §D1: the
@@ -426,6 +494,19 @@ func (o Options) ImageRef() string {
 		rev = defaultRevision
 	}
 	return fmt.Sprintf("%s/%s:%s", o.Registry, o.RepoPath(), rev)
+}
+
+// CachePath is the OCI repository (no host, no tag) this build's layer cache
+// lives in. It comes from the same identity derivation as RepoPath, so the
+// cache and the image it caches can never end up in different workspaces'
+// namespaces — the isolation property in docs/ADR034 §6 rests on that.
+func (o Options) CachePath() string {
+	return identity.ForApp(o.Name, o.Workspace).CacheRepo()
+}
+
+// CacheRef is the fully qualified reference of this App's layer cache.
+func (o Options) CacheRef() string {
+	return fmt.Sprintf("%s/%s:%s", o.Registry, o.CachePath(), cacheTag)
 }
 
 // KpackImageRef is the deterministic tag a buildpack build pushes. It normally
@@ -597,9 +678,13 @@ func unschedulableReason(pods []corev1.Pod) string {
 // mounts; the size limit is uniform so a build cannot fill a node's ephemeral
 // storage regardless of which scratch volume it writes to.
 func emptyDirVolume(name string) corev1.Volume {
+	return boundedEmptyDirVolume(name, emptyDirSizeLimit)
+}
+
+func boundedEmptyDirVolume(name, sizeLimit string) corev1.Volume {
 	return corev1.Volume{
 		Name:         name,
-		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: mustSizeLimit(emptyDirSizeLimit)}},
+		VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{SizeLimit: mustSizeLimit(sizeLimit)}},
 	}
 }
 
@@ -653,6 +738,30 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			args = append(args, "--opt", "filename="+o.DockerfilePath)
 		}
 	}
+	// mode=max because bex builds are typically multi-stage (the native path
+	// always is: build stage + runtime copy) and the default min mode discards
+	// exactly the intermediate layers worth keeping. image-manifest=true stores
+	// the cache as an OCI image manifest rather than an index, which is what
+	// lets skopeo carry it and what OCI-strict registries accept.
+	// ignore-error=true is the load-bearing one: without it a cache export that
+	// fails — a full volume, a Zot hiccup — fails a build that had already
+	// succeeded, which is precisely the "cache changes only speed" invariant
+	// this feature is not allowed to break.
+	buildkitScript := `bex_run buildctl-daemonless.sh "$@"`
+	if o.BuildCache {
+		args = append(args, "--export-cache",
+			"type=local,dest="+cacheOutMount+",mode=max,image-manifest=true,compression=zstd,ignore-error=true")
+		// The import is added by the phase itself rather than here, because
+		// whether there IS a cache is only known at run time: the restore phase
+		// leaves the volume empty on a first build or a registry miss, and
+		// pointing --import-cache at an empty layout is an error. Appending to
+		// "$@" keeps every value a discrete positional parameter, so nothing is
+		// spliced into shell text (the rule classifyPrelude documents).
+		buildkitScript = `if [ -s ` + cacheInMount + `/index.json ]; then
+  set -- "$@" --import-cache "type=local,src=` + cacheInMount + `"
+fi
+` + buildkitScript
+	}
 
 	// Keep BuildKit's default OCI process sandbox enabled; the Pod user namespace
 	// (spec.hostUsers=false) scopes the capabilities it needs without exposing
@@ -674,6 +783,11 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	ttl := int32(3600) // reap the finished Job after an hour
 
 	volumes := []corev1.Volume{emptyDirVolume("source"), emptyDirVolume("output")}
+	if o.BuildCache {
+		volumes = append(volumes,
+			boundedEmptyDirVolume(cacheInVolume, cacheEmptyDirSizeLimit),
+			boundedEmptyDirVolume(cacheOutVolume, cacheEmptyDirSizeLimit))
+	}
 	if o.PushSecret != "" {
 		volumes = append(volumes, secretVolume("push-registry-cred", o.PushSecret))
 	}
@@ -695,7 +809,7 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	buildkit := corev1.Container{
 		Name:    "buildkit",
 		Image:   buildkitImage,
-		Command: []string{"sh", "-eu", "-c", classifyPrelude + `bex_run buildctl-daemonless.sh "$@"`, "bex-buildkit"},
+		Command: []string{"sh", "-eu", "-c", classifyPrelude + buildkitScript, "bex-buildkit"},
 		Args:    args,
 		Env:     env,
 		VolumeMounts: []corev1.VolumeMount{
@@ -736,42 +850,26 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	if o.Builder == BuilderNative {
 		buildkit.VolumeMounts = append(buildkit.VolumeMounts, corev1.VolumeMount{Name: "native-build", MountPath: "/native"})
 	}
+	if o.BuildCache {
+		buildkit.VolumeMounts = append(buildkit.VolumeMounts,
+			corev1.VolumeMount{Name: "cache-in", MountPath: cacheInMount, ReadOnly: true},
+			corev1.VolumeMount{Name: "cache-out", MountPath: cacheOutMount},
+		)
+	}
 	mountRegistryCred(&buildkit, "pull-registry-cred", o.PullSecret)
 
-	// Whole-blob retry, deliberately not chunked-upload resume: resume paths are
-	// where registries historically corrupt uploads (docs/ADR060 D4).
-	pushArgs := []string{"copy", "--retry-times", "3"}
-	// Only the cluster-local endpoint may skip verification: the push credential
-	// travels with this request, so an external registry must be authenticated
-	// (.pm/w1/046.md F11).
-	if registryIsClusterLocal(o.Registry) {
-		pushArgs = append(pushArgs, "--dest-tls-verify=false")
-	}
-	if o.PushSecret != "" {
-		pushArgs = append(pushArgs, "--authfile", dockerConfigMount+"/config.json")
-	}
-	pushArgs = append(pushArgs, "oci-archive:"+outputMount+"/image.tar", "docker://"+image)
 	pusher := corev1.Container{
 		Name:    pushContainer,
 		Image:   pushImage,
 		Command: []string{"skopeo"},
-		Args:    pushArgs,
+		// Whole-blob retry, deliberately not chunked-upload resume: resume paths
+		// are where registries historically corrupt uploads (docs/ADR060 D4).
+		Args: skopeoCopyArgs(o, "oci-archive:"+outputMount+"/image.tar", "docker://"+image, "--retry-times", "3"),
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "output", MountPath: outputMount, ReadOnly: true},
 		},
 		SecurityContext: restrictedContainerSecurityContext(),
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:              resource.MustParse("100m"),
-				corev1.ResourceMemory:           resource.MustParse("128Mi"),
-				corev1.ResourceEphemeralStorage: resource.MustParse(pushEphemeralRequest),
-			},
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:              resource.MustParse("1"),
-				corev1.ResourceMemory:           resource.MustParse("512Mi"),
-				corev1.ResourceEphemeralStorage: resource.MustParse(pushEphemeralLimit),
-			},
-		},
+		Resources:       pushPhaseResources(),
 	}
 	mountRegistryCred(&pusher, "push-registry-cred", o.PushSecret)
 
@@ -781,6 +879,11 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			clone,
 		},
 		Containers: []corev1.Container{pusher},
+	}
+	if o.BuildCache {
+		// After the clone, so a build that fails on tenant input (a bad ref)
+		// does not first spend time pulling a cache it will never use.
+		podSpec.InitContainers = append(podSpec.InitContainers, cacheRestoreContainer(o, pushImage))
 	}
 	if o.Builder == BuilderNative {
 		podSpec.InitContainers = append(podSpec.InitContainers, nativeBuildPreparer(o))
@@ -838,6 +941,16 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: o.SignKeySecret}},
 		})
 	}
+	// Storing the cache is a sibling of the push, not a step before it: it reads
+	// its own volume and shares nothing with the image push, so the two run
+	// concurrently and the build pays max(push, cache-save) rather than their
+	// sum. It is NOT off the critical path — the Job is Complete only once every
+	// regular container exits, so a cache larger than the image (the normal case
+	// under mode=max) is what the deploy waits on. Measured at 1.5s against the
+	// image push's 0.8s, i.e. ~0.7s added; serializing it would have cost 2.3s.
+	if o.BuildCache {
+		podSpec.Containers = append(podSpec.Containers, cacheSaveContainer(o, pushImage))
+	}
 	// Must run AFTER the signing block above, which moves the push phase into
 	// InitContainers and replaces Containers wholesale — applying it any earlier
 	// silently misses both of those phases.
@@ -872,6 +985,119 @@ func BuildJob(o Options, image string) *batchv1.Job {
 			},
 		},
 	}
+}
+
+// cacheBestEffort wraps a cache phase so it can never fail the build. ADR060
+// D3's invariant is that cache loss changes only speed, and both directions can
+// fail for reasons that say nothing about the build: a first build has no cache
+// to restore, and a cache store can lose a race with registry GC or retention.
+// Swallowing the status keeps the reason in the build log — which the tenant
+// sees — while leaving the phase's exit code clean. Arguments stay in "$@" as
+// discrete positional parameters, never spliced into the script text.
+const cacheBestEffort = `skopeo "$@" || echo "bex: build cache step failed; continuing (the cache affects speed, never results)" >&2`
+
+// cacheRestoreBestEffort additionally clears the destination. A restore that
+// dies part-way can leave a layout whose index.json is present and whose blobs
+// are not — which the import guard's "is there an index?" test would accept, and
+// which is a different case from the corrupt-index one that was measured safe.
+// Removing the remains turns an ambiguous half-cache into the well-tested
+// no-cache path.
+const cacheRestoreBestEffort = `skopeo "$@" || { rm -rf ` + cacheInMount + `/* ` + cacheInMount + `/.[!.]*; echo "bex: no usable build cache; building clean" >&2; }`
+
+// skopeoCopyArgs assembles one credential-isolated registry copy. The
+// TLS-verification flag is derived from which SIDE is the registry rather than
+// passed in, so a future phase cannot be given --dest-tls-verify where it needed
+// --src-. Only the cluster-local endpoint may skip verification: the credential
+// travels with the request, so an external registry must stay authenticated
+// (.pm/w1/046.md F11).
+func skopeoCopyArgs(o Options, src, dst string, flags ...string) []string {
+	args := append([]string{"copy"}, flags...)
+	if registryIsClusterLocal(o.Registry) {
+		if strings.HasPrefix(dst, "docker://") {
+			args = append(args, "--dest-tls-verify=false")
+		} else {
+			args = append(args, "--src-tls-verify=false")
+		}
+	}
+	if o.PushSecret != "" {
+		args = append(args, "--authfile", dockerAuthFile)
+	}
+	return append(args, src, dst)
+}
+
+// pushPhaseResources is the budget every credentialed skopeo phase runs under.
+// Shared rather than repeated because kubelet charges a mounted OCI layout to
+// whichever container reads it: if the image push and the cache phases drifted
+// apart, a tune to one would leave the others evictable mid-transfer.
+func pushPhaseResources() corev1.ResourceRequirements {
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:              resource.MustParse("100m"),
+			corev1.ResourceMemory:           resource.MustParse("128Mi"),
+			corev1.ResourceEphemeralStorage: resource.MustParse(pushEphemeralRequest),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:              resource.MustParse("1"),
+			corev1.ResourceMemory:           resource.MustParse("512Mi"),
+			corev1.ResourceEphemeralStorage: resource.MustParse(pushEphemeralLimit),
+		},
+	}
+}
+
+// cacheRestoreContainer fetches this App's layer cache into a local OCI layout
+// for BuildKit to import. It runs skopeo — not BuildKit — precisely so the
+// container that later executes tenant-authored RUN steps never holds a
+// credential for the platform registry (docs/ADR060 D3).
+//
+// The destination carries cacheLayoutTag for the reason recorded on that
+// constant: an untagged layout is one BuildKit reads no cache from, silently.
+//
+// No --retry-times here, unlike the push: "there is no cache yet" is the normal
+// first-build case and must stay fast, and skopeo does not retry a 404 anyway.
+func cacheRestoreContainer(o Options, image string) corev1.Container {
+	return cachePhase(o, cacheRestorePhase, image, cacheRestoreBestEffort,
+		skopeoCopyArgs(o, "docker://"+o.CacheRef(), "oci:"+cacheInMount+":"+cacheLayoutTag, "--all"),
+		corev1.VolumeMount{Name: cacheInVolume, MountPath: cacheInMount})
+}
+
+// cacheSaveContainer stores the layer cache BuildKit exported. Whole-blob retry
+// matches the image push for the same reason (docs/ADR060 D4).
+func cacheSaveContainer(o Options, image string) corev1.Container {
+	return cachePhase(o, cacheSavePhase, image, cacheBestEffort,
+		skopeoCopyArgs(o, "oci:"+cacheOutMount, "docker://"+o.CacheRef(), "--retry-times", "3", "--all"),
+		corev1.VolumeMount{Name: cacheOutVolume, MountPath: cacheOutMount, ReadOnly: true})
+}
+
+// cachePhase is the shape both cache phases share: a skopeo copy that cannot
+// fail the build, holding the same output-repository credential the image push
+// holds and nothing else.
+func cachePhase(o Options, name, image, script string, args []string, mount corev1.VolumeMount) corev1.Container {
+	c := corev1.Container{
+		Name:    name,
+		Image:   image,
+		Command: []string{"sh", "-c", script, name},
+		// The timeout is a skopeo GLOBAL flag, so it precedes the subcommand.
+		Args:            append([]string{"--command-timeout", cacheCommandTimeout}, args...),
+		VolumeMounts:    []corev1.VolumeMount{mount},
+		SecurityContext: restrictedContainerSecurityContext(),
+		// NOT pushPhaseResources: see cacheEphemeralLimit. The pod's ceiling is
+		// the sum of its regular containers' limits, so reusing the push phase's
+		// 16G here would double the disk a build can fill before eviction.
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:              resource.MustParse("100m"),
+				corev1.ResourceMemory:           resource.MustParse("128Mi"),
+				corev1.ResourceEphemeralStorage: resource.MustParse(cacheEphemeralRequest),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:              resource.MustParse("1"),
+				corev1.ResourceMemory:           resource.MustParse("512Mi"),
+				corev1.ResourceEphemeralStorage: resource.MustParse(cacheEphemeralLimit),
+			},
+		},
+	}
+	mountRegistryCred(&c, "push-registry-cred", o.PushSecret)
+	return c
 }
 
 func buildCloneContainer(o Options, image string) corev1.Container {

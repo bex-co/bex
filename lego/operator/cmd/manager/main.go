@@ -370,6 +370,13 @@ func setupAppReconciler(
 		RegistryPushSecret:      os.Getenv("BEX_REGISTRY_PUSH_SECRET"),
 		RegistryPullSecret:      os.Getenv("BEX_REGISTRY_PULL_SECRET"),
 		RegistryBuildPullSecret: os.Getenv("BEX_REGISTRY_BUILD_PULL_SECRET"),
+		// Per-App registry layer cache (docs/ADR060 D3). The variable takes a
+		// backend NAME rather than a truthy flag so that the escalation ADR060
+		// already names — per-workspace persistent cache volumes — arrives as
+		// another value here instead of a second variable. Anything else
+		// (including unset) leaves the build Job byte-identical to before the
+		// feature existed.
+		BuildCache: os.Getenv("BEX_BUILD_CACHE") == "registry",
 	}
 	// Build-namespace pull credential for build-plane Jobs (the static-site publish
 	// Job) that pull the just-built tenant image from Zot. The per-App/shared tenant

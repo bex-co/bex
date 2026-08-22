@@ -151,6 +151,57 @@ The Dockerfile and native paths gain what kpack already has. BuildKit is invoked
 
 `RUN --mount=type=cache` package-manager caches do **not** export to registry caches; making those hit requires persistent local state and is explicitly deferred (see Deferred work) rather than half-solved here.
 
+#### D3 amendment (w7/m86) — the settled shape, and three premises measurement changed
+
+D3 above left one thing open: "either Skopeo copies the cache artifact too, or the cache export is granted through the same push-phase container". Implementing it settled that, and measuring it corrected three things the original decision assumed. Everything below was measured against the pinned images the build plane actually runs (`moby/buildkit:v0.30.0`, `quay.io/skopeo/stable:v1.22.2`) with a real Zot, not reasoned about.
+
+**Decision: BuildKit exports the cache locally; skopeo carries it.** The flags become
+
+```
+--export-cache type=local,dest=/cache-out,mode=max,image-manifest=true,compression=zstd,ignore-error=true
+--import-cache type=local,src=/cache-in            # added at run time, only if a layout was restored
+```
+
+with two new best-effort skopeo phases: `cache-restore` (an initContainer after `clone`) pulls `<registry>/<app-repo>-cache:cache` into `/cache-in`, and `cache-save` (a main container beside `push`) stores `/cache-out` back. This preserves the pipeline's founding invariant exactly: **BuildKit — the one container that executes tenant-authored `RUN` steps — still holds no credential that can write to the registry.** The cache export lands in an emptyDir the same way the image already lands in an OCI archive, and the credentialed phases stay credential-only.
+
+_Rejected:_ `--export-cache type=registry`, the obvious form. It requires BuildKit to authenticate to Zot, which inverts that invariant for a performance feature. _Rejected:_ giving BuildKit a read-only cache credential for the import half — cheaper, but it puts a registry credential inside tenant-executing code for no gain over a skopeo pull. _Residual risk:_ a tenant can poison **its own** cache, bounded by the per-App scope below and by the cache-loss invariant; nothing lets it reach another workspace's.
+
+**Correction 1 — the restored layout must be re-tagged, or the cache is silently inert.** BuildKit's local cache exporter writes `index.json` with `org.opencontainers.image.ref.name: latest` on its manifest descriptor, and its importer selects on that annotation. A registry round-trip drops it. Restoring to an untagged layout therefore yields a build that succeeds, logs nothing unusual, and gets **zero** cache hits — measured: four of four steps rebuilt. Restoring to `oci:/cache-in:latest` instead: four of four `CACHED`. There is no error and no warning distinguishing the two, which is why this is pinned by its own test rather than left as folklore.
+
+**Correction 2 — the retention exemption D3 asked for is unnecessary, and a tightening policy is not expressible.** D3 said `-cache` repos must be exempted from the `mostRecentlyPushedCount` policy or "cache pushes would consume the retention window and silently delete deployable image tags". That cannot happen: Zot applies retention **per repository**, and the cache is a different repository from the image, so cache pushes never touch the image's window. What D3 also wanted — a tighter cache-specific policy (most-recent-1 plus a time bound) — was implemented and measured, and **it does not work**: with a global `**` policy present, a more specific policy did not tighten it in either ordering. Eight tags were pushed to `tea-w1/app-cache` under a `**`-count-5 policy plus a `**-cache`-count-1 policy; five survived, and Zot's own log attributed them to `mostRecentlyPushedCount:5`, both with the specific policy listed first and with it listed last. (With **only** the cache policy present, the same repository dropped to one tag — so the glob matches; it simply does not win.) Adding a policy that provably does nothing would be worse than not adding it.
+
+What bounds cache growth instead is structural, and stronger: **the cache occupies exactly one tag (`:cache`), rewritten every build.** A cache repository holds one manifest no matter how many builds run; each push leaves its predecessor untagged, and the existing `deleteUntagged: true` plus `gcDelay` (already ≥ the build deadline, per D4) reclaims it. So cache growth cannot evict a deployable generation, and image retention cannot delete a hot cache, without any policy change at all. _Reopens if:_ the cache ever needs more than one tag (per-branch or per-architecture caches), at which point the retention question becomes real and Zot's policy-selection semantics have to be revisited first.
+
+**Correction 3 — "same image digest" is the wrong invariant for the cache-loss case, because it is already false without a cache.** D3's rule is right — cache loss must change only speed — but it cannot be tested as digest equality across a cache wipe: two clean builds of the same commit **already** produce different manifest digests today (measured, on a deliberately deterministic Dockerfile), because BuildKit stamps build-time metadata. The testable invariant, which does hold, is narrower and is what actually matters:
+
+| build | cache | result |
+| --- | --- | --- |
+| cold (produces the cache) | — | manifest `b25a0b39…` |
+| warm | imported | **identical** manifest and layer digests |
+| cache repository deleted | restore fails, no import | succeeds, equivalent image |
+| cache manifest corrupted | import of garbage | succeeds, equivalent image |
+
+So: a cache hit reproduces exactly the image the cache was built from, and neither a missing nor a corrupt cache can fail a build. `ignore-error=true` on the export is load-bearing for the second half — without it a failed cache export fails a build that had already produced its image.
+
+**Measured result (w7/m86 t006).** A multi-stage Node service whose dependency install dominates (`npm install` of eight real packages, `node:22-bookworm` build stage → `-slim` runtime), same commit built twice, same pinned images, Zot with dedupe on:
+
+|  | cold | warm |
+| --- | --- | --- |
+| build | 55.2s | **20.5s** — every dependency step `CACHED` |
+| cache restore | — | 1.2s |
+| cache store | 1.5s | 1.5s (runs beside the 0.8s image push, not before it) |
+| **net wall clock** | 56.7s | **23.2s (−59%)** |
+
+The time result is unambiguous and the escalation to per-workspace persistent cache volumes is therefore **not** triggered — the hit rate is not the weak point.
+
+**The storage cost is the unfavorable half, and it is large.** `mode=max` keeps the intermediate stages, which for this shape means the whole build-stage filesystem: the cache is **512 MB against a 90 MB image**, and the registry's total footprint for the App went from 90 MB to 512 MB — **+422 MB per App** after dedupe shared what it could. That is inherent to `mode=max` rather than a defect (the alternative, `min`, discards precisely the dependency layers that produced the win above), but it is a 5.7× multiplier on per-App registry storage, and D4 already records single-replica Zot's PVC as an operational duty with a manual growth step. **Two consequences, both deliberate:** the feature stays behind `BEX_BUILD_CACHE` rather than defaulting on, and enabling it estate-wide is a capacity decision — at ~0.5 GB per actively-built App — not just a flag flip. The one-tag-per-cache-repo bound above is what keeps that number per-App rather than per-build.
+
+**Two things to know before turning it on.** First, **the cache ACL has to be live in the running Zot before the first cached build stores anything.** Zot reads its config only at process start, and the existing activation probe checks the App's _image_ repository — which is already live for an existing App, so writing the cache grant does not by itself trigger a bounce. Until Zot picks the new config up, cache pushes are denied, the best-effort wrapper swallows it, and builds succeed with no cache: the visible symptom is `bex: build cache step failed` in the build log and no speedup. Second, **the build pod's ephemeral-storage ceiling rises from 16G to 24G**, because a pod's limit is the sum of its regular containers' and the cache phase carries its own 8G bound (deliberately not the push phase's 16G, which would have doubled the ceiling silently). The cache emptyDirs are bounded at 8G for the same reason an over-limit volume is dangerous here: eviction sets `DisruptionTarget`, which the failure policy ignores, so a disk-filling build becomes a retry loop rather than a failure.
+
+**What is still unmeasured.** These numbers come from the pinned build images against a real Zot on one machine, not from `bex_build_run_seconds` on a cluster: they do not carry production's network, node contention, or PVC characteristics, and the queue-vs-run split m83 added is exactly the thing a laptop cannot reproduce. Reading the D5 series across a real repeat build after the gate is first enabled is the remaining step, and the storage figure above is the number to re-check first.
+
+**Scope is unchanged** from D3: per-App `<app-repo>-cache`, derived from the same `internal/identity` helper as the image repository so the two can never land in different workspaces' columns, and carrying the same exclusive Zot ACL grant to the same per-App user. That grant is not merely defence in depth — in per-App mode it is load-bearing, because Zot honours only the longest repository match, so the builder's `**` rule does not reach a repository a tenant user owns. With `BEX_REGISTRY_NS` unset (the shared-credential dev path) the cache works through the existing `bex-builder` adminPolicy and needs no ACL entry; isolation in that mode comes from the same place it already does for images — the credential never enters BuildKit — so the cache is **supported in both modes**, not silently shared in one.
+
 ### D4 — Registry hardening for the build path
 
 - Skopeo pushes (image and, per D3, cache) run with `--retry-times 3`. Whole-blob retry, not chunked-upload resume — resume is unreliable across the registry ecosystem and nobody ships it.
