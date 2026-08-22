@@ -260,7 +260,7 @@ describe("useUsage", () => {
     expect(result.current.error?.message).toBe("network error");
   });
 
-  it("polls every 60 seconds with cache-and-network fetchPolicy", () => {
+  it("polls every 60 seconds with the primed cache-first fetch policy", () => {
     mockUseQuery.mockReturnValue(createLoadingQueryResult());
 
     renderHook(() => useUsage());
@@ -269,7 +269,7 @@ describe("useUsage", () => {
       expect.anything(),
       expect.objectContaining({
         pollInterval: 60_000,
-        fetchPolicy: "cache-and-network",
+        fetchPolicy: "cache-first",
       }),
     );
   });

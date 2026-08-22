@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-  type RefObject,
-} from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 
 export interface UseDeferredMountOptions {
   /** Expand the intersection root so near-viewport sections warm early. */
@@ -39,16 +33,26 @@ export function useDeferredMount({
     if (mounted) return;
 
     if (hashId && window.location.hash === `#${hashId}`) {
-      setMounted(true);
-      return;
+      let cancelled = false;
+      queueMicrotask(() => {
+        if (!cancelled) setMounted(true);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
 
     const node = ref.current;
     if (!node) return;
 
     if (typeof IntersectionObserver === "undefined") {
-      setMounted(true);
-      return;
+      let cancelled = false;
+      queueMicrotask(() => {
+        if (!cancelled) setMounted(true);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
 
     const observer = new IntersectionObserver(
@@ -65,30 +69,4 @@ export function useDeferredMount({
   }, [mounted, rootMargin, hashId]);
 
   return { ref, mounted };
-}
-
-/** Wraps children so they only mount once near the viewport (or via hash). */
-export function DeferredMount({
-  children,
-  rootMargin,
-  eager,
-  hashId,
-  className,
-  minHeight,
-}: UseDeferredMountOptions & {
-  children: ReactNode;
-  className?: string;
-  /** Reserves layout space before mount so scroll position stays stable. */
-  minHeight?: number | string;
-}) {
-  const { ref, mounted } = useDeferredMount({ rootMargin, eager, hashId });
-  return (
-    <div
-      ref={ref}
-      className={className}
-      style={!mounted && minHeight != null ? { minHeight } : undefined}
-    >
-      {mounted ? children : null}
-    </div>
-  );
 }

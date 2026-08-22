@@ -195,9 +195,8 @@ describe("service-detail layout routing", () => {
     const scrollContainer = heading.closest(".overflow-auto");
     expect(scrollContainer).toContainElement(heading);
     expect(scrollContainer).toContainElement(search);
-    expect(scrollContainer).not.toContainElement(
-      screen.getByRole("link", { name: "Events" }),
-    );
+    const eventsLink = await screen.findByRole("link", { name: "Events" });
+    expect(scrollContainer).not.toContainElement(eventsLink);
   });
 
   it("leaves document-title ownership with the parent route head", async () => {
@@ -219,7 +218,7 @@ describe("service-detail layout routing", () => {
     const tabs = await screen.findAllByRole("link");
     const names = tabs.map((el) => el.textContent);
     expect(names).not.toContain("Overview");
-    expect(screen.getByRole("link", { name: "Events" })).toHaveAttribute(
+    expect(await screen.findByRole("link", { name: "Events" })).toHaveAttribute(
       "href",
       "/services/app/events",
     );

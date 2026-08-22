@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { act, render, screen } from "@testing-library/react";
-import { DeferredMount } from "../use-deferred-mount";
+import { DeferredMount } from "@/common/components/deferred-mount";
 
 describe("DeferredMount", () => {
   let observe: ReturnType<typeof vi.fn>;
