@@ -206,6 +206,16 @@ func sandboxNotFound(id string) error {
 	return core.NewNotFoundError("SANDBOX_NOT_FOUND", "sandbox not found", map[string]any{"id": id})
 }
 
+// CodeSandboxCapacityLimit is the stable machine code the capacity refusal
+// carries; callers that record it as a session failure (or a client keying an
+// upgrade CTA) match on this rather than the message.
+const CodeSandboxCapacityLimit = "SANDBOX_CAPACITY_LIMIT"
+
+// CapacityFailureReason is the stable failure reason an async caller records on
+// a session when a create is refused for capacity, so a client can recognize a
+// plan-limit failure and offer an upgrade action rather than a dead-end retry.
+const CapacityFailureReason = "sandbox capacity reached"
+
 // sandboxCapacityError is the typed refusal for the server's pod-ready-timeout
 // create failure (.pm/w3/011.md fix #1). bex-api cannot see the BatchSandbox
 // controller's quota condition (server + controller are external), so it names
@@ -214,9 +224,16 @@ func sandboxNotFound(id string) error {
 // instead of the opaque 500 the plain upstream error mapped to. 409 matches the
 // codebase's capacity-limit precedent (AGENT_SESSION_LIVE_LIMIT, ENV_GROUP_LIMIT).
 func sandboxCapacityError() error {
-	return core.NewConflictError("SANDBOX_CAPACITY_LIMIT",
+	return core.NewConflictError(CodeSandboxCapacityLimit,
 		"the sandbox did not become ready within the platform's wait; the likely cause is this workspace's sandbox capacity (plan limit) — stop an existing sandbox or upgrade the plan, then retry",
 		nil)
+}
+
+// IsCapacityLimit reports whether err is (or wraps) the sandbox capacity refusal
+// — the signal an async create failure uses to record CapacityFailureReason.
+func IsCapacityLimit(err error) bool {
+	var coded *core.CodedError
+	return errors.As(err, &coded) && coded.Code == CodeSandboxCapacityLimit
 }
 
 // isWorkspaceAdmin answers the cross-owner admin override with an authoritative

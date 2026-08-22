@@ -493,7 +493,14 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		// unreadable cross-origin), which hid a real create failure during the
 		// w3/m43 live E2E. Never logs the model placeholder or any env value.
 		log.Printf("agent-session dispatch: sandbox create failed (session=%s repo=%s): %v", record.ID, record.Repo, err)
-		s.setLifecycleIfActive(ctx, record.ID, "", PhaseFailed, "sandbox create failed")
+		// Record a distinct reason for a plan-limit refusal so the dashboard can
+		// offer an upgrade action instead of a dead-end retry (the common local /
+		// free-tier failure: too many live sandboxes for the workspace's quota).
+		reason := "sandbox create failed"
+		if sandbox.IsCapacityLimit(err) {
+			reason = sandbox.CapacityFailureReason
+		}
+		s.setLifecycleIfActive(ctx, record.ID, "", PhaseFailed, reason)
 		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox provisioning failed")
 		return store.AgentSession{}, err
 	}

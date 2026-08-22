@@ -168,6 +168,20 @@ export function agentSessionFailureReason(
   return null;
 }
 
+/**
+ * True when a failed session's cause is a sandbox capacity / plan-limit refusal
+ * (bex-api records `sandbox.CapacityFailureReason` = "sandbox capacity reached"
+ * on either `failureReason` or the lifecycle `status`). The failure callout keys
+ * an "Upgrade plan" action off this instead of a dead-end retry.
+ */
+export function isSandboxCapacityFailure(
+  view: Pick<AgentSessionView, "phase" | "failureReason" | "status">,
+): boolean {
+  if (view.phase !== "failed") return false;
+  const reason = `${view.failureReason ?? ""} ${view.status ?? ""}`.toLowerCase();
+  return reason.includes("sandbox capacity");
+}
+
 /** The i18n keys a status phrase resolves to; the settled phases reuse the
  *  phase chip's own copy rather than restating it. */
 export type AgentSessionStatusPhraseKey =

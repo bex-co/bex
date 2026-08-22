@@ -13,6 +13,12 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
   useAgentSessionMutations: () => ({ steer }),
 }));
 
+const navigate = vi.fn();
+vi.mock("@tanstack/react-router", async (importActual) => ({
+  ...(await importActual<typeof import("@tanstack/react-router")>()),
+  useNavigate: () => navigate,
+}));
+
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
 vi.mock("sonner", () => ({
@@ -27,6 +33,7 @@ beforeEach(() => {
   steer.mockResolvedValue({ session: { id: "as-1" } });
   toastSuccess.mockReset();
   toastError.mockReset();
+  navigate.mockReset();
 });
 
 function view(
@@ -113,6 +120,44 @@ describe("FailureCallout", () => {
     );
     expect(toastSuccess).toHaveBeenCalled();
     expect(onRetried).toHaveBeenCalled();
+  });
+
+  it("offers an Upgrade plan CTA (opening the change-plan dialog) on a capacity failure", async () => {
+    const user = userEvent.setup();
+    render(
+      <FailureCallout
+        session={view("failed", { status: "sandbox capacity reached" })}
+      />,
+    );
+
+    // Capacity-specific heading + copy replace the raw backend reason.
+    expect(screen.getByText("Out of sandbox capacity")).toBeInTheDocument();
+    expect(
+      screen.getByText(/reached its plan's limit on concurrent sandboxes/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("sandbox capacity reached"),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Upgrade plan" }));
+    expect(navigate).toHaveBeenCalledWith({
+      to: "/workspace/settings",
+      search: { plan: "change" },
+    });
+    // Retry stays for the "freed a sandbox" case.
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("shows no Upgrade CTA for a non-capacity failure", () => {
+    render(
+      <FailureCallout
+        session={view("failed", { status: "sandbox create failed" })}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Upgrade plan" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
   it("toasts an error and does not converge when the retry is rejected", async () => {
