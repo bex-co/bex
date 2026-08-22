@@ -57,28 +57,18 @@ const (
 	ModelKeyField = "BEX_AGENT_MODEL_API_KEY"
 )
 
-// registeredModelEndpoints is the platform-owned profile-to-provider binding.
-// The workspace currently stores one reusable BYO credential, so a caller may
-// select a profile/model but may not redirect that credential to a custom host.
-// Supporting custom providers requires a separately registered credential that
-// is explicitly bound to its verified origin.
-var registeredModelEndpoints = map[string]string{
-	"claude": "https://api.anthropic.com/v1",
-	"codex":  "https://api.openai.com/v1",
-	"gemini": "https://generativelanguage.googleapis.com/v1beta",
-}
-
 // RegisteredModelEndpoint resolves a supported agent profile server-side and
 // rejects caller-supplied endpoint overrides. It is shared by create/rehydrate
 // and the credential minter, so legacy rows cannot bypass the registration
 // boundary after a new-create check is deployed.
 func RegisteredModelEndpoint(agent, requested string) (string, error) {
-	expected, ok := registeredModelEndpoints[strings.ToLower(strings.TrimSpace(agent))]
+	profile, ok := LookupAgentProfile(agent)
 	if !ok {
 		return "", core.NewBadRequestError(
 			"AGENT_SESSION_MODEL_ENDPOINT_INVALID",
 			"agentConfig.agent has no registered model provider", nil)
 	}
+	expected := profile.ModelEndpoint
 	requested = strings.TrimRight(strings.TrimSpace(requested), "/")
 	if requested != "" && requested != expected {
 		return "", core.NewBadRequestError(

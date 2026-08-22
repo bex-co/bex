@@ -122,7 +122,7 @@ type Capabilities struct {
 }
 
 // agentProfiles is the fixed, secret-free presentation metadata for the
-// operator-owned agentAdapters contract (claude/codex/gemini). Tests require
+// operator-owned release-locked agent profile manifest (claude/codex/gemini). Tests require
 // exact membership parity so an uninstalled adapter cannot be advertised.
 func agentProfiles() []AgentProfile {
 	return []AgentProfile{

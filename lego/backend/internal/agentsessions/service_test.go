@@ -56,12 +56,12 @@ func TestAgentSelectorIsClosedAndResolvesOnlyAbsoluteImagePaths(t *testing.T) {
 	advertised := make(map[string]struct{})
 	for _, profile := range agentProfiles() {
 		advertised[profile.ID] = struct{}{}
-		if _, ok := agentAdapters[profile.ID]; !ok {
+		if _, ok := agentsession.LookupAgentProfile(profile.ID); !ok {
 			t.Errorf("advertised agent %q has no installed adapter contract", profile.ID)
 		}
 	}
-	if len(advertised) != len(agentAdapters) {
-		t.Fatalf("advertised agents = %v, adapter contracts = %v", advertised, agentAdapters)
+	if len(advertised) != len(agentsession.AgentProfileIDs()) {
+		t.Fatalf("advertised agents = %v, adapter contracts = %v", advertised, agentsession.AgentProfileIDs())
 	}
 	for id, want := range map[string]string{
 		"claude": "/usr/local/bin/claude-code-acp",

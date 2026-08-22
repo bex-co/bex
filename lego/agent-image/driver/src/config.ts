@@ -16,6 +16,10 @@
 
 import path from "node:path";
 import { describeError } from "./errors.js";
+import {
+  allowedExecutables,
+  lookupModelProxyRoute,
+} from "./profiles.js";
 
 export interface AgentDriverConfig {
   command: string;
@@ -152,34 +156,7 @@ function defaultCredentialEnvName(credential: string): string {
     : "ANTHROPIC_API_KEY";
 }
 
-// modelProxyRoutes maps each supported adapter (ADR062 D5) to how its provider
-// SDK is pointed at the gateway proxy: the base-URL env var, the path suffix that
-// makes the SDK emit the vendor's full path under the proxy prefix (Anthropic's
-// base is the root so no suffix; OpenAI's base includes /v1), and the credential
-// env var the placeholder must land in so the agent attempts the request (which
-// the proxy then authenticates by pod identity). An adapter absent here cannot
-// join the proxy path — proxy mode fails closed rather than leaking a direct
-// vendor connection.
-const modelProxyRoutes: Record<
-  string,
-  { baseUrlEnv: string; baseUrlSuffix: string; credentialEnv: string }
-> = {
-  "/usr/local/bin/claude-code-acp": {
-    baseUrlEnv: "ANTHROPIC_BASE_URL",
-    baseUrlSuffix: "",
-    credentialEnv: "ANTHROPIC_API_KEY",
-  },
-  "/usr/local/bin/codex-acp": {
-    baseUrlEnv: "OPENAI_BASE_URL",
-    baseUrlSuffix: "/v1",
-    credentialEnv: "OPENAI_API_KEY",
-  },
-  "/usr/local/bin/gemini": {
-    baseUrlEnv: "GOOGLE_GEMINI_BASE_URL",
-    baseUrlSuffix: "",
-    credentialEnv: "GEMINI_API_KEY",
-  },
-};
+// model proxy routing is release-locked in agent-profiles.json (w5/m77).
 
 export function loadConfig(
   env: NodeJS.ProcessEnv = process.env,
@@ -192,11 +169,7 @@ export function loadConfig(
   const modelCredential = env.BEX_AGENT_MODEL_API_KEY || "";
 
   const command = env.BEX_AGENT_COMMAND || "/usr/local/bin/claude-code-acp";
-  const allowedCommands = new Set([
-    "/usr/local/bin/claude-code-acp",
-    "/usr/local/bin/codex-acp",
-    "/usr/local/bin/gemini",
-  ]);
+  const allowedCommands = allowedExecutables();
   if (!path.isAbsolute(command) || !allowedCommands.has(command)) {
     throw new Error(
       "BEX_AGENT_COMMAND must be an installed agent adapter path",
@@ -212,7 +185,7 @@ export function loadConfig(
   let modelBaseUrlEnvName = "";
   let routedCredentialEnv = "";
   if (modelProxyUrl) {
-    const route = modelProxyRoutes[command];
+    const route = lookupModelProxyRoute(command);
     if (!route) {
       throw new Error(
         `BEX_AGENT_MODEL_PROXY_URL is set but agent ${command} has no model base-URL routing`,

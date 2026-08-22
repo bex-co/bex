@@ -635,6 +635,9 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	batcher := newTranscriptBatcher(ctx, s.Store, sessionID)
+	defer batcher.close()
+
 	var ordinal int64 = -1
 	total := storedBytes // transcript bytes already persisted for this session
 	reader := bufio.NewReader(resp.Body)
@@ -662,24 +665,20 @@ func (s *Server) spliceDriverStream(ctx context.Context, sse *agentSSE, podIP, s
 		}
 		total += int64(len(payload))
 		ordinal++
-		// Tee every part (idempotent on the driver-ordinal key); forward to the
-		// client only the parts replay did not already deliver.
-		if err := s.Store.AppendAgentSessionTranscript(ctx, sessionID, []store.AgentSessionTranscriptPart{
-			{PartIndex: ordinal, Turn: turn, Part: []byte(payload)},
-		}); err != nil {
-			log.Printf("agent attach: tee failed (session=%s seq=%d): %v", sessionID, ordinal, err)
-		}
-		// A durable turn means streamAgentAttach already emitted the replay
-		// adapter's synthetic start. Do not start/finish nested driver messages;
-		// the caller emits one finish when the splice ends.
+		// Forward first, then tee into a bounded batch so browser delivery is not
+		// blocked on PostgreSQL transaction latency (w5/m77).
 		if ordinal > storedMaxIndex && !(adaptedReplay && structuralUIChunk([]byte(payload))) {
 			if err := sse.frame(payload); err != nil {
-				// Client gone or stalled past the write deadline. The tee above
-				// already persisted this part; stop forwarding (the Completer's
-				// headless recorder captures the remainder at session end).
+				// Client gone or stalled past the write deadline. The batcher still
+				// persists accepted parts; stop forwarding (the Completer's headless
+				// recorder captures the remainder at session end).
+				batcher.close()
 				return err
 			}
 		}
+		batcher.enqueue(store.AgentSessionTranscriptPart{
+			PartIndex: ordinal, Turn: turn, Part: []byte(payload),
+		})
 	}
 }
 
@@ -709,11 +708,6 @@ func (s *Server) dialDriverStream(ctx context.Context, podIP string) (*http.Resp
 // parts back to the client, teeing them into the transcript after the current
 // stored max so a concurrently attached GET client sees the turn too (w3/m43 t004).
 func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, sessionID string, turn int, body io.Reader) {
-	base, _, err := s.Store.AgentSessionTranscriptMaxSeq(ctx, sessionID)
-	if err != nil {
-		sse.errorAndDone("transcript unavailable")
-		return
-	}
 	// The quota is CUMULATIVE (F10): seed this turn's byte counter from the
 	// session's already-stored transcript bytes, exactly as the live splice
 	// seeds from replayedBytes, so N turns can never grow the stored transcript
@@ -755,7 +749,8 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 	}
 	stopHeartbeat := sse.startHeartbeat(ctx, s.heartbeatInterval())
 	defer stopHeartbeat()
-	ordinal := base
+	batcher := newTranscriptBatcher(ctx, s.Store, sessionID)
+	defer batcher.close()
 	var partIndex int64 = -1
 	total := storedBytes
 	reader := bufio.NewReader(resp.Body)
@@ -775,17 +770,14 @@ func (s *Server) forwardAgentTurn(ctx context.Context, sse *agentSSE, podIP, ses
 			break
 		}
 		total += int64(len(payload))
-		ordinal++
 		partIndex++
-		if err := s.Store.AppendAgentSessionTranscript(ctx, sessionID, []store.AgentSessionTranscriptPart{
-			{PartIndex: partIndex, Turn: turn, Part: []byte(payload)},
-		}); err != nil {
-			log.Printf("agent turn: tee failed (session=%s seq=%d): %v", sessionID, ordinal, err)
-		}
 		if err := sse.frame(payload); err != nil {
 			// Client gone or stalled past the write deadline: stop forwarding.
 			return
 		}
+		batcher.enqueue(store.AgentSessionTranscriptPart{
+			PartIndex: partIndex, Turn: turn, Part: []byte(payload),
+		})
 	}
 	stopHeartbeat()
 	sse.done()

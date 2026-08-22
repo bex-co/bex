@@ -15,7 +15,6 @@
  */
 
 import {
-  appendFile,
   mkdir,
   readFile,
   rename,
@@ -37,6 +36,7 @@ import { describeError } from "./errors.js";
 import type { AgentDriverConfig } from "./config.js";
 import type { CredentialManager } from "./credentials.js";
 import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
+import { TurnLogSink } from "./turn-log.js";
 
 interface RunTurnOptions {
   prompt?: string;
@@ -114,31 +114,6 @@ export async function markTurnFailed(
   await writeFailedStatusAndForget(config, credentialManager, terminalError);
 }
 
-async function logPart(
-  filename: string,
-  part: UIMessagePart,
-  credentialManager: CredentialManager,
-  remaining: number,
-  turn: number,
-  partIndex: number,
-): Promise<number> {
-  await ensureParent(filename);
-  const record = JSON.stringify({
-    at: new Date().toISOString(),
-    type: "ui-message",
-    turn,
-    partIndex,
-    part,
-  });
-  const line = `${credentialManager.redact(record)}\n`;
-  const bytes = Buffer.byteLength(line);
-  if (bytes > remaining) return 0;
-  await appendFile(filename, line, {
-    mode: 0o600,
-  });
-  return bytes;
-}
-
 // A resumed sandbox restarts the driver on the restored rootfs, where the
 // previous turn's status file still carries the agent's ACP session id (the
 // agent's own on-disk session state survives rootfs snapshots — ADR047 D3).
@@ -192,7 +167,6 @@ export async function runHeadlessTurn(
   const closeHub = options.closeHub ?? true;
   const onPart = options.onPart;
   const turn = options.turn ?? config.turn;
-  let partIndex = 0;
   let logBytes = 0;
   let logTruncated = false;
   try {
@@ -200,13 +174,20 @@ export async function runHeadlessTurn(
   } catch {
     // A new session has no log yet.
   }
+  const turnLog = new TurnLogSink(
+    config.sessionLogPath,
+    logBytes,
+    maxSessionLogBytes,
+    turn,
+    credentialManager,
+  );
+  await turnLog.open();
   if (!prompt)
     throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
   // Sanitize at the single publication choke point (codex r7 #4): the hub
   // history, attached GET /stream clients, the POST /turn mirror — the
-  // gateway's byte-transparent durable transcript tee — and (via the return
-  // value) the session log all carry the same sanitized part. logPart's own
-  // string-level redaction stays as a second pass.
+  // gateway's byte-transparent durable transcript tee — and the turn log all
+  // carry the same sanitized part.
   const publish = (part: UIMessagePart): UIMessagePart => {
     const sanitized = stampSourceTimestamp(
       credentialManager.redactPart(part) as Record<string, unknown>,
@@ -302,15 +283,7 @@ export async function runHeadlessTurn(
       });
       for await (const chunk of stream) {
         const sanitized = publish(chunk as UIMessagePart);
-        const written = await logPart(
-          config.sessionLogPath,
-          sanitized,
-          credentialManager,
-          Math.max(0, maxSessionLogBytes - logBytes),
-          turn,
-          partIndex,
-        );
-        partIndex += 1;
+        const written = await turnLog.appendPart(sanitized);
         if (written === 0) logTruncated = true;
         logBytes += written;
       }
@@ -343,6 +316,7 @@ export async function runHeadlessTurn(
       : null;
     const evidence: EvidenceResult = await extractEvidence(config);
     if (logTruncated) evidence.truncated = true;
+    await turnLog.close();
     const status: StatusRecord = {
       state: "succeeded",
       sessionId: provider!.sessionId,
@@ -356,6 +330,7 @@ export async function runHeadlessTurn(
     return { ...status, usage: promptResponse?.usage ?? {} } as TurnResult;
   } catch (error) {
     if (closeHub) hub.close();
+    await turnLog.close().catch(() => {});
     let terminalError = error;
     try {
       await stopProvider();
