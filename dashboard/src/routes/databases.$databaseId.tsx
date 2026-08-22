@@ -3,6 +3,7 @@ import {
   useNavigate,
   useRouter,
 } from "@tanstack/react-router";
+import { lazy, Suspense } from "react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
@@ -22,17 +23,10 @@ import { DatabaseStatusBadge } from "@/features/databases/components/database-st
 import { DatabaseRowActions } from "@/features/databases/components/database-row-actions";
 import { DatabaseDangerActions } from "@/features/databases/components/database-danger-actions";
 import { ConnectionInfoPanel } from "@/features/databases/components/connection-info-panel";
-import { RecoveryPanel } from "@/features/databases/components/recovery-panel";
-import { AccessControlPanel } from "@/features/databases/components/access-control-panel";
-import { HAPanel } from "@/features/databases/components/ha-panel";
-import { InsightsPanel } from "@/features/databases/components/insights-panel";
-import { DatabasePlanSection } from "@/features/databases/components/database-plan-section";
 import { DatabaseVersionControl } from "@/features/databases/components/database-version-control";
 import { DatabaseNameRow } from "@/features/databases/components/database-name-row";
 import { DatabaseDetailNavigation } from "@/features/databases/components/database-detail-navigation";
 import { DatabaseDiskAutoscalingControl } from "@/features/databases/components/database-disk-autoscaling-control";
-import { SQLConsole } from "@/features/databases/components/sql-console";
-import { DatastoreMetricsPanel } from "@/features/metrics/components/datastore-metrics-panel";
 import { PostgresLogViewer } from "@/features/databases/components/postgres-log-viewer";
 import type { DatabaseDetailView } from "@/features/databases/types";
 import { DatabaseDocument } from "@/graphql/definitions";
@@ -43,6 +37,43 @@ import {
   titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
+import { DeferredMount } from "@/common/hooks/use-deferred-mount";
+
+const RecoveryPanel = lazy(() =>
+  import("@/features/databases/components/recovery-panel").then((m) => ({
+    default: m.RecoveryPanel,
+  })),
+);
+const AccessControlPanel = lazy(() =>
+  import("@/features/databases/components/access-control-panel").then((m) => ({
+    default: m.AccessControlPanel,
+  })),
+);
+const HAPanel = lazy(() =>
+  import("@/features/databases/components/ha-panel").then((m) => ({
+    default: m.HAPanel,
+  })),
+);
+const InsightsPanel = lazy(() =>
+  import("@/features/databases/components/insights-panel").then((m) => ({
+    default: m.InsightsPanel,
+  })),
+);
+const DatabasePlanSection = lazy(() =>
+  import("@/features/databases/components/database-plan-section").then((m) => ({
+    default: m.DatabasePlanSection,
+  })),
+);
+const SQLConsole = lazy(() =>
+  import("@/features/databases/components/sql-console").then((m) => ({
+    default: m.SQLConsole,
+  })),
+);
+const DatastoreMetricsPanel = lazy(() =>
+  import("@/features/metrics/components/datastore-metrics-panel").then((m) => ({
+    default: m.DatastoreMetricsPanel,
+  })),
+);
 
 export const Route = createFileRoute("/databases/$databaseId")({
   staticData: { chrome: true },
@@ -172,38 +203,68 @@ function DatabaseDetailPage() {
                 <ConnectionInfoPanel id={database.id} />
               </section>
               <section id="sql-console" className="scroll-mt-6">
-                <SQLConsole key={`sql-${database.id}`} id={database.id} />
+                <DeferredMount hashId="sql-console" minHeight={280}>
+                  <Suspense fallback={<CardSkeleton rows={4} />}>
+                    <SQLConsole key={`sql-${database.id}`} id={database.id} />
+                  </Suspense>
+                </DeferredMount>
               </section>
               <section id="high-availability" className="scroll-mt-6">
-                <HAPanel database={database} refetch={refetch} />
+                <DeferredMount hashId="high-availability" minHeight={160}>
+                  <Suspense fallback={<CardSkeleton rows={2} />}>
+                    <HAPanel database={database} refetch={refetch} />
+                  </Suspense>
+                </DeferredMount>
               </section>
               <section id="metrics" className="scroll-mt-6">
-                <DatastoreMetricsPanel
-                  kind="database"
-                  resource={database.id}
-                  highAvailabilityEnabled={database.highAvailabilityEnabled}
-                  diskHeaderExtra={
-                    <DatabaseDiskAutoscalingControl
+                <DeferredMount hashId="metrics" minHeight={320}>
+                  <Suspense fallback={<CardSkeleton rows={4} />}>
+                    <DatastoreMetricsPanel
+                      kind="database"
+                      resource={database.id}
+                      highAvailabilityEnabled={
+                        database.highAvailabilityEnabled
+                      }
+                      diskHeaderExtra={
+                        <DatabaseDiskAutoscalingControl
+                          database={database}
+                          onChanged={() => void refetch()}
+                        />
+                      }
+                    />
+                  </Suspense>
+                </DeferredMount>
+              </section>
+              <section id="plan" className="scroll-mt-6">
+                <DeferredMount hashId="plan" minHeight={200}>
+                  <Suspense fallback={<CardSkeleton rows={3} />}>
+                    <DatabasePlanSection
                       database={database}
                       onChanged={() => void refetch()}
                     />
-                  }
-                />
-              </section>
-              <section id="plan" className="scroll-mt-6">
-                <DatabasePlanSection
-                  database={database}
-                  onChanged={() => void refetch()}
-                />
+                  </Suspense>
+                </DeferredMount>
               </section>
               <section id="insights" className="scroll-mt-6">
-                <InsightsPanel id={database.id} />
+                <DeferredMount hashId="insights" minHeight={360}>
+                  <Suspense fallback={<CardSkeleton rows={4} />}>
+                    <InsightsPanel id={database.id} />
+                  </Suspense>
+                </DeferredMount>
               </section>
               <section id="recovery" className="scroll-mt-6">
-                <RecoveryPanel id={database.id} />
+                <DeferredMount hashId="recovery" minHeight={240}>
+                  <Suspense fallback={<CardSkeleton rows={3} />}>
+                    <RecoveryPanel id={database.id} />
+                  </Suspense>
+                </DeferredMount>
               </section>
               <section id="access-control" className="scroll-mt-6">
-                <AccessControlPanel id={database.id} />
+                <DeferredMount hashId="access-control" minHeight={240}>
+                  <Suspense fallback={<CardSkeleton rows={3} />}>
+                    <AccessControlPanel id={database.id} />
+                  </Suspense>
+                </DeferredMount>
               </section>
               <section id="danger-zone" className="scroll-mt-6">
                 <DatabaseDangerActions

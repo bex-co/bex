@@ -6,12 +6,10 @@ import {
   SERVICE_TYPE_LABEL,
 } from "@/features/services/lib/service-type";
 import { ServiceDetailLayout } from "@/features/services/components/service-detail-layout";
-import { ServerDocument } from "@/graphql/definitions";
+import { loadServiceDetail } from "@/features/services/lib/service-detail-loader";
 import {
-  loadRouteResource,
   routeResourceTitle,
   titleHead,
-  titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
 
@@ -28,24 +26,21 @@ export const Route = createFileRoute("/services/$serviceId")({
   // literal "$serviceId" pattern), so a login bounce returns to the actual
   // service URL — id- or name-shaped.
   beforeLoad: requireAuth(),
-  // A static_site is canonical under /static; this /services layout keeps the
-  // plain loader (no reverse-redirect) so a static service reached at an old
-  // /services/<id>/<subpath> bookmark still renders — canonicalization of the
-  // bare service URL happens in the index route (service-root-redirect.ts).
-  loader: ({ context, params, cause }) =>
-    loadRouteResource(
-      () =>
-        context.client.query({
-          query: ServerDocument,
-          variables: { id: params.serviceId },
-          fetchPolicy: titleLoaderFetchPolicy(cause),
-          errorPolicy: "all",
-        }),
-      (data) =>
-        data?.server &&
-        (data.server.displayName?.trim() || data.server.name?.trim())
-          ? data.server
-          : null,
+  // Both /services/$serviceId and /static/$serviceId parent loaders call
+  // loadServiceDetail, which canonicalizes the base (static_site → /static,
+  // everything else → /services) via redirectPreservingSuffix — so an old
+  // /services/<static-id>/<subpath> bookmark still lands, just under /static
+  // with the subpath intact. Bare-URL aliases still settle in the index route
+  // (service-root-redirect.ts). Breadcrumb chrome is fire-and-forget warmed
+  // inside loadServiceDetail (does not gate the title loader).
+  loader: ({ context, params, location, cause }) =>
+    loadServiceDetail(
+      context.client,
+      params.serviceId,
+      "/services",
+      location,
+      cause,
+      context.workspaceId,
     ),
   head: ({ loaderData, match }) =>
     titleHead(

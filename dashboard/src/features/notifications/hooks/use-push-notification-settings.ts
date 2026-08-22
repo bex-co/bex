@@ -6,6 +6,7 @@ import {
   PushNotificationUrgency,
   type PushNotificationSettingsInput,
 } from "@/graphql/definitions";
+import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 
 export const defaultPushNotificationSettings: PushNotificationSettingsInput = {
   enabled: true,
@@ -46,7 +47,7 @@ export function clonePushSettings(
 export function usePushNotificationSettings() {
   const { data, loading, error, refetch } = useQuery(
     PushNotificationSettingsDocument,
-    { fetchPolicy: "cache-and-network", errorPolicy: "all" },
+    { fetchPolicy: PRIMED_FETCH_POLICY, errorPolicy: "all" },
   );
 
   const settings = useMemo<PushNotificationSettingsInput>(() => {

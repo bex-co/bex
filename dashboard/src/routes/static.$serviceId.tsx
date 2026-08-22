@@ -37,6 +37,7 @@ export const Route = createFileRoute("/static/$serviceId")({
       "/static",
       location,
       cause,
+      context.workspaceId,
     ),
   head: ({ loaderData, match }) =>
     titleHead(

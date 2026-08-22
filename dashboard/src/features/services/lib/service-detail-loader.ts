@@ -1,5 +1,10 @@
 import type { ParsedLocation } from "@tanstack/react-router";
-import { ServerDocument } from "@/graphql/definitions";
+import {
+  EnvironmentsDocument,
+  ProjectsDocument,
+  ServerDocument,
+  ServicesDocument,
+} from "@/graphql/definitions";
 import type { ServerQuery } from "@/graphql/definitions";
 import {
   isNotFoundError,
@@ -11,6 +16,51 @@ import type { RouterContext } from "@/common/types/router-context";
 import { serviceBaseForType, type ServiceBase } from "./service-base";
 
 export type ServerResource = NonNullable<ServerQuery["server"]>;
+
+/**
+ * Warm the topbar breadcrumb queries (projects → environments + services list)
+ * alongside a service-detail title load so ServiceBreadcrumbs does not waterfall
+ * after paint.
+ */
+export async function warmServiceBreadcrumbs(
+  client: RouterContext["client"],
+  serviceId: string,
+  ownerId: string | null | undefined,
+  cause: "preload" | "enter" | "stay",
+): Promise<void> {
+  if (ownerId == null) return;
+  const fetchPolicy = titleLoaderFetchPolicy(cause);
+  const [projectsResult] = await Promise.all([
+    client
+      .query({
+        query: ProjectsDocument,
+        variables: { ownerId },
+        fetchPolicy,
+        errorPolicy: "all",
+      })
+      .catch(() => undefined),
+    client
+      .query({
+        query: ServicesDocument,
+        variables: { ownerId },
+        fetchPolicy,
+        errorPolicy: "all",
+      })
+      .catch(() => undefined),
+  ]);
+  const projectId = projectsResult?.data?.projects?.find((project) =>
+    (project?.serviceIds ?? []).includes(serviceId),
+  )?.id;
+  if (!projectId) return;
+  await client
+    .query({
+      query: EnvironmentsDocument,
+      variables: { projectId },
+      fetchPolicy,
+      errorPolicy: "all",
+    })
+    .catch(() => undefined);
+}
 
 /**
  * Load a service for the service-detail layout, canonicalizing the URL base
@@ -29,7 +79,12 @@ export async function loadServiceDetail(
   base: ServiceBase,
   location: ParsedLocation,
   cause: "preload" | "enter" | "stay" = "enter",
+  ownerId?: string | null,
 ): Promise<RouteResource<ServerResource>> {
+  // Breadcrumb chrome is not required to paint the detail shell — kick it off
+  // without awaiting so a cold enter/preload still gates only on ServerDocument
+  // (one RTT). Hover-intent and stay already hide most of this path.
+  void warmServiceBreadcrumbs(client, serviceId, ownerId, cause);
   const result = await client.query({
     query: ServerDocument,
     variables: { id: serviceId },

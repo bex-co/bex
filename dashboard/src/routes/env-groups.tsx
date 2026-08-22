@@ -3,7 +3,16 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ListPageSkeleton } from "@/common/components/detail-skeletons";
 import { AlertTriangle, Layers3, Search, X } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
-import { translatedTitleHead } from "@/common/lib/document-head";
+import {
+  translatedTitleHead,
+  titleLoaderFetchPolicy,
+} from "@/common/lib/document-head";
+import { prefetchInParallel } from "@/common/lib/prefetch";
+import {
+  EnvGroupsDocument,
+  EnvGroupScopeIndexDocument,
+  ServicesDocument,
+} from "@/graphql/definitions";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Skeleton } from "@/common/components/ui/skeleton";
@@ -32,6 +41,36 @@ export const Route = createFileRoute("/env-groups")({
   component: EnvGroupsPage,
   pendingComponent: ListPageSkeleton,
   beforeLoad: requireAuth(),
+  // Warm the list + the scope index + services the create dialog needs so
+  // hover-intent navigation skips the post-click skeleton waterfall.
+  loader: ({ context, cause }) => {
+    const ownerId = context.workspaceId;
+    if (ownerId == null) return;
+    const fetchPolicy = titleLoaderFetchPolicy(cause);
+    return prefetchInParallel([
+      () =>
+        context.client.query({
+          query: EnvGroupsDocument,
+          variables: { ownerId },
+          fetchPolicy,
+          errorPolicy: "all",
+        }),
+      () =>
+        context.client.query({
+          query: ServicesDocument,
+          variables: { ownerId },
+          fetchPolicy,
+          errorPolicy: "all",
+        }),
+      () =>
+        context.client.query({
+          query: EnvGroupScopeIndexDocument,
+          variables: { ownerId },
+          fetchPolicy,
+          errorPolicy: "all",
+        }),
+    ]);
+  },
   head: ({ match }) => translatedTitleHead("envGroups.pageTitle", match),
 });
 

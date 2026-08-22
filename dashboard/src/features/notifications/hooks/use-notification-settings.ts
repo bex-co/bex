@@ -1,5 +1,6 @@
 import { useQuery } from "@apollo/client/react";
 import { NotificationSettingsDocument } from "@/graphql/definitions";
+import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 
 export interface NotificationSettingsView {
   deployStarted: boolean;
@@ -28,7 +29,7 @@ export interface UseNotificationSettingsResult {
 export function useNotificationSettings(): UseNotificationSettingsResult {
   const { data, loading, error, refetch } = useQuery(
     NotificationSettingsDocument,
-    { fetchPolicy: "cache-and-network", errorPolicy: "all" },
+    { fetchPolicy: PRIMED_FETCH_POLICY, errorPolicy: "all" },
   );
 
   const raw = data?.notificationSettings;

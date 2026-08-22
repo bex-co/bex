@@ -14,6 +14,7 @@
 
 import { useQuery } from "@apollo/client/react";
 import { skipPollWhenHidden } from "@/common/lib/polling";
+import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 import { useMemo } from "react";
 import { UsageDocument } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
@@ -123,7 +124,7 @@ export function useUsage(period?: string): UseUsageResult {
     skip: !resolved,
     pollInterval: 60_000,
     skipPollAttempt: skipPollWhenHidden,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: PRIMED_FETCH_POLICY,
     errorPolicy: "all",
   });
 

@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ListPageSkeleton } from "@/common/components/detail-skeletons";
 import { requireAuth } from "@/common/lib/auth/auth";
-import { translatedTitleHead } from "@/common/lib/document-head";
+import {
+  translatedTitleHead,
+  titleLoaderFetchPolicy,
+} from "@/common/lib/document-head";
+import { prefetchInParallel } from "@/common/lib/prefetch";
+import { WebhookEndpointsDocument } from "@/graphql/definitions";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { WebhooksPanel } from "@/features/webhooks/components/webhooks-panel";
 
@@ -16,6 +21,19 @@ export const Route = createFileRoute("/webhooks")({
   component: WebhooksPage,
   pendingComponent: ListPageSkeleton,
   beforeLoad: requireAuth(),
+  loader: ({ context, cause }) => {
+    const ownerId = context.workspaceId;
+    if (ownerId == null) return;
+    return prefetchInParallel([
+      () =>
+        context.client.query({
+          query: WebhookEndpointsDocument,
+          variables: { ownerId },
+          fetchPolicy: titleLoaderFetchPolicy(cause),
+          errorPolicy: "all",
+        }),
+    ]);
+  },
   head: ({ match }) => translatedTitleHead("webhooks.title", match),
 });
 

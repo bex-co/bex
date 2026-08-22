@@ -8,6 +8,7 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
+import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 
 export interface EnvironmentIPAllowListEntry {
   cidrBlock: string;
@@ -105,7 +106,10 @@ export function useEnvironments(
   const { data, loading, error, refetch } = useQuery(EnvironmentsDocument, {
     variables: { projectId: projectId! },
     skip: !resolved,
-    fetchPolicy: "cache-and-network",
+    // Chrome consumers pass `poll: false` and rely on a warm cache (service
+    // detail loader / prior list visit). Polling list pages keep background
+    // freshness via pollInterval either way.
+    fetchPolicy: poll ? "cache-and-network" : PRIMED_FETCH_POLICY,
     errorPolicy: "all",
     pollInterval: poll ? RESOURCE_POLL_INTERVAL_MS : 0,
     skipPollAttempt: skipPollWhenHidden,
