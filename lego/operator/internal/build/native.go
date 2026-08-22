@@ -33,7 +33,10 @@ import (
 // reads the ENTIRE runtime-env secret bundle, so a retagged upstream busybox
 // would exfiltrate every tenant build secret. The tag is kept readable for
 // humans; the digest is the 1.37.0 multi-arch OCI index.
-const nativePreparerImage = "busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0"
+const (
+	nativePreparerImage = "busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0"
+	nativeNodeRuntime   = "node"
+)
 
 // nativeRuntimeImages retain readable tags but pin their multi-arch manifest
 // identities. Patch upgrades are deliberate reviewed changes; a registry retag
@@ -41,12 +44,12 @@ const nativePreparerImage = "busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb
 // resolution time lives in toolchain-freshness.json and must move with the
 // digest (docs/ADR060 D7).
 var nativeRuntimeImages = map[string]string{
-	"elixir": "elixir:1.18@sha256:52e8ea10d10e95d74dde312606637e12bc1b1fdf9cfa37d864eacd85fcc16b3c",
-	"go":     "golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac",
-	"node":   "node:24-bookworm@sha256:934240a162082fd8b8a2f90cd5114446443f1eba1c5378f6687167ca405e6584",
-	"python": "python:3.13-bookworm@sha256:62eafe52c91cad83c2c74e630bfde917da8c253673e695665d454def84fc9a13",
-	"ruby":   "ruby:3.4-bookworm@sha256:56e0c9fdbf64d090e45072d32f0d3be7f2e392e733444f7d176a50881e6c325a",
-	"rust":   "rust:1-bookworm@sha256:0e2bcaef56d041a486784e54104a81aebe0da44bd03019bd70bc0401e42e4a97",
+	"elixir":          "elixir:1.18@sha256:52e8ea10d10e95d74dde312606637e12bc1b1fdf9cfa37d864eacd85fcc16b3c",
+	"go":              "golang:1.24-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac",
+	nativeNodeRuntime: "node:24-bookworm@sha256:934240a162082fd8b8a2f90cd5114446443f1eba1c5378f6687167ca405e6584",
+	"python":          "python:3.13-bookworm@sha256:62eafe52c91cad83c2c74e630bfde917da8c253673e695665d454def84fc9a13",
+	"ruby":            "ruby:3.4-bookworm@sha256:56e0c9fdbf64d090e45072d32f0d3be7f2e392e733444f7d176a50881e6c325a",
+	"rust":            "rust:1-bookworm@sha256:0e2bcaef56d041a486784e54104a81aebe0da44bd03019bd70bc0401e42e4a97",
 }
 
 // nativeRuntime resolves the toolchain a native build runs in. A static
@@ -54,7 +57,7 @@ var nativeRuntimeImages = map[string]string{
 // environment is Node-based, so node is the default toolchain there.
 func nativeRuntime(o Options) string {
 	if o.StaticSite && o.Runtime == "" {
-		return "node"
+		return nativeNodeRuntime
 	}
 	return o.Runtime
 }

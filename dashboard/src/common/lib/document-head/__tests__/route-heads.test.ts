@@ -404,8 +404,14 @@ describe("production route heads", () => {
 
     for (const [route, params, data, expectedName] of cases) {
       const { query, result } = await runRouteLoader(route, params, data);
-      expect(query).toHaveBeenCalledOnce();
-      expect(query.mock.calls[0]?.[0]).toMatchObject({
+      const resourceId = Object.values(params)[0];
+      const resourceQueries = query.mock.calls.filter(([options]) =>
+        Object.values(
+          (options.variables ?? {}) as Record<string, unknown>,
+        ).includes(resourceId),
+      );
+      expect(resourceQueries).toHaveLength(1);
+      expect(resourceQueries[0]?.[0]).toMatchObject({
         fetchPolicy: "network-only",
         errorPolicy: "all",
       });

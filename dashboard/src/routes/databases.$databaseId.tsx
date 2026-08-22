@@ -41,7 +41,7 @@ import {
   titleLoaderFetchPolicy,
   translatedText,
 } from "@/common/lib/document-head";
-import { DeferredMount } from "@/common/hooks/use-deferred-mount";
+import { DeferredMount } from "@/common/components/deferred-mount";
 
 const RecoveryPanel = lazy(() =>
   import("@/features/databases/components/recovery-panel").then((m) => ({
@@ -226,9 +226,7 @@ function DatabaseDetailPage() {
                     <DatastoreMetricsPanel
                       kind="database"
                       resource={database.id}
-                      highAvailabilityEnabled={
-                        database.highAvailabilityEnabled
-                      }
+                      highAvailabilityEnabled={database.highAvailabilityEnabled}
                       diskHeaderExtra={
                         <DatabaseDiskAutoscalingControl
                           database={database}
