@@ -30,6 +30,7 @@ allowed-tools: Read, Write, Edit, Bash(ls:*), Bash(find:*), Bash(cat:*)
 - **Numbering:** next free zero-padded 3-digit for inbox notes (`NNN`) and tasks (`tNNN`); next free `wN` / `mN`. Scan the tree first; don't reuse a number.
 - Use `worker: worker1` unless the workstream README names another worker.
 - **Milestones must be meaningful.** Every milestone must include direct project-goal linkage, an observable expected outcome, and why this work matters now (dependency/risk/sequence rationale).
+- **Every board item briefly explains why.** Milestones carry it in the milestone `README.md` (`## Source + Goal linkage`). Single tasks — inbox notes `wN/NNN.md` — carry it in the note itself: a one-line `Why: …` directly under the title (a sentence on the motivation/payoff is enough).
 - **Every milestone ends with standing closing tasks**, appended after the implementation tasks whenever a milestone is materialized:
 
   1. **Render parity** — _only when the milestone is feature development or a fix that touches a user/tenant-facing surface._ Check that the change is consistent across every surface it exposes: REST, GraphQL, and MCP in `lego/backend/` (same fields, semantics, error shapes — bex-api is meant to be Render-compatible, see `docs/ADR006-bex-api.md`) and the `dashboard/` UI (`dashboard/CLAUDE.md`). Compare against the equivalent render.com behavior/API and flag any drift as follow-up work rather than silently diverging. Omit this task only for milestones with no REST/GraphQL/MCP/UI surface change (pure infra, operator-internal mechanism, docs, etc.) — note why it was omitted in the milestone's `## Source + Goal linkage`.
@@ -49,7 +50,8 @@ Read the tree (`find .pm -type f -name '*.md'`, skipping `done/`) and `.pm/DO_NO
 
 - items conflicting with `.pm/DO_NOT_DO.md`,
 - milestones missing `## Source + Goal linkage`,
-- milestones whose definition of done is vague/non-testable.
+- milestones whose definition of done is vague/non-testable,
+- inbox notes missing a `Why:` line.
 
 Touch no files.
 
@@ -59,14 +61,14 @@ Create the next free `wN/` with a role-neutral `README.md` from the workstream t
 
 ### `add <wN> <idea…>`
 
-Create the next free inbox note `wN/NNN.md` with the idea as plain terse markdown (no frontmatter). This is the default home for **sub-hour** work.
+Create the next free inbox note `wN/NNN.md` with the idea as plain terse markdown (no frontmatter), with a one-line `Why: …` directly under the title. This is the default home for **sub-hour** work.
 
 ### `promote <wN/NNN>` / `new milestone <wN> <title>`
 
 Apply the **sizing rule first.**
 
 - If the work is **> ~1h and splits into more than one task**: create `wN/mN/` with `README.md` (milestone template) + one `tNNN.md` per task (task template) **+ the standing closing tasks (Render parity when it's feature dev/a fix touching REST/GraphQL/MCP/UI, then Simplify, then Test coverage, then Closeout)**, add the `- [ ] **mN** — …` line to the workstream `README.md`, and fill `## Source + Goal linkage` with source + goal linkage + expected outcome + why-now rationale (note there why Render parity was included or omitted).
-- If it is **≤ ~1h**: do NOT create a milestone. Keep/append it as an inbox note `wN/NNN.md` and tell the user why (too small for a milestone).
+- If it is **≤ ~1h**: do NOT create a milestone. Keep/append it as an inbox note `wN/NNN.md` (with its one-line `Why: …`) and tell the user why (too small for a milestone).
 
 ### `add-task <wN/mN> <title>`
 
@@ -159,7 +161,11 @@ depends_on: [wN/mN/tMMM]
 
 ### Inbox note `wN/NNN.md`
 
-Plain terse markdown, no frontmatter — one idea or a sub-hour unit of work.
+Plain terse markdown, no frontmatter — one idea or a sub-hour unit of work. Opens with, directly under the title:
+
+```markdown
+Why: <one sentence — motivation / payoff>
+```
 
 ## Arguments
 
