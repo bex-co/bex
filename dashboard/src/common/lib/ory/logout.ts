@@ -1,3 +1,4 @@
+import type { FrontendApi } from "@ory/client-fetch";
 import { createFrontendApi } from "@/common/lib/ory/frontend";
 import { invalidateSessionCache } from "@/common/server-fn/session";
 import { getClient } from "@/common/apollo/client";
@@ -25,6 +26,20 @@ async function clearLocalSessionState(): Promise<void> {
 }
 
 /**
+ * Ask Kratos whether the session still exists. The logout fetch's own result
+ * is not trustworthy (see `endBrowserSession`), so ground truth is `whoami`:
+ * 401/403 means the session is gone — logout actually succeeded.
+ */
+async function sessionIsGone(api: FrontendApi): Promise<boolean> {
+  try {
+    await api.toSession();
+    return false;
+  } catch (err) {
+    return isAlreadySignedOut(err);
+  }
+}
+
+/**
  * End the browser's Kratos session and drop locally cached account-scoped
  * data. Does not navigate — callers decide where to send the user.
  *
@@ -33,6 +48,14 @@ async function clearLocalSessionState(): Promise<void> {
  * on createBrowserLogoutFlow / the logout URL). Presenting failure while
  * the cookie is already gone was the live `/auth/logout` bug. Real
  * provider failures (5xx, network) still throw so callers keep the retry UI.
+ *
+ * The logout GET's own response can't be trusted either: Kratos deletes the
+ * session and then 303-redirects to `return_to` (the dashboard origin), and
+ * fetch's CORS mode rejects that redirect because the dashboard doesn't send
+ * Access-Control-Allow-Origin — so a *successful* logout surfaced as a
+ * network error on the first attempt, and the retry "worked" only because
+ * createBrowserLogoutFlow then 401'd. Any failure of the logout fetch is
+ * therefore confirmed against `whoami` before reporting an error.
  */
 export async function endBrowserSession(): Promise<void> {
   const api = createFrontendApi();
@@ -50,13 +73,15 @@ export async function endBrowserSession(): Promise<void> {
     throw err;
   }
 
-  const response = await fetch(logoutUrl, { credentials: "include" });
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      await clearLocalSessionState();
-      return;
+  try {
+    const response = await fetch(logoutUrl, { credentials: "include" });
+    if (!response.ok && response.status !== 401 && response.status !== 403) {
+      throw new Error(`logout request failed: ${response.status}`);
     }
-    throw new Error(`logout request failed: ${response.status}`);
+  } catch (err) {
+    if (!(await sessionIsGone(api))) {
+      throw err;
+    }
   }
 
   await clearLocalSessionState();
