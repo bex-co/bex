@@ -362,6 +362,22 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Detail page — retry button label while the redispatch is in flight",
   },
+  "agentSessions.capacityFailureTitle": {
+    message: "沙箱容量已用尽",
+    description:
+      "Detail page — heading when a session failed on the plan's sandbox limit",
+  },
+  "agentSessions.capacityFailureBody": {
+    message:
+      "此工作区已达到当前套餐的并发沙箱上限。升级套餐可同时运行更多沙箱，或停止一个空闲会话后重试。",
+    description:
+      "Detail page — explains a plan-limit sandbox failure and the two remedies",
+  },
+  "agentSessions.upgradePlan": {
+    message: "升级套餐",
+    description:
+      "Detail page — CTA on a capacity failure; opens the change-plan dialog",
+  },
   "agentSessions.provisioning": {
     message: "正在启动沙箱…",
     description:

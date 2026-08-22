@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   agentSessionDurationMs,
   agentSessionStatusPhraseKey,
+  isSandboxCapacityFailure,
   isSteerablePhase,
   isTerminalPhase,
   toAgentSessionTicket,
@@ -249,5 +250,34 @@ describe("agentSessionStatusPhraseKey", () => {
         "agentSessions.statusPhrase.working",
       );
     }
+  });
+});
+
+describe("isSandboxCapacityFailure", () => {
+  const failed = (over: { failureReason?: string | null; status?: string }) => ({
+    phase: "failed" as const,
+    failureReason: over.failureReason ?? null,
+    status: over.status ?? "",
+  });
+
+  it("detects the capacity reason on the lifecycle status", () => {
+    expect(isSandboxCapacityFailure(failed({ status: "sandbox capacity reached" }))).toBe(true);
+  });
+
+  it("detects it on failureReason too, case-insensitively", () => {
+    expect(
+      isSandboxCapacityFailure(failed({ failureReason: "Sandbox Capacity Reached" })),
+    ).toBe(true);
+  });
+
+  it("is false for other failures", () => {
+    expect(isSandboxCapacityFailure(failed({ status: "sandbox create failed" }))).toBe(false);
+    expect(isSandboxCapacityFailure(failed({ failureReason: "agent turn failed" }))).toBe(false);
+  });
+
+  it("is false for a non-failed session", () => {
+    expect(
+      isSandboxCapacityFailure({ phase: "running", failureReason: "sandbox capacity reached", status: "" }),
+    ).toBe(false);
   });
 });

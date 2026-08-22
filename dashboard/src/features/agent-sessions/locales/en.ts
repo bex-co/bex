@@ -364,6 +364,22 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Detail page — retry button label while the redispatch is in flight",
   },
+  "agentSessions.capacityFailureTitle": {
+    message: "Out of sandbox capacity",
+    description:
+      "Detail page — heading when a session failed on the plan's sandbox limit",
+  },
+  "agentSessions.capacityFailureBody": {
+    message:
+      "This workspace has reached its plan's limit on concurrent sandboxes. Upgrade the plan to run more at once, or stop an idle session and retry.",
+    description:
+      "Detail page — explains a plan-limit sandbox failure and the two remedies",
+  },
+  "agentSessions.upgradePlan": {
+    message: "Upgrade plan",
+    description:
+      "Detail page — CTA on a capacity failure; opens the change-plan dialog",
+  },
   "agentSessions.provisioning": {
     message: "Starting the sandbox…",
     description:
