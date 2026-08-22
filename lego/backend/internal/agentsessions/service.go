@@ -343,19 +343,28 @@ func validateSessionID(value string) error {
 }
 
 func validateCreate(req *CreateRequest) error {
-	if strings.TrimSpace(req.Repo) == "" || strings.TrimSpace(req.AgentConfig.Agent) == "" || strings.TrimSpace(req.AgentConfig.Task) == "" {
-		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "repo, agentConfig.agent, and agentConfig.task are required", nil)
+	if strings.TrimSpace(req.AgentConfig.Agent) == "" || strings.TrimSpace(req.AgentConfig.Task) == "" {
+		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "agentConfig.agent and agentConfig.task are required", nil)
 	}
 	agent := strings.ToLower(strings.TrimSpace(req.AgentConfig.Agent))
 	if _, ok := agentAdapters[agent]; !ok {
 		return core.NewBadRequestError("AGENT_SESSION_AGENT_INVALID", "agentConfig.agent must name a supported agent profile", map[string]any{"field": "agentConfig.agent"})
 	}
 	req.AgentConfig.Agent = agent
-	if strings.TrimSpace(req.Branch) == "" {
-		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "branch is required", map[string]any{"field": "branch"})
-	}
 	if len(req.Repo) > 2048 || len(req.Branch) > 255 || len(req.AgentConfig.Agent) > 128 || len(req.AgentConfig.Model) > 255 || len(req.AgentConfig.ModelEndpoint) > 2048 || len(req.AgentConfig.Task) > 100_000 || len(req.AgentConfig.Template) > 128 {
 		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "agent session input exceeds its size limit", nil)
+	}
+	// Repo-less (chat-only) mode: with no repository the session just runs the
+	// agent against the prompt in an empty sandbox — no clone, no branch, and no
+	// PR delivery (driverEnv sets BEX_AGENT_DELIVER=0, and a turn that pushes
+	// nothing completes as an honest no-op). A branch is meaningless here.
+	if strings.TrimSpace(req.Repo) == "" {
+		req.Repo = ""
+		req.Branch = ""
+		return nil
+	}
+	if strings.TrimSpace(req.Branch) == "" {
+		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "branch is required", map[string]any{"field": "branch"})
 	}
 	repository, err := agentsession.NormalizeRepository(req.Repo)
 	if err != nil {
@@ -1247,13 +1256,21 @@ func (s *Service) gitProxyURL() string {
 // driver-grant value is likewise only an Ed25519 public verification key.
 func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[string]string {
 	namespace := store.SandboxNamespace(record.WorkspaceID)
-	repoURL, _ := agentsession.ProxyRepositoryURL(s.gitProxyURL(), namespace, record.ID, record.Repo, record.Branch)
+	// Repo-less (chat-only) sessions carry no clone URL and never deliver: the
+	// driver runs the agent against the prompt in an empty /workspace and the
+	// completer records an honest no-op. With a repo, the sandbox clones through
+	// the gateway Git proxy and delivers a draft PR (ADR047 D2/D4).
+	repoURL, deliver := "", "0"
+	if strings.TrimSpace(record.Repo) != "" {
+		repoURL, _ = agentsession.ProxyRepositoryURL(s.gitProxyURL(), namespace, record.ID, record.Repo, record.Branch)
+		deliver = "1"
+	}
 	env := map[string]string{
 		"BEX_AGENT_COMMAND":          agentCommand(config.Agent),
 		"BEX_AGENT_PROMPT":           config.Task,
 		"BEX_AGENT_BRANCH":           record.Branch,
 		"BEX_AGENT_REPO_URL":         repoURL,
-		"BEX_AGENT_DELIVER":          "1",
+		"BEX_AGENT_DELIVER":          deliver,
 		"BEX_AGENT_EXIT_AFTER_TURN":  "0",
 		"BEX_SANDBOX_NAMESPACE":      namespace,
 		"BEX_AGENT_SESSION_ID":       record.ID,
@@ -1489,10 +1506,18 @@ func (s *Service) withTicket(ctx context.Context, record store.AgentSession, act
 		Namespace: record.WorkspaceID + "-sandbox", Action: action, Turn: record.Turns,
 		IssuedAt: now.Unix(), ExpiresAt: expires.Unix(),
 	}
-	if record.SandboxID == "" {
-		// Replay-only ticket (ADR065 D2): no pod to bind, so the pod triple is
-		// empty as a set — the gateway serves the durable replay and never dials.
-		claims.Pod, claims.Namespace = "", ""
+	if record.SandboxID == "" || (action == agentsessionticket.ActionRead && finishedPhase(record.Phase)) {
+		// Replay-only ticket: no pod to bind, so the gateway serves the durable
+		// transcript replay and closes with [DONE] rather than dialing the driver.
+		// Two cases collapse here: a reaped session whose sandbox is gone (ADR065
+		// D2), AND a finished (completed/failed) session whose sandbox is still in
+		// its idle-grace window. A finished turn has nothing live to splice, so a
+		// pod-bound read would hold the SSE open on keep-alives and the AI-SDK
+		// client would read it as a turn perpetually in progress (composer stuck
+		// "Sending…"); replay-only + [DONE] lets the conversation settle so a
+		// follow-up Steer can start the next turn. The pod triple is all-or-nothing
+		// (agentsessionticket.Verify), so SandboxID is cleared with Pod/Namespace.
+		claims.SandboxID, claims.Pod, claims.Namespace = "", "", ""
 	}
 	ticket, err := agentsessionticket.Mint(s.TicketSecret, claims)
 	if err != nil {

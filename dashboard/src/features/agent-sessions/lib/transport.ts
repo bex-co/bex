@@ -55,7 +55,7 @@ export interface AgentSessionTransportOptions {
  * dashboard config and no CORS to configure on the dashboard side.
  */
 export function agentSessionStreamUrl(sessionId: string): string {
-  return `${config.apiBaseUrl}/v1/agent-sessions/${encodeURIComponent(sessionId)}/stream`;
+  return `${config.agentStreamBaseUrl}/v1/agent-sessions/${encodeURIComponent(sessionId)}/stream`;
 }
 
 /**

@@ -169,17 +169,20 @@ describe("NewSessionComposer", () => {
     expect(send).toBeEnabled();
   });
 
-  it("nudges at the @ button instead of submitting when no repo is mentioned", async () => {
+  it("starts a chat-only session when no repo is mentioned", async () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);
     await typeTask(user);
 
     await user.click(screen.getByRole("button", { name: "Start session" }));
 
-    expect(
-      await screen.findByText("Pick a repository first."),
-    ).toBeInTheDocument();
-    expect(create).not.toHaveBeenCalled();
+    // Repo-less sessions are allowed (chat-only): create fires with an empty
+    // repo and no derived branch — the agent just runs the prompt and delivers
+    // no PR — then navigates like any other session.
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ repo: "", branch: "" }),
+    );
   });
 
   it("opens the toolbar mention after text without requiring manual whitespace", async () => {
@@ -558,35 +561,29 @@ describe("NewSessionComposer", () => {
     ).toBeInTheDocument();
   });
 
-  it("highlights the repo chip when submitting without a repo", async () => {
-    const user = userEvent.setup();
-    render(<NewSessionComposer />);
-    await typeTask(user);
-    await user.click(screen.getByRole("button", { name: "Start session" }));
-    const chip = screen.getByTestId("agent-composer-repo-chip");
-    expect(chip.className).toMatch(/ring-destructive/);
-    expect(create).not.toHaveBeenCalled();
-  });
-
-  it("blocks the composer behind a Connect GitHub CTA when there are no repos", async () => {
+  it("keeps the composer usable behind a non-blocking Connect GitHub banner when there are no repos", async () => {
     reposState.repos = [];
     const user = userEvent.setup();
     render(<NewSessionComposer />);
 
+    // The banner nudges toward connecting GitHub, but it no longer BLOCKS the
+    // composer — a repo-less chat session is valid, so the Task field renders
+    // and a prompt still starts a session.
     expect(
       await screen.findByTestId("agent-composer-github-empty"),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Task")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Start session" }),
-    ).toBeDisabled();
-
-    await user.click(screen.getByRole("button", { name: "Connect GitHub" }));
-    expect(connectGit).toHaveBeenCalledTimes(1);
-    expect(create).not.toHaveBeenCalled();
     expect(
       screen.getByRole("link", { name: "Workspace settings" }),
     ).toHaveAttribute("href", "/workspace/settings");
+
+    await typeTask(user);
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0].repo).toBe("");
+
+    // The Connect GitHub button still triggers the connect flow.
+    await user.click(screen.getByRole("button", { name: "Connect GitHub" }));
+    expect(connectGit).toHaveBeenCalledTimes(1);
   });
 
   it("inserts a first-run example and opens the mention picker", async () => {

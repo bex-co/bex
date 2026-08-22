@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { collapseDoubledParts } from "@/features/agent-sessions/lib/collapse-doubled-parts";
+import {
+  keepLastReplay,
+  partSignature,
+} from "@/features/agent-sessions/lib/collapse-doubled-parts";
 import {
   elapsedMsFromSource,
   formatApproxDuration,
@@ -57,9 +60,11 @@ describe("reconnect dedupe", () => {
       callProviderMetadata: { bex: { at: "2026-08-19T00:00:00.000Z" } },
       resultProviderMetadata: { bex: { at: "2026-08-19T00:00:40.000Z" } },
     };
-    const doubled = collapseDoubledParts([part, part, part, part]);
-    expect(doubled).toHaveLength(2);
-    const times = doubled.flatMap((p) => sourceTimestampsMs(p));
+    // Four identical replays fold to one copy (they share a content signature),
+    // so the source timestamps are counted once — the invariant this guards.
+    const deduped = keepLastReplay([part, part, part, part], partSignature);
+    expect(deduped).toHaveLength(1);
+    const times = deduped.flatMap((p) => sourceTimestampsMs(p));
     expect(elapsedMsFromSource(times, true, T40)).toBe(40_000);
   });
 });

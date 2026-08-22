@@ -191,11 +191,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "添加一份说明如何运行项目的 README",
     description: "First-run example prompt chip",
   },
-  "agentSessions.repoNudge": {
-    message: "请先选择一个仓库。",
-    description:
-      "Inline nudge when submitting without a repo while repos exist",
-  },
   "agentSessions.chipRemove": {
     message: "移除 {name}",
     description: "Accessible label of a mention chip's remove button",

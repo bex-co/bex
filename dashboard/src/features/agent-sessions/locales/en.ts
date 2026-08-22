@@ -191,11 +191,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Add a README that explains how to run the project",
     description: "First-run example prompt chip",
   },
-  "agentSessions.repoNudge": {
-    message: "Pick a repository first.",
-    description:
-      "Inline nudge when submitting without a repo while repos exist",
-  },
   "agentSessions.chipRemove": {
     message: "Remove {name}",
     description: "Accessible label of a mention chip's remove button",

@@ -28,7 +28,6 @@ import {
   FormItem,
 } from "@/common/components/ui/form";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { cn } from "@/common/lib/utils/utils";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useRepos } from "@/features/services/hooks/use-repos";
 import { useConnectGit } from "@/features/git/hooks/use-connect-git";
@@ -67,9 +66,10 @@ const EXAMPLE_KEYS = [
 
 /**
  * The prompt-box composer: the visual center of `/agents`. Agent and repo live
- * on the toolbar; Advanced keeps branch / model / endpoint / egress. Submitting
- * without a repo highlights the chip rather than firing create. A workspace
- * with zero GitHub App repos is a Connect GitHub wall, not a writable prompt.
+ * on the toolbar; Advanced keeps branch / model / endpoint / egress. A repo is
+ * optional — a repo-less prompt starts a chat-only session — and a workspace
+ * with zero GitHub App repos shows a non-blocking Connect GitHub banner above
+ * an otherwise usable composer.
  */
 export function NewSessionComposer() {
   const { t } = useTranslations();
@@ -87,7 +87,6 @@ export function NewSessionComposer() {
   const [configOpen, setConfigOpen] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [repoNudge, setRepoNudge] = useState(false);
   const editorRef = useRef<InlineMentionEditorHandle | null>(null);
   const { task, repo, sessionIds } = composerDocument;
   const noRepos = !reposLoading && repos.length === 0;
@@ -120,16 +119,16 @@ export function NewSessionComposer() {
     setUnavailable(false);
     setSubmitError(null);
 
-    if (noRepos) return;
-    if (!repo) {
-      setRepoNudge(true);
-      return;
-    }
-
-    const branch = values.branch.trim() || deriveBranch(task);
-    if (!isBranchInNamespace(branch)) {
-      failInConfig("branch", t("agentSessions.branchInvalid"));
-      return;
+    // Repo-less (chat-only) sessions are allowed: with no repo the agent just
+    // runs the prompt in an empty sandbox and delivers no PR. A branch is only
+    // meaningful — and only validated — when a repo is chosen.
+    let branch = "";
+    if (repo) {
+      branch = values.branch.trim() || deriveBranch(task);
+      if (!isBranchInNamespace(branch)) {
+        failInConfig("branch", t("agentSessions.branchInvalid"));
+        return;
+      }
     }
 
     const egressAllowlist = parseEgress(values.egress);
@@ -146,7 +145,7 @@ export function NewSessionComposer() {
     try {
       const ticket = await create({
         ownerId: currentWorkspaceId,
-        repo,
+        repo: repo ?? "",
         branch,
         agent: values.agent,
         model: values.model.trim() || undefined,
@@ -185,7 +184,6 @@ export function NewSessionComposer() {
   }
 
   function openMention() {
-    setRepoNudge(false);
     editorRef.current?.openMention();
   }
 
@@ -211,28 +209,25 @@ export function NewSessionComposer() {
         </Alert>
       ) : null}
 
+      {noRepos ? <GitHubEmptyCallout /> : null}
+
       <Form {...form}>
         <form onSubmit={onSubmit}>
           <div className="bg-background focus-within:border-ring relative rounded-xl border shadow-sm">
-            {noRepos ? (
-              <GitHubEmptyCallout />
-            ) : (
-              <InlineMentionEditor
-                ref={editorRef}
-                source={source}
-                reposLoading={reposLoading}
-                ariaLabel={t("agentSessions.taskLabel")}
-                placeholder={t("agentSessions.taskPlaceholder")}
-                onChange={(nextDocument) => {
-                  setComposerDocument(nextDocument);
-                  if (nextDocument.repo) setRepoNudge(false);
-                }}
-                onSubmit={() => {
-                  if (isSubmitting || task.trim().length === 0) return;
-                  void onSubmit();
-                }}
-              />
-            )}
+            <InlineMentionEditor
+              ref={editorRef}
+              source={source}
+              reposLoading={reposLoading}
+              ariaLabel={t("agentSessions.taskLabel")}
+              placeholder={t("agentSessions.taskPlaceholder")}
+              onChange={(nextDocument) => {
+                setComposerDocument(nextDocument);
+              }}
+              onSubmit={() => {
+                if (isSubmitting || task.trim().length === 0) return;
+                void onSubmit();
+              }}
+            />
 
             <div className="flex flex-wrap items-center gap-1 px-1.5 pb-1.5">
               <FormField
@@ -243,7 +238,6 @@ export function NewSessionComposer() {
                       <Select
                         value={field.value}
                         onValueChange={(v) => field.onChange(v as AgentOption)}
-                        disabled={noRepos}
                       >
                         <SelectTrigger
                           size="sm"
@@ -270,13 +264,8 @@ export function NewSessionComposer() {
                   type="button"
                   variant={repo ? "secondary" : "ghost"}
                   size="sm"
-                  disabled={noRepos}
                   data-testid="agent-composer-repo-chip"
-                  className={cn(
-                    "h-8 max-w-48 gap-1.5 px-2 text-xs font-normal",
-                    repoNudge &&
-                      "ring-destructive text-destructive ring-2 ring-offset-1",
-                  )}
+                  className="h-8 max-w-48 gap-1.5 px-2 text-xs font-normal"
                   aria-label={
                     repo
                       ? t("agentSessions.repoChip", { repo })
@@ -289,14 +278,6 @@ export function NewSessionComposer() {
                     {repo ?? t("agentSessions.addRepository")}
                   </span>
                 </Button>
-                {repoNudge ? (
-                  <p
-                    role="alert"
-                    className="bg-popover text-popover-foreground absolute top-full left-0 z-20 mt-1 w-max max-w-64 rounded-md border px-2.5 py-1.5 text-xs shadow-md"
-                  >
-                    {t("agentSessions.repoNudge")}
-                  </p>
-                ) : null}
               </div>
 
               <Button
@@ -304,7 +285,6 @@ export function NewSessionComposer() {
                 variant="ghost"
                 size="icon"
                 className="size-8"
-                disabled={noRepos}
                 aria-label={t("agentSessions.mentionButton")}
                 onClick={openMention}
               >
@@ -335,7 +315,7 @@ export function NewSessionComposer() {
                 type="submit"
                 size="sm"
                 className="ml-auto h-8"
-                disabled={noRepos || isSubmitting || task.trim().length === 0}
+                disabled={isSubmitting || task.trim().length === 0}
               >
                 {isSubmitting ? (
                   <Loader2 className="size-4 animate-spin" />

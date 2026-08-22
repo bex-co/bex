@@ -42,25 +42,33 @@ export function toAgentSessionView(
   wire: AgentSessionFieldsFragment,
 ): AgentSessionView {
   const phase = wire.phase as AgentSessionPhase;
+  // agentConfig is non-null in a fully-materialized wire session, but a partial
+  // cache entry (e.g. a create/steer mutation result read back mid-flight, before
+  // the full fragment lands) can omit it. Default it rather than throw — a missing
+  // config must never white-screen the whole session page.
+  const config = wire.agentConfig ?? null;
   return {
     id: wire.id,
     ownerId: wire.ownerId,
     repo: wire.repo,
     branch: wire.branch,
     agentConfig: {
-      agent: wire.agentConfig.agent,
-      model: wire.agentConfig.model ?? null,
-      modelEndpoint: wire.agentConfig.modelEndpoint ?? null,
-      task: wire.agentConfig.task,
-      template: wire.agentConfig.template ?? null,
+      agent: config?.agent ?? "",
+      model: config?.model ?? null,
+      modelEndpoint: config?.modelEndpoint ?? null,
+      task: config?.task ?? "",
+      template: config?.template ?? null,
     },
     sandboxId: wire.sandboxId ?? null,
     sshAddress: wire.sshAddress ?? null,
     phase,
     status: wire.status,
     headSha: wire.headSha ?? null,
-    prUrl: wire.prUrl ?? null,
-    prNumber: wire.prNumber ? wire.prNumber : null,
+    prUrl: wire.prUrl || null,
+    // A real GitHub PR number is ≥ 1; the wire default 0 (no PR — a repo-less
+    // chat-only session, or one that pushed nothing) normalizes to null so the
+    // "PR is ready" phrase and PR card key off genuine delivery, not 0.
+    prNumber: wire.prNumber || null,
     turns: wire.turns ?? 0,
     deliveryMode:
       (wire.deliveryMode as AgentSessionDeliveryMode | null) ?? null,

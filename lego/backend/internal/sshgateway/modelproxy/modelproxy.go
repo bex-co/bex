@@ -158,7 +158,7 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "model request budget exhausted for this workspace", http.StatusTooManyRequests)
 		return
 	}
-	credential, err := b.mint(r.Context(), namespace, verified)
+	credential, err := b.mintWithRetry(r.Context(), namespace, verified)
 	if err != nil {
 		if errors.Is(err, agentsession.ErrForbidden) {
 			b.Metrics.Authentication("rejected_target")
@@ -205,6 +205,40 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 // mint always revalidates the current session lifecycle through bex-api. Model
 // requests are turn-scale, so one internal check per provider exchange is a
 // better boundary than allowing a canceled session to ride a credential cache.
+// mintModelRetryAttempts / mintModelRetryDelay absorb the create-time race where
+// a fast sandbox issues its first model call before bex-api has recorded the live
+// sandbox id, so the mint transiently returns ErrForbidden
+// (currentSandboxCaller's pod triple can't match an unrecorded id yet). This is
+// the same window git-auth-retry.ts handles for the clone path ("403 forbidden
+// until the mint broker sees the live sandbox id"), so the model path mirrors it.
+// Kept short (≈4s total) so a GENUINELY forbidden mint — a terminated/cross
+// session — still fails well within the agent's own request timeout rather than
+// hanging the proxied model call.
+const (
+	mintModelRetryAttempts = 6
+	mintModelRetryDelay    = 700 * time.Millisecond
+)
+
+// mintWithRetry retries only the transient ErrForbidden of the create-time race
+// (see mintModelRetryAttempts); any other error, or a non-forbidden result, is
+// returned immediately.
+func (b *Broker) mintWithRetry(ctx context.Context, namespace string, req agentsession.ModelMintRequest) (agentsession.ModelMintResponse, error) {
+	var cred agentsession.ModelMintResponse
+	var err error
+	for attempt := 1; attempt <= mintModelRetryAttempts; attempt++ {
+		cred, err = b.mint(ctx, namespace, req)
+		if err == nil || !errors.Is(err, agentsession.ErrForbidden) || attempt == mintModelRetryAttempts {
+			return cred, err
+		}
+		select {
+		case <-ctx.Done():
+			return agentsession.ModelMintResponse{}, ctx.Err()
+		case <-time.After(mintModelRetryDelay):
+		}
+	}
+	return cred, err
+}
+
 func (b *Broker) mint(ctx context.Context, namespace string, req agentsession.ModelMintRequest) (agentsession.ModelMintResponse, error) {
 	_ = namespace // retained in the signature to keep the verified call shape explicit.
 	return b.API.Mint(ctx, req)
