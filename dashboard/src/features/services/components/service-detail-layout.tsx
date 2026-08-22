@@ -4,7 +4,11 @@ import { TriangleAlert } from "lucide-react";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Button } from "@/common/components/ui/button";
 import { Card, CardContent } from "@/common/components/ui/card";
-import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
+import {
+  resourceFailed,
+  resourceNotFound,
+  useNotFoundRedirect,
+} from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServer } from "@/features/services/hooks/use-server";
 import { useLatestDeploy } from "@/features/deploys/hooks/use-latest-deploy";
@@ -39,10 +43,10 @@ export function ServiceDetailLayout({
   const { pending } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
 
-  // Unknown service id (`server(id)` resolved null, no error): redirect home
-  // with a toast (w9/m55) — covering every child tab at once. Query errors are
-  // excluded; they keep the inline retry state below.
-  useNotFoundRedirect(!service && !loading && !error);
+  // Unknown service id: redirect home with a toast (w9/m55) — covering every
+  // child tab at once. A genuine query error is excluded; it keeps the inline
+  // retry state below.
+  useNotFoundRedirect(resourceNotFound(service, loading, error));
 
   // `base` (the route tree this layout renders under) rides context so the
   // sidebar + every tab's intra-detail link stays within /services or /static
@@ -51,7 +55,7 @@ export function ServiceDetailLayout({
   // A failed `server(id)` query is not evidence that the service is absent.
   // Keep it distinct from not-found so schema skew, auth failures, and backend
   // outages never masquerade as a deleted service.
-  if (!service && !loading && error) {
+  if (resourceFailed(service, loading, error)) {
     content = (
       <DashboardLayout>
         <div className="flex-1 overflow-auto p-4 sm:p-6">

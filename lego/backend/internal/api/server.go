@@ -52,6 +52,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/environments"
 	"github.com/bex-co/bex/lego/backend/internal/events"
 	"github.com/bex-co/bex/lego/backend/internal/github"
+	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 	"github.com/bex-co/bex/lego/backend/internal/jobs"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
@@ -1163,10 +1164,19 @@ func (s *Server) newSchema() (graphql.Schema, error) {
 			maps.Copy(mutation, p.GraphQLMutation())
 		}
 	}
-	return graphql.NewSchema(graphql.SchemaConfig{
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: query}),
 		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: mutation}),
 	})
+	if err != nil {
+		return schema, err
+	}
+	// An errored field must resolve to null. graphql-go leaks the resolver's
+	// un-completed return value into the response instead, which turned every
+	// `(SomeView, error)` read verb's not-found into a zero-value object rather
+	// than null (w6/m44) — see gqlutil.NilOnError.
+	gqlutil.NilOnError(&schema)
+	return schema, nil
 }
 
 // graphqlHandler serves POST /graphql over the compiled schema. The request

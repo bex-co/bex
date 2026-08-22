@@ -26,6 +26,7 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
+import { isNotFoundError } from "@/common/lib/document-head";
 import { PRIMED_FETCH_POLICY } from "@/common/lib/fetch-policy";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
@@ -638,7 +639,7 @@ export function secretFileNames(group: EnvGroupView | null): SecretFileName[] {
 export type EnvGroupErrorKind = "unavailable" | "forbidden" | "generic";
 
 export function isEnvGroupNotFound(error: Error | undefined): boolean {
-  return error?.message.toLowerCase().includes("not found") ?? false;
+  return !!error && isNotFoundError(error);
 }
 
 export function classifyEnvGroupError(

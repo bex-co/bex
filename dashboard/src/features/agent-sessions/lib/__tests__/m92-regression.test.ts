@@ -6,6 +6,7 @@ import {
   toAgentSessionView,
 } from "@/features/agent-sessions/lib/mapper";
 import type { AgentSessionFieldsFragment } from "@/graphql/definitions";
+import type { AgentSessionView } from "@/features/agent-sessions/types";
 
 /** Minimal wire helper for mapper tests */
 function wire(
@@ -66,7 +67,7 @@ describe("m92 t004 — bounded task title", () => {
   it("short titles pass through unchanged", () => {
     const v = {
       id: "as-1",
-      agentConfig: { task: "short title" } as unknown as { task: string },
+      agentConfig: { task: "short title" } as unknown as AgentSessionView["agentConfig"],
     };
     expect(sessionTitleShort(v)).toBe("short title");
   });
@@ -74,7 +75,7 @@ describe("m92 t004 — bounded task title", () => {
     const long = "a".repeat(500);
     const v = {
       id: "as-1",
-      agentConfig: { task: long } as unknown as { task: string },
+      agentConfig: { task: long } as unknown as AgentSessionView["agentConfig"],
     };
     const out = sessionTitleShort(v);
     expect(out.length).toBeLessThanOrEqual(SESSION_TITLE_MAX + 1); // + ellipsis
@@ -84,7 +85,7 @@ describe("m92 t004 — bounded task title", () => {
   it("falls back to id when task empty", () => {
     const v = {
       id: "as-1",
-      agentConfig: { task: "" } as unknown as { task: string },
+      agentConfig: { task: "" } as unknown as AgentSessionView["agentConfig"],
     };
     expect(sessionTitleShort(v)).toBe("as-1");
   });

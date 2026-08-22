@@ -22,6 +22,7 @@ package gqlutil
 
 import (
 	"context"
+	"strings"
 
 	"github.com/graphql-go/graphql"
 
@@ -106,6 +107,51 @@ func PageArgs(args graphql.FieldConfigArgument) graphql.FieldConfigArgument {
 	args["cursor"] = Arg(graphql.String)
 	args["limit"] = Arg(graphql.Int)
 	return args
+}
+
+// NilOnError makes every field of a built schema resolve to null when its
+// resolver returns an error — the guarantee graphql-go's executor drops.
+//
+// graphql-go assigns the resolver's value to resolveField's NAMED result before
+// it panics on the resolver's error; the deferred recover then returns that same
+// named result, so the raw, un-completed Go value lands straight in the response
+// map (graphql-go v0.8.1 executor.go:649-666). A resolver returning a pointer or
+// a slice leaks a nil there and the field reads null by luck. A resolver
+// returning a VALUE struct — every `func(ctx, id) (SomeView, error)` read verb
+// in this codebase — leaks the ZERO struct, JSON-encoded whole (every Go field,
+// not just the selected ones). So `server(id: "<dead>")` answered
+// {"id":"","name":"","phase":"", ...} instead of null: no client could tell a
+// deleted resource from an empty one, and the dashboard rendered a fully-chromed
+// detail page — enabled Manual Deploy and all — for a service that does not
+// exist, walking straight past the `!resource` predicate w9/m55's dead-id
+// redirect is built on (w6/m44).
+//
+// Applied once to the composed schema instead of verb by verb: the defect is
+// graphql-go's, not any one feature's, so every current AND future resolver
+// inherits the fix rather than the bug — including the hand-written
+// `&graphql.Field{Resolve: ...}` literals that never go through KeyVerb. The
+// error itself is passed through untouched, so the response still carries why
+// (`app not found`) and REST/MCP, which never see the executor, are unaffected.
+func NilOnError(schema *graphql.Schema) {
+	for name, t := range schema.TypeMap() {
+		obj, ok := t.(*graphql.Object)
+		if !ok || strings.HasPrefix(name, "__") {
+			continue // introspection types resolve out of graphql-go's own machinery
+		}
+		for _, f := range obj.Fields() {
+			if f.Resolve == nil {
+				continue // DefaultResolveFn: a struct/map read that returns no error
+			}
+			resolve := f.Resolve
+			f.Resolve = func(p graphql.ResolveParams) (any, error) {
+				out, err := resolve(p)
+				if err != nil {
+					return nil, err
+				}
+				return out, nil
+			}
+		}
+	}
 }
 
 // KeyVerb is a whole `(<key>: String!) -> fn(ctx, key)` field: the shape every
