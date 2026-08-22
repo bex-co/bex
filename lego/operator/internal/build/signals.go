@@ -166,6 +166,13 @@ func retryReason(pod *corev1.Pod) string {
 	// First failing phase wins: the build's phases run strictly serially, so the
 	// earliest non-zero exit is the one that ended the attempt — anything after it
 	// is a consequence.
+	//
+	// The one exception is cache-save (docs/ADR060 D3), which runs beside the
+	// push rather than after it. It cannot disturb this rule because its script
+	// swallows every failure and exits 0 (cacheBestEffort in build.go), so it
+	// never appears here at all — a cross-file coupling worth naming, since
+	// making that phase report its true status would silently start attributing
+	// retries to a phase whose failure is by design irrelevant.
 	for _, cs := range containerStatuses(pod) {
 		term := cs.State.Terminated
 		if term == nil || term.ExitCode == 0 {

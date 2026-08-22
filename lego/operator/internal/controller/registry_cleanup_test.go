@@ -282,3 +282,60 @@ func TestRegistryCleanupRestoresRevokedCredentialThenConverges(t *testing.T) {
 		t.Fatalf("restored credential survived finalization: %v", err)
 	}
 }
+
+func TestRegistryCleanupDeletesTheBuildCacheRepository(t *testing.T) {
+	// The cache is a separate repository holding several times the image's bytes
+	// (docs/ADR060 D3), and this same teardown revokes its ACL entry — so a cache
+	// left behind is both unowned and unreachable, which is a storage leak nobody
+	// can find later. It also has to be reclaimed for an App whose cache was
+	// built while BEX_BUILD_CACHE was on and deleted after it was turned off,
+	// which is why deletion is unconditional rather than gated.
+	var hits []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits = append(hits, r.Method+" "+r.URL.Path)
+		if r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/tags/list") {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"tags":[]}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+	r := &AppReconciler{Registry: server.URL, HTTPClient: server.Client()}
+	app := &appv1alpha1.App{}
+	app.Name = "web"
+	app.Labels = map[string]string{labelWorkspace: "tea-aaaaaaaaaaaaaaaaaaaa"}
+	if done, err := r.deleteRegistryRepo(context.Background(), app); err != nil || !done {
+		t.Fatalf("cleanup pass = done %v err %v", done, err)
+	}
+	joined := strings.Join(hits, "\n")
+	for _, want := range []string{
+		"/v2/tea-aaaaaaaaaaaaaaaaaaaa/web/tags/list",
+		"/v2/tea-aaaaaaaaaaaaaaaaaaaa/web-cache/tags/list",
+	} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("teardown never touched %s:\n%s", want, joined)
+		}
+	}
+}
+
+func TestRegistryCleanupAbsentCacheRepositoryStillCompletes(t *testing.T) {
+	// The common case once the gate is off: the image repository exists, the
+	// cache never did. A 404 there must read as "nothing to reclaim" rather than
+	// stalling the finalizer forever on an App that has no cache.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/v2/web/tags/list" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"tags":[]}`))
+			return
+		}
+		http.NotFound(w, r) // every cache request 404s
+	}))
+	defer server.Close()
+	r := &AppReconciler{Registry: server.URL, HTTPClient: server.Client()}
+	app := &appv1alpha1.App{}
+	app.Name = "web"
+	if done, err := r.deleteRegistryRepo(context.Background(), app); err != nil || !done {
+		t.Fatalf("absent-cache pass = done %v err %v; the finalizer would never clear", done, err)
+	}
+}

@@ -272,6 +272,10 @@ type AppReconciler struct {
 	// build-ns credential (scripts/registry-secrets.sh's bex-registry-pull,
 	// bex-builder with wildcard read). Empty => anonymous pull (dev default).
 	RegistryBuildPullSecret string
+	// BuildCache turns on the per-App registry layer cache for source builds
+	// (BEX_BUILD_CACHE=registry, docs/ADR060 D3). False => the build Job spec is
+	// byte-identical to before the feature existed.
+	BuildCache bool
 	// PerAppRegistry, when non-nil, enables per-App Zot pull credentials (w7/m36,
 	// docs/ADR022-tenant-isolation.md §Read policy). Each App gets its own
 	// "app-<name>" htpasswd user scoped to its image repository, replacing the
@@ -728,6 +732,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		PushSecret:       r.buildJobPushSecret(app),
 		PullSecret:       buildRegistryPullSecret,
 		RegistryConfig:   usesBuildRegistryConfig(app, builder),
+		BuildCache:       r.BuildCache,
 		Client:           buildClient,
 	})
 	if err != nil {
@@ -4188,12 +4193,24 @@ func (r *AppReconciler) deleteTLSSecrets(ctx context.Context, app *appv1alpha1.A
 // the repository empty. Zot's periodic GC reclaims the unreferenced blobs.
 func (r *AppReconciler) deleteRegistryRepo(ctx context.Context, app *appv1alpha1.App) (bool, error) {
 	id := appIdentity(app)
-	done, err := r.deleteRegistryRepoNamed(ctx, app, id.Repo())
-	if err != nil || !done {
-		return done, err
-	}
+	// The build cache goes with the image (docs/ADR060 D3). It is a separate
+	// repository holding by far the larger artifact — a mode=max cache measured
+	// several times the image it caches — and this teardown also revokes its ACL
+	// entry, so anything left behind would be unreachable as well as unowned.
+	// Unconditional rather than gated on BEX_BUILD_CACHE: an App built while the
+	// cache was enabled and deleted after it was turned off must still be
+	// reclaimed, and a repository that never existed answers 404, which
+	// deleteRegistryRepoNamed already treats as done.
+	repos := []string{id.Repo(), id.CacheRepo()}
 	if id.Tombstoned && id.LegacyRepo() != id.Repo() {
-		return r.deleteRegistryRepoNamed(ctx, app, id.LegacyRepo())
+		// No legacy cache repository exists: the cache postdates that scheme.
+		repos = append(repos, id.LegacyRepo())
+	}
+	for _, repo := range repos {
+		done, err := r.deleteRegistryRepoNamed(ctx, app, repo)
+		if err != nil || !done {
+			return done, err
+		}
 	}
 	return true, nil
 }

@@ -97,6 +97,12 @@ func (id Identity) ZotUsername() string {
 	return "app-" + id.Workspace + "-" + id.Name
 }
 
+// LegacyCacheRepo is the build cache of the pre-m75 repository. It exists only
+// for teardown: an App that built while unlabeled owns a "<name>-cache" grant,
+// and without this the entry outlives the App in a document shared by the whole
+// estate. Nothing mints it — CacheRepo is the only cache a live App uses.
+func (id Identity) LegacyCacheRepo() string { return id.LegacyRepo() + "-cache" }
+
 // LegacyZotUsername is the pre-m75 htpasswd user.
 func (id Identity) LegacyZotUsername() string { return "app-" + id.Name }
 

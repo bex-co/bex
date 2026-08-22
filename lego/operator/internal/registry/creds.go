@@ -144,7 +144,15 @@ func (c *Creds) EnsureCredsFor(ctx context.Context, id identity.Identity, appNS 
 	if err != nil {
 		return fmt.Errorf("htpasswd: %w", err)
 	}
-	wroteACL, err := c.ensureZotConfigEntry(ctx, id.Repo(), zotUser, zotReadWriteActions)
+	// The build cache repository carries the SAME exclusive grant to the SAME
+	// user as the image repository (docs/ADR060 D3). Cache layers hold
+	// source-derived content and build-time state, so they need the ADR034 §6
+	// boundary the image repository already has — and granting it here is what
+	// makes that boundary the existing one rather than a second authz surface.
+	// It is also load-bearing for the feature to work at all: in per-App mode the
+	// build pushes as this user, and Zot's longest-match ACL means the "**"
+	// builder rule does not cover a repository the tenant user owns.
+	wroteACL, err := c.ensureZotConfigEntry(ctx, zotUser, zotReadWriteActions, id.Repo(), id.CacheRepo())
 	if err != nil {
 		return fmt.Errorf("zot config: %w", err)
 	}
@@ -186,7 +194,7 @@ func (c *Creds) RevokeCredsFor(ctx context.Context, id identity.Identity) error 
 	if err != nil {
 		return fmt.Errorf("htpasswd revoke: %w", err)
 	}
-	removedACL, err := c.removeZotConfigEntry(ctx, id.Repo())
+	removedACL, err := c.removeZotConfigEntry(ctx, id.Repo(), id.CacheRepo())
 	if err != nil {
 		return fmt.Errorf("zot config revoke: %w", err)
 	}
@@ -204,7 +212,7 @@ func (c *Creds) RevokeCredsFor(ctx context.Context, id identity.Identity) error 
 		if err != nil {
 			return fmt.Errorf("legacy htpasswd revoke: %w", err)
 		}
-		la, err = c.removeZotConfigEntry(ctx, id.LegacyRepo())
+		la, err = c.removeZotConfigEntry(ctx, id.LegacyRepo(), id.LegacyCacheRepo())
 		if err != nil {
 			return fmt.Errorf("legacy zot config revoke: %w", err)
 		}
@@ -427,13 +435,19 @@ func (c *Creds) removeHTPasswdEntry(ctx context.Context, username string) (bool,
 
 // -- Zot config Secret --------------------------------------------------------
 
-// ensureZotConfigEntry grants zotUser exactly actions on repo, and brings the
-// operator-owned storage and platform-builder policies up to canonical while it
-// holds the document. The builder migration matters for configs created before
-// per-App ACLs: Zot applies only the longest repository match, so an exact
-// per-App rule shadows the builder's ** rule. Bootstraps the Secret from the
-// canonical base config when it does not exist.
-func (c *Creds) ensureZotConfigEntry(ctx context.Context, repo, zotUser string, actions []string) (bool, error) {
+// ensureZotConfigEntry grants zotUser exactly actions on each of repos, and
+// brings the operator-owned storage and platform-builder policies up to
+// canonical while it holds the document. The builder migration matters for
+// configs created before per-App ACLs: Zot applies only the longest repository
+// match, so an exact per-App rule shadows the builder's ** rule. Bootstraps the
+// Secret from the canonical base config when it does not exist.
+//
+// Repos are granted together inside ONE document hold rather than in a call
+// each: an App's image repository and its build cache carry the same grant to
+// the same user, and splitting them would mean a second optimistic-lock
+// round-trip per App per reconcile — plus a window in which one exists and the
+// other does not.
+func (c *Creds) ensureZotConfigEntry(ctx context.Context, zotUser string, actions []string, repos ...string) (bool, error) {
 	return c.mutateSecretKey(ctx, c.ConfigName, zotConfigKey, c.baseZotConfig,
 		func(current []byte) ([]byte, bool, error) {
 			data, err := decodeZotConfig(current)
@@ -449,12 +463,14 @@ func (c *Creds) ensureZotConfigEntry(ctx context.Context, repo, zotUser string, 
 				setZotPlatformBuilderPolicy(data)
 				changed = true
 			}
-			// The platform builder repository is never tenant-owned: an App
-			// whose public name collides with it must not replace the shared
-			// read-only rule with tenant write permission.
-			if repo != platformBuilderRepository && !zotRepoGrants(data, repo, zotUser, actions) {
-				setZotRepoPolicy(data, repo, zotUser, actions)
-				changed = true
+			for _, repo := range repos {
+				// The platform builder repository is never tenant-owned: an App
+				// whose public name collides with it must not replace the shared
+				// read-only rule with tenant write permission.
+				if repo != platformBuilderRepository && !zotRepoGrants(data, repo, zotUser, actions) {
+					setZotRepoPolicy(data, repo, zotUser, actions)
+					changed = true
+				}
 			}
 			if !changed {
 				return nil, false, nil
@@ -464,19 +480,27 @@ func (c *Creds) ensureZotConfigEntry(ctx context.Context, repo, zotUser string, 
 		})
 }
 
-// removeZotConfigEntry drops repo's ACL entry, reporting whether one was there.
-func (c *Creds) removeZotConfigEntry(ctx context.Context, repo string) (bool, error) {
+// removeZotConfigEntry drops each repo's ACL entry, reporting whether any was
+// there.
+func (c *Creds) removeZotConfigEntry(ctx context.Context, repos ...string) (bool, error) {
 	removed, err := c.mutateSecretKey(ctx, c.ConfigName, zotConfigKey, nil,
 		func(current []byte) ([]byte, bool, error) {
 			data, err := decodeZotConfig(current)
 			if err != nil {
 				return nil, false, err
 			}
-			// A colliding App's deletion must not strip the platform rule.
-			if repo == platformBuilderRepository || !zotHasRepo(data, repo) {
+			changed := false
+			for _, repo := range repos {
+				// A colliding App's deletion must not strip the platform rule.
+				if repo == platformBuilderRepository || !zotHasRepo(data, repo) {
+					continue
+				}
+				delete(zotRepos(data), repo)
+				changed = true
+			}
+			if !changed {
 				return nil, false, nil
 			}
-			delete(zotRepos(data), repo)
 			next, err := json.Marshal(data)
 			return next, err == nil, err
 		})
