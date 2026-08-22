@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SessionConversationImpl } from "@/features/agent-sessions/components/session-conversation-impl";
-import { collapseDoubledParts } from "@/features/agent-sessions/lib/collapse-doubled-parts";
+import {
+  keepLastReplay,
+  partSignature,
+} from "@/features/agent-sessions/lib/collapse-doubled-parts";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation-impl";
 import { createAgentSessionTransport } from "@/features/agent-sessions/lib/transport";
 import {
@@ -457,7 +460,7 @@ describe("SessionConversationImpl", () => {
   });
 });
 
-describe("collapseDoubledParts", () => {
+describe("keepLastReplay (realistic ACP transcript)", () => {
   const P = (type: string, extra: Record<string, unknown> = {}) => ({
     type,
     ...extra,
@@ -469,6 +472,8 @@ describe("collapseDoubledParts", () => {
     P("tool-run", { toolName: "acp_agent" }),
     P("text", { id: "b", text: "Done" }),
   ];
+  const dedupe = (parts: ReturnType<typeof transcript>) =>
+    keepLastReplay(parts, partSignature);
 
   it("collapses an exact doubled transcript to a single copy", () => {
     // A dev double-mount appends the replay twice into one message; the second
@@ -480,7 +485,7 @@ describe("collapseDoubledParts", () => {
       P("tool-run", { toolName: "acp_agent" }),
       P("text", { id: "b2", text: "Done" }),
     ];
-    const result = collapseDoubledParts(doubled);
+    const result = dedupe(doubled);
     expect(result).toHaveLength(4);
     expect(result.map((p) => (p as { text?: string }).text)).toEqual([
       "Hello",
@@ -496,12 +501,12 @@ describe("collapseDoubledParts", () => {
       P("text", { id: "c", text: "A follow-up turn" }),
       P("tool-run", { toolName: "other_tool" }),
     ];
-    expect(collapseDoubledParts(real)).toHaveLength(real.length);
+    expect(dedupe(real)).toHaveLength(real.length);
   });
 
   it("leaves an odd-length or short parts list untouched", () => {
-    expect(collapseDoubledParts(transcript().slice(0, 3))).toHaveLength(3);
-    expect(collapseDoubledParts([P("text", { text: "hi" })])).toHaveLength(1);
+    expect(dedupe(transcript().slice(0, 3))).toHaveLength(3);
+    expect(dedupe([P("text", { text: "hi" })])).toHaveLength(1);
   });
 });
 

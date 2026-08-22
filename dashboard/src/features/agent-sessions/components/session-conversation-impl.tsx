@@ -35,7 +35,10 @@ import {
   type AcpPlanEntry,
   type AgentUIMessage,
 } from "@/features/agent-sessions/lib/acp-parts";
-import { collapseDoubledParts } from "@/features/agent-sessions/lib/collapse-doubled-parts";
+import {
+  keepLastReplay,
+  partSignature,
+} from "@/features/agent-sessions/lib/collapse-doubled-parts";
 import {
   Task,
   TaskTrigger,
@@ -77,6 +80,15 @@ export interface SessionConversationImplProps {
   sessionId: string;
   /** Terminal sessions show replay-only; running sessions live-tail after replay. */
   isTerminal: boolean;
+  /**
+   * Opaque "attach target changed" signal (`turns:sandboxId:isTerminal`). On a
+   * change the column re-attaches IN PLACE (a fresh `resumeStream`) instead of
+   * remounting — a new turn, a sandbox swap, or a settle each needs a fresh
+   * ticket + replay to reach a new pod or pick up a settled turn's final message
+   * the live tail can miss. Same `useChat` instance ⇒ no blank / lost scroll;
+   * `keepLastReplay` folds the re-replayed transcript at render.
+   */
+  attachSignal?: string;
   /**
    * Mints a fresh 90s attach ticket per connection (t001's attach verb). The
    * app path passes this; the transport is built from it here so the whole
@@ -123,6 +135,7 @@ const WINDOW_STEP = 200;
 export function SessionConversationImpl({
   sessionId,
   isTerminal,
+  attachSignal,
   mintTicket,
   transport: injectedTransport,
   onChatStateChange,
@@ -192,6 +205,16 @@ export function SessionConversationImpl({
     };
   }, [resumeStream]);
 
+  // Re-attach in place when `attachSignal` changes (see the prop doc). Seeded
+  // from the first render so the mount replay above owns the initial attach and
+  // this only fires on genuine subsequent changes.
+  const lastAttachSignal = useRef(attachSignal);
+  useEffect(() => {
+    if (attachSignal === lastAttachSignal.current) return;
+    lastAttachSignal.current = attachSignal;
+    resumeStream().catch((err) => console.error(err));
+  }, [attachSignal, resumeStream]);
+
   // Publish the live-steering handle to the detail page. Withheld (null) while
   // the stream is errored so the composer disables its live POST path instead of
   // steering into a dead stream; the useChat `sendMessage` appends the new turn
@@ -240,10 +263,9 @@ export function SessionConversationImpl({
     setShouldAutoScroll(Math.abs(scrollHeight - scrollTop - clientHeight) < 12);
   };
 
-  // Build the display blocks once per message. Collapse a duplicated replay:
-  // `resume` can fire twice on mount (a second GET replays the same transcript as
-  // a fresh-id message), which would render the whole conversation twice (w3/m44);
-  // collapseDoubledParts dedupes by content signature so nothing real is hidden.
+  // Build the display blocks once per message. `keepLastReplay` (applied to the
+  // parts in the memo below) drops the stacked replay copies a re-attach appends,
+  // so a re-replayed transcript renders once, not k times.
   //
   // Memoized by message identity (a WeakMap keyed on each message object): the AI
   // SDK keeps prior message objects referentially stable and only grows the last
@@ -255,10 +277,18 @@ export function SessionConversationImpl({
   const blockCacheRef = useRef(new WeakMap<object, DisplayBlock[]>());
   const rendered = useMemo(() => {
     const cache = blockCacheRef.current;
+    // Undo the stacking an in-place re-attach produces: the gateway packs the
+    // whole conversation into ONE assistant message, so each `resumeStream`
+    // re-appends the transcript to that message's parts. `keepLastReplay` keeps
+    // only the newest, complete copy.
     return messages.map((message) => {
       let blocks = cache.get(message);
       if (!blocks) {
-        blocks = buildBlocks(collapseDoubledParts(message.parts as PartLike[]));
+        const parts = keepLastReplay(
+          message.parts as PartLike[],
+          partSignature,
+        ) as PartLike[];
+        blocks = buildBlocks(parts);
         cache.set(message, blocks);
       }
       return { message, blocks };
@@ -269,7 +299,11 @@ export function SessionConversationImpl({
   // keeping the live tail visible.
   const [windowSize, setWindowSize] = useState(INITIAL_WINDOW);
 
-  if (error) {
+  // Surrender to the error state only when there's nothing to show. Once the
+  // transcript has loaded, a later error is transient (a re-attach during a
+  // redispatch's provisioning window fails to mint before the pod exists) and
+  // must not blank the conversation the user is reading.
+  if (error && messages.length === 0) {
     const unavailableKey = isTerminal
       ? "agentSessions.conversationUnavailableTerminal"
       : "agentSessions.conversationUnavailable";
@@ -601,8 +635,6 @@ const MessageRow = memo(function MessageRow({
   settled: boolean;
 }) {
   const isUser = role === "user";
-  // The cursor rides the final text block of the last streaming assistant turn.
-  const lastTextKey = [...blocks].reverse().find((b) => b.type === "text")?.key;
 
   return (
     <div
@@ -636,9 +668,6 @@ const MessageRow = memo(function MessageRow({
             return (
               <div key={block.key} className="min-w-0">
                 <MarkdownRenderer content={block.text} />
-                {!isUser && showCursor && block.key === lastTextKey && (
-                  <span className="bg-current ml-1 inline-block h-4 w-2 animate-pulse" />
-                )}
               </div>
             );
           }

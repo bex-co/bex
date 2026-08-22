@@ -79,20 +79,25 @@ export function SessionChatColumn({
     </>
   );
 
-  // Attachable = a live sandbox to splice, OR a finished (terminal/hibernated)
-  // session whose durable transcript replays through an ADR065 D2 replay-only
-  // ticket. Only the genuinely unattachable window (provisioning, pre-dispatch)
-  // shows the fallback — before m70 this gated on `sandboxId` alone, so every
-  // reaped session rendered no conversation at all.
-  const attachable = Boolean(session.sandboxId) || session.isFinished;
+  // Attachable = a live sandbox to splice, a finished (terminal/hibernated)
+  // session replaying through an ADR065 D2 replay-only ticket, or one with an
+  // established transcript (turns ≥ 2). The last clause keeps the conversation
+  // mounted through a redispatch's provisioning window (briefly non-terminal
+  // with no sandbox) so the transcript doesn't drop to the "Starting the
+  // sandbox…" fallback and read as a reload; only genuine first-turn
+  // provisioning (turns ≤ 1, no sandbox) still shows the fallback.
+  const attachable =
+    Boolean(session.sandboxId) || session.isFinished || session.turns >= 2;
   const conversation = attachable ? (
     <SessionConversation
-      // A durable turn is accepted before its replacement sandbox exists. Key
-      // on both identities so each transition remounts useChat and replays the
-      // newly persisted prompt, then attaches to the eventual fresh pod.
-      key={`${session.id}:${session.turns}:${session.sandboxId}`}
+      // Keyed ONLY on the session id (not turns/sandbox), so the `useChat`
+      // instance is stable across the session's lifecycle — no remount on a
+      // follow-up/sandbox-swap/settle. Those transitions ride `attachSignal`
+      // instead, driving an in-place re-attach (see the impl prop).
+      key={session.id}
       sessionId={session.id}
       isTerminal={session.isTerminal}
+      attachSignal={`${session.turns}:${session.sandboxId}:${session.isTerminal}`}
       onChatStateChange={onChatStateChange}
       footer={footer}
       terminalLabel={terminalLabel}

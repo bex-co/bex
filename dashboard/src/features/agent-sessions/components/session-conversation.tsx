@@ -27,6 +27,8 @@ export type { ConversationChatHandle };
 export interface SessionConversationProps {
   sessionId: string;
   isTerminal: boolean;
+  /** "Attach target changed" signal — re-attaches in place; see the impl prop. */
+  attachSignal?: string;
   /**
    * Lifts the live-steering handle up to the detail page (t004). Passed straight
    * through to the client-only impl so the steering composer can send a live
@@ -42,6 +44,7 @@ export interface SessionConversationProps {
 export function SessionConversation({
   sessionId,
   isTerminal,
+  attachSignal,
   onChatStateChange,
   footer,
   terminalLabel,
@@ -92,6 +95,7 @@ export function SessionConversation({
     <Impl
       sessionId={sessionId}
       isTerminal={isTerminal}
+      attachSignal={attachSignal}
       mintTicket={mintTicket}
       onChatStateChange={onChatStateChange}
       footer={footer}

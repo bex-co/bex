@@ -149,6 +149,18 @@ func ValidateBranch(branch string) error {
 // BindingLabels is the integration contract for the future session-create path:
 // stamp these values into OpenSandbox create metadata. No secret is present.
 func BindingLabels(sessionID, repository, branch string) (map[string]string, error) {
+	if strings.TrimSpace(sessionID) == "" || len(sessionID) > 63 {
+		return nil, fmt.Errorf("%w: session id is required", ErrInvalidRequest)
+	}
+	labels := map[string]string{LabelSession: sessionID}
+	// Repo-less (chat-only) sessions carry no git binding: without a repository
+	// the sandbox never clones and never mints a git credential (AuthorizePod is
+	// unreachable), so only the session label is stamped. A later mint attempt
+	// with a repo would fail the missing-digest check in AuthorizePod, so
+	// omitting the labels does not weaken the binding.
+	if strings.TrimSpace(repository) == "" {
+		return labels, nil
+	}
 	repository, err := NormalizeRepository(repository)
 	if err != nil {
 		return nil, err
@@ -156,14 +168,9 @@ func BindingLabels(sessionID, repository, branch string) (map[string]string, err
 	if err := ValidateBranch(branch); err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(sessionID) == "" || len(sessionID) > 63 {
-		return nil, fmt.Errorf("%w: session id is required", ErrInvalidRequest)
-	}
-	return map[string]string{
-		LabelSession:    sessionID,
-		LabelRepository: bindingDigest(repository),
-		LabelBranch:     bindingDigest(branch),
-	}, nil
+	labels[LabelRepository] = bindingDigest(repository)
+	labels[LabelBranch] = bindingDigest(branch)
+	return labels, nil
 }
 
 // AuthorizePod binds a credential request to the source Pod resolved by the

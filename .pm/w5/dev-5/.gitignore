@@ -2,5 +2,6 @@
 .pids/
 logs/
 bin/
+# Secret dev-instance artifacts rendered by dev-env.sh — never commit.
+*.pem
 .rendered-*.yaml
-.github-app-dev.pem
