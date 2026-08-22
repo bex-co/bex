@@ -270,10 +270,13 @@ export function SessionConversationImpl({
   const [windowSize, setWindowSize] = useState(INITIAL_WINDOW);
 
   if (error) {
+    const unavailableKey = isTerminal
+      ? "agentSessions.conversationUnavailableTerminal"
+      : "agentSessions.conversationUnavailable";
     return (
       <div className="text-muted-foreground flex items-center gap-2 p-4 text-sm">
         <AlertCircle aria-hidden className="text-destructive size-4 shrink-0" />
-        {t("agentSessions.conversationUnavailable")}
+        {t(unavailableKey as never)}
       </div>
     );
   }

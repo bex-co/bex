@@ -208,7 +208,11 @@ export function SessionDetailHeader({
             {session.branch}
           </span>
           <span>{t("agentSessions.metaDuration", { duration })}</span>
-          <span>{t("agentSessions.metaTurns", { turns: session.turns })}</span>
+          <span>
+            {session.turns === 1
+              ? t("agentSessions.metaTurn", { turns: session.turns })
+              : t("agentSessions.metaTurns", { turns: session.turns })}
+          </span>
           {session.isHibernated ? (
             <span>
               {t("agentSessions.hibernatedStorage", {
@@ -469,7 +473,7 @@ function OpenInZedButton({ session }: { session: AgentSessionView }) {
 /** The inline draft-PR badge `#N` — links `prUrl` in a new tab when present. */
 function HeaderPrBadge({ session }: { session: AgentSessionView }) {
   const { t } = useTranslations();
-  if (session.prNumber == null) return null;
+  if (session.prNumber == null || session.prNumber === 0) return null;
   const label = t("agentSessions.prBadge", { number: session.prNumber });
   const badge = (
     <Badge variant="secondary" className="hidden gap-1 sm:inline-flex">

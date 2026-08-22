@@ -21,9 +21,10 @@ export interface UseAgentSessionsOptions {
   poll?: boolean;
   /**
    * Archive membership (ADR065 D3): omitted/"false" ⇒ the unarchived working
-   * set (the backend default), "true" ⇒ archived only, "all" ⇒ both.
+   * set (the backend default), "archived" (UI) ⇒ "true" (backend) archived only,
+   * "all" ⇒ both.
    */
-  archived?: "false" | "true" | "all";
+  archived?: "false" | "archived" | "all";
   /** Phase filter (repeatable); omitted ⇒ every phase. */
   phases?: string[];
   /** Exact owner/repository filter; omitted ⇒ every repo. */
@@ -73,15 +74,18 @@ export function useAgentSessions({
 }: UseAgentSessionsOptions = {}): UseAgentSessionsResult {
   const { currentWorkspaceId } = useWorkspace();
   const resolved = currentWorkspaceId != null;
+  const backendArchived =
+    archived === "archived" ? "true" : (archived ?? null);
+  const effectiveLimit = limit ?? AGENT_SESSION_PAGE_SIZE;
   const { data, loading, error, refetch, startPolling, fetchMore } = useQuery(
     AgentSessionsDocument,
     {
       variables: {
         ownerId: currentWorkspaceId,
-        archived: archived ?? null,
+        archived: backendArchived,
         phases: phases?.length ? phases : null,
         repo: repo || null,
-        limit: limit ?? null,
+        limit: effectiveLimit,
       },
       skip: !resolved,
       fetchPolicy: "cache-first",

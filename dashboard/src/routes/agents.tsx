@@ -54,14 +54,17 @@ export const Route = createFileRoute("/agents")({
     ]);
   },
   // `?view=list` is a compatibility no-op now that creation and history share
-  // one page. `?archived=true|all` widens the default unarchived working set
-  // (ADR065 D3 — the sidebar's Archived entry targets `?archived=true`).
+  // one page. `?archived=archived|all` widens the default unarchived working set
+  // (ADR065 D3 — the sidebar's Archived entry targets `?archived=archived`);
+  // legacy `?archived=true` is still accepted for old links and maps to "archived".
   // `?phase=` is still honored if linked; the page no longer offers a dropdown.
   validateSearch: (search: Record<string, unknown>): AgentsSearch => {
     const out: AgentsSearch = {};
     if (search.view === "list") out.view = "list";
-    if (search.archived === "true" || search.archived === "all") {
-      out.archived = search.archived;
+    if (search.archived === "archived" || search.archived === "all") {
+      out.archived = search.archived as AgentSessionArchivedFilter;
+    } else if (search.archived === "true") {
+      out.archived = "archived";
     }
     if (
       typeof search.phase === "string" &&
@@ -81,7 +84,7 @@ export const Route = createFileRoute("/agents")({
  */
 function AgentSessionsPage() {
   const { archived, phase } = Route.useSearch();
-  const listMode = archived === "true" || archived === "all";
+  const listMode = archived === "archived" || archived === "all";
 
   return (
     <DashboardLayout>
@@ -142,12 +145,12 @@ function SessionListSection({
     {
       key: "archived",
       label: t("agentSessions.filterArchived"),
-      archived: "true",
+      archived: "archived",
     },
     { key: "all", label: t("agentSessions.filterAll"), archived: "all" },
   ];
   const activeKey =
-    archived === "true" ? "archived" : archived === "all" ? "all" : "active";
+    archived === "archived" ? "archived" : archived === "all" ? "all" : "active";
 
   return (
     <section
@@ -156,7 +159,11 @@ function SessionListSection({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="session-list-title" className="text-base font-semibold">
-          {t("agentSessions.listTitle")}
+          {activeKey === "archived"
+            ? t("agentSessions.filterArchived")
+            : activeKey === "all"
+              ? t("agentSessions.filterAll")
+              : t("agentSessions.filterActive")}
         </h2>
         <div
           className="bg-muted/50 flex items-center gap-0.5 rounded-lg p-0.5"

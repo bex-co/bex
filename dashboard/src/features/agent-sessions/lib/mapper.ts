@@ -60,7 +60,7 @@ export function toAgentSessionView(
     status: wire.status,
     headSha: wire.headSha ?? null,
     prUrl: wire.prUrl ?? null,
-    prNumber: wire.prNumber ?? null,
+    prNumber: wire.prNumber ? wire.prNumber : null,
     turns: wire.turns ?? 0,
     deliveryMode:
       (wire.deliveryMode as AgentSessionDeliveryMode | null) ?? null,
@@ -122,6 +122,17 @@ export function sessionTitle(
   return view.agentConfig.task || view.id;
 }
 
+/** Bounded title for list rows — caps raw task text to avoid DOM/ARIA bloat. */
+export const SESSION_TITLE_MAX = 140;
+export function sessionTitleShort(
+  view: Pick<AgentSessionView, "id" | "agentConfig">,
+  maxLen: number = SESSION_TITLE_MAX,
+): string {
+  const raw = view.agentConfig.task || view.id;
+  if (raw.length <= maxLen) return raw;
+  return raw.slice(0, maxLen).trimEnd() + "…";
+}
+
 /**
  * The reason text a failed session's callout should show, or null when the
  * session carries nothing worth reading and the caller should use its generic
@@ -156,7 +167,9 @@ export type AgentSessionStatusPhraseKey =
   | "agentSessions.statusPhrase.working"
   | "agentSessions.phase.completed"
   | "agentSessions.phase.failed"
-  | "agentSessions.phase.canceled";
+  | "agentSessions.phase.canceled"
+  | "agentSessions.phase.hibernated"
+  | "agentSessions.phase.hibernating";
 
 /**
  * Phase + PR presence → the sidebar's human status phrase (Devin's "PR is
@@ -169,7 +182,7 @@ export function agentSessionStatusPhraseKey(
 ): AgentSessionStatusPhraseKey {
   switch (view.phase) {
     case "completed":
-      return view.prNumber != null
+      return view.prNumber != null && view.prNumber !== 0
         ? "agentSessions.statusPhrase.prReady"
         : "agentSessions.phase.completed";
     case "failed":
@@ -177,6 +190,10 @@ export function agentSessionStatusPhraseKey(
     case "canceled":
     case "canceling":
       return "agentSessions.phase.canceled";
+    case "hibernated":
+      return "agentSessions.phase.hibernated";
+    case "hibernating":
+      return "agentSessions.phase.hibernating";
     default:
       return "agentSessions.statusPhrase.working";
   }

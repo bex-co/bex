@@ -16,10 +16,16 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessions } from "@/features/agent-sessions/hooks/use-agent-sessions";
 import {
   agentSessionStatusPhraseKey,
-  sessionTitle,
+  sessionTitleShort,
 } from "@/features/agent-sessions/lib/mapper";
-import { fuzzyMatch } from "@/features/agent-sessions/lib/mention";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
+
+/** Substring match for prose titles — avoids the mention picker's subsequence fallback. */
+function sessionSearchMatch(query: string, candidate: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (q === "") return true;
+  return candidate.toLowerCase().includes(q);
+}
 import { cn } from "@/common/lib/utils/utils";
 
 /**
@@ -51,16 +57,21 @@ export function AgentSessionsNavSection() {
   const archivedActive = useRouterState({
     select: (state) =>
       state.location.pathname === "/agents" &&
-      state.location.search.archived === "true",
+      ((state.location.search.archived as string) === "archived" ||
+        (state.location.search.archived as string) === "true"),
   });
-  const { sessions, loading } = useAgentSessions();
+  const { sessions, loading } = useAgentSessions({
+    limit: 20,
+  });
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(
     () =>
       sessions.filter(
-        (s) => fuzzyMatch(query, sessionTitle(s)) || fuzzyMatch(query, s.repo),
+        (s) =>
+          sessionSearchMatch(query, sessionTitleShort(s)) ||
+          sessionSearchMatch(query, s.repo),
       ),
     [sessions, query],
   );
@@ -136,7 +147,7 @@ export function AgentSessionsNavSection() {
           their one navigation home. */}
       <Link
         to="/agents"
-        search={{ archived: "true" }}
+        search={{ archived: "archived" }}
         className={cn(
           "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs",
           archivedActive &&
@@ -164,8 +175,11 @@ function SessionRow({
   active: boolean;
 }) {
   const { t } = useTranslations();
-  const title = sessionTitle(session);
-  const hasPrLink = session.prNumber != null && Boolean(session.prUrl);
+  const title = sessionTitleShort(session);
+  const hasPrLink =
+    session.prNumber != null &&
+    session.prNumber !== 0 &&
+    Boolean(session.prUrl);
 
   return (
     <SidebarMenuItem>
@@ -184,7 +198,9 @@ function SessionRow({
             <span className="truncate">
               {t(agentSessionStatusPhraseKey(session))}
             </span>
-            {session.prNumber != null && !hasPrLink ? (
+            {session.prNumber != null &&
+            session.prNumber !== 0 &&
+            !hasPrLink ? (
               <span className="inline-flex shrink-0 items-center gap-0.5">
                 <GitPullRequest className="size-3" aria-hidden />#
                 {session.prNumber}

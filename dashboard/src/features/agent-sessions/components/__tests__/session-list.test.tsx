@@ -102,7 +102,7 @@ describe("SessionList", () => {
       <SessionList
         sessions={[]}
         loading={false}
-        archiveFilter="true"
+        archiveFilter="archived"
         onClearFilters={onClearFilters}
       />,
     );
@@ -225,14 +225,14 @@ describe("SessionList", () => {
     render(
       <SessionList
         loading={false}
-        archiveFilter="true"
+        archiveFilter="archived"
         phase="failed"
         sessions={[view({ id: "as-filtered", task: "inspect failure" })]}
       />,
     );
     expect(screen.getByText("inspect failure").closest("a")).toHaveAttribute(
       "data-search",
-      JSON.stringify({ fromArchived: "true", fromPhase: "failed" }),
+      JSON.stringify({ fromArchived: "archived", fromPhase: "failed" }),
     );
   });
 
