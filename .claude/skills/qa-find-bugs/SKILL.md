@@ -23,38 +23,36 @@ Parse `$ARGUMENTS`:
 
 ## Phase 1 — Sign in without ever seeing the password
 
-1. `browser_navigate` → `https://dashboard.bex.co/auth/login`, then `browser_snapshot` to read the real field labels — the form is Ory Elements and its label text varies by locale (`Email`, `E-Mail`).
-2. Probe the MCP server's working directory (no secret in, no secret out): `browser_run_code_unsafe` with `async () => process.cwd()`. If it is not the repo root, use the absolute path to `.env` in step 3.
-3. Fill and submit **inside the Playwright process**, so the credentials never enter your context. Adapt the selectors to the snapshot from step 1, and return only the landing URL:
+`scripts/qa-login.sh` does the whole login. It reads `QA_EMAIL`/`QA_PASSWORD` from `.env` inside its own process, completes the Kratos password flow, and hands back only cookies — the password never reaches your context, a file, or a tool call. **Never** read `.env` yourself (`Read(.env)` is denied by project policy), and never type a password into `browser_type`.
+
+1. Get a session, preferring the one-shot loopback form:
+
+   ```bash
+   bash scripts/qa-login.sh --serve   # prints: ok http://127.0.0.1:<port>/<token>.json
+   ```
+
+   It keeps the session state in memory and serves it **once**, on loopback, at an unguessable path, then exits. Nothing lands on disk.
+
+2. Inject it into the browser with `browser_run_code_unsafe`, naming only the loopback URL:
 
    ```js
    async (page) => {
-     let fs;
-     try {
-       fs = await import("node:fs");
-     } catch {
-       fs = require("node:fs");
-     }
-     const read = (k) => {
-       const m = fs
-         .readFileSync("/ABSOLUTE/PATH/TO/REPO/.env", "utf8")
-         .match(new RegExp("^\\s*" + k + "=(.*)$", "m"));
-       return m ? m[1].trim().replace(/^["']|["']$/g, "") : "";
-     };
-     const email = read("QA_EMAIL"),
-       password = read("QA_PASSWORD");
-     if (!email || !password) return "MISSING_CREDENTIALS";
-     await page.getByLabel(/e-?mail/i).fill(email);
-     await page.getByLabel(/password/i).fill(password);
-     await page.getByRole("button", { name: /sign in|log in/i }).click();
-     await page.waitForLoadState("networkidle");
-     return page.url(); // never return the values themselves
+     const res = await page.request.get("http://127.0.0.1:<port>/<token>.json");
+     if (!res.ok()) return "FETCH_FAILED " + res.status();
+     const state = await res.json();
+     await page.context().addCookies(state.cookies);
+     await page.goto("https://dashboard.bex.co/");
+     return page.url();
    };
    ```
 
-4. Verify the session: the URL is no longer `/auth/login` and the workspace switcher renders. `MISSING_CREDENTIALS` → STOP and tell the user to add `QA_EMAIL` / `QA_PASSWORD` to `.env`.
-5. If `browser_run_code_unsafe` is unavailable or refused: **STOP and ask** the user to sign the MCP browser in themselves. Do not ask for the password in chat, and do not type a password you were handed in conversation — that defeats the whole point of step 3.
-6. Note which workspace and plan you landed in, and its pre-existing resources. Everything you create in Phase 2 lives in **this** workspace only.
+   `browser_run_code_unsafe` **echoes its own code back in the tool result**, so nothing secret may appear in the snippet — that is exactly why the cookies arrive over a URL instead of as a literal. Its code also runs in a bare `vm` context whose only globals are `page` and `__end__`: there is no `require`, no `process`, no `import`, so a snippet cannot read `.env` itself. Do not try.
+
+3. Alternative when the MCP server was started with `--caps=storage` (adds `browser_storage_state` / `browser_set_storage_state`): run `bash scripts/qa-login.sh` with no flag to write a 0600 state file under `.playwright-mcp/`, then `browser_set_storage_state` with its absolute path, and delete the file when the hunt ends — it holds a live session cookie. Check whether those tools exist before planning around them; they are opt-in and a `.mcp.json` change only takes effect in a new session.
+
+4. Verify the session: the URL is no longer `/auth/login` and the workspace switcher renders. Script exit 2 (`QA_EMAIL/QA_PASSWORD` missing or empty) is the one case to hand back to the user — tell them to fill `.env`; never ask them for the password in chat.
+
+5. Note which workspace and plan you landed in, and its pre-existing resources. Everything you create in Phase 2 lives in **this** workspace only.
 
 ## Phase 2 — Sweep the hosting features like a real user
 
@@ -95,7 +93,14 @@ What is **not** a bug: upstream Ory Elements cosmetics, anything in `.pm/DO_NOT_
 
 ## Phase 3 — Triage
 
-Reproduce every candidate at least once from a fresh page load before believing it. For each: exact steps, expected vs actual, evidence paths, and severity — **blocker** (a core hosting journey cannot be completed), **major** (completes but the product misleads or loses data), **minor** (cosmetic / copy / polish). Drop what you cannot reproduce; note it as unreproduced rather than filing it.
+Reproduce every candidate at least once from a fresh page load before believing it. Four traps this hunt actually fell into — check each before you write a finding down:
+
+- **Your own sweep rate is not a user's.** Navigating dozens of pages back to back drains the `BEX_RATE_LIMIT` bucket (500/min, keyed on the caller identity) and every later page starts returning `429 RATE_LIMITED`. Before blaming the product for throttling, idle 30–60s and redo the journey at human pace with pauses. Only a 429 that survives that is real.
+- **Accessibility heuristics lie.** A DOM scan for "button with no innerText and no aria-label" flags every control labelled by a sibling `<label for>`. Re-check with the real accessibility tree — `await page.locator('main').ariaSnapshot()` — and keep only controls that come back genuinely unnamed.
+- **A tab that redirects is not a broken tab.** `/services/<id>/headers` and `/redirects` land on `/settings` because those are static-site surfaces; identical page sizes across URLs usually means a deliberate redirect, so check `location.pathname` before calling it a rendering bug.
+- **Non-browser clients hit different infrastructure.** `api.bex.co` sits behind Cloudflare, which answers a `Python-urllib/*` User-Agent with `403 error code 1010`. Probe the API from inside the page (`page.evaluate` + `fetch(..., {credentials:'include'})`), not from a bare script, or you will file a bot-protection response as an API bug.
+
+When the UI looks wrong, query the API directly from the page before concluding where the bug lives — this hunt's main finding only became clear from the raw GraphQL response, which showed the backend returning an all-empty object where the UI merely looked confused. For each: exact steps, expected vs actual, evidence paths, and severity — **blocker** (a core hosting journey cannot be completed), **major** (completes but the product misleads or loses data), **minor** (cosmetic / copy / polish). Drop what you cannot reproduce; note it as unreproduced rather than filing it.
 
 ## Phase 4 — Research the fix
 
