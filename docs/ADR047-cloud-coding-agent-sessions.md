@@ -278,6 +278,17 @@ The w3/m43 conversation plane persists a transcript only as a side effect of a *
 8. **Frontend-exposed API gaps** (D9, resolved into the target API shape): the `attach-ticket` reconnect mint; the transcript store, whose stream-endpoint replay mode serves both reattach and terminal-session history (per-turn prompt/evidence history — today `turns` is a bare counter); optional diff stats in evidence — schedule with the phase-2 gateway milestone per the D9 target API shape (including the `api.bex.co` edge path-routing and the steer-verb deprecation path).
 9. **Open questions carried**: Devin/Claude-web/Cursor internals (memory-snapshot resume), Claude Code resale ToS ([legal page](https://code.claude.com/docs/en/legal-and-compliance) to be verified at build time), the Streamable HTTP draft's trajectory, exemplar branch-confinement enforcement detail.
 
+### w5/m77 — ACP profile manifest and stream hot-path simplification (2026-08-22)
+
+Vercel's experimental `@ai-sdk/harness` / `@ai-sdk/harness-acp` layer (AI SDK v7, sandbox-orchestrating) validates the **declarative runtime profile** idea but duplicates mechanisms bex already owns: direct `@agentclientprotocol/sdk` stdio in the in-pod driver, OpenSandbox lifecycle, gateway credential brokering, transcript authority, and the AI SDK **v6** UI-message stream (`x-vercel-ai-ui-message-stream: v1`). **Adoption boundary (frozen):** do not introduce `@ai-sdk/harness`, a second bridge, a WebSocket hop, a second sandbox provider, or an AI SDK major-version migration to gain ACP compatibility. The useful lesson — one release-locked, non-secret profile manifest — is adopted in `lego/agent-image/agent-profiles.json`, embedded by `lego/backend/internal/agentsession/profiles.go` and loaded by the in-pod driver. Supported profile ids remain the only tenant-selectable agent surface; executables, args, bootstrap env, credential env, and model-proxy routing are operator-owned static facts verified at image build.
+
+The live conversation hot path is optimized without changing wire bytes or dashboard semantics:
+
+- **Gateway attach** (`agentattach.go`): accepted UI-message parts forward to the browser **before** batched `AppendAgentSessionTranscript` calls; a bounded per-stream batcher flushes on count/time and at stream end while preserving `(session_id, turn, part_index)` idempotency and ADR051 log-harvest recovery.
+- **In-pod driver** (`session.ts`, `stream-hub.ts`): one mode-0600 append sink per turn replaces per-part `appendFile`; the hub stores each sanitized part with its single encoded SSE frame for byte accounting, replay, eviction, and fan-out.
+
+Baseline fixtures in `lego/agent-image/driver/test/hotpath-baseline.test.ts` and `lego/backend/internal/sshgateway/agentattach/transcript_batcher_test.go` record encode, file-open, and PostgreSQL append batch counts for before/after comparison.
+
 ## Alternatives considered
 
 - **Per-request ("premium requests") billing** — rejected; retired by its inventor effective 2026-06-01 (four stale premium-request claims were refuted 0-3/1-2 in verification; any source describing multipliers as current is outdated).

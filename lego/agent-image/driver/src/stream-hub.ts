@@ -24,18 +24,25 @@ interface HubLimits {
   maxPartBytes?: number;
 }
 
-function frame(value: unknown): string {
+interface HistoryEntry {
+  part: UIMessagePart;
+  frame: string;
+  frameBytes: number;
+}
+
+export function encodeUIMessageFrame(value: unknown): string {
   return `data: ${JSON.stringify(value)}\n\n`;
 }
 
 export class UIMessageStreamHub {
-  #history: UIMessagePart[] = [];
+  #history: HistoryEntry[] = [];
   #historyBytes = 0;
   #clients = new Set<ServerResponse>();
   #closed = false;
   readonly #maxHistoryBytes: number;
   readonly #maxHistoryParts: number;
   readonly #maxPartBytes: number;
+  #encodeCount = 0;
 
   constructor(limits: HubLimits = {}) {
     this.#maxHistoryBytes = limits.maxHistoryBytes ?? 4 << 20;
@@ -43,24 +50,32 @@ export class UIMessageStreamHub {
     this.#maxPartBytes = limits.maxPartBytes ?? 1 << 20;
   }
 
+  get encodeCount(): number {
+    return this.#encodeCount;
+  }
+
   publish(part: UIMessagePart): void {
     if (this.#closed) throw new Error("UI message stream is already closed");
-    let data = frame(part);
-    if (Buffer.byteLength(data) > this.#maxPartBytes) {
+    let frame = encodeUIMessageFrame(part);
+    this.#encodeCount += 1;
+    let frameBytes = Buffer.byteLength(frame);
+    if (frameBytes > this.#maxPartBytes) {
       part = { type: "data-truncated", reason: "part exceeds stream limit" };
-      data = frame(part);
+      frame = encodeUIMessageFrame(part);
+      this.#encodeCount += 1;
+      frameBytes = Buffer.byteLength(frame);
     }
-    this.#history.push(part);
-    this.#historyBytes += Buffer.byteLength(data);
+    this.#history.push({ part, frame, frameBytes });
+    this.#historyBytes += frameBytes;
     while (
       this.#history.length > this.#maxHistoryParts ||
       this.#historyBytes > this.#maxHistoryBytes
     ) {
       const dropped = this.#history.shift();
-      if (dropped) this.#historyBytes -= Buffer.byteLength(frame(dropped));
+      if (dropped) this.#historyBytes -= dropped.frameBytes;
     }
     for (const response of this.#clients) {
-      if (!response.write(data)) {
+      if (!response.write(frame)) {
         this.#clients.delete(response);
         response.destroy(new Error("UI message stream client is not draining"));
       }
@@ -68,7 +83,7 @@ export class UIMessageStreamHub {
   }
 
   attach(response: ServerResponse): () => void {
-    for (const part of this.#history) response.write(frame(part));
+    for (const entry of this.#history) response.write(entry.frame);
     if (this.#closed) {
       response.end("data: [DONE]\n\n");
       return () => {};
@@ -87,6 +102,6 @@ export class UIMessageStreamHub {
   }
 
   get history(): UIMessagePart[] {
-    return [...this.#history];
+    return this.#history.map((entry) => entry.part);
   }
 }

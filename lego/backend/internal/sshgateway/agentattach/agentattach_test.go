@@ -84,12 +84,13 @@ func TestReadSSEDataBounded(t *testing.T) {
 // (session, seq) with idempotent append) plus a single-use nonce claim, so it
 // also backs the test's NonceGuard.
 type fakeAttachStore struct {
-	mu      sync.Mutex
-	parts   map[string]map[int64]store.AgentSessionTranscriptPart
-	claims  map[string]bool
-	turns   map[string][]store.AgentSessionTurn
-	started []store.SSHSessionAudit
-	ended   []string
+	mu            sync.Mutex
+	parts         map[string]map[int64]store.AgentSessionTranscriptPart
+	claims        map[string]bool
+	turns         map[string][]store.AgentSessionTurn
+	started       []store.SSHSessionAudit
+	ended         []string
+	appendBatches atomic.Int32
 }
 
 func newFakeAttachStore() *fakeAttachStore {
@@ -97,6 +98,7 @@ func newFakeAttachStore() *fakeAttachStore {
 }
 
 func (f *fakeAttachStore) AppendAgentSessionTranscript(_ context.Context, id string, parts []store.AgentSessionTranscriptPart) error {
+	f.appendBatches.Add(1)
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.parts[id] == nil {

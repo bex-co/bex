@@ -10,6 +10,7 @@ WORKDIR /opt/bex-agent-driver
 COPY agent-image/driver/package.json agent-image/driver/package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY agent-image/driver/tsconfig.json ./
+COPY agent-image/agent-profiles.json ./agent-profiles.json
 COPY agent-image/driver/src ./src
 RUN npm run build
 
@@ -50,8 +51,10 @@ COPY agent-image/driver/package.json agent-image/driver/package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts \
     && npm cache clean --force
 COPY --from=driver-build /opt/bex-agent-driver/dist ./dist
+COPY agent-image/agent-profiles.json ./agent-profiles.json
 RUN chmod 0755 dist/main.js \
-    && ln -s /opt/bex-agent-driver/dist/main.js /usr/local/bin/bex-agent-driver
+    && ln -s /opt/bex-agent-driver/dist/main.js /usr/local/bin/bex-agent-driver \
+    && node -e "const fs=require('fs');const m=JSON.parse(fs.readFileSync('agent-profiles.json','utf8'));for (const p of m.profiles){if(!fs.existsSync(p.executable))throw new Error('missing '+p.executable)}"
 
 COPY --chmod=0755 agent-image/bex-pre-snapshot /usr/local/bin/bex-pre-snapshot
 RUN useradd --create-home --home-dir /home/bex --uid 10001 --shell /bin/bash bex \

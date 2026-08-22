@@ -347,7 +347,7 @@ func validateCreate(req *CreateRequest) error {
 		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "agentConfig.agent and agentConfig.task are required", nil)
 	}
 	agent := strings.ToLower(strings.TrimSpace(req.AgentConfig.Agent))
-	if _, ok := agentAdapters[agent]; !ok {
+	if _, ok := agentsession.LookupAgentProfile(agent); !ok {
 		return core.NewBadRequestError("AGENT_SESSION_AGENT_INVALID", "agentConfig.agent must name a supported agent profile", map[string]any{"field": "agentConfig.agent"})
 	}
 	req.AgentConfig.Agent = agent
@@ -1194,48 +1194,12 @@ func (s *Service) enforcePinQuota(ctx context.Context, workspaceID string) error
 	return nil
 }
 
-// agentAdapters is the closed public-profile -> installed adapter contract.
-// Public identifiers never double as process paths: every command is an
-// absolute, operator-owned executable baked into the agent image. Args select
-// ACP stdio mode where the executable is multi-mode. Env contains only
-// non-secret bootstrap settings; the model placeholder still rides the driver's
-// dedicated credential path.
-type agentProfile struct {
-	command string
-	args    []string
-	env     map[string]string
-}
-
-var agentAdapters = map[string]agentProfile{
-	"claude": {command: "/usr/local/bin/claude-code-acp"},
-	"codex": {
-		command: "/usr/local/bin/codex-acp",
-		env: map[string]string{
-			// Select the short-lived OPENAI_API_KEY placeholder without an
-			// interactive auth request or browser in the headless sandbox.
-			"DEFAULT_AUTH_REQUEST": `{"methodId":"api-key"}`,
-			"NO_BROWSER":           "1",
-		},
-	},
-	"gemini": {command: "/usr/local/bin/gemini", args: []string{"--acp"}},
-}
-
 func agentCommand(agent string) string {
-	return agentAdapters[strings.ToLower(strings.TrimSpace(agent))].command
+	return agentsession.AgentProfileCommand(agent)
 }
 
 func agentRuntimeConfig(agent string) (argsJSON, envJSON string) {
-	agent = strings.ToLower(strings.TrimSpace(agent))
-	profile := agentAdapters[agent]
-	if len(profile.args) > 0 {
-		raw, _ := json.Marshal(profile.args) // closed string slice; marshal cannot fail
-		argsJSON = string(raw)
-	}
-	if len(profile.env) > 0 {
-		raw, _ := json.Marshal(profile.env) // closed string map; marshal cannot fail
-		envJSON = string(raw)
-	}
-	return argsJSON, envJSON
+	return agentsession.AgentProfileRuntimeJSON(agent)
 }
 
 // defaultCredentialURL is the trusted in-cluster Git smart-HTTP proxy origin the
