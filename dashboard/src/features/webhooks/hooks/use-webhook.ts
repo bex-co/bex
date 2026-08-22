@@ -8,6 +8,7 @@ import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
+import { resourceNotFound } from "@/common/hooks/use-not-found-redirect";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
@@ -61,13 +62,16 @@ export function useWebhook(id: string): UseWebhookResult {
   });
 
   const endpoint = useMemo(() => toView(data?.webhookEndpoint), [data]);
-  const settled = resolved && !loading;
+  const pending = !resolved || loading;
 
   return {
     endpoint,
-    loading: !resolved || loading,
+    loading: pending,
     error,
-    notFound: settled && endpoint === null,
+    // Settled-and-absent, which includes the not-found bex-api REPORTS as an
+    // error — a bare `endpoint === null` would call an outage a dead id, and a
+    // bare `!error` would call a dead id an outage.
+    notFound: resourceNotFound(endpoint, pending, error),
     refetch,
   };
 }

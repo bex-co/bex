@@ -5,7 +5,11 @@ import { requireAuth } from "@/common/lib/auth/auth";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { ResourceLoadError } from "@/common/components/resource-load-error";
 import { useLoaderErrorRetry } from "@/common/hooks/use-loader-error-retry";
-import { useNotFoundRedirect } from "@/common/hooks/use-not-found-redirect";
+import {
+  resourceFailed,
+  resourceNotFound,
+  useNotFoundRedirect,
+} from "@/common/hooks/use-not-found-redirect";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Card,
@@ -213,9 +217,9 @@ export function BlueprintDetailPage() {
 
   const busy = syncBusy || updateBusy || disconnectBusy;
 
-  useNotFoundRedirect(!loading && !blueprint && !error);
+  useNotFoundRedirect(resourceNotFound(blueprint, loading, error));
   useLoaderErrorRetry(Route.useLoaderData(), blueprintId);
-  const showError = !loading && !blueprint && !!error;
+  const showError = resourceFailed(blueprint, loading, error);
 
   async function handleSync(confirmation?: string) {
     setConfirming(false);

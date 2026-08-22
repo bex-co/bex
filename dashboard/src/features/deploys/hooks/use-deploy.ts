@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useQuery } from "@apollo/client/react";
+import { resourceNotFound } from "@/common/hooks/use-not-found-redirect";
 import { skipPollWhenHidden } from "@/common/lib/polling";
 import { DeployDocument, type DeployQuery } from "@/graphql/definitions";
 import { isTerminalDeployStatus } from "@/features/deploys/lib/deploy-status";
@@ -58,10 +59,7 @@ export function useDeploy(
   );
 
   const deploy = toDeployView(data?.deploy ?? previousData?.deploy ?? null);
-  const notFound =
-    !loading &&
-    !deploy &&
-    (!error || error.message.toLowerCase().includes("not found"));
+  const notFound = resourceNotFound(deploy, loading, error);
 
   useEffect(() => {
     if (deploy && isTerminalDeployStatus(deploy.status)) stopPolling();

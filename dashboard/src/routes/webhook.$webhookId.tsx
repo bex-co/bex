@@ -71,14 +71,15 @@ function WebhookDetailShell() {
   const { webhookId } = Route.useParams();
   const { t } = useTranslations();
   const detail = useWebhook(webhookId);
-  const { endpoint, loading, notFound, error } = detail;
+  const { endpoint, loading, notFound } = detail;
   const creatorIdentity = useWebhookCreator(endpoint?.createdBy ?? "");
 
-  // `notFound` also settles true when the query itself failed (errorPolicy
-  // "all" leaves data empty), so exclude `error`: a dead id redirects home
-  // (w9/m55), a failed query stays put on the inline error state below. A
-  // roll-window loader failure re-runs once (w1/m52) so the title recovers.
-  useNotFoundRedirect(notFound && !error);
+  // A dead id redirects home (w9/m55); a failed query stays put on the inline
+  // error state below. `useWebhook` owns that split — a not-found is REPORTED
+  // as an error by bex-api, so neither `endpoint === null` nor `!error` decides
+  // it alone. A roll-window loader failure re-runs once (w1/m52) so the title
+  // recovers.
+  useNotFoundRedirect(notFound);
   useLoaderErrorRetry(Route.useLoaderData(), webhookId);
 
   return (
@@ -105,7 +106,7 @@ function WebhookDetailShell() {
             </div>
           </div>
         </>
-      ) : loading || (notFound && !error) ? (
+      ) : loading || notFound ? (
         <div className="p-4 sm:p-6">
           <div className="mx-auto w-full max-w-4xl space-y-6">
             {/* endpoint header (url + meta) then the activity/settings card */}
