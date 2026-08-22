@@ -3,7 +3,8 @@ name: test (backend)
 # Run the backend and agent-driver suites on every relevant push/PR, and as a
 # reusable workflow called by deploy.yml to gate the build+push+deploy job.
 # Integration tests gated on BEX_TEST_DB_URI / BEX_TEST_OPENFGA_URL run against real
-# ephemeral service containers (postgres:17 + openfga/openfga in-memory).
+# ephemeral service containers (postgres:17 + openfga/openfga in-memory), both
+# digest-pinned and enforced by scripts/image-pin-validate.sh.
 on:
   push:
     branches: [main]
@@ -46,7 +47,10 @@ jobs:
       GOWORK: "off"
     services:
       postgres:
-        image: postgres:17
+        # Digest-pinned like every other image bex resolves (w7/m85): the
+        # integration suite runs real SQL against this container, so a retagged
+        # postgres:17 changes what the backend is certified against.
+        image: postgres:17@sha256:e38411452a464af89e5adadb8d223bf53b898d47d6ef918b2d58c08707350449
         env:
           POSTGRES_PASSWORD: pw
         options: >-
@@ -77,7 +81,7 @@ jobs:
           docker run -d --name openfga \
             -e OPENFGA_DATASTORE_ENGINE=memory \
             -p 8080:8080 -p 8081:8081 \
-            openfga/openfga:latest run
+            openfga/openfga:latest@sha256:01a6000aa6040a4d0bde6ea1d3359ac3b9f21dc972ac6103a87b38659a836776 run
       - name: seed OpenFGA (bex store + authz model)
         run: |
           # Wait for OpenFGA to accept connections (no HEALTHCHECK in its image).

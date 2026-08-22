@@ -5,7 +5,9 @@
 # (backend module, business logic),
 # all sharing the types module (the CRD contract). Each non-default Deployment
 # overrides command (/api, /activator, /staticserver, /pg-sni-proxy,
-# /ssh-gateway).
+# /ssh-gateway), and the Key Value backup CronJob's encrypt stage runs
+# /backup-encrypt out of this same image (w7/m85 — it used to download the age
+# release into an alpine container standing next to the plaintext RDB).
 FROM golang:1.25@sha256:d7ae6dbb143c4eb97788a53a2bfa879cdde91f793c1d44d9f3bc7cb0df2e4e5f AS builder
 ARG TARGETOS
 ARG TARGETARCH
@@ -32,6 +34,7 @@ RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/pg-sni-proxy ./cmd/pg-sni-proxy
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/kv-sni-proxy ./cmd/kv-sni-proxy
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/egress-meter ./cmd/egress-meter
+RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/backup-encrypt ./cmd/backup-encrypt
 # Output name must not be "api" — that collides with the cmd/api source dir, so
 # go build would write the binary INTO that directory.
 RUN cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/bexapi ./cmd/api
@@ -48,6 +51,7 @@ COPY --from=builder /workspace/staticserver /staticserver
 COPY --from=builder /workspace/pg-sni-proxy /pg-sni-proxy
 COPY --from=builder /workspace/kv-sni-proxy /kv-sni-proxy
 COPY --from=builder /workspace/egress-meter /egress-meter
+COPY --from=builder /workspace/backup-encrypt /backup-encrypt
 COPY --from=builder /workspace/ssh-gateway /ssh-gateway
 USER 65532:65532
 

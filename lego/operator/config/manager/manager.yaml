@@ -105,6 +105,15 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          # The operator reads its own Pod to learn which image it is running
+          # (internal/selfimage): the Key Value backup CronJob's encrypt stage
+          # runs /backup-encrypt out of that same image, and only kustomize —
+          # not any constant in the source — knows the digest deploy.yml pushed.
+          # Dropping this makes ENCRYPTED Key Value backups fail closed.
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
           - name: BEX_RUNTIME
             value: kubernetes
           # In-cluster OCI registry (Zot). Build-from-git Jobs push here and app

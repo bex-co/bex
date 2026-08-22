@@ -3,6 +3,7 @@ module github.com/bex-co/bex/lego/operator
 go 1.25.7
 
 require (
+	filippo.io/age v1.3.1
 	github.com/aws/aws-sdk-go-v2 v1.42.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.29
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.105.0
@@ -20,6 +21,7 @@ require (
 )
 
 require (
+	filippo.io/hpke v0.4.0 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 )

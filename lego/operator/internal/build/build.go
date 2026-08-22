@@ -68,7 +68,16 @@ const (
 const (
 	defaultBuildkitImage = "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"
 	defaultGitImage      = "alpine/git:v2.43.0@sha256:76fdb7210689fc26c6ff101c4adacf9d12d3d25a919a7d8ff42ebaef5bedba65"
-	defaultPushImage     = "quay.io/skopeo/stable@sha256:c7d3c512612f52805023cd38351081dad7e2729fc13d14b701e47c7c8bdd6615" // v1.22.2 multi-arch manifest
+	// The digest is the OCI IMAGE INDEX quay.io actually stores for v1.22.2.
+	// The previous pin (sha256:c7d3c512…) 404s by digest: quay converts an index
+	// to a Docker manifest list on the fly when a client asks for that media
+	// type, and reports the converted digest in Docker-Content-Digest — but it
+	// stores only the index, so the converted digest is not addressable. Pinning
+	// it left the push stage naming an image quay would not serve
+	// (w7/m85 t007 — caught by scripts/image-pin-validate.sh --verify-digests,
+	// which asks the registry whether each digest exists rather than trusting it
+	// to look right).
+	defaultPushImage = "quay.io/skopeo/stable:v1.22.2@sha256:64ac45c5a1c01230896fbae960b2213e32a5040e4009b83b5f5cbf31a35f61c3"
 )
 
 // defaultSignImage is the cosign image the signing container runs when tenant

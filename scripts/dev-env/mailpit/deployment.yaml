@@ -35,7 +35,7 @@ spec:
           emptyDir: {}
       containers:
         - name: mailpit
-          image: axllent/mailpit:v1.21.8
+          image: axllent/mailpit:v1.21.8@sha256:81370195cd4a0eab9604d17c2617a7525b0486f9365555253b6c5376c6350f1a
           # v1.21.8 writes a scratch sqlite file under os.TempDir() at startup
           # regardless of MP_DATABASE — crashes "read-only file system" without
           # this mount (see deploy/gitops/overlays/local/mailpit/deployment.yaml).

@@ -77,7 +77,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | bex-api | `BEX_LOKI_URL` | Loki durable logs; set → history+filters, unset → live pod logs |
 | bex-api | `BEX_OPENBAO_URL`, `BEX_OPENBAO_JWT_PATH` | OpenBao env-vars store; JWT path default pod token |
 | bex-api | `BEX_CP_DB_URI`, `BEX_CP_APPS_NAMESPACE`, `BEX_CP_ADDR` `:8091`, `BEX_CP_RESYNC`, `BEX_CP_TOKEN`, `BEX_CP_IDENTITY` | store URI (opt-in) + projection ns/addr/resync/token + instance identity (`production` default, per-dev `dev-N`) |
-| bex-api | `BEX_OPENSANDBOX_URL`, `BEX_SANDBOX_IMAGE` `opensandbox/base:latest` | OpenSandbox lifecycle + `/v1/sandboxes*` surface |
+| bex-api | `BEX_OPENSANDBOX_URL`, `BEX_SANDBOX_IMAGE` (default `docker.io/library/alpine:3@sha256:…`) | OpenSandbox lifecycle + `/v1/sandboxes*` surface; the base sandbox template image, digest-pinned like every image bex runs (w7/m85) |
 | bex-api | `BEX_AGENT_SETUP_REGISTRIES` | setup egress FQDN allowlist (npm/PyPI/Go/…) override |
 | bex-api | `BEX_WEBHOOK_SECRET`, `…_RETENTION_DAYS` `90`, `…_KEEP` `1000`, `…_MAX_DELIVERIES…` `10000`, `…_BACKOFF`, `BEX_GITHUB_APP_*`, `…_WEBHOOK_SECRET`, `BEX_SMTP_*`, `…_REQUIRE_VERIFIED_INVITE_EMAIL` (on unless `0`), `BEX_DASHBOARD_URL`, `BEX_MCP_STDIO` | webhooks/GitHub/SMTP/invite/dashboard/MCP (see ADRs: 006, 026, 024) |
 | bex-api | `BEX_OAUTH_ISSUER`, `…_RESOURCE`, `…_REQUIRE_AUDIENCE`, `…_API_SCOPE` (compat, closed vocab `bex.read/write/sensitive`) | OAuth 2.1 discovery + audience/scope rules ([ADR012] §7) |

@@ -121,9 +121,15 @@ func assertKeyValueUpload(t *testing.T, upload corev1.Container) {
 	}
 }
 
+// testBackupHelperImage stands in for what selfimage.Resolve reads off the
+// manager Pod in a cluster: the operator's own digest-pinned image, whose
+// /backup-encrypt entrypoint is the encrypt stage (w7/m85).
+const testBackupHelperImage = "ghcr.io/bex-co/bex-operator@sha256:" +
+	"5efd2d8c754176992ec59cb688ae8aa19b8dc2d71bff542a1c91c76603c9a76e"
+
 // TestKeyValueBackupFixedImagesAreDigestPinned (round-14 #5): every backup
 // stage whose image is a reference BEX ITSELF chooses — busybox compress, the
-// alpine age encrypt step, the AWS CLI uploader, and the default-version
+// first-party encrypt step, the AWS CLI uploader, and the default-version
 // valkey snapshot — must carry an immutable sha256 digest. These containers
 // share the plaintext backup volume and (snapshot/uploader) the datastore and
 // S3 credentials, so a retagged mutable tag must not be able to become their
@@ -160,7 +166,7 @@ func TestKeyValueBackupFixedImagesAreDigestPinned(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "red-paid-kv", Namespace: "default", UID: "paid-kv-uid"},
 					Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: vc.version},
 				}
-				r := &KeyValueReconciler{Backup: tc.store}
+				r := &KeyValueReconciler{Backup: tc.store, BackupHelperImage: testBackupHelperImage}
 				spec := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-paid-kv-auth")
 				pod := spec.JobTemplate.Spec.Template.Spec
 				sawSnapshot := false
@@ -248,7 +254,7 @@ func TestKeyValueBackupEncryptStepWhenKeyConfigured(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "red-enc-kv", Namespace: "default", UID: "enc-kv-uid"},
 		Spec:       appv1alpha1.KeyValueSpec{Plan: "starter", Version: "8"},
 	}
-	r := &KeyValueReconciler{Backup: store}
+	r := &KeyValueReconciler{Backup: store, BackupHelperImage: testBackupHelperImage}
 	pod := r.keyValueBackupCronJobSpec(kv, starterValkeyTier(), "red-enc-kv-auth").JobTemplate.Spec.Template.Spec
 
 	// The encrypt step slots between compress and upload (snapshot, compress, encrypt).
@@ -260,25 +266,33 @@ func TestKeyValueBackupEncryptStepWhenKeyConfigured(t *testing.T) {
 			pod.InitContainers[0].Name, pod.InitContainers[1].Name, pod.InitContainers[2].Name)
 	}
 	encrypt := pod.InitContainers[2]
-	if strings.Contains(encrypt.Args[0], "apk add") {
-		t.Fatal("encrypt must not install age from a mutable package index")
+	// w7/m85 (ADR067 #8 → ADR068 #9): the stage that reads the PLAINTEXT RDB
+	// resolves NOTHING at run time — no package index, and no release tarball
+	// downloaded next to the unencrypted backup either. It execs a first-party
+	// entrypoint out of the operator's own image with plain file arguments, so
+	// there is no shell to inject into and nothing to fetch.
+	if len(encrypt.Command) != 1 || encrypt.Command[0] != "/backup-encrypt" {
+		t.Fatalf("encrypt must exec the first-party helper, got command %#v", encrypt.Command)
 	}
-	if !strings.Contains(encrypt.Args[0], "FiloSottile/age/releases") ||
-		!strings.Contains(encrypt.Args[0], "sha256sum -c") ||
-		!strings.Contains(encrypt.Args[0], `./age/age -r "${AGE_PUBLIC_KEY}"`) ||
-		!strings.Contains(encrypt.Args[0], "/backup/dump.rdb.gz.age /backup/dump.rdb.gz") ||
-		!strings.Contains(encrypt.Args[0], "rm -f /backup/dump.rdb.gz") {
-		t.Fatalf("encrypt command is not a pinned-release age encrypt+cleanup: %q", encrypt.Args[0])
+	joined := strings.Join(append(append([]string{}, encrypt.Command...), encrypt.Args...), " ")
+	for _, forbidden := range []string{"apk", "wget", "curl", "http://", "https://", "sh -c", "/bin/sh"} {
+		if strings.Contains(joined, forbidden) {
+			t.Fatalf("encrypt stage resolves %q at run time: %q", forbidden, joined)
+		}
+	}
+	if len(encrypt.Args) != 2 ||
+		encrypt.Args[0] != "/backup/dump.rdb.gz" || encrypt.Args[1] != "/backup/dump.rdb.gz.age" {
+		t.Fatalf("encrypt args = %#v, want plaintext in + ciphertext out", encrypt.Args)
 	}
 	env := map[string]string{}
 	for _, e := range encrypt.Env {
 		env[e.Name] = e.Value
 	}
-	if env["AGE_PUBLIC_KEY"] != pubKey || env["AGE_VERSION"] != ageReleaseVersion || env["AGE_SHA256"] != ageReleaseSHA256 {
-		t.Fatalf("encrypt env = %#v, want recipient + pinned release coordinates", encrypt.Env)
+	if len(env) != 1 || env["AGE_PUBLIC_KEY"] != pubKey {
+		t.Fatalf("encrypt env = %#v, want exactly the recipient", encrypt.Env)
 	}
-	if !strings.Contains(encrypt.Image, "@sha256:") {
-		t.Fatalf("encrypt image %q is not digest-pinned", encrypt.Image)
+	if encrypt.Image != testBackupHelperImage {
+		t.Fatalf("encrypt image %q is not the operator's own resolved image", encrypt.Image)
 	}
 	// The encrypt step keeps the platform hardening baseline.
 	sec := encrypt.SecurityContext
@@ -571,5 +585,52 @@ func TestKeyValueBackupNetworkPolicyRestoresJobEgress(t *testing.T) {
 
 	if len(np.OwnerReferences) != 1 || np.OwnerReferences[0].Name != kv.Name {
 		t.Fatalf("policy must be owned by its KeyValue for GC, got %#v", np.OwnerReferences)
+	}
+}
+
+// TestKeyValueBackupEncryptionFailsClosedWithoutHelperImage (w7/m85): the
+// encrypt stage runs the operator's OWN image, resolved off the manager Pod at
+// startup. If that resolution fails — no POD_NAME, no RBAC, no override — the
+// reconcile must error rather than converge a CronJob, because the only two
+// alternatives are a CronJob the API server rejects for an empty image and, if
+// the stage were quietly dropped instead, a nightly PLAINTEXT upload to a
+// bucket the operator was explicitly told to encrypt into.
+//
+// Unencrypted backups do not depend on the helper image and must be unaffected.
+func TestKeyValueBackupEncryptionFailsClosedWithoutHelperImage(t *testing.T) {
+	scheme := keyValueBackupTestScheme(t)
+	ctx := context.Background()
+	kv := &appv1alpha1.KeyValue{
+		ObjectMeta: metav1.ObjectMeta{Name: "red-failclosed-kv", Namespace: "default", UID: "failclosed-uid"},
+		Spec:       appv1alpha1.KeyValueSpec{Name: "failclosed", Plan: "starter"},
+	}
+	encrypted := testKeyValueBackupStore
+	encrypted.AgePublicKey = "age1sentinelrecipient"
+
+	cronKey := types.NamespacedName{Name: keyValueBackupName(kv.Name), Namespace: kv.Namespace}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv.DeepCopy()).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme, Backup: encrypted}
+	err := r.reconcileKeyValueBackup(ctx, kv, starterValkeyTier(), "red-failclosed-kv-auth")
+	if err == nil {
+		t.Fatal("encryption configured with no helper image must fail the reconcile, not converge a CronJob")
+	}
+	if !strings.Contains(err.Error(), "BEX_BACKUP_HELPER_IMAGE") || !strings.Contains(err.Error(), "POD_NAME") {
+		t.Fatalf("fail-closed error must name both remedies, got %v", err)
+	}
+	if getErr := cl.Get(ctx, cronKey, &batchv1.CronJob{}); !apierrors.IsNotFound(getErr) {
+		t.Fatalf("no CronJob may exist after the fail-closed reconcile, got %v", getErr)
+	}
+
+	// Same operator, same missing helper image, encryption OFF: unchanged.
+	plain := &KeyValueReconciler{Client: cl, Scheme: scheme, Backup: testKeyValueBackupStore}
+	if err := plain.reconcileKeyValueBackup(ctx, kv, starterValkeyTier(), "red-failclosed-kv-auth"); err != nil {
+		t.Fatalf("unencrypted backups must not depend on the helper image: %v", err)
+	}
+	cron := &batchv1.CronJob{}
+	if err := cl.Get(ctx, cronKey, cron); err != nil {
+		t.Fatalf("unencrypted backup CronJob was not created: %v", err)
+	}
+	if len(cron.Spec.JobTemplate.Spec.Template.Spec.InitContainers) != 2 {
+		t.Fatal("unencrypted pipeline must stay snapshot+compress")
 	}
 }

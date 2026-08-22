@@ -6,7 +6,7 @@
 
 ## Summary
 
-Seven of nine findings are fixed in place with regression tests; the remaining two are re-confirmed standing residuals (PSL submission, eighth report; digest-pinning inventory, sixth report). No finding was rejected outright.
+Seven of nine findings are fixed in place with regression tests; the remaining two are re-confirmed standing residuals (PSL submission, eighth report; digest-pinning inventory, sixth report). No finding was rejected outright. **Update 2026-08-21:** finding 9's deferral is closed by `w7/m85` — see below.
 
 | # | Finding | Severity | Disposition |
 | --- | --- | --- | --- |
@@ -18,7 +18,7 @@ Seven of nine findings are fixed in place with regression tests; the remaining t
 | 6 | Two slow static publishes occupy every App reconciler worker | medium | **Fixed** — publish becomes Ensure/Observe + `RequeueAfter` (the ADR060 §D1 shape), no in-reconcile wait |
 | 7 | Workspace viewers can retrieve credential-bearing webhook destination URLs | medium | **Fixed** — URL userinfo refused at create/update; non-admin reads get the origin only (`https://host/…`) |
 | 8 | Pod-bound model proxy lacks a request/spend budget | low | **Fixed** — cumulative per-session (1000) + per-workspace (5000) exchange budgets, atomic, pre-mint |
-| 9 | KeyValue backups execute mutable tooling over plaintext backup material | low | **Deferred** — digest-pinning inventory (sixth report), extends to `busybox:1.37`/`valkey:<tag>` snapshot+compress stages |
+| 9 | KeyValue backups execute mutable tooling over plaintext backup material | low | **Resolved 2026-08-21 (`w7/m85`)** — was the sixth report of the digest-pinning inventory deferral; lineage closed |
 
 ## Finding 1 (high) — agent-session sandboxes under the generic exec verb
 
@@ -79,6 +79,8 @@ The ADR062/ADR064 proxy bounds each exchange (concurrency 32/2, request 4 MiB, r
 
 - **Finding 2 — onbex.co PSL (eighth report)**: unchanged from ADR067 #6 / ADR064 #6 / ADR063 #3 / ADR061 #4 / ADR072 #1 / ADR055 #9. `hostingdomain.ValidateSharedSuffix` correctly detects the unlisted suffix and the manager deliberately continues with a loud warning (hardening it back to fatal was tried and reverted on 2026-08-16, `815e003b` — it made the accepted risk unrepresentable and silently disabled platform hosting). The fix is the operator action: submit `onbex.co` to publicsuffix/list (`.pm/w1/050.md`).
 - **Finding 9 — digest-pinning inventory (sixth report)**: the KeyValue backup Job's snapshot (`valkey:<version>`), compress (`busybox:1.37`), and encrypt (`alpine:3.21` + runtime `apk add age`) stages remain tag-addressed over plaintext backup material; the upload image is pinned. Same deferral as ADR067 #8 / ADR066 #7 / ADR064 / ADR063 #12 / ADR061 #1 (ADR055 F7 family): a first-party reviewed backup helper image containing `valkey-cli` + `gzip` + `age`, digest-pinned, removes the runtime package install — tracked with the wider inventory (Dockerfile FROMs, kpack, barman, CNPG).
+
+  **Resolved 2026-08-21 (`w7/m85`)** — full write-up in [ADR067](ADR067-security-review-round12.md) finding 8. Two corrections to this finding as filed: the snapshot and compress stages were **already digest-pinned** by round-14 #5 before this round wrote them up, and the encrypt stage's `apk add` had **already** become a checksum-verified release download in round-16 #11. What was genuinely open was that download, and it is now gone: the encrypt stage runs `/backup-encrypt`, a first-party entrypoint of the bex image (`filippo.io/age` compiled in), so no stage touching plaintext backup material resolves anything at run time. The separate `valkey-cli` + `gzip` + `age` helper image named here was **deliberately not built** — the bex image is already the reviewed, signed, digest-pinned first-party artifact, and the operator resolves its own image off its Pod to run it. The wider inventory closed with it, behind `scripts/image-pin-validate.sh`, a fail-closed CI guard with a red/green self-test. Snapshot-stage `REDISCLI_AUTH` exposure remains as filed — out of scope there, still bounded by the same upstream-compromise prerequisite.
 
 ## Not changed (explicitly)
 

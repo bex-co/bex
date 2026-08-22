@@ -17,11 +17,13 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"flag"
 	"os"
 	"strconv"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -44,6 +46,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	bexruntime "github.com/bex-co/bex/lego/operator/internal/runtime"
+	"github.com/bex-co/bex/lego/operator/internal/selfimage"
 	bexwebhook "github.com/bex-co/bex/lego/operator/internal/webhook"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	// +kubebuilder:scaffold:imports
@@ -423,6 +426,31 @@ func setupAppReconciler(
 
 // setupDatastoreReconcilers constructs and registers the Database and KeyValue
 // reconcilers.
+// backupHelperImage resolves the image the Key Value backup CronJob's encrypt
+// stage runs — the operator's own, so that stage executes a first-party
+// entrypoint (/backup-encrypt) from an artifact bex builds, signs and pins
+// rather than fetching age at run time (w7/m85).
+//
+// BEX_BACKUP_HELPER_IMAGE overrides it for deployments that run the manager
+// outside a Pod. Empty is not fatal here: backups without encryption are
+// unaffected, and the encryption path fails closed in the reconciler with a
+// message naming both remedies.
+func backupHelperImage(c client.Client) string {
+	if explicit := envOr("BEX_BACKUP_HELPER_IMAGE", ""); explicit != "" {
+		return explicit
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	image, err := selfimage.Resolve(ctx, c,
+		envOr("POD_NAMESPACE", ""), envOr("POD_NAME", ""), selfimage.ManagerContainer)
+	if err != nil {
+		setupLog.Info("backup helper image unresolved; KeyValue backup ENCRYPTION will fail closed "+
+			"(unencrypted backups are unaffected)", "reason", err.Error())
+		return ""
+	}
+	return image
+}
+
 func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, appsNamespace string) {
 	databaseReconciler := &controller.DatabaseReconciler{
 		Client: mgr.GetClient(),
@@ -472,6 +500,7 @@ func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, a
 		Scheme:                mgr.GetScheme(),
 		SecretClient:          uncachedClient, // see DatabaseReconciler above
 		BackupSourceNamespace: appsNamespace,
+		BackupHelperImage:     backupHelperImage(uncachedClient),
 		KvDomain:              envOr("BEX_KV_DOMAIN", ""),
 		ClusterIssuer:         envOr("BEX_CLUSTER_ISSUER", ""),
 		Backup: controller.BackupStore{
