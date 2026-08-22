@@ -112,6 +112,24 @@ For every surviving bug, find the root cause in this repo and cite `file:line`. 
 - Read the governing ADR before proposing anything — catalog in [docs/CLAUDE.md](../../../docs/CLAUDE.md); most relevant here are ADR004 (deploys), ADR005 (custom domains), ADR009 (Postgres), ADR021 (Key Value), ADR029 (static sites), ADR049 (`render.yaml` parity), ADR018 (parity ledger).
 - Compare against render.com's behavior for the same surface; record deliberate divergence as divergence, not as a bug.
 
+### Before you call a root cause found
+
+Evidence is the easy half; a finding that pins a line but underspecifies the fix — or explains it with a mechanism you never opened — still fails review. Run this list against every root cause before it goes on the board:
+
+- **Name the target behavior — "make them consistent" is not a spec.** When the defect is that several surfaces disagree, say which one is correct and why. Otherwise the fix can satisfy the wording by normalizing everything onto the broken variant.
+- **Check the consumer, not just the producer.** Trace who reads the value you propose to change and confirm your new shape actually clears their predicate. A response that changes form but still trips the caller's condition leaves the bug exactly where it was.
+- **Confirm the layer can express the fix.** A type declaration, non-null wrapper, schema constraint, or serializer can turn the value you intend into an error or a default. Read the declaration; do not assume the field can hold what you want to put in it.
+- **Read the framework, not just your code.** When the behavior runs through a library, generated layer, or serializer, open that dependency's actual code path at the version the lockfile pins. A mechanism inferred from the symptom aims the fix and its tests at the wrong thing even when the proposed change happens to work — and once you know the real mechanism, re-check severity: a defect at that level usually reaches further than the symptom that led you to it.
+- **Re-read your own capture against your explanation.** Write down what the artifact shows that your theory does not predict — fields nobody asked for, an absent key, an impossible ordering, a response richer than the request. Those anomalies usually _are_ the mechanism, and spotting them is the cheapest review you will ever get.
+- **A probe that contradicts the code is a fork, not a footnote.** Either the deployed build is not HEAD — in which case part of the fix may be "redeploy" — or the capture is mis-recorded. Say which, and re-probe before anyone builds on it. Corollary: two callers of identical code cannot behave differently, so an unexplained divergence between them means the observation is wrong, not the code.
+- **Verify the control case as hard as the failing one.** "These are broken, those are fine" is a causal claim. Open the fine ones and confirm they are fine _for the reason you are claiming_ — a route-level or caller-level workaround is indistinguishable from a correct backend when you are looking through a browser, so the strongest counter-example to your theory can arrive dressed as its best support.
+- **No "the only" / "all" / "every" without an exhaustive grep.** Universal claims are load-bearing in a filing and cheap to check: run the search, paste the count, and enumerate the whole resource-type family (web · static · cron · worker · private · Postgres · key-value) so a per-type route family cannot hide a sibling.
+- **Count the blast radius of shared code.** If the cause sits in a shared helper, grep every caller and give the number — never estimate. Then say whether the fix is global or allowlisted. Callers that behave correctly today may be correct _because_ of current behavior, so they need regression tests too, not just the broken ones.
+- **Place the adjacent classes.** A fix to any taxonomy (not-found vs failure vs forbidden vs unauthenticated vs timeout) must state where each neighbour lands. Ask what the distinction discloses: answering "no such resource" to a caller who merely lacks access turns the fix into an existence oracle.
+- **Trace look-alike symptoms separately.** A second surface with a similar symptom is a separate claim until you have its own `file:line`. Untraced, it is its own finding marked _cause unverified_ — folding it into this one's root cause is speculation wearing a citation.
+- **Enumerate aliases.** The same handler is usually reachable under more than one name, route, or legacy shim. List them, or the fix lands on one entrypoint while the others keep the bug.
+- **Specify the pre-settle state.** If the fix fires when a query settles, say what renders before it does. Cache-first and polling clients paint stale state first, so a correct redirect can still flash the broken UI.
+
 Write one record per bug:
 
 ```
@@ -121,16 +139,21 @@ Write one record per bug:
 - Expected / Actual:
 - Evidence: .playwright-mcp/qa-<surface>-<n>.png · <console/network excerpt>
 - Root cause: <path/file.tsx:120> — <why>
-- Fix: <what changes; which of REST/GraphQL/MCP/UI must move together>
+- Fix: <the target behavior, named; which of REST/GraphQL/MCP/UI must move together>
+- Blast radius: <callers of the shared code being changed; aliases and sibling entrypoints>
+- Adjacent classes: <where forbidden / unauthenticated / timeout land under this fix>
+- Unverified: <surfaces or causes reasoned about but never probed this run>
 - Render: <what render.com does, or n/a>
 - Estimate: <tens of minutes>
 ```
+
+**Evidence has to survive the handoff.** `ls` every path before you cite it, and match each artifact to the claim it supports — an artifact from a different finding in the same hunt is not support. Screenshots under `.playwright-mcp/` are gitignored: they are yours for this session, not something a board item can rest on. For anything about an API or a contract the durable artifact is the probe itself — the exact request you sent and the complete response you got back, pasted into the record where the next person can re-run it.
 
 ## Phase 5 — Dedupe before filing anything
 
 Do this for every finding, and record the outcome in its record:
 
-1. `grep -ril "<distinctive term>" .pm --include="*.md"` — search **open and `done/`** items. An already-fixed bug that is live again is a **regression**: file it as one, citing the old `wN/mN`. An open item that covers it: do not file a duplicate — extend it with `/pm add-task <wN/mN> <title>`.
+1. `grep -ril "<distinctive term>" .pm --include="*.md"` — search **open and `done/`** items. An already-fixed bug that is live again is a **regression**: file it as one, citing the old `wN/mN`, and walk that milestone's entire definition of done item by item — a survey that covers part of the original guarantee yields a fix that restores part of it. An open item that covers it: do not file a duplicate — extend it with `/pm add-task <wN/mN> <title>`.
 2. Re-read `.pm/DO_NOT_DO.md`. A finding that matches an anti-goal is not filed; say so in the report with the item it matches.
 3. Scan open milestones everywhere, not just the target workstream: `find .pm -path '*/done' -prune -o -name README.md -print`.
 4. Check whether the fix already landed but is not deployed: `git log --oneline -40 -- dashboard lego` plus a targeted `git log -S"<symbol>"`. If it is on `main`, it is a deploy-lag note in the report, not a bug to file.
@@ -142,6 +165,9 @@ Do this for every finding, and record the outcome in its record:
 
 - **> ~1h across more than one task** → `/pm new milestone w6 <title>`. Supply: the title, one task per bug with estimate and `depends_on`, a Definition of done written as observable live-verifiable states (one bullet per bug, in the shape `w9/m92`'s DoD uses), and Source + Goal linkage naming this hunt's date, evidence paths, the ADR the surface belongs to, expected outcome, why now, and whether the Render-parity closing task applies (it does whenever a REST/GraphQL/MCP/UI surface changes).
 - **≤ ~1h** → `/pm add w6 <note>` as an inbox note. Do not inflate small findings into a milestone.
+- **Write the DoD out of probes you actually ran.** Every bullet should be a command or a click the next person can repeat and watch succeed or fail. A surface you reasoned about but never exercised is not a DoD assertion — it belongs in a task as work to verify. Carry each record's _Unverified_ line across so nothing you inferred arrives on the board dressed as something you saw.
+- **State the target behavior in the DoD, not the symptom's absence.** "All surfaces agree" and "the page no longer breaks" are both satisfiable by the wrong fix; name the shape the surfaces must agree _on_.
+- **Give the blast radius its own task** whenever the cause lives in shared code: enumerate the callers, decide global-vs-allowlisted, and require regression tests on the callers that already behave correctly.
 - Let `/pm` own numbering and the standing closing tasks (Render parity → Simplify → Test coverage → Closeout). Never hand-roll them.
 - Confirm afterwards that `.pm/w6/README.md`, the milestone `README.md`, and each task's frontmatter agree, and that `npx prettier@3.4.2 --write "**/*.md"` has run.
 
