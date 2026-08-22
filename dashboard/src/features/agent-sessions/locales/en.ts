@@ -379,6 +379,10 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Duration {duration}",
     description: "Detail header — elapsed session wall-clock",
   },
+  "agentSessions.metaTurn": {
+    message: "{turns} turn",
+    description: "Detail header — number of prompt turns taken (singular)",
+  },
   "agentSessions.metaTurns": {
     message: "{turns} turns",
     description: "Detail header — number of prompt turns taken",
@@ -448,7 +452,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.steerHintIdle": {
     message:
-      "This session is idle — sending redispatches a new turn on the same branch.",
+      "This session is idle — sending a message redispatches a new turn on the same branch.",
     description: "Steering composer — helper text for the redispatch route",
   },
   "agentSessions.steerHintLive": {
@@ -571,6 +575,11 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "The conversation stream is unavailable right now.",
     description:
       "Degraded-state message when the m43 stream endpoint errors or is unconfigured",
+  },
+  "agentSessions.conversationUnavailableTerminal": {
+    message: "The conversation transcript is not available for this session.",
+    description:
+      "Terminal session — transcript unavailable rather than live stream degraded",
   },
   "agentSessions.showEarlierMessages": {
     message: "Show {count} earlier messages",

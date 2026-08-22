@@ -62,13 +62,24 @@ describe("SessionDetailHeader", () => {
     render(
       <SessionDetailHeader
         session={view()}
-        backSearch={{ archived: "true", phase: "failed" }}
+        backSearch={{ archived: "archived", phase: "failed" }}
       />,
     );
     expect(screen.getByLabelText("All sessions")).toHaveAttribute(
       "data-search",
-      JSON.stringify({ archived: "true", phase: "failed" }),
+      JSON.stringify({ archived: "archived", phase: "failed" }),
     );
+  });
+
+  it("shows singular turn copy for a single-turn session", () => {
+    render(<SessionDetailHeader session={view({ turns: 1 })} />);
+    expect(screen.getByText("1 turn")).toBeInTheDocument();
+    expect(screen.queryByText("1 turns")).not.toBeInTheDocument();
+  });
+
+  it("shows plural turns for multi-turn sessions", () => {
+    render(<SessionDetailHeader session={view({ turns: 3 })} />);
+    expect(screen.getByText("3 turns")).toBeInTheDocument();
   });
 
   // With the inline PR card gone, this badge is the session's only PR

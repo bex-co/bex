@@ -377,6 +377,10 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "时长 {duration}",
     description: "Detail header — elapsed session wall-clock",
   },
+  "agentSessions.metaTurn": {
+    message: "{turns} 轮",
+    description: "Detail header — number of prompt turns taken (singular)",
+  },
   "agentSessions.metaTurns": {
     message: "{turns} 轮",
     description: "Detail header — number of prompt turns taken",
@@ -443,7 +447,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description: "Steering composer — textarea placeholder for a live session",
   },
   "agentSessions.steerHintIdle": {
-    message: "该会话处于空闲状态——发送将在同一分支上重新调度新一轮。",
+    message: "该会话处于空闲状态——发送消息将在同一分支上重新调度新一轮。",
     description: "Steering composer — helper text for the redispatch route",
   },
   "agentSessions.steerHintLive": {
@@ -560,6 +564,11 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "对话流当前不可用。",
     description:
       "Degraded-state message when the m43 stream endpoint errors or is unconfigured",
+  },
+  "agentSessions.conversationUnavailableTerminal": {
+    message: "该会话的对话记录不可用。",
+    description:
+      "Terminal session — transcript unavailable rather than live stream degraded",
   },
   "agentSessions.showEarlierMessages": {
     message: "显示更早的 {count} 条消息",

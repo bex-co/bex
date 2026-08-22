@@ -20,8 +20,12 @@ describe("agent-session filter search contracts", () => {
 
   it("keeps shareable membership and phase filters on the list", () => {
     expect(
+      validateList({ archived: "archived", phase: "failed", view: "list" }),
+    ).toEqual({ archived: "archived", phase: "failed", view: "list" });
+    // legacy `true` still maps to archived for old bookmarks
+    expect(
       validateList({ archived: "true", phase: "failed", view: "list" }),
-    ).toEqual({ archived: "true", phase: "failed", view: "list" });
+    ).toEqual({ archived: "archived", phase: "failed", view: "list" });
     expect(validateList({ archived: "no", phase: "unknown" })).toEqual({});
   });
 
@@ -35,8 +39,12 @@ describe("agent-session filter search contracts", () => {
 
   it("keeps only valid list context on a detail URL", () => {
     expect(
-      validateDetail({ fromArchived: "all", fromPhase: "completed" }),
-    ).toEqual({ fromArchived: "all", fromPhase: "completed" });
+      validateDetail({ fromArchived: "archived", fromPhase: "completed" }),
+    ).toEqual({ fromArchived: "archived", fromPhase: "completed" });
+    // legacy `true` maps to archived
+    expect(
+      validateDetail({ fromArchived: "true", fromPhase: "completed" }),
+    ).toEqual({ fromArchived: "archived", fromPhase: "completed" });
     expect(
       validateDetail({ fromArchived: "false", fromPhase: "unknown" }),
     ).toEqual({});

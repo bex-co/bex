@@ -25,8 +25,8 @@ export const AGENT_SESSION_PHASES = [
 
 export type AgentSessionPhase = (typeof AGENT_SESSION_PHASES)[number];
 
-/** Archive-membership values accepted by the sessions list URL. */
-export type AgentSessionArchivedFilter = "true" | "all";
+/** Archive-membership values accepted by the sessions list URL (UI key). */
+export type AgentSessionArchivedFilter = "archived" | "all";
 
 /** Shareable list context carried into a detail page's Back affordance. */
 export interface AgentSessionListSearch {

@@ -50,8 +50,13 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
     search: Record<string, unknown>,
   ): AgentSessionDetailSearch => {
     const out: AgentSessionDetailSearch = {};
-    if (search.fromArchived === "true" || search.fromArchived === "all") {
-      out.fromArchived = search.fromArchived;
+    if (
+      search.fromArchived === "archived" ||
+      search.fromArchived === "all"
+    ) {
+      out.fromArchived = search.fromArchived as AgentSessionArchivedFilter;
+    } else if (search.fromArchived === "true") {
+      out.fromArchived = "archived";
     }
     if (
       typeof search.fromPhase === "string" &&

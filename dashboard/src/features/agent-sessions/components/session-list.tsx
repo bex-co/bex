@@ -29,7 +29,7 @@ import type {
 import { AgentSessionsEmptyState } from "@/features/agent-sessions/components/empty-state";
 import {
   agentSessionStatusPhraseKey,
-  sessionTitle,
+  sessionTitleShort,
 } from "@/features/agent-sessions/lib/mapper";
 
 type ChipVariant = "success" | "destructive" | "secondary" | "outline";
@@ -75,7 +75,7 @@ function PrBadge({
   hideEmpty?: boolean;
 }) {
   const { t } = useTranslations();
-  if (session.prNumber == null) {
+  if (session.prNumber == null || session.prNumber === 0) {
     if (hideEmpty) return null;
     return <span className="text-muted-foreground">—</span>;
   }
@@ -184,7 +184,7 @@ export function SessionList({
 }: SessionListProps) {
   const { t } = useTranslations();
   const { toggle, busyId } = useArchiveToggle(onChanged);
-  const dense = archiveFilter === "true" || archiveFilter === "all";
+  const dense = archiveFilter === "archived" || archiveFilter === "all";
 
   if (loading && sessions.length === 0) {
     return dense ? (
@@ -209,7 +209,7 @@ export function SessionList({
     return (
       <AgentSessionsEmptyState
         mode={
-          phase ? "filtered" : archiveFilter === "true" ? "archived" : "default"
+          phase ? "filtered" : archiveFilter === "archived" ? "archived" : "default"
         }
         onClearFilters={onClearFilters}
       />
@@ -229,10 +229,10 @@ export function SessionList({
                 fromPhase: phase,
               }}
               className="hover:bg-muted/40 min-w-0 flex-1 rounded-md px-2 py-3"
-              title={s.agentConfig.task}
+              title={sessionTitleShort(s)}
             >
               <span className="block truncate font-medium">
-                {sessionTitle(s)}
+                {sessionTitleShort(s)}
               </span>
               <span className="text-muted-foreground mt-1 block truncate text-xs">
                 {t(agentSessionStatusPhraseKey(s))}
@@ -290,9 +290,9 @@ export function SessionList({
                       "block truncate hover:underline",
                       "group-hover:text-foreground",
                     )}
-                    title={s.agentConfig.task}
+                    title={sessionTitleShort(s)}
                   >
-                    {sessionTitle(s)}
+                    {sessionTitleShort(s)}
                   </Link>
                   <span className="text-muted-foreground mt-1 block truncate text-xs font-normal">
                     {s.repo} · <span className="font-mono">{s.branch}</span> ·{" "}
