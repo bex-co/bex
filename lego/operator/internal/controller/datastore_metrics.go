@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
@@ -57,6 +58,16 @@ var (
 		"Seconds since the managed datastore CR was created. Paired with bex_datastore_ready to alert on one that never provisions.",
 		[]string{"kind", "namespace", "name"}, nil,
 	)
+	// Readiness is provisioning state, not backup state. A Database can be Ready,
+	// serving, and archiving nothing at all — which is what w7/040 was: three
+	// production databases whose WAL had never reached the object store, every
+	// dashboard green, found only by looking. The archive is the restore point,
+	// so its absence deserves its own series rather than being inferred.
+	datastoreArchivingDesc = prometheus.NewDesc(
+		"bex_datastore_wal_archiving",
+		"1 when a backup-enabled Database's CNPG cluster reports ContinuousArchiving=True, 0 otherwise. Absent when the cluster does not exist yet.",
+		[]string{"namespace", "name"}, nil,
+	)
 	datastoreObserveErrorsDesc = prometheus.NewDesc(
 		"bex_datastore_observe_errors_total",
 		"Scrapes whose datastore listing failed. Non-zero means bex_datastore_ready is incomplete and must not be read as healthy.",
@@ -87,7 +98,36 @@ func NewDatastoreCollector(list datastoreLister) prometheus.Collector {
 func (c *datastoreCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- datastoreReadyDesc
 	ch <- datastoreAgeDesc
+	ch <- datastoreArchivingDesc
 	ch <- datastoreObserveErrorsDesc
+}
+
+// clusterArchiving indexes ContinuousArchiving by namespace/name across every
+// CNPG Cluster. A listing failure returns nil so the caller can count it: an
+// archiving series that silently vanishes reads exactly like one that is fine.
+func (c *datastoreCollector) clusterArchiving(ctx context.Context) (map[string]bool, bool) {
+	clusters := &unstructured.UnstructuredList{}
+	clusters.SetGroupVersionKind(cnpgClusterGVK)
+	if err := c.list.List(ctx, clusters); err != nil {
+		return nil, false
+	}
+	archiving := make(map[string]bool, len(clusters.Items))
+	for i := range clusters.Items {
+		cluster := &clusters.Items[i]
+		conditions, found, err := unstructured.NestedSlice(cluster.Object, "status", "conditions")
+		if err != nil || !found {
+			continue
+		}
+		for _, raw := range conditions {
+			condition, ok := raw.(map[string]any)
+			if !ok || condition["type"] != "ContinuousArchiving" {
+				continue
+			}
+			archiving[cluster.GetNamespace()+"/"+cluster.GetName()] = condition["status"] == "True"
+			break
+		}
+	}
+	return archiving, true
 }
 
 func (c *datastoreCollector) Collect(ch chan<- prometheus.Metric) {
@@ -95,6 +135,10 @@ func (c *datastoreCollector) Collect(ch chan<- prometheus.Metric) {
 	defer cancel()
 
 	failed := false
+	archiving, listed := c.clusterArchiving(ctx)
+	if !listed {
+		failed = true
+	}
 	var databases appv1alpha1.DatabaseList
 	if err := c.list.List(ctx, &databases); err != nil {
 		failed = true
@@ -104,6 +148,17 @@ func (c *datastoreCollector) Collect(ch chan<- prometheus.Metric) {
 			c.emit(ch, datastoreKindDatabase, db.Namespace, db.Name,
 				string(db.Status.Phase), db.Status.Phase == appv1alpha1.DBPhaseReady,
 				db.CreationTimestamp.Time)
+			if !db.Status.BackupsEnabled {
+				continue
+			}
+			if ok, found := archiving[db.Namespace+"/"+db.Name]; found {
+				value := float64(0)
+				if ok {
+					value = 1
+				}
+				ch <- prometheus.MustNewConstMetric(datastoreArchivingDesc, prometheus.GaugeValue,
+					value, db.Namespace, db.Name)
+			}
 		}
 	}
 

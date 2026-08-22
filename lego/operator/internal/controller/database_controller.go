@@ -181,6 +181,9 @@ type clusterParams struct {
 	version   string
 	dbname    string
 	owner     string
+	// namespace is the Database's own namespace. It scopes the archive identity
+	// a recovery reads from — see databaseArchiveBase.
+	namespace string
 	// store is the object-store contract when the controller has one (nil => not
 	// configured). It gates both this cluster's own plugin and a recovery read.
 	// A cluster loads the WAL-archiver plugin when the plan opts in (plan.Backup)
@@ -218,16 +221,67 @@ func versionedBackupServerName(name, version string) string {
 	return fmt.Sprintf("%s-pg%s", name, version)
 }
 
+// dbArchiveMajors are the PostgreSQL majors a per-major archive generation can
+// carry. Deleting a Database must clear every generation it ever wrote, not only
+// the one it happens to be archiving into now.
+var dbArchiveMajors = []string{"13", "14", "15", "16", "17", "18"}
+
+// databaseArchiveBase is a Database's UNVERSIONED barman archive identity: the
+// prefix under the shared destination that its WAL and base backups live in,
+// before any per-major "-pgNN" suffix.
+//
+// In the legacy shared apps namespace the identity stays the bare CR name, byte
+// for byte — that is where every pre-ADR043 database already archives, and
+// moving it would strand its history. Everywhere else it is namespace-scoped,
+// because a Database name is unique only within its workspace: two namespaces
+// holding the same name would otherwise share one prefix. That is not a
+// cosmetic collision. barman refuses to archive into an occupied prefix
+// ("Expected empty archive"), so the second database silently never backs up,
+// and the delete-time purge — which walks prefixes, not objects — would erase
+// the surviving database's archive along with the deleted one's (w7/040).
+// Extends ADR074's workspace-scoped artifact identity to the Postgres archive.
+func databaseArchiveBase(namespace, name string) string {
+	if namespace == "" || namespace == defaultAppsNamespace {
+		return name
+	}
+	return namespace + "-" + name
+}
+
 func databaseBackupServerNames(db *appv1alpha1.Database) (current, target string) {
+	base := databaseArchiveBase(db.Namespace, db.Name)
 	current = db.Status.BackupServerName
 	if current == "" {
-		current = db.Name
+		current = base
 	}
 	target = current
 	if db.Spec.Version != "" && db.Status.CurrentVersion != "" && db.Spec.Version != db.Status.CurrentVersion {
-		target = versionedBackupServerName(db.Name, db.Spec.Version)
+		target = versionedBackupServerName(base, db.Spec.Version)
 	}
 	return current, target
+}
+
+// databaseArchivePrefixes lists every archive prefix a Database may own, so the
+// delete-time purge clears its own history and nothing else's: the generation it
+// is archiving into right now (the status pin, which is authoritative even when
+// it predates the current derivation) plus every per-major generation of its
+// archive base. Order is stable and the result is deduplicated.
+func databaseArchivePrefixes(db *appv1alpha1.Database) []string {
+	base := databaseArchiveBase(db.Namespace, db.Name)
+	prefixes := make([]string, 0, len(dbArchiveMajors)+2)
+	seen := make(map[string]bool, len(dbArchiveMajors)+2)
+	add := func(p string) {
+		if p == "" || seen[p] {
+			return
+		}
+		seen[p] = true
+		prefixes = append(prefixes, p)
+	}
+	add(base)
+	for _, major := range dbArchiveMajors {
+		add(versionedBackupServerName(base, major))
+	}
+	add(db.Status.BackupServerName)
+	return prefixes
 }
 
 // barmanCloudPlugin builds the CNPG-I reference used for both a Cluster's WAL
@@ -340,9 +394,14 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 		// Postgres (w7/039). SourceDatabase is the source Database's CR name, which
 		// IS its serverName (Database.status.backupServerName), so it is the
 		// correct default.
+		//
+		// The default is the source's archive BASE, not its bare CR name: outside
+		// the legacy apps namespace a Database archives under a namespace-scoped
+		// prefix (w7/040), and the source always lives in this Database's own
+		// namespace.
 		sourceServerName := p.recovery.SourceBackupServerName
 		if sourceServerName == "" {
-			sourceServerName = p.recovery.SourceDatabase
+			sourceServerName = databaseArchiveBase(p.namespace, p.recovery.SourceDatabase)
 		}
 		spec["externalClusters"] = []any{map[string]any{
 			"name":   recoverySource,
@@ -639,7 +698,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	if err := r.reconcileCluster(ctx, &db, cluster, clusterParams{
 		plan: plan, storageGB: storageGB, version: db.Spec.Version,
-		dbname: dbname, owner: owner, store: backups.store,
+		dbname: dbname, owner: owner, store: backups.store, namespace: db.Namespace,
 		backupServerName: backups.targetServerName,
 		recovery:         db.Spec.Recovery, users: db.Spec.Users,
 		deletedUsers:      db.Spec.DeletedUsers,
@@ -1321,7 +1380,8 @@ func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Requ
 }
 
 // dbBackupPurgeJob constructs the durable terminal Job that recursively deletes
-// the database's legacy and per-major barman object-store prefixes.
+// the database's own barman object-store prefixes — its archive base, every
+// per-major generation of it, and the generation it is currently archiving into.
 func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1.Job {
 	deadline := int64((15 * time.Minute) / time.Second)
 	backoff := int32(3)
@@ -1359,13 +1419,17 @@ func (r *DatabaseReconciler) dbBackupPurgeJob(db *appv1alpha1.Database) *batchv1
 						SecurityContext: tenantSecCtx(),
 						Command:         []string{"/bin/sh", "-ec"},
 						Args: []string{
-							`for suffix in '' -pg13 -pg14 -pg15 -pg16 -pg17 -pg18; do
-  aws s3 rm "${DESTINATION}/${DATABASE}${suffix}/" --recursive --endpoint-url "${ENDPOINT}"
+							`for prefix in ${PREFIXES}; do
+  aws s3 rm "${DESTINATION}/${prefix}/" --recursive --endpoint-url "${ENDPOINT}"
 done`,
 						},
 						Env: []corev1.EnvVar{
 							{Name: "DESTINATION", Value: base},
-							{Name: "DATABASE", Value: db.Name},
+							// Every generation this Database owns, and only those:
+							// a bare CR name would also match a same-named database
+							// in another workspace (w7/040). Namespace and object
+							// names are DNS-1123, so the list is shell-word safe.
+							{Name: "PREFIXES", Value: strings.Join(databaseArchivePrefixes(db), " ")},
 							{Name: "ENDPOINT", Value: r.Backup.EndpointURL},
 						},
 						EnvFrom: []corev1.EnvFromSource{{

@@ -40,6 +40,17 @@ A datastore CR cannot be moved in place: its PVC is namespace-bound. The cutover
       | projected backup credential | the `BEX_DB_BACKUP_S3_SECRET` name |
       | quota charged | `count/databases.app.bex.co` incremented |
 
+- [ ] **The cluster has headroom for one extra copy of everything you are moving.** The old and new instances run side by side from Step 5 until Step 9, and the service's own rolling update needs a second Pod on top of that. On `hetzner-prod` this exhausted the serving node group mid-cutover: the replacement Pod sat `Pending` with `0/10 nodes are available` while the autoscaler reported `3 max node group size reached`, because the build/burst pool is tainted and cannot absorb serving work.
+
+      Raise the serving group's ceiling **before** Step 5 rather than discovering it at Step 7, and put it back after Step 9:
+
+      ```
+      kubectl -n bex-capi annotate machinedeployment bex-tenant-0 \
+        cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size=3 --overwrite
+      ```
+
+      Note the ceiling you raised in the Step 10 record — it is billing until it is reverted.
+
 - [ ] You know each affected tenant's maintenance tolerance. This procedure takes a **write outage** for the duration of the final dump + restore. For a tenant that cannot take one, see [Zero-downtime variant](#zero-downtime-variant).
 - [ ] Never print or commit `.env` or `*.kubeconfig` contents.
 
@@ -100,6 +111,29 @@ Create the `Database`/`KeyValue` with the **identical** `metadata.name` in `<ws>
 - the ObjectStore and backup credential are present in `<ws>` (ADR043 D8.4),
 - the namespace `ResourceQuota` accepted it,
 - for Postgres, the CNPG pods are healthy — a stall here is almost certainly a missing D8.3 network allow, not a datastore problem.
+- **for Postgres, the new cluster is actually archiving.** This is the check the whole step turns on, and readiness does not imply it:
+
+      ```
+      kubectl -n <ws> get cluster.postgresql.cnpg.io <id> \
+        -o jsonpath='{.status.conditions[?(@.type=="ContinuousArchiving")].status}{"\n"}'
+      ```
+
+      It must read `True`. `False` here means the new cluster's archive prefix collides with
+      the old one's — the two share a name, and before the `w7/040` fix bex derived the barman
+      `serverName` from the CR name alone. barman fails closed with
+      `WAL archive check failed … Expected empty archive`, so the migrated database serves
+      normally while backing up **nothing** and accumulating WAL until its volume fills.
+      On a build that predates the fix, repoint it explicitly:
+
+      ```
+      kubectl -n <ws> patch database.app.bex.co <id> --subresource=status --type=merge \
+        -p '{"status":{"backupServerName":"<ws>-<id>"}}'
+      # a status-only write does not trigger a reconcile — touch the owned Cluster to drive one
+      kubectl -n <ws> annotate cluster.postgresql.cnpg.io <id> bex.co/nudge="$(date +%s)" --overwrite
+      ```
+
+      Then take a base backup and confirm it reaches `completed` before you go on. A database
+      whose archive you have not seen written is a database with no restore point.
 
 **Rollback:** delete the new CR. The old one is untouched and still holds the data; resume the service.
 
@@ -148,11 +182,18 @@ For tenants repaired by hand on 2026-08-08, remove the hand-built reconcile arti
 
 Only after the tenant has served correctly for an agreed soak period. Delete the old CR and let the finalizer tear down its Cluster/StatefulSet, PVCs, Secrets, Services, and backup prefix (`w7/m12`).
 
+> **Confirm the new database's archive prefix differs from the old one's first.** The purge Job deletes S3 **prefixes**, recursively. Before the `w7/040` fix it derived them from the bare CR name — which both instances share — so this step would have deleted the _live_ database's archive along with the retired one's. Compare them and refuse to proceed if they match:
+>
+> ```
+> kubectl -n default get database.app.bex.co <id> -o jsonpath='{.status.backupServerName}{"\n"}'
+> kubectl -n <ws>    get database.app.bex.co <id> -o jsonpath='{.status.backupServerName}{"\n"}'
+> ```
+
 **Rollback:** none — this is irreversible. The Step 1 restore point is the only remaining recourse, so do not run this step until the soak has passed.
 
 ### Step 10 — Record it
 
-Write a drill record under `docs/drills/` naming what was done per tenant, what deviated from this runbook, and the verified outcome.
+Write a drill record under `docs/drills/` naming what was done per tenant, what deviated from this runbook, and the verified outcome. Include any autoscaler ceiling raised in _Before you start_, and revert it once the retired instances are gone.
 
 ## Zero-downtime variant
 
