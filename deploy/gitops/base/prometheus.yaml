@@ -646,6 +646,18 @@ spec:
                     annotations:
                       summary: "{{ $labels.kind }} {{ $labels.namespace }}/{{ $labels.name }} has not become ready (phase {{ $labels.phase }})"
                       description: "A managed datastore has been in phase {{ $labels.phase }} for over 15 minutes. The tenant sees a resource that never arrives and nothing else reports it. Check the CR's status conditions first; if it names an RBAC forbidden error, compare the operator and barman-plugin grants against .pm/w7/036.md."
+                  # Readiness is provisioning state, not backup state. w7/040:
+                  # three Ready, serving databases had archived no WAL at all
+                  # because their archive prefix collided with a pre-migration
+                  # twin's, and every other signal stayed green.
+                  - alert: DatabaseNotArchivingWAL
+                    expr: bex_datastore_wal_archiving == 0
+                    for: 15m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Database {{ $labels.namespace }}/{{ $labels.name }} has not archived WAL for 15 minutes"
+                      description: "Backups are enabled but the CNPG cluster reports ContinuousArchiving=False, so this database has no advancing restore point and its WAL is accumulating on the volume. Read the reason from the cluster: kubectl -n {{ $labels.namespace }} get cluster.postgresql.cnpg.io {{ $labels.name }} -o jsonpath='{.status.conditions}'. 'Expected empty archive' means the archive prefix collides with another cluster's — see .pm/w7/040.md and docs/runbooks/datastore-namespace-cutover.md Step 5."
                   # Observation must not fail silently: if the listing breaks, the
                   # readiness series simply vanish, and an alert on == 0 would go
                   # quiet exactly when it is blind.

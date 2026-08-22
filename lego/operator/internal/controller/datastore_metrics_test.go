@@ -26,6 +26,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -119,4 +120,58 @@ func renderMetric(t *testing.T, c prometheus.Collector, name string) string {
 		buf.WriteString(err.Error())
 	}
 	return buf.String()
+}
+
+// The regression for w7/040. A Database can be Ready, serving production
+// traffic, and archiving nothing — that is exactly what happened to three live
+// databases whose archive prefix collided with their pre-migration twin's, and
+// no signal anywhere reported it. Readiness cannot stand in for it: the stuck
+// database in the test above is the opposite failure.
+func TestDatastoreMetricsSurfaceADatabaseThatIsNotArchiving(t *testing.T) {
+	cluster := func(namespace, name, archiving string) *unstructured.Unstructured {
+		u := &unstructured.Unstructured{}
+		u.SetGroupVersionKind(cnpgClusterGVK)
+		u.SetNamespace(namespace)
+		u.SetName(name)
+		_ = unstructured.SetNestedSlice(u.Object, []any{
+			map[string]any{"type": "Ready", "status": "True"},
+			map[string]any{"type": "ContinuousArchiving", "status": archiving},
+		}, "status", "conditions")
+		return u
+	}
+	backed := func(name string) *appv1alpha1.Database {
+		return &appv1alpha1.Database{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "tea-ws"},
+			Status: appv1alpha1.DatabaseStatus{
+				Phase: appv1alpha1.DBPhaseReady, BackupsEnabled: true,
+			},
+		}
+	}
+
+	scheme := newTestScheme(t)
+	cl := fake.NewClientBuilder().WithScheme(scheme).
+		WithObjects(backed("dpg-silent"), backed("dpg-archiving"),
+			&appv1alpha1.Database{
+				ObjectMeta: metav1.ObjectMeta{Name: "dpg-nobackups", Namespace: "tea-ws"},
+				Status:     appv1alpha1.DatabaseStatus{Phase: appv1alpha1.DBPhaseReady},
+			}).
+		WithRuntimeObjects(
+			cluster("tea-ws", "dpg-silent", "False"),
+			cluster("tea-ws", "dpg-archiving", "True"),
+			cluster("tea-ws", "dpg-nobackups", "False"),
+		).Build()
+
+	got := renderMetric(t, NewDatastoreCollector(cl), "bex_datastore_wal_archiving")
+	for _, want := range []string{
+		`bex_datastore_wal_archiving{name="dpg-silent",namespace="tea-ws"} 0`,
+		`bex_datastore_wal_archiving{name="dpg-archiving",namespace="tea-ws"} 1`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in:\n%s", want, got)
+		}
+	}
+	// A plan without backups has no archive to miss; alerting on it would be noise.
+	if strings.Contains(got, `name="dpg-nobackups"`) {
+		t.Errorf("emitted an archiving series for a backup-less Database:\n%s", got)
+	}
 }

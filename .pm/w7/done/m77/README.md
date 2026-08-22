@@ -1,6 +1,6 @@
 # w7 · m77 — Finish ADR043: namespace managed Postgres/Key Value under `<ws>` and repair every broken datastore link
 
-**Worker:** worker7 **Goal:** a service created today can actually reach the managed Postgres/Key Value it declares via `fromDatabase`/`fromService` — the link works on create, with no hand-copied Secrets, hand-written network policy, or hand-patched hostnames. **Status:** in progress — all code tasks done (t001–t006, t008–t010, t012, t013). **t007 (live hetzner-prod cutover) is blocked**, and t011 (closeout) must not run until it lands: the DoD includes the production cutover.
+**Worker:** worker7 **Goal:** a service created today can actually reach the managed Postgres/Key Value it declares via `fromDatabase`/`fromService` — the link works on create, with no hand-copied Secrets, hand-written network policy, or hand-patched hostnames. **Status:** done — **t007 (live hetzner-prod cutover) was executed 2026-08-21**: all four datastores are in `<ws>`, all three forums serve real content, every hand-made artifact is gone, and the workspace `ResourceQuota` is actually charged (closing `w3/010`).
 
 > **Blocker re-check 2026-08-17 (during `/loop-worker w7`).** Two of t007's three original blockers are now **resolved**: the code **is** shipped (`docs/runbooks/datastore-namespace-cutover.md` and the code commits are in `main`), and production cluster credentials **are** available (admin kubeconfig via `scripts/fetch-app-kubeconfig.sh` + `.env`). The remaining blocker is the third and it is unchanged: **explicit authorization to migrate live tenant data**, since the procedure takes a write outage per tenant on forums serving real content.
 >
@@ -20,11 +20,11 @@
 | t004 | Operator: per-tenant Barman ObjectStore + backup CronJobs follow the namespace — **DONE** | 45m | w7/m77/t012 |
 | t005 | Connection-string correctness after co-location (internal · external · pooler) — **DONE** | 35m | w7/m77/t003 |
 | t006 | Charge the namespace ResourceQuota for datastores (closes `w3/010`) — **DONE** | 30m | w7/m77/t003 |
-| t007 | Live cutover on hetzner-prod + retire the manual workarounds                  | 60m | w7/m77/t004, w7/m77/t005, w7/m77/t013 |
+| t007 | Live cutover on hetzner-prod + retire the manual workarounds — **DONE** | 60m | w7/m77/t004, w7/m77/t005, w7/m77/t013 |
 | t008 | Render parity sweep: datastore link + connection surfaces — **DONE** | 30m | w7/m77/t006, w7/m77/t007 |
 | t009 | Simplify the code this milestone changed — **DONE** | 30m | w7/m77/t008 |
 | t010 | Test coverage for the shipped behavior — **DONE** | 40m | w7/m77/t008 |
-| t011 | Closeout                                                                      | 15m | w7/m77/t009, w7/m77/t010       |
+| t011 | Closeout — **DONE** | 15m | w7/m77/t009, w7/m77/t010 |
 
 > **t012/t013 added by t001** (2026-08-08). The enumeration found two blockers the milestone brief did not anticipate, both of which would have failed only at runtime inside a tenant namespace: the operator's Secret informer is scoped to one namespace and **cannot** be widened (its ClusterRole omits Secrets, so a cluster-wide informer stops the entire cache — App controller included — from starting), and the tenant allow set grants none of the in-cluster paths CNPG and Valkey need. See [ADR043](../../../docs/ADR043-tenant-namespace-isolation.md) D8.2 and D8.3.
 
