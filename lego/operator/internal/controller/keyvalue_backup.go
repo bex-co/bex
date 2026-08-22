@@ -46,19 +46,6 @@ const (
 	keyValueBackupPurgeComponent  = "keyvalue-backup-purge"
 	keyValueBackupRetention       = 7
 	keyValueBackupDeadlineSeconds = int64(15 * time.Minute / time.Second)
-	// keyValueBackupAgeImage is the Alpine base for the ADR050 Tier A encrypt
-	// step. Digest-pinned (round-14 #5): this container reads the plaintext
-	// backup volume, so a retagged upstream tag must not become its code. Only
-	// pulled/used when encryption is enabled (BackupStore.AgePublicKey set).
-	// The age binary itself is NOT installed via apk — see ageReleaseVersion /
-	// ageReleaseSHA256 below (round-16 #11, mirrors etcd/OpenBao backup charts).
-	keyValueBackupAgeImage = "alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d"
-	// ageReleaseVersion + ageReleaseSHA256 pin FiloSottile/age v1.3.1
-	// (age-v1.3.1-linux-amd64.tar.gz), same reviewed artifact as the etcd and
-	// OpenBao backup CronJobs. A mismatch fails the Job before encrypt, so a
-	// tampered download never becomes an unencrypted upload.
-	ageReleaseVersion = "1.3.1"
-	ageReleaseSHA256  = "bdc69c09cbdd6cf8b1f333d372a1f58247b3a33146406333e30c0f26e8f51377"
 	// keyValueBackupBusyboxImage compresses the plaintext RDB (round-14 #5):
 	// digest-pinned like the build preparer's busybox so the mutable tag cannot
 	// resolve to different bytes.
@@ -79,7 +66,8 @@ const keyValueBackupWorkHeadroomGiB = 1
 //	snapshot  writes /backup/dump.rdb                        => S
 //	compress  gzip -9 dump.rdb (both files exist mid-run)     => S + S(worst case,
 //	          because gzip on incompressible data is ~1.0x)      i.e. PEAK = 2S
-//	encrypt   age -o dump.rdb.gz.age dump.rdb.gz, then rm     => <= 2 * gz size <= 2S
+//	encrypt   /backup-encrypt dump.rdb.gz dump.rdb.gz.age,
+//	          then rm                                          => <= 2 * gz size <= 2S
 //	upload    reads one file                                  => unchanged
 //
 // So the peak is 2S, at the compress step — the pipeline deletes as it goes, so
@@ -182,6 +170,16 @@ func (r *KeyValueReconciler) reconcileKeyValueBackup(
 		return nil
 	}
 
+	// Fail closed rather than silently shipping plaintext: with a public key
+	// configured but no helper image resolved, the alternative is a CronJob
+	// whose encrypt stage names "" (which the API server rejects) or — worse, if
+	// the stage were skipped — a nightly unencrypted upload. Surfacing the
+	// misconfiguration as a reconcile error keeps the previous CronJob in place.
+	if r.Backup.AgePublicKey != "" && r.BackupHelperImage == "" {
+		return fmt.Errorf("KeyValue backup encryption is configured but the backup helper image is unknown: " +
+			"set BEX_BACKUP_HELPER_IMAGE, or give the manager Pod a POD_NAME so it can resolve its own image")
+	}
+
 	// The CronJob mounts the S3 credential by name from its own namespace, so a
 	// KeyValue in a tenant namespace (ADR043 D8.4) needs it projected there
 	// first. Without this the CronJob is created happily and every run fails at
@@ -249,22 +247,19 @@ test -s /backup/dump.rdb`},
 	}
 	if encrypt {
 		initContainers = append(initContainers, corev1.Container{
-			Name:    "encrypt",
-			Image:   keyValueBackupAgeImage,
-			Command: []string{"/bin/sh", "-ceu"},
-			// NO RUNTIME PACKAGE INSTALL (round-16 #11 / ADR050 etcd pattern):
-			// fetch one pinned release artifact, verify SHA-256, then encrypt.
-			Args: []string{`cd /tmp
-wget -q -O age.tgz \
-  "https://github.com/FiloSottile/age/releases/download/v${AGE_VERSION}/age-v${AGE_VERSION}-linux-amd64.tar.gz"
-echo "${AGE_SHA256}  age.tgz" | sha256sum -c -
-tar xzf age.tgz age/age
-./age/age -r "${AGE_PUBLIC_KEY}" -o /backup/dump.rdb.gz.age /backup/dump.rdb.gz
-rm -f /backup/dump.rdb.gz`},
+			Name: "encrypt",
+			// The bex image itself (w7/m85, closing ADR067 #8 / ADR068 #9). This
+			// stage reads the PLAINTEXT RDB, so it must resolve nothing at run
+			// time: no package manager, and no release tarball fetched from the
+			// internet either — /backup-encrypt is filippo.io/age compiled into
+			// the image bex already builds, signs and digest-pins. Its output is
+			// a standard age file, so scripts/restore-keyvalue.sh decrypts it
+			// with the stock `age` binary exactly as before.
+			Image:   r.BackupHelperImage,
+			Command: []string{"/backup-encrypt"},
+			Args:    []string{"/backup/dump.rdb.gz", "/backup/dump.rdb.gz.age"},
 			Env: []corev1.EnvVar{
 				{Name: "AGE_PUBLIC_KEY", Value: r.Backup.AgePublicKey},
-				{Name: "AGE_VERSION", Value: ageReleaseVersion},
-				{Name: "AGE_SHA256", Value: ageReleaseSHA256},
 			},
 			Resources:       backupResources("50m", "64Mi", workBudget),
 			SecurityContext: tenantSecCtx(),

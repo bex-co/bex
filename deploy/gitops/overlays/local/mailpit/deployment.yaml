@@ -39,7 +39,7 @@ spec:
           emptyDir: {}
       containers:
         - name: mailpit
-          image: axllent/mailpit:v1.21.8
+          image: axllent/mailpit:v1.21.8@sha256:81370195cd4a0eab9604d17c2617a7525b0486f9365555253b6c5376c6350f1a
           # In-memory store (no MP_DATABASE) — a catcher needs no persistence.
           # v1.21.8 still writes a scratch sqlite file under os.TempDir() at
           # startup regardless (crashes with "read-only file system" under

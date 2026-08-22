@@ -267,6 +267,13 @@ type KeyValueReconciler struct {
 	// namespaces are projected from (ADR043 D8.4) — the shared apps namespace.
 	// Empty disables projection, correct for a single-namespace deployment.
 	BackupSourceNamespace string
+	// BackupHelperImage is the image the backup CronJob's encrypt stage runs
+	// (its /backup-encrypt entrypoint). It is the OPERATOR'S OWN image — see
+	// selfimage.Resolve — so the stage that handles the plaintext RDB runs
+	// first-party code from an artifact bex builds, signs and digest-pins,
+	// rather than fetching age at run time (w7/m85, ADR068 #9). Required only
+	// when Backup.AgePublicKey is set; that combination fails closed.
+	BackupHelperImage string
 }
 
 // secretClient prefers the uncached reader for tenant-namespace Secret access,

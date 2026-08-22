@@ -5,8 +5,9 @@ name: scripts (test)
 on:
   pull_request:
     paths:
-      - "lego/operator/**"
-      - "lego/backend/**"
+      - "lego/**"
+      - "dashboard/Dockerfile"
+      - "dashboard/deploy/**"
       - "deploy/gitops/**"
       - "infra/**"
       - "scripts/**"
@@ -21,8 +22,9 @@ on:
   push:
     branches: [main]
     paths:
-      - "lego/operator/**"
-      - "lego/backend/**"
+      - "lego/**"
+      - "dashboard/Dockerfile"
+      - "dashboard/deploy/**"
       - "deploy/gitops/**"
       - "infra/**"
       - "scripts/**"
@@ -55,6 +57,14 @@ jobs:
         run: bash scripts/github-actions-validate.sh
       - name: GitHub Actions guard self-test
         run: bash scripts/github-actions-validate.test.sh
+      # w7/m85. Six security rounds re-reported the same unpinned-image finding
+      # because an inventory sweep is only true on the day it is done; this
+      # re-derives the inventory every run and fails closed on anything it
+      # cannot classify.
+      - name: Image digest-pin guard
+        run: bash scripts/image-pin-validate.sh
+      - name: Image digest-pin guard self-test
+        run: bash scripts/image-pin-validate.test.sh
       - name: Build-toolchain freshness inventory + self-test
         run: |
           bash scripts/build-toolchain-freshness.sh validate
@@ -102,5 +112,7 @@ jobs:
           scripts/render-mcp-drift.sh scripts/render-mcp-drift.test.sh
           scripts/dev-env.sh scripts/dev-env.test.sh
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
+          scripts/image-pin-validate.sh scripts/image-pin-validate.test.sh
+          scripts/lib/image-digest-exists.sh
       - name: Restore script hermetic safety tests
         run: bash scripts/restore.test.sh

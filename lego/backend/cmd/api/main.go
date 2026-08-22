@@ -1009,9 +1009,17 @@ func startControlPlaneServer(ctx context.Context, st *store.PGStore, rec *store.
 func wireSandboxes(ctx context.Context, deps *api.Deps, cl client.Client, st *store.PGStore, sandboxExecSecret string) {
 	if osURL := os.Getenv("BEX_OPENSANDBOX_URL"); osURL != "" {
 		deps.SandboxClient = sandbox.NewClient(osURL)
+		// Both defaults are digest-pinned (w7/m85): a sandbox template names an
+		// image bex RUNS, so a floating tag let two creates months apart start
+		// different code with no record of the change. The tag is retained ahead
+		// of the digest for legibility; the digest is what resolves.
+		// BEX_AGENT_SESSION_IMAGE is normally supplied by
+		// lego/operator/config/api/deployment.yaml, which deploy.yml rewrites to
+		// the digest it just pushed — this default is the floor for a deployment
+		// that omits it, not the production value.
 		deps.SandboxTemplates = sandboxTemplateRegistry(
-			envOr("BEX_SANDBOX_IMAGE", "docker.io/library/alpine:3"),
-			envOr("BEX_AGENT_SESSION_IMAGE", "ghcr.io/bex-co/bex-agent-sandbox:latest"),
+			envOr("BEX_SANDBOX_IMAGE", "docker.io/library/alpine:3@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b"),
+			envOr("BEX_AGENT_SESSION_IMAGE", "ghcr.io/bex-co/bex-agent-sandbox@sha256:4faafb4ad14e6d76be076fecffe1b02c06d21ec23d9ce1bba780da2af37c698a"),
 		)
 		deps.SandboxDefaultPlan = sandbox.PlanStarter
 		// The Render CLI's `ea sandbox create` sends no template (no such flag), so
