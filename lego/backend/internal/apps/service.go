@@ -60,6 +60,12 @@ type Service struct {
 	// host enters App.spec and becomes routable. nil uses the system resolver;
 	// tests inject a deterministic verifier.
 	DomainOwnership DomainOwnershipVerifier
+	// DiskSnapshots lists the objects the operator's nightly snapshot Job
+	// writes, and SnapshotSecret signs the 24-hour keys a listing hands out and
+	// a restore hands back (docs/ADR082-persistent-disks.md D5). Either unset ⇒
+	// the two snapshot verbs report unavailable; disks themselves still work.
+	DiskSnapshots  DiskSnapshotLister
+	SnapshotSecret []byte
 	// Owners and Metadata are the shared Render resource-metadata dependencies.
 	// The neutral AppView stays independent of nested REST owner wire shapes.
 	Owners   resourcemeta.OwnerResolver

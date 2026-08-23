@@ -1073,6 +1073,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	}
 	// Disk reads live in their own file beside the disk verbs (disks.go).
 	maps.Copy(fields, s.diskGQLQueryFields())
+	maps.Copy(fields, s.diskSnapshotGQLQueryFields())
 	return fields
 }
 
@@ -1672,5 +1673,6 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 	}
 	maps.Copy(fields, s.diskGQLMutationFields())
+	maps.Copy(fields, s.diskSnapshotGQLMutationFields())
 	return fields
 }

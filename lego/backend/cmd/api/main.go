@@ -439,6 +439,7 @@ func main() {
 	deps.AgentModelProxyURL = os.Getenv("BEX_AGENT_MODEL_PROXY_URL")
 	wireSandboxes(ctx, &deps, cl, st, sandboxExecSecret)
 	wireAgentSessions(&deps)
+	wireDiskSnapshots(&deps)
 	srv := api.NewServer(base, deps)
 	if mode := strings.TrimSpace(os.Getenv("BEX_ENV_GROUP_NAME_CLAIM_AUDIT")); mode != "" {
 		if mode != "dry-run" && mode != "apply" {
@@ -1082,6 +1083,29 @@ func wireSandboxes(ctx context.Context, deps *api.Deps, cl client.Client, st *st
 // wireAgentSessions reads the agent-session and Browser Web Shell environment
 // contract onto deps: the shared gateway trust key, the browser-reachable
 // origins, the Active-tier lifecycle bounds, and the ADR059 hibernation store.
+// wireDiskSnapshots points bex-api at the same bucket the operator writes disk
+// snapshots to (docs/ADR082-persistent-disks.md D5) and gives it the key that
+// signs the 24-hour handles a listing hands out. Unset ⇒ the two snapshot verbs
+// report unavailable and disks otherwise work exactly as before.
+//
+// The signing key is deliberately the shell-ticket secret's sibling rather than
+// the age keypair: this signs a REFERENCE to an object, never its contents, so
+// it has nothing to do with the key that decrypts a snapshot — which stays in
+// the cluster with the restore Job and never reaches bex-api.
+func wireDiskSnapshots(deps *api.Deps) {
+	deps.DiskSnapshots = apps.NewS3DiskSnapshotLister(apps.S3DiskSnapshotConfig{
+		Endpoint:  os.Getenv("BEX_DISK_SNAPSHOT_ENDPOINT"),
+		Bucket:    os.Getenv("BEX_DISK_SNAPSHOT_BUCKET"),
+		Prefix:    os.Getenv("BEX_DISK_SNAPSHOT_PREFIX"),
+		Region:    os.Getenv("BEX_DISK_SNAPSHOT_REGION"),
+		AccessKey: os.Getenv("BEX_DISK_SNAPSHOT_ACCESS_KEY"),
+		SecretKey: os.Getenv("BEX_DISK_SNAPSHOT_SECRET_KEY"),
+	})
+	if secret := os.Getenv("BEX_SHELL_TICKET_SECRET"); secret != "" {
+		deps.DiskSnapshotSecret = []byte(secret)
+	}
+}
+
 func wireAgentSessions(deps *api.Deps) {
 	// Browser Web Shell (docs/ADR035-ssh.md § Browser Web Shell): the HMAC key
 	// shared only with the isolated gateway and the browser-reachable gateway

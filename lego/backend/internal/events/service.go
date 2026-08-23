@@ -216,6 +216,7 @@ const (
 	TypeDiskAttached              = "disk_attached"
 	TypeDiskUpdated               = "disk_updated"
 	TypeDiskDetached              = "disk_detached"
+	TypeDiskRestored              = "disk_restored"
 	TypeCustomDomainAdded         = "custom_domain_added"
 	TypeCustomDomainRemoved       = "custom_domain_removed"
 	TypeCustomDomainVerified      = "custom_domain_verified"
@@ -274,6 +275,7 @@ var eventTypes = map[string]string{
 	"apps.AddDisk":                          TypeDiskAttached,
 	"apps.UpdateDisk":                       TypeDiskUpdated,
 	"apps.DeleteDisk":                       TypeDiskDetached,
+	"apps.RestoreDiskSnapshot":              TypeDiskRestored,
 	"apps.AddDomain":                        TypeCustomDomainAdded,
 	"apps.DeleteDomain":                     TypeCustomDomainRemoved,
 	"apps.VerifyDomain":                     TypeCustomDomainVerified,
