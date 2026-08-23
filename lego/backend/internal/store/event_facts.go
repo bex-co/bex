@@ -33,9 +33,15 @@ import (
 type ServiceEventFactType string
 
 const (
-	EventFactImagePullFailed    ServiceEventFactType = "image_pull_failed"
-	EventFactServiceSuspended   ServiceEventFactType = "service_suspended"
-	EventFactServiceResumed     ServiceEventFactType = "service_resumed"
+	EventFactImagePullFailed  ServiceEventFactType = "image_pull_failed"
+	EventFactServiceSuspended ServiceEventFactType = "service_suspended"
+	EventFactServiceResumed   ServiceEventFactType = "service_resumed"
+	// Free-tier idle auto-sleep (w6/m47). Deliberately NOT the suspended/resumed
+	// pair: those stay exclusively user-driven, so a webhook or push subscriber
+	// watching for an unexpected suspension is not woken by every routine sleep
+	// cycle of a free service.
+	EventFactServiceHibernated  ServiceEventFactType = "service_hibernated"
+	EventFactServiceWoken       ServiceEventFactType = "service_woken"
 	EventFactServerFailed       ServiceEventFactType = "server_failed"
 	EventFactServerAvailable    ServiceEventFactType = "server_available"
 	EventFactBranchChanged      ServiceEventFactType = "branch_changed"
@@ -60,6 +66,8 @@ var serviceEventFactTypes = map[ServiceEventFactType]bool{
 	EventFactImagePullFailed:    true,
 	EventFactServiceSuspended:   true,
 	EventFactServiceResumed:     true,
+	EventFactServiceHibernated:  true,
+	EventFactServiceWoken:       true,
 	EventFactServerFailed:       true,
 	EventFactServerAvailable:    true,
 	EventFactBranchChanged:      true,
@@ -225,6 +233,10 @@ type ObservedServiceState struct {
 	AppID        string
 	At           time.Time
 	ServicePhase string
+	// Suspended is the App's spec.suspended at observation time — the ONLY
+	// signal that separates a user-driven suspension from free-tier idle
+	// auto-hibernation, since both observe the same Hibernated phase (w6/m47).
+	Suspended    bool
 	Availability string
 	// AvailabilityObserved distinguishes "do not advance this dimension" from
 	// the observed empty state used while a service is hibernated.
@@ -272,14 +284,15 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 	var inserted []ServiceEventFact
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var previousPhase, previousAvailability string
+		var previousSuspended bool
 		err := tx.QueryRow(ctx,
-			`SELECT service_phase, availability FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
-			obs.AppID).Scan(&previousPhase, &previousAvailability)
+			`SELECT service_phase, availability, suspended FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
+			obs.AppID).Scan(&previousPhase, &previousAvailability, &previousSuspended)
 		if errors.Is(err, pgx.ErrNoRows) {
 			tag, insertErr := tx.Exec(ctx,
-				`INSERT INTO service_event_checkpoints (app_id, service_phase, availability, updated_at, healthy_transition_at)
-				 VALUES ($1, $2, $3, $4, $5) ON CONFLICT (app_id) DO NOTHING`,
-				obs.AppID, obs.ServicePhase, obs.Availability, obs.At, healthyTransition)
+				`INSERT INTO service_event_checkpoints (app_id, service_phase, availability, suspended, updated_at, healthy_transition_at)
+				 VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (app_id) DO NOTHING`,
+				obs.AppID, obs.ServicePhase, obs.Availability, obs.Suspended, obs.At, healthyTransition)
 			if insertErr != nil {
 				return insertErr
 			}
@@ -287,8 +300,8 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 				return nil
 			}
 			err = tx.QueryRow(ctx,
-				`SELECT service_phase, availability FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
-				obs.AppID).Scan(&previousPhase, &previousAvailability)
+				`SELECT service_phase, availability, suspended FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
+				obs.AppID).Scan(&previousPhase, &previousAvailability, &previousSuspended)
 		}
 		if err != nil {
 			return err
@@ -299,7 +312,7 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 			availability = obs.Availability
 		}
 		obs.Availability = availability
-		facts := observedStateFacts(obs, previousPhase, previousAvailability)
+		facts := observedStateFacts(obs, previousPhase, previousAvailability, previousSuspended)
 		for _, fact := range facts {
 			if _, err := tx.Exec(ctx, insertServiceEventFactSQL,
 				fact.SourceKey, fact.AppID, fact.Type, fact.At, fact.DeployID, fact.Image,
@@ -310,6 +323,7 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 			inserted = append(inserted, fact)
 		}
 		checkpointPhase := checkpointServicePhase(previousPhase, obs.ServicePhase)
+		checkpointSuspended := checkpointServiceSuspended(previousPhase, obs.ServicePhase, previousSuspended, obs.Suspended)
 		// IS DISTINCT FROM makes the steady state a no-op instead of a row
 		// write: the reconciler records an observation for EVERY app on every
 		// resync (30s) and every Kick (after each successful API write), and
@@ -323,13 +337,17 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 		// a healthy conclusion re-observed with an older or missing timestamp
 		// never erases a newer recorded one (COALESCE keeps the stored value
 		// when this pass has none to offer).
+		// suspended joins the guard tuple, not just the SET list: a user who
+		// suspends an already auto-hibernated App changes only this flag (the
+		// phase is Hibernated either way), and losing that write would make the
+		// later wake edge report service_woken for a real user Resume.
 		_, err = tx.Exec(ctx,
 			`UPDATE service_event_checkpoints
-			 SET service_phase = $2, availability = $3, updated_at = $4,
-			     healthy_transition_at = COALESCE($5, healthy_transition_at)
+			 SET service_phase = $2, availability = $3, suspended = $4, updated_at = $5,
+			     healthy_transition_at = COALESCE($6, healthy_transition_at)
 			 WHERE app_id = $1
-			   AND (service_phase, availability) IS DISTINCT FROM ($2, $3)`,
-			obs.AppID, checkpointPhase, availability, obs.At, healthyTransition)
+			   AND (service_phase, availability, suspended) IS DISTINCT FROM ($2, $3, $4)`,
+			obs.AppID, checkpointPhase, availability, checkpointSuspended, obs.At, healthyTransition)
 		return err
 	})
 	if err != nil {
@@ -374,7 +392,19 @@ func checkpointServicePhase(previous, observed string) string {
 	return observed
 }
 
-func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailability string) []ServiceEventFact {
+// checkpointServiceSuspended pins the recorded suspend reason to whatever phase
+// checkpointServicePhase kept. When a Hibernated baseline is held through the
+// transient startup phases, the reason it hibernated must be held with it —
+// otherwise the eventual Running observation (spec.suspended already back to
+// false) reads every user Resume as an idle wake.
+func checkpointServiceSuspended(previousPhase, observedPhase string, previousSuspended, observedSuspended bool) bool {
+	if checkpointServicePhase(previousPhase, observedPhase) != observedPhase {
+		return previousSuspended
+	}
+	return observedSuspended
+}
+
+func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailability string, previousSuspended bool) []ServiceEventFact {
 	makeFact := func(suffix string, typ ServiceEventFactType) ServiceEventFact {
 		return ServiceEventFact{
 			SourceKey:  fmt.Sprintf("observed:%s:%s:%d", obs.AppID, suffix, obs.At.UnixNano()),
@@ -389,10 +419,24 @@ func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailab
 	if obs.ServicePhase != previousPhase {
 		switch obs.ServicePhase {
 		case string(appv1alpha1.PhaseHibernated):
-			facts = append(facts, makeFact("suspended", EventFactServiceSuspended))
+			// Both mechanisms land on Hibernated; spec.suspended is what tells
+			// them apart. Keep the source-key suffixes distinct so an App that
+			// sleeps and is later suspended at the same instant cannot collide.
+			if obs.Suspended {
+				facts = append(facts, makeFact("suspended", EventFactServiceSuspended))
+			} else {
+				facts = append(facts, makeFact("hibernated", EventFactServiceHibernated))
+			}
 		case string(appv1alpha1.PhaseRunning):
 			if previousPhase == string(appv1alpha1.PhaseHibernated) {
-				facts = append(facts, makeFact("resumed", EventFactServiceResumed))
+				// Symmetric with the sleep side: how it went down decides how
+				// coming back up reads. spec.suspended is false in BOTH cases by
+				// the time Running is observed, so only the checkpoint knows.
+				if previousSuspended {
+					facts = append(facts, makeFact("resumed", EventFactServiceResumed))
+				} else {
+					facts = append(facts, makeFact("woken", EventFactServiceWoken))
+				}
 			}
 		}
 	}

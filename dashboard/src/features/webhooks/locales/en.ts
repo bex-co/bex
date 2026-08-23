@@ -579,6 +579,14 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Service Resumed",
     description: "Event label — service_resumed",
   },
+  "webhooks.event.service_hibernated": {
+    message: "Service Went To Sleep",
+    description: "Event label — service_hibernated",
+  },
+  "webhooks.event.service_woken": {
+    message: "Service Woke Up",
+    description: "Event label — service_woken",
+  },
   "webhooks.event.server_restarted": {
     message: "Server Restarted",
     description: "Event label — server_restarted",

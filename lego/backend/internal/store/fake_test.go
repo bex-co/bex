@@ -865,10 +865,11 @@ func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedSer
 	if !(obs.AvailabilityObserved && obs.Availability == "healthy" && !obs.ReadyTransitionAt.IsZero()) {
 		obs.ReadyTransitionAt = previous.ReadyTransitionAt
 	}
-	facts := observedStateFacts(obs, previous.ServicePhase, previous.Availability)
+	facts := observedStateFacts(obs, previous.ServicePhase, previous.Availability, previous.Suspended)
 	for _, fact := range facts {
 		m.eventFacts[fact.SourceKey] = fact
 	}
+	obs.Suspended = checkpointServiceSuspended(previous.ServicePhase, obs.ServicePhase, previous.Suspended, obs.Suspended)
 	obs.ServicePhase = checkpointServicePhase(previous.ServicePhase, obs.ServicePhase)
 	m.eventCheckpoints[obs.AppID] = obs
 	return facts, nil

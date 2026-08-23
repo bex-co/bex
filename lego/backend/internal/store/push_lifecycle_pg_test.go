@@ -104,13 +104,19 @@ func TestPushWorkerEnqueuesObservedLifecycleFacts(t *testing.T) {
 
 	// Running → crashed → recovered → suspended → resumed, each state observed
 	// repeatedly: the checkpoint diff must yield exactly one fact per edge.
+	//
+	// Suspended: true on the Hibernated leg is what makes it a USER suspension
+	// rather than free-tier idle sleep (w6/m47). Both observe the same
+	// Hibernated phase, but only the user-driven pair is push-worthy — an
+	// auto-sleep emits service_hibernated, which is deliberately not in the
+	// push vocabulary, so leaving this false would enqueue nothing here.
 	base := time.Now().UTC()
 	running := store.ObservedServiceState{ServicePhase: string(appv1alpha1.PhaseRunning), Availability: "healthy", AvailabilityObserved: true}
 	states := []store.ObservedServiceState{
 		running,
 		{ServicePhase: string(appv1alpha1.PhaseDeploying), Availability: "unhealthy", AvailabilityObserved: true, ReasonCode: store.EventReasonReadinessFailed},
 		running,
-		{ServicePhase: string(appv1alpha1.PhaseHibernated), AvailabilityObserved: true},
+		{ServicePhase: string(appv1alpha1.PhaseHibernated), AvailabilityObserved: true, Suspended: true},
 		running,
 	}
 	tick := 0

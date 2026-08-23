@@ -127,8 +127,7 @@ export function LogViewer({
   // Stable identity so LogLineList's memoized rows actually skip re-rendering
   // when a live line appends (an inline arrow would defeat the memo).
   const onInstanceFilter = useCallback(
-    (instance: string) =>
-      setFilters((previous) => ({ ...previous, instance })),
+    (instance: string) => setFilters((previous) => ({ ...previous, instance })),
     [],
   );
 
@@ -178,9 +177,7 @@ export function LogViewer({
     body = (
       <EmptyState
         iconName="ScrollText"
-        title={
-          filtered ? t("logs.emptyFilteredTitle") : t("logs.emptyTitle")
-        }
+        title={filtered ? t("logs.emptyFilteredTitle") : t("logs.emptyTitle")}
         description={
           filtered ? t("logs.emptyFilteredBody") : t("logs.emptyBody")
         }

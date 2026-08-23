@@ -1,12 +1,14 @@
 # Fail-closed boundary for Traefik's deliberately global
 # allowExternalNameServices switch (ADR029 / w7/m54).
 #
-# Tenant namespaces need exactly two operator-owned alias shapes: static sites
-# route to the shared static-server and maintenance mode routes to the shared
-# activator. RBAC already denies every tenant-facing identity Service/Ingress
-# mutation; this policy additionally confines every ExternalName object the
-# trusted manager creates. Tenant Ingresses therefore cannot be backed by an
-# unowned or retargeted ExternalName alias even if RBAC drifts elsewhere.
+# Tenant namespaces need exactly three operator-owned alias shapes: static sites
+# route to the shared static-server, maintenance mode routes to the shared
+# activator, and an auto-hibernated free-tier App routes to that same activator
+# so the next public request wakes it (w6/m47). RBAC already denies every
+# tenant-facing identity Service/Ingress mutation; this policy additionally
+# confines every ExternalName object the trusted manager creates. Tenant
+# Ingresses therefore cannot be backed by an unowned or retargeted ExternalName
+# alias even if RBAC drifts elsewhere.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -52,6 +54,18 @@ spec:
         size(object.spec.ports) == 1 &&
         object.spec.ports[0].name == 'http' &&
         object.spec.ports[0].port == 8888
+    # The wake alias for an auto-hibernated App. Same target and port as the
+    # maintenance alias — one responder Service, two states — but a distinct
+    # name/purpose so the two routing intents stay independently auditable and
+    # neither silently inherits the other's target.
+    - name: exactActivatorAlias
+      expression: >-
+        variables.purpose == 'activator' &&
+        object.metadata.name == 'bex-activator-' + variables.app &&
+        object.spec.externalName == 'bex-activator.bex-system.svc.cluster.local' &&
+        size(object.spec.ports) == 1 &&
+        object.spec.ports[0].name == 'http' &&
+        object.spec.ports[0].port == 8888
   validations:
     - expression: >-
         request.userInfo.username == 'system:serviceaccount:bex-system:bex-controller-manager'
@@ -70,9 +84,11 @@ spec:
         variables.controllerOwners[0].name == variables.app
       reason: Invalid
       message: a platform alias must be labeled and controller-owned by its exact App
-    - expression: variables.exactStaticAlias || variables.exactMaintenanceAlias
+    - expression: >-
+        variables.exactStaticAlias || variables.exactMaintenanceAlias ||
+        variables.exactActivatorAlias
       reason: Invalid
-      message: a platform alias may target only the fixed static-server or maintenance responder
+      message: a platform alias may target only the fixed static-server, maintenance, or wake responder
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding

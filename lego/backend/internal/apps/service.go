@@ -874,6 +874,12 @@ func view(a *appv1alpha1.App) AppView {
 // user-driven suspend verb is the only way an App becomes suspended in bex,
 // so a suspended App always reports exactly ["user"]; enum values bex has no
 // source for (admin, billing, parent_service, …) are omitted, never faked.
+//
+// Free-tier idle auto-hibernation is NOT suspension and never reaches here: it
+// scales the Deployment to 0 and observes phase Hibernated without touching
+// spec.suspended, so an auto-slept service correctly reports no suspenders.
+// The event vocabulary keeps the same split — service_hibernated/service_woken
+// for the idle cycle, service_suspended/service_resumed for this verb (w6/m47).
 func suspenders(suspended bool) []string {
 	if suspended {
 		return []string{"user"}

@@ -349,6 +349,7 @@ func setupAppReconciler(
 		BaseDomain:           baseDomain,
 		ClusterIssuer:        envOr("BEX_CLUSTER_ISSUER", "letsencrypt-staging"),
 		ActivatorService:     envOr("BEX_ACTIVATOR_SERVICE", ""),
+		ActivatorNamespace:   envOr("POD_NAMESPACE", "bex-system"),
 		ActivatorPort:        activatorPort,
 		MaintenanceService:   envOr("BEX_ACTIVATOR_SERVICE", "bex-activator"),
 		MaintenanceNamespace: envOr("POD_NAMESPACE", "bex-system"),

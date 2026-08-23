@@ -120,6 +120,10 @@ invalid_aliases="$(while IFS= read -r namespace; do
        ($purpose == "maintenance" and
         $service.metadata.name == ("bex-maintenance-" + $app) and
         $service.spec.externalName == "bex-activator.bex-system.svc.cluster.local" and
+        ($service.spec.ports | length) == 1 and $service.spec.ports[0].port == 8888) or
+       ($purpose == "activator" and
+        $service.metadata.name == ("bex-activator-" + $app) and
+        $service.spec.externalName == "bex-activator.bex-system.svc.cluster.local" and
         ($service.spec.ports | length) == 1 and $service.spec.ports[0].port == 8888)) | not)) |
     [.metadata.namespace,.metadata.name] | @tsv'
 done <<<"$hosting_namespaces")"
