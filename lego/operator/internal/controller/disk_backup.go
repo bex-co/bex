@@ -128,6 +128,16 @@ func (r *AppReconciler) reconcileDiskBackup(ctx context.Context, app *appv1alpha
 		return r.deleteStaleChildren(ctx,
 			&batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}})
 	}
+	if r.BackupHelperImage == "" {
+		// The Job runs bex's own image, resolved from the operator's Pod. With
+		// no image the CronJob would be rejected by the API server on every
+		// pass — an error loop that says nothing about the real problem. Fail
+		// closed and name it instead: the owner can see that snapshots are not
+		// running, which is the one thing a silent backup must never hide.
+		setDiskCondition(app, false, "SnapshotImageUnresolved",
+			"cannot schedule disk snapshots: the operator could not resolve its own image (POD_NAME/BEX_BACKUP_HELPER_IMAGE)")
+		return nil
+	}
 	cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cron, func() error {
 		cron.Labels = diskBackupLabels(app)
@@ -275,7 +285,7 @@ func diskSnapshotWorkspace(app *appv1alpha1.App) string {
 // had. It is fire-and-forget: the disk's own deletion must not wait on the
 // object store, and the Job is retried by its own backoff.
 func (r *AppReconciler) purgeDiskSnapshots(ctx context.Context, app *appv1alpha1.App) error {
-	if !r.DiskSnapshots.configured() {
+	if !r.DiskSnapshots.configured() || r.BackupHelperImage == "" {
 		return nil
 	}
 	labels := diskBackupLabels(app)
@@ -345,9 +355,12 @@ func (r *AppReconciler) reconcileDiskRestore(ctx context.Context, app *appv1alph
 	if app.Annotations[annotDiskRestored] == requested {
 		return false, nil // already served this request
 	}
-	if !r.DiskSnapshots.restorable() {
+	if !r.DiskSnapshots.restorable() || r.BackupHelperImage == "" {
+		// Never start a restore that cannot finish: the Job wipes the volume
+		// before it extracts, so one that fails to start correctly would
+		// destroy data and restore nothing.
 		setDiskCondition(app, false, "SnapshotStoreUnavailable",
-			"a snapshot restore was requested but no snapshot store (or decrypt key) is configured")
+			"a snapshot restore was requested but the snapshot store, decrypt key, or operator image is not available")
 		return false, nil
 	}
 
@@ -420,18 +433,23 @@ func (r *AppReconciler) scaleDownForRestore(ctx context.Context, app *appv1alpha
 
 // diskDetachedFromService reports whether the service's pods are gone, which is
 // what frees a ReadWriteOnce volume for the restore Job to mount.
+//
+// It reads the Deployment's own status rather than listing pods by app label.
+// The snapshot Jobs' pods carry that same label and linger after completing
+// (the CronJob keeps a few for history), so a label list would count a finished
+// backup pod as "the service is still running" and the restore would never
+// start — which is exactly what happened the first time this ran on a cluster.
 func (r *AppReconciler) diskDetachedFromService(ctx context.Context, app *appv1alpha1.App) (bool, error) {
-	var pods corev1.PodList
-	if err := r.List(ctx, &pods, client.InNamespace(app.Namespace),
-		client.MatchingLabels{labelApp: app.Name}); err != nil {
+	dep := &appsv1.Deployment{}
+	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, dep); err != nil {
+		if apierrors.IsNotFound(err) {
+			return true, nil // nothing to hold the volume
+		}
 		return false, err
 	}
-	for i := range pods.Items {
-		if pods.Items[i].DeletionTimestamp == nil {
-			return false, nil
-		}
-	}
-	return true, nil
+	// Status.Replicas counts pods the Deployment still owns, terminating ones
+	// included, so it goes to zero exactly when the volume is released.
+	return dep.Status.Replicas == 0, nil
 }
 
 func (r *AppReconciler) createDiskRestoreJob(ctx context.Context, app *appv1alpha1.App, object string) error {
