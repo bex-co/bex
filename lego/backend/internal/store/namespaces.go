@@ -425,14 +425,30 @@ func (r *NamespaceReconciler) baseResourceQuota(namespace string, t Tenant) *cor
 // defense-in-depth ceiling sized to hold a plan's worst case: paid ≈ 50
 // CPU-requested pro-ultra pods × 32 Gi ≈ 1.6 Ti < 2 Ti; free ≈ 50 tierless
 // containers × 1 Gi = 50 Gi < 100 Gi.
+//
+// The compute axes carry +1 surge pod of headroom above the plan's
+// steady-state budget: App Deployments use the default RollingUpdate strategy
+// (maxSurge 25% → +1 pod at replicas:1, maxUnavailable 25% → 0 — the operator
+// never sets Strategy), so every rollout needs one extra full-tier pod with
+// zero giveback, and a quota with no slack rejects the surge ReplicaSet
+// ("exceeded quota: tenant-quota") and hangs the deploy at the health gate.
+// Derivation: +1 of the largest tier the plan can reasonably run (tiers.yaml;
+// Guaranteed QoS, so the surge is charged on requests AND limits). Hobby = 2
+// CPU/4 Gi base + 1 standard surge (1 CPU/2 Gi) = 3/6 Gi; paid = 50 CPU/100 Gi
+// + 1 pro-ultra surge (8 CPU/32 Gi) = 58/132 Gi; limits.* stay at 2× requests.
+// pods needs no +1: the compute ceiling binds first (hobby: 3 CPU ÷ 100m
+// minimum-tier pod ≈ 30 pods < 50; paid: 58 CPU of pro-ultra pods ≈ 7 ≪ 500),
+// and the ephemeral axis likewise has surge slack once compute binds (30 × 1
+// Gi ≪ 100 Gi; 7 × 32 Gi ≪ 2 Ti).
 func quotaForPlan(plan string) corev1.ResourceList {
-	// Paid default (mirrors the retired shared tenant-apps-quota, per tenant).
-	cpuReq, memReq, cpuLim, memLim, pods, jobs := "50", "100Gi", "100", "200Gi", "500", "250"
+	// Paid default (mirrors the retired shared tenant-apps-quota, per tenant,
+	// plus one pro-ultra surge pod of rollout headroom).
+	cpuReq, memReq, cpuLim, memLim, pods, jobs := "58", "132Gi", "116", "264Gi", "500", "250"
 	storage, pvcs := "5Ti", "200"
 	ephReq, ephLim := "2Ti", "4Ti"
 	switch plan {
 	case PlanHobby, "", "free":
-		cpuReq, memReq, cpuLim, memLim, pods, jobs = "2", "4Gi", "4", "8Gi", "50", "25"
+		cpuReq, memReq, cpuLim, memLim, pods, jobs = "3", "6Gi", "6", "12Gi", "50", "25"
 		storage, pvcs = "20Gi", "4"
 		ephReq, ephLim = "100Gi", "200Gi"
 	}
