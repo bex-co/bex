@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { fontSizes, space, useTheme } from "@/common/theme";
+import { fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 
 /** Back-chevron header with truncating title/subtitle for detail screens. */
 export function DetailHeader({
@@ -32,26 +32,33 @@ export function DetailHeader({
         >
           {title}
         </Text>
-        <Text
-          numberOfLines={1}
-          style={[styles.subtitle, { color: theme.mutedForeground }]}
-        >
-          {subtitle}
-        </Text>
+        {subtitle ? (
+          <Text
+            numberOfLines={1}
+            style={[styles.subtitle, { color: theme.mutedForeground }]}
+          >
+            {subtitle}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    paddingVertical: space.xs,
+  },
   back: {
     width: 40,
     minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
   },
-  copy: { flex: 1 },
-  title: { fontSize: fontSizes.xxl, fontWeight: "700" },
-  subtitle: { fontSize: fontSizes.sm, marginTop: space.xs },
+  copy: { flex: 1, gap: 2 },
+  title: { fontSize: fontSizes.xl, fontWeight: fontWeights.medium },
+  subtitle: { fontSize: fontSizes.sm, marginTop: 2 },
 });

@@ -511,7 +511,7 @@ function eventTransition(
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  content: { paddingTop: space.lg, paddingBottom: space.xxl },
+  content: { gap: space.md },
   notice: { borderWidth: 1, borderRadius: space.sm, padding: space.md },
   initialLoader: { minHeight: 120 },
   identityStatus: { paddingBottom: space.md },

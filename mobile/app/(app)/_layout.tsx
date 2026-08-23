@@ -74,6 +74,8 @@ function WorkspaceTabs() {
         tabBarStyle: {
           backgroundColor: theme.card,
           borderTopColor: theme.border,
+          borderTopWidth: 0.5,
+          elevation: 0,
         },
       }}
     >

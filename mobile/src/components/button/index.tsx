@@ -27,9 +27,9 @@ type ButtonProps = {
 const getButtonStyles = (theme: ColorTheme) => {
   return StyleSheet.create({
     buttonBase: {
-      height: 44,
+      minHeight: 44,
       borderRadius: 8,
-      // flex: 1,
+      paddingHorizontal: 16,
       alignItems: "center",
       justifyContent: "center",
       flexDirection: "row",
@@ -41,11 +41,12 @@ const getButtonStyles = (theme: ColorTheme) => {
       backgroundColor: theme.primaryDark,
     },
     buttonPrimaryText: {
-      color: theme.white,
+      color: "#ffffff",
       fontSize: 16,
+      fontWeight: "600",
     },
     buttonOutline: {
-      backgroundColor: theme.white,
+      backgroundColor: "transparent",
       borderWidth: 1,
       borderColor: theme.primary,
     },

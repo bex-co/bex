@@ -1,6 +1,12 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useTheme } from "@/common/theme";
+import {
+  fontSizes,
+  fontWeights,
+  gutter,
+  space,
+  useTheme,
+} from "@/common/theme";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/components/button";
 
@@ -65,13 +71,22 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: "center",
-    paddingHorizontal: 28,
-    gap: 14,
+    paddingHorizontal: gutter,
+    gap: space.md,
     maxWidth: 560,
     width: "100%",
     alignSelf: "center",
   },
-  title: { fontSize: 30, fontWeight: "700", textAlign: "center" },
-  body: { fontSize: 16, lineHeight: 24, textAlign: "center" },
-  action: { alignSelf: "stretch", marginTop: 12 },
+  title: {
+    fontSize: fontSizes.display,
+    fontWeight: fontWeights.medium,
+    textAlign: "center",
+    lineHeight: fontSizes.display * 1.2,
+  },
+  body: {
+    fontSize: fontSizes.md,
+    lineHeight: fontSizes.md * 1.5,
+    textAlign: "center",
+  },
+  action: { alignSelf: "stretch", marginTop: space.sm },
 });

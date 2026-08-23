@@ -6,13 +6,7 @@ import { DashboardScrollView } from "@/components/dashboard-scroll-view";
 import { TopBar } from "@/components/top-bar";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatTimestamp } from "@/common/format-util";
-import {
-  fontSizes,
-  fontWeights,
-  gutter,
-  space,
-  useTheme,
-} from "@/common/theme";
+import { fontSizes, fontWeights, space, useTheme } from "@/common/theme";
 import { useNotifications } from "./notifications-provider";
 
 export function NotificationInboxScreen() {
@@ -31,7 +25,10 @@ export function NotificationInboxScreen() {
     backgroundColor: theme.card,
     borderColor: theme.border,
   };
-  const unreadStyle = { borderLeftColor: theme.primary, borderLeftWidth: 4 };
+  const unreadStyle = {
+    borderLeftColor: theme.primary,
+    borderLeftWidth: 3,
+  };
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
       <TopBar title={t("notifications.title")} showBell={false} />
@@ -55,7 +52,6 @@ export function NotificationInboxScreen() {
               {t(canDisable ? "notifications.disable" : "notifications.enable")}
             </Button>
           }
-          style={styles.settingsCard}
         >
           <Text style={[styles.state, { color: stateColor }]}>
             {t(`notifications.states.${state}`)}
@@ -112,9 +108,8 @@ export function NotificationInboxScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  content: { paddingTop: space.sm, paddingBottom: space.xxl, gap: space.md },
-  body: { fontSize: fontSizes.md, lineHeight: 21 },
-  settingsCard: { marginBottom: 0 },
+  content: { gap: space.md },
+  body: { fontSize: fontSizes.md, lineHeight: fontSizes.md * 1.5 },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -126,12 +121,13 @@ const styles = StyleSheet.create({
   action: { minWidth: 112, paddingHorizontal: space.lg, flexShrink: 0 },
   item: {
     borderWidth: 1,
-    borderRadius: gutter,
-    padding: space.lg,
+    borderRadius: space.md,
+    padding: space.md,
     gap: space.sm,
+    overflow: "hidden",
   },
-  itemTitle: { fontSize: fontSizes.lg, fontWeight: fontWeights.medium },
-  timestamp: { fontSize: fontSizes.sm },
+  itemTitle: { fontSize: fontSizes.md, fontWeight: fontWeights.medium },
+  timestamp: { fontSize: fontSizes.xs },
   empty: { textAlign: "center", paddingVertical: space.xxl },
   link: { fontWeight: fontWeights.medium },
 });

@@ -21,12 +21,12 @@ import { useTranslations } from "@/common/hooks/use-translations";
 const getStyles = (theme: ColorTheme) =>
   StyleSheet.create({
     card: {
-      backgroundColor: theme.black10,
-      borderRadius: gutter,
+      backgroundColor: theme.card,
+      borderRadius: space.md,
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.black20,
+      borderColor: theme.border,
       paddingVertical: space.lg,
-      marginBottom: space.lg,
+      marginBottom: space.md,
       overflow: "hidden",
     },
     header: {
