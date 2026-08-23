@@ -26,8 +26,11 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
+
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -670,6 +673,7 @@ func TestCreateConflictsOnExistingUnmanagedApp(t *testing.T) {
 // --- Single writer of intent (store-managed vs hand-applied) ---
 
 type recordingStore struct {
+	disks map[string]store.Disk
 	calls []struct {
 		id        string
 		suspended bool
@@ -1835,4 +1839,82 @@ func TestGraphQLCreateServiceEnvVars(t *testing.T) {
 	if generated.Name != "SESSION_SECRET" || len(generated.Value) != 44 {
 		t.Fatalf("generated env = %+v, want SESSION_SECRET with a 44-char value", generated)
 	}
+}
+
+// Persistent service disks (ADR082). recordingStore keeps them in a map so a
+// verb test can assert the row write the API made, and so the one-disk-per-
+// service and grow-only rules hold here exactly as they do in Postgres.
+func (r *recordingStore) CreateDisk(_ context.Context, tenantID, appID, name, mountPath string, sizeGB int32) (store.Disk, error) {
+	if r.err != nil {
+		return store.Disk{}, r.err
+	}
+	if r.disks == nil {
+		r.disks = map[string]store.Disk{}
+	}
+	for _, d := range r.disks {
+		if d.AppID == appID && d.DeletedAt == nil {
+			return store.Disk{}, store.ErrConflict
+		}
+	}
+	now := time.Now().UTC()
+	d := store.Disk{
+		ID: ids.New(ids.Disk), TenantID: tenantID, AppID: appID, Name: name,
+		MountPath: mountPath, SizeGB: sizeGB, CreatedAt: now, UpdatedAt: now,
+	}
+	r.disks[d.ID] = d
+	return d, nil
+}
+
+func (r *recordingStore) GetDisk(_ context.Context, id string) (store.Disk, error) {
+	if d, ok := r.disks[id]; ok && d.DeletedAt == nil {
+		return d, nil
+	}
+	return store.Disk{}, store.ErrNotFound
+}
+
+func (r *recordingStore) ListDisks(_ context.Context, tenantID, appID string) ([]store.Disk, error) {
+	out := []store.Disk{}
+	for _, d := range r.disks {
+		if d.DeletedAt != nil || d.TenantID != tenantID {
+			continue
+		}
+		if appID != "" && d.AppID != appID {
+			continue
+		}
+		out = append(out, d)
+	}
+	return out, nil
+}
+
+func (r *recordingStore) UpdateDisk(_ context.Context, id string, name, mountPath *string, sizeGB *int32) (store.Disk, error) {
+	d, ok := r.disks[id]
+	if !ok || d.DeletedAt != nil {
+		return store.Disk{}, store.ErrNotFound
+	}
+	if sizeGB != nil && *sizeGB < d.SizeGB {
+		return store.Disk{}, store.ErrInvalid
+	}
+	if name != nil {
+		d.Name = *name
+	}
+	if mountPath != nil {
+		d.MountPath = *mountPath
+	}
+	if sizeGB != nil {
+		d.SizeGB = *sizeGB
+	}
+	d.UpdatedAt = time.Now().UTC()
+	r.disks[id] = d
+	return d, nil
+}
+
+func (r *recordingStore) DeleteDisk(_ context.Context, id string) error {
+	d, ok := r.disks[id]
+	if !ok || d.DeletedAt != nil {
+		return store.ErrNotFound
+	}
+	now := time.Now().UTC()
+	d.DeletedAt = &now
+	r.disks[id] = d
+	return nil
 }

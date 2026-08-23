@@ -247,7 +247,9 @@ func TestResourceQuotaCarriesStoragePVCandLBCaps(t *testing.T) {
 		wantStorage string
 		wantPVCs    int64
 	}{
-		{free.ID, "20Gi", 4},
+		// Raised for persistent service disks (ADR082 D10): a hobby workspace
+		// must fit a couple of default 10 GB disks beside its datastore floors.
+		{free.ID, "120Gi", 8},
 		{paid.ID, "5Ti", 200},
 	} {
 		q := quotaFor(tc.nsID)

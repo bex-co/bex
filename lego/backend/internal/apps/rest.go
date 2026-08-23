@@ -595,6 +595,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	s.registerNotificationOverrideRoutes(mux)
 	s.registerServiceRoutes(mux)
 	s.registerDomainRoutes(mux)
+	s.registerDiskRoutes(mux)
 }
 
 // registerServiceRoutes mounts the /v1/services core: list · create · get ·

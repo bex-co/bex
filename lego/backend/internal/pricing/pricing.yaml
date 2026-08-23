@@ -93,3 +93,13 @@ storage:
 # reference divided by 3,600 seconds and 1,000 milli-vCPU per vCPU.
 sandbox:
   usdPerWeightedSecond: 0.000000024861111111111111111111   # $0.0895 / 3,600 / 1,000
+
+# disk_gb_seconds rate: $0.175/GB-month of PROVISIONED capacity
+# (Render's service disk $0.25 × 0.70). Unlike the storage rate above, which
+# meters USED bytes on a datastore volume, this one bills what was reserved —
+# Render bills provisioned disk capacity, and Hetzner charges bex for the whole
+# volume whether it is attached, idle, or detached, so parity and cost recovery
+# point the same way here. It is the one SKU whose estimate equals its invoice.
+# Policy: docs/ADR082-persistent-disks.md D8.
+disk:
+  usdPerGBSecond: 0.000000066590563165905631659056   # $0.175 / 2,628,000 GB-seconds

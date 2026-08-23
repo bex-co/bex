@@ -243,6 +243,14 @@ type IntentStore interface {
 	// on its next pass, so the row delete (not a bare CR delete) is what keeps
 	// the deletion from being resurrected on resync. ErrNotFound for unknown ids.
 	DeleteApp(ctx context.Context, id string) error
+	// Persistent service disks (docs/ADR082-persistent-disks.md). The row is
+	// intent — the projector turns it into spec.disk — and simultaneously the
+	// billing record the provisioned-capacity meter integrates.
+	CreateDisk(ctx context.Context, tenantID, appID, name, mountPath string, sizeGB int32) (store.Disk, error)
+	GetDisk(ctx context.Context, id string) (store.Disk, error)
+	ListDisks(ctx context.Context, tenantID, appID string) ([]store.Disk, error)
+	UpdateDisk(ctx context.Context, id string, name, mountPath *string, sizeGB *int32) (store.Disk, error)
+	DeleteDisk(ctx context.Context, id string) error
 	SetAppSuspended(ctx context.Context, id string, suspended bool) error
 	SetAppTier(ctx context.Context, id string, tier string) error
 	SetAppReplicas(ctx context.Context, id string, replicas int32) error
@@ -437,6 +445,11 @@ type AppView struct {
 	// Autoscaling is the current per-service autoscaling config (nil when
 	// spec.autoscaling is unset, i.e. disabled and unconfigured).
 	Autoscaling *AutoscalingView `json:"autoscaling,omitempty"`
+	// Disk is the attached persistent disk, nil when the service has none
+	// (docs/ADR082-persistent-disks.md). Projected from spec.disk so it reflects
+	// what the operator is actually running, not only what was requested; the
+	// disk's own id comes from the control-plane row via the /v1/disks surface.
+	Disk *ServiceDiskView `json:"disk,omitempty"`
 	// AutoDeploy is whether a signed git push to Branch redeploys this App
 	// (spec.autoDeploy, Render's Auto-Deploy toggle). The Settings → Build &
 	// Deploy section reads it to render the toggle and writes it via SetAutoDeploy.
@@ -838,6 +851,7 @@ func view(a *appv1alpha1.App) AppView {
 		Branch:                a.Spec.Branch,
 		BuildFilter:           buildFilterView(a.Spec.BuildFilter),
 		Autoscaling:           asView,
+		Disk:                  serviceDiskView(a.Spec.Disk),
 		AutoDeploy:            a.Spec.AutoDeploy,
 		NotifyOnFail:          notifyOnFail,
 		NotificationsToSend:   policy,

@@ -22,6 +22,10 @@
 #   build_seconds    → per-second                        event=build_seconds
 #   storage_gb_seconds → re-based to per-GB-hour         event=storage_gb_hours
 #                      value = gb_seconds/3600, price = usdPerGBSecond×3600×100
+#   disk_gb_seconds  → re-based to per-GB-hour           event=disk_gb_hours
+#                      value = gb_seconds/3600, price = usdPerGBSecond×3600×100.
+#                      Distinct from storage_gb_hours: PROVISIONED capacity at a
+#                      different rate, not used bytes (docs/ADR082 D8/D9)
 #   sandbox_compute_seconds → milli-vCPU-equivalent sec  event=sandbox_compute_seconds
 #                      value = weighted seconds, price = usdPerWeightedSecond×100
 #
@@ -117,6 +121,9 @@ def parse_pricing():
                 dims.append(("build_seconds", "bex build_seconds", q12(rate * 100)))
             elif section == "storage":
                 dims.append(("storage_gb_hours", "bex storage (per GB-hour)", q12(rate * SECONDS_PER_HOUR * 100)))
+            elif section == "disk":
+                dims.append(("disk_gb_hours", "bex service disk (per provisioned GB-hour)",
+                             q12(rate * SECONDS_PER_HOUR * 100)))
             elif section == "sandbox":
                 dims.append(("sandbox_compute_seconds", "bex sandbox compute (weighted second)", q12(rate * 100)))
     return dims

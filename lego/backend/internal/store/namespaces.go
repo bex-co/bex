@@ -414,7 +414,17 @@ func (r *NamespaceReconciler) baseResourceQuota(namespace string, t Tenant) *cor
 // datastore at the 16 TiB disk-autoscale ceiling" (which would be ~400 TiB for a
 // paid namespace). paid: 50 datastores × 5 GB × ~20 ≈ 5 TiB; free: 2 × 1 GB × ~10
 // = 20 GiB. persistentvolumeclaims covers each datastore's PVC (HA replicas
-// included) plus slack. services.loadbalancers/nodeports are zeroed because bex
+// included) plus slack.
+//
+// Persistent service DISKS (docs/ADR082-persistent-disks.md) are the second
+// claimant on both dimensions: one RWO PVC per disk-bearing service, sized by
+// the owner rather than by a plan floor. The paid ceiling already absorbs them
+// (100 services at the 10 GB default is 1 TiB inside a 5 TiB budget, and the
+// disk's own bill is the real limiter — provisioned capacity is charged whether
+// or not it is used). The free/hobby figures are raised to 120 GiB / 8 PVCs so a
+// hobby workspace can attach a couple of default-size disks to its paid services
+// beside its datastore floors; at 20 GiB / 4 PVCs a single disk would have eaten
+// a quarter of the claim budget and most of the storage. services.loadbalancers/nodeports are zeroed because bex
 // only ever creates ClusterIP Services in a tenant namespace — a defense-in-depth
 // denial of billable cloud LBs against an operator bug or a compromised principal.
 //
@@ -449,7 +459,7 @@ func quotaForPlan(plan string) corev1.ResourceList {
 	switch plan {
 	case PlanHobby, "", "free":
 		cpuReq, memReq, cpuLim, memLim, pods, jobs = "3", "6Gi", "6", "12Gi", "50", "25"
-		storage, pvcs = "20Gi", "4"
+		storage, pvcs = "120Gi", "8"
 		ephReq, ephLim = "100Gi", "200Gi"
 	}
 	caps := QuotaCapsForPlan(plan)

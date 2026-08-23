@@ -58,7 +58,8 @@ type Sheet struct {
 	keyvalue  map[string]float64 // tier ID → $/second for instance_seconds (key_value)
 	bandwidth float64            // $/byte for egress_bytes
 	build     float64            // $/second for build_seconds
-	storage   float64            // $/GB-second for storage_gb_seconds
+	storage   float64            // $/GB-second of USED datastore volume for storage_gb_seconds
+	disk      float64            // $/GB-second of PROVISIONED capacity for disk_gb_seconds
 	sandbox   float64            // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
 	workspace map[string]float64 // plan ID → $/month licensed fee (hobby/pro/scale)
 }
@@ -90,6 +91,9 @@ func (s *Sheet) BillableMeterNames() []string {
 	}
 	if s.sandbox > 0 {
 		names = append(names, store.UsageKindSandboxComputeSeconds)
+	}
+	if s.disk > 0 {
+		names = append(names, "disk_gb_hours")
 	}
 	sort.Strings(names)
 	return names
@@ -296,7 +300,7 @@ func unitFor(kind string) meterUnit {
 		return meterUnit{"GB", 1073741824}
 	case store.UsageKindBuildSeconds:
 		return meterUnit{"min", 60}
-	case store.UsageKindStorageGBSeconds:
+	case store.UsageKindStorageGBSeconds, store.UsageKindDiskGBSeconds:
 		return meterUnit{"GB-mo", 2628000}
 	case store.UsageKindSandboxComputeSeconds:
 		return meterUnit{"vCPU-hr", 3600000}
@@ -367,6 +371,12 @@ func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {
 		if resourceKind == store.ResourceKindSandbox {
 			return s.sandbox
 		}
+	case store.UsageKindDiskGBSeconds:
+		// A service disk's flat per-GB rate: no tier dimension, because Render
+		// prices a disk by size alone regardless of the plan it hangs off.
+		if resourceKind == store.ResourceKindService {
+			return s.disk
+		}
 	}
 	return 0
 }
@@ -404,6 +414,9 @@ type sheetFile struct {
 	Sandbox struct {
 		USDPerWeightedSecond float64 `json:"usdPerWeightedSecond"`
 	} `json:"sandbox"`
+	Disk struct {
+		USDPerGBSecond float64 `json:"usdPerGBSecond"`
+	} `json:"disk"`
 	Workspace []struct {
 		Plan        string  `json:"plan"`
 		USDPerMonth float64 `json:"usdPerMonth"`
@@ -434,6 +447,7 @@ func parseSheet(raw []byte) (*Sheet, error) {
 		build:     f.Build.USDPerSecond,
 		storage:   f.Storage.USDPerGBSecond,
 		sandbox:   f.Sandbox.USDPerWeightedSecond,
+		disk:      f.Disk.USDPerGBSecond,
 		workspace: make(map[string]float64, len(f.Workspace)),
 	}
 	for _, e := range f.Compute {

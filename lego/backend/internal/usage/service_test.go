@@ -55,6 +55,33 @@ type memUsageStore struct {
 	upsert      func(store.HourlyRow) error
 	coverage    store.UsageCoverage
 	coverageErr error
+	// diskRows is the provisioned-disk meter's source: GB-seconds per window
+	// start, so a test can assert exactly which windows got metered.
+	diskRows map[time.Time][]store.DiskUsageRow
+}
+
+// DiskUsageForWindow / LatestUsageWindowForKind back the store-derived disk
+// meter (ADR082 D9), which reads control-plane rows rather than Prometheus.
+func (m *memUsageStore) DiskUsageForWindow(_ context.Context, from, _ time.Time) ([]store.DiskUsageRow, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.diskRows[from.UTC()], nil
+}
+
+func (m *memUsageStore) LatestUsageWindowForKind(_ context.Context, kind string) (time.Time, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var latest time.Time
+	found := false
+	for key, row := range m.rows {
+		if row.Kind != kind {
+			continue
+		}
+		if !found || key.windowStart.After(latest) {
+			latest, found = key.windowStart, true
+		}
+	}
+	return latest, found, nil
 }
 
 func (m *memUsageStore) RecordUsageSourceHealth(_ context.Context, _ []store.UsageSourceRecord) error {

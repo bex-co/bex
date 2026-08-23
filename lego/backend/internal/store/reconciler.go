@@ -1280,6 +1280,7 @@ func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 	// all. The same contract helper apps.specFromCreate uses, so the create path
 	// and the projector cannot disagree about a service's exposure.
 	s.Expose = s.PubliclyRoutable()
+	s.Disk = projectDisk(d.Disk)
 	s.Host = d.PrimaryHost
 	s.Hosts = slices.Clone(d.Hosts)
 	s.HostRedirects = maps.Clone(d.HostRedirects)
@@ -1356,7 +1357,27 @@ func applyOwnedSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) bool {
 	if !maps.Equal(dst.HostRedirects, want.HostRedirects) {
 		dst.HostRedirects, changed = maps.Clone(want.HostRedirects), true
 	}
+	// The disk is projector-owned in both directions: attaching one has to
+	// reach an existing CR, and detaching one has to clear it, or the operator
+	// would keep a volume the control plane no longer knows about.
+	if !equalDiskSpecs(dst.Disk, want.Disk) {
+		dst.Disk, changed = want.Disk.DeepCopy(), true
+	}
 	return changed
+}
+
+func projectDisk(d *Disk) *appv1alpha1.DiskSpec {
+	if d == nil {
+		return nil
+	}
+	return &appv1alpha1.DiskSpec{Name: d.Name, MountPath: d.MountPath, SizeGB: d.SizeGB}
+}
+
+func equalDiskSpecs(a, b *appv1alpha1.DiskSpec) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }
 
 func copyStringPtr(value *string) *string {

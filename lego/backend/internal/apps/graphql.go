@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/graphql-go/graphql"
@@ -453,6 +454,17 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 				return *a.Autoscaling
 			}),
 		},
+		// disk: the attached persistent disk's shape, null when the service has
+		// none (docs/ADR082-persistent-disks.md).
+		"disk": &graphql.Field{
+			Type: serviceDiskGQLType,
+			Resolve: gqlutil.Field(func(a AppView) any {
+				if a.Disk == nil {
+					return nil
+				}
+				return *a.Disk
+			}),
+		},
 		// publishPath/routes/headers describe a static_site (empty/null for other
 		// types): the served output directory and its edge rules.
 		"publishPath": gqlutil.StrField(func(a AppView) any { return a.PublishPath }),
@@ -885,7 +897,7 @@ var syncBlueprintResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 // GraphQLQuery returns the App read fields (Render dashboard names services /
 // server(id)) for the composition root to merge into the root Query.
 func (s *Service) GraphQLQuery() graphql.Fields {
-	return graphql.Fields{
+	fields := graphql.Fields{
 		// autoscalingConfig: read the autoscaling config for a specific service by id.
 		// A bex extension (Render exposes autoscaling only via REST PUT/DELETE).
 		"autoscalingConfig": &graphql.Field{
@@ -1059,6 +1071,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 	}
+	// Disk reads live in their own file beside the disk verbs (disks.go).
+	maps.Copy(fields, s.diskGQLQueryFields())
+	return fields
 }
 
 // GraphQLMutation returns the lifecycle mutations (Render dashboard names
@@ -1081,7 +1096,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			return fn(ctx, p.Args["id"].(string))
 		}
 	}
-	return graphql.Fields{
+	fields := graphql.Fields{
 		// createService: create-or-update a service (the create half of the
 		// lifecycle). A bex extension — the create mutation's name/shape is not
 		// confirmed against a live Render dashboard capture (same caveat as
@@ -1656,4 +1671,6 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 	}
+	maps.Copy(fields, s.diskGQLMutationFields())
+	return fields
 }
