@@ -21,6 +21,40 @@ const gqlEntry = (over: Partial<Record<string, string | null>> = {}) => ({
   ...over,
 });
 
+describe("logLineKey", () => {
+  // w9/053: a record redelivered with its timestamp at a coarser sub-second
+  // precision (a reconnect replay whose stamp lost its nanoseconds) is the
+  // same line — the viewer's clock display is second-precision, so the copies
+  // render as identical duplicates when the raw strings differ.
+  it("is timestamp-precision invariant within a millisecond", () => {
+    const nano = logLineKey(
+      "2026-08-20T20:51:50.123456789Z",
+      "qa-cron-run-rs2qx",
+      "hello-from-qa-cron",
+    );
+    const milli = logLineKey(
+      "2026-08-20T20:51:50.123Z",
+      "qa-cron-run-rs2qx",
+      "hello-from-qa-cron",
+    );
+    expect(nano).toBe(milli);
+  });
+
+  it("keeps genuinely distinct records apart", () => {
+    expect(logLineKey("2026-08-20T20:51:50.123Z", "p", "m")).not.toBe(
+      logLineKey("2026-08-20T20:51:50.124Z", "p", "m"),
+    );
+    expect(logLineKey("2026-08-20T20:51:50.123Z", "p", "m")).not.toBe(
+      logLineKey("2026-08-20T20:51:50.123Z", "p2", "m"),
+    );
+  });
+
+  it("falls back to the raw string for an empty or unparseable timestamp", () => {
+    expect(logLineKey("", "p", "m")).toBe("|p|m");
+    expect(logLineKey("not-a-date", "p", "m")).toBe("not-a-date|p|m");
+  });
+});
+
 describe("toLogLine / toLogLines", () => {
   it("maps a GraphQL LogEntry to a flat LogLine", () => {
     const line = toLogLine(gqlEntry());

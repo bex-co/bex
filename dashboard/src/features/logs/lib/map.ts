@@ -12,12 +12,23 @@ import { needsAnsiParse, parseAnsi } from "./ansi";
 // logLineKey mirrors the backend's stable id derivation (instance + timestamp +
 // message, internal/logs/render.go) with a client-computable key. The GraphQL
 // projection carries no id, so this is the only key both sources agree on.
+//
+// The timestamp enters the key at MILLISECOND resolution (JS's native clock
+// precision, and finer than the viewer's second-precision clock display), not
+// as the raw wire string: a record redelivered with its timestamp at a coarser
+// sub-second precision (an SSE reconnect replay whose stamp was re-rendered
+// without its nanoseconds) is the same line and must not render twice — that
+// drift double-rendered a cron run's lines in w9/053. Two genuinely distinct
+// records share a key only when same pod + same message + same millisecond,
+// which the viewer already treats as one record. An empty/unparseable stamp
+// keeps the raw string so stamp-less lines key exactly as before.
 export function logLineKey(
   timestamp: string,
   instance: string,
   message: string,
 ): string {
-  return `${timestamp}|${instance}|${message}`;
+  const ms = Date.parse(timestamp);
+  return `${Number.isNaN(ms) ? timestamp : ms}|${instance}|${message}`;
 }
 
 // makeLogLine is the single place a LogLine is built — both wire shapes converge

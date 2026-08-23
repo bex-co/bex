@@ -2,9 +2,10 @@ import type { AnsiSpan } from "./lib/ansi";
 
 // A single rendered log line — the flat shape the viewer draws, mapped from
 // either bex-api's GraphQL `LogEntry` (history) or an SSE `renderLog` frame
-// (live tail). `key` is a client-side dedupe key (timestamp|instance|message)
-// so a line that appears in both the last historical page and the live stream
-// is drawn once — the GraphQL projection carries no id to dedupe on.
+// (live tail). `key` is a client-side dedupe key (millisecond-normalized
+// timestamp|instance|message, see logLineKey) so a line that appears in both
+// the last historical page and the live stream — or twice on a tail reconnect
+// replay — is drawn once; the GraphQL projection carries no id to dedupe on.
 export interface LogLine {
   key: string;
   timestamp: string; // RFC3339Nano, or "" when the source omitted it
