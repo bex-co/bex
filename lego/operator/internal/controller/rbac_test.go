@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"slices"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -106,6 +107,24 @@ var _ = Describe("RBAC least-privilege invariants", func() {
 			Expect(clusterRoleHasSecretsRead(cr)).To(BeFalse(),
 				"ClusterRole %q must not grant cluster-wide secrets read — scope it to the apps namespace Role in deploy/gitops/base/operator-apps-rbac.yaml",
 				cr.Name)
+		}
+	})
+
+	It("operator ClusterRole can read ReplicaSets for rollout diagnosis", func() {
+		var verbs []string
+		for _, cr := range parseClusterRoles(operatorClusterRole) {
+			for _, rule := range cr.Rules {
+				if !slices.Contains(rule.APIGroups, "apps") || !slices.Contains(rule.Resources, "replicasets") {
+					continue
+				}
+				verbs = append(verbs, rule.Verbs...)
+			}
+		}
+		Expect(verbs).To(ContainElements("get", "list", "watch"),
+			"rolloutQuotaBlockMessage lists ReplicaSets through the cluster-wide manager cache")
+		for _, verb := range []string{"create", "update", "patch", "delete", "*"} {
+			Expect(verbs).NotTo(ContainElement(verb),
+				"the operator only diagnoses ReplicaSet status; the Deployment controller owns ReplicaSet mutation")
 		}
 	})
 
