@@ -83,6 +83,12 @@ describe("SessionChatColumn provisioning gate (w2/m64)", () => {
     render(column(view("hibernated", { sandboxId: null })));
     expect(screen.getByTestId("conversation")).toBeInTheDocument();
   });
+
+  it("shows provisioning, not the stream, while redispatching without a sandbox", () => {
+    render(column(view("redispatching", { sandboxId: "", turns: 2 })));
+    expect(screen.getByText("Starting the sandbox…")).toBeInTheDocument();
+    expect(screen.queryByTestId("conversation")).not.toBeInTheDocument();
+  });
 });
 
 describe("SessionChatColumn archived gate (ADR065 D1)", () => {

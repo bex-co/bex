@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Link, useParams, useRouterState } from "@tanstack/react-router";
-import { Archive, GitPullRequest, Search } from "lucide-react";
+import { Link, useParams } from "@tanstack/react-router";
+import { GitPullRequest, Search } from "lucide-react";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   SidebarGroup,
@@ -19,6 +19,7 @@ import {
   sessionTitleShort,
 } from "@/features/agent-sessions/lib/mapper";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
+import { cn } from "@/common/lib/utils/utils";
 
 /** Substring match for prose titles — avoids the mention picker's subsequence fallback. */
 function sessionSearchMatch(query: string, candidate: string): boolean {
@@ -26,7 +27,6 @@ function sessionSearchMatch(query: string, candidate: string): boolean {
   if (q === "") return true;
   return candidate.toLowerCase().includes(q);
 }
-import { cn } from "@/common/lib/utils/utils";
 
 /**
  * The agent-sessions section of the one dashboard rail (w5/m64) — Devin's
@@ -54,12 +54,6 @@ import { cn } from "@/common/lib/utils/utils";
 export function AgentSessionsNavSection() {
   const { t } = useTranslations();
   const { agentSessionId } = useParams({ strict: false });
-  const archivedActive = useRouterState({
-    select: (state) =>
-      state.location.pathname === "/agents" &&
-      ((state.location.search.archived as string) === "archived" ||
-        (state.location.search.archived as string) === "true"),
-  });
   const { sessions, loading } = useAgentSessions({
     limit: 20,
   });
@@ -141,22 +135,6 @@ export function AgentSessionsNavSection() {
           </SidebarMenu>
         )}
       </SidebarGroupContent>
-
-      {/* Devin's Folder → Archived: archived sessions leave the working set
-          above (the backend's default list excludes them, ADR065 D3); this is
-          their one navigation home. */}
-      <Link
-        to="/agents"
-        search={{ archived: "archived" }}
-        className={cn(
-          "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mt-1 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs",
-          archivedActive &&
-            "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
-        )}
-      >
-        <Archive className="size-3.5" />
-        {t("agentSessions.sidebarArchived")}
-      </Link>
     </SidebarGroup>
   );
 }

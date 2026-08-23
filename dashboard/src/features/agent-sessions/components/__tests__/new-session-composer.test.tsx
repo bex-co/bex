@@ -561,29 +561,24 @@ describe("NewSessionComposer", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps the composer usable behind a non-blocking Connect GitHub banner when there are no repos", async () => {
+  it("lets chat-only sessions start without a GitHub banner when there are no repos", async () => {
     reposState.repos = [];
     const user = userEvent.setup();
     render(<NewSessionComposer />);
 
-    // The banner nudges toward connecting GitHub, but it no longer BLOCKS the
-    // composer — a repo-less chat session is valid, so the Task field renders
-    // and a prompt still starts a session.
     expect(
-      await screen.findByTestId("agent-composer-github-empty"),
+      screen.queryByTestId("agent-composer-github-empty"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Enter to start · Shift+Enter for a new line · @ for a repo",
+      ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Workspace settings" }),
-    ).toHaveAttribute("href", "/workspace/settings");
 
     await typeTask(user);
     await user.click(screen.getByRole("button", { name: "Start session" }));
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
     expect(create.mock.calls[0][0].repo).toBe("");
-
-    // The Connect GitHub button still triggers the connect flow.
-    await user.click(screen.getByRole("button", { name: "Connect GitHub" }));
-    expect(connectGit).toHaveBeenCalledTimes(1);
   });
 
   it("inserts a first-run example and opens the mention picker", async () => {

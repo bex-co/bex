@@ -67,9 +67,9 @@ const EXAMPLE_KEYS = [
 /**
  * The prompt-box composer: the visual center of `/agents`. Agent and repo live
  * on the toolbar; Advanced keeps branch / model / endpoint / egress. A repo is
- * optional — a repo-less prompt starts a chat-only session — and a workspace
- * with zero GitHub App repos shows a non-blocking Connect GitHub banner above
- * an otherwise usable composer.
+ * optional — a repo-less prompt starts a chat-only session. The Connect GitHub
+ * callout appears only when the composer targets a repo but the workspace has
+ * no GitHub App repos connected.
  */
 export function NewSessionComposer() {
   const { t } = useTranslations();
@@ -90,6 +90,8 @@ export function NewSessionComposer() {
   const editorRef = useRef<InlineMentionEditorHandle | null>(null);
   const { task, repo, sessionIds } = composerDocument;
   const noRepos = !reposLoading && repos.length === 0;
+  // Repo-backed create needs GitHub; chat-only sessions do not.
+  const showGitHubCallout = noRepos && Boolean(repo);
   const showExamples = !noRepos && sessions.length === 0;
 
   const form = useForm<ComposerValues>({
@@ -209,7 +211,7 @@ export function NewSessionComposer() {
         </Alert>
       ) : null}
 
-      {noRepos ? <GitHubEmptyCallout /> : null}
+      {showGitHubCallout ? <GitHubEmptyCallout /> : null}
 
       <Form {...form}>
         <form onSubmit={onSubmit}>
@@ -329,11 +331,9 @@ export function NewSessionComposer() {
         </form>
       </Form>
 
-      {noRepos ? null : (
-        <p className="text-muted-foreground px-1 text-xs">
-          {t("agentSessions.keyboardHint")}
-        </p>
-      )}
+      <p className="text-muted-foreground px-1 text-xs">
+        {t("agentSessions.keyboardHint")}
+      </p>
 
       {showExamples ? (
         <div className="flex flex-wrap gap-2 px-1">
