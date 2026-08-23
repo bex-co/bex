@@ -81,13 +81,20 @@ export function SessionChatColumn({
 
   // Attachable = a live sandbox to splice, a finished (terminal/hibernated)
   // session replaying through an ADR065 D2 replay-only ticket, or one with an
-  // established transcript (turns ≥ 2). The last clause keeps the conversation
-  // mounted through a redispatch's provisioning window (briefly non-terminal
-  // with no sandbox) so the transcript doesn't drop to the "Starting the
-  // sandbox…" fallback and read as a reload; only genuine first-turn
-  // provisioning (turns ≤ 1, no sandbox) still shows the fallback.
+  // established transcript once provisioning has settled. While a non-terminal
+  // session is creating, redispatching, or resuming without a sandbox, keep the
+  // provisioning fallback so attach-ticket failures never surface as a false
+  // "stream unavailable" error (w5/m78 t003).
+  const provisioningWithoutSandbox =
+    !session.sandboxId &&
+    !session.isFinished &&
+    (session.phase === "creating" ||
+      session.phase === "redispatching" ||
+      session.phase === "resuming");
   const attachable =
-    Boolean(session.sandboxId) || session.isFinished || session.turns >= 2;
+    Boolean(session.sandboxId) ||
+    session.isFinished ||
+    (session.turns >= 2 && !provisioningWithoutSandbox);
   const conversation = attachable ? (
     <SessionConversation
       // Keyed ONLY on the session id (not turns/sandbox), so the `useChat`
