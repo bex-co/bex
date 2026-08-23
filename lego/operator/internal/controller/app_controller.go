@@ -1157,43 +1157,6 @@ func (r *AppReconciler) imagePullSecrets(app *appv1alpha1.App, image string) []c
 	return out
 }
 
-// predeployPullSecrets returns the imagePullSecrets for the pre-deploy Job,
-// which runs in the BUILD namespace — where the App-namespace tenant pull
-// secrets imagePullSecrets() names are unreachable when BEX_BUILD_NAMESPACE
-// differs (the w9/012 publish-Job defect's sibling). Same namespace ⇒ exactly
-// imagePullSecrets() (byte-identical). Different namespace: a platform-registry
-// image uses the build-namespace credential (buildJobPullSecret), and a foreign
-// image's ExternalRegistryPullSecret — minted by bex-api in the App namespace —
-// is relocated beside the Job first (the clone-secret relocation seam).
-func (r *AppReconciler) predeployPullSecrets(ctx context.Context, app *appv1alpha1.App, image string) ([]corev1.LocalObjectReference, error) {
-	ns := r.buildNamespace(app.Namespace)
-	if ns == app.Namespace {
-		return r.imagePullSecrets(app, image), nil
-	}
-	var out []corev1.LocalObjectReference
-	if r.registryHosted(image) {
-		if s := r.buildJobPullSecret(app); s != "" {
-			out = append(out, corev1.LocalObjectReference{Name: s})
-		}
-	}
-	if app.Spec.ExternalRegistryPullSecret != "" {
-		if err := r.copyCloneSecret(ctx, app, app.Namespace, ns, app.Spec.ExternalRegistryPullSecret); err != nil {
-			return nil, fmt.Errorf("relocating external registry pull secret to %s: %w", ns, err)
-		}
-		out = append(out, corev1.LocalObjectReference{Name: app.Spec.ExternalRegistryPullSecret})
-	}
-	return out, nil
-}
-
-// mirrorPreDeploySecrets copies every App-namespace Secret the pre-deploy pod
-// references — the env Secrets a migration reads (spec.envFromSecret[s]) and
-// any secret-file projections (spec.filesFromSecrets) — into the build
-// namespace the Job runs in (w9/012: those refs are namespace-local, so
-// without the copy the pod either stalls on its required env Secret or
-// silently runs the migration without its optional env). No-op when the build
-// namespace IS the App namespace. A Secret absent from the App namespace is
-// skipped: the pod then behaves exactly as it would in-namespace (optional
-// refs tolerate it, the required one fails the pod the same way).
 // rejectProtectedSecretRefs fails the reconcile when a tenant App names an
 // operational Secret marked LabelProtectedFromTenantMount in any of its
 // secret-mount fields (codex F1), or names an operator-configured operational
@@ -1258,69 +1221,6 @@ func (r *AppReconciler) rejectProtectedSecretRefs(ctx context.Context, app *appv
 		}
 		if sec.Labels[execution.LabelProtectedFromTenantMount] == execution.ProtectedFromTenantMount {
 			return fmt.Errorf("app references protected operator Secret %q which tenant workloads may not mount (codex F1)", name)
-		}
-	}
-	return nil
-}
-
-func (r *AppReconciler) mirrorPreDeploySecrets(ctx context.Context, app *appv1alpha1.App, ns string) error {
-	if ns == app.Namespace {
-		return nil
-	}
-	names := append([]string{}, app.Spec.EnvFromSecrets...)
-	names = append(names, app.Spec.FilesFromSecrets...)
-	if app.Spec.EnvFromSecret != "" {
-		names = append(names, app.Spec.EnvFromSecret)
-	}
-	// Per-variable secretKeyRefs too — this is how a Blueprint's
-	// fromDatabase/fromService link is injected (DATABASE_URL and friends), and
-	// a pre-deploy command is most often a database migration, so it is the one
-	// step that most needs them. Without this the Job is created and the pod
-	// fails at container-config time with `secret "<dpg-id>-app" not found`,
-	// which surfaces only as a failed deploy with no reason attached.
-	// appEnv renders these refs unchanged, so the Job resolves them in ITS
-	// namespace; the network path is already open (reconcileExecutionNetworkPolicy).
-	for _, e := range app.Spec.Env {
-		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {
-			names = append(names, e.ValueFrom.SecretKeyRef.Name)
-		}
-	}
-	seen := make(map[string]bool, len(names))
-	for _, name := range names {
-		if name == "" || seen[name] {
-			continue
-		}
-		seen[name] = true
-		err := r.copyCloneSecret(ctx, app, app.Namespace, ns, name)
-		if err == nil {
-			continue
-		}
-		if !apierrors.IsNotFound(err) {
-			return fmt.Errorf("relocating secret %s to %s: %w", name, ns, err)
-		}
-		// codex F4: the tenant-referenced Secret is absent in the App namespace, so
-		// NO tenant-owned copy landed in the build namespace. Silently skipping here
-		// (the pre-fix behavior) is safe ONLY when the name resolves to nothing —
-		// but the pre-deploy Job runs in a SHARED build namespace, so if a
-		// same-named Secret already exists there the pod's unchanged EnvFrom/volume
-		// reference binds THAT object, which can be a platform Secret (e.g. the
-		// static publisher credential) — leaking it to a tenant-controlled
-		// preDeployCommand. Fail closed unless the pre-existing build-namespace
-		// Secret is one this App itself owns (a benign stale copy). A name absent
-		// from BOTH namespaces stays the tolerated optional case.
-		var existing corev1.Secret
-		getErr := r.buildPlaneClient().Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &existing)
-		if getErr == nil {
-			owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
-				Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
-			if ownErr := owned.CheckOwner(&existing); ownErr != nil {
-				return fmt.Errorf("pre-deploy secret %q is absent in App namespace %s but a foreign Secret of that name occupies the shared build namespace %s; refusing to run the pre-deploy Job against a non-tenant Secret (codex F4): %w",
-					name, app.Namespace, ns, ownErr)
-			}
-			continue
-		}
-		if !apierrors.IsNotFound(getErr) {
-			return fmt.Errorf("checking build-namespace secret %s/%s: %w", ns, name, getErr)
 		}
 	}
 	return nil
@@ -2058,7 +1958,10 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 // converging — then overlaid with the stuck-pod diagnosis when a pod is
 // crash-looping or cannot pull its image: the deploy would otherwise time out
 // as an opaque update_failed with the cause visible only in pod state no
-// tenant surface shows (w9/011).
+// tenant surface shows (w9/011). The no-pods-at-all complement is the quota
+// block: the ReplicaSet's FailedCreate verdict is stamped the same way, so the
+// mechanism's specific cause reaches the deploy record instead of the generic
+// health-gate timeout line (deployment_projection.go's two-timer design).
 func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, replicas int32, port int, notReadyMessage string) (ctrl.Result, error) {
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	notReadyReason := "RolloutProgressing"
@@ -2070,6 +1973,11 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 		Message: notReadyMessage, ObservedGeneration: app.Generation,
 	})
 	if reason, msg := r.stuckPodMessage(ctx, dep, port); msg != "" {
+		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
+			Message: msg, ObservedGeneration: app.Generation,
+		})
+	} else if reason, msg := r.rolloutQuotaBlockMessage(ctx, dep); msg != "" {
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
 			Message: msg, ObservedGeneration: app.Generation,
@@ -3308,6 +3216,61 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 	return "", ""
 }
 
+// rolloutQuotaBlockMessage is the stuck-pod diagnosis for the rollout that has
+// NO pods to inspect: the current revision's ReplicaSet cannot create its
+// first pod because the workspace ResourceQuota rejects it, so no pod object
+// ever exists for stuckPodMessage to see — the App would sit
+// RolloutProgressing until the backend's 18-minute health gate fails it with
+// the generic timeout line, while the ReplicaSet status already carries the
+// exact quota verdict (a ReplicaFailure/FailedCreate condition whose message
+// the API server phrased as "exceeded quota: …"). This completes
+// deployment_projection.go's two-timer design for the quota class: the
+// mechanism's own specific verdict lands on the App condition long before the
+// observer's generic gate. The datastore siblings of the same diagnosis are
+// DiskGrowthBlockedByQuota (database_autoscale.go) and StorageBlockedByQuota
+// (keyvalue_controller.go).
+//
+// Empty when the rollout is merely progressing, when the current revision
+// already has pods (stuckPodMessage owns that world), or when the RS controller
+// has recorded no quota rejection — a transiently unschedulable-looking moment
+// must not be misreported, because users act on this message.
+func (r *AppReconciler) rolloutQuotaBlockMessage(ctx context.Context, dep *appsv1.Deployment) (string, string) {
+	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
+		return "", ""
+	}
+	revision := dep.Spec.Template.Labels[labelRevision]
+	if revision == "" {
+		return "", ""
+	}
+	// Listed with the cached client like stuckPodMessage's pods; the ReplicaSet
+	// controller's ReplicaFailure condition carries the admission verdict, so no
+	// (expiring) Events are needed.
+	var rss appsv1.ReplicaSetList
+	if err := r.List(ctx, &rss, client.InNamespace(dep.Namespace),
+		client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
+		return "", ""
+	}
+	for i := range rss.Items {
+		rs := &rss.Items[i]
+		if rs.Labels[labelRevision] != revision {
+			continue
+		}
+		if rs.Status.Replicas != 0 {
+			return "", "" // the new revision has pods; stuckPodMessage owns the diagnosis
+		}
+		for _, c := range rs.Status.Conditions {
+			if c.Type == appsv1.ReplicaSetReplicaFailure && c.Status == corev1.ConditionTrue &&
+				c.Reason == "FailedCreate" && strings.Contains(c.Message, "exceeded quota") {
+				return "RolloutBlockedByQuota",
+					"the rollout is blocked by the workspace resource quota — the new revision's pod cannot be created: " +
+						c.Message + " — the rollout resumes on its own once quota headroom is available (scale down, free resources, or upgrade the plan)"
+			}
+		}
+		return "", "" // the current revision's RS has no quota verdict
+	}
+	return "", ""
+}
+
 // setPublicRoutingCondition records whether this App has a derivable public
 // host, and when it does not, why.
 //
@@ -3547,7 +3510,14 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		// Running/Pending: fall through to re-check the live Job.
 	}
 
-	ns := r.buildNamespace(app.Namespace)
+	// The Job runs in the App's OWN namespace, never the build namespace
+	// (ADR043 D8, applied verbatim): the per-workspace default-deny admits only
+	// same-namespace (plus platform) traffic, so a migration Job in BEX_BUILD_NAMESPACE
+	// cannot reach the workspace's managed Postgres/KeyValue — its connections
+	// time out. Co-locating the Job fixes that with no secret mirroring and no
+	// cross-namespace allow; one-off jobs and cron jobs already run tenant images
+	// here the same way. BEX_BUILD_NAMESPACE still governs image builds.
+	ns := app.Namespace
 	rev := appv1alpha1.BuildRevision(gen)
 	jobName := predeploy.JobName(app.Name, rev)
 	failedPD := func(job, msg string) *appv1alpha1.PreDeployStatus {
@@ -3575,20 +3545,16 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 
 	// The step's container mirrors the app pod: same env, envFrom (the app's
 	// "<name>-env" Secret a migration reads DATABASE_URL from), pull secrets,
-	// security context, tier resources, and secret-file volume.
+	// security context, tier resources, and secret-file volume. Co-located with
+	// the App, the Job resolves every one of those references in-namespace — no
+	// secret mirroring, no build-namespace pull credential.
 	var vols []corev1.Volume
 	var mounts []corev1.VolumeMount
 	if vol, mount := secretFileMounts(app); vol != nil {
 		vols = []corev1.Volume{*vol}
 		mounts = []corev1.VolumeMount{*mount}
 	}
-	pullSecrets, err := r.predeployPullSecrets(ctx, app, image)
-	if err == nil {
-		err = r.mirrorPreDeploySecrets(ctx, app, ns)
-	}
-	if err != nil {
-		return r.failPreDeploy(ctx, app, failedPD(jobName, err.Error()), fmt.Errorf("pre-deploy: %w", err))
-	}
+	pullSecrets := r.imagePullSecrets(app, image)
 	if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
 		return r.failPreDeploy(ctx, app, failedPD(jobName, err.Error()), fmt.Errorf("pre-deploy network policy: %w", err))
 	}
@@ -3662,68 +3628,27 @@ func (r *AppReconciler) reconcileNetworkPolicy(ctx context.Context, app *appv1al
 	return reconcileProtectedAppNetworkPolicy(ctx, r.Client, r.Scheme, app)
 }
 
-// reconcileExecutionNetworkPolicy adds the one dynamic egress edge a static
-// namespace policy cannot express: a pre-deploy Pod may reach only workloads in
-// its own workspace (or protected environment) in the App namespace. DNS,
-// source hosts, the registry, and public object storage are handled by the
-// namespace-wide policy in deploy/gitops/base/build-boundary.yaml.
+// reconcileExecutionNetworkPolicy removes the legacy per-App execution-egress
+// exception from the build namespace. Pre-deploy Jobs run in the App's OWN
+// namespace now (ADR043 D8 co-location — see reconcilePreDeploy), where the
+// workspace default-deny already admits same-namespace traffic, so the
+// cross-namespace grant is never created anymore; what remains is sweeping the
+// stale object a pre-co-location operator left behind. Owner-gated like the
+// finalizer's delete (round 12, finding 1): the shared build namespace can hold
+// a same-named App's policy, which a bare Delete would tear down cross-workspace.
+// No-op when there is no separate build namespace. The build namespace's own
+// baseline policies are static (deploy/gitops/base/build-boundary.yaml) and
+// untouched by this.
 func (r *AppReconciler) reconcileExecutionNetworkPolicy(ctx context.Context, app *appv1alpha1.App) error {
 	buildNS := r.buildNamespace(app.Namespace)
 	if buildNS == app.Namespace {
 		return nil
 	}
-	name := build.JobName(app.Name, "execution-egress")
-	if strings.TrimSpace(app.Spec.PreDeployCommand) == "" ||
-		app.Spec.Type == appv1alpha1.TypeCronJob || app.Spec.Type == appv1alpha1.TypeStaticSite {
-		owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
-			Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
-		_, err := deleteOwnedObject(ctx, r.buildPlaneClient(), buildNS, name, &networkingv1.NetworkPolicy{}, owned)
-		return client.IgnoreNotFound(err)
-	}
-	np := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: buildNS}}
-	ws := app.Labels[labelWorkspace]
-	if ws == "" {
-		// Owner-gated like the finalizer's delete (round 12, finding 1): the
-		// shared build namespace can hold a same-named App's policy, which a
-		// bare Delete would tear down cross-workspace.
-		owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
-			Workspace: ws, Namespace: app.Namespace}
-		_, err := deleteOwnedObject(ctx, r.buildPlaneClient(), buildNS, name, &networkingv1.NetworkPolicy{}, owned)
-		return client.IgnoreNotFound(err)
-	}
-	scopeSelector := map[string]string{labelWorkspace: ws}
-	if env := app.Labels[labelNetworkIsolation]; env != "" {
-		scopeSelector = map[string]string{labelNetworkIsolation: env}
-	}
-	_, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), np, func() error {
-		if err := checkOwnedArtifact(np, app); err != nil {
-			return err
-		}
-		np.Labels = artifactLabels(app, "execution-network-policy")
-		np.Spec = networkingv1.NetworkPolicySpec{
-			// round-5 finding 8: the build namespace is shared, so selecting source
-			// pods by name alone (labelApp) would apply this workspace's egress
-			// grant to a SAME-NAMED App's build pods in ANOTHER workspace, letting
-			// attacker build code reach the victim namespace. Scope the source
-			// selector to this App's workspace too — the same tenant discriminator
-			// the destination scopeSelector uses (ws is non-empty here). App name +
-			// workspace uniquely identifies the App (a name is unique per workspace).
-			PodSelector: metav1.LabelSelector{MatchLabels: map[string]string{
-				labelApp: app.Name, labelWorkspace: ws, execution.LabelComponent: predeploy.ComponentValue,
-			}},
-			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress},
-			Egress: []networkingv1.NetworkPolicyEgressRule{{
-				To: []networkingv1.NetworkPolicyPeer{{
-					NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{
-						"kubernetes.io/metadata.name": app.Namespace,
-					}},
-					PodSelector: &metav1.LabelSelector{MatchLabels: scopeSelector},
-				}},
-			}},
-		}
-		return nil // cross-namespace ownerReferences are invalid; finalizer deletes it
-	})
-	return err
+	owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+		Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
+	_, err := deleteOwnedObject(ctx, r.buildPlaneClient(), buildNS,
+		build.JobName(app.Name, "execution-egress"), &networkingv1.NetworkPolicy{}, owned)
+	return client.IgnoreNotFound(err)
 }
 
 // SetupWithManager sets up the controller with the Manager.

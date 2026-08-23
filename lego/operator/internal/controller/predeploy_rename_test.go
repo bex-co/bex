@@ -45,7 +45,10 @@ import (
 // App CR names are tenant-prefixed (tea-<xid>-<service>), so names long enough
 // to be truncated are ordinary, not exotic.
 func TestPreDeployCancelsAJobRecordedUnderADifferentName(t *testing.T) {
-	const ns = "bex-build"
+	// The pre-deploy Job runs in the App's OWN namespace (ADR043 D8), so the
+	// stale run the sweep must find lives there too. BuildNamespace stays set to
+	// prove it no longer routes the step anywhere.
+	const ns = "default"
 	appName := "tea-" + strings.Repeat("x", 20) + "-orders-migration-service"
 	rev := appv1alpha1.BuildRevision(2)
 
@@ -94,7 +97,7 @@ func TestPreDeployCancelsAJobRecordedUnderADifferentName(t *testing.T) {
 
 	r := &AppReconciler{
 		Client: cl, BuildClient: cl, Scheme: scheme,
-		Mode: ModeKubernetes, BuildNamespace: ns,
+		Mode: ModeKubernetes, BuildNamespace: "bex-build",
 	}
 	if _, _, err := r.reconcilePreDeploy(context.Background(), app, "registry.example/app:gen-2", 3000); err != nil {
 		t.Fatalf("reconcilePreDeploy: %v", err)
@@ -106,6 +109,13 @@ func TestPreDeployCancelsAJobRecordedUnderADifferentName(t *testing.T) {
 		var jobs batchv1.JobList
 		_ = cl.List(context.Background(), &jobs, client.InNamespace(ns))
 		t.Fatalf("the Job recorded under the previous name survived; %d pre-deploy Jobs now exist and the migration runs twice", len(jobs.Items))
+	}
+
+	// The replacement Job for this revision runs beside the App, not in the
+	// build namespace.
+	var current batchv1.Job
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: ns, Name: currentName}, &current); err != nil {
+		t.Fatalf("current revision's pre-deploy Job not in the App namespace: %v", err)
 	}
 }
 

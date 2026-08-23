@@ -24,11 +24,13 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -185,6 +187,55 @@ var _ = Describe("Pre-deploy gate (kubernetes runtime)", func() {
 			Expect(got.Status.Phase).To(Equal(appv1alpha1.PhaseFailed))
 			Expect(got.Status.PreDeploy.Status).To(Equal(appv1alpha1.PreDeployFailed))
 			Expect(got.Status.PreDeploy.Message).To(ContainSubstring("boom"))
+		})
+	})
+
+	Context("when BEX_BUILD_NAMESPACE is set", func() {
+		const name = "predeploy-colocated-app"
+		nn := types.NamespacedName{Name: name, Namespace: "default"}
+		jobNN := types.NamespacedName{Name: predeploy.JobName(name, "gen-1"), Namespace: "default"}
+
+		AfterEach(func() {
+			if app := (&appv1alpha1.App{}); k8sClient.Get(ctx, nn, app) == nil {
+				Expect(k8sClient.Delete(ctx, app)).To(Succeed())
+				reconcile1(nn) // release the finalizer
+			}
+			_ = k8sClient.Delete(ctx, &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: jobNN.Name, Namespace: "default"}})
+		})
+
+		It("still runs the Job in the App's own namespace (ADR043 D8)", func() {
+			// A build namespace no longer routes the pre-deploy step: a Job in the
+			// shared build namespace cannot reach the workspace's managed Postgres
+			// through the tenant default-deny, so the migration's connections timed
+			// out there. The Job runs beside the App instead — no secret mirroring,
+			// no cross-namespace egress exception.
+			r.BuildNamespace = "bex-build"
+			app := &appv1alpha1.App{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+				Spec: appv1alpha1.AppSpec{
+					Image: "traefik/whoami", Port: 3000,
+					PreDeployCommand: "echo migrating",
+					EnvFromSecret:    "predeploy-colocated-env",
+				},
+			}
+			Expect(k8sClient.Create(ctx, app)).To(Succeed())
+
+			reconcile1(nn) // finalizer
+			reconcile1(nn) // pre-deploy gate
+			job := &batchv1.Job{}
+			Expect(k8sClient.Get(ctx, jobNN, job)).To(Succeed(), "the Job must be co-located with the App")
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: jobNN.Name, Namespace: "bex-build"}, &batchv1.Job{})
+			Expect(errors.IsNotFound(err)).To(BeTrue(), "no pre-deploy Job may be created in the build namespace")
+
+			By("not mirroring the referenced env Secret into the build namespace")
+			err = k8sClient.Get(ctx, types.NamespacedName{Name: "predeploy-colocated-env", Namespace: "bex-build"}, &corev1.Secret{})
+			Expect(errors.IsNotFound(err)).To(BeTrue())
+
+			By("not creating the cross-namespace execution egress exception")
+			err = k8sClient.Get(ctx, types.NamespacedName{
+				Name: build.JobName(name, "execution-egress"), Namespace: "bex-build",
+			}, &networkingv1.NetworkPolicy{})
+			Expect(errors.IsNotFound(err)).To(BeTrue())
 		})
 	})
 

@@ -1671,9 +1671,9 @@ func (b *Base) appNamespaceByName(ctx context.Context, app string) (string, erro
 
 // PreDeployPods lists an App's pre-deploy Job pods (the app.bex.co/predeploy
 // label, w1/m33) in namespace — the logs feature reads a migration's output from
-// these. namespace is the operator's build namespace (BEX_BUILD_NAMESPACE, where
-// the Job runs); empty falls back to the API's own namespace, the operator's
-// default when that env is unset.
+// these. namespace is the App's own (per-workspace) namespace: the pre-deploy
+// Job is co-located with the App (ADR043 D8), not in the build namespace.
+// Empty falls back to the API's own namespace.
 func (b *Base) PreDeployPods(ctx context.Context, app, namespace string) ([]corev1.Pod, error) {
 	if namespace == "" {
 		namespace = b.Namespace

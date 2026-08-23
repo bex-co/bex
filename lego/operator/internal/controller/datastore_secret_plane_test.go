@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -304,35 +306,38 @@ func TestKeyValueTenantBackupCredentialProjected(t *testing.T) {
 	}
 }
 
-// --- ADR043 D8: linked datastore Secrets reach the pre-deploy Job (w7/m77/t005) ---
+// --- ADR043 D8: the pre-deploy Job resolves linked datastore Secrets in place ---
 
-// TestPreDeployMirrorsLinkedDatastoreSecrets pins that a pre-deploy command can
-// resolve the datastore link its App declares.
+// TestPreDeployResolvesLinkedDatastoreSecretsInPlace pins that a pre-deploy
+// command can resolve the datastore link its App declares.
 //
 // A pre-deploy step is most often a database migration, so DATABASE_URL is
-// exactly what it needs — but the Job runs in BEX_BUILD_NAMESPACE, and
-// mirrorPreDeploySecrets historically copied only the whole-Secret sources
-// (envFromSecrets / filesFromSecrets / the service's own env Secret). The
-// per-variable secretKeyRefs that carry a Blueprint's fromDatabase/fromService
-// link were never mirrored, so the migration pod failed at container-config time
-// with `secret "<dpg-id>-app" not found` — a failed deploy with no reason
-// attached. Pre-existing, but squarely part of "the link actually works".
-func TestPreDeployMirrorsLinkedDatastoreSecrets(t *testing.T) {
+// exactly what it needs. The Job runs in the App's OWN namespace (ADR043 D8
+// co-location), where the whole-Secret sources (envFromSecrets) and the
+// per-variable secretKeyRefs a Blueprint's fromDatabase/fromService link
+// injects all resolve natively — the earlier design ran the Job in
+// BEX_BUILD_NAMESPACE and mirrored every referenced Secret across, which both
+// left the Job unable to REACH the database (the tenant default-deny admits
+// nothing from the build namespace) and turned a missing mirror into a
+// CreateContainerConfigError with no reason attached. Co-location deletes the
+// whole class: references render unchanged and nothing is copied anywhere.
+func TestPreDeployResolvesLinkedDatastoreSecretsInPlace(t *testing.T) {
 	scheme := datastoreSecretScheme(t)
 	const appNS, buildNS = "tea-predeploy", "bex-build"
 
 	app := &appv1alpha1.App{
-		ObjectMeta: metav1.ObjectMeta{Name: "forum", Namespace: appNS, UID: "uid-1"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "forum", Namespace: appNS, Generation: 1, UID: "uid-1",
+			Labels: map[string]string{labelWorkspace: "tea-ws"},
+		},
 		Spec: appv1alpha1.AppSpec{
-			EnvFromSecrets: []string{"evg-shared-env"},
+			Image:            "zot.svc:5000/forum:gen-1",
+			PreDeployCommand: "migrate",
+			EnvFromSecrets:   []string{"evg-shared-env"},
 			Env: []appv1alpha1.EnvVar{
 				{Name: "PLAIN", Value: "literal"},
 				{Name: "DATABASE_URL", ValueFrom: &appv1alpha1.EnvVarSource{
 					SecretKeyRef: &appv1alpha1.SecretKeySelector{Name: "dpg-forum-app", Key: "uri"},
-				}},
-				{Name: "DATABASE_HOST", ValueFrom: &appv1alpha1.EnvVarSource{
-					// Same Secret as above — the mirror must not copy it twice.
-					SecretKeyRef: &appv1alpha1.SecretKeySelector{Name: "dpg-forum-app", Key: "host"},
 				}},
 				{Name: "REDIS_URL", ValueFrom: &appv1alpha1.EnvVarSource{
 					SecretKeyRef: &appv1alpha1.SecretKeySelector{Name: "red-forum", Key: "uri"},
@@ -349,44 +354,42 @@ func TestPreDeployMirrorsLinkedDatastoreSecrets(t *testing.T) {
 			Data:       map[string][]byte{"k": []byte(name)},
 		})
 	}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
-	r := &AppReconciler{Client: cl, Scheme: scheme}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).
+		WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r := &AppReconciler{Client: cl, BuildClient: cl, Scheme: scheme, BuildNamespace: buildNS}
 	ctx := context.Background()
 
-	if err := r.mirrorPreDeploySecrets(ctx, app, buildNS); err != nil {
-		t.Fatalf("mirrorPreDeploySecrets: %v", err)
+	if _, _, err := r.reconcilePreDeploy(ctx, app, "zot.svc:5000/forum:gen-1", 3000); err != nil {
+		t.Fatalf("reconcilePreDeploy: %v", err)
 	}
-	for _, name := range secretNames {
-		var got corev1.Secret
-		if err := cl.Get(ctx, client.ObjectKey{Namespace: buildNS, Name: name}, &got); err != nil {
-			t.Errorf("Secret %q not mirrored into the pre-deploy namespace: %v — a migration referencing it fails with CreateContainerConfigError", name, err)
+
+	// The Job lands beside the App with the link references rendered unchanged —
+	// they resolve in ITS namespace, which is the App's.
+	var job batchv1.Job
+	jobNN := client.ObjectKey{Namespace: appNS, Name: predeploy.JobName("forum", "gen-1")}
+	if err := cl.Get(ctx, jobNN, &job); err != nil {
+		t.Fatalf("pre-deploy Job not co-located with the App: %v", err)
+	}
+	container := job.Spec.Template.Spec.Containers[0]
+	var gotRefs []string
+	for _, e := range container.Env {
+		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {
+			gotRefs = append(gotRefs, e.ValueFrom.SecretKeyRef.Name)
 		}
 	}
-}
+	if len(container.EnvFrom) != 1 || container.EnvFrom[0].SecretRef.Name != "evg-shared-env" {
+		t.Errorf("envFrom not rendered unchanged: %v", container.EnvFrom)
+	}
+	if len(gotRefs) != 2 || gotRefs[0] != "dpg-forum-app" || gotRefs[1] != "red-forum" {
+		t.Errorf("secretKeyRefs not rendered unchanged: %v", gotRefs)
+	}
 
-// TestPreDeployMirrorIsNoOpWhenCoLocated pins the unchanged path: with no
-// separate build namespace the Job already runs beside the Secrets, and the
-// mirror must not create copies that would then need cleaning up.
-func TestPreDeployMirrorIsNoOpWhenCoLocated(t *testing.T) {
-	scheme := datastoreSecretScheme(t)
-	app := &appv1alpha1.App{
-		ObjectMeta: metav1.ObjectMeta{Name: "forum", Namespace: "tea-x"},
-		Spec: appv1alpha1.AppSpec{Env: []appv1alpha1.EnvVar{
-			{Name: "DATABASE_URL", ValueFrom: &appv1alpha1.EnvVarSource{
-				SecretKeyRef: &appv1alpha1.SecretKeySelector{Name: "dpg-x-app", Key: "uri"},
-			}},
-		}},
-	}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()
-	r := &AppReconciler{Client: cl, Scheme: scheme}
-	if err := r.mirrorPreDeploySecrets(context.Background(), app, "tea-x"); err != nil {
-		t.Fatalf("co-located mirror must be a no-op, got: %v", err)
-	}
-	var secrets corev1.SecretList
-	if err := cl.List(context.Background(), &secrets); err != nil {
+	// Nothing is mirrored into the build namespace anymore.
+	var mirrored corev1.SecretList
+	if err := cl.List(ctx, &mirrored, client.InNamespace(buildNS)); err != nil {
 		t.Fatal(err)
 	}
-	if len(secrets.Items) != 0 {
-		t.Errorf("co-located mirror wrote %d Secrets", len(secrets.Items))
+	if len(mirrored.Items) != 0 {
+		t.Errorf("%d Secrets copied into the build namespace; co-location makes the mirror unnecessary", len(mirrored.Items))
 	}
 }

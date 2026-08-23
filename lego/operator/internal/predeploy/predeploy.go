@@ -219,9 +219,10 @@ func Observe(j *batchv1.Job) (State, string) {
 // tolerated (concurrent GC).
 //
 // appUID scopes the selection to this App's immutable, globally-unique UID
-// (round-5 finding 5): the pre-deploy namespace is shared, so a name-only
-// selector would interrupt (and could replay) a same-named App's migration in
-// ANOTHER workspace. Empty appUID degrades to the prior name-only behavior.
+// (round-5 finding 5): the Job name derives from the workspace-local service
+// name, so a name-only selector would interrupt (and could replay) a same-named
+// App's migration from another lifetime/namespace. Empty appUID degrades to the
+// prior name-only behavior.
 func CancelSuperseded(ctx context.Context, name, appUID, namespace, keep string, cl client.Client) error {
 	sel := client.MatchingLabels{LabelService: name}
 	if appUID != "" {

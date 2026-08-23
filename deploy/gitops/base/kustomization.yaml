@@ -35,7 +35,7 @@ resources:
   - openbao.yaml                 # OpenBao — platform tenant-credential secret store (docs/ADR013-secrets.md)
   - openbao-backup.yaml          # nightly OpenBao Raft snapshot -> object storage (local overlay excludes)
   - network-policies.yaml        # platform-side tenant isolation: deny tenant pods from bex-system/registry/secrets/monitoring (docs/ADR022-tenant-isolation.md)
-  - build-boundary.yaml          # isolated namespace/RBAC/network boundary for tenant-controlled build/publish/pre-deploy execution
+  - build-boundary.yaml          # isolated namespace/RBAC/network boundary for tenant-controlled build/publish execution (pre-deploy is co-located with the App, ADR043 D8)
   - tenant-node-egress.yaml      # Cilium egressDeny: tenant pods -> node (host/remote-node) + link-local metadata (docs/ADR022-tenant-isolation.md); local overlay drops it (Calico CNI)
   - datastore-control-egress.yaml # Cilium allow: CNPG instance managers -> kube-apiserver from any tenant namespace (ADR043 D8.3); local overlay drops it (Calico CNI)
   - platform-namespaces.yaml     # monitoring + secrets namespaces the raw resources above land in (from-scratch ordering, w1/m19 t006)

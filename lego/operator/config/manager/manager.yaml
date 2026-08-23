@@ -153,8 +153,10 @@ spec:
           # BEX_API_NAMESPACE / BEX_CP_APPS_NAMESPACE.
           - name: BEX_APPS_NAMESPACE
             value: default
-          # Dedicated namespace for every tenant-controlled build, publish, and
-          # pre-deploy execution workload.
+          # Dedicated namespace for every tenant-controlled build and publish
+          # execution workload. (Pre-deploy Jobs run in the App's OWN namespace
+          # — ADR043 D8 co-location — so they can reach workspace datastores
+          # through the tenant same-namespace allow.)
           - name: BEX_BUILD_NAMESPACE
             value: bex-build
           # Build-plane concurrency baseline, checked in rather than ambient

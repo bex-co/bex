@@ -176,32 +176,3 @@ func TestRejectConfiguredOperationalSecretNames(t *testing.T) {
 		})
 	}
 }
-
-// TestMirrorPreDeploySecretsFailsClosedOnForeignCollision is the codex F4 guard:
-// when a tenant-referenced pre-deploy Secret is absent in the App namespace, the
-// mirror must not silently proceed if a same-named FOREIGN Secret already exists
-// in the shared build namespace — the pre-deploy Job would otherwise mount that
-// (platform) Secret. Absent in both namespaces stays the tolerated optional case.
-func TestMirrorPreDeploySecretsFailsClosedOnForeignCollision(t *testing.T) {
-	scheme := protectedSecretScheme(t)
-	app := &appv1alpha1.App{
-		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-web"},
-		Spec:       appv1alpha1.AppSpec{EnvFromSecret: "migrate-env"},
-	}
-
-	// Foreign (platform) Secret occupies the name in the build namespace, and the
-	// App-namespace source is absent => must fail closed.
-	foreign := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "migrate-env", Namespace: "bex-build"}}
-	buildClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(foreign).Build()
-	r := &AppReconciler{Client: buildClient, BuildClient: buildClient}
-	if err := r.mirrorPreDeploySecrets(context.Background(), app, "bex-build"); err == nil {
-		t.Fatal("missing tenant source with a foreign build-namespace Secret was ACCEPTED — platform secret mount")
-	}
-
-	// Absent in BOTH namespaces => benign optional case, no error.
-	empty := fake.NewClientBuilder().WithScheme(scheme).Build()
-	r2 := &AppReconciler{Client: empty, BuildClient: empty}
-	if err := r2.mirrorPreDeploySecrets(context.Background(), app, "bex-build"); err != nil {
-		t.Fatalf("absent-in-both optional reference was refused: %v", err)
-	}
-}

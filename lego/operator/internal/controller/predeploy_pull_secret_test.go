@@ -20,132 +20,105 @@ import (
 	"context"
 	"testing"
 
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/bex-co/bex/lego/operator/internal/predeploy"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// TestPredeployPullSecrets pins the w9/012 pre-deploy sibling of the publish
-// Job's pull-secret fix: the pre-deploy Job runs in the build namespace, where
-// the App-namespace tenant pull secrets are unreachable. Same namespace ⇒
-// byte-identical to imagePullSecrets(); separate namespace ⇒ the build-ns
-// credential for platform-registry images, and a foreign image's external
-// pull secret is relocated beside the Job.
-func TestPredeployPullSecrets(t *testing.T) {
+// TestPreDeployJobRunsInAppNamespace pins the ADR043-D8 co-location fix: even
+// with BEX_BUILD_NAMESPACE set, the pre-deploy Job lands in the App's OWN
+// namespace — a Job in the shared build namespace cannot reach the workspace's
+// managed Postgres through the tenant default-deny, so a migration's
+// connections timed out there. Co-location also retires the w9/012 relocation
+// machinery this file used to pin: pull secrets are exactly the app pod's
+// imagePullSecrets() (no build-namespace credential, no external-secret
+// relocation) and no referenced Secret is copied across namespaces.
+func TestPreDeployJobRunsInAppNamespace(t *testing.T) {
 	ctx := context.Background()
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
+	_ = appv1alpha1.AddToScheme(scheme)
 
-	names := func(refs []corev1.LocalObjectReference) []string {
-		out := make([]string, 0, len(refs))
-		for _, r := range refs {
-			out = append(out, r.Name)
-		}
-		return out
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "myapp", Namespace: "default", Generation: 1, UID: "uid-myapp",
+			Labels: map[string]string{labelWorkspace: "tea-ws"},
+		},
+		Spec: appv1alpha1.AppSpec{
+			Image:                      "zot.svc:5000/myapp:gen-1",
+			PreDeployCommand:           "migrate",
+			EnvFromSecret:              "myapp-env",
+			ExternalRegistryPullSecret: "ext-pull",
+		},
+	}
+	envSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "myapp-env", Namespace: "default"}}
+	extPull := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "ext-pull", Namespace: "default"},
+		Type:       corev1.SecretTypeDockerConfigJson,
+		Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte(`{"auths":{}}`)},
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).
+		WithObjects(app, envSecret, extPull).
+		WithStatusSubresource(&appv1alpha1.App{}).
+		Build()
+	r := &AppReconciler{
+		Client: cl, BuildClient: cl, Scheme: scheme,
+		Mode: ModeKubernetes, BuildNamespace: "bex-build",
+		Registry: "zot.svc:5000", PerAppRegistry: &registry.Creds{},
 	}
 
-	t.Run("same namespace is byte-identical to imagePullSecrets", func(t *testing.T) {
-		app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "myapp", Namespace: "default"}}
-		r := &AppReconciler{Registry: "zot.svc:5000", PerAppRegistry: &registry.Creds{}}
-		got, err := r.predeployPullSecrets(ctx, app, "zot.svc:5000/myapp:gen-1")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(got) != 1 || got[0].Name != registry.PullSecretName("myapp") {
-			t.Errorf("same-ns secrets = %v, want [reg-pull-myapp]", names(got))
-		}
-	})
-
-	t.Run("separate namespace uses the build-ns credential", func(t *testing.T) {
-		app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "myapp", Namespace: "default"}}
-		r := &AppReconciler{
-			Registry: "zot.svc:5000", BuildNamespace: "bex-system",
-			PerAppRegistry: &registry.Creds{}, RegistryBuildPullSecret: "bex-registry-pull",
-		}
-		got, err := r.predeployPullSecrets(ctx, app, "zot.svc:5000/myapp:gen-1")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(got) != 1 || got[0].Name != "reg-pull-myapp" {
-			t.Errorf("separate-ns secrets = %v, want [reg-pull-myapp]", names(got))
-		}
-	})
-
-	t.Run("separate namespace relocates a foreign image's external pull secret", func(t *testing.T) {
-		app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "myapp", Namespace: "default"}}
-		app.Spec.ExternalRegistryPullSecret = "ext-pull"
-		src := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "ext-pull", Namespace: "default"},
-			Type:       corev1.SecretTypeDockerConfigJson,
-			Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte(`{"auths":{}}`)},
-		}
-		cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(src).Build()
-		r := &AppReconciler{
-			Client: cl, Registry: "zot.svc:5000", BuildNamespace: "bex-system",
-		}
-		got, err := r.predeployPullSecrets(ctx, app, "ghcr.io/acme/tool:v1")
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(got) != 1 || got[0].Name != "ext-pull" {
-			t.Fatalf("foreign-image secrets = %v, want [ext-pull]", names(got))
-		}
-		var copied corev1.Secret
-		if err := cl.Get(ctx, client.ObjectKey{Namespace: "bex-system", Name: "ext-pull"}, &copied); err != nil {
-			t.Fatalf("external pull secret not relocated to the build namespace: %v", err)
-		}
-		if copied.Type != corev1.SecretTypeDockerConfigJson {
-			t.Errorf("relocated secret type = %v, want kubernetes.io/dockerconfigjson", copied.Type)
-		}
-	})
-}
-
-// TestMirrorPreDeploySecrets pins the env/secret-file mirroring half of the
-// w9/012 pre-deploy fix: with a separate build namespace, the Secrets the
-// pre-deploy pod references (spec.envFromSecret[s], spec.filesFromSecrets)
-// are copied beside the Job; a Secret absent from the App namespace is
-// skipped, not an error; same-namespace is a no-op.
-func TestMirrorPreDeploySecrets(t *testing.T) {
-	ctx := context.Background()
-	scheme := runtime.NewScheme()
-	_ = clientgoscheme.AddToScheme(scheme)
-
-	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "myapp", Namespace: "default"}}
-	app.Spec.EnvFromSecret = "myapp-env"
-	app.Spec.EnvFromSecrets = []string{"extra-env", "absent-env"}
-	app.Spec.FilesFromSecrets = []string{"certs"}
-
-	objs := []client.Object{
-		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "myapp-env", Namespace: "default"},
-			Data: map[string][]byte{"DATABASE_URL": []byte("postgres://…")}},
-		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "extra-env", Namespace: "default"}},
-		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "certs", Namespace: "default"}},
+	if _, _, err := r.reconcilePreDeploy(ctx, app, "zot.svc:5000/myapp:gen-1", 3000); err != nil {
+		t.Fatalf("reconcilePreDeploy: %v", err)
 	}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
-	r := &AppReconciler{Client: cl, BuildNamespace: "bex-system"}
 
-	if err := r.mirrorPreDeploySecrets(ctx, app, "bex-system"); err != nil {
+	// The Job runs beside the App, never in the build namespace.
+	jobNN := client.ObjectKey{Namespace: "default", Name: predeploy.JobName("myapp", "gen-1")}
+	var job batchv1.Job
+	if err := cl.Get(ctx, jobNN, &job); err != nil {
+		t.Fatalf("pre-deploy Job not in the App namespace: %v", err)
+	}
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "bex-build", Name: jobNN.Name}, &batchv1.Job{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("a pre-deploy Job exists in the build namespace: %v", err)
+	}
+
+	// Pull secrets are the app pod's own — the App-namespace tenant credential
+	// plus the external-registry reference, resolved in place. Nothing is
+	// relocated into the build namespace.
+	got := job.Spec.Template.Spec.ImagePullSecrets
+	want := []string{appIdentity(app).PullSecretName(), "ext-pull"}
+	if len(got) != len(want) {
+		t.Fatalf("job imagePullSecrets = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i].Name != want[i] {
+			t.Fatalf("job imagePullSecrets[%d] = %q, want %q", i, got[i].Name, want[i])
+		}
+	}
+	var buildNS batchv1.JobList
+	if err := cl.List(ctx, &buildNS, client.InNamespace("bex-build")); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"myapp-env", "extra-env", "certs"} {
-		var s corev1.Secret
-		if err := cl.Get(ctx, client.ObjectKey{Namespace: "bex-system", Name: name}, &s); err != nil {
-			t.Errorf("secret %s not mirrored into the build namespace: %v", name, err)
+	if len(buildNS.Items) != 0 {
+		t.Errorf("build namespace holds %d Jobs", len(buildNS.Items))
+	}
+	var secrets corev1.SecretList
+	if err := cl.List(ctx, &secrets, client.InNamespace("bex-build")); err != nil {
+		t.Fatal(err)
+	}
+	if len(secrets.Items) != 0 {
+		names := make([]string, 0, len(secrets.Items))
+		for _, s := range secrets.Items {
+			names = append(names, s.Name)
 		}
-	}
-	var s corev1.Secret
-	if err := cl.Get(ctx, client.ObjectKey{Namespace: "bex-system", Name: "absent-env"}, &s); err == nil {
-		t.Error("absent-env should not have been conjured in the build namespace")
-	}
-
-	// Same namespace: nothing to do, no error even with no client access.
-	if err := (&AppReconciler{}).mirrorPreDeploySecrets(ctx, app, "default"); err != nil {
-		t.Errorf("same-namespace mirror = %v, want nil", err)
+		t.Errorf("secrets were mirrored into the build namespace: %v — the Job resolves every reference in the App namespace now", names)
 	}
 }

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -1262,6 +1263,41 @@ func TestFailureReasonFor(t *testing.T) {
 	stale.Status.Conditions[0].ObservedGeneration = 2
 	if got, _ := failureReasonFor(stale); got == crash {
 		t.Error("stale-generation condition message must not be stamped")
+	}
+}
+
+// TestFailureReasonCarriesTheQuotaBlock pins the no-pods-at-all failure leg:
+// the workspace ResourceQuota rejects the rollout's surge pod, the ReplicaSet
+// records FailedCreate, and no pod object ever exists — so every pod-state
+// diagnosis (crash loop, image pull, unresolvable config) stays blind and the
+// deploy would close with the generic health-gate line. The operator stamps
+// the ReplicaSet's quota verdict as RolloutBlockedByQuota; the deploy record
+// must carry that message, like the CreateContainerConfigError gap w7/m79
+// closed (the datastore siblings are DiskGrowthBlockedByQuota /
+// StorageBlockedByQuota).
+func TestFailureReasonCarriesTheQuotaBlock(t *testing.T) {
+	app := &appv1alpha1.App{}
+	app.Generation = 4
+	app.Status.Phase = appv1alpha1.PhaseDeploying
+	msg := `the rollout is blocked by the workspace resource quota — the new revision's pod cannot be created: ` +
+		`pods "web-new-abc12-" is forbidden: exceeded quota: tenant-quota, requested: pods=1, used: pods=20, limited: pods=20` +
+		` — the rollout resumes on its own once quota headroom is available`
+	app.Status.Conditions = []metav1.Condition{{
+		Type: "Ready", Status: metav1.ConditionFalse, Reason: "RolloutBlockedByQuota",
+		Message: msg, ObservedGeneration: 4,
+	}}
+
+	reason, code := failureReasonFor(app)
+	if reason != msg {
+		t.Errorf("failure_reason = %q\nwant the operator's quota diagnosis naming the quota and its headroom", reason)
+	}
+	if strings.Contains(reason, "health-gate window") {
+		t.Error("the deploy still closes with the generic timeout line — the quota verdict was discarded")
+	}
+	// No structured reason code, same as CreateContainerConfigError: the
+	// free-text failure_reason already carries the actionable detail.
+	if code != "" {
+		t.Errorf("reason code = %q, want empty", code)
 	}
 }
 
