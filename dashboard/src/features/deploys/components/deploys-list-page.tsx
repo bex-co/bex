@@ -154,7 +154,7 @@ export function DeploysListPage({ serviceId }: DeploysListPageProps) {
             <TableHead className="hidden sm:table-cell">
               {t("deploys.columnTrigger")}
             </TableHead>
-            <TableHead className="hidden sm:table-cell">
+            <TableHead className="hidden whitespace-nowrap sm:table-cell">
               {t("deploys.columnDuration")}
             </TableHead>
             <TableHead className="w-0 text-right">

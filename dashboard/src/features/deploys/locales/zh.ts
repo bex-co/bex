@@ -117,6 +117,10 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "蓝图同步",
     description: "Deploy row: trigger=blueprint label (Blueprint sync deploy)",
   },
+  "deploys.triggerNewCommit": {
+    message: "新提交",
+    description: "Deploy row: trigger=new_commit label (git push redeploy)",
+  },
   "deploys.logSearchPlaceholder": {
     message: "搜索日志…",
     description: "Deploy detail page: log search input placeholder",

@@ -164,6 +164,7 @@ describe("DeploysListPage", () => {
       row({ id: "dep-c", trigger: "deploy_hook" }),
       row({ id: "dep-d", trigger: "blueprint" }),
       row({ id: "dep-e", trigger: "rollback", rollbackOf: "dep-a" }),
+      row({ id: "dep-f", trigger: "new_commit" }),
     ];
 
     renderPage();
@@ -175,6 +176,8 @@ describe("DeploysListPage", () => {
     expect(screen.getAllByText("deploy hook").length).toBeGreaterThan(0);
     expect(screen.getAllByText("blueprint sync").length).toBeGreaterThan(0);
     expect(screen.getAllByText("rollback to dep-a").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("new commit").length).toBeGreaterThan(0);
+    expect(screen.queryByText("new_commit")).not.toBeInTheDocument();
   });
 
   it("shows a running-elapsed marker for an active deploy and an em-dash before it starts", async () => {

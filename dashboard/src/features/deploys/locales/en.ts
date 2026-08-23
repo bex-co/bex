@@ -117,6 +117,10 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "blueprint sync",
     description: "Deploy row: trigger=blueprint label (Blueprint sync deploy)",
   },
+  "deploys.triggerNewCommit": {
+    message: "new commit",
+    description: "Deploy row: trigger=new_commit label (git push redeploy)",
+  },
   "deploys.logSearchPlaceholder": {
     message: "Search logs…",
     description: "Deploy detail page: log search input placeholder",

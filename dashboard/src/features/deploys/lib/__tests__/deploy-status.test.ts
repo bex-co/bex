@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   deployStatusKey,
   deployStatusVariant,
+  deployTriggerKey,
   isCancelableDeployStatus,
   isRollbackableDeployStatus,
   isTerminalDeployStatus,
@@ -44,5 +45,21 @@ describe("deployStatusKey", () => {
     expect(isRollbackableDeployStatus("deactivated")).toBe(true);
     expect(isRollbackableDeployStatus("build_failed")).toBe(false);
     expect(isRollbackableDeployStatus("update_in_progress")).toBe(false);
+  });
+});
+
+describe("deployTriggerKey", () => {
+  it.each([
+    ["create", "deploys.triggerCreate"],
+    ["api", "deploys.triggerApi"],
+    ["deploy_hook", "deploys.triggerDeployHook"],
+    ["blueprint", "deploys.triggerBlueprint"],
+    ["new_commit", "deploys.triggerNewCommit"],
+  ] as const)("maps trigger=%s to %s", (trigger, key) => {
+    expect(deployTriggerKey(trigger)).toBe(key);
+  });
+
+  it("returns null for an unrecognized trigger so the caller can fall back", () => {
+    expect(deployTriggerKey("surprise")).toBeNull();
   });
 });
