@@ -213,6 +213,9 @@ type AppReconciler struct {
 	// namespaces; a cached client would try to establish forbidden cluster-wide
 	// informers before performing a namespaced Get. Tests may leave it nil and
 	// use Client.
+	//
+	// It also backs uncachedSecretClient below: any Secret in an App's OWN
+	// namespace needs the same bypass, for the same reason.
 	BuildClient client.Client
 	Scheme      *runtime.Scheme
 	// AppsNamespace is the shared/bootstrap tenant namespace (BEX_APPS_NAMESPACE,
@@ -1441,6 +1444,24 @@ func (r *AppReconciler) buildPlaneClient() client.Client {
 		return r.BuildClient
 	}
 	return r.Client
+}
+
+// uncachedSecretClient reads and writes Secrets that live in an App's OWN
+// namespace. It must not be the cached client: the manager's Secret informer
+// covers exactly one namespace (NamespacedSecretCacheOptions), while under
+// ADR043 D8 a tenant App lives in its workspace's own `<ws>` namespace — so a
+// cached Get there fails outright with "unknown namespace for the cache", and
+// the App never converges. Widening the informer is not the alternative: the
+// operator's ClusterRole deliberately omits cluster-wide Secrets (w7/m7), so a
+// cluster-wide Secret list would fail and stop the entire shared cache from
+// starting. This is the App-side counterpart of Database/KeyValue's
+// SecretClient, and it is why the disk's LUKS passphrase Secret is read here
+// rather than through r.Get.
+//
+// Found by the w1/m86 cluster drill: envtest runs its Apps in the cache's own
+// namespace, so no test could distinguish the two clients.
+func (r *AppReconciler) uncachedSecretClient() client.Client {
+	return r.buildPlaneClient()
 }
 
 // lastActiveTime parses the annotLastActive annotation, returning zero if absent or invalid.

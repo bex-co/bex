@@ -113,16 +113,18 @@ func TestMonthlyEstimateVariableClassification(t *testing.T) {
 	}
 }
 
-func TestMonthlyEstimateStorageOnlyForDatastores(t *testing.T) {
+// A service with no disk still carries no storage component. This used to hold
+// for EVERY service because persistent disks were a non-goal; since ADR082
+// reversed that, the invariant is narrower — no disk declared, no storage line —
+// and the disk rate itself is covered in pricing_test.go.
+func TestMonthlyEstimateNoStorageLineWithoutADisk(t *testing.T) {
 	got := Default.MonthlyEstimate([]MonthlyResource{
-		// StorageGB on a service kind must be ignored (services have no
-		// provisioned-storage line — persistent disks are a non-goal).
-		{Name: "web", ResourceKind: store.ResourceKindService, Tier: "starter", StorageGB: 100},
+		{Name: "web", ResourceKind: store.ResourceKindService, Tier: "starter"},
 	})
 	if len(got.Lines) != 1 {
 		t.Fatalf("lines = %d, want 1: %+v", len(got.Lines), got.Lines)
 	}
 	if got.Lines[0].MonthlyUSD != "4.90" || got.Lines[0].StorageUSD != "" || got.Lines[0].StorageGB != 0 {
-		t.Errorf("service line must carry no storage component: %+v", got.Lines[0])
+		t.Errorf("a diskless service must carry no storage component: %+v", got.Lines[0])
 	}
 }

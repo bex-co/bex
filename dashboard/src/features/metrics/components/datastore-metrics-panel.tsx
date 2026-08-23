@@ -43,6 +43,15 @@ interface DatastoreMetricsPanelProps {
   highAvailabilityEnabled?: boolean;
   /** Database-only control rendered beside the disk chart heading. */
   diskHeaderExtra?: ReactNode;
+  /**
+   * Card heading overrides. A service's attached disk (kind="service", ADR082)
+   * renders this same panel — the series, the capacity reference line, and the
+   * unavailable/error states are identical, because what is being measured is
+   * identical: a PVC. Only the words around it differ, so only the words are a
+   * prop. Default to the datastore copy.
+   */
+  title?: string;
+  description?: string;
 }
 
 /**
@@ -51,12 +60,18 @@ interface DatastoreMetricsPanelProps {
  * replication-lag for Postgres only, and memory + connected-clients for Key
  * Value only (w5/011, redis_exporter). bex extension — Render's dashboard has
  * no equivalent panel.
+ *
+ * kind="service" (w1/m86) renders just the disk section for the persistent disk
+ * attached to a service: a service has no datastore process, so every other
+ * chart is already gated off by isDatabase/isKeyValue.
  */
 export function DatastoreMetricsPanel({
   kind,
   resource,
   highAvailabilityEnabled,
   diskHeaderExtra,
+  title,
+  description,
 }: DatastoreMetricsPanelProps) {
   const { t } = useTranslations();
   const isDatabase = kind === "database";
@@ -111,9 +126,9 @@ export function DatastoreMetricsPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("metrics.datastoreMetricsTitle")}</CardTitle>
+        <CardTitle>{title ?? t("metrics.datastoreMetricsTitle")}</CardTitle>
         <CardDescription>
-          {t("metrics.datastoreMetricsDescription")}
+          {description ?? t("metrics.datastoreMetricsDescription")}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

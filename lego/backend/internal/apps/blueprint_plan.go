@@ -68,6 +68,10 @@ var BlueprintServiceFieldPolicies = []BlueprintServiceFieldPolicy{
 	{Name: "scaling", Omission: BlueprintPreserveOnOmission},
 	{Name: "plan", Omission: BlueprintPreserveOnOmission},
 	{Name: "healthCheckPath", Omission: BlueprintPreserveOnOmission},
+	// Omitting `disk` PRESERVES the volume rather than detaching it. Blueprint
+	// sync never deletes a resource a file stopped naming, and for a disk the
+	// deletion would be irreversible — detaching stays a manual act.
+	{Name: "disk", Omission: BlueprintPreserveOnOmission},
 	{Name: "maxShutdownDelaySeconds", Omission: BlueprintPreserveOnOmission},
 	{Name: "envVars", Omission: BlueprintPreserveOnOmission},
 	{Name: "autoDeploy", Omission: BlueprintPreserveOnOmission},
@@ -128,6 +132,15 @@ var blueprintServiceFieldAppliers = []struct {
 	}},
 	{names: []string{"plan"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Tier = want.Tier }},
 	{names: []string{"healthCheckPath"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.HealthCheckPath = want.HealthCheckPath }},
+	{names: []string{"disk"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		if want.Disk == nil {
+			return // omission preserves; see BlueprintServiceFieldPolicies
+		}
+		// A shrink was already refused above, so this only ever grows or
+		// remounts.
+		next := *want.Disk
+		dst.Disk = &next
+	}},
 	{names: []string{"maxShutdownDelaySeconds"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
 		dst.MaxShutdownDelaySeconds = clonePtr(want.MaxShutdownDelaySeconds)
 	}},
@@ -184,8 +197,18 @@ func anyPresent(fields map[string]BlueprintField, names ...string) bool {
 // buildFilter is Render's documented exception: omission clears an existing
 // filter. An explicit envVars block only upserts values the Blueprint owns;
 // dashboard/API vars not named in the Blueprint remain intact.
-func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec, fields map[string]BlueprintField) bool {
+func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec, fields map[string]BlueprintField) (bool, error) {
 	before := *dst.DeepCopy()
+	// Refuse a shrink before anything is written, the same way the database
+	// twin below refuses one. A disk cannot be shrunk at any layer — CRD, API,
+	// or store — so a Blueprint that asks for it has to fail with a source
+	// location rather than be silently clamped to the current size.
+	if _, ok := fields["disk"]; ok && want.Disk != nil && dst.Disk != nil && want.Disk.SizeGB < dst.Disk.SizeGB {
+		return false, &BlueprintFieldConflictError{
+			Path:    "disk.sizeGB",
+			Message: fmt.Sprintf("cannot shrink an existing disk (currently %dGB)", dst.Disk.SizeGB),
+		}
+	}
 	present := func(name string) bool {
 		_, ok := fields[name]
 		return ok
@@ -221,7 +244,7 @@ func ApplyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 		dst.Replicas = want.Replicas
 	}
 
-	return !reflect.DeepEqual(before, *dst)
+	return !reflect.DeepEqual(before, *dst), nil
 }
 
 // mergeBlueprintEnv replaces variables owned by the declared Blueprint while

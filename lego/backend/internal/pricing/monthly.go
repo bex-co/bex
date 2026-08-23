@@ -59,8 +59,9 @@ type MonthlyResource struct {
 	// Cron marks a cron service: listed as variable, never priced into the
 	// total (it only bills per-second while runs execute).
 	Cron bool
-	// StorageGB is the provisioned volume size priced at the flat storage
-	// rate (datastore kinds only). The caller resolves the plan's floor when
+	// StorageGB is the provisioned volume size. Datastore kinds price it at the
+	// used-storage rate; a service prices its attached DISK at the disk rate
+	// (docs/ADR082-persistent-disks.md D8). The caller resolves the plan's floor when
 	// the blueprint omits an explicit size.
 	StorageGB int32
 	// HighAvailability adds a standby line at the same price (ratio 1.0).
@@ -140,8 +141,15 @@ func (s *Sheet) MonthlyEstimate(resources []MonthlyResource) MonthlyEstimate {
 			continue
 		}
 		var storageUSD float64
-		if r.ResourceKind == store.ResourceKindPostgres || r.ResourceKind == store.ResourceKindKeyValue {
+		switch {
+		case r.ResourceKind == store.ResourceKindPostgres || r.ResourceKind == store.ResourceKindKeyValue:
 			storageUSD = float64(r.StorageGB) * s.storage * MonthSeconds
+		case r.ResourceKind == store.ResourceKindService:
+			// A service's storage is its attached disk, priced at the disk rate
+			// on PROVISIONED capacity — the one estimate line that equals its
+			// invoice exactly, since both sides bill what was reserved
+			// (docs/ADR082-persistent-disks.md D8).
+			storageUSD = float64(r.StorageGB) * s.disk * MonthSeconds
 		}
 		lineUSD := instanceUSD + storageUSD
 

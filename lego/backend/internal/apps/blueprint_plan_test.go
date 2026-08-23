@@ -71,7 +71,10 @@ func TestApplyBlueprintServiceSpecOmissionAndExplicitValues(t *testing.T) {
 
 	t.Run("omitted service fields preserve current values except build filter", func(t *testing.T) {
 		got := *initial.DeepCopy()
-		changed := ApplyBlueprintServiceSpec(&got, appv1alpha1.AppSpec{}, nil)
+		changed, err := ApplyBlueprintServiceSpec(&got, appv1alpha1.AppSpec{}, nil)
+		if err != nil {
+			t.Fatalf("apply: %v", err)
+		}
 		if !changed {
 			t.Fatal("buildFilter omission must be a change when a filter exists")
 		}
@@ -99,7 +102,9 @@ func TestApplyBlueprintServiceSpecOmissionAndExplicitValues(t *testing.T) {
 			"autoDeploy":  {},
 			"envVars":     {},
 		}
-		ApplyBlueprintServiceSpec(&got, want, fields)
+		if _, err := ApplyBlueprintServiceSpec(&got, want, fields); err != nil {
+			t.Fatalf("apply: %v", err)
+		}
 		if got.Tier != "starter" || got.AutoDeploy || got.Host != "" || len(got.Hosts) != 0 {
 			t.Fatalf("declared plan/autoDeploy/domains not applied: %#v", got)
 		}
@@ -124,7 +129,9 @@ func TestApplyBlueprintServiceSpecScalingOwnership(t *testing.T) {
 
 	t.Run("manual numInstances disables declared autoscaling mode", func(t *testing.T) {
 		got := *initial.DeepCopy()
-		ApplyBlueprintServiceSpec(&got, appv1alpha1.AppSpec{Replicas: 5}, map[string]BlueprintField{"numInstances": {}})
+		if _, err := ApplyBlueprintServiceSpec(&got, appv1alpha1.AppSpec{Replicas: 5}, map[string]BlueprintField{"numInstances": {}}); err != nil {
+			t.Fatalf("apply: %v", err)
+		}
 		if got.Autoscaling != nil || got.Replicas != 5 {
 			t.Fatalf("manual scaling = %#v, want replicas 5 with nil autoscaling", got)
 		}

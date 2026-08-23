@@ -242,16 +242,6 @@ func TestBlueprintCompilerEnforcesCapabilityRegistryAtNestedPaths(t *testing.T) 
 		manifest string
 		path     string
 	}{
-		"persistent disk": {
-			manifest: `services:
-  - type: web
-    name: api
-    runtime: image
-    image: {url: nginx:1.27}
-    disk: {name: data, mountPath: /data, sizeGB: 10}
-`,
-			path: "#/services/0/disk",
-		},
 		"nested database region": {
 			manifest: `projects:
   - name: product
@@ -301,6 +291,24 @@ func TestBlueprintCompilerEnforcesCapabilityRegistryAtNestedPaths(t *testing.T) 
 			}
 		})
 	}
+
+	// A `disk` block used to be rejected here (ADR018's stateless-first
+	// non-goal). ADR082 D7 made it a translated handler, so the same manifest
+	// must now COMPILE — the fail-closed case is the eligibility refusal, which
+	// is a bad-request with a reason rather than an unsupported field.
+	t.Run("persistent disk now compiles", func(t *testing.T) {
+		_, problems := CompileBlueprintSource(`services:
+  - type: web
+    name: api
+    plan: starter
+    runtime: image
+    image: {url: nginx:1.27}
+    disk: {name: data, mountPath: /var/data, sizeGB: 10}
+`)
+		if problem := findBlueprintProblem(problems, "BLUEPRINT_CAPABILITY_UNSUPPORTED"); problem != nil {
+			t.Fatalf("disk still refused as unsupported: %+v", problem)
+		}
+	})
 }
 
 func TestBlueprintCapabilityStateControlsRuntimeRefusal(t *testing.T) {

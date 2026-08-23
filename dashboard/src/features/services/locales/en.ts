@@ -727,6 +727,10 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Contents",
     description: "Secret-files table column header (file body)",
   },
+  "services.secretFileRevealError": {
+    message: "Couldn't load this secret file's contents. Close the dialog and try again.",
+    description: "Shown in the secret-file dialog when reading the stored contents fails.",
+  },
   "services.secretFilesEmptyTitle": {
     message: "No secret files",
     description: "Secret-files empty-state title",
@@ -3031,6 +3035,198 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Deploys",
     description:
       "Service-detail nav item (dedicated deploy-history tab, w9/002)",
+  },
+  "services.navDisk": {
+    message: "Disk",
+    description: "Service-detail nav item (persistent disk page); Render's label is singular",
+  },
+  "services.diskTitle": {
+    message: "Disk",
+    description: "Disk tab card title",
+  },
+  "services.diskDescription": {
+    message: "Attach an SSD to persist your service's filesystem data across deploys. Disks are charged at $0.175/GB per month.",
+    description: "Disk tab card description; bex's rate is 30% below Render's $0.25",
+  },
+  "services.diskEmptyTitle": {
+    message: "No disk attached",
+    description: "Disk tab empty state title",
+  },
+  "services.diskEmptyBody": {
+    message: "Only files under the disk's mount path are preserved across deploys and restarts.",
+    description: "Disk tab empty state body",
+  },
+  "services.diskPaidOnly": {
+    message: "Disks require a paid instance type. Upgrade this service's plan to attach one.",
+    description: "Shown instead of the add button on a free service",
+  },
+  "services.diskAddAction": {
+    message: "Add Disk",
+    description: "Button that opens and submits the add-disk form",
+  },
+  "services.diskLoadErrorTitle": {
+    message: "Could not load this service's disk",
+    description: "Disk tab error state title",
+  },
+  "services.diskWarningsTitle": {
+    message: "Note the following:",
+    description: "Heading above the five add-disk warnings (Render's wording)",
+  },
+  "services.diskWarningZeroDowntime": {
+    message: "Attaching a disk disables zero-downtime deploys for the service.",
+    description: "Add-disk warning 1",
+  },
+  "services.diskWarningSingleInstance": {
+    message: "Services with an attached disk can't scale to multiple instances.",
+    description: "Add-disk warning 2",
+  },
+  "services.diskWarningOnePerService": {
+    message: "You can attach a maximum of one disk per service.",
+    description: "Add-disk warning 3",
+  },
+  "services.diskWarningMountPathOnly": {
+    message: "Only files under your disk's mount path are persisted.",
+    description: "Add-disk warning 4",
+  },
+  "services.diskWarningNoSharing": {
+    message: "Other services can't access this service's disk.",
+    description: "Add-disk warning 5",
+  },
+  "services.diskMountPathLabel": {
+    message: "Mount path",
+    description: "Add-disk form field label",
+  },
+  "services.diskMountPathHint": {
+    message: "The absolute mount path for the disk. Only files under this path are persisted across deploys. Cannot be the root directory (/).",
+    description: "Add-disk mount path helper text",
+  },
+  "services.diskMountPathRequired": {
+    message: "Enter a mount path.",
+    description: "Client-side validation: empty mount path",
+  },
+  "services.diskMountPathAbsolute": {
+    message: "The mount path must be absolute (start with /).",
+    description: "Client-side validation: relative mount path",
+  },
+  "services.diskMountPathNotRoot": {
+    message: "The mount path cannot be the root directory or end with a slash.",
+    description: "Client-side validation: root or trailing slash",
+  },
+  "services.diskMountPathReserved": {
+    message: "That path is reserved by the platform. Mount a subdirectory of it instead.",
+    description: "Client-side validation: reserved mount path",
+  },
+  "services.diskSizeLabel": {
+    message: "Size",
+    description: "Add-disk size field label",
+  },
+  "services.diskSizeHint": {
+    message: "You can increase the size later, but you can't decrease it. We recommend starting with the lowest value that serves your use case.",
+    description: "Add-disk size helper text (Render's wording)",
+  },
+  "services.diskSizeChip": {
+    message: "{size} GB",
+    description: "Size quick-select chip and size display",
+  },
+  "services.diskAddSuccess": {
+    message: "Disk attached. The service is redeploying.",
+    description: "Toast after a disk is attached",
+  },
+  "services.diskGrowLabel": {
+    message: "Increase size (GB)",
+    description: "Grow control label on an attached disk",
+  },
+  "services.diskGrowAction": {
+    message: "Increase size",
+    description: "Grow button",
+  },
+  "services.diskGrowHint": {
+    message: "Increasing the size takes effect without downtime; on some volumes the filesystem finishes growing on the next restart. A disk can never be made smaller.",
+    description: "Grow helper text, including bex's honest CSI caveat",
+  },
+  "services.diskResizeSuccess": {
+    message: "Disk size increased.",
+    description: "Toast after a successful grow",
+  },
+  "services.diskDeleteAction": {
+    message: "Delete disk",
+    description: "Destructive action on an attached disk",
+  },
+  "services.diskDeleteTitle": {
+    message: "Delete this disk?",
+    description: "Delete confirmation title",
+  },
+  "services.diskDeleteWarning": {
+    message: "All data on the disk will be lost and the service will immediately lose access to it. Its snapshots are deleted too. This cannot be undone.",
+    description: "Delete confirmation body",
+  },
+  "services.diskDeleteConfirm": {
+    message: "Delete disk",
+    description: "Delete confirmation action",
+  },
+  "services.diskDeleteSuccess": {
+    message: "Disk deleted.",
+    description: "Toast after a disk is deleted",
+  },
+  "services.diskSnapshotsTitle": {
+    message: "Snapshots",
+    description: "Snapshots card title",
+  },
+  "services.diskSnapshotsDescription": {
+    message: "A snapshot of this disk is taken daily and kept for at least seven days.",
+    description: "Snapshots card description",
+  },
+  "services.diskSnapshotsEmptyTitle": {
+    message: "No snapshots yet",
+    description: "Snapshots empty state title",
+  },
+  "services.diskSnapshotsEmptyBody": {
+    message: "The first snapshot is taken on the next nightly run.",
+    description: "Snapshots empty state body",
+  },
+  "services.diskSnapshotsUnavailableTitle": {
+    message: "Snapshots are unavailable",
+    description: "Snapshots error state title",
+  },
+  "services.diskRestoreDatabaseWarning": {
+    message: "Don't restore a disk to recover a database running on it — restoring files underneath a running database can leave it corrupted. Use that database's own backup and restore instead.",
+    description: "Render's database-recovery warning, carried verbatim in meaning",
+  },
+  "services.diskRestoreAction": {
+    message: "Restore",
+    description: "Restore button on a snapshot row",
+  },
+  "services.diskRestoreTitle": {
+    message: "Restore this snapshot?",
+    description: "Restore confirmation title",
+  },
+  "services.diskRestoreWarning": {
+    message: "The service stops, the disk is replaced with this snapshot, and the service restarts. Everything written after the snapshot is lost. This cannot be undone.",
+    description: "Restore confirmation body",
+  },
+  "services.diskRestoreConfirm": {
+    message: "Restore disk",
+    description: "Restore confirmation action",
+  },
+  "services.diskUnsupportedType": {
+    message: "Persistent disks need a long-running instance to mount on, so they are available on web services, private services and background workers.",
+    description: "Empty-state body on the Disk tab for a service type that cannot have a disk.",
+  },
+  "services.diskSudoPrompt": {
+    message: "To continue, type {phrase}",
+    description: "Label above the typed-confirmation input for an irreversible disk action.",
+  },
+  "services.diskUsageTitle": {
+    message: "Disk usage",
+    description: "Heading of the disk usage chart on a service's Disk tab.",
+  },
+  "services.diskUsageDescription": {
+    message: "Bytes written to the mounted volume, against its provisioned capacity. Billing meters provisioned size, not used bytes.",
+    description: "Subtitle of the disk usage chart, stating that billing uses provisioned size.",
+  },
+  "services.diskRestoreStarted": {
+    message: "Restoring the disk. The service stops until it finishes.",
+    description: "Toast after a restore is requested",
   },
   "services.navShell": {
     message: "Shell",

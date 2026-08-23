@@ -63,7 +63,7 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
     expect(screen.getByText("storefront-api")).toBeInTheDocument();
 
     // Navigation: top items {Deploys, Settings}, Monitor {Events, Logs,
-    // Metrics}, Manage {Environment, Shell, Scaling, Plan}.
+    // Metrics}, Manage {Environment, Disk, Shell, Scaling, Plan}.
     expect(screen.getByText("Monitor")).toBeInTheDocument();
     expect(screen.getByText("Manage")).toBeInTheDocument();
     for (const [name, href, iconClass] of [
@@ -73,6 +73,7 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
       ["Logs", "/services/srv-1/logs", "lucide-scroll-text"],
       ["Metrics", "/services/srv-1/metrics", "lucide-chart-no-axes-combined"],
       ["Environment", "/services/srv-1/env", "lucide-braces"],
+      ["Disk", "/services/srv-1/disk", "lucide-hard-drive"],
       ["Shell", "/services/srv-1/shell", "lucide-square-terminal"],
       ["Scaling", "/services/srv-1/scaling", "lucide-scaling"],
       ["Plan", "/services/srv-1/plan", "lucide-credit-card"],
@@ -95,6 +96,7 @@ describe("ServiceSidebar (w1/m45 — Render's resource-scoped service nav)", () 
       "Logs",
       "Metrics",
       "Environment",
+      "Disk",
       "Shell",
       "Scaling",
       "Plan",

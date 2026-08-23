@@ -67,6 +67,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "services.$serviceId.env.tsx",
     "services.$serviceId.events.tsx",
     "services.$serviceId.headers.tsx",
+    "services.$serviceId.disk.tsx",
     "services.$serviceId.index.tsx",
     "services.$serviceId.logs.tsx",
     "services.$serviceId.metrics.tsx",

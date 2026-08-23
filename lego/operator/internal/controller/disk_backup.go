@@ -104,8 +104,12 @@ func (d DiskSnapshotStore) restorable() bool {
 	return d.configured() && d.AgeSecret != ""
 }
 
-func diskBackupName(appName string) string { return derivedDiskName(diskBackupPrefix, appName, "") }
-func diskPurgeName(appName string) string  { return derivedDiskName(diskPurgePrefix, appName, "") }
+func diskBackupName(appName string) string {
+	return appv1alpha1.DiskChildName(diskBackupPrefix, appName, "")
+}
+func diskPurgeName(appName string) string {
+	return appv1alpha1.DiskChildName(diskPurgePrefix, appName, "")
+}
 
 // diskBackupSchedule spreads tenant snapshots across 02:00–02:59 UTC — an hour
 // before the KeyValue window, so the two backup fleets do not contend for the
@@ -333,7 +337,7 @@ const (
 )
 
 func diskRestoreName(appName string) string {
-	return derivedDiskName(diskRestorePrefix, appName, "")
+	return appv1alpha1.DiskChildName(diskRestorePrefix, appName, "")
 }
 
 // reconcileDiskRestore runs a requested restore to completion.

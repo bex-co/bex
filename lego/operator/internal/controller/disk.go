@@ -19,7 +19,6 @@ package controller
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 
@@ -47,13 +46,11 @@ import (
 const (
 	// diskVolumeName is the pod-template volume name for the attached disk.
 	diskVolumeName = "disk"
-	// diskPVCPrefix names the per-App claim. A service has at most one disk, so
-	// the App's own name is enough to identify it.
-	diskPVCPrefix = "disk-"
-	// diskLUKSSecretSuffix names the per-disk encryption passphrase Secret, and
-	// diskLUKSSecretKey is the data key the hcloud CSI driver reads it from.
-	diskLUKSSecretSuffix = "-luks"
-	diskLUKSSecretKey    = "encryption-passphrase"
+	// diskLUKSSecretKey is the data key the hcloud CSI driver reads a disk's
+	// encryption passphrase from. The Secret's NAME (and the PVC's) is derived
+	// in lego/types, because bex-api must derive the same claim name to graph
+	// the disk's usage.
+	diskLUKSSecretKey = "encryption-passphrase"
 	// diskSafeToEvictAnnotation keeps the cluster-autoscaler from bin-packing a
 	// disk-bearing pod's node away. Same annotation, same reason as the managed
 	// KeyValue StatefulSet: for a single-instance stateful pod an eviction is
@@ -74,24 +71,13 @@ const (
 	diskProvisionedMarker = "true"
 )
 
-// diskPVCName and diskLUKSSecretName derive the disk's child object names from
-// the App's. Both truncate to Kubernetes' 63-character limit the same way the
-// other derived names in this package do, keeping a digest so two long App
-// names cannot collide onto one volume.
-func diskPVCName(appName string) string { return derivedDiskName(diskPVCPrefix, appName, "") }
+// diskPVCName and diskLUKSSecretName are this package's names for the disk's
+// child objects. The derivation itself lives in the leaf contract module
+// because bex-api must reproduce the claim name exactly to graph the disk's
+// usage — see appv1alpha1.DiskPVCName.
+func diskPVCName(appName string) string { return appv1alpha1.DiskPVCName(appName) }
 
-func diskLUKSSecretName(appName string) string {
-	return derivedDiskName(diskPVCPrefix, appName, diskLUKSSecretSuffix)
-}
-
-func derivedDiskName(prefix, appName, suffix string) string {
-	if len(prefix)+len(appName)+len(suffix) <= 63 {
-		return prefix + appName + suffix
-	}
-	sum := fmt.Sprintf("%x", sha256.Sum256([]byte(appName)))[:8]
-	keep := 63 - len(prefix) - len(suffix) - len(sum) - 1
-	return prefix + appName[:keep] + "-" + sum + suffix
-}
+func diskLUKSSecretName(appName string) string { return appv1alpha1.DiskLUKSSecretName(appName) }
 
 // applyDiskProjection writes the disk's half of the pod template. Like every
 // other field applyDeploymentSpec sets, it is rebuilt from the App each pass, so
@@ -169,9 +155,13 @@ func (r *AppReconciler) reconcileDisk(ctx context.Context, app *appv1alpha1.App)
 // The Secret is minted whether or not the configured StorageClass encrypts, so
 // that moving a cluster onto the encrypted class later needs no backfill.
 func (r *AppReconciler) ensureDiskPassphrase(ctx context.Context, app *appv1alpha1.App) error {
+	// Uncached on both reads and writes: the disk's Secret lives in the App's
+	// OWN namespace, which the manager's single-namespace Secret informer does
+	// not cover — see uncachedSecretClient.
+	secrets := r.uncachedSecretClient()
 	secret := &corev1.Secret{}
 	key := client.ObjectKey{Namespace: app.Namespace, Name: diskLUKSSecretName(app.Name)}
-	if err := r.Get(ctx, key, secret); err == nil {
+	if err := secrets.Get(ctx, key, secret); err == nil {
 		return nil
 	} else if !apierrors.IsNotFound(err) {
 		return err
@@ -194,7 +184,7 @@ func (r *AppReconciler) ensureDiskPassphrase(ctx context.Context, app *appv1alph
 	if err := controllerutil.SetControllerReference(app, secret, r.Scheme); err != nil {
 		return err
 	}
-	if err := r.Create(ctx, secret); err != nil && !apierrors.IsAlreadyExists(err) {
+	if err := secrets.Create(ctx, secret); err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
 	return nil
@@ -319,11 +309,19 @@ func (r *AppReconciler) cleanupDisk(ctx context.Context, app *appv1alpha1.App) e
 	// Blind deletes rather than the usual get-then-delete: this path runs a
 	// handful of times per detach, so one round trip each beats populating a
 	// cluster-wide PVC cache to check.
-	for _, obj := range []client.Object{
-		&corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: diskPVCName(app.Name), Namespace: app.Namespace}},
-		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: diskLUKSSecretName(app.Name), Namespace: app.Namespace}},
-	} {
-		if err := r.Delete(ctx, obj); err != nil && !apierrors.IsNotFound(err) {
+	//
+	// The Secret goes through the uncached client for the same reason it was
+	// created with one: it lives in the App's own namespace, outside the Secret
+	// informer's single-namespace scope.
+	deletes := []struct {
+		cl  client.Client
+		obj client.Object
+	}{
+		{r.Client, &corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: diskPVCName(app.Name), Namespace: app.Namespace}}},
+		{r.uncachedSecretClient(), &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: diskLUKSSecretName(app.Name), Namespace: app.Namespace}}},
+	}
+	for _, d := range deletes {
+		if err := d.cl.Delete(ctx, d.obj); err != nil && !apierrors.IsNotFound(err) {
 			return err
 		}
 	}

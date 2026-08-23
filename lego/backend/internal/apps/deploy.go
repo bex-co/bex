@@ -285,15 +285,28 @@ type bexService struct {
 	StaticPublishPath       string              `json:"staticPublishPath"` // render.yaml static-site publish dir
 	EnvVars                 []bexEnvVar         `json:"envVars"`
 	IPAllowList             []bexIPEntry        `json:"ipAllowList"`
-	MaxmemoryPolicy         string              `json:"maxmemoryPolicy"`
-	PersistenceMode         string              `json:"persistenceMode"`
-	PreviewPlan             string              `json:"previewPlan"`
-	PullRequestPreviews     *bool               `json:"pullRequestPreviewsEnabled"`
+	// Disk is render.yaml's per-service persistent disk (ADR082 D7). Absent
+	// PRESERVES an existing disk rather than detaching it: Blueprint sync never
+	// deletes a resource a file stopped mentioning, and silently destroying a
+	// volume would be the most expensive possible reading of an omission.
+	Disk                *bexDisk `json:"disk"`
+	MaxmemoryPolicy     string   `json:"maxmemoryPolicy"`
+	PersistenceMode     string   `json:"persistenceMode"`
+	PreviewPlan         string   `json:"previewPlan"`
+	PullRequestPreviews *bool    `json:"pullRequestPreviewsEnabled"`
 	// Neither field exists in Render's Blueprint service schema. Keeping them
 	// explicit lets bex reject the common create-body/Blueprint mix-up by name
 	// instead of silently dropping it.
 	EnvironmentID string            `json:"environmentId"`
 	SecretFiles   []secretFileInput `json:"secretFiles"`
+}
+
+// bexDisk is render.yaml's `disk` block, field-for-field.
+type bexDisk struct {
+	Name      string `json:"name"`
+	MountPath string `json:"mountPath"`
+	// SizeGB is optional in Render's schema and defaults to 10.
+	SizeGB int32 `json:"sizeGB"`
 }
 
 type bexMaintenanceMode struct {
@@ -1960,6 +1973,7 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		Replicas:                replicas,
 		Plan:                    plan,
 		HealthCheckPath:         a.HealthCheckPath,
+		Disk:                    blueprintDisk(a.Disk),
 		Env:                     literal,
 		Hosts:                   hosts,
 		AutoDeploy:              autoDeploy,
@@ -2467,7 +2481,10 @@ func (s *Service) applyCreateWithFields(ctx context.Context, req CreateRequest, 
 	}
 	markHookRan, initialHookChanged := initialDeployHookState(req, existing, &desired)
 	final := existing.DeepCopy()
-	specChanged := applyBlueprintServiceSpec(&final.Spec, desired, fields)
+	specChanged, err := applyBlueprintServiceSpec(&final.Spec, desired, fields)
+	if err != nil {
+		return AppView{}, fmt.Errorf("%w: %s", core.ErrBadRequest, err)
+	}
 	domainsChanged := existing.Spec.Host != final.Spec.Host ||
 		!slices.Equal(existing.Spec.Hosts, final.Spec.Hosts) ||
 		!maps.Equal(existing.Spec.HostRedirects, final.Spec.HostRedirects)
@@ -2732,11 +2749,11 @@ func serviceSpecChangedOnlyByMaintenance(cur, want appv1alpha1.AppSpec) bool {
 	return reflect.DeepEqual(*probe, cur)
 }
 
-func applyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec, fields map[string]BlueprintField) bool {
+func applyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec, fields map[string]BlueprintField) (bool, error) {
 	if fields == nil {
 		before := *dst
 		applyCreateToSpec(dst, want)
-		return !reflect.DeepEqual(*dst, before)
+		return !reflect.DeepEqual(*dst, before), nil
 	}
 	return ApplyBlueprintServiceSpec(dst, want, fields)
 }

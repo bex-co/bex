@@ -348,6 +348,18 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 			"uri":     a.MaintenanceMode.URI,
 		}
 	}
+	// Render's schema puts the attached disk inside serviceDetails (its
+	// `serviceDisk`), not beside it — so a Render client reads
+	// serviceDetails.disk and finds nothing if it is only on the sibling view
+	// (ADR082 D6; the omission was caught by the w1/m86 parity audit). Omitted
+	// entirely when the service has no disk, like every optional field above.
+	if a.Disk != nil {
+		details["disk"] = map[string]any{
+			"name":      a.Disk.Name,
+			"mountPath": a.Disk.MountPath,
+			"sizeGB":    a.Disk.SizeGB,
+		}
+	}
 	return details
 }
 

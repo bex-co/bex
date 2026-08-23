@@ -52,6 +52,11 @@ func blueprintEstimatedPricing(st parsedStack) *pricing.MonthlyEstimate {
 			Instances:    int(svc.req.Replicas),
 			Autoscaling:  svc.req.Autoscaling != nil,
 			Cron:         svcType == appv1alpha1.TypeCronJob,
+			// Render's Blueprint panel shows a Disks group; bex's absence of one
+			// used to be a recorded divergence (ADR018) because disks were a
+			// non-goal. The disk rides its service's line as a storage figure,
+			// the same shape a datastore's volume does.
+			StorageGB: blueprintDiskSizeGB(svc.req.Disk),
 		})
 	}
 	for _, db := range st.databases {

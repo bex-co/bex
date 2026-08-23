@@ -1,0 +1,43 @@
+fragment DiskFields on Disk {
+  id
+  name
+  mountPath
+  sizeGB
+  serviceId
+  createdAt
+  updatedAt
+}
+
+query Disks($serviceId: String) {
+  disks(serviceId: $serviceId) {
+    ...DiskFields
+  }
+}
+
+query DiskSnapshots($id: String!) {
+  diskSnapshots(id: $id) {
+    createdAt
+    snapshotKey
+    instanceId
+  }
+}
+
+mutation AddDisk($serviceId: String!, $name: String!, $mountPath: String!, $sizeGB: Int) {
+  addDisk(serviceId: $serviceId, name: $name, mountPath: $mountPath, sizeGB: $sizeGB) {
+    ...DiskFields
+  }
+}
+
+mutation UpdateDisk($id: String!, $name: String, $mountPath: String, $sizeGB: Int) {
+  updateDisk(id: $id, name: $name, mountPath: $mountPath, sizeGB: $sizeGB) {
+    ...DiskFields
+  }
+}
+
+mutation DeleteDisk($id: String!) {
+  deleteDisk(id: $id)
+}
+
+mutation RestoreDiskSnapshot($id: String!, $snapshotKey: String!) {
+  restoreDiskSnapshot(id: $id, snapshotKey: $snapshotKey)
+}

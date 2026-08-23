@@ -17,11 +17,18 @@ limitations under the License.
 package controller
 
 import (
+	"context"
+	"fmt"
 	"strings"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -185,5 +192,144 @@ func TestDiskAttachAndRemountAreReleases(t *testing.T) {
 	}
 	if attachedID == remountedID {
 		t.Fatal("changing mountPath did not change the release identity; the pod would keep the old mount")
+	}
+}
+
+// namespaceScopedClient models the manager's real cache: every kind is watched
+// cluster-wide EXCEPT Secrets, whose informer covers exactly one namespace
+// (NamespacedSecretCacheOptions). A Secret operation outside that namespace
+// fails the way controller-runtime fails it. Restricting every kind would be a
+// stricter fake than production and would prove the wrong thing.
+type namespaceScopedClient struct {
+	client.Client
+	allowed string
+}
+
+func (c namespaceScopedClient) reject(obj client.Object, ns string) error {
+	if _, isSecret := obj.(*corev1.Secret); !isSecret {
+		return nil
+	}
+	if ns != c.allowed {
+		return fmt.Errorf("unable to get: %s because of unknown namespace for the cache", ns)
+	}
+	return nil
+}
+
+func (c namespaceScopedClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	if err := c.reject(obj, key.Namespace); err != nil {
+		return err
+	}
+	return c.Client.Get(ctx, key, obj, opts...)
+}
+
+func (c namespaceScopedClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	if err := c.reject(obj, obj.GetNamespace()); err != nil {
+		return err
+	}
+	return c.Client.Create(ctx, obj, opts...)
+}
+
+func (c namespaceScopedClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+	if err := c.reject(obj, obj.GetNamespace()); err != nil {
+		return err
+	}
+	return c.Client.Delete(ctx, obj, opts...)
+}
+
+// A tenant App lives in its workspace's own namespace (ADR043 D8), which the
+// manager's single-namespace Secret informer does not cover. Reading the disk's
+// LUKS passphrase through the CACHED client there fails outright — the App
+// never converges and the disk never provisions.
+//
+// This is a real bug the w1/m86 cluster drill caught in shipped m83 code:
+// "unable to get: tea-…/disk-…-luks because of unknown namespace for the
+// cache". No existing test could see it, because envtest runs its Apps in
+// `default` — the one namespace the cache does cover — so both clients behaved
+// identically. The fake below is what makes them behave differently.
+func TestDiskPassphraseUsesTheUncachedClientInATenantNamespace(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+
+	const tenantNS = "tea-abc123"
+	app := diskApp("tea-abc123-web", &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 1})
+	app.Namespace = tenantNS
+
+	real := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).Build()
+	r := &AppReconciler{
+		// Cached: scoped to the apps namespace, exactly like production.
+		Client: namespaceScopedClient{Client: real, allowed: "default"},
+		// Uncached: no namespace restriction, exactly like production.
+		BuildClient: real,
+		Scheme:      scheme,
+	}
+
+	if err := r.ensureDiskPassphrase(context.Background(), app); err != nil {
+		t.Fatalf("minting a disk passphrase in a tenant namespace: %v", err)
+	}
+
+	secret := &corev1.Secret{}
+	key := client.ObjectKey{Namespace: tenantNS, Name: diskLUKSSecretName(app.Name)}
+	if err := real.Get(context.Background(), key, secret); err != nil {
+		t.Fatalf("passphrase Secret should exist in the tenant namespace: %v", err)
+	}
+	if len(secret.Data[diskLUKSSecretKey]) == 0 && secret.StringData[diskLUKSSecretKey] == "" {
+		t.Error("passphrase Secret carries no passphrase")
+	}
+
+	// Second pass must find the existing Secret rather than mint a new one:
+	// the passphrase is the only thing that can unlock the volume.
+	before := secret.StringData[diskLUKSSecretKey]
+	if err := r.ensureDiskPassphrase(context.Background(), app); err != nil {
+		t.Fatalf("second pass: %v", err)
+	}
+	after := &corev1.Secret{}
+	if err := real.Get(context.Background(), key, after); err != nil {
+		t.Fatal(err)
+	}
+	if after.StringData[diskLUKSSecretKey] != before {
+		t.Error("passphrase was rewritten on a later reconcile; that locks the tenant out of their own data")
+	}
+}
+
+// Detaching a disk in a tenant namespace must delete the Secret through the
+// same uncached client that created it, or the passphrase outlives the volume.
+func TestDiskCleanupDeletesTheSecretInATenantNamespace(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := corev1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := batchv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+
+	const tenantNS = "tea-abc123"
+	app := diskApp("tea-abc123-web", nil)
+	app.Namespace = tenantNS
+	app.Annotations = map[string]string{annotDiskProvisioned: diskProvisionedMarker}
+	leftover := &corev1.Secret{}
+	leftover.Name = diskLUKSSecretName(app.Name)
+	leftover.Namespace = tenantNS
+
+	real := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, leftover).Build()
+	r := &AppReconciler{
+		Client:      namespaceScopedClient{Client: real, allowed: "default"},
+		BuildClient: real,
+		Scheme:      scheme,
+	}
+
+	if err := r.cleanupDisk(context.Background(), app); err != nil {
+		t.Fatalf("detaching a disk in a tenant namespace: %v", err)
+	}
+	err := real.Get(context.Background(), client.ObjectKeyFromObject(leftover), &corev1.Secret{})
+	if !apierrors.IsNotFound(err) {
+		t.Errorf("passphrase Secret should be gone after a detach, got %v", err)
 	}
 }

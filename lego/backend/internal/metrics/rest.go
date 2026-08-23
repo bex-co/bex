@@ -142,8 +142,9 @@ func parseTimeWindow(v url.Values) (start, end time.Time, resolution time.Durati
 
 // parseDatastoreMetricParams maps a datastore-metric query string onto a
 // DatastoreMetricQuery. `kind` defaults to "database" — db-connections and
-// replication-lag are Postgres-only anyway, and disk usage's other caller
-// (KeyValue) is the exception, not the common case.
+// replication-lag are Postgres-only anyway, and disk usage's other callers
+// (KeyValue, and a service's attached disk) are the exception, not the common
+// case.
 func parseDatastoreMetricParams(r *http.Request) (DatastoreMetricQuery, error) {
 	v := r.URL.Query()
 

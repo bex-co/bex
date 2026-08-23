@@ -613,3 +613,48 @@ func TestFormatRateWidensUntilVisible(t *testing.T) {
 		}
 	}
 }
+
+// Render's Blueprint panel shows a Disks group; bex's absence of one was a
+// recorded divergence only while disks were a non-goal (ADR018 → ADR082).
+func TestMonthlyEstimateIncludesAServicesDisk(t *testing.T) {
+	est := Default.MonthlyEstimate([]MonthlyResource{{
+		Name: "web", ResourceKind: store.ResourceKindService, Tier: "starter", StorageGB: 10,
+	}})
+	if len(est.Lines) != 1 {
+		t.Fatalf("lines = %+v, want one", est.Lines)
+	}
+	line := est.Lines[0]
+	// $4.90 starter + 10GB x $0.175 = $6.65
+	if line.MonthlyUSD != "6.65" || line.StorageUSD != "1.75" || line.StorageGB != 10 {
+		t.Fatalf("line = %+v, want $6.65 total with a $1.75 disk line", line)
+	}
+}
+
+// A disk on a free service contributes nothing, because the whole free line is
+// filtered out — and disks are refused on the free tier anyway.
+func TestMonthlyEstimateSkipsAFreeServicesDisk(t *testing.T) {
+	est := Default.MonthlyEstimate([]MonthlyResource{{
+		Name: "web", ResourceKind: store.ResourceKindService, Tier: "free", StorageGB: 10,
+	}})
+	if est.TotalUSD != "0.00" || len(est.Lines) != 0 {
+		t.Fatalf("estimate = %+v, want nothing priced", est)
+	}
+}
+
+// The two storage rates must not be confused: a service's disk prices at
+// $0.175/GB-mo while a datastore's volume prices at $0.21.
+func TestMonthlyEstimateUsesTheDiskRateForServicesAndStorageForDatastores(t *testing.T) {
+	service := Default.MonthlyEstimate([]MonthlyResource{{
+		Name: "web", ResourceKind: store.ResourceKindService, Tier: "starter", StorageGB: 100,
+	}})
+	datastore := Default.MonthlyEstimate([]MonthlyResource{{
+		Name: "db", ResourceKind: store.ResourceKindPostgres, Tier: "basic-256mb", StorageGB: 100,
+	}})
+	if service.Lines[0].StorageUSD == datastore.Lines[0].StorageUSD {
+		t.Fatalf("disk and datastore storage both priced %s; the rates differ", service.Lines[0].StorageUSD)
+	}
+	if service.Lines[0].StorageUSD != "17.50" || datastore.Lines[0].StorageUSD != "21.00" {
+		t.Fatalf("disk=%s datastore=%s, want 17.50 and 21.00",
+			service.Lines[0].StorageUSD, datastore.Lines[0].StorageUSD)
+	}
+}

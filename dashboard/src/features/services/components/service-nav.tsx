@@ -8,6 +8,7 @@ import {
   Braces,
   ChartNoAxesCombined,
   CreditCard,
+  HardDrive,
   Rocket,
   Scaling,
   ScrollText,
@@ -32,7 +33,8 @@ import type { ServiceBase } from "@/features/services/lib/service-base";
 // from the Events feed). Every other type keeps Deploys as its primary entry
 // because bex exposes dedicated deploy history and detail routes. Plan is
 // bex-only (Render folds instance type into scaling/settings). Shell leads to
-// bex's running-instance SSH instructions. Previews, Disk, and One-Off Jobs
+// bex's running-instance SSH instructions. Disk shipped with ADR082 (the
+// stateless-first non-goal was reversed 2026-08-22); Previews and One-Off Jobs
 // remain DO_NOT_DO non-goals.
 //
 // One source of truth: the service sidebar
@@ -57,6 +59,7 @@ export function serviceNavGroups(
 ): SidebarNavGroup[] {
   const DEPLOYS = navItem(base, "/deploys", "services.navDeploys", Rocket);
   const SETTINGS = navItem(base, "/settings", "services.navSettings", Settings);
+  const DISK = navItem(base, "/disk", "services.navDisk", HardDrive);
   const EVENTS = navItem(base, "/events", "services.navEvents", Activity);
   const LOGS = navItem(base, "/logs", "services.navLogs", ScrollText);
   const METRICS = navItem(
@@ -98,7 +101,18 @@ export function serviceNavGroups(
   // Monitor here (its non-static home); a static site repositions it to
   // top-level once its type is known.
   const topLevel = type === null ? [SETTINGS] : [DEPLOYS, SETTINGS];
-  const manageTail = type === null ? [] : [SHELL, SCALING, PLAN];
+  // Render orders Manage as Environment, Previews, Disk, One-Off Jobs, Shell;
+  // bex has neither Previews nor Jobs, so Disk sits directly after Environment.
+  //
+  // Disk is type-gated to exactly what the API accepts — web, private, and
+  // worker (validateDisk in lego/backend/internal/apps/disks.go). A cron job
+  // has no long-running instance to mount a volume on, so offering the tab
+  // there would lead to an Add Disk button that always 400s.
+  const diskEligible = type === "web" || type === "private" || type === "worker";
+  const manageTail =
+    type === null
+      ? []
+      : [...(diskEligible ? [DISK] : []), SHELL, SCALING, PLAN];
   return [
     { items: topLevel },
     { labelKey: "common.navMonitorGroup", items: [EVENTS, LOGS, METRICS] },

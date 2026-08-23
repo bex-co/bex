@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // datastore.go is the managed-datastore (Database/KeyValue) sibling of the
@@ -40,6 +41,15 @@ import (
 const (
 	DatastoreDatabase = "database"
 	DatastoreKeyValue = "keyvalue"
+	// DatastoreService reads a SERVICE's attached persistent disk (ADR082 D6),
+	// not a managed datastore. It rides this verb rather than the App-metrics
+	// verb because what it reads is a PVC — the same kubelet volume-stats
+	// series, the same used/capacity pair, the same "there is no
+	// metrics-server fallback" story. The App-metrics verb answers questions
+	// about a workload (cpu, memory, instances) from a different source
+	// entirely; a disk is not one of those questions. Only disk/disk_capacity
+	// are valid here.
+	DatastoreService = "service"
 )
 
 // Datastore metric ids (w3/m10) — bex extensions, no Render equivalent.
@@ -129,8 +139,8 @@ type KeyValueStatsSource func(ctx context.Context, req KeyValueStatsRequest) ([]
 // DatastoreMetricQuery is the resolved request for the DatastoreMetrics verb —
 // the Database/KeyValue-scoped sibling of MetricQuery.
 type DatastoreMetricQuery struct {
-	Kind       string // DatastoreDatabase | DatastoreKeyValue
-	Resource   string // Database or KeyValue name
+	Kind       string // DatastoreDatabase | DatastoreKeyValue | DatastoreService
+	Resource   string // Database, KeyValue, or service name
 	Metric     string
 	Start, End time.Time
 	Resolution time.Duration
@@ -153,12 +163,23 @@ func (q DatastoreMetricQuery) normalized(now time.Time) DatastoreMetricQuery {
 // can own: CNPG names a Database's PVCs "<name>-<n>" (per-instance, HA-ready);
 // the KeyValue StatefulSet's volumeClaimTemplate is named "data", so its PVCs
 // are "data-<name>-<n>" (single instance today, per lego/types/tiers).
+//
+// A service's disk is the odd one out and has no ordinal: a service has at most
+// one disk and cannot scale past one instance while it holds one (ADR082 D2),
+// so the claim is a single name. That name is DERIVED, not spelled here —
+// appv1alpha1.DiskPVCName is the same function the operator creates the claim
+// with, so a long app name's truncated-plus-digest claim is matched rather than
+// silently missed. QuoteMeta still applies: the result is going into a regex.
 func pvcPattern(kind, resource string) string {
 	name := regexp.QuoteMeta(resource)
-	if kind == DatastoreKeyValue {
+	switch kind {
+	case DatastoreKeyValue:
 		return `^data-` + name + `-\d+$`
+	case DatastoreService:
+		return `^` + regexp.QuoteMeta(appv1alpha1.DiskPVCName(resource)) + `$`
+	default:
+		return `^` + name + `-\d+$`
 	}
-	return `^` + name + `-\d+$`
 }
 
 // DatastoreMetrics is the disk/db_connections/replication_lag read — the
@@ -204,6 +225,31 @@ func (s *Service) DatastoreMetrics(ctx context.Context, q DatastoreMetricQuery) 
 		resource = kv.Name
 		if q.Metric == MetricDBConnections || q.Metric == MetricReplicationLag {
 			return nil, fmt.Errorf("metric %q is Postgres-only, not valid for a key-value resource", q.Metric)
+		}
+	case DatastoreService:
+		// A service disk is read against the SERVICE — the App CR is the
+		// resource that owns the claim, so canView on the app is the whole
+		// authorization story (there is no separate disk object in the
+		// cluster to gate on).
+		app, err := s.AuthorizeApp(ctx, core.RelCanView, q.Resource)
+		if err != nil {
+			return nil, err
+		}
+		namespace = app.Namespace
+		resource = app.Name
+		// Every other datastore metric describes a datastore process. A
+		// service has none — its cpu/memory/instances live on the App-metrics
+		// verb — so anything but the two PVC series is a caller error, named
+		// rather than silently answered with an empty series.
+		if q.Metric != MetricDisk && q.Metric != MetricDiskCapacity {
+			return nil, fmt.Errorf("metric %q is not valid for a service resource; only disk and disk_capacity are", q.Metric)
+		}
+		// A service without a disk has no claim to measure. Report absence as
+		// an empty series, not an error: the Disk tab asks for the graph
+		// before it knows whether one exists, and a 4xx there would render as
+		// a failure rather than "no disk yet".
+		if app.Spec.Disk == nil {
+			return nil, nil
 		}
 	default:
 		// An unknown kind names no resource to authorize against (there is no
