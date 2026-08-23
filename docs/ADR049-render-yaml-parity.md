@@ -149,7 +149,7 @@ Fields whose semantics bex cannot truthfully provide are rejected. In particular
 
 - `autoDeployTrigger: checksPass` is unsupported until bex can observe and gate on branch checks; it is never collapsed to `commit`;
 - service/database `region` is unsupported while bex exposes one configured placement rather than per-resource Render regions;
-- service `disk` is unsupported under the stateless-first persistent-disk anti-goal;
+- service `disk` is unsupported under the stateless-first persistent-disk anti-goal _(anti-goal reversed 2026-08-22 by [ADR082](ADR082-persistent-disks.md); the four `disk` registry entries flip to translated handlers as that work lands)_;
 - root and per-resource preview configuration is unsupported under the explicit PR-preview-environment anti-goal;
 - a newly discovered upstream field is unsupported-by-default until classified.
 
@@ -217,7 +217,7 @@ Rejected. Two compilers inevitably diverge on validation, authorization, groupin
 
 ### Implement persistent disks and previews to claim 100% acceptance
 
-Rejected. Parity is honest behavior, not checkbox maximization. Both features conflict with explicit roadmap anti-goals; they remain visible, field-specific unsupported cases.
+Rejected. Parity is honest behavior, not checkbox maximization. Both features conflict with explicit roadmap anti-goals; they remain visible, field-specific unsupported cases. _(Update 2026-08-22: the disk anti-goal is reversed by [ADR082](ADR082-persistent-disks.md) on its own merits — not to claim acceptance percentage; previews remain rejected.)_
 
 ## Verification
 
