@@ -26,6 +26,7 @@
 !backend/internal/api/openapi/render-public-api-1.json
 !backend/internal/api/openapi/render-mcp-tools.json
 !backend/internal/apps/schema/*.json
+!backend/internal/agentsession/agent-profiles.json
 !operator/internal/build/toolchain-freshness.json
 
 # ADR047's separate agent-template Dockerfile shares this root context so it can
