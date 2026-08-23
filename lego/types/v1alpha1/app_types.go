@@ -91,6 +91,17 @@ const ConditionPublicRouting = "PublicRouting"
 // reason vocabulary).
 const ConditionReady = "Ready"
 
+// ConditionDiskReady is the status condition tracking the attached persistent
+// disk's convergence (docs/ADR082-persistent-disks.md D4). True once the PVC is
+// bound at the requested size; False while it is being created or expanded, and
+// on the two blocked states an owner can act on — a namespace storage quota
+// with no headroom (reason StorageBlockedByQuota) and a StorageClass that
+// cannot expand (reason StorageClassNotExpandable). Absent when spec.disk is
+// unset. A grow whose filesystem has not caught up yet reports reason
+// DiskResizePending: the Hetzner CSI driver does not guarantee online
+// expansion, so the last step can land on the next restart.
+const ConditionDiskReady = "DiskReady"
+
 // Build-failure condition reasons. These are part of the CR contract, not an
 // operator-internal detail: the operator writes them onto the Ready condition
 // and bex-api reads them to classify a deploy, so they live here where both
@@ -160,6 +171,11 @@ const (
 // AppSpec is the desired state of a deploy-from-git App — the Render-like
 // unit from strategy 211.09. Mirrors the Node MVP's service spec (src/api.js).
 // +kubebuilder:validation:XValidation:rule="(has(self.type) ? self.type : 'web_service') == (has(oldSelf.type) ? oldSelf.type : 'web_service')",message="spec.type is immutable; delete and recreate the service to change type"
+// +kubebuilder:validation:XValidation:rule="!has(self.disk) || (has(self.type) ? self.type : 'web_service') in ['web_service','private_service','background_worker']",message="spec.disk is supported only on web_service, private_service and background_worker"
+// +kubebuilder:validation:XValidation:rule="!has(self.disk) || !has(self.tier) || self.tier != 'free'",message="spec.disk requires a paid tier"
+// +kubebuilder:validation:XValidation:rule="!has(self.disk) || !has(self.replicas) || self.replicas <= 1",message="a service with spec.disk cannot run more than one instance"
+// +kubebuilder:validation:XValidation:rule="!has(self.disk) || !has(self.autoscaling) || !self.autoscaling.enabled",message="a service with spec.disk cannot use autoscaling"
+// +kubebuilder:validation:XValidation:rule="!has(self.disk) || !has(oldSelf.disk) || self.disk.sizeGB >= oldSelf.disk.sizeGB",message="spec.disk.sizeGB can only grow; a disk is never shrunk"
 type AppSpec struct {
 	// DisplayName is the free-form, human-facing label for this App. It is
 	// intentionally distinct from the App object's immutable, DNS-safe Name:
@@ -454,6 +470,22 @@ type AppSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=300
 	MaxShutdownDelaySeconds *int32 `json:"maxShutdownDelaySeconds,omitempty"`
+
+	// Disk attaches one persistent volume to this service, mounted at
+	// Disk.MountPath — Render's per-service persistent disk
+	// (docs/ADR082-persistent-disks.md). Only writes under the mount path
+	// survive a deploy or restart; the rest of the container filesystem stays
+	// ephemeral. nil (the default) is byte-identical to a service with no disk:
+	// no volume, no PVC, and the implicit RollingUpdate strategy.
+	//
+	// Attaching a disk is a deliberate trade, enforced by the spec-level CEL
+	// rules above rather than left to the caller: the service is pinned to a
+	// single instance (Replicas ≤ 1, no autoscaling) and loses zero-downtime
+	// deploys, because two revisions must never write one volume at once. It
+	// requires a paid tier and an eligible type; cron jobs and static sites
+	// have no long-lived filesystem to persist.
+	// +optional
+	Disk *DiskSpec `json:"disk,omitempty"`
 
 	// AutoDeploy triggers a deploy on each push to Branch.
 	// +optional
@@ -756,6 +788,47 @@ type AutoscalingSpec struct {
 	TargetMemoryPercent *int32 `json:"targetMemoryPercent,omitempty"`
 }
 
+// DiskSpec declares the persistent disk attached to a service, mirroring
+// Render's `disk` Blueprint block and /v1/disks object field-for-field
+// (docs/ADR082-persistent-disks.md D2, evidence in
+// docs/render-artifacts/disks.md).
+//
+// The mount-path rules are Render's own denylist. They exist because a volume
+// mounted over a directory the platform populates would shadow it: the build
+// output at /opt/render/project/src, the projected credentials at
+// /etc/secrets, or the whole root filesystem. Subdirectories of every denied
+// path remain legal — it is mounting *over* the directory that breaks, not
+// mounting inside it.
+// +kubebuilder:validation:XValidation:rule="self.mountPath.startsWith('/')",message="disk.mountPath must be an absolute path"
+// +kubebuilder:validation:XValidation:rule="!self.mountPath.endsWith('/')",message="disk.mountPath must not be the root directory or end with a slash"
+// +kubebuilder:validation:XValidation:rule="!(self.mountPath in ['/etc','/etc/secrets','/home','/home/render','/opt','/opt/render','/opt/render/project','/opt/render/project/src'])",message="disk.mountPath is a reserved platform path; mount a subdirectory of it instead"
+type DiskSpec struct {
+	// Name labels the disk. Render accepts any string here and does not display
+	// it in its dashboard, so it is identity for the Blueprint/API contract
+	// rather than something the volume itself derives its name from — the PVC
+	// is named after the App, since a service has at most one disk.
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	Name string `json:"name"`
+
+	// MountPath is the absolute in-container path the volume is mounted at.
+	// Only files written under it persist across deploys and restarts.
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=255
+	MountPath string `json:"mountPath"`
+
+	// SizeGB is the provisioned capacity, in gigabytes. It grows only: the
+	// spec-level transition rule refuses any decrease, because shrinking a
+	// filesystem under a running service destroys data. 10 is Render's
+	// Blueprint default; the 10000 ceiling is the Hetzner Cloud volume maximum,
+	// stated here rather than left undocumented as Render leaves it.
+	// +optional
+	// +kubebuilder:default=10
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=10000
+	SizeGB int32 `json:"sizeGB,omitempty"`
+}
+
 // MaintenanceModeSpec declares whether a web service is taking itself offline
 // behind an interstitial page (Render's maintenanceMode). Mirrors Render's
 // object shape exactly: {enabled, uri}.
@@ -1014,6 +1087,31 @@ type AutoscalingStatus struct {
 	FinishedAt string `json:"finishedAt,omitempty"`
 }
 
+// DiskStatus is the observed state of a service's persistent disk. It carries
+// the same three sizes the managed datastores report, for the same reason: the
+// request the operator has accepted, the spec value that request came from, and
+// the capacity the volume actually has — which trails the other two while a
+// grow is still being applied.
+type DiskStatus struct {
+	// AllocatedSizeGB is the grow-only PVC request the operator has accepted.
+	// It is the high-water mark, so it never drops even if a spec were rolled
+	// back by some path other than the (refused) shrink.
+	// +optional
+	AllocatedSizeGB int32 `json:"allocatedSizeGB,omitempty"`
+
+	// ObservedSizeGB is the spec.disk.sizeGB value the grow-only reconciler last
+	// accepted, which is what distinguishes a genuine new shrink attempt from an
+	// unchanged spec whose allocation has since grown past it.
+	// +optional
+	ObservedSizeGB int32 `json:"observedSizeGB,omitempty"`
+
+	// CapacityGB is the capacity most recently observed on the PVC. While it
+	// trails AllocatedSizeGB the DiskReady condition explains the in-progress
+	// resize.
+	// +optional
+	CapacityGB int32 `json:"capacityGB,omitempty"`
+}
+
 // AppStatus is the observed state of a App.
 type AppStatus struct {
 	// Phase is the high-level lifecycle state.
@@ -1030,6 +1128,12 @@ type AppStatus struct {
 	// Scale changes never populate it.
 	// +optional
 	Autoscaling *AutoscalingStatus `json:"autoscaling,omitempty"`
+
+	// Disk is the observed state of the attached persistent disk; nil when
+	// spec.disk is unset. See the DiskReady condition for why a size is still
+	// converging.
+	// +optional
+	Disk *DiskStatus `json:"disk,omitempty"`
 
 	// Runs is the recent run history of a cron_job (newest first), populated from
 	// the Jobs the CronJob schedule and one-off RunAt triggers create. Empty for

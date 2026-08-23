@@ -8,7 +8,7 @@
 
 ### The Render feature bex is replicating
 
-Render lets a **paid web service, private service, or background worker** attach one persistent SSD-backed disk (render.com/docs/disks, captured 2026-08-22):
+Render lets a **paid web service, private service, or background worker** attach one persistent SSD-backed disk (render.com/docs/disks, captured 2026-08-22; live dashboard walk of a real paid service's Disk tab captured 2026-08-23 in [render-artifacts/disks.md](render-artifacts/disks.md)):
 
 - A single `disk {name, mountPath, sizeGB}` per service. `sizeGB` defaults to 10 in Blueprints; the practical minimum is 1 GB; no maximum is documented (≥1 TB disks exist). Only writes under `mountPath` persist; the rest of the filesystem stays ephemeral.
 - **Grow-only resize**, applied online ("the additional storage becomes available within a few seconds"), never shrink. `name` and `mountPath` are mutable.
@@ -117,7 +117,7 @@ Behavior table (Render → bex):
 | --- | --- | --- |
 | Eligible services | paid web / private service / background worker | same: `web_service` / `private_service` / `background_worker`, `spec.tier != free` |
 | Cron / static / free | refused | refused (CRD CEL + API 400) |
-| Disks per service | one (schema-enforced) | one (`spec.disk` is singular); `POST /v1/disks` for a service that has one → 409 |
+| Disks per service | one — explicit dashboard copy: "You can attach a maximum of one disk per service" ([live walk](render-artifacts/disks.md)) | one (`spec.disk` is singular); `POST /v1/disks` for a service that has one → 409 |
 | Size | default 10 GB, min 1 GB, max undocumented | default 10, min 1, **max 10 000 GB** (the Hetzner volume cap, stated rather than undocumented) |
 | Resize | grow-only, online, no restart | grow-only; applied online when the CSI completes it, otherwise finishes on the next restart (divergence, § D4) |
 | `name` / `mountPath` | mutable | mutable (`mountPath` change triggers a deploy) |
@@ -183,7 +183,7 @@ Hetzner offers no block snapshots, so Render's snapshot semantics are reproduced
 - **id**: new `id.Disk = Kind{prefix: "dsk"}` (Render's observed prefix), minted via `id.New` only; the disk id ↔ App mapping lives in the control-plane store (migration `0095_service_disks`), since the DB-free operator needs only `spec.disk`.
 - **REST** (`internal/apps/disks.go`, Render shapes): `GET/POST /v1/disks`, `GET/PATCH/DELETE /v1/disks/{diskId}`, `GET /v1/disks/{diskId}/snapshots`, `POST /v1/disks/{diskId}/snapshots/restore`. `POST` requires `serviceId` and triggers a deploy; `DELETE` warns and is immediate. The `render_openapi_test.go` pin of `/v1/disks` → 404 is removed and the routes join the pinned-spec inventory. Every route gets a scope-matrix `OpClass*` entry; verbs authorize through `AuthorizeApp` on the owning service (the standard single-gate seam), and the authz/target sweep tests pick them up automatically.
 - **GraphQL / MCP**: `disk` on the service view; `addDisk` / `updateDisk` / `deleteDisk` / `restoreDiskSnapshot` mutations and `add_disk` / `update_disk` / `delete_disk` / `list_disk_snapshots` / `restore_disk_snapshot` tools, mirroring the REST core (one service, three thin fragments). `mcp_parity.go` divergence lists updated.
-- **Dashboard**: a **Disks** tab on eligible service pages (currently omitted as a non-goal in the sidebar) — add disk (mount path + size, with the redeploy warning), usage-over-time graph (`kubelet_volume_stats_*` on the disk PVC, the datastore metrics path extended with a third PVC-name pattern `^disk-<name>$`), grow, snapshot list + restore (confirmation phrase), delete.
+- **Dashboard**: a **Disk** tab (Render's singular label) in the Manage sidebar group on eligible service pages (currently omitted as a non-goal). The add form mirrors the live-captured contract ([render-artifacts/disks.md](render-artifacts/disks.md)): mount path + size only — no name input (bex auto-derives the API-level `name`), `/var/data` placeholder, the five-bullet warning list (zero-downtime deploys lost, no multi-instance, one disk max, only mount-path files persist, no cross-service access), 1/5/10/50/100 GB quick-select chips with a free-text box defaulting to 10, and an empty-state card quoting bex's $0.175/GB-month rate. Post-create: usage-over-time graph (`kubelet_volume_stats_*` on the disk PVC, the datastore metrics path extended with a third PVC-name pattern `^disk-<name>$`), grow, snapshot list + restore (confirmation phrase), delete.
 - **CLI**: upstream has no disk commands; `cli-compatibility-checklist.md` gets a "n/a upstream" row.
 
 ### D7 — Blueprint (`render.yaml`) parity

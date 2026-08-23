@@ -207,6 +207,63 @@ spec:
                   run (Render's cron "Command" field, e.g. "npm run report"); empty runs the
                   image's own command unmodified. Ignored for every other type.
                 type: string
+              disk:
+                description: |-
+                  Disk attaches one persistent volume to this service, mounted at
+                  Disk.MountPath — Render's per-service persistent disk
+                  (docs/ADR082-persistent-disks.md). Only writes under the mount path
+                  survive a deploy or restart; the rest of the container filesystem stays
+                  ephemeral. nil (the default) is byte-identical to a service with no disk:
+                  no volume, no PVC, and the implicit RollingUpdate strategy.
+
+                  Attaching a disk is a deliberate trade, enforced by the spec-level CEL
+                  rules above rather than left to the caller: the service is pinned to a
+                  single instance (Replicas ≤ 1, no autoscaling) and loses zero-downtime
+                  deploys, because two revisions must never write one volume at once. It
+                  requires a paid tier and an eligible type; cron jobs and static sites
+                  have no long-lived filesystem to persist.
+                properties:
+                  mountPath:
+                    description: |-
+                      MountPath is the absolute in-container path the volume is mounted at.
+                      Only files written under it persist across deploys and restarts.
+                    maxLength: 255
+                    minLength: 1
+                    type: string
+                  name:
+                    description: |-
+                      Name labels the disk. Render accepts any string here and does not display
+                      it in its dashboard, so it is identity for the Blueprint/API contract
+                      rather than something the volume itself derives its name from — the PVC
+                      is named after the App, since a service has at most one disk.
+                    maxLength: 63
+                    minLength: 1
+                    type: string
+                  sizeGB:
+                    default: 10
+                    description: |-
+                      SizeGB is the provisioned capacity, in gigabytes. It grows only: the
+                      spec-level transition rule refuses any decrease, because shrinking a
+                      filesystem under a running service destroys data. 10 is Render's
+                      Blueprint default; the 10000 ceiling is the Hetzner Cloud volume maximum,
+                      stated here rather than left undocumented as Render leaves it.
+                    format: int32
+                    maximum: 10000
+                    minimum: 1
+                    type: integer
+                required:
+                - mountPath
+                - name
+                type: object
+                x-kubernetes-validations:
+                - message: disk.mountPath must be an absolute path
+                  rule: self.mountPath.startsWith('/')
+                - message: disk.mountPath must not be the root directory or end with
+                    a slash
+                  rule: '!self.mountPath.endsWith(''/'')'
+                - message: disk.mountPath is a reserved platform path; mount a subdirectory
+                    of it instead
+                  rule: '!(self.mountPath in [''/etc'',''/etc/secrets'',''/home'',''/home/render'',''/opt'',''/opt/render'',''/opt/render/project'',''/opt/render/project/src''])'
               displayName:
                 description: |-
                   DisplayName is the free-form, human-facing label for this App. It is
@@ -781,6 +838,19 @@ spec:
                 change type
               rule: '(has(self.type) ? self.type : ''web_service'') == (has(oldSelf.type)
                 ? oldSelf.type : ''web_service'')'
+            - message: spec.disk is supported only on web_service, private_service
+                and background_worker
+              rule: '!has(self.disk) || (has(self.type) ? self.type : ''web_service'')
+                in [''web_service'',''private_service'',''background_worker'']'
+            - message: spec.disk requires a paid tier
+              rule: '!has(self.disk) || !has(self.tier) || self.tier != ''free'''
+            - message: a service with spec.disk cannot run more than one instance
+              rule: '!has(self.disk) || !has(self.replicas) || self.replicas <= 1'
+            - message: a service with spec.disk cannot use autoscaling
+              rule: '!has(self.disk) || !has(self.autoscaling) || !self.autoscaling.enabled'
+            - message: spec.disk.sizeGB can only grow; a disk is never shrunk
+              rule: '!has(self.disk) || !has(oldSelf.disk) || self.disk.sizeGB >=
+                oldSelf.disk.sizeGB'
           status:
             description: status defines the observed state of App
             properties:
@@ -895,6 +965,34 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              disk:
+                description: |-
+                  Disk is the observed state of the attached persistent disk; nil when
+                  spec.disk is unset. See the DiskReady condition for why a size is still
+                  converging.
+                properties:
+                  allocatedSizeGB:
+                    description: |-
+                      AllocatedSizeGB is the grow-only PVC request the operator has accepted.
+                      It is the high-water mark, so it never drops even if a spec were rolled
+                      back by some path other than the (refused) shrink.
+                    format: int32
+                    type: integer
+                  capacityGB:
+                    description: |-
+                      CapacityGB is the capacity most recently observed on the PVC. While it
+                      trails AllocatedSizeGB the DiskReady condition explains the in-progress
+                      resize.
+                    format: int32
+                    type: integer
+                  observedSizeGB:
+                    description: |-
+                      ObservedSizeGB is the spec.disk.sizeGB value the grow-only reconciler last
+                      accepted, which is what distinguishes a genuine new shrink attempt from an
+                      unchanged spec whose allocation has since grown past it.
+                    format: int32
+                    type: integer
+                type: object
               endpoint:
                 description: Endpoint is the raw runtime target for the edge ("host:port/prefix").
                 type: string

@@ -249,6 +249,14 @@ spec:
             value: bex-activator
           - name: BEX_ACTIVATOR_PORT
             value: "8888"
+          # Persistent service disks (ADR082). Unset selects the cluster's
+          # default StorageClass, which is what lets one manifest serve both
+          # production (hcloud-volumes) and the CAPD mock (local-path). Set it
+          # to hcloud-volumes-luks — deploy/gitops/base/disk-storageclass.yaml —
+          # once that class's two node prerequisites are verified live; the
+          # class file records them.
+          # - name: BEX_DISK_STORAGE_CLASS
+          #   value: hcloud-volumes-luks
         ports:
         - containerPort: 8081
           name: health

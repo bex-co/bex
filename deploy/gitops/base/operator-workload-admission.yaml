@@ -215,9 +215,15 @@ spec:
         apiVersions: ["v1alpha1"]
         operations: ["UPDATE"]
         resources: ["apps/*", "databases/*", "keyvalues/*"]
+      # UPDATE alone covered the KeyValue expander, whose claims a StatefulSet
+      # creates on its behalf. The App controller creates and deletes a
+      # persistent service disk's claim itself (docs/ADR082-persistent-disks.md),
+      # so those two operations need to be inside the namespace boundary too —
+      # otherwise the one PVC the operator authors directly is the one the
+      # policy never sees.
       - apiGroups: [""]
         apiVersions: ["v1"]
-        operations: ["UPDATE"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
         resources: ["persistentvolumeclaims"]
       - apiGroups: ["cert-manager.io"]
         apiVersions: ["v1"]
