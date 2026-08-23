@@ -1,0 +1,18 @@
+# render.yaml — the manifest for deploy-from-chat (pillar 4).
+# Unlike hello-go/hello-node/hello-python, this one declares `runtime: rust`
+# (no Dockerfile): it is the native-toolchain path, where the operator generates
+# the build from `buildCommand`/`startCommand` against the pinned `rust` image.
+services:
+  - name: hello-rust
+    type: web
+    runtime: rust
+    repo: https://github.com/bex-co/bex # replace with your fork/checkout
+    branch: main
+    rootDir: examples/hello-rust
+    buildCommand: cargo build --release
+    startCommand: ./target/release/app
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: MESSAGE
+        value: "hello from bex"

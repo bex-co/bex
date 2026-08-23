@@ -356,7 +356,7 @@ func TestManagedServiceCreatePersistsPendingWithoutServing(t *testing.T) {
 	view, err := svc.materializeNewApp(context.Background(), req, &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: req.Name, Namespace: "default"},
 		Spec:       spec,
-	}, "tea-test", core.EnvironmentAssignment{})
+	}, "tea-test", core.EnvironmentAssignment{}, createSeed{})
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}

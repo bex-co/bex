@@ -44,11 +44,37 @@ func TestNativeDockerfilePreservesRenderCommands(t *testing.T) {
 	for _, want := range []string{
 		"FROM node:24-bookworm@sha256:",
 		"npm ci && npm run build",
-		`CMD ["/bin/bash","-lc","node dist/server.js --flag='quoted'"]`,
+		`CMD ["/bin/bash","-c","node dist/server.js --flag='quoted'"]`,
 		"--mount=type=secret,id=render-env",
 	} {
 		if !strings.Contains(dockerfile, want) {
 			t.Errorf("Dockerfile missing %q:\n%s", want, dockerfile)
+		}
+	}
+}
+
+// A login shell sources /etc/profile, which on Debian unconditionally rewrites
+// PATH to the fixed system default — discarding the toolchain PATH the runtime
+// images set via ENV (golang's /usr/local/go/bin, rust's /usr/local/cargo/bin).
+// Go and Rust builds died with "command not found"; the interpreted runtimes
+// only survived because their binaries sit in /usr/local/bin. Every runtime's
+// RUN and CMD must therefore use a NON-login shell.
+func TestNativeDockerfileKeepsToolchainPATH(t *testing.T) {
+	const profileDefault = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+	for runtime := range nativeRuntimeImages {
+		o := nativeOptions()
+		o.Runtime = runtime
+		dockerfile := nativeDockerfile(o)
+		if strings.Contains(dockerfile, `"-lc"`) {
+			t.Errorf("%s: login shell resets PATH to %s, dropping the toolchain PATH:\n%s", runtime, profileDefault, dockerfile)
+		}
+		for _, want := range []string{
+			`RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",`,
+			`CMD ["/bin/bash","-c",`,
+		} {
+			if !strings.Contains(dockerfile, want) {
+				t.Errorf("%s: Dockerfile missing %q:\n%s", runtime, want, dockerfile)
+			}
 		}
 	}
 }

@@ -12,10 +12,15 @@ import { DeployActions } from "../deploy-actions";
 
 const cancelDeploy = vi.fn();
 const rollbackService = vi.fn();
+const mutationOptions: Record<string, { refetchQueries?: string[] }> = {};
 vi.mock("@apollo/client/react", () => ({
   useMutation: vi.fn(
-    (doc: { definitions?: Array<{ name?: { value?: string } }> }) => {
-      const name = doc.definitions?.[0]?.name?.value;
+    (
+      doc: { definitions?: Array<{ name?: { value?: string } }> },
+      options: { refetchQueries?: string[] },
+    ) => {
+      const name = doc.definitions?.[0]?.name?.value ?? "";
+      mutationOptions[name] = options;
       return name === "RollbackService"
         ? [rollbackService, { loading: false }]
         : [cancelDeploy, { loading: false }];
@@ -112,6 +117,23 @@ describe("DeployActions", () => {
     expect(
       await screen.findByRole("button", { name: "Rollback" }),
     ).toBeInTheDocument();
+  });
+
+  // w6/m45 t003: the header's status pill reads the `Server` query, which is
+  // otherwise only polled every 30s — so a Cancel or Rollback that refetched
+  // only Deploys/ServiceEvents left the header claiming "Building" next to a
+  // "Canceled" latest-deploy chip on the very same page, on all three surfaces
+  // that mount DeployActions, until a reload.
+  it("refetches the service header's own query after cancel and rollback", async () => {
+    renderActions("update_in_progress");
+
+    for (const name of ["CancelDeploy", "RollbackService"]) {
+      expect(mutationOptions[name]?.refetchQueries).toEqual([
+        "Server",
+        "Deploys",
+        "ServiceEvents",
+      ]);
+    }
   });
 
   it("offers neither action for a failed deploy", async () => {

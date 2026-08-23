@@ -629,12 +629,12 @@ func NewServer(base *core.Base, d Deps) *Server {
 	envGroupsSvc := &envgroups.Service{Base: base, Store: d.Secrets, MaxEnvGroups: d.MaxEnvGroupsPerWorkspace}
 	var envSeeder apps.EnvSeeder
 	var envNames apps.EnvNameSource
-	var secretFileSeeder apps.SecretFileSeeder
+	var createSecrets apps.CreateSecretsSeeder
 	var envGroupApplier apps.EnvGroupApplier
 	if d.Secrets != nil {
 		envSeeder = secretsSvc
 		envNames = secretsSvc
-		secretFileSeeder = secrets.NewCreateSecretFileSeeder(secretsSvc)
+		createSecrets = secrets.NewCreateSecretsSeeder(secretsSvc)
 		envGroupApplier = envGroupsSvc
 	}
 	billingSvc := &billing.Service{Base: base, Provider: d.Billing, State: d.BillingState}
@@ -717,7 +717,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		return err
 	}
 	srv := &Server{
-		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, SecretFileSeeder: secretFileSeeder, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
+		Apps: &apps.Service{Base: base, Store: d.Store, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvSeeder: envSeeder, EnvNames: envNames, CreateSecrets: createSecrets, Environments: environmentCreateResolver, Owners: workspaceSvc, Metadata: resourceMetadata},
 		Logs: logSvc,
 		Metrics: &metrics.Service{
 			Base:                       base,

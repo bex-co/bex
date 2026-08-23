@@ -197,16 +197,15 @@ func (s *Service) SeedSecretFiles(ctx context.Context, service string, initial [
 	return s.materializeFiles(ctx, a, files)
 }
 
-// PrepareSecretFiles persists and materializes create-time files before the App
+// prepareSecretFiles persists and materializes create-time files before the App
 // CR exists, then points the App spec at that projection. That ordering is what
 // guarantees the operator's first Deployment already mounts /etc/secrets; a
-// post-create patch could lose the race with the first reconciliation.
-//
-// The Secret is deliberately ownerless for this short prepare window because
-// Kubernetes has not assigned the App UID yet. CommitSecretFiles adopts it as
-// soon as the App create succeeds; AbortSecretFiles removes both writes on any
-// failure.
+// post-create patch could lose the race with the first reconciliation. The
+// ownerless-then-adopt mechanics live in prepareProjection.
 func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *appv1alpha1.App, initial []core.SecretFile) error {
+	if len(initial) == 0 {
+		return nil
+	}
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
@@ -219,46 +218,56 @@ func (s *Service) prepareSecretFiles(ctx context.Context, service string, a *app
 		}
 		files[name] = f.Content
 	}
-	if len(files) == 0 {
-		return nil
-	}
 	if err := filesMapWithinQuota(files); err != nil {
 		return err
 	}
-	if err := s.storeMap(ctx, filesPath(service), files); err != nil {
-		return err
-	}
-	data := make(map[string][]byte, len(files))
-	for name, content := range files {
-		data[name] = []byte(content)
-	}
 	name := filesSecretName(a.Name)
-	sec := &corev1.Secret{
-		// The pod projects this Secret as files (spec.filesFromSecrets) and later
-		// owns it (commitSecretFiles' controller ref), so it MUST share the App's
-		// namespace — the per-tenant `<ws>` namespace under ADR043. A cross-namespace
-		// owner ref would also be garbage-collected.
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: a.Namespace},
-		Type:       corev1.SecretTypeOpaque,
-		Data:       data,
-	}
-	if err := s.Client.Create(ctx, sec); err != nil {
-		if deleteErr := s.Store.Delete(ctx, filesPath(service)); deleteErr != nil {
-			return errors.Join(err, fmt.Errorf("roll back secret-file store: %w", deleteErr))
-		}
+	if err := s.prepareProjection(ctx, a, name, filesPath(service), files); err != nil {
 		return err
 	}
 	a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, name)
 	return nil
 }
 
-// CommitSecretFiles adopts the prepared Secret after Kubernetes has assigned
-// the App UID, restoring normal owner-reference garbage collection.
-func (s *Service) commitSecretFiles(ctx context.Context, _ string, a *appv1alpha1.App) error {
-	if s.Store == nil {
-		return core.ErrSecretsUnavailable
+// prepareProjection is the write tail both create-time prepare phases share:
+// the map into the store (source of truth), then its projection Secret — and
+// the store path rolled back if that Secret cannot be written, so a failed
+// prepare leaves nothing behind either side.
+//
+// The Secret is deliberately OWNERLESS for this prepare window because
+// Kubernetes has not assigned the App UID yet; adoptPreparedSecret restores
+// normal owner-reference garbage collection once the App create succeeds. The
+// caller points the App spec at `name` afterward — that reference is what tells
+// the commit phase which legs actually ran.
+func (s *Service) prepareProjection(ctx context.Context, a *appv1alpha1.App, name, path string, values map[string]string) error {
+	if err := s.storeMap(ctx, path, values); err != nil {
+		return err
 	}
-	name := filesSecretName(a.Name)
+	data := make(map[string][]byte, len(values))
+	for key, value := range values {
+		data[key] = []byte(value)
+	}
+	sec := &corev1.Secret{
+		// The pod consumes this Secret (envFrom for env vars, a projected volume
+		// for files) and later owns it, so it MUST share the App's namespace — the
+		// per-tenant `<ws>` namespace under ADR043. A cross-namespace owner ref
+		// would also be garbage-collected.
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: a.Namespace},
+		Type:       corev1.SecretTypeOpaque,
+		Data:       data,
+	}
+	if err := s.Client.Create(ctx, sec); err != nil {
+		if deleteErr := s.Store.Delete(ctx, path); deleteErr != nil {
+			return errors.Join(err, fmt.Errorf("roll back %s: %w", path, deleteErr))
+		}
+		return err
+	}
+	return nil
+}
+
+// adoptPreparedSecret restores owner-reference garbage collection on one
+// prepared Secret once Kubernetes has assigned the App its UID.
+func (s *Service) adoptPreparedSecret(ctx context.Context, a *appv1alpha1.App, name string) error {
 	sec := &corev1.Secret{}
 	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: name}, sec); err != nil {
 		return err
@@ -269,46 +278,121 @@ func (s *Service) commitSecretFiles(ctx context.Context, _ string, a *appv1alpha
 	return s.Client.Update(ctx, sec)
 }
 
-// AbortSecretFiles removes all state written by PrepareSecretFiles. Both
-// operations are idempotent so callers can use it after any failed phase.
+// abortProjection removes both halves of one prepared leg. Each operation is
+// idempotent, so callers can use it after any failed phase.
+func (s *Service) abortProjection(ctx context.Context, a *appv1alpha1.App, name, path string) error {
+	return errors.Join(
+		s.deleteSecret(ctx, a.Namespace, name),
+		s.Store.Delete(ctx, path),
+	)
+}
+
+func (s *Service) commitSecretFiles(ctx context.Context, _ string, a *appv1alpha1.App) error {
+	if s.Store == nil {
+		return core.ErrSecretsUnavailable
+	}
+	return s.adoptPreparedSecret(ctx, a, filesSecretName(a.Name))
+}
+
 func (s *Service) abortSecretFiles(ctx context.Context, service string, a *appv1alpha1.App) error {
 	if s.Store == nil {
 		return core.ErrSecretsUnavailable
 	}
 	ctx, service = scopeApp(ctx, a, service)
+	return s.abortProjection(ctx, a, filesSecretName(a.Name), filesPath(service))
+}
+
+// prepareCreateEnvVars is the env-var twin of prepareSecretFiles (w6/m45): a
+// create request's literal env vars land in the mutable env store, and their
+// projection Secret is written and referenced from the spec, BEFORE the App CR
+// exists — so the operator's first Deployment already carries them and the
+// Environment tab / envVars API see them the moment create returns. Seeding
+// them post-create instead would both race the first reconcile and roll the
+// pods a second time.
+func (s *Service) prepareCreateEnvVars(ctx context.Context, service string, a *appv1alpha1.App, env map[string]string) error {
+	if len(env) == 0 {
+		return nil
+	}
+	if s.Store == nil {
+		return core.ErrSecretsUnavailable
+	}
+	ctx, service = scopeApp(ctx, a, service)
+	for _, key := range core.SortedKeys(env) {
+		if !core.ValidEnvKey(key) {
+			// Names only in the error — never the value (docs/ADR013-secrets.md).
+			return fmt.Errorf("%w: invalid environment variable name %q", core.ErrBadRequest, key)
+		}
+	}
+	if err := envMapWithinQuota(env); err != nil {
+		return err
+	}
+	name := envSecretName(a.Name)
+	if err := s.prepareProjection(ctx, a, name, envPath(service), env); err != nil {
+		return err
+	}
+	a.Spec.EnvFromSecret = name
+	return nil
+}
+
+func (s *Service) abortCreateEnvVars(ctx context.Context, service string, a *appv1alpha1.App) error {
+	if s.Store == nil {
+		return core.ErrSecretsUnavailable
+	}
+	ctx, service = scopeApp(ctx, a, service)
+	return s.abortProjection(ctx, a, envSecretName(a.Name), envPath(service))
+}
+
+// CreateSecretsSeeder is the apps feature's create-time transaction seam: the
+// secret files AND literal env vars a new service is born with, written before
+// the App CR so its very first pod already carries them. The implementation is
+// intentionally a small adapter rather than exported methods on Service: these
+// phases run only after apps.Create has performed the resource authorization
+// and are not independent API verbs.
+type CreateSecretsSeeder interface {
+	PrepareCreateSecrets(context.Context, string, *appv1alpha1.App, []core.SecretFile, map[string]string) error
+	CommitCreateSecrets(context.Context, string, *appv1alpha1.App) error
+	AbortCreateSecrets(context.Context, string, *appv1alpha1.App) error
+}
+
+type createSecretsSeeder struct{ service *Service }
+
+// PrepareCreateSecrets runs both legs; each is a no-op for an empty input, so a
+// create carrying only one of the two writes only that one.
+func (s createSecretsSeeder) PrepareCreateSecrets(ctx context.Context, service string, a *appv1alpha1.App, files []core.SecretFile, env map[string]string) error {
+	if err := s.service.prepareSecretFiles(ctx, service, a, files); err != nil {
+		return err
+	}
+	return s.service.prepareCreateEnvVars(ctx, service, a, env)
+}
+
+// CommitCreateSecrets adopts exactly the projections prepare actually wrote —
+// identified by the spec references it set, so a create with only one of the
+// two legs never looks for a Secret that was never prepared.
+func (s createSecretsSeeder) CommitCreateSecrets(ctx context.Context, service string, a *appv1alpha1.App) error {
+	var errs []error
+	if slices.Contains(a.Spec.FilesFromSecrets, filesSecretName(a.Name)) {
+		errs = append(errs, s.service.commitSecretFiles(ctx, service, a))
+	}
+	if a.Spec.EnvFromSecret == envSecretName(a.Name) {
+		errs = append(errs, s.service.adoptPreparedSecret(ctx, a, envSecretName(a.Name)))
+	}
+	return errors.Join(errs...)
+}
+
+// AbortCreateSecrets removes every write PrepareCreateSecrets could have made.
+// Each operation is idempotent, so it is safe after any failed phase — and
+// unconditional, because the App it rolls back is brand new and therefore owns
+// nothing either path could be destroying.
+func (s createSecretsSeeder) AbortCreateSecrets(ctx context.Context, service string, a *appv1alpha1.App) error {
 	return errors.Join(
-		s.deleteSecret(ctx, a.Namespace, filesSecretName(a.Name)),
-		s.Store.Delete(ctx, filesPath(service)),
+		s.service.abortSecretFiles(ctx, service, a),
+		s.service.abortCreateEnvVars(ctx, service, a),
 	)
 }
 
-// CreateSecretFileSeeder is the apps feature's create-time transaction seam.
-// The implementation is intentionally a small adapter rather than exported
-// methods on Service: these phases run only after apps.Create has performed the
-// resource authorization and are not independent API verbs.
-type CreateSecretFileSeeder interface {
-	PrepareSecretFiles(context.Context, string, *appv1alpha1.App, []core.SecretFile) error
-	CommitSecretFiles(context.Context, string, *appv1alpha1.App) error
-	AbortSecretFiles(context.Context, string, *appv1alpha1.App) error
-}
-
-type createSecretFileSeeder struct{ service *Service }
-
-func (s createSecretFileSeeder) PrepareSecretFiles(ctx context.Context, service string, a *appv1alpha1.App, files []core.SecretFile) error {
-	return s.service.prepareSecretFiles(ctx, service, a, files)
-}
-
-func (s createSecretFileSeeder) CommitSecretFiles(ctx context.Context, service string, a *appv1alpha1.App) error {
-	return s.service.commitSecretFiles(ctx, service, a)
-}
-
-func (s createSecretFileSeeder) AbortSecretFiles(ctx context.Context, service string, a *appv1alpha1.App) error {
-	return s.service.abortSecretFiles(ctx, service, a)
-}
-
-// NewCreateSecretFileSeeder wraps Service for apps.Service wiring.
-func NewCreateSecretFileSeeder(service *Service) CreateSecretFileSeeder {
-	return createSecretFileSeeder{service: service}
+// NewCreateSecretsSeeder wraps Service for apps.Service wiring.
+func NewCreateSecretsSeeder(service *Service) CreateSecretsSeeder {
+	return createSecretsSeeder{service: service}
 }
 
 // DeleteSecretFile removes one file (Render's DELETE .../secret-files/{name}),

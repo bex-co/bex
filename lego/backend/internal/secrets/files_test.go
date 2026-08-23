@@ -20,10 +20,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -372,4 +375,166 @@ func TestREST_SecretFilesUnconfiguredIs503(t *testing.T) {
 	if serveREST(svc, "GET", "/v1/services/web/secret-files", "").Code != 503 {
 		t.Error("GET secret-files without a store => 503")
 	}
+}
+
+// w6/m45 t002: an env var set in the New Web Service form was baked onto
+// spec.Env and never written to the mutable env store, so envVars/the
+// Environment tab could not see it — no reveal, no edit, no export, no delete.
+// The create-time seeder must land it in the store AND in the projection Secret
+// referenced by the spec, before the App CR exists, so the first pod carries it.
+func TestPrepareCreateEnvVarsSeedsStoreAndFirstAppRevision(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := newService(store)
+	seeder := NewCreateSecretsSeeder(svc)
+	ctx := context.Background()
+	app := sampleApp("web")
+	app.UID = types.UID("app-uid")
+
+	if err := seeder.PrepareCreateSecrets(ctx, "web", app, nil, map[string]string{"MESSAGE": "marker-v1"}); err != nil {
+		t.Fatal(err)
+	}
+	if app.Spec.EnvFromSecret != "web-env" {
+		t.Fatalf("App spec did not reference the prepared env projection: %q", app.Spec.EnvFromSecret)
+	}
+	secret := getSecret(t, svc.Client, "web-env")
+	if string(secret.Data["MESSAGE"]) != "marker-v1" || len(secret.OwnerReferences) != 0 {
+		t.Fatalf("prepared Secret = data %#v owners %#v", secret.Data, secret.OwnerReferences)
+	}
+	if err := svc.Client.Create(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := seeder.CommitCreateSecrets(ctx, "web", app); err != nil {
+		t.Fatal(err)
+	}
+	secret = getSecret(t, svc.Client, "web-env")
+	if len(secret.OwnerReferences) != 1 || secret.OwnerReferences[0].UID != app.UID {
+		t.Fatalf("committed Secret owner = %#v", secret.OwnerReferences)
+	}
+
+	// The whole point: the env-vars API now sees it, and every later verb works
+	// on it exactly as on a var added after create.
+	vars, err := svc.ListEnvVars(ctx, "web")
+	if err != nil || len(vars) != 1 || vars[0].Key != "MESSAGE" || vars[0].Value != "marker-v1" {
+		t.Fatalf("ListEnvVars = %+v err=%v", vars, err)
+	}
+	if _, err := svc.SetEnvVar(ctx, "web", "MESSAGE", EnvVarWrite{Value: "marker-v2"}); err != nil {
+		t.Fatalf("edit creation-time var: %v", err)
+	}
+	if got, err := svc.GetEnvVar(ctx, "web", "MESSAGE"); err != nil || got.Value != "marker-v2" {
+		t.Fatalf("GetEnvVar after edit = %+v err=%v", got, err)
+	}
+	if err := svc.DeleteEnvVar(ctx, "web", "MESSAGE"); err != nil {
+		t.Fatalf("delete creation-time var: %v", err)
+	}
+	if data := getSecret(t, svc.Client, "web-env").Data; len(data) != 0 {
+		t.Fatalf("deleted var still projected: %#v", data)
+	}
+}
+
+// A rejected key must leave nothing behind, and its VALUE must never appear in
+// the error (docs/ADR013-secrets.md).
+func TestPrepareCreateEnvVarsRejectsBadKeyWithoutWriting(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := newService(store)
+	err := NewCreateSecretsSeeder(svc).PrepareCreateSecrets(context.Background(), "web", sampleApp("web"), nil,
+		map[string]string{"bad-key": "never-print-this"})
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("want ErrBadRequest, got %v", err)
+	}
+	if strings.Contains(err.Error(), "never-print-this") {
+		t.Errorf("error must not carry the value: %v", err)
+	}
+	if _, ok := store.m[envPath("web")]; ok {
+		t.Error("rejected create seeded the env store anyway")
+	}
+}
+
+// Aborting a failed create removes both legs' writes, so a retry starts clean.
+func TestAbortCreateSecretsRemovesEnvProjectionAndStore(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := newService(store)
+	seeder := NewCreateSecretsSeeder(svc)
+	ctx := context.Background()
+	app := sampleApp("web")
+
+	if err := seeder.PrepareCreateSecrets(ctx, "web", app, []core.SecretFile{{Name: "token", Content: "t"}},
+		map[string]string{"MESSAGE": "marker"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := seeder.AbortCreateSecrets(ctx, "web", app); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{envPath("web"), filesPath("web")} {
+		if _, ok := store.m[path]; ok {
+			t.Errorf("abort left %s in the store", path)
+		}
+	}
+	for _, name := range []string{"web-env", "web-files"} {
+		var sec corev1.Secret
+		if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: name}, &sec); !apierrors.IsNotFound(err) {
+			t.Errorf("abort left Secret %s: %v", name, err)
+		}
+	}
+}
+
+// w6/m45 t005 (Render parity): env vars are read identically across REST,
+// GraphQL and MCP (docs/ADR006-bex-api.md), so a var seeded at service-creation
+// time must be visible on all three — not just the GraphQL `envVars` the live
+// hunt happened to probe. All three delegate to the same ListEnvVars(Page), so
+// this pins that they keep doing so.
+func TestCreationTimeEnvVarIsVisibleOnEverySecretsReadSurface(t *testing.T) {
+	store := newFakeSecretStore()
+	svc := newService(store)
+	app := sampleApp("web")
+	ctx := context.Background()
+	if err := NewCreateSecretsSeeder(svc).PrepareCreateSecrets(ctx, "web", app, nil,
+		map[string]string{"MESSAGE": "marker-v1"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Client.Create(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("REST", func(t *testing.T) {
+		var list []envVarWithCursor
+		rec := serveREST(svc, "GET", "/v1/services/web/env-vars", "")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET env-vars = %d: %s", rec.Code, rec.Body.String())
+		}
+		_ = json.Unmarshal(rec.Body.Bytes(), &list)
+		if len(list) != 1 || list[0].EnvVar.Key != "MESSAGE" || list[0].EnvVar.Value != "marker-v1" {
+			t.Fatalf("REST list = %+v", list)
+		}
+	})
+
+	t.Run("GraphQL", func(t *testing.T) {
+		field := svc.GraphQLQuery()["envVars"]
+		value, err := field.Resolve(graphql.ResolveParams{
+			Context: ctx,
+			Args:    map[string]any{"serviceId": "web"},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		vars, ok := value.([]envVarWithCursor)
+		if !ok || len(vars) != 1 || vars[0].EnvVar.Key != "MESSAGE" || vars[0].EnvVar.Value != "marker-v1" {
+			t.Fatalf("GraphQL envVars = %#v", value)
+		}
+	})
+
+	t.Run("MCP", func(t *testing.T) {
+		cs := mcpSession(t, svc)
+		res, err := cs.CallTool(ctx, &mcp.CallToolParams{
+			Name: "list_env_vars", Arguments: map[string]any{"serviceId": "web"},
+		})
+		if err != nil || res.IsError {
+			t.Fatalf("list_env_vars: err=%v isErr=%v", err, res != nil && res.IsError)
+		}
+		var out envVarsResult
+		b, _ := json.Marshal(res.StructuredContent)
+		_ = json.Unmarshal(b, &out)
+		if len(out.EnvVars) != 1 || out.EnvVars[0].Key != "MESSAGE" || out.EnvVars[0].Value != "marker-v1" {
+			t.Fatalf("MCP list_env_vars = %+v", out.EnvVars)
+		}
+	})
 }

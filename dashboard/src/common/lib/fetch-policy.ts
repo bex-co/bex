@@ -13,3 +13,22 @@ import type { WatchQueryFetchPolicy } from "@apollo/client";
  * default `cache-and-network` (which always refires on mount). w9/m62 t004.
  */
 export const PRIMED_FETCH_POLICY: WatchQueryFetchPolicy = "cache-first";
+
+/**
+ * The queries every deploy-changing verb must refetch by name.
+ *
+ * A manual deploy, restart, cancel, or rollback all change three things at
+ * once: the deploy history (`Deploys` — the history tab and the header's
+ * latest-deploy chip), the events feed (`ServiceEvents`), and the service's own
+ * state (`Server` — the header's status pill). `Server` is easy to forget and
+ * expensive to omit: it is otherwise only polled every
+ * RESOURCE_POLL_INTERVAL_MS, so leaving it out let the header claim "Building"
+ * for up to 30s next to a "Canceled" latest-deploy chip on the same page until
+ * a reload (w6/m45 t003). Naming the set once is what keeps the verbs from
+ * drifting apart again.
+ *
+ * Named queries match only MOUNTED instances, so nothing inactive is refetched,
+ * and Apollo's query deduplication collapses the several mounted `Server`
+ * watchers into one request.
+ */
+export const DEPLOY_REFETCH_QUERIES = ["Server", "Deploys", "ServiceEvents"];

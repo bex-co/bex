@@ -107,11 +107,19 @@ CMD %s
 `, start)
 }
 
+// shellJSON wraps a Render build/start command in a NON-login bash so the
+// toolchain image's own PATH survives. A login shell (`-lc`) sources Debian's
+// /etc/profile, which unconditionally overwrites PATH with the fixed system
+// default — dropping the toolchain directories the official images add via ENV
+// (golang's /usr/local/go/bin, rust's /usr/local/cargo/bin), so `go`/`cargo`
+// resolved to "command not found". Interpreted runtimes only appeared to work
+// because their binaries happen to live in /usr/local/bin, which is on that
+// default. `-c` keeps the image ENV PATH exactly as the runtime image declares.
 func shellJSON(command string) string {
 	var out bytes.Buffer
 	encoder := json.NewEncoder(&out)
 	encoder.SetEscapeHTML(false)
-	_ = encoder.Encode([]string{"/bin/bash", "-lc", command})
+	_ = encoder.Encode([]string{"/bin/bash", "-c", command})
 	return strings.TrimSpace(out.String())
 }
 

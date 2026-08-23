@@ -18,6 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/common/components/ui/alert-dialog";
+import { DEPLOY_REFETCH_QUERIES } from "@/common/lib/fetch-policy";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import {
@@ -49,18 +50,13 @@ export function DeployActions({
   const navigate = useNavigate();
   const base = useServiceBase();
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
-  // Both verbs change the deploy history and the events feed: rollback mints a
-  // brand-new deploy (which no cached list contains) and cancel appends an
-  // event row. Refetch the active `Deploys` (history tab + the service
-  // header's latest-deploy chrome) and `ServiceEvents` queries by name so
-  // every mounted surface converges without each caller having to know.
   const [cancelDeploy, { loading: canceling }] = useMutation(
     CancelDeployDocument,
-    { refetchQueries: ["Deploys", "ServiceEvents"] },
+    { refetchQueries: DEPLOY_REFETCH_QUERIES },
   );
   const [rollbackService, { loading: rollingBack }] = useMutation(
     RollbackServiceDocument,
-    { refetchQueries: ["Deploys", "ServiceEvents"] },
+    { refetchQueries: DEPLOY_REFETCH_QUERIES },
   );
   const busy = canceling || rollingBack;
 

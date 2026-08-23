@@ -1,6 +1,7 @@
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { TriggerDeployDocument } from "@/graphql/definitions";
+import { DEPLOY_REFETCH_QUERIES } from "@/common/lib/fetch-policy";
 import { useTranslations } from "@/common/hooks/use-translations";
 
 export interface TriggerOptions {
@@ -37,11 +38,9 @@ export interface UseTriggerDeployResult {
 /**
  * Render's header-level "Manual Deploy" verb. It lives in the service header
  * (not on the Events tab), but the Events list and the deploy history are what
- * show its result, so the mutation refetches exactly those queries after
- * success — Server (header chrome/status), Deploys (history), ServiceEvents —
- * rather than every active query (which refetched 6-10 queries per trigger,
- * including unrelated polling lists). Named queries match only mounted
- * instances, so nothing inactive is refetched.
+ * show its result, so the mutation refetches exactly DEPLOY_REFETCH_QUERIES
+ * after success rather than every active query (which refetched 6-10 queries
+ * per trigger, including unrelated polling lists).
  *
  * Also used for "Restart service" (w2/m30 consolidation): passing no opts
  * triggers a rebuild for repo-backed services and a pure restart for
@@ -50,7 +49,7 @@ export interface UseTriggerDeployResult {
 export function useTriggerDeploy(): UseTriggerDeployResult {
   const { t } = useTranslations();
   const [triggerDeploy, { loading }] = useMutation(TriggerDeployDocument, {
-    refetchQueries: ["Server", "Deploys", "ServiceEvents"],
+    refetchQueries: DEPLOY_REFETCH_QUERIES,
     awaitRefetchQueries: true,
   });
 

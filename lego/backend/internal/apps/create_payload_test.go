@@ -19,6 +19,8 @@ package apps
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -213,11 +215,56 @@ func TestBlueprintRejectsCreateBodyOnlyFieldsByName(t *testing.T) {
 	}
 }
 
-func TestSecretFilesThreadThroughGraphQLAndMCPCreate(t *testing.T) {
+// Everything a service is born with that does NOT live on its App spec — the
+// official CLI's `secretFiles` and (since w6/m45 t002) the create payload's
+// literal `envVars` — must reach the create-time seeder on ALL THREE public
+// surfaces. Creation-time env vars used to be baked onto spec.Env and nowhere
+// else, so `envVars`/the Environment tab never saw them; a copy left behind on
+// spec.Env would also shadow the projected Secret in the container (Kubernetes
+// env beats envFrom), silently defeating every later edit and delete.
+func TestCreateTimeSecretsThreadThroughEverySurface(t *testing.T) {
+	const (
+		fileContent = "top-secret"
+		envValue    = "marker-v1"
+	)
+	assertSeeded := func(t *testing.T, seeder *recordingCreateSecretsSeeder, name string) {
+		t.Helper()
+		if seeder.service != name {
+			t.Fatalf("seeded service = %q, want %q", seeder.service, name)
+		}
+		if len(seeder.files) != 1 || seeder.files[0].Name != "token" || seeder.files[0].Content != fileContent {
+			t.Fatalf("seeded files = %#v", seeder.files)
+		}
+		if len(seeder.env) != 1 || seeder.env["MESSAGE"] != envValue {
+			t.Fatalf("seeded env = %#v", seeder.env)
+		}
+	}
+
+	t.Run("REST", func(t *testing.T) {
+		seeder := &recordingCreateSecretsSeeder{}
+		svc, cl := newService(nil)
+		svc.CreateSecrets = seeder
+		mux := http.NewServeMux()
+		svc.RegisterREST(mux)
+
+		body := `{"name":"web","type":"web_service","image":{"imagePath":"nginx:alpine"},` +
+			`"secretFiles":[{"name":"token","content":"` + fileContent + `"}],` +
+			`"envVars":[{"key":"MESSAGE","value":"` + envValue + `"}]}`
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("POST = %d: %s", rec.Code, rec.Body.String())
+		}
+		assertSeeded(t, seeder, "web")
+		if got := getApp(t, cl, "web"); len(got.Spec.Env) != 0 || got.Spec.EnvFromSecret != "web-env" {
+			t.Fatalf("literal left on spec.Env (shadows the store): env=%#v envFromSecret=%q", got.Spec.Env, got.Spec.EnvFromSecret)
+		}
+	})
+
 	t.Run("GraphQL", func(t *testing.T) {
-		seeder := &recordingSecretFileSeeder{}
+		seeder := &recordingCreateSecretsSeeder{}
 		svc, _ := newService(nil)
-		svc.SecretFileSeeder = seeder
+		svc.CreateSecrets = seeder
 		schema, err := appsGQLSchema(svc)
 		if err != nil {
 			t.Fatal(err)
@@ -225,22 +272,22 @@ func TestSecretFilesThreadThroughGraphQLAndMCPCreate(t *testing.T) {
 		result := graphql.Do(graphql.Params{
 			Schema: schema,
 			RequestString: `mutation {
-  createService(name: "gql-web", image: "nginx:alpine", secretFiles: [{name: "token", content: "gql-secret"}]) { id }
+  createService(name: "gql-web", image: "nginx:alpine",
+    secretFiles: [{name: "token", content: "` + fileContent + `"}],
+    envVars: [{key: "MESSAGE", value: "` + envValue + `"}]) { id }
 }`,
 			Context: context.Background(),
 		})
 		if len(result.Errors) > 0 {
 			t.Fatal(result.Errors)
 		}
-		if seeder.service != "gql-web" || len(seeder.files) != 1 || seeder.files[0].Content != "gql-secret" {
-			t.Fatalf("GraphQL seed = service %q files %#v", seeder.service, seeder.files)
-		}
+		assertSeeded(t, seeder, "gql-web")
 	})
 
 	t.Run("MCP", func(t *testing.T) {
-		seeder := &recordingSecretFileSeeder{}
+		seeder := &recordingCreateSecretsSeeder{}
 		svc, _ := newService(nil)
-		svc.SecretFileSeeder = seeder
+		svc.CreateSecrets = seeder
 		call, cleanup := appsMCPClient(t, svc)
 		defer cleanup()
 		call("create_web_service", map[string]any{
@@ -249,12 +296,55 @@ func TestSecretFilesThreadThroughGraphQLAndMCPCreate(t *testing.T) {
 			"runtime":      "image",
 			"buildCommand": "",
 			"startCommand": "",
-			"secretFiles": []any{
-				map[string]any{"name": "token", "content": "mcp-secret"},
-			},
+			"secretFiles":  []any{map[string]any{"name": "token", "content": fileContent}},
+			"envVars":      []any{map[string]any{"key": "MESSAGE", "value": envValue}},
 		})
-		if seeder.service != "mcp-web" || len(seeder.files) != 1 || seeder.files[0].Content != "mcp-secret" {
-			t.Fatalf("MCP seed = service %q files %#v", seeder.service, seeder.files)
-		}
+		assertSeeded(t, seeder, "mcp-web")
 	})
+}
+
+// Only what the env store can represent moves: a ValueFrom entry is a Secret
+// key reference (the shape a bex.yml fromDatabase reference resolves to) and a
+// name outside core.ValidEnvKey would fail the projection Secret's write — both
+// keep their spec-only behavior rather than newly failing a working create.
+func TestCreationTimeEnvVarsLeaveReferencesAndUnprojectableNamesOnTheSpec(t *testing.T) {
+	seeder := &recordingCreateSecretsSeeder{}
+	svc, cl := newService(nil)
+	svc.CreateSecrets = seeder
+	if _, err := svc.Create(context.Background(), CreateRequest{
+		Name: "web", Image: "nginx:alpine",
+		Env: []appv1alpha1.EnvVar{
+			{Name: "MESSAGE", Value: "marker"},
+			{Name: "bad-key", Value: "kept"},
+			{Name: "DATABASE_URL", ValueFrom: &appv1alpha1.EnvVarSource{
+				SecretKeyRef: &appv1alpha1.SecretKeySelector{Name: "db-app", Key: "uri"},
+			}},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(seeder.env) != 1 || seeder.env["MESSAGE"] != "marker" {
+		t.Fatalf("seeded env = %#v, want only the projectable literal", seeder.env)
+	}
+	got := getApp(t, cl, "web")
+	if len(got.Spec.Env) != 2 || got.Spec.Env[0].Name != "bad-key" || got.Spec.Env[1].Name != "DATABASE_URL" {
+		t.Fatalf("spec.Env = %#v, want the unprojectable name and the reference kept in order", got.Spec.Env)
+	}
+}
+
+// With no secrets store wired (OpenBao off), a create keeps its literals on
+// spec.Env exactly as before — the fix must not turn a working dev/hand-applied
+// create into an ErrSecretsUnavailable failure.
+func TestCreationTimeEnvVarsStayOnSpecWithoutASecretsStore(t *testing.T) {
+	svc, cl := newService(nil)
+	if _, err := svc.Create(context.Background(), CreateRequest{
+		Name: "web", Image: "nginx:alpine",
+		Env: []appv1alpha1.EnvVar{{Name: "MESSAGE", Value: "marker"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got := getApp(t, cl, "web")
+	if len(got.Spec.Env) != 1 || got.Spec.Env[0].Value != "marker" || got.Spec.EnvFromSecret != "" {
+		t.Fatalf("store-less create = env %#v envFromSecret %q", got.Spec.Env, got.Spec.EnvFromSecret)
+	}
 }
