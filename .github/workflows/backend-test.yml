@@ -36,7 +36,7 @@ permissions:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, X64]
     env:
       # Same workspace/toolchain split as operator-test.yml: lego/go.work
       # requires go >= 1.26.0 (lego/cli) while this job installs the 1.25 line

@@ -103,7 +103,11 @@ They cannot live in the in-cluster stores they bootstrap (chicken-and-egg), and 
 
 ### 4. Network exposure is currently authentication-only — accepted as interim
 
-As of this writing, `:22` (SSH, gated by `bex`) and `:6443`/`:443` (kube-API, gated by the admin cert + TLS/RBAC) are reachable from `0.0.0.0/0`: the `bex-bootstrap` firewall defaults `allowed_ssh_cidrs` to open, and no app-node firewall exists. Protection is the credential layer only, with **no network second layer**. This is an accepted baseline (key-only SSH + kube RBAC is industry-standard) but is explicitly single-layer — see gaps.
+As of this writing, `:22` (SSH, gated by `bex`) and `:6443`/`:443` (kube-API, gated by the admin cert + TLS/RBAC) are reachable from `0.0.0.0/0`: the `bex-bootstrap` firewall defaults `allowed_ssh_cidrs` to open, and no app-node firewall exists. Protection is the credential layer only, with **no network second layer**. This is an accepted baseline (key-only SSH + kube RBAC is industry-standard) but is explicitly single-layer — see gaps and [ADR083](ADR083-security-review-round20.md) for the self-hosted CI custody model.
+
+### 5. Production CI runs on self-hosted GitHub Actions runners — accepted
+
+All workflows target self-hosted runners (`[self-hosted, Linux, X64]`; `egress-meter-live` uses `[self-hosted, Linux, ARM64]`). That trades GitHub-hosted ephemeral VMs for operator-custodied hosts with a larger compromise blast radius (production secrets land on the same machines that also run PR tests unless runner pools are split). **Accepted** by operator decision 2026-08-23; residual risks, mandatory repository settings (fork PRs off self-hosted), and follow-ups (split pools, ephemeral runners) are recorded in [ADR083-security-review-round20.md](ADR083-security-review-round20.md). ADR080's protected-environment gates (`production-deploy`, `production-cluster`, `production-restore`, etc.) remain load-bearing workflow-side controls.
 
 ## Consequences & known gaps
 
@@ -111,14 +115,16 @@ As of this writing, `:22` (SSH, gated by `bex`) and `:6443`/`:443` (kube-API, ga
 - **CA is revocation-proof.** `bex-ca` compromise can't be contained by revoking a cert; it requires rotating the cluster CA (disruptive). Runbook: [ADR036-ca-rotation-runbook.md](ADR036-ca-rotation-runbook.md). (w7/m37)
 - **Long-lived admin cert.** The `kubernetes-admin` cert is ~1-year (kubeadm default). A Prometheus alert `AdminCertExpiringSoon` fires 30 days before expected expiry (based on the `bex-kubeconfig` Secret creation timestamp). Renewal procedure: [ADR036-ca-rotation-runbook.md](ADR036-ca-rotation-runbook.md) §1. (w7/m37)
 - **Host-key pin is provisioned, not assumed.** The mechanism ships (w1/m66 F7) but stays inert until an operator captures the control-plane host keys into `BEX_SSH_KNOWN_HOSTS`. Treat that capture as part of cluster bring-up and of any control-plane rotation; a rotation without re-capture turns every CI fetch into a hard failure (which is the correct direction to fail, but it is a scheduled task, not a surprise).
-- **No network second layer — by decision, not omission.** `:22`/`:6443` are reachable from `0.0.0.0/0`; protection is the credential layer only. The static source-IP firewall (w1/m7 t001) was **removed** ([.pm/DO_NOT_DO.md](../.pm/DO_NOT_DO.md), 2026-07-09): a static `allowed_ssh_cidrs` fits neither a dynamic-IP operator nor GitHub-hosted CI (dynamic egress), and `:6443` is reached _via the LB_ (`:443`) so a node-`:6443` lockdown would also have to spare the LB→node hop. Auth-only is the accepted baseline. _Follow-up (only if a second layer is wanted):_ Tailscale/WireGuard locking `:22`/`:6443` to a stable tailnet, with a tailnet-joined self-hosted CI runner — never a static CIDR.
+- **No network second layer — by decision, not omission.** `:22`/`:6443` are reachable from `0.0.0.0/0`; protection is the credential layer only. The static source-IP firewall (w1/m7 t001) was **removed** ([.pm/DO_NOT_DO.md](../.pm/DO_NOT_DO.md), 2026-07-09): a static `allowed_ssh_cidrs` fits neither a dynamic-IP operator nor CI jobs whose egress is not a stable CIDR (formerly GitHub-hosted runners; now self-hosted runners unless tailnet-joined — see §Decision 5), and `:6443` is reached _via the LB_ (`:443`) so a node-`:6443` lockdown would also have to spare the LB→node hop. Auth-only is the accepted baseline. _Follow-up (only if a second layer is wanted):_ Tailscale/WireGuard locking `:22`/`:6443` to a stable tailnet, with a tailnet-joined self-hosted CI runner — never a static CIDR.
 - **Three copies to rotate.** Any rotation must cover `.env`, GitHub Actions secrets, and the in-cluster derivations. There is no single rotation command. _Follow-up:_ a rotation checklist per credential.
 
 ## Related decisions
 
 - [ADR050-encrypted-platform-backups.md](ADR050-encrypted-platform-backups.md) adds one more member to this custody model: a backup-encryption `age` keypair, whose private half joins `.env`/GitHub Actions secrets alongside `BAO_ROOT_TOKEN` and the OpenBao unseal shares, for the same reason (§Decision 3) — it must exist independent of any in-cluster store.
+- [ADR083-security-review-round20.md](ADR083-security-review-round20.md) records the accepted residual risks of running all production CI on self-hosted GitHub Actions runners (§Decision 5).
 
 ## Follow-ups
 
 - (If ever wanted) a network second layer via Tailscale/WireGuard, not the removed static-CIDR firewall — see [.pm/DO_NOT_DO.md](../.pm/DO_NOT_DO.md).
+- Split self-hosted runner pools (`ci` vs `production` labels) and/or ephemeral runners — [ADR083](ADR083-security-review-round20.md).
 - Migrate as many `.env` platform secrets as possible _downstream_ into [ADR016-sealed-secrets.md](ADR016-sealed-secrets.md) / [OpenBao](ADR013-secrets.md), leaving `.env` holding only the irreducible bootstrap set (`bex` key, `HCLOUD_TOKEN`, TF-state, OpenBao unseal).

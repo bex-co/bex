@@ -56,9 +56,26 @@ concurrency:
 
 jobs:
   render:
-    runs-on: ubuntu-latest # ships kubectl, helm 3, and yq v4 preinstalled
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
+        with:
+          version: v1.36.1
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v3.19.0
+      - name: install yq
+        run: |
+          if command -v yq >/dev/null 2>&1; then exit 0; fi
+          YQ_VERSION=4.44.6
+          YQ_LINUX_AMD64_SHA256=0c2b24e645b57d8e7c0566d18643a6d4f5580feeea3878127354a46f2a1e4598
+          archive="$RUNNER_TEMP/yq"
+          curl -fsSL -o "$archive" \
+            "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64"
+          echo "$YQ_LINUX_AMD64_SHA256  $archive" | sha256sum -c -
+          chmod +x "$archive"
+          sudo install -m755 "$archive" /usr/local/bin/yq
       - name: install fga CLI # model.fga <-> model.json drift gate
         run: |
           curl -fsSL https://github.com/openfga/cli/releases/download/v0.7.17/fga_0.7.17_linux_amd64.tar.gz \
