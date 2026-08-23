@@ -131,6 +131,27 @@ describe("useLiveLogs", () => {
     expect(result.current.lines).toHaveLength(1);
   });
 
+  // w9/053: a transport drop makes the browser's EventSource reconnect, and
+  // bex-api replays the pod log from offset 0 (the follow has no resume
+  // cursor). A replayed record whose timestamp lost its nanoseconds in transit
+  // is the same line — it must not append a second copy.
+  it("dedupes a reconnect replay whose timestamp lost sub-millisecond precision", () => {
+    const { result } = renderHook(() => useLiveLogs(baseOpts()));
+    act(() =>
+      last!.frame(
+        renderLog("01", "bv1", "2026-08-20T20:51:50.123456789Z"),
+      ),
+    );
+    flush();
+    expect(result.current.lines).toHaveLength(1);
+
+    act(() => last!.drop()); // transport drop → EventSource auto-reconnects
+    act(() => last!.open());
+    act(() => last!.frame(renderLog("01", "bv1", "2026-08-20T20:51:50.123Z")));
+    flush();
+    expect(result.current.lines).toHaveLength(1);
+  });
+
   it("ignores a malformed frame without tearing down the tail", () => {
     const { result } = renderHook(() => useLiveLogs(baseOpts()));
     act(() => last!.raw("{not json"));
