@@ -35,6 +35,7 @@ RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/kv-sni-proxy ./cmd/kv-sni-proxy
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/egress-meter ./cmd/egress-meter
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/backup-encrypt ./cmd/backup-encrypt
+RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/disk-snapshot ./cmd/disk-snapshot
 # Output name must not be "api" — that collides with the cmd/api source dir, so
 # go build would write the binary INTO that directory.
 RUN cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/bexapi ./cmd/api
@@ -52,6 +53,7 @@ COPY --from=builder /workspace/pg-sni-proxy /pg-sni-proxy
 COPY --from=builder /workspace/kv-sni-proxy /kv-sni-proxy
 COPY --from=builder /workspace/egress-meter /egress-meter
 COPY --from=builder /workspace/backup-encrypt /backup-encrypt
+COPY --from=builder /workspace/disk-snapshot /disk-snapshot
 COPY --from=builder /workspace/ssh-gateway /ssh-gateway
 USER 65532:65532
 
