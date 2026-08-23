@@ -58,3 +58,4 @@ Unchanged standing residual: ADR055 F9 → ADR072 #1 → ADR061 #4 → ADR063 #3
 - **Operator action**: create the `production-cluster`, `production-deploy`, and `production-restore` GitHub environments (repository Settings → Environments) and attach required reviewers, matching `production-infra`/`production-snapshot`/`production-release`. Without this, findings 1/2/4's code-level fix is present but not yet load-bearing.
 - Finding 2's fuller remediation (secretless build separated from credentialed deploy) remains open.
 - onbex.co PSL submission (finding 8, fourteenth report): `.pm/w1/050.md` — do not unset `BEX_BASE_DOMAIN` (`.pm/DO_NOT_DO.md` `#PSL`).
+- Self-hosted CI (ADR083, round 20): `.pm/DO_NOT_DO.md` `#CI-RUNNERS` + `scripts/github-actions-validate.sh` — do not revert workflows to `ubuntu-latest`.

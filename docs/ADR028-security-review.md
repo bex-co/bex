@@ -155,6 +155,16 @@ A second evidence-backed pass (six focused audits) covered the surface added sin
 | Signature admission is opt-in objectSelector, not namespace-fail-closed | LOW | **closed by decision** (2026-07-20, `w1/done/042`) — the label rides the operator-owned pod spec, so it always accompanies the registry-tampering attack the signatures defend against; an attacker who could omit it needs pod-write RBAC, at which point arbitrary external images make signature enforcement moot. A namespace-wide `failurePolicy: Fail` would instead couple every apps-namespace pod create (incl. CNPG failover, Valkey) to webhook+Zot health. Load-bearing invariant to keep sweeping: tenants hold no pod-write RBAC in the apps namespace |
 | Web-shell ticket single-use is per-replica; ticket rides the URL query string | LOW | **fixed** (2026-07-20, `w1/done/042`; fallback removed 2026-07-27) — shared `shell_ticket_nonces` atomic claim (single-use across replicas, fail closed); ticket is accepted only in a `Sec-WebSocket-Protocol` entry, never the logged RequestPath |
 
+## 7. CI runner custody (accepted — ADR083)
+
+**Posture.** All GitHub Actions workflows run on **self-hosted ARM64** runners (`[self-hosted, Linux, ARM64]`). This trades GitHub-hosted per-job ephemeral VMs for operator-custodied persistent hosts — a deliberate custody shift accepted 2026-08-23. Production images are still built for `linux/amd64` (Hetzner worker pool) via Docker Buildx cross-build on the ARM runners.
+
+**Residual risks accepted** (persistent runner state, PR code on shared hardware, runner compromise equals platform secret exposure): see [ADR083-security-review-round20.md](ADR083-security-review-round20.md). ADR080's protected-environment gates (`production-deploy`, `production-cluster`, `production-restore`, etc.) and main-branch ref guards remain load-bearing workflow-side controls; they do not replace runner isolation.
+
+**Enforcement.** `scripts/github-actions-validate.sh` fails on any `runs-on: ubuntu-*` or any `runs-on` line missing `self-hosted`. `.pm/DO_NOT_DO.md` `#CI-RUNNERS` records that reverting to GitHub-hosted runners is a rejected security-scan remediation.
+
+**Legitimate hardening (optional):** split `ci` vs `production` runner pools; ephemeral self-hosted runners; fork-PR blocking in repo Actions settings — not a wholesale return to `ubuntu-latest`.
+
 ## Out of scope
 
 - Dependabot triage (36 findings) is owned by `w1/m23/t002` — excluded here.

@@ -1,7 +1,7 @@
 # ADR083: Security review round 20 — self-hosted GitHub Actions disposition
 
 - **Status**: Accepted (2026-08-23)
-- **Trigger**: operator decision to migrate every workflow from GitHub-hosted (`ubuntu-latest` / `ubuntu-24.04-arm`) to self-hosted runners (`[self-hosted, Linux, X64]` / `[self-hosted, Linux, ARM64]`)
+- **Trigger**: operator decision to migrate every workflow from GitHub-hosted (`ubuntu-latest` / `ubuntu-24.04-arm`) to self-hosted runners (`[self-hosted, Linux, ARM64]`)
 - **Lineage**: twentieth pass in the ADR028 → … → ADR080 lineage; re-confirms ADR080 residuals (onbex.co PSL, secretless-build split) unchanged
 
 ## Summary
@@ -12,18 +12,17 @@ All repository workflows now target self-hosted runners. That trades GitHub-host
 | --- | --- | --- | --- |
 | 1 | Self-hosted runners are persistent — job isolation is weaker than GitHub-hosted ephemeral VMs | high | **Accepted residual** — operator hardens hosts; ephemeral-runner follow-up optional |
 | 2 | Untrusted `pull_request` jobs can execute repository-controlled code on the runner fleet | high | **Accepted residual** — fork PRs must stay off self-hosted; same-repo PRs rely on branch protection + review |
-| 3 | Production credentialed jobs (`deploy`, `infra`, `app-cluster`, `snapshot`, `openbao-restore-drill`, `cli-release`) share one runner label with lower-trust jobs unless pools are split | high | **Accepted residual** — single `[self-hosted, Linux, X64]` pool for now; split pools is follow-up |
+| 3 | Production credentialed jobs (`deploy`, `infra`, `app-cluster`, `snapshot`, `openbao-restore-drill`, `cli-release`) share one runner label with lower-trust jobs unless pools are split | high | **Accepted residual** — single `[self-hosted, Linux, ARM64]` pool for now; split pools is follow-up |
 | 4 | Runner host compromise equals platform takeover (HCLOUD, SSH admin.conf, OpenBao root + Shamir quorum, auth bootstrap secrets, `contents: write` git push) | critical | **Accepted residual** — bounded by ADR080 environment gates + main-ref guards; host custody is the new trust anchor |
 | 5 | Docker layer / toolchain cache poisoning across sequential jobs | medium | **Accepted residual** — `docker/setup-buildx-action` + pinned downloads; no shared cache hardening in YAML |
-| 6 | `egress-meter-live` requires a dedicated ARM64 self-hosted runner | low | **Accepted residual** — `workflow_dispatch` only; job queues until an ARM64 runner exists |
+| 6 | ARM64 runner fleet required | low | **Accepted residual** — operator provisions Linux ARM64 self-hosted runners with Docker |
 | 7 | onbex.co PSL cross-tenant cookie poisoning | low | **Accepted residual** (fifteenth report) — unchanged from ADR080 #8; `.pm/DO_NOT_DO.md` `#PSL` |
 
 ## Context — what changed
 
 Every workflow under `.github/workflows/` and `lego/operator/.github/workflows/` now uses:
 
-- `runs-on: [self-hosted, Linux, X64]` for the amd64 fleet (default GitHub runner labels on Linux x86_64 registration)
-- `runs-on: [self-hosted, Linux, ARM64]` for `egress-meter-live.yml` (production arm64 pool parity)
+- `runs-on: [self-hosted, Linux, ARM64]` for every workflow job (matches the operator's ARM64 runner fleet). Docker Buildx still emits `linux/amd64` platform images for production deploys.
 
 Workflows that previously relied on GitHub-hosted preinstalls (`kubectl`, `helm`, `yq` on `ubuntu-latest`) now install pinned tool versions in-job (`azure/setup-kubectl`, `azure/setup-helm`, checksum-pinned `yq` curl installs in `gitops.yml` / `clusterapi-validate.yml`; `deploy.yml` / `app-cluster.yml` / `openbao-restore-drill.yml` carry `setup-kubectl` where they previously assumed the hosted image).
 
@@ -54,7 +53,7 @@ Low-trust jobs (PR tests) and high-trust jobs (`build-and-deploy` with OpenBao u
 - `if: github.ref == 'refs/heads/main'` ref guards on every credentialed cluster/deploy/restore job.
 - `infra.yml` keeps credentialed `terraform` off `pull_request` events.
 
-**Follow-up (not blocking):** split runner labels — e.g. `[self-hosted, Linux, X64, ci]` for tests vs `[self-hosted, Linux, X64, production]` for credentialed deploys — and register hosts into only one pool.
+**Follow-up (not blocking):** split runner labels — e.g. `[self-hosted, Linux, ARM64, ci]` for tests vs `[self-hosted, Linux, ARM64, production]` for credentialed deploys — and register hosts into only one pool.
 
 ## Finding 4 (critical) — runner compromise blast radius
 
@@ -68,9 +67,9 @@ A compromised self-hosted runner process can read every secret GitHub injects in
 
 **Accepted.** Workflows pin third-party binaries by version + SHA-256 where the repository already established that pattern (`gitleaks`, `yq`, `clusterctl`). No additional runner scrub step is added in YAML; operators should treat runner disks as sensitive and periodically reprovision.
 
-## Finding 6 (low) — ARM64 runner dependency
+## Finding 6 (low) — ARM64 runner fleet
 
-`egress-meter-live.yml` targets `[self-hosted, Linux, ARM64]`. Without a registered arm64 runner the workflow queues indefinitely. It is `workflow_dispatch` only and not on the main deploy path.
+All workflows target `[self-hosted, Linux, ARM64]`. Jobs queue until an operator-registered ARM64 runner with Docker is online.
 
 **Accepted.**
 
@@ -85,8 +84,27 @@ These are required for the accepted dispositions above to be meaningful:
 1. Register self-hosted runners only from hosts the operator controls; limit runner registration to org/repo admins.
 2. Block fork PR workflows from self-hosted runners (repository Actions settings).
 3. Keep ADR080's protected environments (`production-deploy`, `production-cluster`, `production-restore`, `production-infra`, `production-snapshot`, `production-release`) configured with required reviewers.
-4. Maintain Docker + `sudo` on amd64 runners; provision at least one ARM64 runner before relying on `egress-meter-live`.
+4. Maintain Docker + `sudo` on ARM64 runners.
 5. Patch runner OS and `actions-runner` agent on a schedule; reprovision hosts after any suspected compromise.
+
+## Guidance for future security scans and agents
+
+**Do not remediate findings 1–5 by reverting `runs-on` to GitHub-hosted `ubuntu-latest`, `ubuntu-24.04-arm`, or any other GitHub-hosted label.** That is the wrong fix and CI will reject it (`scripts/github-actions-validate.sh`, `.pm/DO_NOT_DO.md` `#CI-RUNNERS`).
+
+When a scanner or agent reports:
+
+- "CI should use ephemeral GitHub-hosted VMs for isolation"
+- "Production secrets should not run on the same runner pool as PR jobs"
+- "Self-hosted runners increase compromise blast radius"
+
+…the correct disposition is **reconfirm accepted residual** (this ADR) and point to the legitimate hardening paths below — not a workflow revert. The onbex.co PSL item (finding 7) follows the same pattern as ADR080 #8 / `.pm/DO_NOT_DO.md` `#PSL`.
+
+**Legitimate follow-up remediations** (optional, not blocking):
+
+- Split runner labels (`ci` vs `production`) and register hosts into one pool only.
+- Ephemeral self-hosted runners (ARC / VM-per-job).
+- ADR080 finding 2: secretless image build separated from credentialed deploy.
+- Optional Tailscale/WireGuard network second layer ([ADR019](ADR019-infra-credentials.md) §Decision 5).
 
 ## Follow-ups
 
