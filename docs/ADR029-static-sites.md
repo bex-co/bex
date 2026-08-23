@@ -35,10 +35,11 @@ Static hosting has three independent security domains:
 
 A malicious static-site owner can publish active browser content, configure rooted object-key rewrites/redirects, and set response headers for their own origins. They cannot choose an upstream server: the API rejects route destinations that do not begin with `/`, and the static handler normalizes rewrites into `<app>/<revision>/<path>` before calling its S3 `Origin`. It has no generic HTTP fetch path. In particular, a string that resembles `bex-api.bex-system.svc`, a tenant ClusterIP, cloud metadata, or an external URL is only an object key and returns the ordinary object-store miss.
 
-Traefik deliberately keeps `providers.kubernetesIngress.allowExternalNameServices=true` because static hosting and maintenance mode need cross-namespace aliases. [`operator-alias-admission.yaml`](../deploy/gitops/base/operator-alias-admission.yaml) makes the corresponding authority explicit. In a canonical hosting namespace, an ExternalName create/update (including a transition away from ExternalName) must be requested by `bex-system/bex-controller-manager`, carry exactly one matching App controller owner, and be one of:
+Traefik deliberately keeps `providers.kubernetesIngress.allowExternalNameServices=true` because static hosting, maintenance mode, and free-tier wake all need cross-namespace aliases. [`operator-alias-admission.yaml`](../deploy/gitops/base/operator-alias-admission.yaml) makes the corresponding authority explicit. In a canonical hosting namespace, an ExternalName create/update (including a transition away from ExternalName) must be requested by `bex-system/bex-controller-manager`, carry exactly one matching App controller owner, and be one of:
 
 - `bex-static-*` → `bex-static-server.bex-system.svc.cluster.local:8080`
 - `bex-maintenance-*` → `bex-activator.bex-system.svc.cluster.local:8888`
+- `bex-activator-*` → `bex-activator.bex-system.svc.cluster.local:8888` (the auto-hibernated free-tier wake backend, w6/m47)
 
 Tenant-facing ServiceAccounts are separately denied Service and Ingress mutation by RBAC. Admission is defense in depth for alias shape; it does not make the manager untrusted or replace its reconciliation tests.
 

@@ -3196,6 +3196,16 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Service resumed",
     description: "Service activity type: resume converged",
   },
+  "services.eventsTypeServiceHibernated": {
+    message: "Service went to sleep",
+    description:
+      "Service activity type: free-tier idle auto-hibernation — deliberately worded apart from a user-driven suspension",
+  },
+  "services.eventsTypeServiceWoken": {
+    message: "Service woke up",
+    description:
+      "Service activity type: a sleeping free-tier service woke on an incoming request",
+  },
   "services.eventsTypeServiceRecovered": {
     message: "Service recovered",
     description: "Service activity type: unhealthy service recovered",

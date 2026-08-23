@@ -26,9 +26,13 @@ func TestObservedServiceStateRecordsEachRealEdgeOnce(t *testing.T) {
 	st := newMemStore()
 	ctx := context.Background()
 	at := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
-	record := func(offset time.Duration, phase, availability string, observed bool) []ServiceEventFact {
+	// suspended mirrors spec.suspended, which the user-driven Suspend verb is
+	// the only writer of: this app's Hibernated leg below is a real suspension,
+	// not free-tier idle sleep (see TestAutoHibernateFactsStayApartFromSuspend).
+	record := func(offset time.Duration, phase, availability string, observed, suspended bool) []ServiceEventFact {
 		facts, err := st.RecordObservedServiceState(ctx, ObservedServiceState{
 			AppID: "srv-web", At: at.Add(offset), ServicePhase: phase,
+			Suspended:    suspended,
 			Availability: availability, AvailabilityObserved: observed,
 			ReasonCode: EventReasonReadinessFailed,
 		})
@@ -38,25 +42,25 @@ func TestObservedServiceStateRecordsEachRealEdgeOnce(t *testing.T) {
 		return facts
 	}
 
-	if facts := record(0, "Running", "healthy", true); len(facts) != 0 {
+	if facts := record(0, "Running", "healthy", true, false); len(facts) != 0 {
 		t.Fatalf("baseline emitted %+v", facts)
 	}
-	if facts := record(time.Second, "Deploying", "unhealthy", true); len(facts) != 1 || facts[0].Type != EventFactServerFailed {
+	if facts := record(time.Second, "Deploying", "unhealthy", true, false); len(facts) != 1 || facts[0].Type != EventFactServerFailed {
 		t.Fatalf("failure facts = %+v, want one server_failed", facts)
 	}
-	if facts := record(2*time.Second, "Deploying", "unhealthy", true); len(facts) != 0 {
+	if facts := record(2*time.Second, "Deploying", "unhealthy", true, false); len(facts) != 0 {
 		t.Fatalf("steady unhealthy replay emitted %+v", facts)
 	}
-	if facts := record(3*time.Second, "Running", "healthy", true); len(facts) != 1 || facts[0].Type != EventFactServerAvailable {
+	if facts := record(3*time.Second, "Running", "healthy", true, false); len(facts) != 1 || facts[0].Type != EventFactServerAvailable {
 		t.Fatalf("recovery facts = %+v, want one server_available", facts)
 	}
-	if facts := record(4*time.Second, "Hibernated", "", true); len(facts) != 1 || facts[0].Type != EventFactServiceSuspended {
+	if facts := record(4*time.Second, "Hibernated", "", true, true); len(facts) != 1 || facts[0].Type != EventFactServiceSuspended {
 		t.Fatalf("suspend facts = %+v, want one service_suspended", facts)
 	}
-	if facts := record(5*time.Second, "Deploying", "", false); len(facts) != 0 {
+	if facts := record(5*time.Second, "Deploying", "", false, false); len(facts) != 0 {
 		t.Fatalf("transient resume phase emitted %+v", facts)
 	}
-	if facts := record(6*time.Second, "Running", "healthy", true); len(facts) != 1 || facts[0].Type != EventFactServiceResumed {
+	if facts := record(6*time.Second, "Running", "healthy", true, false); len(facts) != 1 || facts[0].Type != EventFactServiceResumed {
 		t.Fatalf("resume facts = %+v, want one service_resumed", facts)
 	}
 	if got := len(st.eventFacts); got != 4 {
@@ -108,4 +112,64 @@ func TestInsertServiceEventFactIsIdempotentInProducerFake(t *testing.T) {
 	if err != nil || inserted {
 		t.Fatalf("retry insert = (%v, %v), want (false, nil)", inserted, err)
 	}
+}
+
+// TestAutoHibernateFactsStayApartFromSuspend is the w6/m47 t002 regression: a
+// free-tier service sleeping on its idle timeout observes the same Hibernated
+// phase a user-driven suspension does, and the feed used to label both
+// "Service suspended" — leaking a false suspend into every webhook and push
+// subscriber on every routine sleep cycle. spec.suspended is what separates
+// them, and the checkpoint has to remember it so the wake edge reads correctly
+// too (spec.suspended is false on the way back up either way).
+func TestAutoHibernateFactsStayApartFromSuspend(t *testing.T) {
+	ctx := context.Background()
+	at := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
+	record := func(st *memStore, app string, offset time.Duration, phase string, suspended bool) []ServiceEventFact {
+		t.Helper()
+		facts, err := st.RecordObservedServiceState(ctx, ObservedServiceState{
+			AppID: app, At: at.Add(offset), ServicePhase: phase, Suspended: suspended,
+			Availability: "healthy", AvailabilityObserved: phase == "Running",
+		})
+		if err != nil {
+			t.Fatalf("record: %v", err)
+		}
+		return facts
+	}
+	onlyFact := func(facts []ServiceEventFact, want ServiceEventFactType) {
+		t.Helper()
+		if len(facts) != 1 || facts[0].Type != want {
+			t.Fatalf("facts = %+v, want exactly one %s", facts, want)
+		}
+	}
+
+	t.Run("idle sleep and wake never borrow the suspend vocabulary", func(t *testing.T) {
+		st := newMemStore()
+		record(st, "srv-free", 0, "Running", false)
+		onlyFact(record(st, "srv-free", time.Minute, "Hibernated", false), EventFactServiceHibernated)
+		onlyFact(record(st, "srv-free", 2*time.Minute, "Running", false), EventFactServiceWoken)
+	})
+
+	t.Run("a user-driven suspend and resume keep the original vocabulary", func(t *testing.T) {
+		st := newMemStore()
+		record(st, "srv-paid", 0, "Running", false)
+		onlyFact(record(st, "srv-paid", time.Minute, "Hibernated", true), EventFactServiceSuspended)
+		// Resume passes through a transient phase with spec.suspended already
+		// cleared; the checkpoint must still remember this was a suspension.
+		if facts := record(st, "srv-paid", 2*time.Minute, "Deploying", false); len(facts) != 0 {
+			t.Fatalf("transient resume phase emitted %+v", facts)
+		}
+		onlyFact(record(st, "srv-paid", 3*time.Minute, "Running", false), EventFactServiceResumed)
+	})
+
+	t.Run("suspending an already-sleeping service makes its wake a resume", func(t *testing.T) {
+		st := newMemStore()
+		record(st, "srv-both", 0, "Running", false)
+		onlyFact(record(st, "srv-both", time.Minute, "Hibernated", false), EventFactServiceHibernated)
+		// Phase does not move, so there is no edge to report — but the reason
+		// it is down has changed, and the checkpoint must take that on board.
+		if facts := record(st, "srv-both", 2*time.Minute, "Hibernated", true); len(facts) != 0 {
+			t.Fatalf("suspending an already-hibernated service emitted %+v", facts)
+		}
+		onlyFact(record(st, "srv-both", 3*time.Minute, "Running", false), EventFactServiceResumed)
+	})
 }

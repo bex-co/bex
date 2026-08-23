@@ -1075,6 +1075,10 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 		AppID:        appID,
 		At:           time.Now().UTC(),
 		ServicePhase: string(app.Status.Phase),
+		// The operator never writes spec.suspended — only the user-driven
+		// Suspend verb does — so this cleanly separates a real suspension from
+		// free-tier idle auto-hibernation, which scales to 0 without it.
+		Suspended: app.Spec.Suspended,
 	}
 	if app.Status.Phase == appv1alpha1.PhaseHibernated {
 		obs.AvailabilityObserved = true

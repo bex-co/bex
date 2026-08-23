@@ -170,6 +170,7 @@ const labelPlatformAliasPurpose = "app.bex.co/platform-alias"
 const (
 	platformAliasStatic      = "static-server"
 	platformAliasMaintenance = "maintenance"
+	platformAliasActivator   = "activator"
 )
 
 // annotLastActive records when the app last served (or received) traffic.
@@ -228,6 +229,7 @@ type AppReconciler struct {
 	BaseDomain           string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
 	ClusterIssuer        string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
 	ActivatorService     string                  // k8s Service name of the wake activator; empty => auto-sleep disabled
+	ActivatorNamespace   string                  // namespace of the wake activator Service (default bex-system)
 	ActivatorPort        int                     // activator listen port (default 8888)
 	MaintenanceService   string                  // shared public maintenance responder Service (default bex-activator)
 	MaintenanceNamespace string                  // namespace of the shared responder Service (default bex-system)
@@ -1721,7 +1723,11 @@ func (r *AppReconciler) ingressBackend(ctx context.Context, app *appv1alpha1.App
 		return maintenanceSvc, int32(r.maintenancePort()), nil
 	}
 	if autoHibernating {
-		return r.ActivatorService, int32(r.ActivatorPort), nil
+		activatorSvc, err := r.reconcileActivatorAlias(ctx, app)
+		if err != nil {
+			return "", 0, err
+		}
+		return activatorSvc, int32(r.ActivatorPort), nil
 	}
 	return app.Name, int32(port), nil
 }
@@ -2624,6 +2630,35 @@ func (r *AppReconciler) reconcilePlatformAlias(ctx context.Context, app *appv1al
 
 func maintenanceAliasName(appName string) string {
 	return platformAliasName("bex-maintenance-", appName)
+}
+
+func (r *AppReconciler) activatorNamespace() string {
+	return cmp.Or(r.ActivatorNamespace, platformNamespace)
+}
+
+// reconcileActivatorAlias resolves the Ingress backend that fronts an
+// auto-hibernated App. It exists for the same reason reconcileMaintenanceAlias
+// does — an Ingress backend resolves only within the Ingress's own namespace —
+// and its absence was the whole free-tier wake path's defect (w6/m47 t001):
+// the hibernating branch used to name the platform Service directly, so under
+// per-tenant namespaces (ADR043) every sleeping App's Ingress pointed at a
+// Service that does not exist in the tenant namespace. Traefik then answered
+// the public URL with its own default-backend "404 page not found", the
+// activator never saw the request, and the App stayed Hibernated forever.
+func (r *AppReconciler) reconcileActivatorAlias(ctx context.Context, app *appv1alpha1.App) (string, error) {
+	if app.Namespace == r.activatorNamespace() {
+		return r.ActivatorService, nil
+	}
+	name := activatorAliasName(app.Name)
+	if err := r.reconcilePlatformAlias(ctx, app, name, platformAliasActivator,
+		r.ActivatorService, r.activatorNamespace(), int32(r.ActivatorPort)); err != nil {
+		return "", fmt.Errorf("reconciling wake activator alias: %w", err)
+	}
+	return name, nil
+}
+
+func activatorAliasName(appName string) string {
+	return platformAliasName("bex-activator-", appName)
 }
 
 // maxCronRuns caps how many recent runs the status carries — enough to show a

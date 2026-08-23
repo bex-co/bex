@@ -84,19 +84,24 @@ import (
 // equivalent public enum. Intent suspender_* and observed service_* remain
 // distinct in the service feed; outbound notifications use observed service_*.
 const (
-	TypeDeployStarted              = "deploy_started"
-	TypeDeployEnded                = "deploy_ended"
-	TypeBranchDeleted              = "branch_deleted"
-	TypeBuildStarted               = "build_started"
-	TypeBuildEnded                 = "build_ended"
-	TypePreDeployStarted           = "pre_deploy_started"
-	TypePreDeployEnded             = "pre_deploy_ended"
-	TypeJobRunEnded                = "job_run_ended"
-	TypeAutoDeployEnabled          = "auto_deploy_enabled"
-	TypeAutoDeployDisabled         = "auto_deploy_disabled"
-	TypeServerRestarted            = "server_restarted"
-	TypeServiceSuspended           = "service_suspended"
-	TypeServiceResumed             = "service_resumed"
+	TypeDeployStarted      = "deploy_started"
+	TypeDeployEnded        = "deploy_ended"
+	TypeBranchDeleted      = "branch_deleted"
+	TypeBuildStarted       = "build_started"
+	TypeBuildEnded         = "build_ended"
+	TypePreDeployStarted   = "pre_deploy_started"
+	TypePreDeployEnded     = "pre_deploy_ended"
+	TypeJobRunEnded        = "job_run_ended"
+	TypeAutoDeployEnabled  = "auto_deploy_enabled"
+	TypeAutoDeployDisabled = "auto_deploy_disabled"
+	TypeServerRestarted    = "server_restarted"
+	TypeServiceSuspended   = "service_suspended"
+	TypeServiceResumed     = "service_resumed"
+	// Free-tier idle auto-sleep (w6/m47). Subscribers watching
+	// service_suspended for an unexpected suspension must not be paged by every
+	// routine sleep cycle, so auto-sleep is its own opt-in pair.
+	TypeServiceHibernated          = "service_hibernated"
+	TypeServiceWoken               = "service_woken"
 	TypeInstanceCountChanged       = "instance_count_changed"
 	TypeAutoscalingConfigChanged   = "autoscaling_config_changed"
 	TypeCronJobRunStarted          = "cron_job_run_started"
@@ -142,6 +147,8 @@ var factEvents = map[string]string{
 	string(store.EventFactImagePullFailed):    TypeImagePullFailed,
 	string(store.EventFactServiceSuspended):   TypeServiceSuspended,
 	string(store.EventFactServiceResumed):     TypeServiceResumed,
+	string(store.EventFactServiceHibernated):  TypeServiceHibernated,
+	string(store.EventFactServiceWoken):       TypeServiceWoken,
 	string(store.EventFactServerFailed):       TypeServerFailed,
 	string(store.EventFactServerAvailable):    TypeServerAvailable,
 	string(store.EventFactBranchChanged):      TypeBranchChanged,

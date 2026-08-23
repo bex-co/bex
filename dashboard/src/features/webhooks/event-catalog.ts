@@ -41,7 +41,12 @@ const GROUPS: Record<string, string[]> = {
     "postgres_credentials_deleted",
     "postgres_backup_started",
   ],
-  suspension: ["service_suspended", "service_resumed"],
+  suspension: [
+    "service_suspended",
+    "service_resumed",
+    "service_hibernated",
+    "service_woken",
+  ],
 };
 
 /** Keys Render lists as bare rows (no group); anything else unknown → "other". */

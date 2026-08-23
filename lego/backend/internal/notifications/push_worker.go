@@ -658,6 +658,14 @@ func projectPushEvent(row store.WebhookEventRow, serviceID, factStatus string) (
 				event: string(DeliveryEventServiceResumed), title: "Service resumed",
 				body: serviceName + " resumed.", urgency: string(DeliveryUrgencyRoutine),
 			}, true
+		// service_hibernated / service_woken are deliberately absent (w6/m47):
+		// a free-tier service sleeping and waking on its idle timeout is the
+		// designed behavior, not news, and pushing it would page the owner on
+		// every idle cycle. Splitting them out of the suspended/resumed pair is
+		// precisely what makes the two pushes above trustworthy — they now fire
+		// only for a real, user-initiated suspend or resume. Both remain visible
+		// in the Events feed and subscribable as webhooks.
+
 		case string(store.EventFactJobRunEnded):
 			if factStatus != store.EventStatusFailed {
 				return projectedPush{}, false

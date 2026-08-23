@@ -3140,6 +3140,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "服务已恢复运行",
     description: "Service activity type: resume converged",
   },
+  "services.eventsTypeServiceHibernated": {
+    message: "服务已进入休眠",
+    description:
+      "Service activity type: free-tier idle auto-hibernation — deliberately worded apart from a user-driven suspension",
+  },
+  "services.eventsTypeServiceWoken": {
+    message: "服务已被唤醒",
+    description:
+      "Service activity type: a sleeping free-tier service woke on an incoming request",
+  },
   "services.eventsTypeServiceRecovered": {
     message: "服务已恢复健康",
     description: "Service activity type: unhealthy service recovered",

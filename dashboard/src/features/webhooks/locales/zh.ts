@@ -572,6 +572,14 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "服务已恢复",
     description: "Event label — service_resumed",
   },
+  "webhooks.event.service_hibernated": {
+    message: "服务已进入休眠",
+    description: "Event label — service_hibernated",
+  },
+  "webhooks.event.service_woken": {
+    message: "服务已被唤醒",
+    description: "Event label — service_woken",
+  },
   "webhooks.event.server_restarted": {
     message: "服务器已重启",
     description: "Event label — server_restarted",

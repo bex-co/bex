@@ -179,10 +179,12 @@
     "server_available",
     "server_failed",
     "server_restarted",
+    "service_hibernated",
     "service_resumed",
-    "service_suspended"
+    "service_suspended",
+    "service_woken"
   ],
-  "bexExtensions": ["branch_changed"],
+  "bexExtensions": ["branch_changed", "service_hibernated", "service_woken"],
   "renderDocumentedExtensionsSupported": [
     "postgres_credentials_created",
     "postgres_credentials_deleted"

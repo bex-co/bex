@@ -199,3 +199,31 @@ describe("LogViewer URL-backed filter state (w7/m42)", () => {
     );
   });
 });
+
+// w6/m47 t003: the empty state used to hardcode "No logs yet" as its title
+// while the body branched on the active filter, so a zero-result search on a
+// service with real log history asserted both "this service has never logged"
+// and "nothing matches your filter" at once.
+describe("LogViewer zero-result empty state (w6/m47)", () => {
+  it("titles a filtered zero-result view as a filter miss, not an empty service", () => {
+    render(
+      <LogViewer
+        resource="web"
+        initialFilters={{ ...EMPTY_LOG_FILTERS, text: "zzz_no_such_term" }}
+      />,
+    );
+    expect(screen.getByText("No matching logs")).toBeInTheDocument();
+    expect(screen.getByText("No logs match these filters.")).toBeInTheDocument();
+    // The contradictory pairing is the bug: these two must never co-render.
+    expect(screen.queryByText("No logs yet")).not.toBeInTheDocument();
+  });
+
+  it("keeps the unfiltered zero-result view reporting a genuinely empty service", () => {
+    render(<LogViewer resource="web" />);
+    expect(screen.getByText("No logs yet")).toBeInTheDocument();
+    expect(
+      screen.getByText("This service hasn't produced any logs yet."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("No matching logs")).not.toBeInTheDocument();
+  });
+});

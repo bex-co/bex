@@ -4,8 +4,10 @@ import {
   CircleDot,
   GitBranch,
   Hammer,
+  Moon,
   PauseCircle,
   PlayCircle,
+  Sunrise,
   RefreshCcw,
   Rocket,
   Scale,
@@ -56,6 +58,10 @@ export function EventIcon({
   if (type === "suspender_added" || type === "service_suspended") {
     return <PauseCircle {...iconProps} />;
   }
+  // Idle sleep/wake reads as its own thing, not a paused/played service — the
+  // whole point of splitting these out of the suspend pair (w6/m47).
+  if (type === "service_hibernated") return <Moon {...iconProps} />;
+  if (type === "service_woken") return <Sunrise {...iconProps} />;
   if (
     type === "suspender_removed" ||
     type === "service_resumed" ||
