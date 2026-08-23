@@ -327,6 +327,15 @@ func (r *AppReconciler) cleanupDisk(ctx context.Context, app *appv1alpha1.App) e
 			return err
 		}
 	}
+	// The snapshots outlive the volume unless something removes them: they are
+	// a full copy of the tenant's filesystem in a third-party bucket, still
+	// costing storage and still holding data the tenant asked to delete.
+	if err := r.deleteDiskSnapshotChildren(ctx, app); err != nil {
+		return err
+	}
+	if err := r.purgeDiskSnapshots(ctx, app); err != nil {
+		return err
+	}
 	// Clear the marker last: while it is set the cleanup is idempotent and
 	// retried, so a delete that failed halfway is finished by the next pass
 	// instead of leaving a volume nobody is looking for.

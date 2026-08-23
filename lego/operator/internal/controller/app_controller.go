@@ -238,6 +238,15 @@ type AppReconciler struct {
 	// cluster's default — what lets the local CAPD cluster back disks with
 	// local-path instead of pretending to have Hetzner volumes.
 	DiskStorageClass string
+	// DiskSnapshots is the object store nightly disk snapshots are written to
+	// (docs/ADR082-persistent-disks.md D5). Unconfigured ⇒ no snapshot CronJob
+	// is created and no disk is backed up, the same way unset backup vars
+	// disable the KeyValue backups.
+	DiskSnapshots DiskSnapshotStore
+	// BackupHelperImage is the image the disk snapshot Job runs (bex's own, for
+	// its /disk-snapshot entrypoint). Resolved from the operator's own Pod so
+	// the Job always matches the digest the operator was rolled out with.
+	BackupHelperImage string
 	// StaticStore is the object-store target for static_site publishing
 	// (BEX_STATIC_S3_ENDPOINT/BUCKET + BEX_STATIC_PUBLISH_S3_SECRET).
 	// Unconfigured => static_site Apps are rejected with a clear status, the way
@@ -1537,6 +1546,12 @@ func (r *AppReconciler) reconcileKubernetes(ctx context.Context, app *appv1alpha
 	// rather than waiting for a resume.
 	if err := r.reconcileDisk(ctx, app); err != nil {
 		return r.fail(ctx, app, "DiskFailed", err)
+	}
+	// The nightly snapshot rides beside the volume, not the rollout: a failure
+	// to converge the CronJob must not stop the service from deploying, so it
+	// is logged rather than failing the App.
+	if err := r.reconcileDiskBackup(ctx, app); err != nil {
+		logf.FromContext(ctx).Error(err, "disk snapshot schedule not converged", "app", app.Name)
 	}
 
 	// Pre-deploy gate (w1/m33): run spec.preDeployCommand to completion against

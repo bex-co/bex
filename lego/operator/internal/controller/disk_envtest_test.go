@@ -19,6 +19,7 @@ package controller
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -344,5 +345,150 @@ var _ = Describe("Persistent disk reconcile", func() {
 		pvc, err = getPVC(app)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(pvc.Spec.Resources.Requests.Storage().String()).To(Equal("10Gi"))
+	})
+})
+
+var _ = Describe("Persistent disk snapshots", func() {
+	store := DiskSnapshotStore{
+		Endpoint: "https://s3.example.invalid", Bucket: "bex-disk-snapshots",
+		Prefix: "disks", S3Secret: "bex-disk-snapshot-s3",
+		AgePublicKey: "age1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqsxfa9d",
+		AgeSecret:    "bex-disk-snapshot-age",
+	}
+
+	newSnapshotApp := func(name string) (*AppReconciler, *appv1alpha1.App) {
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name, Namespace: "default",
+				Labels:      map[string]string{"app.bex.co/workspace": "tea-snap"},
+				Annotations: map[string]string{annotDiskProvisioned: diskProvisionedMarker},
+			},
+			Spec: appv1alpha1.AppSpec{
+				Image: "nginx:1", Tier: "starter",
+				Disk: &appv1alpha1.DiskSpec{Name: "data", MountPath: "/var/data", SizeGB: 10},
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		return &AppReconciler{
+			Client: k8sClient, Scheme: k8sClient.Scheme(),
+			DiskSnapshots: store, BackupHelperImage: "ghcr.io/bex-co/bex:test",
+		}, app
+	}
+
+	getCronJob := func(app *appv1alpha1.App) (*batchv1.CronJob, error) {
+		cron := &batchv1.CronJob{}
+		key := client.ObjectKey{Namespace: app.Namespace, Name: diskBackupName(app.Name)}
+		return cron, k8sClient.Get(ctx, key, cron)
+	}
+
+	It("schedules a nightly encrypted snapshot of the volume", func() {
+		reconciler, app := newSnapshotApp("snap-schedule")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+
+		Expect(reconciler.reconcileDiskBackup(ctx, app)).To(Succeed())
+
+		cron, err := getCronJob(app)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(cron.Spec.Schedule).To(MatchRegexp(`^\d+ 2 \* \* \*$`), "nightly, in the disk window")
+		Expect(cron.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent))
+		Expect(metav1.GetControllerOf(cron)).NotTo(BeNil(), "the schedule must die with its App")
+
+		pod := cron.Spec.JobTemplate.Spec.Template.Spec
+		Expect(pod.Containers).To(HaveLen(1))
+		container := pod.Containers[0]
+		Expect(container.Command).To(Equal([]string{"/disk-snapshot"}))
+		Expect(container.Args).To(Equal([]string{"backup"}))
+
+		// The volume is mounted READ-ONLY: a backup must not be able to modify
+		// the data it is copying.
+		Expect(container.VolumeMounts).To(HaveLen(1))
+		Expect(container.VolumeMounts[0].ReadOnly).To(BeTrue())
+		Expect(pod.Volumes[0].PersistentVolumeClaim.ClaimName).To(Equal(diskPVCName(app.Name)))
+
+		// Encryption is not optional: the recipient must reach the Job, and the
+		// DECRYPT half must not.
+		env := map[string]string{}
+		for _, e := range container.Env {
+			env[e.Name] = e.Value
+		}
+		Expect(env).To(HaveKeyWithValue("AGE_PUBLIC_KEY", store.AgePublicKey))
+		Expect(env).NotTo(HaveKey("AGE_PRIVATE_KEY"))
+		Expect(env).To(HaveKeyWithValue("BEX_DISK_WORKSPACE", "tea-snap"))
+		Expect(env).To(HaveKeyWithValue("BEX_DISK_SNAPSHOT_RETAIN", "7"), "Render keeps at least seven days")
+
+		// The ReadWriteOnce volume can only be co-mounted on the node that has
+		// it attached, so the snapshot pod prefers the service's own node.
+		Expect(pod.Affinity).NotTo(BeNil())
+		Expect(pod.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution).To(HaveLen(1))
+	})
+
+	It("takes no snapshot at all when the store is not configured", func() {
+		_, app := newSnapshotApp("snap-unconfigured")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+		bare := &AppReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+
+		Expect(bare.reconcileDiskBackup(ctx, app)).To(Succeed())
+
+		_, err := getCronJob(app)
+		Expect(apierrors.IsNotFound(err)).To(BeTrue(), "a half-configured store must not produce a Job")
+	})
+
+	// An unencrypted snapshot in a third-party bucket is worse than none, and
+	// indistinguishable from a good one once written.
+	It("refuses to take snapshots without a recipient key", func() {
+		noKey := store
+		noKey.AgePublicKey = ""
+		Expect(noKey.configured()).To(BeFalse())
+		Expect(store.configured()).To(BeTrue())
+		// Restore additionally needs the decrypt half.
+		noIdentity := store
+		noIdentity.AgeSecret = ""
+		Expect(noIdentity.restorable()).To(BeFalse())
+		Expect(store.restorable()).To(BeTrue())
+	})
+
+	It("removes the schedule when the disk is detached", func() {
+		reconciler, app := newSnapshotApp("snap-detach")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+		Expect(reconciler.reconcileDiskBackup(ctx, app)).To(Succeed())
+		Expect(getCronJob(app)).Error().NotTo(HaveOccurred())
+
+		app.Spec.Disk = nil
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
+		Expect(reconciler.reconcileDiskBackup(ctx, app)).To(Succeed())
+
+		cron, err := getCronJob(app)
+		if err == nil {
+			Expect(cron.DeletionTimestamp).NotTo(BeNil())
+		} else {
+			Expect(apierrors.IsNotFound(err)).To(BeTrue())
+		}
+	})
+
+	// A deleted disk's snapshots are a full copy of tenant data in a bucket;
+	// leaving them behind keeps billing storage and keeps the data reachable.
+	It("purges the snapshots when the disk is deleted", func() {
+		reconciler, app := newSnapshotApp("snap-purge")
+		defer func() { Expect(k8sClient.Delete(ctx, app)).To(Succeed()) }()
+
+		Expect(reconciler.purgeDiskSnapshots(ctx, app)).To(Succeed())
+
+		job := &batchv1.Job{}
+		key := client.ObjectKey{Namespace: app.Namespace, Name: diskPurgeName(app.Name)}
+		Expect(k8sClient.Get(ctx, key, job)).To(Succeed())
+		Expect(job.Spec.Template.Spec.Containers[0].Args).To(Equal([]string{"purge"}))
+		// Purge touches only the object store, so it must not mount the volume.
+		Expect(job.Spec.Template.Spec.Volumes).To(BeEmpty())
+	})
+
+	It("gives each disk its own snapshot prefix", func() {
+		a := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+			Name: "one", Namespace: "default", Labels: map[string]string{"app.bex.co/workspace": "tea-a"}}}
+		b := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
+			Name: "two", Namespace: "default", Labels: map[string]string{"app.bex.co/workspace": "tea-a"}}}
+		Expect(snapshotPrefixFor(a)).NotTo(Equal(snapshotPrefixFor(b)))
+		// Falls back to the namespace, which is still a per-tenant scope.
+		c := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "one", Namespace: "tea-b"}}
+		Expect(snapshotPrefixFor(c)).To(HavePrefix("tea-b/"))
 	})
 })
