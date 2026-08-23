@@ -137,9 +137,12 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
               <> {deploy.commitMessage.split("\n")[0]}</>
             )}
             {commitCreatedAt && (
-              <span className="ml-2 text-muted-foreground">
-                {commitCreatedAt}
-              </span>
+              // The separator is a real text node, not just the margin it used
+              // to be (w6/m45 t004): a margin leaves the paragraph one
+              // unbroken text run, so the commit message and the date ran
+              // together — "…Docker build contextAugust 22, 2026 at 6:16 PM" —
+              // for a screen reader and for anyone copying the line.
+              <span className="text-muted-foreground"> · {commitCreatedAt}</span>
             )}
           </p>
         )}

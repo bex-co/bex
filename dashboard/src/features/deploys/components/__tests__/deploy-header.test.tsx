@@ -81,6 +81,23 @@ describe("DeployHeader", () => {
     expect(screen.queryByText(/longer body/)).not.toBeInTheDocument();
   });
 
+  // w6/m45 t004: the date used to be separated from the commit message by a
+  // margin alone, so the paragraph was one unbroken text run — a screen reader
+  // (and anyone copying the line) got "…Docker build contextAugust 22, 2026".
+  it("separates the commit message from the commit date with real text", () => {
+    render(
+      <DeployHeader
+        deploy={deploy({
+          commitId: "abc1234def5678",
+          commitMessage: "fix: Docker build context",
+          commitCreatedAt: "2026-07-14T00:00:00Z",
+        })}
+      />,
+    );
+    const line = screen.getByText("abc1234").closest("p");
+    expect(line?.textContent).toMatch(/Docker build context\s+·\s+\S/);
+  });
+
   it("shows no commit line when the commit was never resolved", () => {
     render(<DeployHeader deploy={deploy({ commitId: "" })} />);
     expect(screen.queryByText("abc1234")).not.toBeInTheDocument();

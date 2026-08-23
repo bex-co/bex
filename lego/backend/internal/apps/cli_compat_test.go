@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -149,9 +150,10 @@ func TestRESTPatchAcceptsOfficialCLIServiceBody(t *testing.T) {
 	}
 }
 
-type recordingSecretFileSeeder struct {
+type recordingCreateSecretsSeeder struct {
 	service string
 	files   []core.SecretFile
+	env     map[string]string
 }
 
 type fixedEnvironmentResolver map[string]store.Environment
@@ -167,25 +169,31 @@ func (r fixedEnvironmentResolver) ResolveForCreate(_ context.Context, environmen
 	return core.EnvironmentAssignment{ID: e.ID, ProjectID: e.ProjectID, WorkspaceID: e.TenantID}, nil
 }
 
-func (s *recordingSecretFileSeeder) PrepareSecretFiles(_ context.Context, service string, app *appv1alpha1.App, files []core.SecretFile) error {
+func (s *recordingCreateSecretsSeeder) PrepareCreateSecrets(_ context.Context, service string, app *appv1alpha1.App, files []core.SecretFile, env map[string]string) error {
 	s.service = service
 	s.files = append([]core.SecretFile(nil), files...)
-	app.Spec.FilesFromSecrets = []string{app.Name + "-files"}
+	s.env = maps.Clone(env)
+	if len(files) > 0 {
+		app.Spec.FilesFromSecrets = []string{app.Name + "-files"}
+	}
+	if len(env) > 0 {
+		app.Spec.EnvFromSecret = app.Name + "-env"
+	}
 	return nil
 }
 
-func (*recordingSecretFileSeeder) CommitSecretFiles(context.Context, string, *appv1alpha1.App) error {
+func (*recordingCreateSecretsSeeder) CommitCreateSecrets(context.Context, string, *appv1alpha1.App) error {
 	return nil
 }
 
-func (*recordingSecretFileSeeder) AbortSecretFiles(context.Context, string, *appv1alpha1.App) error {
+func (*recordingCreateSecretsSeeder) AbortCreateSecrets(context.Context, string, *appv1alpha1.App) error {
 	return nil
 }
 
 func TestRESTCreateSeedsOfficialCLISecretFiles(t *testing.T) {
-	seeder := &recordingSecretFileSeeder{}
+	seeder := &recordingCreateSecretsSeeder{}
 	svc, _ := newService(nil)
-	svc.SecretFileSeeder = seeder
+	svc.CreateSecrets = seeder
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 

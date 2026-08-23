@@ -180,10 +180,12 @@ type Service struct {
 	// generation (w8/m22) — never values. nil ⇒ those vars are omitted from
 	// generated manifests.
 	EnvNames EnvNameSource
-	// SecretFileSeeder, when set (OpenBao is wired), persists and materializes
-	// the official CLI's create-time secretFiles payload. nil makes such a
-	// create fail before the App is written rather than silently discarding it.
-	SecretFileSeeder SecretFileSeeder
+	// CreateSecrets, when set (OpenBao is wired), persists and materializes what
+	// a service is born with: the official CLI's create-time secretFiles payload
+	// and the create request's literal env vars (w6/m45). nil makes a create
+	// carrying secretFiles fail before the App is written rather than silently
+	// discarding it, and leaves literal env vars on spec.Env exactly as before.
+	CreateSecrets CreateSecretsSeeder
 	// Environments is the shared create-time assignment resolver. It owns the
 	// unknown-versus-foreign classification and project lookup for all resource
 	// kinds, so service/Postgres/Key Value creates cannot drift.
@@ -206,13 +208,15 @@ type AppSecretsEraser interface {
 	PurgeApp(ctx context.Context, a *appv1alpha1.App) error
 }
 
-// SecretFileSeeder is the narrow create-time seam onto the secrets feature.
-// *secrets.Service satisfies it structurally, avoiding an apps -> secrets
-// dependency cycle.
-type SecretFileSeeder interface {
-	PrepareSecretFiles(ctx context.Context, service string, app *appv1alpha1.App, files []core.SecretFile) error
-	CommitSecretFiles(ctx context.Context, service string, app *appv1alpha1.App) error
-	AbortSecretFiles(ctx context.Context, service string, app *appv1alpha1.App) error
+// CreateSecretsSeeder is the narrow create-time seam onto the secrets feature:
+// the secret files and literal env vars a new service is born with, written
+// (and referenced from the spec) before the App CR so the first reconcile
+// already carries them. *secrets.Service's adapter satisfies it structurally,
+// avoiding an apps -> secrets dependency cycle.
+type CreateSecretsSeeder interface {
+	PrepareCreateSecrets(ctx context.Context, service string, app *appv1alpha1.App, files []core.SecretFile, env map[string]string) error
+	CommitCreateSecrets(ctx context.Context, service string, app *appv1alpha1.App) error
+	AbortCreateSecrets(ctx context.Context, service string, app *appv1alpha1.App) error
 }
 
 // IntentStore is the slice of the source of truth Service writes through — kept
@@ -1481,7 +1485,8 @@ type CreateRequest struct {
 	MaxShutdownDelaySeconds *int32
 	Env                     []appv1alpha1.EnvVar
 	// SecretFiles are Render's create-time secret files. They live in OpenBao,
-	// not the App spec, and are materialized by SecretFileSeeder after create.
+	// not the App spec, and are materialized by CreateSecrets before the App CR
+	// is written, so the first pod already mounts them.
 	SecretFiles []core.SecretFile
 	Hosts       []string
 	// AutoDeploy controls whether a signed git push to Branch redeploys this App
@@ -1597,7 +1602,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 				return AppView{}, fmt.Errorf("%w: invalid secret file name %q", core.ErrBadRequest, req.SecretFiles[i].Name)
 			}
 		}
-		if s.SecretFileSeeder == nil {
+		if s.CreateSecrets == nil {
 			return AppView{}, core.ErrSecretsUnavailable
 		}
 	}
@@ -1672,7 +1677,61 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	a.Namespace = s.AppNamespace(tenantID)
 	a.Spec = desired
 	stampEnvironmentMembership(a, environment)
-	return s.materializeNewApp(ctx, req, a, tenantID, environment)
+	seed := createSeed{files: req.SecretFiles}
+	// A nil seeder (OpenBao off) keeps the pre-w6/m45 spec-only behavior.
+	if s.CreateSecrets != nil {
+		seed.env = takeCreateEnvLiterals(&a.Spec)
+	}
+	return s.materializeNewApp(ctx, req, a, tenantID, environment, seed)
+}
+
+// createSeed is what a new service is born with that does NOT live on its App
+// spec: the create request's secret files and its literal env vars, both
+// written to the mutable stores (and referenced from the spec) before the CR
+// exists. Bundled so the two always travel together through the create tail.
+type createSeed struct {
+	files []core.SecretFile
+	env   map[string]string
+}
+
+func (s createSeed) empty() bool { return len(s.files) == 0 && len(s.env) == 0 }
+
+// takeCreateEnvLiterals removes a newborn spec's literal env vars from spec.Env
+// and returns them as the map the create-time seeder writes into the mutable
+// env store. Moving rather than copying is the whole point (w6/m45): the store
+// becomes the single writer, so the Environment tab and the envVars/envVar
+// REST/GraphQL/MCP reads list, reveal, edit, export and delete a var set at
+// creation time exactly like one added later. A copy left on spec.Env would
+// also SHADOW the projected Secret in the running container — Kubernetes `env`
+// beats `envFrom` — so every later edit or delete would be silently ignored by
+// the process.
+//
+// Entries the env store cannot represent stay exactly where they are: a
+// ValueFrom entry is a Secret key reference, not a literal (the shape a bex.yml
+// fromDatabase reference resolves to), and a name outside core.ValidEnvKey
+// would fail the projection Secret's write — both keep their spec-only
+// behavior rather than newly failing a create that works today.
+func takeCreateEnvLiterals(spec *appv1alpha1.AppSpec) map[string]string {
+	var literals map[string]string
+	kept := make([]appv1alpha1.EnvVar, 0, len(spec.Env))
+	for _, item := range spec.Env {
+		if item.ValueFrom != nil || !core.ValidEnvKey(item.Name) {
+			kept = append(kept, item)
+			continue
+		}
+		if literals == nil {
+			literals = map[string]string{}
+		}
+		literals[item.Name] = item.Value
+	}
+	if literals == nil {
+		return nil
+	}
+	if len(kept) == 0 {
+		kept = nil
+	}
+	spec.Env = kept
+	return literals
 }
 
 // nameTaken reports whether name is already claimed in the exactly-one
@@ -1752,7 +1811,13 @@ func (s *Service) createNewApp(ctx context.Context, req CreateRequest, desired a
 		}
 		a.Annotations[initialDeployHookAnnotation] = req.InitialDeployHook
 	}
-	return s.materializeNewApp(ctx, req, a, tenantID, environment)
+	// No env-literal move here: this is the Blueprint/stack create path, where
+	// spec.Env is manifest-owned and re-applied on every sync
+	// (applyCreateToSpec's `dst.Env = want.Env`). Seeding those into the mutable
+	// store would make two writers of the same key and revert a dashboard edit
+	// on the next sync — which is exactly what render.yaml's `sync: false` (and
+	// bex's existing EnvSeeder for it) exists to opt out of.
+	return s.materializeNewApp(ctx, req, a, tenantID, environment, createSeed{files: req.SecretFiles})
 }
 
 // materializeNewApp is the shared write tail of create and createNewApp, run
@@ -1826,7 +1891,7 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 	return createdRowID, firstDeployID, nil
 }
 
-func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, environment core.EnvironmentAssignment) (AppView, error) {
+func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, environment core.EnvironmentAssignment, seed createSeed) (AppView, error) {
 	var createdRowID string
 	rollbackStoreRow := func(cause error) error {
 		if createdRowID == "" || s.Store == nil {
@@ -1882,7 +1947,7 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 	}
 	a.Spec.ExternalRegistryPullSecret = pullSecretName
 	resourcemeta.Touch(a, s.Now())
-	if err := s.writeNewApp(ctx, req.Name, a, req.SecretFiles); err != nil {
+	if err := s.writeNewApp(ctx, req.Name, a, seed); err != nil {
 		return AppView{}, rollbackStoreRow(err)
 	}
 	if s.Kick != nil {
@@ -1910,31 +1975,32 @@ func mapServiceCapError(err error) error {
 	return err
 }
 
-// writeNewApp makes create-time secret files visible to the very first pod.
-// The projection Secret and App reference are prepared before the App exists;
-// after Kubernetes assigns the App UID, Commit adopts the Secret. Every failure
-// removes both the pre-created projection and its OpenBao path.
-func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1alpha1.App, files []core.SecretFile) error {
-	if len(files) == 0 {
+// writeNewApp makes create-time secret files AND literal env vars visible to
+// the very first pod. Both projection Secrets and their App references are
+// prepared before the App exists; after Kubernetes assigns the App UID, Commit
+// adopts them. Every failure removes the pre-created projections and their
+// OpenBao paths.
+func (s *Service) writeNewApp(ctx context.Context, publicName string, a *appv1alpha1.App, seed createSeed) error {
+	if seed.empty() {
 		return mapServiceCapError(s.Client.Create(ctx, a))
 	}
-	if s.SecretFileSeeder == nil {
+	if s.CreateSecrets == nil {
 		return core.ErrSecretsUnavailable
 	}
-	if err := s.SecretFileSeeder.PrepareSecretFiles(ctx, publicName, a, files); err != nil {
-		return fmt.Errorf("prepare secret files: %w", err)
+	if err := s.CreateSecrets.PrepareCreateSecrets(ctx, publicName, a, seed.files, seed.env); err != nil {
+		return fmt.Errorf("prepare create secrets: %w", err)
 	}
 	abort := func(cause error) error {
-		if err := s.SecretFileSeeder.AbortSecretFiles(ctx, publicName, a); err != nil {
-			return errors.Join(cause, fmt.Errorf("abort secret files: %w", err))
+		if err := s.CreateSecrets.AbortCreateSecrets(ctx, publicName, a); err != nil {
+			return errors.Join(cause, fmt.Errorf("abort create secrets: %w", err))
 		}
 		return cause
 	}
 	if err := s.Client.Create(ctx, a); err != nil {
 		return abort(mapServiceCapError(err))
 	}
-	if err := s.SecretFileSeeder.CommitSecretFiles(ctx, publicName, a); err != nil {
-		cause := fmt.Errorf("commit secret files: %w", err)
+	if err := s.CreateSecrets.CommitCreateSecrets(ctx, publicName, a); err != nil {
+		cause := fmt.Errorf("commit create secrets: %w", err)
 		if deleteErr := s.Client.Delete(ctx, a); deleteErr != nil && !apierrors.IsNotFound(deleteErr) {
 			cause = errors.Join(cause, fmt.Errorf("roll back App: %w", deleteErr))
 		}

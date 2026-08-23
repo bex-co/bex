@@ -1,0 +1,14 @@
+# No dependencies on purpose: the native-runtime build compiles this with the
+# stock `rust:1-bookworm` toolchain, so a std-only HTTP responder keeps the
+# example's build a pure toolchain check rather than a crates.io fetch.
+[package]
+name = "hello-rust"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "app"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 1
