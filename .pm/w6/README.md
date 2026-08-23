@@ -64,6 +64,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w6/dev-6/` keeps onl
 ## Inbox
 
 - `024.md` — open-signup funnel observability counters (ADR075 launch precondition; sub-hour)
+- `029.md` — Danger Zone delete copy claims "its URL" for service types that never had one (private service, background worker, cron job); sub-hour
 
 _(`021.md` implemented 2026-08-18 (inert `usage_threshold` event dropped from the notification vocabulary); `022.md` + `023.md` retired 2026-08-18 as already-resolved board hygiene — all three moved to `done/`)_
 
